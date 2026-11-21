@@ -207,6 +207,13 @@ func TestEnterpriseProviderManagement(t *testing.T) {
 				t.Fatalf("SQL accepted delegated owner: %v", err)
 			}
 			data := check(call(one, path, owner, makeBody("corp", orgID, "/discovery")), 200)
+			denied = check(call(one, "sso/delete-provider", delegated, map[string]any{"providerId": "corp"}), 403)
+			if denied["code"] != "OWNER_SESSION_REQUIRED" {
+				t.Fatal("delegated session reached deletion", denied)
+			}
+			if err := a.DeleteSSOProvider(ctx, sso.Actor{UserID: ownerID, SessionID: delegatedID, SessionToken: delegatedToken}, "corp", data["id"].(string), nil); err != sso.ErrUnauthenticated {
+				t.Fatalf("SQL authorized an impersonated deletion: %v", err)
+			}
 			if data["domain"] != "example.com,subs.example.org" || data["redirectURI"] != "https://enterprise.test/identity/sso/callback/corp" {
 				t.Fatal(data)
 			}

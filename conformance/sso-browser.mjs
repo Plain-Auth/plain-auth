@@ -94,5 +94,28 @@ export async function compareEnterpriseBrowser(t, {goFixture,instrument}) {
       assert.equal(session.user.emailVerified,false);
       assert.equal(db.prepare('select count(*) as n from account where providerId=? and accountId=?').get("company","employee-id").n,1);
     }
+    // A state created before deletion cannot authorize a replacement with the same public provider ID.
+    let stateCookie;
+    const browser = instrument({...go,send:async request => {
+      const response = await go.send(request);
+      if (new URL(request.url).pathname.endsWith("/sign-in/sso"))
+        stateCookie = response.headers.getSetCookie().map(h=>h.split(";",1)[0]).join("; ");
+      return response;
+    }},[ssoClient()]).client;
+    const stale = ok(await browser.signIn.sso({providerId:"company",callbackURL:go.baseURL+"/home",errorCallbackURL:go.baseURL+"/retry"}));
+    const authorization = new URL(stale.url).searchParams;
+    const target = new URL(authorization.get("redirect_uri"));
+    const code = randomUUID();
+    grants.set(code,{redirect:target.href,challenge:authorization.get("code_challenge"),nonce:authorization.get("nonce"),subject:"old-id",email:"stale@example.test"});
+    target.search = new URLSearchParams({state:authorization.get("state"),code}).toString();
+    ok(await admin.sso.deleteProvider({providerId:"company"}));
+    const replacement=ok(await admin.sso.register({providerId:"company",domain:"enterprise.example",issuer,
+      oidcConfig:{skipDiscovery:true,authorizationEndpoint:issuer+"/authorize",tokenEndpoint:issuer+"/token",jwksEndpoint:issuer+"/keys",clientId:"catalog-client",clientSecret:"catalog-secret",tokenEndpointAuthentication:"client_secret_post"}}));
+    assert.notEqual(replacement.id,registration.id);
+    const response=await go.send(new Request(target,{headers:{cookie:stateCookie},redirect:"manual"}));
+    assert.equal(response.status,302);
+    assert.equal(response.headers.get("location"),go.baseURL+"/retry?error=invalid_state");
+    assert.ok(grants.delete(code),"a deleted provider's replacement reached the token endpoint");
+    assert.equal(db.prepare("select count(*) as n from account where providerId='company'").get().n,0);
   }
 }

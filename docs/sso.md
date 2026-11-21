@@ -28,6 +28,7 @@ The host imports the root `github.com/Stonewrit/stonewrit-auth` module and its `
 | `POST /sso/register` | Registers a provider with the account owner's direct session. An organization administrator can supply an organization ID. |
 | `GET /sso/providers` | Lists the caller's personal registrations and the organization providers they currently administer. |
 | `GET /sso/get-provider?providerId=company` | Returns sanitized management metadata for a single registration. |
+| `POST /sso/delete-provider` | Deletes a managed OIDC registration and the account links for its exact provider ID. |
 
 ```json
 {
@@ -47,7 +48,7 @@ Treat the registration response and the provider table as confidential. The succ
 
 The default quota is ten provider records per creator across their personal and organization registrations. Set `Options.ProvidersLimit` to a pointer to a different maximum, or to zero to disable registration. The live organization membership controls access on every node that shares the database, including nodes that serve only the SSO routes. Only owners and administrators can register or inspect the organization's providers. Membership and session authority are checked again before the new provider commits. An impersonated administrator cannot register a provider. Personal registrations disappear when their creator's account is deleted, and previously linked account provider IDs stay reserved. [Ownership, cleanup and concurrency tests](../adapters/sqlstore/sso_test.go)
 
-The native Go client exposes `RegisterOIDCProvider`, `ListSSOProviders` and `GetSSOProvider`. The registration result supplies the callback URI for IdP setup. [Compatibility tests](../conformance/sso-providers.mjs) · [SSO checklist](parity/plugins/sso.md)
+The native Go client exposes `RegisterOIDCProvider`, `ListSSOProviders`, `GetSSOProvider` and `DeleteSSOProvider`. The registration result supplies the callback URI for IdP setup. [Compatibility tests](../conformance/sso-providers.mjs) · [SSO checklist](parity/plugins/sso.md)
 
 ## Enterprise browser sign-in
 
@@ -63,4 +64,12 @@ The SQL adapter rechecks the provider's immutable record ID and configuration be
 
 An organization-bound provider adds the authenticated user as a member of the bound tenant in the session transaction. Existing roles and live invitations are preserved. A full or deleted organization cannot leave a partial identity or session. These checks also apply on sign-in nodes that share the organization database and serve only the SSO routes. Set `DisableOrganizationProvisioning` to manage membership separately. [Membership and concurrent removal tests](../adapters/sqlstore/sso_browser_test.go)
 
-The native client starts the flow with `SignInSSO`. A Go flow must finish on a Go instance. Completed enterprise accounts can sign in on either tested implementation using the shared canonical database. Arbitrary callback aliases, stateless IdP-initiated entry, private-key client authentication, custom resolver/provisioning hooks, profile replacement on subsequent sign-in, provider update/deletion, DNS ownership verification and SAML remain open.
+The native client starts the flow with `SignInSSO`. A Go flow must finish on a Go instance. Completed enterprise accounts can sign in on either tested implementation using the shared canonical database. Arbitrary callback aliases, stateless IdP-initiated entry, private-key client authentication, custom resolver/provisioning hooks, profile replacement on subsequent sign-in, provider updates, DNS ownership verification and SAML remain open.
+
+## Delete a provider
+
+Send `{"providerId":"company"}` to `POST /sso/delete-provider` with a direct owner session. A personal registration belongs to its creator. Organization owners and administrators can delete registrations bound to their organization. Access follows current membership on every node. A successful response is `{"success":true}`. A repeated delete returns HTTP 404. [Client compatibility tests](../conformance/sso-providers.mjs)
+
+The SQL adapter locks the exact registration and removes its account links in the same transaction. Existing users, active sessions, organization memberships and links to other providers survive. A replacement registration receives a new internal ID. An authorization started against its predecessor cannot issue a new session through the replacement. Users whose old link was removed must establish a new authorized link before they can reuse their existing account with that provider. [Browser replacement test](../conformance/sso-browser.mjs)
+
+Set `sso.Options.GuardProviderMutation` to apply an application deletion policy. The callback receives the locked registration ID, provider ID, organization ID, configuration fingerprint and linked-account count. Returning an error rolls back the operation with HTTP 409 and code `SSO_PROVIDER_MUTATION_REJECTED`. Keep the callback brief and free of side effects because database conflicts can retry the transaction. Custom adapters can implement `sso.DeletionStore` to supply the same transactional boundary. [SQL authorization and rollback tests](../adapters/sqlstore/sso_delete_test.go)

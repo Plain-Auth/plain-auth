@@ -18,6 +18,9 @@ import (
 )
 
 type Options struct {
+	// GuardProviderMutation can reject a deletion after the exact provider and
+	// its authorization have been checked inside the store transaction.
+	GuardProviderMutation MutationGuard
 	// SharedCallback registers the same /sso/callback URL for every enterprise client.
 	SharedCallback bool
 	// DisableImplicitSignUp requires requestSignUp before creating an account.
@@ -278,7 +281,7 @@ func New(o Options) (auth.Plugin, error) {
 			return errors.New("sso: provider management requires a directory store")
 		}
 		return nil
-	}, Endpoints: []auth.Endpoint{endpoint("/sso/register", "POST", register), endpoint("/sso/providers", "GET", read), endpoint("/sso/get-provider", "GET", read),
+	}, Endpoints: []auth.Endpoint{endpoint("/sso/register", "POST", register), endpoint("/sso/providers", "GET", read), endpoint("/sso/get-provider", "GET", read), endpoint("/sso/delete-provider", "POST", o.deleteProvider),
 		{Method: "POST", Path: "/sign-in/sso", Handler: o.start},
 		{Method: "GET", Path: "/sso/callback", Handler: o.finish},
 		{Method: "GET", Path: "/sso/callback/:providerId", Handler: o.finish}}}, nil

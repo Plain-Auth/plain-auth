@@ -91,6 +91,17 @@ export async function providerCatalog(t, {goFixture, instrument}) {
     assert.equal(manual.oidcConfig.pkce, false);
     const manualRead = success(await other.sso.getProvider({query:{providerId:manualId}}));
     assert.equal(manualRead.oidcConfig.pkce, false);
+    assert.equal((await client(peer).sso.deleteProvider({providerId})).error.status,401);
+    assert.equal((await unauthenticated.sso.deleteProvider({providerId})).error.status,403);
+    const add = db.prepare("insert into account (id,providerId,accountId,userId,createdAt,updatedAt) values (?,?,?,?,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)");
+    add.run(providerId+"-account",providerId,"shared-subject",record.userId);
+    add.run(manualId+"-account",manualId,"shared-subject",record.userId);
+    assert.deepEqual(success(await other.sso.deleteProvider({providerId})), {success:true});
+    assert.equal((await first.sso.getProvider({query:{providerId}})).error.status,404);
+    assert.equal((await other.sso.deleteProvider({providerId})).error.status,404);
+    assert.equal(db.prepare("select count(*) as n from account where providerId=?").get(providerId).n,0);
+    assert.equal(db.prepare("select count(*) as n from account where providerId=?").get(manualId).n,1);
+    assert.equal(success(await first.getSession()).user.id,record.userId);
   }
   assert.equal(discoveries, 2);
 }

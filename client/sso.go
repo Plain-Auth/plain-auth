@@ -67,3 +67,8 @@ func (c *Client) SignInSSO(ctx context.Context, in SSOSignInRequest) (SSOAuthori
 	err := c.Do(ctx, http.MethodPost, "/sign-in/sso", in, &result)
 	return result, err
 }
+
+// DeleteSSOProvider deletes a managed provider and its linked accounts.
+func (c *Client) DeleteSSOProvider(ctx context.Context, providerID string) error {
+	return c.Do(ctx, http.MethodPost, "/sso/delete-provider", map[string]string{"providerId": providerID}, nil)
+}

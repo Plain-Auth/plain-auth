@@ -50,6 +50,9 @@
     - [x] Return public OIDC fields and reject unauthenticated or foreign users without revealing the client secret ([test](../../../conformance/sso-providers.mjs#L11))
   - [ ] `POST /sso/update-provider`
   - [ ] `POST /sso/delete-provider`
+    - [x] Delete the exact OIDC provider and its account links through the released SDK on both implementations ([test](../../../conformance/sso-providers.mjs#L99))
+    - [x] Recheck current tenant authority, protect unrelated links and serialize concurrent sign-in against deletion on all three SQL engines ([test](../../../adapters/sqlstore/sso_delete_test.go#L17))
+    - [x] Reject a browser callback after the original provider is deleted and a replacement reuses its public ID ([test](../../../conformance/sso-browser.mjs#L118))
   - [ ] `GET /sso/saml2/sp/metadata`
   - [ ] `POST /sso/register`
     - [x] Register manually configured and discovered OIDC clients and read the other implementation’s canonical provider record ([test](../../../conformance/sso-providers.mjs#L11))
@@ -123,6 +126,7 @@
   - [ ] `SSOOptions`
     - [ ] `resolveUser`
     - [ ] `guardProviderMutation`
+      - [x] Inspect the locked OIDC provider and linked-account count before deletion, and roll back a rejected mutation with a private conflict response ([test](../../../adapters/sqlstore/sso_delete_test.go#L116))
     - [ ] `provisionUser`
     - [ ] `provisionUserOnEveryLogin`
     - [ ] `organizationProvisioning`

@@ -151,5 +151,18 @@ func (s *Store) CompleteEnterpriseLogin(ctx context.Context, ref string, provisi
 	}
 	// Matching an unverified directory domain never grants linking to an existing email.
 	opts.AllowVerifiedEmailLink = false
-	return s.completeOAuthWith(ctx, id, subject, tokens, user, session, opts, &hooks)
+	u, created, err := s.completeOAuthWith(ctx, id, subject, tokens, user, session, opts, &hooks)
+	// A concurrent deletion can remove the original link while the account
+	// lookup is blocked. Report that stale provider even when identity matching
+	// rejected the now-unlinked email before the transaction guard could run.
+	if errors.Is(err, auth.ErrOAuthLinkRequired) || errors.Is(err, auth.ErrOAuthSignupDisabled) {
+		current, lookup := s.FindBrowserProvider(ctx, sso.Selector{ProviderID: id})
+		if errors.Is(lookup, sso.ErrMissing) || lookup == nil && current.Reference != ref {
+			return auth.User{}, false, sso.ErrChanged
+		}
+		if lookup != nil {
+			return auth.User{}, false, lookup
+		}
+	}
+	return u, created, err
 }

@@ -46,7 +46,7 @@ func DomainMatch(domain, list string) int {
 }
 
 func available(c auth.EndpointContext, p BrowserProvider) bool {
-	return p.OIDC != nil && p.Reference != "" && slug.MatchString(p.ProviderID) && !strings.Contains(p.ProviderID, "..") && !slices.Contains(reserved, strings.ToLower(p.ProviderID)) && !c.Auth.HasOAuthProvider(p.ProviderID)
+	return p.OIDC != nil && p.Reference != "" && MutableProviderID(p.ProviderID) && !c.Auth.HasOAuthProvider(p.ProviderID)
 }
 func (o Options) start(c auth.EndpointContext) (any, error) {
 	store, ok := c.Store().(BrowserStore)
