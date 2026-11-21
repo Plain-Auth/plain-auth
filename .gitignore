@@ -2,3 +2,6 @@
 /auth.db-*
 /cookies.txt
 /conformance/node_modules/
+.env
+.env.*
+!.env.example

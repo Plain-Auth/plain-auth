@@ -3,8 +3,7 @@ package main
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/hex"
+
 	"errors"
 	"flag"
 	"fmt"
@@ -19,6 +18,8 @@ import (
 
 const usage = `Usage: authctl <command>
 
+  init      [--env-file .env] [--url URL]       Write a new local configuration
+  info                                         Show runtime and driver details
   generate  --dialect sqlite|postgres|mysql     Write the auth schema to stdout
   migrate   --dialect sqlite|postgres|mysql     Apply the schema to AUTH_DSN
   secret                                       Print a new signing secret
@@ -41,20 +42,26 @@ func run(ctx context.Context, args []string, out, errOut io.Writer) error {
 		return err
 	}
 	switch args[0] {
+	case "init":
+		return initConfig(args[1:], out, errOut)
+	case "info":
+		if len(args) != 1 {
+			return errors.New("info takes no arguments")
+		}
+		return printInfo(out)
 	case "secret":
 		if len(args) != 1 {
 			return errors.New("secret takes no arguments")
 		}
-		var b [32]byte
-		rand.Read(b[:])
+
 		fmt.Fprintln(errOut, "Add the following to your .env file:")
-		_, err := fmt.Fprintf(out, "AUTH_SECRET=%s\n", hex.EncodeToString(b[:]))
+		_, err := fmt.Fprintf(out, "AUTH_SECRET=%s\n", generateSecret())
 		return err
 	case "generate", "migrate":
 		fs := flag.NewFlagSet(args[0], flag.ContinueOnError)
 		fs.SetOutput(errOut)
 		dialect := fs.String("dialect", "", "Database dialect (sqlite, postgres, mysql)")
-		pluginNames := fs.String("plugins", "", "Comma-separated schema profiles (organization, organization-teams, stripe-subscriptions, two-factor)")
+		pluginNames := fs.String("plugins", "", "Comma-separated schema profiles (organization, organization-teams, rate-limit, stripe-subscriptions, two-factor)")
 		if err := fs.Parse(args[1:]); err != nil {
 			if errors.Is(err, flag.ErrHelp) {
 				return nil
