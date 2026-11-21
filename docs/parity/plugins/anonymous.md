@@ -37,4 +37,5 @@
     - [ ] `disableDeleteAnonymousUser`
     - [ ] `generateName`
   - [ ] Schema
+    - [x] Generate the canonical columns on SQLite, PostgreSQL and MySQL, including combined plugin selections ([test](../../../conformance/schema.test.mjs#L66))
     - [ ] `anonymousUserTableFields.isAnonymous`

@@ -139,7 +139,7 @@ func (a *Auth) PublicJWKS(ctx context.Context) (jose.JSONWebKeySet, error) {
 		key.KeyID = row.ID
 		key.Algorithm = row.Algorithm
 		if key.Algorithm == "" {
-			key.Algorithm = opts.Algorithm
+			return jose.JSONWebKeySet{}, errors.New("jwt: stored public key has no algorithm")
 		}
 		set.Keys = append(set.Keys, key)
 	}

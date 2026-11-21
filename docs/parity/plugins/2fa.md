@@ -8,7 +8,8 @@
   - [ ] `POST /two-factor/verify-backup-code`
     - [x] Allow one claim per backup code and challenge under concurrent use ([test](../../../adapters/sqlstore/twofactor_test.go#L201))
     - [x] Validate the proof with session issuance disabled ([test](../../../adapters/sqlstore/twofactor_test.go#L219))
-    - [x] Complete a backup challenge issued by another compatible runtime sharing the same SQLite database ([test](../../../conformance/core.test.mjs#L242))
+    - [x] Enroll through the public client, reject a spent backup code and accept a fresh code ([test](../../../conformance/core.test.mjs#L258))
+    - [x] Remember a browser, rotate its account-bound grant once and invalidate it during password recovery ([test](../../../adapters/sqlstore/twofactor_trust_test.go#L201))
   - [ ] `POST /two-factor/generate-backup-codes`
     - [x] Replace the complete backup-code set and invalidate the previous set ([test](../../../adapters/sqlstore/twofactor_test.go#L212))
   - [ ] `viewBackupCodes (server API only)`
@@ -61,7 +62,9 @@
     - [ ] `allowPasswordless`
     - [ ] `schema`
     - [ ] `twoFactorCookieMaxAge`
+      - [x] Use the configured pending challenge duration for the browser cookie ([test](../../../adapters/sqlstore/twofactor_trust_test.go#L159))
     - [ ] `trustDeviceMaxAge`
+      - [x] Set the configured browser cookie lifetime and require a fresh challenge when its grant expires ([test](../../../adapters/sqlstore/twofactor_trust_test.go#L219))
     - [ ] `accountLockout`
   - [ ] `UserWithTwoFactor`
   - [ ] `TwoFactorProvider`
@@ -122,7 +125,7 @@
     - [ ] Issuer
   - [ ] Schema
     - [x] Generate and migrate enrollment, factor, recovery and lockout fields ([test](../../../conformance/schema.test.mjs#L83))
-    - [x] Upgrade existing PostgreSQL and MySQL schemas with combined team, billing and factor profiles ([test](../../../adapters/sqlstore/profiles_test.go#L15))
+    - [x] Upgrade existing PostgreSQL and MySQL schemas with combined team, billing and factor profiles ([test](../../../adapters/sqlstore/profiles_test.go#L14))
     - [ ] `twoFactorUserTableFields.twoFactorEnabled`
     - [ ] `twoFactorTableFields.id`
     - [ ] `twoFactorTableFields.userId`

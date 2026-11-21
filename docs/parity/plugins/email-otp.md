@@ -6,32 +6,63 @@
 
 - [ ] Email otp endpoints, types and options
   - [ ] `emailOTPClient`
+    - [x] Use the pinned browser client with hashed proofs in either runtime, including two-address confirmation ([test](../../../conformance/core.test.mjs#L472))
   - [ ] `emailOTP`
+    - [x] Run the typed Go SDK through sign-in, verification, recovery, address changes and cookie-jar authentication ([test](../../../client/emailotp_test.go#L16))
   - [ ] `POST /email-otp/send-verification-otp`
-  - [ ] `Operation (server API only)`
-  - [ ] `Operation (server API only)`
+    - [x] Deliver a purpose-bound sign-in code privately to the normalized mailbox ([test](../../../adapters/sqlstore/emailotp_test.go#L112))
+  - [ ] `createVerificationOTP (server API only)`
+    - [x] Generate a fresh proof directly from Go without invoking the mail sender ([test](../../../adapters/sqlstore/emailotp_management_test.go#L91))
+  - [x] `getVerificationOTP (server API only)` ([test](../../../adapters/sqlstore/emailotp_management_test.go#L245))
+    - [x] Read recoverable proofs inside Go, reject hashed records and return nil after expiry ([test](../../../adapters/sqlstore/emailotp_management_test.go#L238))
+    - [x] Keep the trusted read operation inaccessible over HTTP ([test](../../../adapters/sqlstore/emailotp_management_test.go#L245))
   - [ ] `POST /email-otp/check-verification-otp`
+    - [x] Preserve a successful proof for the final action and count failed comparisons across instances ([test](../../../adapters/sqlstore/emailotp_test.go#L244))
   - [ ] `POST /email-otp/verify-email`
+    - [x] Verify an address while preserving its registered password ([test](../../../adapters/sqlstore/emailotp_test.go#L339))
+    - [x] Issue a session atomically when auto-sign-in is enabled ([test](../../../adapters/sqlstore/emailotp_management_test.go#L207))
   - [ ] `POST /sign-in/email-otp`
+    - [x] Create one verified account and one session when eight sign-ins race across two pools ([test](../../../adapters/sqlstore/emailotp_test.go#L155))
+    - [x] Consume a memory-backed sign-in proof once across handlers and revoke unproven access ([test](../../../adapters/memory/emailotp_test.go#L79))
   - [ ] `POST /email-otp/request-password-reset`
-  - [ ] `POST /forget-password/email-otp`
+    - [x] Deliver recovery mail to an existing owner and accept the stored proof in a second runtime ([test](../../../conformance/core.test.mjs#L492))
+  - [x] `POST /forget-password/email-otp` ([test](../../../adapters/sqlstore/emailotp_test.go#L173))
+    - [x] Give unknown mailboxes a successful private response on the recovery alias ([test](../../../adapters/sqlstore/emailotp_test.go#L101))
+    - [x] Deliver a recovery code through the alias for a registered mailbox ([test](../../../adapters/sqlstore/emailotp_test.go#L173))
   - [ ] `POST /email-otp/reset-password`
+    - [x] Enforce the password policy, consume one proof and revoke sessions when configured ([test](../../../adapters/sqlstore/emailotp_test.go#L286))
   - [ ] `POST /email-otp/request-email-change`
+    - [x] Require one current mailbox proof for a new destination across concurrent requests ([test](../../../adapters/sqlstore/emailotp_management_test.go#L151))
   - [ ] `POST /email-otp/change-email`
+    - [x] Reject stale sessions and preserve the account when verifying its new address ([test](../../../adapters/sqlstore/emailotp_management_test.go#L191))
   - [ ] `RequiredEmailOTPOptions`
   - [ ] `EmailOTPOptions`
     - [ ] `sendVerificationOTP`
-    - [ ] `otpLength`
-    - [ ] `expiresIn`
-    - [ ] `generateOTP`
+      - [x] Deliver the intended mailbox, code and purpose through the callback and propagate request delivery errors ([test](../../../adapters/sqlstore/emailotp_management_test.go#L77))
+    - [x] `otpLength` ([test](../../../adapters/sqlstore/emailotp_test.go#L348))
+      - [x] Generate six digits by default and eight when configured ([test](../../../adapters/sqlstore/emailotp_test.go#L348))
+    - [x] `expiresIn` ([test](../../../adapters/sqlstore/emailotp_test.go#L233))
+      - [x] Persist the configured proof lifetime across connections ([test](../../../adapters/sqlstore/emailotp_test.go#L233))
+    - [x] `generateOTP` ([test](../../../adapters/sqlstore/emailotp_management_test.go#L83))
+      - [x] Deliver the configured generator result and persist its canonical digest ([test](../../../adapters/sqlstore/emailotp_test.go#L116))
+      - [x] Fall back to secure six-digit generation when a custom generator returns no code ([test](../../../adapters/sqlstore/emailotp_management_test.go#L83))
     - [ ] `sendVerificationOnSignUp`
-    - [ ] `disableSignUp`
-    - [ ] `allowedAttempts`
+      - [x] Deliver verification codes during credential registration and enforce the configured gate ([test](../../../adapters/sqlstore/emailotp_test.go#L329))
+    - [x] `disableSignUp` ([test](../../../adapters/sqlstore/emailotp_test.go#L164))
+      - [x] Skip delivery to an unknown sign-in mailbox when registration is disabled ([test](../../../adapters/sqlstore/emailotp_test.go#L108))
+      - [x] Allow an existing owner to sign in and reject a previously issued registration proof after policy changes ([test](../../../adapters/sqlstore/emailotp_test.go#L164))
+    - [x] `allowedAttempts` ([test](../../../adapters/sqlstore/emailotp_test.go#L218))
+      - [x] Serialize competing guesses so the configured budget is exhausted once ([test](../../../adapters/sqlstore/emailotp_test.go#L218))
     - [ ] `storeOTP`
+      - [x] Verify plain, hashed and encrypted proofs and honor application-provided transformations ([test](../../../adapters/sqlstore/emailotp_management_test.go#L232))
     - [ ] `resendStrategy`
+      - [x] Reuse recoverable proofs without resetting attempts, and rotate hashed proofs ([test](../../../adapters/sqlstore/emailotp_test.go#L241))
     - [ ] `changeEmail`
+      - [x] Verify both mailboxes and keep the existing user and session after the change ([test](../../../client/emailotp_test.go#L93))
     - [ ] `overrideDefaultEmailVerification`
-    - [ ] `rateLimit`
+      - [x] Route default email verification to the configured code sender ([test](../../../adapters/sqlstore/emailotp_test.go#L348))
+    - [x] `rateLimit` ([test](../../../adapters/sqlstore/emailotp_test.go#L357))
+      - [x] Apply the default and host-specified peer request budgets ([test](../../../adapters/sqlstore/emailotp_test.go#L357))
 
 ## Email OTP
 

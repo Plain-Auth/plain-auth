@@ -10,7 +10,7 @@
   - [ ] `passkey`
   - [ ] `GET /passkey/generate-register-options`
     - [x] Bind registration to a fresh account session and a secure one-use challenge ([test](../../../adapters/sqlstore/passkey_test.go#L168))
-    - [x] Use the public client to request options with the configured relying-party name, ID and public-key algorithms ([test](../../../conformance/core.test.mjs#L364))
+    - [x] Use the public client to request options with the configured relying-party name, ID and public-key algorithms ([test](../../../conformance/core.test.mjs#L374))
   - [ ] `GET /passkey/generate-authenticate-options`
     - [x] Generate discoverable options and allow the current account’s enrolled credentials ([test](../../../adapters/sqlstore/passkey_test.go#L253))
   - [ ] `POST /passkey/verify-registration`

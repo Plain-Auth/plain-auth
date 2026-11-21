@@ -7,6 +7,9 @@ A checked item links to a local test for that behavior. An open parent means the
 | Capability | Documentation |
 | --- | --- |
 | Credentials, cookies and session lifecycle | [Authentication](../authentication.md) · [Account management](../account.md) |
+| Remember and switch accounts in one browser | [Account switching](../multi-session.md) |
+| Google One Tap popup, button and browser challenges | [Google One Tap](../one-tap.md) |
+| First-party device grants and authorization | [Sign in a device](../device-authorization.md) |
 | Passkey registration, login and credential management | [Passkeys](../passkeys.md) |
 | Email link sign-in and single-use session transfer | [Magic links](../magic-link.md) · [One-time tokens](../one-time-token.md) |
 | Breached-password screening for credential writes | [Password checks](../password-checks.md) |

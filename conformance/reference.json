@@ -1201,11 +1201,11 @@
     },
     {
       "source": "packages/better-auth/src/plugins/email-otp/routes.ts#L192",
-      "symbol": "Operation (server API only)"
+      "symbol": "createVerificationOTP (server API only)"
     },
     {
       "source": "packages/better-auth/src/plugins/email-otp/routes.ts#L253",
-      "symbol": "Operation (server API only)"
+      "symbol": "getVerificationOTP (server API only)"
     },
     {
       "source": "packages/better-auth/src/plugins/email-otp/routes.ts#L351",

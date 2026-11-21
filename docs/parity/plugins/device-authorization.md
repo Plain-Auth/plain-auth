@@ -5,7 +5,8 @@
 ## Interfaces
 
 - [ ] Device authorization endpoints, types and options
-  - [ ] `deviceAuthorizationClient`
+  - [x] `deviceAuthorizationClient` ([test](../../../conformance/core.test.mjs#L430))
+    - [x] Use the browser SDK methods across a shared SQLite installation ([test](../../../conformance/core.test.mjs#L430))
   - [ ] `deviceAuthorizationOptionsSchema`
   - [ ] `DeviceAuthorizationOptions`
   - [ ] `DeviceAuthorizationRequest`
@@ -15,10 +16,20 @@
     - [ ] `grant`
   - [ ] `deviceAuthorization`
   - [ ] `POST /device/code`
+    - [x] Issue distinct indexed codes with expiry, polling interval, callback and display links ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L111))
+    - [x] Require an allowed client and reject repeated form parameters ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L107))
   - [ ] `POST /device/token`
+    - [x] Throttle pending grants and reject cross-client polling ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L116))
+    - [x] Redeem approved grants exactly once between independent runtimes ([test](../../../conformance/core.test.mjs#L430))
+    - [x] Reject OAuth authorization server grants on the first-party endpoint ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L185))
   - [ ] `GET /device`
+    - [x] Claim an unbound code once and disclose its scope only to its signed-in owner ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L183))
+    - [x] Recognize formatted display codes and enforce the verification rate limit ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L207))
   - [ ] `POST /device/approve`
+    - [x] Check the live session, prior claim and owner before approving ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L118))
+    - [x] Approvals interoperate across servers sharing grant records ([test](../../../conformance/core.test.mjs#L430))
   - [ ] `POST /device/deny`
+    - [x] Apply one denial to a pre-bound grant and consume it at the next poll ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L166))
 
 ## Device Authorization
 
@@ -36,31 +47,40 @@
     - [ ] Authorize a CLI to call an API
   - [ ] First-party session flow
     - [ ] Requesting Device Authorization
+      - [x] Accept JSON and URL-encoded code requests ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L107))
       - [ ] `POST /device/code`
         - [ ] Parameter `client_id`
         - [ ] Parameter `scope` (optional)
         - [ ] Parameter `user_id` (optional)
     - [ ] Pre-binding to a User
+      - [x] Restrict pre-bound requests to the specified signed-in account ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L162))
     - [ ] Polling for a authentication session token
+      - [x] Issue the approving user a separate first-party bearer session ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L157))
       - [ ] `POST /device/token`
         - [ ] Parameter `grant_type`
         - [ ] Parameter `device_code`
         - [ ] Parameter `client_id`
     - [ ] User Authorization Flow
+      - [x] Claim verification and restrict private scope metadata ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L122))
       - [ ] Code Verification
       - [ ] Authorization
     - [ ] Approving or Denying Device
       - [ ] Approve Device
+        - [x] Allow only the claimant to record the pending decision ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L136))
         - [ ] `POST /device/approve`
           - [ ] Parameter `userCode`
       - [ ] Deny Device
+        - [x] Consume denied grants and refuse a second decision ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L166))
         - [ ] `POST /device/deny`
           - [ ] Parameter `userCode`
       - [ ] Example Approval Page
   - [ ] Advanced Configuration
     - [ ] Client Validation
+      - [x] Validate clients at both code and token endpoints ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L113))
     - [ ] Custom Code Generation
+      - [x] Handle custom case-sensitive codes and duplicate generation ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L197))
   - [ ] Error Handling
+    - [x] Return OAuth status, error code and description to the Go client ([test](../../../client/deviceauthorization_test.go#L72))
     - [ ] `authorization_pending`
     - [ ] `slow_down`
     - [ ] `expired_token`
@@ -94,6 +114,7 @@
       - [ ] device.approve()
       - [ ] device.deny()
   - [ ] Schema
+    - [x] Compare canonical device fields and unique indexes on all three SQL dialects ([test](../../../conformance/schema.test.mjs#L66))
     - [ ] `deviceCodeTableFields.id`
     - [ ] `deviceCodeTableFields.deviceCode`
     - [ ] `deviceCodeTableFields.userCode`

@@ -12,9 +12,11 @@
   - [ ] `GET /token`
     - [x] Require an authenticated session and stop issuing tokens for a revoked session ([test](../../../adapters/sqlstore/jwt_test.go#L193))
     - [x] Verify Ed25519 signatures and configured issuer, audience and expiration independently ([test](../../../adapters/sqlstore/jwt_test.go#L122))
-    - [x] Sign using encrypted keys created in either runtime and validate through JOSE ([test](../../../conformance/core.test.mjs#L394))
+    - [x] Verify service tokens against their issuer’s published keys and reject a different issuer’s keys ([test](../../../conformance/core.test.mjs#L404))
   - [ ] `signJWT (server API only)`
+    - [x] Sign trusted claims with a configured algorithm or a pinned key and keep the operation server-only ([test](../../../adapters/sqlstore/jwt_test.go#L296))
   - [ ] `verifyJWT (server API only)`
+    - [x] Reject untrusted signatures, wrong identities and expired or inactive tokens ([test](../../../adapters/sqlstore/jwt_test.go#L277))
   - [ ] `jwt`
   - [ ] `JwtOptions`
     - [ ] `sessionCookieCache`
@@ -37,7 +39,8 @@
     - [ ] `modulusLength`
     - [ ] `alg`
     - [ ] `modulusLength`
-  - [ ] `JWSAlgorithms`
+  - [x] `JWSAlgorithms` ([test](../../../adapters/sqlstore/jwt_test.go#L241))
+    - [x] Issue and independently verify each of the five supported JWS algorithms ([test](../../../adapters/sqlstore/jwt_test.go#L241))
   - [ ] `Jwk`
   - [ ] `ResolvedSigningKey`
 

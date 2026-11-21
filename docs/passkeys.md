@@ -54,4 +54,4 @@ The optional `ChallengeLifetime` accepts a Go duration. Key management operates 
 
 ## Existing credentials
 
-This implementation derives each account's opaque browser user handle from the RP ID and immutable account ID. The default database schema has no column for a historical browser user handle. Imported credentials enrolled with another handle require reenrollment. The canonical MySQL schema limits the base64url credential ID to 255 characters. Pre-authentication enrollment, registration-time session creation, extension callbacks and browser conditional UI remain on the [passkey checklist](parity/plugins/passkey.md).
+This implementation derives each account's opaque browser user handle from the RP ID and immutable account ID. The canonical MySQL schema limits the base64url credential ID to 255 characters. Pre-authentication enrollment, registration-time session creation, extension callbacks and browser conditional UI remain on the [passkey checklist](parity/plugins/passkey.md).

@@ -255,6 +255,16 @@
       "label": "Manage accounts, recover passwords and verify authenticator and backup codes using a native client",
       "test": "client/account_test.go",
       "marker": "func TestAccountAndAuthenticatorClient("
+    },
+    {
+      "label": "Switch and revoke remembered accounts through the typed client over TLS",
+      "test": "plugins/multisession/multisession_test.go",
+      "marker": "func TestDeviceAccountSwitching("
+    },
+    {
+      "label": "Use typed client methods for all nine team endpoints over HTTP",
+      "test": "adapters/sqlstore/organization_teams_test.go",
+      "marker": "updated, err := owner.UpdateTeam(ctx, team.ID"
     }
   ],
   "go/databases": [
@@ -292,6 +302,16 @@
       "label": "Preserve a populated PostgreSQL or MySQL account and match fresh plugin tables, indexes and foreign keys after repeat migrations",
       "test": "adapters/sqlstore/profiles_test.go",
       "marker": "func TestServerPluginSchemaUpgrade("
+    },
+    {
+      "label": "Use exact case-sensitive session tokens and atomic revocation on all three SQL engines",
+      "test": "adapters/sqlstore/multisession_test.go",
+      "marker": "func TestDeviceSessionStorage("
+    },
+    {
+      "label": "Serialize organization-team additions, preserve seat limits and roll back failed invitations on all three SQL engines",
+      "test": "adapters/sqlstore/organization_teams_test.go",
+      "marker": "func TestTeamAccountsAcrossEngines("
     }
   ],
   "cli/secret": [
@@ -484,6 +504,11 @@
       "label": "Require a live inviter session for invitation creation and resends",
       "test": "adapters/sqlstore/organization_cleanup_test.go",
       "marker": "deleted inviter: %+v %v"
+    },
+    {
+      "label": "Reject team IDs outside the invitation’s organization, including reserved delimiters",
+      "test": "adapters/sqlstore/organization_teams_test.go",
+      "marker": "err = invite(peerUser, \"member\", foreign[0].ID)"
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L893": [
@@ -508,6 +533,16 @@
       "label": "Return only the public error code and message to a different recipient",
       "test": "plugins/organization/organization_test.go",
       "marker": "foreign recipient received invitation details"
+    },
+    {
+      "label": "Roll back every membership and keep the invitation pending when a team fills",
+      "test": "adapters/sqlstore/organization_teams_test.go",
+      "marker": "capacity failure created partial membership"
+    },
+    {
+      "label": "Read and update the same stored invitations, membership keys and seat counts in both runtime directions",
+      "test": "conformance/core.test.mjs",
+      "marker": "test(\"independent organization servers share team invitations"
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L934": [
@@ -564,6 +599,11 @@
   ],
   "go/environment": [
     {
+      "label": "Ignore unrelated host settings when resolving the signing key, public URL, origins and runtime mode",
+      "test": "env_test.go",
+      "marker": "func TestEnvironmentIsolation("
+    },
+    {
       "label": "Resolve public URL and mount path from explicit options and process settings",
       "test": "env_test.go",
       "marker": "func TestEnvironmentPrecedence("
@@ -594,14 +634,19 @@
       "marker": "func TestEnvironmentRateLimit("
     },
     {
-      "label": "Match host secret precedence, the active rotation key, URL aliases, and trusted origins across runtimes",
+      "label": "Verify startup key selection, mount, trusted origins and client destination in an isolated Go process",
       "test": "conformance/env.test.mjs",
-      "marker": "test(\"host environment selects"
+      "marker": "test(\"server and client use"
     },
     {
-      "label": "Resolve the native client base URL and its mount path from environment settings",
+      "label": "Resolve the native client destination from an explicit URL or AUTH_URL while ignoring unrelated host settings",
       "test": "client/environment_test.go",
       "marker": "func TestClientEnvironmentURL("
+    },
+    {
+      "label": "Protect records with a purpose and an explicitly configured key version",
+      "test": "twofactor_test.go",
+      "marker": "func TestEncryptedRecordsRequirePurposeAndExplicitKeyVersion("
     }
   ],
   "docs/content/docs/reference/options.mdx#L22": [
@@ -922,9 +967,14 @@
       "marker": "suppressed login returned credentials"
     },
     {
-      "label": "Complete a backup challenge issued by another compatible runtime sharing the same SQLite database",
+      "label": "Enroll through the public client, reject a spent backup code and accept a fresh code",
       "test": "conformance/core.test.mjs",
-      "marker": "test(\"shared SQLite authenticator credentials and pending challenges"
+      "marker": "test(\"authenticator enrollment and backup challenges"
+    },
+    {
+      "label": "Remember a browser, rotate its account-bound grant once and invalidate it during password recovery",
+      "test": "adapters/sqlstore/twofactor_trust_test.go",
+      "marker": "one grant did not rotate into exactly one session"
     }
   ],
   "plugin/2fa/POST /two-factor/generate-backup-codes": [
@@ -1453,9 +1503,9 @@
       "marker": "independent verifier rejected signed JWT"
     },
     {
-      "label": "Sign using encrypted keys created in either runtime and validate through JOSE",
+      "label": "Verify service tokens against their issuer’s published keys and reject a different issuer’s keys",
       "test": "conformance/core.test.mjs",
-      "marker": "test(\"shared SQLite signs with either runtime"
+      "marker": "test(\"isolated issuers publish public keys"
     }
   ],
   "plugin/jwt/GET /jwks (configurable)": [
@@ -1658,6 +1708,872 @@
       "label": "Evaluate the host’s BotID callback and acceptance policy",
       "test": "plugins/captcha/captcha_test.go",
       "marker": "func TestBotID("
+    }
+  ],
+  "plugin/device-authorization/POST /device/code": [
+    {
+      "label": "Issue distinct indexed codes with expiry, polling interval, callback and display links",
+      "test": "adapters/sqlstore/deviceauthorization_test.go",
+      "marker": "device generation defaults or request callback changed"
+    },
+    {
+      "label": "Require an allowed client and reject repeated form parameters",
+      "test": "adapters/sqlstore/deviceauthorization_test.go",
+      "marker": "client_id=tv&client_id=cli"
+    }
+  ],
+  "plugin/device-authorization/POST /device/token": [
+    {
+      "label": "Throttle pending grants and reject cross-client polling",
+      "test": "adapters/sqlstore/deviceauthorization_test.go",
+      "marker": "check(poll(second, d, \"tv\"), 400, \"slow_down\")"
+    },
+    {
+      "label": "Redeem approved grants exactly once between independent runtimes",
+      "test": "conformance/core.test.mjs",
+      "marker": "device grants created in either runtime can issue a first-party session in the other"
+    },
+    {
+      "label": "Reject OAuth authorization server grants on the first-party endpoint",
+      "test": "adapters/sqlstore/deviceauthorization_test.go",
+      "marker": "Protect OAuth client grants"
+    }
+  ],
+  "plugin/device-authorization/GET /device": [
+    {
+      "label": "Claim an unbound code once and disclose its scope only to its signed-in owner",
+      "test": "adapters/sqlstore/deviceauthorization_test.go",
+      "marker": "claim race must disclose grant details to exactly one owner"
+    },
+    {
+      "label": "Recognize formatted display codes and enforce the verification rate limit",
+      "test": "adapters/sqlstore/deviceauthorization_test.go",
+      "marker": "check(verify(limited, u, owner), 429, \"\")"
+    }
+  ],
+  "plugin/device-authorization/POST /device/approve": [
+    {
+      "label": "Check the live session, prior claim and owner before approving",
+      "test": "adapters/sqlstore/deviceauthorization_test.go",
+      "marker": "check(decide(first, \"approve\", u, owner), 400, \"invalid_request\")"
+    },
+    {
+      "label": "Approvals interoperate across servers sharing grant records",
+      "test": "conformance/core.test.mjs",
+      "marker": "device grants created in either runtime can issue a first-party session in the other"
+    }
+  ],
+  "plugin/device-authorization/POST /device/deny": [
+    {
+      "label": "Apply one denial to a pre-bound grant and consume it at the next poll",
+      "test": "adapters/sqlstore/deviceauthorization_test.go",
+      "marker": "check(poll(second, d, \"tv\"), 400, \"access_denied\")"
+    }
+  ],
+  "docs/content/docs/plugins/device-authorization.mdx#L236": [
+    {
+      "label": "Accept JSON and URL-encoded code requests",
+      "test": "adapters/sqlstore/deviceauthorization_test.go",
+      "marker": "client_id=tv&client_id=cli"
+    }
+  ],
+  "docs/content/docs/plugins/device-authorization.mdx#L278": [
+    {
+      "label": "Restrict pre-bound requests to the specified signed-in account",
+      "test": "adapters/sqlstore/deviceauthorization_test.go",
+      "marker": "pre-bound grant leaked owner metadata"
+    }
+  ],
+  "docs/content/docs/plugins/device-authorization.mdx#L298": [
+    {
+      "label": "Issue the approving user a separate first-party bearer session",
+      "test": "adapters/sqlstore/deviceauthorization_test.go",
+      "marker": "device session was not bound to approving owner"
+    }
+  ],
+  "docs/content/docs/plugins/device-authorization.mdx#L364": [
+    {
+      "label": "Claim verification and restrict private scope metadata",
+      "test": "adapters/sqlstore/deviceauthorization_test.go",
+      "marker": "anonymous reviewer saw private grant metadata"
+    }
+  ],
+  "docs/content/docs/plugins/device-authorization.mdx#L434": [
+    {
+      "label": "Allow only the claimant to record the pending decision",
+      "test": "adapters/sqlstore/deviceauthorization_test.go",
+      "marker": "check(decide(first, \"approve\", u, owner), 200, \"\")"
+    }
+  ],
+  "docs/content/docs/plugins/device-authorization.mdx#L447": [
+    {
+      "label": "Consume denied grants and refuse a second decision",
+      "test": "adapters/sqlstore/deviceauthorization_test.go",
+      "marker": "check(poll(second, d, \"tv\"), 400, \"access_denied\")"
+    }
+  ],
+  "docs/content/docs/plugins/device-authorization.mdx#L545": [
+    {
+      "label": "Validate clients at both code and token endpoints",
+      "test": "adapters/sqlstore/deviceauthorization_test.go",
+      "marker": "check(poll(first, d, \"invalid\"), 400, \"invalid_client\")"
+    }
+  ],
+  "docs/content/docs/plugins/device-authorization.mdx#L561": [
+    {
+      "label": "Handle custom case-sensitive codes and duplicate generation",
+      "test": "adapters/sqlstore/deviceauthorization_test.go",
+      "marker": "fixed.GenerateUserCode ="
+    }
+  ],
+  "docs/content/docs/plugins/device-authorization.mdx#L590": [
+    {
+      "label": "Return OAuth status, error code and description to the Go client",
+      "test": "client/deviceauthorization_test.go",
+      "marker": "lost OAuth error:"
+    }
+  ],
+  "docs/content/docs/plugins/device-authorization.mdx#L777": [
+    {
+      "label": "Compare canonical device fields and unique indexes on all three SQL dialects",
+      "test": "conformance/schema.test.mjs",
+      "marker": "the CLI emits the pinned plugin schema for every supported preset"
+    }
+  ],
+  "plugin-symbol/device-authorization/deviceAuthorizationClient": [
+    {
+      "label": "Use the browser SDK methods across a shared SQLite installation",
+      "test": "conformance/core.test.mjs",
+      "marker": "device grants created in either runtime can issue a first-party session in the other",
+      "complete": true
+    }
+  ],
+  "plugin/multi-session/GET /multi-session/list-device-sessions": [
+    {
+      "label": "List live accounts from this browser, including when the primary cookie is missing",
+      "test": "plugins/multisession/multisession_test.go",
+      "marker": "list without active cookie"
+    },
+    {
+      "label": "Remove surplus entries after simultaneous browser logins",
+      "test": "plugins/multisession/multisession_test.go",
+      "marker": "extra account cookie survived list reconciliation"
+    }
+  ],
+  "plugin/multi-session/POST /multi-session/set-active": [
+    {
+      "label": "Preserve browser-only persistence when a remembered account becomes active",
+      "test": "plugins/multisession/multisession_test.go",
+      "marker": "browser-only choice lost on switch"
+    },
+    {
+      "label": "Require the signed cookie and reject expired or mismatched credentials",
+      "test": "plugins/multisession/multisession_test.go",
+      "marker": "func TestDeviceCookieScopeExpiryAndSignOut("
+    }
+  ],
+  "plugin/multi-session/POST /multi-session/revoke": [
+    {
+      "label": "Authorize revocation transactionally across independent database connections",
+      "test": "adapters/sqlstore/multisession_test.go",
+      "marker": "concurrent self-revocation must have one winner"
+    },
+    {
+      "label": "Use the public browser client to list, select, revoke, and sign out across independent cookie jars",
+      "test": "conformance/core.test.mjs",
+      "marker": "test(\"the official multi-session client remembers, switches"
+    }
+  ],
+  "plugin-symbol/multi-session/MultiSessionConfig": [
+    {
+      "label": "Remember five accounts by default while allowing another account to sign in",
+      "test": "plugins/multisession/multisession_test.go",
+      "marker": "default limit should be five remembered accounts"
+    },
+    {
+      "label": "Honor a zero limit and reject negative limits",
+      "test": "plugins/multisession/multisession_test.go",
+      "marker": "zero maximum still remembers accounts"
+    }
+  ],
+  "plugin-symbol/multi-session/multiSession": [
+    {
+      "label": "Revoke remembered logins on sign-out and preserve an independent browser session",
+      "test": "plugins/multisession/multisession_test.go",
+      "marker": "signed-out device still lists entries"
+    }
+  ],
+  "plugin-symbol/multi-session/multiSessionClient": [
+    {
+      "label": "Use the public browser client to list, select, revoke, and sign out across independent cookie jars",
+      "test": "conformance/core.test.mjs",
+      "marker": "test(\"the official multi-session client remembers, switches"
+    }
+  ],
+  "plugin-symbol/custom-session/CustomSessionPluginOptions/shouldMutateListDeviceSessionsEndpoint": [
+    {
+      "label": "Compare both opt-in and default device-list projections with the public browser client",
+      "test": "conformance/core.test.mjs",
+      "marker": "test(\"custom session projection on the device list is opt-in\"",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/multi-session.mdx#L49": [
+    {
+      "label": "List live accounts from this browser, including when the primary cookie is missing",
+      "test": "plugins/multisession/multisession_test.go",
+      "marker": "list without active cookie"
+    }
+  ],
+  "docs/content/docs/plugins/multi-session.mdx#L60": [
+    {
+      "label": "Preserve browser-only persistence when a remembered account becomes active",
+      "test": "plugins/multisession/multisession_test.go",
+      "marker": "browser-only choice lost on switch"
+    }
+  ],
+  "docs/content/docs/plugins/multi-session.mdx#L75": [
+    {
+      "label": "Authorize revocation transactionally across independent database connections",
+      "test": "adapters/sqlstore/multisession_test.go",
+      "marker": "concurrent self-revocation must have one winner"
+    }
+  ],
+  "docs/content/docs/plugins/multi-session.mdx#L90": [
+    {
+      "label": "Revoke remembered logins on sign-out and preserve an independent browser session",
+      "test": "plugins/multisession/multisession_test.go",
+      "marker": "signed-out device still lists entries"
+    }
+  ],
+  "docs/content/docs/plugins/multi-session.mdx#L94": [
+    {
+      "label": "Remember five accounts by default while allowing another account to sign in",
+      "test": "plugins/multisession/multisession_test.go",
+      "marker": "default limit should be five remembered accounts"
+    }
+  ],
+  "plugin/email-otp/POST /email-otp/send-verification-otp": [
+    {
+      "label": "Deliver a purpose-bound sign-in code privately to the normalized mailbox",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "sign-in delivery disclosed data or sent the wrong message"
+    }
+  ],
+  "plugin/email-otp/POST /email-otp/check-verification-otp": [
+    {
+      "label": "Preserve a successful proof for the final action and count failed comparisons across instances",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "successful preflight did not preserve proof"
+    }
+  ],
+  "plugin/email-otp/POST /email-otp/verify-email": [
+    {
+      "label": "Verify an address while preserving its registered password",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "verified account could not sign in"
+    },
+    {
+      "label": "Issue a session atomically when auto-sign-in is enabled",
+      "test": "adapters/sqlstore/emailotp_management_test.go",
+      "marker": "verification did not issue the configured session"
+    }
+  ],
+  "plugin/email-otp/POST /sign-in/email-otp": [
+    {
+      "label": "Create one verified account and one session when eight sign-ins race across two pools",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "competing proofs produced"
+    },
+    {
+      "label": "Consume a memory-backed sign-in proof once across handlers and revoke unproven access",
+      "test": "adapters/memory/emailotp_test.go",
+      "marker": "memory proof was not single-use"
+    }
+  ],
+  "plugin/email-otp/POST /email-otp/request-password-reset": [
+    {
+      "label": "Deliver recovery mail to an existing owner and accept the stored proof in a second runtime",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.equal(delivered.Type, \"forget-password\");"
+    }
+  ],
+  "plugin/email-otp/POST /forget-password/email-otp": [
+    {
+      "label": "Give unknown mailboxes a successful private response on the recovery alias",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "private unknown mailbox request"
+    },
+    {
+      "label": "Deliver a recovery code through the alias for a registered mailbox",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "recovery alias failed to deliver to the current owner",
+      "complete": true
+    }
+  ],
+  "plugin/email-otp/POST /email-otp/reset-password": [
+    {
+      "label": "Enforce the password policy, consume one proof and revoke sessions when configured",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "pre-reset session persisted"
+    }
+  ],
+  "plugin/email-otp/POST /email-otp/request-email-change": [
+    {
+      "label": "Require one current mailbox proof for a new destination across concurrent requests",
+      "test": "adapters/sqlstore/emailotp_management_test.go",
+      "marker": "one current proof authorized"
+    }
+  ],
+  "plugin/email-otp/POST /email-otp/change-email": [
+    {
+      "label": "Reject stale sessions and preserve the account when verifying its new address",
+      "test": "adapters/sqlstore/emailotp_management_test.go",
+      "marker": "revoked session changed email"
+    }
+  ],
+  "plugin/email-otp/ createVerificationOTP (server API only)": [
+    {
+      "label": "Generate a fresh proof directly from Go without invoking the mail sender",
+      "test": "adapters/sqlstore/emailotp_management_test.go",
+      "marker": "trusted creation unexpectedly sent email"
+    }
+  ],
+  "plugin/email-otp/ getVerificationOTP (server API only)": [
+    {
+      "label": "Read recoverable proofs inside Go, reject hashed records and return nil after expiry",
+      "test": "adapters/sqlstore/emailotp_management_test.go",
+      "marker": "trusted read returned an expired proof"
+    },
+    {
+      "label": "Keep the trusted read operation inaccessible over HTTP",
+      "test": "adapters/sqlstore/emailotp_management_test.go",
+      "marker": "trusted accessor had an HTTP route",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/email-otp/emailOTPClient": [
+    {
+      "label": "Use the pinned browser client with hashed proofs in either runtime, including two-address confirmation",
+      "test": "conformance/core.test.mjs",
+      "marker": "test(\"shared SQLite accepts email OTP"
+    }
+  ],
+  "plugin-symbol/email-otp/emailOTP": [
+    {
+      "label": "Run the typed Go SDK through sign-in, verification, recovery, address changes and cookie-jar authentication",
+      "test": "client/emailotp_test.go",
+      "marker": "func TestNativeEmailOTPClient("
+    }
+  ],
+  "plugin-symbol/email-otp/EmailOTPOptions/sendVerificationOTP": [
+    {
+      "label": "Deliver the intended mailbox, code and purpose through the callback and propagate request delivery errors",
+      "test": "adapters/sqlstore/emailotp_management_test.go",
+      "marker": "sender failure was hidden"
+    }
+  ],
+  "plugin-symbol/email-otp/EmailOTPOptions/otpLength": [
+    {
+      "label": "Generate six digits by default and eight when configured",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "default verification override did not deliver configured code length",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/email-otp/EmailOTPOptions/expiresIn": [
+    {
+      "label": "Persist the configured proof lifetime across connections",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "configured OTP lifetime was not persisted",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/email-otp/EmailOTPOptions/generateOTP": [
+    {
+      "label": "Deliver the configured generator result and persist its canonical digest",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "hashed canonical proof mismatch"
+    },
+    {
+      "label": "Fall back to secure six-digit generation when a custom generator returns no code",
+      "test": "adapters/sqlstore/emailotp_management_test.go",
+      "marker": "custom generator fallback did not generate six decimal digits",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/email-otp/EmailOTPOptions/sendVerificationOnSignUp": [
+    {
+      "label": "Deliver verification codes during credential registration and enforce the configured gate",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "gated registration or default six-digit mail failed"
+    }
+  ],
+  "plugin-symbol/email-otp/EmailOTPOptions/disableSignUp": [
+    {
+      "label": "Skip delivery to an unknown sign-in mailbox when registration is disabled",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "disabled registration delivered a code"
+    },
+    {
+      "label": "Allow an existing owner to sign in and reject a previously issued registration proof after policy changes",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "registration policy blocked an existing account",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/email-otp/EmailOTPOptions/allowedAttempts": [
+    {
+      "label": "Serialize competing guesses so the configured budget is exhausted once",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "retry budget exhausted %d times",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/email-otp/EmailOTPOptions/storeOTP": [
+    {
+      "label": "Verify plain, hashed and encrypted proofs and honor application-provided transformations",
+      "test": "adapters/sqlstore/emailotp_management_test.go",
+      "marker": "custom recoverable resend failed"
+    }
+  ],
+  "plugin-symbol/email-otp/EmailOTPOptions/resendStrategy": [
+    {
+      "label": "Reuse recoverable proofs without resetting attempts, and rotate hashed proofs",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "encrypted resend lost proof or retry count"
+    }
+  ],
+  "plugin-symbol/email-otp/EmailOTPOptions/changeEmail": [
+    {
+      "label": "Verify both mailboxes and keep the existing user and session after the change",
+      "test": "client/emailotp_test.go",
+      "marker": "changed mailbox login did not retain its session"
+    }
+  ],
+  "plugin-symbol/email-otp/EmailOTPOptions/overrideDefaultEmailVerification": [
+    {
+      "label": "Route default email verification to the configured code sender",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "default verification override did not deliver configured code length"
+    }
+  ],
+  "plugin-symbol/email-otp/EmailOTPOptions/rateLimit": [
+    {
+      "label": "Apply the default and host-specified peer request budgets",
+      "test": "adapters/sqlstore/emailotp_test.go",
+      "marker": "custom email OTP rate limit was ignored",
+      "complete": true
+    }
+  ],
+  "plugin/jwt/ signJWT (server API only)": [
+    {
+      "label": "Sign trusted claims with a configured algorithm or a pinned key and keep the operation server-only",
+      "test": "adapters/sqlstore/jwt_test.go",
+      "marker": "server-only signer exposed as HTTP route"
+    }
+  ],
+  "plugin/jwt/ verifyJWT (server API only)": [
+    {
+      "label": "Reject untrusted signatures, wrong identities and expired or inactive tokens",
+      "test": "adapters/sqlstore/jwt_test.go",
+      "marker": "accepted out-of-window assertion"
+    }
+  ],
+  "plugin-symbol/jwt/JWSAlgorithms": [
+    {
+      "label": "Issue and independently verify each of the five supported JWS algorithms",
+      "test": "adapters/sqlstore/jwt_test.go",
+      "marker": "independent verifier rejected %s:",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/reference/options.mdx#L506": [
+    {
+      "label": "Encrypt provider access, refresh and ID tokens across key rotation and credential refresh",
+      "test": "adapters/sqlstore/oauth_encryption_test.go",
+      "marker": "provider credential stored without active encryption version",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/last-login-method/LastLoginMethodOptions/cookieName": [
+    {
+      "label": "Apply the host cookie namespace and HTTPS security to the default browser preference",
+      "test": "plugins/lastlogin/lastlogin_test.go",
+      "marker": "func TestDefaultCookieUsesHostNamespace("
+    }
+  ],
+  "plugin/one-tap/POST /one-tap/callback": [
+    {
+      "label": "Verify Google-issued claims with a local RSA signing key and enforce Workspace ownership",
+      "test": "adapters/sqlstore/onetap_test.go",
+      "marker": "accepted invalid verified Google claims:"
+    },
+    {
+      "label": "Consume a browser challenge once, including concurrent tokens signed for the same nonce",
+      "test": "adapters/sqlstore/onetap_test.go",
+      "marker": "one-use challenge failed to issue the owner's session"
+    },
+    {
+      "label": "Preserve Google subject ownership after an email change",
+      "test": "adapters/sqlstore/onetap_test.go",
+      "marker": "verified Google subject lost ownership after email change"
+    },
+    {
+      "label": "Expire browser proof before verifying a credential",
+      "test": "onetap_test.go",
+      "marker": "expired browser proof reached the Google verifier"
+    },
+    {
+      "label": "Require the application-issued nonce and reject a replay from the pinned client",
+      "test": "conformance/core.test.mjs",
+      "marker": "the pinned One Tap client signs in to Go with a nonce issued by the application host"
+    },
+    {
+      "label": "Require the Google CSRF cookie and escape the relay document for redirect submissions",
+      "test": "plugins/onetap/redirect_test.go",
+      "marker": "func TestRedirectFormRequiresGoogleProof("
+    }
+  ],
+  "plugin-symbol/one-tap/OneTapOptions/disableSignup": [
+    {
+      "label": "Restrict new registrations while allowing a returning Google subject",
+      "test": "adapters/sqlstore/onetap_test.go",
+      "marker": "blocked, _ := build(true, false, workspace)",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/one-tap/OneTapOptions/clientId": [
+    {
+      "label": "Accept the explicitly configured audience and require an audience before issuing a challenge",
+      "test": "onetap_test.go",
+      "marker": "explicit client ID was not used",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/one-tap/oneTapClient": [
+    {
+      "label": "Submit a stubbed Google credential and send the HttpOnly browser cookie in headless Chrome",
+      "test": "conformance/one-tap-browser.test.mjs",
+      "marker": "Chrome posts a stubbed Google credential with its HttpOnly browser cookie"
+    },
+    {
+      "label": "Cancel without processing credentials from a delayed callback",
+      "test": "conformance/one-tap-browser.test.mjs",
+      "marker": "canceling One Tap ignores delayed Google credentials"
+    },
+    {
+      "label": "Sign in with a host-generated, browser-bound nonce using the pinned client",
+      "test": "conformance/core.test.mjs",
+      "marker": "the pinned One Tap client signs in to Go with a nonce issued by the application host"
+    }
+  ],
+  "plugin-symbol/one-tap/GoogleOneTapOptions/autoSelect": [
+    {
+      "label": "Set automatic account selection",
+      "test": "conformance/one-tap-browser.test.mjs",
+      "marker": "One Tap binds the prompt and optional button",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/one-tap/GoogleOneTapOptions/context": [
+    {
+      "label": "Set the prompt context",
+      "test": "conformance/one-tap-browser.test.mjs",
+      "marker": "One Tap binds the prompt and optional button",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/one-tap/GoogleOneTapOptions/cancelOnTapOutside": [
+    {
+      "label": "Forward outside-click dismissal configuration",
+      "test": "conformance/one-tap-browser.test.mjs",
+      "marker": "One Tap binds the prompt and optional button",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/one-tap/GoogleOneTapOptions/uxMode": [
+    {
+      "label": "Use popup credential delivery",
+      "test": "conformance/one-tap-browser.test.mjs",
+      "marker": "One Tap binds the prompt and optional button"
+    },
+    {
+      "label": "Deliver a redirect-mode form through the same first-party protected callback in headless Chrome",
+      "test": "plugins/onetap/redirect_test.go",
+      "marker": "func TestChromeOneTapRedirect(",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/one-tap/GoogleOneTapActionOptions/button": [
+    {
+      "label": "Render the selected button element with its visual options",
+      "test": "conformance/one-tap-browser.test.mjs",
+      "marker": "One Tap binds the prompt and optional button",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/one-tap/GoogleOneTapActionOptions/onPromptNotification": [
+    {
+      "label": "Forward the Google prompt notification callback",
+      "test": "conformance/one-tap-browser.test.mjs",
+      "marker": "One Tap binds the prompt and optional button",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/one-tap/GoogleOneTapActionOptions/callbackURL": [
+    {
+      "label": "Navigate to the validated same-origin URL after a successful callback",
+      "test": "conformance/one-tap-browser.test.mjs",
+      "marker": "One Tap binds the prompt and optional button"
+    }
+  ],
+  "plugin-symbol/one-tap/GoogleOneTapActionOptions/nonce": [
+    {
+      "label": "Bind the Google prompt to the server-generated nonce",
+      "test": "conformance/one-tap-browser.test.mjs",
+      "marker": "One Tap binds the prompt and optional button"
+    },
+    {
+      "label": "Accept an application-generated nonce with an expiring HttpOnly browser binding",
+      "test": "conformance/core.test.mjs",
+      "marker": "the pinned One Tap client signs in to Go with a nonce issued by the application host",
+      "complete": true
+    }
+  ],
+  "plugin/organization/POST /organization/create-team": [
+    {
+      "label": "Create teams within an organization and enforce its configured maximum",
+      "test": "adapters/sqlstore/organization_teams_test.go",
+      "marker": "err = owner.CreateTeam(ctx, \"FULL\""
+    }
+  ],
+  "plugin/organization/POST /organization/update-team": [
+    {
+      "label": "Update the team name and reject another organization’s team ID",
+      "test": "adapters/sqlstore/organization_teams_test.go",
+      "marker": "err = owner.UpdateTeam(ctx, foreign[0].ID"
+    }
+  ],
+  "plugin/organization/POST /organization/remove-team": [
+    {
+      "label": "Protect the active team and final team, and prune pending invitations when a team is removed",
+      "test": "adapters/sqlstore/organization_teams_test.go",
+      "marker": "single surviving invited team not active"
+    }
+  ],
+  "plugin/organization/GET /organization/list-teams": [
+    {
+      "label": "Read the organization’s teams and deny outsiders using the browser client",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.equal((await outsider.organization.listTeams("
+    }
+  ],
+  "plugin/organization/POST /organization/set-active-team": [
+    {
+      "label": "Select a team belonging to the active organization and preserve session cookie persistence",
+      "test": "adapters/sqlstore/organization_teams_test.go",
+      "marker": "team selection changed persistence"
+    }
+  ],
+  "plugin/organization/GET /organization/list-user-teams": [
+    {
+      "label": "Return self memberships across organizations and scope administrative queries to the selected organization",
+      "test": "adapters/sqlstore/organization_teams_test.go",
+      "marker": "admin failed to list organization member teams"
+    }
+  ],
+  "plugin/organization/GET /organization/list-team-members": [
+    {
+      "label": "List members of the selected team and reject a caller whose membership was removed",
+      "test": "adapters/sqlstore/organization_teams_test.go",
+      "marker": "err = peer.ListTeamMembers(ctx, team.ID)"
+    }
+  ],
+  "plugin/organization/POST /organization/add-team-member": [
+    {
+      "label": "Admit one candidate to the last seat across competing SQL-backed servers and return existing memberships on retry",
+      "test": "adapters/sqlstore/organization_teams_test.go",
+      "marker": "oversubscribed team capacity"
+    }
+  ],
+  "plugin/organization/POST /organization/remove-team-member": [
+    {
+      "label": "Remove membership and clear the affected user’s active team",
+      "test": "adapters/sqlstore/organization_teams_test.go",
+      "marker": "removing member retained active team"
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1810": [
+    {
+      "label": "Create teams within an organization and enforce its configured maximum",
+      "test": "adapters/sqlstore/organization_teams_test.go",
+      "marker": "err = owner.CreateTeam(ctx, \"FULL\""
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1829": [
+    {
+      "label": "Read the organization’s teams and deny outsiders using the browser client",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.equal((await outsider.organization.listTeams("
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1844": [
+    {
+      "label": "Update the team name and reject another organization’s team ID",
+      "test": "adapters/sqlstore/organization_teams_test.go",
+      "marker": "err = owner.UpdateTeam(ctx, foreign[0].ID"
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1880": [
+    {
+      "label": "Protect the active team and final team, and prune pending invitations when a team is removed",
+      "test": "adapters/sqlstore/organization_teams_test.go",
+      "marker": "single surviving invited team not active"
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1899": [
+    {
+      "label": "Select a team belonging to the active organization and preserve session cookie persistence",
+      "test": "adapters/sqlstore/organization_teams_test.go",
+      "marker": "team selection changed persistence"
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1915": [
+    {
+      "label": "Return self memberships across organizations and scope administrative queries to the selected organization",
+      "test": "adapters/sqlstore/organization_teams_test.go",
+      "marker": "admin failed to list organization member teams"
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1937": [
+    {
+      "label": "List members of the selected team and reject a caller whose membership was removed",
+      "test": "adapters/sqlstore/organization_teams_test.go",
+      "marker": "err = peer.ListTeamMembers(ctx, team.ID)"
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1952": [
+    {
+      "label": "Admit one candidate to the last seat across competing SQL-backed servers and return existing memberships on retry",
+      "test": "adapters/sqlstore/organization_teams_test.go",
+      "marker": "oversubscribed team capacity"
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1971": [
+    {
+      "label": "Remove membership and clear the affected user’s active team",
+      "test": "adapters/sqlstore/organization_teams_test.go",
+      "marker": "removing member retained active team"
+    }
+  ],
+  "plugin-symbol/organization/OrganizationClientOptions/teams": [
+    {
+      "label": "Exercise all nine team operations with the official client, including multi-team invitations and organization boundaries",
+      "test": "conformance/core.test.mjs",
+      "marker": "test(\"organization teams manage memberships"
+    }
+  ],
+  "plugin-symbol/organization/OrganizationOptions/teams": [
+    {
+      "label": "Create and select a default team for the owner, or disable automatic creation",
+      "test": "adapters/sqlstore/organization_teams_test.go",
+      "marker": "default team disabled"
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1990": [
+    {
+      "label": "Apply owner, admin and member team-management permissions through public HTTP routes",
+      "test": "conformance/core.test.mjs",
+      "marker": "await alice.organization.createTeam({ name: \"Denied\""
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L2003": [
+    {
+      "label": "Honor fixed seat and team limits, and optionally permit removal of the final team",
+      "test": "adapters/sqlstore/organization_teams_test.go",
+      "marker": "last team removal enabled"
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L2039": [
+    {
+      "label": "Persist the team membership key and maintain the database member count across mutations",
+      "test": "adapters/sqlstore/organization_teams_test.go",
+      "marker": "incorrect persisted membership key"
+    },
+    {
+      "label": "Read and update the same stored invitations, membership keys and seat counts in both runtime directions",
+      "test": "conformance/core.test.mjs",
+      "marker": "test(\"independent organization servers share team invitations"
+    }
+  ],
+  "plugin-symbol/2fa/TwoFactorOptions/trustDeviceMaxAge": [
+    {
+      "label": "Set the configured browser cookie lifetime and require a fresh challenge when its grant expires",
+      "test": "adapters/sqlstore/twofactor_trust_test.go",
+      "marker": "expired remembered cookie authenticated"
+    }
+  ],
+  "plugin-symbol/2fa/TwoFactorOptions/twoFactorCookieMaxAge": [
+    {
+      "label": "Use the configured pending challenge duration for the browser cookie",
+      "test": "adapters/sqlstore/twofactor_trust_test.go",
+      "marker": "configured challenge lifetime ignored"
+    }
+  ],
+  "plugin-symbol/one-tap/GoogleOneTapOptions/clientId": [
+    {
+      "label": "Validate the configured browser audience against the host-issued challenge",
+      "test": "conformance/core.test.mjs",
+      "marker": "the pinned One Tap client signs in to Go with a nonce issued by the application host",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/one-tap/GoogleOneTapOptions/additionalOptions": [
+    {
+      "label": "Forward vetted Google SDK options while protecting receiver and nonce controls",
+      "test": "conformance/one-tap-browser.test.mjs",
+      "marker": "redirect buttons pin the same-origin receiver"
+    }
+  ],
+  "plugin-symbol/one-tap/GoogleOneTapOptions/promptOptions": [
+    {
+      "label": "Retry eligible dismissals with a bounded backoff and stop on FedCM skips",
+      "test": "conformance/one-tap-browser.test.mjs",
+      "marker": "One Tap retries dismissed prompts"
+    },
+    {
+      "label": "Clear supported browser selection state after successful sign-out",
+      "test": "conformance/one-tap-browser.test.mjs",
+      "marker": "sign-out clears supported FedCM selection"
+    }
+  ],
+  "plugin-symbol/one-tap/GoogleOneTapActionOptions/fetchOptions": [
+    {
+      "label": "Keep authentication fetches on the configured origin",
+      "test": "conformance/one-tap-browser.test.mjs",
+      "marker": "One Tap binds the prompt and optional button"
+    }
+  ],
+  "docs/content/docs/plugins/admin.mdx#L698": [
+    {
+      "label": "Generate the canonical columns on SQLite, PostgreSQL and MySQL, including combined plugin selections",
+      "test": "conformance/schema.test.mjs",
+      "marker": "test(\"the CLI emits the pinned plugin schema"
+    }
+  ],
+  "docs/content/docs/plugins/anonymous.mdx#L202": [
+    {
+      "label": "Generate the canonical columns on SQLite, PostgreSQL and MySQL, including combined plugin selections",
+      "test": "conformance/schema.test.mjs",
+      "marker": "test(\"the CLI emits the pinned plugin schema"
+    }
+  ],
+  "docs/content/docs/plugins/last-login-method.mdx#L190": [
+    {
+      "label": "Generate the canonical columns on SQLite, PostgreSQL and MySQL, including combined plugin selections",
+      "test": "conformance/schema.test.mjs",
+      "marker": "test(\"the CLI emits the pinned plugin schema"
     }
   ]
 }

@@ -53,7 +53,7 @@ Register `bearer.New(bearer.Options{RequireSignature: true})` from `plugins/bear
 
 ## Remember the last sign-in method
 
-Register `lastlogin.New(lastlogin.Options{})` from `plugins/lastlogin` to set a browser-readable login-method cookie when the session cookie is issued. The default lifetime is 30 days. Configure `CookieName`, `MaxAge`, or `Resolve` for your application. Set `Allow` to check user consent before storing the preference. See the [consent and cookie test](../plugins/lastlogin/lastlogin_test.go).
+Register `lastlogin.New(lastlogin.Options{})` from `plugins/lastlogin` to set a browser-readable login-method cookie when the session cookie is issued. The preference follows the host's cookie namespace. Its default lifetime is 30 days. Configure `CookieName`, `MaxAge`, or `Resolve` for your application. Set `Allow` to check user consent before storing the preference. See the [consent and cookie test](../plugins/lastlogin/lastlogin_test.go).
 
 ## Open the user's Stripe billing portal
 
@@ -88,3 +88,5 @@ opts.Plugins = append(opts.Plugins, view)
 ```
 
 Anonymous requests return JSON `null`. The core completes session validation and handles renewal cookies before returning the view. Direct Go authorization checks through `auth.GetSession` continue to receive the typed user and session. A native HTTP client expecting this custom JSON should call `client.Do` with an output struct matching the configured view. [Integration tests](../plugins/customsession/customsession_test.go)
+
+To project each entry in a remembered-account list, register the view using `customsession.NewWithOptions` and set `ProjectDeviceSessions` to true. [Account switching](multi-session.md#customize-list-entries)

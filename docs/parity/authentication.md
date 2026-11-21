@@ -87,7 +87,7 @@
   - [ ] Enable Email and Password
   - [ ] Usage
     - [ ] Sign Up
-      - [x] Create a password account and return a usable session token on SQLite ([test](../../conformance/core.test.mjs#L149))
+      - [x] Create a password account and return a usable session token on SQLite ([test](../../conformance/core.test.mjs#L164))
       - [ ] `POST /sign-up/email`
         - [ ] Parameter `name`
         - [ ] Parameter `email`
@@ -95,14 +95,14 @@
         - [ ] Parameter `image` (optional)
         - [ ] Parameter `callbackURL` (optional)
     - [ ] Sign In
-      - [x] Reject the wrong password and issue a fresh session for valid credentials ([test](../../conformance/core.test.mjs#L158))
+      - [x] Reject the wrong password and issue a fresh session for valid credentials ([test](../../conformance/core.test.mjs#L173))
       - [ ] `POST /sign-in/email`
         - [ ] Parameter `email`
         - [ ] Parameter `password`
         - [ ] Parameter `rememberMe` (optional)
         - [ ] Parameter `callbackURL` (optional)
     - [ ] Sign Out
-      - [x] Clear the client's session cookies and return an anonymous session ([test](../../conformance/core.test.mjs#L162))
+      - [x] Clear the client's session cookies and return an anonymous session ([test](../../conformance/core.test.mjs#L177))
       - [ ] `POST /sign-out`
     - [ ] Email Verification
       - [ ] `user`

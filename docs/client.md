@@ -50,6 +50,9 @@ To configure timeouts, transport or persistent cookie storage, pass an `*http.Cl
 | Change a password or recover an account | `VerifyPassword`, `ChangePassword`, `RequestPasswordReset`, `ResetPassword` |
 | Inspect linked identities or delete the account | `ListAccounts`, `UnlinkAccount`, `DeleteAccount` |
 | Enroll an authenticator and replace recovery codes | `EnableTOTP`, `TOTPURI`, `VerifyTOTP`, `GenerateBackupCodes`, `DisableTOTP` |
+| Request and poll for a device session | `RequestDeviceCode`, `PollDeviceToken` |
+| Review and decide a device request | `VerifyDeviceCode`, `ApproveDeviceCode`, `DenyDeviceCode` |
 | Complete sign-in with a recovery code | `VerifyBackupCode` |
+| Manage teams, seats and active selections | `CreateTeam`, `UpdateTeam`, `RemoveTeam`, `ListOrganizationTeams`, `ListUserTeams`, `SetActiveTeam`, `ListTeamMembers`, `AddTeamMember`, `RemoveTeamMember` |
 
 Use the same client for sign-in and second-factor verification so the challenge cookie reaches the verification handler. The [native client integration test](../client/account_test.go) exercises these methods through the mounted API, including recovery, email changes, and account deletion.

@@ -12,11 +12,14 @@ Embed authentication in an existing Go API. Configure an auth instance, mount it
 - [x] Recover a password and verify an email address through an application-provided sender. [Account tests](account_test.go)
 - [x] Register a passkey and authenticate with it. [Software authenticator tests](adapters/sqlstore/passkey_test.go)
 - [x] Sign in using 36 built-in provider configurations. [Browser fixtures](providers/catalog_test.go) · [OpenID Connect fixtures](providers/issuer_test.go) · [Apple and Microsoft](providers/apple_microsoft_test.go)
+- [x] Verify an email address, sign in, change an address and reset a password using single-use email codes. [Email OTP](docs/email-otp.md)
+- [x] Approve or deny a device login from a signed-in browser. [Device authorization](docs/device-authorization.md)
+- [x] Remember multiple accounts in one browser and switch or revoke them. [Account switching](docs/multi-session.md)
 - [x] Sign in with an authenticator or a single-use backup code. [Two-factor tests](adapters/sqlstore/twofactor_test.go)
-- [x] Create organizations and accept scoped member invitations. [Organization tests](plugins/organization/organization_test.go)
+- [x] Create organizations and teams, enforce seat limits and accept scoped invitations. [Organization tests](plugins/organization/organization_test.go)
 - [x] Verify Stripe webhook signatures and open an authenticated customer’s billing portal. [Webhook tests](plugins/stripe/stripe_test.go) · [Billing portal tests](plugins/stripe/portal_test.go)
 
-Single sign-on, SCIM provisioning, team administration, and automated subscription renewals remain open. The [complete checklist](docs/parity/README.md) records which parts of each integration have passing tests.
+Single sign-on, SCIM provisioning and automated subscription renewals remain open. The [complete checklist](docs/parity/README.md) records which parts of each integration have passing tests.
 
 ## Run it locally
 
@@ -62,7 +65,7 @@ if err != nil {
 mux.Handle(strings.TrimRight(auth.BasePath(), "/")+"/", auth)
 ```
 
-This reads the signing secret and public URL from the host environment configured above. Explicit options and all supported environment aliases are documented in the [configuration guide](docs/environment.md).
+This reads the signing secret and public URL from the host environment configured above. Explicit options, environment settings and their precedence are documented in the [configuration guide](docs/environment.md).
 
 To add the package to another Go module while the repository is private, authenticate Git for this GitHub repository, then run the following in the consuming module.
 
@@ -77,8 +80,13 @@ Go records the resolved commit in the consuming project’s `go.mod`. The module
 | Load signing secrets, the public URL, and trusted origins from the environment | [Environment configuration](docs/environment.md) |
 | Mount on ServeMux, chi, Gorilla Mux, Gin, or Fiber | [Router integrations](docs/routers.md) |
 | Configure users, cookies, origins, and session management | [Authentication](docs/authentication.md) |
+| Configure email codes and mailbox delivery | [Email one-time passwords](docs/email-otp.md) |
+| Add account switching to a shared device | [Device sessions](docs/multi-session.md) |
+| Authorize a TV, CLI or input-constrained device | [Device authorization](docs/device-authorization.md) |
 | Transfer an active session using a single-use credential | [One-time tokens](docs/one-time-token.md) |
+| Integrate the Google One Tap prompt or sign-in button | [Google One Tap](docs/one-tap.md) |
 | Register and use a WebAuthn passkey | [Passkeys](docs/passkeys.md) |
+| Verify an address, sign in or recover a password with an email code | [Email one-time passwords](docs/email-otp.md) |
 | Let users sign in through a single-use email link | [Magic links](docs/magic-link.md) |
 | Enroll an authenticator and manage backup codes | [Two-factor authentication](docs/2fa.md) |
 | Generate optional organization, team, passkey, rate-limit, subscription, and two-factor tables | [Schema profiles](docs/schema.md) |
@@ -87,7 +95,7 @@ Go records the resolved commit in the consuming project’s `go.mod`. The module
 | Check new passwords against a breached-password service | [Password screening](docs/password-checks.md) |
 | Configure profile updates, password reset, and verification email | [Account management and recovery](docs/account.md) |
 | Generate tables and migrate SQLite, PostgreSQL, or MySQL | [Databases and CLI](docs/databases.md) |
-| Create organizations, grant memberships, and accept invitations | [Organizations](docs/organizations.md) |
+| Create organizations and teams, grant memberships, and accept invitations | [Organizations](docs/organizations.md) |
 | Start recurring Checkout and list subscriptions | [Subscription billing](docs/subscriptions.md) |
 | Add a custom endpoint, verify Stripe webhooks, or open the billing portal | [Plugins and Stripe](docs/plugins.md) |
 | Configure browser sign-in, native ID tokens and linked provider credentials | [Social sign-in](docs/social.md) |

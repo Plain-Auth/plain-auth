@@ -7,7 +7,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { createInterface } from "node:readline";
 import { DatabaseSync } from "node:sqlite";
-import test from "node:test";
+import test, { after } from "node:test";
 import { fileURLToPath } from "node:url";
 import { betterAuth } from "better-auth";
 import { passkey } from "@better-auth/passkey";
@@ -15,8 +15,8 @@ import { passkeyClient } from "@better-auth/passkey/client";
 import { haveIBeenPwned } from "better-auth/plugins/haveibeenpwned";
 import { createAuthClient } from "better-auth/client";
 import { getMigrations } from "better-auth/db/migration";
-import { customSession, organization, twoFactor, magicLink, oneTimeToken, jwt } from "better-auth/plugins";
-import { organizationClient, twoFactorClient, magicLinkClient, oneTimeTokenClient, jwtClient } from "better-auth/client/plugins";
+import { customSession, emailOTP, organization, twoFactor, magicLink, oneTimeToken, jwt } from "better-auth/plugins";
+import { emailOTPClient, organizationClient, twoFactorClient, magicLinkClient, oneTimeTokenClient, jwtClient } from "better-auth/client/plugins";
 import { createOTP } from "@better-auth/utils/otp";
 import { base32 } from "@better-auth/utils/base32";
 
@@ -43,9 +43,27 @@ async function reference(t, plugins = []) {
   return { baseURL, send: (request) => auth.handler(request) };
 }
 
+let fixtureBuild;
+let buildDirectory;
+
+async function buildFixture() {
+  buildDirectory = await mkdtemp(join(tmpdir(), "authn-fixture-binary-"));
+  const binary = join(buildDirectory, "fixture");
+  const build = spawnSync("go", ["build", "-o", binary, "./fixture"], {
+    cwd: harness, encoding: "utf8", timeout: 180_000,
+  });
+  if (build.error) throw build.error;
+  assert.equal(build.status, 0, build.stderr);
+  return binary;
+}
+
+after(async () => {
+  if (buildDirectory) await rm(buildDirectory, { recursive: true, force: true });
+});
+
 async function goFixture(t, profiles = [], env = {}) {
+  const binary = await (fixtureBuild ??= buildFixture());
   const dir = await mkdtemp(join(tmpdir(), "authn-conformance-"));
-  const binary = join(dir, "fixture");
   let child;
   let exited;
   t.after(async () => {
@@ -55,11 +73,6 @@ async function goFixture(t, profiles = [], env = {}) {
     }
     await rm(dir, { recursive: true, force: true });
   });
-  const build = spawnSync("go", ["build", "-o", binary, "./fixture"], {
-    cwd: harness, encoding: "utf8", timeout: 180_000,
-  });
-  if (build.error) throw build.error;
-  assert.equal(build.status, 0, build.stderr);
   const databasePath = join(dir, "auth.db");
   child = spawn(binary, [databasePath, ...profiles], { env: { ...process.env, ...env }, stdio: ["ignore", "pipe", "inherit"] });
   exited = once(child, "exit");
@@ -412,4 +425,247 @@ test("isolated issuers publish public keys and issue verifiable service tokens",
   }
   await assert.rejects(jwtVerify(issued[0].token, issued[1].jwks));
   await assert.rejects(jwtVerify(issued[1].token, issued[0].jwks));
+});
+
+test("device grants created in either runtime can issue a first-party session in the other", async (t) => {
+  const { deviceAuthorization } = await import("better-auth/plugins");
+  const { deviceAuthorizationClient } = await import("better-auth/client/plugins");
+  const go = await goFixture(t, ["device-authorization"]);
+  const db = new DatabaseSync(go.databasePath);
+  t.after(() => db.close());
+  const refOrigin = "http://reference.localhost";
+  const refAuth = betterAuth({ baseURL: refOrigin, database: db, secret: "local-conformance-0123456789-abcdefghijk",
+    plugins: [deviceAuthorization()], emailAndPassword: { enabled: true }, telemetry: { enabled: false } });
+  const ref = { baseURL: refOrigin, send: (req) => refAuth.handler(req) };
+  const identities = new Map();
+  for (const runtime of [go, ref]) {
+    const owner = instrument(runtime, [deviceAuthorizationClient()]).client;
+    const login = identities.size ? await owner.signIn.email({ email, password }) : await owner.signUp.email({ email, password, name });
+    assert.equal(login.error, null);
+    identities.set(runtime, owner);
+  }
+  for (const [issuer, redeemer] of [[ref, go], [go, ref]]) {
+    const machine = instrument(issuer, [deviceAuthorizationClient()]).client;
+    const otherMachine = instrument(redeemer, [deviceAuthorizationClient()]).client;
+    const { data: code, error } = await machine.device.code({ client_id: "console", scope: "read" });
+    assert.equal(error, null);
+    const review = await identities.get(redeemer).device({ query: { user_code: code.user_code } });
+    assert.equal(review.data?.scope, "read");
+    assert.equal(review.data?.client_id, "console");
+    assert.deepEqual((await identities.get(issuer).device.approve({ userCode: code.user_code })).data, { success: true });
+    const args = { client_id: "console", device_code: code.device_code, grant_type: "urn:ietf:params:oauth:grant-type:device_code" };
+    const grant = await otherMachine.device.token(args);
+    assert.equal(grant.error, null);
+    assert.equal(grant.data.token_type, "Bearer");
+    assert.equal(grant.data.scope, "read");
+    const persisted = db.prepare('SELECT u.email FROM session s JOIN user u ON u.id=s.userId WHERE s.token=?').get(grant.data.access_token);
+    assert.equal(persisted.email, email);
+    assert.equal((await machine.device.token(args)).error.error, "invalid_grant");
+    const denied = await machine.device.code({ client_id: "console" });
+    await identities.get(redeemer).device({ query: { user_code: denied.data.user_code } });
+    assert.equal((await identities.get(issuer).device.deny({ userCode: denied.data.user_code })).data.success, true);
+    assert.equal((await otherMachine.device.token({ ...args, device_code: denied.data.device_code })).error.error, "access_denied");
+  }
+});
+
+
+test("shared SQLite accepts email OTP codes and prevents replay across runtimes", async (t) => {
+  const go = await goFixture(t, [], { AUTH_TEST_EMAIL_OTP_MAILBOX: "1" });
+  const database = new DatabaseSync(go.databasePath);
+  t.after(() => database.close());
+  let sent;
+  const ref = betterAuth({
+    baseURL: go.baseURL, database, secret: "local-conformance-0123456789-abcdefghijk",
+    plugins: [emailOTP({ storeOTP: "hashed", changeEmail: {enabled:true, verifyCurrentEmail:true}, sendVerificationOTP: async (m) => { sent = m; } })],
+    emailAndPassword: { enabled: true }, telemetry: { enabled: false },
+  });
+  const official = instrument({baseURL: go.baseURL, send: (r) => ref.handler(r)}, [emailOTPClient()]).client;
+  const browser = instrument(go, [emailOTPClient()]).client;
+  const email = "otp-inbox@example.test";
+  assert.equal((await official.emailOtp.sendVerificationOtp({ email, type: "sign-in" })).data.success, true);
+  const firstCode = sent.otp;
+  const login = await browser.signIn.emailOtp({ email, otp: firstCode, name: "Mailbox" });
+  assert.equal(login.data?.user.emailVerified, true);
+  assert.equal((await official.signIn.emailOtp({ email, otp: firstCode })).error?.code, "INVALID_OTP");
+  assert.equal((await browser.emailOtp.requestPasswordReset({ email })).data.success, true);
+  const delivered = JSON.parse(await readFile(join(dirname(go.databasePath), "email-otp.json"), "utf8"));
+  assert.equal(delivered.Type, "forget-password");
+  assert.equal((await official.emailOtp.checkVerificationOtp({ email, otp: delivered.OTP, type: "forget-password" })).data.success, true);
+  assert.equal((await official.emailOtp.resetPassword({ email, otp: delivered.OTP, password })).data.success, true);
+  assert.equal((await browser.emailOtp.resetPassword({ email, otp: delivered.OTP, password })).error?.code, "INVALID_OTP");
+  assert.equal((await browser.signIn.email({ email, password })).data?.user.id, login.data.user.id);
+  assert.equal((await official.signIn.email({ email, password })).data?.user.id, login.data.user.id);
+  const currentProof = await ref.api.createVerificationOTP({body: {email, type:"email-verification"}});
+  const newEmail = "updated-otp@example.test";
+  assert.equal((await browser.emailOtp.requestEmailChange({newEmail, otp:currentProof})).data?.success, true);
+  const change = JSON.parse(await readFile(join(dirname(go.databasePath),"email-otp.json"),"utf8"));
+  assert.equal(change.Type,"change-email");
+  assert.equal((await official.emailOtp.changeEmail({newEmail, otp:change.OTP})).data?.success,true);
+  assert.equal((await browser.getSession()).data?.user.email, newEmail);
+  assert.equal((await browser.emailOtp.sendVerificationOtp({email:newEmail, type:"email-verification"})).data?.success,true);
+  const existing = JSON.parse(await readFile(join(dirname(go.databasePath),"email-otp.json"),"utf8"));
+  assert.equal((await official.emailOtp.requestEmailChange({newEmail:email,otp:existing.OTP})).data?.success,true);
+  assert.equal(sent.email,email);
+  assert.equal((await browser.emailOtp.changeEmail({newEmail:email,otp:sent.otp})).data?.success,true);
+  assert.equal((await browser.getSession()).data?.user.email,email);
+});
+
+test("the official multi-session client remembers, switches and revokes accounts per device", async (t) => {
+  const { multiSession } = await import("better-auth/plugins");
+  const { multiSessionClient } = await import("better-auth/client/plugins");
+  for (const runtime of [await reference(t, [multiSession({ maximumSessions: 2 })]),
+    await goFixture(t, [], { CONFORMANCE_MULTI_SESSION: "1" })]) {
+    const device = instrument(runtime, [multiSessionClient()]).client;
+    const second = instrument(runtime, [multiSessionClient()]).client;
+    const api = device.multiSession;
+    assert.deepEqual((await api.listDeviceSessions()).data, []);
+    const logins = [];
+    for (const label of ["alice", "bob", "carol"]) {
+      const result = await device.signUp.email({ email: label + "@example.test", name: label, password });
+      assert.equal(result.error, null);
+      logins.push(result.data.token);
+    }
+    const rows = (await api.listDeviceSessions()).data;
+    assert.deepEqual(rows.map((r) => r.user.name).sort(), ["alice", "bob"]);
+    assert.equal((await device.getSession()).data.session.token, logins[2]);
+    assert.equal((await api.setActive({ sessionToken: logins[2] })).error.code, "INVALID_SESSION_TOKEN");
+    assert.equal((await second.multiSession.setActive({ sessionToken: logins[0] })).error.code, "INVALID_SESSION_TOKEN");
+    assert.equal((await api.setActive({ sessionToken: logins[0] })).data.session.token, logins[0]);
+    assert.equal((await device.getSession()).data.user.name, "alice");
+    assert.deepEqual((await api.revoke({ sessionToken: logins[0] })).data, { status: true });
+    assert.equal((await device.getSession()).data.user.name, "bob");
+    assert.equal((await api.setActive({ sessionToken: logins[0] })).error.code, "INVALID_SESSION_TOKEN");
+    assert.equal((await second.signIn.email({ email: "bob@example.test", password })).error, null);
+    assert.deepEqual((await device.signOut()).data, { success: true });
+    assert.deepEqual((await api.listDeviceSessions()).data, []);
+    assert.equal((await second.getSession()).data.user.name, "bob");
+  }
+});
+
+test("custom session projection on the device list is opt-in", async (t) => {
+  const { multiSession } = await import("better-auth/plugins");
+  const { multiSessionClient } = await import("better-auth/client/plugins");
+  for (const enabled of [false, true]) {
+    const plugins = [multiSession(), customSession(async ({ user }) => ({ viewer: user.email }), {},
+      { shouldMutateListDeviceSessionsEndpoint: enabled })];
+    const fixtures = [await reference(t, plugins), await goFixture(t, [], {
+      CONFORMANCE_MULTI_SESSION: "1", CONFORMANCE_SESSION_VIEW: "1", CONFORMANCE_DEVICE_VIEW: enabled ? "1" : "0",
+    })];
+    for (const runtime of fixtures) {
+      const { client } = instrument(runtime, [multiSessionClient()]);
+      const first = await client.signUp.email({ email, password, name });
+      assert.equal(first.error, null);
+      assert.equal((await client.signUp.email({ email: "second@example.test", password, name })).error, null);
+      const rows = (await client.multiSession.listDeviceSessions()).data;
+      if (enabled) {
+        assert.deepEqual(rows.map((r) => Object.keys(r)), [["viewer"], ["viewer"]]);
+        assert.deepEqual(rows.map((r) => r.viewer).sort(), [email, "second@example.test"].sort());
+      } else {
+        assert.deepEqual(rows.map((r) => r.user.email).sort(), [email, "second@example.test"].sort());
+      }
+      assert.equal((await client.multiSession.setActive({ sessionToken: first.data.token })).data.user.email, email);
+    }
+  }
+});
+
+test("organization teams manage memberships and scoped invitations with the official client", async (t) => {
+  const teamOptions = { teams: { enabled: true } };
+  for (const runtime of [await reference(t, [organization(teamOptions)]),
+    await goFixture(t, ["organization-teams"])]) {
+    const make = () => instrument(runtime, [organizationClient(teamOptions)]).client;
+    const owner = make(), alice = make(), outsider = make();
+    const ok = (res) => { assert.equal(res.error, null, JSON.stringify(res.error)); return res.data; };
+    const boss = ok(await owner.signUp.email({ name, email, password })).user;
+    const peer = ok(await alice.signUp.email({ name: "Alice", email: "alice@example.test", password })).user;
+    ok(await outsider.signUp.email({ name: "Other", email: "other@example.test", password }));
+    const org = owner.organization;
+    const group = ok(await org.create({ name: "Studio", slug: "studio" }));
+    const initial = ok(await org.listTeams())[0];
+    assert.equal(initial.name, "Studio");
+    assert.equal(ok(await owner.getSession()).session.activeTeamId, initial.id);
+    const made = ok(await org.createTeam({ name: "Editing" }));
+    assert.equal(made.organizationId, group.id);
+    assert.equal(ok(await org.updateTeam({ teamId: made.id, data: { name: "Editorial" } })).name, "Editorial");
+    assert.equal((await org.setActiveTeam({ teamId: made.id })).error.code, "USER_IS_NOT_A_MEMBER_OF_THE_TEAM");
+    const member = ok(await org.addTeamMember({ teamId: made.id, userId: boss.id }));
+    assert.equal(ok(await org.addTeamMember({ teamId: made.id, userId: boss.id })).id, member.id);
+    assert.equal(ok(await org.setActiveTeam({ teamId: made.id })).id, made.id);
+    const otherGroup = ok(await outsider.organization.create({ name: "Independent", slug: "independent" }));
+    const foreign = ok(await outsider.organization.listTeams())[0];
+    assert.equal((await org.inviteMember({ email: peer.email, role: "member", organizationId: group.id, teamId: foreign.id })).error.code, "TEAM_NOT_FOUND");
+    assert.equal((await org.updateTeam({ teamId: foreign.id, data: { organizationId: group.id, name: "Invalid" } })).error.code, "TEAM_NOT_FOUND");
+    assert.equal((await outsider.organization.listTeams({ query: { organizationId: group.id } })).error.code, "YOU_ARE_NOT_ALLOWED_TO_ACCESS_THIS_ORGANIZATION");
+    const invitation = ok(await org.inviteMember({ email: peer.email, role: "member", teamId: [initial.id, made.id] }));
+    ok(await alice.organization.acceptInvitation({ invitationId: invitation.id }));
+    assert.deepEqual(ok(await alice.organization.listUserTeams()).map((t) => t.name).sort(), ["Editorial", "Studio"]);
+    const set = ok(await alice.organization.setActiveTeam({ teamId: made.id }));
+    assert.equal(set.id, made.id);
+    assert.deepEqual(ok(await alice.organization.listTeamMembers()).map((m) => m.userId).sort(), [boss.id, peer.id].sort());
+    assert.equal((await alice.organization.createTeam({ name: "Denied" })).error.code, "YOU_ARE_NOT_ALLOWED_TO_CREATE_TEAMS_IN_THIS_ORGANIZATION");
+    assert.deepEqual(ok(await org.removeTeamMember({ teamId: made.id, userId: peer.id })), { message: "Team member removed successfully." });
+    assert.equal((await alice.organization.listTeamMembers({ query: { teamId: made.id } })).error.code, "USER_IS_NOT_A_MEMBER_OF_THE_TEAM");
+    ok(await org.setActiveTeam({ teamId: initial.id }));
+    assert.deepEqual(ok(await org.removeTeam({ teamId: made.id })), { message: "Team removed successfully." });
+    assert.deepEqual(ok(await org.listTeams()).map((t) => t.id), [initial.id]);
+    assert.equal(otherGroup.id, ok(await outsider.getSession()).session.activeOrganizationId);
+  }
+});
+
+test("the pinned One Tap client signs in to Go with a nonce issued by the application host", async (t) => {
+  const { oneTapClient } = await import("better-auth/client/plugins");
+  const { generateKeyPair, exportJWK, SignJWT } = await import("jose");
+  const { publicKey, privateKey } = await generateKeyPair("RS256", { extractable: true });
+  const key = await exportJWK(publicKey);
+  const go = await goFixture(t, [], { CONFORMANCE_ONE_TAP_JWKS: JSON.stringify({ keys: [{ ...key, alg: "RS256", kid: "local" }] }) });
+  const clientId = "fixture.apps.googleusercontent.com";
+  const { client } = instrument(go, [oneTapClient({ clientId })]);
+  const { data } = await client.$fetch("/test/host-challenge", { method: "POST", body: {} });
+  assert.equal(data.clientId, clientId);
+  const name = "Host-bound Google user", email = "host-nonce@example.test";
+  const credential = await new SignJWT({ nonce: data.nonce, name, email, email_verified: true })
+    .setProtectedHeader({ alg: "RS256", kid: "local" }).setSubject("subject").setIssuer("https://accounts.google.com")
+    .setAudience(clientId).setIssuedAt().setExpirationTime("5m").sign(privateKey);
+  let init;
+  const previous = globalThis.window;
+  globalThis.window = { document: {}, googleScriptInitialized: true, google: { accounts: { id: {
+    initialize(config) { init = config; }, prompt() { init.callback({ credential }); },
+  } } } };
+  t.after(() => { if (previous === undefined) delete globalThis.window; else globalThis.window = previous; });
+  await client.oneTap({ nonce: data.nonce, fetchOptions: {} });
+  assert.equal(init.nonce, data.nonce);
+  assert.equal((await client.getSession()).data.user.email, email);
+  const replay = await client.$fetch("/one-tap/callback", { method: "POST", body: { idToken: credential } });
+  assert.equal(replay.error.status, 400);
+});
+
+test("independent organization servers share team invitations, memberships and seat counts", async (t) => {
+  const go = await goFixture(t, ["organization-teams"]);
+  const db = new DatabaseSync(go.databasePath);
+  t.after(() => db.close());
+  const options = { teams: { enabled: true } };
+  const auth = betterAuth({ baseURL: "http://reference.localhost", database: db,
+    secret: "local-conformance-0123456789-abcdefghijk", plugins: [organization(options)],
+    emailAndPassword: { enabled: true }, telemetry: { enabled: false } });
+  const ref = { baseURL: "http://reference.localhost", send: (req) => auth.handler(req) };
+  const ok = (res) => { assert.equal(res.error, null, JSON.stringify(res.error)); return res.data; };
+  for (const [index, [issuer, recipient]] of [[go, ref], [ref, go]].entries()) {
+    const owner = instrument(issuer, [organizationClient(options)]).client;
+    const member = instrument(recipient, [organizationClient(options)]).client;
+    const boss = ok(await owner.signUp.email({ name, email: "owner" + index + "@example.test", password })).user;
+    const peer = ok(await member.signUp.email({ name, email: "peer" + index + "@example.test", password })).user;
+    ok(await owner.organization.create({ name, slug: "org-" + index }));
+    const group = ok(await owner.organization.createTeam({ name: "Shared" }));
+    const invite = ok(await owner.organization.inviteMember({ email: peer.email, role: "member", teamId: group.id }));
+    ok(await member.organization.acceptInvitation({ invitationId: invite.id }));
+    const persisted = db.prepare('SELECT "id","membershipKey" FROM "teamMember" WHERE "teamId"=? AND "userId"=?').get(group.id, peer.id);
+    assert.equal(persisted.membershipKey, createHash("sha256").update(JSON.stringify([group.id, peer.id])).digest("base64url"));
+    assert.equal(ok(await owner.organization.addTeamMember({ teamId: group.id, userId: peer.id })).id, persisted.id);
+    ok(await owner.organization.addTeamMember({ teamId: group.id, userId: boss.id }));
+    const listed = ok(await member.organization.listTeamMembers({ query: { teamId: group.id } }));
+    assert.deepEqual(listed.map((m) => m.userId).sort(), [boss.id, peer.id].sort());
+    assert.ok(listed.every((m) => !("membershipKey" in m)));
+    assert.equal(db.prepare('SELECT "memberCount" FROM "team" WHERE "id"=?').get(group.id).memberCount, 2);
+    ok(await owner.organization.removeTeamMember({ teamId: group.id, userId: peer.id }));
+    assert.equal(db.prepare('SELECT "memberCount" FROM "team" WHERE "id"=?').get(group.id).memberCount, 1);
+  }
 });

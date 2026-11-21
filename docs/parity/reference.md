@@ -252,7 +252,7 @@
   - [ ] `basePath`
     - [x] Resolve public URL and mount path from explicit options and process settings ([test](../../env_test.go#L19))
   - [ ] `trustedOrigins`
-    - [x] Combine configured origins and environment origins for callback validation ([test](../../env_test.go#L35))
+    - [x] Combine configured origins and environment origins for callback validation ([test](../../env_test.go#L33))
     - [ ] Static Origins
     - [ ] Dynamic Origins
       - [ ] On a direct `auth.api` call with a static `baseURL`
@@ -269,12 +269,12 @@
         - [ ] `myapp://`
         - [ ] Notes
   - [ ] `secret`
-    - [x] Give an explicit signing secret precedence over environment defaults ([test](../../env_test.go#L43))
+    - [x] Give an explicit signing secret precedence over environment defaults ([test](../../env_test.go#L41))
     - [ ] `AUTH_SECRET`
     - [ ] `process.env.AUTH_SECRET`
   - [ ] `secrets`
-    - [x] Sign with the active key and accept cookies from a retained key ([test](../../env_test.go#L58))
-    - [x] Accept an email proof signed by a retained key and reject it after retirement ([test](../../env_test.go#L119))
+    - [x] Sign with the active key and accept cookies from a retained key ([test](../../env_test.go#L79))
+    - [x] Accept an email proof signed by a retained key and reject it after retirement ([test](../../env_test.go#L140))
   - [ ] `database`
   - [ ] `secondaryStorage`
   - [ ] `emailVerification`
@@ -336,7 +336,8 @@
   - [ ] `account`
     - [ ] `modelName`
     - [ ] `fields`
-    - [ ] `encryptOAuthTokens`
+    - [x] `encryptOAuthTokens` ([test](../../adapters/sqlstore/oauth_encryption_test.go#L92))
+      - [x] Encrypt provider access, refresh and ID tokens across key rotation and credential refresh ([test](../../adapters/sqlstore/oauth_encryption_test.go#L92))
     - [ ] `updateAccountOnSignIn`
     - [ ] `storeStateStrategy`
       - [ ] `"cookie"`
@@ -356,7 +357,7 @@
     - [ ] `storeIdentifier`
     - [ ] `storeInDatabase`
   - [ ] `rateLimit`
-    - [x] Select the production rate limit by default and honor an explicit override ([test](../../env_test.go#L100))
+    - [x] Select the production rate limit by default and honor an explicit override ([test](../../env_test.go#L121))
     - [ ] `enabled`
     - [ ] `window`
     - [ ] `max`

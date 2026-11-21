@@ -10,6 +10,7 @@
     - [ ] `ac`
     - [ ] `roles`
     - [ ] `teams`
+      - [x] Exercise all nine team operations with the official client, including multi-team invitations and organization boundaries ([test](../../../conformance/core.test.mjs#L571))
     - [ ] `schema`
     - [ ] `dynamicAccessControl`
   - [ ] `organizationClient`
@@ -23,10 +24,13 @@
   - [ ] `POST /organization/invite-member`
     - [x] Authorize the inviter, constrain role grants, and resend the same invitation ([test](../../../plugins/organization/organization_test.go#L128))
     - [x] Require a live inviter session for invitation creation and resends ([test](../../../adapters/sqlstore/organization_cleanup_test.go#L160))
+    - [x] Reject team IDs outside the invitation’s organization, including reserved delimiters ([test](../../../adapters/sqlstore/organization_teams_test.go#L123))
   - [ ] `POST /organization/accept-invitation`
     - [x] Accept a matching invitation once, even during concurrent requests ([test](../../../plugins/organization/organization_test.go#L153))
     - [x] Read the current recipient email and verification status and keep rejected invitation details private ([test](../../../adapters/sqlstore/organization_cleanup_test.go#L117))
     - [x] Return only the public error code and message to a different recipient ([test](../../../plugins/organization/organization_test.go#L142))
+    - [x] Roll back every membership and keep the invitation pending when a team fills ([test](../../../adapters/sqlstore/organization_teams_test.go#L237))
+    - [x] Read and update the same stored invitations, membership keys and seat counts in both runtime directions ([test](../../../conformance/core.test.mjs#L641))
   - [ ] `POST /organization/reject-invitation`
   - [ ] `POST /organization/cancel-invitation`
   - [ ] `GET /organization/get-invitation`
@@ -51,14 +55,23 @@
   - [ ] `GET /organization/list`
     - [x] List only organizations the current user belongs to ([test](../../../plugins/organization/organization_test.go#L109))
   - [ ] `POST /organization/create-team`
+    - [x] Create teams within an organization and enforce its configured maximum ([test](../../../adapters/sqlstore/organization_teams_test.go#L106))
   - [ ] `POST /organization/remove-team`
+    - [x] Protect the active team and final team, and prune pending invitations when a team is removed ([test](../../../adapters/sqlstore/organization_teams_test.go#L136))
   - [ ] `POST /organization/update-team`
+    - [x] Update the team name and reject another organization’s team ID ([test](../../../adapters/sqlstore/organization_teams_test.go#L114))
   - [ ] `GET /organization/list-teams`
+    - [x] Read the organization’s teams and deny outsiders using the browser client ([test](../../../conformance/core.test.mjs#L597))
   - [ ] `POST /organization/set-active-team`
+    - [x] Select a team belonging to the active organization and preserve session cookie persistence ([test](../../../adapters/sqlstore/organization_teams_test.go#L156))
   - [ ] `GET /organization/list-user-teams`
+    - [x] Return self memberships across organizations and scope administrative queries to the selected organization ([test](../../../adapters/sqlstore/organization_teams_test.go#L257))
   - [ ] `GET /organization/list-team-members`
+    - [x] List members of the selected team and reject a caller whose membership was removed ([test](../../../adapters/sqlstore/organization_teams_test.go#L268))
   - [ ] `POST /organization/add-team-member`
+    - [x] Admit one candidate to the last seat across competing SQL-backed servers and return existing memberships on retry ([test](../../../adapters/sqlstore/organization_teams_test.go#L204))
   - [ ] `POST /organization/remove-team-member`
+    - [x] Remove membership and clear the affected user’s active team ([test](../../../adapters/sqlstore/organization_teams_test.go#L266))
   - [ ] `OrganizationOptions`
     - [ ] `allowUserToCreateOrganization`
     - [ ] `organizationLimit`
@@ -68,6 +81,7 @@
     - [ ] `roles`
     - [ ] `dynamicAccessControl`
     - [ ] `teams`
+      - [x] Create and select a default team for the owner, or disable automatic creation ([test](../../../adapters/sqlstore/organization_teams_test.go#L315))
     - [ ] `invitationExpiresIn`
     - [ ] `invitationLimit`
     - [ ] `cancelPendingInvitationsOnReInvite`
@@ -147,7 +161,7 @@
         - [ ] Parameter `teamId` (optional)
     - [ ] Accept Invitation
       - [x] Accept a matching invitation once, even during concurrent requests ([test](../../../plugins/organization/organization_test.go#L153))
-      - [x] Accept an invitation through the JavaScript client and read the new membership ([test](../../../conformance/core.test.mjs#L215))
+      - [x] Accept an invitation through the JavaScript client and read the new membership ([test](../../../conformance/core.test.mjs#L231))
       - [ ] `POST /organization/accept-invitation`
         - [ ] Parameter `invitationId`
       - [ ] Email Verification Requirement
@@ -249,13 +263,16 @@
     - [ ] Enabling Teams
     - [ ] Managing Teams
       - [ ] Create Team
+        - [x] Create teams within an organization and enforce its configured maximum ([test](../../../adapters/sqlstore/organization_teams_test.go#L106))
         - [ ] `POST /organization/create-team`
           - [ ] Parameter `name`
           - [ ] Parameter `organizationId` (optional)
       - [ ] List Teams
+        - [x] Read the organization’s teams and deny outsiders using the browser client ([test](../../../conformance/core.test.mjs#L597))
         - [ ] `GET /organization/list-teams`
           - [ ] Parameter `organizationId` (optional)
       - [ ] Update Team
+        - [x] Update the team name and reject another organization’s team ID ([test](../../../adapters/sqlstore/organization_teams_test.go#L114))
         - [ ] `POST /organization/update-team`
           - [ ] Parameter `teamId`
           - [ ] Parameter `data`
@@ -264,35 +281,45 @@
           - [ ] Parameter `createdAt` (optional)
           - [ ] Parameter `updatedAt` (optional)
       - [ ] Remove Team
+        - [x] Protect the active team and final team, and prune pending invitations when a team is removed ([test](../../../adapters/sqlstore/organization_teams_test.go#L136))
         - [ ] `POST /organization/remove-team`
           - [ ] Parameter `teamId`
           - [ ] Parameter `organizationId` (optional)
       - [ ] Set Active Team
+        - [x] Select a team belonging to the active organization and preserve session cookie persistence ([test](../../../adapters/sqlstore/organization_teams_test.go#L156))
         - [ ] `POST /organization/set-active-team`
           - [ ] Parameter `teamId` (optional)
       - [ ] List User Teams
+        - [x] Return self memberships across organizations and scope administrative queries to the selected organization ([test](../../../adapters/sqlstore/organization_teams_test.go#L257))
         - [ ] `GET /organization/list-user-teams`
           - [ ] Parameter `userId` (optional)
           - [ ] Parameter `organizationId` (optional)
       - [ ] List Team Members
+        - [x] List members of the selected team and reject a caller whose membership was removed ([test](../../../adapters/sqlstore/organization_teams_test.go#L268))
         - [ ] `POST /organization/list-team-members`
           - [ ] Parameter `teamId` (optional)
       - [ ] Add Team Member
+        - [x] Admit one candidate to the last seat across competing SQL-backed servers and return existing memberships on retry ([test](../../../adapters/sqlstore/organization_teams_test.go#L204))
         - [ ] `POST /organization/add-team-member`
           - [ ] Parameter `teamId`
           - [ ] Parameter `userId`
       - [ ] Remove Team Member
+        - [x] Remove membership and clear the affected user’s active team ([test](../../../adapters/sqlstore/organization_teams_test.go#L266))
         - [ ] `POST /organization/remove-team-member`
           - [ ] Parameter `teamId`
           - [ ] Parameter `userId`
     - [ ] Team Permissions
+      - [x] Apply owner, admin and member team-management permissions through public HTTP routes ([test](../../../conformance/core.test.mjs#L604))
       - [ ] `team:create`
       - [ ] `team:update`
       - [ ] `team:delete`
     - [ ] Team Configuration Options
+      - [x] Honor fixed seat and team limits, and optionally permit removal of the final team ([test](../../../adapters/sqlstore/organization_teams_test.go#L322))
       - [ ] `maximumTeams`
       - [ ] `allowRemovingAllTeams`
     - [ ] Team Members
+      - [x] Persist the team membership key and maintain the database member count across mutations ([test](../../../adapters/sqlstore/organization_teams_test.go#L177))
+      - [x] Read and update the same stored invitations, membership keys and seat counts in both runtime directions ([test](../../../conformance/core.test.mjs#L641))
     - [ ] Database Schema
       - [ ] `teamsFeatureTeamTableFields.id`
       - [ ] `teamsFeatureTeamTableFields.name`
@@ -307,7 +334,7 @@
       - [ ] `teamsFeatureTeamMemberTableFields.createdAt`
   - [ ] Schema
     - [x] Generate and incrementally apply the organization schema with and without teams ([test](../../../conformance/schema.test.mjs#L83))
-    - [x] Upgrade existing PostgreSQL and MySQL schemas with combined team, billing and factor profiles ([test](../../../adapters/sqlstore/profiles_test.go#L15))
+    - [x] Upgrade existing PostgreSQL and MySQL schemas with combined team, billing and factor profiles ([test](../../../adapters/sqlstore/profiles_test.go#L14))
     - [ ] Organization
       - [ ] `organizationTableFields.id`
       - [ ] `organizationTableFields.name`

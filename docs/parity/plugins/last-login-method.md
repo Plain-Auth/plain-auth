@@ -9,6 +9,7 @@
   - [ ] `lastLoginMethodClient`
   - [ ] `LastLoginMethodOptions`
     - [ ] `cookieName`
+      - [x] Apply the host cookie namespace and HTTPS security to the default browser preference ([test](../../../plugins/lastlogin/lastlogin_test.go#L47))
     - [ ] `maxAge`
     - [ ] `customResolveMethod`
     - [ ] `storeInDatabase`
@@ -28,6 +29,7 @@
     - [ ] Run database migration
     - [ ] Access database field
     - [ ] Database Schema
+      - [x] Generate the canonical columns on SQLite, PostgreSQL and MySQL, including combined plugin selections ([test](../../../conformance/schema.test.mjs#L66))
       - [ ] `lastLoginMethodUserTableFields.lastLoginMethod`
     - [ ] Custom Schema Configuration
   - [ ] Configuration Options
