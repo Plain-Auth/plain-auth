@@ -5,6 +5,7 @@ import (
 	"context"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -55,7 +56,7 @@ func New(opts Options) auth.Plugin {
 		if cookie.Name == "" {
 			cookie.Name = strings.TrimSuffix(e.Cookie.Name, ".session_token") + ".last_used_login_method"
 		}
-		cookie.Value, cookie.HttpOnly, cookie.MaxAge = method, false, int(opts.MaxAge/time.Second)
+		cookie.Value, cookie.HttpOnly, cookie.MaxAge = url.PathEscape(method), false, int(opts.MaxAge/time.Second)
 		if cookie.Valid() == nil {
 			e.Header.Add("Set-Cookie", cookie.String())
 		}

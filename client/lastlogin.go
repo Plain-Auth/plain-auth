@@ -22,6 +22,9 @@ func (c *Client) LastLoginMethod(cookieName string) string {
 	u, name := c.loginMethodCookie(cookieName)
 	for _, cookie := range c.http.Jar.Cookies(u) {
 		if cookie.Name == name {
+			if decoded, err := url.PathUnescape(cookie.Value); err == nil {
+				return decoded
+			}
 			return cookie.Value
 		}
 	}

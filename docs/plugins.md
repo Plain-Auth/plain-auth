@@ -105,3 +105,15 @@ opts.Plugins = append(opts.Plugins, lastlogin.New(lastlogin.Options{Database: st
 ```
 
 A recognized HTTP login that issues a session records the method on its account. Session reads expose it as `user.lastLoginMethod`. The browser preference defaults to `authn.last_used_login_method` and uses the `__Secure-` prefix on HTTPS. The `Allow` callback controls setting the browser cookie. Supplying `Database` independently enables account storage. In the Go client, `LastLoginMethod("")` reads the default browser preference and `ClearLastLoginMethod("")` clears it. Supply the exact cookie name when configuring a custom name or namespace. [Storage tests](../adapters/sqlstore/lastlogin_test.go) · [Native client tests](../client/lastlogin_test.go)
+
+For a browser sign-in page, serve the [preference module](../plugins/lastlogin/browser.mjs) as a static asset. The helper reads the cookie on demand. Clearing the preference preserves the active login.
+
+```js
+import { loginPreference } from "/assets/login-preference.mjs";
+
+const preference = loginPreference();
+if (preference.is("github")) signInWithGitHubButton.focus();
+forgetPreferenceButton.addEventListener("click", () => preference.clear());
+```
+
+Pass `cookieName` for a custom cookie name. Pass `domain` when clearing a cookie that your application issued on a shared parent domain.

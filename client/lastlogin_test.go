@@ -1,6 +1,7 @@
 package client_test
 
 import (
+	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
@@ -15,7 +16,8 @@ func TestLoginMethodPreferenceJar(t *testing.T) {
 	for _, name := range []string{"", "staff.preference"} {
 		server := httptest.NewUnstartedServer(nil)
 		origin := "https://" + server.Listener.Addr().String()
-		instance, err := auth.New(auth.Options{BaseURL: origin, Secret: strings.Repeat("s", 32), EmailAndPassword: true, Store: memory.New(), Plugins: []auth.Plugin{lastlogin.New(lastlogin.Options{CookieName: name})}})
+		const method = "email + SSO / équipe"
+		instance, err := auth.New(auth.Options{BaseURL: origin, Secret: strings.Repeat("s", 32), EmailAndPassword: true, Store: memory.New(), Plugins: []auth.Plugin{lastlogin.New(lastlogin.Options{CookieName: name, Resolve: func(*http.Request) string { return method }})}})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -33,7 +35,7 @@ func TestLoginMethodPreferenceJar(t *testing.T) {
 		if err := browser.Do(t.Context(), "POST", "/sign-up/email", map[string]string{"name": "User", "email": "user@example.test", "password": "fixture-password"}, &out); err != nil {
 			t.Fatal(err)
 		}
-		if browser.LastLoginMethod(name) != "email" {
+		if browser.LastLoginMethod(name) != method {
 			t.Fatal("client could not read preference")
 		}
 		browser.ClearLastLoginMethod(name)
