@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"slices"
 	"strings"
 	"time"
 
@@ -47,13 +48,26 @@ func (s *Store) removeMembershipOnce(ctx context.Context, userID, token, group, 
 		return nil, err
 	}
 	defer tx.Rollback()
+	value := s.exactSQLValue("?")
+	filter := `m."id"=` + value
+	byEmail := strings.Contains(target, "@")
+	if byEmail {
+		filter = `LOWER(u."email")=` + value
+		target = strings.ToLower(target)
+	}
+	var lockedTarget string
+	if !leave {
+		lockedTarget, err = s.lockRemovalAccounts(ctx, tx, userID, token, group, filter, target)
+		if err != nil {
+			return nil, err
+		}
+	}
 	if err = s.lockActiveAccount(ctx, tx, userID, token, time.Now()); err != nil {
 		if errors.Is(err, auth.ErrNotFound) {
 			return nil, org.ErrUnauthenticated
 		}
 		return nil, err
 	}
-	value := s.exactSQLValue("?")
 	var active *string
 	err = tx.QueryRowContext(ctx, s.bind(`SELECT "activeOrganizationId" FROM "session" WHERE "userId"=`+value+` AND "token"=`+value), userID, token).Scan(&active)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -80,15 +94,12 @@ func (s *Store) removeMembershipOnce(ctx context.Context, userID, token, group, 
 	}
 	member := actor
 	if !leave {
-		filter := `m."id"=` + value
-		byEmail := strings.Contains(target, "@")
-		if byEmail {
-			filter = `LOWER(u."email")=` + value
-			target = strings.ToLower(target)
-		}
 		member, err = s.memberForRemoval(ctx, tx, group, filter, target)
 		if err != nil {
 			return nil, err
+		}
+		if member.UserID != lockedTarget {
+			return nil, org.ErrMemberMissing
 		}
 		if !byEmail {
 			member.User = nil
@@ -110,25 +121,6 @@ func (s *Store) removeMembershipOnce(ctx context.Context, userID, token, group, 
 	if !leave && !actorIsOwner && !membershipHasRole(actor.Role, "admin") {
 		return nil, org.ErrMemberRemove
 	}
-	if member.UserID != userID {
-		if err = s.lockAccount(ctx, tx, member.UserID); err != nil {
-			if errors.Is(err, auth.ErrNotFound) {
-				return nil, org.ErrMemberMissing
-			}
-			return nil, err
-		}
-		// The account could have been deleted or renamed during the wait for its lock.
-		current, err := s.memberForRemoval(ctx, tx, group, `m."id"=`+value, member.ID)
-		if err != nil {
-			return nil, err
-		}
-		if current.UserID != member.UserID || (member.User != nil && strings.ToLower(current.User.Email) != target) {
-			return nil, org.ErrMemberMissing
-		}
-		if member.User != nil {
-			member.User = current.User
-		}
-	}
 	teams, err := s.hasKeyOwnerTable(ctx, tx, "teamMember")
 	if err != nil {
 		return nil, err
@@ -148,6 +140,41 @@ func (s *Store) removeMembershipOnce(ctx context.Context, userID, token, group, 
 		return nil, err
 	}
 	return member, nil
+}
+
+// Discover the target without taking locks. Acquire both accounts in the same
+// order as team and administrative changes, before locking the session and
+// organization. The caller checks the session, scope and membership again
+// under those locks before authorizing any change.
+func (s *Store) lockRemovalAccounts(ctx context.Context, tx *sql.Tx, userID, token, group, filter, target string) (string, error) {
+	value := s.exactSQLValue("?")
+	scope := s.exactSQLValue(`COALESCE(NULLIF(?, ''), ss."activeOrganizationId")`)
+	query := `SELECT m."userId" FROM "session" ss JOIN "member" m ON m."organizationId"=` + scope +
+		` JOIN "user" u ON u."id"=` + s.exactSQLValue(`m."userId"`) +
+		` WHERE ss."userId"=` + value + ` AND ss."token"=` + value + ` AND ` + filter
+	var candidate string
+	err := tx.QueryRowContext(ctx, s.bind(query), group, userID, token, target).Scan(&candidate)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", nil
+	}
+	if err != nil || candidate == userID {
+		return candidate, err
+	}
+	accounts := []string{userID, candidate}
+	slices.Sort(accounts)
+	for _, id := range accounts {
+		err := s.lockAccount(ctx, tx, id)
+		if errors.Is(err, auth.ErrNotFound) {
+			if id == userID {
+				return "", org.ErrUnauthenticated
+			}
+			return "", nil
+		}
+		if err != nil {
+			return "", err
+		}
+	}
+	return candidate, nil
 }
 
 func (s *Store) memberForRemoval(ctx context.Context, tx *sql.Tx, group, filter, value string) (*org.RemovedMember, error) {

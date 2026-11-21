@@ -60,6 +60,7 @@
     - [x] Grant built-in roles and an optional team atomically, enforcing capacity alongside concurrent grants and invitation acceptance ([test](../../../adapters/sqlstore/organization_members_test.go#L15))
     - [x] Read grants stored by either server through the other runtime’s browser client without changing the recipient’s active organization ([test](../../../conformance/core.test.mjs#L1042))
   - [ ] `POST /organization/remove-member`
+    - [x] Resolve simultaneous opposing owner removals in a single transaction attempt while both PostgreSQL connections wait on database locks ([test](../../../adapters/sqlstore/organization_locking_test.go#L106))
     - [x] Remove by case-insensitive email or exact membership ID and return the matching public member shape through the released client ([test](../../../conformance/organization-removal.mjs#L54))
     - [x] Clear the removed tenant from affected sessions and preserve another tenant's selection ([test](../../../adapters/sqlstore/organization_removal_test.go#L158))
     - [x] Serialize opposing owner removals and reread the losing actor's membership ([test](../../../adapters/sqlstore/organization_removal_test.go#L224))

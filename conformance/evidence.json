@@ -6278,6 +6278,11 @@
   ],
   "plugin/organization/POST /organization/remove-member": [
     {
+      "label": "Resolve simultaneous opposing owner removals in a single transaction attempt while both PostgreSQL connections wait on database locks",
+      "test": "adapters/sqlstore/organization_locking_test.go",
+      "marker": "opposing removals must resolve in one transaction attempt"
+    },
+    {
       "label": "Remove by case-insensitive email or exact membership ID and return the matching public member shape through the released client",
       "test": "conformance/organization-removal.mjs",
       "marker": "assert.equal(\"user\" in withoutUser,false)"
