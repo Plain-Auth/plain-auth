@@ -5,7 +5,9 @@ import (
 	_ "embed"
 	"encoding/json"
 	"errors"
+	"net/http"
 	"reflect"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -37,7 +39,7 @@ func schemaPath(r stonewrit.HTTPRoute) string {
 
 func knownPlugin(id string) bool {
 	switch id {
-	case "", "admin", "anonymous", "api-key", "device-authorization", "email-otp", "jwt", "magic-link", "multi-session", "one-tap", "one-time-token", "organization", "passkey", "phone-number", "stripe", "two-factor", "username":
+	case "", "admin", "anonymous", "api-key", "device-authorization", "email-otp", "jwt", "magic-link", "multi-session", "one-tap", "one-time-token", "organization", "passkey", "phone-number", "sso", "stripe", "two-factor", "username":
 		return true
 	}
 	return false
@@ -52,6 +54,8 @@ func sessionProtection(route stonewrit.HTTPRoute) bool {
 	switch route.Plugin {
 	case "admin", "organization", "api-key":
 		return true
+	case "sso":
+		return route.Path == "/sso/request-domain-verification" || route.Path == "/sso/verify-domain"
 	case "stripe":
 		return route.Path != "/stripe/webhook" && route.Path != "/subscription/success"
 	case "passkey":
@@ -77,6 +81,8 @@ func publicResponse(route stonewrit.HTTPRoute, info stonewrit.HTTPDescription, f
 		return responseObject(object{"keys": array(object{"type": "object"})}, "keys")
 	}
 	switch route.Path {
+	case "/sso/request-domain-verification":
+		return responseObject(object{"domainVerificationToken": object{"type": "string"}}, "domainVerificationToken")
 	case "/get-session":
 		if info.CustomSession {
 			return object{}
@@ -182,6 +188,10 @@ func keepFields(schema object, names ...string) {
 
 func adjustRequest(op object, r stonewrit.HTTPRoute, info stonewrit.HTTPDescription, a *stonewrit.Auth) {
 	switch r.Path {
+	case "/sso/request-domain-verification", "/sso/verify-domain":
+		op["description"] = "Requires a direct session from the personal provider’s creator or a current owner or administrator of its organization."
+		op["requestBody"] = object{"required": true, "content": content("application/json", responseObject(object{"providerId": object{"type": "string", "minLength": 1}}, "providerId"))}
+		return
 	case "/account-info":
 		op["parameters"] = []object{{"name": "accountId", "in": "query", "required": true, "schema": object{"type": "string"}}}
 		return
@@ -334,13 +344,23 @@ func standardOperation(r stonewrit.HTTPRoute, info stonewrit.HTTPDescription, a 
 	if builtin {
 		result = publicResponse(r, info, a.HasPlugin("two-factor"))
 	}
-	responses := object{"200": response("application/json", result), "default": object{"$ref": "#/components/responses/Error"}}
+	status := r.SuccessStatus
+	if status == 0 {
+		status = http.StatusOK
+	}
+	success := strconv.Itoa(status)
+	responses := object{"default": object{"$ref": "#/components/responses/Error"}}
+	if status == http.StatusNoContent {
+		responses[success] = object{"description": "No content"}
+	} else {
+		responses[success] = response("application/json", result)
+	}
 	if builtin {
 		switch r.Path {
 		case "/error":
-			responses["200"] = response("text/html", object{"type": "string"})
+			responses[success] = response("text/html", object{"type": "string"})
 		case "/reset-password/:token", "/callback/:id", "/subscription/success":
-			delete(responses, "200")
+			delete(responses, success)
 			responses["302"] = object{"description": "Redirect to the configured destination", "headers": object{"Location": object{"schema": object{"type": "string"}}}}
 		case "/verify-email", "/magic-link/verify", "/delete-user/callback":
 			responses["302"] = object{"description": "Redirect to the trusted callback"}

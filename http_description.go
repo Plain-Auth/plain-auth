@@ -14,7 +14,9 @@ type HTMLPage string
 type HTTPRoute struct {
 	Method, Path, Plugin string
 	RawBody              bool
-	OpenAPI              json.RawMessage
+	// SuccessStatus is the endpoint's declared success status. Zero defaults to 200.
+	SuccessStatus int
+	OpenAPI       json.RawMessage
 }
 
 // HTTPDescription describes public settings used to document the handler.
@@ -89,7 +91,7 @@ func (a *Auth) DescribeHTTP() HTTPDescription {
 				continue
 			}
 		}
-		d.Routes = append(d.Routes, HTTPRoute{Method: ep.Method, Path: ep.Path, Plugin: ep.pluginID, RawBody: ep.RawBody, OpenAPI: slices.Clone(ep.OpenAPI)})
+		d.Routes = append(d.Routes, HTTPRoute{Method: ep.Method, Path: ep.Path, Plugin: ep.pluginID, RawBody: ep.RawBody, SuccessStatus: ep.SuccessStatus, OpenAPI: slices.Clone(ep.OpenAPI)})
 	}
 	slices.SortFunc(d.Routes, func(x, y HTTPRoute) int {
 		if x.Path == y.Path {

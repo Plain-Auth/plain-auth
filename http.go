@@ -126,18 +126,19 @@ func (a *Auth) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusFound)
 		return
 	}
-	if page, ok := result.(HTMLPage); ok {
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		w.Header().Set("X-Content-Type-Options", "nosniff")
-		_, _ = io.WriteString(w, string(page))
-		return
-	}
 	status := ep.SuccessStatus
 	if status == 0 {
 		status = http.StatusOK
 	}
 	if status == http.StatusNoContent {
 		w.WriteHeader(status)
+		return
+	}
+	if page, ok := result.(HTMLPage); ok {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.WriteHeader(status)
+		_, _ = io.WriteString(w, string(page))
 		return
 	}
 	writeAuthJSON(w, status, result)

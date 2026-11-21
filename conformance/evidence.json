@@ -5210,6 +5210,16 @@
   ],
   "plugin/open-api/GET /open-api/generate-schema": [
     {
+      "label": "Describe the enabled enterprise DNS management inputs, outputs and session credentials",
+      "test": "plugins/openapi/sso_domain_test.go",
+      "marker": "func TestEnterpriseDomainVerificationContract("
+    },
+    {
+      "label": "Publish declared success codes, empty 204 responses and explicit operation overrides while preserving redirects",
+      "test": "plugins/openapi/endpoint_status_test.go",
+      "marker": "func TestDeclaredSuccessStatusAndResponseOverrides("
+    },
+    {
       "label": "Serve the mounted versioned JSON document and match required fields for core and username operations",
       "test": "conformance/openapi-contract.mjs",
       "marker": "const [a,b] = [r,g].map"
