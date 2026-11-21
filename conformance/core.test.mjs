@@ -16,7 +16,7 @@ import { haveIBeenPwned } from "better-auth/plugins/haveibeenpwned";
 import { createAuthClient } from "better-auth/client";
 import { getMigrations } from "better-auth/db/migration";
 import { customSession, emailOTP, organization, twoFactor, magicLink, oneTimeToken, jwt } from "better-auth/plugins";
-import { emailOTPClient, organizationClient, twoFactorClient, magicLinkClient, oneTimeTokenClient, jwtClient } from "better-auth/client/plugins";
+import { customSessionClient, emailOTPClient, organizationClient, twoFactorClient, magicLinkClient, oneTimeTokenClient, jwtClient } from "better-auth/client/plugins";
 import { createOTP } from "@better-auth/utils/otp";
 import { base32 } from "@better-auth/utils/base32";
 
@@ -423,7 +423,7 @@ test("the official client reads the configured custom session response", async (
   const ref = await reference(t, [customSession(async ({ user }) => ({ viewer: user.email }))]);
   const go = await goFixture(t, [], { CONFORMANCE_SESSION_VIEW: "1" });
   for (const server of [ref, go]) {
-    const { client } = instrument(server);
+    const { client } = instrument(server, [customSessionClient()]);
     assert.equal((await client.getSession()).data, null);
     assert.equal((await client.signUp.email({ email, name, password })).error, null);
     assert.deepEqual((await client.getSession()).data, { viewer: email });
@@ -581,7 +581,7 @@ test("custom session projection on the device list is opt-in", async (t) => {
       CONFORMANCE_MULTI_SESSION: "1", CONFORMANCE_SESSION_VIEW: "1", CONFORMANCE_DEVICE_VIEW: enabled ? "1" : "0",
     })];
     for (const runtime of fixtures) {
-      const { client } = instrument(runtime, [multiSessionClient()]);
+      const { client } = instrument(runtime, [multiSessionClient(), customSessionClient()]);
       const first = await client.signUp.email({ email, password, name });
       assert.equal(first.error, null);
       assert.equal((await client.signUp.email({ email: "second@example.test", password, name })).error, null);
@@ -1179,4 +1179,13 @@ test("application key validators control sessions on both runtimes", async (t) =
       }
     }
   }
+});
+
+test("the custom session client infers its configured response and public options", () => {
+  const result = spawnSync(process.execPath, [
+    join(harness, "node_modules/typescript/bin/tsc"), "--noEmit", "--strict", "--skipLibCheck",
+    "--module", "NodeNext", "--target", "ES2022", "custom-session-types.mts",
+  ], { cwd: harness, encoding: "utf8", timeout: 60_000 });
+  if (result.error) throw result.error;
+  assert.equal(result.status, 0, result.stdout + result.stderr);
 });

@@ -190,9 +190,17 @@ func (c *Client) SignInEmail(ctx context.Context, input SignInRequest) (*EmailRe
 
 // GetSession returns nil, nil when the caller has no active session.
 func (c *Client) GetSession(ctx context.Context) (*authn.SessionResult, error) {
-	var out *authn.SessionResult
-	err := c.Do(ctx, http.MethodGet, "/get-session", nil, &out)
-	return out, err
+	return GetSessionView[authn.SessionResult](ctx, c)
+}
+
+// GetSessionView decodes the configured HTTP session response into T.
+// An unauthenticated request returns nil, nil.
+func GetSessionView[T any](ctx context.Context, c *Client) (*T, error) {
+	var view *T
+	if err := c.Do(ctx, http.MethodGet, "/get-session", nil, &view); err != nil {
+		return nil, err
+	}
+	return view, nil
 }
 
 func (c *Client) ListSessions(ctx context.Context) ([]authn.Session, error) {

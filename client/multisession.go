@@ -9,9 +9,17 @@ import (
 
 // ListDeviceSessions returns the accounts remembered by this client's cookie jar.
 func (c *Client) ListDeviceSessions(ctx context.Context) ([]authn.SessionResult, error) {
-	var out []authn.SessionResult
-	err := c.Do(ctx, http.MethodGet, "/multi-session/list-device-sessions", nil, &out)
-	return out, err
+	return ListDeviceSessionViews[authn.SessionResult](ctx, c)
+}
+
+// ListDeviceSessionViews decodes each remembered account into T. With
+// per-device projection disabled, T should describe the standard session.
+func ListDeviceSessionViews[T any](ctx context.Context, c *Client) ([]T, error) {
+	var views []T
+	if err := c.Do(ctx, http.MethodGet, "/multi-session/list-device-sessions", nil, &views); err != nil {
+		return nil, err
+	}
+	return views, nil
 }
 
 // SetActiveSession switches to a remembered account without creating a new login.

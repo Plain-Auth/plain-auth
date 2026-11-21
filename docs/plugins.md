@@ -95,7 +95,7 @@ if err != nil {
 opts.Plugins = append(opts.Plugins, view)
 ```
 
-Anonymous requests return JSON `null`. The core completes session validation and handles renewal cookies before returning the view. Direct Go authorization checks through `auth.GetSession` continue to receive the typed user and session. A native HTTP client expecting this custom JSON should call `client.Do` with an output struct matching the configured view. [Integration tests](../plugins/customsession/customsession_test.go)
+Anonymous requests return JSON `null`. The core completes session validation and handles renewal cookies before returning the view. Direct Go authorization checks through `auth.GetSession` continue to receive the typed user and session. A native HTTP client can call `client.GetSessionView[T](ctx, c)` with a Go type matching the configured view. [Integration tests](../plugins/customsession/customsession_test.go)
 
 To project each entry in a remembered-account list, register the view using `customsession.NewWithOptions` and set `ProjectDeviceSessions` to true. [Account switching](multi-session.md#customize-list-entries)
 

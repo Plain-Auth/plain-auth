@@ -36,4 +36,4 @@ SQLite, PostgreSQL, MySQL and the in-memory adapter support this plugin with the
 
 ## Customize list entries
 
-With `customsession.NewWithOptions(project, customsession.Options{ProjectDeviceSessions: true})`, the service runs the session projection on each list entry. The default list returns the standard user and session fields. Choosing an account always returns the standard shape. Applications that render a custom picker should include the selection token in their projected view. In Go, call `Client.Do` with the application's destination type to decode a projected list.
+With `customsession.NewWithOptions(project, customsession.Options{ProjectDeviceSessions: true})`, the service runs the session projection on each list entry. The default list returns the standard user and session fields. Choosing an account always returns the standard shape. Applications that render a custom picker should include the selection token in their projected view. In Go, call `client.ListDeviceSessionViews[T](ctx, c)` with the application's projected entry type. An empty picker returns an empty slice.

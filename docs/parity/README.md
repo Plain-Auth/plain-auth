@@ -64,7 +64,7 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 | [Bearer](plugins/bearer.md) | 9 | 10 |
 | [Captcha](plugins/captcha.md) | 17 | 65 |
 | [Client ID metadata documents](plugins/cimd.md) | 0 | 48 |
-| [Custom session](plugins/custom-session.md) | 4 | 5 |
+| [Custom session](plugins/custom-session.md) | 11 | 3 |
 | [Device authorization](plugins/device-authorization.md) | 22 | 99 |
 | [Electron](plugins/electron.md) | 0 | 52 |
 | [Email otp](plugins/email-otp.md) | 39 | 95 |

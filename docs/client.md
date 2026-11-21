@@ -38,6 +38,25 @@ Use `c.Do(ctx, method, route, input, output)` for JSON plugin and account endpoi
 
 To configure timeouts, transport or persistent cookie storage, pass an `*http.Client` as the second argument to `client.New`. Clients get separate in-memory cookies by default. A supplied jar is shared with its owner. Redirects require an explicit same-origin redirect policy. The client retains the server's JSON redirect flag and callback URL for the application to handle.
 
+## Read an application-defined session
+
+If your server configures a custom session view, pass a Go type matching its JSON fields. The same client sends its existing cookies and accepts any renewal cookies.
+
+```go
+type SessionView struct {
+    Viewer string `json:"viewer"`
+}
+view, err := client.GetSessionView[SessionView](ctx, c)
+if err != nil {
+    return err
+}
+if view != nil {
+    fmt.Println(view.Viewer)
+}
+```
+
+An unauthenticated read returns `nil, nil`. A failed HTTP request or a response that cannot decode into the requested type returns an error. If the server also projects remembered accounts, use `client.ListDeviceSessionViews[SessionView](ctx, c)`. The default device list returns standard sessions through `c.ListDeviceSessions(ctx)`. [Custom session server setup](plugins.md#return-an-application-defined-session-view) · [Go client tests](../client/session_view_test.go)
+
 ## Use a bearer token
 
 Register `bearer.New(bearer.Options{RequireSignature: true})` on the server. On the client, capture the signed credential from the successful login response. If the account uses MFA, capture it from the successful verification response after completing the challenge.
