@@ -190,7 +190,7 @@ Each entry groups the configured endpoint’s behaviors. A checked child records
   - [ ] `check`
     - [x] Report missing tables, missing columns and extra required columns on SQLite, PostgreSQL and MySQL ([test](../../adapters/sqlstore/check_test.go#L17))
     - [x] Check a combined plugin deployment using each live SQL catalog ([test](../../adapters/sqlstore/check_test.go#L131))
-    - [x] Resolve PostgreSQL tables in the connection's search path ([test](../../adapters/sqlstore/check_test.go#L154))
+    - [x] Resolve PostgreSQL tables in the connection's search path ([test](../../adapters/sqlstore/check_test.go#L159))
     - [x] Return distinct success, drift and operational exit codes with JSON findings and redacted connection errors ([test](../../cmd/authctl/check_test.go#L42))
     - [ ] `check schema`
     - [ ] `-c, --cwd <cwd>`
