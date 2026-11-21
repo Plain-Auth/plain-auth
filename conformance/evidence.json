@@ -1777,6 +1777,16 @@
       "label": "Recheck membership and active organization around Stripe responses, recover checkout under a different administrator, and refuse ambiguous customer ownership on three SQL engines",
       "test": "adapters/sqlstore/stripe_organization_test.go",
       "marker": "func TestOrganizationBillingIsolation("
+    },
+    {
+      "label": "Open an annual price confirmation for the selected organization and its existing subscription item",
+      "test": "adapters/sqlstore/stripe_organization_management_test.go",
+      "marker": "wrong organization plan confirmation"
+    },
+    {
+      "label": "Schedule a single-seat annual organization plan and reconcile its signed phase transition through the browser client",
+      "test": "conformance/stripe-lifecycle-fixture.mjs",
+      "marker": "await signedUpdate(server, remote, \"evt_org_phase_activated\""
     }
   ],
   "docs/content/docs/plugins/stripe.mdx#L221": [
@@ -1847,6 +1857,16 @@
       "label": "Apply signed checkout and renewal events to the organization and list its updated price through the browser client",
       "test": "conformance/stripe-organization-fixture.mjs",
       "marker": "await deliver(\"evt_org_renew\""
+    },
+    {
+      "label": "Confirm an organization’s cancellation through Stripe and reconcile it with a signed update on both runtimes",
+      "test": "conformance/stripe-lifecycle-fixture.mjs",
+      "marker": "await signedUpdate(server, remote, \"evt_org_cancel_confirmed\""
+    },
+    {
+      "label": "Schedule a single-seat annual organization plan and reconcile its signed phase transition through the browser client",
+      "test": "conformance/stripe-lifecycle-fixture.mjs",
+      "marker": "await signedUpdate(server, remote, \"evt_org_phase_activated\""
     }
   ],
   "plugin-symbol/captcha/captcha": [
@@ -4182,6 +4202,16 @@
       "label": "Bind the cancellation portal to the selected Stripe subscription",
       "test": "conformance/stripe-lifecycle-fixture.mjs",
       "marker": "cancelCall.form.get(\"flow_data[subscription_cancel][subscription]\")"
+    },
+    {
+      "label": "Confirm an organization’s cancellation through Stripe and reconcile it with a signed update on both runtimes",
+      "test": "conformance/stripe-lifecycle-fixture.mjs",
+      "marker": "await signedUpdate(server, remote, \"evt_org_cancel_confirmed\""
+    },
+    {
+      "label": "Recheck organization membership before disclosing cancellation and plan confirmation links or changing a future phase",
+      "test": "adapters/sqlstore/stripe_organization_management_test.go",
+      "marker": "func TestOrganizationSubscriptionManagement("
     }
   ],
   "plugin/stripe/POST /subscription/restore": [
@@ -4209,6 +4239,16 @@
       "label": "Return the original provider JSON after cancellation restoration and schedule release",
       "test": "conformance/stripe-lifecycle-fixture.mjs",
       "marker": "schedule release changed the Stripe wire object"
+    },
+    {
+      "label": "Restore an organization’s dated or period-end cancellation on three SQL engines",
+      "test": "adapters/sqlstore/stripe_organization_management_test.go",
+      "marker": "active organization dated restoration"
+    },
+    {
+      "label": "Refuse to release an organization schedule when the caller loses restore permission during Stripe’s response",
+      "test": "adapters/sqlstore/stripe_organization_management_test.go",
+      "marker": "revoked restore permission released the schedule"
     }
   ],
   "docs/content/docs/plugins/stripe.mdx#L413": [
@@ -4216,6 +4256,16 @@
       "label": "Open a cancellation page scoped to the signed-in customer and selected subscription",
       "test": "adapters/sqlstore/stripe_management_test.go",
       "marker": "targeted cancellation portal"
+    },
+    {
+      "label": "Confirm an organization’s cancellation through Stripe and reconcile it with a signed update on both runtimes",
+      "test": "conformance/stripe-lifecycle-fixture.mjs",
+      "marker": "await signedUpdate(server, remote, \"evt_org_cancel_confirmed\""
+    },
+    {
+      "label": "Recheck organization membership before disclosing cancellation and plan confirmation links or changing a future phase",
+      "test": "adapters/sqlstore/stripe_organization_management_test.go",
+      "marker": "func TestOrganizationSubscriptionManagement("
     }
   ],
   "docs/content/docs/plugins/stripe.mdx#L456": [
@@ -4233,6 +4283,16 @@
       "label": "Release the current customer’s active schedule and persist the new subscription state",
       "test": "adapters/sqlstore/stripe_management_test.go",
       "marker": "scheduled change restoration"
+    },
+    {
+      "label": "Restore an organization’s dated or period-end cancellation on three SQL engines",
+      "test": "adapters/sqlstore/stripe_organization_management_test.go",
+      "marker": "active organization dated restoration"
+    },
+    {
+      "label": "Refuse to release an organization schedule when the caller loses restore permission during Stripe’s response",
+      "test": "adapters/sqlstore/stripe_organization_management_test.go",
+      "marker": "revoked restore permission released the schedule"
     }
   ],
   "plugin-symbol/stripe/SubscriptionOptions/requireEmailVerification": [
@@ -5278,6 +5338,16 @@
       "label": "Reject pending changes, unsupported recurring items, foreign customers and a session revoked during Stripe’s reply on three SQL engines",
       "test": "adapters/sqlstore/stripe_plan_change_test.go",
       "marker": "func TestHostedSubscriptionPlanChanges("
+    },
+    {
+      "label": "Open an annual price confirmation for the selected organization and its existing subscription item",
+      "test": "adapters/sqlstore/stripe_organization_management_test.go",
+      "marker": "wrong organization plan confirmation"
+    },
+    {
+      "label": "Schedule a single-seat annual organization plan and reconcile its signed phase transition through the browser client",
+      "test": "conformance/stripe-lifecycle-fixture.mjs",
+      "marker": "await signedUpdate(server, remote, \"evt_org_phase_activated\""
     }
   ],
   "plugin-symbol/generic-oauth/gumroad": [
@@ -5722,6 +5792,16 @@
       "label": "Recover lost create, update and release responses, reject competing destinations and preserve custom phases on three SQL engines",
       "test": "adapters/sqlstore/stripe_schedules_test.go",
       "marker": "func TestPeriodEndPlanChanges("
+    },
+    {
+      "label": "Schedule a single-seat annual organization plan and reconcile its signed phase transition through the browser client",
+      "test": "conformance/stripe-lifecycle-fixture.mjs",
+      "marker": "await signedUpdate(server, remote, \"evt_org_phase_activated\""
+    },
+    {
+      "label": "Refuse to release an organization schedule when the caller loses restore permission during Stripe’s response",
+      "test": "adapters/sqlstore/stripe_organization_management_test.go",
+      "marker": "revoked restore permission released the schedule"
     }
   ],
   "plugin-symbol/generic-oauth/line": [
@@ -5824,6 +5904,11 @@
       "label": "Recheck membership and active organization around Stripe responses, recover checkout under a different administrator, and refuse ambiguous customer ownership on three SQL engines",
       "test": "adapters/sqlstore/stripe_organization_test.go",
       "marker": "func TestOrganizationBillingIsolation("
+    },
+    {
+      "label": "Recheck organization membership before disclosing cancellation and plan confirmation links or changing a future phase",
+      "test": "adapters/sqlstore/stripe_organization_management_test.go",
+      "marker": "func TestOrganizationSubscriptionManagement("
     }
   ],
   "docs/content/docs/plugins/stripe.mdx#L908": [

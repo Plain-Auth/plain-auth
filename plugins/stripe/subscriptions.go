@@ -172,21 +172,7 @@ func (s *subscriptions) checkout(c auth.EndpointContext) (any, error) {
 	explicit, _ := c.Body["subscriptionId"].(string)
 	var selected Subscription
 	if explicit != "" {
-		if selection.organization {
-			management, ok := c.Store().(SubscriptionManagementStore)
-			if !ok {
-				return nil, ErrExistingSubscription
-			}
-			_, err := management.ManagedStripeSubscription(c.Request.Context(), selection.reference, ss.Session.Token, explicit, time.Now())
-			if errors.Is(err, auth.ErrNotFound) {
-				return nil, ErrManagedSubscriptionNotFound
-			}
-			if err != nil {
-				return nil, err
-			}
-			return nil, ErrExistingSubscription
-		}
-		selected, err = managedSubscription(c, ss)
+		selected, err = managedSubscription(c, selection, explicit)
 		if err != nil {
 			return nil, err
 		}
@@ -199,7 +185,7 @@ func (s *subscriptions) checkout(c auth.EndpointContext) (any, error) {
 		}
 	}
 	if explicit != "" {
-		return s.changePlan(c, ss, selected, price, returnURL)
+		return s.changePlan(c, selection, selected, price, returnURL)
 	}
 	ctx := c.Request.Context()
 	store := c.Store().(SubscriptionStore)
@@ -219,16 +205,16 @@ func (s *subscriptions) checkout(c auth.EndpointContext) (any, error) {
 		}
 	}
 	a, err := store.ReserveStripeCheckout(ctx, selection.reference, ss.Session.Token, want, time.Now().UTC())
-	if errors.Is(err, ErrExistingSubscription) && !selection.organization {
+	if errors.Is(err, ErrExistingSubscription) {
 		// With multiple subscriptions the customer must name the one to change.
-		rows, err := store.ListStripeSubscriptions(ctx, ss.User.ID, ss.Session.Token, time.Now().UTC())
+		rows, err := store.ListStripeSubscriptions(ctx, selection.reference, ss.Session.Token, time.Now().UTC())
 		if err != nil {
 			return nil, err
 		}
 		if len(rows) != 1 || rows[0].SubscriptionID == nil {
 			return nil, ErrExistingSubscription
 		}
-		return s.changePlan(c, ss, rows[0], price, returnURL)
+		return s.changePlan(c, selection, rows[0], price, returnURL)
 	}
 	if err != nil {
 		return nil, err

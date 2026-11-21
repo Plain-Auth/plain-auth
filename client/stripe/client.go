@@ -34,6 +34,8 @@ type HostedPage struct {
 }
 
 type Cancellation struct {
+	CustomerType    string `json:"customerType,omitempty"`
+	ReferenceID     string `json:"referenceId,omitempty"`
 	SubscriptionID  string `json:"subscriptionId,omitempty"`
 	ReturnURL       string `json:"returnUrl"`
 	DisableRedirect bool   `json:"disableRedirect,omitempty"`
@@ -79,9 +81,21 @@ func (c Client) Cancel(ctx context.Context, in Cancellation) (HostedPage, error)
 // Restore releases a scheduled change or clears an upcoming cancellation.
 // An empty subscriptionID selects the signed-in user's first active subscription.
 func (c Client) Restore(ctx context.Context, subscriptionID string) (*sdk.Subscription, error) {
+	return c.restore(ctx, subscriptionID, "", "")
+}
+
+// RestoreOrganization restores a subscription belonging to the selected organization.
+// An empty referenceID selects the session's active organization.
+func (c Client) RestoreOrganization(ctx context.Context, referenceID, subscriptionID string) (*sdk.Subscription, error) {
+	return c.restore(ctx, subscriptionID, referenceID, "organization")
+}
+
+func (c Client) restore(ctx context.Context, subscriptionID, referenceID, kind string) (*sdk.Subscription, error) {
 	body := struct {
 		SubscriptionID string `json:"subscriptionId,omitempty"`
-	}{subscriptionID}
+		ReferenceID    string `json:"referenceId,omitempty"`
+		CustomerType   string `json:"customerType,omitempty"`
+	}{subscriptionID, referenceID, kind}
 	var sub sdk.Subscription
 	if err := c.Auth.Do(ctx, http.MethodPost, "/subscription/restore", body, &sub); err != nil {
 		return nil, err

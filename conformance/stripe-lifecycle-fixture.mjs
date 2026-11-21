@@ -3,6 +3,8 @@ import { once } from "node:events";
 import { createServer } from "node:http";
 import { DatabaseSync } from "node:sqlite";
 import { stripe } from "@better-auth/stripe";
+import { organization } from "better-auth/plugins";
+import { organizationClient } from "better-auth/client/plugins";
 import { stripeClient } from "@better-auth/stripe/client";
 import Stripe from "stripe";
 
@@ -136,8 +138,9 @@ async function signedUpdate(server, provider, eventID, sub) {
   assert.equal(result.status, 200, await result.text());
 }
 
-function seed(database, id, sub) {
-  database.prepare('UPDATE "user" SET "stripeCustomerId" = ? WHERE "id" = ?').run(sub.customer, id);
+function seed(database, id, sub, kind = "user") {
+  const table = kind === "organization" ? '"organization"' : '"user"';
+  database.prepare('UPDATE ' + table + ' SET "stripeCustomerId" = ? WHERE "id" = ?').run(sub.customer, id);
   database.prepare('INSERT INTO "subscription" ("id", "plan", "referenceId", "stripeCustomerId", "stripeSubscriptionId", "status", "seats", "cancelAtPeriodEnd") VALUES (?, ?, ?, ?, ?, ?, ?, ?)').run(
     "local_" + sub.id, "basic", id, sub.customer, sub.id, "active", 1, 0,
   );
@@ -381,4 +384,71 @@ export async function billingLifecycle(t, helpers) {
   for (const runtime of ["reference", "Go"]) {
     await t.test(runtime, t => exercise(t, runtime, helpers));
   }
+}
+
+export async function organizationManagement(t, { reference, goFixture, instrument }) {
+  for (const runtime of ["reference", "Go"]) await t.test(runtime, async t => {
+    const remote = await localStripe(t);
+    const server = runtime === "Go"
+      ? await goFixture(t, ["organization", "stripe-organization"], { CONFORMANCE_STRIPE_URL: remote.url })
+      : await reference(t, [organization(), stripe({
+        stripeClient: remote.api, stripeWebhookSecret: webhookSecret, organization: { enabled: true },
+        subscription: { enabled: true, plans: [{ name: "basic", priceId: basicPrice }, { name: "team", priceId: teamPrice, annualDiscountPriceId: annualTeamPrice }],
+          authorizeReference: async ({ user, referenceId }, ctx) => {
+            const member = await ctx.context.adapter.findOne({ model: "member", where: [{ field: "organizationId", value: referenceId }, { field: "userId", value: user.id }] });
+            return member?.role === "owner";
+          } },
+      })]);
+    const database = server.database ?? new DatabaseSync(server.databasePath);
+    if (!server.database) t.after(() => database.close());
+    const browser = () => instrument(server, [organizationClient(), stripeClient({ subscription: true })]).client;
+    const buyer = browser(), peer = browser();
+    ok(await buyer.signUp.email({ email: "org-manager@example.test", name: "Buyer", password: "test-password-123" }));
+    ok(await peer.signUp.email({ email: "member-elsewhere@example.test", name: "Peer", password: "test-password-123" }));
+    const group = ok(await buyer.organization.create({ name: "Billing Fixture", slug: "billing-fixture" }));
+    const remoteSub = remote.subscriptions.get("sub_owner");
+    seed(database, group.id, remoteSub, "organization");
+    const explicit = { customerType: "organization", referenceId: group.id, subscriptionId: remoteSub.id };
+    const returnUrl = server.baseURL + "/billing";
+    const options = { ...explicit, returnUrl, disableRedirect: true };
+    for (const denied of [
+      () => peer.subscription.cancel(options), () => peer.subscription.restore(explicit),
+      () => peer.subscription.upgrade({ ...options, plan: "team" }),
+      () => peer.subscription.upgrade({ ...options, plan: "team", scheduleAtPeriodEnd: true }),
+    ]) {
+      const result = await denied();
+      assert.equal(result.error.status, 401);
+      assert.equal(result.error.code, "UNAUTHORIZED");
+    }
+    assert.equal(remote.calls.length, 0);
+    assert.deepEqual(ok(await buyer.subscription.cancel(options)), { url: "https://billing.example.test/cancel", redirect: false });
+    const targeted = remote.calls.at(-1).form;
+    assert.equal(targeted.get("customer"), remoteSub.customer);
+    assert.equal(targeted.get("flow_data[subscription_cancel][subscription]"), remoteSub.id);
+    remoteSub.cancel_at_period_end = true;
+    await signedUpdate(server, remote, "evt_org_cancel_confirmed", remoteSub);
+    const list = async () => ok(await buyer.subscription.list({ query: { customerType: "organization" } }))[0];
+    assert.equal((await list()).cancelAtPeriodEnd, true);
+    assert.equal(ok(await buyer.subscription.restore(explicit)).cancel_at_period_end, false);
+    assert.equal((await list()).cancelAtPeriodEnd, false);
+    const upgrade = ok(await buyer.subscription.upgrade({ customerType: "organization", plan: "team", annual: true, disableRedirect: true }));
+    assert.equal(upgrade.url, "https://billing.example.test/confirm");
+    const confirm = remote.calls.at(-1).form;
+    assert.equal(confirm.get("customer"), remoteSub.customer);
+    assert.equal(confirm.get("flow_data[subscription_update_confirm][subscription]"), remoteSub.id);
+    assert.equal(confirm.get("flow_data[subscription_update_confirm][items][0][id]"), remoteSub.items.data[0].id);
+    assert.equal(confirm.get("flow_data[subscription_update_confirm][items][0][price]"), annualTeamPrice);
+    assert.equal((await list()).priceId, basicPrice);
+    const deferred = { ...options, plan: "team", annual: true, scheduleAtPeriodEnd: true };
+    assert.deepEqual(ok(await buyer.subscription.upgrade(deferred)), { url: returnUrl, redirect: false });
+    assert.equal((await list()).stripeScheduleId, "sched_change");
+    assert.equal(ok(await buyer.subscription.restore(explicit)).schedule ?? null, null);
+    assert.equal((await list()).stripeScheduleId ?? null, null);
+    ok(await buyer.subscription.upgrade(deferred));
+    await signedUpdate(server, remote, "evt_org_phase_activated", remote.activateNextPhase());
+    assert.equal((await list()).priceId, annualTeamPrice);
+    assert.equal((await list()).billingInterval, "year");
+    assert.deepEqual(ok(await buyer.subscription.list()), []);
+    assert.deepEqual(ok(await peer.subscription.list()), []);
+  });
 }

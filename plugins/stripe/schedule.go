@@ -24,7 +24,7 @@ type SubscriptionScheduleStore interface {
 
 const scheduleSource = "stonewrit-auth"
 
-func (s *subscriptions) scheduleChange(c stonewrit.EndpointContext, owner *stonewrit.SessionResult, local Subscription, sub *sdk.Subscription, item *sdk.SubscriptionItem, target, returnURL string) (any, error) {
+func (s *subscriptions) scheduleChange(c stonewrit.EndpointContext, selection billingSelection, local Subscription, sub *sdk.Subscription, item *sdk.SubscriptionItem, target, returnURL string) (any, error) {
 	store, ok := c.Store().(SubscriptionScheduleStore)
 	if !ok {
 		return nil, billingError(400, "SCHEDULING_UNAVAILABLE", "Subscription scheduling requires a schedule store")
@@ -45,11 +45,11 @@ func (s *subscriptions) scheduleChange(c stonewrit.EndpointContext, owner *stone
 	}
 	sourcePrice := s.prices[item.Price.ID]
 	want := ScheduleChange{
-		Owner: owner.User.ID, Customer: sub.Customer.ID, LocalID: local.ID, Subscription: sub.ID,
+		Owner: selection.reference, Customer: sub.Customer.ID, LocalID: local.ID, Subscription: sub.ID,
 		Item: item.ID, Current: item.Price.ID, Target: target, CurrentPlan: sourcePrice.plan, CurrentInterval: sourcePrice.interval,
 		Start: item.CurrentPeriodStart, End: item.CurrentPeriodEnd,
 	}
-	attempt, err := store.ReserveStripeSchedule(ctx, owner.Session.Token, want, attached, now)
+	attempt, err := store.ReserveStripeSchedule(ctx, selection.session.Session.Token, want, attached, now)
 	if err != nil {
 		return nil, err
 	}
@@ -62,10 +62,10 @@ func (s *subscriptions) scheduleChange(c stonewrit.EndpointContext, owner *stone
 			return nil, ErrCheckoutReconcile
 		}
 		if prior.Status == sdk.SubscriptionScheduleStatusReleased && prior.ReleasedSubscription != nil && prior.ReleasedSubscription.ID == sub.ID {
-			if err = store.ForgetStripeSchedule(ctx, owner.User.ID, owner.Session.Token, sub.ID, prior.ID, time.Now().UTC()); err != nil {
+			if err = store.ForgetStripeSchedule(ctx, selection.reference, selection.session.Session.Token, sub.ID, prior.ID, time.Now().UTC()); err != nil {
 				return nil, err
 			}
-			attempt, err = store.ReserveStripeSchedule(ctx, owner.Session.Token, want, "", time.Now().UTC())
+			attempt, err = store.ReserveStripeSchedule(ctx, selection.session.Session.Token, want, "", time.Now().UTC())
 			if err != nil {
 				return nil, err
 			}
@@ -88,7 +88,7 @@ func (s *subscriptions) scheduleChange(c stonewrit.EndpointContext, owner *stone
 		if !ownerSchedule(created, attempt) || (attached != "" && created.ID != attached) {
 			return nil, ErrCheckoutReconcile
 		}
-		if err := store.BindStripeSchedule(ctx, owner.Session.Token, attempt, created.ID, time.Now().UTC()); err != nil {
+		if err := store.BindStripeSchedule(ctx, selection.session.Session.Token, attempt, created.ID, time.Now().UTC()); err != nil {
 			return nil, err
 		}
 		attempt.Schedule = created.ID
@@ -105,7 +105,7 @@ func (s *subscriptions) scheduleChange(c stonewrit.EndpointContext, owner *stone
 			return nil, ErrCheckoutReconcile
 		}
 		// This check also catches revocation or a restore while Stripe responded.
-		if err := store.BindStripeSchedule(ctx, owner.Session.Token, attempt, schedule.ID, time.Now().UTC()); err != nil {
+		if err := store.BindStripeSchedule(ctx, selection.session.Session.Token, attempt, schedule.ID, time.Now().UTC()); err != nil {
 			return nil, err
 		}
 		first := &sdk.SubscriptionScheduleUpdatePhaseParams{StartDate: sdk.Int64(attempt.Start), EndDate: sdk.Int64(attempt.End), Items: scheduleItem(attempt.Current)}
@@ -121,14 +121,14 @@ func (s *subscriptions) scheduleChange(c stonewrit.EndpointContext, owner *stone
 			return nil, ErrCheckoutReconcile
 		}
 	}
-	current, err := s.currentManaged(c, local)
+	current, err := s.currentManaged(c, selection, local)
 	if err != nil {
 		return nil, err
 	}
 	if current.Schedule == nil || current.Schedule.ID != attempt.Schedule {
 		return nil, ErrCheckoutReconcile
 	}
-	if err := store.BindStripeSchedule(ctx, owner.Session.Token, attempt, attempt.Schedule, time.Now().UTC()); err != nil {
+	if err := store.BindStripeSchedule(ctx, selection.session.Session.Token, attempt, attempt.Schedule, time.Now().UTC()); err != nil {
 		return nil, err
 	}
 	disable, _ := c.Body["disableRedirect"].(bool)

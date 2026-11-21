@@ -135,7 +135,7 @@ func (s *Store) ApplyStripeSubscriptionChange(ctx context.Context, key billing.S
 	if before.Owner == "" {
 		return billing.ErrCheckoutReconcile
 	}
-	return s.billingTransaction(ctx, before.Owner, "", time.Now(), func(tx *sql.Tx) error {
+	return s.billingTransaction(ctx, before.Owner, key.SessionToken, time.Now(), func(tx *sql.Tx) error {
 		r, cursor, err := s.subscriptionRevision(ctx, tx, key)
 		if err != nil || r.Skip {
 			return err

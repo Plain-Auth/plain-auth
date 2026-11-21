@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strconv"
 	"strings"
 	"sync"
@@ -21,6 +22,11 @@ import (
 )
 
 type scheduleProvider struct {
+	calls, portals, cancelUpdates                         int
+	portalForm                                            url.Values
+	onPortal, onPriceRead                                 func()
+	cancelAt                                              int64
+	atEnd                                                 bool
 	mu                                                    sync.Mutex
 	start, end                                            int64
 	attached, createKey, updateKey, target, attempt, mode string
@@ -55,13 +61,25 @@ func (p *scheduleProvider) RoundTrip(r *http.Request) (*http.Response, error) {
 	if err := r.ParseForm(); err != nil {
 		return nil, err
 	}
+	p.calls++
 	key := r.Header.Get("Idempotency-Key")
 	path := r.URL.Path
 	switch {
-	case r.Method == "GET" && path == "/v1/subscriptions/sub_owner":
+	case (r.Method == "GET" || r.Method == "POST") && path == "/v1/subscriptions/sub_owner":
+		if r.Method == "POST" {
+			if p.cancelAt != 0 && r.PostForm.Has("cancel_at") && r.PostForm.Get("cancel_at") == "" {
+				p.cancelAt = 0
+			} else if p.atEnd && r.PostForm.Get("cancel_at_period_end") == "false" {
+				p.atEnd = false
+			} else {
+				return nil, errors.New("invalid cancellation restore")
+			}
+			p.cancelUpdates++
+		}
 		item := map[string]any{"id": "si_owner", "quantity": 1, "current_period_start": p.start, "current_period_end": p.end,
 			"price": map[string]any{"id": "price_month", "recurring": map[string]any{"interval": "month", "interval_count": 1, "usage_type": "licensed"}}}
 		sub := map[string]any{"id": "sub_owner", "object": "subscription", "customer": "cus_owner", "status": "active", "items": map[string]any{"data": []any{item}}}
+		sub["cancel_at_period_end"], sub["cancel_at"] = p.atEnd, p.cancelAt
 		if p.attached != "" {
 			sub["schedule"] = p.attached
 		}
@@ -70,12 +88,26 @@ func (p *scheduleProvider) RoundTrip(r *http.Request) (*http.Response, error) {
 		}
 		return stripeJSON(200, sub), nil
 	case r.Method == "GET" && strings.HasPrefix(path, "/v1/prices/"):
+		if p.onPriceRead != nil {
+			fn := p.onPriceRead
+			p.onPriceRead = nil
+			fn()
+		}
 		price := strings.TrimPrefix(path, "/v1/prices/")
 		interval := "month"
 		if price == "price_year" {
 			interval = "year"
 		}
 		return stripeJSON(200, map[string]any{"id": price, "active": true, "recurring": map[string]any{"interval": interval, "interval_count": 1, "usage_type": "licensed"}}), nil
+	case r.Method == "POST" && path == "/v1/billing_portal/sessions":
+		p.portals++
+		p.portalForm = r.PostForm
+		if p.onPortal != nil {
+			fn := p.onPortal
+			p.onPortal = nil
+			fn()
+		}
+		return stripeJSON(200, map[string]string{"id": "bps_owner", "customer": r.PostForm.Get("customer"), "url": "https://billing.example.test/" + r.PostForm.Get("flow_data[type]")}), nil
 	case r.Method == "POST" && path == "/v1/subscription_schedules":
 		if key == "" || len(r.PostForm) != 1 || r.PostForm.Get("from_subscription") != "sub_owner" {
 			return nil, errors.New("invalid schedule create")

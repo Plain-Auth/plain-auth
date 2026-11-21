@@ -14,7 +14,7 @@ import (
 func (s *Store) scheduleRecord(ctx context.Context, tx *sql.Tx, owner, remote string) (billing.ScheduleChange, error) {
 	var record billing.ScheduleChange
 	var data []byte
-	err := tx.QueryRowContext(ctx, s.bind(`SELECT "value" FROM "verification" WHERE "id"=? AND "identifier"=?`), stripeRecordID("schedule-change", remote), "stripe-sync:"+owner).Scan(&data)
+	err := tx.QueryRowContext(ctx, s.bind(`SELECT "value" FROM "verification" WHERE "id"=? AND "identifier"=?`), stripeRecordID("schedule-change", remote), stripeOwnerKey(ctx, "sync", owner)).Scan(&data)
 	if err != nil {
 		return record, err
 	}
@@ -77,7 +77,7 @@ func (s *Store) ReserveStripeSchedule(ctx context.Context, token string, want bi
 			return err
 		}
 		_, err = tx.ExecContext(ctx, s.bind(`INSERT INTO "verification" ("id","identifier","value","expiresAt","createdAt","updatedAt") VALUES(?,?,?,?,?,?)`),
-			key, "stripe-sync:"+want.Owner, string(data), s.date(time.Unix(want.End, 0).Add(24*time.Hour)), s.date(now), s.date(now))
+			key, stripeOwnerKey(ctx, "sync", want.Owner), string(data), s.date(time.Unix(want.End, 0).Add(24*time.Hour)), s.date(now), s.date(now))
 		result = want
 		return err
 	})
@@ -149,7 +149,7 @@ func (s *Store) ForgetStripeSchedule(ctx context.Context, owner, token, remote, 
 		if schedule == "" || schedule != record.Schedule {
 			return nil
 		}
-		_, err = tx.ExecContext(ctx, s.bind(`DELETE FROM "verification" WHERE "id"=? AND "identifier"=?`), stripeRecordID("schedule-change", remote), "stripe-sync:"+owner)
+		_, err = tx.ExecContext(ctx, s.bind(`DELETE FROM "verification" WHERE "id"=? AND "identifier"=?`), stripeRecordID("schedule-change", remote), stripeOwnerKey(ctx, "sync", owner))
 		return err
 	})
 }

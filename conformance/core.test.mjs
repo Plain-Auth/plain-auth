@@ -1028,3 +1028,8 @@ test("managed SCIM directory credentials interoperate across the native and pinn
   const { managedCatalog } = await import("./scim-managed.mjs");
   await managedCatalog(t, goFixture);
 });
+
+test("organization administrators confirm cancellation and manage single-seat plan changes on both runtimes", async t => {
+  const { organizationManagement } = await import("./stripe-lifecycle-fixture.mjs");
+  await organizationManagement(t, { reference, goFixture, instrument });
+});

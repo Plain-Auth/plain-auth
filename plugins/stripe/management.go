@@ -15,22 +15,38 @@ import (
 // SubscriptionManagementStore resolves a Stripe subscription only after checking
 // the current owner session and the local customer mapping.
 type SubscriptionManagementStore interface {
-	ManagedStripeSubscription(ctx context.Context, userID, token, providerID string, now time.Time) (Subscription, error)
+	ManagedStripeSubscription(ctx context.Context, referenceID, token, providerID string, now time.Time) (Subscription, error)
 }
 
 var ErrManagedSubscriptionNotFound = billingError(http.StatusBadRequest, "SUBSCRIPTION_NOT_FOUND", "Subscription not found")
 
-func managedSubscription(c auth.EndpointContext, ss *auth.SessionResult) (Subscription, error) {
+func managedSubscription(c auth.EndpointContext, selection billingSelection, id string) (Subscription, error) {
 	store, ok := c.Store().(SubscriptionManagementStore)
 	if !ok {
 		return Subscription{}, errors.New("stripe: store does not support subscription management")
 	}
-	id, _ := c.Body["subscriptionId"].(string)
-	row, err := store.ManagedStripeSubscription(c.Request.Context(), ss.User.ID, ss.Session.Token, id, time.Now().UTC())
+	row, err := store.ManagedStripeSubscription(c.Request.Context(), selection.reference, selection.session.Session.Token, id, time.Now().UTC())
 	if errors.Is(err, auth.ErrNotFound) {
 		return Subscription{}, ErrManagedSubscriptionNotFound
 	}
 	return row, err
+}
+
+// recheckManaged binds each external operation to the same customer and
+// subscription, including when the caller originally omitted a subscription ID.
+func recheckManaged(c auth.EndpointContext, selection billingSelection, local Subscription) (Subscription, error) {
+	if local.SubscriptionID == nil || local.CustomerID == nil {
+		return Subscription{}, ErrCheckoutReconcile
+	}
+	row, err := managedSubscription(c, selection, *local.SubscriptionID)
+	if err != nil {
+		return row, err
+	}
+	if row.ID != local.ID || row.ReferenceID != selection.reference || row.CustomerID == nil || *row.CustomerID != *local.CustomerID ||
+		row.SubscriptionID == nil || *row.SubscriptionID != *local.SubscriptionID {
+		return row, ErrCheckoutReconcile
+	}
+	return row, nil
 }
 
 func providerManagementError(err error) error {
@@ -46,8 +62,8 @@ func providerManagementError(err error) error {
 	return billingError(502, "STRIPE_SUBSCRIPTION_UNAVAILABLE", "Could not contact the billing provider")
 }
 
-func (s *subscriptions) currentManaged(c auth.EndpointContext, local Subscription) (*sdk.Subscription, error) {
-	sub, err := s.refreshManagedSubscription(c, local)
+func (s *subscriptions) currentManaged(c auth.EndpointContext, selection billingSelection, local Subscription) (*sdk.Subscription, error) {
+	sub, err := s.refreshManagedSubscription(c, local, selection.session.Session.Token)
 	var providerError *sdk.Error
 	switch {
 	case errors.As(err, &providerError):
@@ -62,7 +78,7 @@ func (s *subscriptions) currentManaged(c auth.EndpointContext, local Subscriptio
 }
 
 func (s *subscriptions) cancel(c auth.EndpointContext) (any, error) {
-	owner, err := billingOwner(c, cancelFields)
+	selection, err := selectBilling(&c, cancelFields, "cancel-subscription", s.organization)
 	if err != nil {
 		return nil, err
 	}
@@ -72,11 +88,12 @@ func (s *subscriptions) cancel(c auth.EndpointContext) (any, error) {
 		return nil, err
 	}
 	disable, _ := c.Body["disableRedirect"].(bool)
-	local, err := managedSubscription(c, owner)
+	id, _ := c.Body["subscriptionId"].(string)
+	local, err := managedSubscription(c, selection, id)
 	if err != nil {
 		return nil, err
 	}
-	sub, err := s.currentManaged(c, local)
+	sub, err := s.currentManaged(c, selection, local)
 	if err != nil {
 		return nil, err
 	}
@@ -90,35 +107,46 @@ func (s *subscriptions) cancel(c auth.EndpointContext) (any, error) {
 			SubscriptionCancel: &sdk.BillingPortalSessionCreateFlowDataSubscriptionCancelParams{Subscription: sdk.String(sub.ID)},
 		},
 	}
+	if _, err := recheckManaged(c, selection, local); err != nil {
+		return nil, err
+	}
 	portal, err := s.client.V1BillingPortalSessions.Create(c.Request.Context(), params)
 	if err != nil {
 		var api *sdk.Error
 		if errors.As(err, &api) && strings.Contains(strings.ToLower(api.Msg), "already set to be canceled") {
-			if _, syncErr := s.currentManaged(c, local); syncErr != nil {
+			if _, syncErr := s.currentManaged(c, selection, local); syncErr != nil {
 				return nil, syncErr
 			}
 		}
 		return nil, providerManagementError(err)
 	}
-	if portal == nil || portal.URL == "" {
+	if portal == nil || portal.URL == "" || ((selection.organization || portal.Customer != "") && portal.Customer != sub.Customer.ID) {
 		return nil, billingError(502, "UNABLE_TO_CREATE_BILLING_PORTAL", "Stripe did not return a billing portal URL")
+	}
+	row, err := recheckManaged(c, selection, local)
+	if err != nil {
+		return nil, err
+	}
+	if row.Status != "active" && row.Status != "trialing" {
+		return nil, ErrManagedSubscriptionNotFound
 	}
 	return map[string]any{"url": portal.URL, "redirect": !disable}, nil
 }
 
 func (s *subscriptions) restore(c auth.EndpointContext) (any, error) {
-	owner, err := billingOwner(c, restoreFields)
+	selection, err := selectBilling(&c, restoreFields, "restore-subscription", s.organization)
 	if err != nil {
 		return nil, err
 	}
-	local, err := managedSubscription(c, owner)
+	id, _ := c.Body["subscriptionId"].(string)
+	local, err := managedSubscription(c, selection, id)
 	if err != nil {
 		return nil, err
 	}
 	if local.Status != "active" && local.Status != "trialing" {
 		return nil, billingError(400, "SUBSCRIPTION_NOT_ACTIVE", "Subscription is not active")
 	}
-	sub, err := s.currentManaged(c, local)
+	sub, err := s.currentManaged(c, selection, local)
 	if err != nil {
 		return nil, err
 	}
@@ -136,11 +164,18 @@ func (s *subscriptions) restore(c auth.EndpointContext) (any, error) {
 			schedule.Subscription == nil || schedule.Subscription.ID != sub.ID || schedule.Status != sdk.SubscriptionScheduleStatusActive {
 			return nil, ErrCheckoutReconcile
 		}
+		row, err := recheckManaged(c, selection, local)
+		if err != nil {
+			return nil, err
+		}
+		if row.ScheduleID == nil || *row.ScheduleID != schedule.ID {
+			return nil, ErrCheckoutReconcile
+		}
 		if _, err = s.client.V1SubscriptionSchedules.Release(ctx, schedule.ID, nil); err != nil {
 			return nil, providerManagementError(err)
 		}
 		if store, ok := c.Store().(SubscriptionScheduleStore); ok {
-			if err := store.ForgetStripeSchedule(ctx, owner.User.ID, owner.Session.Token, sub.ID, schedule.ID, time.Now().UTC()); err != nil {
+			if err := store.ForgetStripeSchedule(ctx, selection.reference, selection.session.Session.Token, sub.ID, schedule.ID, time.Now().UTC()); err != nil {
 				return nil, err
 			}
 		}
@@ -150,6 +185,15 @@ func (s *subscriptions) restore(c auth.EndpointContext) (any, error) {
 			params.AddUnsetField(sdk.SubscriptionUpdateParamsUnsetFieldCancelAt)
 		} else {
 			params.CancelAtPeriodEnd = sdk.Bool(false)
+		}
+		row, err := recheckManaged(c, selection, local)
+		if err != nil {
+			return nil, err
+		}
+		dateChanged := sub.CancelAt != 0 && (row.CancelAt == nil || row.CancelAt.Unix() != sub.CancelAt)
+		periodEndChanged := sub.CancelAt == 0 && (row.CancelAtPeriodEnd == nil || !*row.CancelAtPeriodEnd)
+		if dateChanged || periodEndChanged {
+			return nil, ErrCheckoutReconcile
 		}
 		if _, err = s.client.V1Subscriptions.Update(ctx, sub.ID, params); err != nil {
 			return nil, providerManagementError(err)
@@ -161,7 +205,7 @@ func (s *subscriptions) restore(c auth.EndpointContext) (any, error) {
 		}
 		return nil, billingError(400, "SUBSCRIPTION_NOT_PENDING_CHANGE", "Subscription has no pending cancellation or scheduled plan change")
 	}
-	sub, err = s.currentManaged(c, local)
+	sub, err = s.currentManaged(c, selection, local)
 	if err != nil {
 		return nil, err
 	}

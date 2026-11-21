@@ -1,6 +1,6 @@
 # Recurring Stripe Checkout
 
-Use hosted Checkout to start a single-seat recurring subscription for a signed-in user. The application configures monthly and optional annual Stripe price IDs. Clients select a plan by name. Stripe receives the customer associated with the authenticated user.
+A signed-in user can start a single-seat recurring subscription for their own account or an organization they manage. Configure monthly and optional annual Stripe price IDs, then let the client select a plan by name. Checkout and subsequent changes use the selected account’s Stripe customer.
 
 ```go
 ddl, err := schema.Generate("postgres", []string{"stripe-subscriptions"})
@@ -35,7 +35,7 @@ Import `github.com/Stonewrit/stonewrit-auth/plugins/stripe` as `stripeplugin` an
 
 Send an authenticated POST to `/api/auth/subscription/upgrade`.
 
-Personal billing defaults to the signed-in user’s account. Clients can omit `referenceId` or supply their own user ID. A foreign personal reference returns HTTP 400 with `REFERENCE_ID_NOT_ALLOWED`. Organization checkout, listing and portal access require the organization billing configuration below.
+Personal billing defaults to the signed-in user’s account. Clients can omit `referenceId` or supply their own user ID. A foreign personal reference returns HTTP 400 with `REFERENCE_ID_NOT_ALLOWED`. To manage subscriptions for an organization, configure organization billing as described below.
 
 The example requires a verified email before starting Checkout. Set `RequireEmailVerification` to `false` (the default) to let any signed-in owner start a subscription.
 
@@ -85,17 +85,17 @@ billing := stripeplugin.New(stripeplugin.Options{
 })
 ```
 
-Use `customerType: "organization"` for a new checkout, subscription list or billing portal. Specify an organization ID with `referenceId`, or omit it to use the active organization. With the Go client, set `stripeclient.Checkout.CustomerType` or `stripeclient.Portal.CustomerType` to `"organization"`. Call `ListOrganization(ctx, id)` to read subscriptions and pass an empty ID to select the active organization.
+Pass `customerType: "organization"` to start checkout, switch plans, list subscriptions, open the billing portal, cancel or restore. Specify `referenceId` to choose an organization, or omit it to use the active organization. In the Go client, set `CustomerType` and `ReferenceID` on `stripeclient.Checkout`, `stripeclient.Portal` or `stripeclient.Cancellation`. Call `ListOrganization(ctx, id)` to read subscriptions and `RestoreOrganization(ctx, id, subscriptionID)` to undo a pending cancellation or release a schedule. An empty organization ID selects the active organization.
 
-The SQL adapter reads the session and membership under lock and passes the current role and operation to the policy. The supported operations are `upgrade-subscription`, `list-subscription` and `billing-portal`. Keep the callback local and free of side effects. A different authorized administrator can retry the same checkout after a purchaser loses their role. Stripe metadata retains the original purchaser’s ID and the organization’s billing reference. [Authorization and recovery tests](../adapters/sqlstore/stripe_organization_test.go)
+The SQL adapter reads the session and membership under lock and passes the current role and operation to the policy. The policy receives `upgrade-subscription`, `list-subscription`, `billing-portal`, `cancel-subscription` or `restore-subscription`. Both immediate and period-end plan changes use `upgrade-subscription`. Keep the callback local and free of side effects. A different authorized administrator can retry the same checkout after a purchaser loses their role. Stripe metadata retains the original purchaser’s ID and the organization’s billing reference. [Authorization and recovery tests](../adapters/sqlstore/stripe_organization_test.go)
 
 The organization receives its own Stripe customer. The server searches for an existing customer using organization metadata, with a paginated list fallback if search is unavailable. Customer creation uses the stored organization name. Signed checkout and subscription webhooks update the organization’s subscription even if the original purchaser has since left. Ambiguous personal and organization references or customer mappings require reconciliation. [Browser client and renewal tests](../conformance/stripe-organization-fixture.mjs)
 
-Organization checkout currently covers a single licensed seat. Automatic member-based pricing, organization plan switches, cancellation and restoration through the subscription endpoints, and synchronization of organization name or deletion events remain open.
+For a single licensed seat, an authorized member can open Stripe’s cancellation or plan confirmation page, schedule a price at the next billing boundary, or undo a pending change. The server rechecks the acting member’s current permission before disclosing a hosted link or sending a schedule change to Stripe. Signed webhooks record confirmed cancellations and new prices. These flows have local provider coverage on SQLite, PostgreSQL and MySQL. Automatic member-based pricing, multi-item plan changes, and synchronization of organization name or deletion events remain open. [Organization management tests](../adapters/sqlstore/stripe_organization_management_test.go)
 
 ## Change an existing plan
 
-Send the new plan name and the current Stripe subscription ID to the same endpoint. Set `annual` to switch billing intervals. A user with exactly one active or trialing subscription can omit `subscriptionId`.
+Send the new plan name and the current Stripe subscription ID to the same endpoint. Set `annual` to switch billing intervals. For an account with exactly one active or trialing subscription, the client can omit `subscriptionId`.
 
 ```json
 {"plan":"pro","annual":true,"subscriptionId":"sub_example","returnUrl":"/billing","disableRedirect":true}
@@ -123,11 +123,11 @@ Scheduling supports an active, automatically charged subscription with one licen
 
 ## List active subscriptions
 
-An authenticated GET to `/api/auth/subscription/list` lists that user's local active and trialing subscriptions, with the plan's configured price ID. A new reservation has status `incomplete`. A signed checkout completion retrieves the subscription from Stripe and verifies its customer, price, quantity and the local account references before recording the provider subscription ID, status and available billing dates. Replayed completion and expiration events are safe to deliver again.
+An authenticated GET to `/api/auth/subscription/list` lists the selected user’s or organization’s active and trialing subscriptions with each plan’s configured price ID. A new reservation has status `incomplete`. A signed checkout completion retrieves the subscription from Stripe and verifies its customer, price, quantity and the local account references before recording the provider subscription ID, status and available billing dates. Replayed completion and expiration events are safe to deliver again.
 
 ## Synchronize subscription changes
 
-The SQL adapters synchronize subscriptions for users with a unique stored Stripe customer ID. A signed creation or update retrieves the current subscription from Stripe, matches its single recurring price to a configured plan and records its status, quantity, billing period, trial dates, cancellation dates and schedule ID. A subscription created in the Stripe Dashboard appears in the same list as a subscription created through Checkout. User and reservation references in Stripe metadata must agree with the local customer and subscription.
+The SQL adapters synchronize subscriptions for users and organizations with a unique stored Stripe customer ID. A signed creation or update retrieves the current subscription from Stripe, matches its single recurring price to a configured plan and records its status, quantity, billing period, trial dates, cancellation dates and schedule ID. A subscription created in the Stripe Dashboard appears in the same list as a subscription created through Checkout. User and reservation references in Stripe metadata must agree with the local customer and subscription.
 
 Only active and trialing rows appear in the active list. For example, a change to `past_due` removes a subscription from the list. A return to `active` restores it. If an existing subscription changes to an unknown price or a combination of prices, the adapter records the local status `unmapped` until Stripe reports a recognized plan again. A signed deletion records cancellation, preserves billing history and prevents later deliveries from reactivating the subscription.
 
@@ -162,7 +162,7 @@ if err != nil {
 return showBillingLink(page.URL)
 ```
 
-The same client exposes `Upgrade`, `List`, `Restore`, and `BillingPortal`. The general billing portal requires `stripeplugin.PortalOptions`. [Billing portal configuration](plugins.md)
+The same client exposes `Upgrade`, `List`, `ListOrganization`, `Restore`, `RestoreOrganization` and `BillingPortal`. The general billing portal requires `stripeplugin.PortalOptions`. [Billing portal configuration](plugins.md)
 
 ## Verify a hosted Checkout return
 

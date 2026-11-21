@@ -1,7 +1,6 @@
 package stripe
 
 import (
-	"errors"
 	"time"
 
 	auth "github.com/Stonewrit/stonewrit-auth"
@@ -16,24 +15,17 @@ var (
 
 // changePlan opens the customer confirmation page. The authoritative price only
 // changes when Stripe confirms it and the subscription is reconciled.
-func (s *subscriptions) changePlan(c auth.EndpointContext, owner *auth.SessionResult, local Subscription, target, returnURL string) (any, error) {
-	store, ok := c.Store().(SubscriptionManagementStore)
+func (s *subscriptions) changePlan(c auth.EndpointContext, selection billingSelection, local Subscription, target, returnURL string) (any, error) {
+	_, ok := c.Store().(SubscriptionManagementStore)
 	if !ok || local.SubscriptionID == nil {
 		return nil, ErrExistingSubscription
 	}
 	ctx := c.Request.Context()
 	scheduled, _ := c.Body["scheduleAtPeriodEnd"].(bool)
 	checkOwner := func() (Subscription, error) {
-		row, err := store.ManagedStripeSubscription(ctx, owner.User.ID, owner.Session.Token, *local.SubscriptionID, time.Now().UTC())
-		if errors.Is(err, auth.ErrNotFound) {
-			return row, ErrManagedSubscriptionNotFound
-		}
+		row, err := recheckManaged(c, selection, local)
 		if err != nil {
 			return row, err
-		}
-		if row.ID != local.ID || row.CustomerID == nil || local.CustomerID == nil || *row.CustomerID != *local.CustomerID ||
-			row.ReferenceID != owner.User.ID || row.SubscriptionID == nil || *row.SubscriptionID != *local.SubscriptionID {
-			return row, ErrCheckoutReconcile
 		}
 		if row.Status != "active" && row.Status != "trialing" {
 			return row, ErrExistingSubscription
@@ -46,7 +38,7 @@ func (s *subscriptions) changePlan(c auth.EndpointContext, owner *auth.SessionRe
 	if _, err := checkOwner(); err != nil {
 		return nil, err
 	}
-	sub, err := s.currentManaged(c, local)
+	sub, err := s.currentManaged(c, selection, local)
 	if err != nil {
 		return nil, err
 	}
@@ -78,7 +70,7 @@ func (s *subscriptions) changePlan(c auth.EndpointContext, owner *auth.SessionRe
 	}
 
 	if scheduled {
-		return s.scheduleChange(c, owner, local, sub, item, target, returnURL)
+		return s.scheduleChange(c, selection, local, sub, item, target, returnURL)
 	}
 	params := &sdk.BillingPortalSessionCreateParams{
 		Customer: sdk.String(sub.Customer.ID), ReturnURL: sdk.String(returnURL),

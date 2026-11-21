@@ -14,6 +14,8 @@ import (
 type SubscriptionIdentity struct {
 	RemoteID, CustomerID, Owner, LocalID string
 	EventID                              string
+	// SessionToken accompanies a browser-authorized synchronization and is never persisted.
+	SessionToken string `json:"-"`
 }
 
 // SubscriptionRevision records the mapping and version before a Stripe read.
@@ -68,11 +70,11 @@ func (s *subscriptions) handleSubscriptionEvent(c auth.EndpointContext, event sd
 
 // refreshManagedSubscription synchronizes only the account-bound row selected
 // by the management endpoint. It propagates Stripe's resource_missing error.
-func (s *subscriptions) refreshManagedSubscription(c auth.EndpointContext, local Subscription) (*sdk.Subscription, error) {
+func (s *subscriptions) refreshManagedSubscription(c auth.EndpointContext, local Subscription, token string) (*sdk.Subscription, error) {
 	if local.CustomerID == nil || local.SubscriptionID == nil || local.ID == "" || local.ReferenceID == "" {
 		return nil, ErrCheckoutReconcile
 	}
-	key := SubscriptionIdentity{RemoteID: *local.SubscriptionID, CustomerID: *local.CustomerID, Owner: local.ReferenceID, LocalID: local.ID}
+	key := SubscriptionIdentity{RemoteID: *local.SubscriptionID, CustomerID: *local.CustomerID, Owner: local.ReferenceID, LocalID: local.ID, SessionToken: token}
 	store, ok := c.Store().(SubscriptionLifecycleStore)
 	if !ok {
 		return nil, errors.New("stripe: store does not support subscription reconciliation")
