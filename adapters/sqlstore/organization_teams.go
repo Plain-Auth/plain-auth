@@ -57,11 +57,7 @@ func (s *Store) withTeamActor(ctx context.Context, a org.TeamActor, otherUser st
 	return err
 }
 func (s *Store) runTeamTransaction(ctx context.Context, a org.TeamActor, otherUser string, fn func(teamTransaction) error) error {
-	options := &sql.TxOptions{}
-	if s.dialect != "sqlite" {
-		options.Isolation = sql.LevelReadCommitted
-	}
-	tx, err := s.db.BeginTx(ctx, options)
+	tx, err := s.beginMembershipChange(ctx)
 	if err != nil {
 		return err
 	}

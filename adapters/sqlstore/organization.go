@@ -330,7 +330,7 @@ func (s *Store) InviteOrganizationMember(ctx context.Context, inv org.Invitation
 func (s *Store) AcceptOrganizationInvitation(ctx context.Context, id, sessionID string, u authn.User, now time.Time, requireVerified bool) (org.Invitation, org.Member, error) {
 	var inv org.Invitation
 	var m org.Member
-	tx, err := s.db.BeginTx(ctx, nil)
+	tx, err := s.beginMembershipChange(ctx)
 	if err != nil {
 		return org.Invitation{}, org.Member{}, err
 	}
@@ -366,16 +366,8 @@ func (s *Store) AcceptOrganizationInvitation(ctx context.Context, id, sessionID 
 	if requireVerified && !u.EmailVerified {
 		return org.Invitation{}, org.Member{}, org.ErrUnverified
 	}
-	var count, existing int
-	err = tx.QueryRowContext(ctx, s.bind(`SELECT COUNT(*),COALESCE(SUM(CASE WHEN "userId"=? THEN 1 ELSE 0 END),0) FROM "member" WHERE "organizationId"=?`), u.ID, inv.OrganizationID).Scan(&count, &existing)
-	if err != nil {
+	if err = s.checkNewMember(ctx, tx, inv.OrganizationID, u.ID); err != nil {
 		return org.Invitation{}, org.Member{}, err
-	}
-	if existing > 0 {
-		return org.Invitation{}, org.Member{}, org.ErrAlreadyMember
-	}
-	if count >= 100 {
-		return org.Invitation{}, org.Member{}, org.ErrMemberLimit
 	}
 	res, err := tx.ExecContext(ctx, s.bind(`UPDATE "invitation" SET "status"='accepted' WHERE "id"=? AND "status"='pending'`), id)
 	if err != nil {

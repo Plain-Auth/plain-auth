@@ -42,7 +42,27 @@ The application provides `sendInvitation`, its configured public `origin` and it
 
 An owner can invite members, admins or other owners. An admin can invite members or admins. The member role grants no invitation permission. The SQL store commits invitation acceptance and the resulting membership together. The [organization feature checklist](parity/plugins/organization.md) tracks additional role policies and operations.
 
-Every organization mutation checks the active account and session inside the database transaction. Acceptance reads the current account email and verification status. Account deletion removes invitations that user sent, their organization and team memberships, and updates affected team counts. Other members keep their memberships and invitations.
+Browser membership changes check the acting account and session inside the database transaction. Acceptance reads the current account email and verification status. Account deletion removes invitations that user sent, their organization and team memberships, and updates affected team counts. Other members keep their memberships and invitations.
+
+## Grant membership from your application
+
+Create an organization service if your application grants access to existing accounts, for example after a provisioning job approves a new employee. Mount its plugin and keep the service for trusted Go calls.
+
+```go
+organizations, err := organization.NewService(organization.Options{Store: store})
+if err != nil {
+    return err
+}
+// Include organizations.Plugin() in stonewrit.Options.Plugins at startup.
+// After your application has authorized this specific grant:
+member, err := organizations.AddMember(ctx, organization.AddMemberRequest{
+    OrganizationID: organizationID,
+    UserID:         employeeID,
+    Roles:          []string{"member"},
+})
+```
+
+Supply the exact organization and user IDs. Built-in roles are `owner`, `admin`, and `member`. A duplicate grant returns `USER_IS_ALREADY_A_MEMBER_OF_THIS_ORGANIZATION`. To add the user to a team in the same transaction, enable `Teams` on the service and set `TeamID` to a team in that organization. A full team rolls back the entire grant. Direct grants and invitation acceptance share the default 100-member limit. Granting membership preserves the user's current browser selection. [Three-database membership tests](../adapters/sqlstore/organization_members_test.go)
 
 ## Teams
 

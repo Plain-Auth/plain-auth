@@ -6133,5 +6133,17 @@
       "test": "adapters/sqlstore/scim_decommission_test.go",
       "marker": "func TestSCIMDirectoryRetirement("
     }
+  ],
+  "plugin/organization/ addMember (server API only)": [
+    {
+      "label": "Grant built-in roles and an optional team atomically, enforcing capacity alongside concurrent grants and invitation acceptance",
+      "test": "adapters/sqlstore/organization_members_test.go",
+      "marker": "func TestServerOrganizationMembership("
+    },
+    {
+      "label": "Read grants stored by either server through the other runtime’s browser client without changing the recipient’s active organization",
+      "test": "conformance/core.test.mjs",
+      "marker": "test(\"trusted organization membership grants"
+    }
   ]
 }

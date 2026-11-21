@@ -119,12 +119,29 @@ func (o Options) endpoint(method, action string, fn handler) authn.Endpoint {
 
 // New enables the default owner, admin and member role workflows.
 func New(o Options) (authn.Plugin, error) {
-	if o.Store == nil {
-		return authn.Plugin{}, errors.New("organization: Store is required")
-	}
-	if err := o.configureTeams(); err != nil {
+	service, err := NewService(o)
+	if err != nil {
 		return authn.Plugin{}, err
 	}
+	return service.Plugin(), nil
+}
+
+// Service uses one configuration for the HTTP plugin and trusted server operations.
+type Service struct{ options Options }
+
+func NewService(o Options) (*Service, error) {
+	if o.Store == nil {
+		return nil, errors.New("organization: Store is required")
+	}
+	if err := o.configureTeams(); err != nil {
+		return nil, err
+	}
+	return &Service{options: o}, nil
+}
+
+// Plugin exposes organization routes for the host auth instance.
+func (service *Service) Plugin() authn.Plugin {
+	o := service.options
 	plugin := authn.Plugin{
 		ID: "organization",
 		OnReadSession: func(ctx context.Context, s *authn.SessionResult) error {
@@ -152,7 +169,7 @@ func New(o Options) (authn.Plugin, error) {
 	if o.teamStore != nil {
 		plugin.Endpoints = append(plugin.Endpoints, o.teamEndpoints()...)
 	}
-	return plugin, nil
+	return plugin
 }
 
 func validation(field string) error { return problem(400, "VALIDATION_ERROR", "Invalid "+field) }
@@ -259,6 +276,8 @@ func parseRoles(value any) (string, error) {
 	switch v := value.(type) {
 	case string:
 		all = strings.Split(v, ",")
+	case []string:
+		all = v
 	case []any:
 		for _, field := range v {
 			role, ok := field.(string)

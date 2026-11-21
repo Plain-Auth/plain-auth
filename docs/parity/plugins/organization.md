@@ -54,6 +54,8 @@
   - [ ] `GET /organization/list-invitations`
   - [ ] `GET /organization/list-user-invitations`
   - [ ] `addMember (server API only)`
+    - [x] Grant built-in roles and an optional team atomically, enforcing capacity alongside concurrent grants and invitation acceptance ([test](../../../adapters/sqlstore/organization_members_test.go#L15))
+    - [x] Read grants stored by either server through the other runtime’s browser client without changing the recipient’s active organization ([test](../../../conformance/core.test.mjs#L1042))
   - [ ] `POST /organization/remove-member`
   - [ ] `POST /organization/update-member-role`
   - [ ] `GET /organization/get-active-member`

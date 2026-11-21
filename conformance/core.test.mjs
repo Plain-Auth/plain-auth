@@ -1038,3 +1038,47 @@ test("SCIM directory retirement preserves terminal bindings and reconciles eithe
   const { managedCatalog } = await import("./scim-managed.mjs");
   await managedCatalog(t, goFixture, { retirement: true });
 });
+
+test("trusted organization membership grants can be read by either server and its browser client", async t => {
+  const go = await goFixture(t, ["organization-teams"]);
+  const binary = await fixtureBuild;
+  const db = new DatabaseSync(go.databasePath);
+  t.after(() => db.close());
+  const options = { teams: { enabled: true } };
+  const baseURL = "http://reference.localhost";
+  const auth = betterAuth({ baseURL, database: db, secret: "local-conformance-0123456789-abcdefghijk",
+    plugins: [organization(options)], emailAndPassword: { enabled: true }, telemetry: { enabled: false } });
+  const ref = { baseURL, send: req => auth.handler(req) };
+  const ok = result => { assert.equal(result.error, null, JSON.stringify(result.error)); return result.data; };
+  for (const [index, [writer, reader]] of [[go, ref], [ref, go]].entries()) {
+    const owner = instrument(writer, [organizationClient(options)]).client;
+    const peer = instrument(reader, [organizationClient(options)]).client;
+    ok(await owner.signUp.email({ name, email: "grant-owner"+index+"@example.test", password }));
+    const user = ok(await peer.signUp.email({ name, email: "grant-peer"+index+"@example.test", password })).user;
+    const group = ok(await owner.organization.create({ name: "Grant", slug: "grant-"+index }));
+    const team = ok(await owner.organization.createTeam({ name: "Platform" }));
+    const body = { organizationId: group.id, userId: user.id, role: ["admin","member"], teamId: team.id };
+    let grant;
+    if (writer === go) {
+      const child = spawnSync(binary, ["add-organization-member", go.databasePath], {
+        encoding: "utf8", input: JSON.stringify({ ...body, roles: body.role })
+      });
+      assert.equal(child.status, 0, child.stderr);
+      grant = JSON.parse(child.stdout);
+    } else {
+      grant = await auth.api.addMember({ body });
+    }
+    assert.equal(grant.role, "admin,member");
+    assert.equal(grant.userId, user.id);
+    assert.equal(grant.organizationId, group.id);
+    assert.equal(db.prepare('SELECT id FROM member WHERE organizationId=? AND userId=?').get(group.id,user.id).id, grant.id);
+    assert.equal(ok(await peer.getSession()).session.activeOrganizationId ?? null, null);
+    assert.deepEqual(ok(await peer.organization.list()).map(o => o.id), [group.id]);
+    assert.deepEqual(ok(await peer.organization.listUserTeams()).map(t => t.id), [team.id]);
+    assert.equal(db.prepare('SELECT memberCount FROM team WHERE id=?').get(team.id).memberCount, 1);
+    const response = await reader.send(new Request(reader.baseURL+"/api/auth/organization/add-member", {
+      method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify(body),
+    }));
+    assert.equal(response.status, 404);
+  }
+});

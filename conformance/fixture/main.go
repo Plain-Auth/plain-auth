@@ -31,6 +31,12 @@ import (
 )
 
 func main() {
+	if len(os.Args) == 3 && os.Args[1] == "add-organization-member" {
+		if err := grantMember(os.Args[2]); err != nil {
+			log.Fatal(err)
+		}
+		return
+	}
 	if len(os.Args) < 2 {
 		log.Fatal("usage: fixture <temporary-database-path> [organization|two-factor ...]")
 	}
