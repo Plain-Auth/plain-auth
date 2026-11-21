@@ -8,6 +8,7 @@ Construct one `*stonewrit.Auth` during application startup and reuse it across r
 | chi v5 | `router.Handle("/api/auth/*", auth)` |
 | Gorilla Mux | `router.PathPrefix("/api/auth/").Handler(auth)` |
 | Gin | `router.Any("/api/auth/*path", gin.WrapH(auth))` |
+| Echo v5 | `router.Any("/api/auth/*", echo.WrapHandler(auth))` |
 | Fiber v3 | `app.All("/api/auth/*", adaptor.HTTPHandler(auth))` |
 
 Fiber uses `github.com/gofiber/fiber/v3/middleware/adaptor`. Gin's wrapper comes from `github.com/gin-gonic/gin`. Your service only needs the router it uses. Other routers that accept `http.Handler` can use the same mount pattern. A framework with its own request model needs an adapter that preserves the path, body, cookies, and response headers.

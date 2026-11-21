@@ -14,6 +14,7 @@ import (
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/adaptor"
 	"github.com/gorilla/mux"
+	"github.com/labstack/echo/v5"
 	authn "github.com/Stonewrit/stonewrit-auth"
 	"github.com/Stonewrit/stonewrit-auth/adapters/sqlite"
 )
@@ -44,6 +45,11 @@ func TestFrameworkMounts(t *testing.T) {
 		{"Gin", func(h http.Handler) runner {
 			r := gin.New()
 			r.Any("/api/auth/*path", gin.WrapH(h))
+			return httpRunner(r)
+		}},
+		{"Echo", func(h http.Handler) runner {
+			r := echo.New()
+			r.Any("/api/auth/*", echo.WrapHandler(h))
 			return httpRunner(r)
 		}},
 		{"Fiber", func(h http.Handler) runner {

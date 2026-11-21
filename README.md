@@ -9,7 +9,7 @@ StoneWrit Auth embeds authentication in your Go API. Mount the auth handler on y
 - [x] Register with email, sign in, read a session, and sign out. [Client lifecycle test](conformance/core.test.mjs)
 - [x] Register a username, authenticate by handle, and apply account policies and MFA. [Username sign-in](docs/username.md)
 - [x] Issue revocable API keys, check permissions, and enforce usage limits on application routes. [API keys](docs/api-keys.md)
-- [x] Use the same handler with ServeMux, chi, Gorilla Mux, Gin, or Fiber. [Router tests](integrations/routers/routers_test.go)
+- [x] Use the same handler with ServeMux, chi, Gorilla Mux, Gin, Echo, or Fiber. [Router tests](integrations/routers/routers_test.go)
 - [x] Generate auth tables and persist sessions on SQLite, PostgreSQL, and MySQL. [Storage contract](adapters/sqlstore/engines_test.go)
 - [x] Recover a password and verify an email address through an application-provided sender. [Account tests](account_test.go)
 - [x] Register a passkey and authenticate with it. [Software authenticator tests](adapters/sqlstore/passkey_test.go)
@@ -97,7 +97,7 @@ Go records the resolved commit in the consuming project’s `go.mod`. The module
 | Task | Guide |
 | --- | --- |
 | Load signing secrets, the public URL, and trusted origins from the environment | [Environment configuration](docs/environment.md) |
-| Mount on ServeMux, chi, Gorilla Mux, Gin, or Fiber | [Router integrations](docs/routers.md) |
+| Mount on ServeMux, chi, Gorilla Mux, Gin, Echo, or Fiber | [Router integrations](docs/routers.md) |
 | Configure users, cookies, origins, and session management | [Authentication](docs/authentication.md) |
 | Remember the last sign-in method in a browser or across a user's devices | [Login preferences](docs/plugins.md#persist-the-last-login-method) |
 | Add account switching to a shared device | [Device sessions](docs/multi-session.md) |

@@ -324,6 +324,11 @@
       "label": "Fiber signup, session lookup and sign-out with multiple cookies",
       "test": "integrations/routers/routers_test.go",
       "marker": "{\"Fiber\", func("
+    },
+    {
+      "label": "Echo v5 signup, session lookup and sign-out with multiple cookies",
+      "test": "integrations/routers/routers_test.go",
+      "marker": "{\"Echo\", func("
     }
   ],
   "go/client": [

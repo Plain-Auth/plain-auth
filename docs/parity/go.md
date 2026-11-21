@@ -25,11 +25,12 @@ These checks exercise the Go HTTP client, router mounts and SQL drivers.
   - [x] Resolve the native client destination from an explicit URL or AUTH_URL while ignoring unrelated host settings ([test](../../client/environment_test.go#L17))
   - [x] Protect records with a purpose and an explicitly configured key version ([test](../../twofactor_test.go#L22))
 - [ ] HTTP framework mounts
-  - [x] ServeMux signup, session lookup and sign-out with multiple cookies ([test](../../integrations/routers/routers_test.go#L37))
-  - [x] chi signup, session lookup and sign-out with multiple cookies ([test](../../integrations/routers/routers_test.go#L38))
-  - [x] Gorilla signup, session lookup and sign-out with multiple cookies ([test](../../integrations/routers/routers_test.go#L39))
-  - [x] Gin signup, session lookup and sign-out with multiple cookies ([test](../../integrations/routers/routers_test.go#L44))
-  - [x] Fiber signup, session lookup and sign-out with multiple cookies ([test](../../integrations/routers/routers_test.go#L49))
+  - [x] ServeMux signup, session lookup and sign-out with multiple cookies ([test](../../integrations/routers/routers_test.go#L38))
+  - [x] chi signup, session lookup and sign-out with multiple cookies ([test](../../integrations/routers/routers_test.go#L39))
+  - [x] Gorilla signup, session lookup and sign-out with multiple cookies ([test](../../integrations/routers/routers_test.go#L40))
+  - [x] Gin signup, session lookup and sign-out with multiple cookies ([test](../../integrations/routers/routers_test.go#L45))
+  - [x] Fiber signup, session lookup and sign-out with multiple cookies ([test](../../integrations/routers/routers_test.go#L55))
+  - [x] Echo v5 signup, session lookup and sign-out with multiple cookies ([test](../../integrations/routers/routers_test.go#L50))
 - [ ] SQL engine contracts
   - [x] Reopen the SQLite database and read stored credentials and sessions ([test](../../adapters/sqlstore/sqlite_test.go#L85))
   - [x] Roll back registration if creating the initial session fails ([test](../../adapters/sqlstore/sqlite_test.go#L125))
