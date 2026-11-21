@@ -23,6 +23,7 @@ type credential struct {
 
 // Store is safe to share among handlers. Its data lasts for the lifetime of the instance.
 type Store struct {
+	phoneOTPs map[phoneKey]auth.PhoneOTPRecord
 	emailOTPs map[mailKey]mailProof
 	nextProof uint64
 	deletions map[string]auth.PasswordResetToken

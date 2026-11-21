@@ -22,6 +22,7 @@ import (
 
 // Auth is safe for concurrent use by application handlers.
 type Auth struct {
+	phoneNumber           *PhoneNumberOptions
 	translateError        func(ErrorContext, APIError) string
 	username              *UsernameOptions
 	anonymous             *AnonymousOptions
@@ -149,6 +150,9 @@ func New(opts Options) (*Auth, error) {
 				return nil, errors.New("auth: only one plugin may translate errors")
 			}
 			a.translateError = p.TranslateError
+		}
+		if p.phoneNumber != nil {
+			a.phoneNumber = p.phoneNumber
 		}
 		if p.admin != nil {
 			store, ok := opts.Store.(AdminStore)
