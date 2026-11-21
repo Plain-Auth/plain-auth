@@ -10,6 +10,9 @@ AUTH_DSN=auth.db go run ./cmd/authctl migrate --dialect sqlite --plugins organiz
 | Profile | Schema features |
 | --- | --- |
 | Default | User, credential or provider account, session and verification records |
+| `admin` | User roles, ban status and expiration, and the administrator behind an impersonated session |
+| `anonymous` | Anonymous-account status on the user |
+| `last-login-method` | Most recent authentication method on the user |
 | `device-authorization` | Expiring device grants with unique device and user codes and client binding |
 | `jwt` | Public verification keys, encrypted signing keys and rotation times |
 | `organization` | Organizations, memberships, invitations and active organization selection |
@@ -19,7 +22,7 @@ AUTH_DSN=auth.db go run ./cmd/authctl migrate --dialect sqlite --plugins organiz
 | `stripe-subscriptions` | Customer identifiers and subscription records with status, plan, billing and lifecycle fields |
 | `two-factor` | User enrollment state, factor secrets, recovery codes and lockout fields |
 
-Select one organization profile. Device codes, JWT keys, passkeys, rate limits, Stripe subscriptions and two-factor can each be combined with either organization profile or selected independently. Profile order produces deterministic output. The profile selector controls database structure. See the [feature checklist](parity/README.md) for runtime support.
+Select at most one organization profile. All other selectors can be combined freely. Run `authctl info` for the full profile list in your build, or call `schema.Profiles()` from Go. Profile order produces deterministic output. The profile selector controls database structure. See the [feature checklist](parity/README.md) for runtime support.
 
 ```go
 sql, err := schema.Generate("sqlite", []string{"organization", "two-factor"})

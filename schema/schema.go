@@ -1,4 +1,4 @@
-// Package schema generates complete fresh-database DDL for supported auth and plugin configurations.
+// Package schema generates fresh-database DDL for authentication and plugin tables.
 package schema
 
 import (
@@ -12,25 +12,44 @@ import (
 //go:embed catalog.json
 var catalog []byte
 
-// Each supported combination references the shared statements in foreign-key
-// dependency order. Regenerate the catalog with conformance/plugin-schema.mjs.
-type dialectPlan struct {
-	Statements []string         `json:"statements"`
-	Plans      map[string][]int `json:"plans"`
+type fragment struct {
+	SQL      string   `json:"sql"`
+	Profiles []string `json:"profiles"`
 }
 
-var dialects map[string]dialectPlan
+type statement struct {
+	fragment
+	Columns []fragment `json:"columns"`
+}
+
+var layouts struct {
+	Profiles []string               `json:"profiles"`
+	Dialects map[string][]statement `json:"dialects"`
+}
 
 func init() {
-	if err := json.Unmarshal(catalog, &dialects); err != nil {
+	if err := json.Unmarshal(catalog, &layouts); err != nil {
 		panic("schema: invalid embedded catalog: " + err.Error())
 	}
 }
 
-// Generate returns SQL for SQLite, PostgreSQL or MySQL. Supported profiles are
-// device-authorization, jwt, organization, organization-teams, passkey, rate-limit, stripe-subscriptions and two-factor.
-// organization-teams includes organization and selects its teams option.
-// Profile order is canonical so equivalent calls emit the same SQL.
+// Profiles returns the available schema selectors in canonical order.
+func Profiles() []string { return slices.Clone(layouts.Profiles) }
+
+func (f fragment) included(selected map[string]bool) bool {
+	if len(f.Profiles) == 0 {
+		return true
+	}
+	for _, name := range f.Profiles {
+		if selected[name] {
+			return true
+		}
+	}
+	return false
+}
+
+// Generate returns SQL for SQLite, PostgreSQL or MySQL. Profile order does
+// not affect output. The organization-teams profile includes organization.
 func Generate(dialect string, profiles []string) (string, error) {
 	switch dialect {
 	case "postgresql":
@@ -38,25 +57,36 @@ func Generate(dialect string, profiles []string) (string, error) {
 	case "sqlite3":
 		dialect = "sqlite"
 	}
-	spec, ok := dialects[dialect]
+	objects, ok := layouts.Dialects[dialect]
 	if !ok {
 		return "", fmt.Errorf("schema: unsupported dialect %q", dialect)
 	}
-	names := slices.Clone(profiles)
-	slices.Sort(names)
-	names = slices.Compact(names)
-	for _, name := range names {
-		if _, ok := spec.Plans[name]; !ok || name == "" || strings.Contains(name, ",") {
+	selected := make(map[string]bool, len(profiles))
+	for _, name := range profiles {
+		if !slices.Contains(layouts.Profiles, name) {
 			return "", fmt.Errorf("schema: unknown plugin profile %q", name)
 		}
+		selected[name] = true
 	}
-	plan, ok := spec.Plans[strings.Join(names, ",")]
-	if !ok {
+	if selected["organization"] && selected["organization-teams"] {
 		return "", fmt.Errorf("schema: choose one organization profile, organization or organization-teams")
 	}
-	statements := make([]string, 0, len(plan))
-	for _, index := range plan {
-		statements = append(statements, spec.Statements[index])
+	statements := make([]string, 0, len(objects))
+	for _, object := range objects {
+		if !object.included(selected) {
+			continue
+		}
+		sql := object.SQL
+		if len(object.Columns) > 0 {
+			columns := make([]string, 0, len(object.Columns))
+			for _, column := range object.Columns {
+				if column.included(selected) {
+					columns = append(columns, column.SQL)
+				}
+			}
+			sql += " (" + strings.Join(columns, ", ") + ");"
+		}
+		statements = append(statements, sql)
 	}
 	return strings.Join(statements, "\n\n") + "\n", nil
 }

@@ -1,11 +1,11 @@
-// Compile the finite schema presets from the locked plugin implementations.
+// Compile reusable, dialect-specific schema fragments from the pinned implementations.
 import assert from "node:assert/strict";
 import { readFile, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { passkey } from "@better-auth/passkey";
 import { stripe } from "@better-auth/stripe";
 import { getMigrations } from "better-auth/db/migration";
-import { deviceAuthorization, jwt, organization, twoFactor } from "better-auth/plugins";
+import { admin, anonymous, deviceAuthorization, jwt, lastLoginMethod, organization, twoFactor } from "better-auth/plugins";
 import { DummyDriver, Kysely, MysqlDialect, PostgresDialect, SqliteDialect } from "kysely";
 import Stripe from "stripe";
 
@@ -14,6 +14,9 @@ export const dialects = { sqlite: SqliteDialect, postgres: PostgresDialect, mysq
 export function pluginInstances(profiles) {
   return profiles.map((id) => {
     switch (id) {
+      case "admin": return admin();
+      case "anonymous": return anonymous();
+      case "last-login-method": return lastLoginMethod({ storeInDatabase: true });
       case "device-authorization": return deviceAuthorization();
       case "jwt": return jwt();
       case "passkey": return passkey();
@@ -30,15 +33,20 @@ export function pluginInstances(profiles) {
   });
 }
 
-export function* combinations() {
-  for (const device of ["", "device-authorization"]) for (const signing of ["", "jwt"]) {
-    for (const org of ["", "organization", "organization-teams"]) {
-      for (const keys of ["", "passkey"]) for (const limits of ["", "rate-limit"]) {
-        for (const billing of ["", "stripe-subscriptions"]) {
-          for (const mfa of ["", "two-factor"]) yield [device, signing, org, keys, limits, billing, mfa].filter(Boolean);
-        }
-      }
-    }
+const profileGroups = [
+  ["admin"], ["anonymous"], ["device-authorization"], ["jwt"], ["last-login-method"],
+  ["organization", "organization-teams"], ["passkey"], ["rate-limit"], ["stripe-subscriptions"], ["two-factor"],
+];
+const profileNames = profileGroups.flat();
+
+export function* combinations(index = 0, selected = []) {
+  if (index === profileGroups.length) {
+    yield selected;
+    return;
+  }
+  yield* combinations(index + 1, selected);
+  for (const name of profileGroups[index]) {
+    yield* combinations(index + 1, [...selected, name]);
   }
 }
 
@@ -64,24 +72,81 @@ export async function freshSchema(type, profiles) {
   }
 }
 
+// Kysely emits a table definition or an index per statement. Split table
+// definitions only at the outer level, preserving quoted identifiers, SQL type
+// arguments, default literals, and the exact spelling of each fragment.
+function tableColumns(body) {
+  const parts = [];
+  let start = 0, depth = 0, quote = "";
+  for (let i = 0; i < body.length; i++) {
+    const c = body[i];
+    if (quote) {
+      if (c === quote && body[i + 1] === quote) i++;
+      else if (c === quote) quote = "";
+    } else if (["'", '"', "`"].includes(c)) quote = c;
+    else if (c === "(") depth++;
+    else if (c === ")") depth--;
+    else if (c === "," && depth === 0) {
+      parts.push(body.slice(start, i).trim());
+      start = i + 1;
+    }
+  }
+  assert.equal(depth, 0);
+  assert.equal(quote, "");
+  return [...parts, body.slice(start).trim()];
+}
+
+function objects(sql) {
+  const result = new Map();
+  for (const part of sql.trim().split(/;\s*\n\s*\n/)) {
+    const text = part.replace(/;$/, "");
+    const table = /^(create table ["`][^"`]+["`]) \((.*)\)$/s.exec(text);
+    if (table) result.set(table[1], tableColumns(table[2]));
+    else {
+      assert.match(text, /^create (?:unique )?index /);
+      result.set(text + ";", null);
+    }
+  }
+  return result;
+}
+
+
 async function catalog() {
   const data = {};
   for (const dialect of Object.keys(dialects)) {
-    const statements = [];
-    const plans = {};
-    for (const profiles of combinations()) {
-      const sql = await freshSchema(dialect, profiles);
-      const keys = [];
-      for (const statement of sql.trim().split(/;\s*\n\s*\n/).map((s) => s.replace(/;$/, "") + ";")) {
-        let id = statements.indexOf(statement);
-        if (id === -1) id = statements.push(statement) - 1;
-        keys.push(id);
-      }
-      plans[profiles.join(",")] = keys;
+    const base = objects(await freshSchema(dialect, []));
+    const singles = new Map();
+    for (const profile of profileNames) {
+      singles.set(profile, objects(await freshSchema(dialect, [profile])));
     }
-    data[dialect] = { statements, plans };
+    // The teams profile includes the ordinary organization tables. The
+    // maximal schema provides the canonical foreign-key and column order.
+    const all = objects(await freshSchema(dialect, profileNames.filter((p) => p !== "organization")));
+    function owners(inCore, matches) {
+      if (inCore) return {};
+      const profiles = profileNames.filter((p) => matches(singles.get(p)));
+      assert.ok(profiles.length, "a composite-only schema fragment needs an explicit rule");
+      return { profiles };
+    }
+    data[dialect] = [...all].map(([sql, columns]) => {
+      const item = { sql, ...owners(base.has(sql), (one) => one.has(sql)) };
+      if (columns) {
+        item.columns = columns.map((column) => {
+          // A column present whenever this table exists needs no additional selector.
+          const always = [...singles.values(), base].every((one) => !one.has(sql) || one.get(sql).includes(column));
+          return { sql: column, ...owners(always, (one) => one.get(sql)?.includes(column)) };
+        });
+      }
+      return item;
+    });
+    for (const [profile, schema] of singles) {
+      for (const [sql, columns] of schema) {
+        assert.ok(all.has(sql), "missing " + sql + " from " + profile);
+        for (const column of columns ?? []) assert.ok(all.get(sql).includes(column), "missing " + column);
+      }
+    }
   }
-  return JSON.stringify(data, null, 2) + "\n";
+  return JSON.stringify({profiles: profileNames, dialects: data}, null, 2) + "\n";
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {

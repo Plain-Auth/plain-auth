@@ -11,8 +11,10 @@ import (
 	"path/filepath"
 	"runtime"
 	"runtime/debug"
+	"strings"
 
 	"github.com/nabuhadba/go-better-auth/internal/configenv"
+	"github.com/nabuhadba/go-better-auth/schema"
 )
 
 func generateSecret() string { var b [32]byte; rand.Read(b[:]); return hex.EncodeToString(b[:]) }
@@ -69,6 +71,6 @@ func printInfo(out io.Writer) error {
 	if build, ok := debug.ReadBuildInfo(); ok && build.Main.Version != "" {
 		version = build.Main.Version
 	}
-	_, err := fmt.Fprintf(out, "authctl %s\nGo %s (%s/%s)\nSQL dialects: sqlite, postgres, mysql\n", version, runtime.Version(), runtime.GOOS, runtime.GOARCH)
+	_, err := fmt.Fprintf(out, "authctl %s\nGo %s (%s/%s)\nSQL dialects: sqlite, postgres, mysql\nSchema profiles: %s\n", version, runtime.Version(), runtime.GOOS, runtime.GOARCH, strings.Join(schema.Profiles(), ", "))
 	return err
 }

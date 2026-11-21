@@ -61,7 +61,7 @@ func run(ctx context.Context, args []string, out, errOut io.Writer) error {
 		fs := flag.NewFlagSet(args[0], flag.ContinueOnError)
 		fs.SetOutput(errOut)
 		dialect := fs.String("dialect", "", "Database dialect (sqlite, postgres, mysql)")
-		pluginNames := fs.String("plugins", "", "Comma-separated schema profiles (device-authorization, jwt, organization, organization-teams, passkey, rate-limit, stripe-subscriptions, two-factor)")
+		pluginNames := fs.String("plugins", "", "Comma-separated schema profiles ("+strings.Join(schema.Profiles(), ", ")+")")
 		if err := fs.Parse(args[1:]); err != nil {
 			if errors.Is(err, flag.ErrHelp) {
 				return nil
