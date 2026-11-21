@@ -42,6 +42,17 @@ func normalizeDialect(name string) (string, error) {
 // a file path or ":memory:", PostgreSQL accepts a pgx connection string, and
 // MySQL accepts a go-sql-driver/mysql DSN containing a database name.
 func Open(ctx context.Context, dialect, dsn string) (*Store, error) {
+	baseline, err := Schema(dialect)
+	if err != nil {
+		return nil, err
+	}
+	return OpenWithSchema(ctx, dialect, dsn, baseline)
+}
+
+// OpenWithSchema applies a trusted generated baseline including any selected
+// plugin tables, columns and indexes. It accepts the initialization SQL shape
+// returned by Schema and the application's schema-profile generator.
+func OpenWithSchema(ctx context.Context, dialect, dsn, baseline string) (*Store, error) {
 	name, err := normalizeDialect(dialect)
 	if err != nil {
 		return nil, err
@@ -65,7 +76,7 @@ func Open(ctx context.Context, dialect, dsn string) (*Store, error) {
 		return nil, err
 	}
 	store := &Store{db: db, dialect: name}
-	if err := store.migrate(ctx); err != nil {
+	if err := store.migrate(ctx, baseline); err != nil {
 		_ = db.Close()
 		return nil, err
 	}

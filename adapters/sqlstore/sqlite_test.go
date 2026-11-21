@@ -54,7 +54,7 @@ func TestFailedSchemaInitializationIsAtomic(t *testing.T) {
 	}
 	defer existing.Close()
 	// An incompatible table prevents the new session index from being created.
-	if _, err := existing.Exec("CREATE TABLE session(id TEXT PRIMARY KEY)"); err != nil {
+	if _, err := existing.Exec("CREATE TABLE session(id TEXT PRIMARY KEY); INSERT INTO session (id) VALUES ('legacy')"); err != nil {
 		t.Fatal(err)
 	}
 	store, err := Open(context.Background(), "sqlite", path)

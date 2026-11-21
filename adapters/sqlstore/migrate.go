@@ -31,7 +31,7 @@ type migrationConnection interface {
 	QueryRowContext(context.Context, string, ...any) *sql.Row
 }
 
-func (s *Store) migrate(ctx context.Context) error {
+func (s *Store) migrate(ctx context.Context, baseline string) error {
 	if s.dialect == "mysql" {
 		// MySQL's DDL commits implicitly. Keep the lock on one connection until
 		// the full set of tables and indexes has been initialized.
@@ -53,7 +53,7 @@ func (s *Store) migrate(ctx context.Context) error {
 			defer cancel()
 			_, _ = conn.ExecContext(cleanup, "SELECT RELEASE_LOCK("+lock+")")
 		}()
-		return s.applyMigrations(ctx, conn)
+		return s.applyMigrations(ctx, conn, baseline)
 	}
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -66,29 +66,30 @@ func (s *Store) migrate(ctx context.Context) error {
 			return err
 		}
 	}
-	if err := s.applyMigrations(ctx, tx); err != nil {
+	if err := s.applyMigrations(ctx, tx, baseline); err != nil {
 		return err
 	}
 	return tx.Commit()
 }
 
 // These expressions match the immutable initialization scripts embedded above.
-var indexDDL = regexp.MustCompile("(?i)^create index [`\"]([^\"`]+)[`\"] on [`\"]([^\"`]+)[`\"]")
+var indexDDL = regexp.MustCompile("(?i)^create (?:unique )?index [`\"]([^\"`]+)[`\"] on [`\"]([^\"`]+)[`\"]")
+var tableDDL = regexp.MustCompile("(?is)^create table ([`\"][a-zA-Z_][a-zA-Z0-9_]*[`\"]) \\((.*)\\)$")
+var columnDDL = regexp.MustCompile("^[`\"]([a-zA-Z_][a-zA-Z0-9_]*)[`\"] ")
 
-func (s *Store) applyMigrations(ctx context.Context, db migrationConnection) error {
-	script, err := Schema(s.dialect)
-	if err != nil {
-		return err
-	}
-	for statement := range strings.SplitSeq(script, ";") {
+func (s *Store) applyMigrations(ctx context.Context, db migrationConnection, baseline string) error {
+	for statement := range strings.SplitSeq(baseline, ";") {
 		stmt := strings.TrimSpace(statement)
 		if stmt == "" {
 			continue
 		}
 		switch {
 		case strings.HasPrefix(stmt, "create table "):
-			stmt = strings.Replace(stmt, "create table ", "create table if not exists ", 1)
-		case strings.HasPrefix(stmt, "create index "):
+			if err := s.ensureTable(ctx, db, stmt); err != nil {
+				return err
+			}
+			continue
+		case indexDDL.MatchString(stmt):
 			if s.dialect == "mysql" {
 				// MySQL has no CREATE INDEX IF NOT EXISTS.
 				match := indexDDL.FindStringSubmatch(stmt)
@@ -104,7 +105,7 @@ func (s *Store) applyMigrations(ctx context.Context, db migrationConnection) err
 					continue
 				}
 			} else {
-				stmt = strings.Replace(stmt, "create index ", "create index if not exists ", 1)
+				stmt = strings.Replace(stmt, "index ", "index if not exists ", 1)
 			}
 		default:
 			return errors.New("sqlstore: unexpected embedded schema statement")
@@ -125,6 +126,56 @@ func (s *Store) applyMigrations(ctx context.Context, db migrationConnection) err
 			return fmt.Errorf("sqlstore: incompatible %s schema: %w", s.dialect, err)
 		}
 		if err := rows.Close(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *Store) ensureTable(ctx context.Context, db migrationConnection, stmt string) error {
+	match := tableDDL.FindStringSubmatch(stmt)
+	if match == nil {
+		return errors.New("sqlstore: invalid generated table declaration")
+	}
+	table := match[1]
+	if _, err := db.ExecContext(ctx, strings.Replace(stmt, "create table ", "create table if not exists ", 1)); err != nil {
+		return err
+	}
+	rows, err := db.QueryContext(ctx, "SELECT * FROM "+table+" WHERE 1=0")
+	if err != nil {
+		return err
+	}
+	columns, err := rows.Columns()
+	rows.Close()
+	if err != nil {
+		return err
+	}
+	have := make(map[string]bool, len(columns))
+	for _, col := range columns {
+		have[col] = true
+	}
+	// Kysely quotes every column name. A comma followed by a quoted name and
+	// a space therefore starts another column, unlike commas in SQL type
+	// parameters, constraints or literal defaults in these generated baselines.
+	for _, definition := range strings.Split(match[2], ", ") {
+		col := columnDDL.FindStringSubmatch(definition)
+		if col == nil || have[col[1]] {
+			continue
+		}
+		normalized := strings.ToLower(definition)
+		if strings.Contains(normalized, "primary key") {
+			return fmt.Errorf("sqlstore: existing table %s is missing primary key %s", table, col[1])
+		}
+		if strings.Contains(normalized, "not null") && !strings.Contains(normalized, " default ") {
+			var exists bool
+			if err := db.QueryRowContext(ctx, "SELECT EXISTS (SELECT 1 FROM "+table+")").Scan(&exists); err != nil {
+				return err
+			}
+			if exists {
+				return fmt.Errorf("sqlstore: explicitly backfill required column %s.%s before migrating existing rows", table, col[1])
+			}
+		}
+		if _, err := db.ExecContext(ctx, "ALTER TABLE "+table+" ADD COLUMN "+definition); err != nil {
 			return err
 		}
 	}
