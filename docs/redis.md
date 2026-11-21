@@ -2,6 +2,14 @@
 
 Use the optional `github.com/Stonewrit/stonewrit-auth/adapters/redis` Go module to share rate limits across auth servers or store short-lived application values. It accepts a single-node `*redis.Client` from go-redis v9. The primary store continues to manage users, sessions and account data.
 
+Install the adapter from your application's Go module. During private development, use the same GitHub credentials as for the main module.
+
+```sh
+GOPRIVATE=github.com/Stonewrit/stonewrit-auth go get \
+  github.com/Stonewrit/stonewrit-auth@main \
+  github.com/Stonewrit/stonewrit-auth/adapters/redis@main
+```
+
 ## Share rate limits
 
 Configure all replicas with the same Redis database, key prefix and rate-limit rules. The client belongs to the application and should be closed at shutdown.

@@ -67,7 +67,7 @@
     - [ ] Add/Register a passkey
       - [x] Enroll two independent public-key credentials from a fresh session ([test](../../../adapters/sqlstore/passkey_test.go#L273))
       - [x] Use the public addPasskey action with application context, createSession and the real WebAuthn result ([test](../../../conformance/passkey-first-browser.mjs#L112))
-      - [ ] `POST /passkey/add-passkey`
+      - [ ] Browser client action `passkey.addPasskey`
         - [ ] Parameter `name` (optional)
         - [ ] Parameter `authenticatorAttachment` (optional)
         - [ ] Parameter `returnWebAuthnResponse` (optional)
@@ -76,7 +76,7 @@
     - [ ] Sign in with a passkey
       - [x] Sign in with a locally generated software authenticator and honor counter progression ([test](../../../adapters/sqlstore/passkey_test.go#L267))
       - [x] Sign in using the passkey the browser enrolled before login ([test](../../../conformance/passkey-first-browser.mjs#L116))
-      - [ ] `POST /sign-in/passkey`
+      - [ ] Browser client action `signIn.passkey`
         - [ ] Parameter `autoFill` (optional)
         - [ ] Parameter `returnWebAuthnResponse` (optional)
     - [ ] Extensions

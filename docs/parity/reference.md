@@ -244,15 +244,15 @@
 - [ ] Options
   - [ ] `appName`
   - [ ] `baseURL`
-    - [x] Resolve public URL and mount path from explicit options and process settings ([test](../../env_test.go#L19))
+    - [x] Resolve public URL and mount path from explicit options and process settings ([test](../../env_test.go#L20))
     - [ ] Dynamic Base URL
       - [ ] `allowedHosts`
       - [ ] `protocol`
       - [ ] `fallback`
   - [ ] `basePath`
-    - [x] Resolve public URL and mount path from explicit options and process settings ([test](../../env_test.go#L19))
+    - [x] Resolve public URL and mount path from explicit options and process settings ([test](../../env_test.go#L20))
   - [ ] `trustedOrigins`
-    - [x] Combine configured origins and environment origins for callback validation ([test](../../env_test.go#L33))
+    - [x] Combine configured origins and environment origins for callback validation ([test](../../env_test.go#L34))
     - [ ] Static Origins
     - [ ] Dynamic Origins
       - [ ] On a direct `auth.api` call with a static `baseURL`
@@ -269,12 +269,13 @@
         - [ ] `myapp://`
         - [ ] Notes
   - [ ] `secret`
-    - [x] Give an explicit signing secret precedence over environment defaults ([test](../../env_test.go#L41))
+    - [x] Use Options.Secret ahead of AUTH_SECRET when no key list is configured ([test](../../env_test.go#L42))
+    - [x] Sign with the configured key list ahead of single secrets and prefer the explicit list ([test](../../env_test.go#L194))
     - [ ] `AUTH_SECRET`
     - [ ] `process.env.AUTH_SECRET`
   - [ ] `secrets`
-    - [x] Sign with the active key and accept cookies from a retained key ([test](../../env_test.go#L79))
-    - [x] Accept an email proof signed by a retained key and reject it after retirement ([test](../../env_test.go#L140))
+    - [x] Sign with the active key and accept cookies from a retained key ([test](../../env_test.go#L80))
+    - [x] Accept an email proof signed by a retained key and reject it after retirement ([test](../../env_test.go#L141))
   - [ ] `database`
   - [ ] `secondaryStorage`
   - [ ] `emailVerification`
@@ -357,7 +358,7 @@
     - [ ] `storeIdentifier`
     - [ ] `storeInDatabase`
   - [ ] `rateLimit`
-    - [x] Select the production rate limit by default and honor an explicit override ([test](../../env_test.go#L121))
+    - [x] Select the production rate limit by default and honor an explicit override ([test](../../env_test.go#L122))
     - [ ] `enabled`
     - [ ] `window`
     - [ ] `max`

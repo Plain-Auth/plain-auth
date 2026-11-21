@@ -725,9 +725,14 @@
       "marker": "func TestEnvironmentPrecedence("
     },
     {
-      "label": "Give an explicit signing secret precedence over environment defaults",
+      "label": "Use Options.Secret ahead of AUTH_SECRET when no key list is configured",
       "test": "env_test.go",
       "marker": "explicit scalar options lost precedence"
+    },
+    {
+      "label": "Sign with the configured key list ahead of single secrets and prefer the explicit list",
+      "test": "env_test.go",
+      "marker": "session cookie used a lower-priority signing key"
     },
     {
       "label": "Combine configured origins and environment origins for callback validation",
@@ -781,9 +786,14 @@
   ],
   "docs/content/docs/reference/options.mdx#L175": [
     {
-      "label": "Give an explicit signing secret precedence over environment defaults",
+      "label": "Use Options.Secret ahead of AUTH_SECRET when no key list is configured",
       "test": "env_test.go",
       "marker": "explicit scalar options lost precedence"
+    },
+    {
+      "label": "Sign with the configured key list ahead of single secrets and prefer the explicit list",
+      "test": "env_test.go",
+      "marker": "session cookie used a lower-priority signing key"
     }
   ],
   "docs/content/docs/reference/options.mdx#L89": [

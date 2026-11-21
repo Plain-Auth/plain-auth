@@ -35,6 +35,8 @@ This keeps file loading under the host application's control. The example listen
 
 Set the server's public origin and either a signing secret or a versioned key list before startup. Keep signing keys in the server environment.
 
+A versioned key list takes precedence over either single-secret setting. The server first uses `Options.Secrets`, then checks `AUTH_SECRETS` when the Go list is nil. With no key list configured, it uses `Options.Secret` followed by `AUTH_SECRET`. An explicitly empty Go list or an invalid configured list fails startup.
+
 ## Native client URL
 
 Pass a URL to `client.New` to select the destination explicitly. An empty argument reads `AUTH_URL` at construction. For example, `AUTH_URL=https://app.example.org` sends session requests to `/api/auth/get-session`. Set `AUTH_URL=https://app.example.org/login` to send them to `/login/get-session`. The native client requires an absolute HTTP(S) URL. [Client configuration tests](../client/environment_test.go)

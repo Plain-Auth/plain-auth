@@ -6,6 +6,19 @@ import { fileURLToPath } from "node:url";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
 
+test("the passkey checklist distinguishes browser actions from their HTTP endpoints", () => {
+  const page = readFileSync(join(root, "docs/parity/plugins/passkey.md"), "utf8");
+  for (const action of ["passkey.addPasskey", "signIn.passkey"]) {
+    assert.ok(page.includes("Browser client action `" + action + "`"));
+  }
+  for (const path of ["/passkey/add-passkey", "/sign-in/passkey"]) {
+    assert.ok(!page.includes("POST " + path));
+  }
+  for (const action of ["registration", "authentication"]) {
+    assert.ok(page.includes("POST /passkey/verify-" + action));
+  }
+});
+
 function checkedScenarios(directory) {
   const results = new Set();
   for (const entry of readdirSync(directory, { withFileTypes: true })) {

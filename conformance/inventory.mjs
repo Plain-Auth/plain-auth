@@ -257,7 +257,15 @@ function extractPage(file, lines) {
       while (!tag.includes(">") && i + 1 < parts.length) tag += " " + parts[++i].trim();
       const path = tag.match(/\bpath="([^"]+)"/)?.[1];
       const method = tag.match(/\bmethod="([^"]+)"/)?.[1];
-      if (path) add(inline((method ? method + " " : "") + path) + (tag.includes("isServerOnly") ? " (server API)" : ""), depth);
+      if (path) {
+        const route = inline((method ? method + " " : "") + path);
+        if (/\bisClientOnly\b/.test(tag)) {
+          const action = path.slice(1).replace(/-([a-z])/g, (_, letter) => letter.toUpperCase()).replaceAll("/", ".");
+          add("Browser client action " + inline(action), depth, route);
+        } else {
+          add(route + (tag.includes("isServerOnly") ? " (server API)" : ""), depth);
+        }
+      }
     }
     const declaration = text.match(/^export const (\w+)\s*=\s*([\[{])/);
     if (declaration) { optionObject = { name: declaration[1], kind: declaration[2], indent: null }; continue; }

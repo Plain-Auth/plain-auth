@@ -38,7 +38,7 @@ All paths below are relative to the auth mount. Keep browser cookies on both req
 
 | Operation | Request | Result |
 | --- | --- | --- |
-| Begin registration | GET `/passkey/generate-register-options` | Public-key creation options for the signed-in account, including registered credentials to exclude |
+| Begin registration | GET `/passkey/generate-register-options` | Public-key creation options for the signed-in account or the provisional identity supplied by a first-use resolver, including registered credentials to exclude |
 | Finish registration | POST `/passkey/verify-registration` with `response`, optional `name` and optional `createSession` | The stored credential and, if requested, its new user session |
 | Begin login | GET `/passkey/generate-authenticate-options` | Public-key request options for discoverable login |
 | Finish login | POST `/passkey/verify-authentication` with `response` | The authenticated user and session, plus a session cookie |
@@ -48,7 +48,7 @@ All paths below are relative to the auth mount. Keep browser cookies on both req
 
 In a browser, convert the JSON options into WebAuthn options and pass them to `navigator.credentials.create` or `navigator.credentials.get`. Send the resulting credential’s JSON representation as `response`. Rename and remove use the stored row’s `id`. The browser uses the separate `credentialID`. [WebAuthn API](https://www.w3.org/TR/webauthn-3/)
 
-The signed HTTP-only challenge cookie and server-side verification record expire after five minutes by default. Each challenge permits one verification attempt. Registration also binds the challenge to the requesting account and session. The verifier checks the RP ID, browser origin, user-presence flag and assertion signature. `RequireUserVerification` additionally requires authenticator user verification. The SQL store commits the counter adjustment and new session together. Authenticators with a positive counter must advance it. Authenticator counters that stay at zero are supported.
+The signed HTTP-only challenge cookie and server-side verification record expire after five minutes by default. Each challenge permits one verification attempt. Signed-in registration binds the challenge to the requesting account and session. First-use registration saves the enrollment context and the identity returned by the resolver with the challenge. The verifier checks the RP ID, browser origin, user-presence flag and assertion signature. `RequireUserVerification` additionally requires authenticator user verification. The SQL store commits the counter adjustment and new session together. Authenticators with a positive counter must advance it. Authenticator counters that stay at zero are supported.
 
 The optional `ChallengeLifetime` accepts a Go duration. Key management operates on the signed-in user's rows. Deleting the account removes its keys. SQLite, PostgreSQL and MySQL have local software-authenticator tests for this lifecycle.
 

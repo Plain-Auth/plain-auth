@@ -3,6 +3,7 @@ package stonewrit
 import (
 	"context"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 )
@@ -166,5 +167,32 @@ func TestRetainedKeyVerifiesEmailProof(t *testing.T) {
 	}
 	if _, err = b.parseEmailProof(raw); err == nil {
 		t.Fatal("retired verification key accepted")
+	}
+}
+
+func TestSigningKeyListPrecedence(t *testing.T) {
+	cleanConfigEnv(t)
+	envListKey := strings.Repeat("e", 32)
+	optionListKey := strings.Repeat("o", 32)
+	t.Setenv("AUTH_SECRETS", "1:"+envListKey)
+	t.Setenv("AUTH_SECRET", strings.Repeat("s", 32))
+	for _, tc := range []struct {
+		name    string
+		secrets []VersionedSecret
+		want    string
+	}{
+		{"environment list overrides the explicit scalar", nil, envListKey},
+		{"explicit list overrides the environment list", []VersionedSecret{{Version: 2, Value: optionListKey}}, optionListKey},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			a, err := New(Options{Store: &refreshFixture{}, BaseURL: "http://localhost", Secret: strings.Repeat("x", 32), Secrets: tc.secrets})
+			if err != nil {
+				t.Fatal(err)
+			}
+			want := url.QueryEscape("test." + signCookieValue("test", tc.want))
+			if a.SessionCookie("test", true).Value != want {
+				t.Fatal("session cookie used a lower-priority signing key")
+			}
+		})
 	}
 }

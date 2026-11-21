@@ -79,7 +79,7 @@ For isolated development without a database, pass `memory.New()` from `github.co
 
 ## Run database integration tests
 
-Provide disposable databases. The tests create auth tables and test records. Run these commands after setting each DSN in your shell.
+Use disposable databases and dedicated test credentials. The tests create auth tables and records. Tests that isolate schema profiles also create and drop PostgreSQL schemas in the selected database or separate MySQL databases named `orgtest_…`. Grant the test account those permissions on the disposable server.
 
 ```sh
 export AUTH_TEST_POSTGRES_DSN='postgres://auth_user:example@localhost:5432/auth_test?sslmode=disable'
@@ -95,7 +95,8 @@ Pass the same comma-separated profile list to generation and migration. For exam
 
 ```sh
 go run ./cmd/authctl generate --dialect postgres --plugins organization-teams,two-factor
-go run ./cmd/authctl migrate --dialect postgres --plugins organization-teams,two-factor
+AUTH_DSN='postgres://auth_user:example@localhost:5432/auth_dev?sslmode=disable' \
+  go run ./cmd/authctl migrate --dialect postgres --plugins organization-teams,two-factor
 ```
 
 Use the [schema profile guide](schema.md) for supported combinations and runtime feature status.
