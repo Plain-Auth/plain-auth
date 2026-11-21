@@ -12,22 +12,24 @@
   - [ ] `POST /subscription/upgrade`
     - [x] Reserve an owner-scoped checkout, send the configured recurring price and return the same checkout on retries ([test](../../../adapters/sqlstore/subscriptions_test.go#L184))
     - [x] Reuse an existing Stripe customer when starting a monthly subscription ([test](../../../adapters/sqlstore/subscriptions_test.go#L287))
-    - [x] Match the browser client's session, customer-type and foreign-reference errors before contacting Stripe ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L163))
-    - [x] Reject a missing plan and a subscription owned by another signed-in user ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L145))
+    - [x] Match the browser client's session, customer-type and foreign-reference errors before contacting Stripe ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L169))
+    - [x] Reject a missing plan and a subscription owned by another signed-in user ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L151))
+    - [x] Open monthly and annual confirmation pages for the owner’s existing subscription and preserve its price until Stripe confirms ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L215))
+    - [x] Reject pending changes, unsupported recurring items, foreign customers and a session revoked during Stripe’s reply on three SQL engines ([test](../../../adapters/sqlstore/stripe_plan_change_test.go#L103))
   - [ ] `POST /subscription/cancel`
-    - [x] Open a cancellation page scoped to the signed-in customer and selected subscription ([test](../../../adapters/sqlstore/stripe_management_test.go#L156))
-    - [x] Match the browser client's session, customer-type and foreign-reference errors before contacting Stripe ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L163))
-    - [x] Bind the cancellation portal to the selected Stripe subscription ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L217))
+    - [x] Open a cancellation page scoped to the signed-in customer and selected subscription ([test](../../../adapters/sqlstore/stripe_management_test.go#L158))
+    - [x] Match the browser client's session, customer-type and foreign-reference errors before contacting Stripe ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L169))
+    - [x] Bind the cancellation portal to the selected Stripe subscription ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L250))
   - [ ] `POST /subscription/restore`
-    - [x] Clear an end-of-period cancellation through the native client on all three SQL engines ([test](../../../adapters/sqlstore/stripe_management_test.go#L169))
-    - [x] Clear an explicit cancellation date and synchronize the resulting provider state ([test](../../../adapters/sqlstore/stripe_management_test.go#L176))
-    - [x] Release the current customer’s active schedule and persist the new subscription state ([test](../../../adapters/sqlstore/stripe_management_test.go#L189))
-    - [x] Match the browser client's session, customer-type and foreign-reference errors before contacting Stripe ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L163))
-    - [x] Return the original provider JSON after cancellation restoration and schedule release ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L272))
+    - [x] Clear an end-of-period cancellation through the native client on all three SQL engines ([test](../../../adapters/sqlstore/stripe_management_test.go#L171))
+    - [x] Clear an explicit cancellation date and synchronize the resulting provider state ([test](../../../adapters/sqlstore/stripe_management_test.go#L178))
+    - [x] Release the current customer’s active schedule and persist the new subscription state ([test](../../../adapters/sqlstore/stripe_management_test.go#L191))
+    - [x] Match the browser client's session, customer-type and foreign-reference errors before contacting Stripe ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L169))
+    - [x] Return the original provider JSON after cancellation restoration and schedule release ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L305))
   - [ ] `GET /subscription/list`
     - [x] List only the authenticated owner’s active or trialing plans and configured price IDs ([test](../../../adapters/sqlstore/subscriptions_test.go#L227))
-    - [x] Match the browser client's session, customer-type and foreign-reference errors before contacting Stripe ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L163))
-    - [x] Read the changed price, seat count and billing window after a signed renewal ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L255))
+    - [x] Match the browser client's session, customer-type and foreign-reference errors before contacting Stripe ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L169))
+    - [x] Read the changed price, seat count and billing window after a signed renewal ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L288))
   - [ ] `GET /subscription/success`
     - [x] Use the configured auth mount and pass Stripe the literal Checkout Session placeholder ([test](../../../adapters/sqlstore/stripe_return_test.go#L222))
     - [x] Validate the callback and require a signed-in owner and known checkout before reading Stripe ([test](../../../adapters/sqlstore/stripe_return_test.go#L244))
@@ -37,8 +39,8 @@
     - [x] Preserve the original Stripe success URL and checkout attempt on retries across an upgrade ([test](../../../adapters/sqlstore/stripe_return_test.go#L319))
   - [ ] `POST /subscription/billing-portal`
     - [x] Open a billing portal for the authenticated customer and enforce its owner and return URL ([test](../../../plugins/stripe/portal_test.go#L27))
-    - [x] Match the browser client's session, customer-type and foreign-reference errors before contacting Stripe ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L163))
-    - [x] Send the user's verified billing customer, locale and return URL ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L209))
+    - [x] Match the browser client's session, customer-type and foreign-reference errors before contacting Stripe ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L169))
+    - [x] Send the user's verified billing customer, locale and return URL ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L242))
   - [ ] `POST /stripe/webhook`
     - [x] Reject foreign or unsigned checkout receipts and apply completion once ([test](../../../adapters/sqlstore/subscriptions_test.go#L220))
     - [x] Deduplicate signed subscription events and preserve terminal cancellations after delayed updates ([test](../../../adapters/sqlstore/stripe_lifecycle_test.go#L270))
@@ -55,7 +57,7 @@
   - [ ] `SubscriptionOptions`
     - [ ] `plans`
     - [ ] `requireEmailVerification`
-      - [x] Require verified email before starting Checkout when configured ([test](../../../adapters/sqlstore/stripe_management_test.go#L138))
+      - [x] Require verified email before starting Checkout when configured ([test](../../../adapters/sqlstore/stripe_management_test.go#L139))
     - [ ] `onSubscriptionComplete`
     - [ ] `onSubscriptionUpdate`
     - [ ] `onSubscriptionCancel`
@@ -111,6 +113,8 @@
           - [ ] Parameter `scheduleAtPeriodEnd` (optional)
         - [ ] Simple Example:
       - [ ] Switching Plans
+        - [x] Open monthly and annual confirmation pages for the owner’s existing subscription and preserve its price until Stripe confirms ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L215))
+        - [x] Reject pending changes, unsupported recurring items, foreign customers and a session revoked during Stripe’s reply on three SQL engines ([test](../../../adapters/sqlstore/stripe_plan_change_test.go#L103))
       - [ ] Scheduling Plan Changes at Period End
       - [ ] Listing Active Subscriptions
         - [x] List only the authenticated owner’s active or trialing plans and configured price IDs ([test](../../../adapters/sqlstore/subscriptions_test.go#L227))
@@ -118,7 +122,7 @@
           - [ ] Parameter `referenceId` (optional)
           - [ ] Parameter `customerType` (optional)
       - [ ] Canceling a Subscription
-        - [x] Open a cancellation page scoped to the signed-in customer and selected subscription ([test](../../../adapters/sqlstore/stripe_management_test.go#L156))
+        - [x] Open a cancellation page scoped to the signed-in customer and selected subscription ([test](../../../adapters/sqlstore/stripe_management_test.go#L158))
         - [ ] `POST /subscription/cancel`
           - [ ] Parameter `referenceId` (optional)
           - [ ] Parameter `customerType` (optional)
@@ -131,9 +135,9 @@
         - [ ] `endedAt`
         - [ ] `status`
       - [ ] Restoring a Subscription
-        - [x] Clear an end-of-period cancellation through the native client on all three SQL engines ([test](../../../adapters/sqlstore/stripe_management_test.go#L169))
-        - [x] Clear an explicit cancellation date and synchronize the resulting provider state ([test](../../../adapters/sqlstore/stripe_management_test.go#L176))
-        - [x] Release the current customer’s active schedule and persist the new subscription state ([test](../../../adapters/sqlstore/stripe_management_test.go#L189))
+        - [x] Clear an end-of-period cancellation through the native client on all three SQL engines ([test](../../../adapters/sqlstore/stripe_management_test.go#L171))
+        - [x] Clear an explicit cancellation date and synchronize the resulting provider state ([test](../../../adapters/sqlstore/stripe_management_test.go#L178))
+        - [x] Release the current customer’s active schedule and persist the new subscription state ([test](../../../adapters/sqlstore/stripe_management_test.go#L191))
         - [ ] `POST /subscription/restore`
           - [ ] Parameter `referenceId` (optional)
           - [ ] Parameter `customerType` (optional)

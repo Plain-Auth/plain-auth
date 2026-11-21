@@ -28,7 +28,7 @@ func fixtureStripe(customers billing.CustomerStore, endpoint string) (stonewrit.
 		WebhookSecret: "whsec_offline_fixture",
 		Portal:        &billing.PortalOptions{Client: provider, Customers: customers},
 		Subscriptions: &billing.SubscriptionOptions{Client: provider, Plans: []billing.Plan{
-			{Name: "basic", PriceID: "price_basic"}, {Name: "team", PriceID: "price_team"},
+			{Name: "basic", PriceID: "price_basic"}, {Name: "team", PriceID: "price_team", AnnualPriceID: "price_team_annual"},
 		}},
 	}), nil
 }

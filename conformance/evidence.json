@@ -1672,6 +1672,16 @@
       "label": "Reject a missing plan and a subscription owned by another signed-in user",
       "test": "conformance/stripe-lifecycle-fixture.mjs",
       "marker": "other.subscription.upgrade({ ...own, plan:"
+    },
+    {
+      "label": "Open monthly and annual confirmation pages for the owner’s existing subscription and preserve its price until Stripe confirms",
+      "test": "conformance/stripe-lifecycle-fixture.mjs",
+      "marker": "for (const [annual, selection, expectedPrice]"
+    },
+    {
+      "label": "Reject pending changes, unsupported recurring items, foreign customers and a session revoked during Stripe’s reply on three SQL engines",
+      "test": "adapters/sqlstore/stripe_plan_change_test.go",
+      "marker": "func TestHostedSubscriptionPlanChanges("
     }
   ],
   "docs/content/docs/plugins/stripe.mdx#L221": [
@@ -5136,6 +5146,18 @@
       "label": "Match the Okta organization or custom authorization server discovery location and default scopes with the published preset",
       "test": "conformance/enterprise-oidc.test.mjs",
       "marker": "test(\"enterprise OIDC discovery and scopes match"
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L322": [
+    {
+      "label": "Open monthly and annual confirmation pages for the owner’s existing subscription and preserve its price until Stripe confirms",
+      "test": "conformance/stripe-lifecycle-fixture.mjs",
+      "marker": "for (const [annual, selection, expectedPrice]"
+    },
+    {
+      "label": "Reject pending changes, unsupported recurring items, foreign customers and a session revoked during Stripe’s reply on three SQL engines",
+      "test": "adapters/sqlstore/stripe_plan_change_test.go",
+      "marker": "func TestHostedSubscriptionPlanChanges("
     }
   ]
 }

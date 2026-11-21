@@ -9,10 +9,11 @@ import Stripe from "stripe";
 const webhookSecret = "whsec_offline_fixture";
 const basicPrice = "price_basic";
 const teamPrice = "price_team";
+const annualTeamPrice = "price_team_annual";
 const period = 2_592_000;
 
 function subscription(owner) {
-  const start = 1_800_000_000;
+  const start = Math.floor(Date.now() / 1000) - 3600;
   return {
     id: "sub_" + owner, object: "subscription", customer: "cus_" + owner, status: "active",
     cancel_at_period_end: false, cancel_at: null, canceled_at: null, schedule: null,
@@ -20,7 +21,7 @@ function subscription(owner) {
     items: { object: "list", has_more: false, data: [{
       object: "subscription_item", id: "si_" + owner, quantity: 1,
       current_period_start: start, current_period_end: start + period,
-      price: { id: basicPrice, object: "price", recurring: { interval: "month", interval_count: 1 } },
+      price: { id: basicPrice, object: "price", recurring: { interval: "month", interval_count: 1, usage_type: "licensed" } },
     }] },
   };
 }
@@ -41,6 +42,11 @@ async function localStripe(t) {
     if (path === "/v1/subscriptions" && req.method === "GET") {
       const data = [...subscriptions.values()].filter(s => s.customer === url.searchParams.get("customer"));
       result = { object: "list", has_more: false, url: path, data };
+    } else if (req.method === "GET" && [basicPrice, teamPrice, annualTeamPrice].some(id => path === "/v1/prices/" + id)) {
+      const id = path.split("/").at(-1);
+      result = { id, object: "price", active: true, type: "recurring", recurring: {
+        interval: id === annualTeamPrice ? "year" : "month", interval_count: 1, usage_type: "licensed",
+      } };
     } else if (sub && path === "/v1/subscriptions/" + sub.id && req.method === "GET") {
       result = sub;
     } else if (sub && path === "/v1/subscriptions/" + sub.id && req.method === "POST" && (form.get("cancel_at_period_end") === "false" || form.get("cancel_at") === "")) {
@@ -50,7 +56,7 @@ async function localStripe(t) {
     } else if (req.method === "POST" && path === "/v1/billing_portal/sessions") {
       result = {
         id: "bps_" + calls.length, object: "billing_portal.session", customer: form.get("customer"),
-        url: "https://billing.example.test/" + (form.has("flow_data[type]") ? "cancel" : "portal"),
+        url: "https://billing.example.test/" + ({ subscription_update_confirm: "confirm", subscription_cancel: "cancel" }[form.get("flow_data[type]")] ?? "portal"),
       };
     } else if (path === "/v1/subscription_schedules/sched_owner" && req.method === "GET") {
       result = { id: "sched_owner", object: "subscription_schedule", status: "active", customer: "cus_owner", subscription: "sub_owner" };
@@ -105,7 +111,7 @@ async function exercise(t, runtime, { reference, goFixture, instrument }) {
     ? await goFixture(t, ["stripe-subscriptions"], { CONFORMANCE_STRIPE_URL: provider.url })
     : await reference(t, [stripe({
       stripeClient: provider.api, stripeWebhookSecret: webhookSecret,
-      subscription: { enabled: true, plans: [{ name: "basic", priceId: basicPrice }, { name: "team", priceId: teamPrice }] },
+      subscription: { enabled: true, plans: [{ name: "basic", priceId: basicPrice }, { name: "team", priceId: teamPrice, annualDiscountPriceId: annualTeamPrice }] },
     })]);
   const database = server.database ?? new DatabaseSync(server.databasePath);
   if (!server.database) t.after(() => database.close());
@@ -200,6 +206,33 @@ async function exercise(t, runtime, { reference, goFixture, instrument }) {
   assert.equal(unavailablePrice.error.status, 400);
   assert.equal(unavailablePrice.error.message, "Price ID not found for the selected plan");
   assert.equal(Object.hasOwn(unavailablePrice.error, "code"), false);
+
+  const samePlan = await owner.subscription.upgrade({ plan: "basic" });
+  assert.equal(samePlan.error.status, 400);
+  assert.equal(samePlan.error.code, "ALREADY_SUBSCRIBED_PLAN");
+  assert.equal(samePlan.error.message, "You're already subscribed to this plan");
+  const beforeConfirm = provider.calls.length;
+  for (const [annual, selection, expectedPrice] of [[false, {}, teamPrice], [true, own, annualTeamPrice]]) {
+    const change = ok(await owner.subscription.upgrade({
+      ...selection, plan: "team", annual, returnUrl, disableRedirect: true,
+    }));
+    assert.deepEqual(change, { url: "https://billing.example.test/confirm", redirect: false });
+    const confirm = provider.calls.at(-1);
+    assert.equal(confirm.method, "POST");
+    assert.equal(confirm.path, "/v1/billing_portal/sessions");
+    assert.deepEqual(Object.fromEntries(confirm.form), {
+      customer: ownerSub.customer, return_url: returnUrl,
+      "flow_data[type]": "subscription_update_confirm",
+      "flow_data[after_completion][type]": "redirect",
+      "flow_data[after_completion][redirect][return_url]": returnUrl,
+      "flow_data[subscription_update_confirm][subscription]": ownerSub.id,
+      "flow_data[subscription_update_confirm][items][0][id]": ownerSub.items.data[0].id,
+      "flow_data[subscription_update_confirm][items][0][quantity]": "1",
+      "flow_data[subscription_update_confirm][items][0][price]": expectedPrice,
+    });
+    assert.equal((await list(owner, ownerID, ownerSub.id)).priceId, basicPrice);
+  }
+  assert.equal(provider.calls.slice(beforeConfirm).some(c => c.method === "POST" && c.path !== "/v1/billing_portal/sessions"), false);
 
   assert.deepEqual(ok(await owner.subscription.billingPortal(portal)), { url: "https://billing.example.test/portal", redirect: false });
   const portalCall = provider.calls.at(-1);

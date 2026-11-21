@@ -152,10 +152,10 @@ func (s *subscriptions) checkout(c auth.EndpointContext) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	if returnURL, _ := c.Body["returnUrl"].(string); returnURL != "" {
-		if _, err := c.Auth.CallbackURL(returnURL); err != nil {
-			return nil, err
-		}
+	rawReturn, _ := c.Body["returnUrl"].(string)
+	returnURL, err := c.Auth.CallbackURL(rawReturn)
+	if err != nil {
+		return nil, err
 	}
 	name, _ := c.Body["plan"].(string)
 	if s.requireEmailVerification && !ss.User.EmailVerified {
@@ -165,13 +165,13 @@ func (s *subscriptions) checkout(c auth.EndpointContext) (any, error) {
 	if !ok {
 		return nil, billingError(400, "SUBSCRIPTION_PLAN_NOT_FOUND", "Subscription plan not found")
 	}
-	if id, _ := c.Body["subscriptionId"].(string); id != "" {
-		if _, err := managedSubscription(c, ss); err != nil {
+	explicit, _ := c.Body["subscriptionId"].(string)
+	var selected Subscription
+	if explicit != "" {
+		selected, err = managedSubscription(c, ss)
+		if err != nil {
 			return nil, err
 		}
-		// Changing an existing subscription uses a different provider operation.
-		// A selected subscription must never start a second checkout.
-		return nil, ErrExistingSubscription
 	}
 	price, interval := p.PriceID, "month"
 	if annual, _ := c.Body["annual"].(bool); annual {
@@ -179,6 +179,9 @@ func (s *subscriptions) checkout(c auth.EndpointContext) (any, error) {
 		if price == "" {
 			return nil, billingError(400, "", "Price ID not found for the selected plan")
 		}
+	}
+	if explicit != "" {
+		return s.changePlan(c, ss, selected, price, returnURL)
 	}
 	ctx := c.Request.Context()
 	store := c.Store().(SubscriptionStore)
@@ -190,6 +193,17 @@ func (s *subscriptions) checkout(c auth.EndpointContext) (any, error) {
 		}
 	}
 	a, err := store.ReserveStripeCheckout(ctx, ss.User.ID, ss.Session.Token, want, time.Now().UTC())
+	if errors.Is(err, ErrExistingSubscription) {
+		// With multiple subscriptions the customer must name the one to change.
+		rows, err := store.ListStripeSubscriptions(ctx, ss.User.ID, ss.Session.Token, time.Now().UTC())
+		if err != nil {
+			return nil, err
+		}
+		if len(rows) != 1 || rows[0].SubscriptionID == nil {
+			return nil, ErrExistingSubscription
+		}
+		return s.changePlan(c, ss, rows[0], price, returnURL)
+	}
 	if err != nil {
 		return nil, err
 	}

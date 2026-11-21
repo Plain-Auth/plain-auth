@@ -16,8 +16,10 @@ type Client struct{ Auth *client.Client }
 type Checkout struct {
 	Plan            string `json:"plan"`
 	Annual          bool   `json:"annual,omitempty"`
-	SuccessURL      string `json:"successUrl"`
-	CancelURL       string `json:"cancelUrl"`
+	SubscriptionID  string `json:"subscriptionId,omitempty"`
+	ReturnURL       string `json:"returnUrl,omitempty"`
+	SuccessURL      string `json:"successUrl,omitempty"`
+	CancelURL       string `json:"cancelUrl,omitempty"`
 	DisableRedirect bool   `json:"disableRedirect,omitempty"`
 }
 

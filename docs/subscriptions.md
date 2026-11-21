@@ -55,6 +55,20 @@ An existing local Stripe customer is reused. For a user without one, the server 
 
 A checkout expires after 23 hours. Its signed expiration event releases the reservation. If an outcome remains ambiguous, the server keeps the reservation and returns `CHECKOUT_RECONCILIATION_REQUIRED`. Inspect the matching Stripe Checkout Session and redeliver its completion or expiration event before starting a replacement. For a reservation that never reached Stripe, verify the absence of the remote checkout before clearing the incomplete reservation administratively.
 
+## Change an existing plan
+
+Send the new plan name and the current Stripe subscription ID to the same endpoint. Set `annual` to switch billing intervals. A user with exactly one active or trialing subscription can omit `subscriptionId`.
+
+```json
+{"plan":"pro","annual":true,"subscriptionId":"sub_example","returnUrl":"/billing","disableRedirect":true}
+```
+
+Open the response’s `url` so the customer can review and confirm the change on Stripe. The return URL defaults to the application root. The server scopes the confirmation to the existing customer, subscription and item. Repeating a request can open another review page for that item. The current plan remains active until Stripe confirms the change. The signed subscription webhook synchronizes the new price and interval.
+
+Enable subscription updates and add the target prices to the Stripe customer portal configuration. Stripe applies that configuration’s proration behavior when the customer confirms. Project code does not calculate refunds or issue credits for this operation. [Stripe portal deep links](https://docs.stripe.com/customer-management/portal-deep-links)
+
+Plan changes support one licensed seat on one configured monthly or yearly item. Repeating an active subscription’s current price returns `ALREADY_SUBSCRIBED_PLAN`. Resolve any cancellation, attached schedule, pending update or collection pause before requesting a change. Metered or multi-item subscriptions and scheduling a future change through this endpoint remain outside the supported flow. [Plan change tests](../adapters/sqlstore/stripe_plan_change_test.go)
+
 ## List active subscriptions
 
 An authenticated GET to `/api/auth/subscription/list` lists that user's local active and trialing subscriptions, with the plan's configured price ID. A new reservation has status `incomplete`. A signed checkout completion retrieves the subscription from Stripe and verifies its customer, price, quantity and the local account references before recording the provider subscription ID, status and available billing dates. Replayed completion and expiration events are safe to deliver again.

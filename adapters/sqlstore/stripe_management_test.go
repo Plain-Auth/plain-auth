@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/Stonewrit/stonewrit-auth"
 	"github.com/Stonewrit/stonewrit-auth/client"
@@ -47,7 +48,7 @@ func (p *managementProvider) RoundTrip(r *http.Request) (*http.Response, error) 
 			p.updates++
 		}
 		data := map[string]any{"id": "sub_fixture", "object": "subscription", "customer": p.customer, "status": "active", "cancel_at": p.cancelAt, "cancel_at_period_end": p.atEnd,
-			"items": map[string]any{"data": []any{map[string]any{"quantity": 1, "price": map[string]string{"id": "price_pro"}, "current_period_start": 100, "current_period_end": 200}}}}
+			"items": map[string]any{"data": []any{map[string]any{"id": "si_fixture", "quantity": 1, "price": map[string]any{"id": "price_pro", "recurring": map[string]any{"interval": "month", "interval_count": 1, "usage_type": "licensed"}}, "current_period_start": 100, "current_period_end": time.Now().Add(24 * time.Hour).Unix()}}}}
 		if p.schedule != "" {
 			data["schedule"] = p.schedule
 		}
@@ -138,7 +139,8 @@ func TestOwnerSubscriptionManagement(t *testing.T) {
 			mustCode(err, 400, "EMAIL_VERIFICATION_REQUIRED")
 			exec(`UPDATE "user" SET "emailVerified"=? WHERE "id"=?`, true, uid)
 			_, err = a.Upgrade(ctx, upgrade)
-			mustCode(err, 409, "SUBSCRIPTION_ALREADY_EXISTS")
+			mustCode(err, 400, "ALREADY_SUBSCRIBED_PLAN")
+			beforeForeign := p.calls
 			cancellation := stripeclient.Cancellation{SubscriptionID: "sub_fixture", ReturnURL: "/billing", DisableRedirect: true}
 			_, err = b.Cancel(ctx, cancellation)
 			mustCode(err, 400, "SUBSCRIPTION_NOT_FOUND")
@@ -148,7 +150,7 @@ func TestOwnerSubscriptionManagement(t *testing.T) {
 			if err == nil {
 				t.Fatal("accepted foreign portal return")
 			}
-			if p.calls != 0 {
+			if p.calls != beforeForeign {
 				t.Fatal("foreign request reached billing provider")
 			}
 			page, err := a.Cancel(ctx, cancellation)

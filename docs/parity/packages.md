@@ -254,8 +254,10 @@ Each row tracks the behavior exposed by a published entry point. The Go implemen
   - [ ] Default interface (`.`)
     - [x] Reserve an owner-scoped checkout, send the configured recurring price and return the same checkout on retries ([test](../../adapters/sqlstore/subscriptions_test.go#L184))
     - [x] Reuse an existing Stripe customer when starting a monthly subscription ([test](../../adapters/sqlstore/subscriptions_test.go#L287))
-    - [x] Match the browser client's session, customer-type and foreign-reference errors before contacting Stripe ([test](../../conformance/stripe-lifecycle-fixture.mjs#L163))
-    - [x] Reject a missing plan and a subscription owned by another signed-in user ([test](../../conformance/stripe-lifecycle-fixture.mjs#L145))
+    - [x] Match the browser client's session, customer-type and foreign-reference errors before contacting Stripe ([test](../../conformance/stripe-lifecycle-fixture.mjs#L169))
+    - [x] Reject a missing plan and a subscription owned by another signed-in user ([test](../../conformance/stripe-lifecycle-fixture.mjs#L151))
+    - [x] Open monthly and annual confirmation pages for the owner’s existing subscription and preserve its price until Stripe confirms ([test](../../conformance/stripe-lifecycle-fixture.mjs#L215))
+    - [x] Reject pending changes, unsupported recurring items, foreign customers and a session revoked during Stripe’s reply on three SQL engines ([test](../../adapters/sqlstore/stripe_plan_change_test.go#L103))
   - [ ] Client integration (`./client`)
 
 ## Telemetry
