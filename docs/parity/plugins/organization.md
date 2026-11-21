@@ -40,7 +40,7 @@
   - [ ] `POST /organization/update-role`
   - [ ] `POST /organization/invite-member`
     - [x] Authorize the inviter, constrain role grants, and resend the same invitation ([test](../../../plugins/organization/organization_test.go#L128))
-    - [x] Require a live inviter session for invitation creation and resends ([test](../../../adapters/sqlstore/organization_cleanup_test.go#L160))
+    - [x] Require a live inviter session for invitation creation and resends ([test](../../../adapters/sqlstore/organization_cleanup_test.go#L169))
     - [x] Reject team IDs outside the invitation’s organization, including reserved delimiters ([test](../../../adapters/sqlstore/organization_teams_test.go#L123))
   - [ ] `POST /organization/accept-invitation`
     - [x] Accept a matching invitation once, even during concurrent requests ([test](../../../plugins/organization/organization_test.go#L153))

@@ -48,7 +48,9 @@ Browser membership changes check the acting account and session inside the datab
 
 ## Remove a member or leave
 
-Owners and admins can remove a member or an admin. Only an owner can remove another owner, and at least one owner must remain. A member can leave using their signed-in session. The SQL store serializes the final-owner check with each membership change.
+Owners and admins can remove a member or an admin. Only an owner can remove another owner, and these membership operations preserve at least one owner. A member can leave using their signed-in session. The SQL store serializes the final-owner check with each membership change.
+
+Deleting the entire user account also removes its memberships. If that account held an organization's only owner role, the organization stays in the database and its other members keep their current roles. To retain an owner, grant another account the owner role before deleting the existing owner's account. [Database test](../adapters/sqlstore/organization_cleanup_test.go)
 
 Pass a membership ID or the account's email as `memberIdOrEmail`. IDs are case-sensitive and belong to the named organization. Email lookup accepts mixed case. A membership from another organization returns `MEMBER_NOT_FOUND`. The removal response contains `member`. Email lookup also includes that member's public user profile. Leaving returns the caller's membership and public user profile directly.
 

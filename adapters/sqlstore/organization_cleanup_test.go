@@ -11,12 +11,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-sql-driver/mysql"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/stdlib"
 	auth "github.com/Stonewrit/stonewrit-auth"
 	org "github.com/Stonewrit/stonewrit-auth/plugins/organization"
 	"github.com/Stonewrit/stonewrit-auth/schema"
+	"github.com/go-sql-driver/mysql"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/stdlib"
 )
 
 // Use a separate database (MySQL) or schema (PostgreSQL) so profile migrations
@@ -139,7 +139,15 @@ func TestOrganizationAccountDeletion(t *testing.T) {
 			for _, u := range []auth.User{member, owner} {
 				exec(`INSERT INTO "teamMember" ("id","teamId","userId") VALUES(?,?,?)`, "tm-"+u.ID, "team", u.ID)
 			}
+			regular, _ := actor("regular")
+			must(s.AddOrganizationMember(ctx, org.Member{ID: "regular-m", OrganizationID: o.ID, UserID: regular.ID, Role: "member", CreatedAt: now}, ""))
 			must(bare.DeleteAccount(ctx, owner.ID, ownerSession.Token, "", "", now))
+			var remainingRole string
+			must(s.db.QueryRowContext(ctx, s.bind(`SELECT m."role" FROM "member" m JOIN "organization" o ON o."id"=m."organizationId" WHERE o."id"=? AND m."userId"=?`), o.ID, regular.ID).Scan(&remainingRole))
+			if remainingRole != "member" {
+				t.Fatalf("sole owner account deletion changed the regular membership role to %q", remainingRole)
+			}
+
 			count := func(expected int, q string, args ...any) {
 				t.Helper()
 				var n int
@@ -149,6 +157,7 @@ func TestOrganizationAccountDeletion(t *testing.T) {
 				}
 			}
 			count(0, `SELECT COUNT(*) FROM "member" WHERE "userId"=?`, owner.ID)
+			count(0, `SELECT COUNT(*) FROM "member" WHERE "organizationId"=? AND "role"='owner'`, o.ID)
 			count(0, `SELECT COUNT(*) FROM "teamMember" WHERE "userId"=?`, owner.ID)
 			count(0, `SELECT COUNT(*) FROM "invitation" WHERE "inviterId"=?`, owner.ID)
 			count(1, `SELECT COUNT(*) FROM "member" WHERE "userId"=?`, member.ID)

@@ -17,6 +17,7 @@ Each entry groups the configured endpoint’s behaviors. A checked child records
   - [ ] `changePassword` (`POST /change-password`)
     - [x] Change credentials for a signed-in user ([test](../../account_test.go#L63))
   - [ ] `deleteUser` (`POST /delete-user`)
+    - [x] Delete a sole owner’s account while retaining the organization and its remaining ordinary membership role ([test](../../adapters/sqlstore/organization_cleanup_test.go#L148))
     - [x] Delete the account with a fresh authenticated session ([test](../../account_lifecycle_test.go#L150))
     - [x] Remove account-owned invitations and membership rows and update team member totals on SQLite, MySQL and PostgreSQL ([test](../../adapters/sqlstore/organization_cleanup_test.go#L75))
   - [ ] `deleteUserCallback` (`GET /delete-user/callback`)

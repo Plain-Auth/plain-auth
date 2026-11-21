@@ -694,6 +694,11 @@
   ],
   "core/deleteUser": [
     {
+      "label": "Delete a sole owner’s account while retaining the organization and its remaining ordinary membership role",
+      "test": "adapters/sqlstore/organization_cleanup_test.go",
+      "marker": "sole owner account deletion changed the regular membership role"
+    },
+    {
       "label": "Delete the account with a fresh authenticated session",
       "test": "account_lifecycle_test.go",
       "marker": "fresh-session deletion failed"
