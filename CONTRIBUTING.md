@@ -29,7 +29,7 @@ npm --prefix conformance test
 
 ## Working in GitHub
 
-During private development, work directly on `main`. Update the local checkout with `git pull --ff-only origin main` before starting. Review `git diff` and `git status`, stage the files for one change, and use a specific commit message such as `feat: add PostgreSQL session storage` or `test: cover sign-out on Gin`. Run the relevant local checks and push with `git push origin main`.
+During private development, work directly on `main`. Update the local checkout with `git pull --ff-only origin main` before starting. Review `git diff` and `git status`, stage the files for one change, and use a specific commit message such as `feat: add PostgreSQL session storage` or `test: cover sign-out on Gin`. After committing, run `make verify-commit` with the test database and Chrome settings. This runs the suite against an archive of `HEAD`, so an uncommitted local file cannot hide a missing dependency. Push the verified commit with `git push origin main`.
 
 On GitHub, open the [feature checklist](docs/parity/README.md), follow the test link on a completed behavior, and use the file's **History** to find the implementing commit. Changes to checkboxes are reviewed alongside the feature implementation and test evidence. Keep credentials, local database files, and session cookie jars out of commits.
 
