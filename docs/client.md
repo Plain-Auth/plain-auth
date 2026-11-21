@@ -1,0 +1,51 @@
+# Go HTTP client
+
+Create one client per user session. An origin uses the default `/api/auth` mount. To use a custom mount, supply its full URL. The client keeps the session cookies returned by the auth server and sends them on subsequent requests.
+
+```go
+import (
+    "context"
+
+    authn "github.com/nabuhadba/go-better-auth"
+    "github.com/nabuhadba/go-better-auth/client"
+)
+
+func login(ctx context.Context, endpoint, email, password string) (*authn.SessionResult, error) {
+    c, err := client.New(endpoint, nil)
+    if err != nil {
+        return nil, err
+    }
+    result, err := c.SignInEmail(ctx, client.SignInRequest{Email: email, Password: password})
+    if err != nil {
+        return nil, err
+    }
+    if result.TwoFactorRedirect {
+        code, err := readAuthenticatorCode() // application UI
+        if err != nil {
+            return nil, err
+        }
+        if _, err := c.VerifyTOTP(ctx, code); err != nil {
+            return nil, err
+        }
+    }
+    return c.GetSession(ctx)
+}
+```
+
+`GetSession` returns `nil, nil` for an anonymous session. Typed methods also cover email signup, listing sessions, revoking one session, revoking other sessions, revoking all sessions and signing out. When an endpoint returns an HTTP error, `errors.As` exposes the numeric status along with the server’s error code and message. Caller cancellation passes through the supplied context.
+
+Use `c.Do(ctx, method, route, input, output)` for JSON plugin and account endpoints. Routes begin with a slash and are relative to the auth mount. Pass a Go struct or map as input and a pointer to decode the response, or use `nil` for either argument.
+
+To configure timeouts, transport or persistent cookie storage, pass an `*http.Client` as the second argument to `client.New`. Clients get separate in-memory cookies by default. A supplied jar is shared with its owner. Redirects require an explicit same-origin redirect policy. The client retains the server's JSON redirect flag and callback URL for the application to handle.
+
+## Account and credential methods
+
+| Workflow | Client methods |
+| --- | --- |
+| Edit the profile or email | `UpdateUser`, `ChangeEmail`, `SendVerificationEmail`, `VerifyEmail` |
+| Change a password or recover an account | `VerifyPassword`, `ChangePassword`, `RequestPasswordReset`, `ResetPassword` |
+| Inspect linked identities or delete the account | `ListAccounts`, `UnlinkAccount`, `DeleteAccount` |
+| Enroll an authenticator and replace recovery codes | `EnableTOTP`, `TOTPURI`, `VerifyTOTP`, `GenerateBackupCodes`, `DisableTOTP` |
+| Complete sign-in with a recovery code | `VerifyBackupCode` |
+
+Use the same client for sign-in and second-factor verification so the challenge cookie reaches the verification handler. The [native client integration test](../client/account_test.go) exercises these methods through the mounted API, including recovery, email changes, and account deletion.
