@@ -41,6 +41,8 @@ type OAuthProvider struct {
 	AllowVerifiedEmailLink bool
 	// DisableSignUp prevents this provider from creating new accounts.
 	DisableSignUp bool
+	// DisableImplicitSignUp requires requestSignUp for new browser and direct ID-token accounts.
+	DisableImplicitSignUp bool
 	// GoogleHostedDomain restricts the verified Google Workspace hd claim. Use * for any Workspace.
 	GoogleHostedDomain  string
 	AuthorizationParams url.Values
@@ -52,6 +54,7 @@ type OAuthProvider struct {
 // OAuthFlow is the temporary state of a browser authorization. Binding ties a
 // request to the initiating browser, provider and existing session.
 type OAuthFlow struct {
+	RequestSignUp                                     bool   `json:",omitempty"`
 	AnonymousSessionProof                             string `json:",omitempty"`
 	State, Binding, Provider, Verifier, Nonce         string
 	CallbackURL, ErrorCallbackURL, NewUserCallbackURL string

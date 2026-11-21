@@ -993,3 +993,8 @@ test("the official admin client assigns, clears and explicitly verifies phone nu
   const { comparePhoneAdministration } = await import("./phone-admin-contract.mjs");
   await comparePhoneAdministration(t, { reference, goFixture, instrument });
 });
+
+test("explicit social signup is bound to the initiating request on both runtimes", async t => {
+  const { explicitSignup } = await import("./social-signup.mjs");
+  await explicitSignup(t, { reference, goFixture, instrument });
+});

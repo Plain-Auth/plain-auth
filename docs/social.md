@@ -165,3 +165,15 @@ opts.SocialProviders = map[string]auth.OAuthProvider{"company": company}
 ```
 
 The preset discovers the tenant’s signing keys, requests `openid profile email`, and binds each account to the directory object ID from the signed ID token. It checks the issuer, audience, tenant, nonce and token lifetime. Microsoft Graph can fill missing name, email and picture fields when its UserInfo subject matches the signed subject. An absent email receives a stable, unverified address ending in `@microsoft-entra-id.placeholder.invalid`. An email verification flag from Graph applies only to the same email address. [Microsoft ID token claims](https://learn.microsoft.com/en-us/entra/identity-platform/id-token-claims-reference) · [Microsoft UserInfo](https://learn.microsoft.com/en-us/entra/identity-platform/userinfo)
+
+## Require explicit registration
+
+Set `DisableImplicitSignUp` on a provider when an existing user can sign in directly but a first-time user must choose to register. Persist that choice with the initiating sign-in. The callback reads it from single-use server state. Setting `DisableSignUp` on the server or provider still closes new registrations.
+
+```go
+work := providers.GitHub(clientID, secret)
+work.DisableImplicitSignUp = true
+opts.SocialProviders = map[string]auth.OAuthProvider{"work": work}
+```
+
+Post `{"provider":"work","requestSignUp":true}` to `/sign-in/social` from the registration button. Omit `requestSignUp` from the returning-user button. The Go client exposes the same choice through `client.SocialSignInRequest.RequestSignUp`. Keep the browser’s state cookie through the callback.

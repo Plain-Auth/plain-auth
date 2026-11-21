@@ -1,0 +1,42 @@
+package client
+
+import (
+	"context"
+	"net/http"
+
+	auth "github.com/Stonewrit/stonewrit-auth"
+)
+
+// SocialSignInRequest starts a browser flow or exchanges a provider's ID token.
+// RequestSignUp opts in to creating a new account for this sign-in.
+type SocialSignInRequest struct {
+	Provider           string         `json:"provider"`
+	CallbackURL        string         `json:"callbackURL,omitempty"`
+	NewUserCallbackURL string         `json:"newUserCallbackURL,omitempty"`
+	ErrorCallbackURL   string         `json:"errorCallbackURL,omitempty"`
+	RequestSignUp      bool           `json:"requestSignUp,omitempty"`
+	DisableRedirect    bool           `json:"disableRedirect,omitempty"`
+	IDToken            *SocialIDToken `json:"idToken,omitempty"`
+}
+
+type SocialIDToken struct {
+	Token string `json:"token"`
+	Nonce string `json:"nonce"`
+}
+
+type SocialSignInResult struct {
+	URL      string     `json:"url"`
+	Redirect bool       `json:"redirect"`
+	Token    string     `json:"token"`
+	User     *auth.User `json:"user"`
+}
+
+// SignInSocial calls the provider registered under in.Provider.
+// For browser sign-in present the returned URL in the browser that owns the state cookie.
+func (c *Client) SignInSocial(ctx context.Context, in SocialSignInRequest) (*SocialSignInResult, error) {
+	var result SocialSignInResult
+	if err := c.Do(ctx, http.MethodPost, "/sign-in/social", in, &result); err != nil {
+		return nil, err
+	}
+	return &result, nil
+}

@@ -859,6 +859,16 @@
       "label": "Start an OAuth authorization flow with PKCE and browser state",
       "test": "oauth_test.go",
       "marker": "func TestOAuthBrowserFlow("
+    },
+    {
+      "label": "Use a one-time browser state to carry the first-time registration choice and allow returning users to sign in",
+      "test": "conformance/social-signup.mjs",
+      "marker": "export async function explicitSignup("
+    },
+    {
+      "label": "Enforce explicit registration for both browser and direct ID-token sign-in while honoring closed registrations",
+      "test": "oauth_signup_test.go",
+      "marker": "func TestOAuthExplicitRegistration("
     }
   ],
   "core/callbackOAuth": [

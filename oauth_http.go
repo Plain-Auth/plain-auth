@@ -83,6 +83,10 @@ func (a *Auth) startOAuth(w http.ResponseWriter, r *http.Request, link bool) err
 			return fieldTypeError("disableRedirect", "boolean", body)
 		}
 	}
+	requestSignUp, ok := body["requestSignUp"].(bool)
+	if _, present := body["requestSignUp"]; present && !ok {
+		return fieldTypeError("requestSignUp", "boolean", body)
+	}
 	linkUserID := ""
 	if link {
 		current, err := a.requireOwnerSession(r.Context(), r.Header)
@@ -92,13 +96,14 @@ func (a *Auth) startOAuth(w http.ResponseWriter, r *http.Request, link bool) err
 		linkUserID = current.User.ID
 	}
 	if value, found := body["idToken"]; found {
-		return a.directOAuth(w, r, id, p, value, linkUserID)
+		return a.directOAuth(w, r, id, p, value, linkUserID, requestSignUp)
 	}
 	browser := randomID()
 	now := a.now().UTC()
 	flow := OAuthFlow{State: randomID(), Binding: a.oauthBinding(browser, id, r), Provider: id, Verifier: oauth2.GenerateVerifier(),
 		Nonce: randomID(), ExpiresAt: now.Add(10 * time.Minute)}
 	flow.LinkUserID = linkUserID
+	flow.RequestSignUp = requestSignUp
 	if a.anonymous != nil && !link {
 		guest, err := a.guestToken(r)
 		if err != nil {
@@ -248,7 +253,14 @@ func (a *Auth) finishOAuth(w http.ResponseWriter, r *http.Request, id string) er
 	if lifetime := refreshLifetime(token); lifetime > 0 {
 		tokens.RefreshExpiresAt = a.now().Add(lifetime)
 	}
-	result, created, err := a.completeProfile(ctx, r, id, profile, tokens, OAuthLoginOptions{AllowVerifiedEmailLink: p.AllowVerifiedEmailLink, LinkUserID: flow.LinkUserID, LinkSessionToken: a.cookieToken(r.Header)})
+	result, created, err := a.completeProfile(ctx, r, id, profile, tokens, OAuthLoginOptions{DisableSignUp: p.DisableImplicitSignUp && !flow.RequestSignUp, AllowVerifiedEmailLink: p.AllowVerifiedEmailLink, LinkUserID: flow.LinkUserID, LinkSessionToken: a.cookieToken(r.Header)})
+	var signupError *APIError
+	if errors.As(err, &signupError) && signupError.Code == "SIGN_UP_DISABLED" {
+		if flow.ErrorCallbackURL == "" {
+			flow.ErrorCallbackURL = a.opts.BaseURL + a.opts.BasePath + "/error"
+		}
+		return fail("signup_disabled")
+	}
 	if errors.Is(err, ErrOAuthLinkRequired) || errors.Is(err, ErrNotFound) {
 		return fail("ACCOUNT_NOT_LINKED")
 	}
@@ -339,7 +351,7 @@ func (a *Auth) completeProfile(ctx context.Context, r *http.Request, id string, 
 	return AuthResult{User: user, Token: raw}, created, err
 }
 
-func (a *Auth) directOAuth(w http.ResponseWriter, r *http.Request, id string, p OAuthProvider, value any, linkUserID string) error {
+func (a *Auth) directOAuth(w http.ResponseWriter, r *http.Request, id string, p OAuthProvider, value any, linkUserID string, requestSignUp bool) error {
 	if p.VerifyIDToken == nil {
 		return &APIError{404, "ID_TOKEN_NOT_SUPPORTED", "Provider does not support ID token sign-in"}
 	}
@@ -360,7 +372,11 @@ func (a *Auth) directOAuth(w http.ResponseWriter, r *http.Request, id string, p 
 	}
 	// Direct grants authenticate the signed ID token. A client-supplied access
 	// or refresh token has no independently verified binding to its subject.
-	account, _, err := a.completeProfile(ctx, r, id, profile, OAuthTokens{IDToken: raw}, OAuthLoginOptions{AllowVerifiedEmailLink: p.AllowVerifiedEmailLink, LinkUserID: linkUserID, LinkSessionToken: a.cookieToken(r.Header), IDTokenValidUntil: expires})
+	account, _, err := a.completeProfile(ctx, r, id, profile, OAuthTokens{IDToken: raw}, OAuthLoginOptions{DisableSignUp: p.DisableImplicitSignUp && !requestSignUp, AllowVerifiedEmailLink: p.AllowVerifiedEmailLink, LinkUserID: linkUserID, LinkSessionToken: a.cookieToken(r.Header), IDTokenValidUntil: expires})
+	var signupError *APIError
+	if errors.As(err, &signupError) && signupError.Code == "SIGN_UP_DISABLED" {
+		return &APIError{401, "OAUTH_LINK_ERROR", "signup disabled"}
+	}
 	if errors.Is(err, ErrIDTokenUsed) {
 		return &APIError{401, "INVALID_TOKEN", "Invalid token"}
 	}

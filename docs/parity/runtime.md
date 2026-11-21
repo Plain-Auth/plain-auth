@@ -65,6 +65,8 @@ Each entry groups the configured endpoint’s behaviors. A checked child records
     - [x] Require an enrolled second factor for native and HTTP credential sign-in ([test](../../adapters/sqlstore/twofactor_test.go#L145))
   - [ ] `signInSocial` (`POST /sign-in/social`)
     - [x] Start an OAuth authorization flow with PKCE and browser state ([test](../../oauth_test.go#L20))
+    - [x] Use a one-time browser state to carry the first-time registration choice and allow returning users to sign in ([test](../../conformance/social-signup.mjs#L4))
+    - [x] Enforce explicit registration for both browser and direct ID-token sign-in while honoring closed registrations ([test](../../oauth_signup_test.go#L20))
   - [ ] `signOut` (`POST /sign-out`)
     - [x] Clear the client's session cookies and return an anonymous session ([test](../../conformance/core.test.mjs#L206))
   - [ ] `signUpEmail` (`POST /sign-up/email`)
