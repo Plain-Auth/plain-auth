@@ -1,6 +1,6 @@
 # Email one-time passwords
 
-Use a mailbox code to verify an address, sign in, register an account, recover a password or change a verified address. The SQL adapters store challenges in the existing verification table. Configure the sender to deliver each code to the message's email address.
+Use a mailbox code to verify an address, sign in, register an account, recover a password or change a verified address. The SQL adapters store challenges in the existing verification table. The memory adapter holds proofs for the lifetime of its store. Configure the sender to deliver each code to the message's email address.
 
 ```go
 plugin, err := emailotp.New(emailotp.Options{

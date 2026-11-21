@@ -21,6 +21,8 @@ type credential struct {
 
 // Store is safe to share among handlers. Its data lasts for the lifetime of the instance.
 type Store struct {
+	emailOTPs map[mailKey]mailProof
+	nextProof uint64
 	deletions map[string]auth.PasswordResetToken
 	resets    map[string]auth.PasswordResetToken
 	mu        sync.RWMutex
@@ -30,7 +32,7 @@ type Store struct {
 }
 
 func New() *Store {
-	return &Store{deletions: make(map[string]auth.PasswordResetToken), resets: make(map[string]auth.PasswordResetToken), users: make(map[string]credential), emailToID: make(map[string]string), sessions: make(map[string]auth.StoredSession)}
+	return &Store{emailOTPs: make(map[mailKey]mailProof), deletions: make(map[string]auth.PasswordResetToken), resets: make(map[string]auth.PasswordResetToken), users: make(map[string]credential), emailToID: make(map[string]string), sessions: make(map[string]auth.StoredSession)}
 }
 
 var _ auth.Store = (*Store)(nil)

@@ -7,17 +7,24 @@ import (
 	"testing"
 
 	auth "github.com/nabuhadba/go-better-auth"
+	"github.com/nabuhadba/go-better-auth/adapters/memory"
 	"github.com/nabuhadba/go-better-auth/adapters/sqlite"
 	"github.com/nabuhadba/go-better-auth/client"
 	"github.com/nabuhadba/go-better-auth/plugins/emailotp"
 )
 
 func TestNativeEmailOTPClient(t *testing.T) {
-	s, err := sqlite.Open(":memory:")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer s.Close()
+	t.Run("memory", func(t *testing.T) { runNativeEmailOTPClient(t, memory.New()) })
+	t.Run("sqlite", func(t *testing.T) {
+		s, err := sqlite.Open(":memory:")
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer s.Close()
+		runNativeEmailOTPClient(t, s)
+	})
+}
+func runNativeEmailOTPClient(t *testing.T, s auth.Store) {
 	var delivery emailotp.Message
 	p, err := emailotp.New(emailotp.Options{StoreOTP: "encrypted", ChangeEmail: emailotp.ChangeOptions{Enabled: true, VerifyCurrentEmail: true}, Send: func(_ context.Context, m emailotp.Message) error { delivery = m; return nil }})
 	if err != nil {
