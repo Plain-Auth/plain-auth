@@ -247,6 +247,9 @@ func (a *Auth) handleEmail(route string, w http.ResponseWriter, r *http.Request,
 	var result AuthResult
 	var err error
 	if signup {
+		if value, present := body["phoneNumber"]; a.phoneNumber != nil && present && value != nil && value != "" {
+			return nil, &APIError{400, "PHONE_NUMBER_CANNOT_BE_SET", "Phone number can only be set by verifying it"}
+		}
 		in := SignUpInput{Name: body["name"].(string), Email: email, Password: password, Image: image}
 		if a.username != nil {
 			in.Username, in.DisplayUsername, err = usernameInput(body)

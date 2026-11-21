@@ -5360,5 +5360,201 @@
       "test": "adapters/sqlstore/scim_test.go",
       "marker": "func TestSCIMDirectoryLifecycle("
     }
+  ],
+  "plugin/phone-number/POST /sign-in/phone-number": [
+    {
+      "label": "Return a session after a valid password and challenge an enrolled account",
+      "test": "adapters/sqlstore/phone_accounts_test.go",
+      "marker": "phone password sign-in bypassed MFA"
+    }
+  ],
+  "plugin/phone-number/POST /phone-number/send-otp": [
+    {
+      "label": "Deliver a fresh code through the Go SDK and persist its attempt counter",
+      "test": "adapters/sqlstore/phone_test.go",
+      "marker": "canonical verification row mismatch"
+    }
+  ],
+  "plugin/phone-number/POST /phone-number/verify": [
+    {
+      "label": "Verify a first-use number, suppress session creation, link to an owner and reject reuse",
+      "test": "conformance/phone-contract.mjs",
+      "marker": "assert.equal(linked.data.token,previous)"
+    }
+  ],
+  "plugin/phone-number/POST /phone-number/request-password-reset": [
+    {
+      "label": "Hide unknown and unverified users from reset callers and suppress ineligible SMS",
+      "test": "adapters/sqlstore/phone_accounts_test.go",
+      "marker": "unverified reset leaked a delivery"
+    }
+  ],
+  "plugin/phone-number/POST /phone-number/reset-password": [
+    {
+      "label": "Reset the verified owner’s credential once and reject a proof after ownership changes",
+      "test": "adapters/sqlstore/phone_accounts_test.go",
+      "marker": "other.ResetPhonePassword(ctx, number, stale"
+    }
+  ],
+  "plugin/phone-number/ consumePhoneNumberOTP (server API only)": [
+    {
+      "label": "Spend a code exactly once across competing processes and keep the operation off HTTP",
+      "test": "adapters/sqlstore/phone_test.go",
+      "marker": "native consume exposed over HTTP"
+    }
+  ],
+  "plugin-symbol/phone-number/phoneNumberClient": [
+    {
+      "label": "Run signup, verification, recovery, password sign-in and owner linking on both HTTP servers",
+      "test": "conformance/phone-contract.mjs",
+      "marker": "export async function comparePhone("
+    }
+  ],
+  "plugin-symbol/phone-number/UserWithPhoneNumber": [
+    {
+      "label": "Return the verified phone number and clear the verification flag on disassociation",
+      "test": "conformance/phone-contract.mjs",
+      "marker": "assert.equal(cleared.phoneNumberVerified,false)"
+    }
+  ],
+  "plugin-symbol/phone-number/PhoneNumberOptions/sendOTP": [
+    {
+      "label": "Deliver verification SMS via an injected callback",
+      "test": "adapters/sqlstore/phone_test.go",
+      "marker": "invalid SMS delivery"
+    }
+  ],
+  "plugin-symbol/phone-number/PhoneNumberOptions/verifyOTP": [
+    {
+      "label": "Bind a custom verifier’s decision to its original issuance",
+      "test": "adapters/sqlstore/phone_accounts_test.go",
+      "marker": "stale provider verdict spent the new issuance"
+    }
+  ],
+  "plugin-symbol/phone-number/PhoneNumberOptions/sendPasswordResetOTP": [
+    {
+      "label": "Deliver reset messages only for eligible accounts",
+      "test": "adapters/sqlstore/phone_accounts_test.go",
+      "marker": "recovery did not use its own delivery channel"
+    }
+  ],
+  "plugin-symbol/phone-number/PhoneNumberOptions/phoneNumberValidator": [
+    {
+      "label": "Reject a number before invoking the delivery adapter",
+      "test": "adapters/sqlstore/phone_test.go",
+      "marker": "invalid number was delivered"
+    }
+  ],
+  "plugin-symbol/phone-number/PhoneNumberOptions/requireVerification": [
+    {
+      "label": "Gate imported unverified phone credentials and request a verification proof",
+      "test": "adapters/sqlstore/phone_accounts_test.go",
+      "marker": "unverified sign-in failed to request proof"
+    }
+  ],
+  "plugin-symbol/phone-number/PhoneNumberOptions/callbackOnVerification": [
+    {
+      "label": "Run the callback on confirmed signup, existing-account verification and owner linking",
+      "test": "adapters/sqlstore/phone_accounts_test.go",
+      "marker": "callback called %d times"
+    }
+  ],
+  "plugin-symbol/phone-number/PhoneNumberOptions/signUpOnVerification": [
+    {
+      "label": "Generate the first account’s unique email and name from its verified phone",
+      "test": "adapters/sqlstore/phone_accounts_test.go",
+      "marker": "unexpected phone signup fields"
+    }
+  ],
+  "plugin-symbol/phone-number/PhoneNumberOptions/expiresIn": [
+    {
+      "label": "Expire a proof then remove its storage row",
+      "test": "adapters/sqlstore/phone_test.go",
+      "marker": "444444\"), 400, \"OTP_EXPIRED\""
+    }
+  ],
+  "plugin-symbol/phone-number/PhoneNumberOptions/allowedAttempts": [
+    {
+      "label": "Honor a configured zero-attempt budget and default wrong-code limits",
+      "test": "adapters/sqlstore/phone_accounts_test.go",
+      "marker": "disabled.ConsumePhoneNumberOTP(ctx, n, \"any\")"
+    }
+  ],
+  "docs/content/docs/plugins/phone-number.mdx#L71": [
+    {
+      "label": "Request a six-digit code with the released browser client",
+      "test": "conformance/phone-contract.mjs",
+      "marker": "{message:\"code sent\"}"
+    }
+  ],
+  "docs/content/docs/plugins/phone-number.mdx#L86": [
+    {
+      "label": "Verify without a session, then reject replay",
+      "test": "conformance/phone-contract.mjs",
+      "marker": "assert.equal(quiet.data.token,null)"
+    }
+  ],
+  "docs/content/docs/plugins/phone-number.mdx#L114": [
+    {
+      "label": "Expose single-use verification to server applications without account actions",
+      "test": "adapters/sqlstore/phone_test.go",
+      "marker": "phone OTP was consumed %d times"
+    }
+  ],
+  "docs/content/docs/plugins/phone-number.mdx#L141": [
+    {
+      "label": "Create a first-use account with configured email and name",
+      "test": "adapters/sqlstore/phone_accounts_test.go",
+      "marker": "unexpected phone signup fields"
+    }
+  ],
+  "docs/content/docs/plugins/phone-number.mdx#L183": [
+    {
+      "label": "Sign in using the canonical account credential",
+      "test": "conformance/phone-contract.mjs",
+      "marker": "assert.equal(login.data.user.id,quiet.data.user.id)"
+    }
+  ],
+  "docs/content/docs/plugins/phone-number.mdx#L210": [
+    {
+      "label": "Keep the same authenticated session while linking a verified number",
+      "test": "adapters/sqlstore/phone_accounts_test.go",
+      "marker": "link did not preserve the owner's session"
+    }
+  ],
+  "docs/content/docs/plugins/phone-number.mdx#L234": [
+    {
+      "label": "Clear both the number and verified flag on the owner profile",
+      "test": "adapters/sqlstore/phone_accounts_test.go",
+      "marker": "disassociation retained verified status"
+    }
+  ],
+  "docs/content/docs/plugins/phone-number.mdx#L248": [
+    {
+      "label": "Verify without granting a session",
+      "test": "adapters/sqlstore/phone_accounts_test.go",
+      "marker": "disableSession issued a session"
+    }
+  ],
+  "docs/content/docs/plugins/phone-number.mdx#L262": [
+    {
+      "label": "Reset a credential, revoke sessions and deny reuse",
+      "test": "adapters/sqlstore/phone_accounts_test.go",
+      "marker": "reset failed to revoke original session"
+    }
+  ],
+  "docs/content/docs/plugins/phone-number.mdx#L346": [
+    {
+      "label": "Reject a stale external verdict after another instance resends the code",
+      "test": "adapters/sqlstore/phone_accounts_test.go",
+      "marker": "stale provider verdict spent the new issuance"
+    }
+  ],
+  "docs/content/docs/plugins/phone-number.mdx#L418": [
+    {
+      "label": "Spend one shared attempt budget and permit only a single concurrent success",
+      "test": "adapters/sqlstore/phone_test.go",
+      "marker": "phone OTP was consumed %d times"
+    }
   ]
 }

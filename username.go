@@ -306,6 +306,9 @@ func usernameInput(body map[string]any) (*string, *string, error) {
 // readPublicUserFields fills fields from optional plugins after an authentication
 // method has retrieved its core profile. A pending challenge has no public user.
 func (a *Auth) readPublicUserFields(ctx context.Context, user *User) error {
+	if err := a.readPhone(ctx, user); err != nil {
+		return err
+	}
 	if err := a.readGuestFlag(ctx, user); err != nil {
 		return err
 	}

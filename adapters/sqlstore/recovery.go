@@ -51,6 +51,10 @@ func (s *Store) updateProfile(ctx context.Context, db executor, userID string, p
 		fields = append(fields, `"displayUsername"=?`)
 		args = append(args, *patch.DisplayUsername)
 	}
+	if patch.ClearPhoneNumber {
+		fields = append(fields, `"phoneNumber"=NULL`, `"phoneNumberVerified"=?`)
+		args = append(args, false)
+	}
 	args = append(args, userID)
 	_, err := db.ExecContext(ctx, s.bind(`UPDATE "user" SET `+strings.Join(fields, ", ")+` WHERE "id" = ?`), args...)
 	if patch.Username != nil && duplicateConstraint(err) {
@@ -94,6 +98,9 @@ func (s *Store) CreateCredentialSession(ctx context.Context, expectedHash string
 	}
 	defer tx.Rollback()
 	if err = s.lockAccount(ctx, tx, ss.UserID); err != nil {
+		return err
+	}
+	if err = s.checkPhoneLogin(ctx, tx, ss.UserID); err != nil {
 		return err
 	}
 	hash, err := s.credentialHash(ctx, tx, ss.UserID)

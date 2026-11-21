@@ -12,6 +12,7 @@ import (
 // ProfileUpdate changes the supplied fields. A Clear flag removes its field and
 // takes precedence over a supplied value.
 type ProfileUpdate struct {
+	ClearPhoneNumber                                bool
 	Username, DisplayUsername                       *string
 	Name, Image                                     *string
 	ClearImage, ClearUsername, ClearDisplayUsername bool
@@ -61,6 +62,14 @@ func (a *Auth) UpdateUser(ctx context.Context, h http.Header, update ProfileUpda
 	if err != nil {
 		return err
 	}
+	if update.ClearPhoneNumber {
+		if a.phoneNumber == nil {
+			return &APIError{400, "BAD_REQUEST", "Phone number is not enabled"}
+		}
+		if err := session.Session.RequireOwner(); err != nil {
+			return err
+		}
+	}
 	if session.Session.IsApplicationCredential() && (update.hasUsernameChange() || !session.Session.AllowsCredentialAction("user", "update")) {
 		return &APIError{403, "OWNER_SESSION_REQUIRED", "This profile operation requires a direct login"}
 	}
@@ -95,6 +104,13 @@ func (a *Auth) UpdateUser(ctx context.Context, h http.Header, update ProfileUpda
 	}
 	update.Username, update.DisplayUsername = nil, nil
 	update.ClearUsername, update.ClearDisplayUsername = false, false
+	if update.ClearPhoneNumber {
+		err := a.opts.Store.(PhoneAccountStore).ClearPhoneProfile(ctx, session.User.ID, session.Session.Token, update, a.now().UTC())
+		if errors.Is(err, ErrNotFound) {
+			return &APIError{401, "UNAUTHORIZED", "Unauthorized"}
+		}
+		return err
+	}
 	if update.Name == nil && update.Image == nil && !update.ClearImage {
 		return &APIError{400, "BAD_REQUEST", "No fields to update"}
 	}

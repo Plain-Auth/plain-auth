@@ -41,6 +41,9 @@ func New() *Store {
 var _ auth.Store = (*Store)(nil)
 
 func copyUser(u auth.User) auth.User {
+	if u.PhoneNumberFields != nil {
+		u.PhoneNumberFields = clonePhone(u.PhoneNumberFields)
+	}
 	if u.UsernameFields != nil {
 		u.UsernameFields = cloneUsername(u.UsernameFields, u.DisplayUsernameFields != nil)
 	}
@@ -60,6 +63,11 @@ func (s *Store) CreateUser(ctx context.Context, u auth.User, hash string, first 
 	defer s.mu.Unlock()
 	if err := ctx.Err(); err != nil {
 		return err
+	}
+	if f := u.PhoneNumberFields; f != nil && f.PhoneNumber != nil {
+		if id, _ := s.phoneHolder(*f.PhoneNumber); id != "" {
+			return auth.ErrPhoneNumberExists
+		}
 	}
 	if f := u.UsernameFields; f != nil && f.Username != nil && s.usernameOwner(*f.Username) != "" {
 		return auth.ErrUsernameTaken

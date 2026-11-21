@@ -8,6 +8,8 @@ The OpenAPI plugin publishes a machine-readable schema and a local API reference
 
 The SCIM handler wraps the auth handler and serves directory provisioning under its existing mount. [SCIM directory Users](scim.md)
 
+The phone-number plugin supports verified numbers, account linking, sign-in and password recovery. [Phone-number guide](phone-number.md)
+
 ## Create a session-aware endpoint
 
 ```go

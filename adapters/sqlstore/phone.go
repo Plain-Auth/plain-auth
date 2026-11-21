@@ -39,32 +39,29 @@ func (s *Store) phoneIdentifierMatch() string {
 	return `"identifier"=?`
 }
 func (s *Store) SavePhoneOTP(ctx context.Context, r auth.PhoneOTPRecord) error {
-	key := phoneProofKey(r.PhoneNumber, r.Purpose)
-	return s.emailOTPTransaction(ctx, key, func(tx *sql.Tx) (error, error) {
-		if _, err := tx.ExecContext(ctx, s.bind(`DELETE FROM "verification" WHERE `+s.phoneIdentifierMatch()), key.identifier); err != nil {
-			return nil, err
-		}
-		now := s.date(r.CreatedAt)
-		_, err := tx.ExecContext(ctx, s.bind(`INSERT INTO "verification" ("id","identifier","value","expiresAt","createdAt","updatedAt") VALUES(?,?,?,?,?,?)`), r.ID, key.identifier, r.Code+":0", s.date(r.ExpiresAt), now, now)
-		return nil, err
-	})
+	_, err := s.savePhone(ctx, r, false)
+	return err
 }
 func (s *Store) ConsumePhoneOTP(ctx context.Context, u auth.PhoneOTPUse) error {
 	key := phoneProofKey(u.PhoneNumber, u.Purpose)
 	return s.emailOTPTransaction(ctx, key, func(tx *sql.Tx) (error, error) {
-		rec, err := s.readPhoneProof(ctx, tx, key)
-		if err != nil {
-			return nil, err
-		}
-		decision, denied := u.Check(rec)
-		switch decision {
-		case auth.PhoneCountAttempt:
-			_, err = tx.ExecContext(ctx, s.bind(`UPDATE "verification" SET "value"=?,"updatedAt"=? WHERE "id"=?`), rec.Code+":"+strconv.Itoa(rec.Attempts+1), s.date(u.Now), rec.ID)
-		case auth.PhoneRemoveProof:
-			_, err = tx.ExecContext(ctx, s.bind(`DELETE FROM "verification" WHERE `+s.phoneIdentifierMatch()), key.identifier)
-		}
+		_, denied, err := s.consumePhoneProof(ctx, tx, key, u)
 		return denied, err
 	})
+}
+func (s *Store) consumePhoneProof(ctx context.Context, tx *sql.Tx, key emailOTPKey, u auth.PhoneOTPUse) (*auth.PhoneOTPRecord, error, error) {
+	rec, err := s.readPhoneProof(ctx, tx, key)
+	if err != nil {
+		return nil, nil, err
+	}
+	decision, denied := u.Check(rec)
+	switch decision {
+	case auth.PhoneCountAttempt:
+		_, err = tx.ExecContext(ctx, s.bind(`UPDATE "verification" SET "value"=?,"updatedAt"=? WHERE "id"=?`), rec.Code+":"+strconv.Itoa(rec.Attempts+1), s.date(u.Now), rec.ID)
+	case auth.PhoneRemoveProof:
+		err = s.removePhoneProof(ctx, tx, key)
+	}
+	return rec, denied, err
 }
 func (s *Store) readPhoneProof(ctx context.Context, tx *sql.Tx, key emailOTPKey) (*auth.PhoneOTPRecord, error) {
 	var rec auth.PhoneOTPRecord
@@ -84,5 +81,5 @@ func (s *Store) readPhoneProof(ctx context.Context, tx *sql.Tx, key emailOTPKey)
 			return nil, errors.New("invalid phone OTP attempt count")
 		}
 	}
-	return &rec, nil
+	return &rec, s.bindPhoneProof(ctx, tx, &rec, key)
 }

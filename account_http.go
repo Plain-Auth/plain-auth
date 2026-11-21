@@ -86,6 +86,14 @@ func (a *Auth) handleAccountRequest(route string, w http.ResponseWriter, r *http
 				return nil, err
 			}
 		}
+		if a.phoneNumber != nil {
+			if value, present := b["phoneNumber"]; present {
+				if value != nil {
+					return nil, &APIError{400, "PHONE_NUMBER_CANNOT_BE_UPDATED", "Phone number cannot be updated"}
+				}
+				update.ClearPhoneNumber = true
+			}
+		}
 		if _, exists := b["name"]; exists {
 			name, err := requiredString(b, "name")
 			if err != nil {

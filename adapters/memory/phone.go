@@ -18,11 +18,22 @@ func (s *Store) SavePhoneOTP(ctx context.Context, r auth.PhoneOTPRecord) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
+	s.savePhoneLocked(r)
+	return nil
+}
+func (s *Store) savePhoneLocked(r auth.PhoneOTPRecord) {
+	for key, old := range s.phoneOTPs {
+		if !old.ExpiresAt.After(r.CreatedAt) {
+			delete(s.phoneOTPs, key)
+		}
+	}
+	_, owner := s.phoneHolder(r.PhoneNumber)
+	r.OwnerBound = true
+	r.BoundOwner = owner.user.ID
 	if s.phoneOTPs == nil {
 		s.phoneOTPs = map[phoneKey]auth.PhoneOTPRecord{}
 	}
 	s.phoneOTPs[phoneKey{r.PhoneNumber, r.Purpose}] = r
-	return nil
 }
 func (s *Store) ConsumePhoneOTP(ctx context.Context, u auth.PhoneOTPUse) error {
 	s.mu.Lock()
@@ -30,6 +41,10 @@ func (s *Store) ConsumePhoneOTP(ctx context.Context, u auth.PhoneOTPUse) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
+	_, err := s.consumePhoneLocked(u)
+	return err
+}
+func (s *Store) consumePhoneLocked(u auth.PhoneOTPUse) (auth.PhoneOTPRecord, error) {
 	key := phoneKey{u.PhoneNumber, u.Purpose}
 	r, ok := s.phoneOTPs[key]
 	var record *auth.PhoneOTPRecord
@@ -44,5 +59,5 @@ func (s *Store) ConsumePhoneOTP(ctx context.Context, u auth.PhoneOTPUse) error {
 	case auth.PhoneRemoveProof:
 		delete(s.phoneOTPs, key)
 	}
-	return err
+	return r, err
 }

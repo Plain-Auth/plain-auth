@@ -978,3 +978,8 @@ test("SCIM directory Users interoperate through both HTTP handlers and the same 
   const { directoryContract } = await import("./scim-contract.mjs");
   await directoryContract(t, goFixture);
 });
+
+test("the official phone client verifies, links and recovers accounts on both runtimes", async (t) => {
+  const { comparePhone } = await import("./phone-contract.mjs");
+  await comparePhone(t, { reference, goFixture, instrument });
+});

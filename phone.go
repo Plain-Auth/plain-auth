@@ -21,20 +21,32 @@ type PhoneOTPMessage struct {
 	Purpose           PhoneOTPPurpose
 }
 type PhoneNumberOptions struct {
-	SendOTP                    func(context.Context, PhoneOTPMessage) error
-	Validate                   func(context.Context, string) (bool, error)
-	OTPLength, AllowedAttempts int
-	ExpiresIn                  time.Duration
+	SendPasswordResetOTP func(context.Context, PhoneOTPMessage) error
+	VerifyOTP            func(context.Context, PhoneOTPMessage) (bool, error)
+	OnVerification       func(context.Context, string, User) error
+	SignUpOnVerification *PhoneSignUpOptions
+	RequireVerification  bool
+	SendOTP              func(context.Context, PhoneOTPMessage) error
+	Validate             func(context.Context, string) (bool, error)
+	OTPLength            int
+	// AllowedAttempts defaults to three. An explicit zero rejects every proof.
+	AllowedAttempts *int
+	ExpiresIn       time.Duration
 }
 
 // PhoneOTPRecord is one generation of a proof. The value is for server-side delivery only.
 type PhoneOTPRecord struct {
+	BoundOwner            string
+	OwnerBound            bool
 	ID, PhoneNumber, Code string
 	Purpose               PhoneOTPPurpose
 	Attempts              int
 	CreatedAt, ExpiresAt  time.Time
 }
 type PhoneOTPUse struct {
+	// ProviderProof binds an external verifier's answer to the exact local issuance.
+	ProviderProof     string
+	ProviderAccepted  bool
 	PhoneNumber, Code string
 	Purpose           PhoneOTPPurpose
 	AllowedAttempts   int
@@ -53,11 +65,13 @@ func (u PhoneOTPUse) Check(r *PhoneOTPRecord) (PhoneOTPDecision, error) {
 	switch {
 	case r == nil:
 		return PhoneKeepProof, &APIError{400, "OTP_NOT_FOUND", "OTP not found"}
+	case u.ProviderProof != "" && r.ID != u.ProviderProof:
+		return PhoneKeepProof, &APIError{400, "INVALID_OTP", "Invalid OTP"}
 	case !r.ExpiresAt.After(u.Now):
 		return PhoneRemoveProof, &APIError{400, "OTP_EXPIRED", "OTP expired"}
 	case r.Attempts >= u.AllowedAttempts:
 		return PhoneRemoveProof, &APIError{403, "TOO_MANY_ATTEMPTS", "Too many attempts"}
-	case subtle.ConstantTimeCompare([]byte(r.Code), []byte(u.Code)) != 1:
+	case (u.ProviderProof != "" && !u.ProviderAccepted) || (u.ProviderProof == "" && subtle.ConstantTimeCompare([]byte(r.Code), []byte(u.Code)) != 1):
 		return PhoneCountAttempt, &APIError{400, "INVALID_OTP", "Invalid OTP"}
 	default:
 		return PhoneRemoveProof, nil
@@ -72,22 +86,31 @@ type PhoneNumberStore interface {
 
 // NewPhoneNumber enables phone-number proofs with an application-provided SMS sender.
 func NewPhoneNumber(o PhoneNumberOptions) (Plugin, error) {
+	if o.SignUpOnVerification != nil {
+		if o.SignUpOnVerification.GetTempEmail == nil {
+			return Plugin{}, errors.New("phone-number signup requires a temporary email function")
+		}
+		copy := *o.SignUpOnVerification
+		o.SignUpOnVerification = &copy
+	}
 	if o.OTPLength == 0 {
 		o.OTPLength = 6
 	}
-	if o.AllowedAttempts == 0 {
-		o.AllowedAttempts = 3
+	attempts := 3
+	if o.AllowedAttempts != nil {
+		attempts = *o.AllowedAttempts
 	}
+	o.AllowedAttempts = &attempts
 	if o.ExpiresIn == 0 {
 		o.ExpiresIn = 5 * time.Minute
 	}
-	if o.OTPLength < 1 || o.OTPLength > 128 || o.AllowedAttempts < 1 || o.ExpiresIn <= 0 {
+	if o.OTPLength < 1 || o.OTPLength > 128 || attempts < 0 || o.ExpiresIn <= 0 {
 		return Plugin{}, errors.New("phone-number: invalid OTP length, lifetime or attempts")
 	}
 	p := Plugin{ID: "phone-number", phoneNumber: &o, ValidateStore: func(store Store) error {
-		s, ok := store.(PhoneNumberStore)
+		s, ok := store.(PhoneAccountStore)
 		if !ok {
-			return errors.New("phone-number requires a PhoneNumberStore")
+			return errors.New("phone-number requires a PhoneAccountStore")
 		}
 		return s.CheckPhoneNumberSchema(context.Background())
 	}}
@@ -102,6 +125,7 @@ func NewPhoneNumber(o PhoneNumberOptions) (Plugin, error) {
 		}
 		return map[string]string{"message": "code sent"}, nil
 	}}}
+	p.Endpoints = append(p.Endpoints, phoneAccountEndpoints(rule)...)
 	return p, nil
 }
 
@@ -164,5 +188,9 @@ func (a *Auth) ConsumePhoneNumberOTP(ctx context.Context, number, code string) e
 	if err = a.checkPhone(ctx, number); err != nil {
 		return err
 	}
-	return store.ConsumePhoneOTP(ctx, PhoneOTPUse{PhoneNumber: number, Code: code, Purpose: PhoneVerify, AllowedAttempts: a.phoneNumber.AllowedAttempts, Now: a.now().UTC()})
+	use, err := a.phoneUse(ctx, number, code, PhoneVerify)
+	if err != nil {
+		return err
+	}
+	return store.ConsumePhoneOTP(ctx, use)
 }

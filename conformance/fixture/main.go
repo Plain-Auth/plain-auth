@@ -74,6 +74,19 @@ func main() {
 				}
 			}
 			plugins = append(plugins, keyPlugin)
+		case "phone-number":
+			sms := func(_ context.Context, m authn.PhoneOTPMessage) error {
+				b, err := json.Marshal(m)
+				if err != nil {
+					return err
+				}
+				return os.WriteFile(filepath.Join(filepath.Dir(os.Args[1]), "sms.json"), b, 0600)
+			}
+			p, err := authn.NewPhoneNumber(authn.PhoneNumberOptions{SendOTP: sms, SendPasswordResetOTP: sms, RequireVerification: true, SignUpOnVerification: &authn.PhoneSignUpOptions{GetTempEmail: func(n string) string { return n + "@phone.test" }}})
+			if err != nil {
+				log.Fatal(err)
+			}
+			plugins = append(plugins, p)
 		case "username", "username-only":
 			p, err := authn.NewUsername(authn.UsernameOptions{DisableDisplay: id == "username-only"})
 			if err != nil {

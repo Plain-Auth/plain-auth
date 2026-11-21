@@ -36,6 +36,10 @@ func (s *Store) UpdateProfile(ctx context.Context, id string, in auth.ProfileUpd
 	return s.applyProfile(id, record, in, now)
 }
 func (s *Store) applyProfile(id string, record credential, in auth.ProfileUpdate, now time.Time) error {
+	if in.ClearPhoneNumber {
+		verified := false
+		record.user.PhoneNumberFields = &auth.PhoneNumberFields{PhoneNumberVerified: &verified}
+	}
 	if in.Name != nil {
 		record.user.Name = *in.Name
 	}
@@ -58,6 +62,9 @@ func (s *Store) CreateCredentialSession(ctx context.Context, expectedHash string
 	}
 	u, ok := s.users[row.UserID]
 	if !ok || u.hash != expectedHash {
+		return auth.ErrNotFound
+	}
+	if binding, ok := auth.PhoneLoginFrom(ctx); ok && !binding.Matches(u.user.PhoneNumberFields) {
 		return auth.ErrNotFound
 	}
 	return s.insertSession(row)

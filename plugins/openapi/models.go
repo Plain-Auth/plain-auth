@@ -82,7 +82,7 @@ func models(a *stonewrit.Auth, info stonewrit.HTTPDescription) object {
 	session := modelSchema(reflect.TypeFor[stonewrit.Session]())
 	userFields := user["properties"].(object)
 	sessionFields := session["properties"].(object)
-	for name, plugin := range map[string]string{"username": "username", "displayUsername": "username", "twoFactorEnabled": "two-factor", "role": "admin", "banned": "admin", "banExpires": "admin", "banReason": "admin", "isAnonymous": "anonymous", "lastLoginMethod": "last-login-method"} {
+	for name, plugin := range map[string]string{"phoneNumber": "phone-number", "phoneNumberVerified": "phone-number", "username": "username", "displayUsername": "username", "twoFactorEnabled": "two-factor", "role": "admin", "banned": "admin", "banExpires": "admin", "banReason": "admin", "isAnonymous": "anonymous", "lastLoginMethod": "last-login-method"} {
 		if !a.HasPlugin(plugin) || name == "displayUsername" && !info.DisplayUsername {
 			delete(userFields, name)
 		}

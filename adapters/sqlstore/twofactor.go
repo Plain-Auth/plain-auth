@@ -164,6 +164,9 @@ func (s *Store) WithTwoFactor(ctx context.Context, sub auth.FactorSubject, decid
 	if err != nil {
 		return err
 	}
+	if err = s.checkPhoneLogin(ctx, tx, owner); err != nil {
+		return err
+	}
 	if sub.SessionToken != "" {
 		var ss auth.StoredSession
 		err = tx.QueryRowContext(ctx, s.readForUpdate(`SELECT `+sessionColumns+` FROM "session" s WHERE `+sessionWhere+` AND s."userId"=?`), sub.SessionToken, s.date(sub.Now), owner).Scan(sessionFields(&ss)...)
