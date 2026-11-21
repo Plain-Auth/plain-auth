@@ -5578,5 +5578,22 @@
       "test": "adapters/sqlstore/stripe_schedules_test.go",
       "marker": "func TestPeriodEndPlanChanges("
     }
+  ],
+  "plugin-symbol/generic-oauth/line": [
+    {
+      "label": "Use channel-bound verification for ID tokens and reject the wrong issuer, audience, nonce or validity period",
+      "test": "providers/line_test.go",
+      "marker": "func TestLINEChannelTokenVerification("
+    },
+    {
+      "label": "Complete access-token sign-in and persist the authenticated LINE subject and unverified email",
+      "test": "providers/profile_presets_test.go",
+      "marker": "func TestProfilePresetBrowserSignIn("
+    },
+    {
+      "label": "Match the LINE default scopes, UserInfo mapping and subject with the published preset",
+      "test": "conformance/profile-presets.test.mjs",
+      "marker": "test(\"OAuth profile presets match"
+    }
   ]
 }

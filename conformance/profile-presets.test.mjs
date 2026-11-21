@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
-import { gumroad, hubspot, patreon, slack, yandex } from "better-auth/plugins/generic-oauth";
+import { gumroad, hubspot, line, patreon, slack, yandex } from "better-auth/plugins/generic-oauth";
 
 test("OAuth profile presets match published endpoints, scopes, subjects and verified email", async (t) => {
   const cases = JSON.parse(readFileSync(new URL("../providers/testdata/profile_presets.json", import.meta.url)));
-  const presets = { gumroad, hubspot, patreon, slack, yandex };
+  const presets = { gumroad, hubspot, line, patreon, slack, yandex };
   for (const [name, sample] of Object.entries(cases)) {
     await t.test(name, async (t) => {
       const config = presets[name]({ clientId: "fixture", clientSecret: "secret" });

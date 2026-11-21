@@ -39,7 +39,7 @@ var catalog = func() map[string]catalogEntry {
 
 // Names returns the stable identifiers supported by New.
 func Names() []string {
-	ids := []string{"apple", "github", "google", "microsoft", "paybin", "twitch"}
+	ids := []string{"apple", "github", "google", "line-channel", "microsoft", "paybin", "twitch"}
 	for id := range profilePresets {
 		ids = append(ids, id)
 	}
@@ -54,6 +54,8 @@ func Names() []string {
 // More specific constructors expose tenant configuration and OIDC discovery.
 func New(name, clientID, secret string) (auth.OAuthProvider, error) {
 	switch name {
+	case "line-channel":
+		return LINE(clientID, secret), nil
 	case "twitch":
 		return Twitch(clientID, secret), nil
 	case "paybin":

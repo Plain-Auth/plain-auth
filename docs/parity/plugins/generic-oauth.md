@@ -68,7 +68,7 @@
   - [ ] `hubspot`
     - [x] Complete authorization-code sign-in, bind the provider subject and read the linked account profile ([test](../../../providers/profile_presets_test.go#L22))
     - [x] Compare default scopes, authenticated profile fields and subject with the published provider preset ([test](../../../conformance/profile-presets.test.mjs#L6))
-    - [x] Validate the introspected token’s registered client, active status and access-token use ([test](../../../providers/profile_presets_test.go#L161))
+    - [x] Validate the introspected token’s registered client, active status and access-token use ([test](../../../providers/profile_presets_test.go#L164))
   - [ ] `KeycloakOptions`
     - [ ] `issuer`
     - [ ] `clientId`
@@ -101,6 +101,9 @@
     - [ ] `disableSignUp`
     - [ ] `overrideUserInfo`
   - [ ] `line`
+    - [x] Use channel-bound verification for ID tokens and reject the wrong issuer, audience, nonce or validity period ([test](../../../providers/line_test.go#L16))
+    - [x] Complete access-token sign-in and persist the authenticated LINE subject and unverified email ([test](../../../providers/profile_presets_test.go#L22))
+    - [x] Match the LINE default scopes, UserInfo mapping and subject with the published preset ([test](../../../conformance/profile-presets.test.mjs#L6))
   - [ ] `MicrosoftEntraIdOptions`
     - [ ] `tenantId`
     - [ ] `clientId`

@@ -138,3 +138,16 @@ opts.SocialProviders = map[string]auth.OAuthProvider{"patreon": patreon}
 ```
 
 The application reads these vendor credentials and passes them into the constructor. HubSpot uses its September 2026 API for token exchange and introspection. Credentials travel in the HTTPS request body. Only the mapped identity fields are returned by the account-info endpoint.
+
+## LINE Login channels
+
+Create a LINE Login channel and request approval for the email permission. Register the channel ID and secret with `providers.LINE`. If you operate multiple channels, assign each one a separate registration name. Register each callback with the corresponding LINE channel. For example, `line-jp` under `/identity` uses `https://app.example.com/identity/callback/line-jp`.
+
+```go
+opts.SocialProviders = map[string]auth.OAuthProvider{
+    "line-jp": providers.LINE(os.Getenv("LINE_JP_CHANNEL_ID"), os.Getenv("LINE_JP_CHANNEL_SECRET")),
+    "line-th": providers.LINE(os.Getenv("LINE_TH_CHANNEL_ID"), os.Getenv("LINE_TH_CHANNEL_SECRET")),
+}
+```
+
+Sign-in requests `openid profile email`. When LINE issues an ID token, the handler submits it to LINE for verification and checks the issuer, channel, nonce and timestamps. An access-token-only response uses the channel’s UserInfo endpoint. The account requires a subject and email address, and the email is stored as unverified. [LINE Login API](https://developers.line.biz/en/reference/line-login/#verify-id-token)

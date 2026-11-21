@@ -36,8 +36,11 @@ func TestProfilePresetBrowserSignIn(t *testing.T) {
 	for name, sample := range samples {
 		t.Run(name, func(t *testing.T) {
 			presetName := name
-			if name == "slack" {
+			switch name {
+			case "slack":
 				presetName = "slack-oidc"
+			case "line":
+				presetName = "line-channel"
 			}
 			if !slices.Contains(Names(), presetName) {
 				t.Fatalf("%s missing from provider names", name)
