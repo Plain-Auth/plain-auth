@@ -66,7 +66,7 @@ func (s *Store) SaveDeletionToken(ctx context.Context, t authn.PasswordResetToke
 }
 
 func (s *Store) DeleteAccount(ctx context.Context, userID, sessionToken, expectedHash, deleteToken string, now time.Time) error {
-	tx, err := s.db.BeginTx(ctx, nil)
+	tx, err := s.beginMembershipChange(ctx)
 	if err != nil {
 		return err
 	}

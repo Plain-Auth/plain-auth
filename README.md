@@ -28,8 +28,9 @@ StoneWrit Auth embeds authentication in your Go API. Mount the auth handler on y
 - [x] Bill organization seats monthly or annually, with an optional fixed base price, and synchronize the quantity after membership changes. [Automatic seats](docs/subscriptions.md#bill-by-organization-membership)
 - [x] Register enterprise OIDC providers, optionally verify their domains with DNS, sign in with a browser, and provision members in the provider’s organization. [Enterprise OpenID Connect](docs/sso.md)
 - [x] Provision directory Users and Groups, synchronize direct memberships and rotate or revoke scoped SCIM credentials. [Directory provisioning](docs/scim.md)
+- [x] Map directory Group memberships to application roles and withdraw grants when their last source is removed. [SCIM role mapping](docs/scim.md#project-group-memberships-into-application-roles)
 
-Enterprise SAML sign-in, SCIM role projection and metered billing remain open. The [complete checklist](docs/parity/README.md) records which parts of each integration have passing tests.
+Enterprise SAML sign-in and metered billing remain open. The [complete checklist](docs/parity/README.md) records which parts of each integration have passing tests.
 
 ## Run it locally
 

@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	auth "github.com/Stonewrit/stonewrit-auth"
 	"github.com/Stonewrit/stonewrit-auth/plugins/scim"
 )
 
@@ -155,73 +156,62 @@ func groupExternal(d scim.Directory, v string) (any, any) {
 // changing edges so an account deletion cannot race a late membership insert.
 // Recheck scoped Users under lock after waiting on a canonical account lock.
 func (s *Store) scimGroupUsers(ctx context.Context, tx *sql.Tx, d scim.Directory, ids []string) error {
-	for batch := range slices.Chunk(ids, 400) {
-		marks := scimMarks(len(batch))
-		args := []any{d.ID, d.ProvisioningDomainID}
-		for _, id := range batch {
-			args = append(args, id)
-		}
-		q := `SELECT "id","userId" FROM "scimUser" WHERE ` + s.scimScope() + ` AND ` + s.scimExact(`"id"`) + ` IN (` + marks + `) ORDER BY "id"`
-		resolve := func(query string) (map[string]bool, error) {
-			rows, e := tx.QueryContext(ctx, query, args...)
-			if e != nil {
-				return nil, e
+	resolve := func(current bool) (map[string]bool, error) {
+		owners := map[string]bool{}
+		for batch := range slices.Chunk(ids, 400) {
+			args := []any{d.ID, d.ProvisioningDomainID}
+			for _, id := range batch {
+				args = append(args, id)
 			}
-			defer rows.Close()
-			owners := map[string]bool{}
+			q := `SELECT "id","userId" FROM "scimUser" WHERE ` + s.scimScope() + ` AND ` + s.scimExact(`"id"`) + ` IN (` + scimMarks(len(batch)) + `)`
+			query := s.bind(q)
+			if current {
+				query = s.readForUpdate(q)
+			}
+			rows, err := tx.QueryContext(ctx, query, args...)
+			if err != nil {
+				return nil, err
+			}
 			seen := map[string]bool{}
 			for rows.Next() {
-				var id, user string
-				if e = rows.Scan(&id, &user); e != nil {
-					return nil, e
+				var id, owner string
+				if err = rows.Scan(&id, &owner); err != nil {
+					rows.Close()
+					return nil, err
 				}
-				owners[user] = true
+				owners[owner] = true
 				seen[id] = true
 			}
-			if e = rows.Err(); e != nil {
-				return nil, e
+			err = rows.Err()
+			rows.Close()
+			if err != nil {
+				return nil, err
 			}
 			for _, id := range batch {
 				if !seen[id] {
 					return nil, scim.ErrInvalidMember
 				}
 			}
-			return owners, nil
 		}
-		owners, e := resolve(s.bind(q))
-		if e != nil {
-			return e
-		}
-		ownerArgs := make([]any, 0, len(owners))
-		for _, id := range slices.Sorted(maps.Keys(owners)) {
-			ownerArgs = append(ownerArgs, id)
-		}
-		rows, e := tx.QueryContext(ctx, s.readForUpdate(`SELECT "id" FROM "user" WHERE "id" IN (`+scimMarks(len(owners))+`) ORDER BY "id"`), ownerArgs...)
-		if e != nil {
-			return e
-		}
-		n := 0
-		for rows.Next() {
-			var id string
-			if e = rows.Scan(&id); e != nil {
-				rows.Close()
-				return e
+		return owners, nil
+	}
+	owners, err := resolve(false)
+	if err != nil {
+		return err
+	}
+	for _, owner := range slices.Sorted(maps.Keys(owners)) {
+		if err = s.lockAccount(ctx, tx, owner); err != nil {
+			if errors.Is(err, auth.ErrNotFound) {
+				return scim.ErrInvalidMember
 			}
-			n++
-		}
-		e = rows.Err()
-		rows.Close()
-		if e != nil {
-			return e
-		}
-		if n != len(owners) {
-			return scim.ErrInvalidMember
-		}
-		if _, e = resolve(s.readForUpdate(q)); e != nil {
-			return e
+			return err
 		}
 	}
-	return nil
+	current, err := resolve(true)
+	if err == nil && !maps.Equal(owners, current) {
+		return scim.ErrInvalidMember
+	}
+	return err
 }
 func (s *Store) scimGroupGrant(ctx context.Context, tx *sql.Tx, d scim.Directory, id string) error {
 	var exists bool
@@ -241,6 +231,9 @@ func (s *Store) scimGroupEdges(ctx context.Context, tx *sql.Tx, d scim.Directory
 	}
 	desired := map[string]bool{}
 	check := map[string]bool{}
+	for id := range old {
+		check[id] = true
+	}
 	for _, id := range validate {
 		check[id] = true
 	}
@@ -288,7 +281,7 @@ func (s *Store) scimGroupEdges(ctx context.Context, tx *sql.Tx, d scim.Directory
 	return nil
 }
 func (s *Store) SCIMCreateGroup(ctx context.Context, d scim.Directory, p scim.GroupProfile) (out scim.Group, err error) {
-	err = s.scimTx(ctx, d, func(tx *sql.Tx) error {
+	err = s.scimWriteTx(ctx, d, func(tx *sql.Tx) error {
 		now := time.Now().UTC().Truncate(time.Millisecond)
 		id := rand.Text()
 		ext, extKey := groupExternal(d, p.ExternalID)
@@ -300,12 +293,15 @@ func (s *Store) SCIMCreateGroup(ctx context.Context, d scim.Directory, p scim.Gr
 			return e
 		}
 		out, e = s.scimReadGroup(ctx, tx, d, id, true, false)
-		return e
+		if e != nil {
+			return e
+		}
+		return s.projectSCIMMembers(ctx, tx, d, p.MemberIDs)
 	})
 	return
 }
 func (s *Store) SCIMUpdateGroup(ctx context.Context, d scim.Directory, id string, change func(scim.Group) (scim.GroupChange, error)) (out scim.Group, err error) {
-	err = s.scimTx(ctx, d, func(tx *sql.Tx) error {
+	err = s.scimWriteTx(ctx, d, func(tx *sql.Tx) error {
 		current, e := s.scimReadGroup(ctx, tx, d, id, true, true)
 		if e != nil {
 			return e
@@ -325,7 +321,7 @@ func (s *Store) SCIMUpdateGroup(ctx context.Context, d scim.Directory, id string
 				return s.scimGroupUsers(ctx, tx, d, p.ValidateIDs)
 			}
 		}
-		if e = s.scimGroupGrant(ctx, tx, d, id); e != nil {
+		if e = s.checkSCIMGroupGrantPolicy(ctx, tx, d, id); e != nil {
 			return e
 		}
 		now := time.Now().UTC().Truncate(time.Millisecond)
@@ -338,23 +334,34 @@ func (s *Store) SCIMUpdateGroup(ctx context.Context, d scim.Directory, id string
 			return e
 		}
 		out, e = s.scimReadGroup(ctx, tx, d, id, true, false)
-		return e
+		if e != nil {
+			return e
+		}
+		return s.projectSCIMMembers(ctx, tx, d, scimAffectedMembers(current, p))
 	})
 	return
 }
 func (s *Store) SCIMDeleteGroup(ctx context.Context, d scim.Directory, id string) error {
-	return s.scimTx(ctx, d, func(tx *sql.Tx) error {
-		if _, e := s.scimGroupRow(ctx, tx, d, id, true); e != nil {
+	return s.scimWriteTx(ctx, d, func(tx *sql.Tx) error {
+		current, e := s.scimReadGroup(ctx, tx, d, id, true, true)
+		if e != nil {
 			return e
 		}
-		if e := s.scimGroupGrant(ctx, tx, d, id); e != nil {
+		members := scimAffectedMembers(current, scim.GroupChange{})
+		if e = s.scimGroupUsers(ctx, tx, d, members); e != nil {
 			return e
 		}
-		_, e := tx.ExecContext(ctx, s.bind(`DELETE FROM "scimGroupMember" WHERE `+s.scimExact(`"connectionId"`)+`=? AND "groupId"=?`), d.ID, id)
+		if e := s.checkSCIMGroupGrantPolicy(ctx, tx, d, id); e != nil {
+			return e
+		}
+		_, e = tx.ExecContext(ctx, s.bind(`DELETE FROM "scimGroupMember" WHERE `+s.scimExact(`"connectionId"`)+`=? AND "groupId"=?`), d.ID, id)
 		if e != nil {
 			return e
 		}
 		_, e = tx.ExecContext(ctx, s.bind(`DELETE FROM "scimGroup" WHERE "id"=?`), id)
-		return e
+		if e != nil {
+			return e
+		}
+		return s.projectSCIMMembers(ctx, tx, d, members)
 	})
 }

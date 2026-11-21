@@ -5823,6 +5823,11 @@
       "label": "Serialize independent role updates across connections while preserving application and organization authority",
       "test": "adapters/sqlstore/scim_roles_test.go",
       "marker": "directory roles changed account authority:"
+    },
+    {
+      "label": "Withdraw inactive source grants and restore the same provenance on reactivation",
+      "test": "conformance/scim-contract.mjs",
+      "marker": "await native(\"PATCH\",path,200,patchActive(true))"
     }
   ],
   "plugin/scim/DELETE /scim/v2/Users/:userId": [
@@ -6141,6 +6146,11 @@
       "label": "Create directory-owned Groups, deduplicate direct members and reject foreign User and nested Group references",
       "test": "adapters/sqlstore/scim_groups_test.go",
       "marker": "func TestSCIMGroupMembershipLifecycle("
+    },
+    {
+      "label": "Persist a canonical grant key verified across two independent runtimes",
+      "test": "conformance/scim-contract.mjs",
+      "marker": "assert.equal(restored[field],initial[field],field)"
     }
   ],
   "plugin/scim/GET /scim/v2/Groups/:groupId": [
@@ -6176,6 +6186,11 @@
       "label": "Physically remove the scoped membership edges without deleting Users or another directory's Group",
       "test": "adapters/sqlstore/scim_groups_test.go",
       "marker": "func TestSCIMGroupMembershipLifecycle("
+    },
+    {
+      "label": "Remove one directory grant while another connection changes the same subject",
+      "test": "adapters/sqlstore/scim_projection_test.go",
+      "marker": "concurrent responses %d %d"
     }
   ],
   "plugin-symbol/scim/SCIMMicrosoftEntraCompatibilityOptions/acceptLegacyGroupSchema": [
@@ -7260,6 +7275,39 @@
       "label": "Use the same generator and custom credential source with the released client on both runtimes",
       "test": "conformance/core.test.mjs",
       "marker": "custom key generators and credential extractors work across runtimes"
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L464": [
+    {
+      "label": "Map an active direct Group to source-owned role candidates and roll back mapping failures",
+      "test": "adapters/sqlstore/scim_projection_test.go",
+      "marker": "fixture mapping error"
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L468": [
+    {
+      "label": "Check returned roles against the application catalog and replay changes to its contents",
+      "test": "adapters/sqlstore/scim_projection_test.go",
+      "marker": "fixture role catalog error"
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L472": [
+    {
+      "label": "Atomically reconcile per-domain subject grants across independent connections and preserve manual roles",
+      "test": "adapters/sqlstore/scim_projection_test.go",
+      "marker": "failed withdrawal lost app role"
+    },
+    {
+      "label": "Keep the MySQL domain lock until transaction completion and discard ambiguous physical sessions",
+      "test": "adapters/sqlstore/scim_projection_mysql_test.go",
+      "marker": "func TestSCIMMySQLProjectionPoolLifecycle("
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L484": [
+    {
+      "label": "Replay a trusted policy for its complete domain on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_projection_test.go",
+      "marker": "must(second.ReconcileSCIMProjection(ctx, domain))"
     }
   ]
 }

@@ -5,30 +5,25 @@ import (
 	"regexp"
 	"slices"
 	"strings"
-	"unicode"
 	"unicode/utf8"
 
+	"github.com/Stonewrit/stonewrit-auth/internal/scimjson"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 )
 
 var roleFields = []string{"value", "display", "type", "primary"}
 
-func trimRoleText(s string) string {
-	// ECMAScript whitespace includes the byte order mark and excludes NEXT LINE.
-	return strings.TrimFunc(s, func(r rune) bool { return r == '\uFEFF' || r != '\u0085' && unicode.IsSpace(r) })
-}
-
 func roleText(raw any, maxRunes int) (string, error) {
 	s, ok := raw.(string)
-	s = trimRoleText(s)
+	s = scimjson.TrimSpace(s)
 	if !ok || s == "" || utf8.RuneCountInString(s) > maxRunes {
 		return "", invalid("invalidValue", "Invalid role string attribute")
 	}
 	return s, nil
 }
 
-func roleType(s string) string { return cases.Lower(language.Und).String(trimRoleText(s)) }
+func roleType(s string) string { return cases.Lower(language.Und).String(scimjson.TrimSpace(s)) }
 
 // The roles collection is a directory-owned profile attribute.
 func normalizeRoles(raw any) ([]any, error) {

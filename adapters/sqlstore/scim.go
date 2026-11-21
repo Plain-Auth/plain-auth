@@ -38,6 +38,12 @@ func (s *Store) scimScope() string {
 // Persist the first connection/domain binding independently of resource mutations.
 // A failed lookup or rejected mutation still fixes the original domain.
 func (s *Store) scimTx(ctx context.Context, d scim.Directory, fn func(*sql.Tx) error) error {
+	return s.scimTxMode(ctx, d, false, fn)
+}
+func (s *Store) scimWriteTx(ctx context.Context, d scim.Directory, fn func(*sql.Tx) error) error {
+	return s.scimTxMode(ctx, d, true, fn)
+}
+func (s *Store) scimTxMode(ctx context.Context, d scim.Directory, write bool, fn func(*sql.Tx) error) error {
 	key := scimKey("scim-connection", d.ID)
 	query := `SELECT "connectionId","provisioningDomainId","decommissionStatus" FROM "scimConnectionBinding" WHERE "connectionKey"=?`
 	var exists string
@@ -54,11 +60,16 @@ func (s *Store) scimTx(ctx context.Context, d scim.Directory, fn func(*sql.Tx) e
 	if err != nil {
 		return err
 	}
-	tx, err := s.db.BeginTx(ctx, nil)
+	tx, finish, err := s.beginSCIMTransaction(ctx, d.ProvisioningDomainID, write)
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+	defer finish.rollback()
+	if write {
+		if err = s.requireSCIMPolicy(ctx, tx, d.ProvisioningDomainID); err != nil {
+			return err
+		}
+	}
 	if p, ok := scim.PrincipalFromContext(ctx); ok && p.Kind == "managed-bearer" {
 		if err = s.lockManagedPrincipal(ctx, tx, d, p); err != nil {
 			return err
@@ -80,7 +91,7 @@ func (s *Store) scimTx(ctx context.Context, d scim.Directory, fn func(*sql.Tx) e
 		}
 		return err
 	}
-	return tx.Commit()
+	return finish.commit()
 }
 
 const scimUserColumns = `"id","userId","userName","displayName","externalId","primaryEmail","active","serializedAttributes","serializedEmails","formattedName","givenName","familyName","createdAt","updatedAt"`

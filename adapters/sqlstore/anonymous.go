@@ -83,7 +83,7 @@ func (s *Store) anonymousActor(ctx context.Context, tx *sql.Tx, token string, no
 	return authn.SessionResult{User: u, Session: row.Session}, err
 }
 func (s *Store) DeleteAnonymous(ctx context.Context, id, token string, now time.Time) error {
-	tx, err := s.db.BeginTx(ctx, nil)
+	tx, err := s.beginMembershipChange(ctx)
 	if err != nil {
 		return err
 	}
@@ -107,7 +107,7 @@ func (s *Store) DeleteAnonymous(ctx context.Context, id, token string, now time.
 	return tx.Commit()
 }
 func (s *Store) LinkAnonymous(ctx context.Context, source, target string, now time.Time, retain bool, callback func(context.Context, authn.AnonymousLink) error) error {
-	tx, err := s.db.BeginTx(ctx, nil)
+	tx, err := s.beginMembershipChange(ctx)
 	if err != nil {
 		return err
 	}

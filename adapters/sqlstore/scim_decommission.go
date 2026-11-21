@@ -28,11 +28,14 @@ func (s *Store) readRetirement(ctx context.Context, tx *sql.Tx, d scim.Directory
 const scimLeaseDuration = 5 * time.Minute
 
 func (s *Store) acquireRetirement(ctx context.Context, d scim.Directory) (directoryRetirement, string, error) {
-	tx, err := s.db.BeginTx(ctx, nil)
+	tx, finishTx, err := s.beginSCIMTransaction(ctx, d.ProvisioningDomainID, true)
 	if err != nil {
 		return directoryRetirement{}, "", err
 	}
-	defer tx.Rollback()
+	defer finishTx.rollback()
+	if err = s.requireSCIMPolicy(ctx, tx, d.ProvisioningDomainID); err != nil {
+		return directoryRetirement{}, "", err
+	}
 	now := time.Now().UTC().Truncate(time.Millisecond)
 	// A never-used directory starts in the terminal state. If provisioning won
 	// the initial binding race, lock the existing row and retire its Users.
@@ -51,7 +54,7 @@ func (s *Store) acquireRetirement(ctx context.Context, d scim.Directory) (direct
 		return r, "", err
 	}
 	if r.Status == "complete" || (r.Status == "reconciling" && r.lease.Valid && r.RetryAfter != nil && r.RetryAfter.After(now)) {
-		return r, "", tx.Commit()
+		return r, "", finishTx.commit()
 	}
 	if r.Status != "active" && r.Status != "reconciling" {
 		return r, "", scim.ErrConflict
@@ -61,7 +64,7 @@ func (s *Store) acquireRetirement(ctx context.Context, d scim.Directory) (direct
 	if err != nil {
 		return r, "", err
 	}
-	return r, lease, tx.Commit()
+	return r, lease, finishTx.commit()
 }
 
 // Each batch commits its identity changes and cursor together. An interrupted
@@ -85,11 +88,14 @@ func (s *Store) SCIMDecommission(ctx context.Context, d scim.Directory) (scim.Re
 }
 
 func (s *Store) retirementBatch(ctx context.Context, d scim.Directory, lease string) (directoryRetirement, error) {
-	tx, err := s.db.BeginTx(ctx, nil)
+	tx, finishTx, err := s.beginSCIMTransaction(ctx, d.ProvisioningDomainID, true)
 	if err != nil {
 		return directoryRetirement{}, err
 	}
-	defer tx.Rollback()
+	defer finishTx.rollback()
+	if err = s.requireSCIMPolicy(ctx, tx, d.ProvisioningDomainID); err != nil {
+		return directoryRetirement{}, err
+	}
 	r, err := s.readRetirement(ctx, tx, d)
 	if err != nil || r.Status == "complete" {
 		return r, err
@@ -160,7 +166,7 @@ func (s *Store) retirementBatch(ctx context.Context, d scim.Directory, lease str
 	if err != nil {
 		return r, err
 	}
-	return r, tx.Commit()
+	return r, finishTx.commit()
 }
 
 func (s *Store) retireSubject(ctx context.Context, tx *sql.Tx, domain, owner string, now time.Time) error {
@@ -176,7 +182,7 @@ func (s *Store) retireSubject(ctx context.Context, tx *sql.Tx, domain, owner str
 	if err != nil {
 		return err
 	}
-	if grants {
+	if _, configured := s.scimPolicies[domain]; grants && !configured {
 		return &scim.Error{Status: 409, Detail: "The User has externally managed authorization grants"}
 	}
 	if profile != "" {
@@ -190,18 +196,24 @@ func (s *Store) retireSubject(ctx context.Context, tx *sql.Tx, domain, owner str
 			return err
 		}
 	}
-	return s.scimRevokeIfInactive(ctx, tx, owner)
+	if err = s.scimRevokeIfInactive(ctx, tx, owner); err != nil {
+		return err
+	}
+	return s.projectSCIMUser(ctx, tx, domain, owner, false)
 }
 
 // Persist the access cutoff before beginning the recoverable resource batches.
 // The status and audit transition occur once even when the initiating caller
 // disconnects or another application instance finishes the retirement.
 func (s *Store) managedRetirementStage(ctx context.Context, d scim.Directory, actor string, finish bool) (scim.ManagedState, error) {
-	tx, err := s.db.BeginTx(ctx, nil)
+	tx, finishTx, err := s.beginSCIMTransaction(ctx, d.ProvisioningDomainID, true)
 	if err != nil {
 		return scim.ManagedState{}, err
 	}
-	defer tx.Rollback()
+	defer finishTx.rollback()
+	if err = s.requireSCIMPolicy(ctx, tx, d.ProvisioningDomainID); err != nil {
+		return scim.ManagedState{}, err
+	}
 	c, err := s.managedConn(ctx, tx, d, true)
 	if err != nil {
 		return scim.ManagedState{}, err
@@ -258,7 +270,7 @@ func (s *Store) managedRetirementStage(ctx context.Context, d scim.Directory, ac
 	if err != nil {
 		return scim.ManagedState{}, err
 	}
-	return state, tx.Commit()
+	return state, finishTx.commit()
 }
 
 func (s *Store) SCIMDecommissionManaged(ctx context.Context, d scim.Directory, actor string) (scim.ManagedRetirement, error) {

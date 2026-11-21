@@ -346,7 +346,6 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println(baseURL)
 	var handler http.Handler = auth
 	if directoryEnabled {
 		handler, err = scimFixture(auth, store)
@@ -367,5 +366,6 @@ func main() {
 		})))
 		handler = mux
 	}
+	fmt.Println(baseURL)
 	log.Fatal(http.Serve(listener, handler))
 }

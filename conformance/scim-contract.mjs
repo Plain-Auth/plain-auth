@@ -189,3 +189,53 @@ export async function roleProfileContract(t, goFixture) {
   const { directoryRoles } = await import("./scim-roles.mjs");
   await directoryRoles(t, {goFixture, reference, client});
 }
+
+export async function groupProjectionContract(t, goFixture) {
+  const go = await goFixture(t, ["scim"], {CONFORMANCE_SCIM_PROJECTION:"1"});
+  const db = new DatabaseSync(go.databasePath);
+  t.after(() => db.close());
+  const projected = [];
+  const js = client(await reference(t, go.databasePath, {projection:{
+    roles: {
+      map: ({source}) => source.displayName === "Allowed" ? ["\uFEFFread ", "\uFEFFread ", "missing"] : [],
+      exists: ({role}) => role === "read",
+    },
+    reconcileUser: state => { projected.push(state); },
+  }}));
+  const native = client(go);
+  const member = await js("POST", "Users", 201, {
+    schemas:[userSchema], userName:"shared@example.test", externalId:"shared", roles:[{value:"admin"}],
+  });
+  const path = "Users/"+member.id;
+  const profile = members => ({
+    schemas:["urn:ietf:params:scim:schemas:core:2.0:Group"], externalId:"roster",
+    displayName:"Allowed", members:members.map(value=>({value})),
+  });
+  const table = () => db.prepare('SELECT * FROM scimProjectionGrant ORDER BY grantKey').all();
+  const group = await js("POST","Groups",201,profile([member.id]));
+  const uri = "Groups/"+group.id;
+  const [initial] = table();
+  assert.equal(initial.role,"read");
+  assert.equal(initial.sourceKind,"group");
+  assert.equal(initial.sourceId,group.id);
+  assert.equal(initial.sourceValue,"roster");
+  assert.equal(initial.scimUserId,member.id);
+  assert.deepEqual(projected.at(-1).grants,[{role:"read", source:{type:"group",id:group.id,externalId:"roster",displayName:"Allowed"}}]);
+  const patchActive = value=>({schemas:[patchSchema],Operations:[{op:"replace",path:"active",value}]});
+  await native("PATCH",path,200,patchActive(false));
+  assert.equal(table().length,0);
+  await native("PATCH",path,200,patchActive(true));
+  const [restored] = table();
+  for (const field of ["connectionId","provisioningDomainId","userId","scimUserId","sourceKind","sourceId","sourceValue","role","grantKey"]) {
+    assert.equal(restored[field],initial[field],field);
+  }
+  await js("PUT",uri,200,profile([member.id]));
+  assert.equal(table()[0].id,restored.id);
+  await native("PUT",uri,200,{...profile([member.id]),displayName:"Archived"});
+  assert.equal(table().length,0);
+  await js("PUT",uri,200,profile([member.id]));
+  assert.equal(table()[0].grantKey,initial.grantKey);
+  await native("DELETE",uri,204);
+  assert.equal(table().length,0);
+  assert.deepEqual((await js("GET",path,200)).roles,[{value:"admin"}]);
+}

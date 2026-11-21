@@ -108,6 +108,7 @@
     - [x] Retrieve the Group resource type on both implementations ([test](../../../conformance/scim-contract.mjs#L92))
   - [ ] `POST /scim/v2/Groups`
     - [x] Create directory-owned Groups, deduplicate direct members and reject foreign User and nested Group references ([test](../../../adapters/sqlstore/scim_groups_test.go#L20))
+    - [x] Persist a canonical grant key verified across two independent runtimes ([test](../../../conformance/scim-contract.mjs#L230))
   - [ ] `GET /scim/v2/Groups/:groupId`
     - [x] Read the other implementation's canonical membership edges with trusted display names and User links ([test](../../../conformance/scim-contract.mjs#L92))
   - [ ] `GET /scim/v2/Groups`
@@ -118,6 +119,7 @@
     - [x] Apply concurrent membership changes, enforce the 1,000-member limit and roll back invalid multi-operation updates ([test](../../../adapters/sqlstore/scim_groups_test.go#L20))
   - [ ] `DELETE /scim/v2/Groups/:groupId`
     - [x] Physically remove the scoped membership edges without deleting Users or another directory's Group ([test](../../../adapters/sqlstore/scim_groups_test.go#L20))
+    - [x] Remove one directory grant while another connection changes the same subject ([test](../../../adapters/sqlstore/scim_projection_test.go#L274))
   - [ ] `SCIMActiveUserLink`
   - [ ] `SCIMActiveUserLinkContext`
   - [ ] `SCIMUserExternalIdReference`
@@ -167,6 +169,7 @@
     - [x] Apply concurrent supported attribute changes without losing updates and roll back an invalid operation sequence ([test](../../../adapters/sqlstore/scim_test.go#L33))
     - [x] Apply full, selected and pathless role updates atomically with primary reassignment and null removal ([test](../../../conformance/scim-roles.mjs#L51))
     - [x] Serialize independent role updates across connections while preserving application and organization authority ([test](../../../adapters/sqlstore/scim_roles_test.go#L131))
+    - [x] Withdraw inactive source grants and restore the same provenance on reactivation ([test](../../../conformance/scim-contract.mjs#L227))
   - [ ] `DELETE /scim/v2/Users/:userId`
     - [x] Revoke existing sessions, retain the stable external identity and isolate another directory ([test](../../../adapters/sqlstore/scim_test.go#L33))
 
@@ -296,10 +299,15 @@
     - [ ] `identity.reconcileUser`
   - [ ] Projection callbacks
     - [ ] `projection.roles.map`
+      - [x] Map an active direct Group to source-owned role candidates and roll back mapping failures ([test](../../../adapters/sqlstore/scim_projection_test.go#L66))
     - [ ] `projection.roles.exists`
+      - [x] Check returned roles against the application catalog and replay changes to its contents ([test](../../../adapters/sqlstore/scim_projection_test.go#L78))
     - [ ] `projection.reconcileUser`
+      - [x] Atomically reconcile per-domain subject grants across independent connections and preserve manual roles ([test](../../../adapters/sqlstore/scim_projection_test.go#L354))
+      - [x] Keep the MySQL domain lock until transaction completion and discard ambiguous physical sessions ([test](../../../adapters/sqlstore/scim_projection_mysql_test.go#L97))
   - [ ] Trusted server APIs
     - [ ] `reconcileSCIMProjection`
+      - [x] Replay a trusted policy for its complete domain on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_projection_test.go#L282))
     - [ ] `decommissionSCIMConnection`
   - [ ] Unsupported features
     - [ ] Custom schema extensions

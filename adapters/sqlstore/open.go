@@ -4,7 +4,6 @@ package sqlstore
 import (
 	"context"
 	"database/sql"
-
 	"errors"
 	"fmt"
 	"net/url"
@@ -16,6 +15,7 @@ import (
 	"time"
 
 	org "github.com/Stonewrit/stonewrit-auth/plugins/organization"
+	"github.com/Stonewrit/stonewrit-auth/plugins/scim"
 	"github.com/go-sql-driver/mysql"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	_ "github.com/mattn/go-sqlite3"
@@ -23,6 +23,7 @@ import (
 
 // Store persists users, credentials, and sessions in a SQL database.
 type Store struct {
+	scimPolicies           map[string]scim.Projection
 	adminSchema            *atomic.Bool
 	apiKeyLedgerReady      *atomic.Bool
 	adminRole, adminDenial string

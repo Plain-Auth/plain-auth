@@ -1283,3 +1283,8 @@ test("the pinned client bills annual seat-only organizations one yearly item for
   const { organizationBilling } = await import("./stripe-organization-fixture.mjs");
   await organizationBilling(t, { reference, goFixture, instrument }, { automatic: true, annual: true });
 });
+
+test("SCIM Group projection preserves shared source keys across directory runtimes", async t => {
+  const {groupProjectionContract} = await import("./scim-contract.mjs");
+  await groupProjectionContract(t, goFixture);
+});

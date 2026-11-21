@@ -51,7 +51,7 @@ func (s *Store) scimOwner(ctx context.Context, tx *sql.Tx, id string) (string, e
 }
 
 func (s *Store) SCIMCreate(ctx context.Context, d scim.Directory, p scim.Profile) (out scim.Record, err error) {
-	err = s.scimTx(ctx, d, func(tx *sql.Tx) error {
+	err = s.scimWriteTx(ctx, d, func(tx *sql.Tx) error {
 		now := time.Now().UTC().Truncate(time.Millisecond)
 		if p.ExternalID != "" {
 			u, e := s.scimFind(ctx, tx, d, `"externalIdKey"`, scimKey("scim-user-external-id", d.ID, p.ExternalID))
@@ -116,13 +116,13 @@ func (s *Store) SCIMCreate(ctx context.Context, d scim.Directory, p scim.Profile
 			}
 		}
 		out = u.Record
-		return nil
+		return s.projectSCIMUser(ctx, tx, d.ProvisioningDomainID, u.owner, false)
 	})
 	return
 }
 
 func (s *Store) SCIMUpdate(ctx context.Context, d scim.Directory, id string, change func(scim.Record) (scim.Profile, error)) (out scim.Record, err error) {
-	err = s.scimTx(ctx, d, func(tx *sql.Tx) error {
+	err = s.scimWriteTx(ctx, d, func(tx *sql.Tx) error {
 		u, e := s.scimFind(ctx, tx, d, `"id"`, id)
 		if e != nil {
 			return e
@@ -152,7 +152,7 @@ func (s *Store) scimReplace(ctx context.Context, tx *sql.Tx, d scim.Directory, u
 	if e != nil {
 		return scim.Record{}, e
 	}
-	if e = s.scimCheckGrants(ctx, tx, u.ID); e != nil {
+	if e = s.checkSCIMUserGrantPolicy(ctx, tx, d, u.ID); e != nil {
 		return scim.Record{}, e
 	}
 	if p.ExternalID != u.ExternalID {
@@ -189,10 +189,10 @@ func (s *Store) scimReplace(ctx context.Context, tx *sql.Tx, d scim.Directory, u
 	}
 	u.Profile = p
 	u.UpdatedAt = now
-	return u.Record, nil
+	return u.Record, s.projectSCIMUser(ctx, tx, d.ProvisioningDomainID, u.owner, false)
 }
 func (s *Store) SCIMDelete(ctx context.Context, d scim.Directory, id string) error {
-	return s.scimTx(ctx, d, func(tx *sql.Tx) error {
+	return s.scimWriteTx(ctx, d, func(tx *sql.Tx) error {
 		u, e := s.scimFind(ctx, tx, d, `"id"`, id)
 		if e != nil {
 			return e
@@ -201,7 +201,7 @@ func (s *Store) SCIMDelete(ctx context.Context, d scim.Directory, id string) err
 		if e != nil {
 			return e
 		}
-		if e = s.scimCheckGrants(ctx, tx, u.ID); e != nil {
+		if e = s.checkSCIMUserGrantPolicy(ctx, tx, d, u.ID); e != nil {
 			return e
 		}
 		now := s.date(time.Now())
@@ -231,7 +231,10 @@ func (s *Store) SCIMDelete(ctx context.Context, d scim.Directory, id string) err
 		if e != nil {
 			return e
 		}
-		return s.scimRevokeIfInactive(ctx, tx, u.owner)
+		if e = s.scimRevokeIfInactive(ctx, tx, u.owner); e != nil {
+			return e
+		}
+		return s.projectSCIMUser(ctx, tx, d.ProvisioningDomainID, u.owner, false)
 	})
 }
 
@@ -242,6 +245,10 @@ func (s *Store) cleanupSCIMAccount(ctx context.Context, tx *sql.Tx, userID strin
 	if err != nil || !exists {
 		return err
 	}
+	domains, err := s.scimAccountPolicies(ctx, tx, userID)
+	if err != nil {
+		return err
+	}
 	for _, q := range []string{
 		`DELETE FROM "scimGroupMember" WHERE "scimUserId" IN (SELECT "id" FROM "scimUser" WHERE "userId"=?)`,
 		`DELETE FROM "scimProjectionGrant" WHERE "userId"=?`,
@@ -250,6 +257,11 @@ func (s *Store) cleanupSCIMAccount(ctx context.Context, tx *sql.Tx, userID strin
 		`DELETE FROM "scimSubject" WHERE "userId"=?`,
 	} {
 		if _, err = tx.ExecContext(ctx, s.bind(q), userID); err != nil {
+			return err
+		}
+	}
+	for _, domain := range domains {
+		if err = s.projectSCIMUser(ctx, tx, domain, userID, false); err != nil {
 			return err
 		}
 	}

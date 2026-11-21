@@ -17,6 +17,25 @@ func scimFixture(host *auth.Auth, store *sqlstore.Store) (*scim.Handler, error) 
 		Directory:   scim.Directory{ID: "directory", ProvisioningDomainID: "tenant"},
 		Credentials: []scim.Credential{{ID: "directory-key", Token: "local-directory-only"}},
 	}}}
+	if os.Getenv("CONFORMANCE_SCIM_PROJECTION") == "1" {
+		configured, err := store.EnableSCIMProjection(context.Background(), "tenant", scim.Projection{
+			PolicyID: "fixture-group-mapping",
+			Map: func(_ context.Context, _ scim.ProjectionTx, source scim.RoleMapping) ([]string, error) {
+				if source.Group.DisplayName == "Allowed" {
+					return []string{"\uFEFFread ", "\uFEFFread ", "missing"}, nil
+				}
+				return nil, nil
+			},
+			Exists: func(_ context.Context, _ scim.ProjectionTx, lookup scim.RoleLookup) (bool, error) {
+				return lookup.Role == "read", nil
+			},
+			ReconcileUser: func(context.Context, scim.ProjectionTx, scim.ProjectedUser) error { return nil },
+		})
+		if err != nil {
+			return nil, err
+		}
+		options.Store = configured
+	}
 	if slices.Contains(os.Args[2:], "scim-managed") {
 		options.Managed = &scim.ManagedOptions{CredentialHashSecret: "managed-local-fixture-credential-digest-secret", MaxActiveCredentials: 3}
 	}

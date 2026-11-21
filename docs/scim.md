@@ -179,3 +179,50 @@ PUT replaces the Group profile and its direct member set. PATCH supports scalar 
 To accept Microsoft's classic Entra Group schema marker on creation, set `AcceptLegacyEntraGroupSchema: true` in `scim.Options`. The response and discovery documents use the core Group schema. [Group lifecycle and concurrency tests](../adapters/sqlstore/scim_groups_test.go) · [Group PATCH and compatibility tests](../plugins/scim/groups_test.go)
 
 The checklist tracks Group-to-application role mapping, Enterprise User attributes, additional nested User attribute selections and PATCH paths, and SSO identity linking. [Provisioning checklist](parity/plugins/scim.md) · [SQL ownership and concurrency tests](../adapters/sqlstore/scim_test.go) · [Cross-runtime directory tests](../conformance/scim-contract.mjs)
+
+## Project Group memberships into application roles
+
+Apply the `scim` or `scim-managed` SQL profile. Enable a policy for each provisioning domain that your application owns. Pass the returned store to both the auth host and `scim.New`, including server-side operations that delete accounts or retire directories. A configured store uses the original database pool. Close that pool once.
+
+```go
+policy := scim.Projection{
+    PolicyID: "workforce-v1",
+    Map: func(ctx context.Context, tx scim.ProjectionTx, m scim.RoleMapping) ([]string, error) {
+        if m.Directory.ID == workforceDirectoryID && m.Group.ID == engineeringGroupID {
+            return []string{"engineering"}, nil
+        }
+        return nil, nil
+    },
+    Exists: func(ctx context.Context, tx scim.ProjectionTx, lookup scim.RoleLookup) (bool, error) {
+        var exists bool
+        err := tx.QueryRowContext(ctx, tx.Bind(
+            `SELECT EXISTS(SELECT 1 FROM "applicationRole" WHERE `+tx.Exact(`"tenant"`)+`=? AND `+tx.Exact(`"role"`)+`=?)`,
+        ), lookup.ProvisioningDomainID, lookup.Role).Scan(&exists)
+        return exists, err
+    },
+    ReconcileUser: func(ctx context.Context, tx scim.ProjectionTx, u scim.ProjectedUser) error {
+        _, err := tx.ExecContext(ctx, tx.Bind(
+            `DELETE FROM "directoryAssignment" WHERE `+tx.Exact(`"tenant"`)+`=? AND `+tx.Exact(`"userId"`)+`=?`,
+        ), u.ProvisioningDomainID, u.UserID)
+        if err != nil { return err }
+        for _, g := range u.Grants {
+            _, err = tx.ExecContext(ctx, tx.Bind(
+                `INSERT INTO "directoryAssignment" ("tenant","userId","grantKey","role") VALUES (?,?,?,?)`,
+            ), u.ProvisioningDomainID, u.UserID, g.GrantKey, g.Role)
+            if err != nil { return err }
+        }
+        return nil
+    },
+}
+configured, err := store.EnableSCIMProjection(ctx, workforceDomainID, policy)
+```
+
+The example assumes the application owns an `applicationRole` catalog and a separate `directoryAssignment` table with a byte-exact unique `grantKey`. Use case-sensitive identifiers for tenant, user and grant keys on the application tables. Keep manually assigned privileges in their own rows. Role mapping receives the connection and provisioning domain IDs, application and directory User IDs, and the Group's immutable ID, external ID and display name. Use trusted Group IDs for privileged mappings. Display names and external IDs can change through directory requests.
+
+`Map` returns candidate roles. The store trims them, ignores empty values and deduplicates repeated roles from the same source. `Exists` validates each distinct role per connection and subject reconciliation. Two Groups that grant the same role retain distinct provenance. `ReconcileUser` receives the complete source and grant sets for one domain and application user, including inactive participating sources. Treat the slices as sets. Use the supplied transaction for application writes so a failed callback rolls back directory changes, the grant ledger and application state together. External network calls and writes through another database pool cannot participate in that rollback.
+
+The first activation reconciles existing directory sources and validates imported grants. Unknown provenance returns a conflict and leaves existing grants intact. A lifecycle-only policy can omit both role callbacks when the domain has no existing role grants. An imported grant must identify its actual directory Group, source User, domain and application account. Changes to Group membership or metadata, User deactivation and reprovisioning, deletion and directory retirement recompute affected assignments from active sources. Retirement closes directory access before processing its resumable batches. A failed batch preserves the prior application assignments for that batch. Retry retirement after the host callback recovers. Linked sources share a subject only when they already have the same stored application user ID. Directory emails and `User.roles` do not establish identity or grant application privileges.
+
+After changing a mapping or the application role catalog, call `configured.ReconcileSCIMProjection(ctx, domainID)`. Call `configured.DisableSCIMProjection(ctx, domainID)` to submit empty grant sets to the current reconciler and release the domain. User activity and source metadata still describe the current directory facts during withdrawal. Activation, withdrawal and explicit replay each run in a single transaction across the domain. Plan a maintenance window for large domains. Paged replay, custom identity resolution and a built-in organization-role policy remain open.
+
+The first activation creates the small `stonewritSCIMProjectionPolicy` table. Its keys have no expiry. Transaction-scoped PostgreSQL locks, MySQL connection locks held through commit, and SQLite’s immediate transactions serialize domain writes with policy changes. A MySQL connection with an uncertain transaction or lock-release result is discarded. Expiring verification records has no effect on policy ownership. Updated Go nodes sharing a domain must use the same policy ID and equivalent callbacks. While a policy is active, an unconfigured node can read the directory, and its writes receive a conflict. Older binaries, external SQL writers and other directory implementations cannot enforce this extension. Route writes and account deletion through the configured Go store when those processes share the database. [Three-database projection and failure tests](../adapters/sqlstore/scim_projection_test.go) · [MySQL connection lifecycle tests](../adapters/sqlstore/scim_projection_mysql_test.go) · [Shared SQLite HTTP comparison](../conformance/scim-contract.mjs)

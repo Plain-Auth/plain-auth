@@ -4,6 +4,8 @@ package scimjson
 import (
 	"bytes"
 	"encoding/json"
+	"strings"
+	"unicode"
 )
 
 func Marshal(value any) ([]byte, error) {
@@ -35,4 +37,10 @@ func Marshal(value any) ([]byte, error) {
 		canonical.WriteByte(data[i])
 	}
 	return canonical.Bytes(), nil
+}
+
+// TrimSpace applies ECMAScript whitespace rules to directory text.
+func TrimSpace(s string) string {
+	// ECMAScript whitespace includes the byte order mark and excludes NEXT LINE.
+	return strings.TrimFunc(s, func(r rune) bool { return r == '\uFEFF' || r != '\u0085' && unicode.IsSpace(r) })
 }
