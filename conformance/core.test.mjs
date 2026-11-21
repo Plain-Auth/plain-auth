@@ -1013,3 +1013,8 @@ test("SCIM dynamic bearer verification matches the pinned callback and tenant is
   const { dynamicContract } = await import("./scim-contract.mjs");
   await dynamicContract(t, goFixture);
 });
+
+test("the released passkey client enrolls without a session and signs in with a real browser authenticator", {timeout:60000}, async (t) => {
+  const { comparePasskeyFirst } = await import("./passkey-first-browser.mjs");
+  await comparePasskeyFirst(t, { goFixture, instrument });
+});

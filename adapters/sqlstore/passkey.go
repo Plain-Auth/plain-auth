@@ -3,15 +3,17 @@ package sqlstore
 import (
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
 	"database/sql"
+	"encoding/hex"
 	"errors"
 	"time"
 
+	auth "github.com/Stonewrit/stonewrit-auth"
+	pk "github.com/Stonewrit/stonewrit-auth/plugins/passkey"
 	"github.com/go-sql-driver/mysql"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/mattn/go-sqlite3"
-	auth "github.com/Stonewrit/stonewrit-auth"
-	pk "github.com/Stonewrit/stonewrit-auth/plugins/passkey"
 )
 
 var _ pk.Store = (*Store)(nil)
@@ -120,33 +122,74 @@ func duplicateConstraint(err error) bool {
 	var lite sqlite3.Error
 	return (errors.As(err, &my) && my.Number == 1062) || (errors.As(err, &pg) && pg.Code == "23505") || (errors.As(err, &lite) && (lite.ExtendedCode == sqlite3.ErrConstraintPrimaryKey || lite.ExtendedCode == sqlite3.ErrConstraintUnique))
 }
-func (s *Store) CreatePasskey(ctx context.Context, r pk.Record, session string, now time.Time) error {
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return err
+func (s *Store) CreatePasskey(ctx context.Context, r pk.Record, source string, now time.Time) error {
+	if source == "" {
+		return pk.ErrSession
 	}
-	defer tx.Rollback()
-	if err := s.lockActiveAccount(ctx, tx, r.UserID, session, now); err != nil {
-		if errors.Is(err, auth.ErrNotFound) {
-			return pk.ErrSession
+	_, err := s.CommitPasskeyRegistration(ctx, r, source, nil, nil, now)
+	return err
+}
+
+func (s *Store) CommitPasskeyRegistration(ctx context.Context, r pk.Record, source string, create *auth.User, session *auth.StoredSession, now time.Time) (auth.User, error) {
+	var user auth.User
+	if r.UserID == "" || (create != nil && (create.ID != r.UserID || source != "")) || session != nil && session.UserID != r.UserID {
+		return user, pk.ErrRegistration
+	}
+	// The canonical credentialID index is not unique. Serialize all registrations for the same
+	// credential, including simultaneous enrollments under different account and record IDs.
+	sum := sha256.Sum256([]byte("passkey-credential:" + r.CredentialID))
+	digest := hex.EncodeToString(sum[:])
+	lock := emailOTPKey{owner: "passkey-credential:" + digest, digest: digest}
+	err := s.emailOTPTransaction(ctx, lock, func(tx *sql.Tx) (error, error) {
+		if create != nil {
+			_, err := tx.ExecContext(ctx, s.bind(`INSERT INTO "user"("id","name","email","emailVerified","createdAt","updatedAt") VALUES(?,?,?,?,?,?)`), create.ID, create.Name, create.Email, false, s.date(now), s.date(now))
+			if duplicateConstraint(err) {
+				return nil, &auth.APIError{Status: 409, Code: "USER_ALREADY_EXISTS", Message: "User already exists"}
+			}
+			if err != nil {
+				return nil, err
+			}
 		}
-		return err
-	}
-	var exists bool
-	if err := tx.QueryRowContext(ctx, s.bind(`SELECT EXISTS(SELECT 1 FROM "passkey" WHERE `+s.passkeyMatch()+`)`), r.CredentialID).Scan(&exists); err != nil {
-		return err
-	}
-	if exists {
-		return pk.ErrDuplicate
-	}
-	_, err = tx.ExecContext(ctx, s.bind(`INSERT INTO "passkey" (`+passkeyFields+`) VALUES(?,?,?,?,?,?,?,?,?,?,?)`), r.ID, r.Name, r.PublicKey, r.UserID, r.CredentialID, r.Counter, r.DeviceType, r.BackedUp, r.Transports, s.date(now), r.AAGUID)
-	if duplicateConstraint(err) {
-		return pk.ErrDuplicate
-	}
-	if err != nil {
-		return err
-	}
-	return tx.Commit()
+		var err error
+		if source != "" {
+			err = s.lockActiveAccount(ctx, tx, r.UserID, source, now)
+		} else if s.adminSchema {
+			err = s.adminSessionGate(ctx, tx, r.UserID, now)
+		} else {
+			err = s.lockAccount(ctx, tx, r.UserID)
+		}
+		if errors.Is(err, auth.ErrNotFound) {
+			if source != "" {
+				return pk.ErrSession, nil
+			}
+			return &auth.APIError{Status: 500, Code: "USER_NOT_FOUND", Message: "User not found"}, nil
+		}
+		if err != nil {
+			return nil, err
+		}
+		var exists bool
+		if err = tx.QueryRowContext(ctx, s.bind(`SELECT EXISTS(SELECT 1 FROM "passkey" WHERE `+s.passkeyMatch()+`)`), r.CredentialID).Scan(&exists); err != nil {
+			return nil, err
+		}
+		if exists {
+			return nil, pk.ErrDuplicate
+		}
+		_, err = tx.ExecContext(ctx, s.bind(`INSERT INTO "passkey" (`+passkeyFields+`) VALUES(?,?,?,?,?,?,?,?,?,?,?)`), r.ID, r.Name, r.PublicKey, r.UserID, r.CredentialID, r.Counter, r.DeviceType, r.BackedUp, r.Transports, s.date(now), r.AAGUID)
+		if duplicateConstraint(err) {
+			return nil, pk.ErrDuplicate
+		}
+		if err != nil {
+			return nil, err
+		}
+		if session != nil {
+			if err = s.insertSession(ctx, tx, *session); err != nil {
+				return nil, err
+			}
+		}
+		err = tx.QueryRowContext(ctx, s.bind(`SELECT `+userColumns+` FROM "user" u WHERE u."id"=?`), r.UserID).Scan(userFields(&user)...)
+		return nil, err
+	})
+	return user, err
 }
 func (s *Store) FinishPasskeyLogin(ctx context.Context, expected pk.Record, count uint32, backed bool, session auth.StoredSession) (auth.User, error) {
 	var user auth.User

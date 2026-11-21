@@ -51,6 +51,7 @@ type Store interface {
 }
 
 type Options struct {
+	Registration            RegistrationOptions
 	RPID                    string
 	RPName                  string
 	Origins                 []string
@@ -59,25 +60,35 @@ type Options struct {
 }
 
 type service struct {
-	web *wa.WebAuthn
-	ttl time.Duration
+	registration RegistrationOptions
+	web          *wa.WebAuthn
+	ttl          time.Duration
 }
 type ceremony struct {
-	Kind      string
-	UserID    string
-	SessionID string
-	Data      wa.SessionData
+	PreAuth           bool
+	Context           *string
+	Name, DisplayName string
+	Kind              string
+	UserID            string
+	SessionID         string
+	Data              wa.SessionData
 }
 
 type actor struct {
+	display string
 	authn.User
 	handle      []byte
 	credentials wa.Credentials
 }
 
-func (u actor) WebAuthnID() []byte                   { return u.handle }
-func (u actor) WebAuthnName() string                 { return u.Name }
-func (u actor) WebAuthnDisplayName() string          { return u.Name }
+func (u actor) WebAuthnID() []byte   { return u.handle }
+func (u actor) WebAuthnName() string { return u.Name }
+func (u actor) WebAuthnDisplayName() string {
+	if u.display != "" {
+		return u.display
+	}
+	return u.Name
+}
 func (u actor) WebAuthnCredentials() []wa.Credential { return u.credentials }
 func (s service) actor(user authn.User) actor {
 	sum := sha256.Sum256([]byte("passkey-user\x00" + s.web.Config.RPID + "\x00" + user.ID))
@@ -132,17 +143,26 @@ func New(o Options) (authn.Plugin, error) {
 	if err != nil {
 		return authn.Plugin{}, err
 	}
-	s := service{web: web, ttl: o.ChallengeLifetime}
+	var enrollmentMetadata json.RawMessage
+	if o.Registration.AllowWithoutSession {
+		enrollmentMetadata = json.RawMessage(`{"security":[{},{"apiKeyCookie":[]}]}`)
+	}
+	s := service{web: web, ttl: o.ChallengeLifetime, registration: o.Registration}
 	return authn.Plugin{ID: "passkey", ValidateStore: func(store authn.Store) error {
 		backend, ok := store.(Store)
 		if !ok {
 			return errors.New("passkey: configured store does not support passkeys")
 		}
+		if o.Registration.AllowWithoutSession {
+			if _, ok := store.(RegistrationStore); !ok {
+				return errors.New("passkey: pre-authentication registration requires a transactional registration store")
+			}
+		}
 		return backend.CheckPasskeySchema(context.Background())
 	},
 		Endpoints: []authn.Endpoint{
-			{Method: "GET", Path: "/passkey/generate-register-options", Handler: s.beginRegistration},
-			{Method: "POST", Path: "/passkey/verify-registration", Handler: s.finishRegistration},
+			{Method: "GET", Path: "/passkey/generate-register-options", OpenAPI: enrollmentMetadata, Handler: s.beginRegistration},
+			{Method: "POST", Path: "/passkey/verify-registration", OpenAPI: enrollmentMetadata, Handler: s.finishRegistration},
 			{Method: "GET", Path: "/passkey/generate-authenticate-options", Handler: s.beginLogin},
 			{Method: "POST", Path: "/passkey/verify-authentication", Handler: s.finishLogin},
 			{Method: "GET", Path: "/passkey/list-user-passkeys", Handler: s.list},
@@ -232,11 +252,10 @@ func (r Record) credential() (wa.Credential, error) {
 	return out, nil
 }
 func (s service) beginRegistration(c authn.EndpointContext) (any, error) {
-	ss, err := c.RequireFreshSession()
+	user, state, err := s.registrationActor(c)
 	if err != nil {
 		return nil, err
 	}
-	user := s.actor(ss.User)
 	records, err := c.Store().(Store).ListPasskeys(c.Request.Context(), user.ID)
 	if err != nil {
 		return nil, err
@@ -265,7 +284,8 @@ func (s service) beginRegistration(c authn.EndpointContext) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = s.remember(c, ceremony{Kind: "registration", UserID: user.ID, SessionID: ss.Session.ID, Data: *data})
+	state.Data = *data
+	err = s.remember(c, state)
 	return creation.Response, err
 }
 func responseBytes(c authn.EndpointContext) ([]byte, error) {
@@ -276,7 +296,7 @@ func responseBytes(c authn.EndpointContext) ([]byte, error) {
 	return json.Marshal(resp)
 }
 func (s service) finishRegistration(c authn.EndpointContext) (any, error) {
-	ss, err := c.RequireFreshSession()
+	ss, err := s.registrationSession(c)
 	if err != nil {
 		return nil, err
 	}
@@ -284,11 +304,19 @@ func (s service) finishRegistration(c authn.EndpointContext) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	if state.UserID != ss.User.ID || state.SessionID != ss.Session.ID {
+	if !state.PreAuth && (ss == nil || state.SessionID != ss.Session.ID || state.UserID != ss.User.ID) {
 		return nil, ErrSession
 	}
-	if v := c.Body["createSession"]; v != nil && v != false {
-		return nil, problem(400, "UNSUPPORTED_OPTION", "Creating a new session during enrollment is unavailable")
+	if state.PreAuth && (!s.registration.AllowWithoutSession || ss != nil && state.UserID != ss.User.ID) {
+		return nil, errOwner
+	}
+	createSession := false
+	if v, ok := c.Body["createSession"]; ok {
+		flag, valid := v.(bool)
+		if !valid {
+			return nil, ErrRegistration
+		}
+		createSession = flag
 	}
 	data, err := responseBytes(c)
 	if err != nil {
@@ -298,13 +326,17 @@ func (s service) finishRegistration(c authn.EndpointContext) (any, error) {
 	if err != nil {
 		return nil, ErrRegistration
 	}
-	cred, err := s.web.CreateCredential(s.actor(ss.User), state.Data, parsed)
+	who := s.actor(authn.User{ID: state.UserID, Name: state.Name})
+	if state.PreAuth {
+		who.handle = state.Data.UserID
+	}
+	cred, err := s.web.CreateCredential(who, state.Data, parsed)
 	if err != nil {
 		return nil, ErrRegistration
 	}
 	now := time.Now().UTC().Truncate(time.Millisecond)
 	sum := sha256.Sum256(cred.ID)
-	r := Record{ID: hex.EncodeToString(sum[:16]), UserID: ss.User.ID, CredentialID: base64.RawURLEncoding.EncodeToString(cred.ID), PublicKey: base64.StdEncoding.EncodeToString(cred.PublicKey), Counter: cred.Authenticator.SignCount, DeviceType: "singleDevice", BackedUp: cred.Flags.BackupState, CreatedAt: &now}
+	r := Record{ID: hex.EncodeToString(sum[:16]), UserID: state.UserID, CredentialID: base64.RawURLEncoding.EncodeToString(cred.ID), PublicKey: base64.StdEncoding.EncodeToString(cred.PublicKey), Counter: cred.Authenticator.SignCount, DeviceType: "singleDevice", BackedUp: cred.Flags.BackupState, CreatedAt: &now}
 	if cred.Flags.BackupEligible {
 		r.DeviceType = "multiDevice"
 	}
@@ -322,10 +354,7 @@ func (s service) finishRegistration(c authn.EndpointContext) (any, error) {
 		aaguid := id.String()
 		r.AAGUID = &aaguid
 	}
-	if err := c.Store().(Store).CreatePasskey(c.Request.Context(), r, ss.Session.Token, now); err != nil {
-		return nil, err
-	}
-	return r, nil
+	return s.persistRegistration(c, state, ss, cred, data, r, createSession, now)
 }
 func (s service) beginLogin(c authn.EndpointContext) (any, error) {
 	ss, err := c.Auth.GetSession(c.Request.Context(), c.Request.Header)
@@ -382,6 +411,9 @@ func (s service) finishLogin(c authn.EndpointContext) (any, error) {
 		return nil, ErrAuthentication
 	}
 	user := s.actor(authn.User{ID: record.UserID})
+	if h := recordHandle(record.ID); h != nil {
+		user.handle = h
+	}
 	stored, err := record.credential()
 	if err != nil {
 		return nil, err

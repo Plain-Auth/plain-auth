@@ -8,6 +8,9 @@ import (
 // Store returns the current instance's configured identity store.
 func (c EndpointContext) Store() Store { return c.Auth.opts.Store }
 
+// SignUpAllowed reports whether a plugin may create a new account.
+func (c EndpointContext) SignUpAllowed() bool { return !c.Auth.opts.DisableSignUp }
+
 // RequireFreshSession checks the authoritative session and the configured age for
 // a sensitive operation such as enrolling an additional credential.
 func (c EndpointContext) RequireFreshSession() (*SessionResult, error) {

@@ -1405,6 +1405,11 @@
       "label": "Use the public client to request options with the configured relying-party name, ID and public-key algorithms",
       "test": "conformance/core.test.mjs",
       "marker": "test(\"the official passkey client"
+    },
+    {
+      "label": "Resolve a provisional enrollment identity and bind its display name and context to the ceremony",
+      "test": "adapters/sqlstore/passkey_first_test.go",
+      "marker": "WebAuthn registration user labels were lost"
     }
   ],
   "plugin/passkey/GET /passkey/generate-authenticate-options": [
@@ -1419,6 +1424,16 @@
       "label": "Verify the attested key and preserve distinct credential and record IDs",
       "test": "adapters/sqlstore/passkey_test.go",
       "marker": "stored credential identity mismatch"
+    },
+    {
+      "label": "Commit the passwordless user, unique credential and optional browser session together on three SQL backends",
+      "test": "adapters/sqlstore/passkey_first_test.go",
+      "marker": "passkey-first registration did not atomically return"
+    },
+    {
+      "label": "Roll back account provisioning when another enrollment already owns the same credential",
+      "test": "adapters/sqlstore/passkey_first_test.go",
+      "marker": "duplicate credential committed an orphan account"
     }
   ],
   "plugin/passkey/POST /passkey/verify-authentication": [
@@ -1426,6 +1441,11 @@
       "label": "Verify a signed assertion and atomically persist its counter and session",
       "test": "adapters/sqlstore/passkey_test.go",
       "marker": "assertion session missing on second instance"
+    },
+    {
+      "label": "Authenticate a real assertion after the trusted callback chooses a different final account ID",
+      "test": "adapters/sqlstore/passkey_first_test.go",
+      "marker": "credential lost its opaque handle"
     }
   ],
   "plugin/passkey/GET /passkey/list-user-passkeys": [
@@ -1454,6 +1474,11 @@
       "label": "Enroll two independent public-key credentials from a fresh session",
       "test": "adapters/sqlstore/passkey_test.go",
       "marker": "separate authenticator credential IDs collided"
+    },
+    {
+      "label": "Use the public addPasskey action with application context, createSession and the real WebAuthn result",
+      "test": "conformance/passkey-first-browser.mjs",
+      "marker": "assert.equal(enrolled.webauthn.response.id,credentialID)"
     }
   ],
   "docs/content/docs/plugins/passkey.mdx#L174": [
@@ -1461,6 +1486,11 @@
       "label": "Sign in with a locally generated software authenticator and honor counter progression",
       "test": "adapters/sqlstore/passkey_test.go",
       "marker": "counter not persisted"
+    },
+    {
+      "label": "Sign in using the passkey the browser enrolled before login",
+      "test": "conformance/passkey-first-browser.mjs",
+      "marker": "assert.equal((await client.getSession()).data.user.id,user.id)"
     }
   ],
   "docs/content/docs/plugins/passkey.mdx#L237": [
@@ -5849,6 +5879,41 @@
       "label": "Keep static principals and reserved managed credentials out of the application verifier",
       "test": "adapters/sqlstore/scim_dynamic_test.go",
       "marker": "func TestSCIMDynamicBearer("
+    }
+  ],
+  "plugin-symbol/passkey/passkeyClient": [
+    {
+      "label": "Use the published client to register a discoverable credential and authenticate in a local Chrome virtual authenticator on both servers",
+      "test": "conformance/passkey-first-browser.mjs",
+      "marker": "const signed=await client.signIn.passkey()"
+    }
+  ],
+  "plugin-symbol/passkey/PasskeyRegistrationOptions/requireSession": [
+    {
+      "label": "Opt into first-use registration and keep existing-session enrollment bound to the original live session",
+      "test": "adapters/sqlstore/passkey_first_test.go",
+      "marker": "phoneError(t, err, 401, \"SESSION_REQUIRED\")"
+    }
+  ],
+  "plugin-symbol/passkey/PasskeyRegistrationOptions/resolveUser": [
+    {
+      "label": "Accept a validated application enrollment context and a provisional user identity",
+      "test": "adapters/sqlstore/passkey_first_test.go",
+      "marker": "ID: \"pending\", Name: \"registration\""
+    }
+  ],
+  "plugin-symbol/passkey/PasskeyRegistrationOptions/afterVerification": [
+    {
+      "label": "Run the application decision only after verified WebAuthn attestation",
+      "test": "adapters/sqlstore/passkey_first_test.go",
+      "marker": "unverified response reached account provisioning"
+    }
+  ],
+  "docs/content/docs/plugins/passkey.mdx#L108": [
+    {
+      "label": "Complete the two-request registration and session-creation ceremony in the public client on both servers",
+      "test": "conformance/passkey-first-browser.mjs",
+      "marker": "assert.equal(session.userId,user.id)"
     }
   ]
 }

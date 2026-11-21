@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 
 	authn "github.com/Stonewrit/stonewrit-auth"
 	"github.com/Stonewrit/stonewrit-auth/adapters/sqlstore"
@@ -39,6 +40,10 @@ func main() {
 	}
 	defer listener.Close()
 	baseURL := "http://" + listener.Addr().String()
+	passkeyFirst := os.Getenv("CONFORMANCE_PASSKEY_FIRST") == "1"
+	if passkeyFirst {
+		baseURL = strings.Replace(baseURL, "127.0.0.1", "localhost", 1)
+	}
 	ddl, err := schema.Generate("sqlite", os.Args[2:])
 	if err != nil {
 		log.Fatal(err)
@@ -114,7 +119,11 @@ func main() {
 			}
 			plugins = append(plugins, p)
 		case "passkey":
-			p, err := passkey.New(passkey.Options{RPID: "example.test", RPName: "Local Test", Origins: []string{"https://accounts.example.test"}, RequireUserVerification: true})
+			options := passkey.Options{RPID: "example.test", RPName: "Local Test", Origins: []string{"https://accounts.example.test"}, RequireUserVerification: true}
+			if passkeyFirst {
+				options = fixturePasskeyFirst(baseURL)
+			}
+			p, err := passkey.New(options)
 			if err != nil {
 				log.Fatal(err)
 			}

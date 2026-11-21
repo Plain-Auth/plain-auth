@@ -135,6 +135,8 @@ func publicResponse(route stonewrit.HTTPRoute, info stonewrit.HTTPDescription, f
 		return responseObject(object{"token": object{"type": "string"}}, "token")
 	case "/organization/list":
 		return array(modelRef("Organization"))
+	case "/passkey/verify-registration":
+		return object{"allOf": []object{modelRef("Passkey"), responseObject(object{"session": modelRef("Session"), "user": modelRef("User")})}}
 	case "/passkey/list-user-passkeys":
 		return array(modelRef("Passkey"))
 	case "/subscription/list":
@@ -191,7 +193,7 @@ func adjustRequest(op object, r stonewrit.HTTPRoute, info stonewrit.HTTPDescript
 		delete(op, "requestBody")
 		return
 	case "/passkey/generate-register-options":
-		op["parameters"] = []object{{"name": "name", "in": "query", "schema": object{"type": "string"}}, {"name": "authenticatorAttachment", "in": "query", "schema": object{"type": "string", "enum": []string{"platform", "cross-platform"}}}}
+		op["parameters"] = []object{{"name": "context", "in": "query", "schema": object{"type": "string"}}, {"name": "name", "in": "query", "schema": object{"type": "string"}}, {"name": "authenticatorAttachment", "in": "query", "schema": object{"type": "string", "enum": []string{"platform", "cross-platform"}}}}
 		return
 	}
 	if r.Path == "/stripe/webhook" {
@@ -272,7 +274,7 @@ func adjustRequest(op object, r stonewrit.HTTPRoute, info stonewrit.HTTPDescript
 	case "/organization/create":
 		keepFields(schema, "name", "slug", "logo", "metadata", "keepCurrentActiveOrganization")
 	case "/passkey/verify-registration":
-		fields["createSession"] = object{"const": false}
+		fields["createSession"] = object{"type": "boolean"}
 	case "/unlink-account":
 		schema = responseObject(object{"accountId": object{"type": "string"}}, "accountId")
 		jsonMedia["schema"] = schema
