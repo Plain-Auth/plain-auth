@@ -1,0 +1,20 @@
+[
+  {
+    "name": "signed email and matching graph",
+    "token": {"oid":"object-id","tid":"363368ff-7777-452f-886c-a111d48741bb","email":"jo@example.org","given_name":"Jo","family_name":"Lee","email_verified":false},
+    "graph": {"sub":"pairwise-id","email":"jo@example.org","email_verified":true,"name":"Other"},
+    "wantEmail":"jo@example.org","wantName":"Jo Lee","wantVerified":false
+  },
+  {
+    "name":"matching graph fills absent claims",
+    "token":{"oid":"object-id","tid":"363368ff-7777-452f-886c-a111d48741bb"},
+    "graph":{"sub":"pairwise-id","email":"graph@example.org","email_verified":true,"given_name":"Alex","family_name":"Lee"},
+    "wantEmail":"graph@example.org","wantName":"Alex Lee","wantVerified":true
+  },
+  {
+    "name":"unrelated graph subject",
+    "token":{"oid":"object-id","tid":"363368ff-7777-452f-886c-a111d48741bb","name":"Jo"},
+    "graph":{"sub":"unrelated","email":"foreign@example.org","email_verified":true,"name":"Other"},
+    "wantEmail":"object-id@microsoft-entra-id.placeholder.invalid","wantName":"Jo","wantVerified":false
+  }
+]

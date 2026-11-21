@@ -119,6 +119,8 @@
     - [ ] `disableSignUp`
     - [ ] `overrideUserInfo`
   - [ ] `microsoftEntraId`
+    - [x] Use a signed tenant-bound object ID and match the Graph subject before supplementing identity fields ([test](../../../providers/entra_test.go#L20))
+    - [x] Compare tenant discovery, default scopes, graph merging and absent-email behavior with the published preset ([test](../../../conformance/entra-profiles.test.mjs#L6))
   - [ ] `OktaOptions`
     - [ ] `issuer`
     - [ ] `clientId`

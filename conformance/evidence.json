@@ -5600,5 +5600,17 @@
       "test": "conformance/profile-presets.test.mjs",
       "marker": "test(\"OAuth profile presets match"
     }
+  ],
+  "plugin-symbol/generic-oauth/microsoftEntraId": [
+    {
+      "label": "Use a signed tenant-bound object ID and match the Graph subject before supplementing identity fields",
+      "test": "providers/entra_test.go",
+      "marker": "func TestSingleTenantEntraProfile("
+    },
+    {
+      "label": "Compare tenant discovery, default scopes, graph merging and absent-email behavior with the published preset",
+      "test": "conformance/entra-profiles.test.mjs",
+      "marker": "test(\"single-tenant Entra binds"
+    }
   ]
 }

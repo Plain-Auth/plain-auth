@@ -151,3 +151,17 @@ opts.SocialProviders = map[string]auth.OAuthProvider{
 ```
 
 Sign-in requests `openid profile email`. When LINE issues an ID token, the handler submits it to LINE for verification and checks the issuer, channel, nonce and timestamps. An access-token-only response uses the channel’s UserInfo endpoint. The account requires a subject and email address, and the email is stored as unverified. [LINE Login API](https://developers.line.biz/en/reference/line-login/#verify-id-token)
+
+## Single-tenant Microsoft Entra ID
+
+Register a web application in your Microsoft Entra tenant. Pass its directory tenant GUID, application client ID and credential into `providers.MicrosoftEntraID`. Register your callback, for example `https://app.example.com/api/auth/callback/company`, in that application.
+
+```go
+company, err := providers.MicrosoftEntraID(ctx, os.Getenv("ENTRA_TENANT_ID"), os.Getenv("ENTRA_CLIENT_ID"), os.Getenv("ENTRA_CLIENT_SECRET"))
+if err != nil {
+    return err
+}
+opts.SocialProviders = map[string]auth.OAuthProvider{"company": company}
+```
+
+The preset discovers the tenant’s signing keys, requests `openid profile email`, and binds each account to the directory object ID from the signed ID token. It checks the issuer, audience, tenant, nonce and token lifetime. Microsoft Graph can fill missing name, email and picture fields when its UserInfo subject matches the signed subject. An absent email receives a stable, unverified address ending in `@microsoft-entra-id.placeholder.invalid`. An email verification flag from Graph applies only to the same email address. [Microsoft ID token claims](https://learn.microsoft.com/en-us/entra/identity-platform/id-token-claims-reference) · [Microsoft UserInfo](https://learn.microsoft.com/en-us/entra/identity-platform/userinfo)
