@@ -603,6 +603,11 @@
   ],
   "plugin/organization/POST /organization/set-active": [
     {
+      "label": "Preserve the same organization’s selected team and clear it across organization switches on a plain node",
+      "test": "adapters/sqlstore/organization_topology_test.go",
+      "marker": "mixed-node session selection differs"
+    },
+    {
       "label": "Select by slug or clear the current session selection",
       "test": "plugins/organization/organization_test.go",
       "marker": "cleared organization still active"
@@ -640,6 +645,21 @@
     }
   ],
   "plugin/organization/POST /organization/accept-invitation": [
+    {
+      "label": "Reject an invitation ID with different casing without consuming the invitation or granting membership on any SQL engine",
+      "test": "adapters/sqlstore/organization_topology_test.go",
+      "marker": "case-changed invitation ID affected stored state"
+    },
+    {
+      "label": "Accept an organization-only invitation through a plain node sharing the upgraded database",
+      "test": "adapters/sqlstore/organization_topology_test.go",
+      "marker": "plain node did not accept the untargeted invitation"
+    },
+    {
+      "label": "Keep a team invitation pending on a plain node and retry under the configured team policy",
+      "test": "adapters/sqlstore/organization_topology_test.go",
+      "marker": "team policy failure consumed the invitation"
+    },
     {
       "label": "Accept a matching invitation once, even during concurrent requests",
       "test": "plugins/organization/organization_test.go",

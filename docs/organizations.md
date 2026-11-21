@@ -114,3 +114,9 @@ To invite a new organization member into teams, include `teamId` in `/organizati
 `MaximumTeams` limits the number of teams per organization. A positive value enables the limit. `MaximumMembersPerTeam` sets a fixed seat limit for added and invited members, and `nil` leaves capacity unrestricted. Removing an organization's last team requires `AllowRemovingAllTeams: true`. Custom role permissions, dynamic quota functions and team lifecycle callbacks are tracked separately in the [organization checklist](parity/plugins/organization.md).
 
 The native client includes `CreateTeam`, `UpdateTeam`, `RemoveTeam`, `ListOrganizationTeams`, `ListUserTeams`, `SetActiveTeam`, `ListTeamMembers`, `AddTeamMember` and `RemoveTeamMember`. Each client uses its own session when resolving an omitted organization or team. [Multi-engine team tests](../adapters/sqlstore/organization_teams_test.go)
+
+### Share a database between nodes
+
+Invitation IDs are case-sensitive on all three SQL engines. Use the original ID when accepting an invitation. Nodes using the plain organization plugin can accept invitations that grant organization membership alone. Route invitations containing team IDs to a node configured with the team's membership policy. A plain node returns HTTP 409 with code `ORGANIZATION_TEAM_POLICY_REQUIRED` to the signed-in recipient. The invitation remains pending. The team-enabled node checks capacity in the acceptance transaction and grants organization and team membership together.
+
+Every node clears the session's active team when the user switches to a different organization or clears the active organization. Selecting the same organization preserves its current team. These rules also apply when a plain node was already running when the database gained team tables. [Mixed-node HTTP and storage tests](../adapters/sqlstore/organization_topology_test.go)

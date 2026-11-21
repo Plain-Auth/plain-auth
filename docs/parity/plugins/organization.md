@@ -43,6 +43,9 @@
     - [x] Require a live inviter session for invitation creation and resends ([test](../../../adapters/sqlstore/organization_cleanup_test.go#L169))
     - [x] Reject team IDs outside the invitation’s organization, including reserved delimiters ([test](../../../adapters/sqlstore/organization_teams_test.go#L123))
   - [ ] `POST /organization/accept-invitation`
+    - [x] Reject an invitation ID with different casing without consuming the invitation or granting membership on any SQL engine ([test](../../../adapters/sqlstore/organization_topology_test.go#L147))
+    - [x] Accept an organization-only invitation through a plain node sharing the upgraded database ([test](../../../adapters/sqlstore/organization_topology_test.go#L154))
+    - [x] Keep a team invitation pending on a plain node and retry under the configured team policy ([test](../../../adapters/sqlstore/organization_topology_test.go#L106))
     - [x] Accept a matching invitation once, even during concurrent requests ([test](../../../plugins/organization/organization_test.go#L153))
     - [x] Read the current recipient email and verification status and keep rejected invitation details private ([test](../../../adapters/sqlstore/organization_cleanup_test.go#L117))
     - [x] Return only the public error code and message to a different recipient ([test](../../../plugins/organization/organization_test.go#L142))
@@ -76,6 +79,7 @@
     - [x] Resolve the active organization and enforce membership ([test](../../../plugins/organization/organization_test.go#L98))
   - [ ] `GET /organization/get-full-organization`
   - [ ] `POST /organization/set-active`
+    - [x] Preserve the same organization’s selected team and clear it across organization switches on a plain node ([test](../../../adapters/sqlstore/organization_topology_test.go#L123))
     - [x] Select by slug or clear the current session selection ([test](../../../plugins/organization/organization_test.go#L175))
   - [ ] `GET /organization/list`
     - [x] List only organizations the current user belongs to ([test](../../../plugins/organization/organization_test.go#L109))

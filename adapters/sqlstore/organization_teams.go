@@ -504,11 +504,42 @@ func (s *Store) RemoveTeamMember(ctx context.Context, a org.TeamActor, explicit,
 	})
 }
 
-func (s *Store) selectOrganizationAndTeam(ctx context.Context, tx *sql.Tx, session, user string, group, team *string) error {
+// A process without team routes can share a database that a team-aware process
+// migrated after startup. Resolve optional fields in the mutation transaction.
+func (s *Store) organizationTeamField(ctx context.Context, tx *sql.Tx, table, field string) (bool, error) {
 	if s.teamOptions != nil {
-		_, err := tx.ExecContext(ctx, s.bind(`UPDATE "session" SET "activeOrganizationId"=?,"activeTeamId"=? WHERE "id"=? AND "userId"=?`), group, team, session, user)
+		return true, nil
+	}
+	query := `SELECT EXISTS (SELECT 1 FROM pragma_table_info(?) WHERE name=?)`
+	switch s.dialect {
+	case "postgres":
+		query = `SELECT EXISTS (SELECT 1 FROM pg_catalog.pg_attribute WHERE attrelid=pg_catalog.to_regclass(pg_catalog.quote_ident(?)) AND attname=? AND attnum>0 AND NOT attisdropped)`
+	case "mysql":
+		query = `SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name=? AND column_name=?)`
+	}
+	var exists bool
+	err := tx.QueryRowContext(ctx, s.bind(query), table, field).Scan(&exists)
+	return exists, err
+}
+
+func (s *Store) selectOrganizationAndTeam(ctx context.Context, tx *sql.Tx, session, user string, group, team *string) error {
+	hasTeam, err := s.organizationTeamField(ctx, tx, "session", "activeTeamId")
+	if err != nil {
 		return err
 	}
-	_, err := tx.ExecContext(ctx, s.bind(`UPDATE "session" SET "activeOrganizationId"=? WHERE "id"=? AND "userId"=?`), group, session, user)
+	exact := s.exactSQLValue("?")
+	var selection string
+	var args []any
+	if hasTeam {
+		if team == nil && group != nil {
+			selection = `"activeTeamId"=CASE WHEN "activeOrganizationId"=` + exact + ` THEN "activeTeamId" ELSE NULL END, `
+			args = append(args, *group)
+		} else {
+			selection = `"activeTeamId"=?, `
+			args = append(args, team)
+		}
+	}
+	args = append(args, group, session, user)
+	_, err = tx.ExecContext(ctx, s.bind(`UPDATE "session" SET `+selection+`"activeOrganizationId"=? WHERE "id"=`+exact+` AND "userId"=`+exact), args...)
 	return err
 }

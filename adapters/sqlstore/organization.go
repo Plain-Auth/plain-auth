@@ -183,11 +183,7 @@ func (s *Store) SetActiveOrganization(ctx context.Context, sessionID, userID str
 	if !member {
 		return org.ErrNotMember
 	}
-	if s.teamOptions != nil {
-		_, err = tx.ExecContext(ctx, s.bind(`UPDATE "session" SET "activeTeamId"=CASE WHEN "activeOrganizationId"=? THEN "activeTeamId" ELSE NULL END, "activeOrganizationId"=? WHERE "id"=? AND "userId"=?`), *id, *id, sessionID, userID)
-	} else {
-		err = s.selectOrganizationAndTeam(ctx, tx, sessionID, userID, id, nil)
-	}
+	err = s.selectOrganizationAndTeam(ctx, tx, sessionID, userID, id, nil)
 	if err != nil {
 		return err
 	}
@@ -217,21 +213,24 @@ func (s *Store) lockOrganization(ctx context.Context, tx *sql.Tx, id string) err
 
 const invitationFields = `"id","organizationId","inviterId","email","role","status","expiresAt","createdAt"`
 
-func (s *Store) invitationColumns() string {
-	if s.teamOptions != nil {
+func invitationColumns(teamField bool) string {
+	if teamField {
 		return invitationFields + `,"teamId"`
 	}
 	return invitationFields
 }
-func (s *Store) scanInvitation(r rowScanner) (org.Invitation, error) {
+func scanInvitation(r rowScanner, teamField bool) (org.Invitation, error) {
 	var inv org.Invitation
 	var role sql.NullString
 	fields := []any{&inv.ID, &inv.OrganizationID, &inv.InviterID, &inv.Email, &role, &inv.Status, &inv.ExpiresAt, &inv.CreatedAt}
-	if s.teamOptions != nil {
+	if teamField {
 		fields = append(fields, &inv.TeamID)
 	}
 	err := r.Scan(fields...)
 	inv.Role = role.String
+	if inv.TeamID != nil && *inv.TeamID == "" {
+		inv.TeamID = nil
+	}
 	return inv, err
 }
 
@@ -278,7 +277,12 @@ func (s *Store) InviteOrganizationMember(ctx context.Context, inv org.Invitation
 	if existing {
 		return org.Invitation{}, org.ErrAlreadyMember
 	}
-	pending, err := s.scanInvitation(tx.QueryRowContext(ctx, s.bind(`SELECT `+s.invitationColumns()+` FROM "invitation" WHERE "organizationId"=? AND LOWER("email")=? AND "status"='pending' AND "expiresAt">? ORDER BY "createdAt" DESC LIMIT 1`), inv.OrganizationID, inv.Email, s.date(inv.CreatedAt)))
+	teamField, err := s.organizationTeamField(ctx, tx, "invitation", "teamId")
+	if err != nil {
+		return org.Invitation{}, err
+	}
+	exact := s.exactSQLValue("?")
+	pending, err := scanInvitation(tx.QueryRowContext(ctx, s.bind(`SELECT `+invitationColumns(teamField)+` FROM "invitation" WHERE "organizationId"=`+exact+` AND LOWER("email")=? AND "status"='pending' AND "expiresAt">? ORDER BY "createdAt" DESC LIMIT 1`), inv.OrganizationID, inv.Email, s.date(inv.CreatedAt)), teamField)
 	if err == nil {
 		if !resend {
 			return org.Invitation{}, org.ErrAlreadyInvited
@@ -287,7 +291,7 @@ func (s *Store) InviteOrganizationMember(ctx context.Context, inv org.Invitation
 			return org.Invitation{}, org.ErrRoleDenied
 		}
 		pending.ExpiresAt = inv.ExpiresAt
-		_, err = tx.ExecContext(ctx, s.bind(`UPDATE "invitation" SET "expiresAt"=? WHERE "id"=?`), s.date(pending.ExpiresAt), pending.ID)
+		_, err = tx.ExecContext(ctx, s.bind(`UPDATE "invitation" SET "expiresAt"=? WHERE "id"=`+exact+` AND "organizationId"=`+exact), s.date(pending.ExpiresAt), pending.ID, inv.OrganizationID)
 		if err != nil {
 			return org.Invitation{}, err
 		}
@@ -313,11 +317,11 @@ func (s *Store) InviteOrganizationMember(ctx context.Context, inv org.Invitation
 			}
 		}
 	}
-	if s.teamOptions != nil {
+	if teamField {
 		args = append(args, inv.TeamID)
 	}
 	params := strings.TrimSuffix(strings.Repeat("?,", len(args)), ",")
-	_, err = tx.ExecContext(ctx, s.bind(`INSERT INTO "invitation" (`+s.invitationColumns()+`) VALUES(`+params+`)`), args...)
+	_, err = tx.ExecContext(ctx, s.bind(`INSERT INTO "invitation" (`+invitationColumns(teamField)+`) VALUES(`+params+`)`), args...)
 	if err != nil {
 		return org.Invitation{}, err
 	}
@@ -340,7 +344,8 @@ func (s *Store) AcceptOrganizationInvitation(ctx context.Context, id, sessionID 
 		return org.Invitation{}, org.Member{}, err
 	}
 	var organizationID string
-	err = tx.QueryRowContext(ctx, s.bind(`SELECT "organizationId" FROM "invitation" WHERE "id"=?`), id).Scan(&organizationID)
+	exact := s.exactSQLValue("?")
+	err = tx.QueryRowContext(ctx, s.bind(`SELECT "organizationId" FROM "invitation" WHERE "id"=`+exact), id).Scan(&organizationID)
 	if errors.Is(err, sql.ErrNoRows) {
 		return org.Invitation{}, org.Member{}, org.ErrInvitation
 	}
@@ -350,7 +355,11 @@ func (s *Store) AcceptOrganizationInvitation(ctx context.Context, id, sessionID 
 	if err = s.lockOrganization(ctx, tx, organizationID); err != nil {
 		return org.Invitation{}, org.Member{}, err
 	}
-	inv, err = s.scanInvitation(tx.QueryRowContext(ctx, s.bind(`SELECT `+s.invitationColumns()+` FROM "invitation" WHERE "id"=? AND "organizationId"=?`), id, organizationID))
+	teamField, err := s.organizationTeamField(ctx, tx, "invitation", "teamId")
+	if err != nil {
+		return org.Invitation{}, org.Member{}, err
+	}
+	inv, err = scanInvitation(tx.QueryRowContext(ctx, s.bind(`SELECT `+invitationColumns(teamField)+` FROM "invitation" WHERE "id"=`+exact+` AND "organizationId"=`+exact), id, organizationID), teamField)
 	if errors.Is(err, sql.ErrNoRows) {
 		return org.Invitation{}, org.Member{}, org.ErrInvitation
 	}
@@ -366,10 +375,13 @@ func (s *Store) AcceptOrganizationInvitation(ctx context.Context, id, sessionID 
 	if requireVerified && !u.EmailVerified {
 		return org.Invitation{}, org.Member{}, org.ErrUnverified
 	}
+	if inv.TeamID != nil && s.teamOptions == nil {
+		return org.Invitation{}, org.Member{}, org.ErrTeamPolicyRequired
+	}
 	if err = s.checkNewMember(ctx, tx, inv.OrganizationID, u.ID); err != nil {
 		return org.Invitation{}, org.Member{}, err
 	}
-	res, err := tx.ExecContext(ctx, s.bind(`UPDATE "invitation" SET "status"='accepted' WHERE "id"=? AND "status"='pending'`), id)
+	res, err := tx.ExecContext(ctx, s.bind(`UPDATE "invitation" SET "status"='accepted' WHERE "id"=`+exact+` AND "organizationId"=`+exact+` AND "status"='pending'`), id, organizationID)
 	if err != nil {
 		return org.Invitation{}, org.Member{}, err
 	}
