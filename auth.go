@@ -1,0 +1,292 @@
+package betterauth
+
+import (
+	"context"
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/base64"
+	"encoding/hex"
+	"errors"
+	"fmt"
+	"net/http"
+	"net/url"
+	"path"
+	"regexp"
+	"runtime"
+	"strings"
+	"time"
+	"unicode/utf16"
+)
+
+// Auth is safe for concurrent use by application handlers.
+type Auth struct {
+	passwordSlots chan struct{}
+	plugins       map[endpointKey]Endpoint
+	opts          Options
+	now           func() time.Time
+	limiter       rateLimiter
+}
+
+// New constructs an http.Handler for mounting in an existing router.
+func New(opts Options) (*Auth, error) {
+	if opts.Store == nil {
+		return nil, errors.New("betterauth: Store is required")
+	}
+	if len(opts.Secret) < 32 {
+		return nil, errors.New("betterauth: Secret needs at least 32 bytes")
+	}
+	origin, err := parseOrigin(opts.BaseURL)
+	if err != nil {
+		return nil, fmt.Errorf("betterauth: BaseURL: %w", err)
+	}
+	opts.BaseURL = origin
+	opts.TrustedOrigins = append([]string(nil), opts.TrustedOrigins...)
+	for i, s := range opts.TrustedOrigins {
+		origin, err := parseOrigin(s)
+		if err != nil {
+			return nil, fmt.Errorf("betterauth: TrustedOrigins[%d]: %w", i, err)
+		}
+		opts.TrustedOrigins[i] = origin
+	}
+	if opts.BasePath == "" {
+		opts.BasePath = "/api/auth"
+	}
+	if !strings.HasPrefix(opts.BasePath, "/") || path.Clean(opts.BasePath) != opts.BasePath || strings.ContainsAny(opts.BasePath, "?#%\\ \t\r\n") {
+		return nil, errors.New("betterauth: BasePath must be a clean absolute URL path")
+	}
+	if opts.SessionTTL == 0 {
+		opts.SessionTTL = 7 * 24 * time.Hour
+	}
+	if opts.FreshAge == 0 {
+		opts.FreshAge = 24 * time.Hour
+	}
+	if opts.MinPasswordLength == 0 {
+		opts.MinPasswordLength = 8
+	}
+	if opts.MaxPasswordLength == 0 {
+		opts.MaxPasswordLength = 128
+	}
+	if opts.SessionTTL < time.Second || opts.FreshAge < 0 || opts.MinPasswordLength < 1 || opts.MaxPasswordLength < opts.MinPasswordLength {
+		return nil, errors.New("betterauth: invalid session duration or password length")
+	}
+	if opts.RateLimit != nil {
+		v := *opts.RateLimit
+		opts.RateLimit = &v
+	}
+	if opts.PasswordResetTokenTTL == 0 {
+		opts.PasswordResetTokenTTL = time.Hour
+	}
+	if opts.EmailVerificationTokenTTL == 0 {
+		opts.EmailVerificationTokenTTL = time.Hour
+	}
+	if opts.PasswordResetTokenTTL < 0 || opts.EmailVerificationTokenTTL < 0 {
+		return nil, errors.New("betterauth: token lifetimes must be positive")
+	}
+	if opts.SendVerificationEmail != nil || opts.SendResetPassword != nil {
+		if _, ok := opts.Store.(AccountStore); !ok {
+			return nil, errors.New("betterauth: mail link delivery requires an AccountStore")
+		}
+	}
+	opts.Plugins = append([]Plugin(nil), opts.Plugins...)
+	plugins, err := registerPlugins(opts.Plugins)
+	if err != nil {
+		return nil, err
+	}
+	return &Auth{opts: opts, now: time.Now, passwordSlots: make(chan struct{}, min(runtime.GOMAXPROCS(0), 4)), plugins: plugins}, nil
+}
+
+func parseOrigin(s string) (string, error) {
+	u, err := url.Parse(s)
+	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Hostname() == "" || u.User != nil || (u.EscapedPath() != "" && u.EscapedPath() != "/") || u.RawQuery != "" || u.ForceQuery || strings.Contains(s, "#") {
+		return "", errors.New("expected an absolute HTTP(S) origin")
+	}
+	return u.Scheme + "://" + strings.ToLower(u.Host), nil
+}
+
+var emailPattern = regexp.MustCompile("(?i)^[a-z0-9_'+-](?:[a-z0-9_'+.-]*[a-z0-9_'+-])?@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\\.)+[a-z]{2,}$")
+
+func (a *Auth) validateCredential(email, password string, signup bool) error {
+	if !a.opts.EmailAndPassword {
+		if signup {
+			return &APIError{400, "EMAIL_PASSWORD_SIGN_UP_DISABLED", "Email and password sign up is not enabled"}
+		}
+		return &APIError{400, "EMAIL_PASSWORD_DISABLED", "Email and password is not enabled"}
+	}
+	if len(email) > 254 || strings.Contains(email, "..") || !emailPattern.MatchString(email) {
+		return &APIError{400, "INVALID_EMAIL", "Invalid email"}
+	}
+	// Better Auth measures password length in UTF-16 code units.
+	n := 0
+	for _, r := range password {
+		n += utf16.RuneLen(r)
+	}
+	if n > a.opts.MaxPasswordLength {
+		return &APIError{400, "PASSWORD_TOO_LONG", "Password too long"}
+	}
+	if signup && n < a.opts.MinPasswordLength {
+		return &APIError{400, "PASSWORD_TOO_SHORT", "Password too short"}
+	}
+	return nil
+}
+
+func randomID() string {
+	var b [24]byte
+	rand.Read(b[:])
+	return base64.RawURLEncoding.EncodeToString(b[:])
+}
+func digest(token string) string {
+	sum := sha256.Sum256([]byte(token))
+	return hex.EncodeToString(sum[:])
+}
+func (a *Auth) newSession(id string, meta RequestMeta) (StoredSession, string) {
+	now := a.now().UTC().Truncate(time.Millisecond)
+	ttl := a.opts.SessionTTL
+	if meta.RememberMe != nil && !*meta.RememberMe {
+		ttl = min(ttl, 24*time.Hour)
+	}
+	s := Session{ID: randomID(), UserID: id, IPAddress: meta.IPAddress, UserAgent: meta.UserAgent, CreatedAt: now, UpdatedAt: now, ExpiresAt: now.Add(ttl)}
+	s.Token = randomID()
+	return StoredSession{Session: s}, s.Token
+}
+
+// SignUpEmail creates a credential account and its first session atomically.
+func (a *Auth) SignUpEmail(ctx context.Context, in SignUpInput, meta RequestMeta) (AuthResult, error) {
+	if err := a.validateCredential(in.Email, in.Password, true); err != nil {
+		return AuthResult{}, err
+	}
+	hash, err := a.hashCredential(ctx, in.Password)
+	if err != nil {
+		return AuthResult{}, err
+	}
+	now := a.now().UTC().Truncate(time.Millisecond)
+	user := User{ID: randomID(), Email: strings.ToLower(in.Email), Name: in.Name, Image: in.Image, CreatedAt: now, UpdatedAt: now}
+	session, token := a.newSession(user.ID, meta)
+	err = a.opts.Store.CreateUser(ctx, user, hash, &session)
+	if errors.Is(err, ErrEmailTaken) {
+		return AuthResult{}, &APIError{422, "USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL", "User already exists. Use another email."}
+	}
+	if err != nil {
+		return AuthResult{}, err
+	}
+	return AuthResult{User: user, Token: token}, nil
+}
+
+// SignInEmail verifies credentials and creates a new session.
+func (a *Auth) SignInEmail(ctx context.Context, in SignInInput, meta RequestMeta) (AuthResult, error) {
+	if err := a.validateCredential(in.Email, in.Password, false); err != nil {
+		return AuthResult{}, err
+	}
+	user, hash, err := a.opts.Store.Credential(ctx, strings.ToLower(in.Email))
+	if err != nil && !errors.Is(err, ErrNotFound) {
+		return AuthResult{}, err
+	}
+	if errors.Is(err, ErrNotFound) {
+		hash = dummyPasswordHash
+	}
+	valid, err := a.checkCredential(ctx, hash, in.Password)
+	if err != nil {
+		return AuthResult{}, err
+	}
+	if !valid || user.ID == "" {
+		return AuthResult{}, &APIError{401, "INVALID_EMAIL_OR_PASSWORD", "Invalid email or password"}
+	}
+	if in.RememberMe != nil {
+		meta.RememberMe = in.RememberMe
+	}
+	session, token := a.newSession(user.ID, meta)
+	if s, ok := a.opts.Store.(AccountStore); ok {
+		err = s.CreateCredentialSession(ctx, hash, session)
+		if errors.Is(err, ErrNotFound) {
+			return AuthResult{}, &APIError{401, "INVALID_EMAIL_OR_PASSWORD", "Invalid email or password"}
+		}
+	} else {
+		err = a.opts.Store.CreateSession(ctx, session)
+	}
+	if err != nil {
+		return AuthResult{}, err
+	}
+	return AuthResult{User: user, Token: token}, nil
+}
+
+// GetSession returns nil for an unauthenticated request.
+func (a *Auth) GetSession(ctx context.Context, headers http.Header) (*SessionResult, error) {
+	token := a.cookieToken(headers)
+	if token == "" {
+		return nil, nil
+	}
+	row, user, err := a.opts.Store.Session(ctx, token)
+	if errors.Is(err, ErrNotFound) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	if !row.ExpiresAt.After(a.now()) {
+		return nil, nil
+	}
+	row.Token = token
+	return &SessionResult{Session: row.Session, User: user}, nil
+}
+
+func (a *Auth) SignOut(ctx context.Context, headers http.Header) error {
+	token := a.cookieToken(headers)
+	if token == "" {
+		return nil
+	}
+	return a.opts.Store.DeleteSession(ctx, token)
+}
+
+func (a *Auth) requireSession(ctx context.Context, headers http.Header) (*SessionResult, error) {
+	s, err := a.GetSession(ctx, headers)
+	if err == nil && s == nil {
+		return nil, &APIError{401, "UNAUTHORIZED", "Unauthorized"}
+	}
+	return s, err
+}
+
+func (a *Auth) ListSessions(ctx context.Context, headers http.Header) ([]Session, error) {
+	current, err := a.requireSession(ctx, headers)
+	if err != nil {
+		return nil, err
+	}
+	now := a.now()
+	if now.Sub(current.Session.CreatedAt) >= a.opts.FreshAge {
+		return nil, &APIError{403, "SESSION_NOT_FRESH", "Session is not fresh"}
+	}
+	rows, err := a.opts.Store.ListSessions(ctx, current.User.ID)
+	if err != nil {
+		return nil, err
+	}
+	sessions := make([]Session, 0, len(rows))
+	for _, row := range rows {
+		if row.ExpiresAt.After(now) {
+
+			sessions = append(sessions, row.Session)
+		}
+	}
+	return sessions, nil
+}
+
+func (a *Auth) RevokeSession(ctx context.Context, h http.Header, token string) error {
+	s, err := a.requireSession(ctx, h)
+	if err != nil {
+		return err
+	}
+	return a.opts.Store.DeleteUserSession(ctx, s.User.ID, token)
+}
+
+func (a *Auth) RevokeOtherSessions(ctx context.Context, h http.Header) error {
+	s, err := a.requireSession(ctx, h)
+	if err != nil {
+		return err
+	}
+	return a.opts.Store.DeleteOtherSessions(ctx, s.User.ID, s.Session.Token)
+}
+
+func (a *Auth) RevokeSessions(ctx context.Context, h http.Header) error {
+	s, err := a.requireSession(ctx, h)
+	if err != nil {
+		return err
+	}
+	return a.opts.Store.DeleteOtherSessions(ctx, s.User.ID, "")
+}

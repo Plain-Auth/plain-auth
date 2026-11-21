@@ -1,0 +1,163 @@
+package sqlstore
+
+import (
+	"context"
+	"crypto/rand"
+	"database/sql"
+	"errors"
+	"strings"
+
+	"github.com/go-sql-driver/mysql"
+	betterauth "github.com/nabuhadba/go-better-auth"
+)
+
+var _ betterauth.Store = (*Store)(nil)
+
+// Close releases the database connection.
+func (s *Store) Close() error { return s.db.Close() }
+
+// CreateUser commits the user, credential account, and optional session together.
+func (s *Store) CreateUser(ctx context.Context, user betterauth.User, passwordHash string, initial *betterauth.StoredSession) error {
+	if initial != nil && initial.UserID != user.ID {
+		return errors.New("sqlstore: initial session belongs to a different user")
+	}
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	userInsert := `INSERT INTO "user"
+        ("id","email","name","image","emailVerified","createdAt","updatedAt") VALUES (?,?,?,?,?,?,?)`
+	if s.dialect != "mysql" {
+		userInsert += ` ON CONFLICT("email") DO NOTHING`
+	}
+	result, err := tx.ExecContext(ctx, s.bind(userInsert), user.ID, strings.ToLower(user.Email), user.Name, user.Image, user.EmailVerified, s.date(user.CreatedAt), s.date(user.UpdatedAt))
+	if err != nil {
+		var mysqlError *mysql.MySQLError
+		if errors.As(err, &mysqlError) && mysqlError.Number == 1062 {
+			// Distinguish an existing email from an unrelated primary key
+			// collision without parsing a localized server error message.
+			var emailExists bool
+			row := tx.QueryRowContext(ctx, s.bind(`SELECT EXISTS (SELECT 1 FROM "user" WHERE "email" = ?)`), strings.ToLower(user.Email))
+			if err := row.Scan(&emailExists); err != nil {
+				return err
+			}
+			if emailExists {
+				return betterauth.ErrEmailTaken
+			}
+		}
+		return err
+	}
+	n, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		return betterauth.ErrEmailTaken
+	}
+	_, err = tx.ExecContext(ctx, s.bind(`INSERT INTO "account"
+        ("id","accountId","providerId","userId","password","createdAt","updatedAt") VALUES (?,?,'credential',?,?,?,?)`),
+		rand.Text(), user.ID, user.ID, passwordHash, s.date(user.CreatedAt), s.date(user.UpdatedAt))
+	if err != nil {
+		return err
+	}
+	if initial != nil {
+		if err := s.insertSession(ctx, tx, *initial); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
+}
+
+const userColumns = `u."id",u."email",u."name",u."image",u."emailVerified",u."createdAt",u."updatedAt"`
+
+func userFields(u *betterauth.User) []any {
+	return []any{&u.ID, &u.Email, &u.Name, &u.Image, &u.EmailVerified, &u.CreatedAt, &u.UpdatedAt}
+}
+
+// Credential retrieves a user and the credential account's password hash.
+func (s *Store) Credential(ctx context.Context, email string) (betterauth.User, string, error) {
+	var u betterauth.User
+	var passwordHash string
+	row := s.db.QueryRowContext(ctx, s.bind(`SELECT `+userColumns+`, a."password"
+		FROM "user" u JOIN "account" a ON a."userId" = u."id"
+		WHERE u."email" = ? AND a."providerId" = 'credential' AND a."password" IS NOT NULL`), strings.ToLower(email))
+	err := row.Scan(append(userFields(&u), &passwordHash)...)
+	if errors.Is(err, sql.ErrNoRows) {
+		err = betterauth.ErrNotFound
+	}
+	return u, passwordHash, err
+}
+
+type executor interface {
+	ExecContext(context.Context, string, ...any) (sql.Result, error)
+}
+
+func (s *Store) insertSession(ctx context.Context, db executor, ss betterauth.StoredSession) error {
+	_, err := db.ExecContext(ctx, s.bind(`INSERT INTO "session"
+        ("id","userId","token","ipAddress","userAgent","createdAt","updatedAt","expiresAt")
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`), ss.ID, ss.UserID, ss.Token, ss.IPAddress, ss.UserAgent,
+		s.date(ss.CreatedAt), s.date(ss.UpdatedAt), s.date(ss.ExpiresAt))
+	return err
+}
+
+// CreateSession saves a session using its token.
+func (s *Store) CreateSession(ctx context.Context, ss betterauth.StoredSession) error {
+	return s.insertSession(ctx, s.db, ss)
+}
+
+const sessionColumns = `s."id",s."userId",s."token",COALESCE(s."ipAddress",''),COALESCE(s."userAgent",''),s."createdAt",s."updatedAt",s."expiresAt"`
+
+func sessionFields(ss *betterauth.StoredSession) []any {
+	return []any{&ss.ID, &ss.UserID, &ss.Token, &ss.IPAddress, &ss.UserAgent, &ss.CreatedAt, &ss.UpdatedAt, &ss.ExpiresAt}
+}
+
+// Session retrieves session state and its owner. The auth service checks expiry.
+func (s *Store) Session(ctx context.Context, token string) (betterauth.StoredSession, betterauth.User, error) {
+	var ss betterauth.StoredSession
+	var u betterauth.User
+	row := s.db.QueryRowContext(ctx, s.bind(`SELECT `+sessionColumns+`, `+userColumns+`
+		FROM "session" s JOIN "user" u ON u."id"=s."userId" WHERE s."token"=?`), token)
+	err := row.Scan(append(sessionFields(&ss), userFields(&u)...)...)
+	if errors.Is(err, sql.ErrNoRows) {
+		err = betterauth.ErrNotFound
+	}
+	return ss, u, err
+}
+
+// ListSessions retrieves the user's stored sessions in creation order, newest first.
+func (s *Store) ListSessions(ctx context.Context, userID string) ([]betterauth.StoredSession, error) {
+	rows, err := s.db.QueryContext(ctx, s.bind(`SELECT `+sessionColumns+` FROM "session" s
+		WHERE s."userId" = ? ORDER BY s."createdAt" DESC, s."id"`), userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	sessions := []betterauth.StoredSession{}
+	for rows.Next() {
+		var ss betterauth.StoredSession
+		if err := rows.Scan(sessionFields(&ss)...); err != nil {
+			return nil, err
+		}
+		sessions = append(sessions, ss)
+	}
+	return sessions, rows.Err()
+}
+
+// DeleteSession revokes a session by its token.
+func (s *Store) DeleteSession(ctx context.Context, token string) error {
+	_, err := s.db.ExecContext(ctx, s.bind(`DELETE FROM "session" WHERE "token" = ?`), token)
+	return err
+}
+
+// DeleteOtherSessions revokes every session of a user except the one specified.
+func (s *Store) DeleteOtherSessions(ctx context.Context, userID, keepToken string) error {
+	_, err := s.db.ExecContext(ctx, s.bind(`DELETE FROM "session" WHERE "userId" = ? AND "token" <> ?`), userID, keepToken)
+	return err
+}
+
+// DeleteUserSession revokes a session only when it belongs to the specified user.
+func (s *Store) DeleteUserSession(ctx context.Context, userID, token string) error {
+	_, err := s.db.ExecContext(ctx, s.bind(`DELETE FROM "session" WHERE "userId" = ? AND "token" = ?`), userID, token)
+	return err
+}
