@@ -136,6 +136,11 @@ func TestAdminLifecycleAcrossEngines(t *testing.T) {
 			if both {
 				t.Fatal("partial role grants combined unexpectedly")
 			}
+			emptyResource, err := staff.AdminHasPermission(ctx, authn.AdminPermissions{"user": {"get"}, "session": {}})
+			must(err)
+			if emptyResource {
+				t.Fatal("empty resource requirement granted administrative access")
+			}
 			_, err = staff.AdminCreateUser(ctx, client.AdminCreateUserRequest{Name: "Limited", Email: "limited@example.test", Data: map[string]any{"role": "admin"}})
 			expect(err, "YOU_ARE_NOT_ALLOWED_TO_CHANGE_USERS_ROLE")
 			_, err = staff.AdminUpdateUser(ctx, target, map[string]any{"emailVerified": true})

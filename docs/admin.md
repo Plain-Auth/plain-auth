@@ -44,7 +44,7 @@ p, err := admin.New(admin.Options{
 })
 ```
 
-Creating a user with an explicit role requires both `user:create` and `user:set-role`. Updating an email or its verification status requires `user:set-email`. Ban-related fields require `user:ban`. Password changes use a dedicated endpoint. Profile updates accept the standard name, image, email, verification, role and ban fields. Roles assigned through the API must exist in the configured role map.
+Creating a user with an explicit role requires both `user:create` and `user:set-role`. Updating an email or its verification status requires `user:set-email`. Ban-related fields require `user:ban`. Password changes use a dedicated endpoint. Profile updates accept the standard name, image, email, verification, role and ban fields. Roles assigned through the API must exist in the configured role map. To use role checks in your own handlers, see [Role permissions](access.md).
 
 ## HTTP operations
 

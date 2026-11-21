@@ -11,53 +11,54 @@
   - [ ] `adminClient`
     - [x] Exercise all fifteen administrative client routes on both runtimes with shared database records ([test](../../../conformance/core.test.mjs#L725))
   - [ ] `POST /admin/set-role`
-    - [x] Assign a configured role and reject an unknown role ([test](../../../adapters/sqlstore/admin_test.go#L149))
+    - [x] Assign a configured role and reject an unknown role ([test](../../../adapters/sqlstore/admin_test.go#L154))
   - [ ] `GET /admin/get-user`
     - [x] Fetch the authorized record and deny an ordinary account ([test](../../../adapters/sqlstore/admin_test.go#L95))
   - [ ] `POST /admin/create-user`
     - [x] Create a credential account and assign multiple roles ([test](../../../adapters/sqlstore/admin_test.go#L104))
   - [ ] `POST /admin/update-user`
-    - [x] Update a user’s profile and gate changes to protected fields ([test](../../../adapters/sqlstore/admin_test.go#L154))
+    - [x] Update a user’s profile and gate changes to protected fields ([test](../../../adapters/sqlstore/admin_test.go#L159))
   - [ ] `GET /admin/list-users`
-    - [x] Combine search, role filtering, sorting and pagination ([test](../../../adapters/sqlstore/admin_test.go#L159))
+    - [x] Combine search, role filtering, sorting and pagination ([test](../../../adapters/sqlstore/admin_test.go#L164))
   - [ ] `POST /admin/list-user-sessions`
-    - [x] Retrieve the target’s current session through the typed client ([test](../../../adapters/sqlstore/admin_test.go#L193))
+    - [x] Retrieve the target’s current session through the typed client ([test](../../../adapters/sqlstore/admin_test.go#L198))
     - [x] List a protected account without issuing a bearer credential ([test](../../../adapters/sqlstore/admin_test.go#L123))
   - [ ] `POST /admin/unban-user`
-    - [x] Clear a ban and permit sign-in after the password is reset ([test](../../../adapters/sqlstore/admin_test.go#L188))
+    - [x] Clear a ban and permit sign-in after the password is reset ([test](../../../adapters/sqlstore/admin_test.go#L193))
   - [ ] `POST /admin/ban-user`
-    - [x] Revoke existing logins, deny new sessions and automatically clear expired bans ([test](../../../adapters/sqlstore/admin_test.go#L298))
+    - [x] Revoke existing logins, deny new sessions and automatically clear expired bans ([test](../../../adapters/sqlstore/admin_test.go#L303))
     - [x] Prevent a pending second-factor challenge from delivering codes or transferring a guest after a ban ([test](../../../adapters/sqlstore/admin_factor_test.go#L162))
   - [ ] `POST /admin/impersonate-user`
-    - [x] Issue a bounded delegated login and enforce administrator impersonation permissions ([test](../../../adapters/sqlstore/admin_test.go#L213))
+    - [x] Issue a bounded delegated login and enforce administrator impersonation permissions ([test](../../../adapters/sqlstore/admin_test.go#L218))
     - [x] Keep owner credentials, MFA enrollment, device approval and token-bearing session lists restricted during impersonation ([test](../../../adapters/sqlstore/admin_factor_test.go#L136))
   - [ ] `POST /admin/stop-impersonating`
-    - [x] Restore the initiating login and preserve its original persistence ([test](../../../adapters/sqlstore/admin_test.go#L242))
+    - [x] Restore the initiating login and preserve its original persistence ([test](../../../adapters/sqlstore/admin_test.go#L247))
   - [ ] `POST /admin/revoke-user-session`
-    - [x] Invalidate a selected token and delegated credentials relying on it ([test](../../../adapters/sqlstore/admin_test.go#L264))
+    - [x] Invalidate a selected token and delegated credentials relying on it ([test](../../../adapters/sqlstore/admin_test.go#L269))
     - [x] Scope revocation to the issuing operator and require the current revoke grant ([test](../../../adapters/sqlstore/admin_test.go#L130))
   - [ ] `POST /admin/revoke-user-sessions`
-    - [x] Revoke the target’s sessions through the administrative API ([test](../../../adapters/sqlstore/admin_test.go#L300))
+    - [x] Revoke the target’s sessions through the administrative API ([test](../../../adapters/sqlstore/admin_test.go#L305))
   - [ ] `POST /admin/remove-user`
-    - [x] Remove a user while guarding the acting administrator’s own account ([test](../../../adapters/sqlstore/admin_test.go#L304))
+    - [x] Remove a user while guarding the acting administrator’s own account ([test](../../../adapters/sqlstore/admin_test.go#L309))
   - [ ] `POST /admin/set-user-password`
-    - [x] Replace the credential password and sign in with the new value ([test](../../../adapters/sqlstore/admin_test.go#L190))
+    - [x] Replace the credential password and sign in with the new value ([test](../../../adapters/sqlstore/admin_test.go#L195))
   - [ ] `POST /admin/has-permission`
     - [x] Evaluate the authenticated caller’s grants and keep separate roles independent ([test](../../../adapters/sqlstore/admin_test.go#L137))
+    - [x] Deny a mixed request containing an empty action list over HTTP on all three SQL engines ([test](../../../adapters/sqlstore/admin_test.go#L142))
   - [ ] `UserWithRole`
     - [x] Expose role and ban state on a newly created account ([test](../../../adapters/sqlstore/admin_test.go#L92))
   - [ ] `SessionWithImpersonatedBy`
-    - [x] Preserve the initiating administrator in the temporary session record ([test](../../../adapters/sqlstore/admin_test.go#L210))
+    - [x] Preserve the initiating administrator in the temporary session record ([test](../../../adapters/sqlstore/admin_test.go#L215))
   - [ ] `AdminOptions`
     - [ ] `defaultRole`
       - [x] Evaluate permissions for a configured default role ([test](../../../plugins/admin/admin_test.go#L20))
     - [ ] `adminRoles`
       - [x] Validate administrative role names against the configured role registry ([test](../../../plugins/admin/admin_test.go#L28))
     - [ ] `defaultBanReason`
-      - [x] Apply the configured reason when suspending a user ([test](../../../adapters/sqlstore/admin_test.go#L165))
+      - [x] Apply the configured reason when suspending a user ([test](../../../adapters/sqlstore/admin_test.go#L170))
     - [ ] `defaultBanExpiresIn`
     - [ ] `impersonationSessionDuration`
-      - [x] Bound an impersonation to its configured lifetime despite sliding refresh ([test](../../../adapters/sqlstore/admin_test.go#L213))
+      - [x] Bound an impersonation to its configured lifetime despite sliding refresh ([test](../../../adapters/sqlstore/admin_test.go#L218))
     - [ ] `schema`
     - [ ] `ac`
     - [ ] `roles`
@@ -65,7 +66,7 @@
     - [ ] `adminUserIds`
       - [x] Grant an explicitly configured identity administrative authority ([test](../../../adapters/sqlstore/admin_test.go#L83))
     - [ ] `bannedUserMessage`
-      - [x] Use the configured denial message after successful password verification ([test](../../../adapters/sqlstore/admin_test.go#L176))
+      - [x] Use the configured denial message after successful password verification ([test](../../../adapters/sqlstore/admin_test.go#L181))
     - [ ] `allowImpersonatingAdmins`
   - [ ] `InferAdminRolesFromOption`
 
@@ -82,7 +83,7 @@
         - [ ] Parameter `role` (optional)
         - [ ] Parameter `data` (optional)
     - [ ] List Users
-      - [x] Combine search, role filtering, sorting and pagination ([test](../../../adapters/sqlstore/admin_test.go#L159))
+      - [x] Combine search, role filtering, sorting and pagination ([test](../../../adapters/sqlstore/admin_test.go#L164))
       - [ ] `GET /admin/list-users`
         - [ ] Parameter `searchValue` (optional)
         - [ ] Parameter `searchField` (optional)
@@ -95,9 +96,9 @@
         - [ ] Parameter `filterValue` (optional)
         - [ ] Parameter `filterOperator` (optional)
       - [ ] Query Filtering
-        - [x] Filter by role and search by email ([test](../../../adapters/sqlstore/admin_test.go#L159))
+        - [x] Filter by role and search by email ([test](../../../adapters/sqlstore/admin_test.go#L164))
       - [ ] Pagination
-        - [x] Page a sorted result set with its total ([test](../../../adapters/sqlstore/admin_test.go#L158))
+        - [x] Page a sorted result set with its total ([test](../../../adapters/sqlstore/admin_test.go#L163))
         - [ ] How to Implement Pagination
     - [ ] Get User
       - [x] Fetch the authorized record and deny an ordinary account ([test](../../../adapters/sqlstore/admin_test.go#L95))
@@ -105,52 +106,52 @@
         - [ ] Parameter `id`
       - [ ] Returns
     - [ ] Set User Role
-      - [x] Assign a configured role and reject an unknown role ([test](../../../adapters/sqlstore/admin_test.go#L149))
+      - [x] Assign a configured role and reject an unknown role ([test](../../../adapters/sqlstore/admin_test.go#L154))
       - [ ] `POST /admin/set-role`
         - [ ] Parameter `userId` (optional)
         - [ ] Parameter `role`
     - [ ] Set User Password
-      - [x] Replace the credential password and sign in with the new value ([test](../../../adapters/sqlstore/admin_test.go#L190))
+      - [x] Replace the credential password and sign in with the new value ([test](../../../adapters/sqlstore/admin_test.go#L195))
       - [ ] `POST /admin/set-user-password`
         - [ ] Parameter `newPassword`
         - [ ] Parameter `userId`
     - [ ] Update user
-      - [x] Update a user’s profile and gate changes to protected fields ([test](../../../adapters/sqlstore/admin_test.go#L154))
+      - [x] Update a user’s profile and gate changes to protected fields ([test](../../../adapters/sqlstore/admin_test.go#L159))
       - [ ] `POST /admin/update-user`
         - [ ] Parameter `userId`
         - [ ] Parameter `data`
     - [ ] Ban User
-      - [x] Revoke existing logins, deny new sessions and automatically clear expired bans ([test](../../../adapters/sqlstore/admin_test.go#L298))
+      - [x] Revoke existing logins, deny new sessions and automatically clear expired bans ([test](../../../adapters/sqlstore/admin_test.go#L303))
       - [ ] `POST /admin/ban-user`
         - [ ] Parameter `userId`
         - [ ] Parameter `banReason` (optional)
         - [ ] Parameter `banExpiresIn` (optional)
     - [ ] Unban User
-      - [x] Clear a ban and permit sign-in after the password is reset ([test](../../../adapters/sqlstore/admin_test.go#L188))
+      - [x] Clear a ban and permit sign-in after the password is reset ([test](../../../adapters/sqlstore/admin_test.go#L193))
       - [ ] `POST /admin/unban-user`
         - [ ] Parameter `userId`
     - [ ] List User Sessions
-      - [x] Retrieve the target’s current session through the typed client ([test](../../../adapters/sqlstore/admin_test.go#L193))
+      - [x] Retrieve the target’s current session through the typed client ([test](../../../adapters/sqlstore/admin_test.go#L198))
       - [ ] `POST /admin/list-user-sessions`
         - [ ] Parameter `userId`
     - [ ] Revoke User Session
-      - [x] Invalidate a selected token and delegated credentials relying on it ([test](../../../adapters/sqlstore/admin_test.go#L264))
+      - [x] Invalidate a selected token and delegated credentials relying on it ([test](../../../adapters/sqlstore/admin_test.go#L269))
       - [x] Keep revocation handles bounded to the session lifetime and active encryption keys ([test](../../../admin_handle_test.go#L24))
       - [ ] `POST /admin/revoke-user-session`
         - [ ] Parameter `sessionToken`
     - [ ] Revoke All Sessions for a User
-      - [x] Revoke the target’s sessions through the administrative API ([test](../../../adapters/sqlstore/admin_test.go#L300))
+      - [x] Revoke the target’s sessions through the administrative API ([test](../../../adapters/sqlstore/admin_test.go#L305))
       - [ ] `POST /admin/revoke-user-sessions`
         - [ ] Parameter `userId`
     - [ ] Impersonate User
-      - [x] Issue a bounded delegated login and enforce administrator impersonation permissions ([test](../../../adapters/sqlstore/admin_test.go#L213))
+      - [x] Issue a bounded delegated login and enforce administrator impersonation permissions ([test](../../../adapters/sqlstore/admin_test.go#L218))
       - [ ] `POST /admin/impersonate-user`
         - [ ] Parameter `userId`
     - [ ] Stop Impersonating User
-      - [x] Restore the initiating login and preserve its original persistence ([test](../../../adapters/sqlstore/admin_test.go#L242))
+      - [x] Restore the initiating login and preserve its original persistence ([test](../../../adapters/sqlstore/admin_test.go#L247))
       - [ ] `POST /admin/stop-impersonating`
     - [ ] Remove User
-      - [x] Remove a user while guarding the acting administrator’s own account ([test](../../../adapters/sqlstore/admin_test.go#L304))
+      - [x] Remove a user while guarding the acting administrator’s own account ([test](../../../adapters/sqlstore/admin_test.go#L309))
       - [ ] `POST /admin/remove-user`
         - [ ] Parameter `userId`
   - [ ] Access Control
@@ -184,7 +185,7 @@
     - [ ] `adminUserTableFields.banExpires`
     - [ ] `adminSessionTableFields.impersonatedBy`
     - [ ] Email Enumeration Protection
-      - [x] Keep the incorrect-password response independent of ban status ([test](../../../adapters/sqlstore/admin_test.go#L179))
+      - [x] Keep the incorrect-password response independent of ban status ([test](../../../adapters/sqlstore/admin_test.go#L184))
   - [ ] Options
     - [ ] Default Role
       - [x] Evaluate permissions for a configured default role ([test](../../../plugins/admin/admin_test.go#L20))
@@ -193,9 +194,9 @@
     - [ ] Admin userIds
       - [x] Grant an explicitly configured identity administrative authority ([test](../../../adapters/sqlstore/admin_test.go#L83))
     - [ ] impersonationSessionDuration
-      - [x] Bound an impersonation to its configured lifetime despite sliding refresh ([test](../../../adapters/sqlstore/admin_test.go#L213))
+      - [x] Bound an impersonation to its configured lifetime despite sliding refresh ([test](../../../adapters/sqlstore/admin_test.go#L218))
     - [ ] Default Ban Reason
-      - [x] Apply the configured reason when suspending a user ([test](../../../adapters/sqlstore/admin_test.go#L165))
+      - [x] Apply the configured reason when suspending a user ([test](../../../adapters/sqlstore/admin_test.go#L170))
     - [ ] Default Ban Expires In
     - [ ] bannedUserMessage
-      - [x] Use the configured denial message after successful password verification ([test](../../../adapters/sqlstore/admin_test.go#L176))
+      - [x] Use the configured denial message after successful password verification ([test](../../../adapters/sqlstore/admin_test.go#L181))

@@ -8,6 +8,8 @@ import (
 	"slices"
 	"strings"
 	"time"
+
+	"github.com/Stonewrit/stonewrit-auth/plugins/access"
 )
 
 // AdminUserFields is present on profiles managed by the administration plugin.
@@ -135,23 +137,7 @@ func (o AdminOptions) HasPermission(id, role string, want AdminPermissions) bool
 		roles = map[string]AdminPermissions{"admin": adminDefaults, "user": {}}
 	}
 	for _, name := range strings.Split(role, ",") {
-		rules, ok := roles[name]
-		if !ok {
-			continue
-		}
-		allowed := len(want) > 0
-		for resource, actions := range want {
-			grants, exists := rules[resource]
-			if !exists {
-				allowed = false
-			}
-			for _, action := range actions {
-				if !slices.Contains(grants, action) {
-					allowed = false
-				}
-			}
-		}
-		if allowed {
+		if access.Statements(roles[name]).AllowsAll(access.Statements(want)) {
 			return true
 		}
 	}

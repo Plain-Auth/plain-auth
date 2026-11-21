@@ -3169,6 +3169,11 @@
       "label": "Evaluate the authenticated caller’s grants and keep separate roles independent",
       "test": "adapters/sqlstore/admin_test.go",
       "marker": "partial role grants combined unexpectedly"
+    },
+    {
+      "label": "Deny a mixed request containing an empty action list over HTTP on all three SQL engines",
+      "test": "adapters/sqlstore/admin_test.go",
+      "marker": "empty resource requirement granted administrative access"
     }
   ],
   "docs/content/docs/plugins/admin.mdx#L586": [
@@ -3857,6 +3862,32 @@
       "label": "Protect an application operation with a resource/action scope",
       "test": "adapters/sqlstore/apikey_test.go",
       "marker": "middleware did not attach the verified owner and key"
+    }
+  ],
+  "plugin-symbol/access/AccessControl": [
+    {
+      "label": "Validate role grants against the catalog and isolate both from later changes to their input",
+      "test": "plugins/access/access_test.go",
+      "marker": "func TestRoleDefinition("
+    }
+  ],
+  "plugin-symbol/access/Role": [
+    {
+      "label": "Check all or any requested actions across resources and reject empty or ungranted requests",
+      "test": "plugins/access/access_test.go",
+      "marker": "func TestRoleDecisions("
+    },
+    {
+      "label": "Compare nested permission decisions with the pinned client using the same test cases",
+      "test": "conformance/access.test.mjs",
+      "marker": "test(\"role permission decisions match"
+    }
+  ],
+  "plugin-symbol/access/RoleAuthorizeRequest": [
+    {
+      "label": "Keep resource-level and request-level permission checks independent",
+      "test": "plugins/access/access_test.go",
+      "marker": "func TestRoleDecisions("
     }
   ]
 }

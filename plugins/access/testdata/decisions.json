@@ -1,0 +1,13 @@
+[
+  {"case":"no requirements","allowed":false},
+  {"case":"both resources granted","requirements":[{"resource":"project","actions":["create","edit"]},{"resource":"audit","actions":["read"]}],"allowed":true},
+  {"case":"missing action","requirements":[{"resource":"project","actions":["create","delete"]}],"allowed":false},
+  {"case":"any action on one resource","requirements":[{"resource":"project","actions":["create","delete"],"match":1}],"allowed":true},
+  {"case":"mixed inner matches","requirements":[{"resource":"project","actions":["create","delete"],"match":1},{"resource":"audit","actions":["read","edit"]}],"allowed":false},
+  {"case":"any resource","match":1,"requirements":[{"resource":"project","actions":["delete"]},{"resource":"audit","actions":["read"]}],"allowed":true},
+  {"case":"unknown followed by allowed","match":1,"requirements":[{"resource":"unknown","actions":["view"]},{"resource":"audit","actions":["read"]}],"allowed":true},
+  {"case":"unknown with all","requirements":[{"resource":"unknown","actions":["view"]},{"resource":"audit","actions":["read"]}],"allowed":false},
+  {"case":"empty action sequence","requirements":[{"resource":"project","actions":[]}],"allowed":false},
+  {"case":"all empty under any","match":1,"requirements":[{"resource":"project","actions":[],"match":1},{"resource":"audit","actions":[]}],"allowed":false},
+  {"case":"exact action names","requirements":[{"resource":"audit","actions":["Read"]}],"allowed":false}
+]

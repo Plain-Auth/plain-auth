@@ -280,6 +280,7 @@ func (a *Auth) adminHTTP(c EndpointContext, name string) (any, error) {
 			if !ok {
 				return nil, validationError("Invalid permissions")
 			}
+			req.Permissions[k] = make([]string, 0, len(actions))
 			for _, value := range actions {
 				action, ok := value.(string)
 				if !ok {
