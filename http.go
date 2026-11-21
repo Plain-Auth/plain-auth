@@ -135,10 +135,17 @@ func (a *Auth) handleCoreRequest(route string, w http.ResponseWriter, r *http.Re
 	case "/sign-up/email", "/sign-in/email":
 		return a.handleEmail(route, w, r, body, ip)
 	case "/sign-out":
-		err := a.SignOut(ctx, r.Header)
-		a.expireSessionCookies(w, r)
-		if err != nil {
+		if err := a.SignOut(ctx, r.Header); err != nil {
+			if a.deviceSessions == nil {
+				a.expireSessionCookies(w, r)
+			}
 			return nil, err
+		}
+		a.expireSessionCookies(w, r)
+		if a.deviceSessions != nil {
+			for _, token := range a.readDeviceCookies(r.Header).tokens {
+				a.clearDeviceCookie(w.Header(), token)
+			}
 		}
 		return map[string]bool{"success": true}, nil
 	case "/revoke-session":
@@ -238,14 +245,7 @@ func (a *Auth) handleEmail(route string, w http.ResponseWriter, r *http.Request,
 		response["token"] = result.Token
 		persistent := remember == nil || *remember
 		a.setSessionCookie(w, r, result.Token, persistent)
-		marker := a.sessionCookie("true", false)
-		marker.Name = strings.TrimSuffix(marker.Name, "session_token") + "dont_remember"
-		if !persistent {
-			http.SetCookie(w, marker)
-		} else if _, err := r.Cookie(marker.Name); err == nil {
-			marker.Value, marker.MaxAge = "", -1
-			http.SetCookie(w, marker)
-		}
+		a.writeRememberPreference(w.Header(), r, persistent)
 	}
 	if !signup {
 		callback, provided := body["callbackURL"].(string)
@@ -261,19 +261,23 @@ func (a *Auth) handleEmail(route string, w http.ResponseWriter, r *http.Request,
 }
 
 func (a *Auth) expireSessionCookies(w http.ResponseWriter, r *http.Request) {
+	a.expireSessionCookieHeaders(w.Header(), r)
+}
+
+func (a *Auth) expireSessionCookieHeaders(h http.Header, r *http.Request) {
 	cookie := a.clearSessionCookie()
-	http.SetCookie(w, cookie)
+	h.Add("Set-Cookie", cookie.String())
 	prefix := strings.TrimSuffix(cookie.Name, "session_token")
 	for _, name := range []string{"session_data", "dont_remember"} {
 		cookie.Name = prefix + name
-		http.SetCookie(w, cookie)
+		h.Add("Set-Cookie", cookie.String())
 	}
 	chunkPrefix := prefix + "session_data."
 	for _, c := range r.Cookies() {
 		if suffix, ok := strings.CutPrefix(c.Name, chunkPrefix); ok {
 			if _, err := strconv.ParseUint(suffix, 10, 32); err == nil {
 				cookie.Name = c.Name
-				http.SetCookie(w, cookie)
+				h.Add("Set-Cookie", cookie.String())
 			}
 		}
 	}

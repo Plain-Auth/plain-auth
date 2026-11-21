@@ -99,15 +99,32 @@ func (a *Auth) setSessionCookie(w http.ResponseWriter, r *http.Request, token st
 func (a *Auth) addSessionCookieHeaders(headers http.Header, r *http.Request, token string, persistent bool) {
 	a.writeSessionCookieHeaders(headers, r, token, persistent)
 	a.addOneTimeTokenHeader(headers, r, token)
+	if a.deviceSessions != nil {
+		a.rememberDeviceSession(headers, r, token, persistent)
+	}
 }
 
 func (a *Auth) writeSessionCookieHeaders(headers http.Header, r *http.Request, token string, persistent bool) {
-	c := a.sessionCookie(token, persistent)
+	a.emitSessionCookieHeaders(headers, r, a.sessionCookie(token, persistent))
+}
+
+func (a *Auth) emitSessionCookieHeaders(headers http.Header, r *http.Request, c *http.Cookie) {
 	headers.Add("Set-Cookie", c.String())
 	event := SessionCookieEvent{Cookie: *c, Route: strings.TrimPrefix(r.URL.Path, strings.TrimSuffix(a.opts.BasePath, "/")), Request: r, Header: headers}
 	for _, p := range a.opts.Plugins {
 		if p.OnSessionCookie != nil {
 			p.OnSessionCookie(event)
 		}
+	}
+}
+
+func (a *Auth) writeRememberPreference(headers http.Header, r *http.Request, persistent bool) {
+	marker := a.sessionCookie("true", false)
+	marker.Name = strings.TrimSuffix(marker.Name, "session_token") + "dont_remember"
+	if !persistent {
+		headers.Add("Set-Cookie", marker.String())
+	} else if _, err := r.Cookie(marker.Name); err == nil {
+		marker.Value, marker.MaxAge = "", -1
+		headers.Add("Set-Cookie", marker.String())
 	}
 }

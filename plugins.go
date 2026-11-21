@@ -15,15 +15,19 @@ type SessionResponseFunc func(EndpointContext, SessionResult) (any, error)
 
 // Plugin contributes HTTP endpoints to an Auth instance.
 type Plugin struct {
+	maxDeviceSessions *int
+
 	// OnRequest can reject an HTTP request before endpoint dispatch. Path is
 	// relative to the auth mount. ClientIP follows the host's proxy policy.
 	OnRequest func(RequestContext) error
 	// SessionResponse shapes the authenticated GET /get-session JSON response.
 	// One plugin per instance may supply it. An anonymous response stays null.
 	SessionResponse SessionResponseFunc
-	serviceJWT      *JWTOptions
-	ValidateStore   func(Store) error
-	oneTime         *OneTimeTokenOptions
+	// ProjectDeviceSessions also applies SessionResponse to each remembered account.
+	ProjectDeviceSessions bool
+	serviceJWT            *JWTOptions
+	ValidateStore         func(Store) error
+	oneTime               *OneTimeTokenOptions
 	// OnValidateNewPassword checks a proposed credential before it is stored.
 	OnValidateNewPassword func(ctx context.Context, path, password string) error
 	factor                *TwoFactorOptions

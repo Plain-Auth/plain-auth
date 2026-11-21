@@ -22,6 +22,10 @@ import (
 
 // Auth is safe for concurrent use by application handlers.
 type Auth struct {
+	deviceSessionResponse SessionResponseFunc
+	deviceSessions        DeviceSessionStore
+	maxDeviceSessions     int
+
 	sessionResponse SessionResponseFunc
 	serviceJWT      *JWTOptions
 	oneTimeToken    *OneTimeTokenOptions
@@ -134,9 +138,19 @@ func New(opts Options) (*Auth, error) {
 	for _, p := range opts.Plugins {
 		if p.SessionResponse != nil {
 			a.sessionResponse = p.SessionResponse
+			if p.ProjectDeviceSessions {
+				a.deviceSessionResponse = p.SessionResponse
+			}
 		}
 		if p.serviceJWT != nil {
 			a.serviceJWT = p.serviceJWT
+		}
+		if p.maxDeviceSessions != nil {
+			a.deviceSessions, _ = opts.Store.(DeviceSessionStore)
+			if a.deviceSessions == nil {
+				return nil, errors.New("authn: multi-session requires a DeviceSessionStore")
+			}
+			a.maxDeviceSessions = *p.maxDeviceSessions
 		}
 		if p.oneTime != nil {
 			a.oneTimeToken = p.oneTime
@@ -343,6 +357,14 @@ func (a *Auth) GetSession(ctx context.Context, headers http.Header) (*SessionRes
 
 func (a *Auth) SignOut(ctx context.Context, headers http.Header) error {
 	token := a.cookieToken(headers)
+	if a.deviceSessions != nil {
+		devices := a.readDeviceCookies(headers)
+		tokens := devices.tokens
+		if token != "" {
+			tokens = append(tokens, token)
+		}
+		return a.deviceSessions.DeleteDeviceSessions(ctx, tokens)
+	}
 	if token == "" {
 		return nil
 	}
