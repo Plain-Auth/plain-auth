@@ -9,6 +9,7 @@
     "organization",
     "organization-teams",
     "passkey",
+    "phone-number",
     "rate-limit",
     "stripe-subscriptions",
     "two-factor",
@@ -75,6 +76,18 @@
             "sql": "\"lastLoginMethod\" text",
             "profiles": [
               "last-login-method"
+            ]
+          },
+          {
+            "sql": "\"phoneNumber\" text unique",
+            "profiles": [
+              "phone-number"
+            ]
+          },
+          {
+            "sql": "\"phoneNumberVerified\" integer",
+            "profiles": [
+              "phone-number"
             ]
           },
           {
@@ -820,6 +833,18 @@
             ]
           },
           {
+            "sql": "\"phoneNumber\" text unique",
+            "profiles": [
+              "phone-number"
+            ]
+          },
+          {
+            "sql": "\"phoneNumberVerified\" boolean",
+            "profiles": [
+              "phone-number"
+            ]
+          },
+          {
             "sql": "\"stripeCustomerId\" text",
             "profiles": [
               "stripe-subscriptions"
@@ -1559,6 +1584,18 @@
             "sql": "`lastLoginMethod` text",
             "profiles": [
               "last-login-method"
+            ]
+          },
+          {
+            "sql": "`phoneNumber` varchar(255) unique",
+            "profiles": [
+              "phone-number"
+            ]
+          },
+          {
+            "sql": "`phoneNumberVerified` boolean",
+            "profiles": [
+              "phone-number"
             ]
           },
           {

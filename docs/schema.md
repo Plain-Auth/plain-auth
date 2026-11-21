@@ -12,6 +12,7 @@ AUTH_DSN=auth.db go run ./cmd/authctl migrate --dialect sqlite --plugins organiz
 | Default | User, credential or provider account, session and verification records |
 | `username` | Optional unique login name and display spelling |
 | `username-only` | Optional unique login name |
+| `phone-number` | Optional unique telephone number and nullable verification flag |
 | `admin` | User roles, ban status and expiration, and the administrator behind an impersonated session |
 | `api-key` | Personal and organization-owned application keys, digest lookup, scopes, per-key budgets and rate counters |
 | `anonymous` | Anonymous-account status on the user |
@@ -26,6 +27,8 @@ AUTH_DSN=auth.db go run ./cmd/authctl migrate --dialect sqlite --plugins organiz
 | `two-factor` | User enrollment state, factor secrets, recovery codes and lockout fields |
 
 Select at most one organization profile and one username profile. Run `authctl info` for the full profile list in your build, or call `schema.Profiles()` from Go. Profile order produces deterministic output. The profile selector controls database structure. See the [feature checklist](parity/README.md) for runtime support.
+
+The `phone-number` profile adds nullable `phoneNumber` and `phoneNumberVerified` fields to the user table. Existing users keep both fields unset. The database enforces uniqueness for assigned numbers, including after upgrading a populated table. Telephone sign-in, SMS delivery, and number verification are tracked separately. [Phone authentication checklist](parity/plugins/phone-number.md)
 
 ```go
 sql, err := schema.Generate("sqlite", []string{"organization", "two-factor"})

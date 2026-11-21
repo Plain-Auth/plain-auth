@@ -6,7 +6,7 @@ import { apiKey } from "@better-auth/api-key";
 import { passkey } from "@better-auth/passkey";
 import { stripe } from "@better-auth/stripe";
 import { getMigrations } from "better-auth/db/migration";
-import { admin, anonymous, deviceAuthorization, jwt, lastLoginMethod, organization, twoFactor, username } from "better-auth/plugins";
+import { admin, anonymous, deviceAuthorization, jwt, lastLoginMethod, organization, phoneNumber, twoFactor, username } from "better-auth/plugins";
 import { DummyDriver, Kysely, MysqlDialect, PostgresDialect, SqliteDialect } from "kysely";
 import Stripe from "stripe";
 
@@ -22,6 +22,7 @@ export function pluginInstances(profiles) {
       case "device-authorization": return deviceAuthorization();
       case "jwt": return jwt();
       case "passkey": return passkey();
+      case "phone-number": return phoneNumber({ sendOTP() {} });
       case "organization": return organization();
       case "organization-teams": return organization({ teams: { enabled: true } });
       case "stripe-subscriptions": return stripe({
@@ -39,7 +40,7 @@ export function pluginInstances(profiles) {
 
 const profileGroups = [
   ["admin"], ["anonymous"], ["api-key"], ["device-authorization"], ["jwt"], ["last-login-method"],
-  ["organization", "organization-teams"], ["passkey"], ["rate-limit"], ["stripe-subscriptions"], ["two-factor"], ["username", "username-only"],
+  ["organization", "organization-teams"], ["passkey"], ["phone-number"], ["rate-limit"], ["stripe-subscriptions"], ["two-factor"], ["username", "username-only"],
 ];
 const profileNames = profileGroups.flat();
 

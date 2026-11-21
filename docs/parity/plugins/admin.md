@@ -179,7 +179,7 @@
         - [ ] Parameter `permissions` (optional)
       - [ ] Check Role Permission
   - [ ] Schema
-    - [x] Generate the canonical columns on SQLite, PostgreSQL and MySQL, including combined plugin selections ([test](../../../conformance/schema.test.mjs#L105))
+    - [x] Generate the canonical columns on SQLite, PostgreSQL and MySQL, including combined plugin selections ([test](../../../conformance/schema.test.mjs#L106))
     - [ ] `adminUserTableFields.role`
     - [ ] `adminUserTableFields.banned`
     - [ ] `adminUserTableFields.banReason`

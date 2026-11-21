@@ -4887,5 +4887,17 @@
       "test": "conformance/openapi-contract.mjs",
       "marker": "assert.equal(doc.openapi,\"3.1.1\")"
     }
+  ],
+  "docs/content/docs/plugins/phone-number.mdx#L397": [
+    {
+      "label": "Upgrade populated user tables, allow missing numbers, and enforce one owner per telephone number on three SQL engines",
+      "test": "adapters/sqlstore/phone_schema_test.go",
+      "marker": "func TestPhoneNumberProfileMigration("
+    },
+    {
+      "label": "Preserve a verified phone across migration replay and store an explicit false flag on reassignment",
+      "test": "adapters/sqlstore/phone_schema_test.go",
+      "marker": "replayed migration lost a verified number"
+    }
   ]
 }

@@ -93,8 +93,9 @@ function batchFixture(dir) {
 function normalizeAdditiveIndexes(structure) {
   const user = structure.tables.find((t) => t.name === "user");
   if (user) for (const index of user.indexes) {
-    if (index.unique === 1 && index.partial === 0 && index.columns.filter((c) => c.key).length === 1 && index.columns.some((c) => c.key && c.name === "username")) {
-      index.name = "user.username UNIQUE";
+    const keys = index.columns.filter((column) => column.key);
+    if (index.unique === 1 && index.partial === 0 && keys.length === 1 && ["username", "phoneNumber"].includes(keys[0].name)) {
+      index.name = "user." + keys[0].name + " UNIQUE";
       index.origin = "unique";
     }
   }

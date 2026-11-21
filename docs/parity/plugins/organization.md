@@ -333,7 +333,7 @@
       - [ ] `teamsFeatureTeamMemberTableFields.membershipKey`
       - [ ] `teamsFeatureTeamMemberTableFields.createdAt`
   - [ ] Schema
-    - [x] Generate and incrementally apply the organization schema with and without teams ([test](../../../conformance/schema.test.mjs#L128))
+    - [x] Generate and incrementally apply the organization schema with and without teams ([test](../../../conformance/schema.test.mjs#L129))
     - [x] Upgrade existing PostgreSQL and MySQL schemas with combined team, billing and factor profiles ([test](../../../adapters/sqlstore/profiles_test.go#L14))
     - [ ] Organization
       - [ ] `organizationTableFields.id`

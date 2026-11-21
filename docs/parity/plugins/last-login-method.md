@@ -38,7 +38,7 @@
     - [x] Access database field ([test](../../../conformance/core.test.mjs#L28))
       - [x] Expose the stored method through the browser client on both runtimes ([test](../../../conformance/core.test.mjs#L28))
     - [ ] Database Schema
-      - [x] Generate the canonical columns on SQLite, PostgreSQL and MySQL, including combined plugin selections ([test](../../../conformance/schema.test.mjs#L105))
+      - [x] Generate the canonical columns on SQLite, PostgreSQL and MySQL, including combined plugin selections ([test](../../../conformance/schema.test.mjs#L106))
       - [ ] `lastLoginMethodUserTableFields.lastLoginMethod`
     - [ ] Custom Schema Configuration
   - [ ] Configuration Options

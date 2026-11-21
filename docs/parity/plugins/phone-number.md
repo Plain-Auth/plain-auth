@@ -69,6 +69,8 @@
     - [ ] `requireVerification`
   - [ ] Schema
     - [ ] User Table
+      - [x] Upgrade populated user tables, allow missing numbers, and enforce one owner per telephone number on three SQL engines ([test](../../../adapters/sqlstore/phone_schema_test.go#L10))
+      - [x] Preserve a verified phone across migration replay and store an explicit false flag on reassignment ([test](../../../adapters/sqlstore/phone_schema_test.go#L57))
       - [ ] `phoneNumberUserTableFields.phoneNumber`
       - [ ] `phoneNumberUserTableFields.phoneNumberVerified`
     - [ ] OTP Verification Attempts

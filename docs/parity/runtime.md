@@ -212,7 +212,7 @@ Each entry groups the configured endpoint’s behaviors. A checked child records
     - [ ] `--y`
   - [ ] `generate`
     - [x] Emit SQL DDL for SQLite, PostgreSQL and MySQL ([test](../../cmd/authctl/main_test.go#L28))
-    - [x] Emit exact SQL for all supported dialect and profile combinations ([test](../../conformance/schema.test.mjs#L105))
+    - [x] Emit exact SQL for all supported dialect and profile combinations ([test](../../conformance/schema.test.mjs#L106))
     - [ ] `-c, --cwd <cwd>`
     - [ ] `--config <config>`
     - [ ] `--output <output>`
@@ -242,7 +242,7 @@ Each entry groups the configured endpoint’s behaviors. A checked child records
     - [ ] `--manual`
   - [ ] `migrate`
     - [x] Initialize the SQLite schema and repeat the migration ([test](../../cmd/authctl/main_test.go#L37))
-    - [x] Apply the selected profiles twice on populated SQLite while retaining the user ([test](../../conformance/schema.test.mjs#L128))
+    - [x] Apply the selected profiles twice on populated SQLite while retaining the user ([test](../../conformance/schema.test.mjs#L129))
     - [x] Upgrade existing PostgreSQL and MySQL schemas with combined team, billing and factor profiles ([test](../../adapters/sqlstore/profiles_test.go#L14))
     - [ ] `-c, --cwd <cwd>`
     - [ ] `--config <config>`
