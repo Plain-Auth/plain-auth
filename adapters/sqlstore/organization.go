@@ -207,7 +207,9 @@ func (s *Store) lockOrganization(ctx context.Context, tx *sql.Tx, id string) err
 	}
 	var found string
 	err := tx.QueryRowContext(ctx, s.bind(query), id).Scan(&found)
-	if errors.Is(err, sql.ErrNoRows) {
+	// Custom policies and billing metadata use opaque, case-sensitive IDs,
+	// including when the database resolves lookup keys with a looser collation.
+	if errors.Is(err, sql.ErrNoRows) || err == nil && found != id {
 		return org.ErrNotFound
 	}
 	return err

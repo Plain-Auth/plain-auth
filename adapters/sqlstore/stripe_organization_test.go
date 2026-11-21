@@ -22,6 +22,7 @@ import (
 )
 
 func TestOrganizationBillingIsolation(t *testing.T) {
+	const protectedOrganization = "RestrictedBillingOrg"
 	for _, kind := range []string{"sqlite", "postgres", "mysql"} {
 		t.Run(kind, func(t *testing.T) {
 			ctx := t.Context()
@@ -121,6 +122,9 @@ func TestOrganizationBillingIsolation(t *testing.T) {
 			}
 			stripePlugin := billing.New(billing.Options{WebhookSecret: "whsec_local_org", Portal: &billing.PortalOptions{Client: provider, Customers: store}, Subscriptions: &billing.SubscriptionOptions{Client: provider, Plans: []billing.Plan{{Name: "basic", PriceID: "price_basic"}, {Name: "pro", PriceID: "price_pro"}}},
 				Organization: &billing.OrganizationOptions{AuthorizeReference: func(policy billing.ReferenceAuthorization) bool {
+					if policy.OrganizationID == protectedOrganization {
+						return false
+					}
 					return policy.Role == "owner" || policy.Role == "admin" || (policy.Role == "finance" && policy.Action == "list-subscription")
 				}}})
 			off := false
@@ -165,6 +169,26 @@ func TestOrganizationBillingIsolation(t *testing.T) {
 				}
 			}
 			want := stripeclient.Checkout{Plan: "basic", CustomerType: "organization", SuccessURL: "/receipt", CancelURL: "/billing", DisableRedirect: true}
+			exec(`INSERT INTO "organization" ("id","name","slug","createdAt","stripeCustomerId") VALUES(?,?,?,?,?)`, protectedOrganization, "Restricted billing", "restricted", store.date(time.Now()), "cus_restricted")
+			exec(`INSERT INTO "member" ("id","organizationId","userId","role","createdAt") VALUES(?,?,?,?,?)`, "restricted_owner", protectedOrganization, actor, "owner", store.date(time.Now()))
+			for _, reference := range []string{protectedOrganization, strings.ToLower(protectedOrganization)} {
+				page, err := buyer.BillingPortal(ctx, stripeclient.Portal{CustomerType: "organization", ReferenceID: reference})
+				code(err, 401, "UNAUTHORIZED")
+				if page.URL != "" {
+					t.Fatal("protected organization returned a billing portal URL")
+				}
+				checkout := want
+				checkout.ReferenceID = reference
+				page, err = buyer.Upgrade(ctx, checkout)
+				code(err, 401, "UNAUTHORIZED")
+				if page.URL != "" || calls != 0 {
+					t.Fatal("protected organization reached Stripe")
+				}
+			}
+			var pending int
+			if err := store.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM subscription").Scan(&pending); err != nil || pending != 0 {
+				t.Fatal("denied organization spelling persisted a checkout", pending, err)
+			}
 			withID := want
 			withID.ReferenceID = group
 			_, err = outsider.Upgrade(ctx, withID)
