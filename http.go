@@ -563,8 +563,8 @@ func (a *Auth) trustedURL(raw string, relative bool) bool {
 	if origin == "" {
 		return false
 	}
-	for _, candidate := range a.opts.TrustedOrigins {
-		if trusted, err := url.Parse(candidate); err == nil && canonicalOrigin(trusted) == origin {
+	for _, candidate := range a.trustedOrigins {
+		if candidate.matches(u, origin) {
 			return true
 		}
 	}

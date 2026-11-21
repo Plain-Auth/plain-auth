@@ -15,7 +15,7 @@ type Options struct {
 	// BaseURL is the public HTTP(S) address. BasePath defaults to /api/auth.
 	BaseURL  string
 	BasePath string
-	// TrustedOrigins adds exact origins allowed to make browser requests and callbacks.
+	// TrustedOrigins allows exact HTTP(S) origins and hostname or port wildcard patterns for browser requests and callbacks.
 	TrustedOrigins []string
 	CookiePrefix   string
 	// CrossSubDomainCookies selects the Domain attribute for shared browser cookies.

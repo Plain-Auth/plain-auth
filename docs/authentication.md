@@ -25,7 +25,7 @@ Enable `EmailAndPassword` and mount the auth handler. Paths below are relative t
 | `BaseURL` | Public HTTP(S) origin of the application. HTTPS enables secure cookies |
 | `CookiePrefix` | Defaults to `authn`. Choose a namespace such as `myapp` for session cookies and OAuth state. Give separate auth instances distinct prefixes on a shared host. |
 | `BasePath` | Mount path, normally `/api/auth` |
-| `TrustedOrigins` | Additional exact origins allowed for browser requests and absolute callbacks |
+| `TrustedOrigins` | Additional exact or wildcard HTTP(S) origins allowed for browser requests and absolute callbacks |
 | `EmailAndPassword` | Enables email sign-up and sign-in. Defaults to false |
 | `SessionTTL`, `FreshAge` | Default session lifetime is seven days, freshness window is one day |
 | `MinPasswordLength`, `MaxPasswordLength` | Default range is 8–128 UTF-16 code units, matching the JavaScript length convention |
@@ -55,6 +55,19 @@ Apply the `rate-limit` [schema profile](schema.md) and set `Options.RateLimitSto
 ## Browser and server calls
 
 A browser on the same origin automatically sends the cookie to the API. For cross-origin applications, configure an exact trusted origin and credentialed CORS on the host router. A browser's own SameSite cookie policy still applies. For an authenticated curl POST, send your cookie jar and the configured `Origin`, as in the [quickstart](../README.md#run-it-locally).
+
+### Trust a set of application hosts
+
+Keep `BaseURL` on the public auth server. Add origins for sites you control to `Options.TrustedOrigins` or the comma-separated `AUTH_TRUSTED_ORIGINS` environment variable. The same rules authorize a browser's origin for cookie-authenticated mutations and the application destination for an absolute callback URL. The OAuth provider continues to send its authorization response to the callback on `BaseURL`.
+
+| Rule | Admitted origins |
+| --- | --- |
+| `https://*.shop.example.com` | HTTPS subdomains, including `orders.eu.shop.example.com`, on the default port. Add `https://shop.example.com` separately to trust the apex. |
+| `https://preview-?.example.com:8443` | One character after `preview-` and port 8443. |
+| `*.dev.example.com` | HTTP or HTTPS subdomains on each scheme's default port. |
+| `http://192.168.*.*:*` | Valid IPv4 addresses in that range on a nondefault port. |
+
+An asterisk matches zero or more hostname characters, including dots. A question mark matches one character. Apply those characters separately to the ASCII hostname and the optional port. Use the ASCII Punycode spelling for internationalized domains. A literal default port is equivalent to omitting it. Specify a port or a port pattern to admit a nondefault port. A port wildcard matches the port present after default-port normalization. Callback paths, queries and fragments are preserved. A trust rule contains only the scheme and authority, or a hostname wildcard with an optional port. [Native validation](../trusted_origins_test.go) · [HTTP comparison](../conformance/trusted-origins.mjs)
 
 ### Share a session across subdomains
 

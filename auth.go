@@ -22,6 +22,7 @@ import (
 
 // Auth is safe for concurrent use by application handlers.
 type Auth struct {
+	trustedOrigins        []trustedOrigin
 	phoneNumber           *PhoneNumberOptions
 	translateError        func(ErrorContext, APIError) string
 	username              *UsernameOptions
@@ -72,12 +73,9 @@ func New(opts Options) (*Auth, error) {
 	if err := prepareCookieScope(&opts); err != nil {
 		return nil, err
 	}
-	for i, s := range opts.TrustedOrigins {
-		origin, err := parseOrigin(s)
-		if err != nil {
-			return nil, fmt.Errorf("authn: TrustedOrigins[%d]: %w", i, err)
-		}
-		opts.TrustedOrigins[i] = origin
+	trustedOrigins, err := configuredTrustedOrigins(opts.TrustedOrigins)
+	if err != nil {
+		return nil, err
 	}
 	if opts.SessionTTL == 0 {
 		opts.SessionTTL = 7 * 24 * time.Hour
@@ -143,7 +141,7 @@ func New(opts Options) (*Auth, error) {
 	if err != nil {
 		return nil, err
 	}
-	a := &Auth{opts: opts, now: time.Now, passwordSlots: make(chan struct{}, min(runtime.GOMAXPROCS(0), 4)), plugins: plugins}
+	a := &Auth{opts: opts, trustedOrigins: trustedOrigins, now: time.Now, passwordSlots: make(chan struct{}, min(runtime.GOMAXPROCS(0), 4)), plugins: plugins}
 	for _, p := range opts.Plugins {
 		if p.TranslateError != nil {
 			if a.translateError != nil {

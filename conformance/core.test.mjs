@@ -1082,3 +1082,8 @@ test("trusted organization membership grants can be read by either server and it
     assert.equal(response.status, 404);
   }
 });
+
+test("static trusted-origin wildcards authorize cookie-backed changes and callbacks on both servers", async (t) => {
+  const { compareWildcardOrigins } = await import("./trusted-origins.mjs");
+  await compareWildcardOrigins(t, goFixture);
+});

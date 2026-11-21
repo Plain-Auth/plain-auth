@@ -257,7 +257,9 @@
     - [ ] Dynamic Origins
       - [ ] On a direct `auth.api` call with a static `baseURL`
     - [ ] Wildcard Support
+      - [x] Compare cookie-authenticated mutations and absolute login callback decisions for HTTP(S) wildcard origins on both servers ([test](../../conformance/trusted-origins.mjs#L76))
       - [ ] Pattern Syntax
+        - [x] Separate hostname and port matching and restrict numeric address patterns to IPv4 ([test](../../trusted_origins_test.go#L11))
         - [ ] `?`
         - [ ] `*`
         - [ ] ``
@@ -464,7 +466,9 @@
     - [ ] Basic Usage
     - [ ] Wildcard Origins
       - [ ] Protocol-specific wildcards
+        - [x] Complete the OAuth provider callback on the static auth host and return the browser to an allowed HTTPS application subdomain ([test](../../oauth_test.go#L198))
       - [ ] Protocol-agnostic wildcards
+        - [x] Admit both HTTP and HTTPS for a scheme-independent hostname wildcard on their default ports ([test](../../conformance/trusted-origins.mjs#L41))
     - [ ] Custom Schemes
     - [ ] Dynamic origin list
       - [ ] Important

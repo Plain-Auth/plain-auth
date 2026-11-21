@@ -6145,5 +6145,33 @@
       "test": "conformance/core.test.mjs",
       "marker": "test(\"trusted organization membership grants"
     }
+  ],
+  "docs/content/docs/reference/options.mdx#L135": [
+    {
+      "label": "Compare cookie-authenticated mutations and absolute login callback decisions for HTTP(S) wildcard origins on both servers",
+      "test": "conformance/trusted-origins.mjs",
+      "marker": "only authorized updates change the account"
+    }
+  ],
+  "docs/content/docs/reference/options.mdx#L148": [
+    {
+      "label": "Separate hostname and port matching and restrict numeric address patterns to IPv4",
+      "test": "trusted_origins_test.go",
+      "marker": "func TestWildcardOriginCallbacks("
+    }
+  ],
+  "docs/content/docs/reference/security.mdx#L243": [
+    {
+      "label": "Complete the OAuth provider callback on the static auth host and return the browser to an allowed HTTPS application subdomain",
+      "test": "oauth_test.go",
+      "marker": "wildcard application callback:"
+    }
+  ],
+  "docs/content/docs/reference/security.mdx#L251": [
+    {
+      "label": "Admit both HTTP and HTTPS for a scheme-independent hostname wildcard on their default ports",
+      "test": "conformance/trusted-origins.mjs",
+      "marker": "[\"https://one.regional.example.test\", true]"
+    }
   ]
 }

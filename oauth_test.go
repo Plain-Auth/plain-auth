@@ -1,6 +1,7 @@
 package stonewrit_test
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"encoding/json"
@@ -76,6 +77,7 @@ func TestOAuthBrowserFlow(t *testing.T) {
 	app := httptest.NewUnstartedServer(nil)
 	base := "http://" + app.Listener.Addr().String()
 	handler, err := auth.New(auth.Options{Secret: strings.Repeat("s", 32), BaseURL: base, Store: store,
+		TrustedOrigins: []string{"https://*.shop.example.test"},
 		SocialProviders: map[string]auth.OAuthProvider{"local": {
 			Config: oauth2.Config{ClientID: "local-client", ClientSecret: "secret", Endpoint: oauth2.Endpoint{AuthURL: provider.URL + "/authorize", TokenURL: provider.URL + "/token"}},
 			Resolve: func(ctx context.Context, tok *oauth2.Token, _ string) (auth.OAuthProfile, error) {
@@ -98,8 +100,12 @@ func TestOAuthBrowserFlow(t *testing.T) {
 	defer app.Close()
 	jar, _ := cookiejar.New(nil)
 	browser := &http.Client{Jar: jar, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
-	start := func() (string, *http.Cookie) {
-		req, _ := http.NewRequest("POST", base+"/api/auth/sign-in/social", strings.NewReader(`{"provider":"local","callbackURL":"/signed-in"}`))
+	start := func(target string) (string, *http.Cookie) {
+		payload, err := json.Marshal(map[string]string{"provider": "local", "callbackURL": target})
+		if err != nil {
+			t.Fatal(err)
+		}
+		req, _ := http.NewRequest("POST", base+"/api/auth/sign-in/social", bytes.NewReader(payload))
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("Origin", base)
 		res, err := browser.Do(req)
@@ -125,7 +131,7 @@ func TestOAuthBrowserFlow(t *testing.T) {
 		t.Fatal("missing state cookie")
 		return "", nil
 	}
-	authURL, flowCookie := start()
+	authURL, flowCookie := start("/signed-in")
 	res, err := browser.Get(authURL)
 	if err != nil {
 		t.Fatal(err)
@@ -170,5 +176,25 @@ func TestOAuthBrowserFlow(t *testing.T) {
 	var session auth.SessionResult
 	if err = json.NewDecoder(res.Body).Decode(&session); err != nil || session.User.Email != "person@example.org" || session.Session.Token == "" {
 		t.Fatalf("session: %#v, %v", session, err)
+	}
+
+	const target = "https://orders.eu.shop.example.test/account?tab=orders"
+	authURL, _ = start(target)
+	authorized, err := browser.Get(authURL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	authorized.Body.Close()
+	providerCallback := authorized.Header.Get("Location")
+	if !strings.HasPrefix(providerCallback, base+"/api/auth/callback/local?") {
+		t.Fatalf("provider callback must retain the static auth address: %q", providerCallback)
+	}
+	completed, err := browser.Get(providerCallback)
+	if err != nil {
+		t.Fatal(err)
+	}
+	completed.Body.Close()
+	if completed.StatusCode != 302 || completed.Header.Get("Location") != target {
+		t.Fatalf("wildcard application callback: %d %q", completed.StatusCode, completed.Header.Get("Location"))
 	}
 }

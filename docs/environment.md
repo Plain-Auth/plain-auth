@@ -30,7 +30,7 @@ This keeps file loading under the host application's control. The example listen
 | `AUTH_SECRET` | Supplies the signing secret when `Options.Secret` is empty. Use at least 32 random bytes. |
 | `AUTH_SECRETS` | Supplies an ordered signing-key list when `Options.Secrets` is nil. The first key in a configured list signs new credentials. |
 | `AUTH_URL` | Supplies the absolute public HTTP(S) URL when `Options.BaseURL` is empty. An explicit `Options.BasePath` selects the mount. Otherwise the URL path selects it, with `/api/auth` as the default. |
-| `AUTH_TRUSTED_ORIGINS` | Adds comma-separated origins to `Options.TrustedOrigins`. Supply exact origins with schemes. |
+| `AUTH_TRUSTED_ORIGINS` | Adds comma-separated exact HTTP(S) origins or wildcard hostname and port rules to `Options.TrustedOrigins`. See the [pattern examples](authentication.md#trust-a-set-of-application-hosts). |
 | `AUTH_ENV` | The value `production` enables rate limiting and redirects the default error page to `/`. Other nonempty values disable the default rate limiter. With an empty value, HTTPS enables it. `Options.RateLimit` and `Options.ErrorRedirectURL` override these defaults. |
 
 Set the server's public origin and either a signing secret or a versioned key list before startup. Keep signing keys in the server environment.
