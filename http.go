@@ -38,13 +38,13 @@ func (a *Auth) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if a.translateError != nil {
 			r = a.withErrorContext(r)
 		}
-		ctx, identity, authErr := a.resolveCredentialSession(r.Context(), r.Header, RequestMeta{IPAddress: a.clientIP(r), UserAgent: r.UserAgent()})
+		ctx, identity, authErr := a.resolveCredentialSession(r.Context(), r.Header, RequestMeta{IPAddress: a.clientIP(r), UserAgent: r.UserAgent()}, r)
 		if authErr != nil {
 			w.Header().Set("Cache-Control", "no-store")
 			a.writeAuthError(w, r, authErr)
 			return
 		}
-		if identity != nil {
+		if identity != nil || ctx.Value(credentialProbedKey{a}) != nil {
 			r = r.WithContext(ctx)
 		}
 		if err := a.runRequestHooks(r, route); err != nil {

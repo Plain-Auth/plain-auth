@@ -114,7 +114,8 @@ func registerPlugins(plugins []Plugin) (map[endpointKey]Endpoint, error) {
 		}
 		ids[p.ID] = true
 		if resolver := p.CredentialSessions; resolver != nil {
-			if hasCredentialResolver || resolver.Matches == nil || resolver.Resolve == nil {
+			legacy := resolver.Matches != nil || resolver.Resolve != nil
+			if hasCredentialResolver || legacy == (resolver.SelectRequest != nil) || legacy && (resolver.Matches == nil || resolver.Resolve == nil) {
 				return nil, errors.New("only one complete application credential resolver may be installed")
 			}
 			hasCredentialResolver = true

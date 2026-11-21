@@ -60,7 +60,7 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 | [Additional fields](plugins/additional-fields.md) | 0 | 2 |
 | [Admin](plugins/admin.md) | 65 | 141 |
 | [Anonymous](plugins/anonymous.md) | 27 | 25 |
-| [API keys](plugins/api-key.md) | 96 | 214 |
+| [API keys](plugins/api-key.md) | 113 | 210 |
 | [Bearer](plugins/bearer.md) | 30 | 0 |
 | [Captcha](plugins/captcha.md) | 17 | 65 |
 | [Client ID metadata documents](plugins/cimd.md) | 0 | 48 |

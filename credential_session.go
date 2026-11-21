@@ -3,15 +3,22 @@ package stonewrit
 import (
 	"context"
 	"net/http"
+	"net/url"
 	"time"
 )
 
 // CredentialSessionResolver authenticates an application credential for the
 // request. Resolve must validate the credential before returning its principal.
 type CredentialSessionResolver struct {
-	Matches func(http.Header) bool
-	Resolve func(context.Context, http.Header, RequestMeta, time.Duration) (*CredentialSession, error)
+	// SelectRequest is an alternative to Matches and Resolve. Return nil for an
+	// absent credential. A selected verifier runs only after checking for a
+	// conflicting browser credential, so probing must not consume quota.
+	SelectRequest func(*http.Request) (CredentialVerifier, error)
+	Matches       func(http.Header) bool
+	Resolve       func(context.Context, http.Header, RequestMeta, time.Duration) (*CredentialSession, error)
 }
+type CredentialVerifier func(context.Context, RequestMeta, time.Duration) (*CredentialSession, error)
+
 type CredentialSession struct {
 	Identity SessionResult
 	Allows   func(string, string) bool
@@ -19,21 +26,43 @@ type CredentialSession struct {
 	Bind func(context.Context) context.Context
 }
 type credentialSessionKey struct{ host *Auth }
+type credentialProbedKey struct{ host *Auth }
 type credentialSessionAccess struct {
 	allows func(string, string) bool
 	bind   func(context.Context) context.Context
 }
 
-func (a *Auth) resolveCredentialSession(ctx context.Context, h http.Header, meta RequestMeta) (context.Context, *SessionResult, error) {
+func (a *Auth) resolveCredentialSession(ctx context.Context, h http.Header, meta RequestMeta, request *http.Request) (context.Context, *SessionResult, error) {
 	for _, p := range a.opts.Plugins {
 		resolver := p.CredentialSessions
-		if resolver == nil || !resolver.Matches(h) {
+		if resolver == nil {
 			continue
+		}
+		var verify CredentialVerifier
+		if resolver.SelectRequest != nil {
+			if request == nil {
+				request = (&http.Request{Header: h, URL: &url.URL{}}).WithContext(ctx)
+			}
+			var err error
+			verify, err = resolver.SelectRequest(request)
+			if err != nil {
+				return ctx, nil, err
+			}
+			if verify == nil {
+				return context.WithValue(ctx, credentialProbedKey{a}, true), nil, nil
+			}
+		} else {
+			if !resolver.Matches(h) {
+				continue
+			}
+			verify = func(ctx context.Context, meta RequestMeta, ttl time.Duration) (*CredentialSession, error) {
+				return resolver.Resolve(ctx, h, meta, ttl)
+			}
 		}
 		if a.cookieToken(h) != "" {
 			return ctx, nil, &APIError{400, "AMBIGUOUS_CREDENTIALS", "Supply one authentication credential"}
 		}
-		res, err := resolver.Resolve(ctx, h, meta, a.opts.SessionTTL)
+		res, err := verify(ctx, meta, a.opts.SessionTTL)
 		if err != nil {
 			return ctx, nil, err
 		}

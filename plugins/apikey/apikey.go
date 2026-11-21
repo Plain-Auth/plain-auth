@@ -9,6 +9,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"net/http"
 	"regexp"
 	"slices"
 	"time"
@@ -85,7 +86,27 @@ type Store interface {
 	DeleteExpiredAPIKeys(context.Context, string, time.Time) (int64, error)
 }
 
+// Generation describes the authorized owner and requested settings for one new key.
+// Prefix is the caller's effective prefix. The generator returns the entire credential.
+type Generation struct {
+	UserID, OrganizationID, ConfigID, Prefix string
+	Length                                   int
+}
+
+// GeneratorStore checks current issuance authority before the application generator
+// runs. CreateAPIKey must recheck authority and reject duplicate digests atomically.
+type GeneratorStore interface {
+	CheckAPIKeyCreator(context.Context, Owner) error
+}
+
 type Options struct {
+	// GenerateKey runs once per authorized attempt. Return the whole credential
+	// using KeyLength to 4096 printable, non-space ASCII bytes.
+	GenerateKey func(context.Context, Generation) (string, error)
+	// ExtractKey returns (credential, present, error). It replaces Headers for this
+	// configuration. Report malformed supplied credentials as present or return an error.
+	ExtractKey func(*http.Request) (string, bool, error)
+
 	Organization  *OrganizationOptions
 	EnableSession bool
 	// ValidateKey lets the host reject a credential before storage, permission
@@ -113,6 +134,11 @@ func New(o Options) (*Service, error) {
 	if o.EnableSession {
 		if _, ok := o.Store.(sessionUserStore); !ok {
 			return nil, errors.New("apikey: session authentication requires a credential-aware account store")
+		}
+	}
+	if o.GenerateKey != nil {
+		if _, ok := o.Store.(GeneratorStore); !ok {
+			return nil, errors.New("apikey: custom generation requires issuer authorization and digest reservation")
 		}
 	}
 	if o.ConfigID == "" {
@@ -235,6 +261,30 @@ func (in UpdateInput) empty() bool {
 
 func problem(status int, code, msg string) *stonewrit.APIError {
 	return &stonewrit.APIError{Status: status, Code: code, Message: msg}
+}
+
+// ErrKeyCollision indicates the generated credential is already reserved or stored.
+var ErrKeyCollision = problem(409, "API_KEY_ALREADY_ISSUED", "The generated credential has already been issued")
+var errGenerator = errors.New("apikey: invalid credential generator result")
+var errExtractor = errors.New("apikey: credential extraction failed")
+
+// Keep application error text and nested HTTP error types out of wire responses.
+// Native callers can identify their own sentinel and cancellation with errors.Is.
+type hookFailure struct{ kind, cause error }
+
+func (e hookFailure) Error() string        { return e.kind.Error() }
+func (e hookFailure) Is(target error) bool { return target == e.kind || errors.Is(e.cause, target) }
+
+func portableSecret(secret string) bool {
+	if secret == "" || len(secret) > 4096 {
+		return false
+	}
+	for i := 0; i < len(secret); i++ {
+		if secret[i] < 0x21 || secret[i] > 0x7e {
+			return false
+		}
+	}
+	return true
 }
 
 var errKeyValidator = errors.New("apikey: application key validator failed")
@@ -374,15 +424,11 @@ func (s *Service) create(ctx context.Context, owner Owner, in CreateInput) (*Cre
 		return nil, problem(400, "INVALID_PREFIX_LENGTH", "Invalid prefix")
 	}
 	now := current()
-	secret := prefix + randomSecret(s.opts.KeyLength)
 	k := Key{
 		ID: rand.Text(), ConfigID: s.opts.ConfigID, ReferenceID: owner.ReferenceID(), Prefix: textPtr(prefix),
 		CreatedAt: now, UpdatedAt: now, Enabled: true, RateLimitEnabled: !s.opts.DisableRateLimit,
 		RateLimitTimeWindow: ptr(s.opts.RateWindow.Milliseconds()), RateLimitMax: ptr(s.opts.RateMax),
 		Permissions: clonePermissions(s.opts.DefaultPermissions),
-	}
-	if !s.opts.HideStart {
-		k.Start = ptr(secret[:s.opts.StartLength])
 	}
 	if s.opts.DefaultExpiration > 0 {
 		k.ExpiresAt = ptr(now.Add(s.opts.DefaultExpiration))
@@ -393,6 +439,31 @@ func (s *Service) create(ctx context.Context, owner Owner, in CreateInput) (*Cre
 	}
 	if err := s.apply(&k, up, now); err != nil {
 		return nil, err
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	var secret string
+	if generate := s.opts.GenerateKey; generate != nil {
+		if err := s.opts.Store.(GeneratorStore).CheckAPIKeyCreator(ctx, owner); err != nil {
+			return nil, err
+		}
+		var err error
+		secret, err = generate(ctx, Generation{UserID: owner.UserID, OrganizationID: owner.OrganizationID, ConfigID: k.ConfigID, Prefix: prefix, Length: s.opts.KeyLength})
+		if err != nil {
+			return nil, hookFailure{errGenerator, err}
+		}
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+		if len(secret) < s.opts.KeyLength || !portableSecret(secret) {
+			return nil, errGenerator
+		}
+	} else {
+		secret = prefix + randomSecret(s.opts.KeyLength)
+	}
+	if !s.opts.HideStart {
+		k.Start = ptr(secret[:s.opts.StartLength])
 	}
 	if err := s.opts.Store.CreateAPIKey(ctx, owner, k, Digest(secret)); err != nil {
 		return nil, err

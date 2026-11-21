@@ -437,8 +437,10 @@ func (a *Auth) GetSession(ctx context.Context, headers http.Header) (*SessionRes
 	if identity, _ := ctx.Value(credentialSessionKey{a}).(*SessionResult); identity != nil {
 		return identity, nil
 	}
-	if _, identity, err := a.resolveCredentialSession(ctx, headers, RequestMeta{UserAgent: headers.Get("User-Agent")}); identity != nil || err != nil {
-		return identity, err
+	if ctx.Value(credentialProbedKey{a}) == nil {
+		if _, identity, err := a.resolveCredentialSession(ctx, headers, RequestMeta{UserAgent: headers.Get("User-Agent")}, nil); identity != nil || err != nil {
+			return identity, err
+		}
 	}
 	token := a.cookieToken(headers)
 	if token == "" {

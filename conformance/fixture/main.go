@@ -107,6 +107,23 @@ func main() {
 					return strings.HasPrefix(key, prefix), nil
 				}
 			}
+			if os.Getenv("CONFORMANCE_KEY_HOOKS") == "1" {
+				opts.EnableSession = true
+				opts.DefaultPrefix, opts.KeyLength = "app_", 32
+				opts.GenerateKey = func(_ context.Context, g apikey.Generation) (string, error) {
+					return "host-" + g.Prefix + strings.Repeat("Q", g.Length), nil
+				}
+				opts.ExtractKey = func(r *http.Request) (string, bool, error) {
+					values := r.Header.Values("X-Managed-Key")
+					if len(values) == 0 {
+						return "", false, nil
+					}
+					if len(values) != 1 {
+						return "", true, nil
+					}
+					return values[0], true, nil
+				}
+			}
 			keys, err := apikey.New(opts)
 			if err != nil {
 				log.Fatal(err)

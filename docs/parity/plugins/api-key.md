@@ -29,11 +29,16 @@
     - [ ] `configId`
     - [ ] `apiKeyHeaders`
     - [ ] `disableKeyHashing`
-    - [ ] `customAPIKeyGetter`
+    - [x] `customAPIKeyGetter` ([test](../../../adapters/sqlstore/apikey_hooks_test.go#L159))
+      - [x] Use the host extractor for HTTP, native session reads and middleware while keeping malformed credentials and callback errors out of browser fallback ([test](../../../adapters/sqlstore/apikey_hooks_test.go#L159))
+      - [x] Use the same generator and custom credential source with the released client on both runtimes ([test](../../../conformance/core.test.mjs#L1250))
     - [ ] `customAPIKeyValidator`
       - [x] Run the selected policy once across native, middleware and session verification, and preserve the usage budget on denial ([test](../../../adapters/sqlstore/apikey_validator_test.go#L16))
       - [x] Accept or refuse the same application session using the released client and its host policy ([test](../../../conformance/core.test.mjs#L1151))
-    - [ ] `customKeyGenerator`
+    - [x] `customKeyGenerator` ([test](../../../adapters/sqlstore/apikey_hooks_test.go#L102))
+      - [x] Backfill exact historical digests and reject reissuance after revocation, verification cleanup and restart ([test](../../../adapters/sqlstore/apikey_ledger_test.go#L16))
+      - [x] Create personal and organization credentials with the effective prefix, current issuance authority and atomic digest collision checks ([test](../../../adapters/sqlstore/apikey_hooks_test.go#L102))
+      - [x] Use the same generator and custom credential source with the released client on both runtimes ([test](../../../conformance/core.test.mjs#L1250))
     - [ ] `startingCharactersConfig`
     - [ ] `defaultKeyLength`
     - [ ] `defaultPrefix`
@@ -74,11 +79,16 @@
     - [ ] `apiKeyHeaders`
       - [x] Accept configured header names and reject ambiguous credential selection ([test](../../../adapters/sqlstore/apikey_test.go#L238))
     - [ ] `disableKeyHashing`
-    - [ ] `customAPIKeyGetter`
+    - [x] `customAPIKeyGetter` ([test](../../../adapters/sqlstore/apikey_hooks_test.go#L159))
+      - [x] Use the host extractor for HTTP, native session reads and middleware while keeping malformed credentials and callback errors out of browser fallback ([test](../../../adapters/sqlstore/apikey_hooks_test.go#L159))
+      - [x] Use the same generator and custom credential source with the released client on both runtimes ([test](../../../conformance/core.test.mjs#L1250))
     - [ ] `customAPIKeyValidator`
       - [x] Run the selected policy once across native, middleware and session verification, and preserve the usage budget on denial ([test](../../../adapters/sqlstore/apikey_validator_test.go#L16))
       - [x] Accept or refuse the same application session using the released client and its host policy ([test](../../../conformance/core.test.mjs#L1151))
-    - [ ] `customKeyGenerator`
+    - [x] `customKeyGenerator` ([test](../../../adapters/sqlstore/apikey_hooks_test.go#L102))
+      - [x] Backfill exact historical digests and reject reissuance after revocation, verification cleanup and restart ([test](../../../adapters/sqlstore/apikey_ledger_test.go#L16))
+      - [x] Create personal and organization credentials with the effective prefix, current issuance authority and atomic digest collision checks ([test](../../../adapters/sqlstore/apikey_hooks_test.go#L102))
+      - [x] Use the same generator and custom credential source with the released client on both runtimes ([test](../../../conformance/core.test.mjs#L1250))
     - [ ] `startingCharactersConfig`
       - [x] Return six display characters by default ([test](../../../adapters/sqlstore/apikey_test.go#L68))
     - [ ] `defaultKeyLength`
@@ -194,6 +204,9 @@
       - [ ] Expiration:
         - [x] Reject expired secrets and purge expired entries ([test](../../../adapters/sqlstore/apikey_test.go#L266))
   - [ ] Custom Key generation & verification
+    - [x] Backfill exact historical digests and reject reissuance after revocation, verification cleanup and restart ([test](../../../adapters/sqlstore/apikey_ledger_test.go#L16))
+    - [x] Create personal and organization credentials with the effective prefix, current issuance authority and atomic digest collision checks ([test](../../../adapters/sqlstore/apikey_hooks_test.go#L102))
+    - [x] Use the same generator and custom credential source with the released client on both runtimes ([test](../../../conformance/core.test.mjs#L1250))
   - [ ] Metadata
     - [x] Round-trip opted-in JSON metadata ([test](../../../adapters/sqlstore/apikey_test.go#L88))
 

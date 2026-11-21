@@ -16,6 +16,9 @@ import (
 // kind. Keep the namespace kind across restarts so an unrelated account with
 // the same ID can never acquire or delete an organization's credentials.
 func (s *Store) ConfigureKeyReference(ctx context.Context, config string, org bool) error {
+	if err := s.ensureAPIKeyLedger(ctx); err != nil {
+		return err
+	}
 	kind := "apikey-user-config"
 	if org {
 		kind = "apikey-org-config"

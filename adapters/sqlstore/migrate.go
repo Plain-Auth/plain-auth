@@ -32,6 +32,12 @@ type migrationConnection interface {
 }
 
 func (s *Store) migrate(ctx context.Context, baseline string) error {
+	return s.withMigrationConnection(ctx, func(db migrationConnection) error {
+		return s.applyMigrations(ctx, db, baseline)
+	})
+}
+
+func (s *Store) withMigrationConnection(ctx context.Context, apply func(migrationConnection) error) error {
 	if s.dialect == "mysql" {
 		// MySQL's DDL commits implicitly. Keep the lock on one connection until
 		// the full set of tables and indexes has been initialized.
@@ -53,7 +59,7 @@ func (s *Store) migrate(ctx context.Context, baseline string) error {
 			defer cancel()
 			_, _ = conn.ExecContext(cleanup, "SELECT RELEASE_LOCK("+lock+")")
 		}()
-		return s.applyMigrations(ctx, conn, baseline)
+		return apply(conn)
 	}
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -66,7 +72,7 @@ func (s *Store) migrate(ctx context.Context, baseline string) error {
 			return err
 		}
 	}
-	if err := s.applyMigrations(ctx, tx, baseline); err != nil {
+	if err := apply(tx); err != nil {
 		return err
 	}
 	return tx.Commit()

@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"database/sql"
 	"encoding/hex"
 	"io"
 	"path/filepath"
@@ -52,5 +53,25 @@ func TestCommands(t *testing.T) {
 	t.Setenv("AUTH_DSN", "")
 	if err := runCommand("migrate", "--dialect", "sqlite"); err == nil {
 		t.Fatal("accepted missing DSN")
+	}
+}
+
+func TestPrepareAPIKeyLedgerCommand(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "keys.db")
+	t.Setenv("AUTH_DSN", path)
+	args := []string{"migrate", "--dialect", "sqlite", "--api-key-ledger"}
+	for range 2 {
+		if err := run(t.Context(), args, io.Discard, io.Discard); err != nil {
+			t.Fatal(err)
+		}
+	}
+	db, err := sql.Open("sqlite3", path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	var markers int
+	if err := db.QueryRowContext(t.Context(), "SELECT count(*) FROM stonewrit_api_key_digest WHERE digest = ?", []byte{1}).Scan(&markers); err != nil || markers != 1 {
+		t.Fatalf("expected one completed backfill, got %d: %v", markers, err)
 	}
 }

@@ -28,6 +28,7 @@ const usage = `Usage: authctl <command>
   secret                                       Print a new signing secret
 
   check, generate and migrate accept --plugins with comma-separated schema profiles.
+  migrate --api-key-ledger includes the API-key schema and reserves existing key digests.
 `
 
 func main() {
@@ -70,9 +71,12 @@ func run(ctx context.Context, args []string, out, errOut io.Writer) error {
 		fs.SetOutput(errOut)
 		dialect := fs.String("dialect", "", "Database dialect (sqlite, postgres, mysql)")
 		pluginNames := fs.String("plugins", "", "Comma-separated schema profiles ("+strings.Join(schema.Profiles(), ", ")+")")
-		var asJSON bool
+		var asJSON, prepareKeyLedger bool
 		if args[0] == "check" {
 			fs.BoolVar(&asJSON, "json", false, "Write findings as a JSON array")
+		}
+		if args[0] == "migrate" {
+			fs.BoolVar(&prepareKeyLedger, "api-key-ledger", false, "Install the API-key schema and backfill its permanent digest ledger")
 		}
 		if err := fs.Parse(args[1:]); err != nil {
 			if errors.Is(err, flag.ErrHelp) {
@@ -92,6 +96,9 @@ func run(ctx context.Context, args []string, out, errOut io.Writer) error {
 		if args[0] == "check" {
 			return checkDatabase(ctx, *dialect, profiles, asJSON, out)
 		}
+		if prepareKeyLedger {
+			profiles = append(profiles, "api-key")
+		}
 		ddl, err := schema.Generate(*dialect, profiles)
 		if err != nil {
 			return err
@@ -108,7 +115,10 @@ func run(ctx context.Context, args []string, out, errOut io.Writer) error {
 		if err != nil {
 			return fmt.Errorf("migrate: %w", err)
 		}
-		if err = store.Close(); err != nil {
+		if prepareKeyLedger {
+			err = store.PrepareAPIKeyLedger(ctx)
+		}
+		if err = errors.Join(err, store.Close()); err != nil {
 			return err
 		}
 		_, err = fmt.Fprintf(out, "Applied auth schema (%s).\n", *dialect)

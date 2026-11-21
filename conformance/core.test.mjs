@@ -1246,3 +1246,35 @@ test("Apple native bundle IDs and explicit audiences select the same signed iden
   const {compareAppleNative} = await import("./apple-native.mjs");
   await compareAppleNative(t, {reference, goFixture, instrument});
 });
+
+test("custom key generators and credential extractors work across runtimes", async (t) => {
+  const { apiKey } = await import("@better-auth/api-key");
+  const { apiKeyClient } = await import("@better-auth/api-key/client");
+  const runtimes = [
+    await reference(t, [apiKey({
+      enableSessionForAPIKeys: true, defaultPrefix: "app_", defaultKeyLength: 32,
+      customKeyGenerator: ({length, prefix}) => "host-" + prefix + "Q".repeat(length),
+      customAPIKeyGetter: (ctx) => ctx.headers?.get("X-Managed-Key") ?? null,
+    })]),
+    await goFixture(t, ["api-key"], { CONFORMANCE_KEY_HOOKS: "1" }),
+  ];
+  for (const runtime of runtimes) {
+    const {client} = instrument(runtime, [apiKeyClient()]);
+    const owner = await client.signUp.email({email,name,password});
+    assert.equal(owner.error, null);
+    for (const input of [{name:"default"}, {name:"explicit",prefix:"job_"}]) {
+      const created = await client.apiKey.create(input);
+      assert.equal(created.error, null);
+      assert.equal(created.data.key, "host-" + (input.prefix ?? "app_") + "Q".repeat(32));
+      const read = async (headers) => {
+        const response = await runtime.send(new Request(runtime.baseURL + "/api/auth/get-session", {headers}));
+        assert.equal(response.status, 200);
+        return response.json();
+      };
+      const session = await read({"X-Managed-Key": created.data.key});
+      assert.equal(session.user.id, owner.data.user.id);
+      assert.equal(session.session.id, created.data.id);
+      assert.equal(await read({"X-Api-Key":created.data.key}), null);
+    }
+  }
+});

@@ -4,10 +4,10 @@ A signed-in user can issue a personal or organization-owned application credenti
 
 ## Set up the service
 
-Apply the schema profile to your database.
+Install the API-key tables and prepare the permanent digest ledger before starting the application.
 
 ```sh
-AUTH_DSN=auth.db go run ./cmd/authctl migrate --dialect sqlite --plugins api-key
+AUTH_DSN=auth.db go run ./cmd/authctl migrate --dialect sqlite --api-key-ledger
 ```
 
 Import `github.com/Stonewrit/stonewrit-auth` and `github.com/Stonewrit/stonewrit-auth/plugins/apikey`. Pass the same SQL store to the host and key service.
@@ -34,6 +34,32 @@ mux.Handle("/reports", keys.Middleware(apikey.Permissions{"reports": {"read"}}, 
 ```
 
 The application handler can call `apikey.FromContext(r.Context())` for the verified key ID, owner ID and permissions. Middleware reads `X-API-Key` by default. Set `Options.Headers` to accept other header names. Requests carrying more than one configured credential are rejected. Rate-limited requests receive HTTP 429 and a `Retry-After` header.
+
+## Custom key generation and credential extraction
+
+Set `Options.GenerateKey` to a function with signature `func(context.Context, apikey.Generation) (string, error)`. Its input carries the acting user ID, optional organization ID, configuration ID, effective prefix and configured key length. A nonempty request prefix takes priority over the default. Return the entire secret, including any desired prefix. The service records the requested prefix as metadata and preserves the returned bytes. Use cryptographically random secret material. Generated credentials must contain between `KeyLength` and 4,096 printable ASCII bytes, with no spaces. The usual digest, starting-character display, expiration and policy settings apply.
+
+The SQL store checks issuance authority before invoking the generator, then rechecks the account, session and organization role when writing the key. The hook runs outside database locks. A generator failure or canceled request leaves no key. Repeated output yields HTTP 409 with `API_KEY_ALREADY_ISSUED`: someone holding a revoked secret must never acquire another owner’s privileges if the generator repeats that value.
+
+### Upgrade existing SQL key stores
+
+The adapter keeps an additional table, `stonewrit_api_key_digest`, with a binary primary key and no owner, timestamps or expiry. Each credential contributes a 32-byte SHA-256 fingerprint of its stored digest. A separate one-byte completion marker allows subsequent service starts to skip the historical scan. New issuance reserves the digest and inserts the live key in the same transaction. Deleting a key or its owner retains that reservation. Verification cleanup cannot remove it. Back up and restore the ledger with the canonical `apikey` table.
+
+For a coordinated upgrade, pause every process that creates, rotates or deletes API keys, including jobs and older applications that share the database. Run `authctl migrate --dialect postgres --api-key-ledger` with your migration credentials and target dialect, or call `store.PrepareAPIKeyLedger(ctx)` from Go. The first key service on a store also initializes it automatically. Replace all key writers with ledger-aware adapters before resuming writes and enabling custom generators. Applications using restricted database roles can provision the table first and grant the adapter access for backfill and reservation.
+
+Backfill is repeatable. It reserves every distinct digest still present, preserving exact bytes across database collations. It leaves duplicate historical key records intact. Ambiguous records remain unusable under the existing lookup rules. A repeat backfill captures live keys added during a transition. Older writers and raw SQL clients can bypass the ledger, and a historical secret deleted before capture cannot be reconstructed. Imports using plaintext or another hashing format require a separate credential rotation before switching to this service. Existing read operations against the canonical table continue using their prior ownership and ambiguity checks. [Three-engine migration tests](../adapters/sqlstore/apikey_ledger_test.go)
+
+### Extract credentials from requests
+
+Set `Options.ExtractKey` to a function with signature `func(*http.Request) (key string, present bool, err error)`. It replaces header lookup for its configuration and receives a read-only request. Inspect its headers, cookies, method or URL, and use `r.Context()` for cancellation. Leave the body available to the handler. Native `GetSession(ctx, headers)` supplies those headers, the caller’s context, and an empty method and URL.
+
+| Extractor return | Result |
+| --- | --- |
+| `"", false, nil` | No credential was presented through this configuration. Other configured sources or a browser session can proceed. |
+| `key, true, nil` | Verify the supplied printable credential. An empty or malformed value rejects the request. |
+| A non-nil error | Stop authentication. HTTP responses hide the callback’s error detail. Native callers can use `errors.Is` to identify their own error. |
+
+`VerifyRequest`, application middleware and enabled API-key session routes use the extractor. `Verify(ctx, key, permissions)` checks its explicit key directly. Presenting a recognized application key alongside a browser credential is ambiguous. Different key sources are also ambiguous. Configurations that share a header, or custom extractors returning the same key, resolve it only when the digest identifies exactly one candidate. Detection runs before usage counters change. [Hook and concurrency tests](../adapters/sqlstore/apikey_hooks_test.go)
 
 ## Apply an application validation policy
 
@@ -129,4 +155,4 @@ The result identifies the owner and sets `session.id` to the key ID, `session.to
 
 When permissions are omitted entirely, a key may use each supported operation. An explicit permissions map restricts it to the listed grants. Personal logins continue to authorize key management, identity changes, factor recovery and browser-session management. Organization keys identify a group and can authorize application middleware. Supplying one to an enabled session resolver returns `INVALID_REFERENCE_ID_FROM_API_KEY`.
 
-Secondary or custom storage, pluggable key generators and custom credential-extraction callbacks remain open. Phone number replacement with an application key also remains open. [Feature checklist](parity/plugins/api-key.md) · [Key policy tests](../adapters/sqlstore/apikey_test.go) · [Ownership and session tests](../adapters/sqlstore/apikey_session_test.go) · [Client conformance](../conformance/core.test.mjs)
+Secondary or custom storage remains open. Phone number replacement with an application key also remains open. [Feature checklist](parity/plugins/api-key.md) · [Key policy tests](../adapters/sqlstore/apikey_test.go) · [Ownership and session tests](../adapters/sqlstore/apikey_session_test.go) · [Client conformance](../conformance/core.test.mjs)

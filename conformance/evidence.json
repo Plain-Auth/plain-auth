@@ -7161,5 +7161,85 @@
       "marker": "func TestAppleClientSecret(",
       "complete": true
     }
+  ],
+  "plugin-symbol/api-key/ApiKeyConfigurationOptions/customAPIKeyGetter": [
+    {
+      "label": "Use the host extractor for HTTP, native session reads and middleware while keeping malformed credentials and callback errors out of browser fallback",
+      "test": "adapters/sqlstore/apikey_hooks_test.go",
+      "marker": "custom extraction fell back to configured headers or ran twice",
+      "complete": true
+    },
+    {
+      "label": "Use the same generator and custom credential source with the released client on both runtimes",
+      "test": "conformance/core.test.mjs",
+      "marker": "custom key generators and credential extractors work across runtimes"
+    }
+  ],
+  "plugin-symbol/api-key/ApiKeyConfigurationOptions/customKeyGenerator": [
+    {
+      "label": "Backfill exact historical digests and reject reissuance after revocation, verification cleanup and restart",
+      "test": "adapters/sqlstore/apikey_ledger_test.go",
+      "marker": "func TestAPIKeyLedgerMigration("
+    },
+    {
+      "label": "Create personal and organization credentials with the effective prefix, current issuance authority and atomic digest collision checks",
+      "test": "adapters/sqlstore/apikey_hooks_test.go",
+      "marker": "incorrect personal generation inputs or display fields",
+      "complete": true
+    },
+    {
+      "label": "Use the same generator and custom credential source with the released client on both runtimes",
+      "test": "conformance/core.test.mjs",
+      "marker": "custom key generators and credential extractors work across runtimes"
+    }
+  ],
+  "plugin-symbol/api-key/PredefinedApiKeyOptions/customAPIKeyGetter": [
+    {
+      "label": "Use the host extractor for HTTP, native session reads and middleware while keeping malformed credentials and callback errors out of browser fallback",
+      "test": "adapters/sqlstore/apikey_hooks_test.go",
+      "marker": "custom extraction fell back to configured headers or ran twice",
+      "complete": true
+    },
+    {
+      "label": "Use the same generator and custom credential source with the released client on both runtimes",
+      "test": "conformance/core.test.mjs",
+      "marker": "custom key generators and credential extractors work across runtimes"
+    }
+  ],
+  "plugin-symbol/api-key/PredefinedApiKeyOptions/customKeyGenerator": [
+    {
+      "label": "Backfill exact historical digests and reject reissuance after revocation, verification cleanup and restart",
+      "test": "adapters/sqlstore/apikey_ledger_test.go",
+      "marker": "func TestAPIKeyLedgerMigration("
+    },
+    {
+      "label": "Create personal and organization credentials with the effective prefix, current issuance authority and atomic digest collision checks",
+      "test": "adapters/sqlstore/apikey_hooks_test.go",
+      "marker": "incorrect personal generation inputs or display fields",
+      "complete": true
+    },
+    {
+      "label": "Use the same generator and custom credential source with the released client on both runtimes",
+      "test": "conformance/core.test.mjs",
+      "marker": "custom key generators and credential extractors work across runtimes"
+    }
+  ],
+  "docs/content/docs/plugins/api-key/advanced.mdx#L660": [
+    {
+      "label": "Backfill exact historical digests and reject reissuance after revocation, verification cleanup and restart",
+      "test": "adapters/sqlstore/apikey_ledger_test.go",
+      "marker": "func TestAPIKeyLedgerMigration("
+    },
+    {
+      "label": "Create personal and organization credentials with the effective prefix, current issuance authority and atomic digest collision checks",
+      "test": "adapters/sqlstore/apikey_hooks_test.go",
+      "marker": "incorrect personal generation inputs or display fields",
+      "complete": false
+    },
+    {
+      "label": "Use the same generator and custom credential source with the released client on both runtimes",
+      "test": "conformance/core.test.mjs",
+      "marker": "custom key generators and credential extractors work across runtimes"
+    }
   ]
 }

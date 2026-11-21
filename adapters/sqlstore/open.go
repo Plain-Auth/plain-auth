@@ -24,6 +24,7 @@ import (
 // Store persists users, credentials, and sessions in a SQL database.
 type Store struct {
 	adminSchema            *atomic.Bool
+	apiKeyLedgerReady      *atomic.Bool
 	adminRole, adminDenial string
 	teamOptions            *org.TeamOptions
 	factorSchema           bool
@@ -104,7 +105,7 @@ func connectDB(ctx context.Context, dialect, dsn string, create bool) (*Store, e
 	if err != nil {
 		return nil, err
 	}
-	return &Store{db: db, dialect: name, adminSchema: new(atomic.Bool)}, nil
+	return &Store{db: db, dialect: name, adminSchema: new(atomic.Bool), apiKeyLedgerReady: new(atomic.Bool)}, nil
 }
 
 func openSQLite(path string, create bool) (*sql.DB, error) {

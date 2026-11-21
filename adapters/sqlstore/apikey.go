@@ -140,16 +140,55 @@ func scanAPIKey(row rowScanner) (ak.Key, error) {
 	}
 	return k, nil
 }
+
+// CheckAPIKeyCreator authorizes the generator without holding database locks while
+// application code runs. CreateAPIKey repeats the check before it persists anything.
+func (s *Store) CheckAPIKeyCreator(ctx context.Context, owner ak.Owner) error {
+	tx, err := s.beginMembershipChange(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	return s.apiKeyOwner(ctx, tx, owner, time.Now())
+}
+
+// Reserve a fingerprint atomically across all key types and owners. Existing keys
+// may predate this guard, since the canonical key digest index is not unique.
+func (s *Store) reserveKeyDigest(ctx context.Context, tx *sql.Tx, digest string) error {
+	_, err := tx.ExecContext(ctx, s.bind(`INSERT INTO "stonewrit_api_key_digest" ("digest") VALUES (?)`), apiKeyFingerprint(digest))
+	if duplicateConstraint(err) {
+		return ak.ErrKeyCollision
+	}
+	if err != nil {
+		return err
+	}
+	param, _ := s.deviceTokenParameters([]string{digest})
+	var exists bool
+	if err := tx.QueryRowContext(ctx, s.bind(`SELECT EXISTS(SELECT 1 FROM "apikey" WHERE "key"=`+param+`)`), digest).Scan(&exists); err != nil {
+		return err
+	}
+	if exists {
+		return ak.ErrKeyCollision
+	}
+	return nil
+}
+
 func (s *Store) CreateAPIKey(ctx context.Context, owner ak.Owner, k ak.Key, digest string) error {
 	if owner.UserID == "" || owner.ReferenceID() != k.ReferenceID || k.ID == "" || digest == "" {
 		return ak.ErrSession
+	}
+	if err := s.ensureAPIKeyLedger(ctx); err != nil {
+		return err
 	}
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
-	if err = s.apiKeyOwner(ctx, tx, owner, k.CreatedAt); err != nil {
+	if err = s.apiKeyOwner(ctx, tx, owner, time.Now()); err != nil {
+		return err
+	}
+	if err = s.reserveKeyDigest(ctx, tx, digest); err != nil {
 		return err
 	}
 	args, err := s.keyValues(k)

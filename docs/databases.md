@@ -100,3 +100,5 @@ AUTH_DSN='postgres://auth_user:example@localhost:5432/auth_dev?sslmode=disable' 
 ```
 
 Use the [schema profile guide](schema.md) for supported combinations and runtime feature status.
+
+For application keys, `authctl migrate --dialect postgres --api-key-ledger` applies the API-key profile and reserves the digests of existing keys. You can combine this option with other schema profiles. The command reads its target from `AUTH_DSN`. [API-key setup and upgrade guide](api-keys.md#custom-key-generation-and-credential-extraction)

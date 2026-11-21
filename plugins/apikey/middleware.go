@@ -28,19 +28,49 @@ func headerNames(input []string) ([]string, error) {
 	return result, nil
 }
 
-// VerifyRequest consumes the key for one request. Multiple credentials are
-// ambiguous and cannot authenticate a request.
-func (s *Service) VerifyRequest(r *http.Request, required Permissions) (Verification, error) {
-	var secret string
+// credential returns the key and its source. An empty source means no credential.
+func (s *Service) credential(r *http.Request) (secret, source string, err error) {
+	if err := r.Context().Err(); err != nil {
+		return "", "", err
+	}
+	if extract := s.opts.ExtractKey; extract != nil {
+		value, present, err := extract(r)
+		if err != nil {
+			return "", "", hookFailure{errExtractor, err}
+		}
+		if err := r.Context().Err(); err != nil {
+			return "", "", err
+		}
+		if !present && value == "" {
+			return "", "", nil
+		}
+		if !present || !portableSecret(value) {
+			return "", "", invalidSessionKey
+		}
+		return value, "custom extractor", nil
+	}
 	for _, name := range s.opts.Headers {
 		values := r.Header.Values(name)
 		if len(values) == 0 {
 			continue
 		}
-		if len(values) != 1 || secret != "" || values[0] == "" {
-			return Verification{Error: &VerifyError{Code: "INVALID_API_KEY", Message: "Invalid API key"}}, nil
+		if len(values) != 1 || source != "" || values[0] == "" || len(values[0]) > 4096 {
+			return "", "", invalidSessionKey
 		}
-		secret = values[0]
+		secret, source = values[0], name
+	}
+	return secret, source, nil
+}
+
+// VerifyRequest extracts and consumes one credential. Multiple built-in key
+// headers are ambiguous. A custom extractor replaces those headers.
+func (s *Service) VerifyRequest(r *http.Request, required Permissions) (Verification, error) {
+	secret, _, err := s.credential(r)
+	if errors.Is(err, invalidSessionKey) {
+		return Verification{Error: &VerifyError{Code: "INVALID_API_KEY", Message: "Invalid API key"}}, nil
+	}
+	if err != nil {
+		return Verification{}, err
 	}
 	return s.Verify(r.Context(), secret, required)
 }

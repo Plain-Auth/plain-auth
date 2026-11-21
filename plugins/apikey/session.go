@@ -25,42 +25,36 @@ func SessionProofFrom(ctx context.Context) (SessionProof, bool) {
 }
 
 func sessionResolver(services []*Service) *stonewrit.CredentialSessionResolver {
-	byHeader := map[string][]*Service{}
+	var enabled []*Service
 	for _, service := range services {
 		if service.opts.EnableSession {
-			for _, name := range service.opts.Headers {
-				byHeader[name] = append(byHeader[name], service)
-			}
+			enabled = append(enabled, service)
 		}
 	}
-	if len(byHeader) == 0 {
+	if len(enabled) == 0 {
 		return nil
 	}
-	return &stonewrit.CredentialSessionResolver{
-		Matches: func(h http.Header) bool {
-			for name := range byHeader {
-				if len(h.Values(name)) != 0 {
-					return true
-				}
+	return &stonewrit.CredentialSessionResolver{SelectRequest: func(r *http.Request) (stonewrit.CredentialVerifier, error) {
+		var secret, source string
+		var candidates []*Service
+		for _, service := range enabled {
+			value, from, err := service.credential(r)
+			if err != nil {
+				return nil, err
 			}
-			return false
-		},
-		Resolve: func(ctx context.Context, h http.Header, meta stonewrit.RequestMeta, ttl time.Duration) (*stonewrit.CredentialSession, error) {
-			var secret string
-			var candidates []*Service
-			for name, services := range byHeader {
-				values := h.Values(name)
-				if len(values) == 0 {
-					continue
-				}
-				if len(values) != 1 || values[0] == "" || secret != "" {
-					return nil, invalidSessionKey
-				}
-				secret, candidates = values[0], services
+			if from == "" {
+				continue
 			}
-			if len(candidates) == 0 {
+			if source != "" && (from != source || value != secret) {
 				return nil, invalidSessionKey
 			}
+			secret, source = value, from
+			candidates = append(candidates, service)
+		}
+		if len(candidates) == 0 {
+			return nil, nil
+		}
+		return func(ctx context.Context, meta stonewrit.RequestMeta, ttl time.Duration) (*stonewrit.CredentialSession, error) {
 			service := candidates[0]
 			if len(candidates) > 1 {
 				ids := make([]string, len(candidates))
@@ -79,8 +73,8 @@ func sessionResolver(services []*Service) *stonewrit.CredentialSessionResolver {
 				service = candidates[index]
 			}
 			return service.resolveSession(ctx, secret, meta, ttl)
-		},
-	}
+		}, nil
+	}}
 }
 
 var invalidSessionKey = problem(401, "INVALID_API_KEY", "Invalid API key")
