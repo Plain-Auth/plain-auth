@@ -121,7 +121,7 @@
       - [ ] Example with Netlify
       - [ ] Example with Vercel
     - [ ] Using a Shared Parent Domain
-      - [x] Use Chrome on two TLS hosts to sign in, share an HTTP-only session and log out of both hosts ([test](../../cookie_scope_browser_test.go#L20))
+      - [x] Use Chrome on two TLS hosts to sign in, share an HTTP-only session and log out of both hosts ([test](../../cookie_scope_browser_test.go#L21))
 
 ## Database
 

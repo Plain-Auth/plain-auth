@@ -2487,6 +2487,12 @@
       "label": "Apply the host cookie namespace and HTTPS security to the default browser preference",
       "test": "plugins/lastlogin/lastlogin_test.go",
       "marker": "func TestDefaultCookieUsesHostNamespace("
+    },
+    {
+      "label": "Publish a custom Secure preference that the browser can read and the sibling receives",
+      "test": "cookie_scope_browser_test.go",
+      "marker": "const preference = loginPreference({cookieName:",
+      "complete": true
     }
   ],
   "plugin/one-tap/POST /one-tap/callback": [
@@ -6172,6 +6178,22 @@
       "label": "Admit both HTTP and HTTPS for a scheme-independent hostname wildcard on their default ports",
       "test": "conformance/trusted-origins.mjs",
       "marker": "[\"https://one.regional.example.test\", true]"
+    }
+  ],
+  "plugin-symbol/last-login-method/LastLoginMethodClientConfig/cookieName": [
+    {
+      "label": "Read the named login method on the issuing host and its sibling in Chrome",
+      "test": "cookie_scope_browser_test.go",
+      "marker": "custom preference was not shared",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/last-login-method/LastLoginMethodClientConfig/domain": [
+    {
+      "label": "Clear the shared preference on both HTTPS hosts and preserve unrelated cookies and the browser session",
+      "test": "cookie_scope_browser_test.go",
+      "marker": "domain preference survived clear",
+      "complete": true
     }
   ]
 }

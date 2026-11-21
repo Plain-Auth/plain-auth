@@ -124,4 +124,4 @@ if (preference.is("github")) signInWithGitHubButton.focus();
 forgetPreferenceButton.addEventListener("click", () => preference.clear());
 ```
 
-Pass `cookieName` for a custom cookie name. Pass `domain` when clearing a cookie that your application issued on a shared parent domain.
+Use the same cookie name and domain on both sides. For example, a Go plugin configured with `CookieName: "__Secure-staff.preference"` and a shared cookie domain of `example.com` uses `loginPreference({ cookieName: "__Secure-staff.preference", domain: "example.com" })` in the browser. Calling `clear()` removes that preference across participating subdomains and preserves the signed-in session. [Two-host Chrome test](../cookie_scope_browser_test.go)
