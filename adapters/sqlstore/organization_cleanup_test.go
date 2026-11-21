@@ -26,7 +26,7 @@ func organizationTestDSN(t *testing.T, dialect string) string {
 	if dialect == "sqlite" {
 		return filepath.Join(t.TempDir(), "teams.sqlite")
 	}
-	dsn := os.Getenv("BETTERAUTH_TEST_" + strings.ToUpper(dialect) + "_DSN")
+	dsn := os.Getenv("AUTH_TEST_" + strings.ToUpper(dialect) + "_DSN")
 	if dsn == "" {
 		t.Skip("requires a local disposable database")
 	}

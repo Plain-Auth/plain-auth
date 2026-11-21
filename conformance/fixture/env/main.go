@@ -1,5 +1,5 @@
 // Command env reports only public configuration and the signature of a fixed
-// test value. The conformance harness supplies synthetic secrets to both runtimes.
+// test value. The test harness supplies synthetic signing keys.
 package main
 
 import (

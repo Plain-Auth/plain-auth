@@ -57,12 +57,12 @@ For isolated development without a database, pass `memory.New()` from `github.co
 Provide disposable databases. The tests create auth tables and test records. Run these commands after setting each DSN in your shell.
 
 ```sh
-export BETTERAUTH_TEST_POSTGRES_DSN='postgres://auth_user:example@localhost:5432/auth_test?sslmode=disable'
-export BETTERAUTH_TEST_MYSQL_DSN='auth_user:example@tcp(127.0.0.1:3306)/auth_test'
+export AUTH_TEST_POSTGRES_DSN='postgres://auth_user:example@localhost:5432/auth_test?sslmode=disable'
+export AUTH_TEST_MYSQL_DSN='auth_user:example@tcp(127.0.0.1:3306)/auth_test'
 go test -race -count=1 -v ./adapters/...
 ```
 
-For the two-factor tests, create separate empty databases and supply `BETTERAUTH_FACTOR_POSTGRES_DSN` and `BETTERAUTH_FACTOR_MYSQL_DSN`. These tests exercise adding factor fields to a running installation and need a dedicated schema. A skipped engine test indicates that its DSN was absent. Each engine's result is tracked individually in the [feature checklist](parity/README.md).
+For the two-factor tests, create separate empty databases and supply `AUTH_FACTOR_POSTGRES_DSN` and `AUTH_FACTOR_MYSQL_DSN`. These tests exercise adding factor fields to a running installation and need a dedicated schema. A skipped engine test indicates that its DSN was absent. Each engine's result is tracked individually in the [feature checklist](parity/README.md).
 
 ## Add optional integration tables
 

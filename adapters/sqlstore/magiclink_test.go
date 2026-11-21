@@ -26,7 +26,7 @@ func TestMagicLinkMailboxOwnership(t *testing.T) {
 			ctx := t.Context()
 			dsn := filepath.Join(t.TempDir(), "mail.db")
 			if dialect != "sqlite" {
-				dsn = os.Getenv("BETTERAUTH_TEST_" + strings.ToUpper(dialect) + "_DSN")
+				dsn = os.Getenv("AUTH_TEST_" + strings.ToUpper(dialect) + "_DSN")
 				if dsn == "" {
 					t.Skip("requires disposable local database")
 				}

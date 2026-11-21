@@ -18,7 +18,7 @@ func TestSocialStore(t *testing.T) {
 		t.Run(dialect, func(t *testing.T) {
 			dsn := ":memory:"
 			if dialect != "sqlite" {
-				name := "BETTERAUTH_TEST_" + strings.ToUpper(dialect) + "_DSN"
+				name := "AUTH_TEST_" + strings.ToUpper(dialect) + "_DSN"
 				dsn = os.Getenv(name)
 				if dsn == "" {
 					t.Skipf("set %s", name)

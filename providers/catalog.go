@@ -131,7 +131,7 @@ func (e catalogEntry) resolve(ctx context.Context, name, clientID, secret string
 		req.Header.Set("Content-Type", "application/json")
 	}
 	if name == "reddit" {
-		req.Header.Set("User-Agent", "go-better-auth")
+		req.Header.Set("User-Agent", "authn-go")
 	}
 	var fbSubject string
 	if name == "facebook" {

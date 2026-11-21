@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-var configEnvNames = []string{"AUTH_ENV", "NODE_ENV", "BETTER_AUTH_SECRET", "AUTH_SECRET", "BETTER_AUTH_SECRETS", "AUTH_SECRETS", "BETTER_AUTH_URL", "AUTH_URL", "NEXT_PUBLIC_BETTER_AUTH_URL", "PUBLIC_BETTER_AUTH_URL", "NUXT_PUBLIC_BETTER_AUTH_URL", "NUXT_PUBLIC_AUTH_URL", "BASE_URL", "BETTER_AUTH_TRUSTED_ORIGINS", "AUTH_TRUSTED_ORIGINS"}
+var configEnvNames = []string{"AUTH_ENV", "AUTH_SECRET", "AUTH_SECRETS", "AUTH_URL", "AUTH_TRUSTED_ORIGINS"}
 
 func cleanConfigEnv(t *testing.T) {
 	t.Helper()
@@ -19,16 +19,14 @@ func cleanConfigEnv(t *testing.T) {
 func TestEnvironmentPrecedence(t *testing.T) {
 	cleanConfigEnv(t)
 	t.Setenv("AUTH_SECRET", strings.Repeat("a", 32))
-	t.Setenv("BETTER_AUTH_SECRET", strings.Repeat("b", 32))
-	t.Setenv("AUTH_URL", "https://neutral.test")
-	t.Setenv("BETTER_AUTH_URL", "https://auth.test/v1/login")
-	t.Setenv("BETTER_AUTH_TRUSTED_ORIGINS", "https://one.test, https://two.test")
+	t.Setenv("AUTH_URL", "https://auth.test/v1/login")
+	t.Setenv("AUTH_TRUSTED_ORIGINS", "https://one.test, https://two.test")
 	initial := []string{"https://app.test"}
 	a, err := New(Options{Store: &refreshFixture{}, TrustedOrigins: initial})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if a.opts.Secret != strings.Repeat("b", 32) || a.opts.BaseURL != "https://auth.test" || a.BasePath() != "/v1/login" || len(a.opts.TrustedOrigins) != 3 {
+	if a.opts.Secret != strings.Repeat("a", 32) || a.opts.BaseURL != "https://auth.test" || a.BasePath() != "/v1/login" || len(a.opts.TrustedOrigins) != 3 {
 		t.Fatal("environment configuration not resolved")
 	}
 	if !a.trustedURL("https://two.test/done", true) || !a.sessionCookie("credential", true).Secure {
@@ -42,16 +40,39 @@ func TestEnvironmentPrecedence(t *testing.T) {
 	if other.opts.BaseURL != explicit.BaseURL || other.opts.Secret != explicit.Secret || other.BasePath() != explicit.BasePath {
 		t.Fatal("explicit scalar options lost precedence")
 	}
-	for _, key := range []string{"BETTER_AUTH_URL", "AUTH_URL", "NEXT_PUBLIC_BETTER_AUTH_URL", "PUBLIC_BETTER_AUTH_URL", "NUXT_PUBLIC_BETTER_AUTH_URL", "NUXT_PUBLIC_AUTH_URL", "BASE_URL"} {
-		t.Run(key, func(t *testing.T) {
-			cleanConfigEnv(t)
-			t.Setenv(key, "http://localhost:8787/auth")
-			t.Setenv("AUTH_SECRET", strings.Repeat("a", 32))
-			a, err := New(Options{Store: &refreshFixture{}})
-			if err != nil || a.BasePath() != "/auth" {
-				t.Fatalf("URL fallback: %v", err)
-			}
-		})
+}
+
+func TestEnvironmentIsolation(t *testing.T) {
+	cleanConfigEnv(t)
+	external := "https://external.example.org"
+	for _, key := range []string{"BETTER_AUTH_URL", "NEXT_PUBLIC_BETTER_AUTH_URL", "PUBLIC_BETTER_AUTH_URL", "NUXT_PUBLIC_BETTER_AUTH_URL", "NUXT_PUBLIC_AUTH_URL", "BASE_URL", "NEXT_PUBLIC_AUTH_URL", "NEXTAUTH_URL", "VERCEL_URL"} {
+		t.Setenv(key, external)
+	}
+	t.Setenv("BETTER_AUTH_SECRET", strings.Repeat("x", 32))
+	t.Setenv("BETTER_AUTH_SECRETS", "9:"+strings.Repeat("y", 32))
+	t.Setenv("BETTER_AUTH_TRUSTED_ORIGINS", external)
+	t.Setenv("NODE_ENV", "production")
+	t.Setenv("TEST", "true")
+	opts := Options{Store: &refreshFixture{}}
+	if _, err := New(opts); err == nil {
+		t.Fatal("external settings supplied startup credentials")
+	}
+	t.Setenv("AUTH_SECRET", strings.Repeat("z", 32))
+	if _, err := New(opts); err == nil {
+		t.Fatal("external settings supplied the public origin")
+	}
+	t.Setenv("AUTH_SECRET", "")
+	t.Setenv("AUTH_URL", "http://auth.example.org")
+	if _, err := New(opts); err == nil {
+		t.Fatal("external settings supplied the signing key")
+	}
+	t.Setenv("AUTH_SECRET", strings.Repeat("z", 32))
+	a, err := New(opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if a.opts.Secret != strings.Repeat("z", 32) || len(a.opts.Secrets) != 0 || a.opts.BaseURL != "http://auth.example.org" || a.trustedURL(external, false) || a.opts.RateLimit != nil || a.opts.ErrorRedirectURL != "" {
+		t.Fatal("external settings changed server configuration")
 	}
 }
 
@@ -66,7 +87,7 @@ func TestEnvironmentRotation(t *testing.T) {
 		t.Fatal(err)
 	}
 	oldCookie := before.SessionCookie("session", true)
-	t.Setenv("BETTER_AUTH_SECRETS", "2:"+newKey+",1:"+old)
+	t.Setenv("AUTH_SECRETS", "2:"+newKey+",1:"+old)
 	a, err := New(opts)
 	if err != nil {
 		t.Fatal(err)
@@ -90,7 +111,7 @@ func TestEnvironmentRotation(t *testing.T) {
 		t.Fatal("retired key still accepted")
 	}
 	for _, raw := range []string{"x:" + old, "1:" + old + ",1:" + newKey, "1:short", "2:", "-1:" + old} {
-		t.Setenv("BETTER_AUTH_SECRETS", raw)
+		t.Setenv("AUTH_SECRETS", raw)
 		if _, err := New(Options{Store: &refreshFixture{}}); err == nil || strings.Contains(err.Error(), old) {
 			t.Fatal("invalid settings accepted or leaked")
 		}
@@ -101,7 +122,7 @@ func TestEnvironmentRateLimit(t *testing.T) {
 	cleanConfigEnv(t)
 	t.Setenv("AUTH_URL", "http://auth.test")
 	t.Setenv("AUTH_SECRET", strings.Repeat("a", 32))
-	t.Setenv("NODE_ENV", "production")
+	t.Setenv("AUTH_ENV", "production")
 	a, err := New(Options{Store: &refreshFixture{}})
 	if err != nil {
 		t.Fatal(err)

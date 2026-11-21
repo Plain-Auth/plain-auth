@@ -6,8 +6,6 @@ import (
 	"os"
 	"strconv"
 	"strings"
-
-	"github.com/nabuhadba/go-better-auth/internal/configenv"
 )
 
 // VersionedSecret identifies a signing key. The first entry issues credentials.
@@ -19,26 +17,19 @@ type VersionedSecret struct {
 
 // resolveEnvironment takes a startup snapshot. It never modifies the host process.
 func resolveEnvironment(opts *Options) error {
-	first := func(names ...string) string {
-		for _, name := range names {
-			if value := os.Getenv(name); value != "" {
-				return value
-			}
-		}
-		return ""
-	}
-	if mode := first("AUTH_ENV", "NODE_ENV"); opts.RateLimit == nil && mode != "" {
+	mode := os.Getenv("AUTH_ENV")
+	if opts.RateLimit == nil && mode != "" {
 		enabled := mode == "production"
 		opts.RateLimit = &enabled
 	}
-	if opts.ErrorRedirectURL == "" && first("AUTH_ENV", "NODE_ENV") == "production" {
+	if opts.ErrorRedirectURL == "" && mode == "production" {
 		opts.ErrorRedirectURL = "/"
 	}
 	if opts.Secret == "" {
-		opts.Secret = first("BETTER_AUTH_SECRET", "AUTH_SECRET")
+		opts.Secret = os.Getenv("AUTH_SECRET")
 	}
 	if opts.Secrets == nil {
-		if raw := first("BETTER_AUTH_SECRETS", "AUTH_SECRETS"); raw != "" {
+		if raw := os.Getenv("AUTH_SECRETS"); raw != "" {
 			for i, field := range strings.Split(raw, ",") {
 				number, value, found := strings.Cut(strings.TrimSpace(field), ":")
 				version, err := strconv.Atoi(number)
@@ -63,10 +54,10 @@ func resolveEnvironment(opts *Options) error {
 		}
 	}
 	if opts.BaseURL == "" {
-		opts.BaseURL = configenv.BaseURL()
+		opts.BaseURL = os.Getenv("AUTH_URL")
 	}
 	opts.TrustedOrigins = append([]string(nil), opts.TrustedOrigins...)
-	if raw := first("BETTER_AUTH_TRUSTED_ORIGINS", "AUTH_TRUSTED_ORIGINS"); raw != "" {
+	if raw := os.Getenv("AUTH_TRUSTED_ORIGINS"); raw != "" {
 		for value := range strings.SplitSeq(raw, ",") {
 			if origin := strings.TrimSpace(value); origin != "" {
 				opts.TrustedOrigins = append(opts.TrustedOrigins, origin)

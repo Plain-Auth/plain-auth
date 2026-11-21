@@ -40,7 +40,7 @@ To configure timeouts, transport or persistent cookie storage, pass an `*http.Cl
 
 ## Select the endpoint from the environment
 
-`client.New("", nil)` first looks for the server's supported public URL settings, including `BETTER_AUTH_URL` and `AUTH_URL`. If those are empty it checks `NEXT_PUBLIC_AUTH_URL`, then `NEXTAUTH_URL`, then `VERCEL_URL`. The first two client-specific variables supply the complete auth mount. Set them to `https://app.example.org/api/auth` for a standard deployment. `VERCEL_URL` supplies the origin for the default mount. Explicit constructor URLs take precedence. The destination is fixed at construction. [Complete precedence](environment.md#native-client-url)
+`client.New("", nil)` reads the public auth URL from `AUTH_URL`. Set it to `https://app.example.org` for the default `/api/auth` mount, or include a path such as `https://app.example.org/login` for a custom mount. An explicit constructor URL takes precedence. The destination is fixed at construction. [Environment configuration](environment.md#native-client-url)
 
 ## Account and credential methods
 

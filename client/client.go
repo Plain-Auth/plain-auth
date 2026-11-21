@@ -16,7 +16,6 @@ import (
 	"strings"
 
 	authn "github.com/nabuhadba/go-better-auth"
-	"github.com/nabuhadba/go-better-auth/internal/configenv"
 )
 
 // Client holds the server URL and the user's session cookies. Create a separate
@@ -28,16 +27,12 @@ type Client struct {
 }
 
 // New takes an HTTP(S) origin or a full URL with a custom auth mount path.
-// An empty base URL resolves the host environment once at construction.
+// An empty base URL reads AUTH_URL once at construction.
 // Passing nil creates an HTTP client with an in-memory cookie jar. A supplied
 // client's transport, timeout, jar and same-origin redirect policy are reused.
 func New(baseURL string, httpClient *http.Client) (*Client, error) {
-	defaultMount := "/api/auth"
 	if baseURL == "" {
-		baseURL = configenv.BaseURL()
-		if baseURL == "" {
-			baseURL, defaultMount = clientEnvironmentURL()
-		}
+		baseURL = os.Getenv("AUTH_URL")
 	}
 	u, err := url.Parse(baseURL)
 	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Hostname() == "" || u.User != nil ||
@@ -46,7 +41,7 @@ func New(baseURL string, httpClient *http.Client) (*Client, error) {
 	}
 	mount := strings.TrimSuffix(u.Path, "/")
 	if mount == "" {
-		mount = defaultMount
+		mount = "/api/auth"
 	} else if path.Clean(mount) != mount || u.RawPath != "" || strings.Contains(mount, "\\") {
 		return nil, errors.New("authn/client: invalid auth mount path")
 	}
@@ -74,28 +69,6 @@ func New(baseURL string, httpClient *http.Client) (*Client, error) {
 		},
 	}
 	return &Client{base: base, origin: origin, http: configured}, nil
-}
-
-// The two framework client aliases identify the complete auth mount, including
-// a root mount. Vercel supplies a deployment origin and uses the default mount.
-func clientEnvironmentURL() (string, string) {
-	for _, name := range []string{"NEXT_PUBLIC_AUTH_URL", "NEXTAUTH_URL"} {
-		if v := os.Getenv(name); v != "" {
-			return v, ""
-		}
-	}
-	v := os.Getenv("VERCEL_URL")
-	if v == "" {
-		return "", ""
-	}
-	if !strings.HasPrefix(v, "http") {
-		v = "https://" + v
-	}
-	u, err := url.Parse(v)
-	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Hostname() == "" || u.User != nil {
-		return "", ""
-	}
-	return u.Scheme + "://" + u.Host, "/api/auth"
 }
 
 // Do calls an API endpoint under the client's auth mount. Route starts with "/"
@@ -131,7 +104,15 @@ func (c *Client) Do(ctx context.Context, method, route string, input, output any
 	defer res.Body.Close()
 	if res.StatusCode < 200 || res.StatusCode >= 300 {
 		apiErr := &authn.APIError{Status: res.StatusCode}
-		_ = json.NewDecoder(io.LimitReader(res.Body, 64<<10)).Decode(apiErr)
+		wire := struct {
+			*authn.APIError
+			OAuthCode   string `json:"error"`
+			Description string `json:"error_description"`
+		}{APIError: apiErr}
+		_ = json.NewDecoder(io.LimitReader(res.Body, 64<<10)).Decode(&wire)
+		if apiErr.Code == "" && wire.OAuthCode != "" {
+			apiErr.Code, apiErr.Message = wire.OAuthCode, wire.Description
+		}
 		if apiErr.Message == "" {
 			apiErr.Message = fmt.Sprintf("Authentication server returned HTTP %d", res.StatusCode)
 		}

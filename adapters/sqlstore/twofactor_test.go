@@ -27,7 +27,7 @@ func TestTwoFactorAcrossAuthInstances(t *testing.T) {
 		t.Run(dialect, func(t *testing.T) {
 			dsn := filepath.Join(t.TempDir(), "twofactor.db")
 			if dialect != "sqlite" {
-				dsn = os.Getenv("BETTERAUTH_FACTOR_" + strings.ToUpper(dialect) + "_DSN")
+				dsn = os.Getenv("AUTH_FACTOR_" + strings.ToUpper(dialect) + "_DSN")
 				if dsn == "" {
 					t.Skip("requires dedicated, disposable two-factor database")
 				}

@@ -17,7 +17,7 @@ func TestAccountEngineContract(t *testing.T) {
 		t.Run(dialect, func(t *testing.T) {
 			dsn := filepath.Join(t.TempDir(), "account.db")
 			if dialect != "sqlite" {
-				dsn = os.Getenv("BETTERAUTH_TEST_" + strings.ToUpper(dialect) + "_DSN")
+				dsn = os.Getenv("AUTH_TEST_" + strings.ToUpper(dialect) + "_DSN")
 				if dsn == "" {
 					t.Skip("local engine DSN is not configured")
 				}

@@ -18,7 +18,7 @@ import (
 func TestServerSchemaMatchesUpstream(t *testing.T) {
 	for _, dialect := range []string{"postgres", "mysql"} {
 		t.Run(dialect, func(t *testing.T) {
-			key := "BETTERAUTH_TEST_" + strings.ToUpper(dialect) + "_DSN"
+			key := "AUTH_TEST_" + strings.ToUpper(dialect) + "_DSN"
 			dsn := os.Getenv(key)
 			if dsn == "" {
 				t.Skipf("set %s to compare the %s server catalogs", key, dialect)

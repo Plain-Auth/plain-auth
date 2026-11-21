@@ -23,7 +23,7 @@ func TestProviderCredentialRoutes(t *testing.T) {
 		t.Run(engine, func(t *testing.T) {
 			dsn := ":memory:"
 			if engine != "sqlite" {
-				env := "BETTERAUTH_TEST_" + strings.ToUpper(engine) + "_DSN"
+				env := "AUTH_TEST_" + strings.ToUpper(engine) + "_DSN"
 				dsn = os.Getenv(env)
 				if dsn == "" {
 					t.Skipf("set %s", env)

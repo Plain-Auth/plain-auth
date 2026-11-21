@@ -40,7 +40,7 @@ func (s *Store) migrate(ctx context.Context, baseline string) error {
 			return err
 		}
 		defer conn.Close()
-		const lock = "CONCAT('go-better-auth/migration/', MD5(DATABASE()))"
+		const lock = "CONCAT('authn/migration/', MD5(DATABASE()))"
 		var locked sql.NullInt64
 		if err := conn.QueryRowContext(ctx, "SELECT GET_LOCK("+lock+", 30)").Scan(&locked); err != nil {
 			return err
@@ -62,7 +62,7 @@ func (s *Store) migrate(ctx context.Context, baseline string) error {
 	defer tx.Rollback()
 	if s.dialect == "postgres" {
 		// Serialize schema creation across independent application processes.
-		if _, err := tx.ExecContext(ctx, "SELECT pg_advisory_xact_lock(hashtext('go-better-auth/schema'))"); err != nil {
+		if _, err := tx.ExecContext(ctx, "SELECT pg_advisory_xact_lock(hashtext('authn/schema'))"); err != nil {
 			return err
 		}
 	}
