@@ -7,9 +7,9 @@
 - [ ] Username endpoints, types and options
   - [ ] `UsernameClientOptions`
     - [ ] `displayUsername`
-      - [x] Consume public profiles with the display field enabled and disabled ([test](../../../conformance/core.test.mjs#L851))
+      - [x] Consume public profiles with the display field enabled and disabled ([test](../../../conformance/core.test.mjs#L856))
   - [ ] `usernameClient`
-    - [x] Sign in with the pinned client and edit the same username on both servers ([test](../../../conformance/core.test.mjs#L806))
+    - [x] Sign in with the pinned client and edit the same username on both servers ([test](../../../conformance/core.test.mjs#L811))
   - [ ] `POST /sign-in/username`
     - [x] Sign in with the canonical credential, remember preference and callback URL ([test](../../../adapters/sqlstore/username_test.go#L133))
     - [x] Honor email verification, administrator bans and existing second-factor settings ([test](../../../adapters/sqlstore/username_test.go#L316))
@@ -61,7 +61,7 @@
         - [ ] Parameter `password`
     - [ ] Update username
       - [x] Change the login name atomically without altering the previous display spelling ([test](../../../adapters/sqlstore/username_test.go#L119))
-      - [x] Clear either optional field across both servers and immediately release the former login name ([test](../../../conformance/core.test.mjs#L844))
+      - [x] Clear either optional field across both servers and immediately release the former login name ([test](../../../conformance/core.test.mjs#L849))
       - [x] Roll back a display-name clear if the same profile edit requests a claimed login name ([test](../../../adapters/sqlstore/username_test.go#L200))
       - [ ] `POST /update-user`
         - [ ] Parameter `username` (optional)

@@ -18,6 +18,8 @@ type Plan struct{ Name, PriceID, AnnualPriceID string }
 type SubscriptionOptions struct {
 	Client *sdk.Client
 	Plans  []Plan
+	// RequireEmailVerification restricts starting Checkout to a verified owner.
+	RequireEmailVerification bool
 }
 
 type Subscription struct {
@@ -44,6 +46,9 @@ type Subscription struct {
 // CheckoutAttempt is a durable reservation; the same attempt always sends
 // identical Stripe parameters, including callbacks and expiry.
 type CheckoutAttempt struct {
+	// ReturnURL holds the provider success URL issued for this reservation.
+	// Older reservations use their stored SuccessURL directly.
+	ReturnURL                                                                                                     string
 	ID, Owner, LocalSubscription, Customer, Plan, Interval, Price, SuccessURL, CancelURL, CheckoutID, CheckoutURL string
 	Expires                                                                                                       int64
 }
@@ -66,12 +71,16 @@ var (
 	ErrPendingCheckout      = billingError(409, "CHECKOUT_ALREADY_PENDING", "A different checkout is already pending")
 	ErrExistingSubscription = billingError(409, "SUBSCRIPTION_ALREADY_EXISTS", "A subscription already exists")
 	ErrCheckoutReconcile    = billingError(409, "CHECKOUT_RECONCILIATION_REQUIRED", "Waiting for checkout reconciliation")
-	ErrCheckoutSession      = billingError(401, "UNAUTHORIZED", "A current session is required")
+	ErrCheckoutSession      = billingError(401, "UNAUTHORIZED", "Unauthorized")
 )
 
+type subscriptionPrice struct{ plan, interval string }
+
 type subscriptions struct {
-	client *sdk.Client
-	plans  map[string]Plan
+	prices                   map[string]subscriptionPrice
+	client                   *sdk.Client
+	plans                    map[string]Plan
+	requireEmailVerification bool
 }
 
 func configureSubscriptions(o *SubscriptionOptions) (*subscriptions, error) {
@@ -81,35 +90,28 @@ func configureSubscriptions(o *SubscriptionOptions) (*subscriptions, error) {
 	if o.Client == nil || len(o.Plans) == 0 {
 		return nil, errors.New("stripe: subscriptions require a client and plans")
 	}
-	s := &subscriptions{client: o.Client, plans: map[string]Plan{}}
+	s := &subscriptions{client: o.Client, plans: map[string]Plan{}, requireEmailVerification: o.RequireEmailVerification}
+	s.prices = make(map[string]subscriptionPrice)
 	for _, p := range o.Plans {
 		p.Name = strings.ToLower(strings.TrimSpace(p.Name))
 		if p.Name == "" || !strings.HasPrefix(p.PriceID, "price_") || len(p.PriceID) == 6 || (p.AnnualPriceID != "" && (!strings.HasPrefix(p.AnnualPriceID, "price_") || len(p.AnnualPriceID) == 6)) || s.plans[p.Name].Name != "" {
 			return nil, errors.New("stripe: invalid or duplicate subscription plan")
 		}
 		s.plans[p.Name] = p
+		for interval, price := range map[string]string{"month": p.PriceID, "year": p.AnnualPriceID} {
+			if price == "" {
+				continue
+			}
+			if _, exists := s.prices[price]; exists {
+				return nil, errors.New("stripe: a recurring price must identify a single subscription plan and interval")
+			}
+			s.prices[price] = subscriptionPrice{p.Name, interval}
+		}
 	}
 	return s, nil
 }
-func billingOwner(c auth.EndpointContext, reference, kind string) (*auth.SessionResult, error) {
-	ss, err := c.Auth.GetSession(c.Request.Context(), c.Request.Header)
-	if err != nil {
-		return nil, err
-	}
-	if ss == nil {
-		return nil, ErrCheckoutSession
-	}
-	if err := ss.Session.RequireOwner(); err != nil {
-		return nil, err
-	}
-	if (reference != "" && reference != ss.User.ID) || (kind != "" && kind != "user") {
-		return nil, billingError(403, "UNAUTHORIZED", "This billing account is unavailable")
-	}
-	return ss, nil
-}
 func (s *subscriptions) list(c auth.EndpointContext) (any, error) {
-	q := c.Request.URL.Query()
-	ss, err := billingOwner(c, q.Get("referenceId"), q.Get("customerType"))
+	ss, err := billingOwner(c, listFields)
 	if err != nil {
 		return nil, err
 	}
@@ -129,36 +131,15 @@ func (s *subscriptions) list(c auth.EndpointContext) (any, error) {
 func (s *subscriptions) checkout(c auth.EndpointContext) (any, error) {
 	// Request-controlled values can select a plan name, never a Stripe customer,
 	// price, account or subscription metadata object.
-	for key, value := range c.Body {
-		switch key {
-		case "plan", "successUrl", "cancelUrl", "referenceId", "customerType":
-			if _, ok := value.(string); !ok {
-				return nil, billingError(400, "VALIDATION_ERROR", "Invalid "+key)
-			}
-		case "annual", "disableRedirect":
-			if _, ok := value.(bool); !ok {
-				return nil, billingError(400, "VALIDATION_ERROR", "Invalid "+key)
-			}
-		default:
-			return nil, billingError(400, "UNSUPPORTED_CHECKOUT_OPTION", "Unsupported checkout option")
-		}
-	}
-	reference, _ := c.Body["referenceId"].(string)
-	kind, _ := c.Body["customerType"].(string)
-	ss, err := billingOwner(c, reference, kind)
+	ss, err := billingOwner(c, checkoutFields)
 	if err != nil {
 		return nil, err
 	}
-	name, _ := c.Body["plan"].(string)
-	p, ok := s.plans[strings.ToLower(name)]
-	if !ok {
-		return nil, billingError(400, "PLAN_NOT_FOUND", "Plan not found")
-	}
-	price, interval := p.PriceID, "month"
-	if annual, _ := c.Body["annual"].(bool); annual {
-		price, interval = p.AnnualPriceID, "year"
-		if price == "" {
-			return nil, billingError(400, "PLAN_NOT_FOUND", "Annual price is unavailable")
+	for key := range c.Body {
+		switch key {
+		case "plan", "successUrl", "cancelUrl", "returnUrl", "referenceId", "subscriptionId", "customerType", "annual", "disableRedirect":
+		default:
+			return nil, billingError(400, "UNSUPPORTED_CHECKOUT_OPTION", "Unsupported checkout option")
 		}
 	}
 	success, _ := c.Body["successUrl"].(string)
@@ -171,9 +152,43 @@ func (s *subscriptions) checkout(c auth.EndpointContext) (any, error) {
 	if err != nil {
 		return nil, err
 	}
+	if returnURL, _ := c.Body["returnUrl"].(string); returnURL != "" {
+		if _, err := c.Auth.CallbackURL(returnURL); err != nil {
+			return nil, err
+		}
+	}
+	name, _ := c.Body["plan"].(string)
+	if s.requireEmailVerification && !ss.User.EmailVerified {
+		return nil, billingError(400, "EMAIL_VERIFICATION_REQUIRED", "Email verification is required before you can subscribe to a plan")
+	}
+	p, ok := s.plans[strings.ToLower(name)]
+	if !ok {
+		return nil, billingError(400, "SUBSCRIPTION_PLAN_NOT_FOUND", "Subscription plan not found")
+	}
+	if id, _ := c.Body["subscriptionId"].(string); id != "" {
+		if _, err := managedSubscription(c, ss); err != nil {
+			return nil, err
+		}
+		// Changing an existing subscription uses a different provider operation.
+		// A selected subscription must never start a second checkout.
+		return nil, ErrExistingSubscription
+	}
+	price, interval := p.PriceID, "month"
+	if annual, _ := c.Body["annual"].(bool); annual {
+		price, interval = p.AnnualPriceID, "year"
+		if price == "" {
+			return nil, billingError(400, "", "Price ID not found for the selected plan")
+		}
+	}
 	ctx := c.Request.Context()
 	store := c.Store().(SubscriptionStore)
 	want := CheckoutAttempt{Owner: ss.User.ID, Plan: p.Name, Interval: interval, Price: price, SuccessURL: success, CancelURL: cancel}
+	if _, ok := store.(CheckoutReturnStore); ok {
+		want.ReturnURL, err = hostedReturnURL(c.Auth, success)
+		if err != nil {
+			return nil, err
+		}
+	}
 	a, err := store.ReserveStripeCheckout(ctx, ss.User.ID, ss.Session.Token, want, time.Now().UTC())
 	if err != nil {
 		return nil, err
@@ -193,11 +208,15 @@ func (s *subscriptions) checkout(c auth.EndpointContext) (any, error) {
 	}
 	if a.CheckoutID == "" {
 		meta := map[string]string{"userId": a.Owner, "referenceId": a.Owner, "subscriptionId": a.LocalSubscription, "checkoutAttemptId": a.ID}
+		providerSuccess := a.SuccessURL
+		if a.ReturnURL != "" {
+			providerSuccess = a.ReturnURL
+		}
 		params := &sdk.CheckoutSessionCreateParams{
 			Mode:              sdk.String("subscription"),
 			Customer:          sdk.String(a.Customer),
 			ClientReferenceID: sdk.String(a.Owner),
-			SuccessURL:        sdk.String(a.SuccessURL),
+			SuccessURL:        sdk.String(providerSuccess),
 			CancelURL:         sdk.String(a.CancelURL),
 			ExpiresAt:         sdk.Int64(a.Expires),
 			LineItems:         []*sdk.CheckoutSessionCreateLineItemParams{{Price: sdk.String(a.Price), Quantity: sdk.Int64(1)}},
@@ -241,7 +260,7 @@ func (s *subscriptions) handleCheckoutEvent(c auth.EndpointContext, event sdk.Ev
 	if err != nil {
 		return err
 	}
-	if checkout.ID == "" || checkout.Customer == nil || checkout.Customer.ID != a.Customer || checkout.ClientReferenceID != a.Owner || checkout.Metadata["referenceId"] != a.Owner || checkout.Metadata["subscriptionId"] != a.LocalSubscription || (a.CheckoutID != "" && a.CheckoutID != checkout.ID) {
+	if !checkoutMatches(a, &checkout) {
 		return errors.New("stripe: checkout ownership mismatch")
 	}
 	if event.Type == "checkout.session.expired" {
@@ -250,16 +269,15 @@ func (s *subscriptions) handleCheckoutEvent(c auth.EndpointContext, event sdk.Ev
 	if checkout.Subscription == nil || checkout.Subscription.ID == "" {
 		return errors.New("stripe: checkout missing subscription")
 	}
-	sub, err := s.client.V1Subscriptions.Retrieve(ctx, checkout.Subscription.ID, &sdk.SubscriptionRetrieveParams{})
+	if lifecycle, ok := store.(SubscriptionLifecycleStore); ok {
+		settled, err := lifecycle.SettleReconciledCheckout(ctx, a, checkout.ID, checkout.Subscription.ID)
+		if err != nil || settled {
+			return err
+		}
+	}
+	receipt, err := s.checkoutReceipt(ctx, a, checkout.Subscription.ID, checkout.Livemode)
 	if err != nil {
 		return err
 	}
-	if sub == nil || sub.ID != checkout.Subscription.ID || sub.Customer == nil || sub.Customer.ID != a.Customer || sub.Metadata["subscriptionId"] != a.LocalSubscription || sub.Metadata["checkoutAttemptId"] != a.ID || sub.Metadata["referenceId"] != a.Owner || sub.Metadata["userId"] != a.Owner || sub.Items == nil || len(sub.Items.Data) != 1 {
-		return errors.New("stripe: subscription ownership mismatch")
-	}
-	item := sub.Items.Data[0]
-	if item == nil || item.Price == nil || item.Price.ID != a.Price || item.Quantity != 1 {
-		return errors.New("stripe: subscription price mismatch")
-	}
-	return store.ApplyStripeCheckout(ctx, a, checkout.ID, sub.ID, string(sub.Status), item.CurrentPeriodStart, item.CurrentPeriodEnd, sub.TrialStart, sub.TrialEnd)
+	return store.ApplyStripeCheckout(ctx, a, checkout.ID, receipt.RemoteID, receipt.Status, receipt.PeriodStart, receipt.PeriodEnd, receipt.TrialStart, receipt.TrialEnd)
 }

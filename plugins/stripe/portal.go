@@ -22,32 +22,9 @@ type PortalOptions struct {
 func portalEndpoint(opts PortalOptions) auth.Endpoint {
 	return auth.Endpoint{Method: http.MethodPost, Path: "/subscription/billing-portal", Handler: func(c auth.EndpointContext) (any, error) {
 		ctx := c.Request.Context()
-		session, err := c.Auth.GetSession(ctx, c.Request.Header)
+		session, err := billingOwner(c, portalFields)
 		if err != nil {
 			return nil, err
-		}
-		if session == nil {
-			return nil, &auth.APIError{Status: 401, Code: "UNAUTHORIZED", Message: "Unauthorized"}
-		}
-		if err := session.Session.RequireOwner(); err != nil {
-			return nil, err
-		}
-		for k := range c.Body {
-			switch k {
-			case "referenceId", "customerType", "returnUrl", "locale":
-				if _, ok := c.Body[k].(string); !ok {
-					return nil, &auth.APIError{Status: 400, Code: "VALIDATION_ERROR", Message: "Expected a string for " + k}
-				}
-			case "disableRedirect":
-				if _, ok := c.Body[k].(bool); !ok {
-					return nil, &auth.APIError{Status: 400, Code: "VALIDATION_ERROR", Message: "Expected a boolean for disableRedirect"}
-				}
-			}
-		}
-		reference, _ := c.Body["referenceId"].(string)
-		kind, _ := c.Body["customerType"].(string)
-		if (reference != "" && reference != session.User.ID) || (kind != "" && kind != "user") {
-			return nil, &auth.APIError{Status: 403, Code: "UNAUTHORIZED", Message: "This billing account is unavailable"}
 		}
 		raw, _ := c.Body["returnUrl"].(string)
 		callback, err := c.Auth.CallbackURL(raw)
@@ -59,7 +36,7 @@ func portalEndpoint(opts PortalOptions) auth.Endpoint {
 		}
 		customer, err := opts.Customers.StripeCustomer(ctx, session.User.ID)
 		if errors.Is(err, auth.ErrNotFound) || (err == nil && customer == "") {
-			return nil, &auth.APIError{Status: 404, Code: "CUSTOMER_NOT_FOUND", Message: "Customer not found"}
+			return nil, billingError(404, "CUSTOMER_NOT_FOUND", "Stripe customer not found for this user")
 		}
 		if err != nil {
 			return nil, err
@@ -70,7 +47,7 @@ func portalEndpoint(opts PortalOptions) auth.Endpoint {
 		}
 		res, err := opts.Client.V1BillingPortalSessions.Create(ctx, params)
 		if err != nil {
-			return nil, &auth.APIError{Status: 500, Code: "UNABLE_TO_CREATE_BILLING_PORTAL", Message: "Unable to create billing portal"}
+			return nil, billingError(500, "UNABLE_TO_CREATE_BILLING_PORTAL", "Unable to create billing portal session")
 		}
 		disable, _ := c.Body["disableRedirect"].(bool)
 		return map[string]any{"url": res.URL, "redirect": !disable}, nil

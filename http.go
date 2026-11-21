@@ -351,7 +351,7 @@ func writeAuthError(w http.ResponseWriter, err error) {
 	if !errors.As(err, &apiErr) {
 		apiErr = &APIError{Status: 500, Code: "INTERNAL_SERVER_ERROR", Message: "Internal Server Error"}
 	}
-	writeAuthJSON(w, apiErr.Status, map[string]string{"message": apiErr.Message, "code": apiErr.Code})
+	writeAuthJSON(w, apiErr.Status, apiErr)
 }
 
 type wireBody map[string]any

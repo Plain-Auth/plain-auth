@@ -215,7 +215,12 @@ func (s *Store) stripeDate(unix int64) any {
 	return s.date(time.Unix(unix, 0))
 }
 func (s *Store) ApplyStripeCheckout(ctx context.Context, want billing.CheckoutAttempt, id, remote, status string, start, end, trialStart, trialEnd int64) error {
-	return s.billingTransaction(ctx, want.Owner, "", time.Now(), func(tx *sql.Tx) error {
+	receipt := billing.CheckoutReceipt{RemoteID: remote, Status: status, PeriodStart: start, PeriodEnd: end, TrialStart: trialStart, TrialEnd: trialEnd}
+	return s.applyStripeCheckout(ctx, want, "", id, receipt, time.Now())
+}
+func (s *Store) applyStripeCheckout(ctx context.Context, want billing.CheckoutAttempt, token, id string, receipt billing.CheckoutReceipt, now time.Time) error {
+	remote, status := receipt.RemoteID, receipt.Status
+	return s.billingTransaction(ctx, want.Owner, token, now, func(tx *sql.Tx) error {
 		a, err := s.checkoutAttempt(ctx, tx, want.Owner)
 		if errors.Is(err, auth.ErrNotFound) {
 			return nil
@@ -236,11 +241,38 @@ func (s *Store) ApplyStripeCheckout(ctx context.Context, want billing.CheckoutAt
 		if customer.String == "" || customer.String != a.Customer {
 			return billing.ErrCheckoutReconcile
 		}
+		var bound sql.NullString
+		if err := tx.QueryRowContext(ctx, s.bind(`SELECT "stripeSubscriptionId" FROM "subscription" WHERE "id"=? AND "referenceId"=? AND "stripeCustomerId"=?`), a.LocalSubscription, a.Owner, a.Customer).Scan(&bound); err != nil {
+			return err
+		}
+		if bound.Valid {
+			if remote != "" && remote != bound.String {
+				return billing.ErrCheckoutReconcile
+			}
+			// A lifecycle webhook may complete while Checkout retrieves Stripe.
+			return s.settleBoundSubscription(ctx, tx, a, id, bound.String)
+		}
+		if remote != "" {
+			r, cursor, err := s.subscriptionRevision(ctx, tx, billing.SubscriptionIdentity{CustomerID: a.Customer, RemoteID: remote})
+			if err != nil {
+				return err
+			}
+			if r.Owner != a.Owner || (r.LocalID != "" && r.LocalID != a.LocalSubscription) {
+				return billing.ErrCheckoutReconcile
+			}
+			if cursor.Terminal != "" {
+				// Checkout may have fetched its snapshot before a signed terminal event.
+				status = cursor.Terminal
+			}
+		}
+		if status == "" {
+			return billing.ErrCheckoutReconcile
+		}
 		var remoteID any
 		if remote != "" {
 			remoteID = remote
 		}
-		result, err := tx.ExecContext(ctx, s.bind(`UPDATE "subscription" SET "stripeSubscriptionId"=?,"status"=?,"periodStart"=?,"periodEnd"=?,"trialStart"=?,"trialEnd"=? WHERE "id"=? AND "referenceId"=? AND "stripeCustomerId"=? AND "status"='incomplete'`), remoteID, status, s.stripeDate(start), s.stripeDate(end), s.stripeDate(trialStart), s.stripeDate(trialEnd), a.LocalSubscription, a.Owner, a.Customer)
+		result, err := tx.ExecContext(ctx, s.bind(`UPDATE "subscription" SET "stripeSubscriptionId"=?,"status"=?,"periodStart"=?,"periodEnd"=?,"trialStart"=?,"trialEnd"=? WHERE "id"=? AND "referenceId"=? AND "stripeCustomerId"=? AND "status"='incomplete'`), remoteID, status, s.stripeDate(receipt.PeriodStart), s.stripeDate(receipt.PeriodEnd), s.stripeDate(receipt.TrialStart), s.stripeDate(receipt.TrialEnd), a.LocalSubscription, a.Owner, a.Customer)
 		if err != nil {
 			return err
 		}
@@ -251,8 +283,7 @@ func (s *Store) ApplyStripeCheckout(ctx context.Context, want billing.CheckoutAt
 		if n != 1 {
 			return billing.ErrCheckoutReconcile
 		}
-		_, err = tx.ExecContext(ctx, s.bind(`DELETE FROM "verification" WHERE "id"=? AND "identifier"=?`), a.ID, "stripe-checkout:"+a.Owner)
-		return err
+		return s.finishCheckout(ctx, tx, a, id, remote != "", now)
 	})
 }
 func (s *Store) ListStripeSubscriptions(ctx context.Context, owner, token string, now time.Time) ([]billing.Subscription, error) {
@@ -267,8 +298,8 @@ func (s *Store) ListStripeSubscriptions(ctx context.Context, owner, token string
 		}
 		defer rows.Close()
 		for rows.Next() {
-			var r billing.Subscription
-			if err := rows.Scan(&r.ID, &r.Plan, &r.ReferenceID, &r.CustomerID, &r.SubscriptionID, &r.Status, &r.PeriodStart, &r.PeriodEnd, &r.TrialStart, &r.TrialEnd, &r.CancelAtPeriodEnd, &r.CancelAt, &r.CanceledAt, &r.EndedAt, &r.Seats, &r.Interval, &r.ScheduleID); err != nil {
+			r, err := scanStripeSubscription(rows)
+			if err != nil {
 				return err
 			}
 			result = append(result, r)
@@ -276,4 +307,52 @@ func (s *Store) ListStripeSubscriptions(ctx context.Context, owner, token string
 		return rows.Err()
 	})
 	return result, err
+}
+
+func scanStripeSubscription(row rowScanner) (billing.Subscription, error) {
+	var r billing.Subscription
+	err := row.Scan(&r.ID, &r.Plan, &r.ReferenceID, &r.CustomerID, &r.SubscriptionID, &r.Status,
+		&r.PeriodStart, &r.PeriodEnd, &r.TrialStart, &r.TrialEnd, &r.CancelAtPeriodEnd, &r.CancelAt,
+		&r.CanceledAt, &r.EndedAt, &r.Seats, &r.Interval, &r.ScheduleID)
+	return r, err
+}
+
+func (s *Store) ManagedStripeSubscription(ctx context.Context, owner, token, providerID string, now time.Time) (billing.Subscription, error) {
+	var sub billing.Subscription
+	if token == "" {
+		return sub, billing.ErrCheckoutSession
+	}
+	err := s.billingTransaction(ctx, owner, token, now, func(tx *sql.Tx) error {
+		query := `SELECT ` + subscriptionFields + ` FROM "subscription" WHERE "referenceId"=?`
+		args := []any{owner}
+		if providerID == "" {
+			query += ` AND "status" IN ('active','trialing')`
+		} else {
+			query += ` AND "stripeSubscriptionId"=?`
+			args = append(args, providerID)
+		}
+		r, err := scanStripeSubscription(tx.QueryRowContext(ctx, s.bind(query+` ORDER BY "id" LIMIT 1`), args...))
+		if errors.Is(err, sql.ErrNoRows) {
+			return auth.ErrNotFound
+		}
+		if err != nil {
+			return err
+		}
+		if r.CustomerID == nil || *r.CustomerID == "" || r.SubscriptionID == nil || *r.SubscriptionID == "" {
+			return auth.ErrNotFound
+		}
+		if err := s.checkCustomerOwner(ctx, tx, owner, *r.CustomerID); err != nil {
+			return err
+		}
+		var count int
+		if err := tx.QueryRowContext(ctx, s.bind(`SELECT COUNT(*) FROM "subscription" WHERE "stripeSubscriptionId"=?`), *r.SubscriptionID).Scan(&count); err != nil {
+			return err
+		}
+		if count != 1 {
+			return billing.ErrCheckoutReconcile
+		}
+		sub = r
+		return nil
+	})
+	return sub, err
 }

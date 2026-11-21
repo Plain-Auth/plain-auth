@@ -21,8 +21,9 @@ StoneWrit Auth embeds authentication in your Go API. Mount the auth handler on y
 - [x] Verify an authenticator, delivered code or single-use backup code and remember a trusted browser. [Two-factor authentication](docs/2fa.md)
 - [x] Create organizations and teams, enforce seat limits and accept scoped invitations. [Organization tests](plugins/organization/organization_test.go)
 - [x] Verify Stripe webhook signatures and open an authenticated customer’s billing portal. [Webhook tests](plugins/stripe/stripe_test.go) · [Billing portal tests](plugins/stripe/portal_test.go)
+- [x] Start recurring Checkout, synchronize a user's subscription from Stripe, open a cancellation page, and restore a pending cancellation or scheduled change. [Subscription billing](docs/subscriptions.md)
 
-Single sign-on, SCIM provisioning and automated subscription renewals remain open. The [complete checklist](docs/parity/README.md) records which parts of each integration have passing tests.
+Single sign-on, SCIM provisioning, and organization billing remain open. The [complete checklist](docs/parity/README.md) records which parts of each integration have passing tests.
 
 ## Run it locally
 
@@ -114,7 +115,7 @@ Go records the resolved commit in the consuming project’s `go.mod`. The module
 | Register a username and sign in with a password | [Username sign-in](docs/username.md) |
 | Manage users, ban accounts and grant administrative access | [Administrator accounts](docs/admin.md) |
 | Create organizations and teams, grant memberships, and accept invitations | [Organizations](docs/organizations.md) |
-| Start recurring Checkout and list subscriptions | [Subscription billing](docs/subscriptions.md) |
+| Start recurring Checkout, synchronize subscription changes, cancel, and restore | [Subscription billing](docs/subscriptions.md) |
 | Add a custom endpoint, verify Stripe webhooks, or open the billing portal | [Plugins and Stripe](docs/plugins.md) |
 | Configure browser sign-in, native ID tokens and linked provider credentials | [Social sign-in](docs/social.md) |
 | Call the API from a Go service | [Go client](docs/client.md) |

@@ -16,7 +16,7 @@
     - [x] `enabled` ([test](../../../plugins/pwnedpassword/pwnedpassword_test.go#L194))
       - [x] Skip the range service when disabled and enable screening by default ([test](../../../plugins/pwnedpassword/pwnedpassword_test.go#L194))
   - [ ] `haveIBeenPwned`
-    - [x] Reject compromised credentials through the public JavaScript client ([test](../../../conformance/core.test.mjs#L301))
+    - [x] Reject compromised credentials through the public JavaScript client ([test](../../../conformance/core.test.mjs#L306))
 
 ## Have I Been Pwned
 

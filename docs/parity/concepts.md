@@ -448,7 +448,7 @@
   - [ ] Session Freshness
   - [ ] Session Management
     - [ ] Get Session
-      - [x] Return the signed-in user and session with the default seven-day lifetime ([test](../../conformance/core.test.mjs#L185))
+      - [x] Return the signed-in user and session with the default seven-day lifetime ([test](../../conformance/core.test.mjs#L190))
     - [ ] Use Session
     - [ ] List Sessions
       - [x] Return both active logins for the signed-in user ([test](../../http_test.go#L94))

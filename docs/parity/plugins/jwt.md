@@ -12,7 +12,7 @@
   - [ ] `GET /token`
     - [x] Require an authenticated session and stop issuing tokens for a revoked session ([test](../../../adapters/sqlstore/jwt_test.go#L193))
     - [x] Verify Ed25519 signatures and configured issuer, audience and expiration independently ([test](../../../adapters/sqlstore/jwt_test.go#L122))
-    - [x] Verify service tokens against their issuer’s published keys and reject a different issuer’s keys ([test](../../../conformance/core.test.mjs#L423))
+    - [x] Verify service tokens against their issuer’s published keys and reject a different issuer’s keys ([test](../../../conformance/core.test.mjs#L428))
   - [ ] `signJWT (server API only)`
     - [x] Sign trusted claims with a configured algorithm or a pinned key and keep the operation server-only ([test](../../../adapters/sqlstore/jwt_test.go#L296))
   - [ ] `verifyJWT (server API only)`

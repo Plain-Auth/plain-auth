@@ -69,7 +69,7 @@ func TestUserBillingPortal(t *testing.T) {
 	if w := run("{}", false); w.Code != 401 {
 		t.Fatal(w.Code, w.Body)
 	}
-	if w := run(`{"referenceId":"someone-else"}`, true); w.Code != 403 {
+	if w := run(`{"referenceId":"someone-else"}`, true); w.Code != 400 || !strings.Contains(w.Body.String(), "REFERENCE_ID_NOT_ALLOWED") {
 		t.Fatal(w.Code, w.Body)
 	}
 	if w := run(`{"returnUrl":"https://untrusted.example/"}`, true); w.Code != 403 {

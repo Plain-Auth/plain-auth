@@ -1,0 +1,158 @@
+package stripe
+
+import (
+	"context"
+	"errors"
+	"net/http"
+	"net/url"
+	"strings"
+	"time"
+
+	auth "github.com/Stonewrit/stonewrit-auth"
+	sdk "github.com/stripe/stripe-go/v87"
+)
+
+const sessionIDTemplate = "{CHECKOUT_SESSION_ID}"
+
+// CheckoutReturn is an authenticated owner's pending checkout or recent settled receipt.
+type CheckoutReturn struct {
+	Attempt             CheckoutAttempt
+	BoundSubscriptionID string
+	Settled             bool
+}
+
+// CheckoutReceipt is the state read from the provider subscription for this checkout.
+type CheckoutReceipt struct {
+	RemoteID, Status                             string
+	PeriodStart, PeriodEnd, TrialStart, TrialEnd int64
+}
+
+// CheckoutReturnStore enables browser confirmation of a hosted Checkout Session.
+// Both methods must check an active owner session, the stored checkout and its customer.
+type CheckoutReturnStore interface {
+	FindStripeCheckoutReturn(ctx context.Context, owner, sessionToken, checkoutID string, now time.Time) (CheckoutReturn, error)
+	ApplyStripeCheckoutReturn(ctx context.Context, a CheckoutAttempt, sessionToken, checkoutID string, receipt CheckoutReceipt, now time.Time) error
+}
+
+func hostedReturnURL(a *auth.Auth, callback string) (string, error) {
+	target, err := a.CallbackURL(strings.TrimRight(a.BasePath(), "/") + "/subscription/success")
+	if err != nil {
+		return "", err
+	}
+	return target + "?callbackURL=" + url.QueryEscape(callback) + "&checkoutSessionId=" + sessionIDTemplate, nil
+}
+
+func validCheckoutID(id string) bool {
+	if !strings.HasPrefix(id, "cs_") || len(id) < 4 || len(id) > 255 {
+		return false
+	}
+	for _, ch := range id[3:] {
+		if !(ch >= 'A' && ch <= 'Z' || ch >= 'a' && ch <= 'z' || ch >= '0' && ch <= '9' || ch == '_') {
+			return false
+		}
+	}
+	return true
+}
+
+func (s *subscriptions) checkoutSuccess(c auth.EndpointContext) (any, error) {
+	q, err := url.ParseQuery(c.Request.URL.RawQuery)
+	if err != nil || len(q["callbackURL"]) > 1 || len(q["checkoutSessionId"]) > 1 {
+		return nil, billingError(400, "VALIDATION_ERROR", "Invalid checkout return query")
+	}
+	callback, err := c.Auth.CallbackURL(q.Get("callbackURL"))
+	if err != nil {
+		return nil, err
+	}
+	id := q.Get("checkoutSessionId")
+	if id == "" {
+		return c.Redirect(callback)
+	}
+	if !validCheckoutID(id) {
+		return nil, billingError(400, "VALIDATION_ERROR", "Invalid checkout session ID")
+	}
+	filled, err := c.Auth.CallbackURL(strings.ReplaceAll(callback, sessionIDTemplate, id))
+	if err != nil {
+		return nil, err
+	}
+
+	ctx := c.Request.Context()
+	session, err := c.Auth.GetSession(ctx, c.Request.Header)
+	if err != nil {
+		return nil, err
+	}
+	if session == nil || (session.User.IsAnonymous != nil && *session.User.IsAnonymous) {
+		return c.Redirect(callback)
+	}
+	if err := session.Session.RequireOwner(); err != nil {
+		return nil, err
+	}
+	store, ok := c.Store().(CheckoutReturnStore)
+	if !ok {
+		return nil, billingError(400, "CHECKOUT_RETURN_UNAVAILABLE", "Checkout return confirmation is unavailable")
+	}
+	returned, err := store.FindStripeCheckoutReturn(ctx, session.User.ID, session.Session.Token, id, time.Now())
+	if errors.Is(err, auth.ErrNotFound) {
+		return nil, billingError(404, "CHECKOUT_SESSION_NOT_FOUND", "Checkout session not found")
+	}
+	if err != nil {
+		return nil, err
+	}
+	a := returned.Attempt
+	if (q.Get("callbackURL") != "" && callback != a.SuccessURL) || a.CheckoutID != id || a.Owner != session.User.ID {
+		return nil, billingError(403, "INVALID_CHECKOUT_RETURN", "Invalid checkout return")
+	}
+	if returned.Settled {
+		return c.Redirect(filled)
+	}
+	checkout, err := s.client.V1CheckoutSessions.Retrieve(ctx, id, nil)
+	if err != nil {
+		return c.Redirect(filled)
+	}
+	if checkout == nil || checkout.Mode != sdk.CheckoutSessionModeSubscription || !checkoutMatches(a, checkout) {
+		return nil, billingError(403, "INVALID_CHECKOUT_RETURN", "Invalid checkout return")
+	}
+	if checkout.Status != sdk.CheckoutSessionStatusComplete || (checkout.PaymentStatus != sdk.CheckoutSessionPaymentStatusPaid && checkout.PaymentStatus != sdk.CheckoutSessionPaymentStatusNoPaymentRequired) || checkout.Subscription == nil || checkout.Subscription.ID == "" {
+		return c.Redirect(filled)
+	}
+	receipt := CheckoutReceipt{RemoteID: checkout.Subscription.ID}
+	if returned.BoundSubscriptionID == "" {
+		receipt, err = s.checkoutReceipt(ctx, a, checkout.Subscription.ID, checkout.Livemode)
+		if err != nil {
+			if errors.Is(err, ErrCheckoutReconcile) {
+				return nil, billingError(403, "INVALID_CHECKOUT_RETURN", "Invalid checkout return")
+			}
+			return c.Redirect(filled)
+		}
+	} else if returned.BoundSubscriptionID != receipt.RemoteID {
+		return nil, billingError(403, "INVALID_CHECKOUT_RETURN", "Invalid checkout return")
+	}
+	if err := store.ApplyStripeCheckoutReturn(ctx, a, session.Session.Token, id, receipt, time.Now()); err != nil {
+		return nil, err
+	}
+	return c.Redirect(filled)
+}
+
+func checkoutMatches(a CheckoutAttempt, c *sdk.CheckoutSession) bool {
+	return c.Object == "checkout.session" && c.ID != "" && c.Customer != nil && c.Customer.ID == a.Customer && c.ClientReferenceID == a.Owner &&
+		c.Metadata["userId"] == a.Owner && c.Metadata["referenceId"] == a.Owner && c.Metadata["subscriptionId"] == a.LocalSubscription &&
+		c.Metadata["checkoutAttemptId"] == a.ID && (a.CheckoutID == "" || a.CheckoutID == c.ID)
+}
+
+func (s *subscriptions) checkoutReceipt(ctx context.Context, a CheckoutAttempt, remote string, live bool) (CheckoutReceipt, error) {
+	sub, err := s.client.V1Subscriptions.Retrieve(ctx, remote, nil)
+	if err != nil {
+		return CheckoutReceipt{}, err
+	}
+	if sub == nil || sub.Object != "subscription" || sub.ID != remote || sub.Livemode != live || sub.Customer == nil || sub.Customer.ID != a.Customer || sub.Status == "" || sub.Metadata["subscriptionId"] != a.LocalSubscription || sub.Metadata["checkoutAttemptId"] != a.ID || sub.Metadata["referenceId"] != a.Owner || sub.Metadata["userId"] != a.Owner || sub.Items == nil || len(sub.Items.Data) != 1 || sub.Items.HasMore {
+		return CheckoutReceipt{}, ErrCheckoutReconcile
+	}
+	item := sub.Items.Data[0]
+	if item == nil || item.Price == nil || item.Price.ID != a.Price || item.Quantity != 1 {
+		return CheckoutReceipt{}, ErrCheckoutReconcile
+	}
+	return CheckoutReceipt{RemoteID: sub.ID, Status: string(sub.Status), PeriodStart: item.CurrentPeriodStart, PeriodEnd: item.CurrentPeriodEnd, TrialStart: sub.TrialStart, TrialEnd: sub.TrialEnd}, nil
+}
+
+func (s *subscriptions) successEndpoint() auth.Endpoint {
+	return auth.Endpoint{Method: http.MethodGet, Path: "/subscription/success", Handler: s.checkoutSuccess}
+}

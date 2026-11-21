@@ -53,6 +53,9 @@ func New(opts Options) authn.Plugin {
 				if err := subs.handleCheckoutEvent(ctx, event); err != nil {
 					return nil, &authn.APIError{Status: 500, Code: "STRIPE_WEBHOOK_ERROR", Message: "Subscription reconciliation failed"}
 				}
+				if err := subs.handleSubscriptionEvent(ctx, event); err != nil {
+					return nil, &authn.APIError{Status: 500, Code: "STRIPE_WEBHOOK_ERROR", Message: "Subscription reconciliation failed"}
+				}
 			}
 			if opts.OnEvent != nil {
 				if err := opts.OnEvent(r.Context(), event); err != nil {
@@ -80,7 +83,12 @@ func New(opts Options) authn.Plugin {
 			return s.CheckSubscriptionSchema(context.Background())
 		}
 		if subs != nil {
-			plugin.Endpoints = append(plugin.Endpoints, authn.Endpoint{Method: http.MethodPost, Path: "/subscription/upgrade", Handler: subs.checkout}, authn.Endpoint{Method: http.MethodGet, Path: "/subscription/list", Handler: subs.list})
+			plugin.Endpoints = append(plugin.Endpoints, subs.successEndpoint(),
+				authn.Endpoint{Method: http.MethodPost, Path: "/subscription/upgrade", Handler: subs.checkout},
+				authn.Endpoint{Method: http.MethodGet, Path: "/subscription/list", Handler: subs.list},
+				authn.Endpoint{Method: http.MethodPost, Path: "/subscription/cancel", Handler: subs.cancel},
+				authn.Endpoint{Method: http.MethodPost, Path: "/subscription/restore", Handler: subs.restore},
+			)
 		}
 	}
 	return plugin

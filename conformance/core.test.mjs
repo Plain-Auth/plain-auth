@@ -59,8 +59,13 @@ async function reference(t, plugins = []) {
   };
   await (await getMigrations(options)).runMigrations();
   const auth = betterAuth(options);
-  return { baseURL, send: (request) => auth.handler(request) };
+  return { baseURL, send: (request) => auth.handler(request), database };
 }
+
+test("the pinned Stripe client manages owner billing and observes renewals on both runtimes", async (t) => {
+  const { billingLifecycle } = await import("./stripe-lifecycle-fixture.mjs");
+  await billingLifecycle(t, { reference, goFixture, instrument });
+});
 
 let fixtureBuild;
 let buildDirectory;

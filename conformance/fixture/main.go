@@ -66,6 +66,12 @@ func main() {
 			plugins = append(plugins, p)
 		case "last-login-method":
 			plugins = append(plugins, lastlogin.New(lastlogin.Options{Database: store}))
+		case "stripe-subscriptions":
+			p, err := fixtureStripe(store, os.Getenv("CONFORMANCE_STRIPE_URL"))
+			if err != nil {
+				log.Fatal(err)
+			}
+			plugins = append(plugins, p)
 		case "anonymous":
 			p, err := authn.NewAnonymous(authn.AnonymousOptions{})
 			if err != nil {

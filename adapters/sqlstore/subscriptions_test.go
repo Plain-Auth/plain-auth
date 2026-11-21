@@ -74,7 +74,7 @@ func TestSubscriptionCheckout(t *testing.T) {
 					customerRequests++
 					return stripeJSON(200, map[string]any{"id": "cus_local", "object": "customer", "metadata": map[string]string{"userId": owner, "customerType": "user"}}), nil
 				case "/v1/checkout/sessions":
-					if r.Form.Get("customer") != expectedCustomer || r.Form.Get("mode") != "subscription" || r.Form.Get("client_reference_id") != owner || r.Form.Get("success_url") != "https://billing.example/success" || r.Form.Get("cancel_url") != "https://billing.example/cancel" || r.Form.Get("line_items[0][quantity]") != "1" || key == "" {
+					if r.Form.Get("customer") != expectedCustomer || r.Form.Get("mode") != "subscription" || r.Form.Get("client_reference_id") != owner || r.Form.Get("success_url") != "https://billing.example/api/auth/subscription/success?callbackURL=https%3A%2F%2Fbilling.example%2Fsuccess&checkoutSessionId={CHECKOUT_SESSION_ID}" || r.Form.Get("cancel_url") != "https://billing.example/cancel" || r.Form.Get("line_items[0][quantity]") != "1" || key == "" {
 						return nil, fmt.Errorf("incorrect checkout form")
 					}
 					for _, k := range []string{"userId", "referenceId", "subscriptionId", "checkoutAttemptId"} {
@@ -158,8 +158,8 @@ func TestSubscriptionCheckout(t *testing.T) {
 				return data
 			}
 			check(401, first, "upgrade", body, nil)
-			check(403, first, "upgrade", map[string]any{"plan": "pro", "referenceId": owner}, foreign)
-			check(403, first, "list?referenceId="+owner, nil, foreign)
+			check(400, first, "upgrade", map[string]any{"plan": "pro", "referenceId": owner}, foreign)
+			check(400, first, "list?referenceId="+owner, nil, foreign)
 			check(403, first, "upgrade", map[string]any{"plan": "pro", "successUrl": "https://untrusted.example/done"}, cookie)
 			check(403, first, "upgrade", map[string]any{"plan": "pro", "cancelUrl": "https://untrusted.example/cancel"}, cookie)
 			check(400, first, "upgrade", map[string]any{"plan": "pro", "priceId": "price_untrusted"}, cookie)

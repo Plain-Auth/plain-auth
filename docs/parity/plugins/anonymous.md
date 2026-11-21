@@ -5,11 +5,11 @@
 ## Interfaces
 
 - [ ] Anonymous endpoints, types and options
-  - [x] `anonymousClient` ([test](../../../conformance/core.test.mjs#L777))
-    - [x] The public browser client creates, upgrades, reads and removes guest identities on both servers ([test](../../../conformance/core.test.mjs#L777))
-  - [x] `POST /sign-in/anonymous` ([test](../../../conformance/core.test.mjs#L777))
+  - [x] `anonymousClient` ([test](../../../conformance/core.test.mjs#L782))
+    - [x] The public browser client creates, upgrades, reads and removes guest identities on both servers ([test](../../../conformance/core.test.mjs#L782))
+  - [x] `POST /sign-in/anonymous` ([test](../../../conformance/core.test.mjs#L782))
     - [x] Create a guest without a password, with a usable session and the guest flag ([test](../../../adapters/sqlstore/anonymous_test.go#L141))
-    - [x] The public browser client creates, upgrades, reads and removes guest identities on both servers ([test](../../../conformance/core.test.mjs#L777))
+    - [x] The public browser client creates, upgrades, reads and removes guest identities on both servers ([test](../../../conformance/core.test.mjs#L782))
   - [x] `POST /delete-anonymous-user` ([test](../../../adapters/sqlstore/anonymous_test.go#L170))
     - [x] Remove the authenticated guest and revoke its sessions ([test](../../../adapters/sqlstore/anonymous_test.go#L170))
     - [x] Protect permanent accounts from the guest deletion route ([test](../../../adapters/sqlstore/anonymous_test.go#L163))
@@ -34,12 +34,12 @@
 - [ ] Anonymous
   - [ ] Usage
     - [ ] Sign In Anonymously
-      - [x] Start a guest identity through the browser or native client ([test](../../../conformance/core.test.mjs#L777))
+      - [x] Start a guest identity through the browser or native client ([test](../../../conformance/core.test.mjs#L782))
       - [ ] `POST /sign-in/anonymous`
     - [ ] Link Account
       - [x] Wait for MFA completion before transferring guest data ([test](../../../adapters/sqlstore/anonymous_test.go#L215))
       - [x] Carry a guest through a provider redirect without the primary cookie ([test](../../../adapters/sqlstore/anonymous_oauth_test.go#L98))
-      - [x] Complete guest handoff with the official Google One Tap client ([test](../../../conformance/core.test.mjs#L659))
+      - [x] Complete guest handoff with the official Google One Tap client ([test](../../../conformance/core.test.mjs#L664))
       - [x] Transfer only after a verified WebAuthn assertion ([test](../../../adapters/sqlstore/passkey_test.go#L222))
       - [x] Link after local verification of the email OTP ([test](../../../adapters/sqlstore/anonymous_test.go#L184))
       - [x] Link a guest after the email sign-in link is verified ([test](../../../adapters/sqlstore/anonymous_test.go#L192))

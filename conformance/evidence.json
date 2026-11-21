@@ -199,6 +199,16 @@
       "label": "Reconcile signed checkout completion and expiration and preserve the new attempt after replaying an older event",
       "test": "adapters/sqlstore/subscriptions_test.go",
       "marker": "late expiry removed the replacement"
+    },
+    {
+      "label": "Synchronize customer-mapped Dashboard subscriptions, trial and payment status, renewal, price and cancellation state on three SQL engines",
+      "test": "adapters/sqlstore/stripe_lifecycle_test.go",
+      "marker": "func TestStripeSubscriptionReconciliation("
+    },
+    {
+      "label": "Keep the latest provider state when same-second subscription events race across replicas",
+      "test": "adapters/sqlstore/stripe_lifecycle_test.go",
+      "marker": "delayed same-second provider response regressed row"
     }
   ],
   "docs/content/docs/adapters/sqlite.mdx#L72": [
@@ -805,6 +815,16 @@
       "label": "Open a billing portal for the authenticated customer and enforce its owner and return URL",
       "test": "plugins/stripe/portal_test.go",
       "marker": "func TestUserBillingPortal("
+    },
+    {
+      "label": "Match the browser client's session, customer-type and foreign-reference errors before contacting Stripe",
+      "test": "conformance/stripe-lifecycle-fixture.mjs",
+      "marker": "for (const [source, request] of operations)"
+    },
+    {
+      "label": "Send the user's verified billing customer, locale and return URL",
+      "test": "conformance/stripe-lifecycle-fixture.mjs",
+      "marker": "portalCall.form.get(\"locale\")"
     }
   ],
   "docs/content/docs/plugins/stripe.mdx#L488": [
@@ -1632,6 +1652,16 @@
       "label": "Reuse an existing Stripe customer when starting a monthly subscription",
       "test": "adapters/sqlstore/subscriptions_test.go",
       "marker": "monthly checkout failed to reuse the linked customer"
+    },
+    {
+      "label": "Match the browser client's session, customer-type and foreign-reference errors before contacting Stripe",
+      "test": "conformance/stripe-lifecycle-fixture.mjs",
+      "marker": "for (const [source, request] of operations)"
+    },
+    {
+      "label": "Reject a missing plan and a subscription owned by another signed-in user",
+      "test": "conformance/stripe-lifecycle-fixture.mjs",
+      "marker": "other.subscription.upgrade({ ...own, plan:"
     }
   ],
   "docs/content/docs/plugins/stripe.mdx#L221": [
@@ -1651,6 +1681,16 @@
       "label": "List only the authenticated owner’s active or trialing plans and configured price IDs",
       "test": "adapters/sqlstore/subscriptions_test.go",
       "marker": "another account's subscription was listed"
+    },
+    {
+      "label": "Match the browser client's session, customer-type and foreign-reference errors before contacting Stripe",
+      "test": "conformance/stripe-lifecycle-fixture.mjs",
+      "marker": "for (const [source, request] of operations)"
+    },
+    {
+      "label": "Read the changed price, seat count and billing window after a signed renewal",
+      "test": "conformance/stripe-lifecycle-fixture.mjs",
+      "marker": "const renewed = await list"
     }
   ],
   "docs/content/docs/plugins/stripe.mdx#L362": [
@@ -1672,6 +1712,16 @@
       "label": "Reject foreign or unsigned checkout receipts and apply completion once",
       "test": "adapters/sqlstore/subscriptions_test.go",
       "marker": "receipt retry repeated side effects"
+    },
+    {
+      "label": "Deduplicate signed subscription events and preserve terminal cancellations after delayed updates",
+      "test": "adapters/sqlstore/stripe_lifecycle_test.go",
+      "marker": "terminal lifecycle state regressed"
+    },
+    {
+      "label": "Bind the original Checkout reservation when a lifecycle webhook arrives before completion",
+      "test": "adapters/sqlstore/stripe_lifecycle_test.go",
+      "marker": "old checkout superseded lifecycle state"
     }
   ],
   "plugin-symbol/captcha/captcha": [
@@ -3908,6 +3958,113 @@
       "label": "Keep resource-level and request-level permission checks independent",
       "test": "plugins/access/access_test.go",
       "marker": "func TestRoleDecisions("
+    }
+  ],
+  "plugin/stripe/GET /subscription/success": [
+    {
+      "label": "Use the configured auth mount and pass Stripe the literal Checkout Session placeholder",
+      "test": "adapters/sqlstore/stripe_return_test.go",
+      "marker": "Stripe received a different success URL"
+    },
+    {
+      "label": "Validate the callback and require a signed-in owner and known checkout before reading Stripe",
+      "test": "adapters/sqlstore/stripe_return_test.go",
+      "marker": "unproven checkout reached Stripe"
+    },
+    {
+      "label": "Confirm paid or trial checkouts and leave unpaid, unavailable and mismatched receipts pending",
+      "test": "adapters/sqlstore/stripe_return_test.go",
+      "marker": "unconfirmed browser return activated an entitlement"
+    },
+    {
+      "label": "Reuse a completed receipt across replicas and preserve webhook updates during browser confirmation",
+      "test": "adapters/sqlstore/stripe_return_test.go",
+      "marker": "browser return replaced the webhook snapshot from another replica"
+    },
+    {
+      "label": "Recheck the owner session before committing the provider result",
+      "test": "adapters/sqlstore/stripe_return_test.go",
+      "marker": "revoked browser session committed a return"
+    },
+    {
+      "label": "Preserve the original Stripe success URL and checkout attempt on retries across an upgrade",
+      "test": "adapters/sqlstore/stripe_return_test.go",
+      "marker": "legacy retry changed its provider parameters"
+    }
+  ],
+  "plugin/stripe/POST /subscription/cancel": [
+    {
+      "label": "Open a cancellation page scoped to the signed-in customer and selected subscription",
+      "test": "adapters/sqlstore/stripe_management_test.go",
+      "marker": "targeted cancellation portal"
+    },
+    {
+      "label": "Match the browser client's session, customer-type and foreign-reference errors before contacting Stripe",
+      "test": "conformance/stripe-lifecycle-fixture.mjs",
+      "marker": "for (const [source, request] of operations)"
+    },
+    {
+      "label": "Bind the cancellation portal to the selected Stripe subscription",
+      "test": "conformance/stripe-lifecycle-fixture.mjs",
+      "marker": "cancelCall.form.get(\"flow_data[subscription_cancel][subscription]\")"
+    }
+  ],
+  "plugin/stripe/POST /subscription/restore": [
+    {
+      "label": "Clear an end-of-period cancellation through the native client on all three SQL engines",
+      "test": "adapters/sqlstore/stripe_management_test.go",
+      "marker": "period-end restoration"
+    },
+    {
+      "label": "Clear an explicit cancellation date and synchronize the resulting provider state",
+      "test": "adapters/sqlstore/stripe_management_test.go",
+      "marker": "explicit cancellation date restoration"
+    },
+    {
+      "label": "Release the current customer’s active schedule and persist the new subscription state",
+      "test": "adapters/sqlstore/stripe_management_test.go",
+      "marker": "scheduled change restoration"
+    },
+    {
+      "label": "Match the browser client's session, customer-type and foreign-reference errors before contacting Stripe",
+      "test": "conformance/stripe-lifecycle-fixture.mjs",
+      "marker": "for (const [source, request] of operations)"
+    },
+    {
+      "label": "Return the original provider JSON after cancellation restoration and schedule release",
+      "test": "conformance/stripe-lifecycle-fixture.mjs",
+      "marker": "schedule release changed the Stripe wire object"
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L413": [
+    {
+      "label": "Open a cancellation page scoped to the signed-in customer and selected subscription",
+      "test": "adapters/sqlstore/stripe_management_test.go",
+      "marker": "targeted cancellation portal"
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L456": [
+    {
+      "label": "Clear an end-of-period cancellation through the native client on all three SQL engines",
+      "test": "adapters/sqlstore/stripe_management_test.go",
+      "marker": "period-end restoration"
+    },
+    {
+      "label": "Clear an explicit cancellation date and synchronize the resulting provider state",
+      "test": "adapters/sqlstore/stripe_management_test.go",
+      "marker": "explicit cancellation date restoration"
+    },
+    {
+      "label": "Release the current customer’s active schedule and persist the new subscription state",
+      "test": "adapters/sqlstore/stripe_management_test.go",
+      "marker": "scheduled change restoration"
+    }
+  ],
+  "plugin-symbol/stripe/SubscriptionOptions/requireEmailVerification": [
+    {
+      "label": "Require verified email before starting Checkout when configured",
+      "test": "adapters/sqlstore/stripe_management_test.go",
+      "marker": "mustCode(err, 400, \"EMAIL_VERIFICATION_REQUIRED\")"
     }
   ]
 }

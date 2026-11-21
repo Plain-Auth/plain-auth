@@ -9,7 +9,7 @@
     - [ ] `ac`
     - [ ] `roles`
   - [ ] `adminClient`
-    - [x] Exercise all fifteen administrative client routes on both runtimes with shared database records ([test](../../../conformance/core.test.mjs#L725))
+    - [x] Exercise all fifteen administrative client routes on both runtimes with shared database records ([test](../../../conformance/core.test.mjs#L730))
   - [ ] `POST /admin/set-role`
     - [x] Assign a configured role and reject an unknown role ([test](../../../adapters/sqlstore/admin_test.go#L154))
   - [ ] `GET /admin/get-user`

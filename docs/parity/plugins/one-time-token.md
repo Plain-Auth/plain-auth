@@ -10,7 +10,7 @@
     - [x] Require a live session and honor server-only generation ([test](../../../adapters/sqlstore/onetimetoken_test.go#L157))
   - [ ] `POST /one-time-token/verify`
     - [x] Limit concurrent redemption across independent servers to one successful response ([test](../../../adapters/sqlstore/onetimetoken_test.go#L150))
-    - [x] Transfer the same session in both directions using the official client ([test](../../../conformance/core.test.mjs#L368))
+    - [x] Transfer the same session in both directions using the official client ([test](../../../conformance/core.test.mjs#L373))
   - [ ] `OneTimeTokenOptions`
     - [ ] `expiresIn`
       - [x] Persist the configured transfer lifetime ([test](../../../adapters/sqlstore/onetimetoken_test.go#L165))

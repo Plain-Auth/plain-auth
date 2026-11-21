@@ -171,7 +171,7 @@ type Store interface {
 // APIError exposes a public status and error code shared by Go and HTTP callers.
 type APIError struct {
 	Status  int    `json:"-"`
-	Code    string `json:"code"`
+	Code    string `json:"code,omitempty"`
 	Message string `json:"message"`
 }
 
