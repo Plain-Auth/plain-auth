@@ -263,6 +263,8 @@ Each row tracks the behavior exposed by a published entry point. The Go implemen
     - [x] Reject pending changes, unsupported recurring items, foreign customers and a session revoked during Stripe’s reply on three SQL engines ([test](../../adapters/sqlstore/stripe_plan_change_test.go#L103))
     - [x] Schedule a configured annual price at the current period boundary with no proration and observe the signed transition through the browser client ([test](../../conformance/stripe-lifecycle-fixture.mjs#L371))
     - [x] Recover lost create, update and release responses, reject competing destinations and preserve custom phases on three SQL engines ([test](../../adapters/sqlstore/stripe_schedules_test.go#L149))
+    - [x] Use the active or selected organization for single-seat checkout and keep its Stripe customer separate from personal accounts ([test](../../conformance/stripe-organization-fixture.mjs#L80))
+    - [x] Recheck membership and active organization around Stripe responses, recover checkout under a different administrator, and refuse ambiguous customer ownership on three SQL engines ([test](../../adapters/sqlstore/stripe_organization_test.go#L24))
   - [ ] Client integration (`./client`)
 
 ## Telemetry

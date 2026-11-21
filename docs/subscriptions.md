@@ -35,7 +35,7 @@ Import `github.com/Stonewrit/stonewrit-auth/plugins/stripe` as `stripeplugin` an
 
 Send an authenticated POST to `/api/auth/subscription/upgrade`.
 
-Checkout, listing, cancellation, restoration and the billing portal all use the signed-in user's account. Clients can omit `referenceId` or explicitly supply their own user ID. A foreign reference returns HTTP 400 with `REFERENCE_ID_NOT_ALLOWED`. The optional `customerType` accepts `user`. Requesting `organization` returns HTTP 400 with `ORGANIZATION_SUBSCRIPTION_NOT_ENABLED`. Invalid customer types return `VALIDATION_ERROR`.
+Personal billing defaults to the signed-in user’s account. Clients can omit `referenceId` or supply their own user ID. A foreign personal reference returns HTTP 400 with `REFERENCE_ID_NOT_ALLOWED`. Organization checkout, listing and portal access require the organization billing configuration below.
 
 The example requires a verified email before starting Checkout. Set `RequireEmailVerification` to `false` (the default) to let any signed-in owner start a subscription.
 
@@ -54,6 +54,44 @@ The response provides the Checkout Session `id`, the hosted `url` and a `redirec
 An existing local Stripe customer is reused. For a user without one, the server creates a customer using server-owned user metadata and persists the association. The SQL store serializes reservations per owner and releases its lock before contacting Stripe. Identical requests reuse the local subscription, Stripe idempotency key and cached Checkout Session. A different purchase returns HTTP 409 while that checkout is pending. [Stripe idempotent requests](https://docs.stripe.com/api/idempotent_requests)
 
 A checkout expires after 23 hours. Its signed expiration event releases the reservation. If an outcome remains ambiguous, the server keeps the reservation and returns `CHECKOUT_RECONCILIATION_REQUIRED`. Inspect the matching Stripe Checkout Session and redeliver its completion or expiration event before starting a replacement. For a reservation that never reached Stripe, verify the absence of the remote checkout before clearing the incomplete reservation administratively.
+
+## Bill an organization
+
+Apply the `stripe-organization` schema profile and install the organization plugin alongside Stripe. The profile includes the organization and subscription tables and adds `stripeCustomerId` to the organization. It can also be combined with `organization-teams`.
+
+Set the Stripe plugin’s `Organization` option to an explicit billing policy. This example allows owners and administrators to manage billing. A custom finance role can read subscriptions.
+
+```go
+organizationBilling := &stripeplugin.OrganizationOptions{
+    AuthorizeReference: func(member stripeplugin.ReferenceAuthorization) bool {
+        for _, role := range strings.Split(member.Role, ",") {
+            switch strings.TrimSpace(role) {
+            case "owner", "admin":
+                return true
+            case "finance":
+                if member.Action == "list-subscription" {
+                    return true
+                }
+            }
+        }
+        return false
+    },
+}
+billing := stripeplugin.New(stripeplugin.Options{
+    Organization: organizationBilling,
+    WebhookSecret: webhookSecret,
+    Subscriptions: &stripeplugin.SubscriptionOptions{Client: stripeClient, Plans: plans},
+    Portal: &stripeplugin.PortalOptions{Client: stripeClient, Customers: store},
+})
+```
+
+Use `customerType: "organization"` for a new checkout, subscription list or billing portal. Specify an organization ID with `referenceId`, or omit it to use the active organization. With the Go client, set `stripeclient.Checkout.CustomerType` or `stripeclient.Portal.CustomerType` to `"organization"`. Call `ListOrganization(ctx, id)` to read subscriptions and pass an empty ID to select the active organization.
+
+The SQL adapter reads the session and membership under lock and passes the current role and operation to the policy. The supported operations are `upgrade-subscription`, `list-subscription` and `billing-portal`. Keep the callback local and free of side effects. A different authorized administrator can retry the same checkout after a purchaser loses their role. Stripe metadata retains the original purchaser’s ID and the organization’s billing reference. [Authorization and recovery tests](../adapters/sqlstore/stripe_organization_test.go)
+
+The organization receives its own Stripe customer. The server searches for an existing customer using organization metadata, with a paginated list fallback if search is unavailable. Customer creation uses the stored organization name. Signed checkout and subscription webhooks update the organization’s subscription even if the original purchaser has since left. Ambiguous personal and organization references or customer mappings require reconciliation. [Browser client and renewal tests](../conformance/stripe-organization-fixture.mjs)
+
+Organization checkout currently covers a single licensed seat. Automatic member-based pricing, organization plan switches, cancellation and restoration through the subscription endpoints, and synchronization of organization name or deletion events remain open.
 
 ## Change an existing plan
 

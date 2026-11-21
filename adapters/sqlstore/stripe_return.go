@@ -18,13 +18,13 @@ func (s *Store) finishCheckout(ctx context.Context, tx *sql.Tx, a billing.Checko
 		if checkoutID == "" {
 			return billing.ErrCheckoutReconcile
 		}
-		ownerKey := "stripe-return:" + a.Owner
+		ownerKey := stripeOwnerKey(ctx, "return", a.Owner)
 		if _, err := tx.ExecContext(ctx, s.bind(`DELETE FROM "verification" WHERE "identifier"=? AND "expiresAt"<=?`), ownerKey, s.date(now)); err != nil {
 			return err
 		}
 		// Keep the owner and final callback for replay. The hosted payment URL
 		// and the original idempotency parameters are no longer needed.
-		record := billing.CheckoutAttempt{ID: a.ID, Owner: a.Owner, LocalSubscription: a.LocalSubscription, Customer: a.Customer, SuccessURL: a.SuccessURL, CheckoutID: checkoutID}
+		record := billing.CheckoutAttempt{OrganizationID: a.OrganizationID, ActorID: a.ActorID, ID: a.ID, Owner: a.Owner, LocalSubscription: a.LocalSubscription, Customer: a.Customer, SuccessURL: a.SuccessURL, CheckoutID: checkoutID}
 		raw, err := json.Marshal(record)
 		if err != nil {
 			return err
@@ -33,7 +33,7 @@ func (s *Store) finishCheckout(ctx context.Context, tx *sql.Tx, a billing.Checko
 			return err
 		}
 	}
-	_, err := tx.ExecContext(ctx, s.bind(`DELETE FROM "verification" WHERE "id"=? AND "identifier"=?`), a.ID, "stripe-checkout:"+a.Owner)
+	_, err := tx.ExecContext(ctx, s.bind(`DELETE FROM "verification" WHERE "id"=? AND "identifier"=?`), a.ID, stripeOwnerKey(ctx, "checkout", a.Owner))
 	return err
 }
 
@@ -49,7 +49,7 @@ func (s *Store) FindStripeCheckoutReturn(ctx context.Context, owner, token, chec
 		}
 		if errors.Is(err, auth.ErrNotFound) || a.CheckoutID != checkoutID || a.ReturnURL == "" {
 			var raw []byte
-			err = tx.QueryRowContext(ctx, s.bind(`SELECT "value" FROM "verification" WHERE "id"=? AND "identifier"=? AND "expiresAt">?`), stripeRecordID("return", checkoutID), "stripe-return:"+owner, s.date(now)).Scan(&raw)
+			err = tx.QueryRowContext(ctx, s.bind(`SELECT "value" FROM "verification" WHERE "id"=? AND "identifier"=? AND "expiresAt">?`), stripeRecordID("return", checkoutID), stripeOwnerKey(ctx, "return", owner), s.date(now)).Scan(&raw)
 			if errors.Is(err, sql.ErrNoRows) {
 				return auth.ErrNotFound
 			}

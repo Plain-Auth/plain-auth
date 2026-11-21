@@ -24,9 +24,10 @@ StoneWrit Auth embeds authentication in your Go API. Mount the auth handler on y
 - [x] Create organizations and teams, enforce seat limits and accept scoped invitations. [Organization tests](plugins/organization/organization_test.go)
 - [x] Verify Stripe webhook signatures and open an authenticated customer’s billing portal. [Webhook tests](plugins/stripe/stripe_test.go) · [Billing portal tests](plugins/stripe/portal_test.go)
 - [x] Start recurring Checkout, confirm a personal plan change, schedule a price for the next billing period, cancel or restore the subscription. [Subscription billing](docs/subscriptions.md)
+- [x] Authorize a single-seat organization checkout, list subscriptions and open the organization’s billing portal. [Organization billing](docs/subscriptions.md)
 - [x] Provision directory Users and Groups and synchronize direct memberships with scoped SCIM bearer credentials. [Directory provisioning](docs/scim.md)
 
-Single sign-on, managed SCIM connections, and organization billing remain open. The [complete checklist](docs/parity/README.md) records which parts of each integration have passing tests.
+Single sign-on, managed SCIM connections and automatic seat-based billing remain open. The [complete checklist](docs/parity/README.md) records which parts of each integration have passing tests.
 
 ## Run it locally
 

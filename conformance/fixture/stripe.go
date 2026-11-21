@@ -11,7 +11,7 @@ import (
 	sdk "github.com/stripe/stripe-go/v87"
 )
 
-func fixtureStripe(customers billing.CustomerStore, endpoint string) (stonewrit.Plugin, error) {
+func fixtureStripe(customers billing.CustomerStore, endpoint string, organizations bool) (stonewrit.Plugin, error) {
 	u, err := url.Parse(endpoint)
 	if err != nil || u.Scheme != "http" || u.Hostname() != "127.0.0.1" || u.Port() == "" || u.User != nil || u.Path != "" || u.RawQuery != "" || u.Fragment != "" {
 		return stonewrit.Plugin{}, errors.New("Stripe fixture requires a loopback HTTP origin")
@@ -24,7 +24,11 @@ func fixtureStripe(customers billing.CustomerStore, endpoint string) (stonewrit.
 		URL: sdk.String(endpoint), HTTPClient: client, MaxNetworkRetries: sdk.Int64(0),
 	})
 	provider := sdk.NewClient("sk_test_offline_fixture", sdk.WithBackends(backends))
-	return billing.New(billing.Options{
+	var org *billing.OrganizationOptions
+	if organizations {
+		org = &billing.OrganizationOptions{AuthorizeReference: func(v billing.ReferenceAuthorization) bool { return v.Role == "owner" || v.Role == "admin" }}
+	}
+	return billing.New(billing.Options{Organization: org,
 		WebhookSecret: "whsec_offline_fixture",
 		Portal:        &billing.PortalOptions{Client: provider, Customers: customers},
 		Subscriptions: &billing.SubscriptionOptions{Client: provider, Plans: []billing.Plan{

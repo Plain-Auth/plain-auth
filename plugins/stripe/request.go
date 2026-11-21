@@ -52,6 +52,10 @@ func billingValueKind(value any) string {
 }
 
 func billingOwner(c auth.EndpointContext, schema []billingField) (*auth.SessionResult, error) {
+	return billingSession(c, schema, false)
+}
+
+func billingSession(c auth.EndpointContext, schema []billingField, allowOrg bool) (*auth.SessionResult, error) {
 	values, source := c.Body, "body"
 	if c.Request.Method == http.MethodGet {
 		values, source = make(map[string]any), "query"
@@ -103,6 +107,9 @@ func billingOwner(c auth.EndpointContext, schema []billingField) (*auth.SessionR
 		return nil, err
 	}
 	if values["customerType"] == "organization" {
+		if allowOrg {
+			return session, nil
+		}
 		return nil, billingError(400, "ORGANIZATION_SUBSCRIPTION_NOT_ENABLED", "Organization subscription is not enabled")
 	}
 	if id, _ := values["referenceId"].(string); id != "" && id != session.User.ID {

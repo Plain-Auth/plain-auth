@@ -15,6 +15,7 @@ import (
 // Options configures delivery of authenticated events. Stripe may retry an
 // event, so OnEvent can use its ID to make application side effects idempotent.
 type Options struct {
+	Organization  *OrganizationOptions
 	Subscriptions *SubscriptionOptions
 	Portal        *PortalOptions
 	WebhookSecret string
@@ -24,6 +25,9 @@ type Options struct {
 // New exposes POST /stripe/webhook beneath the configured auth base path.
 func New(opts Options) authn.Plugin {
 	subs, configErr := configureSubscriptions(opts.Subscriptions)
+	if subs != nil {
+		subs.organization = opts.Organization
+	}
 	plugin := authn.Plugin{ID: "stripe", Endpoints: []authn.Endpoint{{
 		Method: http.MethodPost, Path: "/stripe/webhook", RawBody: true,
 		Handler: func(ctx authn.EndpointContext) (any, error) {
@@ -49,7 +53,14 @@ func New(opts Options) authn.Plugin {
 			if err != nil {
 				return nil, &authn.APIError{Status: 400, Code: "FAILED_TO_CONSTRUCT_STRIPE_EVENT", Message: "Failed to construct Stripe event"}
 			}
-			if subs != nil {
+			if subs != nil && event.Account == "" && event.Context == "" {
+				if subs.organization != nil {
+					var err error
+					ctx, err = subs.organizationEvent(ctx, event)
+					if err != nil {
+						return nil, &authn.APIError{Status: 500, Code: "STRIPE_WEBHOOK_ERROR", Message: "Subscription reconciliation failed"}
+					}
+				}
 				if err := subs.handleCheckoutEvent(ctx, event); err != nil {
 					return nil, &authn.APIError{Status: 500, Code: "STRIPE_WEBHOOK_ERROR", Message: "Subscription reconciliation failed"}
 				}
@@ -66,7 +77,16 @@ func New(opts Options) authn.Plugin {
 		},
 	}}}
 	if opts.Portal != nil {
-		plugin.Endpoints = append(plugin.Endpoints, portalEndpoint(*opts.Portal))
+		plugin.Endpoints = append(plugin.Endpoints, portalEndpoint(*opts.Portal, opts.Organization))
+	}
+	if opts.Organization != nil && opts.Subscriptions == nil {
+		plugin.ValidateStore = func(store authn.Store) error {
+			org, ok := store.(OrganizationBillingStore)
+			if !ok {
+				return errors.New("stripe: organization billing requires an organization billing store")
+			}
+			return org.CheckStripeOrganizationSchema(context.Background())
+		}
 	}
 	if opts.Subscriptions != nil {
 		plugin.ValidateStore = func(store authn.Store) error {
@@ -80,7 +100,17 @@ func New(opts Options) authn.Plugin {
 			if !ok {
 				return errors.New("stripe: store does not support subscriptions")
 			}
-			return s.CheckSubscriptionSchema(context.Background())
+			if err := s.CheckSubscriptionSchema(context.Background()); err != nil {
+				return err
+			}
+			if opts.Organization != nil {
+				org, ok := store.(OrganizationBillingStore)
+				if !ok {
+					return errors.New("stripe: organization billing requires an organization billing store")
+				}
+				return org.CheckStripeOrganizationSchema(context.Background())
+			}
+			return nil
 		}
 		if subs != nil {
 			plugin.Endpoints = append(plugin.Endpoints, subs.successEndpoint(),

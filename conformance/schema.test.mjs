@@ -8,7 +8,7 @@ import { DatabaseSync } from "node:sqlite";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 import { getMigrations } from "better-auth/db/migration";
-import { verifiedCombinations, scimCombinations, dialects, freshSchema, schemaOptions } from "./plugin-schema.mjs";
+import { verifiedCombinations, scimCombinations, organizationBillingCombinations, dialects, freshSchema, schemaOptions } from "./plugin-schema.mjs";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
 
@@ -103,7 +103,7 @@ function normalizeAdditiveIndexes(structure) {
   return structure;
 }
 
-test("the CLI emits the pinned plugin schema across exhaustive base combinations and SCIM witnesses on three dialects", async () => {
+test("the CLI emits the pinned plugin schema across exhaustive base combinations and SCIM and organization billing witnesses on three dialects", async () => {
   const dir = mkdtempSync(join(tmpdir(), "auth-schema-plugin-cli-"));
   try {
     const binary = join(dir, "authctl");
@@ -185,4 +185,24 @@ test("SCIM adds seven independent tables and leaves each existing schema object 
       assert.deepEqual(combined.filter(s => !additions.includes(s)), baseline, "SCIM changed baseline SQL ordering");
     }
   }
+});
+
+test("organization billing adds the organization customer column and preserves the organization and subscription tables", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "auth-org-billing-schema-"));
+  const fixture = batchFixture(dir);
+  try {
+    for (const dialect of Object.keys(dialects)) {
+      const ordinary = await freshSchema(dialect, ["organization", "stripe-subscriptions"]);
+      const combined = await freshSchema(dialect, ["stripe-organization"]);
+      const table = /create table ["`]organization["`] \([^;]*?\);/;
+      const extra = combined.match(table)?.[0];
+      const symbol = dialect === "mysql" ? "`" : '"';
+      const field = ", " + symbol + "stripeCustomerId" + symbol + " text";
+      assert.ok(extra?.includes(field), dialect);
+      assert.equal(combined.replace(extra, extra.replace(field, "")), ordinary);
+      for (const profiles of organizationBillingCombinations()) {
+        assert.equal((await fixture.call(dialect, profiles)).trim(), (await freshSchema(dialect, profiles)).trim(), profiles.join(","));
+      }
+    }
+  } finally { await fixture.close(); rmSync(dir, { recursive: true, force: true }); }
 });

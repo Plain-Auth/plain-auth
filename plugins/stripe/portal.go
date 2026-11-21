@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"time"
 
 	auth "github.com/Stonewrit/stonewrit-auth"
 	sdk "github.com/stripe/stripe-go/v87"
@@ -19,10 +20,10 @@ type PortalOptions struct {
 	Customers CustomerStore
 }
 
-func portalEndpoint(opts PortalOptions) auth.Endpoint {
+func portalEndpoint(opts PortalOptions, organization *OrganizationOptions) auth.Endpoint {
 	return auth.Endpoint{Method: http.MethodPost, Path: "/subscription/billing-portal", Handler: func(c auth.EndpointContext) (any, error) {
+		selection, err := selectBilling(&c, portalFields, "billing-portal", organization)
 		ctx := c.Request.Context()
-		session, err := billingOwner(c, portalFields)
 		if err != nil {
 			return nil, err
 		}
@@ -31,10 +32,13 @@ func portalEndpoint(opts PortalOptions) auth.Endpoint {
 		if err != nil {
 			return nil, err
 		}
-		if opts.Client == nil || opts.Customers == nil {
+		if opts.Client == nil || (!selection.organization && opts.Customers == nil) {
 			return nil, errors.New("stripe: billing portal requires a client and customer store")
 		}
-		customer, err := opts.Customers.StripeCustomer(ctx, session.User.ID)
+		customer := selection.account.Customer
+		if !selection.organization {
+			customer, err = opts.Customers.StripeCustomer(ctx, selection.reference)
+		}
 		if errors.Is(err, auth.ErrNotFound) || (err == nil && customer == "") {
 			return nil, billingError(404, "CUSTOMER_NOT_FOUND", "Stripe customer not found for this user")
 		}
@@ -48,6 +52,15 @@ func portalEndpoint(opts PortalOptions) auth.Endpoint {
 		res, err := opts.Client.V1BillingPortalSessions.Create(ctx, params)
 		if err != nil {
 			return nil, billingError(500, "UNABLE_TO_CREATE_BILLING_PORTAL", "Unable to create billing portal session")
+		}
+		if selection.organization {
+			account, err := c.Store().(OrganizationBillingStore).StripeOrganizationAccount(ctx, selection.session.Session.Token, time.Now())
+			if err != nil {
+				return nil, err
+			}
+			if account.Customer != customer || res == nil || res.Customer != customer || res.URL == "" {
+				return nil, ErrCheckoutReconcile
+			}
 		}
 		disable, _ := c.Body["disableRedirect"].(bool)
 		return map[string]any{"url": res.URL, "redirect": !disable}, nil

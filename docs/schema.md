@@ -25,9 +25,10 @@ AUTH_DSN=auth.db go run ./cmd/authctl migrate --dialect sqlite --plugins organiz
 | `rate-limit` | Shared per-route counters with a unique key, request count and timestamp in milliseconds |
 | `scim` | Directory connection bindings, Users, Groups, memberships, subjects, retained external identities and projection grants |
 | `stripe-subscriptions` | Customer identifiers and subscription records with status, plan, billing and lifecycle fields |
+| `stripe-organization` | Organization and subscription tables with a Stripe customer identifier on the organization |
 | `two-factor` | User enrollment state, factor secrets, recovery codes and lockout fields |
 
-Select at most one organization profile and one username profile. Run `authctl info` for the full profile list in your build, or call `schema.Profiles()` from Go. Profile order produces deterministic output. The profile selector controls database structure. See the [feature checklist](parity/README.md) for runtime support.
+Choose either `organization` or `organization-teams`, and at most one username profile. The `stripe-organization` option also works alongside `organization-teams`. Run `authctl info` for the full profile list in your build, or call `schema.Profiles()` from Go. Profile order produces deterministic output. The profile selector controls database structure. See the [feature checklist](parity/README.md) for runtime support.
 
 The `phone-number` profile adds nullable `phoneNumber` and `phoneNumberVerified` fields to the user table. Existing users keep both fields unset. The database enforces uniqueness for assigned numbers, including after upgrading a populated table. Telephone sign-in, SMS delivery, and number verification are tracked separately. [Phone authentication checklist](parity/plugins/phone-number.md)
 

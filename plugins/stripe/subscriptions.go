@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"net/url"
 	"strings"
 	"time"
 
@@ -46,6 +47,7 @@ type Subscription struct {
 // CheckoutAttempt is a durable reservation; the same attempt always sends
 // identical Stripe parameters, including callbacks and expiry.
 type CheckoutAttempt struct {
+	OrganizationID, OrganizationName, ActorID string
 	// ReturnURL holds the provider success URL issued for this reservation.
 	// Older reservations use their stored SuccessURL directly.
 	ReturnURL                                                                                                     string
@@ -77,6 +79,7 @@ var (
 type subscriptionPrice struct{ plan, interval string }
 
 type subscriptions struct {
+	organization             *OrganizationOptions
 	prices                   map[string]subscriptionPrice
 	client                   *sdk.Client
 	plans                    map[string]Plan
@@ -111,11 +114,11 @@ func configureSubscriptions(o *SubscriptionOptions) (*subscriptions, error) {
 	return s, nil
 }
 func (s *subscriptions) list(c auth.EndpointContext) (any, error) {
-	ss, err := billingOwner(c, listFields)
+	selection, err := selectBilling(&c, listFields, "list-subscription", s.organization)
 	if err != nil {
 		return nil, err
 	}
-	rows, err := c.Store().(SubscriptionStore).ListStripeSubscriptions(c.Request.Context(), ss.User.ID, ss.Session.Token, time.Now())
+	rows, err := c.Store().(SubscriptionStore).ListStripeSubscriptions(c.Request.Context(), selection.reference, selection.session.Session.Token, time.Now())
 	if err != nil {
 		return nil, err
 	}
@@ -131,7 +134,8 @@ func (s *subscriptions) list(c auth.EndpointContext) (any, error) {
 func (s *subscriptions) checkout(c auth.EndpointContext) (any, error) {
 	// Request-controlled values can select a plan name, never a Stripe customer,
 	// price, account or subscription metadata object.
-	ss, err := billingOwner(c, checkoutFields)
+	selection, err := selectBilling(&c, checkoutFields, "upgrade-subscription", s.organization)
+	ss := selection.session
 	if err != nil {
 		return nil, err
 	}
@@ -168,6 +172,20 @@ func (s *subscriptions) checkout(c auth.EndpointContext) (any, error) {
 	explicit, _ := c.Body["subscriptionId"].(string)
 	var selected Subscription
 	if explicit != "" {
+		if selection.organization {
+			management, ok := c.Store().(SubscriptionManagementStore)
+			if !ok {
+				return nil, ErrExistingSubscription
+			}
+			_, err := management.ManagedStripeSubscription(c.Request.Context(), selection.reference, ss.Session.Token, explicit, time.Now())
+			if errors.Is(err, auth.ErrNotFound) {
+				return nil, ErrManagedSubscriptionNotFound
+			}
+			if err != nil {
+				return nil, err
+			}
+			return nil, ErrExistingSubscription
+		}
 		selected, err = managedSubscription(c, ss)
 		if err != nil {
 			return nil, err
@@ -185,15 +203,23 @@ func (s *subscriptions) checkout(c auth.EndpointContext) (any, error) {
 	}
 	ctx := c.Request.Context()
 	store := c.Store().(SubscriptionStore)
-	want := CheckoutAttempt{Owner: ss.User.ID, Plan: p.Name, Interval: interval, Price: price, SuccessURL: success, CancelURL: cancel}
+	want := CheckoutAttempt{Owner: selection.reference, Plan: p.Name, Interval: interval, Price: price, SuccessURL: success, CancelURL: cancel}
+	if selection.organization {
+		want.ActorID = ss.User.ID
+		want.OrganizationID = selection.reference
+		want.OrganizationName = selection.account.Name
+	}
 	if _, ok := store.(CheckoutReturnStore); ok {
 		want.ReturnURL, err = hostedReturnURL(c.Auth, success)
+		if selection.organization && err == nil {
+			want.ReturnURL += "&organizationId=" + url.QueryEscape(selection.reference)
+		}
 		if err != nil {
 			return nil, err
 		}
 	}
-	a, err := store.ReserveStripeCheckout(ctx, ss.User.ID, ss.Session.Token, want, time.Now().UTC())
-	if errors.Is(err, ErrExistingSubscription) {
+	a, err := store.ReserveStripeCheckout(ctx, selection.reference, ss.Session.Token, want, time.Now().UTC())
+	if errors.Is(err, ErrExistingSubscription) && !selection.organization {
 		// With multiple subscriptions the customer must name the one to change.
 		rows, err := store.ListStripeSubscriptions(ctx, ss.User.ID, ss.Session.Token, time.Now().UTC())
 		if err != nil {
@@ -209,10 +235,28 @@ func (s *subscriptions) checkout(c auth.EndpointContext) (any, error) {
 	}
 	if a.Customer == "" {
 		params := &sdk.CustomerCreateParams{Metadata: map[string]string{"userId": ss.User.ID, "customerType": "user"}}
-		sum := sha256.Sum256([]byte("customer:" + ss.User.ID))
+		namespace := "customer:" + ss.User.ID
+		if selection.organization {
+			params.Name = sdk.String(a.OrganizationName)
+			params.Metadata = map[string]string{"organizationId": a.OrganizationID, "customerType": "organization"}
+			namespace = "organization-customer:" + a.OrganizationID
+		}
+		sum := sha256.Sum256([]byte(namespace))
 		params.SetIdempotencyKey("auth-customer-" + hex.EncodeToString(sum[:]))
-		customer, err := s.client.V1Customers.Create(ctx, params)
-		if err != nil || customer == nil || customer.ID == "" || customer.Metadata["userId"] != a.Owner || customer.Metadata["customerType"] != "user" {
+		var customer *sdk.Customer
+		if selection.organization {
+			customer, err = s.findOrganizationCustomer(ctx, a.OrganizationID)
+			if err != nil {
+				return nil, err
+			}
+			if _, err = c.Store().(OrganizationBillingStore).StripeOrganizationAccount(ctx, ss.Session.Token, time.Now()); err != nil {
+				return nil, err
+			}
+		}
+		if customer == nil {
+			customer, err = s.client.V1Customers.Create(ctx, params)
+		}
+		if err != nil || customer == nil || customer.ID == "" || customer.Metadata["customerType"] != params.Metadata["customerType"] || (selection.organization && customer.Metadata["organizationId"] != a.OrganizationID) || (!selection.organization && customer.Metadata["userId"] != a.Owner) {
 			return nil, billingError(502, "CUSTOMER_CREATION_FAILED", "Stripe customer creation failed")
 		}
 		if err := store.BindStripeCheckoutCustomer(ctx, a, ss.Session.Token, customer.ID, time.Now()); err != nil {
@@ -221,7 +265,11 @@ func (s *subscriptions) checkout(c auth.EndpointContext) (any, error) {
 		a.Customer = customer.ID
 	}
 	if a.CheckoutID == "" {
-		meta := map[string]string{"userId": a.Owner, "referenceId": a.Owner, "subscriptionId": a.LocalSubscription, "checkoutAttemptId": a.ID}
+		meta := map[string]string{"userId": a.creator(), "referenceId": a.Owner, "subscriptionId": a.LocalSubscription, "checkoutAttemptId": a.ID}
+		if selection.organization {
+			meta["customerType"] = "organization"
+			meta["organizationId"] = a.OrganizationID
+		}
 		providerSuccess := a.SuccessURL
 		if a.ReturnURL != "" {
 			providerSuccess = a.ReturnURL
@@ -238,6 +286,15 @@ func (s *subscriptions) checkout(c auth.EndpointContext) (any, error) {
 			SubscriptionData:  &sdk.CheckoutSessionCreateSubscriptionDataParams{Metadata: meta},
 		}
 		params.SetIdempotencyKey("auth-checkout-" + a.ID)
+		if selection.organization {
+			current, err := c.Store().(OrganizationBillingStore).StripeOrganizationAccount(ctx, ss.Session.Token, time.Now())
+			if err != nil {
+				return nil, err
+			}
+			if current.Customer != a.Customer {
+				return nil, ErrCheckoutReconcile
+			}
+		}
 		checkout, err := s.client.V1CheckoutSessions.Create(ctx, params)
 		if err != nil || checkout == nil || checkout.ID == "" || checkout.URL == "" {
 			return nil, billingError(502, "CHECKOUT_CREATION_FAILED", "Stripe checkout creation failed")
@@ -246,6 +303,15 @@ func (s *subscriptions) checkout(c auth.EndpointContext) (any, error) {
 			return nil, err
 		}
 		a.CheckoutID, a.CheckoutURL = checkout.ID, checkout.URL
+	}
+	if selection.organization {
+		now, err := c.Store().(OrganizationBillingStore).StripeOrganizationAccount(ctx, ss.Session.Token, time.Now())
+		if err != nil {
+			return nil, err
+		}
+		if now.Customer != a.Customer {
+			return nil, ErrCheckoutReconcile
+		}
 	}
 	disable, _ := c.Body["disableRedirect"].(bool)
 	return map[string]any{"id": a.CheckoutID, "url": a.CheckoutURL, "redirect": !disable}, nil
@@ -267,7 +333,11 @@ func (s *subscriptions) handleCheckoutEvent(c auth.EndpointContext, event sdk.Ev
 	}
 	ctx := c.Request.Context()
 	store := c.Store().(SubscriptionStore)
-	a, err := store.FindStripeCheckout(ctx, checkout.Metadata["userId"], checkout.Metadata["checkoutAttemptId"])
+	reference := checkout.Metadata["userId"]
+	if org, ok := OrganizationFromContext(ctx); ok {
+		reference = org.ID
+	}
+	a, err := store.FindStripeCheckout(ctx, reference, checkout.Metadata["checkoutAttemptId"])
 	if errors.Is(err, auth.ErrNotFound) {
 		return nil
 	}
@@ -294,4 +364,11 @@ func (s *subscriptions) handleCheckoutEvent(c auth.EndpointContext, event sdk.Ev
 		return err
 	}
 	return store.ApplyStripeCheckout(ctx, a, checkout.ID, receipt.RemoteID, receipt.Status, receipt.PeriodStart, receipt.PeriodEnd, receipt.TrialStart, receipt.TrialEnd)
+}
+
+func (a CheckoutAttempt) creator() string {
+	if a.OrganizationID != "" {
+		return a.ActorID
+	}
+	return a.Owner
 }

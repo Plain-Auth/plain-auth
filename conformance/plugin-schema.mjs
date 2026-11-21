@@ -14,6 +14,13 @@ import Stripe from "stripe";
 export const dialects = { sqlite: SqliteDialect, postgres: PostgresDialect, mysql: MysqlDialect };
 
 export function pluginInstances(profiles) {
+  if (profiles.includes("stripe-organization")) {
+    const enabled = new Set(profiles);
+    if (!enabled.has("organization-teams")) enabled.add("organization");
+    enabled.add("stripe-subscriptions");
+    profiles = [...profileGroups.flat(), "scim"].filter(id => enabled.has(id))
+      .map(id => id === "stripe-subscriptions" ? "stripe-organization" : id);
+  }
   return profiles.map((id) => {
     switch (id) {
       case "admin": return admin();
@@ -27,7 +34,9 @@ export function pluginInstances(profiles) {
       case "organization": return organization();
       case "organization-teams": return organization({ teams: { enabled: true } });
       case "scim": return scim({ connections: [{ id: "schema", credentials: [{ type: "bearer", id: "test", token: "fixture" }] }] });
+      case "stripe-organization":
       case "stripe-subscriptions": return stripe({
+        organization: { enabled: id === "stripe-organization" },
         stripeClient: new Stripe("sk_test_local_schema_only"),
         stripeWebhookSecret: "whsec_local_schema_only",
         subscription: { enabled: true, plans: [] },
@@ -46,7 +55,7 @@ const profileGroups = [
 ];
 // SCIM owns separate tables. The existing cross product remains exhaustive;
 // its new combinations are checked with structural isolation and explicit witnesses.
-const profileNames = [...profileGroups.flat(), "scim"];
+const profileNames = [...profileGroups.flat(), "scim", "stripe-organization"];
 export function* scimCombinations() {
   yield ["scim"];
   for (const name of profileGroups.flat()) yield [name, "scim"];
@@ -57,9 +66,18 @@ export function* scimCombinations() {
   }
 }
 
+export function* organizationBillingCombinations() {
+  yield ["stripe-organization"];
+  for (const name of [...profileGroups.flat(), "scim"]) yield [name, "stripe-organization"];
+  for (const name of ["organization", "organization-teams"]) {
+    yield [...profileGroups.map(group => group.includes("organization") ? name : group[0]), "scim", "stripe-organization"];
+  }
+}
+
 export function* verifiedCombinations() {
   yield* combinations();
   yield* scimCombinations();
+  yield* organizationBillingCombinations();
 }
 
 

@@ -95,8 +95,8 @@ func main() {
 			plugins = append(plugins, p)
 		case "last-login-method":
 			plugins = append(plugins, lastlogin.New(lastlogin.Options{Database: store}))
-		case "stripe-subscriptions":
-			p, err := fixtureStripe(store, os.Getenv("CONFORMANCE_STRIPE_URL"))
+		case "stripe-subscriptions", "stripe-organization":
+			p, err := fixtureStripe(store, os.Getenv("CONFORMANCE_STRIPE_URL"), id == "stripe-organization")
 			if err != nil {
 				log.Fatal(err)
 			}

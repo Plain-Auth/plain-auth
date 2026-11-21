@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"strings"
 	"time"
 
 	auth "github.com/Stonewrit/stonewrit-auth"
@@ -17,7 +18,7 @@ var _ billing.SubscriptionStore = (*Store)(nil)
 const subscriptionFields = `"id","plan","referenceId","stripeCustomerId","stripeSubscriptionId","status","periodStart","periodEnd","trialStart","trialEnd","cancelAtPeriodEnd","cancelAt","canceledAt","endedAt","seats","billingInterval","stripeScheduleId"`
 
 func (s *Store) CheckSubscriptionSchema(ctx context.Context) error {
-	for _, q := range []string{`SELECT ` + subscriptionFields + ` FROM "subscription" WHERE 1=0`, `SELECT "stripeCustomerId" FROM "user" WHERE 1=0`} {
+	for _, q := range []string{`SELECT t.` + strings.ReplaceAll(subscriptionFields, ",", ",t.") + ` FROM "subscription" t WHERE 1=0`, `SELECT u."stripeCustomerId" FROM "user" u WHERE 1=0`} {
 		rows, err := s.db.QueryContext(ctx, s.bind(q))
 		if err != nil {
 			return err
@@ -34,7 +35,9 @@ func (s *Store) billingTransaction(ctx context.Context, userID, token string, no
 		return err
 	}
 	defer tx.Rollback()
-	if token == "" {
+	if org, ok := billing.OrganizationFromContext(ctx); ok {
+		err = s.lockStripeOrganization(ctx, tx, org, userID, token, now)
+	} else if token == "" {
 		err = s.lockAccount(ctx, tx, userID)
 	} else {
 		err = s.lockActiveAccount(ctx, tx, userID, token, now)
@@ -43,6 +46,9 @@ func (s *Store) billingTransaction(ctx context.Context, userID, token string, no
 		return billing.ErrCheckoutSession
 	}
 	if err != nil {
+		return err
+	}
+	if err := s.distinctStripeReference(ctx, tx, userID, ""); err != nil {
 		return err
 	}
 	if err := action(tx); err != nil {
@@ -58,7 +64,7 @@ type checkoutQuerier interface {
 func (s *Store) checkoutAttempt(ctx context.Context, db checkoutQuerier, owner string) (billing.CheckoutAttempt, error) {
 	var a billing.CheckoutAttempt
 	var data []byte
-	err := db.QueryRowContext(ctx, s.bind(`SELECT "value" FROM "verification" WHERE "identifier"=?`), "stripe-checkout:"+owner).Scan(&data)
+	err := db.QueryRowContext(ctx, s.bind(`SELECT "value" FROM "verification" WHERE "identifier"=?`), stripeOwnerKey(ctx, "checkout", owner)).Scan(&data)
 	if errors.Is(err, sql.ErrNoRows) {
 		return a, auth.ErrNotFound
 	}
@@ -109,7 +115,7 @@ func (s *Store) ReserveStripeCheckout(ctx context.Context, owner, token string, 
 			return billing.ErrExistingSubscription
 		}
 		var customer sql.NullString
-		err = tx.QueryRowContext(ctx, s.bind(`SELECT "stripeCustomerId" FROM "user" WHERE "id"=?`), owner).Scan(&customer)
+		err = tx.QueryRowContext(ctx, s.bind(`SELECT "stripeCustomerId" FROM `+billingTable(ctx)+` WHERE "id"=?`), owner).Scan(&customer)
 		if err != nil {
 			return err
 		}
@@ -129,7 +135,7 @@ func (s *Store) ReserveStripeCheckout(ctx context.Context, owner, token string, 
 		if err != nil {
 			return err
 		}
-		_, err = tx.ExecContext(ctx, s.bind(`INSERT INTO "verification" ("id","identifier","value","expiresAt","createdAt","updatedAt") VALUES(?,?,?,?,?,?)`), want.ID, "stripe-checkout:"+owner, string(data), s.date(time.Unix(want.Expires, 0)), s.date(now), s.date(now))
+		_, err = tx.ExecContext(ctx, s.bind(`INSERT INTO "verification" ("id","identifier","value","expiresAt","createdAt","updatedAt") VALUES(?,?,?,?,?,?)`), want.ID, stripeOwnerKey(ctx, "checkout", owner), string(data), s.date(time.Unix(want.Expires, 0)), s.date(now), s.date(now))
 		result = want
 		return err
 	})
@@ -140,14 +146,17 @@ func (s *Store) ReserveStripeCheckout(ctx context.Context, owner, token string, 
 // No SQL transaction encompasses a network call to Stripe.
 func (s *Store) checkCustomerOwner(ctx context.Context, tx *sql.Tx, owner, customer string) error {
 	var current sql.NullString
-	if err := tx.QueryRowContext(ctx, s.bind(`SELECT "stripeCustomerId" FROM "user" WHERE "id"=?`), owner).Scan(&current); err != nil {
+	if err := tx.QueryRowContext(ctx, s.bind(`SELECT "stripeCustomerId" FROM `+billingTable(ctx)+` WHERE "id"=?`), owner).Scan(&current); err != nil {
+		return err
+	}
+	if err := s.distinctStripeReference(ctx, tx, owner, customer); err != nil {
 		return err
 	}
 	if current.String != customer {
 		return billing.ErrCheckoutReconcile
 	}
 	var other bool
-	if err := tx.QueryRowContext(ctx, s.bind(`SELECT EXISTS(SELECT 1 FROM "user" WHERE "stripeCustomerId"=? AND "id"<>?)`), customer, owner).Scan(&other); err != nil {
+	if err := tx.QueryRowContext(ctx, s.bind(`SELECT EXISTS(SELECT 1 FROM `+billingTable(ctx)+` WHERE "stripeCustomerId"=? AND "id"<>?)`), customer, owner).Scan(&other); err != nil {
 		return err
 	}
 	if other {
@@ -174,20 +183,20 @@ func (s *Store) editCheckout(ctx context.Context, want billing.CheckoutAttempt, 
 		if err != nil {
 			return err
 		}
-		_, err = tx.ExecContext(ctx, s.bind(`UPDATE "verification" SET "value"=?,"updatedAt"=? WHERE "id"=? AND "identifier"=?`), string(data), s.date(now), a.ID, "stripe-checkout:"+a.Owner)
+		_, err = tx.ExecContext(ctx, s.bind(`UPDATE "verification" SET "value"=?,"updatedAt"=? WHERE "id"=? AND "identifier"=?`), string(data), s.date(now), a.ID, stripeOwnerKey(ctx, "checkout", a.Owner))
 		return err
 	})
 }
 func (s *Store) BindStripeCheckoutCustomer(ctx context.Context, want billing.CheckoutAttempt, token, customer string, now time.Time) error {
 	return s.editCheckout(ctx, want, token, now, func(tx *sql.Tx, a *billing.CheckoutAttempt) error {
 		var actual sql.NullString
-		if err := tx.QueryRowContext(ctx, s.bind(`SELECT "stripeCustomerId" FROM "user" WHERE "id"=?`), a.Owner).Scan(&actual); err != nil {
+		if err := tx.QueryRowContext(ctx, s.bind(`SELECT "stripeCustomerId" FROM `+billingTable(ctx)+` WHERE "id"=?`), a.Owner).Scan(&actual); err != nil {
 			return err
 		}
 		if (actual.String != "" && actual.String != customer) || (a.Customer != "" && a.Customer != customer) || customer == "" {
 			return billing.ErrCheckoutReconcile
 		}
-		_, err := tx.ExecContext(ctx, s.bind(`UPDATE "user" SET "stripeCustomerId"=? WHERE "id"=?`), customer, a.Owner)
+		_, err := tx.ExecContext(ctx, s.bind(`UPDATE `+billingTable(ctx)+` SET "stripeCustomerId"=? WHERE "id"=?`), customer, a.Owner)
 		if err != nil {
 			return err
 		}
@@ -203,6 +212,9 @@ func (s *Store) SaveStripeCheckoutResult(ctx context.Context, want billing.Check
 	return s.editCheckout(ctx, want, token, now, func(tx *sql.Tx, a *billing.CheckoutAttempt) error {
 		if a.Customer == "" || a.Customer != want.Customer || (a.CheckoutID != "" && a.CheckoutID != id) {
 			return billing.ErrCheckoutReconcile
+		}
+		if err := s.checkCustomerOwner(ctx, tx, a.Owner, a.Customer); err != nil {
+			return err
 		}
 		a.CheckoutID, a.CheckoutURL = id, url
 		return nil
@@ -235,7 +247,7 @@ func (s *Store) applyStripeCheckout(ctx context.Context, want billing.CheckoutAt
 			return billing.ErrCheckoutReconcile
 		}
 		var customer sql.NullString
-		if err := tx.QueryRowContext(ctx, s.bind(`SELECT "stripeCustomerId" FROM "user" WHERE "id"=?`), a.Owner).Scan(&customer); err != nil {
+		if err := tx.QueryRowContext(ctx, s.bind(`SELECT "stripeCustomerId" FROM `+billingTable(ctx)+` WHERE "id"=?`), a.Owner).Scan(&customer); err != nil {
 			return err
 		}
 		if customer.String == "" || customer.String != a.Customer {
@@ -292,7 +304,23 @@ func (s *Store) ListStripeSubscriptions(ctx context.Context, owner, token string
 		return nil, billing.ErrCheckoutSession
 	}
 	err := s.billingTransaction(ctx, owner, token, now, func(tx *sql.Tx) error {
-		rows, err := tx.QueryContext(ctx, s.bind(`SELECT `+subscriptionFields+` FROM "subscription" WHERE "referenceId"=? AND "status" IN ('active','trialing') ORDER BY "id"`), owner)
+		query := `SELECT ` + subscriptionFields + ` FROM "subscription" WHERE "referenceId"=? AND "status" IN ('active','trialing')`
+		args := []any{owner}
+		if _, ok := billing.OrganizationFromContext(ctx); ok {
+			var customer sql.NullString
+			if err := tx.QueryRowContext(ctx, s.bind(`SELECT "stripeCustomerId" FROM "organization" WHERE "id"=?`), owner).Scan(&customer); err != nil {
+				return err
+			}
+			if !customer.Valid || customer.String == "" {
+				return nil
+			}
+			if err := s.checkCustomerOwner(ctx, tx, owner, customer.String); err != nil {
+				return err
+			}
+			query += ` AND "stripeCustomerId"=?`
+			args = append(args, customer.String)
+		}
+		rows, err := tx.QueryContext(ctx, s.bind(query+` ORDER BY "id"`), args...)
 		if err != nil {
 			return err
 		}

@@ -1003,3 +1003,8 @@ test("the published client passes one-request authorization options for social s
   const { authorizationParameters } = await import("./social-signup.mjs");
   await authorizationParameters(t, { reference, goFixture, instrument });
 });
+
+test("organization billing selects the authorized customer and reconciles its recurring plan", async t => {
+  const { organizationBilling } = await import("./stripe-organization-fixture.mjs");
+  await organizationBilling(t, { reference, goFixture, instrument });
+});

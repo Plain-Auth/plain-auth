@@ -15,7 +15,8 @@
     "two-factor",
     "username",
     "username-only",
-    "scim"
+    "scim",
+    "stripe-organization"
   ],
   "dialects": {
     "sqlite": [
@@ -94,7 +95,8 @@
           {
             "sql": "\"stripeCustomerId\" text",
             "profiles": [
-              "stripe-subscriptions"
+              "stripe-subscriptions",
+              "stripe-organization"
             ]
           },
           {
@@ -155,7 +157,8 @@
             "sql": "\"activeOrganizationId\" text",
             "profiles": [
               "organization",
-              "organization-teams"
+              "organization-teams",
+              "stripe-organization"
             ]
           },
           {
@@ -378,7 +381,8 @@
         "sql": "create table \"organization\"",
         "profiles": [
           "organization",
-          "organization-teams"
+          "organization-teams",
+          "stripe-organization"
         ],
         "columns": [
           {
@@ -398,6 +402,12 @@
           },
           {
             "sql": "\"metadata\" text"
+          },
+          {
+            "sql": "\"stripeCustomerId\" text",
+            "profiles": [
+              "stripe-organization"
+            ]
           }
         ]
       },
@@ -454,7 +464,8 @@
         "sql": "create table \"member\"",
         "profiles": [
           "organization",
-          "organization-teams"
+          "organization-teams",
+          "stripe-organization"
         ],
         "columns": [
           {
@@ -478,7 +489,8 @@
         "sql": "create table \"invitation\"",
         "profiles": [
           "organization",
-          "organization-teams"
+          "organization-teams",
+          "stripe-organization"
         ],
         "columns": [
           {
@@ -557,7 +569,8 @@
       {
         "sql": "create table \"subscription\"",
         "profiles": [
-          "stripe-subscriptions"
+          "stripe-subscriptions",
+          "stripe-organization"
         ],
         "columns": [
           {
@@ -1004,28 +1017,32 @@
         "sql": "create index \"member_organizationId_idx\" on \"member\" (\"organizationId\");",
         "profiles": [
           "organization",
-          "organization-teams"
+          "organization-teams",
+          "stripe-organization"
         ]
       },
       {
         "sql": "create index \"member_userId_idx\" on \"member\" (\"userId\");",
         "profiles": [
           "organization",
-          "organization-teams"
+          "organization-teams",
+          "stripe-organization"
         ]
       },
       {
         "sql": "create index \"invitation_organizationId_idx\" on \"invitation\" (\"organizationId\");",
         "profiles": [
           "organization",
-          "organization-teams"
+          "organization-teams",
+          "stripe-organization"
         ]
       },
       {
         "sql": "create index \"invitation_email_idx\" on \"invitation\" (\"email\");",
         "profiles": [
           "organization",
-          "organization-teams"
+          "organization-teams",
+          "stripe-organization"
         ]
       },
       {
@@ -1243,7 +1260,8 @@
           {
             "sql": "\"stripeCustomerId\" text",
             "profiles": [
-              "stripe-subscriptions"
+              "stripe-subscriptions",
+              "stripe-organization"
             ]
           },
           {
@@ -1304,7 +1322,8 @@
             "sql": "\"activeOrganizationId\" text",
             "profiles": [
               "organization",
-              "organization-teams"
+              "organization-teams",
+              "stripe-organization"
             ]
           },
           {
@@ -1527,7 +1546,8 @@
         "sql": "create table \"organization\"",
         "profiles": [
           "organization",
-          "organization-teams"
+          "organization-teams",
+          "stripe-organization"
         ],
         "columns": [
           {
@@ -1547,6 +1567,12 @@
           },
           {
             "sql": "\"metadata\" text"
+          },
+          {
+            "sql": "\"stripeCustomerId\" text",
+            "profiles": [
+              "stripe-organization"
+            ]
           }
         ]
       },
@@ -1603,7 +1629,8 @@
         "sql": "create table \"member\"",
         "profiles": [
           "organization",
-          "organization-teams"
+          "organization-teams",
+          "stripe-organization"
         ],
         "columns": [
           {
@@ -1627,7 +1654,8 @@
         "sql": "create table \"invitation\"",
         "profiles": [
           "organization",
-          "organization-teams"
+          "organization-teams",
+          "stripe-organization"
         ],
         "columns": [
           {
@@ -1706,7 +1734,8 @@
       {
         "sql": "create table \"subscription\"",
         "profiles": [
-          "stripe-subscriptions"
+          "stripe-subscriptions",
+          "stripe-organization"
         ],
         "columns": [
           {
@@ -2153,28 +2182,32 @@
         "sql": "create index \"member_organizationId_idx\" on \"member\" (\"organizationId\");",
         "profiles": [
           "organization",
-          "organization-teams"
+          "organization-teams",
+          "stripe-organization"
         ]
       },
       {
         "sql": "create index \"member_userId_idx\" on \"member\" (\"userId\");",
         "profiles": [
           "organization",
-          "organization-teams"
+          "organization-teams",
+          "stripe-organization"
         ]
       },
       {
         "sql": "create index \"invitation_organizationId_idx\" on \"invitation\" (\"organizationId\");",
         "profiles": [
           "organization",
-          "organization-teams"
+          "organization-teams",
+          "stripe-organization"
         ]
       },
       {
         "sql": "create index \"invitation_email_idx\" on \"invitation\" (\"email\");",
         "profiles": [
           "organization",
-          "organization-teams"
+          "organization-teams",
+          "stripe-organization"
         ]
       },
       {
@@ -2392,7 +2425,8 @@
           {
             "sql": "`stripeCustomerId` text",
             "profiles": [
-              "stripe-subscriptions"
+              "stripe-subscriptions",
+              "stripe-organization"
             ]
           },
           {
@@ -2453,7 +2487,8 @@
             "sql": "`activeOrganizationId` text",
             "profiles": [
               "organization",
-              "organization-teams"
+              "organization-teams",
+              "stripe-organization"
             ]
           },
           {
@@ -2676,7 +2711,8 @@
         "sql": "create table `organization`",
         "profiles": [
           "organization",
-          "organization-teams"
+          "organization-teams",
+          "stripe-organization"
         ],
         "columns": [
           {
@@ -2696,6 +2732,12 @@
           },
           {
             "sql": "`metadata` text"
+          },
+          {
+            "sql": "`stripeCustomerId` text",
+            "profiles": [
+              "stripe-organization"
+            ]
           }
         ]
       },
@@ -2752,7 +2794,8 @@
         "sql": "create table `member`",
         "profiles": [
           "organization",
-          "organization-teams"
+          "organization-teams",
+          "stripe-organization"
         ],
         "columns": [
           {
@@ -2776,7 +2819,8 @@
         "sql": "create table `invitation`",
         "profiles": [
           "organization",
-          "organization-teams"
+          "organization-teams",
+          "stripe-organization"
         ],
         "columns": [
           {
@@ -2855,7 +2899,8 @@
       {
         "sql": "create table `subscription`",
         "profiles": [
-          "stripe-subscriptions"
+          "stripe-subscriptions",
+          "stripe-organization"
         ],
         "columns": [
           {
@@ -3302,28 +3347,32 @@
         "sql": "create index `member_organizationId_idx` on `member` (`organizationId`);",
         "profiles": [
           "organization",
-          "organization-teams"
+          "organization-teams",
+          "stripe-organization"
         ]
       },
       {
         "sql": "create index `member_userId_idx` on `member` (`userId`);",
         "profiles": [
           "organization",
-          "organization-teams"
+          "organization-teams",
+          "stripe-organization"
         ]
       },
       {
         "sql": "create index `invitation_organizationId_idx` on `invitation` (`organizationId`);",
         "profiles": [
           "organization",
-          "organization-teams"
+          "organization-teams",
+          "stripe-organization"
         ]
       },
       {
         "sql": "create index `invitation_email_idx` on `invitation` (`email`);",
         "profiles": [
           "organization",
-          "organization-teams"
+          "organization-teams",
+          "stripe-organization"
         ]
       },
       {

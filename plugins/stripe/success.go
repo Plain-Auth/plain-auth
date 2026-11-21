@@ -56,7 +56,7 @@ func validCheckoutID(id string) bool {
 
 func (s *subscriptions) checkoutSuccess(c auth.EndpointContext) (any, error) {
 	q, err := url.ParseQuery(c.Request.URL.RawQuery)
-	if err != nil || len(q["callbackURL"]) > 1 || len(q["checkoutSessionId"]) > 1 {
+	if err != nil || len(q["callbackURL"]) > 1 || len(q["checkoutSessionId"]) > 1 || len(q["organizationId"]) > 1 {
 		return nil, billingError(400, "VALIDATION_ERROR", "Invalid checkout return query")
 	}
 	callback, err := c.Auth.CallbackURL(q.Get("callbackURL"))
@@ -90,7 +90,16 @@ func (s *subscriptions) checkoutSuccess(c auth.EndpointContext) (any, error) {
 	if !ok {
 		return nil, billingError(400, "CHECKOUT_RETURN_UNAVAILABLE", "Checkout return confirmation is unavailable")
 	}
-	returned, err := store.FindStripeCheckoutReturn(ctx, session.User.ID, session.Session.Token, id, time.Now())
+	reference := session.User.ID
+	if id := q.Get("organizationId"); id != "" {
+		if s.organization == nil || s.organization.AuthorizeReference == nil {
+			return nil, ErrOrganizationBillingAccess
+		}
+		c = withOrganization(c, OrganizationScope{ID: id, Actor: session.User.ID, Session: session.Session.ID, Action: "upgrade-subscription", Authorize: s.organization.AuthorizeReference})
+		ctx = c.Request.Context()
+		reference = id
+	}
+	returned, err := store.FindStripeCheckoutReturn(ctx, reference, session.Session.Token, id, time.Now())
 	if errors.Is(err, auth.ErrNotFound) {
 		return nil, billingError(404, "CHECKOUT_SESSION_NOT_FOUND", "Checkout session not found")
 	}
@@ -98,7 +107,7 @@ func (s *subscriptions) checkoutSuccess(c auth.EndpointContext) (any, error) {
 		return nil, err
 	}
 	a := returned.Attempt
-	if (q.Get("callbackURL") != "" && callback != a.SuccessURL) || a.CheckoutID != id || a.Owner != session.User.ID {
+	if (q.Get("callbackURL") != "" && callback != a.SuccessURL) || a.CheckoutID != id || a.Owner != reference {
 		return nil, billingError(403, "INVALID_CHECKOUT_RETURN", "Invalid checkout return")
 	}
 	if returned.Settled {
@@ -134,8 +143,14 @@ func (s *subscriptions) checkoutSuccess(c auth.EndpointContext) (any, error) {
 
 func checkoutMatches(a CheckoutAttempt, c *sdk.CheckoutSession) bool {
 	return c.Object == "checkout.session" && c.ID != "" && c.Customer != nil && c.Customer.ID == a.Customer && c.ClientReferenceID == a.Owner &&
-		c.Metadata["userId"] == a.Owner && c.Metadata["referenceId"] == a.Owner && c.Metadata["subscriptionId"] == a.LocalSubscription &&
-		c.Metadata["checkoutAttemptId"] == a.ID && (a.CheckoutID == "" || a.CheckoutID == c.ID)
+		checkoutMetadataMatches(a, c.Metadata) && (a.CheckoutID == "" || a.CheckoutID == c.ID)
+}
+
+func checkoutMetadataMatches(a CheckoutAttempt, meta map[string]string) bool {
+	if a.OrganizationID != "" && (meta["customerType"] != "organization" || meta["organizationId"] != a.OrganizationID) {
+		return false
+	}
+	return meta["userId"] == a.creator() && meta["referenceId"] == a.Owner && meta["subscriptionId"] == a.LocalSubscription && meta["checkoutAttemptId"] == a.ID
 }
 
 func (s *subscriptions) checkoutReceipt(ctx context.Context, a CheckoutAttempt, remote string, live bool) (CheckoutReceipt, error) {
@@ -143,7 +158,7 @@ func (s *subscriptions) checkoutReceipt(ctx context.Context, a CheckoutAttempt, 
 	if err != nil {
 		return CheckoutReceipt{}, err
 	}
-	if sub == nil || sub.Object != "subscription" || sub.ID != remote || sub.Livemode != live || sub.Customer == nil || sub.Customer.ID != a.Customer || sub.Status == "" || sub.Metadata["subscriptionId"] != a.LocalSubscription || sub.Metadata["checkoutAttemptId"] != a.ID || sub.Metadata["referenceId"] != a.Owner || sub.Metadata["userId"] != a.Owner || sub.Items == nil || len(sub.Items.Data) != 1 || sub.Items.HasMore {
+	if sub == nil || sub.Object != "subscription" || sub.ID != remote || sub.Livemode != live || sub.Customer == nil || sub.Customer.ID != a.Customer || sub.Status == "" || !checkoutMetadataMatches(a, sub.Metadata) || sub.Items == nil || len(sub.Items.Data) != 1 || sub.Items.HasMore {
 		return CheckoutReceipt{}, ErrCheckoutReconcile
 	}
 	item := sub.Items.Data[0]

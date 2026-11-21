@@ -5,6 +5,7 @@ package stripe
 import (
 	"context"
 	"net/http"
+	"net/url"
 
 	"github.com/Stonewrit/stonewrit-auth/client"
 	billing "github.com/Stonewrit/stonewrit-auth/plugins/stripe"
@@ -14,6 +15,8 @@ import (
 type Client struct{ Auth *client.Client }
 
 type Checkout struct {
+	CustomerType        string `json:"customerType,omitempty"`
+	ReferenceID         string `json:"referenceId,omitempty"`
 	Plan                string `json:"plan"`
 	ScheduleAtPeriodEnd bool   `json:"scheduleAtPeriodEnd,omitempty"`
 	Annual              bool   `json:"annual,omitempty"`
@@ -37,6 +40,8 @@ type Cancellation struct {
 }
 
 type Portal struct {
+	CustomerType    string `json:"customerType,omitempty"`
+	ReferenceID     string `json:"referenceId,omitempty"`
 	ReturnURL       string `json:"returnUrl,omitempty"`
 	Locale          string `json:"locale,omitempty"`
 	DisableRedirect bool   `json:"disableRedirect,omitempty"`
@@ -51,6 +56,17 @@ func (c Client) Upgrade(ctx context.Context, in Checkout) (HostedPage, error) {
 func (c Client) List(ctx context.Context) ([]billing.Subscription, error) {
 	var rows []billing.Subscription
 	err := c.Auth.Do(ctx, http.MethodGet, "/subscription/list", nil, &rows)
+	return rows, err
+}
+
+// ListOrganization lists subscriptions for an explicit or active organization.
+func (c Client) ListOrganization(ctx context.Context, id string) ([]billing.Subscription, error) {
+	q := url.Values{"customerType": {"organization"}}
+	if id != "" {
+		q.Set("referenceId", id)
+	}
+	var rows []billing.Subscription
+	err := c.Auth.Do(ctx, http.MethodGet, "/subscription/list?"+q.Encode(), nil, &rows)
 	return rows, err
 }
 

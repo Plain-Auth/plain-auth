@@ -34,7 +34,7 @@ func stripeRecordID(purpose, value string) string {
 func (s *Store) subscriptionRevision(ctx context.Context, db stripeCatalog, key billing.SubscriptionIdentity) (billing.SubscriptionRevision, stripeCursor, error) {
 	var r billing.SubscriptionRevision
 	var cursor stripeCursor
-	owners, err := db.QueryContext(ctx, s.bind(`SELECT "id","stripeCustomerId" FROM "user" WHERE "stripeCustomerId"=? LIMIT 2`), key.CustomerID)
+	owners, err := db.QueryContext(ctx, s.bind(`SELECT "id","stripeCustomerId" FROM `+billingTable(ctx)+` WHERE "stripeCustomerId"=? LIMIT 2`), key.CustomerID)
 	if err != nil {
 		return r, cursor, err
 	}
@@ -57,6 +57,11 @@ func (s *Store) subscriptionRevision(ctx context.Context, db stripeCatalog, key 
 	owners.Close()
 	if err != nil {
 		return r, cursor, err
+	}
+	if r.Owner != "" {
+		if err := s.distinctStripeReference(ctx, db, r.Owner, key.CustomerID); err != nil {
+			return r, cursor, err
+		}
 	}
 	rows, err := db.QueryContext(ctx, s.bind(`SELECT "id","referenceId","stripeCustomerId","stripeSubscriptionId" FROM "subscription" WHERE "stripeSubscriptionId"=? LIMIT 2`), key.RemoteID)
 	if err != nil {
@@ -95,7 +100,7 @@ func (s *Store) subscriptionRevision(ctx context.Context, db stripeCatalog, key 
 	if err != nil {
 		return r, cursor, err
 	}
-	if identifier != "stripe-sync:"+r.Owner {
+	if identifier != stripeOwnerKey(ctx, "sync", r.Owner) {
 		return r, cursor, billing.ErrCheckoutReconcile
 	}
 	if err := json.Unmarshal(raw, &cursor); err != nil {
@@ -110,7 +115,7 @@ func (s *Store) subscriptionRevision(ctx context.Context, db stripeCatalog, key 
 		var receivedRemote, receivedBy string
 		err = db.QueryRowContext(ctx, s.bind(`SELECT "identifier","value" FROM "verification" WHERE "id"=? AND "expiresAt">?`), stripeRecordID("event", key.EventID), s.date(time.Now())).Scan(&receivedBy, &receivedRemote)
 		if err == nil {
-			if receivedBy != "stripe-event:"+r.Owner || receivedRemote != key.RemoteID {
+			if receivedBy != stripeOwnerKey(ctx, "event", r.Owner) || receivedRemote != key.RemoteID {
 				return r, cursor, billing.ErrCheckoutReconcile
 			}
 			r.Skip = true
@@ -156,7 +161,7 @@ func (s *Store) ApplyStripeSubscriptionChange(ctx context.Context, key billing.S
 		currentTime := time.Now().UTC()
 		now := s.date(currentTime)
 		if key.EventID != "" {
-			identifier := "stripe-event:" + r.Owner
+			identifier := stripeOwnerKey(ctx, "event", r.Owner)
 			if _, err = tx.ExecContext(ctx, s.bind(`DELETE FROM "verification" WHERE "identifier"=? AND "expiresAt"<=?`), identifier, now); err != nil {
 				return err
 			}
@@ -169,7 +174,7 @@ func (s *Store) ApplyStripeSubscriptionChange(ctx context.Context, key billing.S
 		} else {
 			// Keep the terminal fence for the lifetime of the customer mapping.
 			until := s.date(time.Unix(1<<31-1, 0)) // maximum portable MySQL TIMESTAMP
-			_, err = tx.ExecContext(ctx, s.bind(`INSERT INTO "verification" ("id","identifier","value","expiresAt","createdAt","updatedAt") VALUES(?,?,?,?,?,?)`), id, "stripe-sync:"+r.Owner, string(data), until, now, now)
+			_, err = tx.ExecContext(ctx, s.bind(`INSERT INTO "verification" ("id","identifier","value","expiresAt","createdAt","updatedAt") VALUES(?,?,?,?,?,?)`), id, stripeOwnerKey(ctx, "sync", r.Owner), string(data), until, now, now)
 		}
 		return err
 	})
@@ -177,7 +182,16 @@ func (s *Store) ApplyStripeSubscriptionChange(ctx context.Context, key billing.S
 
 func (s *Store) applyCurrentSubscription(ctx context.Context, tx *sql.Tx, key billing.SubscriptionIdentity, r billing.SubscriptionRevision, c billing.SubscriptionChange) error {
 	meta := c.Metadata
-	if (meta["customerType"] != "" && meta["customerType"] != "user") || (meta["userId"] != "" && meta["userId"] != r.Owner) || (meta["referenceId"] != "" && meta["referenceId"] != r.Owner) {
+	org, isOrg := billing.OrganizationFromContext(ctx)
+	if isOrg {
+		if (meta["customerType"] != "" && meta["customerType"] != "organization") || (meta["organizationId"] != "" && meta["organizationId"] != org.ID) ||
+			(meta["userId"] != "" && meta["organizationId"] == "" && meta["referenceId"] == "") {
+			return billing.ErrCheckoutReconcile
+		}
+	} else if (meta["customerType"] != "" && meta["customerType"] != "user") || meta["organizationId"] != "" || (meta["userId"] != "" && meta["userId"] != r.Owner) {
+		return billing.ErrCheckoutReconcile
+	}
+	if meta["referenceId"] != "" && meta["referenceId"] != r.Owner {
 		return billing.ErrCheckoutReconcile
 	}
 	id := r.LocalID
@@ -195,7 +209,11 @@ func (s *Store) applyCurrentSubscription(ctx context.Context, tx *sql.Tx, key bi
 		if err != nil {
 			return err
 		}
-		if a.ID != meta["checkoutAttemptId"] || a.LocalSubscription != claim || a.Customer != key.CustomerID || a.Owner != r.Owner || meta["userId"] != r.Owner || meta["referenceId"] != r.Owner {
+		actor := r.Owner
+		if isOrg {
+			actor = a.ActorID
+		}
+		if a.ID != meta["checkoutAttemptId"] || a.LocalSubscription != claim || a.Customer != key.CustomerID || a.Owner != r.Owner || meta["userId"] != actor || meta["referenceId"] != r.Owner {
 			return billing.ErrCheckoutReconcile
 		}
 		var current sql.NullString
