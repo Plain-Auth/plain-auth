@@ -11,12 +11,13 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
-	"path"
 	"regexp"
 	"runtime"
 	"strings"
 	"time"
 	"unicode/utf16"
+
+	"github.com/nabuhadba/go-better-auth/internal/configenv"
 )
 
 // Auth is safe for concurrent use by application handlers.
@@ -53,23 +54,17 @@ func New(opts Options) (*Auth, error) {
 	if len(opts.Secret) < 32 {
 		return nil, errors.New("authn: Secret needs at least 32 bytes")
 	}
-	origin, err := parseOrigin(opts.BaseURL)
+	var err error
+	opts.BaseURL, opts.BasePath, err = configenv.ServerEndpoint(opts.BaseURL, opts.BasePath)
 	if err != nil {
 		return nil, fmt.Errorf("authn: BaseURL: %w", err)
 	}
-	opts.BaseURL = origin
 	for i, s := range opts.TrustedOrigins {
 		origin, err := parseOrigin(s)
 		if err != nil {
 			return nil, fmt.Errorf("authn: TrustedOrigins[%d]: %w", i, err)
 		}
 		opts.TrustedOrigins[i] = origin
-	}
-	if opts.BasePath == "" {
-		opts.BasePath = "/api/auth"
-	}
-	if !strings.HasPrefix(opts.BasePath, "/") || path.Clean(opts.BasePath) != opts.BasePath || strings.ContainsAny(opts.BasePath, "?#%\\ \t\r\n") {
-		return nil, errors.New("authn: BasePath must be a clean absolute URL path")
 	}
 	if opts.SessionTTL == 0 {
 		opts.SessionTTL = 7 * 24 * time.Hour

@@ -7,11 +7,12 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"net/url"
 	"os"
 	"path/filepath"
 	"runtime"
 	"runtime/debug"
+
+	"github.com/nabuhadba/go-better-auth/internal/configenv"
 )
 
 func generateSecret() string { var b [32]byte; rand.Read(b[:]); return hex.EncodeToString(b[:]) }
@@ -30,9 +31,8 @@ func initConfig(args []string, out, errOut io.Writer) error {
 	if fs.NArg() != 0 {
 		return errors.New("unexpected positional argument")
 	}
-	u, err := url.Parse(*public)
-	if err != nil || u.Hostname() == "" || (u.Scheme != "http" && u.Scheme != "https") || u.User != nil || u.Fragment != "" || u.RawQuery != "" {
-		return errors.New("init: expected a public HTTP(S) URL")
+	if _, _, err := configenv.ServerEndpoint(*public, ""); err != nil {
+		return fmt.Errorf("init: %w", err)
 	}
 	// The generated file is sourceable by a POSIX shell. Restrict the value
 	// to URL characters that can be written safely as a single-quoted value.

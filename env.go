@@ -3,7 +3,6 @@ package authn
 import (
 	"errors"
 	"fmt"
-	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -65,15 +64,6 @@ func resolveEnvironment(opts *Options) error {
 	}
 	if opts.BaseURL == "" {
 		opts.BaseURL = configenv.BaseURL()
-	}
-	// A configured URL can include a mount path. A separately specified
-	// BasePath wins to support routers that mount the handler elsewhere.
-	if u, err := url.Parse(opts.BaseURL); err == nil && u.Host != "" && u.Path != "" && u.Path != "/" {
-		if opts.BasePath == "" {
-			opts.BasePath = strings.TrimRight(u.EscapedPath(), "/")
-		}
-		u.Path, u.RawPath = "", ""
-		opts.BaseURL = u.String()
 	}
 	opts.TrustedOrigins = append([]string(nil), opts.TrustedOrigins...)
 	if raw := first("BETTER_AUTH_TRUSTED_ORIGINS", "AUTH_TRUSTED_ORIGINS"); raw != "" {
