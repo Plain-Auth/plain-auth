@@ -6,6 +6,21 @@ import { fileURLToPath } from "node:url";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
 
+test("the feature index counts every checkbox on each linked checklist", () => {
+  const directory = join(root, "docs/parity");
+  const index = readFileSync(join(directory, "README.md"), "utf8");
+  const expected = readdirSync(directory, {recursive: true}).filter(path => path.endsWith(".md") && path !== "README.md");
+  const listed = [];
+  for (const row of index.matchAll(/^\| \[[^\]]+\]\(([^)]+)\) \| (\d+) \| (\d+) \|$/gm)) {
+    const [, path, checked, open] = row;
+    const lines = readFileSync(join(directory, path), "utf8").split("\n").map(line => line.trimStart());
+    assert.equal(Number(checked), lines.filter(line => line.startsWith("- [x] ")).length, path);
+    assert.equal(Number(open), lines.filter(line => line.startsWith("- [ ] ")).length, path);
+    listed.push(path);
+  }
+  assert.deepEqual(listed.sort(), expected.sort());
+});
+
 test("the passkey checklist distinguishes browser actions from their HTTP endpoints", () => {
   const page = readFileSync(join(root, "docs/parity/plugins/passkey.md"), "utf8");
   for (const action of ["passkey.addPasskey", "signIn.passkey"]) {

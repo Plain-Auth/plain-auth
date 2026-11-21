@@ -356,9 +356,17 @@ for (const { name } of community) {
   communityPage.push(pending(inline(label || name)));
 }
 communityPage.push("");
+const progressHeader = ["| Checklist | Checked | Open |", "| --- | ---: | ---: |"];
+function progressRow(title, path) {
+  const checklist = renderChecklist(pages.get(path));
+  const checked = checklist.match(/^ *- \[x\] /gm)?.length ?? 0;
+  const open = checklist.match(/^ *- \[ \] /gm)?.length ?? 0;
+  return `| [${title}](${path}) | ${checked} | ${open} |`;
+}
 const index = [
   "# Feature checklist", "",
   "A checked item links to a local test for that behavior. An open parent means the feature still has unverified cases. Browser, protocol and storage options each have their own checkboxes.", "",
+  "Browse [authentication, storage and tools](#authentication-storage-and-tools), [plugins](#plugins-and-integrations) or [third-party integrations](#third-party-integrations). Each table counts the checked and open boxes on its linked pages, including individual options and tested scenarios. A behavior can appear in more than one checklist.", "",
   "## Implementation guides", "",
   "| Capability | Documentation |", "| --- | --- |",
   "| Credentials, cookies and session lifecycle | [Authentication](../authentication.md) · [Account management](../account.md) |",
@@ -374,6 +382,7 @@ const index = [
   "| TOTP enrollment, challenge verification and backup codes | [Two-factor authentication](../2fa.md) |",
   "| Runtime settings, key rotation and startup | [Environment](../environment.md) |",
   "| OAuth sign-in, identity verification and account linking | [Social providers](../social.md) |",
+  "| Enterprise provider registration, browser sign-in and organization membership | [Enterprise OpenID Connect](../sso.md) |",
   "| Go client and router integrations | [HTTP client](../client.md) · [Routers](../routers.md) |",
   "| Memory, SQLite, PostgreSQL and MySQL | [Databases](../databases.md) · [Schema generation and migrations](../schema.md) |",
   "| Username registration, sign-in and availability | [Username sign-in](../username.md) |",
@@ -388,13 +397,16 @@ const index = [
   "| Share rate limits and store short-lived application values in Redis | [Redis secondary storage](../redis.md) |",
   "| Describe installed HTTP endpoints and render their reference | [OpenAPI](../openapi.md) |",
   "| Extension hooks, bearer sessions and login method | [Plugins](../plugins.md) |", "",
-  "## Authentication, storage and tools", "", pending("[Published package interfaces](packages.md)"), pending("[Native Go client, routers and databases](go.md)"), pending("[Core API, sign-in providers and CLI](runtime.md)"),
+  "## Authentication, storage and tools", "", ...progressHeader,
+  progressRow("Published package interfaces", "packages.md"),
+  progressRow("Native Go client, routers and databases", "go.md"),
+  progressRow("Core API, sign-in providers and CLI", "runtime.md"),
 ];
-for (const group of [...groups.keys()].sort()) index.push(pending("[" + (groupNames[group] || group) + "](" + group + ".md)"));
-index.push("", "## Plugins and integrations", "");
-for (const slug of [...pluginPages.keys()].filter((slug) => !external.has(slug)).sort()) index.push(pending("[" + pluginTitle(slug) + "](plugins/" + slug + ".md)"));
-index.push("", "## Third-party integrations", "", "These integrations have independent release cycles.", "");
-for (const slug of [...external].sort()) index.push(pending("[" + pluginTitle(slug) + "](plugins/" + slug + ".md)"));
+for (const group of [...groups.keys()].sort()) index.push(progressRow(groupNames[group] || group, group + ".md"));
+index.push("", "## Plugins and integrations", "", ...progressHeader);
+for (const slug of [...pluginPages.keys()].filter((slug) => !external.has(slug)).sort()) index.push(progressRow(pluginTitle(slug), "plugins/" + slug + ".md"));
+index.push("", "## Third-party integrations", "", "These integrations have independent release cycles.", "", ...progressHeader);
+for (const slug of [...external].sort()) index.push(progressRow(pluginTitle(slug), "plugins/" + slug + ".md"));
 index.push("");
 pages.set("README.md", index);
 for (const [name, lines] of pages) {
