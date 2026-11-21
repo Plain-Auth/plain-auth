@@ -5390,6 +5390,11 @@
       "label": "Verify a first-use number, suppress session creation, link to an owner and reject reuse",
       "test": "conformance/phone-contract.mjs",
       "marker": "assert.equal(linked.data.token,previous)"
+    },
+    {
+      "label": "Count an incorrect anonymous link attempt, spend a correct proof and keep the caller signed out on both servers",
+      "test": "conformance/phone-contract.mjs",
+      "marker": "assert.equal(denied.error.code,\"USER_NOT_FOUND\")"
     }
   ],
   "plugin/phone-number/POST /phone-number/request-password-reset": [

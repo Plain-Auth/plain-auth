@@ -2,6 +2,7 @@ package sqlstore
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -57,10 +58,19 @@ func TestPhoneAccounts(t *testing.T) {
 			v := auth.PhoneVerificationInput{PhoneNumber: number, Code: msg.Code, DisableSession: true}
 			unauthed := v
 			unauthed.UpdatePhoneNumber = true
+			unauthed.Code = "wrong"
 			_, err = browser.VerifyPhoneNumber(ctx, unauthed)
-			if err == nil {
-				t.Fatal("unauthenticated phone link allowed")
+			phoneError(t, err, 400, "INVALID_OTP")
+			unauthed.Code = v.Code
+			_, err = browser.VerifyPhoneNumber(ctx, unauthed)
+			phoneError(t, err, 401, "USER_NOT_FOUND")
+			_, err = browser.VerifyPhoneNumber(ctx, v)
+			phoneError(t, err, 400, "OTP_NOT_FOUND")
+			if _, err = store.(auth.AccountStore).FindAccountUser(ctx, "12025550199@phone.test"); !errors.Is(err, auth.ErrNotFound) {
+				t.Fatal("anonymous failed link created an account", err)
 			}
+			must(browser.SendPhoneNumberOTP(ctx, number))
+			v.Code = msg.Code
 			result, err := browser.VerifyPhoneNumber(ctx, v)
 			must(err)
 			if !result.Status || result.Token != nil || result.User.Name != "Phone user" || result.User.PhoneNumberFields == nil || *result.User.PhoneNumber != number || !*result.User.PhoneNumberVerified || result.User.EmailVerified {

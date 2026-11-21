@@ -12,38 +12,39 @@
   - [ ] `consumePhoneNumberOTP (server API only)`
     - [x] Spend a code exactly once across competing processes and keep the operation off HTTP ([test](../../../adapters/sqlstore/phone_test.go#L150))
   - [ ] `POST /sign-in/phone-number`
-    - [x] Return a session after a valid password and challenge an enrolled account ([test](../../../adapters/sqlstore/phone_accounts_test.go#L286))
+    - [x] Return a session after a valid password and challenge an enrolled account ([test](../../../adapters/sqlstore/phone_accounts_test.go#L296))
   - [ ] `POST /phone-number/send-otp`
     - [x] Deliver a fresh code through the Go SDK and persist its attempt counter ([test](../../../adapters/sqlstore/phone_test.go#L90))
   - [ ] `POST /phone-number/verify`
-    - [x] Verify a first-use number, suppress session creation, link to an owner and reject reuse ([test](../../../conformance/phone-contract.mjs#L59))
+    - [x] Verify a first-use number, suppress session creation, link to an owner and reject reuse ([test](../../../conformance/phone-contract.mjs#L68))
+    - [x] Count an incorrect anonymous link attempt, spend a correct proof and keep the caller signed out on both servers ([test](../../../conformance/phone-contract.mjs#L31))
   - [ ] `POST /phone-number/request-password-reset`
-    - [x] Hide unknown and unverified users from reset callers and suppress ineligible SMS ([test](../../../adapters/sqlstore/phone_accounts_test.go#L270))
+    - [x] Hide unknown and unverified users from reset callers and suppress ineligible SMS ([test](../../../adapters/sqlstore/phone_accounts_test.go#L280))
   - [ ] `POST /phone-number/reset-password`
-    - [x] Reset the verified owner’s credential once and reject a proof after ownership changes ([test](../../../adapters/sqlstore/phone_accounts_test.go#L138))
+    - [x] Reset the verified owner’s credential once and reject a proof after ownership changes ([test](../../../adapters/sqlstore/phone_accounts_test.go#L148))
   - [ ] `UserWithPhoneNumber`
-    - [x] Return the verified phone number and clear the verification flag on disassociation ([test](../../../conformance/phone-contract.mjs#L53))
+    - [x] Return the verified phone number and clear the verification flag on disassociation ([test](../../../conformance/phone-contract.mjs#L62))
   - [ ] `PhoneNumberOptions`
     - [ ] `otpLength`
     - [ ] `sendOTP`
       - [x] Deliver verification SMS via an injected callback ([test](../../../adapters/sqlstore/phone_test.go#L85))
     - [ ] `verifyOTP`
-      - [x] Bind a custom verifier’s decision to its original issuance ([test](../../../adapters/sqlstore/phone_accounts_test.go#L193))
+      - [x] Bind a custom verifier’s decision to its original issuance ([test](../../../adapters/sqlstore/phone_accounts_test.go#L203))
     - [ ] `sendPasswordResetOTP`
-      - [x] Deliver reset messages only for eligible accounts ([test](../../../adapters/sqlstore/phone_accounts_test.go#L85))
+      - [x] Deliver reset messages only for eligible accounts ([test](../../../adapters/sqlstore/phone_accounts_test.go#L95))
     - [ ] `expiresIn`
       - [x] Expire a proof then remove its storage row ([test](../../../adapters/sqlstore/phone_test.go#L144))
     - [ ] `phoneNumberValidator`
       - [x] Reject a number before invoking the delivery adapter ([test](../../../adapters/sqlstore/phone_test.go#L73))
     - [ ] `requireVerification`
-      - [x] Gate imported unverified phone credentials and request a verification proof ([test](../../../adapters/sqlstore/phone_accounts_test.go#L275))
+      - [x] Gate imported unverified phone credentials and request a verification proof ([test](../../../adapters/sqlstore/phone_accounts_test.go#L285))
     - [ ] `callbackOnVerification`
-      - [x] Run the callback on confirmed signup, existing-account verification and owner linking ([test](../../../adapters/sqlstore/phone_accounts_test.go#L142))
+      - [x] Run the callback on confirmed signup, existing-account verification and owner linking ([test](../../../adapters/sqlstore/phone_accounts_test.go#L152))
     - [ ] `signUpOnVerification`
-      - [x] Generate the first account’s unique email and name from its verified phone ([test](../../../adapters/sqlstore/phone_accounts_test.go#L67))
+      - [x] Generate the first account’s unique email and name from its verified phone ([test](../../../adapters/sqlstore/phone_accounts_test.go#L77))
     - [ ] `schema`
     - [ ] `allowedAttempts`
-      - [x] Honor a configured zero-attempt budget and default wrong-code limits ([test](../../../adapters/sqlstore/phone_accounts_test.go#L205))
+      - [x] Honor a configured zero-attempt budget and default wrong-code limits ([test](../../../adapters/sqlstore/phone_accounts_test.go#L215))
 
 ## Phone Number
 
@@ -54,7 +55,7 @@
       - [ ] `POST /phone-number/send-otp`
         - [ ] Parameter `phoneNumber`
     - [ ] Verify Phone Number
-      - [x] Verify without a session, then reject replay ([test](../../../conformance/phone-contract.mjs#L30))
+      - [x] Verify without a session, then reject replay ([test](../../../conformance/phone-contract.mjs#L39))
       - [ ] `POST /phone-number/verify`
         - [ ] Parameter `phoneNumber`
         - [ ] Parameter `code`
@@ -63,21 +64,21 @@
     - [ ] Consume an OTP on the Server
       - [x] Expose single-use verification to server applications without account actions ([test](../../../adapters/sqlstore/phone_test.go#L126))
     - [ ] Allow Sign-Up with Phone Number
-      - [x] Create a first-use account with configured email and name ([test](../../../adapters/sqlstore/phone_accounts_test.go#L67))
+      - [x] Create a first-use account with configured email and name ([test](../../../adapters/sqlstore/phone_accounts_test.go#L77))
     - [ ] Sign In with Phone Number
-      - [x] Sign in using the canonical account credential ([test](../../../conformance/phone-contract.mjs#L44))
+      - [x] Sign in using the canonical account credential ([test](../../../conformance/phone-contract.mjs#L53))
       - [ ] `POST /sign-in/phone-number`
         - [ ] Parameter `phoneNumber`
         - [ ] Parameter `password`
         - [ ] Parameter `rememberMe` (optional)
     - [ ] Update Phone Number
-      - [x] Keep the same authenticated session while linking a verified number ([test](../../../adapters/sqlstore/phone_accounts_test.go#L136))
+      - [x] Keep the same authenticated session while linking a verified number ([test](../../../adapters/sqlstore/phone_accounts_test.go#L146))
     - [ ] Remove Phone Number
-      - [x] Clear both the number and verified flag on the owner profile ([test](../../../adapters/sqlstore/phone_accounts_test.go#L128))
+      - [x] Clear both the number and verified flag on the owner profile ([test](../../../adapters/sqlstore/phone_accounts_test.go#L138))
     - [ ] Disable Session Creation
-      - [x] Verify without granting a session ([test](../../../adapters/sqlstore/phone_accounts_test.go#L72))
+      - [x] Verify without granting a session ([test](../../../adapters/sqlstore/phone_accounts_test.go#L82))
     - [ ] Request Password Reset
-      - [x] Reset a credential, revoke sessions and deny reuse ([test](../../../adapters/sqlstore/phone_accounts_test.go#L94))
+      - [x] Reset a credential, revoke sessions and deny reuse ([test](../../../adapters/sqlstore/phone_accounts_test.go#L104))
       - [ ] `POST /phone-number/request-password-reset`
         - [ ] Parameter `phoneNumber`
       - [ ] `POST /phone-number/reset-password`
@@ -91,7 +92,7 @@
     - [ ] `sendPasswordResetOTP`
     - [ ] `phoneNumberValidator`
     - [ ] `verifyOTP`
-      - [x] Reject a stale external verdict after another instance resends the code ([test](../../../adapters/sqlstore/phone_accounts_test.go#L193))
+      - [x] Reject a stale external verdict after another instance resends the code ([test](../../../adapters/sqlstore/phone_accounts_test.go#L203))
     - [ ] `signUpOnVerification`
       - [ ] `getTempEmail`
       - [ ] `getTempName`

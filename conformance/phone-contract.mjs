@@ -23,6 +23,15 @@ export async function comparePhone(t, { reference, goFixture, instrument }) {
     const password = "the-phone-password-349";
     assert.deepEqual((await browser.phoneNumber.requestPasswordReset({phoneNumber:number})).data, {status:true});
     assert.deepEqual((await browser.phoneNumber.sendOtp({phoneNumber:number})).data, {message:"code sent"});
+    const first = await delivered(number);
+    const unauthorized = (code) => browser.phoneNumber.verify({phoneNumber:number, code, updatePhoneNumber:true});
+    assert.equal((await unauthorized("incorrect")).error.code,"INVALID_OTP");
+    const denied = await unauthorized(first);
+    assert.equal(denied.error.status,401);
+    assert.equal(denied.error.code,"USER_NOT_FOUND");
+    assert.equal((await unauthorized(first)).error.code,"OTP_NOT_FOUND");
+    assert.equal((await browser.getSession()).data,null);
+    assert.equal((await browser.phoneNumber.sendOtp({phoneNumber:number})).error,null);
     const otp = await delivered(number);
     const quiet = await browser.phoneNumber.verify({phoneNumber:number, code:otp, disableSession:true});
     assert.equal(quiet.error,null);

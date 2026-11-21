@@ -114,7 +114,7 @@ func (s *Store) ApplyPhoneOTP(ctx context.Context, act auth.PhoneAccountAction) 
 	}
 	if act.SourceID != "" {
 		if !s.currentPhoneOwner(act.SourceID, act.SourceToken, act.Use.Now) {
-			return out, &auth.APIError{Status: 401, Code: "UNAUTHORIZED", Message: "Unauthorized"}
+			return out, &auth.APIError{Status: 401, Code: "USER_NOT_FOUND", Message: "User not found"}
 		}
 		if id != "" {
 			return out, auth.ErrPhoneNumberExists

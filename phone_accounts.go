@@ -117,10 +117,26 @@ func (a *Auth) VerifyPhoneNumber(ctx context.Context, h http.Header, in PhoneVer
 	if err := a.checkPhone(ctx, in.PhoneNumber); err != nil {
 		return out, err
 	}
-	act := PhoneAccountAction{}
+	use, err := a.phoneUse(ctx, in.PhoneNumber, in.Code, PhoneVerify)
+	if err != nil {
+		return out, err
+	}
+	act := PhoneAccountAction{Use: use}
 	if in.UpdatePhoneNumber {
 		current, err := a.requireOwnerSession(ctx, h)
 		if err != nil {
+			var denial *APIError
+			if !errors.As(err, &denial) || (denial.Status != 401 && denial.Status != 403) {
+				return out, err
+			}
+			// A link attempt shares verification's guess budget and spends a correct proof,
+			// even when there is no eligible session. Account mutation stays in ApplyPhoneOTP.
+			if proofErr := a.opts.Store.(PhoneAccountStore).ConsumePhoneOTP(ctx, use); proofErr != nil {
+				return out, proofErr
+			}
+			if denial.Status == 401 {
+				return out, &APIError{401, "USER_NOT_FOUND", "User not found"}
+			}
 			return out, err
 		}
 		act.SourceID, act.SourceToken = current.User.ID, current.Session.Token
@@ -143,11 +159,6 @@ func (a *Auth) VerifyPhoneNumber(ctx context.Context, h http.Header, in PhoneVer
 			act.Session = &ss
 		}
 	}
-	use, err := a.phoneUse(ctx, in.PhoneNumber, in.Code, PhoneVerify)
-	if err != nil {
-		return out, err
-	}
-	act.Use = use
 	result, err := a.opts.Store.(PhoneAccountStore).ApplyPhoneOTP(ctx, act)
 	if errors.Is(err, ErrEmailTaken) {
 		return out, &APIError{400, "USER_ALREADY_EXISTS", "User already exists"}

@@ -133,7 +133,7 @@ func (s *Store) ApplyPhoneOTP(ctx context.Context, act auth.PhoneAccountAction) 
 		if act.SourceID != "" {
 			if err = s.lockActiveAccount(ctx, tx, act.SourceID, act.SourceToken, act.Use.Now); err != nil {
 				if errors.Is(err, auth.ErrNotFound) {
-					return &auth.APIError{Status: 401, Code: "UNAUTHORIZED", Message: "Unauthorized"}, nil
+					return &auth.APIError{Status: 401, Code: "USER_NOT_FOUND", Message: "User not found"}, nil
 				}
 				return nil, err
 			}

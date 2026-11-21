@@ -35,7 +35,7 @@ All routes below accept JSON and are relative to the auth mount, normally `/api/
 | --- | --- |
 | `POST /phone-number/send-otp` | Send `phoneNumber`. A successful delivery returns `{"message":"code sent"}`. |
 | `POST /phone-number/verify` | Send `phoneNumber` and `code`. The response contains `status`, `user` and `token`. Use `disableSession: true` to receive a null token. An enrolled account signing in can receive a two-factor challenge. |
-| `POST /phone-number/verify` with `updatePhoneNumber: true` | A direct owner session can attach a verified, available number. The response returns the same session token. |
+| `POST /phone-number/verify` with `updatePhoneNumber: true` | A direct owner session can attach a verified, available number. The response returns the same session token. A link request without a direct login still counts an incorrect code and spends a correct one. |
 | `POST /update-user` | Send `{"phoneNumber":null}` to remove the number and clear its verification flag. Setting a number requires verification. |
 | `POST /sign-in/phone-number` | Send `phoneNumber`, `password`, and optionally `rememberMe`. Successful sign-in issues a session or starts the account's second-factor challenge. |
 | `POST /phone-number/request-password-reset` | Send `phoneNumber`. Returns `{"status":true}` for registered and unknown numbers. With `RequireVerification`, only a verified owner receives the code. |
