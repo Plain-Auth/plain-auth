@@ -40,11 +40,35 @@ The application provides `sendInvitation`, its configured public `origin` and it
 | POST | `/organization/invite-member` | Invite by email and role, using an explicit organization ID or the active selection |
 | POST | `/organization/accept-invitation` | Accept by invitation ID, create the membership, and select the organization |
 | POST | `/organization/remove-member` | Remove by membership ID or email. Omit `organizationId` to use the active organization. |
+| POST | `/organization/update-member-role` | Replace roles by membership ID in the supplied or active organization. |
 | POST | `/organization/leave` | End the signed-in user's own membership in the supplied `organizationId`. |
 
 An owner can invite members, admins or other owners. An admin can invite members or admins. The member role grants no invitation permission. The SQL store commits invitation acceptance and the resulting membership together. The [organization feature checklist](parity/plugins/organization.md) tracks additional role policies and operations.
 
 Browser membership changes check the acting account and session inside the database transaction. Acceptance reads the current account email and verification status. Account deletion removes invitations that user sent, their organization and team memberships, and updates affected team counts. Other members keep their memberships and invitations.
+
+## Change membership roles
+
+Send the membership ID in `memberId` and the replacement roles in `role`. The endpoint accepts a string or an array of strings, trims whitespace, splits comma-separated entries and preserves their order. Omit `organizationId` to use the organization selected on this session. The response is the updated member with its ID, organization ID, user ID, role and creation time.
+
+| Acting membership | Authorized changes |
+| --- | --- |
+| Owner | Set any built-in role, including granting ownership to another member. The organization must retain an owner. |
+| Admin | Change a member or admin to any combination of `admin` and `member`, including changing their own membership. |
+| Member | No role changes. |
+
+To transfer ownership, grant `owner` to the new owner, then replace the previous owner's role. Both members hold ownership between these two requests. Permissions take effect on the next request, including requests from another server process using the same database.
+
+```go
+change := organization.UpdateMemberRoleRequest{
+    OrganizationID: organizationID,
+    MemberID:       membershipID,
+    Roles:          []string{"admin"},
+}
+updated, err := authClient.UpdateOrganizationMemberRole(ctx, change)
+```
+
+A Go server can call `organizations.UpdateMemberRole(ctx, session.Session, change)` with a signed-in session returned by `auth.GetSession`. Both entry points recheck the session and current membership before committing. The built-in policy covers `owner`, `admin` and `member`. Custom role definitions and role-change hooks remain open on the [organization checklist](parity/plugins/organization.md). [Released client comparison](../conformance/organization-role.mjs) · [Database concurrency tests](../adapters/sqlstore/organization_role_test.go)
 
 ## Remove a member or leave
 

@@ -1181,6 +1181,11 @@ test("application key validators control sessions on both runtimes", async (t) =
   }
 });
 
+test("the released organization client updates member roles on both servers", async t => {
+  const {compareMemberRoles} = await import("./organization-role.mjs");
+  await compareMemberRoles(t, {reference, goFixture, instrument});
+});
+
 test("the custom session client infers its configured response and public options", () => {
   const result = spawnSync(process.execPath, [
     join(harness, "node_modules/typescript/bin/tsc"), "--noEmit", "--strict", "--skipLibCheck",

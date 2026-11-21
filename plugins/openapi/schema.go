@@ -125,6 +125,8 @@ func publicResponse(route stonewrit.HTTPRoute, info stonewrit.HTTPDescription, f
 		return object{"allOf": []object{modelRef("Organization"), responseObject(object{"members": array(modelRef("Member"))}, "members")}}
 	case "/organization/get-organization", "/organization/set-active":
 		return object{"anyOf": []object{modelRef("Organization"), {"type": "null"}}}
+	case "/organization/update-member-role":
+		return modelRef("Member")
 	case "/organization/create-team", "/organization/update-team":
 		return modelRef("Team")
 	case "/organization/list-user-teams", "/organization/list-teams":

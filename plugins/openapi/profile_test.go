@@ -71,6 +71,13 @@ func TestConfiguredOrganizationAndBillingSchema(t *testing.T) {
 	if node(paths, "/organization/list-teams", "get", "responses", "200", "content", "application/json", "schema", "items")["$ref"] != "#/components/schemas/Team" {
 		t.Fatal("list team response schema")
 	}
+	role := node(paths, "/organization/update-member-role", "post")
+	if node(role, "responses", "200", "content", "application/json", "schema")["$ref"] != "#/components/schemas/Member" {
+		t.Fatal("role update must return the public member directly")
+	}
+	if len(node(role, "requestBody", "content", "application/json", "schema", "properties", "role")["anyOf"].([]any)) != 2 {
+		t.Fatal("role update must accept both a string and an array")
+	}
 	start := node(paths, "/sign-in/social", "post", "requestBody", "content", "application/json", "schema", "properties")
 	if got := node(start, "provider")["enum"].([]any); len(got) != 1 || got[0] != "github" {
 		t.Fatal("disabled providers advertised", got)

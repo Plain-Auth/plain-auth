@@ -6367,6 +6367,47 @@
       "complete": true
     }
   ],
+  "plugin/organization/POST /organization/update-member-role": [
+    {
+      "label": "Apply default role grants, direct ownership transfer and effective demotion through the released organization client",
+      "test": "conformance/organization-role.mjs",
+      "marker": "denied(await role(owner, member.id, \"member\"),403, forbidden)"
+    },
+    {
+      "label": "Preserve role order and return the updated membership directly",
+      "test": "conformance/organization-role.mjs",
+      "marker": "assert.equal(updated.role, \"admin,member,admin\")"
+    },
+    {
+      "label": "Distinguish an unknown membership from a membership belonging to another tenant",
+      "test": "conformance/organization-role.mjs",
+      "marker": "denied(await role(owner, foreign.id, \"admin\"), 403, forbidden)"
+    },
+    {
+      "label": "Preserve a final owner under simultaneous self-demotions, opposing demotions and departures on all three SQL engines",
+      "test": "adapters/sqlstore/organization_role_test.go",
+      "marker": "concurrent membership changes left"
+    },
+    {
+      "label": "Reject revoked and delegated sessions and recheck the acting account ban inside the transaction",
+      "test": "adapters/sqlstore/organization_role_test.go",
+      "marker": "problem(raw(second, \"Peer\", stale.Token, change), \"UNAUTHORIZED\")"
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1140": [
+    {
+      "label": "Use the Go HTTP client and authenticated native service to update an existing membership",
+      "test": "adapters/sqlstore/organization_role_test.go",
+      "marker": "HTTP client member shape"
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1144/`POST /organization/update-member-role`": [
+    {
+      "label": "Publish the string-or-array request and direct member response in the configured OpenAPI document",
+      "test": "plugins/openapi/profile_test.go",
+      "marker": "role update must return the public member directly"
+    }
+  ],
   "plugin/organization/POST /organization/remove-member": [
     {
       "label": "Resolve simultaneous opposing owner removals in a single transaction attempt while both PostgreSQL connections wait on database locks",

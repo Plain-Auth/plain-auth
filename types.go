@@ -179,3 +179,19 @@ type APIError struct {
 }
 
 func (e *APIError) Error() string { return e.Message }
+
+// StatusOnlyError writes an HTTP status without a response body. Native
+// callers can also retrieve its status and standard text with errors.As and *APIError.
+type StatusOnlyError int
+
+func (e StatusOnlyError) statusOnlyCode() int {
+	if e < 400 || e > 599 {
+		return http.StatusInternalServerError
+	}
+	return int(e)
+}
+
+func (e StatusOnlyError) Error() string { return http.StatusText(e.statusOnlyCode()) }
+func (e StatusOnlyError) Unwrap() error {
+	return &APIError{Status: e.statusOnlyCode(), Message: e.Error()}
+}

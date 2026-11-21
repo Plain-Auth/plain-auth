@@ -31,3 +31,21 @@ func (c *Client) LeaveOrganization(ctx context.Context, organizationID string) (
 	}
 	return &out, nil
 }
+
+// UpdateOrganizationMemberRole replaces the membership's roles. Leave the
+// organization ID empty to use the caller's active organization.
+func (c *Client) UpdateOrganizationMemberRole(ctx context.Context, request org.UpdateMemberRoleRequest) (*org.Member, error) {
+	roles := request.Roles
+	if roles == nil {
+		roles = []string{}
+	}
+	body := map[string]any{"memberId": request.MemberID, "role": roles}
+	if request.OrganizationID != "" {
+		body["organizationId"] = request.OrganizationID
+	}
+	var out org.Member
+	if err := c.Do(ctx, http.MethodPost, "/organization/update-member-role", body, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}

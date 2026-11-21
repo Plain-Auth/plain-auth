@@ -65,6 +65,11 @@
     - [x] Clear the removed tenant from affected sessions and preserve another tenant's selection ([test](../../../adapters/sqlstore/organization_removal_test.go#L158))
     - [x] Serialize opposing owner removals and reread the losing actor's membership ([test](../../../adapters/sqlstore/organization_removal_test.go#L224))
   - [ ] `POST /organization/update-member-role`
+    - [x] Apply default role grants, direct ownership transfer and effective demotion through the released organization client ([test](../../../conformance/organization-role.mjs#L67))
+    - [x] Preserve role order and return the updated membership directly ([test](../../../conformance/organization-role.mjs#L57))
+    - [x] Distinguish an unknown membership from a membership belonging to another tenant ([test](../../../conformance/organization-role.mjs#L42))
+    - [x] Preserve a final owner under simultaneous self-demotions, opposing demotions and departures on all three SQL engines ([test](../../../adapters/sqlstore/organization_role_test.go#L168))
+    - [x] Reject revoked and delegated sessions and recheck the acting account ban inside the transaction ([test](../../../adapters/sqlstore/organization_role_test.go#L115))
   - [ ] `GET /organization/get-active-member`
   - [ ] `POST /organization/leave`
     - [x] Return the signed-in user's membership and profile when leaving an organization ([test](../../../conformance/organization-removal.mjs#L47))
@@ -254,7 +259,9 @@
         - [ ] Parameter `memberIdOrEmail`
         - [ ] Parameter `organizationId` (optional)
     - [ ] Update Member Role
+      - [x] Use the Go HTTP client and authenticated native service to update an existing membership ([test](../../../adapters/sqlstore/organization_role_test.go#L86))
       - [ ] `POST /organization/update-member-role`
+        - [x] Publish the string-or-array request and direct member response in the configured OpenAPI document ([test](../../../plugins/openapi/profile_test.go#L76))
         - [ ] Parameter `role`
         - [ ] Parameter `memberId`
         - [ ] Parameter `organizationId` (optional)

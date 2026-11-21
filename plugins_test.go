@@ -1,7 +1,10 @@
 package stonewrit_test
 
 import (
+	"errors"
+	"fmt"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	authn "github.com/Stonewrit/stonewrit-auth"
@@ -50,5 +53,39 @@ func TestPluginRegistrationAndDispatch(t *testing.T) {
 		if err == nil {
 			t.Fatalf("expected invalid registration: %+v", plugins)
 		}
+	}
+}
+
+func TestPluginStatusOnlyError(t *testing.T) {
+	plain := &authn.APIError{Status: http.StatusBadRequest}
+	if plain.Error() != "" {
+		t.Fatalf("plain APIError changed its native message: %q", plain.Error())
+	}
+	empty := fmt.Errorf("role update: %w", authn.StatusOnlyError(http.StatusBadRequest))
+	pointer := authn.StatusOnlyError(http.StatusForbidden)
+	var api *authn.APIError
+	if !errors.As(empty, &api) || api.Status != http.StatusBadRequest || api.Message != http.StatusText(http.StatusBadRequest) {
+		t.Fatalf("status-only error lost its native APIError: %#v", api)
+	}
+	for _, test := range []struct {
+		name, body string
+		status     int
+		err        error
+	}{
+		{"plain", "{\"message\":\"\"}\n", 400, plain},
+		{"status-only", "", 400, empty},
+		{"status-only-pointer", "", 403, &pointer},
+		{"invalid-status", "", 500, authn.StatusOnlyError(0)},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			ep := authn.Endpoint{Method: http.MethodGet, Path: "/fixture", Handler: func(authn.EndpointContext) (any, error) { return nil, test.err }}
+			a := newHTTPAuth(t, authn.Options{BaseURL: "https://auth.example", Plugins: []authn.Plugin{{ID: "fixture", Endpoints: []authn.Endpoint{ep}}}})
+			r := httptest.NewRequest(http.MethodGet, "https://auth.example/api/auth/fixture", nil)
+			w := httptest.NewRecorder()
+			a.ServeHTTP(w, r)
+			if w.Code != test.status || w.Body.String() != test.body {
+				t.Fatalf("wire status and body: %d %q", w.Code, w.Body.String())
+			}
+		})
 	}
 }

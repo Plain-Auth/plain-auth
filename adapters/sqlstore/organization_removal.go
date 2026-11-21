@@ -57,44 +57,22 @@ func (s *Store) removeMembershipOnce(ctx context.Context, userID, token, group, 
 	}
 	var lockedTarget string
 	if !leave {
-		lockedTarget, err = s.lockRemovalAccounts(ctx, tx, userID, token, group, filter, target)
+		lockedTarget, err = s.lockMembershipAccounts(ctx, tx, userID, token, group, filter, target)
 		if err != nil {
 			return nil, err
 		}
 	}
-	if err = s.lockActiveAccount(ctx, tx, userID, token, time.Now()); err != nil {
-		if errors.Is(err, auth.ErrNotFound) {
-			return nil, org.ErrUnauthenticated
-		}
-		return nil, err
-	}
-	var active *string
-	err = tx.QueryRowContext(ctx, s.bind(`SELECT "activeOrganizationId" FROM "session" WHERE "userId"=`+value+` AND "token"=`+value), userID, token).Scan(&active)
-	if errors.Is(err, sql.ErrNoRows) {
-		return nil, org.ErrUnauthenticated
-	}
+	group, err = s.lockMembershipScope(ctx, tx, userID, token, group)
 	if err != nil {
 		return nil, err
 	}
-	if group == "" {
-		if active == nil || *active == "" {
-			return nil, org.ErrNoActiveOrg
-		}
-		group = *active
-	}
-	if err = s.lockOrganization(ctx, tx, group); err != nil {
-		if errors.Is(err, org.ErrNotFound) {
-			return nil, org.ErrMemberMissing
-		}
-		return nil, err
-	}
-	actor, err := s.memberForRemoval(ctx, tx, group, `m."userId"=`+value, userID)
+	actor, err := s.lockMembershipActor(ctx, tx, userID, group)
 	if err != nil {
 		return nil, err
 	}
 	member := actor
 	if !leave {
-		member, err = s.memberForRemoval(ctx, tx, group, filter, target)
+		member, err = s.memberForChange(ctx, tx, group, filter, target)
 		if err != nil {
 			return nil, err
 		}
@@ -145,11 +123,48 @@ func (s *Store) removeMembershipOnce(ctx context.Context, userID, token, group, 
 	return member, nil
 }
 
+// Resolve an optional tenant ID while holding the live owner session lock.
+func (s *Store) lockMembershipScope(ctx context.Context, tx *sql.Tx, userID, token, group string) (string, error) {
+	value := s.exactSQLValue("?")
+	if err := s.lockActiveAccount(ctx, tx, userID, token, time.Now()); err != nil {
+		if errors.Is(err, auth.ErrNotFound) {
+			return "", org.ErrUnauthenticated
+		}
+		return "", err
+	}
+	var active *string
+	err := tx.QueryRowContext(ctx, s.bind(`SELECT "activeOrganizationId" FROM "session" WHERE "userId"=`+value+` AND "token"=`+value), userID, token).Scan(&active)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", org.ErrUnauthenticated
+	}
+	if err != nil {
+		return "", err
+	}
+	if group == "" {
+		if active == nil || *active == "" {
+			return "", org.ErrNoActiveOrg
+		}
+		group = *active
+	}
+	return group, nil
+}
+
+// Serialize changes within the tenant before checking the actor's current role.
+func (s *Store) lockMembershipActor(ctx context.Context, tx *sql.Tx, userID, group string) (*org.RemovedMember, error) {
+	if err := s.lockOrganization(ctx, tx, group); err != nil {
+		if errors.Is(err, org.ErrNotFound) {
+			return nil, org.ErrMemberMissing
+		}
+		return nil, err
+	}
+	return s.memberForChange(ctx, tx, group, `m."userId"=`+s.exactSQLValue("?"), userID)
+}
+
 // Discover the target without taking locks. Acquire both accounts in the same
 // order as team and administrative changes, before locking the session and
 // organization. The caller checks the session, scope and membership again
 // under those locks before authorizing any change.
-func (s *Store) lockRemovalAccounts(ctx context.Context, tx *sql.Tx, userID, token, group, filter, target string) (string, error) {
+func (s *Store) lockMembershipAccounts(ctx context.Context, tx *sql.Tx, userID, token, group, filter, target string) (string, error) {
 	value := s.exactSQLValue("?")
 	scope := s.exactSQLValue(`COALESCE(NULLIF(?, ''), ss."activeOrganizationId")`)
 	query := `SELECT m."userId" FROM "session" ss JOIN "member" m ON m."organizationId"=` + scope +
@@ -180,7 +195,7 @@ func (s *Store) lockRemovalAccounts(ctx context.Context, tx *sql.Tx, userID, tok
 	return candidate, nil
 }
 
-func (s *Store) memberForRemoval(ctx context.Context, tx *sql.Tx, group, filter, value string) (*org.RemovedMember, error) {
+func (s *Store) memberForChange(ctx context.Context, tx *sql.Tx, group, filter, value string) (*org.RemovedMember, error) {
 	m := org.RemovedMember{User: &org.MemberUser{}}
 	query := `SELECT m."id",m."organizationId",m."userId",m."role",m."createdAt",u."id",u."name",u."email",u."image" FROM "member" m JOIN "user" u ON u."id"=` + s.exactSQLValue(`m."userId"`) + ` WHERE m."organizationId"=` + s.exactSQLValue("?") + ` AND ` + filter
 	err := tx.QueryRowContext(ctx, s.bind(query), group, value).Scan(&m.ID, &m.OrganizationID, &m.UserID, &m.Role, &m.CreatedAt, &m.User.ID, &m.User.Name, &m.User.Email, &m.User.Image)

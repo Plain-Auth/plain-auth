@@ -83,7 +83,7 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 | [One tap](plugins/one-tap.md) | 36 | 18 |
 | [One time token](plugins/one-time-token.md) | 9 | 27 |
 | [OpenAPI](plugins/open-api.md) | 9 | 24 |
-| [Organization](plugins/organization.md) | 60 | 386 |
+| [Organization](plugins/organization.md) | 67 | 386 |
 | [Passkey](plugins/passkey.md) | 26 | 94 |
 | [Phone number](plugins/phone-number.md) | 33 | 67 |
 | [SCIM provisioning](plugins/scim.md) | 51 | 251 |

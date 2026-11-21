@@ -379,6 +379,11 @@ func writeAuthJSON(w http.ResponseWriter, status int, body any) {
 }
 
 func (a *Auth) writeAuthError(w http.ResponseWriter, r *http.Request, err error) {
+	var status interface{ statusOnlyCode() int }
+	if errors.As(err, &status) {
+		w.WriteHeader(status.statusOnlyCode())
+		return
+	}
 	var deviceErr *deviceFlowError
 	if errors.As(err, &deviceErr) {
 		writeAuthJSON(w, deviceErr.Status, deviceErr)

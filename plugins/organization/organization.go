@@ -166,6 +166,9 @@ func (service *Service) Plugin() authn.Plugin {
 			o.endpoint(http.MethodPost, "accept-invitation", o.accept),
 		},
 	}
+	if _, ok := o.Store.(MemberRoleStore); ok {
+		plugin.Endpoints = append(plugin.Endpoints, service.memberRoleEndpoint())
+	}
 	if store, ok := o.Store.(MemberRemovalStore); ok {
 		plugin.Endpoints = append(plugin.Endpoints, o.memberRemovalEndpoints(store)...)
 	}

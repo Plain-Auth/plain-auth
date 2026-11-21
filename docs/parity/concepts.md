@@ -342,7 +342,7 @@
   - [ ] Create a Server plugin
     - [ ] Register a plugin type
     - [ ] Endpoints
-      - [x] Register a Go plugin endpoint and detect duplicate registrations ([test](../../plugins_test.go#L11))
+      - [x] Register a Go plugin endpoint and detect duplicate registrations ([test](../../plugins_test.go#L14))
       - [ ] Context Object
       - [ ] `appName`
       - [ ] `options`
