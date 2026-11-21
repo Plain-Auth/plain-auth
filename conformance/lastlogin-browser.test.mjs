@@ -40,3 +40,20 @@ test("a server-side render can read and clear the preference before a browser ex
   assert.throws(() => loginPreference({ cookieName: "bad;name" }), TypeError);
   assert.throws(() => loginPreference({ domain: "example.test; Path=/" }), TypeError);
 });
+
+test("a reserved host preference expires only at the issuing host", (t) => {
+  const writes = [];
+  const previous = Object.getOwnPropertyDescriptor(globalThis, "document");
+  Object.defineProperty(globalThis, "document", { configurable: true, value: {
+    set cookie(value) { writes.push(value); },
+  } });
+  t.after(() => {
+    if (previous) Object.defineProperty(globalThis, "document", previous);
+    else delete globalThis.document;
+  });
+  loginPreference({ cookieName: "__Host-preference", domain: ".example.test" }).clear();
+  assert.deepEqual(writes, ["__Host-preference=; Path=/; Max-Age=0; Secure"]);
+  writes.length = 0;
+  loginPreference({ cookieName: "preference", domain: "example.test" }).clear();
+  assert.deepEqual(writes, ["preference=; Path=/; Max-Age=0", "preference=; Path=/; Max-Age=0; Domain=example.test"]);
+});

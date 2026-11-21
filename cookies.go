@@ -15,7 +15,8 @@ func (a *Auth) prefixedCookieName(name string) string {
 	if namespace == "" {
 		namespace = "authn"
 	}
-	if strings.HasPrefix(a.opts.BaseURL, "https://") {
+	prefix := strings.ToLower(namespace)
+	if secureCookies(&a.opts) && !strings.HasPrefix(prefix, "__secure-") && !strings.HasPrefix(prefix, "__host-") {
 		namespace = "__Secure-" + namespace
 	}
 	return namespace + "." + name
@@ -24,7 +25,7 @@ func (a *Auth) prefixedCookieName(name string) string {
 func (a *Auth) cookieName() string { return a.prefixedCookieName("session_token") }
 
 func (a *Auth) sessionCookie(token string, persistent bool) *http.Cookie {
-	c := &http.Cookie{Name: a.cookieName(), Value: url.QueryEscape(token + "." + a.cookieSignature(token)), Path: "/", Secure: strings.HasPrefix(a.opts.BaseURL, "https://"), HttpOnly: true, SameSite: http.SameSiteLaxMode}
+	c := a.browserCookie("session_token", url.QueryEscape(token+"."+a.cookieSignature(token)), 0)
 	if persistent {
 		c.MaxAge = int(a.opts.SessionTTL / time.Second)
 	}
@@ -113,6 +114,7 @@ func (a *Auth) writeSessionCookieHeaders(headers http.Header, r *http.Request, t
 }
 
 func (a *Auth) emitSessionCookieHeaders(headers http.Header, r *http.Request, c *http.Cookie) {
+	expireHostCopy(headers, r, c)
 	headers.Add("Set-Cookie", c.String())
 	event := SessionCookieEvent{Auth: a, Cookie: *c, Route: strings.TrimPrefix(r.URL.Path, strings.TrimSuffix(a.opts.BasePath, "/")), Request: r, Header: headers}
 	for _, p := range a.opts.Plugins {
@@ -125,6 +127,7 @@ func (a *Auth) emitSessionCookieHeaders(headers http.Header, r *http.Request, c 
 func (a *Auth) writeRememberPreference(headers http.Header, r *http.Request, persistent bool) {
 	marker := a.sessionCookie("true", false)
 	marker.Name = strings.TrimSuffix(marker.Name, "session_token") + "dont_remember"
+	expireHostCopy(headers, r, marker)
 	if !persistent {
 		headers.Add("Set-Cookie", marker.String())
 	} else if _, err := r.Cookie(marker.Name); err == nil {

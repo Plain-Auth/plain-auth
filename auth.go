@@ -66,6 +66,9 @@ func New(opts Options) (*Auth, error) {
 	if err != nil {
 		return nil, fmt.Errorf("authn: BaseURL: %w", err)
 	}
+	if err := prepareCookieScope(&opts); err != nil {
+		return nil, err
+	}
 	for i, s := range opts.TrustedOrigins {
 		origin, err := parseOrigin(s)
 		if err != nil {

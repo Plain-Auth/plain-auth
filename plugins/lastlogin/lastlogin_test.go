@@ -72,3 +72,31 @@ func TestDefaultCookieUsesHostNamespace(t *testing.T) {
 		}
 	}
 }
+
+func TestReservedLoginPreferenceName(t *testing.T) {
+	for _, tc := range []struct {
+		name       string
+		secure     bool
+		wantDomain string
+		want       bool
+	}{
+		{"__Host-preference", true, "", true},
+		{"__Secure-preference", true, "example.com", true},
+		{"__host-preference", false, "", false},
+		{"__secure-preference", false, "", false},
+	} {
+		w := httptest.NewRecorder()
+		p := lastlogin.New(lastlogin.Options{CookieName: tc.name})
+		p.OnSessionCookie(auth.SessionCookieEvent{Request: httptest.NewRequest("POST", "/", nil), Route: "/sign-in/email", Header: w.Header(), Cookie: http.Cookie{Name: "session_token", Domain: "example.com", Path: "/", HttpOnly: true, Secure: tc.secure}})
+		list := w.Result().Cookies()
+		if !tc.want {
+			if len(list) != 0 {
+				t.Fatal("issued a reserved preference without Secure")
+			}
+			continue
+		}
+		if len(list) != 1 || list[0].Name != tc.name || list[0].HttpOnly || !list[0].Secure || list[0].Domain != tc.wantDomain || list[0].Path != "/" {
+			t.Fatal("invalid preference security attributes", list)
+		}
+	}
+}

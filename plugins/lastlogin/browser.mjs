@@ -21,9 +21,12 @@ export function loginPreference({ cookieName, domain } = {}) {
     is(method) { return read() === method; },
     clear() {
       if (!globalThis.document) return;
-      const secure = globalThis.location?.protocol === "https:" ? "; Secure" : "";
-      const scope = domain ? "; Domain=" + domain : "";
-      document.cookie = name + "=; Path=/; Max-Age=0" + scope + secure;
+      const secure = globalThis.location?.protocol === "https:" || /^__(?:host|secure)-/i.test(name) ? "; Secure" : "";
+      const expired = name + "=; Path=/; Max-Age=0";
+      document.cookie = expired + secure;
+      if (domain && !name.toLowerCase().startsWith("__host-")) {
+        document.cookie = expired + "; Domain=" + domain + secure;
+      }
     },
   };
 }

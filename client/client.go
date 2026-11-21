@@ -16,11 +16,13 @@ import (
 	"strings"
 
 	authn "github.com/Stonewrit/stonewrit-auth"
+	"golang.org/x/net/publicsuffix"
 )
 
 // Client holds the server URL and the user's session cookies. Create a separate
 // client and cookie jar for each user.
 type Client struct {
+	bearer string
 	base   string
 	origin string
 	http   *http.Client
@@ -52,7 +54,7 @@ func New(baseURL string, httpClient *http.Client) (*Client, error) {
 	}
 	jar := httpClient.Jar
 	if jar == nil {
-		jar, err = cookiejar.New(nil)
+		jar, err = cookiejar.New(&cookiejar.Options{PublicSuffixList: publicsuffix.List})
 		if err != nil {
 			return nil, err
 		}
@@ -73,24 +75,35 @@ func New(baseURL string, httpClient *http.Client) (*Client, error) {
 
 // Do calls an API endpoint under the client's auth mount. Route starts with "/"
 // and may include a query. Non-nil input is encoded as JSON. Supply a pointer
-// for output, or nil to discard the response. HTTP errors are *authn.APIError.
+// for output, or nil to discard the response. HTTP errors are returned as *stonewrit.APIError.
 func (c *Client) Do(ctx context.Context, method, route string, input, output any) error {
+	_, err := c.DoWithHeaders(ctx, method, route, input, output)
+	return err
+}
+
+// DoWithHeaders performs the same request as Do and returns response headers,
+// including Set-Auth-Token when the server issues a signed bearer credential.
+// A transport or request construction error returns nil headers.
+func (c *Client) DoWithHeaders(ctx context.Context, method, route string, input, output any) (http.Header, error) {
 	ref, err := url.ParseRequestURI(route)
 	if err != nil || !strings.HasPrefix(route, "/") || ref.Host != "" || strings.Contains(route, "#") ||
 		path.Clean(ref.Path) != ref.Path || strings.Contains(ref.Path, "\\") {
-		return errors.New("authn/client: expected a clean API route")
+		return nil, errors.New("authn/client: expected a clean API route")
 	}
 	var body io.Reader
 	if input != nil {
 		data, err := json.Marshal(input)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		body = bytes.NewReader(data)
 	}
 	req, err := http.NewRequestWithContext(ctx, method, c.base+route, body)
 	if err != nil {
-		return err
+		return nil, err
+	}
+	if c.bearer != "" {
+		req.Header.Set("Authorization", "Bearer "+c.bearer)
 	}
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Origin", c.origin)
@@ -99,7 +112,7 @@ func (c *Client) Do(ctx context.Context, method, route string, input, output any
 	}
 	res, err := c.http.Do(req)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer res.Body.Close()
 	if res.StatusCode < 200 || res.StatusCode >= 300 {
@@ -116,13 +129,13 @@ func (c *Client) Do(ctx context.Context, method, route string, input, output any
 		if apiErr.Message == "" {
 			apiErr.Message = fmt.Sprintf("Authentication server returned HTTP %d", res.StatusCode)
 		}
-		return apiErr
+		return res.Header, apiErr
 	}
 	if output == nil {
 		_, err = io.Copy(io.Discard, res.Body)
-		return err
+		return res.Header, err
 	}
-	return json.NewDecoder(res.Body).Decode(output)
+	return res.Header, json.NewDecoder(res.Body).Decode(output)
 }
 
 // SignUpRequest configures email/password registration.
@@ -169,7 +182,7 @@ func (c *Client) SignInEmail(ctx context.Context, input SignInRequest) (*EmailRe
 	return &out, nil
 }
 
-// GetSession returns nil, nil for a successful anonymous session lookup.
+// GetSession returns nil, nil when the caller has no active session.
 func (c *Client) GetSession(ctx context.Context) (*authn.SessionResult, error) {
 	var out *authn.SessionResult
 	err := c.Do(ctx, http.MethodGet, "/get-session", nil, &out)

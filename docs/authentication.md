@@ -54,6 +54,22 @@ Apply the `rate-limit` [schema profile](schema.md) and set `Options.RateLimitSto
 
 A browser on the same origin automatically sends the cookie to the API. For cross-origin applications, configure an exact trusted origin and credentialed CORS on the host router. A browser's own SameSite cookie policy still applies. For an authenticated curl POST, send your cookie jar and the configured `Origin`, as in the [quickstart](../README.md#run-it-locally).
 
+### Share a session across subdomains
+
+Cookies are host-only by default. To share a login from `auth.example.com` with `app.example.com`, use a parent domain that you control and explicitly trust the application origin for browser requests.
+
+```go
+opts.BaseURL = "https://auth.example.com"
+opts.CrossSubDomainCookies = &stonewrit.CrossSubDomainCookiesOptions{Domain: "example.com"}
+opts.TrustedOrigins = []string{"https://app.example.com"}
+```
+
+An empty `Domain` inside the options uses the exact hostname from `BaseURL`. A domain cookie reaches that host and its descendants. Set the narrowest domain whose subdomains you control. Startup validates the domain against the base host and the public suffix list, including private hosting suffixes.
+
+HTTPS enables `Secure` by default. `UseSecureCookies` accepts a boolean pointer to override that setting. A `__Secure-` prefix requires secure cookies. A `__Host-` prefix also requires host-only scope and a root path. The HTTPS One Tap nonce always uses this host-only scope.
+
+Signing out clears the shared session cookies across eligible hosts and revokes the active session. During a move from host-only cookies, issue a fresh login on the original host to replace its previous browser credential. Each host controls its own older host-only cookies. The login-method preference persists across logout. In the Go client, call `ClearSharedLastLoginMethod(cookieName, domain)` to remove that preference. [Cookie scope tests](../cookie_scope_http_test.go)
+
 The Go methods `SignUpEmail`, `SignInEmail`, `GetSession`, `SignOut`, and the session management methods accept a request context. `GetSession(ctx, headers)` distinguishes an absent session from a storage failure. Use `errors.As(err, &apiErr)` with `var apiErr *stonewrit.APIError` to inspect a public error code and HTTP status. Other errors can carry infrastructure details and belong in application logs.
 
 See the [cross-runtime conformance test](../conformance/core.test.mjs) and [remaining authentication features](parity/authentication.md).

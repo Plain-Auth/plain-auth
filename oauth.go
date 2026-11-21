@@ -9,7 +9,6 @@ import (
 	"net/url"
 	"regexp"
 	"slices"
-	"strings"
 	"time"
 
 	"golang.org/x/oauth2"
@@ -136,9 +135,5 @@ func prepareOAuthProviders(in map[string]OAuthProvider, store Store) (map[string
 }
 
 func (a *Auth) oauthCookie(name, value string, maxAge int) *http.Cookie {
-	prefix := ""
-	if strings.HasPrefix(a.opts.BaseURL, "https://") {
-		prefix = "__Secure-"
-	}
-	return &http.Cookie{Name: a.prefixedCookieName(name), Value: value, Path: "/", HttpOnly: true, Secure: prefix != "", SameSite: http.SameSiteLaxMode, MaxAge: maxAge}
+	return a.browserCookie(name, value, maxAge)
 }

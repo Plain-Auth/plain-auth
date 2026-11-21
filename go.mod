@@ -15,6 +15,7 @@ require (
 	github.com/pquerna/otp v1.5.0
 	github.com/stripe/stripe-go/v87 v87.2.0
 	golang.org/x/crypto v0.59.0
+	golang.org/x/net v0.62.0
 	golang.org/x/oauth2 v0.38.0
 	golang.org/x/text v0.44.0
 )

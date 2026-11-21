@@ -56,6 +56,13 @@ func New(opts Options) auth.Plugin {
 		if cookie.Name == "" {
 			cookie.Name = strings.TrimSuffix(e.Cookie.Name, ".session_token") + ".last_used_login_method"
 		}
+		lowerName := strings.ToLower(cookie.Name)
+		if strings.HasPrefix(lowerName, "__host-") {
+			cookie.Domain = ""
+		}
+		if !cookie.Secure && (strings.HasPrefix(lowerName, "__host-") || strings.HasPrefix(lowerName, "__secure-")) {
+			return
+		}
 		cookie.Value, cookie.HttpOnly, cookie.MaxAge = url.PathEscape(method), false, int(opts.MaxAge/time.Second)
 		if cookie.Valid() == nil {
 			e.Header.Add("Set-Cookie", cookie.String())

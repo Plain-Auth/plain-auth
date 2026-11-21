@@ -291,6 +291,7 @@ func (a *Auth) expireSessionCookies(w http.ResponseWriter, r *http.Request) {
 
 func (a *Auth) expireSessionCookieHeaders(h http.Header, r *http.Request) {
 	cookie := a.clearSessionCookie()
+	expireHostCopy(h, r, cookie)
 	h.Add("Set-Cookie", cookie.String())
 	prefix := strings.TrimSuffix(cookie.Name, "session_token")
 	names := []string{"session_data", "dont_remember"}
@@ -299,6 +300,7 @@ func (a *Auth) expireSessionCookieHeaders(h http.Header, r *http.Request) {
 	}
 	for _, name := range names {
 		cookie.Name = prefix + name
+		expireHostCopy(h, r, cookie)
 		h.Add("Set-Cookie", cookie.String())
 	}
 	chunkPrefix := prefix + "session_data."
@@ -306,6 +308,7 @@ func (a *Auth) expireSessionCookieHeaders(h http.Header, r *http.Request) {
 		if suffix, ok := strings.CutPrefix(c.Name, chunkPrefix); ok {
 			if _, err := strconv.ParseUint(suffix, 10, 32); err == nil {
 				cookie.Name = c.Name
+				expireHostCopy(h, r, cookie)
 				h.Add("Set-Cookie", cookie.String())
 			}
 		}

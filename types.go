@@ -16,8 +16,13 @@ type Options struct {
 	BaseURL  string
 	BasePath string
 	// TrustedOrigins adds exact origins allowed to make browser requests and callbacks.
-	TrustedOrigins   []string
-	CookiePrefix     string
+	TrustedOrigins []string
+	CookiePrefix   string
+	// CrossSubDomainCookies selects the Domain attribute for shared browser cookies.
+	// A nil value keeps cookies host-only. An empty Domain uses the BaseURL hostname.
+	CrossSubDomainCookies *CrossSubDomainCookiesOptions
+	// UseSecureCookies overrides the HTTPS-based default for session cookies.
+	UseSecureCookies *bool
 	ErrorRedirectURL string
 	// Secret signs credentials. Secrets configures ordered keys for rotation.
 	Secret  string
