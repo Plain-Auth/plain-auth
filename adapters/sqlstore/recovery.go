@@ -23,6 +23,10 @@ func (s *Store) FindAccountUser(ctx context.Context, email string) (authn.User, 
 }
 
 func (s *Store) UpdateProfile(ctx context.Context, userID string, patch authn.ProfileUpdate, now time.Time) error {
+	return s.updateProfile(ctx, s.db, userID, patch, now)
+}
+
+func (s *Store) updateProfile(ctx context.Context, db executor, userID string, patch authn.ProfileUpdate, now time.Time) error {
 	fields := []string{`"updatedAt" = ?`}
 	args := []any{s.date(now)}
 	if patch.Name != nil {
@@ -35,8 +39,19 @@ func (s *Store) UpdateProfile(ctx context.Context, userID string, patch authn.Pr
 		fields = append(fields, `"image" = ?`)
 		args = append(args, *patch.Image)
 	}
+	if patch.Username != nil {
+		fields = append(fields, `"username"=?`)
+		args = append(args, *patch.Username)
+	}
+	if patch.DisplayUsername != nil {
+		fields = append(fields, `"displayUsername"=?`)
+		args = append(args, *patch.DisplayUsername)
+	}
 	args = append(args, userID)
-	_, err := s.db.ExecContext(ctx, s.bind(`UPDATE "user" SET `+strings.Join(fields, ", ")+` WHERE "id" = ?`), args...)
+	_, err := db.ExecContext(ctx, s.bind(`UPDATE "user" SET `+strings.Join(fields, ", ")+` WHERE "id" = ?`), args...)
+	if patch.Username != nil && duplicateConstraint(err) {
+		return authn.ErrUsernameTaken
+	}
 	return err
 }
 

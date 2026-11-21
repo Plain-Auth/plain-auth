@@ -334,7 +334,7 @@ func (a *Auth) completeProfile(ctx context.Context, r *http.Request, id string, 
 		return AuthResult{}, false, &APIError{403, "SIGN_UP_DISABLED", "Sign-up is disabled"}
 	}
 	if err == nil {
-		err = a.readGuestFlag(ctx, &user)
+		err = a.readPublicUserFields(ctx, &user)
 	}
 	return AuthResult{User: user, Token: raw}, created, err
 }

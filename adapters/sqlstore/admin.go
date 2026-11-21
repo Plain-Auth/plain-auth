@@ -136,10 +136,11 @@ func (s *Store) adminSession(ctx context.Context, db rowQuerier, token string) (
 }
 
 type adminTX struct {
-	s   *Store
-	ctx context.Context
-	tx  *sql.Tx
-	now time.Time
+	names, displayNames bool
+	s                   *Store
+	ctx                 context.Context
+	tx                  *sql.Tx
+	now                 time.Time
 }
 
 func (s *Store) AdminTransaction(ctx context.Context, token, target string, now time.Time, fn func(authn.AdminTransaction, authn.SessionResult) error) error {
@@ -208,15 +209,15 @@ func (s *Store) runAdminTransaction(ctx context.Context, token, target string, n
 	if err != nil {
 		return err
 	}
-	if err = fn(&adminTX{s, ctx, tx, now}, authn.SessionResult{Session: ss.Session, User: u}); err != nil {
+	if err = fn(&adminTX{s: s, ctx: ctx, tx: tx, now: now}, authn.SessionResult{Session: ss.Session, User: u}); err != nil {
 		return err
 	}
 	return tx.Commit()
 }
 func (t *adminTX) User(id string) (authn.User, error) {
 	var u authn.User
-	fields, finish := t.s.adminUserScanner(&u)
-	err := t.tx.QueryRowContext(t.ctx, t.s.bind(`SELECT `+userColumns+`,`+adminUserColumns+` FROM "user" u WHERE u."id"=?`), id).Scan(fields...)
+	fields, finish := t.publicFields(&u)
+	err := t.tx.QueryRowContext(t.ctx, t.s.bind(`SELECT `+t.publicColumns()+` FROM "user" u WHERE u."id"=?`), id).Scan(fields...)
 	if errors.Is(err, sql.ErrNoRows) {
 		return u, authn.ErrNotFound
 	}
@@ -236,6 +237,9 @@ func (t *adminTX) CreateUser(u authn.User, hash string) error {
 	if err != nil {
 		return err
 	}
+	if err := s.persistUsernames(t.ctx, t.tx, u); err != nil {
+		return err
+	}
 	if hash != "" {
 		return t.SetPassword(u.ID, hash)
 	}
@@ -251,7 +255,10 @@ func (t *adminTX) UpdateUser(u authn.User) error {
 	if duplicateConstraint(err) {
 		return authn.ErrEmailTaken
 	}
-	return err
+	if err != nil {
+		return err
+	}
+	return s.persistUsernames(t.ctx, t.tx, u)
 }
 func (t *adminTX) SetPassword(user, hash string) error {
 	s := t.s
@@ -445,7 +452,7 @@ func (t *adminTX) Users(q authn.AdminQuery) (authn.AdminPage, error) {
 	if err != nil {
 		return out, err
 	}
-	query := `SELECT ` + userColumns + `,` + adminUserColumns + ` FROM "user" u` + where + " ORDER BY " + sort + " " + q.SortDirection + `,u."id"`
+	query := `SELECT ` + t.publicColumns() + ` FROM "user" u` + where + " ORDER BY " + sort + " " + q.SortDirection + `,u."id"`
 	limit := q.Limit
 	if limit == 0 {
 		limit = 100
@@ -458,7 +465,7 @@ func (t *adminTX) Users(q authn.AdminQuery) (authn.AdminPage, error) {
 	defer rows.Close()
 	for rows.Next() {
 		var u authn.User
-		fields, finish := t.s.adminUserScanner(&u)
+		fields, finish := t.publicFields(&u)
 		if err = rows.Scan(fields...); err != nil {
 			return out, err
 		}

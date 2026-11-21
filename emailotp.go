@@ -247,7 +247,7 @@ func (a *Auth) SignInEmailOTP(ctx context.Context, in EmailOTPSignInInput, meta 
 	if err != nil {
 		return AuthResult{}, err
 	}
-	if err := a.readGuestFlag(ctx, &u); err != nil {
+	if err := a.readPublicUserFields(ctx, &u); err != nil {
 		return AuthResult{}, err
 	}
 	return AuthResult{Token: session.Token, User: u}, nil

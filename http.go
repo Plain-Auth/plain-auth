@@ -69,7 +69,7 @@ func (a *Auth) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	var body wireBody
 	if r.Method != http.MethodGet {
-		if err := a.validateRequestOrigin(r, isEmailRoute(route) || route == "/sign-in/anonymous" || route == "/sign-in/magic-link" || route == "/sign-in/email-otp" || strings.HasPrefix(route, "/email-otp/") || route == "/forget-password/email-otp"); err != nil {
+		if err := a.validateRequestOrigin(r, isEmailRoute(route) || route == "/sign-in/username" || route == "/sign-in/anonymous" || route == "/sign-in/magic-link" || route == "/sign-in/email-otp" || strings.HasPrefix(route, "/email-otp/") || route == "/forget-password/email-otp"); err != nil {
 			writeAuthError(w, err)
 			return
 		}
@@ -229,7 +229,14 @@ func (a *Auth) handleEmail(route string, w http.ResponseWriter, r *http.Request,
 	var result AuthResult
 	var err error
 	if signup {
-		result, err = a.SignUpEmail(r.Context(), SignUpInput{Name: body["name"].(string), Email: email, Password: password, Image: image}, meta)
+		in := SignUpInput{Name: body["name"].(string), Email: email, Password: password, Image: image}
+		if a.username != nil {
+			in.Username, in.DisplayUsername, err = usernameInput(body)
+			if err != nil {
+				return nil, err
+			}
+		}
+		result, err = a.SignUpEmail(r.Context(), in, meta)
 	} else {
 		if c, err := r.Cookie(a.TrustedDeviceCookieName()); err == nil {
 			meta.TrustedDeviceCookie = c.Value
@@ -239,8 +246,11 @@ func (a *Auth) handleEmail(route string, w http.ResponseWriter, r *http.Request,
 	if err != nil {
 		return nil, err
 	}
+	return a.writeCredentialResult(w.Header(), r, body, result, remember, signup)
+}
+func (a *Auth) writeCredentialResult(h http.Header, r *http.Request, body wireBody, result AuthResult, remember *bool, signup bool) (any, error) {
 	if result.TrustedDeviceCookie != nil {
-		http.SetCookie(w, result.TrustedDeviceCookie)
+		h.Add("Set-Cookie", result.TrustedDeviceCookie.String())
 	}
 	if result.Challenge != nil {
 		guest, err := a.guestToken(r)
@@ -252,14 +262,14 @@ func (a *Auth) handleEmail(route string, w http.ResponseWriter, r *http.Request,
 			if err != nil {
 				return nil, err
 			}
-			http.SetCookie(w, a.oauthCookie("guest_continuation", proof, int(a.factorOptions.ChallengeLifetime.Seconds())))
+			h.Add("Set-Cookie", a.oauthCookie("guest_continuation", proof, int(a.factorOptions.ChallengeLifetime.Seconds())).String())
 		}
-		a.expireSessionCookies(w, r)
-		http.SetCookie(w, a.TwoFactorChallengeCookie(*result.Challenge))
+		a.expireSessionCookieHeaders(h, r)
+		h.Add("Set-Cookie", a.TwoFactorChallengeCookie(*result.Challenge).String())
 		if remember != nil && !*remember {
 			m := a.sessionCookie("true", false)
 			m.Name = strings.TrimSuffix(m.Name, "session_token") + "dont_remember"
-			http.SetCookie(w, m)
+			h.Add("Set-Cookie", m.String())
 		}
 		return map[string]any{"twoFactorRedirect": true, "twoFactorMethods": result.TwoFactorMethods}, nil
 	}
@@ -267,10 +277,10 @@ func (a *Auth) handleEmail(route string, w http.ResponseWriter, r *http.Request,
 	if result.Token != "" {
 		response["token"] = result.Token
 		persistent := remember == nil || *remember
-		if err := a.setSessionCookie(w, r, result.Token, persistent); err != nil {
+		if err := a.addSessionCookieHeaders(h, r, result.Token, persistent); err != nil {
 			return nil, err
 		}
-		a.writeRememberPreference(w.Header(), r, persistent)
+		a.writeRememberPreference(h, r, persistent)
 	}
 	if !signup {
 		callback, provided := body["callbackURL"].(string)
@@ -279,7 +289,7 @@ func (a *Auth) handleEmail(route string, w http.ResponseWriter, r *http.Request,
 			response["url"] = callback
 		}
 		if callback != "" {
-			w.Header().Set("Location", callback)
+			h.Set("Location", callback)
 		}
 	}
 	return response, nil

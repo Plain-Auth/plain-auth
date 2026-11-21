@@ -1,0 +1,106 @@
+package memory
+
+import (
+	"context"
+	"time"
+
+	"github.com/Stonewrit/stonewrit-auth"
+)
+
+var _ stonewrit.UsernameStore = (*Store)(nil)
+
+func (s *Store) CheckUsernameSchema(ctx context.Context, display bool) error { return ctx.Err() }
+
+func copyString(v *string) *string {
+	if v == nil {
+		return nil
+	}
+	value := *v
+	return &value
+}
+func cloneUsername(f *stonewrit.UsernameFields, display bool) *stonewrit.UsernameFields {
+	n := &stonewrit.UsernameFields{}
+	if f != nil {
+		n.Username = copyString(f.Username)
+	}
+	if display {
+		n.DisplayUsernameFields = &stonewrit.DisplayUsernameFields{}
+		if f != nil && f.DisplayUsernameFields != nil {
+			n.DisplayUsername = copyString(f.DisplayUsername)
+		}
+	}
+	return n
+}
+
+// Scanning the in-process records also releases names immediately on account deletion.
+func (s *Store) usernameOwner(name string) string {
+	for id, rec := range s.users {
+		f := rec.user.UsernameFields
+		if f != nil && f.Username != nil && *f.Username == name {
+			return id
+		}
+	}
+	return ""
+}
+
+func (s *Store) UsernameExists(ctx context.Context, name string) (bool, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.usernameOwner(name) != "", ctx.Err()
+}
+
+func (s *Store) UsernameCredential(ctx context.Context, name string) (stonewrit.User, string, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	if err := ctx.Err(); err != nil {
+		return stonewrit.User{}, "", err
+	}
+	rec, ok := s.users[s.usernameOwner(name)]
+	if !ok || rec.hash == "" {
+		return stonewrit.User{}, "", stonewrit.ErrNotFound
+	}
+	return copyUser(rec.user), rec.hash, nil
+}
+
+func (s *Store) ReadUsername(ctx context.Context, id string, display bool) (*stonewrit.UsernameFields, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	rec, ok := s.users[id]
+	if !ok {
+		return nil, stonewrit.ErrNotFound
+	}
+	return cloneUsername(rec.user.UsernameFields, display), nil
+}
+
+func (s *Store) UpdateUsernameProfile(ctx context.Context, id string, p stonewrit.ProfileUpdate, now time.Time, immutable bool) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	rec, ok := s.users[id]
+	if !ok {
+		return stonewrit.ErrNotFound
+	}
+	old := rec.user.UsernameFields
+	if p.Username != nil {
+		if immutable && old != nil && old.Username != nil && *old.Username != "" && *old.Username != *p.Username {
+			return stonewrit.ErrUsernameImmutable
+		}
+		if owner := s.usernameOwner(*p.Username); owner != "" && owner != id {
+			return stonewrit.ErrUsernameTaken
+		}
+	}
+	f := cloneUsername(old, p.DisplayUsername != nil || old != nil && old.DisplayUsernameFields != nil)
+	if p.Username != nil {
+		f.Username = copyString(p.Username)
+	}
+	if p.DisplayUsername != nil {
+		f.DisplayUsername = copyString(p.DisplayUsername)
+	}
+	rec.user.UsernameFields = f
+	return s.applyProfile(id, rec, p, now)
+}

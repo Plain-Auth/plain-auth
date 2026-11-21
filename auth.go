@@ -22,6 +22,7 @@ import (
 
 // Auth is safe for concurrent use by application handlers.
 type Auth struct {
+	username              *UsernameOptions
 	anonymous             *AnonymousOptions
 	admin                 *AdminOptions
 	adminStore            AdminStore
@@ -158,6 +159,9 @@ func New(opts Options) (*Auth, error) {
 	}
 	for _, p := range opts.Plugins {
 
+		if p.username != nil {
+			a.username = p.username
+		}
 		if p.anonymous != nil {
 			a.anonymous = p.anonymous
 		}
@@ -289,12 +293,29 @@ func (a *Auth) SignUpEmail(ctx context.Context, in SignUpInput, meta RequestMeta
 	if err := a.validateCredential(in.Email, in.Password, true); err != nil {
 		return AuthResult{}, err
 	}
+	var fields *UsernameFields
+	var err error
+	if a.username != nil {
+		fields, err = a.username.fields(ctx, in.Username, in.DisplayUsername, true)
+		if err != nil {
+			return AuthResult{}, err
+		}
+		if fields.Username != nil {
+			used, err := a.opts.Store.(UsernameStore).UsernameExists(ctx, *fields.Username)
+			if err != nil {
+				return AuthResult{}, err
+			}
+			if used {
+				return AuthResult{}, usernameWriteError(ErrUsernameTaken)
+			}
+		}
+	}
 	hash, err := a.hashCredential(ctx, "/sign-up/email", in.Password)
 	if err != nil {
 		return AuthResult{}, err
 	}
 	now := a.now().UTC().Truncate(time.Millisecond)
-	user := User{ID: randomID(), Email: strings.ToLower(in.Email), Name: in.Name, Image: in.Image, CreatedAt: now, UpdatedAt: now}
+	user := User{UsernameFields: fields, ID: randomID(), Email: strings.ToLower(in.Email), Name: in.Name, Image: in.Image, CreatedAt: now, UpdatedAt: now}
 	if a.admin != nil {
 		user.AdminUserFields = &AdminUserFields{Role: a.admin.DefaultRole}
 	}
@@ -308,7 +329,7 @@ func (a *Auth) SignUpEmail(ctx context.Context, in SignUpInput, meta RequestMeta
 		row, raw := a.newSession(user.ID, meta)
 		first, token = &row, raw
 	}
-	err = a.opts.Store.CreateUser(ctx, user, hash, first)
+	err = usernameWriteError(a.opts.Store.CreateUser(ctx, user, hash, first))
 	if errors.Is(err, ErrEmailTaken) {
 		if first == nil {
 			return AuthResult{User: user}, nil
@@ -332,7 +353,7 @@ func (a *Auth) SignUpEmail(ctx context.Context, in SignUpInput, meta RequestMeta
 			slog.ErrorContext(ctx, "Could not deliver sign-up verification email")
 		}
 	}
-	if err := a.readGuestFlag(ctx, &user); err != nil {
+	if err := a.readPublicUserFields(ctx, &user); err != nil {
 		return AuthResult{}, err
 	}
 	return AuthResult{User: user, Token: token}, nil
@@ -344,18 +365,25 @@ func (a *Auth) SignInEmail(ctx context.Context, in SignInInput, meta RequestMeta
 		return AuthResult{}, err
 	}
 	user, hash, err := a.opts.Store.Credential(ctx, strings.ToLower(in.Email))
+	if in.RememberMe != nil {
+		meta.RememberMe = in.RememberMe
+	}
+	return a.completeCredentialSignIn(ctx, user, hash, err, in.Password, meta, &APIError{401, "INVALID_EMAIL_OR_PASSWORD", "Invalid email or password"})
+}
+
+func (a *Auth) completeCredentialSignIn(ctx context.Context, user User, hash string, err error, password string, meta RequestMeta, denied *APIError) (AuthResult, error) {
 	if err != nil && !errors.Is(err, ErrNotFound) {
 		return AuthResult{}, err
 	}
 	if errors.Is(err, ErrNotFound) {
 		hash = dummyPasswordHash
 	}
-	valid, err := a.checkCredential(ctx, hash, in.Password)
+	valid, err := a.checkCredential(ctx, hash, password)
 	if err != nil {
 		return AuthResult{}, err
 	}
 	if !valid || user.ID == "" {
-		return AuthResult{}, &APIError{401, "INVALID_EMAIL_OR_PASSWORD", "Invalid email or password"}
+		return AuthResult{}, denied
 	}
 	if a.admin != nil && user.AdminUserFields != nil && user.Banned {
 		if user.BanExpires == nil || user.BanExpires.After(a.now()) {
@@ -373,9 +401,7 @@ func (a *Auth) SignInEmail(ctx context.Context, in SignInInput, meta RequestMeta
 		}
 		return AuthResult{}, &APIError{403, "EMAIL_NOT_VERIFIED", "Email not verified"}
 	}
-	if in.RememberMe != nil {
-		meta.RememberMe = in.RememberMe
-	}
+
 	session, token := a.newSession(user.ID, meta)
 	if a.factorStore != nil {
 		return a.factorLogin(ctx, user, hash, session, meta.TrustedDeviceCookie)
@@ -383,7 +409,7 @@ func (a *Auth) SignInEmail(ctx context.Context, in SignInInput, meta RequestMeta
 	if s, ok := a.opts.Store.(AccountStore); ok {
 		err = s.CreateCredentialSession(ctx, hash, session)
 		if errors.Is(err, ErrNotFound) {
-			return AuthResult{}, &APIError{401, "INVALID_EMAIL_OR_PASSWORD", "Invalid email or password"}
+			return AuthResult{}, denied
 		}
 	} else {
 		err = a.opts.Store.CreateSession(ctx, session)
@@ -391,7 +417,7 @@ func (a *Auth) SignInEmail(ctx context.Context, in SignInInput, meta RequestMeta
 	if err != nil {
 		return AuthResult{}, err
 	}
-	if err := a.readGuestFlag(ctx, &user); err != nil {
+	if err := a.readPublicUserFields(ctx, &user); err != nil {
 		return AuthResult{}, err
 	}
 	return AuthResult{User: user, Token: token}, nil

@@ -76,6 +76,7 @@ type Options struct {
 
 // User is the public account profile shared by all authentication methods.
 type User struct {
+	*UsernameFields
 	LastLoginMethod *string `json:"lastLoginMethod,omitempty"`
 	IsAnonymous     *bool   `json:"isAnonymous,omitempty"`
 	*AdminUserFields
@@ -128,8 +129,9 @@ type AuthResult struct {
 
 // SignUpInput describes a new email credential and public profile.
 type SignUpInput struct {
-	Name, Email, Password string
-	Image                 *string
+	Username, DisplayUsername *string
+	Name, Email, Password     string
+	Image                     *string
 }
 
 // SignInInput authenticates an existing email credential.

@@ -11,8 +11,9 @@ import (
 
 // ProfileUpdate changes the supplied fields. ClearImage removes the profile image.
 type ProfileUpdate struct {
-	Name, Image *string
-	ClearImage  bool
+	Username, DisplayUsername *string
+	Name, Image               *string
+	ClearImage                bool
 }
 
 // PasswordResetToken records a reset link and its owner in verification storage.
@@ -59,6 +60,23 @@ func (a *Auth) UpdateUser(ctx context.Context, h http.Header, update ProfileUpda
 	if err != nil {
 		return err
 	}
+	if a.username != nil && (update.Username != nil || update.DisplayUsername != nil) {
+		if session.Session.ImpersonatedBy != nil {
+			return &APIError{403, "FORBIDDEN", "Account owner session required"}
+		}
+		f, err := a.username.fields(ctx, update.Username, update.DisplayUsername, false)
+		if err != nil {
+			return err
+		}
+		update.Username, update.DisplayUsername = f.Username, nil
+		if f.DisplayUsernameFields != nil {
+			update.DisplayUsername = f.DisplayUsername
+		}
+		if update.Username != nil || update.DisplayUsername != nil {
+			return usernameWriteError(a.opts.Store.(UsernameStore).UpdateUsernameProfile(ctx, session.User.ID, update, a.now().UTC(), a.username.Immutable))
+		}
+	}
+	update.Username, update.DisplayUsername = nil, nil
 	if update.Name == nil && update.Image == nil && !update.ClearImage {
 		return &APIError{400, "BAD_REQUEST", "No fields to update"}
 	}

@@ -140,12 +140,14 @@ func (c *Client) DoWithHeaders(ctx context.Context, method, route string, input,
 
 // SignUpRequest configures email/password registration.
 type SignUpRequest struct {
-	Name        string  `json:"name"`
-	Email       string  `json:"email"`
-	Password    string  `json:"password"`
-	Image       *string `json:"image,omitempty"`
-	RememberMe  *bool   `json:"rememberMe,omitempty"`
-	CallbackURL string  `json:"callbackURL,omitempty"`
+	Username        *string `json:"username,omitempty"`
+	DisplayUsername *string `json:"displayUsername,omitempty"`
+	Name            string  `json:"name"`
+	Email           string  `json:"email"`
+	Password        string  `json:"password"`
+	Image           *string `json:"image,omitempty"`
+	RememberMe      *bool   `json:"rememberMe,omitempty"`
+	CallbackURL     string  `json:"callbackURL,omitempty"`
 }
 
 // SignInRequest configures email/password login.

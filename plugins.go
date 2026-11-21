@@ -15,6 +15,7 @@ type SessionResponseFunc func(EndpointContext, SessionResult) (any, error)
 
 // Plugin contributes HTTP endpoints to an Auth instance.
 type Plugin struct {
+	username          *UsernameOptions
 	anonymous         *AnonymousOptions
 	admin             *AdminOptions
 	maxDeviceSessions *int
@@ -166,9 +167,10 @@ func (a *Auth) withSessionPlugins(ctx context.Context, session Session, user Use
 		}
 		user.TwoFactorEnabled = &enabled
 	}
-	if err := a.readGuestFlag(ctx, &user); err != nil {
+	if err := a.readPublicUserFields(ctx, &user); err != nil {
 		return nil, err
 	}
+
 	result := &SessionResult{Session: session, User: user}
 	for _, plugin := range a.opts.Plugins {
 		if plugin.OnReadSession != nil {

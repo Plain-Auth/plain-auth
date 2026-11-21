@@ -138,7 +138,7 @@ func (a *Auth) factorLogin(ctx context.Context, user User, expectedHash string, 
 	if err != nil {
 		return AuthResult{}, err
 	}
-	if err := a.readGuestFlag(ctx, &result.User); err != nil {
+	if err := a.readPublicUserFields(ctx, &result.User); err != nil {
 		return AuthResult{}, err
 	}
 	return result, nil

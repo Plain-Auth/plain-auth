@@ -1,6 +1,7 @@
 package stonewrit
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"strconv"
@@ -27,9 +28,31 @@ func parseAdminRoles(v any) ([]string, error) {
 	}
 }
 
-func (a *Auth) adminUpdateFields(actor User, u *User, req AdminRequest, creating bool) error {
+func (a *Auth) adminUpdateFields(ctx context.Context, actor User, u *User, req AdminRequest, creating bool) error {
 	if req.Operation == "update-user" && len(req.Data) == 0 {
 		return adminError(400, "NO_DATA_TO_UPDATE", "No data to update")
+	}
+	if a.username != nil {
+		name, display, err := usernameInput(req.Data)
+		if err != nil {
+			return err
+		}
+		if name != nil || display != nil || creating {
+			f, err := a.username.fields(ctx, name, display, creating && name != nil)
+			if err != nil {
+				return err
+			}
+			if u.UsernameFields == nil {
+				u.UsernameFields = f
+			} else {
+				if f.Username != nil {
+					u.Username = f.Username
+				}
+				if f.DisplayUsernameFields != nil && f.DisplayUsername != nil {
+					u.DisplayUsernameFields = f.DisplayUsernameFields
+				}
+			}
+		}
 	}
 	role := req.Role
 	if v, ok := req.Data["role"]; ok && role == nil {
@@ -58,6 +81,10 @@ func (a *Auth) adminUpdateFields(actor User, u *User, req AdminRequest, creating
 	}
 	for key, v := range req.Data {
 		switch key {
+		case "username", "displayUsername":
+			if a.username == nil {
+				return validationError("Unknown user field")
+			}
 		case "role":
 			continue
 		case "id":

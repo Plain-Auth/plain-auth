@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-sql-driver/mysql"
 	authn "github.com/Stonewrit/stonewrit-auth"
+	"github.com/go-sql-driver/mysql"
 )
 
 var _ authn.Store = (*Store)(nil)
@@ -62,6 +62,9 @@ func (s *Store) CreateUser(ctx context.Context, user authn.User, passwordHash st
 	if err != nil {
 		return err
 	}
+	if err := s.persistUsernames(ctx, tx, user); err != nil {
+		return err
+	}
 	if s.adminSchema {
 		if _, err = tx.ExecContext(ctx, s.bind(`UPDATE "user" SET "role"=? WHERE "id"=?`), s.defaultAdminRole(), user.ID); err != nil {
 			return err
@@ -83,6 +86,10 @@ func userFields(u *authn.User) []any {
 
 // Credential retrieves a user and the credential account's password hash.
 func (s *Store) Credential(ctx context.Context, email string) (authn.User, string, error) {
+	return s.findCredential(ctx, `u."email"`, strings.ToLower(email))
+}
+
+func (s *Store) findCredential(ctx context.Context, column, login string) (authn.User, string, error) {
 	var u authn.User
 	var passwordHash string
 	columns := userColumns
@@ -92,7 +99,7 @@ func (s *Store) Credential(ctx context.Context, email string) (authn.User, strin
 		columns += "," + adminUserColumns
 		fields, finish = s.adminUserScanner(&u)
 	}
-	row := s.db.QueryRowContext(ctx, s.bind(`SELECT `+columns+`,a."password" FROM "user" u JOIN "account" a ON a."userId"=u."id" WHERE u."email"=? AND a."providerId"='credential' AND a."accountId"=u."id" AND a."password" IS NOT NULL`), strings.ToLower(email))
+	row := s.db.QueryRowContext(ctx, s.bind(`SELECT `+columns+`,a."password" FROM "user" u JOIN "account" a ON a."userId"=u."id" WHERE `+column+`=? AND a."providerId"='credential' AND a."accountId"=u."id" AND a."password" IS NOT NULL`), login)
 	err := row.Scan(append(fields, &passwordHash)...)
 	if err == nil && finish != nil {
 		finish()

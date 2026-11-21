@@ -33,6 +33,9 @@ func (s *Store) UpdateProfile(ctx context.Context, id string, in auth.ProfileUpd
 	if !ok {
 		return auth.ErrNotFound
 	}
+	return s.applyProfile(id, record, in, now)
+}
+func (s *Store) applyProfile(id string, record credential, in auth.ProfileUpdate, now time.Time) error {
 	if in.Name != nil {
 		record.user.Name = *in.Name
 	}

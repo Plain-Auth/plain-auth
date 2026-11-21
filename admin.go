@@ -277,6 +277,12 @@ func (a *Auth) executeAdmin(ctx context.Context, h http.Header, req AdminRequest
 	now := a.now().UTC().Truncate(time.Millisecond)
 	err := a.adminStore.AdminTransaction(ctx, token, req.UserID, now, func(tx AdminTransaction, actor SessionResult) error {
 		out = AdminResult{}
+		if a.username != nil {
+			// Composite stores enable these fields only for this authorized transaction.
+			if projection, ok := tx.(interface{ SelectUsernameFields(bool) }); ok {
+				projection.SelectUsernameFields(!a.username.DisableDisplay)
+			}
+		}
 		if op == "has-permission" {
 			if len(req.Permissions) == 0 {
 				return validationError("Permission set is required")
@@ -321,7 +327,7 @@ func (a *Auth) executeAdmin(ctx context.Context, h http.Header, req AdminRequest
 			if len(u.Email) > 254 || strings.Contains(u.Email, "..") || !emailPattern.MatchString(u.Email) || req.Name == "" {
 				return validationError("A valid email and name are required")
 			}
-			if err := a.adminUpdateFields(actor.User, &u, req, true); err != nil {
+			if err := a.adminUpdateFields(ctx, actor.User, &u, req, true); err != nil {
 				return err
 			}
 			var hash string
@@ -394,7 +400,7 @@ func (a *Auth) executeAdmin(ctx context.Context, h http.Header, req AdminRequest
 			}
 			return tx.SetPassword(u.ID, hash)
 		case "update-user", "set-role":
-			if err := a.adminUpdateFields(actor.User, &u, req, false); err != nil {
+			if err := a.adminUpdateFields(ctx, actor.User, &u, req, false); err != nil {
 				return err
 			}
 		case "ban-user":
@@ -436,6 +442,7 @@ func (a *Auth) executeAdmin(ctx context.Context, h http.Header, req AdminRequest
 		out.User = &u
 		return nil
 	})
+	err = usernameWriteError(err)
 	if errors.Is(err, ErrEmailTaken) {
 		err = adminError(400, "USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL", "User already exists. Use another email.")
 	}

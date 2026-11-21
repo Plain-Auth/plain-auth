@@ -79,6 +79,13 @@ func (a *Auth) handleAccountRequest(route string, w http.ResponseWriter, r *http
 			return nil, &APIError{400, "EMAIL_CAN_NOT_BE_UPDATED", "Email can not be updated"}
 		}
 		var update ProfileUpdate
+		if a.username != nil {
+			var err error
+			update.Username, update.DisplayUsername, err = usernameInput(b)
+			if err != nil {
+				return nil, err
+			}
+		}
 		if _, exists := b["name"]; exists {
 			name, err := requiredString(b, "name")
 			if err != nil {
