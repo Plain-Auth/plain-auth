@@ -466,6 +466,8 @@
     - [ ] Revoking Sessions on Password Change
   - [ ] Session Caching
     - [ ] Cookie Cache
+      - [x] Expire the disabled cache and its canonical chunks on signed-in and anonymous reads ([test](../../conformance/session-cache-cleanup.mjs#L28))
+      - [x] Clear each received cache chunk on the issuing host and shared domain using the configured cookie namespace ([test](../../session_cache_cookies_test.go#L11))
       - [ ] Notes
       - [ ] If immediate session revocation is critical:
       - [ ] Cookie Cache Strategies

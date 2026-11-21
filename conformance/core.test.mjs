@@ -1221,3 +1221,8 @@ test("bearer sessions match the pinned header, identity and revocation contract"
     for (const server of servers) await exerciseBearer(server, signedOnly);
   }
 });
+
+test("session reads retire only the base and canonical cache chunks when caching is disabled", async t => {
+  const {checkCacheCleanup} = await import("./session-cache-cleanup.mjs");
+  for (const server of [await reference(t), await goFixture(t)]) await checkCacheCleanup(server);
+});

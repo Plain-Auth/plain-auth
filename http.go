@@ -350,7 +350,8 @@ func (a *Auth) expireSessionCookieHeaders(h http.Header, r *http.Request) {
 	expireHostCopy(h, r, cookie)
 	h.Add("Set-Cookie", cookie.String())
 	prefix := strings.TrimSuffix(cookie.Name, "session_token")
-	names := []string{"session_data", "dont_remember"}
+	a.expireStoredSessionData(h, r, true)
+	names := []string{"dont_remember"}
 	if a.admin != nil {
 		names = append(names, "admin_session")
 	}
@@ -359,16 +360,7 @@ func (a *Auth) expireSessionCookieHeaders(h http.Header, r *http.Request) {
 		expireHostCopy(h, r, cookie)
 		h.Add("Set-Cookie", cookie.String())
 	}
-	chunkPrefix := prefix + "session_data."
-	for _, c := range r.Cookies() {
-		if suffix, ok := strings.CutPrefix(c.Name, chunkPrefix); ok {
-			if _, err := strconv.ParseUint(suffix, 10, 32); err == nil {
-				cookie.Name = c.Name
-				expireHostCopy(h, r, cookie)
-				h.Add("Set-Cookie", cookie.String())
-			}
-		}
-	}
+
 }
 
 func remoteIP(addr string) string {

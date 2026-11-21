@@ -27,6 +27,7 @@ func (a *Auth) sessionHTTP(w http.ResponseWriter, r *http.Request) (body any, re
 	}
 	token := a.cookieToken(r.Header)
 	if token == "" {
+		a.expireStoredSessionData(w.Header(), r, false)
 		return nil, nil
 	}
 	row, user, err := a.opts.Store.Session(ctx, token)
@@ -45,6 +46,7 @@ func (a *Auth) sessionHTTP(w http.ResponseWriter, r *http.Request) (body any, re
 		}
 		return nil, nil
 	}
+	a.expireStoredSessionData(w.Header(), r, false)
 	result, err := a.withSessionPlugins(ctx, row.Session, user)
 	if err != nil {
 		return nil, err

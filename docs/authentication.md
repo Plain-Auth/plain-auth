@@ -85,6 +85,8 @@ HTTPS enables `Secure` by default. `UseSecureCookies` accepts a boolean pointer 
 
 Signing out clears the shared session cookies across eligible hosts and revokes the active session. During a move from host-only cookies, issue a fresh login on the original host to replace its previous browser credential. Each host controls its own older host-only cookies. The login-method preference persists across logout. In the Go client, call `ClearSharedLastLoginMethod(cookieName, domain)` to remove that preference. [Cookie scope tests](../cookie_scope_http_test.go)
 
+When the browser sends stale session data, `GET /get-session` expires the cache cookie and any numbered chunks in this instance’s namespace. With a shared domain, the response also removes host-only copies that the browser sent. The store supplies the current session. [Session cache cleanup tests](../conformance/session-cache-cleanup.mjs)
+
 The Go methods `SignUpEmail`, `SignInEmail`, `GetSession`, `SignOut`, and the session management methods accept a request context. `GetSession(ctx, headers)` distinguishes an absent session from a storage failure. Use `errors.As(err, &apiErr)` with `var apiErr *stonewrit.APIError` to inspect a public error code and HTTP status. Other errors can carry infrastructure details and belong in application logs.
 
 See the [cross-runtime conformance test](../conformance/core.test.mjs) and [remaining authentication features](parity/authentication.md).
