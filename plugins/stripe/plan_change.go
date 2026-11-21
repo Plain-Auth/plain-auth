@@ -26,7 +26,11 @@ func (s *subscriptions) changePlan(c auth.EndpointContext, selection billingSele
 	if selection.organization {
 		from, to := s.plans[local.Plan], s.plans[s.prices[target].plan]
 		if from.SeatPriceID != "" || to.SeatPriceID != "" {
-			if from.Name == to.Name && from.PriceID == target && local.Status == "active" {
+			current := from.PriceID
+			if local.Interval != nil && *local.Interval == "year" {
+				current = from.AnnualPriceID
+			}
+			if from.Name == to.Name && current == target && local.Status == "active" {
 				return nil, errAlreadySubscribed
 			}
 			return nil, ErrManagedSeatPlanChange
@@ -119,24 +123,26 @@ func (s *subscriptions) changePlan(c auth.EndpointContext, selection billingSele
 }
 
 func (s *subscriptions) verifyLicensedPrice(ctx context.Context, target string) error {
+	return s.verifyPriceInterval(ctx, target, s.prices[target].interval)
+}
+
+func (s *subscriptions) verifyPriceInterval(ctx context.Context, target, interval string) error {
 	price, err := s.client.V1Prices.Retrieve(ctx, target, nil)
 	if err != nil {
 		return providerManagementError(err)
 	}
-	if price == nil || price.ID != target || !price.Active || !s.licensedPrice(price) {
+	if price == nil || price.ID != target || !price.Active || !licensedAtInterval(price, interval) {
 		return errUnsupportedItem
 	}
 	return nil
 }
 
 func (s *subscriptions) licensedPrice(p *sdk.Price) bool {
-	if p == nil || p.Recurring == nil {
-		return false
-	}
-	def, known := s.prices[p.ID]
-	if !known && s.seatPrices[p.ID] {
-		def, known = subscriptionPrice{interval: "month"}, true
-	}
-	return known && string(p.Recurring.Interval) == def.interval && p.Recurring.IntervalCount == 1 &&
+	return p != nil && licensedAtInterval(p, s.prices[p.ID].interval)
+}
+
+func licensedAtInterval(p *sdk.Price, interval string) bool {
+	return (interval == "month" || interval == "year") && p != nil && p.Recurring != nil &&
+		string(p.Recurring.Interval) == interval && p.Recurring.IntervalCount == 1 &&
 		p.Recurring.UsageType == sdk.PriceRecurringUsageTypeLicensed
 }

@@ -1884,6 +1884,11 @@
       "label": "Bind both price IDs across a lost Checkout response, reject a repriced retry and resume on a second server",
       "test": "adapters/sqlstore/stripe_seats_test.go",
       "marker": "a changed seat price reused pending checkout"
+    },
+    {
+      "label": "Pair an annual base and a separate yearly member price through the public client and retain annual terms after membership changes",
+      "test": "conformance/stripe-organization-fixture.mjs",
+      "marker": "[[\"price_basic_annual\", 1], [\"price_member_annual\", 2]]"
     }
   ],
   "docs/content/docs/plugins/stripe.mdx#L221": [
@@ -6576,6 +6581,21 @@
       "label": "Bind both price IDs across a lost Checkout response, reject a repriced retry and resume on a second server",
       "test": "adapters/sqlstore/stripe_seats_test.go",
       "marker": "a changed seat price reused pending checkout"
+    },
+    {
+      "label": "Pair an annual base and a separate yearly member price through the public client and retain annual terms after membership changes",
+      "test": "conformance/stripe-organization-fixture.mjs",
+      "marker": "[[\"price_basic_annual\", 1], [\"price_member_annual\", 2]]"
+    },
+    {
+      "label": "Reject a monthly base paired with yearly seats before creating a Checkout Session",
+      "test": "adapters/sqlstore/stripe_seats_test.go",
+      "marker": "mixed monthly base and annual member price reached Checkout"
+    },
+    {
+      "label": "Resolve a historical organization subscription’s missing billing interval from Stripe before the worker prepares a seat update",
+      "test": "adapters/sqlstore/stripe_seats_test.go",
+      "marker": "worker must recover a missing billing interval before changing seats"
     }
   ],
   "plugin/sso/POST /sign-in/sso": [
@@ -6669,6 +6689,16 @@
       "label": "Keep the fixed base at one while invitations and removals update the separate membership item",
       "test": "conformance/stripe-organization-fixture.mjs",
       "marker": "if (separate) assert.equal(remote.state.subscription.items.data.find"
+    },
+    {
+      "label": "Pair an annual base and a separate yearly member price through the public client and retain annual terms after membership changes",
+      "test": "conformance/stripe-organization-fixture.mjs",
+      "marker": "[[\"price_basic_annual\", 1], [\"price_member_annual\", 2]]"
+    },
+    {
+      "label": "Reject a monthly base paired with yearly seats before creating a Checkout Session",
+      "test": "adapters/sqlstore/stripe_seats_test.go",
+      "marker": "mixed monthly base and annual member price reached Checkout"
     }
   ],
   "docs/content/docs/plugins/stripe.mdx#L19/Team subscription support with seats management": [
@@ -6743,6 +6773,13 @@
       "test": "conformance/custom-session-types.mts",
       "marker": "const checkedOptions: Record<keyof",
       "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L876/`annualDiscountPriceId`": [
+    {
+      "label": "Pair an annual base and a separate yearly member price through the public client and retain annual terms after membership changes",
+      "test": "conformance/stripe-organization-fixture.mjs",
+      "marker": "[[\"price_basic_annual\", 1], [\"price_member_annual\", 2]]"
     }
   ]
 }

@@ -111,11 +111,20 @@ func (w *SeatWorker) syncGroup(ctx context.Context, group string) error {
 	}
 	s := w.subscriptions
 	plan := s.plans[job.Plan]
+	if plan.SeatPriceID == "" || plan.SeatPriceID != job.Price {
+		return ErrSeatReconciliation
+	}
+	if job.BasePrice == "" && plan.PriceID != job.Price && plan.AnnualPriceID != "" && job.Item == "" {
+		// A confirmed historical subscription can lack a stored interval. Refresh
+		// it from Stripe first. The next poll can prepare a price-bound mutation.
+		_, err := s.reconcile(ctx, w.store, SubscriptionIdentity{RemoteID: job.Subscription, CustomerID: job.Customer, Owner: group, LocalID: job.LocalID}, nil, false)
+		return err
+	}
 	basePrice := job.BasePrice
 	if basePrice == "" {
 		basePrice = job.Price
-	} // in-flight jobs written for seat-only plans
-	if plan.SeatPriceID == "" || plan.SeatPriceID != job.Price || plan.PriceID != basePrice {
+	} // older single-item operations
+	if s.prices[basePrice].plan != plan.Name {
 		return ErrSeatReconciliation
 	}
 	sub, err := s.client.V1Subscriptions.Retrieve(ctx, job.Subscription, nil)
@@ -128,7 +137,7 @@ func (w *SeatWorker) syncGroup(ctx context.Context, group string) error {
 	if sub.Status != sdk.SubscriptionStatusActive && sub.Status != sdk.SubscriptionStatusTrialing || sub.Schedule != nil || sub.PendingUpdate != nil || sub.PauseCollection != nil {
 		return ErrSeatReconciliation
 	}
-	_, item := s.membershipItems(sub, plan)
+	_, item := s.membershipItems(sub, plan, basePrice)
 	if item == nil || job.Item != "" && job.Item != item.ID {
 		return ErrSeatReconciliation
 	}
@@ -158,7 +167,7 @@ func (w *SeatWorker) syncGroup(ctx context.Context, group string) error {
 	if err != nil {
 		return err
 	}
-	_, confirmed := s.membershipItems(sub, plan)
+	_, confirmed := s.membershipItems(sub, plan, basePrice)
 	if confirmed == nil || confirmed.ID != item.ID || confirmed.Quantity != job.Quantity {
 		return ErrSeatReconciliation
 	}

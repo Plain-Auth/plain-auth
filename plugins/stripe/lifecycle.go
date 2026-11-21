@@ -158,10 +158,10 @@ func (s *subscriptions) subscriptionChange(sub *sdk.Subscription, deleted bool, 
 			if plan.SeatPriceID == "" {
 				continue
 			}
-			base, seat := s.membershipItems(sub, plan)
+			base, seat := s.membershipItems(sub, plan, item.Price.ID)
 			if seat != nil {
 				change.Plan, change.Interval = plan.Name, price.interval
-				change.ManagedBasePrice, change.ManagedSeatPrice, change.SeatProration = plan.PriceID, plan.SeatPriceID, plan.ProrationBehavior
+				change.ManagedBasePrice, change.ManagedSeatPrice, change.SeatProration = base.Price.ID, plan.SeatPriceID, plan.ProrationBehavior
 				change.PeriodStart, change.PeriodEnd, change.Seats = base.CurrentPeriodStart, base.CurrentPeriodEnd, seat.Quantity
 			}
 			return change

@@ -36,6 +36,8 @@ type seatsProvider struct {
 	afterPost                      func()
 	failAfterPost                  bool
 	dual, loseCheckout, badReceipt bool
+	basePriceID                    string
+	annual                         bool
 	checkoutKey, checkoutForm      string
 }
 
@@ -47,14 +49,18 @@ func (p *seatsProvider) subscription() map[string]any {
 	if customer == "" {
 		customer = "cus_org"
 	}
-	items := []any{map[string]any{"id": "si_managed", "quantity": p.current, "current_period_start": 3000, "price": fixtureMonthlyPrice("price_seat")}}
+	items := []any{map[string]any{"id": "si_managed", "quantity": p.current, "current_period_start": 3000, "price": p.price("price_seat")}}
 	if p.dual {
-		items = append(items, map[string]any{"id": "si_base", "quantity": 1, "current_period_start": 1000, "price": fixtureMonthlyPrice("price_base")})
+		items = append(items, map[string]any{"id": "si_base", "quantity": 1, "current_period_start": 1000, "price": p.price(p.basePriceID)})
 	}
 	return map[string]any{"id": "sub_auto", "object": "subscription", "customer": customer, "status": status, "metadata": p.metadata, "items": map[string]any{"data": items}}
 }
-func fixtureMonthlyPrice(id string) map[string]any {
-	return map[string]any{"id": id, "active": true, "recurring": map[string]any{"interval": "month", "interval_count": 1, "usage_type": "licensed"}}
+func (p *seatsProvider) price(id string) map[string]any {
+	interval := "month"
+	if p.annual && (id == p.basePriceID || id == "price_seat") {
+		interval = "year"
+	}
+	return map[string]any{"id": id, "active": true, "recurring": map[string]any{"interval": interval, "interval_count": 1, "usage_type": "licensed"}}
 }
 func (p *seatsProvider) checkout() map[string]any {
 	lines := []any{map[string]any{"quantity": p.purchased, "price": map[string]string{"id": "price_seat"}}}
@@ -63,7 +69,7 @@ func (p *seatsProvider) checkout() map[string]any {
 		if p.badReceipt {
 			baseCount = 2
 		}
-		lines = append(lines, map[string]any{"quantity": baseCount, "price": map[string]string{"id": "price_base"}})
+		lines = append(lines, map[string]any{"quantity": baseCount, "price": map[string]string{"id": p.basePriceID}})
 	}
 	return map[string]any{"id": "cs_auto", "object": "checkout.session", "url": "https://billing.example.test/managed", "mode": "subscription", "status": "complete", "payment_status": "paid", "customer": "cus_org", "client_reference_id": p.group, "metadata": p.metadata, "subscription": "sub_auto", "line_items": map[string]any{"data": lines}}
 }
@@ -82,15 +88,15 @@ func (p *seatsProvider) RoundTrip(r *http.Request) (*http.Response, error) {
 	case r.Method == "POST" && r.URL.Path == "/v1/subscriptions/sub_broken":
 		p.failedKeys = append(p.failedKeys, r.Header.Get("Idempotency-Key"))
 		return nil, errors.New("subscription update is unavailable")
-	case r.Method == "GET" && (r.URL.Path == "/v1/prices/price_seat" || r.URL.Path == "/v1/prices/price_base"):
-		return stripeJSON(200, fixtureMonthlyPrice(strings.TrimPrefix(r.URL.Path, "/v1/prices/"))), nil
+	case r.Method == "GET" && (r.URL.Path == "/v1/prices/price_seat" || r.URL.Path == "/v1/prices/price_base" || r.URL.Path == "/v1/prices/price_base_year"):
+		return stripeJSON(200, p.price(strings.TrimPrefix(r.URL.Path, "/v1/prices/"))), nil
 	case r.Method == "POST" && r.URL.Path == "/v1/checkout/sessions":
 		if r.Form.Get("customer") != "cus_org" || r.Form.Get("client_reference_id") != p.group {
 			return nil, errors.New("unexpected checkout owner")
 		}
 		seatIndex := "0"
 		if p.dual {
-			if r.Form.Get("line_items[0][price]") != "price_base" || r.Form.Get("line_items[0][quantity]") != "1" || r.Form.Has("line_items[2][price]") {
+			if r.Form.Get("line_items[0][price]") != p.basePriceID || r.Form.Get("line_items[0][quantity]") != "1" || r.Form.Has("line_items[2][price]") {
 				return nil, errors.New("wrong fixed base or extra checkout line")
 			}
 			seatIndex = "1"
@@ -154,9 +160,13 @@ func (p *seatsProvider) RoundTrip(r *http.Request) (*http.Response, error) {
 	return nil, fmt.Errorf("unexpected %s %s", r.Method, r.URL)
 }
 
-func TestAutomaticOrganizationSeats(t *testing.T)    { testOrganizationSeatLifecycle(t, false) }
-func TestOrganizationBaseAndSeatPrices(t *testing.T) { testOrganizationSeatLifecycle(t, true) }
-func testOrganizationSeatLifecycle(t *testing.T, dual bool) {
+func TestAutomaticOrganizationSeats(t *testing.T)    { testOrganizationSeatLifecycle(t, "price_seat") }
+func TestOrganizationBaseAndSeatPrices(t *testing.T) { testOrganizationSeatLifecycle(t, "price_base") }
+func TestOrganizationAnnualBaseAndSeatPrices(t *testing.T) {
+	testOrganizationSeatLifecycle(t, "price_base_year")
+}
+func testOrganizationSeatLifecycle(t *testing.T, basePrice string) {
+	dual, annual := basePrice != "price_seat", basePrice == "price_base_year"
 	for _, dialect := range []string{"sqlite", "postgres", "mysql"} {
 		t.Run(dialect, func(t *testing.T) {
 			ctx := t.Context()
@@ -177,11 +187,14 @@ func testOrganizationSeatLifecycle(t *testing.T, dual bool) {
 			defer replica.Close()
 			svc, err := org.NewService(org.Options{Store: store})
 			must(err)
-			remote := &seatsProvider{keys: map[string]int{}, dual: dual, loseCheckout: dual}
+			remote := &seatsProvider{keys: map[string]int{}, dual: dual, annual: annual, basePriceID: basePrice, loseCheckout: dual}
 			backend := sdk.NewBackendsWithConfig(&sdk.BackendConfig{HTTPClient: &http.Client{Transport: remote}, MaxNetworkRetries: sdk.Int64(0)})
 			opts := billing.SubscriptionOptions{Client: sdk.NewClient("sk_test", sdk.WithBackends(backend)), Plans: []billing.Plan{{Name: "team", PriceID: "price_seat", SeatPriceID: "price_seat", ProrationBehavior: "none"}}}
 			if dual {
 				opts.Plans[0].PriceID = "price_base"
+			}
+			if annual {
+				opts.Plans[0].AnnualPriceID = basePrice
 			}
 			host := httptest.NewUnstartedServer(nil)
 			origin := "https://" + host.Listener.Addr().String()
@@ -222,7 +235,16 @@ func testOrganizationSeatLifecycle(t *testing.T, dual bool) {
 			}
 			initial, err := add(first)
 			must(err)
-			request := stripeclient.Checkout{Plan: "team", Seats: 99, CustomerType: "organization", ReferenceID: group.ID}
+			request := stripeclient.Checkout{Plan: "team", Annual: annual, Seats: 99, CustomerType: "organization", ReferenceID: group.ID}
+			if annual {
+				mixed := request
+				mixed.Annual = false
+				_, err := owner.Upgrade(ctx, mixed)
+				var public *auth.APIError
+				if !errors.As(err, &public) || public.Status != http.StatusConflict || public.Code != "UNSUPPORTED_SUBSCRIPTION_ITEM" || remote.checkoutKey != "" {
+					t.Fatal("mixed monthly base and annual member price reached Checkout", err)
+				}
+			}
 			if dual {
 				_, err = owner.Upgrade(ctx, request)
 				if err == nil || remote.checkoutKey == "" || remote.purchased != 2 {
@@ -336,8 +358,18 @@ func testOrganizationSeatLifecycle(t *testing.T, dual bool) {
 			if len(rows) != 1 || rows[0].Seats == nil || *rows[0].Seats != 3 {
 				t.Fatal("confirmed membership quantity missing", rows)
 			}
-			if dual && (rows[0].PriceID != "price_base" || rows[0].PeriodStart == nil || rows[0].PeriodStart.Unix() != 1000) {
+			if dual && (rows[0].PriceID != basePrice || rows[0].PeriodStart == nil || rows[0].PeriodStart.Unix() != 1000) {
 				t.Fatal("seat item replaced base plan billing terms", rows[0])
+			}
+			if annual {
+				if rows[0].Interval == nil || *rows[0].Interval != "year" {
+					t.Fatal("annual seat subscription lost its billing interval", rows)
+				}
+				_, err := owner.Upgrade(ctx, request)
+				var public *auth.APIError
+				if !errors.As(err, &public) || public.Code != "ALREADY_SUBSCRIBED_PLAN" {
+					t.Fatal("current annual plan was not recognized", err)
+				}
 			}
 			_, err = store.RemoveOrganizationMember(ctx, ownerID, token, group.ID, member.ID)
 			must(err)
@@ -377,6 +409,16 @@ func testOrganizationSeatLifecycle(t *testing.T, dual bool) {
 			// An already-paid subscription can predate this plan configuration.
 			_, err = store.db.ExecContext(ctx, store.bind(`DELETE FROM "verification" WHERE "id"=?`), stripeRecordID("seats", group.ID))
 			must(err)
+			if annual {
+				_, err = store.db.ExecContext(ctx, store.bind(`UPDATE "subscription" SET "billingInterval"=NULL WHERE "referenceId"=?`), group.ID)
+				must(err)
+				must(worker.SyncOnce(ctx, 10))
+				var actual string
+				must(store.db.QueryRowContext(ctx, store.bind(`SELECT "billingInterval" FROM "subscription" WHERE "referenceId"=?`), group.ID).Scan(&actual))
+				if actual != "year" || len(remote.requests) != writes {
+					t.Fatal("worker must recover a missing billing interval before changing seats", actual)
+				}
+			}
 			reenrolled, err := add(first)
 			must(err)
 			remote.customer = "cus_other"

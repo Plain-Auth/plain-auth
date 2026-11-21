@@ -19,7 +19,7 @@ import (
 type Plan struct {
 	Name, PriceID, AnnualPriceID string
 	// SeatPriceID opts organization checkout into membership-based billing.
-	// Use the base price for seat-only billing, or a distinct monthly seat price.
+	// Use the base price for seat-only billing, or a distinct seat price matching the selected base interval.
 	SeatPriceID, ProrationBehavior string
 }
 type SubscriptionOptions struct {
@@ -104,7 +104,6 @@ type subscriptionPrice struct{ plan, interval string }
 type subscriptions struct {
 	organization             *OrganizationOptions
 	prices                   map[string]subscriptionPrice
-	seatPrices               map[string]bool
 	client                   *sdk.Client
 	plans                    map[string]Plan
 	requireEmailVerification bool
@@ -125,8 +124,11 @@ func configureSubscriptions(o *SubscriptionOptions) (*subscriptions, error) {
 			return nil, errors.New("stripe: invalid or duplicate subscription plan")
 		}
 		if p.SeatPriceID != "" {
-			if !strings.HasPrefix(p.SeatPriceID, "price_") || len(p.SeatPriceID) == 6 || p.AnnualPriceID != "" {
-				return nil, errors.New("stripe: organization seat billing requires monthly base and seat prices")
+			if !strings.HasPrefix(p.SeatPriceID, "price_") || len(p.SeatPriceID) == 6 {
+				return nil, errors.New("stripe: invalid organization seat price ID")
+			}
+			if p.AnnualPriceID != "" && p.SeatPriceID == p.PriceID {
+				return nil, errors.New("stripe: an organization plan with an annual base requires a separate licensed seat price")
 			}
 			switch p.ProrationBehavior {
 			case "":
@@ -147,13 +149,11 @@ func configureSubscriptions(o *SubscriptionOptions) (*subscriptions, error) {
 			s.prices[price] = subscriptionPrice{p.Name, interval}
 		}
 	}
-	s.seatPrices = make(map[string]bool)
 	for _, p := range s.plans {
 		if p.SeatPriceID != "" && p.SeatPriceID != p.PriceID {
 			if _, collision := s.prices[p.SeatPriceID]; collision {
 				return nil, errors.New("stripe: a separate seat price cannot also identify a base plan")
 			}
-			s.seatPrices[p.SeatPriceID] = true
 		}
 	}
 	return s, nil

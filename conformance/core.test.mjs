@@ -1105,7 +1105,7 @@ test("enterprise OIDC browser sessions survive an implementation change for both
 
 test("the pinned client bills one organization seat per member on both runtimes", async t => {
   const { organizationBilling } = await import("./stripe-organization-fixture.mjs");
-  await organizationBilling(t, { reference, goFixture, instrument }, true);
+  await organizationBilling(t, { reference, goFixture, instrument }, { automatic: true });
 });
 
 
@@ -1145,7 +1145,7 @@ test("the released client signs in with a preprovisioned Base32 authenticator on
 
 test("the pinned client bills a fixed organization base and a separate quantity per member", async t => {
   const { organizationBilling } = await import("./stripe-organization-fixture.mjs");
-  await organizationBilling(t, { reference, goFixture, instrument }, true, true);
+  await organizationBilling(t, { reference, goFixture, instrument }, { automatic: true, separate: true });
 });
 
 test("application key validators control sessions on both runtimes", async (t) => {
@@ -1188,4 +1188,9 @@ test("the custom session client infers its configured response and public option
   ], { cwd: harness, encoding: "utf8", timeout: 60_000 });
   if (result.error) throw result.error;
   assert.equal(result.status, 0, result.stdout + result.stderr);
+});
+
+test("the pinned client bills an annual organization base and a yearly seat per member", async t => {
+  const { organizationBilling } = await import("./stripe-organization-fixture.mjs");
+  await organizationBilling(t, { reference, goFixture, instrument }, { automatic: true, separate: true, annual: true });
 });

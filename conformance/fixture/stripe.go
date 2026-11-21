@@ -37,8 +37,12 @@ func fixtureStripe(ctx context.Context, store *sqlstore.Store, endpoint string, 
 	}}
 	if managedSeats {
 		subscriptions.Plans[0].SeatPriceID = subscriptions.Plans[0].PriceID
-		if os.Getenv("CONFORMANCE_STRIPE_SEPARATE_PRICE") == "1" {
+		switch os.Getenv("CONFORMANCE_STRIPE_SEPARATE_PRICE") {
+		case "1":
 			subscriptions.Plans[0].SeatPriceID = "price_member"
+		case "annual":
+			subscriptions.Plans[0].AnnualPriceID = "price_basic_annual"
+			subscriptions.Plans[0].SeatPriceID = "price_member_annual"
 		}
 		worker, err := billing.NewSeatWorker(store, *subscriptions)
 		if err != nil {

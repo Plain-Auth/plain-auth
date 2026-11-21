@@ -10,6 +10,8 @@ import Stripe from "stripe";
 const secret = "whsec_offline_fixture";
 const checked = result => { assert.equal(result.error, null, JSON.stringify(result.error)); return result.data; };
 
+const intervalOf = id => id.endsWith("_annual") ? "year" : "month";
+
 async function provider(t) {
   const state = { calls: [], customer: null, checkout: null, subscription: null, seatUpdates: [] };
   const server = createServer(async (req, res) => {
@@ -26,7 +28,10 @@ async function provider(t) {
       result = state.customer = { id: "cus_org", object: "customer", name: form.get("name"), metadata: fields("metadata[") };
     }
     if (url.pathname === "/v1/subscriptions" && req.method === "GET") result = { object: "list", has_more: false, data: [] };
-    if (["/v1/prices/price_basic", "/v1/prices/price_member"].includes(url.pathname)) result = { id: url.pathname.split("/").at(-1), object: "price", active: true, recurring: { interval: "month", interval_count: 1, usage_type: "licensed" } };
+    if (url.pathname.startsWith("/v1/prices/")) {
+      const id = url.pathname.split("/").at(-1);
+      result = { id, object: "price", active: true, recurring: { interval: intervalOf(id), interval_count: 1, usage_type: "licensed" } };
+    }
     if (url.pathname === "/v1/checkout/sessions" && req.method === "POST") {
       const lines = [];
       for (let i = 0; form.has(`line_items[${i}][price]`); i++) {
@@ -39,7 +44,7 @@ async function provider(t) {
       state.subscription = { id: "sub_org", object: "subscription", customer: result.customer, status: "active",
         metadata: fields("subscription_data[metadata]["), livemode: false, items: { object: "list", has_more: false, data: lines.map((line, i) => ({
           id: i === 0 ? "si_org" : "si_member", quantity: line.quantity, current_period_start: start,
-          current_period_end: start + 2_592_000, price: { ...line.price, recurring: { interval: "month", interval_count: 1, usage_type: "licensed" } },
+          current_period_end: start + (intervalOf(line.price.id) === "year" ? 31_536_000 : 2_592_000), price: { ...line.price, recurring: { interval: intervalOf(line.price.id), interval_count: 1, usage_type: "licensed" } },
         })) } };
     }
     if (url.pathname === "/v1/checkout/sessions/cs_org" && req.method === "GET") result = state.checkout;
@@ -67,14 +72,14 @@ async function provider(t) {
   return { state, api, url: "http://127.0.0.1:" + port };
 }
 
-export async function organizationBilling(t, { reference, goFixture, instrument }, automatic = false, separate = false) {
+export async function organizationBilling(t, { reference, goFixture, instrument }, { automatic = false, separate = false, annual = false } = {}) {
   for (const runtime of ["reference", "Go"]) await t.test(runtime, async t => {
     const remote = await provider(t);
     const server = runtime === "Go"
-      ? await goFixture(t, ["organization", "stripe-organization"], { CONFORMANCE_STRIPE_URL: remote.url, CONFORMANCE_STRIPE_AUTO_SEATS: automatic ? "1" : "", CONFORMANCE_STRIPE_SEPARATE_PRICE: separate ? "1" : "" })
+      ? await goFixture(t, ["organization", "stripe-organization"], { CONFORMANCE_STRIPE_URL: remote.url, CONFORMANCE_STRIPE_AUTO_SEATS: automatic ? "1" : "", CONFORMANCE_STRIPE_SEPARATE_PRICE: annual ? "annual" : separate ? "1" : "" })
       : await reference(t, [organization(), stripe({
         stripeClient: remote.api, stripeWebhookSecret: secret, organization: { enabled: true },
-        subscription: { enabled: true, plans: [{ name: "basic", priceId: "price_basic", ...(automatic && { seatPriceId: separate ? "price_member" : "price_basic" }) }, { name: "team", priceId: "price_team", annualDiscountPriceId: "price_team_annual" }],
+        subscription: { enabled: true, plans: [{ name: "basic", priceId: "price_basic", ...(automatic && { seatPriceId: separate ? "price_member" : "price_basic" }), ...(annual && { annualDiscountPriceId: "price_basic_annual", seatPriceId: "price_member_annual" }) }, { name: "team", priceId: "price_team", annualDiscountPriceId: "price_team_annual" }],
           authorizeReference: async ({ user, referenceId }, ctx) => {
             const member = await ctx.context.adapter.findOne({ model: "member", where: [{ field: "organizationId", value: referenceId }, { field: "userId", value: user.id }] });
             return member?.role === "owner" || member?.role === "admin";
@@ -93,7 +98,7 @@ export async function organizationBilling(t, { reference, goFixture, instrument 
     assert.equal(denied.error.code, "UNAUTHORIZED");
     assert.equal(remote.state.calls.length, 0);
     if (automatic) {
-      await automaticSeats({ browser, owner, peer, group, remote, deliver, separate });
+      await automaticSeats({ browser, owner, peer, group, remote, deliver, separate, annual });
       return;
     }
     const purchase = checked(await owner.subscription.upgrade({ ...selector, plan: "basic", seats: 5, disableRedirect: true }));
@@ -136,16 +141,18 @@ export async function organizationBilling(t, { reference, goFixture, instrument 
   });
 }
 
-async function automaticSeats({ browser, owner, peer, group, remote, deliver, separate }) {
+async function automaticSeats({ browser, owner, peer, group, remote, deliver, separate, annual }) {
   const invite = async (client, email) => {
     const invitation = checked(await owner.organization.inviteMember({ organizationId: group.id, email, role: "member" }));
     checked(await client.organization.acceptInvitation({ invitationId: invitation.id }));
   };
   await invite(peer, "outside@example.test");
   const selector = { customerType: "organization", referenceId: group.id };
-  const managedCheckout = checked(await owner.subscription.upgrade({ ...selector, plan: "basic", seats: 99, disableRedirect: true }));
+  const managedCheckout = checked(await owner.subscription.upgrade({ ...selector, plan: "basic", annual, seats: 99, disableRedirect: true }));
   assert.equal(managedCheckout.url, "https://checkout.example.test/org");
-  if (separate) {
+  if (annual) {
+    assert.deepEqual(remote.state.checkout.line_items.data.map(line => [line.price.id, line.quantity]), [["price_basic_annual", 1], ["price_member_annual", 2]]);
+  } else if (separate) {
     assert.deepEqual(remote.state.checkout.line_items.data.map(line => [line.price.id, line.quantity]), [["price_basic", 1], ["price_member", 2]]);
   } else {
     assert.equal(remote.state.checkout.line_items.data[0].quantity, 2);
@@ -159,7 +166,7 @@ async function automaticSeats({ browser, owner, peer, group, remote, deliver, se
     const deadline = Date.now() + 5_000;
     do {
       const rows = checked(await owner.subscription.list({ query: selector }));
-      if (rows.length === 1 && rows[0].priceId === "price_basic" && rows[0].seats === expected && remote.state.subscription.items.data.find(item => item.id === seatID)?.quantity === expected) return;
+      if (rows.length === 1 && rows[0].priceId === (annual ? "price_basic_annual" : "price_basic") && rows[0].billingInterval === (annual ? "year" : "month") && rows[0].seats === expected && remote.state.subscription.items.data.find(item => item.id === seatID)?.quantity === expected) return;
       await new Promise(resolve => setTimeout(resolve, 25));
     } while (Date.now() < deadline);
     assert.fail("Membership quantity did not reach " + expected);

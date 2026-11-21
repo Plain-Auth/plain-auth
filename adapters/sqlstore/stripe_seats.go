@@ -143,6 +143,11 @@ func (s *Store) observeOrganizationSeats(ctx context.Context, tx *sql.Tx, group,
 	if oldBase == "" {
 		oldBase = state.Price
 	}
+	// A historical row without a billing interval first performs a read-only
+	// reconciliation. No provider update has been prepared for this probe.
+	if state.BasePrice == "" && state.Work != nil && state.Work.Item == "" && state.Price == c.ManagedSeatPrice && c.ManagedBasePrice != state.Price {
+		state.Work = nil
+	}
 	if state.Work != nil && (state.Price != c.ManagedSeatPrice || oldBase != c.ManagedBasePrice) {
 		return billing.ErrSeatReconciliation
 	}
@@ -165,6 +170,11 @@ func (s *Store) DiscoverStripeSeats(ctx context.Context, plan billing.Plan, limi
 	}
 	fields := ` FROM "subscription" b JOIN "organization" o ON o."id"=` + s.exactSQLValue(`b."referenceId"`) + ` AND o."stripeCustomerId"=` + s.exactSQLValue(`b."stripeCustomerId"`) + `
 		WHERE b."status" IN ('active','trialing') AND b."plan"=? AND b."stripeSubscriptionId" IS NOT NULL`
+	if plan.AnnualPriceID == "" {
+		fields += ` AND (b."billingInterval" IS NULL OR b."billingInterval"='month')`
+	} else {
+		fields += ` AND (b."billingInterval" IS NULL OR b."billingInterval" IN ('month','year'))`
+	}
 	rows, err := s.db.QueryContext(ctx, s.bind(`SELECT DISTINCT o."id"`+fields+`
 		AND NOT EXISTS(SELECT 1 FROM "verification" v WHERE v."identifier" IN (`+concat+`,`+concat+`))
 		ORDER BY o."id" LIMIT ?`), plan.Name, seatsDue, seatsIdle, limit)
@@ -208,12 +218,19 @@ func (s *Store) enrollSeatPlan(ctx context.Context, group string, plan billing.P
 	}
 	state = &seatState{Organization: group, Plan: plan.Name, Price: plan.SeatPriceID, BasePrice: plan.PriceID, Proration: plan.ProrationBehavior, Revision: 1}
 	var ref string
-	err = tx.QueryRowContext(ctx, s.bind(`SELECT b."id",b."referenceId",b."stripeCustomerId",b."stripeSubscriptionId"`+fields+` AND o."id"=? ORDER BY b."id" LIMIT 1`), plan.Name, group).Scan(&state.LocalID, &ref, &state.Customer, &state.Subscription)
+	var interval sql.NullString
+	err = tx.QueryRowContext(ctx, s.bind(`SELECT b."id",b."referenceId",b."stripeCustomerId",b."stripeSubscriptionId",b."billingInterval"`+fields+` AND o."id"=? ORDER BY b."id" LIMIT 1`), plan.Name, group).Scan(&state.LocalID, &ref, &state.Customer, &state.Subscription, &interval)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil
 	}
 	if err != nil {
 		return err
+	}
+	if interval.String == "year" {
+		state.BasePrice = plan.AnnualPriceID
+	} else if !interval.Valid && plan.AnnualPriceID != "" {
+		// The live subscription must identify its base before its first seat change.
+		state.BasePrice = ""
 	}
 	if ref != group {
 		return billing.ErrSeatReconciliation

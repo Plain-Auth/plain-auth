@@ -2,6 +2,7 @@ package stripe
 
 import (
 	"context"
+	"errors"
 
 	sdk "github.com/stripe/stripe-go/v87"
 )
@@ -42,7 +43,10 @@ func (a CheckoutAttempt) matchesLines(actual []*sdk.LineItem) bool {
 
 func (s *subscriptions) verifyCheckoutPrices(ctx context.Context, a CheckoutAttempt) error {
 	for _, line := range a.checkoutLines() {
-		if err := s.verifyLicensedPrice(ctx, *line.Price); err != nil {
+		if err := s.verifyPriceInterval(ctx, *line.Price, a.Interval); err != nil {
+			if a.SeatPrice != "" && errors.Is(err, errUnsupportedItem) {
+				return billingError(409, errUnsupportedItem.Code, "Organization base and seat prices must be active licensed prices with the selected billing interval")
+			}
 			return err
 		}
 	}
@@ -51,15 +55,16 @@ func (s *subscriptions) verifyCheckoutPrices(ctx context.Context, a CheckoutAtte
 
 // membershipItems resolves by configured price, independent of provider ordering.
 // The base determines the billing period. Only the seat item may change quantity.
-func (s *subscriptions) membershipItems(sub *sdk.Subscription, plan Plan) (base, seat *sdk.SubscriptionItem) {
-	if sub == nil || sub.Items == nil || sub.Items.HasMore || plan.SeatPriceID == "" {
+func (s *subscriptions) membershipItems(sub *sdk.Subscription, plan Plan, basePrice string) (base, seat *sdk.SubscriptionItem) {
+	price := s.prices[basePrice]
+	if price.plan != plan.Name || sub == nil || sub.Items == nil || sub.Items.HasMore || plan.SeatPriceID == "" {
 		return nil, nil
 	}
 	for _, item := range sub.Items.Data {
-		if item == nil || item.ID == "" || item.Quantity < 0 || !s.licensedPrice(item.Price) {
+		if item == nil || item.ID == "" || item.Quantity < 0 || !licensedAtInterval(item.Price, price.interval) {
 			return nil, nil
 		}
-		isBase, isSeat := item.Price.ID == plan.PriceID, item.Price.ID == plan.SeatPriceID
+		isBase, isSeat := item.Price.ID == basePrice, item.Price.ID == plan.SeatPriceID
 		if !isBase && !isSeat || isBase && base != nil || isSeat && seat != nil {
 			return nil, nil
 		}
@@ -70,7 +75,7 @@ func (s *subscriptions) membershipItems(sub *sdk.Subscription, plan Plan) (base,
 			seat = item
 		}
 	}
-	if base == nil || seat == nil || plan.PriceID != plan.SeatPriceID && (base.Quantity != 1 || base.ID == seat.ID) {
+	if base == nil || seat == nil || basePrice != plan.SeatPriceID && (base.Quantity != 1 || base.ID == seat.ID) {
 		return nil, nil
 	}
 	return base, seat

@@ -24,7 +24,7 @@ func TestMembershipPriceConfiguration(t *testing.T) {
 			t.Fatal("incorrect seat proration", behavior, err)
 		}
 	}
-	for _, plan := range []Plan{{Name: "invalid", PriceID: "price_base", SeatPriceID: "invalid"}, {Name: "year", PriceID: "price_seat", SeatPriceID: "price_seat", AnnualPriceID: "price_annual"}} {
+	for _, plan := range []Plan{{Name: "invalid", PriceID: "price_base", SeatPriceID: "invalid"}, {Name: "year", PriceID: "price_seat", SeatPriceID: "price_seat", AnnualPriceID: "price_annual"}, {Name: "collision", PriceID: "price_base", AnnualPriceID: "price_year", SeatPriceID: "price_year"}} {
 		if _, err := configureSubscriptions(&SubscriptionOptions{Client: sdk.NewClient("sk_test"), Plans: []Plan{plan}}); err == nil {
 			t.Fatal("accepted unsupported seat plan", plan.Name)
 		}
@@ -66,5 +66,34 @@ func TestManagedItemsRequireBothConfiguredPrices(t *testing.T) {
 		if purchase.matchesLines(lines) {
 			t.Fatal("nonmatching two-item receipt accepted")
 		}
+	}
+}
+
+func TestManagedSubscriptionIntervals(t *testing.T) {
+	plan := Plan{Name: "team", PriceID: "price_base", AnnualPriceID: "price_annual", SeatPriceID: "price_member"}
+	s, err := configureSubscriptions(&SubscriptionOptions{Client: sdk.NewClient("sk_test"), Plans: []Plan{plan}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		name, base, baseInterval, seatInterval, want string
+		count                                        int64
+	}{
+		{"monthly", plan.PriceID, "month", "month", "month", 1},
+		{"annual", plan.AnnualPriceID, "year", "year", "year", 1},
+		{"monthly seat on annual base", plan.AnnualPriceID, "year", "month", "", 1},
+		{"annual seat on monthly base", plan.PriceID, "month", "year", "", 1},
+		{"wrong base interval", plan.AnnualPriceID, "month", "month", "", 1},
+		{"two-year seat", plan.AnnualPriceID, "year", "year", "", 2},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			item := func(id, price, interval string, count int64) *sdk.SubscriptionItem {
+				return &sdk.SubscriptionItem{ID: id, Quantity: 1, Price: &sdk.Price{ID: price, Recurring: &sdk.PriceRecurring{Interval: sdk.PriceRecurringInterval(interval), IntervalCount: count, UsageType: sdk.PriceRecurringUsageTypeLicensed}}}
+			}
+			state := s.subscriptionChange(&sdk.Subscription{Status: sdk.SubscriptionStatusActive, Items: &sdk.SubscriptionItemList{Data: []*sdk.SubscriptionItem{item("si_seat", plan.SeatPriceID, tc.seatInterval, tc.count), item("si_base", tc.base, tc.baseInterval, 1)}}}, false, true)
+			if state.Interval != tc.want || (state.ManagedBasePrice == tc.base) != (tc.want != "") || (state.Plan == plan.Name) != (tc.want != "") {
+				t.Fatal("provider intervals granted the wrong managed plan", state)
+			}
+		})
 	}
 }
