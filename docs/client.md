@@ -38,6 +38,10 @@ Use `c.Do(ctx, method, route, input, output)` for JSON plugin and account endpoi
 
 To configure timeouts, transport or persistent cookie storage, pass an `*http.Client` as the second argument to `client.New`. Clients get separate in-memory cookies by default. A supplied jar is shared with its owner. Redirects require an explicit same-origin redirect policy. The client retains the server's JSON redirect flag and callback URL for the application to handle.
 
+## Select the endpoint from the environment
+
+`client.New("", nil)` first looks for the server's supported public URL settings, including `BETTER_AUTH_URL` and `AUTH_URL`. If those are empty it checks `NEXT_PUBLIC_AUTH_URL`, then `NEXTAUTH_URL`, then `VERCEL_URL`. The first two client-specific variables supply the complete auth mount. Set them to `https://app.example.org/api/auth` for a standard deployment. `VERCEL_URL` supplies the origin for the default mount. Explicit constructor URLs take precedence. The destination is fixed at construction. [Complete precedence](environment.md#native-client-url)
+
 ## Account and credential methods
 
 | Workflow | Client methods |

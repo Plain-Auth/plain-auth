@@ -11,10 +11,12 @@ import (
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
+	"os"
 	"path"
 	"strings"
 
 	authn "github.com/nabuhadba/go-better-auth"
+	"github.com/nabuhadba/go-better-auth/internal/configenv"
 )
 
 // Client holds the server URL and the user's session cookies. Create a separate
@@ -26,9 +28,17 @@ type Client struct {
 }
 
 // New takes an HTTP(S) origin or a full URL with a custom auth mount path.
+// An empty base URL resolves the host environment once at construction.
 // Passing nil creates an HTTP client with an in-memory cookie jar. A supplied
 // client's transport, timeout, jar and same-origin redirect policy are reused.
 func New(baseURL string, httpClient *http.Client) (*Client, error) {
+	defaultMount := "/api/auth"
+	if baseURL == "" {
+		baseURL = configenv.BaseURL()
+		if baseURL == "" {
+			baseURL, defaultMount = clientEnvironmentURL()
+		}
+	}
 	u, err := url.Parse(baseURL)
 	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Hostname() == "" || u.User != nil ||
 		u.RawQuery != "" || u.ForceQuery || strings.Contains(baseURL, "#") {
@@ -36,7 +46,7 @@ func New(baseURL string, httpClient *http.Client) (*Client, error) {
 	}
 	mount := strings.TrimSuffix(u.Path, "/")
 	if mount == "" {
-		mount = "/api/auth"
+		mount = defaultMount
 	} else if path.Clean(mount) != mount || u.RawPath != "" || strings.Contains(mount, "\\") {
 		return nil, errors.New("authn/client: invalid auth mount path")
 	}
@@ -64,6 +74,28 @@ func New(baseURL string, httpClient *http.Client) (*Client, error) {
 		},
 	}
 	return &Client{base: base, origin: origin, http: configured}, nil
+}
+
+// The two framework client aliases identify the complete auth mount, including
+// a root mount. Vercel supplies a deployment origin and uses the default mount.
+func clientEnvironmentURL() (string, string) {
+	for _, name := range []string{"NEXT_PUBLIC_AUTH_URL", "NEXTAUTH_URL"} {
+		if v := os.Getenv(name); v != "" {
+			return v, ""
+		}
+	}
+	v := os.Getenv("VERCEL_URL")
+	if v == "" {
+		return "", ""
+	}
+	if !strings.HasPrefix(v, "http") {
+		v = "https://" + v
+	}
+	u, err := url.Parse(v)
+	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Hostname() == "" || u.User != nil {
+		return "", ""
+	}
+	return u.Scheme + "://" + u.Host, "/api/auth"
 }
 
 // Do calls an API endpoint under the client's auth mount. Route starts with "/"

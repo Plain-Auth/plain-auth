@@ -7,6 +7,8 @@ import (
 	"os"
 	"strconv"
 	"strings"
+
+	"github.com/nabuhadba/go-better-auth/internal/configenv"
 )
 
 // VersionedSecret identifies a signing key. The first entry issues credentials.
@@ -62,10 +64,7 @@ func resolveEnvironment(opts *Options) error {
 		}
 	}
 	if opts.BaseURL == "" {
-		opts.BaseURL = first("BETTER_AUTH_URL", "AUTH_URL", "NEXT_PUBLIC_BETTER_AUTH_URL", "PUBLIC_BETTER_AUTH_URL", "NUXT_PUBLIC_BETTER_AUTH_URL", "NUXT_PUBLIC_AUTH_URL", "BASE_URL")
-		if opts.BaseURL == "/" {
-			opts.BaseURL = ""
-		}
+		opts.BaseURL = configenv.BaseURL()
 	}
 	// A configured URL can include a mount path. A separately specified
 	// BasePath wins to support routers that mount the handler elsewhere.
