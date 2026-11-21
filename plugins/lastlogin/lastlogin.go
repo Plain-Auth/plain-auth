@@ -17,9 +17,6 @@ type Options struct {
 }
 
 func New(opts Options) auth.Plugin {
-	if opts.CookieName == "" {
-		opts.CookieName = "better-auth.last_used_login_method"
-	}
 	if opts.MaxAge == 0 {
 		opts.MaxAge = 30 * 24 * time.Hour
 	}
@@ -35,7 +32,11 @@ func New(opts Options) auth.Plugin {
 			return
 		}
 		cookie := e.Cookie
-		cookie.Name, cookie.Value, cookie.HttpOnly, cookie.MaxAge = opts.CookieName, method, false, int(opts.MaxAge/time.Second)
+		cookie.Name = opts.CookieName
+		if cookie.Name == "" {
+			cookie.Name = strings.TrimSuffix(e.Cookie.Name, ".session_token") + ".last_used_login_method"
+		}
+		cookie.Value, cookie.HttpOnly, cookie.MaxAge = method, false, int(opts.MaxAge/time.Second)
 		if cookie.Valid() == nil {
 			e.Header.Add("Set-Cookie", cookie.String())
 		}

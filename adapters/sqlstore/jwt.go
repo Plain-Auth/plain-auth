@@ -43,7 +43,7 @@ func (s *Store) PublicJWTKeys(ctx context.Context, cutoff time.Time) ([]auth.Pub
 func (s *Store) readSigningKey(ctx context.Context, db rowQuerier, alg string, now time.Time) (auth.StoredJWTKey, error) {
 	var row auth.StoredJWTKey
 	var curve sql.NullString
-	err := db.QueryRowContext(ctx, s.bind(`SELECT "id","publicKey","privateKey","crv","createdAt","expiresAt" FROM "jwks" WHERE ("alg"=? OR ("alg" IS NULL AND ?='EdDSA')) AND ("expiresAt" IS NULL OR "expiresAt">?) ORDER BY "createdAt" DESC,"id" DESC LIMIT 1`), alg, alg, s.date(now)).Scan(&row.ID, &row.PublicKey, &row.EncryptedPrivateKey, &curve, &row.CreatedAt, &row.ExpiresAt)
+	err := db.QueryRowContext(ctx, s.bind(`SELECT "id","publicKey","privateKey","crv","createdAt","expiresAt" FROM "jwks" WHERE "alg"=? AND ("expiresAt" IS NULL OR "expiresAt">?) ORDER BY "createdAt" DESC,"id" DESC LIMIT 1`), alg, s.date(now)).Scan(&row.ID, &row.PublicKey, &row.EncryptedPrivateKey, &curve, &row.CreatedAt, &row.ExpiresAt)
 	row.Algorithm, row.Curve = alg, curve.String
 	return row, err
 }
@@ -107,4 +107,13 @@ func (s *Store) ActiveJWTKey(ctx context.Context, alg string, now time.Time, gen
 		return row, err
 	}
 	return row, tx.Commit()
+}
+
+// JWTKeyByID resolves an explicit signing key and never generates a replacement.
+func (s *Store) JWTKeyByID(ctx context.Context, id string) (auth.StoredJWTKey, error) {
+	var row auth.StoredJWTKey
+	var curve sql.NullString
+	err := s.db.QueryRowContext(ctx, s.bind(`SELECT "id","publicKey","privateKey","alg","crv","createdAt","expiresAt" FROM "jwks" WHERE "id"=?`), id).Scan(&row.ID, &row.PublicKey, &row.EncryptedPrivateKey, &row.Algorithm, &curve, &row.CreatedAt, &row.ExpiresAt)
+	row.Curve = curve.String
+	return row, err
 }

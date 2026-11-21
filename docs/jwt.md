@@ -30,7 +30,9 @@ Configure the receiving service with the auth server's public JWKS address, expe
 
 | Option | Behavior |
 | --- | --- |
-| `Algorithm` | Defaults to EdDSA with Ed25519. ES256 with P-256 is also available. |
+| `Algorithm` | Defaults to EdDSA with Ed25519. Also supports ES256 (P-256), ES512 (P-521), RS256 and PS256. |
+| `AdditionalAlgorithms` | Algorithms available for server-side issuance. A key for an additional algorithm is generated on first use. Ordinary session tokens continue to use `Algorithm`. |
+| `RSAModulusBits` | RSA modulus size in bits. Defaults to 2048. |
 | `Issuer`, `Audience` | Each defaults to the configured auth origin. Give each receiving service the expected values. |
 | `Expiration` | Defaults to fifteen minutes. |
 | `RotationInterval` | Positive duration schedules key rotation. A token request after the signing key's expiry generates a replacement under a database lock. The default key has no scheduled expiry. |
@@ -38,4 +40,27 @@ Configure the receiving service with the auth server's public JWKS address, expe
 | `JWKSPath` | Sets the public verification endpoint relative to the auth mount. Defaults to `/jwks`. |
 | `DefinePayload` | Receives the authenticated session. The default payload includes the public user profile. A callback can select individual application claims. The server supplies the subject, issuer, audience and timestamps. |
 
-All auth instances sharing signing keys need the same encryption key configuration. The SQL store persists the encrypted private JWK and its public counterpart separately. The JWKS endpoint publishes public fields. The host can use `Auth.IssueJWT(ctx, headers)` for authenticated issuance and `Auth.PublicJWKS(ctx)` for public key discovery.
+All auth instances sharing signing keys need the same encryption key configuration. The SQL store persists the encrypted private JWK under the active encryption key version and its public counterpart separately. The JWKS endpoint publishes public fields. The host can use `Auth.IssueJWT(ctx, headers)` for authenticated issuance and `Auth.PublicJWKS(ctx)` for public key discovery.
+
+## Sign and verify from Go
+
+A host application can sign a service assertion after authorizing the subject. These two methods run in the host process. HTTP requests to the signing and verification methods have no route.
+
+```go
+token, err := instance.SignJWT(ctx, "billing-worker", authn.JWTSignOptions{
+    Audience: []string{"invoice-service"},
+    Claims: map[string]any{"job": "reconcile"},
+})
+if err != nil {
+    return err
+}
+claims, err := instance.VerifyJWT(ctx, token, authn.JWTVerifyOptions{
+    Audience: "invoice-service", Subject: "billing-worker",
+})
+if err != nil {
+    return err
+}
+_ = claims["job"]
+```
+
+Set `JWTSignOptions.Algorithm` to select an enabled algorithm or `KeyID` to require a particular active key. Supplying both requires a match. The options also support token type, content type, issuer, multiple audiences, issuance, expiration and activation times. Reserved claims come from these options and the subject argument. Verification checks the key ID, algorithm, signature, issuer, audience, subject and time window before returning claims. An optional expected subject further restricts which assertions the service accepts.

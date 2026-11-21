@@ -1,9 +1,10 @@
 package authn
 
 import (
+	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
-	"encoding/hex"
+	"encoding/base64"
 	"errors"
 	"strconv"
 	"strings"
@@ -11,53 +12,63 @@ import (
 	"golang.org/x/crypto/chacha20poly1305"
 )
 
-func (a *Auth) sealFactorData(raw []byte) (string, error) {
-	key := sha256.Sum256([]byte(a.opts.Secret))
-	cipher, err := chacha20poly1305.NewX(key[:])
+const recordPrefix = "authn.v1."
+
+var errEncryptedRecord = errors.New("authn: invalid encrypted record or unavailable key")
+
+// recordKey separates storage encryption keys from session-signing keys.
+func recordKey(secret string) []byte {
+	mac := hmac.New(sha256.New, []byte(secret))
+	mac.Write([]byte("authn/v1/encryption-at-rest"))
+	return mac.Sum(nil)
+}
+
+func (a *Auth) sealRecord(purpose string, raw []byte) (string, error) {
+	active := VersionedSecret{Value: a.opts.Secret}
+	if len(a.opts.Secrets) > 0 {
+		active = a.opts.Secrets[0]
+	}
+	header := recordPrefix + strconv.Itoa(active.Version) + "."
+	cipher, err := chacha20poly1305.NewX(recordKey(active.Value))
 	if err != nil {
 		return "", err
 	}
 	nonce := make([]byte, cipher.NonceSize())
 	rand.Read(nonce)
-	data := hex.EncodeToString(cipher.Seal(nonce, nonce, raw, nil))
-	if len(a.opts.Secrets) > 0 {
-		return "$ba$" + strconv.Itoa(a.opts.Secrets[0].Version) + "$" + data, nil
-	}
-	return data, nil
+	sealed := cipher.Seal(nonce, nonce, raw, []byte(header+purpose))
+	return header + base64.RawURLEncoding.EncodeToString(sealed), nil
 }
-func (a *Auth) openFactorData(data string) ([]byte, error) {
-	keys := []string{a.opts.Secret}
-	if strings.HasPrefix(data, "$ba$") {
-		version, raw, ok := strings.Cut(strings.TrimPrefix(data, "$ba$"), "$")
-		if !ok {
-			return nil, errors.New("invalid encrypted factor envelope")
-		}
-		keys = nil
-		data = raw
-		for _, k := range a.opts.Secrets {
-			if strconv.Itoa(k.Version) == version {
-				keys = append(keys, k.Value)
-			}
-		}
-	} else if len(a.opts.Secrets) > 0 {
-		if a.legacySecret == "" {
-			return nil, errors.New("legacy encryption key unavailable")
-		}
-		keys = []string{a.legacySecret}
+
+func (a *Auth) openRecord(purpose, record string) ([]byte, error) {
+	rest, valid := strings.CutPrefix(record, recordPrefix)
+	id, payload, found := strings.Cut(rest, ".")
+	if !valid || !found {
+		return nil, errEncryptedRecord
 	}
-	buf, err := hex.DecodeString(data)
-	if err != nil || len(buf) < chacha20poly1305.NonceSizeX+chacha20poly1305.Overhead {
-		return nil, errors.New("invalid encrypted factor data")
+	var secret string
+	if len(a.opts.Secrets) == 0 && id == "0" {
+		secret = a.opts.Secret
 	}
-	for _, secret := range keys {
-		key := sha256.Sum256([]byte(secret))
-		cipher, err := chacha20poly1305.NewX(key[:])
-		if err != nil {
-			return nil, err
-		}
-		if raw, err := cipher.Open(nil, buf[:cipher.NonceSize()], buf[cipher.NonceSize():], nil); err == nil {
-			return raw, nil
+	for _, key := range a.opts.Secrets {
+		if strconv.Itoa(key.Version) == id {
+			secret = key.Value
+			break
 		}
 	}
-	return nil, errors.New("unable to decrypt factor data")
+	if secret == "" {
+		return nil, errEncryptedRecord
+	}
+	raw, err := base64.RawURLEncoding.Strict().DecodeString(payload)
+	if err != nil || len(raw) < chacha20poly1305.NonceSizeX+chacha20poly1305.Overhead {
+		return nil, errEncryptedRecord
+	}
+	cipher, err := chacha20poly1305.NewX(recordKey(secret))
+	if err != nil {
+		return nil, err
+	}
+	plain, err := cipher.Open(nil, raw[:cipher.NonceSize()], raw[cipher.NonceSize():], []byte(recordPrefix+id+"."+purpose))
+	if err != nil {
+		return nil, errEncryptedRecord
+	}
+	return plain, nil
 }

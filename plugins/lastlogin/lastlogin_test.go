@@ -43,3 +43,32 @@ func TestLastLoginCookieAndConsent(t *testing.T) {
 		}
 	}
 }
+
+func TestDefaultCookieUsesHostNamespace(t *testing.T) {
+	for _, tc := range []struct{ origin, prefix, name string }{
+		{"http://app.example", "", "authn.last_used_login_method"},
+		{"https://app.example", "staff", "__Secure-staff.last_used_login_method"},
+	} {
+		a, err := auth.New(auth.Options{BaseURL: tc.origin, Secret: strings.Repeat("s", 32), Store: memory.New(), EmailAndPassword: true, CookiePrefix: tc.prefix, Plugins: []auth.Plugin{lastlogin.New(lastlogin.Options{})}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		req := httptest.NewRequest("POST", tc.origin+"/api/auth/sign-up/email", strings.NewReader(`{"email":"user@example.test","name":"User","password":"test-password"}`))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Origin", tc.origin)
+		res := httptest.NewRecorder()
+		a.ServeHTTP(res, req)
+		if res.Code != 200 {
+			t.Fatal(res.Code, res.Body)
+		}
+		found := false
+		for _, c := range res.Result().Cookies() {
+			if c.Name == tc.name && c.Value == "email" && c.Secure == strings.HasPrefix(tc.origin, "https://") {
+				found = true
+			}
+		}
+		if !found {
+			t.Fatal("missing namespaced login-method cookie", tc.name)
+		}
+	}
+}

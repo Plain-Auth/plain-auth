@@ -63,7 +63,7 @@ func TestSessionRefreshWindow(t *testing.T) {
 				r.AddCookie(sessionCookie)
 				if name == "dont-remember" {
 					marker := auth.sessionCookie("true", false)
-					marker.Name = "better-auth.dont_remember"
+					marker.Name = "authn.dont_remember"
 					r.AddCookie(marker)
 				}
 				w := httptest.NewRecorder()

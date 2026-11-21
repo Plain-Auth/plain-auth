@@ -13,7 +13,7 @@ import (
 func (a *Auth) prefixedCookieName(name string) string {
 	namespace := a.opts.CookiePrefix
 	if namespace == "" {
-		namespace = "better-auth"
+		namespace = "authn"
 	}
 	if strings.HasPrefix(a.opts.BaseURL, "https://") {
 		namespace = "__Secure-" + namespace

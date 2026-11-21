@@ -195,3 +195,106 @@ func TestJWTIssuanceAndKeyRotation(t *testing.T) {
 		})
 	}
 }
+
+func TestServerJWTProfiles(t *testing.T) {
+	for _, dialect := range []string{"sqlite", "postgres", "mysql"} {
+		t.Run(dialect, func(t *testing.T) {
+			ctx := t.Context()
+			dsn := organizationTestDSN(t, dialect)
+			ddl, err := schema.Generate(dialect, []string{"jwt"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			store, err := OpenWithSchema(ctx, dialect, dsn, ddl)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer store.Close()
+			profile := jwtplugin.Options{Issuer: "https://application.test", Audience: "reports", AdditionalAlgorithms: []string{"ES256", "ES512", "RS256", "PS256"}, RSAModulusBits: 2048}
+			plugin, err := jwtplugin.New(profile)
+			if err != nil {
+				t.Fatal(err)
+			}
+			a, err := auth.New(auth.Options{BaseURL: profile.Issuer, Secret: strings.Repeat("s", 32), Store: store, Plugins: []auth.Plugin{plugin}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, algorithm := range []string{"EdDSA", "ES256", "ES512", "PS256", "RS256"} {
+				opts := auth.JWTSignOptions{Algorithm: algorithm, Type: "events+jwt", ContentType: "application/json", Claims: map[string]any{"event": "refresh", "sub": "untrusted"}}
+				raw, err := a.SignJWT(ctx, "service-account", opts)
+				if err != nil {
+					t.Fatalf("%s: %v", algorithm, err)
+				}
+				set, err := a.PublicJWKS(ctx)
+				if err != nil {
+					t.Fatal(err)
+				}
+				token, err := libjwt.Parse(raw, func(token *libjwt.Token) (any, error) {
+					for _, key := range set.Keys {
+						if key.KeyID == token.Header["kid"] && key.Algorithm == algorithm && key.IsPublic() {
+							return key.Key, nil
+						}
+					}
+					return nil, errors.New("unrecognized key")
+				}, libjwt.WithValidMethods([]string{algorithm}), libjwt.WithIssuer(profile.Issuer), libjwt.WithAudience("reports"), libjwt.WithExpirationRequired())
+				if err != nil || !token.Valid || token.Header["typ"] != "events+jwt" || token.Header["cty"] != "application/json" {
+					t.Fatalf("independent verifier rejected %s: %v", algorithm, err)
+				}
+				claims, err := a.VerifyJWT(ctx, raw, auth.JWTVerifyOptions{Subject: "service-account"})
+				if err != nil || claims["event"] != "refresh" || claims["sub"] != "service-account" {
+					t.Fatalf("missing verified claims: %v", err)
+				}
+				opts.KeyID = token.Header["kid"].(string)
+				if _, err := a.SignJWT(ctx, "service-account", opts); err != nil {
+					t.Fatalf("valid pinned key: %v", err)
+				}
+				opts.Algorithm = "RS256"
+				if algorithm == "RS256" {
+					opts.Algorithm = "ES256"
+				}
+				if _, err := a.SignJWT(ctx, "service-account", opts); err == nil {
+					t.Fatal("accepted mismatched pinned algorithm")
+				}
+				for _, constraints := range []auth.JWTVerifyOptions{{Audience: "billing"}, {Issuer: "https://unrelated.test"}, {Subject: "other-account"}} {
+					if _, err := a.VerifyJWT(ctx, raw, constraints); !errors.Is(err, auth.ErrInvalidJWT) {
+						t.Fatal("accepted mismatched verification constraints")
+					}
+				}
+			}
+			if _, err := a.SignJWT(ctx, "s", auth.JWTSignOptions{KeyID: "missing"}); err == nil {
+				t.Fatal("missing key generated replacement")
+			}
+			if _, err := a.SignJWT(ctx, "s", auth.JWTSignOptions{Algorithm: "HS256"}); err == nil {
+				t.Fatal("accepted unconfigured algorithm")
+			}
+			now := time.Now().UTC()
+			for _, settings := range []auth.JWTSignOptions{{IssuedAt: now.Add(-time.Hour), ExpiresAt: now.Add(-time.Minute)}, {NotBefore: now.Add(time.Minute)}} {
+				raw, err := a.SignJWT(ctx, "s", settings)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if _, err := a.VerifyJWT(ctx, raw, auth.JWTVerifyOptions{}); !errors.Is(err, auth.ErrInvalidJWT) {
+					t.Fatal("accepted out-of-window assertion")
+				}
+			}
+			raw, err := a.SignJWT(ctx, "subject", auth.JWTSignOptions{Audience: []string{"billing", "reporting"}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err := a.VerifyJWT(ctx, raw, auth.JWTVerifyOptions{Audience: "reporting"}); err != nil {
+				t.Fatal("multi-audience assertion rejected", err)
+			}
+			parts := strings.Split(raw, ".")
+			parts[1] = base64.RawURLEncoding.EncodeToString([]byte(`{"sub":"other"}`))
+			if _, err := a.VerifyJWT(ctx, strings.Join(parts, "."), auth.JWTVerifyOptions{}); !errors.Is(err, auth.ErrInvalidJWT) {
+				t.Fatal("accepted altered assertion")
+			}
+			req := httptest.NewRequest("POST", profile.Issuer+"/api/auth/sign-jwt", nil)
+			res := httptest.NewRecorder()
+			a.ServeHTTP(res, req)
+			if res.Code != 404 {
+				t.Fatal("server-only signer exposed as HTTP route", res.Code)
+			}
+		})
+	}
+}

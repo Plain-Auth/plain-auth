@@ -25,7 +25,6 @@ type Auth struct {
 	sessionResponse SessionResponseFunc
 	serviceJWT      *JWTOptions
 	oneTimeToken    *OneTimeTokenOptions
-	legacySecret    string
 	factorOptions   *TwoFactorOptions
 	factorStore     TwoFactorStore
 	passwordSlots   chan struct{}
@@ -43,7 +42,6 @@ func New(opts Options) (*Auth, error) {
 	if err := opts.ClientIP.prepare(); err != nil {
 		return nil, err
 	}
-	legacySecret := opts.Secret
 	if len(opts.Secrets) > 0 {
 		opts.Secret = opts.Secrets[0].Value
 	}
@@ -132,7 +130,7 @@ func New(opts Options) (*Auth, error) {
 	if err != nil {
 		return nil, err
 	}
-	a := &Auth{opts: opts, legacySecret: legacySecret, now: time.Now, passwordSlots: make(chan struct{}, min(runtime.GOMAXPROCS(0), 4)), plugins: plugins}
+	a := &Auth{opts: opts, now: time.Now, passwordSlots: make(chan struct{}, min(runtime.GOMAXPROCS(0), 4)), plugins: plugins}
 	for _, p := range opts.Plugins {
 		if p.SessionResponse != nil {
 			a.sessionResponse = p.SessionResponse

@@ -26,7 +26,7 @@ func TestEngineContract(t *testing.T) {
 		t.Run(dialect, func(t *testing.T) {
 			dsn := filepath.Join(t.TempDir(), "contract.db")
 			if dialect != "sqlite" {
-				key := "BETTERAUTH_TEST_" + strings.ToUpper(dialect) + "_DSN"
+				key := "AUTH_TEST_" + strings.ToUpper(dialect) + "_DSN"
 				dsn = os.Getenv(key)
 				if dsn == "" {
 					t.Skipf("set %s to run the %s database contract", key, dialect)
@@ -119,7 +119,7 @@ func TestEngineContract(t *testing.T) {
 			sessionCookie := func(res *httptest.ResponseRecorder) *http.Cookie {
 				t.Helper()
 				for _, cookie := range res.Result().Cookies() {
-					if cookie.Name == "better-auth.session_token" {
+					if cookie.Name == "authn.session_token" {
 						return cookie
 					}
 				}

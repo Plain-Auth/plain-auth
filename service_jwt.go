@@ -8,9 +8,11 @@ import (
 	"crypto/ed25519"
 	"crypto/elliptic"
 	"crypto/rand"
+	"crypto/rsa"
 	"encoding/json"
 	"errors"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
@@ -19,6 +21,8 @@ import (
 
 type JWTOptions struct {
 	Algorithm                    string
+	AdditionalAlgorithms         []string
+	RSAModulusBits               int
 	Issuer, Audience, JWKSPath   string
 	Expiration, RotationInterval time.Duration
 	GracePeriod                  *time.Duration
@@ -45,8 +49,19 @@ func NewJWT(opts JWTOptions) (Plugin, error) {
 	if opts.Algorithm == "" {
 		opts.Algorithm = string(jose.EdDSA)
 	}
-	if opts.Algorithm != string(jose.EdDSA) && opts.Algorithm != string(jose.ES256) {
-		return Plugin{}, errors.New("jwt: choose EdDSA or ES256")
+	opts.AdditionalAlgorithms = slices.Clone(opts.AdditionalAlgorithms)
+	for _, alg := range append([]string{opts.Algorithm}, opts.AdditionalAlgorithms...) {
+		switch jose.SignatureAlgorithm(alg) {
+		case jose.EdDSA, jose.ES256, jose.ES512, jose.RS256, jose.PS256:
+		default:
+			return Plugin{}, errors.New("jwt: unsupported signing algorithm " + alg)
+		}
+	}
+	if opts.RSAModulusBits == 0 {
+		opts.RSAModulusBits = 2048
+	}
+	if opts.RSAModulusBits < 2048 || opts.RSAModulusBits%8 != 0 {
+		return Plugin{}, errors.New("jwt: RSA modulus length must be at least 2048 bits and a multiple of eight")
 	}
 	if opts.Expiration == 0 {
 		opts.Expiration = 15 * time.Minute
@@ -107,7 +122,7 @@ func (a *Auth) PublicJWKS(ctx context.Context) (jose.JSONWebKeySet, error) {
 		return jose.JSONWebKeySet{}, err
 	}
 	if len(rows) == 0 {
-		if _, err = a.activeSigningKey(ctx, now); err != nil {
+		if _, err = a.activeSigningKey(ctx, now, opts.Algorithm); err != nil {
 			return jose.JSONWebKeySet{}, err
 		}
 		rows, err = store.PublicJWTKeys(ctx, cutoff)
@@ -131,17 +146,26 @@ func (a *Auth) PublicJWKS(ctx context.Context) (jose.JSONWebKeySet, error) {
 	return set, nil
 }
 
-func (a *Auth) activeSigningKey(ctx context.Context, now time.Time) (StoredJWTKey, error) {
+func (a *Auth) activeSigningKey(ctx context.Context, now time.Time, algorithm string) (StoredJWTKey, error) {
 	opts := a.serviceJWT
-	return a.opts.Store.(JWTStore).ActiveJWTKey(ctx, opts.Algorithm, now, func() (StoredJWTKey, error) {
+	return a.opts.Store.(JWTStore).ActiveJWTKey(ctx, algorithm, now, func() (StoredJWTKey, error) {
 		var private crypto.Signer
 		var err error
-		curve := "Ed25519"
-		if opts.Algorithm == string(jose.EdDSA) {
+		var curve string
+		switch jose.SignatureAlgorithm(algorithm) {
+		case jose.EdDSA:
+			curve = "Ed25519"
 			_, private, err = ed25519.GenerateKey(rand.Reader)
-		} else {
+		case jose.ES256:
 			curve = "P-256"
 			private, err = ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+		case jose.ES512:
+			curve = "P-521"
+			private, err = ecdsa.GenerateKey(elliptic.P521(), rand.Reader)
+		case jose.RS256, jose.PS256:
+			private, err = rsa.GenerateKey(rand.Reader, opts.RSAModulusBits)
+		default:
+			return StoredJWTKey{}, errors.New("jwt: unsupported signing algorithm")
 		}
 		if err != nil {
 			return StoredJWTKey{}, err
@@ -154,7 +178,7 @@ func (a *Auth) activeSigningKey(ctx context.Context, now time.Time) (StoredJWTKe
 		if err != nil {
 			return StoredJWTKey{}, err
 		}
-		encrypted, err := a.sealFactorData(secret)
+		encrypted, err := a.sealRecord("jwk", secret)
 		if err != nil {
 			return StoredJWTKey{}, err
 		}
@@ -162,7 +186,7 @@ func (a *Auth) activeSigningKey(ctx context.Context, now time.Time) (StoredJWTKe
 		if err != nil {
 			return StoredJWTKey{}, err
 		}
-		row := StoredJWTKey{PublicJWTKey: PublicJWTKey{ID: randomID(), Algorithm: opts.Algorithm, Curve: curve, PublicKey: string(public), CreatedAt: now}, EncryptedPrivateKey: string(envelope)}
+		row := StoredJWTKey{PublicJWTKey: PublicJWTKey{ID: randomID(), Algorithm: algorithm, Curve: curve, PublicKey: string(public), CreatedAt: now}, EncryptedPrivateKey: string(envelope)}
 		if opts.RotationInterval > 0 {
 			ends := now.Add(opts.RotationInterval)
 			row.ExpiresAt = &ends
@@ -184,31 +208,6 @@ func (a *Auth) IssueJWT(ctx context.Context, h http.Header) (string, error) {
 }
 func (a *Auth) signSessionJWT(ctx context.Context, s SessionResult) (string, error) {
 	opts := a.serviceJWT
-	now := a.now().UTC().Truncate(time.Millisecond)
-	row, err := a.activeSigningKey(ctx, now)
-	if err != nil {
-		return "", err
-	}
-	var envelope string
-	if err = json.Unmarshal([]byte(row.EncryptedPrivateKey), &envelope); err != nil {
-		return "", errors.New("jwt: invalid encrypted private key")
-	}
-	plain, err := a.openFactorData(envelope)
-	if err != nil {
-		return "", errors.New("jwt: cannot decrypt the signing key")
-	}
-	var secret, pub jose.JSONWebKey
-	if json.Unmarshal(plain, &secret) != nil || !secret.Valid() || secret.IsPublic() || json.Unmarshal([]byte(row.PublicKey), &pub) != nil || !pub.IsPublic() {
-		return "", errors.New("jwt: invalid signing key")
-	}
-	check, err := secret.Thumbprint(crypto.SHA256)
-	if err != nil {
-		return "", err
-	}
-	expected, err := pub.Thumbprint(crypto.SHA256)
-	if err != nil || !bytes.Equal(check, expected) {
-		return "", errors.New("jwt: inconsistent signing key pair")
-	}
 	claims := map[string]any{}
 	if opts.DefinePayload != nil {
 		payload, err := opts.DefinePayload(ctx, s)
@@ -227,19 +226,42 @@ func (a *Auth) signSessionJWT(ctx context.Context, s SessionResult) (string, err
 			return "", err
 		}
 	}
-	iss, aud := opts.Issuer, opts.Audience
-	if iss == "" {
-		iss = a.opts.BaseURL
+	return a.SignJWT(ctx, s.User.ID, JWTSignOptions{Claims: claims})
+}
+
+func (a *Auth) signStoredJWTKey(row StoredJWTKey, claims map[string]any, settings JWTSignOptions) (string, error) {
+	var envelope string
+	if err := json.Unmarshal([]byte(row.EncryptedPrivateKey), &envelope); err != nil {
+		return "", errors.New("jwt: invalid encrypted private key")
 	}
-	if aud == "" {
-		aud = a.opts.BaseURL
+	plain, err := a.openRecord("jwk", envelope)
+	if err != nil {
+		return "", errors.New("jwt: cannot decrypt the signing key")
 	}
-	claims["sub"], claims["iss"], claims["aud"], claims["iat"], claims["exp"] = s.User.ID, iss, aud, now.Unix(), now.Add(opts.Expiration).Unix()
+	var secret, pub jose.JSONWebKey
+	if json.Unmarshal(plain, &secret) != nil || !secret.Valid() || secret.IsPublic() || json.Unmarshal([]byte(row.PublicKey), &pub) != nil || !pub.IsPublic() {
+		return "", errors.New("jwt: invalid signing key")
+	}
+	check, err := secret.Thumbprint(crypto.SHA256)
+	if err != nil {
+		return "", err
+	}
+	expected, err := pub.Thumbprint(crypto.SHA256)
+	if err != nil || !bytes.Equal(check, expected) {
+		return "", errors.New("jwt: inconsistent signing key pair")
+	}
+	headers := (&jose.SignerOptions{}).WithHeader(jose.HeaderKey("kid"), row.ID)
+	if settings.Type != "" {
+		headers.WithType(jose.ContentType(settings.Type))
+	}
+	if settings.ContentType != "" {
+		headers.WithContentType(jose.ContentType(settings.ContentType))
+	}
 	payload, err := json.Marshal(claims)
 	if err != nil {
 		return "", err
 	}
-	signer, err := jose.NewSigner(jose.SigningKey{Algorithm: jose.SignatureAlgorithm(opts.Algorithm), Key: secret.Key}, (&jose.SignerOptions{}).WithHeader(jose.HeaderKey("kid"), row.ID))
+	signer, err := jose.NewSigner(jose.SigningKey{Algorithm: jose.SignatureAlgorithm(row.Algorithm), Key: secret.Key}, headers)
 	if err != nil {
 		return "", err
 	}

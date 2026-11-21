@@ -23,7 +23,7 @@ Enable `EmailAndPassword` and mount the auth handler. Paths below are relative t
 | `Secrets` | Versioned keys for signing and verification. See [key rotation](environment.md#rotate-signing-keys) |
 | `Secret` | Stable secret of at least 32 bytes. Generate one with `go run ./cmd/authctl secret` |
 | `BaseURL` | Public HTTP(S) origin of the application. HTTPS enables secure cookies |
-| `CookiePrefix` | Choose a namespace such as `myapp` for session cookies and OAuth state. Give separate auth instances distinct prefixes on a shared host. |
+| `CookiePrefix` | Defaults to `authn`. Choose a namespace such as `myapp` for session cookies and OAuth state. Give separate auth instances distinct prefixes on a shared host. |
 | `BasePath` | Mount path, normally `/api/auth` |
 | `TrustedOrigins` | Additional exact origins allowed for browser requests and absolute callbacks |
 | `EmailAndPassword` | Enables email sign-up and sign-in. Defaults to false |

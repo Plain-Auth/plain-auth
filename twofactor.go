@@ -216,7 +216,7 @@ func (p *factorRequest) verify(state FactorState) (FactorChange, error) {
 	}
 	valid := false
 	if p.route == "/two-factor/verify-totp" {
-		raw, err := p.auth.openFactorData(record.Secret)
+		raw, err := p.auth.openRecord("totp", record.Secret)
 		if err != nil {
 			return ch, err
 		}
@@ -325,7 +325,7 @@ func (p *factorRequest) manage(state FactorState) (FactorChange, error) {
 			return ch, &APIError{400, "TOTP_ALREADY_ENABLED", "TOTP is already enabled"}
 		}
 		secret := rand.Text()
-		encrypted, err := p.auth.sealFactorData([]byte(secret))
+		encrypted, err := p.auth.sealRecord("totp", []byte(secret))
 		if err != nil {
 			return ch, err
 		}
@@ -356,7 +356,7 @@ func (p *factorRequest) manage(state FactorState) (FactorChange, error) {
 		p.issued = raw
 		p.out = map[string]bool{"status": true}
 	case "/two-factor/get-totp-uri":
-		raw, err := p.auth.openFactorData(state.Record.Secret)
+		raw, err := p.auth.openRecord("totp", state.Record.Secret)
 		if err != nil {
 			return ch, err
 		}
@@ -393,10 +393,10 @@ func (a *Auth) storeBackupCodes(codes []string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return a.sealFactorData(raw)
+	return a.sealRecord("backup-codes", raw)
 }
 func (a *Auth) readBackupCodes(data string) ([]string, error) {
-	raw, err := a.openFactorData(data)
+	raw, err := a.openRecord("backup-codes", data)
 	if err != nil {
 		return nil, err
 	}

@@ -17,7 +17,8 @@ import { createAuthClient } from "better-auth/client";
 import { getMigrations } from "better-auth/db/migration";
 import { customSession, organization, twoFactor, magicLink, oneTimeToken, jwt } from "better-auth/plugins";
 import { organizationClient, twoFactorClient, magicLinkClient, oneTimeTokenClient, jwtClient } from "better-auth/client/plugins";
-import { symmetricDecrypt } from "better-auth/crypto";
+import { createOTP } from "@better-auth/utils/otp";
+import { base32 } from "@better-auth/utils/base32";
 
 const harness = fileURLToPath(new URL(".", import.meta.url));
 const email = "fixture@example.test";
@@ -29,6 +30,7 @@ async function reference(t, plugins = []) {
   t.after(() => database.close());
   const baseURL = "http://reference.localhost";
   const options = {
+    advanced: { cookiePrefix: "authn" },
     baseURL,
     database,
     plugins,
@@ -42,7 +44,7 @@ async function reference(t, plugins = []) {
 }
 
 async function goFixture(t, profiles = [], env = {}) {
-  const dir = await mkdtemp(join(tmpdir(), "go-better-auth-conformance-"));
+  const dir = await mkdtemp(join(tmpdir(), "authn-conformance-"));
   const binary = join(dir, "fixture");
   let child;
   let exited;
@@ -81,7 +83,7 @@ function instrument({ baseURL, send }, plugins = []) {
       assert.equal(new URL(url).origin, baseURL);
       const headers = new Headers(options.headers);
       headers.set("origin", baseURL);
-      headers.set("user-agent", "go-better-auth-conformance");
+      headers.set("user-agent", "authn-conformance");
       headers.set("x-forwarded-for", "127.0.0.1");
       if (cookies.size) {
         headers.set("cookie", [...cookies].map(([k, v]) => k + "=" + v).join("; "));
@@ -177,6 +179,7 @@ test("a shared SQLite account consumes reference verification and password reset
   let verification;
   let reset;
   const auth = betterAuth({
+    advanced: { cookiePrefix: "authn" },
     baseURL: go.baseURL, database: db,
     secret: "local-conformance-0123456789-abcdefghijk",
     emailAndPassword: {
@@ -239,36 +242,28 @@ test("the official organization client can create, select, invite and accept acr
   }
 });
 
-test("shared SQLite authenticator credentials and pending challenges work in both runtimes", async (t) => {
-  const go = await goFixture(t, ["two-factor"]);
-  const database = new DatabaseSync(go.databasePath);
-  t.after(() => database.close());
-  const key = "local-conformance-0123456789-abcdefghijk";
-  const ref = betterAuth({
-    baseURL: go.baseURL, database, secret: key, plugins: [twoFactor()],
-    emailAndPassword: { enabled: true }, telemetry: { enabled: false },
-  });
-  let send = (req) => ref.handler(req);
-  const { client } = instrument({ baseURL: go.baseURL, send: (req) => send(req) }, [twoFactorClient()]);
+test("authenticator enrollment and backup challenges work through the public client", async (t) => {
   function ok(response) { assert.equal(response.error, null); return response.data; }
-  const user = ok(await client.signUp.email({ email, name, password })).user;
-  const enrollment = ok(await client.twoFactor.enable({ password }));
-  const { secret } = database.prepare('SELECT secret FROM twoFactor WHERE userId = ?').get(user.id);
-  const raw = await symmetricDecrypt({key, data: secret});
-  const { code } = await ref.api.generateTOTP({body: {secret: raw}});
-  send = go.send;
-  assert.equal(ok(await client.twoFactor.verifyTotp({code})).user.twoFactorEnabled, true);
-  ok(await client.signOut());
-
-  send = (req) => ref.handler(req);
-  assert.equal(ok(await client.signIn.email({email,password})).twoFactorRedirect,true);
-  send = go.send;
-  assert.equal(ok(await client.twoFactor.verifyBackupCode({code: enrollment.backupCodes[0]})).user.id,user.id);
-  ok(await client.signOut());
-  assert.equal(ok(await client.signIn.email({email,password})).twoFactorRedirect,true);
-  send = (req) => ref.handler(req);
-  assert.equal(ok(await client.twoFactor.verifyBackupCode({code: enrollment.backupCodes[1]})).user.id,user.id);
-  assert.equal(ok(await client.getSession()).user.id,user.id);
+  for (const target of [await reference(t, [twoFactor()]), await goFixture(t, ["two-factor"])]) {
+    const { client } = instrument(target, [twoFactorClient()]);
+    const user = ok(await client.signUp.email({ email, name, password })).user;
+    const enrollment = ok(await client.twoFactor.enable({ password }));
+    const uri = new URL(enrollment.totpURI);
+    assert.equal(uri.protocol, "otpauth:");
+    const generator = createOTP(base32.decode(uri.searchParams.get("secret")));
+    assert.equal(ok(await client.twoFactor.verifyTotp({ code: await generator.totp() })).user.id, user.id);
+    assert.equal(ok(await client.getSession()).user.twoFactorEnabled, true);
+    ok(await client.signOut());
+    assert.equal(ok(await client.signIn.email({ email, password })).twoFactorRedirect, true);
+    assert.equal(ok(await client.getSession()), null);
+    const [used, spare] = enrollment.backupCodes;
+    assert.equal(ok(await client.twoFactor.verifyBackupCode({ code: used })).user.id, user.id);
+    assert.equal(ok(await client.getSession()).user.id, user.id);
+    ok(await client.signOut());
+    assert.equal(ok(await client.signIn.email({ email, password })).twoFactorRedirect, true);
+    assert.ok((await client.twoFactor.verifyBackupCode({ code: used })).error);
+    assert.equal(ok(await client.twoFactor.verifyBackupCode({ code: spare })).user.id, user.id);
+  }
 });
 
 test("the official client enforces the password range policy on credential writes", async (t) => {
@@ -311,6 +306,7 @@ test("shared SQLite verifies hashed magic links in either runtime", async (t) =>
   t.after(() => database.close());
   let sent;
   const ref = betterAuth({
+    advanced: { cookiePrefix: "authn" },
     baseURL: go.baseURL, database, secret: "local-conformance-0123456789-abcdefghijk",
     plugins: [magicLink({storeToken:"hashed", sendMagicLink: async (message) => { sent = message; }})],
     emailAndPassword: {enabled: true}, telemetry: {enabled: false},
@@ -342,6 +338,7 @@ test("shared SQLite transfers a session with one-time tokens from either runtime
   const database = new DatabaseSync(go.databasePath);
   t.after(() => database.close());
   const ref = betterAuth({
+    advanced: { cookiePrefix: "authn" },
     baseURL: go.baseURL, database, secret: "local-conformance-0123456789-abcdefghijk",
     plugins: [oneTimeToken({storeToken:"hashed"})],
     emailAndPassword: {enabled: true}, telemetry: {enabled:false},
@@ -391,34 +388,28 @@ test("the official client reads the configured custom session response", async (
   }
 });
 
-test("shared SQLite signs with either runtime's encrypted JWT keys", async (t) => {
+test("isolated issuers publish public keys and issue verifiable service tokens", async (t) => {
   const { createLocalJWKSet, jwtVerify } = await import("jose");
-  for (const first of ["go", "reference"]) {
-    const go = await goFixture(t, ["jwt"]);
-    const database = new DatabaseSync(go.databasePath);
-    t.after(() => database.close());
-    const ref = betterAuth({
-      baseURL: go.baseURL, database, secret: "local-conformance-0123456789-abcdefghijk",
-      plugins: [jwt()], emailAndPassword: { enabled: true }, telemetry: { enabled: false },
-    });
-    const referenceSend = (r) => ref.handler(r);
-    let send = first === "go" ? go.send : referenceSend;
-    const {client} = instrument({baseURL:go.baseURL,send:(r)=>send(r)},[jwtClient()]);
+  const issued = [];
+  for (const target of [await reference(t, [jwt()]), await goFixture(t, ["jwt"])]) {
+    const { client } = instrument(target, [jwtClient()]);
     const keys = (await client.jwks()).data;
-    assert.equal(keys.keys.length,1);
-    assert.equal(keys.keys[0].d,undefined);
-    const registration = (await client.signUp.email({email,name,password})).data;
-    for (const handler of [go.send,referenceSend]) {
-      send = handler;
-      const issued = await client.token();
-      assert.equal(issued.error,null);
-      const {payload,protectedHeader} = await jwtVerify(issued.data.token,createLocalJWKSet(keys),{
-        algorithms:["EdDSA"],issuer:go.baseURL,audience:go.baseURL,
-      });
-      assert.equal(payload.sub,registration.user.id);
-      assert.equal(payload.exp-payload.iat,900);
-      assert.equal(protectedHeader.kid,keys.keys[0].kid);
-    }
-    assert.equal(database.prepare("SELECT count(*) AS n FROM jwks").get().n,1);
+    assert.equal(keys.keys.length, 1);
+    assert.equal(keys.keys[0].d, undefined);
+    const registration = await client.signUp.email({ email, name, password });
+    assert.equal(registration.error, null);
+    const response = await client.token();
+    assert.equal(response.error, null);
+    const token = response.data.token;
+    const jwks = createLocalJWKSet(keys);
+    const { payload, protectedHeader } = await jwtVerify(token, jwks, {
+      algorithms: ["EdDSA"], issuer: target.baseURL, audience: target.baseURL,
+    });
+    assert.equal(payload.sub, registration.data.user.id);
+    assert.equal(payload.exp - payload.iat, 900);
+    assert.equal(protectedHeader.kid, keys.keys[0].kid);
+    issued.push({ token, jwks });
   }
+  await assert.rejects(jwtVerify(issued[0].token, issued[1].jwks));
+  await assert.rejects(jwtVerify(issued[1].token, issued[0].jwks));
 });

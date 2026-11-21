@@ -76,7 +76,7 @@ func TestDiscoveredOIDCDirectGrantAndExplicitLink(t *testing.T) {
 	}
 	var cookie *http.Cookie
 	for _, c := range reg.Result().Cookies() {
-		if c.Name == "better-auth.session_token" {
+		if c.Name == "authn.session_token" {
 			cookie = c
 		}
 	}
