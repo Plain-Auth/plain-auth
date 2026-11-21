@@ -15,9 +15,9 @@ import (
 	"testing"
 	"time"
 
-	auth "github.com/FineStack/frost-auth"
-	"github.com/FineStack/frost-auth/plugins/twofactor"
-	"github.com/FineStack/frost-auth/schema"
+	auth "github.com/Stonewrit/stonewrit-auth"
+	"github.com/Stonewrit/stonewrit-auth/plugins/twofactor"
+	"github.com/Stonewrit/stonewrit-auth/schema"
 	"github.com/pquerna/otp/totp"
 )
 

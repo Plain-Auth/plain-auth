@@ -16,7 +16,7 @@ if err != nil {
 opts.Plugins = append(opts.Plugins, p)
 ```
 
-Import `github.com/FineStack/frost-auth/plugins/captcha`. The application reads its provider secret from the server environment. Configure the browser widget with the matching site key and action.
+Import `github.com/Stonewrit/stonewrit-auth/plugins/captcha`. The application reads its provider secret from the server environment. Configure the browser widget with the matching site key and action.
 
 | Provider | Verification options |
 | --- | --- |

@@ -12,10 +12,10 @@ import (
 	"testing"
 	"time"
 
-	authn "github.com/FineStack/frost-auth"
-	"github.com/FineStack/frost-auth/client"
-	org "github.com/FineStack/frost-auth/plugins/organization"
-	"github.com/FineStack/frost-auth/schema"
+	authn "github.com/Stonewrit/stonewrit-auth"
+	"github.com/Stonewrit/stonewrit-auth/client"
+	org "github.com/Stonewrit/stonewrit-auth/plugins/organization"
+	"github.com/Stonewrit/stonewrit-auth/schema"
 )
 
 func TestTeamAccountsAcrossEngines(t *testing.T) {

@@ -5,8 +5,8 @@ import (
 	_ "embed"
 	"net/http"
 
-	authn "github.com/FineStack/frost-auth"
-	"github.com/FineStack/frost-auth/providers"
+	authn "github.com/Stonewrit/stonewrit-auth"
+	"github.com/Stonewrit/stonewrit-auth/providers"
 )
 
 type Options = authn.OneTapOptions

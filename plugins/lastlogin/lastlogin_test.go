@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
-	auth "github.com/FineStack/frost-auth"
-	"github.com/FineStack/frost-auth/adapters/memory"
-	"github.com/FineStack/frost-auth/plugins/lastlogin"
+	auth "github.com/Stonewrit/stonewrit-auth"
+	"github.com/Stonewrit/stonewrit-auth/adapters/memory"
+	"github.com/Stonewrit/stonewrit-auth/plugins/lastlogin"
 )
 
 func TestLastLoginCookieAndConsent(t *testing.T) {

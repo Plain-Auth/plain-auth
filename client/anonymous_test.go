@@ -8,10 +8,10 @@ import (
 	"strings"
 	"testing"
 
-	authn "github.com/FineStack/frost-auth"
-	"github.com/FineStack/frost-auth/adapters/memory"
-	"github.com/FineStack/frost-auth/client"
-	"github.com/FineStack/frost-auth/plugins/anonymous"
+	authn "github.com/Stonewrit/stonewrit-auth"
+	"github.com/Stonewrit/stonewrit-auth/adapters/memory"
+	"github.com/Stonewrit/stonewrit-auth/client"
+	"github.com/Stonewrit/stonewrit-auth/plugins/anonymous"
 )
 
 func TestGuestClientOnMemoryStore(t *testing.T) {

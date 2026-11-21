@@ -4,7 +4,7 @@ import (
 	"context"
 	"net/http"
 
-	authn "github.com/FineStack/frost-auth"
+	authn "github.com/Stonewrit/stonewrit-auth"
 )
 
 // ListDeviceSessions returns the accounts remembered by this client's cookie jar.

@@ -15,8 +15,8 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	auth "github.com/FineStack/frost-auth"
-	"github.com/FineStack/frost-auth/adapters/sqlite"
+	auth "github.com/Stonewrit/stonewrit-auth"
+	"github.com/Stonewrit/stonewrit-auth/adapters/sqlite"
 )
 
 func TestDiscoveredOIDCDirectGrantAndExplicitLink(t *testing.T) {

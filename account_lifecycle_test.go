@@ -1,4 +1,4 @@
-package frostauth_test
+package stonewrit_test
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	authn "github.com/FineStack/frost-auth"
+	authn "github.com/Stonewrit/stonewrit-auth"
 )
 
 func TestVerificationGatedSignUpAndSignIn(t *testing.T) {

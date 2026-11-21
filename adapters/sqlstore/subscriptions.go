@@ -8,8 +8,8 @@ import (
 	"errors"
 	"time"
 
-	auth "github.com/FineStack/frost-auth"
-	billing "github.com/FineStack/frost-auth/plugins/stripe"
+	auth "github.com/Stonewrit/stonewrit-auth"
+	billing "github.com/Stonewrit/stonewrit-auth/plugins/stripe"
 )
 
 var _ billing.SubscriptionStore = (*Store)(nil)

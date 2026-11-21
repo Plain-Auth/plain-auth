@@ -11,9 +11,9 @@ import (
 	"testing"
 	"time"
 
-	authn "github.com/FineStack/frost-auth"
-	"github.com/FineStack/frost-auth/plugins/deviceauthorization"
-	"github.com/FineStack/frost-auth/schema"
+	authn "github.com/Stonewrit/stonewrit-auth"
+	"github.com/Stonewrit/stonewrit-auth/plugins/deviceauthorization"
+	"github.com/Stonewrit/stonewrit-auth/schema"
 )
 
 func TestDeviceAuthorizationFlow(t *testing.T) {

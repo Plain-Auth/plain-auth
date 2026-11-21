@@ -23,9 +23,9 @@ org, err := organization.New(organization.Options{
 if err != nil {
     return err
 }
-auth, err := frostauth.New(frostauth.Options{
+auth, err := stonewrit.New(stonewrit.Options{
     Store: store, BaseURL: origin, Secret: secret, EmailAndPassword: true,
-    Plugins: []frostauth.Plugin{org},
+    Plugins: []stonewrit.Plugin{org},
 })
 ```
 

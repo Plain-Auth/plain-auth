@@ -6,11 +6,11 @@ Create one client per user session. An origin uses the default `/api/auth` mount
 import (
     "context"
 
-    "github.com/FineStack/frost-auth"
-    "github.com/FineStack/frost-auth/client"
+    "github.com/Stonewrit/stonewrit-auth"
+    "github.com/Stonewrit/stonewrit-auth/client"
 )
 
-func login(ctx context.Context, endpoint, email, password string) (*frostauth.SessionResult, error) {
+func login(ctx context.Context, endpoint, email, password string) (*stonewrit.SessionResult, error) {
     c, err := client.New(endpoint, nil)
     if err != nil {
         return nil, err

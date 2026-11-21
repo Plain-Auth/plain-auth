@@ -15,7 +15,7 @@ import (
 	"path"
 	"strings"
 
-	authn "github.com/FineStack/frost-auth"
+	authn "github.com/Stonewrit/stonewrit-auth"
 )
 
 // Client holds the server URL and the user's session cookies. Create a separate

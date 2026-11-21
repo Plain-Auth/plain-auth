@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/FineStack/frost-auth/schema"
+	"github.com/Stonewrit/stonewrit-auth/schema"
 )
 
 // Upgrade a populated installation and compare it to direct execution of the

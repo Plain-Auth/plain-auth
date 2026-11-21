@@ -24,7 +24,7 @@ go run ./cmd/authctl create-admin --dialect sqlite \
   --password-stdin < /run/secrets/initial-admin-password
 ```
 
-Use `--dialect postgres` or `--dialect mysql` with the corresponding connection string for a network database. The command requires an existing admin schema, a new email address, and a password 16–128 UTF-16 code units long. It reads one line from a pipe or file, hashes the password using the regular credential hasher, and prints the new administrator’s email. Concurrent attempts can create one administrator. Once someone holds the `admin` role, subsequent grants go through an authenticated administrator. Applications that provision accounts directly can call `frostauth.BootstrapAdmin` with a trusted store.
+Use `--dialect postgres` or `--dialect mysql` with the corresponding connection string for a network database. The command requires an existing admin schema, a new email address, and a password 16–128 UTF-16 code units long. It reads one line from a pipe or file, hashes the password using the regular credential hasher, and prints the new administrator’s email. Concurrent attempts can create one administrator. Once someone holds the `admin` role, subsequent grants go through an authenticated administrator. Applications that provision accounts directly can call `stonewrit.BootstrapAdmin` with a trusted store.
 
 ## Permissions
 
@@ -66,7 +66,7 @@ Creating a user with an explicit role requires both `user:create` and `user:set-
 | `POST /admin/remove-user` | Send `{userId}`. Deletes the account and returns `{success:true}`. |
 | `POST /admin/has-permission` | Send a `permissions` object such as `{"permissions":{"user":["get"]}}`. Returns `{success,error:null}` for the authenticated caller. |
 
-User listing supports `searchValue`, `searchField`, `searchOperator`, `filterField`, `filterOperator`, `filterValue`, `sortBy` and `sortDirection`. Operators include `eq`, `ne`, `lt`, `lte`, `gt`, `gte`, `contains`, `starts_with`, `ends_with`, `in` and `not_in`. Repeat the `filterValue` query parameter for an array. Search defaults to email substring matching. The Go client accepts a `frostauth.AdminQuery` for the same operations.
+User listing supports `searchValue`, `searchField`, `searchOperator`, `filterField`, `filterOperator`, `filterValue`, `sortBy` and `sortDirection`. Operators include `eq`, `ne`, `lt`, `lte`, `gt`, `gte`, `contains`, `starts_with`, `ends_with`, `in` and `not_in`. Repeat the `filterValue` query parameter for an array. Search defaults to email substring matching. The Go client accepts a `stonewrit.AdminQuery` for the same operations.
 
 ## Bans and impersonation
 
@@ -76,4 +76,4 @@ Impersonation issues a separate browser-only session with its operator recorded 
 
 The account owner must sign in directly to enroll or change factors, link identities, change login credentials, approve a device, access billing, manage organization membership, or retrieve sessions, provider tokens and service JWTs. Ordinary session reads remain available during impersonation and omit the service JWT header. Custom endpoints that issue credentials or change account permissions can call `session.RequireOwner()`. [Combined plugin tests](../adapters/sqlstore/admin_factor_test.go)
 
-The native Go client provides corresponding `Admin…` methods. For in-process calls, pass the caller’s headers to `Auth.Admin` with a `frostauth.AdminRequest`. HTTP endpoints handle the browser cookies used to start and stop impersonation. [Database and HTTP tests](../adapters/sqlstore/admin_test.go)
+The native Go client provides corresponding `Admin…` methods. For in-process calls, pass the caller’s headers to `Auth.Admin` with a `stonewrit.AdminRequest`. HTTP endpoints handle the browser cookies used to start and stop impersonation. [Database and HTTP tests](../adapters/sqlstore/admin_test.go)

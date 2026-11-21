@@ -9,9 +9,9 @@ import (
 	"strings"
 	"testing"
 
-	authn "github.com/FineStack/frost-auth"
-	"github.com/FineStack/frost-auth/adapters/sqlite"
-	"github.com/FineStack/frost-auth/client"
+	authn "github.com/Stonewrit/stonewrit-auth"
+	"github.com/Stonewrit/stonewrit-auth/adapters/sqlite"
+	"github.com/Stonewrit/stonewrit-auth/client"
 )
 
 type transport func(*http.Request) (*http.Response, error)

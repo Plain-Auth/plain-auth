@@ -1,11 +1,11 @@
-package frostauth_test
+package stonewrit_test
 
 import (
 	"net/http"
 	"testing"
 
-	authn "github.com/FineStack/frost-auth"
-	"github.com/FineStack/frost-auth/adapters/sqlite"
+	authn "github.com/Stonewrit/stonewrit-auth"
+	"github.com/Stonewrit/stonewrit-auth/adapters/sqlite"
 )
 
 func TestPluginRegistrationAndDispatch(t *testing.T) {

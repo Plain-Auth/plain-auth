@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	auth "github.com/FineStack/frost-auth"
+	auth "github.com/Stonewrit/stonewrit-auth"
 )
 
 // Store persists a login method only for the owner of a live session.

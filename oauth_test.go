@@ -1,4 +1,4 @@
-package frostauth_test
+package stonewrit_test
 
 import (
 	"context"
@@ -12,8 +12,8 @@ import (
 	"sync"
 	"testing"
 
-	auth "github.com/FineStack/frost-auth"
-	"github.com/FineStack/frost-auth/adapters/sqlite"
+	auth "github.com/Stonewrit/stonewrit-auth"
+	"github.com/Stonewrit/stonewrit-auth/adapters/sqlite"
 	"golang.org/x/oauth2"
 )
 

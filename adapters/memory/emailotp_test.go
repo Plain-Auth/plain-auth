@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	auth "github.com/FineStack/frost-auth"
-	"github.com/FineStack/frost-auth/plugins/emailotp"
+	auth "github.com/Stonewrit/stonewrit-auth"
+	"github.com/Stonewrit/stonewrit-auth/plugins/emailotp"
 )
 
 func TestEmailOTPConcurrentMemory(t *testing.T) {

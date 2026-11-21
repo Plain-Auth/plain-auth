@@ -15,9 +15,9 @@ import (
 	"testing"
 	"time"
 
-	authn "github.com/FineStack/frost-auth"
-	"github.com/FineStack/frost-auth/adapters/memory"
-	"github.com/FineStack/frost-auth/plugins/captcha"
+	authn "github.com/Stonewrit/stonewrit-auth"
+	"github.com/Stonewrit/stonewrit-auth/adapters/memory"
+	"github.com/Stonewrit/stonewrit-auth/plugins/captcha"
 )
 
 type transport func(*http.Request) (*http.Response, error)

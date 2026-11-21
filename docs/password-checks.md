@@ -4,16 +4,16 @@ Register the password-checking plugin to reject newly chosen credentials that ap
 
 ```go
 import (
-    "github.com/FineStack/frost-auth"
-    "github.com/FineStack/frost-auth/plugins/pwnedpassword"
+    "github.com/Stonewrit/stonewrit-auth"
+    "github.com/Stonewrit/stonewrit-auth/plugins/pwnedpassword"
 )
 
 policy := pwnedpassword.New(pwnedpassword.Options{
     CustomPasswordCompromisedMessage: "Choose a password you have not used before.",
 })
-auth, err := frostauth.New(frostauth.Options{
+auth, err := stonewrit.New(stonewrit.Options{
     Store: store, BaseURL: origin, Secret: secret, EmailAndPassword: true,
-    Plugins: []frostauth.Plugin{policy},
+    Plugins: []stonewrit.Plugin{policy},
 })
 ```
 

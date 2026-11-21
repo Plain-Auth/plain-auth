@@ -4,7 +4,7 @@ package mysql
 import (
 	"context"
 
-	"github.com/FineStack/frost-auth/adapters/sqlstore"
+	"github.com/Stonewrit/stonewrit-auth/adapters/sqlstore"
 )
 
 // Store persists users, credentials, and sessions.

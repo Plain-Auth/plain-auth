@@ -8,9 +8,9 @@ import (
 	"strings"
 	"testing"
 
-	auth "github.com/FineStack/frost-auth"
-	"github.com/FineStack/frost-auth/adapters/memory"
-	"github.com/FineStack/frost-auth/plugins/bearer"
+	auth "github.com/Stonewrit/stonewrit-auth"
+	"github.com/Stonewrit/stonewrit-auth/adapters/memory"
+	"github.com/Stonewrit/stonewrit-auth/plugins/bearer"
 )
 
 func TestBearerSessions(t *testing.T) {

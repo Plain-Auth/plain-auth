@@ -9,9 +9,9 @@ import (
 	"strings"
 	"testing"
 
-	authn "github.com/FineStack/frost-auth"
-	"github.com/FineStack/frost-auth/adapters/sqlstore"
-	"github.com/FineStack/frost-auth/schema"
+	authn "github.com/Stonewrit/stonewrit-auth"
+	"github.com/Stonewrit/stonewrit-auth/adapters/sqlstore"
+	"github.com/Stonewrit/stonewrit-auth/schema"
 )
 
 func TestCreateAdminCommand(t *testing.T) {

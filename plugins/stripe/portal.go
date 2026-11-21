@@ -5,7 +5,7 @@ import (
 	"errors"
 	"net/http"
 
-	auth "github.com/FineStack/frost-auth"
+	auth "github.com/Stonewrit/stonewrit-auth"
 	sdk "github.com/stripe/stripe-go/v87"
 )
 

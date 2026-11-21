@@ -7,10 +7,10 @@ An authenticated user can update their name or profile image, verify their curre
 Set either sender on `Options`. Each callback receives the request context and a `MailLink` containing the destination user, a complete URL, and the token. Deliver the URL only to the address on `link.User.Email`. For example, an application with an existing `mailer` can set the following options.
 
 ```go
-opts.SendResetPassword = func(ctx context.Context, link frostauth.MailLink) error {
+opts.SendResetPassword = func(ctx context.Context, link stonewrit.MailLink) error {
 	return mailer.Send(ctx, link.User.Email, "Reset your password", link.URL)
 }
-opts.SendVerificationEmail = func(ctx context.Context, link frostauth.MailLink) error {
+opts.SendVerificationEmail = func(ctx context.Context, link stonewrit.MailLink) error {
 	return mailer.Send(ctx, link.User.Email, "Verify your email", link.URL)
 }
 opts.RevokeSessionsOnPasswordReset = true

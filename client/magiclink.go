@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"net/url"
 
-	auth "github.com/FineStack/frost-auth"
+	auth "github.com/Stonewrit/stonewrit-auth"
 )
 
 // MagicLinkRequest requests a sign-in link delivered to Email.

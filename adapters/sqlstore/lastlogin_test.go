@@ -8,10 +8,10 @@ import (
 	"testing"
 	"time"
 
-	auth "github.com/FineStack/frost-auth"
-	"github.com/FineStack/frost-auth/adapters/memory"
-	"github.com/FineStack/frost-auth/plugins/lastlogin"
-	"github.com/FineStack/frost-auth/schema"
+	auth "github.com/Stonewrit/stonewrit-auth"
+	"github.com/Stonewrit/stonewrit-auth/adapters/memory"
+	"github.com/Stonewrit/stonewrit-auth/plugins/lastlogin"
+	"github.com/Stonewrit/stonewrit-auth/schema"
 )
 
 func TestPersistedLastLoginMethod(t *testing.T) {

@@ -1,4 +1,4 @@
-package frostauth
+package stonewrit
 
 import (
 	"encoding/json"

@@ -22,13 +22,13 @@ billing := stripeplugin.New(stripeplugin.Options{
         },
     },
 })
-auth, err := frostauth.New(frostauth.Options{
+auth, err := stonewrit.New(stonewrit.Options{
     Store: store, BaseURL: origin, Secret: authSecret,
-    Plugins: []frostauth.Plugin{billing},
+    Plugins: []stonewrit.Plugin{billing},
 })
 ```
 
-Import `github.com/FineStack/frost-auth/plugins/stripe` as `stripeplugin` and `github.com/stripe/stripe-go/v87` as `stripesdk`. Create the recurring prices in the same Stripe account and mode as the server’s API key. Configure the webhook destination at `/api/auth/stripe/webhook` for `checkout.session.completed` and `checkout.session.expired`. [Stripe Checkout Sessions](https://docs.stripe.com/api/checkout/sessions/create)
+Import `github.com/Stonewrit/stonewrit-auth/plugins/stripe` as `stripeplugin` and `github.com/stripe/stripe-go/v87` as `stripesdk`. Create the recurring prices in the same Stripe account and mode as the server’s API key. Configure the webhook destination at `/api/auth/stripe/webhook` for `checkout.session.completed` and `checkout.session.expired`. [Stripe Checkout Sessions](https://docs.stripe.com/api/checkout/sessions/create)
 
 ## Create a checkout
 

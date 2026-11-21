@@ -1,4 +1,4 @@
-package frostauth_test
+package stonewrit_test
 
 import (
 	"context"
@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	authn "github.com/FineStack/frost-auth"
+	authn "github.com/Stonewrit/stonewrit-auth"
 )
 
 func TestAccountRecoveryAndProfile(t *testing.T) {

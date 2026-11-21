@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	auth "github.com/FineStack/frost-auth"
+	auth "github.com/Stonewrit/stonewrit-auth"
 )
 
 var _ auth.TwoFactorStore = (*Store)(nil)

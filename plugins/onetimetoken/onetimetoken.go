@@ -1,7 +1,7 @@
 // Package onetimetoken transfers an active login between clients using a short-lived credential.
 package onetimetoken
 
-import auth "github.com/FineStack/frost-auth"
+import auth "github.com/Stonewrit/stonewrit-auth"
 
 type Options = auth.OneTimeTokenOptions
 

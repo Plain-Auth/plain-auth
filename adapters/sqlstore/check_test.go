@@ -11,7 +11,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/stdlib"
-	"github.com/FineStack/frost-auth/schema"
+	"github.com/Stonewrit/stonewrit-auth/schema"
 )
 
 func TestReadOnlySchemaCheck(t *testing.T) {

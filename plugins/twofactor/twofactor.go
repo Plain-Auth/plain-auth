@@ -1,7 +1,7 @@
 // Package twofactor adds authenticator codes and single-use backup codes to credential sign-in.
 package twofactor
 
-import auth "github.com/FineStack/frost-auth"
+import auth "github.com/Stonewrit/stonewrit-auth"
 
 type Options = auth.TwoFactorOptions
 type TOTPOptions = auth.FactorTOTPOptions

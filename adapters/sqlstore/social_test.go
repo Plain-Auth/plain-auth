@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	auth "github.com/FineStack/frost-auth"
+	auth "github.com/Stonewrit/stonewrit-auth"
 )
 
 func TestSocialStore(t *testing.T) {

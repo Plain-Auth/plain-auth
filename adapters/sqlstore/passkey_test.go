@@ -16,9 +16,9 @@ import (
 	"time"
 
 	"github.com/fxamacker/cbor/v2"
-	auth "github.com/FineStack/frost-auth"
-	pk "github.com/FineStack/frost-auth/plugins/passkey"
-	"github.com/FineStack/frost-auth/schema"
+	auth "github.com/Stonewrit/stonewrit-auth"
+	pk "github.com/Stonewrit/stonewrit-auth/plugins/passkey"
+	"github.com/Stonewrit/stonewrit-auth/schema"
 )
 
 type softwareKey struct {

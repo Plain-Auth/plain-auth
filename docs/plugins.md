@@ -1,22 +1,22 @@
 # Plugins and Stripe
 
-Pass plugins to `frostauth.Options.Plugins` during startup. A plugin declares an ID and endpoint definitions with a method and a path relative to the auth mount. Registration checks IDs and route conflicts before the application begins serving. Assign an `Endpoint.RateLimit` rule to limit requests to a plugin endpoint. The host application can [override rate rules](authentication.md#set-limits-for-an-application).
+Pass plugins to `stonewrit.Options.Plugins` during startup. A plugin declares an ID and endpoint definitions with a method and a path relative to the auth mount. Registration checks IDs and route conflicts before the application begins serving. Assign an `Endpoint.RateLimit` rule to limit requests to a plugin endpoint. The host application can [override rate rules](authentication.md#set-limits-for-an-application).
 
 ## Create a session-aware endpoint
 
 ```go
-profile := frostauth.Plugin{
+profile := stonewrit.Plugin{
     ID: "profile",
-    Endpoints: []frostauth.Endpoint{{
+    Endpoints: []stonewrit.Endpoint{{
         Method: http.MethodGet,
         Path:   "/profile",
-        Handler: func(c frostauth.EndpointContext) (any, error) {
+        Handler: func(c stonewrit.EndpointContext) (any, error) {
             session, err := c.Auth.GetSession(c.Request.Context(), c.Request.Header)
             if err != nil {
                 return nil, err
             }
             if session == nil {
-                return nil, &frostauth.APIError{
+                return nil, &stonewrit.APIError{
                     Status: 401, Code: "UNAUTHORIZED", Message: "Sign in first",
                 }
             }
@@ -24,14 +24,14 @@ profile := frostauth.Plugin{
         },
     }},
 }
-opts.Plugins = []frostauth.Plugin{profile}
+opts.Plugins = []stonewrit.Plugin{profile}
 ```
 
 The handler is then available at `GET /api/auth/profile`. Endpoint handlers run concurrently. Synchronize state they share or persist it in a transactional store. See the [plugin API](../plugins.go) and [registration tests](../plugins_test.go).
 
 ## Receive Stripe webhooks
 
-Import `github.com/FineStack/frost-auth/plugins/stripe` as `authstripe` and the official `github.com/stripe/stripe-go/v87` as `stripesdk`.
+Import `github.com/Stonewrit/stonewrit-auth/plugins/stripe` as `authstripe` and the official `github.com/stripe/stripe-go/v87` as `stripesdk`.
 
 ```go
 opts.Plugins = append(opts.Plugins, authstripe.New(authstripe.Options{
@@ -78,7 +78,7 @@ Send an authenticated `POST /api/auth/subscription/billing-portal` with `{"retur
 Register `customsession.New` from `plugins/customsession` to select the data returned by `GET /get-session`. The function receives the authenticated request context, user, and session. It can perform an application lookup through `c.Request.Context()`.
 
 ```go
-view, err := customsession.New(func(c frostauth.EndpointContext, data frostauth.SessionResult) (any, error) {
+view, err := customsession.New(func(c stonewrit.EndpointContext, data stonewrit.SessionResult) (any, error) {
     return map[string]string{"viewer": data.User.ID, "displayName": data.User.Name}, nil
 })
 if err != nil {

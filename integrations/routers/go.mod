@@ -1,4 +1,4 @@
-module github.com/FineStack/frost-auth/integrations/routers
+module github.com/Stonewrit/stonewrit-auth/integrations/routers
 
 go 1.26.0
 
@@ -7,7 +7,7 @@ require (
 	github.com/go-chi/chi/v5 v5.5.0
 	github.com/gofiber/fiber/v3 v3.7.0
 	github.com/gorilla/mux v1.8.1
-	github.com/FineStack/frost-auth v0.0.0
+	github.com/Stonewrit/stonewrit-auth v0.0.0
 )
 
 require (
@@ -73,4 +73,4 @@ require (
 	google.golang.org/protobuf v1.36.10 // indirect
 )
 
-replace github.com/FineStack/frost-auth => ../..
+replace github.com/Stonewrit/stonewrit-auth => ../..

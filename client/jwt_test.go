@@ -5,11 +5,11 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	auth "github.com/FineStack/frost-auth"
-	"github.com/FineStack/frost-auth/adapters/sqlstore"
-	"github.com/FineStack/frost-auth/client"
-	jwtplugin "github.com/FineStack/frost-auth/plugins/jwt"
-	"github.com/FineStack/frost-auth/schema"
+	auth "github.com/Stonewrit/stonewrit-auth"
+	"github.com/Stonewrit/stonewrit-auth/adapters/sqlstore"
+	"github.com/Stonewrit/stonewrit-auth/client"
+	jwtplugin "github.com/Stonewrit/stonewrit-auth/plugins/jwt"
+	"github.com/Stonewrit/stonewrit-auth/schema"
 )
 
 func TestNativeJWTClient(t *testing.T) {

@@ -9,8 +9,8 @@ import (
 	"sync/atomic"
 	"testing"
 
-	auth "github.com/FineStack/frost-auth"
-	"github.com/FineStack/frost-auth/adapters/memory"
+	auth "github.com/Stonewrit/stonewrit-auth"
+	"github.com/Stonewrit/stonewrit-auth/adapters/memory"
 )
 
 func TestAtomicRegistration(t *testing.T) {

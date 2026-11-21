@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"time"
 
-	authn "github.com/FineStack/frost-auth"
+	authn "github.com/Stonewrit/stonewrit-auth"
 )
 
 type AdminCreateUserRequest struct {

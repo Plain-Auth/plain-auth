@@ -1,5 +1,5 @@
-// Package frostauth embeds authentication in the host application's HTTP server.
-package frostauth
+// Package stonewrit embeds authentication in the host application's HTTP server.
+package stonewrit
 
 import (
 	"context"

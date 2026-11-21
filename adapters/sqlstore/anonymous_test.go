@@ -12,11 +12,11 @@ import (
 	"testing"
 	"time"
 
-	authn "github.com/FineStack/frost-auth"
-	"github.com/FineStack/frost-auth/client"
-	"github.com/FineStack/frost-auth/plugins/anonymous"
-	"github.com/FineStack/frost-auth/plugins/twofactor"
-	"github.com/FineStack/frost-auth/schema"
+	authn "github.com/Stonewrit/stonewrit-auth"
+	"github.com/Stonewrit/stonewrit-auth/client"
+	"github.com/Stonewrit/stonewrit-auth/plugins/anonymous"
+	"github.com/Stonewrit/stonewrit-auth/plugins/twofactor"
+	"github.com/Stonewrit/stonewrit-auth/schema"
 	"github.com/pquerna/otp/totp"
 )
 

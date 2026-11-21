@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	auth "github.com/FineStack/frost-auth"
+	auth "github.com/Stonewrit/stonewrit-auth"
 )
 
 func TestLinkedAccountIsolation(t *testing.T) {

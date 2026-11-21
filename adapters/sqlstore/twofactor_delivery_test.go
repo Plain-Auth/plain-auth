@@ -16,8 +16,8 @@ import (
 	"testing"
 	"time"
 
-	auth "github.com/FineStack/frost-auth"
-	"github.com/FineStack/frost-auth/plugins/twofactor"
+	auth "github.com/Stonewrit/stonewrit-auth"
+	"github.com/Stonewrit/stonewrit-auth/plugins/twofactor"
 )
 
 func TestDeliveredSecondFactor(t *testing.T) {

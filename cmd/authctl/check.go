@@ -11,8 +11,8 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/FineStack/frost-auth/adapters/sqlstore"
-	"github.com/FineStack/frost-auth/schema"
+	"github.com/Stonewrit/stonewrit-auth/adapters/sqlstore"
+	"github.com/Stonewrit/stonewrit-auth/schema"
 )
 
 var errSchemaMismatch = errors.New("the database does not match the selected schema")

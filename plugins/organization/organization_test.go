@@ -12,11 +12,11 @@ import (
 	"testing"
 	"time"
 
-	authn "github.com/FineStack/frost-auth"
-	"github.com/FineStack/frost-auth/adapters/sqlstore"
-	"github.com/FineStack/frost-auth/client"
-	"github.com/FineStack/frost-auth/plugins/organization"
-	"github.com/FineStack/frost-auth/schema"
+	authn "github.com/Stonewrit/stonewrit-auth"
+	"github.com/Stonewrit/stonewrit-auth/adapters/sqlstore"
+	"github.com/Stonewrit/stonewrit-auth/client"
+	"github.com/Stonewrit/stonewrit-auth/plugins/organization"
+	"github.com/Stonewrit/stonewrit-auth/schema"
 )
 
 type handlerTransport struct{ http.Handler }

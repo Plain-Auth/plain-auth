@@ -13,8 +13,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/FineStack/frost-auth"
-	"github.com/FineStack/frost-auth/adapters/sqlite"
+	"github.com/Stonewrit/stonewrit-auth"
+	"github.com/Stonewrit/stonewrit-auth/adapters/sqlite"
 )
 
 func main() {
@@ -33,7 +33,7 @@ func run() error {
 		return err
 	}
 	defer store.Close()
-	auth, err := frostauth.New(frostauth.Options{
+	auth, err := stonewrit.New(stonewrit.Options{
 		Store:            store,
 		EmailAndPassword: true,
 	})

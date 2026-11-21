@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	authn "github.com/FineStack/frost-auth"
+	authn "github.com/Stonewrit/stonewrit-auth"
 )
 
 // OpenForAdminBootstrap opens an existing database and checks its admin profile.

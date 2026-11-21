@@ -14,9 +14,9 @@ import (
 	"time"
 
 	libjwt "github.com/golang-jwt/jwt/v5"
-	auth "github.com/FineStack/frost-auth"
-	jwtplugin "github.com/FineStack/frost-auth/plugins/jwt"
-	"github.com/FineStack/frost-auth/schema"
+	auth "github.com/Stonewrit/stonewrit-auth"
+	jwtplugin "github.com/Stonewrit/stonewrit-auth/plugins/jwt"
+	"github.com/Stonewrit/stonewrit-auth/schema"
 )
 
 func TestJWTIssuanceAndKeyRotation(t *testing.T) {

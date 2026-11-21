@@ -1,5 +1,5 @@
 // Device authorization lets an input-constrained device obtain a first-party session.
-package frostauth
+package stonewrit
 
 import (
 	"context"

@@ -1,4 +1,4 @@
-package frostauth
+package stonewrit
 
 import (
 	"context"
@@ -17,7 +17,7 @@ import (
 	"time"
 	"unicode/utf16"
 
-	"github.com/FineStack/frost-auth/internal/configenv"
+	"github.com/Stonewrit/stonewrit-auth/internal/configenv"
 )
 
 // Auth is safe for concurrent use by application handlers.

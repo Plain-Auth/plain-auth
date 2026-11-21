@@ -6,11 +6,11 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	auth "github.com/FineStack/frost-auth"
-	"github.com/FineStack/frost-auth/adapters/memory"
-	"github.com/FineStack/frost-auth/adapters/sqlite"
-	"github.com/FineStack/frost-auth/client"
-	"github.com/FineStack/frost-auth/plugins/emailotp"
+	auth "github.com/Stonewrit/stonewrit-auth"
+	"github.com/Stonewrit/stonewrit-auth/adapters/memory"
+	"github.com/Stonewrit/stonewrit-auth/adapters/sqlite"
+	"github.com/Stonewrit/stonewrit-auth/client"
+	"github.com/Stonewrit/stonewrit-auth/plugins/emailotp"
 )
 
 func TestNativeEmailOTPClient(t *testing.T) {

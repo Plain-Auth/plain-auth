@@ -1,4 +1,4 @@
-module github.com/FineStack/frost-auth
+module github.com/Stonewrit/stonewrit-auth
 
 go 1.26.0
 

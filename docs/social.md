@@ -6,8 +6,8 @@ Register an OAuth application at the identity provider. Set its callback to your
 import (
     "os"
 
-    auth "github.com/FineStack/frost-auth"
-    "github.com/FineStack/frost-auth/providers"
+    auth "github.com/Stonewrit/stonewrit-auth"
+    "github.com/Stonewrit/stonewrit-auth/providers"
 )
 
 // Set SocialProviders on the same Options that configures your database,

@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	auth "github.com/FineStack/frost-auth"
+	auth "github.com/Stonewrit/stonewrit-auth"
 )
 
 func factorDeliveryKey(sub auth.FactorSubject, st auth.FactorState) string {

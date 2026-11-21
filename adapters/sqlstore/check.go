@@ -9,7 +9,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/FineStack/frost-auth/schema"
+	"github.com/Stonewrit/stonewrit-auth/schema"
 )
 
 // SchemaFinding identifies a mismatch between selected columns and a live table.

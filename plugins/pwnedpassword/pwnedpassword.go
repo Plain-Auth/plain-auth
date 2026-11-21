@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	authn "github.com/FineStack/frost-auth"
+	authn "github.com/Stonewrit/stonewrit-auth"
 )
 
 // Options configures a server-side password check. A nil Paths slice selects

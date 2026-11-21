@@ -24,9 +24,9 @@ keys, err := passkey.New(passkey.Options{
 if err != nil {
     return err
 }
-auth, err := frostauth.New(frostauth.Options{
+auth, err := stonewrit.New(stonewrit.Options{
     Store: store, BaseURL: "https://accounts.example.com", Secret: secret,
-    Plugins: []frostauth.Plugin{keys},
+    Plugins: []stonewrit.Plugin{keys},
 })
 ```
 

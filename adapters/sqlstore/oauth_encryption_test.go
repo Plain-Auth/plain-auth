@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	auth "github.com/FineStack/frost-auth"
+	auth "github.com/Stonewrit/stonewrit-auth"
 	"golang.org/x/oauth2"
 )
 

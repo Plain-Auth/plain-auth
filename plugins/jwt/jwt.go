@@ -1,7 +1,7 @@
 // Package jwt signs short-lived service assertions and publishes public verification keys.
 package jwt
 
-import auth "github.com/FineStack/frost-auth"
+import auth "github.com/Stonewrit/stonewrit-auth"
 
 type Options = auth.JWTOptions
 

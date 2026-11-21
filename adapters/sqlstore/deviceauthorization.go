@@ -6,7 +6,7 @@ import (
 	"errors"
 	"time"
 
-	authn "github.com/FineStack/frost-auth"
+	authn "github.com/Stonewrit/stonewrit-auth"
 )
 
 var _ authn.DeviceAuthorizationStore = (*Store)(nil)

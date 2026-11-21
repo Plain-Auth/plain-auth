@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/FineStack/frost-auth/plugins/onetap"
+	"github.com/Stonewrit/stonewrit-auth/plugins/onetap"
 )
 
 func TestRedirectFormRequiresGoogleProof(t *testing.T) {

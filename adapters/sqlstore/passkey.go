@@ -10,8 +10,8 @@ import (
 	"github.com/go-sql-driver/mysql"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/mattn/go-sqlite3"
-	auth "github.com/FineStack/frost-auth"
-	pk "github.com/FineStack/frost-auth/plugins/passkey"
+	auth "github.com/Stonewrit/stonewrit-auth"
+	pk "github.com/Stonewrit/stonewrit-auth/plugins/passkey"
 )
 
 var _ pk.Store = (*Store)(nil)
