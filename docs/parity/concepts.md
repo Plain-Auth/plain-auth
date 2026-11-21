@@ -110,13 +110,18 @@
   - [ ] Cookie Prefix
   - [ ] Custom Cookies
   - [ ] Cross Subdomain Cookies
+    - [x] Resolve shared cookie domains from the static base URL and reject unrelated hosts and public or private suffixes ([test](../../cookie_scope_test.go#L10))
+    - [x] Share an authenticated browser session with a sibling host and expire it on logout ([test](../../cookie_scope_http_test.go#L17))
+    - [x] Isolate native client cookies by registrable domain and clear a shared login preference ([test](../../client/cookie_scope_test.go#L9))
   - [ ] Secure Cookies
+    - [x] Set the secure override and enforce reserved cookie prefix constraints ([test](../../cookie_scope_test.go#L62))
     - [x] Serialize and authenticate a signed session cookie ([test](../../cookies_test.go#L10))
   - [ ] Safari, ITP, and Cross-Domain Setups
     - [ ] Using a Reverse Proxy
       - [ ] Example with Netlify
       - [ ] Example with Vercel
     - [ ] Using a Shared Parent Domain
+      - [x] Use Chrome on two TLS hosts to sign in, share an HTTP-only session and log out of both hosts ([test](../../cookie_scope_browser_test.go#L20))
 
 ## Database
 

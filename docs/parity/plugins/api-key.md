@@ -6,14 +6,19 @@
 
 - [ ] API keys endpoints, types and options
   - [ ] `apiKeyClient`
+    - [x] Create, retrieve, update, list and revoke user-owned keys with the official client ([test](../../../conformance/core.test.mjs#L844))
   - [ ] `ApiKeyClientPlugin`
-  - [ ] `defaultKeyHasher`
+  - [x] `defaultKeyHasher` ([test](../../../conformance/core.test.mjs#L869))
+    - [x] Match the pinned digest and verify a Go key on shared SQLite ([test](../../../conformance/core.test.mjs#L869))
   - [ ] `API_KEY_TABLE_NAME`
   - [ ] `apiKey`
   - [ ] `POST /api-key/create`
+    - [x] Issue a user-owned key and return its secret to the official client ([test](../../../conformance/core.test.mjs#L844))
   - [ ] `Operation (server API only)`
   - [ ] `POST /api-key/delete`
+    - [x] Revoke the selected user-owned credential ([test](../../../conformance/core.test.mjs#L844))
   - [ ] `GET /api-key/get`
+    - [x] Return owner-visible metadata without the stored digest ([test](../../../conformance/core.test.mjs#L844))
   - [ ] `PredefinedApiKeyOptions`
     - [ ] `keyExpiration`
     - [ ] `startingCharactersConfig`
@@ -24,30 +29,41 @@
   - [ ] `deleteAllExpiredApiKeys`
   - [ ] `createApiKeyRoutes`
   - [ ] `GET /api-key/list`
+    - [x] Return the owner’s paginated API keys and total ([test](../../../conformance/core.test.mjs#L844))
   - [ ] `POST /api-key/update`
+    - [x] Change user-owned key settings using the pinned client ([test](../../../conformance/core.test.mjs#L844))
   - [ ] `Operation (server API only)`
   - [ ] `ApiKeyOptions`
     - [ ] `schema`
   - [ ] `ApiKeyConfigurationOptions`
     - [ ] `configId`
+      - [x] Scope key reads, verification and cleanup to the configured namespace ([test](../../../adapters/sqlstore/apikey_test.go#L261))
     - [ ] `apiKeyHeaders`
+      - [x] Accept configured header names and reject ambiguous credential selection ([test](../../../adapters/sqlstore/apikey_test.go#L238))
     - [ ] `disableKeyHashing`
     - [ ] `customAPIKeyGetter`
     - [ ] `customAPIKeyValidator`
     - [ ] `customKeyGenerator`
     - [ ] `startingCharactersConfig`
+      - [x] Return six display characters by default ([test](../../../adapters/sqlstore/apikey_test.go#L68))
     - [ ] `defaultKeyLength`
+      - [x] Issue 64 random letters plus an optional prefix ([test](../../../adapters/sqlstore/apikey_test.go#L68))
     - [ ] `defaultPrefix`
     - [ ] `maximumPrefixLength`
     - [ ] `requireName`
+      - [x] Enforce a required display name ([test](../../../adapters/sqlstore/apikey_test.go#L203))
     - [ ] `minimumPrefixLength`
     - [ ] `maximumNameLength`
     - [ ] `minimumNameLength`
     - [ ] `enableMetadata`
+      - [x] Reject metadata when disabled ([test](../../../adapters/sqlstore/apikey_test.go#L207))
     - [ ] `keyExpiration`
+      - [x] Enforce configured default lifetime and maximum expiration ([test](../../../adapters/sqlstore/apikey_test.go#L211))
     - [ ] `rateLimit`
+      - [x] Enforce an atomic rate budget and provide a retry interval ([test](../../../adapters/sqlstore/apikey_test.go#L248))
     - [ ] `enableSessionForAPIKeys`
     - [ ] `permissions`
+      - [x] Protect an application operation with a resource/action scope ([test](../../../adapters/sqlstore/apikey_test.go#L226))
     - [ ] `storage`
     - [ ] `fallbackToDatabase`
     - [ ] `customStorage`
@@ -87,12 +103,14 @@
   - [ ] Storage Modes
     - [ ] Storage Mode Options
       - [ ] `"database"` (Default)
+        - [x] Store credentials in a canonical SQL table and return the secret only on issuance ([test](../../../adapters/sqlstore/apikey_test.go#L73))
       - [ ] `"secondary-storage"`
       - [ ] Secondary Storage with Fallback
         - [ ] Read behavior:
         - [ ] Write behavior:
     - [ ] Custom Storage Methods
   - [ ] Rate Limiting
+    - [x] Serialize rate and use decisions across independent service instances ([test](../../../adapters/sqlstore/apikey_test.go#L178))
     - [ ] Double Rate-Limit Increment
     - [ ] How does it work?
       - [ ] First Request
@@ -106,10 +124,14 @@
   - [ ] Remaining, refill, and expiration
     - [ ] How does it work?
       - [ ] Remaining:
+        - [x] Consume the remaining budget concurrently without granting excess uses ([test](../../../adapters/sqlstore/apikey_test.go#L178))
       - [ ] refillInterval & refillAmount:
+        - [x] Refill a depleted key after its configured interval ([test](../../../adapters/sqlstore/apikey_test.go#L196))
       - [ ] Expiration:
+        - [x] Reject expired secrets and purge expired entries ([test](../../../adapters/sqlstore/apikey_test.go#L266))
   - [ ] Custom Key generation & verification
   - [ ] Metadata
+    - [x] Round-trip opted-in JSON metadata ([test](../../../adapters/sqlstore/apikey_test.go#L88))
 
 ## API Key
 
@@ -126,6 +148,7 @@
     - [ ] Organization-owned API keys in addition to user-owned keys
   - [ ] Usage
     - [ ] Create an API key
+      - [x] Issue a key for a direct user session ([test](../../../adapters/sqlstore/apikey_test.go#L68))
       - [ ] `POST /api-key/create`
         - [ ] Parameter `configId` (optional)
         - [ ] Parameter `name` (optional)
@@ -142,17 +165,20 @@
         - [ ] Parameter `permissions` (optional)
       - [ ] Result
     - [ ] Verify an API key
+      - [x] Verify permissions and consume the credential atomically ([test](../../../adapters/sqlstore/apikey_test.go#L178))
       - [ ] `POST /api-key/verify` (server API)
         - [ ] Parameter `configId` (optional)
         - [ ] Parameter `key`
         - [ ] Parameter `permissions` (optional)
       - [ ] Result
     - [ ] Get an API key
+      - [x] Omit the secret and digest from management reads ([test](../../../adapters/sqlstore/apikey_test.go#L132))
       - [ ] `GET /api-key/get`
         - [ ] Parameter `configId` (optional)
         - [ ] Parameter `id`
       - [ ] Result
     - [ ] Update an API key
+      - [x] Allow the owner to disable and rename a key ([test](../../../adapters/sqlstore/apikey_test.go#L100))
       - [ ] `POST /api-key/update`
         - [ ] Parameter `configId` (optional)
         - [ ] Parameter `keyId`
@@ -169,11 +195,13 @@
         - [ ] Parameter `permissions` (optional)
       - [ ] Result
     - [ ] Delete an API Key
+      - [x] Delete a key through the public client and reject future verification ([test](../../../conformance/core.test.mjs#L844))
       - [ ] `POST /api-key/delete`
         - [ ] Parameter `configId` (optional)
         - [ ] Parameter `keyId`
       - [ ] Result
     - [ ] List API keys
+      - [x] Isolate owner lists across users ([test](../../../adapters/sqlstore/apikey_test.go#L106))
       - [ ] `GET /api-key/list`
         - [ ] Parameter `configId` (optional)
         - [ ] Parameter `organizationId` (optional)
@@ -184,6 +212,7 @@
       - [ ] Result
       - [ ] Pagination Examples
     - [ ] Delete all expired API keys
+      - [x] Purge expired entries within one configuration and retain live keys ([test](../../../adapters/sqlstore/apikey_test.go#L266))
       - [ ] `POST /api-key/delete-all-expired-api-keys` (server API)
 
 ## Reference
@@ -199,11 +228,14 @@
     - [ ] `api-key:by-ref:${referenceId}`
   - [ ] Permissions
     - [ ] Setting Default Permissions
+      - [x] Apply static defaults independently to each issued key ([test](../../../adapters/sqlstore/apikey_test.go#L221))
     - [ ] Creating API Keys with Permissions
     - [ ] Verifying API Keys with Required Permissions
+      - [x] Require every requested scope before committing a use ([test](../../../adapters/sqlstore/apikey_test.go#L88))
     - [ ] Updating API Key Permissions
     - [ ] Permissions Structure
   - [ ] Schema
+    - [x] Compare API key columns, constraints and indexes on PostgreSQL and MySQL to the canonical DDL ([test](../../../adapters/sqlstore/profiles_test.go#L14))
     - [ ] `apiKeyTableFields.id`
     - [ ] `apiKeyTableFields.configId`
     - [ ] `apiKeyTableFields.name`

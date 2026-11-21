@@ -38,6 +38,37 @@ Use `c.Do(ctx, method, route, input, output)` for JSON plugin and account endpoi
 
 To configure timeouts, transport or persistent cookie storage, pass an `*http.Client` as the second argument to `client.New`. Clients get separate in-memory cookies by default. A supplied jar is shared with its owner. Redirects require an explicit same-origin redirect policy. The client retains the server's JSON redirect flag and callback URL for the application to handle.
 
+## Use a bearer token
+
+Register `bearer.New(bearer.Options{RequireSignature: true})` on the server. On the client, capture the signed credential from the successful login response. If the account uses MFA, capture it from the successful verification response after completing the challenge.
+
+```go
+var login client.EmailResult
+headers, err := browser.DoWithHeaders(ctx, "POST", "/sign-in/email",
+    client.SignInRequest{Email: email, Password: password}, &login)
+if err != nil {
+    return err
+}
+if login.TwoFactorRedirect {
+    code, err := readAuthenticatorCode() // application UI for an enrolled authenticator
+    if err != nil {
+        return err
+    }
+    headers, err = browser.DoWithHeaders(ctx, "POST", "/two-factor/verify-totp",
+        map[string]string{"code": code}, nil)
+    if err != nil {
+        return err
+    }
+}
+device, err := browser.WithBearerToken(headers.Get("Set-Auth-Token"))
+if err != nil {
+    return err
+}
+session, err := device.GetSession(ctx)
+```
+
+The returned client sends `Authorization: Bearer <token>` to the configured origin and uses no cookies. Reuse it for a device, or create a view for a single request. The original client keeps its own login. Sign-out revokes the bearer session. An ordinary Go HTTP request to your service can send the same Authorization header. Treat the token as a secret. [TLS client test](../client/bearer_test.go)
+
 ## Select the endpoint from the environment
 
 `client.New("", nil)` reads the public auth URL from `AUTH_URL`. Set it to `https://app.example.org` for the default `/api/auth` mount, or include a path such as `https://app.example.org/login` for a custom mount. An explicit constructor URL takes precedence. The destination is fixed at construction. [Environment configuration](environment.md#native-client-url)
@@ -46,6 +77,7 @@ To configure timeouts, transport or persistent cookie storage, pass an `*http.Cl
 
 | Workflow | Client methods |
 | --- | --- |
+| Register or change a username and sign in | `SignUpEmail`, `SignInUsername`, `IsUsernameAvailable`, `UpdateUser` |
 | Edit the profile or email | `UpdateUser`, `ChangeEmail`, `SendVerificationEmail`, `VerifyEmail` |
 | Change a password or recover an account | `VerifyPassword`, `ChangePassword`, `RequestPasswordReset`, `ResetPassword` |
 | Inspect linked identities or delete the account | `ListAccounts`, `UnlinkAccount`, `DeleteAccount` |

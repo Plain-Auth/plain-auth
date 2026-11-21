@@ -21,6 +21,7 @@ A checked item links to a local test for that behavior. An open parent means the
 | OAuth sign-in, identity verification and account linking | [Social providers](../social.md) |
 | Go client and router integrations | [HTTP client](../client.md) · [Routers](../routers.md) |
 | Memory, SQLite, PostgreSQL and MySQL | [Databases](../databases.md) · [Schema generation and migrations](../schema.md) |
+| Username registration, sign-in and availability | [Username sign-in](../username.md) |
 | Administrative roles, bans and impersonation | [Administrator accounts](../admin.md) |
 | Organization membership and invitations | [Organizations](../organizations.md) |
 | Checkout, subscription listing and billing portal | [Recurring subscriptions](../subscriptions.md) · [Billing portal](../plugins.md#open-the-users-stripe-billing-portal) |

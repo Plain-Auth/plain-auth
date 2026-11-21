@@ -13,6 +13,7 @@ import (
 
 	authn "github.com/Stonewrit/stonewrit-auth"
 	"github.com/Stonewrit/stonewrit-auth/adapters/sqlstore"
+	"github.com/Stonewrit/stonewrit-auth/plugins/apikey"
 	"github.com/Stonewrit/stonewrit-auth/plugins/customsession"
 	"github.com/Stonewrit/stonewrit-auth/plugins/emailotp"
 	jwtplugin "github.com/Stonewrit/stonewrit-auth/plugins/jwt"
@@ -47,8 +48,22 @@ func main() {
 	}
 	defer store.Close()
 	var plugins []authn.Plugin
+	var applicationKeys *apikey.Service
 	for _, id := range os.Args[2:] {
 		switch id {
+		case "api-key":
+			keys, err := apikey.New(apikey.Options{Store: store, EnableMetadata: true})
+			if err != nil {
+				log.Fatal(err)
+			}
+			applicationKeys = keys
+			plugins = append(plugins, keys.Plugin())
+		case "username", "username-only":
+			p, err := authn.NewUsername(authn.UsernameOptions{DisableDisplay: id == "username-only"})
+			if err != nil {
+				log.Fatal(err)
+			}
+			plugins = append(plugins, p)
 		case "last-login-method":
 			plugins = append(plugins, lastlogin.New(lastlogin.Options{Database: store}))
 		case "anonymous":
@@ -190,6 +205,16 @@ func main() {
 	var handler http.Handler = auth
 	if oneTapKeys != "" {
 		handler = oneTapFixtureHandler(baseURL, auth)
+	}
+	if applicationKeys != nil {
+		mux := http.NewServeMux()
+		mux.Handle("/", handler)
+		mux.Handle("GET /reports", applicationKeys.Middleware(apikey.Permissions{"reports": {"read"}}, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			key, _ := apikey.FromContext(r.Context())
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(map[string]string{"owner": key.ReferenceID, "id": key.ID})
+		})))
+		handler = mux
 	}
 	log.Fatal(http.Serve(listener, handler))
 }

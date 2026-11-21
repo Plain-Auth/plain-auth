@@ -139,7 +139,36 @@
       "marker": "func TestServerPluginSchemaUpgrade("
     }
   ],
+  "docs/content/docs/concepts/cookies.mdx#L62": [
+    {
+      "label": "Resolve shared cookie domains from the static base URL and reject unrelated hosts and public or private suffixes",
+      "test": "cookie_scope_test.go",
+      "marker": "func TestCrossDomainCookiePolicy("
+    },
+    {
+      "label": "Share an authenticated browser session with a sibling host and expire it on logout",
+      "test": "cookie_scope_http_test.go",
+      "marker": "func TestSharedCookieLoginAndLogoutAcrossHosts("
+    },
+    {
+      "label": "Isolate native client cookies by registrable domain and clear a shared login preference",
+      "test": "client/cookie_scope_test.go",
+      "marker": "func TestClientCookiePublicSuffixAndPreferenceScope("
+    }
+  ],
+  "docs/content/docs/concepts/cookies.mdx#L180": [
+    {
+      "label": "Use Chrome on two TLS hosts to sign in, share an HTTP-only session and log out of both hosts",
+      "test": "cookie_scope_browser_test.go",
+      "marker": "func TestChromeSharedCookieLogout("
+    }
+  ],
   "docs/content/docs/concepts/cookies.mdx#L94": [
+    {
+      "label": "Set the secure override and enforce reserved cookie prefix constraints",
+      "test": "cookie_scope_test.go",
+      "marker": "func TestCookieSecurityOverridesAndReservedNames("
+    },
     {
       "label": "Serialize and authenticate a signed session cookie",
       "test": "cookies_test.go",
@@ -292,6 +321,11 @@
       "label": "Manage and revoke administrative sessions through the typed cookie-backed client",
       "test": "adapters/sqlstore/admin_test.go",
       "marker": "func TestAdminLifecycleAcrossEngines("
+    },
+    {
+      "label": "Use the typed client to register, sign in, rename a public handle and query availability",
+      "test": "adapters/sqlstore/username_test.go",
+      "marker": "func TestUsernameLifecycleAcrossStores("
     }
   ],
   "go/databases": [
@@ -344,6 +378,11 @@
       "label": "Serialize first-administrator provisioning across independent connections on all three SQL engines",
       "test": "adapters/sqlstore/admin_test.go",
       "marker": "func TestFirstAdminProvisioningRace("
+    },
+    {
+      "label": "Require database-enforced unique usernames and reject a partial unique index",
+      "test": "adapters/sqlstore/username_test.go",
+      "marker": "partial username uniqueness accepted"
     }
   ],
   "cli/secret": [
@@ -3360,6 +3399,464 @@
       "test": "conformance/core.test.mjs",
       "marker": "test(\"both runtimes publish the email login preference",
       "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/bearer.mdx#L29": [
+    {
+      "label": "Read the signed session credential from successful login response headers",
+      "test": "client/bearer_test.go",
+      "marker": "registration did not issue a signed credential",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/bearer.mdx#L68": [
+    {
+      "label": "Authenticate a device with a signed credential while the browser uses its own account",
+      "test": "client/bearer_test.go",
+      "marker": "bearer and cookie identities were mixed",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/bearer.mdx#L96": [
+    {
+      "label": "Use a credential for one client view without falling back to the browser on revocation",
+      "test": "client/bearer_test.go",
+      "marker": "revoked bearer reused a browser identity",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/bearer/BearerOptions/requireSignature": [
+    {
+      "label": "Accept valid signed credentials and reject raw or altered tokens when signatures are required",
+      "test": "plugins/bearer/bearer_test.go",
+      "marker": "credential policy mismatch",
+      "complete": true
+    }
+  ],
+  "plugin/username/POST /sign-in/username": [
+    {
+      "label": "Sign in with the canonical credential, remember preference and callback URL",
+      "test": "adapters/sqlstore/username_test.go",
+      "marker": "username login result"
+    },
+    {
+      "label": "Honor email verification, administrator bans and existing second-factor settings",
+      "test": "adapters/sqlstore/username_test.go",
+      "marker": "func TestUsernameVerificationAndFactorChallenge("
+    }
+  ],
+  "plugin/username/POST /is-username-available": [
+    {
+      "label": "Check availability against the normalized unique login name",
+      "test": "adapters/sqlstore/username_test.go",
+      "marker": "normalized availability ignored an existing name"
+    }
+  ],
+  "plugin-symbol/username/usernameClient": [
+    {
+      "label": "Sign in with the pinned client and edit the same username on both servers",
+      "test": "conformance/core.test.mjs",
+      "marker": "test(\"the pinned username client shares"
+    }
+  ],
+  "plugin-symbol/username/UsernameClientOptions/displayUsername": [
+    {
+      "label": "Consume public profiles with the display field enabled and disabled",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.equal(noName.displayUsername,"
+    }
+  ],
+  "docs/content/docs/plugins/username.mdx#L70": [
+    {
+      "label": "Set a normalized login name and preserve display spelling",
+      "test": "adapters/sqlstore/username_test.go",
+      "marker": "sign-up did not preserve normalized and display forms"
+    }
+  ],
+  "docs/content/docs/plugins/username.mdx#L106": [
+    {
+      "label": "Issue a remembered or browser-only username login",
+      "test": "adapters/sqlstore/username_test.go",
+      "marker": "short login preference lost"
+    }
+  ],
+  "docs/content/docs/plugins/username.mdx#L125": [
+    {
+      "label": "Change the login name atomically without altering the previous display spelling",
+      "test": "adapters/sqlstore/username_test.go",
+      "marker": "username-only updates changed display spelling"
+    }
+  ],
+  "docs/content/docs/plugins/username.mdx#L144": [
+    {
+      "label": "Release the old login name on rename",
+      "test": "adapters/sqlstore/username_test.go",
+      "marker": "renaming did not release the old username"
+    }
+  ],
+  "docs/content/docs/plugins/username.mdx#L387": [
+    {
+      "label": "Remove the public endpoint while retaining the application lookup",
+      "test": "adapters/sqlstore/username_test.go",
+      "marker": "disabled public availability endpoint remained reachable"
+    }
+  ],
+  "docs/content/docs/plugins/username.mdx#L406": [
+    {
+      "label": "Keep existing accounts intact when adding nullable username fields",
+      "test": "adapters/sqlstore/username_test.go",
+      "marker": "additive migration changed existing identity"
+    }
+  ],
+  "plugin-symbol/username/UsernameOptions/minUsernameLength": [
+    {
+      "label": "Apply a configured minimum after normalization",
+      "test": "adapters/sqlstore/username_test.go",
+      "marker": "{\"ab\", \"USERNAME_TOO_SHORT\"}"
+    }
+  ],
+  "docs/content/docs/plugins/username.mdx#L167": [
+    {
+      "label": "Apply a configured minimum after normalization",
+      "test": "adapters/sqlstore/username_test.go",
+      "marker": "{\"ab\", \"USERNAME_TOO_SHORT\"}"
+    }
+  ],
+  "plugin-symbol/username/UsernameOptions/maxUsernameLength": [
+    {
+      "label": "Apply a configured maximum after normalization",
+      "test": "adapters/sqlstore/username_test.go",
+      "marker": "{\"Long Word 99\", \"USERNAME_TOO_LONG\"}"
+    }
+  ],
+  "docs/content/docs/plugins/username.mdx#L187": [
+    {
+      "label": "Apply a configured maximum after normalization",
+      "test": "adapters/sqlstore/username_test.go",
+      "marker": "{\"Long Word 99\", \"USERNAME_TOO_LONG\"}"
+    }
+  ],
+  "plugin-symbol/username/UsernameOptions/usernameValidator": [
+    {
+      "label": "Apply a custom login-name validator",
+      "test": "adapters/sqlstore/username_test.go",
+      "marker": "{\"Reserved\", \"INVALID_USERNAME\"}"
+    }
+  ],
+  "docs/content/docs/plugins/username.mdx#L207": [
+    {
+      "label": "Apply a custom login-name validator",
+      "test": "adapters/sqlstore/username_test.go",
+      "marker": "{\"Reserved\", \"INVALID_USERNAME\"}"
+    }
+  ],
+  "plugin-symbol/username/UsernameOptions/displayUsernameValidator": [
+    {
+      "label": "Reject display spellings that fail application validation",
+      "test": "adapters/sqlstore/username_test.go",
+      "marker": "display validator ignored"
+    }
+  ],
+  "docs/content/docs/plugins/username.mdx#L232": [
+    {
+      "label": "Reject display spellings that fail application validation",
+      "test": "adapters/sqlstore/username_test.go",
+      "marker": "display validator ignored"
+    }
+  ],
+  "plugin-symbol/username/UsernameOptions/usernameNormalization": [
+    {
+      "label": "Disable case folding and retain submitted spelling",
+      "test": "adapters/sqlstore/username_test.go",
+      "marker": "disabled normalization collapsed different names"
+    }
+  ],
+  "docs/content/docs/plugins/username.mdx#L255": [
+    {
+      "label": "Disable case folding and retain submitted spelling",
+      "test": "adapters/sqlstore/username_test.go",
+      "marker": "disabled normalization collapsed different names"
+    }
+  ],
+  "plugin-symbol/username/UsernameOptions/displayUsernameNormalization": [
+    {
+      "label": "Normalize display spelling using an application function",
+      "test": "adapters/sqlstore/username_test.go",
+      "marker": "NormalizeDisplay: strings.TrimSpace"
+    }
+  ],
+  "docs/content/docs/plugins/username.mdx#L282": [
+    {
+      "label": "Normalize display spelling using an application function",
+      "test": "adapters/sqlstore/username_test.go",
+      "marker": "NormalizeDisplay: strings.TrimSpace"
+    }
+  ],
+  "plugin-symbol/username/UsernameOptions/validationOrder": [
+    {
+      "label": "Apply custom validators to the transformed input",
+      "test": "adapters/sqlstore/username_test.go",
+      "marker": "post-normalization validators"
+    }
+  ],
+  "docs/content/docs/plugins/username.mdx#L304": [
+    {
+      "label": "Apply custom validators to the transformed input",
+      "test": "adapters/sqlstore/username_test.go",
+      "marker": "post-normalization validators"
+    }
+  ],
+  "plugin-symbol/username/UsernameOptions/displayUsername": [
+    {
+      "label": "Store only the login name and accept a valid display-only fallback",
+      "test": "adapters/sqlstore/username_test.go",
+      "marker": "no-display mode failed display-only signup fallback"
+    }
+  ],
+  "docs/content/docs/plugins/username.mdx#L327": [
+    {
+      "label": "Store only the login name and accept a valid display-only fallback",
+      "test": "adapters/sqlstore/username_test.go",
+      "marker": "no-display mode failed display-only signup fallback"
+    }
+  ],
+  "plugin-symbol/username/UsernameOptions/immutableUsername": [
+    {
+      "label": "Serialize competing first assignments to an immutable username",
+      "test": "adapters/sqlstore/username_test.go",
+      "marker": "immutable first assignments raced"
+    }
+  ],
+  "docs/content/docs/plugins/username.mdx#L365": [
+    {
+      "label": "Serialize competing first assignments to an immutable username",
+      "test": "adapters/sqlstore/username_test.go",
+      "marker": "immutable first assignments raced"
+    }
+  ],
+  "plugin/api-key/POST /api-key/create": [
+    {
+      "label": "Issue a user-owned key and return its secret to the official client",
+      "test": "conformance/core.test.mjs",
+      "marker": "the pinned API key client manages owner credentials on both runtimes"
+    }
+  ],
+  "plugin/api-key/GET /api-key/get": [
+    {
+      "label": "Return owner-visible metadata without the stored digest",
+      "test": "conformance/core.test.mjs",
+      "marker": "the pinned API key client manages owner credentials on both runtimes"
+    }
+  ],
+  "plugin/api-key/POST /api-key/update": [
+    {
+      "label": "Change user-owned key settings using the pinned client",
+      "test": "conformance/core.test.mjs",
+      "marker": "the pinned API key client manages owner credentials on both runtimes"
+    }
+  ],
+  "plugin/api-key/POST /api-key/delete": [
+    {
+      "label": "Revoke the selected user-owned credential",
+      "test": "conformance/core.test.mjs",
+      "marker": "the pinned API key client manages owner credentials on both runtimes"
+    }
+  ],
+  "plugin/api-key/GET /api-key/list": [
+    {
+      "label": "Return the owner’s paginated API keys and total",
+      "test": "conformance/core.test.mjs",
+      "marker": "the pinned API key client manages owner credentials on both runtimes"
+    }
+  ],
+  "docs/content/docs/plugins/api-key/index.mdx#L89": [
+    {
+      "label": "Issue a key for a direct user session",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "issued credential did not match the owner"
+    }
+  ],
+  "docs/content/docs/plugins/api-key/index.mdx#L173": [
+    {
+      "label": "Verify permissions and consume the credential atomically",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "concurrent key quota granted"
+    }
+  ],
+  "docs/content/docs/plugins/api-key/index.mdx#L210": [
+    {
+      "label": "Omit the secret and digest from management reads",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "management response contained"
+    }
+  ],
+  "docs/content/docs/plugins/api-key/index.mdx#L238": [
+    {
+      "label": "Allow the owner to disable and rename a key",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "owner update was not saved"
+    }
+  ],
+  "docs/content/docs/plugins/api-key/index.mdx#L321": [
+    {
+      "label": "Delete a key through the public client and reject future verification",
+      "test": "conformance/core.test.mjs",
+      "marker": "the pinned API key client manages owner credentials on both runtimes"
+    }
+  ],
+  "docs/content/docs/plugins/api-key/index.mdx#L351": [
+    {
+      "label": "Isolate owner lists across users",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "list exposed a different owner"
+    }
+  ],
+  "docs/content/docs/plugins/api-key/index.mdx#L443": [
+    {
+      "label": "Purge expired entries within one configuration and retain live keys",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "expired cleanup did not remove exactly one key"
+    }
+  ],
+  "docs/content/docs/plugins/api-key/advanced.mdx#L434": [
+    {
+      "label": "Store credentials in a canonical SQL table and return the secret only on issuance",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "stored value is not the secret digest"
+    }
+  ],
+  "docs/content/docs/plugins/api-key/advanced.mdx#L553": [
+    {
+      "label": "Serialize rate and use decisions across independent service instances",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "concurrent key quota granted"
+    }
+  ],
+  "docs/content/docs/plugins/api-key/advanced.mdx#L637": [
+    {
+      "label": "Consume the remaining budget concurrently without granting excess uses",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "concurrent key quota granted"
+    }
+  ],
+  "docs/content/docs/plugins/api-key/advanced.mdx#L644": [
+    {
+      "label": "Refill a depleted key after its configured interval",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "verify(refill.Secret, nil, false, \"USAGE_EXCEEDED\")"
+    }
+  ],
+  "docs/content/docs/plugins/api-key/advanced.mdx#L654": [
+    {
+      "label": "Reject expired secrets and purge expired entries",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "expired cleanup did not remove exactly one key"
+    }
+  ],
+  "docs/content/docs/plugins/api-key/advanced.mdx#L716": [
+    {
+      "label": "Round-trip opted-in JSON metadata",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "denied permission consumed a use or lost metadata"
+    }
+  ],
+  "docs/content/docs/plugins/api-key/reference.mdx#L277": [
+    {
+      "label": "Apply static defaults independently to each issued key",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "issued metadata mutated future permission defaults"
+    }
+  ],
+  "docs/content/docs/plugins/api-key/reference.mdx#L342": [
+    {
+      "label": "Require every requested scope before committing a use",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "denied permission consumed a use or lost metadata"
+    }
+  ],
+  "docs/content/docs/plugins/api-key/reference.mdx#L403": [
+    {
+      "label": "Compare API key columns, constraints and indexes on PostgreSQL and MySQL to the canonical DDL",
+      "test": "adapters/sqlstore/profiles_test.go",
+      "marker": "func TestServerPluginSchemaUpgrade("
+    }
+  ],
+  "plugin-symbol/api-key/defaultKeyHasher": [
+    {
+      "label": "Match the pinned digest and verify a Go key on shared SQLite",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.equal(saved.key, await defaultKeyHasher(row.key))",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/api-key/apiKeyClient": [
+    {
+      "label": "Create, retrieve, update, list and revoke user-owned keys with the official client",
+      "test": "conformance/core.test.mjs",
+      "marker": "the pinned API key client manages owner credentials on both runtimes"
+    }
+  ],
+  "plugin-symbol/api-key/ApiKeyConfigurationOptions/configId": [
+    {
+      "label": "Scope key reads, verification and cleanup to the configured namespace",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "expired cleanup crossed configuration boundary"
+    }
+  ],
+  "plugin-symbol/api-key/ApiKeyConfigurationOptions/apiKeyHeaders": [
+    {
+      "label": "Accept configured header names and reject ambiguous credential selection",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "ambiguous key headers accepted"
+    }
+  ],
+  "plugin-symbol/api-key/ApiKeyConfigurationOptions/defaultKeyLength": [
+    {
+      "label": "Issue 64 random letters plus an optional prefix",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "issued credential did not match the owner"
+    }
+  ],
+  "plugin-symbol/api-key/ApiKeyConfigurationOptions/startingCharactersConfig": [
+    {
+      "label": "Return six display characters by default",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "issued credential did not match the owner"
+    }
+  ],
+  "plugin-symbol/api-key/ApiKeyConfigurationOptions/requireName": [
+    {
+      "label": "Enforce a required display name",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "expect(e, \"NAME_REQUIRED\")"
+    }
+  ],
+  "plugin-symbol/api-key/ApiKeyConfigurationOptions/enableMetadata": [
+    {
+      "label": "Reject metadata when disabled",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "expect(e, \"METADATA_DISABLED\")"
+    }
+  ],
+  "plugin-symbol/api-key/ApiKeyConfigurationOptions/keyExpiration": [
+    {
+      "label": "Enforce configured default lifetime and maximum expiration",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "default expiration missing"
+    }
+  ],
+  "plugin-symbol/api-key/ApiKeyConfigurationOptions/rateLimit": [
+    {
+      "label": "Enforce an atomic rate budget and provide a retry interval",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "rate rejection omitted retry interval"
+    }
+  ],
+  "plugin-symbol/api-key/ApiKeyConfigurationOptions/permissions": [
+    {
+      "label": "Protect an application operation with a resource/action scope",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "middleware did not attach the verified owner and key"
     }
   ]
 }

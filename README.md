@@ -7,6 +7,8 @@ StoneWrit Auth embeds authentication in your Go API. Mount the auth handler on y
 ## Supported workflows
 
 - [x] Register with email, sign in, read a session, and sign out. [Client lifecycle test](conformance/core.test.mjs)
+- [x] Register a username, authenticate by handle, and apply account policies and MFA. [Username sign-in](docs/username.md)
+- [x] Issue revocable API keys, check permissions, and enforce usage limits on application routes. [API keys](docs/api-keys.md)
 - [x] Use the same handler with ServeMux, chi, Gorilla Mux, Gin, or Fiber. [Router tests](integrations/routers/routers_test.go)
 - [x] Generate auth tables and persist sessions on SQLite, PostgreSQL, and MySQL. [Storage contract](adapters/sqlstore/engines_test.go)
 - [x] Recover a password and verify an email address through an application-provided sender. [Account tests](account_test.go)
@@ -94,6 +96,8 @@ Go records the resolved commit in the consuming project’s `go.mod`. The module
 | Configure users, cookies, origins, and session management | [Authentication](docs/authentication.md) |
 | Remember the last sign-in method in a browser or across a user's devices | [Login preferences](docs/plugins.md#persist-the-last-login-method) |
 | Add account switching to a shared device | [Device sessions](docs/multi-session.md) |
+| Share login cookies across approved sibling hosts | [Cookie configuration](docs/authentication.md) |
+| Access application routes with revocable API keys | [API keys](docs/api-keys.md) |
 | Authorize a TV, CLI or input-constrained device | [Device authorization](docs/device-authorization.md) |
 | Transfer an active session using a single-use credential | [One-time tokens](docs/one-time-token.md) |
 | Integrate the Google One Tap prompt or sign-in button | [Google One Tap](docs/one-tap.md) |
@@ -107,6 +111,7 @@ Go records the resolved commit in the consuming project’s `go.mod`. The module
 | Check new passwords against a breached-password service | [Password screening](docs/password-checks.md) |
 | Configure profile updates, password reset, and verification email | [Account management and recovery](docs/account.md) |
 | Generate tables and migrate SQLite, PostgreSQL, or MySQL | [Databases and CLI](docs/databases.md) |
+| Register a username and sign in with a password | [Username sign-in](docs/username.md) |
 | Manage users, ban accounts and grant administrative access | [Administrator accounts](docs/admin.md) |
 | Create organizations and teams, grant memberships, and accept invitations | [Organizations](docs/organizations.md) |
 | Start recurring Checkout and list subscriptions | [Subscription billing](docs/subscriptions.md) |

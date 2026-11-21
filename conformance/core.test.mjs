@@ -802,3 +802,92 @@ test("the pinned anonymous client signs in, upgrades and deletes guests on eithe
     }
   }
 });
+
+test("the pinned username client shares normalized identities, display names and renames across servers", async (t) => {
+  const { username } = await import("better-auth/plugins");
+  const { usernameClient } = await import("better-auth/client/plugins");
+  const ok = (result) => { assert.equal(result.error, null, JSON.stringify(result.error)); return result.data; };
+  for (const displayUsername of [true, false]) {
+    const go = await goFixture(t, [displayUsername ? "username" : "username-only"]);
+    const db = new DatabaseSync(go.databasePath);
+    t.after(() => db.close());
+    const ref = betterAuth({ baseURL: "http://reference.localhost", database: db, plugins: [username({ displayUsername })],
+      secret: "local-conformance-0123456789-abcdefghijk", emailAndPassword: { enabled: true }, telemetry: { enabled: false } });
+    const js = { baseURL: "http://reference.localhost", send: (request) => ref.handler(request) };
+    for (const [i, [source, other]] of [[go, js], [js, go]].entries()) {
+      const actor = instrument(source, [usernameClient({ displayUsername })]).client;
+      const alternate = instrument(other, [usernameClient({ displayUsername })]).client;
+      const address = "username" + i + "@example.test";
+      const raw = "Display_Only" + i, next = "Renamed." + i;
+      const initial = ok(await actor.signUp.email({ name, email: address, password, displayUsername: raw })).user;
+      assert.equal(initial.username, raw.toLowerCase());
+      assert.equal(initial.displayUsername, displayUsername ? raw : undefined);
+      assert.deepEqual(ok(await alternate.isUsernameAvailable({ username: raw })), { available: false });
+      assert.equal((await alternate.signIn.username({ username: raw, password: "wrong" })).error.code, "INVALID_USERNAME_OR_PASSWORD");
+      const signed = ok(await alternate.signIn.username({ username: raw, password, rememberMe: false, callbackURL: "/welcome?ref=name" }));
+      assert.equal(signed.user.id, initial.id);
+      assert.equal(signed.redirect, true);
+      assert.equal(signed.url, "/welcome?ref=name");
+      ok(await alternate.updateUser({ username: next }));
+      const current = ok(await actor.getSession()).user;
+      assert.equal(current.username, next.toLowerCase());
+      assert.equal(current.displayUsername, displayUsername ? raw : undefined);
+      assert.deepEqual(ok(await actor.isUsernameAvailable({ username: raw })), { available: true });
+      assert.equal((await alternate.isUsernameAvailable({ username: "ab" })).error.code, "USERNAME_TOO_SHORT");
+      const noName = ok(await actor.signUp.email({ name, email: "no." + address, password })).user;
+      assert.equal(noName.username, null);
+      assert.equal(noName.displayUsername, displayUsername ? null : undefined);
+    }
+  }
+});
+
+test("the pinned API key client manages owner credentials on both runtimes", async (t) => {
+  const { apiKey, defaultKeyHasher } = await import("@better-auth/api-key");
+  const { apiKeyClient } = await import("@better-auth/api-key/client");
+  const plugin = () => apiKey({ enableMetadata: true });
+  for (const runtime of [await reference(t, [plugin()]), await goFixture(t, ["api-key"])]) {
+    const { client } = instrument(runtime, [apiKeyClient()]);
+    const account = await client.signUp.email({ name, email, password });
+    assert.equal(account.error, null);
+    const made = await client.apiKey.create({ name: "Client", prefix: "test_", metadata: { env: "ci" } });
+    assert.equal(made.error, null);
+    const row = made.data;
+    assert.equal(row.referenceId, account.data.user.id);
+    assert.equal(row.configId, "default");
+    assert.equal(row.start, row.key.slice(0, 6));
+    assert.equal(row.key.length, 69);
+    assert.deepEqual(row.metadata, { env: "ci" });
+    const read = await client.apiKey.get({ query: { id: row.id } });
+    assert.equal(read.error, null);
+    assert.equal(read.data.key, undefined);
+    const change = await client.apiKey.update({ keyId: row.id, name: "Renamed" });
+    assert.equal(change.data.name, "Renamed");
+    if (runtime.databasePath) {
+      const database = new DatabaseSync(runtime.databasePath);
+      try {
+        const saved = database.prepare('SELECT key FROM apikey WHERE id=?').get(row.id);
+        assert.equal(saved.key, await defaultKeyHasher(row.key));
+        const peer = betterAuth({ baseURL: runtime.baseURL, database, secret: "local-conformance-0123456789-abcdefghijk", plugins: [plugin()], telemetry: { enabled: false } });
+        const verified = await peer.api.verifyApiKey({ body: { key: row.key } });
+        assert.equal(verified.valid, true);
+        assert.equal(verified.key.id, row.id);
+        assert.equal(verified.key.key, undefined);
+        const source = await peer.api.createApiKey({ body: { userId: row.referenceId, name: "Reference key", permissions: { reports: ["read"] } } });
+        const application = await fetch(runtime.baseURL + "/reports", { headers: { "X-API-Key": source.key } });
+        assert.equal(application.status, 200);
+        assert.deepEqual(await application.json(), { owner: row.referenceId, id: source.id });
+        const spent = database.prepare('SELECT requestCount FROM apikey WHERE id=?').get(source.id);
+        assert.equal(spent.requestCount, 1);
+        assert.equal((await client.apiKey.delete({ keyId: source.id })).data.success, true);
+      } finally { database.close(); }
+    }
+    const result = await client.apiKey.list({ query: { limit: 4, offset: 0 } });
+    assert.equal(result.error, null);
+    assert.equal(result.data.total, 1);
+    assert.equal(result.data.apiKeys[0].id, row.id);
+    assert.equal(result.data.apiKeys[0].key, undefined);
+    const removed = await client.apiKey.delete({ keyId: row.id });
+    assert.equal(removed.data.success, true);
+    assert.equal((await client.apiKey.get({ query: { id: row.id } })).error.code, "KEY_NOT_FOUND");
+  }
+});

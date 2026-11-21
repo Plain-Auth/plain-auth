@@ -7,20 +7,34 @@
 - [ ] Username endpoints, types and options
   - [ ] `UsernameClientOptions`
     - [ ] `displayUsername`
+      - [x] Consume public profiles with the display field enabled and disabled ([test](../../../conformance/core.test.mjs#L839))
   - [ ] `usernameClient`
+    - [x] Sign in with the pinned client and edit the same username on both servers ([test](../../../conformance/core.test.mjs#L806))
   - [ ] `POST /sign-in/username`
+    - [x] Sign in with the canonical credential, remember preference and callback URL ([test](../../../adapters/sqlstore/username_test.go#L133))
+    - [x] Honor email verification, administrator bans and existing second-factor settings ([test](../../../adapters/sqlstore/username_test.go#L275))
   - [ ] `POST /is-username-available`
+    - [x] Check availability against the normalized unique login name ([test](../../../adapters/sqlstore/username_test.go#L107))
   - [ ] `UsernameOptions`
     - [ ] `schema`
     - [ ] `minUsernameLength`
+      - [x] Apply a configured minimum after normalization ([test](../../../adapters/sqlstore/username_test.go#L235))
     - [ ] `maxUsernameLength`
+      - [x] Apply a configured maximum after normalization ([test](../../../adapters/sqlstore/username_test.go#L235))
     - [ ] `usernameValidator`
+      - [x] Apply a custom login-name validator ([test](../../../adapters/sqlstore/username_test.go#L235))
     - [ ] `displayUsernameValidator`
+      - [x] Reject display spellings that fail application validation ([test](../../../adapters/sqlstore/username_test.go#L251))
     - [ ] `usernameNormalization`
+      - [x] Disable case folding and retain submitted spelling ([test](../../../adapters/sqlstore/username_test.go#L271))
     - [ ] `displayUsernameNormalization`
+      - [x] Normalize display spelling using an application function ([test](../../../adapters/sqlstore/username_test.go#L217))
     - [ ] `validationOrder`
+      - [x] Apply custom validators to the transformed input ([test](../../../adapters/sqlstore/username_test.go#L233))
     - [ ] `immutableUsername`
+      - [x] Serialize competing first assignments to an immutable username ([test](../../../adapters/sqlstore/username_test.go#L208))
     - [ ] `displayUsername`
+      - [x] Store only the login name and accept a valid display-only fallback ([test](../../../adapters/sqlstore/username_test.go#L268))
   - [ ] `UsernamePlugin`
   - [ ] `UsernamePluginWithoutDisplayUsername`
   - [ ] `username`
@@ -32,6 +46,7 @@
 - [ ] Username
   - [ ] Usage
     - [ ] Sign up
+      - [x] Set a normalized login name and preserve display spelling ([test](../../../adapters/sqlstore/username_test.go#L101))
       - [ ] `POST /sign-up/email`
         - [ ] Parameter `email`
         - [ ] Parameter `name`
@@ -39,26 +54,40 @@
         - [ ] Parameter `username` (optional)
         - [ ] Parameter `displayUsername` (optional)
     - [ ] Sign in
+      - [x] Issue a remembered or browser-only username login ([test](../../../adapters/sqlstore/username_test.go#L137))
       - [ ] `POST /sign-in/username`
         - [ ] Parameter `username`
         - [ ] Parameter `password`
     - [ ] Update username
+      - [x] Change the login name atomically without altering the previous display spelling ([test](../../../adapters/sqlstore/username_test.go#L119))
       - [ ] `POST /update-user`
         - [ ] Parameter `username` (optional)
     - [ ] Check if username is available
+      - [x] Release the old login name on rename ([test](../../../adapters/sqlstore/username_test.go#L127))
       - [ ] `POST /is-username-available`
         - [ ] Parameter `username`
   - [ ] Options
     - [ ] Min Username Length
+      - [x] Apply a configured minimum after normalization ([test](../../../adapters/sqlstore/username_test.go#L235))
     - [ ] Max Username Length
+      - [x] Apply a configured maximum after normalization ([test](../../../adapters/sqlstore/username_test.go#L235))
     - [ ] Username Validator
+      - [x] Apply a custom login-name validator ([test](../../../adapters/sqlstore/username_test.go#L235))
     - [ ] Display Username Validator
+      - [x] Reject display spellings that fail application validation ([test](../../../adapters/sqlstore/username_test.go#L251))
     - [ ] Username Normalization
+      - [x] Disable case folding and retain submitted spelling ([test](../../../adapters/sqlstore/username_test.go#L271))
     - [ ] Display Username Normalization
+      - [x] Normalize display spelling using an application function ([test](../../../adapters/sqlstore/username_test.go#L217))
     - [ ] Validation Order
+      - [x] Apply custom validators to the transformed input ([test](../../../adapters/sqlstore/username_test.go#L233))
     - [ ] Disable Display Username
+      - [x] Store only the login name and accept a valid display-only fallback ([test](../../../adapters/sqlstore/username_test.go#L268))
     - [ ] Immutable Username
+      - [x] Serialize competing first assignments to an immutable username ([test](../../../adapters/sqlstore/username_test.go#L208))
     - [ ] Disable Is Username Available
+      - [x] Remove the public endpoint while retaining the application lookup ([test](../../../adapters/sqlstore/username_test.go#L263))
   - [ ] Schema
+    - [x] Keep existing accounts intact when adding nullable username fields ([test](../../../adapters/sqlstore/username_test.go#L61))
     - [ ] `usernameUserTableFields.username`
     - [ ] `usernameUserTableFields.displayUsername`

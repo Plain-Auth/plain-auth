@@ -84,7 +84,7 @@
       - [ ] Preload the passkeys
     - [ ] Debugging
   - [ ] Schema
-    - [x] Match generated SQL and SQLite physical schema for the public-key credential profile ([test](../../../conformance/schema.test.mjs#L66))
+    - [x] Match generated SQL and SQLite physical schema for the public-key credential profile ([test](../../../conformance/schema.test.mjs#L105))
     - [ ] `passkeyTableFields.id`
     - [ ] `passkeyTableFields.name`
     - [ ] `passkeyTableFields.publicKey`

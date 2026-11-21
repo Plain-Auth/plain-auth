@@ -114,7 +114,7 @@
       - [ ] device.approve()
       - [ ] device.deny()
   - [ ] Schema
-    - [x] Compare canonical device fields and unique indexes on all three SQL dialects ([test](../../../conformance/schema.test.mjs#L66))
+    - [x] Compare canonical device fields and unique indexes on all three SQL dialects ([test](../../../conformance/schema.test.mjs#L105))
     - [ ] `deviceCodeTableFields.id`
     - [ ] `deviceCodeTableFields.deviceCode`
     - [ ] `deviceCodeTableFields.userCode`
