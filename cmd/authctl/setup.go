@@ -13,8 +13,8 @@ import (
 	"runtime/debug"
 	"strings"
 
-	"github.com/FineStack/finestack-auth/internal/configenv"
-	"github.com/FineStack/finestack-auth/schema"
+	"github.com/FineStack/frost-auth/internal/configenv"
+	"github.com/FineStack/frost-auth/schema"
 )
 
 func generateSecret() string { var b [32]byte; rand.Read(b[:]); return hex.EncodeToString(b[:]) }

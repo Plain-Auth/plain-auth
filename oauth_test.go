@@ -1,4 +1,4 @@
-package fineauth_test
+package frostauth_test
 
 import (
 	"context"
@@ -12,8 +12,8 @@ import (
 	"sync"
 	"testing"
 
-	auth "github.com/FineStack/finestack-auth"
-	"github.com/FineStack/finestack-auth/adapters/sqlite"
+	auth "github.com/FineStack/frost-auth"
+	"github.com/FineStack/frost-auth/adapters/sqlite"
 	"golang.org/x/oauth2"
 )
 

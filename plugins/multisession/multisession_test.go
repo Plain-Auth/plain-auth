@@ -10,10 +10,10 @@ import (
 	"testing"
 	"time"
 
-	authn "github.com/FineStack/finestack-auth"
-	"github.com/FineStack/finestack-auth/adapters/memory"
-	"github.com/FineStack/finestack-auth/client"
-	"github.com/FineStack/finestack-auth/plugins/multisession"
+	authn "github.com/FineStack/frost-auth"
+	"github.com/FineStack/frost-auth/adapters/memory"
+	"github.com/FineStack/frost-auth/client"
+	"github.com/FineStack/frost-auth/plugins/multisession"
 )
 
 type fixture struct {

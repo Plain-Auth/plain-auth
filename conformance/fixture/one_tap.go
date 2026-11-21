@@ -8,8 +8,8 @@ import (
 	"net/http"
 	"strings"
 
-	authn "github.com/FineStack/finestack-auth"
-	"github.com/FineStack/finestack-auth/providers"
+	authn "github.com/FineStack/frost-auth"
+	"github.com/FineStack/frost-auth/providers"
 )
 
 type fixtureGoogleKeys string

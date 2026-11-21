@@ -1,4 +1,4 @@
-package fineauth_test
+package frostauth_test
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	authn "github.com/FineStack/finestack-auth"
+	authn "github.com/FineStack/frost-auth"
 )
 
 func TestVerificationGatedSignUpAndSignIn(t *testing.T) {

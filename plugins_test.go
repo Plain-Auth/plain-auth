@@ -1,11 +1,11 @@
-package fineauth_test
+package frostauth_test
 
 import (
 	"net/http"
 	"testing"
 
-	authn "github.com/FineStack/finestack-auth"
-	"github.com/FineStack/finestack-auth/adapters/sqlite"
+	authn "github.com/FineStack/frost-auth"
+	"github.com/FineStack/frost-auth/adapters/sqlite"
 )
 
 func TestPluginRegistrationAndDispatch(t *testing.T) {

@@ -12,11 +12,11 @@ import (
 	"testing"
 	"time"
 
-	authn "github.com/FineStack/finestack-auth"
-	"github.com/FineStack/finestack-auth/adapters/sqlstore"
-	"github.com/FineStack/finestack-auth/client"
-	"github.com/FineStack/finestack-auth/plugins/organization"
-	"github.com/FineStack/finestack-auth/schema"
+	authn "github.com/FineStack/frost-auth"
+	"github.com/FineStack/frost-auth/adapters/sqlstore"
+	"github.com/FineStack/frost-auth/client"
+	"github.com/FineStack/frost-auth/plugins/organization"
+	"github.com/FineStack/frost-auth/schema"
 )
 
 type handlerTransport struct{ http.Handler }

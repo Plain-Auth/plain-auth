@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	authn "github.com/FineStack/finestack-auth"
+	authn "github.com/FineStack/frost-auth"
 )
 
 type Organization struct {

@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/go-sql-driver/mysql"
-	authn "github.com/FineStack/finestack-auth"
-	org "github.com/FineStack/finestack-auth/plugins/organization"
+	authn "github.com/FineStack/frost-auth"
+	org "github.com/FineStack/frost-auth/plugins/organization"
 )
 
 var _ org.Store = (*Store)(nil)

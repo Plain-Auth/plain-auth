@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strings"
 
-	auth "github.com/FineStack/finestack-auth"
+	auth "github.com/FineStack/frost-auth"
 )
 
 type Options struct{ RequireSignature bool }

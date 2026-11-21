@@ -1,7 +1,7 @@
 // Package deviceauthorization adds RFC 8628 first-party device sign-in.
 package deviceauthorization
 
-import authn "github.com/FineStack/finestack-auth"
+import authn "github.com/FineStack/frost-auth"
 
 type Options = authn.DeviceAuthorizationOptions
 

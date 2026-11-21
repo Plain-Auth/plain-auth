@@ -4,7 +4,7 @@ import (
 	"context"
 	"net/http"
 
-	authn "github.com/FineStack/finestack-auth"
+	authn "github.com/FineStack/frost-auth"
 )
 
 func (c *Client) SignInAnonymous(ctx context.Context) (*authn.AuthResult, error) {

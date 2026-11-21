@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/go-sql-driver/mysql"
-	authn "github.com/FineStack/finestack-auth"
+	authn "github.com/FineStack/frost-auth"
 )
 
 var _ authn.Store = (*Store)(nil)

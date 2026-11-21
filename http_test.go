@@ -1,4 +1,4 @@
-package fineauth_test
+package frostauth_test
 
 import (
 	"encoding/json"
@@ -9,8 +9,8 @@ import (
 	"strings"
 	"testing"
 
-	authn "github.com/FineStack/finestack-auth"
-	"github.com/FineStack/finestack-auth/adapters/sqlite"
+	authn "github.com/FineStack/frost-auth"
+	"github.com/FineStack/frost-auth/adapters/sqlite"
 )
 
 func newHTTPAuth(t *testing.T, opts authn.Options) *authn.Auth {

@@ -17,8 +17,8 @@ import (
 	"testing"
 	"time"
 
-	auth "github.com/FineStack/finestack-auth"
-	"github.com/FineStack/finestack-auth/plugins/emailotp"
+	auth "github.com/FineStack/frost-auth"
+	"github.com/FineStack/frost-auth/plugins/emailotp"
 )
 
 func TestEmailOTPDeliveryAndProof(t *testing.T) {

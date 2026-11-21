@@ -4,7 +4,7 @@ package postgres
 import (
 	"context"
 
-	"github.com/FineStack/finestack-auth/adapters/sqlstore"
+	"github.com/FineStack/frost-auth/adapters/sqlstore"
 )
 
 // Store persists users, credentials, and sessions.

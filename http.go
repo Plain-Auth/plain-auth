@@ -1,5 +1,5 @@
 // HTTP request handling for the core authentication endpoints.
-package fineauth
+package frostauth
 
 import (
 	"bytes"

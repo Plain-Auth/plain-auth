@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/FineStack/finestack-auth/schema"
+	"github.com/FineStack/frost-auth/schema"
 )
 
 func TestGeneratePluginSelection(t *testing.T) {

@@ -13,8 +13,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/FineStack/finestack-auth"
-	"github.com/FineStack/finestack-auth/adapters/sqlite"
+	"github.com/FineStack/frost-auth"
+	"github.com/FineStack/frost-auth/adapters/sqlite"
 )
 
 func main() {
@@ -33,7 +33,7 @@ func run() error {
 		return err
 	}
 	defer store.Close()
-	auth, err := fineauth.New(fineauth.Options{
+	auth, err := frostauth.New(frostauth.Options{
 		Store:            store,
 		EmailAndPassword: true,
 	})

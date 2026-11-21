@@ -1,7 +1,7 @@
 // Package multisession lets one browser remember and switch among signed-in accounts.
 package multisession
 
-import authn "github.com/FineStack/finestack-auth"
+import authn "github.com/FineStack/frost-auth"
 
 type Options = authn.MultiSessionOptions
 

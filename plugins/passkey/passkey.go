@@ -17,7 +17,7 @@ import (
 	"strings"
 	"time"
 
-	authn "github.com/FineStack/finestack-auth"
+	authn "github.com/FineStack/frost-auth"
 	"github.com/go-webauthn/webauthn/protocol"
 	wa "github.com/go-webauthn/webauthn/webauthn"
 	"github.com/google/uuid"

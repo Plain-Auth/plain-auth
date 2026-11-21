@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"strings"
 
-	auth "github.com/FineStack/finestack-auth"
+	auth "github.com/FineStack/frost-auth"
 )
 
 func (s *Store) ListUserAccounts(ctx context.Context, userID string) ([]auth.LinkedAccount, error) {

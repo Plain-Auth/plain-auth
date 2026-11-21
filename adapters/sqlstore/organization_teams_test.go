@@ -12,10 +12,10 @@ import (
 	"testing"
 	"time"
 
-	authn "github.com/FineStack/finestack-auth"
-	"github.com/FineStack/finestack-auth/client"
-	org "github.com/FineStack/finestack-auth/plugins/organization"
-	"github.com/FineStack/finestack-auth/schema"
+	authn "github.com/FineStack/frost-auth"
+	"github.com/FineStack/frost-auth/client"
+	org "github.com/FineStack/frost-auth/plugins/organization"
+	"github.com/FineStack/frost-auth/schema"
 )
 
 func TestTeamAccountsAcrossEngines(t *testing.T) {

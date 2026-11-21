@@ -1,6 +1,6 @@
 # Environment configuration
 
-The auth instance reads the host process environment once during `fineauth.New`. Environment values take effect when the application constructs a new instance. Set them in your shell, container, hosting dashboard, or secret manager.
+The auth instance reads the host process environment once during `frostauth.New`. Environment values take effect when the application constructs a new instance. Set them in your shell, container, hosting dashboard, or secret manager.
 
 ## Local development
 

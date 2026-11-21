@@ -34,7 +34,7 @@ function sqliteSchema(db) {
 }
 
 test("fresh and repeated Go SQLite migrations produce the upstream default schema", async () => {
-  const dir = mkdtempSync(join(tmpdir(), "finestack-auth-schema-"));
+  const dir = mkdtempSync(join(tmpdir(), "frost-auth-schema-"));
   const reference = new DatabaseSync(":memory:");
   try {
     const options = { database: reference, baseURL: "http://localhost", secret: "conformance-only-secret-0123456789-abcdefgh" };

@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	authn "github.com/FineStack/finestack-auth"
+	authn "github.com/FineStack/frost-auth"
 )
 
 // Options configures a server-side password check. A nil Paths slice selects

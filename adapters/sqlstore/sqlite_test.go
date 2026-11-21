@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	authn "github.com/FineStack/finestack-auth"
+	authn "github.com/FineStack/frost-auth"
 )
 
 func openTestStore(t *testing.T, path string) *Store {

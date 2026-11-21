@@ -12,9 +12,9 @@ import (
 	"strings"
 	"testing"
 
-	authn "github.com/FineStack/finestack-auth"
-	"github.com/FineStack/finestack-auth/adapters/memory"
-	"github.com/FineStack/finestack-auth/plugins/pwnedpassword"
+	authn "github.com/FineStack/frost-auth"
+	"github.com/FineStack/frost-auth/adapters/memory"
+	"github.com/FineStack/frost-auth/plugins/pwnedpassword"
 )
 
 type transport func(*http.Request) (*http.Response, error)

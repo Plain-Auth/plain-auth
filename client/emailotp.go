@@ -4,7 +4,7 @@ import (
 	"context"
 	"net/http"
 
-	auth "github.com/FineStack/finestack-auth"
+	auth "github.com/FineStack/frost-auth"
 )
 
 // SendEmailOTP sends a purpose-bound code to the requested mailbox.

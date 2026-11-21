@@ -4,16 +4,16 @@ Register the password-checking plugin to reject newly chosen credentials that ap
 
 ```go
 import (
-    "github.com/FineStack/finestack-auth"
-    "github.com/FineStack/finestack-auth/plugins/pwnedpassword"
+    "github.com/FineStack/frost-auth"
+    "github.com/FineStack/frost-auth/plugins/pwnedpassword"
 )
 
 policy := pwnedpassword.New(pwnedpassword.Options{
     CustomPasswordCompromisedMessage: "Choose a password you have not used before.",
 })
-auth, err := fineauth.New(fineauth.Options{
+auth, err := frostauth.New(frostauth.Options{
     Store: store, BaseURL: origin, Secret: secret, EmailAndPassword: true,
-    Plugins: []fineauth.Plugin{policy},
+    Plugins: []frostauth.Plugin{policy},
 })
 ```
 

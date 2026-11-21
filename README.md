@@ -1,6 +1,6 @@
-# FineStack Auth
+# Frost Auth
 
-FineStack Auth embeds authentication in your Go API. Mount the auth handler on your router and use the same instance to read the signed-in user inside your own handlers. Your application owns its listener, database lifetime, middleware, and routes.
+Frost Auth embeds authentication in your Go API. Mount the auth handler on your router and use the same instance to read the signed-in user inside your own handlers. Your application owns its listener, database lifetime, middleware, and routes.
 
 **Development status.** The [feature checklist](docs/parity/README.md) lists supported behavior, passing tests, and planned features. Browse [authentication](docs/parity/authentication.md), [databases](docs/parity/adapters.md), [integrations](docs/parity/integrations.md), or [Stripe](docs/parity/plugins/stripe.md).
 
@@ -49,14 +49,14 @@ curl -sS -b cookies.txt -c cookies.txt http://127.0.0.1:3000/api/auth/sign-out \
 
 ## Mount it in an application
 
-Import the current module to use the `fineauth` package.
+Import the current module to use the `frostauth` package.
 
 ```go
 import (
     "strings"
 
-    "github.com/FineStack/finestack-auth"
-    "github.com/FineStack/finestack-auth/adapters/sqlite"
+    "github.com/FineStack/frost-auth"
+    "github.com/FineStack/frost-auth/adapters/sqlite"
 )
 ```
 
@@ -67,7 +67,7 @@ if err != nil {
 }
 defer store.Close() // in the function that owns the application's lifetime
 
-instance, err := fineauth.New(fineauth.Options{
+instance, err := frostauth.New(frostauth.Options{
     Store:            store,
     EmailAndPassword: true,
 })
@@ -79,13 +79,13 @@ mux.Handle(strings.TrimRight(instance.BasePath(), "/")+"/", instance)
 
 This reads the signing secret and public URL from the host environment configured above. Explicit options, environment settings and their precedence are documented in the [configuration guide](docs/environment.md).
 
-During private development, authenticate Git for the FineStack repository and run the following in the consuming module.
+During private development, authenticate Git for the Frost Auth repository and run the following in the consuming module.
 
 ```sh
-GOPRIVATE=github.com/FineStack/finestack-auth go get github.com/FineStack/finestack-auth@main
+GOPRIVATE=github.com/FineStack/frost-auth go get github.com/FineStack/frost-auth@main
 ```
 
-Go records the resolved commit in the consuming project’s `go.mod`. The module path is `github.com/FineStack/finestack-auth`. Its Go package name is `fineauth`. The SQLite adapter lives at `github.com/FineStack/finestack-auth/adapters/sqlite`. A complete host application, including a protected route and graceful shutdown, is in [examples/basic](examples/basic/main.go).
+Go records the resolved commit in the consuming project’s `go.mod`. The module path is `github.com/FineStack/frost-auth`. Its Go package name is `frostauth`. The SQLite adapter lives at `github.com/FineStack/frost-auth/adapters/sqlite`. A complete host application, including a protected route and graceful shutdown, is in [examples/basic](examples/basic/main.go).
 
 | Task | Guide |
 | --- | --- |

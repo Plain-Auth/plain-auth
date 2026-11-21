@@ -1,4 +1,4 @@
-package fineauth_test
+package frostauth_test
 
 import (
 	"context"
@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	authn "github.com/FineStack/finestack-auth"
+	authn "github.com/FineStack/frost-auth"
 )
 
 func TestAccountRecoveryAndProfile(t *testing.T) {

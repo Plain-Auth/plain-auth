@@ -1,4 +1,4 @@
-package fineauth
+package frostauth
 
 import (
 	"context"
@@ -17,7 +17,7 @@ import (
 	"time"
 	"unicode/utf16"
 
-	"github.com/FineStack/finestack-auth/internal/configenv"
+	"github.com/FineStack/frost-auth/internal/configenv"
 )
 
 // Auth is safe for concurrent use by application handlers.

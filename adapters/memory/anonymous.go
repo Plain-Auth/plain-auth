@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	authn "github.com/FineStack/finestack-auth"
+	authn "github.com/FineStack/frost-auth"
 )
 
 var _ authn.AnonymousStore = (*Store)(nil)

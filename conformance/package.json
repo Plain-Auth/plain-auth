@@ -1,5 +1,5 @@
 {
-  "name": "finestack-auth-conformance",
+  "name": "frost-auth-conformance",
   "private": true,
   "type": "module",
   "scripts": {

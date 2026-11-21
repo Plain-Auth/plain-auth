@@ -13,9 +13,9 @@ import (
 	"testing"
 	"time"
 
-	auth "github.com/FineStack/finestack-auth"
-	billing "github.com/FineStack/finestack-auth/plugins/stripe"
-	"github.com/FineStack/finestack-auth/schema"
+	auth "github.com/FineStack/frost-auth"
+	billing "github.com/FineStack/frost-auth/plugins/stripe"
+	"github.com/FineStack/frost-auth/schema"
 	sdk "github.com/stripe/stripe-go/v87"
 	"github.com/stripe/stripe-go/v87/webhook"
 )

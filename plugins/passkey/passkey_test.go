@@ -4,9 +4,9 @@ import (
 	"strings"
 	"testing"
 
-	auth "github.com/FineStack/finestack-auth"
-	"github.com/FineStack/finestack-auth/adapters/sqlstore"
-	"github.com/FineStack/finestack-auth/plugins/passkey"
+	auth "github.com/FineStack/frost-auth"
+	"github.com/FineStack/frost-auth/adapters/sqlstore"
+	"github.com/FineStack/frost-auth/plugins/passkey"
 )
 
 func TestRelyingPartyConfiguration(t *testing.T) {

@@ -2,7 +2,7 @@ package client
 
 import (
 	"context"
-	auth "github.com/FineStack/finestack-auth"
+	auth "github.com/FineStack/frost-auth"
 	"net/http"
 )
 

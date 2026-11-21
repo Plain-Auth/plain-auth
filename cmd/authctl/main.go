@@ -12,8 +12,8 @@ import (
 	"os/signal"
 	"strings"
 
-	"github.com/FineStack/finestack-auth/adapters/sqlstore"
-	"github.com/FineStack/finestack-auth/schema"
+	"github.com/FineStack/frost-auth/adapters/sqlstore"
+	"github.com/FineStack/frost-auth/schema"
 )
 
 const usage = `Usage: authctl <command>

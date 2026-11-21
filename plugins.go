@@ -1,4 +1,4 @@
-package fineauth
+package frostauth
 
 import (
 	"context"

@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/FineStack/finestack-auth/client"
+	"github.com/FineStack/frost-auth/client"
 )
 
 type environmentTransport func(*http.Request) (*http.Response, error)

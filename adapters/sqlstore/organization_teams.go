@@ -13,8 +13,8 @@ import (
 	"strings"
 	"time"
 
-	authn "github.com/FineStack/finestack-auth"
-	org "github.com/FineStack/finestack-auth/plugins/organization"
+	authn "github.com/FineStack/frost-auth"
+	org "github.com/FineStack/frost-auth/plugins/organization"
 )
 
 func (s *Store) WithOrganizationTeams(opts org.TeamOptions) (org.TeamStore, error) {

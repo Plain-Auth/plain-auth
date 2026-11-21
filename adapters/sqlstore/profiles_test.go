@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/FineStack/finestack-auth/schema"
+	"github.com/FineStack/frost-auth/schema"
 )
 
 // Upgrade a populated installation and compare it to direct execution of the

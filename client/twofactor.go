@@ -4,7 +4,7 @@ import (
 	"context"
 	"net/http"
 
-	auth "github.com/FineStack/finestack-auth"
+	auth "github.com/FineStack/frost-auth"
 )
 
 // TOTPEnrollment contains the provisioning URI and the user's recovery codes.

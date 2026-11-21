@@ -9,9 +9,9 @@ import (
 	"strings"
 	"testing"
 
-	authn "github.com/FineStack/finestack-auth"
-	"github.com/FineStack/finestack-auth/adapters/sqlite"
-	"github.com/FineStack/finestack-auth/client"
+	authn "github.com/FineStack/frost-auth"
+	"github.com/FineStack/frost-auth/adapters/sqlite"
+	"github.com/FineStack/frost-auth/client"
 )
 
 type transport func(*http.Request) (*http.Response, error)

@@ -16,7 +16,7 @@ import (
 	"testing"
 	"time"
 
-	authn "github.com/FineStack/finestack-auth"
+	authn "github.com/FineStack/frost-auth"
 )
 
 // Network database tests need a database dedicated to testing. They delete

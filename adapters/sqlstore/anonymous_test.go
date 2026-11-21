@@ -12,11 +12,11 @@ import (
 	"testing"
 	"time"
 
-	authn "github.com/FineStack/finestack-auth"
-	"github.com/FineStack/finestack-auth/client"
-	"github.com/FineStack/finestack-auth/plugins/anonymous"
-	"github.com/FineStack/finestack-auth/plugins/twofactor"
-	"github.com/FineStack/finestack-auth/schema"
+	authn "github.com/FineStack/frost-auth"
+	"github.com/FineStack/frost-auth/client"
+	"github.com/FineStack/frost-auth/plugins/anonymous"
+	"github.com/FineStack/frost-auth/plugins/twofactor"
+	"github.com/FineStack/frost-auth/schema"
 	"github.com/pquerna/otp/totp"
 )
 

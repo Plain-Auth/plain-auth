@@ -4,7 +4,7 @@ package customsession
 import (
 	"errors"
 
-	authn "github.com/FineStack/finestack-auth"
+	authn "github.com/FineStack/frost-auth"
 )
 
 // Options controls which authenticated HTTP responses use the projection.

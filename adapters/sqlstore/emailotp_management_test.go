@@ -16,9 +16,9 @@ import (
 	"testing"
 	"time"
 
-	auth "github.com/FineStack/finestack-auth"
-	"github.com/FineStack/finestack-auth/plugins/bearer"
-	"github.com/FineStack/finestack-auth/plugins/emailotp"
+	auth "github.com/FineStack/frost-auth"
+	"github.com/FineStack/frost-auth/plugins/bearer"
+	"github.com/FineStack/frost-auth/plugins/emailotp"
 )
 
 func TestEmailOTPAddressChangeAndTrustedOperations(t *testing.T) {

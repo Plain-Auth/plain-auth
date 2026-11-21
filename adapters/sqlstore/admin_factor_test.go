@@ -11,15 +11,15 @@ import (
 	"testing"
 	"time"
 
-	fineauth "github.com/FineStack/finestack-auth"
-	"github.com/FineStack/finestack-auth/client"
-	"github.com/FineStack/finestack-auth/plugins/admin"
-	"github.com/FineStack/finestack-auth/plugins/anonymous"
-	"github.com/FineStack/finestack-auth/plugins/organization"
-	"github.com/FineStack/finestack-auth/plugins/passkey"
-	"github.com/FineStack/finestack-auth/plugins/stripe"
-	"github.com/FineStack/finestack-auth/plugins/twofactor"
-	"github.com/FineStack/finestack-auth/schema"
+	frostauth "github.com/FineStack/frost-auth"
+	"github.com/FineStack/frost-auth/client"
+	"github.com/FineStack/frost-auth/plugins/admin"
+	"github.com/FineStack/frost-auth/plugins/anonymous"
+	"github.com/FineStack/frost-auth/plugins/organization"
+	"github.com/FineStack/frost-auth/plugins/passkey"
+	"github.com/FineStack/frost-auth/plugins/stripe"
+	"github.com/FineStack/frost-auth/plugins/twofactor"
+	"github.com/FineStack/frost-auth/schema"
 )
 
 func TestAdminGuestAndFactorSessionBoundaries(t *testing.T) {
@@ -34,7 +34,7 @@ func TestAdminGuestAndFactorSessionBoundaries(t *testing.T) {
 			}
 			expect := func(err error, code string) {
 				t.Helper()
-				var api *fineauth.APIError
+				var api *frostauth.APIError
 				if !errors.As(err, &api) || api.Code != code {
 					t.Fatalf("expected %s, got %v", code, err)
 				}
@@ -60,17 +60,17 @@ func TestAdminGuestAndFactorSessionBoundaries(t *testing.T) {
 			const origin = "https://accounts.example"
 			keys, err := passkey.New(passkey.Options{RPID: "accounts.example", RPName: "Accounts", Origins: []string{origin}})
 			must(err)
-			devices, err := fineauth.NewDeviceAuthorization(fineauth.DeviceAuthorizationOptions{})
+			devices, err := frostauth.NewDeviceAuthorization(frostauth.DeviceAuthorizationOptions{})
 			must(err)
 			orgs, err := organization.New(organization.Options{Store: s})
 			must(err)
-			transfers, err := fineauth.NewOneTimeToken(fineauth.OneTimeTokenOptions{})
+			transfers, err := frostauth.NewOneTimeToken(frostauth.OneTimeTokenOptions{})
 			must(err)
-			jwt, err := fineauth.NewJWT(fineauth.JWTOptions{})
+			jwt, err := frostauth.NewJWT(frostauth.JWTOptions{})
 			must(err)
 			billing := stripe.New(stripe.Options{Portal: &stripe.PortalOptions{Customers: s}})
 			off := false
-			service, err := fineauth.New(fineauth.Options{Store: s, BaseURL: origin, Secret: strings.Repeat("s", 32), EmailAndPassword: true, RateLimit: &off, Plugins: []fineauth.Plugin{factors, guests, administration, keys, devices, orgs, transfers, jwt, billing}})
+			service, err := frostauth.New(frostauth.Options{Store: s, BaseURL: origin, Secret: strings.Repeat("s", 32), EmailAndPassword: true, RateLimit: &off, Plugins: []frostauth.Plugin{factors, guests, administration, keys, devices, orgs, transfers, jwt, billing}})
 			must(err)
 			browser := func(credentials ...*http.Cookie) *client.Client {
 				t.Helper()
@@ -105,7 +105,7 @@ func TestAdminGuestAndFactorSessionBoundaries(t *testing.T) {
 			must(err)
 			ownerErr := s.lockActiveAccount(ctx, tx, account.User.ID, delegated.Session.Token, time.Now())
 			must(tx.Rollback())
-			if !errors.Is(ownerErr, fineauth.ErrNotFound) {
+			if !errors.Is(ownerErr, frostauth.ErrNotFound) {
 				t.Fatalf("delegated source authorized a credential write: %v", ownerErr)
 			}
 			expect(staff.EnableDeliveredFactor(ctx, password), "UNAUTHORIZED")
@@ -154,8 +154,8 @@ func TestAdminGuestAndFactorSessionBoundaries(t *testing.T) {
 			_, err = staff.AdminBanUser(ctx, account.User.ID, "", time.Hour)
 			must(err)
 			expect(challenged.SendFactorOTP(ctx), "INVALID_TWO_FACTOR_COOKIE")
-			err = s.WithTwoFactor(ctx, fineauth.FactorSubject{UserID: account.User.ID, Now: time.Now()}, func(fineauth.FactorState) (fineauth.FactorChange, error) {
-				return fineauth.FactorChange{}, errors.New("suspended owner reached a factor operation")
+			err = s.WithTwoFactor(ctx, frostauth.FactorSubject{UserID: account.User.ID, Now: time.Now()}, func(frostauth.FactorState) (frostauth.FactorChange, error) {
+				return frostauth.FactorChange{}, errors.New("suspended owner reached a factor operation")
 			})
 			expect(err, "BANNED_USER")
 			if deliveries != 0 {

@@ -12,7 +12,7 @@ import (
 	"net/mail"
 	"strings"
 
-	auth "github.com/FineStack/finestack-auth"
+	auth "github.com/FineStack/frost-auth"
 )
 
 var _ auth.MagicLinkStore = (*Store)(nil)

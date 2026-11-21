@@ -10,9 +10,9 @@ import (
 	"strings"
 	"testing"
 
-	authn "github.com/FineStack/finestack-auth"
-	"github.com/FineStack/finestack-auth/plugins/anonymous"
-	"github.com/FineStack/finestack-auth/schema"
+	authn "github.com/FineStack/frost-auth"
+	"github.com/FineStack/frost-auth/plugins/anonymous"
+	"github.com/FineStack/frost-auth/schema"
 	"golang.org/x/oauth2"
 )
 

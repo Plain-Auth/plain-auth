@@ -24,9 +24,9 @@ keys, err := passkey.New(passkey.Options{
 if err != nil {
     return err
 }
-auth, err := fineauth.New(fineauth.Options{
+auth, err := frostauth.New(frostauth.Options{
     Store: store, BaseURL: "https://accounts.example.com", Secret: secret,
-    Plugins: []fineauth.Plugin{keys},
+    Plugins: []frostauth.Plugin{keys},
 })
 ```
 

@@ -16,8 +16,8 @@ import (
 	"testing"
 	"time"
 
-	auth "github.com/FineStack/finestack-auth"
-	"github.com/FineStack/finestack-auth/plugins/magiclink"
+	auth "github.com/FineStack/frost-auth"
+	"github.com/FineStack/frost-auth/plugins/magiclink"
 )
 
 func TestMagicLinkMailboxOwnership(t *testing.T) {

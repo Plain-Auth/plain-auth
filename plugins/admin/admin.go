@@ -1,7 +1,7 @@
 // Package admin provides role-checked user and session administration.
 package admin
 
-import authn "github.com/FineStack/finestack-auth"
+import authn "github.com/FineStack/frost-auth"
 
 type Options = authn.AdminOptions
 type Permissions = authn.AdminPermissions

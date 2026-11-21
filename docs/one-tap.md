@@ -8,7 +8,7 @@ google := providers.GoogleWithOptions(providers.GoogleOptions{
     ClientSecret: googleClientSecret,
     HostedDomain: "example.org",
 })
-options.SocialProviders = map[string]fineauth.OAuthProvider{"google": google}
+options.SocialProviders = map[string]frostauth.OAuthProvider{"google": google}
 options.Plugins = append(options.Plugins, onetap.New(onetap.Options{}))
 mux.HandleFunc("GET /assets/one-tap.mjs", onetap.BrowserModule)
 ```

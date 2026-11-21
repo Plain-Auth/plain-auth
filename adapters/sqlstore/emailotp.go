@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	auth "github.com/FineStack/finestack-auth"
+	auth "github.com/FineStack/frost-auth"
 )
 
 var _ auth.EmailOTPStore = (*Store)(nil)

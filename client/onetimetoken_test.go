@@ -8,10 +8,10 @@ import (
 	"testing"
 	"time"
 
-	auth "github.com/FineStack/finestack-auth"
-	"github.com/FineStack/finestack-auth/adapters/sqlite"
-	"github.com/FineStack/finestack-auth/client"
-	"github.com/FineStack/finestack-auth/plugins/onetimetoken"
+	auth "github.com/FineStack/frost-auth"
+	"github.com/FineStack/frost-auth/adapters/sqlite"
+	"github.com/FineStack/frost-auth/client"
+	"github.com/FineStack/frost-auth/plugins/onetimetoken"
 )
 
 func TestNativeOneTimeTokenClient(t *testing.T) {

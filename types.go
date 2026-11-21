@@ -1,5 +1,5 @@
-// Package fineauth embeds authentication in the host application's HTTP server.
-package fineauth
+// Package frostauth embeds authentication in the host application's HTTP server.
+package frostauth
 
 import (
 	"context"

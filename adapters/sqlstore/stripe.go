@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"errors"
 
-	auth "github.com/FineStack/finestack-auth"
+	auth "github.com/FineStack/frost-auth"
 )
 
 // StripeCustomer looks up the customer's own stored Stripe ID. Requires the

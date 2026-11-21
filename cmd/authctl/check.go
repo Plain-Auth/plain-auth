@@ -11,8 +11,8 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/FineStack/finestack-auth/adapters/sqlstore"
-	"github.com/FineStack/finestack-auth/schema"
+	"github.com/FineStack/frost-auth/adapters/sqlstore"
+	"github.com/FineStack/frost-auth/schema"
 )
 
 var errSchemaMismatch = errors.New("the database does not match the selected schema")

@@ -6,10 +6,10 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	auth "github.com/FineStack/finestack-auth"
-	"github.com/FineStack/finestack-auth/adapters/sqlite"
-	"github.com/FineStack/finestack-auth/client"
-	"github.com/FineStack/finestack-auth/plugins/magiclink"
+	auth "github.com/FineStack/frost-auth"
+	"github.com/FineStack/frost-auth/adapters/sqlite"
+	"github.com/FineStack/frost-auth/client"
+	"github.com/FineStack/frost-auth/plugins/magiclink"
 )
 
 func TestNativeMagicLinkClient(t *testing.T) {

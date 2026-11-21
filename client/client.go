@@ -15,7 +15,7 @@ import (
 	"path"
 	"strings"
 
-	authn "github.com/FineStack/finestack-auth"
+	authn "github.com/FineStack/frost-auth"
 )
 
 // Client holds the server URL and the user's session cookies. Create a separate

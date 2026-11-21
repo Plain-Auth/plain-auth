@@ -14,9 +14,9 @@ import (
 	"github.com/go-sql-driver/mysql"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/stdlib"
-	auth "github.com/FineStack/finestack-auth"
-	org "github.com/FineStack/finestack-auth/plugins/organization"
-	"github.com/FineStack/finestack-auth/schema"
+	auth "github.com/FineStack/frost-auth"
+	org "github.com/FineStack/frost-auth/plugins/organization"
+	"github.com/FineStack/frost-auth/schema"
 )
 
 // Use a separate database (MySQL) or schema (PostgreSQL) so profile migrations

@@ -23,9 +23,9 @@ org, err := organization.New(organization.Options{
 if err != nil {
     return err
 }
-auth, err := fineauth.New(fineauth.Options{
+auth, err := frostauth.New(frostauth.Options{
     Store: store, BaseURL: origin, Secret: secret, EmailAndPassword: true,
-    Plugins: []fineauth.Plugin{org},
+    Plugins: []frostauth.Plugin{org},
 })
 ```
 

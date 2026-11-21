@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	authn "github.com/FineStack/finestack-auth"
+	authn "github.com/FineStack/frost-auth"
 )
 
 // TeamOptions enables team management for an organization store with the teams schema.

@@ -7,11 +7,11 @@ import (
 	"path/filepath"
 	"testing"
 
-	auth "github.com/FineStack/finestack-auth"
-	"github.com/FineStack/finestack-auth/adapters/sqlstore"
-	"github.com/FineStack/finestack-auth/client"
-	"github.com/FineStack/finestack-auth/plugins/twofactor"
-	"github.com/FineStack/finestack-auth/schema"
+	auth "github.com/FineStack/frost-auth"
+	"github.com/FineStack/frost-auth/adapters/sqlstore"
+	"github.com/FineStack/frost-auth/client"
+	"github.com/FineStack/frost-auth/plugins/twofactor"
+	"github.com/FineStack/frost-auth/schema"
 )
 
 func TestNativeDeliveredFactorClient(t *testing.T) {

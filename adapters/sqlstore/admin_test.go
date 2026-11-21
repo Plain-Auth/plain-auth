@@ -11,11 +11,11 @@ import (
 	"testing"
 	"time"
 
-	authn "github.com/FineStack/finestack-auth"
-	"github.com/FineStack/finestack-auth/client"
-	"github.com/FineStack/finestack-auth/plugins/admin"
-	"github.com/FineStack/finestack-auth/plugins/bearer"
-	"github.com/FineStack/finestack-auth/schema"
+	authn "github.com/FineStack/frost-auth"
+	"github.com/FineStack/frost-auth/client"
+	"github.com/FineStack/frost-auth/plugins/admin"
+	"github.com/FineStack/frost-auth/plugins/bearer"
+	"github.com/FineStack/frost-auth/schema"
 )
 
 func TestAdminLifecycleAcrossEngines(t *testing.T) {
