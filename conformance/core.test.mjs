@@ -1147,3 +1147,36 @@ test("the pinned client bills a fixed organization base and a separate quantity 
   const { organizationBilling } = await import("./stripe-organization-fixture.mjs");
   await organizationBilling(t, { reference, goFixture, instrument }, true, true);
 });
+
+test("application key validators control sessions on both runtimes", async (t) => {
+  const { apiKey } = await import("@better-auth/api-key");
+  const { apiKeyClient } = await import("@better-auth/api-key/client");
+  const setups = [
+    () => reference(t, [apiKey({
+      enableSessionForAPIKeys: true, customAPIKeyValidator: ({key}) => key.startsWith("worker_"),
+    })]),
+    () => goFixture(t, ["api-key"], {CONFORMANCE_KEY_VALIDATOR_PREFIX: "worker_"}),
+  ];
+  for (const setup of setups) {
+    const runtime = await setup();
+    const { client } = instrument(runtime, [apiKeyClient()]);
+    const account = await client.signUp.email({ email, name, password });
+    assert.equal(account.error, null);
+    for (const prefix of ["worker_", "service_"]) {
+      const issued = await client.apiKey.create({ name: "Job", prefix });
+      assert.equal(issued.error, null);
+      const response = await runtime.send(new Request(runtime.baseURL + "/api/auth/get-session", {
+        headers: {"X-API-Key": issued.data.key},
+      }));
+      const body = await response.json();
+      if (prefix === "worker_") {
+        assert.equal(response.status, 200);
+        assert.equal(body.user.id, account.data.user.id);
+        assert.equal(body.session.id, issued.data.id);
+      } else {
+        assert.equal(response.status, 403);
+        assert.equal(body.code, "INVALID_API_KEY");
+      }
+    }
+  }
+});

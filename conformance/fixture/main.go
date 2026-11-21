@@ -81,7 +81,14 @@ func main() {
 			directoryEnabled = true
 		case "api-key":
 			keySessions := os.Getenv("AUTH_TEST_API_KEY_SESSIONS") == "1"
-			keys, err := apikey.New(apikey.Options{Store: store, EnableMetadata: true, EnableSession: keySessions})
+			opts := apikey.Options{Store: store, EnableMetadata: true, EnableSession: keySessions}
+			if prefix := os.Getenv("CONFORMANCE_KEY_VALIDATOR_PREFIX"); prefix != "" {
+				opts.EnableSession = true
+				opts.ValidateKey = func(_ context.Context, key string) (bool, error) {
+					return strings.HasPrefix(key, prefix), nil
+				}
+			}
+			keys, err := apikey.New(opts)
 			if err != nil {
 				log.Fatal(err)
 			}

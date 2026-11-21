@@ -35,6 +35,25 @@ mux.Handle("/reports", keys.Middleware(apikey.Permissions{"reports": {"read"}}, 
 
 The application handler can call `apikey.FromContext(r.Context())` for the verified key ID, owner ID and permissions. Middleware reads `X-API-Key` by default. Set `Options.Headers` to accept other header names. Requests carrying more than one configured credential are rejected. Rate-limited requests receive HTTP 429 and a `Retry-After` header.
 
+## Apply an application validation policy
+
+Set `apikey.Options.ValidateKey` on the configuration whose credentials you want to check. For example, a worker service can consult an application-owned revocation store before it accepts a request.
+
+```go
+keys, err := apikey.New(apikey.Options{
+    Store: store,
+    ValidateKey: func(ctx context.Context, key string) (bool, error) {
+        revoked, err := revocations.Contains(ctx, apikey.Digest(key))
+        return !revoked, err
+    },
+})
+if err != nil {
+    return err
+}
+```
+
+The callback receives the request context and the presented credential. Keep the credential out of logs. Returning `false, nil` denies the request. Returning an error lets a trusted caller distinguish a policy outage through `Service.Verify`. HTTP routes return a generic server error. Accepted credentials still have to satisfy ownership, expiry, scope and usage checks. Callback rejection and errors consume no uses. When session authentication is enabled and multiple configurations share a header, only the matching configuration’s validator runs. [Validation tests](../adapters/sqlstore/apikey_validator_test.go)
+
 ## Manage keys
 
 | Method and path under the auth mount | Use |

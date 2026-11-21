@@ -4208,6 +4208,30 @@
       "marker": "ambiguous key headers accepted"
     }
   ],
+  "plugin-symbol/api-key/PredefinedApiKeyOptions/customAPIKeyValidator": [
+    {
+      "label": "Run the selected policy once across native, middleware and session verification, and preserve the usage budget on denial",
+      "test": "adapters/sqlstore/apikey_validator_test.go",
+      "marker": "func TestApplicationKeyValidator("
+    },
+    {
+      "label": "Accept or refuse the same application session using the released client and its host policy",
+      "test": "conformance/core.test.mjs",
+      "marker": "application key validators control sessions on both runtimes"
+    }
+  ],
+  "plugin-symbol/api-key/ApiKeyConfigurationOptions/customAPIKeyValidator": [
+    {
+      "label": "Run the selected policy once across native, middleware and session verification, and preserve the usage budget on denial",
+      "test": "adapters/sqlstore/apikey_validator_test.go",
+      "marker": "func TestApplicationKeyValidator("
+    },
+    {
+      "label": "Accept or refuse the same application session using the released client and its host policy",
+      "test": "conformance/core.test.mjs",
+      "marker": "application key validators control sessions on both runtimes"
+    }
+  ],
   "plugin-symbol/api-key/ApiKeyConfigurationOptions/defaultKeyLength": [
     {
       "label": "Issue 64 random letters plus an optional prefix",

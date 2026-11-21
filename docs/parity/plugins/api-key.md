@@ -31,6 +31,8 @@
     - [ ] `disableKeyHashing`
     - [ ] `customAPIKeyGetter`
     - [ ] `customAPIKeyValidator`
+      - [x] Run the selected policy once across native, middleware and session verification, and preserve the usage budget on denial ([test](../../../adapters/sqlstore/apikey_validator_test.go#L16))
+      - [x] Accept or refuse the same application session using the released client and its host policy ([test](../../../conformance/core.test.mjs#L1151))
     - [ ] `customKeyGenerator`
     - [ ] `startingCharactersConfig`
     - [ ] `defaultKeyLength`
@@ -74,6 +76,8 @@
     - [ ] `disableKeyHashing`
     - [ ] `customAPIKeyGetter`
     - [ ] `customAPIKeyValidator`
+      - [x] Run the selected policy once across native, middleware and session verification, and preserve the usage budget on denial ([test](../../../adapters/sqlstore/apikey_validator_test.go#L16))
+      - [x] Accept or refuse the same application session using the released client and its host policy ([test](../../../conformance/core.test.mjs#L1151))
     - [ ] `customKeyGenerator`
     - [ ] `startingCharactersConfig`
       - [x] Return six display characters by default ([test](../../../adapters/sqlstore/apikey_test.go#L68))

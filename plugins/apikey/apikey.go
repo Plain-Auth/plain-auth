@@ -88,6 +88,9 @@ type Store interface {
 type Options struct {
 	Organization  *OrganizationOptions
 	EnableSession bool
+	// ValidateKey lets the host reject a credential before storage, permission
+	// and usage checks. The callback may run concurrently on different requests.
+	ValidateKey func(context.Context, string) (bool, error)
 	// Headers names the request headers accepted by Middleware. The default is X-API-Key.
 	Headers                                                                           []string
 	Store                                                                             Store
@@ -233,6 +236,8 @@ func (in UpdateInput) empty() bool {
 func problem(status int, code, msg string) *stonewrit.APIError {
 	return &stonewrit.APIError{Status: status, Code: code, Message: msg}
 }
+
+var errKeyValidator = errors.New("apikey: application key validator failed")
 
 var ErrMissing = problem(404, "KEY_NOT_FOUND", "API Key not found")
 var ErrSession = problem(401, "UNAUTHORIZED_SESSION", "Unauthorized or invalid session")
@@ -475,13 +480,23 @@ type Verification struct {
 // Verify checks the secret and every required resource/action. Successful
 // verification consumes one use in the same transaction as the rate check.
 func (s *Service) Verify(ctx context.Context, secret string, required Permissions) (Verification, error) {
-	now := current()
 	result := Verification{}
 	invalid := func(code, msg string) { result.Error = &VerifyError{Code: code, Message: msg} }
 	if secret == "" || len(secret) > 4096 {
 		invalid("INVALID_API_KEY", "Invalid API key")
 		return result, nil
 	}
+	if s.opts.ValidateKey != nil {
+		allowed, err := s.opts.ValidateKey(ctx, secret)
+		if err != nil {
+			return Verification{}, fmt.Errorf("%w: %w", errKeyValidator, err)
+		}
+		if !allowed {
+			invalid("KEY_NOT_FOUND", "Invalid API key")
+			return result, nil
+		}
+	}
+	now := current()
 	err := s.opts.Store.WithAPIKey(ctx, s.forAction(Owner{}, ""), Lookup{ConfigID: s.opts.ConfigID, Digest: Digest(secret)}, now, func(k *Key) (Mutation, error) {
 		// Evaluate time-based policies after obtaining the key lock.
 		now = current()

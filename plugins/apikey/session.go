@@ -2,7 +2,7 @@ package apikey
 
 import (
 	"context"
-
+	"errors"
 	"net/http"
 	"slices"
 	"time"
@@ -90,12 +90,21 @@ func (s *Service) resolveSession(ctx context.Context, secret string, meta stonew
 		return nil, invalidSessionKey
 	}
 	v, err := s.Verify(ctx, secret, nil)
+	if errors.Is(err, errKeyValidator) {
+		// A host callback can return an APIError containing private details.
+		return nil, errKeyValidator
+	}
 	if err != nil {
 		return nil, err
 	}
 	if !v.Valid {
 		if v.Error == nil {
 			return nil, invalidSessionKey
+		}
+		if v.Error.Code == "KEY_NOT_FOUND" {
+			// Session lookup has no requested permission scope. This code
+			// therefore identifies an explicit rejection by the host.
+			return nil, problem(http.StatusForbidden, "INVALID_API_KEY", "Invalid API key")
 		}
 		status := 401
 		if v.Error.Code == "RATE_LIMIT_EXCEEDED" || v.Error.Code == "USAGE_EXCEEDED" {
