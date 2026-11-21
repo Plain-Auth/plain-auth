@@ -31,7 +31,7 @@ function compact(value) {
 
 export async function buildCatalog() {
   const profiles = [
-    "admin", "anonymous", "api-key", "device-authorization", "jwt", "organization-teams", "passkey",
+    "admin", "anonymous", "api-key", "device-authorization", "jwt", "organization-teams", "passkey", "phone-number",
     "stripe-subscriptions", "two-factor", "username",
   ];
   const plugins = [

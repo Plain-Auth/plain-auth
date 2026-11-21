@@ -37,7 +37,7 @@ func schemaPath(r stonewrit.HTTPRoute) string {
 
 func knownPlugin(id string) bool {
 	switch id {
-	case "", "admin", "anonymous", "api-key", "device-authorization", "email-otp", "jwt", "magic-link", "multi-session", "one-tap", "one-time-token", "organization", "passkey", "stripe", "two-factor", "username":
+	case "", "admin", "anonymous", "api-key", "device-authorization", "email-otp", "jwt", "magic-link", "multi-session", "one-tap", "one-time-token", "organization", "passkey", "phone-number", "stripe", "two-factor", "username":
 		return true
 	}
 	return false
@@ -64,6 +64,14 @@ func sessionProtection(route stonewrit.HTTPRoute) bool {
 	return false
 }
 
+func loginResponse(success object, factor bool) object {
+	if !factor {
+		return success
+	}
+	challenge := responseObject(object{"twoFactorRedirect": object{"const": true}, "twoFactorMethods": array(object{"type": "string"})}, "twoFactorRedirect", "twoFactorMethods")
+	return object{"oneOf": []object{success, challenge}}
+}
+
 func publicResponse(route stonewrit.HTTPRoute, info stonewrit.HTTPDescription, factor bool) object {
 	if route.Plugin == "jwt" && route.Path != "/token" {
 		return responseObject(object{"keys": array(object{"type": "object"})}, "keys")
@@ -81,10 +89,16 @@ func publicResponse(route stonewrit.HTTPRoute, info stonewrit.HTTPDescription, f
 			props["url"] = object{"type": "string"}
 		}
 		login := responseObject(props, "token", "user")
-		if factor {
-			return object{"oneOf": []object{login, responseObject(object{"twoFactorRedirect": object{"const": true}, "twoFactorMethods": array(object{"type": "string"})}, "twoFactorRedirect", "twoFactorMethods")}}
-		}
-		return login
+		return loginResponse(login, factor)
+	case "/phone-number/verify":
+		verified := responseObject(object{"status": object{"const": true}, "token": object{"type": []string{"string", "null"}}, "user": modelRef("User")}, "status", "token", "user")
+		return loginResponse(verified, factor)
+	case "/sign-in/phone-number":
+		return loginResponse(responseObject(object{"token": object{"type": "string"}, "user": modelRef("User")}, "token", "user"), factor)
+	case "/phone-number/request-password-reset", "/phone-number/reset-password":
+		return responseObject(object{"status": object{"const": true}}, "status")
+	case "/phone-number/send-otp":
+		return responseObject(object{"message": object{"const": "code sent"}}, "message")
 	case "/list-accounts":
 		return array(modelRef("Account"))
 	case "/list-sessions":
@@ -217,9 +231,15 @@ func adjustRequest(op object, r stonewrit.HTTPRoute, info stonewrit.HTTPDescript
 		if r.Path == "/update-user" {
 			schema["type"] = "object"
 			delete(schema, "allOf")
+			if a.HasPlugin("phone-number") {
+				fields["phoneNumber"] = object{"type": "null", "description": "Clear the verified phone number on the signed-in owner's profile."}
+			}
 			fields["name"] = object{"type": "string"}
 			fields["image"] = object{"type": []string{"string", "null"}}
 		} else {
+			if a.HasPlugin("phone-number") {
+				fields["phoneNumber"] = object{"enum": []any{nil, ""}, "description": "Leave empty on email signup. Verify the number to attach it to the account."}
+			}
 			fields["email"] = object{"type": "string", "format": "email"}
 			fields["password"] = object{"type": "string", "format": "password", "minLength": info.MinPassword, "maxLength": info.MaxPassword}
 		}
@@ -233,6 +253,14 @@ func adjustRequest(op object, r stonewrit.HTTPRoute, info stonewrit.HTTPDescript
 				fields["displayUsername"] = userType
 			}
 		}
+	case "/phone-number/verify":
+		fields["updatePhoneNumber"] = object{"type": "boolean", "description": "Link this number to the account in a direct owner session."}
+		fields["code"] = object{"type": "string", "writeOnly": true}
+	case "/sign-in/phone-number":
+		fields["password"] = object{"type": "string", "format": "password", "writeOnly": true, "maxLength": info.MaxPassword}
+	case "/phone-number/reset-password":
+		fields["otp"] = object{"type": "string", "writeOnly": true}
+		fields["newPassword"] = object{"type": "string", "format": "password", "writeOnly": true, "minLength": info.MinPassword, "maxLength": info.MaxPassword}
 	case "/sign-in/email":
 		fields["email"] = object{"type": "string", "format": "email"}
 		fields["password"] = object{"type": "string", "format": "password"}
@@ -284,9 +312,10 @@ func standardOperation(r stonewrit.HTTPRoute, info stonewrit.HTTPDescription, a 
 	}
 	op["tags"] = []string{tag}
 	op["security"] = []object{}
-	if builtin && (sessionProtection(r) || r.Path == "/get-session" || r.Path == "/device") {
+	optionalSession := r.Path == "/get-session" || r.Path == "/device" || r.Plugin == "phone-number" && r.Path == "/phone-number/verify"
+	if builtin && (sessionProtection(r) || optionalSession) {
 		security := []object{{"apiKeyCookie": []string{}}}
-		if r.Path == "/get-session" || r.Path == "/device" {
+		if optionalSession {
 			security = append(security, object{})
 		}
 		if a.HasPlugin("bearer") {

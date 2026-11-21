@@ -60,3 +60,5 @@ endpoint := stonewrit.Endpoint{
 | `Nonce` | Sets the CSP nonce on the page's script and style. The default generates a fresh random nonce for each response. |
 
 The self-contained page filters operations by method or path and expands each operation's JSON. A link such as `/api/auth/reference?q=sign-in` opens a filtered view. All assets are local. The response applies a nonce-based content security policy, blocks embedding and escapes operation metadata as text. Use a separate OpenAPI viewer for interactive request execution.
+
+With the phone-number plugin installed, the document includes the five public phone operations and the two nullable phone profile fields. Verification accepts signed-out requests and documents the direct-session requirement for account linking. The user update schema accepts a null phone number to remove it. Password and code inputs are write-only. Installing two-factor authentication adds its challenge response to phone login and verification. [Phone-number guide](phone-number.md)
