@@ -1,0 +1,4526 @@
+{
+  "upstream": "https://github.com/better-auth/better-auth",
+  "release": "v1.7.27",
+  "commit": "9faf6f6a1155a6cdaf8ba2d25ce53e4f5a3fda72",
+  "packages": [
+    {
+      "source": "packages/api-key/package.json",
+      "name": "@better-auth/api-key",
+      "version": "1.7.27",
+      "private": false,
+      "exports": [
+        ".",
+        "./client",
+        "./types"
+      ],
+      "commands": []
+    },
+    {
+      "source": "packages/better-auth/package.json",
+      "name": "better-auth",
+      "version": "1.7.27",
+      "private": false,
+      "exports": [
+        ".",
+        "./minimal",
+        "./social-providers",
+        "./client",
+        "./client/plugins",
+        "./types",
+        "./crypto",
+        "./cookies",
+        "./cookies/utils",
+        "./oauth2",
+        "./react",
+        "./solid",
+        "./lynx",
+        "./test",
+        "./api",
+        "./db",
+        "./vue",
+        "./plugins",
+        "./svelte-kit",
+        "./solid-start",
+        "./svelte",
+        "./next-js",
+        "./tanstack-start",
+        "./tanstack-start/solid",
+        "./node",
+        "./db/adapter",
+        "./db/adapter/minimal",
+        "./db/migration",
+        "./adapters/prisma",
+        "./adapters/drizzle",
+        "./adapters/mongodb",
+        "./adapters/memory",
+        "./adapters",
+        "./plugins/access",
+        "./plugins/admin",
+        "./plugins/admin/access",
+        "./plugins/anonymous",
+        "./plugins/bearer",
+        "./plugins/captcha",
+        "./plugins/custom-session",
+        "./plugins/email-otp",
+        "./plugins/generic-oauth",
+        "./plugins/jwt",
+        "./plugins/haveibeenpwned",
+        "./plugins/magic-link",
+        "./plugins/multi-session",
+        "./plugins/oauth-proxy",
+        "./plugins/organization",
+        "./plugins/organization/access",
+        "./plugins/one-time-token",
+        "./plugins/one-tap",
+        "./plugins/open-api",
+        "./plugins/phone-number",
+        "./plugins/two-factor",
+        "./plugins/username",
+        "./plugins/siwe",
+        "./plugins/device-authorization"
+      ],
+      "commands": []
+    },
+    {
+      "source": "packages/cimd/package.json",
+      "name": "@better-auth/cimd",
+      "version": "1.7.27",
+      "private": false,
+      "exports": [
+        ".",
+        "./node"
+      ],
+      "commands": []
+    },
+    {
+      "source": "packages/cli/package.json",
+      "name": "auth",
+      "version": "1.7.27",
+      "private": false,
+      "exports": [
+        "./api"
+      ],
+      "commands": [
+        "better-auth",
+        "auth"
+      ]
+    },
+    {
+      "source": "packages/core/package.json",
+      "name": "@better-auth/core",
+      "version": "1.7.27",
+      "private": false,
+      "exports": [
+        ".",
+        "./api",
+        "./async_hooks",
+        "./context",
+        "./env",
+        "./error",
+        "./utils/*",
+        "./social-providers",
+        "./db",
+        "./db/internal",
+        "./db/adapter",
+        "./oauth2",
+        "./oauth2/internal",
+        "./instrumentation"
+      ],
+      "commands": []
+    },
+    {
+      "source": "packages/drizzle-adapter/package.json",
+      "name": "@better-auth/drizzle-adapter",
+      "version": "1.7.27",
+      "private": false,
+      "exports": [
+        ".",
+        "./relations-v2"
+      ],
+      "commands": []
+    },
+    {
+      "source": "packages/electron/package.json",
+      "name": "@better-auth/electron",
+      "version": "1.7.27",
+      "private": false,
+      "exports": [
+        ".",
+        "./client",
+        "./proxy",
+        "./preload",
+        "./storage"
+      ],
+      "commands": []
+    },
+    {
+      "source": "packages/expo/package.json",
+      "name": "@better-auth/expo",
+      "version": "1.7.27",
+      "private": false,
+      "exports": [
+        ".",
+        "./client",
+        "./plugins"
+      ],
+      "commands": []
+    },
+    {
+      "source": "packages/i18n/package.json",
+      "name": "@better-auth/i18n",
+      "version": "1.7.27",
+      "private": false,
+      "exports": [
+        ".",
+        "./client",
+        "./locales"
+      ],
+      "commands": []
+    },
+    {
+      "source": "packages/kysely-adapter/package.json",
+      "name": "@better-auth/kysely-adapter",
+      "version": "1.7.27",
+      "private": false,
+      "exports": [
+        ".",
+        "./node-sqlite-dialect"
+      ],
+      "commands": []
+    },
+    {
+      "source": "packages/mcp/package.json",
+      "name": "@better-auth/mcp",
+      "version": "1.7.27",
+      "private": false,
+      "exports": [
+        "."
+      ],
+      "commands": []
+    },
+    {
+      "source": "packages/memory-adapter/package.json",
+      "name": "@better-auth/memory-adapter",
+      "version": "1.7.27",
+      "private": false,
+      "exports": [
+        "."
+      ],
+      "commands": []
+    },
+    {
+      "source": "packages/mongo-adapter/package.json",
+      "name": "@better-auth/mongo-adapter",
+      "version": "1.7.27",
+      "private": false,
+      "exports": [
+        "."
+      ],
+      "commands": []
+    },
+    {
+      "source": "packages/oauth-provider/package.json",
+      "name": "@better-auth/oauth-provider",
+      "version": "1.7.27",
+      "private": false,
+      "exports": [
+        ".",
+        "./client",
+        "./resource-client",
+        "./internal"
+      ],
+      "commands": []
+    },
+    {
+      "source": "packages/passkey/package.json",
+      "name": "@better-auth/passkey",
+      "version": "1.7.27",
+      "private": false,
+      "exports": [
+        ".",
+        "./client"
+      ],
+      "commands": []
+    },
+    {
+      "source": "packages/prisma-adapter/package.json",
+      "name": "@better-auth/prisma-adapter",
+      "version": "1.7.27",
+      "private": false,
+      "exports": [
+        "."
+      ],
+      "commands": []
+    },
+    {
+      "source": "packages/redis-storage/package.json",
+      "name": "@better-auth/redis-storage",
+      "version": "1.7.27",
+      "private": false,
+      "exports": [
+        "."
+      ],
+      "commands": []
+    },
+    {
+      "source": "packages/release-tooling/package.json",
+      "name": "@better-auth/release-tooling",
+      "version": "0.0.0",
+      "private": true,
+      "exports": [],
+      "commands": []
+    },
+    {
+      "source": "packages/scim/package.json",
+      "name": "@better-auth/scim",
+      "version": "1.7.27",
+      "private": false,
+      "exports": [
+        "."
+      ],
+      "commands": []
+    },
+    {
+      "source": "packages/sso/package.json",
+      "name": "@better-auth/sso",
+      "version": "1.7.27",
+      "private": false,
+      "exports": [
+        ".",
+        "./client"
+      ],
+      "commands": []
+    },
+    {
+      "source": "packages/stripe/package.json",
+      "name": "@better-auth/stripe",
+      "version": "1.7.27",
+      "private": false,
+      "exports": [
+        ".",
+        "./client"
+      ],
+      "commands": []
+    },
+    {
+      "source": "packages/telemetry/package.json",
+      "name": "@better-auth/telemetry",
+      "version": "1.7.27",
+      "private": false,
+      "exports": [
+        "."
+      ],
+      "commands": []
+    },
+    {
+      "source": "packages/test-utils/package.json",
+      "name": "@better-auth/test-utils",
+      "version": "1.7.27",
+      "private": false,
+      "exports": [
+        "./adapter",
+        "./scim"
+      ],
+      "commands": []
+    }
+  ],
+  "core": [
+    {
+      "name": "signInSocial",
+      "path": "/sign-in/social",
+      "methods": [
+        "POST"
+      ],
+      "serverOnly": false
+    },
+    {
+      "name": "callbackOAuth",
+      "path": "/callback/:id",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "serverOnly": false
+    },
+    {
+      "name": "getSession",
+      "path": "/get-session",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "serverOnly": false
+    },
+    {
+      "name": "signOut",
+      "path": "/sign-out",
+      "methods": [
+        "POST"
+      ],
+      "serverOnly": false
+    },
+    {
+      "name": "signUpEmail",
+      "path": "/sign-up/email",
+      "methods": [
+        "POST"
+      ],
+      "serverOnly": false
+    },
+    {
+      "name": "signInEmail",
+      "path": "/sign-in/email",
+      "methods": [
+        "POST"
+      ],
+      "serverOnly": false
+    },
+    {
+      "name": "resetPassword",
+      "path": "/reset-password",
+      "methods": [
+        "POST"
+      ],
+      "serverOnly": false
+    },
+    {
+      "name": "verifyPassword",
+      "path": "/verify-password",
+      "methods": [
+        "POST"
+      ],
+      "serverOnly": false
+    },
+    {
+      "name": "verifyEmail",
+      "path": "/verify-email",
+      "methods": [
+        "GET"
+      ],
+      "serverOnly": false
+    },
+    {
+      "name": "sendVerificationEmail",
+      "path": "/send-verification-email",
+      "methods": [
+        "POST"
+      ],
+      "serverOnly": false
+    },
+    {
+      "name": "changeEmail",
+      "path": "/change-email",
+      "methods": [
+        "POST"
+      ],
+      "serverOnly": false
+    },
+    {
+      "name": "changePassword",
+      "path": "/change-password",
+      "methods": [
+        "POST"
+      ],
+      "serverOnly": false
+    },
+    {
+      "name": "setPassword",
+      "path": null,
+      "methods": [
+        "POST"
+      ],
+      "serverOnly": true
+    },
+    {
+      "name": "updateSession",
+      "path": "/update-session",
+      "methods": [
+        "POST"
+      ],
+      "serverOnly": false
+    },
+    {
+      "name": "updateUser",
+      "path": "/update-user",
+      "methods": [
+        "POST"
+      ],
+      "serverOnly": false
+    },
+    {
+      "name": "deleteUser",
+      "path": "/delete-user",
+      "methods": [
+        "POST"
+      ],
+      "serverOnly": false
+    },
+    {
+      "name": "requestPasswordReset",
+      "path": "/request-password-reset",
+      "methods": [
+        "POST"
+      ],
+      "serverOnly": false
+    },
+    {
+      "name": "requestPasswordResetCallback",
+      "path": "/reset-password/:token",
+      "methods": [
+        "GET"
+      ],
+      "serverOnly": false
+    },
+    {
+      "name": "listSessions",
+      "path": "/list-sessions",
+      "methods": [
+        "GET"
+      ],
+      "serverOnly": false
+    },
+    {
+      "name": "revokeSession",
+      "path": "/revoke-session",
+      "methods": [
+        "POST"
+      ],
+      "serverOnly": false
+    },
+    {
+      "name": "revokeSessions",
+      "path": "/revoke-sessions",
+      "methods": [
+        "POST"
+      ],
+      "serverOnly": false
+    },
+    {
+      "name": "revokeOtherSessions",
+      "path": "/revoke-other-sessions",
+      "methods": [
+        "POST"
+      ],
+      "serverOnly": false
+    },
+    {
+      "name": "linkSocialAccount",
+      "path": "/link-social",
+      "methods": [
+        "POST"
+      ],
+      "serverOnly": false
+    },
+    {
+      "name": "listUserAccounts",
+      "path": "/list-accounts",
+      "methods": [
+        "GET"
+      ],
+      "serverOnly": false
+    },
+    {
+      "name": "deleteUserCallback",
+      "path": "/delete-user/callback",
+      "methods": [
+        "GET"
+      ],
+      "serverOnly": false
+    },
+    {
+      "name": "unlinkAccount",
+      "path": "/unlink-account",
+      "methods": [
+        "POST"
+      ],
+      "serverOnly": false
+    },
+    {
+      "name": "refreshToken",
+      "path": "/refresh-token",
+      "methods": [
+        "POST"
+      ],
+      "serverOnly": false
+    },
+    {
+      "name": "getAccessToken",
+      "path": "/get-access-token",
+      "methods": [
+        "POST"
+      ],
+      "serverOnly": false
+    },
+    {
+      "name": "accountInfo",
+      "path": "/account-info",
+      "methods": [
+        "GET"
+      ],
+      "serverOnly": false
+    },
+    {
+      "name": "ok",
+      "path": "/ok",
+      "methods": [
+        "GET"
+      ],
+      "serverOnly": false
+    },
+    {
+      "name": "error",
+      "path": "/error",
+      "methods": [
+        "GET"
+      ],
+      "serverOnly": false
+    }
+  ],
+  "providers": [
+    "apple",
+    "atlassian",
+    "cloudflare",
+    "cognito",
+    "discord",
+    "dropbox",
+    "facebook",
+    "figma",
+    "github",
+    "gitlab",
+    "google",
+    "huggingface",
+    "kakao",
+    "kick",
+    "line",
+    "linear",
+    "linkedin",
+    "microsoft",
+    "naver",
+    "notion",
+    "paybin",
+    "paypal",
+    "polar",
+    "railway",
+    "reddit",
+    "roblox",
+    "salesforce",
+    "slack",
+    "spotify",
+    "tiktok",
+    "twitch",
+    "twitter",
+    "vercel",
+    "vk",
+    "wechat",
+    "zoom"
+  ],
+  "plugins": [
+    "2fa",
+    "access",
+    "additional-fields",
+    "admin",
+    "anonymous",
+    "api-key",
+    "bearer",
+    "captcha",
+    "cimd",
+    "custom-session",
+    "device-authorization",
+    "electron",
+    "email-otp",
+    "expo",
+    "generic-oauth",
+    "have-i-been-pwned",
+    "i18n",
+    "jwt",
+    "last-login-method",
+    "magic-link",
+    "mcp",
+    "multi-session",
+    "oauth-popup",
+    "oauth-provider",
+    "oauth-proxy",
+    "one-tap",
+    "one-time-token",
+    "open-api",
+    "organization",
+    "passkey",
+    "phone-number",
+    "scim",
+    "siwe",
+    "sso",
+    "stripe",
+    "test-utils",
+    "username"
+  ],
+  "sourceAnchors": [
+    {
+      "source": "packages/better-auth/src/plugins/generic-oauth/providers/auth0.ts",
+      "symbol": "auth0"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/generic-oauth/providers/gumroad.ts",
+      "symbol": "gumroad"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/generic-oauth/providers/hubspot.ts",
+      "symbol": "hubspot"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/generic-oauth/providers/keycloak.ts",
+      "symbol": "keycloak"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/generic-oauth/providers/line.ts",
+      "symbol": "line"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/generic-oauth/providers/microsoft-entra-id.ts",
+      "symbol": "microsoft-entra-id"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/generic-oauth/providers/okta.ts",
+      "symbol": "okta"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/generic-oauth/providers/patreon.ts",
+      "symbol": "patreon"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/generic-oauth/providers/slack.ts",
+      "symbol": "slack"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/generic-oauth/providers/yandex.ts",
+      "symbol": "yandex"
+    },
+    {
+      "source": "packages/cli/src/commands/ai.ts",
+      "symbol": "ai"
+    },
+    {
+      "source": "packages/cli/src/commands/check.ts",
+      "symbol": "check"
+    },
+    {
+      "source": "packages/cli/src/commands/create-admin.ts",
+      "symbol": "create-admin"
+    },
+    {
+      "source": "packages/cli/src/commands/generate.ts",
+      "symbol": "generate"
+    },
+    {
+      "source": "packages/cli/src/commands/info.ts",
+      "symbol": "info"
+    },
+    {
+      "source": "packages/cli/src/commands/init/index.ts",
+      "symbol": "init"
+    },
+    {
+      "source": "packages/cli/src/commands/login.ts",
+      "symbol": "login"
+    },
+    {
+      "source": "packages/cli/src/commands/login.ts",
+      "symbol": "logout"
+    },
+    {
+      "source": "packages/cli/src/commands/mcp.ts",
+      "symbol": "mcp"
+    },
+    {
+      "source": "packages/cli/src/commands/migrate.ts",
+      "symbol": "migrate"
+    },
+    {
+      "source": "packages/cli/src/commands/secret.ts",
+      "symbol": "secret"
+    },
+    {
+      "source": "packages/cli/src/commands/upgrade.ts",
+      "symbol": "upgrade"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/access/types.ts#L4",
+      "symbol": "ArrayElement"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/access/types.ts#L6",
+      "symbol": "SubArray"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/access/types.ts#L10",
+      "symbol": "Subset"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/access/types.ts#L20",
+      "symbol": "Statements"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/access/types.ts#L24",
+      "symbol": "RoleStatements"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/access/types.ts#L28",
+      "symbol": "RoleInput"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/access/types.ts#L37",
+      "symbol": "ExactRoleStatements"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/access/types.ts#L41",
+      "symbol": "AccessControl"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/access/types.ts#L44",
+      "symbol": "RoleAuthorizeRequest"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/access/types.ts#L53",
+      "symbol": "Role"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/additional-fields/client.ts#L9",
+      "symbol": "inferAdditionalFields"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/admin/client.ts#L12",
+      "symbol": "AdminClientOptions"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/admin/client.ts#L13",
+      "symbol": "ac"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/admin/client.ts#L14",
+      "symbol": "roles"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/admin/client.ts#L21",
+      "symbol": "adminClient"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/admin/routes.ts#L94",
+      "symbol": "POST /admin/set-role"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/admin/routes.ts#L188",
+      "symbol": "GET /admin/get-user"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/admin/routes.ts#L299",
+      "symbol": "POST /admin/create-user"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/admin/routes.ts#L512",
+      "symbol": "POST /admin/update-user"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/admin/routes.ts#L793",
+      "symbol": "GET /admin/list-users"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/admin/routes.ts#L926",
+      "symbol": "POST /admin/list-user-sessions"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/admin/routes.ts#L1009",
+      "symbol": "POST /admin/unban-user"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/admin/routes.ts#L1119",
+      "symbol": "POST /admin/ban-user"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/admin/routes.ts#L1226",
+      "symbol": "POST /admin/impersonate-user"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/admin/routes.ts#L1377",
+      "symbol": "POST /admin/stop-impersonating"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/admin/routes.ts#L1458",
+      "symbol": "POST /admin/revoke-user-session"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/admin/routes.ts#L1534",
+      "symbol": "POST /admin/revoke-user-sessions"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/admin/routes.ts#L1611",
+      "symbol": "POST /admin/remove-user"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/admin/routes.ts#L1708",
+      "symbol": "POST /admin/set-user-password"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/admin/routes.ts#L1835",
+      "symbol": "POST /admin/has-permission"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/admin/types.ts#L6",
+      "symbol": "UserWithRole"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/admin/types.ts#L13",
+      "symbol": "SessionWithImpersonatedBy"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/admin/types.ts#L17",
+      "symbol": "AdminOptions"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/admin/types.ts#L23",
+      "symbol": "defaultRole"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/admin/types.ts#L32",
+      "symbol": "adminRoles"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/admin/types.ts#L38",
+      "symbol": "defaultBanReason"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/admin/types.ts#L44",
+      "symbol": "defaultBanExpiresIn"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/admin/types.ts#L50",
+      "symbol": "impersonationSessionDuration"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/admin/types.ts#L54",
+      "symbol": "schema"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/admin/types.ts#L59",
+      "symbol": "ac"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/admin/types.ts#L63",
+      "symbol": "roles"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/admin/types.ts#L73",
+      "symbol": "adminUserIds"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/admin/types.ts#L81",
+      "symbol": "bannedUserMessage"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/admin/types.ts#L92",
+      "symbol": "allowImpersonatingAdmins"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/admin/types.ts#L95",
+      "symbol": "InferAdminRolesFromOption"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/anonymous/client.ts#L6",
+      "symbol": "anonymousClient"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/anonymous/index.ts#L122",
+      "symbol": "POST /sign-in/anonymous"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/anonymous/index.ts#L206",
+      "symbol": "POST /delete-anonymous-user"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/anonymous/index.ts#L117",
+      "symbol": "anonymous"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/anonymous/types.ts#L10",
+      "symbol": "AnonymousSession"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/anonymous/types.ts#L14",
+      "symbol": "UserWithAnonymous"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/anonymous/types.ts#L18",
+      "symbol": "AnonymousOptions"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/anonymous/types.ts#L23",
+      "symbol": "emailDomainName"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/anonymous/types.ts#L28",
+      "symbol": "onLinkAccount"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/anonymous/types.ts#L44",
+      "symbol": "disableDeleteAnonymousUser"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/anonymous/types.ts#L50",
+      "symbol": "generateName"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/anonymous/types.ts#L67",
+      "symbol": "generateRandomEmail"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/anonymous/types.ts#L71",
+      "symbol": "schema"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/bearer/index.ts#L17",
+      "symbol": "BearerOptions"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/bearer/index.ts#L25",
+      "symbol": "requireSignature"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/bearer/index.ts#L42",
+      "symbol": "bearer"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/captcha/index.ts#L36",
+      "symbol": "captcha"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/captcha/types.ts#L3",
+      "symbol": "Provider"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/captcha/types.ts#L5",
+      "symbol": "BaseCaptchaOptions"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/captcha/types.ts#L6",
+      "symbol": "secretKey"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/captcha/types.ts#L11",
+      "symbol": "endpoints"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/captcha/types.ts#L12",
+      "symbol": "siteVerifyURLOverride"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/captcha/types.ts#L15",
+      "symbol": "GoogleRecaptchaOptions"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/captcha/types.ts#L16",
+      "symbol": "provider"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/captcha/types.ts#L17",
+      "symbol": "minScore"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/captcha/types.ts#L23",
+      "symbol": "expectedAction"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/captcha/types.ts#L28",
+      "symbol": "allowedHostnames"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/captcha/types.ts#L31",
+      "symbol": "CloudflareTurnstileOptions"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/captcha/types.ts#L32",
+      "symbol": "provider"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/captcha/types.ts#L37",
+      "symbol": "expectedAction"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/captcha/types.ts#L42",
+      "symbol": "allowedHostnames"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/captcha/types.ts#L45",
+      "symbol": "HCaptchaOptions"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/captcha/types.ts#L46",
+      "symbol": "provider"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/captcha/types.ts#L47",
+      "symbol": "siteKey"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/captcha/types.ts#L50",
+      "symbol": "CaptchaFoxOptions"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/captcha/types.ts#L51",
+      "symbol": "provider"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/captcha/types.ts#L52",
+      "symbol": "siteKey"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/captcha/types.ts#L60",
+      "symbol": "BotIdVerification"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/captcha/types.ts#L67",
+      "symbol": "ValidateRequestContext"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/captcha/types.ts#L78",
+      "symbol": "VercelBotIdOptions"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/captcha/types.ts#L79",
+      "symbol": "provider"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/captcha/types.ts#L85",
+      "symbol": "endpoints"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/captcha/types.ts#L90",
+      "symbol": "checkBotId"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/captcha/types.ts#L98",
+      "symbol": "validateRequest"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/captcha/types.ts#L101",
+      "symbol": "CaptchaOptions"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/custom-session/client.ts#L5",
+      "symbol": "customSessionClient"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/custom-session/index.ts#L71",
+      "symbol": "GET /get-session"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/custom-session/index.ts#L28",
+      "symbol": "CustomSessionPluginOptions"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/custom-session/index.ts#L33",
+      "symbol": "shouldMutateListDeviceSessionsEndpoint"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/custom-session/index.ts#L36",
+      "symbol": "customSession"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/device-authorization/client.ts#L5",
+      "symbol": "deviceAuthorizationClient"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/device-authorization/index.ts#L48",
+      "symbol": "deviceAuthorizationOptionsSchema"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/device-authorization/index.ts#L133",
+      "symbol": "DeviceAuthorizationOptions"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/device-authorization/index.ts#L137",
+      "symbol": "DeviceAuthorizationRequest"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/device-authorization/index.ts#L144",
+      "symbol": "DeviceAuthorizationGrantAuthorization"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/device-authorization/index.ts#L155",
+      "symbol": "DeviceAuthorizationGrant"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/device-authorization/index.ts#L192",
+      "symbol": "DeviceAuthorizationPluginOptions"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/device-authorization/index.ts#L196",
+      "symbol": "grant"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/device-authorization/index.ts#L242",
+      "symbol": "deviceAuthorization"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/device-authorization/routes.ts#L243",
+      "symbol": "POST /device/code"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/device-authorization/routes.ts#L653",
+      "symbol": "POST /device/token"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/device-authorization/routes.ts#L791",
+      "symbol": "GET /device"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/device-authorization/routes.ts#L930",
+      "symbol": "POST /device/approve"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/device-authorization/routes.ts#L1054",
+      "symbol": "POST /device/deny"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/email-otp/client.ts#L8",
+      "symbol": "emailOTPClient"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/email-otp/index.ts#L38",
+      "symbol": "emailOTP"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/email-otp/routes.ts#L102",
+      "symbol": "POST /email-otp/send-verification-otp"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/email-otp/routes.ts#L192",
+      "symbol": "Operation (server API only)"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/email-otp/routes.ts#L253",
+      "symbol": "Operation (server API only)"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/email-otp/routes.ts#L351",
+      "symbol": "POST /email-otp/check-verification-otp"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/email-otp/routes.ts#L428",
+      "symbol": "POST /email-otp/verify-email"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/email-otp/routes.ts#L597",
+      "symbol": "POST /sign-in/email-otp"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/email-otp/routes.ts#L720",
+      "symbol": "POST /email-otp/request-password-reset"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/email-otp/routes.ts#L815",
+      "symbol": "POST /forget-password/email-otp"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/email-otp/routes.ts#L911",
+      "symbol": "POST /email-otp/reset-password"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/email-otp/routes.ts#L1011",
+      "symbol": "POST /email-otp/request-email-change"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/email-otp/routes.ts#L1151",
+      "symbol": "POST /email-otp/change-email"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/email-otp/types.ts#L5",
+      "symbol": "RequiredEmailOTPOptions"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/email-otp/types.ts#L10",
+      "symbol": "EmailOTPOptions"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/email-otp/types.ts#L17",
+      "symbol": "sendVerificationOTP"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/email-otp/types.ts#L34",
+      "symbol": "otpLength"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/email-otp/types.ts#L40",
+      "symbol": "expiresIn"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/email-otp/types.ts#L44",
+      "symbol": "generateOTP"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/email-otp/types.ts#L60",
+      "symbol": "sendVerificationOnSignUp"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/email-otp/types.ts#L67",
+      "symbol": "disableSignUp"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/email-otp/types.ts#L72",
+      "symbol": "allowedAttempts"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/email-otp/types.ts#L79",
+      "symbol": "storeOTP"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/email-otp/types.ts#L102",
+      "symbol": "resendStrategy"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/email-otp/types.ts#L111",
+      "symbol": "changeEmail"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/email-otp/types.ts#L120",
+      "symbol": "overrideDefaultEmailVerification"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/email-otp/types.ts#L129",
+      "symbol": "rateLimit"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/generic-oauth/index.ts#L48",
+      "symbol": "BaseOAuthProviderOptions"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/generic-oauth/index.ts#L65",
+      "symbol": "authorization_endpoint"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/generic-oauth/index.ts#L66",
+      "symbol": "token_endpoint"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/generic-oauth/index.ts#L67",
+      "symbol": "userinfo_endpoint"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/generic-oauth/index.ts#L68",
+      "symbol": "issuer"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/generic-oauth/index.ts#L69",
+      "symbol": "jwks_uri"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/generic-oauth/index.ts#L70",
+      "symbol": "end_session_endpoint"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/generic-oauth/index.ts#L71",
+      "symbol": "id_token_signing_alg_values_supported"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/generic-oauth/index.ts#L244",
+      "symbol": "genericOAuth"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/generic-oauth/types.ts#L12",
+      "symbol": "GenericOAuthUserInfo"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/generic-oauth/types.ts#L18",
+      "symbol": "GenericOAuthOptions"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/generic-oauth/types.ts#L22",
+      "symbol": "config"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/generic-oauth/types.ts#L28",
+      "symbol": "GenericOAuthConfig"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/haveibeenpwned/index.ts#L52",
+      "symbol": "isPasswordCompromised"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/haveibeenpwned/index.ts#L99",
+      "symbol": "HaveIBeenPwnedOptions"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/haveibeenpwned/index.ts#L103",
+      "symbol": "customPasswordCompromisedMessage"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/haveibeenpwned/index.ts#L109",
+      "symbol": "paths"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/haveibeenpwned/index.ts#L115",
+      "symbol": "enabled"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/haveibeenpwned/index.ts#L118",
+      "symbol": "haveIBeenPwned"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/jwt/client.ts#L24",
+      "symbol": "jwtClient"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/jwt/index.ts#L109",
+      "symbol": "GET /jwks (configurable)"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/jwt/index.ts#L249",
+      "symbol": "GET /token"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/jwt/index.ts#L286",
+      "symbol": "signJWT (server API only)"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/jwt/index.ts#L310",
+      "symbol": "verifyJWT (server API only)"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/jwt/index.ts#L43",
+      "symbol": "jwt"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/jwt/types.ts#L6",
+      "symbol": "JwtOptions"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/jwt/types.ts#L15",
+      "symbol": "sessionCookieCache"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/jwt/types.ts#L16",
+      "symbol": "jwks"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/jwt/types.ts#L92",
+      "symbol": "jwt"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/jwt/types.ts#L184",
+      "symbol": "disableSettingJwtHeader"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/jwt/types.ts#L188",
+      "symbol": "schema"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/jwt/types.ts#L196",
+      "symbol": "adapter"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/jwt/types.ts#L232",
+      "symbol": "JWKOptions"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/jwt/types.ts#L234",
+      "symbol": "alg"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/jwt/types.ts#L235",
+      "symbol": "crv"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/jwt/types.ts#L238",
+      "symbol": "alg"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/jwt/types.ts#L239",
+      "symbol": "crv"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/jwt/types.ts#L242",
+      "symbol": "alg"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/jwt/types.ts#L243",
+      "symbol": "crv"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/jwt/types.ts#L246",
+      "symbol": "alg"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/jwt/types.ts#L247",
+      "symbol": "modulusLength"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/jwt/types.ts#L250",
+      "symbol": "alg"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/jwt/types.ts#L251",
+      "symbol": "modulusLength"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/jwt/types.ts#L254",
+      "symbol": "JWSAlgorithms"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/jwt/types.ts#L256",
+      "symbol": "Jwk"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/jwt/types.ts#L273",
+      "symbol": "ResolvedSigningKey"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/last-login-method/client.ts#L8",
+      "symbol": "LastLoginMethodClientConfig"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/last-login-method/client.ts#L36",
+      "symbol": "lastLoginMethodClient"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/last-login-method/index.ts#L18",
+      "symbol": "LastLoginMethodOptions"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/last-login-method/index.ts#L23",
+      "symbol": "cookieName"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/last-login-method/index.ts#L28",
+      "symbol": "maxAge"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/last-login-method/index.ts#L34",
+      "symbol": "customResolveMethod"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/last-login-method/index.ts#L41",
+      "symbol": "storeInDatabase"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/last-login-method/index.ts#L50",
+      "symbol": "beforeStoreCookie"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/last-login-method/index.ts#L60",
+      "symbol": "schema"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/last-login-method/index.ts#L72",
+      "symbol": "lastLoginMethod"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/magic-link/client.ts#L5",
+      "symbol": "magicLinkClient"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/magic-link/index.ts#L227",
+      "symbol": "POST /sign-in/magic-link"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/magic-link/index.ts#L322",
+      "symbol": "GET /magic-link/verify"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/magic-link/index.ts#L28",
+      "symbol": "MagicLinkOptions"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/magic-link/index.ts#L33",
+      "symbol": "expiresIn"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/magic-link/index.ts#L46",
+      "symbol": "allowedAttempts"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/magic-link/index.ts#L50",
+      "symbol": "sendMagicLink"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/magic-link/index.ts#L64",
+      "symbol": "disableSignUp"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/magic-link/index.ts#L73",
+      "symbol": "rateLimit"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/magic-link/index.ts#L82",
+      "symbol": "generateToken"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/magic-link/index.ts#L90",
+      "symbol": "storeToken"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/magic-link/index.ts#L181",
+      "symbol": "magicLink"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/multi-session/client.ts#L8",
+      "symbol": "multiSessionClient"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/multi-session/index.ts#L79",
+      "symbol": "GET /multi-session/list-device-sessions"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/multi-session/index.ts#L141",
+      "symbol": "POST /multi-session/set-active"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/multi-session/index.ts#L224",
+      "symbol": "POST /multi-session/revoke"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/multi-session/index.ts#L27",
+      "symbol": "MultiSessionConfig"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/multi-session/index.ts#L52",
+      "symbol": "multiSession"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/oauth-popup/client.ts#L15",
+      "symbol": "SignInPopupOptions"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/oauth-popup/client.ts#L17",
+      "symbol": "provider"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/oauth-popup/client.ts#L19",
+      "symbol": "providerId"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/oauth-popup/client.ts#L20",
+      "symbol": "callbackURL"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/oauth-popup/client.ts#L21",
+      "symbol": "errorCallbackURL"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/oauth-popup/client.ts#L22",
+      "symbol": "newUserCallbackURL"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/oauth-popup/client.ts#L23",
+      "symbol": "requestSignUp"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/oauth-popup/client.ts#L24",
+      "symbol": "scopes"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/oauth-popup/client.ts#L25",
+      "symbol": "additionalData"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/oauth-popup/client.ts#L27",
+      "symbol": "windowFeatures"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/oauth-popup/client.ts#L29",
+      "symbol": "timeoutMs"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/oauth-popup/client.ts#L32",
+      "symbol": "SignInPopupResult"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/oauth-popup/client.ts#L64",
+      "symbol": "getStoredPopupToken"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/oauth-popup/client.ts#L89",
+      "symbol": "popupBearerFetchPlugin"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/oauth-popup/client.ts#L221",
+      "symbol": "createSignInPopup"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/oauth-popup/client.ts#L341",
+      "symbol": "oauthPopupClient"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/oauth-popup/index.ts#L139",
+      "symbol": "GET /oauth-popup/start"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/oauth-popup/index.ts#L56",
+      "symbol": "OAUTH_POPUP_COMPLETE_SCRIPT"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/oauth-popup/index.ts#L87",
+      "symbol": "OAUTH_POPUP_SCRIPT_CSP_HASH"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/oauth-popup/index.ts#L274",
+      "symbol": "oauthPopup"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/oauth-popup/types.ts#L4",
+      "symbol": "OAuthPopupError"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/oauth-popup/types.ts#L13",
+      "symbol": "OAuthPopupMessage"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/oauth-popup/types.ts#L26",
+      "symbol": "OAuthPopupData"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/oauth-proxy/index.ts#L173",
+      "symbol": "GET /callback/:id/oauth-proxy"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/oauth-proxy/index.ts#L310",
+      "symbol": "GET /oauth-proxy-callback"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/oauth-proxy/index.ts#L45",
+      "symbol": "OAuthProxyOptions"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/oauth-proxy/index.ts#L54",
+      "symbol": "currentURL"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/oauth-proxy/index.ts#L60",
+      "symbol": "productionURL"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/oauth-proxy/index.ts#L70",
+      "symbol": "maxAge"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/oauth-proxy/index.ts#L84",
+      "symbol": "secret"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/oauth-proxy/index.ts#L165",
+      "symbol": "oAuthProxy"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/one-tap/client.ts#L18",
+      "symbol": "GsiButtonConfiguration"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/one-tap/client.ts#L89",
+      "symbol": "GoogleOneTapOptions"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/one-tap/client.ts#L93",
+      "symbol": "clientId"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/one-tap/client.ts#L97",
+      "symbol": "autoSelect"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/one-tap/client.ts#L103",
+      "symbol": "cancelOnTapOutside"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/one-tap/client.ts#L112",
+      "symbol": "uxMode"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/one-tap/client.ts#L119",
+      "symbol": "context"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/one-tap/client.ts#L123",
+      "symbol": "additionalOptions"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/one-tap/client.ts#L127",
+      "symbol": "promptOptions"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/one-tap/client.ts#L152",
+      "symbol": "GoogleOneTapActionOptions"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/one-tap/client.ts#L154",
+      "symbol": "fetchOptions"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/one-tap/client.ts#L158",
+      "symbol": "callbackURL"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/one-tap/client.ts#L163",
+      "symbol": "onPromptNotification"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/one-tap/client.ts#L164",
+      "symbol": "nonce"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/one-tap/client.ts#L169",
+      "symbol": "button"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/one-tap/client.ts#L198",
+      "symbol": "oneTapClient"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/one-tap/index.ts#L67",
+      "symbol": "POST /one-tap/callback"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/one-tap/index.ts#L28",
+      "symbol": "OneTapOptions"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/one-tap/index.ts#L34",
+      "symbol": "disableSignup"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/one-tap/index.ts#L41",
+      "symbol": "clientId"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/one-tap/index.ts#L62",
+      "symbol": "oneTap"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/one-time-token/client.ts#L5",
+      "symbol": "oneTimeTokenClient"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/one-time-token/index.ts#L137",
+      "symbol": "GET /one-time-token/generate"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/one-time-token/index.ts#L170",
+      "symbol": "POST /one-time-token/verify"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/one-time-token/index.ts#L25",
+      "symbol": "OneTimeTokenOptions"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/one-time-token/index.ts#L31",
+      "symbol": "expiresIn"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/one-time-token/index.ts#L35",
+      "symbol": "disableClientRequest"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/one-time-token/index.ts#L39",
+      "symbol": "generateToken"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/one-time-token/index.ts#L51",
+      "symbol": "disableSetSessionCookie"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/one-time-token/index.ts#L58",
+      "symbol": "storeToken"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/one-time-token/index.ts#L68",
+      "symbol": "setOttHeaderOnNewSession"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/one-time-token/index.ts#L77",
+      "symbol": "oneTimeToken"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/open-api/index.ts#L108",
+      "symbol": "GET /open-api/generate-schema"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/open-api/index.ts#L118",
+      "symbol": "GET /reference (configurable)"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/open-api/index.ts#L72",
+      "symbol": "OpenAPIOptions"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/open-api/index.ts#L81",
+      "symbol": "path"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/open-api/index.ts#L87",
+      "symbol": "disableDefaultReference"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/open-api/index.ts#L93",
+      "symbol": "theme"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/open-api/index.ts#L99",
+      "symbol": "nonce"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/open-api/index.ts#L102",
+      "symbol": "openAPI"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/organization/client.ts#L31",
+      "symbol": "clientSideHasPermission"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/organization/client.ts#L39",
+      "symbol": "OrganizationClientOptions"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/organization/client.ts#L40",
+      "symbol": "ac"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/organization/client.ts#L41",
+      "symbol": "roles"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/organization/client.ts#L46",
+      "symbol": "teams"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/organization/client.ts#L51",
+      "symbol": "schema"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/organization/client.ts#L80",
+      "symbol": "dynamicAccessControl"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/organization/client.ts#L87",
+      "symbol": "organizationClient"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/organization/client.ts#L293",
+      "symbol": "inferOrgAdditionalFields"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/organization/organization.ts#L195",
+      "symbol": "POST /organization/has-permission"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/organization/routes/crud-access-control.ts#L81",
+      "symbol": "POST /organization/create-role"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/organization/routes/crud-access-control.ts#L307",
+      "symbol": "POST /organization/delete-role"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/organization/routes/crud-access-control.ts#L544",
+      "symbol": "GET /organization/list-roles"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/organization/routes/crud-access-control.ts#L674",
+      "symbol": "GET /organization/get-role"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/organization/routes/crud-access-control.ts#L843",
+      "symbol": "POST /organization/update-role"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/organization/routes/crud-invites.ts#L141",
+      "symbol": "POST /organization/invite-member"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/organization/routes/crud-invites.ts#L636",
+      "symbol": "POST /organization/accept-invitation"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/organization/routes/crud-invites.ts#L893",
+      "symbol": "POST /organization/reject-invitation"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/organization/routes/crud-invites.ts#L1010",
+      "symbol": "POST /organization/cancel-invitation"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/organization/routes/crud-invites.ts#L1124",
+      "symbol": "GET /organization/get-invitation"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/organization/routes/crud-invites.ts#L1275",
+      "symbol": "GET /organization/list-invitations"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/organization/routes/crud-invites.ts#L1339",
+      "symbol": "GET /organization/list-user-invitations"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/organization/routes/crud-members.ts#L280",
+      "symbol": "POST /organization/remove-member"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/organization/routes/crud-members.ts#L487",
+      "symbol": "POST /organization/update-member-role"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/organization/routes/crud-members.ts#L788",
+      "symbol": "GET /organization/get-active-member"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/organization/routes/crud-members.ts#L859",
+      "symbol": "POST /organization/leave"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/organization/routes/crud-members.ts#L916",
+      "symbol": "GET /organization/list-members"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/organization/routes/crud-members.ts#L1073",
+      "symbol": "GET /organization/get-active-member-role"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/organization/routes/crud-org.ts#L72",
+      "symbol": "POST /organization/create"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/organization/routes/crud-org.ts#L318",
+      "symbol": "POST /organization/check-slug"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/organization/routes/crud-org.ts#L385",
+      "symbol": "POST /organization/update"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/organization/routes/crud-org.ts#L525",
+      "symbol": "POST /organization/delete"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/organization/routes/crud-org.ts#L652",
+      "symbol": "GET /organization/get-organization"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/organization/routes/crud-org.ts#L746",
+      "symbol": "GET /organization/get-full-organization"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/organization/routes/crud-org.ts#L863",
+      "symbol": "POST /organization/set-active"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/organization/routes/crud-org.ts#L985",
+      "symbol": "GET /organization/list"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/organization/routes/crud-team.ts#L39",
+      "symbol": "POST /organization/create-team"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/organization/routes/crud-team.ts#L233",
+      "symbol": "POST /organization/remove-team"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/organization/routes/crud-team.ts#L413",
+      "symbol": "POST /organization/update-team"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/organization/routes/crud-team.ts#L613",
+      "symbol": "GET /organization/list-teams"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/organization/routes/crud-team.ts#L714",
+      "symbol": "POST /organization/set-active-team"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/organization/routes/crud-team.ts#L828",
+      "symbol": "GET /organization/list-user-teams"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/organization/routes/crud-team.ts#L1006",
+      "symbol": "GET /organization/list-team-members"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/organization/routes/crud-team.ts#L1128",
+      "symbol": "POST /organization/add-team-member"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/organization/routes/crud-team.ts#L1344",
+      "symbol": "POST /organization/remove-team-member"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/organization/types.ts#L18",
+      "symbol": "OrganizationOptions"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/organization/types.ts#L32",
+      "symbol": "allowUserToCreateOrganization"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/organization/types.ts#L50",
+      "symbol": "organizationLimit"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/organization/types.ts#L59",
+      "symbol": "creatorRole"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/organization/types.ts#L67",
+      "symbol": "membershipLimit"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/organization/types.ts#L75",
+      "symbol": "ac"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/organization/types.ts#L79",
+      "symbol": "roles"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/organization/types.ts#L87",
+      "symbol": "dynamicAccessControl"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/organization/types.ts#L108",
+      "symbol": "teams"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/organization/types.ts#L184",
+      "symbol": "invitationExpiresIn"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/organization/types.ts#L190",
+      "symbol": "invitationLimit"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/organization/types.ts#L206",
+      "symbol": "cancelPendingInvitationsOnReInvite"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/organization/types.ts#L229",
+      "symbol": "requireEmailVerificationOnInvitation"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/organization/types.ts#L254",
+      "symbol": "sendInvitationEmail"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/organization/types.ts#L293",
+      "symbol": "schema"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/organization/types.ts#L359",
+      "symbol": "disableOrganizationDeletion"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/organization/types.ts#L363",
+      "symbol": "organizationHooks"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/phone-number/client.ts#L8",
+      "symbol": "phoneNumberClient"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/phone-number/index.ts#L29",
+      "symbol": "phoneNumber"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/phone-number/routes.ts#L61",
+      "symbol": "POST /sign-in/phone-number"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/phone-number/routes.ts#L239",
+      "symbol": "POST /phone-number/send-otp"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/phone-number/routes.ts#L437",
+      "symbol": "POST /phone-number/verify"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/phone-number/routes.ts#L705",
+      "symbol": "POST /phone-number/request-password-reset"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/phone-number/routes.ts#L791",
+      "symbol": "POST /phone-number/reset-password"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/phone-number/types.ts#L6",
+      "symbol": "UserWithPhoneNumber"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/phone-number/types.ts#L11",
+      "symbol": "PhoneNumberOptions"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/phone-number/types.ts#L16",
+      "symbol": "otpLength"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/phone-number/types.ts#L24",
+      "symbol": "sendOTP"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/phone-number/types.ts#L38",
+      "symbol": "verifyOTP"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/phone-number/types.ts#L54",
+      "symbol": "sendPasswordResetOTP"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/phone-number/types.ts#L64",
+      "symbol": "expiresIn"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/phone-number/types.ts#L70",
+      "symbol": "phoneNumberValidator"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/phone-number/types.ts#L78",
+      "symbol": "requireVerification"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/phone-number/types.ts#L82",
+      "symbol": "callbackOnVerification"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/phone-number/types.ts#L97",
+      "symbol": "signUpOnVerification"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/phone-number/types.ts#L124",
+      "symbol": "schema"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/phone-number/types.ts#L129",
+      "symbol": "allowedAttempts"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/siwe/client.ts#L5",
+      "symbol": "siweClient"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/siwe/index.ts#L98",
+      "symbol": "/siwe/nonce"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/siwe/index.ts#L99",
+      "symbol": "/siwe/get-nonce"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/siwe/index.ts#L100",
+      "symbol": "POST /siwe/verify"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/siwe/index.ts#L34",
+      "symbol": "SIWEPluginOptions"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/siwe/index.ts#L35",
+      "symbol": "domain"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/siwe/index.ts#L36",
+      "symbol": "emailDomainName"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/siwe/index.ts#L37",
+      "symbol": "anonymous"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/siwe/index.ts#L38",
+      "symbol": "getNonce"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/siwe/index.ts#L39",
+      "symbol": "verifyMessage"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/siwe/index.ts#L40",
+      "symbol": "ensLookup"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/siwe/index.ts#L41",
+      "symbol": "schema"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/siwe/index.ts#L65",
+      "symbol": "siwe"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/siwe/types.ts#L5",
+      "symbol": "WalletAddress"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/siwe/types.ts#L44",
+      "symbol": "SIWEVerifyMessageArgs"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/siwe/types.ts#L52",
+      "symbol": "ENSLookupArgs"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/siwe/types.ts#L56",
+      "symbol": "ENSLookupResult"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/test-utils/index.ts#L74",
+      "symbol": "testUtils"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/test-utils/types.ts#L3",
+      "symbol": "TestUtilsOptions"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/test-utils/types.ts#L5",
+      "symbol": "captureOTP"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/test-utils/types.ts#L8",
+      "symbol": "TestCookie"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/test-utils/types.ts#L19",
+      "symbol": "LoginResult"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/test-utils/types.ts#L28",
+      "symbol": "TestAuthOptions"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/test-utils/types.ts#L29",
+      "symbol": "userId"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/test-utils/types.ts#L31",
+      "symbol": "session"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/test-utils/types.ts#L34",
+      "symbol": "TestHelpers"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/two-factor/backup-codes/index.ts#L209",
+      "symbol": "POST /two-factor/verify-backup-code"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/two-factor/backup-codes/index.ts#L434",
+      "symbol": "POST /two-factor/generate-backup-codes"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/two-factor/backup-codes/index.ts#L552",
+      "symbol": "viewBackupCodes (server API only)"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/two-factor/backup-codes/index.ts#L26",
+      "symbol": "BackupCodeOptions"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/two-factor/backup-codes/index.ts#L32",
+      "symbol": "amount"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/two-factor/backup-codes/index.ts#L38",
+      "symbol": "length"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/two-factor/backup-codes/index.ts#L42",
+      "symbol": "customBackupCodesGenerate"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/two-factor/backup-codes/index.ts#L46",
+      "symbol": "storeBackupCodes"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/two-factor/backup-codes/index.ts#L62",
+      "symbol": "allowPasswordless"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/two-factor/backup-codes/index.ts#L72",
+      "symbol": "encodeBackupCodes"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/two-factor/backup-codes/index.ts#L90",
+      "symbol": "generateBackupCodes"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/two-factor/backup-codes/index.ts#L103",
+      "symbol": "verifyBackupCode"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/two-factor/backup-codes/index.ts#L124",
+      "symbol": "getBackupCodes"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/two-factor/backup-codes/index.ts#L177",
+      "symbol": "backupCode2fa"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/two-factor/client.ts#L9",
+      "symbol": "twoFactorClient"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/two-factor/index.ts#L220",
+      "symbol": "POST /two-factor/enable"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/two-factor/index.ts#L425",
+      "symbol": "POST /two-factor/disable"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/two-factor/index.ts#L120",
+      "symbol": "twoFactor"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/two-factor/otp/index.ts#L178",
+      "symbol": "POST /two-factor/send-otp"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/two-factor/otp/index.ts#L240",
+      "symbol": "POST /two-factor/verify-otp"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/two-factor/otp/index.ts#L28",
+      "symbol": "OTPOptions"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/two-factor/otp/index.ts#L35",
+      "symbol": "period"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/two-factor/otp/index.ts#L41",
+      "symbol": "digits"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/two-factor/otp/index.ts#L50",
+      "symbol": "sendOTP"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/two-factor/otp/index.ts#L72",
+      "symbol": "allowedAttempts"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/two-factor/otp/index.ts#L73",
+      "symbol": "storeOTP"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/two-factor/otp/index.ts#L119",
+      "symbol": "otp2fa"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/two-factor/totp/index.ts#L117",
+      "symbol": "generateTOTP (server API only)"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/two-factor/totp/index.ts#L163",
+      "symbol": "POST /two-factor/get-totp-uri"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/two-factor/totp/index.ts#L244",
+      "symbol": "POST /two-factor/verify-totp"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/two-factor/totp/index.ts#L27",
+      "symbol": "TOTPOptions"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/two-factor/totp/index.ts#L31",
+      "symbol": "issuer"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/two-factor/totp/index.ts#L37",
+      "symbol": "digits"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/two-factor/totp/index.ts#L42",
+      "symbol": "period"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/two-factor/totp/index.ts#L46",
+      "symbol": "backupCodes"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/two-factor/totp/index.ts#L53",
+      "symbol": "allowPasswordless"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/two-factor/totp/index.ts#L57",
+      "symbol": "disable"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/two-factor/totp/index.ts#L98",
+      "symbol": "totp2fa"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/two-factor/types.ts#L8",
+      "symbol": "TwoFactorOptions"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/two-factor/types.ts#L12",
+      "symbol": "issuer"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/two-factor/types.ts#L19",
+      "symbol": "twoFactorTable"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/two-factor/types.ts#L23",
+      "symbol": "totpOptions"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/two-factor/types.ts#L27",
+      "symbol": "otpOptions"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/two-factor/types.ts#L31",
+      "symbol": "backupCodeOptions"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/two-factor/types.ts#L36",
+      "symbol": "skipVerificationOnEnable"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/two-factor/types.ts#L43",
+      "symbol": "allowPasswordless"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/two-factor/types.ts#L47",
+      "symbol": "schema"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/two-factor/types.ts#L55",
+      "symbol": "twoFactorCookieMaxAge"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/two-factor/types.ts#L63",
+      "symbol": "trustDeviceMaxAge"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/two-factor/types.ts#L69",
+      "symbol": "accountLockout"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/two-factor/types.ts#L91",
+      "symbol": "UserWithTwoFactor"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/two-factor/types.ts#L98",
+      "symbol": "TwoFactorProvider"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/two-factor/types.ts#L104",
+      "symbol": "TwoFactorTable"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/username/client.ts#L8",
+      "symbol": "UsernameClientOptions"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/username/client.ts#L17",
+      "symbol": "displayUsername"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/username/client.ts#L20",
+      "symbol": "usernameClient"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/username/index.ts#L355",
+      "symbol": "POST /sign-in/username"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/username/index.ts#L546",
+      "symbol": "POST /is-username-available"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/username/index.ts#L31",
+      "symbol": "UsernameOptions"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/username/index.ts#L32",
+      "symbol": "schema"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/username/index.ts#L38",
+      "symbol": "minUsernameLength"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/username/index.ts#L44",
+      "symbol": "maxUsernameLength"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/username/index.ts#L50",
+      "symbol": "usernameValidator"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/username/index.ts#L58",
+      "symbol": "displayUsernameValidator"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/username/index.ts#L66",
+      "symbol": "usernameNormalization"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/username/index.ts#L72",
+      "symbol": "displayUsernameNormalization"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/username/index.ts#L80",
+      "symbol": "validationOrder"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/username/index.ts#L102",
+      "symbol": "immutableUsername"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/username/index.ts#L112",
+      "symbol": "displayUsername"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/username/index.ts#L724",
+      "symbol": "UsernamePlugin"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/username/index.ts#L725",
+      "symbol": "UsernamePluginWithoutDisplayUsername"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/username/index.ts#L729",
+      "symbol": "username"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/username/index.ts#L732",
+      "symbol": "username"
+    },
+    {
+      "source": "packages/better-auth/src/plugins/username/index.ts#L733",
+      "symbol": "username"
+    },
+    {
+      "source": "packages/api-key/src/client.ts#L8",
+      "symbol": "apiKeyClient"
+    },
+    {
+      "source": "packages/api-key/src/client.ts#L22",
+      "symbol": "ApiKeyClientPlugin"
+    },
+    {
+      "source": "packages/api-key/src/index.ts#L27",
+      "symbol": "defaultKeyHasher"
+    },
+    {
+      "source": "packages/api-key/src/index.ts#L39",
+      "symbol": "API_KEY_TABLE_NAME"
+    },
+    {
+      "source": "packages/api-key/src/index.ts#L41",
+      "symbol": "apiKey"
+    },
+    {
+      "source": "packages/api-key/src/routes/create-api-key.ts#L129",
+      "symbol": "POST /api-key/create"
+    },
+    {
+      "source": "packages/api-key/src/routes/delete-all-expired-api-keys.ts#L12",
+      "symbol": "Operation (server API only)"
+    },
+    {
+      "source": "packages/api-key/src/routes/delete-api-key.ts#L42",
+      "symbol": "POST /api-key/delete"
+    },
+    {
+      "source": "packages/api-key/src/routes/get-api-key.ts#L40",
+      "symbol": "GET /api-key/get"
+    },
+    {
+      "source": "packages/api-key/src/routes/index.ts#L14",
+      "symbol": "PredefinedApiKeyOptions"
+    },
+    {
+      "source": "packages/api-key/src/routes/index.ts#L36",
+      "symbol": "keyExpiration"
+    },
+    {
+      "source": "packages/api-key/src/routes/index.ts#L39",
+      "symbol": "startingCharactersConfig"
+    },
+    {
+      "source": "packages/api-key/src/routes/index.ts#L42",
+      "symbol": "rateLimit"
+    },
+    {
+      "source": "packages/api-key/src/routes/index.ts#L45",
+      "symbol": "resolveConfiguration"
+    },
+    {
+      "source": "packages/api-key/src/routes/index.ts#L76",
+      "symbol": "isDefaultConfigId"
+    },
+    {
+      "source": "packages/api-key/src/routes/index.ts#L86",
+      "symbol": "configIdMatches"
+    },
+    {
+      "source": "packages/api-key/src/routes/index.ts#L100",
+      "symbol": "deleteAllExpiredApiKeys"
+    },
+    {
+      "source": "packages/api-key/src/routes/index.ts#L133",
+      "symbol": "createApiKeyRoutes"
+    },
+    {
+      "source": "packages/api-key/src/routes/list-api-keys.ts#L92",
+      "symbol": "GET /api-key/list"
+    },
+    {
+      "source": "packages/api-key/src/routes/update-api-key.ts#L119",
+      "symbol": "POST /api-key/update"
+    },
+    {
+      "source": "packages/api-key/src/routes/verify-api-key.ts#L514",
+      "symbol": "Operation (server API only)"
+    },
+    {
+      "source": "packages/api-key/src/types.ts#L12",
+      "symbol": "ApiKeyOptions"
+    },
+    {
+      "source": "packages/api-key/src/types.ts#L13",
+      "symbol": "schema"
+    },
+    {
+      "source": "packages/api-key/src/types.ts#L16",
+      "symbol": "ApiKeyConfigurationOptions"
+    },
+    {
+      "source": "packages/api-key/src/types.ts#L20",
+      "symbol": "configId"
+    },
+    {
+      "source": "packages/api-key/src/types.ts#L25",
+      "symbol": "apiKeyHeaders"
+    },
+    {
+      "source": "packages/api-key/src/types.ts#L34",
+      "symbol": "disableKeyHashing"
+    },
+    {
+      "source": "packages/api-key/src/types.ts#L38",
+      "symbol": "customAPIKeyGetter"
+    },
+    {
+      "source": "packages/api-key/src/types.ts#L44",
+      "symbol": "customAPIKeyValidator"
+    },
+    {
+      "source": "packages/api-key/src/types.ts#L53",
+      "symbol": "customKeyGenerator"
+    },
+    {
+      "source": "packages/api-key/src/types.ts#L68",
+      "symbol": "startingCharactersConfig"
+    },
+    {
+      "source": "packages/api-key/src/types.ts#L90",
+      "symbol": "defaultKeyLength"
+    },
+    {
+      "source": "packages/api-key/src/types.ts#L96",
+      "symbol": "defaultPrefix"
+    },
+    {
+      "source": "packages/api-key/src/types.ts#L102",
+      "symbol": "maximumPrefixLength"
+    },
+    {
+      "source": "packages/api-key/src/types.ts#L108",
+      "symbol": "requireName"
+    },
+    {
+      "source": "packages/api-key/src/types.ts#L114",
+      "symbol": "minimumPrefixLength"
+    },
+    {
+      "source": "packages/api-key/src/types.ts#L120",
+      "symbol": "maximumNameLength"
+    },
+    {
+      "source": "packages/api-key/src/types.ts#L126",
+      "symbol": "minimumNameLength"
+    },
+    {
+      "source": "packages/api-key/src/types.ts#L132",
+      "symbol": "enableMetadata"
+    },
+    {
+      "source": "packages/api-key/src/types.ts#L136",
+      "symbol": "keyExpiration"
+    },
+    {
+      "source": "packages/api-key/src/types.ts#L171",
+      "symbol": "rateLimit"
+    },
+    {
+      "source": "packages/api-key/src/types.ts#L203",
+      "symbol": "enableSessionForAPIKeys"
+    },
+    {
+      "source": "packages/api-key/src/types.ts#L207",
+      "symbol": "permissions"
+    },
+    {
+      "source": "packages/api-key/src/types.ts#L228",
+      "symbol": "storage"
+    },
+    {
+      "source": "packages/api-key/src/types.ts#L236",
+      "symbol": "fallbackToDatabase"
+    },
+    {
+      "source": "packages/api-key/src/types.ts#L246",
+      "symbol": "customStorage"
+    },
+    {
+      "source": "packages/api-key/src/types.ts#L260",
+      "symbol": "deferUpdates"
+    },
+    {
+      "source": "packages/api-key/src/types.ts#L266",
+      "symbol": "references"
+    },
+    {
+      "source": "packages/api-key/src/types.ts#L269",
+      "symbol": "ApiKey"
+    },
+    {
+      "source": "packages/cimd/src/index.ts#L26",
+      "symbol": "createCimdClientDiscovery"
+    },
+    {
+      "source": "packages/cimd/src/index.ts#L57",
+      "symbol": "cimd"
+    },
+    {
+      "source": "packages/cimd/src/types.ts#L9",
+      "symbol": "CimdMetadataProfile"
+    },
+    {
+      "source": "packages/cimd/src/types.ts#L11",
+      "symbol": "CimdClientCreatedEvent"
+    },
+    {
+      "source": "packages/cimd/src/types.ts#L20",
+      "symbol": "CimdClientRefreshedEvent"
+    },
+    {
+      "source": "packages/cimd/src/types.ts#L31",
+      "symbol": "CimdMetadataFetchPolicy"
+    },
+    {
+      "source": "packages/cimd/src/types.ts#L74",
+      "symbol": "CimdOptions"
+    },
+    {
+      "source": "packages/cimd/src/types.ts#L85",
+      "symbol": "fetchClientMetadataResource"
+    },
+    {
+      "source": "packages/cimd/src/types.ts#L93",
+      "symbol": "metadataProfile"
+    },
+    {
+      "source": "packages/cimd/src/types.ts#L104",
+      "symbol": "metadataRevalidationInterval"
+    },
+    {
+      "source": "packages/cimd/src/types.ts#L119",
+      "symbol": "metadataStaleIfError"
+    },
+    {
+      "source": "packages/cimd/src/types.ts#L127",
+      "symbol": "metadataFetchPolicy"
+    },
+    {
+      "source": "packages/cimd/src/types.ts#L135",
+      "symbol": "maxCacheEntries"
+    },
+    {
+      "source": "packages/cimd/src/types.ts#L155",
+      "symbol": "originBoundFields"
+    },
+    {
+      "source": "packages/cimd/src/types.ts#L167",
+      "symbol": "isMetadataDocumentUrlAllowed"
+    },
+    {
+      "source": "packages/cimd/src/types.ts#L189",
+      "symbol": "isCrossOriginJwksUriAllowed"
+    },
+    {
+      "source": "packages/cimd/src/types.ts#L202",
+      "symbol": "onClientCreated"
+    },
+    {
+      "source": "packages/cimd/src/types.ts#L211",
+      "symbol": "onClientRefreshed"
+    },
+    {
+      "source": "packages/electron/src/client.ts#L65",
+      "symbol": "electronClient"
+    },
+    {
+      "source": "packages/electron/src/index.ts#L32",
+      "symbol": "electron"
+    },
+    {
+      "source": "packages/electron/src/routes.ts#L40",
+      "symbol": "POST /electron/token"
+    },
+    {
+      "source": "packages/electron/src/routes.ts#L167",
+      "symbol": "GET /electron/init-oauth-proxy"
+    },
+    {
+      "source": "packages/electron/src/routes.ts#L280",
+      "symbol": "POST /electron/transfer-user"
+    },
+    {
+      "source": "packages/electron/src/types/client.ts#L5",
+      "symbol": "Storage"
+    },
+    {
+      "source": "packages/electron/src/types/client.ts#L10",
+      "symbol": "ElectronSharedClientOptions"
+    },
+    {
+      "source": "packages/electron/src/types/client.ts#L19",
+      "symbol": "protocol"
+    },
+    {
+      "source": "packages/electron/src/types/client.ts#L29",
+      "symbol": "callbackPath"
+    },
+    {
+      "source": "packages/electron/src/types/client.ts#L32",
+      "symbol": "ElectronClientOptions"
+    },
+    {
+      "source": "packages/electron/src/types/client.ts#L38",
+      "symbol": "signInURL"
+    },
+    {
+      "source": "packages/electron/src/types/client.ts#L39",
+      "symbol": "protocol"
+    },
+    {
+      "source": "packages/electron/src/types/client.ts#L57",
+      "symbol": "storage"
+    },
+    {
+      "source": "packages/electron/src/types/client.ts#L62",
+      "symbol": "storagePrefix"
+    },
+    {
+      "source": "packages/electron/src/types/client.ts#L68",
+      "symbol": "sanitizeUser"
+    },
+    {
+      "source": "packages/electron/src/types/client.ts#L76",
+      "symbol": "userImageProxy"
+    },
+    {
+      "source": "packages/electron/src/types/client.ts#L125",
+      "symbol": "cookiePrefix"
+    },
+    {
+      "source": "packages/electron/src/types/client.ts#L131",
+      "symbol": "channelPrefix"
+    },
+    {
+      "source": "packages/electron/src/types/client.ts#L137",
+      "symbol": "disableCache"
+    },
+    {
+      "source": "packages/electron/src/types/client.ts#L140",
+      "symbol": "ElectronProxyClientOptions"
+    },
+    {
+      "source": "packages/electron/src/types/client.ts#L147",
+      "symbol": "cookiePrefix"
+    },
+    {
+      "source": "packages/electron/src/types/options.ts#L1",
+      "symbol": "ElectronSharedOptions"
+    },
+    {
+      "source": "packages/electron/src/types/options.ts#L7",
+      "symbol": "clientID"
+    },
+    {
+      "source": "packages/electron/src/types/options.ts#L10",
+      "symbol": "ElectronOptions"
+    },
+    {
+      "source": "packages/electron/src/types/options.ts#L16",
+      "symbol": "codeExpiresIn"
+    },
+    {
+      "source": "packages/electron/src/types/options.ts#L22",
+      "symbol": "redirectCookieExpiresIn"
+    },
+    {
+      "source": "packages/electron/src/types/options.ts#L28",
+      "symbol": "cookiePrefix"
+    },
+    {
+      "source": "packages/expo/src/client.ts#L82",
+      "symbol": "getSetCookie"
+    },
+    {
+      "source": "packages/expo/src/client.ts#L110",
+      "symbol": "getCookie"
+    },
+    {
+      "source": "packages/expo/src/client.ts#L215",
+      "symbol": "hasBetterAuthCookies"
+    },
+    {
+      "source": "packages/expo/src/client.ts#L249",
+      "symbol": "expoClient"
+    },
+    {
+      "source": "packages/expo/src/index.ts#L12",
+      "symbol": "ExpoOptions"
+    },
+    {
+      "source": "packages/expo/src/index.ts#L17",
+      "symbol": "disableOriginOverride"
+    },
+    {
+      "source": "packages/expo/src/index.ts#L28",
+      "symbol": "expo"
+    },
+    {
+      "source": "packages/expo/src/routes.ts#L61",
+      "symbol": "GET /expo-authorization-proxy"
+    },
+    {
+      "source": "packages/i18n/src/client.ts#L22",
+      "symbol": "i18nClient"
+    },
+    {
+      "source": "packages/i18n/src/index.ts#L67",
+      "symbol": "i18n"
+    },
+    {
+      "source": "packages/i18n/src/types.ts#L34",
+      "symbol": "TranslationDictionary"
+    },
+    {
+      "source": "packages/i18n/src/types.ts#L40",
+      "symbol": "LocaleDetectionStrategy"
+    },
+    {
+      "source": "packages/i18n/src/types.ts#L49",
+      "symbol": "I18nOptions"
+    },
+    {
+      "source": "packages/i18n/src/types.ts#L58",
+      "symbol": "translations"
+    },
+    {
+      "source": "packages/i18n/src/types.ts#L66",
+      "symbol": "defaultLocale"
+    },
+    {
+      "source": "packages/i18n/src/types.ts#L72",
+      "symbol": "detection"
+    },
+    {
+      "source": "packages/i18n/src/types.ts#L78",
+      "symbol": "localeCookie"
+    },
+    {
+      "source": "packages/i18n/src/types.ts#L84",
+      "symbol": "userLocaleField"
+    },
+    {
+      "source": "packages/i18n/src/types.ts#L93",
+      "symbol": "getLocale"
+    },
+    {
+      "source": "packages/oauth-provider/src/client.ts#L8",
+      "symbol": "oauthProviderClient"
+    },
+    {
+      "source": "packages/oauth-provider/src/client.ts#L61",
+      "symbol": "oauthDeviceAuthorizationClient"
+    },
+    {
+      "source": "packages/oauth-provider/src/middleware/index.ts#L5",
+      "symbol": "publicSessionMiddleware"
+    },
+    {
+      "source": "packages/oauth-provider/src/oauth.ts#L365",
+      "symbol": "GET / POST /oauth2/authorize"
+    },
+    {
+      "source": "packages/oauth-provider/src/oauth.ts#L764",
+      "symbol": "GET /.well-known/oauth-authorization-server"
+    },
+    {
+      "source": "packages/oauth-provider/src/oauth.ts#L788",
+      "symbol": "GET /.well-known/openid-configuration"
+    },
+    {
+      "source": "packages/oauth-provider/src/oauth.ts#L805",
+      "symbol": "POST /oauth2/consent"
+    },
+    {
+      "source": "packages/oauth-provider/src/oauth.ts#L863",
+      "symbol": "POST /oauth2/continue"
+    },
+    {
+      "source": "packages/oauth-provider/src/oauth.ts#L921",
+      "symbol": "POST /oauth2/token"
+    },
+    {
+      "source": "packages/oauth-provider/src/oauth.ts#L1117",
+      "symbol": "POST /oauth2/introspect"
+    },
+    {
+      "source": "packages/oauth-provider/src/oauth.ts#L1258",
+      "symbol": "POST /oauth2/revoke"
+    },
+    {
+      "source": "packages/oauth-provider/src/oauth.ts#L1347",
+      "symbol": "GET / POST /oauth2/userinfo"
+    },
+    {
+      "source": "packages/oauth-provider/src/oauth.ts#L1478",
+      "symbol": "GET / POST /oauth2/end-session"
+    },
+    {
+      "source": "packages/oauth-provider/src/oauth.ts#L1533",
+      "symbol": "POST /oauth2/end-session/confirm"
+    },
+    {
+      "source": "packages/oauth-provider/src/oauth.ts#L1550",
+      "symbol": "POST /oauth2/register"
+    },
+    {
+      "source": "packages/oauth-provider/src/oauthClient/index.ts#L27",
+      "symbol": "POST /admin/oauth2/create-client"
+    },
+    {
+      "source": "packages/oauth-provider/src/oauthClient/index.ts#L235",
+      "symbol": "POST /oauth2/create-client"
+    },
+    {
+      "source": "packages/oauth-provider/src/oauthClient/index.ts#L420",
+      "symbol": "GET /oauth2/get-client"
+    },
+    {
+      "source": "packages/oauth-provider/src/oauthClient/index.ts#L440",
+      "symbol": "GET /oauth2/public-client"
+    },
+    {
+      "source": "packages/oauth-provider/src/oauthClient/index.ts#L461",
+      "symbol": "POST /oauth2/public-client-prelogin"
+    },
+    {
+      "source": "packages/oauth-provider/src/oauthClient/index.ts#L483",
+      "symbol": "GET /oauth2/get-clients"
+    },
+    {
+      "source": "packages/oauth-provider/src/oauthClient/index.ts#L501",
+      "symbol": "PATCH /admin/oauth2/update-client"
+    },
+    {
+      "source": "packages/oauth-provider/src/oauthClient/index.ts#L558",
+      "symbol": "POST /oauth2/update-client"
+    },
+    {
+      "source": "packages/oauth-provider/src/oauthClient/index.ts#L602",
+      "symbol": "POST /oauth2/client/rotate-secret"
+    },
+    {
+      "source": "packages/oauth-provider/src/oauthClient/index.ts#L627",
+      "symbol": "POST /oauth2/client/rotate-keys"
+    },
+    {
+      "source": "packages/oauth-provider/src/oauthClient/index.ts#L655",
+      "symbol": "POST /oauth2/delete-client"
+    },
+    {
+      "source": "packages/oauth-provider/src/oauthClient/index.ts#L26",
+      "symbol": "adminCreateOAuthClient"
+    },
+    {
+      "source": "packages/oauth-provider/src/oauthClient/index.ts#L234",
+      "symbol": "createOAuthClient"
+    },
+    {
+      "source": "packages/oauth-provider/src/oauthClient/index.ts#L419",
+      "symbol": "getOAuthClient"
+    },
+    {
+      "source": "packages/oauth-provider/src/oauthClient/index.ts#L439",
+      "symbol": "getOAuthClientPublic"
+    },
+    {
+      "source": "packages/oauth-provider/src/oauthClient/index.ts#L460",
+      "symbol": "getOAuthClientPublicPrelogin"
+    },
+    {
+      "source": "packages/oauth-provider/src/oauthClient/index.ts#L482",
+      "symbol": "getOAuthClients"
+    },
+    {
+      "source": "packages/oauth-provider/src/oauthClient/index.ts#L500",
+      "symbol": "adminUpdateOAuthClient"
+    },
+    {
+      "source": "packages/oauth-provider/src/oauthClient/index.ts#L557",
+      "symbol": "updateOAuthClient"
+    },
+    {
+      "source": "packages/oauth-provider/src/oauthClient/index.ts#L601",
+      "symbol": "rotateClientSecret"
+    },
+    {
+      "source": "packages/oauth-provider/src/oauthClient/index.ts#L626",
+      "symbol": "rotateClientKeys"
+    },
+    {
+      "source": "packages/oauth-provider/src/oauthClient/index.ts#L654",
+      "symbol": "deleteOAuthClient"
+    },
+    {
+      "source": "packages/oauth-provider/src/oauthConsent/index.ts#L12",
+      "symbol": "GET /oauth2/get-consent"
+    },
+    {
+      "source": "packages/oauth-provider/src/oauthConsent/index.ts#L32",
+      "symbol": "GET /oauth2/get-consents"
+    },
+    {
+      "source": "packages/oauth-provider/src/oauthConsent/index.ts#L49",
+      "symbol": "POST /oauth2/update-consent"
+    },
+    {
+      "source": "packages/oauth-provider/src/oauthConsent/index.ts#L72",
+      "symbol": "POST /oauth2/delete-consent"
+    },
+    {
+      "source": "packages/oauth-provider/src/oauthConsent/index.ts#L11",
+      "symbol": "getOAuthConsent"
+    },
+    {
+      "source": "packages/oauth-provider/src/oauthConsent/index.ts#L31",
+      "symbol": "getOAuthConsents"
+    },
+    {
+      "source": "packages/oauth-provider/src/oauthConsent/index.ts#L48",
+      "symbol": "updateOAuthConsent"
+    },
+    {
+      "source": "packages/oauth-provider/src/oauthConsent/index.ts#L71",
+      "symbol": "deleteOAuthConsent"
+    },
+    {
+      "source": "packages/oauth-provider/src/oauthResource/index.ts#L36",
+      "symbol": "POST /admin/oauth2/resources"
+    },
+    {
+      "source": "packages/oauth-provider/src/oauthResource/index.ts#L47",
+      "symbol": "GET /admin/oauth2/resources"
+    },
+    {
+      "source": "packages/oauth-provider/src/oauthResource/index.ts#L57",
+      "symbol": "GET /admin/oauth2/resources/:identifier"
+    },
+    {
+      "source": "packages/oauth-provider/src/oauthResource/index.ts#L71",
+      "symbol": "PATCH /admin/oauth2/resources/:identifier"
+    },
+    {
+      "source": "packages/oauth-provider/src/oauthResource/index.ts#L86",
+      "symbol": "DELETE /admin/oauth2/resources/:identifier"
+    },
+    {
+      "source": "packages/oauth-provider/src/oauthResource/index.ts#L100",
+      "symbol": "POST /admin/oauth2/resources/:identifier/clients/:client_id"
+    },
+    {
+      "source": "packages/oauth-provider/src/oauthResource/index.ts#L114",
+      "symbol": "DELETE /admin/oauth2/resources/:identifier/clients/:client_id"
+    },
+    {
+      "source": "packages/oauth-provider/src/oauthResource/index.ts#L35",
+      "symbol": "adminCreateOAuthResource"
+    },
+    {
+      "source": "packages/oauth-provider/src/oauthResource/index.ts#L46",
+      "symbol": "adminListOAuthResources"
+    },
+    {
+      "source": "packages/oauth-provider/src/oauthResource/index.ts#L56",
+      "symbol": "adminGetOAuthResource"
+    },
+    {
+      "source": "packages/oauth-provider/src/oauthResource/index.ts#L70",
+      "symbol": "adminUpdateOAuthResource"
+    },
+    {
+      "source": "packages/oauth-provider/src/oauthResource/index.ts#L85",
+      "symbol": "adminDeleteOAuthResource"
+    },
+    {
+      "source": "packages/oauth-provider/src/oauthResource/index.ts#L99",
+      "symbol": "adminLinkClientResource"
+    },
+    {
+      "source": "packages/oauth-provider/src/oauthResource/index.ts#L113",
+      "symbol": "adminUnlinkClientResource"
+    },
+    {
+      "source": "packages/oauth-provider/src/types/index.ts#L32",
+      "symbol": "StoreTokenType"
+    },
+    {
+      "source": "packages/oauth-provider/src/types/index.ts#L43",
+      "symbol": "Scope"
+    },
+    {
+      "source": "packages/oauth-provider/src/types/index.ts#L49",
+      "symbol": "OAuthClientRegistrationResponse"
+    },
+    {
+      "source": "packages/oauth-provider/src/types/index.ts#L58",
+      "symbol": "OAuthClientAdministrativeResponse"
+    },
+    {
+      "source": "packages/oauth-provider/src/types/index.ts#L64",
+      "symbol": "Prompt"
+    },
+    {
+      "source": "packages/oauth-provider/src/types/index.ts#L65",
+      "symbol": "AuthorizePrompt"
+    },
+    {
+      "source": "packages/oauth-provider/src/types/index.ts#L78",
+      "symbol": "ClientMetadataResourceFetch"
+    },
+    {
+      "source": "packages/oauth-provider/src/types/index.ts#L92",
+      "symbol": "ClientDiscovery"
+    },
+    {
+      "source": "packages/oauth-provider/src/types/index.ts#L161",
+      "symbol": "OAuthAuthenticatedClient"
+    },
+    {
+      "source": "packages/oauth-provider/src/types/index.ts#L175",
+      "symbol": "OAuthClientAuthenticationRequest"
+    },
+    {
+      "source": "packages/oauth-provider/src/types/index.ts#L188",
+      "symbol": "OAuthTokenIssueParams"
+    },
+    {
+      "source": "packages/oauth-provider/src/types/index.ts#L240",
+      "symbol": "OAuthTokenResponse"
+    },
+    {
+      "source": "packages/oauth-provider/src/types/index.ts#L251",
+      "symbol": "ActiveAccessTokenPayload"
+    },
+    {
+      "source": "packages/oauth-provider/src/types/index.ts#L260",
+      "symbol": "OAuthProviderApi"
+    },
+    {
+      "source": "packages/oauth-provider/src/types/index.ts#L320",
+      "symbol": "OAuthExtensionGrantHandlerInput"
+    },
+    {
+      "source": "packages/oauth-provider/src/types/index.ts#L328",
+      "symbol": "OAuthExtensionGrantHandler"
+    },
+    {
+      "source": "packages/oauth-provider/src/types/index.ts#L332",
+      "symbol": "OAuthClientAuthenticationInput"
+    },
+    {
+      "source": "packages/oauth-provider/src/types/index.ts#L345",
+      "symbol": "OAuthClientAuthenticationResult"
+    },
+    {
+      "source": "packages/oauth-provider/src/types/index.ts#L357",
+      "symbol": "OAuthClientAuthenticationStrategy"
+    },
+    {
+      "source": "packages/oauth-provider/src/types/index.ts#L390",
+      "symbol": "OAuthMetadataExtensionInput"
+    },
+    {
+      "source": "packages/oauth-provider/src/types/index.ts#L404",
+      "symbol": "OAuthClaimExtensionInput"
+    },
+    {
+      "source": "packages/oauth-provider/src/types/index.ts#L424",
+      "symbol": "OAuthUserInfoExtensionInput"
+    },
+    {
+      "source": "packages/oauth-provider/src/types/index.ts#L460",
+      "symbol": "OAuthProviderExtension"
+    },
+    {
+      "source": "packages/oauth-provider/src/types/index.ts#L517",
+      "symbol": "InitialAccessTokenAuthorization"
+    },
+    {
+      "source": "packages/oauth-provider/src/types/index.ts#L528",
+      "symbol": "OAuthOptions"
+    },
+    {
+      "source": "packages/oauth-provider/src/types/index.ts#L534",
+      "symbol": "schema"
+    },
+    {
+      "source": "packages/oauth-provider/src/types/index.ts#L546",
+      "symbol": "scopes"
+    },
+    {
+      "source": "packages/oauth-provider/src/types/index.ts#L567",
+      "symbol": "requireOpenId"
+    },
+    {
+      "source": "packages/oauth-provider/src/types/index.ts#L619",
+      "symbol": "validateRedirectUri"
+    },
+    {
+      "source": "packages/oauth-provider/src/types/index.ts#L650",
+      "symbol": "allowInsecureRedirectUri"
+    },
+    {
+      "source": "packages/oauth-provider/src/types/index.ts#L674",
+      "symbol": "resources"
+    },
+    {
+      "source": "packages/oauth-provider/src/types/index.ts#L691",
+      "symbol": "resourceSeedMode"
+    },
+    {
+      "source": "packages/oauth-provider/src/types/index.ts#L713",
+      "symbol": "resourceSeedScope"
+    },
+    {
+      "source": "packages/oauth-provider/src/types/index.ts#L722",
+      "symbol": "cachedResources"
+    },
+    {
+      "source": "packages/oauth-provider/src/types/index.ts#L734",
+      "symbol": "enforcePerClientResources"
+    },
+    {
+      "source": "packages/oauth-provider/src/types/index.ts#L740",
+      "symbol": "clientRegistrationDefaultResources"
+    },
+    {
+      "source": "packages/oauth-provider/src/types/index.ts#L749",
+      "symbol": "clientRegistrationAllowedResources"
+    },
+    {
+      "source": "packages/oauth-provider/src/types/index.ts#L758",
+      "symbol": "identifierValidator"
+    },
+    {
+      "source": "packages/oauth-provider/src/types/index.ts#L765",
+      "symbol": "resourcePrivileges"
+    },
+    {
+      "source": "packages/oauth-provider/src/types/index.ts#L786",
+      "symbol": "cachedTrustedClients"
+    },
+    {
+      "source": "packages/oauth-provider/src/types/index.ts#L792",
+      "symbol": "accessTokenExpiresIn"
+    },
+    {
+      "source": "packages/oauth-provider/src/types/index.ts#L799",
+      "symbol": "m2mAccessTokenExpiresIn"
+    },
+    {
+      "source": "packages/oauth-provider/src/types/index.ts#L805",
+      "symbol": "idTokenExpiresIn"
+    },
+    {
+      "source": "packages/oauth-provider/src/types/index.ts#L812",
+      "symbol": "refreshTokenExpiresIn"
+    },
+    {
+      "source": "packages/oauth-provider/src/types/index.ts#L824",
+      "symbol": "refreshTokenReuseInterval"
+    },
+    {
+      "source": "packages/oauth-provider/src/types/index.ts#L830",
+      "symbol": "codeExpiresIn"
+    },
+    {
+      "source": "packages/oauth-provider/src/types/index.ts#L845",
+      "symbol": "scopeExpirations"
+    },
+    {
+      "source": "packages/oauth-provider/src/types/index.ts#L854",
+      "symbol": "assertionMaxLifetime"
+    },
+    {
+      "source": "packages/oauth-provider/src/types/index.ts#L868",
+      "symbol": "assertionClockTolerance"
+    },
+    {
+      "source": "packages/oauth-provider/src/types/index.ts#L883",
+      "symbol": "allowClientKeyRotation"
+    },
+    {
+      "source": "packages/oauth-provider/src/types/index.ts#L889",
+      "symbol": "allowPublicClientPrelogin"
+    },
+    {
+      "source": "packages/oauth-provider/src/types/index.ts#L904",
+      "symbol": "allowUnauthenticatedClientRegistration"
+    },
+    {
+      "source": "packages/oauth-provider/src/types/index.ts#L919",
+      "symbol": "allowDynamicClientRegistration"
+    },
+    {
+      "source": "packages/oauth-provider/src/types/index.ts#L945",
+      "symbol": "validateInitialAccessToken"
+    },
+    {
+      "source": "packages/oauth-provider/src/types/index.ts#L959",
+      "symbol": "extensions"
+    },
+    {
+      "source": "packages/oauth-provider/src/types/index.ts#L972",
+      "symbol": "clientRegistrationDefaultScopes"
+    },
+    {
+      "source": "packages/oauth-provider/src/types/index.ts#L986",
+      "symbol": "clientRegistrationAllowedScopes"
+    },
+    {
+      "source": "packages/oauth-provider/src/types/index.ts#L997",
+      "symbol": "clientRegistrationRequirePKCE"
+    },
+    {
+      "source": "packages/oauth-provider/src/types/index.ts#L1020",
+      "symbol": "clientRegistrationDefaultApplicationType"
+    },
+    {
+      "source": "packages/oauth-provider/src/types/index.ts#L1045",
+      "symbol": "clientRegistrationClientSecretExpiration"
+    },
+    {
+      "source": "packages/oauth-provider/src/types/index.ts#L1057",
+      "symbol": "clientReference"
+    },
+    {
+      "source": "packages/oauth-provider/src/types/index.ts#L1067",
+      "symbol": "clientPrivileges"
+    },
+    {
+      "source": "packages/oauth-provider/src/types/index.ts#L1096",
+      "symbol": "grantTypes"
+    },
+    {
+      "source": "packages/oauth-provider/src/types/index.ts#L1101",
+      "symbol": "loginPage"
+    },
+    {
+      "source": "packages/oauth-provider/src/types/index.ts#L1130",
+      "symbol": "consentPage"
+    },
+    {
+      "source": "packages/oauth-provider/src/types/index.ts#L1135",
+      "symbol": "signup"
+    },
+    {
+      "source": "packages/oauth-provider/src/types/index.ts#L1169",
+      "symbol": "selectAccount"
+    },
+    {
+      "source": "packages/oauth-provider/src/types/index.ts#L1198",
+      "symbol": "postLogin"
+    },
+    {
+      "source": "packages/oauth-provider/src/types/index.ts#L1251",
+      "symbol": "formatRefreshToken"
+    },
+    {
+      "source": "packages/oauth-provider/src/types/index.ts#L1300",
+      "symbol": "storeClientSecret"
+    },
+    {
+      "source": "packages/oauth-provider/src/types/index.ts#L1324",
+      "symbol": "storeTokens"
+    },
+    {
+      "source": "packages/oauth-provider/src/types/index.ts#L1333",
+      "symbol": "customUserInfoClaims"
+    },
+    {
+      "source": "packages/oauth-provider/src/types/index.ts#L1362",
+      "symbol": "customIdTokenClaims"
+    },
+    {
+      "source": "packages/oauth-provider/src/types/index.ts#L1383",
+      "symbol": "customAccessTokenClaims"
+    },
+    {
+      "source": "packages/oauth-provider/src/types/index.ts#L1406",
+      "symbol": "customTokenResponseFields"
+    },
+    {
+      "source": "packages/oauth-provider/src/types/index.ts#L1433",
+      "symbol": "advertisedMetadata"
+    },
+    {
+      "source": "packages/oauth-provider/src/types/index.ts#L1487",
+      "symbol": "prefix"
+    },
+    {
+      "source": "packages/oauth-provider/src/types/index.ts#L1528",
+      "symbol": "generateClientId"
+    },
+    {
+      "source": "packages/oauth-provider/src/types/index.ts#L1535",
+      "symbol": "generateClientSecret"
+    },
+    {
+      "source": "packages/oauth-provider/src/types/index.ts#L1542",
+      "symbol": "generateOpaqueAccessToken"
+    },
+    {
+      "source": "packages/oauth-provider/src/types/index.ts#L1549",
+      "symbol": "generateRefreshToken"
+    },
+    {
+      "source": "packages/oauth-provider/src/types/index.ts#L1560",
+      "symbol": "disableJwtPlugin"
+    },
+    {
+      "source": "packages/oauth-provider/src/types/index.ts#L1580",
+      "symbol": "rateLimit"
+    },
+    {
+      "source": "packages/oauth-provider/src/types/index.ts#L1624",
+      "symbol": "pairwiseSecret"
+    },
+    {
+      "source": "packages/oauth-provider/src/types/index.ts#L1632",
+      "symbol": "requestUriResolver"
+    },
+    {
+      "source": "packages/oauth-provider/src/types/index.ts#L1644",
+      "symbol": "dpop"
+    },
+    {
+      "source": "packages/oauth-provider/src/types/index.ts#L1660",
+      "symbol": "OAuthAuthorizationQuery"
+    },
+    {
+      "source": "packages/oauth-provider/src/types/index.ts#L1808",
+      "symbol": "OAuthResource"
+    },
+    {
+      "source": "packages/oauth-provider/src/types/index.ts#L1862",
+      "symbol": "OAuthResourceInput"
+    },
+    {
+      "source": "packages/oauth-provider/src/types/index.ts#L1881",
+      "symbol": "OAuthClientResource"
+    },
+    {
+      "source": "packages/oauth-provider/src/types/index.ts#L1896",
+      "symbol": "StoredAuthorizationQuery"
+    },
+    {
+      "source": "packages/oauth-provider/src/types/index.ts#L1908",
+      "symbol": "VerificationValue"
+    },
+    {
+      "source": "packages/oauth-provider/src/types/index.ts#L1921",
+      "symbol": "SchemaClient"
+    },
+    {
+      "source": "packages/oauth-provider/src/types/index.ts#L2064",
+      "symbol": "OAuthOpaqueAccessToken"
+    },
+    {
+      "source": "packages/oauth-provider/src/types/index.ts#L2142",
+      "symbol": "OAuthRefreshToken"
+    },
+    {
+      "source": "packages/oauth-provider/src/types/index.ts#L2203",
+      "symbol": "OAuthConsent"
+    },
+    {
+      "source": "packages/oauth-provider/src/utils/index.ts#L57",
+      "symbol": "parseBearerToken"
+    },
+    {
+      "source": "packages/oauth-provider/src/utils/index.ts#L101",
+      "symbol": "getOAuthProviderPlugin"
+    },
+    {
+      "source": "packages/oauth-provider/src/utils/index.ts#L114",
+      "symbol": "getJwtPlugin"
+    },
+    {
+      "source": "packages/oauth-provider/src/utils/index.ts#L153",
+      "symbol": "getJwksSource"
+    },
+    {
+      "source": "packages/oauth-provider/src/utils/index.ts#L167",
+      "symbol": "getLocalJwksSource"
+    },
+    {
+      "source": "packages/oauth-provider/src/utils/index.ts#L193",
+      "symbol": "isInvalidJwtError"
+    },
+    {
+      "source": "packages/oauth-provider/src/utils/index.ts#L206",
+      "symbol": "normalizeTimestampValue"
+    },
+    {
+      "source": "packages/oauth-provider/src/utils/index.ts#L246",
+      "symbol": "resolveSessionAuthTime"
+    },
+    {
+      "source": "packages/oauth-provider/src/utils/index.ts#L279",
+      "symbol": "findActiveSessionId"
+    },
+    {
+      "source": "packages/oauth-provider/src/utils/index.ts#L301",
+      "symbol": "isSessionBoundRefreshToken"
+    },
+    {
+      "source": "packages/oauth-provider/src/utils/index.ts#L322",
+      "symbol": "resolveRefreshTokenSession"
+    },
+    {
+      "source": "packages/oauth-provider/src/utils/index.ts#L341",
+      "symbol": "toResourceList"
+    },
+    {
+      "source": "packages/oauth-provider/src/utils/index.ts#L352",
+      "symbol": "toAudienceClaim"
+    },
+    {
+      "source": "packages/oauth-provider/src/utils/index.ts#L380",
+      "symbol": "verifyOAuthQueryParams"
+    },
+    {
+      "source": "packages/oauth-provider/src/utils/index.ts#L411",
+      "symbol": "assertNotTrustedClient"
+    },
+    {
+      "source": "packages/oauth-provider/src/utils/index.ts#L426",
+      "symbol": "getClient"
+    },
+    {
+      "source": "packages/oauth-provider/src/utils/index.ts#L477",
+      "symbol": "mergeDiscoveryMetadata"
+    },
+    {
+      "source": "packages/oauth-provider/src/utils/index.ts#L506",
+      "symbol": "decryptStoredClientSecret"
+    },
+    {
+      "source": "packages/oauth-provider/src/utils/index.ts#L603",
+      "symbol": "storeClientSecret"
+    },
+    {
+      "source": "packages/oauth-provider/src/utils/index.ts#L635",
+      "symbol": "storeToken"
+    },
+    {
+      "source": "packages/oauth-provider/src/utils/index.ts#L656",
+      "symbol": "getStoredToken"
+    },
+    {
+      "source": "packages/oauth-provider/src/utils/index.ts#L696",
+      "symbol": "ClientAuthenticationField"
+    },
+    {
+      "source": "packages/oauth-provider/src/utils/index.ts#L719",
+      "symbol": "normalizeClientAuthenticationParameters"
+    },
+    {
+      "source": "packages/oauth-provider/src/utils/index.ts#L801",
+      "symbol": "challengeHeaders"
+    },
+    {
+      "source": "packages/oauth-provider/src/utils/index.ts#L837",
+      "symbol": "clientAllowsGrant"
+    },
+    {
+      "source": "packages/oauth-provider/src/utils/index.ts#L859",
+      "symbol": "validateClientScopes"
+    },
+    {
+      "source": "packages/oauth-provider/src/utils/index.ts#L906",
+      "symbol": "validateClientCredentials"
+    },
+    {
+      "source": "packages/oauth-provider/src/utils/index.ts#L996",
+      "symbol": "parseClientMetadata"
+    },
+    {
+      "source": "packages/oauth-provider/src/utils/index.ts#L1005",
+      "symbol": "ExtractedCredentials"
+    },
+    {
+      "source": "packages/oauth-provider/src/utils/index.ts#L1026",
+      "symbol": "destructureCredentials"
+    },
+    {
+      "source": "packages/oauth-provider/src/utils/index.ts#L1048",
+      "symbol": "extractClientCredentials"
+    },
+    {
+      "source": "packages/oauth-provider/src/utils/index.ts#L1159",
+      "symbol": "parsePrompt"
+    },
+    {
+      "source": "packages/oauth-provider/src/utils/index.ts#L1213",
+      "symbol": "resolveSubjectIdentifier"
+    },
+    {
+      "source": "packages/oauth-provider/src/utils/index.ts#L1229",
+      "symbol": "getConsentReferenceId"
+    },
+    {
+      "source": "packages/oauth-provider/src/utils/index.ts#L1244",
+      "symbol": "findConsent"
+    },
+    {
+      "source": "packages/oauth-provider/src/utils/index.ts#L1267",
+      "symbol": "searchParamsToQuery"
+    },
+    {
+      "source": "packages/oauth-provider/src/utils/index.ts#L1278",
+      "symbol": "isSessionFreshForSignedQuery"
+    },
+    {
+      "source": "packages/oauth-provider/src/utils/index.ts#L1288",
+      "symbol": "removePromptFromQuery"
+    },
+    {
+      "source": "packages/oauth-provider/src/utils/index.ts#L1301",
+      "symbol": "removeMaxAgeFromQuery"
+    },
+    {
+      "source": "packages/oauth-provider/src/utils/index.ts#L1333",
+      "symbol": "isPKCERequired"
+    },
+    {
+      "source": "packages/oauth-provider/src/utils/index.ts#L1367",
+      "symbol": "isRedirectUriTransportAllowed"
+    },
+    {
+      "source": "packages/oauth-provider/src/utils/index.ts#L1387",
+      "symbol": "isInsecureRedirectUriAllowed"
+    },
+    {
+      "source": "packages/oauth-provider/src/utils/index.ts#L1404",
+      "symbol": "getAuthEndpointUrl"
+    },
+    {
+      "source": "packages/passkey/src/client.ts#L35",
+      "symbol": "getPasskeyActions"
+    },
+    {
+      "source": "packages/passkey/src/client.ts#L323",
+      "symbol": "passkeyClient"
+    },
+    {
+      "source": "packages/passkey/src/index.ts#L34",
+      "symbol": "passkey"
+    },
+    {
+      "source": "packages/passkey/src/routes.ts#L217",
+      "symbol": "GET /passkey/generate-register-options"
+    },
+    {
+      "source": "packages/passkey/src/routes.ts#L424",
+      "symbol": "GET /passkey/generate-authenticate-options"
+    },
+    {
+      "source": "packages/passkey/src/routes.ts#L623",
+      "symbol": "POST /passkey/verify-registration"
+    },
+    {
+      "source": "packages/passkey/src/routes.ts#L884",
+      "symbol": "POST /passkey/verify-authentication"
+    },
+    {
+      "source": "packages/passkey/src/routes.ts#L1090",
+      "symbol": "GET /passkey/list-user-passkeys"
+    },
+    {
+      "source": "packages/passkey/src/routes.ts#L1157",
+      "symbol": "POST /passkey/delete-passkey"
+    },
+    {
+      "source": "packages/passkey/src/routes.ts#L1233",
+      "symbol": "POST /passkey/update-passkey"
+    },
+    {
+      "source": "packages/passkey/src/types.ts#L16",
+      "symbol": "WebAuthnChallengeValue"
+    },
+    {
+      "source": "packages/passkey/src/types.ts#L28",
+      "symbol": "PasskeyRegistrationUser"
+    },
+    {
+      "source": "packages/passkey/src/types.ts#L34",
+      "symbol": "PasskeyExtensionsResolver"
+    },
+    {
+      "source": "packages/passkey/src/types.ts#L40",
+      "symbol": "PasskeyRegistrationOptions"
+    },
+    {
+      "source": "packages/passkey/src/types.ts#L46",
+      "symbol": "requireSession"
+    },
+    {
+      "source": "packages/passkey/src/types.ts#L51",
+      "symbol": "resolveUser"
+    },
+    {
+      "source": "packages/passkey/src/types.ts#L67",
+      "symbol": "afterVerification"
+    },
+    {
+      "source": "packages/passkey/src/types.ts#L79",
+      "symbol": "extensions"
+    },
+    {
+      "source": "packages/passkey/src/types.ts#L82",
+      "symbol": "PasskeyAuthenticationOptions"
+    },
+    {
+      "source": "packages/passkey/src/types.ts#L86",
+      "symbol": "extensions"
+    },
+    {
+      "source": "packages/passkey/src/types.ts#L90",
+      "symbol": "afterVerification"
+    },
+    {
+      "source": "packages/passkey/src/types.ts#L99",
+      "symbol": "PasskeyOptions"
+    },
+    {
+      "source": "packages/passkey/src/types.ts#L106",
+      "symbol": "rpID"
+    },
+    {
+      "source": "packages/passkey/src/types.ts#L112",
+      "symbol": "rpName"
+    },
+    {
+      "source": "packages/passkey/src/types.ts#L123",
+      "symbol": "origin"
+    },
+    {
+      "source": "packages/passkey/src/types.ts#L128",
+      "symbol": "authenticatorSelection"
+    },
+    {
+      "source": "packages/passkey/src/types.ts#L132",
+      "symbol": "advanced"
+    },
+    {
+      "source": "packages/passkey/src/types.ts#L145",
+      "symbol": "schema"
+    },
+    {
+      "source": "packages/passkey/src/types.ts#L149",
+      "symbol": "registration"
+    },
+    {
+      "source": "packages/passkey/src/types.ts#L153",
+      "symbol": "authentication"
+    },
+    {
+      "source": "packages/passkey/src/types.ts#L156",
+      "symbol": "Passkey"
+    },
+    {
+      "source": "packages/scim/src/connection-decommission.ts#L416",
+      "symbol": "Operation (server API only)"
+    },
+    {
+      "source": "packages/scim/src/discovery.ts#L70",
+      "symbol": "GET /scim/v2/ServiceProviderConfig"
+    },
+    {
+      "source": "packages/scim/src/discovery.ts#L128",
+      "symbol": "GET /scim/v2/Schemas"
+    },
+    {
+      "source": "packages/scim/src/discovery.ts#L164",
+      "symbol": "GET /scim/v2/Schemas/:schemaId"
+    },
+    {
+      "source": "packages/scim/src/discovery.ts#L206",
+      "symbol": "GET /scim/v2/ResourceTypes"
+    },
+    {
+      "source": "packages/scim/src/discovery.ts#L245",
+      "symbol": "GET /scim/v2/ResourceTypes/:resourceTypeId"
+    },
+    {
+      "source": "packages/scim/src/group-provisioning.ts#L915",
+      "symbol": "POST /scim/v2/Groups"
+    },
+    {
+      "source": "packages/scim/src/group-provisioning.ts#L1045",
+      "symbol": "GET /scim/v2/Groups/:groupId"
+    },
+    {
+      "source": "packages/scim/src/group-provisioning.ts#L1102",
+      "symbol": "GET /scim/v2/Groups"
+    },
+    {
+      "source": "packages/scim/src/group-provisioning.ts#L1192",
+      "symbol": "PUT /scim/v2/Groups/:groupId"
+    },
+    {
+      "source": "packages/scim/src/group-provisioning.ts#L1380",
+      "symbol": "PATCH /scim/v2/Groups/:groupId"
+    },
+    {
+      "source": "packages/scim/src/group-provisioning.ts#L1613",
+      "symbol": "DELETE /scim/v2/Groups/:groupId"
+    },
+    {
+      "source": "packages/scim/src/index.ts#L895",
+      "symbol": "SCIMPlugin"
+    },
+    {
+      "source": "packages/scim/src/index.ts#L898",
+      "symbol": "SCIMEndpoints"
+    },
+    {
+      "source": "packages/scim/src/index.ts#L907",
+      "symbol": "scim"
+    },
+    {
+      "source": "packages/scim/src/managed-connections.ts#L893",
+      "symbol": "createSCIMManagedConnection (server API only)"
+    },
+    {
+      "source": "packages/scim/src/managed-connections.ts#L953",
+      "symbol": "listSCIMManagedConnections (server API only)"
+    },
+    {
+      "source": "packages/scim/src/managed-connections.ts#L979",
+      "symbol": "getSCIMManagedConnection (server API only)"
+    },
+    {
+      "source": "packages/scim/src/managed-connections.ts#L996",
+      "symbol": "rotateSCIMManagedCredential (server API only)"
+    },
+    {
+      "source": "packages/scim/src/managed-connections.ts#L1041",
+      "symbol": "revokeSCIMManagedCredential (server API only)"
+    },
+    {
+      "source": "packages/scim/src/managed-connections.ts#L1067",
+      "symbol": "listSCIMManagedConnectionEvents (server API only)"
+    },
+    {
+      "source": "packages/scim/src/managed-connections.ts#L1121",
+      "symbol": "decommissionSCIMManagedConnection (server API only)"
+    },
+    {
+      "source": "packages/scim/src/projection.ts#L802",
+      "symbol": "Operation (server API only)"
+    },
+    {
+      "source": "packages/scim/src/user-provisioning.ts#L570",
+      "symbol": "POST /scim/v2/Users"
+    },
+    {
+      "source": "packages/scim/src/user-provisioning.ts#L812",
+      "symbol": "GET /scim/v2/Users/:userId"
+    },
+    {
+      "source": "packages/scim/src/user-provisioning.ts#L861",
+      "symbol": "GET /scim/v2/Users"
+    },
+    {
+      "source": "packages/scim/src/user-provisioning.ts#L953",
+      "symbol": "PUT /scim/v2/Users/:userId"
+    },
+    {
+      "source": "packages/scim/src/user-provisioning.ts#L1068",
+      "symbol": "PATCH /scim/v2/Users/:userId"
+    },
+    {
+      "source": "packages/scim/src/user-provisioning.ts#L1260",
+      "symbol": "DELETE /scim/v2/Users/:userId"
+    },
+    {
+      "source": "packages/sso/src/client.ts#L23",
+      "symbol": "ssoClient"
+    },
+    {
+      "source": "packages/sso/src/index.ts#L150",
+      "symbol": "SSOPlugin"
+    },
+    {
+      "source": "packages/sso/src/index.ts#L311",
+      "symbol": "sso"
+    },
+    {
+      "source": "packages/sso/src/index.ts#L328",
+      "symbol": "sso"
+    },
+    {
+      "source": "packages/sso/src/index.ts#L341",
+      "symbol": "sso"
+    },
+    {
+      "source": "packages/sso/src/linking/types.ts#L1",
+      "symbol": "NormalizedSSOProfile"
+    },
+    {
+      "source": "packages/sso/src/oidc/types.ts#L21",
+      "symbol": "OIDCDiscoveryDocument"
+    },
+    {
+      "source": "packages/sso/src/oidc/types.ts#L97",
+      "symbol": "DiscoveryErrorCode"
+    },
+    {
+      "source": "packages/sso/src/oidc/types.ts#L125",
+      "symbol": "DiscoveryError"
+    },
+    {
+      "source": "packages/sso/src/oidc/types.ts#L154",
+      "symbol": "HydratedOIDCConfig"
+    },
+    {
+      "source": "packages/sso/src/oidc/types.ts#L186",
+      "symbol": "DiscoverOIDCConfigParams"
+    },
+    {
+      "source": "packages/sso/src/oidc/types.ts#L219",
+      "symbol": "REQUIRED_DISCOVERY_FIELDS"
+    },
+    {
+      "source": "packages/sso/src/oidc/types.ts#L226",
+      "symbol": "RequiredDiscoveryField"
+    },
+    {
+      "source": "packages/sso/src/routes/domain-verification.ts#L61",
+      "symbol": "POST /sso/request-domain-verification"
+    },
+    {
+      "source": "packages/sso/src/routes/domain-verification.ts#L129",
+      "symbol": "POST /sso/verify-domain"
+    },
+    {
+      "source": "packages/sso/src/routes/providers.ts#L553",
+      "symbol": "GET /sso/providers"
+    },
+    {
+      "source": "packages/sso/src/routes/providers.ts#L679",
+      "symbol": "GET /sso/get-provider"
+    },
+    {
+      "source": "packages/sso/src/routes/providers.ts#L823",
+      "symbol": "POST /sso/update-provider"
+    },
+    {
+      "source": "packages/sso/src/routes/providers.ts#L1083",
+      "symbol": "POST /sso/delete-provider"
+    },
+    {
+      "source": "packages/sso/src/routes/sso.ts#L149",
+      "symbol": "GET /sso/saml2/sp/metadata"
+    },
+    {
+      "source": "packages/sso/src/routes/sso.ts#L214",
+      "symbol": "POST /sso/register"
+    },
+    {
+      "source": "packages/sso/src/routes/sso.ts#L850",
+      "symbol": "POST /sign-in/sso"
+    },
+    {
+      "source": "packages/sso/src/routes/sso.ts#L1959",
+      "symbol": "/sso/callback/:providerId"
+    },
+    {
+      "source": "packages/sso/src/routes/sso.ts#L1978",
+      "symbol": "/sso/callback"
+    },
+    {
+      "source": "packages/sso/src/routes/sso.ts#L2036",
+      "symbol": "GET / POST /sso/saml2/sp/acs/:providerId"
+    },
+    {
+      "source": "packages/sso/src/routes/sso.ts#L2184",
+      "symbol": "GET / POST /sso/saml2/sp/slo/:providerId"
+    },
+    {
+      "source": "packages/sso/src/routes/sso.ts#L2444",
+      "symbol": "POST /sso/saml2/logout/:providerId"
+    },
+    {
+      "source": "packages/sso/src/types.ts#L15",
+      "symbol": "OIDCMapping"
+    },
+    {
+      "source": "packages/sso/src/types.ts#L23",
+      "symbol": "SAMLMapping"
+    },
+    {
+      "source": "packages/sso/src/types.ts#L32",
+      "symbol": "OIDCConfig"
+    },
+    {
+      "source": "packages/sso/src/types.ts#L97",
+      "symbol": "SAMLIdentityProviderMetadata"
+    },
+    {
+      "source": "packages/sso/src/types.ts#L109",
+      "symbol": "SAMLConfig"
+    },
+    {
+      "source": "packages/sso/src/types.ts#L177",
+      "symbol": "AuthnRequestRecord"
+    },
+    {
+      "source": "packages/sso/src/types.ts#L186",
+      "symbol": "SAMLSessionRecord"
+    },
+    {
+      "source": "packages/sso/src/types.ts#L206",
+      "symbol": "SAMLAssertionExtract"
+    },
+    {
+      "source": "packages/sso/src/types.ts#L254",
+      "symbol": "SSOProviderAdditionalFieldsInput"
+    },
+    {
+      "source": "packages/sso/src/types.ts#L259",
+      "symbol": "InferSSOProvider"
+    },
+    {
+      "source": "packages/sso/src/types.ts#L269",
+      "symbol": "SSOProvider"
+    },
+    {
+      "source": "packages/sso/src/types.ts#L277",
+      "symbol": "SSOProviderSchema"
+    },
+    {
+      "source": "packages/sso/src/types.ts#L295",
+      "symbol": "SSOUserResolution"
+    },
+    {
+      "source": "packages/sso/src/types.ts#L305",
+      "symbol": "SSOProviderUserProfile"
+    },
+    {
+      "source": "packages/sso/src/types.ts#L319",
+      "symbol": "SSOProviderReference"
+    },
+    {
+      "source": "packages/sso/src/types.ts#L336",
+      "symbol": "SSOOIDCUserResolutionInput"
+    },
+    {
+      "source": "packages/sso/src/types.ts#L345",
+      "symbol": "SSOSAMLUserResolutionInput"
+    },
+    {
+      "source": "packages/sso/src/types.ts#L355",
+      "symbol": "SSOUserResolutionInput"
+    },
+    {
+      "source": "packages/sso/src/types.ts#L360",
+      "symbol": "SSOUserResolutionContext"
+    },
+    {
+      "source": "packages/sso/src/types.ts#L379",
+      "symbol": "SSOProviderMutationGuardInput"
+    },
+    {
+      "source": "packages/sso/src/types.ts#L393",
+      "symbol": "SSOProviderMutationGuardContext"
+    },
+    {
+      "source": "packages/sso/src/types.ts#L397",
+      "symbol": "SSOOptions"
+    },
+    {
+      "source": "packages/sso/src/types.ts#L409",
+      "symbol": "resolveUser"
+    },
+    {
+      "source": "packages/sso/src/types.ts#L424",
+      "symbol": "guardProviderMutation"
+    },
+    {
+      "source": "packages/sso/src/types.ts#L433",
+      "symbol": "provisionUser"
+    },
+    {
+      "source": "packages/sso/src/types.ts#L462",
+      "symbol": "provisionUserOnEveryLogin"
+    },
+    {
+      "source": "packages/sso/src/types.ts#L466",
+      "symbol": "organizationProvisioning"
+    },
+    {
+      "source": "packages/sso/src/types.ts#L494",
+      "symbol": "defaultSSO"
+    },
+    {
+      "source": "packages/sso/src/types.ts#L527",
+      "symbol": "defaultOverrideUserInfo"
+    },
+    {
+      "source": "packages/sso/src/types.ts#L532",
+      "symbol": "disableImplicitSignUp"
+    },
+    {
+      "source": "packages/sso/src/types.ts#L536",
+      "symbol": "modelName"
+    },
+    {
+      "source": "packages/sso/src/types.ts#L547",
+      "symbol": "fields"
+    },
+    {
+      "source": "packages/sso/src/types.ts#L559",
+      "symbol": "schema"
+    },
+    {
+      "source": "packages/sso/src/types.ts#L593",
+      "symbol": "providersLimit"
+    },
+    {
+      "source": "packages/sso/src/types.ts#L610",
+      "symbol": "trustEmailVerified"
+    },
+    {
+      "source": "packages/sso/src/types.ts#L617",
+      "symbol": "domainVerification"
+    },
+    {
+      "source": "packages/sso/src/types.ts#L636",
+      "symbol": "redirectURI"
+    },
+    {
+      "source": "packages/sso/src/types.ts#L642",
+      "symbol": "resolvePrivateKey"
+    },
+    {
+      "source": "packages/sso/src/types.ts#L656",
+      "symbol": "saml"
+    },
+    {
+      "source": "packages/sso/src/types.ts#L779",
+      "symbol": "Member"
+    },
+    {
+      "source": "packages/stripe/src/client.ts#L6",
+      "symbol": "stripeClient"
+    },
+    {
+      "source": "packages/stripe/src/index.ts#L36",
+      "symbol": "stripe"
+    },
+    {
+      "source": "packages/stripe/src/index.ts#L479",
+      "symbol": "StripePlugin"
+    },
+    {
+      "source": "packages/stripe/src/routes.ts#L258",
+      "symbol": "POST /subscription/upgrade"
+    },
+    {
+      "source": "packages/stripe/src/routes.ts#L1251",
+      "symbol": "POST /subscription/cancel"
+    },
+    {
+      "source": "packages/stripe/src/routes.ts#L1411",
+      "symbol": "POST /subscription/restore"
+    },
+    {
+      "source": "packages/stripe/src/routes.ts#L1623",
+      "symbol": "GET /subscription/list"
+    },
+    {
+      "source": "packages/stripe/src/routes.ts#L1695",
+      "symbol": "GET /subscription/success"
+    },
+    {
+      "source": "packages/stripe/src/routes.ts#L1917",
+      "symbol": "POST /subscription/billing-portal"
+    },
+    {
+      "source": "packages/stripe/src/routes.ts#L2010",
+      "symbol": "POST /stripe/webhook"
+    },
+    {
+      "source": "packages/stripe/src/types.ts#L11",
+      "symbol": "AuthorizeReferenceAction"
+    },
+    {
+      "source": "packages/stripe/src/types.ts#L18",
+      "symbol": "CustomerType"
+    },
+    {
+      "source": "packages/stripe/src/types.ts#L20",
+      "symbol": "WithStripeCustomerId"
+    },
+    {
+      "source": "packages/stripe/src/types.ts#L25",
+      "symbol": "WithActiveOrganizationId"
+    },
+    {
+      "source": "packages/stripe/src/types.ts#L29",
+      "symbol": "StripeCtxSession"
+    },
+    {
+      "source": "packages/stripe/src/types.ts#L34",
+      "symbol": "CheckoutSessionLocale"
+    },
+    {
+      "source": "packages/stripe/src/types.ts#L38",
+      "symbol": "CheckoutSessionLineItem"
+    },
+    {
+      "source": "packages/stripe/src/types.ts#L42",
+      "symbol": "StripePlan"
+    },
+    {
+      "source": "packages/stripe/src/types.ts#L159",
+      "symbol": "Subscription"
+    },
+    {
+      "source": "packages/stripe/src/types.ts#L261",
+      "symbol": "SubscriptionOptions"
+    },
+    {
+      "source": "packages/stripe/src/types.ts#L268",
+      "symbol": "plans"
+    },
+    {
+      "source": "packages/stripe/src/types.ts#L275",
+      "symbol": "requireEmailVerification"
+    },
+    {
+      "source": "packages/stripe/src/types.ts#L282",
+      "symbol": "onSubscriptionComplete"
+    },
+    {
+      "source": "packages/stripe/src/types.ts#L298",
+      "symbol": "onSubscriptionUpdate"
+    },
+    {
+      "source": "packages/stripe/src/types.ts#L310",
+      "symbol": "onSubscriptionCancel"
+    },
+    {
+      "source": "packages/stripe/src/types.ts#L326",
+      "symbol": "authorizeReference"
+    },
+    {
+      "source": "packages/stripe/src/types.ts#L341",
+      "symbol": "onSubscriptionDeleted"
+    },
+    {
+      "source": "packages/stripe/src/types.ts#L352",
+      "symbol": "onSubscriptionCreated"
+    },
+    {
+      "source": "packages/stripe/src/types.ts#L367",
+      "symbol": "getCheckoutSessionParams"
+    },
+    {
+      "source": "packages/stripe/src/types.ts#L389",
+      "symbol": "StripeOptions"
+    },
+    {
+      "source": "packages/stripe/src/types.ts#L393",
+      "symbol": "stripeClient"
+    },
+    {
+      "source": "packages/stripe/src/types.ts#L399",
+      "symbol": "stripeWebhookSecret"
+    },
+    {
+      "source": "packages/stripe/src/types.ts#L403",
+      "symbol": "createCustomerOnSignUp"
+    },
+    {
+      "source": "packages/stripe/src/types.ts#L410",
+      "symbol": "onCustomerCreate"
+    },
+    {
+      "source": "packages/stripe/src/types.ts#L425",
+      "symbol": "getCustomerCreateParams"
+    },
+    {
+      "source": "packages/stripe/src/types.ts#L434",
+      "symbol": "subscription"
+    },
+    {
+      "source": "packages/stripe/src/types.ts#L449",
+      "symbol": "organization"
+    },
+    {
+      "source": "packages/stripe/src/types.ts#L492",
+      "symbol": "onEvent"
+    },
+    {
+      "source": "packages/stripe/src/types.ts#L496",
+      "symbol": "schema"
+    }
+  ],
+  "externalPluginDocumentation": [
+    "agent-auth",
+    "autumn",
+    "chargebee",
+    "commet",
+    "community-plugins",
+    "creem",
+    "dodopayments",
+    "dub",
+    "polar"
+  ],
+  "hostedServices": [
+    "docs/content/docs/infrastructure/getting-started.mdx",
+    "docs/content/docs/infrastructure/introduction.mdx",
+    "docs/content/docs/infrastructure/plugins/audit-logs.mdx",
+    "docs/content/docs/infrastructure/plugins/dashboard.mdx",
+    "docs/content/docs/infrastructure/plugins/sentinel.mdx",
+    "docs/content/docs/infrastructure/services/email.mdx",
+    "docs/content/docs/infrastructure/services/sms.mdx"
+  ]
+}

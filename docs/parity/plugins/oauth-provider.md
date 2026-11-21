@@ -1,0 +1,433 @@
+# OAuth provider
+
+[Feature index](../README.md)
+
+## Interfaces
+
+- [ ] OAuth provider endpoints, types and options
+  - [ ] `oauthProviderClient`
+  - [ ] `oauthDeviceAuthorizationClient`
+  - [ ] `publicSessionMiddleware`
+  - [ ] `GET / POST /oauth2/authorize`
+  - [ ] `GET /.well-known/oauth-authorization-server`
+  - [ ] `GET /.well-known/openid-configuration`
+  - [ ] `POST /oauth2/consent`
+  - [ ] `POST /oauth2/continue`
+  - [ ] `POST /oauth2/token`
+  - [ ] `POST /oauth2/introspect`
+  - [ ] `POST /oauth2/revoke`
+  - [ ] `GET / POST /oauth2/userinfo`
+  - [ ] `GET / POST /oauth2/end-session`
+  - [ ] `POST /oauth2/end-session/confirm`
+  - [ ] `POST /oauth2/register`
+  - [ ] `POST /admin/oauth2/create-client`
+  - [ ] `POST /oauth2/create-client`
+  - [ ] `GET /oauth2/get-client`
+  - [ ] `GET /oauth2/public-client`
+  - [ ] `POST /oauth2/public-client-prelogin`
+  - [ ] `GET /oauth2/get-clients`
+  - [ ] `PATCH /admin/oauth2/update-client`
+  - [ ] `POST /oauth2/update-client`
+  - [ ] `POST /oauth2/client/rotate-secret`
+  - [ ] `POST /oauth2/client/rotate-keys`
+  - [ ] `POST /oauth2/delete-client`
+  - [ ] `adminCreateOAuthClient`
+  - [ ] `createOAuthClient`
+  - [ ] `getOAuthClient`
+  - [ ] `getOAuthClientPublic`
+  - [ ] `getOAuthClientPublicPrelogin`
+  - [ ] `getOAuthClients`
+  - [ ] `adminUpdateOAuthClient`
+  - [ ] `updateOAuthClient`
+  - [ ] `rotateClientSecret`
+  - [ ] `rotateClientKeys`
+  - [ ] `deleteOAuthClient`
+  - [ ] `GET /oauth2/get-consent`
+  - [ ] `GET /oauth2/get-consents`
+  - [ ] `POST /oauth2/update-consent`
+  - [ ] `POST /oauth2/delete-consent`
+  - [ ] `getOAuthConsent`
+  - [ ] `getOAuthConsents`
+  - [ ] `updateOAuthConsent`
+  - [ ] `deleteOAuthConsent`
+  - [ ] `POST /admin/oauth2/resources`
+  - [ ] `GET /admin/oauth2/resources`
+  - [ ] `GET /admin/oauth2/resources/:identifier`
+  - [ ] `PATCH /admin/oauth2/resources/:identifier`
+  - [ ] `DELETE /admin/oauth2/resources/:identifier`
+  - [ ] `POST /admin/oauth2/resources/:identifier/clients/:client_id`
+  - [ ] `DELETE /admin/oauth2/resources/:identifier/clients/:client_id`
+  - [ ] `adminCreateOAuthResource`
+  - [ ] `adminListOAuthResources`
+  - [ ] `adminGetOAuthResource`
+  - [ ] `adminUpdateOAuthResource`
+  - [ ] `adminDeleteOAuthResource`
+  - [ ] `adminLinkClientResource`
+  - [ ] `adminUnlinkClientResource`
+  - [ ] `StoreTokenType`
+  - [ ] `Scope`
+  - [ ] `OAuthClientRegistrationResponse`
+  - [ ] `OAuthClientAdministrativeResponse`
+  - [ ] `Prompt`
+  - [ ] `AuthorizePrompt`
+  - [ ] `ClientMetadataResourceFetch`
+  - [ ] `ClientDiscovery`
+  - [ ] `OAuthAuthenticatedClient`
+  - [ ] `OAuthClientAuthenticationRequest`
+  - [ ] `OAuthTokenIssueParams`
+  - [ ] `OAuthTokenResponse`
+  - [ ] `ActiveAccessTokenPayload`
+  - [ ] `OAuthProviderApi`
+  - [ ] `OAuthExtensionGrantHandlerInput`
+  - [ ] `OAuthExtensionGrantHandler`
+  - [ ] `OAuthClientAuthenticationInput`
+  - [ ] `OAuthClientAuthenticationResult`
+  - [ ] `OAuthClientAuthenticationStrategy`
+  - [ ] `OAuthMetadataExtensionInput`
+  - [ ] `OAuthClaimExtensionInput`
+  - [ ] `OAuthUserInfoExtensionInput`
+  - [ ] `OAuthProviderExtension`
+  - [ ] `InitialAccessTokenAuthorization`
+  - [ ] `OAuthOptions`
+    - [ ] `schema`
+    - [ ] `scopes`
+    - [ ] `requireOpenId`
+    - [ ] `validateRedirectUri`
+    - [ ] `allowInsecureRedirectUri`
+    - [ ] `resources`
+    - [ ] `resourceSeedMode`
+    - [ ] `resourceSeedScope`
+    - [ ] `cachedResources`
+    - [ ] `enforcePerClientResources`
+    - [ ] `clientRegistrationDefaultResources`
+    - [ ] `clientRegistrationAllowedResources`
+    - [ ] `identifierValidator`
+    - [ ] `resourcePrivileges`
+    - [ ] `cachedTrustedClients`
+    - [ ] `accessTokenExpiresIn`
+    - [ ] `m2mAccessTokenExpiresIn`
+    - [ ] `idTokenExpiresIn`
+    - [ ] `refreshTokenExpiresIn`
+    - [ ] `refreshTokenReuseInterval`
+    - [ ] `codeExpiresIn`
+    - [ ] `scopeExpirations`
+    - [ ] `assertionMaxLifetime`
+    - [ ] `assertionClockTolerance`
+    - [ ] `allowClientKeyRotation`
+    - [ ] `allowPublicClientPrelogin`
+    - [ ] `allowUnauthenticatedClientRegistration`
+    - [ ] `allowDynamicClientRegistration`
+    - [ ] `validateInitialAccessToken`
+    - [ ] `extensions`
+    - [ ] `clientRegistrationDefaultScopes`
+    - [ ] `clientRegistrationAllowedScopes`
+    - [ ] `clientRegistrationRequirePKCE`
+    - [ ] `clientRegistrationDefaultApplicationType`
+    - [ ] `clientRegistrationClientSecretExpiration`
+    - [ ] `clientReference`
+    - [ ] `clientPrivileges`
+    - [ ] `grantTypes`
+    - [ ] `loginPage`
+    - [ ] `consentPage`
+    - [ ] `signup`
+    - [ ] `selectAccount`
+    - [ ] `postLogin`
+    - [ ] `formatRefreshToken`
+    - [ ] `storeClientSecret`
+    - [ ] `storeTokens`
+    - [ ] `customUserInfoClaims`
+    - [ ] `customIdTokenClaims`
+    - [ ] `customAccessTokenClaims`
+    - [ ] `customTokenResponseFields`
+    - [ ] `advertisedMetadata`
+    - [ ] `prefix`
+    - [ ] `generateClientId`
+    - [ ] `generateClientSecret`
+    - [ ] `generateOpaqueAccessToken`
+    - [ ] `generateRefreshToken`
+    - [ ] `disableJwtPlugin`
+    - [ ] `rateLimit`
+    - [ ] `pairwiseSecret`
+    - [ ] `requestUriResolver`
+    - [ ] `dpop`
+  - [ ] `OAuthAuthorizationQuery`
+  - [ ] `OAuthResource`
+  - [ ] `OAuthResourceInput`
+  - [ ] `OAuthClientResource`
+  - [ ] `StoredAuthorizationQuery`
+  - [ ] `VerificationValue`
+  - [ ] `SchemaClient`
+  - [ ] `OAuthOpaqueAccessToken`
+  - [ ] `OAuthRefreshToken`
+  - [ ] `OAuthConsent`
+  - [ ] `parseBearerToken`
+  - [ ] `getOAuthProviderPlugin`
+  - [ ] `getJwtPlugin`
+  - [ ] `getJwksSource`
+  - [ ] `getLocalJwksSource`
+  - [ ] `isInvalidJwtError`
+  - [ ] `normalizeTimestampValue`
+  - [ ] `resolveSessionAuthTime`
+  - [ ] `findActiveSessionId`
+  - [ ] `isSessionBoundRefreshToken`
+  - [ ] `resolveRefreshTokenSession`
+  - [ ] `toResourceList`
+  - [ ] `toAudienceClaim`
+  - [ ] `verifyOAuthQueryParams`
+  - [ ] `assertNotTrustedClient`
+  - [ ] `getClient`
+  - [ ] `mergeDiscoveryMetadata`
+  - [ ] `decryptStoredClientSecret`
+  - [ ] `storeClientSecret`
+  - [ ] `storeToken`
+  - [ ] `getStoredToken`
+  - [ ] `ClientAuthenticationField`
+  - [ ] `normalizeClientAuthenticationParameters`
+  - [ ] `challengeHeaders`
+  - [ ] `clientAllowsGrant`
+  - [ ] `validateClientScopes`
+  - [ ] `validateClientCredentials`
+  - [ ] `parseClientMetadata`
+  - [ ] `ExtractedCredentials`
+  - [ ] `destructureCredentials`
+  - [ ] `extractClientCredentials`
+  - [ ] `parsePrompt`
+  - [ ] `resolveSubjectIdentifier`
+  - [ ] `getConsentReferenceId`
+  - [ ] `findConsent`
+  - [ ] `searchParamsToQuery`
+  - [ ] `isSessionFreshForSignedQuery`
+  - [ ] `removePromptFromQuery`
+  - [ ] `removeMaxAgeFromQuery`
+  - [ ] `isPKCERequired`
+  - [ ] `isRedirectUriTransportAllowed`
+  - [ ] `isInsecureRedirectUriAllowed`
+  - [ ] `getAuthEndpointUrl`
+
+## Clients and registration
+
+- [ ] Clients and registration
+  - [ ] Client types
+    - [ ] Public or confidential
+    - [ ] `application_type`
+  - [ ] Manage clients
+    - [ ] `POST /oauth2/create-client`
+      - [ ] Parameter `redirect_uris` (optional)
+      - [ ] Parameter `client_name` (optional)
+      - [ ] Parameter `token_endpoint_auth_method` (optional)
+      - [ ] Parameter `application_type` (optional)
+      - [ ] Parameter `scope` (optional)
+    - [ ] `getOAuthClient`
+    - [ ] `getOAuthClientPublic`
+    - [ ] `getOAuthClientPublicPrelogin`
+    - [ ] `getOAuthClients`
+    - [ ] `updateOAuthClient`
+    - [ ] `adminUpdateOAuthClient`
+    - [ ] `rotateClientSecret`
+    - [ ] `deleteOAuthClient`
+    - [ ] Restricted fields
+      - [ ] `skip_consent`
+      - [ ] `enable_end_session`
+      - [ ] `require_pkce`
+      - [ ] `client_credentials_scopes`
+      - [ ] `resources`
+      - [ ] `disabled`
+      - [ ] `metadata`
+    - [ ] Client credentials scopes
+  - [ ] Dynamic client registration
+    - [ ] `clientRegistrationDefaultScopes`
+    - [ ] `clientRegistrationAllowedScopes`
+    - [ ] `clientRegistrationClientSecretExpiration`
+    - [ ] `clientRegistrationRequirePKCE`
+    - [ ] `clientRegistrationDefaultApplicationType`
+    - [ ] Resources for registered clients
+    - [ ] Redirect URI forms
+      - [ ] HTTPS on a non-loopback host
+      - [ ] HTTP loopback, any port (RFC 8252 §7.3)
+      - [ ] Reverse-domain private-use scheme (RFC 8252 §7.1)
+      - [ ] Custom scheme with a host and a path
+  - [ ] Custom redirect URI validation
+  - [ ] HTTP redirect URIs
+  - [ ] Private key JWT
+    - [ ] `iss`
+    - [ ] `sub`
+    - [ ] `aud`
+    - [ ] `exp`
+    - [ ] `nbf`
+    - [ ] `jti`
+    - [ ] `iat`
+    - [ ] Rotating client keys
+  - [ ] Trusted clients
+  - [ ] Client CRUD privileges
+  - [ ] Organizations
+    - [ ] An organization uses the client
+    - [ ] An organization owns the client
+
+## OAuth 2.1 Provider
+
+- [ ] OAuth 2.1 Provider
+  - [ ] What the provider supports
+    - [ ] Grants
+    - [ ] Authorization requests
+    - [ ] PKCE
+    - [ ] Redirect URIs
+    - [ ] Client authentication
+    - [ ] Client registration
+    - [ ] Resource indicators
+    - [ ] Access tokens
+    - [ ] Sender-constrained tokens
+    - [ ] Introspection and revocation
+    - [ ] Discovery
+    - [ ] Consent
+    - [ ] OpenID Connect
+    - [ ] Logout
+  - [ ] Login and consent pages
+  - [ ] Run your first flow
+    - [ ] Register the API and a client
+    - [ ] Send the user to the authorize endpoint
+    - [ ] Sign in and consent
+    - [ ] Exchange the code for tokens
+    - [ ] Check the token
+
+## OpenID Connect and logout
+
+- [ ] OpenID Connect and logout
+  - [ ] Discovery metadata
+  - [ ] ID token claims
+  - [ ] UserInfo
+    - [ ] No access token
+    - [ ] A token sent with the `Bearer` scheme or in the form body, when the token is not DPoP-bound
+    - [ ] A DPoP-bound token, or any request that uses the `DPoP` scheme
+    - [ ] `openid`
+    - [ ] `profile`
+    - [ ] `email`
+  - [ ] Pairwise subject identifiers
+  - [ ] RP-initiated logout
+  - [ ] Back-channel logout
+
+## OAuth Provider reference
+
+- [ ] OAuth Provider reference
+  - [ ] Plugin options
+    - [ ] Sign-in flow
+    - [ ] Scopes and claims
+    - [ ] Clients and registration
+    - [ ] Tokens
+    - [ ] Storage and generation
+    - [ ] Other
+  - [ ] Endpoints
+    - [ ] `GET`
+    - [ ] `GET` `POST`
+    - [ ] `POST`
+    - [ ] `PATCH`
+    - [ ] `DELETE`
+  - [ ] Token errors
+    - [ ] `invalid_request`
+    - [ ] `invalid_client`
+    - [ ] `invalid_grant`
+    - [ ] `invalid_user`
+    - [ ] `unauthorized_client`
+    - [ ] `unsupported_grant_type`
+    - [ ] `invalid_scope`
+    - [ ] `invalid_target`
+    - [ ] `invalid_dpop_proof`
+  - [ ] Rate limits
+    - [ ] `token`
+    - [ ] `authorize`
+    - [ ] `introspect`
+    - [ ] `revoke`
+    - [ ] `register`
+    - [ ] `rotateClientKeys`
+    - [ ] `userinfo`
+  - [ ] Provider extensions
+    - [ ] `authorization`
+    - [ ] `url`
+    - [ ] `replayStore`
+    - [ ] Client authentication obligations
+    - [ ] Claim precedence
+      - [ ] Access token
+      - [ ] ID token
+      - [ ] UserInfo
+  - [ ] Schema
+    - [ ] OAuth Client
+    - [ ] OAuth Resource
+    - [ ] OAuth Client Resource
+    - [ ] OAuth Refresh Token
+    - [ ] OAuth Access Token
+    - [ ] OAuth Consent
+    - [ ] OAuth Client Assertion
+  - [ ] Optimizations
+
+## Protect your API
+
+- [ ] Protect your API
+  - [ ] Verify access tokens
+  - [ ] JWT or opaque tokens
+    - [ ] How the API verifies it
+    - [ ] Cost per request
+    - [ ] Claims
+  - [ ] Introspection
+  - [ ] Scopes and permissions
+  - [ ] Protected resource metadata
+
+## Sign-in and consent screens
+
+- [ ] Sign-in and consent screens
+  - [ ] How the redirect works
+  - [ ] Login page
+  - [ ] Consent page
+    - [ ] `POST /oauth2/consent`
+      - [ ] Parameter `accept`
+      - [ ] Parameter `scope` (optional)
+      - [ ] Parameter `claims` (optional)
+      - [ ] Parameter `oauth_query` (optional)
+  - [ ] Sign-up account screen
+  - [ ] Select account screen
+  - [ ] Post-login screen
+  - [ ] Continue endpoint
+    - [ ] `POST /oauth2/continue`
+      - [ ] Parameter `selected` (optional)
+      - [ ] Parameter `created` (optional)
+      - [ ] Parameter `postLogin` (optional)
+      - [ ] Parameter `oauth_query` (optional)
+  - [ ] Manage consents
+    - [ ] `getOAuthConsent`
+    - [ ] `getOAuthConsents`
+    - [ ] `updateOAuthConsent`
+    - [ ] `deleteOAuthConsent`
+
+## Tokens, scopes, and resources
+
+- [ ] Tokens, scopes, and resources
+  - [ ] Token endpoint
+    - [ ] `client_secret_basic`
+    - [ ] `client_secret_post`
+    - [ ] `private_key_jwt`
+    - [ ] `none`
+  - [ ] Scopes
+    - [ ] `openid`
+    - [ ] `profile`
+    - [ ] `email`
+    - [ ] `offline_access`
+  - [ ] Lifetimes
+    - [ ] `accessTokenExpiresIn`
+    - [ ] `m2mAccessTokenExpiresIn`
+    - [ ] `idTokenExpiresIn`
+    - [ ] `refreshTokenExpiresIn`
+    - [ ] `codeExpiresIn`
+    - [ ] `assertionMaxLifetime`
+  - [ ] Refresh tokens
+  - [ ] PKCE
+  - [ ] DPoP
+  - [ ] Custom claims
+    - [ ] Client-specific access token claims
+    - [ ] Custom token response fields
+  - [ ] Revocation
+    - [ ] Opaque access token
+    - [ ] Refresh token
+    - [ ] JWT access token
+  - [ ] Without the JWT plugin
+  - [ ] Storage
+    - [ ] `storeClientSecret`
+    - [ ] `storeTokens`
+  - [ ] Device code grant

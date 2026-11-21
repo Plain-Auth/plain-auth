@@ -1,0 +1,189 @@
+# SCIM provisioning
+
+[Feature index](../README.md)
+
+## Interfaces
+
+- [ ] SCIM provisioning endpoints, types and options
+  - [ ] `Operation (server API only)`
+  - [ ] `GET /scim/v2/ServiceProviderConfig`
+  - [ ] `GET /scim/v2/Schemas`
+  - [ ] `GET /scim/v2/Schemas/:schemaId`
+  - [ ] `GET /scim/v2/ResourceTypes`
+  - [ ] `GET /scim/v2/ResourceTypes/:resourceTypeId`
+  - [ ] `POST /scim/v2/Groups`
+  - [ ] `GET /scim/v2/Groups/:groupId`
+  - [ ] `GET /scim/v2/Groups`
+  - [ ] `PUT /scim/v2/Groups/:groupId`
+  - [ ] `PATCH /scim/v2/Groups/:groupId`
+  - [ ] `DELETE /scim/v2/Groups/:groupId`
+  - [ ] `SCIMPlugin`
+  - [ ] `SCIMEndpoints`
+  - [ ] `scim`
+  - [ ] `createSCIMManagedConnection (server API only)`
+  - [ ] `listSCIMManagedConnections (server API only)`
+  - [ ] `getSCIMManagedConnection (server API only)`
+  - [ ] `rotateSCIMManagedCredential (server API only)`
+  - [ ] `revokeSCIMManagedCredential (server API only)`
+  - [ ] `listSCIMManagedConnectionEvents (server API only)`
+  - [ ] `decommissionSCIMManagedConnection (server API only)`
+  - [ ] `Operation (server API only)`
+  - [ ] `POST /scim/v2/Users`
+  - [ ] `GET /scim/v2/Users/:userId`
+  - [ ] `GET /scim/v2/Users`
+  - [ ] `PUT /scim/v2/Users/:userId`
+  - [ ] `PATCH /scim/v2/Users/:userId`
+  - [ ] `DELETE /scim/v2/Users/:userId`
+
+## Groups and custom roles
+
+- [ ] Groups and custom roles
+  - [ ] Provision groups and memberships
+  - [ ] Map Groups to custom roles
+    - [ ] `roles.map`
+    - [ ] `roles.exists`
+    - [ ] `reconcileUser`
+    - [ ] `provisioningDomainId`
+    - [ ] `userId`
+    - [ ] `active`
+    - [ ] `sources`
+    - [ ] `grants`
+  - [ ] Reconcile mapping changes
+  - [ ] Rotate a credential
+  - [ ] Decommission a connection
+
+## System for Cross-domain Identity Management (SCIM)
+
+- [ ] System for Cross-domain Identity Management (SCIM)
+  - [ ] Configure your directory
+    - [ ] Base URL
+    - [ ] Authentication
+    - [ ] Token
+  - [ ] How provisioning maps to your application
+  - [ ] Provision users
+    - [ ] Link an existing authentication User
+      - [ ] `{ action: "create" }`
+      - [ ] `{ action: "link", userId, profile: "manage" }`
+      - [ ] `{ action: "link", userId, profile: "preserve" }`
+  - [ ] Authenticate provisioned users with SSO
+  - [ ] Handle activation and deletion
+
+## SCIM reference
+
+- [ ] SCIM reference
+  - [ ] Plugin options
+    - [ ] `connections`
+    - [ ] `authentication`
+    - [ ] `managedConnections`
+    - [ ] `identity`
+    - [ ] `projection`
+    - [ ] `compatibility`
+    - [ ] Connection options
+      - [ ] `id`
+      - [ ] `credentials`
+      - [ ] `provisioningDomainId`
+    - [ ] Bearer credential options
+      - [ ] `type`
+      - [ ] `id`
+      - [ ] `token`
+      - [ ] `scopes`
+      - [ ] `expiresAt`
+    - [ ] Bearer verification
+    - [ ] Managed connection catalog
+      - [ ] `createSCIMManagedConnection`
+      - [ ] `listSCIMManagedConnections`
+      - [ ] `getSCIMManagedConnection`
+      - [ ] `rotateSCIMManagedCredential`
+      - [ ] `revokeSCIMManagedCredential`
+      - [ ] `listSCIMManagedConnectionEvents`
+      - [ ] `decommissionSCIMManagedConnection`
+      - [ ] `scim.users.read`
+      - [ ] `scim.users.write`
+      - [ ] `scim.groups.read`
+      - [ ] `scim.groups.write`
+  - [ ] HTTP behavior
+    - [ ] Null attribute values
+      - [ ] An attribute or subattribute in a `POST` or `PUT` body
+      - [ ] The `value` of a PATCH `add` or `replace` operation
+      - [ ] A key in a PATCH value that merges into the stored value: a pathless value, `name`, the Enterprise extension, `manager`, or a filtered value such as `addresses[type eq "work"]`
+      - [ ] A subattribute of a value in a PATCH that adds or replaces whole values, such as `emails` or `addresses`
+    - [ ] Microsoft Entra Group compatibility
+  - [ ] Users
+    - [ ] `POST`
+    - [ ] `GET`
+    - [ ] `PUT`
+    - [ ] `PATCH`
+    - [ ] `DELETE`
+    - [ ] Supported User attributes
+      - [ ] `userName`
+      - [ ] `externalId`
+      - [ ] `active`
+      - [ ] `displayName`
+      - [ ] `name.formatted`, `name.givenName`, `name.familyName`
+      - [ ] `name.middleName`, `name.honorificPrefix`, `name.honorificSuffix`
+      - [ ] `emails`
+      - [ ] `title`, `userType`, `preferredLanguage`, `locale`, `timezone`
+      - [ ] `phoneNumbers`, `addresses`, `roles`, `entitlements`
+      - [ ] `urn:ietf:params:scim:schemas:extension:enterprise:2.0:User`
+  - [ ] Groups
+    - [ ] `POST`
+    - [ ] `GET`
+    - [ ] `PUT`
+    - [ ] `PATCH`
+    - [ ] `DELETE`
+  - [ ] Discovery
+    - [ ] `GET`
+  - [ ] Filters and pagination
+    - [ ] User
+    - [ ] Group
+  - [ ] Response attributes
+  - [ ] PATCH
+    - [ ] User PATCH paths
+      - [ ] `userName`
+      - [ ] `externalId`
+      - [ ] `active`
+      - [ ] `displayName`
+      - [ ] `name` and its supported subattributes
+      - [ ] `emails`
+      - [ ] `emails.value`
+      - [ ] `emails[type eq "work"].value`
+      - [ ] `title`, `userType`, `preferredLanguage`, `locale`, `timezone`
+      - [ ] `phoneNumbers`, `addresses`, `roles`, `entitlements`, their subattributes and type paths
+      - [ ] `enterpriseUrn` and its writable subattributes
+      - [ ] `manager`, `manager.value`, `manager.$ref`
+    - [ ] Group PATCH paths
+      - [ ] `displayName`
+      - [ ] `externalId`
+      - [ ] `members`
+      - [ ] `members[value eq "<scim-user-id>"]`
+  - [ ] Identity callbacks
+    - [ ] `identity.resolveUser`
+    - [ ] `identity.reconcileUser`
+  - [ ] Projection callbacks
+    - [ ] `projection.roles.map`
+    - [ ] `projection.roles.exists`
+    - [ ] `projection.reconcileUser`
+  - [ ] Trusted server APIs
+    - [ ] `reconcileSCIMProjection`
+    - [ ] `decommissionSCIMConnection`
+  - [ ] Unsupported features
+    - [ ] Custom schema extensions
+    - [ ] `User.groups`
+    - [ ] Passwords, instant messaging addresses, photos, or X.509 certificates
+    - [ ] Nested Groups or non-User Group members
+    - [ ] Bulk requests, POST-based search, `/Me`, ETags, cursors, or sorting
+    - [ ] Operators other than equality and logical `and`
+    - [ ] A built-in OAuth token endpoint, Basic authentication, or mutual TLS
+    - [ ] HTTP management endpoints, SCIM request audit records, or webhooks
+  - [ ] Schema
+    - [ ] `scimConnectionBinding`
+    - [ ] `scimUser`
+    - [ ] `scimGroup`
+    - [ ] `scimGroupMember`
+    - [ ] `scimSubject`
+    - [ ] `scimIdentityTombstone`
+    - [ ] `scimProjectionGrant`
+    - [ ] `scimManagedConnection`
+    - [ ] `scimManagedCredential`
+    - [ ] `scimManagedConnectionEvent`
+    - [ ] Legacy SCIM cutover

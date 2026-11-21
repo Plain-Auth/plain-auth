@@ -1,0 +1,115 @@
+# Passkey
+
+[Feature index](../README.md)
+
+## Interfaces
+
+- [ ] Passkey endpoints, types and options
+  - [ ] `getPasskeyActions`
+  - [ ] `passkeyClient`
+  - [ ] `passkey`
+  - [ ] `GET /passkey/generate-register-options`
+    - [x] Bind registration to a fresh account session and a secure one-use challenge ([test](../../../adapters/sqlstore/passkey_test.go#L168))
+    - [x] Use the public client to request options with the configured relying-party name, ID and public-key algorithms ([test](../../../conformance/core.test.mjs#L364))
+  - [ ] `GET /passkey/generate-authenticate-options`
+    - [x] Generate discoverable options and allow the current account’s enrolled credentials ([test](../../../adapters/sqlstore/passkey_test.go#L253))
+  - [ ] `POST /passkey/verify-registration`
+    - [x] Verify the attested key and preserve distinct credential and record IDs ([test](../../../adapters/sqlstore/passkey_test.go#L188))
+  - [ ] `POST /passkey/verify-authentication`
+    - [x] Verify a signed assertion and atomically persist its counter and session ([test](../../../adapters/sqlstore/passkey_test.go#L212))
+  - [ ] `GET /passkey/list-user-passkeys`
+    - [x] List only credentials owned by the authenticated account ([test](../../../adapters/sqlstore/passkey_test.go#L231))
+  - [ ] `POST /passkey/delete-passkey`
+    - [x] Remove an owned key and reject subsequent assertions ([test](../../../adapters/sqlstore/passkey_test.go#L256))
+  - [ ] `POST /passkey/update-passkey`
+    - [x] Rename an owned credential and refuse changes from another account ([test](../../../adapters/sqlstore/passkey_test.go#L234))
+  - [ ] `WebAuthnChallengeValue`
+  - [ ] `PasskeyRegistrationUser`
+  - [ ] `PasskeyExtensionsResolver`
+  - [ ] `PasskeyRegistrationOptions`
+    - [ ] `requireSession`
+    - [ ] `resolveUser`
+    - [ ] `afterVerification`
+    - [ ] `extensions`
+  - [ ] `PasskeyAuthenticationOptions`
+    - [ ] `extensions`
+    - [ ] `afterVerification`
+  - [ ] `PasskeyOptions`
+    - [ ] `rpID`
+    - [ ] `rpName`
+    - [ ] `origin`
+      - [x] Require explicitly configured secure origins within the relying-party ID ([test](../../../plugins/passkey/passkey_test.go#L12))
+    - [ ] `authenticatorSelection`
+    - [ ] `advanced`
+    - [ ] `schema`
+    - [ ] `registration`
+    - [ ] `authentication`
+  - [ ] `Passkey`
+
+## Passkey
+
+- [ ] Passkey
+  - [ ] Configuration (Optional)
+    - [ ] Passkey-first registration (pre-auth)
+  - [ ] Usage
+    - [ ] Add/Register a passkey
+      - [x] Enroll two independent public-key credentials from a fresh session ([test](../../../adapters/sqlstore/passkey_test.go#L248))
+      - [ ] `POST /passkey/add-passkey`
+        - [ ] Parameter `name` (optional)
+        - [ ] Parameter `authenticatorAttachment` (optional)
+        - [ ] Parameter `returnWebAuthnResponse` (optional)
+        - [ ] Parameter `context` (optional)
+        - [ ] Parameter `createSession` (optional)
+    - [ ] Sign in with a passkey
+      - [x] Sign in with a locally generated software authenticator and honor counter progression ([test](../../../adapters/sqlstore/passkey_test.go#L242))
+      - [ ] `POST /sign-in/passkey`
+        - [ ] Parameter `autoFill` (optional)
+        - [ ] Parameter `returnWebAuthnResponse` (optional)
+    - [ ] Extensions
+    - [ ] List passkeys
+      - [x] Keep another user’s keys out of the results ([test](../../../adapters/sqlstore/passkey_test.go#L231))
+      - [ ] `GET /passkey/list-user-passkeys`
+    - [ ] Naming passkeys by authenticator
+    - [ ] Deleting passkeys
+      - [x] Delete a credential through an owner-authorized request ([test](../../../adapters/sqlstore/passkey_test.go#L256))
+      - [ ] `POST /passkey/delete-passkey`
+        - [ ] Parameter `id`
+    - [ ] Updating passkey names
+      - [x] Persist the new name on the current account’s credential ([test](../../../adapters/sqlstore/passkey_test.go#L238))
+      - [ ] `POST /passkey/update-passkey`
+        - [ ] Parameter `id`
+        - [ ] Parameter `name`
+    - [ ] Conditional UI
+      - [ ] Update input fields
+      - [ ] Preload the passkeys
+    - [ ] Debugging
+  - [ ] Schema
+    - [x] Match generated SQL and SQLite physical schema for the public-key credential profile ([test](../../../conformance/schema.test.mjs#L66))
+    - [ ] `passkeyTableFields.id`
+    - [ ] `passkeyTableFields.name`
+    - [ ] `passkeyTableFields.publicKey`
+    - [ ] `passkeyTableFields.userId`
+    - [ ] `passkeyTableFields.credentialID`
+    - [ ] `passkeyTableFields.counter`
+    - [ ] `passkeyTableFields.deviceType`
+    - [ ] `passkeyTableFields.backedUp`
+    - [ ] `passkeyTableFields.transports`
+    - [ ] `passkeyTableFields.createdAt`
+    - [ ] `passkeyTableFields.aaguid`
+  - [ ] Options
+    - [ ] rpID
+    - [ ] rpName
+    - [ ] origin
+    - [ ] authenticatorSelection
+    - [ ] `authenticatorAttachment`
+    - [ ] `platform`
+    - [ ] `cross-platform`
+    - [ ] `residentKey`
+    - [ ] `required`
+    - [ ] `preferred`
+    - [ ] `discouraged`
+    - [ ] `userVerification`
+    - [ ] advanced
+    - [ ] `webAuthnChallengeCookie`
+  - [ ] Expo Integration
+    - [ ] Example Configuration

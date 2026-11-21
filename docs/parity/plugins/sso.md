@@ -1,0 +1,266 @@
+# Single sign-on
+
+[Feature index](../README.md)
+
+## Interfaces
+
+- [ ] Single sign-on endpoints, types and options
+  - [ ] `ssoClient`
+  - [ ] `SSOPlugin`
+  - [ ] `sso`
+  - [ ] `sso`
+  - [ ] `sso`
+  - [ ] `NormalizedSSOProfile`
+  - [ ] `OIDCDiscoveryDocument`
+  - [ ] `DiscoveryErrorCode`
+  - [ ] `DiscoveryError`
+  - [ ] `HydratedOIDCConfig`
+  - [ ] `DiscoverOIDCConfigParams`
+  - [ ] `REQUIRED_DISCOVERY_FIELDS`
+  - [ ] `RequiredDiscoveryField`
+  - [ ] `POST /sso/request-domain-verification`
+  - [ ] `POST /sso/verify-domain`
+  - [ ] `GET /sso/providers`
+  - [ ] `GET /sso/get-provider`
+  - [ ] `POST /sso/update-provider`
+  - [ ] `POST /sso/delete-provider`
+  - [ ] `GET /sso/saml2/sp/metadata`
+  - [ ] `POST /sso/register`
+  - [ ] `POST /sign-in/sso`
+  - [ ] `/sso/callback/:providerId`
+  - [ ] `/sso/callback`
+  - [ ] `GET / POST /sso/saml2/sp/acs/:providerId`
+  - [ ] `GET / POST /sso/saml2/sp/slo/:providerId`
+  - [ ] `POST /sso/saml2/logout/:providerId`
+  - [ ] `OIDCMapping`
+  - [ ] `SAMLMapping`
+  - [ ] `OIDCConfig`
+  - [ ] `SAMLIdentityProviderMetadata`
+  - [ ] `SAMLConfig`
+  - [ ] `AuthnRequestRecord`
+  - [ ] `SAMLSessionRecord`
+  - [ ] `SAMLAssertionExtract`
+  - [ ] `SSOProviderAdditionalFieldsInput`
+  - [ ] `InferSSOProvider`
+  - [ ] `SSOProvider`
+  - [ ] `SSOProviderSchema`
+  - [ ] `SSOUserResolution`
+  - [ ] `SSOProviderUserProfile`
+  - [ ] `SSOProviderReference`
+  - [ ] `SSOOIDCUserResolutionInput`
+  - [ ] `SSOSAMLUserResolutionInput`
+  - [ ] `SSOUserResolutionInput`
+  - [ ] `SSOUserResolutionContext`
+  - [ ] `SSOProviderMutationGuardInput`
+  - [ ] `SSOProviderMutationGuardContext`
+  - [ ] `SSOOptions`
+    - [ ] `resolveUser`
+    - [ ] `guardProviderMutation`
+    - [ ] `provisionUser`
+    - [ ] `provisionUserOnEveryLogin`
+    - [ ] `organizationProvisioning`
+    - [ ] `defaultSSO`
+    - [ ] `defaultOverrideUserInfo`
+    - [ ] `disableImplicitSignUp`
+    - [ ] `modelName`
+    - [ ] `fields`
+    - [ ] `schema`
+    - [ ] `providersLimit`
+    - [ ] `trustEmailVerified`
+    - [ ] `domainVerification`
+    - [ ] `redirectURI`
+    - [ ] `resolvePrivateKey`
+    - [ ] `saml`
+  - [ ] `Member`
+
+## Verify SSO domains
+
+- [ ] Verify SSO domains
+  - [ ] Enable domain verification
+  - [ ] Verify your domain
+    - [ ] Get the verification token
+    - [ ] Publish a TXT record
+    - [ ] Submit verification
+      - [ ] `POST /sso/verify-domain`
+        - [ ] Parameter `providerId`
+  - [ ] Request a verification token
+    - [ ] `POST /sso/request-domain-verification`
+      - [ ] Parameter `providerId`
+  - [ ] Errors
+    - [ ] `DOMAIN_VERIFIED`
+    - [ ] `NO_PENDING_VERIFICATION`
+    - [ ] `IDENTIFIER_TOO_LONG`
+    - [ ] `INVALID_DOMAIN`
+    - [ ] `DOMAIN_VERIFICATION_FAILED`
+    - [ ] `SSO_PROVIDER_CHANGED`
+
+## Single Sign-On (SSO)
+
+- [ ] Single Sign-On (SSO)
+  - [ ] Features
+    - [ ] OIDC discovery of provider endpoints
+    - [ ] `private_key_jwt` token endpoint authentication
+    - [ ] SAML 2.0 SP-initiated and IdP-initiated sign-in
+    - [ ] SAML response validation
+    - [ ] SAML Single Logout
+    - [ ] User resolution and provisioning
+    - [ ] Organization provisioning
+    - [ ] DNS domain verification
+  - [ ] Register a provider
+    - [ ] Only your administrators
+    - [ ] Your customers, each for their own domain
+    - [ ] Nobody at runtime
+    - [ ] `providerId`
+    - [ ] `issuer`
+    - [ ] `domain`
+    - [ ] Configure providers in code
+  - [ ] Sign in
+    - [ ] `POST /sign-in/sso`
+      - [ ] Parameter `email` (optional)
+      - [ ] Parameter `organizationSlug` (optional)
+      - [ ] Parameter `providerId` (optional)
+      - [ ] Parameter `domain` (optional)
+      - [ ] Parameter `callbackURL`
+      - [ ] Parameter `errorCallbackURL` (optional)
+      - [ ] Parameter `newUserCallbackURL` (optional)
+      - [ ] Parameter `scopes` (optional)
+      - [ ] Parameter `loginHint` (optional)
+      - [ ] Parameter `additionalParams` (optional)
+      - [ ] Parameter `requestSignUp` (optional)
+      - [ ] Parameter `providerType` (optional)
+  - [ ] Manage providers
+    - [ ] `POST /sso/update-provider`
+      - [ ] Parameter `providerId`
+      - [ ] Parameter `issuer` (optional)
+      - [ ] Parameter `domain` (optional)
+    - [ ] `POST /sso/delete-provider`
+    - [ ] `action`
+    - [ ] `provider`
+    - [ ] `providerReference`
+
+## OIDC providers
+
+- [ ] OIDC providers
+  - [ ] Register an OIDC provider
+    - [ ] Mapping
+  - [ ] OIDC discovery
+    - [ ] Trusted origins
+    - [ ] Discovery errors
+      - [ ] `issuer_mismatch`
+      - [ ] `discovery_incomplete`
+      - [ ] `discovery_not_found`
+      - [ ] `discovery_timeout`
+      - [ ] `discovery_invalid_url`
+      - [ ] `discovery_untrusted_origin`
+      - [ ] `discovery_private_host`
+      - [ ] `discovery_invalid_json`
+      - [ ] `oidc_endpoint_redirect`
+      - [ ] `discovery_unexpected_error`
+  - [ ] Token endpoint authentication
+  - [ ] Shared redirect URI
+  - [ ] IdP-initiated sign-in
+
+## SSO users and organizations
+
+- [ ] SSO users and organizations
+  - [ ] How SSO users are matched
+    - [ ] Block new users
+    - [ ] Update profiles on sign-in
+  - [ ] Resolve SSO users
+    - [ ] `accountKey.issuer`
+    - [ ] `accountKey.accountId`
+    - [ ] `providerUser`
+    - [ ] `verifiedIdTokenClaims`
+    - [ ] `providerClaims`
+    - [ ] `providerAttributes`
+    - [ ] `providerReference`
+  - [ ] User provisioning
+  - [ ] Link a provider to an organization
+  - [ ] Organization provisioning
+
+## SSO reference
+
+- [ ] SSO reference
+  - [ ] Plugin options
+    - [ ] Users and accounts
+    - [ ] Providers
+    - [ ] SAML
+    - [ ] Schema options
+  - [ ] Provider configuration
+    - [ ] Registration body
+      - [ ] Additional fields
+    - [ ] oidcConfig
+    - [ ] samlConfig
+  - [ ] Endpoints
+    - [ ] `POST`
+    - [ ] `GET`
+    - [ ] `GET` `POST`
+  - [ ] Additional provider fields
+  - [ ] Schema
+    - [ ] Verification records
+      - [ ] `saml-authn-request:`
+      - [ ] `saml-used-assertion:`
+      - [ ] `saml-session:`
+      - [ ] `saml-session-by-id:`
+      - [ ] `saml-logout-request:`
+      - [ ] `_{tokenPrefix}-{providerId}`
+
+## SAML response validation
+
+- [ ] SAML response validation
+  - [ ] Size limit
+  - [ ] One assertion
+  - [ ] Signature
+  - [ ] Algorithms
+  - [ ] Timestamps
+  - [ ] Audience, recipient, and destination
+  - [ ] InResponseTo
+  - [ ] Replay
+  - [ ] InResponseTo validation
+    - [ ] `invalid_saml_response`
+    - [ ] `unsolicited_response`
+    - [ ] `invalid_state`
+  - [ ] Assertion replay protection
+    - [ ] `replay_detected`
+  - [ ] Timestamp validation
+    - [ ] `saml_error`
+  - [ ] Algorithm validation
+    - [ ] Signature
+    - [ ] Digest
+    - [ ] Key encryption
+    - [ ] Data encryption
+    - [ ] `"warn"`
+    - [ ] `"reject"`
+    - [ ] `"allow"`
+    - [ ] `SAML_UNKNOWN_ALGORITHM`
+    - [ ] `SAML_ALGORITHM_NOT_ALLOWED`
+    - [ ] `SAML_DEPRECATED_ALGORITHM`
+    - [ ] `SAML_DEPRECATED_CONFIG_ALGORITHM`
+  - [ ] Size limits
+    - [ ] `saml_error`
+
+## SAML providers
+
+- [ ] SAML providers
+  - [ ] Service provider (SP)
+  - [ ] Identity provider (IdP)
+  - [ ] Configure the IdP application
+    - [ ] ACS URL
+    - [ ] SP entity ID
+  - [ ] Register a SAML provider
+  - [ ] Service provider settings
+    - [ ] Signed assertions
+    - [ ] Signed AuthnRequests
+    - [ ] Encrypted assertions
+  - [ ] Signing certificates and rotation
+  - [ ] Attribute mapping
+    - [ ] `email`
+    - [ ] `name`
+    - [ ] `firstName`
+    - [ ] `lastName`
+    - [ ] `extraFields`
+  - [ ] ACS and callback URLs
+  - [ ] IdP-initiated SSO
+  - [ ] Service provider metadata
+  - [ ] Single Logout
+    - [ ] `saml.logoutRequestTTL`

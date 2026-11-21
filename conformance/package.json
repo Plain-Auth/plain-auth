@@ -1,0 +1,16 @@
+{
+  "name": "go-better-auth-conformance",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test",
+    "inventory": "node inventory.mjs"
+  },
+  "dependencies": {
+    "@better-auth/passkey": "1.7.27",
+    "@better-auth/stripe": "1.7.27",
+    "better-auth": "1.7.27",
+    "kysely": "0.28.17",
+    "stripe": "23.0.0"
+  }
+}

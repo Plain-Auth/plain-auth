@@ -1,0 +1,206 @@
+# Stripe
+
+[Feature index](../README.md)
+
+## Interfaces
+
+- [ ] Stripe endpoints, types and options
+  - [ ] `stripeClient`
+  - [ ] `stripe`
+  - [ ] `StripePlugin`
+  - [ ] `POST /subscription/upgrade`
+  - [ ] `POST /subscription/cancel`
+  - [ ] `POST /subscription/restore`
+  - [ ] `GET /subscription/list`
+  - [ ] `GET /subscription/success`
+  - [ ] `POST /subscription/billing-portal`
+    - [x] Open a billing portal for the authenticated customer and enforce its owner and return URL ([test](../../../plugins/stripe/portal_test.go#L27))
+  - [ ] `POST /stripe/webhook`
+  - [ ] `AuthorizeReferenceAction`
+  - [ ] `CustomerType`
+  - [ ] `WithStripeCustomerId`
+  - [ ] `WithActiveOrganizationId`
+  - [ ] `StripeCtxSession`
+  - [ ] `CheckoutSessionLocale`
+  - [ ] `CheckoutSessionLineItem`
+  - [ ] `StripePlan`
+  - [ ] `Subscription`
+  - [ ] `SubscriptionOptions`
+    - [ ] `plans`
+    - [ ] `requireEmailVerification`
+    - [ ] `onSubscriptionComplete`
+    - [ ] `onSubscriptionUpdate`
+    - [ ] `onSubscriptionCancel`
+    - [ ] `authorizeReference`
+    - [ ] `onSubscriptionDeleted`
+    - [ ] `onSubscriptionCreated`
+    - [ ] `getCheckoutSessionParams`
+  - [ ] `StripeOptions`
+    - [ ] `stripeClient`
+    - [ ] `stripeWebhookSecret`
+    - [ ] `createCustomerOnSignUp`
+    - [ ] `onCustomerCreate`
+    - [ ] `getCustomerCreateParams`
+    - [ ] `subscription`
+    - [ ] `organization`
+    - [ ] `onEvent`
+    - [ ] `schema`
+
+## Stripe
+
+- [ ] Stripe
+  - [ ] Features
+    - [ ] Create Stripe Customers automatically when users sign up
+    - [ ] Manage subscription plans and pricing
+    - [ ] Process subscription lifecycle events (creation, updates, cancellations)
+    - [ ] Handle Stripe webhooks securely with signature verification
+    - [ ] Expose subscription data to your application
+    - [ ] Support for trial periods and subscription upgrades
+    - [ ] Automatic trial abuse prevention
+    - [ ] Flexible reference system to associate subscriptions with users or organizations
+    - [ ] Team subscription support with seats management
+  - [ ] Usage
+    - [ ] Customer Management
+    - [ ] Subscription Management
+      - [ ] Defining Plans
+      - [ ] Creating a Subscription
+        - [ ] `POST /subscription/upgrade`
+          - [ ] Parameter `plan`
+          - [ ] Parameter `annual` (optional)
+          - [ ] Parameter `referenceId` (optional)
+          - [ ] Parameter `subscriptionId` (optional)
+          - [ ] Parameter `metadata` (optional)
+          - [ ] Parameter `customerType` (optional)
+          - [ ] Parameter `seats` (optional)
+          - [ ] Parameter `locale` (optional)
+          - [ ] Parameter `successUrl`
+          - [ ] Parameter `cancelUrl`
+          - [ ] Parameter `returnUrl` (optional)
+          - [ ] Parameter `disableRedirect`
+          - [ ] Parameter `scheduleAtPeriodEnd` (optional)
+        - [ ] Simple Example:
+      - [ ] Switching Plans
+      - [ ] Scheduling Plan Changes at Period End
+      - [ ] Listing Active Subscriptions
+        - [ ] `GET /subscription/list`
+          - [ ] Parameter `referenceId` (optional)
+          - [ ] Parameter `customerType` (optional)
+      - [ ] Canceling a Subscription
+        - [ ] `POST /subscription/cancel`
+          - [ ] Parameter `referenceId` (optional)
+          - [ ] Parameter `customerType` (optional)
+          - [ ] Parameter `subscriptionId` (optional)
+          - [ ] Parameter `returnUrl`
+        - [ ] Understanding Cancellation States
+        - [ ] `cancelAtPeriodEnd`
+        - [ ] `cancelAt`
+        - [ ] `canceledAt`
+        - [ ] `endedAt`
+        - [ ] `status`
+      - [ ] Restoring a Subscription
+        - [ ] `POST /subscription/restore`
+          - [ ] Parameter `referenceId` (optional)
+          - [ ] Parameter `customerType` (optional)
+          - [ ] Parameter `subscriptionId` (optional)
+        - [ ] Pending cancellation
+        - [ ] Pending plan change
+      - [ ] Creating Billing Portal Sessions
+        - [x] Open a billing portal for the authenticated customer and enforce its owner and return URL ([test](../../../plugins/stripe/portal_test.go#L27))
+        - [ ] `POST /subscription/billing-portal`
+          - [ ] Parameter `locale` (optional)
+          - [ ] Parameter `referenceId` (optional)
+          - [ ] Parameter `customerType` (optional)
+          - [ ] Parameter `returnUrl` (optional)
+          - [ ] Parameter `disableRedirect` (optional)
+    - [ ] Reference System
+      - [ ] Team Subscriptions with Seats
+    - [ ] Webhook Handling
+      - [x] Verify the webhook signature and dispatch a local event to the application callback ([test](../../../plugins/stripe/stripe_test.go#L19))
+      - [ ] `checkout.session.completed`
+      - [ ] `customer.subscription.created`
+      - [ ] `customer.subscription.updated`
+      - [ ] `customer.subscription.deleted`
+    - [ ] Subscription Lifecycle Hooks
+    - [ ] Trial Periods
+  - [ ] Schema
+    - [x] Generate and migrate the subscriptions schema and customer ID field ([test](../../../conformance/schema.test.mjs#L83))
+    - [x] Upgrade existing PostgreSQL and MySQL schemas with combined team, billing and factor profiles ([test](../../../adapters/sqlstore/profiles_test.go#L15))
+    - [ ] User
+      - [ ] `stripeUserTableFields.stripeCustomerId`
+    - [ ] Organization
+      - [ ] `stripeOrganizationTableFields.stripeCustomerId`
+    - [ ] Subscription
+      - [ ] `stripeSubscriptionTableFields.id`
+      - [ ] `stripeSubscriptionTableFields.plan`
+      - [ ] `stripeSubscriptionTableFields.referenceId`
+      - [ ] `stripeSubscriptionTableFields.stripeCustomerId`
+      - [ ] `stripeSubscriptionTableFields.stripeSubscriptionId`
+      - [ ] `stripeSubscriptionTableFields.status`
+      - [ ] `stripeSubscriptionTableFields.periodStart`
+      - [ ] `stripeSubscriptionTableFields.periodEnd`
+      - [ ] `stripeSubscriptionTableFields.cancelAtPeriodEnd`
+      - [ ] `stripeSubscriptionTableFields.cancelAt`
+      - [ ] `stripeSubscriptionTableFields.canceledAt`
+      - [ ] `stripeSubscriptionTableFields.endedAt`
+      - [ ] `stripeSubscriptionTableFields.seats`
+      - [ ] `stripeSubscriptionTableFields.trialStart`
+      - [ ] `stripeSubscriptionTableFields.trialEnd`
+      - [ ] `stripeSubscriptionTableFields.billingInterval`
+      - [ ] `stripeSubscriptionTableFields.stripeScheduleId`
+    - [ ] Customizing the Schema
+  - [ ] Options
+    - [ ] `stripeClient`
+    - [ ] `stripeWebhookSecret`
+    - [ ] `createCustomerOnSignUp`
+    - [ ] `onCustomerCreate`
+    - [ ] `getCustomerCreateParams`
+    - [ ] `onEvent`
+    - [ ] `subscription`
+    - [ ] `organization`
+    - [ ] `schema`
+    - [ ] Subscription Options
+      - [ ] `enabled`
+      - [ ] `plans`
+      - [ ] `requireEmailVerification`
+      - [ ] `authorizeReference`
+      - [ ] `getCheckoutSessionParams`
+      - [ ] `onSubscriptionComplete`
+      - [ ] `onSubscriptionCreated`
+      - [ ] `onSubscriptionUpdate`
+      - [ ] `onSubscriptionCancel`
+      - [ ] `onSubscriptionDeleted`
+      - [ ] Plan Configuration
+        - [ ] `name`
+        - [ ] `priceId`
+        - [ ] `lookupKey`
+        - [ ] `annualDiscountPriceId`
+        - [ ] `annualDiscountLookupKey`
+        - [ ] `limits`
+        - [ ] `group`
+        - [ ] `seatPriceId`
+        - [ ] `prorationBehavior`
+        - [ ] `lineItems`
+        - [ ] `freeTrial`
+      - [ ] Free Trial Configuration
+        - [ ] `days`
+        - [ ] `onTrialStart`
+        - [ ] `onTrialEnd`
+        - [ ] `onTrialExpired`
+    - [ ] Organization Options
+      - [ ] `enabled`
+      - [ ] `getCustomerCreateParams`
+      - [ ] `onCustomerCreate`
+  - [ ] Advanced Usage
+    - [ ] Using with Organizations
+      - [ ] When Organization Customer is enabled:
+      - [ ] Enabling Organization Customer
+      - [ ] Creating Organization Subscriptions
+      - [ ] Authorization
+      - [ ] Organization Billing Email
+    - [ ] Handling user deletion
+    - [ ] Custom Checkout Session Parameters
+    - [ ] Tax Collection
+    - [ ] Automatic Tax Calculation
+    - [ ] Trial Period Management
+      - [ ] How it works:
+      - [ ] Example scenario:

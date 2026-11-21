@@ -1,0 +1,228 @@
+# API keys
+
+[Feature index](../README.md)
+
+## Interfaces
+
+- [ ] API keys endpoints, types and options
+  - [ ] `apiKeyClient`
+  - [ ] `ApiKeyClientPlugin`
+  - [ ] `defaultKeyHasher`
+  - [ ] `API_KEY_TABLE_NAME`
+  - [ ] `apiKey`
+  - [ ] `POST /api-key/create`
+  - [ ] `Operation (server API only)`
+  - [ ] `POST /api-key/delete`
+  - [ ] `GET /api-key/get`
+  - [ ] `PredefinedApiKeyOptions`
+    - [ ] `keyExpiration`
+    - [ ] `startingCharactersConfig`
+    - [ ] `rateLimit`
+  - [ ] `resolveConfiguration`
+  - [ ] `isDefaultConfigId`
+  - [ ] `configIdMatches`
+  - [ ] `deleteAllExpiredApiKeys`
+  - [ ] `createApiKeyRoutes`
+  - [ ] `GET /api-key/list`
+  - [ ] `POST /api-key/update`
+  - [ ] `Operation (server API only)`
+  - [ ] `ApiKeyOptions`
+    - [ ] `schema`
+  - [ ] `ApiKeyConfigurationOptions`
+    - [ ] `configId`
+    - [ ] `apiKeyHeaders`
+    - [ ] `disableKeyHashing`
+    - [ ] `customAPIKeyGetter`
+    - [ ] `customAPIKeyValidator`
+    - [ ] `customKeyGenerator`
+    - [ ] `startingCharactersConfig`
+    - [ ] `defaultKeyLength`
+    - [ ] `defaultPrefix`
+    - [ ] `maximumPrefixLength`
+    - [ ] `requireName`
+    - [ ] `minimumPrefixLength`
+    - [ ] `maximumNameLength`
+    - [ ] `minimumNameLength`
+    - [ ] `enableMetadata`
+    - [ ] `keyExpiration`
+    - [ ] `rateLimit`
+    - [ ] `enableSessionForAPIKeys`
+    - [ ] `permissions`
+    - [ ] `storage`
+    - [ ] `fallbackToDatabase`
+    - [ ] `customStorage`
+    - [ ] `deferUpdates`
+    - [ ] `references`
+  - [ ] `ApiKey`
+
+## Advanced Features
+
+- [ ] Advanced Features
+  - [ ] Sessions from API keys
+    - [ ] User-Owned Keys Only
+    - [ ] Rate Limiting Note
+  - [ ] Multiple Configurations
+    - [ ] Setup
+    - [ ] Creating Keys with Specific Configurations
+    - [ ] Using configId for API Key Operations
+    - [ ] Filtering Keys by Configuration
+    - [ ] Global Options
+  - [ ] Organization-Owned API Keys
+    - [ ] Configuration
+    - [ ] Creating Organization-Owned Keys
+      - [ ] Session Mocking Limitation
+    - [ ] Access Control & Permissions
+      - [ ] API Key Permissions
+        - [ ] Create
+        - [ ] Read/List
+        - [ ] Update
+        - [ ] Delete
+      - [ ] Configuring Organization Roles
+        - [ ] Owner Access
+      - [ ] Permission Examples
+      - [ ] Error Codes
+        - [ ] `USER_NOT_MEMBER_OF_ORGANIZATION`
+        - [ ] `INSUFFICIENT_API_KEY_PERMISSIONS`
+    - [ ] API Key Object Structure
+  - [ ] Storage Modes
+    - [ ] Storage Mode Options
+      - [ ] `"database"` (Default)
+      - [ ] `"secondary-storage"`
+      - [ ] Secondary Storage with Fallback
+        - [ ] Read behavior:
+        - [ ] Write behavior:
+    - [ ] Custom Storage Methods
+  - [ ] Rate Limiting
+    - [ ] Double Rate-Limit Increment
+    - [ ] How does it work?
+      - [ ] First Request
+      - [ ] Within Window
+      - [ ] Window Reset
+      - [ ] Rate Limit Exceeded
+      - [ ] Disabling Rate Limiting
+      - [ ] Globally
+      - [ ] Per Key
+      - [ ] Null Values
+  - [ ] Remaining, refill, and expiration
+    - [ ] How does it work?
+      - [ ] Remaining:
+      - [ ] refillInterval & refillAmount:
+      - [ ] Expiration:
+  - [ ] Custom Key generation & verification
+  - [ ] Metadata
+
+## API Key
+
+- [ ] API Key
+  - [ ] Features
+    - [ ] Create, manage, and verify API keys
+    - [ ] Built-in rate limiting
+    - [ ] Custom expiration times, remaining count, and refill systems
+    - [ ] Metadata for API keys
+    - [ ] Custom prefix
+    - [ ] Sessions from API keys
+    - [ ] Secondary storage support for high-performance API key lookups
+    - [ ] Multiple configurations for different API key types
+    - [ ] Organization-owned API keys in addition to user-owned keys
+  - [ ] Usage
+    - [ ] Create an API key
+      - [ ] `POST /api-key/create`
+        - [ ] Parameter `configId` (optional)
+        - [ ] Parameter `name` (optional)
+        - [ ] Parameter `expiresIn` (optional)
+        - [ ] Parameter `userId` (optional)
+        - [ ] Parameter `organizationId` (optional)
+        - [ ] Parameter `prefix` (optional)
+        - [ ] Parameter `remaining` (optional)
+        - [ ] Parameter `refillAmount` (optional)
+        - [ ] Parameter `refillInterval` (optional)
+        - [ ] Parameter `rateLimitTimeWindow` (optional)
+        - [ ] Parameter `rateLimitMax` (optional)
+        - [ ] Parameter `rateLimitEnabled` (optional)
+        - [ ] Parameter `permissions` (optional)
+      - [ ] Result
+    - [ ] Verify an API key
+      - [ ] `POST /api-key/verify` (server API)
+        - [ ] Parameter `configId` (optional)
+        - [ ] Parameter `key`
+        - [ ] Parameter `permissions` (optional)
+      - [ ] Result
+    - [ ] Get an API key
+      - [ ] `GET /api-key/get`
+        - [ ] Parameter `configId` (optional)
+        - [ ] Parameter `id`
+      - [ ] Result
+    - [ ] Update an API key
+      - [ ] `POST /api-key/update`
+        - [ ] Parameter `configId` (optional)
+        - [ ] Parameter `keyId`
+        - [ ] Parameter `userId` (optional)
+        - [ ] Parameter `name` (optional)
+        - [ ] Parameter `enabled` (optional)
+        - [ ] Parameter `remaining` (optional)
+        - [ ] Parameter `refillAmount` (optional)
+        - [ ] Parameter `refillInterval` (optional)
+        - [ ] Parameter `expiresIn` (optional)
+        - [ ] Parameter `rateLimitEnabled` (optional)
+        - [ ] Parameter `rateLimitTimeWindow` (optional)
+        - [ ] Parameter `rateLimitMax` (optional)
+        - [ ] Parameter `permissions` (optional)
+      - [ ] Result
+    - [ ] Delete an API Key
+      - [ ] `POST /api-key/delete`
+        - [ ] Parameter `configId` (optional)
+        - [ ] Parameter `keyId`
+      - [ ] Result
+    - [ ] List API keys
+      - [ ] `GET /api-key/list`
+        - [ ] Parameter `configId` (optional)
+        - [ ] Parameter `organizationId` (optional)
+        - [ ] Parameter `limit` (optional)
+        - [ ] Parameter `offset` (optional)
+        - [ ] Parameter `sortBy` (optional)
+        - [ ] Parameter `sortDirection` (optional)
+      - [ ] Result
+      - [ ] Pagination Examples
+    - [ ] Delete all expired API keys
+      - [ ] `POST /api-key/delete-all-expired-api-keys` (server API)
+
+## Reference
+
+- [ ] Reference
+  - [ ] API Key plugin options
+    - [ ] `"user"`
+    - [ ] `"organization"`
+    - [ ] `"database"`
+    - [ ] `"secondary-storage"`
+    - [ ] `api-key:${hashedKey}`
+    - [ ] `api-key:by-id:${id}`
+    - [ ] `api-key:by-ref:${referenceId}`
+  - [ ] Permissions
+    - [ ] Setting Default Permissions
+    - [ ] Creating API Keys with Permissions
+    - [ ] Verifying API Keys with Required Permissions
+    - [ ] Updating API Key Permissions
+    - [ ] Permissions Structure
+  - [ ] Schema
+    - [ ] `apiKeyTableFields.id`
+    - [ ] `apiKeyTableFields.configId`
+    - [ ] `apiKeyTableFields.name`
+    - [ ] `apiKeyTableFields.start`
+    - [ ] `apiKeyTableFields.prefix`
+    - [ ] `apiKeyTableFields.key`
+    - [ ] `apiKeyTableFields.referenceId`
+    - [ ] `apiKeyTableFields.refillInterval`
+    - [ ] `apiKeyTableFields.refillAmount`
+    - [ ] `apiKeyTableFields.lastRefillAt`
+    - [ ] `apiKeyTableFields.enabled`
+    - [ ] `apiKeyTableFields.rateLimitEnabled`
+    - [ ] `apiKeyTableFields.rateLimitTimeWindow`
+    - [ ] `apiKeyTableFields.rateLimitMax`
+    - [ ] `apiKeyTableFields.requestCount`
+    - [ ] `apiKeyTableFields.remaining`
+    - [ ] `apiKeyTableFields.lastRequest`
+    - [ ] `apiKeyTableFields.expiresAt`
+    - [ ] `apiKeyTableFields.createdAt`
+    - [ ] `apiKeyTableFields.updatedAt`
+    - [ ] `apiKeyTableFields.permissions`
+    - [ ] `apiKeyTableFields.metadata`

@@ -1,0 +1,76 @@
+# Databases and the CLI
+
+Create an empty application database and provide credentials that can create tables and indexes. For SQLite, choose a path in a writable directory. The CLI and application adapters use the same schema implementation. The target is a fresh Go installation.
+
+## Inspect and apply the schema
+
+From the repository checkout, generate SQL for review. Generation writes to stdout and needs no database connection.
+
+```sh
+go run ./cmd/authctl generate --dialect postgres > auth-postgres.sql
+go run ./cmd/authctl generate --dialect mysql > auth-mysql.sql
+go run ./cmd/authctl generate --dialect sqlite > auth-sqlite.sql
+```
+
+Supply a connection string in `AUTH_DSN` and run the matching migration. The following examples use local development databases and placeholder credentials.
+
+```sh
+AUTH_DSN='./auth.db' go run ./cmd/authctl migrate --dialect sqlite
+
+AUTH_DSN='postgres://auth_user:example@localhost:5432/auth_dev?sslmode=disable' \
+  go run ./cmd/authctl migrate --dialect postgres
+
+AUTH_DSN='auth_user:example@tcp(127.0.0.1:3306)/auth_dev' \
+  go run ./cmd/authctl migrate --dialect mysql
+```
+
+Use the deployment's TLS settings for remote databases. The PostgreSQL adapter accepts pgx connection strings. The MySQL adapter accepts go-sql-driver/mysql DSNs and enables timestamp parsing. SQLite uses go-sqlite3 with foreign keys enabled and requires CGO.
+
+## Open storage in Go
+
+```go
+store, err := sqlstore.Open(ctx, "postgres", os.Getenv("AUTH_DSN"))
+if err != nil {
+    return err
+}
+defer store.Close()
+// Pass store in authn.Options{Store: store, ...}.
+```
+
+Import `github.com/nabuhadba/go-better-auth/adapters/sqlstore`. Use `"mysql"` or `"sqlite"` to change engines. Opening the store also applies its pending schema. Keep one store for the application's lifetime. Each request passes its own context for cancellation and deadlines.
+
+## What is stored
+
+| Table | Purpose |
+| --- | --- |
+| `user` | Profile, unique email, verification state, creation and update timestamps |
+| `account` | Account and provider identities, owner reference, optional password hash, OAuth tokens, scopes and expiry |
+| `session` | Unique opaque token, owner reference, creation, update and expiry times, and optional network metadata |
+| `verification` | Identifier, value and expiry for temporary verification records |
+
+The default layout uses per-dialect SQL types. A password account has provider ID `credential` and its account ID matches the owning user. Sessions reference that user and expire at their stored timestamp. Account registration writes the user, credential and initial session in one transaction. See the [dialect schemas](../adapters/sqlstore/schema) and [database contract tests](../adapters/sqlstore/engines_test.go).
+
+For isolated development without a database, pass `memory.New()` from `github.com/nabuhadba/go-better-auth/adapters/memory` as the store. Its users and sessions live in a single process and are discarded when the process exits. The [in-memory tests](../adapters/memory/memory_test.go) exercise registration and session revocation.
+
+## Run database integration tests
+
+Provide disposable databases. The tests create auth tables and test records. Run these commands after setting each DSN in your shell.
+
+```sh
+export BETTERAUTH_TEST_POSTGRES_DSN='postgres://auth_user:example@localhost:5432/auth_test?sslmode=disable'
+export BETTERAUTH_TEST_MYSQL_DSN='auth_user:example@tcp(127.0.0.1:3306)/auth_test'
+go test -race -count=1 -v ./adapters/...
+```
+
+For the two-factor tests, create separate empty databases and supply `BETTERAUTH_FACTOR_POSTGRES_DSN` and `BETTERAUTH_FACTOR_MYSQL_DSN`. These tests exercise adding factor fields to a running installation and need a dedicated schema. A skipped engine test indicates that its DSN was absent. Each engine's result is tracked individually in the [feature checklist](parity/README.md).
+
+## Add optional integration tables
+
+Pass the same comma-separated profile list to generation and migration. For example, inspect the SQL for team memberships and two-factor records, then apply it to the chosen database.
+
+```sh
+go run ./cmd/authctl generate --dialect postgres --plugins organization-teams,two-factor
+go run ./cmd/authctl migrate --dialect postgres --plugins organization-teams,two-factor
+```
+
+Use the [schema profile guide](schema.md) for supported combinations and runtime feature status.

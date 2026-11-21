@@ -1,0 +1,99 @@
+# Email otp
+
+[Feature index](../README.md)
+
+## Interfaces
+
+- [ ] Email otp endpoints, types and options
+  - [ ] `emailOTPClient`
+  - [ ] `emailOTP`
+  - [ ] `POST /email-otp/send-verification-otp`
+  - [ ] `Operation (server API only)`
+  - [ ] `Operation (server API only)`
+  - [ ] `POST /email-otp/check-verification-otp`
+  - [ ] `POST /email-otp/verify-email`
+  - [ ] `POST /sign-in/email-otp`
+  - [ ] `POST /email-otp/request-password-reset`
+  - [ ] `POST /forget-password/email-otp`
+  - [ ] `POST /email-otp/reset-password`
+  - [ ] `POST /email-otp/request-email-change`
+  - [ ] `POST /email-otp/change-email`
+  - [ ] `RequiredEmailOTPOptions`
+  - [ ] `EmailOTPOptions`
+    - [ ] `sendVerificationOTP`
+    - [ ] `otpLength`
+    - [ ] `expiresIn`
+    - [ ] `generateOTP`
+    - [ ] `sendVerificationOnSignUp`
+    - [ ] `disableSignUp`
+    - [ ] `allowedAttempts`
+    - [ ] `storeOTP`
+    - [ ] `resendStrategy`
+    - [ ] `changeEmail`
+    - [ ] `overrideDefaultEmailVerification`
+    - [ ] `rateLimit`
+
+## Email OTP
+
+- [ ] Email OTP
+  - [ ] Usage
+    - [ ] Send an OTP
+      - [ ] `POST /email-otp/send-verification-otp`
+        - [ ] Parameter `email`
+        - [ ] Parameter `type`
+    - [ ] Check an OTP (optional)
+      - [ ] `POST /email-otp/check-verification-otp`
+        - [ ] Parameter `email`
+        - [ ] Parameter `type`
+        - [ ] Parameter `otp`
+    - [ ] Sign In with OTP
+      - [ ] `POST /email-otp/send-verification-otp`
+        - [ ] Parameter `email`
+        - [ ] Parameter `type`
+      - [ ] `POST /sign-in/email-otp`
+        - [ ] Parameter `otp`
+        - [ ] Parameter `name` (optional)
+        - [ ] Parameter `image` (optional)
+    - [ ] Verify Email with OTP
+      - [ ] `POST /email-otp/send-verification-otp`
+        - [ ] Parameter `email`
+        - [ ] Parameter `type`
+      - [ ] `POST /email-otp/verify-email`
+        - [ ] Parameter `otp`
+    - [ ] Reset Password with OTP
+      - [ ] `POST /email-otp/request-password-reset`
+        - [ ] Parameter `email`
+      - [ ] `POST /email-otp/check-verification-otp`
+        - [ ] Parameter `type`
+        - [ ] Parameter `otp`
+      - [ ] `POST /email-otp/reset-password`
+        - [ ] Parameter `password`
+    - [ ] Change Email with OTP
+      - [ ] Usage
+        - [ ] `POST /email-otp/request-email-change`
+          - [ ] Parameter `newEmail`
+          - [ ] Parameter `otp` (optional)
+        - [ ] `POST /email-otp/change-email`
+          - [ ] Parameter `otp`
+      - [ ] Confirming with Current Email
+        - [ ] `POST /email-otp/send-verification-otp`
+          - [ ] Parameter `email`
+          - [ ] Parameter `type`
+    - [ ] Override Default Email Verification
+  - [ ] Options
+    - [ ] `sendVerificationOTP`
+    - [ ] `email`
+    - [ ] `otp`
+    - [ ] `type`
+    - [ ] `otpLength`
+    - [ ] `expiresIn`
+    - [ ] `sendVerificationOnSignUp`
+    - [ ] `disableSignUp`
+    - [ ] `generateOTP`
+    - [ ] `allowedAttempts`
+    - [ ] `resendStrategy`
+    - [ ] `"rotate"`
+    - [ ] `"reuse"`
+    - [ ] `storeOTP`
+    - [ ] Custom encryptor
+    - [ ] Custom hasher

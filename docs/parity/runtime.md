@@ -1,0 +1,248 @@
+# Core API and tooling
+
+[Feature index](README.md)
+
+## Core API
+
+Each entry groups the configured endpoint’s behaviors. A checked child records a tested case. The parent stays open while options, error cases or alternate configurations still need coverage.
+
+- [ ] Base API operations
+  - [ ] `accountInfo` (`GET /account-info`)
+    - [x] Resolve the selected provider account’s profile through the public HTTP API ([test](../../conformance/provider-credentials.mjs#L8))
+    - [x] Scope credentials to the current account and handle revocation or provider errors on SQLite, MySQL and PostgreSQL ([test](../../adapters/sqlstore/provider_credentials_test.go#L21))
+  - [ ] `callbackOAuth` (`GET / POST /callback/:id`)
+    - [x] Redeem the authorization code and establish a local authenticated session ([test](../../oauth_test.go#L20))
+  - [ ] `changeEmail` (`POST /change-email`)
+    - [x] Confirm an email change through the destination inbox ([test](../../account_lifecycle_test.go#L100))
+  - [ ] `changePassword` (`POST /change-password`)
+    - [x] Change credentials for a signed-in user ([test](../../account_test.go#L63))
+  - [ ] `deleteUser` (`POST /delete-user`)
+    - [x] Delete the account with a fresh authenticated session ([test](../../account_lifecycle_test.go#L150))
+    - [x] Remove account-owned invitations and membership rows and update team member totals on SQLite, MySQL and PostgreSQL ([test](../../adapters/sqlstore/organization_cleanup_test.go#L75))
+  - [ ] `deleteUserCallback` (`GET /delete-user/callback`)
+    - [x] Confirm account deletion and invalidate its session ([test](../../account_lifecycle_test.go#L125))
+  - [ ] `error` (`GET /error`)
+    - [x] Escape the public error page and forward error codes to the configured redirect ([test](../../error_page_test.go#L10))
+  - [ ] `getAccessToken` (`POST /get-access-token`)
+    - [x] Read the current account’s access token through the public HTTP API ([test](../../conformance/provider-credentials.mjs#L8))
+    - [x] Scope credentials to the current account and handle revocation or provider errors on SQLite, MySQL and PostgreSQL ([test](../../adapters/sqlstore/provider_credentials_test.go#L21))
+  - [ ] `getSession` (`GET / POST /get-session`)
+    - [x] Return the signed-in user and session with the default seven-day lifetime ([test](../../conformance/core.test.mjs#L151))
+    - [x] Support the sliding session window, deferred writes and expiration ([test](../../session_refresh_test.go#L46))
+  - [ ] `linkSocialAccount` (`POST /link-social`)
+    - [x] Explicitly link a verified OIDC identity to the signed-in user ([test](../../providers/oidc_test.go#L22))
+  - [ ] `listSessions` (`GET /list-sessions`)
+    - [x] Return both active logins for the signed-in user ([test](../../http_test.go#L94))
+  - [ ] `listUserAccounts` (`GET /list-accounts`)
+    - [x] List only the current user’s linked accounts and decode provider scopes ([test](../../adapters/sqlstore/identity_test.go#L30))
+  - [x] `ok` (`GET /ok`) ([test](../../conformance/core.test.mjs#L135))
+    - [x] Serve the health endpoint under a custom mount ([test](../../http_test.go#L59))
+    - [x] Return HTTP 200 and a JSON health response to anonymous clients ([test](../../conformance/core.test.mjs#L135))
+  - [ ] `refreshToken` (`POST /refresh-token`)
+    - [x] Refresh selected provider credentials and preserve ownership through the public HTTP API ([test](../../conformance/provider-credentials.mjs#L8))
+    - [x] Scope credentials to the current account and handle revocation or provider errors on SQLite, MySQL and PostgreSQL ([test](../../adapters/sqlstore/provider_credentials_test.go#L21))
+  - [ ] `requestPasswordReset` (`POST /request-password-reset`)
+    - [x] Deliver credential-reset instructions for a registered account ([test](../../account_test.go#L72))
+  - [ ] `requestPasswordResetCallback` (`GET /reset-password/:token`)
+    - [x] Redirect the reset callback to the configured application URL ([test](../../account_test.go#L82))
+  - [ ] `resetPassword` (`POST /reset-password`)
+    - [x] Apply an unexpired reset link only once under concurrent use ([test](../../account_test.go#L96))
+    - [x] Consume a reset token issued by another compatible server ([test](../../conformance/core.test.mjs#L173))
+  - [ ] `revokeOtherSessions` (`POST /revoke-other-sessions`)
+    - [x] Invalidate an older session while retaining the current one ([test](../../http_test.go#L99))
+  - [ ] `revokeSession` (`POST /revoke-session`)
+    - [x] Revoke the current token and expire session cookies ([test](../../http_test.go#L102))
+  - [ ] `revokeSessions` (`POST /revoke-sessions`)
+    - [x] Revoke every session from the native client ([test](../../client/client_test.go#L94))
+  - [ ] `sendVerificationEmail` (`POST /send-verification-email`)
+    - [x] Deliver a verification link to the registered address ([test](../../account_test.go#L47))
+  - [ ] `setPassword` (`server API only`)
+    - [x] Set a first credential on a social account through the server API ([test](../../adapters/sqlstore/account_contract_test.go#L94))
+  - [ ] `signInEmail` (`POST /sign-in/email`)
+    - [x] Reject the wrong password and issue a fresh session for valid credentials ([test](../../conformance/core.test.mjs#L158))
+    - [x] Apply configured email-verification gates ([test](../../account_lifecycle_test.go#L15))
+    - [x] Require an enrolled second factor for native and HTTP credential sign-in ([test](../../adapters/sqlstore/twofactor_test.go#L145))
+  - [ ] `signInSocial` (`POST /sign-in/social`)
+    - [x] Start an OAuth authorization flow with PKCE and browser state ([test](../../oauth_test.go#L20))
+  - [ ] `signOut` (`POST /sign-out`)
+    - [x] Clear the client's session cookies and return an anonymous session ([test](../../conformance/core.test.mjs#L162))
+  - [ ] `signUpEmail` (`POST /sign-up/email`)
+    - [x] Create a password account and return a usable session token on SQLite ([test](../../conformance/core.test.mjs#L149))
+    - [x] Apply configured email-verification gates ([test](../../account_lifecycle_test.go#L15))
+  - [ ] `unlinkAccount` (`POST /unlink-account`)
+    - [x] Keep the last required account and prevent unlinking another user’s account ([test](../../adapters/sqlstore/identity_test.go#L40))
+  - [ ] `updateSession` (`POST /update-session`)
+  - [ ] `updateUser` (`POST /update-user`)
+    - [x] Update a signed-in profile ([test](../../account_test.go#L40))
+  - [ ] `verifyEmail` (`GET /verify-email`)
+    - [x] Reflect the verified email address in the current session ([test](../../account_test.go#L59))
+    - [x] Verify a signed link against the same stored account across runtimes ([test](../../conformance/core.test.mjs#L173))
+  - [ ] `verifyPassword` (`POST /verify-password`)
+    - [x] Validate the password of the signed-in user ([test](../../account_test.go#L36))
+
+## Social sign-in
+
+- [ ] Built-in social providers
+  - [ ] `apple`
+    - [x] Validate the configured form-post flow and verify a signed native token ([test](../../providers/apple_microsoft_test.go#L39))
+  - [ ] `atlassian`
+    - [x] Complete the default browser code exchange and map the provider profile using a local fixture ([test](../../providers/catalog_test.go#L21))
+  - [ ] `cloudflare`
+    - [x] Complete the default browser code exchange and map the provider profile using a local fixture ([test](../../providers/catalog_test.go#L21))
+  - [ ] `cognito`
+    - [x] Complete a browser code exchange with a local issuer and its signed claims ([test](../../providers/issuer_test.go#L25))
+  - [ ] `discord`
+    - [x] Complete the default browser code exchange and map the provider profile using a local fixture ([test](../../providers/catalog_test.go#L21))
+  - [ ] `dropbox`
+    - [x] Complete the default browser code exchange and map the provider profile using a local fixture ([test](../../providers/catalog_test.go#L21))
+  - [ ] `facebook`
+    - [x] Complete the default browser code exchange and map the provider profile using a local fixture ([test](../../providers/catalog_test.go#L21))
+  - [ ] `figma`
+    - [x] Complete the default browser code exchange and map the provider profile using a local fixture ([test](../../providers/catalog_test.go#L21))
+  - [ ] `github`
+    - [x] Resolve a verified GitHub address through the provider API fixture ([test](../../providers/providers_test.go#L57))
+  - [ ] `gitlab`
+    - [x] Complete the default browser code exchange and map the provider profile using a local fixture ([test](../../providers/catalog_test.go#L21))
+  - [ ] `google`
+    - [x] Verify the signature and claims of a Google ID token against a test issuer ([test](../../providers/providers_test.go#L19))
+  - [ ] `huggingface`
+    - [x] Complete the default browser code exchange and map the provider profile using a local fixture ([test](../../providers/catalog_test.go#L21))
+  - [ ] `kakao`
+    - [x] Complete the default browser code exchange and map the provider profile using a local fixture ([test](../../providers/catalog_test.go#L21))
+  - [ ] `kick`
+    - [x] Complete the default browser code exchange and map the provider profile using a local fixture ([test](../../providers/catalog_test.go#L21))
+  - [ ] `line`
+    - [x] Complete the default browser code exchange and map the provider profile using a local fixture ([test](../../providers/catalog_test.go#L21))
+  - [ ] `linear`
+    - [x] Complete the default browser code exchange and map the provider profile using a local fixture ([test](../../providers/catalog_test.go#L21))
+  - [ ] `linkedin`
+    - [x] Complete the default browser code exchange and map the provider profile using a local fixture ([test](../../providers/catalog_test.go#L21))
+  - [ ] `microsoft`
+    - [x] Verify tenant, issuer and mailbox claims using local issuer fixtures ([test](../../providers/apple_microsoft_test.go#L132))
+  - [ ] `naver`
+    - [x] Complete the default browser code exchange and map the provider profile using a local fixture ([test](../../providers/catalog_test.go#L21))
+  - [ ] `notion`
+    - [x] Complete the default browser code exchange and map the provider profile using a local fixture ([test](../../providers/catalog_test.go#L21))
+  - [ ] `paybin`
+    - [x] Complete a browser code exchange with a local issuer and its signed claims ([test](../../providers/issuer_test.go#L25))
+  - [ ] `paypal`
+    - [x] Complete the default browser code exchange and map the provider profile using a local fixture ([test](../../providers/catalog_test.go#L21))
+  - [ ] `polar`
+    - [x] Complete the default browser code exchange and map the provider profile using a local fixture ([test](../../providers/catalog_test.go#L21))
+  - [ ] `railway`
+    - [x] Complete the default browser code exchange and map the provider profile using a local fixture ([test](../../providers/catalog_test.go#L21))
+  - [ ] `reddit`
+    - [x] Complete the default browser code exchange and map the provider profile using a local fixture ([test](../../providers/catalog_test.go#L21))
+  - [ ] `roblox`
+    - [x] Complete the default browser code exchange and map the provider profile using a local fixture ([test](../../providers/catalog_test.go#L21))
+  - [ ] `salesforce`
+    - [x] Complete the default browser code exchange and map the provider profile using a local fixture ([test](../../providers/catalog_test.go#L21))
+  - [ ] `slack`
+    - [x] Complete the default browser code exchange and map the provider profile using a local fixture ([test](../../providers/catalog_test.go#L21))
+  - [ ] `spotify`
+    - [x] Complete the default browser code exchange and map the provider profile using a local fixture ([test](../../providers/catalog_test.go#L21))
+  - [ ] `tiktok`
+    - [x] Complete the default browser code exchange and map the provider profile using a local fixture ([test](../../providers/catalog_test.go#L21))
+  - [ ] `twitch`
+    - [x] Complete a browser code exchange with a local issuer and its signed claims ([test](../../providers/issuer_test.go#L25))
+  - [ ] `twitter`
+    - [x] Complete the default browser code exchange and map the provider profile using a local fixture ([test](../../providers/catalog_test.go#L21))
+  - [ ] `vercel`
+    - [x] Complete the default browser code exchange and map the provider profile using a local fixture ([test](../../providers/catalog_test.go#L21))
+  - [ ] `vk`
+    - [x] Complete the default browser code exchange and map the provider profile using a local fixture ([test](../../providers/catalog_test.go#L21))
+  - [ ] `wechat`
+    - [x] Complete the default browser code exchange and map the provider profile using a local fixture ([test](../../providers/catalog_test.go#L21))
+  - [ ] `zoom`
+    - [x] Complete the default browser code exchange and map the provider profile using a local fixture ([test](../../providers/catalog_test.go#L21))
+- [ ] Generic OAuth provider presets
+  - [ ] auth0
+  - [ ] gumroad
+  - [ ] hubspot
+  - [ ] keycloak
+  - [ ] line
+  - [ ] microsoft-entra-id
+  - [ ] okta
+  - [ ] patreon
+  - [ ] slack
+  - [ ] yandex
+
+## Client SDK and host integrations
+
+- [ ] `client` client interface
+- [ ] `client/plugins` client interface
+- [ ] `react` client interface
+- [ ] `solid` client interface
+- [ ] `lynx` client interface
+- [ ] `vue` client interface
+- [ ] `svelte-kit` host binding
+- [ ] `solid-start` host binding
+- [ ] `svelte` client interface
+- [ ] `next-js` host binding
+- [ ] `tanstack-start` host binding
+- [ ] `tanstack-start/solid` host binding
+- [ ] `node` host binding
+
+## CLI
+
+- [ ] CLI command behavior
+  - [ ] `ai`
+  - [ ] `check`
+    - [ ] `check schema`
+    - [ ] `-c, --cwd <cwd>`
+    - [ ] `--config <config>`
+  - [ ] `create-admin`
+    - [ ] `-c, --cwd <cwd>`
+    - [ ] `--config <config>`
+    - [ ] `--email <email>`
+    - [ ] `--password <password>`
+    - [ ] `--name <name>`
+    - [ ] `--role <role>`
+    - [ ] `--data <json>`
+    - [ ] `--no-email-verified`
+    - [ ] `--force`
+    - [ ] `-y, --yes`
+    - [ ] `--y`
+  - [ ] `generate`
+    - [x] Emit SQL DDL for SQLite, PostgreSQL and MySQL ([test](../../cmd/authctl/main_test.go#L28))
+    - [x] Emit exact SQL for all 144 supported dialect and profile combinations ([test](../../conformance/schema.test.mjs#L66))
+    - [ ] `-c, --cwd <cwd>`
+    - [ ] `--config <config>`
+    - [ ] `--output <output>`
+    - [ ] `--adapter <adapter>`
+    - [ ] `--dialect <dialect>`
+    - [ ] `-y, --yes`
+    - [ ] `--y`
+  - [ ] `info`
+    - [ ] `--cwd <cwd>`
+    - [ ] `--config <config>`
+    - [ ] `-j, --json`
+    - [ ] `-c, --copy`
+  - [ ] `init`
+    - [x] Write a private environment file once and preserve an existing file ([test](../../cmd/authctl/setup_test.go#L13))
+    - [ ] `-c, --cwd <cwd>`
+    - [ ] `--config <config>`
+    - [ ] `--package-manager <package-manager>`
+  - [ ] `login`
+    - [ ] `--server-url <url>`
+    - [ ] `--client-id <id>`
+  - [ ] `logout`
+  - [ ] `mcp`
+    - [ ] `--cursor`
+    - [ ] `--codex`
+    - [ ] `--claude-code`
+    - [ ] `--open-code`
+    - [ ] `--manual`
+  - [ ] `migrate`
+    - [x] Initialize the SQLite schema and repeat the migration ([test](../../cmd/authctl/main_test.go#L37))
+    - [x] Apply the selected profiles twice on populated SQLite while retaining the user ([test](../../conformance/schema.test.mjs#L83))
+    - [x] Upgrade existing PostgreSQL and MySQL schemas with combined team, billing and factor profiles ([test](../../adapters/sqlstore/profiles_test.go#L15))
+    - [ ] `-c, --cwd <cwd>`
+    - [ ] `--config <config>`
+    - [ ] `-y, --yes`
+    - [ ] `--y`
+  - [x] `secret` ([test](../../cmd/authctl/main_test.go#L23))
+    - [x] Generate an environment assignment containing 32 random bytes in hexadecimal ([test](../../cmd/authctl/main_test.go#L23))
+  - [ ] `upgrade`
+    - [ ] `-c, --cwd <cwd>`
+    - [ ] `-y, --yes`

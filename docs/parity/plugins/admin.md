@@ -1,0 +1,143 @@
+# Admin
+
+[Feature index](../README.md)
+
+## Interfaces
+
+- [ ] Admin endpoints, types and options
+  - [ ] `AdminClientOptions`
+    - [ ] `ac`
+    - [ ] `roles`
+  - [ ] `adminClient`
+  - [ ] `POST /admin/set-role`
+  - [ ] `GET /admin/get-user`
+  - [ ] `POST /admin/create-user`
+  - [ ] `POST /admin/update-user`
+  - [ ] `GET /admin/list-users`
+  - [ ] `POST /admin/list-user-sessions`
+  - [ ] `POST /admin/unban-user`
+  - [ ] `POST /admin/ban-user`
+  - [ ] `POST /admin/impersonate-user`
+  - [ ] `POST /admin/stop-impersonating`
+  - [ ] `POST /admin/revoke-user-session`
+  - [ ] `POST /admin/revoke-user-sessions`
+  - [ ] `POST /admin/remove-user`
+  - [ ] `POST /admin/set-user-password`
+  - [ ] `POST /admin/has-permission`
+  - [ ] `UserWithRole`
+  - [ ] `SessionWithImpersonatedBy`
+  - [ ] `AdminOptions`
+    - [ ] `defaultRole`
+    - [ ] `adminRoles`
+    - [ ] `defaultBanReason`
+    - [ ] `defaultBanExpiresIn`
+    - [ ] `impersonationSessionDuration`
+    - [ ] `schema`
+    - [ ] `ac`
+    - [ ] `roles`
+    - [ ] `adminUserIds`
+    - [ ] `bannedUserMessage`
+    - [ ] `allowImpersonatingAdmins`
+  - [ ] `InferAdminRolesFromOption`
+
+## Admin
+
+- [ ] Admin
+  - [ ] Usage
+    - [ ] Create User
+      - [ ] `POST /admin/create-user`
+        - [ ] Parameter `email`
+        - [ ] Parameter `password`
+        - [ ] Parameter `name`
+        - [ ] Parameter `role` (optional)
+        - [ ] Parameter `data` (optional)
+    - [ ] List Users
+      - [ ] `GET /admin/list-users`
+        - [ ] Parameter `searchValue` (optional)
+        - [ ] Parameter `searchField` (optional)
+        - [ ] Parameter `searchOperator` (optional)
+        - [ ] Parameter `limit` (optional)
+        - [ ] Parameter `offset` (optional)
+        - [ ] Parameter `sortBy` (optional)
+        - [ ] Parameter `sortDirection` (optional)
+        - [ ] Parameter `filterField` (optional)
+        - [ ] Parameter `filterValue` (optional)
+        - [ ] Parameter `filterOperator` (optional)
+      - [ ] Query Filtering
+      - [ ] Pagination
+        - [ ] How to Implement Pagination
+    - [ ] Get User
+      - [ ] `GET /admin/get-user`
+        - [ ] Parameter `id`
+      - [ ] Returns
+    - [ ] Set User Role
+      - [ ] `POST /admin/set-role`
+        - [ ] Parameter `userId` (optional)
+        - [ ] Parameter `role`
+    - [ ] Set User Password
+      - [ ] `POST /admin/set-user-password`
+        - [ ] Parameter `newPassword`
+        - [ ] Parameter `userId`
+    - [ ] Update user
+      - [ ] `POST /admin/update-user`
+        - [ ] Parameter `userId`
+        - [ ] Parameter `data`
+    - [ ] Ban User
+      - [ ] `POST /admin/ban-user`
+        - [ ] Parameter `userId`
+        - [ ] Parameter `banReason` (optional)
+        - [ ] Parameter `banExpiresIn` (optional)
+    - [ ] Unban User
+      - [ ] `POST /admin/unban-user`
+        - [ ] Parameter `userId`
+    - [ ] List User Sessions
+      - [ ] `POST /admin/list-user-sessions`
+        - [ ] Parameter `userId`
+    - [ ] Revoke User Session
+      - [ ] `POST /admin/revoke-user-session`
+        - [ ] Parameter `sessionToken`
+    - [ ] Revoke All Sessions for a User
+      - [ ] `POST /admin/revoke-user-sessions`
+        - [ ] Parameter `userId`
+    - [ ] Impersonate User
+      - [ ] `POST /admin/impersonate-user`
+        - [ ] Parameter `userId`
+    - [ ] Stop Impersonating User
+      - [ ] `POST /admin/stop-impersonating`
+    - [ ] Remove User
+      - [ ] `POST /admin/remove-user`
+        - [ ] Parameter `userId`
+  - [ ] Access Control
+    - [ ] Roles
+      - [ ] `admin`
+      - [ ] `user`
+    - [ ] Permissions
+      - [ ] user
+      - [ ] session
+    - [ ] Custom Permissions
+      - [ ] Create Access Control
+      - [ ] Create Roles
+      - [ ] Pass Roles to the Plugin
+    - [ ] Access Control Usage
+      - [ ] Has Permission
+      - [ ] `POST /admin/has-permission`
+        - [ ] Parameter `userId` (optional)
+        - [ ] Parameter `role` (optional)
+        - [ ] Parameter `permission` (optional)
+        - [ ] Parameter `permissions` (optional)
+      - [ ] Check Role Permission
+  - [ ] Schema
+    - [ ] `adminUserTableFields.role`
+    - [ ] `adminUserTableFields.banned`
+    - [ ] `adminUserTableFields.banReason`
+    - [ ] `adminUserTableFields.banExpires`
+    - [ ] `adminSessionTableFields.impersonatedBy`
+    - [ ] Email Enumeration Protection
+  - [ ] Options
+    - [ ] Default Role
+    - [ ] Admin Roles
+    - [ ] Admin userIds
+    - [ ] impersonationSessionDuration
+    - [ ] Default Ban Reason
+    - [ ] Default Ban Expires In
+    - [ ] bannedUserMessage

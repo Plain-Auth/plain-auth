@@ -1,0 +1,106 @@
+# Device authorization
+
+[Feature index](../README.md)
+
+## Interfaces
+
+- [ ] Device authorization endpoints, types and options
+  - [ ] `deviceAuthorizationClient`
+  - [ ] `deviceAuthorizationOptionsSchema`
+  - [ ] `DeviceAuthorizationOptions`
+  - [ ] `DeviceAuthorizationRequest`
+  - [ ] `DeviceAuthorizationGrantAuthorization`
+  - [ ] `DeviceAuthorizationGrant`
+  - [ ] `DeviceAuthorizationPluginOptions`
+    - [ ] `grant`
+  - [ ] `deviceAuthorization`
+  - [ ] `POST /device/code`
+  - [ ] `POST /device/token`
+  - [ ] `GET /device`
+  - [ ] `POST /device/approve`
+  - [ ] `POST /device/deny`
+
+## Device Authorization
+
+- [ ] Device Authorization
+  - [ ] Try It Out
+  - [ ] How It Works
+    - [ ] Device requests codes
+    - [ ] User authorizes
+    - [ ] Device polls for token
+    - [ ] Access granted
+    - [ ] Production security requirements
+  - [ ] Choose the token your device needs
+    - [ ] Sign your own device into the same authentication application
+    - [ ] Let a registered CLI, TV app, or other public client call an OAuth-protected API
+    - [ ] Authorize a CLI to call an API
+  - [ ] First-party session flow
+    - [ ] Requesting Device Authorization
+      - [ ] `POST /device/code`
+        - [ ] Parameter `client_id`
+        - [ ] Parameter `scope` (optional)
+        - [ ] Parameter `user_id` (optional)
+    - [ ] Pre-binding to a User
+    - [ ] Polling for a authentication session token
+      - [ ] `POST /device/token`
+        - [ ] Parameter `grant_type`
+        - [ ] Parameter `device_code`
+        - [ ] Parameter `client_id`
+    - [ ] User Authorization Flow
+      - [ ] Code Verification
+      - [ ] Authorization
+    - [ ] Approving or Denying Device
+      - [ ] Approve Device
+        - [ ] `POST /device/approve`
+          - [ ] Parameter `userCode`
+      - [ ] Deny Device
+        - [ ] `POST /device/deny`
+          - [ ] Parameter `userCode`
+      - [ ] Example Approval Page
+  - [ ] Advanced Configuration
+    - [ ] Client Validation
+    - [ ] Custom Code Generation
+  - [ ] Error Handling
+    - [ ] `authorization_pending`
+    - [ ] `slow_down`
+    - [ ] `expired_token`
+    - [ ] `access_denied`
+    - [ ] `invalid_client`
+    - [ ] `invalid_grant`
+  - [ ] Example: CLI Application
+  - [ ] Security Considerations
+    - [ ] Verification and polling limits
+    - [ ] Code Expiration
+    - [ ] Client Validation
+    - [ ] HTTPS and approval UI
+    - [ ] User Code Format
+    - [ ] Authentication Required
+    - [ ] Pre-binding
+  - [ ] Options
+    - [ ] Server
+      - [ ] verificationUri
+      - [ ] expiresIn
+      - [ ] interval
+      - [ ] userCodeLength
+      - [ ] deviceCodeLength
+      - [ ] generateDeviceCode
+      - [ ] generateUserCode
+      - [ ] validateClient
+      - [ ] onDeviceAuthRequest
+    - [ ] Client
+      - [ ] device()
+      - [ ] device.code()
+      - [ ] device.token()
+      - [ ] device.approve()
+      - [ ] device.deny()
+  - [ ] Schema
+    - [ ] `deviceCodeTableFields.id`
+    - [ ] `deviceCodeTableFields.deviceCode`
+    - [ ] `deviceCodeTableFields.userCode`
+    - [ ] `deviceCodeTableFields.userId`
+    - [ ] `deviceCodeTableFields.clientId`
+    - [ ] `deviceCodeTableFields.scope`
+    - [ ] `deviceCodeTableFields.status`
+    - [ ] `deviceCodeTableFields.expiresAt`
+    - [ ] `deviceCodeTableFields.lastPolledAt`
+    - [ ] `deviceCodeTableFields.pollingInterval`

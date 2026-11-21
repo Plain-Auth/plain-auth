@@ -1,0 +1,530 @@
+# Core concepts
+
+[Feature index](README.md)
+
+## API
+
+- [ ] API
+  - [ ] Calling API Endpoints on the Server
+    - [ ] Body, Headers, Query
+    - [ ] Getting `headers` and `Response` Object
+      - [ ] Getting `headers`
+      - [ ] Getting `Response` Object
+    - [ ] Error Handling
+
+## CLI
+
+- [ ] CLI
+  - [ ] Generate
+    - [ ] Options
+      - [ ] `-c, --cwd`
+      - [ ] `--output`
+      - [ ] `--config`
+      - [ ] `-y, --yes`
+      - [ ] `--adapter`
+      - [ ] `--dialect`
+    - [ ] Generate Without a Database Connection
+      - [ ] `schemaGeneratorOptions.adapter`
+      - [ ] `schemaGeneratorOptions.dialect`
+  - [ ] Migrate
+    - [ ] Options
+      - [ ] `--config`
+      - [ ] `--yes`
+      - [ ] Using PostgreSQL with a non-default schema?
+  - [ ] Check
+    - [ ] Schema
+    - [ ] Options
+      - [ ] `-c, --cwd`
+      - [ ] `--config`
+  - [ ] Create Admin
+    - [ ] Options
+      - [ ] `--email`
+      - [ ] `--password`
+      - [ ] `--name`
+      - [ ] `--role`
+      - [ ] `--data`
+      - [ ] `--no-email-verified`
+      - [ ] `--config`
+      - [ ] `--force`
+      - [ ] `--yes`
+  - [ ] Init
+    - [ ] Options
+      - [ ] `--name`
+      - [ ] `--framework`
+      - [ ] `--plugins`
+      - [ ] `--database`
+      - [ ] `--package-manager`
+  - [ ] Upgrade
+    - [ ] Options
+      - [ ] `--cwd`
+      - [ ] `--yes`
+  - [ ] Info
+    - [ ] Output
+      - [ ] System
+      - [ ] Package Manager
+      - [ ] authentication
+      - [ ] Frameworks
+      - [ ] Databases
+    - [ ] Options
+      - [ ] `--config`
+      - [ ] `--json`
+    - [ ] Examples
+  - [ ] Secret
+  - [ ] Scripts and CI
+  - [ ] Common Issues
+    - [ ] Error: Cannot find module X
+
+## Client
+
+- [ ] Client
+  - [ ] Create Client Instance
+  - [ ] Usage
+    - [ ] Example: Sign In
+    - [ ] Hooks
+      - [ ] Example: useSession
+    - [ ] Fetch Options
+    - [ ] Disabling Default Fetch Plugins
+    - [ ] Session Options
+      - [ ] `clientSessionOptionsType.refetchInterval`
+      - [ ] `clientSessionOptionsType.refetchOnWindowFocus`
+      - [ ] `clientSessionOptionsType.refetchWhenOffline`
+    - [ ] Disable Default Fetch Plugins
+    - [ ] Disabling Hook Rerenders
+    - [ ] Handling Errors
+      - [ ] `data`
+      - [ ] `error`
+      - [ ] `message`
+      - [ ] `status`
+      - [ ] `statusText`
+      - [ ] Error Codes
+    - [ ] SSR Hydration
+    - [ ] Plugins
+      - [ ] Example: Magic Link Plugin
+
+## Cookies
+
+- [ ] Cookies
+  - [ ] `compact`
+  - [ ] `jwt`
+  - [ ] `jwe`
+  - [ ] Cookie Prefix
+  - [ ] Custom Cookies
+  - [ ] Cross Subdomain Cookies
+  - [ ] Secure Cookies
+    - [x] Serialize and authenticate a signed session cookie ([test](../../cookies_test.go#L10))
+  - [ ] Safari, ITP, and Cross-Domain Setups
+    - [ ] Using a Reverse Proxy
+      - [ ] Example with Netlify
+      - [ ] Example with Vercel
+    - [ ] Using a Shared Parent Domain
+
+## Database
+
+- [ ] Database
+  - [ ] Adapters
+  - [ ] CLI
+    - [ ] Running Migrations
+    - [ ] Generating Schema
+    - [ ] Programmatic Migrations
+  - [ ] Schema Validation
+  - [ ] Secondary Storage
+    - [ ] Implementation
+    - [ ] Redis Storage
+      - [ ] Official Redis Storage
+      - [ ] Custom Implementations
+  - [ ] Core Schema
+    - [ ] User
+      - [ ] `userTableFields.id`
+      - [ ] `userTableFields.name`
+      - [ ] `userTableFields.email`
+      - [ ] `userTableFields.emailVerified`
+      - [ ] `userTableFields.image`
+      - [ ] `userTableFields.createdAt`
+      - [ ] `userTableFields.updatedAt`
+    - [ ] Session
+      - [ ] `sessionTableFields.id`
+      - [ ] `sessionTableFields.userId`
+      - [ ] `sessionTableFields.token`
+      - [ ] `sessionTableFields.expiresAt`
+      - [ ] `sessionTableFields.ipAddress`
+      - [ ] `sessionTableFields.userAgent`
+      - [ ] `sessionTableFields.createdAt`
+      - [ ] `sessionTableFields.updatedAt`
+    - [ ] Account
+      - [ ] `accountTableFields.id`
+      - [ ] `accountTableFields.userId`
+      - [ ] `accountTableFields.accountId`
+      - [ ] `accountTableFields.providerId`
+      - [ ] `accountTableFields.accessToken`
+      - [ ] `accountTableFields.refreshToken`
+      - [ ] `accountTableFields.accessTokenExpiresAt`
+      - [ ] `accountTableFields.refreshTokenExpiresAt`
+      - [ ] `accountTableFields.scope`
+      - [ ] `accountTableFields.idToken`
+      - [ ] `accountTableFields.password`
+      - [ ] `accountTableFields.createdAt`
+      - [ ] `accountTableFields.updatedAt`
+    - [ ] Verification
+      - [ ] `verificationTableFields.id`
+      - [ ] `verificationTableFields.identifier`
+      - [ ] `verificationTableFields.value`
+      - [ ] `verificationTableFields.expiresAt`
+      - [ ] `verificationTableFields.createdAt`
+      - [ ] `verificationTableFields.updatedAt`
+  - [ ] Custom Tables
+    - [ ] Custom Table Names
+    - [ ] Extending Core Schema
+      - [ ] `type`
+      - [ ] `required`
+      - [ ] `defaultValue`
+      - [ ] `input`
+      - [ ] `returned`
+      - [ ] `{ input: true, returned: true }`
+      - [ ] `{ input: true, returned: false }`
+      - [ ] `{ input: false, returned: true }`
+      - [ ] `{ input: false, returned: false }`
+      - [ ] Example: Mapping Profile to User For `firstName` and `lastName`
+    - [ ] ID Generation
+      - [ ] Option 1: Let Database Generate IDs
+      - [ ] Option 2: Custom ID Generation Function
+        - [ ] Important
+      - [ ] Option 3: Consistent Custom ID Generator
+    - [ ] Numeric IDs
+    - [ ] UUIDs
+    - [ ] Mixed ID Types
+      - [ ] Use Case
+    - [ ] Database Hooks
+      - [ ] 1. Before Hook
+        - [ ] Purpose
+        - [ ] Behavior
+      - [ ] 2. After Hook
+        - [ ] Purpose
+        - [ ] Behavior
+        - [ ] Example Usage
+      - [ ] Throwing Errors
+      - [ ] Using the Context Object
+  - [ ] Plugins Schema
+    - [ ] `twoFactorEnabled`
+    - [ ] `twoFactorSecret`
+    - [ ] `twoFactorBackupCodes`
+    - [ ] `CLI`
+    - [ ] `Manual Method`
+  - [ ] Joins
+
+## Email
+
+- [ ] Email
+  - [ ] Bring Your Own Email Provider
+  - [ ] Email Verification
+    - [ ] Adding Email Verification to Your App
+      - [ ] sendVerificationEmail
+      - [ ] `user`
+      - [ ] `url`
+      - [ ] `token`
+    - [ ] Triggering Email Verification
+      - [ ] 1. During Sign-up
+      - [ ] 2. Require Email Verification
+      - [ ] 3. Manually
+    - [ ] Verifying the Email
+    - [ ] Auto Sign In After Verification
+    - [ ] Callback before email verification
+    - [ ] Callback after successful email verification
+    - [ ] Callback on duplicate sign-up attempt
+  - [ ] Password Reset Email
+
+## Hooks
+
+- [ ] Hooks
+  - [ ] Before Hooks
+    - [ ] Example: Enforce Email Domain Restriction
+    - [ ] Example: Modify Request Context
+  - [ ] After Hooks
+    - [ ] Example: Send a notification to your channel when a new user is registered
+    - [ ] Example: Handling Multiple Endpoints in a Single Hook
+  - [ ] Ctx
+    - [ ] Context
+    - [ ] Request Response
+      - [ ] JSON Responses
+      - [ ] Redirects
+      - [ ] Cookies
+      - [ ] Errors
+    - [ ] Context
+      - [ ] New Session
+      - [ ] Returned
+      - [ ] Response Headers
+      - [ ] Predefined Auth Cookies
+      - [ ] Secret
+      - [ ] Password
+        - [ ] `ctx.context.password.hash`
+        - [ ] `ctx.context.password.verify`
+      - [ ] Adapter
+      - [ ] Internal Adapter
+      - [ ] generateId
+      - [ ] runInBackground
+      - [ ] runInBackgroundOrAwait
+  - [ ] Reusable Hooks
+
+## OAuth
+
+- [ ] OAuth
+  - [ ] Configuring Social Providers
+  - [ ] Usage
+    - [ ] Sign In
+    - [ ] Link account
+    - [ ] Validate OAuth User Info
+    - [ ] Get Access Token
+    - [ ] Refresh Access Token
+    - [ ] Get Account Info Provided by the provider
+    - [ ] Requesting Additional Scopes
+    - [ ] Customizing the Authorization URL
+    - [ ] Passing Additional Data Through OAuth Flow
+      - [ ] Accessing Additional Data in Hooks
+        - [ ] `callbackURL`
+        - [ ] `codeVerifier`
+        - [ ] `errorURL`
+        - [ ] `newUserURL`
+        - [ ] `link`
+        - [ ] `requestSignUp`
+        - [ ] `expiresAt`
+        - [ ] `serverContext`
+        - [ ] `[key: string]`
+      - [ ] Passing Server-Trusted Data
+  - [ ] Handling Providers Without Email
+    - [ ] Apple
+    - [ ] Discord
+    - [ ] Facebook
+    - [ ] GitHub
+    - [ ] Kakao
+    - [ ] LinkedIn
+    - [ ] Microsoft Entra ID
+    - [ ] Roblox
+    - [ ] Create a placeholder email with `mapProfileToUser`
+    - [ ] Provider-specific notes
+      - [ ] Apple
+      - [ ] GitHub
+      - [ ] Microsoft Entra ID
+      - [ ] Facebook
+  - [ ] Provider Options
+    - [ ] clientId
+    - [ ] scope
+    - [ ] redirectURI
+    - [ ] disableSignUp
+    - [ ] disableIdTokenSignIn
+    - [ ] verifyIdToken
+    - [ ] overrideUserInfoOnSignIn
+    - [ ] requireEmailVerification
+    - [ ] mapProfileToUser
+      - [ ] Server-Owned Fields and Authorization Claims
+    - [ ] getAccountFields
+    - [ ] refreshAccessToken
+    - [ ] clientKey
+    - [ ] getUserInfo
+    - [ ] disableImplicitSignUp
+    - [ ] prompt
+    - [ ] responseMode
+    - [ ] disableDefaultScope
+    - [ ] Other Provider Configurations
+
+## Plugins
+
+- [ ] Plugins
+  - [ ] Using a Plugin
+  - [ ] Creating a Plugin
+    - [ ] What can a plugin do?
+  - [ ] Create a Server plugin
+    - [ ] Register a plugin type
+    - [ ] Endpoints
+      - [x] Register a Go plugin endpoint and detect duplicate registrations ([test](../../plugins_test.go#L11))
+      - [ ] Context Object
+      - [ ] `appName`
+      - [ ] `options`
+      - [ ] `tables`
+      - [ ] `baseURL`
+      - [ ] `session`
+      - [ ] `secret`
+      - [ ] `authCookie`
+      - [ ] `logger`
+      - [ ] `db`
+      - [ ] `adapter`
+      - [ ] `internalAdapter`
+      - [ ] `createAuthCookie`
+      - [ ] `trustedOrigins`
+      - [ ] `isTrustedOrigin`
+      - [ ] Rules for Endpoints
+    - [ ] Schema
+      - [ ] Fields
+      - [ ] `type`
+      - [ ] `required`
+      - [ ] `unique`
+      - [ ] `references`
+      - [ ] `model`
+      - [ ] `field`
+      - [ ] `onDelete`
+      - [ ] Other Schema Properties
+      - [ ] `disableMigration`
+    - [ ] Hooks
+    - [ ] Middleware
+    - [ ] On Request & On Response
+      - [ ] On Request
+        - [ ] Continue as Normal
+        - [ ] Interrupt the Request
+        - [ ] Modify the Request
+      - [ ] On Response
+        - [ ] Modify the Response
+        - [ ] Continue Normally
+    - [ ] Rate Limit
+    - [ ] Trusted origins
+    - [ ] Server-plugin helper functions
+      - [ ] `getSessionFromCtx`
+      - [ ] `sessionMiddleware`
+      - [ ] `requireResourceOwnership`
+      - [ ] `requireOrgRole`
+  - [ ] Creating a client plugin
+    - [ ] Endpoint Interface
+    - [ ] Get actions
+    - [ ] Get Atoms
+    - [ ] Path methods
+    - [ ] Fetch plugins
+    - [ ] Atom Listeners
+
+## Rate Limit
+
+- [ ] Rate Limit
+  - [ ] `/sign-in/email`
+  - [ ] `/two-factor/*`
+  - [ ] Configuring Rate Limit
+    - [ ] Connecting IP Address
+      - [x] Resolve the first untrusted address from configured proxy ranges while ignoring direct peers’ headers ([test](../../ip_test.go#L10))
+      - [ ] A proxy puts the client address in its own header
+      - [ ] Proxies add addresses to `X-Forwarded-For`
+      - [ ] Clients connect directly
+      - [ ] A proxy sets the client address
+      - [ ] Proxies add to `X-Forwarded-For`
+      - [ ] Clients connect directly
+      - [ ] When no address is found
+      - [ ] IPv6 Address Support
+      - [ ] IPv6 Subnet Rate Limiting
+        - [ ] `128`
+        - [ ] `64`
+        - [ ] `56`
+        - [ ] `48`
+        - [ ] `32`
+    - [ ] Rate Limit Window
+      - [x] Configure the default rule, override exact or wildcard paths and exempt individual routes ([test](../../rate_rules_test.go#L10))
+    - [ ] Storage
+      - [x] Enforce shared SQL counters across two independent auth instances on SQLite, PostgreSQL and MySQL ([test](../../adapters/sqlstore/ratelimit_test.go#L18))
+      - [ ] Using Database
+      - [ ] Using Secondary Storage
+      - [ ] Custom Storage
+  - [ ] Handling Rate Limit Errors
+    - [x] Return a rate-limit error with a retry duration ([test](../../http_test.go#L145))
+    - [ ] `X-Retry-After`
+    - [ ] Global Handling
+    - [ ] Per Request Handling
+    - [ ] Schema
+      - [ ] `rateLimitTableFields.id`
+      - [ ] `rateLimitTableFields.key`
+      - [ ] `rateLimitTableFields.count`
+      - [ ] `rateLimitTableFields.lastRequest`
+
+## Session Management
+
+- [ ] Session Management
+  - [ ] Session table
+    - [ ] `id`
+    - [ ] `token`
+    - [ ] `userId`
+    - [ ] `expiresAt`
+    - [ ] `ipAddress`
+    - [ ] `userAgent`
+  - [ ] Session Expiration
+    - [ ] Disable Session Refresh
+    - [ ] Defer Session Refresh
+  - [ ] Session Freshness
+  - [ ] Session Management
+    - [ ] Get Session
+      - [x] Return the signed-in user and session with the default seven-day lifetime ([test](../../conformance/core.test.mjs#L151))
+    - [ ] Use Session
+    - [ ] List Sessions
+      - [x] Return both active logins for the signed-in user ([test](../../http_test.go#L94))
+    - [ ] Revoke Session
+      - [x] Revoke the current token and expire session cookies ([test](../../http_test.go#L102))
+    - [ ] Revoke Other Sessions
+      - [x] Invalidate an older session while retaining the current one ([test](../../http_test.go#L99))
+    - [ ] Revoke All Sessions
+      - [x] Revoke every session from the native client ([test](../../client/client_test.go#L94))
+    - [ ] Update Session
+    - [ ] Revoking Sessions on Password Change
+  - [ ] Session Caching
+    - [ ] Cookie Cache
+      - [ ] Notes
+      - [ ] If immediate session revocation is critical:
+      - [ ] Cookie Cache Strategies
+        - [ ] `compact`
+        - [ ] `jwt`
+        - [ ] `jwe`
+        - [ ] Comparison:
+        - [ ] When to use each:
+    - [ ] JWKS-backed cookie-cache JWTs
+  - [ ] Sessions in Secondary Storage
+    - [ ] Storing Sessions in the Database
+    - [ ] Preserving Sessions
+  - [ ] Stateless Session Management
+    - [ ] Basic Stateless Setup
+    - [ ] Understanding `refreshCache`
+      - [ ] `false`
+      - [ ] `true`
+      - [ ] `object`
+    - [ ] Versioning Stateless Sessions
+    - [ ] Stateless with Secondary Storage
+  - [ ] Customizing Session Response
+    - [ ] Infer on the Client
+    - [ ] Caveats on Customizing Session Response
+      - [ ] Mutating the list-device-sessions endpoint
+
+## TypeScript
+
+- [ ] TypeScript
+  - [ ] TypeScript Config
+    - [ ] Strict Mode
+  - [ ] Inferring Types
+  - [ ] Additional Fields
+    - [ ] The `input` property
+    - [ ] Inferring Additional Fields on Client
+
+## User & Accounts
+
+- [ ] User & Accounts
+  - [ ] Update User
+    - [ ] Update User Information
+    - [ ] Change Email
+      - [ ] Confirming with Current Email
+      - [ ] Updating Without Verification
+      - [ ] Client Usage
+    - [ ] Change Password
+      - [ ] `POST /change-password`
+        - [ ] Parameter `newPassword`
+        - [ ] Parameter `currentPassword`
+        - [ ] Parameter `revokeOtherSessions` (optional)
+    - [ ] Set Password
+    - [ ] Verify Password
+  - [ ] Delete User
+    - [ ] Adding Verification Before Deletion
+      - [ ] How callback verification works:
+      - [ ] Callback URL
+      - [ ] Authentication Check
+    - [ ] Authentication Requirements
+    - [ ] Callbacks
+      - [ ] validateUserInfo
+      - [ ] beforeDelete
+      - [ ] afterDelete
+  - [ ] Accounts
+    - [ ] List User Accounts
+      - [x] List only the current user’s linked accounts and decode provider scopes ([test](../../adapters/sqlstore/identity_test.go#L30))
+    - [ ] Token Encryption
+    - [ ] Account Linking
+      - [ ] Forced Linking
+      - [ ] Disable Implicit Linking
+      - [ ] Manually Linking Accounts
+    - [ ] Account Unlinking
+      - [x] Keep the last required account and prevent unlinking another user’s account ([test](../../adapters/sqlstore/identity_test.go#L40))

@@ -1,0 +1,368 @@
+# Organization
+
+[Feature index](../README.md)
+
+## Interfaces
+
+- [ ] Organization endpoints, types and options
+  - [ ] `clientSideHasPermission`
+  - [ ] `OrganizationClientOptions`
+    - [ ] `ac`
+    - [ ] `roles`
+    - [ ] `teams`
+    - [ ] `schema`
+    - [ ] `dynamicAccessControl`
+  - [ ] `organizationClient`
+  - [ ] `inferOrgAdditionalFields`
+  - [ ] `POST /organization/has-permission`
+  - [ ] `POST /organization/create-role`
+  - [ ] `POST /organization/delete-role`
+  - [ ] `GET /organization/list-roles`
+  - [ ] `GET /organization/get-role`
+  - [ ] `POST /organization/update-role`
+  - [ ] `POST /organization/invite-member`
+    - [x] Authorize the inviter, constrain role grants, and resend the same invitation ([test](../../../plugins/organization/organization_test.go#L128))
+    - [x] Require a live inviter session for invitation creation and resends ([test](../../../adapters/sqlstore/organization_cleanup_test.go#L160))
+  - [ ] `POST /organization/accept-invitation`
+    - [x] Accept a matching invitation once, even during concurrent requests ([test](../../../plugins/organization/organization_test.go#L153))
+    - [x] Read the current recipient email and verification status and keep rejected invitation details private ([test](../../../adapters/sqlstore/organization_cleanup_test.go#L117))
+    - [x] Return only the public error code and message to a different recipient ([test](../../../plugins/organization/organization_test.go#L142))
+  - [ ] `POST /organization/reject-invitation`
+  - [ ] `POST /organization/cancel-invitation`
+  - [ ] `GET /organization/get-invitation`
+  - [ ] `GET /organization/list-invitations`
+  - [ ] `GET /organization/list-user-invitations`
+  - [ ] `POST /organization/remove-member`
+  - [ ] `POST /organization/update-member-role`
+  - [ ] `GET /organization/get-active-member`
+  - [ ] `POST /organization/leave`
+  - [ ] `GET /organization/list-members`
+  - [ ] `GET /organization/get-active-member-role`
+  - [ ] `POST /organization/create`
+    - [x] Create an organization and its owner membership atomically ([test](../../../plugins/organization/organization_test.go#L93))
+  - [ ] `POST /organization/check-slug`
+  - [ ] `POST /organization/update`
+  - [ ] `POST /organization/delete`
+  - [ ] `GET /organization/get-organization`
+    - [x] Resolve the active organization and enforce membership ([test](../../../plugins/organization/organization_test.go#L98))
+  - [ ] `GET /organization/get-full-organization`
+  - [ ] `POST /organization/set-active`
+    - [x] Select by slug or clear the current session selection ([test](../../../plugins/organization/organization_test.go#L175))
+  - [ ] `GET /organization/list`
+    - [x] List only organizations the current user belongs to ([test](../../../plugins/organization/organization_test.go#L109))
+  - [ ] `POST /organization/create-team`
+  - [ ] `POST /organization/remove-team`
+  - [ ] `POST /organization/update-team`
+  - [ ] `GET /organization/list-teams`
+  - [ ] `POST /organization/set-active-team`
+  - [ ] `GET /organization/list-user-teams`
+  - [ ] `GET /organization/list-team-members`
+  - [ ] `POST /organization/add-team-member`
+  - [ ] `POST /organization/remove-team-member`
+  - [ ] `OrganizationOptions`
+    - [ ] `allowUserToCreateOrganization`
+    - [ ] `organizationLimit`
+    - [ ] `creatorRole`
+    - [ ] `membershipLimit`
+    - [ ] `ac`
+    - [ ] `roles`
+    - [ ] `dynamicAccessControl`
+    - [ ] `teams`
+    - [ ] `invitationExpiresIn`
+    - [ ] `invitationLimit`
+    - [ ] `cancelPendingInvitationsOnReInvite`
+    - [ ] `requireEmailVerificationOnInvitation`
+    - [ ] `sendInvitationEmail`
+    - [ ] `schema`
+    - [ ] `disableOrganizationDeletion`
+    - [ ] `organizationHooks`
+
+## Organization
+
+- [ ] Organization
+  - [ ] Usage
+  - [ ] Organization
+    - [ ] Create an organization
+      - [x] Create an organization and its owner membership atomically ([test](../../../plugins/organization/organization_test.go#L93))
+      - [ ] `POST /organization/create`
+        - [ ] Parameter `name`
+        - [ ] Parameter `slug`
+        - [ ] Parameter `logo` (optional)
+        - [ ] Parameter `metadata` (optional)
+        - [ ] Parameter `userId` (optional)
+        - [ ] Parameter `keepCurrentActiveOrganization` (optional)
+      - [ ] Mutually Exclusive Parameters
+      - [ ] Restrict who can create an organization
+      - [ ] Check if organization slug is taken
+        - [ ] `POST /organization/check-slug`
+          - [ ] Parameter `slug`
+    - [ ] Organization Hooks
+      - [ ] Legacy organizationCreation hooks
+      - [ ] Modern organizationHooks
+      - [ ] Organization Creation and Management Hooks
+      - [ ] Member Hooks
+      - [ ] Invitation Hooks
+      - [ ] Team Hooks
+      - [ ] Hook Error Handling
+    - [ ] List User's Organizations
+      - [x] List only organizations the current user belongs to ([test](../../../plugins/organization/organization_test.go#L109))
+      - [ ] `GET /organization/list`
+    - [ ] Active Organization
+      - [ ] Set Active Organization
+        - [x] Select by slug or clear the current session selection ([test](../../../plugins/organization/organization_test.go#L175))
+        - [ ] `POST /organization/set-active`
+          - [ ] Parameter `organizationId` (optional)
+          - [ ] Parameter `organizationSlug` (optional)
+      - [ ] Use Active Organization
+    - [ ] Get Organization
+      - [x] Resolve the active organization and enforce membership ([test](../../../plugins/organization/organization_test.go#L98))
+      - [ ] `GET /organization/get-organization`
+        - [ ] Parameter `organizationId` (optional)
+        - [ ] Parameter `organizationSlug` (optional)
+    - [ ] Get Full Organization
+      - [ ] `GET /organization/get-full-organization`
+        - [ ] Parameter `organizationId` (optional)
+        - [ ] Parameter `organizationSlug` (optional)
+        - [ ] Parameter `membersLimit` (optional)
+    - [ ] Update Organization
+      - [ ] `POST /organization/update`
+        - [ ] Parameter `data`
+        - [ ] Parameter `name` (optional)
+        - [ ] Parameter `slug` (optional)
+        - [ ] Parameter `logo` (optional)
+        - [ ] Parameter `metadata` (optional)
+        - [ ] Parameter `organizationId` (optional)
+    - [ ] Delete Organization
+      - [ ] `POST /organization/delete`
+        - [ ] Parameter `organizationId`
+  - [ ] Invitations
+    - [ ] Setup Invitation Email
+    - [ ] Send Invitation
+      - [x] Authorize the inviter, constrain role grants, and resend the same invitation ([test](../../../plugins/organization/organization_test.go#L128))
+      - [ ] `POST /organization/invite-member`
+        - [ ] Parameter `email`
+        - [ ] Parameter `role`
+        - [ ] Parameter `organizationId` (optional)
+        - [ ] Parameter `resend` (optional)
+        - [ ] Parameter `teamId` (optional)
+    - [ ] Accept Invitation
+      - [x] Accept a matching invitation once, even during concurrent requests ([test](../../../plugins/organization/organization_test.go#L153))
+      - [x] Accept an invitation through the JavaScript client and read the new membership ([test](../../../conformance/core.test.mjs#L215))
+      - [ ] `POST /organization/accept-invitation`
+        - [ ] Parameter `invitationId`
+      - [ ] Email Verification Requirement
+        - [x] Require verified email before acceptance when configured ([test](../../../plugins/organization/organization_test.go#L184))
+    - [ ] Cancel Invitation
+      - [ ] `POST /organization/cancel-invitation`
+        - [ ] Parameter `invitationId`
+    - [ ] Reject Invitation
+      - [ ] `POST /organization/reject-invitation`
+        - [ ] Parameter `invitationId`
+    - [ ] Get Invitation
+      - [ ] `GET /organization/get-invitation`
+        - [ ] Parameter `id`
+    - [ ] List Invitations
+      - [ ] `GET /organization/list-invitations`
+        - [ ] Parameter `organizationId` (optional)
+    - [ ] List user invitations
+  - [ ] Members
+    - [ ] List Members
+      - [ ] `GET /organization/list-members`
+        - [ ] Parameter `organizationId` (optional)
+        - [ ] Parameter `limit` (optional)
+        - [ ] Parameter `offset` (optional)
+        - [ ] Parameter `sortBy` (optional)
+        - [ ] Parameter `sortDirection` (optional)
+        - [ ] Parameter `filterField` (optional)
+        - [ ] Parameter `filterOperator` (optional)
+        - [ ] Parameter `filterValue` (optional)
+    - [ ] Remove Member
+      - [ ] `POST /organization/remove-member`
+        - [ ] Parameter `memberIdOrEmail`
+        - [ ] Parameter `organizationId` (optional)
+    - [ ] Update Member Role
+      - [ ] `POST /organization/update-member-role`
+        - [ ] Parameter `role`
+        - [ ] Parameter `memberId`
+        - [ ] Parameter `organizationId` (optional)
+    - [ ] Get Active Member
+      - [ ] `GET /organization/get-active-member`
+    - [ ] Get Active Member Role
+      - [ ] `GET /organization/get-active-member-role`
+    - [ ] Add Member
+      - [ ] `POST /organization/add-member` (server API)
+        - [ ] Parameter `userId`
+        - [ ] Parameter `role`
+        - [ ] Parameter `organizationId` (optional)
+        - [ ] Parameter `teamId` (optional)
+    - [ ] Leave Organization
+      - [ ] `POST /organization/leave`
+        - [ ] Parameter `organizationId`
+  - [ ] Access Control
+    - [ ] Roles
+      - [ ] `owner`
+      - [ ] `admin`
+      - [ ] `member`
+    - [ ] Permissions
+      - [ ] organization
+      - [ ] member
+      - [ ] invitation
+    - [ ] Custom Permissions
+      - [ ] Create Access Control
+      - [ ] Create Roles
+      - [ ] Pass Roles to the Plugin
+    - [ ] Access Control Usage
+      - [ ] Has Permission
+      - [ ] Check Role Permission
+  - [ ] Dynamic Access Control
+    - [ ] Enabling Dynamic Access Control
+    - [ ] Creating a role
+      - [ ] `POST /organization/create-role`
+        - [ ] Parameter `role`
+        - [ ] Parameter `permission` (optional)
+        - [ ] Parameter `organizationId` (optional)
+    - [ ] Deleting a role
+      - [ ] `POST /organization/delete-role`
+        - [ ] Parameter `roleName` (optional)
+        - [ ] Parameter `roleId` (optional)
+        - [ ] Parameter `organizationId` (optional)
+    - [ ] Listing roles
+      - [ ] `GET /organization/list-roles`
+        - [ ] Parameter `organizationId` (optional)
+    - [ ] Getting a specific role
+      - [ ] `GET /organization/get-role`
+        - [ ] Parameter `roleName` (optional)
+        - [ ] Parameter `roleId` (optional)
+        - [ ] Parameter `organizationId` (optional)
+    - [ ] Updating a role
+      - [ ] `POST /organization/update-role`
+        - [ ] Parameter `roleName` (optional)
+        - [ ] Parameter `roleId` (optional)
+        - [ ] Parameter `organizationId` (optional)
+        - [ ] Parameter `data`
+        - [ ] Parameter `permission` (optional)
+    - [ ] Configuration Options
+      - [ ] `enabled`
+      - [ ] `maximumRolesPerOrganization`
+    - [ ] Additional Fields
+  - [ ] Teams
+    - [ ] Enabling Teams
+    - [ ] Managing Teams
+      - [ ] Create Team
+        - [ ] `POST /organization/create-team`
+          - [ ] Parameter `name`
+          - [ ] Parameter `organizationId` (optional)
+      - [ ] List Teams
+        - [ ] `GET /organization/list-teams`
+          - [ ] Parameter `organizationId` (optional)
+      - [ ] Update Team
+        - [ ] `POST /organization/update-team`
+          - [ ] Parameter `teamId`
+          - [ ] Parameter `data`
+          - [ ] Parameter `name` (optional)
+          - [ ] Parameter `organizationId` (optional)
+          - [ ] Parameter `createdAt` (optional)
+          - [ ] Parameter `updatedAt` (optional)
+      - [ ] Remove Team
+        - [ ] `POST /organization/remove-team`
+          - [ ] Parameter `teamId`
+          - [ ] Parameter `organizationId` (optional)
+      - [ ] Set Active Team
+        - [ ] `POST /organization/set-active-team`
+          - [ ] Parameter `teamId` (optional)
+      - [ ] List User Teams
+        - [ ] `GET /organization/list-user-teams`
+          - [ ] Parameter `userId` (optional)
+          - [ ] Parameter `organizationId` (optional)
+      - [ ] List Team Members
+        - [ ] `POST /organization/list-team-members`
+          - [ ] Parameter `teamId` (optional)
+      - [ ] Add Team Member
+        - [ ] `POST /organization/add-team-member`
+          - [ ] Parameter `teamId`
+          - [ ] Parameter `userId`
+      - [ ] Remove Team Member
+        - [ ] `POST /organization/remove-team-member`
+          - [ ] Parameter `teamId`
+          - [ ] Parameter `userId`
+    - [ ] Team Permissions
+      - [ ] `team:create`
+      - [ ] `team:update`
+      - [ ] `team:delete`
+    - [ ] Team Configuration Options
+      - [ ] `maximumTeams`
+      - [ ] `allowRemovingAllTeams`
+    - [ ] Team Members
+    - [ ] Database Schema
+      - [ ] `teamsFeatureTeamTableFields.id`
+      - [ ] `teamsFeatureTeamTableFields.name`
+      - [ ] `teamsFeatureTeamTableFields.memberCount`
+      - [ ] `teamsFeatureTeamTableFields.organizationId`
+      - [ ] `teamsFeatureTeamTableFields.createdAt`
+      - [ ] `teamsFeatureTeamTableFields.updatedAt`
+      - [ ] `teamsFeatureTeamMemberTableFields.id`
+      - [ ] `teamsFeatureTeamMemberTableFields.teamId`
+      - [ ] `teamsFeatureTeamMemberTableFields.userId`
+      - [ ] `teamsFeatureTeamMemberTableFields.membershipKey`
+      - [ ] `teamsFeatureTeamMemberTableFields.createdAt`
+  - [ ] Schema
+    - [x] Generate and incrementally apply the organization schema with and without teams ([test](../../../conformance/schema.test.mjs#L83))
+    - [x] Upgrade existing PostgreSQL and MySQL schemas with combined team, billing and factor profiles ([test](../../../adapters/sqlstore/profiles_test.go#L15))
+    - [ ] Organization
+      - [ ] `organizationTableFields.id`
+      - [ ] `organizationTableFields.name`
+      - [ ] `organizationTableFields.slug`
+      - [ ] `organizationTableFields.logo`
+      - [ ] `organizationTableFields.metadata`
+      - [ ] `organizationTableFields.createdAt`
+    - [ ] Member
+      - [ ] `memberTableFields.id`
+      - [ ] `memberTableFields.userId`
+      - [ ] `memberTableFields.organizationId`
+      - [ ] `memberTableFields.role`
+      - [ ] `memberTableFields.createdAt`
+    - [ ] Invitation
+      - [ ] `invitationTableFields.id`
+      - [ ] `invitationTableFields.email`
+      - [ ] `invitationTableFields.inviterId`
+      - [ ] `invitationTableFields.organizationId`
+      - [ ] `invitationTableFields.role`
+      - [ ] `invitationTableFields.status`
+      - [ ] `invitationTableFields.createdAt`
+      - [ ] `invitationTableFields.expiresAt`
+      - [ ] `invitationTeamIdFields.teamId`
+    - [ ] Session
+      - [ ] `sessionActiveOrganizationFields.activeOrganizationId`
+      - [ ] `sessionActiveOrganizationFields.activeTeamId`
+    - [ ] Organization Role (optional)
+      - [ ] `organizationRoleTableFields.id`
+      - [ ] `organizationRoleTableFields.organizationId`
+      - [ ] `organizationRoleTableFields.role`
+      - [ ] `organizationRoleTableFields.permission`
+      - [ ] `organizationRoleTableFields.createdAt`
+      - [ ] `organizationRoleTableFields.updatedAt`
+    - [ ] Teams (optional)
+      - [ ] `optionalTeamTableFields.id`
+      - [ ] `optionalTeamTableFields.name`
+      - [ ] `optionalTeamTableFields.memberCount`
+      - [ ] `optionalTeamTableFields.organizationId`
+      - [ ] `optionalTeamTableFields.createdAt`
+      - [ ] `optionalTeamTableFields.updatedAt`
+      - [ ] `teamsFeatureTeamTableFields0.id`
+      - [ ] `teamsFeatureTeamTableFields0.teamId`
+      - [ ] `teamsFeatureTeamTableFields0.userId`
+      - [ ] `teamsFeatureTeamTableFields0.membershipKey`
+      - [ ] `teamsFeatureTeamTableFields0.createdAt`
+      - [ ] `teamsFeatureTeamTableFields1.teamId`
+    - [ ] Customizing the Schema
+      - [ ] Additional Fields
+  - [ ] Options
+    - [ ] allowUserToCreateOrganization
+    - [ ] organizationLimit
+    - [ ] creatorRole
+    - [ ] membershipLimit
+    - [ ] sendInvitationEmail
+    - [ ] invitationExpiresIn
+    - [ ] cancelPendingInvitationsOnReInvite
+    - [ ] invitationLimit
+    - [ ] requireEmailVerificationOnInvitation

@@ -1,0 +1,159 @@
+# Two-factor authentication
+
+[Feature index](../README.md)
+
+## Interfaces
+
+- [ ] Two-factor authentication endpoints, types and options
+  - [ ] `POST /two-factor/verify-backup-code`
+    - [x] Allow one claim per backup code and challenge under concurrent use ([test](../../../adapters/sqlstore/twofactor_test.go#L201))
+    - [x] Validate the proof with session issuance disabled ([test](../../../adapters/sqlstore/twofactor_test.go#L219))
+    - [x] Complete a backup challenge issued by another compatible runtime sharing the same SQLite database ([test](../../../conformance/core.test.mjs#L242))
+  - [ ] `POST /two-factor/generate-backup-codes`
+    - [x] Replace the complete backup-code set and invalidate the previous set ([test](../../../adapters/sqlstore/twofactor_test.go#L212))
+  - [ ] `viewBackupCodes (server API only)`
+  - [ ] `BackupCodeOptions`
+    - [ ] `amount`
+    - [ ] `length`
+    - [ ] `customBackupCodesGenerate`
+    - [ ] `storeBackupCodes`
+    - [ ] `allowPasswordless`
+  - [ ] `encodeBackupCodes`
+  - [ ] `generateBackupCodes`
+  - [ ] `verifyBackupCode`
+  - [ ] `getBackupCodes`
+  - [ ] `backupCode2fa`
+  - [ ] `twoFactorClient`
+  - [ ] `POST /two-factor/enable`
+    - [x] Require a password and issue a provisioning URI and ten backup codes ([test](../../../adapters/sqlstore/twofactor_test.go#L121))
+  - [ ] `POST /two-factor/disable`
+    - [x] Require the password and restore regular credential sign-in after disabling the factor ([test](../../../adapters/sqlstore/twofactor_test.go#L260))
+  - [ ] `twoFactor`
+  - [ ] `POST /two-factor/send-otp`
+  - [ ] `POST /two-factor/verify-otp`
+  - [ ] `OTPOptions`
+    - [ ] `period`
+    - [ ] `digits`
+    - [ ] `sendOTP`
+    - [ ] `allowedAttempts`
+    - [ ] `storeOTP`
+  - [ ] `otp2fa`
+  - [ ] `generateTOTP (server API only)`
+  - [ ] `POST /two-factor/get-totp-uri`
+    - [x] Reread the same provisioning URI after validating the password ([test](../../../adapters/sqlstore/twofactor_test.go#L127))
+  - [ ] `POST /two-factor/verify-totp`
+    - [x] Confirm enrollment from another instance and issue a session after TOTP verification ([test](../../../adapters/sqlstore/twofactor_test.go#L138))
+  - [ ] `TOTPOptions`
+    - [ ] `issuer`
+    - [ ] `digits`
+    - [ ] `period`
+    - [ ] `backupCodes`
+    - [ ] `allowPasswordless`
+    - [ ] `disable`
+  - [ ] `totp2fa`
+  - [ ] `TwoFactorOptions`
+    - [ ] `issuer`
+    - [ ] `twoFactorTable`
+    - [ ] `totpOptions`
+    - [ ] `otpOptions`
+    - [ ] `backupCodeOptions`
+    - [ ] `skipVerificationOnEnable`
+    - [ ] `allowPasswordless`
+    - [ ] `schema`
+    - [ ] `twoFactorCookieMaxAge`
+    - [ ] `trustDeviceMaxAge`
+    - [ ] `accountLockout`
+  - [ ] `UserWithTwoFactor`
+  - [ ] `TwoFactorProvider`
+  - [ ] `TwoFactorTable`
+
+## Two-Factor Authentication (2FA)
+
+- [ ] Two-Factor Authentication (2FA)
+  - [ ] OTP (One-Time Password)
+  - [ ] TOTP (Time-based One-Time Password)
+  - [ ] Generating backup codes for account recovery
+  - [ ] Enabling/disabling 2FA
+  - [ ] Managing trusted devices
+  - [ ] Usage
+    - [ ] Enabling 2FA
+      - [ ] `totp`
+      - [ ] `otp`
+      - [ ] `POST /two-factor/enable`
+        - [ ] Parameter `password`
+        - [ ] Parameter `method` (optional)
+        - [ ] Parameter `issuer` (optional)
+    - [ ] Sign In with 2FA
+      - [ ] With `auth.api`
+    - [ ] Disabling 2FA
+      - [ ] `POST /two-factor/disable`
+        - [ ] Parameter `password` (optional)
+    - [ ] TOTP
+      - [ ] Getting TOTP URI
+        - [ ] `POST /two-factor/get-totp-uri`
+          - [ ] Parameter `password` (optional)
+        - [ ] Example: Using React
+      - [ ] Verifying TOTP
+        - [ ] `POST /two-factor/verify-totp`
+          - [ ] Parameter `code`
+          - [ ] Parameter `trustDevice` (optional)
+      - [ ] Importing Existing TOTP Secrets
+    - [ ] OTP
+      - [ ] Sending OTP
+        - [ ] `POST /two-factor/send-otp`
+          - [ ] Parameter `trustDevice` (optional)
+      - [ ] Verifying OTP
+        - [ ] `POST /two-factor/verify-otp`
+          - [ ] Parameter `code`
+          - [ ] Parameter `trustDevice` (optional)
+    - [ ] Backup Codes
+      - [ ] Generating Backup Codes
+        - [ ] `POST /two-factor/generate-backup-codes`
+          - [ ] Parameter `password` (optional)
+      - [ ] Using Backup Codes
+        - [ ] `POST /two-factor/verify-backup-code`
+          - [ ] Parameter `code`
+          - [ ] Parameter `disableSession` (optional)
+          - [ ] Parameter `trustDevice` (optional)
+      - [ ] Viewing Backup Codes
+        - [ ] `POST /two-factor/view-backup-codes` (server API)
+          - [ ] Parameter `userId`
+    - [ ] Trusted Devices
+    - [ ] Issuer
+  - [ ] Schema
+    - [x] Generate and migrate enrollment, factor, recovery and lockout fields ([test](../../../conformance/schema.test.mjs#L83))
+    - [x] Upgrade existing PostgreSQL and MySQL schemas with combined team, billing and factor profiles ([test](../../../adapters/sqlstore/profiles_test.go#L15))
+    - [ ] `twoFactorUserTableFields.twoFactorEnabled`
+    - [ ] `twoFactorTableFields.id`
+    - [ ] `twoFactorTableFields.userId`
+    - [ ] `twoFactorTableFields.secret`
+    - [ ] `twoFactorTableFields.backupCodes`
+    - [ ] `twoFactorTableFields.verified`
+    - [ ] `twoFactorTableFields.failedVerificationCount`
+    - [ ] `twoFactorTableFields.lockedUntil`
+  - [ ] Options
+    - [ ] Server
+      - [ ] twoFactorTable
+      - [ ] issuer
+      - [ ] skipVerificationOnEnable
+      - [ ] allowPasswordless
+      - [ ] Issuer
+      - [ ] TOTP options
+      - [ ] `twoFactorTotpOptionsType.digits`
+      - [ ] `twoFactorTotpOptionsType.period`
+      - [ ] OTP options
+      - [ ] `twoFactorOtpOptionsType.sendOTP`
+      - [ ] `twoFactorOtpOptionsType.period`
+      - [ ] `twoFactorOtpOptionsType.storeOTP`
+      - [ ] Backup Code Options
+      - [ ] `twoFactorBackupCodeOptionsType.amount`
+      - [ ] `twoFactorBackupCodeOptionsType.length`
+      - [ ] `twoFactorBackupCodeOptionsType.customBackupCodesGenerate`
+      - [ ] `twoFactorBackupCodeOptionsType.storeBackupCodes`
+      - [ ] Account lockout
+      - [ ] `twoFactorAccountLockoutOptionsType.enabled`
+      - [ ] `twoFactorAccountLockoutOptionsType.maxFailedAttempts`
+      - [ ] `twoFactorAccountLockoutOptionsType.durationSeconds`
+    - [ ] Client
+      - [ ] Options
+      - [ ] `onTwoFactorRedirect`

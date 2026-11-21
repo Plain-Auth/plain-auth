@@ -1,0 +1,1422 @@
+{
+  "core/signUpEmail": [
+    {
+      "label": "Create a password account and return a usable session token on SQLite",
+      "test": "conformance/core.test.mjs",
+      "marker": "const registered = record(await client.signUp.email"
+    },
+    {
+      "label": "Apply configured email-verification gates",
+      "test": "account_lifecycle_test.go",
+      "marker": "func TestVerificationGatedSignUpAndSignIn("
+    }
+  ],
+  "core/getSession": [
+    {
+      "label": "Return the signed-in user and session with the default seven-day lifetime",
+      "test": "conformance/core.test.mjs",
+      "marker": "const active = record(await client.getSession"
+    },
+    {
+      "label": "Support the sliding session window, deferred writes and expiration",
+      "test": "session_refresh_test.go",
+      "marker": "func TestSessionRefreshWindow("
+    }
+  ],
+  "core/signInEmail": [
+    {
+      "label": "Reject the wrong password and issue a fresh session for valid credentials",
+      "test": "conformance/core.test.mjs",
+      "marker": "const signedIn = record(await client.signIn.email"
+    },
+    {
+      "label": "Apply configured email-verification gates",
+      "test": "account_lifecycle_test.go",
+      "marker": "func TestVerificationGatedSignUpAndSignIn("
+    },
+    {
+      "label": "Require an enrolled second factor for native and HTTP credential sign-in",
+      "test": "adapters/sqlstore/twofactor_test.go",
+      "marker": "native password sign-in bypassed the challenge:"
+    }
+  ],
+  "core/signOut": [
+    {
+      "label": "Clear the client's session cookies and return an anonymous session",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.ok(record(await client.signOut())?.success); // final sign-out"
+    }
+  ],
+  "core/ok": [
+    {
+      "label": "Serve the health endpoint under a custom mount",
+      "test": "http_test.go",
+      "marker": "request(\"GET\", \"ok\", \"\", nil, 200)"
+    },
+    {
+      "label": "Return HTTP 200 and a JSON health response to anonymous clients",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.deepEqual(await health.json(), { ok: true });",
+      "complete": true
+    }
+  ],
+  "core/listSessions": [
+    {
+      "label": "Return both active logins for the signed-in user",
+      "test": "http_test.go",
+      "marker": "list := request(\"GET\", \"list-sessions\""
+    }
+  ],
+  "core/revokeOtherSessions": [
+    {
+      "label": "Invalidate an older session while retaining the current one",
+      "test": "http_test.go",
+      "marker": "request(\"POST\", \"revoke-other-sessions\", \"\", h, 200)"
+    }
+  ],
+  "core/revokeSession": [
+    {
+      "label": "Revoke the current token and expire session cookies",
+      "test": "http_test.go",
+      "marker": "revoked := request(\"POST\", \"revoke-session\""
+    }
+  ],
+  "core/revokeSessions": [
+    {
+      "label": "Revoke every session from the native client",
+      "test": "client/client_test.go",
+      "marker": "err = first.RevokeSessions(ctx)"
+    }
+  ],
+  "cli/generate": [
+    {
+      "label": "Emit SQL DDL for SQLite, PostgreSQL and MySQL",
+      "test": "cmd/authctl/main_test.go",
+      "marker": "if err := runCommand(\"generate\", \"--dialect\", dialect)"
+    },
+    {
+      "label": "Emit exact SQL for all 144 supported dialect and profile combinations",
+      "test": "conformance/schema.test.mjs",
+      "marker": "test(\"the CLI emits"
+    }
+  ],
+  "cli/migrate": [
+    {
+      "label": "Initialize the SQLite schema and repeat the migration",
+      "test": "cmd/authctl/main_test.go",
+      "marker": "if err := runCommand(\"migrate\", \"--dialect\", \"sqlite\"); err != nil"
+    },
+    {
+      "label": "Apply the selected profiles twice on populated SQLite while retaining the user",
+      "test": "conformance/schema.test.mjs",
+      "marker": "test(\"adding plugin profiles"
+    },
+    {
+      "label": "Upgrade existing PostgreSQL and MySQL schemas with combined team, billing and factor profiles",
+      "test": "adapters/sqlstore/profiles_test.go",
+      "marker": "func TestServerPluginSchemaUpgrade("
+    }
+  ],
+  "docs/content/docs/concepts/cookies.mdx#L94": [
+    {
+      "label": "Serialize and authenticate a signed session cookie",
+      "test": "cookies_test.go",
+      "marker": "func TestBetterCallCookieFixture("
+    }
+  ],
+  "docs/content/docs/concepts/rate-limit.mdx#L310": [
+    {
+      "label": "Return a rate-limit error with a retry duration",
+      "test": "http_test.go",
+      "marker": "func TestCredentialHTTPRateLimit("
+    }
+  ],
+  "docs/content/docs/concepts/plugins.mdx#L109": [
+    {
+      "label": "Register a Go plugin endpoint and detect duplicate registrations",
+      "test": "plugins_test.go",
+      "marker": "func TestPluginRegistrationAndDispatch("
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L586": [
+    {
+      "label": "Verify the webhook signature and dispatch a local event to the application callback",
+      "test": "plugins/stripe/stripe_test.go",
+      "marker": "func TestSignedWebhookDelivery("
+    }
+  ],
+  "docs/content/docs/adapters/sqlite.mdx#L72": [
+    {
+      "label": "Roll back a failed initialization atomically",
+      "test": "adapters/sqlstore/sqlite_test.go",
+      "marker": "func TestFailedSchemaInitializationIsAtomic("
+    }
+  ],
+  "docs/content/docs/authentication/email-password.mdx#L38": [
+    {
+      "label": "Create a password account and return a usable session token on SQLite",
+      "test": "conformance/core.test.mjs",
+      "marker": "const registered = record(await client.signUp.email"
+    }
+  ],
+  "docs/content/docs/authentication/email-password.mdx#L73": [
+    {
+      "label": "Reject the wrong password and issue a fresh session for valid credentials",
+      "test": "conformance/core.test.mjs",
+      "marker": "const signedIn = record(await client.signIn.email"
+    }
+  ],
+  "docs/content/docs/authentication/email-password.mdx#L104": [
+    {
+      "label": "Clear the client's session cookies and return an anonymous session",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.ok(record(await client.signOut())?.success); // final sign-out"
+    }
+  ],
+  "docs/content/docs/concepts/session-management.mdx#L106": [
+    {
+      "label": "Return the signed-in user and session with the default seven-day lifetime",
+      "test": "conformance/core.test.mjs",
+      "marker": "const active = record(await client.getSession"
+    }
+  ],
+  "docs/content/docs/concepts/session-management.mdx#L128": [
+    {
+      "label": "Return both active logins for the signed-in user",
+      "test": "http_test.go",
+      "marker": "list := request(\"GET\", \"list-sessions\""
+    }
+  ],
+  "docs/content/docs/concepts/session-management.mdx#L138": [
+    {
+      "label": "Revoke the current token and expire session cookies",
+      "test": "http_test.go",
+      "marker": "revoked := request(\"POST\", \"revoke-session\""
+    }
+  ],
+  "docs/content/docs/concepts/session-management.mdx#L152": [
+    {
+      "label": "Invalidate an older session while retaining the current one",
+      "test": "http_test.go",
+      "marker": "request(\"POST\", \"revoke-other-sessions\", \"\", h, 200)"
+    }
+  ],
+  "docs/content/docs/concepts/session-management.mdx#L162": [
+    {
+      "label": "Revoke every session from the native client",
+      "test": "client/client_test.go",
+      "marker": "err = first.RevokeSessions(ctx)"
+    }
+  ],
+  "go/routers": [
+    {
+      "label": "ServeMux signup, session lookup and sign-out with multiple cookies",
+      "test": "integrations/routers/routers_test.go",
+      "marker": "{\"ServeMux\", func("
+    },
+    {
+      "label": "chi signup, session lookup and sign-out with multiple cookies",
+      "test": "integrations/routers/routers_test.go",
+      "marker": "{\"chi\", func("
+    },
+    {
+      "label": "Gorilla signup, session lookup and sign-out with multiple cookies",
+      "test": "integrations/routers/routers_test.go",
+      "marker": "{\"Gorilla\", func("
+    },
+    {
+      "label": "Gin signup, session lookup and sign-out with multiple cookies",
+      "test": "integrations/routers/routers_test.go",
+      "marker": "{\"Gin\", func("
+    },
+    {
+      "label": "Fiber signup, session lookup and sign-out with multiple cookies",
+      "test": "integrations/routers/routers_test.go",
+      "marker": "{\"Fiber\", func("
+    }
+  ],
+  "go/client": [
+    {
+      "label": "Use the typed, cookie-backed client for signup, login and session management",
+      "test": "client/client_test.go",
+      "marker": "func TestNativeClientLifecycle("
+    },
+    {
+      "label": "Preserve caller cancellation and HTTP error status",
+      "test": "client/client_test.go",
+      "marker": "func TestTransportErrorsAndCancellation("
+    },
+    {
+      "label": "Manage accounts, recover passwords and verify authenticator and backup codes using a native client",
+      "test": "client/account_test.go",
+      "marker": "func TestAccountAndAuthenticatorClient("
+    }
+  ],
+  "go/databases": [
+    {
+      "label": "Reopen the SQLite database and read stored credentials and sessions",
+      "test": "adapters/sqlstore/sqlite_test.go",
+      "marker": "func TestReopenCredentialAndSession("
+    },
+    {
+      "label": "Roll back registration if creating the initial session fails",
+      "test": "adapters/sqlstore/sqlite_test.go",
+      "marker": "func TestCreateUserRollsBackOnSessionFailure("
+    },
+    {
+      "label": "Resolve concurrent same-email signups across two database connections",
+      "test": "adapters/sqlstore/sqlite_test.go",
+      "marker": "func TestConcurrentRegistrationWithTwoStores("
+    },
+    {
+      "label": "Match fresh and repeated SQLite migrations across columns, defaults, primary keys, indexes and foreign keys",
+      "test": "conformance/schema.test.mjs",
+      "marker": "test(\"fresh and repeated Go SQLite migrations"
+    },
+    {
+      "label": "Commit concurrent in-memory registration atomically",
+      "test": "adapters/memory/memory_test.go",
+      "marker": "func TestAtomicRegistration("
+    },
+    {
+      "label": "Track in-process sessions through the memory adapter",
+      "test": "adapters/memory/memory_test.go",
+      "marker": "func TestInProcessSessions("
+    },
+    {
+      "label": "Preserve a populated PostgreSQL or MySQL account and match fresh plugin tables, indexes and foreign keys after repeat migrations",
+      "test": "adapters/sqlstore/profiles_test.go",
+      "marker": "func TestServerPluginSchemaUpgrade("
+    }
+  ],
+  "cli/secret": [
+    {
+      "label": "Generate an environment assignment containing 32 random bytes in hexadecimal",
+      "test": "cmd/authctl/main_test.go",
+      "marker": "secret, err := hex.DecodeString(raw)",
+      "complete": true
+    }
+  ],
+  "core/updateUser": [
+    {
+      "label": "Update a signed-in profile",
+      "test": "account_test.go",
+      "marker": "profile update failed:"
+    }
+  ],
+  "core/verifyPassword": [
+    {
+      "label": "Validate the password of the signed-in user",
+      "test": "account_test.go",
+      "marker": "post(\"verify-password\", `{\"password\":\"correct password\"}"
+    }
+  ],
+  "core/changePassword": [
+    {
+      "label": "Change credentials for a signed-in user",
+      "test": "account_test.go",
+      "marker": "change := post(\"change-password\""
+    }
+  ],
+  "core/requestPasswordReset": [
+    {
+      "label": "Deliver credential-reset instructions for a registered account",
+      "test": "account_test.go",
+      "marker": "present := post(\"request-password-reset\""
+    }
+  ],
+  "core/requestPasswordResetCallback": [
+    {
+      "label": "Redirect the reset callback to the configured application URL",
+      "test": "account_test.go",
+      "marker": "dest := serve(t, auth, \"GET\", resetURL.RequestURI()"
+    }
+  ],
+  "core/resetPassword": [
+    {
+      "label": "Apply an unexpired reset link only once under concurrent use",
+      "test": "account_test.go",
+      "marker": "func TestOneWinnerForResetAndExpiredLinks("
+    },
+    {
+      "label": "Consume a reset token issued by another compatible server",
+      "test": "conformance/core.test.mjs",
+      "marker": "test(\"a shared SQLite account consumes reference verification and password reset links in Go\""
+    }
+  ],
+  "core/sendVerificationEmail": [
+    {
+      "label": "Deliver a verification link to the registered address",
+      "test": "account_test.go",
+      "marker": "verification delivery did not reach the account owner"
+    }
+  ],
+  "core/verifyEmail": [
+    {
+      "label": "Reflect the verified email address in the current session",
+      "test": "account_test.go",
+      "marker": "verification not reflected in session:"
+    },
+    {
+      "label": "Verify a signed link against the same stored account across runtimes",
+      "test": "conformance/core.test.mjs",
+      "marker": "test(\"a shared SQLite account consumes reference verification and password reset links in Go\""
+    }
+  ],
+  "docs/content/docs/plugins/bearer.mdx#L85": [
+    {
+      "label": "Use a bearer credential to retrieve an authenticated session",
+      "test": "plugins/bearer/bearer_test.go",
+      "marker": "func TestBearerSessions("
+    }
+  ],
+  "docs/content/docs/plugins/last-login-method.mdx#L48": [
+    {
+      "label": "Record the most recent email sign-in method subject to consent",
+      "test": "plugins/lastlogin/lastlogin_test.go",
+      "marker": "func TestLastLoginCookieAndConsent("
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L2137": [
+    {
+      "label": "Generate and incrementally apply the organization schema with and without teams",
+      "test": "conformance/schema.test.mjs",
+      "marker": "test(\"adding plugin profiles"
+    },
+    {
+      "label": "Upgrade existing PostgreSQL and MySQL schemas with combined team, billing and factor profiles",
+      "test": "adapters/sqlstore/profiles_test.go",
+      "marker": "func TestServerPluginSchemaUpgrade("
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L670": [
+    {
+      "label": "Generate and migrate the subscriptions schema and customer ID field",
+      "test": "conformance/schema.test.mjs",
+      "marker": "test(\"adding plugin profiles"
+    },
+    {
+      "label": "Upgrade existing PostgreSQL and MySQL schemas with combined team, billing and factor profiles",
+      "test": "adapters/sqlstore/profiles_test.go",
+      "marker": "func TestServerPluginSchemaUpgrade("
+    }
+  ],
+  "docs/content/docs/plugins/2fa.mdx#L490": [
+    {
+      "label": "Generate and migrate enrollment, factor, recovery and lockout fields",
+      "test": "conformance/schema.test.mjs",
+      "marker": "test(\"adding plugin profiles"
+    },
+    {
+      "label": "Upgrade existing PostgreSQL and MySQL schemas with combined team, billing and factor profiles",
+      "test": "adapters/sqlstore/profiles_test.go",
+      "marker": "func TestServerPluginSchemaUpgrade("
+    }
+  ],
+  "plugin/organization/POST /organization/create": [
+    {
+      "label": "Create an organization and its owner membership atomically",
+      "test": "plugins/organization/organization_test.go",
+      "marker": "invalid owner membership:"
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L71": [
+    {
+      "label": "Create an organization and its owner membership atomically",
+      "test": "plugins/organization/organization_test.go",
+      "marker": "invalid owner membership:"
+    }
+  ],
+  "plugin/organization/GET /organization/list": [
+    {
+      "label": "List only organizations the current user belongs to",
+      "test": "plugins/organization/organization_test.go",
+      "marker": "unrelated organization was listed"
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L530": [
+    {
+      "label": "List only organizations the current user belongs to",
+      "test": "plugins/organization/organization_test.go",
+      "marker": "unrelated organization was listed"
+    }
+  ],
+  "plugin/organization/GET /organization/get-organization": [
+    {
+      "label": "Resolve the active organization and enforce membership",
+      "test": "plugins/organization/organization_test.go",
+      "marker": "created organization missing as active"
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L735": [
+    {
+      "label": "Resolve the active organization and enforce membership",
+      "test": "plugins/organization/organization_test.go",
+      "marker": "created organization missing as active"
+    }
+  ],
+  "plugin/organization/POST /organization/set-active": [
+    {
+      "label": "Select by slug or clear the current session selection",
+      "test": "plugins/organization/organization_test.go",
+      "marker": "cleared organization still active"
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L621": [
+    {
+      "label": "Select by slug or clear the current session selection",
+      "test": "plugins/organization/organization_test.go",
+      "marker": "cleared organization still active"
+    }
+  ],
+  "plugin/organization/POST /organization/invite-member": [
+    {
+      "label": "Authorize the inviter, constrain role grants, and resend the same invitation",
+      "test": "plugins/organization/organization_test.go",
+      "marker": "resend lost the original invitation"
+    },
+    {
+      "label": "Require a live inviter session for invitation creation and resends",
+      "test": "adapters/sqlstore/organization_cleanup_test.go",
+      "marker": "deleted inviter: %+v %v"
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L893": [
+    {
+      "label": "Authorize the inviter, constrain role grants, and resend the same invitation",
+      "test": "plugins/organization/organization_test.go",
+      "marker": "resend lost the original invitation"
+    }
+  ],
+  "plugin/organization/POST /organization/accept-invitation": [
+    {
+      "label": "Accept a matching invitation once, even during concurrent requests",
+      "test": "plugins/organization/organization_test.go",
+      "marker": "denied(second, \"INVITATION_NOT_FOUND\")"
+    },
+    {
+      "label": "Read the current recipient email and verification status and keep rejected invitation details private",
+      "test": "adapters/sqlstore/organization_cleanup_test.go",
+      "marker": "recipient mismatch disclosed invitation"
+    },
+    {
+      "label": "Return only the public error code and message to a different recipient",
+      "test": "plugins/organization/organization_test.go",
+      "marker": "foreign recipient received invitation details"
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L934": [
+    {
+      "label": "Accept a matching invitation once, even during concurrent requests",
+      "test": "plugins/organization/organization_test.go",
+      "marker": "denied(second, \"INVITATION_NOT_FOUND\")"
+    },
+    {
+      "label": "Accept an invitation through the JavaScript client and read the new membership",
+      "test": "conformance/core.test.mjs",
+      "marker": "test(\"the official organization client can create, select"
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L951": [
+    {
+      "label": "Require verified email before acceptance when configured",
+      "test": "plugins/organization/organization_test.go",
+      "marker": "denied(err, \"EMAIL_VERIFICATION_REQUIRED_BEFORE_ACCEPTING_OR_REJECTING_INVITATION\")"
+    }
+  ],
+  "core/changeEmail": [
+    {
+      "label": "Confirm an email change through the destination inbox",
+      "test": "account_lifecycle_test.go",
+      "marker": "replacement inbox was not sent its own verification"
+    }
+  ],
+  "core/deleteUser": [
+    {
+      "label": "Delete the account with a fresh authenticated session",
+      "test": "account_lifecycle_test.go",
+      "marker": "fresh-session deletion failed"
+    },
+    {
+      "label": "Remove account-owned invitations and membership rows and update team member totals on SQLite, MySQL and PostgreSQL",
+      "test": "adapters/sqlstore/organization_cleanup_test.go",
+      "marker": "func TestOrganizationAccountDeletion("
+    }
+  ],
+  "core/deleteUserCallback": [
+    {
+      "label": "Confirm account deletion and invalidate its session",
+      "test": "account_lifecycle_test.go",
+      "marker": "deleted account session still active"
+    }
+  ],
+  "core/setPassword": [
+    {
+      "label": "Set a first credential on a social account through the server API",
+      "test": "adapters/sqlstore/account_contract_test.go",
+      "marker": "first credential on a social account:"
+    }
+  ],
+  "go/environment": [
+    {
+      "label": "Resolve public URL and mount path from explicit options and process settings",
+      "test": "env_test.go",
+      "marker": "func TestEnvironmentPrecedence("
+    },
+    {
+      "label": "Give an explicit signing secret precedence over environment defaults",
+      "test": "env_test.go",
+      "marker": "explicit scalar options lost precedence"
+    },
+    {
+      "label": "Combine configured origins and environment origins for callback validation",
+      "test": "env_test.go",
+      "marker": "settings did not reach auth handler"
+    },
+    {
+      "label": "Sign with the active key and accept cookies from a retained key",
+      "test": "env_test.go",
+      "marker": "func TestEnvironmentRotation("
+    },
+    {
+      "label": "Accept an email proof signed by a retained key and reject it after retirement",
+      "test": "env_test.go",
+      "marker": "func TestRetainedKeyVerifiesEmailProof("
+    },
+    {
+      "label": "Select the production rate limit by default and honor an explicit override",
+      "test": "env_test.go",
+      "marker": "func TestEnvironmentRateLimit("
+    },
+    {
+      "label": "Match host secret precedence, the active rotation key, URL aliases, and trusted origins across runtimes",
+      "test": "conformance/env.test.mjs",
+      "marker": "test(\"host environment selects"
+    }
+  ],
+  "docs/content/docs/reference/options.mdx#L22": [
+    {
+      "label": "Resolve public URL and mount path from explicit options and process settings",
+      "test": "env_test.go",
+      "marker": "func TestEnvironmentPrecedence("
+    }
+  ],
+  "docs/content/docs/reference/options.mdx#L76": [
+    {
+      "label": "Resolve public URL and mount path from explicit options and process settings",
+      "test": "env_test.go",
+      "marker": "func TestEnvironmentPrecedence("
+    }
+  ],
+  "docs/content/docs/reference/options.mdx#L175": [
+    {
+      "label": "Give an explicit signing secret precedence over environment defaults",
+      "test": "env_test.go",
+      "marker": "explicit scalar options lost precedence"
+    }
+  ],
+  "docs/content/docs/reference/options.mdx#L89": [
+    {
+      "label": "Combine configured origins and environment origins for callback validation",
+      "test": "env_test.go",
+      "marker": "settings did not reach auth handler"
+    }
+  ],
+  "docs/content/docs/reference/options.mdx#L199": [
+    {
+      "label": "Sign with the active key and accept cookies from a retained key",
+      "test": "env_test.go",
+      "marker": "func TestEnvironmentRotation("
+    },
+    {
+      "label": "Accept an email proof signed by a retained key and reject it after retirement",
+      "test": "env_test.go",
+      "marker": "func TestRetainedKeyVerifiesEmailProof("
+    }
+  ],
+  "docs/content/docs/reference/options.mdx#L593": [
+    {
+      "label": "Select the production rate limit by default and honor an explicit override",
+      "test": "env_test.go",
+      "marker": "func TestEnvironmentRateLimit("
+    }
+  ],
+  "core/listUserAccounts": [
+    {
+      "label": "List only the current user’s linked accounts and decode provider scopes",
+      "test": "adapters/sqlstore/identity_test.go",
+      "marker": "rows, err := s.ListUserAccounts(ctx, \"one\")"
+    }
+  ],
+  "docs/content/docs/concepts/users-accounts.mdx#L409": [
+    {
+      "label": "List only the current user’s linked accounts and decode provider scopes",
+      "test": "adapters/sqlstore/identity_test.go",
+      "marker": "rows, err := s.ListUserAccounts(ctx, \"one\")"
+    }
+  ],
+  "core/unlinkAccount": [
+    {
+      "label": "Keep the last required account and prevent unlinking another user’s account",
+      "test": "adapters/sqlstore/identity_test.go",
+      "marker": "unlinked another user's account"
+    }
+  ],
+  "docs/content/docs/concepts/users-accounts.mdx#L617": [
+    {
+      "label": "Keep the last required account and prevent unlinking another user’s account",
+      "test": "adapters/sqlstore/identity_test.go",
+      "marker": "unlinked another user's account"
+    }
+  ],
+  "plugin/stripe/POST /subscription/billing-portal": [
+    {
+      "label": "Open a billing portal for the authenticated customer and enforce its owner and return URL",
+      "test": "plugins/stripe/portal_test.go",
+      "marker": "func TestUserBillingPortal("
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L488": [
+    {
+      "label": "Open a billing portal for the authenticated customer and enforce its owner and return URL",
+      "test": "plugins/stripe/portal_test.go",
+      "marker": "func TestUserBillingPortal("
+    }
+  ],
+  "core/signInSocial": [
+    {
+      "label": "Start an OAuth authorization flow with PKCE and browser state",
+      "test": "oauth_test.go",
+      "marker": "func TestOAuthBrowserFlow("
+    }
+  ],
+  "core/callbackOAuth": [
+    {
+      "label": "Redeem the authorization code and establish a local authenticated session",
+      "test": "oauth_test.go",
+      "marker": "func TestOAuthBrowserFlow("
+    }
+  ],
+  "provider/google": [
+    {
+      "label": "Verify the signature and claims of a Google ID token against a test issuer",
+      "test": "providers/providers_test.go",
+      "marker": "func TestGoogleVerifiesIDToken("
+    }
+  ],
+  "provider/github": [
+    {
+      "label": "Resolve a verified GitHub address through the provider API fixture",
+      "test": "providers/providers_test.go",
+      "marker": "func TestGitHubVerifiedEmail("
+    }
+  ],
+  "core/linkSocialAccount": [
+    {
+      "label": "Explicitly link a verified OIDC identity to the signed-in user",
+      "test": "providers/oidc_test.go",
+      "marker": "func TestDiscoveredOIDCDirectGrantAndExplicitLink("
+    }
+  ],
+  "cli/init": [
+    {
+      "label": "Write a private environment file once and preserve an existing file",
+      "test": "cmd/authctl/setup_test.go",
+      "marker": "func TestInitializeEnvironment("
+    }
+  ],
+  "core/error": [
+    {
+      "label": "Escape the public error page and forward error codes to the configured redirect",
+      "test": "error_page_test.go",
+      "marker": "func TestAuthErrorPresentation("
+    }
+  ],
+  "provider/apple": [
+    {
+      "label": "Validate the configured form-post flow and verify a signed native token",
+      "test": "providers/apple_microsoft_test.go",
+      "marker": "func TestAppleFormPostAndNativeToken("
+    }
+  ],
+  "provider/microsoft": [
+    {
+      "label": "Verify tenant, issuer and mailbox claims using local issuer fixtures",
+      "test": "providers/apple_microsoft_test.go",
+      "marker": "func TestMicrosoftTenantAndMailboxClaims("
+    }
+  ],
+  "provider/atlassian": [
+    {
+      "label": "Complete the default browser code exchange and map the provider profile using a local fixture",
+      "test": "providers/catalog_test.go",
+      "marker": "func TestCatalogBrowserFlows("
+    }
+  ],
+  "provider/discord": [
+    {
+      "label": "Complete the default browser code exchange and map the provider profile using a local fixture",
+      "test": "providers/catalog_test.go",
+      "marker": "func TestCatalogBrowserFlows("
+    }
+  ],
+  "provider/dropbox": [
+    {
+      "label": "Complete the default browser code exchange and map the provider profile using a local fixture",
+      "test": "providers/catalog_test.go",
+      "marker": "func TestCatalogBrowserFlows("
+    }
+  ],
+  "provider/figma": [
+    {
+      "label": "Complete the default browser code exchange and map the provider profile using a local fixture",
+      "test": "providers/catalog_test.go",
+      "marker": "func TestCatalogBrowserFlows("
+    }
+  ],
+  "provider/gitlab": [
+    {
+      "label": "Complete the default browser code exchange and map the provider profile using a local fixture",
+      "test": "providers/catalog_test.go",
+      "marker": "func TestCatalogBrowserFlows("
+    }
+  ],
+  "provider/huggingface": [
+    {
+      "label": "Complete the default browser code exchange and map the provider profile using a local fixture",
+      "test": "providers/catalog_test.go",
+      "marker": "func TestCatalogBrowserFlows("
+    }
+  ],
+  "provider/kick": [
+    {
+      "label": "Complete the default browser code exchange and map the provider profile using a local fixture",
+      "test": "providers/catalog_test.go",
+      "marker": "func TestCatalogBrowserFlows("
+    }
+  ],
+  "provider/linear": [
+    {
+      "label": "Complete the default browser code exchange and map the provider profile using a local fixture",
+      "test": "providers/catalog_test.go",
+      "marker": "func TestCatalogBrowserFlows("
+    }
+  ],
+  "provider/linkedin": [
+    {
+      "label": "Complete the default browser code exchange and map the provider profile using a local fixture",
+      "test": "providers/catalog_test.go",
+      "marker": "func TestCatalogBrowserFlows("
+    }
+  ],
+  "provider/naver": [
+    {
+      "label": "Complete the default browser code exchange and map the provider profile using a local fixture",
+      "test": "providers/catalog_test.go",
+      "marker": "func TestCatalogBrowserFlows("
+    }
+  ],
+  "provider/polar": [
+    {
+      "label": "Complete the default browser code exchange and map the provider profile using a local fixture",
+      "test": "providers/catalog_test.go",
+      "marker": "func TestCatalogBrowserFlows("
+    }
+  ],
+  "provider/railway": [
+    {
+      "label": "Complete the default browser code exchange and map the provider profile using a local fixture",
+      "test": "providers/catalog_test.go",
+      "marker": "func TestCatalogBrowserFlows("
+    }
+  ],
+  "provider/reddit": [
+    {
+      "label": "Complete the default browser code exchange and map the provider profile using a local fixture",
+      "test": "providers/catalog_test.go",
+      "marker": "func TestCatalogBrowserFlows("
+    }
+  ],
+  "provider/roblox": [
+    {
+      "label": "Complete the default browser code exchange and map the provider profile using a local fixture",
+      "test": "providers/catalog_test.go",
+      "marker": "func TestCatalogBrowserFlows("
+    }
+  ],
+  "provider/salesforce": [
+    {
+      "label": "Complete the default browser code exchange and map the provider profile using a local fixture",
+      "test": "providers/catalog_test.go",
+      "marker": "func TestCatalogBrowserFlows("
+    }
+  ],
+  "provider/slack": [
+    {
+      "label": "Complete the default browser code exchange and map the provider profile using a local fixture",
+      "test": "providers/catalog_test.go",
+      "marker": "func TestCatalogBrowserFlows("
+    }
+  ],
+  "provider/spotify": [
+    {
+      "label": "Complete the default browser code exchange and map the provider profile using a local fixture",
+      "test": "providers/catalog_test.go",
+      "marker": "func TestCatalogBrowserFlows("
+    }
+  ],
+  "provider/vercel": [
+    {
+      "label": "Complete the default browser code exchange and map the provider profile using a local fixture",
+      "test": "providers/catalog_test.go",
+      "marker": "func TestCatalogBrowserFlows("
+    }
+  ],
+  "provider/zoom": [
+    {
+      "label": "Complete the default browser code exchange and map the provider profile using a local fixture",
+      "test": "providers/catalog_test.go",
+      "marker": "func TestCatalogBrowserFlows("
+    }
+  ],
+  "plugin/2fa/POST /two-factor/enable": [
+    {
+      "label": "Require a password and issue a provisioning URI and ten backup codes",
+      "test": "adapters/sqlstore/twofactor_test.go",
+      "marker": "invalid provisioning material"
+    }
+  ],
+  "plugin/2fa/POST /two-factor/get-totp-uri": [
+    {
+      "label": "Reread the same provisioning URI after validating the password",
+      "test": "adapters/sqlstore/twofactor_test.go",
+      "marker": "provisioning URI changed"
+    }
+  ],
+  "plugin/2fa/POST /two-factor/verify-totp": [
+    {
+      "label": "Confirm enrollment from another instance and issue a session after TOTP verification",
+      "test": "adapters/sqlstore/twofactor_test.go",
+      "marker": "activated := request(second, \"two-factor/verify-totp\""
+    }
+  ],
+  "plugin/2fa/POST /two-factor/verify-backup-code": [
+    {
+      "label": "Allow one claim per backup code and challenge under concurrent use",
+      "test": "adapters/sqlstore/twofactor_test.go",
+      "marker": "challenge consumption winners="
+    },
+    {
+      "label": "Validate the proof with session issuance disabled",
+      "test": "adapters/sqlstore/twofactor_test.go",
+      "marker": "suppressed login returned credentials"
+    },
+    {
+      "label": "Complete a backup challenge issued by another compatible runtime sharing the same SQLite database",
+      "test": "conformance/core.test.mjs",
+      "marker": "test(\"shared SQLite authenticator credentials and pending challenges"
+    }
+  ],
+  "plugin/2fa/POST /two-factor/generate-backup-codes": [
+    {
+      "label": "Replace the complete backup-code set and invalidate the previous set",
+      "test": "adapters/sqlstore/twofactor_test.go",
+      "marker": "backup regeneration failed"
+    }
+  ],
+  "plugin/2fa/POST /two-factor/disable": [
+    {
+      "label": "Require the password and restore regular credential sign-in after disabling the factor",
+      "test": "adapters/sqlstore/twofactor_test.go",
+      "marker": "disabled factor still gated credential"
+    }
+  ],
+  "plugin-symbol/have-i-been-pwned/HaveIBeenPwnedOptions/enabled": [
+    {
+      "label": "Skip the range service when disabled and enable screening by default",
+      "test": "plugins/pwnedpassword/pwnedpassword_test.go",
+      "marker": "func TestPluginOptions(",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/have-i-been-pwned.mdx#L52": [
+    {
+      "label": "Skip the range service when disabled and enable screening by default",
+      "test": "plugins/pwnedpassword/pwnedpassword_test.go",
+      "marker": "func TestPluginOptions(",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/have-i-been-pwned/HaveIBeenPwnedOptions/customPasswordCompromisedMessage": [
+    {
+      "label": "Return the chosen breach message and preserve the stable error code",
+      "test": "plugins/pwnedpassword/pwnedpassword_test.go",
+      "marker": "unexpected breach rejection:",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/have-i-been-pwned.mdx#L69": [
+    {
+      "label": "Return the chosen breach message and preserve the stable error code",
+      "test": "plugins/pwnedpassword/pwnedpassword_test.go",
+      "marker": "unexpected breach rejection:",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/have-i-been-pwned/HaveIBeenPwnedOptions/paths": [
+    {
+      "label": "Use the default route set, replace it with custom paths or turn off all paths with an empty list",
+      "test": "plugins/pwnedpassword/pwnedpassword_test.go",
+      "marker": "missing default screening route",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/have-i-been-pwned/HaveIBeenPwnedOptions": [
+    {
+      "label": "Configure enabled state, path selection and the public error message",
+      "test": "plugins/pwnedpassword/pwnedpassword_test.go",
+      "marker": "func TestPluginOptions(",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/have-i-been-pwned/isPasswordCompromised": [
+    {
+      "label": "Query a padded five-character hash range, compare suffixes locally and handle invalid responses",
+      "test": "plugins/pwnedpassword/pwnedpassword_test.go",
+      "marker": "func TestRangeProtocol(",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/have-i-been-pwned.mdx#L35": [
+    {
+      "label": "Query a padded five-character hash range, compare suffixes locally and handle invalid responses",
+      "test": "plugins/pwnedpassword/pwnedpassword_test.go",
+      "marker": "func TestRangeProtocol(",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/have-i-been-pwned.mdx#L86": [
+    {
+      "label": "Query a padded five-character hash range, compare suffixes locally and handle invalid responses",
+      "test": "plugins/pwnedpassword/pwnedpassword_test.go",
+      "marker": "func TestRangeProtocol(",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/have-i-been-pwned.mdx#L24": [
+    {
+      "label": "Reject a breached password in native and HTTP credential-setting operations",
+      "test": "plugins/pwnedpassword/pwnedpassword_test.go",
+      "marker": "func TestCredentialSettingPaths("
+    }
+  ],
+  "plugin-symbol/have-i-been-pwned/haveIBeenPwned": [
+    {
+      "label": "Reject compromised credentials through the public JavaScript client",
+      "test": "conformance/core.test.mjs",
+      "marker": "test(\"the official client enforces the password range policy"
+    }
+  ],
+  "password-screening//sign-up/email": [
+    {
+      "label": "Screen the proposed password and preserve the existing account state on rejection",
+      "test": "plugins/pwnedpassword/pwnedpassword_test.go",
+      "marker": "func TestCredentialSettingPaths(",
+      "complete": true
+    }
+  ],
+  "password-screening//change-password": [
+    {
+      "label": "Screen the proposed password and preserve the existing account state on rejection",
+      "test": "plugins/pwnedpassword/pwnedpassword_test.go",
+      "marker": "func TestCredentialSettingPaths(",
+      "complete": true
+    }
+  ],
+  "password-screening//reset-password": [
+    {
+      "label": "Screen the proposed password and preserve the existing account state on rejection",
+      "test": "plugins/pwnedpassword/pwnedpassword_test.go",
+      "marker": "func TestCredentialSettingPaths(",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/concepts/rate-limit.mdx#L241": [
+    {
+      "label": "Enforce shared SQL counters across two independent auth instances on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/ratelimit_test.go",
+      "marker": "func TestSharedRateLimit("
+    }
+  ],
+  "docs/content/docs/concepts/rate-limit.mdx#L54": [
+    {
+      "label": "Resolve the first untrusted address from configured proxy ranges while ignoring direct peers’ headers",
+      "test": "ip_test.go",
+      "marker": "func TestTrustedProxyAddresses("
+    }
+  ],
+  "docs/content/docs/concepts/rate-limit.mdx#L185": [
+    {
+      "label": "Configure the default rule, override exact or wildcard paths and exempt individual routes",
+      "test": "rate_rules_test.go",
+      "marker": "func TestHostRateLimitRules("
+    }
+  ],
+  "plugin/magic-link/POST /sign-in/magic-link": [
+    {
+      "label": "Deliver a private link and request metadata through the configured sender",
+      "test": "adapters/sqlstore/magiclink_test.go",
+      "marker": "mail delivery failed:"
+    }
+  ],
+  "plugin/magic-link/GET /magic-link/verify": [
+    {
+      "label": "Promote mailbox ownership and revoke credentials that preceded verification",
+      "test": "adapters/sqlstore/magiclink_test.go",
+      "marker": "prior password survived ownership proof"
+    },
+    {
+      "label": "Consume shared hashed links in Go and the reference runtime with the official client",
+      "test": "conformance/core.test.mjs",
+      "marker": "test(\"shared SQLite verifies hashed magic links"
+    },
+    {
+      "label": "Deny a delivered link after the target email is reassigned",
+      "test": "adapters/sqlstore/magiclink_test.go",
+      "marker": "expectRedirect(verify(second, reassigned.URL)"
+    }
+  ],
+  "plugin/one-time-token/GET /one-time-token/generate": [
+    {
+      "label": "Require a live session and honor server-only generation",
+      "test": "adapters/sqlstore/onetimetoken_test.go",
+      "marker": "server-only generation exposed"
+    }
+  ],
+  "plugin/one-time-token/POST /one-time-token/verify": [
+    {
+      "label": "Limit concurrent redemption across independent servers to one successful response",
+      "test": "adapters/sqlstore/onetimetoken_test.go",
+      "marker": "transfer did not have a unique winner"
+    },
+    {
+      "label": "Transfer the same session in both directions using the official client",
+      "test": "conformance/core.test.mjs",
+      "marker": "test(\"shared SQLite transfers a session"
+    }
+  ],
+  "plugin-symbol/magic-link/MagicLinkOptions/expiresIn": [
+    {
+      "label": "Persist the configured link lifetime",
+      "test": "adapters/sqlstore/magiclink_test.go",
+      "marker": "stored representation or TTL:"
+    }
+  ],
+  "plugin-symbol/magic-link/MagicLinkOptions/sendMagicLink": [
+    {
+      "label": "Deliver the intended mailbox, private token and request metadata",
+      "test": "adapters/sqlstore/magiclink_test.go",
+      "marker": "mail delivery failed:"
+    }
+  ],
+  "plugin-symbol/magic-link/MagicLinkOptions/disableSignUp": [
+    {
+      "label": "Reject registration for an unknown mailbox during verification",
+      "test": "adapters/sqlstore/magiclink_test.go",
+      "marker": "/failed?error=new_user_signup_disabled"
+    }
+  ],
+  "plugin-symbol/magic-link/MagicLinkOptions/rateLimit": [
+    {
+      "label": "Apply the configured per-endpoint request budget",
+      "test": "adapters/sqlstore/magiclink_test.go",
+      "marker": "custom limit returned"
+    }
+  ],
+  "plugin-symbol/magic-link/MagicLinkOptions/generateToken": [
+    {
+      "label": "Deliver the value from the configured generator",
+      "test": "adapters/sqlstore/magiclink_test.go",
+      "marker": "sender or generator:"
+    }
+  ],
+  "plugin-symbol/magic-link/MagicLinkOptions/storeToken": [
+    {
+      "label": "Consume raw and custom-hashed keys on SQLite",
+      "test": "adapters/sqlstore/magiclink_test.go",
+      "marker": "unable to consume generated link"
+    }
+  ],
+  "plugin-symbol/one-time-token/OneTimeTokenOptions/expiresIn": [
+    {
+      "label": "Persist the configured transfer lifetime",
+      "test": "adapters/sqlstore/onetimetoken_test.go",
+      "marker": "custom transfer lifetime was not stored"
+    }
+  ],
+  "plugin-symbol/one-time-token/OneTimeTokenOptions/disableClientRequest": [
+    {
+      "label": "Allow direct host generation and deny HTTP generation",
+      "test": "adapters/sqlstore/onetimetoken_test.go",
+      "marker": "server-only generation exposed"
+    }
+  ],
+  "plugin-symbol/one-time-token/OneTimeTokenOptions/generateToken": [
+    {
+      "label": "Pass the authenticated user and session to the token generator",
+      "test": "client/onetimetoken_test.go",
+      "marker": "wrong session passed to generator"
+    }
+  ],
+  "plugin-symbol/one-time-token/OneTimeTokenOptions/disableSetSessionCookie": [
+    {
+      "label": "Return the original session while suppressing the cookie",
+      "test": "adapters/sqlstore/onetimetoken_test.go",
+      "marker": "disabled cookie written"
+    }
+  ],
+  "plugin-symbol/one-time-token/OneTimeTokenOptions/storeToken": [
+    {
+      "label": "Use the configured hasher on generation and verification",
+      "test": "client/onetimetoken_test.go",
+      "marker": "hashCalls != 2"
+    }
+  ],
+  "plugin-symbol/one-time-token/OneTimeTokenOptions/setOttHeaderOnNewSession": [
+    {
+      "label": "Send and expose Set-Ott on creation and exclude ordinary profile updates",
+      "test": "adapters/sqlstore/onetimetoken_test.go",
+      "marker": "profile update generated a transfer credential"
+    }
+  ],
+  "plugin/passkey/GET /passkey/generate-register-options": [
+    {
+      "label": "Bind registration to a fresh account session and a secure one-use challenge",
+      "test": "adapters/sqlstore/passkey_test.go",
+      "marker": "registration challenge cookie has incorrect attributes"
+    },
+    {
+      "label": "Use the public client to request options with the configured relying-party name, ID and public-key algorithms",
+      "test": "conformance/core.test.mjs",
+      "marker": "test(\"the official passkey client"
+    }
+  ],
+  "plugin/passkey/GET /passkey/generate-authenticate-options": [
+    {
+      "label": "Generate discoverable options and allow the current account’s enrolled credentials",
+      "test": "adapters/sqlstore/passkey_test.go",
+      "marker": "account challenge omitted an enrolled credential"
+    }
+  ],
+  "plugin/passkey/POST /passkey/verify-registration": [
+    {
+      "label": "Verify the attested key and preserve distinct credential and record IDs",
+      "test": "adapters/sqlstore/passkey_test.go",
+      "marker": "stored credential identity mismatch"
+    }
+  ],
+  "plugin/passkey/POST /passkey/verify-authentication": [
+    {
+      "label": "Verify a signed assertion and atomically persist its counter and session",
+      "test": "adapters/sqlstore/passkey_test.go",
+      "marker": "assertion session missing on second instance"
+    }
+  ],
+  "plugin/passkey/GET /passkey/list-user-passkeys": [
+    {
+      "label": "List only credentials owned by the authenticated account",
+      "test": "adapters/sqlstore/passkey_test.go",
+      "marker": "foreign passkeys listed"
+    }
+  ],
+  "plugin/passkey/POST /passkey/update-passkey": [
+    {
+      "label": "Rename an owned credential and refuse changes from another account",
+      "test": "adapters/sqlstore/passkey_test.go",
+      "marker": "request(first, \"update-passkey\", mutation, 401, foreign)"
+    }
+  ],
+  "plugin/passkey/POST /passkey/delete-passkey": [
+    {
+      "label": "Remove an owned key and reject subsequent assertions",
+      "test": "adapters/sqlstore/passkey_test.go",
+      "marker": "request(second, \"delete-passkey\", mutation, 200, session)"
+    }
+  ],
+  "docs/content/docs/plugins/passkey.mdx#L134": [
+    {
+      "label": "Enroll two independent public-key credentials from a fresh session",
+      "test": "adapters/sqlstore/passkey_test.go",
+      "marker": "separate authenticator credential IDs collided"
+    }
+  ],
+  "docs/content/docs/plugins/passkey.mdx#L174": [
+    {
+      "label": "Sign in with a locally generated software authenticator and honor counter progression",
+      "test": "adapters/sqlstore/passkey_test.go",
+      "marker": "counter not persisted"
+    }
+  ],
+  "docs/content/docs/plugins/passkey.mdx#L237": [
+    {
+      "label": "Keep another user’s keys out of the results",
+      "test": "adapters/sqlstore/passkey_test.go",
+      "marker": "foreign passkeys listed"
+    }
+  ],
+  "docs/content/docs/plugins/passkey.mdx#L295": [
+    {
+      "label": "Delete a credential through an owner-authorized request",
+      "test": "adapters/sqlstore/passkey_test.go",
+      "marker": "request(second, \"delete-passkey\", mutation, 200, session)"
+    }
+  ],
+  "docs/content/docs/plugins/passkey.mdx#L310": [
+    {
+      "label": "Persist the new name on the current account’s credential",
+      "test": "adapters/sqlstore/passkey_test.go",
+      "marker": "rename failed"
+    }
+  ],
+  "docs/content/docs/plugins/passkey.mdx#L381": [
+    {
+      "label": "Match generated SQL and SQLite physical schema for the public-key credential profile",
+      "test": "conformance/schema.test.mjs",
+      "marker": "test(\"the CLI emits the pinned plugin schema"
+    }
+  ],
+  "plugin-symbol/passkey/PasskeyOptions/origin": [
+    {
+      "label": "Require explicitly configured secure origins within the relying-party ID",
+      "test": "plugins/passkey/passkey_test.go",
+      "marker": "func TestRelyingPartyConfiguration("
+    }
+  ],
+  "provider/facebook": [
+    {
+      "label": "Complete the default browser code exchange and map the provider profile using a local fixture",
+      "test": "providers/catalog_test.go",
+      "marker": "func TestCatalogBrowserFlows("
+    }
+  ],
+  "provider/twitter": [
+    {
+      "label": "Complete the default browser code exchange and map the provider profile using a local fixture",
+      "test": "providers/catalog_test.go",
+      "marker": "func TestCatalogBrowserFlows("
+    }
+  ],
+  "provider/vk": [
+    {
+      "label": "Complete the default browser code exchange and map the provider profile using a local fixture",
+      "test": "providers/catalog_test.go",
+      "marker": "func TestCatalogBrowserFlows("
+    }
+  ],
+  "provider/tiktok": [
+    {
+      "label": "Complete the default browser code exchange and map the provider profile using a local fixture",
+      "test": "providers/catalog_test.go",
+      "marker": "func TestCatalogBrowserFlows("
+    }
+  ],
+  "provider/wechat": [
+    {
+      "label": "Complete the default browser code exchange and map the provider profile using a local fixture",
+      "test": "providers/catalog_test.go",
+      "marker": "func TestCatalogBrowserFlows("
+    }
+  ],
+  "provider/cloudflare": [
+    {
+      "label": "Complete the default browser code exchange and map the provider profile using a local fixture",
+      "test": "providers/catalog_test.go",
+      "marker": "func TestCatalogBrowserFlows("
+    }
+  ],
+  "provider/kakao": [
+    {
+      "label": "Complete the default browser code exchange and map the provider profile using a local fixture",
+      "test": "providers/catalog_test.go",
+      "marker": "func TestCatalogBrowserFlows("
+    }
+  ],
+  "provider/line": [
+    {
+      "label": "Complete the default browser code exchange and map the provider profile using a local fixture",
+      "test": "providers/catalog_test.go",
+      "marker": "func TestCatalogBrowserFlows("
+    }
+  ],
+  "provider/notion": [
+    {
+      "label": "Complete the default browser code exchange and map the provider profile using a local fixture",
+      "test": "providers/catalog_test.go",
+      "marker": "func TestCatalogBrowserFlows("
+    }
+  ],
+  "provider/paypal": [
+    {
+      "label": "Complete the default browser code exchange and map the provider profile using a local fixture",
+      "test": "providers/catalog_test.go",
+      "marker": "func TestCatalogBrowserFlows("
+    }
+  ],
+  "provider/cognito": [
+    {
+      "label": "Complete a browser code exchange with a local issuer and its signed claims",
+      "test": "providers/issuer_test.go",
+      "marker": "func TestNamedIssuerFlows("
+    }
+  ],
+  "provider/paybin": [
+    {
+      "label": "Complete a browser code exchange with a local issuer and its signed claims",
+      "test": "providers/issuer_test.go",
+      "marker": "func TestNamedIssuerFlows("
+    }
+  ],
+  "provider/twitch": [
+    {
+      "label": "Complete a browser code exchange with a local issuer and its signed claims",
+      "test": "providers/issuer_test.go",
+      "marker": "func TestNamedIssuerFlows("
+    }
+  ],
+  "core/getAccessToken": [
+    {
+      "label": "Read the current account’s access token through the public HTTP API",
+      "test": "conformance/provider-credentials.mjs",
+      "marker": "export async function providerCredentials("
+    },
+    {
+      "label": "Scope credentials to the current account and handle revocation or provider errors on SQLite, MySQL and PostgreSQL",
+      "test": "adapters/sqlstore/provider_credentials_test.go",
+      "marker": "func TestProviderCredentialRoutes("
+    }
+  ],
+  "core/refreshToken": [
+    {
+      "label": "Refresh selected provider credentials and preserve ownership through the public HTTP API",
+      "test": "conformance/provider-credentials.mjs",
+      "marker": "export async function providerCredentials("
+    },
+    {
+      "label": "Scope credentials to the current account and handle revocation or provider errors on SQLite, MySQL and PostgreSQL",
+      "test": "adapters/sqlstore/provider_credentials_test.go",
+      "marker": "func TestProviderCredentialRoutes("
+    }
+  ],
+  "core/accountInfo": [
+    {
+      "label": "Resolve the selected provider account’s profile through the public HTTP API",
+      "test": "conformance/provider-credentials.mjs",
+      "marker": "export async function providerCredentials("
+    },
+    {
+      "label": "Scope credentials to the current account and handle revocation or provider errors on SQLite, MySQL and PostgreSQL",
+      "test": "adapters/sqlstore/provider_credentials_test.go",
+      "marker": "func TestProviderCredentialRoutes("
+    }
+  ]
+}
