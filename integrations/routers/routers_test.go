@@ -9,14 +9,14 @@ import (
 	"strings"
 	"testing"
 
+	authn "github.com/Stonewrit/stonewrit-auth"
+	"github.com/Stonewrit/stonewrit-auth/adapters/sqlite"
 	"github.com/gin-gonic/gin"
 	"github.com/go-chi/chi/v5"
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/adaptor"
 	"github.com/gorilla/mux"
 	"github.com/labstack/echo/v5"
-	authn "github.com/Stonewrit/stonewrit-auth"
-	"github.com/Stonewrit/stonewrit-auth/adapters/sqlite"
 )
 
 type runner func(*http.Request) (*http.Response, error)
@@ -33,28 +33,42 @@ func TestFrameworkMounts(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	for _, tc := range []struct {
 		name  string
-		mount func(http.Handler) runner
+		mount func(http.Handler, http.HandlerFunc) runner
 	}{
-		{"ServeMux", func(h http.Handler) runner { r := http.NewServeMux(); r.Handle("/api/auth/", h); return httpRunner(r) }},
-		{"chi", func(h http.Handler) runner { r := chi.NewRouter(); r.Handle("/api/auth/*", h); return httpRunner(r) }},
-		{"Gorilla", func(h http.Handler) runner {
+		{"ServeMux", func(h http.Handler, me http.HandlerFunc) runner {
+			r := http.NewServeMux()
+			r.Handle("/api/auth/", h)
+			r.HandleFunc("GET /me", me)
+			return httpRunner(r)
+		}},
+		{"chi", func(h http.Handler, me http.HandlerFunc) runner {
+			r := chi.NewRouter()
+			r.Handle("/api/auth/*", h)
+			r.Get("/me", me)
+			return httpRunner(r)
+		}},
+		{"Gorilla", func(h http.Handler, me http.HandlerFunc) runner {
 			r := mux.NewRouter()
 			r.PathPrefix("/api/auth/").Handler(h)
+			r.HandleFunc("/me", me).Methods("GET")
 			return httpRunner(r)
 		}},
-		{"Gin", func(h http.Handler) runner {
+		{"Gin", func(h http.Handler, me http.HandlerFunc) runner {
 			r := gin.New()
 			r.Any("/api/auth/*path", gin.WrapH(h))
+			r.GET("/me", gin.WrapH(me))
 			return httpRunner(r)
 		}},
-		{"Echo", func(h http.Handler) runner {
+		{"Echo", func(h http.Handler, me http.HandlerFunc) runner {
 			r := echo.New()
 			r.Any("/api/auth/*", echo.WrapHandler(h))
+			r.GET("/me", echo.WrapHandler(me))
 			return httpRunner(r)
 		}},
-		{"Fiber", func(h http.Handler) runner {
+		{"Fiber", func(h http.Handler, me http.HandlerFunc) runner {
 			r := fiber.New()
 			r.All("/api/auth/*", adaptor.HTTPHandler(h))
+			r.Get("/me", adaptor.HTTPHandler(me))
 			return func(req *http.Request) (*http.Response, error) { return r.Test(req) }
 		}},
 	} {
@@ -69,7 +83,19 @@ func TestFrameworkMounts(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			run := tc.mount(auth)
+			run := tc.mount(auth, func(w http.ResponseWriter, r *http.Request) {
+				session, err := auth.GetSession(r.Context(), r.Header)
+				if err != nil {
+					http.Error(w, "session lookup failed", http.StatusInternalServerError)
+					return
+				}
+				if session == nil {
+					http.Error(w, "sign in first", http.StatusUnauthorized)
+					return
+				}
+				w.Header().Set("Content-Type", "text/plain")
+				_, _ = io.WriteString(w, session.User.Email)
+			})
 			send := func(method, path, body string, cookies []*http.Cookie, expect int) (*http.Response, string) {
 				t.Helper()
 				req, err := http.NewRequest(method, origin+path, strings.NewReader(body))
@@ -98,10 +124,14 @@ func TestFrameworkMounts(t *testing.T) {
 				return res, strings.TrimSpace(string(b))
 			}
 			send("GET", "/app-owned", "", nil, 404)
+			send("GET", "/me", "", nil, http.StatusUnauthorized)
 			res, _ := send("POST", "/api/auth/sign-up/email", `{"name":"Ada","email":"ada@example.com","password":"example-password"}`, nil, 200)
 			cookies := res.Cookies()
 			if len(cookies) == 0 {
 				t.Fatal("registration returned no session cookie")
+			}
+			if _, email := send("GET", "/me", "", cookies, http.StatusOK); email != "ada@example.com" {
+				t.Fatalf("application route received incorrect account %q", email)
 			}
 			_, session := send("GET", "/api/auth/get-session", "", cookies, 200)
 			var result authn.SessionResult
@@ -116,6 +146,7 @@ func TestFrameworkMounts(t *testing.T) {
 			if session != "null" {
 				t.Fatal("revoked session accepted")
 			}
+			send("GET", "/me", "", cookies, http.StatusUnauthorized)
 		})
 	}
 }

@@ -329,6 +329,11 @@
       "label": "Echo v5 signup, session lookup and sign-out with multiple cookies",
       "test": "integrations/routers/routers_test.go",
       "marker": "{\"Echo\", func("
+    },
+    {
+      "label": "Use the same session on a host-owned route with all six routers and reject its cookie after sign-out",
+      "test": "integrations/routers/routers_test.go",
+      "marker": "application route received incorrect account"
     }
   ],
   "go/client": [
