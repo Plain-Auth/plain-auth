@@ -2,10 +2,11 @@
 import assert from "node:assert/strict";
 import { readFile, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
+import { apiKey } from "@better-auth/api-key";
 import { passkey } from "@better-auth/passkey";
 import { stripe } from "@better-auth/stripe";
 import { getMigrations } from "better-auth/db/migration";
-import { admin, anonymous, deviceAuthorization, jwt, lastLoginMethod, organization, twoFactor } from "better-auth/plugins";
+import { admin, anonymous, deviceAuthorization, jwt, lastLoginMethod, organization, twoFactor, username } from "better-auth/plugins";
 import { DummyDriver, Kysely, MysqlDialect, PostgresDialect, SqliteDialect } from "kysely";
 import Stripe from "stripe";
 
@@ -16,6 +17,7 @@ export function pluginInstances(profiles) {
     switch (id) {
       case "admin": return admin();
       case "anonymous": return anonymous();
+      case "api-key": return apiKey();
       case "last-login-method": return lastLoginMethod({ storeInDatabase: true });
       case "device-authorization": return deviceAuthorization();
       case "jwt": return jwt();
@@ -28,14 +30,16 @@ export function pluginInstances(profiles) {
         subscription: { enabled: true, plans: [] },
       });
       case "two-factor": return twoFactor();
+      case "username": return username();
+      case "username-only": return username({ displayUsername: false });
       default: throw new Error("Unknown plugin schema profile: " + id);
     }
   });
 }
 
 const profileGroups = [
-  ["admin"], ["anonymous"], ["device-authorization"], ["jwt"], ["last-login-method"],
-  ["organization", "organization-teams"], ["passkey"], ["rate-limit"], ["stripe-subscriptions"], ["two-factor"],
+  ["admin"], ["anonymous"], ["api-key"], ["device-authorization"], ["jwt"], ["last-login-method"],
+  ["organization", "organization-teams"], ["passkey"], ["rate-limit"], ["stripe-subscriptions"], ["two-factor"], ["username", "username-only"],
 ];
 const profileNames = profileGroups.flat();
 
@@ -121,7 +125,7 @@ async function catalog() {
     }
     // The teams profile includes the ordinary organization tables. The
     // maximal schema provides the canonical foreign-key and column order.
-    const all = objects(await freshSchema(dialect, profileNames.filter((p) => p !== "organization")));
+    const all = objects(await freshSchema(dialect, profileNames.filter((p) => p !== "organization" && p !== "username-only")));
     function owners(inCore, matches) {
       if (inCore) return {};
       const profiles = profileNames.filter((p) => matches(singles.get(p)));

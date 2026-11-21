@@ -175,8 +175,21 @@ func (s *Store) ensureTable(ctx context.Context, db migrationConnection, stmt st
 				return fmt.Errorf("sqlstore: explicitly backfill required column %s.%s before migrating existing rows", table, col[1])
 			}
 		}
+		// SQLite implements inline uniqueness with an automatic index but only supports
+		// adding it to an existing table as a separate index, in this same transaction.
+		addUnique := s.dialect == "sqlite" && strings.HasSuffix(normalized, " unique")
+		if addUnique {
+			definition = definition[:len(definition)-len(" unique")]
+		}
 		if _, err := db.ExecContext(ctx, "ALTER TABLE "+table+" ADD COLUMN "+definition); err != nil {
 			return err
+		}
+		if addUnique {
+			// Table/column names have already matched the schema identifier grammar.
+			index := strings.Trim(table, `"`) + "_" + col[1] + "_unique"
+			if _, err := db.ExecContext(ctx, `CREATE UNIQUE INDEX "`+index+`" ON `+table+` ("`+col[1]+`")`); err != nil {
+				return err
+			}
 		}
 	}
 	return nil

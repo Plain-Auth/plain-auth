@@ -66,6 +66,9 @@ func selection(dialect string, profiles []string) ([]statement, map[string]bool,
 		}
 		selected[name] = true
 	}
+	if selected["username"] && selected["username-only"] {
+		return nil, nil, fmt.Errorf("schema: choose one username profile")
+	}
 	if selected["organization"] && selected["organization-teams"] {
 		return nil, nil, fmt.Errorf("schema: choose one organization profile, organization or organization-teams")
 	}

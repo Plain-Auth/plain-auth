@@ -2,6 +2,7 @@
   "profiles": [
     "admin",
     "anonymous",
+    "api-key",
     "device-authorization",
     "jwt",
     "last-login-method",
@@ -10,7 +11,9 @@
     "passkey",
     "rate-limit",
     "stripe-subscriptions",
-    "two-factor"
+    "two-factor",
+    "username",
+    "username-only"
   ],
   "dialects": {
     "sqlite": [
@@ -84,6 +87,19 @@
             "sql": "\"twoFactorEnabled\" integer",
             "profiles": [
               "two-factor"
+            ]
+          },
+          {
+            "sql": "\"username\" text unique",
+            "profiles": [
+              "username",
+              "username-only"
+            ]
+          },
+          {
+            "sql": "\"displayUsername\" text",
+            "profiles": [
+              "username"
             ]
           }
         ]
@@ -200,6 +216,80 @@
           },
           {
             "sql": "\"updatedAt\" date not null"
+          }
+        ]
+      },
+      {
+        "sql": "create table \"apikey\"",
+        "profiles": [
+          "api-key"
+        ],
+        "columns": [
+          {
+            "sql": "\"id\" text not null primary key"
+          },
+          {
+            "sql": "\"configId\" text not null"
+          },
+          {
+            "sql": "\"name\" text"
+          },
+          {
+            "sql": "\"start\" text"
+          },
+          {
+            "sql": "\"referenceId\" text not null"
+          },
+          {
+            "sql": "\"prefix\" text"
+          },
+          {
+            "sql": "\"key\" text not null"
+          },
+          {
+            "sql": "\"refillInterval\" integer"
+          },
+          {
+            "sql": "\"refillAmount\" integer"
+          },
+          {
+            "sql": "\"lastRefillAt\" date"
+          },
+          {
+            "sql": "\"enabled\" integer"
+          },
+          {
+            "sql": "\"rateLimitEnabled\" integer"
+          },
+          {
+            "sql": "\"rateLimitTimeWindow\" integer"
+          },
+          {
+            "sql": "\"rateLimitMax\" integer"
+          },
+          {
+            "sql": "\"requestCount\" integer"
+          },
+          {
+            "sql": "\"remaining\" integer"
+          },
+          {
+            "sql": "\"lastRequest\" date"
+          },
+          {
+            "sql": "\"expiresAt\" date"
+          },
+          {
+            "sql": "\"createdAt\" date not null"
+          },
+          {
+            "sql": "\"updatedAt\" date not null"
+          },
+          {
+            "sql": "\"permissions\" text"
+          },
+          {
+            "sql": "\"metadata\" text"
           }
         ]
       },
@@ -568,6 +658,24 @@
         "sql": "create index \"verification_identifier_idx\" on \"verification\" (\"identifier\");"
       },
       {
+        "sql": "create index \"apikey_configId_idx\" on \"apikey\" (\"configId\");",
+        "profiles": [
+          "api-key"
+        ]
+      },
+      {
+        "sql": "create index \"apikey_referenceId_idx\" on \"apikey\" (\"referenceId\");",
+        "profiles": [
+          "api-key"
+        ]
+      },
+      {
+        "sql": "create index \"apikey_key_idx\" on \"apikey\" (\"key\");",
+        "profiles": [
+          "api-key"
+        ]
+      },
+      {
         "sql": "create index \"team_organizationId_idx\" on \"team\" (\"organizationId\");",
         "profiles": [
           "organization-teams"
@@ -722,6 +830,19 @@
             "profiles": [
               "two-factor"
             ]
+          },
+          {
+            "sql": "\"username\" text unique",
+            "profiles": [
+              "username",
+              "username-only"
+            ]
+          },
+          {
+            "sql": "\"displayUsername\" text",
+            "profiles": [
+              "username"
+            ]
           }
         ]
       },
@@ -837,6 +958,80 @@
           },
           {
             "sql": "\"updatedAt\" timestamptz default CURRENT_TIMESTAMP not null"
+          }
+        ]
+      },
+      {
+        "sql": "create table \"apikey\"",
+        "profiles": [
+          "api-key"
+        ],
+        "columns": [
+          {
+            "sql": "\"id\" text not null primary key"
+          },
+          {
+            "sql": "\"configId\" text not null"
+          },
+          {
+            "sql": "\"name\" text"
+          },
+          {
+            "sql": "\"start\" text"
+          },
+          {
+            "sql": "\"referenceId\" text not null"
+          },
+          {
+            "sql": "\"prefix\" text"
+          },
+          {
+            "sql": "\"key\" text not null"
+          },
+          {
+            "sql": "\"refillInterval\" integer"
+          },
+          {
+            "sql": "\"refillAmount\" integer"
+          },
+          {
+            "sql": "\"lastRefillAt\" timestamptz"
+          },
+          {
+            "sql": "\"enabled\" boolean"
+          },
+          {
+            "sql": "\"rateLimitEnabled\" boolean"
+          },
+          {
+            "sql": "\"rateLimitTimeWindow\" integer"
+          },
+          {
+            "sql": "\"rateLimitMax\" integer"
+          },
+          {
+            "sql": "\"requestCount\" integer"
+          },
+          {
+            "sql": "\"remaining\" integer"
+          },
+          {
+            "sql": "\"lastRequest\" timestamptz"
+          },
+          {
+            "sql": "\"expiresAt\" timestamptz"
+          },
+          {
+            "sql": "\"createdAt\" timestamptz not null"
+          },
+          {
+            "sql": "\"updatedAt\" timestamptz not null"
+          },
+          {
+            "sql": "\"permissions\" text"
+          },
+          {
+            "sql": "\"metadata\" text"
           }
         ]
       },
@@ -1205,6 +1400,24 @@
         "sql": "create index \"verification_identifier_idx\" on \"verification\" (\"identifier\");"
       },
       {
+        "sql": "create index \"apikey_configId_idx\" on \"apikey\" (\"configId\");",
+        "profiles": [
+          "api-key"
+        ]
+      },
+      {
+        "sql": "create index \"apikey_referenceId_idx\" on \"apikey\" (\"referenceId\");",
+        "profiles": [
+          "api-key"
+        ]
+      },
+      {
+        "sql": "create index \"apikey_key_idx\" on \"apikey\" (\"key\");",
+        "profiles": [
+          "api-key"
+        ]
+      },
+      {
         "sql": "create index \"team_organizationId_idx\" on \"team\" (\"organizationId\");",
         "profiles": [
           "organization-teams"
@@ -1359,6 +1572,19 @@
             "profiles": [
               "two-factor"
             ]
+          },
+          {
+            "sql": "`username` varchar(255) unique",
+            "profiles": [
+              "username",
+              "username-only"
+            ]
+          },
+          {
+            "sql": "`displayUsername` text",
+            "profiles": [
+              "username"
+            ]
           }
         ]
       },
@@ -1474,6 +1700,80 @@
           },
           {
             "sql": "`updatedAt` timestamp(3) default CURRENT_TIMESTAMP(3) not null"
+          }
+        ]
+      },
+      {
+        "sql": "create table `apikey`",
+        "profiles": [
+          "api-key"
+        ],
+        "columns": [
+          {
+            "sql": "`id` varchar(36) not null primary key"
+          },
+          {
+            "sql": "`configId` varchar(255) not null"
+          },
+          {
+            "sql": "`name` text"
+          },
+          {
+            "sql": "`start` text"
+          },
+          {
+            "sql": "`referenceId` varchar(255) not null"
+          },
+          {
+            "sql": "`prefix` text"
+          },
+          {
+            "sql": "`key` varchar(255) not null"
+          },
+          {
+            "sql": "`refillInterval` integer"
+          },
+          {
+            "sql": "`refillAmount` integer"
+          },
+          {
+            "sql": "`lastRefillAt` timestamp(3)"
+          },
+          {
+            "sql": "`enabled` boolean"
+          },
+          {
+            "sql": "`rateLimitEnabled` boolean"
+          },
+          {
+            "sql": "`rateLimitTimeWindow` integer"
+          },
+          {
+            "sql": "`rateLimitMax` integer"
+          },
+          {
+            "sql": "`requestCount` integer"
+          },
+          {
+            "sql": "`remaining` integer"
+          },
+          {
+            "sql": "`lastRequest` timestamp(3)"
+          },
+          {
+            "sql": "`expiresAt` timestamp(3)"
+          },
+          {
+            "sql": "`createdAt` timestamp(3) not null"
+          },
+          {
+            "sql": "`updatedAt` timestamp(3) not null"
+          },
+          {
+            "sql": "`permissions` text"
+          },
+          {
+            "sql": "`metadata` text"
           }
         ]
       },
@@ -1840,6 +2140,24 @@
       },
       {
         "sql": "create index `verification_identifier_idx` on `verification` (`identifier`);"
+      },
+      {
+        "sql": "create index `apikey_configId_idx` on `apikey` (`configId`);",
+        "profiles": [
+          "api-key"
+        ]
+      },
+      {
+        "sql": "create index `apikey_referenceId_idx` on `apikey` (`referenceId`);",
+        "profiles": [
+          "api-key"
+        ]
+      },
+      {
+        "sql": "create index `apikey_key_idx` on `apikey` (`key`);",
+        "profiles": [
+          "api-key"
+        ]
       },
       {
         "sql": "create index `team_organizationId_idx` on `team` (`organizationId`);",
