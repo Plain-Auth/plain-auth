@@ -140,7 +140,7 @@ func (a *Auth) factorEndpoint(route string, c EndpointContext) (any, error) {
 	remember := !a.dontRemember(r)
 	op := factorRequest{
 		auth: a, ctx: ctx, route: route, body: c.Body, subject: subject,
-		meta: RequestMeta{IPAddress: remoteIP(r.RemoteAddr), UserAgent: r.UserAgent(), RememberMe: &remember},
+		meta: RequestMeta{IPAddress: a.clientIP(r), UserAgent: r.UserAgent(), RememberMe: &remember},
 	}
 	decide := op.manage
 	if isProof {

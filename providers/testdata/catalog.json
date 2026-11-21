@@ -1,0 +1,726 @@
+{
+  "atlassian": {
+    "input": {
+      "email": "person@example.org",
+      "name": "Person",
+      "picture": "https://images.example.org/person.jpg",
+      "email_verified": true,
+      "account_id": "atlassian-sub"
+    },
+    "expectedData": {
+      "email": "person@example.org",
+      "name": "Person",
+      "picture": "https://images.example.org/person.jpg",
+      "email_verified": true,
+      "account_id": "atlassian-sub"
+    },
+    "expected": {
+      "subject": "atlassian-sub",
+      "name": "Person",
+      "email": "person@example.org",
+      "image": "https://images.example.org/person.jpg",
+      "emailVerified": false
+    }
+  },
+  "facebook": {
+    "input": {
+      "id": "fb-person",
+      "email": "person@example.org",
+      "name": "Facebook Person",
+      "picture": {
+        "data": {
+          "url": "https://images.example.org/person.jpg"
+        }
+      }
+    },
+    "expectedData": {
+      "id": "fb-person",
+      "email": "person@example.org",
+      "name": "Facebook Person",
+      "picture": {
+        "data": {
+          "url": "https://images.example.org/person.jpg"
+        }
+      }
+    },
+    "expected": {
+      "subject": "fb-person",
+      "name": "Facebook Person",
+      "email": "person@example.org",
+      "image": "https://images.example.org/person.jpg",
+      "emailVerified": false
+    }
+  },
+  "twitter": {
+    "input": {
+      "data": {
+        "id": "x-person",
+        "name": "X Person",
+        "profile_image_url": "https://images.example.org/person.jpg"
+      }
+    },
+    "expectedData": {
+      "data": {
+        "id": "x-person",
+        "name": "X Person",
+        "profile_image_url": "https://images.example.org/person.jpg",
+        "email": "person@example.org"
+      }
+    },
+    "expected": {
+      "subject": "x-person",
+      "name": "X Person",
+      "email": "person@example.org",
+      "image": "https://images.example.org/person.jpg",
+      "emailVerified": true
+    }
+  },
+  "vk": {
+    "input": {
+      "user": {
+        "user_id": "vk-person",
+        "email": "person@example.org",
+        "first_name": "VK",
+        "last_name": "Person",
+        "avatar": "https://images.example.org/person.jpg"
+      }
+    },
+    "expectedData": {
+      "user": {
+        "user_id": "vk-person",
+        "email": "person@example.org",
+        "first_name": "VK",
+        "last_name": "Person",
+        "avatar": "https://images.example.org/person.jpg"
+      }
+    },
+    "expected": {
+      "subject": "vk-person",
+      "name": "VK Person",
+      "email": "person@example.org",
+      "image": "https://images.example.org/person.jpg",
+      "emailVerified": false
+    }
+  },
+  "tiktok": {
+    "input": {
+      "data": {
+        "user": {
+          "open_id": "tiktok-person",
+          "display_name": "TikTok Person",
+          "avatar_large_url": "https://images.example.org/person.jpg"
+        }
+      }
+    },
+    "expectedData": {
+      "data": {
+        "user": {
+          "open_id": "tiktok-person",
+          "display_name": "TikTok Person",
+          "avatar_large_url": "https://images.example.org/person.jpg"
+        }
+      }
+    },
+    "expected": {
+      "subject": "tiktok-person",
+      "name": "TikTok Person",
+      "email": "tiktok-person@tiktok.placeholder.invalid",
+      "image": "https://images.example.org/person.jpg",
+      "emailVerified": false
+    }
+  },
+  "wechat": {
+    "input": {
+      "openid": "wechat-open",
+      "unionid": "wechat-person",
+      "nickname": "WeChat Person",
+      "headimgurl": "https://images.example.org/person.jpg"
+    },
+    "expectedData": {
+      "openid": "wechat-open",
+      "unionid": "wechat-person",
+      "nickname": "WeChat Person",
+      "headimgurl": "https://images.example.org/person.jpg"
+    },
+    "expected": {
+      "subject": "wechat-person",
+      "name": "WeChat Person",
+      "email": "wechat-person@wechat.placeholder.invalid",
+      "image": "https://images.example.org/person.jpg",
+      "emailVerified": false
+    }
+  },
+  "cloudflare": {
+    "input": {
+      "success": true,
+      "result": {
+        "id": "cf-sub",
+        "email": "person@example.org",
+        "first_name": "A",
+        "last_name": "Person"
+      }
+    },
+    "expectedData": {
+      "id": "cf-sub",
+      "email": "person@example.org",
+      "first_name": "A",
+      "last_name": "Person"
+    },
+    "expected": {
+      "subject": "cf-sub",
+      "name": "A Person",
+      "email": "person@example.org",
+      "image": null,
+      "emailVerified": false
+    }
+  },
+  "kakao": {
+    "input": {
+      "id": 1024,
+      "kakao_account": {
+        "email": "person@example.org",
+        "is_email_valid": true,
+        "is_email_verified": true,
+        "profile": {
+          "nickname": "Kakao Person",
+          "thumbnail_image_url": "https://images.example.org/person.jpg"
+        }
+      }
+    },
+    "expectedData": {
+      "id": 1024,
+      "kakao_account": {
+        "email": "person@example.org",
+        "is_email_valid": true,
+        "is_email_verified": true,
+        "profile": {
+          "nickname": "Kakao Person",
+          "thumbnail_image_url": "https://images.example.org/person.jpg"
+        }
+      }
+    },
+    "expected": {
+      "subject": "1024",
+      "name": "Kakao Person",
+      "email": "person@example.org",
+      "image": "https://images.example.org/person.jpg",
+      "emailVerified": true
+    }
+  },
+  "line": {
+    "input": {
+      "email": "person@example.org",
+      "name": "Person",
+      "picture": "https://images.example.org/person.jpg",
+      "email_verified": true,
+      "sub": "line-sub"
+    },
+    "expectedData": {
+      "email": "person@example.org",
+      "name": "Person",
+      "picture": "https://images.example.org/person.jpg",
+      "email_verified": true,
+      "sub": "line-sub"
+    },
+    "expected": {
+      "subject": "line-sub",
+      "name": "Person",
+      "email": "person@example.org",
+      "image": "https://images.example.org/person.jpg",
+      "emailVerified": false
+    }
+  },
+  "notion": {
+    "input": {
+      "bot": {
+        "owner": {
+          "user": {
+            "id": "notion-id",
+            "name": "Notion Person",
+            "avatar_url": "https://images.example.org/person.jpg",
+            "person": {
+              "email": "person@example.org"
+            }
+          }
+        }
+      }
+    },
+    "expectedData": {
+      "id": "notion-id",
+      "name": "Notion Person",
+      "avatar_url": "https://images.example.org/person.jpg",
+      "person": {
+        "email": "person@example.org"
+      }
+    },
+    "expected": {
+      "subject": "notion-id",
+      "name": "Notion Person",
+      "email": "person@example.org",
+      "image": "https://images.example.org/person.jpg",
+      "emailVerified": false
+    }
+  },
+  "paypal": {
+    "input": {
+      "email": "person@example.org",
+      "name": "Person",
+      "picture": "https://images.example.org/person.jpg",
+      "email_verified": true,
+      "user_id": "paypal-id"
+    },
+    "expectedData": {
+      "email": "person@example.org",
+      "name": "Person",
+      "picture": "https://images.example.org/person.jpg",
+      "email_verified": true,
+      "user_id": "paypal-id"
+    },
+    "expected": {
+      "subject": "paypal-id",
+      "name": "Person",
+      "email": "person@example.org",
+      "image": "https://images.example.org/person.jpg",
+      "emailVerified": true
+    }
+  },
+  "discord": {
+    "input": {
+      "id": "80351110224678912",
+      "username": "person",
+      "global_name": "A Person",
+      "email": "person@example.org",
+      "verified": true,
+      "avatar": "a_example",
+      "discriminator": "0"
+    },
+    "expectedData": {
+      "id": "80351110224678912",
+      "username": "person",
+      "global_name": "A Person",
+      "email": "person@example.org",
+      "verified": true,
+      "avatar": "a_example",
+      "discriminator": "0",
+      "image_url": "https://cdn.discordapp.com/avatars/80351110224678912/a_example.gif"
+    },
+    "expected": {
+      "subject": "80351110224678912",
+      "name": "A Person",
+      "email": "person@example.org",
+      "image": "https://cdn.discordapp.com/avatars/80351110224678912/a_example.gif",
+      "emailVerified": true
+    }
+  },
+  "dropbox": {
+    "input": {
+      "account_id": "dbid:abc",
+      "name": {
+        "display_name": "A Person"
+      },
+      "email": "person@example.org",
+      "email_verified": true,
+      "profile_photo_url": "https://images.example.org/person.jpg"
+    },
+    "expectedData": {
+      "account_id": "dbid:abc",
+      "name": {
+        "display_name": "A Person"
+      },
+      "email": "person@example.org",
+      "email_verified": true,
+      "profile_photo_url": "https://images.example.org/person.jpg"
+    },
+    "expected": {
+      "subject": "dbid:abc",
+      "name": "A Person",
+      "email": "person@example.org",
+      "image": "https://images.example.org/person.jpg",
+      "emailVerified": true
+    }
+  },
+  "figma": {
+    "input": {
+      "id": "figma-sub",
+      "handle": "figma-name",
+      "email": "person@example.org",
+      "img_url": "https://images.example.org/person.jpg"
+    },
+    "expectedData": {
+      "id": "figma-sub",
+      "handle": "figma-name",
+      "email": "person@example.org",
+      "img_url": "https://images.example.org/person.jpg"
+    },
+    "expected": {
+      "subject": "figma-sub",
+      "name": "figma-name",
+      "email": "person@example.org",
+      "image": "https://images.example.org/person.jpg",
+      "emailVerified": false
+    }
+  },
+  "gitlab": {
+    "input": {
+      "id": 123456,
+      "name": "GitLab Person",
+      "email": "person@example.org",
+      "email_verified": true,
+      "avatar_url": "https://images.example.org/person.jpg",
+      "state": "active",
+      "locked": false
+    },
+    "expectedData": {
+      "id": 123456,
+      "name": "GitLab Person",
+      "email": "person@example.org",
+      "email_verified": true,
+      "avatar_url": "https://images.example.org/person.jpg",
+      "state": "active",
+      "locked": false
+    },
+    "expected": {
+      "subject": "123456",
+      "name": "GitLab Person",
+      "email": "person@example.org",
+      "image": "https://images.example.org/person.jpg",
+      "emailVerified": true
+    }
+  },
+  "huggingface": {
+    "input": {
+      "email": "person@example.org",
+      "name": "",
+      "picture": "https://images.example.org/person.jpg",
+      "email_verified": true,
+      "sub": "hf-sub",
+      "preferred_username": "hf-person"
+    },
+    "expectedData": {
+      "email": "person@example.org",
+      "name": "",
+      "picture": "https://images.example.org/person.jpg",
+      "email_verified": true,
+      "sub": "hf-sub",
+      "preferred_username": "hf-person"
+    },
+    "expected": {
+      "subject": "hf-sub",
+      "name": "hf-person",
+      "email": "person@example.org",
+      "image": "https://images.example.org/person.jpg",
+      "emailVerified": true
+    }
+  },
+  "kick": {
+    "input": {
+      "data": [
+        {
+          "user_id": 481,
+          "name": "Kick Person",
+          "email": "person@example.org",
+          "profile_picture": "https://images.example.org/person.jpg"
+        }
+      ]
+    },
+    "expectedData": {
+      "user_id": 481,
+      "name": "Kick Person",
+      "email": "person@example.org",
+      "profile_picture": "https://images.example.org/person.jpg"
+    },
+    "expected": {
+      "subject": "481",
+      "name": "Kick Person",
+      "email": "person@example.org",
+      "image": "https://images.example.org/person.jpg",
+      "emailVerified": false
+    }
+  },
+  "linear": {
+    "input": {
+      "data": {
+        "viewer": {
+          "id": "linear-sub",
+          "name": "Linear Person",
+          "email": "person@example.org",
+          "avatarUrl": "https://images.example.org/person.jpg"
+        }
+      }
+    },
+    "expectedData": {
+      "id": "linear-sub",
+      "name": "Linear Person",
+      "email": "person@example.org",
+      "avatarUrl": "https://images.example.org/person.jpg"
+    },
+    "expected": {
+      "subject": "linear-sub",
+      "name": "Linear Person",
+      "email": "person@example.org",
+      "image": "https://images.example.org/person.jpg",
+      "emailVerified": false
+    }
+  },
+  "linkedin": {
+    "input": {
+      "email": "person@example.org",
+      "name": "Person",
+      "picture": "https://images.example.org/person.jpg",
+      "email_verified": true,
+      "sub": "li-sub"
+    },
+    "expectedData": {
+      "email": "person@example.org",
+      "name": "Person",
+      "picture": "https://images.example.org/person.jpg",
+      "email_verified": true,
+      "sub": "li-sub"
+    },
+    "expected": {
+      "subject": "li-sub",
+      "name": "Person",
+      "email": "person@example.org",
+      "image": "https://images.example.org/person.jpg",
+      "emailVerified": true
+    }
+  },
+  "naver": {
+    "input": {
+      "resultcode": "00",
+      "response": {
+        "id": "nav-sub",
+        "nickname": "Naver Person",
+        "email": "person@example.org",
+        "profile_image": "https://images.example.org/person.jpg"
+      }
+    },
+    "expectedData": {
+      "resultcode": "00",
+      "response": {
+        "id": "nav-sub",
+        "nickname": "Naver Person",
+        "email": "person@example.org",
+        "profile_image": "https://images.example.org/person.jpg"
+      }
+    },
+    "expected": {
+      "subject": "nav-sub",
+      "name": "Naver Person",
+      "email": "person@example.org",
+      "image": "https://images.example.org/person.jpg",
+      "emailVerified": false
+    }
+  },
+  "polar": {
+    "input": {
+      "id": "polar-id",
+      "public_name": "Polar Person",
+      "email": "person@example.org",
+      "email_verified": true,
+      "avatar_url": "https://images.example.org/person.jpg"
+    },
+    "expectedData": {
+      "id": "polar-id",
+      "public_name": "Polar Person",
+      "email": "person@example.org",
+      "email_verified": true,
+      "avatar_url": "https://images.example.org/person.jpg"
+    },
+    "expected": {
+      "subject": "polar-id",
+      "name": "Polar Person",
+      "email": "person@example.org",
+      "image": "https://images.example.org/person.jpg",
+      "emailVerified": true
+    }
+  },
+  "railway": {
+    "input": {
+      "email": "person@example.org",
+      "name": "Person",
+      "picture": "https://images.example.org/person.jpg",
+      "email_verified": true,
+      "sub": "railway-sub"
+    },
+    "expectedData": {
+      "email": "person@example.org",
+      "name": "Person",
+      "picture": "https://images.example.org/person.jpg",
+      "email_verified": true,
+      "sub": "railway-sub"
+    },
+    "expected": {
+      "subject": "railway-sub",
+      "name": "Person",
+      "email": "person@example.org",
+      "image": "https://images.example.org/person.jpg",
+      "emailVerified": false
+    }
+  },
+  "reddit": {
+    "input": {
+      "id": "abcdef",
+      "name": "Reddit Person",
+      "icon_img": "https://images.example.org/person.jpg?size=32"
+    },
+    "expectedData": {
+      "id": "abcdef",
+      "name": "Reddit Person",
+      "icon_img": "https://images.example.org/person.jpg?size=32"
+    },
+    "expected": {
+      "subject": "abcdef",
+      "name": "Reddit Person",
+      "email": "abcdef@reddit.placeholder.invalid",
+      "image": "https://images.example.org/person.jpg",
+      "emailVerified": false
+    }
+  },
+  "roblox": {
+    "input": {
+      "sub": "1234567",
+      "nickname": "Roblox Person",
+      "picture": "https://images.example.org/person.jpg"
+    },
+    "expectedData": {
+      "sub": "1234567",
+      "nickname": "Roblox Person",
+      "picture": "https://images.example.org/person.jpg"
+    },
+    "expected": {
+      "subject": "1234567",
+      "name": "Roblox Person",
+      "email": "1234567@roblox.placeholder.invalid",
+      "image": "https://images.example.org/person.jpg",
+      "emailVerified": false
+    }
+  },
+  "salesforce": {
+    "input": {
+      "user_id": "sf-sub",
+      "name": "Salesforce Person",
+      "email": "person@example.org",
+      "email_verified": true,
+      "photos": {
+        "thumbnail": "https://images.example.org/person.jpg"
+      }
+    },
+    "expectedData": {
+      "user_id": "sf-sub",
+      "name": "Salesforce Person",
+      "email": "person@example.org",
+      "email_verified": true,
+      "photos": {
+        "thumbnail": "https://images.example.org/person.jpg"
+      }
+    },
+    "expected": {
+      "subject": "sf-sub",
+      "name": "Salesforce Person",
+      "email": "person@example.org",
+      "image": "https://images.example.org/person.jpg",
+      "emailVerified": true
+    }
+  },
+  "slack": {
+    "input": {
+      "email": "person@example.org",
+      "name": "Person",
+      "picture": "https://images.example.org/person.jpg",
+      "email_verified": true,
+      "sub": "irrelevant",
+      "https://slack.com/user_id": "U0001"
+    },
+    "expectedData": {
+      "email": "person@example.org",
+      "name": "Person",
+      "picture": "https://images.example.org/person.jpg",
+      "email_verified": true,
+      "sub": "irrelevant",
+      "https://slack.com/user_id": "U0001"
+    },
+    "expected": {
+      "subject": "U0001",
+      "name": "Person",
+      "email": "person@example.org",
+      "image": "https://images.example.org/person.jpg",
+      "emailVerified": true
+    }
+  },
+  "spotify": {
+    "input": {
+      "id": "sp-sub",
+      "display_name": "Spotify Person",
+      "email": "person@example.org",
+      "images": [
+        {
+          "url": "https://images.example.org/person.jpg"
+        }
+      ]
+    },
+    "expectedData": {
+      "id": "sp-sub",
+      "display_name": "Spotify Person",
+      "email": "person@example.org",
+      "images": [
+        {
+          "url": "https://images.example.org/person.jpg"
+        }
+      ]
+    },
+    "expected": {
+      "subject": "sp-sub",
+      "name": "Spotify Person",
+      "email": "person@example.org",
+      "image": "https://images.example.org/person.jpg",
+      "emailVerified": false
+    }
+  },
+  "vercel": {
+    "input": {
+      "email": "person@example.org",
+      "name": "Person",
+      "picture": "https://images.example.org/person.jpg",
+      "email_verified": true,
+      "sub": "vc-sub"
+    },
+    "expectedData": {
+      "email": "person@example.org",
+      "name": "Person",
+      "picture": "https://images.example.org/person.jpg",
+      "email_verified": true,
+      "sub": "vc-sub"
+    },
+    "expected": {
+      "subject": "vc-sub",
+      "name": "Person",
+      "email": "person@example.org",
+      "image": "https://images.example.org/person.jpg",
+      "emailVerified": true
+    }
+  },
+  "zoom": {
+    "input": {
+      "id": "zm-sub",
+      "display_name": "Zoom Person",
+      "email": "person@example.org",
+      "verified": 1,
+      "pic_url": "https://images.example.org/person.jpg"
+    },
+    "expectedData": {
+      "id": "zm-sub",
+      "display_name": "Zoom Person",
+      "email": "person@example.org",
+      "verified": 1,
+      "pic_url": "https://images.example.org/person.jpg"
+    },
+    "expected": {
+      "subject": "zm-sub",
+      "name": "Zoom Person",
+      "email": "person@example.org",
+      "image": "https://images.example.org/person.jpg",
+      "emailVerified": true
+    }
+  }
+}

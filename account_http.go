@@ -101,7 +101,7 @@ func (a *Auth) handleAccountRequest(route string, w http.ResponseWriter, r *http
 			return nil, err
 		}
 		if token := a.cookieToken(r.Header); token != "" {
-			a.setSessionCookie(w, r, token, !a.dontRemember(r))
+			a.writeSessionCookieHeaders(w.Header(), r, token, !a.dontRemember(r))
 		}
 		return ok, nil
 	case "/change-password":

@@ -21,6 +21,7 @@ import (
 
 // Auth is safe for concurrent use by application handlers.
 type Auth struct {
+	oneTimeToken  *OneTimeTokenOptions
 	legacySecret  string
 	factorOptions *TwoFactorOptions
 	factorStore   TwoFactorStore
@@ -34,6 +35,9 @@ type Auth struct {
 // New constructs an http.Handler for mounting in an existing router.
 func New(opts Options) (*Auth, error) {
 	if err := resolveEnvironment(&opts); err != nil {
+		return nil, err
+	}
+	if err := opts.ClientIP.prepare(); err != nil {
 		return nil, err
 	}
 	legacySecret := opts.Secret
@@ -90,9 +94,8 @@ func New(opts Options) (*Auth, error) {
 	if opts.SessionTTL < time.Second || opts.FreshAge < 0 || opts.MinPasswordLength < 1 || opts.MaxPasswordLength < opts.MinPasswordLength {
 		return nil, errors.New("betterauth: invalid session duration or password length")
 	}
-	if opts.RateLimit != nil {
-		v := *opts.RateLimit
-		opts.RateLimit = &v
+	if err := prepareRateLimits(&opts); err != nil {
+		return nil, err
 	}
 	if opts.DeleteTokenTTL == 0 {
 		opts.DeleteTokenTTL = 24 * time.Hour
@@ -134,6 +137,14 @@ func New(opts Options) (*Auth, error) {
 	}
 	a := &Auth{opts: opts, legacySecret: legacySecret, now: time.Now, passwordSlots: make(chan struct{}, min(runtime.GOMAXPROCS(0), 4)), plugins: plugins}
 	for _, p := range opts.Plugins {
+		if p.oneTime != nil {
+			a.oneTimeToken = p.oneTime
+		}
+		if p.ValidateStore != nil {
+			if err := p.ValidateStore(opts.Store); err != nil {
+				return nil, err
+			}
+		}
 		if p.factor != nil {
 			s, ok := opts.Store.(TwoFactorStore)
 			if !ok {

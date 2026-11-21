@@ -28,7 +28,7 @@ func init() {
 }
 
 // Generate returns SQL for SQLite, PostgreSQL or MySQL. Supported profiles are
-// organization, organization-teams, rate-limit, stripe-subscriptions and two-factor.
+// organization, organization-teams, passkey, rate-limit, stripe-subscriptions and two-factor.
 // organization-teams includes organization and selects its teams option.
 // Profile order is canonical so equivalent calls emit the same SQL.
 func Generate(dialect string, profiles []string) (string, error) {

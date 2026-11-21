@@ -15,7 +15,7 @@ import (
 
 // OpenIDConnect discovers an operator-configured issuer and its rotating
 // signing keys. Register the result under a stable SocialProviders name.
-// Its ID tokens must contain a subject, verified email and matching nonce.
+// Its ID tokens must contain a subject, an email address and a matching nonce.
 func OpenIDConnect(ctx context.Context, issuer, clientID, clientSecret string) (betterauth.OAuthProvider, error) {
 	var zero betterauth.OAuthProvider
 	if !secureEndpoint(issuer) || clientID == "" {

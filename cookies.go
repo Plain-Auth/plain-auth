@@ -97,6 +97,11 @@ func (a *Auth) setSessionCookie(w http.ResponseWriter, r *http.Request, token st
 	a.addSessionCookieHeaders(w.Header(), r, token, persistent)
 }
 func (a *Auth) addSessionCookieHeaders(headers http.Header, r *http.Request, token string, persistent bool) {
+	a.writeSessionCookieHeaders(headers, r, token, persistent)
+	a.addOneTimeTokenHeader(headers, r, token)
+}
+
+func (a *Auth) writeSessionCookieHeaders(headers http.Header, r *http.Request, token string, persistent bool) {
 	c := a.sessionCookie(token, persistent)
 	headers.Add("Set-Cookie", c.String())
 	event := SessionCookieEvent{Cookie: *c, Route: strings.TrimPrefix(r.URL.Path, strings.TrimSuffix(a.opts.BasePath, "/")), Request: r, Header: headers}

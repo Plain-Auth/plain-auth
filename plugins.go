@@ -7,10 +7,13 @@ import (
 	"net/http"
 	"path"
 	"strings"
+	"time"
 )
 
 // Plugin contributes HTTP endpoints to an Auth instance.
 type Plugin struct {
+	ValidateStore func(Store) error
+	oneTime       *OneTimeTokenOptions
 	// OnValidateNewPassword checks a proposed credential before it is stored.
 	OnValidateNewPassword func(ctx context.Context, path, password string) error
 	factor                *TwoFactorOptions
@@ -24,13 +27,19 @@ type Plugin struct {
 	OnSessionCookie func(SessionCookieEvent)
 }
 
-// Endpoint serves one method at an exact path relative to the auth base path.
-// RawBody preserves a size-limited request body for protocols with signed payloads.
+// RateLimitRule configures the maximum number of requests per peer and route during Window.
+type RateLimitRule struct {
+	Max    int
+	Window time.Duration
+}
+
+// Endpoint declares the HTTP operation and its optional IP-based limit.
 type Endpoint struct {
-	Method  string
-	Path    string
-	RawBody bool
-	Handler func(EndpointContext) (any, error)
+	RateLimit *RateLimitRule
+	Method    string
+	Path      string
+	RawBody   bool
+	Handler   func(EndpointContext) (any, error)
 }
 
 // EndpointContext gives a plugin access to the host auth instance, incoming
@@ -61,6 +70,13 @@ func registerPlugins(plugins []Plugin) (map[endpointKey]Endpoint, error) {
 			case http.MethodGet, http.MethodPost, http.MethodDelete, http.MethodPut, http.MethodPatch:
 			default:
 				return nil, fmt.Errorf("betterauth: plugin %q has unsupported method %q", p.ID, ep.Method)
+			}
+			if ep.RateLimit != nil {
+				rule := *ep.RateLimit
+				if rule.Max < 1 || rule.Window <= 0 {
+					return nil, fmt.Errorf("auth: invalid rate limit for %s", ep.Path)
+				}
+				ep.RateLimit = &rule
 			}
 			if ep.Handler == nil {
 				return nil, errors.New("betterauth: plugin endpoint requires a handler")

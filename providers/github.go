@@ -54,7 +54,11 @@ func githubProfile(ctx context.Context, t *oauth2.Token, _ string) (betterauth.O
 		}
 		return json.NewDecoder(io.LimitReader(res.Body, 1<<20)).Decode(target)
 	}
-	if err := read("/user", &p); err != nil {
+	var data json.RawMessage
+	if err := read("/user", &data); err != nil {
+		return betterauth.OAuthProfile{}, err
+	}
+	if err := json.Unmarshal(data, &p); err != nil {
 		return betterauth.OAuthProfile{}, err
 	}
 	if p.ID <= 0 {
@@ -82,5 +86,5 @@ func githubProfile(ctx context.Context, t *oauth2.Token, _ string) (betterauth.O
 			break
 		}
 	}
-	return betterauth.OAuthProfile{Subject: strconv.FormatInt(p.ID, 10), Email: p.Email, EmailVerified: verified, Name: p.Name, Image: p.Avatar}, nil
+	return betterauth.OAuthProfile{Data: data, Subject: strconv.FormatInt(p.ID, 10), Email: p.Email, EmailVerified: verified, Name: p.Name, Image: p.Avatar}, nil
 }

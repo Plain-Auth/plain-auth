@@ -121,6 +121,14 @@ func (a *Auth) startOAuth(w http.ResponseWriter, r *http.Request, link bool) err
 		}
 	}
 	target := p.Config.AuthCodeURL(flow.State, opts...)
+	if p.CustomizeAuthorization != nil {
+		u, err := url.Parse(target)
+		if err != nil {
+			return err
+		}
+		p.CustomizeAuthorization(u)
+		target = u.String()
+	}
 	if !disable {
 		w.Header().Set("Location", target)
 	}
@@ -173,7 +181,12 @@ func (a *Auth) finishOAuth(w http.ResponseWriter, r *http.Request, id string) er
 	if !p.DisablePKCE {
 		params = append(params, oauth2.VerifierOption(flow.Verifier))
 	}
-	token, err := p.Config.Exchange(ctx, q.Get("code"), params...)
+	var token *oauth2.Token
+	if p.ExchangeCode == nil {
+		token, err = p.Config.Exchange(ctx, q.Get("code"), params...)
+	} else {
+		token, err = p.ExchangeCode(ctx, p.Config, q.Get("code"), flow.Verifier, q)
+	}
 	if err != nil {
 		return fail("OAUTH_TOKEN_EXCHANGE_FAILED")
 	}
@@ -192,8 +205,22 @@ func (a *Auth) finishOAuth(w http.ResponseWriter, r *http.Request, id string) er
 		}
 	}
 	idToken, _ := token.Extra("id_token").(string)
-	scope, _ := token.Extra("scope").(string)
+	var scopes []string
+	switch v := token.Extra("scope").(type) {
+	case string:
+		scopes = strings.Fields(v)
+	case []any:
+		for _, value := range v {
+			if field, ok := value.(string); ok && strings.TrimSpace(field) != "" {
+				scopes = append(scopes, strings.TrimSpace(field))
+			}
+		}
+	}
+	scope := strings.Join(scopes, ",")
 	tokens := OAuthTokens{AccessToken: token.AccessToken, RefreshToken: token.RefreshToken, IDToken: idToken, Scope: scope, ExpiresAt: token.Expiry}
+	if lifetime := refreshLifetime(token); lifetime > 0 {
+		tokens.RefreshExpiresAt = a.now().Add(lifetime)
+	}
 	result, created, err := a.completeProfile(ctx, r, id, profile, tokens, OAuthLoginOptions{AllowVerifiedEmailLink: p.AllowVerifiedEmailLink, LinkUserID: flow.LinkUserID, LinkSessionToken: a.cookieToken(r.Header)})
 	if errors.Is(err, ErrOAuthLinkRequired) || errors.Is(err, ErrNotFound) {
 		return fail("ACCOUNT_NOT_LINKED")
@@ -239,7 +266,7 @@ func (a *Auth) redirectOAuthForm(w http.ResponseWriter, r *http.Request, id stri
 		return validationError("Invalid OAuth callback form")
 	}
 	q := url.Values{}
-	for _, key := range []string{"state", "code", "error", "error_description", "user", "iss"} {
+	for _, key := range []string{"state", "code", "error", "error_description", "user", "iss", "device_id"} {
 		values := fields[key]
 		if len(values) > 1 {
 			return validationError("Duplicate OAuth callback field")
@@ -258,7 +285,7 @@ func (a *Auth) redirectOAuthForm(w http.ResponseWriter, r *http.Request, id stri
 func (a *Auth) completeProfile(ctx context.Context, r *http.Request, id string, p OAuthProfile, tokens OAuthTokens, options OAuthLoginOptions) (AuthResult, bool, error) {
 	now := a.now().UTC().Truncate(time.Millisecond)
 	candidate := User{ID: randomID(), Name: p.Name, Email: strings.ToLower(p.Email), EmailVerified: p.EmailVerified, Image: p.Image, CreatedAt: now, UpdatedAt: now}
-	session, raw := a.newSession(candidate.ID, RequestMeta{IPAddress: remoteIP(r.RemoteAddr), UserAgent: r.UserAgent()})
+	session, raw := a.newSession(candidate.ID, RequestMeta{IPAddress: a.clientIP(r), UserAgent: r.UserAgent()})
 	user, created, err := a.opts.Store.(OAuthStore).CompleteOAuth(ctx, id, p.Subject, tokens, candidate, session, options)
 	return AuthResult{User: user, Token: raw}, created, err
 }

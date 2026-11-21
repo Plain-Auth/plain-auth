@@ -17,6 +17,8 @@ import (
 
 // OAuthProfile identifies a person by their stable provider subject.
 type OAuthProfile struct {
+	// Data is the authenticated provider profile returned by the account-info endpoint.
+	Data                 any `json:"-"`
 	Subject, Email, Name string
 	Image                *string
 	EmailVerified        bool
@@ -26,9 +28,16 @@ type OAuthProfile struct {
 // identity from an authenticated provider endpoint or a verified ID token.
 // For OpenID Connect it must verify the supplied nonce.
 type OAuthProvider struct {
-	Config                 oauth2.Config
-	Resolve                func(context.Context, *oauth2.Token, string) (OAuthProfile, error)
-	VerifyIDToken          func(ctx context.Context, raw, nonce string) (OAuthProfile, time.Time, error)
+	Config oauth2.Config
+	// CustomizeAuthorization adapts fixed provider-specific parameter names.
+	CustomizeAuthorization func(*url.URL)
+	// ExchangeCode handles providers with a nonstandard token endpoint protocol.
+	ExchangeCode  func(context.Context, oauth2.Config, string, string, url.Values) (*oauth2.Token, error)
+	Resolve       func(context.Context, *oauth2.Token, string) (OAuthProfile, error)
+	VerifyIDToken func(ctx context.Context, raw, nonce string) (OAuthProfile, time.Time, error)
+	// Refresh overrides the standard OAuth 2.0 refresh request.
+	Refresh                func(context.Context, oauth2.Config, string) (*oauth2.Token, error)
+	DisableRefresh         bool
 	HTTPClient             *http.Client
 	AllowVerifiedEmailLink bool
 	AuthorizationParams    url.Values
@@ -49,7 +58,7 @@ type OAuthFlow struct {
 // OAuthTokens are the provider-issued account credentials kept by the adapter.
 type OAuthTokens struct {
 	AccessToken, RefreshToken, IDToken, Scope string
-	ExpiresAt                                 time.Time
+	ExpiresAt, RefreshExpiresAt               time.Time
 }
 
 // OAuthLoginOptions binds an explicit link to a live session or a direct
@@ -105,6 +114,11 @@ func prepareOAuthProviders(in map[string]OAuthProvider, store Store) (map[string
 		if p.HTTPClient == nil {
 			p.HTTPClient = &http.Client{Timeout: 15 * time.Second}
 		}
+		// Token and profile requests can carry credentials in headers, bodies or
+		// query strings. Providers must answer at their configured endpoint.
+		client := *p.HTTPClient
+		client.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
+		p.HTTPClient = &client
 		out[id] = p
 	}
 	return out, nil

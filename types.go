@@ -56,6 +56,12 @@ type Options struct {
 	// counters live on the auth instance. Supply RateLimitStorage to share them.
 	RateLimit        *bool
 	RateLimitStorage RateLimitStorage
+	// RateLimitDefault applies to routes without their own rule. RateLimitRules
+	// overrides built-in and plugin rules by exact route or trailing /* prefix.
+	// A nil map value exempts the matching route from the limiter.
+	RateLimitDefault *RateLimitRule
+	RateLimitRules   map[string]*RateLimitRule
+	ClientIP         ClientIPOptions
 	SocialProviders  map[string]OAuthProvider
 	Plugins          []Plugin
 }

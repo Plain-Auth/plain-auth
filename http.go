@@ -19,7 +19,8 @@ import (
 const maxBodyBytes = 1 << 20
 
 var coreMethods = map[string]string{
-	"/error":        http.MethodGet,
+	"/error":            http.MethodGet,
+	"/get-access-token": http.MethodPost, "/refresh-token": http.MethodPost, "/account-info": http.MethodGet,
 	"/change-email": http.MethodPost, "/delete-user": http.MethodPost, "/delete-user/callback": http.MethodGet,
 	"/list-accounts": http.MethodGet, "/unlink-account": http.MethodPost,
 	"/verify-password": http.MethodPost, "/update-user": http.MethodPost, "/change-password": http.MethodPost,
@@ -51,7 +52,7 @@ func (a *Auth) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Pragma", "no-cache")
 	}
 
-	ip := remoteIP(r.RemoteAddr)
+	ip := a.clientIP(r)
 	if a.rejectRateLimited(w, r, route) {
 		return
 	}
@@ -61,7 +62,7 @@ func (a *Auth) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	var body wireBody
 	if r.Method != http.MethodGet {
-		if err := a.validateRequestOrigin(r, isEmailRoute(route)); err != nil {
+		if err := a.validateRequestOrigin(r, isEmailRoute(route) || route == "/sign-in/magic-link"); err != nil {
 			writeAuthError(w, err)
 			return
 		}
@@ -112,6 +113,8 @@ func (a *Auth) handleCoreRequest(route string, w http.ResponseWriter, r *http.Re
 		return map[string]bool{"ok": true}, nil
 	case "/get-session":
 		return a.sessionHTTP(w, r)
+	case "/get-access-token", "/refresh-token", "/account-info":
+		return a.providerCredentialsHTTP(ctx, route, r, body)
 	case "/list-accounts":
 		return a.ListUserAccounts(ctx, r.Header)
 	case "/unlink-account":

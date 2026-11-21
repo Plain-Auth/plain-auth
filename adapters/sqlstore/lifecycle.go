@@ -111,6 +111,9 @@ func (s *Store) DeleteAccount(ctx context.Context, userID, sessionToken, expecte
 			return err
 		}
 	}
+	if err := s.cleanupPasskeys(ctx, tx, userID); err != nil {
+		return err
+	}
 	if err := s.cleanupOrganizationAccount(ctx, tx, userID); err != nil {
 		return err
 	}

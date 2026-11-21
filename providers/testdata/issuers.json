@@ -1,0 +1,71 @@
+{
+  "cognito": {
+    "authorization": "https://auth.fixture.example.org/oauth2/authorize",
+    "token": "https://auth.fixture.example.org/oauth2/token",
+    "scope": "openid profile email",
+    "pkce": true,
+    "claims": null,
+    "input": {
+      "email": "person@example.org",
+      "name": "",
+      "picture": "https://images.example.org/person.jpg",
+      "email_verified": true,
+      "sub": "cognito-subject",
+      "given_name": "Cognito Person",
+      "preferred_username": "Preferred Person"
+    },
+    "expected": {
+      "subject": "cognito-subject",
+      "email": "person@example.org",
+      "emailVerified": true,
+      "name": "Cognito Person",
+      "image": "https://images.example.org/person.jpg"
+    }
+  },
+  "paybin": {
+    "authorization": "https://idp.paybin.io/oauth2/authorize",
+    "token": "https://idp.paybin.io/oauth2/token",
+    "scope": "openid email profile",
+    "pkce": true,
+    "claims": null,
+    "input": {
+      "email": "person@example.org",
+      "name": "",
+      "picture": "https://images.example.org/person.jpg",
+      "email_verified": true,
+      "sub": "paybin-subject",
+      "given_name": "Cognito Person",
+      "preferred_username": "Preferred Person"
+    },
+    "expected": {
+      "subject": "paybin-subject",
+      "email": "person@example.org",
+      "emailVerified": true,
+      "name": "Preferred Person",
+      "image": "https://images.example.org/person.jpg"
+    }
+  },
+  "twitch": {
+    "authorization": "https://id.twitch.tv/oauth2/authorize",
+    "token": "https://id.twitch.tv/oauth2/token",
+    "scope": "user:read:email openid",
+    "pkce": false,
+    "claims": "{\"id_token\":{\"email\":null,\"email_verified\":null,\"preferred_username\":null,\"picture\":null}}",
+    "input": {
+      "email": "person@example.org",
+      "name": "",
+      "picture": "https://images.example.org/person.jpg",
+      "email_verified": true,
+      "sub": "twitch-subject",
+      "given_name": "Cognito Person",
+      "preferred_username": "Preferred Person"
+    },
+    "expected": {
+      "subject": "twitch-subject",
+      "email": "person@example.org",
+      "emailVerified": true,
+      "name": "Preferred Person",
+      "image": "https://images.example.org/person.jpg"
+    }
+  }
+}

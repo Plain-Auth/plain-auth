@@ -3,7 +3,6 @@ package betterauth
 import (
 	"context"
 	"net/http"
-	"net/netip"
 	"strconv"
 	"strings"
 	"sync"
@@ -36,25 +35,15 @@ func (a *Auth) rejectRateLimited(w http.ResponseWriter, r *http.Request, route s
 	if a.opts.RateLimit != nil {
 		enabled = *a.opts.RateLimit
 	}
-	if !enabled {
+	if !enabled || a.opts.ClientIP.DisableTracking {
 		return false
 	}
-	ip := remoteIP(r.RemoteAddr)
-	if ip == "" {
-		ip = "no-trusted-ip"
+	ip := a.rateLimitIP(a.clientIP(r))
+	rule := a.ruleForRoute(r.Method, route)
+	if rule == nil {
+		return false
 	}
-	if addr, err := netip.ParseAddr(ip); err == nil && addr.Is6() {
-		ip = netip.PrefixFrom(addr, 64).Masked().String()
-	}
-	maximum := 100
-	window := 10 * time.Second
-	switch {
-	case strings.HasPrefix(route, "/sign-in/"), strings.HasPrefix(route, "/sign-up/"), route == "/change-password", route == "/change-email", strings.HasPrefix(route, "/two-factor/"):
-		maximum = 3
-	case route == "/request-password-reset", route == "/send-verification-email":
-		maximum = 3
-		window = time.Minute
-	}
+	maximum, window := rule.Max, rule.Window
 	now := a.now()
 	var retry int
 	if store := a.opts.RateLimitStorage; store != nil {
@@ -63,7 +52,7 @@ func (a *Auth) rejectRateLimited(w http.ResponseWriter, r *http.Request, route s
 			writeAuthError(w, err)
 			return true
 		}
-		retry = int((delay + time.Second - 1) / time.Second)
+		retry = retrySeconds(delay)
 	} else {
 		retry = a.limiter.consume(rateLimitKey{ip: ip, route: route}, maximum, window, now)
 	}
@@ -93,14 +82,21 @@ func (l *rateLimiter) consume(key rateLimitKey, maximum int, window time.Duratio
 	}
 	entry, found := l.entries[key]
 	if !found && len(l.entries) >= 100_000 {
-		return int(window / time.Second)
+		return retrySeconds(window)
 	}
 	if !now.Before(entry.expires) {
 		entry.count = 0
 	}
 	if entry.count >= maximum {
-		return int((entry.expires.Sub(now) + time.Second - 1) / time.Second)
+		return retrySeconds(entry.expires.Sub(now))
 	}
 	l.entries[key] = rateLimitEntry{count: entry.count + 1, expires: now.Add(window)}
 	return 0
+}
+
+func retrySeconds(delay time.Duration) int {
+	if delay <= 0 {
+		return 0
+	}
+	return int((delay-1)/time.Second) + 1
 }

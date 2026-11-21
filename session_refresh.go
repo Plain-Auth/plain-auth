@@ -77,6 +77,6 @@ func (a *Auth) sessionHTTP(w http.ResponseWriter, r *http.Request) (any, error) 
 	}
 	result.Session.ExpiresAt = next
 	result.Session.UpdatedAt = now
-	a.setSessionCookie(w, r, token, true)
+	a.writeSessionCookieHeaders(w.Header(), r, token, true)
 	return result, nil
 }

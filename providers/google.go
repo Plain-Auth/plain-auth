@@ -89,6 +89,12 @@ func signedProvider(id, secret string, endpoint oauth2.Endpoint, verifier *oidc.
 			return profile, time.Time{}, errors.New("unexpected authorized party")
 		}
 		profile, err = rules.profile(token)
+		if err == nil {
+			var claims map[string]any
+			if err = token.Claims(&claims); err == nil {
+				profile.Data = claims
+			}
+		}
 		return profile, token.Expiry, err
 	}
 	return betterauth.OAuthProvider{

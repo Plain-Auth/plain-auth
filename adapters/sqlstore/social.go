@@ -160,16 +160,19 @@ func (s *Store) completeOAuth(ctx context.Context, provider, subject string, tok
 		key := sha256.Sum256([]byte(provider + "\x00" + subject))
 		account = hex.EncodeToString(key[:16])
 	}
-	var expires any
+	var expires, refreshExpires any
+	if !tokens.RefreshExpiresAt.IsZero() {
+		refreshExpires = s.date(tokens.RefreshExpiresAt)
+	}
 	if !tokens.ExpiresAt.IsZero() {
 		expires = s.date(tokens.ExpiresAt)
 	}
 	if existing {
-		_, err = tx.ExecContext(ctx, s.bind(`UPDATE "account" SET "accessToken"=COALESCE(NULLIF(?,''),"accessToken"),"refreshToken"=COALESCE(NULLIF(?,''),"refreshToken"),"idToken"=COALESCE(NULLIF(?,''),"idToken"),"scope"=COALESCE(NULLIF(?,''),"scope"),"accessTokenExpiresAt"=CASE WHEN ?='' THEN "accessTokenExpiresAt" ELSE ? END,"updatedAt"=? WHERE "id"=?`),
-			tokens.AccessToken, tokens.RefreshToken, tokens.IDToken, tokens.Scope, tokens.AccessToken, expires, s.date(session.CreatedAt), account)
+		_, err = tx.ExecContext(ctx, s.bind(`UPDATE "account" SET "accessToken"=COALESCE(NULLIF(?,''),"accessToken"),"refreshToken"=COALESCE(NULLIF(?,''),"refreshToken"),"idToken"=COALESCE(NULLIF(?,''),"idToken"),"scope"=COALESCE(NULLIF(?,''),"scope"),"accessTokenExpiresAt"=CASE WHEN ?='' THEN "accessTokenExpiresAt" ELSE ? END,"refreshTokenExpiresAt"=COALESCE(?,"refreshTokenExpiresAt"),"updatedAt"=? WHERE "id"=?`),
+			tokens.AccessToken, tokens.RefreshToken, tokens.IDToken, tokens.Scope, tokens.AccessToken, expires, refreshExpires, s.date(session.CreatedAt), account)
 	} else {
-		_, err = tx.ExecContext(ctx, s.bind(`INSERT INTO "account" ("id","accountId","providerId","userId","accessToken","refreshToken","idToken","scope","accessTokenExpiresAt","createdAt","updatedAt") VALUES (?,?,?,?,NULLIF(?,''),NULLIF(?,''),NULLIF(?,''),NULLIF(?,''),?,?,?)`),
-			account, subject, provider, u.ID, tokens.AccessToken, tokens.RefreshToken, tokens.IDToken, tokens.Scope, expires, s.date(session.CreatedAt), s.date(session.CreatedAt))
+		_, err = tx.ExecContext(ctx, s.bind(`INSERT INTO "account" ("id","accountId","providerId","userId","accessToken","refreshToken","idToken","scope","accessTokenExpiresAt","refreshTokenExpiresAt","createdAt","updatedAt") VALUES (?,?,?,?,NULLIF(?,''),NULLIF(?,''),NULLIF(?,''),NULLIF(?,''),?,?,?,?)`),
+			account, subject, provider, u.ID, tokens.AccessToken, tokens.RefreshToken, tokens.IDToken, tokens.Scope, expires, refreshExpires, s.date(session.CreatedAt), s.date(session.CreatedAt))
 	}
 	if err != nil {
 		return u, false, err
