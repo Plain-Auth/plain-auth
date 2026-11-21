@@ -1,6 +1,6 @@
-# FineStack Go Auth
+# FineStack Auth
 
-FineStack Go Auth embeds authentication in your Go API. Mount the auth handler on your router and use the same instance to read the signed-in user inside your own handlers. Your application owns its listener, database lifetime, middleware, and routes.
+FineStack Auth embeds authentication in your Go API. Mount the auth handler on your router and use the same instance to read the signed-in user inside your own handlers. Your application owns its listener, database lifetime, middleware, and routes.
 
 **Development status.** The [feature checklist](docs/parity/README.md) lists supported behavior, passing tests, and planned features. Browse [authentication](docs/parity/authentication.md), [databases](docs/parity/adapters.md), [integrations](docs/parity/integrations.md), or [Stripe](docs/parity/plugins/stripe.md).
 
@@ -48,6 +48,15 @@ curl -sS -b cookies.txt -c cookies.txt http://127.0.0.1:3000/api/auth/sign-out \
 
 ## Mount it in an application
 
+Import the package as `auth` from the current module.
+
+```go
+import (
+    auth "github.com/nabuhadba/go-better-auth"
+    "github.com/nabuhadba/go-better-auth/adapters/sqlite"
+)
+```
+
 ```go
 store, err := sqlite.Open("auth.db")
 if err != nil {
@@ -55,19 +64,19 @@ if err != nil {
 }
 defer store.Close() // in the function that owns the application's lifetime
 
-auth, err := authn.New(authn.Options{
+instance, err := auth.New(auth.Options{
     Store:            store,
     EmailAndPassword: true,
 })
 if err != nil {
     return err
 }
-mux.Handle(strings.TrimRight(auth.BasePath(), "/")+"/", auth)
+mux.Handle(strings.TrimRight(instance.BasePath(), "/")+"/", instance)
 ```
 
 This reads the signing secret and public URL from the host environment configured above. Explicit options, environment settings and their precedence are documented in the [configuration guide](docs/environment.md).
 
-To add the package to another Go module while the repository is private, authenticate Git for this GitHub repository, then run the following in the consuming module.
+The planned public repository name is `finestack-auth`. During private development, authenticate Git for the current repository and run the following in the consuming module.
 
 ```sh
 GOPRIVATE=github.com/nabuhadba/go-better-auth go get github.com/nabuhadba/go-better-auth@main
