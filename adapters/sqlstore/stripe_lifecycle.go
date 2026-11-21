@@ -216,6 +216,16 @@ func (s *Store) applyCurrentSubscription(ctx context.Context, tx *sql.Tx, key bi
 		if a.ID != meta["checkoutAttemptId"] || a.LocalSubscription != claim || a.Customer != key.CustomerID || a.Owner != r.Owner || meta["userId"] != actor || meta["referenceId"] != r.Owner {
 			return billing.ErrCheckoutReconcile
 		}
+		// Only bind a new checkout to the item and seat count it reserved. Once
+		// bound, subsequent provider changes are reconciled from signed events.
+		if a.Seats > 0 && !c.Deleted {
+			purchase := key.Purchase
+			if purchase == nil || purchase.Attempt.ID != a.ID || purchase.Attempt.LocalSubscription != claim || purchase.Attempt.Owner != a.Owner ||
+				purchase.RemoteID != key.RemoteID || purchase.Attempt.Customer != key.CustomerID || purchase.Price != a.Price || purchase.Quantity != a.Quantity() ||
+				purchase.CheckoutID == "" || a.CheckoutID != "" && a.CheckoutID != purchase.CheckoutID {
+				return billing.ErrCheckoutReconcile
+			}
+		}
 		var current sql.NullString
 		if err = tx.QueryRowContext(ctx, s.bind(`SELECT "stripeSubscriptionId" FROM "subscription" WHERE "id"=? AND "referenceId"=? AND "stripeCustomerId"=?`), claim, r.Owner, key.CustomerID).Scan(&current); err != nil {
 			return err

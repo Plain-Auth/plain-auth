@@ -14,6 +14,8 @@ import (
 type SubscriptionIdentity struct {
 	RemoteID, CustomerID, Owner, LocalID string
 	EventID                              string
+	// Purchase links an immutable Checkout receipt to its original reservation.
+	Purchase *CheckoutPurchase `json:"-"`
 	// SessionToken accompanies a browser-authorized synchronization and is never persisted.
 	SessionToken string `json:"-"`
 }
@@ -82,11 +84,21 @@ func (s *subscriptions) refreshManagedSubscription(c auth.EndpointContext, local
 	return s.reconcile(c.Request.Context(), store, key, nil, false)
 }
 
+var errCheckoutAlreadyBound = errors.New("stripe: a concurrent event already bound this checkout")
+
 func (s *subscriptions) reconcile(ctx context.Context, store SubscriptionLifecycleStore, key SubscriptionIdentity, eventObject *sdk.Subscription, deleted bool) (*sdk.Subscription, error) {
 	for range 4 {
 		before, err := store.ReadStripeSubscriptionRevision(ctx, key)
 		if err != nil || before.Skip {
 			return nil, err
+		}
+		if purchase := key.Purchase; purchase != nil && before.LocalID != "" && key.EventID == "" {
+			if before.Owner != purchase.Attempt.Owner || before.LocalID != purchase.Attempt.LocalSubscription {
+				return nil, ErrCheckoutReconcile
+			}
+			// The matching subscription is already synchronized. A late Checkout
+			// return settles the reservation without overwriting webhook state.
+			return nil, errCheckoutAlreadyBound
 		}
 		sub := eventObject
 		if !deleted {
@@ -98,7 +110,23 @@ func (s *subscriptions) reconcile(ctx context.Context, store SubscriptionLifecyc
 		if sub == nil || sub.ID != key.RemoteID || sub.Customer == nil || sub.Customer.ID != key.CustomerID || (eventObject != nil && sub.Livemode != eventObject.Livemode) {
 			return nil, ErrCheckoutReconcile
 		}
+		if !deleted && before.LocalID == "" && key.Purchase == nil {
+			key.Purchase, err = s.purchaseForSubscription(ctx, store, before.Owner, sub, eventObject)
+			if err != nil {
+				return nil, err
+			}
+		}
 		change := s.subscriptionChange(sub, deleted)
+		if purchase := key.Purchase; purchase != nil {
+			a := purchase.Attempt
+			if before.Owner != a.Owner || before.LocalID != "" && before.LocalID != a.LocalSubscription || sub.Livemode != purchase.Live {
+				return nil, ErrCheckoutReconcile
+			}
+			change.Metadata, err = purchase.claims(sub.Metadata)
+			if err != nil {
+				return nil, err
+			}
+		}
 		if change.Status == "" {
 			return nil, ErrCheckoutReconcile
 		}

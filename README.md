@@ -24,7 +24,7 @@ StoneWrit Auth embeds authentication in your Go API. Mount the auth handler on y
 - [x] Create organizations and teams, enforce seat limits and accept scoped invitations. [Organization tests](plugins/organization/organization_test.go)
 - [x] Verify Stripe webhook signatures and open an authenticated customer’s billing portal. [Webhook tests](plugins/stripe/stripe_test.go) · [Billing portal tests](plugins/stripe/portal_test.go)
 - [x] Start recurring Checkout, confirm a personal plan change, schedule a price for the next billing period, cancel or restore the subscription. [Subscription billing](docs/subscriptions.md)
-- [x] Authorize a single-seat organization checkout, list subscriptions and open the organization’s billing portal. [Organization billing](docs/subscriptions.md)
+- [x] Choose licensed seat quantities for personal and organization checkout, review quantity changes in Stripe, and list confirmed subscriptions. [Organization billing](docs/subscriptions.md)
 - [x] Register enterprise OIDC providers and read scoped, redacted configuration. [Enterprise provider management](docs/sso.md)
 - [x] Provision directory Users and Groups, synchronize direct memberships and rotate or revoke scoped SCIM credentials. [Directory provisioning](docs/scim.md)
 

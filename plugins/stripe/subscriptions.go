@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"math"
 	"net/url"
 	"strings"
 	"time"
@@ -14,7 +15,7 @@ import (
 	sdk "github.com/stripe/stripe-go/v87"
 )
 
-// Plan supplies Stripe recurring price IDs. A checkout always uses one seat.
+// Plan supplies recurring Stripe price IDs for licensed subscriptions.
 type Plan struct{ Name, PriceID, AnnualPriceID string }
 type SubscriptionOptions struct {
 	Client *sdk.Client
@@ -48,12 +49,26 @@ type Subscription struct {
 // identical Stripe parameters, including callbacks and expiry.
 type CheckoutAttempt struct {
 	OrganizationID, OrganizationName, ActorID string
+	Seats                                     int64
+	// PriceVerified preserves the price preflight across a lost Checkout response.
+	PriceVerified bool `json:"priceVerified,omitempty"`
 	// ReturnURL holds the provider success URL issued for this reservation.
 	// Older reservations use their stored SuccessURL directly.
 	ReturnURL                                                                                                     string
 	ID, Owner, LocalSubscription, Customer, Plan, Interval, Price, SuccessURL, CancelURL, CheckoutID, CheckoutURL string
 	Expires                                                                                                       int64
 }
+
+// Quantity also reads the single-seat reservations written before explicit quantities.
+func (a CheckoutAttempt) Quantity() int64 {
+	if a.Seats == 0 {
+		return 1
+	}
+	return a.Seats
+}
+
+// ErrCheckoutPriceCheck asks the handler to verify the price outside the database transaction.
+var ErrCheckoutPriceCheck = errors.New("stripe: verify the recurring price before reserving multiple seats")
 
 type SubscriptionStore interface {
 	CheckSubscriptionSchema(context.Context) error
@@ -70,6 +85,7 @@ func billingError(status int, code, message string) *auth.APIError {
 }
 
 var (
+	ErrInvalidSeatQuantity  = billingError(400, "INVALID_SEAT_QUANTITY", "Seats must be a whole number between 0 and 2147483647")
 	ErrPendingCheckout      = billingError(409, "CHECKOUT_ALREADY_PENDING", "A different checkout is already pending")
 	ErrExistingSubscription = billingError(409, "SUBSCRIPTION_ALREADY_EXISTS", "A subscription already exists")
 	ErrCheckoutReconcile    = billingError(409, "CHECKOUT_RECONCILIATION_REQUIRED", "Waiting for checkout reconciliation")
@@ -141,7 +157,7 @@ func (s *subscriptions) checkout(c auth.EndpointContext) (any, error) {
 	}
 	for key := range c.Body {
 		switch key {
-		case "plan", "successUrl", "cancelUrl", "returnUrl", "referenceId", "subscriptionId", "customerType", "annual", "disableRedirect", "scheduleAtPeriodEnd":
+		case "plan", "successUrl", "cancelUrl", "returnUrl", "referenceId", "subscriptionId", "customerType", "annual", "disableRedirect", "scheduleAtPeriodEnd", "seats":
 		default:
 			return nil, billingError(400, "UNSUPPORTED_CHECKOUT_OPTION", "Unsupported checkout option")
 		}
@@ -169,6 +185,20 @@ func (s *subscriptions) checkout(c auth.EndpointContext) (any, error) {
 	if !ok {
 		return nil, billingError(400, "SUBSCRIPTION_PLAN_NOT_FOUND", "Subscription plan not found")
 	}
+	quantity := int64(1)
+	if number, ok := c.Body["seats"].(json.Number); ok {
+		value, err := number.Float64()
+		if err != nil || value < 0 || value > math.MaxInt32 || math.Trunc(value) != value {
+			return nil, ErrInvalidSeatQuantity
+		}
+		if value != 0 {
+			quantity = int64(value)
+		}
+	}
+	scheduled, _ := c.Body["scheduleAtPeriodEnd"].(bool)
+	if scheduled && quantity != 1 {
+		return nil, errUnsupportedScheduledSeats
+	}
 	explicit, _ := c.Body["subscriptionId"].(string)
 	var selected Subscription
 	if explicit != "" {
@@ -185,11 +215,11 @@ func (s *subscriptions) checkout(c auth.EndpointContext) (any, error) {
 		}
 	}
 	if explicit != "" {
-		return s.changePlan(c, selection, selected, price, returnURL)
+		return s.changePlan(c, selection, selected, price, returnURL, quantity)
 	}
 	ctx := c.Request.Context()
 	store := c.Store().(SubscriptionStore)
-	want := CheckoutAttempt{Owner: selection.reference, Plan: p.Name, Interval: interval, Price: price, SuccessURL: success, CancelURL: cancel}
+	want := CheckoutAttempt{Seats: quantity, Owner: selection.reference, Plan: p.Name, Interval: interval, Price: price, SuccessURL: success, CancelURL: cancel}
 	if selection.organization {
 		want.ActorID = ss.User.ID
 		want.OrganizationID = selection.reference
@@ -205,6 +235,13 @@ func (s *subscriptions) checkout(c auth.EndpointContext) (any, error) {
 		}
 	}
 	a, err := store.ReserveStripeCheckout(ctx, selection.reference, ss.Session.Token, want, time.Now().UTC())
+	if errors.Is(err, ErrCheckoutPriceCheck) {
+		if err := s.verifyLicensedPrice(ctx, price); err != nil {
+			return nil, err
+		}
+		want.PriceVerified = true
+		a, err = store.ReserveStripeCheckout(ctx, selection.reference, ss.Session.Token, want, time.Now().UTC())
+	}
 	if errors.Is(err, ErrExistingSubscription) {
 		// With multiple subscriptions the customer must name the one to change.
 		rows, err := store.ListStripeSubscriptions(ctx, selection.reference, ss.Session.Token, time.Now().UTC())
@@ -214,10 +251,18 @@ func (s *subscriptions) checkout(c auth.EndpointContext) (any, error) {
 		if len(rows) != 1 || rows[0].SubscriptionID == nil {
 			return nil, ErrExistingSubscription
 		}
-		return s.changePlan(c, selection, rows[0], price, returnURL)
+		return s.changePlan(c, selection, rows[0], price, returnURL, quantity)
 	}
 	if err != nil {
 		return nil, err
+	}
+	if a.Quantity() != quantity {
+		return nil, ErrCheckoutReconcile
+	}
+	if a.CheckoutID == "" && quantity > 1 && !a.PriceVerified {
+		if err := s.verifyLicensedPrice(ctx, price); err != nil {
+			return nil, err
+		}
 	}
 	if a.Customer == "" {
 		params := &sdk.CustomerCreateParams{Metadata: map[string]string{"userId": ss.User.ID, "customerType": "user"}}
@@ -267,7 +312,7 @@ func (s *subscriptions) checkout(c auth.EndpointContext) (any, error) {
 			SuccessURL:        sdk.String(providerSuccess),
 			CancelURL:         sdk.String(a.CancelURL),
 			ExpiresAt:         sdk.Int64(a.Expires),
-			LineItems:         []*sdk.CheckoutSessionCreateLineItemParams{{Price: sdk.String(a.Price), Quantity: sdk.Int64(1)}},
+			LineItems:         []*sdk.CheckoutSessionCreateLineItemParams{{Price: sdk.String(a.Price), Quantity: sdk.Int64(a.Quantity())}},
 			Metadata:          meta,
 			SubscriptionData:  &sdk.CheckoutSessionCreateSubscriptionDataParams{Metadata: meta},
 		}
@@ -345,7 +390,7 @@ func (s *subscriptions) handleCheckoutEvent(c auth.EndpointContext, event sdk.Ev
 			return err
 		}
 	}
-	receipt, err := s.checkoutReceipt(ctx, a, checkout.Subscription.ID, checkout.Livemode)
+	receipt, err := s.checkoutReceipt(c, a, &checkout, "")
 	if err != nil {
 		return err
 	}

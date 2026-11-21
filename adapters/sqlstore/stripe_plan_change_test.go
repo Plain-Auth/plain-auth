@@ -57,7 +57,7 @@ func (p *changeProvider) RoundTrip(r *http.Request) (*http.Response, error) {
 		case "paginated":
 			items["has_more"] = true
 		case "seats":
-			item["quantity"] = 2
+			item["quantity"] = 5
 		case "unmapped":
 			item["price"] = map[string]any{"id": "price_unknown", "recurring": recurring("month")}
 		case "trial":
@@ -85,7 +85,9 @@ func (p *changeProvider) RoundTrip(r *http.Request) (*http.Response, error) {
 		p.form = r.PostForm
 		p.portals++
 		if p.onPortal != nil {
-			p.onPortal()
+			run := p.onPortal
+			p.onPortal = nil
+			run()
 		}
 		customer := "cus_owner"
 		if p.mode == "wrongPortal" {
@@ -195,6 +197,36 @@ func TestHostedSubscriptionPlanChanges(t *testing.T) {
 					t.Fatal("an unconfirmed plan became active", rows, err)
 				}
 			}
+			provider.mode = "seats" // The existing price currently bills five seats.
+			samePrice := stripeclient.Checkout{Plan: "pro", Seats: 5, SubscriptionID: "sub_owner"}
+			_, err = buyer.Upgrade(ctx, samePrice)
+			mustCode(err, 400, "ALREADY_SUBSCRIBED_PLAN")
+			defaultQuantity := samePrice
+			defaultQuantity.Seats = 0 // Omitted from the native client request.
+			defaultPage, err := buyer.Upgrade(ctx, defaultQuantity)
+			if err != nil || defaultPage.URL == "" || provider.form.Get("flow_data[subscription_update_confirm][items][0][quantity]") != "1" {
+				t.Fatal("omitted quantity did not present one seat for hosted confirmation", defaultPage, err)
+			}
+			if rows, err := buyer.List(ctx); err != nil || len(rows) != 1 || rows[0].Seats == nil || *rows[0].Seats != 5 {
+				t.Fatal("five seats changed before the customer confirmed", rows, err)
+			}
+			samePrice.Seats = 7
+			page, err := buyer.Upgrade(ctx, samePrice)
+			if err != nil || page.URL == "" || provider.form.Get("flow_data[subscription_update_confirm][items][0][quantity]") != "7" {
+				t.Fatal("quantity-only hosted confirmation", page, err)
+			}
+			if rows, err := buyer.List(ctx); err != nil || len(rows) != 1 || rows[0].Seats == nil || *rows[0].Seats != 5 {
+				t.Fatal("hosted change applied seats before confirmation", rows, err)
+			}
+			provider.onPortal = func() { exec(`UPDATE "subscription" SET "seats"=3 WHERE "id"='local_owner'`) }
+			page, err = buyer.Upgrade(ctx, samePrice)
+			mustCode(err, 409, "CHECKOUT_RECONCILIATION_REQUIRED")
+			if page.URL != "" {
+				t.Fatal("a concurrent seat change exposed a stale confirmation")
+			}
+			samePrice.ScheduleAtPeriodEnd = true
+			_, err = buyer.Upgrade(ctx, samePrice)
+			mustCode(err, 409, "UNSUPPORTED_SCHEDULE_QUANTITY")
 			for _, tc := range []struct {
 				mode   string
 				status int
@@ -202,7 +234,7 @@ func TestHostedSubscriptionPlanChanges(t *testing.T) {
 			}{
 				{"pending", 409, "SUBSCRIPTION_PENDING_CHANGE"}, {"cancel", 409, "SUBSCRIPTION_PENDING_CHANGE"}, {"schedule", 409, "SUBSCRIPTION_PENDING_CHANGE"},
 				{"paused", 409, "SUBSCRIPTION_PENDING_CHANGE"}, {"foreign", 409, "CHECKOUT_RECONCILIATION_REQUIRED"}, {"multiple", 409, "UNSUPPORTED_SUBSCRIPTION_ITEM"},
-				{"paginated", 409, "UNSUPPORTED_SUBSCRIPTION_ITEM"}, {"seats", 409, "UNSUPPORTED_SUBSCRIPTION_ITEM"}, {"unmapped", 409, "UNSUPPORTED_SUBSCRIPTION_ITEM"},
+				{"paginated", 409, "UNSUPPORTED_SUBSCRIPTION_ITEM"}, {"unmapped", 409, "UNSUPPORTED_SUBSCRIPTION_ITEM"},
 				{"metered", 409, "UNSUPPORTED_SUBSCRIPTION_ITEM"}, {"interval", 409, "UNSUPPORTED_SUBSCRIPTION_ITEM"}, {"archived", 409, "UNSUPPORTED_SUBSCRIPTION_ITEM"},
 				{"wrongPortal", 502, "UNABLE_TO_CREATE_BILLING_PORTAL"}, {"decline", 400, "billing_portal_feature_not_enabled"},
 			} {
@@ -225,7 +257,7 @@ func TestHostedSubscriptionPlanChanges(t *testing.T) {
 			provider.mu.Lock()
 			provider.mode = "trial"
 			provider.mu.Unlock()
-			page, err := buyer.Upgrade(ctx, stripeclient.Checkout{Plan: "pro", SubscriptionID: "sub_owner"})
+			page, err = buyer.Upgrade(ctx, stripeclient.Checkout{Plan: "pro", SubscriptionID: "sub_owner"})
 			if err != nil || !page.Redirect || provider.form.Get("return_url") != origin+"/" {
 				t.Fatal("trialing plan confirmation or default return", page, err)
 			}

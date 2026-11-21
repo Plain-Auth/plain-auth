@@ -166,6 +166,12 @@ func TestOrganizationSubscriptionManagement(t *testing.T) {
 			if err != nil || page.URL != "https://billing.example.test/subscription_update_confirm" || p.portalForm.Get("flow_data[subscription_update_confirm][items][0][price]") != "price_year" || p.portalForm.Get("customer") != "cus_owner" {
 				t.Fatal("wrong organization plan confirmation", page, err)
 			}
+			resize := change
+			resize.Plan, resize.Annual, resize.Seats = "basic", false, 6
+			page, err = delegate.Upgrade(ctx, resize)
+			if err != nil || page.URL == "" || p.portalForm.Get("flow_data[subscription_update_confirm][items][0][quantity]") != "6" || p.portalForm.Get("customer") != "cus_owner" {
+				t.Fatal("organization seat confirmation targeted the wrong account or quantity", page, err)
+			}
 			p.onScheduleRead = func() { role(did, "reader") }
 			page, err = delegate.Upgrade(ctx, deferred)
 			mustCode(err, 401, "UNAUTHORIZED")

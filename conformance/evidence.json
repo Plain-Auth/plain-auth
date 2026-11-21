@@ -1802,6 +1802,26 @@
       "label": "Schedule a single-seat annual organization plan and reconcile its signed phase transition through the browser client",
       "test": "conformance/stripe-lifecycle-fixture.mjs",
       "marker": "await signedUpdate(server, remote, \"evt_org_phase_activated\""
+    },
+    {
+      "label": "Reserve an explicit seat quantity, reject a conflicting retry and preserve single-seat reservations from earlier releases",
+      "test": "adapters/sqlstore/subscriptions_test.go",
+      "marker": "changed quantity reused legacy reservation"
+    },
+    {
+      "label": "Verify a five-seat organization purchase and read the eight seats already active when the webhook arrives",
+      "test": "conformance/stripe-organization-fixture.mjs",
+      "marker": "assert.equal(rows[0].seats, 8)"
+    },
+    {
+      "label": "Open a hosted confirmation for a quantity-only change and suppress the link if the existing quantity changes concurrently",
+      "test": "adapters/sqlstore/stripe_plan_change_test.go",
+      "marker": "a concurrent seat change exposed a stale confirmation"
+    },
+    {
+      "label": "Propose one seat when quantity is omitted and keep all five existing seats until the customer confirms",
+      "test": "conformance/stripe-lifecycle-fixture.mjs",
+      "marker": "opening a checkout review must not reduce five seats to one"
     }
   ],
   "docs/content/docs/plugins/stripe.mdx#L221": [
@@ -1836,6 +1856,11 @@
       "label": "Apply signed checkout and renewal events to the organization and list its updated price through the browser client",
       "test": "conformance/stripe-organization-fixture.mjs",
       "marker": "await deliver(\"evt_org_renew\""
+    },
+    {
+      "label": "Verify a five-seat organization purchase and read the eight seats already active when the webhook arrives",
+      "test": "conformance/stripe-organization-fixture.mjs",
+      "marker": "assert.equal(rows[0].seats, 8)"
     }
   ],
   "docs/content/docs/plugins/stripe.mdx#L362": [
@@ -1882,6 +1907,16 @@
       "label": "Schedule a single-seat annual organization plan and reconcile its signed phase transition through the browser client",
       "test": "conformance/stripe-lifecycle-fixture.mjs",
       "marker": "await signedUpdate(server, remote, \"evt_org_phase_activated\""
+    },
+    {
+      "label": "Validate a multi-seat receipt before activating the subscription on all three SQL engines",
+      "test": "adapters/sqlstore/subscriptions_test.go",
+      "marker": "mismatched checkout seat quantity granted entitlements"
+    },
+    {
+      "label": "Reject an early signed event whose seat count disagrees with the organization’s checkout reservation",
+      "test": "adapters/sqlstore/stripe_organization_test.go",
+      "marker": "an early subscription event bound the wrong organization seat count"
     }
   ],
   "plugin-symbol/captcha/captcha": [
@@ -5369,6 +5404,16 @@
       "label": "Schedule a single-seat annual organization plan and reconcile its signed phase transition through the browser client",
       "test": "conformance/stripe-lifecycle-fixture.mjs",
       "marker": "await signedUpdate(server, remote, \"evt_org_phase_activated\""
+    },
+    {
+      "label": "Open a hosted confirmation for a quantity-only change and suppress the link if the existing quantity changes concurrently",
+      "test": "adapters/sqlstore/stripe_plan_change_test.go",
+      "marker": "a concurrent seat change exposed a stale confirmation"
+    },
+    {
+      "label": "Propose one seat when quantity is omitted and keep all five existing seats until the customer confirms",
+      "test": "conformance/stripe-lifecycle-fixture.mjs",
+      "marker": "opening a checkout review must not reduce five seats to one"
     }
   ],
   "plugin-symbol/generic-oauth/gumroad": [
@@ -6301,6 +6346,55 @@
       "label": "Register persisted OIDC providers and read sanitized configuration through the official client on both implementations",
       "test": "conformance/sso-providers.mjs",
       "marker": "export async function providerCatalog("
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L255/Parameter `seats` (optional)": [
+    {
+      "label": "Reserve an explicit seat quantity, reject a conflicting retry and preserve single-seat reservations from earlier releases",
+      "test": "adapters/sqlstore/subscriptions_test.go",
+      "marker": "changed quantity reused legacy reservation"
+    },
+    {
+      "label": "Validate a multi-seat receipt before activating the subscription on all three SQL engines",
+      "test": "adapters/sqlstore/subscriptions_test.go",
+      "marker": "mismatched checkout seat quantity granted entitlements"
+    },
+    {
+      "label": "Verify a five-seat organization purchase and read the eight seats already active when the webhook arrives",
+      "test": "conformance/stripe-organization-fixture.mjs",
+      "marker": "assert.equal(rows[0].seats, 8)"
+    },
+    {
+      "label": "Propose one seat when quantity is omitted and keep all five existing seats until the customer confirms",
+      "test": "conformance/stripe-lifecycle-fixture.mjs",
+      "marker": "opening a checkout review must not reduce five seats to one"
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L549": [
+    {
+      "label": "Reserve an explicit seat quantity, reject a conflicting retry and preserve single-seat reservations from earlier releases",
+      "test": "adapters/sqlstore/subscriptions_test.go",
+      "marker": "changed quantity reused legacy reservation"
+    },
+    {
+      "label": "Validate a multi-seat receipt before activating the subscription on all three SQL engines",
+      "test": "adapters/sqlstore/subscriptions_test.go",
+      "marker": "mismatched checkout seat quantity granted entitlements"
+    },
+    {
+      "label": "Verify a five-seat organization purchase and read the eight seats already active when the webhook arrives",
+      "test": "conformance/stripe-organization-fixture.mjs",
+      "marker": "assert.equal(rows[0].seats, 8)"
+    },
+    {
+      "label": "Reject an early signed event whose seat count disagrees with the organization’s checkout reservation",
+      "test": "adapters/sqlstore/stripe_organization_test.go",
+      "marker": "an early subscription event bound the wrong organization seat count"
+    },
+    {
+      "label": "Open a hosted confirmation for a quantity-only change and suppress the link if the existing quantity changes concurrently",
+      "test": "adapters/sqlstore/stripe_plan_change_test.go",
+      "marker": "a concurrent seat change exposed a stale confirmation"
     }
   ]
 }

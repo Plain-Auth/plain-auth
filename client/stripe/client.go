@@ -18,6 +18,7 @@ type Checkout struct {
 	CustomerType        string `json:"customerType,omitempty"`
 	ReferenceID         string `json:"referenceId,omitempty"`
 	Plan                string `json:"plan"`
+	Seats               int64  `json:"seats,omitempty"`
 	ScheduleAtPeriodEnd bool   `json:"scheduleAtPeriodEnd,omitempty"`
 	Annual              bool   `json:"annual,omitempty"`
 	SubscriptionID      string `json:"subscriptionId,omitempty"`

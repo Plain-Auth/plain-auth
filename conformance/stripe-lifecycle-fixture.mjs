@@ -252,6 +252,19 @@ async function exercise(t, runtime, { reference, goFixture, instrument }) {
   assert.equal(samePlan.error.status, 400);
   assert.equal(samePlan.error.code, "ALREADY_SUBSCRIBED_PLAN");
   assert.equal(samePlan.error.message, "You're already subscribed to this plan");
+  const resize = ok(await owner.subscription.upgrade({ ...own, plan: "basic", seats: 6, returnUrl, disableRedirect: true }));
+  assert.equal(resize.url, "https://billing.example.test/confirm");
+  assert.equal(provider.calls.at(-1).form.get("flow_data[subscription_update_confirm][items][0][quantity]"), "6");
+  assert.equal((await list(owner, ownerID, ownerSub.id)).seats, 1);
+  ownerSub.items.data[0].quantity = 5;
+  await signedUpdate(server, provider, "evt_five_seats", ownerSub);
+  assert.equal((await list(owner, ownerID, ownerSub.id)).seats, 5);
+  ok(await owner.subscription.upgrade({ ...own, plan: "basic", returnUrl, disableRedirect: true }));
+  assert.equal(provider.calls.at(-1).form.get("flow_data[subscription_update_confirm][items][0][quantity]"), "1");
+  assert.equal((await list(owner, ownerID, ownerSub.id)).seats, 5, "opening a checkout review must not reduce five seats to one");
+  ownerSub.items.data[0].quantity = 1;
+  await signedUpdate(server, provider, "evt_one_seat_confirmed", ownerSub);
+  assert.equal((await list(owner, ownerID, ownerSub.id)).seats, 1);
   const beforeConfirm = provider.calls.length;
   for (const [annual, selection, expectedPrice] of [[false, {}, teamPrice], [true, own, annualTeamPrice]]) {
     const change = ok(await owner.subscription.upgrade({
@@ -439,6 +452,9 @@ export async function organizationManagement(t, { reference, goFixture, instrume
     assert.equal(confirm.get("flow_data[subscription_update_confirm][items][0][id]"), remoteSub.items.data[0].id);
     assert.equal(confirm.get("flow_data[subscription_update_confirm][items][0][price]"), annualTeamPrice);
     assert.equal((await list()).priceId, basicPrice);
+    ok(await buyer.subscription.upgrade({ ...options, plan: "basic", seats: 8 }));
+    assert.equal(remote.calls.at(-1).form.get("flow_data[subscription_update_confirm][items][0][quantity]"), "8");
+    assert.equal((await list()).seats, 1);
     const deferred = { ...options, plan: "team", annual: true, scheduleAtPeriodEnd: true };
     assert.deepEqual(ok(await buyer.subscription.upgrade(deferred)), { url: returnUrl, redirect: false });
     assert.equal((await list()).stripeScheduleId, "sched_change");

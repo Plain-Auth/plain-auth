@@ -30,7 +30,7 @@ async function provider(t) {
     if (url.pathname === "/v1/checkout/sessions" && req.method === "POST") {
       result = state.checkout = { id: "cs_org", object: "checkout.session", mode: form.get("mode"), customer: form.get("customer"),
         url: "https://checkout.example.test/org", client_reference_id: form.get("client_reference_id"), metadata: fields("metadata["),
-        subscription: "sub_org", status: "complete", payment_status: "paid" };
+        subscription: "sub_org", status: "complete", payment_status: "paid", line_items: {object: "list", has_more: false, data: [{id:"li_original", price:{id:form.get("line_items[0][price]")}, quantity:Number(form.get("line_items[0][quantity]"))}]} };
       const start = Math.floor(Date.now() / 1000);
       const price = form.get("line_items[0][price]");
       state.subscription = { id: "sub_org", object: "subscription", customer: result.customer, status: "active",
@@ -39,6 +39,7 @@ async function provider(t) {
           current_period_end: start + 2_592_000, price: { id: price, recurring: { interval: "month", interval_count: 1, usage_type: "licensed" } },
         }] } };
     }
+    if (url.pathname === "/v1/checkout/sessions/cs_org" && req.method === "GET") result = state.checkout;
     if (url.pathname === "/v1/subscriptions/sub_org" && req.method === "GET") result = state.subscription;
     if (url.pathname === "/v1/billing_portal/sessions") result = { id: "bps_org", object: "billing_portal.session", customer: form.get("customer"), url: "https://billing.example.test/" + form.get("customer") };
     res.writeHead(result ? 200 : 404, { "content-type": "application/json" });
@@ -77,12 +78,13 @@ export async function organizationBilling(t, { reference, goFixture, instrument 
     assert.equal(denied.error.status, 401);
     assert.equal(denied.error.code, "UNAUTHORIZED");
     assert.equal(remote.state.calls.length, 0);
-    const purchase = checked(await owner.subscription.upgrade({ ...selector, plan: "basic", disableRedirect: true }));
+    const purchase = checked(await owner.subscription.upgrade({ ...selector, plan: "basic", seats: 5, disableRedirect: true }));
     assert.equal(purchase.url, "https://checkout.example.test/org");
     assert.equal(purchase.redirect, false);
     assert.deepEqual(remote.state.customer.metadata, { organizationId: group.id, customerType: "organization" });
     assert.equal(remote.state.customer.name, group.name);
     assert.equal(remote.state.checkout.client_reference_id, group.id);
+    assert.equal(remote.state.subscription.items.data[0].quantity, 5);
     assert.equal(remote.state.checkout.customer, "cus_org");
     assert.equal(remote.state.checkout.metadata.referenceId, group.id);
     assert.equal(remote.state.checkout.metadata.userId, account.user.id);
@@ -94,10 +96,13 @@ export async function organizationBilling(t, { reference, goFixture, instrument 
       const resp = await server.send(new Request(server.baseURL + "/api/auth/stripe/webhook", { method: "POST", headers: { "content-type": "application/json", "stripe-signature": signature }, body: payload }));
       assert.equal(resp.status, 200, await resp.text());
     }
+    assert.equal(remote.state.checkout.line_items.data[0].quantity, 5);
+    remote.state.subscription.items.data[0].quantity = 8;
     await deliver("evt_checkout_org", "checkout.session.completed", remote.state.checkout);
     const rows = checked(await owner.subscription.list({ query: selector }));
     assert.equal(rows.length, 1);
     assert.equal(rows[0].referenceId, group.id);
+    assert.equal(rows[0].seats, 8);
     assert.equal(rows[0].stripeCustomerId, "cus_org");
     assert.equal(rows[0].stripeSubscriptionId, "sub_org");
     assert.equal(rows[0].priceId, "price_basic");

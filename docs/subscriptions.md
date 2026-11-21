@@ -1,6 +1,6 @@
 # Recurring Stripe Checkout
 
-A signed-in user can start a single-seat recurring subscription for their own account or an organization they manage. Configure monthly and optional annual Stripe price IDs, then let the client select a plan by name. Checkout and subsequent changes use the selected account’s Stripe customer.
+A signed-in user can start a recurring subscription with a chosen number of licensed seats for their own account or an organization they manage. Configure monthly and optional annual Stripe price IDs, then let the client select a plan by name. Checkout and subsequent changes use the selected account’s Stripe customer.
 
 ```go
 ddl, err := schema.Generate("postgres", []string{"stripe-subscriptions"})
@@ -43,6 +43,7 @@ The example requires a verified email before starting Checkout. Set `RequireEmai
 {
   "plan": "pro",
   "annual": true,
+  "seats": 5,
   "successUrl": "/billing/success",
   "cancelUrl": "/billing",
   "disableRedirect": true
@@ -50,6 +51,8 @@ The example requires a verified email before starting Checkout. Set `RequireEmai
 ```
 
 The response provides the Checkout Session `id`, the hosted `url` and a `redirect` preference. Use the returned URL to open Checkout. Both callback URLs must resolve to an allowed application origin. The return handler can confirm a completed Checkout Session with Stripe before sending the customer to your page. Signed webhooks also confirm Checkout and keep the subscription current afterward.
+
+For a licensed price, pass a whole-number `seats` value or set `stripeclient.Checkout.Seats` in Go. Omission or zero selects one seat. Values above 2,147,483,647, fractions and negative quantities return HTTP 400. The SQL store records the chosen quantity with the checkout. Retrying with a different quantity while that purchase is pending returns HTTP 409. The SQL adapters verify the completed Checkout Session’s original line-item price and quantity against the reservation, then store the subscription’s current terms. If a customer buys five seats and changes to eight before either webhook arrives, the list shows eight. Historical single-seat reservations retain the checks supported by their saved data. [Seat quantity and retry tests](../adapters/sqlstore/subscriptions_test.go)
 
 An existing local Stripe customer is reused. For a user without one, the server creates a customer using server-owned user metadata and persists the association. The SQL store serializes reservations per owner and releases its lock before contacting Stripe. Identical requests reuse the local subscription, Stripe idempotency key and cached Checkout Session. A different purchase returns HTTP 409 while that checkout is pending. [Stripe idempotent requests](https://docs.stripe.com/api/idempotent_requests)
 
@@ -91,7 +94,7 @@ The SQL adapter reads the session and membership under lock and passes the curre
 
 The organization receives its own Stripe customer. The server searches for an existing customer using organization metadata, with a paginated list fallback if search is unavailable. Customer creation uses the stored organization name. Signed checkout and subscription webhooks update the organization’s subscription even if the original purchaser has since left. Ambiguous personal and organization references or customer mappings require reconciliation. [Browser client and renewal tests](../conformance/stripe-organization-fixture.mjs)
 
-For a single licensed seat, an authorized member can open Stripe’s cancellation or plan confirmation page, schedule a price at the next billing boundary, or undo a pending change. The server rechecks the acting member’s current permission before disclosing a hosted link or sending a schedule change to Stripe. Signed webhooks record confirmed cancellations and new prices. These flows have local provider coverage on SQLite, PostgreSQL and MySQL. Automatic member-based pricing, multi-item plan changes, and synchronization of organization name or deletion events remain open. [Organization management tests](../adapters/sqlstore/stripe_organization_management_test.go)
+An authorized member can open Stripe’s cancellation or plan confirmation page, request a different seat quantity, or undo a pending change. A single-seat subscription also supports price changes at the next billing boundary. The server rechecks the acting member’s current permission before disclosing a hosted link or sending a schedule change to Stripe. Signed webhooks record confirmed cancellations and new prices. These flows have local provider coverage on SQLite, PostgreSQL and MySQL. Automatic member-based pricing, multi-item plan changes, and synchronization of organization name or deletion events remain open. [Organization management tests](../adapters/sqlstore/stripe_organization_management_test.go)
 
 ## Change an existing plan
 
@@ -105,7 +108,7 @@ Open the response’s `url` so the customer can review and confirm the change on
 
 Enable subscription updates and add the target prices to the Stripe customer portal configuration. Stripe applies that configuration’s proration behavior when the customer confirms and calculates any resulting balance adjustment. [Stripe portal deep links](https://docs.stripe.com/customer-management/portal-deep-links)
 
-Plan changes support one licensed seat on one configured monthly or yearly item. Repeating an active subscription’s current price returns `ALREADY_SUBSCRIBED_PLAN`. Resolve any cancellation, attached schedule, pending update or collection pause before requesting a change. Metered and multi-item subscriptions remain outside the supported flow. [Plan change tests](../adapters/sqlstore/stripe_plan_change_test.go)
+Plan changes support one configured monthly or yearly licensed item. To change only the quantity, send the current plan and its new `seats` value. An omitted or zero quantity proposes one seat on the hosted page. To keep an existing multi-seat quantity when switching prices, send its current `seats` value. The subscription keeps its current quantity until Stripe confirms the change. Repeating an active subscription’s current price and quantity returns `ALREADY_SUBSCRIBED_PLAN`. Resolve any cancellation, attached schedule, pending update or collection pause before requesting a change. Metered and multi-item subscriptions remain outside the supported flow. [Plan change tests](../adapters/sqlstore/stripe_plan_change_test.go)
 
 ## Schedule a change for the next billing period
 
@@ -168,7 +171,7 @@ The same client exposes `Upgrade`, `List`, `ListOrganization`, `Restore`, `Resto
 
 Set `successUrl` on the upgrade request to the application page the customer should see, for example `/billing/complete?checkout={CHECKOUT_SESSION_ID}`. With a SQL adapter, the plugin sends Stripe a return URL under the configured auth mount. Stripe fills in the Checkout Session ID and sends the browser there. The handler resolves and checks the final callback before and after filling its template. [Stripe hosted Checkout redirects](https://docs.stripe.com/payments/checkout/custom-success-page?payment-ui=stripe-hosted)
 
-For a signed-in customer, the handler first finds the local reservation belonging to that customer and Checkout Session ID. It uses the server’s Stripe client to read the Checkout Session and subscription, then checks the stored customer, account references, price and quantity. A completed payment or a trial requiring no payment can update the local subscription before the browser redirects to the application. Signing out while Stripe is responding prevents that update.
+For a signed-in customer, the handler first finds the local reservation belonging to that customer and Checkout Session ID. It uses the server’s Stripe client to check the Checkout Session’s original purchase, customer and account references, then synchronizes the current subscription. A completed payment or a trial requiring no payment can update the local subscription before the browser redirects to the application. Signing out while Stripe is responding prevents that update.
 
 A signed-out or anonymous browser goes directly to the allowed callback with the original template. An open or unpaid Checkout Session, or a temporary Stripe lookup failure, leaves the purchase pending. The application can display the current status from the subscription list. Keep the signed webhook configured so the purchase can complete even if the customer closes the browser.
 

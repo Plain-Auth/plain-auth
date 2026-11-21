@@ -75,7 +75,11 @@ func (f *returnFixture) provider(r *http.Request) (*http.Response, error) {
 		if f.mode == "wrong-customer" {
 			customer = "cus_other"
 		}
-		return stripeJSON(200, map[string]any{"id": id, "object": "checkout.session", "mode": "subscription", "status": status, "payment_status": payment, "customer": customer, "client_reference_id": rec.meta["userId"], "metadata": rec.meta, "subscription": rec.remote}), nil
+		originalPrice := "price_pro"
+		if f.mode == "wrong-price" {
+			originalPrice = "price_foreign"
+		}
+		return stripeJSON(200, map[string]any{"line_items": map[string]any{"data": []any{map[string]any{"quantity": 1, "price": map[string]string{"id": originalPrice}}}}, "id": id, "object": "checkout.session", "mode": "subscription", "status": status, "payment_status": payment, "customer": customer, "client_reference_id": rec.meta["userId"], "metadata": rec.meta, "subscription": rec.remote}), nil
 	}
 	if remote, ok := strings.CutPrefix(r.URL.Path, "/v1/subscriptions/"); ok && r.Method == "GET" {
 		f.getSub++

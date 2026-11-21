@@ -113,7 +113,11 @@ func (s *subscriptions) checkoutSuccess(c auth.EndpointContext) (any, error) {
 	if returned.Settled {
 		return c.Redirect(filled)
 	}
-	checkout, err := s.client.V1CheckoutSessions.Retrieve(ctx, id, nil)
+	params := &sdk.CheckoutSessionRetrieveParams{}
+	if a.Seats > 0 {
+		params.AddExpand("line_items")
+	}
+	checkout, err := s.client.V1CheckoutSessions.Retrieve(ctx, id, params)
 	if err != nil {
 		return c.Redirect(filled)
 	}
@@ -125,10 +129,14 @@ func (s *subscriptions) checkoutSuccess(c auth.EndpointContext) (any, error) {
 	}
 	receipt := CheckoutReceipt{RemoteID: checkout.Subscription.ID}
 	if returned.BoundSubscriptionID == "" {
-		receipt, err = s.checkoutReceipt(ctx, a, checkout.Subscription.ID, checkout.Livemode)
+		receipt, err = s.checkoutReceipt(c, a, checkout, session.Session.Token)
 		if err != nil {
 			if errors.Is(err, ErrCheckoutReconcile) {
 				return nil, billingError(403, "INVALID_CHECKOUT_RETURN", "Invalid checkout return")
+			}
+			var authError *auth.APIError
+			if errors.As(err, &authError) {
+				return nil, err
 			}
 			return c.Redirect(filled)
 		}
@@ -150,10 +158,33 @@ func checkoutMetadataMatches(a CheckoutAttempt, meta map[string]string) bool {
 	if a.OrganizationID != "" && (meta["customerType"] != "organization" || meta["organizationId"] != a.OrganizationID) {
 		return false
 	}
+	if a.OrganizationID == "" && (meta["organizationId"] != "" || meta["customerType"] != "" && meta["customerType"] != "user") {
+		return false
+	}
 	return meta["userId"] == a.creator() && meta["referenceId"] == a.Owner && meta["subscriptionId"] == a.LocalSubscription && meta["checkoutAttemptId"] == a.ID
 }
 
-func (s *subscriptions) checkoutReceipt(ctx context.Context, a CheckoutAttempt, remote string, live bool) (CheckoutReceipt, error) {
+func (s *subscriptions) checkoutReceipt(c auth.EndpointContext, a CheckoutAttempt, checkout *sdk.CheckoutSession, token string) (CheckoutReceipt, error) {
+	ctx := c.Request.Context()
+	remote, live := checkout.Subscription.ID, checkout.Livemode
+	if lifecycle, ok := c.Store().(SubscriptionLifecycleStore); ok && a.Seats > 0 {
+		purchase, err := s.checkoutPurchase(ctx, a, checkout.ID, remote, live, checkout)
+		if err != nil {
+			return CheckoutReceipt{}, err
+		}
+		key := SubscriptionIdentity{RemoteID: remote, CustomerID: a.Customer, SessionToken: token, Purchase: purchase}
+		current, err := s.reconcile(ctx, lifecycle, key, nil, false)
+		if errors.Is(err, errCheckoutAlreadyBound) {
+			return CheckoutReceipt{RemoteID: remote}, nil
+		}
+		if err != nil {
+			return CheckoutReceipt{}, err
+		}
+		if current == nil {
+			return CheckoutReceipt{}, ErrCheckoutReconcile
+		}
+		return CheckoutReceipt{RemoteID: remote, Status: string(current.Status)}, nil
+	}
 	sub, err := s.client.V1Subscriptions.Retrieve(ctx, remote, nil)
 	if err != nil {
 		return CheckoutReceipt{}, err
@@ -162,7 +193,7 @@ func (s *subscriptions) checkoutReceipt(ctx context.Context, a CheckoutAttempt, 
 		return CheckoutReceipt{}, ErrCheckoutReconcile
 	}
 	item := sub.Items.Data[0]
-	if item == nil || item.Price == nil || item.Price.ID != a.Price || item.Quantity != 1 {
+	if item == nil || item.Price == nil || item.Price.ID != a.Price || item.Quantity != a.Quantity() || a.Quantity() > 1 && !s.licensedPrice(item.Price) {
 		return CheckoutReceipt{}, ErrCheckoutReconcile
 	}
 	return CheckoutReceipt{RemoteID: sub.ID, Status: string(sub.Status), PeriodStart: item.CurrentPeriodStart, PeriodEnd: item.CurrentPeriodEnd, TrialStart: sub.TrialStart, TrialEnd: sub.TrialEnd}, nil

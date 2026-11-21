@@ -47,14 +47,20 @@ func TestOrganizationBillingIsolation(t *testing.T) {
 			var receipt map[string]string
 			var beforeCheckout, beforePortal func()
 			var calls, checkoutCalls int
+			paidSeats, remoteSeats := 3, 3
+			var clearedSubscriptionMetadata bool
 			currentPrice := "price_basic"
 			currentStatus := "active"
 			now := time.Now().Unix()
 			subscription := func() map[string]any {
-				return map[string]any{"id": "sub_group", "object": "subscription", "customer": "cus_group", "status": currentStatus, "metadata": receipt, "items": map[string]any{"data": []any{map[string]any{"id": "si_group", "quantity": 1, "current_period_start": now, "current_period_end": now + 86400, "price": map[string]any{"id": currentPrice, "recurring": map[string]string{"interval": "month"}}}}}}
+				metadata := receipt
+				if clearedSubscriptionMetadata {
+					metadata = nil
+				}
+				return map[string]any{"id": "sub_group", "object": "subscription", "customer": "cus_group", "status": currentStatus, "metadata": metadata, "items": map[string]any{"data": []any{map[string]any{"id": "si_group", "quantity": remoteSeats, "current_period_start": now, "current_period_end": now + 86400, "price": map[string]any{"id": currentPrice, "recurring": map[string]string{"interval": "month"}}}}}}
 			}
 			checkout := func() map[string]any {
-				return map[string]any{"id": "cs_group", "object": "checkout.session", "url": "https://checkout.example.test/group", "mode": "subscription", "customer": "cus_group", "client_reference_id": group, "metadata": receipt, "subscription": "sub_group", "status": "complete", "payment_status": "paid"}
+				return map[string]any{"id": "cs_group", "object": "checkout.session", "url": "https://checkout.example.test/group", "mode": "subscription", "customer": "cus_group", "client_reference_id": group, "metadata": receipt, "subscription": "sub_group", "status": "complete", "payment_status": "paid", "line_items": map[string]any{"data": []any{map[string]any{"quantity": paidSeats, "price": map[string]string{"id": "price_basic"}}}}}
 			}
 			transport := localBillingTransport(func(r *http.Request) (*http.Response, error) {
 				calls++
@@ -62,6 +68,8 @@ func TestOrganizationBillingIsolation(t *testing.T) {
 					return nil, err
 				}
 				switch r.URL.Path {
+				case "/v1/prices/price_basic":
+					return stripeJSON(200, map[string]any{"id": "price_basic", "active": true, "recurring": map[string]any{"interval": "month", "interval_count": 1, "usage_type": "licensed"}}), nil
 				case "/v1/customers/search":
 					if !strings.Contains(r.Form.Get("query"), group) {
 						return nil, errors.New("wrong organization search reference")
@@ -76,7 +84,7 @@ func TestOrganizationBillingIsolation(t *testing.T) {
 						map[string]any{"id": "cus_group", "metadata": map[string]string{"organizationId": group, "customerType": "organization"}}}}), nil
 				case "/v1/checkout/sessions":
 					createdKey := r.Header.Get("Idempotency-Key")
-					if r.PostForm.Get("customer") != "cus_group" || r.PostForm.Get("client_reference_id") != group || r.PostForm.Get("line_items[0][price]") != "price_basic" || r.PostForm.Get("line_items[0][quantity]") != "1" || createdKey == "" || (createKey != "" && createdKey != createKey) {
+					if r.PostForm.Get("customer") != "cus_group" || r.PostForm.Get("client_reference_id") != group || r.PostForm.Get("line_items[0][price]") != "price_basic" || r.PostForm.Get("line_items[0][quantity]") != "3" || createdKey == "" || (createKey != "" && createdKey != createKey) {
 						return nil, errors.New("changed organization checkout identity")
 					}
 					createKey = createdKey
@@ -168,7 +176,7 @@ func TestOrganizationBillingIsolation(t *testing.T) {
 					t.Fatalf("expected %d/%s: %v", status, label, err)
 				}
 			}
-			want := stripeclient.Checkout{Plan: "basic", CustomerType: "organization", SuccessURL: "/receipt", CancelURL: "/billing", DisableRedirect: true}
+			want := stripeclient.Checkout{Plan: "basic", Seats: 3, CustomerType: "organization", SuccessURL: "/receipt", CancelURL: "/billing", DisableRedirect: true}
 			exec(`INSERT INTO "organization" ("id","name","slug","createdAt","stripeCustomerId") VALUES(?,?,?,?,?)`, protectedOrganization, "Restricted billing", "restricted", store.date(time.Now()), "cus_restricted")
 			exec(`INSERT INTO "member" ("id","organizationId","userId","role","createdAt") VALUES(?,?,?,?,?)`, "restricted_owner", protectedOrganization, actor, "owner", store.date(time.Now()))
 			for _, reference := range []string{protectedOrganization, strings.ToLower(protectedOrganization)} {
@@ -258,7 +266,15 @@ func TestOrganizationBillingIsolation(t *testing.T) {
 				auth.ServeHTTP(w, r)
 				return w.Code
 			}
-			if got := signed("evt_created", "customer.subscription.created", subscription()); got != 200 {
+			paidSeats = 7
+			if got := signed("evt_wrong_org_quantity", "customer.subscription.created", subscription()); got != 500 {
+				t.Fatal("an early subscription event bound the wrong organization seat count", got)
+			}
+			paidSeats = 3
+			remoteSeats = 8 // The organization already adjusted its completed purchase.
+			currentPrice = "price_pro"
+			clearedSubscriptionMetadata = true
+			if got := signed("evt_updated_first", "customer.subscription.updated", subscription()); got != 200 {
 				t.Fatal("early organization lifecycle event", got)
 			}
 			if got := signed("evt_checkout", "checkout.session.completed", checkout()); got != 200 {
@@ -268,7 +284,7 @@ func TestOrganizationBillingIsolation(t *testing.T) {
 				t.Fatal("authorized organization receipt", got)
 			}
 			rows, err := deputy.ListOrganization(ctx, group)
-			if err != nil || len(rows) != 1 || rows[0].ReferenceID != group || rows[0].PriceID != "price_basic" {
+			if err != nil || len(rows) != 1 || rows[0].ReferenceID != group || rows[0].PriceID != "price_pro" || rows[0].Seats == nil || *rows[0].Seats != 8 {
 				t.Fatal("organization list after early event", rows, err)
 			}
 			if rows, err := buyer.List(ctx); err != nil || len(rows) != 0 {

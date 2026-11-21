@@ -55,6 +55,9 @@ func TestSubscriptionCheckout(t *testing.T) {
 			expectedCustomer := "cus_local"
 			lostResponse := true
 			var activePrice string
+			quantity, paidSeats, currentSeats := 4, 4, 4
+			var priceReads int
+			usage := "licensed"
 			round := localBillingTransport(func(r *http.Request) (*http.Response, error) {
 				mu.Lock()
 				defer mu.Unlock()
@@ -63,6 +66,9 @@ func TestSubscriptionCheckout(t *testing.T) {
 				}
 				key := r.Header.Get("Idempotency-Key")
 				switch r.URL.Path {
+				case "/v1/prices/price_year":
+					priceReads++
+					return stripeJSON(200, map[string]any{"id": "price_year", "active": true, "recurring": map[string]any{"interval": "year", "interval_count": 1, "usage_type": usage}}), nil
 				case "/v1/customers":
 					if key == "" || r.Form.Get("metadata[userId]") != owner || r.Form.Get("metadata[customerType]") != "user" {
 						return nil, fmt.Errorf("incorrect customer association")
@@ -74,7 +80,7 @@ func TestSubscriptionCheckout(t *testing.T) {
 					customerRequests++
 					return stripeJSON(200, map[string]any{"id": "cus_local", "object": "customer", "metadata": map[string]string{"userId": owner, "customerType": "user"}}), nil
 				case "/v1/checkout/sessions":
-					if r.Form.Get("customer") != expectedCustomer || r.Form.Get("mode") != "subscription" || r.Form.Get("client_reference_id") != owner || r.Form.Get("success_url") != "https://billing.example/api/auth/subscription/success?callbackURL=https%3A%2F%2Fbilling.example%2Fsuccess&checkoutSessionId={CHECKOUT_SESSION_ID}" || r.Form.Get("cancel_url") != "https://billing.example/cancel" || r.Form.Get("line_items[0][quantity]") != "1" || key == "" {
+					if r.Form.Get("customer") != expectedCustomer || r.Form.Get("mode") != "subscription" || r.Form.Get("client_reference_id") != owner || r.Form.Get("success_url") != "https://billing.example/api/auth/subscription/success?callbackURL=https%3A%2F%2Fbilling.example%2Fsuccess&checkoutSessionId={CHECKOUT_SESSION_ID}" || r.Form.Get("cancel_url") != "https://billing.example/cancel" || r.Form.Get("line_items[0][quantity]") != fmt.Sprint(quantity) || key == "" {
 						return nil, fmt.Errorf("incorrect checkout form")
 					}
 					for _, k := range []string{"userId", "referenceId", "subscriptionId", "checkoutAttemptId"} {
@@ -97,9 +103,14 @@ func TestSubscriptionCheckout(t *testing.T) {
 						return nil, fmt.Errorf("local timeout after Stripe creates checkout")
 					}
 					return stripeJSON(200, map[string]any{"id": "cs_local", "object": "checkout.session", "url": "https://checkout.stripe.test/local"}), nil
+				case "/v1/checkout/sessions/cs_local":
+					if r.Form.Get("expand[0]") != "line_items" {
+						return nil, fmt.Errorf("checkout purchase did not request immutable line items")
+					}
+					return stripeJSON(200, map[string]any{"id": "cs_local", "object": "checkout.session", "mode": "subscription", "status": "complete", "payment_status": "paid", "customer": "cus_local", "client_reference_id": owner, "metadata": meta, "subscription": "sub_local", "line_items": map[string]any{"data": []any{map[string]any{"id": "li_original", "price": map[string]string{"id": activePrice}, "quantity": paidSeats}}}}), nil
 				case "/v1/subscriptions/sub_local":
 					retrievals++
-					return stripeJSON(200, map[string]any{"id": "sub_local", "object": "subscription", "customer": "cus_local", "metadata": meta, "status": "trialing", "trial_start": 1234, "trial_end": 2345, "items": map[string]any{"data": []any{map[string]any{"quantity": 1, "price": map[string]string{"id": activePrice}, "current_period_start": 1234, "current_period_end": 3456}}}}), nil
+					return stripeJSON(200, map[string]any{"id": "sub_local", "object": "subscription", "customer": "cus_local", "metadata": meta, "status": "trialing", "trial_start": 1234, "trial_end": 2345, "items": map[string]any{"data": []any{map[string]any{"quantity": currentSeats, "price": map[string]any{"id": activePrice, "recurring": map[string]any{"interval": "year", "interval_count": 1, "usage_type": "licensed"}}, "current_period_start": 1234, "current_period_end": 3456}}}}), nil
 				default:
 					return nil, fmt.Errorf("unexpected Stripe call %s", r.URL.Path)
 				}
@@ -148,7 +159,7 @@ func TestSubscriptionCheckout(t *testing.T) {
 				a.ServeHTTP(w, r)
 				return w.Code, w.Body.Bytes()
 			}
-			body := map[string]any{"plan": "PRO", "annual": true, "successUrl": "/success", "cancelUrl": "/cancel", "disableRedirect": true}
+			body := map[string]any{"plan": "PRO", "seats": quantity, "annual": true, "successUrl": "/success", "cancelUrl": "/cancel", "disableRedirect": true}
 			check := func(want int, a *auth.Auth, path string, body map[string]any, c *http.Cookie) []byte {
 				t.Helper()
 				status, data := request(a, path, body, c)
@@ -167,7 +178,21 @@ func TestSubscriptionCheckout(t *testing.T) {
 			if customerRequests+sessionRequests != 0 {
 				t.Fatal("invalid requests reached Stripe")
 			}
+			for _, seats := range []any{-2, 1.5, 2147483648, "4"} {
+				check(400, first, "upgrade", map[string]any{"plan": "pro", "seats": seats}, cookie)
+			}
+			usage = "metered"
+			check(409, first, "upgrade", body, cookie)
+			usage = "licensed"
+			// An invalid price did not reserve a purchase. Lose the first valid
+			// response after the provider accepted it and retry from another host.
 			check(502, first, "upgrade", body, cookie)
+			if priceReads != 2 {
+				t.Fatal("unexpected number of price checks", priceReads)
+			}
+			body["seats"] = quantity + 1
+			check(409, other, "upgrade", body, cookie)
+			body["seats"] = quantity
 			if got := string(check(200, first, "list", nil, cookie)); strings.TrimSpace(got) != "[]" {
 				t.Fatal("incomplete checkout granted a subscription")
 			}
@@ -180,7 +205,7 @@ func TestSubscriptionCheckout(t *testing.T) {
 			}
 			recorded := sessionRequests
 			got := check(200, other, "upgrade", body, cookie)
-			if !bytes.Contains(got, []byte(`"redirect":false`)) || !bytes.Contains(got, []byte("cs_local")) || customerRequests != 1 || sessionRequests != recorded || activePrice != "price_year" {
+			if !bytes.Contains(got, []byte(`"redirect":false`)) || !bytes.Contains(got, []byte("cs_local")) || customerRequests != 1 || priceReads != 2 || sessionRequests != recorded || activePrice != "price_year" {
 				t.Fatal("checkout retry or configured price was incorrect")
 			}
 			check(409, first, "upgrade", map[string]any{"plan": "pro"}, cookie)
@@ -213,6 +238,13 @@ func TestSubscriptionCheckout(t *testing.T) {
 			if retrievals != 0 {
 				t.Fatal("foreign receipt triggered a subscription fetch")
 			}
+			paidSeats = quantity + 1
+			if code := send("checkout.session.completed", "cus_local", true); code != 500 {
+				t.Fatal("mismatched checkout seat quantity granted entitlements", code)
+			}
+			count(1, `SELECT COUNT(*) FROM "subscription" WHERE "referenceId"=? AND "status"='incomplete' AND "seats"=?`, owner, quantity)
+			paidSeats = quantity
+			currentSeats = 8 // The customer changed quantity before this first delivery.
 			if code := send("checkout.session.completed", "cus_local", true); code != 200 {
 				t.Fatal("matching signed completion failed", code)
 			}
@@ -220,7 +252,7 @@ func TestSubscriptionCheckout(t *testing.T) {
 				t.Fatal("receipt retry repeated side effects")
 			}
 			var rows []billing.Subscription
-			if err := json.Unmarshal(check(200, first, "list", nil, cookie), &rows); err != nil || len(rows) != 1 || rows[0].PriceID != "price_year" || rows[0].Status != "trialing" || rows[0].PeriodEnd == nil || rows[0].PeriodEnd.Unix() != 3456 {
+			if err := json.Unmarshal(check(200, first, "list", nil, cookie), &rows); err != nil || len(rows) != 1 || rows[0].Seats == nil || *rows[0].Seats != int64(currentSeats) || rows[0].PriceID != "price_year" || rows[0].Status != "trialing" || rows[0].PeriodEnd == nil || rows[0].PeriodEnd.Unix() != 3456 {
 				t.Fatalf("unexpected active subscriptions: %+v %v", rows, err)
 			}
 			if got := string(check(200, other, "list", nil, foreign)); strings.TrimSpace(got) != "[]" {
@@ -234,6 +266,31 @@ func TestSubscriptionCheckout(t *testing.T) {
 			stale, err := store.ReserveStripeCheckout(ctx, otherUser.User.ID, otherUser.Token, otherWant, start)
 			if err != nil {
 				t.Fatal(err)
+			}
+			legacy, err := json.Marshal(stale)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var legacyFields map[string]any
+			if err := json.Unmarshal(legacy, &legacyFields); err != nil {
+				t.Fatal(err)
+			}
+			delete(legacyFields, "Seats")
+			legacy, err = json.Marshal(legacyFields)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err = store.db.ExecContext(ctx, store.bind(`UPDATE "verification" SET "value"=? WHERE "id"=?`), string(legacy), stale.ID); err != nil {
+				t.Fatal(err)
+			}
+			old, err := second.ReserveStripeCheckout(ctx, otherUser.User.ID, otherUser.Token, otherWant, start)
+			if err != nil || old.ID != stale.ID || old.Quantity() != 1 {
+				t.Fatal("legacy single-seat reservation was not reused", old, err)
+			}
+			larger := otherWant
+			larger.Seats = 2
+			if _, err = store.ReserveStripeCheckout(ctx, otherUser.User.ID, otherUser.Token, larger, start); err != billing.ErrPendingCheckout {
+				t.Fatal("changed quantity reused legacy reservation", err)
 			}
 			if _, err = store.ReserveStripeCheckout(ctx, otherUser.User.ID, otherUser.Token, otherWant, start.Add(23*time.Hour+time.Second)); err != billing.ErrCheckoutReconcile {
 				t.Fatal("ambiguous expired checkout was recreated", err)
@@ -281,6 +338,8 @@ func TestSubscriptionCheckout(t *testing.T) {
 			if _, err := store.db.ExecContext(ctx, store.bind(`UPDATE "user" SET "stripeCustomerId"=? WHERE "id"=?`), expectedCustomer, owner); err != nil {
 				t.Fatal(err)
 			}
+			quantity = 1
+			delete(body, "seats")
 			delete(body, "annual")
 			check(200, first, "upgrade", body, monthlyCookie)
 			if activePrice != "price_month" || customerRequests != 1 {

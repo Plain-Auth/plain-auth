@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"math"
 	"strings"
 	"time"
 
@@ -74,6 +75,10 @@ func (s *Store) checkoutAttempt(ctx context.Context, db checkoutQuerier, owner s
 	err = json.Unmarshal(data, &a)
 	return a, err
 }
+func (s *Store) PendingStripeCheckout(ctx context.Context, owner string) (billing.CheckoutAttempt, error) {
+	return s.checkoutAttempt(ctx, s.db, owner)
+}
+
 func (s *Store) FindStripeCheckout(ctx context.Context, owner, id string) (billing.CheckoutAttempt, error) {
 	a, err := s.checkoutAttempt(ctx, s.db, owner)
 	if err == nil && (id != a.ID || owner != a.Owner) {
@@ -83,6 +88,9 @@ func (s *Store) FindStripeCheckout(ctx context.Context, owner, id string) (billi
 }
 func (s *Store) ReserveStripeCheckout(ctx context.Context, owner, token string, want billing.CheckoutAttempt, now time.Time) (billing.CheckoutAttempt, error) {
 	var result billing.CheckoutAttempt
+	if want.Seats < 0 || want.Seats > math.MaxInt32 {
+		return result, billing.ErrInvalidSeatQuantity
+	}
 	if token == "" {
 		return result, billing.ErrCheckoutSession
 	}
@@ -97,7 +105,7 @@ func (s *Store) ReserveStripeCheckout(ctx context.Context, owner, token string, 
 					return err
 				}
 			}
-			if a.Owner != owner || a.Plan != want.Plan || a.Price != want.Price || a.Interval != want.Interval || a.SuccessURL != want.SuccessURL || a.CancelURL != want.CancelURL {
+			if a.Owner != owner || a.Plan != want.Plan || a.Price != want.Price || a.Quantity() != want.Quantity() || a.Interval != want.Interval || a.SuccessURL != want.SuccessURL || a.CancelURL != want.CancelURL {
 				return billing.ErrPendingCheckout
 			}
 			result = a
@@ -114,6 +122,9 @@ func (s *Store) ReserveStripeCheckout(ctx context.Context, owner, token string, 
 		if existing {
 			return billing.ErrExistingSubscription
 		}
+		if want.Quantity() > 1 && !want.PriceVerified {
+			return billing.ErrCheckoutPriceCheck
+		}
 		var customer sql.NullString
 		err = tx.QueryRowContext(ctx, s.bind(`SELECT "stripeCustomerId" FROM `+billingTable(ctx)+` WHERE "id"=?`), owner).Scan(&customer)
 		if err != nil {
@@ -127,7 +138,7 @@ func (s *Store) ReserveStripeCheckout(ctx context.Context, owner, token string, 
 		want.ID, want.Owner, want.LocalSubscription, want.Customer = rand.Text(), owner, rand.Text(), customer.String
 		// Stripe accepts expiries 30 minutes to 24 hours after creation.
 		want.Expires = now.Add(23 * time.Hour).Unix()
-		_, err = tx.ExecContext(ctx, s.bind(`INSERT INTO "subscription" ("id","plan","referenceId","stripeCustomerId","status","seats","billingInterval") VALUES(?,?,?,?,'incomplete',1,?)`), want.LocalSubscription, want.Plan, owner, customer, want.Interval)
+		_, err = tx.ExecContext(ctx, s.bind(`INSERT INTO "subscription" ("id","plan","referenceId","stripeCustomerId","status","seats","billingInterval") VALUES(?,?,?,?,'incomplete',?,?)`), want.LocalSubscription, want.Plan, owner, customer, want.Quantity(), want.Interval)
 		if err != nil {
 			return err
 		}
@@ -243,7 +254,7 @@ func (s *Store) applyStripeCheckout(ctx context.Context, want billing.CheckoutAt
 		if a.ID != want.ID {
 			return nil
 		}
-		if a.LocalSubscription != want.LocalSubscription || a.Customer != want.Customer || (a.CheckoutID != "" && a.CheckoutID != id) {
+		if a.LocalSubscription != want.LocalSubscription || a.Quantity() != want.Quantity() || a.Customer != want.Customer || (a.CheckoutID != "" && a.CheckoutID != id) {
 			return billing.ErrCheckoutReconcile
 		}
 		var customer sql.NullString
