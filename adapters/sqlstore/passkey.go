@@ -153,10 +153,8 @@ func (s *Store) CommitPasskeyRegistration(ctx context.Context, r pk.Record, sour
 		var err error
 		if source != "" {
 			err = s.lockActiveAccount(ctx, tx, r.UserID, source, now)
-		} else if s.adminSchema {
-			err = s.adminSessionGate(ctx, tx, r.UserID, now)
 		} else {
-			err = s.lockAccount(ctx, tx, r.UserID)
+			_, err = s.lockAllowedAccount(ctx, tx, r.UserID, now)
 		}
 		if errors.Is(err, auth.ErrNotFound) {
 			if source != "" {

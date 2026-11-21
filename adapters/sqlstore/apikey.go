@@ -67,13 +67,10 @@ func (s *Store) apiKeyOwner(ctx context.Context, tx *sql.Tx, owner ak.Owner, now
 		return ak.ErrSession
 	}
 	var err error
-	switch {
-	case owner.SessionToken != "":
+	if owner.SessionToken != "" {
 		err = s.lockActiveAccount(ctx, tx, owner.UserID, owner.SessionToken, now)
-	case s.adminSchema:
-		err = s.adminSessionGate(ctx, tx, owner.UserID, now)
-	default:
-		err = s.lockAccount(ctx, tx, owner.UserID)
+	} else {
+		_, err = s.lockAllowedAccount(ctx, tx, owner.UserID, now)
 	}
 	if errors.Is(err, stonewrit.ErrNotFound) {
 		return ak.ErrSession

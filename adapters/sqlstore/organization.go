@@ -21,7 +21,7 @@ var _ org.Store = (*Store)(nil)
 // Invitation acceptance uses the current email and verification status.
 func (s *Store) organizationActor(ctx context.Context, tx *sql.Tx, userID, sessionID string, now time.Time) (authn.User, error) {
 	var user authn.User
-	err := s.lockAccount(ctx, tx, userID)
+	_, err := s.lockAllowedAccount(ctx, tx, userID, now)
 	if errors.Is(err, authn.ErrNotFound) {
 		return user, org.ErrUnauthenticated
 	}

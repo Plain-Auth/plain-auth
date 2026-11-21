@@ -127,11 +127,6 @@ func (s *Store) WithTwoFactor(ctx context.Context, sub auth.FactorSubject, decid
 	if sub.SessionToken != "" {
 		parameter, _ := s.deviceTokenParameters([]string{sub.SessionToken})
 		sessionWhere = `s."token"=` + parameter + ` AND s."expiresAt">?`
-		if s.adminSchema {
-			// Factor management may rotate the login or issue new credentials.
-			// Only a session authenticated by the owner can authorize either.
-			sessionWhere += ` AND s."impersonatedBy" IS NULL`
-		}
 		q = `SELECT s."userId" FROM "session" s WHERE ` + sessionWhere
 		key = sub.SessionToken
 	}
@@ -144,10 +139,13 @@ func (s *Store) WithTwoFactor(ctx context.Context, sub auth.FactorSubject, decid
 			return factorRowError(err)
 		}
 	}
-	if s.adminSchema {
-		if err := s.adminSessionGate(ctx, tx, owner, sub.Now); err != nil {
-			return err
-		}
+	admin, err := s.lockAllowedAccount(ctx, tx, owner, sub.Now)
+	if err != nil {
+		return err
+	}
+	if admin {
+		// Only an owner's own session may rotate keys or enroll a new factor.
+		sessionWhere += ` AND s."impersonatedBy" IS NULL`
 	}
 	var keyProof ak.SessionProof
 	if sub.ApplicationKeyID != "" {

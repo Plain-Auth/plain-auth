@@ -58,7 +58,8 @@ func (s *Store) anonymousActor(ctx context.Context, tx *sql.Tx, token string, no
 	var guest bool
 	cols := sessionColumns + "," + userColumns + `,COALESCE(u."isAnonymous",false)`
 	dest := append(append(sessionFields(&row), userFields(&u)...), &guest)
-	if s.adminSchema {
+	admin := s.adminSchema.Load()
+	if admin {
 		cols += `,s."impersonatedBy"`
 		dest = append(dest, &row.ImpersonatedBy)
 	}
@@ -68,7 +69,14 @@ func (s *Store) anonymousActor(ctx context.Context, tx *sql.Tx, token string, no
 	if errors.Is(err, sql.ErrNoRows) {
 		return authn.SessionResult{}, authn.ErrNotFound
 	}
-	if err == nil && s.adminSchema {
+	if err == nil && !admin {
+		var enabled bool
+		enabled, err = s.detectAdminSchema(ctx, tx)
+		if err == nil && enabled {
+			return s.anonymousActor(ctx, tx, token, now)
+		}
+	}
+	if err == nil && admin {
 		err = s.adminSessionGate(ctx, tx, u.ID, now)
 	}
 	u.IsAnonymous = &guest

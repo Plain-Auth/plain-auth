@@ -14,22 +14,20 @@ import (
 var _ authn.AccountLifecycleStore = (*Store)(nil)
 
 func (s *Store) lockActiveAccount(ctx context.Context, tx *sql.Tx, userID, token string, now time.Time) error {
-	if err := s.lockAccount(ctx, tx, userID); err != nil {
+	admin, err := s.lockAllowedAccount(ctx, tx, userID, now)
+	if err != nil {
 		return err
 	}
 	parameter, _ := s.deviceTokenParameters([]string{token})
-	q := `SELECT "id" FROM "session" WHERE "userId"=? AND "token"=` + parameter + ` AND "expiresAt">?`
-	if s.adminSchema {
-		if err := s.adminSessionGate(ctx, tx, userID, now); err != nil {
-			return err
-		}
+	q := `SELECT "id" FROM "session" WHERE "userId"=` + s.exactSQLValue("?") + ` AND "token"=` + parameter + ` AND "expiresAt">?`
+	if admin {
 		q += ` AND "impersonatedBy" IS NULL`
 	}
 	if s.dialect != "sqlite" {
 		q += " FOR UPDATE"
 	}
 	var id string
-	err := tx.QueryRowContext(ctx, s.bind(q), userID, token, s.date(now)).Scan(&id)
+	err = tx.QueryRowContext(ctx, s.bind(q), userID, token, s.date(now)).Scan(&id)
 	if errors.Is(err, sql.ErrNoRows) {
 		return authn.ErrNotFound
 	}

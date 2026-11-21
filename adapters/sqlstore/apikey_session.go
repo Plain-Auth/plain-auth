@@ -46,7 +46,7 @@ func (s *Store) APIKeySessionUser(ctx context.Context, id string) (stonewrit.Use
 	fields := userFields(&u)
 	cols := userColumns
 	var finish func()
-	if s.adminSchema {
+	if s.adminSchema.Load() {
 		fields, finish = s.adminUserScanner(&u)
 		cols += "," + adminUserColumns
 	}
@@ -57,7 +57,15 @@ func (s *Store) APIKeySessionUser(ctx context.Context, id string) (stonewrit.Use
 	if e != nil {
 		return u, e
 	}
-	if finish != nil {
+	if finish == nil {
+		admin, err := s.detectAdminSchema(ctx, s.db)
+		if err != nil {
+			return stonewrit.User{}, err
+		}
+		if admin {
+			return s.APIKeySessionUser(ctx, id)
+		}
+	} else {
 		finish()
 		if u.Banned && (u.BanExpires == nil || u.BanExpires.After(time.Now())) {
 			return u, ak.ErrBanned
@@ -66,11 +74,7 @@ func (s *Store) APIKeySessionUser(ctx context.Context, id string) (stonewrit.Use
 	return u, nil
 }
 func (s *Store) lockKeySession(ctx context.Context, tx *sql.Tx, p ak.SessionProof, resource, action string, now time.Time) error {
-	if s.adminSchema {
-		if e := s.adminSessionGate(ctx, tx, p.UserID, now); e != nil {
-			return e
-		}
-	} else if e := s.lockAccount(ctx, tx, p.UserID); e != nil {
+	if _, e := s.lockAllowedAccount(ctx, tx, p.UserID, now); e != nil {
 		return e
 	}
 	param, _ := s.deviceTokenParameters([]string{p.Digest})

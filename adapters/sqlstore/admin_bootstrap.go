@@ -17,8 +17,8 @@ func OpenForAdminBootstrap(ctx context.Context, dialect, dsn string) (*Store, er
 	if err != nil {
 		return nil, err
 	}
-	s.adminSchema, err = s.detectAdminSchema(ctx)
-	if err != nil || !s.adminSchema {
+	enabled, err := s.detectAdminSchema(ctx, s.db)
+	if err != nil || !enabled {
 		s.Close()
 		if err != nil {
 			return nil, err
@@ -32,7 +32,11 @@ func OpenForAdminBootstrap(ctx context.Context, dialect, dsn string) (*Store, er
 // lock row. The row is removed before commit. The administrator and credential
 // are created together, and an existing account cannot be promoted this way.
 func (s *Store) CreateFirstAdmin(ctx context.Context, user authn.User, hash string) error {
-	if !s.adminSchema {
+	enabled, err := s.detectAdminSchema(ctx, s.db)
+	if err != nil {
+		return err
+	}
+	if !enabled {
 		return errors.New("sqlstore: apply the admin schema before creating an administrator")
 	}
 	if user.AdminUserFields == nil || user.Role != "admin" || user.Banned || hash == "" {

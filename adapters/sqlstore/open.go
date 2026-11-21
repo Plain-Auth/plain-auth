@@ -12,17 +12,18 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 
+	org "github.com/Stonewrit/stonewrit-auth/plugins/organization"
 	"github.com/go-sql-driver/mysql"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	_ "github.com/mattn/go-sqlite3"
-	org "github.com/Stonewrit/stonewrit-auth/plugins/organization"
 )
 
 // Store persists users, credentials, and sessions in a SQL database.
 type Store struct {
-	adminSchema            bool
+	adminSchema            *atomic.Bool
 	adminRole, adminDenial string
 	teamOptions            *org.TeamOptions
 	factorSchema           bool
@@ -67,7 +68,7 @@ func OpenWithSchema(ctx context.Context, dialect, dsn, baseline string) (*Store,
 		_ = db.Close()
 		return nil, err
 	}
-	store.adminSchema, err = store.detectAdminSchema(ctx)
+	_, err = store.detectAdminSchema(ctx, db)
 	if err != nil {
 		db.Close()
 		return nil, err
@@ -103,7 +104,7 @@ func connectDB(ctx context.Context, dialect, dsn string, create bool) (*Store, e
 	if err != nil {
 		return nil, err
 	}
-	return &Store{db: db, dialect: name}, nil
+	return &Store{db: db, dialect: name, adminSchema: new(atomic.Bool)}, nil
 }
 
 func openSQLite(path string, create bool) (*sql.DB, error) {

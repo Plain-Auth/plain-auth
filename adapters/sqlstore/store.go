@@ -65,7 +65,11 @@ func (s *Store) CreateUser(ctx context.Context, user authn.User, passwordHash st
 	if err := s.persistUsernames(ctx, tx, user, false); err != nil {
 		return err
 	}
-	if s.adminSchema {
+	admin, err := s.detectAdminSchema(ctx, tx)
+	if err != nil {
+		return err
+	}
+	if admin {
 		if _, err = tx.ExecContext(ctx, s.bind(`UPDATE "user" SET "role"=? WHERE "id"=?`), s.defaultAdminRole(), user.ID); err != nil {
 			return err
 		}
@@ -114,15 +118,15 @@ type executor interface {
 	ExecContext(context.Context, string, ...any) (sql.Result, error)
 }
 
-func (s *Store) insertSession(ctx context.Context, db executor, ss authn.StoredSession) error {
+func (s *Store) insertSession(ctx context.Context, tx *sql.Tx, ss authn.StoredSession) error {
 	cols := `"id","userId","token","ipAddress","userAgent","createdAt","updatedAt","expiresAt"`
 	params := "?,?,?,?,?,?,?,?"
 	args := []any{ss.ID, ss.UserID, ss.Token, ss.IPAddress, ss.UserAgent, s.date(ss.CreatedAt), s.date(ss.UpdatedAt), s.date(ss.ExpiresAt)}
-	if s.adminSchema {
-		tx, ok := db.(*sql.Tx)
-		if !ok {
-			return errors.New("sqlstore: session creation requires a transaction")
-		}
+	admin, err := s.detectAdminSchema(ctx, tx)
+	if err != nil {
+		return err
+	}
+	if admin {
 		if err := s.adminSessionGate(ctx, tx, ss.UserID, time.Now()); err != nil {
 			return err
 		}
@@ -130,15 +134,12 @@ func (s *Store) insertSession(ctx context.Context, db executor, ss authn.StoredS
 		params += ",?"
 		args = append(args, ss.ImpersonatedBy)
 	}
-	_, err := db.ExecContext(ctx, s.bind(`INSERT INTO "session" (`+cols+`) VALUES (`+params+`)`), args...)
+	_, err = tx.ExecContext(ctx, s.bind(`INSERT INTO "session" (`+cols+`) VALUES (`+params+`)`), args...)
 	return err
 }
 
 // CreateSession saves a session using its token.
 func (s *Store) CreateSession(ctx context.Context, ss authn.StoredSession) error {
-	if s.dialect != "mysql" && !s.adminSchema {
-		return s.insertSession(ctx, s.db, ss)
-	}
 	// Some MySQL versions ignore inline REFERENCES. Lock the canonical owner
 	// until insertion commits so concurrent deletion cannot orphan a session.
 	tx, err := s.db.BeginTx(ctx, nil)
@@ -163,7 +164,7 @@ func sessionFields(ss *authn.StoredSession) []any {
 
 // Session retrieves session state and its owner. The auth service checks expiry.
 func (s *Store) Session(ctx context.Context, token string) (authn.StoredSession, authn.User, error) {
-	if s.adminSchema {
+	if s.adminSchema.Load() {
 		return s.adminSession(ctx, s.db, token)
 	}
 	var ss authn.StoredSession
@@ -174,13 +175,28 @@ func (s *Store) Session(ctx context.Context, token string) (authn.StoredSession,
 	if errors.Is(err, sql.ErrNoRows) {
 		err = authn.ErrNotFound
 	}
+	if err == nil {
+		// Read the base row first. A migration that committed before that row was
+		// visible must be detected before returning it as an ordinary session.
+		admin, e := s.detectAdminSchema(ctx, s.db)
+		if e != nil {
+			return authn.StoredSession{}, authn.User{}, e
+		}
+		if admin {
+			return s.adminSession(ctx, s.db, token)
+		}
+	}
 	return ss, u, err
 }
 
 // ListSessions retrieves the user's stored sessions in creation order, newest first.
 func (s *Store) ListSessions(ctx context.Context, userID string) ([]authn.StoredSession, error) {
+	admin, err := s.detectAdminSchema(ctx, s.db)
+	if err != nil {
+		return nil, err
+	}
 	columns := sessionColumns
-	if s.adminSchema {
+	if admin {
 		columns += `,s."impersonatedBy"`
 	}
 	rows, err := s.db.QueryContext(ctx, s.bind(`SELECT `+columns+` FROM "session" s
@@ -193,7 +209,7 @@ func (s *Store) ListSessions(ctx context.Context, userID string) ([]authn.Stored
 	for rows.Next() {
 		var ss authn.StoredSession
 		fields := sessionFields(&ss)
-		if s.adminSchema {
+		if admin {
 			fields = append(fields, &ss.ImpersonatedBy)
 		}
 		if err := rows.Scan(fields...); err != nil {

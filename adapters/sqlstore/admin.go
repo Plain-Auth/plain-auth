@@ -19,22 +19,56 @@ var _ authn.AdminStore = (*Store)(nil)
 const adminUserColumns = `u."role",u."banned",u."banReason",u."banExpires"`
 const adminDeniedMessage = "You have been banned from this application. Please contact support if you believe this is an error."
 
-func (s *Store) detectAdminSchema(ctx context.Context) (bool, error) {
-	var q string
-	switch s.dialect {
-	case "sqlite":
-		q = `SELECT count(*) FROM pragma_table_info('user') WHERE name='banned'`
-	case "mysql":
-		q = `SELECT count(*) FROM information_schema.columns WHERE table_schema=database() AND table_name='user' AND column_name='banned'`
-	default:
-		q = `SELECT count(*) FROM information_schema.columns WHERE table_schema=current_schema() AND table_name='user' AND column_name='banned'`
+// Profile migrations are additive. Cache only a complete administrative schema;
+// another node can add it at any time. Store copies share this positive flag.
+func (s *Store) detectAdminSchema(ctx context.Context, db rowQuerier) (bool, error) {
+	if s.adminSchema.Load() {
+		return true, nil
 	}
-	var count int
-	err := s.db.QueryRowContext(ctx, q).Scan(&count)
-	return count > 0, err
+	columns := `SELECT 'user' AS t, name AS c FROM pragma_table_info('user') UNION ALL SELECT 'session',name FROM pragma_table_info('session')`
+	switch s.dialect {
+	case "postgres":
+		columns = `SELECT 'user' AS t,attname AS c FROM pg_catalog.pg_attribute WHERE attrelid=pg_catalog.to_regclass('"user"') AND attnum>0 AND NOT attisdropped UNION ALL SELECT 'session',attname FROM pg_catalog.pg_attribute WHERE attrelid=pg_catalog.to_regclass('"session"') AND attnum>0 AND NOT attisdropped`
+	case "mysql":
+		columns = `SELECT TABLE_NAME AS t,COLUMN_NAME AS c FROM information_schema.columns WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME IN ('user','session')`
+	}
+	query := `SELECT COUNT(*),COALESCE(SUM(CASE WHEN c IN ('banned','impersonatedBy') THEN 1 ELSE 0 END),0) FROM (` + columns + `) a WHERE (t='user' AND c IN ('role','banned','banReason','banExpires')) OR (t='session' AND c='impersonatedBy')`
+	var fields, controls int
+	if err := db.QueryRowContext(ctx, query).Scan(&fields, &controls); err != nil {
+		return false, err
+	}
+	if controls == 0 {
+		return false, nil
+	}
+	if fields != 5 {
+		return false, errors.New("sqlstore: incomplete administrative schema")
+	}
+	s.adminSchema.Store(true)
+	return true, nil
 }
+
+// lockAllowedAccount serializes the owner's privilege checks with role changes
+// and schema migrations. Already-provisioned stores need only the gate query.
+func (s *Store) lockAllowedAccount(ctx context.Context, tx *sql.Tx, user string, now time.Time) (bool, error) {
+	if s.adminSchema.Load() {
+		return true, s.adminSessionGate(ctx, tx, user, now)
+	}
+	if err := s.lockAccount(ctx, tx, user); err != nil {
+		return false, err
+	}
+	admin, err := s.detectAdminSchema(ctx, tx)
+	if err != nil || !admin {
+		return false, err
+	}
+	return true, s.adminSessionGate(ctx, tx, user, now)
+}
+
 func (s *Store) WithAdminConfig(role, message string) (authn.AdminStore, error) {
-	if !s.adminSchema {
+	enabled, err := s.detectAdminSchema(context.Background(), s.db)
+	if err != nil {
+		return nil, err
+	}
+	if !enabled {
 		return nil, errors.New("sqlstore: apply the admin schema before enabling administration")
 	}
 	rows, err := s.db.Query(s.bind(`SELECT ` + adminUserColumns + `,s."impersonatedBy" FROM "user" u,"session" s WHERE 1=0`))
@@ -145,10 +179,13 @@ type adminTX struct {
 }
 
 func (s *Store) AdminTransaction(ctx context.Context, token, target string, now time.Time, fn func(authn.AdminTransaction, authn.SessionResult) error) error {
-	if !s.adminSchema {
+	enabled, err := s.detectAdminSchema(ctx, s.db)
+	if err != nil {
+		return err
+	}
+	if !enabled {
 		return errors.New("sqlstore: administrative schema required")
 	}
-	var err error
 	for range 3 {
 		err = s.runAdminTransaction(ctx, token, target, now, fn)
 		if !retryIdentity(err) {

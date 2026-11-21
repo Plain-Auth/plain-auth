@@ -2,6 +2,8 @@
 
 The admin plugin manages users and sessions through the same HTTP mount as ordinary sign-in. Every administrative operation authenticates the calling session and checks the operator’s current database role. SQLite, PostgreSQL and MySQL support the `admin` schema profile.
 
+When another process applies the `admin` profile, running SQL stores detect its ban and impersonation fields on subsequent session reads and account authorization checks. They also enforce those controls when their HTTP server exposes only ordinary sign-in. If a database exposes a ban or impersonation column before all five administrative columns are present, those operations return an error until the migration finishes.
+
 ```go
 p, err := admin.New(admin.Options{})
 if err != nil {
