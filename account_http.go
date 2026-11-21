@@ -129,7 +129,9 @@ func (a *Auth) handleAccountRequest(route string, w http.ResponseWriter, r *http
 		response := map[string]any{"user": result.User, "token": nil}
 		if result.Token != "" {
 			response["token"] = result.Token
-			a.setSessionCookie(w, r, result.Token, remember)
+			if err := a.setSessionCookie(w, r, result.Token, remember); err != nil {
+				return nil, err
+			}
 		}
 		return response, nil
 	case "/request-password-reset", "/send-verification-email":

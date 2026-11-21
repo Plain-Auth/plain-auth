@@ -69,7 +69,7 @@ func (a *Auth) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	var body wireBody
 	if r.Method != http.MethodGet {
-		if err := a.validateRequestOrigin(r, isEmailRoute(route) || route == "/sign-in/magic-link" || route == "/sign-in/email-otp" || strings.HasPrefix(route, "/email-otp/") || route == "/forget-password/email-otp"); err != nil {
+		if err := a.validateRequestOrigin(r, isEmailRoute(route) || route == "/sign-in/anonymous" || route == "/sign-in/magic-link" || route == "/sign-in/email-otp" || strings.HasPrefix(route, "/email-otp/") || route == "/forget-password/email-otp"); err != nil {
 			writeAuthError(w, err)
 			return
 		}
@@ -135,6 +135,12 @@ func (a *Auth) handleCoreRequest(route string, w http.ResponseWriter, r *http.Re
 	case "/sign-up/email", "/sign-in/email":
 		return a.handleEmail(route, w, r, body, ip)
 	case "/sign-out":
+		if a.anonymous != nil {
+			c := a.oauthCookie("guest_continuation", "", -1)
+			if _, err := r.Cookie(c.Name); err == nil {
+				http.SetCookie(w, c)
+			}
+		}
 		if err := a.SignOut(ctx, r.Header); err != nil {
 			if a.deviceSessions == nil {
 				a.expireSessionCookies(w, r)
@@ -237,6 +243,17 @@ func (a *Auth) handleEmail(route string, w http.ResponseWriter, r *http.Request,
 		http.SetCookie(w, result.TrustedDeviceCookie)
 	}
 	if result.Challenge != nil {
+		guest, err := a.guestToken(r)
+		if err != nil {
+			return nil, err
+		}
+		if guest != "" {
+			proof, err := a.sealRecord("guest-mfa:"+result.Challenge.Identifier, []byte(guest))
+			if err != nil {
+				return nil, err
+			}
+			http.SetCookie(w, a.oauthCookie("guest_continuation", proof, int(a.factorOptions.ChallengeLifetime.Seconds())))
+		}
 		a.expireSessionCookies(w, r)
 		http.SetCookie(w, a.TwoFactorChallengeCookie(*result.Challenge))
 		if remember != nil && !*remember {
@@ -250,7 +267,9 @@ func (a *Auth) handleEmail(route string, w http.ResponseWriter, r *http.Request,
 	if result.Token != "" {
 		response["token"] = result.Token
 		persistent := remember == nil || *remember
-		a.setSessionCookie(w, r, result.Token, persistent)
+		if err := a.setSessionCookie(w, r, result.Token, persistent); err != nil {
+			return nil, err
+		}
 		a.writeRememberPreference(w.Header(), r, persistent)
 	}
 	if !signup {
@@ -274,7 +293,11 @@ func (a *Auth) expireSessionCookieHeaders(h http.Header, r *http.Request) {
 	cookie := a.clearSessionCookie()
 	h.Add("Set-Cookie", cookie.String())
 	prefix := strings.TrimSuffix(cookie.Name, "session_token")
-	for _, name := range []string{"session_data", "dont_remember"} {
+	names := []string{"session_data", "dont_remember"}
+	if a.admin != nil {
+		names = append(names, "admin_session")
+	}
+	for _, name := range names {
 		cookie.Name = prefix + name
 		h.Add("Set-Cookie", cookie.String())
 	}
@@ -355,7 +378,7 @@ func decodeWireBody(w http.ResponseWriter, r *http.Request, route string) (wireB
 		return nil, nil
 	}
 	mediaType, _, err := mime.ParseMediaType(contentType)
-	formAllowed := isEmailRoute(route)
+	formAllowed := isEmailRoute(route) || route == "/sign-in/anonymous"
 	if err != nil || (mediaType != "application/json" && !(formAllowed && mediaType == "application/x-www-form-urlencoded")) {
 		allowed := "application/json"
 		if formAllowed {

@@ -323,6 +323,11 @@ func reviewDevice(action string) func(EndpointContext) (any, error) {
 		}
 		in := DeviceReview{Code: code, NormalizedCode: normalizeDeviceUserCode(code), Action: action, Now: c.Auth.now()}
 		if session != nil {
+			if action != "review" {
+				if err := session.Session.RequireOwner(); err != nil {
+					return nil, err
+				}
+			}
 			in.UserID = session.User.ID
 			in.SessionToken = session.Session.Token
 		} else if action != "review" {

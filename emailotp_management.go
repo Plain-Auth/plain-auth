@@ -127,7 +127,7 @@ func (a *Auth) CompleteEmailVerificationOTP(ctx context.Context, email, code str
 	return AuthResult{User: u, Token: act.Session.Token}, nil
 }
 func (a *Auth) emailChangeOTPRequest(ctx context.Context, h http.Header, address string) (EmailOTPRequest, error) {
-	s, err := a.requireSession(ctx, h)
+	s, err := a.requireOwnerSession(ctx, h)
 	if err != nil {
 		return EmailOTPRequest{}, err
 	}
@@ -198,7 +198,9 @@ func (a *Auth) serveEmailOTPChange(c EndpointContext, path string) (any, error) 
 		return nil, err
 	}
 	if token := a.cookieToken(c.Request.Header); token != "" {
-		a.addSessionCookieHeaders(c.ResponseHeader, c.Request, token, !a.dontRemember(c.Request))
+		if err := a.addSessionCookieHeaders(c.ResponseHeader, c.Request, token, !a.dontRemember(c.Request)); err != nil {
+			return nil, err
+		}
 	}
 	return success, nil
 }

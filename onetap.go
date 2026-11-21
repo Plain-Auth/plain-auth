@@ -155,7 +155,9 @@ func NewOneTap(o OneTapOptions, fallback OAuthProvider) Plugin {
 				return nil, err
 			}
 			c.ResponseHeader.Add("Set-Cookie", c.Auth.oneTapCookie("", -1).String())
-			c.Auth.addSessionCookieHeaders(c.ResponseHeader, c.Request, account.Token, true)
+			if err := c.Auth.addSessionCookieHeaders(c.ResponseHeader, c.Request, account.Token, true); err != nil {
+				return nil, err
+			}
 			return map[string]any{"token": account.Token, "user": account.User}, nil
 		}},
 	}}

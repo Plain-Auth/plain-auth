@@ -17,7 +17,14 @@ func (s *Store) lockActiveAccount(ctx context.Context, tx *sql.Tx, userID, token
 	if err := s.lockAccount(ctx, tx, userID); err != nil {
 		return err
 	}
-	q := `SELECT "id" FROM "session" WHERE "userId"=? AND "token"=? AND "expiresAt">?`
+	parameter, _ := s.deviceTokenParameters([]string{token})
+	q := `SELECT "id" FROM "session" WHERE "userId"=? AND "token"=` + parameter + ` AND "expiresAt">?`
+	if s.adminSchema {
+		if err := s.adminSessionGate(ctx, tx, userID, now); err != nil {
+			return err
+		}
+		q += ` AND "impersonatedBy" IS NULL`
+	}
 	if s.dialect != "sqlite" {
 		q += " FOR UPDATE"
 	}
@@ -91,9 +98,20 @@ func (s *Store) DeleteAccount(ctx context.Context, userID, sessionToken, expecte
 			return authn.ErrNotFound
 		}
 	}
+	if err := s.deleteAccountRows(ctx, tx, userID); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+func (s *Store) deleteAccountRows(ctx context.Context, tx *sql.Tx, userID string) error {
+	var err error
 	// The verification schema also stores plugin state. Remove the two core
 	// mail-link families whose value is the user ID, leaving other records alone.
 	if _, err = tx.ExecContext(ctx, s.bind(`DELETE FROM "verification" WHERE "value"=? AND ("identifier" LIKE 'delete-account-%' OR "identifier" LIKE 'reset-password:%')`), userID); err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, s.bind(`DELETE FROM "verification" WHERE "identifier"=?`), "anonymous-link:"+userID); err != nil {
 		return err
 	}
 	hasFactor, err := s.detectFactorSchema(ctx, tx)
@@ -130,7 +148,7 @@ func (s *Store) DeleteAccount(ctx context.Context, userID, sessionToken, expecte
 	if _, err = tx.ExecContext(ctx, s.bind(`DELETE FROM "user" WHERE "id"=?`), userID); err != nil {
 		return err
 	}
-	return tx.Commit()
+	return nil
 }
 
 func (s *Store) ChangeAccountEmail(ctx context.Context, userID, oldEmail, newEmail string, verified bool, now time.Time) (authn.User, error) {

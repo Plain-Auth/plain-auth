@@ -179,13 +179,16 @@ func (a *Auth) newEmailOTP(ctx context.Context, req EmailOTPRequest) (string, er
 			return code, nil
 		}
 	}
-	maximum := new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(o.Length)), nil)
+	return randomDecimalCode(o.Length)
+}
+func randomDecimalCode(length int) (string, error) {
+	maximum := new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(length)), nil)
 	n, err := rand.Int(rand.Reader, maximum)
 	if err != nil {
 		return "", err
 	}
 	code := n.String()
-	return strings.Repeat("0", o.Length-len(code)) + code, nil
+	return strings.Repeat("0", length-len(code)) + code, nil
 }
 
 // SendEmailOTP requests delivery to Email under the supplied purpose.
@@ -242,6 +245,9 @@ func (a *Auth) SignInEmailOTP(ctx context.Context, in EmailOTPSignInInput, meta 
 	session, _ := a.newSession("", meta)
 	u, err := a.useEmailOTP(ctx, in.Email, in.OTP, OTPSignIn, EmailOTPAction{AllowSignUp: !a.emailOTP.DisableSignUp, Session: session, NewUser: User{ID: randomID(), Name: in.Name, Image: in.Image}})
 	if err != nil {
+		return AuthResult{}, err
+	}
+	if err := a.readGuestFlag(ctx, &u); err != nil {
 		return AuthResult{}, err
 	}
 	return AuthResult{Token: session.Token, User: u}, nil
@@ -303,7 +309,9 @@ func (a *Auth) serveEmailOTP(c EndpointContext, path string) (any, error) {
 		var token *string
 		if res.Token != "" {
 			token = &res.Token
-			a.addSessionCookieHeaders(c.ResponseHeader, c.Request, res.Token, true)
+			if err := a.addSessionCookieHeaders(c.ResponseHeader, c.Request, res.Token, true); err != nil {
+				return nil, err
+			}
 		}
 		return map[string]any{"status": true, "user": res.User, "token": token}, nil
 	case "/email-otp/reset-password":
@@ -331,7 +339,9 @@ func (a *Auth) serveEmailOTP(c EndpointContext, path string) (any, error) {
 		if err != nil {
 			return nil, err
 		}
-		a.addSessionCookieHeaders(c.ResponseHeader, c.Request, result.Token, true)
+		if err := a.addSessionCookieHeaders(c.ResponseHeader, c.Request, result.Token, true); err != nil {
+			return nil, err
+		}
 		return result, nil
 	default:
 		return nil, &APIError{404, "NOT_FOUND", "Unknown email OTP route"}

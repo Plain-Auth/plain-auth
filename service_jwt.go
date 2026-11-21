@@ -200,7 +200,7 @@ func (a *Auth) IssueJWT(ctx context.Context, h http.Header) (string, error) {
 	if a.serviceJWT == nil {
 		return "", &APIError{404, "NOT_FOUND", "JWT plugin is not enabled"}
 	}
-	s, err := a.requireSession(ctx, h)
+	s, err := a.requireOwnerSession(ctx, h)
 	if err != nil {
 		return "", err
 	}

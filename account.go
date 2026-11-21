@@ -71,7 +71,7 @@ func (a *Auth) UpdateUser(ctx context.Context, h http.Header, update ProfileUpda
 
 // VerifyPassword reauthenticates a signed-in user with their current password.
 func (a *Auth) VerifyPassword(ctx context.Context, h http.Header, password string) error {
-	session, err := a.requireSession(ctx, h)
+	session, err := a.requireOwnerSession(ctx, h)
 	if err != nil {
 		return err
 	}
@@ -111,7 +111,7 @@ type ChangePasswordInput struct {
 // ChangePassword optionally revokes all prior sessions and issues a replacement
 // for the caller in the same transaction as the password update.
 func (a *Auth) ChangePassword(ctx context.Context, h http.Header, in ChangePasswordInput, meta RequestMeta) (AuthResult, error) {
-	session, err := a.requireSession(ctx, h)
+	session, err := a.requireOwnerSession(ctx, h)
 	if err != nil {
 		return AuthResult{}, err
 	}

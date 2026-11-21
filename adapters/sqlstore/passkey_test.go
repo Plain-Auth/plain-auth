@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -89,7 +90,7 @@ func TestPasskeySoftwareAuthenticator(t *testing.T) {
 			dsn := organizationTestDSN(t, dialect)
 			const origin = "https://login.example.test"
 			const rp = "example.test"
-			ddl, err := schema.Generate(dialect, []string{"passkey"})
+			ddl, err := schema.Generate(dialect, []string{"anonymous", "passkey"})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -107,8 +108,12 @@ func TestPasskeySoftwareAuthenticator(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
+			guestPlugin, err := auth.NewAnonymous(auth.AnonymousOptions{})
+			if err != nil {
+				t.Fatal(err)
+			}
 			off := false
-			opts := auth.Options{Store: s, Secret: "test-only-passkey-0123456789-abcdefgh", BaseURL: origin, EmailAndPassword: true, Plugins: []auth.Plugin{plug}, RateLimit: &off}
+			opts := auth.Options{Store: s, Secret: "test-only-passkey-0123456789-abcdefgh", BaseURL: origin, EmailAndPassword: true, Plugins: []auth.Plugin{plug, guestPlugin}, RateLimit: &off}
 			first, err := auth.New(opts)
 			if err != nil {
 				t.Fatal(err)
@@ -188,6 +193,16 @@ func TestPasskeySoftwareAuthenticator(t *testing.T) {
 				t.Fatal("stored credential identity mismatch")
 			}
 			register(false, true)
+			gr := httptest.NewRequest("POST", origin+"/api/auth/sign-in/anonymous", strings.NewReader("{}"))
+			gr.Header.Set("Content-Type", "application/json")
+			gr.Header.Set("Origin", origin)
+			gw := httptest.NewRecorder()
+			first.ServeHTTP(gw, gr)
+			var visitor auth.AuthResult
+			if gw.Code != 200 || json.Unmarshal(gw.Body.Bytes(), &visitor) != nil || visitor.User.IsAnonymous == nil {
+				t.Fatal("could not start guest passkey browser")
+			}
+			var guestCookie = first.SessionCookie(visitor.Token, true)
 			login := func(count uint32, reportedOrigin string, expected int) {
 				t.Helper()
 				options, cs := request(first, "generate-authenticate-options", nil, 200)
@@ -196,8 +211,18 @@ func TestPasskeySoftwareAuthenticator(t *testing.T) {
 				}
 				payload := map[string]any{"response": key.response(t, options["challenge"].(string), reportedOrigin, rp, count, false)}
 				request(second, "verify-authentication", payload, 400)
-				result, newCookies := request(second, "verify-authentication", payload, expected, cs[0])
+				cookies := []*http.Cookie{cs[0]}
+				if guestCookie != nil {
+					cookies = append(cookies, guestCookie)
+				}
+				result, newCookies := request(second, "verify-authentication", payload, expected, cookies...)
 				if expected == 200 {
+					if guestCookie != nil {
+						if _, err := s.IsAnonymous(ctx, visitor.User.ID); err != auth.ErrNotFound {
+							t.Fatal("passkey did not retire the guest after verified assertion")
+						}
+						guestCookie = nil
+					}
 					if result["user"].(map[string]any)["id"] != owner.User.ID {
 						t.Fatal("assertion issued a session for the wrong owner")
 					}

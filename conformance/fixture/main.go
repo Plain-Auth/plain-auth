@@ -16,6 +16,7 @@ import (
 	"github.com/FineStack/finestack-auth/plugins/customsession"
 	"github.com/FineStack/finestack-auth/plugins/emailotp"
 	jwtplugin "github.com/FineStack/finestack-auth/plugins/jwt"
+	"github.com/FineStack/finestack-auth/plugins/lastlogin"
 	"github.com/FineStack/finestack-auth/plugins/magiclink"
 	"github.com/FineStack/finestack-auth/plugins/multisession"
 	"github.com/FineStack/finestack-auth/plugins/onetimetoken"
@@ -48,6 +49,14 @@ func main() {
 	var plugins []authn.Plugin
 	for _, id := range os.Args[2:] {
 		switch id {
+		case "last-login-method":
+			plugins = append(plugins, lastlogin.New(lastlogin.Options{Database: store}))
+		case "anonymous":
+			p, err := authn.NewAnonymous(authn.AnonymousOptions{})
+			if err != nil {
+				log.Fatal(err)
+			}
+			plugins = append(plugins, p)
 		case "device-authorization":
 			p, err := authn.NewDeviceAuthorization(authn.DeviceAuthorizationOptions{})
 			if err != nil {
@@ -70,6 +79,12 @@ func main() {
 				log.Fatal(err)
 			}
 			plugins = append(plugins, p)
+		case "admin":
+			p, err := authn.NewAdmin(authn.AdminOptions{})
+			if err != nil {
+				log.Fatal(err)
+			}
+			plugins = append(plugins, p)
 		case "jwt":
 			p, err := jwtplugin.New(jwtplugin.Options{})
 			if err != nil {
@@ -77,7 +92,18 @@ func main() {
 			}
 			plugins = append(plugins, p)
 		case "two-factor":
-			plugins = append(plugins, twofactor.New(twofactor.Options{}))
+			opts := twofactor.Options{}
+			if os.Getenv("AUTH_TEST_FACTOR_MAILBOX") == "1" {
+				path := filepath.Join(filepath.Dir(os.Args[1]), "factor-otp.json")
+				opts.OTP = twofactor.OTPOptions{Store: "hashed", Send: func(_ context.Context, m twofactor.OTPMessage) error {
+					b, err := json.Marshal(m)
+					if err != nil {
+						return err
+					}
+					return os.WriteFile(path, b, 0600)
+				}}
+			}
+			plugins = append(plugins, twofactor.New(opts))
 		default:
 			log.Fatal("unknown runtime plugin")
 		}

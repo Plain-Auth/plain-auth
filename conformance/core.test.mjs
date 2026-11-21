@@ -25,6 +25,25 @@ const email = "fixture@example.test";
 const name = "Local Fixture";
 const password = "local-conformance-password";
 
+test("both runtimes publish the email login preference and persist it on the user", async (t) => {
+  const { lastLoginMethod } = await import("better-auth/plugins");
+  const cookieName = "authn.last_used_login_method";
+  for (const setup of [
+    () => reference(t, [lastLoginMethod({ storeInDatabase: true, cookieName })]),
+    () => goFixture(t, ["last-login-method"]),
+  ]) {
+    const { client, requests } = instrument(await setup());
+    const result = await client.signUp.email({ email, name, password });
+    assert.equal(result.error, null);
+    const cookie = requests.at(-1).cookies.find(item => item.name === cookieName);
+    assert.ok(cookie, "registration should publish the preference");
+    assert.ok(cookie.attributes.includes("max-age=2592000"));
+    assert.ok(!cookie.attributes.includes("httponly"));
+    const session = await client.getSession();
+    assert.equal(session.data.user.lastLoginMethod, "email");
+  }
+});
+
 async function reference(t, plugins = []) {
   const database = new DatabaseSync(":memory:");
   t.after(() => database.close());
@@ -612,13 +631,15 @@ test("organization teams manage memberships and scoped invitations with the offi
 });
 
 test("the pinned One Tap client signs in to Go with a nonce issued by the application host", async (t) => {
-  const { oneTapClient } = await import("better-auth/client/plugins");
+  const { oneTapClient, anonymousClient } = await import("better-auth/client/plugins");
   const { generateKeyPair, exportJWK, SignJWT } = await import("jose");
   const { publicKey, privateKey } = await generateKeyPair("RS256", { extractable: true });
   const key = await exportJWK(publicKey);
-  const go = await goFixture(t, [], { CONFORMANCE_ONE_TAP_JWKS: JSON.stringify({ keys: [{ ...key, alg: "RS256", kid: "local" }] }) });
+  const go = await goFixture(t, ["anonymous"], { CONFORMANCE_ONE_TAP_JWKS: JSON.stringify({ keys: [{ ...key, alg: "RS256", kid: "local" }] }) });
   const clientId = "fixture.apps.googleusercontent.com";
-  const { client } = instrument(go, [oneTapClient({ clientId })]);
+  const { client } = instrument(go, [oneTapClient({ clientId }), anonymousClient()]);
+  const guest = await client.signIn.anonymous();
+  assert.equal(guest.data.user.isAnonymous, true);
   const { data } = await client.$fetch("/test/host-challenge", { method: "POST", body: {} });
   assert.equal(data.clientId, clientId);
   const name = "Host-bound Google user", email = "host-nonce@example.test";
@@ -634,6 +655,9 @@ test("the pinned One Tap client signs in to Go with a nonce issued by the applic
   await client.oneTap({ nonce: data.nonce, fetchOptions: {} });
   assert.equal(init.nonce, data.nonce);
   assert.equal((await client.getSession()).data.user.email, email);
+  const db = new DatabaseSync(go.databasePath);
+  try { assert.equal(db.prepare("SELECT COUNT(*) AS n FROM user WHERE id=?").get(guest.data.user.id).n, 0, "One Tap did not retire the current guest"); }
+  finally { db.close(); }
   const replay = await client.$fetch("/one-tap/callback", { method: "POST", body: { idToken: credential } });
   assert.equal(replay.error.status, 400);
 });
@@ -667,5 +691,114 @@ test("independent organization servers share team invitations, memberships and s
     assert.equal(db.prepare('SELECT "memberCount" FROM "team" WHERE "id"=?').get(group.id).memberCount, 2);
     ok(await owner.organization.removeTeamMember({ teamId: group.id, userId: peer.id }));
     assert.equal(db.prepare('SELECT "memberCount" FROM "team" WHERE "id"=?').get(group.id).memberCount, 1);
+  }
+});
+
+test("the public client completes delivered second-factor codes and remembers its browser", async (t) => {
+  let sent;
+  const ts = await reference(t,[twoFactor({otpOptions:{storeOTP:"hashed", sendOTP:async(data)=>{sent=data;}}})]);
+  const go = await goFixture(t,["two-factor"],{AUTH_TEST_FACTOR_MAILBOX:"1"});
+  const ok = (response) => {assert.equal(response.error,null);return response.data;};
+  for (const target of [ts,go]) {
+    const {client}=instrument(target,[twoFactorClient()]);
+    const user=ok(await client.signUp.email({email,name,password})).user;
+    assert.equal(ok(await client.twoFactor.enable({method:"otp",password})).method,"otp");
+    ok(await client.signOut());
+    const challenge=ok(await client.signIn.email({email,password}));
+    assert.equal(challenge.twoFactorRedirect,true);
+    assert.deepEqual(challenge.twoFactorMethods,["otp"]);
+    assert.equal(ok(await client.twoFactor.sendOtp({})).status,true);
+    let code;
+    if(target===go) {
+      const delivered=JSON.parse(await readFile(join(dirname(go.databasePath),"factor-otp.json"),"utf8"));
+      assert.equal(delivered.User.id,user.id);code=delivered.Code;
+    }else{assert.equal(sent.user.id,user.id);code=sent.otp;}
+    assert.equal(ok(await client.twoFactor.verifyOtp({code,trustDevice:true})).user.id,user.id);
+    ok(await client.signOut());
+    const remembered=ok(await client.signIn.email({email,password}));
+    assert.equal(remembered.user.id,user.id);
+    assert.ok(remembered.token);
+    assert.equal(ok(await client.getSession()).user.id,user.id);
+  }
+});
+
+test("the official admin client manages roles, bans, sessions and impersonation on shared accounts", async (t) => {
+  const { admin } = await import("better-auth/plugins");
+  const { adminClient } = await import("better-auth/client/plugins");
+  const go = await goFixture(t, ["admin"]);
+  const db = new DatabaseSync(go.databasePath);
+  t.after(() => db.close());
+  const ref = betterAuth({ baseURL: "http://reference.localhost", database: db, plugins: [admin()],
+    secret: "local-conformance-0123456789-abcdefghijk", emailAndPassword: { enabled: true }, telemetry: { enabled: false } });
+  const ts = { baseURL: "http://reference.localhost", send: (request) => ref.handler(request) };
+  const ok = (res) => { assert.equal(res.error, null, JSON.stringify(res.error)); return res.data; };
+  const bootstrap = instrument(go, [adminClient()]).client;
+  const account = ok(await bootstrap.signUp.email({ name, email, password })).user;
+  db.prepare('UPDATE "user" SET "role"=? WHERE "id"=?').run("admin", account.id);
+  for (const [i, [source, other]] of [[go, ts], [ts, go]].entries()) {
+    const actor = instrument(source, [adminClient()]).client;
+    const target = instrument(other, [adminClient()]).client;
+    const original = ok(await actor.signIn.email({ email, password, rememberMe: false }));
+    const api = actor.admin;
+    assert.equal(ok(await api.hasPermission({ permissions: { user: ["list"] } })).success, true);
+    const created = ok(await api.createUser({ email: "admin-target" + i + "@example.test", name: "Target", password })).user;
+    ok(await api.setRole({ userId: created.id, role: "user" }));
+    const auth = ok(await target.signIn.email({ email: created.email, password }));
+    assert.equal((await target.admin.getUser({ query: { id: account.id } })).error.code, "YOU_ARE_NOT_ALLOWED_TO_GET_USER");
+    assert.equal(ok(await api.getUser({ query: { id: created.id } })).role, "user");
+    assert.equal(ok(await api.updateUser({ userId: created.id, data: { name: "Updated" } })).name, "Updated");
+    const page = ok(await api.listUsers({ query: { searchValue: created.email, searchField: "email", limit: 1 } }));
+    assert.equal(page.total, 1);
+    assert.equal(page.users[0].id, created.id);
+    const listed = ok(await api.listUserSessions({ userId: created.id })).sessions;
+    assert.equal(listed.length, 1);
+    assert.equal(listed[0].userId, created.id);
+    if (source === go) assert.notEqual(listed[0].token, auth.token);
+    assert.deepEqual(ok(await api.revokeUserSession({ sessionToken: listed[0].token })), { success: true });
+    assert.equal(ok(await target.getSession()), null);
+    assert.equal(ok(await api.banUser({ userId: created.id, banReason: "Fixture", banExpiresIn: 1800 })).user.banReason, "Fixture");
+    assert.equal((await target.signIn.email({ email: created.email, password })).error.code, "BANNED_USER");
+    assert.equal(ok(await api.unbanUser({ userId: created.id })).user.banned, false);
+    assert.deepEqual(ok(await api.setUserPassword({ userId: created.id, newPassword: password + "-changed" })), { status: true });
+    ok(await target.signIn.email({ email: created.email, password: password + "-changed" }));
+    const delegated = ok(await api.impersonateUser({ userId: created.id }));
+    assert.equal(delegated.session.impersonatedBy, account.id);
+    assert.equal(ok(await actor.getSession()).user.id, created.id);
+    const restored = ok(await api.stopImpersonating());
+    assert.equal(restored.user.id, account.id);
+    assert.equal(restored.session.token, original.token);
+    assert.deepEqual(ok(await api.revokeUserSessions({ userId: created.id })), { success: true });
+    assert.equal(ok(await target.getSession()), null);
+    assert.deepEqual(ok(await api.removeUser({ userId: created.id })), { success: true });
+    assert.equal((await api.getUser({ query: { id: created.id } })).error.code, "USER_NOT_FOUND");
+  }
+});
+
+test("the pinned anonymous client signs in, upgrades and deletes guests on either server", async(t)=>{
+  const { anonymous } = await import("better-auth/plugins");
+  const { anonymousClient } = await import("better-auth/client/plugins");
+  for (const runtime of [await reference(t,[anonymous()]), await goFixture(t,["anonymous"])]) {
+    const { client } = instrument(runtime,[anonymousClient()]);
+    const guest = await client.signIn.anonymous();
+    assert.equal(guest.error,null);
+    assert.equal(guest.data.user.isAnonymous,true);
+    assert.match(guest.data.user.email,/@anonymous\.placeholder\.invalid$/);
+    assert.equal((await client.getSession()).data.user.id,guest.data.user.id);
+    const repeated=await client.signIn.anonymous();
+    assert.equal(repeated.error.code,"ANONYMOUS_USERS_CANNOT_SIGN_IN_AGAIN_ANONYMOUSLY");
+    const signup=await client.signUp.email({name,email,password});
+    assert.equal(signup.error,null);
+    assert.notEqual(signup.data.user.id,guest.data.user.id);
+    assert.equal((await client.getSession()).data.user.isAnonymous,false);
+    assert.equal((await client.deleteAnonymousUser()).error.code,"USER_IS_NOT_ANONYMOUS");
+    await client.signOut();
+    assert.equal((await client.signIn.anonymous()).data.user.isAnonymous,true);
+    assert.equal((await client.deleteAnonymousUser()).data.success,true);
+    assert.equal((await client.getSession()).data,null);
+    if (runtime.databasePath) {
+      const db=new DatabaseSync(runtime.databasePath);
+      try { assert.equal(db.prepare('SELECT count(*) AS n FROM user WHERE isAnonymous').get().n,0); }
+      finally { db.close(); }
+    }
   }
 });

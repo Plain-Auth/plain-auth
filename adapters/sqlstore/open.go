@@ -22,10 +22,12 @@ import (
 
 // Store persists users, credentials, and sessions in a SQL database.
 type Store struct {
-	teamOptions  *org.TeamOptions
-	factorSchema bool
-	db           *sql.DB
-	dialect      string
+	adminSchema            bool
+	adminRole, adminDenial string
+	teamOptions            *org.TeamOptions
+	factorSchema           bool
+	db                     *sql.DB
+	dialect                string
 }
 
 func normalizeDialect(name string) (string, error) {
@@ -56,6 +58,29 @@ func Open(ctx context.Context, dialect, dsn string) (*Store, error) {
 // plugin tables, columns and indexes. It accepts the initialization SQL shape
 // returned by Schema and the application's schema-profile generator.
 func OpenWithSchema(ctx context.Context, dialect, dsn, baseline string) (*Store, error) {
+	store, err := connectDB(ctx, dialect, dsn, true)
+	if err != nil {
+		return nil, err
+	}
+	db := store.db
+	if err := store.migrate(ctx, baseline); err != nil {
+		_ = db.Close()
+		return nil, err
+	}
+	store.adminSchema, err = store.detectAdminSchema(ctx)
+	if err != nil {
+		db.Close()
+		return nil, err
+	}
+	store.factorSchema, err = store.detectFactorSchema(ctx, db)
+	if err != nil {
+		_ = db.Close()
+		return nil, err
+	}
+	return store, nil
+}
+
+func connectDB(ctx context.Context, dialect, dsn string, create bool) (*Store, error) {
 	name, err := normalizeDialect(dialect)
 	if err != nil {
 		return nil, err
@@ -69,7 +94,7 @@ func OpenWithSchema(ctx context.Context, dialect, dsn, baseline string) (*Store,
 	var db *sql.DB
 	switch name {
 	case "sqlite":
-		db, err = openSQLite(dsn)
+		db, err = openSQLite(dsn, create)
 	case "postgres":
 		db, err = sql.Open("pgx", dsn)
 	case "mysql":
@@ -78,28 +103,28 @@ func OpenWithSchema(ctx context.Context, dialect, dsn, baseline string) (*Store,
 	if err != nil {
 		return nil, err
 	}
-	store := &Store{db: db, dialect: name}
-	if err := store.migrate(ctx, baseline); err != nil {
-		_ = db.Close()
-		return nil, err
-	}
-	store.factorSchema, err = store.detectFactorSchema(ctx, db)
-	if err != nil {
-		_ = db.Close()
-		return nil, err
-	}
-	return store, nil
+	return &Store{db: db, dialect: name}, nil
 }
 
-func openSQLite(path string) (*sql.DB, error) {
+func openSQLite(path string, create bool) (*sql.DB, error) {
 	dsn := path
+	mode := ""
+	if !create && path == ":memory:" {
+		return nil, errors.New("sqlstore: an existing database is required")
+	}
 	if path != ":memory:" {
 		absolute, err := filepath.Abs(path)
 		if err != nil {
 			return nil, err
 		}
 		// The database contains personal data and password hashes.
-		file, err := os.OpenFile(absolute, os.O_RDWR|os.O_CREATE, 0o600)
+		flags := os.O_RDWR
+		if create {
+			flags |= os.O_CREATE
+		} else {
+			mode = "&mode=rw"
+		}
+		file, err := os.OpenFile(absolute, flags, 0o600)
 		if err != nil {
 			return nil, err
 		}
@@ -109,7 +134,7 @@ func openSQLite(path string) (*sql.DB, error) {
 		u := url.URL{Scheme: "file", Path: "/" + strings.TrimPrefix(filepath.ToSlash(absolute), "/")}
 		dsn = u.String()
 	}
-	db, err := sql.Open("sqlite3", dsn+"?_foreign_keys=on&_busy_timeout=5000&_txlock=immediate")
+	db, err := sql.Open("sqlite3", dsn+"?_foreign_keys=on&_busy_timeout=5000&_txlock=immediate"+mode)
 	if err == nil {
 		// Each private in-memory database lives on a single connection.
 		// Serializing file-backed writes also avoids in-process contention.

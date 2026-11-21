@@ -15,6 +15,8 @@ type SessionResponseFunc func(EndpointContext, SessionResult) (any, error)
 
 // Plugin contributes HTTP endpoints to an Auth instance.
 type Plugin struct {
+	anonymous         *AnonymousOptions
+	admin             *AdminOptions
 	maxDeviceSessions *int
 	emailOTP          *EmailOTPOptions
 	// OnRequest can reject an HTTP request before endpoint dispatch. Path is
@@ -143,12 +145,29 @@ type SessionCookieEvent struct {
 }
 
 func (a *Auth) withSessionPlugins(ctx context.Context, session Session, user User) (*SessionResult, error) {
+	if a.admin != nil && user.AdminUserFields == nil {
+		stored, owner, err := a.adminStore.Session(ctx, session.Token)
+		if errors.Is(err, ErrNotFound) {
+			return nil, &APIError{401, "UNAUTHORIZED", "Unauthorized"}
+		}
+		if err != nil {
+			return nil, err
+		}
+		if stored.ID != session.ID || owner.ID != user.ID {
+			return nil, &APIError{401, "UNAUTHORIZED", "Unauthorized"}
+		}
+		user.AdminUserFields = owner.AdminUserFields
+		session.ImpersonatedBy = stored.ImpersonatedBy
+	}
 	if a.factorStore != nil {
 		enabled, err := a.factorStore.FactorEnabled(ctx, user.ID)
 		if err != nil {
 			return nil, err
 		}
 		user.TwoFactorEnabled = &enabled
+	}
+	if err := a.readGuestFlag(ctx, &user); err != nil {
+		return nil, err
 	}
 	result := &SessionResult{Session: session, User: user}
 	for _, plugin := range a.opts.Plugins {

@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"errors"
 	"strconv"
+	"strings"
 	"time"
 
 	auth "github.com/FineStack/finestack-auth"
@@ -49,12 +50,21 @@ func (s *Store) readForUpdate(query string) string {
 func (s *Store) factorUser(ctx context.Context, tx *sql.Tx, id string) (auth.FactorState, error) {
 	var state auth.FactorState
 	var enabled sql.NullBool
-	err := tx.QueryRowContext(ctx, s.readForUpdate(`SELECT `+userColumns+`,u."twoFactorEnabled" FROM "user" u WHERE u."id"=?`), id).Scan(append(userFields(&state.User), &enabled)...)
+	cols, fields := userColumns, userFields(&state.User)
+	var finish func()
+	if s.adminRole != "" {
+		cols += "," + adminUserColumns
+		fields, finish = s.adminUserScanner(&state.User)
+	}
+	err := tx.QueryRowContext(ctx, s.readForUpdate(`SELECT `+cols+`,u."twoFactorEnabled" FROM "user" u WHERE u."id"=?`), id).Scan(append(fields, &enabled)...)
 	if errors.Is(err, sql.ErrNoRows) {
 		return state, auth.ErrNotFound
 	}
 	if err != nil {
 		return state, err
+	}
+	if finish != nil {
+		finish()
 	}
 	state.Enabled = enabled.Bool
 	state.User.TwoFactorEnabled = &state.Enabled
@@ -89,6 +99,15 @@ func (s *Store) factorUser(ctx context.Context, tx *sql.Tx, id string) (auth.Fac
 	if err != nil {
 		return state, err
 	}
+	state.LastTOTPPeriod = 30 * time.Second
+	if period, value, ok := strings.Cut(step, ":"); ok {
+		seconds, err := strconv.ParseUint(period, 10, 32)
+		if err != nil || seconds == 0 {
+			return state, errors.New("invalid stored authenticator period")
+		}
+		state.LastTOTPPeriod = time.Duration(seconds) * time.Second
+		step = value
+	}
 	state.LastTOTPStep, err = strconv.ParseInt(step, 10, 64)
 	return state, err
 }
@@ -103,8 +122,16 @@ func (s *Store) WithTwoFactor(ctx context.Context, sub auth.FactorSubject, decid
 	defer tx.Rollback()
 	owner := sub.UserID
 	var q, key string
+	var sessionWhere string
 	if sub.SessionToken != "" {
-		q = `SELECT "userId" FROM "session" WHERE "token"=? AND "expiresAt">?`
+		parameter, _ := s.deviceTokenParameters([]string{sub.SessionToken})
+		sessionWhere = `s."token"=` + parameter + ` AND s."expiresAt">?`
+		if s.adminSchema {
+			// Factor management may rotate the login or issue new credentials.
+			// Only a session authenticated by the owner can authorize either.
+			sessionWhere += ` AND s."impersonatedBy" IS NULL`
+		}
+		q = `SELECT s."userId" FROM "session" s WHERE ` + sessionWhere
 		key = sub.SessionToken
 	}
 	if sub.Challenge != "" {
@@ -116,13 +143,18 @@ func (s *Store) WithTwoFactor(ctx context.Context, sub auth.FactorSubject, decid
 			return factorRowError(err)
 		}
 	}
+	if s.adminSchema {
+		if err := s.adminSessionGate(ctx, tx, owner, sub.Now); err != nil {
+			return err
+		}
+	}
 	state, err := s.factorUser(ctx, tx, owner)
 	if err != nil {
 		return err
 	}
 	if sub.SessionToken != "" {
 		var ss auth.StoredSession
-		err = tx.QueryRowContext(ctx, s.readForUpdate(`SELECT `+sessionColumns+` FROM "session" s WHERE s."token"=? AND s."userId"=? AND s."expiresAt">?`), sub.SessionToken, owner, s.date(sub.Now)).Scan(sessionFields(&ss)...)
+		err = tx.QueryRowContext(ctx, s.readForUpdate(`SELECT `+sessionColumns+` FROM "session" s WHERE `+sessionWhere+` AND s."userId"=?`), sub.SessionToken, s.date(sub.Now), owner).Scan(sessionFields(&ss)...)
 		if err != nil {
 			return factorRowError(err)
 		}
@@ -144,6 +176,12 @@ func (s *Store) WithTwoFactor(ctx context.Context, sub auth.FactorSubject, decid
 		state.Attempts, err = strconv.Atoi(attempts)
 		if err != nil || state.Attempts < 0 || state.Attempts >= 5 {
 			return auth.ErrNotFound
+		}
+	}
+	if sub.ReadDelivery {
+		state.Delivery, err = s.readFactorDelivery(ctx, tx, factorDeliveryKey(sub, state))
+		if err != nil {
+			return err
 		}
 	}
 	if sub.TrustedGrant != "" {
@@ -200,7 +238,13 @@ func (s *Store) writeFactorChange(ctx context.Context, tx *sql.Tx, sub auth.Fact
 			return err
 		}
 		if ch.UsedTOTPStep != nil {
-			err := exec(`INSERT INTO "verification" ("id","identifier","value","expiresAt","createdAt","updatedAt") VALUES (?,?,?,?,?,?)`, rand.Text(), key, strconv.FormatInt(*ch.UsedTOTPStep, 10), s.date(sub.Now.Add(2*time.Minute)), s.date(sub.Now), s.date(sub.Now))
+			seconds := int64(ch.UsedTOTPPeriod / time.Second)
+			if seconds <= 0 {
+				seconds = 30
+			}
+			value := strconv.FormatInt(seconds, 10) + ":" + strconv.FormatInt(*ch.UsedTOTPStep, 10)
+			expiry := time.Unix((*ch.UsedTOTPStep+2)*seconds, 0).UTC()
+			err := exec(`INSERT INTO "verification" ("id","identifier","value","expiresAt","createdAt","updatedAt") VALUES (?,?,?,?,?,?)`, rand.Text(), key, value, s.date(expiry), s.date(sub.Now), s.date(sub.Now))
 			if err != nil {
 				return err
 			}
@@ -224,8 +268,11 @@ func (s *Store) writeFactorChange(ctx context.Context, tx *sql.Tx, sub auth.Fact
 			}
 		}
 	}
+	if err := s.writeFactorDelivery(ctx, tx, sub, state, ch); err != nil {
+		return err
+	}
 	if ch.ConsumeChallenge {
-		if err := exec(`DELETE FROM "verification" WHERE "identifier" IN (?,?)`, sub.Challenge, "2fa-attempts-"+sub.Challenge); err != nil {
+		if err := exec(`DELETE FROM "verification" WHERE "identifier" IN (?,?,?,?)`, sub.Challenge, "2fa-attempts-"+sub.Challenge, "2fa-otp-"+sub.Challenge, pendingFactorDeliveryKey("2fa-otp-"+sub.Challenge)); err != nil {
 			return err
 		}
 	} else if ch.IncrementAttempts {
@@ -277,6 +324,10 @@ func (s *Store) invalidateFactorChallenges(ctx context.Context, tx *sql.Tx, uid 
 	if _, err := tx.ExecContext(ctx, s.bind(`DELETE FROM "verification" WHERE "value"=? AND "identifier" LIKE 'trust-device-%'`), uid); err != nil {
 		return err
 	}
+	sessionPattern := "2fa-otp-" + strings.NewReplacer("!", "!!", "%", "!%", "_", "!_").Replace(uid) + "!!%"
+	if _, err := tx.ExecContext(ctx, s.bind(`DELETE FROM "verification" WHERE "identifier" LIKE ? ESCAPE '!' OR "identifier" LIKE ? ESCAPE '!'`), sessionPattern, pendingFactorDeliveryKey(sessionPattern)); err != nil {
+		return err
+	}
 	// Challenge rows contain the account ID. Counters are harmless without a
 	// challenge, but remove them as well while the account is locked.
 	rows, err := tx.QueryContext(ctx, s.bind(`SELECT "identifier" FROM "verification" WHERE "value"=? AND "identifier" LIKE '2fa-%'`), uid)
@@ -298,7 +349,7 @@ func (s *Store) invalidateFactorChallenges(ctx context.Context, tx *sql.Tx, uid 
 		return err
 	}
 	for _, id := range ids {
-		if _, err = tx.ExecContext(ctx, s.bind(`DELETE FROM "verification" WHERE "identifier" IN (?,?)`), id, "2fa-attempts-"+id); err != nil {
+		if _, err = tx.ExecContext(ctx, s.bind(`DELETE FROM "verification" WHERE "identifier" IN (?,?,?,?)`), id, "2fa-attempts-"+id, "2fa-otp-"+id, pendingFactorDeliveryKey("2fa-otp-"+id)); err != nil {
 			return err
 		}
 	}

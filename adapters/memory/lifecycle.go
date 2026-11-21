@@ -65,6 +65,11 @@ func (s *Store) DeleteAccount(ctx context.Context, id, token, expectedHash, dele
 			return auth.ErrNotFound
 		}
 	}
+	s.deleteUserRecords(id, rec)
+	return nil
+}
+
+func (s *Store) deleteUserRecords(id string, rec credential) {
 	s.deleteSessions(id, "")
 	for key, t := range s.resets {
 		if t.UserID == id {
@@ -78,7 +83,6 @@ func (s *Store) DeleteAccount(ctx context.Context, id, token, expectedHash, dele
 	}
 	delete(s.users, id)
 	delete(s.emailToID, strings.ToLower(rec.user.Email))
-	return nil
 }
 
 func (s *Store) ChangeAccountEmail(ctx context.Context, id, oldEmail, newEmail string, verified bool, now time.Time) (auth.User, error) {

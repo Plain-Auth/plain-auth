@@ -85,7 +85,7 @@ func (a *Auth) startOAuth(w http.ResponseWriter, r *http.Request, link bool) err
 	}
 	linkUserID := ""
 	if link {
-		current, err := a.requireSession(r.Context(), r.Header)
+		current, err := a.requireOwnerSession(r.Context(), r.Header)
 		if err != nil {
 			return err
 		}
@@ -99,6 +99,20 @@ func (a *Auth) startOAuth(w http.ResponseWriter, r *http.Request, link bool) err
 	flow := OAuthFlow{State: randomID(), Binding: a.oauthBinding(browser, id, r), Provider: id, Verifier: oauth2.GenerateVerifier(),
 		Nonce: randomID(), ExpiresAt: now.Add(10 * time.Minute)}
 	flow.LinkUserID = linkUserID
+	if a.anonymous != nil && !link {
+		guest, err := a.guestToken(r)
+		if err != nil {
+			return err
+		}
+		if guest != "" {
+			browser = "guest-" + browser
+			flow.Binding = digest(browser + "\x00" + id + "\x00")
+			flow.AnonymousSessionProof, err = a.sealRecord("guest-oauth:"+flow.State, []byte(guest))
+			if err != nil {
+				return err
+			}
+		}
+	}
 	flow.CallbackURL, _ = body["callbackURL"].(string)
 	flow.ErrorCallbackURL, _ = body["errorCallbackURL"].(string)
 	flow.NewUserCallbackURL, _ = body["newUserCallbackURL"].(string)
@@ -154,7 +168,11 @@ func (a *Auth) finishOAuth(w http.ResponseWriter, r *http.Request, id string) er
 		return &APIError{400, "INVALID_OAUTH_STATE", "Invalid or expired OAuth state"}
 	}
 	store := a.opts.Store.(OAuthStore)
-	flow, err := store.ConsumeOAuthFlow(r.Context(), state, a.oauthBinding(cookie.Value, id, r), a.now().UTC())
+	binding := a.oauthBinding(cookie.Value, id, r)
+	if strings.HasPrefix(cookie.Value, "guest-") {
+		binding = digest(cookie.Value + "\x00" + id + "\x00")
+	}
+	flow, err := store.ConsumeOAuthFlow(r.Context(), state, binding, a.now().UTC())
 	if errors.Is(err, ErrNotFound) {
 		return &APIError{400, "INVALID_OAUTH_STATE", "Invalid or expired OAuth state"}
 	}
@@ -172,6 +190,14 @@ func (a *Auth) finishOAuth(w http.ResponseWriter, r *http.Request, id string) er
 			return nil
 		}
 		return &APIError{400, code, "Unable to complete social sign-in"}
+	}
+	if flow.AnonymousSessionProof != "" {
+		guest, err := a.openRecord("guest-oauth:"+flow.State, flow.AnonymousSessionProof)
+		current := a.cookieToken(r.Header)
+		if err != nil || a.anonymous == nil || current != "" && current != string(guest) {
+			return fail("INVALID_OAUTH_STATE")
+		}
+		r = r.WithContext(context.WithValue(r.Context(), anonymousSourceKey{}, string(guest)))
 	}
 	if flow.Provider != id || q.Get("error") != "" || q.Get("code") == "" {
 		return fail("OAUTH_CALLBACK_ERROR")
@@ -230,7 +256,9 @@ func (a *Auth) finishOAuth(w http.ResponseWriter, r *http.Request, id string) er
 		return err
 	}
 	if flow.LinkUserID == "" {
-		a.setSessionCookie(w, r, result.Token, true)
+		if err := a.setSessionCookie(w, r, result.Token, true); err != nil {
+			return err
+		}
 	}
 	target := flow.CallbackURL
 	if created && flow.NewUserCallbackURL != "" {
@@ -305,6 +333,9 @@ func (a *Auth) completeProfile(ctx context.Context, r *http.Request, id string, 
 	if errors.Is(err, ErrOAuthSignupDisabled) {
 		return AuthResult{}, false, &APIError{403, "SIGN_UP_DISABLED", "Sign-up is disabled"}
 	}
+	if err == nil {
+		err = a.readGuestFlag(ctx, &user)
+	}
 	return AuthResult{User: user, Token: raw}, created, err
 }
 
@@ -343,7 +374,9 @@ func (a *Auth) directOAuth(w http.ResponseWriter, r *http.Request, id string, p 
 		writeAuthJSON(w, 200, map[string]any{"url": "", "status": true, "redirect": false})
 		return nil
 	}
-	a.setSessionCookie(w, r, account.Token, true)
+	if err := a.setSessionCookie(w, r, account.Token, true); err != nil {
+		return err
+	}
 	writeAuthJSON(w, 200, map[string]any{"redirect": false, "token": account.Token, "user": account.User})
 	return nil
 }

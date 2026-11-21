@@ -95,6 +95,11 @@ func (o Options) endpoint(method, action string, fn handler) authn.Endpoint {
 		if s == nil {
 			return nil, ErrUnauthenticated
 		}
+		if method != http.MethodGet && action != "set-active" && action != "set-active-team" {
+			if err := s.Session.RequireOwner(); err != nil {
+				return nil, err
+			}
+		}
 		return fn(c, s)
 	}}
 }

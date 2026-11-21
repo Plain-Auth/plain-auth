@@ -38,7 +38,7 @@ func (a *Auth) ListUserAccounts(ctx context.Context, h http.Header) ([]LinkedAcc
 }
 
 func (a *Auth) UnlinkAccount(ctx context.Context, h http.Header, recordID string) error {
-	session, err := a.requireSession(ctx, h)
+	session, err := a.requireOwnerSession(ctx, h)
 	if err != nil {
 		return err
 	}

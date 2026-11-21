@@ -46,7 +46,7 @@ func (a *Auth) sessionHTTP(w http.ResponseWriter, r *http.Request) (body any, re
 	if err != nil {
 		return nil, err
 	}
-	if a.serviceJWT != nil && !a.serviceJWT.DisableHeader {
+	if a.serviceJWT != nil && !a.serviceJWT.DisableHeader && row.ImpersonatedBy == nil {
 		defer func() {
 			if responseErr != nil || body == nil {
 				return
@@ -62,7 +62,7 @@ func (a *Auth) sessionHTTP(w http.ResponseWriter, r *http.Request) (body any, re
 	}
 	// Match the reference query's coercion: a nonempty disableRefresh query
 	// string requests a read without refreshing the session or reissuing cookies.
-	if a.dontRemember(r) || r.URL.Query().Get("disableRefresh") != "" {
+	if row.ImpersonatedBy != nil || a.dontRemember(r) || r.URL.Query().Get("disableRefresh") != "" {
 		return result, nil
 	}
 	threshold := row.ExpiresAt.Add(-a.opts.SessionTTL).Add(*a.opts.SessionUpdateAge)

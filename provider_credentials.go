@@ -124,7 +124,7 @@ func (a *Auth) selectedCredential(ctx context.Context, h http.Header, s AccountS
 	}
 	userID := s.UserID
 	if h != nil {
-		session, err := a.requireSession(ctx, h)
+		session, err := a.requireOwnerSession(ctx, h)
 		if err != nil {
 			return nil, row, p, err
 		}

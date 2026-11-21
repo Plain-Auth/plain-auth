@@ -17,10 +17,10 @@ import (
 	"strings"
 	"time"
 
+	authn "github.com/FineStack/finestack-auth"
 	"github.com/go-webauthn/webauthn/protocol"
 	wa "github.com/go-webauthn/webauthn/webauthn"
 	"github.com/google/uuid"
-	authn "github.com/FineStack/finestack-auth"
 )
 
 // Record is the canonical stored passkey. CredentialID contains unpadded
@@ -158,7 +158,7 @@ func session(c authn.EndpointContext) (*authn.SessionResult, error) {
 	if u == nil {
 		return nil, ErrSession
 	}
-	return u, nil
+	return u, u.Session.RequireOwner()
 }
 func challengeCookie(c authn.EndpointContext, token string, age int) *http.Cookie {
 	cookie := c.Auth.SessionCookie(token, false)

@@ -22,6 +22,9 @@ import (
 
 // Auth is safe for concurrent use by application handlers.
 type Auth struct {
+	anonymous             *AnonymousOptions
+	admin                 *AdminOptions
+	adminStore            AdminStore
 	deviceSessionResponse SessionResponseFunc
 	deviceSessions        DeviceSessionStore
 	maxDeviceSessions     int
@@ -136,6 +139,25 @@ func New(opts Options) (*Auth, error) {
 	}
 	a := &Auth{opts: opts, now: time.Now, passwordSlots: make(chan struct{}, min(runtime.GOMAXPROCS(0), 4)), plugins: plugins}
 	for _, p := range opts.Plugins {
+		if p.admin != nil {
+			store, ok := opts.Store.(AdminStore)
+			if !ok {
+				return nil, errors.New("authn: admin requires an AdminStore")
+			}
+			a.adminStore, err = store.WithAdminConfig(p.admin.DefaultRole, p.admin.BannedUserMessage)
+			if err != nil {
+				return nil, err
+			}
+			a.admin = p.admin
+			a.opts.Store = a.adminStore
+			opts.Store = a.adminStore
+		}
+	}
+	for _, p := range opts.Plugins {
+
+		if p.anonymous != nil {
+			a.anonymous = p.anonymous
+		}
 		if p.SessionResponse != nil {
 			a.sessionResponse = p.SessionResponse
 			if p.ProjectDeviceSessions {
@@ -270,6 +292,9 @@ func (a *Auth) SignUpEmail(ctx context.Context, in SignUpInput, meta RequestMeta
 	}
 	now := a.now().UTC().Truncate(time.Millisecond)
 	user := User{ID: randomID(), Email: strings.ToLower(in.Email), Name: in.Name, Image: in.Image, CreatedAt: now, UpdatedAt: now}
+	if a.admin != nil {
+		user.AdminUserFields = &AdminUserFields{Role: a.admin.DefaultRole}
+	}
 	if a.factorStore != nil {
 		enabled := false
 		user.TwoFactorEnabled = &enabled
@@ -304,6 +329,9 @@ func (a *Auth) SignUpEmail(ctx context.Context, in SignUpInput, meta RequestMeta
 			slog.ErrorContext(ctx, "Could not deliver sign-up verification email")
 		}
 	}
+	if err := a.readGuestFlag(ctx, &user); err != nil {
+		return AuthResult{}, err
+	}
 	return AuthResult{User: user, Token: token}, nil
 }
 
@@ -325,6 +353,14 @@ func (a *Auth) SignInEmail(ctx context.Context, in SignInInput, meta RequestMeta
 	}
 	if !valid || user.ID == "" {
 		return AuthResult{}, &APIError{401, "INVALID_EMAIL_OR_PASSWORD", "Invalid email or password"}
+	}
+	if a.admin != nil && user.AdminUserFields != nil && user.Banned {
+		if user.BanExpires == nil || user.BanExpires.After(a.now()) {
+			return AuthResult{}, &APIError{403, "BANNED_USER", a.admin.BannedUserMessage}
+		}
+		user.Banned = false
+		user.BanReason = nil
+		user.BanExpires = nil
 	}
 	if a.opts.RequireEmailVerification && !user.EmailVerified {
 		if a.opts.SendVerificationOnSignIn && a.opts.SendVerificationEmail != nil {
@@ -352,6 +388,9 @@ func (a *Auth) SignInEmail(ctx context.Context, in SignInInput, meta RequestMeta
 	if err != nil {
 		return AuthResult{}, err
 	}
+	if err := a.readGuestFlag(ctx, &user); err != nil {
+		return AuthResult{}, err
+	}
 	return AuthResult{User: user, Token: token}, nil
 }
 
@@ -376,6 +415,9 @@ func (a *Auth) GetSession(ctx context.Context, headers http.Header) (*SessionRes
 }
 
 func (a *Auth) SignOut(ctx context.Context, headers http.Header) error {
+	if err := a.revokeGuestContinuation(ctx, headers); err != nil {
+		return err
+	}
 	token := a.cookieToken(headers)
 	if a.deviceSessions != nil {
 		devices := a.readDeviceCookies(headers)
@@ -399,8 +441,25 @@ func (a *Auth) requireSession(ctx context.Context, headers http.Header) (*Sessio
 	return s, err
 }
 
+// RequireOwner rejects temporary administrative impersonation for operations
+// that reveal credentials or alter the account's authentication or permissions.
+func (s Session) RequireOwner() error {
+	if s.ImpersonatedBy != nil {
+		return &APIError{403, "OWNER_SESSION_REQUIRED", "This operation requires the account owner's session"}
+	}
+	return nil
+}
+
+func (a *Auth) requireOwnerSession(ctx context.Context, headers http.Header) (*SessionResult, error) {
+	s, err := a.requireSession(ctx, headers)
+	if err != nil {
+		return nil, err
+	}
+	return s, s.Session.RequireOwner()
+}
+
 func (a *Auth) ListSessions(ctx context.Context, headers http.Header) ([]Session, error) {
-	current, err := a.requireSession(ctx, headers)
+	current, err := a.requireOwnerSession(ctx, headers)
 	if err != nil {
 		return nil, err
 	}
@@ -414,8 +473,7 @@ func (a *Auth) ListSessions(ctx context.Context, headers http.Header) ([]Session
 	}
 	sessions := make([]Session, 0, len(rows))
 	for _, row := range rows {
-		if row.ExpiresAt.After(now) {
-
+		if row.ExpiresAt.After(now) && row.ImpersonatedBy == nil {
 			sessions = append(sessions, row.Session)
 		}
 	}
@@ -423,7 +481,7 @@ func (a *Auth) ListSessions(ctx context.Context, headers http.Header) ([]Session
 }
 
 func (a *Auth) RevokeSession(ctx context.Context, h http.Header, token string) error {
-	s, err := a.requireSession(ctx, h)
+	s, err := a.requireOwnerSession(ctx, h)
 	if err != nil {
 		return err
 	}
@@ -431,7 +489,7 @@ func (a *Auth) RevokeSession(ctx context.Context, h http.Header, token string) e
 }
 
 func (a *Auth) RevokeOtherSessions(ctx context.Context, h http.Header) error {
-	s, err := a.requireSession(ctx, h)
+	s, err := a.requireOwnerSession(ctx, h)
 	if err != nil {
 		return err
 	}
@@ -439,7 +497,7 @@ func (a *Auth) RevokeOtherSessions(ctx context.Context, h http.Header) error {
 }
 
 func (a *Auth) RevokeSessions(ctx context.Context, h http.Header) error {
-	s, err := a.requireSession(ctx, h)
+	s, err := a.requireOwnerSession(ctx, h)
 	if err != nil {
 		return err
 	}

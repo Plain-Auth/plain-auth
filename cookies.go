@@ -93,15 +93,19 @@ func (a *Auth) SessionCookie(token string, persistent bool) *http.Cookie {
 	return a.sessionCookie(token, persistent)
 }
 
-func (a *Auth) setSessionCookie(w http.ResponseWriter, r *http.Request, token string, persistent bool) {
-	a.addSessionCookieHeaders(w.Header(), r, token, persistent)
+func (a *Auth) setSessionCookie(w http.ResponseWriter, r *http.Request, token string, persistent bool) error {
+	return a.addSessionCookieHeaders(w.Header(), r, token, persistent)
 }
-func (a *Auth) addSessionCookieHeaders(headers http.Header, r *http.Request, token string, persistent bool) {
+func (a *Auth) addSessionCookieHeaders(headers http.Header, r *http.Request, token string, persistent bool) error {
+	if err := a.finishAnonymous(r, token); err != nil {
+		return err
+	}
 	a.writeSessionCookieHeaders(headers, r, token, persistent)
 	a.addOneTimeTokenHeader(headers, r, token)
 	if a.deviceSessions != nil {
 		a.rememberDeviceSession(headers, r, token, persistent)
 	}
+	return nil
 }
 
 func (a *Auth) writeSessionCookieHeaders(headers http.Header, r *http.Request, token string, persistent bool) {

@@ -11,7 +11,7 @@ func (c EndpointContext) Store() Store { return c.Auth.opts.Store }
 // RequireFreshSession checks the authoritative session and the configured age for
 // a sensitive operation such as enrolling an additional credential.
 func (c EndpointContext) RequireFreshSession() (*SessionResult, error) {
-	user, err := c.Auth.requireSession(c.Request.Context(), c.Request.Header)
+	user, err := c.Auth.requireOwnerSession(c.Request.Context(), c.Request.Header)
 	if err != nil {
 		return nil, err
 	}
@@ -38,7 +38,9 @@ func (c EndpointContext) IssueSession(userID string, commit func(context.Context
 	if err != nil {
 		return nil, err
 	}
-	a.addSessionCookieHeaders(c.ResponseHeader, r, session.Token, true)
+	if err := a.addSessionCookieHeaders(c.ResponseHeader, r, session.Token, true); err != nil {
+		return nil, err
+	}
 	return result, nil
 }
 

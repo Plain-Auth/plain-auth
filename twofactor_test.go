@@ -8,12 +8,12 @@ import (
 
 func TestFactorEncryptionAndRFC6238Vector(t *testing.T) {
 	const rawSecret = "12345678901234567890"
-	step, match, err := factorTOTPStep([]byte(rawSecret), "287082", time.Unix(59, 0))
+	step, match, err := (FactorTOTPOptions{Digits: 6, Period: 30 * time.Second}).step([]byte(rawSecret), "287082", time.Unix(59, 0))
 	if err != nil || !match || step != 1 {
 		t.Fatal("RFC 6238 test vector failed")
 	}
 	for _, wrong := range []string{"", "12345", "12345x", "000000", "94287082"} {
-		if _, valid, err := factorTOTPStep([]byte(rawSecret), wrong, time.Unix(59, 0)); err != nil || valid {
+		if _, valid, err := (FactorTOTPOptions{Digits: 6, Period: 30 * time.Second}).step([]byte(rawSecret), wrong, time.Unix(59, 0)); err != nil || valid {
 			t.Fatal("accepted malformed or incorrect code")
 		}
 	}

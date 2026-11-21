@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"errors"
 	"strings"
+	"time"
 
 	"github.com/go-sql-driver/mysql"
 	authn "github.com/FineStack/finestack-auth"
@@ -61,6 +62,11 @@ func (s *Store) CreateUser(ctx context.Context, user authn.User, passwordHash st
 	if err != nil {
 		return err
 	}
+	if s.adminSchema {
+		if _, err = tx.ExecContext(ctx, s.bind(`UPDATE "user" SET "role"=? WHERE "id"=?`), s.defaultAdminRole(), user.ID); err != nil {
+			return err
+		}
+	}
 	if initial != nil {
 		if err := s.insertSession(ctx, tx, *initial); err != nil {
 			return err
@@ -79,10 +85,18 @@ func userFields(u *authn.User) []any {
 func (s *Store) Credential(ctx context.Context, email string) (authn.User, string, error) {
 	var u authn.User
 	var passwordHash string
-	row := s.db.QueryRowContext(ctx, s.bind(`SELECT `+userColumns+`, a."password"
-		FROM "user" u JOIN "account" a ON a."userId" = u."id"
-		WHERE u."email" = ? AND a."providerId" = 'credential' AND a."accountId" = u."id" AND a."password" IS NOT NULL`), strings.ToLower(email))
-	err := row.Scan(append(userFields(&u), &passwordHash)...)
+	columns := userColumns
+	fields := userFields(&u)
+	var finish func()
+	if s.adminRole != "" {
+		columns += "," + adminUserColumns
+		fields, finish = s.adminUserScanner(&u)
+	}
+	row := s.db.QueryRowContext(ctx, s.bind(`SELECT `+columns+`,a."password" FROM "user" u JOIN "account" a ON a."userId"=u."id" WHERE u."email"=? AND a."providerId"='credential' AND a."accountId"=u."id" AND a."password" IS NOT NULL`), strings.ToLower(email))
+	err := row.Scan(append(fields, &passwordHash)...)
+	if err == nil && finish != nil {
+		finish()
+	}
 	if errors.Is(err, sql.ErrNoRows) {
 		err = authn.ErrNotFound
 	}
@@ -94,16 +108,28 @@ type executor interface {
 }
 
 func (s *Store) insertSession(ctx context.Context, db executor, ss authn.StoredSession) error {
-	_, err := db.ExecContext(ctx, s.bind(`INSERT INTO "session"
-        ("id","userId","token","ipAddress","userAgent","createdAt","updatedAt","expiresAt")
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`), ss.ID, ss.UserID, ss.Token, ss.IPAddress, ss.UserAgent,
-		s.date(ss.CreatedAt), s.date(ss.UpdatedAt), s.date(ss.ExpiresAt))
+	cols := `"id","userId","token","ipAddress","userAgent","createdAt","updatedAt","expiresAt"`
+	params := "?,?,?,?,?,?,?,?"
+	args := []any{ss.ID, ss.UserID, ss.Token, ss.IPAddress, ss.UserAgent, s.date(ss.CreatedAt), s.date(ss.UpdatedAt), s.date(ss.ExpiresAt)}
+	if s.adminSchema {
+		tx, ok := db.(*sql.Tx)
+		if !ok {
+			return errors.New("sqlstore: session creation requires a transaction")
+		}
+		if err := s.adminSessionGate(ctx, tx, ss.UserID, time.Now()); err != nil {
+			return err
+		}
+		cols += `,"impersonatedBy"`
+		params += ",?"
+		args = append(args, ss.ImpersonatedBy)
+	}
+	_, err := db.ExecContext(ctx, s.bind(`INSERT INTO "session" (`+cols+`) VALUES (`+params+`)`), args...)
 	return err
 }
 
 // CreateSession saves a session using its token.
 func (s *Store) CreateSession(ctx context.Context, ss authn.StoredSession) error {
-	if s.dialect != "mysql" {
+	if s.dialect != "mysql" && !s.adminSchema {
 		return s.insertSession(ctx, s.db, ss)
 	}
 	// Some MySQL versions ignore inline REFERENCES. Lock the canonical owner
@@ -130,6 +156,9 @@ func sessionFields(ss *authn.StoredSession) []any {
 
 // Session retrieves session state and its owner. The auth service checks expiry.
 func (s *Store) Session(ctx context.Context, token string) (authn.StoredSession, authn.User, error) {
+	if s.adminSchema {
+		return s.adminSession(ctx, s.db, token)
+	}
 	var ss authn.StoredSession
 	var u authn.User
 	row := s.db.QueryRowContext(ctx, s.bind(`SELECT `+sessionColumns+`, `+userColumns+`
@@ -143,7 +172,11 @@ func (s *Store) Session(ctx context.Context, token string) (authn.StoredSession,
 
 // ListSessions retrieves the user's stored sessions in creation order, newest first.
 func (s *Store) ListSessions(ctx context.Context, userID string) ([]authn.StoredSession, error) {
-	rows, err := s.db.QueryContext(ctx, s.bind(`SELECT `+sessionColumns+` FROM "session" s
+	columns := sessionColumns
+	if s.adminSchema {
+		columns += `,s."impersonatedBy"`
+	}
+	rows, err := s.db.QueryContext(ctx, s.bind(`SELECT `+columns+` FROM "session" s
 		WHERE s."userId" = ? ORDER BY s."createdAt" DESC, s."id"`), userID)
 	if err != nil {
 		return nil, err
@@ -152,7 +185,11 @@ func (s *Store) ListSessions(ctx context.Context, userID string) ([]authn.Stored
 	sessions := []authn.StoredSession{}
 	for rows.Next() {
 		var ss authn.StoredSession
-		if err := rows.Scan(sessionFields(&ss)...); err != nil {
+		fields := sessionFields(&ss)
+		if s.adminSchema {
+			fields = append(fields, &ss.ImpersonatedBy)
+		}
+		if err := rows.Scan(fields...); err != nil {
 			return nil, err
 		}
 		sessions = append(sessions, ss)

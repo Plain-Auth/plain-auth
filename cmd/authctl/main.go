@@ -23,6 +23,8 @@ const usage = `Usage: authctl <command>
   check [schema] --dialect sqlite|postgres|mysql  Check target columns without writing to the database
   generate  --dialect sqlite|postgres|mysql     Write the auth schema to stdout
   migrate   --dialect sqlite|postgres|mysql     Apply the schema to AUTH_DSN
+  create-admin --dialect D --name N --email E --password-stdin
+                                               Create the first administrator in AUTH_DSN
   secret                                       Print a new signing secret
 
   check, generate and migrate accept --plugins with comma-separated schema profiles.
@@ -43,6 +45,8 @@ func run(ctx context.Context, args []string, out, errOut io.Writer) error {
 		return err
 	}
 	switch args[0] {
+	case "create-admin":
+		return createAdmin(ctx, args[1:], os.Stdin, out, errOut)
 	case "init":
 		return initConfig(args[1:], out, errOut)
 	case "info":

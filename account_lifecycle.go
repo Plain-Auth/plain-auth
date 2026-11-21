@@ -31,7 +31,7 @@ func (a *Auth) lifecycleStore() (AccountLifecycleStore, error) {
 // SetPassword is a server-only operation for adding a first credential to an
 // existing account. An existing password requires ChangePassword instead.
 func (a *Auth) SetPassword(ctx context.Context, h http.Header, password string) error {
-	session, err := a.requireSession(ctx, h)
+	session, err := a.requireOwnerSession(ctx, h)
 	if err != nil {
 		return err
 	}
@@ -64,7 +64,7 @@ func (a *Auth) DeleteUser(ctx context.Context, h http.Header, in DeleteUserInput
 	if !a.opts.DeleteUserEnabled {
 		return false, &APIError{404, "NOT_FOUND", "Not found"}
 	}
-	session, err := a.requireSession(ctx, h)
+	session, err := a.requireOwnerSession(ctx, h)
 	if err != nil {
 		return false, err
 	}
@@ -112,7 +112,7 @@ func (a *Auth) ChangeEmail(ctx context.Context, h http.Header, newEmail, callbac
 	if !a.opts.ChangeEmailEnabled {
 		return &APIError{400, "CHANGE_EMAIL_DISABLED", "Change email is disabled"}
 	}
-	session, err := a.requireSession(ctx, h)
+	session, err := a.requireOwnerSession(ctx, h)
 	if err != nil {
 		return err
 	}

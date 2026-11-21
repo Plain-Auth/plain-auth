@@ -53,6 +53,7 @@ type OAuthProvider struct {
 // OAuthFlow is the temporary state of a browser authorization. Binding ties a
 // request to the initiating browser, provider and existing session.
 type OAuthFlow struct {
+	AnonymousSessionProof                             string `json:",omitempty"`
 	State, Binding, Provider, Verifier, Nonce         string
 	CallbackURL, ErrorCallbackURL, NewUserCallbackURL string
 	LinkUserID                                        string

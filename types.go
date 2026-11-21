@@ -71,8 +71,9 @@ type Options struct {
 
 // User is the public account profile shared by all authentication methods.
 type User struct {
-	IsAnonymous      *bool     `json:"isAnonymous,omitempty"`
-	LastLoginMethod  *string   `json:"lastLoginMethod,omitempty"`
+	LastLoginMethod *string `json:"lastLoginMethod,omitempty"`
+	IsAnonymous     *bool   `json:"isAnonymous,omitempty"`
+	*AdminUserFields
 	TwoFactorEnabled *bool     `json:"twoFactorEnabled,omitempty"`
 	ID               string    `json:"id"`
 	Name             string    `json:"name"`
@@ -85,6 +86,7 @@ type User struct {
 
 // Session identifies one authenticated login.
 type Session struct {
+	ImpersonatedBy       *string   `json:"impersonatedBy,omitempty"`
 	ActiveTeamID         *string   `json:"activeTeamId,omitempty"`
 	ActiveOrganizationID *string   `json:"activeOrganizationId,omitempty"`
 	ID                   string    `json:"id"`

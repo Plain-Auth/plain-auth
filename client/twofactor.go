@@ -42,21 +42,39 @@ type FactorResult struct {
 }
 
 func (c *Client) VerifyTOTP(ctx context.Context, code string) (*FactorResult, error) {
-	var result FactorResult
-	if err := c.Do(ctx, http.MethodPost, "/two-factor/verify-totp", map[string]string{"code": code}, &result); err != nil {
-		return nil, err
-	}
-	return &result, nil
+	return c.VerifyTOTPWithTrust(ctx, code, false)
 }
 
 func (c *Client) VerifyBackupCode(ctx context.Context, code string, disableSession bool) (*FactorResult, error) {
-	var result FactorResult
-	if err := c.Do(ctx, http.MethodPost, "/two-factor/verify-backup-code", map[string]any{"code": code, "disableSession": disableSession}, &result); err != nil {
-		return nil, err
-	}
-	return &result, nil
+	return c.VerifyBackupCodeWithTrust(ctx, code, disableSession, false)
 }
 
 func (c *Client) DisableTOTP(ctx context.Context, password string) error {
 	return c.Do(ctx, http.MethodPost, "/two-factor/disable", map[string]string{"password": password}, nil)
+}
+
+// EnableDeliveredFactor enrolls the account for the host's out-of-band sender.
+func (c *Client) EnableDeliveredFactor(ctx context.Context, password string) error {
+	return c.Do(ctx, http.MethodPost, "/two-factor/enable", map[string]string{"password": password, "method": "otp"}, nil)
+}
+func (c *Client) SendFactorOTP(ctx context.Context) error {
+	return c.Do(ctx, http.MethodPost, "/two-factor/send-otp", map[string]any{}, nil)
+}
+
+// VerifyFactorOTP consumes the delivered code for this browser's session or challenge.
+func (c *Client) VerifyFactorOTP(ctx context.Context, code string, trustDevice bool) (*FactorResult, error) {
+	return c.verifyFactor(ctx, "/two-factor/verify-otp", map[string]any{"code": code, "trustDevice": trustDevice})
+}
+func (c *Client) VerifyTOTPWithTrust(ctx context.Context, code string, trustDevice bool) (*FactorResult, error) {
+	return c.verifyFactor(ctx, "/two-factor/verify-totp", map[string]any{"code": code, "trustDevice": trustDevice})
+}
+func (c *Client) VerifyBackupCodeWithTrust(ctx context.Context, code string, disableSession, trustDevice bool) (*FactorResult, error) {
+	return c.verifyFactor(ctx, "/two-factor/verify-backup-code", map[string]any{"code": code, "disableSession": disableSession, "trustDevice": trustDevice})
+}
+func (c *Client) verifyFactor(ctx context.Context, path string, body map[string]any) (*FactorResult, error) {
+	var result FactorResult
+	if err := c.Do(ctx, http.MethodPost, path, body, &result); err != nil {
+		return nil, err
+	}
+	return &result, nil
 }

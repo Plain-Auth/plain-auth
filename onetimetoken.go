@@ -100,7 +100,7 @@ func (a *Auth) GenerateOneTimeToken(ctx context.Context, h http.Header) (string,
 	if opts == nil {
 		return "", &APIError{404, "NOT_FOUND", "One-time token plugin is not enabled"}
 	}
-	session, err := a.requireSession(ctx, h)
+	session, err := a.requireOwnerSession(ctx, h)
 	if err != nil {
 		return "", err
 	}

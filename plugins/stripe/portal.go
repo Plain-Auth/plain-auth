@@ -29,6 +29,9 @@ func portalEndpoint(opts PortalOptions) auth.Endpoint {
 		if session == nil {
 			return nil, &auth.APIError{Status: 401, Code: "UNAUTHORIZED", Message: "Unauthorized"}
 		}
+		if err := session.Session.RequireOwner(); err != nil {
+			return nil, err
+		}
 		for k := range c.Body {
 			switch k {
 			case "referenceId", "customerType", "returnUrl", "locale":

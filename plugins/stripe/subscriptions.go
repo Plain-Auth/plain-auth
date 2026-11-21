@@ -99,6 +99,9 @@ func billingOwner(c auth.EndpointContext, reference, kind string) (*auth.Session
 	if ss == nil {
 		return nil, ErrCheckoutSession
 	}
+	if err := ss.Session.RequireOwner(); err != nil {
+		return nil, err
+	}
 	if (reference != "" && reference != ss.User.ID) || (kind != "" && kind != "user") {
 		return nil, billingError(403, "UNAUTHORIZED", "This billing account is unavailable")
 	}

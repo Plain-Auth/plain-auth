@@ -205,7 +205,9 @@ func (o MagicLinkOptions) verify(c EndpointContext) (any, error) {
 		return nil, err
 	}
 	session.UserID = user.ID
-	a.addSessionCookieHeaders(c.ResponseHeader, r, session.Token, true)
+	if err := a.addSessionCookieHeaders(c.ResponseHeader, r, session.Token, true); err != nil {
+		return nil, err
+	}
 	if q.Get("callbackURL") == "" {
 		result, err := a.withSessionPlugins(r.Context(), session.Session, user)
 		if err != nil {
