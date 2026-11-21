@@ -184,3 +184,8 @@ export async function dynamicContract(t, goFixture) {
     await call("GET","Users","application",401);await call("GET","Users","local-directory-only",200);
   }
 }
+
+export async function roleProfileContract(t, goFixture) {
+  const { directoryRoles } = await import("./scim-roles.mjs");
+  await directoryRoles(t, {goFixture, reference, client});
+}

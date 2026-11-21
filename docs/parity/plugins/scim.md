@@ -152,14 +152,21 @@
   - [ ] `SCIM_REQUIRES_NATIVE_TRANSACTIONS`
   - [ ] `POST /scim/v2/Users`
     - [x] Create, reject conflicts, reprovision inactive Users and restore an external identity after deletion ([test](../../../conformance/scim-contract.mjs#L45))
+    - [x] Normalize directory role values, type and primary flags and replace the role profile when reprovisioning the same inactive external identity ([test](../../../conformance/scim-roles.mjs#L59))
   - [ ] `GET /scim/v2/Users/:userId`
     - [x] Read a scoped User written by the other implementation from shared SQLite ([test](../../../conformance/scim-contract.mjs#L45))
+    - [x] Read canonical directory role arrays from SQLite records written by either implementation ([test](../../../conformance/scim-roles.mjs#L75))
   - [ ] `GET /scim/v2/Users`
     - [x] Page and filter by username, external ID or normalized email with a top-level attribute projection ([test](../../../adapters/sqlstore/scim_test.go#L33))
+    - [x] Select only the requested role subattributes when listing User resources ([test](../../../adapters/sqlstore/scim_roles_test.go#L71))
   - [ ] `PUT /scim/v2/Users/:userId`
     - [x] Replace a User and reset its verified flag when the managed email changes ([test](../../../adapters/sqlstore/scim_test.go#L33))
+    - [x] Validate role count, primary flags, unique defined types and Unicode field limits before replacing a profile ([test](../../../plugins/scim/roles_test.go#L17))
+    - [x] Reject a directory profile exceeding the MySQL text capacity without changing the saved profile ([test](../../../adapters/sqlstore/scim_roles_test.go#L145))
   - [ ] `PATCH /scim/v2/Users/:userId`
     - [x] Apply concurrent supported attribute changes without losing updates and roll back an invalid operation sequence ([test](../../../adapters/sqlstore/scim_test.go#L33))
+    - [x] Apply full, selected and pathless role updates atomically with primary reassignment and null removal ([test](../../../conformance/scim-roles.mjs#L51))
+    - [x] Serialize independent role updates across connections while preserving application and organization authority ([test](../../../adapters/sqlstore/scim_roles_test.go#L131))
   - [ ] `DELETE /scim/v2/Users/:userId`
     - [x] Revoke existing sessions, retain the stable external identity and isolate another directory ([test](../../../adapters/sqlstore/scim_test.go#L33))
 

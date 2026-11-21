@@ -5,9 +5,11 @@ import (
 	"net/mail"
 	"strings"
 	"unicode/utf16"
+
+	"github.com/Stonewrit/stonewrit-auth/internal/scimjson"
 )
 
-var userFields = strings.Fields("schemas userName displayName externalId name emails active title userType preferredLanguage locale timezone")
+var userFields = strings.Fields("schemas userName displayName externalId name emails active title userType preferredLanguage locale timezone roles")
 var nameFields = strings.Fields("formatted givenName familyName middleName honorificPrefix honorificSuffix")
 var emailFields = strings.Fields("type primary value")
 
@@ -137,7 +139,10 @@ func emailValues(raw any, user string) ([]any, string, error) {
 func normalize(input any) (p Profile, err error) {
 	if m, ok := input.(map[string]any); ok {
 		for key, value := range m {
-			if value != nil && field(key, []string{"phoneNumbers", "addresses", "roles", "entitlements", "enterprise"}) != "" {
+			if strings.EqualFold(key, "active") && value == nil {
+				return p, invalid("invalidValue", "active cannot be null")
+			}
+			if value != nil && field(key, []string{"phoneNumbers", "addresses", "entitlements", "enterprise"}) != "" {
 				return p, invalid("invalidValue", "Unsupported User attribute "+key)
 			}
 		}
@@ -211,6 +216,14 @@ func normalize(input any) (p Profile, err error) {
 		}
 	}
 	p.Attributes = map[string]any{"schemas": schemas, "name": name, "emails": emails}
+	if raw, provided := m["roles"]; provided {
+		roles, err := normalizeRoles(raw)
+		if err != nil {
+			return p, err
+		}
+		p.Attributes["roles"] = roles
+		m["roles"] = roles
+	}
 	for _, k := range []string{"title", "userType", "preferredLanguage", "locale", "timezone"} {
 		if v := m[k]; v != nil {
 			if a, ok := v.([]any); ok && len(a) == 1 {
@@ -223,6 +236,16 @@ func normalize(input any) (p Profile, err error) {
 			p.Attributes[k], err = stringValue(v, limit)
 			if err != nil {
 				return p, err
+			}
+		}
+	}
+	if _, hasRoles := p.Attributes["roles"]; hasRoles {
+		// Bound both the normalized wire document and the canonical payload a
+		// second directory server will read from serializedAttributes.
+		for _, document := range []map[string]any{m, p.Attributes} {
+			encoded, err := scimjson.Marshal(document)
+			if err != nil || len(utf16.Encode([]rune(string(encoded)))) > 65_535 {
+				return p, invalid("invalidValue", "SCIM User attributes exceed the supported serialized size")
 			}
 		}
 	}

@@ -123,9 +123,9 @@ The directory User that supplies an account’s profile can update its name and 
 
 ## User queries and updates
 
-Collections accept one-based `startIndex` and `count` up to 100. Use equality filters on `id`, `userName`, `externalId`, `emails.value` and `emails[type eq "work"].value`. Combine up to ten conditions with `and`. Choose `attributes` or `excludedAttributes` for a comma-separated list of top-level fields. Responses always include `id` and `schemas`.
+Collections accept one-based `startIndex` and `count` up to 100. Use equality filters on `id`, `userName`, `externalId`, `emails.value` and `emails[type eq "work"].value`. Combine up to ten conditions with `and`. Choose `attributes` or `excludedAttributes` for a comma-separated list of top-level fields or individual role fields such as `roles.value`. Responses always include `id` and `schemas`.
 
-PATCH accepts `add`, `replace` and `remove` for supported top-level attributes and individual name subattributes, plus pathless add and replace maps. Whole email arrays can be replaced and individual entries appended. The handler supports the core name, display name, external ID, username, active flag, emails, title, user type, preferred language, locale and timezone. For example, send this body to `PATCH /Users/{id}` to deactivate the User.
+PATCH accepts `add`, `replace` and `remove` for supported top-level attributes and individual name subattributes, plus pathless add and replace maps. Whole email arrays can be replaced and individual entries appended. The handler supports the core name, display name, external ID, username, active flag, emails, title, user type, preferred language, locale, timezone and directory roles. For example, send this body to `PATCH /Users/{id}` to deactivate the User.
 
 ```json
 {
@@ -137,6 +137,25 @@ PATCH accepts `add`, `replace` and `remove` for supported top-level attributes a
 A malformed filter, invalid attribute, unsupported patch path or invalid JSON body returns 400. Missing, expired or unknown credentials return 401 with a bearer challenge. Valid credentials without the required scope return 403. Unsupported request media returns 415. Internal storage errors return a generic protocol error.
 
 A User imported with existing application role grants returns 409 on a directory mutation so its configured role reconciler can handle the change.
+
+## User profile roles
+
+Send `roles` as an array on a User. Each entry requires `value` and can include `display`, `type` and `primary`. The handler trims role text, lowercases defined types and accepts Boolean flags or the strings `"true"` and `"false"` without regard to case. A User may have up to ten entries, at most one primary and at most one entry per defined type. Multiple entries may omit their type. Values and display names allow 1,024 Unicode code points, and types allow 256. The serialized User attribute limit is 65,535 UTF-16 code units. MySQL's canonical `TEXT` column also limits the stored UTF-8 payload to 65,535 bytes.
+
+For example, this PATCH assigns a directory role and marks it primary. The preceding primary entry becomes secondary.
+
+```json
+{
+  "schemas": ["urn:ietf:params:scim:api:messages:2.0:PatchOp"],
+  "Operations": [
+    {"op": "add", "path": "roles", "value": {"value": "finance-reader", "type": "work", "primary": true}}
+  ]
+}
+```
+
+A PATCH can replace or remove the whole array, one selected entry or a subattribute. Use `roles[type eq "work"].display` to select a label or `roles[primary eq true]` to select explicitly primary entries. A matching complex record merges supplied fields. A missing selection can create an entry if the result supplies its required value. Removing a missing selection succeeds. To clear roles, use `remove` on `roles` or replace it with `null`. Assigning `[]` preserves an explicit empty array.
+
+A PUT or a same-external-ID POST that reactivates an inactive User replaces the role profile. Changing only `active` via PATCH preserves the existing roles. Other connections cannot access the directory record. Application account roles, organization memberships and authorization grants keep their existing values when directory profile roles change. [Wire comparison](../conformance/scim-roles.mjs) · [Three-database tests](../adapters/sqlstore/scim_roles_test.go)
 
 ## Groups and memberships
 
@@ -159,4 +178,4 @@ PUT replaces the Group profile and its direct member set. PATCH supports scalar 
 
 To accept Microsoft's classic Entra Group schema marker on creation, set `AcceptLegacyEntraGroupSchema: true` in `scim.Options`. The response and discovery documents use the core Group schema. [Group lifecycle and concurrency tests](../adapters/sqlstore/scim_groups_test.go) · [Group PATCH and compatibility tests](../plugins/scim/groups_test.go)
 
-Role projection, Enterprise User attributes, nested User response projections, filtered User PATCH paths and SSO identity linking are tracked separately. [Provisioning checklist](parity/plugins/scim.md) · [SQL ownership and concurrency tests](../adapters/sqlstore/scim_test.go) · [Cross-runtime directory tests](../conformance/scim-contract.mjs)
+The checklist tracks Group-to-application role mapping, Enterprise User attributes, additional nested User attribute selections and PATCH paths, and SSO identity linking. [Provisioning checklist](parity/plugins/scim.md) · [SQL ownership and concurrency tests](../adapters/sqlstore/scim_test.go) · [Cross-runtime directory tests](../conformance/scim-contract.mjs)

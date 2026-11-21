@@ -1186,6 +1186,11 @@ test("the released organization client updates member roles on both servers", as
   await compareMemberRoles(t, {reference, goFixture, instrument});
 });
 
+test("SCIM User roles share canonical profile data and filtered PATCH behavior", async t => {
+  const {roleProfileContract} = await import("./scim-contract.mjs");
+  await roleProfileContract(t, goFixture);
+});
+
 test("the custom session client infers its configured response and public options", () => {
   const result = spawnSync(process.execPath, [
     join(harness, "node_modules/typescript/bin/tsc"), "--noEmit", "--strict", "--skipLibCheck",

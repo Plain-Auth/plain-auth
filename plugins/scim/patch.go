@@ -57,6 +57,16 @@ func patchProfile(r Record, ops []any) (Profile, error) {
 					return Profile{}, err
 				}
 			}
+		} else if op != "remove" && v["value"] == nil && isRolePath(withoutSchema(path, UserSchema)) {
+			// object drops null fields. An explicit null unassigns this role path,
+			// while a write with a missing value is invalid.
+			fields, _ := raw.(map[string]any)
+			if !hasRolePatchValue(fields) {
+				return Profile{}, invalid("invalidValue", "Patch value is required")
+			}
+			if err = patchValue(m, path, "remove", nil); err != nil {
+				return Profile{}, err
+			}
 		} else if err = patchValue(m, path, op, v["value"]); err != nil {
 			return Profile{}, err
 		}
@@ -66,6 +76,12 @@ func patchProfile(r Record, ops []any) (Profile, error) {
 func patchValue(m map[string]any, path, op string, value any) error {
 	if len(path) > len(UserSchema) && strings.EqualFold(path[:len(UserSchema)+1], UserSchema+":") {
 		path = path[len(UserSchema)+1:]
+	}
+	if isRolePath(path) {
+		if value == nil {
+			op = "remove"
+		}
+		return patchRole(m, path, op, value)
 	}
 	parts := strings.Split(path, ".")
 	name := field(parts[0], userFields)
@@ -122,4 +138,13 @@ func patchValue(m map[string]any, path, op string, value any) error {
 	}
 	target[name] = value
 	return nil
+}
+
+func hasRolePatchValue(fields map[string]any) bool {
+	for k := range fields {
+		if strings.EqualFold(k, "value") {
+			return true
+		}
+	}
+	return false
 }

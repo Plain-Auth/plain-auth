@@ -5699,6 +5699,11 @@
       "label": "Create, reject conflicts, reprovision inactive Users and restore an external identity after deletion",
       "test": "conformance/scim-contract.mjs",
       "marker": "export async function directoryContract("
+    },
+    {
+      "label": "Normalize directory role values, type and primary flags and replace the role profile when reprovisioning the same inactive external identity",
+      "test": "conformance/scim-roles.mjs",
+      "marker": "assert.deepEqual(reprovisioned.roles,"
     }
   ],
   "plugin/scim/GET /scim/v2/Users/:userId": [
@@ -5706,6 +5711,11 @@
       "label": "Read a scoped User written by the other implementation from shared SQLite",
       "test": "conformance/scim-contract.mjs",
       "marker": "export async function directoryContract("
+    },
+    {
+      "label": "Read canonical directory role arrays from SQLite records written by either implementation",
+      "test": "conformance/scim-roles.mjs",
+      "marker": "assert.deepEqual((await shared(\"GET\",path,200)).roles,longRoles)"
     }
   ],
   "plugin/scim/GET /scim/v2/Users": [
@@ -5713,6 +5723,11 @@
       "label": "Page and filter by username, external ID or normalized email with a top-level attribute projection",
       "test": "adapters/sqlstore/scim_test.go",
       "marker": "func TestSCIMDirectoryLifecycle("
+    },
+    {
+      "label": "Select only the requested role subattributes when listing User resources",
+      "test": "adapters/sqlstore/scim_roles_test.go",
+      "marker": "nested role selection:"
     }
   ],
   "plugin/scim/PUT /scim/v2/Users/:userId": [
@@ -5720,6 +5735,16 @@
       "label": "Replace a User and reset its verified flag when the managed email changes",
       "test": "adapters/sqlstore/scim_test.go",
       "marker": "func TestSCIMDirectoryLifecycle("
+    },
+    {
+      "label": "Validate role count, primary flags, unique defined types and Unicode field limits before replacing a profile",
+      "test": "plugins/scim/roles_test.go",
+      "marker": "Unicode value, normalized type or false primary changed"
+    },
+    {
+      "label": "Reject a directory profile exceeding the MySQL text capacity without changing the saved profile",
+      "test": "adapters/sqlstore/scim_roles_test.go",
+      "marker": "incorrect database text bound:"
     }
   ],
   "plugin/scim/PATCH /scim/v2/Users/:userId": [
@@ -5727,6 +5752,16 @@
       "label": "Apply concurrent supported attribute changes without losing updates and roll back an invalid operation sequence",
       "test": "adapters/sqlstore/scim_test.go",
       "marker": "func TestSCIMDirectoryLifecycle("
+    },
+    {
+      "label": "Apply full, selected and pathless role updates atomically with primary reassignment and null removal",
+      "test": "conformance/scim-roles.mjs",
+      "marker": "assert.deepEqual((await call(\"GET\",path,200)).roles,before)"
+    },
+    {
+      "label": "Serialize independent role updates across connections while preserving application and organization authority",
+      "test": "adapters/sqlstore/scim_roles_test.go",
+      "marker": "directory roles changed account authority:"
     }
   ],
   "plugin/scim/DELETE /scim/v2/Users/:userId": [

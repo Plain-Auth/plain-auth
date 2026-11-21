@@ -90,7 +90,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.serveGroups(w, r, d, id, single)
 		return
 	}
-	pr, err := projectQuery(r.URL.Query(), append([]string{"id", "meta"}, userFields...), UserSchema)
+	pr, err := projectQuery(r.URL.Query(), userProjectionFields, UserSchema)
 	if err != nil {
 		writeError(w, err)
 		return

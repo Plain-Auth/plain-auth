@@ -1,7 +1,6 @@
 package sqlstore
 
 import (
-	"bytes"
 	"context"
 	"crypto/rand"
 	"crypto/sha256"
@@ -15,38 +14,15 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Stonewrit/stonewrit-auth/internal/scimjson"
 	"github.com/Stonewrit/stonewrit-auth/plugins/scim"
 )
 
 var _ scim.Store = (*Store)(nil)
 
 func scimKey(parts ...string) string {
-	// JSON.stringify emits HTML and U+2028/U+2029 literally. Do not replace
-	// escaped backslashes in strings that contain a literal Unicode escape.
-	var buf bytes.Buffer
-	enc := json.NewEncoder(&buf)
-	enc.SetEscapeHTML(false)
-	_ = enc.Encode(parts)
-	data := bytes.TrimSuffix(buf.Bytes(), []byte{'\n'})
-	var canonical bytes.Buffer
-	for i := 0; i < len(data); i++ {
-		if data[i] == '\\' && i+1 < len(data) {
-			if bytes.HasPrefix(data[i:], []byte(`\u2028`)) {
-				canonical.WriteRune('\u2028')
-				i += 5
-				continue
-			}
-			if bytes.HasPrefix(data[i:], []byte(`\u2029`)) {
-				canonical.WriteRune('\u2029')
-				i += 5
-				continue
-			}
-			canonical.WriteByte(data[i])
-			i++
-		}
-		canonical.WriteByte(data[i])
-	}
-	sum := sha256.Sum256(canonical.Bytes())
+	data, _ := scimjson.Marshal(parts) // Encoding an array of strings cannot fail.
+	sum := sha256.Sum256(data)
 	return base64.RawURLEncoding.EncodeToString(sum[:])
 }
 func (s *Store) scimExact(col string) string {
@@ -253,9 +229,14 @@ func (s *Store) scimArgs(d scim.Directory, p scim.Profile, now time.Time) ([]any
 	if err != nil {
 		return nil, err
 	}
-	a, err := json.Marshal(p.Attributes)
+	a, err := scimjson.Marshal(p.Attributes)
 	if err != nil {
 		return nil, err
+	}
+	if _, hasRoles := p.Attributes["roles"]; hasRoles && s.dialect == "mysql" && len(a) > 65_535 {
+		// The canonical MySQL TEXT column also limits encoded bytes, whereas
+		// the protocol bounds the length of the serialized JSON string.
+		return nil, &scim.Error{Status: 400, Type: "invalidValue", Detail: "SCIM User attributes exceed the database text limit"}
 	}
 	return []any{p.UserName, scimKey("scim-user-name", d.ID, strings.ToLower(p.UserName)), p.PrimaryEmail, index(work), index(all), p.DisplayName, name["formatted"], name["givenName"], name["familyName"], string(e), string(a), external, key, p.Active, s.date(now)}, nil
 }

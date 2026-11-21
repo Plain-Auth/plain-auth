@@ -85,11 +85,42 @@ func projectQuery(q url.Values, fields []string, schema string) (projection, err
 }
 func (p projection) apply(m map[string]any) map[string]any {
 	if p.fields != nil {
+		roles, found := m["roles"]
 		for k := range m {
 			if k != "id" && k != "schemas" && p.fields[k] != p.include {
 				delete(m, k)
 			}
 		}
+		if found && !p.fields["roles"] && p.hasRoleSelection() {
+			rows, _ := roles.([]any)
+			selected := make([]any, 0, len(rows))
+			for _, row := range rows {
+				fields, _ := row.(map[string]any)
+				item := map[string]any{}
+				for key, value := range fields {
+					if p.fields["roles."+key] == p.include {
+						item[key] = value
+					}
+				}
+				if len(item) != 0 || !p.include {
+					selected = append(selected, item)
+				}
+			}
+			if len(selected) != 0 || !p.include {
+				m["roles"] = selected
+			}
+		}
 	}
 	return m
+}
+
+var userProjectionFields = append(append([]string{"id", "meta"}, userFields...), "roles.value", "roles.display", "roles.type", "roles.primary")
+
+func (p projection) hasRoleSelection() bool {
+	for _, f := range roleFields {
+		if p.fields["roles."+f] {
+			return true
+		}
+	}
+	return false
 }

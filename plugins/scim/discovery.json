@@ -213,6 +213,60 @@
         "mutability": "readWrite",
         "returned": "default",
         "uniqueness": "none"
+      },
+      {
+        "name": "roles",
+        "type": "complex",
+        "multiValued": true,
+        "description": "Roles for the User.",
+        "required": false,
+        "subAttributes": [
+          {
+            "name": "value",
+            "type": "string",
+            "multiValued": false,
+            "description": "The role value.",
+            "required": true,
+            "caseExact": false,
+            "mutability": "readWrite",
+            "returned": "default",
+            "uniqueness": "none"
+          },
+          {
+            "name": "display",
+            "type": "string",
+            "multiValued": false,
+            "description": "A human-readable role name.",
+            "required": false,
+            "caseExact": false,
+            "mutability": "readWrite",
+            "returned": "default",
+            "uniqueness": "none"
+          },
+          {
+            "name": "type",
+            "type": "string",
+            "multiValued": false,
+            "description": "A label indicating the attribute's function.",
+            "required": false,
+            "caseExact": false,
+            "mutability": "readWrite",
+            "returned": "default",
+            "uniqueness": "none"
+          },
+          {
+            "name": "primary",
+            "type": "boolean",
+            "multiValued": false,
+            "description": "Whether this is the primary value for the attribute.",
+            "required": false,
+            "mutability": "readWrite",
+            "returned": "default"
+          }
+        ],
+        "mutability": "readWrite",
+        "returned": "default",
+        "uniqueness": "none"
       }
     ]
   },
