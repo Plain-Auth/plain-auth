@@ -21,6 +21,11 @@
       "label": "Support the sliding session window, deferred writes and expiration",
       "test": "session_refresh_test.go",
       "marker": "func TestSessionRefreshWindow("
+    },
+    {
+      "label": "Expose the application credential type and keep the presented key out of browser session lookup",
+      "test": "adapters/sqlstore/apikey_session_test.go",
+      "marker": "raw application key authenticated through browser session lookup"
     }
   ],
   "core/signInEmail": [
@@ -408,6 +413,11 @@
       "label": "Update a signed-in profile",
       "test": "account_test.go",
       "marker": "profile update failed:"
+    },
+    {
+      "label": "Apply scoped application-key profile updates through a native call",
+      "test": "adapters/sqlstore/apikey_session_test.go",
+      "marker": "must(host.UpdateUser(ctx, http.Header{\"X-Api-Key\": {profile.Secret}},"
     }
   ],
   "core/verifyPassword": [
@@ -3714,6 +3724,11 @@
       "label": "Issue a user-owned key and return its secret to the official client",
       "test": "conformance/core.test.mjs",
       "marker": "the pinned API key client manages owner credentials on both runtimes"
+    },
+    {
+      "label": "Issue a key whose reference identifies the caller’s organization",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.equal(team.referenceId, org.id);"
     }
   ],
   "plugin/api-key/GET /api-key/get": [
@@ -3721,6 +3736,11 @@
       "label": "Return owner-visible metadata without the stored digest",
       "test": "conformance/core.test.mjs",
       "marker": "the pinned API key client manages owner credentials on both runtimes"
+    },
+    {
+      "label": "Reject a lookup under the wrong ownership configuration",
+      "test": "conformance/core.test.mjs",
+      "marker": "id: team.id, configId: \"default\""
     }
   ],
   "plugin/api-key/POST /api-key/update": [
@@ -3728,6 +3748,11 @@
       "label": "Change user-owned key settings using the pinned client",
       "test": "conformance/core.test.mjs",
       "marker": "the pinned API key client manages owner credentials on both runtimes"
+    },
+    {
+      "label": "Rename a key under its organization configuration",
+      "test": "conformance/core.test.mjs",
+      "marker": "configId: \"teams\", name: \"Deploy\""
     }
   ],
   "plugin/api-key/POST /api-key/delete": [
@@ -3735,6 +3760,11 @@
       "label": "Revoke the selected user-owned credential",
       "test": "conformance/core.test.mjs",
       "marker": "the pinned API key client manages owner credentials on both runtimes"
+    },
+    {
+      "label": "Revoke an organization key through the owner’s authorized session",
+      "test": "conformance/core.test.mjs",
+      "marker": "keyId: team.id, configId: \"teams\" })).success"
     }
   ],
   "plugin/api-key/GET /api-key/list": [
@@ -3742,6 +3772,11 @@
       "label": "Return the owner’s paginated API keys and total",
       "test": "conformance/core.test.mjs",
       "marker": "the pinned API key client manages owner credentials on both runtimes"
+    },
+    {
+      "label": "Filter organization keys and keep them out of personal results",
+      "test": "conformance/core.test.mjs",
+      "marker": "query: { organizationId: org.id } })).apiKeys[0].id"
     }
   ],
   "docs/content/docs/plugins/api-key/index.mdx#L89": [
@@ -3869,6 +3904,11 @@
       "label": "Create, retrieve, update, list and revoke user-owned keys with the official client",
       "test": "conformance/core.test.mjs",
       "marker": "the pinned API key client manages owner credentials on both runtimes"
+    },
+    {
+      "label": "Manage organization keys alongside separately authenticated automation clients",
+      "test": "conformance/core.test.mjs",
+      "marker": "official clients share organization key ownership and API-key sessions"
     }
   ],
   "plugin-symbol/api-key/ApiKeyConfigurationOptions/configId": [
@@ -3876,6 +3916,11 @@
       "label": "Scope key reads, verification and cleanup to the configured namespace",
       "test": "adapters/sqlstore/apikey_test.go",
       "marker": "expired cleanup crossed configuration boundary"
+    },
+    {
+      "label": "Prevent an existing ownership namespace from being reinterpreted",
+      "test": "adapters/sqlstore/apikey_session_test.go",
+      "marker": "organization namespace was reinterpreted as user credentials"
     }
   ],
   "plugin-symbol/api-key/ApiKeyConfigurationOptions/apiKeyHeaders": [
@@ -4065,6 +4110,233 @@
       "label": "Require verified email before starting Checkout when configured",
       "test": "adapters/sqlstore/stripe_management_test.go",
       "marker": "mustCode(err, 400, \"EMAIL_VERIFICATION_REQUIRED\")"
+    }
+  ],
+  "plugin-symbol/api-key/ApiKeyConfigurationOptions/enableSessionForAPIKeys": [
+    {
+      "label": "Authenticate a user for a single request and preserve the originating credential type",
+      "test": "adapters/sqlstore/apikey_session_test.go",
+      "marker": "decoded key session lost its credential type"
+    },
+    {
+      "label": "Complete password-confirmed authenticator enrollment with the official client",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.equal(confirmed.user.id, user.id);"
+    },
+    {
+      "label": "Require explicit opt-in and reject ambiguous credentials across configurations sharing a header",
+      "test": "adapters/sqlstore/apikey_session_test.go",
+      "marker": "a key authenticated a session without opt-in"
+    }
+  ],
+  "plugin-symbol/api-key/ApiKeyConfigurationOptions/references": [
+    {
+      "label": "Bind personal and organization keys to separate owners even when identifier values coincide",
+      "test": "adapters/sqlstore/apikey_session_test.go",
+      "marker": "deleting a user revoked an organization key with the same reference ID",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/api-key/advanced.mdx#L7": [
+    {
+      "label": "Read a request-scoped session, invite a member and enroll an authenticator",
+      "test": "conformance/core.test.mjs",
+      "marker": "official clients share organization key ownership and API-key sessions"
+    }
+  ],
+  "docs/content/docs/plugins/api-key/advanced.mdx#L16/User-Owned Keys Only": [
+    {
+      "label": "Reject a user-session request for an organization credential",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.equal(wrongOwner.error.code, \"INVALID_REFERENCE_ID_FROM_API_KEY\");",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/api-key/advanced.mdx#L20/Rate Limiting Note": [
+    {
+      "label": "Consume a one-use allowance exactly once for each auth request",
+      "test": "adapters/sqlstore/apikey_session_test.go",
+      "marker": "expectHTTP(req(\"get-session\", single.Secret, \"X-Api-Key\", nil), 429",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/api-key/advanced.mdx#L85": [
+    {
+      "label": "Select private and organization credentials on one auth mount",
+      "test": "conformance/core.test.mjs",
+      "marker": "official clients share organization key ownership and API-key sessions"
+    }
+  ],
+  "docs/content/docs/plugins/api-key/advanced.mdx#L95": [
+    {
+      "label": "Register a personal configuration and a separate organization configuration",
+      "test": "conformance/core.test.mjs",
+      "marker": "apiKeyHeaders: \"x-team-key\" },",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/api-key/advanced.mdx#L130": [
+    {
+      "label": "Create an organization key under its own explicitly selected configuration",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.equal(team.referenceId, org.id);",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/api-key/advanced.mdx#L163": [
+    {
+      "label": "Use the configured namespace for key retrieval, updates and deletion",
+      "test": "conformance/core.test.mjs",
+      "marker": "official clients share organization key ownership and API-key sessions"
+    }
+  ],
+  "docs/content/docs/plugins/api-key/advanced.mdx#L204": [
+    {
+      "label": "List an organization’s keys separately from personal keys",
+      "test": "adapters/sqlstore/apikey_session_test.go",
+      "marker": "aggregated organization page lost key",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/api-key/advanced.mdx#L245": [
+    {
+      "label": "Enforce ownership type, namespace and role permissions across three databases",
+      "test": "adapters/sqlstore/apikey_session_test.go",
+      "marker": "func TestOrgAPIKeyAndEphemeralSession("
+    }
+  ],
+  "docs/content/docs/plugins/api-key/advanced.mdx#L249": [
+    {
+      "label": "Bind ownership type to the configuration across service restarts",
+      "test": "adapters/sqlstore/apikey_session_test.go",
+      "marker": "organization namespace was reinterpreted as user credentials",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/api-key/advanced.mdx#L275": [
+    {
+      "label": "Issue a key to the selected organization and retain it when an unrelated user is deleted",
+      "test": "adapters/sqlstore/apikey_session_test.go",
+      "marker": "deleting a user revoked an organization key with the same reference ID",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/api-key/advanced.mdx#L292/Session Mocking Limitation": [
+    {
+      "label": "Reject an organization identity on a user session endpoint",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.equal(wrongOwner.error.code, \"INVALID_REFERENCE_ID_FROM_API_KEY\");",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/api-key/advanced.mdx#L295": [
+    {
+      "label": "Require a current membership and the management grant for each action",
+      "test": "adapters/sqlstore/apikey_session_test.go",
+      "marker": "func TestOrgAPIKeyAndEphemeralSession(",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/api-key/advanced.mdx#L302": [
+    {
+      "label": "Enforce independent create, read, update and delete grants",
+      "test": "adapters/sqlstore/apikey_session_test.go",
+      "marker": "func TestOrgAPIKeyAndEphemeralSession(",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/api-key/advanced.mdx#L308/Create": [
+    {
+      "label": "Issue a key for a member granted create access",
+      "test": "adapters/sqlstore/apikey_session_test.go",
+      "marker": "written, e := reader.CreateAPIKey(ctx,",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/api-key/advanced.mdx#L309/Read/List": [
+    {
+      "label": "List keys with the member’s current read grant",
+      "test": "adapters/sqlstore/apikey_session_test.go",
+      "marker": "aggregated organization page lost key",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/api-key/advanced.mdx#L310/Update": [
+    {
+      "label": "Change a key with a configured member update grant",
+      "test": "adapters/sqlstore/apikey_session_test.go",
+      "marker": "_, e = reader.UpdateAPIKey(ctx,",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/api-key/advanced.mdx#L311/Delete": [
+    {
+      "label": "Revoke with the member’s delete grant",
+      "test": "adapters/sqlstore/apikey_session_test.go",
+      "marker": "must(reader.DeleteAPIKey(ctx, written.ID, \"teams\"))",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/api-key/advanced.mdx#L313": [
+    {
+      "label": "Combine static grants from multiple roles and pick up membership downgrades",
+      "test": "adapters/sqlstore/apikey_session_test.go",
+      "marker": "insertMember(readerUser.User.ID, \"reader\", \"member,auditor\")"
+    }
+  ],
+  "docs/content/docs/plugins/api-key/advanced.mdx#L369/Owner Access": [
+    {
+      "label": "Give the organization creator role full key management",
+      "test": "conformance/core.test.mjs",
+      "marker": "official clients share organization key ownership and API-key sessions",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/api-key/advanced.mdx#L372": [
+    {
+      "label": "Apply independent read-only and management grants on a shared namespace",
+      "test": "adapters/sqlstore/apikey_session_test.go",
+      "marker": "func TestOrgAPIKeyAndEphemeralSession(",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/api-key/advanced.mdx#L395": [
+    {
+      "label": "Identify a nonmember separately from a member lacking the needed grant",
+      "test": "adapters/sqlstore/apikey_session_test.go",
+      "marker": "func TestOrgAPIKeyAndEphemeralSession(",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/api-key/advanced.mdx#L399/`USER_NOT_MEMBER_OF_ORGANIZATION`": [
+    {
+      "label": "Refuse management by someone outside the group",
+      "test": "adapters/sqlstore/apikey_session_test.go",
+      "marker": "code(e, \"USER_NOT_MEMBER_OF_ORGANIZATION\")",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/api-key/advanced.mdx#L400/`INSUFFICIENT_API_KEY_PERMISSIONS`": [
+    {
+      "label": "Return the authorization error for members without delete rights",
+      "test": "adapters/sqlstore/apikey_session_test.go",
+      "marker": "code(reader.DeleteAPIKey(ctx, teamKey.ID, \"teams\"), \"INSUFFICIENT_API_KEY_PERMISSIONS\")",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/api-key/advanced.mdx#L402": [
+    {
+      "label": "Expose the organization as the key’s reference",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.equal(team.referenceId, org.id);",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/api-key/reference.mdx#L365": [
+    {
+      "label": "Recheck the current grants before committing an authorized mutation",
+      "test": "adapters/sqlstore/apikey_session_test.go",
+      "marker": "scope downgrade during request still created an invitation"
     }
   ]
 }

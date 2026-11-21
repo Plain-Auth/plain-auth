@@ -1,6 +1,6 @@
 # API keys
 
-A signed-in user can issue an application credential, see its name and starting characters, disable it or revoke it. Creation returns the full secret once. The database keeps its SHA-256 digest in unpadded base64url form. The management endpoints derive ownership from the current direct session and check it again inside the database transaction. User deletion removes that user's keys. A banned user’s keys fail verification.
+A signed-in user can issue a personal or organization-owned application credential, see its name and starting characters, disable it or revoke it. Creation returns the full secret once. The database keeps its SHA-256 digest in unpadded base64url form. The management endpoints derive ownership from the current direct session and check it again inside the database transaction. User deletion removes that user's keys. A banned user’s keys fail verification.
 
 ## Set up the service
 
@@ -55,4 +55,59 @@ A trusted server can call `keys.Verify(ctx, secret, required)`. Check the return
 
 Verification locks the owner and key in one transaction. Permission, expiry, budget and rate checks complete before usage counters commit. Separate application instances share the same budget. `keys.DeleteExpired(ctx)` purges expired keys in the service’s configured namespace. `Options.ConfigID` selects that namespace, with `default` used when omitted.
 
-The current profile covers user-owned database keys and application-route middleware. Organization ownership, browser-session authentication from a key, secondary storage and custom key generators remain open in the [feature checklist](parity/plugins/api-key.md). [Three-engine tests](../adapters/sqlstore/apikey_test.go) · [Client conformance](../conformance/core.test.mjs)
+
+## Organization-owned keys
+
+Apply the `api-key,organization` schema profiles. Register the organization plugin and give the personal and organization key services separate configuration IDs. Pass the same store instance to the host and both services.
+
+```go
+personal, err := apikey.New(apikey.Options{Store: store, EnableSession: true})
+if err != nil {
+    return err
+}
+teams, err := apikey.New(apikey.Options{
+    Store: store, ConfigID: "teams", DefaultPrefix: "team_",
+    Organization: &apikey.OrganizationOptions{
+        Roles: map[string][]string{
+            "admin": {"create", "read", "update", "delete"},
+            "member": {"read"},
+        },
+    },
+})
+if err != nil {
+    return err
+}
+keyPlugin, err := apikey.NewPlugin(personal, teams)
+if err != nil {
+    return err
+}
+orgPlugin, err := organization.New(organization.Options{Store: store})
+if err != nil {
+    return err
+}
+opts.Plugins = append(opts.Plugins, orgPlugin, keyPlugin)
+```
+
+Create an organization key with `{"configId":"teams","organizationId":"…","name":"Build worker"}`. Its `referenceId` identifies the organization. To list organization keys, supply `organizationId` and optionally `configId`. Omit `organizationId` for personal keys. Retrieval, update and deletion accept `configId` and the key ID.
+
+The database checks current membership and the requested action for every management operation. The creator role (`owner` by default) can manage all organization keys. Other roles receive only actions explicitly granted in `Roles`. Multiple roles on a member combine their grants. Existing custom role names can be used in this map. Using the organization HTTP API to assign custom role names and loading dynamic role definitions remain open.
+
+Each configuration ID retains its ownership type across restarts. Use a fresh configuration ID when switching between personal and organization ownership. A deleted user’s personal keys stop working. An organization’s keys continue to belong to the organization when the issuing user leaves.
+
+## Authenticate an auth request with a key
+
+Session authentication is opt-in per key service. Enable `Options.EnableSession` on a personal configuration. Present the secret in its key header to `GET /get-session`, or pass those headers to `Auth.GetSession`. Use a single credential source per request. A request containing both a key and a browser session receives `AMBIGUOUS_CREDENTIALS`. If multiple configurations share a header, exactly one matching stored credential may use that header. Ambiguous imported keys are rejected.
+
+The result identifies the owner and sets `session.id` to the key ID, `session.token` to the presented secret, and `session.credentialType` to `application`. Treat the response as a secret. The reported expiry is the key expiry or, for a nonexpiring key, the configured session lifetime from the request time. Each request revalidates the key and consumes its budget once. The server keeps these sessions out of browser-session storage and issues no login cookie.
+
+| Operation | Authorization |
+| --- | --- |
+| Read the current session | An enabled, valid personal key whose owner can sign in. |
+| Update a name or image | `user:update`. The SQL write rechecks the credential and its current scope. |
+| List or read organizations | `organization:read` and the owner’s current membership. Supply an explicit organization ID or slug to read a specific organization. |
+| Invite an organization member | `invitation:create` and the owner’s current authority to invite the requested role. |
+| Enroll an authenticator | `twoFactor:enable`, the owner’s current password and confirmation with the same key and a valid authenticator code. Apply the `two-factor` profile and enable the plugin. Enrollment keeps the credential scoped. |
+
+When permissions are omitted entirely, a key may use each supported operation. An explicit permissions map restricts it to the listed grants. Personal logins continue to authorize key management, identity changes, factor recovery and browser-session management. Organization keys identify a group and can authorize application middleware. Supplying one to an enabled session resolver returns `INVALID_REFERENCE_ID_FROM_API_KEY`.
+
+Secondary or custom storage, pluggable key generators and custom credential-extraction callbacks remain open. Phone number replacement with an application key also remains open. [Feature checklist](parity/plugins/api-key.md) · [Key policy tests](../adapters/sqlstore/apikey_test.go) · [Ownership and session tests](../adapters/sqlstore/apikey_session_test.go) · [Client conformance](../conformance/core.test.mjs)

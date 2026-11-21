@@ -92,6 +92,8 @@ type User struct {
 
 // Session identifies one authenticated login.
 type Session struct {
+	CredentialType       string `json:"credentialType,omitempty"`
+	credentialAccess     *credentialSessionAccess
 	ImpersonatedBy       *string   `json:"impersonatedBy,omitempty"`
 	ActiveTeamID         *string   `json:"activeTeamId,omitempty"`
 	ActiveOrganizationID *string   `json:"activeOrganizationId,omitempty"`

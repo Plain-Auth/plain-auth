@@ -425,6 +425,12 @@ func (a *Auth) completeCredentialSignIn(ctx context.Context, user User, hash str
 
 // GetSession returns nil for an unauthenticated request.
 func (a *Auth) GetSession(ctx context.Context, headers http.Header) (*SessionResult, error) {
+	if identity, _ := ctx.Value(credentialSessionKey{a}).(*SessionResult); identity != nil {
+		return identity, nil
+	}
+	if _, identity, err := a.resolveCredentialSession(ctx, headers, RequestMeta{UserAgent: headers.Get("User-Agent")}); identity != nil || err != nil {
+		return identity, err
+	}
 	token := a.cookieToken(headers)
 	if token == "" {
 		return nil, nil
@@ -470,10 +476,10 @@ func (a *Auth) requireSession(ctx context.Context, headers http.Header) (*Sessio
 	return s, err
 }
 
-// RequireOwner rejects temporary administrative impersonation for operations
-// that reveal credentials or alter the account's authentication or permissions.
+// RequireOwner requires a direct sign-in for operations that reveal credentials
+// or change an account's authentication or permissions.
 func (s Session) RequireOwner() error {
-	if s.ImpersonatedBy != nil {
+	if s.IsApplicationCredential() || s.ImpersonatedBy != nil {
 		return &APIError{403, "OWNER_SESSION_REQUIRED", "This operation requires the account owner's session"}
 	}
 	return nil

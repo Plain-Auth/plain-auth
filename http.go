@@ -35,6 +35,15 @@ var coreMethods = map[string]string{
 func (a *Auth) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	route, mounted := strings.CutPrefix(r.URL.EscapedPath(), strings.TrimSuffix(a.opts.BasePath, "/"))
 	if mounted && (route == "" || strings.HasPrefix(route, "/")) {
+		ctx, identity, authErr := a.resolveCredentialSession(r.Context(), r.Header, RequestMeta{IPAddress: a.clientIP(r), UserAgent: r.UserAgent()})
+		if authErr != nil {
+			w.Header().Set("Cache-Control", "no-store")
+			writeAuthError(w, authErr)
+			return
+		}
+		if identity != nil {
+			r = r.WithContext(ctx)
+		}
 		if err := a.runRequestHooks(r, route); err != nil {
 			w.Header().Set("Cache-Control", "no-store")
 			writeAuthError(w, err)

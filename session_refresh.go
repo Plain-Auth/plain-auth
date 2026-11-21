@@ -22,6 +22,9 @@ type deferredSessionResponse struct {
 
 func (a *Auth) sessionHTTP(w http.ResponseWriter, r *http.Request) (body any, responseErr error) {
 	ctx := r.Context()
+	if identity, _ := ctx.Value(credentialSessionKey{a}).(*SessionResult); identity != nil {
+		return identity, nil
+	}
 	token := a.cookieToken(r.Header)
 	if token == "" {
 		return nil, nil

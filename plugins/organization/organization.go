@@ -95,6 +95,19 @@ func (o Options) endpoint(method, action string, fn handler) authn.Endpoint {
 		if s == nil {
 			return nil, ErrUnauthenticated
 		}
+		if s.Session.IsApplicationCredential() {
+			allowed := false
+			switch action {
+			case "invite-member":
+				allowed = s.Session.AllowsCredentialAction("invitation", "create")
+			case "list", "get-organization":
+				allowed = s.Session.AllowsCredentialAction("organization", "read")
+			}
+			if !allowed {
+				return nil, &authn.APIError{Status: 403, Code: "INSUFFICIENT_API_KEY_PERMISSIONS", Message: "Credential cannot perform this organization action"}
+			}
+			return fn(c, s)
+		}
 		if method != http.MethodGet && action != "set-active" && action != "set-active-team" {
 			if err := s.Session.RequireOwner(); err != nil {
 				return nil, err
@@ -115,6 +128,9 @@ func New(o Options) (authn.Plugin, error) {
 	plugin := authn.Plugin{
 		ID: "organization",
 		OnReadSession: func(ctx context.Context, s *authn.SessionResult) error {
+			if s.Session.IsApplicationCredential() {
+				return nil
+			}
 			active, err := o.Store.ActiveOrganization(ctx, s.Session.ID, s.User.ID)
 			s.Session.ActiveOrganizationID = active
 			if err == nil && o.teamStore != nil {

@@ -1,4 +1,4 @@
-// Package apikey provides user-owned application credentials with independent
+// Package apikey provides user- and organization-owned credentials with independent
 // expiration, scoped permissions, usage budgets and per-key rate limits.
 package apikey
 
@@ -50,7 +50,10 @@ type Created struct {
 	Secret string `json:"key"`
 }
 
-type Owner struct{ UserID, SessionToken string }
+type Owner struct {
+	UserID, SessionToken, OrganizationID, Action string
+	Organization                                 *OrganizationOptions
+}
 type Lookup struct{ ConfigID, ID, Digest string }
 type Mutation uint8
 
@@ -61,6 +64,7 @@ const (
 )
 
 type PageOptions struct {
+	OrganizationID        string
 	Limit, Offset         *int
 	SortBy, SortDirection string
 }
@@ -82,6 +86,8 @@ type Store interface {
 }
 
 type Options struct {
+	Organization  *OrganizationOptions
+	EnableSession bool
 	// Headers names the request headers accepted by Middleware. The default is X-API-Key.
 	Headers                                                                           []string
 	Store                                                                             Store
@@ -100,6 +106,11 @@ var safePrefix = regexp.MustCompile(`^[a-zA-Z0-9_-]+$`)
 func New(o Options) (*Service, error) {
 	if o.Store == nil {
 		return nil, errors.New("apikey: a store is required")
+	}
+	if o.EnableSession {
+		if _, ok := o.Store.(sessionUserStore); !ok {
+			return nil, errors.New("apikey: session authentication requires a credential-aware account store")
+		}
 	}
 	if o.ConfigID == "" {
 		o.ConfigID = "default"
@@ -155,7 +166,28 @@ func New(o Options) (*Service, error) {
 		return nil, err
 	}
 	o.Headers = headers
-	return &Service{opts: o}, nil
+	if o.Organization != nil {
+		org := *o.Organization
+		if org.CreatorRole == "" {
+			org.CreatorRole = "owner"
+		}
+		org.Roles = clonePermissions(o.Organization.Roles)
+		for _, actions := range org.Roles {
+			for _, action := range actions {
+				switch action {
+				case CreateAction, ReadAction, UpdateAction, DeleteAction:
+				default:
+					return nil, errors.New("apikey: unknown organization action")
+				}
+			}
+		}
+		o.Organization = &org
+	}
+	service := &Service{opts: o}
+	if err := service.configureReference(context.Background()); err != nil {
+		return nil, err
+	}
+	return service, nil
 }
 
 func clonePermissions(source Permissions) Permissions {
@@ -177,10 +209,11 @@ type Policy struct {
 }
 
 type CreateInput struct {
-	Name, Prefix string
-	ExpiresIn    time.Duration
-	Metadata     map[string]any
-	Policy       Policy
+	OrganizationID string
+	Name, Prefix   string
+	ExpiresIn      time.Duration
+	Metadata       map[string]any
+	Policy         Policy
 }
 type UpdateInput struct {
 	Name      *string
@@ -320,6 +353,14 @@ func (s *Service) create(ctx context.Context, owner Owner, in CreateInput) (*Cre
 	if owner.UserID == "" {
 		return nil, ErrSession
 	}
+	owner = s.forAction(owner, CreateAction)
+	owner.OrganizationID = in.OrganizationID
+	if owner.Organization != nil && owner.OrganizationID == "" {
+		return nil, ErrOrganizationRequired
+	}
+	if owner.Organization == nil && owner.OrganizationID != "" {
+		return nil, invalidField("organizationId")
+	}
 	prefix := in.Prefix
 	if prefix == "" {
 		prefix = s.opts.DefaultPrefix
@@ -330,7 +371,7 @@ func (s *Service) create(ctx context.Context, owner Owner, in CreateInput) (*Cre
 	now := current()
 	secret := prefix + randomSecret(s.opts.KeyLength)
 	k := Key{
-		ID: rand.Text(), ConfigID: s.opts.ConfigID, ReferenceID: owner.UserID, Prefix: textPtr(prefix),
+		ID: rand.Text(), ConfigID: s.opts.ConfigID, ReferenceID: owner.ReferenceID(), Prefix: textPtr(prefix),
 		CreatedAt: now, UpdatedAt: now, Enabled: true, RateLimitEnabled: !s.opts.DisableRateLimit,
 		RateLimitTimeWindow: ptr(s.opts.RateWindow.Milliseconds()), RateLimitMax: ptr(s.opts.RateMax),
 		Permissions: clonePermissions(s.opts.DefaultPermissions),
@@ -371,6 +412,14 @@ func (s *Service) manage(ctx context.Context, owner Owner, id string, action Mut
 	if id == "" {
 		return nil, ErrMissing
 	}
+	operation := ReadAction
+	switch action {
+	case Save:
+		operation = UpdateAction
+	case Remove:
+		operation = DeleteAction
+	}
+	owner = s.forAction(owner, operation)
 	now := current()
 	var result *Key
 	err := s.opts.Store.WithAPIKey(ctx, owner, Lookup{ConfigID: s.opts.ConfigID, ID: id}, now, func(k *Key) (Mutation, error) {
@@ -397,6 +446,14 @@ func (s *Service) list(ctx context.Context, owner Owner, o PageOptions) (Page, e
 	}
 	if o.Limit != nil && *o.Limit < 0 || o.Offset != nil && *o.Offset < 0 {
 		return Page{}, problem(400, "VALIDATION_ERROR", "Invalid pagination")
+	}
+	owner = s.forAction(owner, ReadAction)
+	owner.OrganizationID = o.OrganizationID
+	if owner.Organization != nil && owner.OrganizationID == "" {
+		return Page{}, ErrOrganizationRequired
+	}
+	if owner.Organization == nil && owner.OrganizationID != "" {
+		return Page{}, invalidField("organizationId")
 	}
 	return s.opts.Store.ListAPIKeys(ctx, owner, s.opts.ConfigID, current(), o)
 }
@@ -425,7 +482,7 @@ func (s *Service) Verify(ctx context.Context, secret string, required Permission
 		invalid("INVALID_API_KEY", "Invalid API key")
 		return result, nil
 	}
-	err := s.opts.Store.WithAPIKey(ctx, Owner{}, Lookup{ConfigID: s.opts.ConfigID, Digest: Digest(secret)}, now, func(k *Key) (Mutation, error) {
+	err := s.opts.Store.WithAPIKey(ctx, s.forAction(Owner{}, ""), Lookup{ConfigID: s.opts.ConfigID, Digest: Digest(secret)}, now, func(k *Key) (Mutation, error) {
 		// Evaluate time-based policies after obtaining the key lock.
 		now = current()
 		if !k.Enabled {

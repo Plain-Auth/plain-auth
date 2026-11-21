@@ -13,10 +13,11 @@ import (
 // FactorSubject identifies an existing signed-in session, a login after a
 // password check, or a short-lived first-factor challenge.
 type FactorSubject struct {
-	ReadDelivery                    bool
-	TrustedGrant                    string
-	UserID, SessionToken, Challenge string
-	Now                             time.Time
+	ApplicationKeyID, ApplicationOperation string
+	ReadDelivery                           bool
+	TrustedGrant                           string
+	UserID, SessionToken, Challenge        string
+	Now                                    time.Time
 }
 type FactorRecord struct {
 	ID, Secret, BackupCodes string
@@ -169,10 +170,23 @@ func (a *Auth) factorEndpoint(route string, c EndpointContext) (any, error) {
 	if raw := a.cookieToken(r.Header); raw != "" {
 		subject.SessionToken = raw
 	}
+	keySession, _ := ctx.Value(credentialSessionKey{a}).(*SessionResult)
+	if keySession != nil {
+		store, ok := a.factorStore.(interface{ SupportsKeyFactorEnrollment() bool })
+		if !ok || !store.SupportsKeyFactorEnrollment() || !keySession.Session.AllowsCredentialAction("twoFactor", "enable") || (route != "/two-factor/enable" && route != "/two-factor/verify-totp") {
+			return nil, &APIError{403, "OWNER_SESSION_REQUIRED", "This factor operation requires a direct login"}
+		}
+		if method, ok := c.Body["method"]; ok && method != "totp" {
+			return nil, &APIError{403, "OWNER_SESSION_REQUIRED", "This enrollment method requires a direct login"}
+		}
+		subject.ApplicationKeyID = keySession.Session.ID
+		subject.ApplicationOperation = route
+		subject.UserID = keySession.User.ID
+	}
 	isSend := route == "/two-factor/send-otp"
 	subject.ReadDelivery = isSend || route == "/two-factor/verify-otp"
 	isProof := route == "/two-factor/verify-totp" || route == "/two-factor/verify-backup-code" || route == "/two-factor/verify-otp"
-	if subject.SessionToken == "" {
+	if subject.SessionToken == "" && keySession == nil {
 		if !isProof && !isSend {
 			return nil, &APIError{401, "UNAUTHORIZED", "Unauthorized"}
 		}
@@ -194,6 +208,27 @@ func (a *Auth) factorEndpoint(route string, c EndpointContext) (any, error) {
 		decide = op.verify
 	} else if isSend {
 		decide = op.sendOTP
+	}
+	if keySession != nil {
+		base := decide
+		decide = func(state FactorState) (FactorChange, error) {
+			state.Session = &keySession.Session
+			if route == "/two-factor/enable" && state.PasswordHash == "" {
+				return FactorChange{}, &APIError{403, "OWNER_SESSION_REQUIRED", "Credential enrollment requires an account password"}
+			}
+			ch, e := base(state)
+			// An application key can enroll a factor after independent password
+			// proof, but never upgrades itself to a durable browser session.
+			ch.Session = nil
+			op.issued = ""
+			op.trustedCookie = nil
+			if out, ok := op.out.(map[string]any); ok {
+				if _, found := out["token"]; found {
+					out["token"] = keySession.Session.Token
+				}
+			}
+			return ch, e
+		}
 	}
 	err := a.factorStore.WithTwoFactor(ctx, subject, decide)
 

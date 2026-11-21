@@ -15,11 +15,12 @@ type SessionResponseFunc func(EndpointContext, SessionResult) (any, error)
 
 // Plugin contributes HTTP endpoints to an Auth instance.
 type Plugin struct {
-	username          *UsernameOptions
-	anonymous         *AnonymousOptions
-	admin             *AdminOptions
-	maxDeviceSessions *int
-	emailOTP          *EmailOTPOptions
+	CredentialSessions *CredentialSessionResolver
+	username           *UsernameOptions
+	anonymous          *AnonymousOptions
+	admin              *AdminOptions
+	maxDeviceSessions  *int
+	emailOTP           *EmailOTPOptions
 	// OnRequest can reject an HTTP request before endpoint dispatch. Path is
 	// relative to the auth mount. ClientIP follows the host's proxy policy.
 	OnRequest func(RequestContext) error
@@ -95,12 +96,19 @@ type endpointKey struct{ method, path string }
 func registerPlugins(plugins []Plugin) (map[endpointKey]Endpoint, error) {
 	routes := make(map[endpointKey]Endpoint)
 	ids := make(map[string]bool)
+	hasCredentialResolver := false
 	hasSessionResponse := false
 	for _, p := range plugins {
 		if strings.TrimSpace(p.ID) == "" || ids[p.ID] {
 			return nil, fmt.Errorf("authn: missing or duplicate plugin ID %q", p.ID)
 		}
 		ids[p.ID] = true
+		if resolver := p.CredentialSessions; resolver != nil {
+			if hasCredentialResolver || resolver.Matches == nil || resolver.Resolve == nil {
+				return nil, errors.New("only one complete application credential resolver may be installed")
+			}
+			hasCredentialResolver = true
+		}
 		if p.SessionResponse != nil {
 			if hasSessionResponse {
 				return nil, errors.New("auth: only one plugin may customize the session response")
@@ -146,7 +154,7 @@ type SessionCookieEvent struct {
 }
 
 func (a *Auth) withSessionPlugins(ctx context.Context, session Session, user User) (*SessionResult, error) {
-	if a.admin != nil && user.AdminUserFields == nil {
+	if a.admin != nil && user.AdminUserFields == nil && !session.IsApplicationCredential() {
 		stored, owner, err := a.adminStore.Session(ctx, session.Token)
 		if errors.Is(err, ErrNotFound) {
 			return nil, &APIError{401, "UNAUTHORIZED", "Unauthorized"}

@@ -11,11 +11,12 @@ import (
 
 // CreateAPIKeyRequest sets client-editable fields. ExpiresIn is in seconds.
 type CreateAPIKeyRequest struct {
-	ConfigID  string         `json:"configId,omitempty"`
-	Name      string         `json:"name,omitempty"`
-	Prefix    string         `json:"prefix,omitempty"`
-	ExpiresIn *int64         `json:"expiresIn,omitempty"`
-	Metadata  map[string]any `json:"metadata,omitempty"`
+	OrganizationID string         `json:"organizationId,omitempty"`
+	ConfigID       string         `json:"configId,omitempty"`
+	Name           string         `json:"name,omitempty"`
+	Prefix         string         `json:"prefix,omitempty"`
+	ExpiresIn      *int64         `json:"expiresIn,omitempty"`
+	Metadata       map[string]any `json:"metadata,omitempty"`
 }
 
 type UpdateAPIKeyRequest struct {
@@ -80,6 +81,9 @@ func (c *Client) DeleteAPIKey(ctx context.Context, id, configID string) error {
 }
 func (c *Client) ListAPIKeys(ctx context.Context, configID string, o apikey.PageOptions) (*apikey.Page, error) {
 	q := url.Values{}
+	if o.OrganizationID != "" {
+		q.Set("organizationId", o.OrganizationID)
+	}
 	if configID != "" {
 		q.Set("configId", configID)
 	}

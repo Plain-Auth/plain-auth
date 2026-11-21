@@ -9,9 +9,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-sql-driver/mysql"
 	authn "github.com/Stonewrit/stonewrit-auth"
+	ak "github.com/Stonewrit/stonewrit-auth/plugins/apikey"
 	org "github.com/Stonewrit/stonewrit-auth/plugins/organization"
+	"github.com/go-sql-driver/mysql"
 )
 
 var _ org.Store = (*Store)(nil)
@@ -238,7 +239,14 @@ func (s *Store) InviteOrganizationMember(ctx context.Context, inv org.Invitation
 		return org.Invitation{}, err
 	}
 	defer tx.Rollback()
-	if _, err := s.organizationActor(ctx, tx, inv.InviterID, sessionID, time.Now()); err != nil {
+	if proof, ok := ak.SessionProofFrom(ctx); ok {
+		if proof.ID != sessionID || proof.UserID != inv.InviterID {
+			return inv, org.ErrUnauthenticated
+		}
+		if err := s.lockKeySession(ctx, tx, proof, "invitation", "create", time.Now()); err != nil {
+			return inv, err
+		}
+	} else if _, err := s.organizationActor(ctx, tx, inv.InviterID, sessionID, time.Now()); err != nil {
 		return org.Invitation{}, err
 	}
 	if err = s.lockOrganization(ctx, tx, inv.OrganizationID); err != nil {

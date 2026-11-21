@@ -908,3 +908,58 @@ test("the pinned API key client manages owner credentials on both runtimes", asy
     assert.equal((await client.apiKey.get({ query: { id: row.id } })).error.code, "KEY_NOT_FOUND");
   }
 });
+
+test("official clients share organization key ownership and API-key sessions", async (t) => {
+  const { apiKey } = await import("@better-auth/api-key");
+  const { apiKeyClient } = await import("@better-auth/api-key/client");
+  const configs = [
+    { configId: "default", enableSessionForAPIKeys: true },
+    { configId: "teams", references: "organization", enableSessionForAPIKeys: true, apiKeyHeaders: "x-team-key" },
+  ];
+  const runtimes = [
+    await reference(t, [organization(), twoFactor(), apiKey(configs)]),
+    await goFixture(t, ["organization", "two-factor", "api-key"], { AUTH_TEST_API_KEY_SESSIONS: "1" }),
+  ];
+  const ok = (response) => {
+    assert.equal(response.error, null, JSON.stringify(response.error));
+    return response.data;
+  };
+  for (const runtime of runtimes) {
+    const make = () => instrument(runtime, [apiKeyClient(), organizationClient(), twoFactorClient()]).client;
+    const owner = make();
+    const user = ok(await owner.signUp.email({ name, email, password })).user;
+    const org = ok(await owner.organization.create({ name: "Engineering", slug: "engineering" }));
+    const team = ok(await owner.apiKey.create({ configId: "teams", organizationId: org.id, name: "Team" }));
+    assert.equal(team.referenceId, org.id);
+    assert.equal(ok(await owner.apiKey.list({ query: { organizationId: org.id } })).apiKeys[0].id, team.id);
+    assert.equal(ok(await owner.apiKey.list()).total, 0);
+    assert.equal((await owner.apiKey.get({ query: { id: team.id, configId: "default" } })).error.code, "KEY_NOT_FOUND");
+    assert.equal(ok(await owner.apiKey.update({ keyId: team.id, configId: "teams", name: "Deploy" })).name, "Deploy");
+    const automation = make();
+    const wrongOwner = await automation.getSession({ fetchOptions: { headers: { "x-team-key": team.key } } });
+    assert.equal(wrongOwner.error.code, "INVALID_REFERENCE_ID_FROM_API_KEY");
+    assert.equal(ok(await owner.apiKey.delete({ keyId: team.id, configId: "teams" })).success, true);
+
+    const personal = ok(await owner.apiKey.create({ configId: "default", name: "Automation" }));
+    const fromKey = { headers: { "x-api-key": personal.key } };
+    const current = ok(await automation.getSession({ fetchOptions: fromKey }));
+    assert.equal(current.user.id, user.id);
+    assert.equal(current.session.id, personal.id);
+    assert.equal(current.session.token, personal.key);
+    const invite = ok(await automation.organization.inviteMember({
+      organizationId: org.id, email: "invitee@example.test", role: "member", fetchOptions: fromKey,
+    }));
+    assert.equal(invite.email, "invitee@example.test");
+    assert.equal(ok(await owner.apiKey.delete({ keyId: personal.id })).success, true);
+    assert.equal((await automation.getSession({ fetchOptions: fromKey })).error.code, "INVALID_API_KEY");
+
+    const enrollmentKey = ok(await owner.apiKey.create({ name: "Authenticator enrollment" }));
+    const fromEnrollmentKey = { headers: { "x-api-key": enrollmentKey.key } };
+    const enrollment = ok(await automation.twoFactor.enable({ password, fetchOptions: fromEnrollmentKey }));
+    const secret = new URL(enrollment.totpURI).searchParams.get("secret");
+    const otp = await createOTP(base32.decode(secret)).totp();
+    const confirmed = ok(await automation.twoFactor.verifyTotp({ code: otp, fetchOptions: fromEnrollmentKey }));
+    assert.equal(confirmed.user.id, user.id);
+    assert.equal(ok(await make().getSession({ fetchOptions: fromEnrollmentKey })).user.twoFactorEnabled, true);
+  }
+});

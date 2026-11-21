@@ -179,15 +179,17 @@ function extractPage(file, lines) {
   const parts = content.split("\n");
   const stack = [];
   let fence, table, optionObject, frontmatter = parts[0].trim() === "---";
-  let inAPI = false, featureList = false, hiddenDepth;
+  let inAPI = false, featureList = false, hiddenDepth, sourceLine;
   const filename = [...pages].find(([, content]) => content === lines)[0];
   const seenBySection = new Set();
   function add(text, depth, key = text) {
     if (seenBySection.has(key)) return;
     seenBySection.add(key);
     lines.push(pending(text, depth));
+    addEvidence(lines, file + "#L" + sourceLine + "/" + key, filename, depth + 1);
   }
   for (let i = 1; i < parts.length; i++) {
+    sourceLine = i + 1;
     const raw = parts[i];
     const text = raw.trim();
     if (frontmatter) { if (text === "---") frontmatter = false; continue; }

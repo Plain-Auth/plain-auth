@@ -13,7 +13,7 @@ AUTH_DSN=auth.db go run ./cmd/authctl migrate --dialect sqlite --plugins organiz
 | `username` | Optional unique login name and display spelling |
 | `username-only` | Optional unique login name |
 | `admin` | User roles, ban status and expiration, and the administrator behind an impersonated session |
-| `api-key` | User-owned application keys, digest lookup, scopes, per-key budgets and rate counters |
+| `api-key` | Personal and organization-owned application keys, digest lookup, scopes, per-key budgets and rate counters |
 | `anonymous` | Anonymous-account status on the user |
 | `last-login-method` | Most recent authentication method on the user |
 | `device-authorization` | Expiring device grants with unique device and user codes and client binding |

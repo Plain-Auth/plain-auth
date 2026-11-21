@@ -17,32 +17,53 @@ var _ ak.Store = (*Store)(nil)
 const apiKeyFields = `"id","configId","referenceId","name","prefix","start","enabled","rateLimitEnabled","rateLimitTimeWindow","rateLimitMax","requestCount","remaining","refillInterval","refillAmount","lastRefillAt","lastRequest","expiresAt","createdAt","updatedAt","permissions","metadata"`
 
 func (s *Store) CheckAPIKeySchema(ctx context.Context) error {
-	rows, err := s.db.QueryContext(ctx, s.bind(`SELECT `+apiKeyFields+`,"key" FROM "apikey" WHERE 1=0`))
+	rows, err := s.db.QueryContext(ctx, s.bind(`SELECT k.`+strings.ReplaceAll(apiKeyFields, ",", ",k.")+`,k."key" FROM "apikey" k WHERE 1=0`))
 	if err != nil {
 		return err
 	}
 	return rows.Close()
 }
-func (s *Store) cleanupAPIKeys(ctx context.Context, tx *sql.Tx, uid string) error {
-	q := `SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type='table' AND name='apikey')`
+func (s *Store) hasKeyOwnerTable(ctx context.Context, tx *sql.Tx, table string) (bool, error) {
+	q := `SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type='table' AND name=?)`
 	switch s.dialect {
 	case "mysql":
-		q = `SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_schema=database() AND table_name='apikey')`
+		q = `SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_schema=database() AND table_name=?)`
 	case "postgres":
-		q = `SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_schema=current_schema() AND table_name='apikey')`
+		q = `SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_schema=current_schema() AND table_name=?)`
 	}
 	var exists bool
-	if err := tx.QueryRowContext(ctx, q).Scan(&exists); err != nil {
+	err := tx.QueryRowContext(ctx, s.bind(q), table).Scan(&exists)
+	return exists, err
+}
+func (s *Store) cleanupAPIKeys(ctx context.Context, tx *sql.Tx, uid string) error {
+	exists, err := s.hasKeyOwnerTable(ctx, tx, "apikey")
+	if err != nil || !exists {
 		return err
 	}
-	if !exists {
-		return nil
+	col := `"apikey"."configId"`
+	if s.dialect == "mysql" {
+		col = "BINARY " + col
 	}
-	_, err := tx.ExecContext(ctx, s.bind(`DELETE FROM "apikey" WHERE "referenceId"=?`), uid)
+	param, _ := s.deviceTokenParameters([]string{uid})
+	// A registered org namespace always survives a user deletion. For an
+	// imported namespace, preserve ambiguous rows until the host establishes
+	// the owner kind rather than deleting someone else's credential.
+	where := `DELETE FROM "apikey" WHERE "referenceId"=` + param + ` AND NOT EXISTS (SELECT 1 FROM "verification" v WHERE v."identifier"='apikey-org-config' AND v."value"=` + col + `)`
+	hasOrg, err := s.hasKeyOwnerTable(ctx, tx, "organization")
+	if err != nil {
+		return err
+	}
+	if hasOrg {
+		where += ` AND (EXISTS (SELECT 1 FROM "verification" v WHERE v."identifier"='apikey-user-config' AND v."value"=` + col + `) OR NOT EXISTS (SELECT 1 FROM "organization" o WHERE o."id"="apikey"."referenceId"))`
+	}
+	_, err = tx.ExecContext(ctx, s.bind(where), uid)
 	return err
 }
 func (s *Store) apiKeyOwner(ctx context.Context, tx *sql.Tx, owner ak.Owner, now time.Time) error {
 	if owner.UserID == "" {
+		if owner.Organization != nil && owner.Action == "" {
+			return s.authorizeKeyOrganization(ctx, tx, owner)
+		}
 		return ak.ErrSession
 	}
 	var err error
@@ -60,6 +81,9 @@ func (s *Store) apiKeyOwner(ctx context.Context, tx *sql.Tx, owner ak.Owner, now
 	var api *stonewrit.APIError
 	if errors.As(err, &api) && api.Code == "BANNED_USER" {
 		return ak.ErrBanned
+	}
+	if err == nil && owner.Organization != nil {
+		return s.authorizeKeyOrganization(ctx, tx, owner)
 	}
 	return err
 }
@@ -120,7 +144,7 @@ func scanAPIKey(row rowScanner) (ak.Key, error) {
 	return k, nil
 }
 func (s *Store) CreateAPIKey(ctx context.Context, owner ak.Owner, k ak.Key, digest string) error {
-	if owner.UserID != k.ReferenceID || k.ID == "" || digest == "" {
+	if owner.UserID == "" || owner.ReferenceID() != k.ReferenceID || k.ID == "" || digest == "" {
 		return ak.ErrSession
 	}
 	tx, err := s.db.BeginTx(ctx, nil)
@@ -158,7 +182,7 @@ func (s *Store) WithAPIKey(ctx context.Context, owner ak.Owner, l ak.Lookup, now
 	}
 	parameter, _ := s.deviceTokenParameters([]string{value})
 	where := field + `=` + parameter + ` AND "configId"=` + parameter
-	if l.Digest != "" {
+	if l.Digest != "" || owner.Organization != nil {
 		// The canonical key-digest index is nonunique. Ambiguous imports fail
 		// closed, including when different owners have the same stored digest.
 		rows, err := tx.QueryContext(ctx, s.bind(`SELECT "referenceId" FROM "apikey" WHERE `+where+` LIMIT 2`), value, l.ConfigID)
@@ -186,7 +210,11 @@ func (s *Store) WithAPIKey(ctx context.Context, owner ak.Owner, l ak.Lookup, now
 		if more {
 			return ak.ErrMissing
 		}
-		owner = ak.Owner{UserID: id}
+		if owner.Organization != nil {
+			owner.OrganizationID = id
+		} else {
+			owner.UserID = id
+		}
 	}
 	if err = s.apiKeyOwner(ctx, tx, owner, now); err != nil {
 		if l.Digest != "" && errors.Is(err, ak.ErrSession) {
@@ -195,7 +223,7 @@ func (s *Store) WithAPIKey(ctx context.Context, owner ak.Owner, l ak.Lookup, now
 		return err
 	}
 	where += ` AND "referenceId"=` + parameter
-	k, err := scanAPIKey(tx.QueryRowContext(ctx, s.readForUpdate(`SELECT `+apiKeyFields+` FROM "apikey" WHERE `+where), value, l.ConfigID, owner.UserID))
+	k, err := scanAPIKey(tx.QueryRowContext(ctx, s.readForUpdate(`SELECT `+apiKeyFields+` FROM "apikey" WHERE `+where), value, l.ConfigID, owner.ReferenceID()))
 	if errors.Is(err, sql.ErrNoRows) {
 		return ak.ErrMissing
 	}
@@ -207,7 +235,7 @@ func (s *Store) WithAPIKey(ctx context.Context, owner ak.Owner, l ak.Lookup, now
 	if err != nil {
 		return err
 	}
-	if k.ID != id || k.ReferenceID != owner.UserID || k.ConfigID != l.ConfigID {
+	if k.ID != id || k.ReferenceID != owner.ReferenceID() || k.ConfigID != l.ConfigID {
 		return ak.ErrMissing
 	}
 	switch action {
@@ -221,13 +249,13 @@ func (s *Store) WithAPIKey(ctx context.Context, owner ak.Owner, l ak.Lookup, now
 		for i := range cols {
 			cols[i] += "=?"
 		}
-		args := append(vals[3:], id, l.ConfigID, owner.UserID)
+		args := append(vals[3:], id, l.ConfigID, owner.ReferenceID())
 		_, err = tx.ExecContext(ctx, s.bind(`UPDATE "apikey" SET `+strings.Join(cols, ",")+` WHERE "id"=? AND "configId"=? AND "referenceId"=?`), args...)
 		if err != nil {
 			return err
 		}
 	case ak.Remove:
-		_, err = tx.ExecContext(ctx, s.bind(`DELETE FROM "apikey" WHERE "id"=? AND "configId"=? AND "referenceId"=?`), id, l.ConfigID, owner.UserID)
+		_, err = tx.ExecContext(ctx, s.bind(`DELETE FROM "apikey" WHERE "id"=? AND "configId"=? AND "referenceId"=?`), id, l.ConfigID, owner.ReferenceID())
 		if err != nil {
 			return err
 		}
@@ -248,7 +276,7 @@ func (s *Store) ListAPIKeys(ctx context.Context, owner ak.Owner, config string, 
 	}
 	parameter, _ := s.deviceTokenParameters([]string{config})
 	where := ` FROM "apikey" WHERE "referenceId"=` + parameter + ` AND "configId"=` + parameter
-	args := []any{owner.UserID, config}
+	args := []any{owner.ReferenceID(), config}
 	if err = tx.QueryRowContext(ctx, s.bind(`SELECT COUNT(*)`+where), args...).Scan(&page.Total); err != nil {
 		return page, err
 	}

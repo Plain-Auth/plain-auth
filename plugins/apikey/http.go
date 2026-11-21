@@ -1,7 +1,6 @@
 package apikey
 
 import (
-	"context"
 	"encoding/json"
 	"net/http"
 	"strconv"
@@ -13,12 +12,7 @@ import (
 // Plugin exposes session-authorized management routes. Verification and
 // expired-key cleanup are trusted Go methods on the Service.
 func (s *Service) Plugin() stonewrit.Plugin {
-	p := stonewrit.Plugin{ID: "api-key", ValidateStore: func(store stonewrit.Store) error {
-		return s.opts.Store.CheckAPIKeySchema(context.Background())
-	}}
-	for _, r := range []struct{ method, path string }{{"POST", "create"}, {"POST", "update"}, {"GET", "get"}, {"GET", "list"}, {"POST", "delete"}} {
-		p.Endpoints = append(p.Endpoints, stonewrit.Endpoint{Method: r.method, Path: "/api-key/" + r.path, Handler: func(c stonewrit.EndpointContext) (any, error) { return s.handle(c, r.path) }})
-	}
+	p, _ := NewPlugin(s)
 	return p
 }
 func invalidField(k string) error { return problem(400, "VALIDATION_ERROR", "Invalid "+k) }
@@ -58,9 +52,7 @@ func (s *Service) handle(c stonewrit.EndpointContext, action string) (any, error
 	if config != "" && config != s.opts.ConfigID {
 		return nil, ErrMissing
 	}
-	if q.Has("organizationId") {
-		return nil, invalidField("organizationId")
-	}
+
 	for k := range body {
 		switch k {
 		case "userId":
@@ -70,14 +62,16 @@ func (s *Service) handle(c stonewrit.EndpointContext, action string) (any, error
 		case "permissions", "refillAmount", "refillInterval", "rateLimitMax", "rateLimitTimeWindow", "rateLimitEnabled", "remaining":
 			return nil, problem(400, "SERVER_ONLY_PROPERTY", "This property is restricted to server code")
 		case "organizationId":
-			return nil, invalidField(k)
+			if action != "create" {
+				return nil, invalidField(k)
+			}
 		}
 	}
 	switch action {
 	case "get":
 		return s.manage(ctx, owner, q.Get("id"), Read, UpdateInput{})
 	case "list":
-		o := PageOptions{SortBy: q.Get("sortBy"), SortDirection: q.Get("sortDirection")}
+		o := PageOptions{OrganizationID: q.Get("organizationId"), SortBy: q.Get("sortBy"), SortDirection: q.Get("sortDirection")}
 		for k, dst := range map[string]**int{"limit": &o.Limit, "offset": &o.Offset} {
 			if q.Has(k) {
 				v, e := strconv.Atoi(q.Get(k))
@@ -131,7 +125,11 @@ func (s *Service) handle(c stonewrit.EndpointContext, action string) (any, error
 		if e != nil {
 			return nil, e
 		}
-		in := CreateInput{Prefix: prefix, Metadata: up.Metadata}
+		orgID, e := stringValue(body, "organizationId")
+		if e != nil {
+			return nil, e
+		}
+		in := CreateInput{OrganizationID: orgID, Prefix: prefix, Metadata: up.Metadata}
 		if up.Name != nil {
 			in.Name = *up.Name
 		}

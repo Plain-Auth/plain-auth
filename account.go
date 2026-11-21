@@ -61,6 +61,9 @@ func (a *Auth) UpdateUser(ctx context.Context, h http.Header, update ProfileUpda
 	if err != nil {
 		return err
 	}
+	if session.Session.IsApplicationCredential() && (update.hasUsernameChange() || !session.Session.AllowsCredentialAction("user", "update")) {
+		return &APIError{403, "OWNER_SESSION_REQUIRED", "This profile operation requires a direct login"}
+	}
 	if a.username != nil && update.hasUsernameChange() {
 		if session.Session.ImpersonatedBy != nil {
 			return &APIError{403, "FORBIDDEN", "Account owner session required"}
@@ -94,6 +97,16 @@ func (a *Auth) UpdateUser(ctx context.Context, h http.Header, update ProfileUpda
 	update.ClearUsername, update.ClearDisplayUsername = false, false
 	if update.Name == nil && update.Image == nil && !update.ClearImage {
 		return &APIError{400, "BAD_REQUEST", "No fields to update"}
+	}
+	if session.Session.IsApplicationCredential() {
+		store, ok := a.opts.Store.(interface {
+			UpdateCredentialProfile(context.Context, string, ProfileUpdate, time.Time) error
+		})
+		access := session.Session.credentialAccess
+		if !ok || access == nil || access.bind == nil {
+			return &APIError{403, "OWNER_SESSION_REQUIRED", "This profile operation requires a direct login"}
+		}
+		return store.UpdateCredentialProfile(access.bind(ctx), session.User.ID, update, a.now().UTC())
 	}
 	s, err := a.accountStore()
 	if err != nil {

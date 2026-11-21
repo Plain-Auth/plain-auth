@@ -28,6 +28,8 @@ An authenticated browser sends JSON to these endpoints. All paths are relative t
 
 For direct Go calls, inspect `SignInEmail`'s `AuthResult.Challenge`. If present, return `Auth.TwoFactorChallengeCookie(*result.Challenge)` to the browser and complete the verification step there. A pending challenge carries no authenticated token. A Go HTTP client can inspect its sign-in result's `TwoFactorRedirect` and call the verification endpoint with the same cookie jar.
 
+A host can also enable authenticator enrollment from a personal application key. This flow verifies the current password, binds the pending enrollment to that exact key and confirms it with an authenticator code. [Application key guide](api-keys.md#authenticate-an-auth-request-with-a-key)
+
 ## Manage an enrolled account
 
 | Endpoint | JSON fields | Effect |

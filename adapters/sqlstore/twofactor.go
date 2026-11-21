@@ -10,6 +10,7 @@ import (
 	"time"
 
 	auth "github.com/Stonewrit/stonewrit-auth"
+	ak "github.com/Stonewrit/stonewrit-auth/plugins/apikey"
 )
 
 var _ auth.TwoFactorStore = (*Store)(nil)
@@ -148,6 +149,17 @@ func (s *Store) WithTwoFactor(ctx context.Context, sub auth.FactorSubject, decid
 			return err
 		}
 	}
+	var keyProof ak.SessionProof
+	if sub.ApplicationKeyID != "" {
+		var ok bool
+		keyProof, ok = ak.SessionProofFrom(ctx)
+		if !ok || keyProof.ID != sub.ApplicationKeyID || keyProof.UserID != owner {
+			return auth.ErrNotFound
+		}
+		if err := s.lockKeySession(ctx, tx, keyProof, "twoFactor", "enable", time.Now()); err != nil {
+			return err
+		}
+	}
 	state, err := s.factorUser(ctx, tx, owner)
 	if err != nil {
 		return err
@@ -194,12 +206,22 @@ func (s *Store) WithTwoFactor(ctx context.Context, sub auth.FactorSubject, decid
 			state.TrustedGrant = actual
 		}
 	}
+	if sub.ApplicationOperation == "/two-factor/verify-totp" {
+		if err := s.checkKeyEnrollment(ctx, tx, keyProof, state, sub.Now); err != nil {
+			return err
+		}
+	}
 	change, err := decide(state)
 	if err != nil {
 		return err
 	}
 	if err = s.writeFactorChange(ctx, tx, sub, state, change); err != nil {
 		return err
+	}
+	if sub.ApplicationKeyID != "" {
+		if err := s.saveKeyEnrollment(ctx, tx, keyProof, sub, state, change); err != nil {
+			return err
+		}
 	}
 	return tx.Commit()
 }
@@ -321,6 +343,10 @@ func (s *Store) writeFactorChange(ctx context.Context, tx *sql.Tx, sub auth.Fact
 }
 
 func (s *Store) invalidateFactorChallenges(ctx context.Context, tx *sql.Tx, uid string) error {
+	if _, err := tx.ExecContext(ctx, s.bind(`DELETE FROM "verification" WHERE "identifier" LIKE ?`), keyFactorPrefix(uid)+"%"); err != nil {
+		return err
+	}
+
 	if _, err := tx.ExecContext(ctx, s.bind(`DELETE FROM "verification" WHERE "value"=? AND "identifier" LIKE 'trust-device-%'`), uid); err != nil {
 		return err
 	}

@@ -52,12 +52,24 @@ func main() {
 	for _, id := range os.Args[2:] {
 		switch id {
 		case "api-key":
-			keys, err := apikey.New(apikey.Options{Store: store, EnableMetadata: true})
+			keySessions := os.Getenv("AUTH_TEST_API_KEY_SESSIONS") == "1"
+			keys, err := apikey.New(apikey.Options{Store: store, EnableMetadata: true, EnableSession: keySessions})
 			if err != nil {
 				log.Fatal(err)
 			}
 			applicationKeys = keys
-			plugins = append(plugins, keys.Plugin())
+			keyPlugin := keys.Plugin()
+			if keySessions {
+				teamKeys, err := apikey.New(apikey.Options{Store: store, ConfigID: "teams", Organization: &apikey.OrganizationOptions{}, EnableSession: true, Headers: []string{"X-Team-Key"}})
+				if err != nil {
+					log.Fatal(err)
+				}
+				keyPlugin, err = apikey.NewPlugin(keys, teamKeys)
+				if err != nil {
+					log.Fatal(err)
+				}
+			}
+			plugins = append(plugins, keyPlugin)
 		case "username", "username-only":
 			p, err := authn.NewUsername(authn.UsernameOptions{DisableDisplay: id == "username-only"})
 			if err != nil {
