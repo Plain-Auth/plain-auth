@@ -250,7 +250,7 @@
 
 ## SQL dialect integrations
 
-Core dialects ship with the query builder. The organization and community lists identify separately maintained integrations.
+StoneWrit ships SQL adapters for SQLite, PostgreSQL and MySQL. The checklist also tracks additional database drivers and runtimes.
 
 - [ ] Core Dialects
   - [ ] MySQL
@@ -285,30 +285,30 @@ Core dialects ship with the query builder. The organization and community lists 
 
 ## Community database adapters
 
-These adapter projects have their own maintainers and releases.
+Each row tracks Go compatibility with a database integration. Maintainer names distinguish projects for the same database. The [source catalog](../../conformance/reference.json) records their repositories.
 
-- [ ] Convex integration from [get-convex](https://github.com/get-convex/better-auth)
-- [ ] SurrealDB integration from [oskar-gmerek](https://github.com/oskar-gmerek/surreal-better-auth)
-- [ ] SurrealDB integration from [Necmttn](https://github.com/Necmttn/surrealdb-better-auth)
-- [ ] SurrealDB integration from [msanchezdev](https://github.com/msanchezdev/better-auth-surrealdb)
-- [ ] Payload CMS integration from [payload-auth](https://github.com/payload-auth/payload-auth)
-- [ ] Payload CMS integration from [delmaredigital](https://github.com/delmaredigital/payload-better-auth)
-- [ ] TypeORM integration from [Zastinian](https://github.com/Zastinian/better-auth-typeorm)
-- [ ] InstantDB integration from [daveyplate](https://github.com/daveyplate/better-auth-instantdb)
-- [ ] Remult integration from [nerdfolio](https://github.com/nerdfolio/remult-better-auth)
-- [ ] PocketBase integration from [LightInn](https://github.com/LightInn/pocketbase-better-auth)
-- [ ] Firebase Firestore integration from [yultyyev](https://github.com/yultyyev/better-auth-firestore)
-- [ ] ZenStack integration from [zenstackhq](https://github.com/zenstackhq/zenstack/tree/main/packages/auth-adapters/better-auth)
-- [ ] Strapi CMS integration from [strapi-community](https://github.com/strapi-community/plugin-better-auth)
-- [ ] Neo4j integration from [florianamette](https://github.com/florianamette/better-auth-neo4j)
-- [ ] MikroORM integration from [lubiah](https://github.com/lubiah/better-auth-mikro-orm)
-- [ ] MikroORM integration from [octet-stream](https://github.com/octet-stream/better-auth-mikro-orm)
-- [ ] FileMaker OData integration from [proofsh](https://github.com/proofsh/proofkit/tree/main/packages/better-auth)
-- [ ] DynamoDB integration from [datar-platform](https://github.com/datar-platform/better-auth-dynamodb)
-- [ ] DynamoDB integration from [bjorntech](https://github.com/bjorntech/betterauth-dynamodb)
-- [ ] Azure Cosmos DB integration from [9hsein5](https://github.com/9hsein5/better-auth-azure-cosmos)
-- [ ] Mongoose integration from [AshwinSathian](https://github.com/AshwinSathian/better-auth-mongoose)
-- [ ] Bun SQL integration from [ilbertt](https://github.com/ilbertt/better-auth-bun-sql)
-- [ ] MikroORM integration from [a77ay](https://github.com/a77ay/better-auth-mikro-orm)
-- [ ] ArcadeDB integration from [DevSnap](https://github.com/DevSnap/better-auth-arcadedb)
-- [ ] TypeSQL integration from [ismailkarsli](https://github.com/ismailkarsli/TypeSQL/tree/main/packages/better-auth)
+- [ ] Convex (get-convex)
+- [ ] SurrealDB (oskar-gmerek)
+- [ ] SurrealDB (Necmttn)
+- [ ] SurrealDB (msanchezdev)
+- [ ] Payload CMS (payload-auth)
+- [ ] Payload CMS (delmaredigital)
+- [ ] TypeORM (Zastinian)
+- [ ] InstantDB (daveyplate)
+- [ ] Remult (nerdfolio)
+- [ ] PocketBase (LightInn)
+- [ ] Firebase Firestore (yultyyev)
+- [ ] ZenStack (zenstackhq)
+- [ ] Strapi CMS (strapi-community)
+- [ ] Neo4j (florianamette)
+- [ ] MikroORM (lubiah)
+- [ ] MikroORM (octet-stream)
+- [ ] FileMaker OData (proofsh)
+- [ ] DynamoDB (datar-platform)
+- [ ] DynamoDB (bjorntech)
+- [ ] Azure Cosmos DB (9hsein5)
+- [ ] Mongoose (AshwinSathian)
+- [ ] Bun SQL (ilbertt)
+- [ ] MikroORM (a77ay)
+- [ ] ArcadeDB (DevSnap)
+- [ ] TypeSQL (ismailkarsli)

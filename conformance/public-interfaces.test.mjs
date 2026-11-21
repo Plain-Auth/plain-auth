@@ -51,7 +51,11 @@ test("release catalog and rendered checklists retain published packages, storage
     for (const entry of pkg.entries) assert.equal(entry.symbols.length, new Set(entry.symbols).size, pkg.name + "/" + entry.subpath);
   }
   assert.equal(reference.communityAdapters.length, 25);
-  for (const row of reference.communityAdapters) assert.ok(page("adapters.md").includes(row.url), row.url);
+  for (const row of reference.communityAdapters) {
+    const maintainer = new URL(row.url).pathname.split("/")[1];
+    assert.ok(page("adapters.md").includes(row.database + " (" + maintainer + ")"), row.url);
+  }
+  assert.ok(page("adapters.md").includes("[source catalog](../../conformance/reference.json)"));
   assert.equal(Object.values(reference.additionalSQLDialects).flat().length, 24);
   for (const row of Object.values(reference.additionalSQLDialects).flat()) assert.ok(page("adapters.md").includes(row.name), row.name);
   assert.ok(page("adapters.md").includes("`consumeOne`"));

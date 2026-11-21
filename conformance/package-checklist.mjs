@@ -86,7 +86,7 @@ export function renderDatabaseContracts({lines, interfaces, dialects, communityA
     addEvidence(lines, "database/redisStorage/" + name, "adapters.md", 2);
   }
   lines.push("");
-  lines.push("## SQL dialect integrations", "", "Core dialects ship with the query builder. The organization and community lists identify separately maintained integrations.", "");
+  lines.push("## SQL dialect integrations", "", "StoneWrit ships SQL adapters for SQLite, PostgreSQL and MySQL. The checklist also tracks additional database drivers and runtimes.", "");
   for (const [category, items] of dialects) {
     lines.push(pending(category));
     for (const item of items) {
@@ -94,10 +94,10 @@ export function renderDatabaseContracts({lines, interfaces, dialects, communityA
       addEvidence(lines, "sql-dialect/" + item.name, "adapters.md", 2);
     }
   }
-  lines.push("", "## Community database adapters", "", "These adapter projects have their own maintainers and releases.", "");
+  lines.push("", "## Community database adapters", "", "Each row tracks Go compatibility with a database integration. Maintainer names distinguish projects for the same database. The [source catalog](../../conformance/reference.json) records their repositories.", "");
   for (const adapter of communityAdapters) {
     const maintainer = new URL(adapter.url).pathname.split("/")[1];
-    lines.push(pending(adapter.database + " integration from [" + maintainer + "](" + adapter.url + ")"));
+    lines.push(pending(adapter.database + " (" + maintainer + ")"));
     addEvidence(lines, "community-adapter/" + adapter.name, "adapters.md", 1);
   }
   lines.push("");
