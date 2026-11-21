@@ -30,7 +30,7 @@ var (
 	checkoutFields = []billingField{
 		{"plan", "string", true}, {"annual", "boolean", false}, referenceField, subscriptionField,
 		customerTypeField, {"successUrl", "string", false}, {"cancelUrl", "string", false},
-		{"returnUrl", "string", false}, redirectField,
+		{"returnUrl", "string", false}, redirectField, {"scheduleAtPeriodEnd", "boolean", false},
 	}
 )
 

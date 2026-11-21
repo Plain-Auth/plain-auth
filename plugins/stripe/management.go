@@ -139,6 +139,11 @@ func (s *subscriptions) restore(c auth.EndpointContext) (any, error) {
 		if _, err = s.client.V1SubscriptionSchedules.Release(ctx, schedule.ID, nil); err != nil {
 			return nil, providerManagementError(err)
 		}
+		if store, ok := c.Store().(SubscriptionScheduleStore); ok {
+			if err := store.ForgetStripeSchedule(ctx, owner.User.ID, owner.Session.Token, sub.ID, schedule.ID, time.Now().UTC()); err != nil {
+				return nil, err
+			}
+		}
 	case sub.CancelAt != 0 || sub.CancelAtPeriodEnd:
 		params := &sdk.SubscriptionUpdateParams{}
 		if sub.CancelAt != 0 {

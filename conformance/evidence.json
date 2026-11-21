@@ -1692,6 +1692,16 @@
       "label": "Reject pending changes, unsupported recurring items, foreign customers and a session revoked during Stripe’s reply on three SQL engines",
       "test": "adapters/sqlstore/stripe_plan_change_test.go",
       "marker": "func TestHostedSubscriptionPlanChanges("
+    },
+    {
+      "label": "Schedule a configured annual price at the current period boundary with no proration and observe the signed transition through the browser client",
+      "test": "conformance/stripe-lifecycle-fixture.mjs",
+      "marker": "const activated = provider.activateNextPhase()"
+    },
+    {
+      "label": "Recover lost create, update and release responses, reject competing destinations and preserve custom phases on three SQL engines",
+      "test": "adapters/sqlstore/stripe_schedules_test.go",
+      "marker": "func TestPeriodEndPlanChanges("
     }
   ],
   "docs/content/docs/plugins/stripe.mdx#L221": [
@@ -5555,6 +5565,18 @@
       "label": "Spend one shared attempt budget and permit only a single concurrent success",
       "test": "adapters/sqlstore/phone_test.go",
       "marker": "phone OTP was consumed %d times"
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L337": [
+    {
+      "label": "Schedule a configured annual price at the current period boundary with no proration and observe the signed transition through the browser client",
+      "test": "conformance/stripe-lifecycle-fixture.mjs",
+      "marker": "const activated = provider.activateNextPhase()"
+    },
+    {
+      "label": "Recover lost create, update and release responses, reject competing destinations and preserve custom phases on three SQL engines",
+      "test": "adapters/sqlstore/stripe_schedules_test.go",
+      "marker": "func TestPeriodEndPlanChanges("
     }
   ]
 }

@@ -29,6 +29,7 @@ function subscription(owner) {
 async function localStripe(t) {
   const subscriptions = new Map(["owner", "other"].map(name => ["sub_" + name, subscription(name)]));
   const calls = [];
+  let scheduled;
   const server = createServer(async (req, res) => {
     const url = new URL(req.url, "http://127.0.0.1");
     const path = url.pathname;
@@ -58,6 +59,32 @@ async function localStripe(t) {
         id: "bps_" + calls.length, object: "billing_portal.session", customer: form.get("customer"),
         url: "https://billing.example.test/" + ({ subscription_update_confirm: "confirm", subscription_cancel: "cancel" }[form.get("flow_data[type]")] ?? "portal"),
       };
+    } else if (req.method === "POST" && path === "/v1/subscription_schedules" && form.get("from_subscription") === "sub_owner") {
+      const sub = subscriptions.get("sub_owner");
+      const item = sub.items.data[0];
+      sub.schedule = "sched_change";
+      scheduled = { id: sub.schedule, object: "subscription_schedule", status: "active", customer: sub.customer, subscription: sub.id,
+        end_behavior: "release", metadata: {}, phases: [{ start_date: item.current_period_start, end_date: item.current_period_end,
+          items: [{ price: item.price.id, quantity: 1 }], invoice_settings: { issuer: { type: "self" } } }] };
+      result = scheduled;
+    } else if (scheduled && path === "/v1/subscription_schedules/sched_change" && req.method === "GET") {
+      result = scheduled;
+    } else if (scheduled && path === "/v1/subscription_schedules/sched_change" && req.method === "POST") {
+      scheduled.metadata = Object.fromEntries([...form].filter(([k]) => k.startsWith("metadata[")).map(([k, v]) => [k.slice(9, -1), v]));
+      scheduled.end_behavior = form.get("end_behavior");
+      scheduled.phases = [0, 1].map(i => {
+        const prefix = "phases[" + i + "]";
+        return { start_date: Number(form.get(prefix + "[start_date]")),
+          end_date: i === 0 ? Number(form.get(prefix + "[end_date]")) : undefined,
+          items: [{ price: form.get(prefix + "[items][0][price]"), quantity: Number(form.get(prefix + "[items][0][quantity]")) }],
+          proration_behavior: form.get(prefix + "[proration_behavior]") ?? "create_prorations" };
+      });
+      result = scheduled;
+    } else if (scheduled && req.method === "POST" && path === "/v1/subscription_schedules/sched_change/release") {
+      const sub = subscriptions.get("sub_owner");
+      sub.schedule = null;
+      result = { ...scheduled, status: "released", subscription: null, released_subscription: sub.id };
+      scheduled = undefined;
     } else if (path === "/v1/subscription_schedules/sched_owner" && req.method === "GET") {
       result = { id: "sched_owner", object: "subscription_schedule", status: "active", customer: "cus_owner", subscription: "sub_owner" };
     } else if (path === "/v1/subscription_schedules/sched_owner/release" && req.method === "POST") {
@@ -77,7 +104,18 @@ async function localStripe(t) {
   const api = new Stripe("sk_test_offline_fixture", {
     host: "127.0.0.1", port, protocol: "http", timeout: 5000, maxNetworkRetries: 0, telemetry: false,
   });
-  return { url: "http://127.0.0.1:" + port, subscriptions, api, calls };
+  function activateNextPhase() {
+    const next = scheduled.phases[1];
+    const sub = subscriptions.get(scheduled.subscription);
+    const item = sub.items.data[0];
+    item.current_period_start = next.start_date;
+    item.current_period_end = next.start_date + 365 * 86_400;
+    item.price.id = next.items[0].price;
+    item.price.recurring.interval = "year";
+    item.quantity = next.items[0].quantity;
+    return sub;
+  }
+  return { url: "http://127.0.0.1:" + port, subscriptions, api, calls, activateNextPhase };
 }
 
 function ok(result) {
@@ -234,6 +272,25 @@ async function exercise(t, runtime, { reference, goFixture, instrument }) {
   }
   assert.equal(provider.calls.slice(beforeConfirm).some(c => c.method === "POST" && c.path !== "/v1/billing_portal/sessions"), false);
 
+  const deferred = ok(await owner.subscription.upgrade({
+    ...own, plan: "team", annual: true, returnUrl, scheduleAtPeriodEnd: true, disableRedirect: true,
+  }));
+  assert.deepEqual(deferred, { url: returnUrl, redirect: false });
+  const scheduleCreate = provider.calls.find(c => c.path === "/v1/subscription_schedules" && c.method === "POST");
+  assert.deepEqual(Object.fromEntries(scheduleCreate.form), { from_subscription: ownerSub.id });
+  const scheduleUpdate = provider.calls.find(c => c.path === "/v1/subscription_schedules/sched_change" && c.method === "POST");
+  const terms = Object.fromEntries([...scheduleUpdate.form].filter(([k]) => !k.startsWith("metadata[")));
+  assert.deepEqual(terms, {
+    end_behavior: "release", "phases[0][start_date]": String(ownerSub.items.data[0].current_period_start),
+    "phases[0][end_date]": String(ownerSub.items.data[0].current_period_end), "phases[0][items][0][price]": basicPrice,
+    "phases[0][items][0][quantity]": "1", "phases[1][start_date]": String(ownerSub.items.data[0].current_period_end),
+    "phases[1][proration_behavior]": "none", "phases[1][items][0][price]": annualTeamPrice, "phases[1][items][0][quantity]": "1",
+  });
+  const future = await list(owner, ownerID, ownerSub.id);
+  assert.equal(future.priceId, basicPrice);
+  assert.equal(future.stripeScheduleId, "sched_change");
+  assert.equal(ok(await owner.subscription.restore(own)).schedule ?? null, null);
+
   assert.deepEqual(ok(await owner.subscription.billingPortal(portal)), { url: "https://billing.example.test/portal", redirect: false });
   const portalCall = provider.calls.at(-1);
   assert.equal(portalCall.path, "/v1/billing_portal/sessions");
@@ -303,6 +360,21 @@ async function exercise(t, runtime, { reference, goFixture, instrument }) {
   }
   assert.deepEqual(restored, restoredWire, "period-end restore changed the Stripe wire object");
   assert.deepEqual(released, releasedWire, "schedule release changed the Stripe wire object");
+
+  // Give the single seat its own current billing cycle, then advance the
+  // provider fixture to the exact phase requested through its SDK.
+  item.quantity = 1;
+  item.current_period_start = Math.floor(Date.now() / 1000) - 3600;
+  item.current_period_end = item.current_period_start + period;
+  await signedUpdate(server, provider, "evt_one_seat", ownerSub);
+  ok(await owner.subscription.upgrade({ ...own, plan: "team", annual: true, scheduleAtPeriodEnd: true, disableRedirect: true }));
+  const activated = provider.activateNextPhase();
+  await signedUpdate(server, provider, "evt_activate_scheduled_year", activated);
+  const annual = await list(owner, ownerID, ownerSub.id);
+  assert.equal(annual.priceId, annualTeamPrice);
+  assert.equal(annual.billingInterval, "year");
+  assert.equal(Date.parse(annual.periodStart), activated.items.data[0].current_period_start * 1000);
+
 }
 
 export async function billingLifecycle(t, helpers) {

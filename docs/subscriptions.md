@@ -65,9 +65,23 @@ Send the new plan name and the current Stripe subscription ID to the same endpoi
 
 Open the response’s `url` so the customer can review and confirm the change on Stripe. The return URL defaults to the application root. The server scopes the confirmation to the existing customer, subscription and item. Repeating a request can open another review page for that item. The current plan remains active until Stripe confirms the change. The signed subscription webhook synchronizes the new price and interval.
 
-Enable subscription updates and add the target prices to the Stripe customer portal configuration. Stripe applies that configuration’s proration behavior when the customer confirms. Project code does not calculate refunds or issue credits for this operation. [Stripe portal deep links](https://docs.stripe.com/customer-management/portal-deep-links)
+Enable subscription updates and add the target prices to the Stripe customer portal configuration. Stripe applies that configuration’s proration behavior when the customer confirms and calculates any resulting balance adjustment. [Stripe portal deep links](https://docs.stripe.com/customer-management/portal-deep-links)
 
-Plan changes support one licensed seat on one configured monthly or yearly item. Repeating an active subscription’s current price returns `ALREADY_SUBSCRIBED_PLAN`. Resolve any cancellation, attached schedule, pending update or collection pause before requesting a change. Metered or multi-item subscriptions and scheduling a future change through this endpoint remain outside the supported flow. [Plan change tests](../adapters/sqlstore/stripe_plan_change_test.go)
+Plan changes support one licensed seat on one configured monthly or yearly item. Repeating an active subscription’s current price returns `ALREADY_SUBSCRIBED_PLAN`. Resolve any cancellation, attached schedule, pending update or collection pause before requesting a change. Metered and multi-item subscriptions remain outside the supported flow. [Plan change tests](../adapters/sqlstore/stripe_plan_change_test.go)
+
+## Schedule a change for the next billing period
+
+Pass `scheduleAtPeriodEnd: true` to keep the current plan through its paid period. This uses the same endpoint, session, configured price IDs and trusted return URL as an immediate change. The successful response points back to the application. The Go client exposes the option as `stripeclient.Checkout.ScheduleAtPeriodEnd`.
+
+```json
+{"plan":"pro","annual":true,"subscriptionId":"sub_example","scheduleAtPeriodEnd":true,"returnUrl":"/billing"}
+```
+
+Stripe’s schedule preserves the original price and quantity through the current period. Its second phase begins at the billing boundary with the requested price, one seat and no proration. The subscription continues after Stripe releases the schedule. The list endpoint exposes `stripeScheduleId` while the schedule is attached. Its plan and interval follow Stripe’s subscription updates. Use the restore endpoint to release a schedule before the change takes effect. [Stripe subscription schedules](https://docs.stripe.com/billing/subscriptions/subscription-schedules)
+
+The SQL adapters record the request before calling Stripe. Another server can retry the same request after a lost response. Conflicting destinations return HTTP 409. If a create response was lost and the schedule ID is still unknown after 23 hours, the handler returns `CHECKOUT_RECONCILIATION_REQUIRED`. Check the customer’s subscription and schedule in Stripe before resolving the local reservation. [Schedule recovery and concurrency tests](../adapters/sqlstore/stripe_schedules_test.go)
+
+Scheduling supports an active, automatically charged subscription with one licensed seat. Trialing subscriptions, discounts, tax overrides, Connect transfers and custom phase terms require separate billing management. An existing schedule must be resolved before requesting a different destination. [Browser client and phase-transition tests](../conformance/stripe-lifecycle-fixture.mjs)
 
 ## List active subscriptions
 

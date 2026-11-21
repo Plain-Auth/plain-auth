@@ -137,7 +137,7 @@ func (s *subscriptions) checkout(c auth.EndpointContext) (any, error) {
 	}
 	for key := range c.Body {
 		switch key {
-		case "plan", "successUrl", "cancelUrl", "returnUrl", "referenceId", "subscriptionId", "customerType", "annual", "disableRedirect":
+		case "plan", "successUrl", "cancelUrl", "returnUrl", "referenceId", "subscriptionId", "customerType", "annual", "disableRedirect", "scheduleAtPeriodEnd":
 		default:
 			return nil, billingError(400, "UNSUPPORTED_CHECKOUT_OPTION", "Unsupported checkout option")
 		}

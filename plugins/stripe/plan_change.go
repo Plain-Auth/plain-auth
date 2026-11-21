@@ -10,7 +10,7 @@ import (
 
 var (
 	errAlreadySubscribed = billingError(400, "ALREADY_SUBSCRIBED_PLAN", "You're already subscribed to this plan")
-	errPendingPlanChange = billingError(409, "SUBSCRIPTION_PENDING_CHANGE", "Resolve the pending subscription change before switching plans")
+	ErrPendingSchedule   = billingError(409, "SUBSCRIPTION_PENDING_CHANGE", "Resolve the pending subscription change before switching plans")
 	errUnsupportedItem   = billingError(409, "UNSUPPORTED_SUBSCRIPTION_ITEM", "Plan changes require one configured single-seat recurring item")
 )
 
@@ -22,6 +22,7 @@ func (s *subscriptions) changePlan(c auth.EndpointContext, owner *auth.SessionRe
 		return nil, ErrExistingSubscription
 	}
 	ctx := c.Request.Context()
+	scheduled, _ := c.Body["scheduleAtPeriodEnd"].(bool)
 	checkOwner := func() (Subscription, error) {
 		row, err := store.ManagedStripeSubscription(ctx, owner.User.ID, owner.Session.Token, *local.SubscriptionID, time.Now().UTC())
 		if errors.Is(err, auth.ErrNotFound) {
@@ -37,8 +38,8 @@ func (s *subscriptions) changePlan(c auth.EndpointContext, owner *auth.SessionRe
 		if row.Status != "active" && row.Status != "trialing" {
 			return row, ErrExistingSubscription
 		}
-		if row.CancelAt != nil || row.ScheduleID != nil || (row.CancelAtPeriodEnd != nil && *row.CancelAtPeriodEnd) {
-			return row, errPendingPlanChange
+		if row.CancelAt != nil || (!scheduled && row.ScheduleID != nil) || (row.CancelAtPeriodEnd != nil && *row.CancelAtPeriodEnd) {
+			return row, ErrPendingSchedule
 		}
 		return row, nil
 	}
@@ -52,8 +53,8 @@ func (s *subscriptions) changePlan(c auth.EndpointContext, owner *auth.SessionRe
 	if sub.Status != sdk.SubscriptionStatusActive && sub.Status != sdk.SubscriptionStatusTrialing {
 		return nil, ErrExistingSubscription
 	}
-	if sub.Schedule != nil || sub.PendingUpdate != nil || sub.CancelAtPeriodEnd || sub.CancelAt != 0 || sub.PauseCollection != nil {
-		return nil, errPendingPlanChange
+	if (!scheduled && sub.Schedule != nil) || sub.PendingUpdate != nil || sub.CancelAtPeriodEnd || sub.CancelAt != 0 || sub.PauseCollection != nil {
+		return nil, ErrPendingSchedule
 	}
 	if sub.Items == nil || sub.Items.HasMore || len(sub.Items.Data) != 1 {
 		return nil, errUnsupportedItem
@@ -76,6 +77,9 @@ func (s *subscriptions) changePlan(c auth.EndpointContext, owner *auth.SessionRe
 		return nil, err
 	}
 
+	if scheduled {
+		return s.scheduleChange(c, owner, local, sub, item, target, returnURL)
+	}
 	params := &sdk.BillingPortalSessionCreateParams{
 		Customer: sdk.String(sub.Customer.ID), ReturnURL: sdk.String(returnURL),
 		FlowData: &sdk.BillingPortalSessionCreateFlowDataParams{

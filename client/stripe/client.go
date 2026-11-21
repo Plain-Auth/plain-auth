@@ -14,13 +14,14 @@ import (
 type Client struct{ Auth *client.Client }
 
 type Checkout struct {
-	Plan            string `json:"plan"`
-	Annual          bool   `json:"annual,omitempty"`
-	SubscriptionID  string `json:"subscriptionId,omitempty"`
-	ReturnURL       string `json:"returnUrl,omitempty"`
-	SuccessURL      string `json:"successUrl,omitempty"`
-	CancelURL       string `json:"cancelUrl,omitempty"`
-	DisableRedirect bool   `json:"disableRedirect,omitempty"`
+	Plan                string `json:"plan"`
+	ScheduleAtPeriodEnd bool   `json:"scheduleAtPeriodEnd,omitempty"`
+	Annual              bool   `json:"annual,omitempty"`
+	SubscriptionID      string `json:"subscriptionId,omitempty"`
+	ReturnURL           string `json:"returnUrl,omitempty"`
+	SuccessURL          string `json:"successUrl,omitempty"`
+	CancelURL           string `json:"cancelUrl,omitempty"`
+	DisableRedirect     bool   `json:"disableRedirect,omitempty"`
 }
 
 type HostedPage struct {
