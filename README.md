@@ -29,7 +29,7 @@ StoneWrit Auth embeds authentication in your Go API. Mount the auth handler on y
 - [x] Register enterprise OIDC providers, sign in with a browser, and provision members in the provider’s organization. [Enterprise OpenID Connect](docs/sso.md)
 - [x] Provision directory Users and Groups, synchronize direct memberships and rotate or revoke scoped SCIM credentials. [Directory provisioning](docs/scim.md)
 
-Enterprise SAML sign-in, SCIM role projection, metered billing and separate base and per-seat subscription items remain open. The [complete checklist](docs/parity/README.md) records which parts of each integration have passing tests.
+Enterprise SAML sign-in, SCIM role projection, metered billing and annual organization seat plans remain open. The [complete checklist](docs/parity/README.md) records which parts of each integration have passing tests.
 
 ## Run it locally
 

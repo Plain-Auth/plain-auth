@@ -105,7 +105,7 @@ func (s *Store) ReserveStripeCheckout(ctx context.Context, owner, token string, 
 					return err
 				}
 			}
-			if a.Owner != owner || a.Plan != want.Plan || a.Price != want.Price || a.AutomaticSeats != want.AutomaticSeats || !a.AutomaticSeats && a.Quantity() != want.Quantity() || a.Interval != want.Interval || a.SuccessURL != want.SuccessURL || a.CancelURL != want.CancelURL {
+			if a.Owner != owner || a.Plan != want.Plan || a.Price != want.Price || a.AutomaticSeats != want.AutomaticSeats || a.SeatPrice != want.SeatPrice || !a.AutomaticSeats && a.Quantity() != want.Quantity() || a.Interval != want.Interval || a.SuccessURL != want.SuccessURL || a.CancelURL != want.CancelURL {
 				return billing.ErrPendingCheckout
 			}
 			result = a

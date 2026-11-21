@@ -26,7 +26,7 @@ func (s *subscriptions) changePlan(c auth.EndpointContext, selection billingSele
 	if selection.organization {
 		from, to := s.plans[local.Plan], s.plans[s.prices[target].plan]
 		if from.SeatPriceID != "" || to.SeatPriceID != "" {
-			if from.SeatPriceID == target && local.Status == "active" {
+			if from.Name == to.Name && from.PriceID == target && local.Status == "active" {
 				return nil, errAlreadySubscribed
 			}
 			return nil, ErrManagedSeatPlanChange
@@ -134,6 +134,9 @@ func (s *subscriptions) licensedPrice(p *sdk.Price) bool {
 		return false
 	}
 	def, known := s.prices[p.ID]
+	if !known && s.seatPrices[p.ID] {
+		def, known = subscriptionPrice{interval: "month"}, true
+	}
 	return known && string(p.Recurring.Interval) == def.interval && p.Recurring.IntervalCount == 1 &&
 		p.Recurring.UsageType == sdk.PriceRecurringUsageTypeLicensed
 }

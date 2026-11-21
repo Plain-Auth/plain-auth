@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -25,15 +26,17 @@ import (
 )
 
 type seatsProvider struct {
-	mu                      sync.Mutex
-	group, status, customer string
-	purchased, current      int
-	metadata                map[string]string
-	keys                    map[string]int
-	requests                []string
-	failedKeys              []string
-	afterPost               func()
-	failAfterPost           bool
+	mu                             sync.Mutex
+	group, status, customer        string
+	purchased, current             int
+	metadata                       map[string]string
+	keys                           map[string]int
+	requests                       []string
+	failedKeys                     []string
+	afterPost                      func()
+	failAfterPost                  bool
+	dual, loseCheckout, badReceipt bool
+	checkoutKey, checkoutForm      string
 }
 
 func (p *seatsProvider) subscription() map[string]any {
@@ -44,11 +47,27 @@ func (p *seatsProvider) subscription() map[string]any {
 	if customer == "" {
 		customer = "cus_org"
 	}
-	return map[string]any{"id": "sub_auto", "object": "subscription", "customer": customer, "status": status, "metadata": p.metadata, "items": map[string]any{"data": []any{map[string]any{"id": "si_managed", "quantity": p.current, "price": map[string]any{"id": "price_seat", "recurring": map[string]any{"interval": "month", "interval_count": 1, "usage_type": "licensed"}}}}}}
+	items := []any{map[string]any{"id": "si_managed", "quantity": p.current, "current_period_start": 3000, "price": fixtureMonthlyPrice("price_seat")}}
+	if p.dual {
+		items = append(items, map[string]any{"id": "si_base", "quantity": 1, "current_period_start": 1000, "price": fixtureMonthlyPrice("price_base")})
+	}
+	return map[string]any{"id": "sub_auto", "object": "subscription", "customer": customer, "status": status, "metadata": p.metadata, "items": map[string]any{"data": items}}
+}
+func fixtureMonthlyPrice(id string) map[string]any {
+	return map[string]any{"id": id, "active": true, "recurring": map[string]any{"interval": "month", "interval_count": 1, "usage_type": "licensed"}}
 }
 func (p *seatsProvider) checkout() map[string]any {
-	return map[string]any{"id": "cs_auto", "object": "checkout.session", "url": "https://billing.example.test/managed", "mode": "subscription", "status": "complete", "payment_status": "paid", "customer": "cus_org", "client_reference_id": p.group, "metadata": p.metadata, "subscription": "sub_auto", "line_items": map[string]any{"data": []any{map[string]any{"quantity": p.purchased, "price": map[string]string{"id": "price_seat"}}}}}
+	lines := []any{map[string]any{"quantity": p.purchased, "price": map[string]string{"id": "price_seat"}}}
+	if p.dual {
+		baseCount := 1
+		if p.badReceipt {
+			baseCount = 2
+		}
+		lines = append(lines, map[string]any{"quantity": baseCount, "price": map[string]string{"id": "price_base"}})
+	}
+	return map[string]any{"id": "cs_auto", "object": "checkout.session", "url": "https://billing.example.test/managed", "mode": "subscription", "status": "complete", "payment_status": "paid", "customer": "cus_org", "client_reference_id": p.group, "metadata": p.metadata, "subscription": "sub_auto", "line_items": map[string]any{"data": lines}}
 }
+
 func (p *seatsProvider) RoundTrip(r *http.Request) (*http.Response, error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
@@ -63,17 +82,37 @@ func (p *seatsProvider) RoundTrip(r *http.Request) (*http.Response, error) {
 	case r.Method == "POST" && r.URL.Path == "/v1/subscriptions/sub_broken":
 		p.failedKeys = append(p.failedKeys, r.Header.Get("Idempotency-Key"))
 		return nil, errors.New("subscription update is unavailable")
-	case r.Method == "GET" && r.URL.Path == "/v1/prices/price_seat":
-		return stripeJSON(200, map[string]any{"id": "price_seat", "active": true, "recurring": map[string]any{"interval": "month", "interval_count": 1, "usage_type": "licensed"}}), nil
+	case r.Method == "GET" && (r.URL.Path == "/v1/prices/price_seat" || r.URL.Path == "/v1/prices/price_base"):
+		return stripeJSON(200, fixtureMonthlyPrice(strings.TrimPrefix(r.URL.Path, "/v1/prices/"))), nil
 	case r.Method == "POST" && r.URL.Path == "/v1/checkout/sessions":
-		if r.Form.Get("customer") != "cus_org" || r.Form.Get("client_reference_id") != p.group || r.Form.Get("line_items[0][price]") != "price_seat" || r.Form.Has("line_items[1][price]") {
-			return nil, errors.New("wrong organization or duplicate base price")
+		if r.Form.Get("customer") != "cus_org" || r.Form.Get("client_reference_id") != p.group {
+			return nil, errors.New("unexpected checkout owner")
 		}
-		p.purchased, _ = strconv.Atoi(r.Form.Get("line_items[0][quantity]"))
+		seatIndex := "0"
+		if p.dual {
+			if r.Form.Get("line_items[0][price]") != "price_base" || r.Form.Get("line_items[0][quantity]") != "1" || r.Form.Has("line_items[2][price]") {
+				return nil, errors.New("wrong fixed base or extra checkout line")
+			}
+			seatIndex = "1"
+		} else if r.Form.Has("line_items[1][price]") {
+			return nil, errors.New("duplicate base price")
+		}
+		if r.Form.Get("line_items["+seatIndex+"][price]") != "price_seat" {
+			return nil, errors.New("incorrect recurring seat price")
+		}
+		if p.checkoutKey != "" && (r.Header.Get("Idempotency-Key") != p.checkoutKey || r.Form.Encode() != p.checkoutForm) {
+			return nil, errors.New("changed purchase after lost provider response")
+		}
+		p.checkoutKey, p.checkoutForm = r.Header.Get("Idempotency-Key"), r.Form.Encode()
+		p.purchased, _ = strconv.Atoi(r.Form.Get("line_items[" + seatIndex + "][quantity]"))
 		p.current = p.purchased
 		p.metadata = map[string]string{}
 		for _, k := range []string{"userId", "customerType", "organizationId", "referenceId", "subscriptionId", "checkoutAttemptId"} {
 			p.metadata[k] = r.Form.Get("metadata[" + k + "]")
+		}
+		if p.loseCheckout {
+			p.loseCheckout = false
+			return nil, errors.New("checkout created but response lost")
 		}
 		return stripeJSON(200, p.checkout()), nil
 	case r.Method == "GET" && r.URL.Path == "/v1/checkout/sessions/cs_auto":
@@ -115,7 +154,9 @@ func (p *seatsProvider) RoundTrip(r *http.Request) (*http.Response, error) {
 	return nil, fmt.Errorf("unexpected %s %s", r.Method, r.URL)
 }
 
-func TestAutomaticOrganizationSeats(t *testing.T) {
+func TestAutomaticOrganizationSeats(t *testing.T)    { testOrganizationSeatLifecycle(t, false) }
+func TestOrganizationBaseAndSeatPrices(t *testing.T) { testOrganizationSeatLifecycle(t, true) }
+func testOrganizationSeatLifecycle(t *testing.T, dual bool) {
 	for _, dialect := range []string{"sqlite", "postgres", "mysql"} {
 		t.Run(dialect, func(t *testing.T) {
 			ctx := t.Context()
@@ -136,17 +177,28 @@ func TestAutomaticOrganizationSeats(t *testing.T) {
 			defer replica.Close()
 			svc, err := org.NewService(org.Options{Store: store})
 			must(err)
-			groupPlugin, err := org.New(org.Options{Store: store})
-			must(err)
-			remote := &seatsProvider{keys: map[string]int{}}
+			remote := &seatsProvider{keys: map[string]int{}, dual: dual, loseCheckout: dual}
 			backend := sdk.NewBackendsWithConfig(&sdk.BackendConfig{HTTPClient: &http.Client{Transport: remote}, MaxNetworkRetries: sdk.Int64(0)})
 			opts := billing.SubscriptionOptions{Client: sdk.NewClient("sk_test", sdk.WithBackends(backend)), Plans: []billing.Plan{{Name: "team", PriceID: "price_seat", SeatPriceID: "price_seat", ProrationBehavior: "none"}}}
+			if dual {
+				opts.Plans[0].PriceID = "price_base"
+			}
 			host := httptest.NewUnstartedServer(nil)
 			origin := "https://" + host.Listener.Addr().String()
 			off := false
-			api, err := auth.New(auth.Options{BaseURL: origin, Secret: strings.Repeat("s", 32), EmailAndPassword: true, RateLimit: &off, Store: store, Plugins: []auth.Plugin{groupPlugin, billing.New(billing.Options{WebhookSecret: "whsec_auto", Subscriptions: &opts, Organization: &billing.OrganizationOptions{AuthorizeReference: func(m billing.ReferenceAuthorization) bool { return m.Role == "owner" }}})}})
-			must(err)
-			host.Config.Handler = api
+			newNode := func(storage *Store, pricing billing.SubscriptionOptions) *auth.Auth {
+				t.Helper()
+				groupPlugin, err := org.New(org.Options{Store: storage})
+				must(err)
+				billingPlugin := billing.New(billing.Options{WebhookSecret: "whsec_auto", Subscriptions: &pricing, Organization: &billing.OrganizationOptions{AuthorizeReference: func(m billing.ReferenceAuthorization) bool { return m.Role == "owner" }}})
+				node, err := auth.New(auth.Options{BaseURL: origin, Secret: strings.Repeat("s", 32), EmailAndPassword: true, RateLimit: &off, Store: storage, Plugins: []auth.Plugin{groupPlugin, billingPlugin}})
+				must(err)
+				return node
+			}
+			api := newNode(store, opts)
+			var active atomic.Pointer[auth.Auth]
+			active.Store(api)
+			host.Config.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { active.Load().ServeHTTP(w, r) })
 			host.StartTLS()
 			defer host.Close()
 			register := func(name string) (stripeclient.Client, string, string) {
@@ -171,6 +223,23 @@ func TestAutomaticOrganizationSeats(t *testing.T) {
 			initial, err := add(first)
 			must(err)
 			request := stripeclient.Checkout{Plan: "team", Seats: 99, CustomerType: "organization", ReferenceID: group.ID}
+			if dual {
+				_, err = owner.Upgrade(ctx, request)
+				if err == nil || remote.checkoutKey == "" || remote.purchased != 2 {
+					t.Fatal("missing durable base-and-seat reservation", err)
+				}
+				changed := opts
+				changed.Plans = []billing.Plan{opts.Plans[0]}
+				changed.Plans[0].SeatPriceID = "price_changed"
+				active.Store(newNode(replica, changed))
+				_, err = owner.Upgrade(ctx, request)
+				var apiErr *auth.APIError
+				if !errors.As(err, &apiErr) || apiErr.Status != http.StatusConflict || apiErr.Code != "CHECKOUT_ALREADY_PENDING" {
+					t.Fatal("a changed seat price reused pending checkout", err)
+				}
+				active.Store(newNode(replica, opts))
+
+			}
 			page, err := owner.Upgrade(ctx, request)
 			must(err)
 			if page.URL == "" || remote.purchased != 2 {
@@ -184,7 +253,7 @@ func TestAutomaticOrganizationSeats(t *testing.T) {
 			if page.ID != "cs_auto" || remote.purchased != 2 {
 				t.Fatal("a checkout retry changed the purchased quantity")
 			}
-			deliver := func(eventID, kind string, object map[string]any) {
+			deliver := func(eventID, kind string, object map[string]any, expected ...int) {
 				t.Helper()
 				raw, err := json.Marshal(map[string]any{"id": eventID, "object": "event", "api_version": sdk.APIVersion, "type": kind, "data": map[string]any{"object": object}})
 				must(err)
@@ -192,9 +261,27 @@ func TestAutomaticOrganizationSeats(t *testing.T) {
 				r.Header.Set("Stripe-Signature", webhook.GenerateTestSignedPayload(&webhook.UnsignedPayload{Payload: raw, Secret: "whsec_auto"}).Header)
 				rec := httptest.NewRecorder()
 				api.ServeHTTP(rec, r)
+				if len(expected) > 0 {
+					if rec.Code < expected[0] {
+						t.Fatal("unverified receipt granted entitlements", rec.Code)
+					}
+					return
+				}
 				if rec.Code != 200 {
 					t.Fatal(rec.Code, rec.Body.String())
 				}
+			}
+			if dual {
+				remote.badReceipt = true
+				deliver("evt_bad_checkout", "checkout.session.completed", remote.checkout(), 400)
+				deliver("evt_bad_created", "customer.subscription.created", remote.subscription(), 400)
+				rows, err := owner.ListOrganization(ctx, group.ID)
+				must(err)
+				if len(rows) != 0 {
+					t.Fatal("invalid fixed base receipt activated the seat entitlement")
+				}
+				remote.badReceipt = false
+				deliver("evt_valid_created", "customer.subscription.created", remote.subscription())
 			}
 			deliver("evt_auto_checkout", "checkout.session.completed", remote.checkout())
 			worker, err := billing.NewSeatWorker(store, opts)
@@ -248,6 +335,9 @@ func TestAutomaticOrganizationSeats(t *testing.T) {
 			must(err)
 			if len(rows) != 1 || rows[0].Seats == nil || *rows[0].Seats != 3 {
 				t.Fatal("confirmed membership quantity missing", rows)
+			}
+			if dual && (rows[0].PriceID != "price_base" || rows[0].PeriodStart == nil || rows[0].PeriodStart.Unix() != 1000) {
+				t.Fatal("seat item replaced base plan billing terms", rows[0])
 			}
 			_, err = store.RemoveOrganizationMember(ctx, ownerID, token, group.ID, member.ID)
 			must(err)

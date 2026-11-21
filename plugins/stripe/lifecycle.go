@@ -29,7 +29,7 @@ type SubscriptionRevision struct {
 // SubscriptionChange describes a current Stripe subscription or signed deletion.
 type SubscriptionChange struct {
 	Plan, Interval, Status, ScheduleID                                                 string
-	ManagedSeatPrice, SeatProration                                                    string
+	ManagedBasePrice, ManagedSeatPrice, SeatProration                                  string
 	Metadata                                                                           map[string]string
 	Seats, PeriodStart, PeriodEnd, TrialStart, TrialEnd, CancelAt, CanceledAt, EndedAt int64
 	CancelAtPeriodEnd, Deleted                                                         bool
@@ -129,12 +129,6 @@ func (s *subscriptions) reconcile(ctx context.Context, store SubscriptionLifecyc
 				return nil, err
 			}
 		}
-		if organization {
-			plan := s.plans[change.Plan]
-			if plan.SeatPriceID != "" && sub.Items != nil && len(sub.Items.Data) == 1 && sub.Items.Data[0] != nil && s.licensedPrice(sub.Items.Data[0].Price) {
-				change.ManagedSeatPrice, change.SeatProration = plan.SeatPriceID, plan.ProrationBehavior
-			}
-		}
 		if change.Status == "" {
 			return nil, ErrCheckoutReconcile
 		}
@@ -154,11 +148,30 @@ func (s *subscriptions) subscriptionChange(sub *sdk.Subscription, deleted bool, 
 	} else if sub.Schedule != nil {
 		change.ScheduleID = sub.Schedule.ID
 	}
+	if organization && sub.Items != nil {
+		for _, item := range sub.Items.Data {
+			if item == nil || item.Price == nil {
+				continue
+			}
+			price := s.prices[item.Price.ID]
+			plan := s.plans[price.plan]
+			if plan.SeatPriceID == "" {
+				continue
+			}
+			base, seat := s.membershipItems(sub, plan)
+			if seat != nil {
+				change.Plan, change.Interval = plan.Name, price.interval
+				change.ManagedBasePrice, change.ManagedSeatPrice, change.SeatProration = plan.PriceID, plan.SeatPriceID, plan.ProrationBehavior
+				change.PeriodStart, change.PeriodEnd, change.Seats = base.CurrentPeriodStart, base.CurrentPeriodEnd, seat.Quantity
+			}
+			return change
+		}
+	}
 	if sub.Items == nil || len(sub.Items.Data) != 1 || sub.Items.HasMore {
 		return change
 	}
 	item := sub.Items.Data[0]
-	if item == nil || item.Price == nil || item.Quantity < 0 || item.Quantity == 0 && (!organization || s.plans[s.prices[item.Price.ID].plan].SeatPriceID != item.Price.ID) {
+	if item == nil || item.Price == nil || item.Quantity <= 0 {
 		return change
 	}
 	change.PeriodStart, change.PeriodEnd, change.Seats = item.CurrentPeriodStart, item.CurrentPeriodEnd, item.Quantity

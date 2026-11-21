@@ -10,10 +10,10 @@ import (
 // CheckoutPurchase identifies the reserved line read from the signed or
 // SDK-retrieved Checkout Session. The subscription itself may already have changed.
 type CheckoutPurchase struct {
-	CheckoutID, RemoteID, Price string
-	Quantity                    int64
-	Live                        bool
-	Attempt                     CheckoutAttempt
+	CheckoutID, RemoteID, Price, SeatPrice string
+	Quantity                               int64
+	Live                                   bool
+	Attempt                                CheckoutAttempt
 }
 
 func (s *subscriptions) checkoutPurchase(ctx context.Context, a CheckoutAttempt, id, remote string, live bool, session *sdk.CheckoutSession) (*CheckoutPurchase, error) {
@@ -31,14 +31,10 @@ func (s *subscriptions) checkoutPurchase(ctx context.Context, a CheckoutAttempt,
 	}
 	if session == nil || session.ID != id || !checkoutMatches(a, session) || session.Livemode != live || session.Mode != sdk.CheckoutSessionModeSubscription ||
 		session.Status != sdk.CheckoutSessionStatusComplete || session.PaymentStatus != sdk.CheckoutSessionPaymentStatusPaid && session.PaymentStatus != sdk.CheckoutSessionPaymentStatusNoPaymentRequired ||
-		session.Subscription == nil || session.Subscription.ID != remote || session.LineItems == nil || session.LineItems.HasMore || len(session.LineItems.Data) != 1 {
+		session.Subscription == nil || session.Subscription.ID != remote || session.LineItems == nil || session.LineItems.HasMore || !a.matchesLines(session.LineItems.Data) {
 		return nil, ErrCheckoutReconcile
 	}
-	line := session.LineItems.Data[0]
-	if line == nil || line.Price == nil || line.Price.ID != a.Price || line.Quantity != a.Quantity() {
-		return nil, ErrCheckoutReconcile
-	}
-	return &CheckoutPurchase{CheckoutID: id, RemoteID: remote, Price: line.Price.ID, Quantity: line.Quantity, Live: live, Attempt: a}, nil
+	return &CheckoutPurchase{CheckoutID: id, RemoteID: remote, Price: a.Price, SeatPrice: a.SeatPrice, Quantity: a.Quantity(), Live: live, Attempt: a}, nil
 }
 
 // PendingCheckoutStore can recover the local purchase when subscription metadata

@@ -1869,6 +1869,16 @@
       "label": "Count organization members for a monthly licensed checkout and ignore the caller’s seat override",
       "test": "conformance/stripe-organization-fixture.mjs",
       "marker": "assert.equal(remote.state.checkout.line_items.data[0].quantity, 2)"
+    },
+    {
+      "label": "Purchase one fixed monthly base unit and a separate licensed unit for each member with the browser client",
+      "test": "conformance/stripe-organization-fixture.mjs",
+      "marker": "[[\"price_basic\", 1], [\"price_member\", 2]]"
+    },
+    {
+      "label": "Bind both price IDs across a lost Checkout response, reject a repriced retry and resume on a second server",
+      "test": "adapters/sqlstore/stripe_seats_test.go",
+      "marker": "a changed seat price reused pending checkout"
     }
   ],
   "docs/content/docs/plugins/stripe.mdx#L221": [
@@ -1974,6 +1984,11 @@
       "label": "Recover a lost Stripe response using the same idempotency key before applying the newer membership revision",
       "test": "adapters/sqlstore/stripe_seats_test.go",
       "marker": "restart did not recover the same operation before the newer revision"
+    },
+    {
+      "label": "Reject an invalid base-price receipt in either webhook order and grant only the verified two-item subscription",
+      "test": "adapters/sqlstore/stripe_seats_test.go",
+      "marker": "invalid fixed base receipt activated the seat entitlement"
     }
   ],
   "plugin-symbol/captcha/captcha": [
@@ -6492,6 +6507,26 @@
       "label": "Keep a healthy organization moving across one-item worker runs while another organization’s provider update fails",
       "test": "adapters/sqlstore/stripe_seats_test.go",
       "marker": "a failed organization starved its healthy neighbor"
+    },
+    {
+      "label": "Purchase one fixed monthly base unit and a separate licensed unit for each member with the browser client",
+      "test": "conformance/stripe-organization-fixture.mjs",
+      "marker": "[[\"price_basic\", 1], [\"price_member\", 2]]"
+    },
+    {
+      "label": "Keep the fixed base at one while invitations and removals update the separate membership item",
+      "test": "conformance/stripe-organization-fixture.mjs",
+      "marker": "if (separate) assert.equal(remote.state.subscription.items.data.find"
+    },
+    {
+      "label": "Reject an invalid base-price receipt in either webhook order and grant only the verified two-item subscription",
+      "test": "adapters/sqlstore/stripe_seats_test.go",
+      "marker": "invalid fixed base receipt activated the seat entitlement"
+    },
+    {
+      "label": "Bind both price IDs across a lost Checkout response, reject a repriced retry and resume on a second server",
+      "test": "adapters/sqlstore/stripe_seats_test.go",
+      "marker": "a changed seat price reused pending checkout"
     }
   ],
   "plugin/sso/POST /sign-in/sso": [
@@ -6570,6 +6605,16 @@
       "label": "Count organization members for a monthly licensed checkout and ignore the caller’s seat override",
       "test": "conformance/stripe-organization-fixture.mjs",
       "marker": "assert.equal(remote.state.checkout.line_items.data[0].quantity, 2)"
+    },
+    {
+      "label": "Purchase one fixed monthly base unit and a separate licensed unit for each member with the browser client",
+      "test": "conformance/stripe-organization-fixture.mjs",
+      "marker": "[[\"price_basic\", 1], [\"price_member\", 2]]"
+    },
+    {
+      "label": "Keep the fixed base at one while invitations and removals update the separate membership item",
+      "test": "conformance/stripe-organization-fixture.mjs",
+      "marker": "if (separate) assert.equal(remote.state.subscription.items.data.find"
     }
   ],
   "docs/content/docs/plugins/stripe.mdx#L19/Team subscription support with seats management": [

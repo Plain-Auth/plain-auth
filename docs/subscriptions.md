@@ -98,13 +98,13 @@ An authorized member can open Stripe’s cancellation or plan confirmation page,
 
 ## Bill by organization membership
 
-For a monthly plan with one licensed seat price, set `PriceID` and `SeatPriceID` to the same Stripe price. Install the organization and Stripe plugins with the `stripe-organization` profile and the authorization policy above. Give the worker the same subscription options as the HTTP service.
+For monthly organization billing, set `PriceID` to the fixed base price and `SeatPriceID` to a separate licensed price for each member. Use the same Stripe price for both fields when the plan charges only for seats. Install the organization and Stripe plugins with the `stripe-organization` profile and the authorization policy above. Give the worker the same subscription options as the HTTP service.
 
 ```go
 subscriptions := stripeplugin.SubscriptionOptions{
     Client: stripeClient,
     Plans: []stripeplugin.Plan{{
-        Name: "team", PriceID: "price_team_monthly", SeatPriceID: "price_team_monthly",
+        Name: "team", PriceID: "price_team_monthly", SeatPriceID: "price_member_monthly",
         ProrationBehavior: "create_prorations",
     }},
 }
@@ -116,13 +116,13 @@ if err != nil {
 return worker.Run(ctx, 10*time.Second, func(err error) { log.Print(err) })
 ```
 
-Organization checkout counts committed members and reserves one line item with that quantity. A supplied `seats` value is ignored for this plan’s organization checkout. Retrying a pending checkout preserves its original quantity. Once Stripe confirms the purchase, the worker catches up with membership changes that happened during checkout. A personal subscription to this price still uses the quantity selected by its owner. [Browser client checkout and membership tests](../conformance/stripe-organization-fixture.mjs)
+Organization checkout counts committed members. With two prices it reserves one base unit plus that many seat units. A seat-only plan reserves one line item with the member count. A supplied `seats` value is ignored for this plan’s organization checkout. Retrying a pending checkout preserves its original price IDs and quantities. When the server verifies the completed checkout, both purchased items must match the saved reservation. Once Stripe confirms the purchase, the worker catches up with membership changes that happened during checkout. A personal subscription to this price still uses the quantity selected by its owner. [Browser client checkout and membership tests](../conformance/stripe-organization-fixture.mjs)
 
 The worker reads committed membership changes and updates the subscription’s existing Stripe item. Adding a member, accepting an invitation, leaving, removing a member or deleting a member’s account updates the count. Deleting the final member’s account reduces it to zero. The worker also discovers active and trialing organization subscriptions when you enable seat billing on a previously configured price. Each change uses the plan’s `ProrationBehavior`, which defaults to `create_prorations` and also accepts `always_invoice` and `none`. Subscription lists reflect the most recently confirmed Stripe quantity. [Three-database membership and recovery tests](../adapters/sqlstore/stripe_seats_test.go)
 
 Run at least one worker, or call `worker.SyncOnce(ctx, batchSize)` from a scheduled process with a batch size from 1 to 1,000. Replicas share durable work in the existing verification table. A restart retries the same subscription, item and quantity with the same Stripe idempotency key. A failed organization moves behind other queued work. If a prepared request is more than 23 hours old and the remote quantity differs from its recorded target, inspect the reported organization’s Stripe subscription and reconcile that operation before retrying. [Stripe idempotent requests](https://docs.stripe.com/api/idempotent_requests)
 
-Automatic seat updates support one active or trialing organization subscription with one monthly licensed item. Resolve a pending provider update, schedule or collection pause before synchronizing again. Separate base and seat items, metered or annual seat plans, and hosted or scheduled switches involving membership-managed plans remain open.
+Automatic seat updates support one active or trialing organization subscription with monthly licensed prices. The fixed base item supplies the billing period and stays at quantity one. The worker changes the separate seat item by its Stripe item ID. If a provider edit removes that item or changes the fixed quantity, restore the configured items before resuming synchronization. Resolve a pending provider update, schedule or collection pause before synchronizing again. Metered or annual seat plans, extra line items, automatic repair of a removed Stripe item, and hosted or scheduled switches involving membership-managed plans remain open.
 
 ## Change an existing plan
 

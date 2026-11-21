@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"os"
 	"time"
 
 	"github.com/Stonewrit/stonewrit-auth"
@@ -36,6 +37,9 @@ func fixtureStripe(ctx context.Context, store *sqlstore.Store, endpoint string, 
 	}}
 	if managedSeats {
 		subscriptions.Plans[0].SeatPriceID = subscriptions.Plans[0].PriceID
+		if os.Getenv("CONFORMANCE_STRIPE_SEPARATE_PRICE") == "1" {
+			subscriptions.Plans[0].SeatPriceID = "price_member"
+		}
 		worker, err := billing.NewSeatWorker(store, *subscriptions)
 		if err != nil {
 			return stonewrit.Plugin{}, err

@@ -18,15 +18,17 @@
     - [x] Reject pending changes, unsupported recurring items, foreign customers and a session revoked during Stripe’s reply on three SQL engines ([test](../../../adapters/sqlstore/stripe_plan_change_test.go#L105))
     - [x] Schedule a configured annual price at the current period boundary with no proration and observe the signed transition through the browser client ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L387))
     - [x] Recover lost create, update and release responses, reject competing destinations and preserve custom phases on three SQL engines ([test](../../../adapters/sqlstore/stripe_schedules_test.go#L181))
-    - [x] Use the active or selected organization for single-seat checkout and keep its Stripe customer separate from personal accounts ([test](../../../conformance/stripe-organization-fixture.mjs#L95))
+    - [x] Use the active or selected organization for single-seat checkout and keep its Stripe customer separate from personal accounts ([test](../../../conformance/stripe-organization-fixture.mjs#L99))
     - [x] Recheck membership and active organization around Stripe responses, recover checkout under a different administrator, and refuse ambiguous customer ownership on three SQL engines ([test](../../../adapters/sqlstore/stripe_organization_test.go#L24))
     - [x] Open an annual price confirmation for the selected organization and its existing subscription item ([test](../../../adapters/sqlstore/stripe_organization_management_test.go#L167))
     - [x] Schedule a single-seat annual organization plan and reconcile its signed phase transition through the browser client ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L464))
     - [x] Reserve an explicit seat quantity, reject a conflicting retry and preserve single-seat reservations from earlier releases ([test](../../../adapters/sqlstore/subscriptions_test.go#L293))
-    - [x] Verify a five-seat organization purchase and read the eight seats already active when the webhook arrives ([test](../../../conformance/stripe-organization-fixture.mjs#L119))
+    - [x] Verify a five-seat organization purchase and read the eight seats already active when the webhook arrives ([test](../../../conformance/stripe-organization-fixture.mjs#L123))
     - [x] Open a hosted confirmation for a quantity-only change and suppress the link if the existing quantity changes concurrently ([test](../../../adapters/sqlstore/stripe_plan_change_test.go#L225))
     - [x] Propose one seat when quantity is omitted and keep all five existing seats until the customer confirms ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L264))
-    - [x] Count organization members for a monthly licensed checkout and ignore the caller’s seat override ([test](../../../conformance/stripe-organization-fixture.mjs#L144))
+    - [x] Count organization members for a monthly licensed checkout and ignore the caller’s seat override ([test](../../../conformance/stripe-organization-fixture.mjs#L151))
+    - [x] Purchase one fixed monthly base unit and a separate licensed unit for each member with the browser client ([test](../../../conformance/stripe-organization-fixture.mjs#L149))
+    - [x] Bind both price IDs across a lost Checkout response, reject a repriced retry and resume on a second server ([test](../../../adapters/sqlstore/stripe_seats_test.go#L238))
   - [ ] `POST /subscription/cancel`
     - [x] Open a cancellation page scoped to the signed-in customer and selected subscription ([test](../../../adapters/sqlstore/stripe_management_test.go#L158))
     - [x] Match the browser client's session, customer-type and foreign-reference errors before contacting Stripe ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L210))
@@ -45,9 +47,9 @@
     - [x] List only the authenticated owner’s active or trialing plans and configured price IDs ([test](../../../adapters/sqlstore/subscriptions_test.go#L259))
     - [x] Match the browser client's session, customer-type and foreign-reference errors before contacting Stripe ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L210))
     - [x] Read the changed price, seat count and billing window after a signed renewal ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L361))
-    - [x] Apply signed checkout and renewal events to the organization and list its updated price through the browser client ([test](../../../conformance/stripe-organization-fixture.mjs#L126))
-    - [x] Verify a five-seat organization purchase and read the eight seats already active when the webhook arrives ([test](../../../conformance/stripe-organization-fixture.mjs#L119))
-    - [x] Update the existing Stripe item when an invitation is accepted or a member is removed, using default proration ([test](../../../conformance/stripe-organization-fixture.mjs#L162))
+    - [x] Apply signed checkout and renewal events to the organization and list its updated price through the browser client ([test](../../../conformance/stripe-organization-fixture.mjs#L130))
+    - [x] Verify a five-seat organization purchase and read the eight seats already active when the webhook arrives ([test](../../../conformance/stripe-organization-fixture.mjs#L123))
+    - [x] Update the existing Stripe item when an invitation is accepted or a member is removed, using default proration ([test](../../../conformance/stripe-organization-fixture.mjs#L172))
   - [ ] `GET /subscription/success`
     - [x] Use the configured auth mount and pass Stripe the literal Checkout Session placeholder ([test](../../../adapters/sqlstore/stripe_return_test.go#L226))
     - [x] Validate the callback and require a signed-in owner and known checkout before reading Stripe ([test](../../../adapters/sqlstore/stripe_return_test.go#L248))
@@ -64,12 +66,13 @@
     - [x] Reject foreign or unsigned checkout receipts and apply completion once ([test](../../../adapters/sqlstore/subscriptions_test.go#L252))
     - [x] Deduplicate signed subscription events and preserve terminal cancellations after delayed updates ([test](../../../adapters/sqlstore/stripe_lifecycle_test.go#L270))
     - [x] Bind the original Checkout reservation when a lifecycle webhook arrives before completion ([test](../../../adapters/sqlstore/stripe_lifecycle_test.go#L312))
-    - [x] Apply signed checkout and renewal events to the organization and list its updated price through the browser client ([test](../../../conformance/stripe-organization-fixture.mjs#L126))
+    - [x] Apply signed checkout and renewal events to the organization and list its updated price through the browser client ([test](../../../conformance/stripe-organization-fixture.mjs#L130))
     - [x] Confirm an organization’s cancellation through Stripe and reconcile it with a signed update on both runtimes ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L442))
     - [x] Schedule a single-seat annual organization plan and reconcile its signed phase transition through the browser client ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L464))
     - [x] Validate a multi-seat receipt before activating the subscription on all three SQL engines ([test](../../../adapters/sqlstore/subscriptions_test.go#L243))
     - [x] Reject an early signed event whose seat count disagrees with the organization’s checkout reservation ([test](../../../adapters/sqlstore/stripe_organization_test.go#L271))
-    - [x] Recover a lost Stripe response using the same idempotency key before applying the newer membership revision ([test](../../../adapters/sqlstore/stripe_seats_test.go#L221))
+    - [x] Recover a lost Stripe response using the same idempotency key before applying the newer membership revision ([test](../../../adapters/sqlstore/stripe_seats_test.go#L308))
+    - [x] Reject an invalid base-price receipt in either webhook order and grant only the verified two-item subscription ([test](../../../adapters/sqlstore/stripe_seats_test.go#L281))
   - [ ] `AuthorizeReferenceAction`
   - [ ] `CustomerType`
   - [ ] `WithStripeCustomerId`
@@ -114,7 +117,7 @@
     - [ ] Automatic trial abuse prevention
     - [ ] Flexible reference system to associate subscriptions with users or organizations
     - [ ] Team subscription support with seats management
-      - [x] Count organization members for a monthly licensed checkout and ignore the caller’s seat override ([test](../../../conformance/stripe-organization-fixture.mjs#L144))
+      - [x] Count organization members for a monthly licensed checkout and ignore the caller’s seat override ([test](../../../conformance/stripe-organization-fixture.mjs#L151))
   - [ ] Usage
     - [ ] Customer Management
       - [x] Bind or reuse the authenticated account’s customer and roll back conflicting customer mappings ([test](../../../adapters/sqlstore/subscriptions_test.go#L299))
@@ -133,7 +136,7 @@
           - [ ] Parameter `seats` (optional)
             - [x] Reserve an explicit seat quantity, reject a conflicting retry and preserve single-seat reservations from earlier releases ([test](../../../adapters/sqlstore/subscriptions_test.go#L293))
             - [x] Validate a multi-seat receipt before activating the subscription on all three SQL engines ([test](../../../adapters/sqlstore/subscriptions_test.go#L243))
-            - [x] Verify a five-seat organization purchase and read the eight seats already active when the webhook arrives ([test](../../../conformance/stripe-organization-fixture.mjs#L119))
+            - [x] Verify a five-seat organization purchase and read the eight seats already active when the webhook arrives ([test](../../../conformance/stripe-organization-fixture.mjs#L123))
             - [x] Propose one seat when quantity is omitted and keep all five existing seats until the customer confirms ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L264))
           - [ ] Parameter `locale` (optional)
           - [ ] Parameter `successUrl`
@@ -198,15 +201,19 @@
       - [ ] Team Subscriptions with Seats
         - [x] Reserve an explicit seat quantity, reject a conflicting retry and preserve single-seat reservations from earlier releases ([test](../../../adapters/sqlstore/subscriptions_test.go#L293))
         - [x] Validate a multi-seat receipt before activating the subscription on all three SQL engines ([test](../../../adapters/sqlstore/subscriptions_test.go#L243))
-        - [x] Verify a five-seat organization purchase and read the eight seats already active when the webhook arrives ([test](../../../conformance/stripe-organization-fixture.mjs#L119))
+        - [x] Verify a five-seat organization purchase and read the eight seats already active when the webhook arrives ([test](../../../conformance/stripe-organization-fixture.mjs#L123))
         - [x] Reject an early signed event whose seat count disagrees with the organization’s checkout reservation ([test](../../../adapters/sqlstore/stripe_organization_test.go#L271))
         - [x] Open a hosted confirmation for a quantity-only change and suppress the link if the existing quantity changes concurrently ([test](../../../adapters/sqlstore/stripe_plan_change_test.go#L225))
-        - [x] Count organization members for a monthly licensed checkout and ignore the caller’s seat override ([test](../../../conformance/stripe-organization-fixture.mjs#L144))
-        - [x] Update the existing Stripe item when an invitation is accepted or a member is removed, using default proration ([test](../../../conformance/stripe-organization-fixture.mjs#L162))
-        - [x] Recover a lost Stripe response using the same idempotency key before applying the newer membership revision ([test](../../../adapters/sqlstore/stripe_seats_test.go#L221))
-        - [x] Reduce the confirmed seat count to zero after the final member’s account is deleted ([test](../../../adapters/sqlstore/stripe_seats_test.go#L332))
-        - [x] Discover existing paid organizations and resume pending seat adjustments after a billing interruption ([test](../../../adapters/sqlstore/stripe_seats_test.go#L315))
-        - [x] Keep a healthy organization moving across one-item worker runs while another organization’s provider update fails ([test](../../../adapters/sqlstore/stripe_seats_test.go#L395))
+        - [x] Count organization members for a monthly licensed checkout and ignore the caller’s seat override ([test](../../../conformance/stripe-organization-fixture.mjs#L151))
+        - [x] Update the existing Stripe item when an invitation is accepted or a member is removed, using default proration ([test](../../../conformance/stripe-organization-fixture.mjs#L172))
+        - [x] Recover a lost Stripe response using the same idempotency key before applying the newer membership revision ([test](../../../adapters/sqlstore/stripe_seats_test.go#L308))
+        - [x] Reduce the confirmed seat count to zero after the final member’s account is deleted ([test](../../../adapters/sqlstore/stripe_seats_test.go#L422))
+        - [x] Discover existing paid organizations and resume pending seat adjustments after a billing interruption ([test](../../../adapters/sqlstore/stripe_seats_test.go#L405))
+        - [x] Keep a healthy organization moving across one-item worker runs while another organization’s provider update fails ([test](../../../adapters/sqlstore/stripe_seats_test.go#L485))
+        - [x] Purchase one fixed monthly base unit and a separate licensed unit for each member with the browser client ([test](../../../conformance/stripe-organization-fixture.mjs#L149))
+        - [x] Keep the fixed base at one while invitations and removals update the separate membership item ([test](../../../conformance/stripe-organization-fixture.mjs#L171))
+        - [x] Reject an invalid base-price receipt in either webhook order and grant only the verified two-item subscription ([test](../../../adapters/sqlstore/stripe_seats_test.go#L281))
+        - [x] Bind both price IDs across a lost Checkout response, reject a repriced retry and resume on a second server ([test](../../../adapters/sqlstore/stripe_seats_test.go#L238))
     - [ ] Webhook Handling
       - [x] Verify the webhook signature and dispatch a local event to the application callback ([test](../../../plugins/stripe/stripe_test.go#L19))
       - [x] Reconcile signed checkout completion and expiration and preserve the new attempt after replaying an older event ([test](../../../adapters/sqlstore/subscriptions_test.go#L332))
@@ -275,9 +282,11 @@
         - [ ] `limits`
         - [ ] `group`
         - [ ] `seatPriceId`
-          - [x] Count organization members for a monthly licensed checkout and ignore the caller’s seat override ([test](../../../conformance/stripe-organization-fixture.mjs#L144))
+          - [x] Count organization members for a monthly licensed checkout and ignore the caller’s seat override ([test](../../../conformance/stripe-organization-fixture.mjs#L151))
+          - [x] Purchase one fixed monthly base unit and a separate licensed unit for each member with the browser client ([test](../../../conformance/stripe-organization-fixture.mjs#L149))
+          - [x] Keep the fixed base at one while invitations and removals update the separate membership item ([test](../../../conformance/stripe-organization-fixture.mjs#L171))
         - [ ] `prorationBehavior`
-          - [x] Update the existing Stripe item when an invitation is accepted or a member is removed, using default proration ([test](../../../conformance/stripe-organization-fixture.mjs#L162))
+          - [x] Update the existing Stripe item when an invitation is accepted or a member is removed, using default proration ([test](../../../conformance/stripe-organization-fixture.mjs#L172))
           - [x] Configure monthly seat proration and reject unknown behavior or an unsupported plan shape ([test](../../../plugins/stripe/seats_test.go#L9))
         - [ ] `lineItems`
         - [ ] `freeTrial`
@@ -292,12 +301,12 @@
       - [ ] `onCustomerCreate`
   - [ ] Advanced Usage
     - [ ] Using with Organizations
-      - [x] Apply signed checkout and renewal events to the organization and list its updated price through the browser client ([test](../../../conformance/stripe-organization-fixture.mjs#L126))
+      - [x] Apply signed checkout and renewal events to the organization and list its updated price through the browser client ([test](../../../conformance/stripe-organization-fixture.mjs#L130))
       - [ ] When Organization Customer is enabled:
       - [ ] Enabling Organization Customer
         - [x] Generate the optional organization customer column with organization and subscription tables on three SQL dialects ([test](../../../conformance/schema.test.mjs#L190))
       - [ ] Creating Organization Subscriptions
-        - [x] Use the active or selected organization for single-seat checkout and keep its Stripe customer separate from personal accounts ([test](../../../conformance/stripe-organization-fixture.mjs#L95))
+        - [x] Use the active or selected organization for single-seat checkout and keep its Stripe customer separate from personal accounts ([test](../../../conformance/stripe-organization-fixture.mjs#L99))
         - [x] Recheck membership and active organization around Stripe responses, recover checkout under a different administrator, and refuse ambiguous customer ownership on three SQL engines ([test](../../../adapters/sqlstore/stripe_organization_test.go#L24))
       - [ ] Authorization
         - [x] Recheck membership and active organization around Stripe responses, recover checkout under a different administrator, and refuse ambiguous customer ownership on three SQL engines ([test](../../../adapters/sqlstore/stripe_organization_test.go#L24))

@@ -19,7 +19,7 @@ import (
 type Plan struct {
 	Name, PriceID, AnnualPriceID string
 	// SeatPriceID opts organization checkout into membership-based billing.
-	// The supported seat-only plan uses the same monthly licensed price.
+	// Use the base price for seat-only billing, or a distinct monthly seat price.
 	SeatPriceID, ProrationBehavior string
 }
 type SubscriptionOptions struct {
@@ -56,6 +56,7 @@ type CheckoutAttempt struct {
 	OrganizationID, OrganizationName, ActorID string
 	Seats                                     int64
 	AutomaticSeats                            bool
+	SeatPrice                                 string `json:"seatPrice,omitempty"` // distinct from Price for a two-item reservation
 	// PriceVerified preserves the price preflight across a lost Checkout response.
 	PriceVerified bool `json:"priceVerified,omitempty"`
 	// ReturnURL holds the provider success URL issued for this reservation.
@@ -103,6 +104,7 @@ type subscriptionPrice struct{ plan, interval string }
 type subscriptions struct {
 	organization             *OrganizationOptions
 	prices                   map[string]subscriptionPrice
+	seatPrices               map[string]bool
 	client                   *sdk.Client
 	plans                    map[string]Plan
 	requireEmailVerification bool
@@ -123,8 +125,8 @@ func configureSubscriptions(o *SubscriptionOptions) (*subscriptions, error) {
 			return nil, errors.New("stripe: invalid or duplicate subscription plan")
 		}
 		if p.SeatPriceID != "" {
-			if p.PriceID != p.SeatPriceID || p.AnnualPriceID != "" {
-				return nil, errors.New("stripe: organization seat billing requires one monthly base and seat price")
+			if !strings.HasPrefix(p.SeatPriceID, "price_") || len(p.SeatPriceID) == 6 || p.AnnualPriceID != "" {
+				return nil, errors.New("stripe: organization seat billing requires monthly base and seat prices")
 			}
 			switch p.ProrationBehavior {
 			case "":
@@ -143,6 +145,15 @@ func configureSubscriptions(o *SubscriptionOptions) (*subscriptions, error) {
 				return nil, errors.New("stripe: a recurring price must identify a single subscription plan and interval")
 			}
 			s.prices[price] = subscriptionPrice{p.Name, interval}
+		}
+	}
+	s.seatPrices = make(map[string]bool)
+	for _, p := range s.plans {
+		if p.SeatPriceID != "" && p.SeatPriceID != p.PriceID {
+			if _, collision := s.prices[p.SeatPriceID]; collision {
+				return nil, errors.New("stripe: a separate seat price cannot also identify a base plan")
+			}
+			s.seatPrices[p.SeatPriceID] = true
 		}
 	}
 	return s, nil
@@ -242,6 +253,9 @@ func (s *subscriptions) checkout(c auth.EndpointContext) (any, error) {
 	ctx := c.Request.Context()
 	store := c.Store().(SubscriptionStore)
 	want := CheckoutAttempt{AutomaticSeats: automatic, Seats: quantity, Owner: selection.reference, Plan: p.Name, Interval: interval, Price: price, SuccessURL: success, CancelURL: cancel}
+	if automatic && p.SeatPriceID != p.PriceID {
+		want.SeatPrice = p.SeatPriceID
+	}
 	if selection.organization {
 		want.ActorID = ss.User.ID
 		want.OrganizationID = selection.reference
@@ -258,7 +272,7 @@ func (s *subscriptions) checkout(c auth.EndpointContext) (any, error) {
 	}
 	a, err := store.ReserveStripeCheckout(ctx, selection.reference, ss.Session.Token, want, time.Now().UTC())
 	if errors.Is(err, ErrCheckoutPriceCheck) {
-		if err := s.verifyLicensedPrice(ctx, price); err != nil {
+		if err := s.verifyCheckoutPrices(ctx, want); err != nil {
 			return nil, err
 		}
 		want.PriceVerified = true
@@ -278,11 +292,11 @@ func (s *subscriptions) checkout(c auth.EndpointContext) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	if a.AutomaticSeats != automatic || !automatic && a.Quantity() != quantity {
+	if a.AutomaticSeats != automatic || a.SeatPrice != want.SeatPrice || !automatic && a.Quantity() != quantity {
 		return nil, ErrCheckoutReconcile
 	}
 	if a.CheckoutID == "" && (automatic || quantity > 1) && !a.PriceVerified {
-		if err := s.verifyLicensedPrice(ctx, price); err != nil {
+		if err := s.verifyCheckoutPrices(ctx, a); err != nil {
 			return nil, err
 		}
 	}
@@ -334,7 +348,7 @@ func (s *subscriptions) checkout(c auth.EndpointContext) (any, error) {
 			SuccessURL:        sdk.String(providerSuccess),
 			CancelURL:         sdk.String(a.CancelURL),
 			ExpiresAt:         sdk.Int64(a.Expires),
-			LineItems:         []*sdk.CheckoutSessionCreateLineItemParams{{Price: sdk.String(a.Price), Quantity: sdk.Int64(a.Quantity())}},
+			LineItems:         a.checkoutLines(),
 			Metadata:          meta,
 			SubscriptionData:  &sdk.CheckoutSessionCreateSubscriptionDataParams{Metadata: meta},
 		}

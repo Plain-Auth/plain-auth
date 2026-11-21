@@ -16,11 +16,11 @@ const seatsDue = "stripe-org-seats:due:"
 const seatsIdle = "stripe-org-seats:idle:"
 
 type seatState struct {
-	Organization, LocalID, Customer, Subscription, Plan, Price, Proration string
-	Revision                                                              int64
-	Work                                                                  *billing.SeatAdjustment
-	Suspended                                                             bool
-	Due                                                                   bool `json:"-"`
+	Organization, LocalID, Customer, Subscription, Plan, Price, BasePrice, Proration string
+	Revision                                                                         int64
+	Work                                                                             *billing.SeatAdjustment
+	Suspended                                                                        bool
+	Due                                                                              bool `json:"-"`
 }
 
 func (s *Store) organizationSeatCount(ctx context.Context, tx *sql.Tx, group string) (int64, error) {
@@ -139,11 +139,15 @@ func (s *Store) observeOrganizationSeats(ctx context.Context, tx *sql.Tx, group,
 	if state.Customer != key.CustomerID || state.Subscription != key.RemoteID {
 		return billing.ErrSeatReconciliation
 	}
-	if state.Price != "" && state.Price != c.ManagedSeatPrice && state.Work != nil {
+	oldBase := state.BasePrice
+	if oldBase == "" {
+		oldBase = state.Price
+	}
+	if state.Work != nil && (state.Price != c.ManagedSeatPrice || oldBase != c.ManagedBasePrice) {
 		return billing.ErrSeatReconciliation
 	}
 	state.Suspended = false
-	state.Plan, state.Price, state.Proration = c.Plan, c.ManagedSeatPrice, c.SeatProration
+	state.Plan, state.Price, state.BasePrice, state.Proration = c.Plan, c.ManagedSeatPrice, c.ManagedBasePrice, c.SeatProration
 	count, err := s.organizationSeatCount(ctx, tx, group)
 	if err != nil {
 		return err
@@ -202,7 +206,7 @@ func (s *Store) enrollSeatPlan(ctx context.Context, group string, plan billing.P
 	if err != nil || state != nil {
 		return err
 	}
-	state = &seatState{Organization: group, Plan: plan.Name, Price: plan.SeatPriceID, Proration: plan.ProrationBehavior, Revision: 1}
+	state = &seatState{Organization: group, Plan: plan.Name, Price: plan.SeatPriceID, BasePrice: plan.PriceID, Proration: plan.ProrationBehavior, Revision: 1}
 	var ref string
 	err = tx.QueryRowContext(ctx, s.bind(`SELECT b."id",b."referenceId",b."stripeCustomerId",b."stripeSubscriptionId"`+fields+` AND o."id"=? ORDER BY b."id" LIMIT 1`), plan.Name, group).Scan(&state.LocalID, &ref, &state.Customer, &state.Subscription)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -280,7 +284,7 @@ func (s *Store) ClaimStripeSeats(ctx context.Context, group string) (*billing.Se
 			if count < 0 || count > math.MaxInt32 {
 				return billing.ErrInvalidSeatQuantity
 			}
-			state.Work = &billing.SeatAdjustment{ID: rand.Text(), Organization: group, LocalID: state.LocalID, Customer: state.Customer, Subscription: state.Subscription, Plan: state.Plan, Price: state.Price, Proration: state.Proration, Revision: state.Revision, Quantity: count, Started: time.Now().Unix()}
+			state.Work = &billing.SeatAdjustment{ID: rand.Text(), Organization: group, LocalID: state.LocalID, Customer: state.Customer, Subscription: state.Subscription, Plan: state.Plan, Price: state.Price, BasePrice: state.BasePrice, Proration: state.Proration, Revision: state.Revision, Quantity: count, Started: time.Now().Unix()}
 		}
 		result = state.Work
 		return s.saveSeats(ctx, tx, state, true, false)

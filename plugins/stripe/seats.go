@@ -15,8 +15,8 @@ var ErrSeatReconciliation = errors.New("stripe: verify automatic seat state befo
 // SeatAdjustment is the immutable provider operation shared by all workers.
 // Item is persisted before the first POST and is reused on retry.
 type SeatAdjustment struct {
-	ID, Organization, LocalID, Customer, Subscription, Plan, Price, Proration, Item string
-	Revision, Quantity, Started                                                     int64
+	ID, Organization, LocalID, Customer, Subscription, Plan, Price, BasePrice, Proration, Item string
+	Revision, Quantity, Started                                                                int64
 }
 
 type SeatStore interface {
@@ -111,7 +111,11 @@ func (w *SeatWorker) syncGroup(ctx context.Context, group string) error {
 	}
 	s := w.subscriptions
 	plan := s.plans[job.Plan]
-	if plan.SeatPriceID == "" || plan.SeatPriceID != job.Price {
+	basePrice := job.BasePrice
+	if basePrice == "" {
+		basePrice = job.Price
+	} // in-flight jobs written for seat-only plans
+	if plan.SeatPriceID == "" || plan.SeatPriceID != job.Price || plan.PriceID != basePrice {
 		return ErrSeatReconciliation
 	}
 	sub, err := s.client.V1Subscriptions.Retrieve(ctx, job.Subscription, nil)
@@ -121,11 +125,11 @@ func (w *SeatWorker) syncGroup(ctx context.Context, group string) error {
 	if sub == nil || sub.ID != job.Subscription || sub.Customer == nil || sub.Customer.ID != job.Customer {
 		return ErrSeatReconciliation
 	}
-	if sub.Status != sdk.SubscriptionStatusActive && sub.Status != sdk.SubscriptionStatusTrialing || sub.Items == nil || sub.Items.HasMore || len(sub.Items.Data) != 1 || sub.Schedule != nil || sub.PendingUpdate != nil || sub.PauseCollection != nil {
+	if sub.Status != sdk.SubscriptionStatusActive && sub.Status != sdk.SubscriptionStatusTrialing || sub.Schedule != nil || sub.PendingUpdate != nil || sub.PauseCollection != nil {
 		return ErrSeatReconciliation
 	}
-	item := sub.Items.Data[0]
-	if item == nil || item.ID == "" || !s.licensedPrice(item.Price) || item.Price.ID != job.Price || job.Item != "" && job.Item != item.ID {
+	_, item := s.membershipItems(sub, plan)
+	if item == nil || job.Item != "" && job.Item != item.ID {
 		return ErrSeatReconciliation
 	}
 	if job.Item != "" || item.Quantity != job.Quantity {
@@ -154,7 +158,8 @@ func (w *SeatWorker) syncGroup(ctx context.Context, group string) error {
 	if err != nil {
 		return err
 	}
-	if sub == nil || sub.Items == nil || len(sub.Items.Data) != 1 || sub.Items.Data[0] == nil || sub.Items.Data[0].Price == nil || sub.Items.Data[0].Price.ID != job.Price || sub.Items.Data[0].Quantity != job.Quantity {
+	_, confirmed := s.membershipItems(sub, plan)
+	if confirmed == nil || confirmed.ID != item.ID || confirmed.Quantity != job.Quantity {
 		return ErrSeatReconciliation
 	}
 	return w.store.FinishStripeSeats(ctx, *job)

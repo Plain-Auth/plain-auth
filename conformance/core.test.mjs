@@ -1142,3 +1142,8 @@ test("the released client signs in with a preprovisioned Base32 authenticator on
     assert.equal(new URL(totpURI).searchParams.get("secret"), seed);
   }
 });
+
+test("the pinned client bills a fixed organization base and a separate quantity per member", async t => {
+  const { organizationBilling } = await import("./stripe-organization-fixture.mjs");
+  await organizationBilling(t, { reference, goFixture, instrument }, true, true);
+});
