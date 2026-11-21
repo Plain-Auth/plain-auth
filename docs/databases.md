@@ -26,6 +26,31 @@ AUTH_DSN='auth_user:example@tcp(127.0.0.1:3306)/auth_dev' \
 
 Use the deployment's TLS settings for remote databases. The PostgreSQL adapter accepts pgx connection strings. The MySQL adapter accepts go-sql-driver/mysql DSNs and enables timestamp parsing. SQLite uses go-sqlite3 with foreign keys enabled and requires CGO.
 
+## Check a deployed schema
+
+Build the CLI to use its exit codes in a deployment script. Set `AUTH_DSN` to the deployed database and supply the same dialect and plugin profiles as the application.
+
+```sh
+go build -o ./authctl ./cmd/authctl
+AUTH_DSN='./auth.db' ./authctl check schema --dialect sqlite --plugins organization,two-factor
+```
+
+`authctl check` and `authctl check schema` run the same read-only inspection. SQLite requires an existing file. PostgreSQL resolves table names through the connection's search path, and MySQL uses the database selected in its DSN.
+
+| Exit code | Meaning |
+| --- | --- |
+| 0 | All selected tables and columns were found, and extra columns accept omitted values. |
+| 1 | The inspection found a missing table, a missing column or an extra required column. |
+| 2 | The CLI could not validate its settings, inspect the database or write the report. |
+
+Add `--json` to receive an array on stdout, with diagnostics on stderr. A matching database returns `[]`. For example, selecting the last-login-method profile before migrating returns the following finding.
+
+```json
+[{"kind":"missing-column","table":"user","column":"lastLoginMethod"}]
+```
+
+For a missing table or column, review the SQL from `authctl generate` and apply the corresponding migration. For an extra required column, supply a database default or make the column nullable if the application may omit it. The check examines physical column names and whether extra columns can be omitted. Type compatibility, indexes, foreign keys and write permissions require separate verification.
+
 ## Open storage in Go
 
 ```go

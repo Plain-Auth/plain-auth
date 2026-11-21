@@ -20,11 +20,12 @@ const usage = `Usage: authctl <command>
 
   init      [--env-file .env] [--url URL]       Write a new local configuration
   info                                         Show runtime and driver details
+  check [schema] --dialect sqlite|postgres|mysql  Check target columns without writing to the database
   generate  --dialect sqlite|postgres|mysql     Write the auth schema to stdout
   migrate   --dialect sqlite|postgres|mysql     Apply the schema to AUTH_DSN
   secret                                       Print a new signing secret
 
-  generate and migrate accept --plugins with comma-separated schema profiles.
+  check, generate and migrate accept --plugins with comma-separated schema profiles.
 `
 
 func main() {
@@ -32,7 +33,7 @@ func main() {
 	defer cancel()
 	if err := run(ctx, os.Args[1:], os.Stdout, os.Stderr); err != nil {
 		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		os.Exit(failureCode(os.Args[1:], err))
 	}
 }
 
@@ -57,11 +58,18 @@ func run(ctx context.Context, args []string, out, errOut io.Writer) error {
 		fmt.Fprintln(errOut, "Add the following to your .env file:")
 		_, err := fmt.Fprintf(out, "AUTH_SECRET=%s\n", generateSecret())
 		return err
-	case "generate", "migrate":
+	case "generate", "migrate", "check":
+		if args[0] == "check" && len(args) > 1 && args[1] == "schema" {
+			args = append([]string{"check"}, args[2:]...)
+		}
 		fs := flag.NewFlagSet(args[0], flag.ContinueOnError)
 		fs.SetOutput(errOut)
 		dialect := fs.String("dialect", "", "Database dialect (sqlite, postgres, mysql)")
 		pluginNames := fs.String("plugins", "", "Comma-separated schema profiles ("+strings.Join(schema.Profiles(), ", ")+")")
+		var asJSON bool
+		if args[0] == "check" {
+			fs.BoolVar(&asJSON, "json", false, "Write findings as a JSON array")
+		}
 		if err := fs.Parse(args[1:]); err != nil {
 			if errors.Is(err, flag.ErrHelp) {
 				return nil
@@ -76,6 +84,9 @@ func run(ctx context.Context, args []string, out, errOut io.Writer) error {
 			for name := range strings.SplitSeq(*pluginNames, ",") {
 				profiles = append(profiles, strings.TrimSpace(name))
 			}
+		}
+		if args[0] == "check" {
+			return checkDatabase(ctx, *dialect, profiles, asJSON, out)
 		}
 		ddl, err := schema.Generate(*dialect, profiles)
 		if err != nil {

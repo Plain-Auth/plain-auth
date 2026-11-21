@@ -47,7 +47,7 @@ Supply a comma-separated list in the form `2:<new-secret>,1:<old-secret>`. Each 
 
 | Setting | Consumer |
 | --- | --- |
-| `AUTH_DSN` | `authctl migrate` opens this database using the explicitly supplied dialect. Applications may pass the same string to `sqlstore.Open`. |
+| `AUTH_DSN` | `authctl migrate` applies the selected schema to this database. `authctl check schema` reads its catalog with the same dialect and plugin flags. Applications may pass the same string to `sqlstore.Open`. |
 | `AUTH_DB` | The example host chooses its SQLite path from this variable. |
 | `STRIPE_WEBHOOK_SECRET`, `STRIPE_SECRET_KEY` | The [Stripe examples](plugins.md) pass the webhook signing secret and server-side API key into the SDK integration. |
 | Provider client IDs, provider secrets, and mail credentials | The host application reads its chosen variable names and supplies them when configuring the relevant provider or sender. |

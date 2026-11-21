@@ -48,9 +48,7 @@ func (f fragment) included(selected map[string]bool) bool {
 	return false
 }
 
-// Generate returns SQL for SQLite, PostgreSQL or MySQL. Profile order does
-// not affect output. The organization-teams profile includes organization.
-func Generate(dialect string, profiles []string) (string, error) {
+func selection(dialect string, profiles []string) ([]statement, map[string]bool, error) {
 	switch dialect {
 	case "postgresql":
 		dialect = "postgres"
@@ -59,17 +57,27 @@ func Generate(dialect string, profiles []string) (string, error) {
 	}
 	objects, ok := layouts.Dialects[dialect]
 	if !ok {
-		return "", fmt.Errorf("schema: unsupported dialect %q", dialect)
+		return nil, nil, fmt.Errorf("schema: unsupported dialect %q", dialect)
 	}
 	selected := make(map[string]bool, len(profiles))
 	for _, name := range profiles {
 		if !slices.Contains(layouts.Profiles, name) {
-			return "", fmt.Errorf("schema: unknown plugin profile %q", name)
+			return nil, nil, fmt.Errorf("schema: unknown plugin profile %q", name)
 		}
 		selected[name] = true
 	}
 	if selected["organization"] && selected["organization-teams"] {
-		return "", fmt.Errorf("schema: choose one organization profile, organization or organization-teams")
+		return nil, nil, fmt.Errorf("schema: choose one organization profile, organization or organization-teams")
+	}
+	return objects, selected, nil
+}
+
+// Generate returns SQL for SQLite, PostgreSQL or MySQL. Profile order does
+// not affect output. The organization-teams profile includes organization.
+func Generate(dialect string, profiles []string) (string, error) {
+	objects, selected, err := selection(dialect, profiles)
+	if err != nil {
+		return "", err
 	}
 	statements := make([]string, 0, len(objects))
 	for _, object := range objects {
@@ -89,4 +97,33 @@ func Generate(dialect string, profiles []string) (string, error) {
 		statements = append(statements, sql)
 	}
 	return strings.Join(statements, "\n\n") + "\n", nil
+}
+
+// Table describes the physical columns used by a configured schema.
+type Table struct {
+	Name    string
+	Columns []string
+}
+
+// Tables returns the selected physical names in their canonical schema order.
+func Tables(dialect string, profiles []string) ([]Table, error) {
+	objects, selected, err := selection(dialect, profiles)
+	if err != nil {
+		return nil, err
+	}
+	var tables []Table
+	for _, object := range objects {
+		if len(object.Columns) == 0 || !object.included(selected) {
+			continue
+		}
+		table := Table{Name: strings.Trim(strings.TrimPrefix(object.SQL, "create table "), "\"`")}
+		for _, col := range object.Columns {
+			if col.included(selected) {
+				name, _, _ := strings.Cut(col.SQL, " ")
+				table.Columns = append(table.Columns, strings.Trim(name, "\"`"))
+			}
+		}
+		tables = append(tables, table)
+	}
+	return tables, nil
 }
