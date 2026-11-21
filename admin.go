@@ -263,6 +263,13 @@ func (a *Auth) executeAdmin(ctx context.Context, h http.Header, req AdminRequest
 	now := a.now().UTC().Truncate(time.Millisecond)
 	err := a.adminStore.AdminTransaction(ctx, token, req.UserID, now, func(tx AdminTransaction, actor SessionResult) error {
 		out = AdminResult{}
+		if a.phoneNumber != nil {
+			projection, ok := tx.(interface{ SelectPhoneFields() })
+			if !ok {
+				return errors.New("admin: store does not support phone fields")
+			}
+			projection.SelectPhoneFields()
+		}
 		if a.username != nil {
 			// Composite stores enable these fields only for this authorized transaction.
 			if projection, ok := tx.(interface{ SelectUsernameFields(bool) }); ok {
@@ -358,12 +365,7 @@ func (a *Auth) executeAdmin(ctx context.Context, h http.Header, req AdminRequest
 			}
 			return tx.DeleteUser(u.ID)
 		case "impersonate-user":
-			targetAdmin := slices.Contains(a.admin.AdminUserIDs, u.ID)
-			for _, role := range strings.Split(u.Role, ",") {
-				if slices.Contains(a.admin.AdminRoles, role) {
-					targetAdmin = true
-				}
-			}
+			targetAdmin := a.admin.protectedIdentity(u)
 			if targetAdmin && !a.admin.AllowImpersonatingAdmins && !a.admin.HasPermission(actor.User.ID, actor.User.Role, AdminPermissions{"user": {"impersonate-admins"}}) {
 				return adminError(403, "YOU_CANNOT_IMPERSONATE_ADMINS", "You cannot impersonate admins")
 			}

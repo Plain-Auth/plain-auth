@@ -23,9 +23,12 @@
     - [x] Fetch the authorized record and deny an ordinary account ([test](../../../adapters/sqlstore/admin_test.go#L95))
   - [ ] `POST /admin/create-user`
     - [x] Create a credential account and assign multiple roles ([test](../../../adapters/sqlstore/admin_test.go#L104))
+    - [x] Drop unproven phone numbers at account creation and admit explicit, authorized verified imports ([test](../../../conformance/phone-admin-contract.mjs#L46))
   - [ ] `POST /admin/update-user`
     - [x] Update a user’s profile and gate changes to protected fields ([test](../../../adapters/sqlstore/admin_test.go#L159))
     - [x] Persist independent nullable username fields on authorized profile edits ([test](../../../adapters/sqlstore/username_test.go#L448))
+    - [x] Require a current direct session and phone-specific grant; deny an organization owner acting across tenants ([test](../../../adapters/sqlstore/phone_admin_test.go#L78))
+    - [x] Keep one owner under competing authorized assignments on three database engines ([test](../../../adapters/sqlstore/phone_admin_test.go#L170))
   - [ ] `GET /admin/list-users`
     - [x] Combine search, role filtering, sorting and pagination ([test](../../../adapters/sqlstore/admin_test.go#L164))
   - [ ] `POST /admin/list-user-sessions`

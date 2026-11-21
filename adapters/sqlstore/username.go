@@ -112,6 +112,9 @@ func (t *adminTX) SelectUsernameFields(display bool) { t.names = true; t.display
 
 func (t *adminTX) publicColumns() string {
 	cols := userColumns + "," + adminUserColumns
+	if t.phone {
+		cols += `,u."phoneNumber",u."phoneNumberVerified"`
+	}
 	if t.names {
 		cols += `,u."username"`
 	}
@@ -123,6 +126,10 @@ func (t *adminTX) publicColumns() string {
 
 func (t *adminTX) publicFields(u *stonewrit.User) ([]any, func()) {
 	fields, finish := t.s.adminUserScanner(u)
+	if t.phone {
+		u.PhoneNumberFields = &stonewrit.PhoneNumberFields{}
+		fields = append(fields, &u.PhoneNumber, &u.PhoneNumberVerified)
+	}
 	if t.names {
 		u.UsernameFields = &stonewrit.UsernameFields{}
 		fields = append(fields, &u.Username)

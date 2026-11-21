@@ -136,6 +136,7 @@ func (s *Store) adminSession(ctx context.Context, db rowQuerier, token string) (
 }
 
 type adminTX struct {
+	phone               bool
 	names, displayNames bool
 	s                   *Store
 	ctx                 context.Context
@@ -237,6 +238,9 @@ func (t *adminTX) CreateUser(u authn.User, hash string) error {
 	if err != nil {
 		return err
 	}
+	if err := t.persistPhone(u); err != nil {
+		return err
+	}
 	if err := s.persistUsernames(t.ctx, t.tx, u, false); err != nil {
 		return err
 	}
@@ -256,6 +260,9 @@ func (t *adminTX) UpdateUser(u authn.User) error {
 		return authn.ErrEmailTaken
 	}
 	if err != nil {
+		return err
+	}
+	if err := t.persistPhone(u); err != nil {
 		return err
 	}
 	return s.persistUsernames(t.ctx, t.tx, u, true)

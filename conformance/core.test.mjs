@@ -988,3 +988,8 @@ test("SCIM Group membership changes share the same SQL edges and HTTP behavior a
   const { groupContract } = await import("./scim-contract.mjs");
   await groupContract(t, goFixture);
 });
+
+test("the official admin client assigns, clears and explicitly verifies phone numbers", async (t) => {
+  const { comparePhoneAdministration } = await import("./phone-admin-contract.mjs");
+  await comparePhoneAdministration(t, { reference, goFixture, instrument });
+});

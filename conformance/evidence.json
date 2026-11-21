@@ -3066,6 +3066,11 @@
       "label": "Create a credential account and assign multiple roles",
       "test": "adapters/sqlstore/admin_test.go",
       "marker": "operator, err := bootstrap.AdminCreateUser"
+    },
+    {
+      "label": "Drop unproven phone numbers at account creation and admit explicit, authorized verified imports",
+      "test": "conformance/phone-admin-contract.mjs",
+      "marker": "assert.deepEqual(view(explicit),[n,true])"
     }
   ],
   "docs/content/docs/plugins/admin.mdx#L82": [
@@ -3085,6 +3090,16 @@
       "label": "Persist independent nullable username fields on authorized profile edits",
       "test": "adapters/sqlstore/username_test.go",
       "marker": "administrator clear did not persist"
+    },
+    {
+      "label": "Require a current direct session and phone-specific grant; deny an organization owner acting across tenants",
+      "test": "adapters/sqlstore/phone_admin_test.go",
+      "marker": "tenant.AdminUpdateUser(ctx, one.ID"
+    },
+    {
+      "label": "Keep one owner under competing authorized assignments on three database engines",
+      "test": "adapters/sqlstore/phone_admin_test.go",
+      "marker": "concurrent phone assignment did not produce one owner"
     }
   ],
   "docs/content/docs/plugins/admin.mdx#L279": [
@@ -5448,6 +5463,11 @@
       "label": "Run signup, verification, recovery, password sign-in and owner linking on both HTTP servers",
       "test": "conformance/phone-contract.mjs",
       "marker": "export async function comparePhone("
+    },
+    {
+      "label": "Read and manage the phone profile through the released administrative client",
+      "test": "conformance/phone-admin-contract.mjs",
+      "marker": "view(ok(await actor.admin.getUser({query:{id:target.id}}))),[n,true]"
     }
   ],
   "plugin-symbol/phone-number/UserWithPhoneNumber": [
@@ -5567,6 +5587,11 @@
       "label": "Clear both the number and verified flag on the owner profile",
       "test": "adapters/sqlstore/phone_accounts_test.go",
       "marker": "disassociation retained verified status"
+    },
+    {
+      "label": "Clear an administratively assigned number and its flag together, even when a conflicting true flag is submitted",
+      "test": "conformance/phone-admin-contract.mjs",
+      "marker": "view(ok(await patch({phoneNumber:null,phoneNumberVerified:true}))),[null,false]"
     }
   ],
   "docs/content/docs/plugins/phone-number.mdx#L248": [

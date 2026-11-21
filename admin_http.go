@@ -32,6 +32,9 @@ func (a *Auth) adminUpdateFields(ctx context.Context, actor User, u *User, req A
 	if req.Operation == "update-user" && len(req.Data) == 0 {
 		return adminError(400, "NO_DATA_TO_UPDATE", "No data to update")
 	}
+	if err := a.adminPhoneFields(ctx, actor, u, req.Data, creating); err != nil {
+		return err
+	}
 	if a.username != nil {
 		patch, err := usernamePatch(req.Data)
 		name, display := patch.Username, patch.DisplayUsername
@@ -86,7 +89,7 @@ func (a *Auth) adminUpdateFields(ctx context.Context, actor User, u *User, req A
 			if a.username == nil {
 				return validationError("Unknown user field")
 			}
-		case "role":
+		case "role", "phoneNumber", "phoneNumberVerified":
 			continue
 		case "id":
 			return adminError(400, "USER_ID_CANNOT_BE_UPDATED", "User id cannot be updated")

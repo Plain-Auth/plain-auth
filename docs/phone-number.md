@@ -45,6 +45,14 @@ To enable first-use registration, set `SignUpOnVerification` to a `phonenumber.S
 
 The Go HTTP client exposes `SendPhoneNumberOTP`, `VerifyPhoneNumber`, `SignInPhoneNumber`, `RequestPhonePasswordReset` and `ResetPhonePassword`. For an application-owned server workflow, call `auth.ConsumePhoneNumberOTP(ctx, number, code)`. Success spends the code without creating a user, issuing a session or running the account verification callback. This operation is available only in Go.
 
+## Administrative phone changes
+
+Install the `admin` and `phone-number` SQL profiles and plugins to enable administrative management. A current, direct admin session with both `user:update` and `user:set-phone` can send `data.phoneNumber` or `data.phoneNumberVerified` to `POST /admin/update-user`. The response is the updated user. A custom support role with these grants may change ordinary accounts. Protected admin identities require a caller who is also a configured admin. Organization roles and application keys confer no global admin privileges.
+
+When a number first enters an existing profile, the verification flag can be null. Replacing a number clears its previous verification state unless the administrator explicitly attests to the replacement with `phoneNumberVerified: true`. Removing the number sets the flag to false, and setting true on an empty profile fails. A change to either field invalidates outstanding verification and reset codes for the affected numbers. A conflicting assignment fails atomically, including any accompanying profile edits.
+
+On `POST /admin/create-user`, supply both the number and an explicit true flag for a trusted import. An unverified number in the create request is discarded. To assign an unverified number, create the user and then submit the assignment to `/admin/update-user`. Both endpoints require `user:set-phone` for supplied phone fields. Administration is supported on SQLite, PostgreSQL and MySQL. [Three-engine permission and concurrency tests](../adapters/sqlstore/phone_admin_test.go) · [Administrative browser-client comparison](../conformance/phone-admin-contract.mjs)
+
 ## Proof storage and delivery
 
 Codes default to six decimal digits and expire after five minutes. `OTPLength` and `ExpiresIn` configure these values. `AllowedAttempts` takes an optional integer pointer. By default, three incorrect entries each return `INVALID_OTP`. The fourth attempt consumes the proof and returns `TOO_MANY_ATTEMPTS`, even if the code matches. An explicit zero blocks the first verification attempt. A new send replaces the prior verification code. Password-reset codes have a separate lifetime and attempt counter. All processes using the supported SQL adapters serialize changes to a given proof. A reset issued to one owner cannot change a different owner's password after reassignment.
@@ -53,4 +61,4 @@ The SQL adapters store the proof in `verification.value` as the original digits 
 
 A custom `VerifyOTP` can delegate verification to your SMS provider. Each acceptance is bound to the locally issued code generation, expiry and attempt budget. Resending while the provider is responding invalidates its earlier decision. Provider verification remains synchronous with the request. Delivery is application-owned and the automated tests use local message capture.
 
-The native and browser fixtures cover the default account fields and verified owner workflow. Custom schema mappings, arbitrary extra signup fields and administrative assignment of unverified phone numbers are outside the tested HTTP contract. [Account and policy tests](../adapters/sqlstore/phone_accounts_test.go) · [Storage and proof tests](../adapters/sqlstore/phone_test.go) · [Browser-client comparison](../conformance/phone-contract.mjs)
+The native and browser fixtures cover the default account fields and verified owner workflow. Custom schema mappings and arbitrary extra signup fields are outside the tested HTTP contract. [Account and policy tests](../adapters/sqlstore/phone_accounts_test.go) · [Storage and proof tests](../adapters/sqlstore/phone_test.go) · [Browser-client comparison](../conformance/phone-contract.mjs)

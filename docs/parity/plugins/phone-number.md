@@ -7,6 +7,7 @@
 - [ ] Phone number endpoints, types and options
   - [ ] `phoneNumberClient`
     - [x] Run signup, verification, recovery, password sign-in and owner linking on both HTTP servers ([test](../../../conformance/phone-contract.mjs#L7))
+    - [x] Read and manage the phone profile through the released administrative client ([test](../../../conformance/phone-admin-contract.mjs#L30))
   - [ ] `PHONE_NUMBER_ERROR_CODES`
   - [ ] `phoneNumber`
   - [ ] `consumePhoneNumberOTP (server API only)`
@@ -75,6 +76,7 @@
       - [x] Keep the same authenticated session while linking a verified number ([test](../../../adapters/sqlstore/phone_accounts_test.go#L146))
     - [ ] Remove Phone Number
       - [x] Clear both the number and verified flag on the owner profile ([test](../../../adapters/sqlstore/phone_accounts_test.go#L138))
+      - [x] Clear an administratively assigned number and its flag together, even when a conflicting true flag is submitted ([test](../../../conformance/phone-admin-contract.mjs#L35))
     - [ ] Disable Session Creation
       - [x] Verify without granting a session ([test](../../../adapters/sqlstore/phone_accounts_test.go#L82))
     - [ ] Request Password Reset
