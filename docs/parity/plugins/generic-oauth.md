@@ -34,6 +34,8 @@
     - [ ] `disableSignUp`
     - [ ] `overrideUserInfo`
   - [ ] `auth0`
+    - [x] Discover a configured Auth0 tenant and authenticate with a signed ID token at a custom mount ([test](../../../providers/enterprise_oidc_test.go#L23))
+    - [x] Match the Auth0 tenant discovery location and default scopes with the published preset ([test](../../../conformance/enterprise-oidc.test.mjs#L6))
   - [ ] `GumroadOptions`
     - [ ] `clientId`
     - [ ] `clientSecret`
@@ -77,6 +79,8 @@
     - [ ] `disableSignUp`
     - [ ] `overrideUserInfo`
   - [ ] `keycloak`
+    - [x] Discover a configured Keycloak realm and authenticate with a signed ID token at a custom mount ([test](../../../providers/enterprise_oidc_test.go#L23))
+    - [x] Match the Keycloak realm discovery location and default scopes with the published preset ([test](../../../conformance/enterprise-oidc.test.mjs#L6))
   - [ ] `LineOptions`
     - [ ] `providerId`
     - [ ] `clientId`
@@ -122,6 +126,8 @@
     - [ ] `disableSignUp`
     - [ ] `overrideUserInfo`
   - [ ] `okta`
+    - [x] Discover a configured Okta organization or custom authorization server and authenticate with a signed ID token at a custom mount ([test](../../../providers/enterprise_oidc_test.go#L23))
+    - [x] Match the Okta organization or custom authorization server discovery location and default scopes with the published preset ([test](../../../conformance/enterprise-oidc.test.mjs#L6))
   - [ ] `PatreonOptions`
     - [ ] `clientId`
     - [ ] `clientSecret`

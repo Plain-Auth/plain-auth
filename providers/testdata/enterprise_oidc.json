@@ -1,0 +1,6 @@
+[
+  {"name":"auth0","preset":"auth0","input":"Tenant.Auth0.Example","issuer":"https://tenant.auth0.example/"},
+  {"name":"keycloak","preset":"keycloak","input":"https://identity.example/realms/employees/","issuer":"https://identity.example/realms/employees"},
+  {"name":"okta","preset":"okta","input":"https://tenant.okta.example/oauth2/default/","issuer":"https://tenant.okta.example/oauth2/default"},
+  {"name":"okta-org","preset":"okta","input":"https://tenant.okta.example","issuer":"https://tenant.okta.example"}
+]

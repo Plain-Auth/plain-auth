@@ -5101,5 +5101,41 @@
       "test": "adapters/sqlstore/account_contract_test.go",
       "marker": "func TestAccountEngineContract("
     }
+  ],
+  "plugin-symbol/generic-oauth/auth0": [
+    {
+      "label": "Discover a configured Auth0 tenant and authenticate with a signed ID token at a custom mount",
+      "test": "providers/enterprise_oidc_test.go",
+      "marker": "func TestEnterpriseOIDCPresets("
+    },
+    {
+      "label": "Match the Auth0 tenant discovery location and default scopes with the published preset",
+      "test": "conformance/enterprise-oidc.test.mjs",
+      "marker": "test(\"enterprise OIDC discovery and scopes match"
+    }
+  ],
+  "plugin-symbol/generic-oauth/keycloak": [
+    {
+      "label": "Discover a configured Keycloak realm and authenticate with a signed ID token at a custom mount",
+      "test": "providers/enterprise_oidc_test.go",
+      "marker": "func TestEnterpriseOIDCPresets("
+    },
+    {
+      "label": "Match the Keycloak realm discovery location and default scopes with the published preset",
+      "test": "conformance/enterprise-oidc.test.mjs",
+      "marker": "test(\"enterprise OIDC discovery and scopes match"
+    }
+  ],
+  "plugin-symbol/generic-oauth/okta": [
+    {
+      "label": "Discover a configured Okta organization or custom authorization server and authenticate with a signed ID token at a custom mount",
+      "test": "providers/enterprise_oidc_test.go",
+      "marker": "func TestEnterpriseOIDCPresets("
+    },
+    {
+      "label": "Match the Okta organization or custom authorization server discovery location and default scopes with the published preset",
+      "test": "conformance/enterprise-oidc.test.mjs",
+      "marker": "test(\"enterprise OIDC discovery and scopes match"
+    }
   ]
 }

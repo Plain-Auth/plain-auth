@@ -79,6 +79,26 @@ Cognito accepts user-pool ID tokens for direct sign-in as well. Paybin uses the 
 
 The default PayPal registration uses the sandbox. Notion requests the workspace owner's profile with the versioned API. Facebook verifies the returned access token against the configured app before reading the profile. X reads confirmed email using a second provider request. TikTok, WeChat, Reddit, Roblox and X can return a provider-specific placeholder when the service withholds email. Placeholder addresses remain unverified. VK requires the device ID on its callback. The local tests use provider response fixtures and test signing keys.
 
+## Auth0, Keycloak and Okta
+
+Set the provider's browser callback to your public auth mount followed by `/callback/` and its registration name. For example, a provider registered as `work` under the mount `/identity` uses `https://app.example.com/identity/callback/work`.
+
+```go
+work, err := providers.Keycloak(ctx, "https://id.example.com/realms/employees", clientID, clientSecret)
+if err != nil {
+    return err
+}
+opts.SocialProviders = map[string]auth.OAuthProvider{"work": work}
+```
+
+| Provider | Constructor | Tenant setting |
+| --- | --- | --- |
+| Auth0 | `providers.Auth0(ctx, domain, clientID, clientSecret)` | A tenant domain such as `example.us.auth0.com`, or its HTTPS origin. [Auth0 discovery](https://auth0.com/docs/get-started/applications/configure-applications-with-oidc-discovery) |
+| Keycloak | `providers.Keycloak(ctx, issuer, clientID, clientSecret)` | The full realm issuer, including any installation prefix and `/realms/<realm>`. [Keycloak endpoints](https://www.keycloak.org/securing-apps/oidc-layers) |
+| Okta | `providers.Okta(ctx, issuer, clientID, clientSecret)` | The organization origin or a custom authorization server issuer, such as `https://example.okta.com/oauth2/default`. [Okta authorization servers](https://developer.okta.com/docs/concepts/auth-servers/) |
+
+Construct each provider at startup. Discovery uses its configured issuer to obtain the authorization, token, and signing-key endpoints. The default scopes are `openid profile email`. Sign-in uses PKCE and verifies the signed ID token and browser nonce before issuing a session. The integration tests exercise a custom mount and isolate each issuer using a local HTTP transport. [End-to-end tests](../providers/enterprise_oidc_test.go)
+
 ## Linked provider credentials
 
 Find a linked account's local record ID with `GET /api/auth/list-accounts`. The following routes use that ID. HTTP callers need a live session belonging to the account owner.
