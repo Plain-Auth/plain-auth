@@ -56,6 +56,8 @@
     - [ ] `lastUsedWriteIntervalSeconds`
   - [ ] `SCIMMicrosoftEntraCompatibilityOptions`
     - [ ] `acceptLegacyGroupSchema`
+      - [x] Accept one attribute-free Entra schema marker only when enabled and return the canonical Group schema ([test](../../../plugins/scim/groups_test.go#L8))
+      - [x] Create a Group under an explicit compatibility option using the legacy marker and the core schema ([test](../../../adapters/sqlstore/scim_groups_test.go#L20))
   - [ ] `SCIMName`
   - [ ] `SCIMOAuthBearerPrincipal`
   - [ ] `SCIMOptions`
@@ -81,18 +83,28 @@
     - [x] Discover filter, patch and pagination capabilities without a directory credential ([test](../../../conformance/scim-contract.mjs#L43))
   - [ ] `GET /scim/v2/Schemas`
     - [x] List the supported core User schema without a bearer credential ([test](../../../adapters/sqlstore/scim_test.go#L33))
+    - [x] Discover the core Group schema ([test](../../../conformance/scim-contract.mjs#L90))
   - [ ] `GET /scim/v2/Schemas/:schemaId`
     - [x] Read the registered core User schema from a custom mount ([test](../../../adapters/sqlstore/scim_test.go#L33))
+    - [x] Retrieve the core Group schema on the public directory mount ([test](../../../conformance/scim-contract.mjs#L90))
   - [ ] `GET /scim/v2/ResourceTypes`
     - [x] List the registered User resource type publicly ([test](../../../adapters/sqlstore/scim_test.go#L33))
+    - [x] Discover Groups only when the store provides the Group operations ([test](../../../conformance/scim-contract.mjs#L90))
   - [ ] `GET /scim/v2/ResourceTypes/:resourceTypeId`
     - [x] Resolve the User resource type and reject an unavailable resource type ([test](../../../plugins/scim/http_test.go#L20))
+    - [x] Retrieve the Group resource type on both implementations ([test](../../../conformance/scim-contract.mjs#L90))
   - [ ] `POST /scim/v2/Groups`
+    - [x] Create directory-owned Groups, deduplicate direct members and reject foreign User and nested Group references ([test](../../../adapters/sqlstore/scim_groups_test.go#L20))
   - [ ] `GET /scim/v2/Groups/:groupId`
+    - [x] Read the other implementation's canonical membership edges with trusted display names and User links ([test](../../../conformance/scim-contract.mjs#L90))
   - [ ] `GET /scim/v2/Groups`
+    - [x] Filter by display name and external ID, paginate and return a nested member projection ([test](../../../conformance/scim-contract.mjs#L90))
   - [ ] `PUT /scim/v2/Groups/:groupId`
+    - [x] Replace a Group profile and its member set and retain the underlying Users ([test](../../../adapters/sqlstore/scim_groups_test.go#L20))
   - [ ] `PATCH /scim/v2/Groups/:groupId`
+    - [x] Apply concurrent membership changes, enforce the 1,000-member limit and roll back invalid multi-operation updates ([test](../../../adapters/sqlstore/scim_groups_test.go#L20))
   - [ ] `DELETE /scim/v2/Groups/:groupId`
+    - [x] Physically remove the scoped membership edges without deleting Users or another directory's Group ([test](../../../adapters/sqlstore/scim_groups_test.go#L20))
   - [ ] `SCIMActiveUserLink`
   - [ ] `SCIMActiveUserLinkContext`
   - [ ] `SCIMUserExternalIdReference`

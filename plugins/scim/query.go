@@ -10,7 +10,9 @@ import (
 
 var equality = regexp.MustCompile(`(?i)^(?:urn:ietf:params:scim:schemas:core:2\.0:user:)?(id|userName|externalId|emails\.value|emails\[\s*type\s+eq\s+"work"\s*\]\.value)\s+eq\s+("(?:[^"\\]|\\.)*")(?:\s+(and)\s+|$)`)
 
-func query(values url.Values) (Query, error) {
+var groupEquality = regexp.MustCompile(`(?i)^(?:urn:ietf:params:scim:schemas:core:2\.0:group:)?(id|displayName|externalId)\s+eq\s+("(?:[^"\\]|\\.)*")(?:\s+(and)\s+|$)`)
+
+func query(values url.Values, equality *regexp.Regexp) (Query, error) {
 	var q Query
 	page := map[string]int{"startIndex": 1, "count": 100}
 	for k := range page {
@@ -55,7 +57,7 @@ type projection struct {
 	fields  map[string]bool
 }
 
-func projectQuery(q url.Values) (projection, error) {
+func projectQuery(q url.Values, fields []string, schema string) (projection, error) {
 	var p projection
 	if q.Has("attributes") && q.Has("excludedAttributes") {
 		return p, invalid("invalidValue", "Choose one attribute projection")
@@ -72,7 +74,7 @@ func projectQuery(q url.Values) (projection, error) {
 	for _, arg := range q[key] {
 		for _, s := range strings.Split(arg, ",") {
 			s = strings.TrimSpace(s)
-			name := field(s, append([]string{"id", "meta"}, userFields...))
+			name := field(withoutSchema(s, schema), fields)
 			if name == "" {
 				return p, invalid("invalidValue", "Unknown projection attribute")
 			}

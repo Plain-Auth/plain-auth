@@ -983,3 +983,8 @@ test("the official phone client verifies, links and recovers accounts on both ru
   const { comparePhone } = await import("./phone-contract.mjs");
   await comparePhone(t, { reference, goFixture, instrument });
 });
+
+test("SCIM Group membership changes share the same SQL edges and HTTP behavior across implementations", async t => {
+  const { groupContract } = await import("./scim-contract.mjs");
+  await groupContract(t, goFixture);
+});

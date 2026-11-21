@@ -6,7 +6,7 @@ The i18n plugin localizes coded errors from core and plugin endpoints. [Localiza
 
 The OpenAPI plugin publishes a machine-readable schema and a local API reference for installed endpoints. [OpenAPI guide](openapi.md)
 
-The SCIM handler wraps the auth handler and serves directory provisioning under its existing mount. [SCIM directory Users](scim.md)
+The SCIM handler wraps the auth handler and serves directory provisioning under its existing mount. [SCIM directory provisioning](scim.md)
 
 The phone-number plugin supports verified numbers, account linking, sign-in and password recovery. [Phone-number guide](phone-number.md)
 

@@ -37,8 +37,9 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		writeError(w, ErrNotFound)
 		return
 	}
-	if resource != "Users" {
-		if _, ok := descriptors[resource]; !ok {
+	isGroup := resource == "Groups" && h.groups != nil
+	if resource != "Users" && !isGroup {
+		if resource != "Schemas" && resource != "ResourceTypes" && resource != "ServiceProviderConfig" {
 			writeError(w, &Error{404, "", "Resource not found"})
 			return
 		}
@@ -59,12 +60,26 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		writeError(w, &Error{405, "", "Method not allowed"})
 		return
 	}
-	d, err := h.authorize(r)
+	scope := UsersRead
+	if r.Method != http.MethodGet {
+		scope = UsersWrite
+	}
+	if isGroup {
+		scope = GroupsRead
+		if r.Method != http.MethodGet {
+			scope = GroupsWrite
+		}
+	}
+	d, err := h.authorize(r, scope)
 	if err != nil {
 		writeError(w, err)
 		return
 	}
-	pr, err := projectQuery(r.URL.Query())
+	if isGroup {
+		h.serveGroups(w, r, d, id, single)
+		return
+	}
+	pr, err := projectQuery(r.URL.Query(), append([]string{"id", "meta"}, userFields...), UserSchema)
 	if err != nil {
 		writeError(w, err)
 		return
@@ -74,7 +89,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
 		if !single {
-			q, err := query(r.URL.Query())
+			q, err := query(r.URL.Query(), equality)
 			if err != nil {
 				writeError(w, err)
 				return
@@ -158,33 +173,41 @@ func (h *Handler) user(r Record) map[string]any {
 	return m
 }
 func (h *Handler) discovery(w http.ResponseWriter, resource, id string) {
-	data := maps.Clone(descriptors[resource])
-	typ := resource
-	loc := h.base + "/" + resource
+	location := h.base + "/" + resource
 	if resource == "ServiceProviderConfig" {
 		if id != "" {
-			writeError(w, ErrNotFound)
-			return
-		}
-	} else {
-		key := data["id"].(string)
-		if id != "" && id != key {
 			writeError(w, &Error{404, "", "Unknown discovery resource"})
 			return
 		}
-		if resource == "Schemas" {
-			typ = "Schema"
-		} else {
-			typ = "ResourceType"
-		}
-		loc += "/" + url.PathEscape(key)
-	}
-	data["meta"] = map[string]any{"resourceType": typ, "location": loc}
-	if resource != "ServiceProviderConfig" && id == "" {
-		write(w, 200, list([]map[string]any{data}, 1, 1))
+		data := maps.Clone(descriptors[resource])
+		data["meta"] = map[string]any{"resourceType": resource, "location": location}
+		write(w, 200, data)
 		return
 	}
-	write(w, 200, data)
+	kind, groupKey := "Schema", "GroupSchema"
+	if resource == "ResourceTypes" {
+		kind, groupKey = "ResourceType", "GroupResourceType"
+	}
+	keys := []string{resource}
+	if h.groups != nil {
+		keys = append(keys, groupKey)
+	}
+	items := make([]map[string]any, 0, len(keys))
+	for _, k := range keys {
+		data := maps.Clone(descriptors[k])
+		key := data["id"].(string)
+		data["meta"] = map[string]any{"resourceType": kind, "location": location + "/" + url.PathEscape(key)}
+		if id == key {
+			write(w, 200, data)
+			return
+		}
+		items = append(items, data)
+	}
+	if id != "" {
+		writeError(w, &Error{404, "", "Unknown discovery resource"})
+		return
+	}
+	write(w, 200, list(items, len(items), 1))
 }
 func list(items []map[string]any, total, start int) map[string]any {
 	return map[string]any{"schemas": []string{listSchema}, "Resources": items, "startIndex": start, "totalResults": total, "itemsPerPage": len(items)}

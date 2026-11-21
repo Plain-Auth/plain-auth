@@ -5250,6 +5250,11 @@
       "label": "Provision and synchronize directory Users over authenticated SCIM HTTP using compatible SQL records",
       "test": "conformance/scim-contract.mjs",
       "marker": "export async function directoryContract("
+    },
+    {
+      "label": "Exchange canonical Group and membership records with the reference runtime",
+      "test": "conformance/scim-contract.mjs",
+      "marker": "export async function groupContract("
     }
   ],
   "plugin/scim/GET /scim/v2/ServiceProviderConfig": [
@@ -5264,6 +5269,11 @@
       "label": "List the supported core User schema without a bearer credential",
       "test": "adapters/sqlstore/scim_test.go",
       "marker": "func TestSCIMDirectoryLifecycle("
+    },
+    {
+      "label": "Discover the core Group schema",
+      "test": "conformance/scim-contract.mjs",
+      "marker": "export async function groupContract("
     }
   ],
   "plugin/scim/GET /scim/v2/Schemas/:schemaId": [
@@ -5271,6 +5281,11 @@
       "label": "Read the registered core User schema from a custom mount",
       "test": "adapters/sqlstore/scim_test.go",
       "marker": "func TestSCIMDirectoryLifecycle("
+    },
+    {
+      "label": "Retrieve the core Group schema on the public directory mount",
+      "test": "conformance/scim-contract.mjs",
+      "marker": "export async function groupContract("
     }
   ],
   "plugin/scim/GET /scim/v2/ResourceTypes": [
@@ -5278,6 +5293,11 @@
       "label": "List the registered User resource type publicly",
       "test": "adapters/sqlstore/scim_test.go",
       "marker": "func TestSCIMDirectoryLifecycle("
+    },
+    {
+      "label": "Discover Groups only when the store provides the Group operations",
+      "test": "conformance/scim-contract.mjs",
+      "marker": "export async function groupContract("
     }
   ],
   "plugin/scim/GET /scim/v2/ResourceTypes/:resourceTypeId": [
@@ -5285,6 +5305,11 @@
       "label": "Resolve the User resource type and reject an unavailable resource type",
       "test": "plugins/scim/http_test.go",
       "marker": "func TestSCIMProtocolAndCredentialConfiguration("
+    },
+    {
+      "label": "Retrieve the Group resource type on both implementations",
+      "test": "conformance/scim-contract.mjs",
+      "marker": "export async function groupContract("
     }
   ],
   "plugin/scim/POST /scim/v2/Users": [
@@ -5611,6 +5636,60 @@
       "label": "Compare tenant discovery, default scopes, graph merging and absent-email behavior with the published preset",
       "test": "conformance/entra-profiles.test.mjs",
       "marker": "test(\"single-tenant Entra binds"
+    }
+  ],
+  "plugin/scim/POST /scim/v2/Groups": [
+    {
+      "label": "Create directory-owned Groups, deduplicate direct members and reject foreign User and nested Group references",
+      "test": "adapters/sqlstore/scim_groups_test.go",
+      "marker": "func TestSCIMGroupMembershipLifecycle("
+    }
+  ],
+  "plugin/scim/GET /scim/v2/Groups/:groupId": [
+    {
+      "label": "Read the other implementation's canonical membership edges with trusted display names and User links",
+      "test": "conformance/scim-contract.mjs",
+      "marker": "export async function groupContract("
+    }
+  ],
+  "plugin/scim/GET /scim/v2/Groups": [
+    {
+      "label": "Filter by display name and external ID, paginate and return a nested member projection",
+      "test": "conformance/scim-contract.mjs",
+      "marker": "export async function groupContract("
+    }
+  ],
+  "plugin/scim/PUT /scim/v2/Groups/:groupId": [
+    {
+      "label": "Replace a Group profile and its member set and retain the underlying Users",
+      "test": "adapters/sqlstore/scim_groups_test.go",
+      "marker": "func TestSCIMGroupMembershipLifecycle("
+    }
+  ],
+  "plugin/scim/PATCH /scim/v2/Groups/:groupId": [
+    {
+      "label": "Apply concurrent membership changes, enforce the 1,000-member limit and roll back invalid multi-operation updates",
+      "test": "adapters/sqlstore/scim_groups_test.go",
+      "marker": "func TestSCIMGroupMembershipLifecycle("
+    }
+  ],
+  "plugin/scim/DELETE /scim/v2/Groups/:groupId": [
+    {
+      "label": "Physically remove the scoped membership edges without deleting Users or another directory's Group",
+      "test": "adapters/sqlstore/scim_groups_test.go",
+      "marker": "func TestSCIMGroupMembershipLifecycle("
+    }
+  ],
+  "plugin-symbol/scim/SCIMMicrosoftEntraCompatibilityOptions/acceptLegacyGroupSchema": [
+    {
+      "label": "Accept one attribute-free Entra schema marker only when enabled and return the canonical Group schema",
+      "test": "plugins/scim/groups_test.go",
+      "marker": "func TestSCIMGroupCompatibilityAndPatchForms("
+    },
+    {
+      "label": "Create a Group under an explicit compatibility option using the legacy marker and the core schema",
+      "test": "adapters/sqlstore/scim_groups_test.go",
+      "marker": "func TestSCIMGroupMembershipLifecycle("
     }
   ]
 }

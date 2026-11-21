@@ -1,0 +1,247 @@
+package sqlstore
+
+import (
+	"database/sql"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
+	"slices"
+	"strings"
+	"testing"
+	"time"
+
+	auth "github.com/Stonewrit/stonewrit-auth"
+	"github.com/Stonewrit/stonewrit-auth/plugins/scim"
+	"github.com/Stonewrit/stonewrit-auth/schema"
+)
+
+func TestSCIMGroupMembershipLifecycle(t *testing.T) {
+	for _, dialect := range []string{"sqlite", "postgres", "mysql"} {
+		t.Run(dialect, func(t *testing.T) {
+			ctx := t.Context()
+			must := func(e error) {
+				t.Helper()
+				if e != nil {
+					t.Fatal(e)
+				}
+			}
+			dsn := organizationTestDSN(t, dialect)
+			ddl, e := schema.Generate(dialect, []string{"scim"})
+			must(e)
+			open := func() (*Store, *scim.Handler) {
+				s, e := OpenWithSchema(ctx, dialect, dsn, ddl)
+				must(e)
+				t.Cleanup(func() { s.Close() })
+				host, e := auth.New(auth.Options{BaseURL: "https://directory.test", BasePath: "/identity/custom", Secret: strings.Repeat("x", 32), Store: s})
+				must(e)
+				h, e := scim.New(host, scim.Options{Store: s, AcceptLegacyEntraGroupSchema: true, Connections: []scim.Connection{
+					{Directory: scim.Directory{ID: "ACME", ProvisioningDomainID: "domain"}, Credentials: []scim.Credential{{ID: "full", Token: "first"}, {ID: "read", Token: "readgroups", Scopes: []string{scim.GroupsRead}}, {ID: "edit", Token: "writegroups", Scopes: []string{scim.GroupsWrite}}, {ID: "users", Token: "usersonly", Scopes: []string{scim.UsersRead, scim.UsersWrite}}}},
+					{Directory: scim.Directory{ID: "acme", ProvisioningDomainID: "domain"}, Credentials: []scim.Credential{{ID: "full", Token: "second"}}},
+				}})
+				must(e)
+				return s, h
+			}
+			s, h := open()
+			_, replica := open()
+			call := func(host http.Handler, method, path, token string, data map[string]any, status int) map[string]any {
+				t.Helper()
+				w := scimRequest(host, method, path, token, data)
+				if w.Code != status || w.Header().Get("Content-Type") != scim.MediaType {
+					t.Fatalf("%s %s: %d %s", method, path, w.Code, w.Body.String())
+				}
+				var m map[string]any
+				if status != 204 {
+					must(json.Unmarshal(w.Body.Bytes(), &m))
+				}
+				return m
+			}
+			call(h, "GET", "ResourceTypes/Group", "", nil, 200)
+			call(h, "GET", "Schemas/"+scim.GroupSchema, "", nil, 200)
+			for _, token := range []string{"", "readgroups", "usersonly"} {
+				want := 403
+				if token == "" {
+					want = 401
+				}
+				call(h, "POST", "Groups", token, nil, want)
+			}
+			call(h, "GET", "Groups", "writegroups", nil, 403)
+			call(h, "GET", "Users", "readgroups", nil, 403)
+			user := func(name, token string) string {
+				t.Helper()
+				return call(h, "POST", "Users", token, map[string]any{"schemas": []string{scim.UserSchema}, "userName": name + "@example.test", "displayName": name}, 201)["id"].(string)
+			}
+			one, two, three, foreign := user("One", "first"), user("Two", "first"), user("Three", "first"), user("Else", "second")
+			values := func(ids ...string) []map[string]any {
+				result := []map[string]any{}
+				for _, id := range ids {
+					result = append(result, map[string]any{"value": id, "type": "User"})
+				}
+				return result
+			}
+			profile := func(name, ext string, ids ...string) map[string]any {
+				return map[string]any{"schemas": []string{scim.GroupSchema}, "displayName": name, "externalId": ext, "members": values(ids...)}
+			}
+			patch := func(ops ...map[string]any) map[string]any {
+				if ops == nil {
+					ops = []map[string]any{}
+				}
+				return map[string]any{"schemas": []string{scim.PatchSchema}, "Operations": ops}
+			}
+			op := func(method, path string, value any) map[string]any {
+				return map[string]any{"op": method, "path": path, "value": value}
+			}
+			g := profile("Engineering", "dept", one, one)
+			g["schemas"] = []string{scim.GroupSchema, "http://schemas.microsoft.com/2006/11/ResourceManagement/ADSCIM/2.0/Group"}
+			created := call(h, "POST", "Groups", "writegroups", g, 201)
+			id := created["id"].(string)
+			path := "Groups/" + id
+			ms := created["members"].([]any)
+			if len(ms) != 1 {
+				t.Fatal(ms)
+			}
+			m := ms[0].(map[string]any)
+			if m["display"] != "One" || m["$ref"] != "https://directory.test"+directoryPath+"Users/"+one || m["type"] != "User" {
+				t.Fatal(m)
+			}
+			call(h, "POST", "Groups", "first", profile("ENGINEERING", "other"), 409)
+			call(h, "POST", "Groups", "first", profile("alt", "dept"), 409)
+			call(h, "POST", "Groups", "first", profile("foreign", "foreign", foreign), 400)
+			call(h, "POST", "Groups", "first", profile("nested", "nested", id), 400)
+			peer := call(h, "POST", "Groups", "second", profile("Engineering", "dept", foreign), 201)["id"].(string)
+			call(replica, "GET", path, "second", nil, 404)
+			call(replica, "DELETE", path, "second", nil, 404)
+			if page := call(replica, "GET", "Groups?"+url.Values{"filter": {`displayName eq "ENGINEERING" and externalId eq "dept"`}, "attributes": {"members.value,meta.resourceType"}}.Encode(), "readgroups", nil, 200); page["totalResults"] != float64(1) {
+				t.Fatal(page)
+			} else {
+				entry := page["Resources"].([]any)[0].(map[string]any)
+				if len(entry) != 4 || len(entry["members"].([]any)[0].(map[string]any)) != 1 {
+					t.Fatal(entry)
+				}
+			}
+			call(h, "PATCH", path, "first", patch(op("replace", "displayName", "rollback"), op("add", "members", values(foreign))), 400)
+			call(h, "PATCH", path, "first", patch(op("add", "members", values(foreign)), op("remove", "members", values(foreign))), 400)
+			for _, body := range []map[string]any{patch(), patch(op("add", "members", values(one)))} {
+				after := call(h, "PATCH", path, "first", body, 200)
+				if after["meta"].(map[string]any)["lastModified"] != created["meta"].(map[string]any)["lastModified"] || after["displayName"] != "Engineering" {
+					t.Fatal(after)
+				}
+			}
+			start := make(chan struct{})
+			res := make(chan *httptest.ResponseRecorder, 2)
+			for i, host := range []*scim.Handler{h, replica} {
+				go func() {
+					<-start
+					res <- scimRequest(host, "PATCH", path, "first", patch(op("add", "members", values([]string{two, three}[i]))))
+				}()
+			}
+			close(start)
+			for range 2 {
+				if w := <-res; w.Code != 200 {
+					t.Fatalf("concurrent membership: %s", w.Body.String())
+				}
+			}
+			got := call(h, "GET", path, "readgroups", nil, 200)
+			if len(got["members"].([]any)) != 3 {
+				t.Fatal("lost additions", got)
+			}
+			updated := call(replica, "PATCH", path, "first", patch(map[string]any{"op": "remove", "path": `members[value eq "` + two + `"]`}, op("replace", "displayName", []string{"Updated"})), 200)
+			if updated["displayName"] != "Updated" || len(updated["members"].([]any)) != 2 {
+				t.Fatal(updated)
+			}
+			// A private external authorization grant must survive any local mutation.
+			var owner string
+			must(s.db.QueryRowContext(ctx, s.bind(`SELECT "userId" FROM "scimUser" WHERE "id"=?`), one).Scan(&owner))
+			now := s.date(time.Now())
+			_, e = s.db.ExecContext(ctx, s.bind(`INSERT INTO "scimProjectionGrant" ("id","connectionId","provisioningDomainId","scimUserId","userId","sourceKind","sourceId","role","grantKey","createdAt","updatedAt") VALUES (?,?,?,?,?,'group',?,?,?,?,?)`), "grant", "ACME", "domain", one, owner, id, "test", "grant", now, now)
+			must(e)
+			call(h, "PATCH", path, "first", patch(op("replace", "displayName", "Blocked")), 409)
+			call(h, "DELETE", path, "first", nil, 409)
+			_, e = s.db.ExecContext(ctx, s.bind(`DELETE FROM "scimProjectionGrant" WHERE "id"=?`), "grant")
+			must(e)
+			call(h, "PUT", path, "first", profile("Replacement", "new", one, two), 200)
+			call(replica, "DELETE", "Users/"+one, "first", nil, 204)
+			got = call(h, "GET", path, "readgroups", nil, 200)
+			ms = got["members"].([]any)
+			if len(ms) != 1 || ms[0].(map[string]any)["value"] != two {
+				t.Fatal(ms)
+			}
+			call(replica, "DELETE", path, "first", nil, 204)
+			call(h, "GET", path, "first", nil, 404)
+			var n int
+			must(s.db.QueryRowContext(ctx, s.bind(`SELECT COUNT(*) FROM "scimGroupMember" WHERE "groupId"=?`), id).Scan(&n))
+			if n != 0 {
+				t.Fatal("membership survived delete")
+			}
+			call(h, "GET", "Groups/"+peer, "second", nil, 200)
+			call(h, "GET", "Users/"+two, "first", nil, 200)
+			// A regular account deletion and a directory membership addition must
+			// not leave an orphan on engines without enforced inline cascades.
+			for attempt := range 4 {
+				label := fmt.Sprintf("Race%d", attempt)
+				raced := user(label, "first")
+				owner, e := s.FindAccountUser(ctx, strings.ToLower(label)+"@example.test")
+				must(e)
+				g := call(h, "POST", "Groups", "first", profile(label, label), 201)["id"].(string)
+				stamp := time.Now().UTC().Truncate(time.Millisecond)
+				ss := auth.StoredSession{Session: auth.Session{ID: label, Token: label, UserID: owner.ID, CreatedAt: stamp, UpdatedAt: stamp, ExpiresAt: stamp.Add(time.Hour)}}
+				must(s.CreateSession(ctx, ss))
+				start := make(chan struct{})
+				removed := make(chan error, 1)
+				added := make(chan *httptest.ResponseRecorder, 1)
+				go func() { <-start; removed <- s.DeleteAccount(ctx, owner.ID, ss.Token, "", "", stamp) }()
+				go func() {
+					<-start
+					added <- scimRequest(replica, "PATCH", "Groups/"+g, "first", patch(op("add", "members", values(raced))))
+				}()
+				close(start)
+				must(<-removed)
+				w := <-added
+				if w.Code != 200 && w.Code != 400 {
+					t.Fatalf("delete/add race %d %s", w.Code, w.Body.String())
+				}
+				must(s.db.QueryRowContext(ctx, s.bind(`SELECT COUNT(*) FROM "scimGroupMember" WHERE "scimUserId"=?`), raced).Scan(&n))
+				if n != 0 {
+					t.Fatal("orphaned directory membership")
+				}
+			}
+			// Populate enough real provisioned users to cross both a SQL batch
+			// boundary and the public direct-membership limit.
+			d := scim.Directory{ID: "ACME", ProvisioningDomainID: "domain"}
+			ids := make([]string, scim.MaxGroupMembers)
+			must(s.scimTx(ctx, d, func(tx *sql.Tx) error {
+				stamp := time.Now().UTC().Truncate(time.Millisecond)
+				for i := range ids {
+					id := fmt.Sprintf("bounded-%04d", i)
+					ids[i] = id
+					email := id + "@example.test"
+					_, e := tx.ExecContext(ctx, s.bind(`INSERT INTO "user" ("id","name","email","emailVerified","createdAt","updatedAt") VALUES (?,?,?,?,?,?)`), id, id, email, false, s.date(stamp), s.date(stamp))
+					if e != nil {
+						return e
+					}
+					p := scim.Profile{UserName: email, DisplayName: id, Active: true, PrimaryEmail: email, Attributes: map[string]any{"schemas": []any{scim.UserSchema}, "name": map[string]any{"formatted": id}, "emails": []any{map[string]any{"value": email, "primary": true}}}}
+					if e = s.scimInsert(ctx, tx, d, directoryUser{Record: scim.Record{ID: id, Profile: p, CreatedAt: stamp, UpdatedAt: stamp}, owner: id}); e != nil {
+						return e
+					}
+				}
+				return nil
+			}))
+			bounded := call(h, "POST", "Groups", "first", profile("Large", "large", ids...), 201)
+			bp := "Groups/" + bounded["id"].(string)
+			if len(bounded["members"].([]any)) != scim.MaxGroupMembers {
+				t.Fatal("partial Group")
+			}
+			call(h, "PATCH", bp, "first", patch(op("add", "members", values(two))), 400)
+			call(replica, "PATCH", bp, "first", patch(op("remove", "members", values(ids[0])), op("add", "members", values(two))), 200)
+			groups := call(replica, "GET", bp+"?attributes=members.value", "readgroups", nil, 200)
+			var actual []string
+			for _, item := range groups["members"].([]any) {
+				actual = append(actual, item.(map[string]any)["value"].(string))
+			}
+			if len(actual) != scim.MaxGroupMembers || !slices.Contains(actual, two) || slices.Contains(actual, ids[0]) {
+				t.Fatal("wrong membership boundary")
+			}
+		})
+	}
+}

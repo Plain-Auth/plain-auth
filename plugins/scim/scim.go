@@ -1,4 +1,4 @@
-// Package scim provisions directory-owned Users through the SCIM 2.0 protocol.
+// Package scim provisions directory-owned Users and Groups through the SCIM 2.0 protocol.
 package scim
 
 import (
@@ -36,8 +36,10 @@ type Connection struct {
 	Credentials []Credential
 }
 type Options struct {
-	Store       Store
-	Connections []Connection
+	// AcceptLegacyEntraGroupSchema accepts one classic Entra marker only on Group creation.
+	AcceptLegacyEntraGroupSchema bool
+	Store                        Store
+	Connections                  []Connection
 }
 
 // Profile contains the mutable attributes of one normalized directory user.
@@ -83,14 +85,16 @@ var (
 func invalid(kind, detail string) *Error { return &Error{400, kind, detail} }
 
 type principal struct {
-	digest      [32]byte
-	directory   Directory
-	read, write bool
-	expiry      time.Time
+	digest    [32]byte
+	directory Directory
+	scopes    map[string]bool
+	expiry    time.Time
 }
 type Handler struct {
 	host        *auth.Auth
 	store       Store
+	groups      GroupStore
+	legacyGroup bool
 	path, base  string
 	credentials []principal
 }
@@ -106,7 +110,8 @@ func New(host *auth.Auth, opts Options) (*Handler, error) {
 	if err != nil {
 		return nil, err
 	}
-	h := &Handler{host: host, store: opts.Store, path: path, base: base}
+	h := &Handler{host: host, store: opts.Store, path: path, base: base, legacyGroup: opts.AcceptLegacyEntraGroupSchema}
+	h.groups, _ = opts.Store.(GroupStore)
 	usedConnections := map[string]bool{}
 	usedTokens := map[[32]byte]bool{}
 	for _, c := range opts.Connections {
@@ -128,24 +133,18 @@ func New(host *auth.Auth, opts Options) (*Handler, error) {
 			}
 			ids[v.ID], usedTokens[digest] = true, true
 			p := principal{digest: digest, directory: c.Directory, expiry: v.ExpiresAt}
-			if v.Scopes == nil {
-				p.read, p.write = true, true
-			} else {
+			if v.Scopes != nil {
 				if len(v.Scopes) == 0 {
 					return nil, errors.New("scim: empty operation scope list")
 				}
-				seen := map[string]bool{}
+				p.scopes = map[string]bool{}
 				for _, scope := range v.Scopes {
-					if seen[scope] {
+					if p.scopes[scope] {
 						return nil, errors.New("scim: duplicate operation scope")
 					}
-					seen[scope] = true
+					p.scopes[scope] = true
 					switch scope {
-					case UsersRead:
-						p.read = true
-					case UsersWrite:
-						p.write = true
-					case "scim.groups.read", "scim.groups.write":
+					case UsersRead, UsersWrite, GroupsRead, GroupsWrite:
 					default:
 						return nil, errors.New("scim: unknown operation scope")
 					}
@@ -159,7 +158,7 @@ func New(host *auth.Auth, opts Options) (*Handler, error) {
 func identifier(v string) bool {
 	return v != "" && utf8.RuneCountInString(v) <= 255 && strings.TrimSpace(v) == v
 }
-func (h *Handler) authorize(r *http.Request) (Directory, error) {
+func (h *Handler) authorize(r *http.Request, scope string) (Directory, error) {
 	fields := strings.Fields(r.Header.Get("Authorization"))
 	if len(fields) != 2 || !strings.EqualFold(fields[0], "Bearer") || len(r.Header.Values("Authorization")) != 1 {
 		return Directory{}, &Error{401, "", "SCIM bearer token is required"}
@@ -175,11 +174,8 @@ func (h *Handler) authorize(r *http.Request) (Directory, error) {
 	if got == nil {
 		return Directory{}, &Error{401, "", "Invalid SCIM bearer token"}
 	}
-	if r.Method == http.MethodGet && !got.read {
-		return Directory{}, &Error{403, "", "The SCIM bearer token is missing the " + UsersRead + " scope"}
-	}
-	if r.Method != http.MethodGet && !got.write {
-		return Directory{}, &Error{403, "", "The SCIM bearer token is missing the " + UsersWrite + " scope"}
+	if got.scopes != nil && !got.scopes[scope] {
+		return Directory{}, &Error{403, "", "The SCIM bearer token is missing the " + scope + " scope"}
 	}
 	return got.directory, nil
 }
