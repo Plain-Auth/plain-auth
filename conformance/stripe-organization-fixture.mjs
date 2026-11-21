@@ -75,11 +75,21 @@ async function provider(t) {
 export async function organizationBilling(t, { reference, goFixture, instrument }, { automatic = false, separate = false, annual = false } = {}) {
   for (const runtime of ["reference", "Go"]) await t.test(runtime, async t => {
     const remote = await provider(t);
+    const basicPlan = { name: "basic", priceId: "price_basic" };
+    if (automatic) basicPlan.seatPriceId = separate ? "price_member" : basicPlan.priceId;
+    let fixturePricing = separate ? "1" : "";
+    if (annual) {
+      basicPlan.annualDiscountPriceId = "price_basic_annual";
+      basicPlan.seatPriceId = separate ? "price_member_annual" : basicPlan.annualDiscountPriceId;
+      // The reference identifies a seat-only plan by its default price.
+      if (!separate) basicPlan.priceId = basicPlan.seatPriceId;
+      fixturePricing = separate ? "annual" : "annual-seat-only";
+    }
     const server = runtime === "Go"
-      ? await goFixture(t, ["organization", "stripe-organization"], { CONFORMANCE_STRIPE_URL: remote.url, CONFORMANCE_STRIPE_AUTO_SEATS: automatic ? "1" : "", CONFORMANCE_STRIPE_SEPARATE_PRICE: annual ? "annual" : separate ? "1" : "" })
+      ? await goFixture(t, ["organization", "stripe-organization"], { CONFORMANCE_STRIPE_URL: remote.url, CONFORMANCE_STRIPE_AUTO_SEATS: automatic ? "1" : "", CONFORMANCE_STRIPE_SEPARATE_PRICE: fixturePricing })
       : await reference(t, [organization(), stripe({
         stripeClient: remote.api, stripeWebhookSecret: secret, organization: { enabled: true },
-        subscription: { enabled: true, plans: [{ name: "basic", priceId: "price_basic", ...(automatic && { seatPriceId: separate ? "price_member" : "price_basic" }), ...(annual && { annualDiscountPriceId: "price_basic_annual", seatPriceId: "price_member_annual" }) }, { name: "team", priceId: "price_team", annualDiscountPriceId: "price_team_annual" }],
+        subscription: { enabled: true, plans: [basicPlan, { name: "team", priceId: "price_team", annualDiscountPriceId: "price_team_annual" }],
           authorizeReference: async ({ user, referenceId }, ctx) => {
             const member = await ctx.context.adapter.findOne({ model: "member", where: [{ field: "organizationId", value: referenceId }, { field: "userId", value: user.id }] });
             return member?.role === "owner" || member?.role === "admin";
@@ -150,7 +160,9 @@ async function automaticSeats({ browser, owner, peer, group, remote, deliver, se
   const selector = { customerType: "organization", referenceId: group.id };
   const managedCheckout = checked(await owner.subscription.upgrade({ ...selector, plan: "basic", annual, seats: 99, disableRedirect: true }));
   assert.equal(managedCheckout.url, "https://checkout.example.test/org");
-  if (annual) {
+  if (annual && !separate) {
+    assert.deepEqual(remote.state.checkout.line_items.data.map(line => [line.price.id, line.quantity]), [["price_basic_annual", 2]]);
+  } else if (annual) {
     assert.deepEqual(remote.state.checkout.line_items.data.map(line => [line.price.id, line.quantity]), [["price_basic_annual", 1], ["price_member_annual", 2]]);
   } else if (separate) {
     assert.deepEqual(remote.state.checkout.line_items.data.map(line => [line.price.id, line.quantity]), [["price_basic", 1], ["price_member", 2]]);

@@ -356,7 +356,7 @@ Each entry groups the configured endpoint’s behaviors. A checked child records
     - [ ] `-y, --yes`
     - [ ] `--y`
   - [ ] `generate`
-    - [x] Emit SQL DDL for SQLite, PostgreSQL and MySQL ([test](../../cmd/authctl/main_test.go#L28))
+    - [x] Emit SQL DDL for SQLite, PostgreSQL and MySQL ([test](../../cmd/authctl/main_test.go#L29))
     - [x] Compare every base-profile combination and independent SCIM profile witnesses across all three dialects ([test](../../conformance/schema.test.mjs#L106))
     - [x] Prove SCIM adds exactly seven disjoint tables and preserves every preexisting schema statement ([test](../../conformance/schema.test.mjs#L169))
     - [ ] `-c, --cwd <cwd>`
@@ -387,7 +387,7 @@ Each entry groups the configured endpoint’s behaviors. A checked child records
     - [ ] `--open-code`
     - [ ] `--manual`
   - [ ] `migrate`
-    - [x] Initialize the SQLite schema and repeat the migration ([test](../../cmd/authctl/main_test.go#L37))
+    - [x] Initialize the SQLite schema and repeat the migration ([test](../../cmd/authctl/main_test.go#L38))
     - [x] Apply the selected profiles twice on populated SQLite while retaining the user ([test](../../conformance/schema.test.mjs#L129))
     - [x] Upgrade existing PostgreSQL and MySQL schemas with combined team, billing and factor profiles ([test](../../adapters/sqlstore/profiles_test.go#L14))
     - [x] Reopen a populated SCIM profile twice on SQLite, PostgreSQL and MySQL and retain the original account ([test](../../adapters/sqlstore/scim_test.go#L33))
@@ -395,8 +395,8 @@ Each entry groups the configured endpoint’s behaviors. A checked child records
     - [ ] `--config <config>`
     - [ ] `-y, --yes`
     - [ ] `--y`
-  - [x] `secret` ([test](../../cmd/authctl/main_test.go#L23))
-    - [x] Generate an environment assignment containing 32 random bytes in hexadecimal ([test](../../cmd/authctl/main_test.go#L23))
+  - [x] `secret` ([test](../../cmd/authctl/main_test.go#L24))
+    - [x] Generate an environment assignment containing 32 random bytes in hexadecimal ([test](../../cmd/authctl/main_test.go#L24))
   - [ ] `upgrade`
     - [ ] `-c, --cwd <cwd>`
     - [ ] `-y, --yes`

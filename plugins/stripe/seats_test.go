@@ -24,10 +24,18 @@ func TestMembershipPriceConfiguration(t *testing.T) {
 			t.Fatal("incorrect seat proration", behavior, err)
 		}
 	}
-	for _, plan := range []Plan{{Name: "invalid", PriceID: "price_base", SeatPriceID: "invalid"}, {Name: "year", PriceID: "price_seat", SeatPriceID: "price_seat", AnnualPriceID: "price_annual"}, {Name: "collision", PriceID: "price_base", AnnualPriceID: "price_year", SeatPriceID: "price_year"}} {
+	for _, plan := range []Plan{{Name: "invalid", PriceID: "price_base", SeatPriceID: "invalid"}, {Name: "year", PriceID: "price_seat", SeatPriceID: "price_seat", AnnualPriceID: "price_annual"}} {
 		if _, err := configureSubscriptions(&SubscriptionOptions{Client: sdk.NewClient("sk_test"), Plans: []Plan{plan}}); err == nil {
 			t.Fatal("accepted unsupported seat plan", plan.Name)
 		}
+	}
+	annualSeats := Plan{Name: "yearly", PriceID: "price_base", AnnualPriceID: "price_year", SeatPriceID: "price_year"}
+	if _, err := configureSubscriptions(&SubscriptionOptions{Client: sdk.NewClient("sk_test"), Plans: []Plan{annualSeats}}); err != nil {
+		t.Fatal("yearly seat price must identify its own plan", err)
+	}
+	foreign := Plan{Name: "other", PriceID: "price_other", SeatPriceID: "price_year"}
+	if _, err := configureSubscriptions(&SubscriptionOptions{Client: sdk.NewClient("sk_test"), Plans: []Plan{annualSeats, foreign}}); err == nil {
+		t.Fatal("another plan reused an annual seat-only price as a separate seat")
 	}
 }
 

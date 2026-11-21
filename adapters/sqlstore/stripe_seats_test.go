@@ -160,13 +160,20 @@ func (p *seatsProvider) RoundTrip(r *http.Request) (*http.Response, error) {
 	return nil, fmt.Errorf("unexpected %s %s", r.Method, r.URL)
 }
 
-func TestAutomaticOrganizationSeats(t *testing.T)    { testOrganizationSeatLifecycle(t, "price_seat") }
-func TestOrganizationBaseAndSeatPrices(t *testing.T) { testOrganizationSeatLifecycle(t, "price_base") }
-func TestOrganizationAnnualBaseAndSeatPrices(t *testing.T) {
-	testOrganizationSeatLifecycle(t, "price_base_year")
+func TestAutomaticOrganizationSeats(t *testing.T) {
+	testOrganizationSeatLifecycle(t, "price_seat", false)
 }
-func testOrganizationSeatLifecycle(t *testing.T, basePrice string) {
-	dual, annual := basePrice != "price_seat", basePrice == "price_base_year"
+func TestOrganizationBaseAndSeatPrices(t *testing.T) {
+	testOrganizationSeatLifecycle(t, "price_base", false)
+}
+func TestOrganizationAnnualBaseAndSeatPrices(t *testing.T) {
+	testOrganizationSeatLifecycle(t, "price_base_year", true)
+}
+func TestOrganizationAnnualSeatOnlyPrice(t *testing.T) {
+	testOrganizationSeatLifecycle(t, "price_seat", true)
+}
+func testOrganizationSeatLifecycle(t *testing.T, basePrice string, annual bool) {
+	dual := basePrice != "price_seat"
 	for _, dialect := range []string{"sqlite", "postgres", "mysql"} {
 		t.Run(dialect, func(t *testing.T) {
 			ctx := t.Context()
@@ -190,7 +197,7 @@ func testOrganizationSeatLifecycle(t *testing.T, basePrice string) {
 			remote := &seatsProvider{keys: map[string]int{}, dual: dual, annual: annual, basePriceID: basePrice, loseCheckout: dual}
 			backend := sdk.NewBackendsWithConfig(&sdk.BackendConfig{HTTPClient: &http.Client{Transport: remote}, MaxNetworkRetries: sdk.Int64(0)})
 			opts := billing.SubscriptionOptions{Client: sdk.NewClient("sk_test", sdk.WithBackends(backend)), Plans: []billing.Plan{{Name: "team", PriceID: "price_seat", SeatPriceID: "price_seat", ProrationBehavior: "none"}}}
-			if dual {
+			if dual || annual {
 				opts.Plans[0].PriceID = "price_base"
 			}
 			if annual {
@@ -362,7 +369,7 @@ func testOrganizationSeatLifecycle(t *testing.T, basePrice string) {
 				t.Fatal("seat item replaced base plan billing terms", rows[0])
 			}
 			if annual {
-				if rows[0].Interval == nil || *rows[0].Interval != "year" {
+				if rows[0].PriceID != basePrice || rows[0].Interval == nil || *rows[0].Interval != "year" {
 					t.Fatal("annual seat subscription lost its billing interval", rows)
 				}
 				_, err := owner.Upgrade(ctx, request)

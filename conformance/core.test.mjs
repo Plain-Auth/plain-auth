@@ -1278,3 +1278,8 @@ test("custom key generators and credential extractors work across runtimes", asy
     }
   }
 });
+
+test("the pinned client bills annual seat-only organizations one yearly item for all members", async t => {
+  const { organizationBilling } = await import("./stripe-organization-fixture.mjs");
+  await organizationBilling(t, { reference, goFixture, instrument }, { automatic: true, annual: true });
+});

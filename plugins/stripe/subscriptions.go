@@ -150,7 +150,7 @@ func configureSubscriptions(o *SubscriptionOptions) (*subscriptions, error) {
 		}
 	}
 	for _, p := range s.plans {
-		if p.SeatPriceID != "" && p.SeatPriceID != p.PriceID {
+		if p.SeatPriceID != "" && p.SeatPriceID != p.PriceID && p.SeatPriceID != p.AnnualPriceID {
 			if _, collision := s.prices[p.SeatPriceID]; collision {
 				return nil, errors.New("stripe: a separate seat price cannot also identify a base plan")
 			}
@@ -253,7 +253,7 @@ func (s *subscriptions) checkout(c auth.EndpointContext) (any, error) {
 	ctx := c.Request.Context()
 	store := c.Store().(SubscriptionStore)
 	want := CheckoutAttempt{AutomaticSeats: automatic, Seats: quantity, Owner: selection.reference, Plan: p.Name, Interval: interval, Price: price, SuccessURL: success, CancelURL: cancel}
-	if automatic && p.SeatPriceID != p.PriceID {
+	if automatic && p.SeatPriceID != price {
 		want.SeatPrice = p.SeatPriceID
 	}
 	if selection.organization {

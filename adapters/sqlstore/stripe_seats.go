@@ -145,7 +145,7 @@ func (s *Store) observeOrganizationSeats(ctx context.Context, tx *sql.Tx, group,
 	}
 	// A historical row without a billing interval first performs a read-only
 	// reconciliation. No provider update has been prepared for this probe.
-	if state.BasePrice == "" && state.Work != nil && state.Work.Item == "" && state.Price == c.ManagedSeatPrice && c.ManagedBasePrice != state.Price {
+	if state.BasePrice == "" && state.Work != nil && state.Work.Item == "" && state.Price == c.ManagedSeatPrice && c.ManagedBasePrice != "" {
 		state.Work = nil
 	}
 	if state.Work != nil && (state.Price != c.ManagedSeatPrice || oldBase != c.ManagedBasePrice) {

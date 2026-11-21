@@ -40,6 +40,9 @@ func fixtureStripe(ctx context.Context, store *sqlstore.Store, endpoint string, 
 		switch os.Getenv("CONFORMANCE_STRIPE_SEPARATE_PRICE") {
 		case "1":
 			subscriptions.Plans[0].SeatPriceID = "price_member"
+		case "annual-seat-only":
+			subscriptions.Plans[0].AnnualPriceID = "price_basic_annual"
+			subscriptions.Plans[0].SeatPriceID = "price_basic_annual"
 		case "annual":
 			subscriptions.Plans[0].AnnualPriceID = "price_basic_annual"
 			subscriptions.Plans[0].SeatPriceID = "price_member_annual"
