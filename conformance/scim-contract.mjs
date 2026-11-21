@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import {writeFile} from "node:fs/promises";
+import {dirname,join} from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { betterAuth } from "better-auth";
 import { getMigrations } from "better-auth/db/migration";
@@ -11,12 +13,12 @@ const connections = [{ id: "directory", provisioningDomainId: "tenant", credenti
   { type: "bearer", id: "directory-key", token: "local-directory-only" },
 ]}];
 
-async function reference(t, path = ":memory:") {
+async function reference(t, path = ":memory:", pluginOptions = {}) {
   const database = new DatabaseSync(path);
   t.after(() => database.close());
   const baseURL = "http://reference.localhost";
   const options = { baseURL, database: { type: "sqlite", dialect: new NodeSqliteDialect({ database }), transaction: true },
-    secret: "local-conformance-0123456789-abcdefghijk", plugins: [scim({ connections })], telemetry: { enabled: false } };
+    secret: "local-conformance-0123456789-abcdefghijk", plugins: [scim({ connections,...pluginOptions })], telemetry: { enabled: false } };
   await (await getMigrations(options)).runMigrations();
   const auth = betterAuth(options);
   return { baseURL, send: req => auth.handler(req) };
@@ -137,4 +139,48 @@ export async function groupContract(t, goFixture) {
   assert.equal((await b("GET","Groups/"+fromRef.id,200)).members[0].value,u.id);
   await b("DELETE","Groups/"+fromRef.id,204);
   await a("GET","Groups/"+fromRef.id,404);
+}
+
+export async function dynamicContract(t, goFixture) {
+  const go=await goFixture(t,["scim"],{CONFORMANCE_SCIM_DYNAMIC:"1"});
+  let revoked=false;
+  const referenceRuntime=await reference(t,":memory:",{authentication:{verifyBearerToken({headers,method,path,token}) {
+    if (headers.get("X-Test-Route")!==method+" "+path) return null;
+    const claim={connection:{id:"runtime",provisioningDomainId:"domain"},credentialId:"issued",
+      scopes:["scim.users.read","scim.users.write"],expiresAt:new Date(Date.now()+3600000)};
+    switch(token) {
+      case "application":return revoked?null:claim;
+      case "declared":delete claim.connection;return {...claim,connectionId:"directory"};
+      case "expired":return {...claim,expiresAt:new Date(0)};
+      case "read":return {...claim,scopes:["scim.users.read"]};
+      case "ambiguous":return {...claim,connectionId:"directory"};
+      case "collision":return {...claim,connection:{id:"directory",provisioningDomainId:"domain"}};
+      case "moved":return {...claim,connection:{id:"runtime",provisioningDomainId:"different"}};
+      case "reserved":return {...claim,connection:{id:"ba_scim_connection_local",provisioningDomainId:"different"}};
+      case "ba_scim_credential_test.invalid":return claim;
+      default:return null;
+    }
+  }}});
+  for(const runtime of [referenceRuntime,go]) {
+    async function call(method,path,token,status,body) {
+      const route="/scim/v2/"+path.replace(/Users\/.+/,"Users/:userId");
+      const headers={authorization:"Bearer "+token,"X-Test-Route":method+" "+route};
+      if(body)headers["content-type"]="application/scim+json";
+      const q=new Request(runtime.baseURL+"/api/auth/scim/v2/"+path,{method,headers,body:body&&JSON.stringify(body)});
+      const r=await runtime.send(q);const value=await r.json();assert.equal(r.status,status,path+" "+JSON.stringify(value));
+      if(status===401)assert.equal(r.headers.get("www-authenticate"),'Bearer realm="SCIM"');
+      return value;
+    }
+    for(const token of ["expired","ambiguous","collision","reserved","ba_scim_credential_test.invalid","unknown"])
+      await call("GET","Users",token,401);
+    const create=email=>({schemas:[userSchema],userName:email,externalId:"id-one"});
+    await call("POST","Users","read",403,create("skip@example.test"));
+    const u=await call("POST","Users","application",201,create("runtime@example.test"));
+    assert.equal((await call("GET","Users/"+u.id,"application",200)).id,u.id);
+    assert.equal((await call("GET","Users","declared",200)).totalResults,0);
+    await call("GET","Users/"+u.id,"declared",404);
+    await call("GET","Users","moved",409);
+    if(runtime===go)await writeFile(join(dirname(go.databasePath),"scim-revoked"),"revoked");else revoked=true;
+    await call("GET","Users","application",401);await call("GET","Users","local-directory-only",200);
+  }
 }

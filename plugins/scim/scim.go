@@ -7,6 +7,7 @@ import (
 	"crypto/subtle"
 	"errors"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 	"unicode"
@@ -36,6 +37,7 @@ type Connection struct {
 	Credentials []Credential
 }
 type Options struct {
+	VerifyBearerToken VerifyBearerToken
 	// AcceptLegacyEntraGroupSchema accepts one classic Entra marker only on Group creation.
 	AcceptLegacyEntraGroupSchema bool
 	Store                        Store
@@ -84,11 +86,9 @@ var (
 
 func invalid(kind, detail string) *Error { return &Error{400, kind, detail} }
 
-type principal struct {
+type staticBearer struct {
 	digest    [32]byte
-	directory Directory
-	scopes    map[string]bool
-	expiry    time.Time
+	principal Principal
 }
 type Handler struct {
 	host        *auth.Auth
@@ -96,35 +96,36 @@ type Handler struct {
 	groups      GroupStore
 	legacyGroup bool
 	path, base  string
-	credentials []principal
+	credentials []staticBearer
+	declared    map[string]Directory
+	verify      VerifyBearerToken
 }
 
 // New wraps host with SCIM routes under its configured public auth mount.
 // Other paths continue to the original host handler.
 func New(host *auth.Auth, opts Options) (*Handler, error) {
-	if host == nil || opts.Store == nil || len(opts.Connections) == 0 {
-		return nil, errors.New("scim: auth host, directory store and at least one connection are required")
+	if host == nil || opts.Store == nil || len(opts.Connections) == 0 && opts.VerifyBearerToken == nil {
+		return nil, errors.New("scim: auth host, directory store and a credential source are required")
 	}
 	path := strings.TrimRight(host.BasePath(), "/") + "/scim/v2"
 	base, err := host.CallbackURL(path)
 	if err != nil {
 		return nil, err
 	}
-	h := &Handler{host: host, store: opts.Store, path: path, base: base, legacyGroup: opts.AcceptLegacyEntraGroupSchema}
+	h := &Handler{host: host, store: opts.Store, path: path, base: base, legacyGroup: opts.AcceptLegacyEntraGroupSchema, declared: map[string]Directory{}, verify: opts.VerifyBearerToken}
 	h.groups, _ = opts.Store.(GroupStore)
-	usedConnections := map[string]bool{}
 	usedTokens := map[[32]byte]bool{}
 	for _, c := range opts.Connections {
-		if !identifier(c.ID) || usedConnections[c.ID] || len(c.Credentials) == 0 || strings.HasPrefix(c.ID, "ba_scim_connection_") {
+		if _, exists := h.declared[c.ID]; !identifier(c.ID) || exists || len(c.Credentials) == 0 && h.verify == nil || strings.HasPrefix(c.ID, managedConnectionPrefix) {
 			return nil, errors.New("scim: invalid or duplicate static connection")
 		}
-		usedConnections[c.ID] = true
 		if c.ProvisioningDomainID == "" {
 			c.ProvisioningDomainID = c.ID
 		}
 		if !identifier(c.ProvisioningDomainID) {
 			return nil, errors.New("scim: invalid provisioning domain")
 		}
+		h.declared[c.ID] = c.Directory
 		ids := map[string]bool{}
 		for _, v := range c.Credentials {
 			digest := sha256.Sum256([]byte(v.Token))
@@ -132,24 +133,14 @@ func New(host *auth.Auth, opts Options) (*Handler, error) {
 				return nil, errors.New("scim: invalid or duplicate bearer credential")
 			}
 			ids[v.ID], usedTokens[digest] = true, true
-			p := principal{digest: digest, directory: c.Directory, expiry: v.ExpiresAt}
+			scopes := allScopes
 			if v.Scopes != nil {
-				if len(v.Scopes) == 0 {
-					return nil, errors.New("scim: empty operation scope list")
+				if !validScopes(v.Scopes) {
+					return nil, errors.New("scim: expected non-empty, unique, supported operation scopes")
 				}
-				p.scopes = map[string]bool{}
-				for _, scope := range v.Scopes {
-					if p.scopes[scope] {
-						return nil, errors.New("scim: duplicate operation scope")
-					}
-					p.scopes[scope] = true
-					switch scope {
-					case UsersRead, UsersWrite, GroupsRead, GroupsWrite:
-					default:
-						return nil, errors.New("scim: unknown operation scope")
-					}
-				}
+				scopes = v.Scopes
 			}
+			p := staticBearer{digest: digest, principal: Principal{Kind: "static-bearer", Directory: c.Directory, CredentialID: v.ID, Scopes: slices.Clone(scopes), ExpiresAt: v.ExpiresAt}}
 			h.credentials = append(h.credentials, p)
 		}
 	}
@@ -158,24 +149,32 @@ func New(host *auth.Auth, opts Options) (*Handler, error) {
 func identifier(v string) bool {
 	return v != "" && utf8.RuneCountInString(v) <= 255 && strings.TrimSpace(v) == v
 }
-func (h *Handler) authorize(r *http.Request, scope string) (Directory, error) {
+func (h *Handler) authorize(r *http.Request, scope, route string) (Principal, error) {
 	fields := strings.Fields(r.Header.Get("Authorization"))
 	if len(fields) != 2 || !strings.EqualFold(fields[0], "Bearer") || len(r.Header.Values("Authorization")) != 1 {
-		return Directory{}, &Error{401, "", "SCIM bearer token is required"}
+		return Principal{}, &Error{401, "", "SCIM bearer token is required"}
 	}
-	digest := sha256.Sum256([]byte(fields[1]))
-	var got *principal
+	token := fields[1]
+	digest := sha256.Sum256([]byte(token))
+	var got *Principal
 	for i := range h.credentials {
 		p := &h.credentials[i]
-		if subtle.ConstantTimeCompare(digest[:], p.digest[:]) == 1 && (p.expiry.IsZero() || p.expiry.After(time.Now())) {
-			got = p
+		if subtle.ConstantTimeCompare(digest[:], p.digest[:]) == 1 && (p.principal.ExpiresAt.IsZero() || p.principal.ExpiresAt.After(time.Now())) {
+			got = &p.principal
+		}
+	}
+	if got == nil && h.verify != nil && !strings.HasPrefix(token, managedCredentialPrefix) {
+		var e error
+		got, e = h.verifyDynamic(r.Context(), BearerInput{Token: token, Method: r.Method, Path: route, Headers: r.Header.Clone()})
+		if e != nil {
+			return Principal{}, e
 		}
 	}
 	if got == nil {
-		return Directory{}, &Error{401, "", "Invalid SCIM bearer token"}
+		return Principal{}, &Error{401, "", "Invalid SCIM bearer token"}
 	}
-	if got.scopes != nil && !got.scopes[scope] {
-		return Directory{}, &Error{403, "", "The SCIM bearer token is missing the " + scope + " scope"}
+	if !slices.Contains(got.Scopes, scope) {
+		return Principal{}, &Error{403, "", "The SCIM bearer token is missing the " + scope + " scope"}
 	}
-	return got.directory, nil
+	return *got, nil
 }

@@ -7,6 +7,7 @@
 - [ ] SCIM provisioning endpoints, types and options
   - [ ] `SCIMAuthenticationOptions`
     - [ ] `verifyBearerToken`
+      - [x] Verify callback credentials per request with scoped identities and prospective revocation ([test](../../../conformance/scim-contract.mjs#L144))
   - [ ] `SCIMAuthorizationSource`
   - [ ] `SCIMBearerCredentialOptions`
     - [ ] `type`
@@ -20,6 +21,7 @@
   - [ ] `SCIMBearerTokenVerification`
   - [ ] `SCIMBearerTokenVerificationContext`
   - [ ] `SCIMBearerTokenVerificationInput`
+    - [x] Supply the trusted verifier with the bearer value, HTTP method, route template and copied request headers ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L35))
   - [ ] `SCIMCanonicalAddress`
   - [ ] `SCIMCanonicalEmail`
   - [ ] `SCIMCanonicalEntitlement`
@@ -40,6 +42,7 @@
     - [ ] `provisioningDomainId`
       - [x] Persist the first directory domain and reject later reassignment ([test](../../../adapters/sqlstore/scim_test.go#L33))
   - [ ] `SCIMDeclaredConnectionVerificationResult`
+    - [x] Resolve a declared directory ID and reject unknown or ambiguous connection claims ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L35))
   - [ ] `SCIMEmail`
   - [ ] `SCIMEnterpriseUser`
   - [ ] `SCIMGroupAuthorizationSource`
@@ -60,9 +63,11 @@
       - [x] Create a Group under an explicit compatibility option using the legacy marker and the core schema ([test](../../../adapters/sqlstore/scim_groups_test.go#L20))
   - [ ] `SCIMName`
   - [ ] `SCIMOAuthBearerPrincipal`
+    - [x] Expose the verified credential ID, operation scopes, expiry and scoped directory through request context ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L35))
   - [ ] `SCIMOptions`
     - [ ] `connections`
     - [ ] `authentication`
+      - [x] Allow a verifier-only directory and preserve static credential precedence ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L35))
     - [ ] `managedConnections`
     - [ ] `identity`
     - [ ] `projection`
@@ -72,33 +77,35 @@
   - [ ] `SCIMProjectedUserState`
   - [ ] `SCIMProjection`
   - [ ] `SCIMResolvedConnectionVerificationResult`
+    - [x] Persist the first application-resolved directory domain and isolate case-sensitive connection IDs ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L35))
   - [ ] `SCIMRoleExistenceInput`
   - [ ] `SCIMRoleMappingInput`
   - [ ] `SCIMRoleProjection`
   - [ ] `SCIMScope`
   - [ ] `SCIMStaticBearerPrincipal`
+    - [x] Keep static principals and reserved managed credentials out of the application verifier ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L35))
   - [ ] `SCIMTransactionContext`
   - [ ] `decommissionSCIMConnection (server API only)`
   - [ ] `GET /scim/v2/ServiceProviderConfig`
-    - [x] Discover filter, patch and pagination capabilities without a directory credential ([test](../../../conformance/scim-contract.mjs#L43))
+    - [x] Discover filter, patch and pagination capabilities without a directory credential ([test](../../../conformance/scim-contract.mjs#L45))
   - [ ] `GET /scim/v2/Schemas`
     - [x] List the supported core User schema without a bearer credential ([test](../../../adapters/sqlstore/scim_test.go#L33))
-    - [x] Discover the core Group schema ([test](../../../conformance/scim-contract.mjs#L90))
+    - [x] Discover the core Group schema ([test](../../../conformance/scim-contract.mjs#L92))
   - [ ] `GET /scim/v2/Schemas/:schemaId`
     - [x] Read the registered core User schema from a custom mount ([test](../../../adapters/sqlstore/scim_test.go#L33))
-    - [x] Retrieve the core Group schema on the public directory mount ([test](../../../conformance/scim-contract.mjs#L90))
+    - [x] Retrieve the core Group schema on the public directory mount ([test](../../../conformance/scim-contract.mjs#L92))
   - [ ] `GET /scim/v2/ResourceTypes`
     - [x] List the registered User resource type publicly ([test](../../../adapters/sqlstore/scim_test.go#L33))
-    - [x] Discover Groups only when the store provides the Group operations ([test](../../../conformance/scim-contract.mjs#L90))
+    - [x] Discover Groups only when the store provides the Group operations ([test](../../../conformance/scim-contract.mjs#L92))
   - [ ] `GET /scim/v2/ResourceTypes/:resourceTypeId`
     - [x] Resolve the User resource type and reject an unavailable resource type ([test](../../../plugins/scim/http_test.go#L20))
-    - [x] Retrieve the Group resource type on both implementations ([test](../../../conformance/scim-contract.mjs#L90))
+    - [x] Retrieve the Group resource type on both implementations ([test](../../../conformance/scim-contract.mjs#L92))
   - [ ] `POST /scim/v2/Groups`
     - [x] Create directory-owned Groups, deduplicate direct members and reject foreign User and nested Group references ([test](../../../adapters/sqlstore/scim_groups_test.go#L20))
   - [ ] `GET /scim/v2/Groups/:groupId`
-    - [x] Read the other implementation's canonical membership edges with trusted display names and User links ([test](../../../conformance/scim-contract.mjs#L90))
+    - [x] Read the other implementation's canonical membership edges with trusted display names and User links ([test](../../../conformance/scim-contract.mjs#L92))
   - [ ] `GET /scim/v2/Groups`
-    - [x] Filter by display name and external ID, paginate and return a nested member projection ([test](../../../conformance/scim-contract.mjs#L90))
+    - [x] Filter by display name and external ID, paginate and return a nested member projection ([test](../../../conformance/scim-contract.mjs#L92))
   - [ ] `PUT /scim/v2/Groups/:groupId`
     - [x] Replace a Group profile and its member set and retain the underlying Users ([test](../../../adapters/sqlstore/scim_groups_test.go#L20))
   - [ ] `PATCH /scim/v2/Groups/:groupId`
@@ -129,9 +136,9 @@
   - [ ] `reconcileSCIMProjection (server API only)`
   - [ ] `SCIM_REQUIRES_NATIVE_TRANSACTIONS`
   - [ ] `POST /scim/v2/Users`
-    - [x] Create, reject conflicts, reprovision inactive Users and restore an external identity after deletion ([test](../../../conformance/scim-contract.mjs#L43))
+    - [x] Create, reject conflicts, reprovision inactive Users and restore an external identity after deletion ([test](../../../conformance/scim-contract.mjs#L45))
   - [ ] `GET /scim/v2/Users/:userId`
-    - [x] Read a scoped User written by the other implementation from shared SQLite ([test](../../../conformance/scim-contract.mjs#L43))
+    - [x] Read a scoped User written by the other implementation from shared SQLite ([test](../../../conformance/scim-contract.mjs#L45))
   - [ ] `GET /scim/v2/Users`
     - [x] Page and filter by username, external ID or normalized email with a top-level attribute projection ([test](../../../adapters/sqlstore/scim_test.go#L33))
   - [ ] `PUT /scim/v2/Users/:userId`

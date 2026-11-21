@@ -1,6 +1,7 @@
 package scim
 
 import (
+	"context"
 	_ "embed"
 	"encoding/json"
 	"errors"
@@ -70,11 +71,21 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			scope = GroupsWrite
 		}
 	}
-	d, err := h.authorize(r, scope)
+	route := "/scim/v2/" + resource
+	if single {
+		if isGroup {
+			route += "/:groupId"
+		} else {
+			route += "/:userId"
+		}
+	}
+	identity, err := h.authorize(r, scope, route)
 	if err != nil {
 		writeError(w, err)
 		return
 	}
+	r = r.WithContext(context.WithValue(r.Context(), principalKey{}, identity))
+	d := identity.Directory
 	if isGroup {
 		h.serveGroups(w, r, d, id, single)
 		return

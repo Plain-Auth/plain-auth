@@ -1008,3 +1008,8 @@ test("organization billing selects the authorized customer and reconciles its re
   const { organizationBilling } = await import("./stripe-organization-fixture.mjs");
   await organizationBilling(t, { reference, goFixture, instrument });
 });
+
+test("SCIM dynamic bearer verification matches the pinned callback and tenant isolation contract", async t => {
+  const { dynamicContract } = await import("./scim-contract.mjs");
+  await dynamicContract(t, goFixture);
+});

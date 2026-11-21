@@ -44,6 +44,14 @@ Import the root `github.com/Stonewrit/stonewrit-auth` package and its `schema`, 
 
 A credential can have an absolute `ExpiresAt`. An omitted scope list permits reads and writes for this directory. Configure both old and new credentials during rotation, then remove the old entry from each serving process. Tokens must be unique across connections. The first authenticated lookup fixes the connection's provisioning domain in the shared database. Reassigning an existing connection ID to a different domain returns HTTP 409.
 
+## Verify application-issued bearer tokens
+
+Set `Options.VerifyBearerToken` to a trusted callback when your application owns directory credential issuance and revocation. The callback receives the request context, bearer value, a copy of the headers, HTTP method and SCIM route template such as `/scim/v2/Users/:userId`. Your callback can use its normal credential store or token verifier. A matching active static credential takes priority.
+
+Return a `BearerVerification` with the verified credential ID, explicit operation scopes and its expiry when available. Set `ConnectionID` to use a declared connection. Alternatively, set `Connection` to the verified directory ID and provisioning domain. This form supports a deployment without any static connections. The server rejects empty or duplicate scopes, expired tokens, mixed connection forms, reserved IDs and resolved identities that collide with a declared connection.
+
+Returning `nil, nil` rejects the credential. An error produces a generic server error so an issuer outage can be distinguished from a rejected credential. The callback runs for each application credential request. Revocation in the application's credential store takes effect on the next request. Your store can read the verified credential ID, directory, scope and expiry using `scim.PrincipalFromContext(ctx)`. The signed-in application session plays no part in this exchange. [Dynamic verification and SQL tests](../adapters/sqlstore/scim_dynamic_test.go) · [Cross-runtime callback tests](../conformance/scim-contract.mjs)
+
 ## Provision and synchronize
 
 | Route relative to the directory URL | Behavior |
@@ -111,4 +119,4 @@ PUT replaces the Group profile and its direct member set. PATCH supports scalar 
 
 To accept Microsoft's classic Entra Group schema marker on creation, set `AcceptLegacyEntraGroupSchema: true` in `scim.Options`. The response and discovery documents use the core Group schema. [Group lifecycle and concurrency tests](../adapters/sqlstore/scim_groups_test.go) · [Group PATCH and compatibility tests](../plugins/scim/groups_test.go)
 
-Managed or dynamically resolved credentials, role projection, Enterprise User attributes, nested User response projections, filtered User PATCH paths and SSO identity linking are tracked separately. [Provisioning checklist](parity/plugins/scim.md) · [SQL ownership and concurrency tests](../adapters/sqlstore/scim_test.go) · [Cross-runtime directory tests](../conformance/scim-contract.mjs)
+Managed credential administration, role projection, Enterprise User attributes, nested User response projections, filtered User PATCH paths and SSO identity linking are tracked separately. [Provisioning checklist](parity/plugins/scim.md) · [SQL ownership and concurrency tests](../adapters/sqlstore/scim_test.go) · [Cross-runtime directory tests](../conformance/scim-contract.mjs)
