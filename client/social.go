@@ -10,13 +10,16 @@ import (
 // SocialSignInRequest starts a browser flow or exchanges a provider's ID token.
 // RequestSignUp opts in to creating a new account for this sign-in.
 type SocialSignInRequest struct {
-	Provider           string         `json:"provider"`
-	CallbackURL        string         `json:"callbackURL,omitempty"`
-	NewUserCallbackURL string         `json:"newUserCallbackURL,omitempty"`
-	ErrorCallbackURL   string         `json:"errorCallbackURL,omitempty"`
-	RequestSignUp      bool           `json:"requestSignUp,omitempty"`
-	DisableRedirect    bool           `json:"disableRedirect,omitempty"`
-	IDToken            *SocialIDToken `json:"idToken,omitempty"`
+	Provider           string            `json:"provider"`
+	CallbackURL        string            `json:"callbackURL,omitempty"`
+	NewUserCallbackURL string            `json:"newUserCallbackURL,omitempty"`
+	ErrorCallbackURL   string            `json:"errorCallbackURL,omitempty"`
+	RequestSignUp      bool              `json:"requestSignUp,omitempty"`
+	DisableRedirect    bool              `json:"disableRedirect,omitempty"`
+	Scopes             []string          `json:"scopes,omitempty"`
+	LoginHint          string            `json:"loginHint,omitempty"`
+	AdditionalParams   map[string]string `json:"additionalParams,omitempty"`
+	IDToken            *SocialIDToken    `json:"idToken,omitempty"`
 }
 
 type SocialIDToken struct {
@@ -25,6 +28,7 @@ type SocialIDToken struct {
 }
 
 type SocialSignInResult struct {
+	Status   bool       `json:"status"`
 	URL      string     `json:"url"`
 	Redirect bool       `json:"redirect"`
 	Token    string     `json:"token"`
@@ -36,6 +40,15 @@ type SocialSignInResult struct {
 func (c *Client) SignInSocial(ctx context.Context, in SocialSignInRequest) (*SocialSignInResult, error) {
 	var result SocialSignInResult
 	if err := c.Do(ctx, http.MethodPost, "/sign-in/social", in, &result); err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
+// LinkSocial adds an identity to the user who owns this client's session.
+func (c *Client) LinkSocial(ctx context.Context, in SocialSignInRequest) (*SocialSignInResult, error) {
+	var result SocialSignInResult
+	if err := c.Do(ctx, http.MethodPost, "/link-social", in, &result); err != nil {
 		return nil, err
 	}
 	return &result, nil

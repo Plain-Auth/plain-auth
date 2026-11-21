@@ -83,6 +83,10 @@ func (a *Auth) startOAuth(w http.ResponseWriter, r *http.Request, link bool) err
 			return fieldTypeError("disableRedirect", "boolean", body)
 		}
 	}
+	requestedParams, err := authorizationOptions(body, p.Config.Scopes)
+	if err != nil {
+		return err
+	}
 	requestSignUp, ok := body["requestSignUp"].(bool)
 	if _, present := body["requestSignUp"]; present && !ok {
 		return fieldTypeError("requestSignUp", "boolean", body)
@@ -140,6 +144,7 @@ func (a *Auth) startOAuth(w http.ResponseWriter, r *http.Request, link bool) err
 			opts = append(opts, oauth2.SetAuthURLParam(key, values[0]))
 		}
 	}
+	opts = append(opts, requestedParams...)
 	target := p.Config.AuthCodeURL(flow.State, opts...)
 	if p.CustomizeAuthorization != nil {
 		u, err := url.Parse(target)

@@ -998,3 +998,8 @@ test("explicit social signup is bound to the initiating request on both runtimes
   const { explicitSignup } = await import("./social-signup.mjs");
   await explicitSignup(t, { reference, goFixture, instrument });
 });
+
+test("the published client passes one-request authorization options for social sign-in and account linking", async t => {
+  const { authorizationParameters } = await import("./social-signup.mjs");
+  await authorizationParameters(t, { reference, goFixture, instrument });
+});

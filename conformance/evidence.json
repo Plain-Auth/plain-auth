@@ -869,6 +869,11 @@
       "label": "Enforce explicit registration for both browser and direct ID-token sign-in while honoring closed registrations",
       "test": "oauth_signup_test.go",
       "marker": "func TestOAuthExplicitRegistration("
+    },
+    {
+      "label": "Apply extra scopes, login hints and consent parameters per request, and reject reserved OAuth fields",
+      "test": "conformance/social-signup.mjs",
+      "marker": "export async function authorizationParameters("
     }
   ],
   "core/callbackOAuth": [
@@ -897,6 +902,11 @@
       "label": "Explicitly link a verified OIDC identity to the signed-in user",
       "test": "providers/oidc_test.go",
       "marker": "func TestDiscoveredOIDCDirectGrantAndExplicitLink("
+    },
+    {
+      "label": "Apply extra scopes, login hints and consent parameters per request, and reject reserved OAuth fields",
+      "test": "conformance/social-signup.mjs",
+      "marker": "export async function authorizationParameters("
     }
   ],
   "cli/init": [

@@ -177,3 +177,19 @@ opts.SocialProviders = map[string]auth.OAuthProvider{"work": work}
 ```
 
 Post `{"provider":"work","requestSignUp":true}` to `/sign-in/social` from the registration button. Omit `requestSignUp` from the returning-user button. The Go client exposes the same choice through `client.SocialSignInRequest.RequestSignUp`. Keep the browser’s state cookie through the callback.
+
+## Request extra scopes or a login hint
+
+Add `scopes`, `loginHint` and `additionalParams` to a sign-in or account-linking request. These values apply to that browser flow. For example, an application can defer asking for contacts until a user chooses to import them.
+
+```json
+{
+  "provider": "work",
+  "scopes": ["contacts"],
+  "loginHint": "jo@example.org",
+  "additionalParams": {"prompt": "consent", "ui_locales": "fr"},
+  "disableRedirect": true
+}
+```
+
+The configured scopes remain in effect. Provider support determines which hints have an effect on the consent screen. The handler owns the OAuth state, client identity, callback, response type, PKCE parameters, nonce and scope field. It rejects those names in `additionalParams`, along with client-secret fields, vendor client-ID aliases and parameters that replace the authorization request. Native applications can supply the same fields to `SignInSocial` and `LinkSocial` on the Go client.
