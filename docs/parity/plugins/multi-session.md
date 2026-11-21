@@ -6,7 +6,7 @@
 
 - [ ] Multi session endpoints, types and options
   - [ ] `multiSessionClient`
-    - [x] Use the public browser client to list, select, revoke, and sign out across independent cookie jars ([test](../../../conformance/core.test.mjs#L513))
+    - [x] Use the public browser client to list, select, revoke, and sign out across independent cookie jars ([test](../../../conformance/core.test.mjs#L532))
   - [ ] `GET /multi-session/list-device-sessions`
     - [x] List live accounts from this browser, including when the primary cookie is missing ([test](../../../plugins/multisession/multisession_test.go#L160))
     - [x] Remove surplus entries after simultaneous browser logins ([test](../../../plugins/multisession/multisession_test.go#L311))
@@ -15,7 +15,7 @@
     - [x] Require the signed cookie and reject expired or mismatched credentials ([test](../../../plugins/multisession/multisession_test.go#L177))
   - [ ] `POST /multi-session/revoke`
     - [x] Authorize revocation transactionally across independent database connections ([test](../../../adapters/sqlstore/multisession_test.go#L85))
-    - [x] Use the public browser client to list, select, revoke, and sign out across independent cookie jars ([test](../../../conformance/core.test.mjs#L513))
+    - [x] Use the public browser client to list, select, revoke, and sign out across independent cookie jars ([test](../../../conformance/core.test.mjs#L532))
   - [ ] `MultiSessionConfig`
     - [x] Remember five accounts by default while allowing another account to sign in ([test](../../../plugins/multisession/multisession_test.go#L283))
     - [x] Honor a zero limit and reject negative limits ([test](../../../plugins/multisession/multisession_test.go#L243))

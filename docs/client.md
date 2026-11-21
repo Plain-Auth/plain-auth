@@ -32,7 +32,7 @@ func login(ctx context.Context, endpoint, email, password string) (*fineauth.Ses
 }
 ```
 
-`GetSession` returns `nil, nil` for an anonymous session. Typed methods also cover email signup, listing sessions, revoking one session, revoking other sessions, revoking all sessions and signing out. When an endpoint returns an HTTP error, `errors.As` exposes the numeric status along with the server’s error code and message. Caller cancellation passes through the supplied context.
+`GetSession` returns `nil, nil` when the caller has no active session. A signed-in guest has a session and an `isAnonymous` user field. Typed methods also cover email signup, listing sessions, revoking one session, revoking other sessions, revoking all sessions and signing out. When an endpoint returns an HTTP error, `errors.As` exposes the numeric status along with the server’s error code and message. Caller cancellation passes through the supplied context.
 
 Use `c.Do(ctx, method, route, input, output)` for JSON plugin and account endpoints. Routes begin with a slash and are relative to the auth mount. Pass a Go struct or map as input and a pointer to decode the response, or use `nil` for either argument.
 
@@ -50,9 +50,11 @@ To configure timeouts, transport or persistent cookie storage, pass an `*http.Cl
 | Change a password or recover an account | `VerifyPassword`, `ChangePassword`, `RequestPasswordReset`, `ResetPassword` |
 | Inspect linked identities or delete the account | `ListAccounts`, `UnlinkAccount`, `DeleteAccount` |
 | Enroll an authenticator and replace recovery codes | `EnableTOTP`, `TOTPURI`, `VerifyTOTP`, `GenerateBackupCodes`, `DisableTOTP` |
+| Create or delete a guest identity | `SignInAnonymous`, `DeleteAnonymousUser` |
 | Request and poll for a device session | `RequestDeviceCode`, `PollDeviceToken` |
 | Review and decide a device request | `VerifyDeviceCode`, `ApproveDeviceCode`, `DenyDeviceCode` |
 | Complete sign-in with a recovery code | `VerifyBackupCode` |
+| Administer accounts and sessions | `AdminCreateUser`, `AdminSetRole`, `AdminListUsers`, `AdminBanUser`, `AdminRevokeUserSessions`, `AdminImpersonate` and [other administrative methods](admin.md) |
 | Manage teams, seats and active selections | `CreateTeam`, `UpdateTeam`, `RemoveTeam`, `ListOrganizationTeams`, `ListUserTeams`, `SetActiveTeam`, `ListTeamMembers`, `AddTeamMember`, `RemoveTeamMember` |
 
 Use the same client for sign-in and second-factor verification so the challenge cookie reaches the verification handler. The [native client integration test](../client/account_test.go) exercises these methods through the mounted API, including recovery, email changes, and account deletion.

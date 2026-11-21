@@ -27,7 +27,7 @@ Each entry groups the configured endpoint’s behaviors. A checked child records
     - [x] Read the current account’s access token through the public HTTP API ([test](../../conformance/provider-credentials.mjs#L8))
     - [x] Scope credentials to the current account and handle revocation or provider errors on SQLite, MySQL and PostgreSQL ([test](../../adapters/sqlstore/provider_credentials_test.go#L21))
   - [ ] `getSession` (`GET / POST /get-session`)
-    - [x] Return the signed-in user and session with the default seven-day lifetime ([test](../../conformance/core.test.mjs#L166))
+    - [x] Return the signed-in user and session with the default seven-day lifetime ([test](../../conformance/core.test.mjs#L185))
     - [x] Support the sliding session window, deferred writes and expiration ([test](../../session_refresh_test.go#L46))
   - [ ] `linkSocialAccount` (`POST /link-social`)
     - [x] Explicitly link a verified OIDC identity to the signed-in user ([test](../../providers/oidc_test.go#L22))
@@ -35,9 +35,9 @@ Each entry groups the configured endpoint’s behaviors. A checked child records
     - [x] Return both active logins for the signed-in user ([test](../../http_test.go#L94))
   - [ ] `listUserAccounts` (`GET /list-accounts`)
     - [x] List only the current user’s linked accounts and decode provider scopes ([test](../../adapters/sqlstore/identity_test.go#L30))
-  - [x] `ok` (`GET /ok`) ([test](../../conformance/core.test.mjs#L150))
+  - [x] `ok` (`GET /ok`) ([test](../../conformance/core.test.mjs#L169))
     - [x] Serve the health endpoint under a custom mount ([test](../../http_test.go#L59))
-    - [x] Return HTTP 200 and a JSON health response to anonymous clients ([test](../../conformance/core.test.mjs#L150))
+    - [x] Return HTTP 200 and a JSON health response to anonymous clients ([test](../../conformance/core.test.mjs#L169))
   - [ ] `refreshToken` (`POST /refresh-token`)
     - [x] Refresh selected provider credentials and preserve ownership through the public HTTP API ([test](../../conformance/provider-credentials.mjs#L8))
     - [x] Scope credentials to the current account and handle revocation or provider errors on SQLite, MySQL and PostgreSQL ([test](../../adapters/sqlstore/provider_credentials_test.go#L21))
@@ -47,7 +47,7 @@ Each entry groups the configured endpoint’s behaviors. A checked child records
     - [x] Redirect the reset callback to the configured application URL ([test](../../account_test.go#L82))
   - [ ] `resetPassword` (`POST /reset-password`)
     - [x] Apply an unexpired reset link only once under concurrent use ([test](../../account_test.go#L96))
-    - [x] Consume a reset token issued by another compatible server ([test](../../conformance/core.test.mjs#L188))
+    - [x] Consume a reset token issued by another compatible server ([test](../../conformance/core.test.mjs#L207))
   - [ ] `revokeOtherSessions` (`POST /revoke-other-sessions`)
     - [x] Invalidate an older session while retaining the current one ([test](../../http_test.go#L99))
   - [ ] `revokeSession` (`POST /revoke-session`)
@@ -59,15 +59,15 @@ Each entry groups the configured endpoint’s behaviors. A checked child records
   - [ ] `setPassword` (`server API only`)
     - [x] Set a first credential on a social account through the server API ([test](../../adapters/sqlstore/account_contract_test.go#L94))
   - [ ] `signInEmail` (`POST /sign-in/email`)
-    - [x] Reject the wrong password and issue a fresh session for valid credentials ([test](../../conformance/core.test.mjs#L173))
+    - [x] Reject the wrong password and issue a fresh session for valid credentials ([test](../../conformance/core.test.mjs#L192))
     - [x] Apply configured email-verification gates ([test](../../account_lifecycle_test.go#L15))
     - [x] Require an enrolled second factor for native and HTTP credential sign-in ([test](../../adapters/sqlstore/twofactor_test.go#L145))
   - [ ] `signInSocial` (`POST /sign-in/social`)
     - [x] Start an OAuth authorization flow with PKCE and browser state ([test](../../oauth_test.go#L20))
   - [ ] `signOut` (`POST /sign-out`)
-    - [x] Clear the client's session cookies and return an anonymous session ([test](../../conformance/core.test.mjs#L177))
+    - [x] Clear the client's session cookies and return an anonymous session ([test](../../conformance/core.test.mjs#L196))
   - [ ] `signUpEmail` (`POST /sign-up/email`)
-    - [x] Create a password account and return a usable session token on SQLite ([test](../../conformance/core.test.mjs#L164))
+    - [x] Create a password account and return a usable session token on SQLite ([test](../../conformance/core.test.mjs#L183))
     - [x] Apply configured email-verification gates ([test](../../account_lifecycle_test.go#L15))
   - [ ] `unlinkAccount` (`POST /unlink-account`)
     - [x] Keep the last required account and prevent unlinking another user’s account ([test](../../adapters/sqlstore/identity_test.go#L40))
@@ -76,7 +76,7 @@ Each entry groups the configured endpoint’s behaviors. A checked child records
     - [x] Update a signed-in profile ([test](../../account_test.go#L40))
   - [ ] `verifyEmail` (`GET /verify-email`)
     - [x] Reflect the verified email address in the current session ([test](../../account_test.go#L59))
-    - [x] Verify a signed link against the same stored account across runtimes ([test](../../conformance/core.test.mjs#L188))
+    - [x] Verify a signed link against the same stored account across runtimes ([test](../../conformance/core.test.mjs#L207))
   - [ ] `verifyPassword` (`POST /verify-password`)
     - [x] Validate the password of the signed-in user ([test](../../account_test.go#L36))
 
@@ -188,10 +188,15 @@ Each entry groups the configured endpoint’s behaviors. A checked child records
 - [ ] CLI command behavior
   - [ ] `ai`
   - [ ] `check`
+    - [x] Report missing tables, missing columns and extra required columns on SQLite, PostgreSQL and MySQL ([test](../../adapters/sqlstore/check_test.go#L17))
+    - [x] Check a combined plugin deployment using each live SQL catalog ([test](../../adapters/sqlstore/check_test.go#L131))
+    - [x] Resolve PostgreSQL tables in the connection's search path ([test](../../adapters/sqlstore/check_test.go#L154))
+    - [x] Return distinct success, drift and operational exit codes with JSON findings and redacted connection errors ([test](../../cmd/authctl/check_test.go#L42))
     - [ ] `check schema`
     - [ ] `-c, --cwd <cwd>`
     - [ ] `--config <config>`
   - [ ] `create-admin`
+    - [x] Create the first administrator in an existing database using a password supplied on standard input ([test](../../cmd/authctl/admin_test.go#L17))
     - [ ] `-c, --cwd <cwd>`
     - [ ] `--config <config>`
     - [ ] `--email <email>`

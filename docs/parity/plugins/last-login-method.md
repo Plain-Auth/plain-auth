@@ -5,15 +5,21 @@
 ## Interfaces
 
 - [ ] Last login method endpoints, types and options
-  - [ ] `LastLoginMethodClientConfig`
-  - [ ] `lastLoginMethodClient`
+  - [x] `LastLoginMethodClientConfig` ([test](../../../conformance/lastlogin-browser.test.mjs#L6))
+    - [x] Use a custom preference name and set the domain when clearing it ([test](../../../conformance/lastlogin-browser.test.mjs#L6))
+  - [x] `lastLoginMethodClient` ([test](../../../conformance/lastlogin-browser.test.mjs#L6))
+    - [x] Read, match and clear the browser preference, including a custom cookie domain ([test](../../../conformance/lastlogin-browser.test.mjs#L6))
   - [ ] `LastLoginMethodOptions`
     - [ ] `cookieName`
       - [x] Apply the host cookie namespace and HTTPS security to the default browser preference ([test](../../../plugins/lastlogin/lastlogin_test.go#L47))
-    - [ ] `maxAge`
-    - [ ] `customResolveMethod`
+    - [x] `maxAge` ([test](../../../plugins/lastlogin/lastlogin_test.go#L41))
+      - [x] Respect a custom preference lifetime in the emitted browser cookie ([test](../../../plugins/lastlogin/lastlogin_test.go#L41))
+    - [x] `customResolveMethod` ([test](../../../adapters/sqlstore/lastlogin_test.go#L94))
+      - [x] Override the method for a sign-in and fall back to the default when the resolver returns empty ([test](../../../adapters/sqlstore/lastlogin_test.go#L94))
     - [ ] `storeInDatabase`
-    - [ ] `beforeStoreCookie`
+      - [x] Share a successful sign-in method across sessions on all three SQL backends and in memory ([test](../../../adapters/sqlstore/lastlogin_test.go#L94))
+    - [x] `beforeStoreCookie` ([test](../../../plugins/lastlogin/lastlogin_test.go#L39))
+      - [x] Require consent independently of successful authentication ([test](../../../plugins/lastlogin/lastlogin_test.go#L39))
     - [ ] `schema`
   - [ ] `lastLoginMethod`
 
@@ -23,11 +29,14 @@
   - [ ] Usage
     - [ ] Getting the Last Used Method
       - [x] Record the most recent email sign-in method subject to consent ([test](../../../plugins/lastlogin/lastlogin_test.go#L15))
+      - [x] Read and clear a custom Unicode method in a native TLS cookie jar without ending the session ([test](../../../client/lastlogin_test.go#L15))
     - [ ] UI Integration Example
   - [ ] Database Persistence
     - [ ] Enable database storage
+      - [x] Expose the stored sign-in method when the configured plugin issues a session ([test](../../../adapters/sqlstore/lastlogin_test.go#L89))
     - [ ] Run database migration
-    - [ ] Access database field
+    - [x] Access database field ([test](../../../conformance/core.test.mjs#L28))
+      - [x] Expose the stored method through the browser client on both runtimes ([test](../../../conformance/core.test.mjs#L28))
     - [ ] Database Schema
       - [x] Generate the canonical columns on SQLite, PostgreSQL and MySQL, including combined plugin selections ([test](../../../conformance/schema.test.mjs#L66))
       - [ ] `lastLoginMethodUserTableFields.lastLoginMethod`

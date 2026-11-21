@@ -88,6 +88,28 @@
       "marker": "err = first.RevokeSessions(ctx)"
     }
   ],
+  "cli/check": [
+    {
+      "label": "Report missing tables, missing columns and extra required columns on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/check_test.go",
+      "marker": "func TestReadOnlySchemaCheck("
+    },
+    {
+      "label": "Check a combined plugin deployment using each live SQL catalog",
+      "test": "adapters/sqlstore/check_test.go",
+      "marker": "func TestCheckSchemaSelectedProfiles("
+    },
+    {
+      "label": "Resolve PostgreSQL tables in the connection's search path",
+      "test": "adapters/sqlstore/check_test.go",
+      "marker": "func TestCheckSchemaPostgresSearchPath("
+    },
+    {
+      "label": "Return distinct success, drift and operational exit codes with JSON findings and redacted connection errors",
+      "test": "cmd/authctl/check_test.go",
+      "marker": "func TestCheckSchemaProcess("
+    }
+  ],
   "cli/generate": [
     {
       "label": "Emit SQL DDL for SQLite, PostgreSQL and MySQL",
@@ -265,6 +287,11 @@
       "label": "Use typed client methods for all nine team endpoints over HTTP",
       "test": "adapters/sqlstore/organization_teams_test.go",
       "marker": "updated, err := owner.UpdateTeam(ctx, team.ID"
+    },
+    {
+      "label": "Manage and revoke administrative sessions through the typed cookie-backed client",
+      "test": "adapters/sqlstore/admin_test.go",
+      "marker": "func TestAdminLifecycleAcrossEngines("
     }
   ],
   "go/databases": [
@@ -312,6 +339,11 @@
       "label": "Serialize organization-team additions, preserve seat limits and roll back failed invitations on all three SQL engines",
       "test": "adapters/sqlstore/organization_teams_test.go",
       "marker": "func TestTeamAccountsAcrossEngines("
+    },
+    {
+      "label": "Serialize first-administrator provisioning across independent connections on all three SQL engines",
+      "test": "adapters/sqlstore/admin_test.go",
+      "marker": "func TestFirstAdminProvisioningRace("
     }
   ],
   "cli/secret": [
@@ -400,6 +432,11 @@
       "label": "Record the most recent email sign-in method subject to consent",
       "test": "plugins/lastlogin/lastlogin_test.go",
       "marker": "func TestLastLoginCookieAndConsent("
+    },
+    {
+      "label": "Read and clear a custom Unicode method in a native TLS cookie jar without ending the session",
+      "test": "client/lastlogin_test.go",
+      "marker": "func TestLoginMethodPreferenceJar("
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L2137": [
@@ -939,6 +976,11 @@
       "label": "Require a password and issue a provisioning URI and ten backup codes",
       "test": "adapters/sqlstore/twofactor_test.go",
       "marker": "invalid provisioning material"
+    },
+    {
+      "label": "Enroll the authenticated password holder for delivered codes and preserve that method during authenticator setup",
+      "test": "adapters/sqlstore/twofactor_delivery_test.go",
+      "marker": "verified authenticator and delivered channel were not both offered"
     }
   ],
   "plugin/2fa/POST /two-factor/get-totp-uri": [
@@ -2574,6 +2616,750 @@
       "label": "Generate the canonical columns on SQLite, PostgreSQL and MySQL, including combined plugin selections",
       "test": "conformance/schema.test.mjs",
       "marker": "test(\"the CLI emits the pinned plugin schema"
+    }
+  ],
+  "plugin/2fa/POST /two-factor/send-otp": [
+    {
+      "label": "Publish delivered codes only after the sender succeeds, preserving the newest proof on a late failure",
+      "test": "adapters/sqlstore/twofactor_delivery_test.go",
+      "marker": "synthetic sender unavailable"
+    }
+  ],
+  "plugin/2fa/POST /two-factor/verify-otp": [
+    {
+      "label": "Bind codes to the requesting login or session and issue one session for competing proofs",
+      "test": "adapters/sqlstore/twofactor_delivery_test.go",
+      "marker": "a delivered factor issued %d authenticated sessions"
+    },
+    {
+      "label": "Honor the pending challenge and reject a signed-in proof after its session is revoked",
+      "test": "adapters/sqlstore/twofactor_delivery_test.go",
+      "marker": "pendingSession.code}, 401, u.session"
+    }
+  ],
+  "plugin/2fa/ generateTOTP (server API only)": [
+    {
+      "label": "Generate the configured eight-digit authenticator code in Go and verify it with the provisioned account",
+      "test": "adapters/sqlstore/twofactor_delivery_test.go",
+      "marker": "native authenticator generation ignored settings"
+    }
+  ],
+  "plugin/2fa/ viewBackupCodes (server API only)": [
+    {
+      "label": "Read remaining codes through a trusted Go call across separate connections",
+      "test": "adapters/sqlstore/twofactor_delivery_test.go",
+      "marker": "trusted backup code listing failed"
+    }
+  ],
+  "plugin-symbol/2fa/twoFactorClient": [
+    {
+      "label": "Complete delivered second-factor enrollment, code verification and remembered sign-in through the pinned browser client",
+      "test": "conformance/core.test.mjs",
+      "marker": "test(\"the public client completes delivered second-factor"
+    }
+  ],
+  "plugin-symbol/2fa/OTPOptions/period": [
+    {
+      "label": "Persist the configured two-minute lifetime and reject an expired delivered proof",
+      "test": "adapters/sqlstore/twofactor_delivery_test.go",
+      "marker": "stored delivered OTP or expiry differs"
+    }
+  ],
+  "plugin-symbol/2fa/OTPOptions/digits": [
+    {
+      "label": "Deliver an eight-digit decimal code privately to the correct user",
+      "test": "adapters/sqlstore/twofactor_delivery_test.go",
+      "marker": "factor delivery exposed proof or addressed another user"
+    }
+  ],
+  "plugin-symbol/2fa/OTPOptions/sendOTP": [
+    {
+      "label": "Deliver outside the database lock and handle a failing sender without activating the proof",
+      "test": "adapters/sqlstore/twofactor_delivery_test.go",
+      "marker": "factor sender did not run outside the transaction"
+    }
+  ],
+  "plugin-symbol/2fa/OTPOptions/allowedAttempts": [
+    {
+      "label": "Reject an exhausted code and accept a replacement on the same pending login",
+      "test": "adapters/sqlstore/twofactor_delivery_test.go",
+      "marker": "delivery-specific attempt limit failed"
+    }
+  ],
+  "plugin-symbol/2fa/OTPOptions/storeOTP": [
+    {
+      "label": "Encode and verify plain, encrypted, hashed, and custom transformed codes",
+      "test": "twofactor_settings_test.go",
+      "marker": "func TestDeliveredFactorStorageModes("
+    }
+  ],
+  "plugin-symbol/2fa/TOTPOptions/digits": [
+    {
+      "label": "Provision and verify an eight-digit authenticator",
+      "test": "adapters/sqlstore/twofactor_delivery_test.go",
+      "marker": "native authenticator generation ignored settings"
+    }
+  ],
+  "plugin-symbol/2fa/TOTPOptions/period": [
+    {
+      "label": "Advertise the configured 45-second interval in the provisioning URI",
+      "test": "adapters/sqlstore/twofactor_delivery_test.go",
+      "marker": "custom authenticator parameters were omitted"
+    }
+  ],
+  "plugin-symbol/2fa/TOTPOptions/disable": [
+    {
+      "label": "Reject trusted code generation on a host that disabled authenticator support",
+      "test": "adapters/sqlstore/twofactor_delivery_test.go",
+      "marker": "disabled authenticator generated a code"
+    }
+  ],
+  "plugin-symbol/2fa/BackupCodeOptions/amount": [
+    {
+      "label": "Generate the configured four-code recovery set",
+      "test": "adapters/sqlstore/twofactor_delivery_test.go",
+      "marker": "custom backup code amount or length was ignored"
+    }
+  ],
+  "plugin-symbol/2fa/BackupCodeOptions/length": [
+    {
+      "label": "Generate twelve random characters per code and format the recovery codes",
+      "test": "adapters/sqlstore/twofactor_delivery_test.go",
+      "marker": "custom backup code amount or length was ignored"
+    }
+  ],
+  "plugin-symbol/2fa/BackupCodeOptions/customBackupCodesGenerate": [
+    {
+      "label": "Use the supplied recovery-code generator for enrollment",
+      "test": "adapters/sqlstore/twofactor_delivery_test.go",
+      "marker": "passwordless enrollment did not use custom backup generator"
+    }
+  ],
+  "plugin-symbol/2fa/BackupCodeOptions/storeBackupCodes": [
+    {
+      "label": "Read application-coded recovery material and round-trip a custom backup cipher",
+      "test": "adapters/sqlstore/twofactor_delivery_test.go",
+      "marker": "custom backup-code codec did not round trip"
+    }
+  ],
+  "plugin-symbol/2fa/TwoFactorOptions/skipVerificationOnEnable": [
+    {
+      "label": "Enable a password-confirmed authenticator and rotate the current session immediately",
+      "test": "adapters/sqlstore/twofactor_delivery_test.go",
+      "marker": "current := h.cookie(setup, \"session_token\")"
+    }
+  ],
+  "plugin-symbol/2fa/TwoFactorOptions/allowPasswordless": [
+    {
+      "label": "Allow a passwordless account to enroll while preserving the password requirement on credential accounts",
+      "test": "adapters/sqlstore/twofactor_delivery_test.go",
+      "marker": "passwordLogin.Token, true)"
+    }
+  ],
+  "plugin-symbol/2fa/TwoFactorOptions/accountLockout": [
+    {
+      "label": "Honor configured thresholds and duration and recover on successful proof after expiration",
+      "test": "adapters/sqlstore/twofactor_delivery_test.go",
+      "marker": "successful proof did not recover from lockout"
+    }
+  ],
+  "plugin-symbol/2fa/TwoFactorOptions/otpOptions": [
+    {
+      "label": "Complete native SDK delivery, verification and remembered login",
+      "test": "client/twofactor_delivery_test.go",
+      "marker": "native cookie jar lost remembered-browser grant"
+    }
+  ],
+  "plugin-symbol/2fa/TwoFactorOptions/totpOptions": [
+    {
+      "label": "Exercise configurable digits, period, provisioning and server-only generation on SQL",
+      "test": "adapters/sqlstore/twofactor_delivery_test.go",
+      "marker": "func TestAuthenticatorAndBackupSettings("
+    }
+  ],
+  "plugin-symbol/2fa/TwoFactorOptions/backupCodeOptions": [
+    {
+      "label": "Read plain and custom-encoded backup codes under configurable generation options",
+      "test": "adapters/sqlstore/twofactor_delivery_test.go",
+      "marker": "custom backup-code codec did not round trip"
+    }
+  ],
+  "plugin-symbol/anonymous/anonymousClient": [
+    {
+      "label": "The public browser client creates, upgrades, reads and removes guest identities on both servers",
+      "test": "conformance/core.test.mjs",
+      "marker": "the pinned anonymous client signs in, upgrades and deletes guests on either server",
+      "complete": true
+    }
+  ],
+  "plugin/anonymous/POST /sign-in/anonymous": [
+    {
+      "label": "Create a guest without a password, with a usable session and the guest flag",
+      "test": "adapters/sqlstore/anonymous_test.go",
+      "marker": "guest unexpectedly acquired a password account"
+    },
+    {
+      "label": "The public browser client creates, upgrades, reads and removes guest identities on both servers",
+      "test": "conformance/core.test.mjs",
+      "marker": "the pinned anonymous client signs in, upgrades and deletes guests on either server",
+      "complete": true
+    }
+  ],
+  "plugin/anonymous/POST /delete-anonymous-user": [
+    {
+      "label": "Remove the authenticated guest and revoke its sessions",
+      "test": "adapters/sqlstore/anonymous_test.go",
+      "marker": "explicit guest deletion left active state",
+      "complete": true
+    },
+    {
+      "label": "Protect permanent accounts from the guest deletion route",
+      "test": "adapters/sqlstore/anonymous_test.go",
+      "marker": "expectErr(c.DeleteAnonymousUser(ctx), 403, \"USER_IS_NOT_ANONYMOUS\")"
+    }
+  ],
+  "plugin-symbol/anonymous/AnonymousOptions/onLinkAccount": [
+    {
+      "label": "Roll back application-record writes and withhold the new session when a transfer callback fails",
+      "test": "adapters/sqlstore/anonymous_test.go",
+      "marker": "failed callback partially transferred guest records or left a target session",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/anonymous/AnonymousOptions/disableDeleteAnonymousUser": [
+    {
+      "label": "Retain a linked guest, block explicit deletion and deliver one callback across concurrent requests",
+      "test": "adapters/sqlstore/anonymous_test.go",
+      "marker": "retained guest transferred more than once or disappeared",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/anonymous/AnonymousOptions/emailDomainName": [
+    {
+      "label": "Assign generated guest addresses to the configured domain",
+      "test": "adapters/sqlstore/anonymous_test.go",
+      "marker": "invalid guest identity",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/anonymous/AnonymousOptions/generateName": [
+    {
+      "label": "Obtain guest display names from the initiating HTTP request",
+      "test": "adapters/sqlstore/anonymous_test.go",
+      "marker": "wrong creation route",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/anonymous/AnonymousOptions/generateRandomEmail": [
+    {
+      "label": "Accept host-generated guest addresses and reject invalid values",
+      "test": "client/anonymous_test.go",
+      "marker": "invalid guest email accepted",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/anonymous.mdx#L72": [
+    {
+      "label": "Start a guest identity through the browser or native client",
+      "test": "conformance/core.test.mjs",
+      "marker": "the pinned anonymous client signs in, upgrades and deletes guests on either server"
+    }
+  ],
+  "docs/content/docs/plugins/anonymous.mdx#L90": [
+    {
+      "label": "Wait for MFA completion before transferring guest data",
+      "test": "adapters/sqlstore/anonymous_test.go",
+      "marker": "second-factor completion lost the guest"
+    },
+    {
+      "label": "Carry a guest through a provider redirect without the primary cookie",
+      "test": "adapters/sqlstore/anonymous_oauth_test.go",
+      "marker": "provider callback lost the guest"
+    },
+    {
+      "label": "Complete guest handoff with the official Google One Tap client",
+      "test": "conformance/core.test.mjs",
+      "marker": "One Tap did not retire the current guest"
+    },
+    {
+      "label": "Transfer only after a verified WebAuthn assertion",
+      "test": "adapters/sqlstore/passkey_test.go",
+      "marker": "passkey did not retire the guest"
+    },
+    {
+      "label": "Link after local verification of the email OTP",
+      "test": "adapters/sqlstore/anonymous_test.go",
+      "marker": "email OTP did not transfer guest"
+    },
+    {
+      "label": "Link a guest after the email sign-in link is verified",
+      "test": "adapters/sqlstore/anonymous_test.go",
+      "marker": "verified magic link did not transfer the guest"
+    }
+  ],
+  "docs/content/docs/plugins/anonymous.mdx#L123": [
+    {
+      "label": "Distinguish guest deletion from sign-out",
+      "test": "adapters/sqlstore/anonymous_test.go",
+      "marker": "sign-out deleted guest data"
+    }
+  ],
+  "plugin/admin/POST /admin/set-role": [
+    {
+      "label": "Assign a configured role and reject an unknown role",
+      "test": "adapters/sqlstore/admin_test.go",
+      "marker": "adminBrowser.AdminSetRole(ctx, target, \"unknown\")"
+    }
+  ],
+  "docs/content/docs/plugins/admin.mdx#L241": [
+    {
+      "label": "Assign a configured role and reject an unknown role",
+      "test": "adapters/sqlstore/admin_test.go",
+      "marker": "adminBrowser.AdminSetRole(ctx, target, \"unknown\")"
+    }
+  ],
+  "plugin/admin/GET /admin/get-user": [
+    {
+      "label": "Fetch the authorized record and deny an ordinary account",
+      "test": "adapters/sqlstore/admin_test.go",
+      "marker": "userBrowser.AdminGetUser(ctx, u.ID)"
+    }
+  ],
+  "docs/content/docs/plugins/admin.mdx#L211": [
+    {
+      "label": "Fetch the authorized record and deny an ordinary account",
+      "test": "adapters/sqlstore/admin_test.go",
+      "marker": "userBrowser.AdminGetUser(ctx, u.ID)"
+    }
+  ],
+  "plugin/admin/POST /admin/create-user": [
+    {
+      "label": "Create a credential account and assign multiple roles",
+      "test": "adapters/sqlstore/admin_test.go",
+      "marker": "operator, err := bootstrap.AdminCreateUser"
+    }
+  ],
+  "docs/content/docs/plugins/admin.mdx#L82": [
+    {
+      "label": "Create a credential account and assign multiple roles",
+      "test": "adapters/sqlstore/admin_test.go",
+      "marker": "operator, err := bootstrap.AdminCreateUser"
+    }
+  ],
+  "plugin/admin/POST /admin/update-user": [
+    {
+      "label": "Update a user’s profile and gate changes to protected fields",
+      "test": "adapters/sqlstore/admin_test.go",
+      "marker": "admin profile fields not updated"
+    }
+  ],
+  "docs/content/docs/plugins/admin.mdx#L279": [
+    {
+      "label": "Update a user’s profile and gate changes to protected fields",
+      "test": "adapters/sqlstore/admin_test.go",
+      "marker": "admin profile fields not updated"
+    }
+  ],
+  "plugin/admin/GET /admin/list-users": [
+    {
+      "label": "Combine search, role filtering, sorting and pagination",
+      "test": "adapters/sqlstore/admin_test.go",
+      "marker": "admin search/filter/pagination"
+    }
+  ],
+  "docs/content/docs/plugins/admin.mdx#L113": [
+    {
+      "label": "Combine search, role filtering, sorting and pagination",
+      "test": "adapters/sqlstore/admin_test.go",
+      "marker": "admin search/filter/pagination"
+    }
+  ],
+  "plugin/admin/POST /admin/list-user-sessions": [
+    {
+      "label": "Retrieve the target’s current session through the typed client",
+      "test": "adapters/sqlstore/admin_test.go",
+      "marker": "found, err := adminBrowser.AdminListUserSessions"
+    },
+    {
+      "label": "List a protected account without issuing a bearer credential",
+      "test": "adapters/sqlstore/admin_test.go",
+      "marker": "revocation handle authenticated as a bearer credential"
+    }
+  ],
+  "docs/content/docs/plugins/admin.mdx#L336": [
+    {
+      "label": "Retrieve the target’s current session through the typed client",
+      "test": "adapters/sqlstore/admin_test.go",
+      "marker": "found, err := adminBrowser.AdminListUserSessions"
+    }
+  ],
+  "plugin/admin/POST /admin/unban-user": [
+    {
+      "label": "Clear a ban and permit sign-in after the password is reset",
+      "test": "adapters/sqlstore/admin_test.go",
+      "marker": "err = adminBrowser.AdminUnbanUser"
+    }
+  ],
+  "docs/content/docs/plugins/admin.mdx#L321": [
+    {
+      "label": "Clear a ban and permit sign-in after the password is reset",
+      "test": "adapters/sqlstore/admin_test.go",
+      "marker": "err = adminBrowser.AdminUnbanUser"
+    }
+  ],
+  "plugin/admin/POST /admin/ban-user": [
+    {
+      "label": "Revoke existing logins, deny new sessions and automatically clear expired bans",
+      "test": "adapters/sqlstore/admin_test.go",
+      "marker": "expired ban not cleared during login"
+    },
+    {
+      "label": "Prevent a pending second-factor challenge from delivering codes or transferring a guest after a ban",
+      "test": "adapters/sqlstore/admin_factor_test.go",
+      "marker": "suspended account received an OTP"
+    }
+  ],
+  "docs/content/docs/plugins/admin.mdx#L298": [
+    {
+      "label": "Revoke existing logins, deny new sessions and automatically clear expired bans",
+      "test": "adapters/sqlstore/admin_test.go",
+      "marker": "expired ban not cleared during login"
+    }
+  ],
+  "plugin/admin/POST /admin/impersonate-user": [
+    {
+      "label": "Issue a bounded delegated login and enforce administrator impersonation permissions",
+      "test": "adapters/sqlstore/admin_test.go",
+      "marker": "delegated session duration differs from policy"
+    },
+    {
+      "label": "Keep owner credentials, MFA enrollment, device approval and token-bearing session lists restricted during impersonation",
+      "test": "adapters/sqlstore/admin_factor_test.go",
+      "marker": "JWT session header did not distinguish delegation from direct authentication"
+    }
+  ],
+  "docs/content/docs/plugins/admin.mdx#L381": [
+    {
+      "label": "Issue a bounded delegated login and enforce administrator impersonation permissions",
+      "test": "adapters/sqlstore/admin_test.go",
+      "marker": "delegated session duration differs from policy"
+    }
+  ],
+  "plugin/admin/POST /admin/stop-impersonating": [
+    {
+      "label": "Restore the initiating login and preserve its original persistence",
+      "test": "adapters/sqlstore/admin_test.go",
+      "marker": "original login persistence lost"
+    }
+  ],
+  "docs/content/docs/plugins/admin.mdx#L409": [
+    {
+      "label": "Restore the initiating login and preserve its original persistence",
+      "test": "adapters/sqlstore/admin_test.go",
+      "marker": "original login persistence lost"
+    }
+  ],
+  "plugin/admin/POST /admin/revoke-user-session": [
+    {
+      "label": "Invalidate a selected token and delegated credentials relying on it",
+      "test": "adapters/sqlstore/admin_test.go",
+      "marker": "delegated login survived revocation of its original session"
+    },
+    {
+      "label": "Scope revocation to the issuing operator and require the current revoke grant",
+      "test": "adapters/sqlstore/admin_test.go",
+      "marker": "revocation handle escaped its operator binding"
+    }
+  ],
+  "docs/content/docs/plugins/admin.mdx#L351": [
+    {
+      "label": "Invalidate a selected token and delegated credentials relying on it",
+      "test": "adapters/sqlstore/admin_test.go",
+      "marker": "delegated login survived revocation of its original session"
+    },
+    {
+      "label": "Keep revocation handles bounded to the session lifetime and active encryption keys",
+      "test": "admin_handle_test.go",
+      "marker": "func TestAdministrativeRevocationHandleLifetimeAndKeyRotation("
+    }
+  ],
+  "plugin/admin/POST /admin/revoke-user-sessions": [
+    {
+      "label": "Revoke the target’s sessions through the administrative API",
+      "test": "adapters/sqlstore/admin_test.go",
+      "marker": "must(bootstrap.AdminRevokeUserSessions(ctx, target))"
+    }
+  ],
+  "docs/content/docs/plugins/admin.mdx#L366": [
+    {
+      "label": "Revoke the target’s sessions through the administrative API",
+      "test": "adapters/sqlstore/admin_test.go",
+      "marker": "must(bootstrap.AdminRevokeUserSessions(ctx, target))"
+    }
+  ],
+  "plugin/admin/POST /admin/remove-user": [
+    {
+      "label": "Remove a user while guarding the acting administrator’s own account",
+      "test": "adapters/sqlstore/admin_test.go",
+      "marker": "expect(bootstrap.AdminRemoveUser(ctx, u.ID)"
+    }
+  ],
+  "docs/content/docs/plugins/admin.mdx#L420": [
+    {
+      "label": "Remove a user while guarding the acting administrator’s own account",
+      "test": "adapters/sqlstore/admin_test.go",
+      "marker": "expect(bootstrap.AdminRemoveUser(ctx, u.ID)"
+    }
+  ],
+  "plugin/admin/POST /admin/set-user-password": [
+    {
+      "label": "Replace the credential password and sign in with the new value",
+      "test": "adapters/sqlstore/admin_test.go",
+      "marker": "must(adminBrowser.AdminSetPassword("
+    }
+  ],
+  "docs/content/docs/plugins/admin.mdx#L260": [
+    {
+      "label": "Replace the credential password and sign in with the new value",
+      "test": "adapters/sqlstore/admin_test.go",
+      "marker": "must(adminBrowser.AdminSetPassword("
+    }
+  ],
+  "plugin/admin/POST /admin/has-permission": [
+    {
+      "label": "Evaluate the authenticated caller’s grants and keep separate roles independent",
+      "test": "adapters/sqlstore/admin_test.go",
+      "marker": "partial role grants combined unexpectedly"
+    }
+  ],
+  "docs/content/docs/plugins/admin.mdx#L586": [
+    {
+      "label": "Evaluate the authenticated caller’s grants and keep separate roles independent",
+      "test": "adapters/sqlstore/admin_test.go",
+      "marker": "partial role grants combined unexpectedly"
+    }
+  ],
+  "plugin-symbol/admin/AdminOptions/defaultRole": [
+    {
+      "label": "Evaluate permissions for a configured default role",
+      "test": "plugins/admin/admin_test.go",
+      "marker": "default/explicit grants"
+    }
+  ],
+  "docs/content/docs/plugins/admin.mdx#L771": [
+    {
+      "label": "Evaluate permissions for a configured default role",
+      "test": "plugins/admin/admin_test.go",
+      "marker": "default/explicit grants"
+    }
+  ],
+  "plugin-symbol/admin/AdminOptions/adminRoles": [
+    {
+      "label": "Validate administrative role names against the configured role registry",
+      "test": "plugins/admin/admin_test.go",
+      "marker": "AdminRoles: []string{\"missing\"}"
+    }
+  ],
+  "docs/content/docs/plugins/admin.mdx#L781": [
+    {
+      "label": "Validate administrative role names against the configured role registry",
+      "test": "plugins/admin/admin_test.go",
+      "marker": "AdminRoles: []string{\"missing\"}"
+    }
+  ],
+  "plugin-symbol/admin/AdminOptions/adminUserIds": [
+    {
+      "label": "Grant an explicitly configured identity administrative authority",
+      "test": "adapters/sqlstore/admin_test.go",
+      "marker": "configured admin ID lacks grants"
+    }
+  ],
+  "docs/content/docs/plugins/admin.mdx#L798": [
+    {
+      "label": "Grant an explicitly configured identity administrative authority",
+      "test": "adapters/sqlstore/admin_test.go",
+      "marker": "configured admin ID lacks grants"
+    }
+  ],
+  "plugin-symbol/admin/AdminOptions/roles": [
+    {
+      "label": "Define custom roles and evaluate each role’s entire grant",
+      "test": "plugins/admin/admin_test.go",
+      "marker": "required statement split across independent roles"
+    }
+  ],
+  "docs/content/docs/plugins/admin.mdx#L463": [
+    {
+      "label": "Define custom roles and evaluate each role’s entire grant",
+      "test": "plugins/admin/admin_test.go",
+      "marker": "required statement split across independent roles"
+    }
+  ],
+  "plugin-symbol/admin/AdminOptions/defaultBanReason": [
+    {
+      "label": "Apply the configured reason when suspending a user",
+      "test": "adapters/sqlstore/admin_test.go",
+      "marker": "*banned.BanReason != \"Account review\""
+    }
+  ],
+  "docs/content/docs/plugins/admin.mdx#L820": [
+    {
+      "label": "Apply the configured reason when suspending a user",
+      "test": "adapters/sqlstore/admin_test.go",
+      "marker": "*banned.BanReason != \"Account review\""
+    }
+  ],
+  "plugin-symbol/admin/AdminOptions/bannedUserMessage": [
+    {
+      "label": "Use the configured denial message after successful password verification",
+      "test": "adapters/sqlstore/admin_test.go",
+      "marker": "expected configured ban message"
+    }
+  ],
+  "docs/content/docs/plugins/admin.mdx#L840": [
+    {
+      "label": "Use the configured denial message after successful password verification",
+      "test": "adapters/sqlstore/admin_test.go",
+      "marker": "expected configured ban message"
+    }
+  ],
+  "plugin-symbol/admin/AdminOptions/impersonationSessionDuration": [
+    {
+      "label": "Bound an impersonation to its configured lifetime despite sliding refresh",
+      "test": "adapters/sqlstore/admin_test.go",
+      "marker": "delegated session duration differs from policy"
+    }
+  ],
+  "docs/content/docs/plugins/admin.mdx#L810": [
+    {
+      "label": "Bound an impersonation to its configured lifetime despite sliding refresh",
+      "test": "adapters/sqlstore/admin_test.go",
+      "marker": "delegated session duration differs from policy"
+    }
+  ],
+  "docs/content/docs/plugins/admin.mdx#L164": [
+    {
+      "label": "Filter by role and search by email",
+      "test": "adapters/sqlstore/admin_test.go",
+      "marker": "admin search/filter/pagination"
+    }
+  ],
+  "docs/content/docs/plugins/admin.mdx#L168": [
+    {
+      "label": "Page a sorted result set with its total",
+      "test": "adapters/sqlstore/admin_test.go",
+      "marker": "page.Total != 2"
+    }
+  ],
+  "docs/content/docs/plugins/admin.mdx#L439": [
+    {
+      "label": "Give ordinary accounts no administrative grants",
+      "test": "plugins/admin/admin_test.go",
+      "marker": "default user received administrative permissions"
+    }
+  ],
+  "docs/content/docs/plugins/admin.mdx#L451": [
+    {
+      "label": "Evaluate grants for user and session actions",
+      "test": "plugins/admin/admin_test.go",
+      "marker": "default administrative grants"
+    }
+  ],
+  "docs/content/docs/plugins/admin.mdx#L745": [
+    {
+      "label": "Keep the incorrect-password response independent of ban status",
+      "test": "adapters/sqlstore/admin_test.go",
+      "marker": "expect(err, \"INVALID_EMAIL_OR_PASSWORD\")"
+    }
+  ],
+  "plugin-symbol/admin/UserWithRole": [
+    {
+      "label": "Expose role and ban state on a newly created account",
+      "test": "adapters/sqlstore/admin_test.go",
+      "marker": "regular signup did not receive its default role"
+    }
+  ],
+  "plugin-symbol/admin/SessionWithImpersonatedBy": [
+    {
+      "label": "Preserve the initiating administrator in the temporary session record",
+      "test": "adapters/sqlstore/admin_test.go",
+      "marker": "delegated session has no owner"
+    }
+  ],
+  "plugin-symbol/admin/adminClient": [
+    {
+      "label": "Exercise all fifteen administrative client routes on both runtimes with shared database records",
+      "test": "conformance/core.test.mjs",
+      "marker": "test(\"the official admin client manages"
+    }
+  ],
+  "cli/create-admin": [
+    {
+      "label": "Create the first administrator in an existing database using a password supplied on standard input",
+      "test": "cmd/authctl/admin_test.go",
+      "marker": "func TestCreateAdminCommand("
+    }
+  ],
+  "plugin-symbol/last-login-method/LastLoginMethodOptions/maxAge": [
+    {
+      "label": "Respect a custom preference lifetime in the emitted browser cookie",
+      "test": "plugins/lastlogin/lastlogin_test.go",
+      "marker": "method.MaxAge != 7200",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/last-login-method/LastLoginMethodOptions/beforeStoreCookie": [
+    {
+      "label": "Require consent independently of successful authentication",
+      "test": "plugins/lastlogin/lastlogin_test.go",
+      "marker": "cookie recorded without consent",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/last-login-method/LastLoginMethodOptions/customResolveMethod": [
+    {
+      "label": "Override the method for a sign-in and fall back to the default when the resolver returns empty",
+      "test": "adapters/sqlstore/lastlogin_test.go",
+      "marker": "second session did not update account method",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/last-login-method/LastLoginMethodOptions/storeInDatabase": [
+    {
+      "label": "Share a successful sign-in method across sessions on all three SQL backends and in memory",
+      "test": "adapters/sqlstore/lastlogin_test.go",
+      "marker": "second session did not update account method"
+    }
+  ],
+  "plugin-symbol/last-login-method/lastLoginMethodClient": [
+    {
+      "label": "Read, match and clear the browser preference, including a custom cookie domain",
+      "test": "conformance/lastlogin-browser.test.mjs",
+      "marker": "test(\"login preference readers agree",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/last-login-method/LastLoginMethodClientConfig": [
+    {
+      "label": "Use a custom preference name and set the domain when clearing it",
+      "test": "conformance/lastlogin-browser.test.mjs",
+      "marker": "test(\"login preference readers agree",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/last-login-method.mdx#L133": [
+    {
+      "label": "Expose the stored sign-in method when the configured plugin issues a session",
+      "test": "adapters/sqlstore/lastlogin_test.go",
+      "marker": "missing persisted sign-up method"
+    }
+  ],
+  "docs/content/docs/plugins/last-login-method.mdx#L172": [
+    {
+      "label": "Expose the stored method through the browser client on both runtimes",
+      "test": "conformance/core.test.mjs",
+      "marker": "test(\"both runtimes publish the email login preference",
+      "complete": true
     }
   ]
 }

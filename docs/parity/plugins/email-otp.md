@@ -6,7 +6,7 @@
 
 - [ ] Email otp endpoints, types and options
   - [ ] `emailOTPClient`
-    - [x] Use the pinned browser client with hashed proofs in either runtime, including two-address confirmation ([test](../../../conformance/core.test.mjs#L472))
+    - [x] Use the pinned browser client with hashed proofs in either runtime, including two-address confirmation ([test](../../../conformance/core.test.mjs#L491))
   - [ ] `emailOTP`
     - [x] Run the typed Go SDK through sign-in, verification, recovery, address changes and cookie-jar authentication ([test](../../../client/emailotp_test.go#L16))
   - [ ] `POST /email-otp/send-verification-otp`
@@ -25,7 +25,7 @@
     - [x] Create one verified account and one session when eight sign-ins race across two pools ([test](../../../adapters/sqlstore/emailotp_test.go#L155))
     - [x] Consume a memory-backed sign-in proof once across handlers and revoke unproven access ([test](../../../adapters/memory/emailotp_test.go#L79))
   - [ ] `POST /email-otp/request-password-reset`
-    - [x] Deliver recovery mail to an existing owner and accept the stored proof in a second runtime ([test](../../../conformance/core.test.mjs#L492))
+    - [x] Deliver recovery mail to an existing owner and accept the stored proof in a second runtime ([test](../../../conformance/core.test.mjs#L511))
   - [x] `POST /forget-password/email-otp` ([test](../../../adapters/sqlstore/emailotp_test.go#L173))
     - [x] Give unknown mailboxes a successful private response on the recovery alias ([test](../../../adapters/sqlstore/emailotp_test.go#L101))
     - [x] Deliver a recovery code through the alias for a registered mailbox ([test](../../../adapters/sqlstore/emailotp_test.go#L173))

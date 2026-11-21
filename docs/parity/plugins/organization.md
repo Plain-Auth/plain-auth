@@ -10,7 +10,7 @@
     - [ ] `ac`
     - [ ] `roles`
     - [ ] `teams`
-      - [x] Exercise all nine team operations with the official client, including multi-team invitations and organization boundaries ([test](../../../conformance/core.test.mjs#L571))
+      - [x] Exercise all nine team operations with the official client, including multi-team invitations and organization boundaries ([test](../../../conformance/core.test.mjs#L590))
     - [ ] `schema`
     - [ ] `dynamicAccessControl`
   - [ ] `organizationClient`
@@ -30,7 +30,7 @@
     - [x] Read the current recipient email and verification status and keep rejected invitation details private ([test](../../../adapters/sqlstore/organization_cleanup_test.go#L117))
     - [x] Return only the public error code and message to a different recipient ([test](../../../plugins/organization/organization_test.go#L142))
     - [x] Roll back every membership and keep the invitation pending when a team fills ([test](../../../adapters/sqlstore/organization_teams_test.go#L237))
-    - [x] Read and update the same stored invitations, membership keys and seat counts in both runtime directions ([test](../../../conformance/core.test.mjs#L641))
+    - [x] Read and update the same stored invitations, membership keys and seat counts in both runtime directions ([test](../../../conformance/core.test.mjs#L665))
   - [ ] `POST /organization/reject-invitation`
   - [ ] `POST /organization/cancel-invitation`
   - [ ] `GET /organization/get-invitation`
@@ -61,7 +61,7 @@
   - [ ] `POST /organization/update-team`
     - [x] Update the team name and reject another organization’s team ID ([test](../../../adapters/sqlstore/organization_teams_test.go#L114))
   - [ ] `GET /organization/list-teams`
-    - [x] Read the organization’s teams and deny outsiders using the browser client ([test](../../../conformance/core.test.mjs#L597))
+    - [x] Read the organization’s teams and deny outsiders using the browser client ([test](../../../conformance/core.test.mjs#L616))
   - [ ] `POST /organization/set-active-team`
     - [x] Select a team belonging to the active organization and preserve session cookie persistence ([test](../../../adapters/sqlstore/organization_teams_test.go#L156))
   - [ ] `GET /organization/list-user-teams`
@@ -161,7 +161,7 @@
         - [ ] Parameter `teamId` (optional)
     - [ ] Accept Invitation
       - [x] Accept a matching invitation once, even during concurrent requests ([test](../../../plugins/organization/organization_test.go#L153))
-      - [x] Accept an invitation through the JavaScript client and read the new membership ([test](../../../conformance/core.test.mjs#L231))
+      - [x] Accept an invitation through the JavaScript client and read the new membership ([test](../../../conformance/core.test.mjs#L250))
       - [ ] `POST /organization/accept-invitation`
         - [ ] Parameter `invitationId`
       - [ ] Email Verification Requirement
@@ -268,7 +268,7 @@
           - [ ] Parameter `name`
           - [ ] Parameter `organizationId` (optional)
       - [ ] List Teams
-        - [x] Read the organization’s teams and deny outsiders using the browser client ([test](../../../conformance/core.test.mjs#L597))
+        - [x] Read the organization’s teams and deny outsiders using the browser client ([test](../../../conformance/core.test.mjs#L616))
         - [ ] `GET /organization/list-teams`
           - [ ] Parameter `organizationId` (optional)
       - [ ] Update Team
@@ -309,7 +309,7 @@
           - [ ] Parameter `teamId`
           - [ ] Parameter `userId`
     - [ ] Team Permissions
-      - [x] Apply owner, admin and member team-management permissions through public HTTP routes ([test](../../../conformance/core.test.mjs#L604))
+      - [x] Apply owner, admin and member team-management permissions through public HTTP routes ([test](../../../conformance/core.test.mjs#L623))
       - [ ] `team:create`
       - [ ] `team:update`
       - [ ] `team:delete`
@@ -319,7 +319,7 @@
       - [ ] `allowRemovingAllTeams`
     - [ ] Team Members
       - [x] Persist the team membership key and maintain the database member count across mutations ([test](../../../adapters/sqlstore/organization_teams_test.go#L177))
-      - [x] Read and update the same stored invitations, membership keys and seat counts in both runtime directions ([test](../../../conformance/core.test.mjs#L641))
+      - [x] Read and update the same stored invitations, membership keys and seat counts in both runtime directions ([test](../../../conformance/core.test.mjs#L665))
     - [ ] Database Schema
       - [ ] `teamsFeatureTeamTableFields.id`
       - [ ] `teamsFeatureTeamTableFields.name`

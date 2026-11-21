@@ -8,6 +8,7 @@ A checked item links to a local test for that behavior. An open parent means the
 | --- | --- |
 | Credentials, cookies and session lifecycle | [Authentication](../authentication.md) · [Account management](../account.md) |
 | Remember and switch accounts in one browser | [Account switching](../multi-session.md) |
+| Guest sessions and account upgrades | [Guest sessions](../anonymous.md) |
 | Google One Tap popup, button and browser challenges | [Google One Tap](../one-tap.md) |
 | First-party device grants and authorization | [Sign in a device](../device-authorization.md) |
 | Passkey registration, login and credential management | [Passkeys](../passkeys.md) |
@@ -20,6 +21,7 @@ A checked item links to a local test for that behavior. An open parent means the
 | OAuth sign-in, identity verification and account linking | [Social providers](../social.md) |
 | Go client and router integrations | [HTTP client](../client.md) · [Routers](../routers.md) |
 | Memory, SQLite, PostgreSQL and MySQL | [Databases](../databases.md) · [Schema generation and migrations](../schema.md) |
+| Administrative roles, bans and impersonation | [Administrator accounts](../admin.md) |
 | Organization membership and invitations | [Organizations](../organizations.md) |
 | Checkout, subscription listing and billing portal | [Recurring subscriptions](../subscriptions.md) · [Billing portal](../plugins.md#open-the-users-stripe-billing-portal) |
 | CAPTCHA verification and host BotID integration | [CAPTCHA](../captcha.md) |

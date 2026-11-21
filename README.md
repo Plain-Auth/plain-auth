@@ -15,7 +15,8 @@ FineStack Auth embeds authentication in your Go API. Mount the auth handler on y
 - [x] Verify an email address, sign in, change an address and reset a password using single-use email codes. [Email OTP](docs/email-otp.md)
 - [x] Approve or deny a device login from a signed-in browser. [Device authorization](docs/device-authorization.md)
 - [x] Remember multiple accounts in one browser and switch or revoke them. [Account switching](docs/multi-session.md)
-- [x] Sign in with an authenticator or a single-use backup code. [Two-factor tests](adapters/sqlstore/twofactor_test.go)
+- [x] Create a guest account and transfer its application records on sign-up. [Guest sessions](docs/anonymous.md)
+- [x] Verify an authenticator, delivered code or single-use backup code and remember a trusted browser. [Two-factor authentication](docs/2fa.md)
 - [x] Create organizations and teams, enforce seat limits and accept scoped invitations. [Organization tests](plugins/organization/organization_test.go)
 - [x] Verify Stripe webhook signatures and open an authenticated customer’s billing portal. [Webhook tests](plugins/stripe/stripe_test.go) · [Billing portal tests](plugins/stripe/portal_test.go)
 
@@ -52,6 +53,8 @@ Import the current module to use the `fineauth` package.
 
 ```go
 import (
+    "strings"
+
     "github.com/FineStack/finestack-auth"
     "github.com/FineStack/finestack-auth/adapters/sqlite"
 )
@@ -104,6 +107,7 @@ Go records the resolved commit in the consuming project’s `go.mod`. The module
 | Check new passwords against a breached-password service | [Password screening](docs/password-checks.md) |
 | Configure profile updates, password reset, and verification email | [Account management and recovery](docs/account.md) |
 | Generate tables and migrate SQLite, PostgreSQL, or MySQL | [Databases and CLI](docs/databases.md) |
+| Manage users, ban accounts and grant administrative access | [Administrator accounts](docs/admin.md) |
 | Create organizations and teams, grant memberships, and accept invitations | [Organizations](docs/organizations.md) |
 | Start recurring Checkout and list subscriptions | [Subscription billing](docs/subscriptions.md) |
 | Add a custom endpoint, verify Stripe webhooks, or open the billing portal | [Plugins and Stripe](docs/plugins.md) |

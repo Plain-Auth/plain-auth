@@ -10,6 +10,7 @@ These checks exercise the Go HTTP client, router mounts and SQL drivers.
   - [x] Manage accounts, recover passwords and verify authenticator and backup codes using a native client ([test](../../client/account_test.go#L21))
   - [x] Switch and revoke remembered accounts through the typed client over TLS ([test](../../plugins/multisession/multisession_test.go#L97))
   - [x] Use typed client methods for all nine team endpoints over HTTP ([test](../../adapters/sqlstore/organization_teams_test.go#L99))
+  - [x] Manage and revoke administrative sessions through the typed cookie-backed client ([test](../../adapters/sqlstore/admin_test.go#L21))
 - [ ] Environment configuration
   - [x] Ignore unrelated host settings when resolving the signing key, public URL, origins and runtime mode ([test](../../env_test.go#L45))
   - [x] Resolve public URL and mount path from explicit options and process settings ([test](../../env_test.go#L19))
@@ -37,3 +38,4 @@ These checks exercise the Go HTTP client, router mounts and SQL drivers.
   - [x] Preserve a populated PostgreSQL or MySQL account and match fresh plugin tables, indexes and foreign keys after repeat migrations ([test](../../adapters/sqlstore/profiles_test.go#L14))
   - [x] Use exact case-sensitive session tokens and atomic revocation on all three SQL engines ([test](../../adapters/sqlstore/multisession_test.go#L15))
   - [x] Serialize organization-team additions, preserve seat limits and roll back failed invitations on all three SQL engines ([test](../../adapters/sqlstore/organization_teams_test.go#L21))
+  - [x] Serialize first-administrator provisioning across independent connections on all three SQL engines ([test](../../adapters/sqlstore/admin_test.go#L309))
