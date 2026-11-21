@@ -23,6 +23,7 @@ AUTH_DSN=auth.db go run ./cmd/authctl migrate --dialect sqlite --plugins organiz
 | `organization-teams` | Organization schema with teams, team membership, invitation team selection and active team selection |
 | `passkey` | Public credentials, authenticator counters, transport hints and account ownership |
 | `rate-limit` | Shared per-route counters with a unique key, request count and timestamp in milliseconds |
+| `scim` | Directory connection bindings, Users, Groups, memberships, subjects, retained external identities and projection grants |
 | `stripe-subscriptions` | Customer identifiers and subscription records with status, plan, billing and lifecycle fields |
 | `two-factor` | User enrollment state, factor secrets, recovery codes and lockout fields |
 
@@ -44,4 +45,4 @@ defer store.Close()
 
 Migrations initialize missing tables and indexes and add compatible columns to existing tables. Supply the same profiles on each deployment. Adding a profile can expand an existing installation while preserving its records. Removing a selection leaves its existing tables and columns in place. Required columns that cannot be populated from a default need an explicit application backfill. Review generated SQL when changing a database with custom constraints or mappings.
 
-Use the [schema conformance tests](../conformance/schema.test.mjs) to inspect what the CLI and live database comparisons cover.
+Schema tests compare every one of the 18,432 compatible selections without SCIM on each SQL dialect, then upgrade a populated SQLite database for each nonempty selection. SCIM adds seven independent tables. For each dialect, the tests compare the full generator with SCIM alone, with each of the 15 other profiles, and with all four compatible maximal selections. Each of these 20 SCIM selections gets a repeated populated SQLite upgrade. An additional comparison requires identical statements for all preexisting schema objects and checks that SCIM contributes only tables and indexes belonging to its seven models. The SQL lifecycle test also opens and upgrades a populated database twice on SQLite, PostgreSQL and MySQL. [Schema comparisons](../conformance/schema.test.mjs) · [SCIM database tests](../adapters/sqlstore/scim_test.go)

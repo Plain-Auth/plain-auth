@@ -1,0 +1,115 @@
+package scim
+
+import (
+	"context"
+	"errors"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"testing"
+
+	auth "github.com/Stonewrit/stonewrit-auth"
+	"github.com/Stonewrit/stonewrit-auth/adapters/memory"
+)
+
+type failureStore struct{ Store }
+
+func (failureStore) SCIMGet(context.Context, Directory, string) (Record, error) {
+	return Record{}, errors.New("private driver diagnostic")
+}
+func TestSCIMProtocolAndCredentialConfiguration(t *testing.T) {
+	host, err := auth.New(auth.Options{BaseURL: "https://directory.example.test", BasePath: "/identity", Secret: strings.Repeat("a", 32), Store: memory.New()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	conn := func(id, token string) Connection {
+		return Connection{Directory: Directory{ID: id}, Credentials: []Credential{{ID: "one", Token: token}}}
+	}
+	for _, cs := range [][]Connection{{conn("ba_scim_connection_managed", "a")}, {conn("a", "one"), conn("b", "one")}, {conn("a", "one"), conn("a", "two")}, {conn("a", "")}, {conn("a", "two words")}, {{Directory: Directory{ID: "a"}, Credentials: []Credential{{ID: "key", Token: "one", Scopes: []string{"bad"}}}}}} {
+		if _, err := New(host, Options{Store: failureStore{}, Connections: cs}); err == nil {
+			t.Fatal("accepted invalid connection")
+		}
+	}
+	options := Options{Store: failureStore{}, Connections: []Connection{conn("a", "one")}}
+	h, err := New(host, options)
+	if err != nil {
+		t.Fatal(err)
+	}
+	options.Connections[0].Credentials[0].Token = "mutated-after-install"
+	for _, tc := range []struct {
+		method, path, token, media, body string
+		status                           int
+	}{
+		{"GET", "/identity/ok", "", "", "", 200},
+		{"GET", "/identity/scim/v2/Users/id", "one", "", "", 500},
+		{"GET", "/identity/scim/v2/Users/id", "mutated-after-install", "", "", 401},
+		{"GET", "/identity/scim/v2/ResourceTypes/Group", "", "", "", 404},
+		{"GET", "/identity/scim/v2/Schemas/" + UserSchema, "", "", "", 200},
+		{"GET", "/identity/scim/v2/Users/a%2fb", "one", "", "", 404},
+		{"GET", "/identity/scim/v2/Users/id", "", "", "", 401},
+		{"PATCH", "/identity/scim/v2/Users/id", "one", "text/plain", "{}", 415},
+		{"PATCH", "/identity/scim/v2/Users/id", "one", "application/json", "{} {}", 400},
+		{"POST", "/identity/scim/v2/Users", "one", "application/json", "`", 400},
+		{"OPTIONS", "/identity/scim/v2/Users", "", "", "", 405},
+	} {
+		t.Run(tc.method+" "+tc.path+tc.token+tc.media, func(t *testing.T) {
+			r := httptest.NewRequest(tc.method, tc.path, strings.NewReader(tc.body))
+			r.Header.Set("Cookie", "session=fixture")
+			if tc.token != "" {
+				r.Header.Set("Authorization", "Bearer "+tc.token)
+			}
+			if tc.media != "" {
+				r.Header.Set("Content-Type", tc.media)
+			}
+			w := httptest.NewRecorder()
+			h.ServeHTTP(w, r)
+			if w.Code != tc.status {
+				t.Fatalf("status %d: %s", w.Code, w.Body.String())
+			}
+			if strings.Contains(w.Body.String(), "private driver diagnostic") {
+				t.Fatal("private driver detail exposed")
+			}
+			if strings.Contains(tc.path, "/scim/") && w.Header().Get("Content-Type") != MediaType {
+				t.Fatal("wrong response media")
+			}
+		})
+	}
+	r := httptest.NewRequest(http.MethodGet, "/identity/scim/v2/Users/id", nil)
+	r.Header.Add("Authorization", "Bearer one")
+	r.Header.Add("Authorization", "Bearer two")
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, r)
+	if w.Code != 401 {
+		t.Fatal("multiple Authorization headers accepted")
+	}
+}
+func TestSCIMNormalizedProfileAndPatch(t *testing.T) {
+	p, err := normalize(map[string]any{"SCHEMAS": []any{UserSchema}, "USERNAME": "Person@Example.test", "Name": map[string]any{"givenname": " A "}, "ACTiVe": "TRUE"})
+	if err != nil || p.PrimaryEmail != "person@example.test" || p.DisplayName != "A" || !p.Active {
+		t.Fatalf("%+v %v", p, err)
+	}
+	r := Record{Profile: p}
+	for _, ops := range [][]any{
+		{map[string]any{"op": "add", "path": "name", "value": map[string]any{"familyName": "Two"}}},
+		{map[string]any{"path": UserSchema + ":name.givenName", "value": "Shift"}},
+		{map[string]any{"op": "remove", "path": "name.givenName"}},
+		{map[string]any{"op": "replace", "value": map[string]any{"title": []any{"Director"}, "timeZone": "UTC"}}},
+		{map[string]any{"op": "add", "path": "emails", "value": map[string]any{"type": "work", "value": "second@example.test"}}},
+	} {
+		if _, e := patchProfile(r, ops); e != nil {
+			t.Fatal(ops, e)
+		}
+	}
+	for _, bad := range []map[string]any{
+		{"userName": "no-address"},
+		{"userName": "foo@example.test", "emails": []any{map[string]any{"type": "work", "value": "aaa@example.test"}, map[string]any{"type": "WORK", "value": "bbb@example.test"}}},
+		{"userName": "foo@example.test", "emails": []any{map[string]any{"primary": true, "value": "one@example.test"}, map[string]any{"primary": "true", "value": "two@example.test"}}},
+		{"userName": "foo@example.test", "active": "yes"},
+		{"userName": "foo@example.test", "phoneNumbers": []any{map[string]any{"value": "12345"}}},
+	} {
+		bad["schemas"] = []any{UserSchema}
+		if _, e := normalize(bad); e == nil {
+			t.Fatal("accepted invalid data", bad)
+		}
+	}
+}

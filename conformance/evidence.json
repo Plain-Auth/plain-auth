@@ -122,9 +122,14 @@
       "marker": "if err := runCommand(\"generate\", \"--dialect\", dialect)"
     },
     {
-      "label": "Emit exact SQL for all supported dialect and profile combinations",
+      "label": "Compare every base-profile combination and independent SCIM profile witnesses across all three dialects",
       "test": "conformance/schema.test.mjs",
       "marker": "test(\"the CLI emits"
+    },
+    {
+      "label": "Prove SCIM adds exactly seven disjoint tables and preserves every preexisting schema statement",
+      "test": "conformance/schema.test.mjs",
+      "marker": "test(\"SCIM adds seven"
     }
   ],
   "cli/migrate": [
@@ -142,6 +147,11 @@
       "label": "Upgrade existing PostgreSQL and MySQL schemas with combined team, billing and factor profiles",
       "test": "adapters/sqlstore/profiles_test.go",
       "marker": "func TestServerPluginSchemaUpgrade("
+    },
+    {
+      "label": "Reopen a populated SCIM profile twice on SQLite, PostgreSQL and MySQL and retain the original account",
+      "test": "adapters/sqlstore/scim_test.go",
+      "marker": "func TestSCIMDirectoryLifecycle("
     }
   ],
   "docs/content/docs/concepts/cookies.mdx#L62": [
@@ -1988,7 +1998,7 @@
     {
       "label": "Compare canonical device fields and unique indexes on all three SQL dialects",
       "test": "conformance/schema.test.mjs",
-      "marker": "the CLI emits the pinned plugin schema for every supported preset"
+      "marker": "the CLI emits the pinned plugin schema across exhaustive base combinations"
     }
   ],
   "plugin-symbol/device-authorization/deviceAuthorizationClient": [
@@ -5223,6 +5233,132 @@
       "label": "Compare default scopes, authenticated profile fields and subject with the published provider preset",
       "test": "conformance/profile-presets.test.mjs",
       "marker": "test(\"OAuth profile presets match"
+    }
+  ],
+  "published/scim/.": [
+    {
+      "label": "Provision and synchronize directory Users over authenticated SCIM HTTP using compatible SQL records",
+      "test": "conformance/scim-contract.mjs",
+      "marker": "export async function directoryContract("
+    }
+  ],
+  "plugin/scim/GET /scim/v2/ServiceProviderConfig": [
+    {
+      "label": "Discover filter, patch and pagination capabilities without a directory credential",
+      "test": "conformance/scim-contract.mjs",
+      "marker": "export async function directoryContract("
+    }
+  ],
+  "plugin/scim/GET /scim/v2/Schemas": [
+    {
+      "label": "List the supported core User schema without a bearer credential",
+      "test": "adapters/sqlstore/scim_test.go",
+      "marker": "func TestSCIMDirectoryLifecycle("
+    }
+  ],
+  "plugin/scim/GET /scim/v2/Schemas/:schemaId": [
+    {
+      "label": "Read the registered core User schema from a custom mount",
+      "test": "adapters/sqlstore/scim_test.go",
+      "marker": "func TestSCIMDirectoryLifecycle("
+    }
+  ],
+  "plugin/scim/GET /scim/v2/ResourceTypes": [
+    {
+      "label": "List the registered User resource type publicly",
+      "test": "adapters/sqlstore/scim_test.go",
+      "marker": "func TestSCIMDirectoryLifecycle("
+    }
+  ],
+  "plugin/scim/GET /scim/v2/ResourceTypes/:resourceTypeId": [
+    {
+      "label": "Resolve the User resource type and reject an unavailable resource type",
+      "test": "plugins/scim/http_test.go",
+      "marker": "func TestSCIMProtocolAndCredentialConfiguration("
+    }
+  ],
+  "plugin/scim/POST /scim/v2/Users": [
+    {
+      "label": "Create, reject conflicts, reprovision inactive Users and restore an external identity after deletion",
+      "test": "conformance/scim-contract.mjs",
+      "marker": "export async function directoryContract("
+    }
+  ],
+  "plugin/scim/GET /scim/v2/Users/:userId": [
+    {
+      "label": "Read a scoped User written by the other implementation from shared SQLite",
+      "test": "conformance/scim-contract.mjs",
+      "marker": "export async function directoryContract("
+    }
+  ],
+  "plugin/scim/GET /scim/v2/Users": [
+    {
+      "label": "Page and filter by username, external ID or normalized email with a top-level attribute projection",
+      "test": "adapters/sqlstore/scim_test.go",
+      "marker": "func TestSCIMDirectoryLifecycle("
+    }
+  ],
+  "plugin/scim/PUT /scim/v2/Users/:userId": [
+    {
+      "label": "Replace a User and reset its verified flag when the managed email changes",
+      "test": "adapters/sqlstore/scim_test.go",
+      "marker": "func TestSCIMDirectoryLifecycle("
+    }
+  ],
+  "plugin/scim/PATCH /scim/v2/Users/:userId": [
+    {
+      "label": "Apply concurrent supported attribute changes without losing updates and roll back an invalid operation sequence",
+      "test": "adapters/sqlstore/scim_test.go",
+      "marker": "func TestSCIMDirectoryLifecycle("
+    }
+  ],
+  "plugin/scim/DELETE /scim/v2/Users/:userId": [
+    {
+      "label": "Revoke existing sessions, retain the stable external identity and isolate another directory",
+      "test": "adapters/sqlstore/scim_test.go",
+      "marker": "func TestSCIMDirectoryLifecycle("
+    }
+  ],
+  "plugin-symbol/scim/SCIMBearerCredentialOptions/token": [
+    {
+      "label": "Reject unknown, ambiguous and duplicate static bearer credentials",
+      "test": "plugins/scim/http_test.go",
+      "marker": "func TestSCIMProtocolAndCredentialConfiguration("
+    }
+  ],
+  "plugin-symbol/scim/SCIMBearerCredentialOptions/scopes": [
+    {
+      "label": "Require a write scope for changes and a read scope for retrieval",
+      "test": "adapters/sqlstore/scim_test.go",
+      "marker": "func TestSCIMDirectoryLifecycle("
+    }
+  ],
+  "plugin-symbol/scim/SCIMBearerCredentialOptions/expiresAt": [
+    {
+      "label": "Return a bearer challenge for an expired credential",
+      "test": "adapters/sqlstore/scim_test.go",
+      "marker": "func TestSCIMDirectoryLifecycle("
+    }
+  ],
+  "plugin-symbol/scim/SCIMConnectionOptions/provisioningDomainId": [
+    {
+      "label": "Persist the first directory domain and reject later reassignment",
+      "test": "adapters/sqlstore/scim_test.go",
+      "marker": "func TestSCIMDirectoryLifecycle("
+    }
+  ],
+  "plugin-symbol/scim/SCIMConnectionOptions/id": [
+    {
+      "label": "Isolate two directory identifiers differing only in case on every SQL engine",
+      "test": "adapters/sqlstore/scim_test.go",
+      "marker": "func TestSCIMDirectoryLifecycle("
+    }
+  ],
+  "plugin-symbol/scim/SCIMConnectionOptions/credentials": [
+    {
+      "label": "Resolve separate scoped credentials for one directory",
+      "test": "adapters/sqlstore/scim_test.go",
+      "marker": "func TestSCIMDirectoryLifecycle("
     }
   ]
 }

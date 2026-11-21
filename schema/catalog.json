@@ -14,7 +14,8 @@
     "stripe-subscriptions",
     "two-factor",
     "username",
-    "username-only"
+    "username-only",
+    "scim"
   ],
   "dialects": {
     "sqlite": [
@@ -642,6 +643,299 @@
         ]
       },
       {
+        "sql": "create table \"scimConnectionBinding\"",
+        "profiles": [
+          "scim"
+        ],
+        "columns": [
+          {
+            "sql": "\"id\" text not null primary key"
+          },
+          {
+            "sql": "\"connectionId\" text not null"
+          },
+          {
+            "sql": "\"connectionKey\" text not null unique"
+          },
+          {
+            "sql": "\"provisioningDomainId\" text not null"
+          },
+          {
+            "sql": "\"createdAt\" date not null"
+          },
+          {
+            "sql": "\"decommissionedAt\" date"
+          },
+          {
+            "sql": "\"decommissionStatus\" text not null"
+          },
+          {
+            "sql": "\"decommissionCursorUserId\" text"
+          },
+          {
+            "sql": "\"decommissionReconciledUserCount\" integer not null"
+          },
+          {
+            "sql": "\"decommissionBatchCount\" integer not null"
+          },
+          {
+            "sql": "\"decommissionRevision\" integer not null"
+          },
+          {
+            "sql": "\"decommissionCompletedAt\" date"
+          },
+          {
+            "sql": "\"decommissionLeaseId\" text"
+          },
+          {
+            "sql": "\"decommissionLeaseExpiresAt\" date"
+          }
+        ]
+      },
+      {
+        "sql": "create table \"scimIdentityTombstone\"",
+        "profiles": [
+          "scim"
+        ],
+        "columns": [
+          {
+            "sql": "\"id\" text not null primary key"
+          },
+          {
+            "sql": "\"connectionId\" text not null"
+          },
+          {
+            "sql": "\"provisioningDomainId\" text not null"
+          },
+          {
+            "sql": "\"externalId\" text not null"
+          },
+          {
+            "sql": "\"externalIdKey\" text not null unique"
+          },
+          {
+            "sql": "\"userId\" text not null references \"user\" (\"id\") on delete cascade"
+          },
+          {
+            "sql": "\"profile\" text not null"
+          },
+          {
+            "sql": "\"deletedAt\" date not null"
+          }
+        ]
+      },
+      {
+        "sql": "create table \"scimSubject\"",
+        "profiles": [
+          "scim"
+        ],
+        "columns": [
+          {
+            "sql": "\"id\" text not null primary key"
+          },
+          {
+            "sql": "\"userId\" text not null unique references \"user\" (\"id\") on delete cascade"
+          },
+          {
+            "sql": "\"profileSourceId\" text"
+          },
+          {
+            "sql": "\"revision\" integer not null"
+          },
+          {
+            "sql": "\"createdAt\" date not null"
+          },
+          {
+            "sql": "\"updatedAt\" date not null"
+          }
+        ]
+      },
+      {
+        "sql": "create table \"scimUser\"",
+        "profiles": [
+          "scim"
+        ],
+        "columns": [
+          {
+            "sql": "\"id\" text not null primary key"
+          },
+          {
+            "sql": "\"connectionId\" text not null"
+          },
+          {
+            "sql": "\"provisioningDomainId\" text not null"
+          },
+          {
+            "sql": "\"userId\" text not null references \"user\" (\"id\") on delete cascade"
+          },
+          {
+            "sql": "\"connectionUserKey\" text not null unique"
+          },
+          {
+            "sql": "\"userName\" text not null"
+          },
+          {
+            "sql": "\"userNameKey\" text not null unique"
+          },
+          {
+            "sql": "\"primaryEmail\" text not null"
+          },
+          {
+            "sql": "\"workEmailValueIndex\" text not null"
+          },
+          {
+            "sql": "\"emailValueIndex\" text not null"
+          },
+          {
+            "sql": "\"displayName\" text not null"
+          },
+          {
+            "sql": "\"formattedName\" text not null"
+          },
+          {
+            "sql": "\"givenName\" text"
+          },
+          {
+            "sql": "\"familyName\" text"
+          },
+          {
+            "sql": "\"serializedEmails\" text not null"
+          },
+          {
+            "sql": "\"serializedAttributes\" text"
+          },
+          {
+            "sql": "\"externalId\" text"
+          },
+          {
+            "sql": "\"externalIdKey\" text unique"
+          },
+          {
+            "sql": "\"active\" integer not null"
+          },
+          {
+            "sql": "\"orderKey\" text not null unique"
+          },
+          {
+            "sql": "\"createdAt\" date not null"
+          },
+          {
+            "sql": "\"updatedAt\" date not null"
+          }
+        ]
+      },
+      {
+        "sql": "create table \"scimProjectionGrant\"",
+        "profiles": [
+          "scim"
+        ],
+        "columns": [
+          {
+            "sql": "\"id\" text not null primary key"
+          },
+          {
+            "sql": "\"connectionId\" text not null"
+          },
+          {
+            "sql": "\"provisioningDomainId\" text not null"
+          },
+          {
+            "sql": "\"scimUserId\" text not null references \"scimUser\" (\"id\") on delete cascade"
+          },
+          {
+            "sql": "\"userId\" text not null references \"user\" (\"id\") on delete cascade"
+          },
+          {
+            "sql": "\"sourceKind\" text not null"
+          },
+          {
+            "sql": "\"sourceId\" text not null"
+          },
+          {
+            "sql": "\"sourceValue\" text"
+          },
+          {
+            "sql": "\"role\" text not null"
+          },
+          {
+            "sql": "\"grantKey\" text not null unique"
+          },
+          {
+            "sql": "\"createdAt\" date not null"
+          },
+          {
+            "sql": "\"updatedAt\" date not null"
+          }
+        ]
+      },
+      {
+        "sql": "create table \"scimGroup\"",
+        "profiles": [
+          "scim"
+        ],
+        "columns": [
+          {
+            "sql": "\"id\" text not null primary key"
+          },
+          {
+            "sql": "\"connectionId\" text not null"
+          },
+          {
+            "sql": "\"provisioningDomainId\" text not null"
+          },
+          {
+            "sql": "\"revision\" integer not null"
+          },
+          {
+            "sql": "\"displayName\" text not null"
+          },
+          {
+            "sql": "\"displayNameKey\" text not null unique"
+          },
+          {
+            "sql": "\"externalId\" text"
+          },
+          {
+            "sql": "\"externalIdKey\" text unique"
+          },
+          {
+            "sql": "\"orderKey\" text not null unique"
+          },
+          {
+            "sql": "\"createdAt\" date not null"
+          },
+          {
+            "sql": "\"updatedAt\" date not null"
+          }
+        ]
+      },
+      {
+        "sql": "create table \"scimGroupMember\"",
+        "profiles": [
+          "scim"
+        ],
+        "columns": [
+          {
+            "sql": "\"id\" text not null primary key"
+          },
+          {
+            "sql": "\"connectionId\" text not null"
+          },
+          {
+            "sql": "\"groupId\" text not null references \"scimGroup\" (\"id\") on delete cascade"
+          },
+          {
+            "sql": "\"scimUserId\" text not null references \"scimUser\" (\"id\") on delete cascade"
+          },
+          {
+            "sql": "\"membershipKey\" text not null unique"
+          },
+          {
+            "sql": "\"createdAt\" date not null"
+          }
+        ]
+      },
+      {
         "sql": "create table \"rateLimit\"",
         "profiles": [
           "rate-limit"
@@ -756,6 +1050,108 @@
         "sql": "create index \"twoFactor_userId_idx\" on \"twoFactor\" (\"userId\");",
         "profiles": [
           "two-factor"
+        ]
+      },
+      {
+        "sql": "create index \"scimConnectionBinding_connectionId_idx\" on \"scimConnectionBinding\" (\"connectionId\");",
+        "profiles": [
+          "scim"
+        ]
+      },
+      {
+        "sql": "create index \"scimIdentityTombstone_connectionId_idx\" on \"scimIdentityTombstone\" (\"connectionId\");",
+        "profiles": [
+          "scim"
+        ]
+      },
+      {
+        "sql": "create index \"scimIdentityTombstone_provisioningDomainId_idx\" on \"scimIdentityTombstone\" (\"provisioningDomainId\");",
+        "profiles": [
+          "scim"
+        ]
+      },
+      {
+        "sql": "create index \"scimIdentityTombstone_userId_idx\" on \"scimIdentityTombstone\" (\"userId\");",
+        "profiles": [
+          "scim"
+        ]
+      },
+      {
+        "sql": "create index \"scimSubject_profileSourceId_idx\" on \"scimSubject\" (\"profileSourceId\");",
+        "profiles": [
+          "scim"
+        ]
+      },
+      {
+        "sql": "create index \"scimUser_connectionId_idx\" on \"scimUser\" (\"connectionId\");",
+        "profiles": [
+          "scim"
+        ]
+      },
+      {
+        "sql": "create index \"scimUser_provisioningDomainId_idx\" on \"scimUser\" (\"provisioningDomainId\");",
+        "profiles": [
+          "scim"
+        ]
+      },
+      {
+        "sql": "create index \"scimUser_userId_idx\" on \"scimUser\" (\"userId\");",
+        "profiles": [
+          "scim"
+        ]
+      },
+      {
+        "sql": "create index \"scimProjectionGrant_connectionId_idx\" on \"scimProjectionGrant\" (\"connectionId\");",
+        "profiles": [
+          "scim"
+        ]
+      },
+      {
+        "sql": "create index \"scimProjectionGrant_provisioningDomainId_idx\" on \"scimProjectionGrant\" (\"provisioningDomainId\");",
+        "profiles": [
+          "scim"
+        ]
+      },
+      {
+        "sql": "create index \"scimProjectionGrant_scimUserId_idx\" on \"scimProjectionGrant\" (\"scimUserId\");",
+        "profiles": [
+          "scim"
+        ]
+      },
+      {
+        "sql": "create index \"scimProjectionGrant_userId_idx\" on \"scimProjectionGrant\" (\"userId\");",
+        "profiles": [
+          "scim"
+        ]
+      },
+      {
+        "sql": "create index \"scimGroup_connectionId_idx\" on \"scimGroup\" (\"connectionId\");",
+        "profiles": [
+          "scim"
+        ]
+      },
+      {
+        "sql": "create index \"scimGroup_provisioningDomainId_idx\" on \"scimGroup\" (\"provisioningDomainId\");",
+        "profiles": [
+          "scim"
+        ]
+      },
+      {
+        "sql": "create index \"scimGroupMember_connectionId_idx\" on \"scimGroupMember\" (\"connectionId\");",
+        "profiles": [
+          "scim"
+        ]
+      },
+      {
+        "sql": "create index \"scimGroupMember_groupId_idx\" on \"scimGroupMember\" (\"groupId\");",
+        "profiles": [
+          "scim"
+        ]
+      },
+      {
+        "sql": "create index \"scimGroupMember_scimUserId_idx\" on \"scimGroupMember\" (\"scimUserId\");",
+        "profiles": [
+          "scim"
         ]
       },
       {
@@ -1396,6 +1792,299 @@
         ]
       },
       {
+        "sql": "create table \"scimConnectionBinding\"",
+        "profiles": [
+          "scim"
+        ],
+        "columns": [
+          {
+            "sql": "\"id\" text not null primary key"
+          },
+          {
+            "sql": "\"connectionId\" text not null"
+          },
+          {
+            "sql": "\"connectionKey\" text not null unique"
+          },
+          {
+            "sql": "\"provisioningDomainId\" text not null"
+          },
+          {
+            "sql": "\"createdAt\" timestamptz not null"
+          },
+          {
+            "sql": "\"decommissionedAt\" timestamptz"
+          },
+          {
+            "sql": "\"decommissionStatus\" text not null"
+          },
+          {
+            "sql": "\"decommissionCursorUserId\" text"
+          },
+          {
+            "sql": "\"decommissionReconciledUserCount\" integer not null"
+          },
+          {
+            "sql": "\"decommissionBatchCount\" integer not null"
+          },
+          {
+            "sql": "\"decommissionRevision\" integer not null"
+          },
+          {
+            "sql": "\"decommissionCompletedAt\" timestamptz"
+          },
+          {
+            "sql": "\"decommissionLeaseId\" text"
+          },
+          {
+            "sql": "\"decommissionLeaseExpiresAt\" timestamptz"
+          }
+        ]
+      },
+      {
+        "sql": "create table \"scimIdentityTombstone\"",
+        "profiles": [
+          "scim"
+        ],
+        "columns": [
+          {
+            "sql": "\"id\" text not null primary key"
+          },
+          {
+            "sql": "\"connectionId\" text not null"
+          },
+          {
+            "sql": "\"provisioningDomainId\" text not null"
+          },
+          {
+            "sql": "\"externalId\" text not null"
+          },
+          {
+            "sql": "\"externalIdKey\" text not null unique"
+          },
+          {
+            "sql": "\"userId\" text not null references \"user\" (\"id\") on delete cascade"
+          },
+          {
+            "sql": "\"profile\" text not null"
+          },
+          {
+            "sql": "\"deletedAt\" timestamptz not null"
+          }
+        ]
+      },
+      {
+        "sql": "create table \"scimSubject\"",
+        "profiles": [
+          "scim"
+        ],
+        "columns": [
+          {
+            "sql": "\"id\" text not null primary key"
+          },
+          {
+            "sql": "\"userId\" text not null unique references \"user\" (\"id\") on delete cascade"
+          },
+          {
+            "sql": "\"profileSourceId\" text"
+          },
+          {
+            "sql": "\"revision\" integer not null"
+          },
+          {
+            "sql": "\"createdAt\" timestamptz not null"
+          },
+          {
+            "sql": "\"updatedAt\" timestamptz not null"
+          }
+        ]
+      },
+      {
+        "sql": "create table \"scimUser\"",
+        "profiles": [
+          "scim"
+        ],
+        "columns": [
+          {
+            "sql": "\"id\" text not null primary key"
+          },
+          {
+            "sql": "\"connectionId\" text not null"
+          },
+          {
+            "sql": "\"provisioningDomainId\" text not null"
+          },
+          {
+            "sql": "\"userId\" text not null references \"user\" (\"id\") on delete cascade"
+          },
+          {
+            "sql": "\"connectionUserKey\" text not null unique"
+          },
+          {
+            "sql": "\"userName\" text not null"
+          },
+          {
+            "sql": "\"userNameKey\" text not null unique"
+          },
+          {
+            "sql": "\"primaryEmail\" text not null"
+          },
+          {
+            "sql": "\"workEmailValueIndex\" text not null"
+          },
+          {
+            "sql": "\"emailValueIndex\" text not null"
+          },
+          {
+            "sql": "\"displayName\" text not null"
+          },
+          {
+            "sql": "\"formattedName\" text not null"
+          },
+          {
+            "sql": "\"givenName\" text"
+          },
+          {
+            "sql": "\"familyName\" text"
+          },
+          {
+            "sql": "\"serializedEmails\" text not null"
+          },
+          {
+            "sql": "\"serializedAttributes\" text"
+          },
+          {
+            "sql": "\"externalId\" text"
+          },
+          {
+            "sql": "\"externalIdKey\" text unique"
+          },
+          {
+            "sql": "\"active\" boolean not null"
+          },
+          {
+            "sql": "\"orderKey\" text not null unique"
+          },
+          {
+            "sql": "\"createdAt\" timestamptz not null"
+          },
+          {
+            "sql": "\"updatedAt\" timestamptz not null"
+          }
+        ]
+      },
+      {
+        "sql": "create table \"scimProjectionGrant\"",
+        "profiles": [
+          "scim"
+        ],
+        "columns": [
+          {
+            "sql": "\"id\" text not null primary key"
+          },
+          {
+            "sql": "\"connectionId\" text not null"
+          },
+          {
+            "sql": "\"provisioningDomainId\" text not null"
+          },
+          {
+            "sql": "\"scimUserId\" text not null references \"scimUser\" (\"id\") on delete cascade"
+          },
+          {
+            "sql": "\"userId\" text not null references \"user\" (\"id\") on delete cascade"
+          },
+          {
+            "sql": "\"sourceKind\" text not null"
+          },
+          {
+            "sql": "\"sourceId\" text not null"
+          },
+          {
+            "sql": "\"sourceValue\" text"
+          },
+          {
+            "sql": "\"role\" text not null"
+          },
+          {
+            "sql": "\"grantKey\" text not null unique"
+          },
+          {
+            "sql": "\"createdAt\" timestamptz not null"
+          },
+          {
+            "sql": "\"updatedAt\" timestamptz not null"
+          }
+        ]
+      },
+      {
+        "sql": "create table \"scimGroup\"",
+        "profiles": [
+          "scim"
+        ],
+        "columns": [
+          {
+            "sql": "\"id\" text not null primary key"
+          },
+          {
+            "sql": "\"connectionId\" text not null"
+          },
+          {
+            "sql": "\"provisioningDomainId\" text not null"
+          },
+          {
+            "sql": "\"revision\" integer not null"
+          },
+          {
+            "sql": "\"displayName\" text not null"
+          },
+          {
+            "sql": "\"displayNameKey\" text not null unique"
+          },
+          {
+            "sql": "\"externalId\" text"
+          },
+          {
+            "sql": "\"externalIdKey\" text unique"
+          },
+          {
+            "sql": "\"orderKey\" text not null unique"
+          },
+          {
+            "sql": "\"createdAt\" timestamptz not null"
+          },
+          {
+            "sql": "\"updatedAt\" timestamptz not null"
+          }
+        ]
+      },
+      {
+        "sql": "create table \"scimGroupMember\"",
+        "profiles": [
+          "scim"
+        ],
+        "columns": [
+          {
+            "sql": "\"id\" text not null primary key"
+          },
+          {
+            "sql": "\"connectionId\" text not null"
+          },
+          {
+            "sql": "\"groupId\" text not null references \"scimGroup\" (\"id\") on delete cascade"
+          },
+          {
+            "sql": "\"scimUserId\" text not null references \"scimUser\" (\"id\") on delete cascade"
+          },
+          {
+            "sql": "\"membershipKey\" text not null unique"
+          },
+          {
+            "sql": "\"createdAt\" timestamptz not null"
+          }
+        ]
+      },
+      {
         "sql": "create table \"rateLimit\"",
         "profiles": [
           "rate-limit"
@@ -1510,6 +2199,108 @@
         "sql": "create index \"twoFactor_userId_idx\" on \"twoFactor\" (\"userId\");",
         "profiles": [
           "two-factor"
+        ]
+      },
+      {
+        "sql": "create index \"scimConnectionBinding_connectionId_idx\" on \"scimConnectionBinding\" (\"connectionId\");",
+        "profiles": [
+          "scim"
+        ]
+      },
+      {
+        "sql": "create index \"scimIdentityTombstone_connectionId_idx\" on \"scimIdentityTombstone\" (\"connectionId\");",
+        "profiles": [
+          "scim"
+        ]
+      },
+      {
+        "sql": "create index \"scimIdentityTombstone_provisioningDomainId_idx\" on \"scimIdentityTombstone\" (\"provisioningDomainId\");",
+        "profiles": [
+          "scim"
+        ]
+      },
+      {
+        "sql": "create index \"scimIdentityTombstone_userId_idx\" on \"scimIdentityTombstone\" (\"userId\");",
+        "profiles": [
+          "scim"
+        ]
+      },
+      {
+        "sql": "create index \"scimSubject_profileSourceId_idx\" on \"scimSubject\" (\"profileSourceId\");",
+        "profiles": [
+          "scim"
+        ]
+      },
+      {
+        "sql": "create index \"scimUser_connectionId_idx\" on \"scimUser\" (\"connectionId\");",
+        "profiles": [
+          "scim"
+        ]
+      },
+      {
+        "sql": "create index \"scimUser_provisioningDomainId_idx\" on \"scimUser\" (\"provisioningDomainId\");",
+        "profiles": [
+          "scim"
+        ]
+      },
+      {
+        "sql": "create index \"scimUser_userId_idx\" on \"scimUser\" (\"userId\");",
+        "profiles": [
+          "scim"
+        ]
+      },
+      {
+        "sql": "create index \"scimProjectionGrant_connectionId_idx\" on \"scimProjectionGrant\" (\"connectionId\");",
+        "profiles": [
+          "scim"
+        ]
+      },
+      {
+        "sql": "create index \"scimProjectionGrant_provisioningDomainId_idx\" on \"scimProjectionGrant\" (\"provisioningDomainId\");",
+        "profiles": [
+          "scim"
+        ]
+      },
+      {
+        "sql": "create index \"scimProjectionGrant_scimUserId_idx\" on \"scimProjectionGrant\" (\"scimUserId\");",
+        "profiles": [
+          "scim"
+        ]
+      },
+      {
+        "sql": "create index \"scimProjectionGrant_userId_idx\" on \"scimProjectionGrant\" (\"userId\");",
+        "profiles": [
+          "scim"
+        ]
+      },
+      {
+        "sql": "create index \"scimGroup_connectionId_idx\" on \"scimGroup\" (\"connectionId\");",
+        "profiles": [
+          "scim"
+        ]
+      },
+      {
+        "sql": "create index \"scimGroup_provisioningDomainId_idx\" on \"scimGroup\" (\"provisioningDomainId\");",
+        "profiles": [
+          "scim"
+        ]
+      },
+      {
+        "sql": "create index \"scimGroupMember_connectionId_idx\" on \"scimGroupMember\" (\"connectionId\");",
+        "profiles": [
+          "scim"
+        ]
+      },
+      {
+        "sql": "create index \"scimGroupMember_groupId_idx\" on \"scimGroupMember\" (\"groupId\");",
+        "profiles": [
+          "scim"
+        ]
+      },
+      {
+        "sql": "create index \"scimGroupMember_scimUserId_idx\" on \"scimGroupMember\" (\"scimUserId\");",
+        "profiles": [
+          "scim"
         ]
       },
       {
@@ -2150,6 +2941,299 @@
         ]
       },
       {
+        "sql": "create table `scimConnectionBinding`",
+        "profiles": [
+          "scim"
+        ],
+        "columns": [
+          {
+            "sql": "`id` varchar(36) not null primary key"
+          },
+          {
+            "sql": "`connectionId` varchar(255) not null"
+          },
+          {
+            "sql": "`connectionKey` varchar(255) not null unique"
+          },
+          {
+            "sql": "`provisioningDomainId` text not null"
+          },
+          {
+            "sql": "`createdAt` timestamp(3) not null"
+          },
+          {
+            "sql": "`decommissionedAt` timestamp(3)"
+          },
+          {
+            "sql": "`decommissionStatus` text not null"
+          },
+          {
+            "sql": "`decommissionCursorUserId` text"
+          },
+          {
+            "sql": "`decommissionReconciledUserCount` integer not null"
+          },
+          {
+            "sql": "`decommissionBatchCount` integer not null"
+          },
+          {
+            "sql": "`decommissionRevision` integer not null"
+          },
+          {
+            "sql": "`decommissionCompletedAt` timestamp(3)"
+          },
+          {
+            "sql": "`decommissionLeaseId` text"
+          },
+          {
+            "sql": "`decommissionLeaseExpiresAt` timestamp(3)"
+          }
+        ]
+      },
+      {
+        "sql": "create table `scimIdentityTombstone`",
+        "profiles": [
+          "scim"
+        ],
+        "columns": [
+          {
+            "sql": "`id` varchar(36) not null primary key"
+          },
+          {
+            "sql": "`connectionId` varchar(255) not null"
+          },
+          {
+            "sql": "`provisioningDomainId` varchar(255) not null"
+          },
+          {
+            "sql": "`externalId` text not null"
+          },
+          {
+            "sql": "`externalIdKey` varchar(255) not null unique"
+          },
+          {
+            "sql": "`userId` varchar(36) not null references `user` (`id`) on delete cascade"
+          },
+          {
+            "sql": "`profile` text not null"
+          },
+          {
+            "sql": "`deletedAt` timestamp(3) not null"
+          }
+        ]
+      },
+      {
+        "sql": "create table `scimSubject`",
+        "profiles": [
+          "scim"
+        ],
+        "columns": [
+          {
+            "sql": "`id` varchar(36) not null primary key"
+          },
+          {
+            "sql": "`userId` varchar(36) not null unique references `user` (`id`) on delete cascade"
+          },
+          {
+            "sql": "`profileSourceId` varchar(255)"
+          },
+          {
+            "sql": "`revision` integer not null"
+          },
+          {
+            "sql": "`createdAt` timestamp(3) not null"
+          },
+          {
+            "sql": "`updatedAt` timestamp(3) not null"
+          }
+        ]
+      },
+      {
+        "sql": "create table `scimUser`",
+        "profiles": [
+          "scim"
+        ],
+        "columns": [
+          {
+            "sql": "`id` varchar(36) not null primary key"
+          },
+          {
+            "sql": "`connectionId` varchar(255) not null"
+          },
+          {
+            "sql": "`provisioningDomainId` varchar(255) not null"
+          },
+          {
+            "sql": "`userId` varchar(36) not null references `user` (`id`) on delete cascade"
+          },
+          {
+            "sql": "`connectionUserKey` varchar(255) not null unique"
+          },
+          {
+            "sql": "`userName` text not null"
+          },
+          {
+            "sql": "`userNameKey` varchar(255) not null unique"
+          },
+          {
+            "sql": "`primaryEmail` text not null"
+          },
+          {
+            "sql": "`workEmailValueIndex` text not null"
+          },
+          {
+            "sql": "`emailValueIndex` text not null"
+          },
+          {
+            "sql": "`displayName` text not null"
+          },
+          {
+            "sql": "`formattedName` text not null"
+          },
+          {
+            "sql": "`givenName` text"
+          },
+          {
+            "sql": "`familyName` text"
+          },
+          {
+            "sql": "`serializedEmails` text not null"
+          },
+          {
+            "sql": "`serializedAttributes` text"
+          },
+          {
+            "sql": "`externalId` text"
+          },
+          {
+            "sql": "`externalIdKey` varchar(255) unique"
+          },
+          {
+            "sql": "`active` boolean not null"
+          },
+          {
+            "sql": "`orderKey` varchar(255) not null unique"
+          },
+          {
+            "sql": "`createdAt` timestamp(3) not null"
+          },
+          {
+            "sql": "`updatedAt` timestamp(3) not null"
+          }
+        ]
+      },
+      {
+        "sql": "create table `scimProjectionGrant`",
+        "profiles": [
+          "scim"
+        ],
+        "columns": [
+          {
+            "sql": "`id` varchar(36) not null primary key"
+          },
+          {
+            "sql": "`connectionId` varchar(255) not null"
+          },
+          {
+            "sql": "`provisioningDomainId` varchar(255) not null"
+          },
+          {
+            "sql": "`scimUserId` varchar(36) not null references `scimUser` (`id`) on delete cascade"
+          },
+          {
+            "sql": "`userId` varchar(36) not null references `user` (`id`) on delete cascade"
+          },
+          {
+            "sql": "`sourceKind` text not null"
+          },
+          {
+            "sql": "`sourceId` text not null"
+          },
+          {
+            "sql": "`sourceValue` text"
+          },
+          {
+            "sql": "`role` text not null"
+          },
+          {
+            "sql": "`grantKey` varchar(255) not null unique"
+          },
+          {
+            "sql": "`createdAt` timestamp(3) not null"
+          },
+          {
+            "sql": "`updatedAt` timestamp(3) not null"
+          }
+        ]
+      },
+      {
+        "sql": "create table `scimGroup`",
+        "profiles": [
+          "scim"
+        ],
+        "columns": [
+          {
+            "sql": "`id` varchar(36) not null primary key"
+          },
+          {
+            "sql": "`connectionId` varchar(255) not null"
+          },
+          {
+            "sql": "`provisioningDomainId` varchar(255) not null"
+          },
+          {
+            "sql": "`revision` integer not null"
+          },
+          {
+            "sql": "`displayName` text not null"
+          },
+          {
+            "sql": "`displayNameKey` varchar(255) not null unique"
+          },
+          {
+            "sql": "`externalId` text"
+          },
+          {
+            "sql": "`externalIdKey` varchar(255) unique"
+          },
+          {
+            "sql": "`orderKey` varchar(255) not null unique"
+          },
+          {
+            "sql": "`createdAt` timestamp(3) not null"
+          },
+          {
+            "sql": "`updatedAt` timestamp(3) not null"
+          }
+        ]
+      },
+      {
+        "sql": "create table `scimGroupMember`",
+        "profiles": [
+          "scim"
+        ],
+        "columns": [
+          {
+            "sql": "`id` varchar(36) not null primary key"
+          },
+          {
+            "sql": "`connectionId` varchar(255) not null"
+          },
+          {
+            "sql": "`groupId` varchar(36) not null references `scimGroup` (`id`) on delete cascade"
+          },
+          {
+            "sql": "`scimUserId` varchar(36) not null references `scimUser` (`id`) on delete cascade"
+          },
+          {
+            "sql": "`membershipKey` varchar(255) not null unique"
+          },
+          {
+            "sql": "`createdAt` timestamp(3) not null"
+          }
+        ]
+      },
+      {
         "sql": "create table `rateLimit`",
         "profiles": [
           "rate-limit"
@@ -2264,6 +3348,108 @@
         "sql": "create index `twoFactor_userId_idx` on `twoFactor` (`userId`);",
         "profiles": [
           "two-factor"
+        ]
+      },
+      {
+        "sql": "create index `scimConnectionBinding_connectionId_idx` on `scimConnectionBinding` (`connectionId`);",
+        "profiles": [
+          "scim"
+        ]
+      },
+      {
+        "sql": "create index `scimIdentityTombstone_connectionId_idx` on `scimIdentityTombstone` (`connectionId`);",
+        "profiles": [
+          "scim"
+        ]
+      },
+      {
+        "sql": "create index `scimIdentityTombstone_provisioningDomainId_idx` on `scimIdentityTombstone` (`provisioningDomainId`);",
+        "profiles": [
+          "scim"
+        ]
+      },
+      {
+        "sql": "create index `scimIdentityTombstone_userId_idx` on `scimIdentityTombstone` (`userId`);",
+        "profiles": [
+          "scim"
+        ]
+      },
+      {
+        "sql": "create index `scimSubject_profileSourceId_idx` on `scimSubject` (`profileSourceId`);",
+        "profiles": [
+          "scim"
+        ]
+      },
+      {
+        "sql": "create index `scimUser_connectionId_idx` on `scimUser` (`connectionId`);",
+        "profiles": [
+          "scim"
+        ]
+      },
+      {
+        "sql": "create index `scimUser_provisioningDomainId_idx` on `scimUser` (`provisioningDomainId`);",
+        "profiles": [
+          "scim"
+        ]
+      },
+      {
+        "sql": "create index `scimUser_userId_idx` on `scimUser` (`userId`);",
+        "profiles": [
+          "scim"
+        ]
+      },
+      {
+        "sql": "create index `scimProjectionGrant_connectionId_idx` on `scimProjectionGrant` (`connectionId`);",
+        "profiles": [
+          "scim"
+        ]
+      },
+      {
+        "sql": "create index `scimProjectionGrant_provisioningDomainId_idx` on `scimProjectionGrant` (`provisioningDomainId`);",
+        "profiles": [
+          "scim"
+        ]
+      },
+      {
+        "sql": "create index `scimProjectionGrant_scimUserId_idx` on `scimProjectionGrant` (`scimUserId`);",
+        "profiles": [
+          "scim"
+        ]
+      },
+      {
+        "sql": "create index `scimProjectionGrant_userId_idx` on `scimProjectionGrant` (`userId`);",
+        "profiles": [
+          "scim"
+        ]
+      },
+      {
+        "sql": "create index `scimGroup_connectionId_idx` on `scimGroup` (`connectionId`);",
+        "profiles": [
+          "scim"
+        ]
+      },
+      {
+        "sql": "create index `scimGroup_provisioningDomainId_idx` on `scimGroup` (`provisioningDomainId`);",
+        "profiles": [
+          "scim"
+        ]
+      },
+      {
+        "sql": "create index `scimGroupMember_connectionId_idx` on `scimGroupMember` (`connectionId`);",
+        "profiles": [
+          "scim"
+        ]
+      },
+      {
+        "sql": "create index `scimGroupMember_groupId_idx` on `scimGroupMember` (`groupId`);",
+        "profiles": [
+          "scim"
+        ]
+      },
+      {
+        "sql": "create index `scimGroupMember_scimUserId_idx` on `scimGroupMember` (`scimUserId`);",
+        "profiles": [
+          "scim"
         ]
       },
       {

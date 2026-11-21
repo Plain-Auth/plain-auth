@@ -138,6 +138,9 @@ func (s *Store) deleteAccountRows(ctx context.Context, tx *sql.Tx, userID string
 	if err := s.cleanupPasskeys(ctx, tx, userID); err != nil {
 		return err
 	}
+	if err := s.cleanupSCIMAccount(ctx, tx, userID); err != nil {
+		return err
+	}
 	if err := s.cleanupOrganizationAccount(ctx, tx, userID); err != nil {
 		return err
 	}

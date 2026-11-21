@@ -12,8 +12,11 @@
     - [ ] `type`
     - [ ] `id`
     - [ ] `token`
+      - [x] Reject unknown, ambiguous and duplicate static bearer credentials ([test](../../../plugins/scim/http_test.go#L20))
     - [ ] `scopes`
+      - [x] Require a write scope for changes and a read scope for retrieval ([test](../../../adapters/sqlstore/scim_test.go#L33))
     - [ ] `expiresAt`
+      - [x] Return a bearer challenge for an expired credential ([test](../../../adapters/sqlstore/scim_test.go#L33))
   - [ ] `SCIMBearerTokenVerification`
   - [ ] `SCIMBearerTokenVerificationContext`
   - [ ] `SCIMBearerTokenVerificationInput`
@@ -31,8 +34,11 @@
   - [ ] `SCIMConnectionDecommissionStatus`
   - [ ] `SCIMConnectionOptions`
     - [ ] `id`
+      - [x] Isolate two directory identifiers differing only in case on every SQL engine ([test](../../../adapters/sqlstore/scim_test.go#L33))
     - [ ] `credentials`
+      - [x] Resolve separate scoped credentials for one directory ([test](../../../adapters/sqlstore/scim_test.go#L33))
     - [ ] `provisioningDomainId`
+      - [x] Persist the first directory domain and reject later reassignment ([test](../../../adapters/sqlstore/scim_test.go#L33))
   - [ ] `SCIMDeclaredConnectionVerificationResult`
   - [ ] `SCIMEmail`
   - [ ] `SCIMEnterpriseUser`
@@ -72,10 +78,15 @@
   - [ ] `SCIMTransactionContext`
   - [ ] `decommissionSCIMConnection (server API only)`
   - [ ] `GET /scim/v2/ServiceProviderConfig`
+    - [x] Discover filter, patch and pagination capabilities without a directory credential ([test](../../../conformance/scim-contract.mjs#L43))
   - [ ] `GET /scim/v2/Schemas`
+    - [x] List the supported core User schema without a bearer credential ([test](../../../adapters/sqlstore/scim_test.go#L33))
   - [ ] `GET /scim/v2/Schemas/:schemaId`
+    - [x] Read the registered core User schema from a custom mount ([test](../../../adapters/sqlstore/scim_test.go#L33))
   - [ ] `GET /scim/v2/ResourceTypes`
+    - [x] List the registered User resource type publicly ([test](../../../adapters/sqlstore/scim_test.go#L33))
   - [ ] `GET /scim/v2/ResourceTypes/:resourceTypeId`
+    - [x] Resolve the User resource type and reject an unavailable resource type ([test](../../../plugins/scim/http_test.go#L20))
   - [ ] `POST /scim/v2/Groups`
   - [ ] `GET /scim/v2/Groups/:groupId`
   - [ ] `GET /scim/v2/Groups`
@@ -106,11 +117,17 @@
   - [ ] `reconcileSCIMProjection (server API only)`
   - [ ] `SCIM_REQUIRES_NATIVE_TRANSACTIONS`
   - [ ] `POST /scim/v2/Users`
+    - [x] Create, reject conflicts, reprovision inactive Users and restore an external identity after deletion ([test](../../../conformance/scim-contract.mjs#L43))
   - [ ] `GET /scim/v2/Users/:userId`
+    - [x] Read a scoped User written by the other implementation from shared SQLite ([test](../../../conformance/scim-contract.mjs#L43))
   - [ ] `GET /scim/v2/Users`
+    - [x] Page and filter by username, external ID or normalized email with a top-level attribute projection ([test](../../../adapters/sqlstore/scim_test.go#L33))
   - [ ] `PUT /scim/v2/Users/:userId`
+    - [x] Replace a User and reset its verified flag when the managed email changes ([test](../../../adapters/sqlstore/scim_test.go#L33))
   - [ ] `PATCH /scim/v2/Users/:userId`
+    - [x] Apply concurrent supported attribute changes without losing updates and roll back an invalid operation sequence ([test](../../../adapters/sqlstore/scim_test.go#L33))
   - [ ] `DELETE /scim/v2/Users/:userId`
+    - [x] Revoke existing sessions, retain the stable external identity and isolate another directory ([test](../../../adapters/sqlstore/scim_test.go#L33))
 
 ## Groups and custom roles
 

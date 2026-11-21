@@ -60,7 +60,8 @@ Each row tracks the behavior exposed by a published entry point. The Go implemen
   - [ ] Minimal database adapter contract (`./db/adapter/minimal`)
   - [ ] Schema discovery and migration (`./db/migration`)
     - [x] Emit SQL DDL for SQLite, PostgreSQL and MySQL ([test](../../cmd/authctl/main_test.go#L28))
-    - [x] Emit exact SQL for all supported dialect and profile combinations ([test](../../conformance/schema.test.mjs#L106))
+    - [x] Compare every base-profile combination and independent SCIM profile witnesses across all three dialects ([test](../../conformance/schema.test.mjs#L106))
+    - [x] Prove SCIM adds exactly seven disjoint tables and preserves every preexisting schema statement ([test](../../conformance/schema.test.mjs#L169))
   - [ ] Adapter binding for prisma (`./adapters/prisma`)
   - [ ] Adapter binding for drizzle (`./adapters/drizzle`)
   - [ ] Adapter binding for mongodb (`./adapters/mongodb`)
@@ -241,6 +242,7 @@ Each row tracks the behavior exposed by a published entry point. The Go implemen
 
 - [ ] SCIM provisioning
   - [ ] Default interface (`.`)
+    - [x] Provision and synchronize directory Users over authenticated SCIM HTTP using compatible SQL records ([test](../../conformance/scim-contract.mjs#L43))
 
 ## Single sign-on
 

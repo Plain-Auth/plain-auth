@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { apiKey } from "@better-auth/api-key";
 import { passkey } from "@better-auth/passkey";
 import { stripe } from "@better-auth/stripe";
+import { scim } from "@better-auth/scim";
 import { getMigrations } from "better-auth/db/migration";
 import { admin, anonymous, deviceAuthorization, jwt, lastLoginMethod, organization, phoneNumber, twoFactor, username } from "better-auth/plugins";
 import { DummyDriver, Kysely, MysqlDialect, PostgresDialect, SqliteDialect } from "kysely";
@@ -25,6 +26,7 @@ export function pluginInstances(profiles) {
       case "phone-number": return phoneNumber({ sendOTP() {} });
       case "organization": return organization();
       case "organization-teams": return organization({ teams: { enabled: true } });
+      case "scim": return scim({ connections: [{ id: "schema", credentials: [{ type: "bearer", id: "test", token: "fixture" }] }] });
       case "stripe-subscriptions": return stripe({
         stripeClient: new Stripe("sk_test_local_schema_only"),
         stripeWebhookSecret: "whsec_local_schema_only",
@@ -42,7 +44,24 @@ const profileGroups = [
   ["admin"], ["anonymous"], ["api-key"], ["device-authorization"], ["jwt"], ["last-login-method"],
   ["organization", "organization-teams"], ["passkey"], ["phone-number"], ["rate-limit"], ["stripe-subscriptions"], ["two-factor"], ["username", "username-only"],
 ];
-const profileNames = profileGroups.flat();
+// SCIM owns separate tables. The existing cross product remains exhaustive;
+// its new combinations are checked with structural isolation and explicit witnesses.
+const profileNames = [...profileGroups.flat(), "scim"];
+export function* scimCombinations() {
+  yield ["scim"];
+  for (const name of profileGroups.flat()) yield [name, "scim"];
+  for (const organization of ["organization", "organization-teams"]) {
+    for (const username of ["username", "username-only"]) {
+      yield [...profileGroups.map(group => group.includes("organization") ? organization : group.includes("username") ? username : group[0]), "scim"];
+    }
+  }
+}
+
+export function* verifiedCombinations() {
+  yield* combinations();
+  yield* scimCombinations();
+}
+
 
 export function* combinations(index = 0, selected = []) {
   if (index === profileGroups.length) {

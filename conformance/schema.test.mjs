@@ -8,7 +8,7 @@ import { DatabaseSync } from "node:sqlite";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 import { getMigrations } from "better-auth/db/migration";
-import { combinations, dialects, freshSchema, schemaOptions } from "./plugin-schema.mjs";
+import { verifiedCombinations, scimCombinations, dialects, freshSchema, schemaOptions } from "./plugin-schema.mjs";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
 
@@ -103,7 +103,7 @@ function normalizeAdditiveIndexes(structure) {
   return structure;
 }
 
-test("the CLI emits the pinned plugin schema for every supported preset and SQL dialect", async () => {
+test("the CLI emits the pinned plugin schema across exhaustive base combinations and SCIM witnesses on three dialects", async () => {
   const dir = mkdtempSync(join(tmpdir(), "auth-schema-plugin-cli-"));
   try {
     const binary = join(dir, "authctl");
@@ -111,7 +111,7 @@ test("the CLI emits the pinned plugin schema for every supported preset and SQL 
     const batch = batchFixture(dir);
     try {
       for (const type of Object.keys(dialects)) {
-        for (const profiles of combinations()) {
+        for (const profiles of verifiedCombinations()) {
           const output = await batch.call(type, profiles);
           assert.equal(output.trim(), (await freshSchema(type, profiles)).trim(), type + " / " + profiles.join(","));
           if (profiles.length <= 1) {
@@ -140,13 +140,14 @@ test("adding plugin profiles to a populated SQLite database preserves existing a
     } finally { seeded.close(); }
     const batch = batchFixture(dir);
     try {
-      for (const profiles of combinations()) {
+      for (const profiles of verifiedCombinations()) {
         if (!profiles.length) continue;
         copyFileSync(seed, database);
         if (profiles.length === 1) {
           execFileSync(binary, ["migrate", "--dialect", "sqlite", "--plugins", profiles[0]], { env: { ...process.env, AUTH_DSN: database } });
         }
         await batch.call("sqlite", profiles, "candidate.db");
+        if (profiles.includes("scim")) await batch.call("sqlite", profiles, "candidate.db");
         const db = new DatabaseSync(database, { readOnly: true });
         const reference = new DatabaseSync(":memory:");
         try {
@@ -162,5 +163,26 @@ test("adding plugin profiles to a populated SQLite database preserves existing a
     } finally { await batch.close(); }
   } finally {
     rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("SCIM adds seven independent tables and leaves each existing schema object intact", async () => {
+  const tables = ["scimConnectionBinding", "scimGroup", "scimGroupMember", "scimIdentityTombstone", "scimProjectionGrant", "scimSubject", "scimUser"];
+  const statements = sql => sql.trim().split(/;\s*\n\s*\n/).map(s => s.replace(/;$/, ""));
+  for (const type of Object.keys(dialects)) {
+    const core = new Set(statements(await freshSchema(type, [])));
+    const additions = statements(await freshSchema(type, ["scim"])).filter(s => !core.has(s));
+    const tableNames = additions.flatMap(sql => /^create table ["`]([^"`]+)["`]/.exec(sql)?.slice(1) ?? []);
+    assert.deepEqual(tableNames.sort(), tables, type);
+    for (const statement of additions) {
+      assert.ok(tables.some(name => new RegExp('^(?:create table|create (?:unique )?index .+ on) ["`]' + name + '["`]').test(statement)),
+        "SCIM contributed an object outside its seven tables");
+    }
+    for (const selected of scimCombinations()) {
+      const baseline = statements(await freshSchema(type, selected.filter(name => name !== "scim")));
+      const combined = statements(await freshSchema(type, selected));
+      assert.deepEqual(new Set(combined), new Set([...baseline, ...additions]), "SCIM changed baseline DDL for " + selected.join(","));
+      assert.deepEqual(combined.filter(s => !additions.includes(s)), baseline, "SCIM changed baseline SQL ordering");
+    }
   }
 });

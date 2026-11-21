@@ -973,3 +973,8 @@ test("the browser client receives localized API errors in both runtimes", async 
   const { localization } = await import("./i18n-contract.mjs");
   await localization(t, { reference, goFixture, instrument });
 });
+
+test("SCIM directory Users interoperate through both HTTP handlers and the same canonical SQLite records", async t => {
+  const { directoryContract } = await import("./scim-contract.mjs");
+  await directoryContract(t, goFixture);
+});

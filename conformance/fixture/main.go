@@ -50,8 +50,11 @@ func main() {
 	defer store.Close()
 	var plugins []authn.Plugin
 	var applicationKeys *apikey.Service
+	var directoryEnabled bool
 	for _, id := range os.Args[2:] {
 		switch id {
+		case "scim":
+			directoryEnabled = true
 		case "api-key":
 			keySessions := os.Getenv("AUTH_TEST_API_KEY_SESSIONS") == "1"
 			keys, err := apikey.New(apikey.Options{Store: store, EnableMetadata: true, EnableSession: keySessions})
@@ -239,6 +242,12 @@ func main() {
 	}
 	fmt.Println(baseURL)
 	var handler http.Handler = auth
+	if directoryEnabled {
+		handler, err = scimFixture(auth, store)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
 	if oneTapKeys != "" {
 		handler = oneTapFixtureHandler(baseURL, auth)
 	}
