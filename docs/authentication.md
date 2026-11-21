@@ -39,8 +39,8 @@ Create one auth instance per configuration and share it among handlers. Use the 
 `RateLimitDefault` controls routes without a built-in or plugin rule. `RateLimitRules` overrides all other rules. The most specific match wins. An exact path takes priority over a trailing `/*` pattern. A nil rule exempts a route. The rules apply to HTTP requests.
 
 ```go
-opts.RateLimitDefault = &authn.RateLimitRule{Max: 100, Window: time.Minute}
-opts.RateLimitRules = map[string]*authn.RateLimitRule{
+opts.RateLimitDefault = &fineauth.RateLimitRule{Max: 100, Window: time.Minute}
+opts.RateLimitRules = map[string]*fineauth.RateLimitRule{
     "/sign-in/*": {Max: 3, Window: 10 * time.Second},
     "/get-session": nil,
 }
@@ -54,7 +54,7 @@ Apply the `rate-limit` [schema profile](schema.md) and set `Options.RateLimitSto
 
 A browser on the same origin automatically sends the cookie to the API. For cross-origin applications, configure an exact trusted origin and credentialed CORS on the host router. A browser's own SameSite cookie policy still applies. For an authenticated curl POST, send your cookie jar and the configured `Origin`, as in the [quickstart](../README.md#run-it-locally).
 
-The Go methods `SignUpEmail`, `SignInEmail`, `GetSession`, `SignOut`, and the session management methods accept a request context. `GetSession(ctx, headers)` distinguishes an absent session from a storage failure. Use `errors.As(err, &apiErr)` with `var apiErr *authn.APIError` to inspect a public error code and HTTP status. Other errors can carry infrastructure details and belong in application logs.
+The Go methods `SignUpEmail`, `SignInEmail`, `GetSession`, `SignOut`, and the session management methods accept a request context. `GetSession(ctx, headers)` distinguishes an absent session from a storage failure. Use `errors.As(err, &apiErr)` with `var apiErr *fineauth.APIError` to inspect a public error code and HTTP status. Other errors can carry infrastructure details and belong in application logs.
 
 See the [cross-runtime conformance test](../conformance/core.test.mjs) and [remaining authentication features](parity/authentication.md).
 

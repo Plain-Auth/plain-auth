@@ -4,7 +4,7 @@ import (
 	"context"
 	"net/http"
 
-	authn "github.com/nabuhadba/go-better-auth"
+	authn "github.com/FineStack/finestack-auth"
 )
 
 // ListDeviceSessions returns the accounts remembered by this client's cookie jar.

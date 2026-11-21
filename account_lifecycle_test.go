@@ -1,4 +1,4 @@
-package authn_test
+package fineauth_test
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	authn "github.com/nabuhadba/go-better-auth"
+	authn "github.com/FineStack/finestack-auth"
 )
 
 func TestVerificationGatedSignUpAndSignIn(t *testing.T) {

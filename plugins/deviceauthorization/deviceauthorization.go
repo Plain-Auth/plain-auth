@@ -1,7 +1,7 @@
 // Package deviceauthorization adds RFC 8628 first-party device sign-in.
 package deviceauthorization
 
-import authn "github.com/nabuhadba/go-better-auth"
+import authn "github.com/FineStack/finestack-auth"
 
 type Options = authn.DeviceAuthorizationOptions
 

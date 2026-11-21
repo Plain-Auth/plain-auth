@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"net/url"
 
-	authn "github.com/nabuhadba/go-better-auth"
+	authn "github.com/FineStack/finestack-auth"
 )
 
 type DeviceCodeRequest struct {

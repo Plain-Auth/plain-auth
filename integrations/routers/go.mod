@@ -1,4 +1,4 @@
-module github.com/nabuhadba/go-better-auth/integrations/routers
+module github.com/FineStack/finestack-auth/integrations/routers
 
 go 1.26.0
 
@@ -7,7 +7,7 @@ require (
 	github.com/go-chi/chi/v5 v5.5.0
 	github.com/gofiber/fiber/v3 v3.7.0
 	github.com/gorilla/mux v1.8.1
-	github.com/nabuhadba/go-better-auth v0.0.0
+	github.com/FineStack/finestack-auth v0.0.0
 )
 
 require (
@@ -73,4 +73,4 @@ require (
 	google.golang.org/protobuf v1.36.10 // indirect
 )
 
-replace github.com/nabuhadba/go-better-auth => ../..
+replace github.com/FineStack/finestack-auth => ../..

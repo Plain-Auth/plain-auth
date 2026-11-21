@@ -8,9 +8,9 @@ import (
 	"strings"
 	"testing"
 
-	auth "github.com/nabuhadba/go-better-auth"
-	"github.com/nabuhadba/go-better-auth/adapters/memory"
-	"github.com/nabuhadba/go-better-auth/plugins/bearer"
+	auth "github.com/FineStack/finestack-auth"
+	"github.com/FineStack/finestack-auth/adapters/memory"
+	"github.com/FineStack/finestack-auth/plugins/bearer"
 )
 
 func TestBearerSessions(t *testing.T) {

@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	authn "github.com/nabuhadba/go-better-auth"
+	authn "github.com/FineStack/finestack-auth"
 )
 
 var _ authn.DeviceSessionStore = (*Store)(nil)

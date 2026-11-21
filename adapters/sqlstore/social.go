@@ -12,7 +12,7 @@ import (
 
 	"github.com/go-sql-driver/mysql"
 	"github.com/jackc/pgx/v5/pgconn"
-	authn "github.com/nabuhadba/go-better-auth"
+	authn "github.com/FineStack/finestack-auth"
 )
 
 var _ authn.OAuthStore = (*Store)(nil)

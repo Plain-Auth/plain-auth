@@ -18,8 +18,8 @@ import (
 
 	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/golang-jwt/jwt/v5"
-	auth "github.com/nabuhadba/go-better-auth"
-	"github.com/nabuhadba/go-better-auth/adapters/sqlite"
+	auth "github.com/FineStack/finestack-auth"
+	"github.com/FineStack/finestack-auth/adapters/sqlite"
 	"golang.org/x/oauth2"
 )
 

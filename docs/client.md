@@ -6,11 +6,11 @@ Create one client per user session. An origin uses the default `/api/auth` mount
 import (
     "context"
 
-    authn "github.com/nabuhadba/go-better-auth"
-    "github.com/nabuhadba/go-better-auth/client"
+    "github.com/FineStack/finestack-auth"
+    "github.com/FineStack/finestack-auth/client"
 )
 
-func login(ctx context.Context, endpoint, email, password string) (*authn.SessionResult, error) {
+func login(ctx context.Context, endpoint, email, password string) (*fineauth.SessionResult, error) {
     c, err := client.New(endpoint, nil)
     if err != nil {
         return nil, err

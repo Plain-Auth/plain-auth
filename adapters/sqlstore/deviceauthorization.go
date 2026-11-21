@@ -6,7 +6,7 @@ import (
 	"errors"
 	"time"
 
-	authn "github.com/nabuhadba/go-better-auth"
+	authn "github.com/FineStack/finestack-auth"
 )
 
 var _ authn.DeviceAuthorizationStore = (*Store)(nil)

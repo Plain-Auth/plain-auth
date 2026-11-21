@@ -15,9 +15,9 @@ import (
 	"testing"
 	"time"
 
-	authn "github.com/nabuhadba/go-better-auth"
-	"github.com/nabuhadba/go-better-auth/adapters/memory"
-	"github.com/nabuhadba/go-better-auth/plugins/captcha"
+	authn "github.com/FineStack/finestack-auth"
+	"github.com/FineStack/finestack-auth/adapters/memory"
+	"github.com/FineStack/finestack-auth/plugins/captcha"
 )
 
 type transport func(*http.Request) (*http.Response, error)

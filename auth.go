@@ -1,4 +1,4 @@
-package authn
+package fineauth
 
 import (
 	"context"
@@ -17,7 +17,7 @@ import (
 	"time"
 	"unicode/utf16"
 
-	"github.com/nabuhadba/go-better-auth/internal/configenv"
+	"github.com/FineStack/finestack-auth/internal/configenv"
 )
 
 // Auth is safe for concurrent use by application handlers.

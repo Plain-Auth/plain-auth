@@ -4,7 +4,7 @@ package postgres
 import (
 	"context"
 
-	"github.com/nabuhadba/go-better-auth/adapters/sqlstore"
+	"github.com/FineStack/finestack-auth/adapters/sqlstore"
 )
 
 // Store persists users, credentials, and sessions.

@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	authn "github.com/nabuhadba/go-better-auth"
+	authn "github.com/FineStack/finestack-auth"
 )
 
 // Options configures a server-side password check. A nil Paths slice selects

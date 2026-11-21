@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"net/url"
 
-	org "github.com/nabuhadba/go-better-auth/plugins/organization"
+	org "github.com/FineStack/finestack-auth/plugins/organization"
 )
 
 // TeamMembershipRequest identifies one explicit team membership. An empty

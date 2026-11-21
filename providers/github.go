@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"time"
 
-	authn "github.com/nabuhadba/go-better-auth"
+	authn "github.com/FineStack/finestack-auth"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/endpoints"
 )

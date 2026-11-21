@@ -4,7 +4,7 @@ package customsession
 import (
 	"errors"
 
-	authn "github.com/nabuhadba/go-better-auth"
+	authn "github.com/FineStack/finestack-auth"
 )
 
 // Options controls which authenticated HTTP responses use the projection.

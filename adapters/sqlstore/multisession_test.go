@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	authn "github.com/nabuhadba/go-better-auth"
+	authn "github.com/FineStack/finestack-auth"
 )
 
 func TestDeviceSessionStorage(t *testing.T) {

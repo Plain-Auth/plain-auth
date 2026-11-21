@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/nabuhadba/go-better-auth/client"
+	"github.com/FineStack/finestack-auth/client"
 )
 
 type environmentTransport func(*http.Request) (*http.Response, error)

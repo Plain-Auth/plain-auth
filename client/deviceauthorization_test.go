@@ -8,12 +8,12 @@ import (
 	"strings"
 	"testing"
 
-	authn "github.com/nabuhadba/go-better-auth"
-	"github.com/nabuhadba/go-better-auth/adapters/sqlstore"
-	"github.com/nabuhadba/go-better-auth/client"
-	"github.com/nabuhadba/go-better-auth/plugins/bearer"
-	"github.com/nabuhadba/go-better-auth/plugins/deviceauthorization"
-	"github.com/nabuhadba/go-better-auth/schema"
+	authn "github.com/FineStack/finestack-auth"
+	"github.com/FineStack/finestack-auth/adapters/sqlstore"
+	"github.com/FineStack/finestack-auth/client"
+	"github.com/FineStack/finestack-auth/plugins/bearer"
+	"github.com/FineStack/finestack-auth/plugins/deviceauthorization"
+	"github.com/FineStack/finestack-auth/schema"
 )
 
 func TestNativeDeviceClient(t *testing.T) {

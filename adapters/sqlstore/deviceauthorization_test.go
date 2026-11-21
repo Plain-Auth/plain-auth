@@ -11,9 +11,9 @@ import (
 	"testing"
 	"time"
 
-	authn "github.com/nabuhadba/go-better-auth"
-	"github.com/nabuhadba/go-better-auth/plugins/deviceauthorization"
-	"github.com/nabuhadba/go-better-auth/schema"
+	authn "github.com/FineStack/finestack-auth"
+	"github.com/FineStack/finestack-auth/plugins/deviceauthorization"
+	"github.com/FineStack/finestack-auth/schema"
 )
 
 func TestDeviceAuthorizationFlow(t *testing.T) {

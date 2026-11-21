@@ -13,8 +13,8 @@ import (
 	"runtime/debug"
 	"strings"
 
-	"github.com/nabuhadba/go-better-auth/internal/configenv"
-	"github.com/nabuhadba/go-better-auth/schema"
+	"github.com/FineStack/finestack-auth/internal/configenv"
+	"github.com/FineStack/finestack-auth/schema"
 )
 
 func generateSecret() string { var b [32]byte; rand.Read(b[:]); return hex.EncodeToString(b[:]) }

@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	authn "github.com/nabuhadba/go-better-auth"
+	authn "github.com/FineStack/finestack-auth"
 )
 
 type Organization struct {

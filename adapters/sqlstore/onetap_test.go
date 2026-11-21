@@ -15,9 +15,9 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	authn "github.com/nabuhadba/go-better-auth"
-	"github.com/nabuhadba/go-better-auth/plugins/onetap"
-	"github.com/nabuhadba/go-better-auth/providers"
+	authn "github.com/FineStack/finestack-auth"
+	"github.com/FineStack/finestack-auth/plugins/onetap"
+	"github.com/FineStack/finestack-auth/providers"
 )
 
 type googleJWKS func(*http.Request) (*http.Response, error)

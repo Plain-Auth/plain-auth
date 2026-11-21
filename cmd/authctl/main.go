@@ -12,8 +12,8 @@ import (
 	"os/signal"
 	"strings"
 
-	"github.com/nabuhadba/go-better-auth/adapters/sqlstore"
-	"github.com/nabuhadba/go-better-auth/schema"
+	"github.com/FineStack/finestack-auth/adapters/sqlstore"
+	"github.com/FineStack/finestack-auth/schema"
 )
 
 const usage = `Usage: authctl <command>

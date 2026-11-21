@@ -1,4 +1,4 @@
-package authn
+package fineauth
 
 import (
 	"net/http/httptest"

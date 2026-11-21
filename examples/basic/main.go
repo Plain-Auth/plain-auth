@@ -13,8 +13,8 @@ import (
 	"syscall"
 	"time"
 
-	authn "github.com/nabuhadba/go-better-auth"
-	"github.com/nabuhadba/go-better-auth/adapters/sqlite"
+	"github.com/FineStack/finestack-auth"
+	"github.com/FineStack/finestack-auth/adapters/sqlite"
 )
 
 func main() {
@@ -33,7 +33,7 @@ func run() error {
 		return err
 	}
 	defer store.Close()
-	auth, err := authn.New(authn.Options{
+	auth, err := fineauth.New(fineauth.Options{
 		Store:            store,
 		EmailAndPassword: true,
 	})

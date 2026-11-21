@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	auth "github.com/nabuhadba/go-better-auth"
+	auth "github.com/FineStack/finestack-auth"
 )
 
 var _ auth.EmailOTPStore = (*Store)(nil)

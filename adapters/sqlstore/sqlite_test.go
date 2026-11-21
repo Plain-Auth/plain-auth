@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	authn "github.com/nabuhadba/go-better-auth"
+	authn "github.com/FineStack/finestack-auth"
 )
 
 func openTestStore(t *testing.T, path string) *Store {

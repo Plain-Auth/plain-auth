@@ -1,7 +1,7 @@
 // Package emailotp adds single-use email verification, login and recovery codes.
 package emailotp
 
-import auth "github.com/nabuhadba/go-better-auth"
+import auth "github.com/FineStack/finestack-auth"
 
 type Options = auth.EmailOTPOptions
 type Message = auth.EmailOTPMessage

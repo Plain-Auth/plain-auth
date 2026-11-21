@@ -1,4 +1,4 @@
-module github.com/nabuhadba/go-better-auth
+module github.com/FineStack/finestack-auth
 
 go 1.26.0
 

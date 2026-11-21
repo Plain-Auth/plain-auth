@@ -6,8 +6,8 @@ Register an OAuth application at the identity provider. Set its callback to your
 import (
     "os"
 
-    auth "github.com/nabuhadba/go-better-auth"
-    "github.com/nabuhadba/go-better-auth/providers"
+    auth "github.com/FineStack/finestack-auth"
+    "github.com/FineStack/finestack-auth/providers"
 )
 
 // Set SocialProviders on the same Options that configures your database,

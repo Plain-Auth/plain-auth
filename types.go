@@ -1,5 +1,5 @@
-// Package authn embeds authentication in the host application's HTTP server.
-package authn
+// Package fineauth embeds authentication in the host application's HTTP server.
+package fineauth
 
 import (
 	"context"

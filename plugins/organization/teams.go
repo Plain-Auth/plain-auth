@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	authn "github.com/nabuhadba/go-better-auth"
+	authn "github.com/FineStack/finestack-auth"
 )
 
 // TeamOptions enables team management for an organization store with the teams schema.

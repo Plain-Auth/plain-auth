@@ -14,8 +14,8 @@ import (
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/adaptor"
 	"github.com/gorilla/mux"
-	authn "github.com/nabuhadba/go-better-auth"
-	"github.com/nabuhadba/go-better-auth/adapters/sqlite"
+	authn "github.com/FineStack/finestack-auth"
+	"github.com/FineStack/finestack-auth/adapters/sqlite"
 )
 
 type runner func(*http.Request) (*http.Response, error)

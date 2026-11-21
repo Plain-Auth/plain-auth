@@ -15,7 +15,7 @@ import (
 	"path"
 	"strings"
 
-	authn "github.com/nabuhadba/go-better-auth"
+	authn "github.com/FineStack/finestack-auth"
 )
 
 // Client holds the server URL and the user's session cookies. Create a separate

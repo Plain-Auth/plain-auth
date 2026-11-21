@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"strings"
 
-	auth "github.com/nabuhadba/go-better-auth"
+	auth "github.com/FineStack/finestack-auth"
 )
 
 func (s *Store) ListUserAccounts(ctx context.Context, userID string) ([]auth.LinkedAccount, error) {

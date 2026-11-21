@@ -5,7 +5,7 @@ import (
 	"errors"
 	"net/http"
 
-	auth "github.com/nabuhadba/go-better-auth"
+	auth "github.com/FineStack/finestack-auth"
 	sdk "github.com/stripe/stripe-go/v87"
 )
 

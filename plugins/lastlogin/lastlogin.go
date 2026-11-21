@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	auth "github.com/nabuhadba/go-better-auth"
+	auth "github.com/FineStack/finestack-auth"
 )
 
 // Store persists a login method only for the owner of a live session.

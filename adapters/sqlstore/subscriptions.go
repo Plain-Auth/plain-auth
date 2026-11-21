@@ -8,8 +8,8 @@ import (
 	"errors"
 	"time"
 
-	auth "github.com/nabuhadba/go-better-auth"
-	billing "github.com/nabuhadba/go-better-auth/plugins/stripe"
+	auth "github.com/FineStack/finestack-auth"
+	billing "github.com/FineStack/finestack-auth/plugins/stripe"
 )
 
 var _ billing.SubscriptionStore = (*Store)(nil)

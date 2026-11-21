@@ -4,7 +4,7 @@ import (
 	"context"
 	"net/http"
 
-	auth "github.com/nabuhadba/go-better-auth"
+	auth "github.com/FineStack/finestack-auth"
 )
 
 // SendEmailOTP sends a purpose-bound code to the requested mailbox.

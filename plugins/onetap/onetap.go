@@ -5,8 +5,8 @@ import (
 	_ "embed"
 	"net/http"
 
-	authn "github.com/nabuhadba/go-better-auth"
-	"github.com/nabuhadba/go-better-auth/providers"
+	authn "github.com/FineStack/finestack-auth"
+	"github.com/FineStack/finestack-auth/providers"
 )
 
 type Options = authn.OneTapOptions

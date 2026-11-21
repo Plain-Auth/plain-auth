@@ -12,7 +12,7 @@ import (
 	"net/mail"
 	"strings"
 
-	auth "github.com/nabuhadba/go-better-auth"
+	auth "github.com/FineStack/finestack-auth"
 )
 
 var _ auth.MagicLinkStore = (*Store)(nil)

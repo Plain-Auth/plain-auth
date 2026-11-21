@@ -2,7 +2,7 @@ package client
 
 import (
 	"context"
-	auth "github.com/nabuhadba/go-better-auth"
+	auth "github.com/FineStack/finestack-auth"
 	"net/http"
 )
 

@@ -10,8 +10,8 @@ import (
 	"github.com/go-sql-driver/mysql"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/mattn/go-sqlite3"
-	auth "github.com/nabuhadba/go-better-auth"
-	pk "github.com/nabuhadba/go-better-auth/plugins/passkey"
+	auth "github.com/FineStack/finestack-auth"
+	pk "github.com/FineStack/finestack-auth/plugins/passkey"
 )
 
 var _ pk.Store = (*Store)(nil)

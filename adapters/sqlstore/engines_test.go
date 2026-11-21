@@ -16,7 +16,7 @@ import (
 	"testing"
 	"time"
 
-	authn "github.com/nabuhadba/go-better-auth"
+	authn "github.com/FineStack/finestack-auth"
 )
 
 // Network database tests need a database dedicated to testing. They delete

@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"errors"
 
-	auth "github.com/nabuhadba/go-better-auth"
+	auth "github.com/FineStack/finestack-auth"
 )
 
 // StripeCustomer looks up the customer's own stored Stripe ID. Requires the

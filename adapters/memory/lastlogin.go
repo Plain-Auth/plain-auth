@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	auth "github.com/nabuhadba/go-better-auth"
+	auth "github.com/FineStack/finestack-auth"
 )
 
 func (s *Store) SaveSessionLoginMethod(ctx context.Context, token, method string, now time.Time) error {

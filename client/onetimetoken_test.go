@@ -8,10 +8,10 @@ import (
 	"testing"
 	"time"
 
-	auth "github.com/nabuhadba/go-better-auth"
-	"github.com/nabuhadba/go-better-auth/adapters/sqlite"
-	"github.com/nabuhadba/go-better-auth/client"
-	"github.com/nabuhadba/go-better-auth/plugins/onetimetoken"
+	auth "github.com/FineStack/finestack-auth"
+	"github.com/FineStack/finestack-auth/adapters/sqlite"
+	"github.com/FineStack/finestack-auth/client"
+	"github.com/FineStack/finestack-auth/plugins/onetimetoken"
 )
 
 func TestNativeOneTimeTokenClient(t *testing.T) {

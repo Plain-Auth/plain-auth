@@ -47,14 +47,14 @@ All auth instances sharing signing keys need the same encryption key configurati
 A host application can sign a service assertion after authorizing the subject. These two methods run in the host process. HTTP requests to the signing and verification methods have no route.
 
 ```go
-token, err := instance.SignJWT(ctx, "billing-worker", authn.JWTSignOptions{
+token, err := instance.SignJWT(ctx, "billing-worker", fineauth.JWTSignOptions{
     Audience: []string{"invoice-service"},
     Claims: map[string]any{"job": "reconcile"},
 })
 if err != nil {
     return err
 }
-claims, err := instance.VerifyJWT(ctx, token, authn.JWTVerifyOptions{
+claims, err := instance.VerifyJWT(ctx, token, fineauth.JWTVerifyOptions{
     Audience: "invoice-service", Subject: "billing-worker",
 })
 if err != nil {

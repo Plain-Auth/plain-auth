@@ -15,7 +15,7 @@ import (
 	"strings"
 	"time"
 
-	auth "github.com/nabuhadba/go-better-auth"
+	auth "github.com/FineStack/finestack-auth"
 	"golang.org/x/oauth2"
 )
 

@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/nabuhadba/go-better-auth/schema"
+	"github.com/FineStack/finestack-auth/schema"
 )
 
 // Upgrade a populated installation and compare it to direct execution of the

@@ -9,9 +9,9 @@ import (
 	"strings"
 	"testing"
 
-	authn "github.com/nabuhadba/go-better-auth"
-	"github.com/nabuhadba/go-better-auth/adapters/sqlite"
-	"github.com/nabuhadba/go-better-auth/client"
+	authn "github.com/FineStack/finestack-auth"
+	"github.com/FineStack/finestack-auth/adapters/sqlite"
+	"github.com/FineStack/finestack-auth/client"
 )
 
 type transport func(*http.Request) (*http.Response, error)

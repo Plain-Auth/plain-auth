@@ -1,7 +1,7 @@
 // Package onetimetoken transfers an active login between clients using a short-lived credential.
 package onetimetoken
 
-import auth "github.com/nabuhadba/go-better-auth"
+import auth "github.com/FineStack/finestack-auth"
 
 type Options = auth.OneTimeTokenOptions
 

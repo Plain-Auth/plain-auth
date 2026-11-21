@@ -5,11 +5,11 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	auth "github.com/nabuhadba/go-better-auth"
-	"github.com/nabuhadba/go-better-auth/adapters/sqlstore"
-	"github.com/nabuhadba/go-better-auth/client"
-	jwtplugin "github.com/nabuhadba/go-better-auth/plugins/jwt"
-	"github.com/nabuhadba/go-better-auth/schema"
+	auth "github.com/FineStack/finestack-auth"
+	"github.com/FineStack/finestack-auth/adapters/sqlstore"
+	"github.com/FineStack/finestack-auth/client"
+	jwtplugin "github.com/FineStack/finestack-auth/plugins/jwt"
+	"github.com/FineStack/finestack-auth/schema"
 )
 
 func TestNativeJWTClient(t *testing.T) {

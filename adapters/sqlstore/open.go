@@ -17,7 +17,7 @@ import (
 	"github.com/go-sql-driver/mysql"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	_ "github.com/mattn/go-sqlite3"
-	org "github.com/nabuhadba/go-better-auth/plugins/organization"
+	org "github.com/FineStack/finestack-auth/plugins/organization"
 )
 
 // Store persists users, credentials, and sessions in a SQL database.

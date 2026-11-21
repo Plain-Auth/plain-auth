@@ -1,7 +1,7 @@
 // Package magiclink adds single-use mailbox sign-in links.
 package magiclink
 
-import auth "github.com/nabuhadba/go-better-auth"
+import auth "github.com/FineStack/finestack-auth"
 
 type Options = auth.MagicLinkOptions
 type Message = auth.MagicLinkMessage

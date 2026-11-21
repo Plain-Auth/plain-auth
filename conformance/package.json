@@ -1,5 +1,5 @@
 {
-  "name": "go-better-auth-conformance",
+  "name": "finestack-auth-conformance",
   "private": true,
   "type": "module",
   "scripts": {

@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	auth "github.com/nabuhadba/go-better-auth"
+	auth "github.com/FineStack/finestack-auth"
 )
 
 func TestLinkedAccountIsolation(t *testing.T) {

@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"time"
 
-	auth "github.com/nabuhadba/go-better-auth"
+	auth "github.com/FineStack/finestack-auth"
 )
 
 var _ auth.TwoFactorStore = (*Store)(nil)

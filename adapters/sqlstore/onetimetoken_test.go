@@ -15,8 +15,8 @@ import (
 	"testing"
 	"time"
 
-	auth "github.com/nabuhadba/go-better-auth"
-	"github.com/nabuhadba/go-better-auth/plugins/onetimetoken"
+	auth "github.com/FineStack/finestack-auth"
+	"github.com/FineStack/finestack-auth/plugins/onetimetoken"
 )
 
 func TestOneTimeSessionTransfer(t *testing.T) {

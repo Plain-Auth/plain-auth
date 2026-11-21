@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/nabuhadba/go-better-auth/plugins/onetap"
+	"github.com/FineStack/finestack-auth/plugins/onetap"
 )
 
 func TestRedirectFormRequiresGoogleProof(t *testing.T) {

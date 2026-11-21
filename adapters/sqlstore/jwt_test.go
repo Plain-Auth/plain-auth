@@ -14,9 +14,9 @@ import (
 	"time"
 
 	libjwt "github.com/golang-jwt/jwt/v5"
-	auth "github.com/nabuhadba/go-better-auth"
-	jwtplugin "github.com/nabuhadba/go-better-auth/plugins/jwt"
-	"github.com/nabuhadba/go-better-auth/schema"
+	auth "github.com/FineStack/finestack-auth"
+	jwtplugin "github.com/FineStack/finestack-auth/plugins/jwt"
+	"github.com/FineStack/finestack-auth/schema"
 )
 
 func TestJWTIssuanceAndKeyRotation(t *testing.T) {

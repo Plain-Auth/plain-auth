@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	auth "github.com/nabuhadba/go-better-auth"
+	auth "github.com/FineStack/finestack-auth"
 )
 
 type credential struct {

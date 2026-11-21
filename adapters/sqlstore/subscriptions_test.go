@@ -13,9 +13,9 @@ import (
 	"testing"
 	"time"
 
-	auth "github.com/nabuhadba/go-better-auth"
-	billing "github.com/nabuhadba/go-better-auth/plugins/stripe"
-	"github.com/nabuhadba/go-better-auth/schema"
+	auth "github.com/FineStack/finestack-auth"
+	billing "github.com/FineStack/finestack-auth/plugins/stripe"
+	"github.com/FineStack/finestack-auth/schema"
 	sdk "github.com/stripe/stripe-go/v87"
 	"github.com/stripe/stripe-go/v87/webhook"
 )

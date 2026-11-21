@@ -34,10 +34,10 @@ if err != nil {
     return err
 }
 defer store.Close()
-// Pass store in authn.Options{Store: store, ...}.
+// Pass store in fineauth.Options{Store: store, ...}.
 ```
 
-Import `github.com/nabuhadba/go-better-auth/adapters/sqlstore`. Use `"mysql"` or `"sqlite"` to change engines. Opening the store also applies its pending schema. Keep one store for the application's lifetime. Each request passes its own context for cancellation and deadlines.
+Import `github.com/FineStack/finestack-auth/adapters/sqlstore`. Use `"mysql"` or `"sqlite"` to change engines. Opening the store also applies its pending schema. Keep one store for the application's lifetime. Each request passes its own context for cancellation and deadlines.
 
 ## What is stored
 
@@ -50,7 +50,7 @@ Import `github.com/nabuhadba/go-better-auth/adapters/sqlstore`. Use `"mysql"` or
 
 The default layout uses per-dialect SQL types. A password account has provider ID `credential` and its account ID matches the owning user. Sessions reference that user and expire at their stored timestamp. Account registration writes the user, credential and initial session in one transaction. See the [dialect schemas](../adapters/sqlstore/schema) and [database contract tests](../adapters/sqlstore/engines_test.go).
 
-For isolated development without a database, pass `memory.New()` from `github.com/nabuhadba/go-better-auth/adapters/memory` as the store. Its users and sessions live in a single process and are discarded when the process exits. The [in-memory tests](../adapters/memory/memory_test.go) exercise registration and session revocation.
+For isolated development without a database, pass `memory.New()` from `github.com/FineStack/finestack-auth/adapters/memory` as the store. Its users and sessions live in a single process and are discarded when the process exits. The [in-memory tests](../adapters/memory/memory_test.go) exercise registration and session revocation.
 
 ## Run database integration tests
 

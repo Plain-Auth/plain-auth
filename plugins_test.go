@@ -1,11 +1,11 @@
-package authn_test
+package fineauth_test
 
 import (
 	"net/http"
 	"testing"
 
-	authn "github.com/nabuhadba/go-better-auth"
-	"github.com/nabuhadba/go-better-auth/adapters/sqlite"
+	authn "github.com/FineStack/finestack-auth"
+	"github.com/FineStack/finestack-auth/adapters/sqlite"
 )
 
 func TestPluginRegistrationAndDispatch(t *testing.T) {

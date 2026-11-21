@@ -48,12 +48,12 @@ curl -sS -b cookies.txt -c cookies.txt http://127.0.0.1:3000/api/auth/sign-out \
 
 ## Mount it in an application
 
-Import the package as `auth` from the current module.
+Import the current module to use the `fineauth` package.
 
 ```go
 import (
-    auth "github.com/nabuhadba/go-better-auth"
-    "github.com/nabuhadba/go-better-auth/adapters/sqlite"
+    "github.com/FineStack/finestack-auth"
+    "github.com/FineStack/finestack-auth/adapters/sqlite"
 )
 ```
 
@@ -64,7 +64,7 @@ if err != nil {
 }
 defer store.Close() // in the function that owns the application's lifetime
 
-instance, err := auth.New(auth.Options{
+instance, err := fineauth.New(fineauth.Options{
     Store:            store,
     EmailAndPassword: true,
 })
@@ -76,13 +76,13 @@ mux.Handle(strings.TrimRight(instance.BasePath(), "/")+"/", instance)
 
 This reads the signing secret and public URL from the host environment configured above. Explicit options, environment settings and their precedence are documented in the [configuration guide](docs/environment.md).
 
-The planned public repository name is `finestack-auth`. During private development, authenticate Git for the current repository and run the following in the consuming module.
+During private development, authenticate Git for the FineStack repository and run the following in the consuming module.
 
 ```sh
-GOPRIVATE=github.com/nabuhadba/go-better-auth go get github.com/nabuhadba/go-better-auth@main
+GOPRIVATE=github.com/FineStack/finestack-auth go get github.com/FineStack/finestack-auth@main
 ```
 
-Go records the resolved commit in the consuming project’s `go.mod`. The module path is `github.com/nabuhadba/go-better-auth`. Its Go package name is `authn`. The SQLite adapter lives at `github.com/nabuhadba/go-better-auth/adapters/sqlite`. A complete host application, including a protected route and graceful shutdown, is in [examples/basic](examples/basic/main.go).
+Go records the resolved commit in the consuming project’s `go.mod`. The module path is `github.com/FineStack/finestack-auth`. Its Go package name is `fineauth`. The SQLite adapter lives at `github.com/FineStack/finestack-auth/adapters/sqlite`. A complete host application, including a protected route and graceful shutdown, is in [examples/basic](examples/basic/main.go).
 
 | Task | Guide |
 | --- | --- |

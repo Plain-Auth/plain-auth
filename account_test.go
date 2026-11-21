@@ -1,4 +1,4 @@
-package authn_test
+package fineauth_test
 
 import (
 	"context"
@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	authn "github.com/nabuhadba/go-better-auth"
+	authn "github.com/FineStack/finestack-auth"
 )
 
 func TestAccountRecoveryAndProfile(t *testing.T) {

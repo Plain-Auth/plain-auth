@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
-	authn "github.com/nabuhadba/go-better-auth"
-	"github.com/nabuhadba/go-better-auth/adapters/sqlite"
-	stripeplugin "github.com/nabuhadba/go-better-auth/plugins/stripe"
+	authn "github.com/FineStack/finestack-auth"
+	"github.com/FineStack/finestack-auth/adapters/sqlite"
+	stripeplugin "github.com/FineStack/finestack-auth/plugins/stripe"
 	stripesdk "github.com/stripe/stripe-go/v87"
 	"github.com/stripe/stripe-go/v87/webhook"
 )

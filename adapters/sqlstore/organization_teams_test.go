@@ -12,10 +12,10 @@ import (
 	"testing"
 	"time"
 
-	authn "github.com/nabuhadba/go-better-auth"
-	"github.com/nabuhadba/go-better-auth/client"
-	org "github.com/nabuhadba/go-better-auth/plugins/organization"
-	"github.com/nabuhadba/go-better-auth/schema"
+	authn "github.com/FineStack/finestack-auth"
+	"github.com/FineStack/finestack-auth/client"
+	org "github.com/FineStack/finestack-auth/plugins/organization"
+	"github.com/FineStack/finestack-auth/schema"
 )
 
 func TestTeamAccountsAcrossEngines(t *testing.T) {

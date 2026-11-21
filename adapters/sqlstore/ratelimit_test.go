@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	auth "github.com/nabuhadba/go-better-auth"
-	"github.com/nabuhadba/go-better-auth/schema"
+	auth "github.com/FineStack/finestack-auth"
+	"github.com/FineStack/finestack-auth/schema"
 )
 
 func TestSharedRateLimit(t *testing.T) {

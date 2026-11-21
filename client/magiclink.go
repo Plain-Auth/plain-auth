@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"net/url"
 
-	auth "github.com/nabuhadba/go-better-auth"
+	auth "github.com/FineStack/finestack-auth"
 )
 
 // MagicLinkRequest requests a sign-in link delivered to Email.

@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	auth "github.com/nabuhadba/go-better-auth"
-	"github.com/nabuhadba/go-better-auth/plugins/emailotp"
+	auth "github.com/FineStack/finestack-auth"
+	"github.com/FineStack/finestack-auth/plugins/emailotp"
 )
 
 func TestEmailOTPConcurrentMemory(t *testing.T) {

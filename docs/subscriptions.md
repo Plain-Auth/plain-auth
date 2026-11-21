@@ -22,13 +22,13 @@ billing := stripeplugin.New(stripeplugin.Options{
         },
     },
 })
-auth, err := authn.New(authn.Options{
+auth, err := fineauth.New(fineauth.Options{
     Store: store, BaseURL: origin, Secret: authSecret,
-    Plugins: []authn.Plugin{billing},
+    Plugins: []fineauth.Plugin{billing},
 })
 ```
 
-Import `github.com/nabuhadba/go-better-auth/plugins/stripe` as `stripeplugin` and `github.com/stripe/stripe-go/v87` as `stripesdk`. Create the recurring prices in the same Stripe account and mode as the server’s API key. Configure the webhook destination at `/api/auth/stripe/webhook` for `checkout.session.completed` and `checkout.session.expired`. [Stripe Checkout Sessions](https://docs.stripe.com/api/checkout/sessions/create)
+Import `github.com/FineStack/finestack-auth/plugins/stripe` as `stripeplugin` and `github.com/stripe/stripe-go/v87` as `stripesdk`. Create the recurring prices in the same Stripe account and mode as the server’s API key. Configure the webhook destination at `/api/auth/stripe/webhook` for `checkout.session.completed` and `checkout.session.expired`. [Stripe Checkout Sessions](https://docs.stripe.com/api/checkout/sessions/create)
 
 ## Create a checkout
 

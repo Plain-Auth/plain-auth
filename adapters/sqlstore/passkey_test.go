@@ -15,9 +15,9 @@ import (
 	"time"
 
 	"github.com/fxamacker/cbor/v2"
-	auth "github.com/nabuhadba/go-better-auth"
-	pk "github.com/nabuhadba/go-better-auth/plugins/passkey"
-	"github.com/nabuhadba/go-better-auth/schema"
+	auth "github.com/FineStack/finestack-auth"
+	pk "github.com/FineStack/finestack-auth/plugins/passkey"
+	"github.com/FineStack/finestack-auth/schema"
 )
 
 type softwareKey struct {
