@@ -13,6 +13,8 @@ import (
 
 	authn "github.com/nabuhadba/go-better-auth"
 	"github.com/nabuhadba/go-better-auth/adapters/sqlstore"
+	"github.com/nabuhadba/go-better-auth/plugins/customsession"
+	jwtplugin "github.com/nabuhadba/go-better-auth/plugins/jwt"
 	"github.com/nabuhadba/go-better-auth/plugins/magiclink"
 	"github.com/nabuhadba/go-better-auth/plugins/onetimetoken"
 	"github.com/nabuhadba/go-better-auth/plugins/organization"
@@ -56,11 +58,26 @@ func main() {
 				log.Fatal(err)
 			}
 			plugins = append(plugins, p)
+		case "jwt":
+			p, err := jwtplugin.New(jwtplugin.Options{})
+			if err != nil {
+				log.Fatal(err)
+			}
+			plugins = append(plugins, p)
 		case "two-factor":
 			plugins = append(plugins, twofactor.New(twofactor.Options{}))
 		default:
 			log.Fatal("unknown runtime plugin")
 		}
+	}
+	if os.Getenv("CONFORMANCE_SESSION_VIEW") == "1" {
+		p, err := customsession.New(func(_ authn.EndpointContext, data authn.SessionResult) (any, error) {
+			return map[string]string{"viewer": data.User.Email}, nil
+		})
+		if err != nil {
+			log.Fatal(err)
+		}
+		plugins = append(plugins, p)
 	}
 	if os.Getenv("CONFORMANCE_MAILBOX") == "1" {
 		mailbox := filepath.Join(filepath.Dir(os.Args[1]), "mailbox.json")

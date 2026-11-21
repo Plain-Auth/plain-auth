@@ -34,6 +34,13 @@ var coreMethods = map[string]string{
 // ServeHTTP serves the auth endpoints beneath the configured base path.
 func (a *Auth) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	route, mounted := strings.CutPrefix(r.URL.EscapedPath(), strings.TrimSuffix(a.opts.BasePath, "/"))
+	if mounted && (route == "" || strings.HasPrefix(route, "/")) {
+		if err := a.runRequestHooks(r, route); err != nil {
+			w.Header().Set("Cache-Control", "no-store")
+			writeAuthError(w, err)
+			return
+		}
+	}
 	if mounted && a.serveOAuth(w, r, route) {
 		return
 	}
@@ -112,7 +119,7 @@ func (a *Auth) handleCoreRequest(route string, w http.ResponseWriter, r *http.Re
 	case "/ok":
 		return map[string]bool{"ok": true}, nil
 	case "/get-session":
-		return a.sessionHTTP(w, r)
+		return a.presentSession(w, r)
 	case "/get-access-token", "/refresh-token", "/account-info":
 		return a.providerCredentialsHTTP(ctx, route, r, body)
 	case "/list-accounts":

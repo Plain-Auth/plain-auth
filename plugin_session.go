@@ -1,6 +1,9 @@
 package authn
 
-import "context"
+import (
+	"context"
+	"net/http"
+)
 
 // Store returns the current instance's configured identity store.
 func (c EndpointContext) Store() Store { return c.Auth.opts.Store }
@@ -37,4 +40,21 @@ func (c EndpointContext) IssueSession(userID string, commit func(context.Context
 	}
 	a.addSessionCookieHeaders(c.ResponseHeader, r, session.Token, true)
 	return result, nil
+}
+
+func (a *Auth) presentSession(w http.ResponseWriter, r *http.Request) (any, error) {
+	body, err := a.sessionHTTP(w, r)
+	if err != nil || a.sessionResponse == nil || r.Method != http.MethodGet {
+		return body, err
+	}
+	var session *SessionResult
+	switch result := body.(type) {
+	case *SessionResult:
+		session = result
+	case deferredSessionResponse:
+		session = result.SessionResult
+	default:
+		return body, nil
+	}
+	return a.sessionResponse(EndpointContext{Auth: a, Request: r, ResponseHeader: w.Header()}, *session)
 }

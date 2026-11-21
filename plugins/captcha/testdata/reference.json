@@ -1,0 +1,480 @@
+[
+  {
+    "name": "google-recaptcha-pass",
+    "provider": "google-recaptcha",
+    "reply": {
+      "success": true,
+      "action": "login",
+      "hostname": "app.example.org"
+    },
+    "sent": {
+      "url": "https://www.google.com/recaptcha/api/siteverify",
+      "method": "POST",
+      "type": "application/x-www-form-urlencoded",
+      "fields": {
+        "secret": "fixture-secret",
+        "response": "fixture-token",
+        "remoteip": "203.0.113.4"
+      }
+    },
+    "expected": {
+      "status": 200
+    }
+  },
+  {
+    "name": "google-recaptcha-reject",
+    "provider": "google-recaptcha",
+    "reply": {
+      "success": false
+    },
+    "sent": {
+      "url": "https://www.google.com/recaptcha/api/siteverify",
+      "method": "POST",
+      "type": "application/x-www-form-urlencoded",
+      "fields": {
+        "secret": "fixture-secret",
+        "response": "fixture-token",
+        "remoteip": "203.0.113.4"
+      }
+    },
+    "expected": {
+      "status": 403,
+      "message": "Captcha verification failed",
+      "code": "VERIFICATION_FAILED"
+    }
+  },
+  {
+    "name": "google-recaptcha-outage",
+    "provider": "google-recaptcha",
+    "status": 502,
+    "reply": {},
+    "sent": {
+      "url": "https://www.google.com/recaptcha/api/siteverify",
+      "method": "POST",
+      "type": "application/x-www-form-urlencoded",
+      "fields": {
+        "secret": "fixture-secret",
+        "response": "fixture-token",
+        "remoteip": "203.0.113.4"
+      }
+    },
+    "expected": {
+      "status": 500,
+      "message": "Something went wrong",
+      "code": "UNKNOWN_ERROR"
+    }
+  },
+  {
+    "name": "cloudflare-turnstile-pass",
+    "provider": "cloudflare-turnstile",
+    "reply": {
+      "success": true,
+      "action": "login",
+      "hostname": "app.example.org"
+    },
+    "sent": {
+      "url": "https://challenges.cloudflare.com/turnstile/v0/siteverify",
+      "method": "POST",
+      "type": "application/json",
+      "fields": {
+        "secret": "fixture-secret",
+        "response": "fixture-token",
+        "remoteip": "203.0.113.4"
+      }
+    },
+    "expected": {
+      "status": 200
+    }
+  },
+  {
+    "name": "cloudflare-turnstile-reject",
+    "provider": "cloudflare-turnstile",
+    "reply": {
+      "success": false
+    },
+    "sent": {
+      "url": "https://challenges.cloudflare.com/turnstile/v0/siteverify",
+      "method": "POST",
+      "type": "application/json",
+      "fields": {
+        "secret": "fixture-secret",
+        "response": "fixture-token",
+        "remoteip": "203.0.113.4"
+      }
+    },
+    "expected": {
+      "status": 403,
+      "message": "Captcha verification failed",
+      "code": "VERIFICATION_FAILED"
+    }
+  },
+  {
+    "name": "cloudflare-turnstile-outage",
+    "provider": "cloudflare-turnstile",
+    "status": 502,
+    "reply": {},
+    "sent": {
+      "url": "https://challenges.cloudflare.com/turnstile/v0/siteverify",
+      "method": "POST",
+      "type": "application/json",
+      "fields": {
+        "secret": "fixture-secret",
+        "response": "fixture-token",
+        "remoteip": "203.0.113.4"
+      }
+    },
+    "expected": {
+      "status": 500,
+      "message": "Something went wrong",
+      "code": "UNKNOWN_ERROR"
+    }
+  },
+  {
+    "name": "hcaptcha-pass",
+    "provider": "hcaptcha",
+    "reply": {
+      "success": true,
+      "action": "login",
+      "hostname": "app.example.org"
+    },
+    "sent": {
+      "url": "https://api.hcaptcha.com/siteverify",
+      "method": "POST",
+      "type": "application/x-www-form-urlencoded",
+      "fields": {
+        "secret": "fixture-secret",
+        "response": "fixture-token",
+        "sitekey": "site-key",
+        "remoteip": "203.0.113.4"
+      }
+    },
+    "expected": {
+      "status": 200
+    }
+  },
+  {
+    "name": "hcaptcha-reject",
+    "provider": "hcaptcha",
+    "reply": {
+      "success": false
+    },
+    "sent": {
+      "url": "https://api.hcaptcha.com/siteverify",
+      "method": "POST",
+      "type": "application/x-www-form-urlencoded",
+      "fields": {
+        "secret": "fixture-secret",
+        "response": "fixture-token",
+        "sitekey": "site-key",
+        "remoteip": "203.0.113.4"
+      }
+    },
+    "expected": {
+      "status": 403,
+      "message": "Captcha verification failed",
+      "code": "VERIFICATION_FAILED"
+    }
+  },
+  {
+    "name": "hcaptcha-outage",
+    "provider": "hcaptcha",
+    "status": 502,
+    "reply": {},
+    "sent": {
+      "url": "https://api.hcaptcha.com/siteverify",
+      "method": "POST",
+      "type": "application/x-www-form-urlencoded",
+      "fields": {
+        "secret": "fixture-secret",
+        "response": "fixture-token",
+        "sitekey": "site-key",
+        "remoteip": "203.0.113.4"
+      }
+    },
+    "expected": {
+      "status": 500,
+      "message": "Something went wrong",
+      "code": "UNKNOWN_ERROR"
+    }
+  },
+  {
+    "name": "captchafox-pass",
+    "provider": "captchafox",
+    "reply": {
+      "success": true,
+      "action": "login",
+      "hostname": "app.example.org"
+    },
+    "sent": {
+      "url": "https://api.captchafox.com/siteverify",
+      "method": "POST",
+      "type": "application/x-www-form-urlencoded",
+      "fields": {
+        "secret": "fixture-secret",
+        "response": "fixture-token",
+        "sitekey": "site-key",
+        "remoteIp": "203.0.113.4"
+      }
+    },
+    "expected": {
+      "status": 200
+    }
+  },
+  {
+    "name": "captchafox-reject",
+    "provider": "captchafox",
+    "reply": {
+      "success": false
+    },
+    "sent": {
+      "url": "https://api.captchafox.com/siteverify",
+      "method": "POST",
+      "type": "application/x-www-form-urlencoded",
+      "fields": {
+        "secret": "fixture-secret",
+        "response": "fixture-token",
+        "sitekey": "site-key",
+        "remoteIp": "203.0.113.4"
+      }
+    },
+    "expected": {
+      "status": 403,
+      "message": "Captcha verification failed",
+      "code": "VERIFICATION_FAILED"
+    }
+  },
+  {
+    "name": "captchafox-outage",
+    "provider": "captchafox",
+    "status": 502,
+    "reply": {},
+    "sent": {
+      "url": "https://api.captchafox.com/siteverify",
+      "method": "POST",
+      "type": "application/x-www-form-urlencoded",
+      "fields": {
+        "secret": "fixture-secret",
+        "response": "fixture-token",
+        "sitekey": "site-key",
+        "remoteIp": "203.0.113.4"
+      }
+    },
+    "expected": {
+      "status": 500,
+      "message": "Something went wrong",
+      "code": "UNKNOWN_ERROR"
+    }
+  },
+  {
+    "name": "missing-header",
+    "provider": "hcaptcha",
+    "missing": true,
+    "expected": {
+      "status": 400,
+      "message": "Missing CAPTCHA response",
+      "code": "MISSING_RESPONSE"
+    }
+  },
+  {
+    "name": "missing-secret",
+    "provider": "hcaptcha",
+    "noSecret": true,
+    "expected": {
+      "status": 500,
+      "message": "Something went wrong",
+      "code": "UNKNOWN_ERROR"
+    }
+  },
+  {
+    "name": "google-v3-low-score",
+    "provider": "google-recaptcha",
+    "reply": {
+      "success": true,
+      "action": "login",
+      "hostname": "app.example.org",
+      "score": 0.49
+    },
+    "sent": {
+      "url": "https://www.google.com/recaptcha/api/siteverify",
+      "method": "POST",
+      "type": "application/x-www-form-urlencoded",
+      "fields": {
+        "secret": "fixture-secret",
+        "response": "fixture-token",
+        "remoteip": "203.0.113.4"
+      }
+    },
+    "expected": {
+      "status": 403,
+      "message": "Captcha verification failed",
+      "code": "VERIFICATION_FAILED"
+    }
+  },
+  {
+    "name": "google-v3-threshold",
+    "provider": "google-recaptcha",
+    "reply": {
+      "success": true,
+      "action": "login",
+      "hostname": "app.example.org",
+      "score": 0.5
+    },
+    "sent": {
+      "url": "https://www.google.com/recaptcha/api/siteverify",
+      "method": "POST",
+      "type": "application/x-www-form-urlencoded",
+      "fields": {
+        "secret": "fixture-secret",
+        "response": "fixture-token",
+        "remoteip": "203.0.113.4"
+      }
+    },
+    "expected": {
+      "status": 200
+    }
+  },
+  {
+    "name": "google-v3-custom-score",
+    "provider": "google-recaptcha",
+    "minScore": 0.9,
+    "reply": {
+      "success": true,
+      "action": "login",
+      "hostname": "app.example.org",
+      "score": 0.8
+    },
+    "sent": {
+      "url": "https://www.google.com/recaptcha/api/siteverify",
+      "method": "POST",
+      "type": "application/x-www-form-urlencoded",
+      "fields": {
+        "secret": "fixture-secret",
+        "response": "fixture-token",
+        "remoteip": "203.0.113.4"
+      }
+    },
+    "expected": {
+      "status": 403,
+      "message": "Captcha verification failed",
+      "code": "VERIFICATION_FAILED"
+    }
+  },
+  {
+    "name": "google-action",
+    "provider": "google-recaptcha",
+    "reply": {
+      "success": true,
+      "action": "other",
+      "hostname": "app.example.org"
+    },
+    "sent": {
+      "url": "https://www.google.com/recaptcha/api/siteverify",
+      "method": "POST",
+      "type": "application/x-www-form-urlencoded",
+      "fields": {
+        "secret": "fixture-secret",
+        "response": "fixture-token",
+        "remoteip": "203.0.113.4"
+      }
+    },
+    "expected": {
+      "status": 403,
+      "message": "Captcha verification failed",
+      "code": "VERIFICATION_FAILED"
+    }
+  },
+  {
+    "name": "google-host",
+    "provider": "google-recaptcha",
+    "reply": {
+      "success": true,
+      "action": "login",
+      "hostname": "other.example.org"
+    },
+    "sent": {
+      "url": "https://www.google.com/recaptcha/api/siteverify",
+      "method": "POST",
+      "type": "application/x-www-form-urlencoded",
+      "fields": {
+        "secret": "fixture-secret",
+        "response": "fixture-token",
+        "remoteip": "203.0.113.4"
+      }
+    },
+    "expected": {
+      "status": 403,
+      "message": "Captcha verification failed",
+      "code": "VERIFICATION_FAILED"
+    }
+  },
+  {
+    "name": "turnstile-host",
+    "provider": "cloudflare-turnstile",
+    "reply": {
+      "success": true,
+      "action": "login"
+    },
+    "sent": {
+      "url": "https://challenges.cloudflare.com/turnstile/v0/siteverify",
+      "method": "POST",
+      "type": "application/json",
+      "fields": {
+        "secret": "fixture-secret",
+        "response": "fixture-token",
+        "remoteip": "203.0.113.4"
+      }
+    },
+    "expected": {
+      "status": 403,
+      "message": "Captcha verification failed",
+      "code": "VERIFICATION_FAILED"
+    }
+  },
+  {
+    "name": "turnstile-action",
+    "provider": "cloudflare-turnstile",
+    "reply": {
+      "success": true,
+      "hostname": "app.example.org"
+    },
+    "sent": {
+      "url": "https://challenges.cloudflare.com/turnstile/v0/siteverify",
+      "method": "POST",
+      "type": "application/json",
+      "fields": {
+        "secret": "fixture-secret",
+        "response": "fixture-token",
+        "remoteip": "203.0.113.4"
+      }
+    },
+    "expected": {
+      "status": 403,
+      "message": "Captcha verification failed",
+      "code": "VERIFICATION_FAILED"
+    }
+  },
+  {
+    "name": "override-url",
+    "provider": "captchafox",
+    "override": "https://custom.example.org/verify",
+    "reply": {
+      "success": true,
+      "action": "login",
+      "hostname": "app.example.org"
+    },
+    "sent": {
+      "url": "https://custom.example.org/verify",
+      "method": "POST",
+      "type": "application/x-www-form-urlencoded",
+      "fields": {
+        "secret": "fixture-secret",
+        "response": "fixture-token",
+        "sitekey": "site-key",
+        "remoteIp": "203.0.113.4"
+      }
+    },
+    "expected": {
+      "status": 200
+    }
+  }
+]

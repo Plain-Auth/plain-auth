@@ -72,3 +72,19 @@ opts.Plugins = append(opts.Plugins, authstripe.New(authstripe.Options{
 ```
 
 Send an authenticated `POST /api/auth/subscription/billing-portal` with `{"returnUrl":"/account","disableRedirect":true}`. The response contains a Stripe portal URL and the redirect preference. The endpoint resolves the customer using the session owner and accepts return URLs on configured trusted origins. The [portal test](../plugins/stripe/portal_test.go) exercises the real Go SDK with a local transport.
+
+## Return an application-defined session view
+
+Register `customsession.New` from `plugins/customsession` to select the data returned by `GET /get-session`. The function receives the authenticated request context, user, and session. It can perform an application lookup through `c.Request.Context()`.
+
+```go
+view, err := customsession.New(func(c authn.EndpointContext, data authn.SessionResult) (any, error) {
+    return map[string]string{"viewer": data.User.ID, "displayName": data.User.Name}, nil
+})
+if err != nil {
+    return err
+}
+opts.Plugins = append(opts.Plugins, view)
+```
+
+Anonymous requests return JSON `null`. The core completes session validation and handles renewal cookies before returning the view. Direct Go authorization checks through `auth.GetSession` continue to receive the typed user and session. A native HTTP client expecting this custom JSON should call `client.Do` with an output struct matching the configured view. [Integration tests](../plugins/customsession/customsession_test.go)

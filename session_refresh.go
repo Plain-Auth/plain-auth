@@ -15,7 +15,12 @@ type SessionRefreshStore interface {
 	DeleteExpiredSession(ctx context.Context, token string, now time.Time) error
 }
 
-func (a *Auth) sessionHTTP(w http.ResponseWriter, r *http.Request) (any, error) {
+type deferredSessionResponse struct {
+	*SessionResult
+	NeedsRefresh bool `json:"needsRefresh"`
+}
+
+func (a *Auth) sessionHTTP(w http.ResponseWriter, r *http.Request) (body any, responseErr error) {
 	ctx := r.Context()
 	token := a.cookieToken(r.Header)
 	if token == "" {
@@ -41,6 +46,20 @@ func (a *Auth) sessionHTTP(w http.ResponseWriter, r *http.Request) (any, error) 
 	if err != nil {
 		return nil, err
 	}
+	if a.serviceJWT != nil && !a.serviceJWT.DisableHeader {
+		defer func() {
+			if responseErr != nil || body == nil {
+				return
+			}
+			token, err := a.signSessionJWT(ctx, *result)
+			if err != nil {
+				body, responseErr = nil, err
+				return
+			}
+			w.Header().Set("Set-Auth-Jwt", token)
+			w.Header().Add("Access-Control-Expose-Headers", "set-auth-jwt")
+		}()
+	}
 	// Match the reference query's coercion: a nonempty disableRefresh query
 	// string requests a read without refreshing the session or reissuing cookies.
 	if a.dontRemember(r) || r.URL.Query().Get("disableRefresh") != "" {
@@ -49,10 +68,7 @@ func (a *Auth) sessionHTTP(w http.ResponseWriter, r *http.Request) (any, error) 
 	threshold := row.ExpiresAt.Add(-a.opts.SessionTTL).Add(*a.opts.SessionUpdateAge)
 	due := canRefresh && !a.opts.DisableSessionRefresh && !now.Before(threshold)
 	if deferredRead {
-		return struct {
-			*SessionResult
-			NeedsRefresh bool `json:"needsRefresh"`
-		}{result, due}, nil
+		return deferredSessionResponse{result, due}, nil
 	}
 	if !due {
 		return result, nil
@@ -73,6 +89,7 @@ func (a *Auth) sessionHTTP(w http.ResponseWriter, r *http.Request) (any, error) 
 			a.expireSessionCookies(w, r)
 			return nil, &APIError{401, "FAILED_TO_GET_SESSION", "Failed to get session"}
 		}
+		result = current
 		return current, nil
 	}
 	result.Session.ExpiresAt = next

@@ -10,10 +10,20 @@ import (
 	"time"
 )
 
+// SessionResponseFunc projects a validated HTTP session into a JSON response.
+type SessionResponseFunc func(EndpointContext, SessionResult) (any, error)
+
 // Plugin contributes HTTP endpoints to an Auth instance.
 type Plugin struct {
-	ValidateStore func(Store) error
-	oneTime       *OneTimeTokenOptions
+	// OnRequest can reject an HTTP request before endpoint dispatch. Path is
+	// relative to the auth mount. ClientIP follows the host's proxy policy.
+	OnRequest func(RequestContext) error
+	// SessionResponse shapes the authenticated GET /get-session JSON response.
+	// One plugin per instance may supply it. An anonymous response stays null.
+	SessionResponse SessionResponseFunc
+	serviceJWT      *JWTOptions
+	ValidateStore   func(Store) error
+	oneTime         *OneTimeTokenOptions
 	// OnValidateNewPassword checks a proposed credential before it is stored.
 	OnValidateNewPassword func(ctx context.Context, path, password string) error
 	factor                *TwoFactorOptions
@@ -25,6 +35,27 @@ type Plugin struct {
 	SessionToken func(*Auth, http.Header) string
 	// OnSessionCookie runs when a handler issues a session cookie.
 	OnSessionCookie func(SessionCookieEvent)
+}
+
+type RequestContext struct {
+	Request        *http.Request
+	Path, ClientIP string
+}
+
+func (a *Auth) runRequestHooks(r *http.Request, route string) error {
+	var c RequestContext
+	for _, plugin := range a.opts.Plugins {
+		if plugin.OnRequest == nil {
+			continue
+		}
+		if c.Request == nil {
+			c = RequestContext{Request: r, Path: route, ClientIP: a.clientIP(r)}
+		}
+		if err := plugin.OnRequest(c); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // RateLimitRule configures the maximum number of requests per peer and route during Window.
@@ -57,11 +88,18 @@ type endpointKey struct{ method, path string }
 func registerPlugins(plugins []Plugin) (map[endpointKey]Endpoint, error) {
 	routes := make(map[endpointKey]Endpoint)
 	ids := make(map[string]bool)
+	hasSessionResponse := false
 	for _, p := range plugins {
 		if strings.TrimSpace(p.ID) == "" || ids[p.ID] {
 			return nil, fmt.Errorf("authn: missing or duplicate plugin ID %q", p.ID)
 		}
 		ids[p.ID] = true
+		if p.SessionResponse != nil {
+			if hasSessionResponse {
+				return nil, errors.New("auth: only one plugin may customize the session response")
+			}
+			hasSessionResponse = true
+		}
 		for _, ep := range p.Endpoints {
 			if !strings.HasPrefix(ep.Path, "/") || ep.Path == "/" || path.Clean(ep.Path) != ep.Path || strings.ContainsAny(ep.Path, "%?#\\ \t\r\n") {
 				return nil, fmt.Errorf("authn: plugin %q has invalid endpoint path %q", p.ID, ep.Path)

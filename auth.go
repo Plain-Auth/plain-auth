@@ -22,15 +22,17 @@ import (
 
 // Auth is safe for concurrent use by application handlers.
 type Auth struct {
-	oneTimeToken  *OneTimeTokenOptions
-	legacySecret  string
-	factorOptions *TwoFactorOptions
-	factorStore   TwoFactorStore
-	passwordSlots chan struct{}
-	plugins       map[endpointKey]Endpoint
-	opts          Options
-	now           func() time.Time
-	limiter       rateLimiter
+	sessionResponse SessionResponseFunc
+	serviceJWT      *JWTOptions
+	oneTimeToken    *OneTimeTokenOptions
+	legacySecret    string
+	factorOptions   *TwoFactorOptions
+	factorStore     TwoFactorStore
+	passwordSlots   chan struct{}
+	plugins         map[endpointKey]Endpoint
+	opts            Options
+	now             func() time.Time
+	limiter         rateLimiter
 }
 
 // New constructs an http.Handler for mounting in an existing router.
@@ -132,6 +134,12 @@ func New(opts Options) (*Auth, error) {
 	}
 	a := &Auth{opts: opts, legacySecret: legacySecret, now: time.Now, passwordSlots: make(chan struct{}, min(runtime.GOMAXPROCS(0), 4)), plugins: plugins}
 	for _, p := range opts.Plugins {
+		if p.SessionResponse != nil {
+			a.sessionResponse = p.SessionResponse
+		}
+		if p.serviceJWT != nil {
+			a.serviceJWT = p.serviceJWT
+		}
 		if p.oneTime != nil {
 			a.oneTimeToken = p.oneTime
 		}

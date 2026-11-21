@@ -15,8 +15,8 @@ import { passkeyClient } from "@better-auth/passkey/client";
 import { haveIBeenPwned } from "better-auth/plugins/haveibeenpwned";
 import { createAuthClient } from "better-auth/client";
 import { getMigrations } from "better-auth/db/migration";
-import { organization, twoFactor, magicLink, oneTimeToken } from "better-auth/plugins";
-import { organizationClient, twoFactorClient, magicLinkClient, oneTimeTokenClient } from "better-auth/client/plugins";
+import { customSession, organization, twoFactor, magicLink, oneTimeToken, jwt } from "better-auth/plugins";
+import { organizationClient, twoFactorClient, magicLinkClient, oneTimeTokenClient, jwtClient } from "better-auth/client/plugins";
 import { symmetricDecrypt } from "better-auth/crypto";
 
 const harness = fileURLToPath(new URL(".", import.meta.url));
@@ -377,5 +377,48 @@ test("the official passkey client obtains registration and discoverable login op
     assert.ok(creation.data.user.id.length > 0);
     assert.ok(creation.data.pubKeyCredParams.some((p) => p.type === "public-key" && p.alg === -7));
     assert.deepEqual((await client.passkey.listUserPasskeys()).data, []);
+  }
+});
+
+test("the official client reads the configured custom session response", async (t) => {
+  const ref = await reference(t, [customSession(async ({ user }) => ({ viewer: user.email }))]);
+  const go = await goFixture(t, [], { CONFORMANCE_SESSION_VIEW: "1" });
+  for (const server of [ref, go]) {
+    const { client } = instrument(server);
+    assert.equal((await client.getSession()).data, null);
+    assert.equal((await client.signUp.email({ email, name, password })).error, null);
+    assert.deepEqual((await client.getSession()).data, { viewer: email });
+  }
+});
+
+test("shared SQLite signs with either runtime's encrypted JWT keys", async (t) => {
+  const { createLocalJWKSet, jwtVerify } = await import("jose");
+  for (const first of ["go", "reference"]) {
+    const go = await goFixture(t, ["jwt"]);
+    const database = new DatabaseSync(go.databasePath);
+    t.after(() => database.close());
+    const ref = betterAuth({
+      baseURL: go.baseURL, database, secret: "local-conformance-0123456789-abcdefghijk",
+      plugins: [jwt()], emailAndPassword: { enabled: true }, telemetry: { enabled: false },
+    });
+    const referenceSend = (r) => ref.handler(r);
+    let send = first === "go" ? go.send : referenceSend;
+    const {client} = instrument({baseURL:go.baseURL,send:(r)=>send(r)},[jwtClient()]);
+    const keys = (await client.jwks()).data;
+    assert.equal(keys.keys.length,1);
+    assert.equal(keys.keys[0].d,undefined);
+    const registration = (await client.signUp.email({email,name,password})).data;
+    for (const handler of [go.send,referenceSend]) {
+      send = handler;
+      const issued = await client.token();
+      assert.equal(issued.error,null);
+      const {payload,protectedHeader} = await jwtVerify(issued.data.token,createLocalJWKSet(keys),{
+        algorithms:["EdDSA"],issuer:go.baseURL,audience:go.baseURL,
+      });
+      assert.equal(payload.sub,registration.user.id);
+      assert.equal(payload.exp-payload.iat,900);
+      assert.equal(protectedHeader.kid,keys.keys[0].kid);
+    }
+    assert.equal(database.prepare("SELECT count(*) AS n FROM jwks").get().n,1);
   }
 });
