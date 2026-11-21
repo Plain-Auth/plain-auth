@@ -114,7 +114,7 @@ func (s *Store) LookupPasskey(ctx context.Context, id string) (pk.Record, error)
 	}
 	return r, rows.Err()
 }
-func duplicatePasskey(err error) bool {
+func duplicateConstraint(err error) bool {
 	var my *mysql.MySQLError
 	var pg *pgconn.PgError
 	var lite sqlite3.Error
@@ -140,7 +140,7 @@ func (s *Store) CreatePasskey(ctx context.Context, r pk.Record, session string, 
 		return pk.ErrDuplicate
 	}
 	_, err = tx.ExecContext(ctx, s.bind(`INSERT INTO "passkey" (`+passkeyFields+`) VALUES(?,?,?,?,?,?,?,?,?,?,?)`), r.ID, r.Name, r.PublicKey, r.UserID, r.CredentialID, r.Counter, r.DeviceType, r.BackedUp, r.Transports, s.date(now), r.AAGUID)
-	if duplicatePasskey(err) {
+	if duplicateConstraint(err) {
 		return pk.ErrDuplicate
 	}
 	if err != nil {

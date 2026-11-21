@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import { passkey } from "@better-auth/passkey";
 import { stripe } from "@better-auth/stripe";
 import { getMigrations } from "better-auth/db/migration";
-import { jwt, organization, twoFactor } from "better-auth/plugins";
+import { deviceAuthorization, jwt, organization, twoFactor } from "better-auth/plugins";
 import { DummyDriver, Kysely, MysqlDialect, PostgresDialect, SqliteDialect } from "kysely";
 import Stripe from "stripe";
 
@@ -14,6 +14,7 @@ export const dialects = { sqlite: SqliteDialect, postgres: PostgresDialect, mysq
 export function pluginInstances(profiles) {
   return profiles.map((id) => {
     switch (id) {
+      case "device-authorization": return deviceAuthorization();
       case "jwt": return jwt();
       case "passkey": return passkey();
       case "organization": return organization();
@@ -30,10 +31,12 @@ export function pluginInstances(profiles) {
 }
 
 export function* combinations() {
-  for (const signing of ["", "jwt"]) for (const org of ["", "organization", "organization-teams"]) {
-    for (const keys of ["", "passkey"]) for (const limits of ["", "rate-limit"]) {
-      for (const billing of ["", "stripe-subscriptions"]) {
-        for (const mfa of ["", "two-factor"]) yield [signing, org, keys, limits, billing, mfa].filter(Boolean);
+  for (const device of ["", "device-authorization"]) for (const signing of ["", "jwt"]) {
+    for (const org of ["", "organization", "organization-teams"]) {
+      for (const keys of ["", "passkey"]) for (const limits of ["", "rate-limit"]) {
+        for (const billing of ["", "stripe-subscriptions"]) {
+          for (const mfa of ["", "two-factor"]) yield [device, signing, org, keys, limits, billing, mfa].filter(Boolean);
+        }
       }
     }
   }

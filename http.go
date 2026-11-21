@@ -296,6 +296,11 @@ func writeAuthJSON(w http.ResponseWriter, status int, body any) {
 }
 
 func writeAuthError(w http.ResponseWriter, err error) {
+	var deviceErr *deviceFlowError
+	if errors.As(err, &deviceErr) {
+		writeAuthJSON(w, deviceErr.Status, deviceErr)
+		return
+	}
 	var apiErr *APIError
 	if !errors.As(err, &apiErr) {
 		apiErr = &APIError{Status: 500, Code: "INTERNAL_SERVER_ERROR", Message: "Internal Server Error"}

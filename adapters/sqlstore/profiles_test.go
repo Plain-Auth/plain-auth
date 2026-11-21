@@ -1,8 +1,7 @@
 package sqlstore
 
 import (
-	"crypto/rand"
-	"os"
+	"database/sql"
 	"reflect"
 	"strings"
 	"testing"
@@ -10,85 +9,59 @@ import (
 	"github.com/nabuhadba/go-better-auth/schema"
 )
 
-// Install the reference DDL and upgrade a populated core installation in
-// different, run-specific table namespaces on the same local SQL engine.
+// Upgrade a populated installation and compare it to direct execution of the
+// reference DDL in a separate database/schema on the same server.
 func TestServerPluginSchemaUpgrade(t *testing.T) {
 	for _, dialect := range []string{"postgres", "mysql"} {
 		t.Run(dialect, func(t *testing.T) {
-			dsn := os.Getenv("BETTERAUTH_TEST_" + strings.ToUpper(dialect) + "_DSN")
-			if dsn == "" {
-				t.Skip("disposable database DSN not set")
-			}
 			ctx := t.Context()
-			quote := `"`
-			queries := postgresCatalog
-			if dialect == "mysql" {
-				quote = "`"
-				queries = mysqlCatalog
-			}
+			migratedDSN, refDSN := organizationTestDSN(t, dialect), organizationTestDSN(t, dialect)
 			base, err := schema.Generate(dialect, nil)
 			if err != nil {
 				t.Fatal(err)
 			}
-			expanded, err := schema.Generate(dialect, []string{"organization-teams", "passkey", "rate-limit", "stripe-subscriptions", "two-factor"})
+			full, err := schema.Generate(dialect, []string{"device-authorization", "jwt", "organization-teams", "passkey", "rate-limit", "stripe-subscriptions", "two-factor"})
 			if err != nil {
 				t.Fatal(err)
 			}
-			var tables, names []string
-			for statement := range strings.SplitSeq(expanded, ";") {
-				stmt := strings.TrimSpace(statement)
-				if stmt == "" {
+			migrated, err := OpenWithSchema(ctx, dialect, migratedDSN, base)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer migrated.Close()
+			var db *sql.DB
+			queries := postgresCatalog
+			if dialect == "postgres" {
+				db, err = sql.Open("pgx", refDSN)
+			} else {
+				db, err = openMySQL(refDSN)
+				queries = mysqlCatalog
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer db.Close()
+			ref := &Store{db: db, dialect: dialect}
+			q := `INSERT INTO "user" ("id","name","email","emailVerified","createdAt","updatedAt") VALUES ('local','Fixture','local@example.test',false,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)`
+			if _, err := migrated.db.ExecContext(ctx, migrated.bind(q)); err != nil {
+				t.Fatal(err)
+			}
+			var tables []string
+			for statement := range strings.SplitSeq(full, ";") {
+				statement = strings.TrimSpace(statement)
+				if statement == "" {
 					continue
 				}
-				first := strings.Index(stmt, quote)
-				end := strings.Index(stmt[first+1:], quote)
-				if first < 0 || end < 0 {
-					t.Fatalf("invalid schema SQL %s", stmt)
+				if _, err := db.ExecContext(ctx, statement); err != nil {
+					t.Fatal(err)
 				}
-				name := stmt[first+1 : first+1+end]
-				names = append(names, name)
-				if strings.HasPrefix(stmt, "create table ") {
-					tables = append(tables, name)
-				}
-			}
-			prefix := "p" + strings.ToLower(rand.Text()[:8])
-			migrated, fresh := prefix+"m_", prefix+"f_"
-			withPrefix := func(script, prefix string) string {
-				for _, name := range names {
-					script = strings.ReplaceAll(script, quote+name+quote, quote+prefix+name+quote)
-				}
-				return script
-			}
-			store, err := OpenWithSchema(ctx, dialect, dsn, withPrefix(base, migrated))
-			if err != nil {
-				t.Fatal(err)
-			}
-			defer store.Close()
-			defer func() {
-				for i := len(tables) - 1; i >= 0; i-- {
-					for _, prefix := range []string{fresh, migrated} {
-						if _, err := store.db.ExecContext(ctx, "DROP TABLE IF EXISTS "+quote+prefix+tables[i]+quote); err != nil {
-							t.Error(err)
-						}
-					}
-				}
-			}()
-			q := func(key string) string { return quote + key + quote }
-			userTable := q(migrated + "user")
-			insert := "INSERT INTO " + userTable + " (" + strings.Join([]string{q("id"), q("name"), q("email"), q("emailVerified"), q("createdAt"), q("updatedAt")}, ",") +
-				") VALUES ('local','Fixture','local@example.test',false,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)"
-			if _, err := store.db.ExecContext(ctx, insert); err != nil {
-				t.Fatal(err)
-			}
-			for statement := range strings.SplitSeq(withPrefix(expanded, fresh), ";") {
-				if strings.TrimSpace(statement) != "" {
-					if _, err := store.db.ExecContext(ctx, statement); err != nil {
-						t.Fatal(err)
-					}
+				if strings.HasPrefix(statement, "create table ") {
+					table := strings.Fields(statement)[2]
+					tables = append(tables, strings.Trim(table, "`\""))
 				}
 			}
 			for range 2 {
-				again, err := OpenWithSchema(ctx, dialect, dsn, withPrefix(expanded, migrated))
+				again, err := OpenWithSchema(ctx, dialect, migratedDSN, full)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -97,13 +70,13 @@ func TestServerPluginSchemaUpgrade(t *testing.T) {
 				}
 			}
 			var email string
-			if err := store.db.QueryRowContext(ctx, "SELECT email FROM "+userTable+" WHERE id='local'").Scan(&email); err != nil || email != "local@example.test" {
+			if err := migrated.db.QueryRowContext(ctx, migrated.bind(`SELECT "email" FROM "user" WHERE "id"='local'`)).Scan(&email); err != nil || email != "local@example.test" {
 				t.Fatalf("preserving existing user: %q, %v", email, err)
 			}
 			for _, table := range tables {
 				for category, query := range queries {
-					actual := catalogRows(t, store, query, migrated+table, migrated)
-					expected := catalogRows(t, store, query, fresh+table, fresh)
+					actual := catalogRows(t, migrated, query, table, "")
+					expected := catalogRows(t, ref, query, table, "")
 					if !reflect.DeepEqual(actual, expected) {
 						t.Errorf("%s %s differs: got %v, expected %v", table, category, actual, expected)
 					}
