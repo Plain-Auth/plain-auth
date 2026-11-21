@@ -18,6 +18,7 @@
     - [x] Create a credential account and assign multiple roles ([test](../../../adapters/sqlstore/admin_test.go#L104))
   - [ ] `POST /admin/update-user`
     - [x] Update a user’s profile and gate changes to protected fields ([test](../../../adapters/sqlstore/admin_test.go#L159))
+    - [x] Persist independent nullable username fields on authorized profile edits ([test](../../../adapters/sqlstore/username_test.go#L448))
   - [ ] `GET /admin/list-users`
     - [x] Combine search, role filtering, sorting and pagination ([test](../../../adapters/sqlstore/admin_test.go#L164))
   - [ ] `POST /admin/list-user-sessions`

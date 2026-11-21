@@ -6,19 +6,19 @@
 
 - [ ] API keys endpoints, types and options
   - [ ] `apiKeyClient`
-    - [x] Create, retrieve, update, list and revoke user-owned keys with the official client ([test](../../../conformance/core.test.mjs#L844))
+    - [x] Create, retrieve, update, list and revoke user-owned keys with the official client ([test](../../../conformance/core.test.mjs#L856))
   - [ ] `ApiKeyClientPlugin`
-  - [x] `defaultKeyHasher` ([test](../../../conformance/core.test.mjs#L869))
-    - [x] Match the pinned digest and verify a Go key on shared SQLite ([test](../../../conformance/core.test.mjs#L869))
+  - [x] `defaultKeyHasher` ([test](../../../conformance/core.test.mjs#L881))
+    - [x] Match the pinned digest and verify a Go key on shared SQLite ([test](../../../conformance/core.test.mjs#L881))
   - [ ] `API_KEY_TABLE_NAME`
   - [ ] `apiKey`
   - [ ] `POST /api-key/create`
-    - [x] Issue a user-owned key and return its secret to the official client ([test](../../../conformance/core.test.mjs#L844))
+    - [x] Issue a user-owned key and return its secret to the official client ([test](../../../conformance/core.test.mjs#L856))
   - [ ] `Operation (server API only)`
   - [ ] `POST /api-key/delete`
-    - [x] Revoke the selected user-owned credential ([test](../../../conformance/core.test.mjs#L844))
+    - [x] Revoke the selected user-owned credential ([test](../../../conformance/core.test.mjs#L856))
   - [ ] `GET /api-key/get`
-    - [x] Return owner-visible metadata without the stored digest ([test](../../../conformance/core.test.mjs#L844))
+    - [x] Return owner-visible metadata without the stored digest ([test](../../../conformance/core.test.mjs#L856))
   - [ ] `PredefinedApiKeyOptions`
     - [ ] `keyExpiration`
     - [ ] `startingCharactersConfig`
@@ -29,9 +29,9 @@
   - [ ] `deleteAllExpiredApiKeys`
   - [ ] `createApiKeyRoutes`
   - [ ] `GET /api-key/list`
-    - [x] Return the owner’s paginated API keys and total ([test](../../../conformance/core.test.mjs#L844))
+    - [x] Return the owner’s paginated API keys and total ([test](../../../conformance/core.test.mjs#L856))
   - [ ] `POST /api-key/update`
-    - [x] Change user-owned key settings using the pinned client ([test](../../../conformance/core.test.mjs#L844))
+    - [x] Change user-owned key settings using the pinned client ([test](../../../conformance/core.test.mjs#L856))
   - [ ] `Operation (server API only)`
   - [ ] `ApiKeyOptions`
     - [ ] `schema`
@@ -195,7 +195,7 @@
         - [ ] Parameter `permissions` (optional)
       - [ ] Result
     - [ ] Delete an API Key
-      - [x] Delete a key through the public client and reject future verification ([test](../../../conformance/core.test.mjs#L844))
+      - [x] Delete a key through the public client and reject future verification ([test](../../../conformance/core.test.mjs#L856))
       - [ ] `POST /api-key/delete`
         - [ ] Parameter `configId` (optional)
         - [ ] Parameter `keyId`

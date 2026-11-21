@@ -237,7 +237,7 @@ func (t *adminTX) CreateUser(u authn.User, hash string) error {
 	if err != nil {
 		return err
 	}
-	if err := s.persistUsernames(t.ctx, t.tx, u); err != nil {
+	if err := s.persistUsernames(t.ctx, t.tx, u, false); err != nil {
 		return err
 	}
 	if hash != "" {
@@ -258,7 +258,7 @@ func (t *adminTX) UpdateUser(u authn.User) error {
 	if err != nil {
 		return err
 	}
-	return s.persistUsernames(t.ctx, t.tx, u)
+	return s.persistUsernames(t.ctx, t.tx, u, true)
 }
 func (t *adminTX) SetPassword(user, hash string) error {
 	s := t.s

@@ -40,4 +40,4 @@ These checks exercise the Go HTTP client, router mounts and SQL drivers.
   - [x] Use exact case-sensitive session tokens and atomic revocation on all three SQL engines ([test](../../adapters/sqlstore/multisession_test.go#L15))
   - [x] Serialize organization-team additions, preserve seat limits and roll back failed invitations on all three SQL engines ([test](../../adapters/sqlstore/organization_teams_test.go#L21))
   - [x] Serialize first-administrator provisioning across independent connections on all three SQL engines ([test](../../adapters/sqlstore/admin_test.go#L314))
-  - [x] Require database-enforced unique usernames and reject a partial unique index ([test](../../adapters/sqlstore/username_test.go#L421))
+  - [x] Require database-enforced unique usernames and reject a partial unique index ([test](../../adapters/sqlstore/username_test.go#L474))

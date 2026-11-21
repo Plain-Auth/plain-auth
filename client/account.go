@@ -12,10 +12,14 @@ import (
 // UpdateUser sends only the supplied fields. ClearImage explicitly removes an image.
 func (c *Client) UpdateUser(ctx context.Context, update auth.ProfileUpdate) error {
 	input := map[string]any{}
-	if update.Username != nil {
+	if update.ClearUsername {
+		input["username"] = nil
+	} else if update.Username != nil {
 		input["username"] = *update.Username
 	}
-	if update.DisplayUsername != nil {
+	if update.ClearDisplayUsername {
+		input["displayUsername"] = nil
+	} else if update.DisplayUsername != nil {
 		input["displayUsername"] = *update.DisplayUsername
 	}
 	if update.Name != nil {

@@ -33,11 +33,12 @@ func (a *Auth) adminUpdateFields(ctx context.Context, actor User, u *User, req A
 		return adminError(400, "NO_DATA_TO_UPDATE", "No data to update")
 	}
 	if a.username != nil {
-		name, display, err := usernameInput(req.Data)
+		patch, err := usernamePatch(req.Data)
+		name, display := patch.Username, patch.DisplayUsername
 		if err != nil {
 			return err
 		}
-		if name != nil || display != nil || creating {
+		if patch.hasUsernameChange() || creating {
 			f, err := a.username.fields(ctx, name, display, creating && name != nil)
 			if err != nil {
 				return err
@@ -45,10 +46,10 @@ func (a *Auth) adminUpdateFields(ctx context.Context, actor User, u *User, req A
 			if u.UsernameFields == nil {
 				u.UsernameFields = f
 			} else {
-				if f.Username != nil {
+				if patch.ClearUsername || f.Username != nil {
 					u.Username = f.Username
 				}
-				if f.DisplayUsernameFields != nil && f.DisplayUsername != nil {
+				if f.DisplayUsernameFields != nil && (patch.ClearDisplayUsername || f.DisplayUsername != nil) {
 					u.DisplayUsernameFields = f.DisplayUsernameFields
 				}
 			}

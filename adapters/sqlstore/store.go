@@ -62,7 +62,7 @@ func (s *Store) CreateUser(ctx context.Context, user authn.User, passwordHash st
 	if err != nil {
 		return err
 	}
-	if err := s.persistUsernames(ctx, tx, user); err != nil {
+	if err := s.persistUsernames(ctx, tx, user, false); err != nil {
 		return err
 	}
 	if s.adminSchema {

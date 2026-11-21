@@ -2990,6 +2990,11 @@
       "label": "Update a user’s profile and gate changes to protected fields",
       "test": "adapters/sqlstore/admin_test.go",
       "marker": "admin profile fields not updated"
+    },
+    {
+      "label": "Persist independent nullable username fields on authorized profile edits",
+      "test": "adapters/sqlstore/username_test.go",
+      "marker": "administrator clear did not persist"
     }
   ],
   "docs/content/docs/plugins/admin.mdx#L279": [
@@ -3490,6 +3495,16 @@
       "label": "Change the login name atomically without altering the previous display spelling",
       "test": "adapters/sqlstore/username_test.go",
       "marker": "username-only updates changed display spelling"
+    },
+    {
+      "label": "Clear either optional field across both servers and immediately release the former login name",
+      "test": "conformance/core.test.mjs",
+      "marker": "const cleared = ok(await alternate.getSession()).user;"
+    },
+    {
+      "label": "Roll back a display-name clear if the same profile edit requests a claimed login name",
+      "test": "adapters/sqlstore/username_test.go",
+      "marker": "conflicting update committed a partial clear"
     }
   ],
   "docs/content/docs/plugins/username.mdx#L144": [
@@ -3630,6 +3645,11 @@
       "label": "Serialize competing first assignments to an immutable username",
       "test": "adapters/sqlstore/username_test.go",
       "marker": "immutable first assignments raced"
+    },
+    {
+      "label": "Require a live owner session and protect previously assigned immutable names from clearing",
+      "test": "adapters/sqlstore/username_test.go",
+      "marker": "err = fixed.UpdateUser(ctx, h, stonewrit.ProfileUpdate{ClearUsername: true})"
     }
   ],
   "docs/content/docs/plugins/username.mdx#L365": [

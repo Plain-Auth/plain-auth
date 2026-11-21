@@ -31,8 +31,10 @@ AUTH_DSN=./accounts.db go run ./cmd/authctl migrate --dialect sqlite --plugins u
 | --- | --- |
 | `POST /sign-up/email` | Add optional `username` and `displayUsername` to a normal credential registration. A supplied username supplies the default display spelling. When only a display name is supplied, a valid login name is also registered from it. |
 | `POST /sign-in/username` | Supply `username`, `password` and optionally `rememberMe` and `callbackURL`. Email verification, administrator bans and enrolled second factors apply to this login. A successful login sets the regular session cookie. |
-| `POST /update-user` | The authenticated account owner can submit either name alongside ordinary profile changes. Changing only the login name preserves the current display spelling. |
+| `POST /update-user` | The authenticated account owner can submit either name alongside ordinary profile changes. Omitted fields keep their stored values. Send `null` to clear either name. Clearing a mutable login name makes it available for registration. |
 | `POST /is-username-available` | Supply `username` to receive `{"available":true}` or `{"available":false}`. A database constraint settles simultaneous attempts to claim the same name. |
+
+In Go, use `ProfileUpdate.ClearUsername` and `ClearDisplayUsername` to clear fields. A clear flag takes precedence over a supplied value for the same field. Owners retain their assigned login name under `Immutable`. Administrators with the user update grant can change or clear either field.
 
 The Go client exposes `SignUpEmail`, `SignInUsername`, `UpdateUser` and `IsUsernameAvailable`. In process, use `Auth.SignInUsername` or `Auth.IsUsernameAvailable`. Administrators can supply `username` and `displayUsername` in the `data` field of authenticated user creation and profile updates. [Public API and storage tests](../adapters/sqlstore/username_test.go)
 

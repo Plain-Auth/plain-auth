@@ -834,6 +834,18 @@ test("the pinned username client shares normalized identities, display names and
       assert.equal(current.displayUsername, displayUsername ? raw : undefined);
       assert.deepEqual(ok(await actor.isUsernameAvailable({ username: raw })), { available: true });
       assert.equal((await alternate.isUsernameAvailable({ username: "ab" })).error.code, "USERNAME_TOO_SHORT");
+      if (displayUsername) {
+        ok(await alternate.updateUser({ displayUsername: null }));
+        const visible = ok(await actor.getSession()).user;
+        assert.equal(visible.displayUsername, null);
+        assert.equal(visible.username, next.toLowerCase());
+      }
+      ok(await actor.updateUser({ username: null }));
+      const cleared = ok(await alternate.getSession()).user;
+      assert.equal(cleared.username, null);
+      assert.equal(cleared.displayUsername, displayUsername ? null : undefined);
+      assert.deepEqual(ok(await alternate.isUsernameAvailable({ username: next })), { available: true });
+      assert.equal((await alternate.signIn.username({ username: next, password })).error.code, "INVALID_USERNAME_OR_PASSWORD");
       const noName = ok(await actor.signUp.email({ name, email: "no." + address, password })).user;
       assert.equal(noName.username, null);
       assert.equal(noName.displayUsername, displayUsername ? null : undefined);

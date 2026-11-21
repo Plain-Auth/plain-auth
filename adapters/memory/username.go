@@ -75,30 +75,35 @@ func (s *Store) ReadUsername(ctx context.Context, id string, display bool) (*sto
 	return cloneUsername(rec.user.UsernameFields, display), nil
 }
 
-func (s *Store) UpdateUsernameProfile(ctx context.Context, id string, p stonewrit.ProfileUpdate, now time.Time, immutable bool) error {
+func (s *Store) UpdateUsernameProfile(ctx context.Context, id, token string, p stonewrit.ProfileUpdate, now time.Time, immutable bool) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if err := ctx.Err(); err != nil {
 		return err
 	}
 	rec, ok := s.users[id]
-	if !ok {
+	ss := s.sessions[token]
+	if !ok || ss.UserID != id || ss.ImpersonatedBy != nil || !ss.ExpiresAt.After(now) {
 		return stonewrit.ErrNotFound
 	}
 	old := rec.user.UsernameFields
-	if p.Username != nil {
-		if immutable && old != nil && old.Username != nil && *old.Username != "" && *old.Username != *p.Username {
-			return stonewrit.ErrUsernameImmutable
-		}
+	if immutable && old != nil && old.Username != nil && *old.Username != "" && (p.ClearUsername || p.Username != nil && *old.Username != *p.Username) {
+		return stonewrit.ErrUsernameImmutable
+	}
+	if p.Username != nil && !p.ClearUsername {
 		if owner := s.usernameOwner(*p.Username); owner != "" && owner != id {
 			return stonewrit.ErrUsernameTaken
 		}
 	}
-	f := cloneUsername(old, p.DisplayUsername != nil || old != nil && old.DisplayUsernameFields != nil)
-	if p.Username != nil {
+	f := cloneUsername(old, p.ClearDisplayUsername || p.DisplayUsername != nil || old != nil && old.DisplayUsernameFields != nil)
+	if p.ClearUsername {
+		f.Username = nil
+	} else if p.Username != nil {
 		f.Username = copyString(p.Username)
 	}
-	if p.DisplayUsername != nil {
+	if p.ClearDisplayUsername {
+		f.DisplayUsername = nil
+	} else if p.DisplayUsername != nil {
 		f.DisplayUsername = copyString(p.DisplayUsername)
 	}
 	rec.user.UsernameFields = f

@@ -9,11 +9,12 @@ import (
 	"time"
 )
 
-// ProfileUpdate changes the supplied fields. ClearImage removes the profile image.
+// ProfileUpdate changes the supplied fields. A Clear flag removes its field and
+// takes precedence over a supplied value.
 type ProfileUpdate struct {
-	Username, DisplayUsername *string
-	Name, Image               *string
-	ClearImage                bool
+	Username, DisplayUsername                       *string
+	Name, Image                                     *string
+	ClearImage, ClearUsername, ClearDisplayUsername bool
 }
 
 // PasswordResetToken records a reset link and its owner in verification storage.
@@ -60,9 +61,15 @@ func (a *Auth) UpdateUser(ctx context.Context, h http.Header, update ProfileUpda
 	if err != nil {
 		return err
 	}
-	if a.username != nil && (update.Username != nil || update.DisplayUsername != nil) {
+	if a.username != nil && update.hasUsernameChange() {
 		if session.Session.ImpersonatedBy != nil {
 			return &APIError{403, "FORBIDDEN", "Account owner session required"}
+		}
+		if update.ClearUsername {
+			update.Username = nil
+		}
+		if update.ClearDisplayUsername {
+			update.DisplayUsername = nil
 		}
 		f, err := a.username.fields(ctx, update.Username, update.DisplayUsername, false)
 		if err != nil {
@@ -72,11 +79,19 @@ func (a *Auth) UpdateUser(ctx context.Context, h http.Header, update ProfileUpda
 		if f.DisplayUsernameFields != nil {
 			update.DisplayUsername = f.DisplayUsername
 		}
-		if update.Username != nil || update.DisplayUsername != nil {
-			return usernameWriteError(a.opts.Store.(UsernameStore).UpdateUsernameProfile(ctx, session.User.ID, update, a.now().UTC(), a.username.Immutable))
+		if a.username.DisableDisplay {
+			update.ClearDisplayUsername = false
+		}
+		if update.hasUsernameChange() {
+			err := a.opts.Store.(UsernameStore).UpdateUsernameProfile(ctx, session.User.ID, session.Session.Token, update, a.now().UTC(), a.username.Immutable)
+			if errors.Is(err, ErrNotFound) {
+				return &APIError{401, "UNAUTHORIZED", "Unauthorized"}
+			}
+			return usernameWriteError(err)
 		}
 	}
 	update.Username, update.DisplayUsername = nil, nil
+	update.ClearUsername, update.ClearDisplayUsername = false, false
 	if update.Name == nil && update.Image == nil && !update.ClearImage {
 		return &APIError{400, "BAD_REQUEST", "No fields to update"}
 	}

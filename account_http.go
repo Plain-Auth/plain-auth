@@ -81,7 +81,7 @@ func (a *Auth) handleAccountRequest(route string, w http.ResponseWriter, r *http
 		var update ProfileUpdate
 		if a.username != nil {
 			var err error
-			update.Username, update.DisplayUsername, err = usernameInput(b)
+			update, err = usernamePatch(b)
 			if err != nil {
 				return nil, err
 			}

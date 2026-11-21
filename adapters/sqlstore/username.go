@@ -68,21 +68,21 @@ func (s *Store) ReadUsername(ctx context.Context, user string, display bool) (*s
 	return f, err
 }
 
-func (s *Store) UpdateUsernameProfile(ctx context.Context, userID string, p stonewrit.ProfileUpdate, now time.Time, immutable bool) error {
+func (s *Store) UpdateUsernameProfile(ctx context.Context, userID, token string, p stonewrit.ProfileUpdate, now time.Time, immutable bool) error {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
-	if err = s.lockAccount(ctx, tx, userID); err != nil {
+	if err = s.lockActiveAccount(ctx, tx, userID, token, now); err != nil {
 		return err
 	}
-	if immutable && p.Username != nil {
+	if immutable && (p.Username != nil || p.ClearUsername) {
 		var current *string
 		if err = tx.QueryRowContext(ctx, s.bind(`SELECT "username" FROM "user" WHERE "id"=?`), userID).Scan(&current); err != nil {
 			return err
 		}
-		if current != nil && *current != "" && *current != *p.Username {
+		if current != nil && *current != "" && (p.ClearUsername || *current != *p.Username) {
 			return stonewrit.ErrUsernameImmutable
 		}
 	}
@@ -92,16 +92,17 @@ func (s *Store) UpdateUsernameProfile(ctx context.Context, userID string, p ston
 	return tx.Commit()
 }
 
-func (s *Store) persistUsernames(ctx context.Context, tx *sql.Tx, u stonewrit.User) error {
+func (s *Store) persistUsernames(ctx context.Context, tx *sql.Tx, u stonewrit.User, writeNulls bool) error {
 	f := u.UsernameFields
 	if f == nil {
 		return nil
 	}
-	patch := stonewrit.ProfileUpdate{Username: f.Username}
+	patch := stonewrit.ProfileUpdate{Username: f.Username, ClearUsername: writeNulls && f.Username == nil}
 	if f.DisplayUsernameFields != nil {
 		patch.DisplayUsername = f.DisplayUsername
+		patch.ClearDisplayUsername = writeNulls && f.DisplayUsername == nil
 	}
-	if patch.Username == nil && patch.DisplayUsername == nil {
+	if !patch.ClearUsername && !patch.ClearDisplayUsername && patch.Username == nil && patch.DisplayUsername == nil {
 		return nil
 	}
 	return s.updateProfile(ctx, tx, u.ID, patch, u.UpdatedAt)

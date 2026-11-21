@@ -32,7 +32,7 @@ type UsernameOptions struct {
 
 type UsernameStore interface {
 	CheckUsernameSchema(context.Context, bool) error
-	UpdateUsernameProfile(context.Context, string, ProfileUpdate, time.Time, bool) error
+	UpdateUsernameProfile(context.Context, string, string, ProfileUpdate, time.Time, bool) error
 	UsernameExists(context.Context, string) (bool, error)
 	UsernameCredential(context.Context, string) (User, string, error)
 	ReadUsername(context.Context, string, bool) (*UsernameFields, error)
@@ -254,6 +254,34 @@ func (a *Auth) usernameLoginHTTP(c EndpointContext) (any, error) {
 		return nil, err
 	}
 	return a.writeCredentialResult(c.ResponseHeader, c.Request, c.Body, res, remember, false)
+}
+
+func (p ProfileUpdate) hasUsernameChange() bool {
+	return p.Username != nil || p.DisplayUsername != nil || p.ClearUsername || p.ClearDisplayUsername
+}
+
+func usernamePatch(body map[string]any) (ProfileUpdate, error) {
+	var p ProfileUpdate
+	read := func(field string, dest **string, clear *bool) error {
+		v, ok := body[field]
+		if !ok {
+			return nil
+		}
+		if v == nil {
+			*clear = true
+			return nil
+		}
+		text, err := requiredString(body, field)
+		if err == nil {
+			*dest = &text
+		}
+		return err
+	}
+	if err := read("username", &p.Username, &p.ClearUsername); err != nil {
+		return p, err
+	}
+	err := read("displayUsername", &p.DisplayUsername, &p.ClearDisplayUsername)
+	return p, err
 }
 
 func usernameInput(body map[string]any) (*string, *string, error) {

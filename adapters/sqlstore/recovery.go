@@ -39,11 +39,15 @@ func (s *Store) updateProfile(ctx context.Context, db executor, userID string, p
 		fields = append(fields, `"image" = ?`)
 		args = append(args, *patch.Image)
 	}
-	if patch.Username != nil {
+	if patch.ClearUsername {
+		fields = append(fields, `"username" = NULL`)
+	} else if patch.Username != nil {
 		fields = append(fields, `"username"=?`)
 		args = append(args, *patch.Username)
 	}
-	if patch.DisplayUsername != nil {
+	if patch.ClearDisplayUsername {
+		fields = append(fields, `"displayUsername" = NULL`)
+	} else if patch.DisplayUsername != nil {
 		fields = append(fields, `"displayUsername"=?`)
 		args = append(args, *patch.DisplayUsername)
 	}

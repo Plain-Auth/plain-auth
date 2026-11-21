@@ -171,6 +171,34 @@ func TestUsernameLifecycleAcrossStores(t *testing.T) {
 			if err != nil || after.User.Name != reg.User.Name || *after.User.Username != "renamed.member" {
 				t.Fatal("conflicting rename partially updated the profile", err)
 			}
+			if err = owner.UpdateUser(ctx, stonewrit.ProfileUpdate{ClearUsername: true}); err != nil {
+				t.Fatal(err)
+			}
+			cleared, err := owner.GetSession(ctx)
+			if err != nil || cleared.User.Username != nil || *cleared.User.DisplayUsername != pretty {
+				t.Fatal("clearing the login name changed the omitted display field", err)
+			}
+			if free, err := owner.IsUsernameAvailable(ctx, changed); err != nil || !free {
+				t.Fatal("cleared username remained claimed", err)
+			}
+			_, err = signin.SignInUsername(ctx, client.UsernameSignInRequest{Username: changed, Password: pwd})
+			checkCode(err, "INVALID_USERNAME_OR_PASSWORD")
+			if err = owner.UpdateUser(ctx, stonewrit.ProfileUpdate{Username: &changed, ClearDisplayUsername: true}); err != nil {
+				t.Fatal(err)
+			}
+			cleared, err = owner.GetSession(ctx)
+			if err != nil || *cleared.User.Username != "renamed.member" || cleared.User.DisplayUsername != nil {
+				t.Fatal("clearing display field removed the login name", err)
+			}
+			if err = owner.UpdateUser(ctx, stonewrit.ProfileUpdate{DisplayUsername: &pretty}); err != nil {
+				t.Fatal(err)
+			}
+			err = owner.UpdateUser(ctx, stonewrit.ProfileUpdate{Username: &contested, ClearDisplayUsername: true})
+			checkCode(err, "USERNAME_IS_ALREADY_TAKEN")
+			cleared, err = owner.GetSession(ctx)
+			if err != nil || *cleared.User.DisplayUsername != pretty {
+				t.Fatal("conflicting update committed a partial clear", err)
+			}
 			if _, err = owner.DeleteAccount(ctx, stonewrit.DeleteUserInput{Password: pwd}); err != nil {
 				t.Fatal(err)
 			}
@@ -207,6 +235,19 @@ func TestUsernameLifecycleAcrossStores(t *testing.T) {
 			if wins != 1 {
 				t.Fatal("immutable first assignments raced")
 			}
+			err = fixed.UpdateUser(ctx, h, stonewrit.ProfileUpdate{ClearUsername: true})
+			checkCode(err, "USERNAME_IS_IMMUTABLE")
+			if err = fixed.UpdateUser(ctx, h, stonewrit.ProfileUpdate{ClearDisplayUsername: true}); err != nil {
+				t.Fatal(err)
+			}
+			if err = fixed.SignOut(ctx, h); err != nil {
+				t.Fatal(err)
+			}
+			err = store.(stonewrit.UsernameStore).UpdateUsernameProfile(ctx, newUser.User.ID, newUser.Token, stonewrit.ProfileUpdate{ClearDisplayUsername: true}, time.Now(), true)
+			if !errors.Is(err, stonewrit.ErrNotFound) {
+				t.Fatal("revoked owner session changed a username profile", err)
+			}
+
 		})
 	}
 }
@@ -393,6 +434,18 @@ func TestUsernameVerificationAndFactorChallenge(t *testing.T) {
 	cache, err := browser.AdminListUsers(ctx, stonewrit.AdminQuery{SearchValue: "created@example.test"})
 	if err != nil || len(cache.Users) != 1 || *cache.Users[0].Username != "reassigned" {
 		t.Fatal("administrative listing omitted username", err)
+	}
+	profile, err = browser.AdminUpdateUser(ctx, added.ID, map[string]any{"username": nil})
+	if err != nil || profile.Username != nil || *profile.DisplayUsername != "From_Admin" {
+		t.Fatal("administrator could not clear only the login name", err)
+	}
+	profile, err = browser.AdminUpdateUser(ctx, added.ID, map[string]any{"displayUsername": nil})
+	if err != nil || profile.DisplayUsername != nil {
+		t.Fatal("administrator could not clear display name", err)
+	}
+	profile, err = browser.AdminGetUser(ctx, added.ID)
+	if err != nil || profile.Username != nil || profile.DisplayUsername != nil {
+		t.Fatal("administrator clear did not persist", err)
 	}
 	if _, err = db.db.ExecContext(ctx, `UPDATE "user" SET "banned"=1 WHERE "id"=?`, reg.User.ID); err != nil {
 		t.Fatal(err)
