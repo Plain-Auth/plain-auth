@@ -5,8 +5,10 @@
 ## Interfaces
 
 - [ ] Last login method endpoints, types and options
-  - [x] `LastLoginMethodClientConfig` ([test](../../../conformance/lastlogin-browser.test.mjs#L6))
+  - [ ] `LastLoginMethodClientConfig`
     - [x] Use a custom preference name and set the domain when clearing it ([test](../../../conformance/lastlogin-browser.test.mjs#L6))
+    - [ ] `cookieName`
+    - [ ] `domain`
   - [x] `lastLoginMethodClient` ([test](../../../conformance/lastlogin-browser.test.mjs#L6))
     - [x] Read, match and clear the browser preference, including a custom cookie domain ([test](../../../conformance/lastlogin-browser.test.mjs#L6))
   - [ ] `LastLoginMethodOptions`

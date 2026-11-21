@@ -6,20 +6,41 @@
 
 - [ ] Single sign-on endpoints, types and options
   - [ ] `ssoClient`
+  - [ ] `DEFAULT_CLOCK_SKEW_MS`
+  - [ ] `DEFAULT_MAX_SAML_METADATA_SIZE`
+  - [ ] `DEFAULT_MAX_SAML_RESPONSE_SIZE`
+  - [ ] `sso`
   - [ ] `SSOPlugin`
-  - [ ] `sso`
-  - [ ] `sso`
-  - [ ] `sso`
   - [ ] `NormalizedSSOProfile`
-  - [ ] `OIDCDiscoveryDocument`
-  - [ ] `DiscoveryErrorCode`
-  - [ ] `DiscoveryError`
-  - [ ] `HydratedOIDCConfig`
+  - [ ] `computeDiscoveryUrl`
+  - [ ] `discoverOIDCConfig`
+  - [ ] `fetchDiscoveryDocument`
+  - [ ] `needsRuntimeDiscovery`
+  - [ ] `normalizeDiscoveryUrls`
+  - [ ] `normalizeUrl`
+  - [ ] `selectTokenEndpointAuthMethod`
+  - [ ] `validateDiscoveryDocument`
+  - [ ] `validateDiscoveryUrl`
   - [ ] `DiscoverOIDCConfigParams`
+  - [ ] `DiscoveryError`
+  - [ ] `DiscoveryErrorCode`
+  - [ ] `HydratedOIDCConfig`
+    - [ ] `issuer`
+    - [ ] `discoveryEndpoint`
+    - [ ] `authorizationEndpoint`
+    - [ ] `tokenEndpoint`
+    - [ ] `jwksEndpoint`
+    - [ ] `userInfoEndpoint`
+    - [ ] `tokenEndpointAuthentication`
+    - [ ] `scopesSupported`
+  - [ ] `OIDCDiscoveryDocument`
   - [ ] `REQUIRED_DISCOVERY_FIELDS`
   - [ ] `RequiredDiscoveryField`
   - [ ] `POST /sso/request-domain-verification`
   - [ ] `POST /sso/verify-domain`
+  - [ ] `deriveSAMLIdentityProviderEntityID`
+  - [ ] `deriveSAMLServiceProviderPolicy`
+  - [ ] `SAMLServiceProviderPolicy`
   - [ ] `GET /sso/providers`
   - [ ] `GET /sso/get-provider`
   - [ ] `POST /sso/update-provider`
@@ -32,27 +53,58 @@
   - [ ] `GET / POST /sso/saml2/sp/acs/:providerId`
   - [ ] `GET / POST /sso/saml2/sp/slo/:providerId`
   - [ ] `POST /sso/saml2/logout/:providerId`
-  - [ ] `OIDCMapping`
-  - [ ] `SAMLMapping`
+  - [ ] `AlgorithmValidationOptions`
+    - [ ] `onDeprecated`
+    - [ ] `allowedSignatureAlgorithms`
+    - [ ] `allowedDigestAlgorithms`
+    - [ ] `allowedKeyEncryptionAlgorithms`
+    - [ ] `allowedDataEncryptionAlgorithms`
+  - [ ] `DataEncryptionAlgorithm`
+  - [ ] `DeprecatedAlgorithmBehavior`
+  - [ ] `DigestAlgorithm`
+  - [ ] `KeyEncryptionAlgorithm`
+  - [ ] `SignatureAlgorithm`
+  - [ ] `SAMLConditions`
+  - [ ] `TimestampValidationOptions`
+    - [ ] `clockSkew`
+    - [ ] `requireTimestamps`
+    - [ ] `logger`
+  - [ ] `validateSAMLTimestamp`
   - [ ] `OIDCConfig`
-  - [ ] `SAMLIdentityProviderMetadata`
+    - [ ] `issuer`
+    - [ ] `pkce`
+    - [ ] `clientId`
+    - [ ] `clientSecret`
+    - [ ] `authorizationEndpoint`
+    - [ ] `discoveryEndpoint`
+    - [ ] `userInfoEndpoint`
+    - [ ] `scopes`
+    - [ ] `overrideUserInfo`
+    - [ ] `tokenEndpoint`
+    - [ ] `tokenEndpointAuthentication`
+    - [ ] `privateKeyId`
+    - [ ] `privateKeyAlgorithm`
+    - [ ] `jwksEndpoint`
+    - [ ] `mapping`
+    - [ ] `allowIdpInitiated`
   - [ ] `SAMLConfig`
-  - [ ] `AuthnRequestRecord`
-  - [ ] `SAMLSessionRecord`
-  - [ ] `SAMLAssertionExtract`
-  - [ ] `SSOProviderAdditionalFieldsInput`
-  - [ ] `InferSSOProvider`
-  - [ ] `SSOProvider`
-  - [ ] `SSOProviderSchema`
-  - [ ] `SSOUserResolution`
-  - [ ] `SSOProviderUserProfile`
-  - [ ] `SSOProviderReference`
+    - [ ] `issuer`
+    - [ ] `entryPoint`
+    - [ ] `cert`
+    - [ ] `audience`
+    - [ ] `callbackUrl`
+    - [ ] `idpInitiatedCallbackUrl`
+    - [ ] `idpMetadata`
+    - [ ] `spMetadata`
+    - [ ] `wantAssertionsSigned`
+    - [ ] `authnRequestsSigned`
+    - [ ] `signatureAlgorithm`
+    - [ ] `digestAlgorithm`
+    - [ ] `identifierFormat`
+    - [ ] `privateKey`
+    - [ ] `mapping`
+  - [ ] `SAMLIdentityProviderMetadata`
   - [ ] `SSOOIDCUserResolutionInput`
-  - [ ] `SSOSAMLUserResolutionInput`
-  - [ ] `SSOUserResolutionInput`
-  - [ ] `SSOUserResolutionContext`
-  - [ ] `SSOProviderMutationGuardInput`
-  - [ ] `SSOProviderMutationGuardContext`
   - [ ] `SSOOptions`
     - [ ] `resolveUser`
     - [ ] `guardProviderMutation`
@@ -71,6 +123,23 @@
     - [ ] `redirectURI`
     - [ ] `resolvePrivateKey`
     - [ ] `saml`
+  - [ ] `SSOProvider`
+  - [ ] `SSOProviderMutationGuardContext`
+  - [ ] `SSOProviderMutationGuardInput`
+  - [ ] `SSOProviderReference`
+  - [ ] `SSOProviderUserProfile`
+  - [ ] `SSOSAMLUserResolutionInput`
+  - [ ] `SSOUserResolution`
+  - [ ] `SSOUserResolutionContext`
+  - [ ] `SSOUserResolutionInput`
+  - [ ] `OIDCMapping`
+  - [ ] `SAMLMapping`
+  - [ ] `AuthnRequestRecord`
+  - [ ] `SAMLSessionRecord`
+  - [ ] `SAMLAssertionExtract`
+  - [ ] `SSOProviderAdditionalFieldsInput`
+  - [ ] `InferSSOProvider`
+  - [ ] `SSOProviderSchema`
   - [ ] `Member`
 
 ## Verify SSO domains

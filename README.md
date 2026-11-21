@@ -99,6 +99,10 @@ Go records the resolved commit in the consuming project’s `go.mod`. The module
 | Add account switching to a shared device | [Device sessions](docs/multi-session.md) |
 | Share login cookies across approved sibling hosts | [Cookie configuration](docs/authentication.md) |
 | Access application routes with revocable API keys | [API keys](docs/api-keys.md) |
+| Define roles and check resource permissions in application handlers | [Role permissions](docs/access.md) |
+| Share a request limit across server instances using Redis or Valkey | [Redis secondary storage](docs/redis.md) |
+| Return translated authentication errors in 22 bundled languages | [Localization](docs/localization.md) |
+| Generate an OpenAPI document and browse the routes enabled in this application | [OpenAPI reference](docs/openapi.md) |
 | Authorize a TV, CLI or input-constrained device | [Device authorization](docs/device-authorization.md) |
 | Transfer an active session using a single-use credential | [One-time tokens](docs/one-time-token.md) |
 | Integrate the Google One Tap prompt or sign-in button | [Google One Tap](docs/one-tap.md) |

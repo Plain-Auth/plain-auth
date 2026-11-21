@@ -4829,6 +4829,18 @@
       "complete": true
     }
   ],
+  "docs/content/docs/plugins/phone-number.mdx#L397": [
+    {
+      "label": "Upgrade populated user tables, allow missing numbers, and enforce one owner per telephone number on three SQL engines",
+      "test": "adapters/sqlstore/phone_schema_test.go",
+      "marker": "func TestPhoneNumberProfileMigration("
+    },
+    {
+      "label": "Preserve a verified phone across migration replay and store an explicit false flag on reassignment",
+      "test": "adapters/sqlstore/phone_schema_test.go",
+      "marker": "replayed migration lost a verified number"
+    }
+  ],
   "plugin/open-api/GET /open-api/generate-schema": [
     {
       "label": "Serve the mounted versioned JSON document and match required fields for core and username operations",
@@ -4888,16 +4900,206 @@
       "marker": "assert.equal(doc.openapi,\"3.1.1\")"
     }
   ],
-  "docs/content/docs/plugins/phone-number.mdx#L397": [
+  "database/redisStorage/get": [
     {
-      "label": "Upgrade populated user tables, allow missing numbers, and enforce one owner per telephone number on three SQL engines",
-      "test": "adapters/sqlstore/phone_schema_test.go",
-      "marker": "func TestPhoneNumberProfileMigration("
+      "label": "Distinguish a missing key from a stored empty string",
+      "test": "adapters/redis/storage_test.go",
+      "marker": "empty string confused with missing key",
+      "complete": true
+    }
+  ],
+  "database/SecondaryStorage/get": [
+    {
+      "label": "Distinguish a missing key from a stored empty string",
+      "test": "adapters/redis/storage_test.go",
+      "marker": "empty string confused with missing key",
+      "complete": true
+    }
+  ],
+  "database/redisStorage/set": [
+    {
+      "label": "Replace a value and its expiry and remove an expired string",
+      "test": "adapters/redis/storage_test.go",
+      "marker": "string value survived its expiry",
+      "complete": true
+    }
+  ],
+  "database/SecondaryStorage/set": [
+    {
+      "label": "Replace a value and its expiry and remove an expired string",
+      "test": "adapters/redis/storage_test.go",
+      "marker": "string value survived its expiry",
+      "complete": true
+    }
+  ],
+  "database/redisStorage/delete": [
+    {
+      "label": "Delete present and absent keys idempotently",
+      "test": "adapters/redis/storage_test.go",
+      "marker": "deleted key returned a value",
+      "complete": true
+    }
+  ],
+  "database/SecondaryStorage/delete": [
+    {
+      "label": "Delete present and absent keys idempotently",
+      "test": "adapters/redis/storage_test.go",
+      "marker": "deleted key returned a value",
+      "complete": true
+    }
+  ],
+  "database/redisStorage/increment": [
+    {
+      "label": "Increment atomically and preserve the TTL from creation",
+      "test": "adapters/redis/storage_test.go",
+      "marker": "increment extended the fixed creation window",
+      "complete": true
+    }
+  ],
+  "database/SecondaryStorage/increment": [
+    {
+      "label": "Increment atomically and preserve the TTL from creation",
+      "test": "adapters/redis/storage_test.go",
+      "marker": "increment extended the fixed creation window",
+      "complete": true
+    }
+  ],
+  "database/redisStorage/getAndDelete": [
+    {
+      "label": "Allow one successful claim across simultaneous clients with GETDEL and the Lua fallback",
+      "test": "adapters/redis/storage_test.go",
+      "marker": "concurrent get-and-delete returned more or fewer than one proof",
+      "complete": true
+    }
+  ],
+  "database/SecondaryStorage/getAndDelete": [
+    {
+      "label": "Allow one successful claim across simultaneous clients with GETDEL and the Lua fallback",
+      "test": "adapters/redis/storage_test.go",
+      "marker": "concurrent get-and-delete returned more or fewer than one proof",
+      "complete": true
+    }
+  ],
+  "database/redisStorage/listKeys": [
+    {
+      "label": "Deduplicate paged SCAN results and strip a literal prefix containing glob metacharacters",
+      "test": "adapters/redis/storage_test.go",
+      "marker": "literal prefix list did not return 400 unique relative keys",
+      "complete": true
+    }
+  ],
+  "database/redisStorage/clear": [
+    {
+      "label": "Resume a partially failed prefix-scoped clear while preserving neighboring data",
+      "test": "adapters/redis/storage_test.go",
+      "marker": "clear crossed its literal namespace or left keys behind",
+      "complete": true
+    }
+  ],
+  "database/RedisStorageConfig/client": [
+    {
+      "label": "Share one rate-limit budget across two handlers with separate client connections",
+      "test": "adapters/redis/storage_test.go",
+      "marker": "replicas did not share one HTTP request budget",
+      "complete": true
+    }
+  ],
+  "database/RedisStorageConfig/keyPrefix": [
+    {
+      "label": "Apply a default namespace or explicitly scope a prefix with Redis glob characters",
+      "test": "adapters/redis/storage_test.go",
+      "marker": "missing default application prefix",
+      "complete": true
+    }
+  ],
+  "published/redis-storage/.": [
+    {
+      "label": "Store expiring values and enforce distributed rate limits using the optional Redis module",
+      "test": "adapters/redis/storage_test.go",
+      "marker": "func TestDistributedHTTPRateLimit("
+    }
+  ],
+  "docs/content/docs/concepts/database.mdx#L146": [
+    {
+      "label": "Store expiring values and enforce distributed rate limits using the optional Redis module",
+      "test": "adapters/redis/storage_test.go",
+      "marker": "func TestDistributedHTTPRateLimit("
+    }
+  ],
+  "docs/content/docs/concepts/database.mdx#L177": [
+    {
+      "label": "Store expiring values and enforce distributed rate limits using the optional Redis module",
+      "test": "adapters/redis/storage_test.go",
+      "marker": "func TestDistributedHTTPRateLimit("
+    }
+  ],
+  "docs/content/docs/concepts/database.mdx#L182": [
+    {
+      "label": "Store expiring values and enforce distributed rate limits using the optional Redis module",
+      "test": "adapters/redis/storage_test.go",
+      "marker": "func TestDistributedHTTPRateLimit("
+    }
+  ],
+  "docs/content/docs/concepts/rate-limit.mdx#L269/Using Secondary Storage": [
+    {
+      "label": "Share a fixed HTTP request window and reopen it after Redis expires the counter",
+      "test": "adapters/redis/storage_test.go",
+      "marker": "Redis did not reopen the expired HTTP window",
+      "complete": true
+    }
+  ],
+  "plugin/api-key/ verifyApiKey (server API only)": [
+    {
+      "label": "Verify permissions and consume the credential atomically",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "concurrent key quota granted"
+    }
+  ],
+  "plugin/api-key/ deleteAllExpiredApiKeys (server API only)": [
+    {
+      "label": "Purge expired entries within one configuration and retain live keys",
+      "test": "adapters/sqlstore/apikey_test.go",
+      "marker": "expired cleanup did not remove exactly one key"
+    }
+  ],
+  "plugin-symbol/access/createAccessControl": [
+    {
+      "label": "Validate role grants against the catalog and isolate both from later changes to their input",
+      "test": "plugins/access/access_test.go",
+      "marker": "func TestRoleDefinition("
+    }
+  ],
+  "plugin-symbol/access/role": [
+    {
+      "label": "Check all or any requested actions across resources and reject empty or ungranted requests",
+      "test": "plugins/access/access_test.go",
+      "marker": "func TestRoleDecisions("
     },
     {
-      "label": "Preserve a verified phone across migration replay and store an explicit false flag on reassignment",
-      "test": "adapters/sqlstore/phone_schema_test.go",
-      "marker": "replayed migration lost a verified number"
+      "label": "Compare nested permission decisions with the pinned client using the same test cases",
+      "test": "conformance/access.test.mjs",
+      "marker": "test(\"role permission decisions match"
+    }
+  ],
+  "sql-dialect/SQLite": [
+    {
+      "label": "Run the account and session lifecycle against SQLite",
+      "test": "adapters/sqlstore/account_contract_test.go",
+      "marker": "func TestAccountEngineContract("
+    }
+  ],
+  "sql-dialect/PostgreSQL": [
+    {
+      "label": "Run the account and session lifecycle against PostgreSQL",
+      "test": "adapters/sqlstore/account_contract_test.go",
+      "marker": "func TestAccountEngineContract("
+    }
+  ],
+  "sql-dialect/MySQL": [
+    {
+      "label": "Run the account and session lifecycle against MySQL",
+      "test": "adapters/sqlstore/account_contract_test.go",
+      "marker": "func TestAccountEngineContract("
     }
   ]
 }

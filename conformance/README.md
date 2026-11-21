@@ -39,4 +39,6 @@ Omit `--check` to regenerate the [product feature checklist](../docs/parity/READ
 
 Each evidence entry records a passing subcase. Set `"complete": true` on one reviewed scenario when its test establishes the full capability. The generator attaches that test to the parent checkbox and keeps the parent open whenever any nested requirement is open. A new open descendant reopens the parent automatically.
 
+The package inventory follows each published manifest’s export map. The pinned TypeScript compiler resolves local re-exports, overloads, inherited option fields and wildcard entry points. The machine-readable index records forwarded third-party types separately. The public checklist describes behavior at each entry point and links available Go and wire tests. Source-language types, externally maintained packages and provider settings still need individual review before a behavior can be marked complete. [Published interfaces](../docs/parity/packages.md) · [Extractor regression tests](public-interfaces.test.mjs)
+
 Set `CHROME_BIN` to a local Chrome or Chromium executable to include the headless One Tap browser fixture in `node --test one-tap-browser.test.mjs`. Run `go test -count=1 ./plugins/onetap` from the project root with the same variable to exercise the secure redirect receiver in Chrome. Each uses an isolated browser profile and loopback networking.

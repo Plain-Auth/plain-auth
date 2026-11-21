@@ -7,6 +7,7 @@
 - [ ] Anonymous endpoints, types and options
   - [x] `anonymousClient` ([test](../../../conformance/core.test.mjs#L787))
     - [x] The public browser client creates, upgrades, reads and removes guest identities on both servers ([test](../../../conformance/core.test.mjs#L787))
+  - [ ] `ANONYMOUS_ERROR_CODES`
   - [x] `POST /sign-in/anonymous` ([test](../../../conformance/core.test.mjs#L787))
     - [x] Create a guest without a password, with a usable session and the guest flag ([test](../../../adapters/sqlstore/anonymous_test.go#L141))
     - [x] The public browser client creates, upgrades, reads and removes guest identities on both servers ([test](../../../conformance/core.test.mjs#L787))
@@ -14,6 +15,7 @@
     - [x] Remove the authenticated guest and revoke its sessions ([test](../../../adapters/sqlstore/anonymous_test.go#L170))
     - [x] Protect permanent accounts from the guest deletion route ([test](../../../adapters/sqlstore/anonymous_test.go#L163))
   - [ ] `anonymous`
+  - [ ] `schema`
   - [ ] `AnonymousSession`
   - [ ] `UserWithAnonymous`
   - [ ] `AnonymousOptions`

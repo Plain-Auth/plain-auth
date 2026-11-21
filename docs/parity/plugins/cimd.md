@@ -7,10 +7,11 @@
 - [ ] Client ID metadata documents endpoints, types and options
   - [ ] `createCimdClientDiscovery`
   - [ ] `cimd`
-  - [ ] `CimdMetadataProfile`
+  - [ ] `fetchClientMetadataResource`
   - [ ] `CimdClientCreatedEvent`
   - [ ] `CimdClientRefreshedEvent`
   - [ ] `CimdMetadataFetchPolicy`
+  - [ ] `CimdMetadataProfile`
   - [ ] `CimdOptions`
     - [ ] `fetchClientMetadataResource`
     - [ ] `metadataProfile`
@@ -23,6 +24,13 @@
     - [ ] `isCrossOriginJwksUriAllowed`
     - [ ] `onClientCreated`
     - [ ] `onClientRefreshed`
+  - [ ] `CimdMetadataValidationOptions`
+    - [ ] `originBoundFields`
+    - [ ] `metadataProfile`
+  - [ ] `CimdMetadataValidationResult`
+  - [ ] `isCimdClientIdUrlCandidate`
+  - [ ] `validateCimdMetadata`
+  - [ ] `validateClientIdUrl`
 
 ## Client ID Metadata Document (CIMD)
 

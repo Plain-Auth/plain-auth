@@ -5,6 +5,13 @@
 ## Interfaces
 
 - [ ] Organization endpoints, types and options
+  - [ ] `defaultStatements`
+  - [ ] `defaultAc`
+  - [ ] `adminAc`
+  - [ ] `ownerAc`
+  - [ ] `memberAc`
+  - [ ] `defaultRoles`
+  - [ ] `getOrgAdapter`
   - [ ] `clientSideHasPermission`
   - [ ] `OrganizationClientOptions`
     - [ ] `ac`
@@ -15,7 +22,17 @@
     - [ ] `dynamicAccessControl`
   - [ ] `organizationClient`
   - [ ] `inferOrgAdditionalFields`
+  - [ ] `ORGANIZATION_ERROR_CODES`
+  - [ ] `hasPermission`
   - [ ] `POST /organization/has-permission`
+  - [ ] `organization`
+  - [ ] `DefaultOrganizationPlugin`
+  - [ ] `OrganizationCreator`
+  - [ ] `DynamicAccessControlEndpoints`
+  - [ ] `TeamEndpoints`
+  - [ ] `OrganizationEndpoints`
+  - [ ] `OrganizationPlugin`
+  - [ ] `parseRoles`
   - [ ] `POST /organization/create-role`
   - [ ] `POST /organization/delete-role`
   - [ ] `GET /organization/list-roles`
@@ -36,6 +53,7 @@
   - [ ] `GET /organization/get-invitation`
   - [ ] `GET /organization/list-invitations`
   - [ ] `GET /organization/list-user-invitations`
+  - [ ] `addMember (server API only)`
   - [ ] `POST /organization/remove-member`
   - [ ] `POST /organization/update-member-role`
   - [ ] `GET /organization/get-active-member`
@@ -72,6 +90,34 @@
     - [x] Admit one candidate to the last seat across competing SQL-backed servers and return existing memberships on retry ([test](../../../adapters/sqlstore/organization_teams_test.go#L204))
   - [ ] `POST /organization/remove-team-member`
     - [x] Remove membership and clear the affected user’s active team ([test](../../../adapters/sqlstore/organization_teams_test.go#L266))
+  - [ ] `OrganizationSchema`
+  - [ ] `roleSchema`
+  - [ ] `invitationStatus`
+  - [ ] `organizationSchema`
+  - [ ] `memberSchema`
+  - [ ] `invitationSchema`
+  - [ ] `teamSchema`
+  - [ ] `teamMemberSchema`
+  - [ ] `organizationRoleSchema`
+  - [ ] `Organization`
+  - [ ] `Member`
+  - [ ] `TeamMember`
+  - [ ] `Team`
+  - [ ] `Invitation`
+  - [ ] `InvitationInput`
+  - [ ] `MemberInput`
+  - [ ] `TeamMemberInput`
+  - [ ] `OrganizationInput`
+  - [ ] `TeamInput`
+  - [ ] `OrganizationRole`
+  - [ ] `defaultRolesSchema`
+  - [ ] `InferOrganizationZodRolesFromOption`
+  - [ ] `InferOrganizationRolesFromOption`
+  - [ ] `InvitationStatus`
+  - [ ] `InferMember`
+  - [ ] `InferOrganization`
+  - [ ] `InferTeam`
+  - [ ] `InferInvitation`
   - [ ] `OrganizationOptions`
     - [ ] `allowUserToCreateOrganization`
     - [ ] `organizationLimit`

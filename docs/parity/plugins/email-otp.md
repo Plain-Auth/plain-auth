@@ -7,15 +7,16 @@
 - [ ] Email otp endpoints, types and options
   - [ ] `emailOTPClient`
     - [x] Use the pinned browser client with hashed proofs in either runtime, including two-address confirmation ([test](../../../conformance/core.test.mjs#L501))
+  - [ ] `EMAIL_OTP_ERROR_CODES`
   - [ ] `emailOTP`
     - [x] Run the typed Go SDK through sign-in, verification, recovery, address changes and cookie-jar authentication ([test](../../../client/emailotp_test.go#L16))
-  - [ ] `POST /email-otp/send-verification-otp`
-    - [x] Deliver a purpose-bound sign-in code privately to the normalized mailbox ([test](../../../adapters/sqlstore/emailotp_test.go#L112))
   - [ ] `createVerificationOTP (server API only)`
     - [x] Generate a fresh proof directly from Go without invoking the mail sender ([test](../../../adapters/sqlstore/emailotp_management_test.go#L91))
   - [x] `getVerificationOTP (server API only)` ([test](../../../adapters/sqlstore/emailotp_management_test.go#L245))
     - [x] Read recoverable proofs inside Go, reject hashed records and return nil after expiry ([test](../../../adapters/sqlstore/emailotp_management_test.go#L238))
     - [x] Keep the trusted read operation inaccessible over HTTP ([test](../../../adapters/sqlstore/emailotp_management_test.go#L245))
+  - [ ] `POST /email-otp/send-verification-otp`
+    - [x] Deliver a purpose-bound sign-in code privately to the normalized mailbox ([test](../../../adapters/sqlstore/emailotp_test.go#L112))
   - [ ] `POST /email-otp/check-verification-otp`
     - [x] Preserve a successful proof for the final action and count failed comparisons across instances ([test](../../../adapters/sqlstore/emailotp_test.go#L244))
   - [ ] `POST /email-otp/verify-email`
@@ -35,7 +36,6 @@
     - [x] Require one current mailbox proof for a new destination across concurrent requests ([test](../../../adapters/sqlstore/emailotp_management_test.go#L151))
   - [ ] `POST /email-otp/change-email`
     - [x] Reject stale sessions and preserve the account when verifying its new address ([test](../../../adapters/sqlstore/emailotp_management_test.go#L191))
-  - [ ] `RequiredEmailOTPOptions`
   - [ ] `EmailOTPOptions`
     - [ ] `sendVerificationOTP`
       - [x] Deliver the intended mailbox, code and purpose through the callback and propagate request delivery errors ([test](../../../adapters/sqlstore/emailotp_management_test.go#L77))
@@ -63,6 +63,19 @@
       - [x] Route default email verification to the configured code sender ([test](../../../adapters/sqlstore/emailotp_test.go#L348))
     - [x] `rateLimit` ([test](../../../adapters/sqlstore/emailotp_test.go#L357))
       - [x] Apply the default and host-specified peer request budgets ([test](../../../adapters/sqlstore/emailotp_test.go#L357))
+  - [ ] `RequiredEmailOTPOptions`
+    - [ ] `sendVerificationOTP`
+    - [ ] `otpLength`
+    - [ ] `expiresIn`
+    - [ ] `generateOTP`
+    - [ ] `sendVerificationOnSignUp`
+    - [ ] `disableSignUp`
+    - [ ] `allowedAttempts`
+    - [ ] `storeOTP`
+    - [ ] `resendStrategy`
+    - [ ] `changeEmail`
+    - [ ] `overrideDefaultEmailVerification`
+    - [ ] `rateLimit`
 
 ## Email OTP
 

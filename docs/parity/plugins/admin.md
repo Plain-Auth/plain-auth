@@ -5,11 +5,18 @@
 ## Interfaces
 
 - [ ] Admin endpoints, types and options
+  - [ ] `defaultStatements`
+  - [ ] `defaultAc`
+  - [ ] `adminAc`
+  - [ ] `userAc`
+  - [ ] `defaultRoles`
+  - [ ] `admin`
   - [ ] `AdminClientOptions`
     - [ ] `ac`
     - [ ] `roles`
   - [ ] `adminClient`
     - [x] Exercise all fifteen administrative client routes on both runtimes with shared database records ([test](../../../conformance/core.test.mjs#L735))
+  - [ ] `ADMIN_ERROR_CODES`
   - [ ] `POST /admin/set-role`
     - [x] Assign a configured role and reject an unknown role ([test](../../../adapters/sqlstore/admin_test.go#L154))
   - [ ] `GET /admin/get-user`

@@ -7,6 +7,8 @@
 - [ ] Multi session endpoints, types and options
   - [ ] `multiSessionClient`
     - [x] Use the public browser client to list, select, revoke, and sign out across independent cookie jars ([test](../../../conformance/core.test.mjs#L542))
+  - [ ] `MULTI_SESSION_ERROR_CODES`
+  - [ ] `ERROR_CODES`
   - [ ] `GET /multi-session/list-device-sessions`
     - [x] List live accounts from this browser, including when the primary cookie is missing ([test](../../../plugins/multisession/multisession_test.go#L160))
     - [x] Remove surplus entries after simultaneous browser logins ([test](../../../plugins/multisession/multisession_test.go#L311))
@@ -19,6 +21,7 @@
   - [ ] `MultiSessionConfig`
     - [x] Remember five accounts by default while allowing another account to sign in ([test](../../../plugins/multisession/multisession_test.go#L283))
     - [x] Honor a zero limit and reject negative limits ([test](../../../plugins/multisession/multisession_test.go#L243))
+    - [ ] `maximumSessions`
   - [ ] `multiSession`
     - [x] Revoke remembered logins on sign-out and preserve an independent browser session ([test](../../../plugins/multisession/multisession_test.go#L231))
 

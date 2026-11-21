@@ -9,14 +9,16 @@
     - [x] Create, retrieve, update, list and revoke user-owned keys with the official client ([test](../../../conformance/core.test.mjs#L866))
     - [x] Manage organization keys alongside separately authenticated automation clients ([test](../../../conformance/core.test.mjs#L917))
   - [ ] `ApiKeyClientPlugin`
+  - [ ] `API_KEY_ERROR_CODES`
+  - [ ] `apiKey`
   - [x] `defaultKeyHasher` ([test](../../../conformance/core.test.mjs#L891))
     - [x] Match the pinned digest and verify a Go key on shared SQLite ([test](../../../conformance/core.test.mjs#L891))
   - [ ] `API_KEY_TABLE_NAME`
-  - [ ] `apiKey`
   - [ ] `POST /api-key/create`
     - [x] Issue a user-owned key and return its secret to the official client ([test](../../../conformance/core.test.mjs#L866))
     - [x] Issue a key whose reference identifies the caller’s organization ([test](../../../conformance/core.test.mjs#L938))
-  - [ ] `Operation (server API only)`
+  - [ ] `deleteAllExpiredApiKeys (server API only)`
+    - [x] Purge expired entries within one configuration and retain live keys ([test](../../../adapters/sqlstore/apikey_test.go#L266))
   - [ ] `POST /api-key/delete`
     - [x] Revoke the selected user-owned credential ([test](../../../conformance/core.test.mjs#L866))
     - [x] Revoke an organization key through the owner’s authorized session ([test](../../../conformance/core.test.mjs#L946))
@@ -24,9 +26,30 @@
     - [x] Return owner-visible metadata without the stored digest ([test](../../../conformance/core.test.mjs#L866))
     - [x] Reject a lookup under the wrong ownership configuration ([test](../../../conformance/core.test.mjs#L941))
   - [ ] `PredefinedApiKeyOptions`
-    - [ ] `keyExpiration`
+    - [ ] `configId`
+    - [ ] `apiKeyHeaders`
+    - [ ] `disableKeyHashing`
+    - [ ] `customAPIKeyGetter`
+    - [ ] `customAPIKeyValidator`
+    - [ ] `customKeyGenerator`
     - [ ] `startingCharactersConfig`
+    - [ ] `defaultKeyLength`
+    - [ ] `defaultPrefix`
+    - [ ] `maximumPrefixLength`
+    - [ ] `requireName`
+    - [ ] `minimumPrefixLength`
+    - [ ] `maximumNameLength`
+    - [ ] `minimumNameLength`
+    - [ ] `enableMetadata`
+    - [ ] `keyExpiration`
     - [ ] `rateLimit`
+    - [ ] `enableSessionForAPIKeys`
+    - [ ] `permissions`
+    - [ ] `storage`
+    - [ ] `fallbackToDatabase`
+    - [ ] `customStorage`
+    - [ ] `deferUpdates`
+    - [ ] `references`
   - [ ] `resolveConfiguration`
   - [ ] `isDefaultConfigId`
   - [ ] `configIdMatches`
@@ -38,7 +61,8 @@
   - [ ] `POST /api-key/update`
     - [x] Change user-owned key settings using the pinned client ([test](../../../conformance/core.test.mjs#L866))
     - [x] Rename a key under its organization configuration ([test](../../../conformance/core.test.mjs#L942))
-  - [ ] `Operation (server API only)`
+  - [ ] `verifyApiKey (server API only)`
+    - [x] Verify permissions and consume the credential atomically ([test](../../../adapters/sqlstore/apikey_test.go#L178))
   - [ ] `ApiKeyOptions`
     - [ ] `schema`
   - [ ] `ApiKeyConfigurationOptions`

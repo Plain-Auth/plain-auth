@@ -7,6 +7,8 @@ import { betterAuth } from "better-auth";
 import { socialProviderList } from "better-auth/social-providers";
 
 import { renderChecklist } from "./checklist-state.mjs";
+import { readInterfaces, documentedDialects, readCommunityAdapters } from "./public-interfaces.mjs";
+import { renderPublicPackages, renderDatabaseContracts } from "./package-checklist.mjs";
 
 const commit = "9faf6f6a1155a6cdaf8ba2d25ce53e4f5a3fda72";
 const source = process.argv[2];
@@ -20,6 +22,7 @@ assert.equal(git("status", "--porcelain", "--untracked-files=no"), "", "Upstream
 const tracked = git("ls-files").split("\n");
 const root = fileURLToPath(new URL("../", import.meta.url));
 const output = join(root, "docs/parity");
+const interfaces = readInterfaces(source, tracked);
 
 const read = (path) => readFileSync(join(source, path), "utf8");
 const evidence = JSON.parse(readFileSync(new URL("evidence.json", import.meta.url)));
@@ -38,7 +41,7 @@ const page = (name, title) => {
   pages.set(name, lines);
   return lines;
 };
-function addEvidence(lines, id, filename, depth) {
+function addEvidence(lines, id, filename, depth, wholeFeature = true) {
   const parentIndex = lines.length - 1;
   for (const scenario of evidence[id] ?? []) {
     used.add(id);
@@ -47,7 +50,7 @@ function addEvidence(lines, id, filename, depth) {
     const markers = test.flatMap((line, i) => line.includes(scenario.marker) ? [i + 1] : []);
     assert.equal(markers.length, 1, "Expected exactly one test marker for " + id + " / " + scenario.marker);
     const testLink = "[test](" + path + "#L" + markers[0] + ")";
-    if (scenario.complete) {
+    if (scenario.complete && wholeFeature) {
       assert.equal(typeof lines[parentIndex], "string", "Only one whole-feature review is allowed for " + id);
       lines[parentIndex] = { text: lines[parentIndex], wholeTest: testLink };
     }
@@ -71,9 +74,38 @@ for (const id of [...socialProviderList].sort()) {
   runtime.push(pending(inline(id), 1));
   addEvidence(runtime, "provider/" + id, runtimePage, 2);
 }
+const providerTypes = "packages/core/src/social-providers/";
+const fileForProvider = { microsoft: "microsoft-entra-id" };
+const sharedType = interfaces.exportsOf("packages/core/src/oauth2/oauth-provider.ts").find(s => s.name === "ProviderOptions");
+assert.ok(sharedType, "Missing shared social provider options");
+runtime.push(pending("Shared social sign-in configuration"));
+for (const field of interfaces.members(sharedType.symbol)) {
+  runtime.push(pending(inline(field.name), 1));
+  addEvidence(runtime, "provider-option/shared/" + field.name, runtimePage, 2);
+}
+runtime.push(pending("Provider-specific settings and overrides"));
+for (const id of [...socialProviderList].sort()) {
+  const file = providerTypes + (fileForProvider[id] ?? id) + ".ts";
+  const settings = interfaces.exportsOf(file).find(s => /Options?$/.test(s.name) && !s.name.startsWith("Verify"));
+  assert.ok(settings, "Missing provider configuration for " + id);
+  const fields = interfaces.members(settings.symbol).filter(s => s.file === file);
+  if (fields.length) {
+    runtime.push(pending(inline(id), 1));
+    for (const field of fields) {
+      runtime.push(pending(inline(field.name), 2));
+      addEvidence(runtime, "provider-option/" + id + "/" + field.name, runtimePage, 3);
+    }
+  }
+}
 runtime.push(pending("Generic OAuth provider presets"));
 for (const file of tracked.filter((f) => /^packages\/better-auth\/src\/plugins\/generic-oauth\/providers\/[^/]+\.ts$/.test(f) && !f.endsWith("index.ts"))) {
   runtime.push(pending(link(file, basename(file, ".ts")), 1));
+  for (const opt of interfaces.exportsOf(file).filter(s => /Options$/.test(s.name))) {
+    for (const field of interfaces.members(opt.symbol).filter(s => s.file === file)) {
+      runtime.push(pending(inline(field.name), 2));
+      addEvidence(runtime, "oauth-preset/" + basename(file, ".ts") + "/" + field.name, runtimePage, 3);
+    }
+  }
 }
 
 runtime.push("", "## Client SDK and host integrations", "");
@@ -118,51 +150,44 @@ for (const slug of [...bundled, ...standalone]) {
   const prefix = bundled.has(slug) ? corePrefix + slug + "/" : "packages/" + slug + "/src/";
   lines.push("## Interfaces", "", pending(pluginTitle(sourceNames[slug] ?? slug) + " endpoints, types and options"));
   const sources = tracked.filter((f) => f.startsWith(prefix) && f.endsWith(".ts") && !/\.(test|spec|typecheck)\./.test(f));
+  const seenSymbols = new Set();
+  const seenRoutes = new Set();
+  const publicName = sourceNames[slug] ?? slug;
+  const filename = "plugins/" + publicName + ".md";
   for (const file of sources) {
     const content = read(file);
-    const routes = [];
-    const sourceLines = content.split("\n");
-    const declarations = /\b(?:createAuthEndpoint|createOAuthEndpoint|createSiweNonceEndpoint)(\.serverOnly)?\(\s*(?:"([^"]+)"|([\w.]+),|\{)/g;
-    for (const match of content.matchAll(declarations)) {
+    const rows = content.split("\n");
+    function addRoute(method, label, line) {
+      const route = method + " " + label;
+      if (seenRoutes.has(route)) return;
+      seenRoutes.add(route);
+      lines.push(pending(link(file + "#L" + line, inline(route.trim())), 1));
+      addEvidence(lines, "plugin/" + publicName + "/" + route, filename, 2);
+    }
+    for (const op of interfaces.serverOperations(file)) addRoute("", op.name + " (server API only)", op.line);
+    const declaration = /\b(?:createAuthEndpoint|createOAuthEndpoint|createSiweNonceEndpoint)\(\s*(?:"([^"]+)"|([\w.]+),)/g;
+    for (const match of content.matchAll(declaration)) {
       const line = content.slice(0, match.index).split("\n").length;
-      if (sourceLines[line - 1].trimStart().startsWith("*")) continue;
-      let label = match[2] || match[3];
-      if (match[1]) {
-        const binding = content.slice(0, match.index).match(/(\w+)\s*[=:]\s*(?:\([^()]*\)\s*=>\s*)?$/)?.[1];
-        label = (binding || "Operation") + " (server API only)";
-      }
-      if (!label) continue;
+      if (rows[line - 1].trimStart().startsWith("*")) continue;
+      let label = match[1] ?? match[2];
       if (label === "path" && slug === "open-api") label = "/reference (configurable)";
       if (label === "jwksPath") label = "/jwks (configurable)";
-      if (!match[2] && !match[1] && !label.startsWith("/")) continue;
+      if (!label.startsWith("/")) continue;
       const method = content.slice(match.index + match[0].length).match(/^\s*,?\s*\{?\s*method:\s*("[A-Z]+"|\[[^\]]+\])/);
-      const prefix = method && !match[1] ? [...method[1].matchAll(/"([A-Z]+)"/g)].map((m) => m[1]).join(" / ") + " " : "";
-      routes.push(pending(link(file + "#L" + line, inline(prefix + label)), 1));
-      const publicName = sourceNames[slug] ?? slug;
-      addEvidence(routes, "plugin/" + publicName + "/" + prefix.trim() + " " + label, "plugins/" + publicName + ".md", 2);
+      addRoute(method ? [...method[1].matchAll(/"([A-Z]+)"/g)].map(m => m[1]).join(" / ") : "", label, line);
     }
-    lines.push(...routes);
-    if (!["index.ts", "client.ts", "types.ts", "options.ts"].includes(basename(file))) continue;
-    for (const m of content.matchAll(/^export (?:declare )?(?:async )?(?:(?:const|function|class|interface|type|enum)\s+)([A-Za-z_$][\w$]*)/gm)) {
-      const line = content.slice(0, m.index).split("\n").length;
-      const symbol = m[1];
-      if (symbol === "PACKAGE_VERSION") continue;
-      lines.push(pending(link(file + "#L" + line, inline(symbol)), 1));
-      const publicName = sourceNames[slug] ?? slug;
-      const feature = "plugin-symbol/" + publicName + "/" + symbol;
-      const filename = "plugins/" + publicName + ".md";
+    const declarations = ["index.ts", "client.ts", "types.ts", "options.ts"].includes(basename(file))
+      ? interfaces.declarationExports(file) : [...(interfaces.published.get(file)?.values() ?? [])];
+    for (const item of declarations) {
+      if (seenSymbols.has(item.name)) continue;
+      seenSymbols.add(item.name);
+      lines.push(pending(link(item.file + "#L" + item.line, inline(item.name)), 1));
+      const feature = "plugin-symbol/" + publicName + "/" + item.name;
       addEvidence(lines, feature, filename, 2);
-      if (!/Options$/.test(symbol)) continue;
-      let fieldIndent;
-      for (let i = line; i < sourceLines.length; i++) {
-        if (/^[}]/.test(sourceLines[i]) || /^export /.test(sourceLines[i])) break;
-        const field = sourceLines[i].match(/^(\s+)([A-Za-z_$][\w$]*)\??:\s*/);
-        if (!field) continue;
-        fieldIndent ??= field[1].length;
-        if (field[1].length === fieldIndent) {
-          lines.push(pending(link(file + "#L" + (i+1), inline(field[2])), 2));
-          addEvidence(lines, feature + "/" + field[2], filename, 3);
-        }
+      if (!/(Options|Config)$/.test(item.name)) continue;
+      for (const field of interfaces.members(item.symbol)) {
+        lines.push(pending(link(field.file + "#L" + field.line, inline(field.name)), 2));
+        addEvidence(lines, feature + "/" + field.name, filename, 3);
       }
     }
   }
@@ -211,7 +236,7 @@ function extractPage(file, lines) {
     if (heading) {
       if (hiddenDepth && heading[1].length > hiddenDepth) continue;
       hiddenDepth = undefined;
-      if (/^(?:installation|install .+?|getting started|quick start|quickstart|example usage|usage example|next steps|additional resources|additional information|further reading|see also|troubleshooting|faq|frequently asked questions|changelog|release notes|migration from.*|contributing|resources|related|done|credits|prerequisites|before you (?:begin|start)|table of contents|features overview)$/i.test(clean(heading[2]).replace(/[^\p{L}\p{N} ]/gu, "").trim())) {
+      if (/^(?:installation|install .+?|getting started|quick start|quickstart|what is saml|youre now ready|thats it|wrapping up|example usage|usage example|next steps|additional resources|additional information|further reading|see also|troubleshooting|faq|frequently asked questions|changelog|release notes|migration from.*|contributing|resources|related|done|credits|prerequisites|before you (?:begin|start)|table of contents|features overview)$/i.test(clean(heading[2]).replace(/[^\p{L}\p{N} ]/gu, "").trim())) {
         hiddenDepth = heading[1].length;
         continue;
       }
@@ -268,6 +293,11 @@ function extractPage(file, lines) {
   lines.push("");
 }
 const external = new Set(["agent-auth", "autumn", "chargebee", "commet", "community-plugins", "creem", "dodopayments", "dub", "polar"]);
+const technicalGuides = {
+  "browser-extension-guide": "integrations", cloudflare: "integrations", "saml-sso-with-okta": "integrations",
+  "create-a-db-adapter": "adapters", "dynamic-base-url": "concepts", "your-first-plugin": "concepts",
+  "optimizing-for-performance": "concepts",
+};
 for (const file of tracked.filter((f) => f.startsWith(docPrefix) && f.endsWith(".mdx"))) {
   const subpath = file.slice(docPrefix.length);
   const parts = subpath.split("/");
@@ -276,10 +306,11 @@ for (const file of tracked.filter((f) => f.startsWith(docPrefix) && f.endsWith("
     const slug = parts[1].replace(/\.mdx$/, "");
     if (slug !== "index") extractPage(file, pluginPage(slug));
   } else {
-    if (!["authentication", "concepts", "adapters", "integrations", "reference", "infrastructure"].includes(group)) continue;
+    const section = group === "guides" ? technicalGuides[basename(file, ".mdx")] : group;
+    if (!["authentication", "concepts", "adapters", "integrations", "reference", "infrastructure"].includes(section)) continue;
     if (group === "reference" && !/^(options|security|instrumentation|telemetry)\.mdx$/.test(parts[1]) && parts[1] !== "errors") continue;
-    if (!groups.has(group)) groups.set(group, page(group + ".md", groupNames[group] || group));
-    extractPage(file, groups.get(group));
+    if (!groups.has(section)) groups.set(section, page(section + ".md", groupNames[section] || section));
+    extractPage(file, groups.get(section));
   }
 }
 const screeningPage = "plugins/have-i-been-pwned.md";
@@ -299,6 +330,10 @@ for (const [key, label] of [["client", "Native Go HTTP client"], ["environment",
   go.push(pending(label));
   addEvidence(go, "go/" + key, goPage, 1);
 }
+const communityAdapters = readCommunityAdapters(read("docs/lib/community-adapters-data.ts"));
+const dialects = documentedDialects(read(docPrefix + "adapters/other-relational-databases.mdx"));
+renderDatabaseContracts({lines: groups.get("adapters"), interfaces, communityAdapters, dialects, pending, addEvidence});
+renderPublicPackages({lines: page("packages.md", "Published package interfaces"), interfaces, pending, addEvidence});
 assert.deepEqual([...used].sort(), Object.keys(evidence).sort(), "Unknown evidence IDs");
 const communitySource = "docs/lib/community-plugins-data.ts";
 const communityData = read(communitySource);
@@ -336,10 +371,14 @@ const index = [
   "| Username registration, sign-in and availability | [Username sign-in](../username.md) |",
   "| Administrative roles, bans and impersonation | [Administrator accounts](../admin.md) |",
   "| Organization membership and invitations | [Organizations](../organizations.md) |",
-  "| Checkout, subscription listing and billing portal | [Recurring subscriptions](../subscriptions.md) · [Billing portal](../plugins.md#open-the-users-stripe-billing-portal) |",
-  "| CAPTCHA verification and host BotID integration | [CAPTCHA](../captcha.md) |",
+  "| Checkout, subscription changes, cancellation, restoration and signed webhooks | [Subscription lifecycle](../subscriptions.md) · [Billing portal](../plugins.md#open-the-users-stripe-billing-portal) |",
+  "| Role definitions and action checks | [Role permissions](../access.md) |",
+  "| Personal and organization application credentials | [API keys](../api-keys.md) |",
+  "| Translate authentication errors and select a locale | [Localization](../localization.md) |",
+  "| Redis-backed sessions, single-use proofs and rate limits | [Redis secondary storage](../redis.md) |",
+  "| Describe installed HTTP endpoints and render their reference | [OpenAPI](../openapi.md) |",
   "| Extension hooks, bearer sessions and login method | [Plugins](../plugins.md) |", "",
-  "## Authentication, storage and tools", "", pending("[Native Go client, routers and databases](go.md)"), pending("[Core API, sign-in providers and CLI](runtime.md)"),
+  "## Authentication, storage and tools", "", pending("[Published package interfaces](packages.md)"), pending("[Native Go client, routers and databases](go.md)"), pending("[Core API, sign-in providers and CLI](runtime.md)"),
 ];
 for (const group of [...groups.keys()].sort()) index.push(pending("[" + (groupNames[group] || group) + "](" + group + ".md)"));
 index.push("", "## Plugins and integrations", "");
@@ -353,9 +392,11 @@ for (const [name, lines] of pages) {
   // Documentation headings can contain the reference project's product name.
   // Product-facing pages describe capabilities independently; the verification
   // guide retains exact source names and package coordinates for maintainers.
-  const body = renderChecklist(lines).replace(/@better-auth\//gi, "")
-    .replace(/better[- ]auth(?:’s|'s)?/gi, "authentication").replace(/BetterAuth/g, "Auth").replace(/better_auth\./g, "auth.").replace(/(?:process\.env\.)?BETTER_AUTH_/g, "AUTH_")
-    .trimEnd() + "\n";
+  const body = renderChecklist(lines).split(/(\]\([^)]+\))/).map(part =>
+    part.startsWith("](") ? part : part.replace(/@better-auth\//gi, "")
+      .replace(/better[- ]auth(?:’s|'s)?/gi, "authentication").replace(/BetterAuth/g, "Auth")
+      .replace(/better_auth\./g, "auth.").replace(/(?:process\.env\.)?BETTER_AUTH_/g, "AUTH_")
+  ).join("").trimEnd() + "\n";
   if (check) assert.equal(readFileSync(path, "utf8") === body, true, "Stale parity file: " + name);
   else { mkdirSync(dirname(path), { recursive: true }); writeFileSync(path, body); }
 }
@@ -363,10 +404,9 @@ const referenceIndex = {
   upstream: "https://github.com/better-auth/better-auth",
   release: "v1.7.27",
   commit,
-  packages: tracked.filter((f) => /^packages\/[^/]+\/package\.json$/.test(f)).map((f) => {
-    const p = JSON.parse(read(f));
-    return { source: f, name: p.name, version: p.version, private: !!p.private, exports: Object.keys(p.exports ?? {}), commands: Object.keys(p.bin ?? {}) };
-  }),
+  packages: interfaces.packages,
+  communityAdapters,
+  additionalSQLDialects: Object.fromEntries(dialects),
   core: Object.entries(auth.api).map(([name, ep]) => ({
     name, path: ep.path ?? null, methods: [ep.options.method].flat(), serverOnly: !ep.path || !!ep.options.metadata?.SERVER_ONLY,
   })),

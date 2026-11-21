@@ -23,20 +23,32 @@
       - [x] Exercise the configured expectedAction in the provider transport contract ([test](../../../plugins/captcha/captcha_test.go#L53))
     - [ ] `allowedHostnames`
       - [x] Exercise the configured allowedHostnames in the provider transport contract ([test](../../../plugins/captcha/captcha_test.go#L53))
+    - [ ] `secretKey`
+    - [ ] `endpoints`
+    - [ ] `siteVerifyURLOverride`
   - [ ] `CloudflareTurnstileOptions`
     - [ ] `provider`
     - [ ] `expectedAction`
       - [x] Exercise the configured expectedAction in the provider transport contract ([test](../../../plugins/captcha/captcha_test.go#L53))
     - [ ] `allowedHostnames`
       - [x] Exercise the configured allowedHostnames in the provider transport contract ([test](../../../plugins/captcha/captcha_test.go#L53))
+    - [ ] `secretKey`
+    - [ ] `endpoints`
+    - [ ] `siteVerifyURLOverride`
   - [ ] `HCaptchaOptions`
     - [ ] `provider`
     - [ ] `siteKey`
       - [x] Exercise the configured siteKey in the provider transport contract ([test](../../../plugins/captcha/captcha_test.go#L53))
+    - [ ] `secretKey`
+    - [ ] `endpoints`
+    - [ ] `siteVerifyURLOverride`
   - [ ] `CaptchaFoxOptions`
     - [ ] `provider`
     - [ ] `siteKey`
       - [x] Exercise the configured siteKey in the provider transport contract ([test](../../../plugins/captcha/captcha_test.go#L53))
+    - [ ] `secretKey`
+    - [ ] `endpoints`
+    - [ ] `siteVerifyURLOverride`
   - [ ] `BotIdVerification`
   - [ ] `ValidateRequestContext`
   - [ ] `VercelBotIdOptions`
@@ -47,6 +59,16 @@
     - [ ] `validateRequest`
       - [x] Evaluate the host’s BotID callback and acceptance policy ([test](../../../plugins/captcha/captcha_test.go#L206))
   - [ ] `CaptchaOptions`
+    - [ ] `provider`
+    - [ ] `minScore`
+    - [ ] `expectedAction`
+    - [ ] `allowedHostnames`
+    - [ ] `secretKey`
+    - [ ] `endpoints`
+    - [ ] `siteVerifyURLOverride`
+    - [ ] `siteKey`
+    - [ ] `checkBotId`
+    - [ ] `validateRequest`
 
 ## Captcha
 

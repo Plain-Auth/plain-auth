@@ -157,14 +157,149 @@ Each entry groups the configured endpoint’s behaviors. A checked child records
     - [x] Complete the default browser code exchange and map the provider profile using a local fixture ([test](../../providers/catalog_test.go#L21))
   - [ ] `zoom`
     - [x] Complete the default browser code exchange and map the provider profile using a local fixture ([test](../../providers/catalog_test.go#L21))
+- [ ] Shared social sign-in configuration
+  - [ ] `clientId`
+  - [ ] `clientSecret`
+  - [ ] `scope`
+  - [ ] `disableDefaultScope`
+  - [ ] `redirectURI`
+  - [ ] `authorizationEndpoint`
+  - [ ] `clientKey`
+  - [ ] `disableIdTokenSignIn`
+  - [ ] `verifyIdToken`
+  - [ ] `getUserInfo`
+  - [ ] `refreshAccessToken`
+  - [ ] `mapProfileToUser`
+  - [ ] `getAccountFields`
+  - [ ] `disableImplicitSignUp`
+  - [ ] `disableSignUp`
+  - [ ] `prompt`
+  - [ ] `responseMode`
+  - [ ] `overrideUserInfoOnSignIn`
+  - [ ] `requireEmailVerification`
+- [ ] Provider-specific settings and overrides
+  - [ ] `apple`
+    - [ ] `clientId`
+    - [ ] `appBundleIdentifier`
+    - [ ] `audience`
+  - [ ] `atlassian`
+    - [ ] `clientId`
+  - [ ] `cloudflare`
+    - [ ] `clientId`
+    - [ ] `tokenEndpointAuth`
+    - [ ] `tokenEndpointAuthMethod`
+  - [ ] `cognito`
+    - [ ] `clientId`
+    - [ ] `domain`
+    - [ ] `region`
+    - [ ] `userPoolId`
+    - [ ] `requireClientSecret`
+    - [ ] `identityProvider`
+  - [ ] `discord`
+    - [ ] `clientId`
+    - [ ] `prompt`
+    - [ ] `permissions`
+  - [ ] `dropbox`
+    - [ ] `clientId`
+    - [ ] `accessType`
+  - [ ] `facebook`
+    - [ ] `clientId`
+    - [ ] `fields`
+    - [ ] `configId`
+  - [ ] `figma`
+    - [ ] `clientId`
+  - [ ] `github`
+    - [ ] `clientId`
+  - [ ] `gitlab`
+    - [ ] `clientId`
+    - [ ] `issuer`
+  - [ ] `google`
+    - [ ] `clientId`
+    - [ ] `accessType`
+    - [ ] `display`
+    - [ ] `hd`
+    - [ ] `includeGrantedScopes`
+  - [ ] `huggingface`
+    - [ ] `clientId`
+  - [ ] `kakao`
+    - [ ] `clientId`
+  - [ ] `kick`
+    - [ ] `clientId`
+  - [ ] `line`
+    - [ ] `clientId`
+  - [ ] `linear`
+    - [ ] `clientId`
+  - [ ] `linkedin`
+    - [ ] `clientId`
+  - [ ] `microsoft`
+    - [ ] `clientId`
+    - [ ] `tenantId`
+    - [ ] `authority`
+    - [ ] `clientAssertion`
+    - [ ] `profilePhotoSize`
+    - [ ] `disableProfilePhoto`
+  - [ ] `naver`
+    - [ ] `clientId`
+  - [ ] `notion`
+    - [ ] `clientId`
+  - [ ] `paybin`
+    - [ ] `clientId`
+    - [ ] `issuer`
+  - [ ] `paypal`
+    - [ ] `clientId`
+    - [ ] `environment`
+    - [ ] `requestShippingAddress`
+  - [ ] `railway`
+    - [ ] `clientId`
+  - [ ] `reddit`
+    - [ ] `clientId`
+    - [ ] `duration`
+  - [ ] `roblox`
+    - [ ] `clientId`
+    - [ ] `prompt`
+  - [ ] `salesforce`
+    - [ ] `clientId`
+    - [ ] `environment`
+    - [ ] `loginUrl`
+    - [ ] `redirectURI`
+  - [ ] `slack`
+    - [ ] `clientId`
+  - [ ] `spotify`
+    - [ ] `clientId`
+  - [ ] `tiktok`
+    - [ ] `clientId`
+    - [ ] `clientSecret`
+    - [ ] `clientKey`
+  - [ ] `twitch`
+    - [ ] `clientId`
+    - [ ] `claims`
+  - [ ] `twitter`
+    - [ ] `clientId`
+  - [ ] `vercel`
+    - [ ] `clientId`
+    - [ ] `tokenEndpointAuth`
+  - [ ] `vk`
+    - [ ] `clientId`
+    - [ ] `scheme`
+  - [ ] `wechat`
+    - [ ] `clientId`
+    - [ ] `clientSecret`
+    - [ ] `platformType`
+    - [ ] `lang`
 - [ ] Generic OAuth provider presets
   - [ ] auth0
+    - [ ] `domain`
   - [ ] gumroad
   - [ ] hubspot
+    - [ ] `scopes`
   - [ ] keycloak
+    - [ ] `issuer`
   - [ ] line
+    - [ ] `providerId`
   - [ ] microsoft-entra-id
+    - [ ] `tenantId`
   - [ ] okta
+    - [ ] `issuer`
   - [ ] patreon
   - [ ] slack
   - [ ] yandex

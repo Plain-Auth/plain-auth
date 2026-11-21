@@ -10,11 +10,13 @@
       - [x] Consume public profiles with the display field enabled and disabled ([test](../../../conformance/core.test.mjs#L861))
   - [ ] `usernameClient`
     - [x] Sign in with the pinned client and edit the same username on both servers ([test](../../../conformance/core.test.mjs#L816))
+  - [ ] `USERNAME_ERROR_CODES`
   - [ ] `POST /sign-in/username`
     - [x] Sign in with the canonical credential, remember preference and callback URL ([test](../../../adapters/sqlstore/username_test.go#L133))
     - [x] Honor email verification, administrator bans and existing second-factor settings ([test](../../../adapters/sqlstore/username_test.go#L316))
   - [ ] `POST /is-username-available`
     - [x] Check availability against the normalized unique login name ([test](../../../adapters/sqlstore/username_test.go#L107))
+  - [ ] `username`
   - [ ] `UsernameOptions`
     - [ ] `schema`
     - [ ] `minUsernameLength`
@@ -38,9 +40,6 @@
       - [x] Store only the login name and accept a valid display-only fallback ([test](../../../adapters/sqlstore/username_test.go#L309))
   - [ ] `UsernamePlugin`
   - [ ] `UsernamePluginWithoutDisplayUsername`
-  - [ ] `username`
-  - [ ] `username`
-  - [ ] `username`
 
 ## Username
 

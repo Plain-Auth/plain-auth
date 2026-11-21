@@ -26,6 +26,7 @@ test("every checked scenario links to its current local test line", () => {
   const checked = checkedScenarios(join(root, "docs/parity"));
   const evidence = JSON.parse(readFileSync(join(root, "conformance/evidence.json"), "utf8"));
   const sources = new Map();
+  const targetsByLabel = new Map();
   for (const [feature, cases] of Object.entries(evidence)) {
     for (const { label, test: path, marker } of cases) {
       if (!sources.has(path)) sources.set(path, readFileSync(join(root, path), "utf8").split("\n"));
@@ -33,6 +34,15 @@ test("every checked scenario links to its current local test line", () => {
       assert.equal(matches.length, 1, feature + " has an ambiguous or missing test marker: " + marker);
       const target = join(root, path) + "#L" + matches[0];
       assert.ok(checked.has(label + "\n" + target), feature + " needs an updated checklist link for " + label);
+      if (!targetsByLabel.has(label)) targetsByLabel.set(label, new Set());
+      targetsByLabel.get(label).add(target);
     }
+  }
+  // A scenario may appear in both its feature guide and the package index.
+  // Every copy must point to a current test line.
+  for (const entry of checked) {
+    const [label, target] = entry.split("\n");
+    const expected = targetsByLabel.get(label);
+    if (expected) assert.ok(expected.has(target), "Stale checklist link for " + label + ": " + target);
   }
 });

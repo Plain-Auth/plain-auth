@@ -5,8 +5,11 @@
 ## Interfaces
 
 - [ ] Passkey endpoints, types and options
+  - [ ] `commonAuthenticatorNames`
+  - [ ] `getAuthenticatorName`
   - [ ] `getPasskeyActions`
   - [ ] `passkeyClient`
+  - [ ] `PASSKEY_ERROR_CODES`
   - [ ] `passkey`
   - [ ] `GET /passkey/generate-register-options`
     - [x] Bind registration to a fresh account session and a secure one-use challenge ([test](../../../adapters/sqlstore/passkey_test.go#L173))
@@ -23,6 +26,17 @@
     - [x] Remove an owned key and reject subsequent assertions ([test](../../../adapters/sqlstore/passkey_test.go#L281))
   - [ ] `POST /passkey/update-passkey`
     - [x] Rename an owned credential and refuse changes from another account ([test](../../../adapters/sqlstore/passkey_test.go#L259))
+  - [ ] `Passkey`
+  - [ ] `PasskeyOptions`
+    - [ ] `rpID`
+    - [ ] `rpName`
+    - [ ] `origin`
+      - [x] Require explicitly configured secure origins within the relying-party ID ([test](../../../plugins/passkey/passkey_test.go#L12))
+    - [ ] `authenticatorSelection`
+    - [ ] `advanced`
+    - [ ] `schema`
+    - [ ] `registration`
+    - [ ] `authentication`
   - [ ] `WebAuthnChallengeValue`
   - [ ] `PasskeyRegistrationUser`
   - [ ] `PasskeyExtensionsResolver`
@@ -34,17 +48,6 @@
   - [ ] `PasskeyAuthenticationOptions`
     - [ ] `extensions`
     - [ ] `afterVerification`
-  - [ ] `PasskeyOptions`
-    - [ ] `rpID`
-    - [ ] `rpName`
-    - [ ] `origin`
-      - [x] Require explicitly configured secure origins within the relying-party ID ([test](../../../plugins/passkey/passkey_test.go#L12))
-    - [ ] `authenticatorSelection`
-    - [ ] `advanced`
-    - [ ] `schema`
-    - [ ] `registration`
-    - [ ] `authentication`
-  - [ ] `Passkey`
 
 ## Passkey
 

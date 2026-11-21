@@ -6,7 +6,9 @@
 
 - [ ] Phone number endpoints, types and options
   - [ ] `phoneNumberClient`
+  - [ ] `PHONE_NUMBER_ERROR_CODES`
   - [ ] `phoneNumber`
+  - [ ] `consumePhoneNumberOTP (server API only)`
   - [ ] `POST /sign-in/phone-number`
   - [ ] `POST /phone-number/send-otp`
   - [ ] `POST /phone-number/verify`

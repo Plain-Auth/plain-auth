@@ -5,7 +5,72 @@
 ## Interfaces
 
 - [ ] SCIM provisioning endpoints, types and options
-  - [ ] `Operation (server API only)`
+  - [ ] `SCIMAuthenticationOptions`
+    - [ ] `verifyBearerToken`
+  - [ ] `SCIMAuthorizationSource`
+  - [ ] `SCIMBearerCredentialOptions`
+    - [ ] `type`
+    - [ ] `id`
+    - [ ] `token`
+    - [ ] `scopes`
+    - [ ] `expiresAt`
+  - [ ] `SCIMBearerTokenVerification`
+  - [ ] `SCIMBearerTokenVerificationContext`
+  - [ ] `SCIMBearerTokenVerificationInput`
+  - [ ] `SCIMCanonicalAddress`
+  - [ ] `SCIMCanonicalEmail`
+  - [ ] `SCIMCanonicalEntitlement`
+  - [ ] `SCIMCanonicalManager`
+  - [ ] `SCIMCanonicalName`
+  - [ ] `SCIMCanonicalPhoneNumber`
+  - [ ] `SCIMCanonicalRole`
+  - [ ] `SCIMCanonicalUser`
+  - [ ] `SCIMCompatibilityOptions`
+    - [ ] `microsoftEntra`
+  - [ ] `SCIMConnection`
+  - [ ] `SCIMConnectionDecommissionStatus`
+  - [ ] `SCIMConnectionOptions`
+    - [ ] `id`
+    - [ ] `credentials`
+    - [ ] `provisioningDomainId`
+  - [ ] `SCIMDeclaredConnectionVerificationResult`
+  - [ ] `SCIMEmail`
+  - [ ] `SCIMEnterpriseUser`
+  - [ ] `SCIMGroupAuthorizationSource`
+  - [ ] `SCIMIdentity`
+  - [ ] `SCIMIdentityResolution`
+  - [ ] `SCIMIdentityResolutionContext`
+  - [ ] `SCIMIdentityResolutionInput`
+  - [ ] `SCIMIdentitySource`
+  - [ ] `SCIMIdentityState`
+  - [ ] `SCIMManagedBearerPrincipal`
+  - [ ] `SCIMManagedConnectionOptions`
+    - [ ] `credentialHashSecret`
+    - [ ] `maxActiveCredentials`
+    - [ ] `lastUsedWriteIntervalSeconds`
+  - [ ] `SCIMMicrosoftEntraCompatibilityOptions`
+    - [ ] `acceptLegacyGroupSchema`
+  - [ ] `SCIMName`
+  - [ ] `SCIMOAuthBearerPrincipal`
+  - [ ] `SCIMOptions`
+    - [ ] `connections`
+    - [ ] `authentication`
+    - [ ] `managedConnections`
+    - [ ] `identity`
+    - [ ] `projection`
+    - [ ] `compatibility`
+  - [ ] `SCIMPrincipal`
+  - [ ] `SCIMProjectedRoleGrant`
+  - [ ] `SCIMProjectedUserState`
+  - [ ] `SCIMProjection`
+  - [ ] `SCIMResolvedConnectionVerificationResult`
+  - [ ] `SCIMRoleExistenceInput`
+  - [ ] `SCIMRoleMappingInput`
+  - [ ] `SCIMRoleProjection`
+  - [ ] `SCIMScope`
+  - [ ] `SCIMStaticBearerPrincipal`
+  - [ ] `SCIMTransactionContext`
+  - [ ] `decommissionSCIMConnection (server API only)`
   - [ ] `GET /scim/v2/ServiceProviderConfig`
   - [ ] `GET /scim/v2/Schemas`
   - [ ] `GET /scim/v2/Schemas/:schemaId`
@@ -17,9 +82,13 @@
   - [ ] `PUT /scim/v2/Groups/:groupId`
   - [ ] `PATCH /scim/v2/Groups/:groupId`
   - [ ] `DELETE /scim/v2/Groups/:groupId`
+  - [ ] `SCIMActiveUserLink`
+  - [ ] `SCIMActiveUserLinkContext`
+  - [ ] `SCIMUserExternalIdReference`
+  - [ ] `acquireActiveSCIMUserLink`
+  - [ ] `scim`
   - [ ] `SCIMPlugin`
   - [ ] `SCIMEndpoints`
-  - [ ] `scim`
   - [ ] `createSCIMManagedConnection (server API only)`
   - [ ] `listSCIMManagedConnections (server API only)`
   - [ ] `getSCIMManagedConnection (server API only)`
@@ -27,7 +96,15 @@
   - [ ] `revokeSCIMManagedCredential (server API only)`
   - [ ] `listSCIMManagedConnectionEvents (server API only)`
   - [ ] `decommissionSCIMManagedConnection (server API only)`
-  - [ ] `Operation (server API only)`
+  - [ ] `SCIMManagedConnection`
+  - [ ] `SCIMManagedConnectionEvent`
+  - [ ] `SCIMManagedConnectionEventType`
+  - [ ] `SCIMManagedConnectionStatus`
+  - [ ] `SCIMManagedCredential`
+  - [ ] `SCIMManagedCredentialStatus`
+  - [ ] `SCIM_MANAGED_CREATION_REQUEST_ID_CONFLICT`
+  - [ ] `reconcileSCIMProjection (server API only)`
+  - [ ] `SCIM_REQUIRES_NATIVE_TRANSACTIONS`
   - [ ] `POST /scim/v2/Users`
   - [ ] `GET /scim/v2/Users/:userId`
   - [ ] `GET /scim/v2/Users`

@@ -6,6 +6,10 @@
 
 - [ ] JSON Web Tokens endpoints, types and options
   - [ ] `jwtClient`
+  - [ ] `signJWT (server API only)`
+    - [x] Sign trusted claims with a configured algorithm or a pinned key and keep the operation server-only ([test](../../../adapters/sqlstore/jwt_test.go#L296))
+  - [ ] `verifyJWT (server API only)`
+    - [x] Reject untrusted signatures, wrong identities and expired or inactive tokens ([test](../../../adapters/sqlstore/jwt_test.go#L277))
   - [ ] `GET /jwks (configurable)`
     - [x] Publish public keys to anonymous clients at a configured path and serialize concurrent initialization ([test](../../../adapters/sqlstore/jwt_test.go#L91))
     - [x] Retain rotated public keys through the grace interval and remove retired keys from publication ([test](../../../adapters/sqlstore/jwt_test.go#L159))
@@ -13,11 +17,10 @@
     - [x] Require an authenticated session and stop issuing tokens for a revoked session ([test](../../../adapters/sqlstore/jwt_test.go#L193))
     - [x] Verify Ed25519 signatures and configured issuer, audience and expiration independently ([test](../../../adapters/sqlstore/jwt_test.go#L122))
     - [x] Verify service tokens against their issuer’s published keys and reject a different issuer’s keys ([test](../../../conformance/core.test.mjs#L433))
-  - [ ] `signJWT (server API only)`
-    - [x] Sign trusted claims with a configured algorithm or a pinned key and keep the operation server-only ([test](../../../adapters/sqlstore/jwt_test.go#L296))
-  - [ ] `verifyJWT (server API only)`
-    - [x] Reject untrusted signatures, wrong identities and expired or inactive tokens ([test](../../../adapters/sqlstore/jwt_test.go#L277))
   - [ ] `jwt`
+  - [ ] `resolveSigningKey`
+  - [ ] `signJWT`
+  - [ ] `getJwtToken`
   - [ ] `JwtOptions`
     - [ ] `sessionCookieCache`
     - [ ] `jwks`
@@ -31,18 +34,15 @@
   - [ ] `JWKOptions`
     - [ ] `alg`
     - [ ] `crv`
-    - [ ] `alg`
-    - [ ] `crv`
-    - [ ] `alg`
-    - [ ] `crv`
-    - [ ] `alg`
-    - [ ] `modulusLength`
-    - [ ] `alg`
     - [ ] `modulusLength`
   - [x] `JWSAlgorithms` ([test](../../../adapters/sqlstore/jwt_test.go#L241))
     - [x] Issue and independently verify each of the five supported JWS algorithms ([test](../../../adapters/sqlstore/jwt_test.go#L241))
   - [ ] `Jwk`
   - [ ] `ResolvedSigningKey`
+  - [ ] `createJwk`
+  - [ ] `generateExportedKeyPair`
+  - [ ] `toExpJWT`
+  - [ ] `verifyJWT`
 
 ## JWT
 

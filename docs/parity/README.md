@@ -24,12 +24,17 @@ A checked item links to a local test for that behavior. An open parent means the
 | Username registration, sign-in and availability | [Username sign-in](../username.md) |
 | Administrative roles, bans and impersonation | [Administrator accounts](../admin.md) |
 | Organization membership and invitations | [Organizations](../organizations.md) |
-| Checkout, subscription listing and billing portal | [Recurring subscriptions](../subscriptions.md) · [Billing portal](../plugins.md#open-the-users-stripe-billing-portal) |
-| CAPTCHA verification and host BotID integration | [CAPTCHA](../captcha.md) |
+| Checkout, subscription changes, cancellation, restoration and signed webhooks | [Subscription lifecycle](../subscriptions.md) · [Billing portal](../plugins.md#open-the-users-stripe-billing-portal) |
+| Role definitions and action checks | [Role permissions](../access.md) |
+| Personal and organization application credentials | [API keys](../api-keys.md) |
+| Translate authentication errors and select a locale | [Localization](../localization.md) |
+| Redis-backed sessions, single-use proofs and rate limits | [Redis secondary storage](../redis.md) |
+| Describe installed HTTP endpoints and render their reference | [OpenAPI](../openapi.md) |
 | Extension hooks, bearer sessions and login method | [Plugins](../plugins.md) |
 
 ## Authentication, storage and tools
 
+- [ ] [Published package interfaces](packages.md)
 - [ ] [Native Go client, routers and databases](go.md)
 - [ ] [Core API, sign-in providers and CLI](runtime.md)
 - [ ] [Database adapters](adapters.md)

@@ -6,14 +6,14 @@
 
 - [ ] Test utils endpoints, types and options
   - [ ] `testUtils`
-  - [ ] `TestUtilsOptions`
-    - [ ] `captureOTP`
-  - [ ] `TestCookie`
   - [ ] `LoginResult`
   - [ ] `TestAuthOptions`
     - [ ] `userId`
     - [ ] `session`
+  - [ ] `TestCookie`
   - [ ] `TestHelpers`
+  - [ ] `TestUtilsOptions`
+    - [ ] `captureOTP`
 
 ## Test Utils
 

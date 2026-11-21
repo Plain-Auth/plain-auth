@@ -5,6 +5,12 @@
 ## Interfaces
 
 - [ ] OpenAPI endpoints, types and options
+  - [ ] `FieldSchema`
+  - [ ] `OpenAPIModelSchema`
+  - [ ] `Path`
+  - [ ] `generator`
+  - [ ] `OpenAPISchema`
+  - [ ] `OpenAPIParameter`
   - [ ] `GET /open-api/generate-schema`
     - [x] Serve the mounted versioned JSON document and match required fields for core and username operations ([test](../../../conformance/openapi-contract.mjs#L48))
     - [x] Expose the actual response fields, cookie name, optional bearer scheme and custom operation metadata ([test](../../../plugins/openapi/openapi_test.go#L76))

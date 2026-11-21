@@ -6,6 +6,7 @@
 
 - [ ] Stripe endpoints, types and options
   - [ ] `stripeClient`
+  - [ ] `STRIPE_ERROR_CODES`
   - [ ] `stripe`
   - [ ] `StripePlugin`
   - [ ] `POST /subscription/upgrade`

@@ -2,6 +2,30 @@
 
 [Feature index](README.md)
 
+## Browser Extension Guide
+
+- [ ] Browser Extension Guide
+  - [ ] Setup & Installations
+  - [ ] Configure tsconfig
+  - [ ] Create the client auth instance
+  - [ ] Configure the manifest
+  - [ ] Bundle your extension
+  - [ ] Configure the server auth instance
+
+## Cloudflare Guide
+
+- [ ] Cloudflare Guide
+  - [ ] Node.js Compatibility
+  - [ ] Environment Variables
+  - [ ] Client IP
+  - [ ] Background Tasks
+  - [ ] Database Connections
+  - [ ] Cloudflare Workers KV
+
+## SAML SSO with Okta
+
+- [ ] SAML SSO with Okta
+
 ## Astro Integration
 
 - [ ] Astro Integration

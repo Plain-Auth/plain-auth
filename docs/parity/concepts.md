@@ -133,9 +133,12 @@
     - [ ] Programmatic Migrations
   - [ ] Schema Validation
   - [ ] Secondary Storage
+    - [x] Store expiring values and enforce distributed rate limits using the optional Redis module ([test](../../adapters/redis/storage_test.go#L299))
     - [ ] Implementation
     - [ ] Redis Storage
+      - [x] Store expiring values and enforce distributed rate limits using the optional Redis module ([test](../../adapters/redis/storage_test.go#L299))
       - [ ] Official Redis Storage
+        - [x] Store expiring values and enforce distributed rate limits using the optional Redis module ([test](../../adapters/redis/storage_test.go#L299))
       - [ ] Custom Implementations
   - [ ] Core Schema
     - [ ] User
@@ -419,7 +422,8 @@
     - [ ] Storage
       - [x] Enforce shared SQL counters across two independent auth instances on SQLite, PostgreSQL and MySQL ([test](../../adapters/sqlstore/ratelimit_test.go#L18))
       - [ ] Using Database
-      - [ ] Using Secondary Storage
+      - [x] Using Secondary Storage ([test](../../adapters/redis/storage_test.go#L355))
+        - [x] Share a fixed HTTP request window and reopen it after Redis expires the counter ([test](../../adapters/redis/storage_test.go#L355))
       - [ ] Custom Storage
   - [ ] Handling Rate Limit Errors
     - [x] Return a rate-limit error with a retry duration ([test](../../http_test.go#L145))
@@ -533,3 +537,53 @@
       - [ ] Manually Linking Accounts
     - [ ] Account Unlinking
       - [x] Keep the last required account and prevent unlinking another user’s account ([test](../../adapters/sqlstore/identity_test.go#L40))
+
+## Dynamic Base URL
+
+- [ ] Dynamic Base URL
+  - [ ] Basic Setup
+  - [ ] Common Deployment Patterns
+    - [ ] Vercel Deployment
+    - [ ] Development + Production
+    - [ ] Multiple Production Domains
+  - [ ] Choosing a Fallback
+  - [ ] Cookies Across Subdomains
+  - [ ] Security Model
+  - [ ] Reference
+
+## Optimizing for Performance
+
+- [ ] Optimizing for Performance
+  - [ ] Caching
+    - [ ] Cookie Cache
+    - [ ] Framework Caching
+  - [ ] Background Tasks
+  - [ ] SSR Optimizations
+  - [ ] Database optimizations
+    - [ ] Recommended fields to index
+      - [ ] users
+      - [ ] accounts
+      - [ ] sessions
+      - [ ] verifications
+      - [ ] invitations
+      - [ ] members
+      - [ ] organizations
+      - [ ] passkey
+      - [ ] twoFactor
+  - [ ] Bundle Size Optimization
+    - [ ] Usage
+      - [ ] Limitations:
+
+## Create your first plugin
+
+- [ ] Create your first plugin
+  - [ ] Plan your idea
+  - [ ] Server plugin first
+    - [ ] Creating the server plugin
+    - [ ] Defining a schema
+    - [ ] Authorization logic
+  - [ ] Client Plugin
+  - [ ] Initiate your plugin!
+    - [ ] Server initiation
+    - [ ] Client initiation
+    - [ ] Oh yeah, the schemas!

@@ -13,7 +13,6 @@
   - [ ] `DeviceAuthorizationGrantAuthorization`
   - [ ] `DeviceAuthorizationGrant`
   - [ ] `DeviceAuthorizationPluginOptions`
-    - [ ] `grant`
   - [ ] `deviceAuthorization`
   - [ ] `POST /device/code`
     - [x] Issue distinct indexed codes with expiry, polling interval, callback and display links ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L111))
@@ -30,6 +29,10 @@
     - [x] Approvals interoperate across servers sharing grant records ([test](../../../conformance/core.test.mjs#L459))
   - [ ] `POST /device/deny`
     - [x] Apply one denial to a pre-bound grant and consume it at the next poll ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L166))
+  - [ ] `DeviceCodeRedemptionAuthorization`
+  - [ ] `DeviceCodeRedemptionResult`
+  - [ ] `redeemDeviceCode`
+  - [ ] `DeviceCode`
 
 ## Device Authorization
 

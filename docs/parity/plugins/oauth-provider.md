@@ -5,9 +5,31 @@
 ## Interfaces
 
 - [ ] OAuth provider endpoints, types and options
+  - [ ] `getIssuer`
+  - [ ] `PublicClientJwksValidationResult`
+  - [ ] `validatePublicClientJwks`
+  - [ ] `isForbiddenCimdClientMetadataField`
+  - [ ] `oauthProviderResourceClient`
+  - [ ] `VerifyAccessTokenRemote`
   - [ ] `oauthProviderClient`
   - [ ] `oauthDeviceAuthorizationClient`
+  - [ ] `DEVICE_CODE_GRANT_TYPE`
+  - [ ] `OAuthDeviceAuthorizationOptions`
+  - [ ] `oauthDeviceAuthorization`
+  - [ ] `extendOAuthProvider`
+  - [ ] `authServerMetadata`
+  - [ ] `metadataResponse`
+  - [ ] `oauthAuthorizationServerMetadata`
+  - [ ] `oauthProviderAuthServerMetadata`
+  - [ ] `oauthProviderOpenIdConfigMetadata`
+  - [ ] `oidcServerMetadata`
   - [ ] `publicSessionMiddleware`
+  - [ ] `OAuthEndpointErrorResult`
+  - [ ] `OAuthEndpointRedirectContext`
+  - [ ] `OAuthErrorCode`
+  - [ ] `OAuthFieldErrorCode`
+  - [ ] `OAuthFieldErrorCodeMap`
+  - [ ] `OAuthRedirectOnError`
   - [ ] `GET / POST /oauth2/authorize`
   - [ ] `GET /.well-known/oauth-authorization-server`
   - [ ] `GET /.well-known/openid-configuration`
@@ -20,6 +42,9 @@
   - [ ] `GET / POST /oauth2/end-session`
   - [ ] `POST /oauth2/end-session/confirm`
   - [ ] `POST /oauth2/register`
+  - [ ] `DEFAULT_OAUTH_SCOPES`
+  - [ ] `getOAuthProviderState`
+  - [ ] `oauthProvider`
   - [ ] `POST /admin/oauth2/create-client`
   - [ ] `POST /oauth2/create-client`
   - [ ] `GET /oauth2/get-client`
@@ -64,6 +89,11 @@
   - [ ] `adminDeleteOAuthResource`
   - [ ] `adminLinkClientResource`
   - [ ] `adminUnlinkClientResource`
+  - [ ] `OAuthClientRegistrationResult`
+  - [ ] `RegisterClientMetadataDocumentInput`
+  - [ ] `registerClientMetadataDocument`
+  - [ ] `createResourceServerChallenge`
+  - [ ] `getOAuthProviderApi`
   - [ ] `StoreTokenType`
   - [ ] `Scope`
   - [ ] `OAuthClientRegistrationResponse`
@@ -160,11 +190,27 @@
   - [ ] `OAuthOpaqueAccessToken`
   - [ ] `OAuthRefreshToken`
   - [ ] `OAuthConsent`
+  - [ ] `OAuthClient`
+  - [ ] `ResourceServerMetadata`
+  - [ ] `AuthMethod`
+  - [ ] `AuthServerMetadata`
+  - [ ] `BearerMethodsSupported`
+  - [ ] `Confirmation`
+  - [ ] `GrantType`
+  - [ ] `OIDCMetadata`
+  - [ ] `TokenEndpointAuthMethod`
+  - [ ] `TokenType`
+  - [ ] `OAuthClientMetadata`
+  - [ ] `oauthClientMetadataSchema`
+  - [ ] `ResourceUriSchema`
+  - [ ] `ClientRegistrationRequest`
+  - [ ] `consumeClientAssertion`
+  - [ ] `verifyOAuthQueryParams`
+  - [ ] `getLocalJwksSource`
   - [ ] `parseBearerToken`
   - [ ] `getOAuthProviderPlugin`
   - [ ] `getJwtPlugin`
   - [ ] `getJwksSource`
-  - [ ] `getLocalJwksSource`
   - [ ] `isInvalidJwtError`
   - [ ] `normalizeTimestampValue`
   - [ ] `resolveSessionAuthTime`
@@ -173,7 +219,6 @@
   - [ ] `resolveRefreshTokenSession`
   - [ ] `toResourceList`
   - [ ] `toAudienceClaim`
-  - [ ] `verifyOAuthQueryParams`
   - [ ] `assertNotTrustedClient`
   - [ ] `getClient`
   - [ ] `mergeDiscoveryMetadata`
@@ -203,6 +248,10 @@
   - [ ] `isRedirectUriTransportAllowed`
   - [ ] `isInsecureRedirectUriAllowed`
   - [ ] `getAuthEndpointUrl`
+  - [ ] `isLocalCapacityRefusal`
+  - [ ] `isTransientAbort`
+  - [ ] `isTransientHttpStatus`
+  - [ ] `isTransientNetworkError`
 
 ## Clients and registration
 

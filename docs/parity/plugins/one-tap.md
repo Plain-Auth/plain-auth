@@ -35,6 +35,11 @@
       - [x] Accept an application-generated nonce with an expiring HttpOnly browser binding ([test](../../../conformance/core.test.mjs#L643))
     - [x] `button` ([test](../../../conformance/one-tap-browser.test.mjs#L13))
       - [x] Render the selected button element with its visual options ([test](../../../conformance/one-tap-browser.test.mjs#L13))
+    - [ ] `autoSelect`
+    - [ ] `cancelOnTapOutside`
+    - [ ] `uxMode`
+    - [ ] `context`
+    - [ ] `additionalOptions`
   - [ ] `oneTapClient`
     - [x] Submit a stubbed Google credential and send the HttpOnly browser cookie in headless Chrome ([test](../../../conformance/one-tap-browser.test.mjs#L65))
     - [x] Cancel without processing credentials from a delayed callback ([test](../../../conformance/one-tap-browser.test.mjs#L50))
