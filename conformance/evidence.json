@@ -5440,6 +5440,11 @@
       "label": "Issue, rotate, authenticate and revoke managed directory credentials from either runtime on shared SQLite",
       "test": "conformance/scim-managed.mjs",
       "marker": "export async function managedCatalog("
+    },
+    {
+      "label": "Retire managed directories across runtimes and retain their canonical status and audit records",
+      "test": "conformance/core.test.mjs",
+      "marker": "test(\"SCIM directory retirement"
     }
   ],
   "plugin/scim/GET /scim/v2/ServiceProviderConfig": [
@@ -6101,6 +6106,32 @@
       "label": "Reject the duplicate creation request without exposing the previously issued bearer",
       "test": "adapters/sqlstore/scim_managed_test.go",
       "marker": "func TestSCIMManagedCredentials("
+    }
+  ],
+  "plugin/scim/ decommissionSCIMConnection (server API only)": [
+    {
+      "label": "Persist a terminal binding before first use and read its completion timestamp from either implementation",
+      "test": "conformance/core.test.mjs",
+      "marker": "test(\"SCIM directory retirement"
+    }
+  ],
+  "plugin/scim/ decommissionSCIMManagedConnection (server API only)": [
+    {
+      "label": "Retire a provisioned directory from either implementation, invalidate its credentials and revoke the last source’s sessions",
+      "test": "conformance/core.test.mjs",
+      "marker": "test(\"SCIM directory retirement"
+    },
+    {
+      "label": "Resume failed and expired leases across instances, retain independently sourced sessions and record one completion",
+      "test": "adapters/sqlstore/scim_decommission_test.go",
+      "marker": "func TestSCIMDirectoryRetirement("
+    }
+  ],
+  "plugin-symbol/scim/SCIMConnectionDecommissionStatus": [
+    {
+      "label": "Preserve terminal state and report the persisted retry time while another worker owns a live lease",
+      "test": "adapters/sqlstore/scim_decommission_test.go",
+      "marker": "func TestSCIMDirectoryRetirement("
     }
   ]
 }

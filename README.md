@@ -27,7 +27,7 @@ StoneWrit Auth embeds authentication in your Go API. Mount the auth handler on y
 - [x] Authorize a single-seat organization checkout, list subscriptions and open the organization’s billing portal. [Organization billing](docs/subscriptions.md)
 - [x] Provision directory Users and Groups, synchronize direct memberships and rotate or revoke scoped SCIM credentials. [Directory provisioning](docs/scim.md)
 
-Single sign-on, SCIM directory decommissioning and automatic seat-based billing remain open. The [complete checklist](docs/parity/README.md) records which parts of each integration have passing tests.
+Single sign-on, SCIM role projection and automatic seat-based billing remain open. The [complete checklist](docs/parity/README.md) records which parts of each integration have passing tests.
 
 ## Run it locally
 

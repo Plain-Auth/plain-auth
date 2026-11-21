@@ -10,7 +10,7 @@ import { NodeSqliteDialect } from "@better-auth/kysely-adapter/node-sqlite-diale
 import { betterAuth } from "better-auth";
 import { getMigrations } from "better-auth/db/migration";
 
-export async function managedCatalog(t, goFixture) {
+export async function managedCatalog(t, goFixture, { retirement = false } = {}) {
   const go = await goFixture(t, ["scim-managed"]);
   const dir = await mkdtemp(join(tmpdir(), "scim-server-fixture-"));
   t.after(() => rm(dir, { recursive: true, force: true }));
@@ -39,6 +39,8 @@ export async function managedCatalog(t, goFixture) {
     get: "getSCIMManagedConnection",
     events: "listSCIMManagedConnectionEvents",
     list: "listSCIMManagedConnections",
+    retire: "decommissionSCIMManagedConnection",
+    retireDirectory: "decommissionSCIMConnection",
   };
   const refAdmin = (op, body) => reference.api[operations[op]]({ body });
   const goAdmin = (op, body) => JSON.parse(execFileSync(binary, [go.databasePath], {
@@ -98,5 +100,52 @@ export async function managedCatalog(t, goFixture) {
     const row = db.prepare("SELECT tokenDigest FROM scimManagedCredential WHERE credentialId=?").get(initial.credential.credentialId);
     assert.equal(row.tokenDigest.length, 43);
     assert.ok(!JSON.stringify(state).includes(row.tokenDigest));
+
+    if (retirement) {
+      const email = "retire-" + i + "@example.test";
+      const createResponse = await runtimes[i].send(new Request(runtimes[i].base + "/api/auth/scim/v2/Users", {
+        method: "POST",
+        headers: { "content-type": "application/scim+json", authorization: "Bearer " + initial.token },
+        body: JSON.stringify({ userName: email, schemas: ["urn:ietf:params:scim:schemas:core:2.0:User"] }),
+      }));
+      assert.equal(createResponse.status, 403);
+      const write = await issuer("rotate", { ...owner, ...policy, scopes: ["scim.users.write"] });
+      const provisioned = await runtimes[i].send(new Request(runtimes[i].base + "/api/auth/scim/v2/Users", {
+        method: "POST",
+        headers: { "content-type": "application/scim+json", authorization: "Bearer " + write.token },
+        body: JSON.stringify({ userName: email, schemas: ["urn:ietf:params:scim:schemas:core:2.0:User"] }),
+      }));
+      assert.equal(provisioned.status, 201);
+      const { id } = await provisioned.json();
+      const subject = db.prepare("SELECT userId FROM scimUser WHERE id=?").get(id);
+      const now = Date.now();
+      const session = "retire-session-" + i;
+      db.prepare('INSERT INTO session (id, token, userId, createdAt, updatedAt, expiresAt) VALUES(?,?,?,?,?,?)')
+        .run(session, session, subject.userId, ...[now, now, now + 3600000].map(ms => new Date(ms).toISOString()));
+
+      const result = await peer("retire", { ...owner, actorId });
+      assert.equal(result.connection.status, "decommissioned");
+      assert.equal(result.decommission.status, "complete");
+      assert.equal(result.decommission.reconciledUsers, 1);
+      assert.equal(result.decommission.batches, 1);
+      assert.equal(result.credentials.find(k => k.credentialId === write.credential.credentialId).status, "decommissioned");
+      for (const runtime of runtimes) await request(runtime, initial.token, 401);
+      assert.equal(db.prepare("SELECT count(*) AS n FROM session WHERE id=?").get(session).n, 0);
+      assert.equal(db.prepare("SELECT profileSourceId FROM scimSubject WHERE userId=?").get(subject.userId).profileSourceId, null);
+      const repeat = await issuer("retire", { ...owner, actorId: "another-admin" });
+      assert.equal(repeat.connection.decommissionedBy, actorId);
+      assert.equal(repeat.decommission.status, "complete");
+      const { events } = await issuer("events", owner);
+      assert.deepEqual(events.slice(-2).map(e => e.type), ["connection.decommissioning", "connection.decommissioned"]);
+
+      const beforeUse = { connectionId: "unused-directory-" + i, provisioningDomainId: domain };
+      const terminal = await peer("retireDirectory", beforeUse);
+      const observed = await issuer("retireDirectory", beforeUse);
+      assert.equal(terminal.status, "complete");
+      assert.equal(observed.status, "complete");
+      assert.equal(observed.batches, 0);
+      assert.equal(observed.reconciledUsers, 0);
+      assert.equal(new Date(observed.completedAt).getTime(), new Date(terminal.completedAt).getTime());
+    }
   }
 }

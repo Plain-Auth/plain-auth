@@ -62,6 +62,10 @@ func main() {
 		result = map[string]any{"connections": list}
 	case "events":
 		result, e = catalog.Events(ctx, d, scim.EventQuery{Limit: in.Limit, Offset: in.Offset, SortDirection: in.SortDirection})
+	case "retire":
+		result, e = catalog.Decommission(ctx, d, in.ActorID)
+	case "retireDirectory":
+		result, e = directory.Decommission(ctx, d)
 	case "revoke":
 		result, e = catalog.Revoke(ctx, d, in.CredentialID, in.ActorID)
 	default:

@@ -84,6 +84,14 @@ The catalog methods run inside your trusted Go application. Authorize the caller
 
 The default limit is five active credentials per connection. Set `MaxActiveCredentials` to a value from 1 to 100 to change it. Expired credentials free a slot on the next issuance. Successful verification updates the last-use timestamp at most once every five minutes by default. A non-nil `LastUsedWriteInterval` overrides that interval. Audit events include the actor and sequence number. `EventQuery` supports a page limit of 1 to 100, an offset, and ascending or descending sequence order. The default returns the latest page in chronological order. [Three-database credential tests](../adapters/sqlstore/scim_managed_test.go) · [Cross-runtime credential tests](../conformance/scim-managed.mjs)
 
+## Permanently retire a directory
+
+For a static or application-verified directory, call `directory.Decommission(ctx, scope)`. For a managed directory, call `directory.Catalog().Decommission(ctx, scope, administratorID)`. Both are trusted server methods. Supply the connection ID and provisioning domain in `scope` after checking the administrator's access to that directory. You can retire a connection before its first provisioning request. Its terminal binding prevents later use of the same ID.
+
+Managed retirement first disables the connection and its active credentials together and records the initiating administrator. Other instances immediately reject subsequent directory requests and rotations. The SQL adapter reconciles subjects in batches of 50 using a persisted lease and cursor. A second worker observing an active lease returns `reconciling` with `RetryAfter`. Retry the same operation at or after that time. A worker can resume from the committed cursor after a process failure. Completion records the finishing administrator and an audit event. A later call returns the recorded state.
+
+Retirement preserves directory and application records, releases profile ownership for retired sources, and revokes SQL sessions when an account loses its last active directory source. Accounts with another participating source keep their sessions. An existing externally managed role grant that requires an application role reconciler returns a conflict. The connection stays disabled, and retirement can resume after the grant has been reconciled. [Database retirement and recovery tests](../adapters/sqlstore/scim_decommission_test.go) · [Cross-runtime retirement tests](../conformance/scim-managed.mjs)
+
 ## Provision and synchronize
 
 | Route relative to the directory URL | Behavior |
@@ -151,4 +159,4 @@ PUT replaces the Group profile and its direct member set. PATCH supports scalar 
 
 To accept Microsoft's classic Entra Group schema marker on creation, set `AcceptLegacyEntraGroupSchema: true` in `scim.Options`. The response and discovery documents use the core Group schema. [Group lifecycle and concurrency tests](../adapters/sqlstore/scim_groups_test.go) · [Group PATCH and compatibility tests](../plugins/scim/groups_test.go)
 
-Directory decommissioning, role projection, Enterprise User attributes, nested User response projections, filtered User PATCH paths and SSO identity linking are tracked separately. [Provisioning checklist](parity/plugins/scim.md) · [SQL ownership and concurrency tests](../adapters/sqlstore/scim_test.go) · [Cross-runtime directory tests](../conformance/scim-contract.mjs)
+Role projection, Enterprise User attributes, nested User response projections, filtered User PATCH paths and SSO identity linking are tracked separately. [Provisioning checklist](parity/plugins/scim.md) · [SQL ownership and concurrency tests](../adapters/sqlstore/scim_test.go) · [Cross-runtime directory tests](../conformance/scim-contract.mjs)

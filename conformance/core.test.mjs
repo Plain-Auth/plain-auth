@@ -1033,3 +1033,8 @@ test("organization administrators confirm cancellation and manage single-seat pl
   const { organizationManagement } = await import("./stripe-lifecycle-fixture.mjs");
   await organizationManagement(t, { reference, goFixture, instrument });
 });
+
+test("SCIM directory retirement preserves terminal bindings and reconciles either runtime’s provisioned accounts", async t => {
+  const { managedCatalog } = await import("./scim-managed.mjs");
+  await managedCatalog(t, goFixture, { retirement: true });
+});

@@ -34,6 +34,7 @@
     - [ ] `microsoftEntra`
   - [ ] `SCIMConnection`
   - [ ] `SCIMConnectionDecommissionStatus`
+    - [x] Preserve terminal state and report the persisted retry time while another worker owns a live lease ([test](../../../adapters/sqlstore/scim_decommission_test.go#L15))
   - [ ] `SCIMConnectionOptions`
     - [ ] `id`
       - [x] Isolate two directory identifiers differing only in case on every SQL engine ([test](../../../adapters/sqlstore/scim_test.go#L33))
@@ -90,6 +91,7 @@
     - [x] Keep static principals and reserved managed credentials out of the application verifier ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L35))
   - [ ] `SCIMTransactionContext`
   - [ ] `decommissionSCIMConnection (server API only)`
+    - [x] Persist a terminal binding before first use and read its completion timestamp from either implementation ([test](../../../conformance/core.test.mjs#L1037))
   - [ ] `GET /scim/v2/ServiceProviderConfig`
     - [x] Discover filter, patch and pagination capabilities without a directory credential ([test](../../../conformance/scim-contract.mjs#L45))
   - [ ] `GET /scim/v2/Schemas`
@@ -136,6 +138,8 @@
   - [ ] `listSCIMManagedConnectionEvents (server API only)`
     - [x] Read the other implementation’s ordered audit events and total with pagination ([test](../../../conformance/scim-managed.mjs#L13))
   - [ ] `decommissionSCIMManagedConnection (server API only)`
+    - [x] Retire a provisioned directory from either implementation, invalidate its credentials and revoke the last source’s sessions ([test](../../../conformance/core.test.mjs#L1037))
+    - [x] Resume failed and expired leases across instances, retain independently sourced sessions and record one completion ([test](../../../adapters/sqlstore/scim_decommission_test.go#L15))
   - [ ] `SCIMManagedConnection`
   - [ ] `SCIMManagedConnectionEvent`
   - [ ] `SCIMManagedConnectionEventType`
