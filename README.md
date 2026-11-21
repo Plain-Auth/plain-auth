@@ -1,6 +1,6 @@
-# Go authentication
+# FineStack Go Auth
 
-Embed authentication in an existing Go API. Configure an auth instance, mount it on your router, and use the same instance to read the signed-in user inside your own handlers. Your application owns its listener, database lifetime, middleware, and routes.
+FineStack Go Auth embeds authentication in your Go API. Mount the auth handler on your router and use the same instance to read the signed-in user inside your own handlers. Your application owns its listener, database lifetime, middleware, and routes.
 
 **Development status.** The [feature checklist](docs/parity/README.md) lists supported behavior, passing tests, and planned features. Browse [authentication](docs/parity/authentication.md), [databases](docs/parity/adapters.md), [integrations](docs/parity/integrations.md), or [Stripe](docs/parity/plugins/stripe.md).
 
@@ -80,7 +80,7 @@ Go records the resolved commit in the consuming project’s `go.mod`. The module
 | Load signing secrets, the public URL, and trusted origins from the environment | [Environment configuration](docs/environment.md) |
 | Mount on ServeMux, chi, Gorilla Mux, Gin, or Fiber | [Router integrations](docs/routers.md) |
 | Configure users, cookies, origins, and session management | [Authentication](docs/authentication.md) |
-| Configure email codes and mailbox delivery | [Email one-time passwords](docs/email-otp.md) |
+| Remember the last sign-in method in a browser or across a user's devices | [Login preferences](docs/plugins.md#persist-the-last-login-method) |
 | Add account switching to a shared device | [Device sessions](docs/multi-session.md) |
 | Authorize a TV, CLI or input-constrained device | [Device authorization](docs/device-authorization.md) |
 | Transfer an active session using a single-use credential | [One-time tokens](docs/one-time-token.md) |
