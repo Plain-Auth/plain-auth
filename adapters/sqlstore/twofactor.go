@@ -74,7 +74,7 @@ func (s *Store) factorUser(ctx context.Context, tx *sql.Tx, id string) (auth.Fac
 	if err != nil {
 		return state, err
 	}
-	rec.Verified = !verified.Valid || verified.Bool
+	rec.Verified = verified.Valid && verified.Bool
 	rec.Failures = int(count.Int64)
 	if locked.Valid {
 		rec.LockedUntil = &locked.Time
@@ -144,6 +144,16 @@ func (s *Store) WithTwoFactor(ctx context.Context, sub auth.FactorSubject, decid
 		state.Attempts, err = strconv.Atoi(attempts)
 		if err != nil || state.Attempts < 0 || state.Attempts >= 5 {
 			return auth.ErrNotFound
+		}
+	}
+	if sub.TrustedGrant != "" {
+		var actual string
+		err := tx.QueryRowContext(ctx, s.readForUpdate(`SELECT "identifier" FROM "verification" WHERE "identifier"=? AND "value"=? AND "expiresAt">?`), sub.TrustedGrant, owner, s.date(sub.Now)).Scan(&actual)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return err
+		}
+		if actual == sub.TrustedGrant {
+			state.TrustedGrant = actual
 		}
 	}
 	change, err := decide(state)
@@ -231,6 +241,27 @@ func (s *Store) writeFactorChange(ctx context.Context, tx *sql.Tx, sub auth.Fact
 			return err
 		}
 	}
+	if ch.CreateTrustedGrant != "" {
+		if state.TrustedGrant != "" {
+			res, err := tx.ExecContext(ctx, s.bind(`DELETE FROM "verification" WHERE "identifier"=? AND "value"=? AND "expiresAt">?`), state.TrustedGrant, uid, s.date(sub.Now))
+			if err != nil {
+				return err
+			}
+			n, err := res.RowsAffected()
+			if err != nil {
+				return err
+			}
+			if n != 1 {
+				return auth.ErrNotFound
+			}
+		}
+		if err := exec(`DELETE FROM "verification" WHERE "value"=? AND "identifier" LIKE 'trust-device-%' AND "expiresAt"<=?`, uid, s.date(sub.Now)); err != nil {
+			return err
+		}
+		if err := exec(`INSERT INTO "verification" ("id","identifier","value","expiresAt","createdAt","updatedAt") VALUES (?,?,?,?,?,?)`, rand.Text(), ch.CreateTrustedGrant, uid, s.date(ch.TrustedUntil), s.date(sub.Now), s.date(sub.Now)); err != nil {
+			return err
+		}
+	}
 	if ch.Session != nil {
 		if ch.Session.UserID != uid {
 			return errors.New("sqlstore: session owner differs from factor owner")
@@ -243,6 +274,9 @@ func (s *Store) writeFactorChange(ctx context.Context, tx *sql.Tx, sub auth.Fact
 }
 
 func (s *Store) invalidateFactorChallenges(ctx context.Context, tx *sql.Tx, uid string) error {
+	if _, err := tx.ExecContext(ctx, s.bind(`DELETE FROM "verification" WHERE "value"=? AND "identifier" LIKE 'trust-device-%'`), uid); err != nil {
+		return err
+	}
 	// Challenge rows contain the account ID. Counters are harmless without a
 	// challenge, but remove them as well while the account is locked.
 	rows, err := tx.QueryContext(ctx, s.bind(`SELECT "identifier" FROM "verification" WHERE "value"=? AND "identifier" LIKE '2fa-%'`), uid)

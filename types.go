@@ -4,6 +4,7 @@ package authn
 import (
 	"context"
 	"errors"
+	"net/http"
 	"time"
 )
 
@@ -80,8 +81,8 @@ type User struct {
 
 // Session identifies one authenticated login.
 type Session struct {
-	ActiveOrganizationID *string   `json:"activeOrganizationId,omitempty"`
 	ActiveTeamID         *string   `json:"activeTeamId,omitempty"`
+	ActiveOrganizationID *string   `json:"activeOrganizationId,omitempty"`
 	ID                   string    `json:"id"`
 	UserID               string    `json:"userId"`
 	Token                string    `json:"token"`
@@ -105,11 +106,13 @@ type SessionResult struct {
 
 // AuthResult contains a newly issued token or a pending second-factor challenge.
 type AuthResult struct {
-	Challenge         *LoginChallenge `json:"-"`
-	TwoFactorRedirect bool            `json:"twoFactorRedirect,omitempty"`
-	TwoFactorMethods  []string        `json:"twoFactorMethods,omitempty"`
-	Token             string          `json:"token"`
-	User              User            `json:"user"`
+	// TrustedDeviceCookie contains the rotated or expired cookie after a credential login.
+	TrustedDeviceCookie *http.Cookie    `json:"-"`
+	Challenge           *LoginChallenge `json:"-"`
+	TwoFactorRedirect   bool            `json:"twoFactorRedirect,omitempty"`
+	TwoFactorMethods    []string        `json:"twoFactorMethods,omitempty"`
+	Token               string          `json:"token"`
+	User                User            `json:"user"`
 }
 
 // SignUpInput describes a new email credential and public profile.
@@ -126,6 +129,8 @@ type SignInInput struct {
 
 // RequestMeta records the originating client information for a login.
 type RequestMeta struct {
+	// TrustedDeviceCookie is the incoming signed browser cookie value, if any.
+	TrustedDeviceCookie  string
 	CallbackURL          string
 	IPAddress, UserAgent string
 	RememberMe           *bool

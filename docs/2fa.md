@@ -40,3 +40,9 @@ For direct Go calls, inspect `SignInEmail`'s `AuthResult.Challenge`. If present,
 A challenge expires after ten minutes or five failed proofs. Ten consecutive failed verification attempts lock verification on the account for fifteen minutes. A successful proof resets the account failure count. Password changes and password recovery invalidate outstanding challenges. Each accepted sign-in TOTP time step can grant one login. Backup codes can each be spent once across all instances.
 
 Provisioning secrets and backup codes use authenticated encryption at rest. Every encrypted record identifies its key version. A single configured secret uses version zero. To rotate it, include it as version zero in the key list and place the new key first. Keep each version available until the credentials it protects have been replaced. The session user's `twoFactorEnabled` field reports enrollment status.
+
+## Remember a browser
+
+A browser completing a sign-in challenge can include `"trustDevice":true` with a valid authenticator or backup code. The server issues an HTTP-only signed cookie and records an expiring grant for that account. On the next password sign-in it consumes the old grant, creates the session and issues a replacement grant in one transaction. Concurrent sign-ins presenting the same cookie can use it once. A missing, expired, altered or differently owned grant leads to a new second-factor challenge.
+
+`TrustDeviceMaxAge` defaults to 30 days and `ChallengeLifetime` defaults to 10 minutes. Set both on `twofactor.Options`. Password changes, password resets and disabling the factor invalidate the account's remembered grants. For native credentials, pass the incoming signed cookie value in `RequestMeta.TrustedDeviceCookie` and return any `AuthResult.TrustedDeviceCookie` to the browser. `Auth.TrustedDeviceCookieName()` returns the namespace for this instance.

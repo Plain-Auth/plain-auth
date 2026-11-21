@@ -19,6 +19,7 @@ import (
 // FactorSubject identifies an existing signed-in session, a login after a
 // password check, or a short-lived first-factor challenge.
 type FactorSubject struct {
+	TrustedGrant                    string
 	UserID, SessionToken, Challenge string
 	Now                             time.Time
 }
@@ -29,6 +30,7 @@ type FactorRecord struct {
 	LockedUntil             *time.Time
 }
 type FactorState struct {
+	TrustedGrant string
 	User         User
 	Enabled      bool
 	Record       *FactorRecord
@@ -42,6 +44,8 @@ type FactorState struct {
 // SaveRecord and DeleteRecord are mutually exclusive. Sessions are persisted
 // only after the corresponding authentication decision succeeds.
 type FactorChange struct {
+	CreateTrustedGrant                  string
+	TrustedUntil                        time.Time
 	SaveRecord                          *FactorRecord
 	DeleteRecord                        bool
 	Enabled                             *bool
@@ -56,7 +60,11 @@ type TwoFactorStore interface {
 	FactorEnabled(context.Context, string) (bool, error)
 	WithTwoFactor(ctx context.Context, subject FactorSubject, decide func(FactorState) (FactorChange, error)) error
 }
-type TwoFactorOptions struct{ Issuer string }
+type TwoFactorOptions struct {
+	Issuer            string
+	ChallengeLifetime time.Duration
+	TrustDeviceMaxAge time.Duration
+}
 
 type LoginChallenge struct{ Identifier string }
 
@@ -67,7 +75,18 @@ func NewTwoFactor(opts TwoFactorOptions) Plugin {
 	if opts.Issuer == "" {
 		opts.Issuer = "Auth"
 	}
-	p := Plugin{ID: "two-factor", factor: &opts}
+	if opts.ChallengeLifetime == 0 {
+		opts.ChallengeLifetime = challengeLifetime
+	}
+	if opts.TrustDeviceMaxAge == 0 {
+		opts.TrustDeviceMaxAge = 30 * 24 * time.Hour
+	}
+	p := Plugin{ID: "two-factor", factor: &opts, ValidateStore: func(Store) error {
+		if opts.TrustDeviceMaxAge < time.Second || opts.ChallengeLifetime < time.Second {
+			return errors.New("two-factor cookie lifetimes must be at least one second")
+		}
+		return nil
+	}}
 	for _, path := range []string{"/two-factor/enable", "/two-factor/disable", "/two-factor/get-totp-uri", "/two-factor/verify-totp", "/two-factor/verify-backup-code", "/two-factor/generate-backup-codes"} {
 		p.Endpoints = append(p.Endpoints, Endpoint{Method: http.MethodPost, Path: path, Handler: func(c EndpointContext) (any, error) {
 			return c.Auth.factorEndpoint(path, c)
@@ -76,9 +95,10 @@ func NewTwoFactor(opts TwoFactorOptions) Plugin {
 	return p
 }
 
-func (a *Auth) factorLogin(ctx context.Context, user User, expectedHash string, session StoredSession) (AuthResult, error) {
+func (a *Auth) factorLogin(ctx context.Context, user User, expectedHash string, session StoredSession, signedDevice string) (AuthResult, error) {
 	result := AuthResult{}
-	err := a.factorStore.WithTwoFactor(ctx, FactorSubject{UserID: user.ID, Now: a.now().UTC()}, func(state FactorState) (FactorChange, error) {
+	subject := FactorSubject{UserID: user.ID, Now: a.now().UTC(), TrustedGrant: a.readTrustedGrant(signedDevice, user.ID)}
+	err := a.factorStore.WithTwoFactor(ctx, subject, func(state FactorState) (FactorChange, error) {
 		if state.PasswordHash != expectedHash {
 			return FactorChange{}, &APIError{401, "INVALID_EMAIL_OR_PASSWORD", "Invalid email or password"}
 		}
@@ -91,11 +111,19 @@ func (a *Auth) factorLogin(ctx context.Context, user User, expectedHash string, 
 		if state.Record == nil || !state.Record.Verified {
 			return FactorChange{}, &APIError{403, "TOTP_NOT_CONFIGURED", "TOTP is not available"}
 		}
+		if state.TrustedGrant != "" {
+			change := FactorChange{Session: &session}
+			result = AuthResult{User: state.User, Token: session.Token, TrustedDeviceCookie: a.rotateTrustedGrant(&change, state.User.ID, subject.Now)}
+			return change, nil
+		}
+		if signedDevice != "" {
+			result.TrustedDeviceCookie = a.trustedDeviceCookie("", "", -1)
+		}
 		id := "2fa-" + randomID()
 		result.Challenge = &LoginChallenge{Identifier: id}
 		result.TwoFactorRedirect = true
 		result.TwoFactorMethods = []string{"totp"}
-		return FactorChange{CreateChallenge: id, ChallengeExpires: a.now().UTC().Add(challengeLifetime)}, nil
+		return FactorChange{CreateChallenge: id, ChallengeExpires: subject.Now.Add(a.factorOptions.ChallengeLifetime)}, nil
 	})
 	if err != nil {
 		return AuthResult{}, err
@@ -106,7 +134,7 @@ func (a *Auth) factorLogin(ctx context.Context, user User, expectedHash string, 
 // TwoFactorChallengeCookie serializes a pending native sign-in result for the
 // browser to carry to the verification endpoint. It cannot authenticate GetSession.
 func (a *Auth) TwoFactorChallengeCookie(challenge LoginChallenge) *http.Cookie {
-	return a.factorCookie(challenge.Identifier, int(challengeLifetime.Seconds()))
+	return a.factorCookie(challenge.Identifier, int(a.factorOptions.ChallengeLifetime.Seconds()))
 }
 func (a *Auth) factorCookie(id string, expires int) *http.Cookie {
 	c := a.sessionCookie(id, false)
@@ -163,6 +191,9 @@ func (a *Auth) factorEndpoint(route string, c EndpointContext) (any, error) {
 	if op.denied != nil {
 		return nil, op.denied
 	}
+	if op.trustedCookie != nil {
+		c.ResponseHeader.Add("Set-Cookie", op.trustedCookie.String())
+	}
 	if op.issued != "" {
 		a.addSessionCookieHeaders(c.ResponseHeader, r, op.issued, remember)
 	}
@@ -170,6 +201,7 @@ func (a *Auth) factorEndpoint(route string, c EndpointContext) (any, error) {
 }
 
 type factorRequest struct {
+	trustedCookie  *http.Cookie
 	auth           *Auth
 	ctx            context.Context
 	route          string
@@ -197,8 +229,13 @@ func (p *factorRequest) verify(state FactorState) (FactorChange, error) {
 			return ch, fieldTypeError("disableSession", "boolean", p.body)
 		}
 	}
-	if v, ok := p.body["trustDevice"]; ok && v != false {
-		return ch, &APIError{400, "TRUST_DEVICE_UNAVAILABLE", "Trusted devices are unavailable"}
+	trustDevice := false
+	if v, ok := p.body["trustDevice"]; ok {
+		var valid bool
+		trustDevice, valid = v.(bool)
+		if !valid {
+			return ch, fieldTypeError("trustDevice", "boolean", p.body)
+		}
 	}
 	if state.Record == nil {
 		return ch, &APIError{400, "TOTP_NOT_ENABLED", "TOTP not enabled"}
@@ -288,6 +325,9 @@ func (p *factorRequest) verify(state FactorState) (FactorChange, error) {
 		ss, raw := p.auth.newSession(state.User.ID, p.meta)
 		ch.Session = &ss
 		p.issued = raw
+		if trustDevice && p.subject.Challenge != "" {
+			p.trustedCookie = p.auth.rotateTrustedGrant(&ch, state.User.ID, p.subject.Now)
+		}
 		ch.ConsumeChallenge = p.subject.Challenge != ""
 		p.clearChallenge = ch.ConsumeChallenge
 		p.out = map[string]any{"token": raw, "user": state.User}

@@ -339,7 +339,7 @@ func (a *Auth) SignInEmail(ctx context.Context, in SignInInput, meta RequestMeta
 	}
 	session, token := a.newSession(user.ID, meta)
 	if a.factorStore != nil {
-		return a.factorLogin(ctx, user, hash, session)
+		return a.factorLogin(ctx, user, hash, session, meta.TrustedDeviceCookie)
 	}
 	if s, ok := a.opts.Store.(AccountStore); ok {
 		err = s.CreateCredentialSession(ctx, hash, session)

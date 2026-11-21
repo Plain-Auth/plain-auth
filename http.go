@@ -225,20 +225,26 @@ func (a *Auth) handleEmail(route string, w http.ResponseWriter, r *http.Request,
 	if signup {
 		result, err = a.SignUpEmail(r.Context(), SignUpInput{Name: body["name"].(string), Email: email, Password: password, Image: image}, meta)
 	} else {
+		if c, err := r.Cookie(a.TrustedDeviceCookieName()); err == nil {
+			meta.TrustedDeviceCookie = c.Value
+		}
 		result, err = a.SignInEmail(r.Context(), SignInInput{Email: email, Password: password, RememberMe: remember}, meta)
 	}
 	if err != nil {
 		return nil, err
 	}
+	if result.TrustedDeviceCookie != nil {
+		http.SetCookie(w, result.TrustedDeviceCookie)
+	}
 	if result.Challenge != nil {
 		a.expireSessionCookies(w, r)
-		http.SetCookie(w, a.factorCookie(result.Challenge.Identifier, int(challengeLifetime.Seconds())))
+		http.SetCookie(w, a.TwoFactorChallengeCookie(*result.Challenge))
 		if remember != nil && !*remember {
 			m := a.sessionCookie("true", false)
 			m.Name = strings.TrimSuffix(m.Name, "session_token") + "dont_remember"
 			http.SetCookie(w, m)
 		}
-		return map[string]any{"twoFactorRedirect": true, "twoFactorMethods": []string{"totp"}}, nil
+		return map[string]any{"twoFactorRedirect": true, "twoFactorMethods": result.TwoFactorMethods}, nil
 	}
 	response := map[string]any{"user": result.User, "token": nil}
 	if result.Token != "" {
