@@ -3409,6 +3409,11 @@
       "label": "Prevent a pending second-factor challenge from delivering codes or transferring a guest after a ban",
       "test": "adapters/sqlstore/admin_factor_test.go",
       "marker": "suspended account received an OTP"
+    },
+    {
+      "label": "Enforce a newly migrated ban on established browser sessions and new session issuance across running SQL instances",
+      "test": "adapters/sqlstore/admin_live_schema_test.go",
+      "marker": "cold node issued session after ban"
     }
   ],
   "docs/content/docs/plugins/admin.mdx#L298": [
@@ -3428,6 +3433,11 @@
       "label": "Keep owner credentials, MFA enrollment, device approval and token-bearing session lists restricted during impersonation",
       "test": "adapters/sqlstore/admin_factor_test.go",
       "marker": "JWT session header did not distinguish delegation from direct authentication"
+    },
+    {
+      "label": "Preserve the delegated-session identity when a running node first observes the administrative schema",
+      "test": "adapters/sqlstore/admin_live_schema_test.go",
+      "marker": "live session reader lost its delegated-session authority"
     }
   ],
   "docs/content/docs/plugins/admin.mdx#L381": [
@@ -6410,6 +6420,11 @@
       "label": "Enforce direct owner sessions, organization roles and creator quota during concurrent registrations",
       "test": "adapters/sqlstore/sso_test.go",
       "marker": "func TestEnterpriseProviderManagement("
+    },
+    {
+      "label": "Deny enterprise registration from an impersonated session on an instance opened before the administrative migration",
+      "test": "adapters/sqlstore/admin_live_schema_test.go",
+      "marker": "cold registration node accepted a delegated login"
     }
   ],
   "plugin/sso/GET /sso/providers": [
@@ -6695,6 +6710,11 @@
       "label": "Preserve a same-name static OAuth credential and stop deletion until historical account links have independently verified source records",
       "test": "adapters/sqlstore/sso_delete_test.go",
       "marker": "deletion removed same-name static credentials"
+    },
+    {
+      "label": "Deny enterprise provider deletion from an impersonated session after the administrative schema is added on another node",
+      "test": "adapters/sqlstore/admin_live_schema_test.go",
+      "marker": "cold deletion node accepted a delegated login"
     }
   ],
   "plugin-symbol/sso/SSOOptions/guardProviderMutation": [

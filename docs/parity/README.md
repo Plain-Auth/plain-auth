@@ -58,7 +58,7 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 | [Two-factor authentication](plugins/2fa.md) | 40 | 141 |
 | [Access](plugins/access.md) | 7 | 14 |
 | [Additional fields](plugins/additional-fields.md) | 0 | 2 |
-| [Admin](plugins/admin.md) | 63 | 141 |
+| [Admin](plugins/admin.md) | 65 | 141 |
 | [Anonymous](plugins/anonymous.md) | 27 | 25 |
 | [API keys](plugins/api-key.md) | 96 | 214 |
 | [Bearer](plugins/bearer.md) | 9 | 10 |
@@ -88,7 +88,7 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 | [Phone number](plugins/phone-number.md) | 33 | 67 |
 | [SCIM provisioning](plugins/scim.md) | 51 | 251 |
 | [Sign in with Ethereum](plugins/siwe.md) | 0 | 40 |
-| [Single sign-on](plugins/sso.md) | 25 | 308 |
+| [Single sign-on](plugins/sso.md) | 27 | 308 |
 | [Stripe](plugins/stripe.md) | 119 | 193 |
 | [Test utils](plugins/test-utils.md) | 0 | 42 |
 | [Username](plugins/username.md) | 32 | 54 |

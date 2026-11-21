@@ -39,9 +39,11 @@
   - [ ] `POST /admin/ban-user`
     - [x] Revoke existing logins, deny new sessions and automatically clear expired bans ([test](../../../adapters/sqlstore/admin_test.go#L303))
     - [x] Prevent a pending second-factor challenge from delivering codes or transferring a guest after a ban ([test](../../../adapters/sqlstore/admin_factor_test.go#L162))
+    - [x] Enforce a newly migrated ban on established browser sessions and new session issuance across running SQL instances ([test](../../../adapters/sqlstore/admin_live_schema_test.go#L141))
   - [ ] `POST /admin/impersonate-user`
     - [x] Issue a bounded delegated login and enforce administrator impersonation permissions ([test](../../../adapters/sqlstore/admin_test.go#L218))
     - [x] Keep owner credentials, MFA enrollment, device approval and token-bearing session lists restricted during impersonation ([test](../../../adapters/sqlstore/admin_factor_test.go#L136))
+    - [x] Preserve the delegated-session identity when a running node first observes the administrative schema ([test](../../../adapters/sqlstore/admin_live_schema_test.go#L122))
   - [ ] `POST /admin/stop-impersonating`
     - [x] Restore the initiating login and preserve its original persistence ([test](../../../adapters/sqlstore/admin_test.go#L247))
   - [ ] `POST /admin/revoke-user-session`
