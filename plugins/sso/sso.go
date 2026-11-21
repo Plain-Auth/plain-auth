@@ -18,6 +18,12 @@ import (
 )
 
 type Options struct {
+	// SharedCallback registers the same /sso/callback URL for every enterprise client.
+	SharedCallback bool
+	// DisableImplicitSignUp requires requestSignUp before creating an account.
+	DisableImplicitSignUp bool
+	// DisableOrganizationProvisioning leaves membership management to the application.
+	DisableOrganizationProvisioning bool
 	// A nil ProvidersLimit allows ten registrations per creator. Zero disables registration.
 	ProvidersLimit *int
 	// HTTPClient supplies discovery transport and optional TLS settings.
@@ -236,7 +242,7 @@ func New(o Options) (auth.Plugin, error) {
 		if err = store.CreateSSOProvider(ctx, actor, p, limit); err != nil {
 			return nil, err
 		}
-		callback, err := c.Auth.CallbackURL(strings.TrimRight(c.Auth.BasePath(), "/") + "/sso/callback/" + id)
+		callback, err := callbackURI(c, id, o.SharedCallback)
 		if err != nil {
 			return nil, err
 		}
@@ -272,7 +278,10 @@ func New(o Options) (auth.Plugin, error) {
 			return errors.New("sso: provider management requires a directory store")
 		}
 		return nil
-	}, Endpoints: []auth.Endpoint{endpoint("/sso/register", "POST", register), endpoint("/sso/providers", "GET", read), endpoint("/sso/get-provider", "GET", read)}}, nil
+	}, Endpoints: []auth.Endpoint{endpoint("/sso/register", "POST", register), endpoint("/sso/providers", "GET", read), endpoint("/sso/get-provider", "GET", read),
+		{Method: "POST", Path: "/sign-in/sso", Handler: o.start},
+		{Method: "GET", Path: "/sso/callback", Handler: o.finish},
+		{Method: "GET", Path: "/sso/callback/:providerId", Handler: o.finish}}}, nil
 }
 
 func sanitized(c auth.EndpointContext, p Provider) PublicProvider {

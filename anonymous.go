@@ -156,7 +156,7 @@ func (a *Auth) finishAnonymous(r *http.Request, target string) error {
 	case route == "/sign-in/anonymous":
 		return nil
 	case strings.HasPrefix(route, "/sign-in/"), strings.HasPrefix(route, "/sign-up/"), strings.HasPrefix(route, "/callback/"), strings.HasPrefix(route, "/two-factor/verify-"):
-	case route == "/magic-link/verify", route == "/email-otp/verify-email", route == "/one-tap/callback", route == "/passkey/verify-authentication", route == "/verify-email":
+	case route == "/sso/callback", strings.HasPrefix(route, "/sso/callback/"), route == "/magic-link/verify", route == "/email-otp/verify-email", route == "/one-tap/callback", route == "/passkey/verify-authentication", route == "/verify-email":
 	default:
 		return nil
 	}

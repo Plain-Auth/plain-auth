@@ -66,7 +66,7 @@ func main() {
 	for _, id := range os.Args[2:] {
 		switch id {
 		case "sso":
-			p, e := sso.New(sso.Options{})
+			p, e := sso.New(sso.Options{SharedCallback: os.Getenv("CONFORMANCE_SSO_SHARED_CALLBACK") == "1"})
 			if e != nil {
 				log.Fatal(e)
 			}

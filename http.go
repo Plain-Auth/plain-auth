@@ -59,6 +59,12 @@ func (a *Auth) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if token, ok := strings.CutPrefix(route, "/reset-password/"); ok && token != "" && !strings.ContainsAny(token, "/%") {
 		route = "/reset-password/:token"
 	}
+	if id, ok := strings.CutPrefix(route, "/sso/callback/"); ok && id != "" && !strings.ContainsAny(id, "/%:") {
+		_, exact := a.plugins[endpointKey{r.Method, route}]
+		if _, exists := a.plugins[endpointKey{r.Method, "/sso/callback/:providerId"}]; exists && !exact {
+			route = "/sso/callback/:providerId"
+		}
+	}
 	method, known := coreMethods[route]
 	isSessionPost := route == "/get-session" && r.Method == http.MethodPost
 	ep, pluginRoute := a.plugins[endpointKey{r.Method, route}]
@@ -81,7 +87,7 @@ func (a *Auth) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	var body wireBody
 	if r.Method != http.MethodGet {
-		if err := a.validateRequestOrigin(r, isEmailRoute(route) || route == "/sign-in/username" || route == "/sign-in/anonymous" || route == "/sign-in/magic-link" || route == "/sign-in/email-otp" || strings.HasPrefix(route, "/email-otp/") || route == "/forget-password/email-otp"); err != nil {
+		if err := a.validateRequestOrigin(r, isEmailRoute(route) || route == "/sign-in/sso" || route == "/sign-in/username" || route == "/sign-in/anonymous" || route == "/sign-in/magic-link" || route == "/sign-in/email-otp" || strings.HasPrefix(route, "/email-otp/") || route == "/forget-password/email-otp"); err != nil {
 			a.writeAuthError(w, r, err)
 			return
 		}

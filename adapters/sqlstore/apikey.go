@@ -23,7 +23,7 @@ func (s *Store) CheckAPIKeySchema(ctx context.Context) error {
 	}
 	return rows.Close()
 }
-func (s *Store) hasKeyOwnerTable(ctx context.Context, tx *sql.Tx, table string) (bool, error) {
+func (s *Store) hasKeyOwnerTable(ctx context.Context, tx rowQuerier, table string) (bool, error) {
 	q := `SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type='table' AND name=?)`
 	switch s.dialect {
 	case "mysql":

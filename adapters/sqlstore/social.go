@@ -10,9 +10,9 @@ import (
 	"strings"
 	"time"
 
+	authn "github.com/Stonewrit/stonewrit-auth"
 	"github.com/go-sql-driver/mysql"
 	"github.com/jackc/pgx/v5/pgconn"
-	authn "github.com/Stonewrit/stonewrit-auth"
 )
 
 var _ authn.OAuthStore = (*Store)(nil)
@@ -70,12 +70,21 @@ func (s *Store) ConsumeOAuthFlow(ctx context.Context, state, binding string, now
 // issuance. A stable primary key serializes concurrent first logins even on a
 // canonical schema with no (providerId, accountId) unique constraint.
 func (s *Store) CompleteOAuth(ctx context.Context, provider, subject string, tokens authn.OAuthTokens, candidate authn.User, session authn.StoredSession, options authn.OAuthLoginOptions) (authn.User, bool, error) {
+	return s.completeOAuthWith(ctx, provider, subject, tokens, candidate, session, options, nil)
+}
+
+type oauthTransactionHooks struct {
+	guard         func(*sql.Tx) error
+	afterIdentity func(*sql.Tx, authn.User) error
+}
+
+func (s *Store) completeOAuthWith(ctx context.Context, provider, subject string, tokens authn.OAuthTokens, candidate authn.User, session authn.StoredSession, options authn.OAuthLoginOptions, hooks *oauthTransactionHooks) (authn.User, bool, error) {
 	candidate.Email = strings.ToLower(candidate.Email)
 	var u authn.User
 	var created bool
 	var err error
 	for attempt := 0; attempt < 3; attempt++ {
-		u, created, err = s.completeOAuth(ctx, provider, subject, tokens, candidate, session, options)
+		u, created, err = s.completeOAuth(ctx, provider, subject, tokens, candidate, session, options, hooks)
 		if !retryIdentity(err) {
 			break
 		}
@@ -95,9 +104,13 @@ func retryIdentity(err error) bool {
 	return false
 }
 
-func (s *Store) completeOAuth(ctx context.Context, provider, subject string, tokens authn.OAuthTokens, candidate authn.User, session authn.StoredSession, options authn.OAuthLoginOptions) (authn.User, bool, error) {
+func (s *Store) completeOAuth(ctx context.Context, provider, subject string, tokens authn.OAuthTokens, candidate authn.User, session authn.StoredSession, options authn.OAuthLoginOptions, hooks *oauthTransactionHooks) (authn.User, bool, error) {
 	var u authn.User
-	tx, err := s.db.BeginTx(ctx, nil)
+	var txOptions *sql.TxOptions
+	if hooks != nil && s.dialect != "sqlite" {
+		txOptions = &sql.TxOptions{Isolation: sql.LevelReadCommitted}
+	}
+	tx, err := s.db.BeginTx(ctx, txOptions)
 	if err != nil {
 		return u, false, err
 	}
@@ -175,6 +188,13 @@ func (s *Store) completeOAuth(ctx context.Context, provider, subject string, tok
 		key := sha256.Sum256([]byte(provider + "\x00" + subject))
 		account = hex.EncodeToString(key[:16])
 	}
+	// Membership and account deletion take user locks before locking the tenant.
+	// Recheck the directory under lock before writing its account or session.
+	if hooks != nil {
+		if err := hooks.guard(tx); err != nil {
+			return u, false, err
+		}
+	}
 	var expires, refreshExpires any
 	if !tokens.RefreshExpiresAt.IsZero() {
 		refreshExpires = s.date(tokens.RefreshExpiresAt)
@@ -191,6 +211,11 @@ func (s *Store) completeOAuth(ctx context.Context, provider, subject string, tok
 	}
 	if err != nil {
 		return u, false, err
+	}
+	if hooks != nil {
+		if err := hooks.afterIdentity(tx, u); err != nil {
+			return u, false, err
+		}
 	}
 	session.UserID = u.ID
 	if options.LinkUserID == "" {

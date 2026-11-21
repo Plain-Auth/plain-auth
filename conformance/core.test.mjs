@@ -1097,3 +1097,8 @@ test("the official SSO client registers and reads redacted OIDC providers across
   const {providerCatalog} = await import("./sso-providers.mjs");
   await providerCatalog(t, {goFixture,instrument});
 });
+
+test("enterprise OIDC browser sessions survive an implementation change for both callback URLs", async t => {
+  const {compareEnterpriseBrowser} = await import("./sso-browser.mjs");
+  await compareEnterpriseBrowser(t,{goFixture,instrument});
+});

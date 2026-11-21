@@ -329,6 +329,10 @@ func (a *Auth) redirectOAuthForm(w http.ResponseWriter, r *http.Request, id stri
 }
 
 func (a *Auth) completeProfile(ctx context.Context, r *http.Request, id string, p OAuthProfile, tokens OAuthTokens, options OAuthLoginOptions) (AuthResult, bool, error) {
+	return a.completeProfileWith(ctx, r, id, p, tokens, options, a.opts.Store.(OAuthStore).CompleteOAuth)
+}
+
+func (a *Auth) completeProfileWith(ctx context.Context, r *http.Request, id string, p OAuthProfile, tokens OAuthTokens, options OAuthLoginOptions, complete OAuthCompletion) (AuthResult, bool, error) {
 	options.DisableSignUp = options.DisableSignUp || a.opts.DisableSignUp || a.opts.SocialProviders[id].DisableSignUp
 	if id == "google" && !googleDomainAllowed(a.opts.SocialProviders[id].GoogleHostedDomain, p) {
 		return AuthResult{}, false, &APIError{401, "INVALID_TOKEN", "Invalid token"}
@@ -346,7 +350,7 @@ func (a *Auth) completeProfile(ctx context.Context, r *http.Request, id string, 
 			return AuthResult{}, false, err
 		}
 	}
-	user, created, err := a.opts.Store.(OAuthStore).CompleteOAuth(ctx, id, p.Subject, tokens, candidate, session, options)
+	user, created, err := complete(ctx, id, p.Subject, tokens, candidate, session, options)
 	if errors.Is(err, ErrOAuthSignupDisabled) {
 		return AuthResult{}, false, &APIError{403, "SIGN_UP_DISABLED", "Sign-up is disabled"}
 	}

@@ -1,0 +1,136 @@
+package stonewrit
+
+import (
+	"context"
+	"errors"
+	"net/url"
+	"strings"
+	"time"
+
+	"golang.org/x/oauth2"
+)
+
+// OAuthCompletion persists the verified identity, account credentials and session
+// in one transaction after checking any plugin-owned identity binding.
+type OAuthCompletion func(context.Context, string, string, OAuthTokens, User, StoredSession, OAuthLoginOptions) (User, bool, error)
+
+// BeginEnterpriseFlow persists the provider reference and browser return destinations.
+// Only the random browser binding is placed in a cookie.
+func (c EndpointContext) BeginEnterpriseFlow(provider, reference, redirectURI string, signup bool) (OAuthFlow, error) {
+	a := c.Auth
+	store, ok := c.Store().(OAuthStore)
+	if !ok {
+		return OAuthFlow{}, errors.New("enterprise sign-in requires an OAuth flow store")
+	}
+	now := a.now().UTC()
+	browser := randomID()
+	f := OAuthFlow{State: randomID(), Provider: provider, ProviderReference: reference, RedirectURI: redirectURI, Verifier: oauth2.GenerateVerifier(), Nonce: randomID(), RequestSignUp: signup, ExpiresAt: now.Add(10 * time.Minute)}
+	for field, target := range map[string]*string{"callbackURL": &f.CallbackURL, "errorCallbackURL": &f.ErrorCallbackURL, "newUserCallbackURL": &f.NewUserCallbackURL} {
+		raw, present := c.Body[field]
+		if !present && field != "callbackURL" {
+			continue
+		}
+		value, ok := raw.(string)
+		if !ok || value == "" {
+			return OAuthFlow{}, validationError("Invalid " + field)
+		}
+		resolved, err := a.CallbackURL(value)
+		if err != nil {
+			return OAuthFlow{}, err
+		}
+		*target = resolved
+	}
+	callback, err := url.Parse(redirectURI)
+	if err != nil {
+		return OAuthFlow{}, err
+	}
+	namespace := "sso:" + callback.EscapedPath()
+	f.Binding = a.oauthBinding(browser, namespace, c.Request)
+	if a.anonymous != nil {
+		guest, err := a.guestToken(c.Request)
+		if err != nil {
+			return OAuthFlow{}, err
+		}
+		if guest != "" {
+			browser = "guest-" + browser
+			f.Binding = digest(browser + "\x00" + namespace + "\x00")
+			f.AnonymousSessionProof, err = a.sealRecord("guest-oauth:"+f.State, []byte(guest))
+			if err != nil {
+				return OAuthFlow{}, err
+			}
+		}
+	}
+	if err := store.SaveOAuthFlow(c.Request.Context(), f, now); err != nil {
+		return OAuthFlow{}, err
+	}
+	c.ResponseHeader.Add("Set-Cookie", a.oauthCookie("sso_state", browser, 600).String())
+	return f, nil
+}
+
+// ConsumeEnterpriseFlow accepts only a single use of the browser-bound state at
+// the auth host and callback path originally selected during sign-in.
+func (c *EndpointContext) ConsumeEnterpriseFlow() (OAuthFlow, error) {
+	a := c.Auth
+	bad := &APIError{Status: 400, Code: "INVALID_OAUTH_STATE", Message: "Invalid or expired enterprise sign-in state"}
+	base, _ := url.Parse(a.opts.BaseURL)
+	q := c.Request.URL.Query()
+	state := q.Get("state")
+	cookie, e := c.Request.Cookie(a.oauthCookie("sso_state", "", 0).Name)
+	if canonicalOrigin(&url.URL{Scheme: base.Scheme, Host: c.Request.Host}) != canonicalOrigin(base) || e != nil || state == "" || len(state) > 128 || len(q["state"]) != 1 || len(q["code"]) > 1 || len(q["error"]) > 1 || len(q["iss"]) > 1 {
+		return OAuthFlow{}, bad
+	}
+	namespace := "sso:" + c.Request.URL.EscapedPath()
+	binding := a.oauthBinding(cookie.Value, namespace, c.Request)
+	if strings.HasPrefix(cookie.Value, "guest-") {
+		binding = digest(cookie.Value + "\x00" + namespace + "\x00")
+	}
+	store, ok := c.Store().(OAuthStore)
+	if !ok {
+		return OAuthFlow{}, bad
+	}
+	f, e := store.ConsumeOAuthFlow(c.Request.Context(), state, binding, a.now().UTC())
+	if errors.Is(e, ErrNotFound) {
+		return OAuthFlow{}, bad
+	}
+	if e != nil {
+		return OAuthFlow{}, e
+	}
+	c.ResponseHeader.Add("Set-Cookie", a.oauthCookie("sso_state", "", -1).String())
+	original, e := url.Parse(f.RedirectURI)
+	if e != nil || f.ProviderReference == "" || canonicalOrigin(original) != canonicalOrigin(base) || original.EscapedPath() != c.Request.URL.EscapedPath() {
+		return OAuthFlow{}, bad
+	}
+	if f.AnonymousSessionProof != "" {
+		guest, err := a.openRecord("guest-oauth:"+f.State, f.AnonymousSessionProof)
+		current := a.cookieToken(c.Request.Header)
+		if err != nil || a.anonymous == nil || current != "" && current != string(guest) {
+			return OAuthFlow{}, bad
+		}
+		c.Request = c.Request.WithContext(context.WithValue(c.Request.Context(), anonymousSourceKey{}, string(guest)))
+	}
+	return f, nil
+}
+
+// CompleteEnterpriseFlow applies the host's account and token policy and emits
+// the usual session cookies only after the store's transaction has committed.
+func (c EndpointContext) CompleteEnterpriseFlow(f OAuthFlow, p OAuthProfile, tokens OAuthTokens, disableSignup bool, complete OAuthCompletion) (any, error) {
+	if !validSocialProfile(p) || complete == nil {
+		return nil, validationError("Invalid enterprise identity")
+	}
+	result, created, err := c.Auth.completeProfileWith(c.Request.Context(), c.Request, f.Provider, p, tokens, OAuthLoginOptions{DisableSignUp: disableSignup}, complete)
+	if err != nil {
+		return nil, err
+	}
+	target := f.CallbackURL
+	if created && f.NewUserCallbackURL != "" {
+		target = f.NewUserCallbackURL
+	}
+	redirect, err := c.Redirect(target)
+	if err != nil {
+		return nil, err
+	}
+	if err = c.Auth.addSessionCookieHeaders(c.ResponseHeader, c.Request, result.Token, true); err != nil {
+		return nil, err
+	}
+	return redirect, nil
+}

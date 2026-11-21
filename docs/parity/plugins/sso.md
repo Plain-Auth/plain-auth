@@ -55,8 +55,14 @@
     - [x] Register manually configured and discovered OIDC clients and read the other implementation’s canonical provider record ([test](../../../conformance/sso-providers.mjs#L11))
     - [x] Enforce direct owner sessions, organization roles and creator quota during concurrent registrations ([test](../../../adapters/sqlstore/sso_test.go#L23))
   - [ ] `POST /sign-in/sso`
+    - [x] Start an authorization with a persisted OIDC provider through the released client and retain the same account across implementations ([test](../../../conformance/sso-browser.mjs#L13))
+    - [x] Select a provider by ID, organization slug, email or DNS suffix on a custom auth mount ([test](../../../adapters/sqlstore/sso_browser_test.go#L121))
   - [ ] `/sso/callback/:providerId`
+    - [x] Redeem a browser-bound code with PKCE and either secret authentication method, then issue a session for the stable provider subject ([test](../../../adapters/sqlstore/sso_browser_test.go#L121))
+    - [x] Reject changed provider configuration before exchange and inside the account, membership and session transaction ([test](../../../adapters/sqlstore/sso_browser_test.go#L318))
+    - [x] Use validated public addresses for tenant-controlled endpoints and reject redirects and oversized responses ([test](../../../plugins/sso/identity_test.go#L15))
   - [ ] `/sso/callback`
+    - [x] Authenticate using the shared callback on both servers and preserve the canonical linked account in SQLite ([test](../../../conformance/sso-browser.mjs#L54))
   - [ ] `GET / POST /sso/saml2/sp/acs/:providerId`
   - [ ] `GET / POST /sso/saml2/sp/slo/:providerId`
   - [ ] `POST /sso/saml2/logout/:providerId`
@@ -85,10 +91,12 @@
     - [ ] `authorizationEndpoint`
     - [ ] `discoveryEndpoint`
     - [ ] `userInfoEndpoint`
+      - [x] Resolve the subject through UserInfo and reject disagreement with a signed ID token ([test](../../../adapters/sqlstore/sso_browser_test.go#L288))
     - [ ] `scopes`
     - [ ] `overrideUserInfo`
     - [ ] `tokenEndpoint`
     - [ ] `tokenEndpointAuthentication`
+      - [x] Redeem codes through confidential client-secret basic and POST authentication ([test](../../../adapters/sqlstore/sso_browser_test.go#L76))
     - [ ] `privateKeyId`
     - [ ] `privateKeyAlgorithm`
     - [ ] `jwksEndpoint`
@@ -118,9 +126,11 @@
     - [ ] `provisionUser`
     - [ ] `provisionUserOnEveryLogin`
     - [ ] `organizationProvisioning`
+      - [x] Preserve existing roles and pending invitations, serialize competing removal and roll back new identities at capacity ([test](../../../adapters/sqlstore/sso_browser_test.go#L373))
     - [ ] `defaultSSO`
     - [ ] `defaultOverrideUserInfo`
     - [ ] `disableImplicitSignUp`
+      - [x] Require an explicit signup request for new enterprise users and enforce host-wide signup controls ([test](../../../adapters/sqlstore/sso_browser_test.go#L297))
     - [ ] `modelName`
     - [ ] `fields`
     - [ ] `schema`
@@ -129,6 +139,7 @@
     - [ ] `trustEmailVerified`
     - [ ] `domainVerification`
     - [ ] `redirectURI`
+      - [x] Select the shared callback for all registered providers or the provider-specific URL under the auth mount ([test](../../../conformance/sso-browser.mjs#L57))
     - [ ] `resolvePrivateKey`
     - [ ] `saml`
   - [ ] `SSOProvider`

@@ -40,3 +40,30 @@ func (c *Client) GetSSOProvider(ctx context.Context, id string) (sso.PublicProvi
 	err := c.Do(ctx, http.MethodGet, "/sso/get-provider?"+url.Values{"providerId": {id}}.Encode(), nil, &out)
 	return out, err
 }
+
+// SSOSignInRequest selects a persisted enterprise provider and trusted application
+// return destinations. CallbackURL is required.
+type SSOSignInRequest struct {
+	ProviderID         string            `json:"providerId,omitempty"`
+	OrganizationSlug   string            `json:"organizationSlug,omitempty"`
+	Domain             string            `json:"domain,omitempty"`
+	Email              string            `json:"email,omitempty"`
+	CallbackURL        string            `json:"callbackURL"`
+	NewUserCallbackURL string            `json:"newUserCallbackURL,omitempty"`
+	ErrorCallbackURL   string            `json:"errorCallbackURL,omitempty"`
+	LoginHint          string            `json:"loginHint,omitempty"`
+	Scopes             []string          `json:"scopes,omitempty"`
+	AdditionalParams   map[string]string `json:"additionalParams,omitempty"`
+	RequestSignUp      bool              `json:"requestSignUp,omitempty"`
+}
+type SSOAuthorization struct {
+	URL      string `json:"url"`
+	Redirect bool   `json:"redirect"`
+}
+
+// SignInSSO starts authorization for the browser that owns the client's cookie jar.
+func (c *Client) SignInSSO(ctx context.Context, in SSOSignInRequest) (SSOAuthorization, error) {
+	var result SSOAuthorization
+	err := c.Do(ctx, http.MethodPost, "/sign-in/sso", in, &result)
+	return result, err
+}
