@@ -9,9 +9,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Stonewrit/stonewrit-auth/schema"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/stdlib"
-	"github.com/Stonewrit/stonewrit-auth/schema"
 )
 
 func TestReadOnlySchemaCheck(t *testing.T) {
@@ -129,25 +129,30 @@ func TestCheckSchemaConnectionPrivacy(t *testing.T) {
 }
 
 func TestCheckSchemaSelectedProfiles(t *testing.T) {
-	profiles := slices.DeleteFunc(schema.Profiles(), func(name string) bool { return name == "organization" })
-	for _, dialect := range []string{"sqlite", "postgres", "mysql"} {
-		t.Run(dialect, func(t *testing.T) {
-			ctx := t.Context()
-			dsn := organizationTestDSN(t, dialect)
-			ddl, err := schema.Generate(dialect, profiles)
-			if err != nil {
-				t.Fatal(err)
-			}
-			all, err := OpenWithSchema(ctx, dialect, dsn, ddl)
-			if err != nil {
-				t.Fatal(err)
-			}
-			defer all.Close()
-			findings, err := CheckSchema(ctx, dialect, dsn, profiles)
-			if err != nil || len(findings) != 0 {
-				t.Fatalf("configured schema had findings: %v, %v", findings, err)
-			}
-		})
+	base := slices.DeleteFunc(schema.Profiles(), func(name string) bool {
+		return name == "organization" || name == "username" || name == "username-only"
+	})
+	for _, variant := range []string{"username", "username-only"} {
+		profiles := append(slices.Clone(base), variant)
+		for _, dialect := range []string{"sqlite", "postgres", "mysql"} {
+			t.Run(dialect+"/"+variant, func(t *testing.T) {
+				ctx := t.Context()
+				dsn := organizationTestDSN(t, dialect)
+				ddl, err := schema.Generate(dialect, profiles)
+				if err != nil {
+					t.Fatal(err)
+				}
+				all, err := OpenWithSchema(ctx, dialect, dsn, ddl)
+				if err != nil {
+					t.Fatal(err)
+				}
+				defer all.Close()
+				findings, err := CheckSchema(ctx, dialect, dsn, profiles)
+				if err != nil || len(findings) != 0 {
+					t.Fatalf("configured schema had findings: %v, %v", findings, err)
+				}
+			})
+		}
 	}
 }
 
