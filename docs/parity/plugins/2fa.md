@@ -127,6 +127,8 @@
           - [ ] Parameter `code`
           - [ ] Parameter `trustDevice` (optional)
       - [ ] Importing Existing TOTP Secrets
+        - [x] Sign in through the released client using the same external Base32 seed enrolled through each server's trusted provisioning process ([test](../../../conformance/core.test.mjs#L1112))
+        - [x] Read the normalized imported key with the configured eight-digit, 45-second authenticator settings on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/twofactor_import_test.go#L97))
     - [ ] OTP
       - [ ] Sending OTP
         - [ ] `POST /two-factor/send-otp`

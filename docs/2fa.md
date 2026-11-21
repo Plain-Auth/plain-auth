@@ -86,3 +86,17 @@ An account enrolled with delivered codes can set up an authenticator while conti
 | `SkipVerificationOnEnable` | Enables authenticator enrollment immediately after the password check and replaces the existing sessions. |
 
 Trusted Go code can call `Auth.GenerateTOTP(rawSecret)` and `Auth.ViewBackupCodes(ctx, userID)`. Authorize requests for recovery material before passing the account ID to the latter operation. Both functions stay inside the Go process.
+
+## Import an existing authenticator
+
+Trusted server code can enroll an existing account with a Base32 TOTP seed. First authorize the operator for that account and obtain the seed through a confidential channel. Supply the account's exact ID and the seed from the authenticator’s provisioning record.
+
+```go
+if err := auth.ImportTOTP(ctx, userID, base32Seed); err != nil {
+    return err
+}
+```
+
+The importer accepts uppercase or lowercase RFC 4648 Base32, with optional padding. Remove spaces from a grouped display before calling it. The authenticator must use SHA-1 and match the server’s `TOTP.Digits` and `TOTP.Period` settings. A successful import encrypts the decoded key with the active local storage key, enables the factor, and revokes existing sessions, pending challenges and remembered-browser grants together. The next password sign-in requires the authenticator. An existing or pending enrollment returns HTTP-equivalent status 409 through the Go error and keeps its credentials.
+
+When the source supplies a provisioning URI, extract its Base32 `secret` query parameter. When the source encrypts its records, retrieve the seed using its authorized key-management process. The new factor starts with an empty recovery-code set. After sign-in, the account holder can generate fresh recovery codes with `POST /two-factor/generate-backup-codes`. Keep seed material out of logs and client requests. [Import and sign-in tests](../adapters/sqlstore/twofactor_import_test.go)

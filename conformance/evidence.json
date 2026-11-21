@@ -552,6 +552,18 @@
       "marker": "func TestServerPluginSchemaUpgrade("
     }
   ],
+  "docs/content/docs/plugins/2fa.mdx#L312": [
+    {
+      "label": "Sign in through the released client using the same external Base32 seed enrolled through each server's trusted provisioning process",
+      "test": "conformance/core.test.mjs",
+      "marker": "the released client signs in with a preprovisioned Base32 authenticator on both runtimes"
+    },
+    {
+      "label": "Read the normalized imported key with the configured eight-digit, 45-second authenticator settings on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/twofactor_import_test.go",
+      "marker": "imported authenticator URI lost the external key, digit count or period"
+    }
+  ],
   "docs/content/docs/plugins/2fa.mdx#L490": [
     {
       "label": "Generate and migrate enrollment, factor, recovery and lockout fields",

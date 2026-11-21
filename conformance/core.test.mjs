@@ -1107,3 +1107,38 @@ test("the pinned client bills one organization seat per member on both runtimes"
   const { organizationBilling } = await import("./stripe-organization-fixture.mjs");
   await organizationBilling(t, { reference, goFixture, instrument }, true);
 });
+
+
+test("the released client signs in with a preprovisioned Base32 authenticator on both runtimes", async (t) => {
+  const { symmetricEncrypt } = await import("better-auth/crypto");
+  const seed = "JBSWY3DPEHPK3PXP";
+  const ts = await reference(t, [twoFactor()]);
+  const go = await goFixture(t, ["two-factor"]);
+  const binary = await fixtureBuild;
+  function ok(response) { assert.equal(response.error, null); return response.data; }
+
+  for (const runtime of [ts, go]) {
+    const client = instrument(runtime, [twoFactorClient()]).client;
+    const user = ok(await client.signUp.email({ email, name, password })).user;
+    ok(await client.signOut());
+    if (runtime === go) {
+      const imported = spawnSync(binary, ["import-totp", go.databasePath], {
+        input: JSON.stringify({ userID: user.id, secret: seed.toLowerCase() }), encoding: "utf8",
+      });
+      assert.equal(imported.status, 0, imported.stderr);
+    } else {
+      const key = "local-conformance-0123456789-abcdefghijk";
+      const secret = await symmetricEncrypt({ key, data: "base32:" + seed.toLowerCase() });
+      const backup = await symmetricEncrypt({ key, data: "[]" });
+      ts.database.prepare('INSERT INTO "twoFactor" ("id","userId","secret","backupCodes") VALUES(?,?,?,?)')
+        .run("imported-fixture", user.id, secret, backup);
+      ts.database.prepare('UPDATE "user" SET "twoFactorEnabled"=1 WHERE "id"=?').run(user.id);
+    }
+    const signIn = ok(await client.signIn.email({ email, password }));
+    assert.deepEqual(signIn.twoFactorMethods, ["totp"]);
+    const code = await createOTP(base32.decode(seed)).totp();
+    assert.equal(ok(await client.twoFactor.verifyTotp({ code })).user.id, user.id);
+    const { totpURI } = ok(await client.twoFactor.getTotpUri({ password }));
+    assert.equal(new URL(totpURI).searchParams.get("secret"), seed);
+  }
+});
