@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/coreos/go-oidc/v3/oidc"
@@ -20,9 +21,31 @@ import (
 // Google configures OpenID Connect sign-in with Google's OAuth endpoints and
 // rotating signing keys. Identity is read only from a verified ID token.
 func Google(clientID, clientSecret string) authn.OAuthProvider {
-	client := &http.Client{Timeout: 15 * time.Second}
+	return GoogleWithOptions(GoogleOptions{ClientID: clientID, ClientSecret: clientSecret})
+}
+
+type GoogleOptions struct {
+	ClientID, ClientSecret string
+	HostedDomain           string
+	DisableSignUp          bool
+	HTTPClient             *http.Client
+}
+
+// GoogleWithOptions configures audience, Workspace restriction, registration,
+// and the HTTP client used for Google's rotating keys and token endpoint.
+func GoogleWithOptions(o GoogleOptions) authn.OAuthProvider {
+	client := o.HTTPClient
+	if client == nil {
+		client = &http.Client{Timeout: 15 * time.Second}
+	}
 	keys := oidc.NewRemoteKeySet(oidc.ClientContext(context.Background(), client), "https://www.googleapis.com/oauth2/v3/certs")
-	return google(clientID, clientSecret, keys, client)
+	p := google(o.ClientID, o.ClientSecret, keys, client)
+	p.GoogleHostedDomain = o.HostedDomain
+	p.DisableSignUp = o.DisableSignUp
+	if o.HostedDomain != "" {
+		p.AuthorizationParams = url.Values{"hd": {o.HostedDomain}}
+	}
+	return p
 }
 
 func google(id, secret string, keys oidc.KeySet, client *http.Client) authn.OAuthProvider {

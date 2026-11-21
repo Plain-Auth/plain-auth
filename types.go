@@ -64,7 +64,9 @@ type Options struct {
 	RateLimitRules   map[string]*RateLimitRule
 	ClientIP         ClientIPOptions
 	SocialProviders  map[string]OAuthProvider
-	Plugins          []Plugin
+	// EncryptOAuthTokens encrypts linked provider credentials at rest using the configured key ring.
+	EncryptOAuthTokens bool
+	Plugins            []Plugin
 }
 
 // User is the public account profile shared by all authentication methods.

@@ -40,10 +40,14 @@ type OAuthProvider struct {
 	DisableRefresh         bool
 	HTTPClient             *http.Client
 	AllowVerifiedEmailLink bool
-	AuthorizationParams    url.Values
-	DisablePKCE            bool
-	OmitNonce              bool
-	FormPostName           bool
+	// DisableSignUp prevents this provider from creating new accounts.
+	DisableSignUp bool
+	// GoogleHostedDomain restricts the verified Google Workspace hd claim. Use * for any Workspace.
+	GoogleHostedDomain  string
+	AuthorizationParams url.Values
+	DisablePKCE         bool
+	OmitNonce           bool
+	FormPostName        bool
 }
 
 // OAuthFlow is the temporary state of a browser authorization. Binding ties a
@@ -64,9 +68,14 @@ type OAuthTokens struct {
 // OAuthLoginOptions binds an explicit link to a live session or a direct
 // ID-token grant to the verified token's expiry.
 type OAuthLoginOptions struct {
+	DisableSignUp                bool
+	OneTapNonce                  string
+	OneTapExpires                time.Time
 	AllowVerifiedEmailLink       bool
 	LinkUserID, LinkSessionToken string
 	IDTokenValidUntil            time.Time
+	// IDTokenHash binds single-use grants independently of randomized storage encryption.
+	IDTokenHash [32]byte
 }
 
 // OAuthStore supports shared, single-use flow state and atomic identity login.
@@ -77,6 +86,7 @@ type OAuthStore interface {
 	CompleteOAuth(ctx context.Context, provider, subject string, tokens OAuthTokens, candidate User, session StoredSession, options OAuthLoginOptions) (User, bool, error)
 }
 
+var ErrOAuthSignupDisabled = errors.New("OAuth account creation disabled")
 var ErrOAuthLinkRequired = errors.New("account must be linked by its existing owner")
 var ErrIDTokenUsed = errors.New("ID token has already been used")
 var providerName = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$`)

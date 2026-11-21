@@ -2,6 +2,7 @@ package authn
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"io"
@@ -283,10 +284,27 @@ func (a *Auth) redirectOAuthForm(w http.ResponseWriter, r *http.Request, id stri
 }
 
 func (a *Auth) completeProfile(ctx context.Context, r *http.Request, id string, p OAuthProfile, tokens OAuthTokens, options OAuthLoginOptions) (AuthResult, bool, error) {
+	options.DisableSignUp = options.DisableSignUp || a.opts.DisableSignUp || a.opts.SocialProviders[id].DisableSignUp
+	if id == "google" && !googleDomainAllowed(a.opts.SocialProviders[id].GoogleHostedDomain, p) {
+		return AuthResult{}, false, &APIError{401, "INVALID_TOKEN", "Invalid token"}
+	}
 	now := a.now().UTC().Truncate(time.Millisecond)
 	candidate := User{ID: randomID(), Name: p.Name, Email: strings.ToLower(p.Email), EmailVerified: p.EmailVerified, Image: p.Image, CreatedAt: now, UpdatedAt: now}
 	session, raw := a.newSession(candidate.ID, RequestMeta{IPAddress: a.clientIP(r), UserAgent: r.UserAgent()})
+	if !options.IDTokenValidUntil.IsZero() {
+		options.IDTokenHash = sha256.Sum256([]byte(id + "\x00" + tokens.IDToken))
+	}
+	if a.opts.EncryptOAuthTokens {
+		var err error
+		tokens, err = a.transformOAuthTokens(id, p.Subject, tokens, true)
+		if err != nil {
+			return AuthResult{}, false, err
+		}
+	}
 	user, created, err := a.opts.Store.(OAuthStore).CompleteOAuth(ctx, id, p.Subject, tokens, candidate, session, options)
+	if errors.Is(err, ErrOAuthSignupDisabled) {
+		return AuthResult{}, false, &APIError{403, "SIGN_UP_DISABLED", "Sign-up is disabled"}
+	}
 	return AuthResult{User: user, Token: raw}, created, err
 }
 

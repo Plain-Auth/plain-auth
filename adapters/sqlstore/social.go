@@ -114,7 +114,19 @@ func (s *Store) completeOAuth(ctx context.Context, provider, subject string, tok
 		if !options.IDTokenValidUntil.After(session.CreatedAt) {
 			return u, false, authn.ErrIDTokenUsed
 		}
-		if err := s.claimIDToken(ctx, tx, provider, tokens.IDToken, session.CreatedAt, options.IDTokenValidUntil); err != nil {
+		hash := options.IDTokenHash
+		if hash == ([32]byte{}) {
+			hash = sha256.Sum256([]byte(provider + "\x00" + tokens.IDToken))
+		}
+		if err := s.claimIDToken(ctx, tx, provider, hash, session.CreatedAt, options.IDTokenValidUntil); err != nil {
+			return u, false, err
+		}
+	}
+	if options.OneTapNonce != "" {
+		if !options.OneTapExpires.After(session.CreatedAt) {
+			return u, false, authn.ErrIDTokenUsed
+		}
+		if err := s.claimIDToken(ctx, tx, "one-tap-nonce", sha256.Sum256([]byte("one-tap-nonce\x00"+options.OneTapNonce)), session.CreatedAt, options.OneTapExpires); err != nil {
 			return u, false, err
 		}
 	}
@@ -143,6 +155,9 @@ func (s *Store) completeOAuth(ctx context.Context, provider, subject string, tok
 		case errors.Is(err, sql.ErrNoRows):
 			if options.LinkUserID != "" {
 				return u, false, authn.ErrOAuthLinkRequired
+			}
+			if options.DisableSignUp {
+				return u, false, authn.ErrOAuthSignupDisabled
 			}
 			u = candidate
 			created = true
@@ -186,11 +201,10 @@ func (s *Store) completeOAuth(ctx context.Context, provider, subject string, tok
 	return u, created, tx.Commit()
 }
 
-func (s *Store) claimIDToken(ctx context.Context, tx *sql.Tx, provider, raw string, now, expires time.Time) error {
+func (s *Store) claimIDToken(ctx context.Context, tx *sql.Tx, provider string, hash [32]byte, now, expires time.Time) error {
 	if _, err := tx.ExecContext(ctx, s.bind(`DELETE FROM "verification" WHERE "identifier"='consumed-id-token' AND "expiresAt"<=?`), s.date(now)); err != nil {
 		return err
 	}
-	hash := sha256.Sum256([]byte(provider + "\x00" + raw))
 	id := "oid-" + hex.EncodeToString(hash[:16])
 	q := `INSERT INTO "verification" ("id","identifier","value","expiresAt","createdAt","updatedAt") VALUES (?,'consumed-id-token',?,?,?,?)`
 	if s.dialect != "mysql" {

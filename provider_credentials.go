@@ -140,6 +140,9 @@ func (a *Auth) selectedCredential(ctx context.Context, h http.Header, s AccountS
 	if !ok {
 		return nil, row, p, &APIError{501, "ACCOUNT_STORAGE_UNAVAILABLE", "Account operation is unavailable for this store"}
 	}
+	if a.opts.EncryptOAuthTokens {
+		store = encryptedProviderStore{ProviderCredentialStore: store, auth: a}
+	}
 	row, err := store.ProviderCredential(ctx, userID, s.AccountID)
 	if errors.Is(err, ErrNotFound) {
 		return nil, row, p, &APIError{400, "ACCOUNT_NOT_FOUND", "Account not found"}
