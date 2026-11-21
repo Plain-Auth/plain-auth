@@ -1,6 +1,7 @@
 package betterauth
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -10,8 +11,13 @@ import (
 
 // Plugin contributes HTTP endpoints to an Auth instance.
 type Plugin struct {
-	ID        string
-	Endpoints []Endpoint
+	// OnValidateNewPassword checks a proposed credential before it is stored.
+	OnValidateNewPassword func(ctx context.Context, path, password string) error
+	factor                *TwoFactorOptions
+	// OnReadSession populates fields owned by an enabled plugin after session authentication.
+	OnReadSession func(context.Context, *SessionResult) error
+	ID            string
+	Endpoints     []Endpoint
 	// SessionToken can supply an alternate credential for session lookups.
 	SessionToken func(*Auth, http.Header) string
 	// OnSessionCookie runs when a handler issues a session cookie.
@@ -75,4 +81,23 @@ type SessionCookieEvent struct {
 	Route   string
 	Request *http.Request
 	Header  http.Header
+}
+
+func (a *Auth) withSessionPlugins(ctx context.Context, session Session, user User) (*SessionResult, error) {
+	if a.factorStore != nil {
+		enabled, err := a.factorStore.FactorEnabled(ctx, user.ID)
+		if err != nil {
+			return nil, err
+		}
+		user.TwoFactorEnabled = &enabled
+	}
+	result := &SessionResult{Session: session, User: user}
+	for _, plugin := range a.opts.Plugins {
+		if plugin.OnReadSession != nil {
+			if err := plugin.OnReadSession(ctx, result); err != nil {
+				return nil, err
+			}
+		}
+	}
+	return result, nil
 }

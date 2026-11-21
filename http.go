@@ -19,6 +19,9 @@ import (
 const maxBodyBytes = 1 << 20
 
 var coreMethods = map[string]string{
+	"/error":        http.MethodGet,
+	"/change-email": http.MethodPost, "/delete-user": http.MethodPost, "/delete-user/callback": http.MethodGet,
+	"/list-accounts": http.MethodGet, "/unlink-account": http.MethodPost,
 	"/verify-password": http.MethodPost, "/update-user": http.MethodPost, "/change-password": http.MethodPost,
 	"/request-password-reset": http.MethodPost, "/reset-password": http.MethodPost, "/reset-password/:token": http.MethodGet,
 	"/send-verification-email": http.MethodPost, "/verify-email": http.MethodGet,
@@ -30,6 +33,9 @@ var coreMethods = map[string]string{
 // ServeHTTP serves the auth endpoints beneath the configured base path.
 func (a *Auth) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	route, mounted := strings.CutPrefix(r.URL.EscapedPath(), strings.TrimSuffix(a.opts.BasePath, "/"))
+	if mounted && a.serveOAuth(w, r, route) {
+		return
+	}
 	if token, ok := strings.CutPrefix(route, "/reset-password/"); ok && token != "" && !strings.ContainsAny(token, "/%") {
 		route = "/reset-password/:token"
 	}
@@ -46,9 +52,11 @@ func (a *Auth) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ip := remoteIP(r.RemoteAddr)
-	if retry := a.limitRequest(ip, route); retry > 0 {
-		w.Header().Set("X-Retry-After", strconv.Itoa(retry))
-		writeAuthJSON(w, http.StatusTooManyRequests, map[string]string{"message": "Too many requests. Please try again later."})
+	if a.rejectRateLimited(w, r, route) {
+		return
+	}
+	if route == "/error" {
+		a.serveErrorPage(w, r)
 		return
 	}
 	var body wireBody
@@ -72,7 +80,7 @@ func (a *Auth) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	if isSessionPost {
+	if isSessionPost && !a.opts.DeferSessionRefresh {
 		writeAuthError(w, &APIError{Status: 405, Code: "METHOD_NOT_ALLOWED_DEFER_SESSION_REQUIRED", Message: "POST method requires deferSessionRefresh to be enabled in session config"})
 		return
 	}
@@ -103,11 +111,15 @@ func (a *Auth) handleCoreRequest(route string, w http.ResponseWriter, r *http.Re
 	case "/ok":
 		return map[string]bool{"ok": true}, nil
 	case "/get-session":
-		session, err := a.GetSession(ctx, r.Header)
-		if err == nil && session == nil && a.cookieToken(r.Header) != "" {
-			a.expireSessionCookies(w, r)
+		return a.sessionHTTP(w, r)
+	case "/list-accounts":
+		return a.ListUserAccounts(ctx, r.Header)
+	case "/unlink-account":
+		id, err := requiredString(body, "accountId")
+		if err != nil {
+			return nil, err
 		}
-		return session, err
+		return map[string]bool{"status": true}, a.UnlinkAccount(ctx, r.Header, id)
 	case "/list-sessions":
 		return a.ListSessions(ctx, r.Header)
 	case "/sign-up/email", "/sign-in/email":
@@ -189,7 +201,8 @@ func (a *Auth) handleEmail(route string, w http.ResponseWriter, r *http.Request,
 		return nil, validationError(strings.Join(issues, "; "))
 	}
 	email, password := body["email"].(string), body["password"].(string)
-	meta := RequestMeta{IPAddress: ip, UserAgent: r.UserAgent(), RememberMe: remember}
+	callback, _ := body["callbackURL"].(string)
+	meta := RequestMeta{IPAddress: ip, UserAgent: r.UserAgent(), RememberMe: remember, CallbackURL: callback}
 	var result AuthResult
 	var err error
 	if signup {
@@ -199,6 +212,16 @@ func (a *Auth) handleEmail(route string, w http.ResponseWriter, r *http.Request,
 	}
 	if err != nil {
 		return nil, err
+	}
+	if result.Challenge != nil {
+		a.expireSessionCookies(w, r)
+		http.SetCookie(w, a.factorCookie(result.Challenge.Identifier, int(challengeLifetime.Seconds())))
+		if remember != nil && !*remember {
+			m := a.sessionCookie("true", false)
+			m.Name = strings.TrimSuffix(m.Name, "session_token") + "dont_remember"
+			http.SetCookie(w, m)
+		}
+		return map[string]any{"twoFactorRedirect": true, "twoFactorMethods": []string{"totp"}}, nil
 	}
 	response := map[string]any{"user": result.User, "token": nil}
 	if result.Token != "" {
@@ -463,4 +486,18 @@ func canonicalOrigin(u *url.URL) string {
 		host = net.JoinHostPort(host, port)
 	}
 	return u.Scheme + "://" + host
+}
+
+// CallbackURL resolves an application callback using this instance's trusted origins.
+func (a *Auth) CallbackURL(raw string) (string, error) {
+	if raw == "" {
+		raw = "/"
+	}
+	if !a.trustedURL(raw, true) {
+		return "", &APIError{403, "INVALID_CALLBACK_URL", "Invalid callbackURL"}
+	}
+	if strings.HasPrefix(raw, "/") {
+		return a.opts.BaseURL + raw, nil
+	}
+	return raw, nil
 }

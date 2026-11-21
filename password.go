@@ -12,7 +12,7 @@ import (
 	"golang.org/x/text/unicode/norm"
 )
 
-// Match the NFKC normalization and ASCII-hex salt used by Better Auth.
+// Use NFKC normalization and an ASCII-hex salt for credential interoperability.
 func passwordKey(password, salt string) ([]byte, error) {
 	return scrypt.Key([]byte(norm.NFKC.String(password)), []byte(salt), 16384, 16, 1, 64)
 }
@@ -61,7 +61,24 @@ func (a *Auth) acquirePasswordSlot(ctx context.Context) error {
 		return ctx.Err()
 	}
 }
-func (a *Auth) hashCredential(ctx context.Context, password string) (string, error) {
+
+// ValidateNewPassword runs configured plugin checks for a credential-setting
+// operation. Custom server endpoints pass their stable path under the auth mount.
+func (a *Auth) ValidateNewPassword(ctx context.Context, path, password string) error {
+	for _, plugin := range a.opts.Plugins {
+		if plugin.OnValidateNewPassword != nil {
+			if err := plugin.OnValidateNewPassword(ctx, path, password); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (a *Auth) hashCredential(ctx context.Context, path, password string) (string, error) {
+	if err := a.ValidateNewPassword(ctx, path, password); err != nil {
+		return "", err
+	}
 	if err := a.acquirePasswordSlot(ctx); err != nil {
 		return "", err
 	}

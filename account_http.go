@@ -24,6 +24,50 @@ func (a *Auth) handleAccountRequest(route string, w http.ResponseWriter, r *http
 	ok := map[string]bool{"status": true}
 	query := r.URL.Query()
 	switch route {
+	case "/change-email":
+		email, err := requiredString(b, "newEmail")
+		if err != nil {
+			return nil, err
+		}
+		callback, _ := b["callbackURL"].(string)
+		return ok, a.ChangeEmail(ctx, r.Header, email, callback)
+	case "/delete-user", "/delete-user/callback":
+		params := DeleteUserInput{}
+		if route == "/delete-user/callback" {
+			if err := a.validateCallbacks(nil, query); err != nil {
+				return nil, err
+			}
+			params.Token = query.Get("token")
+			params.CallbackURL = query.Get("callbackURL")
+			if params.Token == "" {
+				return nil, validationError("Missing token")
+			}
+		} else {
+			for _, f := range []struct {
+				key string
+				dst *string
+			}{{"token", &params.Token}, {"password", &params.Password}, {"callbackURL", &params.CallbackURL}} {
+				if _, exists := b[f.key]; exists {
+					value, err := requiredString(b, f.key)
+					if err != nil {
+						return nil, err
+					}
+					*f.dst = value
+				}
+			}
+		}
+		deleted, err := a.DeleteUser(ctx, r.Header, params)
+		if err != nil {
+			return nil, err
+		}
+		if deleted {
+			a.expireSessionCookies(w, r)
+			if route == "/delete-user/callback" && params.CallbackURL != "" {
+				return authRedirect(params.CallbackURL), nil
+			}
+			return map[string]any{"success": true, "message": "User deleted"}, nil
+		}
+		return map[string]any{"success": true, "message": "Verification email sent"}, nil
 	case "/verify-password":
 		password, err := requiredString(b, "password")
 		if err != nil {
@@ -125,7 +169,7 @@ func (a *Auth) handleAccountRequest(route string, w http.ResponseWriter, r *http
 			if token == "" {
 				return nil, validationError("[query.token] Invalid input: expected string, received undefined")
 			}
-			err := a.VerifyEmail(ctx, token)
+			result, err := a.applyEmailProof(ctx, r.Header, token, callback)
 			if callback != "" {
 				var apiErr *APIError
 				if errors.As(err, &apiErr) {
@@ -135,7 +179,7 @@ func (a *Auth) handleAccountRequest(route string, w http.ResponseWriter, r *http
 					return authRedirect(callback), nil
 				}
 			}
-			return map[string]any{"status": true, "user": nil}, err
+			return result, err
 		}
 		// The reset callback validates a link without spending it. The POST that
 		// actually replaces the password is the single-use operation.
@@ -171,7 +215,7 @@ func redirectQuery(target, key, value string) authRedirect {
 }
 
 func (a *Auth) dontRemember(r *http.Request) bool {
-	marker := a.sessionCookie("true", false)
-	c, err := r.Cookie(strings.TrimSuffix(marker.Name, "session_token") + "dont_remember")
-	return err == nil && c.Value == marker.Value
+	name := strings.TrimSuffix(a.cookieName(), "session_token") + "dont_remember"
+	c, err := r.Cookie(name)
+	return err == nil && a.VerifySignedSessionToken(c.Value) == "true"
 }

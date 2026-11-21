@@ -1,0 +1,119 @@
+package betterauth
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"net"
+	"net/http"
+	"net/url"
+	"regexp"
+	"slices"
+	"strings"
+	"time"
+
+	"golang.org/x/oauth2"
+)
+
+// OAuthProfile identifies a person by their stable provider subject.
+type OAuthProfile struct {
+	Subject, Email, Name string
+	Image                *string
+	EmailVerified        bool
+}
+
+// OAuthProvider configures an authorization-code provider. Resolve must obtain
+// identity from an authenticated provider endpoint or a verified ID token.
+// For OpenID Connect it must verify the supplied nonce.
+type OAuthProvider struct {
+	Config                 oauth2.Config
+	Resolve                func(context.Context, *oauth2.Token, string) (OAuthProfile, error)
+	VerifyIDToken          func(ctx context.Context, raw, nonce string) (OAuthProfile, time.Time, error)
+	HTTPClient             *http.Client
+	AllowVerifiedEmailLink bool
+	AuthorizationParams    url.Values
+	DisablePKCE            bool
+	OmitNonce              bool
+	FormPostName           bool
+}
+
+// OAuthFlow is the temporary state of a browser authorization. Binding ties a
+// request to the initiating browser, provider and existing session.
+type OAuthFlow struct {
+	State, Binding, Provider, Verifier, Nonce         string
+	CallbackURL, ErrorCallbackURL, NewUserCallbackURL string
+	LinkUserID                                        string
+	ExpiresAt                                         time.Time
+}
+
+// OAuthTokens are the provider-issued account credentials kept by the adapter.
+type OAuthTokens struct {
+	AccessToken, RefreshToken, IDToken, Scope string
+	ExpiresAt                                 time.Time
+}
+
+// OAuthLoginOptions binds an explicit link to a live session or a direct
+// ID-token grant to the verified token's expiry.
+type OAuthLoginOptions struct {
+	AllowVerifiedEmailLink       bool
+	LinkUserID, LinkSessionToken string
+	IDTokenValidUntil            time.Time
+}
+
+// OAuthStore supports shared, single-use flow state and atomic identity login.
+// CompleteOAuth returns the actual account owner and whether it created a user.
+type OAuthStore interface {
+	SaveOAuthFlow(context.Context, OAuthFlow, time.Time) error
+	ConsumeOAuthFlow(ctx context.Context, state, binding string, now time.Time) (OAuthFlow, error)
+	CompleteOAuth(ctx context.Context, provider, subject string, tokens OAuthTokens, candidate User, session StoredSession, options OAuthLoginOptions) (User, bool, error)
+}
+
+var ErrOAuthLinkRequired = errors.New("account must be linked by its existing owner")
+var ErrIDTokenUsed = errors.New("ID token has already been used")
+var providerName = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$`)
+
+func prepareOAuthProviders(in map[string]OAuthProvider, store Store) (map[string]OAuthProvider, error) {
+	if len(in) == 0 {
+		return nil, nil
+	}
+	if _, ok := store.(OAuthStore); !ok {
+		return nil, errors.New("social providers require OAuthStore")
+	}
+	out := make(map[string]OAuthProvider, len(in))
+	for id, p := range in {
+		if !providerName.MatchString(id) || id == "credential" || p.Config.ClientID == "" || p.Resolve == nil {
+			return nil, fmt.Errorf("incomplete OAuth provider %q", id)
+		}
+		for _, endpoint := range []string{p.Config.Endpoint.AuthURL, p.Config.Endpoint.TokenURL} {
+			u, err := url.Parse(endpoint)
+			if err != nil || u.Hostname() == "" || u.User != nil || u.Fragment != "" {
+				return nil, fmt.Errorf("invalid OAuth endpoint for %q", id)
+			}
+			ip := net.ParseIP(u.Hostname())
+			if u.Scheme != "https" && !(u.Scheme == "http" && (u.Hostname() == "localhost" || ip.IsLoopback())) {
+				return nil, fmt.Errorf("OAuth endpoint for %q requires HTTPS", id)
+			}
+		}
+		p.Config.Scopes = slices.Clone(p.Config.Scopes)
+		if p.AuthorizationParams != nil {
+			params := make(url.Values, len(p.AuthorizationParams))
+			for k, v := range p.AuthorizationParams {
+				params[k] = slices.Clone(v)
+			}
+			p.AuthorizationParams = params
+		}
+		if p.HTTPClient == nil {
+			p.HTTPClient = &http.Client{Timeout: 15 * time.Second}
+		}
+		out[id] = p
+	}
+	return out, nil
+}
+
+func (a *Auth) oauthCookie(name, value string, maxAge int) *http.Cookie {
+	prefix := ""
+	if strings.HasPrefix(a.opts.BaseURL, "https://") {
+		prefix = "__Secure-"
+	}
+	return &http.Cookie{Name: a.prefixedCookieName(name), Value: value, Path: "/", HttpOnly: true, Secure: prefix != "", SameSite: http.SameSiteLaxMode, MaxAge: maxAge}
+}

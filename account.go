@@ -39,8 +39,8 @@ type AccountStore interface {
 // MailLink is delivered to the application's configured mail sender. Its Token
 // and URL are sensitive and should only be delivered to User.Email.
 type MailLink struct {
-	User       User
-	URL, Token string
+	User                 User
+	URL, Token, NewEmail string
 }
 
 type MailSender func(context.Context, MailLink) error
@@ -80,10 +80,13 @@ func (a *Auth) VerifyPassword(ctx context.Context, h http.Header, password strin
 }
 
 func (a *Auth) checkedAccountHash(ctx context.Context, user User, password string) (string, error) {
-	if err := a.validateCredential(user.Email, password, false); err != nil {
+	if err := a.validatePasswordLength(password, false); err != nil {
 		return "", err
 	}
 	u, hash, err := a.opts.Store.Credential(ctx, user.Email)
+	if errors.Is(err, ErrNotFound) {
+		return "", &APIError{400, "INVALID_PASSWORD", "Invalid password"}
+	}
 	if err != nil {
 		return "", err
 	}
@@ -112,7 +115,7 @@ func (a *Auth) ChangePassword(ctx context.Context, h http.Header, in ChangePassw
 	if err != nil {
 		return AuthResult{}, err
 	}
-	if err := a.validateCredential(session.User.Email, in.NewPassword, true); err != nil {
+	if err := a.validatePasswordLength(in.NewPassword, true); err != nil {
 		return AuthResult{}, err
 	}
 	s, err := a.accountStore()
@@ -123,7 +126,7 @@ func (a *Auth) ChangePassword(ctx context.Context, h http.Header, in ChangePassw
 	if err != nil {
 		return AuthResult{}, err
 	}
-	hash, err := a.hashCredential(ctx, in.NewPassword)
+	hash, err := a.hashCredential(ctx, "/change-password", in.NewPassword)
 	if err != nil {
 		return AuthResult{}, err
 	}
@@ -133,7 +136,13 @@ func (a *Auth) ChangePassword(ctx context.Context, h http.Header, in ChangePassw
 		row, token := a.newSession(session.User.ID, meta)
 		replacement, result.Token = &row, token
 	}
-	err = s.ChangeCredential(ctx, session.User.ID, old, hash, replacement)
+	if bound, ok := s.(interface {
+		ChangeCredentialForSession(context.Context, string, string, string, *StoredSession, string, time.Time) error
+	}); ok {
+		err = bound.ChangeCredentialForSession(ctx, session.User.ID, old, hash, replacement, session.Session.Token, a.now().UTC())
+	} else {
+		err = s.ChangeCredential(ctx, session.User.ID, old, hash, replacement)
+	}
 	if errors.Is(err, ErrNotFound) {
 		return AuthResult{}, &APIError{400, "INVALID_PASSWORD", "Invalid password"}
 	}
@@ -182,10 +191,10 @@ func (a *Auth) ResetPassword(ctx context.Context, token, newPassword string) err
 	if err != nil {
 		return err
 	}
-	if err := a.validateCredential(row.Email, newPassword, true); err != nil {
+	if err := a.validatePasswordLength(newPassword, true); err != nil {
 		return err
 	}
-	hash, err := a.hashCredential(ctx, newPassword)
+	hash, err := a.hashCredential(ctx, "/reset-password", newPassword)
 	if err != nil {
 		return err
 	}
@@ -244,10 +253,5 @@ func (a *Auth) SendVerificationEmail(ctx context.Context, h http.Header, email, 
 			return err
 		}
 	}
-	token, err := a.emailVerificationToken(u)
-	if err != nil {
-		return err
-	}
-	link := a.opts.BaseURL + strings.TrimRight(a.opts.BasePath, "/") + "/verify-email?" + url.Values{"token": {token}, "callbackURL": {callback}}.Encode()
-	return a.opts.SendVerificationEmail(ctx, MailLink{User: u, URL: link, Token: token})
+	return a.sendEmailProof(ctx, u, "", "", callback, a.opts.SendVerificationEmail)
 }

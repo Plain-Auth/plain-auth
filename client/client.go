@@ -1,4 +1,4 @@
-// Package client calls a Better Auth HTTP server on behalf of a single user.
+// Package client calls the authentication HTTP API on behalf of a single user.
 package client
 
 import (
@@ -101,7 +101,7 @@ func (c *Client) Do(ctx context.Context, method, route string, input, output any
 		apiErr := &betterauth.APIError{Status: res.StatusCode}
 		_ = json.NewDecoder(io.LimitReader(res.Body, 64<<10)).Decode(apiErr)
 		if apiErr.Message == "" {
-			apiErr.Message = fmt.Sprintf("Better Auth returned HTTP %d", res.StatusCode)
+			apiErr.Message = fmt.Sprintf("Authentication server returned HTTP %d", res.StatusCode)
 		}
 		return apiErr
 	}
@@ -132,10 +132,12 @@ type SignInRequest struct {
 
 // EmailResult contains the public profile and, when issued, the session token.
 type EmailResult struct {
-	User     betterauth.User `json:"user"`
-	Token    *string         `json:"token"`
-	Redirect bool            `json:"redirect"`
-	URL      string          `json:"url"`
+	TwoFactorRedirect bool            `json:"twoFactorRedirect,omitempty"`
+	TwoFactorMethods  []string        `json:"twoFactorMethods,omitempty"`
+	User              betterauth.User `json:"user"`
+	Token             *string         `json:"token"`
+	Redirect          bool            `json:"redirect"`
+	URL               string          `json:"url"`
 }
 
 func (c *Client) SignUpEmail(ctx context.Context, input SignUpRequest) (*EmailResult, error) {

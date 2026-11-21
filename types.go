@@ -9,69 +9,117 @@ import (
 
 // Options configures one isolated authentication instance.
 type Options struct {
-	SendResetPassword             MailSender
-	SendVerificationEmail         MailSender
-	PasswordResetTokenTTL         time.Duration
-	EmailVerificationTokenTTL     time.Duration
-	RevokeSessionsOnPasswordReset bool
-	Plugins                       []Plugin
-	Store                         Store
-	Secret                        string
-	BaseURL                       string
-	BasePath                      string
-	TrustedOrigins                []string
+	// Store persists identities and sessions. Configure one store per auth instance.
+	Store Store
+	// BaseURL is the public HTTP(S) address. BasePath defaults to /api/auth.
+	BaseURL  string
+	BasePath string
+	// TrustedOrigins adds exact origins allowed to make browser requests and callbacks.
+	TrustedOrigins   []string
+	CookiePrefix     string
+	ErrorRedirectURL string
+	// Secret signs credentials. Secrets configures ordered keys for rotation.
+	Secret  string
+	Secrets []VersionedSecret
+
 	EmailAndPassword              bool
-	SessionTTL                    time.Duration
-	FreshAge                      time.Duration
 	MinPasswordLength             int
 	MaxPasswordLength             int
-	RateLimit                     *bool
+	DisableSignUp                 bool
+	DisableAutoSignIn             bool
+	RequireEmailVerification      bool
+	SendVerificationOnSignUp      *bool
+	SendVerificationOnSignIn      bool
+	SendVerificationEmail         MailSender
+	EmailVerificationTokenTTL     time.Duration
+	SendResetPassword             MailSender
+	PasswordResetTokenTTL         time.Duration
+	RevokeSessionsOnPasswordReset bool
+
+	// Account lifecycle operations with destructive or identity-changing effects are opt-in.
+	DeleteUserEnabled              bool
+	SendDeleteAccountVerification  MailSender
+	DeleteTokenTTL                 time.Duration
+	ChangeEmailEnabled             bool
+	UpdateEmailWithoutVerification bool
+	SendChangeEmailConfirmation    MailSender
+	AllowUnlinkingAll              bool
+
+	SessionTTL time.Duration
+	FreshAge   time.Duration
+	// SessionUpdateAge controls sliding expiration. A pointer to zero refreshes on every eligible read.
+	SessionUpdateAge      *time.Duration
+	DisableSessionRefresh bool
+	DeferSessionRefresh   bool
+
+	// RateLimit overrides the environment's enablement policy. By default
+	// counters live on the auth instance. Supply RateLimitStorage to share them.
+	RateLimit        *bool
+	RateLimitStorage RateLimitStorage
+	SocialProviders  map[string]OAuthProvider
+	Plugins          []Plugin
 }
 
 // User is the public account profile shared by all authentication methods.
 type User struct {
-	ID            string    `json:"id"`
-	Name          string    `json:"name"`
-	Email         string    `json:"email"`
-	EmailVerified bool      `json:"emailVerified"`
-	Image         *string   `json:"image"`
-	CreatedAt     time.Time `json:"createdAt"`
-	UpdatedAt     time.Time `json:"updatedAt"`
+	TwoFactorEnabled *bool     `json:"twoFactorEnabled,omitempty"`
+	ID               string    `json:"id"`
+	Name             string    `json:"name"`
+	Email            string    `json:"email"`
+	EmailVerified    bool      `json:"emailVerified"`
+	Image            *string   `json:"image"`
+	CreatedAt        time.Time `json:"createdAt"`
+	UpdatedAt        time.Time `json:"updatedAt"`
 }
 
 // Session identifies one authenticated login.
 type Session struct {
-	ID        string    `json:"id"`
-	UserID    string    `json:"userId"`
-	Token     string    `json:"token"`
-	IPAddress string    `json:"ipAddress"`
-	UserAgent string    `json:"userAgent"`
-	CreatedAt time.Time `json:"createdAt"`
-	UpdatedAt time.Time `json:"updatedAt"`
-	ExpiresAt time.Time `json:"expiresAt"`
+	ActiveOrganizationID *string   `json:"activeOrganizationId,omitempty"`
+	ID                   string    `json:"id"`
+	UserID               string    `json:"userId"`
+	Token                string    `json:"token"`
+	IPAddress            string    `json:"ipAddress"`
+	UserAgent            string    `json:"userAgent"`
+	CreatedAt            time.Time `json:"createdAt"`
+	UpdatedAt            time.Time `json:"updatedAt"`
+	ExpiresAt            time.Time `json:"expiresAt"`
 }
 
 // StoredSession is the record passed to the storage adapter.
 type StoredSession struct {
 	Session
 }
+
+// SessionResult pairs the current session with its authenticated user.
 type SessionResult struct {
 	Session Session `json:"session"`
 	User    User    `json:"user"`
 }
+
+// AuthResult contains a newly issued token or a pending second-factor challenge.
 type AuthResult struct {
-	Token string `json:"token"`
-	User  User   `json:"user"`
+	Challenge         *LoginChallenge `json:"-"`
+	TwoFactorRedirect bool            `json:"twoFactorRedirect,omitempty"`
+	TwoFactorMethods  []string        `json:"twoFactorMethods,omitempty"`
+	Token             string          `json:"token"`
+	User              User            `json:"user"`
 }
+
+// SignUpInput describes a new email credential and public profile.
 type SignUpInput struct {
 	Name, Email, Password string
 	Image                 *string
 }
+
+// SignInInput authenticates an existing email credential.
 type SignInInput struct {
 	Email, Password string
 	RememberMe      *bool
 }
+
+// RequestMeta records the originating client information for a login.
 type RequestMeta struct {
+	CallbackURL          string
 	IPAddress, UserAgent string
 	RememberMe           *bool
 }

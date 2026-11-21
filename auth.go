@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"path"
@@ -20,6 +21,9 @@ import (
 
 // Auth is safe for concurrent use by application handlers.
 type Auth struct {
+	legacySecret  string
+	factorOptions *TwoFactorOptions
+	factorStore   TwoFactorStore
 	passwordSlots chan struct{}
 	plugins       map[endpointKey]Endpoint
 	opts          Options
@@ -29,6 +33,16 @@ type Auth struct {
 
 // New constructs an http.Handler for mounting in an existing router.
 func New(opts Options) (*Auth, error) {
+	if err := resolveEnvironment(&opts); err != nil {
+		return nil, err
+	}
+	legacySecret := opts.Secret
+	if len(opts.Secrets) > 0 {
+		opts.Secret = opts.Secrets[0].Value
+	}
+	if opts.CookiePrefix != "" && !cookiePrefixPattern.MatchString(opts.CookiePrefix) {
+		return nil, errors.New("auth: CookiePrefix must contain only letters, digits, underscores, or hyphens")
+	}
 	if opts.Store == nil {
 		return nil, errors.New("betterauth: Store is required")
 	}
@@ -40,7 +54,6 @@ func New(opts Options) (*Auth, error) {
 		return nil, fmt.Errorf("betterauth: BaseURL: %w", err)
 	}
 	opts.BaseURL = origin
-	opts.TrustedOrigins = append([]string(nil), opts.TrustedOrigins...)
 	for i, s := range opts.TrustedOrigins {
 		origin, err := parseOrigin(s)
 		if err != nil {
@@ -57,6 +70,14 @@ func New(opts Options) (*Auth, error) {
 	if opts.SessionTTL == 0 {
 		opts.SessionTTL = 7 * 24 * time.Hour
 	}
+	updateAge := 24 * time.Hour
+	if opts.SessionUpdateAge != nil {
+		updateAge = *opts.SessionUpdateAge
+		if updateAge < 0 {
+			return nil, errors.New("betterauth: session update age must be nonnegative")
+		}
+	}
+	opts.SessionUpdateAge = &updateAge
 	if opts.FreshAge == 0 {
 		opts.FreshAge = 24 * time.Hour
 	}
@@ -73,6 +94,21 @@ func New(opts Options) (*Auth, error) {
 		v := *opts.RateLimit
 		opts.RateLimit = &v
 	}
+	if opts.DeleteTokenTTL == 0 {
+		opts.DeleteTokenTTL = 24 * time.Hour
+	}
+	if opts.DeleteTokenTTL < 0 {
+		return nil, errors.New("betterauth: deletion token lifetime must be positive")
+	}
+	if opts.SendVerificationOnSignUp != nil {
+		v := *opts.SendVerificationOnSignUp
+		opts.SendVerificationOnSignUp = &v
+	}
+	if opts.DeleteUserEnabled || opts.ChangeEmailEnabled {
+		if _, ok := opts.Store.(AccountLifecycleStore); !ok {
+			return nil, errors.New("betterauth: account management requires an AccountLifecycleStore")
+		}
+	}
 	if opts.PasswordResetTokenTTL == 0 {
 		opts.PasswordResetTokenTTL = time.Hour
 	}
@@ -88,11 +124,32 @@ func New(opts Options) (*Auth, error) {
 		}
 	}
 	opts.Plugins = append([]Plugin(nil), opts.Plugins...)
+	opts.SocialProviders, err = prepareOAuthProviders(opts.SocialProviders, opts.Store)
+	if err != nil {
+		return nil, err
+	}
 	plugins, err := registerPlugins(opts.Plugins)
 	if err != nil {
 		return nil, err
 	}
-	return &Auth{opts: opts, now: time.Now, passwordSlots: make(chan struct{}, min(runtime.GOMAXPROCS(0), 4)), plugins: plugins}, nil
+	a := &Auth{opts: opts, legacySecret: legacySecret, now: time.Now, passwordSlots: make(chan struct{}, min(runtime.GOMAXPROCS(0), 4)), plugins: plugins}
+	for _, p := range opts.Plugins {
+		if p.factor != nil {
+			s, ok := opts.Store.(TwoFactorStore)
+			if !ok {
+				return nil, errors.New("auth: two-factor plugin requires a two-factor store")
+			}
+			if v, ok := s.(interface{ TwoFactorReady() bool }); ok && !v.TwoFactorReady() {
+				return nil, errors.New("auth: install the two-factor database schema before enabling the plugin")
+			}
+			a.factorOptions = p.factor
+			a.factorStore = s
+		}
+	}
+	if opts.ErrorRedirectURL != "" && !a.trustedURL(opts.ErrorRedirectURL, true) {
+		return nil, errors.New("auth: ErrorRedirectURL must be a trusted callback")
+	}
+	return a, nil
 }
 
 func parseOrigin(s string) (string, error) {
@@ -102,6 +159,8 @@ func parseOrigin(s string) (string, error) {
 	}
 	return u.Scheme + "://" + strings.ToLower(u.Host), nil
 }
+
+var cookiePrefixPattern = regexp.MustCompile(`^[A-Za-z0-9_-]+$`)
 
 var emailPattern = regexp.MustCompile("(?i)^[a-z0-9_'+-](?:[a-z0-9_'+.-]*[a-z0-9_'+-])?@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\\.)+[a-z]{2,}$")
 
@@ -115,7 +174,11 @@ func (a *Auth) validateCredential(email, password string, signup bool) error {
 	if len(email) > 254 || strings.Contains(email, "..") || !emailPattern.MatchString(email) {
 		return &APIError{400, "INVALID_EMAIL", "Invalid email"}
 	}
-	// Better Auth measures password length in UTF-16 code units.
+	return a.validatePasswordLength(password, signup)
+}
+
+func (a *Auth) validatePasswordLength(password string, enforceMinimum bool) error {
+	// Measure the wire limit in UTF-16 code units.
 	n := 0
 	for _, r := range password {
 		n += utf16.RuneLen(r)
@@ -123,7 +186,7 @@ func (a *Auth) validateCredential(email, password string, signup bool) error {
 	if n > a.opts.MaxPasswordLength {
 		return &APIError{400, "PASSWORD_TOO_LONG", "Password too long"}
 	}
-	if signup && n < a.opts.MinPasswordLength {
+	if enforceMinimum && n < a.opts.MinPasswordLength {
 		return &APIError{400, "PASSWORD_TOO_SHORT", "Password too short"}
 	}
 	return nil
@@ -151,27 +214,54 @@ func (a *Auth) newSession(id string, meta RequestMeta) (StoredSession, string) {
 
 // SignUpEmail creates a credential account and its first session atomically.
 func (a *Auth) SignUpEmail(ctx context.Context, in SignUpInput, meta RequestMeta) (AuthResult, error) {
+	if a.opts.DisableSignUp {
+		return AuthResult{}, &APIError{400, "EMAIL_PASSWORD_SIGN_UP_DISABLED", "Email and password sign up is not enabled"}
+	}
+	if meta.CallbackURL != "" && !a.trustedURL(meta.CallbackURL, true) {
+		return AuthResult{}, &APIError{403, "INVALID_CALLBACK_URL", "Invalid callbackURL"}
+	}
 	if err := a.validateCredential(in.Email, in.Password, true); err != nil {
 		return AuthResult{}, err
 	}
-	hash, err := a.hashCredential(ctx, in.Password)
+	hash, err := a.hashCredential(ctx, "/sign-up/email", in.Password)
 	if err != nil {
 		return AuthResult{}, err
 	}
 	now := a.now().UTC().Truncate(time.Millisecond)
 	user := User{ID: randomID(), Email: strings.ToLower(in.Email), Name: in.Name, Image: in.Image, CreatedAt: now, UpdatedAt: now}
-	session, token := a.newSession(user.ID, meta)
-	err = a.opts.Store.CreateUser(ctx, user, hash, &session)
+	if a.factorStore != nil {
+		enabled := false
+		user.TwoFactorEnabled = &enabled
+	}
+	var first *StoredSession
+	var token string
+	if !a.opts.RequireEmailVerification && !a.opts.DisableAutoSignIn {
+		row, raw := a.newSession(user.ID, meta)
+		first, token = &row, raw
+	}
+	err = a.opts.Store.CreateUser(ctx, user, hash, first)
 	if errors.Is(err, ErrEmailTaken) {
+		if first == nil {
+			return AuthResult{User: user}, nil
+		}
 		return AuthResult{}, &APIError{422, "USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL", "User already exists. Use another email."}
 	}
 	if err != nil {
 		return AuthResult{}, err
 	}
+	send := a.opts.RequireEmailVerification
+	if a.opts.SendVerificationOnSignUp != nil {
+		send = *a.opts.SendVerificationOnSignUp
+	}
+	if send && a.opts.SendVerificationEmail != nil {
+		if err := a.sendEmailProof(ctx, user, "", "", meta.CallbackURL, a.opts.SendVerificationEmail); err != nil {
+			slog.ErrorContext(ctx, "Could not deliver sign-up verification email")
+		}
+	}
 	return AuthResult{User: user, Token: token}, nil
 }
 
-// SignInEmail verifies credentials and creates a new session.
+// SignInEmail verifies credentials and returns a new session or a pending second-factor challenge.
 func (a *Auth) SignInEmail(ctx context.Context, in SignInInput, meta RequestMeta) (AuthResult, error) {
 	if err := a.validateCredential(in.Email, in.Password, false); err != nil {
 		return AuthResult{}, err
@@ -190,10 +280,21 @@ func (a *Auth) SignInEmail(ctx context.Context, in SignInInput, meta RequestMeta
 	if !valid || user.ID == "" {
 		return AuthResult{}, &APIError{401, "INVALID_EMAIL_OR_PASSWORD", "Invalid email or password"}
 	}
+	if a.opts.RequireEmailVerification && !user.EmailVerified {
+		if a.opts.SendVerificationOnSignIn && a.opts.SendVerificationEmail != nil {
+			if err := a.sendEmailProof(ctx, user, "", "", meta.CallbackURL, a.opts.SendVerificationEmail); err != nil {
+				return AuthResult{}, err
+			}
+		}
+		return AuthResult{}, &APIError{403, "EMAIL_NOT_VERIFIED", "Email not verified"}
+	}
 	if in.RememberMe != nil {
 		meta.RememberMe = in.RememberMe
 	}
 	session, token := a.newSession(user.ID, meta)
+	if a.factorStore != nil {
+		return a.factorLogin(ctx, user, hash, session)
+	}
 	if s, ok := a.opts.Store.(AccountStore); ok {
 		err = s.CreateCredentialSession(ctx, hash, session)
 		if errors.Is(err, ErrNotFound) {
@@ -225,7 +326,7 @@ func (a *Auth) GetSession(ctx context.Context, headers http.Header) (*SessionRes
 		return nil, nil
 	}
 	row.Token = token
-	return &SessionResult{Session: row.Session, User: user}, nil
+	return a.withSessionPlugins(ctx, row.Session, user)
 }
 
 func (a *Auth) SignOut(ctx context.Context, headers http.Header) error {
@@ -290,3 +391,6 @@ func (a *Auth) RevokeSessions(ctx context.Context, h http.Header) error {
 	}
 	return a.opts.Store.DeleteOtherSessions(ctx, s.User.ID, "")
 }
+
+// BasePath reports the effective mount path after configuration resolution.
+func (a *Auth) BasePath() string { return a.opts.BasePath }

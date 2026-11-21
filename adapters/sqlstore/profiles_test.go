@@ -30,7 +30,7 @@ func TestServerPluginSchemaUpgrade(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			expanded, err := schema.Generate(dialect, []string{"organization-teams", "stripe-subscriptions", "two-factor"})
+			expanded, err := schema.Generate(dialect, []string{"organization-teams", "rate-limit", "stripe-subscriptions", "two-factor"})
 			if err != nil {
 				t.Fatal(err)
 			}

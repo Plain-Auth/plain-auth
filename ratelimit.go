@@ -1,11 +1,20 @@
 package betterauth
 
 import (
+	"context"
+	"net/http"
 	"net/netip"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
 )
+
+// RateLimitStorage atomically admits one request, or returns how long the
+// caller must wait. An error prevents the request from reaching its handler.
+type RateLimitStorage interface {
+	ConsumeRateLimit(ctx context.Context, key string, maximum int, window time.Duration, now time.Time) (time.Duration, error)
+}
 
 type rateLimitKey struct {
 	ip, route string
@@ -22,27 +31,48 @@ type rateLimiter struct {
 	nextSweep time.Time
 }
 
-func (a *Auth) limitRequest(ip, route string) int {
+func (a *Auth) rejectRateLimited(w http.ResponseWriter, r *http.Request, route string) bool {
 	enabled := strings.HasPrefix(a.opts.BaseURL, "https://")
 	if a.opts.RateLimit != nil {
 		enabled = *a.opts.RateLimit
 	}
 	if !enabled {
-		return 0
+		return false
+	}
+	ip := remoteIP(r.RemoteAddr)
+	if ip == "" {
+		ip = "no-trusted-ip"
 	}
 	if addr, err := netip.ParseAddr(ip); err == nil && addr.Is6() {
 		ip = netip.PrefixFrom(addr, 64).Masked().String()
 	}
 	maximum := 100
 	window := 10 * time.Second
-	switch route {
-	case "/sign-in/email", "/sign-up/email", "/change-password", "/change-email":
+	switch {
+	case strings.HasPrefix(route, "/sign-in/"), strings.HasPrefix(route, "/sign-up/"), route == "/change-password", route == "/change-email", strings.HasPrefix(route, "/two-factor/"):
 		maximum = 3
-	case "/request-password-reset", "/send-verification-email":
+	case route == "/request-password-reset", route == "/send-verification-email":
 		maximum = 3
 		window = time.Minute
 	}
-	return a.limiter.consume(rateLimitKey{ip: ip, route: route}, maximum, window, time.Now())
+	now := a.now()
+	var retry int
+	if store := a.opts.RateLimitStorage; store != nil {
+		delay, err := store.ConsumeRateLimit(r.Context(), ip+"|"+route, maximum, window, now)
+		if err != nil {
+			writeAuthError(w, err)
+			return true
+		}
+		retry = int((delay + time.Second - 1) / time.Second)
+	} else {
+		retry = a.limiter.consume(rateLimitKey{ip: ip, route: route}, maximum, window, now)
+	}
+	if retry > 0 {
+		w.Header().Set("X-Retry-After", strconv.Itoa(retry))
+		writeAuthJSON(w, http.StatusTooManyRequests, map[string]string{"message": "Too many requests. Please try again later."})
+		return true
+	}
+	return false
 }
 
 // consume counts accepted requests within the rolling window. Denied requests

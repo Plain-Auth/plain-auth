@@ -10,12 +10,18 @@ import (
 	"time"
 )
 
-func (a *Auth) cookieName() string {
-	if strings.HasPrefix(a.opts.BaseURL, "https://") {
-		return "__Secure-better-auth.session_token"
+func (a *Auth) prefixedCookieName(name string) string {
+	namespace := a.opts.CookiePrefix
+	if namespace == "" {
+		namespace = "better-auth"
 	}
-	return "better-auth.session_token"
+	if strings.HasPrefix(a.opts.BaseURL, "https://") {
+		namespace = "__Secure-" + namespace
+	}
+	return namespace + "." + name
 }
+
+func (a *Auth) cookieName() string { return a.prefixedCookieName("session_token") }
 
 func (a *Auth) sessionCookie(token string, persistent bool) *http.Cookie {
 	c := &http.Cookie{Name: a.cookieName(), Value: url.QueryEscape(token + "." + a.cookieSignature(token)), Path: "/", Secure: strings.HasPrefix(a.opts.BaseURL, "https://"), HttpOnly: true, SameSite: http.SameSiteLaxMode}
@@ -60,15 +66,23 @@ func (a *Auth) VerifySignedSessionToken(signed string) string {
 		return ""
 	}
 	token, sig := value[:separator], value[separator+1:]
-	if !hmac.Equal([]byte(sig), []byte(a.cookieSignature(token))) {
-		return ""
+	if hmac.Equal([]byte(sig), []byte(a.cookieSignature(token))) {
+		return token
 	}
-	return token
+	for i := 1; i < len(a.opts.Secrets); i++ {
+		if hmac.Equal([]byte(sig), []byte(signCookieValue(token, a.opts.Secrets[i].Value))) {
+			return token
+		}
+	}
+	return ""
 }
 
 // Cookie signatures cover the raw UTF-8 token and use standard padded base64.
 func (a *Auth) cookieSignature(token string) string {
-	mac := hmac.New(sha256.New, []byte(a.opts.Secret))
+	return signCookieValue(token, a.opts.Secret)
+}
+func signCookieValue(token, secret string) string {
+	mac := hmac.New(sha256.New, []byte(secret))
 	mac.Write([]byte(token))
 	return base64.StdEncoding.EncodeToString(mac.Sum(nil))
 }
@@ -80,9 +94,12 @@ func (a *Auth) SessionCookie(token string, persistent bool) *http.Cookie {
 }
 
 func (a *Auth) setSessionCookie(w http.ResponseWriter, r *http.Request, token string, persistent bool) {
+	a.addSessionCookieHeaders(w.Header(), r, token, persistent)
+}
+func (a *Auth) addSessionCookieHeaders(headers http.Header, r *http.Request, token string, persistent bool) {
 	c := a.sessionCookie(token, persistent)
-	http.SetCookie(w, c)
-	event := SessionCookieEvent{Cookie: *c, Route: strings.TrimPrefix(r.URL.Path, strings.TrimSuffix(a.opts.BasePath, "/")), Request: r, Header: w.Header()}
+	headers.Add("Set-Cookie", c.String())
+	event := SessionCookieEvent{Cookie: *c, Route: strings.TrimPrefix(r.URL.Path, strings.TrimSuffix(a.opts.BasePath, "/")), Request: r, Header: headers}
 	for _, p := range a.opts.Plugins {
 		if p.OnSessionCookie != nil {
 			p.OnSessionCookie(event)

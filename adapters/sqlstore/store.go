@@ -81,7 +81,7 @@ func (s *Store) Credential(ctx context.Context, email string) (betterauth.User, 
 	var passwordHash string
 	row := s.db.QueryRowContext(ctx, s.bind(`SELECT `+userColumns+`, a."password"
 		FROM "user" u JOIN "account" a ON a."userId" = u."id"
-		WHERE u."email" = ? AND a."providerId" = 'credential' AND a."password" IS NOT NULL`), strings.ToLower(email))
+		WHERE u."email" = ? AND a."providerId" = 'credential' AND a."accountId" = u."id" AND a."password" IS NOT NULL`), strings.ToLower(email))
 	err := row.Scan(append(userFields(&u), &passwordHash)...)
 	if errors.Is(err, sql.ErrNoRows) {
 		err = betterauth.ErrNotFound
@@ -103,7 +103,23 @@ func (s *Store) insertSession(ctx context.Context, db executor, ss betterauth.St
 
 // CreateSession saves a session using its token.
 func (s *Store) CreateSession(ctx context.Context, ss betterauth.StoredSession) error {
-	return s.insertSession(ctx, s.db, ss)
+	if s.dialect != "mysql" {
+		return s.insertSession(ctx, s.db, ss)
+	}
+	// Some MySQL versions ignore inline REFERENCES. Lock the canonical owner
+	// until insertion commits so concurrent deletion cannot orphan a session.
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	if err := s.lockAccount(ctx, tx, ss.UserID); err != nil {
+		return err
+	}
+	if err := s.insertSession(ctx, tx, ss); err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 
 const sessionColumns = `s."id",s."userId",s."token",COALESCE(s."ipAddress",''),COALESCE(s."userAgent",''),s."createdAt",s."updatedAt",s."expiresAt"`

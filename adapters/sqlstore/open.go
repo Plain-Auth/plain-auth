@@ -1,4 +1,4 @@
-// Package sqlstore implements Better Auth storage for SQLite, PostgreSQL, and MySQL.
+// Package sqlstore persists authentication data in SQLite, PostgreSQL, and MySQL.
 package sqlstore
 
 import (
@@ -19,10 +19,11 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-// Store persists users, credentials, and session digests in a SQL database.
+// Store persists users, credentials, and sessions in a SQL database.
 type Store struct {
-	db      *sql.DB
-	dialect string
+	factorSchema bool
+	db           *sql.DB
+	dialect      string
 }
 
 func normalizeDialect(name string) (string, error) {
@@ -77,6 +78,11 @@ func OpenWithSchema(ctx context.Context, dialect, dsn, baseline string) (*Store,
 	}
 	store := &Store{db: db, dialect: name}
 	if err := store.migrate(ctx, baseline); err != nil {
+		_ = db.Close()
+		return nil, err
+	}
+	store.factorSchema, err = store.detectFactorSchema(ctx, db)
+	if err != nil {
 		_ = db.Close()
 		return nil, err
 	}

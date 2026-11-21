@@ -3,21 +3,26 @@ package memory
 
 import (
 	"context"
+	"crypto/rand"
 	"errors"
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
 	auth "github.com/nabuhadba/go-better-auth"
 )
 
 type credential struct {
-	user auth.User
-	hash string
+	accountID string
+	user      auth.User
+	hash      string
 }
 
 // Store is safe to share among handlers. Its data lasts for the lifetime of the instance.
 type Store struct {
+	deletions map[string]auth.PasswordResetToken
+	resets    map[string]auth.PasswordResetToken
 	mu        sync.RWMutex
 	users     map[string]credential
 	emailToID map[string]string
@@ -25,7 +30,7 @@ type Store struct {
 }
 
 func New() *Store {
-	return &Store{users: make(map[string]credential), emailToID: make(map[string]string), sessions: make(map[string]auth.StoredSession)}
+	return &Store{deletions: make(map[string]auth.PasswordResetToken), resets: make(map[string]auth.PasswordResetToken), users: make(map[string]credential), emailToID: make(map[string]string), sessions: make(map[string]auth.StoredSession)}
 }
 
 var _ auth.Store = (*Store)(nil)
@@ -59,7 +64,7 @@ func (s *Store) CreateUser(ctx context.Context, u auth.User, hash string, first 
 			return err
 		}
 	}
-	s.users[u.ID] = credential{user: copyUser(u), hash: hash}
+	s.users[u.ID] = credential{user: copyUser(u), hash: hash, accountID: rand.Text()}
 	s.emailToID[key] = u.ID
 	return nil
 }
@@ -71,7 +76,7 @@ func (s *Store) Credential(ctx context.Context, email string) (auth.User, string
 		return auth.User{}, "", err
 	}
 	u, ok := s.users[s.emailToID[strings.ToLower(email)]]
-	if !ok {
+	if !ok || u.hash == "" {
 		return auth.User{}, "", auth.ErrNotFound
 	}
 	return copyUser(u.user), u.hash, nil
@@ -167,10 +172,41 @@ func (s *Store) DeleteOtherSessions(ctx context.Context, id, keep string) error 
 	if err := ctx.Err(); err != nil {
 		return err
 	}
+	s.deleteSessions(id, keep)
+	return nil
+}
+
+func (s *Store) deleteSessions(id, keep string) {
 	for token, row := range s.sessions {
 		if row.UserID == id && token != keep {
 			delete(s.sessions, token)
 		}
+	}
+}
+
+// RefreshSession extends a live row only while its previously observed expiry still matches.
+func (s *Store) RefreshSession(ctx context.Context, token string, oldExpiry, now, nextExpiry time.Time) (bool, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if err := ctx.Err(); err != nil {
+		return false, err
+	}
+	row, ok := s.sessions[token]
+	if !ok || !row.ExpiresAt.Equal(oldExpiry) || !row.ExpiresAt.After(now) {
+		return false, nil
+	}
+	row.ExpiresAt, row.UpdatedAt = nextExpiry, now
+	s.sessions[token] = row
+	return true, nil
+}
+func (s *Store) DeleteExpiredSession(ctx context.Context, token string, now time.Time) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if row, ok := s.sessions[token]; ok && !row.ExpiresAt.After(now) {
+		delete(s.sessions, token)
 	}
 	return nil
 }

@@ -15,13 +15,14 @@ import (
 // Options configures delivery of authenticated events. Stripe may retry an
 // event, so OnEvent can use its ID to make application side effects idempotent.
 type Options struct {
+	Portal        *PortalOptions
 	WebhookSecret string
 	OnEvent       func(context.Context, stripesdk.Event) error
 }
 
 // New exposes POST /stripe/webhook beneath the configured auth base path.
 func New(opts Options) betterauth.Plugin {
-	return betterauth.Plugin{ID: "stripe", Endpoints: []betterauth.Endpoint{{
+	plugin := betterauth.Plugin{ID: "stripe", Endpoints: []betterauth.Endpoint{{
 		Method: http.MethodPost, Path: "/stripe/webhook", RawBody: true,
 		Handler: func(ctx betterauth.EndpointContext) (any, error) {
 			r := ctx.Request
@@ -54,4 +55,8 @@ func New(opts Options) betterauth.Plugin {
 			return map[string]bool{"success": true}, nil
 		},
 	}}}
+	if opts.Portal != nil {
+		plugin.Endpoints = append(plugin.Endpoints, portalEndpoint(*opts.Portal))
+	}
+	return plugin
 }

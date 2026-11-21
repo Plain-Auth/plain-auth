@@ -1,4 +1,4 @@
-// Package sqlite implements durable Better Auth storage using SQLite.
+// Package sqlite implements durable authentication storage using SQLite.
 package sqlite
 
 import (

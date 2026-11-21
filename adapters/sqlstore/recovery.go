@@ -56,7 +56,7 @@ func (s *Store) lockAccount(ctx context.Context, tx *sql.Tx, userID string) erro
 }
 
 func (s *Store) credentialHash(ctx context.Context, tx *sql.Tx, userID string) (string, error) {
-	query := `SELECT "password" FROM "account" WHERE "userId"=? AND "providerId"='credential'`
+	query := `SELECT "password" FROM "account" WHERE "userId"=? AND "providerId"='credential' AND "accountId"="userId"`
 	if s.dialect != "sqlite" {
 		query += " FOR UPDATE"
 	}
@@ -81,6 +81,19 @@ func (s *Store) CreateCredentialSession(ctx context.Context, expectedHash string
 	if err != nil {
 		return err
 	}
+	hasFactor, err := s.detectFactorSchema(ctx, tx)
+	if err != nil {
+		return err
+	}
+	if hasFactor {
+		var enabled sql.NullBool
+		if err := tx.QueryRowContext(ctx, s.readForUpdate(`SELECT "twoFactorEnabled" FROM "user" WHERE "id"=?`), ss.UserID).Scan(&enabled); err != nil {
+			return err
+		}
+		if enabled.Bool {
+			return &betterauth.APIError{Status: 403, Code: "TWO_FACTOR_REQUIRED", Message: "Two-factor authentication required"}
+		}
+	}
 	if hash != expectedHash {
 		return betterauth.ErrNotFound
 	}
@@ -91,11 +104,17 @@ func (s *Store) CreateCredentialSession(ctx context.Context, expectedHash string
 }
 
 func (s *Store) writeCredential(ctx context.Context, tx *sql.Tx, userID, newHash string, now time.Time) error {
-	_, err := tx.ExecContext(ctx, s.bind(`UPDATE "account" SET "password"=?,"updatedAt"=? WHERE "userId"=? AND "providerId"='credential'`), newHash, s.date(now), userID)
+	_, err := tx.ExecContext(ctx, s.bind(`UPDATE "account" SET "password"=?,"updatedAt"=? WHERE "userId"=? AND "providerId"='credential' AND "accountId"="userId"`), newHash, s.date(now), userID)
 	return err
 }
 
 func (s *Store) ChangeCredential(ctx context.Context, userID, oldHash, newHash string, replacement *betterauth.StoredSession) error {
+	return s.ChangeCredentialForSession(ctx, userID, oldHash, newHash, replacement, "", time.Time{})
+}
+
+// ChangeCredentialForSession validates the source session under the account
+// lock so a concurrent enrollment or sign-out cannot revive a revoked session.
+func (s *Store) ChangeCredentialForSession(ctx context.Context, userID, oldHash, newHash string, replacement *betterauth.StoredSession, source string, now time.Time) error {
 	if replacement != nil && replacement.UserID != userID {
 		return errors.New("sqlstore: replacement session has wrong account")
 	}
@@ -111,8 +130,24 @@ func (s *Store) ChangeCredential(ctx context.Context, userID, oldHash, newHash s
 	if err != nil {
 		return err
 	}
+	if source != "" {
+		var owner string
+		err := tx.QueryRowContext(ctx, s.readForUpdate(`SELECT "userId" FROM "session" WHERE "token"=? AND "userId"=? AND "expiresAt">?`), source, userID, s.date(now)).Scan(&owner)
+		if err != nil {
+			return factorRowError(err)
+		}
+	}
 	if hash != oldHash {
 		return betterauth.ErrNotFound
+	}
+	hasFactor, err := s.detectFactorSchema(ctx, tx)
+	if err != nil {
+		return err
+	}
+	if hasFactor {
+		if err := s.invalidateFactorChallenges(ctx, tx, userID); err != nil {
+			return err
+		}
 	}
 	if err = s.writeCredential(ctx, tx, userID, newHash, time.Now()); err != nil {
 		return err
@@ -183,6 +218,15 @@ func (s *Store) FinishPasswordReset(ctx context.Context, token, newHash string, 
 	}
 	if err != nil {
 		return err
+	}
+	hasFactor, err := s.detectFactorSchema(ctx, tx)
+	if err != nil {
+		return err
+	}
+	if hasFactor {
+		if err := s.invalidateFactorChallenges(ctx, tx, t.UserID); err != nil {
+			return err
+		}
 	}
 	if revoke {
 		if _, err = tx.ExecContext(ctx, s.bind(`DELETE FROM "session" WHERE "userId"=?`), t.UserID); err != nil {

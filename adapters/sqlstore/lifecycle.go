@@ -1,0 +1,166 @@
+package sqlstore
+
+import (
+	"context"
+	"crypto/rand"
+	"database/sql"
+	"errors"
+	"strings"
+	"time"
+
+	betterauth "github.com/nabuhadba/go-better-auth"
+)
+
+var _ betterauth.AccountLifecycleStore = (*Store)(nil)
+
+func (s *Store) lockActiveAccount(ctx context.Context, tx *sql.Tx, userID, token string, now time.Time) error {
+	if err := s.lockAccount(ctx, tx, userID); err != nil {
+		return err
+	}
+	q := `SELECT "id" FROM "session" WHERE "userId"=? AND "token"=? AND "expiresAt">?`
+	if s.dialect != "sqlite" {
+		q += " FOR UPDATE"
+	}
+	var id string
+	err := tx.QueryRowContext(ctx, s.bind(q), userID, token, s.date(now)).Scan(&id)
+	if errors.Is(err, sql.ErrNoRows) {
+		return betterauth.ErrNotFound
+	}
+	return err
+}
+
+func (s *Store) SetInitialPassword(ctx context.Context, userID, sessionToken, newHash string, now time.Time) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	if err := s.lockActiveAccount(ctx, tx, userID, sessionToken, now); err != nil {
+		return err
+	}
+	hash, err := s.credentialHash(ctx, tx, userID)
+	switch {
+	case errors.Is(err, betterauth.ErrNotFound):
+		_, err = tx.ExecContext(ctx, s.bind(`INSERT INTO "account" ("id","userId","accountId","providerId","password","createdAt","updatedAt") VALUES (?,?,?,'credential',?,?,?)`), rand.Text(), userID, userID, newHash, s.date(now), s.date(now))
+	case err != nil:
+		return err
+	case hash != "":
+		return betterauth.ErrPasswordAlreadySet
+	default:
+		err = s.writeCredential(ctx, tx, userID, newHash, now)
+	}
+	if err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+func (s *Store) SaveDeletionToken(ctx context.Context, t betterauth.PasswordResetToken) error {
+	_, err := s.db.ExecContext(ctx, s.bind(`INSERT INTO "verification" ("id","identifier","value","expiresAt","createdAt","updatedAt") VALUES (?,?,?,?,?,?)`), t.ID, "delete-account-"+t.Token, t.UserID, s.date(t.ExpiresAt), s.date(t.CreatedAt), s.date(t.CreatedAt))
+	return err
+}
+
+func (s *Store) DeleteAccount(ctx context.Context, userID, sessionToken, expectedHash, deleteToken string, now time.Time) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	if err := s.lockActiveAccount(ctx, tx, userID, sessionToken, now); err != nil {
+		return err
+	}
+	if expectedHash != "" {
+		hash, err := s.credentialHash(ctx, tx, userID)
+		if err != nil {
+			return err
+		}
+		if hash != expectedHash {
+			return betterauth.ErrNotFound
+		}
+	}
+	if deleteToken != "" {
+		result, err := tx.ExecContext(ctx, s.bind(`DELETE FROM "verification" WHERE "identifier"=? AND "value"=? AND "expiresAt">?`), "delete-account-"+deleteToken, userID, s.date(now))
+		if err != nil {
+			return err
+		}
+		n, err := result.RowsAffected()
+		if err != nil {
+			return err
+		}
+		if n != 1 {
+			return betterauth.ErrNotFound
+		}
+	}
+	// The verification schema also stores plugin state. Remove the two core
+	// mail-link families whose value is the user ID, leaving other records alone.
+	if _, err = tx.ExecContext(ctx, s.bind(`DELETE FROM "verification" WHERE "value"=? AND ("identifier" LIKE 'delete-account-%' OR "identifier" LIKE 'reset-password:%')`), userID); err != nil {
+		return err
+	}
+	hasFactor, err := s.detectFactorSchema(ctx, tx)
+	if err != nil {
+		return err
+	}
+	if hasFactor {
+		if _, err = tx.ExecContext(ctx, s.bind(`DELETE FROM "verification" WHERE "identifier"=?`), "2fa-totp-step-"+userID); err != nil {
+			return err
+		}
+		if err := s.invalidateFactorChallenges(ctx, tx, userID); err != nil {
+			return err
+		}
+		if _, err = tx.ExecContext(ctx, s.bind(`DELETE FROM "twoFactor" WHERE "userId"=?`), userID); err != nil {
+			return err
+		}
+	}
+	if err := s.cleanupOrganizationAccount(ctx, tx, userID); err != nil {
+		return err
+	}
+	// MySQL accepts the canonical inline REFERENCES syntax without enforcing
+	// its cascade. Perform child removal explicitly on every dialect.
+	for _, q := range []string{`DELETE FROM "session" WHERE "userId"=?`, `DELETE FROM "account" WHERE "userId"=?`} {
+		if _, err = tx.ExecContext(ctx, s.bind(q), userID); err != nil {
+			return err
+		}
+	}
+	if _, err = tx.ExecContext(ctx, s.bind(`DELETE FROM "user" WHERE "id"=?`), userID); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+func (s *Store) ChangeAccountEmail(ctx context.Context, userID, oldEmail, newEmail string, verified bool, now time.Time) (betterauth.User, error) {
+	var user betterauth.User
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return user, err
+	}
+	defer tx.Rollback()
+	if err = s.lockAccount(ctx, tx, userID); err != nil {
+		return user, err
+	}
+	oldEmail, newEmail = strings.ToLower(oldEmail), strings.ToLower(newEmail)
+	update := s.bind(`UPDATE "user" SET "email"=?,"updatedAt"=? WHERE "id"=? AND "email"=? AND "emailVerified"=?`)
+	res, err := tx.ExecContext(ctx, update, newEmail, s.date(now), userID, oldEmail, verified)
+	if err != nil {
+		// PostgreSQL rejects subsequent queries in a failed transaction. Roll
+		// it back before determining whether another user claimed the address.
+		if rollbackErr := tx.Rollback(); rollbackErr != nil {
+			return user, err
+		}
+		if other, lookupErr := s.FindAccountUser(ctx, newEmail); lookupErr == nil && other.ID != userID {
+			return user, betterauth.ErrEmailTaken
+		}
+		return user, err
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return user, err
+	}
+	if n != 1 {
+		return user, betterauth.ErrNotFound
+	}
+	err = tx.QueryRowContext(ctx, s.bind(`SELECT `+userColumns+` FROM "user" u WHERE u."id"=?`), userID).Scan(userFields(&user)...)
+	if err != nil {
+		return user, err
+	}
+	return user, tx.Commit()
+}
