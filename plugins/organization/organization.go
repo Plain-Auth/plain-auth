@@ -33,6 +33,7 @@ type Member struct {
 }
 
 type Invitation struct {
+	TeamID         *string   `json:"teamId,omitempty"`
 	ID             string    `json:"id"`
 	OrganizationID string    `json:"organizationId"`
 	InviterID      string    `json:"inviterId"`
@@ -56,6 +57,8 @@ type Store interface {
 }
 
 type Options struct {
+	Teams                *TeamOptions
+	teamStore            TeamStore
 	Store                Store
 	SendInvitation       func(context.Context, Invitation) error
 	RequireVerifiedEmail bool
@@ -101,11 +104,17 @@ func New(o Options) (authn.Plugin, error) {
 	if o.Store == nil {
 		return authn.Plugin{}, errors.New("organization: Store is required")
 	}
-	return authn.Plugin{
+	if err := o.configureTeams(); err != nil {
+		return authn.Plugin{}, err
+	}
+	plugin := authn.Plugin{
 		ID: "organization",
 		OnReadSession: func(ctx context.Context, s *authn.SessionResult) error {
 			active, err := o.Store.ActiveOrganization(ctx, s.Session.ID, s.User.ID)
 			s.Session.ActiveOrganizationID = active
+			if err == nil && o.teamStore != nil {
+				s.Session.ActiveTeamID, err = o.teamStore.ActiveTeam(ctx, TeamActor{UserID: s.User.ID, SessionID: s.Session.ID})
+			}
 			return err
 		},
 		Endpoints: []authn.Endpoint{
@@ -118,7 +127,11 @@ func New(o Options) (authn.Plugin, error) {
 			o.endpoint(http.MethodPost, "invite-member", o.invite),
 			o.endpoint(http.MethodPost, "accept-invitation", o.accept),
 		},
-	}, nil
+	}
+	if o.teamStore != nil {
+		plugin.Endpoints = append(plugin.Endpoints, o.teamEndpoints()...)
+	}
+	return plugin, nil
 }
 
 func validation(field string) error { return problem(400, "VALIDATION_ERROR", "Invalid "+field) }
@@ -275,7 +288,7 @@ func (o Options) invite(c authn.EndpointContext, s *authn.SessionResult) (any, e
 	if id == "" {
 		return nil, ErrNotFound
 	}
-	if c.Body["teamId"] != nil {
+	if c.Body["teamId"] != nil && o.teamStore == nil {
 		return nil, validation("teamId")
 	}
 	resend, ok := c.Body["resend"].(bool)
@@ -284,6 +297,10 @@ func (o Options) invite(c authn.EndpointContext, s *authn.SessionResult) (any, e
 	}
 	now := time.Now().UTC().Truncate(time.Millisecond)
 	inv := Invitation{ID: rand.Text(), OrganizationID: id, InviterID: s.User.ID, Email: strings.ToLower(email), Role: role, Status: "pending", CreatedAt: now, ExpiresAt: now.Add(48 * time.Hour)}
+	inv.TeamID, err = teamInvitationIDs(c.Body["teamId"])
+	if err != nil {
+		return nil, err
+	}
 	inv, err = o.Store.InviteOrganizationMember(c.Request.Context(), inv, s.Session.ID, resend)
 	if err != nil {
 		return nil, err

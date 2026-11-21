@@ -58,3 +58,10 @@ func (a *Auth) presentSession(w http.ResponseWriter, r *http.Request) (any, erro
 	}
 	return a.sessionResponse(EndpointContext{Auth: a, Request: r, ResponseHeader: w.Header()}, *session)
 }
+
+// ReissueSessionCookie emits the current session cookie and its normal response
+// hooks after a plugin changes that session's active context. It preserves the
+// browser's persistence choice and leaves the stored session lifetime intact.
+func (c EndpointContext) ReissueSessionCookie(session Session) {
+	c.Auth.writeSessionCookieHeaders(c.ResponseHeader, c.Request, session.Token, !c.Auth.dontRemember(c.Request))
+}

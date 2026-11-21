@@ -70,8 +70,19 @@ func (s *Store) CreateOrganization(ctx context.Context, o org.Organization, owne
 	if err = s.addMember(ctx, tx, owner); err != nil {
 		return err
 	}
+	var initialTeam *string
+	if s.teamOptions != nil && !s.teamOptions.DisableDefaultTeam {
+		team, err := s.insertTeam(ctx, tx, o.ID, o.Name, false)
+		if err != nil {
+			return err
+		}
+		if _, err = s.insertTeamMember(ctx, tx, team.ID, owner.UserID, false); err != nil {
+			return err
+		}
+		initialTeam = &team.ID
+	}
 	if !keep {
-		if _, err = tx.ExecContext(ctx, s.bind(`UPDATE "session" SET "activeOrganizationId"=? WHERE "id"=? AND "userId"=?`), o.ID, sessionID, owner.UserID); err != nil {
+		if err = s.selectOrganizationAndTeam(ctx, tx, sessionID, owner.UserID, &o.ID, initialTeam); err != nil {
 			return err
 		}
 	}
@@ -155,7 +166,7 @@ func (s *Store) SetActiveOrganization(ctx context.Context, sessionID, userID str
 		return err
 	}
 	if id == nil {
-		if _, err := tx.ExecContext(ctx, s.bind(`UPDATE "session" SET "activeOrganizationId"=NULL WHERE "id"=? AND "userId"=?`), sessionID, userID); err != nil {
+		if err := s.selectOrganizationAndTeam(ctx, tx, sessionID, userID, nil, nil); err != nil {
 			return err
 		}
 		return tx.Commit()
@@ -171,7 +182,11 @@ func (s *Store) SetActiveOrganization(ctx context.Context, sessionID, userID str
 	if !member {
 		return org.ErrNotMember
 	}
-	_, err = tx.ExecContext(ctx, s.bind(`UPDATE "session" SET "activeOrganizationId"=? WHERE "id"=? AND "userId"=?`), *id, sessionID, userID)
+	if s.teamOptions != nil {
+		_, err = tx.ExecContext(ctx, s.bind(`UPDATE "session" SET "activeTeamId"=CASE WHEN "activeOrganizationId"=? THEN "activeTeamId" ELSE NULL END, "activeOrganizationId"=? WHERE "id"=? AND "userId"=?`), *id, *id, sessionID, userID)
+	} else {
+		err = s.selectOrganizationAndTeam(ctx, tx, sessionID, userID, id, nil)
+	}
 	if err != nil {
 		return err
 	}
@@ -199,10 +214,20 @@ func (s *Store) lockOrganization(ctx context.Context, tx *sql.Tx, id string) err
 
 const invitationFields = `"id","organizationId","inviterId","email","role","status","expiresAt","createdAt"`
 
-func scanInvitation(r rowScanner) (org.Invitation, error) {
+func (s *Store) invitationColumns() string {
+	if s.teamOptions != nil {
+		return invitationFields + `,"teamId"`
+	}
+	return invitationFields
+}
+func (s *Store) scanInvitation(r rowScanner) (org.Invitation, error) {
 	var inv org.Invitation
 	var role sql.NullString
-	err := r.Scan(&inv.ID, &inv.OrganizationID, &inv.InviterID, &inv.Email, &role, &inv.Status, &inv.ExpiresAt, &inv.CreatedAt)
+	fields := []any{&inv.ID, &inv.OrganizationID, &inv.InviterID, &inv.Email, &role, &inv.Status, &inv.ExpiresAt, &inv.CreatedAt}
+	if s.teamOptions != nil {
+		fields = append(fields, &inv.TeamID)
+	}
+	err := r.Scan(fields...)
 	inv.Role = role.String
 	return inv, err
 }
@@ -243,7 +268,7 @@ func (s *Store) InviteOrganizationMember(ctx context.Context, inv org.Invitation
 	if existing {
 		return org.Invitation{}, org.ErrAlreadyMember
 	}
-	pending, err := scanInvitation(tx.QueryRowContext(ctx, s.bind(`SELECT `+invitationFields+` FROM "invitation" WHERE "organizationId"=? AND LOWER("email")=? AND "status"='pending' AND "expiresAt">? ORDER BY "createdAt" DESC LIMIT 1`), inv.OrganizationID, inv.Email, s.date(inv.CreatedAt)))
+	pending, err := s.scanInvitation(tx.QueryRowContext(ctx, s.bind(`SELECT `+s.invitationColumns()+` FROM "invitation" WHERE "organizationId"=? AND LOWER("email")=? AND "status"='pending' AND "expiresAt">? ORDER BY "createdAt" DESC LIMIT 1`), inv.OrganizationID, inv.Email, s.date(inv.CreatedAt)))
 	if err == nil {
 		if !resend {
 			return org.Invitation{}, org.ErrAlreadyInvited
@@ -264,7 +289,25 @@ func (s *Store) InviteOrganizationMember(ctx context.Context, inv org.Invitation
 	if !errors.Is(err, sql.ErrNoRows) {
 		return org.Invitation{}, err
 	}
-	_, err = tx.ExecContext(ctx, s.bind(`INSERT INTO "invitation" (`+invitationFields+`) VALUES(?,?,?,?,?,?,?,?)`), inv.ID, inv.OrganizationID, inv.InviterID, inv.Email, inv.Role, inv.Status, s.date(inv.ExpiresAt), s.date(inv.CreatedAt))
+	args := []any{inv.ID, inv.OrganizationID, inv.InviterID, inv.Email, inv.Role, inv.Status, s.date(inv.ExpiresAt), s.date(inv.CreatedAt)}
+	if inv.TeamID != nil {
+		if s.teamOptions == nil {
+			return org.Invitation{}, org.ErrTeamNotFound
+		}
+		for _, id := range strings.Split(*inv.TeamID, ",") {
+			if _, err = s.findTeam(ctx, tx, inv.OrganizationID, id); err != nil {
+				return org.Invitation{}, err
+			}
+			if _, err = s.teamCapacity(ctx, tx, id); err != nil {
+				return org.Invitation{}, err
+			}
+		}
+	}
+	if s.teamOptions != nil {
+		args = append(args, inv.TeamID)
+	}
+	params := strings.TrimSuffix(strings.Repeat("?,", len(args)), ",")
+	_, err = tx.ExecContext(ctx, s.bind(`INSERT INTO "invitation" (`+s.invitationColumns()+`) VALUES(`+params+`)`), args...)
 	if err != nil {
 		return org.Invitation{}, err
 	}
@@ -297,7 +340,7 @@ func (s *Store) AcceptOrganizationInvitation(ctx context.Context, id, sessionID 
 	if err = s.lockOrganization(ctx, tx, organizationID); err != nil {
 		return org.Invitation{}, org.Member{}, err
 	}
-	inv, err = scanInvitation(tx.QueryRowContext(ctx, s.bind(`SELECT `+invitationFields+` FROM "invitation" WHERE "id"=? AND "organizationId"=?`), id, organizationID))
+	inv, err = s.scanInvitation(tx.QueryRowContext(ctx, s.bind(`SELECT `+s.invitationColumns()+` FROM "invitation" WHERE "id"=? AND "organizationId"=?`), id, organizationID))
 	if errors.Is(err, sql.ErrNoRows) {
 		return org.Invitation{}, org.Member{}, org.ErrInvitation
 	}
@@ -337,7 +380,22 @@ func (s *Store) AcceptOrganizationInvitation(ctx context.Context, id, sessionID 
 	if err = s.addMember(ctx, tx, m); err != nil {
 		return org.Invitation{}, org.Member{}, err
 	}
-	_, err = tx.ExecContext(ctx, s.bind(`UPDATE "session" SET "activeOrganizationId"=? WHERE "id"=? AND "userId"=?`), organizationID, sessionID, u.ID)
+	var activeTeam *string
+	if inv.TeamID != nil {
+		ids := strings.Split(*inv.TeamID, ",")
+		for _, id := range ids {
+			if _, err = s.findTeam(ctx, tx, organizationID, id); err != nil {
+				return org.Invitation{}, org.Member{}, err
+			}
+			if _, err = s.insertTeamMember(ctx, tx, id, u.ID, true); err != nil {
+				return org.Invitation{}, org.Member{}, err
+			}
+		}
+		if len(ids) == 1 {
+			activeTeam = &ids[0]
+		}
+	}
+	err = s.selectOrganizationAndTeam(ctx, tx, sessionID, u.ID, &organizationID, activeTeam)
 	if err != nil {
 		return org.Invitation{}, org.Member{}, err
 	}

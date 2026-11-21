@@ -81,6 +81,7 @@ type User struct {
 // Session identifies one authenticated login.
 type Session struct {
 	ActiveOrganizationID *string   `json:"activeOrganizationId,omitempty"`
+	ActiveTeamID         *string   `json:"activeTeamId,omitempty"`
 	ID                   string    `json:"id"`
 	UserID               string    `json:"userId"`
 	Token                string    `json:"token"`
