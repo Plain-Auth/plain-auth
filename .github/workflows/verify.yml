@@ -1,0 +1,68 @@
+name: Verify
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: auth_test
+          POSTGRES_PASSWORD: fixture
+          POSTGRES_DB: auth_test
+        ports:
+          - 5432/tcp
+        options: >-
+          --health-cmd "pg_isready -U auth_test -d auth_test"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: fixture
+          MYSQL_ROOT_HOST: '%'
+          MYSQL_DATABASE: auth_test
+        ports:
+          - 3306/tcp
+        options: >-
+          --health-cmd "mysqladmin ping -h 127.0.0.1 -uroot -pfixture"
+          --health-interval 5s --health-timeout 5s --health-retries 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
+        with:
+          go-version: '1.26.x'
+          cache-dependency-path: |
+            go.sum
+            integrations/routers/go.sum
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: conformance/package-lock.json
+      - name: Create isolated authenticator databases
+        env:
+          POSTGRES_CONTAINER: ${{ job.services.postgres.id }}
+          MYSQL_CONTAINER: ${{ job.services.mysql.id }}
+        run: |
+          docker exec "$POSTGRES_CONTAINER" createdb -U auth_test auth_factor_test
+          docker exec "$MYSQL_CONTAINER" mysql -uroot -pfixture -e 'CREATE DATABASE auth_factor_test'
+      - name: Test routers, databases, clients and schema profiles
+        env:
+          CHROME_BIN: /usr/bin/google-chrome
+          AUTH_TEST_POSTGRES_DSN: postgres://auth_test:fixture@127.0.0.1:${{ job.services.postgres.ports[5432] }}/auth_test?sslmode=disable
+          AUTH_FACTOR_POSTGRES_DSN: postgres://auth_test:fixture@127.0.0.1:${{ job.services.postgres.ports[5432] }}/auth_factor_test?sslmode=disable
+          AUTH_TEST_MYSQL_DSN: root:fixture@tcp(127.0.0.1:${{ job.services.mysql.ports[3306] }})/auth_test
+          AUTH_FACTOR_MYSQL_DSN: root:fixture@tcp(127.0.0.1:${{ job.services.mysql.ports[3306] }})/auth_factor_test
+        run: make verify
