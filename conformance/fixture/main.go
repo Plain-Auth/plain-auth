@@ -26,6 +26,7 @@ import (
 	"github.com/Stonewrit/stonewrit-auth/plugins/organization"
 	"github.com/Stonewrit/stonewrit-auth/plugins/passkey"
 	"github.com/Stonewrit/stonewrit-auth/plugins/pwnedpassword"
+	"github.com/Stonewrit/stonewrit-auth/plugins/sso"
 	"github.com/Stonewrit/stonewrit-auth/plugins/twofactor"
 	"github.com/Stonewrit/stonewrit-auth/schema"
 )
@@ -64,6 +65,12 @@ func main() {
 	var directoryEnabled bool
 	for _, id := range os.Args[2:] {
 		switch id {
+		case "sso":
+			p, e := sso.New(sso.Options{})
+			if e != nil {
+				log.Fatal(e)
+			}
+			plugins = append(plugins, p)
 		case "scim", "scim-managed":
 			directoryEnabled = true
 		case "api-key":
@@ -256,7 +263,12 @@ func main() {
 		}
 		plugins = append(plugins, p)
 	}
+	var discoveryOrigins []string
+	if origin := os.Getenv("CONFORMANCE_SSO_DISCOVERY_ORIGIN"); origin != "" {
+		discoveryOrigins = []string{origin}
+	}
 	auth, err := authn.New(authn.Options{
+		TrustedOrigins:   discoveryOrigins,
 		BasePath:         mount,
 		SocialProviders:  social,
 		Plugins:          plugins,

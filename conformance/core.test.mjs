@@ -1092,3 +1092,8 @@ test("the released organization client removes members and leaves through both H
   const {compareOrganizationRemoval} = await import("./organization-removal.mjs");
   await compareOrganizationRemoval(t,{reference,goFixture,instrument});
 });
+
+test("the official SSO client registers and reads redacted OIDC providers across implementations", async t => {
+  const {providerCatalog} = await import("./sso-providers.mjs");
+  await providerCatalog(t, {goFixture,instrument});
+});

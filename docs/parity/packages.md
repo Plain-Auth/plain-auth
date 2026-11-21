@@ -252,6 +252,7 @@ Each row tracks the behavior exposed by a published entry point. The Go implemen
 
 - [ ] Single sign-on
   - [ ] Default interface (`.`)
+    - [x] Register persisted OIDC providers and read sanitized configuration through the official client on both implementations ([test](../../conformance/sso-providers.mjs#L11))
   - [ ] Client integration (`./client`)
 
 ## Stripe billing

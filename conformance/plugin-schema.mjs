@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { apiKey } from "@better-auth/api-key";
 import { passkey } from "@better-auth/passkey";
 import { stripe } from "@better-auth/stripe";
+import { sso } from "@better-auth/sso";
 import { scim } from "@better-auth/scim";
 import { getMigrations } from "better-auth/db/migration";
 import { admin, anonymous, deviceAuthorization, jwt, lastLoginMethod, organization, phoneNumber, twoFactor, username } from "better-auth/plugins";
@@ -16,15 +17,17 @@ export const dialects = { sqlite: SqliteDialect, postgres: PostgresDialect, mysq
 export function pluginInstances(profiles) {
   const managed = profiles.includes("scim-managed");
   if (managed) profiles = [...profiles.filter(p => p !== "scim" && p !== "scim-managed"), "scim"];
+  if (profiles.includes("sso")) profiles = [...profiles.filter(p => p !== "sso"), "sso"];
   if (profiles.includes("stripe-organization")) {
     const enabled = new Set(profiles);
     if (!enabled.has("organization-teams")) enabled.add("organization");
     enabled.add("stripe-subscriptions");
-    profiles = [...profileGroups.flat(), "scim"].filter(id => enabled.has(id))
+    profiles = [...profileGroups.flat(), "scim", "sso"].filter(id => enabled.has(id))
       .map(id => id === "stripe-subscriptions" ? "stripe-organization" : id);
   }
   return profiles.map((id) => {
     switch (id) {
+      case "sso": return sso();
       case "admin": return admin();
       case "anonymous": return anonymous();
       case "api-key": return apiKey();
@@ -60,7 +63,7 @@ const profileGroups = [
 ];
 // SCIM owns separate tables. The existing cross product remains exhaustive;
 // its new combinations are checked with structural isolation and explicit witnesses.
-const profileNames = [...profileGroups.flat(), "scim", "stripe-organization", "scim-managed"];
+const profileNames = [...profileGroups.flat(), "scim", "stripe-organization", "scim-managed", "sso"];
 export function* scimCombinations() {
   yield ["scim"];
   for (const name of profileGroups.flat()) yield [name, "scim"];
@@ -90,11 +93,20 @@ export function* managedSCIMCombinations() {
   }
 }
 
+export function* ssoCombinations() {
+  yield ["sso"];
+  for (const name of profileNames.filter(id => id !== "sso")) yield [name, "sso"];
+  for (const profiles of managedSCIMCombinations()) {
+    if (profiles.includes("stripe-organization") && profiles.length > 2) yield [...profiles, "sso"];
+  }
+}
+
 export function* verifiedCombinations() {
   yield* combinations();
   yield* scimCombinations();
   yield* organizationBillingCombinations();
   yield* managedSCIMCombinations();
+  yield* ssoCombinations();
 }
 
 

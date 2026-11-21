@@ -17,7 +17,8 @@
     "username-only",
     "scim",
     "stripe-organization",
-    "scim-managed"
+    "scim-managed",
+    "sso"
   ],
   "dialects": {
     "sqlite": [
@@ -1082,6 +1083,38 @@
           },
           {
             "sql": "\"createdAt\" date not null"
+          }
+        ]
+      },
+      {
+        "sql": "create table \"ssoProvider\"",
+        "profiles": [
+          "sso"
+        ],
+        "columns": [
+          {
+            "sql": "\"id\" text not null primary key"
+          },
+          {
+            "sql": "\"issuer\" text not null"
+          },
+          {
+            "sql": "\"oidcConfig\" text"
+          },
+          {
+            "sql": "\"samlConfig\" text"
+          },
+          {
+            "sql": "\"userId\" text not null references \"user\" (\"id\") on delete cascade"
+          },
+          {
+            "sql": "\"providerId\" text not null unique"
+          },
+          {
+            "sql": "\"organizationId\" text"
+          },
+          {
+            "sql": "\"domain\" text not null"
           }
         ]
       },
@@ -2422,6 +2455,38 @@
         ]
       },
       {
+        "sql": "create table \"ssoProvider\"",
+        "profiles": [
+          "sso"
+        ],
+        "columns": [
+          {
+            "sql": "\"id\" text not null primary key"
+          },
+          {
+            "sql": "\"issuer\" text not null"
+          },
+          {
+            "sql": "\"oidcConfig\" text"
+          },
+          {
+            "sql": "\"samlConfig\" text"
+          },
+          {
+            "sql": "\"userId\" text not null references \"user\" (\"id\") on delete cascade"
+          },
+          {
+            "sql": "\"providerId\" text not null unique"
+          },
+          {
+            "sql": "\"organizationId\" text"
+          },
+          {
+            "sql": "\"domain\" text not null"
+          }
+        ]
+      },
+      {
         "sql": "create table \"rateLimit\"",
         "profiles": [
           "rate-limit"
@@ -3754,6 +3819,38 @@
           },
           {
             "sql": "`createdAt` timestamp(3) not null"
+          }
+        ]
+      },
+      {
+        "sql": "create table `ssoProvider`",
+        "profiles": [
+          "sso"
+        ],
+        "columns": [
+          {
+            "sql": "`id` varchar(36) not null primary key"
+          },
+          {
+            "sql": "`issuer` text not null"
+          },
+          {
+            "sql": "`oidcConfig` text"
+          },
+          {
+            "sql": "`samlConfig` text"
+          },
+          {
+            "sql": "`userId` varchar(36) not null references `user` (`id`) on delete cascade"
+          },
+          {
+            "sql": "`providerId` varchar(255) not null unique"
+          },
+          {
+            "sql": "`organizationId` text"
+          },
+          {
+            "sql": "`domain` text not null"
           }
         ]
       },

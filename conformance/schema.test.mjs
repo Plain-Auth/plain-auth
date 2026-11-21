@@ -8,7 +8,7 @@ import { DatabaseSync } from "node:sqlite";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 import { getMigrations } from "better-auth/db/migration";
-import { verifiedCombinations, scimCombinations, managedSCIMCombinations, organizationBillingCombinations, dialects, freshSchema, schemaOptions } from "./plugin-schema.mjs";
+import { verifiedCombinations, ssoCombinations, scimCombinations, managedSCIMCombinations, organizationBillingCombinations, dialects, freshSchema, schemaOptions } from "./plugin-schema.mjs";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
 
@@ -147,7 +147,7 @@ test("adding plugin profiles to a populated SQLite database preserves existing a
           execFileSync(binary, ["migrate", "--dialect", "sqlite", "--plugins", profiles[0]], { env: { ...process.env, AUTH_DSN: database } });
         }
         await batch.call("sqlite", profiles, "candidate.db");
-        if (profiles.includes("scim") || profiles.includes("scim-managed")) await batch.call("sqlite", profiles, "candidate.db");
+        if (profiles.includes("scim") || profiles.includes("scim-managed") || profiles.includes("sso")) await batch.call("sqlite", profiles, "candidate.db");
         const db = new DatabaseSync(database, { readOnly: true });
         const reference = new DatabaseSync(":memory:");
         try {
@@ -225,6 +225,24 @@ test("SCIM managed credentials add three independent catalog tables while preser
       const baseline = [...profiles.filter(p => p !== "scim" && p !== "scim-managed"), "scim"];
       const base = statements(await freshSchema(dialect, baseline));
       const combined = statements(await freshSchema(dialect, profiles));
+      assert.deepEqual(new Set(combined), new Set([...base, ...additions]), dialect + " / " + profiles.join(","));
+      assert.deepEqual(combined.filter(s => !additions.includes(s)), base);
+    }
+  }
+});
+
+test("enterprise OIDC registration adds only the canonical provider table to each SSO sample", async () => {
+  const statements = sql => sql.trim().split(/;\s*\n\s*\n/).map(s => s.replace(/;$/, ""));
+  for (const dialect of Object.keys(dialects)) {
+    const original = new Set(statements(await freshSchema(dialect, [])));
+    const additions = statements(await freshSchema(dialect, ["sso"])).filter(s => !original.has(s));
+    assert.equal(additions.filter(s => /^create table ["`]ssoProvider["`]/.test(s)).length, 1);
+    for (const statement of additions) {
+      assert.match(statement, /^(?:create table|create (?:unique )?index .+ on) ["`]ssoProvider["`]/);
+    }
+    for (const profiles of ssoCombinations()) {
+      const combined = statements(await freshSchema(dialect, profiles));
+      const base = statements(await freshSchema(dialect, profiles.filter(id => id !== "sso")));
       assert.deepEqual(new Set(combined), new Set([...base, ...additions]), dialect + " / " + profiles.join(","));
       assert.deepEqual(combined.filter(s => !additions.includes(s)), base);
     }

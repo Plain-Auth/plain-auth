@@ -6243,5 +6243,64 @@
       "test": "conformance/organization-removal.mjs",
       "marker": "denial(await member.organization.leave({organizationId:second.id})"
     }
+  ],
+  "plugin/sso/POST /sso/register": [
+    {
+      "label": "Register manually configured and discovered OIDC clients and read the other implementation’s canonical provider record",
+      "test": "conformance/sso-providers.mjs",
+      "marker": "export async function providerCatalog("
+    },
+    {
+      "label": "Enforce direct owner sessions, organization roles and creator quota during concurrent registrations",
+      "test": "adapters/sqlstore/sso_test.go",
+      "marker": "func TestEnterpriseProviderManagement("
+    }
+  ],
+  "plugin/sso/GET /sso/providers": [
+    {
+      "label": "List personal registrations with masked client IDs and omit other owners’ registrations",
+      "test": "conformance/sso-providers.mjs",
+      "marker": "export async function providerCatalog("
+    },
+    {
+      "label": "Grant organization visibility to current administrators and remove it after demotion",
+      "test": "adapters/sqlstore/sso_test.go",
+      "marker": "func TestEnterpriseProviderManagement("
+    }
+  ],
+  "plugin/sso/GET /sso/get-provider": [
+    {
+      "label": "Return public OIDC fields and reject unauthenticated or foreign users without revealing the client secret",
+      "test": "conformance/sso-providers.mjs",
+      "marker": "export async function providerCatalog("
+    }
+  ],
+  "plugin-symbol/sso/SSOOptions/providersLimit": [
+    {
+      "label": "Reject disabled registration and serialize concurrent requests for the final account slot",
+      "test": "adapters/sqlstore/sso_test.go",
+      "marker": "func TestEnterpriseProviderManagement("
+    }
+  ],
+  "plugin-symbol/sso/discoverOIDCConfig": [
+    {
+      "label": "Hydrate the tenant’s authorization, token and JWKS locations and select the advertised secret authentication method",
+      "test": "conformance/sso-providers.mjs",
+      "marker": "export async function providerCatalog("
+    }
+  ],
+  "plugin-symbol/sso/fetchDiscoveryDocument": [
+    {
+      "label": "Require an exact discovery origin and enforce the deadline, issuer match and bounded response",
+      "test": "plugins/sso/discovery_test.go",
+      "marker": "func TestDiscoveryOriginAndBoundedTransport("
+    }
+  ],
+  "published/sso/.": [
+    {
+      "label": "Register persisted OIDC providers and read sanitized configuration through the official client on both implementations",
+      "test": "conformance/sso-providers.mjs",
+      "marker": "export async function providerCatalog("
+    }
   ]
 }

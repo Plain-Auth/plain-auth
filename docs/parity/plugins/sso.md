@@ -14,7 +14,9 @@
   - [ ] `NormalizedSSOProfile`
   - [ ] `computeDiscoveryUrl`
   - [ ] `discoverOIDCConfig`
+    - [x] Hydrate the tenant’s authorization, token and JWKS locations and select the advertised secret authentication method ([test](../../../conformance/sso-providers.mjs#L11))
   - [ ] `fetchDiscoveryDocument`
+    - [x] Require an exact discovery origin and enforce the deadline, issuer match and bounded response ([test](../../../plugins/sso/discovery_test.go#L20))
   - [ ] `needsRuntimeDiscovery`
   - [ ] `normalizeDiscoveryUrls`
   - [ ] `normalizeUrl`
@@ -42,11 +44,16 @@
   - [ ] `deriveSAMLServiceProviderPolicy`
   - [ ] `SAMLServiceProviderPolicy`
   - [ ] `GET /sso/providers`
+    - [x] List personal registrations with masked client IDs and omit other owners’ registrations ([test](../../../conformance/sso-providers.mjs#L11))
+    - [x] Grant organization visibility to current administrators and remove it after demotion ([test](../../../adapters/sqlstore/sso_test.go#L23))
   - [ ] `GET /sso/get-provider`
+    - [x] Return public OIDC fields and reject unauthenticated or foreign users without revealing the client secret ([test](../../../conformance/sso-providers.mjs#L11))
   - [ ] `POST /sso/update-provider`
   - [ ] `POST /sso/delete-provider`
   - [ ] `GET /sso/saml2/sp/metadata`
   - [ ] `POST /sso/register`
+    - [x] Register manually configured and discovered OIDC clients and read the other implementation’s canonical provider record ([test](../../../conformance/sso-providers.mjs#L11))
+    - [x] Enforce direct owner sessions, organization roles and creator quota during concurrent registrations ([test](../../../adapters/sqlstore/sso_test.go#L23))
   - [ ] `POST /sign-in/sso`
   - [ ] `/sso/callback/:providerId`
   - [ ] `/sso/callback`
@@ -118,6 +125,7 @@
     - [ ] `fields`
     - [ ] `schema`
     - [ ] `providersLimit`
+      - [x] Reject disabled registration and serialize concurrent requests for the final account slot ([test](../../../adapters/sqlstore/sso_test.go#L23))
     - [ ] `trustEmailVerified`
     - [ ] `domainVerification`
     - [ ] `redirectURI`

@@ -132,6 +132,9 @@ func (s *Store) deleteAccountRows(ctx context.Context, tx *sql.Tx, userID string
 	if _, err := tx.ExecContext(ctx, s.bind(`DELETE FROM "verification" WHERE "identifier" IN (?,?,?,?)`), "stripe-checkout:"+userID, "stripe-sync:"+userID, "stripe-event:"+userID, "stripe-return:"+userID); err != nil {
 		return err
 	}
+	if err := s.cleanupSSOProviders(ctx, tx, userID); err != nil {
+		return err
+	}
 	if err := s.cleanupAPIKeys(ctx, tx, userID); err != nil {
 		return err
 	}
