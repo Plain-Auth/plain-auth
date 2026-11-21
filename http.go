@@ -69,7 +69,7 @@ func (a *Auth) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	var body wireBody
 	if r.Method != http.MethodGet {
-		if err := a.validateRequestOrigin(r, isEmailRoute(route) || route == "/sign-in/magic-link"); err != nil {
+		if err := a.validateRequestOrigin(r, isEmailRoute(route) || route == "/sign-in/magic-link" || route == "/sign-in/email-otp" || strings.HasPrefix(route, "/email-otp/") || route == "/forget-password/email-otp"); err != nil {
 			writeAuthError(w, err)
 			return
 		}

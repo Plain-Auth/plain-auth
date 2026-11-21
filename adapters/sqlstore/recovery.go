@@ -210,11 +210,18 @@ func (s *Store) FinishPasswordReset(ctx context.Context, token, newHash string, 
 	if n != 1 {
 		return authn.ErrNotFound
 	}
-	_, err = s.credentialHash(ctx, tx, t.UserID)
+	if err = s.replaceResetCredential(ctx, tx, t.UserID, newHash, now, revoke); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+func (s *Store) replaceResetCredential(ctx context.Context, tx *sql.Tx, id, newHash string, now time.Time, revoke bool) error {
+	_, err := s.credentialHash(ctx, tx, id)
 	if errors.Is(err, authn.ErrNotFound) {
-		_, err = tx.ExecContext(ctx, s.bind(`INSERT INTO "account" ("id","userId","providerId","accountId","password","createdAt","updatedAt") VALUES (?,?,'credential',?,?,?,?)`), rand.Text(), t.UserID, t.UserID, newHash, s.date(now), s.date(now))
+		_, err = tx.ExecContext(ctx, s.bind(`INSERT INTO "account" ("id","userId","providerId","accountId","password","createdAt","updatedAt") VALUES (?,?,'credential',?,?,?,?)`), rand.Text(), id, id, newHash, s.date(now), s.date(now))
 	} else if err == nil {
-		err = s.writeCredential(ctx, tx, t.UserID, newHash, now)
+		err = s.writeCredential(ctx, tx, id, newHash, now)
 	}
 	if err != nil {
 		return err
@@ -224,16 +231,16 @@ func (s *Store) FinishPasswordReset(ctx context.Context, token, newHash string, 
 		return err
 	}
 	if hasFactor {
-		if err := s.invalidateFactorChallenges(ctx, tx, t.UserID); err != nil {
+		if err := s.invalidateFactorChallenges(ctx, tx, id); err != nil {
 			return err
 		}
 	}
 	if revoke {
-		if _, err = tx.ExecContext(ctx, s.bind(`DELETE FROM "session" WHERE "userId"=?`), t.UserID); err != nil {
+		if _, err = tx.ExecContext(ctx, s.bind(`DELETE FROM "session" WHERE "userId"=?`), id); err != nil {
 			return err
 		}
 	}
-	return tx.Commit()
+	return nil
 }
 
 func (s *Store) VerifyAccountEmail(ctx context.Context, userID, email string, now time.Time) error {

@@ -25,17 +25,17 @@ type Auth struct {
 	deviceSessionResponse SessionResponseFunc
 	deviceSessions        DeviceSessionStore
 	maxDeviceSessions     int
-
-	sessionResponse SessionResponseFunc
-	serviceJWT      *JWTOptions
-	oneTimeToken    *OneTimeTokenOptions
-	factorOptions   *TwoFactorOptions
-	factorStore     TwoFactorStore
-	passwordSlots   chan struct{}
-	plugins         map[endpointKey]Endpoint
-	opts            Options
-	now             func() time.Time
-	limiter         rateLimiter
+	emailOTP              *EmailOTPOptions
+	sessionResponse       SessionResponseFunc
+	serviceJWT            *JWTOptions
+	oneTimeToken          *OneTimeTokenOptions
+	factorOptions         *TwoFactorOptions
+	factorStore           TwoFactorStore
+	passwordSlots         chan struct{}
+	plugins               map[endpointKey]Endpoint
+	opts                  Options
+	now                   func() time.Time
+	limiter               rateLimiter
 }
 
 // New constructs an http.Handler for mounting in an existing router.
@@ -144,6 +144,21 @@ func New(opts Options) (*Auth, error) {
 		}
 		if p.serviceJWT != nil {
 			a.serviceJWT = p.serviceJWT
+		}
+		if p.emailOTP != nil {
+			a.emailOTP = p.emailOTP
+			if p.emailOTP.OverrideDefaultEmailVerification {
+				original := a.opts.SendVerificationEmail
+				a.opts.SendVerificationEmail = func(ctx context.Context, message MailLink) error {
+					if message.NewEmail != "" {
+						if original == nil {
+							return errors.New("configure an email-change verification sender")
+						}
+						return original(ctx, message)
+					}
+					return a.SendEmailOTP(ctx, message.User.Email, OTPVerifyEmail)
+				}
+			}
 		}
 		if p.maxDeviceSessions != nil {
 			a.deviceSessions, _ = opts.Store.(DeviceSessionStore)
@@ -274,6 +289,11 @@ func (a *Auth) SignUpEmail(ctx context.Context, in SignUpInput, meta RequestMeta
 	}
 	if err != nil {
 		return AuthResult{}, err
+	}
+	if a.emailOTP != nil && a.emailOTP.SendVerificationOnSignUp && !a.emailOTP.OverrideDefaultEmailVerification {
+		if err := a.SendEmailOTP(ctx, user.Email, OTPVerifyEmail); err != nil {
+			slog.ErrorContext(ctx, "Could not deliver sign-up verification code")
+		}
 	}
 	send := a.opts.RequireEmailVerification
 	if a.opts.SendVerificationOnSignUp != nil {

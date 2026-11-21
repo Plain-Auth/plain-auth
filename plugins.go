@@ -16,7 +16,7 @@ type SessionResponseFunc func(EndpointContext, SessionResult) (any, error)
 // Plugin contributes HTTP endpoints to an Auth instance.
 type Plugin struct {
 	maxDeviceSessions *int
-
+	emailOTP          *EmailOTPOptions
 	// OnRequest can reject an HTTP request before endpoint dispatch. Path is
 	// relative to the auth mount. ClientIP follows the host's proxy policy.
 	OnRequest func(RequestContext) error
