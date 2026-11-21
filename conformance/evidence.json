@@ -1852,6 +1852,11 @@
       "label": "Propose one seat when quantity is omitted and keep all five existing seats until the customer confirms",
       "test": "conformance/stripe-lifecycle-fixture.mjs",
       "marker": "opening a checkout review must not reduce five seats to one"
+    },
+    {
+      "label": "Count organization members for a monthly licensed checkout and ignore the caller’s seat override",
+      "test": "conformance/stripe-organization-fixture.mjs",
+      "marker": "assert.equal(remote.state.checkout.line_items.data[0].quantity, 2)"
     }
   ],
   "docs/content/docs/plugins/stripe.mdx#L221": [
@@ -1891,6 +1896,11 @@
       "label": "Verify a five-seat organization purchase and read the eight seats already active when the webhook arrives",
       "test": "conformance/stripe-organization-fixture.mjs",
       "marker": "assert.equal(rows[0].seats, 8)"
+    },
+    {
+      "label": "Update the existing Stripe item when an invitation is accepted or a member is removed, using default proration",
+      "test": "conformance/stripe-organization-fixture.mjs",
+      "marker": "assert.deepEqual(remote.state.seatUpdates, ["
     }
   ],
   "docs/content/docs/plugins/stripe.mdx#L362": [
@@ -1947,6 +1957,11 @@
       "label": "Reject an early signed event whose seat count disagrees with the organization’s checkout reservation",
       "test": "adapters/sqlstore/stripe_organization_test.go",
       "marker": "an early subscription event bound the wrong organization seat count"
+    },
+    {
+      "label": "Recover a lost Stripe response using the same idempotency key before applying the newer membership revision",
+      "test": "adapters/sqlstore/stripe_seats_test.go",
+      "marker": "restart did not recover the same operation before the newer revision"
     }
   ],
   "plugin-symbol/captcha/captcha": [
@@ -6435,6 +6450,36 @@
       "label": "Open a hosted confirmation for a quantity-only change and suppress the link if the existing quantity changes concurrently",
       "test": "adapters/sqlstore/stripe_plan_change_test.go",
       "marker": "a concurrent seat change exposed a stale confirmation"
+    },
+    {
+      "label": "Count organization members for a monthly licensed checkout and ignore the caller’s seat override",
+      "test": "conformance/stripe-organization-fixture.mjs",
+      "marker": "assert.equal(remote.state.checkout.line_items.data[0].quantity, 2)"
+    },
+    {
+      "label": "Update the existing Stripe item when an invitation is accepted or a member is removed, using default proration",
+      "test": "conformance/stripe-organization-fixture.mjs",
+      "marker": "assert.deepEqual(remote.state.seatUpdates, ["
+    },
+    {
+      "label": "Recover a lost Stripe response using the same idempotency key before applying the newer membership revision",
+      "test": "adapters/sqlstore/stripe_seats_test.go",
+      "marker": "restart did not recover the same operation before the newer revision"
+    },
+    {
+      "label": "Reduce the confirmed seat count to zero after the final member’s account is deleted",
+      "test": "adapters/sqlstore/stripe_seats_test.go",
+      "marker": "account deletion left stale seat quantity"
+    },
+    {
+      "label": "Discover existing paid organizations and resume pending seat adjustments after a billing interruption",
+      "test": "adapters/sqlstore/stripe_seats_test.go",
+      "marker": "interrupted subscription lost its pending idempotency key"
+    },
+    {
+      "label": "Keep a healthy organization moving across one-item worker runs while another organization’s provider update fails",
+      "test": "adapters/sqlstore/stripe_seats_test.go",
+      "marker": "a failed organization starved its healthy neighbor"
     }
   ],
   "plugin/sso/POST /sign-in/sso": [
@@ -6506,6 +6551,32 @@
       "label": "Resolve the subject through UserInfo and reject disagreement with a signed ID token",
       "test": "adapters/sqlstore/sso_browser_test.go",
       "marker": "missing UserInfo identity"
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L880/`seatPriceId`": [
+    {
+      "label": "Count organization members for a monthly licensed checkout and ignore the caller’s seat override",
+      "test": "conformance/stripe-organization-fixture.mjs",
+      "marker": "assert.equal(remote.state.checkout.line_items.data[0].quantity, 2)"
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L19/Team subscription support with seats management": [
+    {
+      "label": "Count organization members for a monthly licensed checkout and ignore the caller’s seat override",
+      "test": "conformance/stripe-organization-fixture.mjs",
+      "marker": "assert.equal(remote.state.checkout.line_items.data[0].quantity, 2)"
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L881/`prorationBehavior`": [
+    {
+      "label": "Update the existing Stripe item when an invitation is accepted or a member is removed, using default proration",
+      "test": "conformance/stripe-organization-fixture.mjs",
+      "marker": "assert.deepEqual(remote.state.seatUpdates, ["
+    },
+    {
+      "label": "Configure monthly seat proration and reject unknown behavior or an unsupported plan shape",
+      "test": "plugins/stripe/seats_test.go",
+      "marker": "func TestMembershipPriceConfiguration("
     }
   ]
 }

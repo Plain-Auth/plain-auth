@@ -136,6 +136,9 @@ func (s *Store) removeMembershipOnce(ctx context.Context, userID, token, group, 
 	if _, err = tx.ExecContext(ctx, s.bind(`DELETE FROM "member" WHERE "id"=`+value+` AND "organizationId"=`+value+` AND "userId"=`+value), member.ID, group, member.UserID); err != nil {
 		return nil, err
 	}
+	if err = s.dirtyOrganizationSeats(ctx, tx, group); err != nil {
+		return nil, err
+	}
 	if err = tx.Commit(); err != nil {
 		return nil, err
 	}

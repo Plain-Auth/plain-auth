@@ -103,6 +103,16 @@ func New(opts Options) authn.Plugin {
 			if err := s.CheckSubscriptionSchema(context.Background()); err != nil {
 				return err
 			}
+			for _, plan := range subs.plans {
+				if plan.SeatPriceID != "" {
+					if opts.Organization == nil || opts.Organization.AuthorizeReference == nil {
+						return errors.New("stripe: membership-based billing requires organization authorization")
+					}
+					if _, ok := store.(SeatStore); !ok {
+						return errors.New("stripe: store does not support automatic seats")
+					}
+				}
+			}
 			if opts.Organization != nil {
 				org, ok := store.(OrganizationBillingStore)
 				if !ok {

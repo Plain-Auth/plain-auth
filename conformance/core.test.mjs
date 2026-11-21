@@ -1102,3 +1102,8 @@ test("enterprise OIDC browser sessions survive an implementation change for both
   const {compareEnterpriseBrowser} = await import("./sso-browser.mjs");
   await compareEnterpriseBrowser(t,{goFixture,instrument});
 });
+
+test("the pinned client bills one organization seat per member on both runtimes", async t => {
+  const { organizationBilling } = await import("./stripe-organization-fixture.mjs");
+  await organizationBilling(t, { reference, goFixture, instrument }, true);
+});

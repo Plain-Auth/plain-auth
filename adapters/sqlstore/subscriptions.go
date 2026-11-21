@@ -105,7 +105,7 @@ func (s *Store) ReserveStripeCheckout(ctx context.Context, owner, token string, 
 					return err
 				}
 			}
-			if a.Owner != owner || a.Plan != want.Plan || a.Price != want.Price || a.Quantity() != want.Quantity() || a.Interval != want.Interval || a.SuccessURL != want.SuccessURL || a.CancelURL != want.CancelURL {
+			if a.Owner != owner || a.Plan != want.Plan || a.Price != want.Price || a.AutomaticSeats != want.AutomaticSeats || !a.AutomaticSeats && a.Quantity() != want.Quantity() || a.Interval != want.Interval || a.SuccessURL != want.SuccessURL || a.CancelURL != want.CancelURL {
 				return billing.ErrPendingCheckout
 			}
 			result = a
@@ -122,7 +122,20 @@ func (s *Store) ReserveStripeCheckout(ctx context.Context, owner, token string, 
 		if existing {
 			return billing.ErrExistingSubscription
 		}
-		if want.Quantity() > 1 && !want.PriceVerified {
+		if want.AutomaticSeats {
+			scope, ok := billing.OrganizationFromContext(ctx)
+			if !ok || want.OrganizationID != owner || scope.ID != owner {
+				return billing.ErrOrganizationBillingAccess
+			}
+			want.Seats, err = s.organizationSeatCount(ctx, tx, owner)
+			if err != nil {
+				return err
+			}
+			if want.Seats < 1 || want.Seats > math.MaxInt32 {
+				return billing.ErrInvalidSeatQuantity
+			}
+		}
+		if (want.AutomaticSeats || want.Quantity() > 1) && !want.PriceVerified {
 			return billing.ErrCheckoutPriceCheck
 		}
 		var customer sql.NullString

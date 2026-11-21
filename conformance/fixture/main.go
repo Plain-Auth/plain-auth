@@ -114,7 +114,9 @@ func main() {
 		case "last-login-method":
 			plugins = append(plugins, lastlogin.New(lastlogin.Options{Database: store}))
 		case "stripe-subscriptions", "stripe-organization":
-			p, err := fixtureStripe(store, os.Getenv("CONFORMANCE_STRIPE_URL"), id == "stripe-organization")
+			workerCtx, stopWorker := context.WithCancel(context.Background())
+			defer stopWorker()
+			p, err := fixtureStripe(workerCtx, store, os.Getenv("CONFORMANCE_STRIPE_URL"), id == "stripe-organization", os.Getenv("CONFORMANCE_STRIPE_AUTO_SEATS") == "1")
 			if err != nil {
 				log.Fatal(err)
 			}

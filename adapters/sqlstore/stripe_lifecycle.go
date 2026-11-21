@@ -261,9 +261,12 @@ func (s *Store) applyCurrentSubscription(ctx context.Context, tx *sql.Tx, key bi
 		key.RemoteID, sql.NullString{String: c.Plan, Valid: c.Plan != ""}, status,
 		s.stripeDate(c.PeriodStart), s.stripeDate(c.PeriodEnd), s.stripeDate(c.TrialStart), s.stripeDate(c.TrialEnd),
 		c.CancelAtPeriodEnd, s.stripeDate(c.CancelAt), s.stripeDate(c.CanceledAt), s.stripeDate(c.EndedAt),
-		sql.NullInt64{Int64: c.Seats, Valid: c.Seats > 0}, sql.NullString{String: c.Interval, Valid: c.Interval != ""}, sql.NullString{String: c.ScheduleID, Valid: c.ScheduleID != ""},
+		sql.NullInt64{Int64: c.Seats, Valid: c.Seats > 0 || c.ManagedSeatPrice != ""}, sql.NullString{String: c.Interval, Valid: c.Interval != ""}, sql.NullString{String: c.ScheduleID, Valid: c.ScheduleID != ""},
 		id, r.Owner, key.CustomerID,
 	)
+	if err == nil && isOrg {
+		return s.observeOrganizationSeats(ctx, tx, r.Owner, id, key, c)
+	}
 	return err
 }
 

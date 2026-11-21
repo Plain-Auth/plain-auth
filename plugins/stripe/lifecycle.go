@@ -29,6 +29,7 @@ type SubscriptionRevision struct {
 // SubscriptionChange describes a current Stripe subscription or signed deletion.
 type SubscriptionChange struct {
 	Plan, Interval, Status, ScheduleID                                                 string
+	ManagedSeatPrice, SeatProration                                                    string
 	Metadata                                                                           map[string]string
 	Seats, PeriodStart, PeriodEnd, TrialStart, TrialEnd, CancelAt, CanceledAt, EndedAt int64
 	CancelAtPeriodEnd, Deleted                                                         bool
@@ -116,7 +117,8 @@ func (s *subscriptions) reconcile(ctx context.Context, store SubscriptionLifecyc
 				return nil, err
 			}
 		}
-		change := s.subscriptionChange(sub, deleted)
+		_, organization := OrganizationFromContext(ctx)
+		change := s.subscriptionChange(sub, deleted, organization)
 		if purchase := key.Purchase; purchase != nil {
 			a := purchase.Attempt
 			if before.Owner != a.Owner || before.LocalID != "" && before.LocalID != a.LocalSubscription || sub.Livemode != purchase.Live {
@@ -125,6 +127,12 @@ func (s *subscriptions) reconcile(ctx context.Context, store SubscriptionLifecyc
 			change.Metadata, err = purchase.claims(sub.Metadata)
 			if err != nil {
 				return nil, err
+			}
+		}
+		if organization {
+			plan := s.plans[change.Plan]
+			if plan.SeatPriceID != "" && sub.Items != nil && len(sub.Items.Data) == 1 && sub.Items.Data[0] != nil && s.licensedPrice(sub.Items.Data[0].Price) {
+				change.ManagedSeatPrice, change.SeatProration = plan.SeatPriceID, plan.ProrationBehavior
 			}
 		}
 		if change.Status == "" {
@@ -138,7 +146,7 @@ func (s *subscriptions) reconcile(ctx context.Context, store SubscriptionLifecyc
 	return nil, ErrStripeRevisionChanged
 }
 
-func (s *subscriptions) subscriptionChange(sub *sdk.Subscription, deleted bool) SubscriptionChange {
+func (s *subscriptions) subscriptionChange(sub *sdk.Subscription, deleted bool, organization bool) SubscriptionChange {
 	change := SubscriptionChange{Deleted: deleted, Status: string(sub.Status), Metadata: sub.Metadata, TrialStart: sub.TrialStart, TrialEnd: sub.TrialEnd,
 		CancelAtPeriodEnd: sub.CancelAtPeriodEnd, CancelAt: sub.CancelAt, CanceledAt: sub.CanceledAt, EndedAt: sub.EndedAt}
 	if deleted {
@@ -150,7 +158,7 @@ func (s *subscriptions) subscriptionChange(sub *sdk.Subscription, deleted bool) 
 		return change
 	}
 	item := sub.Items.Data[0]
-	if item == nil || item.Price == nil || item.Quantity <= 0 {
+	if item == nil || item.Price == nil || item.Quantity < 0 || item.Quantity == 0 && (!organization || s.plans[s.prices[item.Price.ID].plan].SeatPriceID != item.Price.ID) {
 		return change
 	}
 	change.PeriodStart, change.PeriodEnd, change.Seats = item.CurrentPeriodStart, item.CurrentPeriodEnd, item.Quantity

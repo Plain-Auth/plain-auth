@@ -11,7 +11,7 @@ const secret = "whsec_offline_fixture";
 const checked = result => { assert.equal(result.error, null, JSON.stringify(result.error)); return result.data; };
 
 async function provider(t) {
-  const state = { calls: [], customer: null, checkout: null, subscription: null };
+  const state = { calls: [], customer: null, checkout: null, subscription: null, seatUpdates: [] };
   const server = createServer(async (req, res) => {
     const url = new URL(req.url, "http://127.0.0.1");
     const chunks = [];
@@ -41,6 +41,16 @@ async function provider(t) {
     }
     if (url.pathname === "/v1/checkout/sessions/cs_org" && req.method === "GET") result = state.checkout;
     if (url.pathname === "/v1/subscriptions/sub_org" && req.method === "GET") result = state.subscription;
+    if (url.pathname === "/v1/subscriptions/sub_org" && req.method === "POST") {
+      const item = form.get("items[0][id]");
+      const quantity = Number(form.get("items[0][quantity]"));
+      const proration = form.get("proration_behavior");
+      if (item === state.subscription?.items.data[0].id && Number.isInteger(quantity) && quantity >= 0) {
+        state.seatUpdates.push({ item, quantity, proration });
+        state.subscription.items.data[0].quantity = quantity;
+        result = state.subscription;
+      }
+    }
     if (url.pathname === "/v1/billing_portal/sessions") result = { id: "bps_org", object: "billing_portal.session", customer: form.get("customer"), url: "https://billing.example.test/" + form.get("customer") };
     res.writeHead(result ? 200 : 404, { "content-type": "application/json" });
     res.end(JSON.stringify(result ?? { error: { type: "invalid_request_error", code: "resource_missing", message: "Unsupported fixture operation" } }));
@@ -53,14 +63,14 @@ async function provider(t) {
   return { state, api, url: "http://127.0.0.1:" + port };
 }
 
-export async function organizationBilling(t, { reference, goFixture, instrument }) {
+export async function organizationBilling(t, { reference, goFixture, instrument }, automatic = false) {
   for (const runtime of ["reference", "Go"]) await t.test(runtime, async t => {
     const remote = await provider(t);
     const server = runtime === "Go"
-      ? await goFixture(t, ["organization", "stripe-organization"], { CONFORMANCE_STRIPE_URL: remote.url })
+      ? await goFixture(t, ["organization", "stripe-organization"], { CONFORMANCE_STRIPE_URL: remote.url, CONFORMANCE_STRIPE_AUTO_SEATS: automatic ? "1" : "" })
       : await reference(t, [organization(), stripe({
         stripeClient: remote.api, stripeWebhookSecret: secret, organization: { enabled: true },
-        subscription: { enabled: true, plans: [{ name: "basic", priceId: "price_basic" }, { name: "team", priceId: "price_team", annualDiscountPriceId: "price_team_annual" }],
+        subscription: { enabled: true, plans: [{ name: "basic", priceId: "price_basic", ...(automatic && { seatPriceId: "price_basic" }) }, { name: "team", priceId: "price_team", annualDiscountPriceId: "price_team_annual" }],
           authorizeReference: async ({ user, referenceId }, ctx) => {
             const member = await ctx.context.adapter.findOne({ model: "member", where: [{ field: "organizationId", value: referenceId }, { field: "userId", value: user.id }] });
             return member?.role === "owner" || member?.role === "admin";
@@ -78,6 +88,10 @@ export async function organizationBilling(t, { reference, goFixture, instrument 
     assert.equal(denied.error.status, 401);
     assert.equal(denied.error.code, "UNAUTHORIZED");
     assert.equal(remote.state.calls.length, 0);
+    if (automatic) {
+      await automaticSeats({ browser, owner, peer, group, remote, deliver });
+      return;
+    }
     const purchase = checked(await owner.subscription.upgrade({ ...selector, plan: "basic", seats: 5, disableRedirect: true }));
     assert.equal(purchase.url, "https://checkout.example.test/org");
     assert.equal(purchase.redirect, false);
@@ -116,4 +130,38 @@ export async function organizationBilling(t, { reference, goFixture, instrument 
     assert.deepEqual(checked(await owner.subscription.list()), []);
     assert.deepEqual(checked(await peer.subscription.list()), []);
   });
+}
+
+async function automaticSeats({ browser, owner, peer, group, remote, deliver }) {
+  const invite = async (client, email) => {
+    const invitation = checked(await owner.organization.inviteMember({ organizationId: group.id, email, role: "member" }));
+    checked(await client.organization.acceptInvitation({ invitationId: invitation.id }));
+  };
+  await invite(peer, "outside@example.test");
+  const selector = { customerType: "organization", referenceId: group.id };
+  const managedCheckout = checked(await owner.subscription.upgrade({ ...selector, plan: "basic", seats: 99, disableRedirect: true }));
+  assert.equal(managedCheckout.url, "https://checkout.example.test/org");
+  assert.equal(remote.state.checkout.line_items.data[0].quantity, 2);
+  assert.equal(remote.state.checkout.customer, "cus_org");
+  await deliver("evt_managed_checkout", "checkout.session.completed", remote.state.checkout);
+  const member = browser();
+  checked(await member.signUp.email({ email: "third@example.test", name: "Third", password: "test-password-123" }));
+  async function observe(expected) {
+    const deadline = Date.now() + 5_000;
+    do {
+      const rows = checked(await owner.subscription.list({ query: selector }));
+      if (rows.length === 1 && rows[0].seats === expected && remote.state.subscription.items.data[0].quantity === expected) return;
+      await new Promise(resolve => setTimeout(resolve, 25));
+    } while (Date.now() < deadline);
+    assert.fail("Membership quantity did not reach " + expected);
+  }
+  await invite(member, "third@example.test");
+  await observe(3);
+  checked(await owner.organization.removeMember({ organizationId: group.id, memberIdOrEmail: "third@example.test" }));
+  await observe(2);
+  assert.deepEqual(remote.state.seatUpdates, [
+    { item: "si_org", quantity: 3, proration: "create_prorations" },
+    { item: "si_org", quantity: 2, proration: "create_prorations" },
+  ]);
+  assert.deepEqual(checked(await owner.subscription.list()), []);
 }

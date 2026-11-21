@@ -16,7 +16,12 @@ import (
 )
 
 // Plan supplies recurring Stripe price IDs for licensed subscriptions.
-type Plan struct{ Name, PriceID, AnnualPriceID string }
+type Plan struct {
+	Name, PriceID, AnnualPriceID string
+	// SeatPriceID opts organization checkout into membership-based billing.
+	// The supported seat-only plan uses the same monthly licensed price.
+	SeatPriceID, ProrationBehavior string
+}
 type SubscriptionOptions struct {
 	Client *sdk.Client
 	Plans  []Plan
@@ -50,6 +55,7 @@ type Subscription struct {
 type CheckoutAttempt struct {
 	OrganizationID, OrganizationName, ActorID string
 	Seats                                     int64
+	AutomaticSeats                            bool
 	// PriceVerified preserves the price preflight across a lost Checkout response.
 	PriceVerified bool `json:"priceVerified,omitempty"`
 	// ReturnURL holds the provider success URL issued for this reservation.
@@ -115,6 +121,18 @@ func configureSubscriptions(o *SubscriptionOptions) (*subscriptions, error) {
 		p.Name = strings.ToLower(strings.TrimSpace(p.Name))
 		if p.Name == "" || !strings.HasPrefix(p.PriceID, "price_") || len(p.PriceID) == 6 || (p.AnnualPriceID != "" && (!strings.HasPrefix(p.AnnualPriceID, "price_") || len(p.AnnualPriceID) == 6)) || s.plans[p.Name].Name != "" {
 			return nil, errors.New("stripe: invalid or duplicate subscription plan")
+		}
+		if p.SeatPriceID != "" {
+			if p.PriceID != p.SeatPriceID || p.AnnualPriceID != "" {
+				return nil, errors.New("stripe: organization seat billing requires one monthly base and seat price")
+			}
+			switch p.ProrationBehavior {
+			case "":
+				p.ProrationBehavior = "create_prorations"
+			case "create_prorations", "always_invoice", "none":
+			default:
+				return nil, errors.New("stripe: unknown seat proration behavior")
+			}
 		}
 		s.plans[p.Name] = p
 		for interval, price := range map[string]string{"month": p.PriceID, "year": p.AnnualPriceID} {
@@ -185,8 +203,9 @@ func (s *subscriptions) checkout(c auth.EndpointContext) (any, error) {
 	if !ok {
 		return nil, billingError(400, "SUBSCRIPTION_PLAN_NOT_FOUND", "Subscription plan not found")
 	}
+	automatic := selection.organization && p.SeatPriceID != ""
 	quantity := int64(1)
-	if number, ok := c.Body["seats"].(json.Number); ok {
+	if number, ok := c.Body["seats"].(json.Number); ok && !automatic {
 		value, err := number.Float64()
 		if err != nil || value < 0 || value > math.MaxInt32 || math.Trunc(value) != value {
 			return nil, ErrInvalidSeatQuantity
@@ -196,6 +215,9 @@ func (s *subscriptions) checkout(c auth.EndpointContext) (any, error) {
 		}
 	}
 	scheduled, _ := c.Body["scheduleAtPeriodEnd"].(bool)
+	if scheduled && automatic {
+		return nil, ErrManagedSeatPlanChange
+	}
 	if scheduled && quantity != 1 {
 		return nil, errUnsupportedScheduledSeats
 	}
@@ -219,7 +241,7 @@ func (s *subscriptions) checkout(c auth.EndpointContext) (any, error) {
 	}
 	ctx := c.Request.Context()
 	store := c.Store().(SubscriptionStore)
-	want := CheckoutAttempt{Seats: quantity, Owner: selection.reference, Plan: p.Name, Interval: interval, Price: price, SuccessURL: success, CancelURL: cancel}
+	want := CheckoutAttempt{AutomaticSeats: automatic, Seats: quantity, Owner: selection.reference, Plan: p.Name, Interval: interval, Price: price, SuccessURL: success, CancelURL: cancel}
 	if selection.organization {
 		want.ActorID = ss.User.ID
 		want.OrganizationID = selection.reference
@@ -256,10 +278,10 @@ func (s *subscriptions) checkout(c auth.EndpointContext) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	if a.Quantity() != quantity {
+	if a.AutomaticSeats != automatic || !automatic && a.Quantity() != quantity {
 		return nil, ErrCheckoutReconcile
 	}
-	if a.CheckoutID == "" && quantity > 1 && !a.PriceVerified {
+	if a.CheckoutID == "" && (automatic || quantity > 1) && !a.PriceVerified {
 		if err := s.verifyLicensedPrice(ctx, price); err != nil {
 			return nil, err
 		}

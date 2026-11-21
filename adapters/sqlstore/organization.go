@@ -92,7 +92,10 @@ func (s *Store) CreateOrganization(ctx context.Context, o org.Organization, owne
 
 func (s *Store) addMember(ctx context.Context, tx *sql.Tx, m org.Member) error {
 	_, err := tx.ExecContext(ctx, s.bind(`INSERT INTO "member" ("id","userId","organizationId","role","createdAt") VALUES(?,?,?,?,?)`), m.ID, m.UserID, m.OrganizationID, m.Role, s.date(m.CreatedAt))
-	return err
+	if err != nil {
+		return err
+	}
+	return s.dirtyOrganizationSeats(ctx, tx, m.OrganizationID)
 }
 
 const orgFields = `o."id",o."name",o."slug",o."logo",o."createdAt",o."metadata"`
@@ -436,6 +439,11 @@ func (s *Store) cleanupOrganizationAccount(ctx context.Context, tx *sql.Tx, user
 	err := tx.QueryRowContext(ctx, `SELECT COUNT(CASE WHEN name='activeOrganizationId' THEN 1 END), COUNT(CASE WHEN name='activeTeamId' THEN 1 END) FROM (`+names+`) AS session_fields`).Scan(&organizations, &teams)
 	if err != nil {
 		return err
+	}
+	if organizations > 0 {
+		if err := s.dirtyDeletedMemberSeats(ctx, tx, userID); err != nil {
+			return err
+		}
 	}
 	if teams > 0 {
 		if err := s.removeOrganizationTeamMemberships(ctx, tx, userID); err != nil {

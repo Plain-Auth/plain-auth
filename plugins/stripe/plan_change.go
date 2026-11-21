@@ -23,6 +23,15 @@ func (s *subscriptions) changePlan(c auth.EndpointContext, selection billingSele
 	if !ok || local.SubscriptionID == nil {
 		return nil, ErrExistingSubscription
 	}
+	if selection.organization {
+		from, to := s.plans[local.Plan], s.plans[s.prices[target].plan]
+		if from.SeatPriceID != "" || to.SeatPriceID != "" {
+			if from.SeatPriceID == target && local.Status == "active" {
+				return nil, errAlreadySubscribed
+			}
+			return nil, ErrManagedSeatPlanChange
+		}
+	}
 	ctx := c.Request.Context()
 	scheduled, _ := c.Body["scheduleAtPeriodEnd"].(bool)
 	var sourcePrice subscriptionPrice

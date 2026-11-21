@@ -52,7 +52,7 @@ The example requires a verified email before starting Checkout. Set `RequireEmai
 
 The response provides the Checkout Session `id`, the hosted `url` and a `redirect` preference. Use the returned URL to open Checkout. Both callback URLs must resolve to an allowed application origin. The return handler can confirm a completed Checkout Session with Stripe before sending the customer to your page. Signed webhooks also confirm Checkout and keep the subscription current afterward.
 
-For a licensed price, pass a whole-number `seats` value or set `stripeclient.Checkout.Seats` in Go. Omission or zero selects one seat. Values above 2,147,483,647, fractions and negative quantities return HTTP 400. The SQL store records the chosen quantity with the checkout. Retrying with a different quantity while that purchase is pending returns HTTP 409. The SQL adapters verify the completed Checkout Session’s original line-item price and quantity against the reservation, then store the subscription’s current terms. If a customer buys five seats and changes to eight before either webhook arrives, the list shows eight. Historical single-seat reservations retain the checks supported by their saved data. [Seat quantity and retry tests](../adapters/sqlstore/subscriptions_test.go)
+For a plan with manually selected quantities, pass a whole-number `seats` value or set `stripeclient.Checkout.Seats` in Go. Omission or zero selects one seat. Values above 2,147,483,647, fractions and negative quantities return HTTP 400. The SQL store records the chosen quantity with the checkout. Retrying with a different quantity while that purchase is pending returns HTTP 409. The SQL adapters verify the completed Checkout Session’s original line-item price and quantity against the reservation, then store the subscription’s current terms. If a customer buys five seats and changes to eight before either webhook arrives, the list shows eight. Historical single-seat reservations retain the checks supported by their saved data. [Seat quantity and retry tests](../adapters/sqlstore/subscriptions_test.go)
 
 An existing local Stripe customer is reused. For a user without one, the server creates a customer using server-owned user metadata and persists the association. The SQL store serializes reservations per owner and releases its lock before contacting Stripe. Identical requests reuse the local subscription, Stripe idempotency key and cached Checkout Session. A different purchase returns HTTP 409 while that checkout is pending. [Stripe idempotent requests](https://docs.stripe.com/api/idempotent_requests)
 
@@ -94,7 +94,35 @@ The SQL adapter reads the session and membership under lock and passes the curre
 
 The organization receives its own Stripe customer. The server searches for an existing customer using organization metadata, with a paginated list fallback if search is unavailable. Customer creation uses the stored organization name. Signed checkout and subscription webhooks update the organization’s subscription even if the original purchaser has since left. Ambiguous personal and organization references or customer mappings require reconciliation. [Browser client and renewal tests](../conformance/stripe-organization-fixture.mjs)
 
-An authorized member can open Stripe’s cancellation or plan confirmation page, request a different seat quantity, or undo a pending change. A single-seat subscription also supports price changes at the next billing boundary. The server rechecks the acting member’s current permission before disclosing a hosted link or sending a schedule change to Stripe. Signed webhooks record confirmed cancellations and new prices. These flows have local provider coverage on SQLite, PostgreSQL and MySQL. Automatic member-based pricing, multi-item plan changes, and synchronization of organization name or deletion events remain open. [Organization management tests](../adapters/sqlstore/stripe_organization_management_test.go)
+An authorized member can open Stripe’s cancellation or plan confirmation page, request a different seat quantity, or undo a pending change. A single-seat subscription also supports price changes at the next billing boundary. The server rechecks the acting member’s current permission before disclosing a hosted link or sending a schedule change to Stripe. Signed webhooks record confirmed cancellations and new prices. These flows have local provider coverage on SQLite, PostgreSQL and MySQL. Multi-item plan changes and synchronization of organization name or deletion events remain open. [Organization management tests](../adapters/sqlstore/stripe_organization_management_test.go)
+
+## Bill by organization membership
+
+For a monthly plan with one licensed seat price, set `PriceID` and `SeatPriceID` to the same Stripe price. Install the organization and Stripe plugins with the `stripe-organization` profile and the authorization policy above. Give the worker the same subscription options as the HTTP service.
+
+```go
+subscriptions := stripeplugin.SubscriptionOptions{
+    Client: stripeClient,
+    Plans: []stripeplugin.Plan{{
+        Name: "team", PriceID: "price_team_monthly", SeatPriceID: "price_team_monthly",
+        ProrationBehavior: "create_prorations",
+    }},
+}
+worker, err := stripeplugin.NewSeatWorker(store, subscriptions)
+if err != nil {
+    return err
+}
+// Run in a service worker with its own shutdown context.
+return worker.Run(ctx, 10*time.Second, func(err error) { log.Print(err) })
+```
+
+Organization checkout counts committed members and reserves one line item with that quantity. A supplied `seats` value is ignored for this plan’s organization checkout. Retrying a pending checkout preserves its original quantity. Once Stripe confirms the purchase, the worker catches up with membership changes that happened during checkout. A personal subscription to this price still uses the quantity selected by its owner. [Browser client checkout and membership tests](../conformance/stripe-organization-fixture.mjs)
+
+The worker reads committed membership changes and updates the subscription’s existing Stripe item. Adding a member, accepting an invitation, leaving, removing a member or deleting a member’s account updates the count. Deleting the final member’s account reduces it to zero. The worker also discovers active and trialing organization subscriptions when you enable seat billing on a previously configured price. Each change uses the plan’s `ProrationBehavior`, which defaults to `create_prorations` and also accepts `always_invoice` and `none`. Subscription lists reflect the most recently confirmed Stripe quantity. [Three-database membership and recovery tests](../adapters/sqlstore/stripe_seats_test.go)
+
+Run at least one worker, or call `worker.SyncOnce(ctx, batchSize)` from a scheduled process with a batch size from 1 to 1,000. Replicas share durable work in the existing verification table. A restart retries the same subscription, item and quantity with the same Stripe idempotency key. A failed organization moves behind other queued work. If a prepared request is more than 23 hours old and the remote quantity differs from its recorded target, inspect the reported organization’s Stripe subscription and reconcile that operation before retrying. [Stripe idempotent requests](https://docs.stripe.com/api/idempotent_requests)
+
+Automatic seat updates support one active or trialing organization subscription with one monthly licensed item. Resolve a pending provider update, schedule or collection pause before synchronizing again. Separate base and seat items, metered or annual seat plans, and hosted or scheduled switches involving membership-managed plans remain open.
 
 ## Change an existing plan
 
