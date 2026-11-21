@@ -1023,3 +1023,8 @@ test("provider sign-out returns a scoped end-session URL after revoking the loca
   const { compareSocialLogout } = await import("./social-logout.mjs");
   await compareSocialLogout(t, { reference, goFixture, instrument });
 });
+
+test("managed SCIM directory credentials interoperate across the native and pinned server-only catalogs", async t => {
+  const { managedCatalog } = await import("./scim-managed.mjs");
+  await managedCatalog(t, goFixture);
+});

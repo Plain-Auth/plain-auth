@@ -5355,6 +5355,11 @@
       "label": "Exchange canonical Group and membership records with the reference runtime",
       "test": "conformance/scim-contract.mjs",
       "marker": "export async function groupContract("
+    },
+    {
+      "label": "Issue, rotate, authenticate and revoke managed directory credentials from either runtime on shared SQLite",
+      "test": "conformance/scim-managed.mjs",
+      "marker": "export async function managedCatalog("
     }
   ],
   "plugin/scim/GET /scim/v2/ServiceProviderConfig": [
@@ -5924,6 +5929,83 @@
       "label": "Complete the two-request registration and session-creation ceremony in the public client on both servers",
       "test": "conformance/passkey-first-browser.mjs",
       "marker": "assert.equal(session.userId,user.id)"
+    }
+  ],
+  "plugin-symbol/scim/SCIMManagedConnectionOptions/credentialHashSecret": [
+    {
+      "label": "Authenticate the other implementation’s issued credential from a shared keyed digest",
+      "test": "conformance/scim-managed.mjs",
+      "marker": "export async function managedCatalog("
+    }
+  ],
+  "plugin-symbol/scim/SCIMManagedConnectionOptions/maxActiveCredentials": [
+    {
+      "label": "Bound concurrent credential rotations and reclaim slots after expiry",
+      "test": "adapters/sqlstore/scim_managed_test.go",
+      "marker": "func TestSCIMManagedCredentials("
+    }
+  ],
+  "plugin-symbol/scim/SCIMManagedConnectionOptions/lastUsedWriteIntervalSeconds": [
+    {
+      "label": "Record first usage and throttle immediate subsequent timestamp writes",
+      "test": "adapters/sqlstore/scim_managed_test.go",
+      "marker": "func TestSCIMManagedCredentials("
+    }
+  ],
+  "plugin-symbol/scim/SCIMOptions/managedConnections": [
+    {
+      "label": "Authenticate and revoke server-issued managed credentials on both implementations",
+      "test": "conformance/scim-managed.mjs",
+      "marker": "export async function managedCatalog("
+    }
+  ],
+  "plugin/scim/ createSCIMManagedConnection (server API only)": [
+    {
+      "label": "Issue a finite scoped bearer once under concurrent creates with the same request ID",
+      "test": "adapters/sqlstore/scim_managed_test.go",
+      "marker": "func TestSCIMManagedCredentials("
+    }
+  ],
+  "plugin/scim/ listSCIMManagedConnections (server API only)": [
+    {
+      "label": "List the other implementation’s connection for its provisioning domain",
+      "test": "conformance/scim-managed.mjs",
+      "marker": "export async function managedCatalog("
+    }
+  ],
+  "plugin/scim/ getSCIMManagedConnection (server API only)": [
+    {
+      "label": "Return public managed credential metadata only to the matching domain",
+      "test": "adapters/sqlstore/scim_managed_test.go",
+      "marker": "func TestSCIMManagedCredentials("
+    }
+  ],
+  "plugin/scim/ rotateSCIMManagedCredential (server API only)": [
+    {
+      "label": "Accept both overlapping secrets while rotating credentials across implementations",
+      "test": "conformance/scim-managed.mjs",
+      "marker": "export async function managedCatalog("
+    }
+  ],
+  "plugin/scim/ revokeSCIMManagedCredential (server API only)": [
+    {
+      "label": "Revoke once and prevent an already verified resource write from proceeding after commit",
+      "test": "adapters/sqlstore/scim_managed_test.go",
+      "marker": "func TestSCIMManagedCredentials("
+    }
+  ],
+  "plugin/scim/ listSCIMManagedConnectionEvents (server API only)": [
+    {
+      "label": "Read the other implementation’s ordered audit events and total with pagination",
+      "test": "conformance/scim-managed.mjs",
+      "marker": "export async function managedCatalog("
+    }
+  ],
+  "plugin-symbol/scim/SCIM_MANAGED_CREATION_REQUEST_ID_CONFLICT": [
+    {
+      "label": "Reject the duplicate creation request without exposing the previously issued bearer",
+      "test": "adapters/sqlstore/scim_managed_test.go",
+      "marker": "func TestSCIMManagedCredentials("
     }
   ]
 }

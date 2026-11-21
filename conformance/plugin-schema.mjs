@@ -14,6 +14,8 @@ import Stripe from "stripe";
 export const dialects = { sqlite: SqliteDialect, postgres: PostgresDialect, mysql: MysqlDialect };
 
 export function pluginInstances(profiles) {
+  const managed = profiles.includes("scim-managed");
+  if (managed) profiles = [...profiles.filter(p => p !== "scim" && p !== "scim-managed"), "scim"];
   if (profiles.includes("stripe-organization")) {
     const enabled = new Set(profiles);
     if (!enabled.has("organization-teams")) enabled.add("organization");
@@ -33,7 +35,10 @@ export function pluginInstances(profiles) {
       case "phone-number": return phoneNumber({ sendOTP() {} });
       case "organization": return organization();
       case "organization-teams": return organization({ teams: { enabled: true } });
-      case "scim": return scim({ connections: [{ id: "schema", credentials: [{ type: "bearer", id: "test", token: "fixture" }] }] });
+      case "scim": return scim({
+        managedConnections: managed ? { credentialHashSecret: "fixture-only-managed-catalog-credential-secret" } : undefined,
+        connections: [{ id: "schema", credentials: [{ type: "bearer", id: "test", token: "fixture" }] }],
+      });
       case "stripe-organization":
       case "stripe-subscriptions": return stripe({
         organization: { enabled: id === "stripe-organization" },
@@ -55,7 +60,7 @@ const profileGroups = [
 ];
 // SCIM owns separate tables. The existing cross product remains exhaustive;
 // its new combinations are checked with structural isolation and explicit witnesses.
-const profileNames = [...profileGroups.flat(), "scim", "stripe-organization"];
+const profileNames = [...profileGroups.flat(), "scim", "stripe-organization", "scim-managed"];
 export function* scimCombinations() {
   yield ["scim"];
   for (const name of profileGroups.flat()) yield [name, "scim"];
@@ -74,10 +79,22 @@ export function* organizationBillingCombinations() {
   }
 }
 
+export function* managedSCIMCombinations() {
+  for (const profiles of scimCombinations()) {
+    yield [...profiles.filter(p => p !== "scim"), "scim-managed"];
+  }
+  yield ["scim", "scim-managed"];
+  yield ["stripe-organization", "scim-managed"];
+  for (const profiles of scimCombinations()) {
+    if (profiles.length > 2) yield [...profiles.filter(p => p !== "scim"), "stripe-organization", "scim-managed"];
+  }
+}
+
 export function* verifiedCombinations() {
   yield* combinations();
   yield* scimCombinations();
   yield* organizationBillingCombinations();
+  yield* managedSCIMCombinations();
 }
 
 

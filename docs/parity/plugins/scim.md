@@ -55,8 +55,11 @@
   - [ ] `SCIMManagedBearerPrincipal`
   - [ ] `SCIMManagedConnectionOptions`
     - [ ] `credentialHashSecret`
+      - [x] Authenticate the other implementation’s issued credential from a shared keyed digest ([test](../../../conformance/scim-managed.mjs#L13))
     - [ ] `maxActiveCredentials`
+      - [x] Bound concurrent credential rotations and reclaim slots after expiry ([test](../../../adapters/sqlstore/scim_managed_test.go#L31))
     - [ ] `lastUsedWriteIntervalSeconds`
+      - [x] Record first usage and throttle immediate subsequent timestamp writes ([test](../../../adapters/sqlstore/scim_managed_test.go#L31))
   - [ ] `SCIMMicrosoftEntraCompatibilityOptions`
     - [ ] `acceptLegacyGroupSchema`
       - [x] Accept one attribute-free Entra schema marker only when enabled and return the canonical Group schema ([test](../../../plugins/scim/groups_test.go#L8))
@@ -69,6 +72,7 @@
     - [ ] `authentication`
       - [x] Allow a verifier-only directory and preserve static credential precedence ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L35))
     - [ ] `managedConnections`
+      - [x] Authenticate and revoke server-issued managed credentials on both implementations ([test](../../../conformance/scim-managed.mjs#L13))
     - [ ] `identity`
     - [ ] `projection`
     - [ ] `compatibility`
@@ -120,11 +124,17 @@
   - [ ] `SCIMPlugin`
   - [ ] `SCIMEndpoints`
   - [ ] `createSCIMManagedConnection (server API only)`
+    - [x] Issue a finite scoped bearer once under concurrent creates with the same request ID ([test](../../../adapters/sqlstore/scim_managed_test.go#L31))
   - [ ] `listSCIMManagedConnections (server API only)`
+    - [x] List the other implementation’s connection for its provisioning domain ([test](../../../conformance/scim-managed.mjs#L13))
   - [ ] `getSCIMManagedConnection (server API only)`
+    - [x] Return public managed credential metadata only to the matching domain ([test](../../../adapters/sqlstore/scim_managed_test.go#L31))
   - [ ] `rotateSCIMManagedCredential (server API only)`
+    - [x] Accept both overlapping secrets while rotating credentials across implementations ([test](../../../conformance/scim-managed.mjs#L13))
   - [ ] `revokeSCIMManagedCredential (server API only)`
+    - [x] Revoke once and prevent an already verified resource write from proceeding after commit ([test](../../../adapters/sqlstore/scim_managed_test.go#L31))
   - [ ] `listSCIMManagedConnectionEvents (server API only)`
+    - [x] Read the other implementation’s ordered audit events and total with pagination ([test](../../../conformance/scim-managed.mjs#L13))
   - [ ] `decommissionSCIMManagedConnection (server API only)`
   - [ ] `SCIMManagedConnection`
   - [ ] `SCIMManagedConnectionEvent`
@@ -133,6 +143,7 @@
   - [ ] `SCIMManagedCredential`
   - [ ] `SCIMManagedCredentialStatus`
   - [ ] `SCIM_MANAGED_CREATION_REQUEST_ID_CONFLICT`
+    - [x] Reject the duplicate creation request without exposing the previously issued bearer ([test](../../../adapters/sqlstore/scim_managed_test.go#L31))
   - [ ] `reconcileSCIMProjection (server API only)`
   - [ ] `SCIM_REQUIRES_NATIVE_TRANSACTIONS`
   - [ ] `POST /scim/v2/Users`

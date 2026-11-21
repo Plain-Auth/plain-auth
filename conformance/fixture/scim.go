@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"slices"
 	"time"
 
 	auth "github.com/Stonewrit/stonewrit-auth"
@@ -16,6 +17,9 @@ func scimFixture(host *auth.Auth, store *sqlstore.Store) (*scim.Handler, error) 
 		Directory:   scim.Directory{ID: "directory", ProvisioningDomainID: "tenant"},
 		Credentials: []scim.Credential{{ID: "directory-key", Token: "local-directory-only"}},
 	}}}
+	if slices.Contains(os.Args[2:], "scim-managed") {
+		options.Managed = &scim.ManagedOptions{CredentialHashSecret: "managed-local-fixture-credential-digest-secret", MaxActiveCredentials: 3}
+	}
 	if os.Getenv("CONFORMANCE_SCIM_DYNAMIC") == "1" {
 		path := filepath.Join(filepath.Dir(os.Args[1]), "scim-revoked")
 		options.VerifyBearerToken = func(ctx context.Context, in scim.BearerInput) (*scim.BearerVerification, error) {

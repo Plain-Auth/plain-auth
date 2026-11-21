@@ -52,6 +52,38 @@ Return a `BearerVerification` with the verified credential ID, explicit operatio
 
 Returning `nil, nil` rejects the credential. An error produces a generic server error so an issuer outage can be distinguished from a rejected credential. The callback runs for each application credential request. Revocation in the application's credential store takes effect on the next request. Your store can read the verified credential ID, directory, scope and expiry using `scim.PrincipalFromContext(ctx)`. The signed-in application session plays no part in this exchange. [Dynamic verification and SQL tests](../adapters/sqlstore/scim_dynamic_test.go) · [Cross-runtime callback tests](../conformance/scim-contract.mjs)
 
+## Issue and rotate directory credentials
+
+Use the `scim-managed` schema profile to add a credential catalog to the directory tables. Configure the same high-entropy `CredentialHashSecret` on each serving instance. Use a separate secret of at least 32 characters for this purpose.
+
+```go
+directory, err := scim.New(host, scim.Options{
+    Store: store,
+    Managed: &scim.ManagedOptions{CredentialHashSecret: directoryHashSecret},
+})
+if err != nil {
+    return err
+}
+
+// The host has authenticated the administrator and checked access to domainID.
+catalog := directory.Catalog()
+issued, err := catalog.Create(ctx, domainID, creationRequestID, administratorID,
+    scim.CredentialPolicy{
+        Scopes: []string{scim.UsersRead, scim.UsersWrite},
+        ExpiresAt: time.Now().Add(30 * 24 * time.Hour),
+    })
+if err != nil {
+    return err
+}
+// Deliver issued.Token to the identity provider through a secure channel.
+```
+
+A creation request ID must be unique and contain 16 to 255 characters. Reusing it returns `scim.ErrCreationRequestConflict`. Only the successful creating or rotating call receives the bearer secret. The database stores a keyed digest. Every credential needs distinct recognized scopes and a future expiry.
+
+The catalog methods run inside your trusted Go application. Authorize the caller for the provisioning domain before using them. `List` takes a domain. `Get`, `Rotate`, `Revoke` and `Events` take a `scim.Directory` with both the connection and domain IDs. During rotation, the old and new credentials can overlap while you update the identity provider. Revoke the previous credential by its ID after the provider switches. Repeating a successful revocation preserves the original actor and audit event. SQL resource operations recheck the managed credential inside the directory transaction.
+
+The default limit is five active credentials per connection. Set `MaxActiveCredentials` to a value from 1 to 100 to change it. Expired credentials free a slot on the next issuance. Successful verification updates the last-use timestamp at most once every five minutes by default. A non-nil `LastUsedWriteInterval` overrides that interval. Audit events include the actor and sequence number. `EventQuery` supports a page limit of 1 to 100, an offset, and ascending or descending sequence order. The default returns the latest page in chronological order. [Three-database credential tests](../adapters/sqlstore/scim_managed_test.go) · [Cross-runtime credential tests](../conformance/scim-managed.mjs)
+
 ## Provision and synchronize
 
 | Route relative to the directory URL | Behavior |
@@ -119,4 +151,4 @@ PUT replaces the Group profile and its direct member set. PATCH supports scalar 
 
 To accept Microsoft's classic Entra Group schema marker on creation, set `AcceptLegacyEntraGroupSchema: true` in `scim.Options`. The response and discovery documents use the core Group schema. [Group lifecycle and concurrency tests](../adapters/sqlstore/scim_groups_test.go) · [Group PATCH and compatibility tests](../plugins/scim/groups_test.go)
 
-Managed credential administration, role projection, Enterprise User attributes, nested User response projections, filtered User PATCH paths and SSO identity linking are tracked separately. [Provisioning checklist](parity/plugins/scim.md) · [SQL ownership and concurrency tests](../adapters/sqlstore/scim_test.go) · [Cross-runtime directory tests](../conformance/scim-contract.mjs)
+Directory decommissioning, role projection, Enterprise User attributes, nested User response projections, filtered User PATCH paths and SSO identity linking are tracked separately. [Provisioning checklist](parity/plugins/scim.md) · [SQL ownership and concurrency tests](../adapters/sqlstore/scim_test.go) · [Cross-runtime directory tests](../conformance/scim-contract.mjs)

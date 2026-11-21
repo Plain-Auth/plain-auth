@@ -16,7 +16,8 @@
     "username",
     "username-only",
     "scim",
-    "stripe-organization"
+    "stripe-organization",
+    "scim-managed"
   ],
   "dialects": {
     "sqlite": [
@@ -656,9 +657,139 @@
         ]
       },
       {
+        "sql": "create table \"scimManagedConnection\"",
+        "profiles": [
+          "scim-managed"
+        ],
+        "columns": [
+          {
+            "sql": "\"id\" text not null primary key"
+          },
+          {
+            "sql": "\"creationRequestId\" text not null unique"
+          },
+          {
+            "sql": "\"connectionId\" text not null unique"
+          },
+          {
+            "sql": "\"provisioningDomainId\" text not null"
+          },
+          {
+            "sql": "\"status\" text not null"
+          },
+          {
+            "sql": "\"revision\" integer not null"
+          },
+          {
+            "sql": "\"createdAt\" date not null"
+          },
+          {
+            "sql": "\"createdBy\" text not null"
+          },
+          {
+            "sql": "\"decommissionStartedAt\" date"
+          },
+          {
+            "sql": "\"decommissionStartedBy\" text"
+          },
+          {
+            "sql": "\"decommissionedAt\" date"
+          },
+          {
+            "sql": "\"decommissionedBy\" text"
+          }
+        ]
+      },
+      {
+        "sql": "create table \"scimManagedCredential\"",
+        "profiles": [
+          "scim-managed"
+        ],
+        "columns": [
+          {
+            "sql": "\"id\" text not null primary key"
+          },
+          {
+            "sql": "\"connectionRecordId\" text not null references \"scimManagedConnection\" (\"id\") on delete cascade"
+          },
+          {
+            "sql": "\"credentialId\" text not null unique"
+          },
+          {
+            "sql": "\"tokenDigest\" text not null"
+          },
+          {
+            "sql": "\"hashVersion\" text not null"
+          },
+          {
+            "sql": "\"activeSlotKey\" text not null unique"
+          },
+          {
+            "sql": "\"status\" text not null"
+          },
+          {
+            "sql": "\"serializedScopes\" text not null"
+          },
+          {
+            "sql": "\"expiresAt\" date not null"
+          },
+          {
+            "sql": "\"createdAt\" date not null"
+          },
+          {
+            "sql": "\"createdBy\" text not null"
+          },
+          {
+            "sql": "\"lastUsedAt\" date"
+          },
+          {
+            "sql": "\"revokedAt\" date"
+          },
+          {
+            "sql": "\"revokedBy\" text"
+          },
+          {
+            "sql": "\"decommissionedAt\" date"
+          }
+        ]
+      },
+      {
+        "sql": "create table \"scimManagedConnectionEvent\"",
+        "profiles": [
+          "scim-managed"
+        ],
+        "columns": [
+          {
+            "sql": "\"id\" text not null primary key"
+          },
+          {
+            "sql": "\"connectionRecordId\" text not null references \"scimManagedConnection\" (\"id\") on delete cascade"
+          },
+          {
+            "sql": "\"eventKey\" text not null unique"
+          },
+          {
+            "sql": "\"sequence\" integer not null"
+          },
+          {
+            "sql": "\"type\" text not null"
+          },
+          {
+            "sql": "\"actorId\" text not null"
+          },
+          {
+            "sql": "\"credentialId\" text"
+          },
+          {
+            "sql": "\"createdAt\" date not null"
+          }
+        ]
+      },
+      {
         "sql": "create table \"scimConnectionBinding\"",
         "profiles": [
-          "scim"
+          "scim",
+          "scim-managed"
         ],
         "columns": [
           {
@@ -708,7 +839,8 @@
       {
         "sql": "create table \"scimIdentityTombstone\"",
         "profiles": [
-          "scim"
+          "scim",
+          "scim-managed"
         ],
         "columns": [
           {
@@ -740,7 +872,8 @@
       {
         "sql": "create table \"scimSubject\"",
         "profiles": [
-          "scim"
+          "scim",
+          "scim-managed"
         ],
         "columns": [
           {
@@ -766,7 +899,8 @@
       {
         "sql": "create table \"scimUser\"",
         "profiles": [
-          "scim"
+          "scim",
+          "scim-managed"
         ],
         "columns": [
           {
@@ -840,7 +974,8 @@
       {
         "sql": "create table \"scimProjectionGrant\"",
         "profiles": [
-          "scim"
+          "scim",
+          "scim-managed"
         ],
         "columns": [
           {
@@ -884,7 +1019,8 @@
       {
         "sql": "create table \"scimGroup\"",
         "profiles": [
-          "scim"
+          "scim",
+          "scim-managed"
         ],
         "columns": [
           {
@@ -925,7 +1061,8 @@
       {
         "sql": "create table \"scimGroupMember\"",
         "profiles": [
-          "scim"
+          "scim",
+          "scim-managed"
         ],
         "columns": [
           {
@@ -1070,105 +1207,140 @@
         ]
       },
       {
+        "sql": "create index \"scimManagedConnection_provisioningDomainId_idx\" on \"scimManagedConnection\" (\"provisioningDomainId\");",
+        "profiles": [
+          "scim-managed"
+        ]
+      },
+      {
+        "sql": "create index \"scimManagedCredential_connectionRecordId_idx\" on \"scimManagedCredential\" (\"connectionRecordId\");",
+        "profiles": [
+          "scim-managed"
+        ]
+      },
+      {
+        "sql": "create index \"scimManagedConnectionEvent_connectionRecordId_idx\" on \"scimManagedConnectionEvent\" (\"connectionRecordId\");",
+        "profiles": [
+          "scim-managed"
+        ]
+      },
+      {
         "sql": "create index \"scimConnectionBinding_connectionId_idx\" on \"scimConnectionBinding\" (\"connectionId\");",
         "profiles": [
-          "scim"
+          "scim",
+          "scim-managed"
         ]
       },
       {
         "sql": "create index \"scimIdentityTombstone_connectionId_idx\" on \"scimIdentityTombstone\" (\"connectionId\");",
         "profiles": [
-          "scim"
+          "scim",
+          "scim-managed"
         ]
       },
       {
         "sql": "create index \"scimIdentityTombstone_provisioningDomainId_idx\" on \"scimIdentityTombstone\" (\"provisioningDomainId\");",
         "profiles": [
-          "scim"
+          "scim",
+          "scim-managed"
         ]
       },
       {
         "sql": "create index \"scimIdentityTombstone_userId_idx\" on \"scimIdentityTombstone\" (\"userId\");",
         "profiles": [
-          "scim"
+          "scim",
+          "scim-managed"
         ]
       },
       {
         "sql": "create index \"scimSubject_profileSourceId_idx\" on \"scimSubject\" (\"profileSourceId\");",
         "profiles": [
-          "scim"
+          "scim",
+          "scim-managed"
         ]
       },
       {
         "sql": "create index \"scimUser_connectionId_idx\" on \"scimUser\" (\"connectionId\");",
         "profiles": [
-          "scim"
+          "scim",
+          "scim-managed"
         ]
       },
       {
         "sql": "create index \"scimUser_provisioningDomainId_idx\" on \"scimUser\" (\"provisioningDomainId\");",
         "profiles": [
-          "scim"
+          "scim",
+          "scim-managed"
         ]
       },
       {
         "sql": "create index \"scimUser_userId_idx\" on \"scimUser\" (\"userId\");",
         "profiles": [
-          "scim"
+          "scim",
+          "scim-managed"
         ]
       },
       {
         "sql": "create index \"scimProjectionGrant_connectionId_idx\" on \"scimProjectionGrant\" (\"connectionId\");",
         "profiles": [
-          "scim"
+          "scim",
+          "scim-managed"
         ]
       },
       {
         "sql": "create index \"scimProjectionGrant_provisioningDomainId_idx\" on \"scimProjectionGrant\" (\"provisioningDomainId\");",
         "profiles": [
-          "scim"
+          "scim",
+          "scim-managed"
         ]
       },
       {
         "sql": "create index \"scimProjectionGrant_scimUserId_idx\" on \"scimProjectionGrant\" (\"scimUserId\");",
         "profiles": [
-          "scim"
+          "scim",
+          "scim-managed"
         ]
       },
       {
         "sql": "create index \"scimProjectionGrant_userId_idx\" on \"scimProjectionGrant\" (\"userId\");",
         "profiles": [
-          "scim"
+          "scim",
+          "scim-managed"
         ]
       },
       {
         "sql": "create index \"scimGroup_connectionId_idx\" on \"scimGroup\" (\"connectionId\");",
         "profiles": [
-          "scim"
+          "scim",
+          "scim-managed"
         ]
       },
       {
         "sql": "create index \"scimGroup_provisioningDomainId_idx\" on \"scimGroup\" (\"provisioningDomainId\");",
         "profiles": [
-          "scim"
+          "scim",
+          "scim-managed"
         ]
       },
       {
         "sql": "create index \"scimGroupMember_connectionId_idx\" on \"scimGroupMember\" (\"connectionId\");",
         "profiles": [
-          "scim"
+          "scim",
+          "scim-managed"
         ]
       },
       {
         "sql": "create index \"scimGroupMember_groupId_idx\" on \"scimGroupMember\" (\"groupId\");",
         "profiles": [
-          "scim"
+          "scim",
+          "scim-managed"
         ]
       },
       {
         "sql": "create index \"scimGroupMember_scimUserId_idx\" on \"scimGroupMember\" (\"scimUserId\");",
         "profiles": [
-          "scim"
+          "scim",
+          "scim-managed"
         ]
       },
       {
@@ -1821,9 +1993,139 @@
         ]
       },
       {
+        "sql": "create table \"scimManagedConnection\"",
+        "profiles": [
+          "scim-managed"
+        ],
+        "columns": [
+          {
+            "sql": "\"id\" text not null primary key"
+          },
+          {
+            "sql": "\"creationRequestId\" text not null unique"
+          },
+          {
+            "sql": "\"connectionId\" text not null unique"
+          },
+          {
+            "sql": "\"provisioningDomainId\" text not null"
+          },
+          {
+            "sql": "\"status\" text not null"
+          },
+          {
+            "sql": "\"revision\" integer not null"
+          },
+          {
+            "sql": "\"createdAt\" timestamptz not null"
+          },
+          {
+            "sql": "\"createdBy\" text not null"
+          },
+          {
+            "sql": "\"decommissionStartedAt\" timestamptz"
+          },
+          {
+            "sql": "\"decommissionStartedBy\" text"
+          },
+          {
+            "sql": "\"decommissionedAt\" timestamptz"
+          },
+          {
+            "sql": "\"decommissionedBy\" text"
+          }
+        ]
+      },
+      {
+        "sql": "create table \"scimManagedCredential\"",
+        "profiles": [
+          "scim-managed"
+        ],
+        "columns": [
+          {
+            "sql": "\"id\" text not null primary key"
+          },
+          {
+            "sql": "\"connectionRecordId\" text not null references \"scimManagedConnection\" (\"id\") on delete cascade"
+          },
+          {
+            "sql": "\"credentialId\" text not null unique"
+          },
+          {
+            "sql": "\"tokenDigest\" text not null"
+          },
+          {
+            "sql": "\"hashVersion\" text not null"
+          },
+          {
+            "sql": "\"activeSlotKey\" text not null unique"
+          },
+          {
+            "sql": "\"status\" text not null"
+          },
+          {
+            "sql": "\"serializedScopes\" text not null"
+          },
+          {
+            "sql": "\"expiresAt\" timestamptz not null"
+          },
+          {
+            "sql": "\"createdAt\" timestamptz not null"
+          },
+          {
+            "sql": "\"createdBy\" text not null"
+          },
+          {
+            "sql": "\"lastUsedAt\" timestamptz"
+          },
+          {
+            "sql": "\"revokedAt\" timestamptz"
+          },
+          {
+            "sql": "\"revokedBy\" text"
+          },
+          {
+            "sql": "\"decommissionedAt\" timestamptz"
+          }
+        ]
+      },
+      {
+        "sql": "create table \"scimManagedConnectionEvent\"",
+        "profiles": [
+          "scim-managed"
+        ],
+        "columns": [
+          {
+            "sql": "\"id\" text not null primary key"
+          },
+          {
+            "sql": "\"connectionRecordId\" text not null references \"scimManagedConnection\" (\"id\") on delete cascade"
+          },
+          {
+            "sql": "\"eventKey\" text not null unique"
+          },
+          {
+            "sql": "\"sequence\" integer not null"
+          },
+          {
+            "sql": "\"type\" text not null"
+          },
+          {
+            "sql": "\"actorId\" text not null"
+          },
+          {
+            "sql": "\"credentialId\" text"
+          },
+          {
+            "sql": "\"createdAt\" timestamptz not null"
+          }
+        ]
+      },
+      {
         "sql": "create table \"scimConnectionBinding\"",
         "profiles": [
-          "scim"
+          "scim",
+          "scim-managed"
         ],
         "columns": [
           {
@@ -1873,7 +2175,8 @@
       {
         "sql": "create table \"scimIdentityTombstone\"",
         "profiles": [
-          "scim"
+          "scim",
+          "scim-managed"
         ],
         "columns": [
           {
@@ -1905,7 +2208,8 @@
       {
         "sql": "create table \"scimSubject\"",
         "profiles": [
-          "scim"
+          "scim",
+          "scim-managed"
         ],
         "columns": [
           {
@@ -1931,7 +2235,8 @@
       {
         "sql": "create table \"scimUser\"",
         "profiles": [
-          "scim"
+          "scim",
+          "scim-managed"
         ],
         "columns": [
           {
@@ -2005,7 +2310,8 @@
       {
         "sql": "create table \"scimProjectionGrant\"",
         "profiles": [
-          "scim"
+          "scim",
+          "scim-managed"
         ],
         "columns": [
           {
@@ -2049,7 +2355,8 @@
       {
         "sql": "create table \"scimGroup\"",
         "profiles": [
-          "scim"
+          "scim",
+          "scim-managed"
         ],
         "columns": [
           {
@@ -2090,7 +2397,8 @@
       {
         "sql": "create table \"scimGroupMember\"",
         "profiles": [
-          "scim"
+          "scim",
+          "scim-managed"
         ],
         "columns": [
           {
@@ -2235,105 +2543,140 @@
         ]
       },
       {
+        "sql": "create index \"scimManagedConnection_provisioningDomainId_idx\" on \"scimManagedConnection\" (\"provisioningDomainId\");",
+        "profiles": [
+          "scim-managed"
+        ]
+      },
+      {
+        "sql": "create index \"scimManagedCredential_connectionRecordId_idx\" on \"scimManagedCredential\" (\"connectionRecordId\");",
+        "profiles": [
+          "scim-managed"
+        ]
+      },
+      {
+        "sql": "create index \"scimManagedConnectionEvent_connectionRecordId_idx\" on \"scimManagedConnectionEvent\" (\"connectionRecordId\");",
+        "profiles": [
+          "scim-managed"
+        ]
+      },
+      {
         "sql": "create index \"scimConnectionBinding_connectionId_idx\" on \"scimConnectionBinding\" (\"connectionId\");",
         "profiles": [
-          "scim"
+          "scim",
+          "scim-managed"
         ]
       },
       {
         "sql": "create index \"scimIdentityTombstone_connectionId_idx\" on \"scimIdentityTombstone\" (\"connectionId\");",
         "profiles": [
-          "scim"
+          "scim",
+          "scim-managed"
         ]
       },
       {
         "sql": "create index \"scimIdentityTombstone_provisioningDomainId_idx\" on \"scimIdentityTombstone\" (\"provisioningDomainId\");",
         "profiles": [
-          "scim"
+          "scim",
+          "scim-managed"
         ]
       },
       {
         "sql": "create index \"scimIdentityTombstone_userId_idx\" on \"scimIdentityTombstone\" (\"userId\");",
         "profiles": [
-          "scim"
+          "scim",
+          "scim-managed"
         ]
       },
       {
         "sql": "create index \"scimSubject_profileSourceId_idx\" on \"scimSubject\" (\"profileSourceId\");",
         "profiles": [
-          "scim"
+          "scim",
+          "scim-managed"
         ]
       },
       {
         "sql": "create index \"scimUser_connectionId_idx\" on \"scimUser\" (\"connectionId\");",
         "profiles": [
-          "scim"
+          "scim",
+          "scim-managed"
         ]
       },
       {
         "sql": "create index \"scimUser_provisioningDomainId_idx\" on \"scimUser\" (\"provisioningDomainId\");",
         "profiles": [
-          "scim"
+          "scim",
+          "scim-managed"
         ]
       },
       {
         "sql": "create index \"scimUser_userId_idx\" on \"scimUser\" (\"userId\");",
         "profiles": [
-          "scim"
+          "scim",
+          "scim-managed"
         ]
       },
       {
         "sql": "create index \"scimProjectionGrant_connectionId_idx\" on \"scimProjectionGrant\" (\"connectionId\");",
         "profiles": [
-          "scim"
+          "scim",
+          "scim-managed"
         ]
       },
       {
         "sql": "create index \"scimProjectionGrant_provisioningDomainId_idx\" on \"scimProjectionGrant\" (\"provisioningDomainId\");",
         "profiles": [
-          "scim"
+          "scim",
+          "scim-managed"
         ]
       },
       {
         "sql": "create index \"scimProjectionGrant_scimUserId_idx\" on \"scimProjectionGrant\" (\"scimUserId\");",
         "profiles": [
-          "scim"
+          "scim",
+          "scim-managed"
         ]
       },
       {
         "sql": "create index \"scimProjectionGrant_userId_idx\" on \"scimProjectionGrant\" (\"userId\");",
         "profiles": [
-          "scim"
+          "scim",
+          "scim-managed"
         ]
       },
       {
         "sql": "create index \"scimGroup_connectionId_idx\" on \"scimGroup\" (\"connectionId\");",
         "profiles": [
-          "scim"
+          "scim",
+          "scim-managed"
         ]
       },
       {
         "sql": "create index \"scimGroup_provisioningDomainId_idx\" on \"scimGroup\" (\"provisioningDomainId\");",
         "profiles": [
-          "scim"
+          "scim",
+          "scim-managed"
         ]
       },
       {
         "sql": "create index \"scimGroupMember_connectionId_idx\" on \"scimGroupMember\" (\"connectionId\");",
         "profiles": [
-          "scim"
+          "scim",
+          "scim-managed"
         ]
       },
       {
         "sql": "create index \"scimGroupMember_groupId_idx\" on \"scimGroupMember\" (\"groupId\");",
         "profiles": [
-          "scim"
+          "scim",
+          "scim-managed"
         ]
       },
       {
         "sql": "create index \"scimGroupMember_scimUserId_idx\" on \"scimGroupMember\" (\"scimUserId\");",
         "profiles": [
-          "scim"
+          "scim",
+          "scim-managed"
         ]
       },
       {
@@ -2986,9 +3329,139 @@
         ]
       },
       {
+        "sql": "create table `scimManagedConnection`",
+        "profiles": [
+          "scim-managed"
+        ],
+        "columns": [
+          {
+            "sql": "`id` varchar(36) not null primary key"
+          },
+          {
+            "sql": "`creationRequestId` varchar(255) not null unique"
+          },
+          {
+            "sql": "`connectionId` varchar(255) not null unique"
+          },
+          {
+            "sql": "`provisioningDomainId` varchar(255) not null"
+          },
+          {
+            "sql": "`status` text not null"
+          },
+          {
+            "sql": "`revision` integer not null"
+          },
+          {
+            "sql": "`createdAt` timestamp(3) not null"
+          },
+          {
+            "sql": "`createdBy` text not null"
+          },
+          {
+            "sql": "`decommissionStartedAt` timestamp(3)"
+          },
+          {
+            "sql": "`decommissionStartedBy` text"
+          },
+          {
+            "sql": "`decommissionedAt` timestamp(3)"
+          },
+          {
+            "sql": "`decommissionedBy` text"
+          }
+        ]
+      },
+      {
+        "sql": "create table `scimManagedCredential`",
+        "profiles": [
+          "scim-managed"
+        ],
+        "columns": [
+          {
+            "sql": "`id` varchar(36) not null primary key"
+          },
+          {
+            "sql": "`connectionRecordId` varchar(36) not null references `scimManagedConnection` (`id`) on delete cascade"
+          },
+          {
+            "sql": "`credentialId` varchar(255) not null unique"
+          },
+          {
+            "sql": "`tokenDigest` text not null"
+          },
+          {
+            "sql": "`hashVersion` text not null"
+          },
+          {
+            "sql": "`activeSlotKey` varchar(255) not null unique"
+          },
+          {
+            "sql": "`status` text not null"
+          },
+          {
+            "sql": "`serializedScopes` text not null"
+          },
+          {
+            "sql": "`expiresAt` timestamp(3) not null"
+          },
+          {
+            "sql": "`createdAt` timestamp(3) not null"
+          },
+          {
+            "sql": "`createdBy` text not null"
+          },
+          {
+            "sql": "`lastUsedAt` timestamp(3)"
+          },
+          {
+            "sql": "`revokedAt` timestamp(3)"
+          },
+          {
+            "sql": "`revokedBy` text"
+          },
+          {
+            "sql": "`decommissionedAt` timestamp(3)"
+          }
+        ]
+      },
+      {
+        "sql": "create table `scimManagedConnectionEvent`",
+        "profiles": [
+          "scim-managed"
+        ],
+        "columns": [
+          {
+            "sql": "`id` varchar(36) not null primary key"
+          },
+          {
+            "sql": "`connectionRecordId` varchar(36) not null references `scimManagedConnection` (`id`) on delete cascade"
+          },
+          {
+            "sql": "`eventKey` varchar(255) not null unique"
+          },
+          {
+            "sql": "`sequence` integer not null"
+          },
+          {
+            "sql": "`type` text not null"
+          },
+          {
+            "sql": "`actorId` text not null"
+          },
+          {
+            "sql": "`credentialId` text"
+          },
+          {
+            "sql": "`createdAt` timestamp(3) not null"
+          }
+        ]
+      },
+      {
         "sql": "create table `scimConnectionBinding`",
         "profiles": [
-          "scim"
+          "scim",
+          "scim-managed"
         ],
         "columns": [
           {
@@ -3038,7 +3511,8 @@
       {
         "sql": "create table `scimIdentityTombstone`",
         "profiles": [
-          "scim"
+          "scim",
+          "scim-managed"
         ],
         "columns": [
           {
@@ -3070,7 +3544,8 @@
       {
         "sql": "create table `scimSubject`",
         "profiles": [
-          "scim"
+          "scim",
+          "scim-managed"
         ],
         "columns": [
           {
@@ -3096,7 +3571,8 @@
       {
         "sql": "create table `scimUser`",
         "profiles": [
-          "scim"
+          "scim",
+          "scim-managed"
         ],
         "columns": [
           {
@@ -3170,7 +3646,8 @@
       {
         "sql": "create table `scimProjectionGrant`",
         "profiles": [
-          "scim"
+          "scim",
+          "scim-managed"
         ],
         "columns": [
           {
@@ -3214,7 +3691,8 @@
       {
         "sql": "create table `scimGroup`",
         "profiles": [
-          "scim"
+          "scim",
+          "scim-managed"
         ],
         "columns": [
           {
@@ -3255,7 +3733,8 @@
       {
         "sql": "create table `scimGroupMember`",
         "profiles": [
-          "scim"
+          "scim",
+          "scim-managed"
         ],
         "columns": [
           {
@@ -3400,105 +3879,140 @@
         ]
       },
       {
+        "sql": "create index `scimManagedConnection_provisioningDomainId_idx` on `scimManagedConnection` (`provisioningDomainId`);",
+        "profiles": [
+          "scim-managed"
+        ]
+      },
+      {
+        "sql": "create index `scimManagedCredential_connectionRecordId_idx` on `scimManagedCredential` (`connectionRecordId`);",
+        "profiles": [
+          "scim-managed"
+        ]
+      },
+      {
+        "sql": "create index `scimManagedConnectionEvent_connectionRecordId_idx` on `scimManagedConnectionEvent` (`connectionRecordId`);",
+        "profiles": [
+          "scim-managed"
+        ]
+      },
+      {
         "sql": "create index `scimConnectionBinding_connectionId_idx` on `scimConnectionBinding` (`connectionId`);",
         "profiles": [
-          "scim"
+          "scim",
+          "scim-managed"
         ]
       },
       {
         "sql": "create index `scimIdentityTombstone_connectionId_idx` on `scimIdentityTombstone` (`connectionId`);",
         "profiles": [
-          "scim"
+          "scim",
+          "scim-managed"
         ]
       },
       {
         "sql": "create index `scimIdentityTombstone_provisioningDomainId_idx` on `scimIdentityTombstone` (`provisioningDomainId`);",
         "profiles": [
-          "scim"
+          "scim",
+          "scim-managed"
         ]
       },
       {
         "sql": "create index `scimIdentityTombstone_userId_idx` on `scimIdentityTombstone` (`userId`);",
         "profiles": [
-          "scim"
+          "scim",
+          "scim-managed"
         ]
       },
       {
         "sql": "create index `scimSubject_profileSourceId_idx` on `scimSubject` (`profileSourceId`);",
         "profiles": [
-          "scim"
+          "scim",
+          "scim-managed"
         ]
       },
       {
         "sql": "create index `scimUser_connectionId_idx` on `scimUser` (`connectionId`);",
         "profiles": [
-          "scim"
+          "scim",
+          "scim-managed"
         ]
       },
       {
         "sql": "create index `scimUser_provisioningDomainId_idx` on `scimUser` (`provisioningDomainId`);",
         "profiles": [
-          "scim"
+          "scim",
+          "scim-managed"
         ]
       },
       {
         "sql": "create index `scimUser_userId_idx` on `scimUser` (`userId`);",
         "profiles": [
-          "scim"
+          "scim",
+          "scim-managed"
         ]
       },
       {
         "sql": "create index `scimProjectionGrant_connectionId_idx` on `scimProjectionGrant` (`connectionId`);",
         "profiles": [
-          "scim"
+          "scim",
+          "scim-managed"
         ]
       },
       {
         "sql": "create index `scimProjectionGrant_provisioningDomainId_idx` on `scimProjectionGrant` (`provisioningDomainId`);",
         "profiles": [
-          "scim"
+          "scim",
+          "scim-managed"
         ]
       },
       {
         "sql": "create index `scimProjectionGrant_scimUserId_idx` on `scimProjectionGrant` (`scimUserId`);",
         "profiles": [
-          "scim"
+          "scim",
+          "scim-managed"
         ]
       },
       {
         "sql": "create index `scimProjectionGrant_userId_idx` on `scimProjectionGrant` (`userId`);",
         "profiles": [
-          "scim"
+          "scim",
+          "scim-managed"
         ]
       },
       {
         "sql": "create index `scimGroup_connectionId_idx` on `scimGroup` (`connectionId`);",
         "profiles": [
-          "scim"
+          "scim",
+          "scim-managed"
         ]
       },
       {
         "sql": "create index `scimGroup_provisioningDomainId_idx` on `scimGroup` (`provisioningDomainId`);",
         "profiles": [
-          "scim"
+          "scim",
+          "scim-managed"
         ]
       },
       {
         "sql": "create index `scimGroupMember_connectionId_idx` on `scimGroupMember` (`connectionId`);",
         "profiles": [
-          "scim"
+          "scim",
+          "scim-managed"
         ]
       },
       {
         "sql": "create index `scimGroupMember_groupId_idx` on `scimGroupMember` (`groupId`);",
         "profiles": [
-          "scim"
+          "scim",
+          "scim-managed"
         ]
       },
       {
         "sql": "create index `scimGroupMember_scimUserId_idx` on `scimGroupMember` (`scimUserId`);",
         "profiles": [
-          "scim"
+          "scim",
+          "scim-managed"
         ]
       },
       {

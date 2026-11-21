@@ -37,6 +37,7 @@ type Connection struct {
 	Credentials []Credential
 }
 type Options struct {
+	Managed           *ManagedOptions
 	VerifyBearerToken VerifyBearerToken
 	// AcceptLegacyEntraGroupSchema accepts one classic Entra marker only on Group creation.
 	AcceptLegacyEntraGroupSchema bool
@@ -91,6 +92,7 @@ type staticBearer struct {
 	principal Principal
 }
 type Handler struct {
+	catalog     *Catalog
 	host        *auth.Auth
 	store       Store
 	groups      GroupStore
@@ -104,7 +106,7 @@ type Handler struct {
 // New wraps host with SCIM routes under its configured public auth mount.
 // Other paths continue to the original host handler.
 func New(host *auth.Auth, opts Options) (*Handler, error) {
-	if host == nil || opts.Store == nil || len(opts.Connections) == 0 && opts.VerifyBearerToken == nil {
+	if host == nil || opts.Store == nil || len(opts.Connections) == 0 && opts.VerifyBearerToken == nil && opts.Managed == nil {
 		return nil, errors.New("scim: auth host, directory store and a credential source are required")
 	}
 	path := strings.TrimRight(host.BasePath(), "/") + "/scim/v2"
@@ -113,6 +115,12 @@ func New(host *auth.Auth, opts Options) (*Handler, error) {
 		return nil, err
 	}
 	h := &Handler{host: host, store: opts.Store, path: path, base: base, legacyGroup: opts.AcceptLegacyEntraGroupSchema, declared: map[string]Directory{}, verify: opts.VerifyBearerToken}
+	if opts.Managed != nil {
+		h.catalog, err = newCatalog(opts.Store, opts.Managed)
+		if err != nil {
+			return nil, err
+		}
+	}
 	h.groups, _ = opts.Store.(GroupStore)
 	usedTokens := map[[32]byte]bool{}
 	for _, c := range opts.Connections {
@@ -161,6 +169,13 @@ func (h *Handler) authorize(r *http.Request, scope, route string) (Principal, er
 		p := &h.credentials[i]
 		if subtle.ConstantTimeCompare(digest[:], p.digest[:]) == 1 && (p.principal.ExpiresAt.IsZero() || p.principal.ExpiresAt.After(time.Now())) {
 			got = &p.principal
+		}
+	}
+	if got == nil && h.catalog != nil && strings.HasPrefix(token, managedCredentialPrefix) {
+		var e error
+		got, e = h.catalog.verify(r.Context(), token)
+		if e != nil {
+			return Principal{}, e
 		}
 	}
 	if got == nil && h.verify != nil && !strings.HasPrefix(token, managedCredentialPrefix) {

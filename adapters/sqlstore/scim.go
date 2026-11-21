@@ -83,6 +83,11 @@ func (s *Store) scimTx(ctx context.Context, d scim.Directory, fn func(*sql.Tx) e
 		return err
 	}
 	defer tx.Rollback()
+	if p, ok := scim.PrincipalFromContext(ctx); ok && p.Kind == "managed-bearer" {
+		if err = s.lockManagedPrincipal(ctx, tx, d, p); err != nil {
+			return err
+		}
+	}
 	var connection, domain, status string
 	if err = tx.QueryRowContext(ctx, s.readForUpdate(query), key).Scan(&connection, &domain, &status); err != nil {
 		return err

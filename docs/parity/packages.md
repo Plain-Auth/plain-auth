@@ -244,6 +244,7 @@ Each row tracks the behavior exposed by a published entry point. The Go implemen
   - [ ] Default interface (`.`)
     - [x] Provision and synchronize directory Users over authenticated SCIM HTTP using compatible SQL records ([test](../../conformance/scim-contract.mjs#L45))
     - [x] Exchange canonical Group and membership records with the reference runtime ([test](../../conformance/scim-contract.mjs#L92))
+    - [x] Issue, rotate, authenticate and revoke managed directory credentials from either runtime on shared SQLite ([test](../../conformance/scim-managed.mjs#L13))
 
 ## Single sign-on
 

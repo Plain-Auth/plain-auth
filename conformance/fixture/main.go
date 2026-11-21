@@ -58,7 +58,7 @@ func main() {
 	var directoryEnabled bool
 	for _, id := range os.Args[2:] {
 		switch id {
-		case "scim":
+		case "scim", "scim-managed":
 			directoryEnabled = true
 		case "api-key":
 			keySessions := os.Getenv("AUTH_TEST_API_KEY_SESSIONS") == "1"

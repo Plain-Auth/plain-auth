@@ -8,7 +8,7 @@ import { DatabaseSync } from "node:sqlite";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 import { getMigrations } from "better-auth/db/migration";
-import { verifiedCombinations, scimCombinations, organizationBillingCombinations, dialects, freshSchema, schemaOptions } from "./plugin-schema.mjs";
+import { verifiedCombinations, scimCombinations, managedSCIMCombinations, organizationBillingCombinations, dialects, freshSchema, schemaOptions } from "./plugin-schema.mjs";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
 
@@ -147,7 +147,7 @@ test("adding plugin profiles to a populated SQLite database preserves existing a
           execFileSync(binary, ["migrate", "--dialect", "sqlite", "--plugins", profiles[0]], { env: { ...process.env, AUTH_DSN: database } });
         }
         await batch.call("sqlite", profiles, "candidate.db");
-        if (profiles.includes("scim")) await batch.call("sqlite", profiles, "candidate.db");
+        if (profiles.includes("scim") || profiles.includes("scim-managed")) await batch.call("sqlite", profiles, "candidate.db");
         const db = new DatabaseSync(database, { readOnly: true });
         const reference = new DatabaseSync(":memory:");
         try {
@@ -205,4 +205,28 @@ test("organization billing adds the organization customer column and preserves t
       }
     }
   } finally { await fixture.close(); rmSync(dir, { recursive: true, force: true }); }
+});
+
+test("SCIM managed credentials add three independent catalog tables while preserving directory data", async () => {
+  const tables = ["scimManagedConnection", "scimManagedConnectionEvent", "scimManagedCredential"];
+  const statements = sql => sql.trim().split(/;\s*\n\s*\n/).map(s => s.replace(/;$/, ""));
+  const witnesses = [...managedSCIMCombinations()];
+  assert.equal(witnesses.length, 26);
+  for (const dialect of Object.keys(dialects)) {
+    const original = new Set(statements(await freshSchema(dialect, ["scim"])));
+    const additions = statements(await freshSchema(dialect, ["scim-managed"])).filter(s => !original.has(s));
+    const tableNames = additions.flatMap(s => /^create table ["`]([^"`]+)["`]/.exec(s)?.slice(1) ?? []);
+    assert.deepEqual(tableNames.sort(), tables);
+    for (const statement of additions) {
+      const owner = /^(?:create table|create (?:unique )?index .+ on) ["`]([^"`]+)["`]/.exec(statement)?.[1];
+      assert.ok(tables.includes(owner), statement);
+    }
+    for (const profiles of witnesses) {
+      const baseline = [...profiles.filter(p => p !== "scim" && p !== "scim-managed"), "scim"];
+      const base = statements(await freshSchema(dialect, baseline));
+      const combined = statements(await freshSchema(dialect, profiles));
+      assert.deepEqual(new Set(combined), new Set([...base, ...additions]), dialect + " / " + profiles.join(","));
+      assert.deepEqual(combined.filter(s => !additions.includes(s)), base);
+    }
+  }
 });
