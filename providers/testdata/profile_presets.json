@@ -1,0 +1,33 @@
+{
+  "gumroad": {
+    "authorize": "https://gumroad.com/oauth/authorize", "token": "https://api.gumroad.com/oauth/token", "userInfo": "https://api.gumroad.com/v2/user",
+    "scopes": ["view_profile"],
+    "input": {"success": true, "user": {"user_id": "gum-45", "name": "Jo", "email": "jo@example.org", "profile_url": "https://example.org/jo"}},
+    "expected": {"id": "gum-45", "name": "Jo", "email": "jo@example.org", "image": "https://example.org/jo", "emailVerified": false}
+  },
+  "hubspot": {
+    "authorize": "https://app.hubspot.com/oauth/authorize", "token": "https://api.hubspot.com/oauth/2026-09/token", "userInfo": "https://api.hubspot.com/oauth/2026-09/token/introspect",
+    "scopes": ["oauth"],
+    "referenceToken": "https://api.hubapi.com/oauth/v1/token", "referenceUserInfo": "https://api.hubapi.com/oauth/v1/access-tokens/access",
+    "input": {"active": true, "token_use": "access_token", "client_id": "fixture", "user_id": "359", "user": "jo@example.org", "token": "access"},
+    "expected": {"id": "359", "name": "jo@example.org", "email": "jo@example.org", "emailVerified": false}
+  },
+  "patreon": {
+    "authorize": "https://www.patreon.com/oauth2/authorize", "token": "https://www.patreon.com/api/oauth2/token", "userInfo": "https://www.patreon.com/api/oauth2/v2/identity?fields[user]=email,full_name,image_url,is_email_verified",
+    "scopes": ["identity[email]"],
+    "input": {"data": {"id": "pat-45", "attributes": {"full_name": "Jo", "email": "jo@example.org", "image_url": "https://example.org/jo", "is_email_verified": true}}},
+    "expected": {"id": "pat-45", "name": "Jo", "email": "jo@example.org", "image": "https://example.org/jo", "emailVerified": true}
+  },
+  "slack": {
+    "authorize": "https://slack.com/openid/connect/authorize", "token": "https://slack.com/api/openid.connect.token", "userInfo": "https://slack.com/api/openid.connect.userInfo",
+    "scopes": ["openid", "profile", "email"],
+    "input": {"ok": true, "sub": "sl-45", "name": "Jo", "email": "jo@example.org", "email_verified": true, "https://slack.com/user_image_512": "https://example.org/jo"},
+    "expected": {"sub": "sl-45", "name": "Jo", "email": "jo@example.org", "image": "https://example.org/jo", "emailVerified": true}
+  },
+  "yandex": {
+    "authorize": "https://oauth.yandex.com/authorize", "token": "https://oauth.yandex.com/token", "userInfo": "https://login.yandex.ru/info?format=json",
+    "scopes": ["login:info", "login:email", "login:avatar"],
+    "input": {"id": "ya-45", "real_name": "Jo", "emails": ["jo@example.org", "another@example.org"], "default_avatar_id": "portrait-45", "is_avatar_empty": false},
+    "expected": {"id": "ya-45", "name": "Jo", "email": "jo@example.org", "image": "https://avatars.yandex.net/get-yapic/portrait-45/islands-200", "emailVerified": false}
+  }
+}

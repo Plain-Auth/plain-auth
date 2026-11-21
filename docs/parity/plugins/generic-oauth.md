@@ -50,6 +50,8 @@
     - [ ] `disableSignUp`
     - [ ] `overrideUserInfo`
   - [ ] `gumroad`
+    - [x] Complete authorization-code sign-in, bind the provider subject and read the linked account profile ([test](../../../providers/profile_presets_test.go#L22))
+    - [x] Compare default scopes, authenticated profile fields and subject with the published provider preset ([test](../../../conformance/profile-presets.test.mjs#L6))
   - [ ] `HubSpotOptions`
     - [ ] `scopes`
     - [ ] `clientId`
@@ -64,6 +66,9 @@
     - [ ] `disableSignUp`
     - [ ] `overrideUserInfo`
   - [ ] `hubspot`
+    - [x] Complete authorization-code sign-in, bind the provider subject and read the linked account profile ([test](../../../providers/profile_presets_test.go#L22))
+    - [x] Compare default scopes, authenticated profile fields and subject with the published provider preset ([test](../../../conformance/profile-presets.test.mjs#L6))
+    - [x] Validate the introspected token’s registered client, active status and access-token use ([test](../../../providers/profile_presets_test.go#L161))
   - [ ] `KeycloakOptions`
     - [ ] `issuer`
     - [ ] `clientId`
@@ -142,6 +147,8 @@
     - [ ] `disableSignUp`
     - [ ] `overrideUserInfo`
   - [ ] `patreon`
+    - [x] Complete authorization-code sign-in, bind the provider subject and read the linked account profile ([test](../../../providers/profile_presets_test.go#L22))
+    - [x] Compare default scopes, authenticated profile fields and subject with the published provider preset ([test](../../../conformance/profile-presets.test.mjs#L6))
   - [ ] `SlackOptions`
     - [ ] `clientId`
     - [ ] `clientSecret`
@@ -156,6 +163,8 @@
     - [ ] `disableSignUp`
     - [ ] `overrideUserInfo`
   - [ ] `slack`
+    - [x] Complete authorization-code sign-in, bind the provider subject and read the linked account profile ([test](../../../providers/profile_presets_test.go#L22))
+    - [x] Compare default scopes, authenticated profile fields and subject with the published provider preset ([test](../../../conformance/profile-presets.test.mjs#L6))
   - [ ] `YandexOptions`
     - [ ] `clientId`
     - [ ] `clientSecret`
@@ -170,6 +179,8 @@
     - [ ] `disableSignUp`
     - [ ] `overrideUserInfo`
   - [ ] `yandex`
+    - [x] Complete authorization-code sign-in, bind the provider subject and read the linked account profile ([test](../../../providers/profile_presets_test.go#L22))
+    - [x] Compare default scopes, authenticated profile fields and subject with the published provider preset ([test](../../../conformance/profile-presets.test.mjs#L6))
   - [ ] `GenericOAuthConfig`
     - [ ] `providerId`
     - [ ] `name`

@@ -116,3 +116,25 @@ Go services can call `GetAccessToken`, `RefreshToken` and `AccountInfo` directly
 ## Encrypt provider credentials
 
 Set `Options.EncryptOAuthTokens` to `true` on every instance before accepting social sign-ins to store encrypted access, refresh and ID tokens. The default is `false`. Encryption uses the configured key ring, authenticates the provider, account subject and token field, and preserves the provider's expiry and scopes for lookup. New grants and refreshed tokens use the active encryption key. Keep a retiring key available until all accounts that use it have refreshed or reauthorized. Applications continue to use the same account-selection, access, refresh and user-info APIs. [Storage and rotation tests](../adapters/sqlstore/oauth_encryption_test.go)
+
+## Gumroad, HubSpot, Patreon, Slack and Yandex
+
+Use the table name to construct the provider. The key you assign in `SocialProviders` determines the name sent by the client and the callback URL. Register the callback URL including your auth mount, for example `https://app.example.com/api/auth/callback/patreon`. Each registration needs an OAuth application at that provider and its own client credentials.
+
+| Name for `providers.New` | Default permissions | Account identity |
+| --- | --- | --- |
+| `gumroad` | `view_profile` | Gumroad user ID. The account email is unverified. [Gumroad API](https://gumroad.com/api) |
+| `hubspot` | `oauth` | HubSpot user ID. The registered email serves as both email and display name. The preset checks that the token is active, belongs to this client, and represents an access token. [HubSpot OAuth](https://developers.hubspot.com/docs/api-reference/latest/authentication/manage-oauth-tokens) |
+| `patreon` | `identity[email]` | Patreon user ID. The user’s profile supplies the name, photo and email verification status. [Patreon identity API](https://docs.patreon.com/#get-api-oauth2-v2-identity) |
+| `slack-oidc` | `openid profile email` | Slack subject. This preset uses PKCE by default. UserInfo supplies the email verification status and profile picture. [Slack UserInfo](https://docs.slack.dev/reference/methods/openid.connect.userInfo/) |
+| `yandex` | `login:info login:email login:avatar` | Yandex ID. The default email takes precedence over the first address in the list. It is stored as unverified. [Yandex profile API](https://yandex.com/dev/id/doc/en/user-information) |
+
+```go
+patreon, err := providers.New("patreon", os.Getenv("PATREON_CLIENT_ID"), os.Getenv("PATREON_CLIENT_SECRET"))
+if err != nil {
+    return err
+}
+opts.SocialProviders = map[string]auth.OAuthProvider{"patreon": patreon}
+```
+
+The application reads these vendor credentials and passes them into the constructor. HubSpot uses its September 2026 API for token exchange and introspection. Credentials travel in the HTTPS request body. Only the mapped identity fields are returned by the account-info endpoint.

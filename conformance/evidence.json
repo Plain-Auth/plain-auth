@@ -5159,5 +5159,70 @@
       "test": "adapters/sqlstore/stripe_plan_change_test.go",
       "marker": "func TestHostedSubscriptionPlanChanges("
     }
+  ],
+  "plugin-symbol/generic-oauth/gumroad": [
+    {
+      "label": "Complete authorization-code sign-in, bind the provider subject and read the linked account profile",
+      "test": "providers/profile_presets_test.go",
+      "marker": "func TestProfilePresetBrowserSignIn("
+    },
+    {
+      "label": "Compare default scopes, authenticated profile fields and subject with the published provider preset",
+      "test": "conformance/profile-presets.test.mjs",
+      "marker": "test(\"OAuth profile presets match"
+    }
+  ],
+  "plugin-symbol/generic-oauth/hubspot": [
+    {
+      "label": "Complete authorization-code sign-in, bind the provider subject and read the linked account profile",
+      "test": "providers/profile_presets_test.go",
+      "marker": "func TestProfilePresetBrowserSignIn("
+    },
+    {
+      "label": "Compare default scopes, authenticated profile fields and subject with the published provider preset",
+      "test": "conformance/profile-presets.test.mjs",
+      "marker": "test(\"OAuth profile presets match"
+    },
+    {
+      "label": "Validate the introspected token’s registered client, active status and access-token use",
+      "test": "providers/profile_presets_test.go",
+      "marker": "func TestHubSpotTokenIntrospection("
+    }
+  ],
+  "plugin-symbol/generic-oauth/patreon": [
+    {
+      "label": "Complete authorization-code sign-in, bind the provider subject and read the linked account profile",
+      "test": "providers/profile_presets_test.go",
+      "marker": "func TestProfilePresetBrowserSignIn("
+    },
+    {
+      "label": "Compare default scopes, authenticated profile fields and subject with the published provider preset",
+      "test": "conformance/profile-presets.test.mjs",
+      "marker": "test(\"OAuth profile presets match"
+    }
+  ],
+  "plugin-symbol/generic-oauth/slack": [
+    {
+      "label": "Complete authorization-code sign-in, bind the provider subject and read the linked account profile",
+      "test": "providers/profile_presets_test.go",
+      "marker": "func TestProfilePresetBrowserSignIn("
+    },
+    {
+      "label": "Compare default scopes, authenticated profile fields and subject with the published provider preset",
+      "test": "conformance/profile-presets.test.mjs",
+      "marker": "test(\"OAuth profile presets match"
+    }
+  ],
+  "plugin-symbol/generic-oauth/yandex": [
+    {
+      "label": "Complete authorization-code sign-in, bind the provider subject and read the linked account profile",
+      "test": "providers/profile_presets_test.go",
+      "marker": "func TestProfilePresetBrowserSignIn("
+    },
+    {
+      "label": "Compare default scopes, authenticated profile fields and subject with the published provider preset",
+      "test": "conformance/profile-presets.test.mjs",
+      "marker": "test(\"OAuth profile presets match"
+    }
   ]
 }

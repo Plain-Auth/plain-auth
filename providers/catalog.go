@@ -40,6 +40,9 @@ var catalog = func() map[string]catalogEntry {
 // Names returns the stable identifiers supported by New.
 func Names() []string {
 	ids := []string{"apple", "github", "google", "microsoft", "paybin", "twitch"}
+	for id := range profilePresets {
+		ids = append(ids, id)
+	}
 	for id := range catalog {
 		ids = append(ids, id)
 	}
@@ -63,6 +66,9 @@ func New(name, clientID, secret string) (auth.OAuthProvider, error) {
 		return Apple(clientID, secret), nil
 	case "microsoft":
 		return Microsoft(clientID, secret, MicrosoftOptions{})
+	}
+	if preset, ok := profilePresets[name]; ok {
+		return preset.provider(name, clientID, secret), nil
 	}
 	entry, ok := catalog[name]
 	if !ok {
