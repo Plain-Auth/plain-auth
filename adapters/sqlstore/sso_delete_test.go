@@ -88,6 +88,35 @@ func TestEnterpriseProviderDeletion(t *testing.T) {
 			account("a-two", "corp", "two", eve.ID)
 			account("a-case", "Corp", "foreign", eve.ID)
 			account("a-other", "personal", "one", alice.ID)
+			// A static OAuth node uses the same provider name for an unrelated subject.
+			socialCandidate := auth.User{ID: "social-owner", Name: "Social owner", Email: "social@example.test", CreatedAt: now, UpdatedAt: now}
+			socialSession := auth.StoredSession{Session: auth.Session{ID: "social-session", Token: "social-token", CreatedAt: now, UpdatedAt: now, ExpiresAt: now.Add(time.Hour)}}
+			_, _, e = second.CompleteOAuth(ctx, "corp", "ordinary-subject", auth.OAuthTokens{AccessToken: "static-only"}, socialCandidate, socialSession, auth.OAuthLoginOptions{})
+			must(e)
+			var staticID string
+			must(first.db.QueryRowContext(ctx, first.bind(`SELECT "id" FROM "account" WHERE "providerId"='corp' AND "accountId"='ordinary-subject'`)).Scan(&staticID))
+			// A historical canonical row with no origin is ambiguous even when the
+			// subject and email are known. Only a trusted explicit classification can resolve it.
+			if _, err := second.ProviderCredential(ctx, bob.ID, "a-one"); !errors.Is(err, auth.ErrNotFound) {
+				t.Fatalf("unclassified credential exposed: %v", err)
+			}
+			mismatch := OAuthAccountAttribution{AccountID: "a-one", UserID: bob.ID, Subject: "one", ProviderID: "corp", EnterpriseRecordID: p.ID, EnterpriseIssuer: "https://different.example", EnterpriseOrganizationID: "tenant"}
+			if err := second.ReconcileOAuthAccount(ctx, mismatch); !errors.Is(err, auth.ErrOAuthLinkRequired) {
+				t.Fatalf("reconciled wrong issuer: %v", err)
+			}
+			mismatch.EnterpriseIssuer = p.Issuer
+			mismatch.EnterpriseOrganizationID = "other-tenant"
+			if e := first.ReconcileOAuthAccount(ctx, mismatch); !errors.Is(e, auth.ErrOAuthLinkRequired) {
+				t.Fatalf("reconciled foreign tenant: %v", e)
+			}
+			code(admin.DeleteSSOProvider(ctx, "corp"), 409)
+			for _, fixture := range []struct{ id, subject, uid string }{{"a-one", "one", bob.ID}, {"a-two", "two", eve.ID}} {
+				must(first.ReconcileOAuthAccount(ctx, OAuthAccountAttribution{AccountID: fixture.id, UserID: fixture.uid, Subject: fixture.subject, ProviderID: "corp", EnterpriseRecordID: p.ID, EnterpriseIssuer: p.Issuer, EnterpriseOrganizationID: "tenant"}))
+			}
+			must(first.ReconcileOAuthAccount(ctx, OAuthAccountAttribution{AccountID: "a-other", UserID: alice.ID, Subject: "one", ProviderID: "personal", EnterpriseRecordID: personal.ID, EnterpriseIssuer: personal.Issuer}))
+			if err := second.ReconcileOAuthAccount(ctx, OAuthAccountAttribution{AccountID: "a-one", UserID: bob.ID, Subject: "one", ProviderID: "corp"}); !errors.Is(err, auth.ErrOAuthLinkRequired) {
+				t.Fatalf("changed established attribution: %v", err)
+			}
 			browser, e := first.FindBrowserProvider(ctx, sso.Selector{ProviderID: p.ProviderID})
 			must(e)
 			direct := sso.Actor{UserID: bob.ID}
@@ -142,6 +171,16 @@ func TestEnterpriseProviderDeletion(t *testing.T) {
 				t.Fatal("unrelated identity or tenant membership changed")
 			}
 			code(admin.DeleteSSOProvider(ctx, "corp"), 404)
+			cred, e := second.ProviderCredential(ctx, socialCandidate.ID, staticID)
+			must(e)
+			if cred.AccessToken != "static-only" {
+				t.Fatal("deletion removed same-name static credentials")
+			}
+			must(second.UnlinkAccount(ctx, socialCandidate.ID, staticID, true))
+			if count(`SELECT COUNT(*) FROM "verification" WHERE "id"=?`, sourceID(staticID)) != 0 {
+				t.Fatal("unlink retained stale source")
+			}
+
 			// The case-distinct fixture remains in a MySQL case-insensitive namespace;
 			// remove it here before requesting a fresh registration.
 			exec(`DELETE FROM "account" WHERE "id"='a-case'`)
@@ -170,6 +209,7 @@ func TestEnterpriseProviderDeletion(t *testing.T) {
 			<-linkFirst
 			_, err = link.ExecContext(ctx, first.bind(`INSERT INTO "account" ("id","providerId","accountId","userId","createdAt","updatedAt") VALUES ('last-link','corp','last',?,?,?)`), eve.ID, first.date(now), first.date(now))
 			must(err)
+			must(first.writeAccountSource(ctx, link, oauthIdentity{ID: "last-link", UserID: eve.ID, ProviderID: "corp", Subject: "last", CreatedMS: now.UnixMilli()}, enterpriseAuthority(replacement.ID, replacement.Issuer, replacement.OrganizationID)))
 			must(link.Commit())
 			must(<-deleted)
 			if count(`SELECT COUNT(*) FROM "account" WHERE "id"='last-link'`) != 0 {

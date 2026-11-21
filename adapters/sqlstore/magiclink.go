@@ -164,6 +164,9 @@ func (s *Store) completeMagicLink(ctx context.Context, key, newID string, sessio
 // Remove standing access created before this mailbox was proven. The caller
 // holds the owning user lock until the new verified session has been committed.
 func (s *Store) promoteMagicLinkOwner(ctx context.Context, tx *sql.Tx, id string, session auth.StoredSession) error {
+	if _, err := tx.ExecContext(ctx, s.bind(`DELETE FROM "verification" WHERE "identifier"=?`), sourceOwner(id)); err != nil {
+		return err
+	}
 	for _, q := range []string{
 		`DELETE FROM "account" WHERE "userId"=?`,
 		`DELETE FROM "session" WHERE "userId"=?`,

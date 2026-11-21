@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import {createServer} from "node:http";
 import {once} from "node:events";
 import { DatabaseSync } from "node:sqlite";
@@ -8,7 +9,7 @@ import { NodeSqliteDialect } from "@better-auth/kysely-adapter/node-sqlite-diale
 import { betterAuth } from "better-auth";
 import { getMigrations } from "better-auth/db/migration";
 
-export async function providerCatalog(t, {goFixture, instrument}) {
+export async function providerCatalog(t, {goFixture, instrument, fixtureBinary}) {
   let issuer;
   let discoveries = 0;
   const idp = createServer((req, res) => {
@@ -96,6 +97,15 @@ export async function providerCatalog(t, {goFixture, instrument}) {
     const add = db.prepare("insert into account (id,providerId,accountId,userId,createdAt,updatedAt) values (?,?,?,?,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)");
     add.run(providerId+"-account",providerId,"shared-subject",record.userId);
     add.run(manualId+"-account",manualId,"shared-subject",record.userId);
+    if (peer===go) {
+      const unclassified = await other.sso.deleteProvider({providerId});
+      assert.equal(unclassified.error.code,"SSO_ACCOUNT_ORIGIN_REQUIRED");
+      const classified = spawnSync(await fixtureBinary(),["reconcile-sso-account",go.databasePath],{encoding:"utf8",input:JSON.stringify({
+        AccountID:providerId+"-account",UserID:record.userId,ProviderID:providerId,Subject:"shared-subject",
+        EnterpriseRecordID:record.id,EnterpriseIssuer:issuer,
+      })});
+      assert.equal(classified.status,0,classified.stderr);
+    }
     assert.deepEqual(success(await other.sso.deleteProvider({providerId})), {success:true});
     assert.equal((await first.sso.getProvider({query:{providerId}})).error.status,404);
     assert.equal((await other.sso.deleteProvider({providerId})).error.status,404);

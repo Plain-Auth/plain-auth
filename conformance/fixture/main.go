@@ -44,6 +44,12 @@ func main() {
 		}
 		return
 	}
+	if len(os.Args) == 3 && os.Args[1] == "reconcile-sso-account" {
+		if err := reconcileSSOAccount(os.Args[2]); err != nil {
+			log.Fatal(err)
+		}
+		return
+	}
 	if len(os.Args) < 2 {
 		log.Fatal("usage: fixture <temporary-database-path> [organization|two-factor ...]")
 	}

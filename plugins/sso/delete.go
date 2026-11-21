@@ -26,6 +26,10 @@ type DeletionStore interface {
 	DeleteSSOProvider(ctx context.Context, actor Actor, providerID, recordID string, guard MutationGuard) error
 }
 
+// ErrUnclassifiedAccounts requires a trusted operator to establish the
+// origin of preexisting canonical account rows before a provider can be deleted.
+var ErrUnclassifiedAccounts = &auth.APIError{Status: 409, Code: "SSO_ACCOUNT_ORIGIN_REQUIRED", Message: "An existing account link requires source reconciliation"}
+
 var ErrMutationRejected = &auth.APIError{Status: 409, Code: "SSO_PROVIDER_MUTATION_REJECTED", Message: "SSO provider mutation is not allowed"}
 
 // MutableProviderID reports whether an identifier can belong to an enterprise

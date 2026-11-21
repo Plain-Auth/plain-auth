@@ -105,6 +105,9 @@ func (s *Store) DeleteAccount(ctx context.Context, userID, sessionToken, expecte
 }
 
 func (s *Store) deleteAccountRows(ctx context.Context, tx *sql.Tx, userID string) error {
+	if _, err := tx.ExecContext(ctx, s.bind(`DELETE FROM "verification" WHERE "identifier"=?`), sourceOwner(userID)); err != nil {
+		return err
+	}
 	var err error
 	// The verification schema also stores plugin state. Remove the two core
 	// mail-link families whose value is the user ID, leaving other records alone.

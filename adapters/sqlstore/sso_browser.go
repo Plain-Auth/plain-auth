@@ -106,7 +106,8 @@ func (s *Store) FindBrowserProvider(ctx context.Context, sel sso.Selector) (sso.
 
 func (s *Store) CompleteEnterpriseLogin(ctx context.Context, ref string, provision bool, id, subject string, tokens auth.OAuthTokens, user auth.User, session auth.StoredSession, opts auth.OAuthLoginOptions) (auth.User, bool, error) {
 	var orgID *string
-	hooks := oauthTransactionHooks{
+	var hooks oauthTransactionHooks
+	hooks = oauthTransactionHooks{
 		guard: func(tx *sql.Tx) error {
 			q := `SELECT ` + browserProviderCols + ` FROM "ssoProvider" p WHERE ` + browserProviderWhere + ` AND ` + s.scimExact(`p."providerId"`) + `=?`
 			p, err := scanBrowserProvider(tx.QueryRowContext(ctx, s.readForUpdate(q), id))
@@ -124,6 +125,7 @@ func (s *Store) CompleteEnterpriseLogin(ctx context.Context, ref string, provisi
 			if matches > 1 {
 				return auth.ErrOAuthLinkRequired
 			}
+			hooks.authority = enterpriseAuthority(p.ID, p.Issuer, p.OrganizationID)
 			orgID = p.OrganizationID
 			if orgID != nil {
 				return s.lockOrganization(ctx, tx, *orgID)

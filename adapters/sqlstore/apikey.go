@@ -29,7 +29,7 @@ func (s *Store) hasKeyOwnerTable(ctx context.Context, tx rowQuerier, table strin
 	case "mysql":
 		q = `SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_schema=database() AND table_name=?)`
 	case "postgres":
-		q = `SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_schema=current_schema() AND table_name=?)`
+		q = `SELECT pg_catalog.to_regclass(pg_catalog.quote_ident(?::text)) IS NOT NULL`
 	}
 	var exists bool
 	err := tx.QueryRowContext(ctx, s.bind(q), table).Scan(&exists)

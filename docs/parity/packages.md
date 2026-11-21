@@ -252,7 +252,7 @@ Each row tracks the behavior exposed by a published entry point. The Go implemen
 
 - [ ] Single sign-on
   - [ ] Default interface (`.`)
-    - [x] Register persisted OIDC providers and read sanitized configuration through the official client on both implementations ([test](../../conformance/sso-providers.mjs#L11))
+    - [x] Register persisted OIDC providers and read sanitized configuration through the official client on both implementations ([test](../../conformance/sso-providers.mjs#L12))
     - [x] Create reusable enterprise sessions through both browser callback routes while preserving a single linked account ([test](../../conformance/sso-browser.mjs#L13))
   - [ ] Client integration (`./client`)
 

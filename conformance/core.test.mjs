@@ -1095,7 +1095,7 @@ test("the released organization client removes members and leaves through both H
 
 test("the official SSO client registers and reads redacted OIDC providers across implementations", async t => {
   const {providerCatalog} = await import("./sso-providers.mjs");
-  await providerCatalog(t, {goFixture,instrument});
+  await providerCatalog(t, {goFixture,instrument,fixtureBinary:()=>fixtureBuild});
 });
 
 test("enterprise OIDC browser sessions survive an implementation change for both callback URLs", async t => {

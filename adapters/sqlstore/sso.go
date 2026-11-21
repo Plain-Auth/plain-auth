@@ -112,6 +112,9 @@ func (s *Store) ssoRegister(ctx context.Context, a sso.Actor, p sso.Provider, li
 	if err != nil {
 		return err
 	}
+	if err = s.markEnterpriseNamespace(ctx, tx, p.ProviderID); err != nil {
+		return err
+	}
 	return tx.Commit()
 }
 func (s *Store) CheckSSORegistration(ctx context.Context, a sso.Actor, p sso.Provider, limit int) error {

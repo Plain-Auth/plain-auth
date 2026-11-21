@@ -6580,6 +6580,11 @@
       "label": "Use validated public addresses for tenant-controlled endpoints and reject redirects and oversized responses",
       "test": "plugins/sso/identity_test.go",
       "marker": "func TestEnterpriseIdentityTransport("
+    },
+    {
+      "label": "Reject a shared public subject from another authority on both enterprise and static OAuth nodes",
+      "test": "adapters/sqlstore/sso_browser_test.go",
+      "marker": "static node accepted managed identity"
     }
   ],
   "plugin/sso/ /sso/callback": [
@@ -6675,6 +6680,11 @@
       "label": "Reject a browser callback after the original provider is deleted and a replacement reuses its public ID",
       "test": "conformance/sso-browser.mjs",
       "marker": "a deleted provider's replacement reached the token endpoint"
+    },
+    {
+      "label": "Preserve a same-name static OAuth credential and stop deletion until historical account links have independently verified source records",
+      "test": "adapters/sqlstore/sso_delete_test.go",
+      "marker": "deletion removed same-name static credentials"
     }
   ],
   "plugin-symbol/sso/SSOOptions/guardProviderMutation": [

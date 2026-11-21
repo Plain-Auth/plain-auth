@@ -2,9 +2,11 @@ package sqlstore
 
 import (
 	"bytes"
+	"context"
 	"crypto/ed25519"
 	"crypto/rand"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -328,6 +330,47 @@ func TestEnterpriseOIDCBrowser(t *testing.T) {
 			}
 			if locations["https://service.test/welcome"] != 1 || locations["https://service.test/identity/error?error=invalid_state"] != 1 {
 				t.Fatal(locations)
+			}
+			// An ordinary OAuth node shares the database but verifies a different
+			// identity authority under the same public "acme" name.
+			staticProfile := auth.OAuthProfile{}
+			static, e := auth.New(auth.Options{BaseURL: "https://service.test", BasePath: "/identity", Store: other, Secret: strings.Repeat("k", 32), RateLimit: new(bool), SocialProviders: map[string]auth.OAuthProvider{
+				"acme": {Config: oauth2.Config{ClientID: "different-client", Endpoint: oauth2.Endpoint{AuthURL: "https://social.example/authorize", TokenURL: "https://social.example/token"}}, Resolve: func(context.Context, *oauth2.Token, string) (auth.OAuthProfile, error) { return staticProfile, nil }, VerifyIDToken: func(context.Context, string, string) (auth.OAuthProfile, time.Time, error) {
+					return staticProfile, time.Now().Add(time.Minute), nil
+				}},
+			}})
+			must(e)
+			socialLogin := func(sub, email string) *httptest.ResponseRecorder {
+				staticProfile = auth.OAuthProfile{Subject: sub, Name: "Static identity", Email: email}
+				return call(static, "POST", "sign-in/social", "", map[string]any{"provider": "acme", "idToken": map[string]string{"token": rand.Text(), "nonce": rand.Text()}})
+			}
+			if got := socialLogin("employee", "unrelated@social.example"); got.Code != 401 || !strings.Contains(got.Body.String(), "ACCOUNT_NOT_LINKED") {
+				t.Fatalf("static node accepted managed identity: %d %s", got.Code, got.Body.String())
+			}
+			if got := socialLogin("static-subject", "social@elsewhere.example"); got.Code != 200 {
+				t.Fatalf("independent static login failed: %d %s", got.Code, got.Body.String())
+			}
+			target(finish(two, start(one, "acme", "another@enterprise.example", "static-subject", "client_secret_basic", "", withID)), "/retry?error=account_not_linked")
+			var managedID string
+			must(first.db.QueryRowContext(ctx, first.bind(`SELECT "id" FROM "account" WHERE "providerId"='acme' AND "accountId"='employee'`)).Scan(&managedID))
+			selection := auth.AccountSelection{UserID: session.User.ID, AccountID: managedID}
+			if _, err := static.GetAccessToken(ctx, nil, selection); err == nil {
+				t.Fatal("static node released an enterprise access token")
+			}
+			if _, err := static.RefreshToken(ctx, nil, selection); err == nil {
+				t.Fatal("static node refreshed an enterprise credential")
+			}
+			if _, err := static.AccountInfo(ctx, nil, selection); err == nil {
+				t.Fatal("static node used an enterprise credential for profile resolution")
+			}
+			if _, err := other.ProviderCredential(ctx, session.User.ID, managedID); !errors.Is(err, auth.ErrNotFound) {
+				t.Fatalf("store exposed cross-source credentials: %v", err)
+			}
+			if _, err := other.UpdateProviderCredential(ctx, session.User.ID, managedID, func(auth.ProviderAccountCredential) (auth.ProviderAccountCredential, bool, error) {
+				t.Fatal("cross-source refresh callback reached")
+				return auth.ProviderAccountCredential{}, false, nil
+			}); !errors.Is(err, auth.ErrNotFound) {
+				t.Fatal(err)
 			}
 			// Targeted removal and an existing employee signing back in may serialize
 			// either way. All engines must complete both operations under contention.

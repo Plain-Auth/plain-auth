@@ -86,17 +86,35 @@ func (s *Store) deleteSSOProvider(ctx context.Context, actor sso.Actor, id, reco
 			return e
 		}
 	}
+	// The provider ID is shared with static OAuth providers. Matching that
+	// public name never proves ownership of a canonical account row.
+	if err = s.markEnterpriseNamespace(ctx, tx, id); err != nil {
+		return err
+	}
+	owned, err := s.ownedEnterpriseLinks(ctx, tx, p)
+	if err != nil {
+		return err
+	}
 	if guard != nil {
 		mutation := sso.ProviderMutation{Action: "delete", ID: recordID, ProviderID: id, OrganizationID: p.OrganizationID, Reference: p.Reference}
-		if err = tx.QueryRowContext(ctx, s.bind(`SELECT COUNT(*) FROM "account" WHERE `+accountWhere), id).Scan(&mutation.LinkedAccounts); err != nil {
-			return err
-		}
+		mutation.LinkedAccounts = len(owned)
 		if err = guard(ctx, mutation); err != nil {
 			return sso.ErrMutationRejected
 		}
 	}
-	if _, err = tx.ExecContext(ctx, s.bind(`DELETE FROM "account" WHERE `+accountWhere), id); err != nil {
-		return err
+	for _, link := range owned {
+		result, err := tx.ExecContext(ctx, s.bind(`DELETE FROM "account" WHERE `+s.scimExact(`"id"`)+`=? AND `+accountWhere+` AND `+s.scimExact(`"userId"`)+`=? AND `+s.scimExact(`"accountId"`)+`=?`), link.ID, id, link.UserID, link.Subject)
+		if err != nil {
+			return err
+		}
+		if n, err := result.RowsAffected(); err != nil {
+			return err
+		} else if n != 1 {
+			return sso.ErrUnclassifiedAccounts
+		}
+		if _, err = tx.ExecContext(ctx, s.bind(`DELETE FROM "verification" WHERE "id"=? AND "identifier"=?`), sourceID(link.ID), sourceOwner(link.UserID)); err != nil {
+			return err
+		}
 	}
 	result, err := tx.ExecContext(ctx, s.bind(`DELETE FROM "ssoProvider" WHERE `+s.scimExact(`"id"`)+`=? AND `+s.scimExact(`"providerId"`)+`=?`), recordID, id)
 	if err != nil {
@@ -108,4 +126,49 @@ func (s *Store) deleteSSOProvider(ctx context.Context, actor sso.Actor, id, reco
 		return sso.ErrMissing
 	}
 	return tx.Commit()
+}
+
+func (s *Store) ownedEnterpriseLinks(ctx context.Context, tx *sql.Tx, p sso.BrowserProvider) ([]oauthIdentity, error) {
+	q := `SELECT "id","userId","providerId","accountId","createdAt" FROM "account" WHERE ` + s.scimExact(`"providerId"`) + `=? ORDER BY "id"`
+	// Existing links were locked before the provider row. A link created by an
+	// earlier holder of the provider lock must now be included as well.
+	rows, err := tx.QueryContext(ctx, s.readForUpdate(q), p.ProviderID)
+	if err != nil {
+		return nil, err
+	}
+	var accounts []oauthIdentity
+	for rows.Next() {
+		var link oauthIdentity
+		var created time.Time
+		if err = rows.Scan(&link.ID, &link.UserID, &link.ProviderID, &link.Subject, &created); err != nil {
+			rows.Close()
+			return nil, err
+		}
+		link.CreatedMS = created.UnixMilli()
+		accounts = append(accounts, link)
+	}
+	if err = rows.Err(); err != nil {
+		rows.Close()
+		return nil, err
+	}
+	if err = rows.Close(); err != nil {
+		return nil, err
+	}
+	owned := accounts[:0]
+	for _, link := range accounts {
+		origin, known, e := s.readAccountSource(ctx, tx, link)
+		if errors.Is(e, auth.ErrOAuthLinkRequired) || e == nil && !known {
+			return nil, sso.ErrUnclassifiedAccounts
+		}
+		if e != nil {
+			return nil, e
+		}
+		if origin.Kind == "enterprise" && origin.RecordID == p.ID {
+			if origin != enterpriseAuthority(p.ID, p.Issuer, p.OrganizationID) {
+				return nil, sso.ErrUnclassifiedAccounts
+			}
+			owned = append(owned, link)
+		}
+	}
+	return owned, nil
 }

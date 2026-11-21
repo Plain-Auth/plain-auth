@@ -74,6 +74,7 @@ func (s *Store) CompleteOAuth(ctx context.Context, provider, subject string, tok
 }
 
 type oauthTransactionHooks struct {
+	authority     oauthAuthority
 	guard         func(*sql.Tx) error
 	afterIdentity func(*sql.Tx, authn.User) error
 }
@@ -148,12 +149,13 @@ func (s *Store) completeOAuth(ctx context.Context, provider, subject string, tok
 		suffix = " FOR UPDATE"
 	}
 	var account string
-	q := `SELECT ` + userColumns + `,a."id" FROM "account" a JOIN "user" u ON u."id"=a."userId" WHERE a."providerId"=? AND a."accountId"=?`
+	var accountCreated time.Time
+	q := `SELECT ` + userColumns + `,a."id",a."createdAt" FROM "account" a JOIN "user" u ON u."id"=a."userId" WHERE a."providerId"=? AND a."accountId"=?`
 	// MySQL deployments may use case-insensitive collations by default.
 	if s.dialect == "mysql" {
-		q = `SELECT ` + userColumns + `,a."id" FROM "account" a JOIN "user" u ON u."id"=a."userId" WHERE BINARY a."providerId"=? AND BINARY a."accountId"=?`
+		q = `SELECT ` + userColumns + `,a."id",a."createdAt" FROM "account" a JOIN "user" u ON u."id"=a."userId" WHERE BINARY a."providerId"=? AND BINARY a."accountId"=?`
 	}
-	err = tx.QueryRowContext(ctx, s.bind(q+suffix), provider, subject).Scan(append(userFields(&u), &account)...)
+	err = tx.QueryRowContext(ctx, s.bind(q+suffix), provider, subject).Scan(append(userFields(&u), &account, &accountCreated)...)
 	existing := err == nil
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return u, false, err
@@ -195,6 +197,19 @@ func (s *Store) completeOAuth(ctx context.Context, provider, subject string, tok
 			return u, false, err
 		}
 	}
+	authority := socialAuthority
+	if hooks != nil {
+		authority = hooks.authority
+	}
+	if !existing {
+		accountCreated = session.CreatedAt
+	}
+	identity := oauthIdentity{ID: account, UserID: u.ID, ProviderID: provider, Subject: subject, CreatedMS: accountCreated.UnixMilli()}
+	if existing {
+		if err = s.requireAccountSource(ctx, tx, identity, authority); err != nil {
+			return u, false, err
+		}
+	}
 	var expires, refreshExpires any
 	if !tokens.RefreshExpiresAt.IsZero() {
 		refreshExpires = s.date(tokens.RefreshExpiresAt)
@@ -211,6 +226,11 @@ func (s *Store) completeOAuth(ctx context.Context, provider, subject string, tok
 	}
 	if err != nil {
 		return u, false, err
+	}
+	if !existing {
+		if err = s.writeAccountSource(ctx, tx, identity, authority); err != nil {
+			return u, false, err
+		}
 	}
 	if hooks != nil {
 		if err := hooks.afterIdentity(tx, u); err != nil {

@@ -60,5 +60,9 @@ func (s *Store) UnlinkAccount(ctx context.Context, userID, id string, allowLast 
 	if n == 0 {
 		return auth.ErrNotFound
 	}
+	_, err = tx.ExecContext(ctx, s.bind(`DELETE FROM "verification" WHERE "id"=? AND "identifier"=?`), sourceID(id), sourceOwner(userID))
+	if err != nil {
+		return err
+	}
 	return tx.Commit()
 }

@@ -88,7 +88,7 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 | [Phone number](plugins/phone-number.md) | 33 | 67 |
 | [SCIM provisioning](plugins/scim.md) | 51 | 251 |
 | [Sign in with Ethereum](plugins/siwe.md) | 0 | 40 |
-| [Single sign-on](plugins/sso.md) | 23 | 308 |
+| [Single sign-on](plugins/sso.md) | 25 | 308 |
 | [Stripe](plugins/stripe.md) | 119 | 193 |
 | [Test utils](plugins/test-utils.md) | 0 | 42 |
 | [Username](plugins/username.md) | 32 | 54 |

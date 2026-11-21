@@ -14,7 +14,7 @@
   - [ ] `NormalizedSSOProfile`
   - [ ] `computeDiscoveryUrl`
   - [ ] `discoverOIDCConfig`
-    - [x] Hydrate the tenant’s authorization, token and JWKS locations and select the advertised secret authentication method ([test](../../../conformance/sso-providers.mjs#L11))
+    - [x] Hydrate the tenant’s authorization, token and JWKS locations and select the advertised secret authentication method ([test](../../../conformance/sso-providers.mjs#L12))
   - [ ] `fetchDiscoveryDocument`
     - [x] Require an exact discovery origin and enforce the deadline, issuer match and bounded response ([test](../../../plugins/sso/discovery_test.go#L20))
   - [ ] `needsRuntimeDiscovery`
@@ -44,26 +44,28 @@
   - [ ] `deriveSAMLServiceProviderPolicy`
   - [ ] `SAMLServiceProviderPolicy`
   - [ ] `GET /sso/providers`
-    - [x] List personal registrations with masked client IDs and omit other owners’ registrations ([test](../../../conformance/sso-providers.mjs#L11))
+    - [x] List personal registrations with masked client IDs and omit other owners’ registrations ([test](../../../conformance/sso-providers.mjs#L12))
     - [x] Grant organization visibility to current administrators and remove it after demotion ([test](../../../adapters/sqlstore/sso_test.go#L23))
   - [ ] `GET /sso/get-provider`
-    - [x] Return public OIDC fields and reject unauthenticated or foreign users without revealing the client secret ([test](../../../conformance/sso-providers.mjs#L11))
+    - [x] Return public OIDC fields and reject unauthenticated or foreign users without revealing the client secret ([test](../../../conformance/sso-providers.mjs#L12))
   - [ ] `POST /sso/update-provider`
   - [ ] `POST /sso/delete-provider`
-    - [x] Delete the exact OIDC provider and its account links through the released SDK on both implementations ([test](../../../conformance/sso-providers.mjs#L99))
+    - [x] Delete the exact OIDC provider and its account links through the released SDK on both implementations ([test](../../../conformance/sso-providers.mjs#L109))
     - [x] Recheck current tenant authority, protect unrelated links and serialize concurrent sign-in against deletion on all three SQL engines ([test](../../../adapters/sqlstore/sso_delete_test.go#L17))
     - [x] Reject a browser callback after the original provider is deleted and a replacement reuses its public ID ([test](../../../conformance/sso-browser.mjs#L118))
+    - [x] Preserve a same-name static OAuth credential and stop deletion until historical account links have independently verified source records ([test](../../../adapters/sqlstore/sso_delete_test.go#L177))
   - [ ] `GET /sso/saml2/sp/metadata`
   - [ ] `POST /sso/register`
-    - [x] Register manually configured and discovered OIDC clients and read the other implementation’s canonical provider record ([test](../../../conformance/sso-providers.mjs#L11))
+    - [x] Register manually configured and discovered OIDC clients and read the other implementation’s canonical provider record ([test](../../../conformance/sso-providers.mjs#L12))
     - [x] Enforce direct owner sessions, organization roles and creator quota during concurrent registrations ([test](../../../adapters/sqlstore/sso_test.go#L23))
   - [ ] `POST /sign-in/sso`
     - [x] Start an authorization with a persisted OIDC provider through the released client and retain the same account across implementations ([test](../../../conformance/sso-browser.mjs#L13))
-    - [x] Select a provider by ID, organization slug, email or DNS suffix on a custom auth mount ([test](../../../adapters/sqlstore/sso_browser_test.go#L121))
+    - [x] Select a provider by ID, organization slug, email or DNS suffix on a custom auth mount ([test](../../../adapters/sqlstore/sso_browser_test.go#L123))
   - [ ] `/sso/callback/:providerId`
-    - [x] Redeem a browser-bound code with PKCE and either secret authentication method, then issue a session for the stable provider subject ([test](../../../adapters/sqlstore/sso_browser_test.go#L121))
-    - [x] Reject changed provider configuration before exchange and inside the account, membership and session transaction ([test](../../../adapters/sqlstore/sso_browser_test.go#L318))
+    - [x] Redeem a browser-bound code with PKCE and either secret authentication method, then issue a session for the stable provider subject ([test](../../../adapters/sqlstore/sso_browser_test.go#L123))
+    - [x] Reject changed provider configuration before exchange and inside the account, membership and session transaction ([test](../../../adapters/sqlstore/sso_browser_test.go#L320))
     - [x] Use validated public addresses for tenant-controlled endpoints and reject redirects and oversized responses ([test](../../../plugins/sso/identity_test.go#L15))
+    - [x] Reject a shared public subject from another authority on both enterprise and static OAuth nodes ([test](../../../adapters/sqlstore/sso_browser_test.go#L348))
   - [ ] `/sso/callback`
     - [x] Authenticate using the shared callback on both servers and preserve the canonical linked account in SQLite ([test](../../../conformance/sso-browser.mjs#L54))
   - [ ] `GET / POST /sso/saml2/sp/acs/:providerId`
@@ -94,12 +96,12 @@
     - [ ] `authorizationEndpoint`
     - [ ] `discoveryEndpoint`
     - [ ] `userInfoEndpoint`
-      - [x] Resolve the subject through UserInfo and reject disagreement with a signed ID token ([test](../../../adapters/sqlstore/sso_browser_test.go#L288))
+      - [x] Resolve the subject through UserInfo and reject disagreement with a signed ID token ([test](../../../adapters/sqlstore/sso_browser_test.go#L290))
     - [ ] `scopes`
     - [ ] `overrideUserInfo`
     - [ ] `tokenEndpoint`
     - [ ] `tokenEndpointAuthentication`
-      - [x] Redeem codes through confidential client-secret basic and POST authentication ([test](../../../adapters/sqlstore/sso_browser_test.go#L76))
+      - [x] Redeem codes through confidential client-secret basic and POST authentication ([test](../../../adapters/sqlstore/sso_browser_test.go#L78))
     - [ ] `privateKeyId`
     - [ ] `privateKeyAlgorithm`
     - [ ] `jwksEndpoint`
@@ -126,15 +128,15 @@
   - [ ] `SSOOptions`
     - [ ] `resolveUser`
     - [ ] `guardProviderMutation`
-      - [x] Inspect the locked OIDC provider and linked-account count before deletion, and roll back a rejected mutation with a private conflict response ([test](../../../adapters/sqlstore/sso_delete_test.go#L116))
+      - [x] Inspect the locked OIDC provider and linked-account count before deletion, and roll back a rejected mutation with a private conflict response ([test](../../../adapters/sqlstore/sso_delete_test.go#L145))
     - [ ] `provisionUser`
     - [ ] `provisionUserOnEveryLogin`
     - [ ] `organizationProvisioning`
-      - [x] Preserve existing roles and pending invitations, serialize competing removal and roll back new identities at capacity ([test](../../../adapters/sqlstore/sso_browser_test.go#L373))
+      - [x] Preserve existing roles and pending invitations, serialize competing removal and roll back new identities at capacity ([test](../../../adapters/sqlstore/sso_browser_test.go#L416))
     - [ ] `defaultSSO`
     - [ ] `defaultOverrideUserInfo`
     - [ ] `disableImplicitSignUp`
-      - [x] Require an explicit signup request for new enterprise users and enforce host-wide signup controls ([test](../../../adapters/sqlstore/sso_browser_test.go#L297))
+      - [x] Require an explicit signup request for new enterprise users and enforce host-wide signup controls ([test](../../../adapters/sqlstore/sso_browser_test.go#L299))
     - [ ] `modelName`
     - [ ] `fields`
     - [ ] `schema`
