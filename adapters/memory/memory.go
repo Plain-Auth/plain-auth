@@ -40,6 +40,9 @@ func New() *Store {
 
 var _ auth.Store = (*Store)(nil)
 
+// AllowSessionCookieCache permits browser-only snapshots in this store.
+func (s *Store) AllowSessionCookieCache(ctx context.Context) (bool, error) { return true, ctx.Err() }
+
 func copyUser(u auth.User) auth.User {
 	if u.PhoneNumberFields != nil {
 		u.PhoneNumberFields = clonePhone(u.PhoneNumberFields)

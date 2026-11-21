@@ -110,7 +110,11 @@ func (a *Auth) addSessionCookieHeaders(headers http.Header, r *http.Request, tok
 }
 
 func (a *Auth) writeSessionCookieHeaders(headers http.Header, r *http.Request, token string, persistent bool) {
-	a.emitSessionCookieHeaders(headers, r, a.sessionCookie(token, persistent))
+	cookie := a.sessionCookie(token, persistent)
+	a.emitSessionCookieHeaders(headers, r, cookie)
+	if a.opts.SessionCookieCache != nil {
+		a.cacheIssuedSession(headers, r, cookie)
+	}
 }
 
 func (a *Auth) emitSessionCookieHeaders(headers http.Header, r *http.Request, c *http.Cookie) {

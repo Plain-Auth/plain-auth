@@ -18,12 +18,24 @@ type SessionRefreshStore interface {
 func (a *Auth) sessionHTTP(headers http.Header, r *http.Request) (body any, responseErr error) {
 	ctx := r.Context()
 	if identity, _ := ctx.Value(credentialSessionKey{a}).(*SessionResult); identity != nil {
+		if a.opts.SessionCookieCache == nil {
+			a.expireStoredSessionData(headers, r, false)
+		}
 		return identity, nil
 	}
 	token := a.cookieToken(r.Header)
 	if token == "" {
-		a.expireStoredSessionData(headers, r, false)
+		if a.opts.SessionCookieCache == nil {
+			a.expireStoredSessionData(headers, r, false)
+		}
 		return nil, nil
+	}
+	allowCache := a.canCacheSessionView(r)
+	readCache := allowCache && r.URL.Query().Get("disableCookieCache") == ""
+	if readCache {
+		if cached := a.cachedSessionView(r, token); cached != nil {
+			return cached, nil
+		}
 	}
 	row, user, err := a.opts.Store.Session(ctx, token)
 	if err != nil && !errors.Is(err, ErrNotFound) {
@@ -41,7 +53,9 @@ func (a *Auth) sessionHTTP(headers http.Header, r *http.Request) (body any, resp
 		}
 		return nil, nil
 	}
-	a.expireStoredSessionData(headers, r, false)
+	if !allowCache {
+		a.expireStoredSessionData(headers, r, false)
+	}
 	result, err := a.withSessionPlugins(ctx, row.Session, user)
 	if err != nil {
 		return nil, err
@@ -63,15 +77,20 @@ func (a *Auth) sessionHTTP(headers http.Header, r *http.Request) (body any, resp
 	// Match the reference query's coercion: a nonempty disableRefresh query
 	// string requests a read without refreshing the session or reissuing cookies.
 	if row.ImpersonatedBy != nil || a.dontRemember(r) || r.URL.Query().Get("disableRefresh") != "" {
+		if readCache {
+			a.expireStoredSessionData(headers, r, false)
+		}
 		return result, nil
 	}
 	threshold := row.ExpiresAt.Add(-a.opts.SessionTTL).Add(*a.opts.SessionUpdateAge)
 	due := canRefresh && !a.opts.DisableSessionRefresh && !now.Before(threshold)
-	if deferredRead {
-		result.NeedsRefresh = &due
-		return result, nil
-	}
-	if !due {
+	if deferredRead || !due {
+		if allowCache {
+			a.writeCachedSessionView(headers, r, *result, true)
+		}
+		if deferredRead {
+			result.NeedsRefresh = &due
+		}
 		return result, nil
 	}
 	next := now.Add(a.opts.SessionTTL)
@@ -91,10 +110,16 @@ func (a *Auth) sessionHTTP(headers http.Header, r *http.Request) (body any, resp
 			return nil, &APIError{401, "FAILED_TO_GET_SESSION", "Failed to get session"}
 		}
 		result = current
+		if allowCache {
+			a.writeCachedSessionView(headers, r, *current, true)
+		}
 		return current, nil
 	}
 	result.Session.ExpiresAt = next
 	result.Session.UpdatedAt = now
-	a.writeSessionCookieHeaders(headers, r, token, true)
+	a.emitSessionCookieHeaders(headers, r, a.sessionCookie(token, true))
+	if allowCache {
+		a.writeCachedSessionView(headers, r, *result, true)
+	}
 	return result, nil
 }

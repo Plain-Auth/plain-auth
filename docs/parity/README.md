@@ -41,15 +41,15 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 
 | Checklist | Checked | Open |
 | --- | ---: | ---: |
-| [Published package interfaces](packages.md) | 66 | 161 |
+| [Published package interfaces](packages.md) | 69 | 161 |
 | [Native Go client, routers and databases](go.md) | 36 | 4 |
-| [Core API, sign-in providers and CLI](runtime.md) | 105 | 280 |
+| [Core API, sign-in providers and CLI](runtime.md) | 108 | 280 |
 | [Database adapters](adapters.md) | 32 | 224 |
 | [Authentication](authentication.md) | 8 | 422 |
-| [Core concepts](concepts.md) | 25 | 515 |
+| [Core concepts](concepts.md) | 30 | 515 |
 | [Managed infrastructure](infrastructure.md) | 0 | 528 |
 | [Framework integrations](integrations.md) | 0 | 228 |
-| [Reference and configuration](reference.md) | 14 | 410 |
+| [Reference and configuration](reference.md) | 15 | 410 |
 
 ## Plugins and integrations
 
@@ -64,7 +64,7 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 | [Bearer](plugins/bearer.md) | 30 | 0 |
 | [Captcha](plugins/captcha.md) | 17 | 65 |
 | [Client ID metadata documents](plugins/cimd.md) | 0 | 48 |
-| [Custom session](plugins/custom-session.md) | 20 | 3 |
+| [Custom session](plugins/custom-session.md) | 21 | 3 |
 | [Device authorization](plugins/device-authorization.md) | 22 | 99 |
 | [Electron](plugins/electron.md) | 0 | 52 |
 | [Email otp](plugins/email-otp.md) | 39 | 95 |

@@ -331,7 +331,12 @@ func main() {
 	if origin := os.Getenv("CONFORMANCE_SSO_DISCOVERY_ORIGIN"); origin != "" {
 		discoveryOrigins = []string{origin}
 	}
+	var sessionCache *authn.SessionCookieCacheOptions
+	if os.Getenv("CONFORMANCE_COMPACT_CACHE") == "1" {
+		sessionCache = &authn.SessionCookieCacheOptions{Version: "release-test"}
+	}
 	auth, err := authn.New(authn.Options{
+		SessionCookieCache:  sessionCache,
 		SessionUpdateAge:    fixtureSessionUpdateAge(),
 		DeferSessionRefresh: os.Getenv("CONFORMANCE_DEFER_SESSION_REFRESH") == "1",
 		TrustedOrigins:      discoveryOrigins,

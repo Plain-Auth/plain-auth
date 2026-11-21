@@ -47,6 +47,9 @@ type Auth struct {
 
 // New constructs an http.Handler for mounting in an existing router.
 func New(opts Options) (*Auth, error) {
+	if err := prepareSessionCookieCache(&opts); err != nil {
+		return nil, err
+	}
 	if err := resolveEnvironment(&opts); err != nil {
 		return nil, err
 	}

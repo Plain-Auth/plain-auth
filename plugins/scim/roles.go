@@ -7,7 +7,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/Stonewrit/stonewrit-auth/internal/scimjson"
+	"github.com/Stonewrit/stonewrit-auth/internal/jsjson"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 )
@@ -16,14 +16,14 @@ var roleFields = []string{"value", "display", "type", "primary"}
 
 func roleText(raw any, maxRunes int) (string, error) {
 	s, ok := raw.(string)
-	s = scimjson.TrimSpace(s)
+	s = jsjson.TrimSpace(s)
 	if !ok || s == "" || utf8.RuneCountInString(s) > maxRunes {
 		return "", invalid("invalidValue", "Invalid role string attribute")
 	}
 	return s, nil
 }
 
-func roleType(s string) string { return cases.Lower(language.Und).String(scimjson.TrimSpace(s)) }
+func roleType(s string) string { return cases.Lower(language.Und).String(jsjson.TrimSpace(s)) }
 
 // The roles collection is a directory-owned profile attribute.
 func normalizeRoles(raw any) ([]any, error) {

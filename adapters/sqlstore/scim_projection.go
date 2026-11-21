@@ -10,7 +10,7 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/Stonewrit/stonewrit-auth/internal/scimjson"
+	"github.com/Stonewrit/stonewrit-auth/internal/jsjson"
 	"github.com/Stonewrit/stonewrit-auth/plugins/scim"
 )
 
@@ -171,7 +171,7 @@ func (s *Store) projectSCIMUser(ctx context.Context, tx *sql.Tx, domain, owner s
 				return scimCallbackFailure("SCIM role mapping failed")
 			}
 			for _, raw := range roles {
-				role := scimjson.TrimSpace(raw)
+				role := jsjson.TrimSpace(raw)
 				if role == "" {
 					continue
 				}

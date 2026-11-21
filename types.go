@@ -10,6 +10,8 @@ import (
 
 // Options configures one isolated authentication instance.
 type Options struct {
+	// SessionCookieCache enables signed compact snapshots for public browser session reads.
+	SessionCookieCache *SessionCookieCacheOptions
 	// Store persists identities and sessions. Configure one store per auth instance.
 	Store Store
 	// BaseURL is the public HTTP(S) address. BasePath defaults to /api/auth.

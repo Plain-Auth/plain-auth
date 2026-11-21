@@ -336,6 +336,7 @@
     - [ ] `storeSessionInDatabase`
     - [ ] `preserveSessionInDatabase`
     - [ ] `cookieCache`
+      - [x] Enable compact browser snapshots with a fixed version and whole-second lifetime ([test](../../session_cache_compact_test.go#L367))
   - [ ] `account`
     - [ ] `modelName`
     - [ ] `fields`

@@ -31,6 +31,21 @@
       "label": "Compare ordinary GET and deferred POST without the projection on both runtimes",
       "test": "conformance/custom-session-contract.mjs",
       "marker": "export async function compareOrdinarySession("
+    },
+    {
+      "label": "Force live reads on request and preserve the exact signed cache deadline while a browser view remains cacheable",
+      "test": "session_cache_compact_test.go",
+      "marker": "outer expiry ignored"
+    },
+    {
+      "label": "Retain live JWT issuance, protected session checks and administrative controls after a physical schema migration on another node",
+      "test": "adapters/sqlstore/session_cache_test.go",
+      "marker": "live administrative migration failed to suppress stale identity"
+    },
+    {
+      "label": "Compare deferred GET and POST cache hits, forced store reads and independent renewal flags on both runtimes",
+      "test": "conformance/session-cache-compact.mjs",
+      "marker": "export async function compareDeferredCompactSession("
     }
   ],
   "core/signInEmail": [
@@ -1788,6 +1803,11 @@
       "label": "Omit disabled flags and suppress renewal on an explicitly non-refreshing native client read",
       "test": "client/session_view_test.go",
       "marker": "false query flags changed refresh behavior"
+    },
+    {
+      "label": "Project another runtime’s compact browser snapshot and compare it with a fresh deferred session result",
+      "test": "conformance/session-cache-compact.mjs",
+      "marker": "assert.deepEqual(await fresh.json(), { viewer: freshEmail, needsRefresh: true })"
     }
   ],
   "plugin/jwt/GET /token": [
@@ -7167,6 +7187,16 @@
       "label": "Clear each received cache chunk on the issuing host and shared domain using the configured cookie namespace",
       "test": "session_cache_cookies_test.go",
       "marker": "func TestDisabledCacheScopeCleanup("
+    },
+    {
+      "label": "Exchange HMAC-signed snapshots, browser-only lifetimes and chunked cookies in both directions on shared SQLite",
+      "test": "conformance/session-cache-compact.mjs",
+      "marker": "the other runtime consumed the signed cookie"
+    },
+    {
+      "label": "Retain live JWT issuance, protected session checks and administrative controls after a physical schema migration on another node",
+      "test": "adapters/sqlstore/session_cache_test.go",
+      "marker": "live administrative migration failed to suppress stale identity"
     }
   ],
   "plugin-symbol/custom-session/customSession": [
@@ -7308,6 +7338,32 @@
       "label": "Replay a trusted policy for its complete domain on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/scim_projection_test.go",
       "marker": "must(second.ReconcileSCIMProjection(ctx, domain))"
+    }
+  ],
+  "docs/content/docs/concepts/session-management.mdx#L255": [
+    {
+      "label": "Exchange HMAC-signed snapshots, browser-only lifetimes and chunked cookies in both directions on shared SQLite",
+      "test": "conformance/session-cache-compact.mjs",
+      "marker": "the other runtime consumed the signed cookie"
+    },
+    {
+      "label": "Reject incomplete, oversized, wrong-key or ambiguous cached credentials and retain per-cookie scope",
+      "test": "session_cache_compact_test.go",
+      "marker": "ambiguous or incomplete chunked cache"
+    }
+  ],
+  "docs/content/docs/concepts/session-management.mdx#L462": [
+    {
+      "label": "Invalidate prior compact snapshots across a fixed cache-version change or signing key removal",
+      "test": "session_cache_compact_test.go",
+      "marker": "cache version did not invalidate"
+    }
+  ],
+  "docs/content/docs/reference/options.mdx#L477/`cookieCache`": [
+    {
+      "label": "Enable compact browser snapshots with a fixed version and whole-second lifetime",
+      "test": "session_cache_compact_test.go",
+      "marker": "func TestCompactSessionConfiguration("
     }
   ]
 }

@@ -1,5 +1,5 @@
-// Package scimjson encodes values with the string escaping used by SCIM directory records and keys.
-package scimjson
+// Package jsjson encodes Go values using JSON.stringify string escaping.
+package jsjson
 
 import (
 	"bytes"

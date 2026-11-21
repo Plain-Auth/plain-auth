@@ -85,7 +85,26 @@ HTTPS enables `Secure` by default. `UseSecureCookies` accepts a boolean pointer 
 
 Signing out clears the shared session cookies across eligible hosts and revokes the active session. During a move from host-only cookies, issue a fresh login on the original host to replace its previous browser credential. Each host controls its own older host-only cookies. The login-method preference persists across logout. In the Go client, call `ClearSharedLastLoginMethod(cookieName, domain)` to remove that preference. [Cookie scope tests](../cookie_scope_http_test.go)
 
-When the browser sends stale session data, `GET /get-session` expires the cache cookie and any numbered chunks in this instance’s namespace. With a shared domain, the response also removes host-only copies that the browser sent. The store supplies the current session. [Session cache cleanup tests](../conformance/session-cache-cleanup.mjs)
+With the browser cache disabled (the default), `GET /get-session` expires the cache cookie and any numbered chunks in this instance’s namespace. With a shared domain, the response also removes host-only copies that the browser sent. The store supplies the current session. [Session cache cleanup tests](../conformance/session-cache-cleanup.mjs)
+
+### Compact browser session cache
+
+To cache the public session view on the browser, set the option before constructing the handler.
+
+```go
+opts.SessionCookieCache = &stonewrit.SessionCookieCacheOptions{
+    MaxAge:  5 * time.Minute,
+    Version: "1",
+}
+```
+
+A matching signed session cookie and a valid, unexpired HMAC-SHA256 snapshot let `GET /get-session` return the core user and session fields saved at issuance. With deferred session refresh enabled, the ordinary `POST /get-session` route also accepts cached views. Add `disableCookieCache=true` on either method to consult the store. A deferred POST then renews a due session unless a nonempty `disableRefresh` suppresses renewal. Anyone holding a snapshot can read those fields, including its session token. The browser cookie is HTTP-only and inherits the configured secure and domain settings. The persistent cache defaults to five minutes. A browser-only login receives a cookie without `Max-Age` whose signed contents expire after one minute. Long profiles are split into at most 100 cookies of at most 4,050 bytes each. If the profile exceeds that limit, the browser reads the store. Logout and size changes retire obsolete base or chunk cookies. [Cookie exchange and logout tests](../conformance/session-cache-compact.mjs)
+
+During the cache window, a browser view can show an old profile or a session revoked from another device. Protected endpoints and the native server method `GetSession(ctx, headers)` continue to verify sessions in storage. Administrative stores, delegated sessions, application or bearer credentials and JWT response-header issuance use live reads. Phone number, username, guest and two-factor profiles also stay live, as do application-defined session-read hooks. SQLite, PostgreSQL and MySQL query the physical schema before accepting a cache hit, so another node can enable administrative controls after startup. [Live authorization tests](../adapters/sqlstore/session_cache_test.go)
+
+All replicas that share browser sessions should use the same signing keys, cookie scope and cache version. Change `Version` to reject earlier snapshots. Removing a signing key also invalidates its snapshots. Keep separate deployments on distinct signing keys. You can implement `stonewrit.SessionCacheStore` on a custom store to permit cached views when its current access rules allow them. Stores without this capability use live reads. [Rotation and binding tests](../session_cache_compact_test.go)
+
+This implementation supports the compact format with a fixed version string and fixed expiry. JWT and JWE cache formats, rolling cache renewal, callback-based versions and global partitioned-cookie defaults remain open.
 
 The Go methods `SignUpEmail`, `SignInEmail`, `GetSession`, `SignOut`, and the session management methods accept a request context. `GetSession(ctx, headers)` distinguishes an absent session from a storage failure. Use `errors.As(err, &apiErr)` with `var apiErr *stonewrit.APIError` to inspect a public error code and HTTP status. Other errors can carry infrastructure details and belong in application logs.
 

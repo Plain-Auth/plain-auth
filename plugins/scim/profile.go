@@ -6,7 +6,7 @@ import (
 	"strings"
 	"unicode/utf16"
 
-	"github.com/Stonewrit/stonewrit-auth/internal/scimjson"
+	"github.com/Stonewrit/stonewrit-auth/internal/jsjson"
 )
 
 var userFields = strings.Fields("schemas userName displayName externalId name emails active title userType preferredLanguage locale timezone roles")
@@ -243,7 +243,7 @@ func normalize(input any) (p Profile, err error) {
 		// Bound both the normalized wire document and the canonical payload a
 		// second directory server will read from serializedAttributes.
 		for _, document := range []map[string]any{m, p.Attributes} {
-			encoded, err := scimjson.Marshal(document)
+			encoded, err := jsjson.Marshal(document)
 			if err != nil || len(utf16.Encode([]rune(string(encoded)))) > 65_535 {
 				return p, invalid("invalidValue", "SCIM User attributes exceed the supported serialized size")
 			}

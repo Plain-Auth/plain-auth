@@ -14,14 +14,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Stonewrit/stonewrit-auth/internal/scimjson"
+	"github.com/Stonewrit/stonewrit-auth/internal/jsjson"
 	"github.com/Stonewrit/stonewrit-auth/plugins/scim"
 )
 
 var _ scim.Store = (*Store)(nil)
 
 func scimKey(parts ...string) string {
-	data, _ := scimjson.Marshal(parts) // Encoding an array of strings cannot fail.
+	data, _ := jsjson.Marshal(parts) // Encoding an array of strings cannot fail.
 	sum := sha256.Sum256(data)
 	return base64.RawURLEncoding.EncodeToString(sum[:])
 }
@@ -240,7 +240,7 @@ func (s *Store) scimArgs(d scim.Directory, p scim.Profile, now time.Time) ([]any
 	if err != nil {
 		return nil, err
 	}
-	a, err := scimjson.Marshal(p.Attributes)
+	a, err := jsjson.Marshal(p.Attributes)
 	if err != nil {
 		return nil, err
 	}

@@ -40,7 +40,7 @@ func fixtureSessionProjection() (auth.Plugin, error) {
 }
 
 func fixtureSessionUpdateAge() *time.Duration {
-	if os.Getenv("CONFORMANCE_SESSION_VIEW") != "contract" {
+	if os.Getenv("CONFORMANCE_SESSION_VIEW") != "contract" && os.Getenv("CONFORMANCE_IMMEDIATE_SESSION_REFRESH") != "1" {
 		return nil
 	}
 	immediate := time.Duration(0)

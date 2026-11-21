@@ -9,6 +9,10 @@ import (
 // expireStoredSessionData removes the cache cookies belonging to this auth
 // instance. Credential expiration also clears the base name when the browser omitted it.
 func (a *Auth) expireStoredSessionData(h http.Header, r *http.Request, expireBase bool) {
+	a.reconcileSessionDataCookies(h, r, expireBase, nil)
+}
+
+func (a *Auth) reconcileSessionDataCookies(h http.Header, r *http.Request, expireBase bool, replacements map[string]bool) {
 	expired := a.browserCookie("session_data", "", -1)
 	prefix := expired.Name + "."
 	var names []string
@@ -48,6 +52,8 @@ func (a *Auth) expireStoredSessionData(h http.Header, r *http.Request, expireBas
 			host.Domain = ""
 			h.Add("Set-Cookie", host.String())
 		}
-		h.Add("Set-Cookie", expired.String())
+		if !replacements[name] {
+			h.Add("Set-Cookie", expired.String())
+		}
 	}
 }

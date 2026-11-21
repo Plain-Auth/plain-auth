@@ -1288,3 +1288,18 @@ test("SCIM Group projection preserves shared source keys across directory runtim
   const {groupProjectionContract} = await import("./scim-contract.mjs");
   await groupProjectionContract(t, goFixture);
 });
+
+test("both runtimes exchange signed compact session cache cookies and scoped chunks", async t => {
+  const { compareCompactSessionCache } = await import("./session-cache-compact.mjs");
+  await compareCompactSessionCache(t, { reference, goFixture });
+});
+
+test("custom session projects exchanged compact snapshots and fresh deferred reads", async t => {
+  const { compareCompactProjection } = await import("./session-cache-compact.mjs");
+  await compareCompactProjection(t, { reference, goFixture });
+});
+
+test("ordinary deferred POST and GET share compact cache and authoritative query behavior", async t => {
+  const { compareDeferredCompactSession } = await import("./session-cache-compact.mjs");
+  await compareDeferredCompactSession(t, { reference, goFixture });
+});

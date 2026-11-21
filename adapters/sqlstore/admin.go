@@ -19,6 +19,13 @@ var _ authn.AdminStore = (*Store)(nil)
 const adminUserColumns = `u."role",u."banned",u."banReason",u."banExpires"`
 const adminDeniedMessage = "You have been banned from this application. Please contact support if you believe this is an error."
 
+// AllowSessionCookieCache keeps administrative account and delegation controls
+// live even if another replica installed the administrative schema after Open.
+func (s *Store) AllowSessionCookieCache(ctx context.Context) (bool, error) {
+	admin, err := s.detectAdminSchema(ctx, s.db)
+	return !admin && err == nil, err
+}
+
 // Profile migrations are additive. Cache only a complete administrative schema;
 // another node can add it at any time. Store copies share this positive flag.
 func (s *Store) detectAdminSchema(ctx context.Context, db rowQuerier) (bool, error) {

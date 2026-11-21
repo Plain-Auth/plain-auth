@@ -211,6 +211,9 @@ func (a *Auth) activateDeviceCookie(c EndpointContext, row Session, persistent b
 		cookie.MaxAge = max(1, min(cookie.MaxAge, int(remaining/time.Second)))
 	}
 	a.emitSessionCookieHeaders(c.ResponseHeader, c.Request, cookie)
+	if a.opts.SessionCookieCache != nil {
+		a.cacheIssuedSession(c.ResponseHeader, c.Request, cookie)
+	}
 	a.writeRememberPreference(c.ResponseHeader, c.Request, persistent)
 }
 
