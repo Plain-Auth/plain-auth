@@ -514,6 +514,12 @@
       "label": "Use a bearer credential to retrieve an authenticated session",
       "test": "plugins/bearer/bearer_test.go",
       "marker": "func TestBearerSessions("
+    },
+    {
+      "label": "List only the device owner’s active sessions with the configured browser client",
+      "test": "conformance/bearer-contract.mjs",
+      "marker": "s.userId === alice.id",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/last-login-method.mdx#L48": [
@@ -6982,6 +6988,83 @@
       "label": "Replace an expired challenge once across two database instances",
       "test": "adapters/sqlstore/sso_domain_test.go",
       "marker": "concurrent renewal returned different challenge tokens"
+    }
+  ],
+  "plugin/bearer": [
+    {
+      "label": "Verify bearer session issuance, renewal, mixed credentials and revocation with both signature policies",
+      "test": "conformance/core.test.mjs",
+      "marker": "bearer sessions match the pinned header, identity and revocation contract",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/bearer/bearer": [
+    {
+      "label": "Install the bearer hooks and exercise ordinary and signed-only sessions over HTTP",
+      "test": "conformance/bearer-contract.mjs",
+      "marker": "export async function exerciseBearer(",
+      "complete": true
+    },
+    {
+      "label": "Retain the original opaque token when decoding the cookie signature for the response header",
+      "test": "plugins/bearer/bearer_test.go",
+      "marker": "func TestIssuedBearerPreservesOpaqueToken("
+    }
+  ],
+  "plugin-symbol/bearer/BearerOptions": [
+    {
+      "label": "Configure the public signature policy and exercise each setting on both runtimes",
+      "test": "conformance/core.test.mjs",
+      "marker": "await goFixture(t, [], {CONFORMANCE_BEARER:",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/bearer.mdx": [
+    {
+      "label": "Exercise bearer headers on sign-in, protected requests, session renewal and sign-out",
+      "test": "conformance/bearer-contract.mjs",
+      "marker": "export async function exerciseBearer(",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/bearer.mdx#L14": [
+    {
+      "label": "Install the plugin on a Go host with signed-only credentials and exercise the client on TLS",
+      "test": "client/bearer_test.go",
+      "marker": "func TestSignedBearerClient(",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/bearer.mdx#L27": [
+    {
+      "label": "Read the signed login header, use it on the client, and authenticate a request at another application endpoint",
+      "test": "client/bearer_test.go",
+      "marker": "privateProfile(http.StatusOK, alice)",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/bearer.mdx#L112": [
+    {
+      "label": "Authenticate a host-owned TLS route with a plain HTTP client and deny the same credential after sign-out",
+      "test": "client/bearer_test.go",
+      "marker": "privateProfile(http.StatusUnauthorized, \"\")",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/bearer.mdx#L149": [
+    {
+      "label": "Test the default signature policy and signed-only mode with independent accounts",
+      "test": "conformance/core.test.mjs",
+      "marker": "await reference(t, [bearer(signedOnly",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/bearer.mdx#L151/requireSignature": [
+    {
+      "label": "Accept the raw credential only under the default policy and always verify signed values",
+      "test": "conformance/bearer-contract.mjs",
+      "marker": "device.raw), signedOnly ? null : alice.id)",
+      "complete": true
     }
   ]
 }

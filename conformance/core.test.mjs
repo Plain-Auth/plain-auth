@@ -1209,3 +1209,15 @@ test("the official SSO client proves all registered domains using local DNS", as
   const {compareSSODomains} = await import("./sso-domains.mjs");
   await compareSSODomains(t, {goFixture, instrument});
 });
+
+test("bearer sessions match the pinned header, identity and revocation contract", async t => {
+  const { bearer } = await import("better-auth/plugins");
+  const { exerciseBearer } = await import("./bearer-contract.mjs");
+  for (const signedOnly of [false, true]) {
+    const servers = [
+      await reference(t, [bearer(signedOnly ? {requireSignature: true} : undefined)]),
+      await goFixture(t, [], {CONFORMANCE_BEARER: signedOnly ? "signed" : "default"}),
+    ];
+    for (const server of servers) await exerciseBearer(server, signedOnly);
+  }
+});

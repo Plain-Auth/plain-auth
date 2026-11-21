@@ -3,6 +3,7 @@ package bearer
 
 import (
 	"net/http"
+	"net/url"
 	"strings"
 
 	auth "github.com/Stonewrit/stonewrit-auth"
@@ -28,7 +29,18 @@ func New(opts Options) auth.Plugin {
 			return token
 		},
 		OnSessionCookie: func(e auth.SessionCookieEvent) {
-			e.Header.Set("Set-Auth-Token", e.Cookie.Value)
+			// The cookie escapes the standard base64 signature. Keep the token's
+			// own escaping intact so imported opaque tokens still verify.
+			value := e.Cookie.Value
+			dot := strings.LastIndexByte(value, '.')
+			if dot <= 0 || e.Cookie.MaxAge < 0 {
+				return
+			}
+			signature, err := url.PathUnescape(value[dot+1:])
+			if err != nil {
+				return
+			}
+			e.Header.Set("Set-Auth-Token", value[:dot+1]+signature)
 			for _, line := range e.Header.Values("Access-Control-Expose-Headers") {
 				for field := range strings.SplitSeq(line, ",") {
 					if strings.EqualFold(strings.TrimSpace(field), "set-auth-token") {

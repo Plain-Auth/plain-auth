@@ -15,6 +15,7 @@ import (
 	authn "github.com/Stonewrit/stonewrit-auth"
 	"github.com/Stonewrit/stonewrit-auth/adapters/sqlstore"
 	"github.com/Stonewrit/stonewrit-auth/plugins/apikey"
+	"github.com/Stonewrit/stonewrit-auth/plugins/bearer"
 	"github.com/Stonewrit/stonewrit-auth/plugins/customsession"
 	"github.com/Stonewrit/stonewrit-auth/plugins/emailotp"
 	jwtplugin "github.com/Stonewrit/stonewrit-auth/plugins/jwt"
@@ -212,6 +213,9 @@ func main() {
 		default:
 			log.Fatal("unknown runtime plugin")
 		}
+	}
+	if mode := os.Getenv("CONFORMANCE_BEARER"); mode != "" {
+		plugins = append(plugins, bearer.New(bearer.Options{RequireSignature: mode == "signed"}))
 	}
 	if os.Getenv("CONFORMANCE_I18N") == "1" {
 		p, err := fixtureI18n()

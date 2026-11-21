@@ -61,3 +61,19 @@ func TestBearerSessions(t *testing.T) {
 		})
 	}
 }
+
+func TestIssuedBearerPreservesOpaqueToken(t *testing.T) {
+	a, err := auth.New(auth.Options{Store: memory.New(), Secret: strings.Repeat("s", 32), BaseURL: "https://example.test"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	token := "imported.%2F+opaque"
+	cookie := a.SessionCookie(token, true)
+	headers := http.Header{}
+	plugin := bearer.New(bearer.Options{RequireSignature: true})
+	plugin.OnSessionCookie(auth.SessionCookieEvent{Auth: a, Header: headers, Cookie: *cookie})
+	wire := headers.Get("Set-Auth-Token")
+	if !strings.HasSuffix(wire, "=") || a.VerifySignedSessionToken(wire) != token {
+		t.Fatal("opaque token did not survive bearer issuance")
+	}
+}

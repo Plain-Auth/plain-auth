@@ -154,6 +154,7 @@ for (const slug of [...bundled, ...standalone]) {
   const seenRoutes = new Set();
   const publicName = sourceNames[slug] ?? slug;
   const filename = "plugins/" + publicName + ".md";
+  addEvidence(lines, "plugin/" + publicName, filename, 1);
   for (const file of sources) {
     const content = read(file);
     const rows = content.split("\n");
@@ -206,6 +207,7 @@ function extractPage(file, lines) {
   let fence, table, optionObject, frontmatter = parts[0].trim() === "---";
   let inAPI = false, featureList = false, hiddenDepth, sourceLine;
   const filename = [...pages].find(([, content]) => content === lines)[0];
+  addEvidence(lines, file, filename, 1);
   const seenBySection = new Set();
   function add(text, depth, key = text) {
     if (seenBySection.has(key)) return;

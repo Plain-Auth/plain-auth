@@ -61,7 +61,7 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 | [Admin](plugins/admin.md) | 65 | 141 |
 | [Anonymous](plugins/anonymous.md) | 27 | 25 |
 | [API keys](plugins/api-key.md) | 96 | 214 |
-| [Bearer](plugins/bearer.md) | 9 | 10 |
+| [Bearer](plugins/bearer.md) | 30 | 0 |
 | [Captcha](plugins/captcha.md) | 17 | 65 |
 | [Client ID metadata documents](plugins/cimd.md) | 0 | 48 |
 | [Custom session](plugins/custom-session.md) | 11 | 3 |

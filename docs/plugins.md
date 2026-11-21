@@ -57,7 +57,9 @@ Run `go test ./plugins/stripe` to exercise signed deliveries locally. The [Strip
 
 ## Authenticate a Go or mobile client with a bearer token
 
-Register `bearer.New(bearer.Options{RequireSignature: true})` from `plugins/bearer` in `Options.Plugins`. After sign-in, read the signed credential from the `Set-Auth-Token` response header. Send it on subsequent requests as `Authorization: Bearer <value>`. Treat it as a credential. Session lookup checks expiry and revocation on each request. With the default `RequireSignature: false` setting the raw session token in the JSON response is also accepted. See the [bearer flow test](../plugins/bearer/bearer_test.go).
+Register `bearer.New(bearer.Options{RequireSignature: true})` from `plugins/bearer` in `Options.Plugins`. After sign-in, read the signed credential from the `Set-Auth-Token` response header. Send it on subsequent requests as `Authorization: Bearer <value>`. Treat it as a credential. Session lookup checks expiry and revocation on each request. With the default `RequireSignature: false` setting the raw session token in the JSON response is also accepted. The response header contains the signed value with its base64 signature. A client that already holds the percent-encoded signed cookie value can send that form too. A valid bearer selects its own account when the request also includes a different session cookie. An invalid signature leaves an independently valid cookie available. The Go client’s bearer view sends only the bearer credential. [Client setup](client.md#use-a-bearer-token) · [HTTP contract tests](../conformance/bearer-contract.mjs)
+
+For an application-owned route, pass `r.Context()` and `r.Header` to `auth.GetSession`. A missing or revoked session yields a nil result, so the handler can return HTTP 401. A storage error is a separate return value. [Handler example](routers.md#protect-an-application-route) · [TLS application test](../client/bearer_test.go)
 
 ## Remember the last sign-in method
 
