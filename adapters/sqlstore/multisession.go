@@ -16,10 +16,7 @@ var _ authn.DeviceSessionStore = (*Store)(nil)
 // MySQL installations commonly use a case-insensitive collation. Session tokens
 // are opaque credentials and must match byte for byte on every engine.
 func (s *Store) deviceTokenParameters(tokens []string) (string, []any) {
-	arg := "?"
-	if s.dialect == "mysql" {
-		arg = "BINARY ?"
-	}
+	arg := s.exactSQLValue("?")
 	args := make([]any, len(tokens))
 	for i, token := range tokens {
 		args[i] = token

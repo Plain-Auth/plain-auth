@@ -6200,5 +6200,48 @@
       "marker": "domain preference survived clear",
       "complete": true
     }
+  ],
+  "plugin/organization/POST /organization/remove-member": [
+    {
+      "label": "Remove by case-insensitive email or exact membership ID and return the matching public member shape through the released client",
+      "test": "conformance/organization-removal.mjs",
+      "marker": "assert.equal(\"user\" in withoutUser,false)"
+    },
+    {
+      "label": "Clear the removed tenant from affected sessions and preserve another tenant's selection",
+      "test": "adapters/sqlstore/organization_removal_test.go",
+      "marker": "incorrect session selection on"
+    },
+    {
+      "label": "Serialize opposing owner removals and reread the losing actor's membership",
+      "test": "adapters/sqlstore/organization_removal_test.go",
+      "marker": "competing owner removals left"
+    }
+  ],
+  "plugin/organization/POST /organization/leave": [
+    {
+      "label": "Return the signed-in user's membership and profile when leaving an organization",
+      "test": "conformance/organization-removal.mjs",
+      "marker": "assert.equal(left.user.email,user.email)"
+    },
+    {
+      "label": "Keep one owner when two separate database connections attempt to leave simultaneously",
+      "test": "adapters/sqlstore/organization_removal_test.go",
+      "marker": "concurrent departures left"
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1121": [
+    {
+      "label": "Release team seats when a process using the plain organization plugin removes a member from a team-enabled database",
+      "test": "adapters/sqlstore/organization_removal_test.go",
+      "marker": "physical team cleanup lost seat counts"
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1212": [
+    {
+      "label": "Report a missing membership when the released client repeats a departure",
+      "test": "conformance/organization-removal.mjs",
+      "marker": "denial(await member.organization.leave({organizationId:second.id})"
+    }
   ]
 }

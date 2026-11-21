@@ -57,9 +57,14 @@
     - [x] Grant built-in roles and an optional team atomically, enforcing capacity alongside concurrent grants and invitation acceptance ([test](../../../adapters/sqlstore/organization_members_test.go#L15))
     - [x] Read grants stored by either server through the other runtime’s browser client without changing the recipient’s active organization ([test](../../../conformance/core.test.mjs#L1042))
   - [ ] `POST /organization/remove-member`
+    - [x] Remove by case-insensitive email or exact membership ID and return the matching public member shape through the released client ([test](../../../conformance/organization-removal.mjs#L54))
+    - [x] Clear the removed tenant from affected sessions and preserve another tenant's selection ([test](../../../adapters/sqlstore/organization_removal_test.go#L158))
+    - [x] Serialize opposing owner removals and reread the losing actor's membership ([test](../../../adapters/sqlstore/organization_removal_test.go#L224))
   - [ ] `POST /organization/update-member-role`
   - [ ] `GET /organization/get-active-member`
   - [ ] `POST /organization/leave`
+    - [x] Return the signed-in user's membership and profile when leaving an organization ([test](../../../conformance/organization-removal.mjs#L47))
+    - [x] Keep one owner when two separate database connections attempt to leave simultaneously ([test](../../../adapters/sqlstore/organization_removal_test.go#L200))
   - [ ] `GET /organization/list-members`
   - [ ] `GET /organization/get-active-member-role`
   - [ ] `POST /organization/create`
@@ -239,6 +244,7 @@
         - [ ] Parameter `filterOperator` (optional)
         - [ ] Parameter `filterValue` (optional)
     - [ ] Remove Member
+      - [x] Release team seats when a process using the plain organization plugin removes a member from a team-enabled database ([test](../../../adapters/sqlstore/organization_removal_test.go#L165))
       - [ ] `POST /organization/remove-member`
         - [ ] Parameter `memberIdOrEmail`
         - [ ] Parameter `organizationId` (optional)
@@ -258,6 +264,7 @@
         - [ ] Parameter `organizationId` (optional)
         - [ ] Parameter `teamId` (optional)
     - [ ] Leave Organization
+      - [x] Report a missing membership when the released client repeats a departure ([test](../../../conformance/organization-removal.mjs#L49))
       - [ ] `POST /organization/leave`
         - [ ] Parameter `organizationId`
   - [ ] Access Control

@@ -39,10 +39,22 @@ The application provides `sendInvitation`, its configured public `origin` and it
 | POST | `/organization/set-active` | Select by ID or slug. Send `{"organizationId":null}` to clear the current selection |
 | POST | `/organization/invite-member` | Invite by email and role, using an explicit organization ID or the active selection |
 | POST | `/organization/accept-invitation` | Accept by invitation ID, create the membership, and select the organization |
+| POST | `/organization/remove-member` | Remove by membership ID or email. Omit `organizationId` to use the active organization. |
+| POST | `/organization/leave` | End the signed-in user's own membership in the supplied `organizationId`. |
 
 An owner can invite members, admins or other owners. An admin can invite members or admins. The member role grants no invitation permission. The SQL store commits invitation acceptance and the resulting membership together. The [organization feature checklist](parity/plugins/organization.md) tracks additional role policies and operations.
 
 Browser membership changes check the acting account and session inside the database transaction. Acceptance reads the current account email and verification status. Account deletion removes invitations that user sent, their organization and team memberships, and updates affected team counts. Other members keep their memberships and invitations.
+
+## Remove a member or leave
+
+Owners and admins can remove a member or an admin. Only an owner can remove another owner, and at least one owner must remain. A member can leave using their signed-in session. The SQL store serializes the final-owner check with each membership change.
+
+Pass a membership ID or the account's email as `memberIdOrEmail`. IDs are case-sensitive and belong to the named organization. Email lookup accepts mixed case. A membership from another organization returns `MEMBER_NOT_FOUND`. The removal response contains `member`. Email lookup also includes that member's public user profile. Leaving returns the caller's membership and public user profile directly.
+
+The Go HTTP client provides `RemoveOrganizationMember(ctx, memberIDOrEmail, organizationID)` and `LeaveOrganization(ctx, organizationID)`. An empty organization ID on removal uses that client's active selection.
+
+Removal releases the member's team seats in that organization and clears its organization and team selections from every affected session. This also works when the handling process uses the organization plugin without teams while sharing a team-enabled database. Sessions selecting another organization retain that selection. [Client comparison](../conformance/organization-removal.mjs) · [Three-database concurrency tests](../adapters/sqlstore/organization_removal_test.go)
 
 ## Grant membership from your application
 

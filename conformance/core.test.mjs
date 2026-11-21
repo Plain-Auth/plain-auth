@@ -1087,3 +1087,8 @@ test("static trusted-origin wildcards authorize cookie-backed changes and callba
   const { compareWildcardOrigins } = await import("./trusted-origins.mjs");
   await compareWildcardOrigins(t, goFixture);
 });
+
+test("the released organization client removes members and leaves through both HTTP servers", async t => {
+  const {compareOrganizationRemoval} = await import("./organization-removal.mjs");
+  await compareOrganizationRemoval(t,{reference,goFixture,instrument});
+});
