@@ -5,8 +5,8 @@
 ## Interfaces
 
 - [ ] Device authorization endpoints, types and options
-  - [x] `deviceAuthorizationClient` ([test](../../../conformance/core.test.mjs#L454))
-    - [x] Use the browser SDK methods across a shared SQLite installation ([test](../../../conformance/core.test.mjs#L454))
+  - [x] `deviceAuthorizationClient` ([test](../../../conformance/core.test.mjs#L459))
+    - [x] Use the browser SDK methods across a shared SQLite installation ([test](../../../conformance/core.test.mjs#L459))
   - [ ] `deviceAuthorizationOptionsSchema`
   - [ ] `DeviceAuthorizationOptions`
   - [ ] `DeviceAuthorizationRequest`
@@ -20,14 +20,14 @@
     - [x] Require an allowed client and reject repeated form parameters ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L107))
   - [ ] `POST /device/token`
     - [x] Throttle pending grants and reject cross-client polling ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L116))
-    - [x] Redeem approved grants exactly once between independent runtimes ([test](../../../conformance/core.test.mjs#L454))
+    - [x] Redeem approved grants exactly once between independent runtimes ([test](../../../conformance/core.test.mjs#L459))
     - [x] Reject OAuth authorization server grants on the first-party endpoint ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L185))
   - [ ] `GET /device`
     - [x] Claim an unbound code once and disclose its scope only to its signed-in owner ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L183))
     - [x] Recognize formatted display codes and enforce the verification rate limit ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L207))
   - [ ] `POST /device/approve`
     - [x] Check the live session, prior claim and owner before approving ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L118))
-    - [x] Approvals interoperate across servers sharing grant records ([test](../../../conformance/core.test.mjs#L454))
+    - [x] Approvals interoperate across servers sharing grant records ([test](../../../conformance/core.test.mjs#L459))
   - [ ] `POST /device/deny`
     - [x] Apply one denial to a pre-bound grant and consume it at the next poll ([test](../../../adapters/sqlstore/deviceauthorization_test.go#L166))
 

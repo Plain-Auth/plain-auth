@@ -4,6 +4,8 @@ Pass plugins to `stonewrit.Options.Plugins` during startup. A plugin declares an
 
 The i18n plugin localizes coded errors from core and plugin endpoints. [Localization guide](localization.md)
 
+The OpenAPI plugin publishes a machine-readable schema and a local API reference for installed endpoints. [OpenAPI guide](openapi.md)
+
 ## Create a session-aware endpoint
 
 ```go

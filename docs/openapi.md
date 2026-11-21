@@ -1,0 +1,62 @@
+# OpenAPI reference
+
+Install `plugins/openapi` to publish an OpenAPI 3.1.1 document for your configured StoneWrit Auth handler. The document and reference page are public GET endpoints. Mount them behind application middleware if your deployment requires a private reference.
+
+```go
+import (
+    "github.com/Stonewrit/stonewrit-auth"
+    "github.com/Stonewrit/stonewrit-auth/plugins/openapi"
+)
+
+// Start with the application's configured store, secret, public URL and plugins.
+func withReference(options stonewrit.Options) (*stonewrit.Auth, error) {
+    reference, err := openapi.New(openapi.Options{Path: "/manual", Theme: "solarized"})
+    if err != nil {
+        return nil, err
+    }
+    options.Plugins = append(options.Plugins, reference)
+    return stonewrit.New(options)
+}
+```
+
+Under the default mount, the schema is at `/api/auth/open-api/generate-schema` and the default page is at `/api/auth/reference`. The example serves its page at `/api/auth/manual`. A custom `BasePath` changes both URLs. The document's `servers[0].url` uses the configured public origin and mount. An application can also call `openapi.Generate(auth)` to obtain a fresh document or supply the schema URL as a source in an existing documentation site.
+
+## What the document describes
+
+Only installed HTTP operations appear. The inventory reflects configuration such as email/password signup, deferred session refresh, social providers, username display fields, team management, and separately enabled billing routes. Registered OAuth callbacks use `/callback/{id}`. Email credentials accept JSON and form data, and OAuth form callbacks accept `application/x-www-form-urlencoded`.
+
+The `User`, `Session` and linked `Account` models describe public Go response fields. Dates use the `date-time` format. Enabled model sets include organization, team, passkey, API-key and subscription records. The common error response requires a message and allows an optional code. Custom session projections and provider-specific or otherwise unconstrained results have an open response schema.
+
+The document declares the actual session cookie name, including its configured prefix. The bearer plugin adds bearer tokens as an alternative on session-protected operations. Public signup and login have no session credential requirement. Stripe webhooks declare the signature header. Application-specific authorization rules, roles, scoped API keys and conditional second-factor challenges still apply at runtime.
+
+## Custom operations
+
+Attach JSON OpenAPI operation metadata to a `stonewrit.Endpoint`. It can declare `parameters`, `requestBody`, `responses`, `security`, tags and an operation ID. Supply a unique operation ID and valid OpenAPI metadata. Root-relative `$ref` values may name public models included in the document. These declarations describe the handler. The handler implements validation and authorization.
+
+```go
+endpoint := stonewrit.Endpoint{
+    Method: http.MethodGet,
+    Path:   "/service-status",
+    OpenAPI: json.RawMessage(`{
+        "operationId": "getServiceStatus",
+        "responses": {
+            "200": {
+                "description": "Current service availability",
+                "content": {"application/json": {"schema": {"type": "boolean"}}}
+            }
+        }
+    }`),
+    Handler: func(stonewrit.EndpointContext) (any, error) { return true, nil },
+}
+```
+
+## Reference page
+
+| Option | Effect |
+| --- | --- |
+| `Path` | Changes the page path relative to the auth mount. Defaults to `/reference`. |
+| `DisableDefaultReference` | Serves the JSON schema alone. |
+| `Theme` | Selects `default`, `alternate`, `moon`, `purple`, `solarized`, `bluePlanet`, `saturn`, `kepler`, `mars`, `deepSpace`, `laserwave` or `none`. |
+| `Nonce` | Sets the CSP nonce on the page's script and style. The default generates a fresh random nonce for each response. |
+
+The self-contained page filters operations by method or path and expands each operation's JSON. A link such as `/api/auth/reference?q=sign-in` opens a filtered view. All assets are local. The response applies a nonce-based content security policy, blocks embedding and escapes operation metadata as text. Use a separate OpenAPI viewer for interactive request execution.

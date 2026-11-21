@@ -6,23 +6,23 @@
 
 - [ ] API keys endpoints, types and options
   - [ ] `apiKeyClient`
-    - [x] Create, retrieve, update, list and revoke user-owned keys with the official client ([test](../../../conformance/core.test.mjs#L861))
-    - [x] Manage organization keys alongside separately authenticated automation clients ([test](../../../conformance/core.test.mjs#L912))
+    - [x] Create, retrieve, update, list and revoke user-owned keys with the official client ([test](../../../conformance/core.test.mjs#L866))
+    - [x] Manage organization keys alongside separately authenticated automation clients ([test](../../../conformance/core.test.mjs#L917))
   - [ ] `ApiKeyClientPlugin`
-  - [x] `defaultKeyHasher` ([test](../../../conformance/core.test.mjs#L886))
-    - [x] Match the pinned digest and verify a Go key on shared SQLite ([test](../../../conformance/core.test.mjs#L886))
+  - [x] `defaultKeyHasher` ([test](../../../conformance/core.test.mjs#L891))
+    - [x] Match the pinned digest and verify a Go key on shared SQLite ([test](../../../conformance/core.test.mjs#L891))
   - [ ] `API_KEY_TABLE_NAME`
   - [ ] `apiKey`
   - [ ] `POST /api-key/create`
-    - [x] Issue a user-owned key and return its secret to the official client ([test](../../../conformance/core.test.mjs#L861))
-    - [x] Issue a key whose reference identifies the caller’s organization ([test](../../../conformance/core.test.mjs#L933))
+    - [x] Issue a user-owned key and return its secret to the official client ([test](../../../conformance/core.test.mjs#L866))
+    - [x] Issue a key whose reference identifies the caller’s organization ([test](../../../conformance/core.test.mjs#L938))
   - [ ] `Operation (server API only)`
   - [ ] `POST /api-key/delete`
-    - [x] Revoke the selected user-owned credential ([test](../../../conformance/core.test.mjs#L861))
-    - [x] Revoke an organization key through the owner’s authorized session ([test](../../../conformance/core.test.mjs#L941))
+    - [x] Revoke the selected user-owned credential ([test](../../../conformance/core.test.mjs#L866))
+    - [x] Revoke an organization key through the owner’s authorized session ([test](../../../conformance/core.test.mjs#L946))
   - [ ] `GET /api-key/get`
-    - [x] Return owner-visible metadata without the stored digest ([test](../../../conformance/core.test.mjs#L861))
-    - [x] Reject a lookup under the wrong ownership configuration ([test](../../../conformance/core.test.mjs#L936))
+    - [x] Return owner-visible metadata without the stored digest ([test](../../../conformance/core.test.mjs#L866))
+    - [x] Reject a lookup under the wrong ownership configuration ([test](../../../conformance/core.test.mjs#L941))
   - [ ] `PredefinedApiKeyOptions`
     - [ ] `keyExpiration`
     - [ ] `startingCharactersConfig`
@@ -33,11 +33,11 @@
   - [ ] `deleteAllExpiredApiKeys`
   - [ ] `createApiKeyRoutes`
   - [ ] `GET /api-key/list`
-    - [x] Return the owner’s paginated API keys and total ([test](../../../conformance/core.test.mjs#L861))
-    - [x] Filter organization keys and keep them out of personal results ([test](../../../conformance/core.test.mjs#L934))
+    - [x] Return the owner’s paginated API keys and total ([test](../../../conformance/core.test.mjs#L866))
+    - [x] Filter organization keys and keep them out of personal results ([test](../../../conformance/core.test.mjs#L939))
   - [ ] `POST /api-key/update`
-    - [x] Change user-owned key settings using the pinned client ([test](../../../conformance/core.test.mjs#L861))
-    - [x] Rename a key under its organization configuration ([test](../../../conformance/core.test.mjs#L937))
+    - [x] Change user-owned key settings using the pinned client ([test](../../../conformance/core.test.mjs#L866))
+    - [x] Rename a key under its organization configuration ([test](../../../conformance/core.test.mjs#L942))
   - [ ] `Operation (server API only)`
   - [ ] `ApiKeyOptions`
     - [ ] `schema`
@@ -70,7 +70,7 @@
       - [x] Enforce an atomic rate budget and provide a retry interval ([test](../../../adapters/sqlstore/apikey_test.go#L248))
     - [ ] `enableSessionForAPIKeys`
       - [x] Authenticate a user for a single request and preserve the originating credential type ([test](../../../adapters/sqlstore/apikey_session_test.go#L196))
-      - [x] Complete password-confirmed authenticator enrollment with the official client ([test](../../../conformance/core.test.mjs#L962))
+      - [x] Complete password-confirmed authenticator enrollment with the official client ([test](../../../conformance/core.test.mjs#L967))
       - [x] Require explicit opt-in and reject ambiguous credentials across configurations sharing a header ([test](../../../adapters/sqlstore/apikey_session_test.go#L189))
     - [ ] `permissions`
       - [x] Protect an application operation with a resource/action scope ([test](../../../adapters/sqlstore/apikey_test.go#L226))
@@ -86,19 +86,19 @@
 
 - [ ] Advanced Features
   - [ ] Sessions from API keys
-    - [x] Read a request-scoped session, invite a member and enroll an authenticator ([test](../../../conformance/core.test.mjs#L912))
-    - [x] User-Owned Keys Only ([test](../../../conformance/core.test.mjs#L940))
-      - [x] Reject a user-session request for an organization credential ([test](../../../conformance/core.test.mjs#L940))
+    - [x] Read a request-scoped session, invite a member and enroll an authenticator ([test](../../../conformance/core.test.mjs#L917))
+    - [x] User-Owned Keys Only ([test](../../../conformance/core.test.mjs#L945))
+      - [x] Reject a user-session request for an organization credential ([test](../../../conformance/core.test.mjs#L945))
     - [x] Rate Limiting Note ([test](../../../adapters/sqlstore/apikey_session_test.go#L239))
       - [x] Consume a one-use allowance exactly once for each auth request ([test](../../../adapters/sqlstore/apikey_session_test.go#L239))
   - [ ] Multiple Configurations
-    - [x] Select private and organization credentials on one auth mount ([test](../../../conformance/core.test.mjs#L912))
-    - [x] Setup ([test](../../../conformance/core.test.mjs#L917))
-      - [x] Register a personal configuration and a separate organization configuration ([test](../../../conformance/core.test.mjs#L917))
-    - [x] Creating Keys with Specific Configurations ([test](../../../conformance/core.test.mjs#L933))
-      - [x] Create an organization key under its own explicitly selected configuration ([test](../../../conformance/core.test.mjs#L933))
+    - [x] Select private and organization credentials on one auth mount ([test](../../../conformance/core.test.mjs#L917))
+    - [x] Setup ([test](../../../conformance/core.test.mjs#L922))
+      - [x] Register a personal configuration and a separate organization configuration ([test](../../../conformance/core.test.mjs#L922))
+    - [x] Creating Keys with Specific Configurations ([test](../../../conformance/core.test.mjs#L938))
+      - [x] Create an organization key under its own explicitly selected configuration ([test](../../../conformance/core.test.mjs#L938))
     - [ ] Using configId for API Key Operations
-      - [x] Use the configured namespace for key retrieval, updates and deletion ([test](../../../conformance/core.test.mjs#L912))
+      - [x] Use the configured namespace for key retrieval, updates and deletion ([test](../../../conformance/core.test.mjs#L917))
     - [x] Filtering Keys by Configuration ([test](../../../adapters/sqlstore/apikey_session_test.go#L110))
       - [x] List an organization’s keys separately from personal keys ([test](../../../adapters/sqlstore/apikey_session_test.go#L110))
     - [ ] Global Options
@@ -108,8 +108,8 @@
       - [x] Bind ownership type to the configuration across service restarts ([test](../../../adapters/sqlstore/apikey_session_test.go#L299))
     - [x] Creating Organization-Owned Keys ([test](../../../adapters/sqlstore/apikey_session_test.go#L288))
       - [x] Issue a key to the selected organization and retain it when an unrelated user is deleted ([test](../../../adapters/sqlstore/apikey_session_test.go#L288))
-      - [x] Session Mocking Limitation ([test](../../../conformance/core.test.mjs#L940))
-        - [x] Reject an organization identity on a user session endpoint ([test](../../../conformance/core.test.mjs#L940))
+      - [x] Session Mocking Limitation ([test](../../../conformance/core.test.mjs#L945))
+        - [x] Reject an organization identity on a user session endpoint ([test](../../../conformance/core.test.mjs#L945))
     - [ ] Access Control & Permissions
       - [x] Require a current membership and the management grant for each action ([test](../../../adapters/sqlstore/apikey_session_test.go#L22))
       - [x] API Key Permissions ([test](../../../adapters/sqlstore/apikey_session_test.go#L22))
@@ -124,8 +124,8 @@
           - [x] Revoke with the member’s delete grant ([test](../../../adapters/sqlstore/apikey_session_test.go#L128))
       - [ ] Configuring Organization Roles
         - [x] Combine static grants from multiple roles and pick up membership downgrades ([test](../../../adapters/sqlstore/apikey_session_test.go#L92))
-        - [x] Owner Access ([test](../../../conformance/core.test.mjs#L912))
-          - [x] Give the organization creator role full key management ([test](../../../conformance/core.test.mjs#L912))
+        - [x] Owner Access ([test](../../../conformance/core.test.mjs#L917))
+          - [x] Give the organization creator role full key management ([test](../../../conformance/core.test.mjs#L917))
       - [x] Permission Examples ([test](../../../adapters/sqlstore/apikey_session_test.go#L22))
         - [x] Apply independent read-only and management grants on a shared namespace ([test](../../../adapters/sqlstore/apikey_session_test.go#L22))
       - [x] Error Codes ([test](../../../adapters/sqlstore/apikey_session_test.go#L22))
@@ -134,8 +134,8 @@
           - [x] Refuse management by someone outside the group ([test](../../../adapters/sqlstore/apikey_session_test.go#L99))
         - [x] `INSUFFICIENT_API_KEY_PERMISSIONS` ([test](../../../adapters/sqlstore/apikey_session_test.go#L104))
           - [x] Return the authorization error for members without delete rights ([test](../../../adapters/sqlstore/apikey_session_test.go#L104))
-    - [x] API Key Object Structure ([test](../../../conformance/core.test.mjs#L933))
-      - [x] Expose the organization as the key’s reference ([test](../../../conformance/core.test.mjs#L933))
+    - [x] API Key Object Structure ([test](../../../conformance/core.test.mjs#L938))
+      - [x] Expose the organization as the key’s reference ([test](../../../conformance/core.test.mjs#L938))
   - [ ] Storage Modes
     - [ ] Storage Mode Options
       - [ ] `"database"` (Default)
@@ -231,7 +231,7 @@
         - [ ] Parameter `permissions` (optional)
       - [ ] Result
     - [ ] Delete an API Key
-      - [x] Delete a key through the public client and reject future verification ([test](../../../conformance/core.test.mjs#L861))
+      - [x] Delete a key through the public client and reject future verification ([test](../../../conformance/core.test.mjs#L866))
       - [ ] `POST /api-key/delete`
         - [ ] Parameter `configId` (optional)
         - [ ] Parameter `keyId`

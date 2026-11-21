@@ -2,6 +2,7 @@ package stonewrit
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -77,11 +78,14 @@ type RateLimitRule struct {
 
 // Endpoint declares the HTTP operation and its optional IP-based limit.
 type Endpoint struct {
+	// OpenAPI is optional JSON operation metadata for this endpoint. It is copied at registration.
+	OpenAPI   json.RawMessage
 	RateLimit *RateLimitRule
 	Method    string
 	Path      string
 	RawBody   bool
 	Handler   func(EndpointContext) (any, error)
+	pluginID  string
 }
 
 // EndpointContext gives a plugin access to the host auth instance, incoming
@@ -99,8 +103,8 @@ type endpointKey struct{ method, path string }
 func registerPlugins(plugins []Plugin) (map[endpointKey]Endpoint, error) {
 	routes := make(map[endpointKey]Endpoint)
 	ids := make(map[string]bool)
-	hasCredentialResolver := false
 	hasSessionResponse := false
+	hasCredentialResolver := false
 	for _, p := range plugins {
 		if strings.TrimSpace(p.ID) == "" || ids[p.ID] {
 			return nil, fmt.Errorf("authn: missing or duplicate plugin ID %q", p.ID)
@@ -119,6 +123,14 @@ func registerPlugins(plugins []Plugin) (map[endpointKey]Endpoint, error) {
 			hasSessionResponse = true
 		}
 		for _, ep := range p.Endpoints {
+			ep.pluginID = p.ID
+			if ep.OpenAPI != nil {
+				var op map[string]json.RawMessage
+				if err := json.Unmarshal(ep.OpenAPI, &op); err != nil || op == nil {
+					return nil, fmt.Errorf("invalid OpenAPI operation for %s", ep.Path)
+				}
+				ep.OpenAPI = append(json.RawMessage(nil), ep.OpenAPI...)
+			}
 			if !strings.HasPrefix(ep.Path, "/") || ep.Path == "/" || path.Clean(ep.Path) != ep.Path || strings.ContainsAny(ep.Path, "%?#\\ \t\r\n") {
 				return nil, fmt.Errorf("authn: plugin %q has invalid endpoint path %q", p.ID, ep.Path)
 			}

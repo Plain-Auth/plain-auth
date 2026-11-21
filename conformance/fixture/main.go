@@ -21,6 +21,7 @@ import (
 	"github.com/Stonewrit/stonewrit-auth/plugins/magiclink"
 	"github.com/Stonewrit/stonewrit-auth/plugins/multisession"
 	"github.com/Stonewrit/stonewrit-auth/plugins/onetimetoken"
+	"github.com/Stonewrit/stonewrit-auth/plugins/openapi"
 	"github.com/Stonewrit/stonewrit-auth/plugins/organization"
 	"github.com/Stonewrit/stonewrit-auth/plugins/passkey"
 	"github.com/Stonewrit/stonewrit-auth/plugins/pwnedpassword"
@@ -215,7 +216,17 @@ func main() {
 		social = oneTapFixtureProvider(oneTapKeys)
 		plugins = append(plugins, authn.NewOneTap(authn.OneTapOptions{}, authn.OAuthProvider{}))
 	}
+	var mount string
+	if os.Getenv("CONFORMANCE_OPENAPI") == "1" {
+		mount = "/identity"
+		p, err := openapi.New(openapi.Options{Path: "/manual", Theme: "moon", Nonce: "openAPI123"})
+		if err != nil {
+			log.Fatal(err)
+		}
+		plugins = append(plugins, p)
+	}
 	auth, err := authn.New(authn.Options{
+		BasePath:         mount,
 		SocialProviders:  social,
 		Plugins:          plugins,
 		BaseURL:          baseURL,

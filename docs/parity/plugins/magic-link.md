@@ -10,7 +10,7 @@
     - [x] Deliver a private link and request metadata through the configured sender ([test](../../../adapters/sqlstore/magiclink_test.go#L73))
   - [ ] `GET /magic-link/verify`
     - [x] Promote mailbox ownership and revoke credentials that preceded verification ([test](../../../adapters/sqlstore/magiclink_test.go#L174))
-    - [x] Consume shared hashed links in Go and the reference runtime with the official client ([test](../../../conformance/core.test.mjs#L340))
+    - [x] Consume shared hashed links in Go and the reference runtime with the official client ([test](../../../conformance/core.test.mjs#L345))
     - [x] Deny a delivered link after the target email is reassigned ([test](../../../adapters/sqlstore/magiclink_test.go#L158))
   - [ ] `MagicLinkOptions`
     - [ ] `expiresIn`

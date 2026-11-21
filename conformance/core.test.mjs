@@ -67,6 +67,11 @@ test("the pinned Stripe client manages owner billing and observes renewals on bo
   await billingLifecycle(t, { reference, goFixture, instrument });
 });
 
+test("OpenAPI returns the pinned core and enabled username contracts over HTTP", async (t) => {
+  const { compareOpenAPI } = await import("./openapi-contract.mjs");
+  await compareOpenAPI(t, goFixture);
+});
+
 let fixtureBuild;
 let buildDirectory;
 

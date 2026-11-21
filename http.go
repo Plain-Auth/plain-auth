@@ -120,6 +120,12 @@ func (a *Auth) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusFound)
 		return
 	}
+	if page, ok := result.(HTMLPage); ok {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		_, _ = io.WriteString(w, string(page))
+		return
+	}
 	writeAuthJSON(w, http.StatusOK, result)
 }
 

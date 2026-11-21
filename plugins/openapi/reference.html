@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en" data-theme="{{.Theme}}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>StoneWrit Auth API reference</title>
+<style nonce="{{.Nonce}}">
+:root{color-scheme:light;--bg:#fafaf9;--paper:#fff;--fg:#182023;--accent:#146256;--line:#cbd4d1}
+[data-theme=alternate]{--bg:#edf1ef;--accent:#82404e}
+[data-theme=solarized]{--bg:#fdf6e3;--fg:#24474a;--accent:#126b6c}
+[data-theme=purple]{--bg:#f7f4fb;--accent:#67409c}
+[data-theme=bluePlanet]{--bg:#f1f7fc;--accent:#205b96}
+[data-theme=saturn]{--bg:#fbf6ee;--accent:#8a512d}
+[data-theme=kepler]{--bg:#f0f7f1;--accent:#35723c}
+[data-theme=mars]{--bg:#fcf5f1;--accent:#923e28}
+[data-theme=moon],[data-theme=deepSpace],[data-theme=laserwave]{color-scheme:dark;--bg:#14191f;--fg:#e5e9ee;--paper:#1d252e;--line:#414b57;--accent:#a0d6c5}
+[data-theme=deepSpace]{--bg:#111426;--paper:#1b1e34;--accent:#a5bcff}
+[data-theme=laserwave]{--bg:#201629;--paper:#2d2036;--accent:#e4a7fc}
+[data-theme=none]{--bg:Canvas;--fg:CanvasText;--paper:Canvas;--line:GrayText;--accent:LinkText}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:1rem/1.5 Inter,system-ui,sans-serif}main{max-width:60rem;margin:0 auto;padding:3rem 1.25rem}
+header{border-bottom:1px solid var(--line);padding-bottom:1.5rem}h1{font-size:clamp(2rem,6vw,3.5rem);line-height:1.1;margin:.4rem 0 1rem}a,strong{color:var(--accent)}
+code,pre{font-family:"IBM Plex Mono",ui-monospace,monospace}label,input{display:block}label{margin:1.5rem 0 .4rem;font-weight:600}
+input{width:100%;padding:.7rem;border:1px solid var(--line);border-radius:.35rem;color:inherit;background:var(--paper);font:inherit}section{margin:1.2rem 0}
+details{border-bottom:1px solid var(--line)}summary{padding:.75rem .25rem;cursor:pointer;overflow-wrap:anywhere}summary strong{display:inline-block;min-width:4rem}
+pre{background:var(--paper);padding:1rem;overflow:auto;font-size:.875rem}[hidden]{display:none}
+</style>
+</head>
+<body><main>
+<header><h1>StoneWrit Auth API reference</h1><p><code>{{.Server}}</code></p><a href="{{.SchemaPath}}">OpenAPI schema (JSON)</a></header>
+<label for="filter">Filter operations</label><input id="filter" type="search" placeholder="Method or path" autocomplete="off">
+<section aria-label="HTTP operations">{{range .Operations}}
+<details><summary><strong>{{.Method}}</strong> <code>{{.Path}}</code></summary><pre>{{.Detail}}</pre></details>{{end}}</section>
+<p id="empty" hidden>No matching operations.</p>
+</main><script nonce="{{.Nonce}}">
+const filter=document.getElementById("filter");
+function filterOperations(){
+  const query=filter.value.trim().toLowerCase();
+  let matches=0;
+  for(const row of document.querySelectorAll("details")){
+    row.hidden=!row.querySelector("summary").textContent.toLowerCase().includes(query);
+    if(!row.hidden) matches++;
+  }
+  document.getElementById("empty").hidden=matches>0;
+}
+filter.addEventListener("input",filterOperations);
+filter.value=new URLSearchParams(window.location.search).get("q")||"";
+filterOperations();
+</script></body></html>
