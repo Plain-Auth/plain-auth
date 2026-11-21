@@ -58,6 +58,9 @@ func (a *Auth) presentSession(w http.ResponseWriter, r *http.Request) (any, erro
 	default:
 		return body, nil
 	}
+	if a.translateError != nil {
+		a.noteErrorUser(r.Context(), session.Session.Token, session.User)
+	}
 	return a.sessionResponse(EndpointContext{Auth: a, Request: r, ResponseHeader: w.Header()}, *session)
 }
 

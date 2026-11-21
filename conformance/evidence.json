@@ -4338,5 +4338,495 @@
       "test": "adapters/sqlstore/apikey_session_test.go",
       "marker": "scope downgrade during request still created an invitation"
     }
+  ],
+  "docs/content/docs/plugins/i18n.mdx#L57/`ar`": [
+    {
+      "label": "Match every bundled ar message to the pinned dictionary",
+      "test": "conformance/i18n-contract.mjs",
+      "marker": "all bundled locale dictionaries must match the pinned package",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/i18n.mdx#L58/`bn`": [
+    {
+      "label": "Match every bundled bn message to the pinned dictionary",
+      "test": "conformance/i18n-contract.mjs",
+      "marker": "all bundled locale dictionaries must match the pinned package",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/i18n.mdx#L59/`de`": [
+    {
+      "label": "Match every bundled de message to the pinned dictionary",
+      "test": "conformance/i18n-contract.mjs",
+      "marker": "all bundled locale dictionaries must match the pinned package",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/i18n.mdx#L60/`en`": [
+    {
+      "label": "Match every bundled en message to the pinned dictionary",
+      "test": "conformance/i18n-contract.mjs",
+      "marker": "all bundled locale dictionaries must match the pinned package",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/i18n.mdx#L61/`es`": [
+    {
+      "label": "Match every bundled es message to the pinned dictionary",
+      "test": "conformance/i18n-contract.mjs",
+      "marker": "all bundled locale dictionaries must match the pinned package",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/i18n.mdx#L62/`fa`": [
+    {
+      "label": "Match every bundled fa message to the pinned dictionary",
+      "test": "conformance/i18n-contract.mjs",
+      "marker": "all bundled locale dictionaries must match the pinned package",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/i18n.mdx#L63/`fr`": [
+    {
+      "label": "Match every bundled fr message to the pinned dictionary",
+      "test": "conformance/i18n-contract.mjs",
+      "marker": "all bundled locale dictionaries must match the pinned package",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/i18n.mdx#L64/`hi`": [
+    {
+      "label": "Match every bundled hi message to the pinned dictionary",
+      "test": "conformance/i18n-contract.mjs",
+      "marker": "all bundled locale dictionaries must match the pinned package",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/i18n.mdx#L65/`id`": [
+    {
+      "label": "Match every bundled id message to the pinned dictionary",
+      "test": "conformance/i18n-contract.mjs",
+      "marker": "all bundled locale dictionaries must match the pinned package",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/i18n.mdx#L66/`it`": [
+    {
+      "label": "Match every bundled it message to the pinned dictionary",
+      "test": "conformance/i18n-contract.mjs",
+      "marker": "all bundled locale dictionaries must match the pinned package",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/i18n.mdx#L67/`ja`": [
+    {
+      "label": "Match every bundled ja message to the pinned dictionary",
+      "test": "conformance/i18n-contract.mjs",
+      "marker": "all bundled locale dictionaries must match the pinned package",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/i18n.mdx#L68/`ko`": [
+    {
+      "label": "Match every bundled ko message to the pinned dictionary",
+      "test": "conformance/i18n-contract.mjs",
+      "marker": "all bundled locale dictionaries must match the pinned package",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/i18n.mdx#L69/`nl`": [
+    {
+      "label": "Match every bundled nl message to the pinned dictionary",
+      "test": "conformance/i18n-contract.mjs",
+      "marker": "all bundled locale dictionaries must match the pinned package",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/i18n.mdx#L70/`pl`": [
+    {
+      "label": "Match every bundled pl message to the pinned dictionary",
+      "test": "conformance/i18n-contract.mjs",
+      "marker": "all bundled locale dictionaries must match the pinned package",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/i18n.mdx#L71/`pt`": [
+    {
+      "label": "Match every bundled pt message to the pinned dictionary",
+      "test": "conformance/i18n-contract.mjs",
+      "marker": "all bundled locale dictionaries must match the pinned package",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/i18n.mdx#L72/`ru`": [
+    {
+      "label": "Match every bundled ru message to the pinned dictionary",
+      "test": "conformance/i18n-contract.mjs",
+      "marker": "all bundled locale dictionaries must match the pinned package",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/i18n.mdx#L73/`sv`": [
+    {
+      "label": "Match every bundled sv message to the pinned dictionary",
+      "test": "conformance/i18n-contract.mjs",
+      "marker": "all bundled locale dictionaries must match the pinned package",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/i18n.mdx#L74/`th`": [
+    {
+      "label": "Match every bundled th message to the pinned dictionary",
+      "test": "conformance/i18n-contract.mjs",
+      "marker": "all bundled locale dictionaries must match the pinned package",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/i18n.mdx#L75/`tr`": [
+    {
+      "label": "Match every bundled tr message to the pinned dictionary",
+      "test": "conformance/i18n-contract.mjs",
+      "marker": "all bundled locale dictionaries must match the pinned package",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/i18n.mdx#L76/`uk`": [
+    {
+      "label": "Match every bundled uk message to the pinned dictionary",
+      "test": "conformance/i18n-contract.mjs",
+      "marker": "all bundled locale dictionaries must match the pinned package",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/i18n.mdx#L77/`vi`": [
+    {
+      "label": "Match every bundled vi message to the pinned dictionary",
+      "test": "conformance/i18n-contract.mjs",
+      "marker": "all bundled locale dictionaries must match the pinned package",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/i18n.mdx#L78/`zh`": [
+    {
+      "label": "Match every bundled zh message to the pinned dictionary",
+      "test": "conformance/i18n-contract.mjs",
+      "marker": "all bundled locale dictionaries must match the pinned package",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/i18n.mdx#L267/`USER_NOT_FOUND`": [
+    {
+      "label": "Resolve this code in the bundled locale dictionaries",
+      "test": "plugins/i18n/i18n_test.go",
+      "marker": "bundled message unavailable for"
+    }
+  ],
+  "docs/content/docs/plugins/i18n.mdx#L268/`INVALID_EMAIL_OR_PASSWORD`": [
+    {
+      "label": "Resolve this code in the bundled locale dictionaries",
+      "test": "plugins/i18n/i18n_test.go",
+      "marker": "bundled message unavailable for"
+    }
+  ],
+  "docs/content/docs/plugins/i18n.mdx#L269/`INVALID_PASSWORD`": [
+    {
+      "label": "Resolve this code in the bundled locale dictionaries",
+      "test": "plugins/i18n/i18n_test.go",
+      "marker": "bundled message unavailable for"
+    }
+  ],
+  "docs/content/docs/plugins/i18n.mdx#L270/`CREDENTIAL_ACCOUNT_NOT_FOUND`": [
+    {
+      "label": "Resolve this code in the bundled locale dictionaries",
+      "test": "plugins/i18n/i18n_test.go",
+      "marker": "bundled message unavailable for"
+    }
+  ],
+  "docs/content/docs/plugins/i18n.mdx#L271/`EMAIL_NOT_VERIFIED`": [
+    {
+      "label": "Resolve this code in the bundled locale dictionaries",
+      "test": "plugins/i18n/i18n_test.go",
+      "marker": "bundled message unavailable for"
+    }
+  ],
+  "docs/content/docs/plugins/i18n.mdx#L272/`SESSION_EXPIRED`": [
+    {
+      "label": "Resolve this code in the bundled locale dictionaries",
+      "test": "plugins/i18n/i18n_test.go",
+      "marker": "bundled message unavailable for"
+    }
+  ],
+  "plugin-symbol/i18n/i18nClient": [
+    {
+      "label": "Read the translated message, original message, stable code and HTTP status through the published browser client",
+      "test": "conformance/i18n-contract.mjs",
+      "marker": "browser client must preserve status, code and source message",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/i18n.mdx#L167": [
+    {
+      "label": "Read the translated message, original message, stable code and HTTP status through the published browser client",
+      "test": "conformance/i18n-contract.mjs",
+      "marker": "browser client must preserve status, code and source message",
+      "complete": true
+    },
+    {
+      "label": "Match both the localized error and the wrapped API error with the native Go client",
+      "test": "plugins/i18n/i18n_test.go",
+      "marker": "native client lost translated or original error"
+    }
+  ],
+  "plugin-symbol/i18n/i18n": [
+    {
+      "label": "Read translated errors through real HTTP on both runtimes",
+      "test": "conformance/i18n-contract.mjs",
+      "marker": "browser client must preserve status, code and source message"
+    }
+  ],
+  "docs/content/docs/plugins/i18n.mdx#L163": [
+    {
+      "label": "Read translated errors through real HTTP on both runtimes",
+      "test": "conformance/i18n-contract.mjs",
+      "marker": "browser client must preserve status, code and source message"
+    }
+  ],
+  "plugin-symbol/i18n/TranslationDictionary": [
+    {
+      "label": "Load all 22 bundled dictionaries and match every message to the pinned package",
+      "test": "conformance/i18n-contract.mjs",
+      "marker": "all bundled locale dictionaries must match the pinned package",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/i18n/I18nOptions/translations": [
+    {
+      "label": "Load all 22 bundled dictionaries and match every message to the pinned package",
+      "test": "conformance/i18n-contract.mjs",
+      "marker": "all bundled locale dictionaries must match the pinned package",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/i18n.mdx#L51": [
+    {
+      "label": "Load all 22 bundled dictionaries and match every message to the pinned package",
+      "test": "conformance/i18n-contract.mjs",
+      "marker": "all bundled locale dictionaries must match the pinned package",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/i18n.mdx#L80": [
+    {
+      "label": "Load all 22 bundled dictionaries and match every message to the pinned package",
+      "test": "conformance/i18n-contract.mjs",
+      "marker": "all bundled locale dictionaries must match the pinned package",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/i18n.mdx#L276": [
+    {
+      "label": "Load all 22 bundled dictionaries and match every message to the pinned package",
+      "test": "conformance/i18n-contract.mjs",
+      "marker": "all bundled locale dictionaries must match the pinned package",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/i18n.mdx#L93": [
+    {
+      "label": "Install custom locale subsets with independently owned translation maps",
+      "test": "plugins/i18n/i18n_test.go",
+      "marker": "independent installations shared locale state",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/i18n.mdx#L113": [
+    {
+      "label": "Install custom locale subsets with independently owned translation maps",
+      "test": "plugins/i18n/i18n_test.go",
+      "marker": "independent installations shared locale state",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/i18n.mdx#L136": [
+    {
+      "label": "Install custom locale subsets with independently owned translation maps",
+      "test": "plugins/i18n/i18n_test.go",
+      "marker": "independent installations shared locale state",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/i18n/LocaleDetectionStrategy": [
+    {
+      "label": "Select a locale in configured cookie, session, callback and header order",
+      "test": "conformance/i18n-contract.mjs",
+      "marker": "authenticated profile preference precedes callback detection",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/i18n/I18nOptions/detection": [
+    {
+      "label": "Select a locale in configured cookie, session, callback and header order",
+      "test": "conformance/i18n-contract.mjs",
+      "marker": "authenticated profile preference precedes callback detection",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/i18n.mdx#L179": [
+    {
+      "label": "Select a locale in configured cookie, session, callback and header order",
+      "test": "conformance/i18n-contract.mjs",
+      "marker": "authenticated profile preference precedes callback detection",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/i18n.mdx#L299": [
+    {
+      "label": "Select a locale in configured cookie, session, callback and header order",
+      "test": "conformance/i18n-contract.mjs",
+      "marker": "authenticated profile preference precedes callback detection",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/i18n/I18nOptions/defaultLocale": [
+    {
+      "label": "Use a configured fallback and preserve the original response for an absent code, message or default locale",
+      "test": "plugins/i18n/i18n_test.go",
+      "marker": "error response lost its fallback or wire shape",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/i18n.mdx#L291": [
+    {
+      "label": "Use a configured fallback and preserve the original response for an absent code, message or default locale",
+      "test": "plugins/i18n/i18n_test.go",
+      "marker": "error response lost its fallback or wire shape",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/i18n.mdx#L333": [
+    {
+      "label": "Use a configured fallback and preserve the original response for an absent code, message or default locale",
+      "test": "plugins/i18n/i18n_test.go",
+      "marker": "error response lost its fallback or wire shape",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/i18n/I18nOptions/localeCookie": [
+    {
+      "label": "Read the named locale cookie and decode its percent-escaped value before consulting the next strategy",
+      "test": "conformance/i18n-contract.mjs",
+      "marker": "lang=%6a%61",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/i18n.mdx#L307": [
+    {
+      "label": "Read the named locale cookie and decode its percent-escaped value before consulting the next strategy",
+      "test": "conformance/i18n-contract.mjs",
+      "marker": "lang=%6a%61",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/i18n.mdx#L207": [
+    {
+      "label": "Read the named locale cookie and decode its percent-escaped value before consulting the next strategy",
+      "test": "conformance/i18n-contract.mjs",
+      "marker": "lang=%6a%61",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/i18n.mdx#L193/`cookie`": [
+    {
+      "label": "Read the named locale cookie and decode its percent-escaped value before consulting the next strategy",
+      "test": "conformance/i18n-contract.mjs",
+      "marker": "lang=%6a%61",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/i18n.mdx#L197": [
+    {
+      "label": "Choose the preferred available language from regional tags and quality weights",
+      "test": "conformance/i18n-contract.mjs",
+      "marker": "unavailable;q=1",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/i18n.mdx#L192/`header`": [
+    {
+      "label": "Choose the preferred available language from regional tags and quality weights",
+      "test": "conformance/i18n-contract.mjs",
+      "marker": "unavailable;q=1",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/i18n/I18nOptions/userLocaleField": [
+    {
+      "label": "Read the configured field from the user authenticated for the request",
+      "test": "conformance/i18n-contract.mjs",
+      "marker": "authenticated profile preference precedes callback detection",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/i18n.mdx#L315": [
+    {
+      "label": "Read the configured field from the user authenticated for the request",
+      "test": "conformance/i18n-contract.mjs",
+      "marker": "authenticated profile preference precedes callback detection",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/i18n.mdx#L219": [
+    {
+      "label": "Read the configured field from the user authenticated for the request",
+      "test": "conformance/i18n-contract.mjs",
+      "marker": "authenticated profile preference precedes callback detection",
+      "complete": true
+    },
+    {
+      "label": "Read application profile preferences only after successful authentication without spending the credential twice",
+      "test": "plugins/i18n/i18n_test.go",
+      "marker": "translation repeated credential verification or profile access"
+    }
+  ],
+  "docs/content/docs/plugins/i18n.mdx#L194/`session`": [
+    {
+      "label": "Read the configured field from the user authenticated for the request",
+      "test": "conformance/i18n-contract.mjs",
+      "marker": "authenticated profile preference precedes callback detection",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/i18n/I18nOptions/getLocale": [
+    {
+      "label": "Use the locale callback with or without an HTTP request",
+      "test": "plugins/i18n/i18n_test.go",
+      "marker": "callback could not select a locale without an HTTP request",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/i18n.mdx#L323": [
+    {
+      "label": "Use the locale callback with or without an HTTP request",
+      "test": "plugins/i18n/i18n_test.go",
+      "marker": "callback could not select a locale without an HTTP request",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/i18n.mdx#L240": [
+    {
+      "label": "Use the locale callback with or without an HTTP request",
+      "test": "plugins/i18n/i18n_test.go",
+      "marker": "callback could not select a locale without an HTTP request",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/i18n.mdx#L195/`callback`": [
+    {
+      "label": "Use the locale callback with or without an HTTP request",
+      "test": "plugins/i18n/i18n_test.go",
+      "marker": "callback could not select a locale without an HTTP request",
+      "complete": true
+    }
   ]
 }

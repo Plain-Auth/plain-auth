@@ -2,6 +2,8 @@
 
 Pass plugins to `stonewrit.Options.Plugins` during startup. A plugin declares an ID and endpoint definitions with a method and a path relative to the auth mount. Registration checks IDs and route conflicts before the application begins serving. Assign an `Endpoint.RateLimit` rule to limit requests to a plugin endpoint. The host application can [override rate rules](authentication.md#set-limits-for-an-application).
 
+The i18n plugin localizes coded errors from core and plugin endpoints. [Localization guide](localization.md)
+
 ## Create a session-aware endpoint
 
 ```go

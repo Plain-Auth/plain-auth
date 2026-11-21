@@ -35,10 +35,13 @@ var coreMethods = map[string]string{
 func (a *Auth) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	route, mounted := strings.CutPrefix(r.URL.EscapedPath(), strings.TrimSuffix(a.opts.BasePath, "/"))
 	if mounted && (route == "" || strings.HasPrefix(route, "/")) {
+		if a.translateError != nil {
+			r = a.withErrorContext(r)
+		}
 		ctx, identity, authErr := a.resolveCredentialSession(r.Context(), r.Header, RequestMeta{IPAddress: a.clientIP(r), UserAgent: r.UserAgent()})
 		if authErr != nil {
 			w.Header().Set("Cache-Control", "no-store")
-			writeAuthError(w, authErr)
+			a.writeAuthError(w, r, authErr)
 			return
 		}
 		if identity != nil {
@@ -46,7 +49,7 @@ func (a *Auth) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		if err := a.runRequestHooks(r, route); err != nil {
 			w.Header().Set("Cache-Control", "no-store")
-			writeAuthError(w, err)
+			a.writeAuthError(w, r, err)
 			return
 		}
 	}
@@ -79,7 +82,7 @@ func (a *Auth) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var body wireBody
 	if r.Method != http.MethodGet {
 		if err := a.validateRequestOrigin(r, isEmailRoute(route) || route == "/sign-in/username" || route == "/sign-in/anonymous" || route == "/sign-in/magic-link" || route == "/sign-in/email-otp" || strings.HasPrefix(route, "/email-otp/") || route == "/forget-password/email-otp"); err != nil {
-			writeAuthError(w, err)
+			a.writeAuthError(w, r, err)
 			return
 		}
 		if ep.RawBody {
@@ -88,17 +91,17 @@ func (a *Auth) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			var err error
 			body, err = decodeWireBody(w, r, route)
 			if err != nil {
-				writeAuthError(w, err)
+				a.writeAuthError(w, r, err)
 				return
 			}
 		}
 		if err := a.validateCallbacks(body, r.URL.Query()); err != nil {
-			writeAuthError(w, err)
+			a.writeAuthError(w, r, err)
 			return
 		}
 	}
 	if isSessionPost && !a.opts.DeferSessionRefresh {
-		writeAuthError(w, &APIError{Status: 405, Code: "METHOD_NOT_ALLOWED_DEFER_SESSION_REQUIRED", Message: "POST method requires deferSessionRefresh to be enabled in session config"})
+		a.writeAuthError(w, r, &APIError{Status: 405, Code: "METHOD_NOT_ALLOWED_DEFER_SESSION_REQUIRED", Message: "POST method requires deferSessionRefresh to be enabled in session config"})
 		return
 	}
 	var result any
@@ -109,7 +112,7 @@ func (a *Auth) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		result, err = a.handleCoreRequest(route, w, r, body, ip)
 	}
 	if err != nil {
-		writeAuthError(w, err)
+		a.writeAuthError(w, r, err)
 		return
 	}
 	if redirect, ok := result.(authRedirect); ok {
@@ -350,7 +353,7 @@ func writeAuthJSON(w http.ResponseWriter, status int, body any) {
 	_ = json.NewEncoder(w).Encode(body)
 }
 
-func writeAuthError(w http.ResponseWriter, err error) {
+func (a *Auth) writeAuthError(w http.ResponseWriter, r *http.Request, err error) {
 	var deviceErr *deviceFlowError
 	if errors.As(err, &deviceErr) {
 		writeAuthJSON(w, deviceErr.Status, deviceErr)
@@ -359,6 +362,13 @@ func writeAuthError(w http.ResponseWriter, err error) {
 	var apiErr *APIError
 	if !errors.As(err, &apiErr) {
 		apiErr = &APIError{Status: 500, Code: "INTERNAL_SERVER_ERROR", Message: "Internal Server Error"}
+	} else if a.translateError != nil && apiErr.Code != "" {
+		if message := a.translateError(a.errorContext(r), *apiErr); message != "" {
+			translated := *apiErr
+			translated.Message = message
+			writeAuthJSON(w, apiErr.Status, &LocalizedError{APIError: &translated, OriginalMessage: apiErr.Message})
+			return
+		}
 	}
 	writeAuthJSON(w, apiErr.Status, apiErr)
 }

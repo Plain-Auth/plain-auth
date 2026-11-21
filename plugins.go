@@ -15,6 +15,9 @@ type SessionResponseFunc func(EndpointContext, SessionResult) (any, error)
 
 // Plugin contributes HTTP endpoints to an Auth instance.
 type Plugin struct {
+	// TranslateError returns a localized HTTP error message for the request.
+	// An empty result preserves the original error response.
+	TranslateError     func(ErrorContext, APIError) string
 	CredentialSessions *CredentialSessionResolver
 	username           *UsernameOptions
 	anonymous          *AnonymousOptions

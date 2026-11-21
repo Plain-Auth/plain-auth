@@ -49,7 +49,7 @@ func (a *Auth) rejectRateLimited(w http.ResponseWriter, r *http.Request, route s
 	if store := a.opts.RateLimitStorage; store != nil {
 		delay, err := store.ConsumeRateLimit(r.Context(), ip+"|"+route, maximum, window, now)
 		if err != nil {
-			writeAuthError(w, err)
+			a.writeAuthError(w, r, err)
 			return true
 		}
 		retry = retrySeconds(delay)

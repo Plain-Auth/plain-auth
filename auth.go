@@ -22,6 +22,7 @@ import (
 
 // Auth is safe for concurrent use by application handlers.
 type Auth struct {
+	translateError        func(ErrorContext, APIError) string
 	username              *UsernameOptions
 	anonymous             *AnonymousOptions
 	admin                 *AdminOptions
@@ -143,6 +144,12 @@ func New(opts Options) (*Auth, error) {
 	}
 	a := &Auth{opts: opts, now: time.Now, passwordSlots: make(chan struct{}, min(runtime.GOMAXPROCS(0), 4)), plugins: plugins}
 	for _, p := range opts.Plugins {
+		if p.TranslateError != nil {
+			if a.translateError != nil {
+				return nil, errors.New("auth: only one plugin may translate errors")
+			}
+			a.translateError = p.TranslateError
+		}
 		if p.admin != nil {
 			store, ok := opts.Store.(AdminStore)
 			if !ok {
@@ -446,7 +453,11 @@ func (a *Auth) GetSession(ctx context.Context, headers http.Header) (*SessionRes
 		return nil, nil
 	}
 	row.Token = token
-	return a.withSessionPlugins(ctx, row.Session, user)
+	result, err := a.withSessionPlugins(ctx, row.Session, user)
+	if err == nil && a.translateError != nil {
+		a.noteErrorUser(ctx, token, result.User)
+	}
+	return result, err
 }
 
 func (a *Auth) SignOut(ctx context.Context, headers http.Header) error {

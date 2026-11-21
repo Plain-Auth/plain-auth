@@ -141,6 +141,13 @@ func main() {
 			log.Fatal("unknown runtime plugin")
 		}
 	}
+	if os.Getenv("CONFORMANCE_I18N") == "1" {
+		p, err := fixtureI18n()
+		if err != nil {
+			log.Fatal(err)
+		}
+		plugins = append(plugins, p)
+	}
 	if os.Getenv("CONFORMANCE_SESSION_VIEW") == "1" {
 		p, err := customsession.NewWithOptions(func(_ authn.EndpointContext, data authn.SessionResult) (any, error) {
 			return map[string]string{"viewer": data.User.Email}, nil

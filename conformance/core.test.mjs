@@ -963,3 +963,8 @@ test("official clients share organization key ownership and API-key sessions", a
     assert.equal(ok(await make().getSession({ fetchOptions: fromEnrollmentKey })).user.twoFactorEnabled, true);
   }
 });
+
+test("the browser client receives localized API errors in both runtimes", async (t) => {
+  const { localization } = await import("./i18n-contract.mjs");
+  await localization(t, { reference, goFixture, instrument });
+});

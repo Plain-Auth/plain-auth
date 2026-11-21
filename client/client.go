@@ -75,7 +75,7 @@ func New(baseURL string, httpClient *http.Client) (*Client, error) {
 
 // Do calls an API endpoint under the client's auth mount. Route starts with "/"
 // and may include a query. Non-nil input is encoded as JSON. Supply a pointer
-// for output, or nil to discard the response. HTTP errors are returned as *stonewrit.APIError.
+// for output, or nil to discard the response. HTTP errors match *stonewrit.APIError through errors.As.
 func (c *Client) Do(ctx context.Context, method, route string, input, output any) error {
 	_, err := c.DoWithHeaders(ctx, method, route, input, output)
 	return err
@@ -119,8 +119,9 @@ func (c *Client) DoWithHeaders(ctx context.Context, method, route string, input,
 		apiErr := &authn.APIError{Status: res.StatusCode}
 		wire := struct {
 			*authn.APIError
-			OAuthCode   string `json:"error"`
-			Description string `json:"error_description"`
+			OriginalMessage *string `json:"originalMessage"`
+			OAuthCode       string  `json:"error"`
+			Description     string  `json:"error_description"`
 		}{APIError: apiErr}
 		_ = json.NewDecoder(io.LimitReader(res.Body, 64<<10)).Decode(&wire)
 		if apiErr.Code == "" && wire.OAuthCode != "" {
@@ -128,6 +129,9 @@ func (c *Client) DoWithHeaders(ctx context.Context, method, route string, input,
 		}
 		if apiErr.Message == "" {
 			apiErr.Message = fmt.Sprintf("Authentication server returned HTTP %d", res.StatusCode)
+		}
+		if wire.OriginalMessage != nil {
+			return res.Header, &authn.LocalizedError{APIError: apiErr, OriginalMessage: *wire.OriginalMessage}
 		}
 		return res.Header, apiErr
 	}

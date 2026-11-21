@@ -39,7 +39,7 @@ func (a *Auth) serveOAuth(w http.ResponseWriter, r *http.Request, route string) 
 		err = a.finishOAuth(w, r, id)
 	}
 	if err != nil {
-		writeAuthError(w, err)
+		a.writeAuthError(w, r, err)
 	}
 	return true
 }

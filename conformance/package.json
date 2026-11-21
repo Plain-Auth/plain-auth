@@ -8,6 +8,7 @@
   },
   "dependencies": {
     "@better-auth/api-key": "1.7.27",
+    "@better-auth/i18n": "1.7.27",
     "@better-auth/passkey": "1.7.27",
     "@better-auth/stripe": "1.7.27",
     "better-auth": "1.7.27",
