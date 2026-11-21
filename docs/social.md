@@ -209,3 +209,50 @@ if err != nil {
 }
 // When result.URL is populated, open it in the user's browser.
 ```
+
+## Sign an Apple client secret in Go
+
+For a web application, register the Services ID and the HTTPS return URL for your auth mount with Apple. For the default mount the return URL is `https://auth.example.org/api/auth/callback/apple`. Obtain the Team ID, Key ID and the Sign in with Apple private key for that application. [Apple configuration guide](https://developer.apple.com/documentation/signinwithapple/configuring-your-environment-for-sign-in-with-apple)
+
+Use `providers.GenerateAppleClientSecret` when constructing the provider. The environment variable names below belong to the example application.
+
+```go
+clientID := os.Getenv("APPLE_CLIENT_ID")
+privateKey, err := os.ReadFile(os.Getenv("APPLE_PRIVATE_KEY_FILE"))
+if err != nil {
+    return err
+}
+secret, err := providers.GenerateAppleClientSecret(providers.AppleClientSecretOptions{
+    ClientID: clientID,
+    TeamID: os.Getenv("APPLE_TEAM_ID"),
+    KeyID: os.Getenv("APPLE_KEY_ID"),
+    PrivateKeyPEM: privateKey,
+    ValidFor: 30 * 24 * time.Hour,
+})
+if err != nil {
+    return err
+}
+opts.SocialProviders = map[string]stonewrit.OAuthProvider{
+    "apple": providers.Apple(clientID, secret),
+}
+```
+
+The function signs with the P-256 key from the PKCS#8 `.p8` file. The subject is the exact client ID, the issuer is the Team ID, and the audience is `https://appleid.apple.com`. The default lifetime is 180 days. Apple accepts a maximum of 15,777,000 seconds. Generate a new secret and configure your running auth instances before the previous one expires. Store both the private key and generated credential on the server. [Apple client-secret specification](https://developer.apple.com/documentation/accountorganizationaldatasharing/creating-a-client-secret) · [Signature and expiry tests](../providers/apple_secret_test.go) · [Token exchange test](../providers/apple_microsoft_test.go)
+
+### Accept a native Apple app alongside a web application
+
+Use the Services ID for the browser and the bundle ID for directly submitted native ID tokens. A native app signs in through `POST /sign-in/social` with its Apple ID token and the nonce used for that login.
+
+```go
+apple, err := providers.AppleWithOptions(providers.AppleOptions{
+    ClientID: clientID,
+    ClientSecret: secret,
+    AppBundleIdentifier: "org.example.mobile",
+})
+if err != nil {
+    return err
+}
+opts.SocialProviders["apple"] = apple
+```
+
+For multiple native audiences, set `NativeAudiences` to their exact case-sensitive identifiers. A nonempty list replaces the bundle ID for native verification. Include the web Services ID in that list if clients also submit its tokens directly. The browser's code exchange always verifies its configured Services ID. Multiple-audience tokens must identify an authorized party that is both configured and present in the token. [Native client comparison](../conformance/apple-native.mjs) · [Browser and native audience tests](../providers/apple_audiences_test.go)

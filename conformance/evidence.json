@@ -1011,6 +1011,16 @@
       "label": "Validate the configured form-post flow and verify a signed native token",
       "test": "providers/apple_microsoft_test.go",
       "marker": "func TestAppleFormPostAndNativeToken("
+    },
+    {
+      "label": "Select a native bundle ID or explicit app audiences and keep the browser exchange bound to its own Services ID",
+      "test": "providers/apple_audiences_test.go",
+      "marker": "func TestAppleNativeAudiences("
+    },
+    {
+      "label": "Use the released client with signed native tokens for accepted identities and reject an unlisted app on both runtimes",
+      "test": "conformance/apple-native.mjs",
+      "marker": "export async function compareAppleNative("
     }
   ],
   "provider/microsoft": [
@@ -7129,6 +7139,27 @@
       "label": "Reject ambiguous or missing callback registrations and isolate concurrent application projections",
       "test": "plugins/customsession/customsession_test.go",
       "marker": "multiple projection callbacks registered on the same endpoint"
+    }
+  ],
+  "docs/content/docs/authentication/apple.mdx#L185": [
+    {
+      "label": "Sign the case-sensitive client ID and Apple audience with a PKCS#8 P-256 developer key and verify expiry bounds",
+      "test": "providers/apple_secret_test.go",
+      "marker": "func TestAppleClientSecret(",
+      "complete": true
+    },
+    {
+      "label": "Use the generated assertion during a local Apple authorization code exchange",
+      "test": "providers/apple_microsoft_test.go",
+      "marker": "token endpoint rejected the Apple developer assertion"
+    }
+  ],
+  "docs/content/docs/authentication/apple.mdx#L57/Generate the Client Secret (JWT):": [
+    {
+      "label": "Sign the case-sensitive client ID and Apple audience with a PKCS#8 P-256 developer key and verify expiry bounds",
+      "test": "providers/apple_secret_test.go",
+      "marker": "func TestAppleClientSecret(",
+      "complete": true
     }
   ]
 }

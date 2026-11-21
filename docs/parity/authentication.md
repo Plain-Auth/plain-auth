@@ -12,14 +12,17 @@
     - [ ] Identifier: Set a unique identifier for the service. Use a reverse domain format, distinct from your App ID (e.g., `com.yourcompany.yourapp.si`, where `.si` indicates service identifier - this is for your organization and not required). This Service ID will be your `clientId`.
     - [ ] Configure the Service ID:
     - [ ] Create a Client Secret Key:
-    - [ ] Generate the Client Secret (JWT):
+    - [x] Generate the Client Secret (JWT): ([test](../../providers/apple_secret_test.go#L30))
+      - [x] Sign the case-sensitive client ID and Apple audience with a PKCS#8 P-256 developer key and verify expiry bounds ([test](../../providers/apple_secret_test.go#L30))
   - [ ] Configure the provider
     - [ ] Localhost and Non-TLS Restrictions
   - [ ] Usage
     - [ ] Sign In with Apple
       - [ ] `provider`
     - [ ] Sign In with Apple With ID Token
-  - [ ] Generate Apple Client Secret (JWT)
+  - [x] Generate Apple Client Secret (JWT) ([test](../../providers/apple_secret_test.go#L30))
+    - [x] Sign the case-sensitive client ID and Apple audience with a PKCS#8 P-256 developer key and verify expiry bounds ([test](../../providers/apple_secret_test.go#L30))
+    - [x] Use the generated assertion during a local Apple authorization code exchange ([test](../../providers/apple_microsoft_test.go#L65))
 
 ## Atlassian
 

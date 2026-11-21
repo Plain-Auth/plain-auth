@@ -3,6 +3,7 @@ package providers
 import (
 	"context"
 	"crypto"
+	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
@@ -16,10 +17,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/go-oidc/v3/oidc"
-	"github.com/golang-jwt/jwt/v5"
 	auth "github.com/Stonewrit/stonewrit-auth"
 	"github.com/Stonewrit/stonewrit-auth/adapters/sqlite"
+	"github.com/coreos/go-oidc/v3/oidc"
+	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/oauth2"
 )
 
@@ -42,6 +43,13 @@ func TestAppleFormPostAndNativeToken(t *testing.T) {
 		t.Fatal(err)
 	}
 	keys := &oidc.StaticKeySet{PublicKeys: []crypto.PublicKey{&key.PublicKey}}
+	developerKey, pem := appleSigningKey(t, elliptic.P256())
+	clientSecret, err := GenerateAppleClientSecret(AppleClientSecretOptions{
+		ClientID: "client", TeamID: "ABCDEF1234", KeyID: "012345ABCD", PrivateKeyPEM: pem,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
 	var nonce, challenge string
 	client := &http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
 		if r.URL.String() != "https://appleid.apple.com/auth/token" || r.Method != "POST" {
@@ -50,14 +58,20 @@ func TestAppleFormPostAndNativeToken(t *testing.T) {
 		if err := r.ParseForm(); err != nil {
 			t.Fatal(err)
 		}
-		if r.Form.Get("client_secret") != "client-jwt" || r.Form.Get("code") != "apple-code" || oauth2.S256ChallengeFromVerifier(r.Form.Get("code_verifier")) != challenge {
+		assertion, err := jwt.Parse(r.Form.Get("client_secret"), func(token *jwt.Token) (any, error) {
+			return &developerKey.PublicKey, nil
+		}, jwt.WithValidMethods([]string{"ES256"}), jwt.WithIssuer("ABCDEF1234"), jwt.WithAudience("https://appleid.apple.com"), jwt.WithSubject(r.Form.Get("client_id")), jwt.WithExpirationRequired())
+		if err != nil || assertion.Header["kid"] != "012345ABCD" {
+			t.Fatal("token endpoint rejected the Apple developer assertion", err)
+		}
+		if r.Form.Get("code") != "apple-code" || oauth2.S256ChallengeFromVerifier(r.Form.Get("code_verifier")) != challenge {
 			t.Fatal("incorrect authorization code exchange")
 		}
 		raw := signedClaims(t, key, "https://appleid.apple.com", "apple-subject", nonce, map[string]any{"email": "person@example.org", "email_verified": "true"})
 		data, _ := json.Marshal(map[string]any{"access_token": "access", "token_type": "bearer", "id_token": raw})
 		return &http.Response{StatusCode: 200, Header: http.Header{"Content-Type": {"application/json"}}, Body: io.NopCloser(strings.NewReader(string(data)))}, nil
 	})}
-	p := appleProvider("client", "client-jwt", keys, client)
+	p := appleProvider("client", clientSecret, keys, client)
 	hash := sha256.Sum256([]byte("native-nonce"))
 	raw := signedClaims(t, key, "https://appleid.apple.com", "apple-subject", hex.EncodeToString(hash[:]), map[string]any{"email": "person@example.org", "email_verified": true})
 	profile, _, err := p.VerifyIDToken(context.Background(), raw, "native-nonce")

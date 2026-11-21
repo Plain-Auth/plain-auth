@@ -43,9 +43,9 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 | --- | ---: | ---: |
 | [Published package interfaces](packages.md) | 65 | 161 |
 | [Native Go client, routers and databases](go.md) | 36 | 4 |
-| [Core API, sign-in providers and CLI](runtime.md) | 103 | 280 |
+| [Core API, sign-in providers and CLI](runtime.md) | 105 | 280 |
 | [Database adapters](adapters.md) | 32 | 224 |
-| [Authentication](authentication.md) | 3 | 424 |
+| [Authentication](authentication.md) | 8 | 422 |
 | [Core concepts](concepts.md) | 25 | 515 |
 | [Managed infrastructure](infrastructure.md) | 0 | 528 |
 | [Framework integrations](integrations.md) | 0 | 228 |

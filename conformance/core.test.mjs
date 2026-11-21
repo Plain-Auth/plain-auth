@@ -1241,3 +1241,8 @@ test("ordinary session GET and deferred POST work without a custom session plugi
   const { compareOrdinarySession } = await import("./custom-session-contract.mjs");
   await compareOrdinarySession(t, { reference, goFixture });
 });
+
+test("Apple native bundle IDs and explicit audiences select the same signed identities on both runtimes", async t => {
+  const {compareAppleNative} = await import("./apple-native.mjs");
+  await compareAppleNative(t, {reference, goFixture, instrument});
+});

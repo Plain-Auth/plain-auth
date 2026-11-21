@@ -94,7 +94,9 @@ Each entry groups the configured endpoint’s behaviors. A checked child records
 
 - [ ] Built-in social providers
   - [ ] `apple`
-    - [x] Validate the configured form-post flow and verify a signed native token ([test](../../providers/apple_microsoft_test.go#L39))
+    - [x] Validate the configured form-post flow and verify a signed native token ([test](../../providers/apple_microsoft_test.go#L40))
+    - [x] Select a native bundle ID or explicit app audiences and keep the browser exchange bound to its own Services ID ([test](../../providers/apple_audiences_test.go#L20))
+    - [x] Use the released client with signed native tokens for accepted identities and reject an unlisted app on both runtimes ([test](../../conformance/apple-native.mjs#L4))
   - [ ] `atlassian`
     - [x] Complete the default browser code exchange and map the provider profile using a local fixture ([test](../../providers/catalog_test.go#L21))
   - [ ] `cloudflare`
@@ -128,7 +130,7 @@ Each entry groups the configured endpoint’s behaviors. A checked child records
   - [ ] `linkedin`
     - [x] Complete the default browser code exchange and map the provider profile using a local fixture ([test](../../providers/catalog_test.go#L21))
   - [ ] `microsoft`
-    - [x] Verify tenant, issuer and mailbox claims using local issuer fixtures ([test](../../providers/apple_microsoft_test.go#L132))
+    - [x] Verify tenant, issuer and mailbox claims using local issuer fixtures ([test](../../providers/apple_microsoft_test.go#L146))
   - [ ] `naver`
     - [x] Complete the default browser code exchange and map the provider profile using a local fixture ([test](../../providers/catalog_test.go#L21))
   - [ ] `notion`

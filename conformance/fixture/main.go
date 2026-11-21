@@ -28,6 +28,7 @@ import (
 	"github.com/Stonewrit/stonewrit-auth/plugins/pwnedpassword"
 	"github.com/Stonewrit/stonewrit-auth/plugins/sso"
 	"github.com/Stonewrit/stonewrit-auth/plugins/twofactor"
+	"github.com/Stonewrit/stonewrit-auth/providers"
 	"github.com/Stonewrit/stonewrit-auth/schema"
 )
 
@@ -282,6 +283,18 @@ func main() {
 	var social map[string]authn.OAuthProvider
 	if os.Getenv("CONFORMANCE_PROVIDER") == "1" {
 		social = fixtureSocialProvider()
+	}
+	if keys := os.Getenv("CONFORMANCE_APPLE_JWKS"); keys != "" {
+		opts := providers.AppleOptions{ClientID: "org.example.web", ClientSecret: "local-client-assertion", AppBundleIdentifier: "org.example.mobile",
+			HTTPClient: &http.Client{Transport: fixtureProviderKeys{"https://appleid.apple.com/auth/keys", keys}}}
+		if audiences := os.Getenv("CONFORMANCE_APPLE_AUDIENCES"); audiences != "" {
+			opts.NativeAudiences = strings.Split(audiences, ",")
+		}
+		apple, err := providers.AppleWithOptions(opts)
+		if err != nil {
+			log.Fatal(err)
+		}
+		social = map[string]authn.OAuthProvider{"apple": apple}
 	}
 	oneTapKeys := os.Getenv("CONFORMANCE_ONE_TAP_JWKS")
 	if oneTapKeys != "" {

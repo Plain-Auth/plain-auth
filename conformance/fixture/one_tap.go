@@ -12,19 +12,19 @@ import (
 	"github.com/Stonewrit/stonewrit-auth/providers"
 )
 
-type fixtureGoogleKeys string
+type fixtureProviderKeys struct{ url, document string }
 
-func (keys fixtureGoogleKeys) RoundTrip(r *http.Request) (*http.Response, error) {
-	if r.URL.String() != "https://www.googleapis.com/oauth2/v3/certs" {
+func (keys fixtureProviderKeys) RoundTrip(r *http.Request) (*http.Response, error) {
+	if r.Method != http.MethodGet || r.URL.String() != keys.url {
 		return nil, fmt.Errorf("unexpected signing keys endpoint")
 	}
-	return &http.Response{StatusCode: 200, Header: http.Header{"Content-Type": {"application/json"}}, Body: io.NopCloser(strings.NewReader(string(keys)))}, nil
+	return &http.Response{StatusCode: 200, Header: http.Header{"Content-Type": {"application/json"}}, Body: io.NopCloser(strings.NewReader(keys.document))}, nil
 }
 
 const fixtureAudience = "fixture.apps.googleusercontent.com"
 
 func oneTapFixtureProvider(keys string) map[string]authn.OAuthProvider {
-	p := providers.GoogleWithOptions(providers.GoogleOptions{ClientID: fixtureAudience, HTTPClient: &http.Client{Transport: fixtureGoogleKeys(keys)}})
+	p := providers.GoogleWithOptions(providers.GoogleOptions{ClientID: fixtureAudience, HTTPClient: &http.Client{Transport: fixtureProviderKeys{"https://www.googleapis.com/oauth2/v3/certs", keys}}})
 	return map[string]authn.OAuthProvider{"google": p}
 }
 func oneTapFixtureHandler(origin string, a *authn.Auth) http.Handler {
