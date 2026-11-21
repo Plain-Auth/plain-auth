@@ -1,0 +1,64 @@
+# Agent auth
+
+[Feature index](../README.md)
+
+## Agent Auth
+
+- [ ] Agent Auth
+  - [ ] Features
+    - [ ] OpenAPI adapter
+    - [ ] MCP adapter
+    - [ ] Discovery document at `/.well-known/agent-configuration`
+    - [ ] Capability listing, description, and execution (optional per-capability `location` URLs)
+    - [ ] Delegated and autonomous agent modes
+    - [ ] Device authorization and CIBA approval flows
+    - [ ] Short-lived signed JWTs with replay protection
+    - [ ] Audit/event hooks for approvals, grants, and execution
+  - [ ] How It Works
+  - [ ] Discovery
+    - [ ] `issuer`
+    - [ ] `endpoints`
+    - [ ] `default_location`
+  - [ ] OpenAPI Adapter
+    - [ ] Upstream authentication
+    - [ ] Default host capabilities
+    - [ ] Approval strength per method
+    - [ ] Per-capability `location`
+    - [ ] Using the pieces individually
+      - [ ] `fromOpenAPI(spec)`
+      - [ ] `createOpenAPIHandler(spec, opts)`
+  - [ ] Capabilities
+    - [ ] Define capabilities
+    - [ ] Default execute vs custom `location`
+      - [ ] No `location`
+      - [ ] With `location`
+    - [ ] Agent session outside `onExecute`
+      - [ ] `auth.api.getAgentSession({ headers })` runs that flow in-process and returns `AgentSession` or `null`. `verifyAgentRequest(request, auth)` does the same by forwarding the `Request`’s headers to `GET /agent/session` via `auth.handler`
+      - [ ] Checking grants and inputs
+      - [ ] What you get on the session
+      - [ ] `agentSession.user`
+      - [ ] `agentSession.agent`
+      - [ ] `agentSession.host`
+    - [ ] JWT audience (`aud`)
+      - [ ] No per-capability `location`
+      - [ ] With `location`
+      - [ ] Single capability in the JWT
+      - [ ] Multiple capabilities in the JWT
+    - [ ] Filter visible capabilities
+    - [ ] `onExecute`
+  - [ ] Approval Flows
+  - [ ] Events and Auditing
+  - [ ] Configuration
+    - [ ] `agentAuthOptionsType.providerName`
+    - [ ] `agentAuthOptionsType.providerDescription`
+    - [ ] `agentAuthOptionsType.modes`
+    - [ ] `agentAuthOptionsType.capabilities`
+    - [ ] `agentAuthOptionsType.onExecute`
+    - [ ] `agentAuthOptionsType.requireAuthForCapabilities`
+    - [ ] `agentAuthOptionsType.approvalMethods`
+    - [ ] `agentAuthOptionsType.resolveApprovalMethod`
+    - [ ] `agentAuthOptionsType.deviceAuthorizationPage`
+    - [ ] `agentAuthOptionsType.defaultHostCapabilities`
+    - [ ] `agentAuthOptionsType.allowDynamicHostRegistration`
+    - [ ] `agentAuthOptionsType.onEvent`
+    - [ ] `agentAuthOptionsType.trustProxy`

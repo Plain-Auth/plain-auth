@@ -16,7 +16,7 @@ Embed authentication in an existing Go API. Configure an auth instance, mount it
 - [x] Create organizations and accept scoped member invitations. [Organization tests](plugins/organization/organization_test.go)
 - [x] Verify Stripe webhook signatures and open an authenticated customer’s billing portal. [Webhook tests](plugins/stripe/stripe_test.go) · [Billing portal tests](plugins/stripe/portal_test.go)
 
-Single sign-on, SCIM provisioning, team administration, and Stripe checkout remain in development. The [complete checklist](docs/parity/README.md) records which parts of each integration have passing tests.
+Single sign-on, SCIM provisioning, team administration, and automated subscription renewals remain open. The [complete checklist](docs/parity/README.md) records which parts of each integration have passing tests.
 
 ## Run it locally
 
@@ -82,10 +82,13 @@ Go records the resolved commit in the consuming project’s `go.mod`. The module
 | Let users sign in through a single-use email link | [Magic links](docs/magic-link.md) |
 | Enroll an authenticator and manage backup codes | [Two-factor authentication](docs/2fa.md) |
 | Generate optional organization, team, passkey, rate-limit, subscription, and two-factor tables | [Schema profiles](docs/schema.md) |
+| Require a CAPTCHA verdict on selected routes | [CAPTCHA providers](docs/captcha.md) |
+| Issue signed service tokens and publish verification keys | [JWT and JWKS](docs/jwt.md) |
 | Check new passwords against a breached-password service | [Password screening](docs/password-checks.md) |
 | Configure profile updates, password reset, and verification email | [Account management and recovery](docs/account.md) |
 | Generate tables and migrate SQLite, PostgreSQL, or MySQL | [Databases and CLI](docs/databases.md) |
 | Create organizations, grant memberships, and accept invitations | [Organizations](docs/organizations.md) |
+| Start recurring Checkout and list subscriptions | [Subscription billing](docs/subscriptions.md) |
 | Add a custom endpoint, verify Stripe webhooks, or open the billing portal | [Plugins and Stripe](docs/plugins.md) |
 | Configure browser sign-in, native ID tokens and linked provider credentials | [Social sign-in](docs/social.md) |
 | Call the API from a Go service | [Go client](docs/client.md) |

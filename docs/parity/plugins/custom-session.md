@@ -7,6 +7,8 @@
 - [ ] Custom session endpoints, types and options
   - [ ] `customSessionClient`
   - [ ] `GET /get-session`
+    - [x] Project a verified session, preserve refresh headers, retain anonymous null and redact application errors ([test](../../../plugins/customsession/customsession_test.go#L18))
+    - [x] Read the same custom payload through the official JavaScript client ([test](../../../conformance/core.test.mjs#L383))
   - [ ] `CustomSessionPluginOptions`
     - [ ] `shouldMutateListDeviceSessionsEndpoint`
   - [ ] `customSession`

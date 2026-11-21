@@ -619,13 +619,21 @@
     "access",
     "additional-fields",
     "admin",
+    "agent-auth",
     "anonymous",
     "api-key",
+    "autumn",
     "bearer",
     "captcha",
+    "chargebee",
     "cimd",
+    "commet",
+    "community-plugins",
+    "creem",
     "custom-session",
     "device-authorization",
+    "dodopayments",
+    "dub",
     "electron",
     "email-otp",
     "expo",
@@ -646,6 +654,7 @@
     "organization",
     "passkey",
     "phone-number",
+    "polar",
     "scim",
     "siwe",
     "sso",
@@ -4513,6 +4522,216 @@
     "dodopayments",
     "dub",
     "polar"
+  ],
+  "communityExtensions": [
+    {
+      "name": "@dymo-api/better-auth",
+      "url": "https://github.com/TPEOficial/dymo-api-better-auth"
+    },
+    {
+      "name": "better-auth-harmony",
+      "url": "https://github.com/gekorm/better-auth-harmony/"
+    },
+    {
+      "name": "validation-better-auth",
+      "url": "https://github.com/Daanish2003/validation-better-auth"
+    },
+    {
+      "name": "better-auth-localization",
+      "url": "https://github.com/marcellosso/better-auth-localization"
+    },
+    {
+      "name": "better-auth-attio-plugin",
+      "url": "https://github.com/tobimori/better-auth-attio-plugin"
+    },
+    {
+      "name": "better-auth-cloudflare",
+      "url": "https://github.com/zpg6/better-auth-cloudflare"
+    },
+    {
+      "name": "expo-better-auth-passkey",
+      "url": "https://github.com/kevcube/expo-better-auth-passkey"
+    },
+    {
+      "name": "better-auth-credentials-plugin",
+      "url": "https://github.com/erickweil/better-auth-credentials-plugin"
+    },
+    {
+      "name": "better-auth-opaque",
+      "url": "https://github.com/TheUntraceable/better-auth-opaque"
+    },
+    {
+      "name": "better-auth-firebase-auth",
+      "url": "https://github.com/yultyyev/better-auth-firebase-auth"
+    },
+    {
+      "name": "better-auth-university",
+      "url": "https://github.com/LuyxLLC/better-auth-university"
+    },
+    {
+      "name": "better-auth-paystack",
+      "url": "https://github.com/alexasomba/better-auth-paystack"
+    },
+    {
+      "name": "better-auth-bachs",
+      "url": "https://github.com/grtsnx/better-auth-bachs"
+    },
+    {
+      "name": "better-auth-flutterwave",
+      "url": "https://github.com/alexasomba/better-auth-flutterwave"
+    },
+    {
+      "name": "better-auth-solana-payments",
+      "url": "https://github.com/alexasomba/better-auth-solana-payments"
+    },
+    {
+      "name": "better-auth-lark",
+      "url": "https://github.com/uselark/better-auth-lark"
+    },
+    {
+      "name": "stargate-better-auth",
+      "url": "https://github.com/neiii/stargate-better-auth"
+    },
+    {
+      "name": "@sequenzy/better-auth",
+      "url": "https://github.com/Sequenzy/sequenzy-better-auth"
+    },
+    {
+      "name": "better-auth-nostr",
+      "url": "https://github.com/leon-wbr/better-auth-nostr"
+    },
+    {
+      "name": "@ramiras123/better-auth-strapi",
+      "url": "https://github.com/Ramiras123/better-auth-strapi"
+    },
+    {
+      "name": "better-auth-razorpay",
+      "url": "https://github.com/iamjasonkendrick/better-auth-razorpay"
+    },
+    {
+      "name": "better-auth-payu",
+      "url": "https://github.com/iamjasonkendrick/better-auth-payu"
+    },
+    {
+      "name": "@agentaos/better-auth",
+      "url": "https://github.com/AgentaOS/agentaos/tree/main/packages/better-auth"
+    },
+    {
+      "name": "better-invite",
+      "url": "https://github.com/better-invite/better-invite"
+    },
+    {
+      "name": "better-auth-usos",
+      "url": "https://github.com/qamarq/better-auth-usos"
+    },
+    {
+      "name": "better-auth-devtools",
+      "url": "https://github.com/C-W-D-Harshit/better-auth-devtools"
+    },
+    {
+      "name": "better-auth-audit-logs",
+      "url": "https://github.com/ejirocodes/better-auth-audit-logs"
+    },
+    {
+      "name": "better-near-auth",
+      "url": "https://github.com/elliotBraem/better-near-auth"
+    },
+    {
+      "name": "ton-better-auth",
+      "url": "https://github.com/mhbdev/ton-better-auth"
+    },
+    {
+      "name": "@dbsc-toolkit/better-auth",
+      "url": "https://www.npmjs.com/package/@dbsc-toolkit/better-auth"
+    },
+    {
+      "name": "@marinedotsh/better-auth-referral",
+      "url": "https://github.com/marinedotsh/better-auth-referral"
+    },
+    {
+      "name": "@amank-root/better-auth-razorpay",
+      "url": "https://github.com/Amank-root/better-auth-razorpay"
+    },
+    {
+      "name": "better-auth-instagram",
+      "url": "https://github.com/rajatsandeepsen/better-auth-instagram"
+    },
+    {
+      "name": "better-auth-zoho",
+      "url": "https://github.com/rajatsandeepsen/better-auth-zoho"
+    },
+    {
+      "name": "better-auth-snapchat",
+      "url": "https://github.com/rajatsandeepsen/better-auth-snapchat"
+    },
+    {
+      "name": "BYO (byo-oss)",
+      "url": "https://byo.dev"
+    },
+    {
+      "name": "better-auth-email-challenge",
+      "url": "https://github.com/lapluviosilla/better-auth-email-challenge"
+    },
+    {
+      "name": "@better-geetest/better-auth-plugin-gt4",
+      "url": "https://github.com/typed-sigterm/better-geetest/tree/main/packages/better-auth-plugin-gt4"
+    },
+    {
+      "name": "better-auth-evp",
+      "url": "https://github.com/qamarq/better-auth-evp"
+    },
+    {
+      "name": "@eusend_dev/better-auth",
+      "url": "https://github.com/eusend-dev/eusend-better-auth"
+    },
+    {
+      "name": "@stellartools/betterauth-adapter",
+      "url": "https://github.com/payrouteshq/stellartools"
+    },
+    {
+      "name": "@octopi-ai/better-enrollment",
+      "url": "https://github.com/OctopiAI/better-enrollment"
+    },
+    {
+      "name": "good-webhooks",
+      "url": "https://github.com/pplytas/good-webhooks"
+    },
+    {
+      "name": "better-auth-saml-idp",
+      "url": "https://github.com/mmcintosh/better-auth-saml-idp"
+    },
+    {
+      "name": "better-auth-multi-tenant",
+      "url": "https://github.com/Weesofficial/better-auth-multi-tenant"
+    },
+    {
+      "name": "better-auth-captcha",
+      "url": "https://github.com/klynglabs/better-auth-captcha"
+    },
+    {
+      "name": "tauri-plugin-better-auth",
+      "url": "https://github.com/laakal/tauri-plugin-better-auth"
+    },
+    {
+      "name": "better-auth-loginllama",
+      "url": "https://github.com/joshghent/better-auth-loginllama"
+    },
+    {
+      "name": "better-auth-waitlist",
+      "url": "https://github.com/slargat/better-auth-waitlist"
+    },
+    {
+      "name": "better-auth-trustware",
+      "url": "https://github.com/danielmerja/better-auth-trustware"
+    },
+    {
+      "name": "@mockatoo/connect-better-auth",
+      "url": "https://github.com/mockatoo/connectors/tree/main/packages/connect-better-auth"
+    },
+    {
+      "name": "@mailkite/better-auth-inbox",
+      "url": "https://github.com/mailkite/mailkite-better-auth-inbox"
+    }
   ],
   "hostedServices": [
     "docs/content/docs/infrastructure/getting-started.mdx",

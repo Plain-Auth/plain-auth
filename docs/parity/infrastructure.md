@@ -1,0 +1,552 @@
+# Managed infrastructure
+
+[Feature index](README.md)
+
+## Getting Started
+
+- [ ] Getting Started
+  - [ ] Environment Variables
+  - [ ] Server Setup
+    - [ ] Basic Configuration
+  - [ ] Client Setup
+    - [ ] Basic Client Configuration
+    - [ ] Expo and React Native
+    - [ ] Plugin Overview
+      - [ ] `dash()`
+      - [ ] `sentinel()`
+
+## authentication Infrastructure
+
+- [ ] authentication Infrastructure
+  - [ ] Key Features
+
+## Audit Logs
+
+- [ ] Audit Logs
+  - [ ] How Audit Logs Are Collected
+  - [ ] Tracked Events
+    - [ ] `user_created`
+    - [ ] `profile_updated`
+    - [ ] `profile_image_updated`
+    - [ ] `email_verified`
+    - [ ] `email_changed`
+    - [ ] `user_banned`
+    - [ ] `user_unbanned`
+    - [ ] `user_role_updated`
+    - [ ] `user_deleted`
+    - [ ] `anonymous_user_converted`
+    - [ ] `two_factor_enabled`
+    - [ ] `two_factor_disabled`
+    - [ ] `two_factor_verified`
+    - [ ] `user_signed_in`
+    - [ ] `user_signed_out`
+    - [ ] `user_sign_in_failed`
+    - [ ] `session_created`
+    - [ ] `session_revoked`
+    - [ ] `all_sessions_revoked`
+    - [ ] `user_impersonated`
+    - [ ] `user_impersonated_stopped`
+    - [ ] `account_linked`
+    - [ ] `account_unlinked`
+    - [ ] `password_changed`
+    - [ ] `password_reset_requested`
+    - [ ] `password_reset_completed`
+    - [ ] `email_verification_sent`
+    - [ ] `organization_created`
+    - [ ] `organization_updated`
+    - [ ] `organization_deleted`
+    - [ ] `organization_member_added`
+    - [ ] `organization_member_removed`
+    - [ ] `organization_member_role_updated`
+    - [ ] `organization_member_invited`
+    - [ ] `organization_member_invite_accepted`
+    - [ ] `organization_member_invite_rejected`
+    - [ ] `organization_member_invite_canceled`
+    - [ ] `organization_team_created`
+    - [ ] `organization_team_updated`
+    - [ ] `organization_team_deleted`
+    - [ ] `organization_team_member_added`
+    - [ ] `organization_team_member_removed`
+    - [ ] `security_check`
+    - [ ] `security_signal`
+  - [ ] Fetching Audit Logs
+    - [ ] Client setup
+    - [ ] Get current user's audit logs
+      - [ ] Query parameters
+        - [ ] `limit`
+        - [ ] `offset`
+        - [ ] `organizationId`
+        - [ ] `identifier`
+        - [ ] `eventType`
+        - [ ] `userId`
+        - [ ] `user`
+        - [ ] `session`
+      - [ ] Basic query
+      - [ ] Filter by event type
+      - [ ] Filter by organization
+      - [ ] Combined filters
+      - [ ] Pagination
+    - [ ] Get all audit logs
+      - [ ] Query parameters
+        - [ ] `limit`
+        - [ ] `offset`
+        - [ ] `organizationId`
+        - [ ] `userId`
+        - [ ] `eventType`
+        - [ ] `identifier`
+        - [ ] `session`
+      - [ ] Basic query
+      - [ ] Filter by organization
+      - [ ] Filter by user
+      - [ ] Filter by event type
+      - [ ] Combined filters
+      - [ ] Pagination
+
+## Dashboard
+
+- [ ] Dashboard
+  - [ ] What the Dashboard Plugin Enables
+    - [ ] User management
+    - [ ] Session monitoring
+    - [ ] Organization overview
+    - [ ] Analytics
+    - [ ] Audit logs
+  - [ ] Compatibility
+    - [ ] 0.3.x
+    - [ ] 0.4.x
+  - [ ] Configuration Options
+    - [ ] DashOptions
+      - [ ] `apiUrl`
+      - [ ] `kvUrl`
+      - [ ] `apiKey`
+      - [ ] `apiOptions`
+      - [ ] `kvOptions`
+      - [ ] `apiTimeout`
+      - [ ] `kvTimeout`
+      - [ ] `activityTracking`
+      - [ ] `managedDirectorySync`
+    - [ ] Activity Tracking
+      - [ ] Schema Changes
+  - [ ] Managed Directory Sync
+    - [ ] `scim({ managedConnections })`
+    - [ ] `dash({ managedDirectorySync })`
+    - [ ] Enable managed directory sync
+    - [ ] Membership projection
+      - [ ] `membershipProjection.enabled`
+      - [ ] `membershipProjection.role`
+    - [ ] SSO pairing
+      - [ ] `ssoPairing`
+    - [ ] Field projection
+      - [ ] `fieldProjection.enabled`
+      - [ ] Projectable fields
+        - [ ] `user`
+        - [ ] `member`
+      - [ ] SCIM attribute catalog
+        - [ ] `userName`
+        - [ ] `primaryEmail` / `emails.primary`
+        - [ ] `displayName`
+        - [ ] `externalId`
+        - [ ] `name.formatted` / `name.givenName` / `name.familyName`
+        - [ ] `title`
+        - [ ] `userType`
+        - [ ] `preferredLanguage` / `locale` / `timezone`
+        - [ ] `photos.primary`
+        - [ ] `enterprise.employeeNumber`
+        - [ ] `enterprise.costCenter` / `enterprise.organization` / `enterprise.division` / `enterprise.department`
+      - [ ] Projection modes
+        - [ ] `create-only`
+        - [ ] `reconcile`
+    - [ ] Options reference
+      - [ ] `enabled`
+      - [ ] `ssoPairing`
+      - [ ] `membershipProjection`
+      - [ ] `membershipProjection.enabled`
+      - [ ] `membershipProjection.role`
+      - [ ] `fieldProjection`
+      - [ ] `fieldProjection.enabled`
+    - [ ] Database schema
+      - [ ] `directorySyncConnection`
+        - [ ] `organizationId`
+        - [ ] `providerId`
+        - [ ] `aliasKey`
+        - [ ] `provisioningDomainId`
+        - [ ] `activeOrganizationKey`
+        - [ ] `connectionId`
+        - [ ] `creationRequestId`
+        - [ ] `status`
+        - [ ] `revision`
+        - [ ] `createdAt`
+        - [ ] `createdByActorId`
+        - [ ] `updatedAt`
+        - [ ] `lastActorId`
+        - [ ] `ssoProviderId`
+        - [ ] `ssoProviderRecordId`
+        - [ ] `activeSsoProviderKey`
+        - [ ] `serializedSsoPairing`
+        - [ ] `pairingEnforced`
+        - [ ] `unpairedAt`
+        - [ ] `unpairedBy`
+        - [ ] `decommissionStartedAt`
+        - [ ] `decommissionedAt`
+        - [ ] `lastError`
+      - [ ] `directorySyncMembershipProvenance`
+        - [ ] `membershipKey`
+        - [ ] `organizationId`
+        - [ ] `userId`
+        - [ ] `memberId`
+        - [ ] `ownership`
+        - [ ] `provisioningDomainId`
+        - [ ] `createdAt`
+        - [ ] `updatedAt`
+      - [ ] `directorySyncFieldMapping`
+        - [ ] `mappingKey`
+        - [ ] `provisioningDomainId`
+        - [ ] `organizationId`
+        - [ ] `entity`
+        - [ ] `targetField`
+        - [ ] `scimSource`
+        - [ ] `scimPath`
+        - [ ] `defaultValue`
+        - [ ] `enabled`
+        - [ ] `createdAt`
+        - [ ] `updatedAt`
+        - [ ] `createdByActorId`
+        - [ ] `lastActorId`
+      - [ ] `directorySyncFieldProjectionMode`
+        - [ ] `modeKey`
+        - [ ] `provisioningDomainId`
+        - [ ] `organizationId`
+        - [ ] `entity`
+        - [ ] `mode`
+        - [ ] `createdAt`
+        - [ ] `updatedAt`
+        - [ ] `lastActorId`
+      - [ ] `directorySyncFieldProvenance`
+        - [ ] `provenanceKey`
+        - [ ] `provisioningDomainId`
+        - [ ] `entity`
+        - [ ] `targetId`
+        - [ ] `appliedAt`
+        - [ ] `createdAt`
+        - [ ] `updatedAt`
+  - [ ] Event Tracking
+    - [ ] User Events
+      - [ ] `user_created`
+      - [ ] `profile_updated`
+      - [ ] `profile_image_updated`
+      - [ ] `email_verified`
+      - [ ] `email_changed`
+      - [ ] `user_banned`
+      - [ ] `user_unbanned`
+      - [ ] `user_role_updated`
+      - [ ] `user_deleted`
+      - [ ] `anonymous_user_converted`
+      - [ ] `two_factor_enabled`
+      - [ ] `two_factor_disabled`
+      - [ ] `two_factor_verified`
+    - [ ] Session Events
+      - [ ] `user_signed_in`
+      - [ ] `user_signed_out`
+      - [ ] `user_sign_in_failed`
+      - [ ] `session_created`
+      - [ ] `session_revoked`
+      - [ ] `all_sessions_revoked`
+      - [ ] `user_impersonated`
+      - [ ] `user_impersonated_stopped`
+    - [ ] Account Events
+      - [ ] `account_linked`
+      - [ ] `account_unlinked`
+      - [ ] `password_changed`
+    - [ ] Verification Events
+      - [ ] `password_reset_requested`
+      - [ ] `password_reset_completed`
+      - [ ] `email_verification_sent`
+    - [ ] Organization Events
+      - [ ] `organization_created`
+      - [ ] `organization_updated`
+      - [ ] `organization_deleted`
+      - [ ] `organization_member_added`
+      - [ ] `organization_member_removed`
+      - [ ] `organization_member_role_updated`
+      - [ ] `organization_member_invited`
+      - [ ] `organization_member_invite_accepted`
+      - [ ] `organization_member_invite_rejected`
+      - [ ] `organization_member_invite_canceled`
+      - [ ] `organization_team_created`
+      - [ ] `organization_team_updated`
+      - [ ] `organization_team_deleted`
+      - [ ] `organization_team_member_added`
+      - [ ] `organization_team_member_removed`
+  - [ ] Dashboard Endpoints
+    - [ ] Config
+      - [ ] `/dash/config`
+      - [ ] `/dash/validate`
+    - [ ] User Management
+      - [ ] `/dash/list-users`
+      - [ ] `/dash/export-users`
+      - [ ] `/dash/user`
+      - [ ] `/dash/user-organizations`
+      - [ ] `/dash/create-user`
+      - [ ] `/dash/update-user`
+      - [ ] `/dash/delete-user`
+      - [ ] `/dash/delete-many-users`
+      - [ ] `/dash/ban-user`
+      - [ ] `/dash/ban-many-users`
+      - [ ] `/dash/unban-user`
+      - [ ] `/dash/set-user-role`
+      - [ ] `/dash/set-password`
+      - [ ] `/dash/unlink-account`
+      - [ ] `/dash/impersonate-user`
+      - [ ] `/dash/send-verification-email`
+      - [ ] `/dash/send-many-verification-emails`
+      - [ ] `/dash/send-reset-password-email`
+    - [ ] Session Management
+      - [ ] `/dash/sessions/revoke`
+      - [ ] `/dash/sessions/revoke-all`
+      - [ ] `/dash/sessions/revoke-many`
+    - [ ] Organization Management
+      - [ ] `/dash/list-organizations`
+      - [ ] `/dash/export-organizations`
+      - [ ] `/dash/organization/options`
+      - [ ] `/dash/organization/:id`
+      - [ ] `/dash/organization/create`
+      - [ ] `/dash/organization/update`
+      - [ ] `/dash/organization/delete`
+      - [ ] `/dash/organization/delete-many`
+      - [ ] `/dash/organization/:id/members`
+      - [ ] `/dash/organization/add-member`
+      - [ ] `/dash/organization/remove-member`
+      - [ ] `/dash/organization/update-member-role`
+      - [ ] `/dash/organization/update-member`
+    - [ ] Team Management
+      - [ ] `/dash/organization/:id/teams`
+      - [ ] `/dash/organization/create-team`
+      - [ ] `/dash/organization/update-team`
+      - [ ] `/dash/organization/delete-team`
+      - [ ] `/dash/organization/:orgId/teams/:teamId/members`
+      - [ ] `/dash/organization/add-team-member`
+      - [ ] `/dash/organization/remove-team-member`
+    - [ ] Invitation Management
+      - [ ] `/dash/organization/:id/invitations`
+      - [ ] `/dash/organization/invite-member`
+      - [ ] `/dash/organization/cancel-invitation`
+      - [ ] `/dash/organization/resend-invitation`
+      - [ ] `/dash/organization/check-user-by-email`
+      - [ ] `/dash/accept-invitation`
+      - [ ] `/dash/complete-invitation`
+      - [ ] `/dash/complete-invitation-handoff`
+      - [ ] `/dash/complete-invitation-social`
+      - [ ] `/dash/check-user-exists`
+    - [ ] SSO Management
+      - [ ] `/dash/sso/connection-count`
+      - [ ] `/dash/organization/:id/sso-providers`
+      - [ ] `/dash/organization/:id/sso-provider/create`
+      - [ ] `/dash/organization/:id/sso-provider/update`
+      - [ ] `/dash/organization/:id/sso-provider/delete`
+      - [ ] `/dash/organization/:id/sso-provider/request-verification-token`
+      - [ ] `/dash/organization/:id/sso-provider/verify-domain`
+      - [ ] `/dash/organization/:id/sso-provider/mark-domain-verified`
+    - [ ] Directory Sync
+      - [ ] `/dash/directory-sync/connection-count`
+      - [ ] `/dash/organization/:id/directories`
+      - [ ] `/dash/organization/directory/create`
+      - [ ] `/dash/organization/directory/delete`
+      - [ ] `/dash/organization/directory/regenerate-token`
+      - [ ] `/dash/organization/:id/directories/:providerId`
+      - [ ] `/dash/organization/:id/directories/:providerId/credentials/rotate`
+      - [ ] `/dash/organization/:id/directories/:providerId/credentials/:credentialId/revoke`
+      - [ ] `/dash/organization/:id/directories/:providerId/events`
+      - [ ] `/dash/organization/:id/directories/:providerId/decommission`
+      - [ ] `/dash/organization/:id/directories/:providerId/unpair`
+      - [ ] `/dash/organization/:id/directory-field-mapping-options`
+      - [ ] `/dash/organization/:id/directories/:providerId/field-mappings`
+    - [ ] Events & Audit Logs
+      - [ ] `/events/list`
+      - [ ] `/events/audit-logs`
+      - [ ] `/events/all-audit-logs`
+      - [ ] `/events/types`
+    - [ ] Analytics
+      - [ ] `/dash/user-stats`
+      - [ ] `/dash/user-graph-data`
+      - [ ] `/dash/user-retention-data`
+    - [ ] Two-Factor Management
+      - [ ] `/dash/enable-two-factor`
+      - [ ] `/dash/complete-two-factor-setup`
+      - [ ] `/dash/disable-two-factor`
+      - [ ] `/dash/view-two-factor-totp-uri`
+      - [ ] `/dash/view-backup-codes`
+      - [ ] `/dash/generate-backup-codes`
+  - [ ] Client Integration
+    - [ ] dashClient()
+      - [ ] Note
+    - [ ] Configuration
+    - [ ] Get the current user's audit logs
+      - [ ] Basic query
+    - [ ] Get all audit logs
+      - [ ] Basic query
+  - [ ] Best Practices
+    - [ ] Always set an API key
+    - [ ] Use activity tracking wisely
+    - [ ] Monitor audit log retention
+    - [ ] Secure your endpoints
+
+## Security Plugin (sentinel)
+
+- [ ] Security Plugin (sentinel)
+  - [ ] Configuration Options
+    - [ ] SentinelOptions
+      - [ ] `apiUrl`
+      - [ ] `kvUrl`
+      - [ ] `apiKey`
+      - [ ] `apiOptions`
+      - [ ] `kvOptions`
+      - [ ] `apiTimeout`
+      - [ ] `kvTimeout`
+      - [ ] `sentinelHeaders`
+      - [ ] `security`
+    - [ ] SecurityOptions
+  - [ ] Security Features
+    - [ ] Credential Stuffing Protection
+      - [ ] How it works:
+    - [ ] Impossible Travel Detection
+    - [ ] Free Trial Abuse Prevention
+      - [ ] How it works:
+    - [ ] Compromised Password Detection
+    - [ ] Stale Account Monitoring
+      - [ ] Notifications include:
+    - [ ] Geo-Blocking
+    - [ ] Bot Blocking
+    - [ ] Suspicious IP Detection
+    - [ ] Velocity / Rate Limiting
+    - [ ] Email Validation
+      - [ ] Strictness levels:
+      - [ ] `low`
+      - [ ] `medium`
+      - [ ] `high`
+    - [ ] Email normalization
+  - [ ] Protocol headers (`sentinelHeaders`)
+    - [ ] Request id
+    - [ ] Visitor id
+    - [ ] PoW challenge
+    - [ ] PoW reason
+    - [ ] PoW solution
+    - [ ] Cross-origin CORS
+      - [ ] Legacy client
+      - [ ] Modern client
+      - [ ] Server `"legacy"`
+      - [ ] Server `"modern"`
+  - [ ] Proof-of-Work Challenges
+    - [ ] How PoW Works
+    - [ ] Challenge Difficulty
+  - [ ] Client Integration
+    - [ ] sentinelClient()
+    - [ ] Configuration
+      - [ ] `identifyUrl`
+      - [ ] `identifyOptions`
+      - [ ] `sentinelHeaders`
+      - [ ] `autoSolveChallenge`
+      - [ ] `kvTimeout`
+      - [ ] `onChallengeReceived`
+      - [ ] `onChallengeSolved`
+      - [ ] `onChallengeFailed`
+    - [ ] Browser Fingerprinting
+    - [ ] PoW Solution Header
+    - [ ] Expo and React Native
+      - [ ] Example
+      - [ ] Example
+      - [ ] `sentinelNativeClient` options
+        - [ ] `identifyUrl`
+        - [ ] `identifyOptions`
+        - [ ] `sentinelHeaders`
+        - [ ] `kvTimeout`
+        - [ ] `autoSolveChallenge`
+        - [ ] `onChallengeReceived`
+        - [ ] `onChallengeSolved`
+        - [ ] `onChallengeFailed`
+        - [ ] `storage`
+  - [ ] Security Events
+    - [ ] `security_check`
+    - [ ] `security_signal`
+  - [ ] Complete Example
+  - [ ] Best Practices
+    - [ ] Start with logging
+    - [ ] Tune thresholds
+    - [ ] Use challenges before blocks
+    - [ ] Enable client-side auto-solve
+    - [ ] Monitor security events
+    - [ ] Set up admin notifications
+
+## Email Service
+
+- [ ] Email Service
+  - [ ] Overview
+  - [ ] Use with authentication
+  - [ ] Available Templates
+    - [ ] verify-email
+    - [ ] reset-password
+    - [ ] change-email
+    - [ ] sign-in-otp
+    - [ ] verify-email-otp
+    - [ ] reset-password-otp
+    - [ ] magic-link
+    - [ ] two-factor
+    - [ ] invitation
+    - [ ] application-invite
+    - [ ] delete-account
+    - [ ] stale-account-user
+    - [ ] stale-account-admin
+  - [ ] Configuration
+    - [ ] `apiKey`
+    - [ ] `apiUrl`
+    - [ ] `apiOptions`
+    - [ ] `apiTimeout`
+  - [ ] API Reference
+    - [ ] sendEmail
+      - [ ] `template`
+      - [ ] `to`
+      - [ ] `variables`
+      - [ ] `subject`
+      - [ ] `clientIp`
+    - [ ] createEmailSender
+    - [ ] sendBulkEmails
+      - [ ] `template`
+      - [ ] `emails`
+      - [ ] `subject`
+      - [ ] `variables`
+      - [ ] `clientIp`
+    - [ ] Results
+  - [ ] Plan Requirements
+    - [ ] Transactional Email
+
+## SMS Service
+
+- [ ] SMS Service
+  - [ ] Overview
+  - [ ] Use with authentication
+  - [ ] Available Templates
+    - [ ] phone-verification
+      - [ ] Example message:
+    - [ ] two-factor
+      - [ ] Example message:
+    - [ ] sign-in-otp
+      - [ ] Example message:
+    - [ ] Default (No Template)
+      - [ ] Example message:
+  - [ ] Phone Number Format
+    - [ ] Examples:
+    - [ ] Common mistakes:
+  - [ ] Configuration
+    - [ ] `apiKey`
+    - [ ] `apiUrl`
+    - [ ] `apiOptions`
+    - [ ] `apiTimeout`
+  - [ ] API Reference
+    - [ ] sendSMS
+      - [ ] `to`
+      - [ ] `code`
+      - [ ] `template`
+      - [ ] `clientIp`
+    - [ ] createSMSSender
+    - [ ] Results
+  - [ ] Plan Requirements
+    - [ ] Transactional SMS

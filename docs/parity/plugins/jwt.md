@@ -7,15 +7,23 @@
 - [ ] JSON Web Tokens endpoints, types and options
   - [ ] `jwtClient`
   - [ ] `GET /jwks (configurable)`
+    - [x] Publish public keys to anonymous clients at a configured path and serialize concurrent initialization ([test](../../../adapters/sqlstore/jwt_test.go#L91))
+    - [x] Retain rotated public keys through the grace interval and remove retired keys from publication ([test](../../../adapters/sqlstore/jwt_test.go#L159))
   - [ ] `GET /token`
+    - [x] Require an authenticated session and stop issuing tokens for a revoked session ([test](../../../adapters/sqlstore/jwt_test.go#L193))
+    - [x] Verify Ed25519 signatures and configured issuer, audience and expiration independently ([test](../../../adapters/sqlstore/jwt_test.go#L122))
+    - [x] Sign using encrypted keys created in either runtime and validate through JOSE ([test](../../../conformance/core.test.mjs#L394))
   - [ ] `signJWT (server API only)`
   - [ ] `verifyJWT (server API only)`
   - [ ] `jwt`
   - [ ] `JwtOptions`
     - [ ] `sessionCookieCache`
     - [ ] `jwks`
+      - [x] Generate ES256 keys and validate their signatures with a separate verifier ([test](../../../adapters/sqlstore/jwt_test.go#L183))
     - [ ] `jwt`
+      - [x] Use custom application claims while binding the token subject to the authenticated user ([test](../../../adapters/sqlstore/jwt_test.go#L187))
     - [ ] `disableSettingJwtHeader`
+      - [x] Suppress the assertion on session retrieval when requested ([test](../../../adapters/sqlstore/jwt_test.go#L140))
     - [ ] `schema`
     - [ ] `adapter`
   - [ ] `JWKOptions`

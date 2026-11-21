@@ -16,6 +16,7 @@ These checks exercise the Go HTTP client, router mounts and SQL drivers.
   - [x] Accept an email proof signed by a retained key and reject it after retirement ([test](../../env_test.go#L119))
   - [x] Select the production rate limit by default and honor an explicit override ([test](../../env_test.go#L100))
   - [x] Match host secret precedence, the active rotation key, URL aliases, and trusted origins across runtimes ([test](../../conformance/env.test.mjs#L13))
+  - [x] Resolve the native client base URL and its mount path from environment settings ([test](../../client/environment_test.go#L17))
 - [ ] HTTP framework mounts
   - [x] ServeMux signup, session lookup and sign-out with multiple cookies ([test](../../integrations/routers/routers_test.go#L37))
   - [x] chi signup, session lookup and sign-out with multiple cookies ([test](../../integrations/routers/routers_test.go#L38))

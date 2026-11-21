@@ -95,7 +95,7 @@
       "marker": "if err := runCommand(\"generate\", \"--dialect\", dialect)"
     },
     {
-      "label": "Emit exact SQL for all 144 supported dialect and profile combinations",
+      "label": "Emit exact SQL for all supported dialect and profile combinations",
       "test": "conformance/schema.test.mjs",
       "marker": "test(\"the CLI emits"
     }
@@ -143,6 +143,11 @@
       "label": "Verify the webhook signature and dispatch a local event to the application callback",
       "test": "plugins/stripe/stripe_test.go",
       "marker": "func TestSignedWebhookDelivery("
+    },
+    {
+      "label": "Reconcile signed checkout completion and expiration and preserve the new attempt after replaying an older event",
+      "test": "adapters/sqlstore/subscriptions_test.go",
+      "marker": "late expiry removed the replacement"
     }
   ],
   "docs/content/docs/adapters/sqlite.mdx#L72": [
@@ -592,6 +597,11 @@
       "label": "Match host secret precedence, the active rotation key, URL aliases, and trusted origins across runtimes",
       "test": "conformance/env.test.mjs",
       "marker": "test(\"host environment selects"
+    },
+    {
+      "label": "Resolve the native client base URL and its mount path from environment settings",
+      "test": "client/environment_test.go",
+      "marker": "func TestClientEnvironmentURL("
     }
   ],
   "docs/content/docs/reference/options.mdx#L22": [
@@ -1417,6 +1427,237 @@
       "label": "Scope credentials to the current account and handle revocation or provider errors on SQLite, MySQL and PostgreSQL",
       "test": "adapters/sqlstore/provider_credentials_test.go",
       "marker": "func TestProviderCredentialRoutes("
+    }
+  ],
+  "plugin/custom-session/GET /get-session": [
+    {
+      "label": "Project a verified session, preserve refresh headers, retain anonymous null and redact application errors",
+      "test": "plugins/customsession/customsession_test.go",
+      "marker": "func TestProjectedSessionHTTP("
+    },
+    {
+      "label": "Read the same custom payload through the official JavaScript client",
+      "test": "conformance/core.test.mjs",
+      "marker": "test(\"the official client reads the configured custom session response\""
+    }
+  ],
+  "plugin/jwt/GET /token": [
+    {
+      "label": "Require an authenticated session and stop issuing tokens for a revoked session",
+      "test": "adapters/sqlstore/jwt_test.go",
+      "marker": "revoked session issued another assertion"
+    },
+    {
+      "label": "Verify Ed25519 signatures and configured issuer, audience and expiration independently",
+      "test": "adapters/sqlstore/jwt_test.go",
+      "marker": "independent verifier rejected signed JWT"
+    },
+    {
+      "label": "Sign using encrypted keys created in either runtime and validate through JOSE",
+      "test": "conformance/core.test.mjs",
+      "marker": "test(\"shared SQLite signs with either runtime"
+    }
+  ],
+  "plugin/jwt/GET /jwks (configurable)": [
+    {
+      "label": "Publish public keys to anonymous clients at a configured path and serialize concurrent initialization",
+      "test": "adapters/sqlstore/jwt_test.go",
+      "marker": "invalid public key projection"
+    },
+    {
+      "label": "Retain rotated public keys through the grace interval and remove retired keys from publication",
+      "test": "adapters/sqlstore/jwt_test.go",
+      "marker": "expired key remained published"
+    }
+  ],
+  "plugin-symbol/jwt/JwtOptions/jwt": [
+    {
+      "label": "Use custom application claims while binding the token subject to the authenticated user",
+      "test": "adapters/sqlstore/jwt_test.go",
+      "marker": "custom payload or subject binding changed"
+    }
+  ],
+  "plugin-symbol/jwt/JwtOptions/jwks": [
+    {
+      "label": "Generate ES256 keys and validate their signatures with a separate verifier",
+      "test": "adapters/sqlstore/jwt_test.go",
+      "marker": "independent verifier rejected ES256"
+    }
+  ],
+  "plugin-symbol/jwt/JwtOptions/disableSettingJwtHeader": [
+    {
+      "label": "Suppress the assertion on session retrieval when requested",
+      "test": "adapters/sqlstore/jwt_test.go",
+      "marker": "disabled JWT header emitted"
+    }
+  ],
+  "plugin/stripe/POST /subscription/upgrade": [
+    {
+      "label": "Reserve an owner-scoped checkout, send the configured recurring price and return the same checkout on retries",
+      "test": "adapters/sqlstore/subscriptions_test.go",
+      "marker": "checkout retry or configured price was incorrect"
+    },
+    {
+      "label": "Reuse an existing Stripe customer when starting a monthly subscription",
+      "test": "adapters/sqlstore/subscriptions_test.go",
+      "marker": "monthly checkout failed to reuse the linked customer"
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L221": [
+    {
+      "label": "Reserve an owner-scoped checkout, send the configured recurring price and return the same checkout on retries",
+      "test": "adapters/sqlstore/subscriptions_test.go",
+      "marker": "checkout retry or configured price was incorrect"
+    },
+    {
+      "label": "Reuse an existing Stripe customer when starting a monthly subscription",
+      "test": "adapters/sqlstore/subscriptions_test.go",
+      "marker": "monthly checkout failed to reuse the linked customer"
+    }
+  ],
+  "plugin/stripe/GET /subscription/list": [
+    {
+      "label": "List only the authenticated owner’s active or trialing plans and configured price IDs",
+      "test": "adapters/sqlstore/subscriptions_test.go",
+      "marker": "another account's subscription was listed"
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L362": [
+    {
+      "label": "List only the authenticated owner’s active or trialing plans and configured price IDs",
+      "test": "adapters/sqlstore/subscriptions_test.go",
+      "marker": "another account's subscription was listed"
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L145": [
+    {
+      "label": "Bind or reuse the authenticated account’s customer and roll back conflicting customer mappings",
+      "test": "adapters/sqlstore/subscriptions_test.go",
+      "marker": "duplicate customer was bound"
+    }
+  ],
+  "plugin/stripe/POST /stripe/webhook": [
+    {
+      "label": "Reject foreign or unsigned checkout receipts and apply completion once",
+      "test": "adapters/sqlstore/subscriptions_test.go",
+      "marker": "receipt retry repeated side effects"
+    }
+  ],
+  "plugin-symbol/captcha/captcha": [
+    {
+      "label": "Verify the four supported challenge-provider protocols against pinned local fixtures",
+      "test": "conformance/captcha.test.mjs",
+      "marker": "test(\"CAPTCHA verification protocols"
+    }
+  ],
+  "docs/content/docs/plugins/captcha.mdx#L80": [
+    {
+      "label": "Verify the challenge, HTTP request parameters and provider responses using local transports",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "func TestProviderContracts("
+    }
+  ],
+  "docs/content/docs/plugins/captcha.mdx#L82": [
+    {
+      "label": "Evaluate a host-supplied BotID verdict and a custom policy",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "func TestBotID("
+    }
+  ],
+  "docs/content/docs/plugins/captcha.mdx#L132": [
+    {
+      "label": "Apply endpoint matching to HTTP routes and honor caller cancellation",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "func TestPathsAndNativeMethods("
+    },
+    {
+      "label": "Enforce configured peer privacy and reject provider errors",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "func TestPeerPrivacyAndServiceErrors("
+    }
+  ],
+  "plugin-symbol/captcha/GoogleRecaptchaOptions/minScore": [
+    {
+      "label": "Exercise the configured minScore in the provider transport contract",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "func TestProviderContracts("
+    }
+  ],
+  "plugin-symbol/captcha/GoogleRecaptchaOptions/expectedAction": [
+    {
+      "label": "Exercise the configured expectedAction in the provider transport contract",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "func TestProviderContracts("
+    }
+  ],
+  "plugin-symbol/captcha/GoogleRecaptchaOptions/allowedHostnames": [
+    {
+      "label": "Exercise the configured allowedHostnames in the provider transport contract",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "func TestProviderContracts("
+    }
+  ],
+  "plugin-symbol/captcha/CloudflareTurnstileOptions/expectedAction": [
+    {
+      "label": "Exercise the configured expectedAction in the provider transport contract",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "func TestProviderContracts("
+    }
+  ],
+  "plugin-symbol/captcha/CloudflareTurnstileOptions/allowedHostnames": [
+    {
+      "label": "Exercise the configured allowedHostnames in the provider transport contract",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "func TestProviderContracts("
+    }
+  ],
+  "plugin-symbol/captcha/HCaptchaOptions/siteKey": [
+    {
+      "label": "Exercise the configured siteKey in the provider transport contract",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "func TestProviderContracts("
+    }
+  ],
+  "plugin-symbol/captcha/CaptchaFoxOptions/siteKey": [
+    {
+      "label": "Exercise the configured siteKey in the provider transport contract",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "func TestProviderContracts("
+    }
+  ],
+  "plugin-symbol/captcha/BaseCaptchaOptions/secretKey": [
+    {
+      "label": "Exercise the configured secretKey in the provider transport contract",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "func TestProviderContracts("
+    }
+  ],
+  "plugin-symbol/captcha/BaseCaptchaOptions/siteVerifyURLOverride": [
+    {
+      "label": "Exercise the configured siteVerifyURLOverride in the provider transport contract",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "func TestProviderContracts("
+    }
+  ],
+  "plugin-symbol/captcha/BaseCaptchaOptions/endpoints": [
+    {
+      "label": "Apply configured paths, wildcard matching and mount normalization",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "func TestPathsAndNativeMethods("
+    }
+  ],
+  "plugin-symbol/captcha/VercelBotIdOptions/checkBotId": [
+    {
+      "label": "Evaluate the host’s BotID callback and acceptance policy",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "func TestBotID("
+    }
+  ],
+  "plugin-symbol/captcha/VercelBotIdOptions/validateRequest": [
+    {
+      "label": "Evaluate the host’s BotID callback and acceptance policy",
+      "test": "plugins/captcha/captcha_test.go",
+      "marker": "func TestBotID("
     }
   ]
 }

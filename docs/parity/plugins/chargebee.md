@@ -1,0 +1,165 @@
+# Chargebee
+
+[Feature index](../README.md)
+
+## Chargebee
+
+- [ ] Chargebee
+  - [ ] Features
+    - [ ] Create Chargebee customers automatically when users sign up
+    - [ ] Manage subscription plans and pricing (item-based
+    - [ ] Process subscription lifecycle events (creation, updates, cancellations)
+    - [ ] Handle Chargebee webhooks securely with Basic Auth verification
+    - [ ] Expose subscription data to your application
+    - [ ] Support for trial periods and multi-item subscriptions
+    - [ ] Automatic trial abuse prevention - Users can only get one trial per account across all plans
+    - [ ] Flexible reference system to associate subscriptions with users or organizations
+    - [ ] Team subscription support with seats management
+    - [ ] Hosted checkout and portal via Chargebee Hosted Pages
+    - [ ] Self-service billing portal for managing payment methods, invoices, and subscriptions
+  - [ ] Usage
+    - [ ] Customer Management
+      - [ ] Passing Additional Customer Params
+    - [ ] Subscription Management
+      - [ ] Defining Plans
+        - [ ] Static plans:
+        - [ ] Dynamic plans from database (Recommended):
+      - [ ] Creating a Subscription
+        - [ ] `POST /subscription/create`
+          - [ ] Parameter `itemPriceId`
+          - [ ] Parameter `referenceId` (optional)
+          - [ ] Parameter `metadata` (optional)
+          - [ ] Parameter `customerType` (optional)
+          - [ ] Parameter `seats` (optional)
+          - [ ] Parameter `successUrl`
+          - [ ] Parameter `cancelUrl`
+          - [ ] Parameter `disableRedirect`
+          - [ ] Parameter `trialEnd` (optional)
+        - [ ] Simple Example:
+        - [ ] How the checkout redirect works
+      - [ ] Switching Plans
+        - [ ] `POST /subscription/update`
+          - [ ] Parameter `itemPriceId`
+          - [ ] Parameter `referenceId` (optional)
+          - [ ] Parameter `subscriptionId` (optional)
+          - [ ] Parameter `metadata` (optional)
+          - [ ] Parameter `customerType` (optional)
+          - [ ] Parameter `seats` (optional)
+          - [ ] Parameter `successUrl`
+          - [ ] Parameter `cancelUrl`
+          - [ ] Parameter `returnUrl` (optional)
+          - [ ] Parameter `disableRedirect`
+      - [ ] Listing Active Subscriptions
+        - [ ] `GET /subscription/list`
+          - [ ] Parameter `referenceId` (optional)
+          - [ ] Parameter `customerType` (optional)
+      - [ ] Canceling a Subscription
+        - [ ] `POST /subscription/cancel`
+          - [ ] Parameter `referenceId` (optional)
+          - [ ] Parameter `customerType` (optional)
+          - [ ] Parameter `subscriptionId` (optional)
+          - [ ] Parameter `returnUrl`
+        - [ ] Understanding Cancellation States
+        - [ ] `canceledAt`
+        - [ ] `status`
+      - [ ] Billing Portal Session
+        - [ ] `POST /subscription/portal`
+          - [ ] Parameter `referenceId` (optional)
+          - [ ] Parameter `customerType` (optional)
+          - [ ] Parameter `returnUrl`
+          - [ ] Parameter `disableRedirect` (optional)
+        - [ ] Example:
+        - [ ] For organization billing:
+    - [ ] Reference System
+      - [ ] Team Subscriptions with Seats
+    - [ ] Webhook Handling
+      - [ ] `subscription_created`
+      - [ ] `subscription_activated`
+      - [ ] `subscription_changed`
+      - [ ] `subscription_renewed`
+      - [ ] `subscription_started`
+      - [ ] `subscription_cancelled`
+      - [ ] `subscription_cancellation_scheduled`
+      - [ ] `customer_deleted`
+    - [ ] Subscription Lifecycle Hooks
+    - [ ] Trial Periods
+      - [ ] Prevent Duplicate Trials
+      - [ ] Override Trial End Date (Optional)
+  - [ ] Schema
+    - [ ] User
+      - [ ] `chargebeeUserTableFields.chargebeeCustomerId`
+    - [ ] Organization
+      - [ ] `chargebeeOrganizationTableFields.chargebeeCustomerId`
+    - [ ] Subscription
+      - [ ] `chargebeeSubscriptionTableFields.id`
+      - [ ] `chargebeeSubscriptionTableFields.referenceId`
+      - [ ] `chargebeeSubscriptionTableFields.chargebeeCustomerId`
+      - [ ] `chargebeeSubscriptionTableFields.chargebeeSubscriptionId`
+      - [ ] `chargebeeSubscriptionTableFields.status`
+      - [ ] `chargebeeSubscriptionTableFields.periodStart`
+      - [ ] `chargebeeSubscriptionTableFields.periodEnd`
+      - [ ] `chargebeeSubscriptionTableFields.trialStart`
+      - [ ] `chargebeeSubscriptionTableFields.trialEnd`
+      - [ ] `chargebeeSubscriptionTableFields.canceledAt`
+      - [ ] `chargebeeSubscriptionTableFields.seats`
+      - [ ] `chargebeeSubscriptionTableFields.metadata`
+    - [ ] Subscription Item
+      - [ ] `chargebeeSubscriptionItemTableFields.id`
+      - [ ] `chargebeeSubscriptionItemTableFields.subscriptionId`
+      - [ ] `chargebeeSubscriptionItemTableFields.itemPriceId`
+      - [ ] `chargebeeSubscriptionItemTableFields.itemType`
+      - [ ] `chargebeeSubscriptionItemTableFields.quantity`
+      - [ ] `chargebeeSubscriptionItemTableFields.unitPrice`
+      - [ ] `chargebeeSubscriptionItemTableFields.amount`
+    - [ ] Customizing the Schema
+  - [ ] Options
+    - [ ] `chargebeeClient`
+    - [ ] `webhookUsername`
+    - [ ] `webhookPassword`
+    - [ ] `createCustomerOnSignUp`
+    - [ ] `getCustomerCreateParams`
+    - [ ] `onCustomerCreate`
+    - [ ] `webhookHandler`
+    - [ ] `subscription`
+    - [ ] `organization`
+    - [ ] Subscription Options
+      - [ ] `enabled`
+      - [ ] `plans`
+      - [ ] `requireEmailVerification`
+      - [ ] `preventDuplicateTrials`
+      - [ ] `authorizeReference`
+      - [ ] `getHostedPageParams`
+      - [ ] `onSubscriptionComplete`
+      - [ ] `onSubscriptionCreated`
+      - [ ] `onSubscriptionUpdate`
+      - [ ] `onSubscriptionDeleted`
+      - [ ] `onTrialStart`
+      - [ ] `onTrialEnd`
+      - [ ] Plan Configuration
+        - [ ] `name`
+        - [ ] `itemPriceId`
+        - [ ] `itemId`
+        - [ ] `itemFamilyId`
+        - [ ] `type`
+        - [ ] `limits`
+        - [ ] `freeTrial`
+        - [ ] `trialPeriod`
+        - [ ] `trialPeriodUnit`
+        - [ ] `billingCycles`
+      - [ ] Free Trial Configuration
+        - [ ] `days`
+    - [ ] Organization Options
+      - [ ] `enabled`
+      - [ ] `getCustomerCreateParams`
+      - [ ] `onCustomerCreate`
+  - [ ] Advanced Usage
+    - [ ] Using with Organizations
+      - [ ] When Organization Customer is enabled:
+      - [ ] Enabling Organization Customer
+      - [ ] Creating Organization Subscriptions
+      - [ ] Authorization
+      - [ ] Organization Billing Email
+    - [ ] Custom Hosted Page Parameters
+    - [ ] Trial Period Management
+      - [ ] How it works:
+      - [ ] Example scenario:

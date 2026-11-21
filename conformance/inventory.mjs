@@ -272,9 +272,9 @@ for (const file of tracked.filter((f) => f.startsWith(docPrefix) && f.endsWith("
   const group = parts.length > 1 ? parts[0] : "overview";
   if (group === "plugins") {
     const slug = parts[1].replace(/\.mdx$/, "");
-    if (slug !== "index" && !external.has(slug)) extractPage(file, pluginPage(slug));
+    if (slug !== "index") extractPage(file, pluginPage(slug));
   } else {
-    if (!["authentication", "concepts", "adapters", "integrations", "reference"].includes(group)) continue;
+    if (!["authentication", "concepts", "adapters", "integrations", "reference", "infrastructure"].includes(group)) continue;
     if (group === "reference" && !/^(options|security|instrumentation|telemetry)\.mdx$/.test(parts[1]) && parts[1] !== "errors") continue;
     if (!groups.has(group)) groups.set(group, page(group + ".md", groupNames[group] || group));
     extractPage(file, groups.get(group));
@@ -298,6 +298,19 @@ for (const [key, label] of [["client", "Native Go HTTP client"], ["environment",
   addEvidence(go, "go/" + key, goPage, 1);
 }
 assert.deepEqual([...used].sort(), Object.keys(evidence).sort(), "Unknown evidence IDs");
+const communitySource = "docs/lib/community-plugins-data.ts";
+const communityData = read(communitySource);
+const community = [...communityData.matchAll(/^\t\tname: "([^"]+)",\s*url: "([^"]+)"/gm)]
+  .map(([_, name, url]) => ({ name, url }));
+assert.equal(community.length, [...communityData.matchAll(/^\t\tname: "/gm)].length, "Unparsed community extension");
+const communityPage = pluginPage("community-plugins");
+communityPage.push("## Listed extensions", "", "These integrations are tracked for the Go library. Each row requires its own implementation and tests.", "");
+for (const { name } of community) {
+  const label = name.replace(/better[- ]?auth/gi, "").replace(/-{2,}/g, "-")
+    .replace(/\/-/g, "/").replace(/[-/]+$/, "").replace(/^-+/, "");
+  communityPage.push(pending(inline(label || name)));
+}
+communityPage.push("");
 const index = [
   "# Feature checklist", "",
   "A checked item links to a local test for that behavior. An open parent means the feature still has unverified cases. Browser, protocol and storage options each have their own checkboxes.", "",
@@ -307,19 +320,25 @@ const index = [
   "| Passkey registration, login and credential management | [Passkeys](../passkeys.md) |",
   "| Email link sign-in and single-use session transfer | [Magic links](../magic-link.md) · [One-time tokens](../one-time-token.md) |",
   "| Breached-password screening for credential writes | [Password checks](../password-checks.md) |",
+  "| CAPTCHA verification and trusted request conditions | [CAPTCHA](../captcha.md) |",
+  "| Service tokens, key rotation and public verification keys | [JWT and JWKS](../jwt.md) |",
   "| TOTP enrollment, challenge verification and backup codes | [Two-factor authentication](../2fa.md) |",
   "| Runtime settings, key rotation and startup | [Environment](../environment.md) |",
   "| OAuth sign-in, identity verification and account linking | [Social providers](../social.md) |",
   "| Go client and router integrations | [HTTP client](../client.md) · [Routers](../routers.md) |",
   "| Memory, SQLite, PostgreSQL and MySQL | [Databases](../databases.md) · [Schema generation and migrations](../schema.md) |",
   "| Organization membership and invitations | [Organizations](../organizations.md) |",
-  "| Extension hooks, bearer sessions, login method and billing | [Plugins](../plugins.md) |", "",
+  "| Checkout, subscription listing and billing portal | [Recurring subscriptions](../subscriptions.md) · [Billing portal](../plugins.md#open-the-users-stripe-billing-portal) |",
+  "| CAPTCHA verification and host BotID integration | [CAPTCHA](../captcha.md) |",
+  "| Extension hooks, bearer sessions and login method | [Plugins](../plugins.md) |", "",
   "## Authentication, storage and tools", "", pending("[Native Go client, routers and databases](go.md)"), pending("[Core API, sign-in providers and CLI](runtime.md)"),
 ];
 for (const group of [...groups.keys()].sort()) index.push(pending("[" + (groupNames[group] || group) + "](" + group + ".md)"));
 index.push("", "## Plugins and integrations", "");
-for (const slug of [...pluginPages.keys()].sort()) index.push(pending("[" + pluginTitle(slug) + "](plugins/" + slug + ".md)"));
-index.push("", "The checklist covers embeddable software and its integration interfaces. Separately hosted services and externally maintained extensions have their own release cycles.", "");
+for (const slug of [...pluginPages.keys()].filter((slug) => !external.has(slug)).sort()) index.push(pending("[" + pluginTitle(slug) + "](plugins/" + slug + ".md)"));
+index.push("", "## Third-party integrations", "", "These integrations have independent release cycles.", "");
+for (const slug of [...external].sort()) index.push(pending("[" + pluginTitle(slug) + "](plugins/" + slug + ".md)"));
+index.push("");
 pages.set("README.md", index);
 for (const [name, lines] of pages) {
   const path = join(output, name);
@@ -347,6 +366,7 @@ const referenceIndex = {
   plugins: [...pluginPages.keys()].sort(),
   sourceAnchors,
   externalPluginDocumentation: [...external].sort(),
+  communityExtensions: community,
   hostedServices: tracked.filter((f) => f.startsWith(docPrefix + "infrastructure/") && f.endsWith(".mdx")),
 };
 const referenceFile = new URL("reference.json", import.meta.url);

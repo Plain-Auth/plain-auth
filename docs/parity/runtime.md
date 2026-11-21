@@ -205,7 +205,7 @@ Each entry groups the configured endpoint’s behaviors. A checked child records
     - [ ] `--y`
   - [ ] `generate`
     - [x] Emit SQL DDL for SQLite, PostgreSQL and MySQL ([test](../../cmd/authctl/main_test.go#L28))
-    - [x] Emit exact SQL for all 144 supported dialect and profile combinations ([test](../../conformance/schema.test.mjs#L66))
+    - [x] Emit exact SQL for all supported dialect and profile combinations ([test](../../conformance/schema.test.mjs#L66))
     - [ ] `-c, --cwd <cwd>`
     - [ ] `--config <config>`
     - [ ] `--output <output>`

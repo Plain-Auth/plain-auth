@@ -10,13 +10,17 @@ A checked item links to a local test for that behavior. An open parent means the
 | Passkey registration, login and credential management | [Passkeys](../passkeys.md) |
 | Email link sign-in and single-use session transfer | [Magic links](../magic-link.md) · [One-time tokens](../one-time-token.md) |
 | Breached-password screening for credential writes | [Password checks](../password-checks.md) |
+| CAPTCHA verification and trusted request conditions | [CAPTCHA](../captcha.md) |
+| Service tokens, key rotation and public verification keys | [JWT and JWKS](../jwt.md) |
 | TOTP enrollment, challenge verification and backup codes | [Two-factor authentication](../2fa.md) |
 | Runtime settings, key rotation and startup | [Environment](../environment.md) |
 | OAuth sign-in, identity verification and account linking | [Social providers](../social.md) |
 | Go client and router integrations | [HTTP client](../client.md) · [Routers](../routers.md) |
 | Memory, SQLite, PostgreSQL and MySQL | [Databases](../databases.md) · [Schema generation and migrations](../schema.md) |
 | Organization membership and invitations | [Organizations](../organizations.md) |
-| Extension hooks, bearer sessions, login method and billing | [Plugins](../plugins.md) |
+| Checkout, subscription listing and billing portal | [Recurring subscriptions](../subscriptions.md) · [Billing portal](../plugins.md#open-the-users-stripe-billing-portal) |
+| CAPTCHA verification and host BotID integration | [CAPTCHA](../captcha.md) |
+| Extension hooks, bearer sessions and login method | [Plugins](../plugins.md) |
 
 ## Authentication, storage and tools
 
@@ -25,6 +29,7 @@ A checked item links to a local test for that behavior. An open parent means the
 - [ ] [Database adapters](adapters.md)
 - [ ] [Authentication](authentication.md)
 - [ ] [Core concepts](concepts.md)
+- [ ] [Managed infrastructure](infrastructure.md)
 - [ ] [Framework integrations](integrations.md)
 - [ ] [Reference and configuration](reference.md)
 
@@ -68,4 +73,16 @@ A checked item links to a local test for that behavior. An open parent means the
 - [ ] [Test utils](plugins/test-utils.md)
 - [ ] [Username](plugins/username.md)
 
-The checklist covers embeddable software and its integration interfaces. Separately hosted services and externally maintained extensions have their own release cycles.
+## Third-party integrations
+
+These integrations have independent release cycles.
+
+- [ ] [Agent auth](plugins/agent-auth.md)
+- [ ] [Autumn](plugins/autumn.md)
+- [ ] [Chargebee](plugins/chargebee.md)
+- [ ] [Commet](plugins/commet.md)
+- [ ] [Community plugins](plugins/community-plugins.md)
+- [ ] [Creem](plugins/creem.md)
+- [ ] [Dodopayments](plugins/dodopayments.md)
+- [ ] [Dub](plugins/dub.md)
+- [ ] [Polar](plugins/polar.md)

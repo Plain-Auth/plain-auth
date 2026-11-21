@@ -6,41 +6,58 @@
 
 - [ ] Captcha endpoints, types and options
   - [ ] `captcha`
+    - [x] Verify the four supported challenge-provider protocols against pinned local fixtures ([test](../../../conformance/captcha.test.mjs#L3))
   - [ ] `Provider`
   - [ ] `BaseCaptchaOptions`
     - [ ] `secretKey`
+      - [x] Exercise the configured secretKey in the provider transport contract ([test](../../../plugins/captcha/captcha_test.go#L53))
     - [ ] `endpoints`
+      - [x] Apply configured paths, wildcard matching and mount normalization ([test](../../../plugins/captcha/captcha_test.go#L140))
     - [ ] `siteVerifyURLOverride`
+      - [x] Exercise the configured siteVerifyURLOverride in the provider transport contract ([test](../../../plugins/captcha/captcha_test.go#L53))
   - [ ] `GoogleRecaptchaOptions`
     - [ ] `provider`
     - [ ] `minScore`
+      - [x] Exercise the configured minScore in the provider transport contract ([test](../../../plugins/captcha/captcha_test.go#L53))
     - [ ] `expectedAction`
+      - [x] Exercise the configured expectedAction in the provider transport contract ([test](../../../plugins/captcha/captcha_test.go#L53))
     - [ ] `allowedHostnames`
+      - [x] Exercise the configured allowedHostnames in the provider transport contract ([test](../../../plugins/captcha/captcha_test.go#L53))
   - [ ] `CloudflareTurnstileOptions`
     - [ ] `provider`
     - [ ] `expectedAction`
+      - [x] Exercise the configured expectedAction in the provider transport contract ([test](../../../plugins/captcha/captcha_test.go#L53))
     - [ ] `allowedHostnames`
+      - [x] Exercise the configured allowedHostnames in the provider transport contract ([test](../../../plugins/captcha/captcha_test.go#L53))
   - [ ] `HCaptchaOptions`
     - [ ] `provider`
     - [ ] `siteKey`
+      - [x] Exercise the configured siteKey in the provider transport contract ([test](../../../plugins/captcha/captcha_test.go#L53))
   - [ ] `CaptchaFoxOptions`
     - [ ] `provider`
     - [ ] `siteKey`
+      - [x] Exercise the configured siteKey in the provider transport contract ([test](../../../plugins/captcha/captcha_test.go#L53))
   - [ ] `BotIdVerification`
   - [ ] `ValidateRequestContext`
   - [ ] `VercelBotIdOptions`
     - [ ] `provider`
     - [ ] `endpoints`
     - [ ] `checkBotId`
+      - [x] Evaluate the host’s BotID callback and acceptance policy ([test](../../../plugins/captcha/captcha_test.go#L206))
     - [ ] `validateRequest`
+      - [x] Evaluate the host’s BotID callback and acceptance policy ([test](../../../plugins/captcha/captcha_test.go#L206))
   - [ ] `CaptchaOptions`
 
 ## Captcha
 
 - [ ] Captcha
   - [ ] Providers
+    - [x] Verify the challenge, HTTP request parameters and provider responses using local transports ([test](../../../plugins/captcha/captcha_test.go#L53))
     - [ ] Vercel BotID
+      - [x] Evaluate a host-supplied BotID verdict and a custom policy ([test](../../../plugins/captcha/captcha_test.go#L206))
   - [ ] How it works
+    - [x] Apply endpoint matching to HTTP routes and honor caller cancellation ([test](../../../plugins/captcha/captcha_test.go#L140))
+    - [x] Enforce configured peer privacy and reject provider errors ([test](../../../plugins/captcha/captcha_test.go#L168))
   - [ ] Plugin Options
     - [ ] `provider` (required)
     - [ ] `secretKey` (required for all providers except `vercel-botid`)

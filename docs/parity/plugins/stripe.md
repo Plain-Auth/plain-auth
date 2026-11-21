@@ -9,13 +9,17 @@
   - [ ] `stripe`
   - [ ] `StripePlugin`
   - [ ] `POST /subscription/upgrade`
+    - [x] Reserve an owner-scoped checkout, send the configured recurring price and return the same checkout on retries ([test](../../../adapters/sqlstore/subscriptions_test.go#L184))
+    - [x] Reuse an existing Stripe customer when starting a monthly subscription ([test](../../../adapters/sqlstore/subscriptions_test.go#L287))
   - [ ] `POST /subscription/cancel`
   - [ ] `POST /subscription/restore`
   - [ ] `GET /subscription/list`
+    - [x] List only the authenticated owner’s active or trialing plans and configured price IDs ([test](../../../adapters/sqlstore/subscriptions_test.go#L227))
   - [ ] `GET /subscription/success`
   - [ ] `POST /subscription/billing-portal`
     - [x] Open a billing portal for the authenticated customer and enforce its owner and return URL ([test](../../../plugins/stripe/portal_test.go#L27))
   - [ ] `POST /stripe/webhook`
+    - [x] Reject foreign or unsigned checkout receipts and apply completion once ([test](../../../adapters/sqlstore/subscriptions_test.go#L220))
   - [ ] `AuthorizeReferenceAction`
   - [ ] `CustomerType`
   - [ ] `WithStripeCustomerId`
@@ -61,9 +65,12 @@
     - [ ] Team subscription support with seats management
   - [ ] Usage
     - [ ] Customer Management
+      - [x] Bind or reuse the authenticated account’s customer and roll back conflicting customer mappings ([test](../../../adapters/sqlstore/subscriptions_test.go#L242))
     - [ ] Subscription Management
       - [ ] Defining Plans
       - [ ] Creating a Subscription
+        - [x] Reserve an owner-scoped checkout, send the configured recurring price and return the same checkout on retries ([test](../../../adapters/sqlstore/subscriptions_test.go#L184))
+        - [x] Reuse an existing Stripe customer when starting a monthly subscription ([test](../../../adapters/sqlstore/subscriptions_test.go#L287))
         - [ ] `POST /subscription/upgrade`
           - [ ] Parameter `plan`
           - [ ] Parameter `annual` (optional)
@@ -82,6 +89,7 @@
       - [ ] Switching Plans
       - [ ] Scheduling Plan Changes at Period End
       - [ ] Listing Active Subscriptions
+        - [x] List only the authenticated owner’s active or trialing plans and configured price IDs ([test](../../../adapters/sqlstore/subscriptions_test.go#L227))
         - [ ] `GET /subscription/list`
           - [ ] Parameter `referenceId` (optional)
           - [ ] Parameter `customerType` (optional)
@@ -116,6 +124,7 @@
       - [ ] Team Subscriptions with Seats
     - [ ] Webhook Handling
       - [x] Verify the webhook signature and dispatch a local event to the application callback ([test](../../../plugins/stripe/stripe_test.go#L19))
+      - [x] Reconcile signed checkout completion and expiration and preserve the new attempt after replaying an older event ([test](../../../adapters/sqlstore/subscriptions_test.go#L275))
       - [ ] `checkout.session.completed`
       - [ ] `customer.subscription.created`
       - [ ] `customer.subscription.updated`

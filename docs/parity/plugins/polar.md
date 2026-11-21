@@ -1,0 +1,64 @@
+# Polar
+
+[Feature index](../README.md)
+
+## Polar
+
+- [ ] Polar
+  - [ ] Features
+    - [ ] Checkout Integration
+    - [ ] Customer Portal
+    - [ ] Automatic Customer creation on signup
+    - [ ] Event Ingestion & Customer Meters for flexible Usage Based Billing
+    - [ ] Handle Polar Webhooks securely with signature verification
+    - [ ] Reference System to associate purchases with organizations
+  - [ ] Preparation
+    - [ ] Configuring Auth Server
+    - [ ] Configuring Auth Client
+  - [ ] Configuration Options
+    - [ ] Required Options
+      - [ ] `client`
+    - [ ] Optional Options
+      - [ ] `createCustomerOnSignUp`
+      - [ ] `getCustomerCreateParams`
+    - [ ] Customers
+  - [ ] Checkout Plugin
+    - [ ] Organization Support
+  - [ ] Portal Plugin
+    - [ ] Customer Portal Management
+    - [ ] Customer State
+    - [ ] Benefits, Orders & Subscriptions
+      - [ ] Benefits
+      - [ ] Orders
+      - [ ] Subscriptions
+        - [ ] Important
+  - [ ] Usage Plugin
+    - [ ] Event Ingestion
+    - [ ] Customer Meters
+  - [ ] Webhooks Plugin
+    - [ ] `onPayload`
+    - [ ] `onCheckoutCreated`
+    - [ ] `onCheckoutUpdated`
+    - [ ] `onOrderCreated`
+    - [ ] `onOrderPaid`
+    - [ ] `onOrderRefunded`
+    - [ ] `onRefundCreated`
+    - [ ] `onRefundUpdated`
+    - [ ] `onSubscriptionCreated`
+    - [ ] `onSubscriptionUpdated`
+    - [ ] `onSubscriptionActive`
+    - [ ] `onSubscriptionCanceled`
+    - [ ] `onSubscriptionRevoked`
+    - [ ] `onSubscriptionUncanceled`
+    - [ ] `onProductCreated`
+    - [ ] `onProductUpdated`
+    - [ ] `onOrganizationUpdated`
+    - [ ] `onBenefitCreated`
+    - [ ] `onBenefitUpdated`
+    - [ ] `onBenefitGrantCreated`
+    - [ ] `onBenefitGrantUpdated`
+    - [ ] `onBenefitGrantRevoked`
+    - [ ] `onCustomerCreated`
+    - [ ] `onCustomerUpdated`
+    - [ ] `onCustomerDeleted`
+    - [ ] `onCustomerStateChanged`

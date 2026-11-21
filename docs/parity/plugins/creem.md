@@ -1,0 +1,80 @@
+# Creem
+
+[Feature index](../README.md)
+
+## Creem
+
+- [ ] Creem
+  - [ ] Features
+    - [ ] Create checkouts for signed-in users or anonymous visitors
+    - [ ] Open the Creem customer portal for invoices, payment methods, and subscriptions
+    - [ ] Cancel and retrieve subscriptions, and search transactions
+    - [ ] Persist customers and subscriptions from verified webhooks
+    - [ ] Check access from local subscription state, including paid-up periods after cancellation
+    - [ ] Run your own provisioning logic with `onGrantAccess` and `onRevokeAccess`
+    - [ ] Offer each user at most one trial across all plans
+  - [ ] Usage
+    - [ ] Checkout
+      - [ ] `productId`
+      - [ ] `units`
+      - [ ] `successUrl`
+      - [ ] `discountCode`
+      - [ ] `customer`
+      - [ ] `customFields`
+      - [ ] `metadata`
+      - [ ] `requestId`
+      - [ ] `redirect`
+    - [ ] Customer portal
+    - [ ] Check access
+    - [ ] Cancel a subscription
+    - [ ] Retrieve a subscription
+    - [ ] Transaction history
+  - [ ] Webhooks
+    - [ ] Grant and revoke access
+      - [ ] `onGrantAccess`
+      - [ ] `onRevokeAccess`
+    - [ ] Event callbacks
+      - [ ] `onCheckoutCompleted`
+      - [ ] `onRefundCreated`
+      - [ ] `onDisputeCreated`
+      - [ ] `onSubscriptionActive`
+      - [ ] `onSubscriptionTrialing`
+      - [ ] `onSubscriptionPaid`
+      - [ ] `onSubscriptionCanceled`
+      - [ ] `onSubscriptionScheduledCancel`
+      - [ ] `onSubscriptionExpired`
+      - [ ] `onSubscriptionUnpaid`
+      - [ ] `onSubscriptionPastDue`
+      - [ ] `onSubscriptionPaused`
+      - [ ] `onSubscriptionUpdate`
+    - [ ] Custom webhook route
+  - [ ] Server helpers
+  - [ ] Trial abuse prevention
+  - [ ] Schema
+    - [ ] User
+      - [ ] `creemUserTableFields.creemCustomerId`
+      - [ ] `creemUserTableFields.hadTrial`
+    - [ ] Subscription
+      - [ ] `creemSubscriptionTableFields.id`
+      - [ ] `creemSubscriptionTableFields.productId`
+      - [ ] `creemSubscriptionTableFields.referenceId`
+      - [ ] `creemSubscriptionTableFields.creemCustomerId`
+      - [ ] `creemSubscriptionTableFields.creemSubscriptionId`
+      - [ ] `creemSubscriptionTableFields.creemOrderId`
+      - [ ] `creemSubscriptionTableFields.status`
+      - [ ] `creemSubscriptionTableFields.periodStart`
+      - [ ] `creemSubscriptionTableFields.periodEnd`
+      - [ ] `creemSubscriptionTableFields.cancelAtPeriodEnd`
+    - [ ] Customizing the Schema
+  - [ ] Options
+    - [ ] Server
+      - [ ] `apiKey`
+      - [ ] `webhookSecret`
+      - [ ] `testMode`
+      - [ ] `defaultSuccessUrl`
+      - [ ] `persistSubscriptions`
+      - [ ] `schema`
+      - [ ] `onGrantAccess`
+      - [ ] `onRevokeAccess`
+    - [ ] Client
+      - [ ] `persistSubscriptions`
