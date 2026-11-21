@@ -26,28 +26,39 @@ func scanBrowserProvider(row rowScanner) (sso.BrowserProvider, error) {
 	if err := row.Scan(&p.ID, &p.ProviderID, &p.Issuer, &p.Domain, &p.UserID, &p.OrganizationID, &raw); err != nil {
 		return p, err
 	}
-	var cfg map[string]any
-	decoder := json.NewDecoder(strings.NewReader(raw))
-	decoder.UseNumber()
-	if e := decoder.Decode(&cfg); e != nil || cfg == nil {
-		return p, errors.New("sqlstore: invalid enterprise configuration")
-	}
 	if e := json.Unmarshal([]byte(raw), &p.OIDC); e != nil {
 		return p, errors.New("sqlstore: invalid enterprise provider")
 	}
-	// Secret rotation does not change ownership. Include all other stored configuration
-	// keys and the immutable record ID so a replacement cannot finish an old flow.
+	var err error
+	p.Reference, err = enterpriseReference(p.Provider, raw)
+	return p, err
+}
+
+func enterpriseReference(p sso.Provider, raw string) (string, error) {
+	var cfg map[string]any
+	decoder := json.NewDecoder(strings.NewReader(raw))
+	decoder.UseNumber()
+	if err := decoder.Decode(&cfg); err != nil || cfg == nil {
+		return "", errors.New("sqlstore: invalid enterprise configuration")
+	}
+	// Secret rotation keeps the same authority. The immutable registration,
+	// tenant and every other configuration key bind the identity and DNS proof.
 	delete(cfg, "clientSecret")
 	payload, err := json.Marshal([]any{p.ID, p.ProviderID, p.UserID, p.OrganizationID, p.Issuer, p.Domain, cfg})
 	if err != nil {
-		return p, err
+		return "", err
 	}
 	hash := sha256.Sum256(payload)
-	p.Reference = base64.RawURLEncoding.EncodeToString(hash[:])
-	return p, nil
+	return base64.RawURLEncoding.EncodeToString(hash[:]), nil
 }
 
 func (s *Store) FindBrowserProvider(ctx context.Context, sel sso.Selector) (sso.BrowserProvider, error) {
+	return s.findBrowserProvider(ctx, sel, false)
+}
+func (s *Store) FindVerifiedBrowserProvider(ctx context.Context, sel sso.Selector) (sso.BrowserProvider, error) {
+	return s.findBrowserProvider(ctx, sel, true)
+}
+func (s *Store) findBrowserProvider(ctx context.Context, sel sso.Selector, requireProof bool) (sso.BrowserProvider, error) {
 	var found sso.BrowserProvider
 	query := `SELECT ` + browserProviderCols + ` FROM "ssoProvider" p WHERE ` + browserProviderWhere
 	args := []any{}
@@ -73,38 +84,87 @@ func (s *Store) FindBrowserProvider(ctx context.Context, sel sso.Selector) (sso.
 		return found, e
 	}
 	defer rows.Close()
-	best := -1
-	ambiguous := false
+	// Close the scan before checking scope metadata. A SQLite pool may expose
+	// only one connection, and many directories can share a suffix.
+	type candidate struct {
+		p      sso.BrowserProvider
+		suffix int
+	}
+	var matches []candidate
 	for rows.Next() {
 		p, e := scanBrowserProvider(rows)
 		if e != nil {
 			return found, e
 		}
-		score := 0
+		suffix := 0
 		if sel.ProviderID == "" && sel.OrganizationSlug == "" {
-			score = sso.DomainMatch(sel.Domain, p.Domain)
-			if score < 0 {
+			suffix = sso.DomainMatch(sel.Domain, p.Domain)
+			if suffix < 0 {
 				continue
 			}
 		}
-		if score > best {
-			best = score
-			found = p
-			ambiguous = false
-		} else if score == best {
-			ambiguous = true
-		}
+		matches = append(matches, candidate{p, suffix})
 	}
 	if e = rows.Err(); e != nil {
 		return found, e
 	}
-	if best < 0 || ambiguous {
+	if e = rows.Close(); e != nil {
+		return found, e
+	}
+	if len(matches) == 0 {
+		return found, sso.ErrMissing
+	}
+	if sel.ProviderID != "" {
+		if len(matches) != 1 {
+			return found, sso.ErrMissing
+		}
+		return matches[0].p, nil
+	}
+	bestTier, bestSuffix := -1, -1
+	ambiguous := false
+	for _, m := range matches {
+		required := requireProof
+		if !required {
+			required, e = s.SSODomainRequired(ctx, m.p.Provider)
+			if e != nil {
+				return found, e
+			}
+		}
+		tier := 0
+		if required {
+			valid, e := s.SSODomainVerified(ctx, m.p.Provider, m.p.Reference)
+			if e != nil {
+				return found, e
+			}
+			if !valid {
+				continue
+			}
+			tier = 1
+		}
+		if tier > bestTier || tier == bestTier && m.suffix > bestSuffix {
+			found = m.p
+			bestTier, bestSuffix = tier, m.suffix
+			ambiguous = false
+		} else if tier == bestTier && m.suffix == bestSuffix {
+			ambiguous = true
+		}
+	}
+	if bestTier < 0 {
+		return found, sso.ErrDomainUnverified
+	}
+	if ambiguous {
 		return sso.BrowserProvider{}, sso.ErrMissing
 	}
 	return found, nil
 }
 
 func (s *Store) CompleteEnterpriseLogin(ctx context.Context, ref string, provision bool, id, subject string, tokens auth.OAuthTokens, user auth.User, session auth.StoredSession, opts auth.OAuthLoginOptions) (auth.User, bool, error) {
+	return s.completeEnterpriseLogin(ctx, ref, provision, id, subject, tokens, user, session, opts, false)
+}
+func (s *Store) CompleteVerifiedEnterpriseLogin(ctx context.Context, ref string, provision bool, id, subject string, tokens auth.OAuthTokens, user auth.User, session auth.StoredSession, opts auth.OAuthLoginOptions) (auth.User, bool, error) {
+	return s.completeEnterpriseLogin(ctx, ref, provision, id, subject, tokens, user, session, opts, true)
+}
+func (s *Store) completeEnterpriseLogin(ctx context.Context, ref string, provision bool, id, subject string, tokens auth.OAuthTokens, user auth.User, session auth.StoredSession, opts auth.OAuthLoginOptions, requireProof bool) (auth.User, bool, error) {
 	var orgID *string
 	var hooks oauthTransactionHooks
 	hooks = oauthTransactionHooks{
@@ -116,6 +176,24 @@ func (s *Store) CompleteEnterpriseLogin(ctx context.Context, ref string, provisi
 			}
 			if err != nil {
 				return err
+			}
+			required := requireProof
+			if !required {
+				required, err = s.requiresSSODomain(ctx, tx, p.Provider)
+				if err != nil {
+					return err
+				}
+			}
+			if required {
+				valid, e := s.domainVerified(ctx, tx, p.Provider, p.Reference)
+				if e != nil {
+					return e
+				}
+				if !valid {
+					return sso.ErrDomainUnverified
+				}
+				_, domain, ok := strings.Cut(strings.ToLower(user.Email), "@")
+				hooks.trustEmailDomain = ok && sso.DomainMatch(domain, p.Domain) >= 0
 			}
 			var matches int
 			q = `SELECT COUNT(*) FROM "account" WHERE ` + s.scimExact(`"providerId"`) + `=? AND ` + s.scimExact(`"accountId"`) + `=?`

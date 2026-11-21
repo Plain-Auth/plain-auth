@@ -132,7 +132,15 @@ func (a *Auth) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		_, _ = io.WriteString(w, string(page))
 		return
 	}
-	writeAuthJSON(w, http.StatusOK, result)
+	status := ep.SuccessStatus
+	if status == 0 {
+		status = http.StatusOK
+	}
+	if status == http.StatusNoContent {
+		w.WriteHeader(status)
+		return
+	}
+	writeAuthJSON(w, status, result)
 }
 
 func (a *Auth) handleCoreRequest(route string, w http.ResponseWriter, r *http.Request, body wireBody, ip string) (any, error) {

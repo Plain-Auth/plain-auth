@@ -8,7 +8,7 @@ import { DatabaseSync } from "node:sqlite";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 import { getMigrations } from "better-auth/db/migration";
-import { verifiedCombinations, ssoCombinations, scimCombinations, managedSCIMCombinations, organizationBillingCombinations, dialects, freshSchema, schemaOptions } from "./plugin-schema.mjs";
+import { verifiedCombinations, ssoCombinations, ssoDomainCombinations, scimCombinations, managedSCIMCombinations, organizationBillingCombinations, dialects, freshSchema, schemaOptions } from "./plugin-schema.mjs";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
 
@@ -147,7 +147,7 @@ test("adding plugin profiles to a populated SQLite database preserves existing a
           execFileSync(binary, ["migrate", "--dialect", "sqlite", "--plugins", profiles[0]], { env: { ...process.env, AUTH_DSN: database } });
         }
         await batch.call("sqlite", profiles, "candidate.db");
-        if (profiles.includes("scim") || profiles.includes("scim-managed") || profiles.includes("sso")) await batch.call("sqlite", profiles, "candidate.db");
+        if (profiles.includes("scim") || profiles.includes("scim-managed") || profiles.includes("sso") || profiles.includes("sso-domain-verification")) await batch.call("sqlite", profiles, "candidate.db");
         const db = new DatabaseSync(database, { readOnly: true });
         const reference = new DatabaseSync(":memory:");
         try {
@@ -246,5 +246,43 @@ test("enterprise OIDC registration adds only the canonical provider table to eac
       assert.deepEqual(new Set(combined), new Set([...base, ...additions]), dialect + " / " + profiles.join(","));
       assert.deepEqual(combined.filter(s => !additions.includes(s)), base);
     }
+  }
+});
+
+test("enterprise DNS verification extends only the canonical provider flag across schema samples", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "sso-domain-schema-"));
+  const batch = batchFixture(dir);
+  try {
+    let n = 0;
+    for (const group of ssoDomainCombinations()) {
+      const base = [...group.filter(id => id !== "sso-domain-verification" && id !== "sso"), "sso"];
+      for (const dialect of Object.keys(dialects)) {
+        const before = await freshSchema(dialect, base);
+        const after = await freshSchema(dialect, group);
+        const flag = /, ["`]domainVerified["`] (?:boolean|integer|tinyint)(?:\(1\))?/gi;
+        assert.equal((after.match(flag) ?? []).length, 1, dialect+" "+group);
+        assert.equal(after.replace(flag, ""), before, dialect+" "+group);
+        assert.equal(await batch.call(dialect,group), after, dialect+" "+group);
+      }
+      const filename = "upgraded-"+(n++)+".db";
+      await batch.call("sqlite",base,filename);
+      const path = join(dir,filename);
+      const existing = new DatabaseSync(path);
+      existing.exec("INSERT INTO user(id,name,email,emailVerified,createdAt,updatedAt) VALUES ('owner','Owner','owner@example.test',0,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)");
+      existing.exec("INSERT INTO ssoProvider(id,providerId,issuer,domain,userId) VALUES ('old','old','https://idp.example','domain.example','owner')");
+      existing.close();
+      await batch.call("sqlite",group,filename);
+      const upgraded = new DatabaseSync(path,{readOnly:true});
+      const reference = new DatabaseSync(":memory:");
+      try {
+        await (await getMigrations({database:reference,...schemaOptions(group)})).runMigrations();
+        assert.deepEqual(sqliteSchema(upgraded),sqliteSchema(reference),group.join(","));
+        assert.deepEqual({...upgraded.prepare("SELECT domain,domainVerified FROM ssoProvider WHERE id='old'").get()},
+          {domain:"domain.example",domainVerified:null});
+      } finally { reference.close(); upgraded.close(); }
+    }
+  } finally {
+    await batch.close();
+    rmSync(dir,{recursive:true,force:true});
   }
 });

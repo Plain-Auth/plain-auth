@@ -15,6 +15,8 @@ import Stripe from "stripe";
 export const dialects = { sqlite: SqliteDialect, postgres: PostgresDialect, mysql: MysqlDialect };
 
 export function pluginInstances(profiles) {
+  const verifiedDomains = profiles.includes("sso-domain-verification");
+  if (verifiedDomains) profiles = [...profiles.filter(p => p !== "sso" && p !== "sso-domain-verification"), "sso"];
   const managed = profiles.includes("scim-managed");
   if (managed) profiles = [...profiles.filter(p => p !== "scim" && p !== "scim-managed"), "scim"];
   if (profiles.includes("sso")) profiles = [...profiles.filter(p => p !== "sso"), "sso"];
@@ -27,7 +29,7 @@ export function pluginInstances(profiles) {
   }
   return profiles.map((id) => {
     switch (id) {
-      case "sso": return sso();
+      case "sso": return sso(verifiedDomains ? {domainVerification:{enabled:true}} : {});
       case "admin": return admin();
       case "anonymous": return anonymous();
       case "api-key": return apiKey();
@@ -63,7 +65,7 @@ const profileGroups = [
 ];
 // SCIM owns separate tables. The existing cross product remains exhaustive;
 // its new combinations are checked with structural isolation and explicit witnesses.
-const profileNames = [...profileGroups.flat(), "scim", "stripe-organization", "scim-managed", "sso"];
+const profileNames = [...profileGroups.flat(), "scim", "stripe-organization", "scim-managed", "sso", "sso-domain-verification"];
 export function* scimCombinations() {
   yield ["scim"];
   for (const name of profileGroups.flat()) yield [name, "scim"];
@@ -95,10 +97,15 @@ export function* managedSCIMCombinations() {
 
 export function* ssoCombinations() {
   yield ["sso"];
-  for (const name of profileNames.filter(id => id !== "sso")) yield [name, "sso"];
+  for (const name of profileNames.filter(id => id !== "sso" && id !== "sso-domain-verification")) yield [name, "sso"];
   for (const profiles of managedSCIMCombinations()) {
     if (profiles.includes("stripe-organization") && profiles.length > 2) yield [...profiles, "sso"];
   }
+}
+
+export function* ssoDomainCombinations() {
+  for (const group of ssoCombinations()) yield [...group.filter(id => id !== "sso"), "sso-domain-verification"];
+  yield ["sso", "sso-domain-verification"];
 }
 
 export function* verifiedCombinations() {
@@ -107,6 +114,7 @@ export function* verifiedCombinations() {
   yield* organizationBillingCombinations();
   yield* managedSCIMCombinations();
   yield* ssoCombinations();
+  yield* ssoDomainCombinations();
 }
 
 

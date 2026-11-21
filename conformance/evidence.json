@@ -6471,6 +6471,11 @@
       "label": "Deny enterprise registration from an impersonated session on an instance opened before the administrative migration",
       "test": "adapters/sqlstore/admin_live_schema_test.go",
       "marker": "cold registration node accepted a delegated login"
+    },
+    {
+      "label": "Read a seven-day registration challenge with the released client and return HTTP 201 for a repeated request",
+      "test": "conformance/sso-domains.mjs",
+      "marker": "const req=seen.at(-1)"
     }
   ],
   "plugin/sso/GET /sso/providers": [
@@ -6523,6 +6528,11 @@
       "label": "Create reusable enterprise sessions through both browser callback routes while preserving a single linked account",
       "test": "conformance/sso-browser.mjs",
       "marker": "export async function compareEnterpriseBrowser("
+    },
+    {
+      "label": "Require each domain to publish the token and accept split TXT character strings and labeled values",
+      "test": "conformance/sso-domains.mjs",
+      "marker": "ok(await api.sso.verifyDomain({providerId})); assert.equal"
     }
   ],
   "docs/content/docs/plugins/stripe.mdx#L255/Parameter `seats` (optional)": [
@@ -6649,6 +6659,11 @@
       "label": "Select a provider by ID, organization slug, email or DNS suffix on a custom auth mount",
       "test": "adapters/sqlstore/sso_browser_test.go",
       "marker": "func TestEnterpriseOIDCBrowser("
+    },
+    {
+      "label": "Select a proved directory ahead of overlapping pending registrations",
+      "test": "adapters/sqlstore/sso_domain_test.go",
+      "marker": "pending directory shadowed a verified route"
     }
   ],
   "plugin/sso/ /sso/callback/:providerId": [
@@ -6671,6 +6686,21 @@
       "label": "Reject a shared public subject from another authority on both enterprise and static OAuth nodes",
       "test": "adapters/sqlstore/sso_browser_test.go",
       "marker": "static node accepted managed identity"
+    },
+    {
+      "label": "Deny the session and roll back identity creation when the DNS proof is withdrawn during token exchange",
+      "test": "adapters/sqlstore/sso_domain_test.go",
+      "marker": "withdrawn proof left a partial account"
+    },
+    {
+      "label": "Link a verified local mailbox within the proved subdomain to the authenticated identity",
+      "test": "adapters/sqlstore/sso_domain_test.go",
+      "marker": "proved subdomain failed to link verified existing identity"
+    },
+    {
+      "label": "Reject two distinct mailboxes that compare equal under an accent-insensitive MySQL collation",
+      "test": "adapters/sqlstore/sso_domain_test.go",
+      "marker": "collation-equivalent different mailbox was linked"
     }
   ],
   "plugin/sso/ /sso/callback": [
@@ -6821,6 +6851,87 @@
       "label": "Pair an annual base and a separate yearly member price through the public client and retain annual terms after membership changes",
       "test": "conformance/stripe-organization-fixture.mjs",
       "marker": "[[\"price_basic_annual\", 1], [\"price_member_annual\", 2]]"
+    }
+  ],
+  "plugin/sso/POST /sso/request-domain-verification": [
+    {
+      "label": "Read a seven-day registration challenge with the released client and return HTTP 201 for a repeated request",
+      "test": "conformance/sso-domains.mjs",
+      "marker": "const req=seen.at(-1)"
+    },
+    {
+      "label": "Replace an expired challenge once across two database instances",
+      "test": "adapters/sqlstore/sso_domain_test.go",
+      "marker": "concurrent renewal returned different challenge tokens"
+    }
+  ],
+  "plugin/sso/POST /sso/verify-domain": [
+    {
+      "label": "Require each domain to publish the token and accept split TXT character strings and labeled values",
+      "test": "conformance/sso-domains.mjs",
+      "marker": "ok(await api.sso.verifyDomain({providerId})); assert.equal"
+    },
+    {
+      "label": "Recheck the manager’s tenant role after DNS answers and before committing the proof",
+      "test": "adapters/sqlstore/sso_domain_test.go",
+      "marker": "status(<-errs, 403, \"\")"
+    },
+    {
+      "label": "Bind DNS verification to the nonsecret identity source and require fresh proof when it changes",
+      "test": "adapters/sqlstore/sso_domain_test.go",
+      "marker": "identity source change reused the old DNS challenge"
+    },
+    {
+      "label": "Reject dotted, overlong and oversized verification names before the resolver is called",
+      "test": "adapters/sqlstore/sso_domain_test.go",
+      "marker": "malformed verification name reached DNS"
+    }
+  ],
+  "plugin-symbol/sso/SSOOptions/domainVerification": [
+    {
+      "label": "Migrate a populated enterprise provider to the DNS profile and compare 24 profile selections on all three SQL dialects",
+      "test": "conformance/schema.test.mjs",
+      "marker": "test(\"enterprise DNS verification extends"
+    },
+    {
+      "label": "Bind DNS verification to the nonsecret identity source and require fresh proof when it changes",
+      "test": "adapters/sqlstore/sso_domain_test.go",
+      "marker": "identity source change reused the old DNS challenge"
+    }
+  ],
+  "docs/content/docs/plugins/sso/domain-verification.mdx#L8": [
+    {
+      "label": "Migrate a populated enterprise provider to the DNS profile and compare 24 profile selections on all three SQL dialects",
+      "test": "conformance/schema.test.mjs",
+      "marker": "test(\"enterprise DNS verification extends"
+    }
+  ],
+  "docs/content/docs/plugins/sso/domain-verification.mdx#L74": [
+    {
+      "label": "Read a seven-day registration challenge with the released client and return HTTP 201 for a repeated request",
+      "test": "conformance/sso-domains.mjs",
+      "marker": "const req=seen.at(-1)"
+    }
+  ],
+  "docs/content/docs/plugins/sso/domain-verification.mdx#L80": [
+    {
+      "label": "Require each domain to publish the token and accept split TXT character strings and labeled values",
+      "test": "conformance/sso-domains.mjs",
+      "marker": "ok(await api.sso.verifyDomain({providerId})); assert.equal"
+    }
+  ],
+  "docs/content/docs/plugins/sso/domain-verification.mdx#L88": [
+    {
+      "label": "Recheck the manager’s tenant role after DNS answers and before committing the proof",
+      "test": "adapters/sqlstore/sso_domain_test.go",
+      "marker": "status(<-errs, 403, \"\")"
+    }
+  ],
+  "docs/content/docs/plugins/sso/domain-verification.mdx#L112": [
+    {
+      "label": "Replace an expired challenge once across two database instances",
+      "test": "adapters/sqlstore/sso_domain_test.go",
+      "marker": "concurrent renewal returned different challenge tokens"
     }
   ]
 }

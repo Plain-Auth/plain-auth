@@ -83,12 +83,20 @@ func (o Options) start(c auth.EndpointContext) (any, error) {
 	if _, found := body["requestSignUp"]; found && !ok {
 		return nil, apiError(400, "Invalid requestSignUp")
 	}
-	p, err := store.FindBrowserProvider(c.Request.Context(), sel)
+	find := store.FindBrowserProvider
+	if o.DomainVerification != nil {
+		find = store.(DomainStore).FindVerifiedBrowserProvider
+	}
+	p, err := find(c.Request.Context(), sel)
 	if err != nil {
 		return nil, err
 	}
 	if !available(c, p) {
 		return nil, ErrMissing
+	}
+	proof, err := o.domainGate(c, p)
+	if err != nil {
+		return nil, err
 	}
 	cfg, err := o.oauthConfig(c, p)
 	if err != nil {
@@ -129,7 +137,11 @@ func (o Options) start(c auth.EndpointContext) (any, error) {
 			opts = append(opts, oauth2.SetAuthURLParam(k, value))
 		}
 	}
-	flow, err := c.BeginEnterpriseFlow(p.ProviderID, p.Reference, cfg.RedirectURL, signup)
+	reference := p.Reference
+	if proof {
+		reference += ".dns"
+	}
+	flow, err := c.BeginEnterpriseFlow(p.ProviderID, reference, cfg.RedirectURL, signup)
 	if err != nil {
 		return nil, err
 	}
@@ -225,8 +237,15 @@ func (o Options) finish(c auth.EndpointContext) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	if !available(c, p) || flow.ProviderReference != p.Reference {
+	if !available(c, p) || strings.TrimSuffix(flow.ProviderReference, ".dns") != p.Reference {
 		return fail("invalid_state")
+	}
+	proof, err := o.domainGate(c, p)
+	if err != nil {
+		return nil, err
+	}
+	if strings.HasSuffix(flow.ProviderReference, ".dns") && !proof {
+		return nil, ErrDomainUnverified
 	}
 	if iss := q.Get("iss"); iss != "" && iss != p.Issuer {
 		return fail("invalid_provider")
@@ -255,9 +274,15 @@ func (o Options) finish(c auth.EndpointContext) (any, error) {
 	scope, _ := token.Extra("scope").(string)
 	tokens := auth.OAuthTokens{AccessToken: token.AccessToken, RefreshToken: token.RefreshToken, IDToken: idToken, Scope: strings.Join(strings.Fields(scope), ","), ExpiresAt: token.Expiry}
 	complete := func(ctx context.Context, id, sub string, t auth.OAuthTokens, u auth.User, s auth.StoredSession, opts auth.OAuthLoginOptions) (auth.User, bool, error) {
-		return store.CompleteEnterpriseLogin(ctx, flow.ProviderReference, !o.DisableOrganizationProvisioning, id, sub, t, u, s, opts)
+		if proof {
+			return store.(DomainStore).CompleteVerifiedEnterpriseLogin(ctx, p.Reference, !o.DisableOrganizationProvisioning, id, sub, t, u, s, opts)
+		}
+		return store.CompleteEnterpriseLogin(ctx, p.Reference, !o.DisableOrganizationProvisioning, id, sub, t, u, s, opts)
 	}
 	result, err := c.CompleteEnterpriseFlow(flow, profile, tokens, o.DisableImplicitSignUp && !flow.RequestSignUp, complete)
+	if errors.Is(err, ErrDomainUnverified) {
+		return nil, err
+	}
 	if errors.Is(err, auth.ErrOAuthLinkRequired) {
 		return fail("account_not_linked")
 	}

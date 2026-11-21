@@ -82,11 +82,13 @@ type Endpoint struct {
 	// OpenAPI is optional JSON operation metadata for this endpoint. It is copied at registration.
 	OpenAPI   json.RawMessage
 	RateLimit *RateLimitRule
-	Method    string
-	Path      string
-	RawBody   bool
-	Handler   func(EndpointContext) (any, error)
-	pluginID  string
+	// SuccessStatus defaults to 200. A 204 response omits the body.
+	SuccessStatus int
+	Method        string
+	Path          string
+	RawBody       bool
+	Handler       func(EndpointContext) (any, error)
+	pluginID      string
 }
 
 // EndpointContext gives a plugin access to the host auth instance, incoming
@@ -125,6 +127,9 @@ func registerPlugins(plugins []Plugin) (map[endpointKey]Endpoint, error) {
 		}
 		for _, ep := range p.Endpoints {
 			ep.pluginID = p.ID
+			if ep.SuccessStatus != 0 && (ep.SuccessStatus < 200 || ep.SuccessStatus >= 300) {
+				return nil, fmt.Errorf("invalid success status for %s", ep.Path)
+			}
 			if ep.OpenAPI != nil {
 				var op map[string]json.RawMessage
 				if err := json.Unmarshal(ep.OpenAPI, &op); err != nil || op == nil {

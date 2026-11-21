@@ -41,7 +41,7 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 
 | Checklist | Checked | Open |
 | --- | ---: | ---: |
-| [Published package interfaces](packages.md) | 63 | 161 |
+| [Published package interfaces](packages.md) | 64 | 161 |
 | [Native Go client, routers and databases](go.md) | 36 | 4 |
 | [Core API, sign-in providers and CLI](runtime.md) | 102 | 280 |
 | [Database adapters](adapters.md) | 32 | 224 |
@@ -88,7 +88,7 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 | [Phone number](plugins/phone-number.md) | 33 | 67 |
 | [SCIM provisioning](plugins/scim.md) | 51 | 251 |
 | [Sign in with Ethereum](plugins/siwe.md) | 0 | 40 |
-| [Single sign-on](plugins/sso.md) | 27 | 308 |
+| [Single sign-on](plugins/sso.md) | 45 | 308 |
 | [Stripe](plugins/stripe.md) | 126 | 193 |
 | [Test utils](plugins/test-utils.md) | 0 | 42 |
 | [Username](plugins/username.md) | 32 | 54 |

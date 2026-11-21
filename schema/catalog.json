@@ -18,7 +18,8 @@
     "scim",
     "stripe-organization",
     "scim-managed",
-    "sso"
+    "sso",
+    "sso-domain-verification"
   ],
   "dialects": {
     "sqlite": [
@@ -1089,7 +1090,8 @@
       {
         "sql": "create table \"ssoProvider\"",
         "profiles": [
-          "sso"
+          "sso",
+          "sso-domain-verification"
         ],
         "columns": [
           {
@@ -1115,6 +1117,12 @@
           },
           {
             "sql": "\"domain\" text not null"
+          },
+          {
+            "sql": "\"domainVerified\" integer",
+            "profiles": [
+              "sso-domain-verification"
+            ]
           }
         ]
       },
@@ -2457,7 +2465,8 @@
       {
         "sql": "create table \"ssoProvider\"",
         "profiles": [
-          "sso"
+          "sso",
+          "sso-domain-verification"
         ],
         "columns": [
           {
@@ -2483,6 +2492,12 @@
           },
           {
             "sql": "\"domain\" text not null"
+          },
+          {
+            "sql": "\"domainVerified\" boolean",
+            "profiles": [
+              "sso-domain-verification"
+            ]
           }
         ]
       },
@@ -3825,7 +3840,8 @@
       {
         "sql": "create table `ssoProvider`",
         "profiles": [
-          "sso"
+          "sso",
+          "sso-domain-verification"
         ],
         "columns": [
           {
@@ -3851,6 +3867,12 @@
           },
           {
             "sql": "`domain` text not null"
+          },
+          {
+            "sql": "`domainVerified` boolean",
+            "profiles": [
+              "sso-domain-verification"
+            ]
           }
         ]
       },

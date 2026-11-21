@@ -26,6 +26,7 @@ AUTH_DSN=auth.db go run ./cmd/authctl migrate --dialect sqlite --plugins organiz
 | `scim` | Directory connection bindings, Users, Groups, memberships, subjects, retained external identities and projection grants |
 | `scim-managed` | Directory tables plus managed connections, credential digests and the ordered audit log |
 | `sso` | Enterprise provider registration with globally unique provider ID, creator, organization, issuer, domains and serialized OIDC configuration |
+| `sso-domain-verification` | Enterprise provider catalog with the nullable DNS ownership flag |
 | `stripe-subscriptions` | Customer identifiers and subscription records with status, plan, billing and lifecycle fields |
 | `stripe-organization` | Organization and subscription tables with a Stripe customer identifier on the organization |
 | `two-factor` | User enrollment state, factor secrets, recovery codes and lockout fields |
@@ -53,3 +54,5 @@ Schema tests compare every one of the 18,432 compatible selections of the origin
 The `scim-managed` comparison covers 26 selections per dialect and repeats their populated SQLite upgrades. These include the managed profile alone, each original profile alongside it, both SCIM selectors together, organization billing, and maximal selections with and without organization billing. Each comparison requires the base SCIM schema to remain identical and exactly three managed-catalog tables to account for every additional object. A separate test upgrades the populated basic-directory schema to managed credentials twice on all three database engines. [Schema comparisons](../conformance/schema.test.mjs) · [Managed credential database tests](../adapters/sqlstore/scim_managed_test.go)
 
 The `sso` schema comparison verifies that its provider table and indexes compose with 23 selections per dialect. These include the profile alone, each other profile in isolation and four maximal combinations containing managed SCIM and organization billing. The tests repeat each selected populated SQLite upgrade. The local SQL lifecycle tests also upgrade existing accounts on PostgreSQL and MySQL. [Schema tests](../conformance/schema.test.mjs) · [Provider management tests](../adapters/sqlstore/sso_test.go)
+
+The `sso-domain-verification` checks cover 24 profile selections per SQL dialect, including the base SSO profile combined with its verification extension. Each selection upgrades a populated SQLite provider catalog and repeats the migration. Three-engine tests exercise a live upgrade and domain verification through the public API. [Profile comparison](../conformance/schema.test.mjs) · [Live migration](../adapters/sqlstore/sso_domain_test.go)

@@ -72,3 +72,17 @@ func (c *Client) SignInSSO(ctx context.Context, in SSOSignInRequest) (SSOAuthori
 func (c *Client) DeleteSSOProvider(ctx context.Context, providerID string) error {
 	return c.Do(ctx, http.MethodPost, "/sso/delete-provider", map[string]string{"providerId": providerID}, nil)
 }
+
+// RequestSSODomainVerification returns the current seven-day DNS challenge.
+func (c *Client) RequestSSODomainVerification(ctx context.Context, providerID string) (string, error) {
+	var out struct {
+		Token string `json:"domainVerificationToken"`
+	}
+	err := c.Do(ctx, http.MethodPost, "/sso/request-domain-verification", map[string]string{"providerId": providerID}, &out)
+	return out.Token, err
+}
+
+// VerifySSODomain confirms DNS ownership of every domain in the provider registration.
+func (c *Client) VerifySSODomain(ctx context.Context, providerID string) error {
+	return c.Do(ctx, http.MethodPost, "/sso/verify-domain", map[string]string{"providerId": providerID}, nil)
+}

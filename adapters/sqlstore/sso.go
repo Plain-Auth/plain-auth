@@ -49,7 +49,7 @@ func (s *Store) ssoOrgRole(ctx context.Context, tx *sql.Tx, orgID, userID string
 	return role, err
 }
 
-func (s *Store) ssoRegister(ctx context.Context, a sso.Actor, p sso.Provider, limit int, insert bool) error {
+func (s *Store) ssoRegister(ctx context.Context, a sso.Actor, p sso.Provider, limit int, insert bool, challenge *sso.DomainChallenge) error {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
@@ -115,13 +115,22 @@ func (s *Store) ssoRegister(ctx context.Context, a sso.Actor, p sso.Provider, li
 	if err = s.markEnterpriseNamespace(ctx, tx, p.ProviderID); err != nil {
 		return err
 	}
+	if challenge != nil {
+		challenge.Scope, err = enterpriseReference(p, string(cfg))
+		if err != nil {
+			return err
+		}
+		if err = s.issueDomainToken(ctx, tx, p, challenge); err != nil {
+			return err
+		}
+	}
 	return tx.Commit()
 }
 func (s *Store) CheckSSORegistration(ctx context.Context, a sso.Actor, p sso.Provider, limit int) error {
-	return s.ssoRegister(ctx, a, p, limit, false)
+	return s.ssoRegister(ctx, a, p, limit, false, nil)
 }
 func (s *Store) CreateSSOProvider(ctx context.Context, a sso.Actor, p sso.Provider, limit int) error {
-	return s.ssoRegister(ctx, a, p, limit, true)
+	return s.ssoRegister(ctx, a, p, limit, true, nil)
 }
 
 func (s *Store) ReadSSOProviders(ctx context.Context, a sso.Actor, id string) ([]sso.Provider, error) {
@@ -208,6 +217,31 @@ func (s *Store) cleanupSSOProviders(ctx context.Context, tx *sql.Tx, userID stri
 	exists, err := s.hasKeyOwnerTable(ctx, tx, "ssoProvider")
 	if err != nil || !exists {
 		return err
+	}
+	rows, err := tx.QueryContext(ctx, s.bind(`SELECT "id" FROM "ssoProvider" WHERE `+s.scimExact(`"userId"`)+`=?`), userID)
+	if err != nil {
+		return err
+	}
+	var ids []string
+	for rows.Next() {
+		var id string
+		if err = rows.Scan(&id); err != nil {
+			rows.Close()
+			return err
+		}
+		ids = append(ids, id)
+	}
+	if err = rows.Err(); err != nil {
+		rows.Close()
+		return err
+	}
+	if err = rows.Close(); err != nil {
+		return err
+	}
+	for _, id := range ids {
+		if err = s.removeDomainMetadata(ctx, tx, id); err != nil {
+			return err
+		}
 	}
 	_, err = tx.ExecContext(ctx, s.bind(`DELETE FROM "ssoProvider" WHERE `+s.scimExact(`"userId"`)+`=?`), userID)
 	return err

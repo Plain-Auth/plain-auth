@@ -74,9 +74,10 @@ func (s *Store) CompleteOAuth(ctx context.Context, provider, subject string, tok
 }
 
 type oauthTransactionHooks struct {
-	authority     oauthAuthority
-	guard         func(*sql.Tx) error
-	afterIdentity func(*sql.Tx, authn.User) error
+	authority        oauthAuthority
+	trustEmailDomain bool
+	guard            func(*sql.Tx) error
+	afterIdentity    func(*sql.Tx, authn.User) error
 }
 
 func (s *Store) completeOAuthWith(ctx context.Context, provider, subject string, tokens authn.OAuthTokens, candidate authn.User, session authn.StoredSession, options authn.OAuthLoginOptions, hooks *oauthTransactionHooks) (authn.User, bool, error) {
@@ -164,6 +165,7 @@ func (s *Store) completeOAuth(ctx context.Context, provider, subject string, tok
 		return u, false, authn.ErrOAuthLinkRequired
 	}
 	created := false
+	emailLink := false
 	if !existing {
 		err = tx.QueryRowContext(ctx, s.bind(`SELECT `+userColumns+` FROM "user" u WHERE u."email"=?`+suffix), candidate.Email).Scan(userFields(&u)...)
 		switch {
@@ -184,8 +186,8 @@ func (s *Store) completeOAuth(ctx context.Context, provider, subject string, tok
 			return u, false, err
 		case options.LinkUserID != "" && u.ID != options.LinkUserID:
 			return u, false, authn.ErrOAuthLinkRequired
-		case options.LinkUserID == "" && (!options.AllowVerifiedEmailLink || !u.EmailVerified || !candidate.EmailVerified):
-			return u, false, authn.ErrOAuthLinkRequired
+		case options.LinkUserID == "":
+			emailLink = true
 		}
 		key := sha256.Sum256([]byte(provider + "\x00" + subject))
 		account = hex.EncodeToString(key[:16])
@@ -196,6 +198,9 @@ func (s *Store) completeOAuth(ctx context.Context, provider, subject string, tok
 		if err := hooks.guard(tx); err != nil {
 			return u, false, err
 		}
+	}
+	if emailLink && (strings.ToLower(u.Email) != candidate.Email || !u.EmailVerified || (!(options.AllowVerifiedEmailLink && candidate.EmailVerified) && !(hooks != nil && hooks.trustEmailDomain))) {
+		return u, false, authn.ErrOAuthLinkRequired
 	}
 	authority := socialAuthority
 	if hooks != nil {

@@ -66,25 +66,8 @@ func (s *Store) deleteSSOProvider(ctx context.Context, actor sso.Actor, id, reco
 	if err != nil {
 		return err
 	}
-	if p.OrganizationID == nil {
-		if p.UserID != actor.UserID {
-			return sso.ErrForbidden
-		}
-	} else {
-		exists, e := s.hasKeyOwnerTable(ctx, tx, "member")
-		if e != nil {
-			return e
-		}
-		if !exists {
-			return sso.ErrForbidden
-		}
-		role, e := s.ssoOrgRole(ctx, tx, *p.OrganizationID, actor.UserID)
-		if errors.Is(e, sso.ErrNotMember) || e == nil && !ssoAdmin(role) {
-			return sso.ErrForbidden
-		}
-		if e != nil {
-			return e
-		}
+	if err = s.authorizeSSOManager(ctx, tx, actor, p.Provider); err != nil {
+		return err
 	}
 	// The provider ID is shared with static OAuth providers. Matching that
 	// public name never proves ownership of a canonical account row.
@@ -115,6 +98,9 @@ func (s *Store) deleteSSOProvider(ctx context.Context, actor sso.Actor, id, reco
 		if _, err = tx.ExecContext(ctx, s.bind(`DELETE FROM "verification" WHERE "id"=? AND "identifier"=?`), sourceID(link.ID), sourceOwner(link.UserID)); err != nil {
 			return err
 		}
+	}
+	if err = s.removeDomainMetadata(ctx, tx, recordID); err != nil {
+		return err
 	}
 	result, err := tx.ExecContext(ctx, s.bind(`DELETE FROM "ssoProvider" WHERE `+s.scimExact(`"id"`)+`=? AND `+s.scimExact(`"providerId"`)+`=?`), recordID, id)
 	if err != nil {
@@ -171,4 +157,28 @@ func (s *Store) ownedEnterpriseLinks(ctx context.Context, tx *sql.Tx, p sso.Brow
 		}
 	}
 	return owned, nil
+}
+
+func (s *Store) authorizeSSOManager(ctx context.Context, tx *sql.Tx, actor sso.Actor, p sso.Provider) error {
+	if p.OrganizationID == nil {
+		if p.UserID != actor.UserID {
+			return sso.ErrForbidden
+		}
+	} else {
+		exists, e := s.hasKeyOwnerTable(ctx, tx, "member")
+		if e != nil {
+			return e
+		}
+		if !exists {
+			return sso.ErrForbidden
+		}
+		role, e := s.ssoOrgRole(ctx, tx, *p.OrganizationID, actor.UserID)
+		if errors.Is(e, sso.ErrNotMember) || e == nil && !ssoAdmin(role) {
+			return sso.ErrForbidden
+		}
+		if e != nil {
+			return e
+		}
+	}
+	return nil
 }

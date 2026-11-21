@@ -77,8 +77,20 @@ func main() {
 	var directoryEnabled bool
 	for _, id := range os.Args[2:] {
 		switch id {
-		case "sso":
-			p, e := sso.New(sso.Options{SharedCallback: os.Getenv("CONFORMANCE_SSO_SHARED_CALLBACK") == "1"})
+		case "sso", "sso-domain-verification":
+			opts := sso.Options{SharedCallback: os.Getenv("CONFORMANCE_SSO_SHARED_CALLBACK") == "1"}
+			if id == "sso-domain-verification" {
+				address := os.Getenv("CONFORMANCE_SSO_DNS")
+				host, _, err := net.SplitHostPort(address)
+				if err != nil || host != "127.0.0.1" {
+					log.Fatal("domain verification fixture requires a loopback DNS server")
+				}
+				opts.DomainVerification = &sso.DomainVerificationOptions{TokenPrefix: "tenant-proof", Resolver: &net.Resolver{PreferGo: true, Dial: func(ctx context.Context, network, _ string) (net.Conn, error) {
+					var dialer net.Dialer
+					return dialer.DialContext(ctx, network, address)
+				}}}
+			}
+			p, e := sso.New(opts)
 			if e != nil {
 				log.Fatal(e)
 			}

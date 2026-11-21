@@ -39,7 +39,13 @@
   - [ ] `REQUIRED_DISCOVERY_FIELDS`
   - [ ] `RequiredDiscoveryField`
   - [ ] `POST /sso/request-domain-verification`
+    - [x] Read a seven-day registration challenge with the released client and return HTTP 201 for a repeated request ([test](../../../conformance/sso-domains.mjs#L86))
+    - [x] Replace an expired challenge once across two database instances ([test](../../../adapters/sqlstore/sso_domain_test.go#L202))
   - [ ] `POST /sso/verify-domain`
+    - [x] Require each domain to publish the token and accept split TXT character strings and labeled values ([test](../../../conformance/sso-domains.mjs#L92))
+    - [x] Recheck the manager’s tenant role after DNS answers and before committing the proof ([test](../../../adapters/sqlstore/sso_domain_test.go#L379))
+    - [x] Bind DNS verification to the nonsecret identity source and require fresh proof when it changes ([test](../../../adapters/sqlstore/sso_domain_test.go#L435))
+    - [x] Reject dotted, overlong and oversized verification names before the resolver is called ([test](../../../adapters/sqlstore/sso_domain_test.go#L401))
   - [ ] `deriveSAMLIdentityProviderEntityID`
   - [ ] `deriveSAMLServiceProviderPolicy`
   - [ ] `SAMLServiceProviderPolicy`
@@ -60,14 +66,19 @@
     - [x] Register manually configured and discovered OIDC clients and read the other implementation’s canonical provider record ([test](../../../conformance/sso-providers.mjs#L12))
     - [x] Enforce direct owner sessions, organization roles and creator quota during concurrent registrations ([test](../../../adapters/sqlstore/sso_test.go#L23))
     - [x] Deny enterprise registration from an impersonated session on an instance opened before the administrative migration ([test](../../../adapters/sqlstore/admin_live_schema_test.go#L108))
+    - [x] Read a seven-day registration challenge with the released client and return HTTP 201 for a repeated request ([test](../../../conformance/sso-domains.mjs#L86))
   - [ ] `POST /sign-in/sso`
     - [x] Start an authorization with a persisted OIDC provider through the released client and retain the same account across implementations ([test](../../../conformance/sso-browser.mjs#L13))
     - [x] Select a provider by ID, organization slug, email or DNS suffix on a custom auth mount ([test](../../../adapters/sqlstore/sso_browser_test.go#L123))
+    - [x] Select a proved directory ahead of overlapping pending registrations ([test](../../../adapters/sqlstore/sso_domain_test.go#L245))
   - [ ] `/sso/callback/:providerId`
     - [x] Redeem a browser-bound code with PKCE and either secret authentication method, then issue a session for the stable provider subject ([test](../../../adapters/sqlstore/sso_browser_test.go#L123))
     - [x] Reject changed provider configuration before exchange and inside the account, membership and session transaction ([test](../../../adapters/sqlstore/sso_browser_test.go#L320))
     - [x] Use validated public addresses for tenant-controlled endpoints and reject redirects and oversized responses ([test](../../../plugins/sso/identity_test.go#L15))
     - [x] Reject a shared public subject from another authority on both enterprise and static OAuth nodes ([test](../../../adapters/sqlstore/sso_browser_test.go#L348))
+    - [x] Deny the session and roll back identity creation when the DNS proof is withdrawn during token exchange ([test](../../../adapters/sqlstore/sso_domain_test.go#L320))
+    - [x] Link a verified local mailbox within the proved subdomain to the authenticated identity ([test](../../../adapters/sqlstore/sso_domain_test.go#L296))
+    - [x] Reject two distinct mailboxes that compare equal under an accent-insensitive MySQL collation ([test](../../../adapters/sqlstore/sso_domain_test.go#L330))
   - [ ] `/sso/callback`
     - [x] Authenticate using the shared callback on both servers and preserve the canonical linked account in SQLite ([test](../../../conformance/sso-browser.mjs#L54))
   - [ ] `GET / POST /sso/saml2/sp/acs/:providerId`
@@ -146,6 +157,8 @@
       - [x] Reject disabled registration and serialize concurrent requests for the final account slot ([test](../../../adapters/sqlstore/sso_test.go#L23))
     - [ ] `trustEmailVerified`
     - [ ] `domainVerification`
+      - [x] Migrate a populated enterprise provider to the DNS profile and compare 24 profile selections on all three SQL dialects ([test](../../../conformance/schema.test.mjs#L252))
+      - [x] Bind DNS verification to the nonsecret identity source and require fresh proof when it changes ([test](../../../adapters/sqlstore/sso_domain_test.go#L435))
     - [ ] `redirectURI`
       - [x] Select the shared callback for all registered providers or the provider-specific URL under the auth mount ([test](../../../conformance/sso-browser.mjs#L57))
     - [ ] `resolvePrivateKey`
@@ -173,13 +186,18 @@
 
 - [ ] Verify SSO domains
   - [ ] Enable domain verification
+    - [x] Migrate a populated enterprise provider to the DNS profile and compare 24 profile selections on all three SQL dialects ([test](../../../conformance/schema.test.mjs#L252))
   - [ ] Verify your domain
     - [ ] Get the verification token
+      - [x] Read a seven-day registration challenge with the released client and return HTTP 201 for a repeated request ([test](../../../conformance/sso-domains.mjs#L86))
     - [ ] Publish a TXT record
+      - [x] Require each domain to publish the token and accept split TXT character strings and labeled values ([test](../../../conformance/sso-domains.mjs#L92))
     - [ ] Submit verification
+      - [x] Recheck the manager’s tenant role after DNS answers and before committing the proof ([test](../../../adapters/sqlstore/sso_domain_test.go#L379))
       - [ ] `POST /sso/verify-domain`
         - [ ] Parameter `providerId`
   - [ ] Request a verification token
+    - [x] Replace an expired challenge once across two database instances ([test](../../../adapters/sqlstore/sso_domain_test.go#L202))
     - [ ] `POST /sso/request-domain-verification`
       - [ ] Parameter `providerId`
   - [ ] Errors

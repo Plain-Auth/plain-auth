@@ -1199,3 +1199,8 @@ test("the pinned client bills an annual organization base and a yearly seat per 
   const { organizationBilling } = await import("./stripe-organization-fixture.mjs");
   await organizationBilling(t, { reference, goFixture, instrument }, { automatic: true, separate: true, annual: true });
 });
+
+test("the official SSO client proves all registered domains using local DNS", async t => {
+  const {compareSSODomains} = await import("./sso-domains.mjs");
+  await compareSSODomains(t, {goFixture, instrument});
+});

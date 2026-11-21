@@ -18,6 +18,8 @@ import (
 )
 
 type Options struct {
+	// DomainVerification enables DNS ownership checks for managed OIDC domains.
+	DomainVerification *DomainVerificationOptions
 	// GuardProviderMutation can reject a deletion after the exact provider and
 	// its authorization have been checked inside the store transaction.
 	GuardProviderMutation MutationGuard
@@ -61,8 +63,10 @@ type Provider struct {
 
 type Registered struct {
 	Provider
-	RedirectURI string `json:"redirectURI"`
-	SAMLConfig  any    `json:"samlConfig"`
+	RedirectURI             string `json:"redirectURI"`
+	SAMLConfig              any    `json:"samlConfig"`
+	DomainVerified          *bool  `json:"domainVerified,omitempty"`
+	DomainVerificationToken string `json:"domainVerificationToken,omitempty"`
 }
 
 type PublicConfig struct {
@@ -145,6 +149,13 @@ func domains(value string) (string, error) {
 
 // New registers the provider management routes under the auth mount.
 func New(o Options) (auth.Plugin, error) {
+	if o.DomainVerification != nil {
+		cfg, err := o.DomainVerification.normalized()
+		if err != nil {
+			return auth.Plugin{}, err
+		}
+		o.DomainVerification = &cfg
+	}
 	limit := 10
 	if o.ProvidersLimit != nil {
 		limit = *o.ProvidersLimit
@@ -194,6 +205,11 @@ func New(o Options) (auth.Plugin, error) {
 		if err != nil {
 			return nil, err
 		}
+		if opt := o.DomainVerification; opt != nil {
+			if _, err := DomainTargets(id, opt.identifier(id), domain); err != nil {
+				return nil, err
+			}
+		}
 		issuer, _ := c.Body["issuer"].(string)
 		if _, err = endpointURL(issuer); err != nil {
 			return nil, err
@@ -242,14 +258,24 @@ func New(o Options) (auth.Plugin, error) {
 			return nil, err
 		}
 		p.OIDC = &cfg
-		if err = store.CreateSSOProvider(ctx, actor, p, limit); err != nil {
+		var result Registered
+		if opt := o.DomainVerification; opt != nil {
+			result.DomainVerificationToken, err = store.(DomainStore).CreateSSODomainProvider(ctx, actor, p, limit, opt.identifier(id))
+			verified := false
+			result.DomainVerified = &verified
+		} else {
+			err = store.CreateSSOProvider(ctx, actor, p, limit)
+		}
+		if err != nil {
 			return nil, err
 		}
 		callback, err := callbackURI(c, id, o.SharedCallback)
 		if err != nil {
 			return nil, err
 		}
-		return Registered{Provider: p, RedirectURI: callback}, nil
+		result.Provider = p
+		result.RedirectURI = callback
+		return result, nil
 	}
 	read := func(c auth.EndpointContext, store Store, actor Actor) (any, error) {
 		id := ""
@@ -266,7 +292,12 @@ func New(o Options) (auth.Plugin, error) {
 		}
 		out := make([]PublicProvider, 0, len(list))
 		for _, p := range list {
-			out = append(out, sanitized(c, p))
+			public := sanitized(c, p)
+			_, public.DomainVerified, err = o.domainStatus(c.Request.Context(), store, p, "")
+			if err != nil {
+				return nil, err
+			}
+			out = append(out, public)
 		}
 		if single {
 			if len(out) != 1 {
@@ -276,15 +307,30 @@ func New(o Options) (auth.Plugin, error) {
 		}
 		return map[string]any{"providers": out}, nil
 	}
-	return auth.Plugin{ID: "sso", ValidateStore: func(s auth.Store) error {
+	plugin := auth.Plugin{ID: "sso", ValidateStore: func(s auth.Store) error {
 		if _, ok := s.(Store); !ok {
 			return errors.New("sso: provider management requires a directory store")
+		}
+		if o.DomainVerification != nil {
+			ds, ok := s.(DomainStore)
+			if !ok {
+				return errors.New("sso: DNS verification requires a domain verification store")
+			}
+			return ds.CheckSSODomainSchema(context.Background())
 		}
 		return nil
 	}, Endpoints: []auth.Endpoint{endpoint("/sso/register", "POST", register), endpoint("/sso/providers", "GET", read), endpoint("/sso/get-provider", "GET", read), endpoint("/sso/delete-provider", "POST", o.deleteProvider),
 		{Method: "POST", Path: "/sign-in/sso", Handler: o.start},
 		{Method: "GET", Path: "/sso/callback", Handler: o.finish},
-		{Method: "GET", Path: "/sso/callback/:providerId", Handler: o.finish}}}, nil
+		{Method: "GET", Path: "/sso/callback/:providerId", Handler: o.finish}}}
+	if opt := o.DomainVerification; opt != nil {
+		request := endpoint("/sso/request-domain-verification", "POST", opt.request)
+		request.SuccessStatus = 201
+		verify := endpoint("/sso/verify-domain", "POST", opt.verify)
+		verify.SuccessStatus = 204
+		plugin.Endpoints = append(plugin.Endpoints, request, verify)
+	}
+	return plugin, nil
 }
 
 func sanitized(c auth.EndpointContext, p Provider) PublicProvider {

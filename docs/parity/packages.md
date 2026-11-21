@@ -254,6 +254,7 @@ Each row tracks the behavior exposed by a published entry point. The Go implemen
   - [ ] Default interface (`.`)
     - [x] Register persisted OIDC providers and read sanitized configuration through the official client on both implementations ([test](../../conformance/sso-providers.mjs#L12))
     - [x] Create reusable enterprise sessions through both browser callback routes while preserving a single linked account ([test](../../conformance/sso-browser.mjs#L13))
+    - [x] Require each domain to publish the token and accept split TXT character strings and labeled values ([test](../../conformance/sso-domains.mjs#L92))
   - [ ] Client integration (`./client`)
 
 ## Stripe billing
