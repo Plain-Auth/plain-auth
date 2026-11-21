@@ -26,6 +26,9 @@ var catalogue = sync.OnceValue(func() map[string]json.RawMessage {
 })
 
 func schemaPath(r stonewrit.HTTPRoute) string {
+	if r.Plugin == "sso" && r.Path == "/sso/callback/:providerId" {
+		return "/sso/callback/{providerId}"
+	}
 	if r.Plugin == "" {
 		switch r.Path {
 		case "/reset-password/:token":
@@ -55,7 +58,11 @@ func sessionProtection(route stonewrit.HTTPRoute) bool {
 	case "admin", "organization", "api-key":
 		return true
 	case "sso":
-		return route.Path == "/sso/request-domain-verification" || route.Path == "/sso/verify-domain"
+		switch route.Path {
+		case "/sso/register", "/sso/providers", "/sso/get-provider", "/sso/delete-provider", "/sso/request-domain-verification", "/sso/verify-domain":
+			return true
+		}
+		return false
 	case "stripe":
 		return route.Path != "/stripe/webhook" && route.Path != "/subscription/success"
 	case "passkey":
@@ -77,12 +84,13 @@ func loginResponse(success object, factor bool) object {
 }
 
 func publicResponse(route stonewrit.HTTPRoute, info stonewrit.HTTPDescription, factor bool) object {
+	if route.Plugin == "sso" {
+		return ssoResponse(route.Path, info)
+	}
 	if route.Plugin == "jwt" && route.Path != "/token" {
 		return responseObject(object{"keys": array(object{"type": "object"})}, "keys")
 	}
 	switch route.Path {
-	case "/sso/request-domain-verification":
-		return responseObject(object{"domainVerificationToken": object{"type": "string"}}, "domainVerificationToken")
 	case "/get-session":
 		if info.CustomSession {
 			return object{}
@@ -187,11 +195,11 @@ func keepFields(schema object, names ...string) {
 }
 
 func adjustRequest(op object, r stonewrit.HTTPRoute, info stonewrit.HTTPDescription, a *stonewrit.Auth) {
-	switch r.Path {
-	case "/sso/request-domain-verification", "/sso/verify-domain":
-		op["description"] = "Requires a direct session from the personal provider’s creator or a current owner or administrator of its organization."
-		op["requestBody"] = object{"required": true, "content": content("application/json", responseObject(object{"providerId": object{"type": "string", "minLength": 1}}, "providerId"))}
+	if r.Plugin == "sso" {
+		describeSSORequest(op, r.Path, info)
 		return
+	}
+	switch r.Path {
 	case "/account-info":
 		op["parameters"] = []object{{"name": "accountId", "in": "query", "required": true, "schema": object{"type": "string"}}}
 		return
@@ -359,7 +367,7 @@ func standardOperation(r stonewrit.HTTPRoute, info stonewrit.HTTPDescription, a 
 		switch r.Path {
 		case "/error":
 			responses[success] = response("text/html", object{"type": "string"})
-		case "/reset-password/:token", "/callback/:id", "/subscription/success":
+		case "/reset-password/:token", "/callback/:id", "/subscription/success", "/sso/callback", "/sso/callback/:providerId":
 			delete(responses, success)
 			responses["302"] = object{"description": "Redirect to the configured destination", "headers": object{"Location": object{"schema": object{"type": "string"}}}}
 		case "/verify-email", "/magic-link/verify", "/delete-user/callback":

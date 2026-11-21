@@ -29,6 +29,8 @@ The `User`, `Session` and linked `Account` models describe public Go response fi
 
 The document declares the actual session cookie name, including its configured prefix. The bearer plugin adds bearer tokens as an alternative on session-protected operations. Public signup and login have no session credential requirement. Stripe webhooks declare the signature header. Application-specific authorization rules, roles, scoped API keys and conditional second-factor challenges still apply at runtime.
 
+With enterprise OIDC installed, the reference describes registration, list, lookup, deletion and browser sign-in. The registration request marks the client secret as write-only. Its confidential administration response can echo the submitted OIDC credentials. The public schema lists safe response fields, and the list and lookup handlers return the masked client ID. Sign-in returns an authorization URL. The provider-specific and shared callbacks document the browser binding cookie, query parameters and HTTP 302 destination. [Enterprise provider management](sso.md)
+
 When enterprise DNS verification is enabled, both management operations require a JSON body containing `providerId` and a direct session belonging to the personal directory creator or a current organization owner or administrator. Requesting a challenge returns HTTP 201 with a `domainVerificationToken` string. Successful verification returns HTTP 204 with an empty body. [Enterprise DNS verification](sso.md#verify-directory-domains-with-dns)
 
 ## Custom operations

@@ -70,39 +70,8 @@ func TestEnterpriseDomainVerificationContract(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			call := func(method, path string, body obj, headers http.Header, want int) *httptest.ResponseRecorder {
-				t.Helper()
-				var input bytes.Buffer
-				if body != nil {
-					if err := json.NewEncoder(&input).Encode(body); err != nil {
-						t.Fatal(err)
-					}
-				}
-				r := httptest.NewRequest(method, origin+"/identity"+path, &input)
-				for key, values := range headers {
-					for _, value := range values {
-						r.Header.Add(key, value)
-					}
-				}
-				r.Header.Set("Origin", origin)
-				if body != nil {
-					r.Header.Set("Content-Type", "application/json")
-				}
-				w := httptest.NewRecorder()
-				host.ServeHTTP(w, r)
-				if w.Code != want {
-					t.Fatalf("%s %s: received %d, want %d", method, path, w.Code, want)
-				}
-				return w
-			}
-			decode := func(w *httptest.ResponseRecorder) obj {
-				t.Helper()
-				var out obj
-				if err := json.Unmarshal(w.Body.Bytes(), &out); err != nil {
-					t.Fatal(err)
-				}
-				return out
-			}
+			wire := ssoWire{t, host, origin}
+			call, decode := wire.call, wire.decode
 			document := decode(call("GET", "/open-api/generate-schema", nil, nil, 200))
 			page := call("GET", "/reference", nil, nil, 200).Body.String()
 			paths := node(document, "paths")
@@ -207,4 +176,45 @@ func TestEnterpriseDomainVerificationContract(t *testing.T) {
 			}
 		})
 	}
+}
+
+type ssoWire struct {
+	t      *testing.T
+	host   *auth.Auth
+	origin string
+}
+
+func (f ssoWire) call(method, path string, body obj, headers http.Header, want int) *httptest.ResponseRecorder {
+	f.t.Helper()
+	var input bytes.Buffer
+	if body != nil {
+		if err := json.NewEncoder(&input).Encode(body); err != nil {
+			f.t.Fatal(err)
+		}
+	}
+	r := httptest.NewRequest(method, f.origin+"/identity"+path, &input)
+	for key, values := range headers {
+		for _, value := range values {
+			r.Header.Add(key, value)
+		}
+	}
+	r.Header.Set("Origin", f.origin)
+	if body != nil {
+		r.Header.Set("Content-Type", "application/json")
+	}
+	w := httptest.NewRecorder()
+	f.host.ServeHTTP(w, r)
+	if w.Code != want {
+		f.t.Fatalf("%s %s: received %d, want %d", method, path, w.Code, want)
+	}
+	return w
+}
+
+func (f ssoWire) decode(w *httptest.ResponseRecorder) obj {
+	f.t.Helper()
+	var out obj
+	if err := json.Unmarshal(w.Body.Bytes(), &out); err != nil {
+		f.t.Fatal(err)
+	}
+	return out
 }

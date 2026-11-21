@@ -22,6 +22,8 @@ type HTTPRoute struct {
 // HTTPDescription describes public settings used to document the handler.
 type HTTPDescription struct {
 	ServerURL, SessionCookie string
+	// SSOStateCookie is the browser binding cookie for installed enterprise OIDC callbacks.
+	SSOStateCookie           string
 	Routes                   []HTTPRoute
 	Providers                []string
 	MinPassword, MaxPassword int
@@ -36,6 +38,9 @@ func (a *Auth) DescribeHTTP() HTTPDescription {
 	d := HTTPDescription{ServerURL: strings.TrimRight(o.BaseURL, "/") + o.BasePath, SessionCookie: a.cookieName(),
 		MinPassword: o.MinPasswordLength, MaxPassword: o.MaxPasswordLength, CustomSession: a.sessionResponse != nil,
 		DisplayUsername: a.username != nil && !a.username.DisableDisplay}
+	if a.HasPlugin("sso") {
+		d.SSOStateCookie = a.prefixedCookieName("sso_state")
+	}
 	for name := range o.SocialProviders {
 		d.Providers = append(d.Providers, name)
 	}

@@ -5210,6 +5210,11 @@
   ],
   "plugin/open-api/GET /open-api/generate-schema": [
     {
+      "label": "Describe enterprise provider management, redacted reads, browser sign-in and both bound callback routes against the configured SQL handler",
+      "test": "plugins/openapi/sso_directory_test.go",
+      "marker": "func TestEnterpriseDirectoryOpenAPI("
+    },
+    {
       "label": "Describe the enabled enterprise DNS management inputs, outputs and session credentials",
       "test": "plugins/openapi/sso_domain_test.go",
       "marker": "func TestEnterpriseDomainVerificationContract("
