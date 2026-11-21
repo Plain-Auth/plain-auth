@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	betterauth "github.com/nabuhadba/go-better-auth"
+	authn "github.com/nabuhadba/go-better-auth"
 	"github.com/nabuhadba/go-better-auth/adapters/sqlite"
 	stripeplugin "github.com/nabuhadba/go-better-auth/plugins/stripe"
 	stripesdk "github.com/stripe/stripe-go/v87"
@@ -33,7 +33,7 @@ func TestSignedWebhookDelivery(t *testing.T) {
 		}
 		return callbackErr
 	}}
-	auth, err := betterauth.New(betterauth.Options{Store: db, BaseURL: "http://auth.test", Secret: "test-secret-0123456789-abcdefghijk", Plugins: []betterauth.Plugin{stripeplugin.New(opt)}})
+	auth, err := authn.New(authn.Options{Store: db, BaseURL: "http://auth.test", Secret: "test-secret-0123456789-abcdefghijk", Plugins: []authn.Plugin{stripeplugin.New(opt)}})
 	if err != nil {
 		t.Fatal(err)
 	}

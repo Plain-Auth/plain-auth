@@ -14,7 +14,7 @@ import (
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/adaptor"
 	"github.com/gorilla/mux"
-	betterauth "github.com/nabuhadba/go-better-auth"
+	authn "github.com/nabuhadba/go-better-auth"
 	"github.com/nabuhadba/go-better-auth/adapters/sqlite"
 )
 
@@ -59,7 +59,7 @@ func TestFrameworkMounts(t *testing.T) {
 			}
 			defer s.Close()
 			const origin = "http://localhost"
-			auth, err := betterauth.New(betterauth.Options{BaseURL: origin, Secret: strings.Repeat("r", 32), Store: s, EmailAndPassword: true})
+			auth, err := authn.New(authn.Options{BaseURL: origin, Secret: strings.Repeat("r", 32), Store: s, EmailAndPassword: true})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -98,7 +98,7 @@ func TestFrameworkMounts(t *testing.T) {
 				t.Fatal("registration returned no session cookie")
 			}
 			_, session := send("GET", "/api/auth/get-session", "", cookies, 200)
-			var result betterauth.SessionResult
+			var result authn.SessionResult
 			if json.Unmarshal([]byte(session), &result) != nil || result.User.Email != "ada@example.com" {
 				t.Fatalf("unexpected session: %s", session)
 			}

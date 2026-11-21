@@ -12,12 +12,12 @@ import (
 
 	"github.com/go-sql-driver/mysql"
 	"github.com/jackc/pgx/v5/pgconn"
-	betterauth "github.com/nabuhadba/go-better-auth"
+	authn "github.com/nabuhadba/go-better-auth"
 )
 
-var _ betterauth.OAuthStore = (*Store)(nil)
+var _ authn.OAuthStore = (*Store)(nil)
 
-func (s *Store) SaveOAuthFlow(ctx context.Context, flow betterauth.OAuthFlow, now time.Time) error {
+func (s *Store) SaveOAuthFlow(ctx context.Context, flow authn.OAuthFlow, now time.Time) error {
 	payload, err := json.Marshal(flow)
 	if err != nil {
 		return err
@@ -38,8 +38,8 @@ func (s *Store) SaveOAuthFlow(ctx context.Context, flow betterauth.OAuthFlow, no
 	return tx.Commit()
 }
 
-func (s *Store) ConsumeOAuthFlow(ctx context.Context, state, binding string, now time.Time) (betterauth.OAuthFlow, error) {
-	var flow betterauth.OAuthFlow
+func (s *Store) ConsumeOAuthFlow(ctx context.Context, state, binding string, now time.Time) (authn.OAuthFlow, error) {
+	var flow authn.OAuthFlow
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return flow, err
@@ -52,7 +52,7 @@ func (s *Store) ConsumeOAuthFlow(ctx context.Context, state, binding string, now
 	var payload string
 	err = tx.QueryRowContext(ctx, s.bind(q), state, "oauth-state:"+binding, s.date(now)).Scan(&payload)
 	if errors.Is(err, sql.ErrNoRows) {
-		return flow, betterauth.ErrNotFound
+		return flow, authn.ErrNotFound
 	}
 	if err != nil {
 		return flow, err
@@ -69,9 +69,9 @@ func (s *Store) ConsumeOAuthFlow(ctx context.Context, state, binding string, now
 // CompleteOAuth serializes account creation, verified-email linking and session
 // issuance. A stable primary key serializes concurrent first logins even on a
 // canonical schema with no (providerId, accountId) unique constraint.
-func (s *Store) CompleteOAuth(ctx context.Context, provider, subject string, tokens betterauth.OAuthTokens, candidate betterauth.User, session betterauth.StoredSession, options betterauth.OAuthLoginOptions) (betterauth.User, bool, error) {
+func (s *Store) CompleteOAuth(ctx context.Context, provider, subject string, tokens authn.OAuthTokens, candidate authn.User, session authn.StoredSession, options authn.OAuthLoginOptions) (authn.User, bool, error) {
 	candidate.Email = strings.ToLower(candidate.Email)
-	var u betterauth.User
+	var u authn.User
 	var created bool
 	var err error
 	for attempt := 0; attempt < 3; attempt++ {
@@ -95,8 +95,8 @@ func retryIdentity(err error) bool {
 	return false
 }
 
-func (s *Store) completeOAuth(ctx context.Context, provider, subject string, tokens betterauth.OAuthTokens, candidate betterauth.User, session betterauth.StoredSession, options betterauth.OAuthLoginOptions) (betterauth.User, bool, error) {
-	var u betterauth.User
+func (s *Store) completeOAuth(ctx context.Context, provider, subject string, tokens authn.OAuthTokens, candidate authn.User, session authn.StoredSession, options authn.OAuthLoginOptions) (authn.User, bool, error) {
+	var u authn.User
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return u, false, err
@@ -104,7 +104,7 @@ func (s *Store) completeOAuth(ctx context.Context, provider, subject string, tok
 	defer tx.Rollback()
 	if options.LinkUserID != "" {
 		if !candidate.EmailVerified {
-			return u, false, betterauth.ErrOAuthLinkRequired
+			return u, false, authn.ErrOAuthLinkRequired
 		}
 		if err := s.lockActiveAccount(ctx, tx, options.LinkUserID, options.LinkSessionToken, session.CreatedAt); err != nil {
 			return u, false, err
@@ -112,7 +112,7 @@ func (s *Store) completeOAuth(ctx context.Context, provider, subject string, tok
 	}
 	if !options.IDTokenValidUntil.IsZero() {
 		if !options.IDTokenValidUntil.After(session.CreatedAt) {
-			return u, false, betterauth.ErrIDTokenUsed
+			return u, false, authn.ErrIDTokenUsed
 		}
 		if err := s.claimIDToken(ctx, tx, provider, tokens.IDToken, session.CreatedAt, options.IDTokenValidUntil); err != nil {
 			return u, false, err
@@ -134,7 +134,7 @@ func (s *Store) completeOAuth(ctx context.Context, provider, subject string, tok
 		return u, false, err
 	}
 	if existing && options.LinkUserID != "" && (u.ID != options.LinkUserID || !strings.EqualFold(u.Email, candidate.Email)) {
-		return u, false, betterauth.ErrOAuthLinkRequired
+		return u, false, authn.ErrOAuthLinkRequired
 	}
 	created := false
 	if !existing {
@@ -142,7 +142,7 @@ func (s *Store) completeOAuth(ctx context.Context, provider, subject string, tok
 		switch {
 		case errors.Is(err, sql.ErrNoRows):
 			if options.LinkUserID != "" {
-				return u, false, betterauth.ErrOAuthLinkRequired
+				return u, false, authn.ErrOAuthLinkRequired
 			}
 			u = candidate
 			created = true
@@ -153,9 +153,9 @@ func (s *Store) completeOAuth(ctx context.Context, provider, subject string, tok
 		case err != nil:
 			return u, false, err
 		case options.LinkUserID != "" && u.ID != options.LinkUserID:
-			return u, false, betterauth.ErrOAuthLinkRequired
+			return u, false, authn.ErrOAuthLinkRequired
 		case options.LinkUserID == "" && (!options.AllowVerifiedEmailLink || !u.EmailVerified || !candidate.EmailVerified):
-			return u, false, betterauth.ErrOAuthLinkRequired
+			return u, false, authn.ErrOAuthLinkRequired
 		}
 		key := sha256.Sum256([]byte(provider + "\x00" + subject))
 		account = hex.EncodeToString(key[:16])
@@ -200,13 +200,13 @@ func (s *Store) claimIDToken(ctx context.Context, tx *sql.Tx, provider, raw stri
 	if err != nil {
 		var my *mysql.MySQLError
 		if errors.As(err, &my) && my.Number == 1062 {
-			return betterauth.ErrIDTokenUsed
+			return authn.ErrIDTokenUsed
 		}
 		return err
 	}
 	n, err := result.RowsAffected()
 	if err == nil && n == 0 {
-		return betterauth.ErrIDTokenUsed
+		return authn.ErrIDTokenUsed
 	}
 	return err
 }

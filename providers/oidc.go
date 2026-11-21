@@ -9,15 +9,15 @@ import (
 	"time"
 
 	"github.com/coreos/go-oidc/v3/oidc"
-	betterauth "github.com/nabuhadba/go-better-auth"
+	authn "github.com/nabuhadba/go-better-auth"
 	"golang.org/x/oauth2"
 )
 
 // OpenIDConnect discovers an operator-configured issuer and its rotating
 // signing keys. Register the result under a stable SocialProviders name.
 // Its ID tokens must contain a subject, an email address and a matching nonce.
-func OpenIDConnect(ctx context.Context, issuer, clientID, clientSecret string) (betterauth.OAuthProvider, error) {
-	var zero betterauth.OAuthProvider
+func OpenIDConnect(ctx context.Context, issuer, clientID, clientSecret string) (authn.OAuthProvider, error) {
+	var zero authn.OAuthProvider
 	if !secureEndpoint(issuer) || clientID == "" {
 		return zero, errors.New("invalid OpenID Connect issuer or client ID")
 	}

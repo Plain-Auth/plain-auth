@@ -16,7 +16,7 @@ import (
 	"testing"
 	"time"
 
-	betterauth "github.com/nabuhadba/go-better-auth"
+	authn "github.com/nabuhadba/go-better-auth"
 )
 
 // Network database tests need a database dedicated to testing. They delete
@@ -64,7 +64,7 @@ func TestEngineContract(t *testing.T) {
 			}
 			dup := testUser(prefix + "-duplicate")
 			dup.Email = strings.ToUpper(u.Email)
-			if err := store.CreateUser(ctx, dup, "hash", nil); !errors.Is(err, betterauth.ErrEmailTaken) {
+			if err := store.CreateUser(ctx, dup, "hash", nil); !errors.Is(err, authn.ErrEmailTaken) {
 				t.Fatalf("case-insensitive duplicate: %v", err)
 			}
 			dup.Email = dup.ID + "@example.org"
@@ -73,7 +73,7 @@ func TestEngineContract(t *testing.T) {
 			if err := store.CreateUser(ctx, dup, "hash", &bad); err == nil {
 				t.Fatal("expected session digest collision")
 			}
-			if _, _, err := store.Credential(ctx, dup.Email); !errors.Is(err, betterauth.ErrNotFound) {
+			if _, _, err := store.Credential(ctx, dup.Email); !errors.Is(err, authn.ErrNotFound) {
 				t.Fatalf("partial registration after failed session insert: %v", err)
 			}
 			// Simulate an application starting again against a populated schema.
@@ -87,7 +87,7 @@ func TestEngineContract(t *testing.T) {
 				t.Fatalf("persisted session %#v, %#v, %v", ss, owner, err)
 			}
 			// Exercise the public HTTP API with this engine's connection pool.
-			auth, err := betterauth.New(betterauth.Options{
+			auth, err := authn.New(authn.Options{
 				Store: reopened, EmailAndPassword: true, Secret: strings.Repeat("s", 32), BaseURL: "http://example.org",
 			})
 			if err != nil {
@@ -111,7 +111,7 @@ func TestEngineContract(t *testing.T) {
 			email := prefix + "-http@example.org"
 			body := fmt.Sprintf(`{"name":"Test User","email":%q,"password":"test-password-123"}`, email)
 			registration := request(http.MethodPost, "sign-up/email", body, nil)
-			var account betterauth.AuthResult
+			var account authn.AuthResult
 			if err := json.Unmarshal(registration.Body.Bytes(), &account); err != nil || account.User.ID == "" {
 				t.Fatalf("registration response: %v, %s", err, registration.Body.String())
 			}

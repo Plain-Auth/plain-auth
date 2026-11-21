@@ -1,4 +1,4 @@
-package betterauth_test
+package authn_test
 
 import (
 	"context"
@@ -9,28 +9,28 @@ import (
 	"strings"
 	"testing"
 
-	betterauth "github.com/nabuhadba/go-better-auth"
+	authn "github.com/nabuhadba/go-better-auth"
 )
 
 func TestVerificationGatedSignUpAndSignIn(t *testing.T) {
 	off := false
-	var messages []betterauth.MailLink
-	auth := newHTTPAuth(t, betterauth.Options{BaseURL: "https://auth.example", RateLimit: &off, RequireEmailVerification: true, SendVerificationOnSignIn: true,
-		SendVerificationEmail: func(_ context.Context, m betterauth.MailLink) error { messages = append(messages, m); return nil },
+	var messages []authn.MailLink
+	auth := newHTTPAuth(t, authn.Options{BaseURL: "https://auth.example", RateLimit: &off, RequireEmailVerification: true, SendVerificationOnSignIn: true,
+		SendVerificationEmail: func(_ context.Context, m authn.MailLink) error { messages = append(messages, m); return nil },
 	})
-	input := betterauth.SignUpInput{Name: "First", Email: "gated@example.test", Password: "a correct password"}
+	input := authn.SignUpInput{Name: "First", Email: "gated@example.test", Password: "a correct password"}
 	ctx := t.Context()
-	first, err := auth.SignUpEmail(ctx, input, betterauth.RequestMeta{CallbackURL: "/after"})
+	first, err := auth.SignUpEmail(ctx, input, authn.RequestMeta{CallbackURL: "/after"})
 	if err != nil || first.Token != "" || len(messages) != 1 {
 		t.Fatalf("verification-gated signup: %+v, %v", first, err)
 	}
-	second, err := auth.SignUpEmail(ctx, input, betterauth.RequestMeta{})
+	second, err := auth.SignUpEmail(ctx, input, authn.RequestMeta{})
 	if err != nil || second.Token != "" || second.User.ID == first.User.ID || len(messages) != 1 {
 		t.Fatal("duplicate registration disclosed an existing account or sent mail")
 	}
-	login := betterauth.SignInInput{Email: input.Email, Password: input.Password}
-	var e *betterauth.APIError
-	if _, err = auth.SignInEmail(ctx, login, betterauth.RequestMeta{}); !errors.As(err, &e) || e.Code != "EMAIL_NOT_VERIFIED" || len(messages) != 2 {
+	login := authn.SignInInput{Email: input.Email, Password: input.Password}
+	var e *authn.APIError
+	if _, err = auth.SignInEmail(ctx, login, authn.RequestMeta{}); !errors.As(err, &e) || e.Code != "EMAIL_NOT_VERIFIED" || len(messages) != 2 {
 		t.Fatalf("unverified login: %v", err)
 	}
 	u, err := url.Parse(messages[0].URL)
@@ -40,42 +40,42 @@ func TestVerificationGatedSignUpAndSignIn(t *testing.T) {
 	if res := serve(t, auth, "GET", u.RequestURI(), "", nil, 302); res.Header.Get("Location") != "/after" {
 		t.Fatal("missing signup callback")
 	}
-	ok, err := auth.SignInEmail(ctx, login, betterauth.RequestMeta{})
+	ok, err := auth.SignInEmail(ctx, login, authn.RequestMeta{})
 	if err != nil || ok.Token == "" || !ok.User.EmailVerified {
 		t.Fatalf("verified login: %v", err)
 	}
-	disabled := newHTTPAuth(t, betterauth.Options{BaseURL: "http://auth.example", DisableSignUp: true})
-	if _, err = disabled.SignUpEmail(ctx, input, betterauth.RequestMeta{}); !errors.As(err, &e) || e.Code != "EMAIL_PASSWORD_SIGN_UP_DISABLED" {
+	disabled := newHTTPAuth(t, authn.Options{BaseURL: "http://auth.example", DisableSignUp: true})
+	if _, err = disabled.SignUpEmail(ctx, input, authn.RequestMeta{}); !errors.As(err, &e) || e.Code != "EMAIL_PASSWORD_SIGN_UP_DISABLED" {
 		t.Fatalf("registration control: %v", err)
 	}
-	noAuto := newHTTPAuth(t, betterauth.Options{BaseURL: "http://auth.example", DisableAutoSignIn: true})
-	registered, err := noAuto.SignUpEmail(ctx, input, betterauth.RequestMeta{})
+	noAuto := newHTTPAuth(t, authn.Options{BaseURL: "http://auth.example", DisableAutoSignIn: true})
+	registered, err := noAuto.SignUpEmail(ctx, input, authn.RequestMeta{})
 	if err != nil || registered.Token != "" {
 		t.Fatal("autoSignIn controlled registration unexpectedly signed in")
 	}
-	if signed, err := noAuto.SignInEmail(ctx, login, betterauth.RequestMeta{}); err != nil || signed.Token == "" {
+	if signed, err := noAuto.SignInEmail(ctx, login, authn.RequestMeta{}); err != nil || signed.Token == "" {
 		t.Fatal("manual login failed")
 	}
 }
 
 func TestConfirmedEmailChangeAndDeletion(t *testing.T) {
 	off := false
-	var confirmations, verifications, deletions []betterauth.MailLink
-	auth := newHTTPAuth(t, betterauth.Options{BaseURL: "https://auth.example", RateLimit: &off, DeleteUserEnabled: true, ChangeEmailEnabled: true,
-		SendChangeEmailConfirmation: func(_ context.Context, m betterauth.MailLink) error {
+	var confirmations, verifications, deletions []authn.MailLink
+	auth := newHTTPAuth(t, authn.Options{BaseURL: "https://auth.example", RateLimit: &off, DeleteUserEnabled: true, ChangeEmailEnabled: true,
+		SendChangeEmailConfirmation: func(_ context.Context, m authn.MailLink) error {
 			confirmations = append(confirmations, m)
 			return nil
 		},
-		SendVerificationEmail: func(_ context.Context, m betterauth.MailLink) error {
+		SendVerificationEmail: func(_ context.Context, m authn.MailLink) error {
 			verifications = append(verifications, m)
 			return nil
 		},
-		SendDeleteAccountVerification: func(_ context.Context, m betterauth.MailLink) error { deletions = append(deletions, m); return nil },
+		SendDeleteAccountVerification: func(_ context.Context, m authn.MailLink) error { deletions = append(deletions, m); return nil },
 	})
-	register := func(email string) (betterauth.AuthResult, http.Header) {
+	register := func(email string) (authn.AuthResult, http.Header) {
 		t.Helper()
-		input := betterauth.SignUpInput{Name: email, Email: email, Password: "a test password"}
-		signup, err := auth.SignUpEmail(t.Context(), input, betterauth.RequestMeta{})
+		input := authn.SignUpInput{Name: email, Email: email, Password: "a test password"}
+		signup, err := auth.SignUpEmail(t.Context(), input, authn.RequestMeta{})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -106,7 +106,7 @@ func TestConfirmedEmailChangeAndDeletion(t *testing.T) {
 	if err != nil || session == nil || session.User.Email != "new@example.test" || !session.User.EmailVerified {
 		t.Fatal("change did not persist")
 	}
-	var e *betterauth.APIError
+	var e *authn.APIError
 	if err = auth.SetPassword(t.Context(), h, "should not overwrite"); !errors.As(err, &e) || e.Code != "PASSWORD_ALREADY_SET" {
 		t.Fatalf("set an existing password: %v", err)
 	}
@@ -131,8 +131,8 @@ func TestConfirmedEmailChangeAndDeletion(t *testing.T) {
 
 func TestFreshDeletionAndUnverifiedAddressChange(t *testing.T) {
 	off := false
-	auth := newHTTPAuth(t, betterauth.Options{BaseURL: "https://auth.example", RateLimit: &off, DeleteUserEnabled: true, ChangeEmailEnabled: true, UpdateEmailWithoutVerification: true})
-	user, err := auth.SignUpEmail(t.Context(), betterauth.SignUpInput{Name: "Fixture", Email: "old@example.test", Password: "a test password"}, betterauth.RequestMeta{})
+	auth := newHTTPAuth(t, authn.Options{BaseURL: "https://auth.example", RateLimit: &off, DeleteUserEnabled: true, ChangeEmailEnabled: true, UpdateEmailWithoutVerification: true})
+	user, err := auth.SignUpEmail(t.Context(), authn.SignUpInput{Name: "Fixture", Email: "old@example.test", Password: "a test password"}, authn.RequestMeta{})
 	if err != nil {
 		t.Fatal(err)
 	}

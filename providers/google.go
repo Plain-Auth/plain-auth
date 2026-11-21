@@ -12,20 +12,20 @@ import (
 	"time"
 
 	"github.com/coreos/go-oidc/v3/oidc"
-	betterauth "github.com/nabuhadba/go-better-auth"
+	authn "github.com/nabuhadba/go-better-auth"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/endpoints"
 )
 
 // Google configures OpenID Connect sign-in with Google's OAuth endpoints and
 // rotating signing keys. Identity is read only from a verified ID token.
-func Google(clientID, clientSecret string) betterauth.OAuthProvider {
+func Google(clientID, clientSecret string) authn.OAuthProvider {
 	client := &http.Client{Timeout: 15 * time.Second}
 	keys := oidc.NewRemoteKeySet(oidc.ClientContext(context.Background(), client), "https://www.googleapis.com/oauth2/v3/certs")
 	return google(clientID, clientSecret, keys, client)
 }
 
-func google(id, secret string, keys oidc.KeySet, client *http.Client) betterauth.OAuthProvider {
+func google(id, secret string, keys oidc.KeySet, client *http.Client) authn.OAuthProvider {
 	verifier := oidc.NewVerifier("https://accounts.google.com", keys, &oidc.Config{ClientID: id, SupportedSigningAlgs: []string{"RS256"}})
 	p := oidcProvider(id, secret, endpoints.Google, verifier, client)
 	p.AllowVerifiedEmailLink = true
@@ -34,10 +34,10 @@ func google(id, secret string, keys oidc.KeySet, client *http.Client) betterauth
 
 type idTokenRules struct {
 	allowHashedNonce bool
-	profile          func(*oidc.IDToken) (betterauth.OAuthProfile, error)
+	profile          func(*oidc.IDToken) (authn.OAuthProfile, error)
 }
 
-func oidcProvider(id, secret string, endpoint oauth2.Endpoint, verifier *oidc.IDTokenVerifier, client *http.Client) betterauth.OAuthProvider {
+func oidcProvider(id, secret string, endpoint oauth2.Endpoint, verifier *oidc.IDTokenVerifier, client *http.Client) authn.OAuthProvider {
 	return signedProvider(id, secret, endpoint, verifier, client, idTokenRules{profile: standardProfile})
 }
 
@@ -49,17 +49,17 @@ type identityClaims struct {
 }
 
 func verifiedFlag(raw json.RawMessage) bool { return string(raw) == "true" || string(raw) == `"true"` }
-func standardProfile(token *oidc.IDToken) (betterauth.OAuthProfile, error) {
+func standardProfile(token *oidc.IDToken) (authn.OAuthProfile, error) {
 	var c identityClaims
 	if err := token.Claims(&c); err != nil {
-		return betterauth.OAuthProfile{}, err
+		return authn.OAuthProfile{}, err
 	}
-	return betterauth.OAuthProfile{Subject: token.Subject, Name: c.Name, Email: c.Email, EmailVerified: verifiedFlag(c.Verified), Image: c.Picture}, nil
+	return authn.OAuthProfile{Subject: token.Subject, Name: c.Name, Email: c.Email, EmailVerified: verifiedFlag(c.Verified), Image: c.Picture}, nil
 }
 
-func signedProvider(id, secret string, endpoint oauth2.Endpoint, verifier *oidc.IDTokenVerifier, client *http.Client, rules idTokenRules) betterauth.OAuthProvider {
-	resolve := func(ctx context.Context, raw, nonce, access string) (betterauth.OAuthProfile, time.Time, error) {
-		var profile betterauth.OAuthProfile
+func signedProvider(id, secret string, endpoint oauth2.Endpoint, verifier *oidc.IDTokenVerifier, client *http.Client, rules idTokenRules) authn.OAuthProvider {
+	resolve := func(ctx context.Context, raw, nonce, access string) (authn.OAuthProfile, time.Time, error) {
+		var profile authn.OAuthProfile
 		token, err := verifier.Verify(ctx, raw)
 		if err != nil {
 			return profile, time.Time{}, err
@@ -97,15 +97,15 @@ func signedProvider(id, secret string, endpoint oauth2.Endpoint, verifier *oidc.
 		}
 		return profile, token.Expiry, err
 	}
-	return betterauth.OAuthProvider{
+	return authn.OAuthProvider{
 		Config:     oauth2.Config{ClientID: id, ClientSecret: secret, Endpoint: endpoint, Scopes: []string{"openid", "profile", "email"}},
 		HTTPClient: client,
-		Resolve: func(ctx context.Context, t *oauth2.Token, nonce string) (betterauth.OAuthProfile, error) {
+		Resolve: func(ctx context.Context, t *oauth2.Token, nonce string) (authn.OAuthProfile, error) {
 			raw, _ := t.Extra("id_token").(string)
 			profile, _, err := resolve(ctx, raw, nonce, t.AccessToken)
 			return profile, err
 		},
-		VerifyIDToken: func(ctx context.Context, raw, nonce string) (betterauth.OAuthProfile, time.Time, error) {
+		VerifyIDToken: func(ctx context.Context, raw, nonce string) (authn.OAuthProfile, time.Time, error) {
 			return resolve(ctx, raw, nonce, "")
 		},
 	}

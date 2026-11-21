@@ -8,10 +8,10 @@ import (
 	"strings"
 	"time"
 
-	betterauth "github.com/nabuhadba/go-better-auth"
+	authn "github.com/nabuhadba/go-better-auth"
 )
 
-var _ betterauth.AccountLifecycleStore = (*Store)(nil)
+var _ authn.AccountLifecycleStore = (*Store)(nil)
 
 func (s *Store) lockActiveAccount(ctx context.Context, tx *sql.Tx, userID, token string, now time.Time) error {
 	if err := s.lockAccount(ctx, tx, userID); err != nil {
@@ -24,7 +24,7 @@ func (s *Store) lockActiveAccount(ctx context.Context, tx *sql.Tx, userID, token
 	var id string
 	err := tx.QueryRowContext(ctx, s.bind(q), userID, token, s.date(now)).Scan(&id)
 	if errors.Is(err, sql.ErrNoRows) {
-		return betterauth.ErrNotFound
+		return authn.ErrNotFound
 	}
 	return err
 }
@@ -40,12 +40,12 @@ func (s *Store) SetInitialPassword(ctx context.Context, userID, sessionToken, ne
 	}
 	hash, err := s.credentialHash(ctx, tx, userID)
 	switch {
-	case errors.Is(err, betterauth.ErrNotFound):
+	case errors.Is(err, authn.ErrNotFound):
 		_, err = tx.ExecContext(ctx, s.bind(`INSERT INTO "account" ("id","userId","accountId","providerId","password","createdAt","updatedAt") VALUES (?,?,?,'credential',?,?,?)`), rand.Text(), userID, userID, newHash, s.date(now), s.date(now))
 	case err != nil:
 		return err
 	case hash != "":
-		return betterauth.ErrPasswordAlreadySet
+		return authn.ErrPasswordAlreadySet
 	default:
 		err = s.writeCredential(ctx, tx, userID, newHash, now)
 	}
@@ -55,7 +55,7 @@ func (s *Store) SetInitialPassword(ctx context.Context, userID, sessionToken, ne
 	return tx.Commit()
 }
 
-func (s *Store) SaveDeletionToken(ctx context.Context, t betterauth.PasswordResetToken) error {
+func (s *Store) SaveDeletionToken(ctx context.Context, t authn.PasswordResetToken) error {
 	_, err := s.db.ExecContext(ctx, s.bind(`INSERT INTO "verification" ("id","identifier","value","expiresAt","createdAt","updatedAt") VALUES (?,?,?,?,?,?)`), t.ID, "delete-account-"+t.Token, t.UserID, s.date(t.ExpiresAt), s.date(t.CreatedAt), s.date(t.CreatedAt))
 	return err
 }
@@ -75,7 +75,7 @@ func (s *Store) DeleteAccount(ctx context.Context, userID, sessionToken, expecte
 			return err
 		}
 		if hash != expectedHash {
-			return betterauth.ErrNotFound
+			return authn.ErrNotFound
 		}
 	}
 	if deleteToken != "" {
@@ -88,7 +88,7 @@ func (s *Store) DeleteAccount(ctx context.Context, userID, sessionToken, expecte
 			return err
 		}
 		if n != 1 {
-			return betterauth.ErrNotFound
+			return authn.ErrNotFound
 		}
 	}
 	// The verification schema also stores plugin state. Remove the two core
@@ -130,8 +130,8 @@ func (s *Store) DeleteAccount(ctx context.Context, userID, sessionToken, expecte
 	return tx.Commit()
 }
 
-func (s *Store) ChangeAccountEmail(ctx context.Context, userID, oldEmail, newEmail string, verified bool, now time.Time) (betterauth.User, error) {
-	var user betterauth.User
+func (s *Store) ChangeAccountEmail(ctx context.Context, userID, oldEmail, newEmail string, verified bool, now time.Time) (authn.User, error) {
+	var user authn.User
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return user, err
@@ -150,7 +150,7 @@ func (s *Store) ChangeAccountEmail(ctx context.Context, userID, oldEmail, newEma
 			return user, err
 		}
 		if other, lookupErr := s.FindAccountUser(ctx, newEmail); lookupErr == nil && other.ID != userID {
-			return user, betterauth.ErrEmailTaken
+			return user, authn.ErrEmailTaken
 		}
 		return user, err
 	}
@@ -159,7 +159,7 @@ func (s *Store) ChangeAccountEmail(ctx context.Context, userID, oldEmail, newEma
 		return user, err
 	}
 	if n != 1 {
-		return user, betterauth.ErrNotFound
+		return user, authn.ErrNotFound
 	}
 	err = tx.QueryRowContext(ctx, s.bind(`SELECT `+userColumns+` FROM "user" u WHERE u."id"=?`), userID).Scan(userFields(&user)...)
 	if err != nil {

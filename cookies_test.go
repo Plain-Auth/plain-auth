@@ -1,4 +1,4 @@
-package betterauth
+package authn
 
 import (
 	"net/http"

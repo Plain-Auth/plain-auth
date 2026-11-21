@@ -1,16 +1,16 @@
-package betterauth_test
+package authn_test
 
 import (
 	"net/http"
 	"testing"
 
-	betterauth "github.com/nabuhadba/go-better-auth"
+	authn "github.com/nabuhadba/go-better-auth"
 	"github.com/nabuhadba/go-better-auth/adapters/sqlite"
 )
 
 func TestPluginRegistrationAndDispatch(t *testing.T) {
 	calls := 0
-	handle := func(ctx betterauth.EndpointContext) (any, error) {
+	handle := func(ctx authn.EndpointContext) (any, error) {
 		calls++
 		ctx.ResponseHeader.Set("X-Fixture", "received")
 		if ctx.Body["value"] != "sample" || ctx.Auth == nil {
@@ -18,8 +18,8 @@ func TestPluginRegistrationAndDispatch(t *testing.T) {
 		}
 		return ctx.Body, nil
 	}
-	ep := betterauth.Endpoint{Method: "POST", Path: "/fixture", Handler: handle}
-	auth := newHTTPAuth(t, betterauth.Options{BaseURL: "https://auth.example", Plugins: []betterauth.Plugin{{ID: "example", Endpoints: []betterauth.Endpoint{ep}}}})
+	ep := authn.Endpoint{Method: "POST", Path: "/fixture", Handler: handle}
+	auth := newHTTPAuth(t, authn.Options{BaseURL: "https://auth.example", Plugins: []authn.Plugin{{ID: "example", Endpoints: []authn.Endpoint{ep}}}})
 	h := http.Header{"Origin": {"https://auth.example"}, "Content-Type": {"application/json"}}
 	serve(t, auth, "GET", "/api/auth/fixture", "", nil, 404)
 	res := serve(t, auth, "POST", "/api/auth/fixture", `{"value":"sample"}`, h, 200)
@@ -40,13 +40,13 @@ func TestPluginRegistrationAndDispatch(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer store.Close()
-	for _, plugins := range [][]betterauth.Plugin{
+	for _, plugins := range [][]authn.Plugin{
 		{{ID: "duplicate"}, {ID: "duplicate"}},
-		{{ID: "first", Endpoints: []betterauth.Endpoint{ep}}, {ID: "second", Endpoints: []betterauth.Endpoint{ep}}},
-		{{ID: "collision", Endpoints: []betterauth.Endpoint{{Method: "GET", Path: "/ok", Handler: handle}}}},
-		{{ID: "invalid", Endpoints: []betterauth.Endpoint{{Method: "POST", Path: "invalid", Handler: handle}}}},
+		{{ID: "first", Endpoints: []authn.Endpoint{ep}}, {ID: "second", Endpoints: []authn.Endpoint{ep}}},
+		{{ID: "collision", Endpoints: []authn.Endpoint{{Method: "GET", Path: "/ok", Handler: handle}}}},
+		{{ID: "invalid", Endpoints: []authn.Endpoint{{Method: "POST", Path: "invalid", Handler: handle}}}},
 	} {
-		_, err := betterauth.New(betterauth.Options{Store: store, BaseURL: "http://auth.example", Secret: "unit-test-secret-0123456789-abcdefghijk", Plugins: plugins})
+		_, err := authn.New(authn.Options{Store: store, BaseURL: "http://auth.example", Secret: "unit-test-secret-0123456789-abcdefghijk", Plugins: plugins})
 		if err == nil {
 			t.Fatalf("expected invalid registration: %+v", plugins)
 		}

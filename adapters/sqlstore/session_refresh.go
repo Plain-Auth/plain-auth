@@ -4,10 +4,10 @@ import (
 	"context"
 	"time"
 
-	betterauth "github.com/nabuhadba/go-better-auth"
+	authn "github.com/nabuhadba/go-better-auth"
 )
 
-var _ betterauth.SessionRefreshStore = (*Store)(nil)
+var _ authn.SessionRefreshStore = (*Store)(nil)
 
 func (s *Store) RefreshSession(ctx context.Context, token string, previousExpiry, now, nextExpiry time.Time) (bool, error) {
 	res, err := s.db.ExecContext(ctx, s.bind(`UPDATE "session" SET "updatedAt"=?,"expiresAt"=?

@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"github.com/coreos/go-oidc/v3/oidc"
-	betterauth "github.com/nabuhadba/go-better-auth"
+	authn "github.com/nabuhadba/go-better-auth"
 	"golang.org/x/oauth2"
 )
 
@@ -31,24 +31,24 @@ type MicrosoftOptions struct {
 }
 
 // Microsoft configures the Microsoft identity platform v2 endpoints.
-func Microsoft(id, secret string, options MicrosoftOptions) (betterauth.OAuthProvider, error) {
+func Microsoft(id, secret string, options MicrosoftOptions) (authn.OAuthProvider, error) {
 	tenant := strings.ToLower(options.TenantID)
 	if tenant == "" {
 		tenant = "common"
 	}
 	if tenant != "common" && tenant != "consumers" && tenant != "organizations" && !tenantIDPattern.MatchString(tenant) {
-		return betterauth.OAuthProvider{}, errors.New("invalid Microsoft tenant ID")
+		return authn.OAuthProvider{}, errors.New("invalid Microsoft tenant ID")
 	}
 	client := &http.Client{Timeout: 15 * time.Second}
 	keys := oidc.NewRemoteKeySet(oidc.ClientContext(context.Background(), client), microsoftAuthority+"/"+tenant+"/discovery/v2.0/keys")
 	return microsoftProvider(id, secret, tenant, options.DisableProfilePhoto, keys, client), nil
 }
 
-func microsoftProvider(id, secret, tenant string, disablePhoto bool, keys oidc.KeySet, client *http.Client) betterauth.OAuthProvider {
+func microsoftProvider(id, secret, tenant string, disablePhoto bool, keys oidc.KeySet, client *http.Client) authn.OAuthProvider {
 	base := microsoftAuthority + "/" + tenant
 	multi := tenant == "common" || tenant == "consumers" || tenant == "organizations"
 	verifier := oidc.NewVerifier(base+"/v2.0", keys, &oidc.Config{ClientID: id, SupportedSigningAlgs: []string{"RS256"}, SkipIssuerCheck: multi})
-	mapProfile := func(token *oidc.IDToken) (betterauth.OAuthProfile, error) {
+	mapProfile := func(token *oidc.IDToken) (authn.OAuthProfile, error) {
 		var c struct {
 			OID, TID, Email, Name string
 			Picture               *string
@@ -57,24 +57,24 @@ func microsoftProvider(id, secret, tenant string, disablePhoto bool, keys oidc.K
 			Secondary             []string        `json:"verified_secondary_email"`
 		}
 		if err := token.Claims(&c); err != nil {
-			return betterauth.OAuthProfile{}, err
+			return authn.OAuthProfile{}, err
 		}
 		if !tenantIDPattern.MatchString(c.TID) || token.Issuer != microsoftAuthority+"/"+c.TID+"/v2.0" || strings.TrimSpace(c.OID) == "" ||
 			(tenant == "consumers" && c.TID != microsoftConsumers) || (tenant == "organizations" && c.TID == microsoftConsumers) || (!multi && tenant != c.TID) {
-			return betterauth.OAuthProfile{}, errors.New("Microsoft identity is outside the configured tenant")
+			return authn.OAuthProfile{}, errors.New("Microsoft identity is outside the configured tenant")
 		}
 		verified := verifiedFlag(c.Verified)
 		if len(c.Verified) == 0 {
 			verified = c.Email != "" && (slices.Contains(c.Primary, c.Email) || slices.Contains(c.Secondary, c.Email))
 		}
-		return betterauth.OAuthProfile{Subject: c.OID, Email: c.Email, Name: c.Name, EmailVerified: verified, Image: c.Picture}, nil
+		return authn.OAuthProfile{Subject: c.OID, Email: c.Email, Name: c.Name, EmailVerified: verified, Image: c.Picture}, nil
 	}
 	p := signedProvider(id, secret, oauth2.Endpoint{AuthURL: base + "/oauth2/v2.0/authorize", TokenURL: base + "/oauth2/v2.0/token", AuthStyle: oauth2.AuthStyleInParams}, verifier, client, idTokenRules{profile: mapProfile})
 	p.Config.Scopes = []string{"openid", "profile", "email", "User.Read", "offline_access"}
 	p.AllowVerifiedEmailLink = true
 	if !disablePhoto {
 		resolve := p.Resolve
-		p.Resolve = func(ctx context.Context, t *oauth2.Token, nonce string) (betterauth.OAuthProfile, error) {
+		p.Resolve = func(ctx context.Context, t *oauth2.Token, nonce string) (authn.OAuthProfile, error) {
 			profile, err := resolve(ctx, t, nonce)
 			if err != nil {
 				return profile, err

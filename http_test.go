@@ -1,4 +1,4 @@
-package betterauth_test
+package authn_test
 
 import (
 	"encoding/json"
@@ -9,11 +9,11 @@ import (
 	"strings"
 	"testing"
 
-	betterauth "github.com/nabuhadba/go-better-auth"
+	authn "github.com/nabuhadba/go-better-auth"
 	"github.com/nabuhadba/go-better-auth/adapters/sqlite"
 )
 
-func newHTTPAuth(t *testing.T, opts betterauth.Options) *betterauth.Auth {
+func newHTTPAuth(t *testing.T, opts authn.Options) *authn.Auth {
 	t.Helper()
 	store, err := sqlite.Open(":memory:")
 	if err != nil {
@@ -23,7 +23,7 @@ func newHTTPAuth(t *testing.T, opts betterauth.Options) *betterauth.Auth {
 	opts.Store = store
 	opts.Secret = "local-test-cookie-signing-secret-at-least-32"
 	opts.EmailAndPassword = true
-	auth, err := betterauth.New(opts)
+	auth, err := authn.New(opts)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -47,7 +47,7 @@ func serve(t *testing.T, auth http.Handler, method, path, body string, headers h
 
 func TestCoreHTTPContracts(t *testing.T) {
 	off := false
-	auth := newHTTPAuth(t, betterauth.Options{
+	auth := newHTTPAuth(t, authn.Options{
 		BaseURL: "https://auth.example", BasePath: "/identity", RateLimit: &off,
 		TrustedOrigins: []string{"https://app.example"},
 	})
@@ -92,7 +92,7 @@ func TestCoreHTTPContracts(t *testing.T) {
 	}
 	h.Set("Cookie", cookies[0].Name+"="+cookies[0].Value)
 	list := request("GET", "list-sessions", "", h, 200)
-	var sessions []betterauth.Session
+	var sessions []authn.Session
 	if err := json.NewDecoder(list.Body).Decode(&sessions); err != nil || len(sessions) != 2 {
 		t.Fatalf("expected two active sessions: %+v, %v", sessions, err)
 	}
@@ -108,7 +108,7 @@ func TestCoreHTTPContracts(t *testing.T) {
 
 func TestBrowserRequestValidation(t *testing.T) {
 	off := false
-	auth := newHTTPAuth(t, betterauth.Options{BaseURL: "https://auth.example", RateLimit: &off})
+	auth := newHTTPAuth(t, authn.Options{BaseURL: "https://auth.example", RateLimit: &off})
 	for _, tc := range []struct {
 		name, path, body string
 		headers          http.Header
@@ -144,7 +144,7 @@ func TestBrowserRequestValidation(t *testing.T) {
 
 func TestCredentialHTTPRateLimit(t *testing.T) {
 	on := true
-	auth := newHTTPAuth(t, betterauth.Options{BaseURL: "https://auth.example", RateLimit: &on})
+	auth := newHTTPAuth(t, authn.Options{BaseURL: "https://auth.example", RateLimit: &on})
 	for i := 0; i < 3; i++ {
 		serve(t, auth, "POST", "/api/auth/sign-in/email", "{}", http.Header{"Content-Type": {"application/json"}}, 400)
 	}

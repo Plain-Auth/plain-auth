@@ -8,16 +8,16 @@ import (
 	"strings"
 
 	"github.com/go-sql-driver/mysql"
-	betterauth "github.com/nabuhadba/go-better-auth"
+	authn "github.com/nabuhadba/go-better-auth"
 )
 
-var _ betterauth.Store = (*Store)(nil)
+var _ authn.Store = (*Store)(nil)
 
 // Close releases the database connection.
 func (s *Store) Close() error { return s.db.Close() }
 
 // CreateUser commits the user, credential account, and optional session together.
-func (s *Store) CreateUser(ctx context.Context, user betterauth.User, passwordHash string, initial *betterauth.StoredSession) error {
+func (s *Store) CreateUser(ctx context.Context, user authn.User, passwordHash string, initial *authn.StoredSession) error {
 	if initial != nil && initial.UserID != user.ID {
 		return errors.New("sqlstore: initial session belongs to a different user")
 	}
@@ -43,7 +43,7 @@ func (s *Store) CreateUser(ctx context.Context, user betterauth.User, passwordHa
 				return err
 			}
 			if emailExists {
-				return betterauth.ErrEmailTaken
+				return authn.ErrEmailTaken
 			}
 		}
 		return err
@@ -53,7 +53,7 @@ func (s *Store) CreateUser(ctx context.Context, user betterauth.User, passwordHa
 		return err
 	}
 	if n == 0 {
-		return betterauth.ErrEmailTaken
+		return authn.ErrEmailTaken
 	}
 	_, err = tx.ExecContext(ctx, s.bind(`INSERT INTO "account"
         ("id","accountId","providerId","userId","password","createdAt","updatedAt") VALUES (?,?,'credential',?,?,?,?)`),
@@ -71,20 +71,20 @@ func (s *Store) CreateUser(ctx context.Context, user betterauth.User, passwordHa
 
 const userColumns = `u."id",u."email",u."name",u."image",u."emailVerified",u."createdAt",u."updatedAt"`
 
-func userFields(u *betterauth.User) []any {
+func userFields(u *authn.User) []any {
 	return []any{&u.ID, &u.Email, &u.Name, &u.Image, &u.EmailVerified, &u.CreatedAt, &u.UpdatedAt}
 }
 
 // Credential retrieves a user and the credential account's password hash.
-func (s *Store) Credential(ctx context.Context, email string) (betterauth.User, string, error) {
-	var u betterauth.User
+func (s *Store) Credential(ctx context.Context, email string) (authn.User, string, error) {
+	var u authn.User
 	var passwordHash string
 	row := s.db.QueryRowContext(ctx, s.bind(`SELECT `+userColumns+`, a."password"
 		FROM "user" u JOIN "account" a ON a."userId" = u."id"
 		WHERE u."email" = ? AND a."providerId" = 'credential' AND a."accountId" = u."id" AND a."password" IS NOT NULL`), strings.ToLower(email))
 	err := row.Scan(append(userFields(&u), &passwordHash)...)
 	if errors.Is(err, sql.ErrNoRows) {
-		err = betterauth.ErrNotFound
+		err = authn.ErrNotFound
 	}
 	return u, passwordHash, err
 }
@@ -93,7 +93,7 @@ type executor interface {
 	ExecContext(context.Context, string, ...any) (sql.Result, error)
 }
 
-func (s *Store) insertSession(ctx context.Context, db executor, ss betterauth.StoredSession) error {
+func (s *Store) insertSession(ctx context.Context, db executor, ss authn.StoredSession) error {
 	_, err := db.ExecContext(ctx, s.bind(`INSERT INTO "session"
         ("id","userId","token","ipAddress","userAgent","createdAt","updatedAt","expiresAt")
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`), ss.ID, ss.UserID, ss.Token, ss.IPAddress, ss.UserAgent,
@@ -102,7 +102,7 @@ func (s *Store) insertSession(ctx context.Context, db executor, ss betterauth.St
 }
 
 // CreateSession saves a session using its token.
-func (s *Store) CreateSession(ctx context.Context, ss betterauth.StoredSession) error {
+func (s *Store) CreateSession(ctx context.Context, ss authn.StoredSession) error {
 	if s.dialect != "mysql" {
 		return s.insertSession(ctx, s.db, ss)
 	}
@@ -124,34 +124,34 @@ func (s *Store) CreateSession(ctx context.Context, ss betterauth.StoredSession) 
 
 const sessionColumns = `s."id",s."userId",s."token",COALESCE(s."ipAddress",''),COALESCE(s."userAgent",''),s."createdAt",s."updatedAt",s."expiresAt"`
 
-func sessionFields(ss *betterauth.StoredSession) []any {
+func sessionFields(ss *authn.StoredSession) []any {
 	return []any{&ss.ID, &ss.UserID, &ss.Token, &ss.IPAddress, &ss.UserAgent, &ss.CreatedAt, &ss.UpdatedAt, &ss.ExpiresAt}
 }
 
 // Session retrieves session state and its owner. The auth service checks expiry.
-func (s *Store) Session(ctx context.Context, token string) (betterauth.StoredSession, betterauth.User, error) {
-	var ss betterauth.StoredSession
-	var u betterauth.User
+func (s *Store) Session(ctx context.Context, token string) (authn.StoredSession, authn.User, error) {
+	var ss authn.StoredSession
+	var u authn.User
 	row := s.db.QueryRowContext(ctx, s.bind(`SELECT `+sessionColumns+`, `+userColumns+`
 		FROM "session" s JOIN "user" u ON u."id"=s."userId" WHERE s."token"=?`), token)
 	err := row.Scan(append(sessionFields(&ss), userFields(&u)...)...)
 	if errors.Is(err, sql.ErrNoRows) {
-		err = betterauth.ErrNotFound
+		err = authn.ErrNotFound
 	}
 	return ss, u, err
 }
 
 // ListSessions retrieves the user's stored sessions in creation order, newest first.
-func (s *Store) ListSessions(ctx context.Context, userID string) ([]betterauth.StoredSession, error) {
+func (s *Store) ListSessions(ctx context.Context, userID string) ([]authn.StoredSession, error) {
 	rows, err := s.db.QueryContext(ctx, s.bind(`SELECT `+sessionColumns+` FROM "session" s
 		WHERE s."userId" = ? ORDER BY s."createdAt" DESC, s."id"`), userID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	sessions := []betterauth.StoredSession{}
+	sessions := []authn.StoredSession{}
 	for rows.Next() {
-		var ss betterauth.StoredSession
+		var ss authn.StoredSession
 		if err := rows.Scan(sessionFields(&ss)...); err != nil {
 			return nil, err
 		}

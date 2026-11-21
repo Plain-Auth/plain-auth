@@ -1,4 +1,4 @@
-package betterauth
+package authn
 
 import (
 	"context"
@@ -48,20 +48,20 @@ func New(opts Options) (*Auth, error) {
 		return nil, errors.New("auth: CookiePrefix must contain only letters, digits, underscores, or hyphens")
 	}
 	if opts.Store == nil {
-		return nil, errors.New("betterauth: Store is required")
+		return nil, errors.New("authn: Store is required")
 	}
 	if len(opts.Secret) < 32 {
-		return nil, errors.New("betterauth: Secret needs at least 32 bytes")
+		return nil, errors.New("authn: Secret needs at least 32 bytes")
 	}
 	origin, err := parseOrigin(opts.BaseURL)
 	if err != nil {
-		return nil, fmt.Errorf("betterauth: BaseURL: %w", err)
+		return nil, fmt.Errorf("authn: BaseURL: %w", err)
 	}
 	opts.BaseURL = origin
 	for i, s := range opts.TrustedOrigins {
 		origin, err := parseOrigin(s)
 		if err != nil {
-			return nil, fmt.Errorf("betterauth: TrustedOrigins[%d]: %w", i, err)
+			return nil, fmt.Errorf("authn: TrustedOrigins[%d]: %w", i, err)
 		}
 		opts.TrustedOrigins[i] = origin
 	}
@@ -69,7 +69,7 @@ func New(opts Options) (*Auth, error) {
 		opts.BasePath = "/api/auth"
 	}
 	if !strings.HasPrefix(opts.BasePath, "/") || path.Clean(opts.BasePath) != opts.BasePath || strings.ContainsAny(opts.BasePath, "?#%\\ \t\r\n") {
-		return nil, errors.New("betterauth: BasePath must be a clean absolute URL path")
+		return nil, errors.New("authn: BasePath must be a clean absolute URL path")
 	}
 	if opts.SessionTTL == 0 {
 		opts.SessionTTL = 7 * 24 * time.Hour
@@ -78,7 +78,7 @@ func New(opts Options) (*Auth, error) {
 	if opts.SessionUpdateAge != nil {
 		updateAge = *opts.SessionUpdateAge
 		if updateAge < 0 {
-			return nil, errors.New("betterauth: session update age must be nonnegative")
+			return nil, errors.New("authn: session update age must be nonnegative")
 		}
 	}
 	opts.SessionUpdateAge = &updateAge
@@ -92,7 +92,7 @@ func New(opts Options) (*Auth, error) {
 		opts.MaxPasswordLength = 128
 	}
 	if opts.SessionTTL < time.Second || opts.FreshAge < 0 || opts.MinPasswordLength < 1 || opts.MaxPasswordLength < opts.MinPasswordLength {
-		return nil, errors.New("betterauth: invalid session duration or password length")
+		return nil, errors.New("authn: invalid session duration or password length")
 	}
 	if err := prepareRateLimits(&opts); err != nil {
 		return nil, err
@@ -101,7 +101,7 @@ func New(opts Options) (*Auth, error) {
 		opts.DeleteTokenTTL = 24 * time.Hour
 	}
 	if opts.DeleteTokenTTL < 0 {
-		return nil, errors.New("betterauth: deletion token lifetime must be positive")
+		return nil, errors.New("authn: deletion token lifetime must be positive")
 	}
 	if opts.SendVerificationOnSignUp != nil {
 		v := *opts.SendVerificationOnSignUp
@@ -109,7 +109,7 @@ func New(opts Options) (*Auth, error) {
 	}
 	if opts.DeleteUserEnabled || opts.ChangeEmailEnabled {
 		if _, ok := opts.Store.(AccountLifecycleStore); !ok {
-			return nil, errors.New("betterauth: account management requires an AccountLifecycleStore")
+			return nil, errors.New("authn: account management requires an AccountLifecycleStore")
 		}
 	}
 	if opts.PasswordResetTokenTTL == 0 {
@@ -119,11 +119,11 @@ func New(opts Options) (*Auth, error) {
 		opts.EmailVerificationTokenTTL = time.Hour
 	}
 	if opts.PasswordResetTokenTTL < 0 || opts.EmailVerificationTokenTTL < 0 {
-		return nil, errors.New("betterauth: token lifetimes must be positive")
+		return nil, errors.New("authn: token lifetimes must be positive")
 	}
 	if opts.SendVerificationEmail != nil || opts.SendResetPassword != nil {
 		if _, ok := opts.Store.(AccountStore); !ok {
-			return nil, errors.New("betterauth: mail link delivery requires an AccountStore")
+			return nil, errors.New("authn: mail link delivery requires an AccountStore")
 		}
 	}
 	opts.Plugins = append([]Plugin(nil), opts.Plugins...)

@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	betterauth "github.com/nabuhadba/go-better-auth"
+	authn "github.com/nabuhadba/go-better-auth"
 	"github.com/nabuhadba/go-better-auth/adapters/sqlite"
 	"github.com/nabuhadba/go-better-auth/client"
 )
@@ -26,7 +26,7 @@ func TestNativeClientLifecycle(t *testing.T) {
 	t.Cleanup(func() { db.Close() })
 	const origin = "https://client.example.test"
 	limit := false
-	auth, err := betterauth.New(betterauth.Options{
+	auth, err := authn.New(authn.Options{
 		BaseURL: origin, BasePath: "/identity", Store: db,
 		Secret: "client-fixture-secret-0123456789-abcdefgh", EmailAndPassword: true, RateLimit: &limit,
 	})
@@ -64,7 +64,7 @@ func TestNativeClientLifecycle(t *testing.T) {
 		t.Fatalf("cookies were not isolated: %v, %v", session, err)
 	}
 	_, err = second.SignInEmail(ctx, client.SignInRequest{Email: email, Password: "wrong-password"})
-	var apiErr *betterauth.APIError
+	var apiErr *authn.APIError
 	if !errors.As(err, &apiErr) || apiErr.Status != 401 || apiErr.Code != "INVALID_EMAIL_OR_PASSWORD" {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -123,7 +123,7 @@ func TestTransportErrorsAndCancellation(t *testing.T) {
 		t.Fatal(err)
 	}
 	_, err = c.GetSession(t.Context())
-	var apiErr *betterauth.APIError
+	var apiErr *authn.APIError
 	if !errors.As(err, &apiErr) || apiErr.Status != 502 || apiErr.Message == "" {
 		t.Fatalf("missing status: %v", err)
 	}

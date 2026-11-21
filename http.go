@@ -1,5 +1,5 @@
 // HTTP request handling for the core authentication endpoints.
-package betterauth
+package authn
 
 import (
 	"bytes"

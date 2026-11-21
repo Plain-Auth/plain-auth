@@ -7,7 +7,7 @@ import (
 	"io"
 	"net/http"
 
-	betterauth "github.com/nabuhadba/go-better-auth"
+	authn "github.com/nabuhadba/go-better-auth"
 	stripesdk "github.com/stripe/stripe-go/v87"
 	"github.com/stripe/stripe-go/v87/webhook"
 )
@@ -21,35 +21,35 @@ type Options struct {
 }
 
 // New exposes POST /stripe/webhook beneath the configured auth base path.
-func New(opts Options) betterauth.Plugin {
-	plugin := betterauth.Plugin{ID: "stripe", Endpoints: []betterauth.Endpoint{{
+func New(opts Options) authn.Plugin {
+	plugin := authn.Plugin{ID: "stripe", Endpoints: []authn.Endpoint{{
 		Method: http.MethodPost, Path: "/stripe/webhook", RawBody: true,
-		Handler: func(ctx betterauth.EndpointContext) (any, error) {
+		Handler: func(ctx authn.EndpointContext) (any, error) {
 			r := ctx.Request
 			payload, err := io.ReadAll(r.Body)
 			var tooLarge *http.MaxBytesError
 			if errors.As(err, &tooLarge) {
-				return nil, &betterauth.APIError{Status: 413, Code: "PAYLOAD_TOO_LARGE", Message: "Request body too large"}
+				return nil, &authn.APIError{Status: 413, Code: "PAYLOAD_TOO_LARGE", Message: "Request body too large"}
 			}
 			if err != nil || len(payload) == 0 {
-				return nil, &betterauth.APIError{Status: 400, Code: "INVALID_REQUEST_BODY", Message: "Invalid request body"}
+				return nil, &authn.APIError{Status: 400, Code: "INVALID_REQUEST_BODY", Message: "Invalid request body"}
 			}
 			signature := r.Header.Get("Stripe-Signature")
 			if signature == "" {
-				return nil, &betterauth.APIError{Status: 400, Code: "STRIPE_SIGNATURE_NOT_FOUND", Message: "Stripe signature not found"}
+				return nil, &authn.APIError{Status: 400, Code: "STRIPE_SIGNATURE_NOT_FOUND", Message: "Stripe signature not found"}
 			}
 			if opts.WebhookSecret == "" {
-				return nil, &betterauth.APIError{Status: 500, Code: "STRIPE_WEBHOOK_SECRET_NOT_FOUND", Message: "Stripe webhook secret not found"}
+				return nil, &authn.APIError{Status: 500, Code: "STRIPE_WEBHOOK_SECRET_NOT_FOUND", Message: "Stripe webhook secret not found"}
 			}
 			// Like the upstream JavaScript integration, pass through the event
 			// envelope in its original API version. The SDK leaves data.object in Data.Raw.
 			event, err := webhook.ConstructEventWithOptions(payload, signature, opts.WebhookSecret, webhook.ConstructEventOptions{IgnoreAPIVersionMismatch: true})
 			if err != nil {
-				return nil, &betterauth.APIError{Status: 400, Code: "FAILED_TO_CONSTRUCT_STRIPE_EVENT", Message: "Failed to construct Stripe event"}
+				return nil, &authn.APIError{Status: 400, Code: "FAILED_TO_CONSTRUCT_STRIPE_EVENT", Message: "Failed to construct Stripe event"}
 			}
 			if opts.OnEvent != nil {
 				if err := opts.OnEvent(r.Context(), event); err != nil {
-					return nil, &betterauth.APIError{Status: 400, Code: "STRIPE_WEBHOOK_ERROR", Message: "Stripe webhook error"}
+					return nil, &authn.APIError{Status: 400, Code: "STRIPE_WEBHOOK_ERROR", Message: "Stripe webhook error"}
 				}
 			}
 			return map[string]bool{"success": true}, nil

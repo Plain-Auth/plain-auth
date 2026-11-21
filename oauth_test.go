@@ -1,4 +1,4 @@
-package betterauth_test
+package authn_test
 
 import (
 	"context"

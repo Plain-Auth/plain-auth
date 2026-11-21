@@ -14,7 +14,7 @@ import (
 	"path"
 	"strings"
 
-	betterauth "github.com/nabuhadba/go-better-auth"
+	authn "github.com/nabuhadba/go-better-auth"
 )
 
 // Client holds the server URL and the user's session cookies. Create a separate
@@ -32,13 +32,13 @@ func New(baseURL string, httpClient *http.Client) (*Client, error) {
 	u, err := url.Parse(baseURL)
 	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Hostname() == "" || u.User != nil ||
 		u.RawQuery != "" || u.ForceQuery || strings.Contains(baseURL, "#") {
-		return nil, errors.New("betterauth/client: expected an absolute HTTP(S) base URL")
+		return nil, errors.New("authn/client: expected an absolute HTTP(S) base URL")
 	}
 	mount := strings.TrimSuffix(u.Path, "/")
 	if mount == "" {
 		mount = "/api/auth"
 	} else if path.Clean(mount) != mount || u.RawPath != "" || strings.Contains(mount, "\\") {
-		return nil, errors.New("betterauth/client: invalid auth mount path")
+		return nil, errors.New("authn/client: invalid auth mount path")
 	}
 	origin := u.Scheme + "://" + u.Host
 	base := (&url.URL{Scheme: u.Scheme, Host: u.Host, Path: mount}).String()
@@ -68,12 +68,12 @@ func New(baseURL string, httpClient *http.Client) (*Client, error) {
 
 // Do calls an API endpoint under the client's auth mount. Route starts with "/"
 // and may include a query. Non-nil input is encoded as JSON. Supply a pointer
-// for output, or nil to discard the response. HTTP errors are *betterauth.APIError.
+// for output, or nil to discard the response. HTTP errors are *authn.APIError.
 func (c *Client) Do(ctx context.Context, method, route string, input, output any) error {
 	ref, err := url.ParseRequestURI(route)
 	if err != nil || !strings.HasPrefix(route, "/") || ref.Host != "" || strings.Contains(route, "#") ||
 		path.Clean(ref.Path) != ref.Path || strings.Contains(ref.Path, "\\") {
-		return errors.New("betterauth/client: expected a clean API route")
+		return errors.New("authn/client: expected a clean API route")
 	}
 	var body io.Reader
 	if input != nil {
@@ -98,7 +98,7 @@ func (c *Client) Do(ctx context.Context, method, route string, input, output any
 	}
 	defer res.Body.Close()
 	if res.StatusCode < 200 || res.StatusCode >= 300 {
-		apiErr := &betterauth.APIError{Status: res.StatusCode}
+		apiErr := &authn.APIError{Status: res.StatusCode}
 		_ = json.NewDecoder(io.LimitReader(res.Body, 64<<10)).Decode(apiErr)
 		if apiErr.Message == "" {
 			apiErr.Message = fmt.Sprintf("Authentication server returned HTTP %d", res.StatusCode)
@@ -132,12 +132,12 @@ type SignInRequest struct {
 
 // EmailResult contains the public profile and, when issued, the session token.
 type EmailResult struct {
-	TwoFactorRedirect bool            `json:"twoFactorRedirect,omitempty"`
-	TwoFactorMethods  []string        `json:"twoFactorMethods,omitempty"`
-	User              betterauth.User `json:"user"`
-	Token             *string         `json:"token"`
-	Redirect          bool            `json:"redirect"`
-	URL               string          `json:"url"`
+	TwoFactorRedirect bool       `json:"twoFactorRedirect,omitempty"`
+	TwoFactorMethods  []string   `json:"twoFactorMethods,omitempty"`
+	User              authn.User `json:"user"`
+	Token             *string    `json:"token"`
+	Redirect          bool       `json:"redirect"`
+	URL               string     `json:"url"`
 }
 
 func (c *Client) SignUpEmail(ctx context.Context, input SignUpRequest) (*EmailResult, error) {
@@ -157,14 +157,14 @@ func (c *Client) SignInEmail(ctx context.Context, input SignInRequest) (*EmailRe
 }
 
 // GetSession returns nil, nil for a successful anonymous session lookup.
-func (c *Client) GetSession(ctx context.Context) (*betterauth.SessionResult, error) {
-	var out *betterauth.SessionResult
+func (c *Client) GetSession(ctx context.Context) (*authn.SessionResult, error) {
+	var out *authn.SessionResult
 	err := c.Do(ctx, http.MethodGet, "/get-session", nil, &out)
 	return out, err
 }
 
-func (c *Client) ListSessions(ctx context.Context) ([]betterauth.Session, error) {
-	var out []betterauth.Session
+func (c *Client) ListSessions(ctx context.Context) ([]authn.Session, error) {
+	var out []authn.Session
 	err := c.Do(ctx, http.MethodGet, "/list-sessions", nil, &out)
 	return out, err
 }

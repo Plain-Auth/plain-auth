@@ -9,21 +9,21 @@ import (
 	"strconv"
 	"time"
 
-	betterauth "github.com/nabuhadba/go-better-auth"
+	authn "github.com/nabuhadba/go-better-auth"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/endpoints"
 )
 
 // GitHub resolves the stable numeric user ID and verifies ownership of the
 // chosen email address through GitHub's authenticated email API.
-func GitHub(clientID, clientSecret string) betterauth.OAuthProvider {
-	return betterauth.OAuthProvider{
+func GitHub(clientID, clientSecret string) authn.OAuthProvider {
+	return authn.OAuthProvider{
 		Config:                 oauth2.Config{ClientID: clientID, ClientSecret: clientSecret, Endpoint: endpoints.GitHub, Scopes: []string{"read:user", "user:email"}},
 		AllowVerifiedEmailLink: true, Resolve: githubProfile,
 	}
 }
 
-func githubProfile(ctx context.Context, t *oauth2.Token, _ string) (betterauth.OAuthProfile, error) {
+func githubProfile(ctx context.Context, t *oauth2.Token, _ string) (authn.OAuthProfile, error) {
 	client, _ := ctx.Value(oauth2.HTTPClient).(*http.Client)
 	if client == nil {
 		client = &http.Client{Timeout: 15 * time.Second}
@@ -56,16 +56,16 @@ func githubProfile(ctx context.Context, t *oauth2.Token, _ string) (betterauth.O
 	}
 	var data json.RawMessage
 	if err := read("/user", &data); err != nil {
-		return betterauth.OAuthProfile{}, err
+		return authn.OAuthProfile{}, err
 	}
 	if err := json.Unmarshal(data, &p); err != nil {
-		return betterauth.OAuthProfile{}, err
+		return authn.OAuthProfile{}, err
 	}
 	if p.ID <= 0 {
-		return betterauth.OAuthProfile{}, errors.New("missing GitHub subject")
+		return authn.OAuthProfile{}, errors.New("missing GitHub subject")
 	}
 	if err := read("/user/emails", &emails); err != nil && p.Email == "" {
-		return betterauth.OAuthProfile{}, err
+		return authn.OAuthProfile{}, err
 	}
 	if p.Email == "" && len(emails) > 0 {
 		p.Email = emails[0].Email
@@ -86,5 +86,5 @@ func githubProfile(ctx context.Context, t *oauth2.Token, _ string) (betterauth.O
 			break
 		}
 	}
-	return betterauth.OAuthProfile{Data: data, Subject: strconv.FormatInt(p.ID, 10), Email: p.Email, EmailVerified: verified, Name: p.Name, Image: p.Avatar}, nil
+	return authn.OAuthProfile{Data: data, Subject: strconv.FormatInt(p.ID, 10), Email: p.Email, EmailVerified: verified, Name: p.Name, Image: p.Avatar}, nil
 }

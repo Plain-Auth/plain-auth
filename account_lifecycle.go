@@ -1,4 +1,4 @@
-package betterauth
+package authn
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-var ErrPasswordAlreadySet = errors.New("betterauth: password already set")
+var ErrPasswordAlreadySet = errors.New("authn: password already set")
 
 // AccountLifecycleStore provides owner-bound account writes. Session-based
 // mutations check the current session and user in the same transaction.

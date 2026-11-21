@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	betterauth "github.com/nabuhadba/go-better-auth"
+	authn "github.com/nabuhadba/go-better-auth"
 )
 
 func openTestStore(t *testing.T, path string) *Store {
@@ -30,16 +30,16 @@ func openTestStore(t *testing.T, path string) *Store {
 	return s
 }
 
-func testUser(id string) betterauth.User {
+func testUser(id string) authn.User {
 	created := time.Date(2024, time.January, 1, 12, 30, 10, 123000000, time.UTC)
-	return betterauth.User{
+	return authn.User{
 		ID: id, Email: id + "@example.org", Name: id, CreatedAt: created, UpdatedAt: created.Add(time.Minute),
 	}
 }
 
-func testSession(u betterauth.User, id string) betterauth.StoredSession {
-	return betterauth.StoredSession{
-		Session: betterauth.Session{
+func testSession(u authn.User, id string) authn.StoredSession {
+	return authn.StoredSession{
+		Session: authn.Session{
 			ID: id, Token: "token-" + id, UserID: u.ID, IPAddress: "127.0.0.1", UserAgent: "test client",
 			CreatedAt: u.CreatedAt, UpdatedAt: u.UpdatedAt, ExpiresAt: u.CreatedAt.Add(24 * time.Hour),
 		},
@@ -117,7 +117,7 @@ func TestReopenCredentialAndSession(t *testing.T) {
 	if err := s.DeleteSession(ctx, ss.Token); err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := s.Session(ctx, ss.Token); !errors.Is(err, betterauth.ErrNotFound) {
+	if _, _, err := s.Session(ctx, ss.Token); !errors.Is(err, authn.ErrNotFound) {
 		t.Fatalf("revoked session: %v", err)
 	}
 }
@@ -136,7 +136,7 @@ func TestCreateUserRollsBackOnSessionFailure(t *testing.T) {
 	if err := s.CreateUser(ctx, two, "hash", &second); err == nil {
 		t.Fatal("duplicate session token unexpectedly succeeded")
 	}
-	if _, _, err := s.Credential(ctx, two.Email); !errors.Is(err, betterauth.ErrNotFound) {
+	if _, _, err := s.Credential(ctx, two.Email); !errors.Is(err, authn.ErrNotFound) {
 		t.Fatalf("user persisted after failed session insert: %v", err)
 	}
 	if err := s.CreateSession(ctx, testSession(two, "orphan")); err == nil {
@@ -172,7 +172,7 @@ func TestConcurrentRegistrationWithTwoStores(t *testing.T) {
 		switch err := <-errs; {
 		case err == nil:
 			created++
-		case errors.Is(err, betterauth.ErrEmailTaken):
+		case errors.Is(err, authn.ErrEmailTaken):
 			duplicate++
 		default:
 			t.Errorf("registration failed: %v", err)
@@ -205,7 +205,7 @@ func TestUserScopedRevocation(t *testing.T) {
 		t.Fatal(err)
 	}
 	got, err := s.ListSessions(ctx, one.ID)
-	if err != nil || !reflect.DeepEqual(got, []betterauth.StoredSession{second, first}) {
+	if err != nil || !reflect.DeepEqual(got, []authn.StoredSession{second, first}) {
 		t.Fatalf("listed sessions: %#v, %v", got, err)
 	}
 	if err := s.DeleteUserSession(ctx, one.ID, other.Token); err != nil {
@@ -214,12 +214,12 @@ func TestUserScopedRevocation(t *testing.T) {
 	if err := s.DeleteOtherSessions(ctx, one.ID, second.Token); err != nil {
 		t.Fatal(err)
 	}
-	for _, kept := range []betterauth.StoredSession{second, other} {
+	for _, kept := range []authn.StoredSession{second, other} {
 		if _, _, err := s.Session(ctx, kept.Token); err != nil {
 			t.Fatalf("retained session %q: %v", kept.ID, err)
 		}
 	}
-	if _, _, err := s.Session(ctx, first.Token); !errors.Is(err, betterauth.ErrNotFound) {
+	if _, _, err := s.Session(ctx, first.Token); !errors.Is(err, authn.ErrNotFound) {
 		t.Fatalf("first session: %v", err)
 	}
 	if err := s.DeleteUserSession(ctx, one.ID, second.Token); err != nil {

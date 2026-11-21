@@ -1,4 +1,4 @@
-package betterauth
+package authn
 
 import (
 	"context"
@@ -35,7 +35,7 @@ const dummyPasswordHash = "00000000000000000000000000000000:" +
 func verifyPassword(hash, password string) (bool, error) {
 	salt, encoded, ok := strings.Cut(hash, ":")
 	if !ok || len(salt) != 32 || len(encoded) != 128 {
-		return false, errors.New("betterauth: invalid stored credential")
+		return false, errors.New("authn: invalid stored credential")
 	}
 	want, err := hex.DecodeString(encoded)
 	if err != nil {

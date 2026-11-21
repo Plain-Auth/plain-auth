@@ -1,4 +1,4 @@
-package betterauth
+package authn
 
 import (
 	"context"
@@ -59,17 +59,17 @@ func registerPlugins(plugins []Plugin) (map[endpointKey]Endpoint, error) {
 	ids := make(map[string]bool)
 	for _, p := range plugins {
 		if strings.TrimSpace(p.ID) == "" || ids[p.ID] {
-			return nil, fmt.Errorf("betterauth: missing or duplicate plugin ID %q", p.ID)
+			return nil, fmt.Errorf("authn: missing or duplicate plugin ID %q", p.ID)
 		}
 		ids[p.ID] = true
 		for _, ep := range p.Endpoints {
 			if !strings.HasPrefix(ep.Path, "/") || ep.Path == "/" || path.Clean(ep.Path) != ep.Path || strings.ContainsAny(ep.Path, "%?#\\ \t\r\n") {
-				return nil, fmt.Errorf("betterauth: plugin %q has invalid endpoint path %q", p.ID, ep.Path)
+				return nil, fmt.Errorf("authn: plugin %q has invalid endpoint path %q", p.ID, ep.Path)
 			}
 			switch ep.Method {
 			case http.MethodGet, http.MethodPost, http.MethodDelete, http.MethodPut, http.MethodPatch:
 			default:
-				return nil, fmt.Errorf("betterauth: plugin %q has unsupported method %q", p.ID, ep.Method)
+				return nil, fmt.Errorf("authn: plugin %q has unsupported method %q", p.ID, ep.Method)
 			}
 			if ep.RateLimit != nil {
 				rule := *ep.RateLimit
@@ -79,11 +79,11 @@ func registerPlugins(plugins []Plugin) (map[endpointKey]Endpoint, error) {
 				ep.RateLimit = &rule
 			}
 			if ep.Handler == nil {
-				return nil, errors.New("betterauth: plugin endpoint requires a handler")
+				return nil, errors.New("authn: plugin endpoint requires a handler")
 			}
 			key := endpointKey{ep.Method, ep.Path}
 			if _, found := routes[key]; found || coreMethods[ep.Path] == ep.Method || (ep.Path == "/get-session" && ep.Method == http.MethodPost) {
-				return nil, fmt.Errorf("betterauth: duplicate %s endpoint %q", ep.Method, ep.Path)
+				return nil, fmt.Errorf("authn: duplicate %s endpoint %q", ep.Method, ep.Path)
 			}
 			routes[key] = ep
 		}

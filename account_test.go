@@ -1,4 +1,4 @@
-package betterauth_test
+package authn_test
 
 import (
 	"context"
@@ -12,15 +12,15 @@ import (
 	"testing"
 	"time"
 
-	betterauth "github.com/nabuhadba/go-better-auth"
+	authn "github.com/nabuhadba/go-better-auth"
 )
 
 func TestAccountRecoveryAndProfile(t *testing.T) {
 	off := false
-	var reset, verify []betterauth.MailLink
-	auth := newHTTPAuth(t, betterauth.Options{BaseURL: "https://auth.example", RateLimit: &off, RevokeSessionsOnPasswordReset: true,
-		SendResetPassword:     func(_ context.Context, m betterauth.MailLink) error { reset = append(reset, m); return nil },
-		SendVerificationEmail: func(_ context.Context, m betterauth.MailLink) error { verify = append(verify, m); return nil },
+	var reset, verify []authn.MailLink
+	auth := newHTTPAuth(t, authn.Options{BaseURL: "https://auth.example", RateLimit: &off, RevokeSessionsOnPasswordReset: true,
+		SendResetPassword:     func(_ context.Context, m authn.MailLink) error { reset = append(reset, m); return nil },
+		SendVerificationEmail: func(_ context.Context, m authn.MailLink) error { verify = append(verify, m); return nil },
 	})
 	empty := http.Header{"Content-Type": {"application/json"}, "Origin": {"https://auth.example"}}
 	signed := empty.Clone()
@@ -95,11 +95,11 @@ func TestAccountRecoveryAndProfile(t *testing.T) {
 
 func TestOneWinnerForResetAndExpiredLinks(t *testing.T) {
 	off := false
-	var link betterauth.MailLink
-	auth := newHTTPAuth(t, betterauth.Options{BaseURL: "http://auth.example", RateLimit: &off, SendResetPassword: func(_ context.Context, m betterauth.MailLink) error { link = m; return nil }})
+	var link authn.MailLink
+	auth := newHTTPAuth(t, authn.Options{BaseURL: "http://auth.example", RateLimit: &off, SendResetPassword: func(_ context.Context, m authn.MailLink) error { link = m; return nil }})
 	ctx := t.Context()
-	input := betterauth.SignUpInput{Name: "Example", Email: "race@example.test", Password: "initial password"}
-	_, err := auth.SignUpEmail(ctx, input, betterauth.RequestMeta{})
+	input := authn.SignUpInput{Name: "Example", Email: "race@example.test", Password: "initial password"}
+	_, err := auth.SignUpEmail(ctx, input, authn.RequestMeta{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -116,7 +116,7 @@ func TestOneWinnerForResetAndExpiredLinks(t *testing.T) {
 	close(errs)
 	var successes, spent int
 	for err := range errs {
-		var apiErr *betterauth.APIError
+		var apiErr *authn.APIError
 		switch {
 		case err == nil:
 			successes++
@@ -130,14 +130,14 @@ func TestOneWinnerForResetAndExpiredLinks(t *testing.T) {
 		t.Fatalf("successful resets %d, consumed token results %d", successes, spent)
 	}
 
-	expiring := newHTTPAuth(t, betterauth.Options{BaseURL: "http://auth.example", RateLimit: &off, PasswordResetTokenTTL: time.Nanosecond, SendResetPassword: func(_ context.Context, m betterauth.MailLink) error { link = m; return nil }})
-	if _, err = expiring.SignUpEmail(ctx, input, betterauth.RequestMeta{}); err != nil {
+	expiring := newHTTPAuth(t, authn.Options{BaseURL: "http://auth.example", RateLimit: &off, PasswordResetTokenTTL: time.Nanosecond, SendResetPassword: func(_ context.Context, m authn.MailLink) error { link = m; return nil }})
+	if _, err = expiring.SignUpEmail(ctx, input, authn.RequestMeta{}); err != nil {
 		t.Fatal(err)
 	}
 	if err = expiring.RequestPasswordReset(ctx, input.Email, "/"); err != nil {
 		t.Fatal(err)
 	}
-	var apiErr *betterauth.APIError
+	var apiErr *authn.APIError
 	if err = expiring.ResetPassword(ctx, link.Token, "changed after expiry"); !errors.As(err, &apiErr) || apiErr.Code != "INVALID_TOKEN" {
 		t.Fatalf("expired reset link: %v", err)
 	}
@@ -145,7 +145,7 @@ func TestOneWinnerForResetAndExpiredLinks(t *testing.T) {
 
 func TestMailFeatureDefaultsAndCallbackTrust(t *testing.T) {
 	off := false
-	auth := newHTTPAuth(t, betterauth.Options{BaseURL: "https://auth.example", RateLimit: &off})
+	auth := newHTTPAuth(t, authn.Options{BaseURL: "https://auth.example", RateLimit: &off})
 	h := http.Header{"Content-Type": {"application/json"}}
 	for _, c := range []struct{ path, code string }{{"send-verification-email", "VERIFICATION_EMAIL_NOT_ENABLED"}, {"request-password-reset", "RESET_PASSWORD_DISABLED"}} {
 		res := serve(t, auth, "POST", "/api/auth/"+c.path, `{"email":"example@test.example"}`, h, 400)

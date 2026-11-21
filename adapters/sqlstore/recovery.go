@@ -8,21 +8,21 @@ import (
 	"strings"
 	"time"
 
-	betterauth "github.com/nabuhadba/go-better-auth"
+	authn "github.com/nabuhadba/go-better-auth"
 )
 
-var _ betterauth.AccountStore = (*Store)(nil)
+var _ authn.AccountStore = (*Store)(nil)
 
-func (s *Store) FindAccountUser(ctx context.Context, email string) (betterauth.User, error) {
-	var u betterauth.User
+func (s *Store) FindAccountUser(ctx context.Context, email string) (authn.User, error) {
+	var u authn.User
 	err := s.db.QueryRowContext(ctx, s.bind(`SELECT `+userColumns+` FROM "user" u WHERE u."email"=?`), strings.ToLower(email)).Scan(userFields(&u)...)
 	if errors.Is(err, sql.ErrNoRows) {
-		err = betterauth.ErrNotFound
+		err = authn.ErrNotFound
 	}
 	return u, err
 }
 
-func (s *Store) UpdateProfile(ctx context.Context, userID string, patch betterauth.ProfileUpdate, now time.Time) error {
+func (s *Store) UpdateProfile(ctx context.Context, userID string, patch authn.ProfileUpdate, now time.Time) error {
 	fields := []string{`"updatedAt" = ?`}
 	args := []any{s.date(now)}
 	if patch.Name != nil {
@@ -50,7 +50,7 @@ func (s *Store) lockAccount(ctx context.Context, tx *sql.Tx, userID string) erro
 	var id string
 	err := tx.QueryRowContext(ctx, s.bind(query), userID).Scan(&id)
 	if errors.Is(err, sql.ErrNoRows) {
-		return betterauth.ErrNotFound
+		return authn.ErrNotFound
 	}
 	return err
 }
@@ -63,12 +63,12 @@ func (s *Store) credentialHash(ctx context.Context, tx *sql.Tx, userID string) (
 	var hash sql.NullString
 	err := tx.QueryRowContext(ctx, s.bind(query), userID).Scan(&hash)
 	if errors.Is(err, sql.ErrNoRows) {
-		return "", betterauth.ErrNotFound
+		return "", authn.ErrNotFound
 	}
 	return hash.String, err
 }
 
-func (s *Store) CreateCredentialSession(ctx context.Context, expectedHash string, ss betterauth.StoredSession) error {
+func (s *Store) CreateCredentialSession(ctx context.Context, expectedHash string, ss authn.StoredSession) error {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
@@ -91,11 +91,11 @@ func (s *Store) CreateCredentialSession(ctx context.Context, expectedHash string
 			return err
 		}
 		if enabled.Bool {
-			return &betterauth.APIError{Status: 403, Code: "TWO_FACTOR_REQUIRED", Message: "Two-factor authentication required"}
+			return &authn.APIError{Status: 403, Code: "TWO_FACTOR_REQUIRED", Message: "Two-factor authentication required"}
 		}
 	}
 	if hash != expectedHash {
-		return betterauth.ErrNotFound
+		return authn.ErrNotFound
 	}
 	if err = s.insertSession(ctx, tx, ss); err != nil {
 		return err
@@ -108,13 +108,13 @@ func (s *Store) writeCredential(ctx context.Context, tx *sql.Tx, userID, newHash
 	return err
 }
 
-func (s *Store) ChangeCredential(ctx context.Context, userID, oldHash, newHash string, replacement *betterauth.StoredSession) error {
+func (s *Store) ChangeCredential(ctx context.Context, userID, oldHash, newHash string, replacement *authn.StoredSession) error {
 	return s.ChangeCredentialForSession(ctx, userID, oldHash, newHash, replacement, "", time.Time{})
 }
 
 // ChangeCredentialForSession validates the source session under the account
 // lock so a concurrent enrollment or sign-out cannot revive a revoked session.
-func (s *Store) ChangeCredentialForSession(ctx context.Context, userID, oldHash, newHash string, replacement *betterauth.StoredSession, source string, now time.Time) error {
+func (s *Store) ChangeCredentialForSession(ctx context.Context, userID, oldHash, newHash string, replacement *authn.StoredSession, source string, now time.Time) error {
 	if replacement != nil && replacement.UserID != userID {
 		return errors.New("sqlstore: replacement session has wrong account")
 	}
@@ -138,7 +138,7 @@ func (s *Store) ChangeCredentialForSession(ctx context.Context, userID, oldHash,
 		}
 	}
 	if hash != oldHash {
-		return betterauth.ErrNotFound
+		return authn.ErrNotFound
 	}
 	hasFactor, err := s.detectFactorSchema(ctx, tx)
 	if err != nil {
@@ -163,7 +163,7 @@ func (s *Store) ChangeCredentialForSession(ctx context.Context, userID, oldHash,
 	return tx.Commit()
 }
 
-func (s *Store) SavePasswordResetToken(ctx context.Context, t betterauth.PasswordResetToken) error {
+func (s *Store) SavePasswordResetToken(ctx context.Context, t authn.PasswordResetToken) error {
 	_, err := s.db.ExecContext(ctx, s.bind(`INSERT INTO "verification" ("id","identifier","value","expiresAt","createdAt","updatedAt") VALUES (?,?,?,?,?,?)`), t.ID, "reset-password:"+t.Token, t.UserID, s.date(t.ExpiresAt), s.date(t.CreatedAt), s.date(t.CreatedAt))
 	return err
 }
@@ -172,17 +172,17 @@ type rowQuerier interface {
 	QueryRowContext(context.Context, string, ...any) *sql.Row
 }
 
-func (s *Store) findPasswordResetToken(ctx context.Context, db rowQuerier, token string, now time.Time) (betterauth.PasswordResetToken, error) {
-	t := betterauth.PasswordResetToken{Token: token}
+func (s *Store) findPasswordResetToken(ctx context.Context, db rowQuerier, token string, now time.Time) (authn.PasswordResetToken, error) {
+	t := authn.PasswordResetToken{Token: token}
 	err := db.QueryRowContext(ctx, s.bind(`SELECT v."id",v."value",u."email",v."expiresAt" FROM "verification" v
 	JOIN "user" u ON u."id"=v."value" WHERE v."identifier"=? AND v."expiresAt">?`), "reset-password:"+token, s.date(now)).Scan(&t.ID, &t.UserID, &t.Email, &t.ExpiresAt)
 	if errors.Is(err, sql.ErrNoRows) {
-		err = betterauth.ErrNotFound
+		err = authn.ErrNotFound
 	}
 	return t, err
 }
 
-func (s *Store) FindPasswordResetToken(ctx context.Context, token string, now time.Time) (betterauth.PasswordResetToken, error) {
+func (s *Store) FindPasswordResetToken(ctx context.Context, token string, now time.Time) (authn.PasswordResetToken, error) {
 	return s.findPasswordResetToken(ctx, s.db, token, now)
 }
 
@@ -208,10 +208,10 @@ func (s *Store) FinishPasswordReset(ctx context.Context, token, newHash string, 
 		return err
 	}
 	if n != 1 {
-		return betterauth.ErrNotFound
+		return authn.ErrNotFound
 	}
 	_, err = s.credentialHash(ctx, tx, t.UserID)
-	if errors.Is(err, betterauth.ErrNotFound) {
+	if errors.Is(err, authn.ErrNotFound) {
 		_, err = tx.ExecContext(ctx, s.bind(`INSERT INTO "account" ("id","userId","providerId","accountId","password","createdAt","updatedAt") VALUES (?,?,'credential',?,?,?,?)`), rand.Text(), t.UserID, t.UserID, newHash, s.date(now), s.date(now))
 	} else if err == nil {
 		err = s.writeCredential(ctx, tx, t.UserID, newHash, now)
@@ -252,7 +252,7 @@ func (s *Store) VerifyAccountEmail(ctx context.Context, userID, email string, no
 		return err
 	}
 	if u.ID != userID || !u.EmailVerified {
-		return betterauth.ErrNotFound
+		return authn.ErrNotFound
 	}
 	return nil
 }

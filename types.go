@@ -1,5 +1,5 @@
-// Package betterauth embeds authentication in the host application's HTTP server.
-package betterauth
+// Package authn embeds authentication in the host application's HTTP server.
+package authn
 
 import (
 	"context"
@@ -131,8 +131,8 @@ type RequestMeta struct {
 }
 
 var (
-	ErrNotFound   = errors.New("betterauth: record not found")
-	ErrEmailTaken = errors.New("betterauth: email already registered")
+	ErrNotFound   = errors.New("authn: record not found")
+	ErrEmailTaken = errors.New("authn: email already registered")
 )
 
 // Store persists users, credentials, and sessions. CreateUser commits its three
