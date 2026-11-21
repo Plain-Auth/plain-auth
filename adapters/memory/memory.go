@@ -14,9 +14,11 @@ import (
 )
 
 type credential struct {
-	accountID string
-	user      auth.User
-	hash      string
+	guestLinked     bool
+	lastLoginMethod string
+	accountID       string
+	user            auth.User
+	hash            string
 }
 
 // Store is safe to share among handlers. Its data lasts for the lifetime of the instance.
@@ -38,6 +40,10 @@ func New() *Store {
 var _ auth.Store = (*Store)(nil)
 
 func copyUser(u auth.User) auth.User {
+	if u.IsAnonymous != nil {
+		v := *u.IsAnonymous
+		u.IsAnonymous = &v
+	}
 	if u.Image != nil {
 		image := *u.Image
 		u.Image = &image

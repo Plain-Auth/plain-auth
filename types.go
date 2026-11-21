@@ -71,6 +71,7 @@ type Options struct {
 
 // User is the public account profile shared by all authentication methods.
 type User struct {
+	LastLoginMethod  *string   `json:"lastLoginMethod,omitempty"`
 	TwoFactorEnabled *bool     `json:"twoFactorEnabled,omitempty"`
 	ID               string    `json:"id"`
 	Name             string    `json:"name"`

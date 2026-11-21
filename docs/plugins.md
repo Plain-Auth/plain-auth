@@ -90,3 +90,18 @@ opts.Plugins = append(opts.Plugins, view)
 Anonymous requests return JSON `null`. The core completes session validation and handles renewal cookies before returning the view. Direct Go authorization checks through `auth.GetSession` continue to receive the typed user and session. A native HTTP client expecting this custom JSON should call `client.Do` with an output struct matching the configured view. [Integration tests](../plugins/customsession/customsession_test.go)
 
 To project each entry in a remembered-account list, register the view using `customsession.NewWithOptions` and set `ProjectDeviceSessions` to true. [Account switching](multi-session.md#customize-list-entries)
+
+### Persist the last login method
+
+To expose the most recent method across devices, enable the `last-login-method` schema profile and pass the same store to the plugin and auth instance.
+
+```go
+ddl, err := schema.Generate("postgres", []string{"last-login-method"})
+if err != nil { return err }
+store, err := sqlstore.OpenWithSchema(ctx, "postgres", dsn, ddl)
+if err != nil { return err }
+opts.Store = store
+opts.Plugins = append(opts.Plugins, lastlogin.New(lastlogin.Options{Database: store}))
+```
+
+A recognized HTTP login that issues a session records the method on its account. Session reads expose it as `user.lastLoginMethod`. The browser preference defaults to `authn.last_used_login_method` and uses the `__Secure-` prefix on HTTPS. The `Allow` callback controls setting the browser cookie. Supplying `Database` independently enables account storage. In the Go client, `LastLoginMethod("")` reads the default browser preference and `ClearLastLoginMethod("")` clears it. Supply the exact cookie name when configuring a custom name or namespace. [Storage tests](../adapters/sqlstore/lastlogin_test.go) · [Native client tests](../client/lastlogin_test.go)

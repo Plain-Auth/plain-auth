@@ -135,6 +135,7 @@ func registerPlugins(plugins []Plugin) (map[endpointKey]Endpoint, error) {
 
 // SessionCookieEvent lets an extension add response headers when a session is issued.
 type SessionCookieEvent struct {
+	Auth    *Auth
 	Cookie  http.Cookie
 	Route   string
 	Request *http.Request

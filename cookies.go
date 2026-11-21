@@ -110,7 +110,7 @@ func (a *Auth) writeSessionCookieHeaders(headers http.Header, r *http.Request, t
 
 func (a *Auth) emitSessionCookieHeaders(headers http.Header, r *http.Request, c *http.Cookie) {
 	headers.Add("Set-Cookie", c.String())
-	event := SessionCookieEvent{Cookie: *c, Route: strings.TrimPrefix(r.URL.Path, strings.TrimSuffix(a.opts.BasePath, "/")), Request: r, Header: headers}
+	event := SessionCookieEvent{Auth: a, Cookie: *c, Route: strings.TrimPrefix(r.URL.Path, strings.TrimSuffix(a.opts.BasePath, "/")), Request: r, Header: headers}
 	for _, p := range a.opts.Plugins {
 		if p.OnSessionCookie != nil {
 			p.OnSessionCookie(event)

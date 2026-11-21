@@ -2,6 +2,8 @@
 package lastlogin
 
 import (
+	"context"
+	"log/slog"
 	"net/http"
 	"strings"
 	"time"
@@ -9,7 +11,15 @@ import (
 	auth "github.com/nabuhadba/go-better-auth"
 )
 
+// Store persists a login method only for the owner of a live session.
+type Store interface {
+	SaveSessionLoginMethod(context.Context, string, string, time.Time) error
+	UserLoginMethod(context.Context, string) (string, error)
+}
+
 type Options struct {
+	// Database records recognized sign-ins and exposes the method on session reads.
+	Database   Store
 	CookieName string
 	MaxAge     time.Duration
 	Resolve    func(*http.Request) string
@@ -20,7 +30,7 @@ func New(opts Options) auth.Plugin {
 	if opts.MaxAge == 0 {
 		opts.MaxAge = 30 * 24 * time.Hour
 	}
-	return auth.Plugin{ID: "last-login-method", OnSessionCookie: func(e auth.SessionCookieEvent) {
+	p := auth.Plugin{ID: "last-login-method", OnSessionCookie: func(e auth.SessionCookieEvent) {
 		var method string
 		if opts.Resolve != nil {
 			method = opts.Resolve(e.Request)
@@ -28,7 +38,16 @@ func New(opts Options) auth.Plugin {
 		if method == "" {
 			method = methodForRoute(e.Route)
 		}
-		if method == "" || (opts.Allow != nil && !opts.Allow(e.Request, method)) {
+		if method == "" {
+			return
+		}
+		if opts.Database != nil {
+			token := e.Auth.VerifySignedSessionToken(e.Cookie.Value)
+			if err := opts.Database.SaveSessionLoginMethod(e.Request.Context(), token, method, time.Now().UTC()); err != nil {
+				slog.ErrorContext(e.Request.Context(), "Could not save last login method")
+			}
+		}
+		if opts.Allow != nil && !opts.Allow(e.Request, method) {
 			return
 		}
 		cookie := e.Cookie
@@ -41,6 +60,22 @@ func New(opts Options) auth.Plugin {
 			e.Header.Add("Set-Cookie", cookie.String())
 		}
 	}}
+	if opts.Database != nil {
+		p.ValidateStore = func(auth.Store) error {
+			if check, ok := opts.Database.(interface{ CheckLastLogin() error }); ok {
+				return check.CheckLastLogin()
+			}
+			return nil
+		}
+		p.OnReadSession = func(ctx context.Context, session *auth.SessionResult) error {
+			method, err := opts.Database.UserLoginMethod(ctx, session.User.ID)
+			if err == nil && method != "" {
+				session.User.LastLoginMethod = &method
+			}
+			return err
+		}
+	}
+	return p
 }
 
 func methodForRoute(route string) string {
