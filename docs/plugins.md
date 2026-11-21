@@ -97,9 +97,15 @@ if err != nil {
 opts.Plugins = append(opts.Plugins, view)
 ```
 
-Anonymous requests return JSON `null`. The core completes session validation and handles renewal cookies before returning the view. Direct Go authorization checks through `auth.GetSession` continue to receive the typed user and session. A native HTTP client can call `client.GetSessionView[T](ctx, c)` with a Go type matching the configured view. [Integration tests](../plugins/customsession/customsession_test.go)
+The view replaces `GET /get-session`. Anonymous or revoked sessions return JSON `null` and skip the callback. At most one session projection can be installed on a server. Direct Go authorization through `auth.GetSession` returns the live typed identity without invoking the application projection. A native HTTP client reads the projected value with `client.GetSessionView[T](ctx, c)`. [Registration and response tests](../plugins/customsession/customsession_test.go)
 
-To project each entry in a remembered-account list, register the view using `customsession.NewWithOptions` and set `ProjectDeviceSessions` to true. [Account switching](multi-session.md#customize-list-entries)
+The handler commits application response headers only after the projection returns valid JSON. It then forwards the core session headers, including renewal and deletion cookies as separate header entries, and preserves `Cache-Control: no-store` and `Pragma: no-cache`. A lookup failure returns HTTP 500 with `FAILED_TO_GET_SESSION`. An ordinary callback error or JSON encoding error returns a redacted HTTP 500. The public error body may differ between implementations. [Released HTTP comparison](../conformance/custom-session-contract.mjs)
+
+A nonempty `disableRefresh` query skips renewal. Omit the parameter to allow refresh. The string `false` also counts as nonempty. Under `DeferSessionRefresh`, an eligible GET passes `NeedsRefresh` to the callback. Applications choose which fields to expose in their view. The installed custom-session endpoint accepts GET only, including in deferred mode. Use ordinary sliding refresh for projected sessions that need automatic renewal. [Method matrix](../plugins/customsession/customsession_test.go)
+
+StoneWrit reads the configured store for browser sessions. With the browser data cache disabled, a retained `session_data` cookie or its numbered chunks are expired, including on anonymous reads. The Go handler does not yet issue or consume a session-data cache. Cache-specific TTLs, cache encodings and global partitioned-cookie defaults remain open. The pinned comparison exercises the cache-enabled behavior separately. [Cache contract fixture](../conformance/custom-session-contract.mjs)
+
+To project each entry in a remembered-account list, use `customsession.NewWithOptions` and set `ProjectDeviceSessions` to true. The SQL adapter respects current bans and delegation validity on every listing, including after an administrative schema migration on another instance. A failed list projection returns no partial account data. [SQL visibility tests](../adapters/sqlstore/custom_session_test.go) · [Account switching](multi-session.md#customize-list-entries)
 
 ### Persist the last login method
 

@@ -48,6 +48,28 @@ func (s *Store) DeviceSessions(ctx context.Context, tokens []string, now time.Ti
 			return nil, err
 		}
 	}
+	if len(found) > 0 {
+		// A device list can be served by an instance without admin routes, or
+		// one opened before a live migration. Apply the same visibility and
+		// delegation checks as a single-session read before releasing a row.
+		admin, err := s.detectAdminSchema(ctx, s.db)
+		if err != nil {
+			return nil, err
+		}
+		if admin {
+			for token := range found {
+				row, user, err := s.adminSession(ctx, s.db, token)
+				if errors.Is(err, authn.ErrNotFound) || err == nil && !row.ExpiresAt.After(now) {
+					delete(found, token)
+					continue
+				}
+				if err != nil {
+					return nil, err
+				}
+				found[token] = authn.SessionResult{Session: row.Session, User: user}
+			}
+		}
+	}
 	return found, ctx.Err()
 }
 

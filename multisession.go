@@ -2,6 +2,7 @@ package stonewrit
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"log/slog"
 	"net/http"
@@ -149,6 +150,10 @@ func listDeviceSessions(c EndpointContext) (any, error) {
 	if err != nil {
 		return nil, err
 	}
+	headers := c.ResponseHeader
+	if a.deviceSessionResponse != nil {
+		c.ResponseHeader = make(http.Header)
+	}
 	out := []any{}
 	seen := map[string]bool{}
 	for _, token := range held.tokens {
@@ -170,6 +175,15 @@ func listDeviceSessions(c EndpointContext) (any, error) {
 			}
 		}
 		out = append(out, view)
+	}
+	if a.deviceSessionResponse != nil {
+		raw, err := json.Marshal(out)
+		if err != nil {
+			return nil, err
+		}
+		mergeSessionHeaders(headers, c.ResponseHeader)
+		headers.Set("Cache-Control", "no-store")
+		return json.RawMessage(raw), nil
 	}
 	return out, nil
 }

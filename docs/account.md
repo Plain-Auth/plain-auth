@@ -41,7 +41,7 @@ Persistent sessions last seven days by default. After the first 24 hours, an HTT
 
 Use `GET /get-session?disableRefresh=true` for a read without renewal. In Go, `GetSession` reads the session without extending it. Set `DisableSessionRefresh` to keep the original expiry for every login.
 
-With `DeferSessionRefresh` enabled, an ordinary `GET /get-session` on a persistent session includes `needsRefresh`. If it is true, send a same-origin `POST /get-session` to perform the renewal. The SQL stores compare the saved expiry during renewal so that a concurrent sign-out can revoke the session. A custom store can opt into this behavior by implementing `SessionRefreshStore`.
+With `DeferSessionRefresh` enabled, an ordinary `GET /get-session` on a persistent session includes `needsRefresh`. For the standard session endpoint, send a same-origin `POST /get-session` when it is true to perform the renewal. Installing the custom-session plugin replaces that endpoint with a GET-only projection. The SQL stores compare the saved expiry during renewal so that a concurrent sign-out can revoke the session. A custom store can opt into this behavior by implementing `SessionRefreshStore`.
 
 ## Registration and verification policy
 

@@ -44,11 +44,11 @@ test("both runtimes publish the email login preference and persist it on the use
   }
 });
 
-async function reference(t, plugins = []) {
+async function reference(t, plugins = [], settings = {}) {
   const database = new DatabaseSync(":memory:");
   t.after(() => database.close());
   const baseURL = "http://reference.localhost";
-  const options = {
+  const options = Object.assign({
     advanced: { cookiePrefix: "authn" },
     baseURL,
     database,
@@ -56,7 +56,7 @@ async function reference(t, plugins = []) {
     secret: "local-conformance-0123456789-abcdefghijk",
     emailAndPassword: { enabled: true },
     telemetry: { enabled: false },
-  };
+  }, settings);
   await (await getMigrations(options)).runMigrations();
   const auth = betterAuth(options);
   return { baseURL, send: (request) => auth.handler(request), database };
@@ -1225,4 +1225,19 @@ test("bearer sessions match the pinned header, identity and revocation contract"
 test("session reads retire only the base and canonical cache chunks when caching is disabled", async t => {
   const {checkCacheCleanup} = await import("./session-cache-cleanup.mjs");
   for (const server of [await reference(t), await goFixture(t)]) await checkCacheCleanup(server);
+});
+
+test("custom session matches the released GET override, protected headers, query and SQL failure behavior", async t => {
+  const {compareCustomSession} = await import("./custom-session-contract.mjs");
+  await compareCustomSession(t, { reference, goFixture });
+});
+
+test("pinned custom session reads expose the enabled core cookie-cache contract", async t => {
+  const {pinnedCookieCacheContract} = await import("./custom-session-contract.mjs");
+  await pinnedCookieCacheContract(t, reference);
+});
+
+test("ordinary session GET and deferred POST work without a custom session plugin", async t => {
+  const { compareOrdinarySession } = await import("./custom-session-contract.mjs");
+  await compareOrdinarySession(t, { reference, goFixture });
 });

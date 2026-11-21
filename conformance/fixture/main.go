@@ -16,7 +16,6 @@ import (
 	"github.com/Stonewrit/stonewrit-auth/adapters/sqlstore"
 	"github.com/Stonewrit/stonewrit-auth/plugins/apikey"
 	"github.com/Stonewrit/stonewrit-auth/plugins/bearer"
-	"github.com/Stonewrit/stonewrit-auth/plugins/customsession"
 	"github.com/Stonewrit/stonewrit-auth/plugins/emailotp"
 	jwtplugin "github.com/Stonewrit/stonewrit-auth/plugins/jwt"
 	"github.com/Stonewrit/stonewrit-auth/plugins/lastlogin"
@@ -224,10 +223,8 @@ func main() {
 		}
 		plugins = append(plugins, p)
 	}
-	if os.Getenv("CONFORMANCE_SESSION_VIEW") == "1" {
-		p, err := customsession.NewWithOptions(func(_ authn.EndpointContext, data authn.SessionResult) (any, error) {
-			return map[string]string{"viewer": data.User.Email}, nil
-		}, customsession.Options{ProjectDeviceSessions: os.Getenv("CONFORMANCE_DEVICE_VIEW") == "1"})
+	if os.Getenv("CONFORMANCE_SESSION_VIEW") != "" {
+		p, err := fixtureSessionProjection()
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -305,14 +302,16 @@ func main() {
 		discoveryOrigins = []string{origin}
 	}
 	auth, err := authn.New(authn.Options{
-		TrustedOrigins:   discoveryOrigins,
-		BasePath:         mount,
-		SocialProviders:  social,
-		Plugins:          plugins,
-		BaseURL:          baseURL,
-		EmailAndPassword: true,
-		Secret:           "local-conformance-0123456789-abcdefghijk",
-		Store:            store,
+		SessionUpdateAge:    fixtureSessionUpdateAge(),
+		DeferSessionRefresh: os.Getenv("CONFORMANCE_DEFER_SESSION_REFRESH") == "1",
+		TrustedOrigins:      discoveryOrigins,
+		BasePath:            mount,
+		SocialProviders:     social,
+		Plugins:             plugins,
+		BaseURL:             baseURL,
+		EmailAndPassword:    true,
+		Secret:              "local-conformance-0123456789-abcdefghijk",
+		Store:               store,
 	})
 	if err != nil {
 		log.Fatal(err)

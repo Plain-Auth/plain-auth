@@ -66,7 +66,7 @@ func (a *Auth) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	method, known := coreMethods[route]
-	isSessionPost := route == "/get-session" && r.Method == http.MethodPost
+	isSessionPost := route == "/get-session" && r.Method == http.MethodPost && a.sessionResponse == nil
 	ep, pluginRoute := a.plugins[endpointKey{r.Method, route}]
 	if !mounted || (!pluginRoute && (!known || (method != r.Method && !isSessionPost))) {
 		w.WriteHeader(http.StatusNotFound)

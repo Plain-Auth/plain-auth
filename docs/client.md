@@ -55,6 +55,8 @@ if view != nil {
 }
 ```
 
+Pass `client.SessionReadOptions{DisableRefresh: true}` to `client.GetSessionViewWithOptions[T](ctx, c, options)` to read the view without extending the session. `DisableCookieCache` requests a fresh store read from a server that supports a browser data cache. False flags are omitted from the query. [Go query-control tests](../client/session_view_test.go)
+
 An unauthenticated read returns `nil, nil`. A failed HTTP request or a response that cannot decode into the requested type returns an error. If the server also projects remembered accounts, use `client.ListDeviceSessionViews[SessionView](ctx, c)`. The default device list returns standard sessions through `c.ListDeviceSessions(ctx)`. [Custom session server setup](plugins.md#return-an-application-defined-session-view) · [Go client tests](../client/session_view_test.go)
 
 ## Use a bearer token

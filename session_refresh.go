@@ -15,19 +15,14 @@ type SessionRefreshStore interface {
 	DeleteExpiredSession(ctx context.Context, token string, now time.Time) error
 }
 
-type deferredSessionResponse struct {
-	*SessionResult
-	NeedsRefresh bool `json:"needsRefresh"`
-}
-
-func (a *Auth) sessionHTTP(w http.ResponseWriter, r *http.Request) (body any, responseErr error) {
+func (a *Auth) sessionHTTP(headers http.Header, r *http.Request) (body any, responseErr error) {
 	ctx := r.Context()
 	if identity, _ := ctx.Value(credentialSessionKey{a}).(*SessionResult); identity != nil {
 		return identity, nil
 	}
 	token := a.cookieToken(r.Header)
 	if token == "" {
-		a.expireStoredSessionData(w.Header(), r, false)
+		a.expireStoredSessionData(headers, r, false)
 		return nil, nil
 	}
 	row, user, err := a.opts.Store.Session(ctx, token)
@@ -38,7 +33,7 @@ func (a *Auth) sessionHTTP(w http.ResponseWriter, r *http.Request) (body any, re
 	store, canRefresh := a.opts.Store.(SessionRefreshStore)
 	deferredRead := a.opts.DeferSessionRefresh && r.Method == http.MethodGet
 	if errors.Is(err, ErrNotFound) || !row.ExpiresAt.After(now) {
-		a.expireSessionCookies(w, r)
+		a.expireSessionCookieHeaders(headers, r)
 		if err == nil && canRefresh && !deferredRead {
 			if err := store.DeleteExpiredSession(ctx, token, now); err != nil {
 				return nil, err
@@ -46,7 +41,7 @@ func (a *Auth) sessionHTTP(w http.ResponseWriter, r *http.Request) (body any, re
 		}
 		return nil, nil
 	}
-	a.expireStoredSessionData(w.Header(), r, false)
+	a.expireStoredSessionData(headers, r, false)
 	result, err := a.withSessionPlugins(ctx, row.Session, user)
 	if err != nil {
 		return nil, err
@@ -61,8 +56,8 @@ func (a *Auth) sessionHTTP(w http.ResponseWriter, r *http.Request) (body any, re
 				body, responseErr = nil, err
 				return
 			}
-			w.Header().Set("Set-Auth-Jwt", token)
-			w.Header().Add("Access-Control-Expose-Headers", "set-auth-jwt")
+			headers.Set("Set-Auth-Jwt", token)
+			headers.Add("Access-Control-Expose-Headers", "set-auth-jwt")
 		}()
 	}
 	// Match the reference query's coercion: a nonempty disableRefresh query
@@ -73,7 +68,8 @@ func (a *Auth) sessionHTTP(w http.ResponseWriter, r *http.Request) (body any, re
 	threshold := row.ExpiresAt.Add(-a.opts.SessionTTL).Add(*a.opts.SessionUpdateAge)
 	due := canRefresh && !a.opts.DisableSessionRefresh && !now.Before(threshold)
 	if deferredRead {
-		return deferredSessionResponse{result, due}, nil
+		result.NeedsRefresh = &due
+		return result, nil
 	}
 	if !due {
 		return result, nil
@@ -91,7 +87,7 @@ func (a *Auth) sessionHTTP(w http.ResponseWriter, r *http.Request) (body any, re
 			return nil, err
 		}
 		if current == nil {
-			a.expireSessionCookies(w, r)
+			a.expireSessionCookieHeaders(headers, r)
 			return nil, &APIError{401, "FAILED_TO_GET_SESSION", "Failed to get session"}
 		}
 		result = current
@@ -99,6 +95,6 @@ func (a *Auth) sessionHTTP(w http.ResponseWriter, r *http.Request) (body any, re
 	}
 	result.Session.ExpiresAt = next
 	result.Session.UpdatedAt = now
-	a.writeSessionCookieHeaders(w.Header(), r, token, true)
+	a.writeSessionCookieHeaders(headers, r, token, true)
 	return result, nil
 }

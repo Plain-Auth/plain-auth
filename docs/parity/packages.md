@@ -24,6 +24,7 @@ Each row tracks the behavior exposed by a published entry point. The Go implemen
     - [x] Return the signed-in user and session with the default seven-day lifetime ([test](../../conformance/core.test.mjs#L195))
     - [x] Support the sliding session window, deferred writes and expiration ([test](../../session_refresh_test.go#L46))
     - [x] Expose the application credential type and keep the presented key out of browser session lookup ([test](../../adapters/sqlstore/apikey_session_test.go#L201))
+    - [x] Compare ordinary GET and deferred POST without the projection on both runtimes ([test](../../conformance/custom-session-contract.mjs#L113))
   - [ ] Minimal server initialization (`./minimal`)
   - [ ] Social provider registration and profiles (`./social-providers`)
     - [x] Verify the signature and claims of a Google ID token against a test issuer ([test](../../providers/providers_test.go#L19))

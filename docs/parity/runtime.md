@@ -31,6 +31,7 @@ Each entry groups the configured endpoint’s behaviors. A checked child records
     - [x] Return the signed-in user and session with the default seven-day lifetime ([test](../../conformance/core.test.mjs#L195))
     - [x] Support the sliding session window, deferred writes and expiration ([test](../../session_refresh_test.go#L46))
     - [x] Expose the application credential type and keep the presented key out of browser session lookup ([test](../../adapters/sqlstore/apikey_session_test.go#L201))
+    - [x] Compare ordinary GET and deferred POST without the projection on both runtimes ([test](../../conformance/custom-session-contract.mjs#L113))
   - [ ] `linkSocialAccount` (`POST /link-social`)
     - [x] Explicitly link a verified OIDC identity to the signed-in user ([test](../../providers/oidc_test.go#L22))
     - [x] Apply extra scopes, login hints and consent parameters per request, and reject reserved OAuth fields ([test](../../conformance/social-signup.mjs#L39))

@@ -74,7 +74,7 @@ func (a *Auth) DescribeHTTP() HTTPDescription {
 		}
 		d.Routes = append(d.Routes, HTTPRoute{Method: method, Path: route})
 	}
-	if o.DeferSessionRefresh {
+	if o.DeferSessionRefresh && a.sessionResponse == nil {
 		d.Routes = append(d.Routes, HTTPRoute{Method: http.MethodPost, Path: "/get-session"})
 	}
 	if len(d.Providers) != 0 {

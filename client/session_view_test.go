@@ -143,3 +143,45 @@ func TestTypedSessionViews(t *testing.T) {
 		})
 	}
 }
+
+func TestProjectedSessionReadOptions(t *testing.T) {
+	type view struct {
+		Viewer string `json:"viewer"`
+	}
+	plugin, err := customsession.New(func(_ stonewrit.EndpointContext, data stonewrit.SessionResult) (any, error) {
+		return view{data.User.Email}, nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	const origin = "https://view.example"
+	immediate := time.Duration(0)
+	host, err := stonewrit.New(stonewrit.Options{BaseURL: origin, Store: memory.New(), Secret: strings.Repeat("x", 32), EmailAndPassword: true, SessionUpdateAge: &immediate, Plugins: []stonewrit.Plugin{plugin}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var query string
+	var cookies []*http.Cookie
+	c, err := client.New(origin+"/api/auth", &http.Client{Transport: transport(func(r *http.Request) (*http.Response, error) {
+		w := httptest.NewRecorder()
+		host.ServeHTTP(w, r)
+		response := w.Result()
+		query = r.URL.RawQuery
+		cookies = response.Cookies()
+		return response, nil
+	})})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = c.SignUpEmail(t.Context(), client.SignUpRequest{Name: "View", Email: "view@example.test", Password: "valid-fixture-password"}); err != nil {
+		t.Fatal(err)
+	}
+	got, err := client.GetSessionViewWithOptions[view](t.Context(), c, client.SessionReadOptions{DisableRefresh: true, DisableCookieCache: true})
+	if err != nil || got == nil || got.Viewer != "view@example.test" || query != "disableCookieCache=true&disableRefresh=true" || len(cookies) != 0 {
+		t.Fatal("requested a non-refreshing database view", err, query, len(cookies))
+	}
+	got, err = client.GetSessionViewWithOptions[view](t.Context(), c, client.SessionReadOptions{})
+	if err != nil || got == nil || query != "" || len(cookies) == 0 {
+		t.Fatal("false query flags changed refresh behavior", err, query, len(cookies))
+	}
+}

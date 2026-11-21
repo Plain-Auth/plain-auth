@@ -119,6 +119,9 @@ func registerPlugins(plugins []Plugin) (map[endpointKey]Endpoint, error) {
 			}
 			hasCredentialResolver = true
 		}
+		if p.ProjectDeviceSessions && p.SessionResponse == nil {
+			return nil, errors.New("auth: projecting remembered sessions requires a session response function")
+		}
 		if p.SessionResponse != nil {
 			if hasSessionResponse {
 				return nil, errors.New("auth: only one plugin may customize the session response")

@@ -115,8 +115,10 @@ type StoredSession struct {
 
 // SessionResult pairs the current session with its authenticated user.
 type SessionResult struct {
-	Session Session `json:"session"`
-	User    User    `json:"user"`
+	// NeedsRefresh is present for eligible deferred HTTP reads.
+	NeedsRefresh *bool   `json:"needsRefresh,omitempty"`
+	Session      Session `json:"session"`
+	User         User    `json:"user"`
 }
 
 // AuthResult contains a newly issued token or a pending second-factor challenge.

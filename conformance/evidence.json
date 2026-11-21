@@ -26,6 +26,11 @@
       "label": "Expose the application credential type and keep the presented key out of browser session lookup",
       "test": "adapters/sqlstore/apikey_session_test.go",
       "marker": "raw application key authenticated through browser session lookup"
+    },
+    {
+      "label": "Compare ordinary GET and deferred POST without the projection on both runtimes",
+      "test": "conformance/custom-session-contract.mjs",
+      "marker": "export async function compareOrdinarySession("
     }
   ],
   "core/signInEmail": [
@@ -1743,6 +1748,36 @@
       "label": "Decode a nested Go session view and preserve the signed session cookie on refresh",
       "test": "client/session_view_test.go",
       "marker": "session refresh changed the signed cookie or lost cache control"
+    },
+    {
+      "label": "Expose only GET with the projection installed and retain deferred POST on the standard session endpoint",
+      "test": "plugins/customsession/customsession_test.go",
+      "marker": "deferred POST dispatch"
+    },
+    {
+      "label": "Forward individual cookies and authoritative cache headers after the projection returns",
+      "test": "conformance/custom-session-contract.mjs",
+      "marker": "const renewed = getCookie(response, \"authn.session_token\")"
+    },
+    {
+      "label": "Propagate SQL lookup failures and discard callback headers and cookies on error",
+      "test": "conformance/custom-session-contract.mjs",
+      "marker": "assert.equal((await unavailable.json()).code, \"FAILED_TO_GET_SESSION\")"
+    },
+    {
+      "label": "Clear stale cache chunks and expired credentials during database-backed reads",
+      "test": "conformance/custom-session-contract.mjs",
+      "marker": "assert.match(getCookie(revoked, \"authn.session_token\"), /max-age=0/i)"
+    },
+    {
+      "label": "Expose deferred refresh state and accept the released query string coercion rules",
+      "test": "conformance/custom-session-contract.mjs",
+      "marker": "if (deferred && refresh) expected.needsRefresh = true"
+    },
+    {
+      "label": "Omit disabled flags and suppress renewal on an explicitly non-refreshing native client read",
+      "test": "client/session_view_test.go",
+      "marker": "false query flags changed refresh behavior"
     }
   ],
   "plugin/jwt/GET /token": [
@@ -2335,6 +2370,11 @@
       "label": "Decode nested remembered-account views in Go and discard all results when one projection fails",
       "test": "client/session_view_test.go",
       "marker": "projection failure returned partial account data"
+    },
+    {
+      "label": "Filter remembered accounts through the current SQL ban and delegation policy after a live administrative migration",
+      "test": "adapters/sqlstore/custom_session_test.go",
+      "marker": "remembered projection ignored live SQL visibility"
     }
   ],
   "docs/content/docs/plugins/multi-session.mdx#L49": [
@@ -6892,6 +6932,11 @@
       "test": "conformance/custom-session-types.mts",
       "marker": "result.data.session.token",
       "complete": true
+    },
+    {
+      "label": "Preserve application projection types alongside client-inferred additional user fields",
+      "test": "conformance/custom-session-types.mts",
+      "marker": "const acceptsCombined = (session:Combined)"
     }
   ],
   "plugin-symbol/custom-session/CustomSessionPluginOptions": [
@@ -7077,6 +7122,13 @@
       "label": "Clear each received cache chunk on the issuing host and shared domain using the configured cookie namespace",
       "test": "session_cache_cookies_test.go",
       "marker": "func TestDisabledCacheScopeCleanup("
+    }
+  ],
+  "plugin-symbol/custom-session/customSession": [
+    {
+      "label": "Reject ambiguous or missing callback registrations and isolate concurrent application projections",
+      "test": "plugins/customsession/customsession_test.go",
+      "marker": "multiple projection callbacks registered on the same endpoint"
     }
   ]
 }

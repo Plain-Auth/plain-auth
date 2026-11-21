@@ -2,6 +2,8 @@ package stonewrit
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"net/http"
 )
 
@@ -48,23 +50,56 @@ func (c EndpointContext) IssueSession(userID string, commit func(context.Context
 }
 
 func (a *Auth) presentSession(w http.ResponseWriter, r *http.Request) (any, error) {
-	body, err := a.sessionHTTP(w, r)
-	if err != nil || a.sessionResponse == nil || r.Method != http.MethodGet {
-		return body, err
+	if a.sessionResponse == nil {
+		return a.sessionHTTP(w.Header(), r)
 	}
-	var session *SessionResult
-	switch result := body.(type) {
-	case *SessionResult:
-		session = result
-	case deferredSessionResponse:
-		session = result.SessionResult
-	default:
-		return body, nil
+	// The underlying endpoint owns renewal, cookie attributes and cache policy.
+	// Buffer its headers until the application projection succeeds.
+	inner := make(http.Header)
+	inner.Set("Cache-Control", "no-store")
+	inner.Set("Pragma", "no-cache")
+	for _, value := range w.Header().Values("Access-Control-Expose-Headers") {
+		inner.Add("Access-Control-Expose-Headers", value)
+	}
+	body, err := a.sessionHTTP(inner, r)
+	if err != nil {
+		var public *APIError
+		if errors.As(err, &public) {
+			return nil, err
+		}
+		return nil, &APIError{500, "FAILED_TO_GET_SESSION", "Failed to get session"}
+	}
+	session, ok := body.(*SessionResult)
+	if !ok || session == nil {
+		mergeSessionHeaders(w.Header(), inner)
+		return nil, nil
 	}
 	if a.translateError != nil {
 		a.noteErrorUser(r.Context(), session.Session.Token, session.User)
 	}
-	return a.sessionResponse(EndpointContext{Auth: a, Request: r, ResponseHeader: w.Header()}, *session)
+	output := make(http.Header)
+	value, err := a.sessionResponse(EndpointContext{Auth: a, Request: r, ResponseHeader: output}, *session)
+	if err != nil {
+		return nil, err
+	}
+	raw, err := json.Marshal(value)
+	if err != nil {
+		return nil, err
+	}
+	mergeSessionHeaders(w.Header(), output)
+	mergeSessionHeaders(w.Header(), inner)
+	return json.RawMessage(raw), nil
+}
+
+func mergeSessionHeaders(to, from http.Header) {
+	for name, values := range from {
+		if http.CanonicalHeaderKey(name) != "Set-Cookie" {
+			to.Del(name)
+		}
+		for _, value := range values {
+			to.Add(name, value)
+		}
+	}
 }
 
 // ReissueSessionCookie emits the current session cookie and its normal response

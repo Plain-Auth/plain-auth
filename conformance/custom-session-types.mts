@@ -1,6 +1,6 @@
 import { betterAuth } from "better-auth";
 import { createAuthClient } from "better-auth/client";
-import { customSessionClient } from "better-auth/client/plugins";
+import { customSessionClient, inferAdditionalFields } from "better-auth/client/plugins";
 import { customSession } from "better-auth/plugins";
 
 // A new public plugin option requires its own behavioral coverage.
@@ -27,3 +27,15 @@ async function readViewer() {
   return result.data.viewer;
 }
 void readViewer;
+
+
+// The published client can merge application projection fields with inferred fields.
+const extended = betterAuth({
+  user: { additionalFields: { department: { type: "string", required: false } } },
+  plugins: [customSession(async ({user}) => ({user:{initial:user.name.slice(0,1)},visible:true}))],
+});
+const combined = createAuthClient({plugins:[customSessionClient<typeof extended>(), inferAdditionalFields<typeof extended>()]});
+type Combined = typeof combined.$Infer.Session;
+const acceptsCombined = (session:Combined):[string,string | null | undefined,boolean] =>
+  [session.user.initial,session.user.department,session.visible];
+void acceptsCombined;

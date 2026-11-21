@@ -196,8 +196,28 @@ func (c *Client) GetSession(ctx context.Context) (*authn.SessionResult, error) {
 // GetSessionView decodes the configured HTTP session response into T.
 // An unauthenticated request returns nil, nil.
 func GetSessionView[T any](ctx context.Context, c *Client) (*T, error) {
+	return GetSessionViewWithOptions[T](ctx, c, SessionReadOptions{})
+}
+
+// SessionReadOptions controls whether a browser session read may refresh or use
+// a cached session on a server that supports it. False fields are omitted.
+type SessionReadOptions struct{ DisableRefresh, DisableCookieCache bool }
+
+// GetSessionViewWithOptions decodes the projected response after applying query controls.
+func GetSessionViewWithOptions[T any](ctx context.Context, c *Client, options SessionReadOptions) (*T, error) {
+	query := url.Values{}
+	if options.DisableRefresh {
+		query.Set("disableRefresh", "true")
+	}
+	if options.DisableCookieCache {
+		query.Set("disableCookieCache", "true")
+	}
+	route := "/get-session"
+	if len(query) > 0 {
+		route += "?" + query.Encode()
+	}
 	var view *T
-	if err := c.Do(ctx, http.MethodGet, "/get-session", nil, &view); err != nil {
+	if err := c.Do(ctx, http.MethodGet, route, nil, &view); err != nil {
 		return nil, err
 	}
 	return view, nil
