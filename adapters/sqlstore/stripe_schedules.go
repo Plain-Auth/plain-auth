@@ -121,16 +121,59 @@ func (s *Store) BindStripeSchedule(ctx context.Context, token string, a billing.
 		if schedule == "" || record.ID != a.ID || (record.Schedule != "" && record.Schedule != schedule) || now.Unix() >= record.End {
 			return billing.ErrCheckoutReconcile
 		}
-		if record.Schedule == schedule {
-			return nil
+		return s.saveScheduleBinding(ctx, tx, record, schedule, now)
+	})
+}
+
+func (s *Store) saveScheduleBinding(ctx context.Context, tx *sql.Tx, record billing.ScheduleChange, schedule string, now time.Time) error {
+	if record.Schedule == schedule {
+		return nil
+	}
+	if record.Schedule != "" || schedule == "" {
+		return billing.ErrCheckoutReconcile
+	}
+	record.Schedule = schedule
+	data, err := json.Marshal(record)
+	if err != nil {
+		return err
+	}
+	_, err = tx.ExecContext(ctx, s.bind(`UPDATE "verification" SET "value"=?,"updatedAt"=? WHERE "id"=? AND "identifier"=?`),
+		string(data), s.date(now), stripeRecordID("schedule-change", record.Subscription), stripeOwnerKey(ctx, "sync", record.Owner))
+	return err
+}
+
+func (s *Store) PrepareStripeScheduleRelease(ctx context.Context, token string, sub billing.Subscription, schedule string, now time.Time) error {
+	if token == "" {
+		return billing.ErrCheckoutSession
+	}
+	if sub.SubscriptionID == nil || sub.CustomerID == nil || schedule == "" {
+		return billing.ErrCheckoutReconcile
+	}
+	return s.billingTransaction(ctx, sub.ReferenceID, token, now, func(tx *sql.Tx) error {
+		if err := s.checkCustomerOwner(ctx, tx, sub.ReferenceID, *sub.CustomerID); err != nil {
+			return err
 		}
-		record.Schedule = schedule
-		data, err := json.Marshal(record)
+		var current sql.NullString
+		err := tx.QueryRowContext(ctx, s.bind(`SELECT "stripeScheduleId" FROM "subscription"
+			WHERE "id"=? AND "referenceId"=? AND "stripeCustomerId"=? AND "stripeSubscriptionId"=? AND "status" IN ('active','trialing')`),
+			sub.ID, sub.ReferenceID, *sub.CustomerID, *sub.SubscriptionID).Scan(&current)
+		if errors.Is(err, sql.ErrNoRows) || err == nil && current.String != schedule {
+			return billing.ErrCheckoutReconcile
+		}
 		if err != nil {
 			return err
 		}
-		_, err = tx.ExecContext(ctx, s.bind(`UPDATE "verification" SET "value"=?,"updatedAt"=? WHERE "id"=?`), string(data), s.date(now), stripeRecordID("schedule-change", a.Subscription))
-		return err
+		record, err := s.scheduleRecord(ctx, tx, sub.ReferenceID, *sub.SubscriptionID)
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil // Schedules created outside the app have no local reservation.
+		}
+		if err != nil {
+			return err
+		}
+		if record.LocalID != sub.ID || record.Customer != *sub.CustomerID {
+			return billing.ErrCheckoutReconcile
+		}
+		return s.saveScheduleBinding(ctx, tx, record, schedule, now)
 	})
 }
 

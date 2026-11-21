@@ -171,6 +171,11 @@ func (s *subscriptions) restore(c auth.EndpointContext) (any, error) {
 		if row.ScheduleID == nil || *row.ScheduleID != schedule.ID {
 			return nil, ErrCheckoutReconcile
 		}
+		if store, ok := c.Store().(ScheduleReleaseStore); ok {
+			if err := store.PrepareStripeScheduleRelease(ctx, selection.session.Session.Token, row, schedule.ID, time.Now().UTC()); err != nil {
+				return nil, err
+			}
+		}
 		if _, err = s.client.V1SubscriptionSchedules.Release(ctx, schedule.ID, nil); err != nil {
 			return nil, providerManagementError(err)
 		}

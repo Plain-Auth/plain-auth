@@ -22,6 +22,12 @@ type SubscriptionScheduleStore interface {
 	ForgetStripeSchedule(ctx context.Context, owner, token, subscription, schedule string, now time.Time) error
 }
 
+// ScheduleReleaseStore records the observed schedule before releasing it. This
+// lets a later request recover even if both creation and release responses are lost.
+type ScheduleReleaseStore interface {
+	PrepareStripeScheduleRelease(ctx context.Context, token string, subscription Subscription, schedule string, now time.Time) error
+}
+
 const scheduleSource = "stonewrit-auth"
 
 func (s *subscriptions) scheduleChange(c stonewrit.EndpointContext, selection billingSelection, local Subscription, sub *sdk.Subscription, item *sdk.SubscriptionItem, target, returnURL string) (any, error) {

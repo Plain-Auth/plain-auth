@@ -190,6 +190,35 @@ func TestOrganizationSubscriptionManagement(t *testing.T) {
 			if _, err = buyer.RestoreOrganization(ctx, "", "sub_owner"); err != nil || p.released != 1 {
 				t.Fatal("authorized schedule restoration failed", err)
 			}
+			for _, loseRelease := range []bool{false, true} {
+				role(did, "change-only")
+				p.loseCreate = true
+				_, err = delegate.Upgrade(ctx, deferred)
+				mustCode(err, 502, "STRIPE_SUBSCRIPTION_UNAVAILABLE")
+				lostSchedule, lostKey := p.attached, p.createKey
+				if lostSchedule == "" || p.target != "" {
+					t.Fatal("fixture did not attach the unconfirmed schedule")
+				}
+				p.loseRelease = loseRelease
+				_, err = buyer.RestoreOrganization(ctx, group.ID, "sub_owner")
+				if loseRelease {
+					mustCode(err, 502, "STRIPE_SUBSCRIPTION_UNAVAILABLE")
+				} else if err != nil {
+					t.Fatal("a second manager could not release the unconfirmed schedule", err)
+				}
+				if p.lastReleased != lostSchedule || p.attached != "" {
+					t.Fatal("restore did not release the exact schedule")
+				}
+				next := deferred
+				next.Annual = false
+				page, err = delegate.Upgrade(ctx, next)
+				if err != nil || page.URL == "" || p.attached == "" || p.attached == lostSchedule || p.createKey == lostKey || p.target != "price_team" {
+					t.Fatal("a released unconfirmed schedule blocked a new destination", err)
+				}
+				if _, err = buyer.RestoreOrganization(ctx, group.ID, "sub_owner"); err != nil {
+					t.Fatal("restoring the replacement schedule", err)
+				}
+			}
 			personal, err := buyer.List(ctx)
 			if err != nil || len(personal) != 1 || personal[0].SubscriptionID == nil || *personal[0].SubscriptionID != "sub_personal" || personal[0].ScheduleID != nil {
 				t.Fatal("organization operations changed personal billing", personal, err)
