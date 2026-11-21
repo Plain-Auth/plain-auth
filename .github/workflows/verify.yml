@@ -14,6 +14,13 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     services:
+      valkey:
+        image: valkey/valkey:9.2.0@sha256:1c2b25b09f354c66fe994733acdf12fcfd4bdf6f3bd92b88a93a70378d884056
+        ports:
+          - 6379/tcp
+        options: >-
+          --health-cmd "valkey-cli ping"
+          --health-interval 5s --health-timeout 5s --health-retries 20
       postgres:
         image: postgres:18
         env:
@@ -45,6 +52,7 @@ jobs:
           go-version: '1.26.x'
           cache-dependency-path: |
             go.sum
+            adapters/redis/go.sum
             integrations/routers/go.sum
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
@@ -61,6 +69,7 @@ jobs:
       - name: Test routers, databases, clients and schema profiles
         env:
           CHROME_BIN: /usr/bin/google-chrome
+          AUTH_TEST_REDIS_URL: redis://127.0.0.1:${{ job.services.valkey.ports[6379] }}/0
           AUTH_TEST_POSTGRES_DSN: postgres://auth_test:fixture@127.0.0.1:${{ job.services.postgres.ports[5432] }}/auth_test?sslmode=disable
           AUTH_FACTOR_POSTGRES_DSN: postgres://auth_test:fixture@127.0.0.1:${{ job.services.postgres.ports[5432] }}/auth_factor_test?sslmode=disable
           AUTH_TEST_MYSQL_DSN: root:fixture@tcp(127.0.0.1:${{ job.services.mysql.ports[3306] }})/auth_test

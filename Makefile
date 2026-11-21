@@ -1,10 +1,13 @@
-.PHONY: test test-routers test-conformance vet verify verify-commit
+.PHONY: test test-routers test-redis test-conformance vet verify verify-commit
 
 test:
 	go test -race -count=1 ./...
 
 test-routers:
 	cd integrations/routers && go test -race -count=1 ./...
+
+test-redis:
+	cd adapters/redis && go test -race -count=1 ./...
 
 test-conformance:
 	npm --prefix conformance ci --ignore-scripts --no-audit --no-fund
@@ -13,10 +16,11 @@ test-conformance:
 vet:
 	go vet ./...
 	cd integrations/routers && go vet ./...
+	cd adapters/redis && go vet ./...
 
-verify: test test-routers vet test-conformance
+verify: test test-routers test-redis vet test-conformance
 
-# Run from the files a clean clone will receive, including the nested Go module.
+# Run from the files a clean clone will receive, including the nested Go modules.
 verify-commit:
 	@set -eu; \
 	snapshot=$$(mktemp -d); \
