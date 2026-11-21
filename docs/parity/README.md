@@ -27,8 +27,10 @@ A checked item links to a local test for that behavior. An open parent means the
 | Checkout, subscription changes, cancellation, restoration and signed webhooks | [Subscription lifecycle](../subscriptions.md) · [Billing portal](../plugins.md#open-the-users-stripe-billing-portal) |
 | Role definitions and action checks | [Role permissions](../access.md) |
 | Personal and organization application credentials | [API keys](../api-keys.md) |
+| Verify a phone number, sign in or recover a password by SMS | [Phone accounts](../phone-number.md) |
+| Provision directory users with scoped bearer credentials | [SCIM provisioning](../scim.md) |
 | Translate authentication errors and select a locale | [Localization](../localization.md) |
-| Redis-backed sessions, single-use proofs and rate limits | [Redis secondary storage](../redis.md) |
+| Share rate limits and store short-lived application values in Redis | [Redis secondary storage](../redis.md) |
 | Describe installed HTTP endpoints and render their reference | [OpenAPI](../openapi.md) |
 | Extension hooks, bearer sessions and login method | [Plugins](../plugins.md) |
 

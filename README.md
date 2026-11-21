@@ -14,6 +14,8 @@ StoneWrit Auth embeds authentication in your Go API. Mount the auth handler on y
 - [x] Recover a password and verify an email address through an application-provided sender. [Account tests](account_test.go)
 - [x] Register a passkey and authenticate with it. [Software authenticator tests](adapters/sqlstore/passkey_test.go)
 - [x] Sign in using 36 built-in provider configurations. [Browser fixtures](providers/catalog_test.go) · [OpenID Connect fixtures](providers/issuer_test.go) · [Apple and Microsoft](providers/apple_microsoft_test.go)
+- [x] Configure tenant-specific sign-in with Auth0, Keycloak, Okta or Entra ID and additional OAuth profiles including LINE and HubSpot. [Provider setup](docs/social.md#auth0-keycloak-and-okta)
+- [x] Verify a phone number, link it to an account and recover a password through the application’s SMS sender. [Phone accounts](docs/phone-number.md)
 - [x] Verify an email address, sign in, change an address and reset a password using single-use email codes. [Email OTP](docs/email-otp.md)
 - [x] Approve or deny a device login from a signed-in browser. [Device authorization](docs/device-authorization.md)
 - [x] Remember multiple accounts in one browser and switch or revoke them. [Account switching](docs/multi-session.md)
@@ -21,7 +23,7 @@ StoneWrit Auth embeds authentication in your Go API. Mount the auth handler on y
 - [x] Verify an authenticator, delivered code or single-use backup code and remember a trusted browser. [Two-factor authentication](docs/2fa.md)
 - [x] Create organizations and teams, enforce seat limits and accept scoped invitations. [Organization tests](plugins/organization/organization_test.go)
 - [x] Verify Stripe webhook signatures and open an authenticated customer’s billing portal. [Webhook tests](plugins/stripe/stripe_test.go) · [Billing portal tests](plugins/stripe/portal_test.go)
-- [x] Start recurring Checkout, synchronize a user's subscription from Stripe, open a cancellation page, and restore a pending cancellation or scheduled change. [Subscription billing](docs/subscriptions.md)
+- [x] Start recurring Checkout, confirm a personal plan change, schedule a price for the next billing period, cancel or restore the subscription. [Subscription billing](docs/subscriptions.md)
 - [x] Provision, edit, deactivate and remove directory Users with scoped SCIM bearer credentials. [Directory provisioning](docs/scim.md)
 
 Single sign-on, SCIM Groups and managed directory connections, and organization billing remain open. The [complete checklist](docs/parity/README.md) records which parts of each integration have passing tests.
