@@ -28,6 +28,11 @@ type OAuthProfile struct {
 // For OpenID Connect it must verify the supplied nonce.
 type OAuthProvider struct {
 	Config oauth2.Config
+	// EndSessionEndpoint is the provider's registered OIDC logout endpoint.
+	EndSessionEndpoint string
+	// PostLogoutRedirectURI is the default application return URI after provider logout.
+	PostLogoutRedirectURI string
+	DisableProviderLogout bool
 	// CustomizeAuthorization adapts fixed provider-specific parameter names.
 	CustomizeAuthorization func(*url.URL)
 	// ExchangeCode handles providers with a nonstandard token endpoint protocol.
@@ -106,7 +111,11 @@ func prepareOAuthProviders(in map[string]OAuthProvider, store Store) (map[string
 		if !providerName.MatchString(id) || id == "credential" || p.Config.ClientID == "" || p.Resolve == nil {
 			return nil, fmt.Errorf("incomplete OAuth provider %q", id)
 		}
-		for _, endpoint := range []string{p.Config.Endpoint.AuthURL, p.Config.Endpoint.TokenURL} {
+		endpoints := []string{p.Config.Endpoint.AuthURL, p.Config.Endpoint.TokenURL}
+		if p.EndSessionEndpoint != "" {
+			endpoints = append(endpoints, p.EndSessionEndpoint)
+		}
+		for _, endpoint := range endpoints {
 			u, err := url.Parse(endpoint)
 			if err != nil || u.Hostname() == "" || u.User != nil || u.Fragment != "" {
 				return nil, fmt.Errorf("invalid OAuth endpoint for %q", id)

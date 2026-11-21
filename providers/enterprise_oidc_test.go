@@ -42,7 +42,7 @@ func TestEnterpriseOIDCPresets(t *testing.T) {
 				var response any
 				switch r.URL.String() {
 				case base + "/.well-known/openid-configuration":
-					response = map[string]any{"issuer": tc.Issuer, "authorization_endpoint": base + "/authorize", "token_endpoint": base + "/token", "jwks_uri": base + "/keys", "id_token_signing_alg_values_supported": []string{"RS256"}}
+					response = map[string]any{"issuer": tc.Issuer, "authorization_endpoint": base + "/authorize", "token_endpoint": base + "/token", "jwks_uri": base + "/keys", "end_session_endpoint": base + "/end", "id_token_signing_alg_values_supported": []string{"RS256"}}
 				case base + "/token":
 					user, pass, _ := r.BasicAuth()
 					if err := r.ParseForm(); err != nil || r.PostForm.Get("code") != "fixture" || user != "client" || pass != "secret" ||
@@ -66,6 +66,9 @@ func TestEnterpriseOIDCPresets(t *testing.T) {
 			provider, err := presets[tc.Preset](ctx, tc.Input, "client", "secret")
 			if err != nil {
 				t.Fatal(err)
+			}
+			if provider.EndSessionEndpoint != base+"/end" {
+				t.Fatal("missing discovered provider logout URL")
 			}
 			db, err := sqlite.Open(":memory:")
 			if err != nil {

@@ -153,6 +153,10 @@ func (a *Auth) handleCoreRequest(route string, w http.ResponseWriter, r *http.Re
 	case "/sign-up/email", "/sign-in/email":
 		return a.handleEmail(route, w, r, body, ip)
 	case "/sign-out":
+		logout, err := a.prepareProviderLogout(ctx, r.Header, body)
+		if err != nil {
+			return nil, err
+		}
 		if a.anonymous != nil {
 			c := a.oauthCookie("guest_continuation", "", -1)
 			if _, err := r.Cookie(c.Name); err == nil {
@@ -170,6 +174,12 @@ func (a *Auth) handleCoreRequest(route string, w http.ResponseWriter, r *http.Re
 			for _, token := range a.readDeviceCookies(r.Header).tokens {
 				a.clearDeviceCookie(w.Header(), token)
 			}
+		}
+		if logout.URL != "" {
+			if logout.Redirect {
+				w.Header().Set("Location", logout.URL)
+			}
+			return logout, nil
 		}
 		return map[string]bool{"success": true}, nil
 	case "/revoke-session":

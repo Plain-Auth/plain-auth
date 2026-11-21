@@ -71,6 +71,8 @@ Each entry groups the configured endpoint’s behaviors. A checked child records
     - [x] Apply extra scopes, login hints and consent parameters per request, and reject reserved OAuth fields ([test](../../conformance/social-signup.mjs#L39))
   - [ ] `signOut` (`POST /sign-out`)
     - [x] Clear the client's session cookies and return an anonymous session ([test](../../conformance/core.test.mjs#L206))
+    - [x] Revoke the owner session before returning an OIDC logout URL with trusted callback and optional state ([test](../../conformance/social-logout.mjs#L4))
+    - [x] Use an encrypted account ID token as a logout hint only for the signed-in owner and reject an untrusted return ([test](../../oauth_logout_test.go#L17))
   - [ ] `signUpEmail` (`POST /sign-up/email`)
     - [x] Create a password account and return a usable session token on SQLite ([test](../../conformance/core.test.mjs#L193))
     - [x] Apply configured email-verification gates ([test](../../account_lifecycle_test.go#L15))

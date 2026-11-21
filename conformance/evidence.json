@@ -50,6 +50,16 @@
       "label": "Clear the client's session cookies and return an anonymous session",
       "test": "conformance/core.test.mjs",
       "marker": "assert.ok(record(await client.signOut())?.success); // final sign-out"
+    },
+    {
+      "label": "Revoke the owner session before returning an OIDC logout URL with trusted callback and optional state",
+      "test": "conformance/social-logout.mjs",
+      "marker": "export async function compareSocialLogout("
+    },
+    {
+      "label": "Use an encrypted account ID token as a logout hint only for the signed-in owner and reject an untrusted return",
+      "test": "oauth_logout_test.go",
+      "marker": "func TestProviderLogoutRevokesOwnerSession("
     }
   ],
   "core/ok": [

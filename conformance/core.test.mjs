@@ -1018,3 +1018,8 @@ test("the released passkey client enrolls without a session and signs in with a 
   const { comparePasskeyFirst } = await import("./passkey-first-browser.mjs");
   await comparePasskeyFirst(t, { goFixture, instrument });
 });
+
+test("provider sign-out returns a scoped end-session URL after revoking the local session", async t => {
+  const { compareSocialLogout } = await import("./social-logout.mjs");
+  await compareSocialLogout(t, { reference, goFixture, instrument });
+});

@@ -8,8 +8,8 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/coreos/go-oidc/v3/oidc"
 	authn "github.com/Stonewrit/stonewrit-auth"
+	"github.com/coreos/go-oidc/v3/oidc"
 	"golang.org/x/oauth2"
 )
 
@@ -31,7 +31,8 @@ func OpenIDConnect(ctx context.Context, issuer, clientID, clientSecret string) (
 		return zero, err
 	}
 	var meta struct {
-		Keys string `json:"jwks_uri"`
+		Keys   string `json:"jwks_uri"`
+		Logout string `json:"end_session_endpoint"`
 	}
 	if err := discovered.Claims(&meta); err != nil {
 		return zero, err
@@ -41,7 +42,11 @@ func OpenIDConnect(ctx context.Context, issuer, clientID, clientSecret string) (
 		return zero, errors.New("invalid endpoints in OpenID Connect discovery")
 	}
 	verifier := discovered.VerifierContext(oidc.ClientContext(context.Background(), client), &oidc.Config{ClientID: clientID})
-	return oidcProvider(clientID, clientSecret, endpoint, verifier, client), nil
+	provider := oidcProvider(clientID, clientSecret, endpoint, verifier, client)
+	if secureEndpoint(meta.Logout) {
+		provider.EndSessionEndpoint = meta.Logout
+	}
+	return provider, nil
 }
 
 func secureEndpoint(raw string) bool {

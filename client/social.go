@@ -53,3 +53,19 @@ func (c *Client) LinkSocial(ctx context.Context, in SocialSignInRequest) (*Socia
 	}
 	return &result, nil
 }
+
+// ProviderSignOutRequest selects a trusted application return address and the
+// optional state the identity provider should pass back after sign-out.
+type ProviderSignOutRequest struct {
+	CallbackURL     string `json:"callbackURL,omitempty"`
+	DisableRedirect bool   `json:"disableRedirect,omitempty"`
+	State           string `json:"state,omitempty"`
+}
+
+func (c *Client) SignOutProvider(ctx context.Context, in ProviderSignOutRequest) (*auth.ProviderLogoutResult, error) {
+	var result auth.ProviderLogoutResult
+	if err := c.Do(ctx, http.MethodPost, "/sign-out", in, &result); err != nil {
+		return nil, err
+	}
+	return &result, nil
+}

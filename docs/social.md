@@ -193,3 +193,19 @@ Add `scopes`, `loginHint` and `additionalParams` to a sign-in or account-linking
 ```
 
 The configured scopes remain in effect. Provider support determines which hints have an effect on the consent screen. The handler owns the OAuth state, client identity, callback, response type, PKCE parameters, nonce and scope field. It rejects those names in `additionalParams`, along with client-secret fields, vendor client-ID aliases and parameters that replace the authorization request. Native applications can supply the same fields to `SignInSocial` and `LinkSocial` on the Go client.
+
+## Sign out from an identity provider
+
+OIDC discovery can supply an `end_session_endpoint`. For a manually registered provider, set `OAuthProvider.EndSessionEndpoint` to its HTTPS logout URL. Set `PostLogoutRedirectURI` to a trusted application return URL registered at the provider. Use `DisableProviderLogout` to keep sign-out local for an individual provider.
+
+`POST /sign-out` revokes the current local session and clears its cookies. When the account owner has a linked provider with a logout endpoint, the response includes its URL. Pass `disableRedirect: true` to read that URL without a `Location` header. The server selects the most recently updated eligible account. A stored ID token supplies the provider hint when available. A trusted `callbackURL` overrides the configured return address, and `state` is sent to the provider with that address. Account or provider lookup failures still allow local sign-out.
+
+```go
+result, err := c.SignOutProvider(ctx, client.ProviderSignOutRequest{
+    CallbackURL: "/signed-out", State: returnState, DisableRedirect: true,
+})
+if err != nil {
+    return err
+}
+// When result.URL is populated, open it in the user's browser.
+```
