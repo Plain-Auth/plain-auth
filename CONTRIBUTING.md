@@ -16,13 +16,17 @@ Use the [feature checklist](docs/parity/README.md) to find an open capability. A
 - Prefer an existing maintained SDK for a provider's protocol. Keep it inside the integration package and exercise it with local fixtures.
 - Link the test to the feature it proves in [the evidence registry](conformance/evidence.json). Regenerate the [checklist](docs/parity/README.md) with the [inventory instructions](conformance/README.md). If a database test was skipped or a provider option remains pending, leave that behavior open.
 
-Run `make verify` for the package, router, vet, and cross-runtime checks. Set the engine and two-factor test DSNs first to include all live PostgreSQL and MySQL cases. The [database guide](docs/databases.md#run-database-integration-tests) lists all four. The equivalent individual commands below run from the repository root. The separate router module keeps framework dependencies out of application builds.
+Run `make verify` for the Go packages, routers, Redis adapter, vet, and cross-runtime checks. Set the four database test DSNs for PostgreSQL and MySQL. Set `CHROME_BIN` for the browser tests. For the Redis tests, install `valkey-server` or `redis-server`, set `AUTH_TEST_REDIS_SERVER` to the executable, or point `AUTH_TEST_REDIS_URL` at a disposable test instance. [Database setup](docs/databases.md#run-database-integration-tests) · [Redis setup](docs/redis.md)
+
+Run individual checks from the repository root. The router and Redis integrations use separate modules.
 
 ```sh
 go test -race -count=1 ./...
 go vet ./...
 (cd integrations/routers && go test -race -count=1 ./...)
 (cd integrations/routers && go vet ./...)
+(cd adapters/redis && go test -race -count=1 ./...)
+(cd adapters/redis && go vet ./...)
 npm --prefix conformance ci --ignore-scripts --no-audit --no-fund
 npm --prefix conformance test
 ```
@@ -33,4 +37,4 @@ During private development, work directly on `main`. Update the local checkout w
 
 On GitHub, open the [feature checklist](docs/parity/README.md), follow the test link on a completed behavior, and use the file's **History** to find the implementing commit. Changes to checkboxes are reviewed alongside the feature implementation and test evidence. Keep credentials, local database files, and session cookie jars out of commits.
 
-Open **Actions → Verify** in GitHub to see the Go race tests, router tests, vet, client conformance and schema checks for a commit. The browser tests use headless Chrome with a local identity-provider fixture. Set `CHROME_BIN` to your Chrome executable to include them locally. Each job creates its own PostgreSQL and MySQL services and a separate database for authenticator tests. SQLite uses temporary local files. The same `make verify` command runs locally with the disposable database settings in the [database guide](docs/databases.md#run-database-integration-tests).
+Open **Actions → Verify** in GitHub and select the run for your commit. Expand **Test routers, databases, clients and schema profiles** to see the Go race tests, each module’s vet results, browser conformance tests and schema checks. If verification fails, the first failing test or compile error identifies what to reproduce locally. Each job starts PostgreSQL, MySQL and Valkey services. SQLite uses temporary files, and the browser tests use headless Chrome with local fixtures. [Workflow runs](https://github.com/Stonewrit/stonewrit-auth/actions/workflows/verify.yml)
