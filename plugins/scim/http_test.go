@@ -113,3 +113,24 @@ func TestSCIMNormalizedProfileAndPatch(t *testing.T) {
 		}
 	}
 }
+
+func TestSCIMRespectsDisabledHTTPPaths(t *testing.T) {
+	host, err := auth.New(auth.Options{BaseURL: "https://directory.example.test", BasePath: "/identity", Secret: strings.Repeat("s", 32), Store: memory.New(), DisabledPaths: []string{"/scim/v2/Users"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	handler, err := New(host, Options{Store: failureStore{}, Connections: []Connection{{Directory: Directory{ID: "hr"}, Credentials: []Credential{{ID: "sync", Token: "key"}}}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, item := range []struct {
+		method, route string
+		status        int
+	}{{"GET", "Users", 404}, {"POST", "Users", 404}, {"GET", "Users/one", 401}, {"GET", "ServiceProviderConfig", 200}} {
+		rec := httptest.NewRecorder()
+		handler.ServeHTTP(rec, httptest.NewRequest(item.method, "https://directory.example.test/identity/scim/v2/"+item.route, nil))
+		if rec.Code != item.status {
+			t.Fatal(item, rec.Code, rec.Body.String())
+		}
+	}
+}

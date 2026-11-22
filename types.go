@@ -23,6 +23,8 @@ type Options struct {
 	// BaseURL is the public HTTP(S) address. BasePath defaults to /api/auth.
 	BaseURL  string
 	BasePath string
+	// DisabledPaths hides exact HTTP paths relative to this instance’s mount.
+	DisabledPaths []string
 	// TrustedOrigins allows exact HTTP(S) origins and hostname or port wildcard patterns for browser requests and callbacks.
 	TrustedOrigins []string
 	CookiePrefix   string

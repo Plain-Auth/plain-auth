@@ -29,6 +29,10 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.host.ServeHTTP(w, r)
 		return
 	}
+	if h.host.HTTPPathDisabled(r) {
+		http.NotFound(w, r)
+		return
+	}
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("Content-Type", MediaType)
 	w.Header().Set("X-Content-Type-Options", "nosniff")

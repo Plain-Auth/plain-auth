@@ -210,7 +210,7 @@ func main() {
 			}
 			plugins = append(plugins, p)
 		case "jwt":
-			p, err := jwtplugin.New(jwtplugin.Options{})
+			p, err := jwtplugin.New(jwtplugin.Options{DisableHeader: os.Getenv("CONFORMANCE_MUTE_JWT_HEADER") == "1"})
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -357,6 +357,7 @@ func main() {
 		TrustedOrigins:      discoveryOrigins,
 		BasePath:            mount,
 		SocialProviders:     social,
+		DisabledPaths:       strings.Fields(os.Getenv("CONFORMANCE_DISABLED_PATHS")),
 		Plugins:             plugins,
 		BaseURL:             baseURL,
 		EmailAndPassword:    true,

@@ -3963,6 +3963,11 @@
       "label": "Remove the public endpoint while retaining the application lookup",
       "test": "adapters/sqlstore/username_test.go",
       "marker": "disabled public availability endpoint remained reachable"
+    },
+    {
+      "label": "Disable just the public availability endpoint through general HTTP path configuration",
+      "test": "conformance/core.test.mjs",
+      "marker": "disabled HTTP paths suppress core, username and JWT endpoints on a custom mount"
     }
   ],
   "docs/content/docs/plugins/username.mdx#L406": [
@@ -7670,6 +7675,26 @@
       "test": "conformance/oauth-popup-browser.test.mjs",
       "marker": "assert.deepEqual(await rejected,",
       "complete": true
+    }
+  ],
+  "docs/content/docs/reference/options.mdx#L962": [
+    {
+      "label": "Disable exact mount-relative HTTP paths before key extraction and request hooks, omit their fixed routes from OpenAPI and retain native Go calls",
+      "test": "disabled_paths_test.go",
+      "marker": "func TestDisabledHTTPPaths(",
+      "complete": true
+    },
+    {
+      "label": "Apply the same per-path HTTP setting to the SCIM wrapper and preserve neighboring resource operations",
+      "test": "plugins/scim/http_test.go",
+      "marker": "func TestSCIMRespectsDisabledHTTPPaths"
+    }
+  ],
+  "docs/content/docs/plugins/jwt.mdx#L226": [
+    {
+      "label": "Disable both the browser token endpoint and the session JWT response header while retaining ordinary sessions",
+      "test": "conformance/core.test.mjs",
+      "marker": "disabled HTTP paths suppress core, username and JWT endpoints on a custom mount"
     }
   ]
 }

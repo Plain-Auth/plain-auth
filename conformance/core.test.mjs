@@ -1365,3 +1365,25 @@ test("Chrome signs in through a real popup at top level and inside a cross-site 
   const { chromePopup } = await import("./oauth-popup-chrome.mjs");
   await chromePopup(t, goFixture);
 });
+
+test("disabled HTTP paths suppress core, username and JWT endpoints on a custom mount", async t => {
+  const {username} = await import("better-auth/plugins");
+  const disabledPaths = ["/sign-in/email", "/is-username-available", "/token"];
+  const ref = await reference(t, [username(), jwt({disableSettingJwtHeader:true})], {basePath:"/identity", disabledPaths});
+  const go = await goFixture(t, ["username", "jwt"], {CONFORMANCE_DISABLED_PATHS:disabledPaths.join(" "), CONFORMANCE_OPENAPI:"1", CONFORMANCE_MUTE_JWT_HEADER:"1"});
+  for (const runtime of [ref, go]) {
+    const send = (path,method="GET",body,headers={}) => runtime.send(new Request(runtime.baseURL + "/identity" + path,{
+      method, headers:{origin:runtime.baseURL, ...body && {"content-type":"application/json"},...headers},body:body && JSON.stringify(body),
+    }));
+    const signup = await send("/sign-up/email","POST",{email,name,password,username:"account123"});
+    assert.equal(signup.status,200);
+    const cookie = signup.headers.getSetCookie().map(v=>v.split(";")[0]).join("; ");
+    const session = await send("/get-session","GET",undefined,{cookie});
+    assert.equal((await session.json()).user.email,email);
+    assert.equal(session.headers.get("set-auth-jwt"),null);
+    assert.equal((await send("/token","GET",undefined,{cookie})).status,404);
+    assert.equal((await send("/sign-in/email","POST",{email,password})).status,404);
+    assert.equal((await send("/is-username-available","POST",{username:"available123"})).status,404);
+    assert.equal((await send("/ok")).status,200);
+  }
+});

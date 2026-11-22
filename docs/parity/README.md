@@ -50,7 +50,7 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 | [Core concepts](concepts.md) | 32 | 514 |
 | [Managed infrastructure](infrastructure.md) | 0 | 528 |
 | [Framework integrations](integrations.md) | 0 | 228 |
-| [Reference and configuration](reference.md) | 27 | 406 |
+| [Reference and configuration](reference.md) | 30 | 405 |
 
 ## Plugins and integrations
 
@@ -73,7 +73,7 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 | [Generic OAuth](plugins/generic-oauth.md) | 22 | 265 |
 | [Have I Been Pwned](plugins/have-i-been-pwned.md) | 26 | 10 |
 | [Internationalization](plugins/i18n.md) | 116 | 36 |
-| [JSON Web Tokens](plugins/jwt.md) | 12 | 75 |
+| [JSON Web Tokens](plugins/jwt.md) | 13 | 75 |
 | [Last login method](plugins/last-login-method.md) | 24 | 48 |
 | [Magic link](plugins/magic-link.md) | 10 | 44 |
 | [Model Context Protocol](plugins/mcp.md) | 0 | 108 |
@@ -92,7 +92,7 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 | [Single sign-on](plugins/sso.md) | 45 | 308 |
 | [Stripe](plugins/stripe.md) | 130 | 193 |
 | [Test utils](plugins/test-utils.md) | 0 | 42 |
-| [Username](plugins/username.md) | 32 | 54 |
+| [Username](plugins/username.md) | 33 | 54 |
 
 ## Third-party integrations
 

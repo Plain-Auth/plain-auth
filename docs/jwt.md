@@ -64,3 +64,7 @@ _ = claims["job"]
 ```
 
 Set `JWTSignOptions.Algorithm` to select an enabled algorithm or `KeyID` to require a particular active key. Supplying both requires a match. The options also support token type, content type, issuer, multiple audiences, issuance, expiration and activation times. Reserved claims come from these options and the subject argument. Verification checks the key ID, algorithm, signature, issuer, audience, subject and time window before returning claims. An optional expected subject further restricts which assertions the service accepts.
+
+## Disable browser token issuance
+
+To keep serving verification keys while disabling browser token issuance, add `"/token"` to `Options.DisabledPaths` and configure `jwt.Options{DisableHeader: true}`. The first setting returns 404 for the token endpoint. The second removes the session JWT header from session reads. [Mounted client test](../conformance/core.test.mjs)

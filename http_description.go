@@ -98,6 +98,12 @@ func (a *Auth) DescribeHTTP() HTTPDescription {
 		}
 		d.Routes = append(d.Routes, HTTPRoute{Method: ep.Method, Path: ep.Path, Plugin: ep.pluginID, RawBody: ep.RawBody, SuccessStatus: ep.SuccessStatus, OpenAPI: slices.Clone(ep.OpenAPI)})
 	}
+	if len(a.disabledPaths) > 0 {
+		d.Routes = slices.DeleteFunc(d.Routes, func(r HTTPRoute) bool {
+			_, disabled := a.disabledPaths[r.Path]
+			return disabled
+		})
+	}
 	slices.SortFunc(d.Routes, func(x, y HTTPRoute) int {
 		if x.Path == y.Path {
 			return strings.Compare(x.Method, y.Method)

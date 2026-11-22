@@ -35,6 +35,10 @@ var coreMethods = map[string]string{
 func (a *Auth) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	route, mounted := strings.CutPrefix(r.URL.EscapedPath(), strings.TrimSuffix(a.opts.BasePath, "/"))
 	if mounted && (route == "" || strings.HasPrefix(route, "/")) {
+		if a.HTTPPathDisabled(r) {
+			http.NotFound(w, r)
+			return
+		}
 		if a.translateError != nil || a.opts.OnAPIError != nil {
 			r = a.withErrorContext(r)
 		}

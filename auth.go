@@ -22,6 +22,7 @@ import (
 
 // Auth is safe for concurrent use by application handlers.
 type Auth struct {
+	disabledPaths         map[string]struct{}
 	trustedOrigins        []trustedOrigin
 	phoneNumber           *PhoneNumberOptions
 	translateError        func(ErrorContext, APIError) string
@@ -144,7 +145,11 @@ func New(opts Options) (*Auth, error) {
 	if err != nil {
 		return nil, err
 	}
-	a := &Auth{opts: opts, trustedOrigins: trustedOrigins, now: time.Now, passwordSlots: make(chan struct{}, min(runtime.GOMAXPROCS(0), 4)), plugins: plugins}
+	disabledPaths, err := prepareDisabledPaths(opts.DisabledPaths)
+	if err != nil {
+		return nil, err
+	}
+	a := &Auth{opts: opts, disabledPaths: disabledPaths, trustedOrigins: trustedOrigins, now: time.Now, passwordSlots: make(chan struct{}, min(runtime.GOMAXPROCS(0), 4)), plugins: plugins}
 	for _, p := range opts.Plugins {
 		if p.TranslateError != nil {
 			if a.translateError != nil {

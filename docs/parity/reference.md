@@ -441,7 +441,9 @@
     - [ ] `disableCornerDecorations`
     - [ ] `disableBackgroundGrid`
   - [ ] `hooks`
-  - [ ] `disabledPaths`
+  - [x] `disabledPaths` ([test](../../disabled_paths_test.go#L14))
+    - [x] Disable exact mount-relative HTTP paths before key extraction and request hooks, omit their fixed routes from OpenAPI and retain native Go calls ([test](../../disabled_paths_test.go#L14))
+    - [x] Apply the same per-path HTTP setting to the SCIM wrapper and preserve neighboring resource operations ([test](../../plugins/scim/http_test.go#L117))
   - [ ] `telemetry`
 
 ## Security

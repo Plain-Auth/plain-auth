@@ -15,6 +15,18 @@ Enable `EmailAndPassword` and mount the auth handler. Paths below are relative t
 | `GET /error` | Display an escaped error description or redirect to the configured application error page |
 | `GET /ok` | Check the auth mount |
 
+## Disable an HTTP endpoint
+
+Set `Options.DisabledPaths` to a list of exact paths relative to your auth mount. Each entry disables every HTTP method on that path for this instance. For example, the configuration below permits trusted Go code to register accounts while hiding public email registration and username availability.
+
+```go
+opts.DisabledPaths = []string{"/sign-up/email", "/is-username-available"}
+auth, err := stonewrit.New(opts)
+```
+
+If the mount is `/identity`, a request to `/identity/sign-up/email` returns 404 before the handler reads credentials, charges a rate limit or runs a request hook. Query parameters and trailing slashes do not change the selection. Supply concrete paths for individual OAuth callbacks or SCIM resources. A collection entry such as `/scim/v2/Users` leaves individual resources separately addressable. Fixed disabled routes are omitted from the generated OpenAPI document. Native Go methods remain available to the host. [HTTP routing tests](../disabled_paths_test.go) · [SCIM tests](../plugins/scim/http_test.go)
+
+
 ## Configure the instance
 
 | Option | Meaning |
