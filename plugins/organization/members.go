@@ -49,3 +49,6 @@ func (service *Service) AddMember(ctx context.Context, request AddMemberRequest)
 	}
 	return member, nil
 }
+
+// Store returns the adapter used for membership, including its configured team policy.
+func (service *Service) Store() Store { return service.options.Store }

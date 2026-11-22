@@ -9161,5 +9161,44 @@
       "test": "conformance/organization-profile.mjs",
       "marker": "check(anonymous,\"org-late\")"
     }
+  ],
+  "docs/content/docs/plugins/test-utils.mdx#L126": [
+    {
+      "label": "Round-trip supplied organization fields without creating an owner, team or session",
+      "test": "adapters/sqlstore/organization_fixtures_test.go",
+      "marker": "t.Fatal(\"supplied organization fields were not round-tripped\"",
+      "complete": true
+    },
+    {
+      "label": "Confirm row creation, member role defaults and tenant-scoped teardown in the released test helpers",
+      "test": "conformance/auth-test-helpers.test.mjs",
+      "marker": "test(\"trusted organization fixtures save without members"
+    }
+  ],
+  "docs/content/docs/plugins/test-utils.mdx#L135": [
+    {
+      "label": "Remove tenant-owned rows and receipts atomically on three engines while preserving an account with the same ID",
+      "test": "adapters/sqlstore/organization_fixtures_test.go",
+      "marker": "t.Fatal(\"unclassified subscription was claimed\"",
+      "complete": true
+    },
+    {
+      "label": "Confirm row creation, member role defaults and tenant-scoped teardown in the released test helpers",
+      "test": "conformance/auth-test-helpers.test.mjs",
+      "marker": "test(\"trusted organization fixtures save without members"
+    }
+  ],
+  "docs/content/docs/plugins/test-utils.mdx#L143": [
+    {
+      "label": "Use the configured trusted grant service and give an existing user the default member role or a supported explicit role",
+      "test": "adapters/sqlstore/organization_fixtures_test.go",
+      "marker": "t.Fatal(\"default member fixture\"",
+      "complete": true
+    },
+    {
+      "label": "Confirm row creation, member role defaults and tenant-scoped teardown in the released test helpers",
+      "test": "conformance/auth-test-helpers.test.mjs",
+      "marker": "test(\"trusted organization fixtures save without members"
+    }
   ]
 }

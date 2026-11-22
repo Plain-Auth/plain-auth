@@ -68,3 +68,32 @@ test("in-process test fixtures create unsaved defaults and retain the last OTP s
   for (const headers of supplied) assert.equal(await auth.api.getSession({headers}),null);
   assert.equal(database.prepare('SELECT count(*) AS n FROM session WHERE userId=?').get(profile.id).n,0);
 });
+
+test("trusted organization fixtures save without members, grant explicit or default roles, and delete one tenant", async t => {
+  const database = new DatabaseSync(":memory:");
+  t.after(() => database.close());
+  const options = {
+    baseURL: "https://app.example.test", database, telemetry: { enabled: false },
+    secret: "fixture-only-secret-for-test-helpers-0123456789",
+    plugins: [organization(), testUtils()],
+  };
+  await (await getMigrations(options)).runMigrations();
+  const helpers = (await betterAuth(options).$context).test;
+  const first = await helpers.saveOrganization(helpers.createOrganization({id:"fixture-tenant",name:"Landscapes",slug:"landscapes"}));
+  const neighbor = await helpers.saveOrganization(helpers.createOrganization({name:"Neighbor"}));
+  assert.deepEqual([first.id,first.name,first.slug], ["fixture-tenant","Landscapes","landscapes"]);
+  assert.equal(database.prepare("SELECT count(*) AS n FROM member").get().n, 0);
+  const user = await helpers.saveUser(helpers.createUser());
+  const grant = await helpers.addMember({organizationId:first.id,userId:user.id});
+  assert.equal(grant.role, "member");
+  assert.equal(grant.organizationId, first.id);
+  assert.equal(grant.userId, user.id);
+  const retained = await helpers.addMember({organizationId:neighbor.id,userId:user.id,role:"admin"});
+  assert.equal(retained.role,"admin");
+  await helpers.deleteOrganization(first.id);
+  await helpers.deleteOrganization(first.id);
+  assert.equal(database.prepare("SELECT count(*) AS n FROM member WHERE organizationId=?").get(first.id).n,0);
+  assert.equal(database.prepare("SELECT id FROM member WHERE organizationId=?").get(neighbor.id).id,retained.id);
+  assert.equal(database.prepare("SELECT id FROM organization").get().id,neighbor.id);
+  assert.equal(database.prepare("SELECT id FROM user").get().id,user.id);
+});

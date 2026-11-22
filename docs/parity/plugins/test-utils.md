@@ -33,9 +33,15 @@
         - [x] Save a user fixture with no linked account or issued login on the four supported stores ([test](../../../authtest/server_test.go#L71))
       - [x] deleteUser ([test](../../../authtest/server_test.go#L133))
         - [x] Remove the fixture and revoke its sessions on another instance ([test](../../../authtest/server_test.go#L133))
-      - [ ] saveOrganization
-      - [ ] deleteOrganization
-      - [ ] addMember
+      - [x] saveOrganization ([test](../../../adapters/sqlstore/organization_fixtures_test.go#L68))
+        - [x] Round-trip supplied organization fields without creating an owner, team or session ([test](../../../adapters/sqlstore/organization_fixtures_test.go#L68))
+        - [x] Confirm row creation, member role defaults and tenant-scoped teardown in the released test helpers ([test](../../../conformance/auth-test-helpers.test.mjs#L72))
+      - [x] deleteOrganization ([test](../../../adapters/sqlstore/organization_fixtures_test.go#L161))
+        - [x] Remove tenant-owned rows and receipts atomically on three engines while preserving an account with the same ID ([test](../../../adapters/sqlstore/organization_fixtures_test.go#L161))
+        - [x] Confirm row creation, member role defaults and tenant-scoped teardown in the released test helpers ([test](../../../conformance/auth-test-helpers.test.mjs#L72))
+      - [x] addMember ([test](../../../adapters/sqlstore/organization_fixtures_test.go#L89))
+        - [x] Use the configured trusted grant service and give an existing user the default member role or a supported explicit role ([test](../../../adapters/sqlstore/organization_fixtures_test.go#L89))
+        - [x] Confirm row creation, member role defaults and tenant-scoped teardown in the released test helpers ([test](../../../conformance/auth-test-helpers.test.mjs#L72))
     - [ ] Auth Helpers
       - [ ] login
         - [x] Issue an authenticated session with the configured lifetime and owner ([test](../../../authtest/server_test.go#L85))

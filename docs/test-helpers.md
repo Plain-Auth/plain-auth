@@ -47,6 +47,43 @@ router.ServeHTTP(res, req) // router mounts server.Auth and your protected /prof
 
 `GetAuthHeaders(ctx, userID)` and `GetCookies(ctx, userID, domain)` each create a new session. An empty domain selects the configured cookie domain or the auth hostname. To remove a fixture and its sessions, call `server.DeleteUser(ctx, user.ID)` while the test database is still open. Custom adapters can provide profile persistence and cleanup through `authtest.UserStore`. [Four-adapter tests](../authtest/server_test.go)
 
+## Save and remove organization fixtures
+
+Use `authtest.NewWithOrganizations` with a dedicated SQLite, PostgreSQL or MySQL database initialized with the `organization` schema profile. Use `organization-teams` when the test needs teams. Pass the organization options to the constructor once. It installs the plugin and retains the same configured adapter for trusted grants and fixture persistence. An empty `organization.Options.Store` selects the auth store. A custom organization adapter can implement `authtest.OrganizationStore` and `organization.MemberWriter`.
+
+```go
+server, err := authtest.NewWithOrganizations(opts, organization.Options{})
+if err != nil {
+    t.Fatal(err)
+}
+group, err := server.SaveOrganization(t.Context(), authtest.NewOrganization("Support"))
+if err != nil {
+    t.Fatal(err)
+}
+t.Cleanup(func() {
+    if err := server.DeleteOrganization(context.Background(), group.ID); err != nil {
+        t.Error(err)
+    }
+})
+user, err := server.SaveUser(t.Context(), authtest.NewUser())
+if err != nil {
+    t.Fatal(err)
+}
+member, err := server.AddMember(t.Context(), organization.AddMemberRequest{
+    UserID: user.ID, OrganizationID: group.ID, Roles: []string{"admin"},
+})
+if err != nil {
+    t.Fatal(err)
+}
+if member.Role != "admin" {
+    t.Fatalf("unexpected member role %q", member.Role)
+}
+```
+
+`SaveOrganization` inserts the supplied ID, name, slug, logo, metadata and creation time. The new organization starts with zero members and teams. `AddMember` uses the normal trusted grant service. Omitting roles selects `member`; explicitly grant a supported role when testing administrative or owner actions. Supply `TeamID` to enroll the member in an existing team when teams are configured.
+
+`DeleteOrganization` is idempotent and runs in one database transaction. It removes local memberships, invitations, teams, team memberships and current selections, plus tenant-owned API keys, billing subscriptions and billing receipts. An account with the same reference ID retains its own credentials and subscriptions. The fixture returns an actionable error if a managed SSO provider still names the organization, or if an imported key or billing record has ambiguous ownership. Delete the provider using its management API or resolve the ambiguous local records before retrying. Custom plugin data, external key storage and remote provider resources require their own test teardown. Register cleanup before closing the fixture database. [SQL lifecycle and isolation tests](../adapters/sqlstore/organization_fixtures_test.go)
+
 ## Test email and phone codes
 
 Create one recorder per test and wrap the sender when configuring the plugin. The wrapper captures the issued code under its delivery address and calls the sender you supply. Pass `nil` for a test that uses only the recorder. A sender error still reaches the caller. Captured proofs stay in the test process even if the database stores a hash.

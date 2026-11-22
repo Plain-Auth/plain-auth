@@ -30,7 +30,7 @@ func (s *Store) organizationBillingColumn(ctx context.Context, q rowQuerier) (bo
 	case "sqlite":
 		query = `SELECT count(*) FROM pragma_table_info('organization') WHERE name='stripeCustomerId'`
 	case "postgres":
-		query = `SELECT count(*) FROM information_schema.columns WHERE table_schema=current_schema() AND table_name='organization' AND column_name='stripeCustomerId'`
+		query = `SELECT count(*) FROM pg_catalog.pg_attribute WHERE attrelid=pg_catalog.to_regclass('organization') AND attname='stripeCustomerId' AND attnum>0 AND NOT attisdropped`
 	case "mysql":
 		query = `SELECT count(*) FROM information_schema.columns WHERE table_schema=database() AND table_name='organization' AND column_name='stripeCustomerId'`
 	}

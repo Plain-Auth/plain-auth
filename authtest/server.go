@@ -8,14 +8,17 @@ import (
 	"time"
 
 	auth "github.com/Stonewrit/stonewrit-auth"
+	"github.com/Stonewrit/stonewrit-auth/plugins/organization"
 )
 
 // Server holds an auth handler and privileged helpers for a dedicated test database.
 // Only Auth should be mounted in the application's router.
 type Server struct {
-	Auth   *auth.Auth
-	store  auth.Store
-	origin string
+	Auth                 *auth.Auth
+	store                auth.Store
+	origin               string
+	organizations        *organization.Service
+	organizationFixtures OrganizationStore
 }
 
 // New creates an auth instance from the same options used by the application.
