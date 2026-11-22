@@ -98,7 +98,7 @@ This reads the signing secret and public URL from the host environment configure
 During private development, authenticate Git for the Plain Auth repository and run the following in the consuming module.
 
 ```sh
-GOPRIVATE=github.com/Plain-Auth/plain-auth go get github.com/Plain-Auth/plain-auth@main
+GOPRIVATE=github.com/Plain-Auth/plain-auth go get github.com/Plain-Auth/plain-auth/adapters/sqlite@main
 ```
 
 Go records the resolved commit in the consuming project’s `go.mod`. The module path is `github.com/Plain-Auth/plain-auth`. Its Go package name is `plainauth`. The SQLite adapter lives at `github.com/Plain-Auth/plain-auth/adapters/sqlite`. A complete host application, including a protected route and graceful shutdown, is in [examples/basic](examples/basic/main.go).
