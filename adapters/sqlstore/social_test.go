@@ -115,6 +115,27 @@ func TestSocialStore(t *testing.T) {
 			if err != nil || owner.ID != cred.ID || saved.UserID != cred.ID {
 				t.Fatalf("session owner %#v, %v", owner, err)
 			}
+			ownerLink := auth.OAuthLoginOptions{LinkUserID: cred.ID, LinkSessionToken: session.Token}
+			refreshSession := testSession(candidate, rand.Text())
+			update := auth.OAuthTokens{AccessToken: "refreshed"}
+			if _, _, err := store.RefreshOwnedOAuthLink(ctx, "demo", rand.Text(), update, candidate, refreshSession, ownerLink); !errors.Is(err, auth.ErrOAuthLinkingDisabled) {
+				t.Fatal("refresh created a missing identity", err)
+			}
+			if _, _, err := store.RefreshOwnedOAuthLink(ctx, "demo", subject, update, candidate, refreshSession, auth.OAuthLoginOptions{LinkUserID: cred.ID, LinkSessionToken: rand.Text()}); !errors.Is(err, auth.ErrNotFound) {
+				t.Fatal("refresh accepted a stale session", err)
+			}
+			refreshed, created, err := store.RefreshOwnedOAuthLink(ctx, "demo", subject, update, candidate, refreshSession, ownerLink)
+			if err != nil || created || refreshed.ID != cred.ID {
+				t.Fatal("could not refresh existing link", refreshed, err)
+			}
+			if _, _, err := store.Session(ctx, refreshSession.Token); !errors.Is(err, auth.ErrNotFound) {
+				t.Fatal("refresh minted a new session", err)
+			}
+			var storedToken string
+			err = store.db.QueryRowContext(ctx, store.bind(`SELECT "accessToken" FROM "account" WHERE "providerId"=? AND "accountId"=?`), "demo", subject).Scan(&storedToken)
+			if err != nil || storedToken != "refreshed" {
+				t.Fatal("owned credential was not updated", storedToken, err)
+			}
 			tokens.AccessToken = "second"
 			tokens.RefreshToken = ""
 			candidate.Email = "different-" + strings.ToLower(rand.Text()) + "@example.org"

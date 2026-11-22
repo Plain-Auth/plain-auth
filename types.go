@@ -75,6 +75,8 @@ type Options struct {
 	ChangeEmailEnabled             bool
 	UpdateEmailWithoutVerification bool
 	SendChangeEmailConfirmation    MailSender
+	// DisableAccountLinking prevents attaching another provider to an existing account.
+	DisableAccountLinking bool
 	// DisableImplicitAccountLinking requires an authenticated owner to link an additional provider.
 	DisableImplicitAccountLinking bool
 	AllowUnlinkingAll             bool

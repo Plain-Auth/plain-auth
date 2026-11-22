@@ -302,6 +302,9 @@ func (a *Auth) finishOAuth(w http.ResponseWriter, r *http.Request, id string) (r
 		}
 		return fail("signup_disabled")
 	}
+	if errors.Is(err, ErrOAuthLinkingDisabled) {
+		return fail("unable_to_link_account")
+	}
 	if errors.Is(err, ErrOAuthLinkRequired) || errors.Is(err, ErrNotFound) {
 		return fail("account_not_linked")
 	}
@@ -369,11 +372,19 @@ func (a *Auth) redirectOAuthForm(w http.ResponseWriter, r *http.Request, id stri
 }
 
 func (a *Auth) completeProfile(ctx context.Context, r *http.Request, id string, p OAuthProfile, tokens OAuthTokens, options OAuthLoginOptions) (AuthResult, bool, error) {
-	return a.completeProfileWith(ctx, r, id, p, tokens, options, a.opts.Store.(OAuthStore).CompleteOAuth)
+	complete := a.opts.Store.(OAuthStore).CompleteOAuth
+	if a.opts.DisableAccountLinking && options.LinkUserID != "" {
+		store, ok := a.opts.Store.(OAuthLinkRefreshStore)
+		if options.IDTokenValidUntil.IsZero() || !ok {
+			return AuthResult{}, false, ErrOAuthLinkingDisabled
+		}
+		complete = store.RefreshOwnedOAuthLink
+	}
+	return a.completeProfileWith(ctx, r, id, p, tokens, options, complete)
 }
 
 func (a *Auth) completeProfileWith(ctx context.Context, r *http.Request, id string, p OAuthProfile, tokens OAuthTokens, options OAuthLoginOptions, complete OAuthCompletion) (AuthResult, bool, error) {
-	if a.opts.DisableImplicitAccountLinking {
+	if a.opts.DisableImplicitAccountLinking || a.opts.DisableAccountLinking {
 		options.DisableImplicitLinking = true
 		options.AllowVerifiedEmailLink = false
 	}
@@ -432,6 +443,12 @@ func (a *Auth) directOAuth(w http.ResponseWriter, r *http.Request, id string, p 
 	}
 	if errors.Is(err, ErrIDTokenUsed) {
 		return &APIError{401, "INVALID_TOKEN", "Invalid token"}
+	}
+	if errors.Is(err, ErrOAuthLinkingDisabled) {
+		return &APIError{401, "LINKING_NOT_ALLOWED", "Account not linked - linking not allowed"}
+	}
+	if errors.Is(err, ErrOAuthAccountAlreadyLinked) {
+		return &APIError{409, "SOCIAL_ACCOUNT_ALREADY_LINKED", "Social account already linked"}
 	}
 	if errors.Is(err, ErrOAuthLinkRequired) || errors.Is(err, ErrNotFound) {
 		return &APIError{401, "ACCOUNT_NOT_LINKED", "Account not linked"}

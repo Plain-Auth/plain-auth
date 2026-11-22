@@ -99,6 +99,16 @@ type OAuthStore interface {
 	CompleteOAuth(ctx context.Context, provider, subject string, tokens OAuthTokens, candidate User, session StoredSession, options OAuthLoginOptions) (User, bool, error)
 }
 
+// OAuthLinkRefreshStore updates an already-owned provider identity after verifying
+// the live owner session and the provider subject in the same transaction.
+// Implement it to permit redundant mobile link requests when linking is disabled.
+type OAuthLinkRefreshStore interface {
+	RefreshOwnedOAuthLink(context.Context, string, string, OAuthTokens, User, StoredSession, OAuthLoginOptions) (User, bool, error)
+}
+
+var ErrOAuthLinkingDisabled = errors.New("account linking is disabled")
+var ErrOAuthAccountAlreadyLinked = errors.New("social identity belongs to another account")
+
 var ErrOAuthSignupDisabled = errors.New("OAuth account creation disabled")
 var ErrOAuthLinkRequired = errors.New("account must be linked by its existing owner")
 var ErrIDTokenUsed = errors.New("ID token has already been used")

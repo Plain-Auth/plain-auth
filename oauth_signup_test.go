@@ -127,6 +127,17 @@ func TestOAuthExplicitRegistration(t *testing.T) {
 }
 
 func TestIDTokenExplicitAccountLinking(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		closed bool
+	}{{"owner can add identities", false}, {"all new links disabled", true}} {
+		t.Run(tc.name, func(t *testing.T) {
+			testMobileLinkPolicy(t, tc.closed)
+		})
+	}
+}
+
+func testMobileLinkPolicy(t *testing.T, closed bool) {
 	ctx := t.Context()
 	store, err := sqlite.Open(":memory:")
 	if err != nil {
@@ -139,13 +150,20 @@ func TestIDTokenExplicitAccountLinking(t *testing.T) {
 		Config:                 oauth2.Config{ClientID: "mobile-test", Endpoint: oauth2.Endpoint{AuthURL: "https://issuer.example/authorize", TokenURL: "https://issuer.example/token"}},
 		AllowVerifiedEmailLink: true,
 		Resolve:                func(context.Context, *oauth2.Token, string) (auth.OAuthProfile, error) { return profile, nil },
-		VerifyIDToken: func(context.Context, string, string) (auth.OAuthProfile, time.Time, error) {
-			return profile, time.Now().Add(time.Hour), nil
+		VerifyIDToken: func(_ context.Context, raw, nonce string) (auth.OAuthProfile, time.Time, error) {
+			if nonce != "device-nonce" {
+				return auth.OAuthProfile{}, time.Time{}, errors.New("unexpected nonce")
+			}
+			claims := profile
+			if strings.HasPrefix(raw, "separate-") {
+				claims.Subject, claims.Email = "separate", "separate@example.test"
+			}
+			return claims, time.Now().Add(time.Hour), nil
 		},
 	}
 	host := httptest.NewUnstartedServer(nil)
 	base := "http://" + host.Listener.Addr().String()
-	node, err := auth.New(auth.Options{Store: store, Secret: strings.Repeat("s", 40), BaseURL: base, EmailAndPassword: true, DisableImplicitAccountLinking: true, SocialProviders: map[string]auth.OAuthProvider{"mobile": p}, RateLimit: new(bool)})
+	node, err := auth.New(auth.Options{Store: store, Secret: strings.Repeat("s", 40), BaseURL: base, EmailAndPassword: true, DisableImplicitAccountLinking: !closed, DisableAccountLinking: closed, SocialProviders: map[string]auth.OAuthProvider{"mobile": p}, RateLimit: new(bool)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -178,6 +196,33 @@ func TestIDTokenExplicitAccountLinking(t *testing.T) {
 	}
 	if got, err := visitor.GetSession(ctx); err != nil || got != nil {
 		t.Fatal("denied visitor retained a session", got, err)
+	}
+	if closed {
+		_, err := owner.LinkSocial(ctx, input("explicit"))
+		if !errors.As(err, &api) || api.Status != 401 || api.Code != "LINKING_NOT_ALLOWED" {
+			t.Fatal("new mobile link under closed policy", err)
+		}
+		fresh := newClient()
+		registered, err := fresh.SignInSocial(ctx, input("separate-signup"))
+		if err != nil || registered.User == nil || registered.User.Email != "separate@example.test" {
+			t.Fatal("closed linking affected new registration", registered, err)
+		}
+		refreshed, err := fresh.LinkSocial(ctx, input("separate-refresh"))
+		if err != nil || !refreshed.Status || refreshed.Redirect || refreshed.Token != "" || refreshed.URL != "" {
+			t.Fatal("could not refresh an already-owned identity", refreshed, err)
+		}
+		if sessions, err := fresh.ListSessions(ctx); err != nil || len(sessions) != 1 {
+			t.Fatal("refresh changed the owner's sessions", sessions, err)
+		}
+		_, err = owner.LinkSocial(ctx, input("separate-foreign"))
+		if !errors.As(err, &api) || api.Status != 409 || api.Code != "SOCIAL_ACCOUNT_ALREADY_LINKED" {
+			t.Fatal("foreign identity error", err)
+		}
+		login, err := visitor.SignInSocial(ctx, input("separate-signin"))
+		if err != nil || login.User == nil || login.User.ID != registered.User.ID {
+			t.Fatal("existing mobile sign-in failed", login, err)
+		}
+		return
 	}
 	if _, err := owner.LinkSocial(ctx, input("explicit")); err != nil {
 		t.Fatal("authenticated explicit link failed", err)

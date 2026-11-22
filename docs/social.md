@@ -168,9 +168,13 @@ opts.SocialProviders = map[string]auth.OAuthProvider{"company": company}
 
 The preset discovers the tenant’s signing keys, requests `openid profile email`, and binds each account to the directory object ID from the signed ID token. It checks the issuer, audience, tenant, nonce and token lifetime. Microsoft Graph can fill missing name, email and picture fields when its UserInfo subject matches the signed subject. An absent email receives a stable, unverified address ending in `@microsoft-entra-id.placeholder.invalid`. An email verification flag from Graph applies only to the same email address. [Microsoft ID token claims](https://learn.microsoft.com/en-us/entra/identity-platform/id-token-claims-reference) · [Microsoft UserInfo](https://learn.microsoft.com/en-us/entra/identity-platform/userinfo)
 
-## Require explicit registration
+## Control account linking
 
 To require users to link an additional provider from an authenticated session, set `Options.DisableImplicitAccountLinking = true` on every instance performing callbacks. An existing matching mailbox then receives `account_not_linked` on a browser sign-in, including when the provider verified the email or the enterprise directory proved its domain. Have the owner sign in with their current method and call `client.LinkSocial` to add a static provider. A new mailbox can register under the normal signup policy, and an existing provider identity can still sign in. [Browser and client comparison](../conformance/social-link-policy.mjs) · [Verified enterprise domain](../adapters/sqlstore/sso_domain_test.go)
+
+To close account linking entirely, set `Options.DisableAccountLinking = true` on each instance. Users can register with a provider or sign in with one they already linked. A browser request to attach a provider returns to the configured error callback with `unable_to_link_account`. A mobile ID-token request to attach a new identity returns `401 LINKING_NOT_ALLOWED`. The SQL adapters also allow an authenticated owner to refresh an identity they already own using a fresh ID token. An identity owned by another user returns `409 SOCIAL_ACCOUNT_ALREADY_LINKED`. Custom stores can support that refresh by implementing `auth.OAuthLinkRefreshStore` and checking the session and identity ownership together. [Mobile client tests](../oauth_signup_test.go) · [Storage tests](../adapters/sqlstore/social_test.go)
+
+## Require explicit registration
 
 Set `DisableImplicitSignUp` on a provider when an existing user can sign in directly but a first-time user must choose to register. Persist that choice with the initiating sign-in. The callback reads it from single-use server state. Setting `DisableSignUp` on the server or provider still closes new registrations.
 

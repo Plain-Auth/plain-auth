@@ -367,7 +367,10 @@
       - [ ] `"database"`
     - [ ] `storeAccountCookie`
     - [ ] `accountLinking`
-      - [ ] `enabled`
+      - [x] `enabled` ([test](../../conformance/social-link-policy.mjs#L50))
+        - [x] Close new links across browser and direct grants while permitting new registration and subsequent sign-in with the same stable subject ([test](../../conformance/social-link-policy.mjs#L50))
+        - [x] Refresh an existing mobile identity only under its live owner session and reject attachment of new and foreign identities ([test](../../oauth_signup_test.go#L212))
+        - [x] Commit owned credential refresh without issuing another session across all three SQL engines ([test](../../adapters/sqlstore/social_test.go#L132))
       - [x] `disableImplicitLinking` ([test](../../conformance/social-link-policy.mjs#L5))
         - [x] Require an authenticated owner to link a trusted provider, preserve the stable owner, and accept subsequent logins ([test](../../conformance/social-link-policy.mjs#L5))
         - [x] Deny an automatic link even when a registered enterprise IdP has a verified matching domain ([test](../../adapters/sqlstore/sso_domain_test.go#L300))

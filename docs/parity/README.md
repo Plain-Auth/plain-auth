@@ -51,7 +51,7 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 | [Core concepts](concepts.md) | 47 | 512 |
 | [Managed infrastructure](infrastructure.md) | 0 | 528 |
 | [Framework integrations](integrations.md) | 0 | 228 |
-| [Reference and configuration](reference.md) | 63 | 396 |
+| [Reference and configuration](reference.md) | 67 | 395 |
 
 ## Plugins and integrations
 

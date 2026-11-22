@@ -8695,5 +8695,23 @@
       "test": "adapters/sqlstore/stripe_lifecycle_callbacks_test.go",
       "marker": "deletion changed the local organization subscription identity"
     }
+  ],
+  "docs/content/docs/reference/options.mdx#L554/`enabled`": [
+    {
+      "label": "Close new links across browser and direct grants while permitting new registration and subsequent sign-in with the same stable subject",
+      "test": "conformance/social-link-policy.mjs",
+      "marker": "if (mode === \"disabled-existing\")",
+      "complete": true
+    },
+    {
+      "label": "Refresh an existing mobile identity only under its live owner session and reject attachment of new and foreign identities",
+      "test": "oauth_signup_test.go",
+      "marker": "could not refresh an already-owned identity"
+    },
+    {
+      "label": "Commit owned credential refresh without issuing another session across all three SQL engines",
+      "test": "adapters/sqlstore/social_test.go",
+      "marker": "refresh minted a new session"
+    }
   ]
 }

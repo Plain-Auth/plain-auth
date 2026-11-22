@@ -16,6 +16,7 @@ import (
 )
 
 var _ authn.OAuthStore = (*Store)(nil)
+var _ authn.OAuthLinkRefreshStore = (*Store)(nil)
 
 func (s *Store) SaveOAuthFlow(ctx context.Context, flow authn.OAuthFlow, now time.Time) error {
 	payload, err := json.Marshal(flow)
@@ -70,7 +71,16 @@ func (s *Store) ConsumeOAuthFlow(ctx context.Context, state, binding string, now
 // issuance. A stable primary key serializes concurrent first logins even on a
 // canonical schema with no (providerId, accountId) unique constraint.
 func (s *Store) CompleteOAuth(ctx context.Context, provider, subject string, tokens authn.OAuthTokens, candidate authn.User, session authn.StoredSession, options authn.OAuthLoginOptions) (authn.User, bool, error) {
-	return s.completeOAuthWith(ctx, provider, subject, tokens, candidate, session, options, nil)
+	return s.completeOAuthWith(ctx, provider, subject, tokens, candidate, session, options, nil, false)
+}
+
+// RefreshOwnedOAuthLink can only update an existing provider identity, even if
+// another request unlinks or reassigns the identity during the exchange.
+func (s *Store) RefreshOwnedOAuthLink(ctx context.Context, provider, subject string, tokens authn.OAuthTokens, candidate authn.User, session authn.StoredSession, options authn.OAuthLoginOptions) (authn.User, bool, error) {
+	if options.LinkUserID == "" || options.LinkSessionToken == "" {
+		return authn.User{}, false, authn.ErrOAuthLinkingDisabled
+	}
+	return s.completeOAuthWith(ctx, provider, subject, tokens, candidate, session, options, nil, true)
 }
 
 type oauthTransactionHooks struct {
@@ -80,13 +90,13 @@ type oauthTransactionHooks struct {
 	afterIdentity    func(*sql.Tx, authn.User) error
 }
 
-func (s *Store) completeOAuthWith(ctx context.Context, provider, subject string, tokens authn.OAuthTokens, candidate authn.User, session authn.StoredSession, options authn.OAuthLoginOptions, hooks *oauthTransactionHooks) (authn.User, bool, error) {
+func (s *Store) completeOAuthWith(ctx context.Context, provider, subject string, tokens authn.OAuthTokens, candidate authn.User, session authn.StoredSession, options authn.OAuthLoginOptions, hooks *oauthTransactionHooks, existingOnly bool) (authn.User, bool, error) {
 	candidate.Email = strings.ToLower(candidate.Email)
 	var u authn.User
 	var created bool
 	var err error
 	for attempt := 0; attempt < 3; attempt++ {
-		u, created, err = s.completeOAuth(ctx, provider, subject, tokens, candidate, session, options, hooks)
+		u, created, err = s.completeOAuth(ctx, provider, subject, tokens, candidate, session, options, hooks, existingOnly)
 		if !retryIdentity(err) {
 			break
 		}
@@ -106,7 +116,7 @@ func retryIdentity(err error) bool {
 	return false
 }
 
-func (s *Store) completeOAuth(ctx context.Context, provider, subject string, tokens authn.OAuthTokens, candidate authn.User, session authn.StoredSession, options authn.OAuthLoginOptions, hooks *oauthTransactionHooks) (authn.User, bool, error) {
+func (s *Store) completeOAuth(ctx context.Context, provider, subject string, tokens authn.OAuthTokens, candidate authn.User, session authn.StoredSession, options authn.OAuthLoginOptions, hooks *oauthTransactionHooks, existingOnly bool) (authn.User, bool, error) {
 	var u authn.User
 	var txOptions *sql.TxOptions
 	if hooks != nil && s.dialect != "sqlite" {
@@ -160,6 +170,14 @@ func (s *Store) completeOAuth(ctx context.Context, provider, subject string, tok
 	existing := err == nil
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return u, false, err
+	}
+	if existingOnly {
+		if !existing {
+			return u, false, authn.ErrOAuthLinkingDisabled
+		}
+		if u.ID != options.LinkUserID {
+			return u, false, authn.ErrOAuthAccountAlreadyLinked
+		}
 	}
 	if existing && options.LinkUserID != "" && (u.ID != options.LinkUserID || !strings.EqualFold(u.Email, candidate.Email)) {
 		return u, false, authn.ErrOAuthLinkRequired
