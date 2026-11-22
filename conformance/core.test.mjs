@@ -1491,3 +1491,8 @@ test("the released billing client buys one metered price without a Checkout quan
     await t.test(organization ? "organization" : "user", t => meteredCheckout(t, { reference, goFixture, instrument }, organization));
   }
 });
+
+test("magic-link delivery forwards request metadata and preserves first, returning and closed-signup destinations", async t => {
+  const {compareMagicLinkDelivery} = await import("./magic-link-delivery.mjs");
+  await compareMagicLinkDelivery(t, {reference, goFixture, instrument});
+});

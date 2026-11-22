@@ -287,19 +287,7 @@ func (s *Store) finishMailProof(key mailKey, p mailProof, act auth.EmailOTPActio
 		}
 	}
 	if act.Purpose == auth.OTPSignIn && exists && !rec.user.EmailVerified {
-		s.deleteSessions(rec.user.ID, act.Session.Token)
-		rec.hash = ""
-		rec.accountID = ""
-		for token, row := range s.resets {
-			if row.UserID == rec.user.ID {
-				delete(s.resets, token)
-			}
-		}
-		for token, row := range s.deletions {
-			if row.UserID == rec.user.ID {
-				delete(s.deletions, token)
-			}
-		}
+		s.revokeUnprovenAccess(&rec, act.Session.Token)
 	}
 	if act.Purpose == auth.OTPResetPassword {
 		rec.hash = act.PasswordHash

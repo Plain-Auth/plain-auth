@@ -76,7 +76,7 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 | [Internationalization](plugins/i18n.md) | 116 | 36 |
 | [JSON Web Tokens](plugins/jwt.md) | 13 | 75 |
 | [Last login method](plugins/last-login-method.md) | 24 | 48 |
-| [Magic link](plugins/magic-link.md) | 10 | 44 |
+| [Magic link](plugins/magic-link.md) | 64 | 19 |
 | [Model Context Protocol](plugins/mcp.md) | 0 | 108 |
 | [Multi session](plugins/multi-session.md) | 15 | 22 |
 | [OAuth popup](plugins/oauth-popup.md) | 56 | 5 |

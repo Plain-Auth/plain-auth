@@ -15,6 +15,9 @@ import (
 type MagicLinkMessage struct {
 	Email, URL, Token string
 	Metadata          map[string]any
+	// Request contains independent HTTP request metadata for the delivery callback.
+	// It is excluded when serializing the message for an email queue.
+	Request *http.Request `json:"-"`
 }
 
 // MagicLinkOptions configures delivery, token storage and registration.
@@ -148,7 +151,7 @@ func (o MagicLinkOptions) request(c EndpointContext) (any, error) {
 		}
 	}
 	link := a.opts.BaseURL + strings.TrimRight(a.opts.BasePath, "/") + "/magic-link/verify?" + q.Encode()
-	if err := o.Send(ctx, MagicLinkMessage{Email: ch.Email, Token: token, URL: link, Metadata: metadata}); err != nil {
+	if err := o.Send(ctx, MagicLinkMessage{Email: ch.Email, Token: token, URL: link, Metadata: metadata, Request: accountObserverRequest(ctx, c.Request)}); err != nil {
 		return nil, err
 	}
 	return map[string]bool{"status": true}, nil

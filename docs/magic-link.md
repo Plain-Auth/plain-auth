@@ -16,7 +16,7 @@ if err != nil {
 opts.Plugins = append(opts.Plugins, plugin)
 ```
 
-Import `plugins/magiclink` from this module. The sender receives the destination email, full URL, raw token and optional application metadata. Deliver the link only to `message.Email`. Treat metadata as user input. The HTTP response to a successful send is `{"status":true}`.
+Import `plugins/magiclink` from this module. The sender receives the destination email, full URL, raw token and optional application metadata. Use `message.Request.Header.Get("Accept-Language")` to select a mail template from the browser locale. The request is a metadata-only copy. Encoding the message as JSON excludes HTTP headers and cookies. Deliver the link only to `message.Email`. Treat metadata as user input. The HTTP response to a successful send is `{"status":true}`.
 
 ## Request and verify a link
 
@@ -37,8 +37,12 @@ Set `DisableSignUp` on the plugin to restrict sign-in to existing users. An unkn
 
 A Go client can request delivery with `Client.SignInMagicLink(ctx, client.MagicLinkRequest{Email: email})`. Once the user supplies the delivered token, call `Client.VerifyMagicLink(ctx, token)` on the same client. The result includes the user and session, and the client retains the session cookie.
 
+## Choose a store
+
+Use `memory.New()` from `adapters/memory` for development with a single process. Share that store across auth instances that need to redeem each other's links. Restarting the process clears pending links, accounts and sessions. For multiple processes, give each instance a SQLite, PostgreSQL or MySQL adapter connected to the same database. A link issued for an existing owner stops working when the address moves to another account. [Concurrent memory redemptions](../adapters/memory/magiclink_test.go) · [SQL adapter tests](../adapters/sqlstore/magiclink_test.go)
+
 ## Tokens and limits
 
 Links expire after five minutes by default. Set `ExpiresIn` to change their lifetime. With `HashTokens: true`, the database stores a SHA-256 digest of the token using unpadded URL-safe Base64. The default stores the raw token under a purpose-specific key. Applications with their own token services can supply `GenerateToken` and `HashToken` callbacks. Configure one hashing mode and use the same configuration on all instances.
 
-When rate limiting is enabled on the auth server, each endpoint accepts five requests per peer per minute. Set `RateLimit` to an `stonewrit.RateLimitRule` to change the maximum and window. The rule uses the server's configured rate-limit storage.
+When rate limiting is enabled on the auth server, each endpoint accepts five requests per peer per minute. Set `RateLimit` to a `stonewrit.RateLimitRule` to change the maximum and window. The rule uses the server's configured rate-limit storage.

@@ -2,8 +2,11 @@ package client_test
 
 import (
 	"context"
+	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	auth "github.com/Stonewrit/stonewrit-auth"
@@ -19,7 +22,22 @@ func TestNativeMagicLinkClient(t *testing.T) {
 	}
 	defer store.Close()
 	var message magiclink.Message
-	plugin, err := magiclink.New(magiclink.Options{Send: func(_ context.Context, m magiclink.Message) error { message = m; return nil }})
+	plugin, err := magiclink.New(magiclink.Options{Send: func(_ context.Context, m magiclink.Message) error {
+		message = m
+		if m.Request == nil || m.Request.Method != http.MethodPost || m.Request.Header.Get("X-Delivery-Locale") != "sv-SE" {
+			t.Fatal("sender lost its request metadata")
+		}
+		body, readErr := io.ReadAll(m.Request.Body)
+		if readErr != nil || len(body) != 0 || m.Request.GetBody != nil {
+			t.Fatal("delivery callback retained a request body", readErr)
+		}
+		serialized, err := json.Marshal(m)
+		if err != nil || strings.Contains(string(serialized), "sv-SE") || strings.Contains(string(serialized), "Request") {
+			t.Fatal("HTTP metadata entered the serializable delivery payload", err)
+		}
+		m.Request.Header.Set("X-Delivery-Locale", "callback mutation")
+		return nil
+	}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -30,7 +48,11 @@ func TestNativeMagicLinkClient(t *testing.T) {
 	}
 	c, err := client.New(origin+"/api/auth", &http.Client{Transport: transport(func(r *http.Request) (*http.Response, error) {
 		w := httptest.NewRecorder()
+		r.Header.Set("X-Delivery-Locale", "sv-SE")
 		a.ServeHTTP(w, r)
+		if r.Header.Get("X-Delivery-Locale") != "sv-SE" {
+			t.Fatal("sender changed the host request headers")
+		}
 		return w.Result(), nil
 	})})
 	if err != nil {

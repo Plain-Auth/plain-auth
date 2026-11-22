@@ -213,3 +213,21 @@ func (s *Store) UnlinkAccount(ctx context.Context, userID, recordID string, allo
 	s.users[userID] = rec
 	return nil
 }
+
+// revokeUnprovenAccess drops the credentials created before mailbox ownership
+// was proven. The caller holds the store lock and has inserted the new session.
+func (s *Store) revokeUnprovenAccess(rec *credential, keepToken string) {
+	s.deleteSessions(rec.user.ID, keepToken)
+	rec.hash = ""
+	rec.accountID = ""
+	for token, row := range s.resets {
+		if row.UserID == rec.user.ID {
+			delete(s.resets, token)
+		}
+	}
+	for token, row := range s.deletions {
+		if row.UserID == rec.user.ID {
+			delete(s.deletions, token)
+		}
+	}
+}

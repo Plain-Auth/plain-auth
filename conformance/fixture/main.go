@@ -15,6 +15,7 @@ import (
 	"time"
 
 	authn "github.com/Stonewrit/stonewrit-auth"
+	"github.com/Stonewrit/stonewrit-auth/adapters/memory"
 	"github.com/Stonewrit/stonewrit-auth/adapters/sqlstore"
 	"github.com/Stonewrit/stonewrit-auth/plugins/apikey"
 	"github.com/Stonewrit/stonewrit-auth/plugins/bearer"
@@ -280,13 +281,7 @@ func main() {
 	}
 	if os.Getenv("CONFORMANCE_MAILBOX") == "1" {
 		mailbox := filepath.Join(filepath.Dir(os.Args[1]), "mailbox.json")
-		p, err := magiclink.New(magiclink.Options{HashTokens: true, Send: func(_ context.Context, m magiclink.Message) error {
-			payload, err := json.Marshal(m)
-			if err != nil {
-				return err
-			}
-			return os.WriteFile(mailbox, payload, 0600)
-		}})
+		p, err := magiclink.New(fixtureMagicLink(mailbox))
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -404,6 +399,9 @@ func main() {
 		EmailAndPassword:    true,
 		Secret:              "local-conformance-0123456789-abcdefghijk",
 		Store:               store,
+	}
+	if os.Getenv("CONFORMANCE_MAGIC_MEMORY") == "1" {
+		opts.Store = memory.New()
 	}
 	switch os.Getenv("CONFORMANCE_EMAIL_POLICY") {
 	case "disabled":

@@ -5,21 +5,29 @@
 ## Interfaces
 
 - [ ] Magic link endpoints, types and options
-  - [ ] `magicLinkClient`
-  - [ ] `POST /sign-in/magic-link`
+  - [x] `magicLinkClient` ([test](../../../conformance/magic-link-delivery.mjs#L62))
+    - [x] Redeem first and returning links, acquire the same session through the client and send repeat attempts to the configured error destination ([test](../../../conformance/magic-link-delivery.mjs#L62))
+  - [x] `POST /sign-in/magic-link` ([test](../../../conformance/magic-link-delivery.mjs#L31))
     - [x] Deliver a private link and request metadata through the configured sender ([test](../../../adapters/sqlstore/magiclink_test.go#L73))
-  - [ ] `GET /magic-link/verify`
+    - [x] Deliver an opaque login link, browser locale and application metadata on the released client with both open and closed registration ([test](../../../conformance/magic-link-delivery.mjs#L31))
+  - [x] `GET /magic-link/verify` ([test](../../../conformance/magic-link-delivery.mjs#L62))
     - [x] Promote mailbox ownership and revoke credentials that preceded verification ([test](../../../adapters/sqlstore/magiclink_test.go#L174))
     - [x] Consume shared hashed links in Go and the reference runtime with the official client ([test](../../../conformance/core.test.mjs#L345))
     - [x] Deny a delivered link after the target email is reassigned ([test](../../../adapters/sqlstore/magiclink_test.go#L158))
+    - [x] Redeem first and returning links, acquire the same session through the client and send repeat attempts to the configured error destination ([test](../../../conformance/magic-link-delivery.mjs#L62))
+    - [x] Issue one process-local session on concurrent redemption and revoke standing access during mailbox promotion ([test](../../../adapters/memory/magiclink_test.go#L16))
+    - [x] Reject a link following a reassigned or expired mailbox claim ([test](../../../adapters/memory/magiclink_test.go#L86))
   - [ ] `MagicLinkOptions`
     - [ ] `expiresIn`
       - [x] Persist the configured link lifetime ([test](../../../adapters/sqlstore/magiclink_test.go#L238))
     - [ ] `allowedAttempts`
-    - [ ] `sendMagicLink`
+      - [x] Issue one process-local session on concurrent redemption and revoke standing access during mailbox promotion ([test](../../../adapters/memory/magiclink_test.go#L16))
+    - [x] `sendMagicLink` ([test](../../../conformance/magic-link-delivery.mjs#L42))
       - [x] Deliver the intended mailbox, private token and request metadata ([test](../../../adapters/sqlstore/magiclink_test.go#L73))
-    - [ ] `disableSignUp`
+      - [x] Deliver the destination, token, link, application metadata and browser request context together ([test](../../../conformance/magic-link-delivery.mjs#L42))
+    - [x] `disableSignUp` ([test](../../../conformance/magic-link-delivery.mjs#L53))
       - [x] Reject registration for an unknown mailbox during verification ([test](../../../adapters/sqlstore/magiclink_test.go#L182))
+      - [x] Deny creation of an unknown account and admit a known owner under the same closed registration policy ([test](../../../conformance/magic-link-delivery.mjs#L53))
     - [ ] `rateLimit`
       - [x] Apply the configured per-endpoint request budget ([test](../../../adapters/sqlstore/magiclink_test.go#L195))
     - [ ] `generateToken`
@@ -32,29 +40,50 @@
 
 - [ ] Magic link
   - [ ] Usage
-    - [ ] Sign In with Magic Link
-      - [ ] `POST /sign-in/magic-link`
-        - [ ] Parameter `email`
-        - [ ] Parameter `name` (optional)
-        - [ ] Parameter `callbackURL` (optional)
-        - [ ] Parameter `newUserCallbackURL` (optional)
-        - [ ] Parameter `errorCallbackURL` (optional)
-        - [ ] Parameter `metadata` (optional)
-    - [ ] Verify Magic Link
-      - [ ] `GET /magic-link/verify`
-        - [ ] Parameter `token`
-        - [ ] Parameter `callbackURL` (optional)
-        - [ ] Parameter `newUserCallbackURL` (optional)
-        - [ ] Parameter `errorCallbackURL` (optional)
+    - [x] Sign In with Magic Link ([test](../../../conformance/magic-link-delivery.mjs#L31))
+      - [x] Deliver an opaque login link, browser locale and application metadata on the released client with both open and closed registration ([test](../../../conformance/magic-link-delivery.mjs#L31))
+      - [x] `POST /sign-in/magic-link` ([test](../../../conformance/magic-link-delivery.mjs#L31))
+        - [x] Deliver an opaque login link, browser locale and application metadata on the released client with both open and closed registration ([test](../../../conformance/magic-link-delivery.mjs#L31))
+        - [x] Parameter `email` ([test](../../../conformance/magic-link-delivery.mjs#L39))
+          - [x] Deliver the link to the requested address ([test](../../../conformance/magic-link-delivery.mjs#L39))
+        - [x] Parameter `name` (optional) ([test](../../../conformance/magic-link-delivery.mjs#L65))
+          - [x] Preserve the original name when a returning user sends a different name ([test](../../../conformance/magic-link-delivery.mjs#L65))
+        - [x] Parameter `callbackURL` (optional) ([test](../../../conformance/magic-link-delivery.mjs#L60))
+          - [x] Resolve the application return URL and retain its query fields ([test](../../../conformance/magic-link-delivery.mjs#L60))
+        - [x] Parameter `newUserCallbackURL` (optional) ([test](../../../conformance/magic-link-delivery.mjs#L53))
+          - [x] Route a newly created user to the welcome page ([test](../../../conformance/magic-link-delivery.mjs#L53))
+        - [x] Parameter `errorCallbackURL` (optional) ([test](../../../conformance/magic-link-delivery.mjs#L54))
+          - [x] Route a consumed link to the configured error page ([test](../../../conformance/magic-link-delivery.mjs#L54))
+        - [x] Parameter `metadata` (optional) ([test](../../../conformance/magic-link-delivery.mjs#L40))
+          - [x] Forward nested metadata to the application sender ([test](../../../conformance/magic-link-delivery.mjs#L40))
+    - [x] Verify Magic Link ([test](../../../conformance/magic-link-delivery.mjs#L62))
+      - [x] Redeem first and returning links, acquire the same session through the client and send repeat attempts to the configured error destination ([test](../../../conformance/magic-link-delivery.mjs#L62))
+      - [x] `GET /magic-link/verify` ([test](../../../conformance/magic-link-delivery.mjs#L62))
+        - [x] Redeem first and returning links, acquire the same session through the client and send repeat attempts to the configured error destination ([test](../../../conformance/magic-link-delivery.mjs#L62))
+        - [x] Parameter `token` ([test](../../../conformance/magic-link-delivery.mjs#L62))
+          - [x] Exchange the delivered token for a verified user and browser session ([test](../../../conformance/magic-link-delivery.mjs#L62))
+        - [x] Parameter `callbackURL` (optional) ([test](../../../conformance/magic-link-delivery.mjs#L74))
+          - [x] Resolve the application return URL and retain its query fields ([test](../../../conformance/magic-link-delivery.mjs#L74))
+        - [x] Parameter `newUserCallbackURL` (optional) ([test](../../../conformance/magic-link-delivery.mjs#L53))
+          - [x] Route a newly created user to the welcome page ([test](../../../conformance/magic-link-delivery.mjs#L53))
+        - [x] Parameter `errorCallbackURL` (optional) ([test](../../../conformance/magic-link-delivery.mjs#L54))
+          - [x] Route a consumed link to the configured error page ([test](../../../conformance/magic-link-delivery.mjs#L54))
   - [ ] Configuration Options
-    - [ ] sendMagicLink
-    - [ ] `email`
-    - [ ] `url`
-    - [ ] `token`
-    - [ ] `metadata`
+    - [x] sendMagicLink ([test](../../../conformance/magic-link-delivery.mjs#L42))
+      - [x] Deliver the destination, token, link, application metadata and browser request context together ([test](../../../conformance/magic-link-delivery.mjs#L42))
+    - [x] `email` ([test](../../../conformance/magic-link-delivery.mjs#L39))
+      - [x] Read the delivered message through a host-owned sender ([test](../../../conformance/magic-link-delivery.mjs#L39))
+    - [x] `url` ([test](../../../conformance/magic-link-delivery.mjs#L46))
+      - [x] Read the delivered message through a host-owned sender ([test](../../../conformance/magic-link-delivery.mjs#L46))
+    - [x] `token` ([test](../../../conformance/magic-link-delivery.mjs#L47))
+      - [x] Read the delivered message through a host-owned sender ([test](../../../conformance/magic-link-delivery.mjs#L47))
+    - [x] `metadata` ([test](../../../conformance/magic-link-delivery.mjs#L40))
+      - [x] Read the delivered message through a host-owned sender ([test](../../../conformance/magic-link-delivery.mjs#L40))
     - [ ] expiresIn
     - [ ] allowedAttempts
-    - [ ] disableSignUp
+      - [x] Issue one process-local session on concurrent redemption and revoke standing access during mailbox promotion ([test](../../../adapters/memory/magiclink_test.go#L16))
+    - [x] disableSignUp ([test](../../../conformance/magic-link-delivery.mjs#L53))
+      - [x] Deny creation of an unknown account and admit a known owner under the same closed registration policy ([test](../../../conformance/magic-link-delivery.mjs#L53))
     - [ ] rateLimit
     - [ ] generateToken
     - [ ] storeToken
