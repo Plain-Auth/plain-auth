@@ -5,8 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/Plain-Auth/plain-auth/internal/sessionfields"
@@ -42,16 +44,37 @@ func (s StoredSession) PhysicalSessionFields() (map[string]any, error) {
 	if s.storageFields.invalid != "" {
 		return nil, errors.New(s.storageFields.invalid)
 	}
-	out := make(map[string]any, len(s.storageFields.columns))
-	for k, v := range s.storageFields.columns {
-		out[k] = v
+	if s.storageFields.onInsert != nil {
+		columns, err := s.storageFields.onInsert()
+		return maps.Clone(columns), err
 	}
-	return out, nil
+	return maps.Clone(s.storageFields.columns), nil
 }
 
 type storedSessionFields struct {
-	columns map[string]any
-	invalid string
+	columns  map[string]any
+	invalid  string
+	onInsert func() (map[string]any, error)
+}
+
+// A provider may commit an identity while withholding its session. Evaluate
+// defaults only for an actual insert and reuse the values on transaction retry.
+func (a *Auth) oauthSessionDraft(id string, meta RequestMeta, requireVerifiedEmail bool) StoredSession {
+	if !requireVerifiedEmail {
+		row, _ := a.newSession(id, meta)
+		return row
+	}
+	row := a.sessionDraft(id, meta)
+	if len(a.opts.SessionAdditionalFields) != 0 {
+		row.storageFields = &storedSessionFields{onInsert: sync.OnceValues(func() (map[string]any, error) {
+			prepared, err := a.WithTrustedSessionFields(StoredSession{}, nil)
+			if err != nil {
+				return nil, err
+			}
+			return prepared.storageFields.columns, nil
+		})}
+	}
+	return row
 }
 
 // WithTrustedSessionFields prepares an unpersisted row using configured defaults

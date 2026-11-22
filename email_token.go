@@ -19,6 +19,13 @@ type verificationClaims struct {
 	jwt.RegisteredClaims
 }
 
+func (a *Auth) sendVerificationOnSignup(required bool) bool {
+	if a.opts.SendVerificationOnSignUp != nil {
+		return *a.opts.SendVerificationOnSignUp
+	}
+	return required
+}
+
 func (a *Auth) sendEmailProof(ctx context.Context, u User, newEmail, requestType, callback string, send MailSender) error {
 	if callback == "" {
 		callback = "/"

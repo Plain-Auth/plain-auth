@@ -153,7 +153,7 @@ func NewOneTap(o OneTapOptions, fallback OAuthProvider) Plugin {
 			if err != nil || !validSocialProfile(profile) || !exp.After(c.Auth.now()) {
 				return nil, invalid()
 			}
-			account, _, err := c.Auth.completeProfile(ctx, c.Request, "google", profile, OAuthTokens{IDToken: raw, Scope: "openid,profile,email"}, OAuthLoginOptions{OneTapNonce: challenge.Nonce, OneTapExpires: time.Unix(challenge.Expires, 0), IDTokenValidUntil: exp, DisableSignUp: o.DisableSignUp, AllowVerifiedEmailLink: p.AllowVerifiedEmailLink})
+			account, _, err := c.Auth.completeProfile(ctx, c.Request, "google", "", profile, OAuthTokens{IDToken: raw, Scope: "openid,profile,email"}, OAuthLoginOptions{OneTapNonce: challenge.Nonce, OneTapExpires: time.Unix(challenge.Expires, 0), IDTokenValidUntil: exp, DisableSignUp: o.DisableSignUp, RequireEmailVerification: p.RequireEmailVerification, AllowVerifiedEmailLink: p.AllowVerifiedEmailLink})
 			if errors.Is(err, ErrIDTokenUsed) {
 				return nil, invalid()
 			}

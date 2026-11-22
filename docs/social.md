@@ -118,6 +118,28 @@ The server lowercases the provider's email. For the same address, either the exi
 
 SQLite, PostgreSQL and MySQL commit the profile, provider credential and session in one transaction. If another user already owns the proposed email, the browser receives `profile_conflict` at its configured error callback. Direct grants return HTTP 409 with `OAUTH_PROFILE_CONFLICT`. A custom adapter implements `OAuthProfileSyncStore` to enable the same transaction. [Browser callback tests](../conformance/social-user-fields.mjs) · [SQL and native sign-in tests](../adapters/sqlstore/oauth_profile_sync_test.go)
 
+## Require a verified email for a provider
+
+Set `RequireEmailVerification` on each provider that needs a verified mailbox before sign-in. Configure a mail sender so users can confirm addresses the provider reports as unverified.
+
+```go
+work := providers.GitHub(clientID, clientSecret)
+work.RequireEmailVerification = true
+opts.SocialProviders = map[string]plainauth.OAuthProvider{"github": work}
+opts.SendVerificationEmail = func(ctx context.Context, message plainauth.MailLink) error {
+    return mailer.SendVerificationLink(ctx, message.User.Email, message.URL)
+}
+opts.SendVerificationOnSignIn = true
+```
+
+On the first unverified sign-in, the SQL adapters save the user and provider account. The browser returns to `errorCallbackURL` with `error=email_not_verified`, or to the mounted error page when that URL is omitted. Direct ID-token and Google One Tap requests receive HTTP 403 with code `EMAIL_NOT_VERIFIED`. The session table receives its first row when a sign-in satisfies the policy. A consumed ID token requires a fresh grant on retry.
+
+By default, a provider requiring verification sends a link for a new unverified user when a mail sender is configured. Set `SendVerificationOnSignUp` to a pointer to `false` to suppress that first delivery. Set `SendVerificationOnSignIn` to `true` to resend on subsequent blocked sign-ins. The verification link uses the original trusted callback URL. A missing or failing sender leaves the account awaiting verification.
+
+The gate checks the local user's current email and verification status. A user who confirms through the link can sign in even if the provider still reports the address as unverified. A fresh verified provider claim for the same address also satisfies the gate. With profile refresh enabled, a newly supplied address must qualify on its own. The password sign-in policy is configured independently through `Options.RequireEmailVerification`.
+
+Custom stores implement `OAuthVerifiedEmailStore` to check the owner and issue the session in one transaction. With an OAuth proxy, the preview honors verification required by either deployment. [Delivery and browser tests](../conformance/social-user-fields.mjs) · [SQL and One Tap tests](../adapters/sqlstore/oauth_verified_email_test.go)
+
 ## Auth0, Keycloak and Okta
 
 Set the provider's browser callback to your public auth mount followed by `/callback/` and its registration name. For example, a provider registered as `work` under the mount `/identity` uses `https://app.example.com/identity/callback/work`.

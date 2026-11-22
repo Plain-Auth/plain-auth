@@ -18,6 +18,7 @@ import (
 var _ authn.OAuthStore = (*Store)(nil)
 var _ authn.OAuthLinkRefreshStore = (*Store)(nil)
 var _ authn.OAuthProfileSyncStore = (*Store)(nil)
+var _ authn.OAuthVerifiedEmailStore = (*Store)(nil)
 
 func (s *Store) SaveOAuthFlow(ctx context.Context, flow authn.OAuthFlow, now time.Time) error {
 	payload, err := json.Marshal(flow)
@@ -86,6 +87,14 @@ func (s *Store) CompleteOAuthProfile(ctx context.Context, provider, subject stri
 	if options.LinkUserID != "" || fields.Create == nil || fields.Update == nil {
 		return authn.User{}, false, errors.New("sqlstore: invalid OAuth profile sync")
 	}
+	return s.completeOAuthWith(ctx, provider, subject, tokens, candidate, session, options, nil, false, &fields)
+}
+
+func (s *Store) CompleteOAuthVerifiedEmail(ctx context.Context, provider, subject string, tokens authn.OAuthTokens, candidate authn.User, session authn.StoredSession, options authn.OAuthLoginOptions, fields authn.OAuthProfileFields) (authn.User, bool, error) {
+	if options.LinkUserID != "" || fields.Create == nil {
+		return authn.User{}, false, errors.New("sqlstore: invalid verified-email sign-in")
+	}
+	options.RequireEmailVerification = true
 	return s.completeOAuthWith(ctx, provider, subject, tokens, candidate, session, options, nil, false, &fields)
 }
 
@@ -287,6 +296,21 @@ func (s *Store) completeOAuth(ctx context.Context, provider, subject string, tok
 		if err != nil {
 			return u, false, err
 		}
+	}
+	if options.RequireEmailVerification && options.LinkUserID == "" && !u.EmailVerified {
+		if !candidate.EmailVerified || strings.ToLower(u.Email) != candidate.Email {
+			if err := tx.Commit(); err != nil {
+				return authn.User{}, false, err
+			}
+			return u, created, authn.ErrOAuthEmailUnverified
+		}
+		// A verified claim for this owner's current mailbox also satisfies the
+		// gate when the host keeps name and other profile fields locally.
+		_, err := tx.ExecContext(ctx, s.bind(`UPDATE "user" SET "emailVerified"=?,"updatedAt"=? WHERE "id"=?`), true, s.date(session.CreatedAt), u.ID)
+		if err != nil {
+			return authn.User{}, false, err
+		}
+		u.EmailVerified, u.UpdatedAt = true, session.CreatedAt
 	}
 	if hooks != nil {
 		if err := hooks.afterIdentity(tx, u); err != nil {

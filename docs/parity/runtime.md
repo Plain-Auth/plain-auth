@@ -12,7 +12,8 @@ Each entry groups the configured endpoint’s behaviors. A checked child records
     - [x] Scope credentials to the current account and handle revocation or provider errors on SQLite, MySQL and PostgreSQL ([test](../../adapters/sqlstore/provider_credentials_test.go#L21))
   - [ ] `callbackOAuth` (`GET / POST /callback/:id`)
     - [x] Redeem the authorization code and establish a local authenticated session ([test](../../oauth_test.go#L21))
-    - [x] Refresh a returning profile with either server, preserve protected fields and use the new mailbox verification status ([test](../../conformance/social-user-fields.mjs#L133))
+    - [x] Refresh a returning profile with either server, preserve protected fields and use the new mailbox verification status ([test](../../conformance/social-user-fields.mjs#L138))
+    - [x] Withhold sessions for unverified social accounts, honor mail delivery settings and accept confirmation by either server ([test](../../conformance/social-user-fields.mjs#L193))
   - [ ] `changeEmail` (`POST /change-email`)
     - [x] Confirm an email change through the destination inbox ([test](../../account_lifecycle_test.go#L100))
   - [ ] `changePassword` (`POST /change-password`)
@@ -80,9 +81,10 @@ Each entry groups the configured endpoint’s behaviors. A checked child records
     - [x] Use a one-time browser state to carry the first-time registration choice and allow returning users to sign in ([test](../../conformance/social-signup.mjs#L4))
     - [x] Enforce explicit registration for both browser and direct ID-token sign-in while honoring closed registrations ([test](../../oauth_signup_test.go#L20))
     - [x] Apply extra scopes, login hints and consent parameters per request, and reject reserved OAuth fields ([test](../../conformance/social-signup.mjs#L39))
-    - [x] Compare static defaults and explicitly mapped signup claims through the released browser client and a loopback issuer on shared SQLite ([test](../../conformance/social-user-fields.mjs#L98))
+    - [x] Compare static defaults and explicitly mapped signup claims through the released browser client and a loopback issuer on shared SQLite ([test](../../conformance/social-user-fields.mjs#L103))
     - [x] Exercise required profile failures, stored field privacy and unchanged returning and linked owners through the Go client on all three SQL engines ([test](../../adapters/sqlstore/oauth_user_fields_test.go#L112))
     - [x] Apply the provider policy on direct sign-in, Google One Tap and permitted automatic links across three SQL engines ([test](../../adapters/sqlstore/oauth_profile_sync_test.go#L16))
+    - [x] Check the exact local mailbox before issuing a session on direct ID-token and One Tap sign-in across all SQL engines ([test](../../adapters/sqlstore/oauth_verified_email_test.go#L18))
   - [ ] `signOut` (`POST /sign-out`)
     - [x] Clear the client's session cookies and return an anonymous session ([test](../../conformance/core.test.mjs#L206))
     - [x] Revoke the owner session before returning an OIDC logout URL with trusted callback and optional state ([test](../../conformance/social-logout.mjs#L4))
@@ -208,12 +210,15 @@ Each entry groups the configured endpoint’s behaviors. A checked child records
   - [ ] `disableSignUp`
   - [ ] `prompt`
   - [ ] `responseMode`
-  - [x] `overrideUserInfoOnSignIn` ([test](../../conformance/social-user-fields.mjs#L133))
-    - [x] Refresh a returning profile with either server, preserve protected fields and use the new mailbox verification status ([test](../../conformance/social-user-fields.mjs#L133))
+  - [x] `overrideUserInfoOnSignIn` ([test](../../conformance/social-user-fields.mjs#L138))
+    - [x] Refresh a returning profile with either server, preserve protected fields and use the new mailbox verification status ([test](../../conformance/social-user-fields.mjs#L138))
     - [x] Apply the provider policy on direct sign-in, Google One Tap and permitted automatic links across three SQL engines ([test](../../adapters/sqlstore/oauth_profile_sync_test.go#L16))
-    - [x] Preserve the stored owner and mapped fields on a returning sign-in with the default provider settings ([test](../../conformance/social-user-fields.mjs#L98))
+    - [x] Preserve the stored owner and mapped fields on a returning sign-in with the default provider settings ([test](../../conformance/social-user-fields.mjs#L103))
     - [x] Commit only the winning profile, credential and session when two account owners request the same address ([test](../../adapters/sqlstore/oauth_profile_sync_test.go#L157))
-  - [ ] `requireEmailVerification`
+  - [x] `requireEmailVerification` ([test](../../conformance/social-user-fields.mjs#L193))
+    - [x] Withhold sessions for unverified social accounts, honor mail delivery settings and accept confirmation by either server ([test](../../conformance/social-user-fields.mjs#L193))
+    - [x] Check the exact local mailbox before issuing a session on direct ID-token and One Tap sign-in across all SQL engines ([test](../../adapters/sqlstore/oauth_verified_email_test.go#L18))
+    - [x] Enforce verification required by the production provider when completing sign-in on a separately configured preview ([test](../../adapters/sqlstore/oauth_proxy_test.go#L259))
 - [ ] Provider-specific settings and overrides
   - [ ] `apple`
     - [ ] `clientId`

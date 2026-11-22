@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"os"
 
 	auth "github.com/Plain-Auth/plain-auth"
 	"golang.org/x/oauth2"
@@ -46,5 +47,27 @@ func fixtureProfileProvider(issuer string) auth.OAuthProvider {
 			}
 			return profile, nil
 		},
+	}
+}
+
+func configureSocialVerification(opts *auth.Options, mode, path string) {
+	opts.RequireEmailVerification = true
+	opts.SendVerificationOnSignIn = mode == "resend"
+	if mode == "quiet" || mode == "ungated" {
+		send := mode == "ungated"
+		opts.SendVerificationOnSignUp = &send
+	}
+	if mode != "no-sender" {
+		opts.SendVerificationEmail = func(_ context.Context, msg auth.MailLink) error {
+			if mode == "delivery-error" {
+				return errors.New("fixture delivery unavailable")
+			}
+			file, err := os.OpenFile(path, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
+			if err != nil {
+				return err
+			}
+			defer file.Close()
+			return json.NewEncoder(file).Encode(map[string]string{"email": msg.User.Email, "url": msg.URL, "token": msg.Token})
+		}
 	}
 }

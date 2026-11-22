@@ -142,6 +142,7 @@ type oauthProxyResult struct {
 	Fields                                                   map[string]any `json:",omitempty"`
 	Tokens                                                   OAuthTokens
 	DisableSignUp                                            bool
+	RequireEmailVerification                                 bool   `json:",omitempty"`
 	Error                                                    string `json:",omitempty"`
 }
 
@@ -201,7 +202,7 @@ func (a *Auth) exchangeProxyCallback(w http.ResponseWriter, r *http.Request, id 
 		return invalidProxyCallback()
 	}
 	result := oauthProxyResult{State: grant.State, Provider: id, Preview: grant.Preview, Production: grant.Production, Callback: grant.Callback, BasePath: grant.BasePath,
-		DisableSignUp: provider.DisableSignUp || provider.DisableImplicitSignUp && !grant.RequestSignUp}
+		DisableSignUp: provider.DisableSignUp || provider.DisableImplicitSignUp && !grant.RequestSignUp, RequireEmailVerification: provider.RequireEmailVerification}
 	if code := q.Get("error"); code != "" {
 		result.Error = "OAUTH_CALLBACK_ERROR"
 		if len(code) <= 128 && errorCodeFormat.MatchString(code) {

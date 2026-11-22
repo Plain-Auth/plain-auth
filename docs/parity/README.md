@@ -2,15 +2,15 @@
 
 ## Verification progress
 
-**357 of 6,957 inventory entries are fully verified (5.1%).**
+**361 of 6,957 inventory entries are fully verified (5.2%).**
 
 | Inventory status | Entries |
 | --- | ---: |
-| Fully verified | 357 |
+| Fully verified | 361 |
 | Partially verified | 869 |
-| No linked test evidence | 5,731 |
+| No linked test evidence | 5,727 |
 
-The inventory covers features, options, integrations and documentation topics. Partial verification means an open entry has a passing case somewhere beneath it. The checklists also contain 1,713 links from passing scenarios to tests. Adding a scenario leaves the inventory denominator unchanged.
+The inventory covers features, options, integrations and documentation topics. Partial verification means an open entry has a passing case somewhere beneath it. The checklists also contain 1,723 links from passing scenarios to tests. Adding a scenario leaves the inventory denominator unchanged.
 
 A checked item links to a local test for that behavior. An open parent means the feature still has unverified cases. Browser, protocol and storage options each have their own checkboxes.
 
@@ -60,13 +60,13 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 | --- | ---: | ---: |
 | [Published package interfaces](packages.md) | 89 | 160 |
 | [Native Go client, routers and databases](go.md) | 38 | 4 |
-| [Core API, sign-in providers and CLI](runtime.md) | 147 | 279 |
+| [Core API, sign-in providers and CLI](runtime.md) | 153 | 278 |
 | [Database adapters](adapters.md) | 32 | 224 |
 | [Authentication](authentication.md) | 26 | 415 |
-| [Core concepts](concepts.md) | 58 | 509 |
+| [Core concepts](concepts.md) | 60 | 508 |
 | [Managed infrastructure](infrastructure.md) | 0 | 528 |
 | [Framework integrations](integrations.md) | 0 | 228 |
-| [Reference and configuration](reference.md) | 83 | 394 |
+| [Reference and configuration](reference.md) | 85 | 393 |
 
 ## Plugins and integrations
 
@@ -86,7 +86,7 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 | [Electron](plugins/electron.md) | 0 | 52 |
 | [Email otp](plugins/email-otp.md) | 43 | 95 |
 | [Expo](plugins/expo.md) | 0 | 19 |
-| [Generic OAuth](plugins/generic-oauth.md) | 26 | 263 |
+| [Generic OAuth](plugins/generic-oauth.md) | 28 | 262 |
 | [Have I Been Pwned](plugins/have-i-been-pwned.md) | 26 | 10 |
 | [Internationalization](plugins/i18n.md) | 116 | 36 |
 | [JSON Web Tokens](plugins/jwt.md) | 13 | 75 |
@@ -96,8 +96,8 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 | [Multi session](plugins/multi-session.md) | 15 | 22 |
 | [OAuth popup](plugins/oauth-popup.md) | 56 | 5 |
 | [OAuth provider](plugins/oauth-provider.md) | 0 | 455 |
-| [OAuth proxy](plugins/oauth-proxy.md) | 26 | 6 |
-| [One tap](plugins/one-tap.md) | 37 | 18 |
+| [OAuth proxy](plugins/oauth-proxy.md) | 27 | 6 |
+| [One tap](plugins/one-tap.md) | 38 | 18 |
 | [One time token](plugins/one-time-token.md) | 76 | 0 |
 | [OpenAPI](plugins/open-api.md) | 15 | 24 |
 | [Organization](plugins/organization.md) | 84 | 385 |

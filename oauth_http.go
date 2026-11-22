@@ -103,7 +103,8 @@ func (a *Auth) startOAuth(w http.ResponseWriter, r *http.Request, link bool) err
 		linkUserID = current.User.ID
 	}
 	if value, found := body["idToken"]; found {
-		return a.directOAuth(w, r, id, p, value, linkUserID, requestSignUp)
+		callback, _ := body["callbackURL"].(string)
+		return a.directOAuth(w, r, id, p, value, linkUserID, requestSignUp, callback)
 	}
 	flow := OAuthFlow{Provider: id, LinkUserID: linkUserID, RequestSignUp: requestSignUp}
 	target, _, err := a.beginBrowserOAuth(w.Header(), r, p, body, flow, requestedParams)
@@ -308,9 +309,16 @@ func (a *Auth) finishBrowserOAuth(w http.ResponseWriter, r *http.Request, id str
 			return fail("OAUTH_PROFILE_INVALID")
 		}
 		disableSignUp = disableSignUp || returned.DisableSignUp
+		p.RequireEmailVerification = p.RequireEmailVerification || returned.RequireEmailVerification
 	}
-	result, created, err := a.completeProfile(ctx, r, id, profile, tokens, OAuthLoginOptions{DisableSignUp: disableSignUp, AllowVerifiedEmailLink: p.AllowVerifiedEmailLink, LinkUserID: flow.LinkUserID, LinkSessionToken: a.cookieToken(r.Header)})
+	result, created, err := a.completeProfile(ctx, r, id, flow.CallbackURL, profile, tokens, OAuthLoginOptions{DisableSignUp: disableSignUp, RequireEmailVerification: p.RequireEmailVerification, AllowVerifiedEmailLink: p.AllowVerifiedEmailLink, LinkUserID: flow.LinkUserID, LinkSessionToken: a.cookieToken(r.Header)})
 	var apiError *APIError
+	if errors.As(err, &apiError) && apiError.Code == "EMAIL_NOT_VERIFIED" {
+		if flow.ErrorCallbackURL == "" {
+			flow.ErrorCallbackURL = a.opts.BaseURL + a.opts.BasePath + "/error"
+		}
+		return fail("email_not_verified")
+	}
 	if errors.As(err, &apiError) && apiError.Code == "SIGN_UP_DISABLED" {
 		if flow.ErrorCallbackURL == "" {
 			flow.ErrorCallbackURL = a.opts.BaseURL + a.opts.BasePath + "/error"
@@ -445,13 +453,18 @@ func (a *Auth) redirectOAuthForm(w http.ResponseWriter, r *http.Request, id stri
 	return nil
 }
 
-func (a *Auth) completeProfile(ctx context.Context, r *http.Request, id string, p OAuthProfile, tokens OAuthTokens, options OAuthLoginOptions) (AuthResult, bool, error) {
+func (a *Auth) completeProfile(ctx context.Context, r *http.Request, id, callback string, p OAuthProfile, tokens OAuthTokens, options OAuthLoginOptions) (AuthResult, bool, error) {
 	complete := a.opts.Store.(OAuthStore).CompleteOAuth
 	provider, registered := a.opts.SocialProviders[id]
-	if registered && options.LinkUserID == "" {
-		signupFields := len(a.opts.UserAdditionalFields) > 0 && !options.DisableSignUp && !a.opts.DisableSignUp && !provider.DisableSignUp
-		if provider.OverrideUserInfoOnSignIn || signupFields {
-			complete = a.socialProfileCompletion(p, provider.OverrideUserInfoOnSignIn)
+	if options.LinkUserID == "" {
+		options.RequireEmailVerification = options.RequireEmailVerification || provider.RequireEmailVerification
+		signupFields := registered && len(a.opts.UserAdditionalFields) > 0 && !options.DisableSignUp && !a.opts.DisableSignUp && !provider.DisableSignUp
+		if options.RequireEmailVerification || provider.OverrideUserInfoOnSignIn || signupFields {
+			var err error
+			complete, err = a.socialProfileCompletion(p, provider.OverrideUserInfoOnSignIn, options.RequireEmailVerification)
+			if err != nil {
+				return AuthResult{}, false, err
+			}
 		}
 	}
 	if a.opts.DisableAccountLinking && options.LinkUserID != "" {
@@ -461,7 +474,23 @@ func (a *Auth) completeProfile(ctx context.Context, r *http.Request, id string, 
 		}
 		complete = store.RefreshOwnedOAuthLink
 	}
-	return a.completeProfileWith(ctx, r, id, p, tokens, options, complete)
+	result, created, err := a.completeProfileWith(ctx, r, id, p, tokens, options, complete)
+	blocked := errors.Is(err, ErrOAuthEmailUnverified)
+	if (err == nil || blocked) && options.LinkUserID == "" && !result.User.EmailVerified && a.opts.SendVerificationEmail != nil {
+		send := blocked && a.opts.SendVerificationOnSignIn
+		if created {
+			send = a.sendVerificationOnSignup(options.RequireEmailVerification)
+		}
+		if send {
+			if err := a.sendEmailProof(ctx, result.User, "", "", callback, a.opts.SendVerificationEmail); err != nil {
+				a.Logger().ErrorContext(ctx, "Could not deliver social sign-in verification email")
+			}
+		}
+	}
+	if blocked {
+		return AuthResult{}, created, &APIError{403, "EMAIL_NOT_VERIFIED", "Email not verified"}
+	}
+	return result, created, err
 }
 
 func (a *Auth) completeProfileWith(ctx context.Context, r *http.Request, id string, p OAuthProfile, tokens OAuthTokens, options OAuthLoginOptions, complete OAuthCompletion) (AuthResult, bool, error) {
@@ -475,7 +504,7 @@ func (a *Auth) completeProfileWith(ctx context.Context, r *http.Request, id stri
 	}
 	now := a.now().UTC().Truncate(time.Millisecond)
 	candidate := User{ID: randomID(), Name: p.Name, Email: strings.ToLower(p.Email), EmailVerified: p.EmailVerified, Image: p.Image, CreatedAt: now, UpdatedAt: now}
-	session, raw := a.newSession(candidate.ID, RequestMeta{IPAddress: a.clientIP(r), UserAgent: r.UserAgent()})
+	session := a.oauthSessionDraft(candidate.ID, RequestMeta{IPAddress: a.clientIP(r), UserAgent: r.UserAgent()}, options.RequireEmailVerification)
 	if !options.IDTokenValidUntil.IsZero() {
 		options.IDTokenHash = sha256.Sum256([]byte(id + "\x00" + tokens.IDToken))
 	}
@@ -493,13 +522,14 @@ func (a *Auth) completeProfileWith(ctx context.Context, r *http.Request, id stri
 	if errors.Is(err, ErrOAuthSignupDisabled) {
 		return AuthResult{}, false, &APIError{403, "SIGN_UP_DISABLED", "Sign-up is disabled"}
 	}
-	if err == nil {
-		err = a.readPublicUserFields(ctx, &user)
+	if err != nil {
+		return AuthResult{User: user}, created, err
 	}
-	return AuthResult{User: user, Token: raw}, created, err
+	err = a.readPublicUserFields(ctx, &user)
+	return AuthResult{User: user, Token: session.Token}, created, err
 }
 
-func (a *Auth) directOAuth(w http.ResponseWriter, r *http.Request, id string, p OAuthProvider, value any, linkUserID string, requestSignUp bool) error {
+func (a *Auth) directOAuth(w http.ResponseWriter, r *http.Request, id string, p OAuthProvider, value any, linkUserID string, requestSignUp bool, callback string) error {
 	if p.VerifyIDToken == nil {
 		return &APIError{404, "ID_TOKEN_NOT_SUPPORTED", "Provider does not support ID token sign-in"}
 	}
@@ -520,7 +550,7 @@ func (a *Auth) directOAuth(w http.ResponseWriter, r *http.Request, id string, p 
 	}
 	// Direct grants authenticate the signed ID token. A client-supplied access
 	// or refresh token has no independently verified binding to its subject.
-	account, _, err := a.completeProfile(ctx, r, id, profile, OAuthTokens{IDToken: raw}, OAuthLoginOptions{DisableSignUp: p.DisableImplicitSignUp && !requestSignUp, AllowVerifiedEmailLink: p.AllowVerifiedEmailLink, LinkUserID: linkUserID, LinkSessionToken: a.cookieToken(r.Header), IDTokenValidUntil: expires})
+	account, _, err := a.completeProfile(ctx, r, id, callback, profile, OAuthTokens{IDToken: raw}, OAuthLoginOptions{DisableSignUp: p.DisableImplicitSignUp && !requestSignUp, AllowVerifiedEmailLink: p.AllowVerifiedEmailLink, LinkUserID: linkUserID, LinkSessionToken: a.cookieToken(r.Header), IDTokenValidUntil: expires})
 	var signupError *APIError
 	if errors.As(err, &signupError) && signupError.Code == "SIGN_UP_DISABLED" {
 		return &APIError{401, "OAUTH_LINK_ERROR", "signup disabled"}

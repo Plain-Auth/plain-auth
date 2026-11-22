@@ -490,11 +490,7 @@ func (a *Auth) signUpEmail(ctx context.Context, in SignUpInput, meta RequestMeta
 			a.Logger().ErrorContext(ctx, "Could not deliver sign-up verification code")
 		}
 	}
-	send := a.opts.RequireEmailVerification
-	if a.opts.SendVerificationOnSignUp != nil {
-		send = *a.opts.SendVerificationOnSignUp
-	}
-	if send && a.opts.SendVerificationEmail != nil {
+	if a.sendVerificationOnSignup(a.opts.RequireEmailVerification) && a.opts.SendVerificationEmail != nil {
 		if err := a.sendEmailProof(ctx, user, "", "", meta.CallbackURL, a.opts.SendVerificationEmail); err != nil {
 			a.Logger().ErrorContext(ctx, "Could not deliver sign-up verification email")
 		}

@@ -56,9 +56,11 @@ func TestOAuthProxyAcrossDeployments(t *testing.T) {
 					opts.ProductionURL = "" // The instance public URL is the registered origin.
 				}
 				provider := issuer.provider()
+				provider.RequireEmailVerification = origin == production
 				resolve := provider.Resolve
 				provider.Resolve = func(ctx context.Context, token *oauth2.Token, nonce string) (auth.OAuthProfile, error) {
 					profile, err := resolve(ctx, token, nonce)
+					profile.EmailVerified = profile.Subject != "unverified"
 					domain := "social.test"
 					if profile.Subject == "outsider" {
 						domain = "elsewhere.test"
@@ -249,6 +251,19 @@ func TestOAuthProxyAcrossDeployments(t *testing.T) {
 			w = proxyRequest(t, origin, "GET", relay(callback).String(), nil, browser, 401)
 			if !strings.Contains(w.Body.String(), "INVALID_TOKEN") {
 				t.Fatal("preview accepted a different hosted domain")
+			}
+			issuer.set("unverified", map[string]any{"locale": "en"})
+			callback, browser = begin("/sign-in/social", nil)
+			w = proxyRequest(t, origin, "GET", relay(callback).String(), nil, browser, 302)
+			if w.Header().Get("Location") != "/error?error=email_not_verified" {
+				t.Fatal("preview bypassed the production mailbox policy")
+			}
+			pending, err := previewStore.FindAccountUser(t.Context(), "unverified@social.test")
+			if err != nil || pending.EmailVerified {
+				t.Fatal("preview failed to retain the unverified account", err)
+			}
+			if rows, err := previewStore.ListSessions(t.Context(), pending.ID); err != nil || len(rows) != 0 {
+				t.Fatal("preview created a session before verification", err)
 			}
 		})
 	}

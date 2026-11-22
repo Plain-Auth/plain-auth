@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
 import { once } from "node:events";
+import { readFile } from "node:fs/promises";
 import { DatabaseSync } from "node:sqlite";
 import { genericOAuth } from "better-auth/plugins/generic-oauth";
 import { inferAdditionalFields } from "better-auth/client/plugins";
@@ -78,16 +79,20 @@ function browser(target, instrument) {
   }};
 }
 
+function referenceProvider(issuer, options) {
+  return genericOAuth({config:[{ providerId:"work",clientId:"profile-app",clientSecret:"local-secret",scopes:["profile"],
+    authorizationUrl:issuer.base+"/authorize",tokenUrl:issuer.base+"/token",userInfoUrl:issuer.base+"/userinfo",
+    accountSubject:({profile})=>profile.id,
+    mapProfileToUser:raw=>raw.mapped??{},
+    ...options,
+  }]});
+}
+
 async function profileServers(t, {reference, goFixture}, defaults, syncProfile = false) {
   const issuer=await issuerFixture(t);
   const fields={...mappings,locale:{...mappings.locale}};
   if (defaults) fields.locale.defaultValue="en";
-  const provider=genericOAuth({config:[{ providerId:"work",clientId:"profile-app",clientSecret:"local-secret",scopes:["profile"],
-    authorizationUrl:issuer.base+"/authorize",tokenUrl:issuer.base+"/token",userInfoUrl:issuer.base+"/userinfo",
-    accountSubject:({profile})=>profile.id,
-    mapProfileToUser:raw=>raw.mapped??{},
-    overrideUserInfo: syncProfile,
-  }]});
+  const provider=referenceProvider(issuer, {overrideUserInfo: syncProfile});
   const go=await goFixture(t,[],{CONFORMANCE_PROVIDER:"1",CONFORMANCE_USER_FIELDS:"1",CONFORMANCE_SOCIAL_FIELD_ISSUER:issuer.base,CONFORMANCE_SOCIAL_FIELD_DEFAULT:defaults?"1":"0",CONFORMANCE_SOCIAL_PROFILE_SYNC:syncProfile?"1":"0"});
   const database=new DatabaseSync(go.databasePath);
   t.after(()=>database.close());
@@ -183,4 +188,71 @@ export async function compareSocialProfileSync(t, harness) {
   assert.equal(refused.searchParams.get("error"), "profile_conflict");
   assert.equal((await visitor.client.getSession()).data, null);
   assert.deepEqual(snapshot(), before);
+}
+
+export async function compareProviderEmailVerification(t, {reference, goFixture, instrument}, mode) {
+  const issuer = await issuerFixture(t);
+  const gated = mode !== "ungated";
+  const go = await goFixture(t, [], {
+    CONFORMANCE_PROVIDER: "1", CONFORMANCE_SOCIAL_FIELD_ISSUER: issuer.base, CONFORMANCE_SOCIAL_VERIFY: mode,
+  });
+  const database = new DatabaseSync(go.databasePath);
+  t.after(() => database.close());
+  const referenceMail = [];
+  const emailVerification = {sendOnSignIn: mode === "resend"};
+  if (["quiet", "ungated"].includes(mode)) emailVerification.sendOnSignUp = !gated;
+  if (mode !== "no-sender") {
+    emailVerification.sendVerificationEmail = async ({user, url, token}) => {
+      if (mode === "delivery-error") throw new Error("fixture delivery unavailable");
+      referenceMail.push({email:user.email, url, token});
+    };
+  }
+  const ref = await reference(t, [referenceProvider(issuer, {requireEmailVerification:gated})], {
+    database, emailAndPassword: {enabled:true, requireEmailVerification:true}, emailVerification, rateLimit:{enabled:false},
+  });
+  async function messages(server) {
+    if (server === ref) return [...referenceMail];
+    try {
+      const raw = await readFile(go.databasePath + ".social-mail", "utf8");
+      return raw.trimEnd().split("\n").map(line => JSON.parse(line));
+    } catch (error) {
+      if (error.code === "ENOENT") return [];
+      throw error;
+    }
+  }
+  for (const [sender, verifier, label] of [[go,ref,"native"],[ref,go,"reference"]]) {
+    const email = label + "@issuer.test";
+    issuer.profile({id:label, name:label, email, emailVerified:false, email_verified:false});
+    const visitor = browser(sender, instrument);
+    const startCount = (await messages(sender)).length;
+    const first = await visitor.login();
+    const owner = database.prepare('SELECT id, emailVerified FROM "user" WHERE email=?').get(email);
+    assert.equal(owner.emailVerified, 0);
+    const countSessions = () => database.prepare('SELECT count(*) AS n FROM session WHERE userId=?').get(owner.id).n;
+    assert.equal(database.prepare('SELECT count(*) AS n FROM account WHERE userId=? AND providerId=?').get(owner.id,"work").n, 1);
+    assert.equal(first.pathname, gated ? "/retry" : "/done");
+    assert.equal(first.searchParams.get("error"), gated ? "email_not_verified" : null);
+    assert.equal(countSessions(), gated ? 0 : 1);
+    assert.equal(Boolean((await visitor.client.getSession()).data), !gated);
+    const shouldDeliver = ["default", "resend", "ungated"].includes(mode);
+    const afterSignup = await messages(sender);
+    assert.equal(afterSignup.length - startCount, Number(shouldDeliver));
+
+    const repeat = await visitor.login();
+    assert.equal(repeat.pathname, first.pathname);
+    assert.equal(countSessions(), gated ? 0 : 2);
+    assert.equal((await messages(sender)).length - afterSignup.length, Number(mode === "resend"));
+    if (shouldDeliver) {
+      const message = afterSignup.at(-1);
+      assert.equal(message.email, email);
+      const callback = new URL(message.url).searchParams.get("callbackURL");
+      assert.equal(new URL(callback, sender.baseURL).pathname, "/done");
+      const approved = await browser(verifier, instrument).client.verifyEmail({query:{token:message.token}});
+      assert.equal(approved.error, null);
+      assert.equal((await visitor.login()).pathname, "/done");
+      const session = (await visitor.client.getSession()).data;
+      assert.equal(session.user.id, owner.id);
+      assert.equal(session.user.emailVerified, true);
+    }
+  }
 }

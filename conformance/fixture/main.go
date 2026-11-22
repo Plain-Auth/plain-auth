@@ -476,6 +476,9 @@ func main() {
 	if os.Getenv("CONFORMANCE_MAGIC_MEMORY") == "1" {
 		opts.Store = memory.New()
 	}
+	if mode := os.Getenv("CONFORMANCE_SOCIAL_VERIFY"); mode != "" {
+		configureSocialVerification(&opts, mode, os.Args[1]+".social-mail")
+	}
 	opts.DisableAccountLinking = os.Getenv("CONFORMANCE_LINK_POLICY") == "disabled"
 	opts.DisableImplicitAccountLinking = os.Getenv("CONFORMANCE_LINK_POLICY") == "explicit"
 	switch os.Getenv("CONFORMANCE_EMAIL_POLICY") {

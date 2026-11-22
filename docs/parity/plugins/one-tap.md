@@ -52,6 +52,7 @@
     - [x] Require the application-issued nonce and reject a replay from the pinned client ([test](../../../conformance/core.test.mjs#L643))
     - [x] Require the Google CSRF cookie and escape the relay document for redirect submissions ([test](../../../plugins/onetap/redirect_test.go#L19))
     - [x] Apply the provider policy on direct sign-in, Google One Tap and permitted automatic links across three SQL engines ([test](../../../adapters/sqlstore/oauth_profile_sync_test.go#L16))
+    - [x] Check the exact local mailbox before issuing a session on direct ID-token and One Tap sign-in across all SQL engines ([test](../../../adapters/sqlstore/oauth_verified_email_test.go#L18))
   - [ ] `OneTapOptions`
     - [x] `disableSignup` ([test](../../../adapters/sqlstore/onetap_test.go#L167))
       - [x] Restrict new registrations while allowing a returning Google subject ([test](../../../adapters/sqlstore/onetap_test.go#L167))

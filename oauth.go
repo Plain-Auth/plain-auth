@@ -55,6 +55,8 @@ type OAuthProvider struct {
 	// OverrideUserInfoOnSignIn updates the local profile from this provider on
 	// successful sign-in. Explicit account linking preserves the owner's profile.
 	OverrideUserInfoOnSignIn bool
+	// RequireEmailVerification withholds a session until the local mailbox is verified.
+	RequireEmailVerification bool
 	// GoogleHostedDomain restricts the verified Google Workspace hd claim. Use * for any Workspace.
 	GoogleHostedDomain  string
 	AuthorizationParams url.Values
@@ -89,6 +91,8 @@ type OAuthTokens struct {
 // ID-token grant to the verified token's expiry.
 type OAuthLoginOptions struct {
 	DisableSignUp bool
+	// RequireEmailVerification commits an unverified identity without issuing a session.
+	RequireEmailVerification bool
 	// DisableImplicitLinking also takes precedence over directory-based trust in custom stores.
 	DisableImplicitLinking       bool
 	OneTapNonce                  string
@@ -135,6 +139,14 @@ type OAuthProfileSyncStore interface {
 	CompleteOAuthProfile(ctx context.Context, provider, subject string, tokens OAuthTokens, candidate User, session StoredSession, options OAuthLoginOptions, fields OAuthProfileFields) (User, bool, error)
 }
 
+// OAuthVerifiedEmailStore checks the locked owner's email before inserting a
+// session. For an unverified owner it commits the user, provider credential and
+// single-use proof, then returns the owner, creation flag and ErrOAuthEmailUnverified.
+// A nil fields.Update preserves the existing profile on returning sign-ins.
+type OAuthVerifiedEmailStore interface {
+	CompleteOAuthVerifiedEmail(ctx context.Context, provider, subject string, tokens OAuthTokens, candidate User, session StoredSession, options OAuthLoginOptions, fields OAuthProfileFields) (User, bool, error)
+}
+
 // OAuthLinkRefreshStore updates an already-owned provider identity after verifying
 // the live owner session and the provider subject in the same transaction.
 // Implement it to permit redundant mobile link requests when linking is disabled.
@@ -145,6 +157,7 @@ type OAuthLinkRefreshStore interface {
 var ErrOAuthLinkingDisabled = errors.New("account linking is disabled")
 var ErrOAuthAccountAlreadyLinked = errors.New("social identity belongs to another account")
 var ErrOAuthProfileConflict = errors.New("provider profile conflicts with an existing profile")
+var ErrOAuthEmailUnverified = errors.New("OAuth account requires email verification")
 
 var ErrOAuthSignupDisabled = errors.New("OAuth account creation disabled")
 var ErrOAuthLinkRequired = errors.New("account must be linked by its existing owner")
@@ -160,7 +173,11 @@ func prepareOAuthProviders(in map[string]OAuthProvider, store Store, userFieldsO
 	}
 	out := make(map[string]OAuthProvider, len(in))
 	for id, p := range in {
-		if p.OverrideUserInfoOnSignIn {
+		if p.RequireEmailVerification {
+			if _, ok := store.(OAuthVerifiedEmailStore); !ok {
+				return nil, fmt.Errorf("auth: verified email for provider %q requires an OAuthVerifiedEmailStore", id)
+			}
+		} else if p.OverrideUserInfoOnSignIn {
 			if _, ok := store.(OAuthProfileSyncStore); !ok {
 				return nil, fmt.Errorf("auth: profile updates from provider %q require an OAuthProfileSyncStore", id)
 			}

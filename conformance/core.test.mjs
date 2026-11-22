@@ -1692,3 +1692,10 @@ test("social callbacks refresh existing profiles across both servers when the pr
   const {compareSocialProfileSync} = await import("./social-user-fields.mjs");
   await compareSocialProfileSync(t, {reference, goFixture, instrument});
 });
+
+test("providers require a verified mailbox before issuing a session on either server", async t => {
+  const {compareProviderEmailVerification} = await import("./social-user-fields.mjs");
+  for (const mode of ["default", "resend", "quiet", "no-sender", "delivery-error", "ungated"]) {
+    await t.test(mode, t => compareProviderEmailVerification(t, {reference, goFixture, instrument}, mode));
+  }
+});
