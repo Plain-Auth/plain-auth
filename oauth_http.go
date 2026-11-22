@@ -215,21 +215,25 @@ func (a *Auth) finishOAuth(w http.ResponseWriter, r *http.Request, id string) (r
 		return err
 	}
 	http.SetCookie(w, a.oauthCookie("oauth_state", "", -1))
-	fail := func(code string) error {
+	failWithDescription := func(code, description string) error {
 		if popup != nil {
-			popup.write(w, "", "", &popupError{Code: code})
+			popup.write(w, "", "", &popupError{Code: code, Description: description})
 			return nil
 		}
 		if flow.ErrorCallbackURL != "" && a.trustedURL(flow.ErrorCallbackURL, true) {
 			target, _ := url.Parse(flow.ErrorCallbackURL)
 			v := target.Query()
 			v.Set("error", code)
+			if description != "" {
+				v.Set("error_description", description)
+			}
 			target.RawQuery = v.Encode()
 			http.Redirect(w, r, target.String(), http.StatusFound)
 			return nil
 		}
 		return &APIError{400, code, "Unable to complete social sign-in"}
 	}
+	fail := func(code string) error { return failWithDescription(code, "") }
 	if flow.AnonymousSessionProof != "" {
 		guest, err := a.openRecord("guest-oauth:"+flow.State, flow.AnonymousSessionProof)
 		current := a.cookieToken(r.Header)
@@ -302,6 +306,13 @@ func (a *Auth) finishOAuth(w http.ResponseWriter, r *http.Request, id string) (r
 		}
 		return fail("signup_disabled")
 	}
+	var fieldError oauthRegistrationFieldError
+	if errors.As(err, &fieldError) && errors.As(fieldError, &signupError) {
+		if flow.ErrorCallbackURL == "" {
+			flow.ErrorCallbackURL = a.opts.BaseURL + a.opts.BasePath + "/error"
+		}
+		return failWithDescription(signupError.Code, signupError.Message)
+	}
 	if errors.Is(err, ErrOAuthLinkingDisabled) {
 		return fail("unable_to_link_account")
 	}
@@ -373,6 +384,10 @@ func (a *Auth) redirectOAuthForm(w http.ResponseWriter, r *http.Request, id stri
 
 func (a *Auth) completeProfile(ctx context.Context, r *http.Request, id string, p OAuthProfile, tokens OAuthTokens, options OAuthLoginOptions) (AuthResult, bool, error) {
 	complete := a.opts.Store.(OAuthStore).CompleteOAuth
+	provider, registered := a.opts.SocialProviders[id]
+	if registered && options.LinkUserID == "" && !options.DisableSignUp && !a.opts.DisableSignUp && !provider.DisableSignUp && len(a.opts.UserAdditionalFields) > 0 {
+		complete = a.socialRegistrationWithFields(p)
+	}
 	if a.opts.DisableAccountLinking && options.LinkUserID != "" {
 		store, ok := a.opts.Store.(OAuthLinkRefreshStore)
 		if options.IDTokenValidUntil.IsZero() || !ok {

@@ -1628,3 +1628,10 @@ test("magic links create configured profile defaults and preserve verified mailb
   const { magicLinkFields } = await import("./magic-link-fields.mjs");
   await magicLinkFields(t, { reference, goFixture, instrument });
 });
+
+test("local social callbacks exchange mapped user fields and ignore browser profile data", async t => {
+  const { compareSocialUserFields } = await import("./social-user-fields.mjs");
+  const harness = { reference, goFixture, instrument };
+  await t.test("application defaults", t => compareSocialUserFields(t, harness, true));
+  await t.test("required mapped claims", t => compareSocialUserFields(t, harness, false));
+});

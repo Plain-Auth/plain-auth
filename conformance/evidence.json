@@ -1087,6 +1087,16 @@
       "label": "Apply extra scopes, login hints and consent parameters per request, and reject reserved OAuth fields",
       "test": "conformance/social-signup.mjs",
       "marker": "export async function authorizationParameters("
+    },
+    {
+      "label": "Compare static defaults and explicitly mapped signup claims through the released browser client and a loopback issuer on shared SQLite",
+      "test": "conformance/social-user-fields.mjs",
+      "marker": "export async function compareSocialUserFields("
+    },
+    {
+      "label": "Exercise required profile failures, stored field privacy and unchanged returning and linked owners through the Go client on all three SQL engines",
+      "test": "adapters/sqlstore/oauth_user_fields_test.go",
+      "marker": "func TestOAuthRegistrationUserFields("
     }
   ],
   "core/callbackOAuth": [
@@ -9824,6 +9834,11 @@
       "label": "Apply declared user fields only on first-time email OTP registration and retain the original values during sign-in",
       "test": "conformance/user-fields.mjs",
       "marker": "const established = await other.signIn.emailOtp("
+    },
+    {
+      "label": "Keep browser state and raw provider claims separate from declared public, hidden and server-owned fields on social signup",
+      "test": "conformance/social-user-fields.mjs",
+      "marker": "const saved=database.prepare("
     }
   ],
   "plugin-symbol/one-time-token/oneTimeTokenClient": [

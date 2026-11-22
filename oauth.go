@@ -16,6 +16,10 @@ import (
 
 // OAuthProfile identifies a person by their stable provider subject.
 type OAuthProfile struct {
+	// AdditionalFields is an explicit mapping from the authenticated provider
+	// profile to configured user attributes for first-time account creation.
+	AdditionalFields map[string]any `json:"-"`
+
 	// Data is the authenticated provider profile returned by the account-info endpoint.
 	Data                 any `json:"-"`
 	Subject, Email, Name string
@@ -99,6 +103,20 @@ type OAuthStore interface {
 	CompleteOAuth(ctx context.Context, provider, subject string, tokens OAuthTokens, candidate User, session StoredSession, options OAuthLoginOptions) (User, bool, error)
 }
 
+// OAuthRegistrationFields resolves the configured scalar values for a new
+// account. It has no side effects and can be called again when retrying a write.
+type OAuthRegistrationFields func() (UserFieldValues, error)
+
+type oauthRegistrationFieldError struct{ error }
+
+func (e oauthRegistrationFieldError) Unwrap() error { return e.error }
+
+// OAuthRegistrationStore resolves fields only for new users after selecting the
+// exact identity. It commits them with the user, account link and initial session.
+type OAuthRegistrationStore interface {
+	CompleteOAuthRegistration(ctx context.Context, provider, subject string, tokens OAuthTokens, candidate User, session StoredSession, options OAuthLoginOptions, fields OAuthRegistrationFields) (User, bool, error)
+}
+
 // OAuthLinkRefreshStore updates an already-owned provider identity after verifying
 // the live owner session and the provider subject in the same transaction.
 // Implement it to permit redundant mobile link requests when linking is disabled.
@@ -114,7 +132,7 @@ var ErrOAuthLinkRequired = errors.New("account must be linked by its existing ow
 var ErrIDTokenUsed = errors.New("ID token has already been used")
 var providerName = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$`)
 
-func prepareOAuthProviders(in map[string]OAuthProvider, store Store) (map[string]OAuthProvider, error) {
+func prepareOAuthProviders(in map[string]OAuthProvider, store Store, userFieldsOnSignup bool) (map[string]OAuthProvider, error) {
 	if len(in) == 0 {
 		return nil, nil
 	}
@@ -123,6 +141,11 @@ func prepareOAuthProviders(in map[string]OAuthProvider, store Store) (map[string
 	}
 	out := make(map[string]OAuthProvider, len(in))
 	for id, p := range in {
+		if userFieldsOnSignup && !p.DisableSignUp {
+			if _, ok := store.(OAuthRegistrationStore); !ok {
+				return nil, errors.New("auth: social signup with configured user fields requires an OAuthRegistrationStore")
+			}
+		}
 		if !providerName.MatchString(id) || id == "credential" || p.Config.ClientID == "" || p.Resolve == nil {
 			return nil, fmt.Errorf("incomplete OAuth provider %q", id)
 		}

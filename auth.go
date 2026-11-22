@@ -172,7 +172,7 @@ func New(opts Options) (*Auth, error) {
 		}
 	}
 	opts.Plugins = append([]Plugin(nil), opts.Plugins...)
-	opts.SocialProviders, err = prepareOAuthProviders(opts.SocialProviders, opts.Store)
+	opts.SocialProviders, err = prepareOAuthProviders(opts.SocialProviders, opts.Store, len(opts.UserAdditionalFields) > 0 && !opts.DisableSignUp)
 	if err != nil {
 		return nil, err
 	}

@@ -83,7 +83,7 @@ func main() {
 	}
 	if mode := os.Getenv("CONFORMANCE_USER_FIELDS"); mode == "1" || mode == "magic-defaults" {
 		additionalUserFields = configuredUserFields()
-		if mode == "magic-defaults" {
+		if mode == "magic-defaults" || os.Getenv("CONFORMANCE_SOCIAL_FIELD_DEFAULT") == "1" {
 			field := additionalUserFields["locale"]
 			field.Default = "en"
 			additionalUserFields["locale"] = field

@@ -81,6 +81,25 @@ The default PayPal registration uses the sandbox. Notion requests the workspace 
 
 To complete sign-in while keeping the opener on its current page, use [OAuth popup sign-in](oauth-popup.md).
 
+## User fields on social registration
+
+On first registration, a static social provider can supply configured user attributes through `OAuthProfile.AdditionalFields`. Set this map inside the application's provider resolver after it authenticates the profile. For example, a resolver that already fetched and validated a provider identity can return its preferred locale.
+
+```go
+mapped := map[string]any{}
+if identity.Locale != "" {
+    mapped["locale"] = identity.Locale
+}
+return plainauth.OAuthProfile{
+    Subject: identity.Subject, Email: identity.Email, EmailVerified: identity.EmailVerified,
+    Name: identity.Name, AdditionalFields: mapped,
+}, nil
+```
+
+Use the logical names from `Options.UserAdditionalFields`. The service accepts declared writable values, skips server-owned claims and fills missing fields from application defaults. A required field without a default needs a mapped value. The SQL adapter checks the field policy when creating the user and commits the profile, account link and session together. Hidden values stay in storage.
+
+The server reads application attributes only from the explicit resolver mapping. Browser `additionalData`, callback parameters, tokens and the raw provider profile in `OAuthProfile.Data` are never copied into profile columns. A returning login reads the stored profile and a default verified-email link preserves the existing owner's values. Use the authenticated update API or a trusted host update for subsequent changes. Custom stores with social registration and user fields enabled implement `OAuthRegistrationStore`. Profile resynchronization on every sign-in or link and enterprise SSO attribute mapping are separate integrations. [Additional user fields](user-fields.md)
+
 ## Auth0, Keycloak and Okta
 
 Set the provider's browser callback to your public auth mount followed by `/callback/` and its registration name. For example, a provider registered as `work` under the mount `/identity` uses `https://app.example.com/identity/callback/work`.

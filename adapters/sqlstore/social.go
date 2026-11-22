@@ -71,7 +71,14 @@ func (s *Store) ConsumeOAuthFlow(ctx context.Context, state, binding string, now
 // issuance. A stable primary key serializes concurrent first logins even on a
 // canonical schema with no (providerId, accountId) unique constraint.
 func (s *Store) CompleteOAuth(ctx context.Context, provider, subject string, tokens authn.OAuthTokens, candidate authn.User, session authn.StoredSession, options authn.OAuthLoginOptions) (authn.User, bool, error) {
-	return s.completeOAuthWith(ctx, provider, subject, tokens, candidate, session, options, nil, false)
+	return s.completeOAuthWith(ctx, provider, subject, tokens, candidate, session, options, nil, false, nil)
+}
+
+func (s *Store) CompleteOAuthRegistration(ctx context.Context, provider, subject string, tokens authn.OAuthTokens, candidate authn.User, session authn.StoredSession, options authn.OAuthLoginOptions, fields authn.OAuthRegistrationFields) (authn.User, bool, error) {
+	if fields == nil || options.LinkUserID != "" {
+		return authn.User{}, false, errors.New("sqlstore: invalid OAuth registration")
+	}
+	return s.completeOAuthWith(ctx, provider, subject, tokens, candidate, session, options, nil, false, fields)
 }
 
 // RefreshOwnedOAuthLink can only update an existing provider identity, even if
@@ -80,7 +87,7 @@ func (s *Store) RefreshOwnedOAuthLink(ctx context.Context, provider, subject str
 	if options.LinkUserID == "" || options.LinkSessionToken == "" {
 		return authn.User{}, false, authn.ErrOAuthLinkingDisabled
 	}
-	return s.completeOAuthWith(ctx, provider, subject, tokens, candidate, session, options, nil, true)
+	return s.completeOAuthWith(ctx, provider, subject, tokens, candidate, session, options, nil, true, nil)
 }
 
 type oauthTransactionHooks struct {
@@ -90,13 +97,13 @@ type oauthTransactionHooks struct {
 	afterIdentity    func(*sql.Tx, authn.User) error
 }
 
-func (s *Store) completeOAuthWith(ctx context.Context, provider, subject string, tokens authn.OAuthTokens, candidate authn.User, session authn.StoredSession, options authn.OAuthLoginOptions, hooks *oauthTransactionHooks, existingOnly bool) (authn.User, bool, error) {
+func (s *Store) completeOAuthWith(ctx context.Context, provider, subject string, tokens authn.OAuthTokens, candidate authn.User, session authn.StoredSession, options authn.OAuthLoginOptions, hooks *oauthTransactionHooks, existingOnly bool, fields authn.OAuthRegistrationFields) (authn.User, bool, error) {
 	candidate.Email = strings.ToLower(candidate.Email)
 	var u authn.User
 	var created bool
 	var err error
 	for attempt := 0; attempt < 3; attempt++ {
-		u, created, err = s.completeOAuth(ctx, provider, subject, tokens, candidate, session, options, hooks, existingOnly)
+		u, created, err = s.completeOAuth(ctx, provider, subject, tokens, candidate, session, options, hooks, existingOnly, fields)
 		if !retryIdentity(err) {
 			break
 		}
@@ -116,7 +123,7 @@ func retryIdentity(err error) bool {
 	return false
 }
 
-func (s *Store) completeOAuth(ctx context.Context, provider, subject string, tokens authn.OAuthTokens, candidate authn.User, session authn.StoredSession, options authn.OAuthLoginOptions, hooks *oauthTransactionHooks, existingOnly bool) (authn.User, bool, error) {
+func (s *Store) completeOAuth(ctx context.Context, provider, subject string, tokens authn.OAuthTokens, candidate authn.User, session authn.StoredSession, options authn.OAuthLoginOptions, hooks *oauthTransactionHooks, existingOnly bool, fields authn.OAuthRegistrationFields) (authn.User, bool, error) {
 	var u authn.User
 	var txOptions *sql.TxOptions
 	if hooks != nil && s.dialect != "sqlite" {
@@ -196,7 +203,15 @@ func (s *Store) completeOAuth(ctx context.Context, provider, subject string, tok
 			}
 			u = candidate
 			created = true
-			_, err = tx.ExecContext(ctx, s.bind(`INSERT INTO "user" ("id","email","name","image","emailVerified","createdAt","updatedAt") VALUES (?,?,?,?,?,?,?)`), u.ID, u.Email, u.Name, u.Image, u.EmailVerified, s.date(u.CreatedAt), s.date(u.UpdatedAt))
+			var values authn.UserFieldValues
+			if fields != nil {
+				values, err = fields()
+				if err != nil {
+					return u, false, err
+				}
+			}
+			query, args := s.userInsert(u, values.Columns())
+			_, err = tx.ExecContext(ctx, s.bind(query), args...)
 			if err != nil {
 				return u, false, err
 			}

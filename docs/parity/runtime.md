@@ -79,6 +79,8 @@ Each entry groups the configured endpoint’s behaviors. A checked child records
     - [x] Use a one-time browser state to carry the first-time registration choice and allow returning users to sign in ([test](../../conformance/social-signup.mjs#L4))
     - [x] Enforce explicit registration for both browser and direct ID-token sign-in while honoring closed registrations ([test](../../oauth_signup_test.go#L20))
     - [x] Apply extra scopes, login hints and consent parameters per request, and reject reserved OAuth fields ([test](../../conformance/social-signup.mjs#L39))
+    - [x] Compare static defaults and explicitly mapped signup claims through the released browser client and a loopback issuer on shared SQLite ([test](../../conformance/social-user-fields.mjs#L81))
+    - [x] Exercise required profile failures, stored field privacy and unchanged returning and linked owners through the Go client on all three SQL engines ([test](../../adapters/sqlstore/oauth_user_fields_test.go#L112))
   - [ ] `signOut` (`POST /sign-out`)
     - [x] Clear the client's session cookies and return an anonymous session ([test](../../conformance/core.test.mjs#L206))
     - [x] Revoke the owner session before returning an OIDC logout URL with trusted callback and optional state ([test](../../conformance/social-logout.mjs#L4))
