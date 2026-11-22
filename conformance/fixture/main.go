@@ -99,7 +99,7 @@ func main() {
 	for _, id := range os.Args[2:] {
 		switch id {
 		case "siwe":
-			p, err := siwe.New(siwe.Options{Domain: "wallet.example.test"})
+			p, err := siwe.New(walletFixtureOptions())
 			if err != nil {
 				log.Fatal(err)
 			}

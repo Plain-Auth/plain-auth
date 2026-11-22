@@ -17,6 +17,9 @@
     - [x] Verify an Ethereum wallet signature, return the account and issue a session cookie ([test](../../../conformance/siwe-wallet.mjs#L53))
     - [x] Two simultaneous presentations of the same signed challenge issue one session ([test](../../../adapters/sqlstore/siwe_test.go#L174))
     - [x] Refuse a database account with an ambiguous wallet binding ([test](../../../adapters/sqlstore/siwe_test.go#L210))
+    - [x] Reject a canceled request before it creates an account or issues a session ([test](../../../adapters/sqlstore/siwe_callbacks_test.go#L240))
+    - [x] Keep verified contract identities separate from EOA associations ([test](../../../adapters/sqlstore/siwe_callbacks_test.go#L291))
+    - [x] Recheck a signed or stored expiration after a slow host verdict ([test](../../../adapters/sqlstore/siwe_callbacks_test.go#L260))
   - [ ] `SIWEPluginOptions`
     - [x] `domain` ([test](../../../plugins/siwe/message_test.go#L9))
       - [x] Match the signed authority, scheme and URI including the relying-party port ([test](../../../plugins/siwe/message_test.go#L9))
@@ -24,18 +27,28 @@
       - [x] Apply a configured placeholder domain without verifying the user’s email ([test](../../../adapters/sqlstore/siwe_test.go#L281))
     - [ ] `anonymous`
       - [x] Establish a wallet-only identity and ignore contact email supplied in the signing request ([test](../../../conformance/siwe-wallet.mjs#L51))
-    - [ ] `getNonce`
-    - [ ] `verifyMessage`
-    - [ ] `ensLookup`
+    - [x] `getNonce` ([test](../../../conformance/siwe-wallet.mjs#L100))
+      - [x] Use a host-generated nonce in the released public client ([test](../../../conformance/siwe-wallet.mjs#L100))
+      - [x] Refuse concurrent duplicate challenges and reuse after consumption or restart ([test](../../../adapters/sqlstore/siwe_callbacks_test.go#L199))
+    - [x] `verifyMessage` ([test](../../../conformance/siwe-wallet.mjs#L83))
+      - [x] Pass the original signed bytes, checksummed address, chain ID and CACAO fields to the host verifier ([test](../../../conformance/siwe-wallet.mjs#L83))
+      - [x] Check relying party, chain and expiry before the verifier runs ([test](../../../adapters/sqlstore/siwe_callbacks_test.go#L222))
+      - [x] Keep contract identities separate across networks and EOA recovery ([test](../../../adapters/sqlstore/siwe_callbacks_test.go#L287))
+    - [x] `ensLookup` ([test](../../../conformance/siwe-wallet.mjs#L111))
+      - [x] Populate the new wallet user’s display name and avatar through the resolver ([test](../../../conformance/siwe-wallet.mjs#L111))
+      - [x] Keep established profiles intact and reject failed or canceled callbacks ([test](../../../adapters/sqlstore/siwe_callbacks_test.go#L277))
     - [ ] `schema`
   - [ ] `siwe`
     - [x] Respect closed registration and refuse wallet sessions for a banned owner ([test](../../../adapters/sqlstore/siwe_test.go#L221))
     - [x] Delete the wallet credential when its owner unlinks or deletes the account ([test](../../../adapters/sqlstore/siwe_test.go#L246))
   - [x] `WalletAddress` ([test](../../../conformance/schema.test.mjs#L290))
     - [x] Match the table, all six fields, owner relationship and index in the three SQL dialects ([test](../../../conformance/schema.test.mjs#L290))
-  - [ ] `SIWEVerifyMessageArgs`
-  - [ ] `ENSLookupArgs`
-  - [ ] `ENSLookupResult`
+  - [x] `SIWEVerifyMessageArgs` ([test](../../../conformance/siwe-wallet.mjs#L84))
+    - [x] Bind callback input and the CACAO context to the consumed challenge ([test](../../../conformance/siwe-wallet.mjs#L84))
+  - [x] `ENSLookupArgs` ([test](../../../adapters/sqlstore/siwe_callbacks_test.go#L127))
+    - [x] Pass the address and signed chain of a new owner to the resolver ([test](../../../adapters/sqlstore/siwe_callbacks_test.go#L127))
+  - [x] `ENSLookupResult` ([test](../../../adapters/sqlstore/siwe_callbacks_test.go#L281))
+    - [x] Persist the resolver name and avatar in the new user profile ([test](../../../adapters/sqlstore/siwe_callbacks_test.go#L281))
 
 ## Sign In With Ethereum (SIWE)
 
@@ -58,9 +71,16 @@
         - [x] Apply a configured placeholder domain without verifying the user’s email ([test](../../../adapters/sqlstore/siwe_test.go#L281))
       - [ ] anonymous
         - [x] Establish a wallet-only identity and ignore contact email supplied in the signing request ([test](../../../conformance/siwe-wallet.mjs#L51))
-      - [ ] getNonce
-      - [ ] verifyMessage
-      - [ ] ensLookup
+      - [x] getNonce ([test](../../../conformance/siwe-wallet.mjs#L100))
+        - [x] Use a host-generated nonce in the released public client ([test](../../../conformance/siwe-wallet.mjs#L100))
+        - [x] Refuse concurrent duplicate challenges and reuse after consumption or restart ([test](../../../adapters/sqlstore/siwe_callbacks_test.go#L199))
+      - [x] verifyMessage ([test](../../../conformance/siwe-wallet.mjs#L83))
+        - [x] Pass the original signed bytes, checksummed address, chain ID and CACAO fields to the host verifier ([test](../../../conformance/siwe-wallet.mjs#L83))
+        - [x] Check relying party, chain and expiry before the verifier runs ([test](../../../adapters/sqlstore/siwe_callbacks_test.go#L222))
+        - [x] Keep contract identities separate across networks and EOA recovery ([test](../../../adapters/sqlstore/siwe_callbacks_test.go#L287))
+      - [x] ensLookup ([test](../../../conformance/siwe-wallet.mjs#L111))
+        - [x] Populate the new wallet user’s display name and avatar through the resolver ([test](../../../conformance/siwe-wallet.mjs#L111))
+        - [x] Keep established profiles intact and reject failed or canceled callbacks ([test](../../../adapters/sqlstore/siwe_callbacks_test.go#L277))
     - [x] Client Options ([test](../../../conformance/siwe-wallet.mjs#L28))
       - [x] Use both nonce aliases and sign in through the released client and a locally generated signing key ([test](../../../conformance/siwe-wallet.mjs#L28))
   - [x] Schema ([test](../../../conformance/schema.test.mjs#L290))

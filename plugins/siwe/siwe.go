@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/mail"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -20,6 +21,12 @@ type Options struct {
 	Chains []int64
 	// EmailDomainName sets the domain used for a new wallet account's placeholder email.
 	EmailDomainName string
+	// GetNonce supplies a cryptographically random, globally unique challenge.
+	GetNonce func(context.Context) (string, error)
+	// VerifyMessage is the host's final signature decision for the exact address and chain.
+	VerifyMessage func(context.Context, VerifyMessageArgs) (bool, error)
+	// ENSLookup supplies display-only metadata when registering a new owner.
+	ENSLookup func(context.Context, ENSLookupArgs) (ENSLookupResult, error)
 }
 
 type Login struct {
@@ -27,6 +34,9 @@ type Login struct {
 	ChainID                     int64
 	AllowSignUp                 bool
 	Existing                    bool
+	Contract                    bool
+	Profile                     ENSLookupResult
+	ValidUntil                  time.Time
 }
 
 type Store interface {
@@ -65,7 +75,11 @@ func New(o Options) (auth.Plugin, error) {
 	if emailDomain == "" {
 		emailDomain = "siwe.placeholder.invalid"
 	}
-	if a, err := mail.ParseAddress("wallet@" + emailDomain); len(emailDomain) > 210 || err != nil || a.Address != "wallet@"+emailDomain || strings.ContainsAny(emailDomain, "@[]") {
+	maxDomain := 210
+	if o.VerifyMessage != nil {
+		maxDomain = 200
+	} // Contract placeholders include a decimal chain ID.
+	if a, err := mail.ParseAddress("wallet@" + emailDomain); len(emailDomain) > maxDomain || err != nil || a.Address != "wallet@"+emailDomain || strings.ContainsAny(emailDomain, "@[]") {
 		return auth.Plugin{}, errors.New("siwe: invalid placeholder email domain")
 	}
 	chains := slices.Clone(o.Chains)
@@ -79,9 +93,22 @@ func New(o Options) (auth.Plugin, error) {
 		if len(c.Body) != 0 {
 			return nil, bad
 		}
-		now := time.Now().UTC()
+		ctx := c.Request.Context()
 		n := rand.Text()
-		if err := c.Store().(Store).SaveWalletNonce(c.Request.Context(), n, now, now.Add(15*time.Minute)); err != nil {
+		save := c.Store().(Store).SaveWalletNonce
+		if o.GetNonce != nil {
+			var err error
+			n, err = callHost(ctx, errNonceSource, func() (string, error) { return o.GetNonce(ctx) })
+			if err != nil {
+				return nil, err
+			}
+			if !validNonce(n) {
+				return nil, errNonceSource
+			}
+			save = c.Store().(CustomNonceStore).SaveCustomWalletNonce
+		}
+		now := time.Now().UTC()
+		if err := save(ctx, n, now, now.Add(15*time.Minute)); err != nil {
 			return nil, err
 		}
 		c.ResponseHeader.Set("Cache-Control", "no-store")
@@ -113,12 +140,24 @@ func New(o Options) (auth.Plugin, error) {
 		now := time.Now().UTC()
 		ctx := c.Request.Context()
 		store := c.Store().(Store)
-		taken, err := store.TakeWalletNonce(ctx, n, now)
-		if err != nil {
-			return nil, err
-		}
-		if !taken {
-			return nil, &auth.APIError{Status: 401, Code: "UNAUTHORIZED_INVALID_OR_EXPIRED_NONCE", Message: "Unauthorized: Invalid or expired nonce"}
+		var deadline time.Time
+		if o.VerifyMessage != nil || o.ENSLookup != nil {
+			var err error
+			deadline, err = store.(CallbackStore).TakeTimedWalletNonce(ctx, n, now)
+			if err != nil {
+				return nil, err
+			}
+			if deadline.IsZero() {
+				return nil, errNoNonce
+			}
+		} else {
+			taken, err := store.TakeWalletNonce(ctx, n, now)
+			if err != nil {
+				return nil, err
+			}
+			if !taken {
+				return nil, errNoNonce
+			}
 		}
 		m, err := parseMessage(lines, scheme, domain, now)
 		if err != nil {
@@ -127,20 +166,54 @@ func New(o Options) (auth.Plugin, error) {
 		if len(chains) > 0 && !slices.Contains(chains, m.chain) {
 			return nil, errMismatch
 		}
-		if !validSignature(text, signature, m.address) {
-			return nil, &auth.APIError{Status: 401, Code: "UNAUTHORIZED", Message: "Unauthorized: Invalid SIWE signature"}
+		contract, err := o.verifySignature(ctx, text, signature, m)
+		if err != nil {
+			return nil, err
 		}
+		emailLocal := strings.ToLower(m.address)
+		if contract {
+			emailLocal += "+" + strconv.FormatInt(m.chain, 10)
+		}
+		var profile ENSLookupResult
 		for range 2 {
-			id, err := store.WalletOwner(ctx, m.address)
+			var id string
+			if contract {
+				id, err = store.(ContractStore).ContractWalletOwner(ctx, m.address, m.chain)
+			} else {
+				id, err = store.WalletOwner(ctx, m.address)
+			}
 			if err != nil {
 				return nil, err
 			}
 			existing := id != ""
 			if !existing {
+				if !c.SignUpAllowed() {
+					return nil, &auth.APIError{Status: 403, Code: "SIGN_UP_DISABLED", Message: "Sign up is disabled"}
+				}
 				id = rand.Text()
+				if profile.Name == "" {
+					profile, err = o.profile(ctx, m)
+					if err != nil {
+						return nil, err
+					}
+				}
 			}
-			input := Login{Address: m.address, ChainID: m.chain, CandidateID: id, Existing: existing, Email: strings.ToLower(m.address) + "@" + emailDomain, AllowSignUp: c.SignUpAllowed()}
+			input := Login{Address: m.address, ChainID: m.chain, CandidateID: id, Existing: existing, Email: emailLocal + "@" + emailDomain, AllowSignUp: c.SignUpAllowed(), Contract: contract, Profile: profile}
+			input.ValidUntil = deadline
+			if !m.expiration.IsZero() && (input.ValidUntil.IsZero() || m.expiration.Before(input.ValidUntil)) {
+				input.ValidUntil = m.expiration
+			}
 			result, err := c.IssueSession(id, func(ctx context.Context, s auth.StoredSession) (auth.User, error) {
+				if err := ctx.Err(); err != nil {
+					return auth.User{}, err
+				}
+				now := time.Now()
+				if !deadline.IsZero() && !now.Before(deadline) {
+					return auth.User{}, errNoNonce
+				}
+				if !m.expiration.IsZero() && !now.Before(m.expiration) {
+					return auth.User{}, errExpired
+				}
 				return store.FinishWalletLogin(ctx, input, s)
 			})
 			if errors.Is(err, ErrOwnerChanged) {
@@ -153,13 +226,7 @@ func New(o Options) (auth.Plugin, error) {
 		}
 		return nil, errMismatch
 	}
-	return auth.Plugin{ID: "siwe", ValidateStore: func(s auth.Store) error {
-		w, ok := s.(Store)
-		if !ok {
-			return errors.New("siwe: wallet storage is required")
-		}
-		return w.CheckWalletSchema(context.Background())
-	}, Endpoints: []auth.Endpoint{
+	return auth.Plugin{ID: "siwe", ValidateStore: o.checkStore, Endpoints: []auth.Endpoint{
 		{Method: http.MethodPost, Path: "/siwe/nonce", Handler: nonce},
 		{Method: http.MethodPost, Path: "/siwe/get-nonce", Handler: nonce},
 		{Method: http.MethodPost, Path: "/siwe/verify", Handler: verify},

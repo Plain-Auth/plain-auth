@@ -9488,6 +9488,21 @@
       "label": "Refuse a database account with an ambiguous wallet binding",
       "test": "adapters/sqlstore/siwe_test.go",
       "marker": "ambiguous imported wallet accounts issued a session"
+    },
+    {
+      "label": "Reject a canceled request before it creates an account or issues a session",
+      "test": "adapters/sqlstore/siwe_callbacks_test.go",
+      "marker": "cancelled callback issued a session"
+    },
+    {
+      "label": "Keep verified contract identities separate from EOA associations",
+      "test": "adapters/sqlstore/siwe_callbacks_test.go",
+      "marker": "EOA recovery adopted a chain-bound contract"
+    },
+    {
+      "label": "Recheck a signed or stored expiration after a slow host verdict",
+      "test": "adapters/sqlstore/siwe_callbacks_test.go",
+      "marker": "expiry must be rechecked after a slow host verdict"
     }
   ],
   "docs/content/docs/plugins/siwe.mdx#L104": [
@@ -9745,6 +9760,118 @@
       "label": "Require transactional reauthorization from custom stores only when profile hooks are enabled",
       "test": "adapters/sqlstore/organization_profile_hooks_test.go",
       "marker": "func TestOrganizationProfileHooksRequireGuardedStore("
+    }
+  ],
+  "plugin-symbol/siwe/SIWEPluginOptions/getNonce": [
+    {
+      "label": "Use a host-generated nonce in the released public client",
+      "test": "conformance/siwe-wallet.mjs",
+      "marker": "assert.match(nonce, /^Custom/)",
+      "complete": true
+    },
+    {
+      "label": "Refuse concurrent duplicate challenges and reuse after consumption or restart",
+      "test": "adapters/sqlstore/siwe_callbacks_test.go",
+      "marker": "concurrent generators issued a repeated nonce"
+    }
+  ],
+  "docs/content/docs/plugins/siwe.mdx#L160/getNonce": [
+    {
+      "label": "Use a host-generated nonce in the released public client",
+      "test": "conformance/siwe-wallet.mjs",
+      "marker": "assert.match(nonce, /^Custom/)",
+      "complete": true
+    },
+    {
+      "label": "Refuse concurrent duplicate challenges and reuse after consumption or restart",
+      "test": "adapters/sqlstore/siwe_callbacks_test.go",
+      "marker": "concurrent generators issued a repeated nonce"
+    }
+  ],
+  "plugin-symbol/siwe/SIWEPluginOptions/verifyMessage": [
+    {
+      "label": "Pass the original signed bytes, checksummed address, chain ID and CACAO fields to the host verifier",
+      "test": "conformance/siwe-wallet.mjs",
+      "marker": "async verifyMessage({ address, chainId, message, signature, cacao })",
+      "complete": true
+    },
+    {
+      "label": "Check relying party, chain and expiry before the verifier runs",
+      "test": "adapters/sqlstore/siwe_callbacks_test.go",
+      "marker": "invalid relying party, chain or expiry reached the host verifier"
+    },
+    {
+      "label": "Keep contract identities separate across networks and EOA recovery",
+      "test": "adapters/sqlstore/siwe_callbacks_test.go",
+      "marker": "contracts at the same address on different chains shared an owner"
+    }
+  ],
+  "docs/content/docs/plugins/siwe.mdx#L161/verifyMessage": [
+    {
+      "label": "Pass the original signed bytes, checksummed address, chain ID and CACAO fields to the host verifier",
+      "test": "conformance/siwe-wallet.mjs",
+      "marker": "async verifyMessage({ address, chainId, message, signature, cacao })",
+      "complete": true
+    },
+    {
+      "label": "Check relying party, chain and expiry before the verifier runs",
+      "test": "adapters/sqlstore/siwe_callbacks_test.go",
+      "marker": "invalid relying party, chain or expiry reached the host verifier"
+    },
+    {
+      "label": "Keep contract identities separate across networks and EOA recovery",
+      "test": "adapters/sqlstore/siwe_callbacks_test.go",
+      "marker": "contracts at the same address on different chains shared an owner"
+    }
+  ],
+  "plugin-symbol/siwe/SIWEPluginOptions/ensLookup": [
+    {
+      "label": "Populate the new wallet user’s display name and avatar through the resolver",
+      "test": "conformance/siwe-wallet.mjs",
+      "marker": "assert.equal(user.name, \"fixture.eth\")",
+      "complete": true
+    },
+    {
+      "label": "Keep established profiles intact and reject failed or canceled callbacks",
+      "test": "adapters/sqlstore/siwe_callbacks_test.go",
+      "marker": "returning contract owner reran ENS"
+    }
+  ],
+  "docs/content/docs/plugins/siwe.mdx#L162/ensLookup": [
+    {
+      "label": "Populate the new wallet user’s display name and avatar through the resolver",
+      "test": "conformance/siwe-wallet.mjs",
+      "marker": "assert.equal(user.name, \"fixture.eth\")",
+      "complete": true
+    },
+    {
+      "label": "Keep established profiles intact and reject failed or canceled callbacks",
+      "test": "adapters/sqlstore/siwe_callbacks_test.go",
+      "marker": "returning contract owner reran ENS"
+    }
+  ],
+  "plugin-symbol/siwe/SIWEVerifyMessageArgs": [
+    {
+      "label": "Bind callback input and the CACAO context to the consumed challenge",
+      "test": "conformance/siwe-wallet.mjs",
+      "marker": "assert.deepEqual(cacao,",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/siwe/ENSLookupArgs": [
+    {
+      "label": "Pass the address and signed chain of a new owner to the resolver",
+      "test": "adapters/sqlstore/siwe_callbacks_test.go",
+      "marker": "Name: fmt.Sprintf(\"wallet-%d.eth\", a.ChainID)",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/siwe/ENSLookupResult": [
+    {
+      "label": "Persist the resolver name and avatar in the new user profile",
+      "test": "adapters/sqlstore/siwe_callbacks_test.go",
+      "marker": "ENS profile was not persisted",
+      "complete": true
     }
   ]
 }

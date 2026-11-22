@@ -14,9 +14,10 @@ import (
 )
 
 type message struct {
-	address string
-	chain   int64
-	nonce   string
+	address    string
+	chain      int64
+	nonce      string
+	expiration time.Time
 }
 
 func validNonce(s string) bool {
@@ -157,6 +158,7 @@ func parseMessage(lines []string, scheme, domain string, now time.Time) (message
 		if err != nil {
 			return out, errMismatch
 		}
+		out.expiration = end
 		if !now.Before(end) {
 			return out, errExpired
 		}

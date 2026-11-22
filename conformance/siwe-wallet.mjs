@@ -69,3 +69,69 @@ export async function walletSignIn(t, { reference, goFixture, instrument }) {
     assert.equal((await c.getSession()).data, null);
   }
 }
+
+export async function walletCallbacks(t, { reference, goFixture, instrument }) {
+  const signer = privateKeyToAccount(generatePrivateKey());
+  const contract = privateKeyToAccount(generatePrivateKey()).address;
+  const go = await goFixture(t, ["siwe"], {
+    CONFORMANCE_WALLET_CONTROLLER: signer.address,
+    CONFORMANCE_WALLET_CONTRACT: contract,
+  });
+  const callbacks = siwe({
+    domain,
+    getNonce: async () => "Custom" + randomBytes(20).toString("hex"),
+    async verifyMessage({ address, chainId, message, signature, cacao }) {
+      assert.deepEqual(cacao, {
+        h: { t: "caip122" }, p: { domain, aud: domain, nonce: message.match(/^Nonce: ([A-Za-z0-9]+)$/m)[1], iss: domain, version: "1" },
+        s: { t: "eip191", s: signature },
+      });
+      return address === contract && chainId === 1 && verifyMessage({ address: signer.address, message, signature });
+    },
+    ensLookup: async ({ walletAddress }) => {
+      assert.equal(walletAddress, contract);
+      return { name: "fixture.eth", avatar: "https://wallet.example.test/avatar.png" };
+    },
+  });
+  const ref = await reference(t, [callbacks]);
+  for (const runtime of [ref, go]) {
+    const c = instrument(runtime, [siweClient()]).client;
+    for (const chainId of [137, 1]) {
+      const { data: { nonce } } = await c.siwe.nonce();
+      assert.match(nonce, /^Custom/);
+      const message = signingText(contract, nonce, chainId);
+      const signature = await signer.signMessage({ message });
+      const proof = await c.siwe.verify({ message, signature });
+      if (chainId !== 1) {
+        assert.equal(proof.error.status, 401);
+        assert.equal((await c.getSession()).data, null);
+      } else {
+        assert.equal(proof.error, null, JSON.stringify(proof.error));
+        assert.equal(proof.data.user.walletAddress, contract);
+        const user = (await c.getSession()).data.user;
+        assert.equal(user.name, "fixture.eth");
+        assert.equal(user.image, "https://wallet.example.test/avatar.png");
+      }
+      const replay = await c.siwe.verify({ message, signature });
+      assert.equal(replay.error.code, "UNAUTHORIZED_INVALID_OR_EXPIRED_NONCE");
+    }
+  }
+
+  const sharedDB = new DatabaseSync(go.databasePath);
+  t.after(() => sharedDB.close());
+  const sharedReference = await reference(t, [callbacks], { database: sharedDB });
+  for (const [issuer, verifier] of [[sharedReference, go], [go, sharedReference]]) {
+    const issuerClient = instrument(issuer, [siweClient()]).client;
+    const verifierClient = instrument(verifier, [siweClient()]).client;
+    const challenge = await issuerClient.siwe.nonce();
+    assert.equal(challenge.error, null);
+    assert.match(challenge.data.nonce, /^Custom/);
+    const message = signingText(contract, challenge.data.nonce, 1);
+    const signature = await signer.signMessage({ message });
+    const result = await verifierClient.siwe.verify({ message, signature });
+    assert.equal(result.error, null, JSON.stringify(result.error));
+    assert.equal(result.data.user.walletAddress, contract);
+    assert.equal((await verifierClient.getSession()).data.user.name, "fixture.eth");
+    const replay = await issuerClient.siwe.verify({ message, signature });
+    assert.equal(replay.error.code, "UNAUTHORIZED_INVALID_OR_EXPIRED_NONCE");
+  }
+}

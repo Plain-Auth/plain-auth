@@ -37,7 +37,7 @@ func (s *Store) prepareAPIKeyLedger(ctx context.Context, rescan bool) error {
 				return err
 			}
 		}
-		if err := s.checkAPIKeyLedger(ctx, db); err != nil {
+		if err := s.checkDigestLedger(ctx, db, "plainauth_api_key_digest"); err != nil {
 			return err
 		}
 		// A one-byte completion marker cannot collide with a 32-byte fingerprint.
@@ -56,7 +56,7 @@ func (s *Store) prepareAPIKeyLedger(ctx context.Context, rescan bool) error {
 		if err := s.backfillAPIKeyLedger(ctx, db); err != nil {
 			return err
 		}
-		return s.mergeAPIKeyDigests(ctx, db, []any{version})
+		return s.mergeDigests(ctx, db, "plainauth_api_key_digest", []any{version})
 
 	})
 	if err == nil {
@@ -106,7 +106,7 @@ func (s *Store) backfillAPIKeyLedger(ctx context.Context, db migrationConnection
 		if len(values) == 0 {
 			return nil
 		}
-		if err := s.mergeAPIKeyDigests(ctx, db, values); err != nil {
+		if err := s.mergeDigests(ctx, db, "plainauth_api_key_digest", values); err != nil {
 			return err
 		}
 		if len(values) < chunk {
@@ -116,10 +116,11 @@ func (s *Store) backfillAPIKeyLedger(ctx context.Context, db migrationConnection
 	}
 }
 
-func (s *Store) mergeAPIKeyDigests(ctx context.Context, db migrationConnection, values []any) error {
-	q := `INSERT INTO "plainauth_api_key_digest" ("digest") VALUES ` + strings.TrimSuffix(strings.Repeat("(?),", len(values)), ",")
+// table is always an adapter-owned constant.
+func (s *Store) mergeDigests(ctx context.Context, db migrationConnection, table string, values []any) error {
+	q := `INSERT INTO "` + table + `" ("digest") VALUES ` + strings.TrimSuffix(strings.Repeat("(?),", len(values)), ",")
 	if s.dialect == "mysql" {
-		q += ` ON DUPLICATE KEY UPDATE "digest"="plainauth_api_key_digest"."digest"`
+		q += ` ON DUPLICATE KEY UPDATE "digest"="` + table + `"."digest"`
 	} else {
 		q += ` ON CONFLICT ("digest") DO NOTHING`
 	}
@@ -136,27 +137,27 @@ func (s *Store) ensureAPIKeyLedger(ctx context.Context) error {
 
 // An existing extension table must enforce a whole, binary primary key. A table
 // with the same name and a nonunique or text-collated column cannot reserve keys.
-func (s *Store) checkAPIKeyLedger(ctx context.Context, db migrationConnection) error {
+func (s *Store) checkDigestLedger(ctx context.Context, db migrationConnection, table string) error {
 	var query string
 	switch s.dialect {
 	case "sqlite":
-		query = `SELECT count(*)=1 AND count(CASE WHEN name='digest' AND upper(type)='BLOB' AND pk=1 AND "notnull"=1 THEN 1 END)=1 FROM pragma_table_info('plainauth_api_key_digest')`
+		query = `SELECT count(*)=1 AND count(CASE WHEN name='digest' AND upper(type)='BLOB' AND pk=1 AND "notnull"=1 THEN 1 END)=1 FROM pragma_table_info(?)`
 	case "postgres":
 		query = `SELECT EXISTS(SELECT 1 FROM pg_constraint pk JOIN pg_attribute col ON col.attrelid=pk.conrelid AND pk.conkey=ARRAY[col.attnum]
-		WHERE pk.conrelid=to_regclass('plainauth_api_key_digest') AND pk.contype='p' AND col.attname='digest' AND col.atttypid='bytea'::regtype AND col.attnotnull)`
+		WHERE pk.conrelid=to_regclass(?) AND pk.contype='p' AND col.attname='digest' AND col.atttypid='bytea'::regtype AND col.attnotnull)`
 	case "mysql":
 		query = `SELECT EXISTS(SELECT 1 FROM information_schema.columns c JOIN information_schema.statistics i
 		ON i.table_schema=c.table_schema AND i.table_name=c.table_name AND i.column_name=c.column_name
-		WHERE c.table_schema=DATABASE() AND c.table_name='plainauth_api_key_digest' AND c.column_name='digest' AND c.data_type='varbinary' AND c.character_maximum_length=32
+		WHERE c.table_schema=DATABASE() AND c.table_name=? AND c.column_name='digest' AND c.data_type='varbinary' AND c.character_maximum_length=32
 		AND i.index_name='PRIMARY' AND i.seq_in_index=1 AND i.sub_part IS NULL AND NOT EXISTS (SELECT 1 FROM information_schema.statistics j
 		WHERE j.table_schema=c.table_schema AND j.table_name=c.table_name AND j.index_name='PRIMARY' AND j.seq_in_index>1))`
 	}
 	var valid bool
-	if err := db.QueryRowContext(ctx, query).Scan(&valid); err != nil {
+	if err := db.QueryRowContext(ctx, s.bind(query), table).Scan(&valid); err != nil {
 		return err
 	}
 	if !valid {
-		return errors.New("sqlstore: invalid API key digest ledger; a full binary digest primary key is required")
+		return errors.New("sqlstore: invalid digest ledger; a full binary digest primary key is required")
 	}
 	return nil
 }

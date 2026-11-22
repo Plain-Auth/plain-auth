@@ -32,12 +32,43 @@ func walletLock(purpose, id string) emailOTPKey {
 }
 
 func (s *Store) SaveWalletNonce(ctx context.Context, nonce string, now, expires time.Time) error {
+	return s.saveWalletNonce(ctx, nonce, now, expires, false)
+}
+
+func (s *Store) saveWalletNonce(ctx context.Context, nonce string, now, expires time.Time, custom bool) error {
 	id := walletLock("nonce", nonce).digest[:36]
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
+	history := custom
+	if !history {
+		history, err = s.hasKeyOwnerTable(ctx, tx, "plainauth_siwe_nonce_digest")
+		if err != nil {
+			return err
+		}
+	}
+	if history {
+		digest := sha256.Sum256([]byte(nonce))
+		if _, err = tx.ExecContext(ctx, s.bind(`INSERT INTO "plainauth_siwe_nonce_digest" ("digest") VALUES (?)`), digest[:]); err != nil {
+			if duplicateConstraint(err) {
+				return &auth.APIError{Status: 500, Code: "SIWE_INVALID_NONCE", Message: "The nonce generator repeated a previous challenge"}
+			}
+			return err
+		}
+		var live bool
+		if err = tx.QueryRowContext(ctx, s.bind(`SELECT EXISTS (SELECT 1 FROM "verification" WHERE "identifier"=?)`), "siwe:"+nonce).Scan(&live); err != nil {
+			return err
+		}
+		if live {
+			// Retain this discovered legacy value even after its live row is consumed.
+			if err := tx.Commit(); err != nil {
+				return err
+			}
+			return &auth.APIError{Status: 500, Code: "SIWE_INVALID_NONCE", Message: "The nonce generator repeated a previous challenge"}
+		}
+	}
 	if _, err := tx.ExecContext(ctx, s.bind(`DELETE FROM "verification" WHERE "identifier" LIKE 'siwe:%' AND "expiresAt"<=?`), s.date(now)); err != nil {
 		return err
 	}
@@ -49,23 +80,31 @@ func (s *Store) SaveWalletNonce(ctx context.Context, nonce string, now, expires 
 }
 
 func (s *Store) TakeWalletNonce(ctx context.Context, nonce string, now time.Time) (bool, error) {
-	var taken bool
+	deadline, err := s.TakeTimedWalletNonce(ctx, nonce, now)
+	return !deadline.IsZero(), err
+}
+
+func (s *Store) TakeTimedWalletNonce(ctx context.Context, nonce string, now time.Time) (time.Time, error) {
+	var taken time.Time
 	err := s.emailOTPTransaction(ctx, walletLock("nonce", nonce), func(tx *sql.Tx) (error, error) {
-		taken = false
-		rows, err := tx.QueryContext(ctx, s.readForUpdate(`SELECT "id","identifier","value" FROM "verification" WHERE "identifier"=? AND "expiresAt">?`), "siwe:"+nonce, s.date(now))
+		taken = time.Time{}
+		rows, err := tx.QueryContext(ctx, s.readForUpdate(`SELECT "id","identifier","value","expiresAt" FROM "verification" WHERE "identifier"=? AND "expiresAt">?`), "siwe:"+nonce, s.date(now))
 		if err != nil {
 			return nil, err
 		}
 		var ids []string
+		var expiry time.Time
 		for rows.Next() {
 			var id, identifier, value string
-			if err := rows.Scan(&id, &identifier, &value); err != nil {
+			var end time.Time
+			if err := rows.Scan(&id, &identifier, &value, &end); err != nil {
 				rows.Close()
 				return nil, err
 			}
 			// Verify byte equality even on case-insensitive database collations.
 			if identifier == "siwe:"+nonce && value == nonce {
 				ids = append(ids, id)
+				expiry = end
 			}
 		}
 		err = rows.Err()
@@ -82,7 +121,9 @@ func (s *Store) TakeWalletNonce(ctx context.Context, nonce string, now time.Time
 			if err != nil {
 				return nil, err
 			}
-			taken = len(ids) == 1 && n == 1
+			if len(ids) == 1 && n == 1 {
+				taken = expiry
+			}
 		}
 		return nil, nil
 	})
@@ -123,34 +164,39 @@ func (s *Store) WalletOwner(ctx context.Context, address string) (string, error)
 
 // The public account schema permits duplicate provider subjects. Read every
 // matching record and refuse ambiguous or collation-equivalent imported data.
-func (s *Store) checkWalletAccount(ctx context.Context, tx *sql.Tx, subject, owner string, matched bool) error {
-	rows, err := tx.QueryContext(ctx, s.bind(`SELECT "providerId","accountId","userId" FROM "account" WHERE "providerId"='siwe' AND "accountId"=?`), subject)
+func (s *Store) walletAccountOwner(ctx context.Context, db walletQueryer, subject string, contract bool) (string, error) {
+	rows, err := db.QueryContext(ctx, s.bind(`SELECT "id","providerId","accountId","userId" FROM "account" WHERE "providerId"='siwe' AND "accountId"=?`), subject)
 	if err != nil {
-		return err
+		return "", err
 	}
 	defer rows.Close()
-	seen := false
+	var owner string
 	for rows.Next() {
-		var provider, account, user string
-		if err := rows.Scan(&provider, &account, &user); err != nil {
-			return err
+		var id, provider, account, user string
+		if err := rows.Scan(&id, &provider, &account, &user); err != nil {
+			return "", err
 		}
-		if seen || !matched || provider != "siwe" || account != subject || user != owner {
-			return errors.New("siwe: ambiguous wallet account binding")
+		if owner != "" || user == "" || provider != "siwe" || account != subject || contract && id != walletLock("contract", subject).digest[:36] {
+			return "", errors.New("siwe: ambiguous wallet account binding")
 		}
-		seen = true
+		owner = user
 	}
-	if err := rows.Err(); err != nil {
-		return err
-	}
-	if matched != seen {
-		return errors.New("siwe: missing wallet account binding")
-	}
-	return nil
+	return owner, rows.Err()
+}
+
+func contractSubject(address string, chain int64) string {
+	return "contract:" + strconv.FormatInt(chain, 10) + ":" + address
+}
+
+func (s *Store) ContractWalletOwner(ctx context.Context, address string, chain int64) (string, error) {
+	return s.walletAccountOwner(ctx, s.db, contractSubject(address, chain), true)
 }
 
 func (s *Store) FinishWalletLogin(ctx context.Context, in siwe.Login, session auth.StoredSession) (auth.User, error) {
 	var user auth.User
+	if in.Profile.Name == "" {
+		in.Profile.Name = in.Address
+	}
 	if session.UserID == "" || session.UserID != in.CandidateID {
 		return user, auth.ErrNotFound
 	}
@@ -160,23 +206,34 @@ func (s *Store) FinishWalletLogin(ctx context.Context, in siwe.Login, session au
 				return nil, err
 			}
 		}
-		owner, matched, err := s.walletMembership(ctx, tx, in.Address, in.ChainID)
+		acct := in.Address + ":" + strconv.FormatInt(in.ChainID, 10)
+		if in.Contract {
+			acct = contractSubject(in.Address, in.ChainID)
+		}
+		owner, err := s.walletAccountOwner(ctx, tx, acct, in.Contract)
 		if err != nil {
 			return nil, err
 		}
+		matched := owner != ""
+		if !in.Contract {
+			walletOwner, hasChain, err := s.walletMembership(ctx, tx, in.Address, in.ChainID)
+			if err != nil {
+				return nil, err
+			}
+			if matched != hasChain || matched && owner != walletOwner {
+				return nil, errors.New("siwe: inconsistent wallet account binding")
+			}
+			owner = walletOwner
+		}
 		if owner != "" && owner != in.CandidateID || owner == "" && in.Existing {
 			return siwe.ErrOwnerChanged, nil
-		}
-		acct := in.Address + ":" + strconv.FormatInt(in.ChainID, 10)
-		if err := s.checkWalletAccount(ctx, tx, acct, owner, matched); err != nil {
-			return nil, err
 		}
 		now := s.date(session.CreatedAt)
 		if owner == "" {
 			if !in.AllowSignUp {
 				return &auth.APIError{Status: 403, Code: "SIGN_UP_DISABLED", Message: "Sign up is disabled"}, nil
 			}
-			_, err = tx.ExecContext(ctx, s.bind(`INSERT INTO "user" ("id","name","email","emailVerified","image","createdAt","updatedAt") VALUES(?,?,?,?,'',?,?)`), in.CandidateID, in.Address, in.Email, false, now, now)
+			_, err = tx.ExecContext(ctx, s.bind(`INSERT INTO "user" ("id","name","email","emailVerified","image","createdAt","updatedAt") VALUES(?,?,?,?,?,?,?)`), in.CandidateID, in.Profile.Name, in.Email, false, in.Profile.Avatar, now, now)
 			if duplicateConstraint(err) {
 				return nil, &auth.APIError{Status: 409, Code: "WALLET_ACCOUNT_CONFLICT", Message: "Unable to register this wallet"}
 			}
@@ -184,13 +241,22 @@ func (s *Store) FinishWalletLogin(ctx context.Context, in siwe.Login, session au
 				return nil, err
 			}
 		}
-		if !matched {
+		if !matched && !in.Contract {
 			if _, err = tx.ExecContext(ctx, s.bind(`INSERT INTO "walletAddress" ("id","userId","address","chainId","isPrimary","createdAt") VALUES(?,?,?,?,?,?)`), rand.Text(), in.CandidateID, in.Address, in.ChainID, owner == "", now); err != nil {
 				return nil, err
 			}
-			if _, err = tx.ExecContext(ctx, s.bind(`INSERT INTO "account" ("id","providerId","accountId","userId","createdAt","updatedAt") VALUES(?,'siwe',?,?,?,?)`), rand.Text(), acct, in.CandidateID, now, now); err != nil {
+		}
+		if !matched {
+			id := rand.Text()
+			if in.Contract {
+				id = walletLock("contract", acct).digest[:36]
+			}
+			if _, err = tx.ExecContext(ctx, s.bind(`INSERT INTO "account" ("id","providerId","accountId","userId","createdAt","updatedAt") VALUES(?,'siwe',?,?,?,?)`), id, acct, in.CandidateID, now, now); err != nil {
 				return nil, err
 			}
+		}
+		if !in.ValidUntil.IsZero() && !time.Now().Before(in.ValidUntil) {
+			return nil, &auth.APIError{Status: 401, Code: "UNAUTHORIZED", Message: "Wallet verification expired"}
 		}
 		if err = s.insertSession(ctx, tx, session); err != nil {
 			return nil, err

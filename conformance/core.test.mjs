@@ -1598,3 +1598,8 @@ test("the released organization client observes validated input, merged changes 
   const { compareOrganizationProfileHooks } = await import("./organization-profile-hooks.mjs");
   await compareOrganizationProfileHooks(t, { reference, goFixture, instrument });
 });
+
+test("Ethereum host callbacks bind the signed address and chain and populate the first wallet profile", async t => {
+  const { walletCallbacks } = await import("./siwe-wallet.mjs");
+  await walletCallbacks(t, { reference, goFixture, instrument });
+});
