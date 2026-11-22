@@ -42,3 +42,51 @@ With Gin, use `router.Any(discovery.Path(), gin.WrapH(discovery))`. With Gorilla
 - **Separate services.** Set `Resource` and `AuthorizationServers` explicitly. For multiple issuers, put additional supported scopes in `ExternalScopes`. Every advertised scope must appear in the local or external list. The `openid` scope belongs to the authorization server. Supply an empty list to publish an explicit JSON array.
 - **Proof of possession.** Set `DefaultDPoPSigningAlgorithms` to the algorithms your verifier accepts. The default list is EdDSA, ES256, ES512, PS256 and RS256. `ResourceMetadata.DPoPSigningAlgorithms` overrides it for an individual API. An empty list advertises no proof algorithms. Set `DPoPBoundAccessTokensRequired` to a pointer to true only when the API enforces that requirement.
 - **Other metadata.** The document can publish a resource JWKS URL, response-signing algorithms, documentation and policy links, supported authorization detail types, and certificate-bound token capability. For localized or application-specific fields, use `DiscoveryOptions.Extra` with a language-tagged name such as `resource_name#fr` and a JSON string value. Standard fields use their typed Go options. [Metadata and validation tests](../plugins/oauthprovider/discovery_test.go)
+
+## Respond to a failed access-token check
+
+Use `NewResourceChallenges` to send clients from a protected route to its discovery document. Your token verifier supplies the public failure message, status, and OAuth error code. A request that presents a DPoP token receives a DPoP challenge. A request with missing bearer credentials receives a metadata pointer and optional scope hints. A verified token with insufficient privileges can receive a challenge naming the scopes it lacks. [Bearer challenges, RFC 6750 §3](https://www.rfc-editor.org/rfc/rfc6750.html#section-3) · [DPoP challenges, RFC 9449 §7](https://www.rfc-editor.org/rfc/rfc9449.html#section-7)
+
+This middleware accepts an application verifier that returns a zero status on success. An ordinary access denial uses status 403. For a scope failure, set status 403, code `insufficient_scope`, and `MissingScopes`. For an expired bearer token, set status 401 and code `invalid_token`.
+
+```go
+func protectReports(next http.Handler, verify func(*http.Request) (oauthprovider.ResourceFailure, error)) (http.Handler, error) {
+    challenges, err := oauthprovider.NewResourceChallenges([]string{"https://api.example.com/reports"}, oauthprovider.ChallengeOptions{
+        Scopes: []string{"reports:read"},
+        DPoPSigningAlgorithms: []string{"ES256"},
+    })
+    if err != nil {
+        return nil, err
+    }
+    return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+        failure, err := verify(r)
+        if err != nil {
+            http.Error(w, "Token verification unavailable", http.StatusServiceUnavailable)
+            return
+        }
+        if failure.Status == 0 {
+            next.ServeHTTP(w, r)
+            return
+        }
+        written, err := challenges.Write(w, r, failure)
+        if written {
+            return
+        }
+        if err != nil {
+            http.Error(w, "Invalid challenge configuration", http.StatusInternalServerError)
+            return
+        }
+        http.Error(w, http.StatusText(failure.Status), failure.Status)
+    }), nil
+}
+```
+
+| Verifier result | What the client receives |
+| --- | --- |
+| Missing bearer credentials | HTTP 401 with a Bearer challenge, a metadata URL for each protected resource, and any configured scope hint |
+| Expired or invalid bearer token | HTTP 401 with `invalid_token` and the public description |
+| Invalid DPoP proof or an expired DPoP token | HTTP 401 with a DPoP challenge and the verifier’s configured proof algorithms |
+| Insufficient scopes | HTTP 403 with `insufficient_scope` and the missing scopes in the presented scheme |
+| Ordinary permission denial or service failure | The application handles the original failure and status |
+
+For an opaque identifier such as `urn:example:reports`, supply its public HTTPS URL in `ChallengeOptions.MetadataMappings`. Additional resources generate separate Bearer challenges in the configured order. Browsers can read `WWW-Authenticate` through the exposed response header when the host permits the requesting origin. The JSON error body retains the public description, and the response header formats it for HTTP. [HTTP comparison tests](../conformance/resource-challenges.mjs) · [Go TLS and configuration tests](../plugins/oauthprovider/challenge_test.go)

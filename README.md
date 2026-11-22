@@ -128,7 +128,7 @@ Go records the resolved commit in the consuming project’s `go.mod`. The module
 | Enroll an authenticator and manage backup codes | [Two-factor authentication](docs/2fa.md) |
 | Generate optional organization, team, passkey, rate-limit, subscription, and two-factor tables | [Schema profiles](docs/schema.md) |
 | Require a CAPTCHA verdict on selected routes | [CAPTCHA providers](docs/captcha.md) |
-| Publish OAuth issuers and scopes for your protected API | [Protected-resource discovery](docs/oauth-resource-discovery.md) |
+| Publish OAuth issuers and scopes, and return Bearer or DPoP challenges from a protected API | [Resource discovery and challenges](docs/oauth-resource-discovery.md) |
 | Issue signed service tokens and publish verification keys | [JWT and JWKS](docs/jwt.md) |
 | Check new passwords against a breached-password service | [Password screening](docs/password-checks.md) |
 | Configure profile updates, password reset, and verification email | [Account management and recovery](docs/account.md) |

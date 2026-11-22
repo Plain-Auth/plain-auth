@@ -10912,5 +10912,30 @@
       "test": "conformance/resource-discovery.mjs",
       "marker": "export async function compareResourceDiscovery("
     }
+  ],
+  "plugin-symbol/oauth-provider/createResourceServerChallenge": [
+    {
+      "label": "Compare Bearer and DPoP challenges, required scopes, public errors, metadata mappings and ordinary denials over HTTP",
+      "test": "conformance/resource-challenges.mjs",
+      "marker": "export async function compareResourceChallenges(",
+      "complete": true
+    },
+    {
+      "label": "Preserve application headers and JSON descriptions while formatting challenges for HTTP over TLS",
+      "test": "plugins/oauthprovider/challenge_test.go",
+      "marker": "func TestResourceChallengeThroughHTTP("
+    },
+    {
+      "label": "Reject invalid configuration and leave the response untouched for unhandled errors",
+      "test": "plugins/oauthprovider/challenge_test.go",
+      "marker": "func TestResourceChallengeRejectsInvalidConfiguration("
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/resource-server.mdx#L10": [
+    {
+      "label": "Return a browser-readable challenge for a missing or invalid token on an application route",
+      "test": "conformance/resource-challenges.mjs",
+      "marker": "[\"expired bearer\","
+    }
   ]
 }

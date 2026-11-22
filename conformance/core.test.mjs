@@ -1739,3 +1739,8 @@ test("Go protected-resource discovery agrees with the OAuth resource client", as
   const { compareResourceDiscovery } = await import("./resource-discovery.mjs");
   await compareResourceDiscovery(t, goFixture);
 });
+
+test("protected APIs return the same Bearer and DPoP challenges as the released provider", async t => {
+  const { compareResourceChallenges } = await import("./resource-challenges.mjs");
+  await compareResourceChallenges(t, goFixture);
+});

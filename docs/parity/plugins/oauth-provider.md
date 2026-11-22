@@ -93,7 +93,10 @@
   - [ ] `OAuthClientRegistrationResult`
   - [ ] `RegisterClientMetadataDocumentInput`
   - [ ] `registerClientMetadataDocument`
-  - [ ] `createResourceServerChallenge`
+  - [x] `createResourceServerChallenge` ([test](../../../conformance/resource-challenges.mjs#L6))
+    - [x] Compare Bearer and DPoP challenges, required scopes, public errors, metadata mappings and ordinary denials over HTTP ([test](../../../conformance/resource-challenges.mjs#L6))
+    - [x] Preserve application headers and JSON descriptions while formatting challenges for HTTP over TLS ([test](../../../plugins/oauthprovider/challenge_test.go#L13))
+    - [x] Reject invalid configuration and leave the response untouched for unhandled errors ([test](../../../plugins/oauthprovider/challenge_test.go#L63))
   - [ ] `getOAuthProviderApi`
   - [ ] `StoreTokenType`
   - [ ] `Scope`
@@ -428,6 +431,7 @@
 
 - [ ] Protect your API
   - [ ] Verify access tokens
+    - [x] Return a browser-readable challenge for a missing or invalid token on an application route ([test](../../../conformance/resource-challenges.mjs#L27))
   - [ ] JWT or opaque tokens
     - [ ] How the API verifies it
     - [ ] Cost per request

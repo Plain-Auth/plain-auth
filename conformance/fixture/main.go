@@ -573,6 +573,9 @@ func main() {
 		log.Fatal(err)
 	}
 	var handler http.Handler = auth
+	if config := os.Getenv("CONFORMANCE_RESOURCE_CHALLENGES"); config != "" {
+		handler = resourceChallengeFixture(config, handler)
+	}
 	if discoveryConfig != "" {
 		var config struct {
 			Metadata oauthprovider.ResourceMetadata
