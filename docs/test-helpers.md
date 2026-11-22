@@ -84,6 +84,24 @@ if member.Role != "admin" {
 
 `DeleteOrganization` is idempotent and runs in one database transaction. It removes local memberships, invitations, teams, team memberships and current selections, plus tenant-owned API keys, billing subscriptions and billing receipts. An account with the same reference ID retains its own credentials and subscriptions. The fixture returns an actionable error if a managed SSO provider still names the organization, or if an imported key or billing record has ambiguous ownership. Delete the provider using its management API or resolve the ambiguous local records before retrying. Custom plugin data, external key storage and remote provider resources require their own test teardown. Register cleanup before closing the fixture database. [SQL lifecycle and isolation tests](../adapters/sqlstore/organization_fixtures_test.go)
 
+## Supply additional session fields
+
+Pass `authtest.LoginOptions` to seed a session that requires application-defined values. Configure the fields on the auth instance and include their physical columns in the test database. The helpers can set a server-only field such as a workstation ID before the insert.
+
+```go
+opts := authtest.LoginOptions{
+    UserID: user.ID,
+    Fields: map[string]any{"station": "warehouse-2", "label": ""},
+}
+login, err := server.LoginWithOptions(t.Context(), opts)
+if err != nil {
+    t.Fatal(err)
+}
+station, ok := login.Session.AdditionalField("station") // "warehouse-2", true
+```
+
+`GetAuthHeadersWithOptions(ctx, opts)` and `GetCookiesWithOptions(ctx, opts, domain)` accept the same values. Omitted fields use their configured defaults. An explicitly supplied empty string, zero or false overrides a default. Hidden values stay in storage. The issuer supplies the session ID, user ID, token, timestamps, IP address and user agent. A missing required field, unknown field or invalid value returns an error before the helper creates a session. [Four-adapter tests](../adapters/sqlstore/fixture_session_fields_test.go)
+
 ## Test email and phone codes
 
 Create one recorder per test and wrap the sender when configuring the plugin. The wrapper captures the issued code under its delivery address and calls the sender you supply. Pass `nil` for a test that uses only the recorder. A sender error still reaches the caller. Captured proofs stay in the test process even if the database stores a hash.

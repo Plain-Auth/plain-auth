@@ -6,10 +6,18 @@
 
 - [ ] Test utils endpoints, types and options
   - [ ] `testUtils`
-  - [ ] `LoginResult`
-  - [ ] `TestAuthOptions`
-    - [ ] `userId`
-    - [ ] `session`
+  - [x] `LoginResult` ([test](../../../authtest/server_test.go#L85))
+    - [x] Return the authenticated user, session, signed cookie, request headers and token ([test](../../../authtest/server_test.go#L85))
+    - [x] Read the authenticated user and configured session values from the published runtime ([test](../../../conformance/auth-test-helpers.test.mjs#L101))
+  - [x] `TestAuthOptions` ([test](../../../adapters/sqlstore/fixture_session_fields_test.go#L60))
+    - [x] Issue a session for the selected user with configured application fields ([test](../../../adapters/sqlstore/fixture_session_fields_test.go#L60))
+    - [x] Read the authenticated user and configured session values from the published runtime ([test](../../../conformance/auth-test-helpers.test.mjs#L101))
+    - [x] `userId` ([test](../../../adapters/sqlstore/fixture_session_fields_test.go#L70))
+      - [x] Keep the fixture bound to its selected user when supplied attributes include another user ID ([test](../../../adapters/sqlstore/fixture_session_fields_test.go#L70))
+      - [x] Read the authenticated user and configured session values from the published runtime ([test](../../../conformance/auth-test-helpers.test.mjs#L101))
+    - [x] `session` ([test](../../../adapters/sqlstore/fixture_session_fields_test.go#L117))
+      - [x] Apply typed attributes, protect generated fields and reject invalid input without a session ([test](../../../adapters/sqlstore/fixture_session_fields_test.go#L117))
+      - [x] Read the authenticated user and configured session values from the published runtime ([test](../../../conformance/auth-test-helpers.test.mjs#L101))
   - [ ] `TestCookie`
   - [ ] `TestHelpers`
   - [ ] `TestUtilsOptions`
@@ -43,12 +51,18 @@
         - [x] Use the configured trusted grant service and give an existing user the default member role or a supported explicit role ([test](../../../adapters/sqlstore/organization_fixtures_test.go#L89))
         - [x] Confirm row creation, member role defaults and tenant-scoped teardown in the released test helpers ([test](../../../conformance/auth-test-helpers.test.mjs#L72))
     - [ ] Auth Helpers
-      - [ ] login
+      - [x] login ([test](../../../adapters/sqlstore/fixture_session_fields_test.go#L96))
         - [x] Issue an authenticated session with the configured lifetime and owner ([test](../../../authtest/server_test.go#L85))
-      - [ ] getAuthHeaders
+        - [x] Supply trusted required attributes and read the session through an independent instance ([test](../../../adapters/sqlstore/fixture_session_fields_test.go#L96))
+        - [x] Compare all three helper results and generated session fields on the released runtime ([test](../../../conformance/auth-test-helpers.test.mjs#L101))
+      - [x] getAuthHeaders ([test](../../../adapters/sqlstore/fixture_session_fields_test.go#L96))
         - [x] Generate independent authenticated request headers for a stored user ([test](../../../authtest/server_test.go#L111))
-      - [ ] getCookies
+        - [x] Supply trusted required attributes and read the session through an independent instance ([test](../../../adapters/sqlstore/fixture_session_fields_test.go#L96))
+        - [x] Compare all three helper results and generated session fields on the released runtime ([test](../../../conformance/auth-test-helpers.test.mjs#L101))
+      - [x] getCookies ([test](../../../adapters/sqlstore/fixture_session_fields_test.go#L96))
         - [x] Supply a signed browser cookie and optionally override its domain ([test](../../../authtest/server_test.go#L118))
+        - [x] Supply trusted required attributes and read the session through an independent instance ([test](../../../adapters/sqlstore/fixture_session_fields_test.go#L96))
+        - [x] Compare all three helper results and generated session fields on the released runtime ([test](../../../conformance/auth-test-helpers.test.mjs#L101))
         - [x] `name` ([test](../../../authtest/server_test.go#L82))
           - [x] Use the issued session cookie’s name when a browser fixture logs in ([test](../../../authtest/server_test.go#L82))
         - [x] `value` ([test](../../../authtest/server_test.go#L82))

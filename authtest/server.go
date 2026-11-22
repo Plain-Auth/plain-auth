@@ -78,10 +78,22 @@ type LoginResult struct {
 	Cookies []*http.Cookie
 }
 
+// LoginOptions selects an existing fixture user and values for configured session fields.
+// Fields can supply required or server-only values before the row is inserted.
+type LoginOptions struct {
+	UserID string
+	Fields map[string]any
+}
+
 // Login creates a real session for an existing user and returns its signed cookie.
 // Reuse the result when several requests should belong to the same login.
 func (s *Server) Login(ctx context.Context, userID string) (*LoginResult, error) {
-	if userID == "" {
+	return s.LoginWithOptions(ctx, LoginOptions{UserID: userID})
+}
+
+// LoginWithOptions creates a real session with trusted fixture attributes.
+func (s *Server) LoginWithOptions(ctx context.Context, opts LoginOptions) (*LoginResult, error) {
+	if opts.UserID == "" {
 		return nil, auth.ErrNotFound
 	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, s.origin, nil)
@@ -90,7 +102,20 @@ func (s *Server) Login(ctx context.Context, userID string) (*LoginResult, error)
 	}
 	call := auth.EndpointContext{Auth: s.Auth, Request: req, ResponseHeader: make(http.Header)}
 	var issued string
-	session, err := call.IssueSession(userID, func(ctx context.Context, row auth.StoredSession) (auth.User, error) {
+	fields := make(map[string]any, len(opts.Fields))
+	for name, value := range opts.Fields {
+		switch name {
+		case "id", "userId", "token", "expiresAt", "createdAt", "updatedAt", "ipAddress", "userAgent":
+			// Session issuance owns these fields even when the fixture includes them.
+		default:
+			fields[name] = value
+		}
+	}
+	session, err := call.IssueSession(opts.UserID, func(ctx context.Context, row auth.StoredSession) (auth.User, error) {
+		row, err := s.Auth.WithTrustedSessionFields(row, fields)
+		if err != nil {
+			return auth.User{}, err
+		}
 		if err := s.store.CreateSession(ctx, row); err != nil {
 			return auth.User{}, err
 		}
@@ -116,7 +141,12 @@ func (s *Server) Login(ctx context.Context, userID string) (*LoginResult, error)
 
 // GetAuthHeaders creates a session and returns a request header for native or HTTP calls.
 func (s *Server) GetAuthHeaders(ctx context.Context, userID string) (http.Header, error) {
-	login, err := s.Login(ctx, userID)
+	return s.GetAuthHeadersWithOptions(ctx, LoginOptions{UserID: userID})
+}
+
+// GetAuthHeadersWithOptions creates a session with fixture attributes and returns its request headers.
+func (s *Server) GetAuthHeadersWithOptions(ctx context.Context, opts LoginOptions) (http.Header, error) {
+	login, err := s.LoginWithOptions(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -126,14 +156,18 @@ func (s *Server) GetAuthHeaders(ctx context.Context, userID string) (http.Header
 // GetCookies creates a session and returns its cookie for a browser fixture.
 // Pass an empty domain to use the configured cookie domain or auth hostname.
 func (s *Server) GetCookies(ctx context.Context, userID, domain string) ([]*http.Cookie, error) {
+	return s.GetCookiesWithOptions(ctx, LoginOptions{UserID: userID}, domain)
+}
+
+// GetCookiesWithOptions creates a session with fixture attributes and returns its browser cookie.
+func (s *Server) GetCookiesWithOptions(ctx context.Context, opts LoginOptions, domain string) ([]*http.Cookie, error) {
 	if domain != "" {
 		probe := &http.Cookie{Name: "test", Value: "test", Domain: domain}
 		if err := probe.Valid(); err != nil {
 			return nil, err
 		}
-
 	}
-	login, err := s.Login(ctx, userID)
+	login, err := s.LoginWithOptions(ctx, opts)
 	if err != nil {
 		return nil, err
 	}

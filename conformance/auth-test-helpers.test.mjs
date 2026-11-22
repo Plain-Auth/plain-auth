@@ -97,3 +97,51 @@ test("trusted organization fixtures save without members, grant explicit or defa
   assert.equal(database.prepare("SELECT id FROM organization").get().id,neighbor.id);
   assert.equal(database.prepare("SELECT id FROM user").get().id,user.id);
 });
+
+test("trusted login, headers and browser-cookie fixtures persist configured session fields", async t => {
+  const database = new DatabaseSync(":memory:");
+  t.after(() => database.close());
+  const options = {
+    database,
+    baseURL: "https://auth.example.test",
+    secret: "fixture-session-options-0123456789abcd",
+    telemetry: { enabled: false },
+    session: { additionalFields: {
+      station: { type: "string", required: true, input: false, fieldName: "fixture_station" },
+      label: { type: "string", required: false, defaultValue: "office" },
+    }},
+    plugins: [testUtils()],
+  };
+  await (await getMigrations(options)).runMigrations();
+  const auth = betterAuth(options);
+  const fixtures = (await auth.$context).test;
+  const user = await fixtures.saveUser(fixtures.createUser());
+  const supplied = {
+    station: "west", label: "", id: "supplied-id", userId: "other", token: "supplied-token",
+    createdAt: new Date(0), updatedAt: new Date(0), expiresAt: new Date(0),
+    ipAddress: "192.0.2.1", userAgent: "supplied-agent",
+  };
+  const login = await fixtures.login({userId:user.id, session:supplied});
+  const headers = await fixtures.getAuthHeaders({userId:user.id, session:supplied});
+  const cookies = await fixtures.getCookies({userId:user.id, session:{station:"west"}, domain:".example.test"});
+  assert.equal(cookies[0].domain, ".example.test");
+  const peer = betterAuth(options);
+  const browser = new Headers({cookie:cookies.map(c => c.name + "=" + c.value).join("; ")});
+  const sessions = [login.session];
+  for (const h of [login.headers, headers, browser]) {
+    const current = await peer.api.getSession({headers:h});
+    assert.equal(current.user.id, user.id);
+    sessions.push(current.session);
+  }
+  assert.equal(new Set(sessions.map(s => s.id)).size, 3);
+  for (const [i, session] of sessions.entries()) {
+    assert.equal(session.station, "west");
+    assert.equal(session.label, i === 3 ? "office" : "");
+    assert.equal(session.userId, user.id);
+    assert.notEqual(session.id, supplied.id);
+    assert.notEqual(session.token, supplied.token);
+    assert.equal(session.ipAddress, "");
+    assert.equal(session.userAgent, "");
+    assert.ok(+session.createdAt > 0 && +session.updatedAt > 0 && +session.expiresAt > Date.now());
+  }
+});

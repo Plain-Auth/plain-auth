@@ -8908,6 +8908,17 @@
       "label": "Issue an authenticated session with the configured lifetime and owner",
       "test": "authtest/server_test.go",
       "marker": "fixture session did not use host policy"
+    },
+    {
+      "label": "Supply trusted required attributes and read the session through an independent instance",
+      "test": "adapters/sqlstore/fixture_session_fields_test.go",
+      "marker": "peer could not read fixture session",
+      "complete": true
+    },
+    {
+      "label": "Compare all three helper results and generated session fields on the released runtime",
+      "test": "conformance/auth-test-helpers.test.mjs",
+      "marker": "trusted login, headers and browser-cookie fixtures"
     }
   ],
   "docs/content/docs/plugins/test-utils.mdx#L178": [
@@ -8915,6 +8926,17 @@
       "label": "Generate independent authenticated request headers for a stored user",
       "test": "authtest/server_test.go",
       "marker": "header helper reused"
+    },
+    {
+      "label": "Supply trusted required attributes and read the session through an independent instance",
+      "test": "adapters/sqlstore/fixture_session_fields_test.go",
+      "marker": "peer could not read fixture session",
+      "complete": true
+    },
+    {
+      "label": "Compare all three helper results and generated session fields on the released runtime",
+      "test": "conformance/auth-test-helpers.test.mjs",
+      "marker": "trusted login, headers and browser-cookie fixtures"
     }
   ],
   "docs/content/docs/plugins/test-utils.mdx#L192": [
@@ -8922,6 +8944,17 @@
       "label": "Supply a signed browser cookie and optionally override its domain",
       "test": "authtest/server_test.go",
       "marker": "cookie override"
+    },
+    {
+      "label": "Supply trusted required attributes and read the session through an independent instance",
+      "test": "adapters/sqlstore/fixture_session_fields_test.go",
+      "marker": "peer could not read fixture session",
+      "complete": true
+    },
+    {
+      "label": "Compare all three helper results and generated session fields on the released runtime",
+      "test": "conformance/auth-test-helpers.test.mjs",
+      "marker": "trusted login, headers and browser-cookie fixtures"
     }
   ],
   "docs/content/docs/plugins/test-utils.mdx#L213/`name`": [
@@ -9243,6 +9276,58 @@
       "label": "Document public inputs and responses separately from physical names and private defaults",
       "test": "plugins/openapi/session_fields_test.go",
       "marker": "func TestConfigurableSessionFieldSchemas("
+    }
+  ],
+  "plugin-symbol/test-utils/TestAuthOptions": [
+    {
+      "label": "Issue a session for the selected user with configured application fields",
+      "test": "adapters/sqlstore/fixture_session_fields_test.go",
+      "marker": "fixture field or default was lost",
+      "complete": true
+    },
+    {
+      "label": "Read the authenticated user and configured session values from the published runtime",
+      "test": "conformance/auth-test-helpers.test.mjs",
+      "marker": "trusted login, headers and browser-cookie fixtures"
+    }
+  ],
+  "plugin-symbol/test-utils/TestAuthOptions/userId": [
+    {
+      "label": "Keep the fixture bound to its selected user when supplied attributes include another user ID",
+      "test": "adapters/sqlstore/fixture_session_fields_test.go",
+      "marker": "fixture changed generated session attributes",
+      "complete": true
+    },
+    {
+      "label": "Read the authenticated user and configured session values from the published runtime",
+      "test": "conformance/auth-test-helpers.test.mjs",
+      "marker": "trusted login, headers and browser-cookie fixtures"
+    }
+  ],
+  "plugin-symbol/test-utils/TestAuthOptions/session": [
+    {
+      "label": "Apply typed attributes, protect generated fields and reject invalid input without a session",
+      "test": "adapters/sqlstore/fixture_session_fields_test.go",
+      "marker": "failed fixture wrote a session",
+      "complete": true
+    },
+    {
+      "label": "Read the authenticated user and configured session values from the published runtime",
+      "test": "conformance/auth-test-helpers.test.mjs",
+      "marker": "trusted login, headers and browser-cookie fixtures"
+    }
+  ],
+  "plugin-symbol/test-utils/LoginResult": [
+    {
+      "label": "Return the authenticated user, session, signed cookie, request headers and token",
+      "test": "authtest/server_test.go",
+      "marker": "fixture session did not use host policy",
+      "complete": true
+    },
+    {
+      "label": "Read the authenticated user and configured session values from the published runtime",
+      "test": "conformance/auth-test-helpers.test.mjs",
+      "marker": "trusted login, headers and browser-cookie fixtures"
     }
   ]
 }
