@@ -3,7 +3,7 @@ module github.com/Plain-Auth/plain-auth/integrations/routers
 go 1.26.0
 
 require (
-	github.com/Plain-Auth/plain-auth v0.0.0
+	github.com/Plain-Auth/plain-auth v0.0.0-20261122021736-377ca0dd43ab
 	github.com/gin-gonic/gin v1.12.0
 	github.com/go-chi/chi/v5 v5.5.0
 	github.com/gofiber/fiber/v3 v3.7.0

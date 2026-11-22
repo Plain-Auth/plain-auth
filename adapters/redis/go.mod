@@ -3,7 +3,7 @@ module github.com/Plain-Auth/plain-auth/adapters/redis
 go 1.26.0
 
 require (
-	github.com/Plain-Auth/plain-auth v0.0.0-20261121202906-b6201be7a07b
+	github.com/Plain-Auth/plain-auth v0.0.0-20261122021736-377ca0dd43ab
 	github.com/redis/go-redis/v9 v9.23.0
 )
 

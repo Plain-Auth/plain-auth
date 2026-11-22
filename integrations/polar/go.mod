@@ -3,7 +3,7 @@ module github.com/Plain-Auth/plain-auth/integrations/polar
 go 1.26.0
 
 require (
-	github.com/Plain-Auth/plain-auth v0.0.0-20261122004206-6eaaaa941283
+	github.com/Plain-Auth/plain-auth v0.0.0-20261122021736-377ca0dd43ab
 	github.com/go-sql-driver/mysql v1.10.2
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.13.0
