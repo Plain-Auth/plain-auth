@@ -1,6 +1,7 @@
 package openapi
 
 import (
+	"encoding/json"
 	"reflect"
 	"slices"
 
@@ -17,7 +18,7 @@ func samlConfigSchema() object {
 	sp := responseObject(object{"entityID": text, "isAssertionEncrypted": encryption})
 	sp["additionalProperties"] = false
 	idp["anyOf"] = []object{{"required": []string{"entityID"}}, {"required": []string{"metadata"}}}
-	config := responseObject(object{"entryPoint": object{"type": "string", "format": "uri"}, "cert": cert, "audience": text, "idpMetadata": idp, "spMetadata": sp, "wantAssertionsSigned": object{"const": true}, "authnRequestsSigned": object{"type": "boolean"}, "identifierFormat": text, "mapping": modelSchema(reflect.TypeFor[sso.SAMLMapping]())}, "entryPoint", "idpMetadata")
+	config := responseObject(object{"callbackUrl": text, "idpInitiatedCallbackUrl": text, "entryPoint": object{"type": "string", "format": "uri"}, "cert": cert, "audience": text, "idpMetadata": idp, "spMetadata": sp, "wantAssertionsSigned": object{"const": true}, "authnRequestsSigned": object{"type": "boolean"}, "identifierFormat": text, "mapping": modelSchema(reflect.TypeFor[sso.SAMLMapping]())}, "entryPoint", "idpMetadata")
 	config["anyOf"] = []object{{"properties": object{"idpMetadata": object{"required": []string{"metadata"}}}}, {"required": []string{"cert"}}, {"properties": object{"idpMetadata": object{"required": []string{"cert"}}}}}
 	return config
 }
@@ -61,7 +62,8 @@ func ssoResponse(path string, info stonewrit.HTTPDescription) object {
 	return object{}
 }
 
-func describeSSORequest(op object, path string, info stonewrit.HTTPDescription) {
+func describeSSORequest(op object, route stonewrit.HTTPRoute, info stonewrit.HTTPDescription) {
+	path := route.Path
 	text := object{"type": "string"}
 	providerID := object{"type": "string", "minLength": 1}
 	body := func(schema object) {
@@ -114,8 +116,23 @@ func describeSSORequest(op object, path string, info stonewrit.HTTPDescription) 
 	case "/sso/saml2/sp/metadata":
 		op["parameters"] = []object{{"name": "providerId", "in": "query", "required": true, "schema": providerID}}
 	case "/sso/saml2/sp/acs/:providerId":
-		op["parameters"] = []object{{"name": "providerId", "in": "path", "required": true, "schema": providerID}, {"name": info.SAMLStateCookie, "in": "cookie", "required": true, "schema": text}}
-		op["requestBody"] = object{"required": true, "content": content("application/x-www-form-urlencoded", responseObject(object{"SAMLResponse": text, "RelayState": text}, "SAMLResponse", "RelayState"))}
+		var mode struct {
+			Portal bool `json:"x-stonewrit-idp-initiated"`
+		}
+		if len(route.OpenAPI) != 0 {
+			_ = json.Unmarshal(route.OpenAPI, &mode)
+		}
+		required := []string{"SAMLResponse"}
+		params := []object{{"name": "providerId", "in": "path", "required": true, "schema": providerID}, {"name": info.SAMLStateCookie, "in": "cookie", "required": !mode.Portal, "schema": text, "description": "Browser binding for a service-provider-initiated request."}}
+		if mode.Portal {
+			params = append(params, object{"name": "Origin", "in": "header", "required": false, "schema": text, "description": "A portal POST without RelayState requires the exact origin of its reviewed IdP."})
+			op["description"] = "A service-provider return requires RelayState and its browser cookie. A reviewed IdP portal returns a signed assertion without RelayState or InResponseTo."
+		} else {
+			required = append(required, "RelayState")
+		}
+		op["parameters"] = params
+		op["requestBody"] = object{"required": true, "content": content("application/x-www-form-urlencoded", responseObject(object{"SAMLResponse": text, "RelayState": text}, required...))}
+
 	case "/sso/callback", "/sso/callback/:providerId":
 		op["description"] = "Complete the browser-bound OIDC flow. Successful authentication redirects to the trusted application callback. Invalid state or rejected authentication may redirect to an error page. No signed-in session is required."
 		params := []object{

@@ -12,7 +12,7 @@
   - [ ] `OpenAPISchema`
   - [ ] `OpenAPIParameter`
   - [ ] `GET /open-api/generate-schema`
-    - [x] Describe enterprise provider management, redacted reads, browser sign-in and both bound callback routes against the configured SQL handler ([test](../../../plugins/openapi/sso_directory_test.go#L20))
+    - [x] Describe enterprise provider management, redacted reads, browser sign-in and both bound callback routes against the configured SQL handler ([test](../../../plugins/openapi/sso_directory_test.go#L21))
     - [x] Describe the enabled enterprise DNS management inputs, outputs and session credentials ([test](../../../plugins/openapi/sso_domain_test.go#L28))
     - [x] Publish declared success codes, empty 204 responses and explicit operation overrides while preserving redirects ([test](../../../plugins/openapi/endpoint_status_test.go#L12))
     - [x] Serve the mounted versioned JSON document and match required fields for core and username operations ([test](../../../conformance/openapi-contract.mjs#L48))

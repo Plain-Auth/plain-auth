@@ -64,7 +64,7 @@ The SQL adapter rechecks the provider's immutable record ID and configuration be
 
 An organization-bound provider adds the authenticated user as a member of the bound tenant in the session transaction. Existing roles and live invitations are preserved. A full or deleted organization cannot leave a partial identity or session. These checks also apply on sign-in nodes that share the organization database and serve only the SSO routes. Set `DisableOrganizationProvisioning` to manage membership separately. [Membership and concurrent removal tests](../adapters/sqlstore/sso_browser_test.go)
 
-The native client starts the flow with `SignInSSO`. A Go flow must finish on a Go instance. The released client can use Go-created enterprise accounts on both tested implementations. Imported links require an explicit source classification before the Go runtime can use them. Arbitrary callback aliases, stateless IdP-initiated entry, private-key client authentication, custom resolver/provisioning hooks, profile replacement on subsequent sign-in, general provider updates, and automatic organization assignment on ordinary signup remain open.
+The native client starts the flow with `SignInSSO`. A Go flow must finish on a Go instance. The released client can use Go-created enterprise accounts on both tested implementations. Imported links require an explicit source classification before the Go runtime can use them. Arbitrary OIDC callback aliases, stateless OIDC IdP-initiated entry, private-key client authentication, custom resolver/provisioning hooks, profile replacement on subsequent sign-in, general provider updates, and automatic organization assignment on ordinary signup remain open.
 
 ## Verify directory domains with DNS
 
@@ -144,7 +144,31 @@ Start with `POST /sign-in/sso` or the native `SignInSSO` method. Supply `provide
 
 `NameID` identifies the external account. Use `identifierFormat` to request a persistent NameID when your IdP offers one. Default attributes are `email`, `givenName`, `surname` and `displayName`; set `mapping` to select other single-valued attribute names. An email-shaped NameID supplies a missing email. To accept the IdP's verification claim, set both `SAMLOptions.TrustEmailVerified` and `mapping.emailVerified`. Existing verified mailboxes still require a live matching DNS domain proof for automatic linking. Current provider configuration, organization binding and domain proof are checked in the SQL transaction that claims the assertion and creates the account or session. A SHA-256 fingerprint identifies each accepted issuer and assertion ID for replay prevention. The receipt lasts 24 hours. Avoid recording assertion forms and state cookies in proxy or request logs.
 
-The default profile accepts a directly signed plaintext assertion over HTTP-POST. IdP-initiated sign-in, a GET or JSON ACS, SP metadata XML import, SAML single logout and registration-time private keys remain open. Configure an IdP to use the posted HTTPS ACS and a modern SHA-256-or-stronger signature. The `additionalParams` OAuth option is unavailable for this protocol. Imported SAML links require a recorded identity authority. The historical account reconciliation interface currently supports OIDC and static social identities.
+The default profile accepts a directly signed plaintext assertion over HTTP-POST. A GET or JSON ACS, SP metadata XML import, SAML single logout and registration-time private keys remain open. Configure an IdP to use the posted HTTPS ACS and a modern SHA-256-or-stronger signature. The `additionalParams` OAuth option is unavailable for this protocol. Imported SAML links require a recorded identity authority. The historical account reconciliation interface currently supports OIDC and static social identities.
+
+### Sign in from a reviewed IdP portal
+
+An IdP portal can send a signed assertion directly to its registered HTTP-POST ACS. Use this flow when users select the application in their identity provider. The default configuration requires a browser-bound service-provider request. To enable portal login, give each instance a host-owned policy that authorizes the specific directory. The service supplies the immutable registration ID, current configuration reference, provider name, actual assertion issuer, effective IdP entry point and organization ID.
+
+```go
+portal := &sso.SAMLOptions{
+    IDPInitiatedCallbackURL: "/employee",
+    AllowIDPInitiated: func(ctx context.Context, d sso.SAMLDirectory) (bool, error) {
+        return d.RecordID == approvedRegistrationID &&
+            d.Reference == approvedConfigurationReference &&
+            d.OrganizationID == companyOrganizationID &&
+            d.Issuer == "https://identity.example.org/metadata" &&
+            d.EntryPoint == "https://identity.example.org/sso", nil
+    },
+}
+enterprise, err := sso.New(sso.Options{SAML: portal})
+```
+
+Obtain the registration ID from the administrator’s successful registration response. Source the policy from trusted host configuration and apply it on all replicas serving the callback. Registration names can be reused after deletion. Pinning the immutable record prevents an old approval from following its name to a new directory. Use the trusted store’s `FindBrowserProvider` method with the provider name and protocol `saml` to obtain the current reference after reviewing the signing certificates. Pinning that reference requires a fresh approval after a catalog change, including signing certificate rotation. A policy error fails the request with HTTP 503.
+
+Configure the IdP to submit a top-level form containing `SAMLResponse` directly to the HTTPS ACS. Omit `RelayState` and `InResponseTo` from an unsolicited response and its subject confirmation. The browser must send an `Origin` matching the configured IdP entry point exactly, including any nondefault port. Choose an IdP origin whose pages the organization trusts to initiate sign-in. When supplied by the browser, `Sec-Fetch-Dest` must be `document`. Some IdPs use a different frontend origin or suppress Origin through referrer policy. Those deployments can use the browser-bound SP flow. Submitting an invalid RelayState never starts portal login.
+
+Use `samlConfig.idpInitiatedCallbackUrl` for a directory landing page. For portal requests the server tries that URL, the host’s `SAMLOptions.IDPInitiatedCallbackURL`, and then the directory’s `samlConfig.callbackUrl`. It skips untrusted destinations and the auth host’s own ACS path, and falls back to the application origin. `DisableImplicitSignUp` permits returning accounts and rejects first-time portal signup. The ACS validates signed subject, issuer, recipient, audience, time bounds and optional directory encryption. The SQL transaction checks current authority and DNS requirements and consumes the assertion once across replicas. A replay redirects with `error=replay_detected`. The Go host’s directory approval and mandatory browser Origin are additional requirements for this mode.
 
 ### Encrypt assertions for a directory
 

@@ -25,8 +25,8 @@ type SAMLStore interface {
 var ErrAssertionUsed = apiError(400, "SAML assertion has already been consumed")
 var errSAMLResponse = apiError(400, "Invalid SAML response")
 
-// The supported HTTP-POST profile has one plaintext, directly signed assertion
-// and no encrypted assertions. This pass bounds the XML and checks the envelope;
+// The cleartext HTTP-POST profile has one directly signed assertion.
+// This pass bounds the XML and checks the envelope;
 // all identity data below comes from the library's authenticated assertion.
 func assertionEnvelope(raw []byte, acs, requestID string) (string, error) {
 	const protocol = "urn:oasis:names:tc:SAML:2.0:protocol"
@@ -69,6 +69,13 @@ func assertionEnvelope(raw []byte, acs, requestID string) (string, error) {
 			switch {
 			case len(stack) == 0:
 				roots++
+				if requestID == "" {
+					for _, v := range t.Attr {
+						if v.Name == (xml.Name{Local: "InResponseTo"}) {
+							return "", errSAMLResponse
+						}
+					}
+				}
 				if roots != 1 || t.Name != (xml.Name{Space: protocol, Local: "Response"}) || attr(t, "Destination") != acs || attr(t, "InResponseTo") != requestID {
 					return "", errSAMLResponse
 				}
@@ -201,10 +208,10 @@ func (o Options) samlFinish(c auth.EndpointContext) (any, error) {
 		return nil, errSAMLResponse
 	}
 	form := c.Request.PostForm
-	if len(form["RelayState"]) != 1 || len(form["SAMLResponse"]) != 1 || form.Get("SAMLResponse") == "" {
+	if len(form["SAMLResponse"]) != 1 || form.Get("SAMLResponse") == "" {
 		return nil, errSAMLResponse
 	}
-	flow, err := c.ConsumeEnterprisePostFlow(form.Get("RelayState"))
+	flow, unsolicited, err := incomingSAMLFlow(&c, form)
 	if err != nil {
 		return nil, err
 	}
@@ -212,12 +219,21 @@ func (o Options) samlFinish(c auth.EndpointContext) (any, error) {
 	p, err := store.FindBrowserProvider(c.Request.Context(), Selector{ProviderID: flow.Provider, Protocol: "saml"})
 	if err != nil {
 		if errors.Is(err, ErrMissing) {
+			if unsolicited {
+				return nil, ErrMissing
+			}
 			return fail("invalid_provider")
 		}
 		return nil, err
 	}
-	if p.SAML == nil || !available(c, p) || p.Reference != strings.TrimSuffix(flow.ProviderReference, ".dns") {
+	if p.SAML == nil || p.ProviderID != flow.Provider || !available(c, p) || (!unsolicited && p.Reference != strings.TrimSuffix(flow.ProviderReference, ".dns")) {
 		return fail("invalid_state")
+	}
+	if unsolicited {
+		flow.CallbackURL = samlLanding(c, flow.RedirectURI, p.SAML.IDPInitiatedCallbackURL, o.SAML.IDPInitiatedCallbackURL, p.SAML.CallbackURL)
+		if o.SAML.AllowIDPInitiated == nil {
+			return fail("unsolicited_response")
+		}
 	}
 	proof, err := o.domainGate(c, p)
 	if err != nil {
@@ -230,7 +246,7 @@ func (o Options) samlFinish(c auth.EndpointContext) (any, error) {
 	if err != nil || sp.AcsURL.String() != flow.RedirectURI {
 		return fail("invalid_provider")
 	}
-	if origins := c.Request.Header.Values("Origin"); len(origins) != 0 {
+	if origins := c.Request.Header.Values("Origin"); unsolicited || len(origins) != 0 {
 		if len(origins) != 1 || !sameSAMLOrigin(origins[0], sp.GetSSOBindingLocation(saml.HTTPRedirectBinding)) {
 			return fail("invalid_origin")
 		}
@@ -240,16 +256,40 @@ func (o Options) samlFinish(c auth.EndpointContext) (any, error) {
 		return fail("invalid_saml_response")
 	}
 	requestID := "_" + flow.Nonce
+	requestIDs := []string{requestID}
+	if unsolicited {
+		// Honor the navigation destination when the browser supplies Fetch Metadata.
+		if dest := c.Request.Header.Values("Sec-Fetch-Dest"); len(dest) > 0 && (len(dest) != 1 || dest[0] != "document") {
+			return fail("invalid_origin")
+		}
+		allowed, err := o.SAML.AllowIDPInitiated.authorize(c.Request.Context(), samlDirectory(p))
+		if err != nil {
+			return nil, apiError(503, "SAML directory authorization is unavailable")
+		}
+		if !allowed {
+			return fail("unsolicited_response")
+		}
+		sp.AllowIDPInitiated = true
+		requestID = ""
+		requestIDs = nil
+	}
 	id, err := assertionDocumentID(raw, sp, requestID)
 	if err != nil {
 		return fail("invalid_saml_response")
 	}
-	a, err := sp.ParseXMLResponse(raw, []string{requestID}, sp.AcsURL)
+	a, err := sp.ParseXMLResponse(raw, requestIDs, sp.AcsURL)
 	// Require bounded assertion validity even if library-wide clock settings
 	// are adjusted by another application component.
 	now := time.Now()
 	if err != nil || a == nil || a.ID != id || a.Issuer.Value != p.SAML.IdentityProviderEntityID() || a.Conditions == nil {
 		return fail("invalid_saml_response")
+	}
+	if unsolicited && a.Subject != nil {
+		for _, confirmation := range a.Subject.SubjectConfirmations {
+			if data := confirmation.SubjectConfirmationData; data != nil && data.InResponseTo != "" {
+				return fail("invalid_saml_response")
+			}
+		}
 	}
 	latest := now.Add(3 * time.Minute)
 	if a.Conditions.NotOnOrAfter.IsZero() || !a.Conditions.NotOnOrAfter.After(now.Add(-3*time.Minute)) ||
@@ -274,6 +314,9 @@ func (o Options) samlFinish(c auth.EndpointContext) (any, error) {
 	case errors.Is(err, ErrChanged):
 		return fail("SSO_PROVIDER_CHANGED")
 	case errors.Is(err, ErrAssertionUsed):
+		if unsolicited {
+			return fail("replay_detected")
+		}
 		return fail("invalid_saml_response")
 	}
 	var ae *auth.APIError

@@ -10,7 +10,7 @@ import (
 
 func TestSAMLConfigurationModes(t *testing.T) {
 	const supported = `{"entryPoint":"https://idp.example/sso","idpMetadata":{"entityID":"urn:example:idp"}`
-	for _, suffix := range []string{`,"wantAssertionsSigned":false}`, `,"spMetadata":{"metadata":"<xml/>"}}`, `,"privateKey":"unused"}`, `,"spMetadata":{"encPrivateKey":"unused"}}`, `,"spMetadata":{"encPrivateKeyPass":"unused"}}`, `,"idpInitiatedCallbackUrl":"/home"}`, `}{ }`} {
+	for _, suffix := range []string{`,"wantAssertionsSigned":false}`, `,"spMetadata":{"metadata":"<xml/>"}}`, `,"privateKey":"unused"}`, `,"spMetadata":{"encPrivateKey":"unused"}}`, `,"spMetadata":{"encPrivateKeyPass":"unused"}}`, `,"idpInitiatedCallbackUrl":"not a landing URL"}`, `}{ }`} {
 		if _, err := DecodeSAMLConfig([]byte(supported + suffix)); err == nil {
 			t.Errorf("unexpected supported mode %s", suffix)
 		}

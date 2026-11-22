@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"crypto/rsa"
 	"crypto/tls"
 	"crypto/x509"
@@ -42,4 +43,14 @@ func fixtureSAMLEncryption(dir string) (*sso.SAMLEncryption, error) {
 		return nil, errors.New("local fixture requires an RSA encryption key")
 	}
 	return &sso.SAMLEncryption{PrivateKey: key, Certificate: cert}, nil
+}
+
+func fixtureSAMLPortal(path string) sso.SAMLDirectoryPolicy {
+	return func(_ context.Context, d sso.SAMLDirectory) (bool, error) {
+		id, err := os.ReadFile(path)
+		if os.IsNotExist(err) {
+			return false, nil
+		}
+		return d.RecordID == string(id) && d.Issuer == "https://idp.example.test/metadata" && d.EntryPoint == "https://idp.example.test/sign-in" && d.OrganizationID == "", err
+	}
 }

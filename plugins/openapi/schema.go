@@ -196,7 +196,7 @@ func keepFields(schema object, names ...string) {
 
 func adjustRequest(op object, r stonewrit.HTTPRoute, info stonewrit.HTTPDescription, a *stonewrit.Auth) {
 	if r.Plugin == "sso" {
-		describeSSORequest(op, r.Path, info)
+		describeSSORequest(op, r, info)
 		return
 	}
 	switch r.Path {

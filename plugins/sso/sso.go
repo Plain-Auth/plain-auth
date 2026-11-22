@@ -383,7 +383,11 @@ func New(o Options) (auth.Plugin, error) {
 		plugin.Endpoints = append(plugin.Endpoints, request, verify)
 	}
 	if o.SAML != nil {
-		plugin.Endpoints = append(plugin.Endpoints, endpoint("/sso/update-provider", "POST", o.updateSAMLMetadata), auth.Endpoint{Method: "GET", Path: "/sso/saml2/sp/metadata", Handler: o.samlMetadata}, auth.Endpoint{Method: "POST", Path: "/sso/saml2/sp/acs/:providerId", RawBody: true, Handler: o.samlFinish})
+		acs := auth.Endpoint{Method: "POST", Path: "/sso/saml2/sp/acs/:providerId", RawBody: true, Handler: o.samlFinish}
+		if o.SAML.AllowIDPInitiated != nil {
+			acs.OpenAPI = json.RawMessage(`{"x-stonewrit-idp-initiated":true}`)
+		}
+		plugin.Endpoints = append(plugin.Endpoints, endpoint("/sso/update-provider", "POST", o.updateSAMLMetadata), auth.Endpoint{Method: "GET", Path: "/sso/saml2/sp/metadata", Handler: o.samlMetadata}, acs)
 	}
 	return plugin, nil
 }

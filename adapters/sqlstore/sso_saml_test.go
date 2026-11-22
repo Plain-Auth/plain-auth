@@ -2,6 +2,7 @@ package sqlstore
 
 import (
 	"bytes"
+	"context"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
@@ -19,6 +20,7 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -94,15 +96,20 @@ func runEnterpriseSAMLBrowser(t *testing.T, encrypted bool) {
 			idpEntity := idpBase + "/metadata"
 			entry := "https://IDENTITY.example.test:443/sso"
 			dns := &dnsAnswers{records: map[string][]string{}}
-			host := func(s *Store, encryption *sso.SAMLEncryption) *auth.Auth {
-				plug, e := sso.New(sso.Options{SAML: &sso.SAMLOptions{Encryption: encryption, RequestSigner: spKey, RequestCertificate: spCert, TrustEmailVerified: true}, DomainVerification: &sso.DomainVerificationOptions{Resolver: dns}})
+			var reviewed atomic.Pointer[sso.SAMLDirectory]
+			portalPolicy := func(_ context.Context, d sso.SAMLDirectory) (bool, error) {
+				expected := reviewed.Load()
+				return expected != nil && *expected == d, nil
+			}
+			host := func(s *Store, encryption *sso.SAMLEncryption, policy sso.SAMLDirectoryPolicy, disableSignup bool) *auth.Auth {
+				plug, e := sso.New(sso.Options{DisableImplicitSignUp: disableSignup, SAML: &sso.SAMLOptions{AllowIDPInitiated: policy, IDPInitiatedCallbackURL: "/global-portal", Encryption: encryption, RequestSigner: spKey, RequestCertificate: spCert, TrustEmailVerified: true}, DomainVerification: &sso.DomainVerificationOptions{Resolver: dns}})
 				must(e)
 				a, e := auth.New(auth.Options{BaseURL: app.URL, BasePath: "/identity", Secret: strings.Repeat("s", 40), Store: s, RateLimit: new(bool), EmailAndPassword: true, Plugins: []auth.Plugin{plug}})
 				must(e)
 				return a
 			}
 			keys := &sso.SAMLEncryption{PrivateKey: encKey, Certificate: encCert}
-			node, peer = host(first, keys), host(second, keys)
+			node, peer = host(first, keys, portalPolicy, false), host(second, keys, portalPolicy, false)
 			newBrowser := func() *http.Client {
 				jar, e := cookiejar.New(nil)
 				must(e)
@@ -133,9 +140,9 @@ func runEnterpriseSAMLBrowser(t *testing.T, encrypted bool) {
 			if status != 200 {
 				t.Fatal(status, string(data))
 			}
-			cfg := sso.SAMLConfig{SPMetadata: &sso.SAMLSPMetadata{EntityID: app.URL + "/sp"}, EntryPoint: entry, IDPMetadata: sso.SAMLIDPMetadata{EntityID: idpEntity, IsAssertionEncrypted: encrypted}, Certificates: sso.Certificates{idpPEM}, AuthnRequestsSigned: true, Mapping: sso.SAMLMapping{EmailVerified: "verified"}}
+			cfg := sso.SAMLConfig{IDPInitiatedCallbackURL: "/company-portal", CallbackURL: "/fallback-portal", SPMetadata: &sso.SAMLSPMetadata{EntityID: app.URL + "/sp"}, EntryPoint: entry, IDPMetadata: sso.SAMLIDPMetadata{EntityID: idpEntity, IsAssertionEncrypted: encrypted}, Certificates: sso.Certificates{idpPEM}, AuthnRequestsSigned: true, Mapping: sso.SAMLMapping{EmailVerified: "verified"}}
 			if encrypted {
-				withoutKey := host(first, nil)
+				withoutKey := host(first, nil, portalPolicy, false)
 				requestBody, e := json.Marshal(client.RegisterSAMLProviderRequest{ProviderID: "missing-key", Domain: "staff.example", Issuer: idpEntity, SAML: cfg})
 				must(e)
 				r := httptest.NewRequest(http.MethodPost, api+"/sso/register", bytes.NewReader(requestBody))
@@ -220,10 +227,6 @@ func runEnterpriseSAMLBrowser(t *testing.T, encrypted bool) {
 			if _, e = start(newBrowser()); e == nil {
 				t.Fatal("unverified directory accepted")
 			}
-			token, e := owner.RequestSSODomainVerification(ctx, "work")
-			must(e)
-			dns.put("_stonewrit-auth-token-work.staff.example.", token)
-			must(owner.VerifySSODomain(ctx, "work"))
 			form := func(req *saml.IdpAuthnRequest, identity, email string, adjust func(*saml.Assertion)) url.Values {
 				t.Helper()
 				sess := &saml.Session{ID: "idp-session", Index: "idp-index", CreateTime: time.Now(), ExpireTime: time.Now().Add(time.Hour), NameID: identity, CustomAttributes: []saml.Attribute{{Name: "email", Values: []saml.AttributeValue{{Value: email}}}, {Name: "verified", Values: []saml.AttributeValue{{Value: "true"}}}, {Name: "displayName", Values: []saml.AttributeValue{{Value: "Local Employee"}}}}}
@@ -241,6 +244,81 @@ func runEnterpriseSAMLBrowser(t *testing.T, encrypted bool) {
 				return send(h, "POST", path, "application/x-www-form-urlencoded", body.Encode(), idpBase)
 			}
 			const acs = "/sso/saml2/sp/acs/work"
+			catalog, e := first.FindBrowserProvider(ctx, sso.Selector{ProviderID: "work", Protocol: "saml"})
+			must(e)
+			t.Run("portal requires current DNS proof", func(t *testing.T) {
+				expected := sso.SAMLDirectory{RecordID: reg.ID, Reference: catalog.Reference, ProviderID: "work", Issuer: idpEntity, EntryPoint: entry}
+				reviewed.Store(&expected)
+				defer reviewed.Store(nil)
+				req, e := idp.NewIdpInitiatedRequest(httptest.NewRequest("GET", entry, nil), cfg.SPMetadata.EntityID, "")
+				must(e)
+				fields := form(req, "unproven", "unproven@staff.example", nil)
+				fields.Del("RelayState")
+				status, head, _ := post(newBrowser(), fields, acs)
+				if status != http.StatusUnauthorized || strings.Contains(strings.Join(head.Values("Set-Cookie"), ";"), "session_token=") {
+					t.Fatal("unexpected portal response for an unverified directory", status)
+				}
+			})
+			token, e := owner.RequestSSODomainVerification(ctx, "work")
+			must(e)
+			dns.put("_stonewrit-auth-token-work.staff.example.", token)
+			must(owner.VerifySSODomain(ctx, "work"))
+
+			t.Run("reviewed identity provider portal", func(t *testing.T) {
+				directory := sso.SAMLDirectory{RecordID: reg.ID, Reference: catalog.Reference, ProviderID: "work", Issuer: idpEntity, EntryPoint: entry}
+				checkSAMLPortal(t, idp, cfg.SPMetadata.EntityID, api+acs, idpBase, form, &reviewed, directory, node, peer, host(second, keys, nil, false), host(second, keys, portalPolicy, true))
+			})
+
+			t.Run("live directory checks during portal login", func(t *testing.T) {
+				var original string
+				must(first.db.QueryRowContext(ctx, first.bind(`SELECT "samlConfig" FROM "ssoProvider" WHERE "id"=?`), reg.ID).Scan(&original))
+				var changed sso.SAMLConfig
+				must(json.Unmarshal([]byte(original), &changed))
+				changed.Audience = "urn:changed:audience"
+				changedRaw, e := json.Marshal(changed)
+				must(e)
+				set := func(s string) error {
+					_, err := first.db.ExecContext(ctx, first.bind(`UPDATE "ssoProvider" SET "samlConfig"=? WHERE "id"=?`), s, reg.ID)
+					return err
+				}
+				entered, resume := make(chan struct{}), make(chan struct{})
+				policy := func(ctx context.Context, d sso.SAMLDirectory) (bool, error) {
+					close(entered)
+					select {
+					case <-resume:
+						return d.RecordID == reg.ID, nil
+					case <-ctx.Done():
+						return false, ctx.Err()
+					}
+				}
+				handler := host(second, keys, policy, false)
+				req, e := idp.NewIdpInitiatedRequest(httptest.NewRequest("GET", entry, nil), cfg.SPMetadata.EntityID, "")
+				must(e)
+				fields := form(req, "portal-changing", "portal-changing@staff.example", nil)
+				fields.Del("RelayState")
+				incoming := httptest.NewRequest("POST", api+acs, strings.NewReader(fields.Encode()))
+				incoming.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+				incoming.Header.Set("Origin", idpBase)
+				w := httptest.NewRecorder()
+				done := make(chan struct{})
+				go func() { handler.ServeHTTP(w, incoming); close(done) }()
+				select {
+				case <-entered:
+				case <-done:
+					t.Fatalf("policy was never reached: %d", w.Code)
+				case <-time.After(10 * time.Second):
+					t.Fatal("policy wait timed out")
+				}
+				updateErr := set(string(changedRaw))
+				close(resume)
+				<-done
+				must(updateErr)
+				must(set(original))
+				if w.Code != 302 || !strings.Contains(w.Header().Get("Location"), "error=SSO_PROVIDER_CHANGED") || strings.Contains(strings.Join(w.Header().Values("Set-Cookie"), ";"), "session_token=") {
+					t.Fatal("stale reviewed directory created a portal session", w.Code)
+				}
+			})
+
 			status, _, _ = send(newBrowser(), "GET", acs, "", "", "")
 			if status != 404 && status != 405 {
 				t.Fatal("unexpected GET assertion consumer", status)
@@ -253,6 +331,11 @@ func runEnterpriseSAMLBrowser(t *testing.T, encrypted bool) {
 			req, e := start(browser)
 			must(e)
 			proof := form(req, "staff-opaque-01", "worker@staff.example", nil)
+			status, headers, _ = post(newBrowser(), url.Values{"SAMLResponse": {proof.Get("SAMLResponse")}}, acs)
+			if status != 302 || !strings.Contains(headers.Get("Location"), "error=invalid_saml_response") {
+				t.Fatal("a correlated reply was accepted without its state", status)
+			}
+
 			status, _, _ = post(browser, proof, "/sso/saml2/sp/acs/another-tenant")
 			if status != 400 {
 				t.Fatal("wrong tenant callback", status)
@@ -498,6 +581,26 @@ func runEnterpriseSAMLBrowser(t *testing.T, encrypted bool) {
 				t.Fatal("changed provider accepted response", head)
 			}
 			must(owner.DeleteSSOProvider(ctx, "work"))
+			// Registration names may be reused. Approval for the removed immutable row
+			// must not follow a new record with the same name, issuer and signing key.
+			replacement, e := owner.RegisterSAMLProvider(ctx, client.RegisterSAMLProviderRequest{ProviderID: "work", Domain: "staff.example", Issuer: idpEntity, SAML: cfg})
+			must(e)
+			if replacement.ID == reg.ID {
+				t.Fatal("provider identity reused")
+			}
+			newProof, e := owner.RequestSSODomainVerification(ctx, "work")
+			must(e)
+			dns.put("_stonewrit-auth-token-work.staff.example.", newProof)
+			must(owner.VerifySSODomain(ctx, "work"))
+			portal, e := idp.NewIdpInitiatedRequest(httptest.NewRequest("GET", entry, nil), cfg.SPMetadata.EntityID, "")
+			must(e)
+			fields := form(portal, "new-directory", "new-directory@staff.example", nil)
+			fields.Del("RelayState")
+			st, head, _ = post(newBrowser(), fields, acs)
+			if st != 302 || !strings.Contains(head.Get("Location"), "error=unsolicited_response") {
+				t.Fatal("portal approval adopted a replacement registration", st)
+			}
+
 			var links int
 			must(first.db.QueryRowContext(ctx, first.bind(`SELECT COUNT(*) FROM "account" WHERE "providerId"=?`), "work").Scan(&links))
 			if links != 0 {

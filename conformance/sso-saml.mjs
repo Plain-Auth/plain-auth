@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { createPublicKey, randomUUID } from "node:crypto";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { request as httpsRequest } from "node:https";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -32,13 +32,14 @@ function xml(value) {
 // The fixture's private signing key stays in this test process. The Go handler
 // and the published TypeScript handler consume exactly the same signed format.
 function signedReply({ id, acs, audience, cert, key }) {
+  const correlation=id ? ` InResponseTo="${xml(id)}"` : "";
   const date = offset => new Date(Date.now() + offset).toISOString();
   const attribute = (name, value) => '<saml:Attribute Name="' + xml(name) + '"><saml:AttributeValue>' + xml(value) + '</saml:AttributeValue></saml:Attribute>';
-  const response = `<samlp:Response xmlns:samlp="${protocolNS}" xmlns:saml="${assertionNS}" ID="_${randomUUID()}" Version="2.0" IssueInstant="${date(0)}" Destination="${xml(acs)}" InResponseTo="${xml(id)}">
+  const response = `<samlp:Response xmlns:samlp="${protocolNS}" xmlns:saml="${assertionNS}" ID="_${randomUUID()}" Version="2.0" IssueInstant="${date(0)}" Destination="${xml(acs)}"${correlation}>
   <saml:Issuer>${issuer}</saml:Issuer><samlp:Status><samlp:StatusCode Value="urn:oasis:names:tc:SAML:2.0:status:Success"/></samlp:Status>
   <saml:Assertion xmlns:saml="${assertionNS}" ID="_${randomUUID()}" Version="2.0" IssueInstant="${date(0)}"><saml:Issuer>${issuer}</saml:Issuer>
   <saml:Subject><saml:NameID Format="urn:oasis:names:tc:SAML:2.0:nameid-format:persistent">stable-user</saml:NameID>
-  <saml:SubjectConfirmation Method="urn:oasis:names:tc:SAML:2.0:cm:bearer"><saml:SubjectConfirmationData NotOnOrAfter="${date(60000)}" InResponseTo="${xml(id)}" Recipient="${xml(acs)}"/></saml:SubjectConfirmation></saml:Subject>
+  <saml:SubjectConfirmation Method="urn:oasis:names:tc:SAML:2.0:cm:bearer"><saml:SubjectConfirmationData NotOnOrAfter="${date(60000)}"${correlation} Recipient="${xml(acs)}"/></saml:SubjectConfirmation></saml:Subject>
   <saml:Conditions NotBefore="${date(-15000)}" NotOnOrAfter="${date(60000)}"><saml:AudienceRestriction><saml:Audience>${xml(audience)}</saml:Audience></saml:AudienceRestriction></saml:Conditions>
   <saml:AuthnStatement AuthnInstant="${date(-1000)}" SessionIndex="local-assertion-session"><saml:AuthnContext><saml:AuthnContextClassRef>urn:oasis:names:tc:SAML:2.0:ac:classes:PasswordProtectedTransport</saml:AuthnContextClassRef></saml:AuthnContext></saml:AuthnStatement>
   <saml:AttributeStatement>${attribute("email","employee@enterprise.example")}${attribute("displayName","Enterprise Employee")}</saml:AttributeStatement></saml:Assertion></samlp:Response>`;
@@ -109,7 +110,7 @@ function inlineIdP(certificates, entity=issuer) {
   return `<md:EntityDescriptor xmlns:md="urn:oasis:names:tc:SAML:2.0:metadata" xmlns:ds="${ds}" entityID="${xml(entity)}"><md:IDPSSODescriptor protocolSupportEnumeration="${protocolNS}">${descriptors.join("")}<md:SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect" Location="${entryPoint}"/></md:IDPSSODescriptor></md:EntityDescriptor>`;
 }
 
-export async function compareEnterpriseSAML(t, {goFixture,instrument,privateDeployment=false,inline=false,encrypted=false}) {
+export async function compareEnterpriseSAML(t, {goFixture,instrument,privateDeployment=false,inline=false,encrypted=false,portal=false}) {
   const keys = await mkdtemp(join(tmpdir(),"stonewrit-idp-"));
   t.after(()=>rm(keys,{recursive:true,force:true}));
   const keyFile=join(keys,"private.pem"), certFile=join(keys,"cert.pem");
@@ -122,6 +123,8 @@ export async function compareEnterpriseSAML(t, {goFixture,instrument,privateDepl
     rotating={key:await readFile(privateFile,"utf8"),cert:await readFile(publicFile,"utf8")};
   }
   const fixtureEnv={CONFORMANCE_SAML:"1"};
+  const reviewed=join(keys,"reviewed-directory");
+  if (portal) fixtureEnv.CONFORMANCE_SAML_REVIEWED_DIRECTORY=reviewed;
   let spKey,spCert;
   if (encrypted) {
     const spKeyFile=join(keys,"sp-key.pem"),spCertFile=join(keys,"sp-cert.pem");
@@ -141,7 +144,7 @@ export async function compareEnterpriseSAML(t, {goFixture,instrument,privateDepl
   t.after(()=>db.close());
   const options={baseURL:"https://saml.reference.localhost",secret:"local-conformance-0123456789-abcdefghijk",
     database:{type:"sqlite",dialect:new NodeSqliteDialect({database:db}),transaction:true},emailAndPassword:{enabled:true},
-    telemetry:{enabled:false},plugins:[sso()]};
+    telemetry:{enabled:false},plugins:[sso(portal ? {saml:{allowIdpInitiated:true,idpInitiatedCallbackUrl:"/global-landing"}} : {})]};
   await (await getMigrations(options)).runMigrations();
   const auth=betterAuth(options);
   const reference={baseURL:options.baseURL,send:r=>auth.handler(r)};
@@ -171,7 +174,7 @@ export async function compareEnterpriseSAML(t, {goFixture,instrument,privateDepl
       }
     }
     const samlConfig={entryPoint:inline ? "https://manual.example.test/unused" : entryPoint,
-      ...(inline ? {} : {cert}),idpMetadata,spMetadata,wantAssertionsSigned:true};
+      ...(inline ? {} : {cert}),...(portal && {idpInitiatedCallbackUrl:encrypted ? "https://unused.invalid/landing" : "/staff-portal",callbackUrl:"/fallback"}),idpMetadata,spMetadata,wantAssertionsSigned:true};
     const registration = ok(await admin.sso.register({providerId:"work",domain:"enterprise.example",issuer,samlConfig}));
     assert.equal(registration.redirectURI,runtime.baseURL+mount+"/sso/callback/work");
     if (inline) assert.equal(registration.samlConfig.idpMetadata.metadata,inlineIdP([cert]));
@@ -201,6 +204,31 @@ export async function compareEnterpriseSAML(t, {goFixture,instrument,privateDepl
       }
       assert.ok(descriptor.includes('entityID="'+audience+'"'));
       assert.ok(descriptor.includes('Location="'+acs+'"'));
+    }
+    if (portal) {
+      if (runtime===go) await writeFile(reviewed,registration.id,{mode:0o600});
+      let old;
+      for (const first of [true,false]) {
+        const send=browserFor(runtime);
+        const browser=instrument({baseURL:runtime.baseURL,send},[ssoClient()]).client;
+        let reply=signedReply({acs,audience,key,cert});
+        if (encrypted) reply=await encryptSignedReply(reply,spCert);
+        if (first) {
+          const absent=await send(new Request(acs.replace(/\/work$/,"/removed-directory"),{method:"POST",headers:{origin:new URL(entryPoint).origin},body:new URLSearchParams({SAMLResponse:reply})}));
+          assert.equal(absent.status,404);
+        }
+        const submit=()=>send(new Request(acs,{method:"POST",headers:{origin:new URL(entryPoint).origin},body:new URLSearchParams({SAMLResponse:reply})}));
+        const response=await submit();
+        assert.equal(response.status,302,await response.text());
+        assert.equal(new URL(response.headers.get("location"),runtime.baseURL).href,runtime.baseURL+(encrypted ? "/global-landing" : "/staff-portal"));
+        const session=ok(await browser.getSession());
+        assert.equal(session.user.email,"employee@enterprise.example");
+        if (first) old=session.user.id; else assert.equal(session.user.id,old);
+        const duplicate=await submit();
+        assert.equal(new URL(duplicate.headers.get("location"),runtime.baseURL).searchParams.get("error"),"replay_detected");
+        assert.ok(!duplicate.headers.getSetCookie().some(value=>value.split("=",1)[0].endsWith(".session_token")));
+      }
+      continue;
     }
     let initialID;
     for (const first of [true,false]) {

@@ -89,6 +89,10 @@ func main() {
 			opts := sso.Options{SharedCallback: os.Getenv("CONFORMANCE_SSO_SHARED_CALLBACK") == "1"}
 			if samlFixture {
 				opts.SAML = &sso.SAMLOptions{}
+				if file := os.Getenv("CONFORMANCE_SAML_REVIEWED_DIRECTORY"); file != "" {
+					opts.SAML.AllowIDPInitiated = fixtureSAMLPortal(file)
+					opts.SAML.IDPInitiatedCallbackURL = "/global-landing"
+				}
 				if dir := os.Getenv("CONFORMANCE_SAML_ENCRYPTION_DIR"); dir != "" {
 					keys, e := fixtureSAMLEncryption(dir)
 					if e != nil {

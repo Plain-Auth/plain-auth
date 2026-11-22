@@ -1480,6 +1480,11 @@ test("email password and signup switches control registration and existing accou
   await comparePasswordSwitches(t, {reference, goFixture, instrument});
 });
 
+test("enterprise SAML performs reviewed IdP-initiated sign-in and rejects a repeated assertion", async t => {
+  const {compareEnterpriseSAML}=await import("./sso-saml.mjs");
+  for (const encrypted of [false,true]) await t.test(encrypted ? "encrypted" : "signed", t=>compareEnterpriseSAML(t,{goFixture,instrument,portal:true,encrypted}));
+});
+
 test("enterprise SAML accepts an independently encrypted signed assertion through the released client", async t => {
   const {compareEnterpriseSAML}=await import("./sso-saml.mjs");
   await compareEnterpriseSAML(t,{goFixture,instrument,encrypted:true});

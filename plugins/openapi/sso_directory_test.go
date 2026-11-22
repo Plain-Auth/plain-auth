@@ -1,6 +1,7 @@
 package openapi_test
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/url"
@@ -164,10 +165,14 @@ func TestEnterpriseSAMLDocumentation(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { store.Close() })
-	for _, enabled := range []bool{false, true} {
+	for _, mode := range []string{"off", "sp", "portal"} {
+		enabled := mode != "off"
 		options := sso.Options{}
 		if enabled {
 			options.SAML = &sso.SAMLOptions{}
+			if mode == "portal" {
+				options.SAML.AllowIDPInitiated = func(context.Context, sso.SAMLDirectory) (bool, error) { return false, nil }
+			}
 		}
 		plugin, err := sso.New(options)
 		if err != nil {
@@ -224,6 +229,14 @@ func TestEnterpriseSAMLDocumentation(t *testing.T) {
 			t.Fatal("incorrect callback response, transport or authentication")
 		}
 		params := op["parameters"].([]any)
+		required := node(op, "requestBody", "content", "application/x-www-form-urlencoded", "schema")["required"].([]any)
+		if (len(required) == 1) != (mode == "portal") || params[1].(obj)["required"] != (mode != "portal") {
+			t.Fatal("correlation requirements for", mode)
+		}
+		if mode == "portal" && (len(params) != 3 || params[2].(obj)["name"] != "Origin" || op["x-stonewrit-idp-initiated"] != true) {
+			t.Fatal("missing reviewed portal origin")
+		}
+
 		if params[0].(obj)["in"] != "path" || params[1].(obj)["in"] != "cookie" || !strings.HasSuffix(params[1].(obj)["name"].(string), "portal.saml_state") {
 			t.Fatal("incorrect path or browser binding", params)
 		}

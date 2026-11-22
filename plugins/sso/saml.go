@@ -23,7 +23,11 @@ var ErrInvalidSAML = apiError(400, "Invalid or unsupported SAML configuration")
 
 // SAMLOptions enables SP-initiated SAML. Request signing keys stay in the host.
 type SAMLOptions struct {
-	Encryption *SAMLEncryption
+	// AllowIDPInitiated is a host-owned directory policy. Nil disables unsolicited sign-in.
+	AllowIDPInitiated SAMLDirectoryPolicy
+	// IDPInitiatedCallbackURL is the public landing page when a directory provides none.
+	IDPInitiatedCallbackURL string
+	Encryption              *SAMLEncryption
 	// MaxMetadataSize limits inline IdP XML in bytes, defaulting to 100 KiB.
 	MaxMetadataSize    int
 	RequestSigner      crypto.Signer
@@ -32,6 +36,9 @@ type SAMLOptions struct {
 }
 
 func (o SAMLOptions) validate() error {
+	if !validSAMLLanding(o.IDPInitiatedCallbackURL) {
+		return errors.New("sso: invalid IdP-initiated SAML callback URL")
+	}
 	if o.Encryption != nil && !o.Encryption.valid() {
 		return errors.New("sso: SAML decryption requires a matching RSA private key and certificate of at least 2048 bits")
 	}
@@ -89,17 +96,19 @@ type SAMLSPMetadata struct {
 }
 
 type SAMLConfig struct {
-	imported             *samlIDPAuthority
-	SPMetadata           *SAMLSPMetadata `json:"spMetadata,omitempty"`
-	Issuer               string          `json:"issuer,omitempty"`
-	EntryPoint           string          `json:"entryPoint"`
-	Certificates         Certificates    `json:"cert,omitempty"`
-	IDPMetadata          SAMLIDPMetadata `json:"idpMetadata"`
-	Audience             string          `json:"audience,omitempty"`
-	WantAssertionsSigned *bool           `json:"wantAssertionsSigned,omitempty"`
-	AuthnRequestsSigned  bool            `json:"authnRequestsSigned,omitempty"`
-	IdentifierFormat     string          `json:"identifierFormat,omitempty"`
-	Mapping              SAMLMapping     `json:"mapping,omitempty"`
+	IDPInitiatedCallbackURL string `json:"idpInitiatedCallbackUrl,omitempty"`
+	CallbackURL             string `json:"callbackUrl,omitempty"`
+	imported                *samlIDPAuthority
+	SPMetadata              *SAMLSPMetadata `json:"spMetadata,omitempty"`
+	Issuer                  string          `json:"issuer,omitempty"`
+	EntryPoint              string          `json:"entryPoint"`
+	Certificates            Certificates    `json:"cert,omitempty"`
+	IDPMetadata             SAMLIDPMetadata `json:"idpMetadata"`
+	Audience                string          `json:"audience,omitempty"`
+	WantAssertionsSigned    *bool           `json:"wantAssertionsSigned,omitempty"`
+	AuthnRequestsSigned     bool            `json:"authnRequestsSigned,omitempty"`
+	IdentifierFormat        string          `json:"identifierFormat,omitempty"`
+	Mapping                 SAMLMapping     `json:"mapping,omitempty"`
 }
 
 func DecodeSAMLConfig(raw []byte) (*SAMLConfig, error) {
@@ -109,7 +118,7 @@ func DecodeSAMLConfig(raw []byte) (*SAMLConfig, error) {
 	if d.Decode(&c) != nil || d.Decode(&struct{}{}) != io.EOF {
 		return nil, ErrInvalidSAML
 	}
-	if c.EntryPoint == "" || (c.IDPMetadata.EntityID == "" && c.IDPMetadata.Metadata == "") || c.WantAssertionsSigned != nil && !*c.WantAssertionsSigned {
+	if !validSAMLLanding(c.IDPInitiatedCallbackURL) || strings.Contains(c.CallbackURL, "#") || c.EntryPoint == "" || (c.IDPMetadata.EntityID == "" && c.IDPMetadata.Metadata == "") || c.WantAssertionsSigned != nil && !*c.WantAssertionsSigned {
 		return nil, ErrInvalidSAML
 	}
 	if c.IDPMetadata.Metadata != "" {
