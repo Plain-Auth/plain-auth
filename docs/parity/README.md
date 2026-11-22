@@ -90,7 +90,7 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 | [Passkey](plugins/passkey.md) | 26 | 94 |
 | [Phone number](plugins/phone-number.md) | 34 | 67 |
 | [SCIM provisioning](plugins/scim.md) | 66 | 251 |
-| [Sign in with Ethereum](plugins/siwe.md) | 87 | 11 |
+| [Sign in with Ethereum](plugins/siwe.md) | 90 | 11 |
 | [Single sign-on](plugins/sso.md) | 75 | 308 |
 | [Stripe](plugins/stripe.md) | 206 | 175 |
 | [Test utils](plugins/test-utils.md) | 69 | 18 |

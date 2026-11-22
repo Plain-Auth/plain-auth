@@ -43,6 +43,9 @@
       - [x] Populate the new wallet user’s display name and avatar through the resolver ([test](../../../conformance/siwe-wallet.mjs#L111))
       - [x] Keep established profiles intact and reject failed or canceled callbacks ([test](../../../adapters/sqlstore/siwe_callbacks_test.go#L277))
     - [ ] `schema`
+      - [x] Generate the mapped wallet table, five physical columns and bounded owner index name for all three SQL dialects ([test](../../../conformance/schema.test.mjs#L321))
+      - [x] Interoperate on a populated mapped schema with both client/server directions and one-time wallet proofs ([test](../../../conformance/siwe-schema.mjs#L40))
+      - [x] Reopen and check mapped layouts, keep ownership consistent on unlink and mailbox promotion, and refuse mismatched nodes ([test](../../../adapters/sqlstore/siwe_schema_test.go#L150))
   - [ ] `siwe`
     - [x] Respect closed registration and refuse wallet sessions for a banned owner ([test](../../../adapters/sqlstore/siwe_test.go#L221))
     - [x] Delete the wallet credential when its owner unlinks or deletes the account ([test](../../../adapters/sqlstore/siwe_test.go#L246))

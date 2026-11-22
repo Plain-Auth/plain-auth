@@ -16,10 +16,11 @@ import (
 type request struct {
 	Dialect, Path string
 	Profiles      []string
+	Wallet        schema.WalletSchema
 }
 
 func run(in request) (string, error) {
-	ddl, err := schema.Generate(in.Dialect, in.Profiles)
+	ddl, err := schema.GenerateWithOptions(in.Dialect, in.Profiles, schema.Options{Wallet: in.Wallet})
 	if err != nil || in.Path == "" {
 		return ddl, err
 	}
@@ -27,7 +28,12 @@ func run(in request) (string, error) {
 		return "", fmt.Errorf("fixture database must be a local SQLite filename")
 	}
 	for range 2 {
-		s, err := sqlstore.OpenWithSchema(context.Background(), in.Dialect, in.Path, ddl)
+		var s *sqlstore.Store
+		if in.Wallet != (schema.WalletSchema{}) {
+			s, err = sqlstore.OpenWithOptions(context.Background(), in.Dialect, in.Path, in.Profiles, schema.Options{Wallet: in.Wallet})
+		} else {
+			s, err = sqlstore.OpenWithSchema(context.Background(), in.Dialect, in.Path, ddl)
+		}
 		if err != nil {
 			return "", err
 		}

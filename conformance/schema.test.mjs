@@ -78,8 +78,8 @@ function batchFixture(dir) {
   // A failed fixture can exit while the client waits for a data line.
   done.catch(() => {});
   return {
-    async call(dialect, profiles, path) {
-      child.stdin.write(JSON.stringify({ dialect, profiles, path }) + "\n");
+    async call(dialect, profiles, path, wallet) {
+      child.stdin.write(JSON.stringify({ dialect, profiles, path, wallet }) + "\n");
       const row = await lines.next();
       assert.equal(row.done, false, "schemafixture closed before replying");
       return JSON.parse(row.value);
@@ -315,4 +315,35 @@ test("session transfer uses the canonical verification table on every SQL dialec
     assert.match(baseline, /create table ["`]?verification/i);
     assert.equal(await freshSchema(dialect, [], [oneTimeToken()]), baseline);
   }
+});
+
+
+test("custom wallet model, columns and owner indexes match the three released SQL dialects", async t => {
+  const { siwe } = await import("better-auth/plugins/siwe");
+  const dir = mkdtempSync(join(tmpdir(), "plain-auth-wallet-mapping-"));
+  const batch = batchFixture(dir);
+  try {
+    for (const [i, wallet] of [
+      { Table: "wallet_address" },
+      { UserID: "member_id", Address: "address", ChainID: "network" },
+      { Table: "wallet_address", UserID: "user_id", Address: "wallet_address", ChainID: "chain_id", IsPrimary: "is_primary", CreatedAt: "created_at" },
+      { Table: "long_" + "w".repeat(55), UserID: "owner_" + "u".repeat(50) },
+    ].entries()) {
+      const columns = { userId: wallet.UserID, address: wallet.Address, chainId: wallet.ChainID, isPrimary: wallet.IsPrimary, createdAt: wallet.CreatedAt };
+      const plugin = siwe({ domain: "wallet.test", schema: { walletAddress: { modelName: wallet.Table, fields: columns } } });
+      for (const dialect of Object.keys(dialects)) {
+        const rendered = await batch.call(dialect, ["siwe"], undefined, wallet);
+        const released = await freshSchema(dialect, [], [plugin]);
+        assert.equal(rendered.trim(), released.trim(), dialect + " layout " + i);
+      }
+      const filename = "layout" + i + ".sqlite";
+      await batch.call("sqlite", ["siwe"], filename, wallet);
+      const actual = new DatabaseSync(join(dir,filename));
+      const reference = new DatabaseSync(":memory:");
+      try {
+        await (await getMigrations({ database: reference, plugins: [plugin] })).runMigrations();
+        assert.deepEqual(sqliteSchema(actual), sqliteSchema(reference));
+      } finally { actual.close(); reference.close(); }
+    }
+  } finally { await batch.close(); rmSync(dir,{recursive:true,force:true}); }
 });

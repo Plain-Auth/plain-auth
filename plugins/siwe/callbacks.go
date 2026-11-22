@@ -94,6 +94,13 @@ func (o Options) checkStore(s auth.Store) error {
 	if !ok {
 		return errors.New("siwe: wallet storage is required")
 	}
+	if mapped, ok := s.(MappingStore); ok {
+		if err := mapped.CheckWalletMapping(context.Background(), o.Schema); err != nil {
+			return err
+		}
+	} else if o.Schema != (Schema{}) {
+		return errors.New("siwe: a custom wallet schema requires a MappingStore")
+	}
 	if err := w.CheckWalletSchema(context.Background()); err != nil {
 		return err
 	}

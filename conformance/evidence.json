@@ -10168,5 +10168,22 @@
       "test": "conformance/browser-fixture-cookies.mjs",
       "marker": "await call(\"Network.setCookies\", {cookies});"
     }
+  ],
+  "plugin-symbol/siwe/SIWEPluginOptions/schema": [
+    {
+      "label": "Generate the mapped wallet table, five physical columns and bounded owner index name for all three SQL dialects",
+      "test": "conformance/schema.test.mjs",
+      "marker": "custom wallet model, columns and owner indexes match the three released SQL dialects"
+    },
+    {
+      "label": "Interoperate on a populated mapped schema with both client/server directions and one-time wallet proofs",
+      "test": "conformance/siwe-schema.mjs",
+      "marker": "assert.deepEqual(rows.map(r => [r.user_id"
+    },
+    {
+      "label": "Reopen and check mapped layouts, keep ownership consistent on unlink and mailbox promotion, and refuse mismatched nodes",
+      "test": "adapters/sqlstore/siwe_schema_test.go",
+      "marker": "wrong layout consumed a mailbox proof without reclaiming the wallet"
+    }
   ]
 }

@@ -20,18 +20,37 @@ func OpenWithSessionFields(ctx context.Context, dialect, dsn string, profiles []
 
 // OpenWithAdditionalFields applies selected profiles and both sets of additional columns.
 func OpenWithAdditionalFields(ctx context.Context, dialect, dsn string, profiles []string, fields schema.AdditionalFields) (*Store, error) {
-	fields, err := fields.Normalize()
+	return OpenWithOptions(ctx, dialect, dsn, profiles, schema.Options{AdditionalFields: fields})
+}
+
+// OpenWithOptions keeps the wallet layout on this store, including for account
+// cleanup when a node has not mounted the wallet plugin.
+func OpenWithOptions(ctx context.Context, dialect, dsn string, profiles []string, opts schema.Options) (*Store, error) {
+	fields, err := opts.AdditionalFields.Normalize()
 	if err != nil {
 		return nil, err
 	}
-	if _, err := schema.Generate(dialect, profiles); err != nil {
+	if _, err := schema.GenerateWithOptions(dialect, profiles, opts); err != nil {
 		return nil, err
 	}
 	s, err := connectDB(ctx, dialect, dsn, true)
 	if err != nil {
 		return nil, err
 	}
+	if opts.Wallet != (schema.WalletSchema{}) {
+		s.walletMapping, err = schema.NormalizeWallet(opts.Wallet)
+		if err != nil {
+			s.Close()
+			return nil, err
+		}
+		s.walletQueryNames = s.walletMapping.Replacer(`"`)
+	}
 	err = s.withMigrationConnection(ctx, func(db migrationConnection) error {
+		if s.walletQueryNames != nil {
+			if err := s.preflightWalletMapping(ctx, db); err != nil {
+				return err
+			}
+		}
 		type add struct {
 			model string
 			field auth.SessionField
@@ -62,7 +81,7 @@ func OpenWithAdditionalFields(ctx context.Context, dialect, dsn string, profiles
 				additions = append(additions, add{entry.model, entry.defs[name]})
 			}
 		}
-		full, err := schema.GenerateWithAdditionalFields(dialect, profiles, fresh)
+		full, err := schema.GenerateWithOptions(dialect, profiles, schema.Options{AdditionalFields: fresh, Wallet: opts.Wallet})
 		if err != nil {
 			return err
 		}

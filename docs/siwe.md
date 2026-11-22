@@ -66,4 +66,38 @@ When a custom generator is installed, the SQL adapter creates `plainauth_siwe_no
 
 Custom stores can implement `siwe.CustomNonceStore` for nonce generation, `siwe.CallbackStore` for timed consumption, and `siwe.ContractStore` to resolve a contract owner on its signed chain. Store initialization verifies the interfaces needed by the enabled callbacks.
 
-Custom schema field mappings remain open. Hosts supply their own ERC-1271 and ENS services. The integration tests use local signers and resolver fixtures. [Feature checklist](parity/plugins/siwe.md)
+Hosts supply their own ERC-1271 and ENS services. The integration tests use local signers and resolver fixtures. [Feature checklist](parity/plugins/siwe.md)
+
+## Map an existing wallet schema
+
+Use one declaration for schema generation, the SQL store and the wallet plugin. Set any subset of `Table`, `UserID`, `Address`, `ChainID`, `IsPrimary` and `CreatedAt`. Omitted names keep their defaults. The primary key is always `id`.
+
+```go
+layout := siwe.Schema{
+    Table: "wallet_address", UserID: "user_id", Address: "wallet_address",
+    ChainID: "chain_id", IsPrimary: "is_primary", CreatedAt: "created_at",
+}
+profiles := []string{"siwe"}
+database := schema.Options{Wallet: layout}
+ddl, err := schema.GenerateWithOptions("postgres", profiles, database)
+if err != nil {
+    return err
+}
+fmt.Print(ddl)
+store, err := sqlstore.OpenWithOptions(ctx, "postgres", dsn, profiles, database)
+if err != nil {
+    return err
+}
+defer store.Close()
+wallet, err := siwe.New(siwe.Options{Domain: "wallet.example.com", Schema: layout})
+if err != nil {
+    return err
+}
+// Use store and wallet when constructing the authentication server.
+```
+
+`sqlstore.CheckSchemaWithOptions(ctx, dialect, dsn, profiles, database)` checks the live columns without writing. Supply additional user and session fields in `database.AdditionalFields`. Names are portable ASCII SQL identifiers up to 63 bytes, starting with a letter or underscore and followed by letters, digits or underscores. The generator preserves the owner foreign key and derives its index name from the physical table and owner column. The wire fields, verification records and canonical account subjects remain the same.
+
+Opening the same mapping again preserves populated records. When renaming existing storage, migrate the table, columns and owner index with your normal database migration before deploying the new declaration. Stop writers during that cutover and back up the database. The store checks an existing target’s expected columns and refuses to create an alternate wallet table when it detects established wallet accounts. A mapped database can also be opened by a server without wallet routes. Pass the same schema options there so mailbox promotion, credential unlinking and account deletion can clean up wallet rows. Go nodes compare the wallet associations with the canonical account subjects before authorizing cross-chain access or deleting established links.
+
+A custom wallet adapter implements `siwe.MappingStore` to check the configured schema against its own physical layout. [Database configuration](databases.md)

@@ -11,6 +11,9 @@ import (
 
 func walletFixtureOptions() siwe.Options {
 	o := siwe.Options{Domain: "wallet.example.test", RequireEmail: os.Getenv("CONFORMANCE_WALLET_CONTACT") == "1"}
+	if os.Getenv("CONFORMANCE_WALLET_SCHEMA") == "1" {
+		o.Schema = siwe.Schema{Table: "wallet_address", UserID: "user_id", Address: "wallet_address", ChainID: "chain_id", IsPrimary: "is_primary", CreatedAt: "created_at"}
+	}
 	controller := os.Getenv("CONFORMANCE_WALLET_CONTROLLER")
 	if controller == "" {
 		return o

@@ -35,7 +35,12 @@ func CheckSchemaWithSessionFields(ctx context.Context, dialect, dsn string, prof
 
 // CheckSchemaWithAdditionalFields compares both sets of declarations in a read-only transaction.
 func CheckSchemaWithAdditionalFields(ctx context.Context, dialect, dsn string, profiles []string, fields schema.AdditionalFields) ([]SchemaFinding, error) {
-	fields, err := fields.Normalize()
+	return CheckSchemaWithOptions(ctx, dialect, dsn, profiles, schema.Options{AdditionalFields: fields})
+}
+
+// CheckSchemaWithOptions checks a mapped wallet layout and configured profile columns.
+func CheckSchemaWithOptions(ctx context.Context, dialect, dsn string, profiles []string, opts schema.Options) ([]SchemaFinding, error) {
+	fields, err := opts.AdditionalFields.Normalize()
 	if err != nil {
 		return nil, err
 	}
@@ -43,7 +48,7 @@ func CheckSchemaWithAdditionalFields(ctx context.Context, dialect, dsn string, p
 	if err != nil {
 		return nil, err
 	}
-	tables, err := schema.Tables(name, profiles)
+	tables, err := schema.TablesWithOptions(name, profiles, opts)
 	if err != nil {
 		return nil, err
 	}

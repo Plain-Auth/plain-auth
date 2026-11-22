@@ -7,6 +7,7 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"errors"
+	"maps"
 	"strconv"
 	"strings"
 	"time"
@@ -18,7 +19,7 @@ import (
 var _ siwe.Store = (*Store)(nil)
 
 func (s *Store) CheckWalletSchema(ctx context.Context) error {
-	rows, err := s.db.QueryContext(ctx, s.bind(`SELECT w."id",w."userId",w."address",w."chainId",w."isPrimary",w."createdAt" FROM "walletAddress" w WHERE 1=0`))
+	rows, err := s.db.QueryContext(ctx, s.walletSQL(`SELECT w."id",w."userId",w."address",w."chainId",w."isPrimary",w."createdAt" FROM "walletAddress" w WHERE 1=0`))
 	if err != nil {
 		return err
 	}
@@ -134,27 +135,62 @@ type walletQueryer interface {
 	QueryContext(context.Context, string, ...any) (*sql.Rows, error)
 }
 
-func (s *Store) walletMembership(ctx context.Context, db walletQueryer, address string, chain int64) (owner string, matched bool, err error) {
-	rows, err := db.QueryContext(ctx, s.bind(`SELECT "userId","address","chainId" FROM "walletAddress" WHERE LOWER("address")=?`), strings.ToLower(address))
+func (s *Store) walletMembership(ctx context.Context, db walletQueryer, address string, chain int64) (string, bool, error) {
+	// Read both sides of the binding in a single snapshot. The account subject
+	// remains canonical even when the wallet table and columns are renamed.
+	wallets := s.mapWalletSQL(`SELECT "userId","address","chainId",0 FROM "walletAddress" WHERE LOWER("address")=?`)
+	accounts := `SELECT "userId","accountId",0,1 FROM "account" WHERE "providerId"=` + s.exactSQLValue("?") + ` AND LOWER("accountId") LIKE ?`
+	lower := strings.ToLower(address)
+	rows, err := db.QueryContext(ctx, s.bind(wallets+" UNION ALL "+accounts), lower, "siwe", lower+":%")
 	if err != nil {
 		return "", false, err
 	}
 	defer rows.Close()
+	var owner string
+	links := map[int64]bool{}
+	subjects := map[int64]bool{}
 	for rows.Next() {
 		var user, actual string
 		var network int64
-		if err := rows.Scan(&user, &actual, &network); err != nil {
+		var account bool
+		if err := rows.Scan(&user, &actual, &network, &account); err != nil {
 			return "", false, err
 		}
-		if !strings.EqualFold(address, actual) || user == "" || owner != "" && owner != user || network == chain && matched {
-			return "", false, errors.New("siwe: ambiguous wallet ownership")
+		seen := links
+		if account {
+			var ok bool
+			actual, network, ok = walletSubject(actual)
+			if !ok {
+				return "", false, errWalletLayout
+			}
+			seen = subjects
+		}
+		if !strings.EqualFold(actual, address) || user == "" || owner != "" && user != owner || network <= 0 || seen[network] {
+			return "", false, errWalletLayout
 		}
 		owner = user
-		if network == chain {
-			matched = true
-		}
+		seen[network] = true
 	}
-	return owner, matched, rows.Err()
+	if err := rows.Err(); err != nil {
+		return "", false, err
+	}
+	if !maps.Equal(links, subjects) {
+		return "", false, errWalletLayout
+	}
+	return owner, links[chain], nil
+}
+
+// EOA subjects are address:chain. Contract subjects use their own namespace.
+func walletSubject(subject string) (string, int64, bool) {
+	address, chain, ok := strings.Cut(subject, ":")
+	if !ok || len(address) != 42 || !strings.HasPrefix(address, "0x") {
+		return "", 0, false
+	}
+	if _, err := hex.DecodeString(address[2:]); err != nil {
+		return "", 0, false
+	}
+	network, err := strconv.ParseInt(chain, 10, 32)
+	return address, network, err == nil && network > 0 && strconv.FormatInt(network, 10) == chain
 }
 
 func (s *Store) WalletOwner(ctx context.Context, address string) (string, error) {
@@ -242,7 +278,7 @@ func (s *Store) finishWalletLogin(ctx context.Context, in siwe.Login, session au
 			}
 		}
 		if !matched && !in.Contract {
-			if _, err = tx.ExecContext(ctx, s.bind(`INSERT INTO "walletAddress" ("id","userId","address","chainId","isPrimary","createdAt") VALUES(?,?,?,?,?,?)`), rand.Text(), in.CandidateID, in.Address, in.ChainID, owner == "", now); err != nil {
+			if _, err = tx.ExecContext(ctx, s.walletSQL(`INSERT INTO "walletAddress" ("id","userId","address","chainId","isPrimary","createdAt") VALUES(?,?,?,?,?,?)`), rand.Text(), in.CandidateID, in.Address, in.ChainID, owner == "", now); err != nil {
 				return nil, err
 			}
 		}
@@ -267,22 +303,6 @@ func (s *Store) finishWalletLogin(ctx context.Context, in siwe.Login, session au
 	return user, err
 }
 
-func (s *Store) walletTable(ctx context.Context, tx *sql.Tx) (bool, error) {
-	var q string
-	switch s.dialect {
-	case "sqlite":
-		q = `SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type='table' AND name='walletAddress' COLLATE NOCASE)`
-	case "postgres":
-		q = `SELECT pg_catalog.to_regclass('"walletAddress"') IS NOT NULL`
-	case "mysql":
-		q = `SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_schema=database() AND table_name='walletAddress'
-            AND (@@lower_case_table_names<>0 OR (BINARY table_schema=BINARY DATABASE() AND BINARY table_name=BINARY 'walletAddress')))`
-	}
-	var exists bool
-	err := tx.QueryRowContext(ctx, q).Scan(&exists)
-	return exists, err
-}
-
 func (s *Store) unlinkWallet(ctx context.Context, tx *sql.Tx, userID, accountID string) error {
 	var wallet string
 	err := tx.QueryRowContext(ctx, s.bind(`SELECT "accountId" FROM "account" WHERE "id"=? AND "userId"=? AND "providerId"='siwe'`), accountID, userID).Scan(&wallet)
@@ -292,42 +312,70 @@ func (s *Store) unlinkWallet(ctx context.Context, tx *sql.Tx, userID, accountID 
 	if err != nil {
 		return err
 	}
-	address, chain, ok := strings.Cut(wallet, ":")
-	id, err := strconv.ParseInt(chain, 10, 64)
-	if !ok || err != nil || id <= 0 || len(address) != 42 || !strings.HasPrefix(address, "0x") {
+	address, id, ok := walletSubject(wallet)
+	if !ok {
 		return nil
 	}
-	exists, err := s.walletTable(ctx, tx)
-	if err != nil || !exists {
+	owner, matched, err := s.walletMembership(ctx, tx, address, id)
+	if err != nil {
 		return err
 	}
-	if _, err := tx.ExecContext(ctx, s.bind(`DELETE FROM "walletAddress" WHERE "userId"=? AND lower("address")=? AND "chainId"=?`), userID, strings.ToLower(address), id); err != nil {
+	if owner != userID || !matched {
+		return errWalletLayout
+	}
+	if _, err := tx.ExecContext(ctx, s.walletSQL(`DELETE FROM "walletAddress" WHERE "userId"=? AND lower("address")=? AND "chainId"=?`), userID, strings.ToLower(address), id); err != nil {
 		return err
 	}
 	var primary string
-	err = tx.QueryRowContext(ctx, s.bind(`SELECT "id" FROM "walletAddress" WHERE "userId"=? ORDER BY "isPrimary" DESC,"createdAt","id" LIMIT 1`), userID).Scan(&primary)
+	err = tx.QueryRowContext(ctx, s.walletSQL(`SELECT "id" FROM "walletAddress" WHERE "userId"=? ORDER BY "isPrimary" DESC,"createdAt","id" LIMIT 1`), userID).Scan(&primary)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil
 	}
 	if err != nil {
 		return err
 	}
-	_, err = tx.ExecContext(ctx, s.bind(`UPDATE "walletAddress" SET "isPrimary"=? WHERE "id"=? AND "userId"=?`), true, primary, userID)
+	_, err = tx.ExecContext(ctx, s.walletSQL(`UPDATE "walletAddress" SET "isPrimary"=? WHERE "id"=? AND "userId"=?`), true, primary, userID)
 	return err
 }
 
-func (s *Store) cleanupWallets(ctx context.Context, tx *sql.Tx, userID string) error {
-	if s.dialect != "mysql" {
-		return nil
-	}
-	return s.deleteOwnerWalletAddresses(ctx, tx, userID)
-}
-
 func (s *Store) deleteOwnerWalletAddresses(ctx context.Context, tx *sql.Tx, userID string) error {
-	exists, err := s.walletTable(ctx, tx)
+	// A core-only node may be using a different wallet layout. Validate each
+	// established EOA against this layout before deleting its shared account row.
+	rows, err := tx.QueryContext(ctx, s.bind(`SELECT "accountId" FROM "account" WHERE "providerId"='siwe' AND "userId"=`+s.exactSQLValue("?")), userID)
+	if err != nil {
+		return err
+	}
+	addresses := map[string]bool{}
+	for rows.Next() {
+		var subject string
+		if err := rows.Scan(&subject); err != nil {
+			rows.Close()
+			return err
+		}
+		if address, _, ok := walletSubject(subject); ok {
+			addresses[address] = true
+		}
+	}
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		return err
+	}
+	if err := rows.Close(); err != nil {
+		return err
+	}
+	for address := range addresses {
+		owner, _, err := s.walletMembership(ctx, tx, address, 0)
+		if err != nil {
+			return err
+		}
+		if owner != userID {
+			return errWalletLayout
+		}
+	}
+	exists, err := s.walletTableExists(ctx, tx, s.walletNames().Table)
 	if err != nil || !exists {
 		return err
 	}
-	_, err = tx.ExecContext(ctx, s.bind(`DELETE FROM "walletAddress" WHERE "userId"=`+s.exactSQLValue("?")), userID)
+	_, err = tx.ExecContext(ctx, s.walletSQL(`DELETE FROM "walletAddress" WHERE "userId"=`+s.exactSQLValue("?")), userID)
 	return err
 }

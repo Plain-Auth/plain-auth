@@ -124,11 +124,16 @@ func (f AdditionalFields) Normalize() (AdditionalFields, error) {
 
 // GenerateWithAdditionalFields includes configured user and session columns in fresh DDL.
 func GenerateWithAdditionalFields(dialect string, profiles []string, fields AdditionalFields) (string, error) {
-	fields, err := fields.Normalize()
+	return GenerateWithOptions(dialect, profiles, Options{AdditionalFields: fields})
+}
+
+// GenerateWithOptions generates the physical schema for a configured installation.
+func GenerateWithOptions(dialect string, profiles []string, opts Options) (string, error) {
+	fields, err := opts.AdditionalFields.Normalize()
 	if err != nil {
 		return "", err
 	}
-	objects, selected, err := selection(dialect, profiles)
+	objects, selected, err := mappedObjects(dialect, profiles, opts.Wallet)
 	if err != nil {
 		return "", err
 	}
@@ -173,7 +178,12 @@ type Table struct {
 
 // Tables returns the selected physical names in their canonical schema order.
 func Tables(dialect string, profiles []string) ([]Table, error) {
-	objects, selected, err := selection(dialect, profiles)
+	return TablesWithOptions(dialect, profiles, Options{})
+}
+
+// TablesWithOptions includes mapped wallet table and column identifiers.
+func TablesWithOptions(dialect string, profiles []string, opts Options) ([]Table, error) {
+	objects, selected, err := mappedObjects(dialect, profiles, opts.Wallet)
 	if err != nil {
 		return nil, err
 	}

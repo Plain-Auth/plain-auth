@@ -14,6 +14,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/Plain-Auth/plain-auth/internal/walletschema"
 	org "github.com/Plain-Auth/plain-auth/plugins/organization"
 	"github.com/Plain-Auth/plain-auth/plugins/scim"
 	"github.com/go-sql-driver/mysql"
@@ -23,6 +24,8 @@ import (
 
 // Store persists users, credentials, and sessions in a SQL database.
 type Store struct {
+	walletMapping          walletschema.Mapping
+	walletQueryNames       *strings.Replacer
 	scimPolicies           map[string]scim.Projection
 	adminSchema            *atomic.Bool
 	apiKeyLedgerReady      *atomic.Bool

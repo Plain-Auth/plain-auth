@@ -89,7 +89,9 @@ func main() {
 			additionalUserFields["locale"] = field
 		}
 	}
-	if len(additionalSessionFields)+len(additionalUserFields) > 0 {
+	if os.Getenv("CONFORMANCE_WALLET_SCHEMA") == "1" {
+		store, err = sqlstore.OpenWithOptions(context.Background(), "sqlite", os.Args[1], os.Args[2:], schema.Options{Wallet: walletFixtureOptions().Schema, AdditionalFields: schema.AdditionalFields{Session: additionalSessionFields, User: additionalUserFields}})
+	} else if len(additionalSessionFields)+len(additionalUserFields) > 0 {
 		store, err = sqlstore.OpenWithAdditionalFields(context.Background(), "sqlite", os.Args[1], os.Args[2:], schema.AdditionalFields{Session: additionalSessionFields, User: additionalUserFields})
 	} else {
 		store, err = sqlstore.OpenWithSchema(context.Background(), "sqlite", os.Args[1], ddl)

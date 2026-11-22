@@ -1640,3 +1640,8 @@ test("Chrome imports signed browser fixture cookies, switches owners and observe
   const { browserFixtureCookies } = await import("./browser-fixture-cookies.mjs");
   await browserFixtureCookies(t, goFixture);
 });
+
+test("Ethereum clients exchange signed wallet identities using one custom physical schema", async t => {
+  const {walletSchema}=await import("./siwe-schema.mjs");
+  await walletSchema(t,{reference,goFixture,instrument});
+});

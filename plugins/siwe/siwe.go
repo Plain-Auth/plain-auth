@@ -13,9 +13,15 @@ import (
 
 	auth "github.com/Plain-Auth/plain-auth"
 	"github.com/Plain-Auth/plain-auth/internal/emailaddress"
+	"github.com/Plain-Auth/plain-auth/schema"
 )
 
+// Schema selects the physical wallet association table and columns.
+type Schema = schema.WalletSchema
+
 type Options struct {
+	// Schema must agree with the layout selected when opening the store.
+	Schema Schema
 	// Domain is the authority (including its port), optionally with an HTTP(S) scheme.
 	Domain string
 	// Chains restricts accepted chain IDs. An empty list permits any positive ID supported by the shared SQL schema.
@@ -40,6 +46,11 @@ type Login struct {
 	Contract                    bool
 	Profile                     ENSLookupResult
 	ValidUntil                  time.Time
+}
+
+// MappingStore confirms that the plugin and adapter agree on the physical wallet model.
+type MappingStore interface {
+	CheckWalletMapping(context.Context, Schema) error
 }
 
 type Store interface {
@@ -70,6 +81,18 @@ type Result struct {
 }
 
 func New(o Options) (auth.Plugin, error) {
+	if o.Schema != (Schema{}) {
+		layout, err := schema.NormalizeWallet(o.Schema)
+		if err != nil {
+			return auth.Plugin{}, err
+		}
+		canonical, _ := schema.NormalizeWallet(Schema{})
+		if layout == canonical {
+			o.Schema = Schema{}
+		} else {
+			o.Schema = layout
+		}
+	}
 	scheme, domain, ok := canonicalOrigin(o.Domain)
 	if !ok {
 		return auth.Plugin{}, errors.New("siwe: invalid relying-party domain")
