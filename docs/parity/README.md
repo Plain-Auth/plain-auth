@@ -2,15 +2,15 @@
 
 ## Verification progress
 
-**488 of 7,025 inventory entries are fully verified (6.9%).**
+**489 of 7,025 inventory entries are fully verified (7.0%).**
 
 | Inventory status | Entries |
 | --- | ---: |
-| Fully verified | 488 |
-| Partially verified | 963 |
-| No linked test evidence | 5,574 |
+| Fully verified | 489 |
+| Partially verified | 964 |
+| No linked test evidence | 5,572 |
 
-The inventory covers features, options, integrations and documentation topics. Partial verification means an open entry has a passing case somewhere beneath it. The checklists also contain 2,045 links from passing scenarios to tests. Adding a scenario leaves the inventory denominator unchanged.
+The inventory covers features, options, integrations and documentation topics. Partial verification means an open entry has a passing case somewhere beneath it. The checklists also contain 2,060 links from passing scenarios to tests. Adding a scenario leaves the inventory denominator unchanged.
 
 A checked item links to a local test for that behavior. An open parent means the feature still has unverified cases. Browser, protocol and storage options each have their own checkboxes.
 
@@ -32,7 +32,7 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 | Manage the signed-in user’s OAuth consent grants | [Authorized applications](../oauth-consents.md) |
 | Register OAuth clients and rotate shared secrets | [OAuth client registration](../oauth-client-registration.md) |
 | Grant or revoke machine-to-machine scopes from Go server code | [Machine scope management](../oauth-client-registration.md#grant-machine-to-machine-scopes) |
-| Issue opaque machine access tokens and check their current scopes and expiry | [Machine access tokens](../machine-tokens.md) · [Token introspection](../machine-tokens.md#check-whether-a-token-is-active) |
+| Issue signed or opaque machine tokens with resource audiences, scoped permissions and sender binding | [Machine access tokens](../machine-tokens.md#request-access-to-a-resource) · [Token introspection](../machine-tokens.md#check-whether-a-token-is-active) |
 | Authenticate an OAuth application with its own signing key and rotate its keys | [Signed client assertions](../oauth-client-assertions.md) |
 | Check whether a refresh token or its original session is still active | [Refresh token introspection](../machine-tokens.md#inspect-a-refresh-token) |
 | Revoke an OAuth token or invalidate a replayed refresh-token family | [Token revocation](../oauth-token-revocation.md) |
@@ -107,7 +107,7 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 | [Model Context Protocol](plugins/mcp.md) | 0 | 108 |
 | [Multi session](plugins/multi-session.md) | 15 | 22 |
 | [OAuth popup](plugins/oauth-popup.md) | 56 | 5 |
-| [OAuth provider](plugins/oauth-provider.md) | 397 | 397 |
+| [OAuth provider](plugins/oauth-provider.md) | 413 | 396 |
 | [OAuth proxy](plugins/oauth-proxy.md) | 27 | 6 |
 | [One tap](plugins/one-tap.md) | 38 | 18 |
 | [One time token](plugins/one-time-token.md) | 76 | 0 |

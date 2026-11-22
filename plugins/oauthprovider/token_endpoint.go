@@ -24,7 +24,7 @@ type tokenRequest struct {
 const tokenFormType = "application/x-www-form-urlencoded"
 
 const machineTokenOperation = `{
-  "summary":"Exchange confidential application credentials for an opaque access token",
+  "summary":"Exchange confidential application credentials for an access token",
   "security":[{"clientSecretBasic":[]},{}],
   "description":"Use the registered HTTP Basic, client_secret_post or private_key_jwt method. A signed assertion replaces the client secret and must be fresh for each request. A DPoP proof binds the token to its sender.",
   "parameters":[{"name":"DPoP","in":"header","schema":{"type":"string"},"description":"A signed proof for the public token endpoint URL"}],
@@ -32,7 +32,8 @@ const machineTokenOperation = `{
     "type":"object","required":["grant_type"],"properties":{
       "grant_type":{"type":"string","enum":["client_credentials"]},"client_id":{"type":"string"},
       "client_secret":{"type":"string","format":"password"},"client_assertion_type":{"type":"string","enum":["urn:ietf:params:oauth:client-assertion-type:jwt-bearer"]},
-      "client_assertion":{"type":"string","format":"jwt"},"scope":{"type":"string"}
+      "client_assertion":{"type":"string","format":"jwt"},"scope":{"type":"string"},
+      "resource":{"type":"array","items":{"type":"string","format":"uri"},"description":"Repeat this form parameter to request multiple resource audiences"}
     }}}}},
   "responses":{"200":{"description":"Machine access token","content":{"application/json":{"schema":{
     "type":"object","required":["access_token","token_type","expires_in","expires_at","scope"],"properties":{
@@ -55,6 +56,14 @@ func (opts Options) token(c auth.EndpointContext) (any, error) {
 	grant := jsjson.TrimSpace(grants[len(grants)-1])
 	if grant == "" {
 		return nil, registrationProblem(400, "invalid_request", "grant_type: Too small: expected string to have >=1 characters")
+	}
+	if len(form["resource"]) > 64 {
+		return nil, registrationProblem(400, "invalid_target", "at most 64 resource parameters are supported")
+	}
+	for _, id := range form["resource"] {
+		if !ValidResourceIdentifier(id) {
+			return nil, registrationProblem(400, "invalid_request", "resource must be an absolute URI without a fragment")
+		}
 	}
 	if grant != "client_credentials" || !slices.Contains(opts.GrantTypes, grant) {
 		return nil, registrationProblem(400, "unsupported_grant_type", "unsupported grant_type "+grant)

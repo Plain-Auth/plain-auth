@@ -11282,6 +11282,11 @@
       "label": "Persist and reset the accessTokenTtl policy through startup configuration",
       "test": "conformance/resource-seeds.mjs",
       "marker": "assert.equal(first.accessTokenTtl,"
+    },
+    {
+      "label": "Apply the shortest lifetime from the original machine scopes and every requested API, including scopes dropped at issuance",
+      "test": "conformance/oauth-resource-machine-tokens.mjs",
+      "marker": "assert.equal(token.expires_in, 90)"
     }
   ],
   "docs/content/docs/plugins/oauth-provider/tokens.mdx#L70/`refreshTokenTtl`": [
@@ -11296,6 +11301,11 @@
       "label": "Persist and reset the allowedScopes policy through startup configuration",
       "test": "conformance/resource-seeds.mjs",
       "marker": "JSON.parse(first.allowedScopes)"
+    },
+    {
+      "label": "Narrow machine grants to the intersection of API scopes and reject an empty intersection",
+      "test": "conformance/oauth-resource-machine-tokens.mjs",
+      "marker": "await expect(issue([a], \"reports\"), 400, \"invalid_scope\");"
     }
   ],
   "docs/content/docs/plugins/oauth-provider/tokens.mdx#L71/`signingAlgorithm`": [
@@ -11303,6 +11313,11 @@
       "label": "Persist and reset the signingAlgorithm policy through startup configuration",
       "test": "conformance/resource-seeds.mjs",
       "marker": "assert.equal(first.signingAlgorithm,"
+    },
+    {
+      "label": "Reject conflicting resource pins and verify the selected key on a machine access token",
+      "test": "conformance/oauth-resource-machine-tokens.mjs",
+      "marker": "assert.equal(single.protectedHeader.kid, protectedHeader.kid);"
     }
   ],
   "docs/content/docs/plugins/oauth-provider/tokens.mdx#L72/`signingKeyId`": [
@@ -11310,6 +11325,11 @@
       "label": "Persist and reset the signingKeyId policy through startup configuration",
       "test": "conformance/resource-seeds.mjs",
       "marker": "assert.equal(first.signingKeyId,"
+    },
+    {
+      "label": "Reject conflicting resource pins and verify the selected key on a machine access token",
+      "test": "conformance/oauth-resource-machine-tokens.mjs",
+      "marker": "assert.equal(single.protectedHeader.kid, protectedHeader.kid);"
     }
   ],
   "docs/content/docs/plugins/oauth-provider/tokens.mdx#L73/`customClaims`": [
@@ -11317,6 +11337,11 @@
       "label": "Persist and reset the customClaims policy through startup configuration",
       "test": "conformance/resource-seeds.mjs",
       "marker": "JSON.parse(first.customClaims)"
+    },
+    {
+      "label": "Verify ordered resource claims on signed and opaque machine tokens and keep reserved protocol claims authoritative",
+      "test": "conformance/oauth-resource-machine-tokens.mjs",
+      "marker": "const repeat = await expect(issue([b, a, b], \"extra\"), 200);"
     }
   ],
   "docs/content/docs/plugins/oauth-provider/tokens.mdx#L74/`dpopBoundAccessTokensRequired`": [
@@ -11324,6 +11349,11 @@
       "label": "Persist and reset the dpopBoundAccessTokensRequired policy through startup configuration",
       "test": "conformance/resource-seeds.mjs",
       "marker": "assert.equal(first.dpopBoundAccessTokensRequired,"
+    },
+    {
+      "label": "Require a fresh sender proof when any targeted machine resource requires one and verify the published confirmation key",
+      "test": "conformance/oauth-resource-machine-tokens.mjs",
+      "marker": "assert.deepEqual(info.cnf, { jkt: thumb });"
     }
   ],
   "docs/content/docs/plugins/oauth-provider/tokens.mdx#L75/`disabled`": [
@@ -11331,6 +11361,11 @@
       "label": "Persist and reset the disabled policy through startup configuration",
       "test": "conformance/resource-seeds.mjs",
       "marker": "assert.equal(first.disabled,"
+    },
+    {
+      "label": "Reject disabled resources at issuance while preserving outstanding machine grants until a resource is deleted",
+      "test": "conformance/oauth-resource-machine-tokens.mjs",
+      "marker": "assert.equal((await inspect(token.access_token)).tier, opaque ? \"updated\" : \"files\");"
     }
   ],
   "plugin/oauth-provider/GET /oauth2/get-consent": [
@@ -12063,6 +12098,16 @@
       "label": "Issue a sender-bound machine token, enforce its key on an independent resource verifier, introspect it and revoke it",
       "test": "conformance/dpop-machine-tokens.mjs",
       "marker": "assert.deepEqual(info.cnf, { jkt });"
+    },
+    {
+      "label": "Issue signed or opaque machine tokens for several registered APIs and verify them with an independent issuer",
+      "test": "conformance/oauth-resource-machine-tokens.mjs",
+      "marker": "await checkResourceIssuance(server, inspector, db, opaque,"
+    },
+    {
+      "label": "Require links to every machine-token audience and recheck concurrent unlink, scope, binding and signing policy changes on three engines",
+      "test": "adapters/sqlstore/oauth_machine_resources_test.go",
+      "marker": "func TestMachineResourceIssuance("
     }
   ],
   "docs/content/docs/plugins/oauth-provider/reference.mdx#L321/`POST /oauth2/token`": [
@@ -12070,6 +12115,16 @@
       "label": "Issue opaque bearer tokens with Basic or form authentication and verify their scope, expiry, introspection and revocation at an independent server",
       "test": "conformance/oauth-machine-tokens.mjs",
       "marker": "assert.equal(info.active, true);"
+    },
+    {
+      "label": "Issue signed or opaque machine tokens for several registered APIs and verify them with an independent issuer",
+      "test": "conformance/oauth-resource-machine-tokens.mjs",
+      "marker": "await checkResourceIssuance(server, inspector, db, opaque,"
+    },
+    {
+      "label": "Require links to every machine-token audience and recheck concurrent unlink, scope, binding and signing policy changes on three engines",
+      "test": "adapters/sqlstore/oauth_machine_resources_test.go",
+      "marker": "func TestMachineResourceIssuance("
     }
   ],
   "plugin-symbol/oauth-provider/OAuthOptions/m2mAccessTokenExpiresIn": [
@@ -12082,6 +12137,12 @@
       "label": "Default to a one-hour machine lifetime and 20 token requests per minute",
       "test": "plugins/oauthprovider/machine_token_test.go",
       "marker": "incorrect machine token defaults"
+    },
+    {
+      "label": "Apply the machine grant lifetime together with scope and resource ceilings for signed and opaque grants",
+      "test": "conformance/oauth-resource-machine-tokens.mjs",
+      "marker": "assert.equal(token.expires_in, 90)",
+      "complete": true
     }
   ],
   "plugin-symbol/oauth-provider/OAuthOptions/scopeExpirations": [
@@ -12089,6 +12150,11 @@
       "label": "Apply the machine token lifetime and shortest applicable scope lifetime to the response and persisted expiry",
       "test": "conformance/oauth-machine-tokens.mjs",
       "marker": "assert.equal(info.exp - info.iat, 90);"
+    },
+    {
+      "label": "Apply the shortest lifetime from the original machine scopes and every requested API, including scopes dropped at issuance",
+      "test": "conformance/oauth-resource-machine-tokens.mjs",
+      "marker": "assert.equal(token.expires_in, 90)"
     }
   ],
   "plugin-symbol/oauth-provider/OAuthOptions/generateOpaqueAccessToken": [
@@ -12725,6 +12791,20 @@
       "test": "adapters/sqlstore/oauth_userinfo_test.go",
       "marker": "\"profile and email\"",
       "complete": true
+    }
+  ],
+  "plugin-symbol/oauth-provider/OAuthOptions/disableJwtPlugin": [
+    {
+      "label": "Issue signed or opaque machine tokens for several registered APIs and verify them with an independent issuer",
+      "test": "conformance/oauth-resource-machine-tokens.mjs",
+      "marker": "await checkResourceIssuance(server, inspector, db, opaque,"
+    }
+  ],
+  "plugin-symbol/oauth-provider/OAuthOptions/enforcePerClientResources": [
+    {
+      "label": "Require links to every machine-token audience and recheck concurrent unlink, scope, binding and signing policy changes on three engines",
+      "test": "adapters/sqlstore/oauth_machine_resources_test.go",
+      "marker": "func TestMachineResourceIssuance("
     }
   ]
 }

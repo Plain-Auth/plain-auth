@@ -55,7 +55,7 @@ func (s *Store) LookupMachineClient(ctx context.Context, id string) (op.MachineC
 }
 
 func (s *Store) StoreMachineToken(ctx context.Context, id string, prepare func(op.MachineClient) (op.MachineTokenRecord, error)) error {
-	return s.storeMachineToken(ctx, id, sql.NullString{}, prepare)
+	return s.storeMachineToken(ctx, id, "", prepare)
 }
 
 // StoreDPoPMachineToken stores cnf.jkt together with the new token so readers
@@ -64,14 +64,10 @@ func (s *Store) StoreDPoPMachineToken(ctx context.Context, id, thumbprint string
 	if thumbprint == "" {
 		return errors.New("sqlstore: missing DPoP thumbprint")
 	}
-	confirmation, err := json.Marshal(map[string]string{"jkt": thumbprint})
-	if err != nil {
-		return err
-	}
-	return s.storeMachineToken(ctx, id, sql.NullString{String: string(confirmation), Valid: true}, prepare)
+	return s.storeMachineToken(ctx, id, thumbprint, prepare)
 }
 
-func (s *Store) storeMachineToken(ctx context.Context, id string, confirmation sql.NullString, prepare func(op.MachineClient) (op.MachineTokenRecord, error)) error {
+func (s *Store) storeMachineToken(ctx context.Context, id, thumbprint string, prepare func(op.MachineClient) (op.MachineTokenRecord, error)) error {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
@@ -85,13 +81,33 @@ func (s *Store) storeMachineToken(ctx context.Context, id string, confirmation s
 	if err != nil {
 		return err
 	}
+	if err := s.insertMachineToken(ctx, tx, id, op.ResourceMachineTokenRecord{MachineTokenRecord: record, Thumbprint: thumbprint}); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+func (s *Store) insertMachineToken(ctx context.Context, tx *sql.Tx, id string, record op.ResourceMachineTokenRecord) error {
 	scopes, err := json.Marshal(record.Scopes)
 	if err != nil {
 		return err
 	}
-	const insert = `INSERT INTO "oauthAccessToken" ("id","token","clientId","scopes","createdAt","expiresAt","confirmation") VALUES (?,?,?,?,?,?,?)`
-	if _, err := tx.ExecContext(ctx, s.bind(insert), rand.Text(), record.StoredToken, id, string(scopes), s.date(record.IssuedAt), s.date(record.ExpiresAt), confirmation); err != nil {
-		return err
+	var resources, confirmation sql.NullString
+	if len(record.Resources) > 0 {
+		raw, err := json.Marshal(record.Resources)
+		if err != nil {
+			return err
+		}
+		resources = sql.NullString{String: string(raw), Valid: true}
 	}
-	return tx.Commit()
+	if record.Thumbprint != "" {
+		raw, err := json.Marshal(map[string]string{"jkt": record.Thumbprint})
+		if err != nil {
+			return err
+		}
+		confirmation = sql.NullString{String: string(raw), Valid: true}
+	}
+	const insert = `INSERT INTO "oauthAccessToken" ("id","token","clientId","scopes","createdAt","expiresAt","confirmation","resources") VALUES (?,?,?,?,?,?,?,?)`
+	_, err = tx.ExecContext(ctx, s.bind(insert), rand.Text(), record.StoredToken, id, string(scopes), s.date(record.IssuedAt), s.date(record.ExpiresAt), confirmation, resources)
+	return err
 }

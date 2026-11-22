@@ -134,7 +134,7 @@ Go records the resolved commit in the consuming project’s `go.mod`. The module
 | List, inspect, update and remove a user’s OAuth consent grants | [Authorized applications](docs/oauth-consents.md) |
 | Register OAuth clients and rotate confidential client secrets | [OAuth client registration](docs/oauth-client-registration.md) |
 | Grant or revoke machine-to-machine scopes from Go server code | [Machine scope management](docs/oauth-client-registration.md#grant-machine-to-machine-scopes) |
-| Issue opaque machine access tokens and check their current scopes and expiry | [Machine access tokens](docs/machine-tokens.md) · [Token introspection](docs/machine-tokens.md#check-whether-a-token-is-active) |
+| Issue signed or opaque machine tokens with resource audiences, scoped permissions and sender binding | [Machine access tokens](docs/machine-tokens.md#request-access-to-a-resource) · [Token introspection](docs/machine-tokens.md#check-whether-a-token-is-active) |
 | Authenticate an OAuth application with its own signing key and rotate its keys | [Signed client assertions](docs/oauth-client-assertions.md) |
 | Check whether a refresh token or its original session is still active | [Refresh token introspection](docs/machine-tokens.md#inspect-a-refresh-token) |
 | Inspect a delegated opaque token using an application or resource server credential | [Delegated token introspection](docs/machine-tokens.md#inspect-a-delegated-token-as-a-resource-server) |

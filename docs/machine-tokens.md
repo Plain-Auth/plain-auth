@@ -1,6 +1,6 @@
 # Issue a machine access token
 
-An application can exchange its own credentials for an opaque Bearer token at `POST /api/auth/oauth2/token`. The endpoint runs inside the existing auth handler on any supported router. Each token belongs to one registered client and has a set of scopes and an expiry. A machine exchange does not start a user session.
+An application exchanges its own credentials for an access token at `POST /api/auth/oauth2/token` on any supported router. Each token represents the registered client and carries its granted scopes and expiry. A client can request one or more resource audiences and bind the token to its own key.
 
 ## Configure the issuer
 
@@ -61,7 +61,7 @@ Here `AUTH_URL` is the public origin and `/api/auth` is the default mount. Suppl
 
 ## Token storage and errors
 
-Plain Auth generates a fresh token for each successful exchange and stores a SHA-256 digest encoded in unpadded base64url. `Tokens.OpaquePrefix` applies to the returned token. `Tokens.GenerateOpaqueToken` and `Tokens.HashOpaqueToken` customize the unprefixed value and its stored digest. If registration uses a randomized secret-storage function, configure `Registration.VerifySecret` to check an unprefixed secret against its stored representation. A deterministic `StoreSecret` can also be used for comparison.
+Plain Auth generates a fresh credential for each successful exchange. For an opaque token, it stores a SHA-256 digest encoded in unpadded base64url. `Tokens.OpaquePrefix` applies to the returned opaque value. `Tokens.GenerateOpaqueToken` and `Tokens.HashOpaqueToken` customize the unprefixed value and its stored digest. If registration uses a randomized secret-storage function, configure `Registration.VerifySecret` to check an unprefixed secret against its stored representation. A deterministic `StoreSecret` can also be used for comparison.
 
 The SQL adapters recheck the registration, credential, grant, and scopes when inserting the token. A rotation, deletion or withdrawal of permissions during issuance can reject the exchange. Deleting the application also deletes its stored tokens. [SQL and Go client tests](../adapters/sqlstore/oauth_machine_token_test.go) · [Issuance, independent introspection and revocation tests](../conformance/oauth-machine-tokens.mjs)
 
@@ -71,10 +71,30 @@ The SQL adapters recheck the registration, credential, grant, and scopes when in
 | 400 or 401 `invalid_client` | Client identification or authentication failed. Failed Basic authentication returns 401 with `WWW-Authenticate: Basic`. |
 | 400 `unauthorized_client` | The client cannot use the grant or has no machine scopes. |
 | 400 `invalid_scope` | A requested permission falls outside the current machine grant. |
+| 400 `invalid_target` | A resource is unavailable or the issuing application lacks a required link. |
 | 400 `invalid_dpop_proof` | The client requires a sender proof, or the proof is invalid or already used. Generate a fresh proof for this request. |
 | 415 `UNSUPPORTED_MEDIA_TYPE` | Send the token request as `application/x-www-form-urlencoded`. |
 
-This flow issues opaque tokens for confidential registrations using a shared secret or a signed client assertion. For a key-based registration, generate a fresh assertion for each exchange. Resource-targeted issuance, authorization codes and refresh tokens have separate checklist entries. [Signed client assertions](oauth-client-assertions.md) · [OAuth feature checklist](parity/plugins/oauth-provider.md)
+Confidential registrations can authenticate with a shared secret or a signed client assertion. For a key-based registration, generate a fresh assertion for each exchange. [Signed client assertions](oauth-client-assertions.md) · [OAuth feature checklist](parity/plugins/oauth-provider.md)
+
+## Request access to a resource
+
+Register each API's absolute URI or URN with the resource manager and link the application to every API it may call. Send one `resource` form field per intended audience. In Go, set the OAuth client's `EndpointParams` before constructing the token source. [Register and link audiences](oauth-resource-management.md)
+
+```go
+config.EndpointParams = url.Values{
+    "resource": {"https://reports.example.com", "urn:example:files"},
+}
+token, err := config.Token(ctx)
+```
+
+Import `net/url` for this example. Omitting `resource` issues an opaque token without an audience. For targeted tokens, enable `auth.NewJWT` and install the `jwt` schema profile to sign JWT access tokens. Without that plugin the issuer uses opaque tokens. Set `Tokens.OpaqueResourceTokens` to use opaque tokens for these exchanges even when the host uses the JWT plugin elsewhere. The handler accepts up to 64 resource parameters, matching the introspection audience limit. [Signing keys and migration](jwt.md)
+
+The default requires a current link from the issuing client to each named resource. `Tokens.AllowUnlinkedResources` lets confidential clients request enabled, registered resources without a link. Resource allowlists still narrow the requested scopes. The issuer rejects a request if the intersection becomes empty. Expiry uses the shortest of the machine lifetime, each originally requested scope lifetime and each resource lifetime. If any target requires a sender binding, supply a DPoP proof. A client can explicitly name the public mount's UserInfo URL as an implicit audience. Reading a user's profile separately requires a user grant.
+
+A signed token uses `typ=at+jwt` and carries a distinct `jti`. Its `sub`, `azp` and `client_id` identify the application. A single audience is a string and multiple audiences appear in first-requested order with duplicates removed. Each resource may pin a signing algorithm or key. Conflicting pins reject the request. A signing failure returns an error. Resource claims merge in request order with the last distinct resource taking precedence. The issuer controls the subject, scopes, expiry and sender binding.
+
+An opaque grant stores the original resource list, the narrowed scopes and any sender thumbprint together. Introspection reads the current resource claims in the stored order, including repeated resources. A custom adapter implements `oauthprovider.ResourceMachineTokenStore` to lock the registration, policies and links together before issuing a targeted token. [Cross-runtime issuance and verification](../conformance/oauth-resource-machine-tokens.mjs) · [Concurrent policy changes on three databases](../adapters/sqlstore/oauth_machine_resources_test.go)
 
 ## Bind a machine token to the client's key
 

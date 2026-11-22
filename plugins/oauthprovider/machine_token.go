@@ -14,14 +14,18 @@ import (
 	auth "github.com/Plain-Auth/plain-auth"
 )
 
-// TokenOptions controls opaque access token issuance. Lifetimes use whole seconds.
+// TokenOptions controls access token issuance. Lifetimes use whole seconds.
 type TokenOptions struct {
-	MachineLifetime     time.Duration
-	ScopeLifetimes      map[string]time.Duration
-	OpaquePrefix        string
-	GenerateOpaqueToken func(context.Context) (string, error)
-	HashOpaqueToken     func(context.Context, string) (string, error)
-	RateLimit           *auth.RateLimitRule
+	// OpaqueResourceTokens selects stored tokens even when the JWT plugin is installed.
+	OpaqueResourceTokens bool
+	// AllowUnlinkedResources lets registered clients target enabled resources without a per-client link.
+	AllowUnlinkedResources bool
+	MachineLifetime        time.Duration
+	ScopeLifetimes         map[string]time.Duration
+	OpaquePrefix           string
+	GenerateOpaqueToken    func(context.Context) (string, error)
+	HashOpaqueToken        func(context.Context, string) (string, error)
+	RateLimit              *auth.RateLimitRule
 	// IntrospectionRateLimit defaults to 100 per minute. An empty rule
 	// selects the host's global rate limit for this endpoint.
 	IntrospectionRateLimit *auth.RateLimitRule
@@ -185,12 +189,6 @@ func (in tokenRequest) authorizedScopes(client MachineClient) ([]string, error) 
 	if len(invalid) != 0 {
 		return nil, registrationProblem(400, "invalid_scope", "The following scopes are invalid: "+strings.Join(invalid, ", "))
 	}
-	if len(in.resources) != 0 {
-		return nil, registrationProblem(400, "invalid_target", "requested resource is not available for token issuance")
-	}
-	if client.RequireDPoP && in.proof == "" {
-		return nil, proofError("DPoP proof header is required")
-	}
 	return scopes, nil
 }
 
@@ -247,40 +245,73 @@ func (opts TokenOptions) storedOpaque(ctx context.Context, raw string) (string, 
 	return stored, err
 }
 
-func (opts Options) issueMachineToken(c auth.EndpointContext, store MachineTokenStore, in tokenRequest, first MachineClient) (MachineToken, error) {
-	if _, err := in.authorizedScopes(first); err != nil {
-		return MachineToken{}, err
-	}
-	ctx := c.Request.Context()
-	boundStore, canBind := store.(DPoPMachineTokenStore)
-	var thumbprint string
-	tokenType := "Bearer"
-	if in.proof != "" {
-		if !canBind {
-			return MachineToken{}, &auth.APIError{Status: 501, Code: "OAUTH_DPOP_STORE_UNAVAILABLE", Message: "The configured store cannot persist sender-bound tokens"}
+func (opts Options) machineThumbprint(c auth.EndpointContext, in tokenRequest, required bool) (string, error) {
+	if in.proof == "" {
+		if required {
+			return "", proofError("DPoP proof header is required")
 		}
-		verifier := opts.proofsFor(c.Store())
-		proof, err := verifier.Verify(ctx, in.proof, DPoPProofRequest{Method: c.Request.Method, URL: c.Auth.PublicURL() + "/oauth2/token"})
-		if err != nil {
-			return MachineToken{}, err
-		}
-		thumbprint = proof.Thumbprint
-		tokenType = "DPoP"
+		return "", nil
 	}
+	verifier := opts.proofsFor(c.Store())
+	proof, err := verifier.Verify(c.Request.Context(), in.proof, DPoPProofRequest{Method: c.Request.Method, URL: c.Auth.PublicURL() + "/oauth2/token"})
+	if err != nil {
+		return "", err
+	}
+	return proof.Thumbprint, nil
+}
+
+func (opts TokenOptions) newOpaqueToken(ctx context.Context) (issued, stored string, err error) {
 	var raw string
-	var err error
-	if gen := opts.Tokens.GenerateOpaqueToken; gen != nil {
+	if gen := opts.GenerateOpaqueToken; gen != nil {
 		raw, err = gen(ctx)
 	} else {
 		raw, err = randomClientCredential()
 	}
 	if err != nil {
-		return MachineToken{}, err
+		return "", "", err
 	}
 	if raw == "" {
-		return MachineToken{}, errors.New("oauthprovider: empty generated access token")
+		return "", "", errors.New("oauthprovider: empty generated access token")
 	}
-	stored, err := opts.Tokens.storedOpaque(ctx, raw)
+	stored, err = opts.storedOpaque(ctx, raw)
+	return opts.OpaquePrefix + raw, stored, err
+}
+
+func (opts TokenOptions) machineLifetime(scopes []string) time.Duration {
+	lifetime := opts.MachineLifetime
+	for _, scope := range scopes {
+		if limit, ok := opts.ScopeLifetimes[scope]; ok && limit < lifetime {
+			lifetime = limit
+		}
+	}
+	return lifetime
+}
+
+func machineResponse(issued, thumbprint string, scopes []string, now time.Time, lifetime time.Duration) MachineToken {
+	tokenType := "Bearer"
+	if thumbprint != "" {
+		tokenType = "DPoP"
+	}
+	return MachineToken{AccessToken: issued, TokenType: tokenType, Scope: strings.Join(scopes, " "), ExpiresIn: int64(lifetime / time.Second), ExpiresAt: now.Add(lifetime).Unix()}
+}
+
+func (opts Options) issueMachineToken(c auth.EndpointContext, store MachineTokenStore, in tokenRequest, first MachineClient) (MachineToken, error) {
+	if _, err := in.authorizedScopes(first); err != nil {
+		return MachineToken{}, err
+	}
+	if len(in.resources) != 0 {
+		return opts.issueResourceMachineToken(c, store, in, first)
+	}
+	boundStore, canBind := store.(DPoPMachineTokenStore)
+	if in.proof != "" && !canBind {
+		return MachineToken{}, &auth.APIError{Status: 501, Code: "OAUTH_DPOP_STORE_UNAVAILABLE", Message: "The configured store cannot persist sender-bound tokens"}
+	}
+	thumbprint, err := opts.machineThumbprint(c, in, first.RequireDPoP)
+	if err != nil {
+		return MachineToken{}, err
+	}
+	ctx := c.Request.Context()
+	issued, stored, err := opts.Tokens.newOpaqueToken(ctx)
 	if err != nil {
 		return MachineToken{}, err
 	}
@@ -293,16 +324,13 @@ func (opts Options) issueMachineToken(c auth.EndpointContext, store MachineToken
 		if err != nil {
 			return MachineTokenRecord{}, err
 		}
-		lifetime := opts.Tokens.MachineLifetime
-		for _, scope := range scopes {
-			if limit, ok := opts.Tokens.ScopeLifetimes[scope]; ok && limit < lifetime {
-				lifetime = limit
-			}
+		if current.RequireDPoP && thumbprint == "" {
+			return MachineTokenRecord{}, proofError("DPoP proof header is required")
 		}
+		lifetime := opts.Tokens.machineLifetime(scopes)
 		now := time.Now().UTC().Truncate(time.Second)
-		expires := now.Add(lifetime)
-		result = MachineToken{AccessToken: opts.Tokens.OpaquePrefix + raw, TokenType: tokenType, Scope: strings.Join(scopes, " "), ExpiresIn: int64(lifetime / time.Second), ExpiresAt: expires.Unix()}
-		return MachineTokenRecord{StoredToken: stored, Scopes: scopes, IssuedAt: now, ExpiresAt: expires}, nil
+		result = machineResponse(issued, thumbprint, scopes, now, lifetime)
+		return MachineTokenRecord{StoredToken: stored, Scopes: scopes, IssuedAt: now, ExpiresAt: now.Add(lifetime)}, nil
 	}
 	if thumbprint != "" {
 		err = boundStore.StoreDPoPMachineToken(ctx, in.id, thumbprint, prepare)

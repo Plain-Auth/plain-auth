@@ -83,6 +83,7 @@ func registrationFixtureOptions() op.Options {
 	if mode == "protected" {
 		opts.Assertions.AllowKeyRotation = true
 		opts.Tokens = op.TokenOptions{MachineLifetime: 10 * time.Minute, ScopeLifetimes: map[string]time.Duration{"reports": 90 * time.Second}, OpaquePrefix: "access_"}
+		opts.Tokens.OpaqueResourceTokens = os.Getenv("CONFORMANCE_OPAQUE_RESOURCE_TOKENS") == "1"
 	}
 	optional := false
 	opts.Registration = op.RegistrationOptions{

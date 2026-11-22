@@ -44,6 +44,8 @@
     - [x] Recheck credential rotation, registered scopes, sender constraints and client deletion during issuance on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_machine_token_test.go#L154))
     - [x] Authenticate issuance, introspection and revocation with independently signed assertions and reject replay across issuers ([test](../../../conformance/oauth-client-assertions.mjs#L5))
     - [x] Issue a sender-bound machine token, enforce its key on an independent resource verifier, introspect it and revoke it ([test](../../../conformance/dpop-machine-tokens.mjs#L43))
+    - [x] Issue signed or opaque machine tokens for several registered APIs and verify them with an independent issuer ([test](../../../conformance/oauth-resource-machine-tokens.mjs#L28))
+    - [x] Require links to every machine-token audience and recheck concurrent unlink, scope, binding and signing policy changes on three engines ([test](../../../adapters/sqlstore/oauth_machine_resources_test.go#L30))
   - [ ] `POST /oauth2/introspect`
     - [x] Inspect a machine token issued independently, verify its exact claims, and report it inactive after revocation ([test](../../../conformance/oauth-introspection.mjs#L32))
     - [x] Read credentials, ownership and token state consistently across rotation, disablement, deletion and revocation on three SQL engines ([test](../../../adapters/sqlstore/oauth_introspection_test.go#L97))
@@ -221,6 +223,7 @@
       - [x] Retry rejected entries when a second manager supplies a different validator ([test](../../../adapters/sqlstore/oauth_resource_seed_test.go#L169))
     - [ ] `cachedResources`
     - [ ] `enforcePerClientResources`
+      - [x] Require links to every machine-token audience and recheck concurrent unlink, scope, binding and signing policy changes on three engines ([test](../../../adapters/sqlstore/oauth_machine_resources_test.go#L30))
     - [ ] `clientRegistrationDefaultResources`
       - [x] Link the configured default resources once per dynamic registration ([test](../../../conformance/oauth-registration.mjs#L128))
     - [ ] `clientRegistrationAllowedResources`
@@ -234,15 +237,17 @@
     - [ ] `cachedTrustedClients`
       - [x] Keep an operator-managed credential immutable from the owner endpoint ([test](../../../conformance/oauth-registration.mjs#L426))
     - [ ] `accessTokenExpiresIn`
-    - [ ] `m2mAccessTokenExpiresIn`
+    - [x] `m2mAccessTokenExpiresIn` ([test](../../../conformance/oauth-resource-machine-tokens.mjs#L89))
       - [x] Apply the machine token lifetime and shortest applicable scope lifetime to the response and persisted expiry ([test](../../../conformance/oauth-machine-tokens.mjs#L65))
       - [x] Default to a one-hour machine lifetime and 20 token requests per minute ([test](../../../plugins/oauthprovider/machine_token_test.go#L26))
+      - [x] Apply the machine grant lifetime together with scope and resource ceilings for signed and opaque grants ([test](../../../conformance/oauth-resource-machine-tokens.mjs#L89))
     - [ ] `idTokenExpiresIn`
     - [ ] `refreshTokenExpiresIn`
     - [ ] `refreshTokenReuseInterval`
     - [ ] `codeExpiresIn`
     - [ ] `scopeExpirations`
       - [x] Apply the machine token lifetime and shortest applicable scope lifetime to the response and persisted expiry ([test](../../../conformance/oauth-machine-tokens.mjs#L65))
+      - [x] Apply the shortest lifetime from the original machine scopes and every requested API, including scopes dropped at issuance ([test](../../../conformance/oauth-resource-machine-tokens.mjs#L89))
     - [x] `assertionMaxLifetime` ([test](../../../plugins/oauthprovider/client_assertion_test.go#L25))
       - [x] Apply the configured lifetime and skew to expiry, not-before and issued-at claims, including exact boundaries ([test](../../../plugins/oauthprovider/client_assertion_test.go#L25))
     - [x] `assertionClockTolerance` ([test](../../../plugins/oauthprovider/client_assertion_test.go#L25))
@@ -306,6 +311,7 @@
       - [x] Use a host token generator, credential verifier and digest function without storing cleartext tokens ([test](../../../adapters/sqlstore/oauth_machine_token_test.go#L121))
     - [ ] `generateRefreshToken`
     - [ ] `disableJwtPlugin`
+      - [x] Issue signed or opaque machine tokens for several registered APIs and verify them with an independent issuer ([test](../../../conformance/oauth-resource-machine-tokens.mjs#L28))
     - [ ] `rateLimit`
     - [ ] `pairwiseSecret`
       - [x] Derive pairwise refresh subjects from the first redirect host with normalized international names, IPv6 literals and non-default ports ([test](../../../plugins/oauthprovider/pairwise_subject_test.go#L10))
@@ -555,6 +561,8 @@
     - [ ] `POST /oauth2/continue`
     - [ ] `POST /oauth2/token`
       - [x] Issue opaque bearer tokens with Basic or form authentication and verify their scope, expiry, introspection and revocation at an independent server ([test](../../../conformance/oauth-machine-tokens.mjs#L61))
+      - [x] Issue signed or opaque machine tokens for several registered APIs and verify them with an independent issuer ([test](../../../conformance/oauth-resource-machine-tokens.mjs#L28))
+      - [x] Require links to every machine-token audience and recheck concurrent unlink, scope, binding and signing policy changes on three engines ([test](../../../adapters/sqlstore/oauth_machine_resources_test.go#L30))
     - [ ] `POST /oauth2/introspect`
       - [x] Inspect a machine token issued independently, verify its exact claims, and report it inactive after revocation ([test](../../../conformance/oauth-introspection.mjs#L32))
       - [x] Inspect a refresh token issued by an independent authorization-code exchange and compare expiry, issuer, binding, subject and session across runtimes ([test](../../../conformance/oauth-refresh-introspection.mjs#L6))
@@ -751,20 +759,27 @@
       - [x] Persist and return the configured display name across restarts ([test](../../../conformance/resource-seeds.mjs#L53))
     - [ ] `allowedScopes`
       - [x] Persist and reset the allowedScopes policy through startup configuration ([test](../../../conformance/resource-seeds.mjs#L58))
+      - [x] Narrow machine grants to the intersection of API scopes and reject an empty intersection ([test](../../../conformance/oauth-resource-machine-tokens.mjs#L70))
     - [ ] `accessTokenTtl`
       - [x] Persist and reset the accessTokenTtl policy through startup configuration ([test](../../../conformance/resource-seeds.mjs#L54))
+      - [x] Apply the shortest lifetime from the original machine scopes and every requested API, including scopes dropped at issuance ([test](../../../conformance/oauth-resource-machine-tokens.mjs#L89))
     - [ ] `refreshTokenTtl`
       - [x] Persist and reset the refreshTokenTtl policy through startup configuration ([test](../../../conformance/resource-seeds.mjs#L55))
     - [ ] `signingAlgorithm`
       - [x] Persist and reset the signingAlgorithm policy through startup configuration ([test](../../../conformance/resource-seeds.mjs#L56))
+      - [x] Reject conflicting resource pins and verify the selected key on a machine access token ([test](../../../conformance/oauth-resource-machine-tokens.mjs#L124))
     - [ ] `signingKeyId`
       - [x] Persist and reset the signingKeyId policy through startup configuration ([test](../../../conformance/resource-seeds.mjs#L57))
+      - [x] Reject conflicting resource pins and verify the selected key on a machine access token ([test](../../../conformance/oauth-resource-machine-tokens.mjs#L124))
     - [ ] `customClaims`
       - [x] Persist and reset the customClaims policy through startup configuration ([test](../../../conformance/resource-seeds.mjs#L59))
+      - [x] Verify ordered resource claims on signed and opaque machine tokens and keep reserved protocol claims authoritative ([test](../../../conformance/oauth-resource-machine-tokens.mjs#L132))
     - [ ] `dpopBoundAccessTokensRequired`
       - [x] Persist and reset the dpopBoundAccessTokensRequired policy through startup configuration ([test](../../../conformance/resource-seeds.mjs#L60))
+      - [x] Require a fresh sender proof when any targeted machine resource requires one and verify the published confirmation key ([test](../../../conformance/oauth-resource-machine-tokens.mjs#L97))
     - [ ] `disabled`
       - [x] Persist and reset the disabled policy through startup configuration ([test](../../../conformance/resource-seeds.mjs#L61))
+      - [x] Reject disabled resources at issuance while preserving outstanding machine grants until a resource is deleted ([test](../../../conformance/oauth-resource-machine-tokens.mjs#L136))
     - [x] `insertOnly` ([test](../../../conformance/resource-seeds.mjs#L67))
       - [x] Keep existing policy values and the update timestamp ([test](../../../conformance/resource-seeds.mjs#L67))
     - [x] `merge` ([test](../../../conformance/resource-seeds.mjs#L76))

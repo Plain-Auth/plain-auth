@@ -1779,3 +1779,8 @@ test("OAuth dynamic client registration handles sessions, initial tokens and ope
   const { compareClientRegistration } = await import("./oauth-registration.mjs");
   await compareClientRegistration(t, reference, goFixture);
 });
+
+test("machine clients obtain signed and opaque access tokens for their registered resources", async t => {
+  const { compareResourceMachineTokens } = await import("./oauth-resource-machine-tokens.mjs");
+  await compareResourceMachineTokens(t, { reference, goFixture });
+});

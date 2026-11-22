@@ -39,15 +39,7 @@ func opaqueAccessClaims(token *OpaqueAccessTokenRecord, digest, issuer, userInfo
 	}
 	claims := map[string]any{"active": true, "iss": issuer, "client_id": token.ClientID, "azp": token.ClientID,
 		"token_type": "Bearer", "iat": token.IssuedAt.Unix(), "exp": token.ExpiresAt.Unix(), "scope": strings.Join(token.Scopes, " ")}
-	for name, raw := range token.ResourceClaims {
-		// Resource policies may add application claims. Protocol fields, including
-		// optional fields absent from this grant, are controlled by the issuer.
-		switch name {
-		case "active", "iss", "sub", "aud", "exp", "iat", "jti", "client_id", "azp", "scope", "auth_time", "acr", "amr", "cnf", "sid", "token_type":
-			continue
-		}
-		claims[name] = raw
-	}
+	addResourceClaims(claims, token.ResourceClaims)
 	aud := token.Resources
 	if len(aud) > 0 && slices.Contains(token.Scopes, "openid") && !slices.Contains(aud, userInfoURL) {
 		aud = append(slices.Clone(aud), userInfoURL)
@@ -65,6 +57,18 @@ func opaqueAccessClaims(token *OpaqueAccessTokenRecord, digest, issuer, userInfo
 	}
 	addTokenConfirmation(claims, token.Confirmation)
 	return claims
+}
+
+// Resource policies can add application claims. Protocol fields, including
+// optional fields absent from a particular grant, belong to the issuer.
+func addResourceClaims(claims map[string]any, policy map[string]json.RawMessage) {
+	for name, raw := range policy {
+		switch name {
+		case "active", "iss", "sub", "aud", "exp", "iat", "jti", "client_id", "azp", "scope", "auth_time", "acr", "amr", "cnf", "sid", "token_type":
+			continue
+		}
+		claims[name] = raw
+	}
 }
 
 func (opts Options) addTokenIdentity(claims map[string]any, clientID, userID, subjectType string, redirects []string, confirmation map[string]any) (map[string]any, error) {
