@@ -68,6 +68,16 @@ func NewDPoPVerifier(opts DPoPOptions) (*DPoPVerifier, error) {
 	return &DPoPVerifier{algorithms: algorithms, maxAge: opts.ProofMaxAge, store: opts.ReplayStore, now: time.Now}, nil
 }
 
+// A plugin may serve multiple hosts. Select shared storage per host without
+// changing the verifier used by another request.
+func (opts Options) proofsFor(store auth.Store) DPoPVerifier {
+	v := *opts.proofVerifier
+	if shared, ok := store.(DPoPReplayStore); ok && opts.DPoP.ReplayStore == nil {
+		v.store = shared
+	}
+	return v
+}
+
 // DPoPProofRequest describes the actual request and the binding expected by the
 // host. URL is the public absolute target of the request, including its path.
 type DPoPProofRequest struct {

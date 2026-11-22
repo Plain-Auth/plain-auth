@@ -17,7 +17,7 @@ import (
 type tokenRequest struct {
 	id, secret, method string
 	scopes, resources  []string
-	dpop               bool
+	proof              string
 	assertion          *clientAssertion
 }
 
@@ -26,7 +26,8 @@ const tokenFormType = "application/x-www-form-urlencoded"
 const machineTokenOperation = `{
   "summary":"Exchange confidential application credentials for an opaque access token",
   "security":[{"clientSecretBasic":[]},{}],
-  "description":"Use the registered HTTP Basic, client_secret_post or private_key_jwt method. A signed assertion replaces the client secret and must be fresh for each request.",
+  "description":"Use the registered HTTP Basic, client_secret_post or private_key_jwt method. A signed assertion replaces the client secret and must be fresh for each request. A DPoP proof binds the token to its sender.",
+  "parameters":[{"name":"DPoP","in":"header","schema":{"type":"string"},"description":"A signed proof for the public token endpoint URL"}],
   "requestBody":{"required":true,"content":{"application/x-www-form-urlencoded":{"schema":{
     "type":"object","required":["grant_type"],"properties":{
       "grant_type":{"type":"string","enum":["client_credentials"]},"client_id":{"type":"string"},
@@ -35,7 +36,7 @@ const machineTokenOperation = `{
     }}}}},
   "responses":{"200":{"description":"Machine access token","content":{"application/json":{"schema":{
     "type":"object","required":["access_token","token_type","expires_in","expires_at","scope"],"properties":{
-      "access_token":{"type":"string"},"token_type":{"type":"string","enum":["Bearer"]},
+      "access_token":{"type":"string"},"token_type":{"type":"string","enum":["Bearer","DPoP"]},
       "expires_in":{"type":"integer"},"expires_at":{"type":"integer"},"scope":{"type":"string"}
     }}}}},"400":{"description":"OAuth grant, client or scope rejected"},"401":{"description":"HTTP client authentication failed"},"415":{"description":"Unsupported token request media type"}}
 }`
@@ -69,7 +70,7 @@ func (opts Options) token(c auth.EndpointContext) (any, error) {
 	if scopes := form["scope"]; len(scopes) != 0 {
 		in.scopes = strings.Split(scopes[len(scopes)-1], " ")
 	}
-	in.dpop = len(c.Request.Header.Values("DPoP")) != 0
+	in.proof = c.Request.Header.Get("DPoP")
 	store, ok := c.Store().(MachineTokenStore)
 	if !ok {
 		return nil, &auth.APIError{Status: 501, Code: "OAUTH_TOKEN_STORE_UNAVAILABLE", Message: "The configured store does not support OAuth machine tokens"}
@@ -78,7 +79,10 @@ func (opts Options) token(c auth.EndpointContext) (any, error) {
 	if err != nil {
 		return nil, tokenEndpointError(c.ResponseHeader, challenge, err)
 	}
-	token, err := opts.issueMachineToken(c.Request.Context(), store, in, first)
+	if len(c.Request.Header.Values("DPoP")) > 1 {
+		return nil, proofError("DPoP proof header must not be repeated")
+	}
+	token, err := opts.issueMachineToken(c, store, in, first)
 	return token, tokenEndpointError(c.ResponseHeader, challenge, err)
 }
 

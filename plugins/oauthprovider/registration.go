@@ -124,7 +124,11 @@ type Options struct {
 	Registration       RegistrationOptions
 	Tokens             TokenOptions
 	Assertions         AssertionOptions
-	assertionKeys      *clientKeyCache
+	// DPoP controls sender proofs at the token endpoint. The host SQL store
+	// shares reservations automatically when ReplayStore is omitted.
+	DPoP          DPoPOptions
+	proofVerifier *DPoPVerifier
+	assertionKeys *clientKeyCache
 }
 
 func (opts Options) clientManagementOptions() Options {
@@ -147,6 +151,11 @@ func New(opts Options) (auth.Plugin, error) {
 		return auth.Plugin{}, err
 	}
 	opts.assertionKeys = newClientKeyCache(opts.Assertions.JWKSTransport)
+	proofs, err := NewDPoPVerifier(opts.DPoP)
+	if err != nil {
+		return auth.Plugin{}, err
+	}
+	opts.proofVerifier = proofs
 	if opts.GrantTypes == nil {
 		opts.GrantTypes = []string{"authorization_code", "client_credentials", "refresh_token"}
 	}

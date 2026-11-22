@@ -12058,6 +12058,11 @@
       "label": "Authenticate issuance, introspection and revocation with independently signed assertions and reject replay across issuers",
       "test": "conformance/oauth-client-assertions.mjs",
       "marker": "export async function exerciseClientAssertions("
+    },
+    {
+      "label": "Issue a sender-bound machine token, enforce its key on an independent resource verifier, introspect it and revoke it",
+      "test": "conformance/dpop-machine-tokens.mjs",
+      "marker": "assert.deepEqual(info.cnf, { jkt });"
     }
   ],
   "docs/content/docs/plugins/oauth-provider/reference.mdx#L321/`POST /oauth2/token`": [
@@ -12603,6 +12608,18 @@
       "label": "Share proof reservations across independent Redis clients without extending their expiry",
       "test": "adapters/redis/storage_test.go",
       "marker": "func TestDPoPReplayReservationAcrossClients("
+    },
+    {
+      "label": "Issue a sender-bound machine token, enforce its key on an independent resource verifier, introspect it and revoke it",
+      "test": "conformance/dpop-machine-tokens.mjs",
+      "marker": "assert.deepEqual(info.cnf, { jkt });"
+    }
+  ],
+  "plugin-symbol/oauth-provider/OAuthOptions/dpop": [
+    {
+      "label": "Enforce issuer proof algorithms and shared replay storage during machine issuance on all three SQL engines",
+      "test": "adapters/sqlstore/oauth_dpop_issuance_test.go",
+      "marker": "func TestDPoPMachineTokenIssuance("
     }
   ]
 }

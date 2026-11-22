@@ -5,6 +5,7 @@ import { jwt } from "better-auth/plugins";
 import { oauthProvider } from "@better-auth/oauth-provider";
 import { betterAuth } from "better-auth";
 import { exportJWK, generateKeyPair, SignJWT } from "jose";
+import { exerciseBoundMachineTokens } from "./dpop-machine-tokens.mjs";
 import { exerciseMachineTokens } from "./oauth-machine-tokens.mjs";
 import { exerciseIntrospection } from "./oauth-introspection.mjs";
 import { exerciseClientKeyRotation } from "./oauth-key-rotation.mjs";
@@ -325,6 +326,9 @@ export async function compareClientRegistration(t, reference, goFixture) {
         assert.deepEqual(configured.client_credentials_scopes, ["reports"]);
         await t.test("issue opaque machine tokens accepted by an independent authorization server", async () => {
           await exerciseMachineTokens({ server, issuer, db, credentials, cookie, created, setMachineScopes });
+        });
+        await t.test("issue sender-bound machine tokens for an independent resource verifier", async () => {
+          await exerciseBoundMachineTokens({ server, issuer, db, credentials });
         });
         await t.test("introspect opaque machine tokens minted and revoked by an independent issuer", async () => {
           await exerciseIntrospection({ server, issuer, exchange, credentials, created, cookie, setMachineScopes });

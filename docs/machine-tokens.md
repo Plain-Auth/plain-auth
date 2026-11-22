@@ -57,7 +57,7 @@ curl --request POST "$AUTH_URL/api/auth/oauth2/token" \
   --data-urlencode 'scope=reports:read'
 ```
 
-Here `AUTH_URL` is the public origin and `/api/auth` is the default mount. Supply the scope as a space-separated string or omit it to request the full machine grant. Sending an empty `scope` is invalid. A successful JSON response contains `access_token`, `token_type` (`Bearer`), `scope`, `expires_in` in seconds and `expires_at` as a Unix timestamp.
+Here `AUTH_URL` is the public origin and `/api/auth` is the default mount. Supply the scope as a space-separated string or omit it to request the full machine grant. Sending an empty `scope` is invalid. A successful JSON response contains `access_token`, `token_type` (`Bearer` or `DPoP`), `scope`, `expires_in` in seconds and `expires_at` as a Unix timestamp.
 
 ## Token storage and errors
 
@@ -71,9 +71,42 @@ The SQL adapters recheck the registration, credential, grant, and scopes when in
 | 400 or 401 `invalid_client` | Client identification or authentication failed. Failed Basic authentication returns 401 with `WWW-Authenticate: Basic`. |
 | 400 `unauthorized_client` | The client cannot use the grant or has no machine scopes. |
 | 400 `invalid_scope` | A requested permission falls outside the current machine grant. |
+| 400 `invalid_dpop_proof` | The client requires a sender proof, or the proof is invalid or already used. Generate a fresh proof for this request. |
 | 415 `UNSUPPORTED_MEDIA_TYPE` | Send the token request as `application/x-www-form-urlencoded`. |
 
-This flow issues opaque tokens for confidential registrations using a shared secret or a signed client assertion. For a key-based registration, generate a fresh assertion for each exchange. Resource-targeted issuance, DPoP, authorization codes and refresh tokens have separate checklist entries. Requests requiring those capabilities cannot obtain an unbound machine token through this flow. [Signed client assertions](oauth-client-assertions.md) · [OAuth feature checklist](parity/plugins/oauth-provider.md)
+This flow issues opaque tokens for confidential registrations using a shared secret or a signed client assertion. For a key-based registration, generate a fresh assertion for each exchange. Resource-targeted issuance, authorization codes and refresh tokens have separate checklist entries. [Signed client assertions](oauth-client-assertions.md) · [OAuth feature checklist](parity/plugins/oauth-provider.md)
+
+## Bind a machine token to the client's key
+
+A confidential client can request an opaque sender-bound token by sending a `DPoP` header with its client-credentials exchange. To require proofs for every exchange by an application, register it with `dpop_bound_access_tokens: true`. Client authentication still uses its registered secret or signed assertion. Each proof is single use, including retries. [DPoP token requests, RFC 9449 §5](https://www.rfc-editor.org/rfc/rfc9449.html#section-5)
+
+Sign a proof with the client's private key and put its **public** JWK in the protected header. This Go example uses an Ed25519 client key and `github.com/go-jose/go-jose/v4`. Pass the issuer's public token endpoint URL to `tokenProof`, including its configured mount path.
+
+```go
+func tokenProof(key ed25519.PrivateKey, tokenURL string) (string, error) {
+    pub := (&jose.JSONWebKey{Key: key}).Public()
+    opts := new(jose.SignerOptions).WithType("dpop+jwt").WithHeader("jwk", pub)
+    signer, err := jose.NewSigner(jose.SigningKey{Algorithm: jose.EdDSA, Key: key}, opts)
+    if err != nil {
+        return "", err
+    }
+    payload, err := json.Marshal(map[string]any{
+        "htm": "POST", "htu": tokenURL, "iat": time.Now().Unix(), "jti": rand.Text(),
+    })
+    if err != nil {
+        return "", err
+    }
+    signed, err := signer.Sign(payload)
+    if err != nil {
+        return "", err
+    }
+    return signed.CompactSerialize()
+}
+```
+
+Use `crypto/ed25519`, `crypto/rand`, `encoding/json` and `time` alongside the JOSE package. Set `req.Header.Set("DPoP", proof)` on the form request shown above. A successful exchange returns `token_type: "DPoP"`. Keep the key for the lifetime of the issued token. For each protected request, sign a fresh proof with that key and include `ath`, the unpadded base64url SHA-256 digest of the literal access token, including any configured prefix. Send both `Authorization: DPoP <access_token>` and the `DPoP` proof. [Verify the proof in your API](oauth-resource-discovery.md#verify-a-sender-bound-access-token-on-a-protected-route)
+
+Configure the issuer with `oauthprovider.Options{DPoP: oauthprovider.DPoPOptions{...}}`. `SigningAlgorithms` and `ProofMaxAge` control the accepted proofs. The included SQL adapters share replay records across issuer instances automatically. To use a separate Redis or Valkey namespace, supply its store in `DPoP.ReplayStore`. A custom token adapter must implement `DPoPMachineTokenStore` to atomically persist the sender thumbprint with the token. Configure shared replay storage when that adapter serves multiple instances. [Cross-runtime issuance and revocation test](../conformance/dpop-machine-tokens.mjs)
 
 ## Check whether a token is active
 

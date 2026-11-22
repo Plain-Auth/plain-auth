@@ -93,6 +93,14 @@ type MachineTokenStore interface {
 	StoreMachineToken(ctx context.Context, clientID string, prepare func(MachineClient) (MachineTokenRecord, error)) error
 }
 
+// DPoPMachineTokenStore persists the verified sender thumbprint in the same
+// transaction as the token. Its prepare callback follows MachineTokenStore's
+// locked-registration contract. Implementations must retain the binding on
+// every subsequent token read.
+type DPoPMachineTokenStore interface {
+	StoreDPoPMachineToken(ctx context.Context, clientID, thumbprint string, prepare func(MachineClient) (MachineTokenRecord, error)) error
+}
+
 // MachineClientReader loads the local client registration for secret verification.
 type MachineClientReader interface {
 	LookupMachineClient(context.Context, string) (MachineClient, error)
@@ -180,12 +188,8 @@ func (in tokenRequest) authorizedScopes(client MachineClient) ([]string, error) 
 	if len(in.resources) != 0 {
 		return nil, registrationProblem(400, "invalid_target", "requested resource is not available for token issuance")
 	}
-	if client.RequireDPoP || in.dpop {
-		msg := "DPoP proof header is required"
-		if in.dpop {
-			msg = "DPoP proof could not be verified"
-		}
-		return nil, registrationProblem(400, "invalid_dpop_proof", msg)
+	if client.RequireDPoP && in.proof == "" {
+		return nil, proofError("DPoP proof header is required")
 	}
 	return scopes, nil
 }
@@ -243,9 +247,25 @@ func (opts TokenOptions) storedOpaque(ctx context.Context, raw string) (string, 
 	return stored, err
 }
 
-func (opts Options) issueMachineToken(ctx context.Context, store MachineTokenStore, in tokenRequest, first MachineClient) (MachineToken, error) {
+func (opts Options) issueMachineToken(c auth.EndpointContext, store MachineTokenStore, in tokenRequest, first MachineClient) (MachineToken, error) {
 	if _, err := in.authorizedScopes(first); err != nil {
 		return MachineToken{}, err
+	}
+	ctx := c.Request.Context()
+	boundStore, canBind := store.(DPoPMachineTokenStore)
+	var thumbprint string
+	tokenType := "Bearer"
+	if in.proof != "" {
+		if !canBind {
+			return MachineToken{}, &auth.APIError{Status: 501, Code: "OAUTH_DPOP_STORE_UNAVAILABLE", Message: "The configured store cannot persist sender-bound tokens"}
+		}
+		verifier := opts.proofsFor(c.Store())
+		proof, err := verifier.Verify(ctx, in.proof, DPoPProofRequest{Method: c.Request.Method, URL: c.Auth.PublicURL() + "/oauth2/token"})
+		if err != nil {
+			return MachineToken{}, err
+		}
+		thumbprint = proof.Thumbprint
+		tokenType = "DPoP"
 	}
 	var raw string
 	var err error
@@ -265,7 +285,7 @@ func (opts Options) issueMachineToken(ctx context.Context, store MachineTokenSto
 		return MachineToken{}, err
 	}
 	var result MachineToken
-	err = store.StoreMachineToken(ctx, in.id, func(current MachineClient) (MachineTokenRecord, error) {
+	prepare := func(current MachineClient) (MachineTokenRecord, error) {
 		if err := in.recheckClient(first, current); err != nil {
 			return MachineTokenRecord{}, err
 		}
@@ -281,9 +301,14 @@ func (opts Options) issueMachineToken(ctx context.Context, store MachineTokenSto
 		}
 		now := time.Now().UTC().Truncate(time.Second)
 		expires := now.Add(lifetime)
-		result = MachineToken{AccessToken: opts.Tokens.OpaquePrefix + raw, TokenType: "Bearer", Scope: strings.Join(scopes, " "), ExpiresIn: int64(lifetime / time.Second), ExpiresAt: expires.Unix()}
+		result = MachineToken{AccessToken: opts.Tokens.OpaquePrefix + raw, TokenType: tokenType, Scope: strings.Join(scopes, " "), ExpiresIn: int64(lifetime / time.Second), ExpiresAt: expires.Unix()}
 		return MachineTokenRecord{StoredToken: stored, Scopes: scopes, IssuedAt: now, ExpiresAt: expires}, nil
-	})
+	}
+	if thumbprint != "" {
+		err = boundStore.StoreDPoPMachineToken(ctx, in.id, thumbprint, prepare)
+	} else {
+		err = store.StoreMachineToken(ctx, in.id, prepare)
+	}
 	if err != nil {
 		return MachineToken{}, err
 	}
