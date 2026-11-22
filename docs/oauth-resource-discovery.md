@@ -90,3 +90,36 @@ func protectReports(next http.Handler, verify func(*http.Request) (oauthprovider
 | Ordinary permission denial or service failure | The application handles the original failure and status |
 
 For an opaque identifier such as `urn:example:reports`, supply its public HTTPS URL in `ChallengeOptions.MetadataMappings`. Additional resources generate separate Bearer challenges in the configured order. Browsers can read `WWW-Authenticate` through the exposed response header when the host permits the requesting origin. The JSON error body retains the public description, and the response header formats it for HTTP. [HTTP comparison tests](../conformance/resource-challenges.mjs) · [Go TLS and configuration tests](../plugins/oauthprovider/challenge_test.go)
+
+## Verify a sender-bound access token on a protected route
+
+First authenticate the access token using your issuer and check the audience, expiry and scopes required by this route. Read the sender key thumbprint from the authenticated token’s `cnf.jkt` claim or from the active introspection response. The client sends the literal access token in `Authorization: DPoP <access_token>` and a separate signed JWT in the `DPoP` header. [Proof verification in RFC 9449](https://www.rfc-editor.org/rfc/rfc9449.html#section-7)
+
+Construct one verifier at startup. For multiple instances, use the same SQL database or the same Redis or Valkey namespace on every instance. The SQL adapter uses the core verification table and supports SQLite, PostgreSQL and MySQL. A single-process service can omit `ReplayStore` to keep reservations in memory for the verifier’s lifetime.
+
+```go
+proofs, err := oauthprovider.NewDPoPVerifier(oauthprovider.DPoPOptions{
+    ReplayStore: store, // *sqlstore.Store or *redisstore.Store
+})
+if err != nil {
+    return err
+}
+```
+
+Call the verifier in your middleware after token validation. Pass the actual HTTP method and public URL. Configure the public origin at startup and preserve the external path if a trusted proxy rewrites it. The verifier excludes the query string, checks the signature and key thumbprint, and compares the signed `ath` claim with a hash of the presented token.
+
+```go
+func checkReportsProof(r *http.Request, proofs *oauthprovider.DPoPVerifier, verifiedThumbprint string) error {
+    scheme, token, _ := strings.Cut(r.Header.Get("Authorization"), " ")
+    return proofs.CheckBinding(r.Context(), scheme, r.Header.Get("DPoP"), oauthprovider.DPoPProofRequest{
+        Method: r.Method,
+        URL: "https://api.example.com" + r.URL.EscapedPath(),
+        AccessToken: token,
+        ExpectedThumbprint: verifiedThumbprint,
+    })
+}
+```
+
+An ordinary bearer token uses an empty thumbprint. A bound token requires the DPoP scheme and a fresh proof. Each accepted proof reserves its key thumbprint, HTTP method, normalized target and proof ID together. Reuse returns a 401 OAuth error. Pass the status, code and public description from `*plainauth.OAuthError` to the resource challenge writer. If replay storage is unavailable, deny the request and return a service error. [Cross-runtime HTTP tests](../conformance/dpop-proofs.mjs)
+
+The default proof lifetime is five minutes with up to five seconds of future clock skew. Configure `ProofMaxAge` and `SigningAlgorithms` on the verifier and advertise the same algorithms in resource metadata. For a custom token endpoint that must authenticate the sender before issuing a credential, call `Verify` with the request method and public token endpoint URL. It returns the validated public JWK and thumbprint for the issuer to bind to that credential. Issuance and refresh flows are tracked separately in the [OAuth provider checklist](parity/plugins/oauth-provider.md).

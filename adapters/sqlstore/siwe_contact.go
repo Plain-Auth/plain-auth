@@ -3,10 +3,7 @@ package sqlstore
 import (
 	"context"
 	"crypto/rand"
-	"crypto/sha256"
 	"database/sql"
-	"encoding/base64"
-	"encoding/hex"
 	"errors"
 	"strings"
 	"time"
@@ -19,18 +16,6 @@ import (
 var _ siwe.ContactStore = (*Store)(nil)
 var errContactCollision = errors.New("siwe: contact was occupied during wallet registration")
 
-func (s *Store) walletClaimID(identifier string) string {
-	hash := sha256.Sum256([]byte("reserve:" + identifier))
-	if s.dialect != "mysql" {
-		return base64.RawURLEncoding.EncodeToString(hash[:])
-	}
-	// The canonical MySQL primary key fits the UUID form of the reservation.
-	hash[6] = hash[6]&15 | 0x50
-	hash[8] = hash[8]&63 | 0x80
-	v := hex.EncodeToString(hash[:16])
-	return v[:8] + "-" + v[8:12] + "-" + v[12:16] + "-" + v[16:20] + "-" + v[20:]
-}
-
 func (s *Store) ReserveWalletContact(ctx context.Context, email, address string) (*siwe.ContactClaim, error) {
 	if !emailaddress.ValidWalletContact(email) || email != strings.ToLower(email) || address == "" {
 		return nil, nil
@@ -39,7 +24,7 @@ func (s *Store) ReserveWalletContact(ctx context.Context, email, address string)
 	if s.dialect == "mysql" && len(identifier) > 255 {
 		return nil, nil
 	}
-	id := s.walletClaimID(identifier)
+	id := s.verificationReservationID(identifier)
 	var claim *siwe.ContactClaim
 	err := s.emailOTPTransaction(ctx, walletLock("contact", email), func(tx *sql.Tx) (error, error) {
 		claim = nil
@@ -71,7 +56,7 @@ type walletClaimDeleter interface {
 
 func (s *Store) deleteWalletClaim(ctx context.Context, db walletClaimDeleter, c siwe.ContactClaim, live bool) (bool, error) {
 	id := "siwe-email-claim-" + c.Email
-	if s.walletClaimID(id) != c.ID || !strings.HasPrefix(c.Receipt, c.Address+":") || !emailaddress.ValidWalletContact(c.Email) || c.Email != strings.ToLower(c.Email) {
+	if s.verificationReservationID(id) != c.ID || !strings.HasPrefix(c.Receipt, c.Address+":") || !emailaddress.ValidWalletContact(c.Email) || c.Email != strings.ToLower(c.Email) {
 		return false, nil
 	}
 	exact := s.exactSQLValue("?")

@@ -661,6 +661,7 @@
 - [ ] Protect your API
   - [ ] Verify access tokens
     - [x] Return a browser-readable challenge for a missing or invalid token on an application route ([test](../../../conformance/resource-challenges.mjs#L27))
+    - [x] Check authenticated token binding, request method, public URL and proof-of-possession errors on a protected HTTP route ([test](../../../conformance/dpop-proofs.mjs#L67))
   - [ ] JWT or opaque tokens
     - [x] Introspect a resource-bound JWT minted by an independent issuer and preserve the claims originally signed for the grant ([test](../../../conformance/oauth-signed-introspection.mjs#L49))
     - [ ] How the API verifies it
@@ -784,6 +785,10 @@
     - [x] Apply offline and session-bound grants across session expiry, deletion and revocation while preserving the issuing application’s ownership ([test](../../../conformance/oauth-refresh-introspection.mjs#L74))
   - [ ] PKCE
   - [ ] DPoP
+    - [x] Verify signed DPoP proofs, their token hashes, permitted algorithms, normalized targets, validity windows and sender thumbprints ([test](../../../plugins/oauthprovider/dpop_test.go#L58))
+    - [x] Exchange proof reservations with an independent runtime and reject reuse in both directions ([test](../../../conformance/dpop-proofs.mjs#L39))
+    - [x] Accept a proof only once across independent connections and expire reservations on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/verification_reservation_test.go#L12))
+    - [x] Share proof reservations across independent Redis clients without extending their expiry ([test](../../../adapters/redis/storage_test.go#L435))
   - [ ] Custom claims
     - [ ] Client-specific access token claims
     - [ ] Custom token response fields

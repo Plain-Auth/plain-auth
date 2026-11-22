@@ -32,6 +32,7 @@ type Store struct {
 	scimPolicies           map[string]scim.Projection
 	adminSchema            *atomic.Bool
 	apiKeyLedgerReady      *atomic.Bool
+	dpopNextSweep          *atomic.Int64
 	adminRole, adminDenial string
 	teamOptions            *org.TeamOptions
 	factorSchema           bool
@@ -117,7 +118,7 @@ func connectDB(ctx context.Context, dialect, dsn string, create bool) (*Store, e
 	if err != nil {
 		return nil, err
 	}
-	return &Store{db: db, dialect: name, adminSchema: new(atomic.Bool), apiKeyLedgerReady: new(atomic.Bool)}, nil
+	return &Store{db: db, dialect: name, adminSchema: new(atomic.Bool), apiKeyLedgerReady: new(atomic.Bool), dpopNextSweep: new(atomic.Int64)}, nil
 }
 
 func openSQLite(path string, create bool) (*sql.DB, error) {

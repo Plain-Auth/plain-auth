@@ -1745,6 +1745,11 @@ test("protected APIs return the same Bearer and DPoP challenges as the released 
   await compareResourceChallenges(t, goFixture);
 });
 
+test("DPoP proofs enforce sender binding and shared single use across runtimes", async t => {
+  const { compareDPoPProofs } = await import("./dpop-proofs.mjs");
+  await compareDPoPProofs(t, goFixture);
+});
+
 test("OAuth resource administrators interoperate through a shared SQL registry", async t => {
   const { compareResourceRegistry } = await import("./resource-registry.mjs");
   await compareResourceRegistry(t, goFixture);

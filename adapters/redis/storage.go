@@ -101,6 +101,17 @@ func (s *Store) increment(ctx context.Context, key string, ttl time.Duration) (i
 	return increment.Run(ctx, s.client, []string{s.prefix + key}, ms).Int64()
 }
 
+// ReserveDPoPProof reserves a verified proof once across all instances sharing
+// this namespace. Replays leave the original reservation's expiry intact.
+func (s *Store) ReserveDPoPProof(ctx context.Context, key string, now, expires time.Time) (bool, error) {
+	ttl := expires.Sub(now)
+	if key == "" || ttl <= 0 {
+		return false, errors.New("redisstore: invalid DPoP replay reservation")
+	}
+	count, err := s.increment(ctx, "dpop-proof:"+key, ttl)
+	return count == 1, err
+}
+
 // ConsumeRateLimit implements the auth handler's RateLimitStorage interface.
 // Redis starts a fixed window on the first request. Over-budget requests
 // return the configured retry window and keep the existing key expiry.

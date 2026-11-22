@@ -579,6 +579,9 @@ func main() {
 		log.Fatal(err)
 	}
 	var handler http.Handler = auth
+	if key := os.Getenv("CONFORMANCE_DPOP_JKT"); key != "" {
+		handler = dpopFixture(baseURL, key, store, handler)
+	}
 	if os.Getenv("CONFORMANCE_CLIENT_REGISTRATION") == "protected" {
 		handler = clientScopeFixture(auth, store, handler)
 	}

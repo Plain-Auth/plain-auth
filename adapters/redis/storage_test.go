@@ -431,3 +431,52 @@ func TestStringExpiryAndUnavailableLimiter(t *testing.T) {
 		t.Fatal("Redis failure admitted the protected endpoint or exposed backend details")
 	}
 }
+
+func TestDPoPReplayReservationAcrossClients(t *testing.T) {
+	opts := serverOptions(t)
+	ns := "proof:" + rand.Text() + ":"
+	first := connection(t, opts)
+	stores := []*redisstore.Store{storage(t, first, ns), storage(t, connection(t, opts), ns)}
+	now := time.Now().UTC()
+	var wins atomic.Int32
+	var wg sync.WaitGroup
+	for i := range 12 {
+		wg.Go(func() {
+			ok, err := stores[i%2].ReserveDPoPProof(t.Context(), "digest", now, now.Add(10*time.Second))
+			if err != nil {
+				t.Errorf("reserve: %v", err)
+			} else if ok {
+				wins.Add(1)
+			}
+		})
+	}
+	wg.Wait()
+	if wins.Load() != 1 {
+		t.Fatalf("%d proof reservations won", wins.Load())
+	}
+	ctx := t.Context()
+	if ok, err := stores[0].ReserveDPoPProof(ctx, "digest", now, now.Add(time.Hour)); ok || err != nil {
+		t.Fatal("duplicate", ok, err)
+	}
+	ttl, err := first.PTTL(ctx, ns+"dpop-proof:digest").Result()
+	if err != nil || ttl <= 0 || ttl > 10*time.Second {
+		t.Fatal("replay changed original TTL", ttl, err)
+	}
+	if ok, err := stores[0].ReserveDPoPProof(ctx, "brief", now, now.Add(25*time.Millisecond)); !ok || err != nil {
+		t.Fatal(ok, err)
+	}
+	deadline := time.Now().Add(3 * time.Second)
+	for {
+		ok, err := stores[1].ReserveDPoPProof(ctx, "brief", now, now.Add(time.Second))
+		if err != nil || time.Now().After(deadline) {
+			t.Fatal("could not reuse expired proof ID", ok, err)
+		}
+		if ok {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	if ok, err := stores[0].ReserveDPoPProof(ctx, "digest", now, now); ok || err == nil {
+		t.Fatal("zero TTL", ok, err)
+	}
+}

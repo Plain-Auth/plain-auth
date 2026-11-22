@@ -58,30 +58,37 @@ func (keys assertionKeys) match(h jose.Header) (*jose.JSONWebKey, int) {
 	for i := range keys {
 		entry := &keys[i]
 		key := &entry.jwk
-		if h.KeyID != "" && key.KeyID != h.KeyID || key.Algorithm != "" && key.Algorithm != h.Algorithm ||
-			key.Use != "" && key.Use != "sig" || entry.operations != nil && !slices.Contains(entry.operations, "verify") {
+		if (h.KeyID != "" && key.KeyID != h.KeyID) || !allowsVerificationKey(key, h.Algorithm, entry.operations) {
 			continue
 		}
-		switch v := key.Key.(type) {
-		case *rsa.PublicKey:
-			if v.N.BitLen() < 2048 || (!strings.HasPrefix(h.Algorithm, "RS") && !strings.HasPrefix(h.Algorithm, "PS")) {
-				continue
-			}
-		case *ecdsa.PublicKey:
-			if map[int]string{256: "ES256", 384: "ES384", 521: "ES512"}[v.Params().BitSize] != h.Algorithm {
-				continue
-			}
-		case ed25519.PublicKey:
-			if h.Algorithm != "EdDSA" {
-				continue
-			}
-		default:
-			continue
-		}
+
 		match = key
 		count++
 	}
 	return match, count
+}
+
+func allowsVerificationKey(key *jose.JSONWebKey, alg string, operations []string) bool {
+	if (key.Algorithm != "" && key.Algorithm != alg) || (key.Use != "" && key.Use != "sig") || (operations != nil && !slices.Contains(operations, "verify")) {
+		return false
+	}
+	switch v := key.Key.(type) {
+	case *rsa.PublicKey:
+		if v.N.BitLen() < 2048 || (!strings.HasPrefix(alg, "RS") && !strings.HasPrefix(alg, "PS")) {
+			return false
+		}
+	case *ecdsa.PublicKey:
+		if map[int]string{256: "ES256", 384: "ES384", 521: "ES512"}[v.Params().BitSize] != alg {
+			return false
+		}
+	case ed25519.PublicKey:
+		if alg != "EdDSA" {
+			return false
+		}
+	default:
+		return false
+	}
+	return true
 }
 
 const (
