@@ -488,3 +488,32 @@ func TestRequiredSessionFieldOnFirstLogin(t *testing.T) {
 		})
 	}
 }
+
+func TestPostgresImportedSessionFieldCaseCollision(t *testing.T) {
+	ctx := t.Context()
+	dsn := organizationTestDSN(t, "postgres")
+	store, err := Open(ctx, "postgres", dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	for _, name := range []string{"Region", "region"} {
+		if _, err := store.db.ExecContext(ctx, `ALTER TABLE "session" ADD COLUMN "`+name+`" text`); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, name := range []string{"Region", "region"} {
+		fields := map[string]auth.SessionField{"residence": {Column: name, Type: auth.FieldString}}
+		if err := store.ValidateSessionFields(fields); err == nil {
+			t.Fatal("accepted an ambiguous case-folded imported column", name)
+		}
+		findings, err := CheckSchemaWithSessionFields(ctx, "postgres", dsn, nil, fields)
+		if err != nil || len(findings) != 1 || findings[0] != (SchemaFinding{Kind: "incompatible-column", Table: "session", Column: name}) {
+			t.Fatal("read-only check missed ambiguous imported columns", name, findings, err)
+		}
+		if migrated, err := OpenWithSessionFields(ctx, "postgres", dsn, nil, fields); err == nil {
+			migrated.Close()
+			t.Fatal("migration accepted ambiguous physical session columns", name)
+		}
+	}
+}

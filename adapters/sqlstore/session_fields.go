@@ -38,8 +38,8 @@ func (s *Store) ValidateSessionFields(fields map[string]auth.SessionField) error
 }
 
 type sessionColumn struct {
-	name, kind          string
-	required, generated bool
+	name, kind                     string
+	required, generated, ambiguous bool
 }
 
 // Resolve the same session relation as subsequent selects, including a
@@ -66,12 +66,17 @@ func (s *Store) sessionColumnCatalog(ctx context.Context, db interface {
 		if err = rows.Scan(&col.name, &col.kind, &col.required, &col.generated); err != nil {
 			return nil, err
 		}
-		result[strings.ToLower(col.name)] = col
+		folded := strings.ToLower(col.name)
+		_, col.ambiguous = result[folded]
+		result[folded] = col
 	}
 	return result, rows.Err()
 }
 
 func (s *Store) checkSessionField(f auth.SessionField, column sessionColumn) error {
+	if column.ambiguous {
+		return fmt.Errorf("sqlstore: multiple columns match the session field %q", f.Column)
+	}
 	if f.Column != column.name {
 		return fmt.Errorf("sqlstore: session column %q collides with existing %q", f.Column, column.name)
 	}
