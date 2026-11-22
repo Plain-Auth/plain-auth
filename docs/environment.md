@@ -83,6 +83,7 @@ Supply a comma-separated list in the form `2:<new-secret>,1:<old-secret>`. Each 
 | --- | --- |
 | `AUTH_DSN` | `authctl migrate` applies the selected schema to this database. `authctl check schema` reads its catalog with the same dialect and plugin flags. Applications may pass the same string to `sqlstore.Open`. |
 | `AUTH_DB` | The example host chooses its SQLite path from this variable. |
+| `POLAR_ACCESS_TOKEN`, `POLAR_WEBHOOK_SECRET`, `POLAR_ORGANIZATION_ID`, `POLAR_HOSTED_ORIGIN`, `POLAR_PRO_PRODUCT_ID` | The host passes these example variables to the official SDK and the checkout plugin. Each application chooses the product slugs and corresponding variables. [Polar configuration](polar.md#configure-the-integration) |
 | `STRIPE_WEBHOOK_SECRET`, `STRIPE_SECRET_KEY` | The [Stripe examples](plugins.md) pass the webhook signing secret and server-side API key into the SDK integration. |
 | Provider client IDs, provider secrets, and mail credentials | The host application reads its chosen variable names and supplies them when configuring the relevant provider or sender. |
 | `AUTH_TEST_POSTGRES_DSN`, `AUTH_TEST_MYSQL_DSN` | The integration tests read these to select disposable databases. |

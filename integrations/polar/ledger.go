@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/Stonewrit/stonewrit-auth/internal/polarledger"
 	"github.com/google/uuid"
 )
 
@@ -24,29 +25,22 @@ func OpenLedger(ctx context.Context, db *sql.DB, dialect string) (*Ledger, error
 	l := &Ledger{db: db, dialect: dialect}
 	exec := db.ExecContext
 	var tx *sql.Tx
-	if dialect == "postgres" {
+	if dialect != "mysql" {
 		var err error
 		tx, err = db.BeginTx(ctx, nil)
 		if err != nil {
 			return nil, err
 		}
 		defer tx.Rollback()
-		// Concurrent CREATE TABLE IF NOT EXISTS can race on PostgreSQL's catalog.
-		_, err = tx.ExecContext(ctx, "SELECT pg_advisory_xact_lock(hashtext(current_schema()),hashtext('stonewrit_polar_ledger'))")
-		if err != nil {
-			return nil, err
-		}
 		exec = tx.ExecContext
 	}
-	for _, ddl := range []string{
-		`CREATE TABLE IF NOT EXISTS stonewrit_polar_checkout (
-			slot CHAR(64) PRIMARY KEY, attempt CHAR(36) NOT NULL UNIQUE,
-			owner_id VARCHAR(512) NOT NULL, contact_hash CHAR(64) NOT NULL, merchant CHAR(36) NOT NULL, product CHAR(36) NOT NULL,
-			success_url TEXT NOT NULL, return_url TEXT NOT NULL, checkout_id CHAR(36) UNIQUE,
-			hosted_url TEXT NOT NULL, status VARCHAR(16) NOT NULL, expires_ms BIGINT NOT NULL, changed_us BIGINT NOT NULL)`,
-		`CREATE TABLE IF NOT EXISTS stonewrit_polar_delivery (
-			event_key CHAR(64) PRIMARY KEY, body_hash CHAR(64) NOT NULL, claim CHAR(36) NOT NULL)`,
-	} {
+	if dialect == "postgres" {
+		if _, err := tx.ExecContext(ctx, polarledger.PostgresSchemaLock); err != nil {
+			return nil, err
+		}
+	}
+	for _, table := range polarledger.Tables(dialect) {
+		ddl := "CREATE TABLE IF NOT EXISTS " + table.Name + " (" + strings.Join(table.Columns, ", ") + ")"
 		if _, err := exec(ctx, ddl); err != nil {
 			return nil, err
 		}

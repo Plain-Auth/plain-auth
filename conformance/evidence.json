@@ -207,6 +207,11 @@
       "label": "Reopen a populated SCIM profile twice on SQLite, PostgreSQL and MySQL and retain the original account",
       "test": "adapters/sqlstore/scim_test.go",
       "marker": "func TestSCIMDirectoryLifecycle("
+    },
+    {
+      "label": "Preserve Polar delivery receipts and their uniqueness across repeated CLI-compatible migrations on three SQL engines",
+      "test": "integrations/polar/schema_test.go",
+      "marker": "func TestCheckoutLedgerSchemaMigration("
     }
   ],
   "docs/content/docs/concepts/cookies.mdx#L62": [
@@ -7867,6 +7872,11 @@
       "label": "Allow one sender across competing sessions and withhold the hosted checkout after session revocation",
       "test": "integrations/polar/checkout_test.go",
       "marker": "revoked owner recovered a hosted checkout"
+    },
+    {
+      "label": "Provision the checkout ledger while the application starts and retain previously claimed webhook deliveries",
+      "test": "integrations/polar/schema_test.go",
+      "marker": "accepted an already recorded delivery"
     }
   ],
   "docs/content/docs/plugins/polar.mdx#L406": [

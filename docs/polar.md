@@ -4,6 +4,16 @@ Use the optional `integrations/polar` Go module to sell a configured product to 
 
 ## Configure the integration
 
+To provision the billing tables with the rest of the application schema, run the CLI against a dedicated auth database. Select the same dialect for all three commands and set `AUTH_DSN` for the migration and check.
+
+```sh
+authctl generate --dialect postgres --plugins polar
+authctl migrate --dialect postgres --plugins polar
+authctl check schema --dialect postgres --plugins polar
+```
+
+Include other enabled schema profiles in the comma-separated list. Repeating the migration preserves existing reservations and delivery receipts. The runtime also initializes the ledger when `OpenLedger` starts. [All schema profiles](schema.md)
+
 Use an organization access token for the Polar merchant, the merchant’s organization UUID, a configured product UUID, and the exact HTTPS origin of its hosted checkouts. Keep production and sandbox credentials, webhook secrets and products together. The auth database can be SQLite, PostgreSQL or MySQL.
 
 ```go

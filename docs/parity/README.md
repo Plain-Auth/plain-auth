@@ -45,7 +45,7 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 | --- | ---: | ---: |
 | [Published package interfaces](packages.md) | 72 | 161 |
 | [Native Go client, routers and databases](go.md) | 36 | 4 |
-| [Core API, sign-in providers and CLI](runtime.md) | 113 | 280 |
+| [Core API, sign-in providers and CLI](runtime.md) | 114 | 280 |
 | [Database adapters](adapters.md) | 32 | 224 |
 | [Authentication](authentication.md) | 12 | 420 |
 | [Core concepts](concepts.md) | 35 | 514 |
@@ -109,4 +109,4 @@ These integrations have independent release cycles.
 | [Creem](plugins/creem.md) | 0 | 74 |
 | [Dodopayments](plugins/dodopayments.md) | 0 | 20 |
 | [Dub](plugins/dub.md) | 0 | 15 |
-| [Polar](plugins/polar.md) | 13 | 57 |
+| [Polar](plugins/polar.md) | 14 | 57 |

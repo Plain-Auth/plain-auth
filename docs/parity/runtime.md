@@ -399,6 +399,7 @@ Each entry groups the configured endpoint’s behaviors. A checked child records
     - [x] Apply the selected profiles twice on populated SQLite while retaining the user ([test](../../conformance/schema.test.mjs#L129))
     - [x] Upgrade existing PostgreSQL and MySQL schemas with combined team, billing and factor profiles ([test](../../adapters/sqlstore/profiles_test.go#L14))
     - [x] Reopen a populated SCIM profile twice on SQLite, PostgreSQL and MySQL and retain the original account ([test](../../adapters/sqlstore/scim_test.go#L33))
+    - [x] Preserve Polar delivery receipts and their uniqueness across repeated CLI-compatible migrations on three SQL engines ([test](../../integrations/polar/schema_test.go#L11))
     - [ ] `-c, --cwd <cwd>`
     - [ ] `--config <config>`
     - [ ] `-y, --yes`
