@@ -12,6 +12,7 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 | Remember and switch accounts in one browser | [Account switching](../multi-session.md) |
 | Guest sessions and account upgrades | [Guest sessions](../anonymous.md) |
 | OAuth popup sign-in for top-level and embedded applications | [OAuth popup sign-in](../oauth-popup.md) |
+| Share a registered OAuth callback across trusted preview deployments | [OAuth proxy setup](../oauth-proxy.md) |
 | Google One Tap popup, button and browser challenges | [Google One Tap](../one-tap.md) |
 | First-party device grants and authorization | [Sign in a device](../device-authorization.md) |
 | Sign in with an Ethereum wallet | [Wallet sign-in](../siwe.md) |
@@ -45,7 +46,7 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 
 | Checklist | Checked | Open |
 | --- | ---: | ---: |
-| [Published package interfaces](packages.md) | 86 | 161 |
+| [Published package interfaces](packages.md) | 88 | 160 |
 | [Native Go client, routers and databases](go.md) | 36 | 4 |
 | [Core API, sign-in providers and CLI](runtime.md) | 139 | 280 |
 | [Database adapters](adapters.md) | 32 | 224 |
@@ -83,7 +84,7 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 | [Multi session](plugins/multi-session.md) | 15 | 22 |
 | [OAuth popup](plugins/oauth-popup.md) | 56 | 5 |
 | [OAuth provider](plugins/oauth-provider.md) | 0 | 455 |
-| [OAuth proxy](plugins/oauth-proxy.md) | 0 | 17 |
+| [OAuth proxy](plugins/oauth-proxy.md) | 26 | 6 |
 | [One tap](plugins/one-tap.md) | 36 | 18 |
 | [One time token](plugins/one-time-token.md) | 76 | 0 |
 | [OpenAPI](plugins/open-api.md) | 14 | 24 |

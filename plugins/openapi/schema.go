@@ -28,6 +28,9 @@ var catalogue = sync.OnceValue(func() map[string]json.RawMessage {
 })
 
 func schemaPath(r plainauth.HTTPRoute) string {
+	if r.Plugin == "oauth-proxy" && r.Path == "/callback/:id/oauth-proxy" {
+		return "/callback/{id}/oauth-proxy"
+	}
 	if r.Plugin == "sso" && strings.HasSuffix(r.Path, "/:providerId") {
 		return strings.TrimSuffix(r.Path, "/:providerId") + "/{providerId}"
 	}
@@ -44,7 +47,7 @@ func schemaPath(r plainauth.HTTPRoute) string {
 
 func knownPlugin(id string) bool {
 	switch id {
-	case "", "admin", "anonymous", "api-key", "device-authorization", "email-otp", "jwt", "magic-link", "multi-session", "oauth-popup", "one-tap", "one-time-token", "organization", "passkey", "phone-number", "sso", "stripe", "two-factor", "username":
+	case "", "admin", "anonymous", "api-key", "device-authorization", "email-otp", "jwt", "magic-link", "multi-session", "oauth-popup", "oauth-proxy", "one-tap", "one-time-token", "organization", "passkey", "phone-number", "sso", "stripe", "two-factor", "username":
 		return true
 	}
 	return false
@@ -273,6 +276,26 @@ func signupFormSchema(schema object, info plainauth.HTTPDescription) object {
 }
 
 func adjustRequest(op object, r plainauth.HTTPRoute, info plainauth.HTTPDescription, a *plainauth.Auth) {
+	if r.Plugin == "oauth-proxy" {
+		params := []object{
+			{"name": "callbackURL", "in": "query", "required": true, "schema": object{"type": "string"}},
+			{"name": "profile", "in": "query", "required": true, "schema": object{"type": "string"}, "description": "Encrypted, short-lived return from the production callback."},
+		}
+		if r.Path == "/oauth-proxy-callback" {
+			op["operationId"] = "oauthProxyCallback"
+			op["deprecated"] = true
+		} else {
+			op["operationId"] = "oauthProxyCompletion"
+			provider := object{"type": "string"}
+			if len(info.Providers) > 0 {
+				provider["enum"] = info.Providers
+			}
+			params = append(params, object{"name": "id", "in": "path", "required": true, "schema": provider})
+		}
+		op["parameters"] = params
+		op["security"] = []object{{"oauthProxyState": []string{}}}
+		return
+	}
 	if r.Plugin == "sso" {
 		describeSSORequest(op, r, info)
 		return
@@ -492,10 +515,10 @@ func standardOperation(r plainauth.HTTPRoute, info plainauth.HTTPDescription, a 
 			responses[success] = response("text/html", object{"type": "string"})
 		case "/error":
 			responses[success] = response("text/html", object{"type": "string"})
-		case "/reset-password/:token", "/callback/:id", "/subscription/success", "/sso/callback", "/sso/callback/:providerId", "/sso/saml2/sp/acs/:providerId", "/sso/saml2/logout/:providerId", "/sso/saml2/sp/slo/:providerId":
+		case "/reset-password/:token", "/callback/:id", "/callback/:id/oauth-proxy", "/oauth-proxy-callback", "/subscription/success", "/sso/callback", "/sso/callback/:providerId", "/sso/saml2/sp/acs/:providerId", "/sso/saml2/logout/:providerId", "/sso/saml2/sp/slo/:providerId":
 			delete(responses, success)
 			responses["302"] = object{"description": "Redirect to the configured destination", "headers": object{"Location": object{"schema": object{"type": "string"}}}}
-			if r.Path == "/callback/:id" && r.Method == "GET" && a.HasPlugin("oauth-popup") {
+			if (r.Path == "/callback/:id" || r.Plugin == "oauth-proxy") && r.Method == "GET" && a.HasPlugin("oauth-popup") {
 				responses["200"] = response("text/html", object{"type": "string"})
 			}
 		case "/verify-email", "/magic-link/verify", "/delete-user/callback":
@@ -528,6 +551,9 @@ func Generate(a *plainauth.Auth) (map[string]any, error) {
 	}
 	info := a.DescribeHTTP()
 	schemes := object{"apiKeyCookie": object{"type": "apiKey", "in": "cookie", "name": info.SessionCookie}}
+	if info.OAuthProxyStateCookie != "" {
+		schemes["oauthProxyState"] = object{"type": "apiKey", "in": "cookie", "name": info.OAuthProxyStateCookie}
+	}
 	if a.HasPlugin("bearer") {
 		schemes["bearerAuth"] = object{"type": "http", "scheme": "bearer"}
 	}

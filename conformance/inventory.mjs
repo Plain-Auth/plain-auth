@@ -375,6 +375,7 @@ const index = [
   "| Remember and switch accounts in one browser | [Account switching](../multi-session.md) |",
   "| Guest sessions and account upgrades | [Guest sessions](../anonymous.md) |",
   "| OAuth popup sign-in for top-level and embedded applications | [OAuth popup sign-in](../oauth-popup.md) |",
+  "| Share a registered OAuth callback across trusted preview deployments | [OAuth proxy setup](../oauth-proxy.md) |",
   "| Google One Tap popup, button and browser challenges | [Google One Tap](../one-tap.md) |",
   "| First-party device grants and authorization | [Sign in a device](../device-authorization.md) |",
   "| Sign in with an Ethereum wallet | [Wallet sign-in](../siwe.md) |",

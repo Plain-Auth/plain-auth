@@ -16,6 +16,9 @@ import (
 )
 
 func (a *Auth) serveOAuth(w http.ResponseWriter, r *http.Request, route string) bool {
+	if a.oauthProxy != nil && a.serveOAuthProxyCompletion(w, r, route) {
+		return true
+	}
 	link := route == "/link-social"
 	start := route == "/sign-in/social" || link
 	id, callback := strings.CutPrefix(route, "/callback/")
@@ -154,7 +157,23 @@ func (a *Auth) beginBrowserOAuth(h http.Header, r *http.Request, p OAuthProvider
 		}
 	}
 	opts = append(opts, requestedParams...)
-	target := p.Config.AuthCodeURL(flow.State, opts...)
+	providerState := flow.State
+	if a.oauthProxy != nil {
+		current := a.proxyCurrentOrigin(r)
+		if current != a.oauthProxy.ProductionURL && r.Header.Get("X-Skip-OAuth-Proxy") == "" {
+			if current == "" {
+				return "", "", validationError("OAuth proxy requires a secure preview origin")
+			}
+			flow.ProxyOrigin = current
+			p.Config.RedirectURL = a.oauthProxy.ProductionURL + a.opts.BasePath + "/callback/" + id
+			var err error
+			providerState, err = a.packProxyState(flow)
+			if err != nil {
+				return "", "", err
+			}
+		}
+	}
+	target := p.Config.AuthCodeURL(providerState, opts...)
 	if p.CustomizeAuthorization != nil {
 		u, err := url.Parse(target)
 		if err != nil {
@@ -170,10 +189,13 @@ func (a *Auth) beginBrowserOAuth(h http.Header, r *http.Request, p OAuthProvider
 	return target, flow.State, nil
 }
 
-func (a *Auth) finishOAuth(w http.ResponseWriter, r *http.Request, id string) (resultErr error) {
+func (a *Auth) finishOAuth(w http.ResponseWriter, r *http.Request, id string) error {
 	p, err := a.providerConfig(id)
 	if err != nil {
 		return err
+	}
+	if a.oauthProxy != nil && strings.HasPrefix(r.URL.Query().Get("state"), recordPrefix) {
+		return a.exchangeProxyCallback(w, r, id, p)
 	}
 	// The configured origin is the only destination sent in the code exchange.
 	base, _ := url.Parse(a.opts.BaseURL)
@@ -182,8 +204,12 @@ func (a *Auth) finishOAuth(w http.ResponseWriter, r *http.Request, id string) (r
 	}
 	q := r.URL.Query()
 	state := q.Get("state")
+	return a.finishBrowserOAuth(w, r, id, p, state, q, nil)
+}
+
+func (a *Auth) finishBrowserOAuth(w http.ResponseWriter, r *http.Request, id string, p OAuthProvider, state string, q url.Values, returned *oauthProxyResult) (resultErr error) {
 	var popup *popupOpener
-	if len(q["state"]) == 1 && state != "" && len(state) <= 128 {
+	if (returned != nil || len(q["state"]) == 1) && state != "" && len(state) <= 128 {
 		popup = a.callbackPopup(w.Header(), r, state)
 	}
 	if popup != nil {
@@ -195,7 +221,7 @@ func (a *Auth) finishOAuth(w http.ResponseWriter, r *http.Request, id string) (r
 		}()
 	}
 	cookie, err := r.Cookie(a.oauthCookie("oauth_state", "", 0).Name)
-	if err != nil || len(q["state"]) != 1 || len(state) > 128 || state == "" || len(q["code"]) > 1 || len(q["error"]) > 1 {
+	if err != nil || state == "" || len(state) > 128 || (returned == nil && (len(q["state"]) != 1 || len(q["code"]) > 1 || len(q["error"]) > 1)) {
 		return &APIError{400, "INVALID_OAUTH_STATE", "Invalid or expired OAuth state"}
 	}
 	store := a.opts.Store.(OAuthStore)
@@ -234,6 +260,9 @@ func (a *Auth) finishOAuth(w http.ResponseWriter, r *http.Request, id string) (r
 		return &APIError{400, code, "Unable to complete social sign-in"}
 	}
 	fail := func(code string) error { return failWithDescription(code, "") }
+	if (returned == nil && flow.ProxyOrigin != "") || (returned != nil && (flow.ProxyOrigin != returned.Preview || flow.CallbackURL != returned.Callback)) {
+		return fail("INVALID_OAUTH_STATE")
+	}
 	if flow.AnonymousSessionProof != "" {
 		guest, err := a.openRecord("guest-oauth:"+flow.State, flow.AnonymousSessionProof)
 		current := a.cookieToken(r.Header)
@@ -246,7 +275,7 @@ func (a *Auth) finishOAuth(w http.ResponseWriter, r *http.Request, id string) (r
 		popup.write(w, "", "", &popupError{Code: q.Get("error"), Description: q.Get("error_description")})
 		return nil
 	}
-	if flow.Provider != id || q.Get("error") != "" || q.Get("code") == "" {
+	if flow.Provider != id || (returned == nil && (q.Get("error") != "" || q.Get("code") == "")) {
 		return fail("OAUTH_CALLBACK_ERROR")
 	}
 	ctx, cancel := context.WithTimeout(context.WithValue(r.Context(), oauth2.HTTPClient, p.HTTPClient), 30*time.Second)
@@ -254,10 +283,82 @@ func (a *Auth) finishOAuth(w http.ResponseWriter, r *http.Request, id string) (r
 	if flow.PopupAdditionalData != nil {
 		ctx = context.WithValue(ctx, popupDataKey{}, flow.PopupAdditionalData)
 	}
+	var profile OAuthProfile
+	var tokens OAuthTokens
+	disableSignUp := p.DisableImplicitSignUp && !flow.RequestSignUp
+	if returned != nil && flow.ErrorCallbackURL == "" {
+		flow.ErrorCallbackURL = a.opts.BasePath + "/error"
+	}
+	if returned == nil {
+		var failure string
+		profile, tokens, failure = a.exchangeProviderCode(ctx, p, flow, q)
+		if failure != "" {
+			return fail(failure)
+		}
+	} else {
+		if returned.Error != "" {
+			return fail(returned.Error)
+		}
+		profile, tokens = returned.Profile, returned.Tokens
+		profile.AdditionalFields = returned.Fields
+		if returned.GoogleHostedDomain != "" {
+			profile.Data = map[string]any{"hd": returned.GoogleHostedDomain}
+		}
+		if !validSocialProfile(profile) {
+			return fail("OAUTH_PROFILE_INVALID")
+		}
+		disableSignUp = disableSignUp || returned.DisableSignUp
+	}
+	result, created, err := a.completeProfile(ctx, r, id, profile, tokens, OAuthLoginOptions{DisableSignUp: disableSignUp, AllowVerifiedEmailLink: p.AllowVerifiedEmailLink, LinkUserID: flow.LinkUserID, LinkSessionToken: a.cookieToken(r.Header)})
+	var signupError *APIError
+	if errors.As(err, &signupError) && signupError.Code == "SIGN_UP_DISABLED" {
+		if flow.ErrorCallbackURL == "" {
+			flow.ErrorCallbackURL = a.opts.BaseURL + a.opts.BasePath + "/error"
+		}
+		return fail("signup_disabled")
+	}
+	var fieldError oauthRegistrationFieldError
+	if errors.As(err, &fieldError) && errors.As(fieldError, &signupError) {
+		if flow.ErrorCallbackURL == "" {
+			flow.ErrorCallbackURL = a.opts.BaseURL + a.opts.BasePath + "/error"
+		}
+		return failWithDescription(signupError.Code, signupError.Message)
+	}
+	if errors.Is(err, ErrOAuthLinkingDisabled) {
+		return fail("unable_to_link_account")
+	}
+	if errors.Is(err, ErrOAuthLinkRequired) || errors.Is(err, ErrNotFound) {
+		return fail("account_not_linked")
+	}
+	if err != nil {
+		return err
+	}
+	if flow.LinkUserID == "" {
+		if err := a.setSessionCookie(w, r, result.Token, true); err != nil {
+			return a.discardUnpublishedSession(ctx, result.Token, err)
+		}
+	}
+	target := flow.CallbackURL
+	if created && flow.NewUserCallbackURL != "" {
+		target = flow.NewUserCallbackURL
+	}
+	if !a.trustedURL(target, true) {
+		target = a.opts.BaseURL
+	}
+	if popup != nil && flow.LinkUserID == "" {
+		popup.write(w, a.sessionCookie(result.Token, true).Value, target, nil)
+		return nil
+	}
+	http.Redirect(w, r, target, http.StatusFound)
+	return nil
+}
+
+func (a *Auth) exchangeProviderCode(ctx context.Context, p OAuthProvider, flow OAuthFlow, q url.Values) (OAuthProfile, OAuthTokens, string) {
 	var params []oauth2.AuthCodeOption
 	if !p.DisablePKCE {
 		params = append(params, oauth2.VerifierOption(flow.Verifier))
 	}
+	var err error
 	var token *oauth2.Token
 	if p.ExchangeCode == nil {
 		token, err = p.Config.Exchange(ctx, q.Get("code"), params...)
@@ -265,11 +366,11 @@ func (a *Auth) finishOAuth(w http.ResponseWriter, r *http.Request, id string) (r
 		token, err = p.ExchangeCode(ctx, p.Config, q.Get("code"), flow.Verifier, q)
 	}
 	if err != nil {
-		return fail("OAUTH_TOKEN_EXCHANGE_FAILED")
+		return OAuthProfile{}, OAuthTokens{}, "OAUTH_TOKEN_EXCHANGE_FAILED"
 	}
 	profile, err := p.Resolve(ctx, token, flow.Nonce)
 	if err != nil || !validSocialProfile(profile) {
-		return fail("OAUTH_PROFILE_INVALID")
+		return OAuthProfile{}, OAuthTokens{}, "OAUTH_PROFILE_INVALID"
 	}
 	if p.FormPostName && q.Get("user") != "" {
 		var newUser struct {
@@ -298,48 +399,7 @@ func (a *Auth) finishOAuth(w http.ResponseWriter, r *http.Request, id string) (r
 	if lifetime := refreshLifetime(token); lifetime > 0 {
 		tokens.RefreshExpiresAt = a.now().Add(lifetime)
 	}
-	result, created, err := a.completeProfile(ctx, r, id, profile, tokens, OAuthLoginOptions{DisableSignUp: p.DisableImplicitSignUp && !flow.RequestSignUp, AllowVerifiedEmailLink: p.AllowVerifiedEmailLink, LinkUserID: flow.LinkUserID, LinkSessionToken: a.cookieToken(r.Header)})
-	var signupError *APIError
-	if errors.As(err, &signupError) && signupError.Code == "SIGN_UP_DISABLED" {
-		if flow.ErrorCallbackURL == "" {
-			flow.ErrorCallbackURL = a.opts.BaseURL + a.opts.BasePath + "/error"
-		}
-		return fail("signup_disabled")
-	}
-	var fieldError oauthRegistrationFieldError
-	if errors.As(err, &fieldError) && errors.As(fieldError, &signupError) {
-		if flow.ErrorCallbackURL == "" {
-			flow.ErrorCallbackURL = a.opts.BaseURL + a.opts.BasePath + "/error"
-		}
-		return failWithDescription(signupError.Code, signupError.Message)
-	}
-	if errors.Is(err, ErrOAuthLinkingDisabled) {
-		return fail("unable_to_link_account")
-	}
-	if errors.Is(err, ErrOAuthLinkRequired) || errors.Is(err, ErrNotFound) {
-		return fail("account_not_linked")
-	}
-	if err != nil {
-		return err
-	}
-	if flow.LinkUserID == "" {
-		if err := a.setSessionCookie(w, r, result.Token, true); err != nil {
-			return err
-		}
-	}
-	target := flow.CallbackURL
-	if created && flow.NewUserCallbackURL != "" {
-		target = flow.NewUserCallbackURL
-	}
-	if !a.trustedURL(target, true) {
-		target = a.opts.BaseURL
-	}
-	if popup != nil && flow.LinkUserID == "" {
-		popup.write(w, a.sessionCookie(result.Token, true).Value, target, nil)
-		return nil
-	}
-	http.Redirect(w, r, target, http.StatusFound)
-	return nil
+	return profile, tokens, ""
 }
 
 func validSocialProfile(p OAuthProfile) bool {

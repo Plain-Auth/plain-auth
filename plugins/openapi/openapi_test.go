@@ -231,3 +231,40 @@ func TestChromeReferenceFilter(t *testing.T) {
 		t.Fatal("Chrome did not filter operations under the nonce CSP")
 	}
 }
+
+func TestOAuthProxyCompletionSchema(t *testing.T) {
+	proxy, err := auth.NewOAuthProxy(auth.OAuthProxyOptions{ProductionURL: "https://login.example.test"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	a, server := fixture(t, openapi.Options{}, proxy)
+	doc := schemaDoc(t, server)
+	scheme := node(doc, "components", "securitySchemes", "oauthProxyState")
+	if scheme["in"] != "cookie" || scheme["name"] != a.DescribeHTTP().OAuthProxyStateCookie || scheme["name"] == "" {
+		t.Fatal("missing binding cookie", scheme)
+	}
+	for path, operation := range map[string]string{
+		"/callback/{id}/oauth-proxy": "oauthProxyCompletion",
+		"/oauth-proxy-callback":      "oauthProxyCallback",
+	} {
+		op := node(doc, "paths", path, "get")
+		if op["operationId"] != operation || node(op, "responses", "302") == nil || node(op, "responses", "200") != nil {
+			t.Fatal("incorrect redirect operation", path)
+		}
+		sec := op["security"].([]any)
+		if len(sec) != 1 || sec[0].(obj)["oauthProxyState"] == nil {
+			t.Fatal("missing state binding requirement", path)
+		}
+		parameters := map[string]any{}
+		for _, value := range op["parameters"].([]any) {
+			p := value.(obj)
+			if p["required"] != true {
+				t.Fatal("optional callback parameter", p["name"])
+			}
+			parameters[p["name"].(string)] = p["in"]
+		}
+		if parameters["callbackURL"] != "query" || parameters["profile"] != "query" || (parameters["id"] == "path") != (operation == "oauthProxyCompletion") {
+			t.Fatal("incorrect parameters", path, parameters)
+		}
+	}
+}

@@ -1662,3 +1662,18 @@ test("OpenAPI describes configured writable profile fields and their live regist
   const { compareProfileFieldSchemas } = await import("./openapi-contract.mjs");
   await compareProfileFieldSchemas(t, reference, goFixture);
 });
+
+test("OAuth proxy exchanges on production and completes login only on the originating preview", async t => {
+  const { compareProxyDeployments } = await import("./oauth-proxy.mjs");
+  await compareProxyDeployments(t, { reference, goFixture, instrument });
+});
+
+test("Chrome signs in across sites through the registered callback and keeps the session on the preview", async t => {
+  const { browserProxySignIn } = await import("./oauth-proxy.mjs");
+  await browserProxySignIn(t, goFixture);
+});
+
+test("Chrome returns a proxied OAuth popup to its opener with the preview session", async t => {
+  const { browserProxyPopup } = await import("./oauth-proxy.mjs");
+  await browserProxyPopup(t, goFixture);
+});

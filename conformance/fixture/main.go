@@ -62,6 +62,12 @@ func main() {
 		log.Fatal(err)
 	}
 	defer listener.Close()
+	if os.Getenv("CONFORMANCE_OAUTH_PROXY") == "1" {
+		if err := serveProxyPair(listener, os.Args[1]); err != nil {
+			log.Fatal(err)
+		}
+		return
+	}
 	baseURL := "http://" + listener.Addr().String()
 	samlFixture := os.Getenv("CONFORMANCE_SAML") == "1"
 	if samlFixture {

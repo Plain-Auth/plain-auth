@@ -25,6 +25,7 @@ import (
 
 // Auth is safe for concurrent use by application handlers.
 type Auth struct {
+	oauthProxy            *OAuthProxyOptions
 	sessionCacheKeys      []sessionCacheKey
 	disabledPaths         map[string]struct{}
 	trustedOrigins        []trustedOrigin
@@ -189,6 +190,19 @@ func New(opts Options) (*Auth, error) {
 		return nil, err
 	}
 	for _, p := range opts.Plugins {
+		if p.oauthProxy != nil {
+			proxy := *p.oauthProxy
+			if proxy.ProductionURL == "" {
+				proxy.ProductionURL = proxyOrigin(a.opts.BaseURL)
+				if proxy.ProductionURL == "" {
+					return nil, errors.New("oauth proxy: a secure production origin is required")
+				}
+			}
+			if len(proxy.Secrets) == 0 {
+				proxy.Secrets = a.encryptionSecrets()
+			}
+			a.oauthProxy = &proxy
+		}
 		if p.TranslateError != nil {
 			if a.translateError != nil {
 				return nil, errors.New("auth: only one plugin may translate errors")

@@ -10272,5 +10272,127 @@
       "test": "conformance/admin-fields.mjs",
       "marker": "const denied = await creator.admin.createUser("
     }
+  ],
+  "plugin/oauth-proxy": [
+    {
+      "label": "Use one registered callback with independent deployments and session stores",
+      "test": "adapters/sqlstore/oauth_proxy_test.go",
+      "marker": "func TestOAuthProxyAcrossDeployments("
+    }
+  ],
+  "plugin/oauth-proxy/GET /callback/:id/oauth-proxy": [
+    {
+      "label": "Consume the originating browser state once and verify the provider before creating the preview session",
+      "test": "adapters/sqlstore/oauth_proxy_test.go",
+      "marker": "missing browser binding was accepted"
+    },
+    {
+      "label": "Complete a popup across sites and return its session to the trusted opener",
+      "test": "conformance/core.test.mjs",
+      "marker": "Chrome returns a proxied OAuth popup"
+    }
+  ],
+  "plugin/oauth-proxy/GET /oauth-proxy-callback": [
+    {
+      "label": "Accept the unqualified return path for a returning account through the released browser client",
+      "test": "conformance/core.test.mjs",
+      "marker": "OAuth proxy exchanges on production"
+    }
+  ],
+  "plugin-symbol/oauth-proxy/oAuthProxy": [
+    {
+      "label": "Install the plugin with separate provider credentials, databases and signing keys",
+      "test": "adapters/sqlstore/oauth_proxy_test.go",
+      "marker": "func TestOAuthProxyAcrossDeployments(",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/oauth-proxy/OAuthProxyOptions": [
+    {
+      "label": "Configure the registered origin, current origin, lifetime and shared key",
+      "test": "oauth_proxy_test.go",
+      "marker": "func TestOAuthProxyConfiguration(",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/oauth-proxy/OAuthProxyOptions/productionURL": [
+    {
+      "label": "Override the registered origin or load it from the process environment",
+      "test": "oauth_proxy_test.go",
+      "marker": "func TestOAuthProxyConfiguration(",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/oauth-proxy/OAuthProxyOptions/currentURL": [
+    {
+      "label": "Discover a hosting origin or fall back to the configured public URL",
+      "test": "oauth_proxy_test.go",
+      "marker": "func TestOAuthProxyHostingOrigins(",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/oauth-proxy/OAuthProxyOptions/maxAge": [
+    {
+      "label": "Check the profile lifetime and tolerate bounded clock skew",
+      "test": "oauth_proxy_test.go",
+      "marker": "func TestOAuthProxyProfileLifetimeAndKeys(",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/oauth-proxy/OAuthProxyOptions/secret": [
+    {
+      "label": "Reject wrong-purpose records and honor only keys in the configured ring",
+      "test": "oauth_proxy_test.go",
+      "marker": "func TestOAuthProxyProfileLifetimeAndKeys(",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/oauth-proxy.mdx#L100": [
+    {
+      "label": "Follow the complete production-to-preview return with host-scoped cookies in Chrome",
+      "test": "conformance/core.test.mjs",
+      "marker": "Chrome signs in across sites through the registered callback",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/oauth-proxy.mdx#L123/productionURL": [
+    {
+      "label": "Send the production redirect URI and bypass the proxy on production itself",
+      "test": "adapters/sqlstore/oauth_proxy_test.go",
+      "marker": "direct OAuth origin was not preserved",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/oauth-proxy.mdx#L125/currentURL": [
+    {
+      "label": "Check all supported host environment fallbacks",
+      "test": "oauth_proxy_test.go",
+      "marker": "func TestOAuthProxyHostingOrigins(",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/oauth-proxy.mdx#L127/maxAge": [
+    {
+      "label": "Accept the configured boundary and reject expired or future-dated profiles",
+      "test": "oauth_proxy_test.go",
+      "marker": "func TestOAuthProxyProfileLifetimeAndKeys(",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/oauth-proxy.mdx#L129/secret": [
+    {
+      "label": "Complete a flow with shared proxy credentials and per-environment session secrets",
+      "test": "adapters/sqlstore/oauth_proxy_test.go",
+      "marker": "func TestOAuthProxyAcrossDeployments(",
+      "complete": true
+    }
+  ],
+  "published/better-auth/./plugins/oauth-proxy": [
+    {
+      "label": "Initialize the Go plugin and complete a browser-bound authorization across separate stores",
+      "test": "adapters/sqlstore/oauth_proxy_test.go",
+      "marker": "func TestOAuthProxyAcrossDeployments(",
+      "complete": true
+    }
   ]
 }

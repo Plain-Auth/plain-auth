@@ -24,10 +24,17 @@ func recordKey(secret string) []byte {
 }
 
 func (a *Auth) sealRecord(purpose string, raw []byte) (string, error) {
-	active := VersionedSecret{Value: a.opts.Secret}
+	return sealSecretRecord(a.encryptionSecrets()[0], purpose, raw)
+}
+
+func (a *Auth) encryptionSecrets() []VersionedSecret {
 	if len(a.opts.Secrets) > 0 {
-		active = a.opts.Secrets[0]
+		return a.opts.Secrets
 	}
+	return []VersionedSecret{{Value: a.opts.Secret}}
+}
+
+func sealSecretRecord(active VersionedSecret, purpose string, raw []byte) (string, error) {
 	header := recordPrefix + strconv.Itoa(active.Version) + "."
 	cipher, err := chacha20poly1305.NewX(recordKey(active.Value))
 	if err != nil {
@@ -40,16 +47,17 @@ func (a *Auth) sealRecord(purpose string, raw []byte) (string, error) {
 }
 
 func (a *Auth) openRecord(purpose, record string) ([]byte, error) {
+	return openSecretRecord(a.encryptionSecrets(), purpose, record)
+}
+
+func openSecretRecord(keys []VersionedSecret, purpose, record string) ([]byte, error) {
 	rest, valid := strings.CutPrefix(record, recordPrefix)
 	id, payload, found := strings.Cut(rest, ".")
 	if !valid || !found {
 		return nil, errEncryptedRecord
 	}
 	var secret string
-	if len(a.opts.Secrets) == 0 && id == "0" {
-		secret = a.opts.Secret
-	}
-	for _, key := range a.opts.Secrets {
+	for _, key := range keys {
 		if strconv.Itoa(key.Version) == id {
 			secret = key.Value
 			break

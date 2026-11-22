@@ -18,6 +18,7 @@ Plain Auth embeds authentication in your Go API. Mount the auth handler on your 
 - [x] Register a passkey and authenticate with it. [Software authenticator tests](adapters/sqlstore/passkey_test.go)
 - [x] Sign in with a built-in provider. Use `providers.Names()` for the current catalog. [Browser fixtures](providers/catalog_test.go) · [OpenID Connect fixtures](providers/issuer_test.go) · [Apple and Microsoft](providers/apple_microsoft_test.go)
 - [x] Sign in through an OAuth popup from a top-level page or a cross-site iframe. [Popup setup and Chrome tests](docs/oauth-popup.md)
+- [x] Share a registered OAuth callback across trusted previews and create the session on the preview that started sign-in. [OAuth proxy setup](docs/oauth-proxy.md)
 - [x] Configure tenant-specific sign-in with Auth0, Keycloak, Okta or Entra ID and additional OAuth profiles including LINE and HubSpot. [Provider setup](docs/social.md#auth0-keycloak-and-okta)
 - [x] Verify a phone number, link it to an account and recover a password through the application’s SMS sender. [Phone accounts](docs/phone-number.md)
 - [x] Verify an email address, sign in, change an address and reset a password using single-use email codes. [Email OTP](docs/email-otp.md)

@@ -53,6 +53,8 @@ type HTTPDescription struct {
 	EmailOTPRegistration, PhoneRegistration bool
 
 	ServerURL, SessionCookie string
+	// OAuthProxyStateCookie binds a preview return to the initiating browser.
+	OAuthProxyStateCookie string
 	// SSOStateCookie is the browser binding cookie for installed enterprise OIDC callbacks.
 	SSOStateCookie string
 	// SAMLStateCookie is set when the SP-initiated SAML form handler is installed.
@@ -130,6 +132,12 @@ func (a *Auth) DescribeHTTP() HTTPDescription {
 	if len(d.Providers) != 0 {
 		d.Routes = append(d.Routes, HTTPRoute{Method: "POST", Path: "/sign-in/social"}, HTTPRoute{Method: "POST", Path: "/link-social"},
 			HTTPRoute{Method: "GET", Path: "/callback/:id"}, HTTPRoute{Method: "POST", Path: "/callback/:id"})
+	}
+	if a.oauthProxy != nil {
+		d.OAuthProxyStateCookie = a.oauthCookie("oauth_state", "", 0).Name
+		for _, path := range []string{"/callback/:id/oauth-proxy", "/oauth-proxy-callback"} {
+			d.Routes = append(d.Routes, HTTPRoute{Method: http.MethodGet, Path: path, Plugin: "oauth-proxy", SuccessStatus: http.StatusFound})
+		}
 	}
 	for _, ep := range a.plugins {
 		switch ep.Path {
