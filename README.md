@@ -32,7 +32,7 @@ StoneWrit Auth embeds authentication in your Go API. Mount the auth handler on y
 - [x] Provision directory Users and Groups, synchronize direct memberships and rotate or revoke scoped SCIM credentials. [Directory provisioning](docs/scim.md)
 - [x] Map directory Group memberships to application roles and withdraw grants when their last source is removed. [SCIM role mapping](docs/scim.md#project-group-memberships-into-application-roles)
 
-Single-price metered subscriptions support Checkout and signed billing updates. IdP-initiated SAML, SAML single logout, and plan switches involving metered prices remain open. The [complete checklist](docs/parity/README.md) records which parts of each integration have passing tests.
+Stripe Checkout and signed billing updates support a single metered price or metered add-ons with a licensed base. IdP-initiated SAML, SAML single logout, and plan switches involving metered prices remain open. The [complete checklist](docs/parity/README.md) records which parts of each integration have passing tests.
 
 ## Run it locally
 

@@ -111,6 +111,11 @@ func (s *subscriptions) reconcile(ctx context.Context, store SubscriptionLifecyc
 		if sub == nil || sub.ID != key.RemoteID || sub.Customer == nil || sub.Customer.ID != key.CustomerID || (eventObject != nil && sub.Livemode != eventObject.Livemode) {
 			return nil, ErrCheckoutReconcile
 		}
+		if !deleted && s.hasMeteredAddons && sub.Items != nil && sub.Items.HasMore {
+			if err := s.readAllSubscriptionItems(ctx, sub); err != nil {
+				return nil, err
+			}
+		}
 		if !deleted && before.LocalID == "" && key.Purchase == nil {
 			key.Purchase, err = s.purchaseForSubscription(ctx, store, before.Owner, sub, eventObject)
 			if err != nil {
@@ -147,6 +152,23 @@ func (s *subscriptions) subscriptionChange(sub *sdk.Subscription, deleted bool, 
 		change.Status = "canceled"
 	} else if sub.Schedule != nil {
 		change.ScheduleID = sub.Schedule.ID
+	}
+	if s.hasMeteredAddons && sub.Items != nil {
+		for _, item := range sub.Items.Data {
+			if item == nil || item.Price == nil {
+				continue
+			}
+			price := s.prices[item.Price.ID]
+			plan := s.plans[price.plan]
+			if len(plan.MeteredPriceIDs) == 0 {
+				continue
+			}
+			if matchesAddonSubscription(sub.Items, item, plan.MeteredPriceIDs, price.interval) {
+				change.Plan, change.Interval = plan.Name, price.interval
+				change.PeriodStart, change.PeriodEnd, change.Seats = item.CurrentPeriodStart, item.CurrentPeriodEnd, item.Quantity
+			}
+			return change
+		}
 	}
 	if organization && sub.Items != nil {
 		for _, item := range sub.Items.Data {

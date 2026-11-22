@@ -2059,6 +2059,16 @@
       "label": "Leave the database free of an ambiguous purchase if the provider cannot identify the price’s billing mode",
       "test": "adapters/sqlstore/stripe_metered_test.go",
       "marker": "catalog outage reserved an unknown billing mode"
+    },
+    {
+      "label": "Buy a licensed base and two fixed metered add-ons for a personal or organization account, sending a quantity only for the base",
+      "test": "conformance/stripe-organization-fixture.mjs",
+      "marker": "[[priceID, true], ...addonIDs.map(id => [id, false])]"
+    },
+    {
+      "label": "Replay the exact original add-on basket after a lost Checkout response on independent SQL connections",
+      "test": "adapters/sqlstore/stripe_addons_test.go",
+      "marker": "incorrect cross-node checkout retry"
     }
   ],
   "docs/content/docs/plugins/stripe.mdx#L221": [
@@ -2108,6 +2118,11 @@
       "label": "List the metered owner’s actual monthly or yearly plan and apply the default of one when Stripe omits the subscription quantity",
       "test": "adapters/sqlstore/stripe_metered_test.go",
       "marker": "metered subscription did not reconcile its owner, price, period and default quantity"
+    },
+    {
+      "label": "Read the licensed base quantity after metered add-ons move ahead of it on a paid subscription",
+      "test": "conformance/stripe-organization-fixture.mjs",
+      "marker": "[referenceId, priceID, \"year\", 12]"
     }
   ],
   "docs/content/docs/plugins/stripe.mdx#L362": [
@@ -2179,6 +2194,16 @@
       "label": "Settle the original metered purchase and synchronize a signed renewal with no subscription item quantity on both runtimes",
       "test": "conformance/stripe-organization-fixture.mjs",
       "marker": "[referenceId, \"team\", priceID, \"year\", 1]"
+    },
+    {
+      "label": "Require the full original purchase, recover a signed creation after an add-on receipt is corrected, and preserve the current base quantity",
+      "test": "adapters/sqlstore/stripe_addons_test.go",
+      "marker": "corrected original receipt did not recover signed creation"
+    },
+    {
+      "label": "Remove the active entitlement if an existing add-on is substituted and restore it once the configured items return",
+      "test": "adapters/sqlstore/stripe_addons_test.go",
+      "marker": "unrecognized replacement kept the old entitlement"
     }
   ],
   "plugin-symbol/captcha/captcha": [
@@ -8440,6 +8465,23 @@
       "label": "Issue one process-local session on concurrent redemption and revoke standing access during mailbox promotion",
       "test": "adapters/memory/magiclink_test.go",
       "marker": "func TestMemoryMagicLinkAtomicPromotion"
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L882/`lineItems`": [
+    {
+      "label": "Configure up to 19 separate metered add-ons, validate price roles and isolate the installed plan from later host mutations",
+      "test": "plugins/stripe/metered_addons_test.go",
+      "marker": "func TestMeteredAddonConfiguration("
+    },
+    {
+      "label": "Validate the add-on price intervals and retain the original price IDs and ordering across a configuration change",
+      "test": "adapters/sqlstore/stripe_addons_test.go",
+      "marker": "changed configuration rewrote the reserved add-ons"
+    },
+    {
+      "label": "Keep personal and organization billing separate through a licensed purchase with two metered additions on three SQL engines",
+      "test": "adapters/sqlstore/stripe_addons_test.go",
+      "marker": "organization purchase appeared on personal account"
     }
   ]
 }

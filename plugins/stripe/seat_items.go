@@ -18,29 +18,39 @@ func (a CheckoutAttempt) checkoutLines() []*sdk.CheckoutSessionCreateLineItemPar
 		base.Quantity = sdk.Int64(1)
 		lines = append(lines, &sdk.CheckoutSessionCreateLineItemParams{Price: sdk.String(a.SeatPrice), Quantity: sdk.Int64(a.Quantity())})
 	}
+	for _, id := range a.MeteredPriceIDs {
+		lines = append(lines, &sdk.CheckoutSessionCreateLineItemParams{Price: sdk.String(id)})
+	}
 	return lines
 }
 
 func (a CheckoutAttempt) matchesLines(actual []*sdk.LineItem) bool {
-	if a.Metered {
-		return len(actual) == 1 && actual[0] != nil && a.matchesMeteredPrice(actual[0].Price)
-	}
 	want := a.checkoutLines()
 	if len(actual) != len(want) {
 		return false
 	}
-	purchased := make(map[string]int64, len(actual))
+	purchased := make(map[string]*sdk.LineItem, len(actual))
 	for _, line := range actual {
-		if line == nil || line.Price == nil || line.Price.ID == "" || line.Price.Recurring != nil && line.Price.Recurring.UsageType == sdk.PriceRecurringUsageTypeMetered {
+		if line == nil || line.Price == nil || line.Price.ID == "" || purchased[line.Price.ID] != nil {
 			return false
 		}
-		if _, duplicate := purchased[line.Price.ID]; duplicate {
-			return false
-		}
-		purchased[line.Price.ID] = line.Quantity
+		purchased[line.Price.ID] = line
 	}
 	for _, expected := range want {
-		if count, ok := purchased[*expected.Price]; !ok || count != *expected.Quantity {
+		line := purchased[*expected.Price]
+		if line == nil {
+			return false
+		}
+		if expected.Quantity == nil {
+			if !recurringAtInterval(line.Price, a.Interval, sdk.PriceRecurringUsageTypeMetered) {
+				return false
+			}
+			continue
+		}
+		if line.Quantity != *expected.Quantity || line.Price.Recurring != nil && line.Price.Recurring.UsageType == sdk.PriceRecurringUsageTypeMetered {
+			return false
+		}
+		if len(a.MeteredPriceIDs) > 0 && !licensedAtInterval(line.Price, a.Interval) {
 			return false
 		}
 	}
@@ -59,16 +69,25 @@ func (s *subscriptions) prepareCheckoutPrices(ctx context.Context, a *CheckoutAt
 		a.PriceVerified = true
 		return nil
 	}
-	price, err := s.client.V1Prices.Retrieve(ctx, a.Price, nil)
+	price, err := s.checkoutPrice(ctx, a.Price)
 	if err != nil {
-		if ctx.Err() != nil {
-			return ctx.Err()
-		}
-		return billingError(502, "STRIPE_PRICE_UNAVAILABLE", "Could not retrieve the configured checkout price")
+		return err
 	}
 	a.Metered = a.matchesMeteredPrice(price)
-	if price == nil || price.ID != a.Price || !price.Active || (!a.Metered && !licensedAtInterval(price, a.Interval)) {
+	if !a.Metered && !licensedAtInterval(price, a.Interval) {
 		return billingError(409, errUnsupportedItem.Code, "Checkout requires an active recurring price with the selected interval")
+	}
+	if a.Metered && len(a.MeteredPriceIDs) > 0 {
+		return billingError(409, errUnsupportedItem.Code, "Metered add-ons require a licensed base price")
+	}
+	for _, id := range a.MeteredPriceIDs {
+		addon, err := s.checkoutPrice(ctx, id)
+		if err != nil {
+			return err
+		}
+		if !recurringAtInterval(addon, a.Interval, sdk.PriceRecurringUsageTypeMetered) {
+			return billingError(409, errUnsupportedItem.Code, "Each add-on must be a metered price with the selected billing interval")
+		}
 	}
 	a.PriceVerified = true
 	return nil

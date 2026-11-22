@@ -23,8 +23,11 @@ func (s *subscriptions) changePlan(c auth.EndpointContext, selection billingSele
 	if !ok || local.SubscriptionID == nil {
 		return nil, ErrExistingSubscription
 	}
+	from, to := s.plans[local.Plan], s.plans[s.prices[target].plan]
+	if len(from.MeteredPriceIDs) > 0 || len(to.MeteredPriceIDs) > 0 {
+		return nil, errUnsupportedItem
+	}
 	if selection.organization {
-		from, to := s.plans[local.Plan], s.plans[s.prices[target].plan]
 		if from.SeatPriceID != "" || to.SeatPriceID != "" {
 			current := from.PriceID
 			if local.Interval != nil && *local.Interval == "year" {

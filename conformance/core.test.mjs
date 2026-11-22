@@ -1496,3 +1496,10 @@ test("magic-link delivery forwards request metadata and preserves first, returni
   const {compareMagicLinkDelivery} = await import("./magic-link-delivery.mjs");
   await compareMagicLinkDelivery(t, {reference, goFixture, instrument});
 });
+
+test("the released client buys a licensed base with two metered add-ons for personal and organization accounts", async t => {
+  const { meteredCheckout } = await import("./stripe-organization-fixture.mjs");
+  for (const organization of [false, true]) {
+    await t.test(organization ? "organization" : "user", t => meteredCheckout(t, { reference, goFixture, instrument }, organization, true));
+  }
+});

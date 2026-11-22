@@ -1,6 +1,6 @@
 # Recurring Stripe Checkout
 
-A signed-in user can start a recurring subscription for their own account or an organization they manage. A plan can charge for licensed seats or use one metered price. Configure monthly and optional annual Stripe price IDs, then let the client select a plan by name. Checkout and subsequent changes use the selected account’s Stripe customer.
+A signed-in user can start a recurring subscription for their own account or an organization they manage. A plan can charge for licensed seats, add metered usage to those seats, or use one metered price. Configure monthly and optional annual Stripe price IDs, then let the client select a plan by name. Checkout and subsequent changes use the selected account’s Stripe customer.
 
 ```go
 ddl, err := schema.Generate("postgres", []string{"stripe-subscriptions"})
@@ -64,7 +64,25 @@ Configure the monthly or annual Stripe price ID for the usage-based plan and omi
 
 For a metered price, the server sends the price ID to Checkout and omits its quantity, even when your client supplies `seats`. The reservation retains the original request so retries after an interruption send identical parameters. A completed browser return or signed webhook checks the original Checkout line’s price, interval and metered billing mode. The active subscription list returns `seats: 1` when Stripe supplies no item quantity. Use your application's usage records or Stripe's meter summaries to measure consumption. [Metered checkout and receipt tests](../adapters/sqlstore/stripe_metered_test.go)
 
-Configure a meter in Stripe and report billable usage from your application. This integration handles purchase and subscription status. Separate licensed seat items combined with a metered base, additional metered items, and switching an existing metered plan remain open. Upgrade all application instances that create Checkout sessions or process billing webhooks before enabling a metered price. Custom subscription stores must honor the new-reservation price check in `ReserveStripeCheckout`, retain `CheckoutAttempt.Metered` across retries, and implement `SubscriptionLifecycleStore`. [Stripe usage-based billing](https://docs.stripe.com/billing/subscriptions/usage-based)
+Configure a meter in Stripe and report billable usage from your application. This integration handles purchase and subscription status. Combining a metered base with other prices and switching an existing metered plan remain open. Upgrade all application instances that create Checkout sessions or process billing webhooks before enabling a metered price. Custom subscription stores must honor the new-reservation price check in `ReserveStripeCheckout`, retain `CheckoutAttempt.Metered` across retries, and implement `SubscriptionLifecycleStore`. [Stripe usage-based billing](https://docs.stripe.com/billing/subscriptions/usage-based)
+
+## Add metered usage to a licensed plan
+
+Use `MeteredPriceIDs` to include usage charges with a manually quantified licensed base. Both personal and organization billing use the server’s configured price IDs. The following monthly plan charges for each licensed seat and adds metered storage and requests.
+
+```go
+stripeplugin.Plan{
+    Name: "platform",
+    PriceID: "price_platform_monthly",
+    MeteredPriceIDs: []string{"price_storage_monthly", "price_requests_monthly"},
+}
+```
+
+An upgrade request chooses the plan and its licensed seat quantity. Checkout sends the base quantity and one quantity-free line for each configured meter. All prices must be active and share the selected interval. The same add-on configuration applies when the client selects `AnnualPriceID`. Use separate plan configurations for monthly and yearly meters. The platform supports up to 19 distinct metered add-ons alongside one licensed base. Each add-on price must be separate from all configured base and member-seat prices. [Stripe Checkout line items](https://docs.stripe.com/api/checkout/sessions/create)
+
+A pending reservation keeps its original ordered price IDs and quantities across retries, including after a plan configuration edit. Signed events and hosted returns verify the original Checkout receipt. The subscription list then reads the current base’s quantity and period regardless of item order. If a required meter disappears or an unrecognized price appears, an existing subscription becomes `unmapped` until its configured prices return. Custom stores must round-trip `CheckoutAttempt.MeteredPriceIDs`. Deploy all billing nodes before offering a plan with add-ons. [Persistence and account-isolation tests](../adapters/sqlstore/stripe_addons_test.go)
+
+Metered add-ons on membership-managed plans, add-ons with fixed quantities or inline prices, and changes to active add-on plans remain open. The application reports usage to its Stripe meters. [Stripe usage reporting](https://docs.stripe.com/billing/subscriptions/usage-based/recording-usage)
 
 ## Bill an organization
 
@@ -172,9 +190,9 @@ An authenticated GET to `/api/auth/subscription/list` lists the selected user’
 
 ## Synchronize subscription changes
 
-The SQL adapters synchronize subscriptions for users and organizations with a unique stored Stripe customer ID. A signed creation or update retrieves the current subscription from Stripe, matches its single recurring price to a configured plan and records its status, quantity, billing period, trial dates, cancellation dates and schedule ID. A subscription created in the Stripe Dashboard appears in the same list as a subscription created through Checkout. User and reservation references in Stripe metadata must agree with the local customer and subscription.
+The SQL adapters synchronize subscriptions for users and organizations with a unique stored Stripe customer ID. A signed creation or update retrieves the current subscription from Stripe, matches its recurring prices to a configured plan and records its status, quantity, billing period, trial dates, cancellation dates and schedule ID. A subscription created in the Stripe Dashboard appears in the same list as a subscription created through Checkout. User and reservation references in Stripe metadata must agree with the local customer and subscription.
 
-Only active and trialing rows appear in the active list. For example, a change to `past_due` removes a subscription from the list. A return to `active` restores it. If an existing subscription changes to an unknown price or a combination of prices, the adapter records the local status `unmapped` until Stripe reports a recognized plan again. A signed deletion records cancellation, preserves billing history and prevents later deliveries from reactivating the subscription.
+Only active and trialing rows appear in the active list. For example, a change to `past_due` removes a subscription from the list. A return to `active` restores it. If an existing subscription changes to an unknown price or an unconfigured combination of prices, the adapter records the local status `unmapped` until Stripe reports a recognized plan again. A signed deletion records cancellation, preserves billing history and prevents later deliveries from reactivating the subscription.
 
 Processing is safe across replicas. The adapter records processed event IDs for 45 days in the existing `verification` table. It compares the stored revision before applying a Stripe response and fetches again if another instance updated the row. An unseen, delayed update therefore synchronizes the provider’s current state. Checkout completion preserves a lifecycle change that arrived first. A database or provider error leaves the event available for retry. [Stripe delivery behavior](https://docs.stripe.com/webhooks#event-ordering)
 

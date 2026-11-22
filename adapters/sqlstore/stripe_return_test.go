@@ -13,6 +13,7 @@ import (
 	"time"
 
 	auth "github.com/Stonewrit/stonewrit-auth"
+	"github.com/Stonewrit/stonewrit-auth/plugins/organization"
 	billing "github.com/Stonewrit/stonewrit-auth/plugins/stripe"
 	"github.com/Stonewrit/stonewrit-auth/schema"
 	sdk "github.com/stripe/stripe-go/v87"
@@ -53,7 +54,7 @@ func (f *returnFixture) provider(r *http.Request) (*http.Response, error) {
 		customer := r.Form.Get("customer")
 		node := strings.TrimPrefix(customer, "cus_")
 		rec := returnCheckout{id: "cs_" + node, remote: "sub_" + node, customer: customer, callback: r.Form.Get("success_url"), meta: map[string]string{}}
-		for _, k := range []string{"userId", "referenceId", "subscriptionId", "checkoutAttemptId"} {
+		for _, k := range []string{"userId", "referenceId", "subscriptionId", "checkoutAttemptId", "organizationId", "customerType"} {
 			rec.meta[k] = r.Form.Get("metadata[" + k + "]")
 		}
 		f.sessions[rec.id] = rec
@@ -82,7 +83,7 @@ func (f *returnFixture) provider(r *http.Request) (*http.Response, error) {
 		if f.mode == "wrong-price" {
 			originalPrice = "price_foreign"
 		}
-		return stripeJSON(200, map[string]any{"line_items": map[string]any{"data": []any{map[string]any{"quantity": 1, "price": map[string]string{"id": originalPrice}}}}, "id": id, "object": "checkout.session", "mode": "subscription", "status": status, "payment_status": payment, "customer": customer, "client_reference_id": rec.meta["userId"], "metadata": rec.meta, "subscription": rec.remote}), nil
+		return stripeJSON(200, map[string]any{"line_items": map[string]any{"data": []any{map[string]any{"quantity": 1, "price": map[string]string{"id": originalPrice}}}}, "id": id, "object": "checkout.session", "mode": "subscription", "status": status, "payment_status": payment, "customer": customer, "client_reference_id": rec.meta["referenceId"], "metadata": rec.meta, "subscription": rec.remote}), nil
 	}
 	if remote, ok := strings.CutPrefix(r.URL.Path, "/v1/subscriptions/"); ok && r.Method == "GET" {
 		f.getSub++
@@ -109,14 +110,18 @@ func (f *returnFixture) provider(r *http.Request) (*http.Response, error) {
 
 func newReturnFixture(t *testing.T, dialect string) *returnFixture {
 	t.Helper()
-	return configuredReturnFixture(t, dialect, billing.Plan{Name: "pro", PriceID: "price_pro"}, (*returnFixture).provider)
+	return configuredReturnFixture(t, dialect, billing.Plan{Name: "pro", PriceID: "price_pro"}, false, (*returnFixture).provider)
 }
 
-func configuredReturnFixture(t *testing.T, dialect string, plan billing.Plan, provider func(*returnFixture, *http.Request) (*http.Response, error)) *returnFixture {
+func configuredReturnFixture(t *testing.T, dialect string, plan billing.Plan, organizations bool, provider func(*returnFixture, *http.Request) (*http.Response, error)) *returnFixture {
 	t.Helper()
 	f := &returnFixture{t: t, sessions: map[string]returnCheckout{}}
 	dsn := organizationTestDSN(t, dialect)
-	ddl, err := schema.Generate(dialect, []string{"stripe-subscriptions", "anonymous"})
+	profile := "stripe-subscriptions"
+	if organizations {
+		profile = "stripe-organization"
+	}
+	ddl, err := schema.Generate(dialect, []string{profile, "anonymous"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -130,13 +135,23 @@ func configuredReturnFixture(t *testing.T, dialect string, plan billing.Plan, pr
 	}
 	f.store = newStore()
 	back := sdk.NewBackendsWithConfig(&sdk.BackendConfig{HTTPClient: &http.Client{Transport: localBillingTransport(func(r *http.Request) (*http.Response, error) { return provider(f, r) })}, MaxNetworkRetries: sdk.Int64(0)})
-	plug := billing.New(billing.Options{WebhookSecret: returnSecret, Subscriptions: &billing.SubscriptionOptions{Client: sdk.NewClient("sk_test_local", sdk.WithBackends(back)), Plans: []billing.Plan{plan}}, OnEvent: f.event})
+	stripeOptions := billing.Options{WebhookSecret: returnSecret, Subscriptions: &billing.SubscriptionOptions{Client: sdk.NewClient("sk_test_local", sdk.WithBackends(back)), Plans: []billing.Plan{plan}}, OnEvent: f.event}
 	guest, err := auth.NewAnonymous(auth.AnonymousOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
+	plugins := []auth.Plugin{guest}
+	if organizations {
+		stripeOptions.Organization = &billing.OrganizationOptions{AuthorizeReference: func(member billing.ReferenceAuthorization) bool { return member.Role == "owner" }}
+		group, err := organization.New(organization.Options{Store: f.store})
+		if err != nil {
+			t.Fatal(err)
+		}
+		plugins = append(plugins, group)
+	}
+	plugins = append(plugins, billing.New(stripeOptions))
 	off := false
-	opts := auth.Options{Store: f.store, BaseURL: returnOrigin + returnMount, Secret: strings.Repeat("s", 32), EmailAndPassword: true, Plugins: []auth.Plugin{plug, guest}, RateLimit: &off}
+	opts := auth.Options{Store: f.store, BaseURL: returnOrigin + returnMount, Secret: strings.Repeat("s", 32), EmailAndPassword: true, Plugins: plugins, RateLimit: &off}
 	f.a, err = auth.New(opts)
 	if err != nil {
 		t.Fatal(err)
@@ -210,7 +225,7 @@ func (f *returnFixture) state(owner string) string {
 }
 func (f *returnFixture) notify(rec returnCheckout) {
 	f.t.Helper()
-	obj := map[string]any{"id": rec.id, "object": "checkout.session", "mode": "subscription", "customer": rec.customer, "client_reference_id": rec.meta["userId"], "metadata": rec.meta, "subscription": rec.remote}
+	obj := map[string]any{"id": rec.id, "object": "checkout.session", "mode": "subscription", "customer": rec.customer, "client_reference_id": rec.meta["referenceId"], "metadata": rec.meta, "subscription": rec.remote}
 	raw, _ := json.Marshal(map[string]any{"id": "evt_" + rec.id, "object": "event", "api_version": sdk.APIVersion, "type": "checkout.session.completed", "data": map[string]any{"object": obj}})
 	req := httptest.NewRequest("POST", returnOrigin+returnMount+"/stripe/webhook", bytes.NewReader(raw))
 	req.Header.Set("Content-Type", "application/json")

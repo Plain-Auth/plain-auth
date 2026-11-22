@@ -35,6 +35,9 @@ func fixtureStripe(ctx context.Context, store *sqlstore.Store, endpoint string, 
 	subscriptions := &billing.SubscriptionOptions{Client: provider, Plans: []billing.Plan{
 		{Name: "basic", PriceID: "price_basic"}, {Name: "team", PriceID: "price_team", AnnualPriceID: "price_team_annual"},
 	}}
+	if os.Getenv("CONFORMANCE_STRIPE_METERED_ADDONS") == "1" {
+		subscriptions.Plans[1].MeteredPriceIDs = []string{"price_storage_annual", "price_requests_annual"}
+	}
 	if managedSeats {
 		subscriptions.Plans[0].SeatPriceID = subscriptions.Plans[0].PriceID
 		switch os.Getenv("CONFORMANCE_STRIPE_SEPARATE_PRICE") {

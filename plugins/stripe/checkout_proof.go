@@ -23,7 +23,7 @@ func (s *subscriptions) checkoutPurchase(ctx context.Context, a CheckoutAttempt,
 	}
 	// A signed event can include price IDs without the recurring details.
 	// Retrieve the expanded receipt before deciding its billing mode.
-	if session == nil || session.LineItems == nil || a.Metered && !a.matchesLines(session.LineItems.Data) {
+	if session == nil || session.LineItems == nil || (a.Metered || len(a.MeteredPriceIDs) > 0) && !a.matchesLines(session.LineItems.Data) {
 		params := &sdk.CheckoutSessionRetrieveParams{}
 		params.AddExpand("line_items")
 		var err error
@@ -34,7 +34,19 @@ func (s *subscriptions) checkoutPurchase(ctx context.Context, a CheckoutAttempt,
 	}
 	if session == nil || session.ID != id || !checkoutMatches(a, session) || session.Livemode != live || session.Mode != sdk.CheckoutSessionModeSubscription ||
 		session.Status != sdk.CheckoutSessionStatusComplete || session.PaymentStatus != sdk.CheckoutSessionPaymentStatusPaid && session.PaymentStatus != sdk.CheckoutSessionPaymentStatusNoPaymentRequired ||
-		session.Subscription == nil || session.Subscription.ID != remote || session.LineItems == nil || session.LineItems.HasMore || !a.matchesLines(session.LineItems.Data) {
+		session.Subscription == nil || session.Subscription.ID != remote || session.LineItems == nil {
+		return nil, ErrCheckoutReconcile
+	}
+	if session.LineItems.HasMore && len(a.MeteredPriceIDs) > 0 {
+		params := &sdk.CheckoutSessionListLineItemsParams{Session: sdk.String(id)}
+		params.Limit = sdk.Int64(maxRecurringLines)
+		items := s.client.V1CheckoutSessions.ListLineItems(ctx, params)
+		if err := items.Err(); err != nil {
+			return nil, err
+		}
+		session.LineItems.Data, session.LineItems.HasMore = items.Data(), items.Meta().HasMore
+	}
+	if session.LineItems.HasMore || !a.matchesLines(session.LineItems.Data) {
 		return nil, ErrCheckoutReconcile
 	}
 	return &CheckoutPurchase{CheckoutID: id, RemoteID: remote, Price: a.Price, SeatPrice: a.SeatPrice, Quantity: a.Quantity(), Live: live, Attempt: a}, nil

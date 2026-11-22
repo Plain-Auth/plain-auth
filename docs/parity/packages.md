@@ -291,9 +291,11 @@ Each row tracks the behavior exposed by a published entry point. The Go implemen
     - [x] Bind both price IDs across a lost Checkout response, reject a repriced retry and resume on a second server ([test](../../adapters/sqlstore/stripe_seats_test.go#L267))
     - [x] Pair an annual base and a separate yearly member price through the public client and retain annual terms after membership changes ([test](../../conformance/stripe-organization-fixture.mjs#L178))
     - [x] Charge a single yearly item at the organization member count and synchronize that same item after a member joins or leaves ([test](../../conformance/stripe-organization-fixture.mjs#L176))
-    - [x] Buy a configured annual metered price through the browser client and omit the Checkout item quantity even when the caller specifies seats ([test](../../conformance/stripe-organization-fixture.mjs#L243))
+    - [x] Buy a configured annual metered price through the browser client and omit the Checkout item quantity even when the caller specifies seats ([test](../../conformance/stripe-organization-fixture.mjs#L254))
     - [x] Retry the original monthly or annual metered purchase across replicas using the native Go client and three SQL engines ([test](../../adapters/sqlstore/stripe_metered_test.go#L130))
     - [x] Leave the database free of an ambiguous purchase if the provider cannot identify the price’s billing mode ([test](../../adapters/sqlstore/stripe_metered_test.go#L118))
+    - [x] Buy a licensed base and two fixed metered add-ons for a personal or organization account, sending a quantity only for the base ([test](../../conformance/stripe-organization-fixture.mjs#L248))
+    - [x] Replay the exact original add-on basket after a lost Checkout response on independent SQL connections ([test](../../adapters/sqlstore/stripe_addons_test.go#L158))
   - [ ] Client integration (`./client`)
 
 ## Telemetry

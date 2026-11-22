@@ -12,10 +12,10 @@ const checked = result => { assert.equal(result.error, null, JSON.stringify(resu
 
 const intervalOf = id => id.endsWith("_annual") ? "year" : "month";
 
-async function provider(t, meteredID) {
+async function provider(t, meteredIDs = []) {
   function price(id) {
     return { id, object: "price", active: true, recurring: {
-      interval: intervalOf(id), interval_count: 1, usage_type: id === meteredID ? "metered" : "licensed",
+      interval: intervalOf(id), interval_count: 1, usage_type: meteredIDs.includes(id) ? "metered" : "licensed",
     } };
   }
   const state = { calls: [], customer: null, checkout: null, subscription: null, seatUpdates: [] };
@@ -51,7 +51,7 @@ async function provider(t, meteredID) {
       const start = Math.floor(Date.now() / 1000);
       state.subscription = { id: "sub_org", object: "subscription", customer: result.customer, status: "active",
         metadata: fields("subscription_data[metadata]["), livemode: false, items: { object: "list", has_more: false, data: lines.map((line, i) => ({
-          id: i === 0 ? "si_org" : "si_member", quantity: line.quantity, current_period_start: start,
+          id: ["si_org", "si_member"][i] ?? "si_addon_" + i, quantity: line.quantity, current_period_start: start,
           current_period_end: start + (intervalOf(line.price.id) === "year" ? 31_536_000 : 2_592_000), price: line.price,
         })) } };
     }
@@ -207,17 +207,20 @@ async function automaticSeats({ browser, owner, peer, group, remote, deliver, se
   assert.deepEqual(checked(await owner.subscription.list()), []);
 }
 
-export async function meteredCheckout(t, { reference, goFixture, instrument }, isOrganization) {
+export async function meteredCheckout(t, { reference, goFixture, instrument }, isOrganization, withAddons = false) {
   const priceID = "price_team_annual";
   for (const runtime of ["reference", "Go"]) await t.test(runtime, async t => {
-    const remote = await provider(t, priceID);
+    const addonIDs = ["price_storage_annual", "price_requests_annual"];
+    const plan = { name: "team", priceId: "price_team", annualDiscountPriceId: priceID };
+    if (withAddons) plan.lineItems = addonIDs.map(price => ({ price }));
+    const remote = await provider(t, withAddons ? addonIDs : [priceID]);
     const profile = isOrganization ? ["organization", "stripe-organization"] : ["stripe-subscriptions"];
     const server = runtime === "Go"
-      ? await goFixture(t, profile, { CONFORMANCE_STRIPE_URL: remote.url })
+      ? await goFixture(t, profile, { CONFORMANCE_STRIPE_URL: remote.url, CONFORMANCE_STRIPE_METERED_ADDONS: withAddons ? "1" : "" })
       : await reference(t, [organization(), stripe({
         stripeClient: remote.api, stripeWebhookSecret: secret, organization: { enabled: true },
         subscription: { enabled: true, authorizeReference: organizationBillingPolicy,
-          plans: [{ name: "team", priceId: "price_team", annualDiscountPriceId: priceID }] },
+          plans: [plan] },
       })]);
     const browser = () => instrument(server, [organizationClient(), stripeClient({ subscription: true })]).client;
     const owner = browser(), other = browser();
@@ -240,7 +243,16 @@ export async function meteredCheckout(t, { reference, goFixture, instrument }, i
     assert.equal(remote.state.checkout.client_reference_id, referenceId);
     const [line] = remote.state.checkout.line_items.data;
     assert.equal(line.price.id, priceID);
-    assert.equal(Object.hasOwn(line, "quantity"), false);
+    if (withAddons) {
+      const lines = remote.state.checkout.line_items.data;
+      assert.deepEqual(lines.map(l => [l.price.id, Object.hasOwn(l, "quantity")]), [[priceID, true], ...addonIDs.map(id => [id, false])]);
+      assert.equal(line.quantity, 9);
+      const base = remote.state.subscription.items.data[0];
+      base.quantity = 12;
+      remote.state.subscription.items.data.reverse();
+    } else {
+      assert.equal(Object.hasOwn(line, "quantity"), false);
+    }
     const list = () => owner.subscription.list({ query: selection });
     assert.deepEqual(checked(await list()), []);
     // An event may identify the bought price without expanding its recurring details.
@@ -255,7 +267,11 @@ export async function meteredCheckout(t, { reference, goFixture, instrument }, i
       }));
       assert.equal(reply.status, 200, await reply.text());
       const [row] = checked(await list());
-      assert.deepEqual([row.referenceId, row.plan, row.priceId, row.billingInterval, row.seats], [referenceId, "team", priceID, "year", 1]);
+      if (withAddons) {
+        assert.deepEqual([row.referenceId, row.priceId, row.billingInterval, row.seats], [referenceId, priceID, "year", 12]);
+      } else {
+        assert.deepEqual([row.referenceId, row.plan, row.priceId, row.billingInterval, row.seats], [referenceId, "team", priceID, "year", 1]);
+      }
       assert.deepEqual(checked(await other.subscription.list()), []);
       if (isOrganization) assert.deepEqual(checked(await owner.subscription.list()), []);
     }

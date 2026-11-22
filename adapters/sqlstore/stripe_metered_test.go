@@ -103,7 +103,7 @@ func TestMeteredStripeCheckout(t *testing.T) {
 				plan := billing.Plan{Name: "usage", PriceID: "price_month", AnnualPriceID: "price_year"}
 				annual := interval == "year"
 				remote := &meteredProvider{price: "price_" + interval, interval: interval, receiptUsage: "metered", unavailable: true}
-				f := configuredReturnFixture(t, dialect, plan, remote.handle)
+				f := configuredReturnFixture(t, dialect, plan, false, remote.handle)
 				owner, outsider := f.user("owner"), f.user("outsider")
 				first := meteredClient(t, f.a, owner.Token)
 				replica := meteredClient(t, f.b, owner.Token)

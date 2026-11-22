@@ -8,6 +8,7 @@ import (
 	"errors"
 	"math"
 	"net/url"
+	"slices"
 	"strings"
 	"time"
 
@@ -21,6 +22,8 @@ type Plan struct {
 	// SeatPriceID opts organization checkout into membership-based billing.
 	// Use the base price for seat-only billing, or a distinct seat price matching the selected base interval.
 	SeatPriceID, ProrationBehavior string
+	// MeteredPriceIDs adds fixed metered prices to a licensed base at the same interval.
+	MeteredPriceIDs []string
 }
 type SubscriptionOptions struct {
 	Client *sdk.Client
@@ -59,6 +62,8 @@ type CheckoutAttempt struct {
 	SeatPrice                                 string `json:"seatPrice,omitempty"` // distinct from Price for a two-item reservation
 	// PriceVerified preserves the price preflight across a lost Checkout response.
 	PriceVerified bool `json:"priceVerified,omitempty"`
+	// MeteredPriceIDs preserves the ordered add-on prices sent to Checkout.
+	MeteredPriceIDs []string `json:"meteredPriceIds,omitempty"`
 	// Metered reservations omit quantity from the original Checkout line.
 	Metered bool `json:"metered,omitempty"`
 	// CheckPrice requests a price lookup for a new reservation only.
@@ -111,6 +116,7 @@ type subscriptions struct {
 	client                   *sdk.Client
 	plans                    map[string]Plan
 	requireEmailVerification bool
+	hasMeteredAddons         bool
 }
 
 func configureSubscriptions(o *SubscriptionOptions) (*subscriptions, error) {
@@ -142,6 +148,7 @@ func configureSubscriptions(o *SubscriptionOptions) (*subscriptions, error) {
 				return nil, errors.New("stripe: unknown seat proration behavior")
 			}
 		}
+		p.MeteredPriceIDs = slices.Clone(p.MeteredPriceIDs)
 		s.plans[p.Name] = p
 		for interval, price := range map[string]string{"month": p.PriceID, "year": p.AnnualPriceID} {
 			if price == "" {
@@ -159,6 +166,9 @@ func configureSubscriptions(o *SubscriptionOptions) (*subscriptions, error) {
 				return nil, errors.New("stripe: a separate seat price cannot also identify a base plan")
 			}
 		}
+	}
+	if err := s.validateMeteredAddons(); err != nil {
+		return nil, err
 	}
 	return s, nil
 }
@@ -256,7 +266,7 @@ func (s *subscriptions) checkout(c auth.EndpointContext) (any, error) {
 	}
 	ctx := c.Request.Context()
 	store := c.Store().(SubscriptionStore)
-	want := CheckoutAttempt{CheckPrice: true, AutomaticSeats: automatic, Seats: quantity, Owner: selection.reference, Plan: p.Name, Interval: interval, Price: price, SuccessURL: success, CancelURL: cancel}
+	want := CheckoutAttempt{CheckPrice: true, MeteredPriceIDs: slices.Clone(p.MeteredPriceIDs), AutomaticSeats: automatic, Seats: quantity, Owner: selection.reference, Plan: p.Name, Interval: interval, Price: price, SuccessURL: success, CancelURL: cancel}
 	if automatic && p.SeatPriceID != price {
 		want.SeatPrice = p.SeatPriceID
 	}
@@ -279,7 +289,7 @@ func (s *subscriptions) checkout(c auth.EndpointContext) (any, error) {
 		if err := s.prepareCheckoutPrices(ctx, &want); err != nil {
 			return nil, err
 		}
-		if _, supported := store.(SubscriptionLifecycleStore); want.Metered && !supported {
+		if _, supported := store.(SubscriptionLifecycleStore); (want.Metered || len(want.MeteredPriceIDs) > 0) && !supported {
 			return nil, billingError(409, "METERED_CHECKOUT_UNAVAILABLE", "Metered checkout requires subscription lifecycle storage")
 		}
 		a, err = store.ReserveStripeCheckout(ctx, selection.reference, ss.Session.Token, want, time.Now().UTC())

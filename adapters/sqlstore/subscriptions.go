@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"math"
+	"slices"
 	"strings"
 	"time"
 
@@ -135,8 +136,11 @@ func (s *Store) ReserveStripeCheckout(ctx context.Context, owner, token string, 
 				return billing.ErrInvalidSeatQuantity
 			}
 		}
-		if (want.CheckPrice || want.AutomaticSeats || want.Quantity() > 1) && !want.PriceVerified {
+		if (want.CheckPrice || want.AutomaticSeats || want.Quantity() > 1 || len(want.MeteredPriceIDs) > 0) && !want.PriceVerified {
 			return billing.ErrCheckoutPriceCheck
+		}
+		if len(want.MeteredPriceIDs) > 0 && (want.Metered || want.AutomaticSeats || want.SeatPrice != "") {
+			return billing.ErrCheckoutReconcile
 		}
 		if want.Metered && (!want.PriceVerified || want.AutomaticSeats || want.SeatPrice != "") {
 			return billing.ErrCheckoutReconcile
@@ -270,7 +274,7 @@ func (s *Store) applyStripeCheckout(ctx context.Context, want billing.CheckoutAt
 		if a.ID != want.ID {
 			return nil
 		}
-		if a.LocalSubscription != want.LocalSubscription || a.Quantity() != want.Quantity() || a.Metered != want.Metered || a.Customer != want.Customer || (a.CheckoutID != "" && a.CheckoutID != id) {
+		if a.LocalSubscription != want.LocalSubscription || a.Quantity() != want.Quantity() || a.Metered != want.Metered || !slices.Equal(a.MeteredPriceIDs, want.MeteredPriceIDs) || a.Customer != want.Customer || (a.CheckoutID != "" && a.CheckoutID != id) {
 			return billing.ErrCheckoutReconcile
 		}
 		var customer sql.NullString
