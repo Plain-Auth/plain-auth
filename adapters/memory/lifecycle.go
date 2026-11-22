@@ -84,6 +84,11 @@ func (s *Store) DeleteFixtureUser(ctx context.Context, id string) error {
 
 func (s *Store) deleteUserRecords(id string, rec credential) {
 	s.deleteSessions(id, "")
+	for key, transfer := range s.transfers {
+		if transfer.userID == id {
+			delete(s.transfers, key)
+		}
+	}
 	for key, t := range s.resets {
 		if t.UserID == id {
 			delete(s.resets, key)

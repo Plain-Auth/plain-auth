@@ -24,7 +24,6 @@ import (
 	"github.com/Plain-Auth/plain-auth/plugins/lastlogin"
 	"github.com/Plain-Auth/plain-auth/plugins/magiclink"
 	"github.com/Plain-Auth/plain-auth/plugins/multisession"
-	"github.com/Plain-Auth/plain-auth/plugins/onetimetoken"
 	"github.com/Plain-Auth/plain-auth/plugins/openapi"
 	"github.com/Plain-Auth/plain-auth/plugins/organization"
 	"github.com/Plain-Auth/plain-auth/plugins/passkey"
@@ -329,8 +328,8 @@ func main() {
 		}
 		plugins = append(plugins, p)
 	}
-	if os.Getenv("CONFORMANCE_TRANSFER") == "1" {
-		p, err := onetimetoken.New(onetimetoken.Options{HashTokens: true})
+	if mode := os.Getenv("CONFORMANCE_TRANSFER"); mode != "" {
+		p, err := transferPlugin(mode)
 		if err != nil {
 			log.Fatal(err)
 		}

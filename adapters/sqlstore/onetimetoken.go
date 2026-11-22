@@ -16,9 +16,13 @@ import (
 var _ auth.OneTimeTokenStore = (*Store)(nil)
 
 func (s *Store) SaveOneTimeToken(ctx context.Context, key string, source auth.Session, now, expires time.Time) error {
+	if err := source.RequireOwner(); err != nil {
+		return err
+	}
+	start := time.Now()
 	var err error
 	for range 3 {
-		err = s.saveOneTimeToken(ctx, key, source, now, expires)
+		err = s.saveOneTimeToken(ctx, key, source, now.Add(time.Since(start)), expires)
 		if !retryIdentity(err) {
 			break
 		}
@@ -31,15 +35,21 @@ func (s *Store) saveOneTimeToken(ctx context.Context, key string, source auth.Se
 		return err
 	}
 	defer tx.Rollback()
+	started := time.Now()
+	if err = s.lockActiveAccount(ctx, tx, source.UserID, source.Token, now); err != nil {
+		return err
+	}
 	if _, err = tx.ExecContext(ctx, s.bind(`DELETE FROM "verification" WHERE "expiresAt"<=? AND ("identifier" LIKE 'one-time-token:%' OR "identifier" LIKE 'one-time-token-owner:%')`), s.date(now)); err != nil {
 		return err
 	}
 	var id, owner, token string
-	err = tx.QueryRowContext(ctx, s.readForUpdate(`SELECT "id","userId","token" FROM "session" WHERE "token"=? AND "expiresAt">?`), source.Token, s.date(now)).Scan(&id, &owner, &token)
+	var sessionExpires time.Time
+	err = tx.QueryRowContext(ctx, s.readForUpdate(`SELECT "id","userId","token","expiresAt" FROM "session" WHERE "token"=? AND "expiresAt">?`), source.Token, s.date(now)).Scan(&id, &owner, &token, &sessionExpires)
 	if err != nil {
 		return factorRowError(err)
 	}
-	if id != source.ID || owner != source.UserID || token != source.Token {
+	at := now.Add(time.Since(started))
+	if id != source.ID || owner != source.UserID || token != source.Token || !sessionExpires.After(at) {
 		return auth.ErrNotFound
 	}
 	hash := sha256.Sum256([]byte(key))
@@ -53,10 +63,11 @@ func (s *Store) saveOneTimeToken(ctx context.Context, key string, source auth.Se
 	return tx.Commit()
 }
 func (s *Store) ConsumeOneTimeToken(ctx context.Context, key string, now time.Time) (auth.SessionResult, error) {
+	started := time.Now()
 	var result auth.SessionResult
 	var err error
 	for range 3 {
-		result, err = s.consumeOneTimeToken(ctx, key, now)
+		result, err = s.consumeOneTimeToken(ctx, key, now.Add(time.Since(started)))
 		if !retryIdentity(err) {
 			break
 		}
@@ -64,6 +75,7 @@ func (s *Store) ConsumeOneTimeToken(ctx context.Context, key string, now time.Ti
 	return result, err
 }
 func (s *Store) consumeOneTimeToken(ctx context.Context, key string, now time.Time) (auth.SessionResult, error) {
+	started := time.Now()
 	var result auth.SessionResult
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -71,8 +83,9 @@ func (s *Store) consumeOneTimeToken(ctx context.Context, key string, now time.Ti
 	}
 	defer tx.Rollback()
 	var id, identifier, bound string
+	var transferExpires time.Time
 	want := "one-time-token:" + key
-	err = tx.QueryRowContext(ctx, s.readForUpdate(`SELECT "id","identifier","value" FROM "verification" WHERE "identifier"=? AND "expiresAt">? ORDER BY "createdAt" DESC LIMIT 1`), want, s.date(now)).Scan(&id, &identifier, &bound)
+	err = tx.QueryRowContext(ctx, s.readForUpdate(`SELECT "id","identifier","value","expiresAt" FROM "verification" WHERE `+s.scimExact(`"identifier"`)+`=? AND "expiresAt">? ORDER BY "createdAt" DESC LIMIT 1`), want, s.date(now)).Scan(&id, &identifier, &bound, &transferExpires)
 	if err != nil {
 		return result, factorRowError(err)
 	}
@@ -81,11 +94,11 @@ func (s *Store) consumeOneTimeToken(ctx context.Context, key string, now time.Ti
 	}
 	var owner string
 	marker := "one-time-token-owner:" + id
-	err = tx.QueryRowContext(ctx, s.readForUpdate(`SELECT "value" FROM "verification" WHERE "identifier"=?`), marker).Scan(&owner)
+	err = tx.QueryRowContext(ctx, s.readForUpdate(`SELECT "value" FROM "verification" WHERE `+s.scimExact(`"identifier"`)+`=?`), marker).Scan(&owner)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return result, err
 	}
-	if _, err = tx.ExecContext(ctx, s.bind(`DELETE FROM "verification" WHERE "id"=? OR "identifier"=?`), id, marker); err != nil {
+	if _, err = tx.ExecContext(ctx, s.bind(`DELETE FROM "verification" WHERE `+s.scimExact(`"id"`)+`=? OR `+s.scimExact(`"identifier"`)+`=?`), id, marker); err != nil {
 		return result, err
 	}
 	var session auth.StoredSession
@@ -101,6 +114,23 @@ func (s *Store) consumeOneTimeToken(ctx context.Context, key string, now time.Ti
 	case owner != "" && owner != strings.Join([]string{session.UserID, session.ID}, "\x1f"):
 		denial = auth.ErrTransferSessionMissing
 	case !session.ExpiresAt.After(now):
+		denial = auth.ErrTransferSessionExpired
+	default:
+		// A live administrative profile may have been installed on another node.
+		// Consume the proof on policy denials; database failures remain retryable.
+		err := s.lockActiveAccount(ctx, tx, session.UserID, bound, now.Add(time.Since(started)))
+		var api *auth.APIError
+		switch {
+		case errors.Is(err, auth.ErrNotFound), errors.As(err, &api) && api.Code == "BANNED_USER":
+			denial = auth.ErrTransferSessionMissing
+		case err != nil:
+			return auth.SessionResult{}, err
+		}
+	}
+	at := now.Add(time.Since(started))
+	if !transferExpires.After(at) {
+		denial = auth.ErrNotFound
+	} else if session.ID != "" && !session.ExpiresAt.After(at) {
 		denial = auth.ErrTransferSessionExpired
 	}
 	if err = tx.Commit(); err != nil {

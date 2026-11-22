@@ -24,6 +24,8 @@ type credential struct {
 
 // Store is safe to share among handlers. Its data lasts for the lifetime of the instance.
 type Store struct {
+	transfers            map[string]sessionTransfer
+	nextTransferExpiry   time.Time
 	verificationReceipts map[string]auth.EmailVerificationReceipt
 	spentEmailProofs     map[string]spentEmailProof
 	magicLinks           map[string]mailLink

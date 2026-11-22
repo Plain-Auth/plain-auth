@@ -1588,3 +1588,8 @@ test("both runtimes share configured user fields through signup, signin and owne
   const { compareUserFields } = await import("./user-fields.mjs");
   await compareUserFields(t, { reference, goFixture, instrument });
 });
+
+test("session transfer storage modes and request-aware generation agree across both runtimes", async t => {
+  const { compareTransferOptions } = await import("./transfer-options.mjs");
+  await compareTransferOptions(t, { reference, goFixture, instrument });
+});

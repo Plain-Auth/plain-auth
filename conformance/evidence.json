@@ -1537,6 +1537,11 @@
       "label": "Require a live session and honor server-only generation",
       "test": "adapters/sqlstore/onetimetoken_test.go",
       "marker": "server-only generation exposed"
+    },
+    {
+      "label": "Generate from a direct signed-in session using the configured host callback and the current HTTP request",
+      "test": "conformance/transfer-options.mjs",
+      "marker": "raw.startsWith"
     }
   ],
   "plugin/one-time-token/POST /one-time-token/verify": [
@@ -1549,6 +1554,16 @@
       "label": "Transfer the same session in both directions using the official client",
       "test": "conformance/core.test.mjs",
       "marker": "test(\"shared SQLite transfers a session"
+    },
+    {
+      "label": "Burn the proof under a current direct-owner policy even after a separate node installs administration",
+      "test": "adapters/sqlstore/onetimetoken_policy_test.go",
+      "marker": "administrative denial did not consume transfer"
+    },
+    {
+      "label": "Limit concurrent redemptions on a shared in-memory store to one owner session",
+      "test": "adapters/memory/onetimetoken_test.go",
+      "marker": "one transfer produced multiple logins"
     }
   ],
   "plugin-symbol/magic-link/MagicLinkOptions/expiresIn": [
@@ -1624,6 +1639,12 @@
       "label": "Pass the authenticated user and session to the token generator",
       "test": "client/onetimetoken_test.go",
       "marker": "wrong session passed to generator"
+    },
+    {
+      "label": "Pass the original user, session and initiating HTTP request to the host generator",
+      "test": "client/onetimetoken_context_test.go",
+      "marker": "generator received the wrong source session or route",
+      "complete": true
     }
   ],
   "plugin-symbol/one-time-token/OneTimeTokenOptions/disableSetSessionCookie": [
@@ -1631,6 +1652,12 @@
       "label": "Return the original session while suppressing the cookie",
       "test": "adapters/sqlstore/onetimetoken_test.go",
       "marker": "disabled cookie written"
+    },
+    {
+      "label": "Return the original login while leaving the receiving browser signed out",
+      "test": "conformance/transfer-options.mjs",
+      "marker": "recipient.getSession()",
+      "complete": true
     }
   ],
   "plugin-symbol/one-time-token/OneTimeTokenOptions/storeToken": [
@@ -1638,6 +1665,12 @@
       "label": "Use the configured hasher on generation and verification",
       "test": "client/onetimetoken_test.go",
       "marker": "hashCalls != 2"
+    },
+    {
+      "label": "Select plain, SHA-256 or a host-defined storage encoding and redeem across implementations",
+      "test": "conformance/transfer-options.mjs",
+      "marker": "assert.equal(stored.value",
+      "complete": true
     }
   ],
   "plugin-symbol/one-time-token/OneTimeTokenOptions/setOttHeaderOnNewSession": [
@@ -1645,6 +1678,12 @@
       "label": "Send and expose Set-Ott on creation and exclude ordinary profile updates",
       "test": "adapters/sqlstore/onetimetoken_test.go",
       "marker": "profile update generated a transfer credential"
+    },
+    {
+      "label": "Expose the configured token on a new login and issue an independent token on request",
+      "test": "conformance/transfer-options.mjs",
+      "marker": "signupHeader.startsWith",
+      "complete": true
     }
   ],
   "plugin/passkey/GET /passkey/generate-register-options": [
@@ -9624,6 +9663,54 @@
       "label": "Apply public and host-owned fields on memory, SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/user_fields_test.go",
       "marker": "func TestConfiguredUserFieldsAcrossStores("
+    }
+  ],
+  "plugin-symbol/one-time-token/oneTimeTokenClient": [
+    {
+      "label": "Generate from the signed-in client, verify in a separate client and reject a replay",
+      "test": "conformance/transfer-options.mjs",
+      "marker": "recipient.oneTimeToken.verify({token:proof})).error.status",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/one-time-token.mdx#L94/`generateToken`": [
+    {
+      "label": "Pass the owning session and request metadata to the chosen generator",
+      "test": "client/onetimetoken_context_test.go",
+      "marker": "incorrect number of generation callbacks",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/one-time-token.mdx#L96/`storeToken`": [
+    {
+      "label": "Verify configured at-rest transfer keys and redeem the original session on a peer",
+      "test": "conformance/transfer-options.mjs",
+      "marker": "assert.equal(stored.value",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/one-time-token.mdx#L98/`plain`": [
+    {
+      "label": "Verify configured at-rest transfer keys and redeem the original session on a peer",
+      "test": "conformance/transfer-options.mjs",
+      "marker": "assert.equal(stored.value",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/one-time-token.mdx#L99/`hashed`": [
+    {
+      "label": "Verify configured at-rest transfer keys and redeem the original session on a peer",
+      "test": "conformance/transfer-options.mjs",
+      "marker": "assert.equal(stored.value",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/one-time-token.mdx#L100/`custom-hasher`": [
+    {
+      "label": "Verify configured at-rest transfer keys and redeem the original session on a peer",
+      "test": "conformance/transfer-options.mjs",
+      "marker": "assert.equal(stored.value",
+      "complete": true
     }
   ]
 }

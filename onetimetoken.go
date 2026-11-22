@@ -16,6 +16,8 @@ type OneTimeTokenOptions struct {
 	HashTokens                                                           bool
 	HashToken                                                            func(context.Context, string) (string, error)
 	GenerateToken                                                        func(context.Context, SessionResult) (string, error)
+	// GenerateTokenWithRequest receives request metadata for HTTP issuance and nil for native calls.
+	GenerateTokenWithRequest func(context.Context, SessionResult, *http.Request) (string, error)
 }
 
 type OneTimeTokenStore interface {
@@ -38,6 +40,9 @@ func NewOneTimeToken(opts OneTimeTokenOptions) (Plugin, error) {
 	if opts.HashTokens && opts.HashToken != nil {
 		return Plugin{}, errors.New("choose one one-time token hasher")
 	}
+	if opts.GenerateToken != nil && opts.GenerateTokenWithRequest != nil {
+		return Plugin{}, errors.New("choose one one-time token generator")
+	}
 	return Plugin{
 		ID: "one-time-token", oneTime: &opts,
 		ValidateStore: func(s Store) error {
@@ -51,7 +56,7 @@ func NewOneTimeToken(opts OneTimeTokenOptions) (Plugin, error) {
 				if opts.DisableClientRequest {
 					return nil, &APIError{400, "BAD_REQUEST", "Client requests are disabled"}
 				}
-				token, err := c.Auth.GenerateOneTimeToken(c.Request.Context(), c.Request.Header)
+				token, err := c.Auth.generateOneTimeToken(c.Request.Context(), c.Request.Header, c.Request)
 				if err != nil {
 					return nil, err
 				}
@@ -97,6 +102,10 @@ func (o OneTimeTokenOptions) storedKey(ctx context.Context, token string) (strin
 
 // GenerateOneTimeToken creates a short-lived transfer credential for the caller's active session.
 func (a *Auth) GenerateOneTimeToken(ctx context.Context, h http.Header) (string, error) {
+	return a.generateOneTimeToken(ctx, h, nil)
+}
+
+func (a *Auth) generateOneTimeToken(ctx context.Context, h http.Header, request *http.Request) (string, error) {
 	opts := a.oneTimeToken
 	if opts == nil {
 		return "", &APIError{404, "NOT_FOUND", "One-time token plugin is not enabled"}
@@ -105,16 +114,24 @@ func (a *Auth) GenerateOneTimeToken(ctx context.Context, h http.Header) (string,
 	if err != nil {
 		return "", err
 	}
-	return a.newOneTimeToken(ctx, opts, *session)
+	return a.newOneTimeToken(ctx, opts, *session, request)
 }
-func (a *Auth) newOneTimeToken(ctx context.Context, opts *OneTimeTokenOptions, session SessionResult) (string, error) {
-	token := randomID()
-	if opts.GenerateToken != nil {
-		var err error
+func (a *Auth) newOneTimeToken(ctx context.Context, opts *OneTimeTokenOptions, session SessionResult, request *http.Request) (string, error) {
+	if err := session.Session.RequireOwner(); err != nil {
+		return "", err
+	}
+	var token string
+	var err error
+	switch {
+	case opts.GenerateTokenWithRequest != nil:
+		token, err = opts.GenerateTokenWithRequest(ctx, session, accountObserverRequest(ctx, request))
+	case opts.GenerateToken != nil:
 		token, err = opts.GenerateToken(ctx, session)
-		if err != nil {
-			return "", err
-		}
+	default:
+		token = randomID()
+	}
+	if err != nil {
+		return "", err
 	}
 	if token == "" || len(token) > 238 || strings.ContainsAny(token, "\r\n") {
 		return "", errors.New("invalid generated one-time token")
@@ -173,7 +190,7 @@ func (a *Auth) addOneTimeTokenHeader(headers http.Header, r *http.Request, token
 		a.Logger().ErrorContext(r.Context(), "Could not read the new session for token transfer")
 		return
 	}
-	transfer, err := a.newOneTimeToken(r.Context(), opts, *session)
+	transfer, err := a.newOneTimeToken(r.Context(), opts, *session, r)
 	if err != nil {
 		a.Logger().ErrorContext(r.Context(), "Could not issue an optional one-time token header")
 		return
