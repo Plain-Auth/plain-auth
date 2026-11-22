@@ -391,7 +391,7 @@ const index = [
   "| Username registration, sign-in and availability | [Username sign-in](../username.md) |",
   "| Administrative roles, bans and impersonation | [Administrator accounts](../admin.md) |",
   "| Organization membership and invitations | [Organizations](../organizations.md) |",
-  "| Personal hosted checkout and signed billing notifications | [Polar checkout](../polar.md) |",
+  "| Personal checkout, customer portal, billing state and signed notifications | [Polar billing](../polar.md) |",
   "| Checkout, subscription changes, cancellation, restoration and signed webhooks | [Subscription lifecycle](../subscriptions.md) · [Billing portal](../plugins.md#open-the-users-stripe-billing-portal) |",
   "| Role definitions and action checks | [Role permissions](../access.md) |",
   "| Personal and organization application credentials | [API keys](../api-keys.md) |",

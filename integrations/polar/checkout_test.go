@@ -549,6 +549,7 @@ func TestGuestOwnerAcrossPostgresSearchPath(t *testing.T) {
 		Client: polargo.New(polargo.WithSecurity("fake-token"), polargo.WithClient(transport(mock.create))),
 		Ledger: ledger, OrganizationID: merchant, Products: map[string]string{"pro": product},
 		HostedOrigin: hosted, SuccessURL: "/success", WebhookSecret: dashboardSecret,
+		Portal: &PortalOptions{URL: portalURL},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -561,6 +562,10 @@ func TestGuestOwnerAcrossPostgresSearchPath(t *testing.T) {
 	}
 	result := call(checkout, "/checkout", `{"slug":"pro"}`, "guest-attempt", issuer.SessionCookie(guest.Token, true), nil)
 	expect(t, result, 403)
+	for _, path := range []string{"/customer/portal", "/customer/state"} {
+		result := readPersonal(checkout, "GET", path, "", issuer.SessionCookie(guest.Token, true), http.Header{"Sec-Fetch-Site": {"same-origin"}})
+		expect(t, result, 403)
+	}
 	var reservations int
 	if err := mixed.QueryRowContext(ctx, "SELECT COUNT(*) FROM stonewrit_polar_checkout").Scan(&reservations); err != nil {
 		t.Fatal(err)

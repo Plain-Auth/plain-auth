@@ -1,4 +1,4 @@
-// Package polar integrates personal, authenticated hosted checkouts and verified checkout webhooks.
+// Package polar integrates personal hosted checkout, verified checkout webhooks and optional customer self-service.
 package polar
 
 import (
@@ -34,6 +34,8 @@ type Options struct {
 	HostedOrigin          string            // exact HTTPS origin serving this merchant's Polar checkout
 	SuccessURL, ReturnURL string
 	WebhookSecret         string
+	// Portal enables personal portal sessions and customer-state reads when configured.
+	Portal *PortalOptions
 	// LegacySecret selects the raw UTF-8 signing key used for secrets created before 8 September 2026.
 	LegacySecret bool
 	// OnCheckout runs in the same SQL transaction as the verified delivery receipt.
@@ -50,7 +52,7 @@ type Service struct {
 
 var requestKey = regexp.MustCompile(`^[A-Za-z0-9._:-]{1,128}$`)
 
-// New registers both HTTP endpoints.
+// New registers checkout, signed deliveries and the configured customer endpoints.
 func New(opts Options) (auth.Plugin, error) {
 	s, err := NewService(opts)
 	if err != nil {
@@ -80,6 +82,13 @@ func NewService(opts Options) (*Service, error) {
 	if err != nil {
 		return nil, errors.New("polar: invalid webhook signing secret")
 	}
+	if opts.Portal != nil {
+		portal := *opts.Portal
+		if err := portal.validate(); err != nil {
+			return nil, err
+		}
+		opts.Portal = &portal
+	}
 	s := &Service{opts: opts, products: map[string]bool{}, verifier: verifier}
 	s.opts.Products = make(map[string]string, len(opts.Products))
 	for slug, id := range opts.Products {
@@ -92,12 +101,20 @@ func NewService(opts Options) (*Service, error) {
 	return s, nil
 }
 
-// Plugin returns the configured checkout and webhook endpoints.
+// Plugin returns the configured billing endpoints.
 func (s *Service) Plugin() auth.Plugin {
-	return auth.Plugin{ID: "polar", Endpoints: []auth.Endpoint{
+	endpoints := []auth.Endpoint{
 		{Method: "POST", Path: "/checkout", Handler: s.checkout},
 		{Method: "POST", Path: "/polar/webhooks", RawBody: true, Handler: s.webhook},
-	}}
+	}
+	if s.opts.Portal != nil {
+		endpoints = append(endpoints,
+			auth.Endpoint{Method: "GET", Path: "/customer/portal", Handler: s.portal},
+			auth.Endpoint{Method: "POST", Path: "/customer/portal", Handler: s.portal},
+			auth.Endpoint{Method: "GET", Path: "/customer/state", Handler: s.customerState},
+		)
+	}
+	return auth.Plugin{ID: "polar", Endpoints: endpoints}
 }
 
 func canonicalID(raw string) bool {

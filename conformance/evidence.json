@@ -7904,5 +7904,46 @@
       "test": "integrations/polar/checkout_test.go",
       "marker": "duplicate/out-of-order delivery executed"
     }
+  ],
+  "docs/content/docs/plugins/polar.mdx#L18/Customer Portal": [
+    {
+      "label": "Open the merchant’s personal customer portal with an expiring, customer-bound link",
+      "test": "integrations/polar/portal_test.go",
+      "marker": "invalid private portal handoff"
+    }
+  ],
+  "docs/content/docs/plugins/polar.mdx#L245": [
+    {
+      "label": "Open by GET or POST, preserve the theme and redirect preference, and validate the hosted path and token",
+      "test": "integrations/polar/portal_test.go",
+      "marker": "invalid private portal handoff"
+    },
+    {
+      "label": "Open a separate customer’s portal using its signed bearer session",
+      "test": "integrations/polar/portal_test.go",
+      "marker": "signed bearer received another customer"
+    },
+    {
+      "label": "Withhold credentials and billing data when the caller’s session is revoked during a provider request",
+      "test": "integrations/polar/portal_test.go",
+      "marker": "revoked session received portal credentials or state"
+    }
+  ],
+  "docs/content/docs/plugins/polar.mdx#L253": [
+    {
+      "label": "Read the individual customer’s subscriptions with product IDs, granted benefits and meter balances while withholding merchant metadata",
+      "test": "integrations/polar/portal_test.go",
+      "marker": "owner-scoped subscription, benefit and meter summary"
+    },
+    {
+      "label": "Return empty arrays for a customer without subscriptions, grants or meters",
+      "test": "integrations/polar/portal_test.go",
+      "marker": "a fresh personal customer lost an empty billing collection"
+    },
+    {
+      "label": "Reject customer selectors and delegated, unverified or guest sessions before calling the provider",
+      "test": "integrations/polar/portal_test.go",
+      "marker": "untrusted personal billing request reached the provider"
+    }
   ]
 }

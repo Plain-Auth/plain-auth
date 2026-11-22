@@ -9,6 +9,7 @@
     - [ ] Checkout Integration
       - [x] Open an allowlisted personal checkout by slug or product ID through the Polar SDK ([test](../../../integrations/polar/checkout_test.go#L357))
     - [ ] Customer Portal
+      - [x] Open the merchant’s personal customer portal with an expiring, customer-bound link ([test](../../../integrations/polar/portal_test.go#L246))
     - [ ] Automatic Customer creation on signup
     - [ ] Event Ingestion & Customer Meters for flexible Usage Based Billing
     - [ ] Handle Polar Webhooks securely with signature verification
@@ -35,7 +36,13 @@
     - [ ] Organization Support
   - [ ] Portal Plugin
     - [ ] Customer Portal Management
+      - [x] Open by GET or POST, preserve the theme and redirect preference, and validate the hosted path and token ([test](../../../integrations/polar/portal_test.go#L246))
+      - [x] Open a separate customer’s portal using its signed bearer session ([test](../../../integrations/polar/portal_test.go#L252))
+      - [x] Withhold credentials and billing data when the caller’s session is revoked during a provider request ([test](../../../integrations/polar/portal_test.go#L327))
     - [ ] Customer State
+      - [x] Read the individual customer’s subscriptions with product IDs, granted benefits and meter balances while withholding merchant metadata ([test](../../../integrations/polar/portal_test.go#L264))
+      - [x] Return empty arrays for a customer without subscriptions, grants or meters ([test](../../../integrations/polar/portal_test.go#L275))
+      - [x] Reject customer selectors and delegated, unverified or guest sessions before calling the provider ([test](../../../integrations/polar/portal_test.go#L222))
     - [ ] Benefits, Orders & Subscriptions
       - [ ] Benefits
       - [ ] Orders

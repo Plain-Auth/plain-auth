@@ -1,6 +1,6 @@
-# Polar hosted checkout
+# Polar customer billing
 
-Use the optional `integrations/polar` Go module to sell a configured product to a signed-in individual. The integration opens a Polar checkout and records its lifecycle from verified deliveries. It requires a direct session and a verified email address. Guest accounts, application-key sessions and administrator impersonation cannot open a checkout.
+Use the optional `integrations/polar` Go module to sell a configured product to a signed-in individual. The integration opens a Polar checkout and records its lifecycle from verified deliveries. You can also enable the individual customer’s hosted portal and billing summary. It requires a direct session and a verified email address. Guest accounts, application-key sessions and administrator impersonation cannot open a checkout.
 
 ## Configure the integration
 
@@ -88,4 +88,36 @@ Configure a Polar webhook endpoint at `/api/auth/polar/webhooks` with raw JSON, 
 
 `OnCheckout(ctx, tx, event)` receives a typed checkout transition bound to a locally reserved purchase. The delivery receipt, checkout state and callback’s SQL writes commit together. Return an error to roll back and allow Polar to retry. For external work, insert a job in an application outbox through the supplied transaction. Separate provider events have separate delivery IDs. Duplicate deliveries have one effect, and stale updates cannot reopen a closed checkout. Verified events outside the supported checkout types are acknowledged without invoking the callback.
 
-A successful checkout is distinct from an order-paid event. This integration covers hosted personal checkout. Payment fulfillment, refunds, subscriptions, organization billing, customer creation on signup, portal access, usage meters and embedded checkout remain outside this release. Local tests exercise the official Go SDK with an in-process HTTP transport on all three SQL engines. Live purchases and provider dashboards require merchant-side verification.
+## Enable the individual customer portal
+
+Add the following field to `polar.Options`. Supply the exact public URL for this merchant’s portal. Polar's API token needs `customer_sessions:write` to open a portal and `customers:read` or `customers:write` to read customer state. [Create customer session](https://polar.sh/docs/api-reference/2026-10/customer-sessions/create-customer-session) · [Read customer state by external ID](https://polar.sh/docs/api-reference/2026-10/customers/get-customer-state-by-external-id)
+
+```go
+Portal: &polar.PortalOptions{
+    URL:       "https://polar.sh/your-merchant/portal",
+    ReturnURL: "/account",
+    Theme:     "dark",
+},
+```
+
+`ReturnURL` and `Theme` are optional. The return URL must resolve to a trusted application destination. The two theme values are `light` and `dark`. Leaving `Portal` unset disables both routes.
+
+Use a same-origin request to `GET /api/auth/customer/portal` or `POST /api/auth/customer/portal`. POST accepts an optional boolean `redirect` which defaults to true. Both methods return `{url, redirect}`. Navigate to the returned URL to open the customer’s Polar account. Treat it as a credential until Polar’s session expires and keep it out of logs or analytics. GET requests authenticated with a cookie must carry same-origin fetch metadata or a trusted Origin or Referer. A native caller using a configured signed bearer session can send an Authorization header.
+
+Polar selects the customer using the immutable external ID of the signed-in account. StoneWrit verifies the returned individual customer, merchant, session expiry, configured portal path and token before handing out the URL. It rechecks the direct auth session when the provider responds. A completed checkout in this installation is optional for customers already bound to the same merchant and external ID.
+
+The hosted portal covers that customer’s purchases across this Polar merchant. The checkout product allowlist controls new purchases initiated by StoneWrit. Organization customers and caller-supplied customer or merchant selectors are unsupported.
+
+## Read the customer’s billing summary
+
+`GET /api/auth/customer/state` returns the same customer’s merchant-wide `polar.CustomerState`. Its JSON uses Polar's snake-case field names. It includes the customer ID, external ID, merchant organization ID, display name and email. The response also contains three arrays.
+
+| Field | Available properties |
+| --- | --- |
+| `active_subscriptions` | Subscription ID, product ID, status, current period end and cancellation at period end |
+| `granted_benefits` | Grant ID, benefit ID, benefit type and grant timestamp |
+| `active_meters` | Meter entry ID, meter ID, consumed units, credited units and balance |
+
+Applications can match a subscription’s `product_id` when granting product-specific access. A grant or meter may span products. The public summary omits customer metadata, subscription custom fields, grant properties, tax details and payment instrument data. A missing Polar customer returns 404 when the provider reports it. Provider failures or a conflicting customer, merchant or session produce a redacted 502. Portal credentials and state responses use `Cache-Control: no-store`. [Customer state](https://polar.sh/docs/integrate/customer-state)
+
+Local tests exercise the official Go SDK with an in-process HTTP transport on SQLite, PostgreSQL and MySQL. End-to-end use of a live merchant dashboard and real payments requires merchant-side verification. Fulfillment of paid orders, refunds, subscription management or listing endpoints, organization billing, signup customer creation, event ingestion, paginated meter reads and embedded checkout remain open.
