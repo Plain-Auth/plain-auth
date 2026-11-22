@@ -21,11 +21,16 @@ type TokenOptions struct {
 	// AllowUnlinkedResources lets registered clients target enabled resources without a per-client link.
 	AllowUnlinkedResources bool
 	MachineLifetime        time.Duration
-	ScopeLifetimes         map[string]time.Duration
-	OpaquePrefix           string
-	GenerateOpaqueToken    func(context.Context) (string, error)
-	HashOpaqueToken        func(context.Context, string) (string, error)
-	RateLimit              *auth.RateLimitRule
+	// AccessLifetime applies to access tokens issued on behalf of a user.
+	AccessLifetime time.Duration
+	// HashAuthorizationCode derives the verification identifier from a presented code.
+	// The default is unpadded base64url of its SHA-256 digest.
+	HashAuthorizationCode func(context.Context, string) (string, error)
+	ScopeLifetimes        map[string]time.Duration
+	OpaquePrefix          string
+	GenerateOpaqueToken   func(context.Context) (string, error)
+	HashOpaqueToken       func(context.Context, string) (string, error)
+	RateLimit             *auth.RateLimitRule
 	// IntrospectionRateLimit defaults to 100 per minute. An empty rule
 	// selects the host's global rate limit for this endpoint.
 	IntrospectionRateLimit *auth.RateLimitRule
@@ -44,6 +49,12 @@ func (opts *TokenOptions) defaults() error {
 	}
 	if opts.MachineLifetime < time.Second || opts.MachineLifetime%time.Second != 0 {
 		return errors.New("oauthprovider: machine token lifetime must be a positive whole number of seconds")
+	}
+	if opts.AccessLifetime == 0 {
+		opts.AccessLifetime = time.Hour
+	}
+	if opts.AccessLifetime < time.Second || opts.AccessLifetime%time.Second != 0 {
+		return errors.New("oauthprovider: access token lifetime must be a positive whole number of seconds")
 	}
 	opts.ScopeLifetimes = maps.Clone(opts.ScopeLifetimes)
 	for _, ttl := range opts.ScopeLifetimes {
@@ -278,7 +289,10 @@ func (opts TokenOptions) newOpaqueToken(ctx context.Context) (issued, stored str
 }
 
 func (opts TokenOptions) machineLifetime(scopes []string) time.Duration {
-	lifetime := opts.MachineLifetime
+	return opts.scopeLifetime(opts.MachineLifetime, scopes)
+}
+
+func (opts TokenOptions) scopeLifetime(lifetime time.Duration, scopes []string) time.Duration {
 	for _, scope := range scopes {
 		if limit, ok := opts.ScopeLifetimes[scope]; ok && limit < lifetime {
 			lifetime = limit

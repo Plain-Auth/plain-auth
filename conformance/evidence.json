@@ -12108,6 +12108,16 @@
       "label": "Require links to every machine-token audience and recheck concurrent unlink, scope, binding and signing policy changes on three engines",
       "test": "adapters/sqlstore/oauth_machine_resources_test.go",
       "marker": "func TestMachineResourceIssuance("
+    },
+    {
+      "label": "Exchange a browser-issued S256 code, verify the delegated access token with an independent issuer and isolate replay cleanup to that code",
+      "test": "conformance/oauth-authorization-code.mjs",
+      "marker": "export async function exerciseAuthorizationCode("
+    },
+    {
+      "label": "Roll back failed token inserts and serialize simultaneous redemptions across independent SQL connections on all three databases",
+      "test": "adapters/sqlstore/oauth_authorization_code_test.go",
+      "marker": "func TestAuthorizationCodeRedemption("
     }
   ],
   "docs/content/docs/plugins/oauth-provider/reference.mdx#L321/`POST /oauth2/token`": [
@@ -12125,6 +12135,16 @@
       "label": "Require links to every machine-token audience and recheck concurrent unlink, scope, binding and signing policy changes on three engines",
       "test": "adapters/sqlstore/oauth_machine_resources_test.go",
       "marker": "func TestMachineResourceIssuance("
+    },
+    {
+      "label": "Exchange a browser-issued S256 code, verify the delegated access token with an independent issuer and isolate replay cleanup to that code",
+      "test": "conformance/oauth-authorization-code.mjs",
+      "marker": "export async function exerciseAuthorizationCode("
+    },
+    {
+      "label": "Roll back failed token inserts and serialize simultaneous redemptions across independent SQL connections on all three databases",
+      "test": "adapters/sqlstore/oauth_authorization_code_test.go",
+      "marker": "func TestAuthorizationCodeRedemption("
     }
   ],
   "plugin-symbol/oauth-provider/OAuthOptions/m2mAccessTokenExpiresIn": [
@@ -12155,6 +12175,11 @@
       "label": "Apply the shortest lifetime from the original machine scopes and every requested API, including scopes dropped at issuance",
       "test": "conformance/oauth-resource-machine-tokens.mjs",
       "marker": "assert.equal(token.expires_in, 90)"
+    },
+    {
+      "label": "Limit an opaque delegated token to its approved scope's lifetime",
+      "test": "conformance/oauth-authorization-code.mjs",
+      "marker": "assert.equal(token.expires_in, 90)"
     }
   ],
   "plugin-symbol/oauth-provider/OAuthOptions/generateOpaqueAccessToken": [
@@ -12174,6 +12199,11 @@
       "label": "Check opaque access-token precedence, custom refresh prefixes, decoder and digest failures, expiry and concurrent credential changes on three SQL engines",
       "test": "adapters/sqlstore/oauth_refresh_introspection_test.go",
       "marker": "func TestOAuthRefreshIntrospection("
+    },
+    {
+      "label": "Redeem codes using the configured verification identifier and keep stored token families isolated after replay",
+      "test": "adapters/sqlstore/oauth_authorization_code_test.go",
+      "marker": "func TestAuthorizationCodeRedemption("
     }
   ],
   "docs/content/docs/plugins/oauth-provider/tokens.mdx#L125/`m2mAccessTokenExpiresIn`": [
@@ -12882,6 +12912,57 @@
       "label": "Reject unknown scopes, unsupported machine authentication, duplicate methods and an explicitly empty method list",
       "test": "plugins/oauthprovider/issuer_metadata_test.go",
       "marker": "func TestIssuerDiscoveryConfiguration("
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/tokens.mdx#L8": [
+    {
+      "label": "Exchange a browser-issued S256 code, verify the delegated access token with an independent issuer and isolate replay cleanup to that code",
+      "test": "conformance/oauth-authorization-code.mjs",
+      "marker": "export async function exerciseAuthorizationCode("
+    },
+    {
+      "label": "Roll back failed token inserts and serialize simultaneous redemptions across independent SQL connections on all three databases",
+      "test": "adapters/sqlstore/oauth_authorization_code_test.go",
+      "marker": "func TestAuthorizationCodeRedemption("
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/index.mdx#L20/PKCE": [
+    {
+      "label": "Exchange a browser-issued S256 code, verify the delegated access token with an independent issuer and isolate replay cleanup to that code",
+      "test": "conformance/oauth-authorization-code.mjs",
+      "marker": "export async function exerciseAuthorizationCode("
+    },
+    {
+      "label": "Resolve public and confidential client PKCE requirements, including offline scopes, OIDC nonces and explicit registration policy",
+      "test": "plugins/oauthprovider/authorization_code_test.go",
+      "marker": "func TestAuthorizationCodePKCERequirement("
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/tokens.mdx#L181": [
+    {
+      "label": "Exchange a browser-issued S256 code, verify the delegated access token with an independent issuer and isolate replay cleanup to that code",
+      "test": "conformance/oauth-authorization-code.mjs",
+      "marker": "export async function exerciseAuthorizationCode("
+    },
+    {
+      "label": "Resolve public and confidential client PKCE requirements, including offline scopes, OIDC nonces and explicit registration policy",
+      "test": "plugins/oauthprovider/authorization_code_test.go",
+      "marker": "func TestAuthorizationCodePKCERequirement("
+    }
+  ],
+  "plugin-symbol/oauth-provider/isPKCERequired": [
+    {
+      "label": "Resolve public and confidential client PKCE requirements, including offline scopes, OIDC nonces and explicit registration policy",
+      "test": "plugins/oauthprovider/authorization_code_test.go",
+      "marker": "func TestAuthorizationCodePKCERequirement(",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/oauth-provider/OAuthOptions/accessTokenExpiresIn": [
+    {
+      "label": "Apply the configured delegated lifetime for a successful headless public-client exchange on all SQL engines",
+      "test": "adapters/sqlstore/oauth_authorization_code_test.go",
+      "marker": "reply.ExpiresIn != 120"
     }
   ]
 }

@@ -24,18 +24,19 @@ type tokenRequest struct {
 const tokenFormType = "application/x-www-form-urlencoded"
 
 const machineTokenOperation = `{
-  "summary":"Exchange confidential application credentials for an access token",
+  "summary":"Exchange application credentials or a delegated authorization code for an access token",
   "security":[{"clientSecretBasic":[]},{}],
-  "description":"Use the registered HTTP Basic, client_secret_post or private_key_jwt method. A signed assertion replaces the client secret and must be fresh for each request. A DPoP proof binds the token to its sender.",
-  "parameters":[{"name":"DPoP","in":"header","schema":{"type":"string"},"description":"A signed proof for the public token endpoint URL"}],
+  "description":"Machine clients use their registered HTTP Basic, client_secret_post or private_key_jwt method and may bind tokens with DPoP. A delegated opaque exchange uses the registered client method, the code, its original redirect URI and its S256 verifier when PKCE was used. Public clients always use PKCE.",
+  "parameters":[{"name":"DPoP","in":"header","schema":{"type":"string"},"description":"A signed proof for a sender-bound machine token"}],
   "requestBody":{"required":true,"content":{"application/x-www-form-urlencoded":{"schema":{
     "type":"object","required":["grant_type"],"properties":{
-      "grant_type":{"type":"string","enum":["client_credentials"]},"client_id":{"type":"string"},
+      "grant_type":{"type":"string","enum":["client_credentials","authorization_code"]},"client_id":{"type":"string"},
+      "code":{"type":"string"},"code_verifier":{"type":"string"},"redirect_uri":{"type":"string","format":"uri"},
       "client_secret":{"type":"string","format":"password"},"client_assertion_type":{"type":"string","enum":["urn:ietf:params:oauth:client-assertion-type:jwt-bearer"]},
       "client_assertion":{"type":"string","format":"jwt"},"scope":{"type":"string"},
       "resource":{"type":"array","items":{"type":"string","format":"uri"},"description":"Repeat this form parameter to request multiple resource audiences"}
     }}}}},
-  "responses":{"200":{"description":"Machine access token","content":{"application/json":{"schema":{
+  "responses":{"200":{"description":"Access token","content":{"application/json":{"schema":{
     "type":"object","required":["access_token","token_type","expires_in","expires_at","scope"],"properties":{
       "access_token":{"type":"string"},"token_type":{"type":"string","enum":["Bearer","DPoP"]},
       "expires_in":{"type":"integer"},"expires_at":{"type":"integer"},"scope":{"type":"string"}
@@ -65,7 +66,7 @@ func (opts Options) token(c auth.EndpointContext) (any, error) {
 			return nil, registrationProblem(400, "invalid_request", "resource must be an absolute URI without a fragment")
 		}
 	}
-	if grant != "client_credentials" || !slices.Contains(opts.GrantTypes, grant) {
+	if (grant != "client_credentials" && grant != "authorization_code") || !slices.Contains(opts.GrantTypes, grant) {
 		return nil, registrationProblem(400, "unsupported_grant_type", "unsupported grant_type "+grant)
 	}
 	in, challenge, err := parseTokenCredentials(form, c.Request.Header.Values("Authorization"))
@@ -80,6 +81,10 @@ func (opts Options) token(c auth.EndpointContext) (any, error) {
 		in.scopes = strings.Split(scopes[len(scopes)-1], " ")
 	}
 	in.proof = c.Request.Header.Get("DPoP")
+	if grant == "authorization_code" {
+		token, err := opts.redeemAuthorizationCode(c, in, form)
+		return token, tokenEndpointError(c.ResponseHeader, challenge, err)
+	}
 	store, ok := c.Store().(MachineTokenStore)
 	if !ok {
 		return nil, &auth.APIError{Status: 501, Code: "OAUTH_TOKEN_STORE_UNAVAILABLE", Message: "The configured store does not support OAuth machine tokens"}

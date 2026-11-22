@@ -79,7 +79,7 @@ function post(base, path, form) {
   });
 }
 
-export async function issueDelegatedGrant(issuer, db, { name, email, scopes, callback, resource, origin = "http://issuer.localhost" }) {
+export async function authorizationCodeClient(issuer, db, { name, email, scopes, callback, resource, origin = "http://issuer.localhost" }) {
   const peer = origin + "/api/auth";
   const account = await issuer.api.signUpEmail({ body: { name, email, password: "refresh fixture password" }, asResponse: true });
   assert.equal(account.status, 200);
@@ -99,18 +99,26 @@ export async function issueDelegatedGrant(issuer, db, { name, email, scopes, cal
   const now = new Date().toISOString();
   db.prepare("INSERT INTO oauthConsent(id,clientId,userId,scopes,resources,createdAt,updatedAt) VALUES(?,?,?,?,?,?,?)")
     .run(randomUUID(), app.client_id, user, JSON.stringify(scopes), resource ? JSON.stringify([resource]) : null, now, now);
-  const verifier = randomUUID() + randomUUID();
-  const query = new URLSearchParams({ response_type: "code", client_id: app.client_id, redirect_uri: callback,
-    state: randomUUID(), scope: scopes.join(" "), ...(resource && { resource }), code_challenge_method: "S256",
-    code_challenge: createHash("sha256").update(verifier).digest("base64url") });
-  const authorize = await issuer.handler(new Request(peer + "/oauth2/authorize?" + query, { headers: { cookie: login } }));
-  const location = authorize.headers.get("location");
-  assert.ok(location, "expected an authorization redirect, HTTP " + authorize.status);
-  const redirected = new URL(location);
-  assert.equal(redirected.origin + redirected.pathname, callback);
-  const code = redirected.searchParams.get("code");
-  assert.ok(code, redirected.searchParams.get("error_description") ?? "missing authorization code");
-  const exchange = await issuer.handler(post(peer, "token", { ...fields, grant_type: "authorization_code", code, code_verifier: verifier, redirect_uri: callback, ...(resource && { resource }) }));
+  async function authorizeCode() {
+    const verifier = randomUUID() + randomUUID();
+    const query = new URLSearchParams({ response_type: "code", client_id: app.client_id, redirect_uri: callback,
+      state: randomUUID(), scope: scopes.join(" "), ...(resource && { resource }), code_challenge_method: "S256",
+      code_challenge: createHash("sha256").update(verifier).digest("base64url") });
+    const authorize = await issuer.handler(new Request(peer + "/oauth2/authorize?" + query, { headers: { cookie: login } }));
+    const location = authorize.headers.get("location");
+    assert.ok(location, "expected an authorization redirect, HTTP " + authorize.status);
+    const redirected = new URL(location);
+    assert.equal(redirected.origin + redirected.pathname, callback);
+    const code = redirected.searchParams.get("code");
+    assert.ok(code, redirected.searchParams.get("error_description") ?? "missing authorization code");
+    return { ...fields, grant_type: "authorization_code", code, code_verifier: verifier, redirect_uri: callback, ...(resource && { resource }) };
+  }
+  return { peer, app, fields, user, authorizeCode };
+}
+
+export async function issueDelegatedGrant(issuer, db, options) {
+  const { peer, app, fields, user, authorizeCode } = await authorizationCodeClient(issuer, db, options);
+  const exchange = await issuer.handler(post(peer, "token", await authorizeCode()));
   const issued = await exchange.json();
   assert.equal(exchange.status, 200, JSON.stringify(issued));
   return { peer, app, fields, issued, user };

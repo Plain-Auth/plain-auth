@@ -13,14 +13,16 @@ import (
 var _ op.MachineTokenStore = (*Store)(nil)
 var _ op.DPoPMachineTokenStore = (*Store)(nil)
 
-const machineClientSelect = `SELECT "id","clientId","clientSecret","tokenEndpointAuthMethod","grantTypes","clientCredentialsScopes","disabled","dpopBoundAccessTokens","metadata","jwks","jwksUri" FROM "oauthClient"` + localClientFilter
+const machineClientColumns = `"id","clientId","clientSecret","tokenEndpointAuthMethod","grantTypes","clientCredentialsScopes","disabled","dpopBoundAccessTokens","metadata","jwks","jwksUri"`
+const machineClientSelect = "SELECT " + machineClientColumns + ` FROM "oauthClient"` + localClientFilter
 
-func scanMachineClient(row rowScanner, id string) (op.MachineClient, error) {
+func scanMachineClient(row rowScanner, id string, extra ...any) (op.MachineClient, error) {
 	var client op.MachineClient
 	var secret, method, jwks, uri sql.NullString
 	var disabled, dpop sql.NullBool
 	var grants, scopes, metadata []byte
-	err := row.Scan(&client.RowID, &client.ClientID, &secret, &method, &grants, &scopes, &disabled, &dpop, &metadata, &jwks, &uri)
+	fields := []any{&client.RowID, &client.ClientID, &secret, &method, &grants, &scopes, &disabled, &dpop, &metadata, &jwks, &uri}
+	err := row.Scan(append(fields, extra...)...)
 	if errors.Is(err, sql.ErrNoRows) || err == nil && client.ClientID != id {
 		return op.MachineClient{}, op.ErrClientNotFound
 	}
