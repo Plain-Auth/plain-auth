@@ -111,13 +111,8 @@ func (m *ClientManager) SetClientCredentialsScopes(ctx context.Context, headers 
 	}
 	var invalid []string
 	for _, scope := range normalized {
-		switch scope {
-		case "openid", "profile", "email", "offline_access":
+		if userDelegatedScope(scope) || !slices.Contains(m.opts.Scopes, scope) {
 			invalid = append(invalid, scope)
-		default:
-			if !slices.Contains(m.opts.Scopes, scope) {
-				invalid = append(invalid, scope)
-			}
 		}
 	}
 	if len(invalid) > 0 {

@@ -5,6 +5,7 @@ import { jwt } from "better-auth/plugins";
 import { oauthProvider } from "@better-auth/oauth-provider";
 import { betterAuth } from "better-auth";
 import { exportJWK, generateKeyPair, SignJWT } from "jose";
+import { exerciseMachineTokens } from "./oauth-machine-tokens.mjs";
 
 function options(mode) {
   if (mode === "disabled") return { loginPage: "/login", consentPage: "/consent" };
@@ -20,7 +21,8 @@ function options(mode) {
     clientRegistrationAllowedScopes: ["reports"],
     clientRegistrationDefaultApplicationType: "infer",
     clientRegistrationRequirePKCE: false,
-    prefix: { clientSecret: "fixture_" },
+    prefix: { clientSecret: "fixture_", ...(mode === "protected" && { opaqueAccessToken: "access_" }) },
+    ...(mode === "protected" && { m2mAccessTokenExpiresIn: 600, scopeExpirations: { reports: "90s" } }),
     pairwiseSecret: "p".repeat(32),
     allowInsecureRedirectUri: (u) => u.hostname === "dev.example.test",
     clientPrivileges: ({ headers }) => !headers.get("X-Deny"),
@@ -302,6 +304,9 @@ export async function compareClientRegistration(t, reference, goFixture) {
         }
         const configured = await setMachineScopes(credentials.client_id, [" reports ", "reports"]);
         assert.deepEqual(configured.client_credentials_scopes, ["reports"]);
+        await t.test("issue opaque machine tokens accepted by an independent authorization server", async () => {
+          await exerciseMachineTokens({ server, issuer, db, credentials, cookie, created, setMachineScopes });
+        });
         const exchanged = await exchange(credentials.client_secret);
         const result = await exchanged.json();
         assert.equal(exchanged.status, 200, JSON.stringify(result));

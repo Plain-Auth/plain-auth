@@ -133,6 +133,7 @@ Go records the resolved commit in the consuming project’s `go.mod`. The module
 | List, inspect, update and remove a user’s OAuth consent grants | [Authorized applications](docs/oauth-consents.md) |
 | Register OAuth clients and rotate confidential client secrets | [OAuth client registration](docs/oauth-client-registration.md) |
 | Grant or revoke machine-to-machine scopes from Go server code | [Machine scope management](docs/oauth-client-registration.md#grant-machine-to-machine-scopes) |
+| Exchange a confidential application's credentials for a scoped opaque access token | [Machine access tokens](docs/machine-tokens.md) |
 | List or delete registered applications and show client details on a consent screen | [Manage registered applications](docs/oauth-client-directory.md) |
 | Issue signed service tokens and publish verification keys | [JWT and JWKS](docs/jwt.md) |
 | Check new passwords against a breached-password service | [Password screening](docs/password-checks.md) |

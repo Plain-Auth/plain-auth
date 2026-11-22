@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"time"
 
 	auth "github.com/Plain-Auth/plain-auth"
 	op "github.com/Plain-Auth/plain-auth/plugins/oauthprovider"
@@ -79,6 +80,9 @@ func registrationFixtureOptions() op.Options {
 	opts.ClientPrivileges = func(_ context.Context, a op.ClientAccess) (bool, error) { return a.Headers.Get("X-Deny") == "", nil }
 	opts.PairwiseSecret = strings.Repeat("p", 32)
 	opts.Scopes = []string{"openid", "email", "reports", "extra"}
+	if mode == "protected" {
+		opts.Tokens = op.TokenOptions{MachineLifetime: 10 * time.Minute, ScopeLifetimes: map[string]time.Duration{"reports": 90 * time.Second}, OpaquePrefix: "access_"}
+	}
 	optional := false
 	opts.Registration = op.RegistrationOptions{
 		Enabled: true, AllowUnauthenticated: mode == "open", DefaultApplicationType: "infer", SecretPrefix: "fixture_",

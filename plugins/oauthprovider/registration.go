@@ -3,8 +3,6 @@ package oauthprovider
 import (
 	"context"
 	"crypto/rand"
-	"crypto/sha256"
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -103,11 +101,14 @@ type RegistrationOptions struct {
 	SecretPrefix                           string
 	GenerateClientID, GenerateClientSecret func() (string, error)
 	StoreSecret                            func(context.Context, string) (string, error)
-	ValidateInitialToken                   func(context.Context, string, http.Header, RegistrationMetadata) (*InitialAuthorization, error)
-	MayCreate                              func(context.Context, RegistrationAccess) (bool, error)
-	ClientReference                        func(context.Context, RegistrationAccess) (string, error)
-	AllowHTTPRedirect                      func(*url.URL) bool
-	RateLimit                              *auth.RateLimitRule
+	// VerifySecret compares an unprefixed issued secret with its stored representation.
+	// Supply this when StoreSecret uses a random salt or encryption.
+	VerifySecret         func(ctx context.Context, raw, stored string) (bool, error)
+	ValidateInitialToken func(context.Context, string, http.Header, RegistrationMetadata) (*InitialAuthorization, error)
+	MayCreate            func(context.Context, RegistrationAccess) (bool, error)
+	ClientReference      func(context.Context, RegistrationAccess) (string, error)
+	AllowHTTPRedirect    func(*url.URL) bool
+	RateLimit            *auth.RateLimitRule
 }
 
 type Options struct {
@@ -121,6 +122,7 @@ type Options struct {
 	Scopes, GrantTypes []string
 	PairwiseSecret     string
 	Registration       RegistrationOptions
+	Tokens             TokenOptions
 }
 
 func (opts Options) clientManagementOptions() Options {
@@ -150,6 +152,9 @@ func New(opts Options) (auth.Plugin, error) {
 		return auth.Plugin{}, errors.New("oauthprovider: pairwise secret must contain at least 32 bytes")
 	}
 	r := &opts.Registration
+	if err := opts.Tokens.defaults(); err != nil {
+		return auth.Plugin{}, err
+	}
 	switch r.DefaultApplicationType {
 	case "":
 		r.DefaultApplicationType = "web"
@@ -200,6 +205,7 @@ func New(opts Options) (auth.Plugin, error) {
 	}
 	p.Endpoints = append(p.Endpoints, auth.Endpoint{Method: http.MethodPost, Path: "/oauth2/client/rotate-secret", Handler: opts.rotateClientSecret})
 	p.Endpoints = append(p.Endpoints, auth.Endpoint{Method: http.MethodPost, Path: "/oauth2/delete-client", Handler: opts.deleteClient})
+	p.Endpoints = append(p.Endpoints, auth.Endpoint{Method: http.MethodPost, Path: "/oauth2/token", RawBody: true, OpenAPI: json.RawMessage(machineTokenOperation), RateLimit: opts.Tokens.RateLimit, Handler: opts.token})
 	return p, nil
 }
 
@@ -298,8 +304,7 @@ func (r RegistrationOptions) issueSecret(ctx context.Context) (issued, stored st
 			return "", "", errors.New("oauthprovider: empty stored client secret")
 		}
 	} else {
-		digest := sha256.Sum256([]byte(secret))
-		stored = base64.RawURLEncoding.EncodeToString(digest[:])
+		stored = tokenDigest(secret)
 	}
 	return r.SecretPrefix + secret, stored, nil
 }

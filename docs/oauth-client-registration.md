@@ -110,7 +110,7 @@ Import `github.com/Plain-Auth/plain-auth/client` for the SDK. A successful respo
 | Secret handling | By default, SQL stores the base64url SHA-256 digest. The optional `SecretPrefix` appears on the issued credential. A custom `StoreSecret` callback receives the unprefixed value. Shared secrets currently have no expiry and return `client_secret_expires_at: 0`. |
 | Other metadata | The server also stores display information, contacts, software metadata, post-logout URIs and DPoP preferences. Client credentials, ownership and privilege fields are assigned by the server. |
 
-This endpoint creates registrations. The Go authorization, token issuance and backchannel logout flows have separate implementation statuses. The interoperability tests use an independent issuer to exercise stored shared-secret and signed-JWT clients. [Resource management](oauth-resource-management.md) · [Feature checklist](parity/plugins/oauth-provider.md) · [Registration tests](../conformance/oauth-registration.mjs)
+Use a registered confidential application's shared secret at the Go token endpoint to obtain an opaque machine token. The registration tests also exercise shared-secret and signed-JWT clients at an independent issuer. [Machine access tokens](machine-tokens.md) · [Resource management](oauth-resource-management.md) · [Feature checklist](parity/plugins/oauth-provider.md) · [Registration tests](../conformance/oauth-registration.mjs)
 
 ## Rotate a shared secret
 
@@ -168,7 +168,7 @@ func grantReportAccess(ctx context.Context, headers http.Header, api *auth.Auth,
 
 `headers` carries the caller's signed-in session. The method replaces the whole machine grant and returns the stored list. Pass an empty slice to revoke every scope. Each name must contain a non-whitespace character. The manager trims names and removes duplicates in input order. User scopes such as `openid`, `profile`, `email` and `offline_access` cannot be assigned to a machine.
 
-Changes apply to subsequent token exchanges. When a client omits `scope`, the issuer uses its machine grant. The comparison tests verify these exchanges against an independent issuer. The native OAuth token endpoint is still open on the checklist.
+Changes apply to subsequent token exchanges. When a client omits `scope`, the issuer uses its machine grant. The Go token endpoint accepts Basic and form credentials for opaque machine tokens. The comparison tests verify issued tokens at an independent authorization server. [Issue a machine access token](machine-tokens.md)
 
 | Caller and operation | Required policy decisions |
 | --- | --- |

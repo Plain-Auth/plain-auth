@@ -12033,6 +12033,71 @@
       "marker": "assert.equal((await implicit.json()).scope, \"extra\");"
     }
   ],
+  "plugin/oauth-provider/POST /oauth2/token": [
+    {
+      "label": "Issue opaque bearer tokens with Basic or form authentication and verify their scope, expiry, introspection and revocation at an independent server",
+      "test": "conformance/oauth-machine-tokens.mjs",
+      "marker": "assert.equal(info.active, true);"
+    },
+    {
+      "label": "Recheck credential rotation, registered scopes, sender constraints and client deletion during issuance on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_machine_token_test.go",
+      "marker": "failed exchanges persisted access tokens"
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/reference.mdx#L321/`POST /oauth2/token`": [
+    {
+      "label": "Issue opaque bearer tokens with Basic or form authentication and verify their scope, expiry, introspection and revocation at an independent server",
+      "test": "conformance/oauth-machine-tokens.mjs",
+      "marker": "assert.equal(info.active, true);"
+    }
+  ],
+  "plugin-symbol/oauth-provider/OAuthOptions/m2mAccessTokenExpiresIn": [
+    {
+      "label": "Apply the machine token lifetime and shortest applicable scope lifetime to the response and persisted expiry",
+      "test": "conformance/oauth-machine-tokens.mjs",
+      "marker": "assert.equal(info.exp - info.iat, 90);"
+    },
+    {
+      "label": "Default to a one-hour machine lifetime and 20 token requests per minute",
+      "test": "plugins/oauthprovider/machine_token_test.go",
+      "marker": "incorrect machine token defaults"
+    }
+  ],
+  "plugin-symbol/oauth-provider/OAuthOptions/scopeExpirations": [
+    {
+      "label": "Apply the machine token lifetime and shortest applicable scope lifetime to the response and persisted expiry",
+      "test": "conformance/oauth-machine-tokens.mjs",
+      "marker": "assert.equal(info.exp - info.iat, 90);"
+    }
+  ],
+  "plugin-symbol/oauth-provider/OAuthOptions/generateOpaqueAccessToken": [
+    {
+      "label": "Use a host token generator, credential verifier and digest function without storing cleartext tokens",
+      "test": "adapters/sqlstore/oauth_machine_token_test.go",
+      "marker": "machine token persistence or lifetime incorrect"
+    }
+  ],
+  "plugin-symbol/oauth-provider/OAuthOptions/storeTokens": [
+    {
+      "label": "Use a host token generator, credential verifier and digest function without storing cleartext tokens",
+      "test": "adapters/sqlstore/oauth_machine_token_test.go",
+      "marker": "machine token persistence or lifetime incorrect"
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/tokens.mdx#L125/`m2mAccessTokenExpiresIn`": [
+    {
+      "label": "Apply the machine token lifetime and shortest applicable scope lifetime to the response and persisted expiry",
+      "test": "conformance/oauth-machine-tokens.mjs",
+      "marker": "assert.equal(info.exp - info.iat, 90);",
+      "complete": true
+    },
+    {
+      "label": "Default to a one-hour machine lifetime and 20 token requests per minute",
+      "test": "plugins/oauthprovider/machine_token_test.go",
+      "marker": "incorrect machine token defaults"
+    }
+  ],
   "plugin-symbol/oauth-provider/OAuthOptions/cachedTrustedClients": [
     {
       "label": "Keep an operator-managed credential immutable from the owner endpoint",
