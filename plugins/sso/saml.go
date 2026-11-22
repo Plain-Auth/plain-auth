@@ -25,6 +25,8 @@ var ErrInvalidSAML = apiError(400, "Invalid or unsupported SAML configuration")
 type SAMLOptions struct {
 	// EnableSingleLogout enables SP-initiated signed HTTP-Redirect logout.
 	EnableSingleLogout bool
+	// EnableIDPInitiatedLogout accepts signed Redirect requests from the current directory.
+	EnableIDPInitiatedLogout bool
 	// LogoutRequestTTL defaults to five minutes.
 	LogoutRequestTTL time.Duration
 	// AllowIDPInitiated is a host-owned directory policy. Nil disables unsolicited sign-in.
@@ -42,6 +44,9 @@ type SAMLOptions struct {
 func (o SAMLOptions) validate() error {
 	if o.LogoutRequestTTL < 0 || o.LogoutRequestTTL != 0 && (o.LogoutRequestTTL < time.Second || o.LogoutRequestTTL%time.Second != 0) {
 		return errors.New("sso: SAML logout lifetime must be a positive whole number of seconds")
+	}
+	if o.EnableIDPInitiatedLogout && !o.EnableSingleLogout {
+		return errors.New("sso: IdP-initiated logout requires single logout")
 	}
 	if o.EnableSingleLogout && (o.RequestSigner == nil || o.RequestCertificate == nil) {
 		return errors.New("sso: SAML single logout requires the host signing key and certificate")

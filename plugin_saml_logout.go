@@ -47,3 +47,24 @@ func (c EndpointContext) SAMLLogoutStarted(token, target, binding string, ttl ti
 func (c EndpointContext) SAMLLogoutCompleted() {
 	c.ResponseHeader.Add("Set-Cookie", c.samlLogoutCookie("", -1).String())
 }
+
+// SAMLLogoutBrowserToken identifies the one signed local browser cookie so
+// an IdP logout can clear it only when its underlying session was revoked.
+func (c EndpointContext) SAMLLogoutBrowserToken() string {
+	cookies := c.Request.CookiesNamed(c.Auth.cookieName())
+	if len(cookies) != 1 {
+		return ""
+	}
+	return c.Auth.VerifySignedSessionToken(cookies[0].Value)
+}
+
+// SAMLIDPLogoutCompleted returns the signed response to the registered IdP.
+func (c EndpointContext) SAMLIDPLogoutCompleted(target, token string, revoked bool) any {
+	if revoked && token != "" && c.DirectBrowserSession(token) {
+		c.Auth.expireSessionCookieHeaders(c.ResponseHeader, c.Request)
+		if c.Auth.deviceSessions != nil {
+			c.Auth.clearDeviceCookie(c.ResponseHeader, token)
+		}
+	}
+	return authRedirect(target)
+}

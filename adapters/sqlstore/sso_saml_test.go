@@ -111,7 +111,7 @@ func runEnterpriseSAMLBrowser(t *testing.T, encrypted, logout bool) {
 				return expected != nil && *expected == d, nil
 			}
 			host := func(s *Store, encryption *sso.SAMLEncryption, policy sso.SAMLDirectoryPolicy, disableSignup bool) *auth.Auth {
-				plug, e := sso.New(sso.Options{DisableImplicitSignUp: disableSignup, SAML: &sso.SAMLOptions{EnableSingleLogout: logout, AllowIDPInitiated: policy, IDPInitiatedCallbackURL: "/global-portal", Encryption: encryption, RequestSigner: spKey, RequestCertificate: spCert, TrustEmailVerified: true}, DomainVerification: &sso.DomainVerificationOptions{Resolver: dns}})
+				plug, e := sso.New(sso.Options{DisableImplicitSignUp: disableSignup, SAML: &sso.SAMLOptions{EnableSingleLogout: logout, EnableIDPInitiatedLogout: logout, AllowIDPInitiated: policy, IDPInitiatedCallbackURL: "/global-portal", Encryption: encryption, RequestSigner: spKey, RequestCertificate: spCert, TrustEmailVerified: true}, DomainVerification: &sso.DomainVerificationOptions{Resolver: dns}})
 				must(e)
 				a, e := auth.New(auth.Options{BaseURL: app.URL, BasePath: "/identity", Secret: strings.Repeat("s", 40), Store: s, RateLimit: new(bool), EmailAndPassword: true, Plugins: []auth.Plugin{plug}})
 				must(e)
@@ -299,6 +299,9 @@ func runEnterpriseSAMLBrowser(t *testing.T, encrypted, logout bool) {
 						t.Fatal("SAML login failed", status, head.Get("Location"))
 					}
 				}
+				t.Run("IdP session logout", func(t *testing.T) {
+					testSAMLIDPLogout(t, first, second, idp, api, newBrowser, sdk, login, owner, node, peer, dns)
+				})
 				testSAMLLogout(t, first, second, idp, api, idpBase, newBrowser, sdk, login, owner, node, peer)
 				return
 			}

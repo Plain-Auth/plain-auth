@@ -359,6 +359,11 @@ func New(o Options) (auth.Plugin, error) {
 			return errors.New("sso: provider management requires a directory store")
 		}
 		if o.SAML != nil {
+			if o.SAML.EnableIDPInitiatedLogout {
+				if _, ok := s.(SAMLIDPLogoutStore); !ok {
+					return errors.New("sso: IdP-initiated logout requires a directory session revocation store")
+				}
+			}
 			if o.SAML.EnableSingleLogout {
 				if _, ok := s.(SAMLLogoutStore); !ok {
 					return errors.New("sso: SAML single logout requires a logout session store")
@@ -389,9 +394,11 @@ func New(o Options) (auth.Plugin, error) {
 	}
 	if o.SAML != nil {
 		if o.SAML.EnableSingleLogout {
-			plugin.Endpoints = append(plugin.Endpoints,
-				endpoint("/sso/saml2/logout/:providerId", "POST", o.startLogout),
-				auth.Endpoint{Path: "/sso/saml2/sp/slo/:providerId", Method: "GET", Handler: o.finishLogout})
+			slo := auth.Endpoint{Path: "/sso/saml2/sp/slo/:providerId", Method: "GET", Handler: o.finishLogout}
+			if o.SAML.EnableIDPInitiatedLogout {
+				slo.OpenAPI = json.RawMessage(`{"x-stonewrit-idp-logout":true}`)
+			}
+			plugin.Endpoints = append(plugin.Endpoints, endpoint("/sso/saml2/logout/:providerId", "POST", o.startLogout), slo)
 		}
 		acs := auth.Endpoint{Method: "POST", Path: "/sso/saml2/sp/acs/:providerId", RawBody: true, Handler: o.samlFinish}
 		if o.SAML.AllowIDPInitiated != nil {

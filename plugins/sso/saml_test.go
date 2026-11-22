@@ -89,6 +89,9 @@ func TestSAMLEncryptionHostKeys(t *testing.T) {
 }
 
 func TestSAMLLogoutConfiguration(t *testing.T) {
+	if _, e := New(Options{SAML: &SAMLOptions{EnableIDPInitiatedLogout: true}}); e == nil {
+		t.Fatal("IdP logout enabled without single logout")
+	}
 	if _, e := New(Options{SAML: &SAMLOptions{EnableSingleLogout: true}}); e == nil {
 		t.Fatal("missing SP signing credentials accepted")
 	}

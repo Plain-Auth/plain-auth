@@ -8746,6 +8746,21 @@
       "label": "Complete the strict Go Redirect return with an independent IdP and capture the pinned reference’s signed-response rejection",
       "test": "conformance/core.test.mjs",
       "marker": "test(\"enterprise SAML logs out a recorded IdP session"
+    },
+    {
+      "label": "Accept a signed directory LogoutRequest once across replicas, revoke sessions for the exact qualified NameID and SessionIndex, and preserve another immutable registration on three SQL engines",
+      "test": "adapters/sqlstore/sso_saml_idp_logout_test.go",
+      "marker": "t.Fatal(\"incoming logout replay race\""
+    },
+    {
+      "label": "Expire a request waiting on a directory lock and keep a renewed SAML session bound past its original TTL",
+      "test": "adapters/sqlstore/sso_saml_idp_logout_test.go",
+      "marker": "t.Fatal(\"logout remained valid past its deadline while locked\""
+    },
+    {
+      "label": "Return an independently verified signed Redirect acknowledgement to the IdP; the strict pinned runtime rejects the same signed request",
+      "test": "conformance/core.test.mjs",
+      "marker": "test(\"enterprise SAML accepts signed directory logout"
     }
   ],
   "docs/content/docs/plugins/test-utils.mdx#L77": [

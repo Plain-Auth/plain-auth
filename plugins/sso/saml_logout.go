@@ -205,6 +205,9 @@ func (o Options) finishLogout(c auth.EndpointContext) (any, error) {
 		return nil, ErrSAMLLogoutResponse
 	}
 	q, e := url.ParseQuery(c.Request.URL.RawQuery)
+	if e == nil && q.Has("SAMLRequest") && o.SAML.EnableIDPInitiatedLogout {
+		return o.receiveIDPLogout(c, q, store)
+	}
 	if e != nil || len(q) != 4 {
 		return nil, ErrSAMLLogoutResponse
 	}
@@ -213,10 +216,7 @@ func (o Options) finishLogout(c auth.EndpointContext) (any, error) {
 			return nil, ErrSAMLLogoutResponse
 		}
 	}
-	const rsaSHA2 = "http://www.w3.org/2001/04/xmldsig-more#rsa-sha"
-	switch q.Get("SigAlg") {
-	case rsaSHA2 + "256", rsaSHA2 + "384", rsaSHA2 + "512":
-	default:
+	if !logoutSignatureAllowed(q.Get("SigAlg")) {
 		return nil, ErrSAMLLogoutResponse
 	}
 	state := q.Get("RelayState")

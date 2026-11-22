@@ -122,11 +122,21 @@ func describeSSORequest(op object, route stonewrit.HTTPRoute, info stonewrit.HTT
 		op["parameters"] = []object{{"name": "providerId", "in": "path", "required": true, "schema": providerID}}
 		body(responseObject(object{"callbackURL": text}))
 	case "/sso/saml2/sp/slo/:providerId":
+		var mode struct {
+			Incoming bool `json:"x-stonewrit-idp-logout"`
+		}
+		if len(route.OpenAPI) != 0 {
+			_ = json.Unmarshal(route.OpenAPI, &mode)
+		}
 		op["description"] = "Consume the initiating browser's signed HTTP-Redirect logout acknowledgement."
 		op["security"] = []object{}
-		params := []object{{"name": "providerId", "in": "path", "required": true, "schema": providerID}, {"name": info.SAMLLogoutCookie, "in": "cookie", "required": true, "schema": text}}
+		params := []object{{"name": "providerId", "in": "path", "required": true, "schema": providerID}, {"name": info.SAMLLogoutCookie, "in": "cookie", "required": !mode.Incoming, "schema": text, "description": "Required when processing a LogoutResponse."}}
+		if mode.Incoming {
+			op["description"] = "Provide exactly one signed HTTP-Redirect protocol message. A LogoutResponse requires the browser binding and RelayState. A LogoutRequest revokes the exact signed NameID and SessionIndex and returns a signed response to the directory."
+			params = append(params, object{"name": "SAMLRequest", "in": "query", "required": false, "schema": text})
+		}
 		for _, key := range []string{"SAMLResponse", "RelayState", "SigAlg", "Signature"} {
-			params = append(params, object{"name": key, "in": "query", "required": true, "schema": text})
+			params = append(params, object{"name": key, "in": "query", "required": !mode.Incoming || key == "SigAlg" || key == "Signature", "schema": text})
 		}
 		op["parameters"] = params
 

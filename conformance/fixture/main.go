@@ -99,6 +99,7 @@ func main() {
 						log.Fatal(e)
 					}
 					opts.SAML.EnableSingleLogout = true
+					opts.SAML.EnableIDPInitiatedLogout = os.Getenv("CONFORMANCE_SAML_IDP_LOGOUT") == "1"
 					opts.SAML.RequestSigner = signer.PrivateKey
 					opts.SAML.RequestCertificate = signer.Certificate
 				}

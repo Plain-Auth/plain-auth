@@ -55,7 +55,7 @@
   - [ ] `GET /sso/get-provider`
     - [x] Return public OIDC fields and reject unauthenticated or foreign users without revealing the client secret ([test](../../../conformance/sso-providers.mjs#L12))
   - [ ] `POST /sso/update-provider`
-    - [x] Rotate a directory’s signing certificate through the released client and retain the existing subject on both runtimes ([test](../../../conformance/sso-saml.mjs#L329))
+    - [x] Rotate a directory’s signing certificate through the released client and retain the existing subject on both runtimes ([test](../../../conformance/sso-saml.mjs#L361))
     - [x] Authorize metadata replacement under a current manager session and reject stale competing revisions on three SQL engines ([test](../../../adapters/sqlstore/sso_saml_metadata_test.go#L178))
     - [x] Reject issuer and endpoint replacement on linked directories, accept overlapping signing keys, and reject retired keys after rotation ([test](../../../adapters/sqlstore/sso_saml_metadata_test.go#L121))
     - [x] Allow an active organization administrator to replace metadata and deny the same live session after demotion ([test](../../../adapters/sqlstore/sso_saml_metadata_test.go#L152))
@@ -66,7 +66,7 @@
     - [x] Preserve a same-name static OAuth credential and stop deletion until historical account links have independently verified source records ([test](../../../adapters/sqlstore/sso_delete_test.go#L177))
     - [x] Deny enterprise provider deletion from an impersonated session after the administrative schema is added on another node ([test](../../../adapters/sqlstore/admin_live_schema_test.go#L111))
   - [ ] `GET /sso/saml2/sp/metadata`
-    - [x] Read public XML metadata with the configured entity ID and mounted HTTP-POST ACS on both runtimes ([test](../../../conformance/sso-saml.mjs#L217))
+    - [x] Read public XML metadata with the configured entity ID and mounted HTTP-POST ACS on both runtimes ([test](../../../conformance/sso-saml.mjs#L222))
     - [x] Publish the host signing certificate and verify the resulting RSA-SHA256 Redirect at a local IdP ([test](../../../adapters/sqlstore/sso_saml_test.go#L245))
     - [x] Advertise the public SP recipient certificate, AES-256-GCM and explicit RSA-OAEP SHA-256 parameters when a directory requires encryption ([test](../../../adapters/sqlstore/sso_saml_test.go#L210))
     - [x] Advertise a single HTTP-Redirect logout service and the signed request key for a configured directory ([test](../../../adapters/sqlstore/sso_saml_test.go#L189))
@@ -75,14 +75,14 @@
     - [x] Enforce direct owner sessions, organization roles and creator quota during concurrent registrations ([test](../../../adapters/sqlstore/sso_test.go#L23))
     - [x] Deny enterprise registration from an impersonated session on an instance opened before the administrative migration ([test](../../../adapters/sqlstore/admin_live_schema_test.go#L108))
     - [x] Read a seven-day registration challenge with the released client and return HTTP 201 for a repeated request ([test](../../../conformance/sso-domains.mjs#L86))
-    - [x] Register an IdP signing certificate and separate SP entity ID through the released client on both runtimes ([test](../../../conformance/sso-saml.mjs#L122))
-    - [x] Import the issuer, Redirect service and signing anchors from one submitted IdP XML document through the published client on both runtimes ([test](../../../conformance/sso-saml.mjs#L200))
+    - [x] Register an IdP signing certificate and separate SP entity ID through the released client on both runtimes ([test](../../../conformance/sso-saml.mjs#L126))
+    - [x] Import the issuer, Redirect service and signing anchors from one submitted IdP XML document through the published client on both runtimes ([test](../../../conformance/sso-saml.mjs#L205))
     - [x] Require host-managed recipient credentials for encrypted directory registrations on each SQL engine ([test](../../../adapters/sqlstore/sso_saml_test.go#L169))
   - [ ] `POST /sign-in/sso`
     - [x] Start an authorization with a persisted OIDC provider through the released client and retain the same account across implementations ([test](../../../conformance/sso-browser.mjs#L13))
     - [x] Select a provider by ID, organization slug, email or DNS suffix on a custom auth mount ([test](../../../adapters/sqlstore/sso_browser_test.go#L123))
     - [x] Select a proved directory ahead of overlapping pending registrations ([test](../../../adapters/sqlstore/sso_domain_test.go#L245))
-    - [x] Start an SP-initiated Redirect request and complete first and repeat SAML sign-in with the same account ([test](../../../conformance/sso-saml.mjs#L122))
+    - [x] Start an SP-initiated Redirect request and complete first and repeat SAML sign-in with the same account ([test](../../../conformance/sso-saml.mjs#L126))
     - [x] Issue first and returning SAML sessions with public signup and metadata disabled; retain the installed ACS and registration in OpenAPI ([test](../../../conformance/core.test.mjs#L1446))
   - [ ] `/sso/callback/:providerId`
     - [x] Redeem a browser-bound code with PKCE and either secret authentication method, then issue a session for the stable provider subject ([test](../../../adapters/sqlstore/sso_browser_test.go#L123))
@@ -95,22 +95,25 @@
   - [ ] `/sso/callback`
     - [x] Authenticate using the shared callback on both servers and preserve the canonical linked account in SQLite ([test](../../../conformance/sso-browser.mjs#L54))
   - [ ] `GET / POST /sso/saml2/sp/acs/:providerId`
-    - [x] POST a separately signed browser assertion, receive the application session and reuse the original account ([test](../../../conformance/sso-saml.mjs#L283))
-    - [x] Validate a signed issuer, audience, recipient, request and validity window on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_test.go#L483))
-    - [x] Consume an assertion once across independent instances and maintain the live DNS boundary on automatic linking ([test](../../../adapters/sqlstore/sso_saml_test.go#L583))
+    - [x] POST a separately signed browser assertion, receive the application session and reuse the original account ([test](../../../conformance/sso-saml.mjs#L288))
+    - [x] Validate a signed issuer, audience, recipient, request and validity window on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_test.go#L486))
+    - [x] Consume an assertion once across independent instances and maintain the live DNS boundary on automatic linking ([test](../../../adapters/sqlstore/sso_saml_test.go#L586))
     - [x] Invalidate requests that predate a certificate rotation and check the current XML trust anchors on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_metadata_test.go#L103))
     - [x] Complete first and returning sign-in with the published client using a directly signed, independently encrypted assertion on both runtimes ([test](../../../conformance/core.test.mjs#L1488))
     - [x] Enforce the encrypted assertion profile, issuer, browser, DNS binding and durable replay checks on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_test.go#L63))
     - [x] Sign in from a reviewed IdP portal with a directly signed or encrypted assertion, select a trusted landing page and reject replay through the released client on both runtimes ([test](../../../conformance/core.test.mjs#L1483))
     - [x] Require an approved immutable registration and its browser Origin, apply session and signup policy, and claim one portal assertion across SQL replicas in all three databases ([test](../../../adapters/sqlstore/sso_saml_portal_test.go#L24))
-    - [x] Exclude a new registration that reuses the approved provider name after deletion ([test](../../../adapters/sqlstore/sso_saml_test.go#L640))
-    - [x] Reject a signed portal assertion when the provider catalog changes after host approval and before the final SQL transaction ([test](../../../adapters/sqlstore/sso_saml_test.go#L357))
+    - [x] Exclude a new registration that reuses the approved provider name after deletion ([test](../../../adapters/sqlstore/sso_saml_test.go#L643))
+    - [x] Reject a signed portal assertion when the provider catalog changes after host approval and before the final SQL transaction ([test](../../../adapters/sqlstore/sso_saml_test.go#L360))
   - [ ] `GET / POST /sso/saml2/sp/slo/:providerId`
     - [x] Accept a signed HTTP-Redirect acknowledgement once across replicas and preserve a newer login during the round trip ([test](../../../adapters/sqlstore/sso_saml_logout_test.go#L224))
     - [x] Complete the strict Go Redirect return with an independent IdP and capture the pinned reference’s signed-response rejection ([test](../../../conformance/core.test.mjs#L1532))
+    - [x] Accept a signed directory LogoutRequest once across replicas, revoke sessions for the exact qualified NameID and SessionIndex, and preserve another immutable registration on three SQL engines ([test](../../../adapters/sqlstore/sso_saml_idp_logout_test.go#L231))
+    - [x] Expire a request waiting on a directory lock and keep a renewed SAML session bound past its original TTL ([test](../../../adapters/sqlstore/sso_saml_idp_logout_test.go#L170))
+    - [x] Return an independently verified signed Redirect acknowledgement to the IdP; the strict pinned runtime rejects the same signed request ([test](../../../conformance/core.test.mjs#L1550))
   - [ ] `POST /sso/saml2/logout/:providerId`
     - [x] Use the native SDK to revoke exactly the recorded local SAML login and sign the original IdP NameID and SessionIndex on three SQL engines ([test](../../../adapters/sqlstore/sso_saml_logout_test.go#L30))
-    - [x] Revoke the current local login through the released client on both runtimes and verify the Go request’s RSA-SHA256 Redirect signature ([test](../../../conformance/sso-saml.mjs#L310))
+    - [x] Revoke the current local login through the released client on both runtimes and verify the Go request’s RSA-SHA256 Redirect signature ([test](../../../conformance/sso-saml.mjs#L342))
   - [ ] `AlgorithmValidationOptions`
     - [ ] `onDeprecated`
     - [ ] `allowedSignatureAlgorithms`

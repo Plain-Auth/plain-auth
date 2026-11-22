@@ -1546,3 +1546,8 @@ test("signed Checkout completion delivers a retrieved subscription and local own
       checkoutCompletionObserver(t, { reference, goFixture, instrument }, organization));
   }
 });
+
+test("enterprise SAML accepts signed directory logout and returns a correlated signed acknowledgement", async t => {
+  const {compareEnterpriseSAML}=await import("./sso-saml.mjs");
+  await compareEnterpriseSAML(t,{goFixture,instrument,logout:true,incoming:true});
+});

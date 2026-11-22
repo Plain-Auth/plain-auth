@@ -27,10 +27,10 @@ func (o SAMLOptions) metadataLimit() int {
 }
 
 type samlIDPAuthority struct {
-	entity, redirect, post, logout string
-	certs                          Certificates
-	validUntil                     time.Time
-	signedRequests                 bool
+	entity, redirect, post, logout, logoutResponse string
+	certs                                          Certificates
+	validUntil                                     time.Time
+	signedRequests                                 bool
 }
 
 // IdentityProviderEntityID returns the assertion issuer from a decoded directory configuration.
@@ -154,6 +154,9 @@ func parseInlineMetadata(raw string) (*samlIDPAuthority, error) {
 	var logoutServices []SAMLService
 	for _, endpoint := range role.SingleLogoutServices {
 		logoutServices = append(logoutServices, SAMLService{Binding: endpoint.Binding, Location: endpoint.Location})
+		if endpoint.Binding == saml.HTTPRedirectBinding {
+			idp.logoutResponse = endpoint.ResponseLocation
+		}
 	}
 	// An unsupported or ambiguous optional logout service leaves the existing
 	// authentication metadata usable. Only an unambiguous Redirect endpoint can

@@ -67,8 +67,12 @@ async function encryptSignedReply(encoded, cert) {
 
 function signedLogoutReply(destination,requestID,relay,key) {
   const response=`<samlp:LogoutResponse xmlns:samlp="${protocolNS}" xmlns:saml="${assertionNS}" ID="_${randomUUID()}" Version="2.0" IssueInstant="${new Date().toISOString()}" Destination="${xml(destination)}" InResponseTo="${xml(requestID)}"><saml:Issuer>${issuer}</saml:Issuer><samlp:Status><samlp:StatusCode Value="urn:oasis:names:tc:SAML:2.0:status:Success"/></samlp:Status></samlp:LogoutResponse>`;
-  const data=deflateRawSync(Buffer.from(response)).toString("base64");
-  let query="SAMLResponse="+encodeURIComponent(data);
+  return signedLogoutRedirect("SAMLResponse",response,relay,key);
+}
+
+function signedLogoutRedirect(kind, message, relay, key) {
+  const data=deflateRawSync(Buffer.from(message)).toString("base64");
+  let query=kind+"="+encodeURIComponent(data);
   if (relay) query+="&RelayState="+encodeURIComponent(relay);
   query+="&SigAlg="+encodeURIComponent("http://www.w3.org/2001/04/xmldsig-more#rsa-sha256");
   return query+"&Signature="+encodeURIComponent(sign("RSA-SHA256",Buffer.from(query),key).toString("base64"));
@@ -119,7 +123,7 @@ function inlineIdP(certificates, entity=issuer) {
   return `<md:EntityDescriptor xmlns:md="urn:oasis:names:tc:SAML:2.0:metadata" xmlns:ds="${ds}" entityID="${xml(entity)}"><md:IDPSSODescriptor protocolSupportEnumeration="${protocolNS}">${descriptors.join("")}<md:SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect" Location="${entryPoint}"/></md:IDPSSODescriptor></md:EntityDescriptor>`;
 }
 
-export async function compareEnterpriseSAML(t, {goFixture,instrument,privateDeployment=false,inline=false,encrypted=false,portal=false,logout=false}) {
+export async function compareEnterpriseSAML(t, {goFixture,instrument,privateDeployment=false,inline=false,encrypted=false,portal=false,logout=false,incoming=false}) {
   const keys = await mkdtemp(join(tmpdir(),"stonewrit-idp-"));
   t.after(()=>rm(keys,{recursive:true,force:true}));
   const keyFile=join(keys,"private.pem"), certFile=join(keys,"cert.pem");
@@ -132,6 +136,7 @@ export async function compareEnterpriseSAML(t, {goFixture,instrument,privateDepl
     rotating={key:await readFile(privateFile,"utf8"),cert:await readFile(publicFile,"utf8")};
   }
   const fixtureEnv={CONFORMANCE_SAML:"1"};
+  if (incoming) fixtureEnv.CONFORMANCE_SAML_IDP_LOGOUT="1";
   let actorKey,actorCert;
   if (logout) {
     const priv=join(keys,"logout-key.pem"),certPath=join(keys,"logout-cert.pem");
@@ -289,6 +294,33 @@ export async function compareEnterpriseSAML(t, {goFixture,instrument,privateDepl
       assert.equal(current.user.name,"Enterprise Employee");
       if (first) initialID=current.user.id;
       else assert.equal(current.user.id,initialID);
+      if (incoming) {
+        const slo=runtime.baseURL+mount+"/sso/saml2/sp/slo/work";
+        const requestID="_"+randomUUID(),relay="opaque state /?&";
+        const message=`<samlp:LogoutRequest xmlns:samlp="${protocolNS}" xmlns:saml="${assertionNS}" ID="${requestID}" Version="2.0" IssueInstant="${new Date().toISOString()}" Destination="${xml(slo)}"><saml:Issuer>${issuer}</saml:Issuer><saml:NameID Format="urn:oasis:names:tc:SAML:2.0:nameid-format:persistent">stable-user</saml:NameID><samlp:SessionIndex>local-assertion-session</samlp:SessionIndex></samlp:LogoutRequest>`;
+        const target=slo+"?"+signedLogoutRedirect("SAMLRequest",message,relay,key);
+        const result=await send(new Request(target));
+        if (runtime===go) {
+          assert.equal(result.status,302,await result.text());
+          const response=new URL(result.headers.get("location"));
+          assert.equal(response.origin+response.pathname,"https://idp.example.test/logout");
+          assert.equal(response.searchParams.get("RelayState"),relay);
+          const parts=response.search.slice(1).split("&");
+          const input=["SAMLResponse","RelayState","SigAlg"].map(name=>parts.find(part=>part.startsWith(name+"="))).join("&");
+          assert.ok(verify("RSA-SHA256",Buffer.from(input),actorCert,Buffer.from(response.searchParams.get("Signature"),"base64")));
+          const xmlResponse=inflateRawSync(Buffer.from(response.searchParams.get("SAMLResponse"),"base64")).toString();
+          assert.ok(xmlResponse.includes('InResponseTo="'+requestID+'"'));
+          assert.ok(xmlResponse.includes(audience));assert.ok(xmlResponse.includes('urn:oasis:names:tc:SAML:2.0:status:Success'));
+          assert.equal((await browser.getSession()).data,null);
+          assert.equal((await send(new Request(target))).status,400);
+        } else {
+          assert.equal(result.status,400);
+          assert.equal((await result.json()).code,"INVALID_LOGOUT_REQUEST");
+          assert.equal(ok(await browser.getSession()).user.id,current.user.id);
+        }
+        assert.equal(ok(await admin.getSession()).user.email,user.email);
+        continue;
+      }
       if (logout) {
         await browser.$fetch("/sso/saml2/logout/work",{method:"POST",body:{callbackURL:runtime.baseURL+"/signed-out"},redirect:"manual"});
         assert.equal(logoutStart?.status,302);
