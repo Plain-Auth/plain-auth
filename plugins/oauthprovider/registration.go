@@ -111,12 +111,16 @@ type RegistrationOptions struct {
 }
 
 type Options struct {
+	// ClientPrivileges checks authenticated create, read, and list actions.
+	ClientPrivileges func(context.Context, ClientAccess) (bool, error)
+	// ClientReference resolves the active tenant. It defaults to Registration.ClientReference.
+	ClientReference    func(context.Context, RegistrationAccess) (string, error)
 	Scopes, GrantTypes []string
 	PairwiseSecret     string
 	Registration       RegistrationOptions
 }
 
-// New installs the OAuth consent and dynamic registration endpoints. Dynamic
+// New installs the OAuth consent, client lookup and dynamic registration endpoints. Dynamic
 // registration is disabled until the host explicitly enables it.
 func New(opts Options) (auth.Plugin, error) {
 	scopes := opts.Scopes
@@ -135,6 +139,9 @@ func New(opts Options) (auth.Plugin, error) {
 		return auth.Plugin{}, errors.New("oauthprovider: pairwise secret must contain at least 32 bytes")
 	}
 	r := &opts.Registration
+	if opts.ClientReference == nil {
+		opts.ClientReference = r.ClientReference
+	}
 	switch r.DefaultApplicationType {
 	case "":
 		r.DefaultApplicationType = "web"
@@ -180,6 +187,9 @@ func New(opts Options) (auth.Plugin, error) {
 		return nil
 	}
 	p.Endpoints = append(p.Endpoints, auth.Endpoint{Method: http.MethodPost, Path: "/oauth2/register", SuccessStatus: 201, RateLimit: &limit, Handler: opts.register})
+	for _, action := range []string{"get-client", "get-clients", "public-client"} {
+		p.Endpoints = append(p.Endpoints, opts.clientEndpoint(action))
+	}
 	return p, nil
 }
 
@@ -227,7 +237,7 @@ func (opts Options) register(c auth.EndpointContext) (any, error) {
 	if !r.Enabled {
 		return nil, registrationProblem(403, "access_denied", "Client registration is disabled")
 	}
-	owner, reference, authenticated, err := r.authorize(c)
+	owner, reference, authenticated, err := opts.authorize(c)
 	if err != nil {
 		return nil, err
 	}
@@ -276,7 +286,8 @@ func (opts Options) register(c auth.EndpointContext) (any, error) {
 	return result, nil
 }
 
-func (r RegistrationOptions) authorize(c auth.EndpointContext) (owner, reference string, authenticated bool, err error) {
+func (opts Options) authorize(c auth.EndpointContext) (owner, reference string, authenticated bool, err error) {
+	r := opts.Registration
 	ctx, h := c.Request.Context(), c.Request.Header
 	session, err := c.Auth.GetSession(ctx, h)
 	if err != nil {
@@ -287,6 +298,9 @@ func (r RegistrationOptions) authorize(c auth.EndpointContext) (owner, reference
 			return "", "", false, err
 		}
 		access := RegistrationAccess{SessionResult: *session, Headers: h.Clone()}
+		if err := opts.allowClient(ctx, access, "create", ""); err != nil {
+			return "", "", false, err
+		}
 		if r.MayCreate != nil {
 			ok, err := r.MayCreate(ctx, access)
 			if err != nil {
@@ -296,11 +310,9 @@ func (r RegistrationOptions) authorize(c auth.EndpointContext) (owner, reference
 				return "", "", false, auth.StatusOnlyError(401)
 			}
 		}
-		if r.ClientReference != nil {
-			reference, err = r.ClientReference(ctx, access)
-			if err != nil {
-				return "", "", false, err
-			}
+		reference, err = opts.activeClientReference(ctx, access)
+		if err != nil {
+			return "", "", false, err
 		}
 		if reference == "" {
 			owner = session.User.ID

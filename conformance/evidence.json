@@ -11631,6 +11631,11 @@
       "label": "Check the host create privilege for a signed-in registration",
       "test": "conformance/oauth-registration.mjs",
       "marker": "assert.equal(denied.status,"
+    },
+    {
+      "label": "Apply the host privilege hook to authenticated create, read and list actions before checking ownership",
+      "test": "conformance/oauth-client-directory.mjs",
+      "marker": "assert.equal(deniedCreate.status, 401);"
     }
   ],
   "plugin-symbol/oauth-provider/OAuthOptions/clientReference": [
@@ -11638,6 +11643,11 @@
       "label": "Record a trusted tenant reference and omit the personal owner when a reference is assigned",
       "test": "adapters/sqlstore/oauth_registration_test.go",
       "marker": "incorrect registration at rest"
+    },
+    {
+      "label": "Resolve tenant membership for shared registrations and keep owner lookups independent of tenant callback failures",
+      "test": "adapters/sqlstore/oauth_client_directory_test.go",
+      "marker": "ownership reassignment was stale"
     }
   ],
   "plugin-symbol/oauth-provider/OAuthOptions/generateClientId": [
@@ -11734,6 +11744,118 @@
       "test": "adapters/sqlstore/oauth_registration_test.go",
       "marker": "func TestRegistrationLimitsAndCustomSecretStore(",
       "complete": true
+    }
+  ],
+  "plugin/oauth-provider/GET /oauth2/get-client": [
+    {
+      "label": "Read locally registered owner metadata and omit internal fields and the shared secret",
+      "test": "conformance/oauth-client-directory.mjs",
+      "marker": "assert.deepEqual(privateView, expected);"
+    },
+    {
+      "label": "Enforce account-owner sessions, exact tenant IDs and current ownership on three SQL engines",
+      "test": "adapters/sqlstore/oauth_client_directory_test.go",
+      "marker": "func TestOAuthClientDirectory("
+    }
+  ],
+  "plugin-symbol/oauth-provider/getOAuthClient": [
+    {
+      "label": "Read locally registered owner metadata and omit internal fields and the shared secret",
+      "test": "conformance/oauth-client-directory.mjs",
+      "marker": "assert.deepEqual(privateView, expected);"
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/clients.mdx#L58/`getOAuthClient`": [
+    {
+      "label": "Read locally registered owner metadata and omit internal fields and the shared secret",
+      "test": "conformance/oauth-client-directory.mjs",
+      "marker": "assert.deepEqual(privateView, expected);"
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/reference.mdx#L331/`GET /oauth2/get-client`": [
+    {
+      "label": "Read locally registered owner metadata and omit internal fields and the shared secret",
+      "test": "conformance/oauth-client-directory.mjs",
+      "marker": "assert.deepEqual(privateView, expected);"
+    }
+  ],
+  "plugin/oauth-provider/GET /oauth2/public-client": [
+    {
+      "label": "Expose only display metadata for an enabled local registration to a signed-in user",
+      "test": "conformance/oauth-client-directory.mjs",
+      "marker": "assert.deepEqual(publicView, {"
+    }
+  ],
+  "plugin-symbol/oauth-provider/getOAuthClientPublic": [
+    {
+      "label": "Expose only display metadata for an enabled local registration to a signed-in user",
+      "test": "conformance/oauth-client-directory.mjs",
+      "marker": "assert.deepEqual(publicView, {"
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/clients.mdx#L59/`getOAuthClientPublic`": [
+    {
+      "label": "Expose only display metadata for an enabled local registration to a signed-in user",
+      "test": "conformance/oauth-client-directory.mjs",
+      "marker": "assert.deepEqual(publicView, {"
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/reference.mdx#L332/`GET /oauth2/public-client`": [
+    {
+      "label": "Expose only display metadata for an enabled local registration to a signed-in user",
+      "test": "conformance/oauth-client-directory.mjs",
+      "marker": "assert.deepEqual(publicView, {"
+    }
+  ],
+  "plugin/oauth-provider/GET /oauth2/get-clients": [
+    {
+      "label": "List personally or tenant-owned registrations with filtered metadata and return an empty list for a new owner",
+      "test": "conformance/oauth-client-directory.mjs",
+      "marker": "assert.deepEqual(await ok(list, member.cookie), [teamView]);",
+      "complete": true
+    },
+    {
+      "label": "Honor personal ownership on mixed records even when listing a tenant",
+      "test": "adapters/sqlstore/oauth_client_directory_test.go",
+      "marker": "tenant list exposed another user"
+    }
+  ],
+  "plugin-symbol/oauth-provider/getOAuthClients": [
+    {
+      "label": "List personally or tenant-owned registrations with filtered metadata and return an empty list for a new owner",
+      "test": "conformance/oauth-client-directory.mjs",
+      "marker": "assert.deepEqual(await ok(list, member.cookie), [teamView]);",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/clients.mdx#L61/`getOAuthClients`": [
+    {
+      "label": "List personally or tenant-owned registrations with filtered metadata and return an empty list for a new owner",
+      "test": "conformance/oauth-client-directory.mjs",
+      "marker": "assert.deepEqual(await ok(list, member.cookie), [teamView]);",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/reference.mdx#L334/`GET /oauth2/get-clients`": [
+    {
+      "label": "List personally or tenant-owned registrations with filtered metadata and return an empty list for a new owner",
+      "test": "conformance/oauth-client-directory.mjs",
+      "marker": "assert.deepEqual(await ok(list, member.cookie), [teamView]);",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/clients.mdx#L327": [
+    {
+      "label": "Check read and list privileges on the owner endpoints while keeping public display accessible to signed-in users",
+      "test": "conformance/oauth-client-directory.mjs",
+      "marker": "const publicView = await ok("
+    }
+  ],
+  "plugin-symbol/oauth-provider/OAuthClient": [
+    {
+      "label": "Represent owner metadata, display data, extension values and optional fields in the Go SDK",
+      "test": "adapters/sqlstore/oauth_client_directory_test.go",
+      "marker": "SDK lost host metadata"
     }
   ]
 }

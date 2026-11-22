@@ -14,6 +14,19 @@ import (
 func registrationFixtureOptions() op.Options {
 	mode := os.Getenv("CONFORMANCE_CLIENT_REGISTRATION")
 	opts := op.Options{}
+	if mode == "directory" {
+		opts.Registration.Enabled = true
+		opts.ClientReference = func(_ context.Context, a op.RegistrationAccess) (string, error) {
+			if strings.HasPrefix(a.User.Email, "team-") {
+				return "reports-team", nil
+			}
+			return "", nil
+		}
+		opts.ClientPrivileges = func(_ context.Context, a op.ClientAccess) (bool, error) {
+			return a.Headers.Get("X-Deny-Action") != a.Action && (a.ClientID == "" || a.Headers.Get("X-Deny-Client") != a.ClientID), nil
+		}
+		return opts
+	}
 	if mode == "" || mode == "disabled" {
 		return opts
 	}

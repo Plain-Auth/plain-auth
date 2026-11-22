@@ -46,7 +46,7 @@ func Open(ctx context.Context, dialect, dsn string) (*auth.Auth, *sqlstore.Store
 }
 ```
 
-The plugin also installs the signed-in user's consent management endpoints. A custom store implements both `oauthprovider.ConsentStore` and `oauthprovider.RegistrationStore`. [Managing authorized applications](oauth-consents.md)
+The plugin also installs application lookup and the signed-in user's consent management endpoints. A custom store supporting registration implements both `oauthprovider.ConsentStore` and `oauthprovider.RegistrationStore`. [Managing authorized applications](oauth-consents.md) · [Reading registered applications](oauth-client-directory.md)
 
 ## Choose who can register
 

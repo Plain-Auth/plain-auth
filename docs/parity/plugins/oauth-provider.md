@@ -54,9 +54,14 @@
   - [ ] `POST /admin/oauth2/create-client` (server API only)
   - [ ] `POST /oauth2/create-client`
   - [ ] `GET /oauth2/get-client`
+    - [x] Read locally registered owner metadata and omit internal fields and the shared secret ([test](../../../conformance/oauth-client-directory.mjs#L116))
+    - [x] Enforce account-owner sessions, exact tenant IDs and current ownership on three SQL engines ([test](../../../adapters/sqlstore/oauth_client_directory_test.go#L20))
   - [ ] `GET /oauth2/public-client`
+    - [x] Expose only display metadata for an enabled local registration to a signed-in user ([test](../../../conformance/oauth-client-directory.mjs#L130))
   - [ ] `POST /oauth2/public-client-prelogin`
-  - [ ] `GET /oauth2/get-clients`
+  - [x] `GET /oauth2/get-clients` ([test](../../../conformance/oauth-client-directory.mjs#L128))
+    - [x] List personally or tenant-owned registrations with filtered metadata and return an empty list for a new owner ([test](../../../conformance/oauth-client-directory.mjs#L128))
+    - [x] Honor personal ownership on mixed records even when listing a tenant ([test](../../../adapters/sqlstore/oauth_client_directory_test.go#L137))
   - [ ] `PATCH /admin/oauth2/update-client` (server API only)
   - [ ] `POST /oauth2/update-client`
   - [ ] `POST /oauth2/client/rotate-secret`
@@ -65,9 +70,12 @@
   - [ ] `adminCreateOAuthClient`
   - [ ] `createOAuthClient`
   - [ ] `getOAuthClient`
+    - [x] Read locally registered owner metadata and omit internal fields and the shared secret ([test](../../../conformance/oauth-client-directory.mjs#L116))
   - [ ] `getOAuthClientPublic`
+    - [x] Expose only display metadata for an enabled local registration to a signed-in user ([test](../../../conformance/oauth-client-directory.mjs#L130))
   - [ ] `getOAuthClientPublicPrelogin`
-  - [ ] `getOAuthClients`
+  - [x] `getOAuthClients` ([test](../../../conformance/oauth-client-directory.mjs#L128))
+    - [x] List personally or tenant-owned registrations with filtered metadata and return an empty list for a new owner ([test](../../../conformance/oauth-client-directory.mjs#L128))
   - [ ] `adminUpdateOAuthClient`
   - [ ] `updateOAuthClient`
   - [ ] `rotateClientSecret`
@@ -212,8 +220,10 @@
     - [ ] `clientRegistrationClientSecretExpiration`
     - [ ] `clientReference`
       - [x] Record a trusted tenant reference and omit the personal owner when a reference is assigned ([test](../../../adapters/sqlstore/oauth_registration_test.go#L96))
+      - [x] Resolve tenant membership for shared registrations and keep owner lookups independent of tenant callback failures ([test](../../../adapters/sqlstore/oauth_client_directory_test.go#L143))
     - [ ] `clientPrivileges`
       - [x] Check the host create privilege for a signed-in registration ([test](../../../conformance/oauth-registration.mjs#L203))
+      - [x] Apply the host privilege hook to authenticated create, read and list actions before checking ownership ([test](../../../conformance/oauth-client-directory.mjs#L97))
     - [ ] `grantTypes`
       - [x] Register only the mutually supported requested grant types ([test](../../../conformance/oauth-registration.mjs#L170))
     - [ ] `loginPage`
@@ -258,6 +268,7 @@
   - [ ] `OAuthRefreshToken`
   - [ ] `OAuthConsent`
   - [ ] `OAuthClient`
+    - [x] Represent owner metadata, display data, extension values and optional fields in the Go SDK ([test](../../../adapters/sqlstore/oauth_client_directory_test.go#L107))
   - [x] `ResourceServerMetadata` ([test](../../../conformance/resource-discovery.mjs#L28))
     - [x] Compare every resource metadata field, including identity, algorithms, scopes, localized names and boolean overrides ([test](../../../conformance/resource-discovery.mjs#L28))
   - [ ] `AuthMethod`
@@ -337,9 +348,12 @@
       - [ ] Parameter `application_type` (optional)
       - [ ] Parameter `scope` (optional)
     - [ ] `getOAuthClient`
+      - [x] Read locally registered owner metadata and omit internal fields and the shared secret ([test](../../../conformance/oauth-client-directory.mjs#L116))
     - [ ] `getOAuthClientPublic`
+      - [x] Expose only display metadata for an enabled local registration to a signed-in user ([test](../../../conformance/oauth-client-directory.mjs#L130))
     - [ ] `getOAuthClientPublicPrelogin`
-    - [ ] `getOAuthClients`
+    - [x] `getOAuthClients` ([test](../../../conformance/oauth-client-directory.mjs#L128))
+      - [x] List personally or tenant-owned registrations with filtered metadata and return an empty list for a new owner ([test](../../../conformance/oauth-client-directory.mjs#L128))
     - [ ] `updateOAuthClient`
     - [ ] `adminUpdateOAuthClient`
     - [ ] `rotateClientSecret`
@@ -385,6 +399,7 @@
     - [ ] Rotating client keys
   - [ ] Trusted clients
   - [ ] Client CRUD privileges
+    - [x] Check read and list privileges on the owner endpoints while keeping public display accessible to signed-in users ([test](../../../conformance/oauth-client-directory.mjs#L129))
   - [ ] Organizations
     - [ ] An organization uses the client
     - [ ] An organization owns the client
@@ -460,9 +475,12 @@
     - [ ] `PATCH /admin/oauth2/update-client` (server API only)
     - [ ] `POST /oauth2/create-client`
     - [ ] `GET /oauth2/get-client`
+      - [x] Read locally registered owner metadata and omit internal fields and the shared secret ([test](../../../conformance/oauth-client-directory.mjs#L116))
     - [ ] `GET /oauth2/public-client`
+      - [x] Expose only display metadata for an enabled local registration to a signed-in user ([test](../../../conformance/oauth-client-directory.mjs#L130))
     - [ ] `POST /oauth2/public-client-prelogin`
-    - [ ] `GET /oauth2/get-clients`
+    - [x] `GET /oauth2/get-clients` ([test](../../../conformance/oauth-client-directory.mjs#L128))
+      - [x] List personally or tenant-owned registrations with filtered metadata and return an empty list for a new owner ([test](../../../conformance/oauth-client-directory.mjs#L128))
     - [ ] `POST /oauth2/update-client`
     - [ ] `POST /oauth2/client/rotate-secret`
     - [ ] `POST /oauth2/client/rotate-keys`

@@ -1760,6 +1760,11 @@ test("signed-in users manage their stored OAuth consents", async t => {
   await compareOAuthConsents(t, reference, goFixture);
 });
 
+test("signed-in accounts read and list OAuth client registrations", async t => {
+  const { compareClientDirectory } = await import("./oauth-client-directory.mjs");
+  await compareClientDirectory(t, reference, goFixture);
+});
+
 test("OAuth dynamic client registration handles sessions, initial tokens and open registration", async t => {
   const { compareClientRegistration } = await import("./oauth-registration.mjs");
   await compareClientRegistration(t, reference, goFixture);
