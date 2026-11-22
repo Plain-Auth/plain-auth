@@ -579,6 +579,9 @@ func main() {
 		log.Fatal(err)
 	}
 	var handler http.Handler = auth
+	if os.Getenv("CONFORMANCE_CLIENT_REGISTRATION") == "protected" {
+		handler = clientScopeFixture(auth, store, handler)
+	}
 	if os.Getenv("CONFORMANCE_RESOURCE_REGISTRY") == "1" {
 		handler = resourceRegistryFixture(auth, store, handler)
 	}

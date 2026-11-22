@@ -257,17 +257,18 @@ export async function compareClientRegistration(t, reference, goFixture) {
           emailAndPassword: { enabled: true },
           plugins: [jwt(), oauthProvider(config)],
         });
-        async function exchange(secret, clientID = credentials.client_id) {
+        async function exchange(secret, clientID = credentials.client_id, scope = "reports") {
+          const body = new URLSearchParams({
+            grant_type: "client_credentials",
+            client_id: clientID,
+            client_secret: secret,
+          });
+          if (scope !== null) body.set("scope", scope);
           return issuer.handler(
             new Request("http://issuer.localhost/api/auth/oauth2/token", {
               method: "POST",
               headers: { "content-type": "application/x-www-form-urlencoded" },
-              body: new URLSearchParams({
-                grant_type: "client_credentials",
-                client_id: clientID,
-                client_secret: secret,
-                scope: "reports",
-              }),
+              body,
             }),
           );
         }
@@ -283,10 +284,23 @@ export async function compareClientRegistration(t, reference, goFixture) {
           .getSetCookie()
           .map((line) => line.split(";")[0])
           .join("; ");
-        const configured = await issuer.api.adminUpdateOAuthClient({
-          headers: { cookie: operatorCookie },
-          body: { client_id: credentials.client_id, update: { client_credentials_scopes: ["reports"] } },
-        });
+        async function setMachineScopes(id, scopes) {
+          if (runtime === "reference") {
+            return server.api.adminUpdateOAuthClient({
+              headers: { cookie },
+              body: { client_id: id, update: { client_credentials_scopes: scopes } },
+            });
+          }
+          const result = await server.send(new Request(server.baseURL + "/__fixture/client-scopes", {
+            method: "POST",
+            headers: { "content-type": "application/json", cookie },
+            body: JSON.stringify({ client_id: id, client_credentials_scopes: scopes }),
+          }));
+          const body = await result.json();
+          if (!result.ok) throw Object.assign(new Error("scope configuration failed"), { statusCode: result.status, body });
+          return body;
+        }
+        const configured = await setMachineScopes(credentials.client_id, [" reports ", "reports"]);
         assert.deepEqual(configured.client_credentials_scopes, ["reports"]);
         const exchanged = await exchange(credentials.client_secret);
         const result = await exchanged.json();
@@ -294,6 +308,26 @@ export async function compareClientRegistration(t, reference, goFixture) {
         assert.ok(result.access_token);
         assert.equal(result.scope, "reports");
         assert.equal((await (await exchange("incorrect")).json()).error, "invalid_client");
+        await t.test("machine scope changes control issuance independently of user scopes", async () => {
+          for (const blank of ["", " \t "]) {
+            await assert.rejects(setMachineScopes(credentials.client_id, ["reports", blank]), (failure) =>
+              failure.statusCode === 400 && failure.body.code === "VALIDATION_ERROR" &&
+              failure.body.message === "[body.update.client_credentials_scopes.1] Too small: expected string to have >=1 characters",
+            );
+          }
+          const cleared = await setMachineScopes(credentials.client_id, []);
+          assert.deepEqual(cleared.client_credentials_scopes, []);
+          const refused = await exchange(credentials.client_secret);
+          assert.equal(refused.status, 400);
+          assert.equal((await refused.json()).error, "unauthorized_client");
+          const narrowed = await setMachineScopes(credentials.client_id, ["extra"]);
+          assert.deepEqual(narrowed.client_credentials_scopes, ["extra"]);
+          assert.equal((await (await exchange(credentials.client_secret)).json()).error, "invalid_scope");
+          const implicit = await exchange(credentials.client_secret, credentials.client_id, null);
+          assert.equal(implicit.status, 200);
+          assert.equal((await implicit.json()).scope, "extra");
+          assert.deepEqual((await setMachineScopes(credentials.client_id, ["reports"])).client_credentials_scopes, ["reports"]);
+        });
         await issuer.api.adminUpdateOAuthClient({
           headers: { cookie: operatorCookie },
           body: { client_id: keyed.client_id, update: { client_credentials_scopes: ["reports"] } },

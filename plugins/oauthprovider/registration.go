@@ -111,7 +111,8 @@ type RegistrationOptions struct {
 }
 
 type Options struct {
-	// ClientPrivileges checks authenticated create, read, list, rotate, and delete actions.
+	// ClientPrivileges checks authenticated client management actions. Assigning machine
+	// scopes requires an explicit configure-client-credentials-scopes decision.
 	ClientPrivileges func(context.Context, ClientAccess) (bool, error)
 	// ClientReference resolves the active tenant. It defaults to Registration.ClientReference.
 	ClientReference func(context.Context, RegistrationAccess) (string, error)
@@ -122,15 +123,22 @@ type Options struct {
 	Registration       RegistrationOptions
 }
 
-// New installs the OAuth consent, client lookup and dynamic registration endpoints. Dynamic
-// registration is disabled until the host explicitly enables it.
-func New(opts Options) (auth.Plugin, error) {
-	scopes := opts.Scopes
-	if scopes == nil {
-		scopes = []string{"openid", "profile", "email", "offline_access"}
+func (opts Options) clientManagementOptions() Options {
+	if opts.Scopes == nil {
+		opts.Scopes = []string{"openid", "profile", "email", "offline_access"}
 	}
-	opts.Scopes = distinct(scopes)
+	opts.Scopes = distinct(opts.Scopes)
 	opts.ImmutableClientIDs = distinct(opts.ImmutableClientIDs)
+	if opts.ClientReference == nil {
+		opts.ClientReference = opts.Registration.ClientReference
+	}
+	return opts
+}
+
+// New installs the OAuth consent, client management and dynamic registration endpoints.
+// Dynamic registration is disabled until the host explicitly enables it.
+func New(opts Options) (auth.Plugin, error) {
+	opts = opts.clientManagementOptions()
 	if opts.GrantTypes == nil {
 		opts.GrantTypes = []string{"authorization_code", "client_credentials", "refresh_token"}
 	}
@@ -142,9 +150,6 @@ func New(opts Options) (auth.Plugin, error) {
 		return auth.Plugin{}, errors.New("oauthprovider: pairwise secret must contain at least 32 bytes")
 	}
 	r := &opts.Registration
-	if opts.ClientReference == nil {
-		opts.ClientReference = r.ClientReference
-	}
 	switch r.DefaultApplicationType {
 	case "":
 		r.DefaultApplicationType = "web"

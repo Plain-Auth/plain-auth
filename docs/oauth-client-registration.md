@@ -140,3 +140,40 @@ Configure the host's `ClientPrivileges` callback to restrict the `rotate` action
 | 404 `not_found` | The client is missing or requires an unresolved discovery provider. |
 
 The SQL adapters recheck ownership and authentication method under a database lock. A failed storage operation rolls back. If multiple rotations succeed, the last committed credential is the active one. A custom adapter implements `oauthprovider.SecretRotationStore` for the same transaction guarantee. [Client directory and tenant authorization](oauth-client-directory.md) · [Database concurrency tests](../adapters/sqlstore/oauth_secret_rotation_test.go) · [Protocol tests](../conformance/oauth-registration.mjs)
+
+## Grant machine-to-machine scopes
+
+A newly registered confidential client starts with zero machine permissions. Give it the `client_credentials` grant at registration and configure its scopes from trusted Go server code. The ordinary `scope` field describes user-delegated access. The machine grant is stored separately.
+
+Use the same `oauthprovider.Options` for `oauthprovider.New` and `oauthprovider.NewClientManager`. Include each allowed machine scope in `Options.Scopes`. The example policy reserves client management for one operator. An application with multiple roles can check its own permission store using the session user, action and client ID.
+
+```go
+func operatorOptions(operatorID string) oauthprovider.Options {
+    return oauthprovider.Options{
+        Scopes: []string{"openid", "reports:read", "reports:write"},
+        ClientPrivileges: func(_ context.Context, actor oauthprovider.ClientAccess) (bool, error) {
+            return actor.User.ID == operatorID, nil
+        },
+    }
+}
+
+func grantReportAccess(ctx context.Context, headers http.Header, api *auth.Auth, store *sqlstore.Store, opts oauthprovider.Options, id string) ([]string, error) {
+    manager, err := oauthprovider.NewClientManager(api, store, opts)
+    if err != nil {
+        return nil, err
+    }
+    return manager.SetClientCredentialsScopes(ctx, headers, id, []string{"reports:read"})
+}
+```
+
+`headers` carries the caller's signed-in session. The method replaces the whole machine grant and returns the stored list. Pass an empty slice to revoke every scope. Each name must contain a non-whitespace character. The manager trims names and removes duplicates in input order. User scopes such as `openid`, `profile`, `email` and `offline_access` cannot be assigned to a machine.
+
+Changes apply to subsequent token exchanges. When a client omits `scope`, the issuer uses its machine grant. The comparison tests verify these exchanges against an independent issuer. The native OAuth token endpoint is still open on the checklist.
+
+| Caller and operation | Required policy decisions |
+| --- | --- |
+| Personal or tenant owner clears the grant | `update` |
+| Owner assigns scopes | `update` and `configure-client-credentials-scopes` |
+| Operator assigns or clears another owner's grant | `update` and `configure-client-credentials-scopes` |
+
+With no privilege callback, an owner can clear a grant. Assigning scopes requires explicit approval. An impersonated session cannot change grants. Operator-managed IDs are immutable. SQLite, PostgreSQL and MySQL recheck ownership, grant type and client authentication method in the write transaction. An application exposing its own browser-facing management route must verify the request origin before forwarding a cookie-authenticated mutation. [Database and privilege tests](../adapters/sqlstore/oauth_client_scopes_test.go) · [Issuer comparison](../conformance/oauth-registration.mjs) · [OAuth checklist](parity/plugins/oauth-provider.md)

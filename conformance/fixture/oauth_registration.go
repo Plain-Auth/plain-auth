@@ -2,14 +2,58 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"log"
 	"net/http"
 	"net/url"
 	"os"
 	"strings"
 
+	auth "github.com/Plain-Auth/plain-auth"
 	op "github.com/Plain-Auth/plain-auth/plugins/oauthprovider"
 )
+
+// Expose the host's server-only method to the local comparison process.
+func clientScopeFixture(a *auth.Auth, store op.ClientCredentialsScopeStore, fallback http.Handler) http.Handler {
+	manager, err := op.NewClientManager(a, store, registrationFixtureOptions())
+	if err != nil {
+		log.Fatal(err)
+	}
+	mux := http.NewServeMux()
+	mux.HandleFunc("POST /__fixture/client-scopes", func(w http.ResponseWriter, r *http.Request) {
+		var body struct {
+			ClientID string   `json:"client_id"`
+			Scopes   []string `json:"client_credentials_scopes"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		granted, err := manager.SetClientCredentialsScopes(r.Context(), r.Header, body.ClientID, body.Scopes)
+		if err != nil {
+			var problem *auth.OAuthError
+			var api *auth.APIError
+			switch {
+			case errors.As(err, &problem):
+				w.WriteHeader(problem.Status)
+				json.NewEncoder(w).Encode(problem)
+			case errors.As(err, &api):
+				w.WriteHeader(api.Status)
+				if api.Code != "" {
+					json.NewEncoder(w).Encode(api)
+				}
+			default:
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string][]string{"client_credentials_scopes": granted})
+	})
+	mux.Handle("/", fallback)
+	return mux
+}
 
 func registrationFixtureOptions() op.Options {
 	mode := os.Getenv("CONFORMANCE_CLIENT_REGISTRATION")

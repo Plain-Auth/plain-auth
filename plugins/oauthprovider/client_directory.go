@@ -172,6 +172,9 @@ type ClientAccess struct {
 
 func (opts Options) allowClient(ctx context.Context, a RegistrationAccess, action, id string) error {
 	if opts.ClientPrivileges == nil {
+		if action == "configure-client-credentials-scopes" {
+			return auth.StatusOnlyError(http.StatusUnauthorized)
+		}
 		return nil
 	}
 	ok, err := opts.ClientPrivileges(ctx, ClientAccess{RegistrationAccess: a, Action: action, ClientID: id})
@@ -196,20 +199,26 @@ func (opts Options) ownedClient(ctx context.Context, store ClientDirectoryStore,
 	if err != nil {
 		return ClientDetails{}, err
 	}
-	if c.UserID != nil && *c.UserID != "" {
-		if *c.UserID == access.User.ID {
-			return c, nil
-		}
-	} else if c.ReferenceID != nil && *c.ReferenceID != "" {
-		ref, err := opts.activeClientReference(ctx, access)
-		if err != nil {
-			return ClientDetails{}, err
-		}
-		if ref == *c.ReferenceID {
-			return c, nil
-		}
+	owned, err := opts.ownsClient(ctx, access, c)
+	if err != nil {
+		return ClientDetails{}, err
 	}
-	return ClientDetails{}, auth.StatusOnlyError(http.StatusUnauthorized)
+	if !owned {
+		return ClientDetails{}, auth.StatusOnlyError(http.StatusUnauthorized)
+	}
+	return c, nil
+}
+
+func (opts Options) ownsClient(ctx context.Context, access RegistrationAccess, c ClientDetails) (bool, error) {
+	user, ref := c.ownerIDs()
+	if user != "" {
+		return user == access.User.ID, nil
+	}
+	if ref == "" {
+		return false, nil
+	}
+	active, err := opts.activeClientReference(ctx, access)
+	return active == ref, err
 }
 
 func (opts Options) clientEndpoint(action string) auth.Endpoint {

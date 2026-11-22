@@ -11971,6 +11971,68 @@
       "marker": "await t.test(\"owners delete personal and tenant registrations\""
     }
   ],
+  "plugin/oauth-provider/PATCH /admin/oauth2/update-client": [
+    {
+      "label": "Grant, narrow and revoke machine access from server code and verify the changed scope ceiling at an independent issuer",
+      "test": "conformance/oauth-registration.mjs",
+      "marker": "assert.equal((await implicit.json()).scope, \"extra\");"
+    },
+    {
+      "label": "Require separate update and machine-scope privileges and reject user-delegated scopes, public clients and impersonation sessions on three SQL engines",
+      "test": "adapters/sqlstore/oauth_client_scopes_test.go",
+      "marker": "denied(defaultManager, operator, \"tenant\", nil, 401, \"\")"
+    },
+    {
+      "label": "Reject an ownership or authentication-method change during authorization without overwriting the existing grant",
+      "test": "adapters/sqlstore/oauth_client_scopes_test.go",
+      "marker": "a rejected grant change modified the stored ceiling"
+    }
+  ],
+  "plugin-symbol/oauth-provider/adminUpdateOAuthClient": [
+    {
+      "label": "Grant, narrow and revoke machine access from server code and verify the changed scope ceiling at an independent issuer",
+      "test": "conformance/oauth-registration.mjs",
+      "marker": "assert.equal((await implicit.json()).scope, \"extra\");"
+    },
+    {
+      "label": "Require separate update and machine-scope privileges and reject user-delegated scopes, public clients and impersonation sessions on three SQL engines",
+      "test": "adapters/sqlstore/oauth_client_scopes_test.go",
+      "marker": "denied(defaultManager, operator, \"tenant\", nil, 401, \"\")"
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/clients.mdx#L63/`adminUpdateOAuthClient`": [
+    {
+      "label": "Grant, narrow and revoke machine access from server code and verify the changed scope ceiling at an independent issuer",
+      "test": "conformance/oauth-registration.mjs",
+      "marker": "assert.equal((await implicit.json()).scope, \"extra\");"
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/clients.mdx#L80/`client_credentials_scopes`": [
+    {
+      "label": "Grant, narrow and revoke machine access from server code and verify the changed scope ceiling at an independent issuer",
+      "test": "conformance/oauth-registration.mjs",
+      "marker": "assert.equal((await implicit.json()).scope, \"extra\");"
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/clients.mdx#L110": [
+    {
+      "label": "Grant, narrow and revoke machine access from server code and verify the changed scope ceiling at an independent issuer",
+      "test": "conformance/oauth-registration.mjs",
+      "marker": "assert.equal((await implicit.json()).scope, \"extra\");"
+    },
+    {
+      "label": "Require separate update and machine-scope privileges and reject user-delegated scopes, public clients and impersonation sessions on three SQL engines",
+      "test": "adapters/sqlstore/oauth_client_scopes_test.go",
+      "marker": "denied(defaultManager, operator, \"tenant\", nil, 401, \"\")"
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/reference.mdx#L329/`PATCH /admin/oauth2/update-client`": [
+    {
+      "label": "Grant, narrow and revoke machine access from server code and verify the changed scope ceiling at an independent issuer",
+      "test": "conformance/oauth-registration.mjs",
+      "marker": "assert.equal((await implicit.json()).scope, \"extra\");"
+    }
+  ],
   "plugin-symbol/oauth-provider/OAuthOptions/cachedTrustedClients": [
     {
       "label": "Keep an operator-managed credential immutable from the owner endpoint",

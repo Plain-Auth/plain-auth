@@ -415,6 +415,7 @@ const index = [
   "| Manage OAuth resource policies and client grants from server code | [Resource management](../oauth-resource-management.md) |",
   "| Manage the signed-in user’s OAuth consent grants | [Authorized applications](../oauth-consents.md) |",
   "| Register OAuth clients and rotate shared secrets | [OAuth client registration](../oauth-client-registration.md) |",
+  "| Grant or revoke machine-to-machine scopes from Go server code | [Machine scope management](../oauth-client-registration.md#grant-machine-to-machine-scopes) |",
   "| List or delete owned applications and show public client details | [Manage registered applications](../oauth-client-directory.md) |",
   "| OAuth authorization-server database tables | [Schema and migration](../schema.md#oauth-authorization-server-tables) |",
   "| First-party device grants and authorization | [Sign in a device](../device-authorization.md) |",
