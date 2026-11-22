@@ -1497,6 +1497,11 @@
       "test": "conformance/magic-link-delivery.mjs",
       "marker": "const requestLink = async",
       "complete": true
+    },
+    {
+      "label": "Keep delivery metadata and extra browser properties separate from the persisted account profile",
+      "test": "conformance/magic-link-fields.mjs",
+      "marker": "assert.deepEqual(delivered.Metadata, metadata);"
     }
   ],
   "plugin/magic-link/GET /magic-link/verify": [
@@ -1530,6 +1535,16 @@
       "label": "Reject a link following a reassigned or expired mailbox claim",
       "test": "adapters/memory/magiclink_test.go",
       "marker": "func TestMemoryMagicLinkOwnerAndExpiry"
+    },
+    {
+      "label": "Write static profile defaults for a newly proved mailbox and return only the configured public user and session fields",
+      "test": "conformance/magic-link-fields.mjs",
+      "marker": "preferred_locale:\"en\", accountClass:\"standard\""
+    },
+    {
+      "label": "Preserve the winning profile and its saved fields across concurrent links and nodes with different registration defaults",
+      "test": "adapters/sqlstore/magiclink_fields_test.go",
+      "marker": "concurrent links did not resolve the same profile"
     }
   ],
   "plugin/one-time-token/GET /one-time-token/generate": [

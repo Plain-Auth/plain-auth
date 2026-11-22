@@ -10,6 +10,7 @@
   - [x] `POST /sign-in/magic-link` ([test](../../../conformance/magic-link-delivery.mjs#L31))
     - [x] Deliver a private link and request metadata through the configured sender ([test](../../../adapters/sqlstore/magiclink_test.go#L73))
     - [x] Deliver an opaque login link, browser locale and application metadata on the released client with both open and closed registration ([test](../../../conformance/magic-link-delivery.mjs#L31))
+    - [x] Keep delivery metadata and extra browser properties separate from the persisted account profile ([test](../../../conformance/magic-link-fields.mjs#L43))
   - [x] `GET /magic-link/verify` ([test](../../../conformance/magic-link-delivery.mjs#L62))
     - [x] Promote mailbox ownership and revoke credentials that preceded verification ([test](../../../adapters/sqlstore/magiclink_test.go#L174))
     - [x] Consume shared hashed links in Go and the reference runtime with the official client ([test](../../../conformance/core.test.mjs#L345))
@@ -17,6 +18,8 @@
     - [x] Redeem first and returning links, acquire the same session through the client and send repeat attempts to the configured error destination ([test](../../../conformance/magic-link-delivery.mjs#L62))
     - [x] Issue one process-local session on concurrent redemption and revoke standing access during mailbox promotion ([test](../../../adapters/memory/magiclink_test.go#L16))
     - [x] Reject a link following a reassigned or expired mailbox claim ([test](../../../adapters/memory/magiclink_test.go#L86))
+    - [x] Write static profile defaults for a newly proved mailbox and return only the configured public user and session fields ([test](../../../conformance/magic-link-fields.mjs#L72))
+    - [x] Preserve the winning profile and its saved fields across concurrent links and nodes with different registration defaults ([test](../../../adapters/sqlstore/magiclink_fields_test.go#L129))
   - [ ] `MagicLinkOptions`
     - [ ] `expiresIn`
       - [x] Persist the configured link lifetime ([test](../../../adapters/sqlstore/magiclink_test.go#L238))

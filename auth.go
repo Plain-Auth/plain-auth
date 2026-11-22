@@ -261,6 +261,11 @@ func New(opts Options) (*Auth, error) {
 			}
 			a.maxDeviceSessions = *p.maxDeviceSessions
 		}
+		if p.magicLinkRegistration && len(opts.UserAdditionalFields) > 0 {
+			if _, ok := opts.Store.(MagicLinkUserFieldStore); !ok {
+				return nil, errors.New("magic link registration with configured user fields requires a MagicLinkUserFieldStore")
+			}
+		}
 		if p.oneTime != nil {
 			a.oneTimeToken = p.oneTime
 		}

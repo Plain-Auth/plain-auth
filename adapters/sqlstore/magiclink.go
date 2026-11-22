@@ -74,11 +74,19 @@ func (s *Store) saveMagicLink(ctx context.Context, ch auth.MagicLinkChallenge) e
 }
 
 func (s *Store) CompleteMagicLink(ctx context.Context, key, newID string, session auth.StoredSession, allowSignup bool) (auth.User, bool, error) {
+	return s.redeemMagicLink(ctx, key, newID, session, allowSignup, auth.RegistrationUserFields{})
+}
+
+func (s *Store) CompleteMagicLinkWithUserFields(ctx context.Context, key, newID string, session auth.StoredSession, defaults auth.RegistrationUserFields) (auth.User, bool, error) {
+	return s.redeemMagicLink(ctx, key, newID, session, true, defaults)
+}
+
+func (s *Store) redeemMagicLink(ctx context.Context, key, newID string, session auth.StoredSession, allowSignup bool, defaults auth.RegistrationUserFields) (auth.User, bool, error) {
 	var user auth.User
 	var created bool
 	var err error
 	for range 3 {
-		user, created, err = s.completeMagicLink(ctx, key, newID, session, allowSignup)
+		user, created, err = s.completeMagicLink(ctx, key, newID, session, allowSignup, defaults)
 		if !retryIdentity(err) {
 			break
 		}
@@ -86,7 +94,7 @@ func (s *Store) CompleteMagicLink(ctx context.Context, key, newID string, sessio
 	return user, created, err
 }
 
-func (s *Store) completeMagicLink(ctx context.Context, key, newID string, session auth.StoredSession, allowSignup bool) (auth.User, bool, error) {
+func (s *Store) completeMagicLink(ctx context.Context, key, newID string, session auth.StoredSession, allowSignup bool, defaults auth.RegistrationUserFields) (auth.User, bool, error) {
 	var user auth.User
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -135,7 +143,7 @@ func (s *Store) completeMagicLink(ctx context.Context, key, newID string, sessio
 	if err != nil && !created {
 		return user, false, err
 	}
-	if bound != "" && (created || user.ID != bound) {
+	if (!created && strings.ToLower(user.Email) != email) || (bound != "" && (created || user.ID != bound)) {
 		return finishDenial(auth.ErrNotFound)
 	}
 	if created {
@@ -143,7 +151,12 @@ func (s *Store) completeMagicLink(ctx context.Context, key, newID string, sessio
 			return finishDenial(auth.ErrMagicLinkSignUpDisabled)
 		}
 		user = auth.User{ID: newID, Email: email, Name: rec.Name, EmailVerified: true, CreatedAt: session.CreatedAt, UpdatedAt: session.CreatedAt}
-		_, err = tx.ExecContext(ctx, s.bind(`INSERT INTO "user" ("id","email","name","emailVerified","createdAt","updatedAt") VALUES (?,?,?,?,?,?)`), newID, email, rec.Name, true, now, now)
+		columns, err := defaults.Columns()
+		if err != nil {
+			return finishDenial(err)
+		}
+		insert, args := s.userInsert(user, columns)
+		_, err = tx.ExecContext(ctx, s.bind(insert), args...)
 		if err != nil {
 			return user, false, err
 		}

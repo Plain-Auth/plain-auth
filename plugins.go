@@ -16,7 +16,8 @@ type SessionResponseFunc func(EndpointContext, SessionResult) (any, error)
 
 // Plugin contributes HTTP endpoints to an Auth instance.
 type Plugin struct {
-	phoneNumber *PhoneNumberOptions
+	magicLinkRegistration bool
+	phoneNumber           *PhoneNumberOptions
 	// TranslateError returns a localized HTTP error message for the request.
 	// An empty result preserves the original error response.
 	TranslateError     func(ErrorContext, APIError) string

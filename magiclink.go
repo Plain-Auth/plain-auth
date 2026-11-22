@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"errors"
+	"maps"
 	"net/http"
 	"net/url"
 	"strings"
@@ -44,6 +45,13 @@ type MagicLinkStore interface {
 	CompleteMagicLink(ctx context.Context, key, newUserID string, session StoredSession, allowSignUp bool) (User, bool, error)
 }
 
+// MagicLinkUserFieldStore writes registration defaults in the transaction
+// that proves mailbox ownership and creates the first session. Existing users
+// keep their stored values, including when a required field has no default.
+type MagicLinkUserFieldStore interface {
+	CompleteMagicLinkWithUserFields(ctx context.Context, key, newUserID string, session StoredSession, defaults RegistrationUserFields) (User, bool, error)
+}
+
 var ErrMagicLinkSignUpDisabled = errors.New("magic link registration disabled")
 
 // NewMagicLink registers mail delivery and one-time mailbox verification endpoints.
@@ -68,7 +76,7 @@ func NewMagicLink(options MagicLinkOptions) (Plugin, error) {
 		return Plugin{}, errors.New("invalid magic link rate limit")
 	}
 	return Plugin{
-		ID: "magic-link",
+		ID: "magic-link", magicLinkRegistration: !options.DisableSignUp,
 		ValidateStore: func(s Store) error {
 			if _, ok := s.(MagicLinkStore); !ok {
 				return errors.New("magic link requires a MagicLinkStore")
@@ -197,7 +205,14 @@ func (o MagicLinkOptions) verify(c EndpointContext) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	user, created, err := a.opts.Store.(MagicLinkStore).CompleteMagicLink(r.Context(), key, randomID(), session, !o.DisableSignUp)
+	var user User
+	var created bool
+	if !o.DisableSignUp && len(a.opts.UserAdditionalFields) > 0 {
+		store := a.opts.Store.(MagicLinkUserFieldStore)
+		user, created, err = store.CompleteMagicLinkWithUserFields(r.Context(), key, randomID(), session, a.registrationUserFields())
+	} else {
+		user, created, err = a.opts.Store.(MagicLinkStore).CompleteMagicLink(r.Context(), key, randomID(), session, !o.DisableSignUp)
+	}
 	if errors.Is(err, ErrNotFound) {
 		return redirectQuery(errorURL, "error", "INVALID_TOKEN"), nil
 	}
@@ -208,24 +223,30 @@ func (o MagicLinkOptions) verify(c EndpointContext) (any, error) {
 		return nil, err
 	}
 	session.UserID = user.ID
-	if err := a.addSessionCookieHeaders(c.ResponseHeader, r, session.Token, true); err != nil {
+	// A profile read or plugin may reject the public session after the database
+	// has consumed the proof. Publish credentials only with a successful response.
+	issued := c.ResponseHeader.Clone()
+	if err := a.addSessionCookieHeaders(issued, r, session.Token, true); err != nil {
 		return nil, err
 	}
+	var output any = authRedirect(callback)
 	if q.Get("callbackURL") == "" {
 		result, err := a.withSessionPlugins(r.Context(), session.Session, user)
 		if err != nil {
 			return nil, err
 		}
-		return struct {
+		output = struct {
 			*SessionResult
 			Token string `json:"token"`
-		}{result, session.Token}, nil
-	}
-	if created && q.Get("newUserCallbackURL") != "" {
+		}{result, session.Token}
+	} else if created && q.Get("newUserCallbackURL") != "" {
 		callback, err = a.CallbackURL(q.Get("newUserCallbackURL"))
 		if err != nil {
 			return nil, err
 		}
+		output = authRedirect(callback)
 	}
-	return authRedirect(callback), nil
+	clear(c.ResponseHeader)
+	maps.Copy(c.ResponseHeader, issued)
+	return output, nil
 }

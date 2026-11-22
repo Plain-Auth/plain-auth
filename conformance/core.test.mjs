@@ -1623,3 +1623,8 @@ test("Ethereum wallet contact mode reserves unverified mailboxes without linking
   const { walletContact } = await import("./siwe-contact.mjs");
   await walletContact(t, { reference, goFixture, instrument });
 });
+
+test("magic links create configured profile defaults and preserve verified mailbox owners' fields", async t => {
+  const { magicLinkFields } = await import("./magic-link-fields.mjs");
+  await magicLinkFields(t, { reference, goFixture, instrument });
+});

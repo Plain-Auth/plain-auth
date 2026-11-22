@@ -41,6 +41,14 @@ func (s *Store) SaveMagicLink(ctx context.Context, link auth.MagicLinkChallenge)
 // CompleteMagicLink redeems a pending mailbox proof and creates the session
 // under one lock. Operational errors leave the original proof available.
 func (s *Store) CompleteMagicLink(ctx context.Context, key, newID string, session auth.StoredSession, allowSignup bool) (auth.User, bool, error) {
+	return s.completeMagicLink(ctx, key, newID, session, allowSignup, auth.RegistrationUserFields{})
+}
+
+func (s *Store) CompleteMagicLinkWithUserFields(ctx context.Context, key, newID string, session auth.StoredSession, defaults auth.RegistrationUserFields) (auth.User, bool, error) {
+	return s.completeMagicLink(ctx, key, newID, session, true, defaults)
+}
+
+func (s *Store) completeMagicLink(ctx context.Context, key, newID string, session auth.StoredSession, allowSignup bool, defaults auth.RegistrationUserFields) (auth.User, bool, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if err := ctx.Err(); err != nil {
@@ -65,6 +73,12 @@ func (s *Store) CompleteMagicLink(ctx context.Context, key, newID string, sessio
 		if _, inUse := s.users[newID]; inUse || newID == "" {
 			return auth.User{}, false, errors.New("memory: invalid or duplicate user ID")
 		}
+		columns, err := defaults.Columns()
+		if err != nil {
+			delete(s.magicLinks, key)
+			return auth.User{}, false, err
+		}
+		rec.fields = columns
 		rec.user = auth.User{ID: newID, Email: link.Email, Name: link.Name, CreatedAt: session.CreatedAt}
 	}
 	session.UserID = rec.user.ID

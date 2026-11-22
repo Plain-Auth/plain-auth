@@ -3,6 +3,7 @@ package plainauth
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"maps"
 	"reflect"
@@ -17,6 +18,28 @@ type UserField = sessionfields.Field
 
 // UserFieldValues carries validated physical values into the account creation transaction.
 type UserFieldValues struct{ columns map[string]any }
+
+// RegistrationUserFields holds the configured defaults for a new profile.
+// Adapters inspect it only after determining that the verified identity is new.
+type RegistrationUserFields struct {
+	values UserFieldValues
+	err    error
+}
+
+// Columns returns validated physical columns, or an error when a required
+// field has no default that the registration flow can supply.
+func (f RegistrationUserFields) Columns() (map[string]any, error) {
+	return f.values.Columns(), f.err
+}
+
+func (a *Auth) registrationUserFields() RegistrationUserFields {
+	values, err := a.prepareUserFields(nil, true, true)
+	if err != nil {
+		// A mailbox caller cannot supply these attributes. Keep their names private.
+		return RegistrationUserFields{err: errors.New("missing registration profile default")}
+	}
+	return RegistrationUserFields{values: values}
+}
 
 // Columns returns a copy keyed by physical column name.
 func (v UserFieldValues) Columns() map[string]any { return maps.Clone(v.columns) }

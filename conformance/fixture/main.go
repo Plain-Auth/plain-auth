@@ -81,8 +81,13 @@ func main() {
 	if os.Getenv("CONFORMANCE_SESSION_FIELDS") == "1" {
 		additionalSessionFields = configuredSessionFields()
 	}
-	if os.Getenv("CONFORMANCE_USER_FIELDS") == "1" {
+	if mode := os.Getenv("CONFORMANCE_USER_FIELDS"); mode == "1" || mode == "magic-defaults" {
 		additionalUserFields = configuredUserFields()
+		if mode == "magic-defaults" {
+			field := additionalUserFields["locale"]
+			field.Default = "en"
+			additionalUserFields["locale"] = field
+		}
 	}
 	if len(additionalSessionFields)+len(additionalUserFields) > 0 {
 		store, err = sqlstore.OpenWithAdditionalFields(context.Background(), "sqlite", os.Args[1], os.Args[2:], schema.AdditionalFields{Session: additionalSessionFields, User: additionalUserFields})

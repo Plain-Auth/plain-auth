@@ -37,6 +37,14 @@ Set `DisableSignUp` on the plugin to restrict sign-in to existing users. An unkn
 
 A Go client can request delivery with `Client.SignInMagicLink(ctx, client.MagicLinkRequest{Email: email})`. Once the user supplies the delivered token, call `Client.VerifyMagicLink(ctx, token)` on the same client. The result includes the user and session, and the client retains the session cookie.
 
+## Registration fields
+
+A new account receives the static defaults from `Options.UserAdditionalFields` on the server that verifies the link. The request accepts the fields listed above. Sending extra profile properties or adding them to delivery metadata cannot change those defaults. An existing mailbox owner keeps their saved profile and display name. Each new session receives its own configured session defaults.
+
+A required profile field needs a default for magic-link registration. If the server cannot supply that value, verification consumes the proof and returns a server error without creating an account or session. An existing account with a saved value can still sign in. A custom store that combines open magic-link registration with configured user fields implements `MagicLinkUserFieldStore` to commit the new profile and first session together.
+
+JSON verification and `get-session` expose public fields using their configured names. In the Go client, read them with `result.User.AdditionalField(name)` and `result.Session.AdditionalField(name)`. [Profile and field configuration](user-fields.md) · [Registration tests](../adapters/sqlstore/magiclink_fields_test.go)
+
 ## Choose a store
 
 Use `memory.New()` from `adapters/memory` for development with a single process. Share that store across auth instances that need to redeem each other's links. Restarting the process clears pending links, accounts and sessions. For multiple processes, give each instance a SQLite, PostgreSQL or MySQL adapter connected to the same database. A link issued for an existing owner stops working when the address moves to another account. [Concurrent memory redemptions](../adapters/memory/magiclink_test.go) · [SQL adapter tests](../adapters/sqlstore/magiclink_test.go)
