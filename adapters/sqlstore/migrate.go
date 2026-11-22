@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+
+	"github.com/Stonewrit/stonewrit-auth/internal/polarledger"
 )
 
 //go:embed schema/*.sql
@@ -131,6 +133,12 @@ func (s *Store) ensureTable(ctx context.Context, db migrationConnection, stmt st
 		return errors.New("sqlstore: invalid generated table declaration")
 	}
 	table := match[1]
+	if s.dialect == "postgres" && table == `"`+polarledger.CheckoutTable+`"` {
+		// The plugin may open its standalone ledger while authctl migrates.
+		if _, err := db.ExecContext(ctx, polarledger.PostgresSchemaLock); err != nil {
+			return err
+		}
+	}
 	if _, err := db.ExecContext(ctx, strings.Replace(stmt, "create table ", "create table if not exists ", 1)); err != nil {
 		return err
 	}

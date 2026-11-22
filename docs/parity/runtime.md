@@ -345,6 +345,7 @@ Each entry groups the configured endpoint’s behaviors. A checked child records
     - [x] Check a combined plugin deployment using each live SQL catalog ([test](../../adapters/sqlstore/check_test.go#L131))
     - [x] Resolve PostgreSQL tables in the connection's search path ([test](../../adapters/sqlstore/check_test.go#L159))
     - [x] Return distinct success, drift and operational exit codes with JSON findings and redacted connection errors ([test](../../cmd/authctl/check_test.go#L42))
+    - [x] Report an uninstalled Polar profile and an empty finding list after provisioning ([test](../../cmd/authctl/main_test.go#L104))
     - [ ] `check schema`
     - [ ] `-c, --cwd <cwd>`
     - [ ] `--config <config>`
@@ -365,6 +366,7 @@ Each entry groups the configured endpoint’s behaviors. A checked child records
     - [x] Emit SQL DDL for SQLite, PostgreSQL and MySQL ([test](../../cmd/authctl/main_test.go#L29))
     - [x] Compare every base-profile combination and independent SCIM profile witnesses across all three dialects ([test](../../conformance/schema.test.mjs#L106))
     - [x] Prove SCIM adds exactly seven disjoint tables and preserves every preexisting schema statement ([test](../../conformance/schema.test.mjs#L169))
+    - [x] Generate the optional Polar checkout and delivery tables on every SQL dialect ([test](../../cmd/authctl/main_test.go#L79))
     - [ ] `-c, --cwd <cwd>`
     - [ ] `--config <config>`
     - [ ] `--output <output>`

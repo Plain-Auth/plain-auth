@@ -68,6 +68,7 @@ Each row tracks the behavior exposed by a published entry point. The Go implemen
     - [x] Emit SQL DDL for SQLite, PostgreSQL and MySQL ([test](../../cmd/authctl/main_test.go#L29))
     - [x] Compare every base-profile combination and independent SCIM profile witnesses across all three dialects ([test](../../conformance/schema.test.mjs#L106))
     - [x] Prove SCIM adds exactly seven disjoint tables and preserves every preexisting schema statement ([test](../../conformance/schema.test.mjs#L169))
+    - [x] Generate the optional Polar checkout and delivery tables on every SQL dialect ([test](../../cmd/authctl/main_test.go#L79))
   - [ ] Adapter binding for prisma (`./adapters/prisma`)
   - [ ] Adapter binding for drizzle (`./adapters/drizzle`)
   - [ ] Adapter binding for mongodb (`./adapters/mongodb`)

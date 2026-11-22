@@ -75,3 +75,40 @@ func TestPrepareAPIKeyLedgerCommand(t *testing.T) {
 		t.Fatalf("expected one completed backfill, got %d: %v", markers, err)
 	}
 }
+
+func TestPolarSchemaCommands(t *testing.T) {
+	ctx := t.Context()
+	dbPath := filepath.Join(t.TempDir(), "billing.sqlite")
+	t.Setenv("AUTH_DSN", dbPath)
+	var out, diagnostics bytes.Buffer
+	command := func(args ...string) error {
+		out.Reset()
+		diagnostics.Reset()
+		return run(ctx, args, &out, &diagnostics)
+	}
+	for _, dialect := range []string{"sqlite", "postgres", "mysql"} {
+		if err := command("generate", "--dialect", dialect, "--plugins", "polar"); err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(out.String(), "stonewrit_polar_checkout") || !strings.Contains(out.String(), "stonewrit_polar_delivery") {
+			t.Fatal("missing Polar tables for", dialect)
+		}
+		if err := command("generate", "--dialect", dialect); err != nil || strings.Contains(out.String(), "stonewrit_polar_") {
+			t.Fatal("ordinary installation selected billing tables", dialect, err)
+		}
+	}
+	if err := command("migrate", "--dialect", "sqlite"); err != nil {
+		t.Fatal(err)
+	}
+	if err := command("check", "schema", "--dialect", "sqlite", "--plugins", "polar", "--json"); err == nil || !strings.Contains(out.String(), "stonewrit_polar_delivery") {
+		t.Fatal("pending billing setup not reported", err, out.String())
+	}
+	for range 2 {
+		if err := command("migrate", "--dialect", "sqlite", "--plugins", "sso,polar"); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := command("check", "schema", "--dialect", "sqlite", "--plugins", "sso,polar", "--json"); err != nil || strings.TrimSpace(out.String()) != "[]" {
+		t.Fatalf("billing schema check: %v %q", err, out.String())
+	}
+}

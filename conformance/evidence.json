@@ -158,6 +158,11 @@
       "label": "Return distinct success, drift and operational exit codes with JSON findings and redacted connection errors",
       "test": "cmd/authctl/check_test.go",
       "marker": "func TestCheckSchemaProcess("
+    },
+    {
+      "label": "Report an uninstalled Polar profile and an empty finding list after provisioning",
+      "test": "cmd/authctl/main_test.go",
+      "marker": "pending billing setup not reported"
     }
   ],
   "cli/generate": [
@@ -175,6 +180,11 @@
       "label": "Prove SCIM adds exactly seven disjoint tables and preserves every preexisting schema statement",
       "test": "conformance/schema.test.mjs",
       "marker": "test(\"SCIM adds seven"
+    },
+    {
+      "label": "Generate the optional Polar checkout and delivery tables on every SQL dialect",
+      "test": "cmd/authctl/main_test.go",
+      "marker": "func TestPolarSchemaCommands("
     }
   ],
   "cli/migrate": [

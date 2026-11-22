@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+
+	"github.com/Stonewrit/stonewrit-auth/internal/polarledger"
 )
 
 //go:embed catalog.json
@@ -30,6 +32,18 @@ var layouts struct {
 func init() {
 	if err := json.Unmarshal(catalog, &layouts); err != nil {
 		panic("schema: invalid embedded catalog: " + err.Error())
+	}
+	// Polar checkout reservations and delivery receipts belong to the Go
+	// integration and use the same definitions as its runtime ledger.
+	layouts.Profiles = append(layouts.Profiles, "polar")
+	for dialect := range layouts.Dialects {
+		for _, table := range polarledger.Tables(dialect) {
+			object := statement{fragment: fragment{SQL: "create table " + table.Name, Profiles: []string{"polar"}}}
+			for _, column := range table.Columns {
+				object.Columns = append(object.Columns, fragment{SQL: column})
+			}
+			layouts.Dialects[dialect] = append(layouts.Dialects[dialect], object)
+		}
 	}
 }
 
