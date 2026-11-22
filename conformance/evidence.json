@@ -8742,5 +8742,57 @@
       "test": "conformance/core.test.mjs",
       "marker": "test(\"enterprise SAML logs out a recorded IdP session"
     }
+  ],
+  "docs/content/docs/plugins/test-utils.mdx#L77": [
+    {
+      "label": "Construct a unique unsaved user with editable fields and creation time",
+      "test": "authtest/fixtures_test.go",
+      "marker": "user defaults",
+      "complete": true
+    },
+    {
+      "label": "Check factory defaults and that neither factory writes a database record",
+      "test": "conformance/auth-test-helpers.test.mjs",
+      "marker": "for (const model"
+    }
+  ],
+  "docs/content/docs/plugins/test-utils.mdx#L94": [
+    {
+      "label": "Construct a unique unsaved organization with editable fields and creation time",
+      "test": "authtest/fixtures_test.go",
+      "marker": "organization defaults",
+      "complete": true
+    },
+    {
+      "label": "Check factory defaults and that neither factory writes a database record",
+      "test": "conformance/auth-test-helpers.test.mjs",
+      "marker": "for (const model"
+    }
+  ],
+  "docs/content/docs/plugins/test-utils.mdx#L245": [
+    {
+      "label": "Capture email and SMS codes in the test process while forwarding the message to its sender",
+      "test": "authtest/fixtures_test.go",
+      "marker": "func TestCapturedProofs(",
+      "complete": true
+    },
+    {
+      "label": "Isolate concurrent recorder access, return the latest code and preserve delivery errors",
+      "test": "authtest/fixtures_test.go",
+      "marker": "func TestRecorderConcurrencyAndDeliveryErrors("
+    }
+  ],
+  "docs/content/docs/plugins/test-utils.mdx#L336": [
+    {
+      "label": "Read the code from a local recorder and verify the account through the public client",
+      "test": "authtest/fixtures_test.go",
+      "marker": "verified, err := c.VerifyEmailOTP",
+      "complete": true
+    },
+    {
+      "label": "Redeem the captured proof on the pinned runtime",
+      "test": "conformance/auth-test-helpers.test.mjs",
+      "marker": "result = await auth.api.signInEmailOTP"
+    }
   ]
 }

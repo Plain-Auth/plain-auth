@@ -34,6 +34,8 @@ StoneWrit Auth embeds authentication in your Go API. Mount the auth handler on y
 
 Stripe Checkout and signed billing updates support a single metered price or metered add-ons with a licensed base. IdP-initiated SAML, SAML single logout, and plan switches involving metered prices remain open. The [complete checklist](docs/parity/README.md) records which parts of each integration have passing tests.
 
+For application integration tests, build fixture users and organizations and capture email or SMS verification codes with the [test helpers](docs/test-helpers.md).
+
 ## Run it locally
 
 Use Go 1.26 or newer and a C compiler for the SQLite driver. Clone this repository using a GitHub account with access. From the checkout, generate a signing secret once and start the example.
