@@ -531,7 +531,7 @@ func (a *Auth) completeProfileWith(ctx context.Context, r *http.Request, id stri
 }
 
 func (a *Auth) directOAuth(w http.ResponseWriter, r *http.Request, id string, p OAuthProvider, value any, linkUserID string, requestSignUp bool, callback string) error {
-	if p.VerifyIDToken == nil {
+	if p.DisableIDTokenSignIn || p.VerifyIDToken == nil {
 		return &APIError{404, "ID_TOKEN_NOT_SUPPORTED", "Provider does not support ID token sign-in"}
 	}
 	data, ok := value.(map[string]any)

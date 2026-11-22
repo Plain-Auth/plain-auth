@@ -400,6 +400,14 @@ func main() {
 		social = oneTapFixtureProvider(oneTapKeys)
 		plugins = append(plugins, authn.NewOneTap(authn.OneTapOptions{}, authn.OAuthProvider{}))
 	}
+	if id := os.Getenv("CONFORMANCE_DISABLE_DIRECT_ID_TOKEN"); id != "" {
+		p, ok := social[id]
+		if !ok {
+			log.Fatal("direct ID-token fixture requires a configured provider")
+		}
+		p.DisableIDTokenSignIn = true
+		social[id] = p
+	}
 	var mount string
 	if os.Getenv("CONFORMANCE_OPENAPI") == "1" {
 		mount = "/identity"

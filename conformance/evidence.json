@@ -10604,5 +10604,39 @@
       "marker": "const landing = await returning.login([\"write\"]);",
       "complete": true
     }
+  ],
+  "provider-option/shared/disableIdTokenSignIn": [
+    {
+      "label": "Decline signed client ID tokens for sign-in and account linking while preserving browser authorization",
+      "test": "conformance/apple-native.mjs",
+      "marker": "export async function compareDisabledIDTokenSignIn(",
+      "complete": true
+    },
+    {
+      "label": "Finish the browser code exchange with direct grants disabled and keep other providers available",
+      "test": "oauth_signup_test.go",
+      "marker": "browser-only provider failed to complete code exchange"
+    },
+    {
+      "label": "Complete a separately enabled Google One Tap challenge with the direct social grant disabled",
+      "test": "conformance/core.test.mjs",
+      "marker": "CONFORMANCE_DISABLE_DIRECT_ID_TOKEN: \"google\""
+    }
+  ],
+  "docs/content/docs/reference/options.mdx#L369/`disableIdTokenSignIn`": [
+    {
+      "label": "Decline signed client ID tokens for sign-in and account linking while preserving browser authorization",
+      "test": "conformance/apple-native.mjs",
+      "marker": "export async function compareDisabledIDTokenSignIn(",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/concepts/oauth.mdx#L545": [
+    {
+      "label": "Decline signed client ID tokens for sign-in and account linking while preserving browser authorization",
+      "test": "conformance/apple-native.mjs",
+      "marker": "export async function compareDisabledIDTokenSignIn(",
+      "complete": true
+    }
   ]
 }

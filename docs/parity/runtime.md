@@ -121,7 +121,7 @@ Each entry groups the configured endpoint’s behaviors. A checked child records
   - [ ] `apple`
     - [x] Validate the configured form-post flow and verify a signed native token ([test](../../providers/apple_microsoft_test.go#L40))
     - [x] Select a native bundle ID or explicit app audiences and keep the browser exchange bound to its own Services ID ([test](../../providers/apple_audiences_test.go#L20))
-    - [x] Use the released client with signed native tokens for accepted identities and reject an unlisted app on both runtimes ([test](../../conformance/apple-native.mjs#L4))
+    - [x] Use the released client with signed native tokens for accepted identities and reject an unlisted app on both runtimes ([test](../../conformance/apple-native.mjs#L18))
   - [ ] `atlassian`
     - [x] Complete the default browser code exchange and map the provider profile using a local fixture ([test](../../providers/catalog_test.go#L21))
   - [ ] `cloudflare`
@@ -200,7 +200,10 @@ Each entry groups the configured endpoint’s behaviors. A checked child records
   - [ ] `redirectURI`
   - [ ] `authorizationEndpoint`
   - [ ] `clientKey`
-  - [ ] `disableIdTokenSignIn`
+  - [x] `disableIdTokenSignIn` ([test](../../conformance/apple-native.mjs#L50))
+    - [x] Decline signed client ID tokens for sign-in and account linking while preserving browser authorization ([test](../../conformance/apple-native.mjs#L50))
+    - [x] Finish the browser code exchange with direct grants disabled and keep other providers available ([test](../../oauth_signup_test.go#L139))
+    - [x] Complete a separately enabled Google One Tap challenge with the direct social grant disabled ([test](../../conformance/core.test.mjs#L648))
   - [ ] `verifyIdToken`
   - [ ] `getUserInfo`
   - [ ] `refreshAccessToken`

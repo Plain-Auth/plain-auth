@@ -336,7 +336,8 @@
     - [ ] `getUserInfo`
     - [ ] `refreshAccessToken`
     - [ ] `verifyIdToken`
-    - [ ] `disableIdTokenSignIn`
+    - [x] `disableIdTokenSignIn` ([test](../../conformance/apple-native.mjs#L50))
+      - [x] Decline signed client ID tokens for sign-in and account linking while preserving browser authorization ([test](../../conformance/apple-native.mjs#L50))
     - [ ] `disableDefaultScope`
     - [ ] `authorizationEndpoint`
   - [ ] `plugins`
@@ -388,13 +389,13 @@
     - [ ] `accountLinking`
       - [x] `enabled` ([test](../../conformance/social-link-policy.mjs#L50))
         - [x] Close new links across browser and direct grants while permitting new registration and subsequent sign-in with the same stable subject ([test](../../conformance/social-link-policy.mjs#L50))
-        - [x] Refresh an existing mobile identity only under its live owner session and reject attachment of new and foreign identities ([test](../../oauth_signup_test.go#L212))
+        - [x] Refresh an existing mobile identity only under its live owner session and reject attachment of new and foreign identities ([test](../../oauth_signup_test.go#L228))
         - [x] Commit owned credential refresh without issuing another session across all three SQL engines ([test](../../adapters/sqlstore/social_test.go#L132))
       - [x] `disableImplicitLinking` ([test](../../conformance/social-link-policy.mjs#L5))
         - [x] Require an authenticated owner to link a trusted provider, preserve the stable owner, and accept subsequent logins ([test](../../conformance/social-link-policy.mjs#L5))
         - [x] Deny an automatic link even when a registered enterprise IdP has a verified matching domain ([test](../../adapters/sqlstore/sso_domain_test.go#L300))
         - [x] Keep new social registration available and leave no partial session on a same-email collision on all SQL engines ([test](../../adapters/sqlstore/social_test.go#L107))
-        - [x] Use a mobile ID token to sign in only after the authenticated account owner explicitly links the provider ([test](../../oauth_signup_test.go#L129))
+        - [x] Use a mobile ID token to sign in only after the authenticated account owner explicitly links the provider ([test](../../oauth_signup_test.go#L145))
       - [ ] `trustedProviders`
       - [ ] `allowDifferentEmails`
       - [ ] `allowUnlinkingAll`

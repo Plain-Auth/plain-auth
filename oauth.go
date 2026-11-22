@@ -43,6 +43,9 @@ type OAuthProvider struct {
 	ExchangeCode  func(context.Context, oauth2.Config, string, string, url.Values) (*oauth2.Token, error)
 	Resolve       func(context.Context, *oauth2.Token, string) (OAuthProfile, error)
 	VerifyIDToken func(ctx context.Context, raw, nonce string) (OAuthProfile, time.Time, error)
+	// DisableIDTokenSignIn closes the direct token grant on social sign-in and
+	// linking. Browser code exchanges and the One Tap plugin verify independently.
+	DisableIDTokenSignIn bool
 	// Refresh overrides the standard OAuth 2.0 refresh request.
 	Refresh                func(context.Context, oauth2.Config, string) (*oauth2.Token, error)
 	DisableRefresh         bool

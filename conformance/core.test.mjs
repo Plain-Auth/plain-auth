@@ -645,7 +645,7 @@ test("the pinned One Tap client signs in to Go with a nonce issued by the applic
   const { generateKeyPair, exportJWK, SignJWT } = await import("jose");
   const { publicKey, privateKey } = await generateKeyPair("RS256", { extractable: true });
   const key = await exportJWK(publicKey);
-  const go = await goFixture(t, ["anonymous"], { CONFORMANCE_ONE_TAP_JWKS: JSON.stringify({ keys: [{ ...key, alg: "RS256", kid: "local" }] }) });
+  const go = await goFixture(t, ["anonymous"], { CONFORMANCE_ONE_TAP_JWKS: JSON.stringify({ keys: [{ ...key, alg: "RS256", kid: "local" }] }), CONFORMANCE_DISABLE_DIRECT_ID_TOKEN: "google" });
   const clientId = "fixture.apps.googleusercontent.com";
   const { client } = instrument(go, [oneTapClient({ clientId }), anonymousClient()]);
   const guest = await client.signIn.anonymous();
@@ -1705,4 +1705,9 @@ test("returning sign-ins respect stored provider credentials and explicit scope 
   for (const preserve of [false, true]) {
     await t.test(preserve ? "preserve" : "default", t => compareAccountUpdateOnSignIn(t, {reference, goFixture, instrument}, preserve));
   }
+});
+
+test("providers can disable client ID tokens for sign-in and account linking", async t => {
+  const {compareDisabledIDTokenSignIn} = await import("./apple-native.mjs");
+  await compareDisabledIDTokenSignIn(t, {reference, goFixture, instrument});
 });

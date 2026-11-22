@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import {generateKeyPair, exportJWK, SignJWT} from "jose";
 
-export async function compareAppleNative(t, {reference, goFixture, instrument}) {
+async function localAppleKeys(t) {
   const {privateKey, publicKey} = await generateKeyPair("RS256", {extractable: true});
   const kid = "apple-test-key";
   const keys = {keys: [{...await exportJWK(publicKey), use:"sig", alg:"RS256", kid}]};
@@ -12,7 +12,11 @@ export async function compareAppleNative(t, {reference, goFixture, instrument}) 
     assert.equal(url.hostname, "127.0.0.1", "provider fixture must stay local");
     return realFetch(resource, init);
   });
+  return {keys, privateKey, kid};
+}
 
+export async function compareAppleNative(t, {reference, goFixture, instrument}) {
+  const {keys, privateKey, kid} = await localAppleKeys(t);
   const web = "org.example.web", mobile = "org.example.mobile", watch = "org.example.watch";
   for (const explicit of [false, true]) {
     const apple = {clientId: web, clientSecret: "local-client-assertion", appBundleIdentifier: mobile};
@@ -39,6 +43,42 @@ export async function compareAppleNative(t, {reference, goFixture, instrument}) 
           assert.equal((await client.getSession()).data, null);
         }
       }
+    }
+  }
+}
+
+export async function compareDisabledIDTokenSignIn(t, {reference, goFixture, instrument}) {
+  const {keys, privateKey, kid} = await localAppleKeys(t);
+  const mobile = "org.example.mobile";
+  const apple = {clientId: "org.example.web", clientSecret: "local-client-assertion", appBundleIdentifier: mobile, disableIdTokenSignIn: true};
+  const ref = await reference(t, [], {socialProviders: {apple}});
+  const go = await goFixture(t, [], {CONFORMANCE_APPLE_JWKS: JSON.stringify(keys), CONFORMANCE_DISABLE_DIRECT_ID_TOKEN: "apple"});
+  for (const server of [ref, go]) {
+    const {client} = instrument(server);
+    const email = "browser-owner@example.test", nonce = crypto.randomUUID();
+    const token = await new SignJWT({email, email_verified: true, nonce})
+      .setProtectedHeader({alg: "RS256", kid}).setSubject("browser-owner")
+      .setIssuer("https://appleid.apple.com").setAudience(mobile).setIssuedAt().setExpirationTime("5m").sign(privateKey);
+    const direct = {provider: "apple", idToken: {token, nonce}};
+    const rejected = await client.signIn.social(direct);
+    assert.equal(rejected.error?.status, 404);
+    assert.equal(rejected.error.code, "ID_TOKEN_NOT_SUPPORTED");
+    assert.equal((await client.getSession()).data, null);
+    const created = await client.signUp.email({email, name: "Browser owner", password: "local-test-password"});
+    assert.equal(created.error, null);
+    const link = await client.linkSocial(direct);
+    assert.equal(link.error?.status, 404);
+    assert.equal(link.error.code, "ID_TOKEN_NOT_SUPPORTED");
+    assert.deepEqual((await client.listAccounts()).data.map(a => a.providerId), ["credential"]);
+    assert.equal((await client.getSession()).data.user.id, created.data.user.id);
+    for (const start of [body => client.signIn.social(body), body => client.linkSocial(body)]) {
+      const browser = await start({provider: "apple", callbackURL: "/done", disableRedirect: true});
+      assert.equal(browser.error, null);
+      const target = new URL(browser.data.url);
+      assert.equal(target.origin, "https://appleid.apple.com");
+      assert.equal(target.searchParams.get("response_type"), "code id_token");
+      assert.equal(target.searchParams.get("response_mode"), "form_post");
+      assert.ok(target.searchParams.get("state"));
     }
   }
 }

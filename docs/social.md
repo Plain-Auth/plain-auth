@@ -55,6 +55,8 @@ Apple, Google, Microsoft and discovered OpenID Connect providers also accept `{ 
 
 Use `providers.Names()` to enumerate the default browser providers. Use `providers.New(name, clientID, clientSecret)` for a listed provider. Callback URLs use the same stable identifier as the registration map. The catalog fixtures exercise each provider's default scopes, token client authentication, profile requests, stable account identifier and email verification mapping using local responses.
 
+To require the browser flow for a provider on the social routes, set `provider.DisableIDTokenSignIn = true` before adding it to `Options.SocialProviders`. Both `POST /sign-in/social` and an authenticated `POST /link-social` then return HTTP 404 with `ID_TOKEN_NOT_SUPPORTED` when the client submits an ID token. Browser sign-in and linking still use the provider's configured callback. Google One Tap has its own plugin and challenge verification. [Signed-token comparisons](../conformance/apple-native.mjs) · [Browser callback tests](../oauth_signup_test.go)
+
 Apple requires a services ID or bundle identifier and an Apple-issued developer configuration with a signed client-secret JWT. Supply the JWT as the secret. The browser callback accepts Apple's form POST, redirects to the same callback origin, and consumes the browser's state cookie on the subsequent GET. The first authorization may include the user's display name in the form.
 
 Microsoft uses the common Entra endpoint by default. Use `providers.Microsoft(id, secret, providers.MicrosoftOptions{TenantID: tenant})` for a tenant GUID, `organizations`, or `consumers`. Verified tokens must match the tenant issuer and account class. Set `DisableProfilePhoto` to skip the optional Microsoft Graph photo request.

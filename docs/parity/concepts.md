@@ -328,7 +328,8 @@
     - [ ] scope
     - [ ] redirectURI
     - [ ] disableSignUp
-    - [ ] disableIdTokenSignIn
+    - [x] disableIdTokenSignIn ([test](../../conformance/apple-native.mjs#L50))
+      - [x] Decline signed client ID tokens for sign-in and account linking while preserving browser authorization ([test](../../conformance/apple-native.mjs#L50))
     - [ ] verifyIdToken
     - [x] overrideUserInfoOnSignIn ([test](../../conformance/social-user-fields.mjs#L143))
       - [x] Refresh a returning profile with either server, preserve protected fields and use the new mailbox verification status ([test](../../conformance/social-user-fields.mjs#L143))
@@ -564,7 +565,7 @@
         - [x] Require an authenticated owner to link a trusted provider, preserve the stable owner, and accept subsequent logins ([test](../../conformance/social-link-policy.mjs#L5))
         - [x] Deny an automatic link even when a registered enterprise IdP has a verified matching domain ([test](../../adapters/sqlstore/sso_domain_test.go#L300))
         - [x] Keep new social registration available and leave no partial session on a same-email collision on all SQL engines ([test](../../adapters/sqlstore/social_test.go#L107))
-        - [x] Use a mobile ID token to sign in only after the authenticated account owner explicitly links the provider ([test](../../oauth_signup_test.go#L129))
+        - [x] Use a mobile ID token to sign in only after the authenticated account owner explicitly links the provider ([test](../../oauth_signup_test.go#L145))
       - [ ] Manually Linking Accounts
     - [ ] Account Unlinking
       - [x] Keep the last required account and prevent unlinking another user’s account ([test](../../adapters/sqlstore/identity_test.go#L40))

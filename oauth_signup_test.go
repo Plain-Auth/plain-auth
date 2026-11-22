@@ -45,7 +45,13 @@ func TestOAuthExplicitRegistration(t *testing.T) {
 			}
 			closed := p
 			closed.DisableSignUp = true
-			api, err := auth.New(auth.Options{Store: store, BaseURL: base, BasePath: "/identity", Secret: strings.Repeat("s", 32), SocialProviders: map[string]auth.OAuthProvider{"invite": p, "closed": closed}})
+			browserOnly := p
+			browserOnly.DisableIDTokenSignIn = true
+			browserOnly.VerifyIDToken = func(context.Context, string, string) (auth.OAuthProfile, time.Time, error) {
+				t.Error("disabled provider invoked its direct token verifier")
+				return auth.OAuthProfile{}, time.Time{}, errors.New("unexpected direct grant")
+			}
+			api, err := auth.New(auth.Options{Store: store, BaseURL: base, BasePath: "/identity", Secret: strings.Repeat("s", 32), SocialProviders: map[string]auth.OAuthProvider{"invite": p, "closed": closed, "browser": browserOnly}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -70,6 +76,9 @@ func TestOAuthExplicitRegistration(t *testing.T) {
 				out, err := c.SignInSocial(t.Context(), in)
 				if direct {
 					var ae *auth.APIError
+					if errors.As(err, &ae) && ae.Status == 404 && ae.Code == "ID_TOKEN_NOT_SUPPORTED" {
+						return "unsupported"
+					}
 					if errors.As(err, &ae) && ae.Status == 401 && ae.Code == "OAUTH_LINK_ERROR" {
 						return "declined"
 					}
@@ -121,6 +130,13 @@ func TestOAuthExplicitRegistration(t *testing.T) {
 			profile.Subject, profile.Email = "other", "other@example.org"
 			if got := signin("closed", "fourth", true); got != "declined" {
 				t.Fatal("disabled registration", got)
+			}
+			if direct {
+				if got := signin("browser", "fifth", true); got != "unsupported" {
+					t.Fatal("provider opted out of direct ID tokens", got)
+				}
+			} else if got := signin("browser", "fifth", true); got != "welcome" {
+				t.Fatal("browser-only provider failed to complete code exchange", got)
 			}
 		})
 	}
