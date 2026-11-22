@@ -20,6 +20,8 @@
     - [x] Accept a string credential, return the owning session and reject missing, ill-typed or spent proofs ([test](../../../conformance/transfer-options.mjs#L96))
     - [x] Prevent imported credentials from being reissued and burn ambiguous live proofs ([test](../../../adapters/sqlstore/onetimetoken_test.go#L199))
     - [x] Preserve temporary-session cookies when the receiving browser changes accounts ([test](../../../conformance/transfer-options.mjs#L158))
+    - [x] Replace an existing browser login with the issuing account’s current public profile and device fields while filtering hidden and physical names ([test](../../../conformance/transfer-fields.mjs#L75))
+    - [x] Keep the original owner and configured fields when the Go client redeems a renewed session’s replacement proof on another node ([test](../../../adapters/sqlstore/onetimetoken_fields_test.go#L123))
   - [x] `OneTimeTokenOptions` ([test](../../../conformance/core.test.mjs#L1607))
     - [x] Select storage, host generation, request restrictions, token lifetimes and cookie or response-header behavior ([test](../../../conformance/core.test.mjs#L1607))
     - [x] `expiresIn` ([test](../../../conformance/transfer-options.mjs#L131))

@@ -95,3 +95,5 @@ export async function compareSessionFields(t, { reference, goFixture, instrument
     assert.equal((await consumer.updateSession({ locale: "revoked" })).error?.status, 401);
   }
 }
+
+export { fields as sessionFields };

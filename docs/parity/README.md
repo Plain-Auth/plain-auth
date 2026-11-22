@@ -84,7 +84,7 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 | [OAuth provider](plugins/oauth-provider.md) | 0 | 455 |
 | [OAuth proxy](plugins/oauth-proxy.md) | 0 | 17 |
 | [One tap](plugins/one-tap.md) | 36 | 18 |
-| [One time token](plugins/one-time-token.md) | 74 | 0 |
+| [One time token](plugins/one-time-token.md) | 76 | 0 |
 | [OpenAPI](plugins/open-api.md) | 12 | 24 |
 | [Organization](plugins/organization.md) | 84 | 385 |
 | [Passkey](plugins/passkey.md) | 26 | 94 |

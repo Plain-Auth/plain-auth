@@ -1613,3 +1613,8 @@ test("both runtimes register email OTP users with configured fields and preserve
   const { compareEmailOTPUserFields } = await import("./user-fields.mjs");
   await compareEmailOTPUserFields(t, { reference, goFixture, instrument });
 });
+
+test("transferred sessions publish only the current owner's configured user and session fields", async t => {
+  const { compareTransferFields } = await import("./transfer-fields.mjs");
+  await compareTransferFields(t, { reference, goFixture, instrument });
+});

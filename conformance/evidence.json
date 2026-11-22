@@ -1586,6 +1586,16 @@
       "label": "Preserve temporary-session cookies when the receiving browser changes accounts",
       "test": "conformance/transfer-options.mjs",
       "marker": "temporary-session preference"
+    },
+    {
+      "label": "Replace an existing browser login with the issuing account’s current public profile and device fields while filtering hidden and physical names",
+      "test": "conformance/transfer-fields.mjs",
+      "marker": "checkFields(redeemed, owner.user.id,"
+    },
+    {
+      "label": "Keep the original owner and configured fields when the Go client redeems a renewed session’s replacement proof on another node",
+      "test": "adapters/sqlstore/onetimetoken_fields_test.go",
+      "marker": "check(next, \"renewed-device\")"
     }
   ],
   "plugin-symbol/magic-link/MagicLinkOptions/expiresIn": [

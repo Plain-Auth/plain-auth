@@ -119,3 +119,5 @@ export async function compareEmailOTPUserFields(t, { reference, goFixture, instr
     assert.deepEqual({ ...stored }, { preferred_locale: "fr", privateNote: "secret input", internalRisk: 9 });
   }
 }
+
+export { fields as userFields };

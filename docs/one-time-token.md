@@ -32,6 +32,8 @@ Both paths are relative to the auth mount. In the Go HTTP client, use `GenerateO
 
 A verification response that sets cookies honors the receiving browser’s signed temporary-session preference. With cookie suppression, verification returns the transferred identity in JSON and the browser keeps its current login. A replacement `Set-Ott` belongs to the returned session, including when the recipient had another account signed in. Reads without cookie renewal, explicit token generation, sign-out and rejected requests omit this header.
 
+When you configure additional user or session fields, verification reads the public values belonging to the issuing account and session at redemption time. The Go client exposes them through `result.User.AdditionalField(name)` and `result.Session.AdditionalField(name)`. Hidden fields and physical column names stay out of the response. Cookie replacement and subsequent renewal keep the same owner. [Field transfer tests](../adapters/sqlstore/onetimetoken_fields_test.go)
+
 ### Request-aware token generation
 
 Use `GenerateTokenWithRequest` when a generator needs the request that initiated the login or transfer. It receives the authenticated user, the issuing session and a copy of the HTTP request metadata. Its body is empty. Direct calls to `Auth.GenerateOneTimeToken` supply a nil request. Configure one generator per plugin instance.
