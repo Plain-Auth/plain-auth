@@ -1,6 +1,6 @@
 # Environment configuration
 
-The auth instance reads the host process environment once during `stonewrit.New`. Environment values take effect when the application constructs a new instance. Set them in your shell, container, hosting dashboard, or secret manager.
+The auth instance reads the host process environment once during `plainauth.New`. Environment values take effect when the application constructs a new instance. Set them in your shell, container, hosting dashboard, or secret manager.
 
 ## Local development
 
@@ -51,19 +51,19 @@ level.Set(slog.LevelWarn)
 opts.Logger = slog.New(slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{
     Level: level,
 })).With("component", "auth")
-auth, err := stonewrit.New(opts)
+auth, err := plainauth.New(opts)
 ```
 
 A plugin can call `c.Auth.Logger().InfoContext(c.Request.Context(), "directory sync completed", "members", count)` to use the same destination and request context. Change the threshold at runtime with `level.Set(slog.LevelError)`. The verification-mail and last-login handlers report delivery or storage failures without putting the email address, token, password or raw callback error in the message. The host controls formatting, including terminal colors, through its handler. [Logger isolation and redaction tests](../logger_test.go)
 
 ### Observe endpoint errors
 
-Set `OnAPIError` to receive the original error on the server before StoneWrit writes the HTTP error response. The hook receives the request and the user identity if the endpoint already resolved it. For example, a host can count failures by public API code using its own metrics recorder.
+Set `OnAPIError` to receive the original error on the server before Plain Auth writes the HTTP error response. The hook receives the request and the user identity if the endpoint already resolved it. For example, a host can count failures by public API code using its own metrics recorder.
 
 ```go
-opts.OnAPIError = func(c stonewrit.ErrorContext, err error) error {
+opts.OnAPIError = func(c plainauth.ErrorContext, err error) error {
     code := "INTERNAL_SERVER_ERROR"
-    var apiErr *stonewrit.APIError
+    var apiErr *plainauth.APIError
     if errors.As(err, &apiErr) {
         code = apiErr.Code
     }

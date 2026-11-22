@@ -9,10 +9,10 @@ import (
 	"sync/atomic"
 	"testing"
 
-	auth "github.com/Stonewrit/stonewrit-auth"
-	"github.com/Stonewrit/stonewrit-auth/client"
-	pk "github.com/Stonewrit/stonewrit-auth/plugins/passkey"
-	"github.com/Stonewrit/stonewrit-auth/schema"
+	auth "github.com/Plain-Auth/plain-auth"
+	"github.com/Plain-Auth/plain-auth/client"
+	pk "github.com/Plain-Auth/plain-auth/plugins/passkey"
+	"github.com/Plain-Auth/plain-auth/schema"
 )
 
 func TestPasskeyFirstRegistrationAcrossEngines(t *testing.T) {

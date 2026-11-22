@@ -10,9 +10,9 @@ import (
 	"strings"
 	"testing"
 
-	authn "github.com/Stonewrit/stonewrit-auth"
-	"github.com/Stonewrit/stonewrit-auth/plugins/anonymous"
-	"github.com/Stonewrit/stonewrit-auth/schema"
+	authn "github.com/Plain-Auth/plain-auth"
+	"github.com/Plain-Auth/plain-auth/plugins/anonymous"
+	"github.com/Plain-Auth/plain-auth/schema"
 	"golang.org/x/oauth2"
 )
 

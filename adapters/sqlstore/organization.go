@@ -9,9 +9,9 @@ import (
 	"strings"
 	"time"
 
-	authn "github.com/Stonewrit/stonewrit-auth"
-	ak "github.com/Stonewrit/stonewrit-auth/plugins/apikey"
-	org "github.com/Stonewrit/stonewrit-auth/plugins/organization"
+	authn "github.com/Plain-Auth/plain-auth"
+	ak "github.com/Plain-Auth/plain-auth/plugins/apikey"
+	org "github.com/Plain-Auth/plain-auth/plugins/organization"
 	"github.com/go-sql-driver/mysql"
 )
 

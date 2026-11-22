@@ -13,7 +13,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	auth "github.com/Stonewrit/stonewrit-auth"
+	auth "github.com/Plain-Auth/plain-auth"
 )
 
 const (

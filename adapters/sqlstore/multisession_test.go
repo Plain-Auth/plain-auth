@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	authn "github.com/Stonewrit/stonewrit-auth"
+	authn "github.com/Plain-Auth/plain-auth"
 )
 
 func TestDeviceSessionStorage(t *testing.T) {

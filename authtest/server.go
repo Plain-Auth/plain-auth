@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	auth "github.com/Stonewrit/stonewrit-auth"
-	"github.com/Stonewrit/stonewrit-auth/plugins/organization"
+	auth "github.com/Plain-Auth/plain-auth"
+	"github.com/Plain-Auth/plain-auth/plugins/organization"
 )
 
 // Server holds an auth handler and privileged helpers for a dedicated test database.

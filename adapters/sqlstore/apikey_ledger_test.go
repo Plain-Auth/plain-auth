@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Stonewrit/stonewrit-auth"
-	ak "github.com/Stonewrit/stonewrit-auth/plugins/apikey"
-	"github.com/Stonewrit/stonewrit-auth/schema"
+	"github.com/Plain-Auth/plain-auth"
+	ak "github.com/Plain-Auth/plain-auth/plugins/apikey"
+	"github.com/Plain-Auth/plain-auth/schema"
 )
 
 func TestAPIKeyLedgerMigration(t *testing.T) {
@@ -34,9 +34,9 @@ func TestAPIKeyLedgerMigration(t *testing.T) {
 				return s
 			}
 			a, b := open(), open()
-			host, e := stonewrit.New(stonewrit.Options{BaseURL: "https://issuer.example", Store: a, EmailAndPassword: true, Secret: strings.Repeat("z", 32)})
+			host, e := plainauth.New(plainauth.Options{BaseURL: "https://issuer.example", Store: a, EmailAndPassword: true, Secret: strings.Repeat("z", 32)})
 			must(e)
-			user, e := host.SignUpEmail(ctx, stonewrit.SignUpInput{Name: "Owner", Email: "owner@example.test", Password: "a secure account password"}, stonewrit.RequestMeta{})
+			user, e := host.SignUpEmail(ctx, plainauth.SignUpInput{Name: "Owner", Email: "owner@example.test", Password: "a secure account password"}, plainauth.RequestMeta{})
 			must(e)
 			insertOld := func(id, digest string) {
 				t.Helper()
@@ -64,7 +64,7 @@ func TestAPIKeyLedgerMigration(t *testing.T) {
 			}
 			importedPlain := "historical-noncanonical-credential"
 			insertOld("plaintext-legacy", importedPlain)
-			exists, e := a.hasKeyOwnerTable(ctx, a.db, "stonewrit_api_key_digest")
+			exists, e := a.hasKeyOwnerTable(ctx, a.db, "plainauth_api_key_digest")
 			must(e)
 			if exists {
 				t.Fatal("canonical schema unexpectedly installed the extension")
@@ -84,37 +84,37 @@ func TestAPIKeyLedgerMigration(t *testing.T) {
 				t.Helper()
 				var n int
 				q := `SELECT COUNT(*) FROM "` + table + `"`
-				if table == "stonewrit_api_key_digest" {
+				if table == "plainauth_api_key_digest" {
 					q += ` WHERE length("digest")=32`
 				}
 				must(a.db.QueryRowContext(ctx, a.bind(q)).Scan(&n))
 				return n
 			}
-			if count("apikey") != 260 || count("stonewrit_api_key_digest") != 3 {
+			if count("apikey") != 260 || count("plainauth_api_key_digest") != 3 {
 				t.Fatal("backfill merged distinct digests or changed historical key rows")
 			}
 			later := strings.Repeat("late-old-writer-", 3)
 			insertOld("legacy-late", ak.Digest(later))
 			_, e = ak.New(ak.Options{Store: open()})
 			must(e)
-			if count("stonewrit_api_key_digest") != 3 {
+			if count("plainauth_api_key_digest") != 3 {
 				t.Fatal("ordinary startup unexpectedly repeated a completed historical scan")
 			}
 			must(b.PrepareAPIKeyLedger(ctx))
 			var leaked bool
-			must(a.db.QueryRowContext(ctx, a.bind(`SELECT EXISTS(SELECT 1 FROM "stonewrit_api_key_digest" WHERE "digest"=?)`), []byte(importedPlain)).Scan(&leaked))
+			must(a.db.QueryRowContext(ctx, a.bind(`SELECT EXISTS(SELECT 1 FROM "plainauth_api_key_digest" WHERE "digest"=?)`), []byte(importedPlain)).Scan(&leaked))
 			if leaked {
 				t.Fatal("permanent ledger copied recoverable imported material")
 			}
-			if count("stonewrit_api_key_digest") != 4 {
+			if count("plainauth_api_key_digest") != 4 {
 				t.Fatal("repeated backfill missed a live legacy digest")
 			}
 			// A crash can leave committed pages but no completion marker on MySQL.
-			_, e = a.db.ExecContext(ctx, a.bind(`DELETE FROM "stonewrit_api_key_digest" WHERE "digest" IN (?,?)`), []byte{1}, apiKeyFingerprint(ak.Digest(later)))
+			_, e = a.db.ExecContext(ctx, a.bind(`DELETE FROM "plainauth_api_key_digest" WHERE "digest" IN (?,?)`), []byte{1}, apiKeyFingerprint(ak.Digest(later)))
 			must(e)
 			_, e = ak.New(ak.Options{Store: open()})
 			must(e)
-			if count("stonewrit_api_key_digest") != 4 {
+			if count("plainauth_api_key_digest") != 4 {
 				t.Fatal("startup did not recover an incomplete backfill")
 			}
 			// Model a revoked historical key and a complete verification-cache purge.
@@ -130,12 +130,12 @@ func TestAPIKeyLedgerMigration(t *testing.T) {
 					t.Fatal("revoked key was reissued after verification cleanup and restart", e)
 				}
 			}
-			if count("stonewrit_api_key_digest") != 4 || count("apikey") != 0 {
+			if count("plainauth_api_key_digest") != 4 || count("apikey") != 0 {
 				t.Fatal("failed issuance changed ledger or active keys")
 			}
-			_, e = a.db.ExecContext(ctx, a.bind(`DROP TABLE "stonewrit_api_key_digest"`))
+			_, e = a.db.ExecContext(ctx, a.bind(`DROP TABLE "plainauth_api_key_digest"`))
 			must(e)
-			_, e = a.db.ExecContext(ctx, a.bind(`CREATE TABLE "stonewrit_api_key_digest" ("digest" varchar(64))`))
+			_, e = a.db.ExecContext(ctx, a.bind(`CREATE TABLE "plainauth_api_key_digest" ("digest" varchar(64))`))
 			must(e)
 			if e := open().PrepareAPIKeyLedger(ctx); e == nil {
 				t.Fatal("ledger without a binary primary key passed validation")

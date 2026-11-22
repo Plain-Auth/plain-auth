@@ -15,7 +15,7 @@ import (
 	"path"
 	"strings"
 
-	authn "github.com/Stonewrit/stonewrit-auth"
+	authn "github.com/Plain-Auth/plain-auth"
 	"golang.org/x/net/publicsuffix"
 )
 
@@ -75,7 +75,7 @@ func New(baseURL string, httpClient *http.Client) (*Client, error) {
 
 // Do calls an API endpoint under the client's auth mount. Route starts with "/"
 // and may include a query. Non-nil input is encoded as JSON. Supply a pointer
-// for output, or nil to discard the response. HTTP errors match *stonewrit.APIError through errors.As.
+// for output, or nil to discard the response. HTTP errors match *plainauth.APIError through errors.As.
 func (c *Client) Do(ctx context.Context, method, route string, input, output any) error {
 	_, err := c.DoWithHeaders(ctx, method, route, input, output)
 	return err

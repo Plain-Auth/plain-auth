@@ -1,4 +1,4 @@
-package stonewrit_test
+package plainauth_test
 
 import (
 	"context"
@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	authn "github.com/Stonewrit/stonewrit-auth"
+	authn "github.com/Plain-Auth/plain-auth"
 )
 
 func TestAccountRecoveryAndProfile(t *testing.T) {

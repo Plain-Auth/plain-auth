@@ -22,7 +22,7 @@ import (
     "os"
     "time"
 
-    "github.com/Stonewrit/stonewrit-auth/integrations/polar"
+    "github.com/Plain-Auth/plain-auth/integrations/polar"
     polargo "github.com/polarsource/polar-go"
 )
 
@@ -80,7 +80,7 @@ async function checkout() {
 
 Reuse the same `Idempotency-Key` for every retry of a purchase. Each owner has an independent key space. A changed product, contact email or callback configuration conflicts with the original reservation. Without a key, the integration uses a stable owner/product reservation. Supply a fresh explicit key for a deliberate subsequent purchase after the earlier checkout has completed, failed or expired.
 
-StoneWrit commits the reservation before asking Polar to create a checkout. Only one request sends that POST, including across processes. A lost response returns `409 POLAR_CHECKOUT_PENDING`. A verified checkout event can complete the reservation. An operator who knows the checkout UUID can also call `billing.ReconcileCheckout(ctx, checkoutID)`. This reads Polar’s checkout and validates the merchant, customer, product, destinations and server-generated attempt metadata. The original owner can then retry the same request to obtain an open checkout’s URL. If a process dies before sending the request, a pending reservation may have no remote counterpart. Confirm its absence with the merchant before starting a new purchase. Digests and reservation records survive restart.
+Plain Auth commits the reservation before asking Polar to create a checkout. Only one request sends that POST, including across processes. A lost response returns `409 POLAR_CHECKOUT_PENDING`. A verified checkout event can complete the reservation. An operator who knows the checkout UUID can also call `billing.ReconcileCheckout(ctx, checkoutID)`. This reads Polar’s checkout and validates the merchant, customer, product, destinations and server-generated attempt metadata. The original owner can then retry the same request to obtain an open checkout’s URL. If a process dies before sending the request, a pending reservation may have no remote counterpart. Confirm its absence with the merchant before starting a new purchase. Digests and reservation records survive restart.
 
 ## Receive verified deliveries
 
@@ -104,9 +104,9 @@ Portal: &polar.PortalOptions{
 
 Use a same-origin request to `GET /api/auth/customer/portal` or `POST /api/auth/customer/portal`. POST accepts an optional boolean `redirect` which defaults to true. Both methods return `{url, redirect}`. Navigate to the returned URL to open the customer’s Polar account. Treat it as a credential until Polar’s session expires and keep it out of logs or analytics. GET requests authenticated with a cookie must carry same-origin fetch metadata or a trusted Origin or Referer. A native caller using a configured signed bearer session can send an Authorization header.
 
-Polar selects the customer using the immutable external ID of the signed-in account. StoneWrit verifies the returned individual customer, merchant, session expiry, configured portal path and token before handing out the URL. It rechecks the direct auth session when the provider responds. A completed checkout in this installation is optional for customers already bound to the same merchant and external ID.
+Polar selects the customer using the immutable external ID of the signed-in account. Plain Auth verifies the returned individual customer, merchant, session expiry, configured portal path and token before handing out the URL. It rechecks the direct auth session when the provider responds. A completed checkout in this installation is optional for customers already bound to the same merchant and external ID.
 
-The hosted portal covers that customer’s purchases across this Polar merchant. The checkout product allowlist controls new purchases initiated by StoneWrit. Organization customers and caller-supplied customer or merchant selectors are unsupported.
+The hosted portal covers that customer’s purchases across this Polar merchant. The checkout product allowlist controls new purchases initiated by Plain Auth. Organization customers and caller-supplied customer or merchant selectors are unsupported.
 
 ## Read the customer’s billing summary
 

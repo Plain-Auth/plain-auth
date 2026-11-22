@@ -4,7 +4,7 @@ import (
 	"context"
 	"net/http"
 
-	org "github.com/Stonewrit/stonewrit-auth/plugins/organization"
+	org "github.com/Plain-Auth/plain-auth/plugins/organization"
 )
 
 // RemoveOrganizationMember removes a member by membership ID or email. An empty

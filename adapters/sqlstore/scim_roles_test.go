@@ -8,10 +8,10 @@ import (
 	"testing"
 	"time"
 
-	auth "github.com/Stonewrit/stonewrit-auth"
-	org "github.com/Stonewrit/stonewrit-auth/plugins/organization"
-	"github.com/Stonewrit/stonewrit-auth/plugins/scim"
-	"github.com/Stonewrit/stonewrit-auth/schema"
+	auth "github.com/Plain-Auth/plain-auth"
+	org "github.com/Plain-Auth/plain-auth/plugins/organization"
+	"github.com/Plain-Auth/plain-auth/plugins/scim"
+	"github.com/Plain-Auth/plain-auth/schema"
 )
 
 func TestSCIMUserRoleProfile(t *testing.T) {

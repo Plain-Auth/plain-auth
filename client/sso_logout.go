@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"net/url"
 
-	auth "github.com/Stonewrit/stonewrit-auth"
-	"github.com/Stonewrit/stonewrit-auth/plugins/sso"
+	auth "github.com/Plain-Auth/plain-auth"
+	"github.com/Plain-Auth/plain-auth/plugins/sso"
 )
 
 // StartSAMLLogout revokes this browser's recorded SAML session and returns

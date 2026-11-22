@@ -11,9 +11,9 @@ import (
 	"testing"
 	"time"
 
-	authn "github.com/Stonewrit/stonewrit-auth"
-	"github.com/Stonewrit/stonewrit-auth/plugins/deviceauthorization"
-	"github.com/Stonewrit/stonewrit-auth/schema"
+	authn "github.com/Plain-Auth/plain-auth"
+	"github.com/Plain-Auth/plain-auth/plugins/deviceauthorization"
+	"github.com/Plain-Auth/plain-auth/schema"
 )
 
 func TestDeviceAuthorizationFlow(t *testing.T) {

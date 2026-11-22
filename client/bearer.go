@@ -16,7 +16,7 @@ func (c *Client) WithBearerToken(token string) (*Client, error) {
 		return !(r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' ||
 			r >= '0' && r <= '9' || strings.ContainsRune(symbols, r))
 	}) {
-		return nil, errors.New("stonewrit/client: invalid bearer credential")
+		return nil, errors.New("plainauth/client: invalid bearer credential")
 	}
 	h := &http.Client{
 		Transport: c.http.Transport, Timeout: c.http.Timeout,

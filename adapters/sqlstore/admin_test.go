@@ -11,11 +11,11 @@ import (
 	"testing"
 	"time"
 
-	authn "github.com/Stonewrit/stonewrit-auth"
-	"github.com/Stonewrit/stonewrit-auth/client"
-	"github.com/Stonewrit/stonewrit-auth/plugins/admin"
-	"github.com/Stonewrit/stonewrit-auth/plugins/bearer"
-	"github.com/Stonewrit/stonewrit-auth/schema"
+	authn "github.com/Plain-Auth/plain-auth"
+	"github.com/Plain-Auth/plain-auth/client"
+	"github.com/Plain-Auth/plain-auth/plugins/admin"
+	"github.com/Plain-Auth/plain-auth/plugins/bearer"
+	"github.com/Plain-Auth/plain-auth/schema"
 )
 
 func TestAdminLifecycleAcrossEngines(t *testing.T) {

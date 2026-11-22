@@ -7,10 +7,10 @@ An authenticated user can update their name or profile image, verify their curre
 Set either sender on `Options`. Each callback receives the request context and a `MailLink` containing the destination user, a complete URL, and the token. Deliver the URL only to the address on `link.User.Email`. For example, an application with an existing `mailer` can set the following options.
 
 ```go
-opts.SendResetPassword = func(ctx context.Context, link stonewrit.MailLink) error {
+opts.SendResetPassword = func(ctx context.Context, link plainauth.MailLink) error {
 	return mailer.Send(ctx, link.User.Email, "Reset your password", link.URL)
 }
-opts.SendVerificationEmail = func(ctx context.Context, link stonewrit.MailLink) error {
+opts.SendVerificationEmail = func(ctx context.Context, link plainauth.MailLink) error {
 	return mailer.Send(ctx, link.User.Email, "Verify your email", link.URL)
 }
 opts.RevokeSessionsOnPasswordReset = true
@@ -48,7 +48,7 @@ An active ban or enrolled second factor permits mailbox verification alone. Requ
 Set `Options.OnPasswordReset` to run a synchronous host callback after email-link, email-code or phone-code recovery. It receives the winning account and request context. The mounted HTTP endpoint also passes a copy of the request URL and headers with an empty body. Direct calls to `ResetPassword`, `ResetPasswordEmailOTP` and `ResetPhonePassword` pass a nil request.
 
 ```go
-opts.OnPasswordReset = func(ctx context.Context, user stonewrit.User, request *http.Request) error {
+opts.OnPasswordReset = func(ctx context.Context, user plainauth.User, request *http.Request) error {
     return sendPasswordChangedNotice(ctx, user.Email)
 }
 ```
@@ -98,4 +98,4 @@ Set `Options.BeforeEmailVerification` and `Options.AfterEmailVerification` indep
 
 For ordinary links, a before-hook error leaves verification pending and the same link can be retried until expiry. Email verification and change codes are spent before the before hook. A rejected code operation needs a fresh code. An after-hook error leaves the mailbox change committed. Each route waits for the after hook before issuing or refreshing browser credentials. Code-based sign-in and password recovery follow their own callback policies. [Browser compatibility tests](../conformance/email-verification-observers.mjs)
 
-The built-in adapters release locks before calling application code. Simultaneous link requests can both inspect the unverified profile in their before hooks. Use that hook for repeatable checks. Only the request that commits ordinary verification runs the after hook. A process interruption between the commit and the callback can interrupt delivery. An expiring, single-use receipt binds each delayed OTP change or session grant to its original proof, owner and proposed operation. Callback failures discard the corresponding receipt. When granting a session after a callback, StoneWrit rechecks the verified account, session authority and applicable sign-in restrictions. Custom adapters that enable these callbacks implement `EmailVerificationObserverStore` and, when using the email-code plugin, `EmailOTPVerificationObserverStore`. [Storage and concurrency tests](../adapters/sqlstore/email_verification_observers_test.go)
+The built-in adapters release locks before calling application code. Simultaneous link requests can both inspect the unverified profile in their before hooks. Use that hook for repeatable checks. Only the request that commits ordinary verification runs the after hook. A process interruption between the commit and the callback can interrupt delivery. An expiring, single-use receipt binds each delayed OTP change or session grant to its original proof, owner and proposed operation. Callback failures discard the corresponding receipt. When granting a session after a callback, Plain Auth rechecks the verified account, session authority and applicable sign-in restrictions. Custom adapters that enable these callbacks implement `EmailVerificationObserverStore` and, when using the email-code plugin, `EmailOTPVerificationObserverStore`. [Storage and concurrency tests](../adapters/sqlstore/email_verification_observers_test.go)

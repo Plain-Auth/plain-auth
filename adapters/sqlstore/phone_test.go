@@ -11,11 +11,11 @@ import (
 	"testing"
 	"time"
 
-	auth "github.com/Stonewrit/stonewrit-auth"
-	"github.com/Stonewrit/stonewrit-auth/adapters/memory"
-	"github.com/Stonewrit/stonewrit-auth/client"
-	"github.com/Stonewrit/stonewrit-auth/plugins/phonenumber"
-	"github.com/Stonewrit/stonewrit-auth/schema"
+	auth "github.com/Plain-Auth/plain-auth"
+	"github.com/Plain-Auth/plain-auth/adapters/memory"
+	"github.com/Plain-Auth/plain-auth/client"
+	"github.com/Plain-Auth/plain-auth/plugins/phonenumber"
+	"github.com/Plain-Auth/plain-auth/schema"
 )
 
 func phoneStores(t *testing.T, dialect string) (auth.Store, auth.Store) {

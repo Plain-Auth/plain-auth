@@ -6,7 +6,7 @@ import (
 	"errors"
 	"time"
 
-	authn "github.com/Stonewrit/stonewrit-auth"
+	authn "github.com/Plain-Auth/plain-auth"
 )
 
 var _ authn.SessionRefreshStore = (*Store)(nil)

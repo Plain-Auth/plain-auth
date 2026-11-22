@@ -7,7 +7,7 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/Stonewrit/stonewrit-auth/plugins/sso"
+	"github.com/Plain-Auth/plain-auth/plugins/sso"
 )
 
 // Use a compact JSON string to retain the metadata document verbatim. The

@@ -4,7 +4,7 @@ import (
 	"context"
 	"net/http"
 
-	auth "github.com/Stonewrit/stonewrit-auth"
+	auth "github.com/Plain-Auth/plain-auth"
 )
 
 // MemberUser is the public user returned by email lookup and self-leave.

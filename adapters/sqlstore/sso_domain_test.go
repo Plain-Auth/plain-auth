@@ -14,10 +14,10 @@ import (
 	"testing"
 	"time"
 
-	auth "github.com/Stonewrit/stonewrit-auth"
-	"github.com/Stonewrit/stonewrit-auth/client"
-	"github.com/Stonewrit/stonewrit-auth/plugins/sso"
-	"github.com/Stonewrit/stonewrit-auth/schema"
+	auth "github.com/Plain-Auth/plain-auth"
+	"github.com/Plain-Auth/plain-auth/client"
+	"github.com/Plain-Auth/plain-auth/plugins/sso"
+	"github.com/Plain-Auth/plain-auth/schema"
 )
 
 type dnsAnswers struct {
@@ -157,7 +157,7 @@ func TestEnterpriseDomainVerification(t *testing.T) {
 			if reg.DomainVerified == nil || *reg.DomainVerified || len(reg.DomainVerificationToken) != 24 || reg.Domain != "proof.example,second.example" {
 				t.Fatal("missing registration challenge or normalized domain")
 			}
-			const label = "_stonewrit-auth-token-corp"
+			const label = "_plain-auth-token-corp"
 			token := reg.DomainVerificationToken
 			var expires, created time.Time
 			must(b.db.QueryRowContext(ctx, b.bind(`SELECT "expiresAt","createdAt" FROM "verification" WHERE "identifier"=? AND "value"=?`), label, token).Scan(&expires, &created))
@@ -418,7 +418,7 @@ func TestEnterpriseDomainVerification(t *testing.T) {
 			config.Domain = "authority.example"
 			directory, e := one.RegisterOIDCProvider(ctx, config)
 			must(e)
-			const authLabel = "_stonewrit-auth-token-authority"
+			const authLabel = "_plain-auth-token-authority"
 			dns.put(authLabel+".authority.example.", directory.DomainVerificationToken)
 			change := func(key, value string) {
 				var raw string

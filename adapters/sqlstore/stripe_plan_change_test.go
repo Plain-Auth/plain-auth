@@ -12,11 +12,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Stonewrit/stonewrit-auth"
-	"github.com/Stonewrit/stonewrit-auth/client"
-	stripeclient "github.com/Stonewrit/stonewrit-auth/client/stripe"
-	billing "github.com/Stonewrit/stonewrit-auth/plugins/stripe"
-	"github.com/Stonewrit/stonewrit-auth/schema"
+	"github.com/Plain-Auth/plain-auth"
+	"github.com/Plain-Auth/plain-auth/client"
+	stripeclient "github.com/Plain-Auth/plain-auth/client/stripe"
+	billing "github.com/Plain-Auth/plain-auth/plugins/stripe"
+	"github.com/Plain-Auth/plain-auth/schema"
 	sdk "github.com/stripe/stripe-go/v87"
 )
 
@@ -122,7 +122,7 @@ func TestHostedSubscriptionPlanChanges(t *testing.T) {
 			remote := sdk.NewClient("sk_test_local", sdk.WithBackends(backends))
 			stripePlugin := billing.New(billing.Options{WebhookSecret: "whsec_local",
 				Subscriptions: &billing.SubscriptionOptions{Client: remote, Plans: []billing.Plan{{Name: "pro", PriceID: "price_pro"}, {Name: "team", PriceID: "price_team", AnnualPriceID: "price_team_year"}}}})
-			auth, err := stonewrit.New(stonewrit.Options{BaseURL: origin, Secret: strings.Repeat("s", 32), EmailAndPassword: true, Store: db, Plugins: []stonewrit.Plugin{stripePlugin}})
+			auth, err := plainauth.New(plainauth.Options{BaseURL: origin, Secret: strings.Repeat("s", 32), EmailAndPassword: true, Store: db, Plugins: []plainauth.Plugin{stripePlugin}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -153,7 +153,7 @@ func TestHostedSubscriptionPlanChanges(t *testing.T) {
 			request := stripeclient.Checkout{Plan: "team", SubscriptionID: "sub_owner", ReturnURL: "/billing/done", DisableRedirect: true}
 			mustCode := func(err error, status int, code string) {
 				t.Helper()
-				var api *stonewrit.APIError
+				var api *plainauth.APIError
 				if !errors.As(err, &api) || api.Status != status || api.Code != code {
 					t.Fatalf("want %d %s, got %v", status, code, err)
 				}

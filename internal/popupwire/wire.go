@@ -1,7 +1,7 @@
 // Package popupwire defines the popup protocol shared by the handler and browser clients.
 package popupwire
 
-const MessageType = "stonewrit:oauth-popup"
+const MessageType = "plainauth:oauth-popup"
 const DataElementID = "oauth-popup-data"
 const MarkerCookie = "oauth_popup"
 const CompletionScript = `(() => {

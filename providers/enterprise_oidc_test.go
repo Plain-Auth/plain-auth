@@ -15,8 +15,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Stonewrit/stonewrit-auth"
-	"github.com/Stonewrit/stonewrit-auth/adapters/sqlite"
+	"github.com/Plain-Auth/plain-auth"
+	"github.com/Plain-Auth/plain-auth/adapters/sqlite"
 	"golang.org/x/oauth2"
 )
 
@@ -33,7 +33,7 @@ func TestEnterpriseOIDCPresets(t *testing.T) {
 	if err = json.Unmarshal(data, &cases); err != nil {
 		t.Fatal(err)
 	}
-	presets := map[string]func(context.Context, string, string, string) (stonewrit.OAuthProvider, error){"auth0": Auth0, "keycloak": Keycloak, "okta": Okta}
+	presets := map[string]func(context.Context, string, string, string) (plainauth.OAuthProvider, error){"auth0": Auth0, "keycloak": Keycloak, "okta": Okta}
 	for _, tc := range cases {
 		t.Run(tc.Name, func(t *testing.T) {
 			base := strings.TrimRight(tc.Issuer, "/")
@@ -75,7 +75,7 @@ func TestEnterpriseOIDCPresets(t *testing.T) {
 				t.Fatal(err)
 			}
 			defer db.Close()
-			instance, err := stonewrit.New(stonewrit.Options{Store: db, BaseURL: "https://app.example", BasePath: "/identity", Secret: strings.Repeat("x", 32), SocialProviders: map[string]stonewrit.OAuthProvider{tc.Name: provider}})
+			instance, err := plainauth.New(plainauth.Options{Store: db, BaseURL: "https://app.example", BasePath: "/identity", Secret: strings.Repeat("x", 32), SocialProviders: map[string]plainauth.OAuthProvider{tc.Name: provider}})
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -8,8 +8,8 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/Stonewrit/stonewrit-auth/internal/polarledger"
-	"github.com/Stonewrit/stonewrit-auth/internal/sessionfields"
+	"github.com/Plain-Auth/plain-auth/internal/polarledger"
+	"github.com/Plain-Auth/plain-auth/internal/sessionfields"
 )
 
 //go:embed catalog.json

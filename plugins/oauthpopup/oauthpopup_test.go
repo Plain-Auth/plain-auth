@@ -12,31 +12,31 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Stonewrit/stonewrit-auth"
-	"github.com/Stonewrit/stonewrit-auth/adapters/sqlite"
-	"github.com/Stonewrit/stonewrit-auth/plugins/oauthpopup"
-	"github.com/Stonewrit/stonewrit-auth/plugins/openapi"
+	"github.com/Plain-Auth/plain-auth"
+	"github.com/Plain-Auth/plain-auth/adapters/sqlite"
+	"github.com/Plain-Auth/plain-auth/plugins/oauthpopup"
+	"github.com/Plain-Auth/plain-auth/plugins/openapi"
 	"golang.org/x/oauth2"
 )
 
 const authBase = "https://identity.example"
 const opener = "https://app.example"
 
-func service(t *testing.T, enabled bool, configured ...oauthpopup.Options) *stonewrit.Auth {
+func service(t *testing.T, enabled bool, configured ...oauthpopup.Options) *plainauth.Auth {
 	t.Helper()
 	store, err := sqlite.Open(":memory:")
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { store.Close() })
-	opts := stonewrit.Options{BaseURL: authBase, BasePath: "/identity", TrustedOrigins: []string{opener},
+	opts := plainauth.Options{BaseURL: authBase, BasePath: "/identity", TrustedOrigins: []string{opener},
 		Store: store, Secret: strings.Repeat("k", 32),
-		SocialProviders: map[string]stonewrit.OAuthProvider{"work": {Config: oauth2.Config{ClientID: "client", Endpoint: oauth2.Endpoint{AuthURL: "https://issuer.example/authorize", TokenURL: "https://issuer.example/token"}},
+		SocialProviders: map[string]plainauth.OAuthProvider{"work": {Config: oauth2.Config{ClientID: "client", Endpoint: oauth2.Endpoint{AuthURL: "https://issuer.example/authorize", TokenURL: "https://issuer.example/token"}},
 			ExchangeCode: func(_ context.Context, _ oauth2.Config, _ string, _ string, _ url.Values) (*oauth2.Token, error) {
 				return &oauth2.Token{AccessToken: "local"}, nil
 			},
-			Resolve: func(_ context.Context, _ *oauth2.Token, _ string) (stonewrit.OAuthProfile, error) {
-				return stonewrit.OAuthProfile{Subject: "local", Email: "local@example.test", Name: "Local", EmailVerified: true}, nil
+			Resolve: func(_ context.Context, _ *oauth2.Token, _ string) (plainauth.OAuthProfile, error) {
+				return plainauth.OAuthProfile{Subject: "local", Email: "local@example.test", Name: "Local", EmailVerified: true}, nil
 			},
 		}}}
 	if enabled {
@@ -47,11 +47,11 @@ func service(t *testing.T, enabled bool, configured ...oauthpopup.Options) *ston
 				t.Fatal(err)
 			}
 		}
-		opts.Plugins = []stonewrit.Plugin{popup, {ID: "host-cookie", OnSessionCookie: func(e stonewrit.SessionCookieEvent) {
+		opts.Plugins = []plainauth.Plugin{popup, {ID: "host-cookie", OnSessionCookie: func(e plainauth.SessionCookieEvent) {
 			e.Header.Add("Set-Cookie", "host_marker=1; Path=/; HttpOnly")
 		}}}
 	}
-	a, err := stonewrit.New(opts)
+	a, err := plainauth.New(opts)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -1,5 +1,5 @@
 {
-  "name": "stonewrit-auth-conformance",
+  "name": "plain-auth-conformance",
   "private": true,
   "type": "module",
   "scripts": {

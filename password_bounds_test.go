@@ -1,4 +1,4 @@
-package stonewrit_test
+package plainauth_test
 
 import (
 	"context"
@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	auth "github.com/Stonewrit/stonewrit-auth"
-	"github.com/Stonewrit/stonewrit-auth/adapters/memory"
+	auth "github.com/Plain-Auth/plain-auth"
+	"github.com/Plain-Auth/plain-auth/adapters/memory"
 )
 
 func TestPasswordBoundsBeforeCredentialCallbacks(t *testing.T) {

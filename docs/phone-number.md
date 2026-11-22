@@ -7,13 +7,13 @@ import (
     "context"
     "regexp"
 
-    "github.com/Stonewrit/stonewrit-auth"
-    "github.com/Stonewrit/stonewrit-auth/plugins/phonenumber"
+    "github.com/Plain-Auth/plain-auth"
+    "github.com/Plain-Auth/plain-auth/plugins/phonenumber"
 )
 
 var international = regexp.MustCompile(`^\+[1-9][0-9]{6,14}$`)
 
-func configurePhone(send func(context.Context, phonenumber.Message) error) (stonewrit.Plugin, error) {
+func configurePhone(send func(context.Context, phonenumber.Message) error) (plainauth.Plugin, error) {
     return phonenumber.New(phonenumber.Options{
         SendOTP:              send,
         SendPasswordResetOTP: send,
@@ -25,7 +25,7 @@ func configurePhone(send func(context.Context, phonenumber.Message) error) (ston
 }
 ```
 
-Add the returned plugin to `stonewrit.Options.Plugins`. Supply a sender that accepts a context, delivers the code over SMS and returns delivery failures. `Message.Purpose` distinguishes telephone verification from password recovery. Applications choose their canonical number format. The plugin uses the submitted number as its identifier and accepts up to 255 UTF-8 characters. The example accepts a restricted international format.
+Add the returned plugin to `plainauth.Options.Plugins`. Supply a sender that accepts a context, delivers the code over SMS and returns delivery failures. `Message.Purpose` distinguishes telephone verification from password recovery. Applications choose their canonical number format. The plugin uses the submitted number as its identifier and accepts up to 255 UTF-8 characters. The example accepts a restricted international format.
 
 ## Verification and account access
 

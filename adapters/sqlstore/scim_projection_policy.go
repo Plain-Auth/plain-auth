@@ -8,10 +8,10 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/Stonewrit/stonewrit-auth/plugins/scim"
+	"github.com/Plain-Auth/plain-auth/plugins/scim"
 )
 
-const scimPolicyTable = "stonewritSCIMProjectionPolicy"
+const scimPolicyTable = "plainauthSCIMProjectionPolicy"
 
 var errProjectionPolicy = &scim.Error{Status: 409, Detail: "The provisioning domain requires its configured application projection policy"}
 var errUnknownGrant = &scim.Error{Status: 409, Detail: "The provisioning domain contains a grant with unrecognized provenance"}
@@ -32,7 +32,7 @@ func (s *Store) EnableSCIMProjection(ctx context.Context, domain string, policy 
 		return nil, err
 	}
 	if !present {
-		_, err = s.db.ExecContext(ctx, s.bind(`CREATE TABLE IF NOT EXISTS "stonewritSCIMProjectionPolicy" ("domainKey" VARCHAR(43) PRIMARY KEY, "domain" VARCHAR(255) NOT NULL, "policyId" VARCHAR(255) NOT NULL)`))
+		_, err = s.db.ExecContext(ctx, s.bind(`CREATE TABLE IF NOT EXISTS "plainauthSCIMProjectionPolicy" ("domainKey" VARCHAR(43) PRIMARY KEY, "domain" VARCHAR(255) NOT NULL, "policyId" VARCHAR(255) NOT NULL)`))
 		if err != nil {
 			// Two first-time instances may race on PostgreSQL's catalog even
 			// with IF NOT EXISTS. The winning DDL must be committed and visible.
@@ -73,7 +73,7 @@ func (s *Store) EnableSCIMProjection(ctx context.Context, domain string, policy 
 				return nil, &scim.Error{Status: 409, Detail: "The provisioning domain has existing role grants and requires a role mapping policy"}
 			}
 		}
-		_, err = tx.ExecContext(ctx, s.bind(`INSERT INTO "stonewritSCIMProjectionPolicy" ("domainKey","domain","policyId") VALUES (?,?,?)`), scimKey("scim-policy", domain), domain, policy.PolicyID)
+		_, err = tx.ExecContext(ctx, s.bind(`INSERT INTO "plainauthSCIMProjectionPolicy" ("domainKey","domain","policyId") VALUES (?,?,?)`), scimKey("scim-policy", domain), domain, policy.PolicyID)
 		if err == nil {
 			err = configured.projectSCIMDomain(ctx, tx, domain, false)
 		}
@@ -117,7 +117,7 @@ func (s *Store) changeSCIMProjection(ctx context.Context, domain string, disable
 		return err
 	}
 	if disable {
-		if _, err = tx.ExecContext(ctx, s.bind(`DELETE FROM "stonewritSCIMProjectionPolicy" WHERE "domainKey"=?`), scimKey("scim-policy", domain)); err != nil {
+		if _, err = tx.ExecContext(ctx, s.bind(`DELETE FROM "plainauthSCIMProjectionPolicy" WHERE "domainKey"=?`), scimKey("scim-policy", domain)); err != nil {
 			return err
 		}
 	}
@@ -143,7 +143,7 @@ func (s *Store) beginSCIMTransaction(ctx context.Context, domain string, write b
 		// SQLite connections use BEGIN IMMEDIATE.
 		return tx, &transactionEnd{tx: tx}, nil
 	}
-	const name = "SHA2(CONCAT(DATABASE(), '/stonewrit/scim-projection/', ?), 256)"
+	const name = "SHA2(CONCAT(DATABASE(), '/plainauth/scim-projection/', ?), 256)"
 	busy := &scim.Error{Status: 503, Detail: "The provisioning domain is busy. Retry the request."}
 	return s.beginTransactionWithMySQLLock(ctx, &sql.TxOptions{Isolation: sql.LevelReadCommitted}, name, 15, busy, domain)
 }
@@ -153,7 +153,7 @@ func (s *Store) scimPolicyID(ctx context.Context, tx *sql.Tx, domain string) (st
 		return "", err
 	}
 	var stored, id string
-	err = tx.QueryRowContext(ctx, s.bind(`SELECT "domain","policyId" FROM "stonewritSCIMProjectionPolicy" WHERE "domainKey"=?`), scimKey("scim-policy", domain)).Scan(&stored, &id)
+	err = tx.QueryRowContext(ctx, s.bind(`SELECT "domain","policyId" FROM "plainauthSCIMProjectionPolicy" WHERE "domainKey"=?`), scimKey("scim-policy", domain)).Scan(&stored, &id)
 	if errors.Is(err, sql.ErrNoRows) {
 		return "", nil
 	}

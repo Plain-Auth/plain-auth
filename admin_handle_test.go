@@ -1,4 +1,4 @@
-package stonewrit
+package plainauth
 
 import (
 	"strings"

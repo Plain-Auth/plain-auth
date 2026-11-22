@@ -250,7 +250,7 @@
 
 ## SQL dialect integrations
 
-StoneWrit ships SQL adapters for SQLite, PostgreSQL and MySQL. The checklist also tracks additional database drivers and runtimes.
+Plain Auth ships SQL adapters for SQLite, PostgreSQL and MySQL. The checklist also tracks additional database drivers and runtimes.
 
 - [ ] Core Dialects
   - [ ] MySQL

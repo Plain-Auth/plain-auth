@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	auth "github.com/Stonewrit/stonewrit-auth"
+	auth "github.com/Plain-Auth/plain-auth"
 	"github.com/polarsource/polar-go/models/components"
 )
 
@@ -150,7 +150,7 @@ func (s *Service) apply(ctx context.Context, v checkoutSnapshot, d *delivery) er
 			return tx.Commit()
 		}
 	}
-	q := "SELECT " + columns + " FROM stonewrit_polar_checkout WHERE attempt=?"
+	q := "SELECT " + columns + " FROM plainauth_polar_checkout WHERE attempt=?"
 	if l.dialect != "sqlite" {
 		q += " FOR UPDATE"
 	}
@@ -172,7 +172,7 @@ func (s *Service) apply(ctx context.Context, v checkoutSnapshot, d *delivery) er
 	// Once checkout ends, a delayed snapshot cannot reopen it. Notification ordering is local to the checkout.
 	stale := change.UnixMicro() < row.Changed || terminal(row.Status) && row.Status != v.Status || row.Status == "confirmed" && v.Status == "open"
 	if !stale {
-		q = `UPDATE stonewrit_polar_checkout SET checkout_id=?,hosted_url=?,status=?,expires_ms=?,changed_us=? WHERE slot=?`
+		q = `UPDATE plainauth_polar_checkout SET checkout_id=?,hosted_url=?,status=?,expires_ms=?,changed_us=? WHERE slot=?`
 		if _, err = tx.ExecContext(ctx, l.bind(q), v.ID, v.URL, v.Status, v.Expires.UnixMilli(), change.UnixMicro(), row.Slot); err != nil {
 			return err
 		}

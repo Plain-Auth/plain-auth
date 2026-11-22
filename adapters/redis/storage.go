@@ -15,7 +15,7 @@ import (
 )
 
 // DefaultPrefix is used when New is given an empty prefix.
-const DefaultPrefix = "stonewrit:"
+const DefaultPrefix = "plainauth:"
 
 type Store struct {
 	client          *redis.Client

@@ -13,12 +13,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Stonewrit/stonewrit-auth"
-	"github.com/Stonewrit/stonewrit-auth/adapters/sqlstore"
-	"github.com/Stonewrit/stonewrit-auth/plugins/bearer"
-	"github.com/Stonewrit/stonewrit-auth/plugins/openapi"
-	"github.com/Stonewrit/stonewrit-auth/plugins/sso"
-	"github.com/Stonewrit/stonewrit-auth/schema"
+	"github.com/Plain-Auth/plain-auth"
+	"github.com/Plain-Auth/plain-auth/adapters/sqlstore"
+	"github.com/Plain-Auth/plain-auth/plugins/bearer"
+	"github.com/Plain-Auth/plain-auth/plugins/openapi"
+	"github.com/Plain-Auth/plain-auth/plugins/sso"
+	"github.com/Plain-Auth/plain-auth/schema"
 )
 
 func TestEnterpriseDirectoryOpenAPI(t *testing.T) {
@@ -44,7 +44,7 @@ func TestEnterpriseDirectoryOpenAPI(t *testing.T) {
 			must(e)
 			reference, e := openapi.New(openapi.Options{})
 			must(e)
-			host, e := stonewrit.New(stonewrit.Options{BaseURL: origin, BasePath: "/identity", Store: store, Secret: strings.Repeat("a", 48), CookiePrefix: "portal", EmailAndPassword: true, RateLimit: new(bool), Plugins: []stonewrit.Plugin{directory, reference, bearer.New(bearer.Options{RequireSignature: true})}})
+			host, e := plainauth.New(plainauth.Options{BaseURL: origin, BasePath: "/identity", Store: store, Secret: strings.Repeat("a", 48), CookiePrefix: "portal", EmailAndPassword: true, RateLimit: new(bool), Plugins: []plainauth.Plugin{directory, reference, bearer.New(bearer.Options{RequireSignature: true})}})
 			must(e)
 			wire := ssoWire{t, host, origin}
 			paths := node(wire.decode(wire.call("GET", "/open-api/generate-schema", nil, nil, 200)), "paths")
@@ -196,7 +196,7 @@ func TestEnterpriseSAMLDocumentation(t *testing.T) {
 			t.Fatal(err)
 		}
 		const origin = "https://saml.example.test"
-		host, err := stonewrit.New(stonewrit.Options{BaseURL: origin, BasePath: "/identity", Store: store, Secret: strings.Repeat("a", 48), CookiePrefix: "portal", Plugins: []stonewrit.Plugin{plugin, reference}})
+		host, err := plainauth.New(plainauth.Options{BaseURL: origin, BasePath: "/identity", Store: store, Secret: strings.Repeat("a", 48), CookiePrefix: "portal", Plugins: []plainauth.Plugin{plugin, reference}})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -271,7 +271,7 @@ func TestEnterpriseSAMLDocumentation(t *testing.T) {
 		if (len(required) == 1) != (mode == "portal") || params[1].(obj)["required"] != (mode != "portal") {
 			t.Fatal("correlation requirements for", mode)
 		}
-		if mode == "portal" && (len(params) != 3 || params[2].(obj)["name"] != "Origin" || op["x-stonewrit-idp-initiated"] != true) {
+		if mode == "portal" && (len(params) != 3 || params[2].(obj)["name"] != "Origin" || op["x-plainauth-idp-initiated"] != true) {
 			t.Fatal("missing reviewed portal origin")
 		}
 

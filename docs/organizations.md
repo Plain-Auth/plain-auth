@@ -23,9 +23,9 @@ org, err := organization.New(organization.Options{
 if err != nil {
     return err
 }
-auth, err := stonewrit.New(stonewrit.Options{
+auth, err := plainauth.New(plainauth.Options{
     Store: store, BaseURL: origin, Secret: secret, EmailAndPassword: true,
-    Plugins: []stonewrit.Plugin{org},
+    Plugins: []plainauth.Plugin{org},
 })
 ```
 
@@ -115,7 +115,7 @@ organizations, err := organization.NewService(organization.Options{Store: store}
 if err != nil {
     return err
 }
-// Include organizations.Plugin() in stonewrit.Options.Plugins at startup.
+// Include organizations.Plugin() in plainauth.Options.Plugins at startup.
 // After your application has authorized this specific grant:
 member, err := organizations.AddMember(ctx, organization.AddMemberRequest{
     OrganizationID: organizationID,

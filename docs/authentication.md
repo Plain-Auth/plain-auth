@@ -21,7 +21,7 @@ Set `Options.DisabledPaths` to a list of exact paths relative to your auth mount
 
 ```go
 opts.DisabledPaths = []string{"/sign-up/email", "/is-username-available"}
-auth, err := stonewrit.New(opts)
+auth, err := plainauth.New(opts)
 ```
 
 If the mount is `/identity`, a request to `/identity/sign-up/email` returns 404 before the handler reads credentials, charges a rate limit or runs a request hook. Query parameters and trailing slashes do not change the selection. Supply concrete paths for individual OAuth callbacks or SCIM resources. A collection entry such as `/scim/v2/Users` leaves individual resources separately addressable. Fixed disabled routes are omitted from the generated OpenAPI document. Native Go methods remain available to the host. [HTTP routing tests](../disabled_paths_test.go) · [SCIM tests](../plugins/scim/http_test.go)
@@ -58,18 +58,18 @@ Set `Options.OnExistingUserSignUp` when `RequireEmailVerification` or `DisableAu
 
 ```go
 opts.RequireEmailVerification = true
-opts.OnExistingUserSignUp = func(ctx context.Context, owner stonewrit.User, request *http.Request) error {
+opts.OnExistingUserSignUp = func(ctx context.Context, owner plainauth.User, request *http.Request) error {
     return notifications.EnqueueExistingSignUp(ctx, owner.ID, owner.Email)
 }
 ```
 
-StoneWrit waits for the observer after the insert attempt has released its transaction. Enqueuing a short notification job keeps delivery latency out of the sign-up request. Each duplicate attempt can emit a notification, including concurrent retries. Observer errors and panics produce a fixed diagnostic and preserve the private response. If the mailbox disappears before it can be read, the observer is skipped.
+Plain Auth waits for the observer after the insert attempt has released its transaction. Enqueuing a short notification job keeps delivery latency out of the sign-up request. Each duplicate attempt can emit a notification, including concurrent retries. Observer errors and panics produce a fixed diagnostic and preserve the private response. If the mailbox disappears before it can be read, the observer is skipped.
 
-The callback receives the call’s context and the stored public account fields, including ID, name, email, verification status, image and timestamps. A mounted request supplies a copy of its URL and headers with an empty body. Direct calls to `SignUpEmail` pass a nil request. Third-party stores using this option in protected mode must implement `FindAccountUser(context.Context, string) (stonewrit.User, error)` to read the mailbox owner independently of its sign-in methods.
+The callback receives the call’s context and the stored public account fields, including ID, name, email, verification status, image and timestamps. A mounted request supplies a copy of its URL and headers with an empty body. Direct calls to `SignUpEmail` pass a nil request. Third-party stores using this option in protected mode must implement `FindAccountUser(context.Context, string) (plainauth.User, error)` to read the mailbox owner independently of its sign-in methods.
 
 ## Use an existing password database
 
-Stonewrit stores a salted scrypt hash on the credential account. The built-in format uses NFKC normalization, a 16-byte random salt encoded as hex, and scrypt with N=16384, r=16, p=1 and a 64-byte key. To use a host-managed format, set `Options.PasswordHash` and `Options.PasswordVerify` before calling `stonewrit.New`. Each callback receives the request context. A nil callback uses the built-in implementation for that operation.
+Plain Auth stores a salted scrypt hash on the credential account. The built-in format uses NFKC normalization, a 16-byte random salt encoded as hex, and scrypt with N=16384, r=16, p=1 and a 64-byte key. To use a host-managed format, set `Options.PasswordHash` and `Options.PasswordVerify` before calling `plainauth.New`. Each callback receives the request context. A nil callback uses the built-in implementation for that operation.
 
 For a gradual migration, have your verifier recognize both stored formats. The example assumes the application has a `credentials` service whose encoded hashes start with `v2$`.
 
@@ -79,7 +79,7 @@ opts.PasswordVerify = func(ctx context.Context, encoded, password string) (bool,
     if strings.HasPrefix(encoded, "v2$") {
         return credentials.Verify(ctx, encoded, password)
     }
-    return stonewrit.VerifyPasswordHash(ctx, encoded, password)
+    return plainauth.VerifyPasswordHash(ctx, encoded, password)
 }
 ```
 
@@ -92,8 +92,8 @@ Existing accounts keep their stored credentials until a password-setting operati
 `RateLimitDefault` controls routes without a built-in or plugin rule. `RateLimitRules` overrides all other rules. The most specific match wins. An exact path takes priority over a trailing `/*` pattern. A nil rule exempts a route. The rules apply to HTTP requests.
 
 ```go
-opts.RateLimitDefault = &stonewrit.RateLimitRule{Max: 100, Window: time.Minute}
-opts.RateLimitRules = map[string]*stonewrit.RateLimitRule{
+opts.RateLimitDefault = &plainauth.RateLimitRule{Max: 100, Window: time.Minute}
+opts.RateLimitRules = map[string]*plainauth.RateLimitRule{
     "/sign-in/*": {Max: 3, Window: 10 * time.Second},
     "/get-session": nil,
 }
@@ -128,7 +128,7 @@ Cookies are host-only by default. To share a login from `auth.example.com` with 
 
 ```go
 opts.BaseURL = "https://auth.example.com"
-opts.CrossSubDomainCookies = &stonewrit.CrossSubDomainCookiesOptions{Domain: "example.com"}
+opts.CrossSubDomainCookies = &plainauth.CrossSubDomainCookiesOptions{Domain: "example.com"}
 opts.TrustedOrigins = []string{"https://app.example.com"}
 ```
 
@@ -145,8 +145,8 @@ With the browser cache disabled (the default), `GET /get-session` expires the ca
 To cache the public session view on the browser, set the option before constructing the handler.
 
 ```go
-opts.SessionCookieCache = &stonewrit.SessionCookieCacheOptions{
-    Strategy: stonewrit.SessionCacheJWE,
+opts.SessionCookieCache = &plainauth.SessionCookieCacheOptions{
+    Strategy: plainauth.SessionCacheJWE,
     MaxAge:   5 * time.Minute,
     Version:  "1",
 }
@@ -171,21 +171,21 @@ During migration between implementations, a reader that checks only its active H
 For per-user invalidation, supply a concurrency-safe `VersionFor` callback and use the same revision source on every replica. Choose either a fixed `Version` or `VersionFor`. The callback receives the request context and the session and user that will be written or read. For example, an application can keep a per-account revision in its own store.
 
 ```go
-opts.SessionCookieCache = &stonewrit.SessionCookieCacheOptions{
-    Strategy: stonewrit.SessionCacheJWE,
-    VersionFor: func(ctx context.Context, session stonewrit.Session, user stonewrit.User) (string, error) {
+opts.SessionCookieCache = &plainauth.SessionCookieCacheOptions{
+    Strategy: plainauth.SessionCacheJWE,
+    VersionFor: func(ctx context.Context, session plainauth.Session, user plainauth.User) (string, error) {
         return accountRevisions.Lookup(ctx, user.ID)
     },
 }
 ```
 
-On a cache hit, the callback receives the authenticated snapshot. StoneWrit checks the signature, expiry, ordinary profile fields and session-token binding before passing snapshot data to the callback. An update to a profile in storage therefore becomes visible after the shared revision changes, the snapshot expires, or the caller requests a live read. When the versions differ, StoneWrit reads the session from storage and computes the replacement version using the live data. Return a stable, nonempty revision. An empty stored revision is read as `"1"`, so a callback that always returns an empty string causes a live lookup on every read. [Public client and replica tests](../conformance/session-cache-version.mjs)
+On a cache hit, the callback receives the authenticated snapshot. Plain Auth checks the signature, expiry, ordinary profile fields and session-token binding before passing snapshot data to the callback. An update to a profile in storage therefore becomes visible after the shared revision changes, the snapshot expires, or the caller requests a live read. When the versions differ, Plain Auth reads the session from storage and computes the replacement version using the live data. Return a stable, nonempty revision. An empty stored revision is read as `"1"`, so a callback that always returns an empty string causes a live lookup on every read. [Public client and replica tests](../conformance/session-cache-version.mjs)
 
 A callback error on a session view fails the request. If a version mismatch is already known, the response clears the stale snapshot even when preparing the replacement fails. The combination `disableCookieCache=true&disableRefresh=true` skips cache reads and writes. Native authorization, protected operations, and administrative or JWT-issuing reads use live identity. Give the callback a bounded lookup and keep it free of side effects. Concurrent registration attempts can prepare a version before storage chooses the successful registration. Private duplicate registration and password recovery keep their account observers and skip cache versioning until a session is actually issued. A failed version lookup during new email registration leaves the address available to retry. If the stored profile changes before publication, the browser receives its session credential and the next live view computes a version from the updated profile. [Callback tests](../session_cache_version_test.go) · [Live authorization tests](../adapters/sqlstore/session_cache_test.go)
 
-Custom stores can implement `stonewrit.SessionCacheStore` to permit cached views when current access rules allow them. Other stores use live reads. The expiry and version are fixed for each snapshot. Rolling cache renewal, JWKS-backed public verification of browser snapshots, and global partitioned-cookie defaults remain open.
+Custom stores can implement `plainauth.SessionCacheStore` to permit cached views when current access rules allow them. Other stores use live reads. The expiry and version are fixed for each snapshot. Rolling cache renewal, JWKS-backed public verification of browser snapshots, and global partitioned-cookie defaults remain open.
 
-The Go methods `SignUpEmail`, `SignInEmail`, `GetSession`, `SignOut`, and the session management methods accept a request context. `GetSession(ctx, headers)` distinguishes an absent session from a storage failure. Use `errors.As(err, &apiErr)` with `var apiErr *stonewrit.APIError` to inspect a public error code and HTTP status. Other errors can carry infrastructure details and belong in application logs.
+The Go methods `SignUpEmail`, `SignInEmail`, `GetSession`, `SignOut`, and the session management methods accept a request context. `GetSession(ctx, headers)` distinguishes an absent session from a storage failure. Use `errors.As(err, &apiErr)` with `var apiErr *plainauth.APIError` to inspect a public error code and HTTP status. Other errors can carry infrastructure details and belong in application logs.
 
 See the [cross-runtime conformance test](../conformance/core.test.mjs) and [remaining authentication features](parity/authentication.md).
 

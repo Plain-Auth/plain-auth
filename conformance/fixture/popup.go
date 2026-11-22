@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"net/url"
 
-	auth "github.com/Stonewrit/stonewrit-auth"
+	auth "github.com/Plain-Auth/plain-auth"
 	"golang.org/x/oauth2"
 )
 

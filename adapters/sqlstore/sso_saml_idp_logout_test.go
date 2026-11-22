@@ -12,9 +12,9 @@ import (
 	"testing"
 	"time"
 
-	auth "github.com/Stonewrit/stonewrit-auth"
-	"github.com/Stonewrit/stonewrit-auth/client"
-	"github.com/Stonewrit/stonewrit-auth/plugins/sso"
+	auth "github.com/Plain-Auth/plain-auth"
+	"github.com/Plain-Auth/plain-auth/client"
+	"github.com/Plain-Auth/plain-auth/plugins/sso"
 	"github.com/crewjam/saml"
 )
 
@@ -120,7 +120,7 @@ func testSAMLIDPLogout(t *testing.T, first, peerStore *Store, idp *saml.Identity
 	must(e)
 	domainToken, e := owner.RequestSSODomainVerification(ctx, alternate)
 	must(e)
-	dns.put("_stonewrit-auth-token-"+alternate+".other.example.", domainToken)
+	dns.put("_plain-auth-token-"+alternate+".other.example.", domainToken)
 	must(owner.VerifySSODomain(ctx, alternate))
 	alt, e := first.FindBrowserProvider(ctx, sso.Selector{ProviderID: alternate, Protocol: "saml"})
 	must(e)

@@ -1,7 +1,7 @@
-package stonewrit
+package plainauth
 
 import (
-	"github.com/Stonewrit/stonewrit-auth/internal/sessionfields"
+	"github.com/Plain-Auth/plain-auth/internal/sessionfields"
 	"slices"
 
 	"context"
@@ -20,7 +20,7 @@ import (
 	"time"
 	"unicode/utf16"
 
-	"github.com/Stonewrit/stonewrit-auth/internal/configenv"
+	"github.com/Plain-Auth/plain-auth/internal/configenv"
 )
 
 // Auth is safe for concurrent use by application handlers.

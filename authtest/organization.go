@@ -5,8 +5,8 @@ import (
 	"errors"
 	"slices"
 
-	auth "github.com/Stonewrit/stonewrit-auth"
-	"github.com/Stonewrit/stonewrit-auth/plugins/organization"
+	auth "github.com/Plain-Auth/plain-auth"
+	"github.com/Plain-Auth/plain-auth/plugins/organization"
 )
 
 // OrganizationStore saves ownerless fixture records and removes their local

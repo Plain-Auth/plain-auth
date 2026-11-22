@@ -4,7 +4,7 @@ import (
 	"context"
 	"sync"
 
-	auth "github.com/Stonewrit/stonewrit-auth"
+	auth "github.com/Plain-Auth/plain-auth"
 )
 
 // OTPRecorder keeps the last issued proof for each mailbox or phone number.

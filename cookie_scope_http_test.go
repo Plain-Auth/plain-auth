@@ -1,4 +1,4 @@
-package stonewrit_test
+package plainauth_test
 
 import (
 	"net/http"
@@ -8,9 +8,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Stonewrit/stonewrit-auth"
-	"github.com/Stonewrit/stonewrit-auth/adapters/memory"
-	"github.com/Stonewrit/stonewrit-auth/plugins/lastlogin"
+	"github.com/Plain-Auth/plain-auth"
+	"github.com/Plain-Auth/plain-auth/adapters/memory"
+	"github.com/Plain-Auth/plain-auth/plugins/lastlogin"
 	"golang.org/x/net/publicsuffix"
 )
 
@@ -18,10 +18,10 @@ func TestSharedCookieLoginAndLogoutAcrossHosts(t *testing.T) {
 	const issuer = "https://auth.example.com"
 	const sibling = "https://app.example.com"
 	store := memory.New()
-	opts := stonewrit.Options{Store: store, BaseURL: issuer, Secret: strings.Repeat("x", 32), EmailAndPassword: true, Plugins: []stonewrit.Plugin{lastlogin.New(lastlogin.Options{})}}
-	create := func() *stonewrit.Auth {
+	opts := plainauth.Options{Store: store, BaseURL: issuer, Secret: strings.Repeat("x", 32), EmailAndPassword: true, Plugins: []plainauth.Plugin{lastlogin.New(lastlogin.Options{})}}
+	create := func() *plainauth.Auth {
 		t.Helper()
-		a, err := stonewrit.New(opts)
+		a, err := plainauth.New(opts)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -31,7 +31,7 @@ func TestSharedCookieLoginAndLogoutAcrossHosts(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	do := func(a *stonewrit.Auth, origin, method, path, body string, status int) *httptest.ResponseRecorder {
+	do := func(a *plainauth.Auth, origin, method, path, body string, status int) *httptest.ResponseRecorder {
 		t.Helper()
 		req := httptest.NewRequest(method, origin+"/api/auth/"+path, strings.NewReader(body))
 		if method == "POST" {
@@ -70,7 +70,7 @@ func TestSharedCookieLoginAndLogoutAcrossHosts(t *testing.T) {
 		t.Fatal("unexpected host-only session scope")
 	}
 
-	opts.CrossSubDomainCookies = &stonewrit.CrossSubDomainCookiesOptions{Domain: ".example.com"}
+	opts.CrossSubDomainCookies = &plainauth.CrossSubDomainCookiesOptions{Domain: ".example.com"}
 	shared := create()
 	do(shared, issuer, "POST", "sign-in/email", credentials, 200)
 	if len(cookies(issuer, "session_token")) != 1 || len(cookies(sibling, "session_token")) != 1 || len(cookies(sibling, "dont_remember")) != 1 {

@@ -10,8 +10,8 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/Stonewrit/stonewrit-auth/internal/jsjson"
-	"github.com/Stonewrit/stonewrit-auth/plugins/scim"
+	"github.com/Plain-Auth/plain-auth/internal/jsjson"
+	"github.com/Plain-Auth/plain-auth/plugins/scim"
 )
 
 // Expose transaction operations without exposing commit, rollback or the pool.

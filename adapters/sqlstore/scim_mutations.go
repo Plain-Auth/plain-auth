@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Stonewrit/stonewrit-auth/plugins/scim"
+	"github.com/Plain-Auth/plain-auth/plugins/scim"
 )
 
 type scimTombstone struct{ id, owner, profile string }

@@ -1,16 +1,16 @@
-package stonewrit_test
+package plainauth_test
 
 import (
 	"strings"
 	"testing"
 
-	"github.com/Stonewrit/stonewrit-auth"
-	"github.com/Stonewrit/stonewrit-auth/adapters/memory"
+	"github.com/Plain-Auth/plain-auth"
+	"github.com/Plain-Auth/plain-auth/adapters/memory"
 )
 
 func TestWildcardOriginCallbacks(t *testing.T) {
 	t.Setenv("AUTH_TRUSTED_ORIGINS", "*.store.example,https://preview-?.example:84??")
-	a, err := stonewrit.New(stonewrit.Options{Store: memory.New(), BaseURL: "https://auth.example/login",
+	a, err := plainauth.New(plainauth.Options{Store: memory.New(), BaseURL: "https://auth.example/login",
 		Secret: strings.Repeat("x", 32), TrustedOrigins: []string{
 			"https://*.apps.example", "http://192.168.*.*:*", "https://[::1]:8???",
 			"https://branch.**.example", "https://portal*", "*://common.example:443", "https://media.example:*",
@@ -56,7 +56,7 @@ func TestInvalidWildcardOriginConfiguration(t *testing.T) {
 		"https://*.shop.example:65536", "https://*.shop.example:", "https://*.shop.example:8x", "ftp://*.shop.example",
 		"https://*.shop..example", "https://[::1]oops:*", "https://a.example?param=value"} {
 		t.Run(value, func(t *testing.T) {
-			_, err := stonewrit.New(stonewrit.Options{Store: memory.New(), BaseURL: "https://auth.example",
+			_, err := plainauth.New(plainauth.Options{Store: memory.New(), BaseURL: "https://auth.example",
 				Secret: strings.Repeat("x", 32), TrustedOrigins: []string{value}})
 			if err == nil {
 				t.Fatal("invalid wildcard origin accepted at startup")

@@ -1,4 +1,4 @@
-package stonewrit_test
+package plainauth_test
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	authn "github.com/Stonewrit/stonewrit-auth"
+	authn "github.com/Plain-Auth/plain-auth"
 )
 
 func TestVerificationGatedSignUpAndSignIn(t *testing.T) {

@@ -6,8 +6,8 @@ Register an OAuth application at the identity provider. Set its callback to your
 import (
     "os"
 
-    auth "github.com/Stonewrit/stonewrit-auth"
-    "github.com/Stonewrit/stonewrit-auth/providers"
+    auth "github.com/Plain-Auth/plain-auth"
+    "github.com/Plain-Auth/plain-auth/providers"
 )
 
 // Set SocialProviders on the same Options that configures your database,
@@ -240,7 +240,7 @@ secret, err := providers.GenerateAppleClientSecret(providers.AppleClientSecretOp
 if err != nil {
     return err
 }
-opts.SocialProviders = map[string]stonewrit.OAuthProvider{
+opts.SocialProviders = map[string]plainauth.OAuthProvider{
     "apple": providers.Apple(clientID, secret),
 }
 ```

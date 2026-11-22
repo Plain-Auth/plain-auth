@@ -11,9 +11,9 @@ import (
 	"testing"
 	"time"
 
-	auth "github.com/Stonewrit/stonewrit-auth"
-	"github.com/Stonewrit/stonewrit-auth/plugins/scim"
-	"github.com/Stonewrit/stonewrit-auth/schema"
+	auth "github.com/Plain-Auth/plain-auth"
+	"github.com/Plain-Auth/plain-auth/plugins/scim"
+	"github.com/Plain-Auth/plain-auth/schema"
 )
 
 func TestSCIMGroupApplicationProjection(t *testing.T) {
@@ -187,7 +187,7 @@ func TestSCIMGroupApplicationProjection(t *testing.T) {
 			if !errors.Is(e, errUnknownGrant) {
 				t.Fatal(e)
 			}
-			if count(`SELECT COUNT(*) FROM "stonewritSCIMProjectionPolicy"`) != 0 || count(`SELECT COUNT(*) FROM "scimProjectionGrant"`) != 1 {
+			if count(`SELECT COUNT(*) FROM "plainauthSCIMProjectionPolicy"`) != 0 || count(`SELECT COUNT(*) FROM "scimProjectionGrant"`) != 1 {
 				t.Fatal("import guard changed on failure")
 			}
 			// Even a matching hash does not authorize an imported source from

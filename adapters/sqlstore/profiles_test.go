@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Stonewrit/stonewrit-auth/schema"
+	"github.com/Plain-Auth/plain-auth/schema"
 )
 
 // Upgrade a populated installation and compare it to direct execution of the

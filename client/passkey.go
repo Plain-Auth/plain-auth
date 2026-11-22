@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/Stonewrit/stonewrit-auth"
-	"github.com/Stonewrit/stonewrit-auth/plugins/passkey"
+	"github.com/Plain-Auth/plain-auth"
+	"github.com/Plain-Auth/plain-auth/plugins/passkey"
 	"github.com/go-webauthn/webauthn/protocol"
 )
 
@@ -53,8 +53,8 @@ func (c *Client) BeginPasskeyLogin(ctx context.Context) (*protocol.PublicKeyCred
 	}
 	return &out, nil
 }
-func (c *Client) FinishPasskeyLogin(ctx context.Context, response json.RawMessage) (*stonewrit.SessionResult, error) {
-	var out stonewrit.SessionResult
+func (c *Client) FinishPasskeyLogin(ctx context.Context, response json.RawMessage) (*plainauth.SessionResult, error) {
+	var out plainauth.SessionResult
 	if err := c.Do(ctx, http.MethodPost, "/passkey/verify-authentication", map[string]any{"response": response}, &out); err != nil {
 		return nil, err
 	}

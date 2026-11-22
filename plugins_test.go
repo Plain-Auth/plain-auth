@@ -1,4 +1,4 @@
-package stonewrit_test
+package plainauth_test
 
 import (
 	"errors"
@@ -7,8 +7,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	authn "github.com/Stonewrit/stonewrit-auth"
-	"github.com/Stonewrit/stonewrit-auth/adapters/sqlite"
+	authn "github.com/Plain-Auth/plain-auth"
+	"github.com/Plain-Auth/plain-auth/adapters/sqlite"
 )
 
 func TestPluginRegistrationAndDispatch(t *testing.T) {

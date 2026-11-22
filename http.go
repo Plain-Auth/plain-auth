@@ -1,5 +1,5 @@
 // HTTP request handling for the core authentication endpoints.
-package stonewrit
+package plainauth
 
 import (
 	"bytes"

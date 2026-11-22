@@ -1,4 +1,4 @@
-package stonewrit
+package plainauth
 
 // Redirect returns a 302 endpoint result for a callback allowed by this Auth instance.
 func (c EndpointContext) Redirect(callback string) (any, error) {

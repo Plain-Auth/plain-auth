@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	auth "github.com/Stonewrit/stonewrit-auth"
+	auth "github.com/Plain-Auth/plain-auth"
 	"github.com/polarsource/polar-go/models/apierrors"
 	"github.com/polarsource/polar-go/models/components"
 	"github.com/polarsource/polar-go/models/operations"

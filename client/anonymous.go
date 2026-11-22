@@ -4,7 +4,7 @@ import (
 	"context"
 	"net/http"
 
-	authn "github.com/Stonewrit/stonewrit-auth"
+	authn "github.com/Plain-Auth/plain-auth"
 )
 
 func (c *Client) SignInAnonymous(ctx context.Context) (*authn.AuthResult, error) {

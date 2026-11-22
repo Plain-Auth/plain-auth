@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	auth "github.com/Stonewrit/stonewrit-auth"
+	auth "github.com/Plain-Auth/plain-auth"
 )
 
 type credential struct {

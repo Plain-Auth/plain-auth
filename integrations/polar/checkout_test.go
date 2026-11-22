@@ -23,9 +23,9 @@ import (
 	"testing"
 	"time"
 
-	auth "github.com/Stonewrit/stonewrit-auth"
-	"github.com/Stonewrit/stonewrit-auth/adapters/sqlstore"
-	"github.com/Stonewrit/stonewrit-auth/schema"
+	auth "github.com/Plain-Auth/plain-auth"
+	"github.com/Plain-Auth/plain-auth/adapters/sqlstore"
+	"github.com/Plain-Auth/plain-auth/schema"
 	"github.com/go-sql-driver/mysql"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -567,7 +567,7 @@ func TestGuestOwnerAcrossPostgresSearchPath(t *testing.T) {
 		expect(t, result, 403)
 	}
 	var reservations int
-	if err := mixed.QueryRowContext(ctx, "SELECT COUNT(*) FROM stonewrit_polar_checkout").Scan(&reservations); err != nil {
+	if err := mixed.QueryRowContext(ctx, "SELECT COUNT(*) FROM plainauth_polar_checkout").Scan(&reservations); err != nil {
 		t.Fatal(err)
 	}
 	if mock.count() != 0 || reservations != 0 || strings.Contains(result.Body.String(), hosted) {

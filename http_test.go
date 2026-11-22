@@ -1,4 +1,4 @@
-package stonewrit_test
+package plainauth_test
 
 import (
 	"encoding/json"
@@ -9,8 +9,8 @@ import (
 	"strings"
 	"testing"
 
-	authn "github.com/Stonewrit/stonewrit-auth"
-	"github.com/Stonewrit/stonewrit-auth/adapters/sqlite"
+	authn "github.com/Plain-Auth/plain-auth"
+	"github.com/Plain-Auth/plain-auth/adapters/sqlite"
 )
 
 func newHTTPAuth(t *testing.T, opts authn.Options) *authn.Auth {

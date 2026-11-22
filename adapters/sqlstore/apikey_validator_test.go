@@ -8,9 +8,9 @@ import (
 	"strings"
 	"testing"
 
-	stonewrit "github.com/Stonewrit/stonewrit-auth"
-	ak "github.com/Stonewrit/stonewrit-auth/plugins/apikey"
-	"github.com/Stonewrit/stonewrit-auth/schema"
+	plainauth "github.com/Plain-Auth/plain-auth"
+	ak "github.com/Plain-Auth/plain-auth/plugins/apikey"
+	"github.com/Plain-Auth/plain-auth/schema"
 )
 
 func TestApplicationKeyValidator(t *testing.T) {
@@ -59,7 +59,7 @@ func TestApplicationKeyValidator(t *testing.T) {
 			plugin, err := ak.NewPlugin(other, keys)
 			must(err)
 			const origin = "https://service.example"
-			host, err := stonewrit.New(stonewrit.Options{Store: store, BaseURL: origin, Secret: strings.Repeat("s", 36), Plugins: []stonewrit.Plugin{plugin}})
+			host, err := plainauth.New(plainauth.Options{Store: store, BaseURL: origin, Secret: strings.Repeat("s", 36), Plugins: []plainauth.Plugin{plugin}})
 			must(err)
 			uses := int64(6)
 			key, err := keys.Create(ctx, user.ID, ak.CreateInput{Policy: ak.Policy{Remaining: &uses}})
@@ -93,7 +93,7 @@ func TestApplicationKeyValidator(t *testing.T) {
 			}
 			request(app, "/reports", 401, "KEY_NOT_FOUND")
 			request(host, "/api/auth/get-session", 403, "INVALID_API_KEY")
-			callbackErr = &stonewrit.APIError{Status: 400, Code: "LOCAL", Message: "private-validator-detail"}
+			callbackErr = &plainauth.APIError{Status: 400, Code: "LOCAL", Message: "private-validator-detail"}
 			_, err = keys.Verify(ctx, key.Secret, nil)
 			if !errors.Is(err, callbackErr) {
 				t.Fatal("trusted verification lost the application error")

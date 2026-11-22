@@ -4,7 +4,7 @@ import (
 	"context"
 	"net/http"
 
-	auth "github.com/Stonewrit/stonewrit-auth"
+	auth "github.com/Plain-Auth/plain-auth"
 )
 
 // SendEmailOTP sends a purpose-bound code to the requested mailbox.

@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	auth "github.com/Stonewrit/stonewrit-auth"
+	auth "github.com/Plain-Auth/plain-auth"
 )
 
 var _ auth.AccountStore = (*Store)(nil)

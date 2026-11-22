@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
-	auth "github.com/Stonewrit/stonewrit-auth"
-	"github.com/Stonewrit/stonewrit-auth/plugins/siwe"
+	auth "github.com/Plain-Auth/plain-auth"
+	"github.com/Plain-Auth/plain-auth/plugins/siwe"
 )
 
 var _ siwe.Store = (*Store)(nil)

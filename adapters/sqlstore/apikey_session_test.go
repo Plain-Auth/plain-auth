@@ -10,12 +10,12 @@ import (
 	"testing"
 	"time"
 
-	stonewrit "github.com/Stonewrit/stonewrit-auth"
-	"github.com/Stonewrit/stonewrit-auth/client"
-	ak "github.com/Stonewrit/stonewrit-auth/plugins/apikey"
-	org "github.com/Stonewrit/stonewrit-auth/plugins/organization"
-	"github.com/Stonewrit/stonewrit-auth/plugins/twofactor"
-	"github.com/Stonewrit/stonewrit-auth/schema"
+	plainauth "github.com/Plain-Auth/plain-auth"
+	"github.com/Plain-Auth/plain-auth/client"
+	ak "github.com/Plain-Auth/plain-auth/plugins/apikey"
+	org "github.com/Plain-Auth/plain-auth/plugins/organization"
+	"github.com/Plain-Auth/plain-auth/plugins/twofactor"
+	"github.com/Plain-Auth/plain-auth/schema"
 	"github.com/pquerna/otp/totp"
 )
 
@@ -31,7 +31,7 @@ func TestOrgAPIKeyAndEphemeralSession(t *testing.T) {
 			}
 			code := func(e error, want string) {
 				t.Helper()
-				var api *stonewrit.APIError
+				var api *plainauth.APIError
 				if !errors.As(e, &api) || api.Code != want {
 					t.Fatalf("expected %s, got %v", want, e)
 				}
@@ -55,7 +55,7 @@ func TestOrgAPIKeyAndEphemeralSession(t *testing.T) {
 			const origin = "https://keys.example"
 			off := false
 			var afterVerification func() error
-			scopeChange := stonewrit.Plugin{ID: "scope-change", OnRequest: func(stonewrit.RequestContext) error {
+			scopeChange := plainauth.Plugin{ID: "scope-change", OnRequest: func(plainauth.RequestContext) error {
 				if afterVerification != nil {
 					change := afterVerification
 					afterVerification = nil
@@ -63,7 +63,7 @@ func TestOrgAPIKeyAndEphemeralSession(t *testing.T) {
 				}
 				return nil
 			}}
-			host, e := stonewrit.New(stonewrit.Options{Store: db, EmailAndPassword: true, Secret: strings.Repeat("k", 32), BaseURL: origin, RateLimit: &off, Plugins: []stonewrit.Plugin{plugin, organization, twofactor.New(twofactor.Options{}), scopeChange}})
+			host, e := plainauth.New(plainauth.Options{Store: db, EmailAndPassword: true, Secret: strings.Repeat("k", 32), BaseURL: origin, RateLimit: &off, Plugins: []plainauth.Plugin{plugin, organization, twofactor.New(twofactor.Options{}), scopeChange}})
 			must(e)
 			otherDatabase, e := Open(ctx, "sqlite", ":memory:")
 			must(e)
@@ -181,7 +181,7 @@ func TestOrgAPIKeyAndEphemeralSession(t *testing.T) {
 			}
 			defaultPolicy, e := ak.New(ak.Options{Store: db})
 			must(e)
-			unconfigured, e := stonewrit.New(stonewrit.Options{Store: db, Secret: strings.Repeat("k", 32), BaseURL: origin, Plugins: []stonewrit.Plugin{defaultPolicy.Plugin()}})
+			unconfigured, e := plainauth.New(plainauth.Options{Store: db, Secret: strings.Repeat("k", 32), BaseURL: origin, Plugins: []plainauth.Plugin{defaultPolicy.Plugin()}})
 			must(e)
 			disabled, e := unconfigured.GetSession(ctx, headers)
 			must(e)
@@ -190,7 +190,7 @@ func TestOrgAPIKeyAndEphemeralSession(t *testing.T) {
 			}
 			w := req("get-session", priv.Secret, "X-Api-Key", nil)
 			expectHTTP(w, 200, ownerUser.User.ID)
-			var wire stonewrit.SessionResult
+			var wire plainauth.SessionResult
 			must(json.Unmarshal(w.Body.Bytes(), &wire))
 			if !wire.Session.IsApplicationCredential() || wire.Session.RequireOwner() == nil {
 				t.Fatal("decoded key session lost its credential type")
@@ -215,7 +215,7 @@ func TestOrgAPIKeyAndEphemeralSession(t *testing.T) {
 			profile, e := users.Create(ctx, ownerUser.User.ID, ak.CreateInput{Policy: ak.Policy{Permissions: ak.Permissions{"user": {"update"}, "organization": {"read"}, "invitation": {"create"}}}})
 			must(e)
 			name := "Renamed by owner key"
-			must(host.UpdateUser(ctx, http.Header{"X-Api-Key": {profile.Secret}}, stonewrit.ProfileUpdate{Name: &name}))
+			must(host.UpdateUser(ctx, http.Header{"X-Api-Key": {profile.Secret}}, plainauth.ProfileUpdate{Name: &name}))
 			expectHTTP(req("get-session", profile.Secret, "X-Api-Key", nil), 200, name)
 			expectHTTP(req("organization/list", profile.Secret, "X-Api-Key", nil), 200, group.ID)
 			expectHTTP(req("update-user", limited.Secret, "X-Api-Key", map[string]string{"name": "Forbidden"}), 403, "OWNER_SESSION_REQUIRED")

@@ -151,7 +151,7 @@ func (w *SeatWorker) syncGroup(ctx context.Context, group string) error {
 			job.Item = item.ID
 			postCtx, cancel := context.WithDeadline(ctx, deadline)
 			params := &sdk.SubscriptionUpdateParams{Items: []*sdk.SubscriptionUpdateItemParams{{ID: sdk.String(item.ID), Quantity: sdk.Int64(job.Quantity)}}, ProrationBehavior: sdk.String(job.Proration)}
-			params.SetIdempotencyKey("stonewrit-seat-" + job.ID)
+			params.SetIdempotencyKey("plainauth-seat-" + job.ID)
 			_, err = s.client.V1Subscriptions.Update(postCtx, job.Subscription, params)
 			cancel()
 			if err != nil {

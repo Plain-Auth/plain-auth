@@ -1,4 +1,4 @@
-package stonewrit_test
+package plainauth_test
 
 import (
 	"context"
@@ -13,9 +13,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Stonewrit/stonewrit-auth"
-	"github.com/Stonewrit/stonewrit-auth/adapters/memory"
-	"github.com/Stonewrit/stonewrit-auth/plugins/lastlogin"
+	"github.com/Plain-Auth/plain-auth"
+	"github.com/Plain-Auth/plain-auth/adapters/memory"
+	"github.com/Plain-Auth/plain-auth/plugins/lastlogin"
 )
 
 func TestChromeSharedCookieLogout(t *testing.T) {
@@ -30,10 +30,10 @@ func TestChromeSharedCookieLogout(t *testing.T) {
 	}
 	origin := "https://auth.example.test:" + port
 	sibling := "https://app.example.test:" + port
-	instance, err := stonewrit.New(stonewrit.Options{
+	instance, err := plainauth.New(plainauth.Options{
 		BaseURL: origin, Secret: strings.Repeat("s", 32), EmailAndPassword: true,
-		Store: memory.New(), CrossSubDomainCookies: &stonewrit.CrossSubDomainCookiesOptions{Domain: "example.test"},
-		Plugins: []stonewrit.Plugin{lastlogin.New(lastlogin.Options{CookieName: "__Secure-staff.preference"})},
+		Store: memory.New(), CrossSubDomainCookies: &plainauth.CrossSubDomainCookiesOptions{Domain: "example.test"},
+		Plugins: []plainauth.Plugin{lastlogin.New(lastlogin.Options{CookieName: "__Secure-staff.preference"})},
 	})
 	if err != nil {
 		t.Fatal(err)

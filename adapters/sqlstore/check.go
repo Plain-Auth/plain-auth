@@ -9,8 +9,8 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/Stonewrit/stonewrit-auth/internal/sessionfields"
-	"github.com/Stonewrit/stonewrit-auth/schema"
+	"github.com/Plain-Auth/plain-auth/internal/sessionfields"
+	"github.com/Plain-Auth/plain-auth/schema"
 )
 
 // SchemaFinding identifies a mismatch between selected columns and a live table.

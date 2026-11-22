@@ -5,8 +5,8 @@ import (
 	"reflect"
 	"slices"
 
-	"github.com/Stonewrit/stonewrit-auth"
-	"github.com/Stonewrit/stonewrit-auth/plugins/sso"
+	"github.com/Plain-Auth/plain-auth"
+	"github.com/Plain-Auth/plain-auth/plugins/sso"
 )
 
 func samlConfigSchema() object {
@@ -24,7 +24,7 @@ func samlConfigSchema() object {
 	return config
 }
 
-func ssoResponse(path string, info stonewrit.HTTPDescription) object {
+func ssoResponse(path string, info plainauth.HTTPDescription) object {
 	text := object{"type": "string"}
 	switch path {
 	case "/sso/register":
@@ -41,7 +41,7 @@ func ssoResponse(path string, info stonewrit.HTTPDescription) object {
 			fields["oidcConfig"] = object{"oneOf": []object{fields["oidcConfig"].(object), {"type": "null"}}}
 		}
 		required := []string{"id", "providerId", "userId", "domain", "issuer", "redirectURI", "oidcConfig", "samlConfig"}
-		if slices.ContainsFunc(info.Routes, func(r stonewrit.HTTPRoute) bool {
+		if slices.ContainsFunc(info.Routes, func(r plainauth.HTTPRoute) bool {
 			return r.Plugin == "sso" && r.Path == "/sso/request-domain-verification"
 		}) {
 			fields["domainVerified"] = object{"const": false}
@@ -63,7 +63,7 @@ func ssoResponse(path string, info stonewrit.HTTPDescription) object {
 	return object{}
 }
 
-func describeSSORequest(op object, route stonewrit.HTTPRoute, info stonewrit.HTTPDescription) {
+func describeSSORequest(op object, route plainauth.HTTPRoute, info plainauth.HTTPDescription) {
 	path := route.Path
 	text := object{"type": "string"}
 	providerID := object{"type": "string", "minLength": 1}
@@ -123,7 +123,7 @@ func describeSSORequest(op object, route stonewrit.HTTPRoute, info stonewrit.HTT
 		body(responseObject(object{"callbackURL": text}))
 	case "/sso/saml2/sp/slo/:providerId":
 		var mode struct {
-			Incoming bool `json:"x-stonewrit-idp-logout"`
+			Incoming bool `json:"x-plainauth-idp-logout"`
 		}
 		if len(route.OpenAPI) != 0 {
 			_ = json.Unmarshal(route.OpenAPI, &mode)
@@ -142,7 +142,7 @@ func describeSSORequest(op object, route stonewrit.HTTPRoute, info stonewrit.HTT
 
 	case "/sso/saml2/sp/acs/:providerId":
 		var mode struct {
-			Portal bool `json:"x-stonewrit-idp-initiated"`
+			Portal bool `json:"x-plainauth-idp-initiated"`
 		}
 		if len(route.OpenAPI) != 0 {
 			_ = json.Unmarshal(route.OpenAPI, &mode)

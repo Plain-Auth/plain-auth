@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	auth "github.com/Stonewrit/stonewrit-auth"
+	auth "github.com/Plain-Auth/plain-auth"
 )
 
 // TXTResolver returns one string for each TXT resource record, concatenating
@@ -18,7 +18,7 @@ type TXTResolver interface {
 }
 
 type DomainVerificationOptions struct {
-	// TokenPrefix defaults to "stonewrit-auth-token". A prefix is one DNS label fragment.
+	// TokenPrefix defaults to "plain-auth-token". A prefix is one DNS label fragment.
 	TokenPrefix string
 	// Resolver defaults to the system resolver.
 	Resolver TXTResolver
@@ -28,7 +28,7 @@ var dnsPrefix = regexp.MustCompile("^[A-Za-z0-9_-]+$")
 
 func (o DomainVerificationOptions) normalized() (DomainVerificationOptions, error) {
 	if o.TokenPrefix == "" {
-		o.TokenPrefix = "stonewrit-auth-token"
+		o.TokenPrefix = "plain-auth-token"
 	}
 	if !dnsPrefix.MatchString(o.TokenPrefix) || len(o.TokenPrefix) > 63 {
 		return o, errors.New("sso: invalid domain verification token prefix")

@@ -5,7 +5,7 @@ import (
 	"slices"
 	"strings"
 
-	auth "github.com/Stonewrit/stonewrit-auth"
+	auth "github.com/Plain-Auth/plain-auth"
 )
 
 // ProviderMutation contains the locked provider identity and a snapshot of its

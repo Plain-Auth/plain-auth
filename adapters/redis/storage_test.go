@@ -17,9 +17,9 @@ import (
 	"testing"
 	"time"
 
-	auth "github.com/Stonewrit/stonewrit-auth"
-	"github.com/Stonewrit/stonewrit-auth/adapters/memory"
-	redisstore "github.com/Stonewrit/stonewrit-auth/adapters/redis"
+	auth "github.com/Plain-Auth/plain-auth"
+	"github.com/Plain-Auth/plain-auth/adapters/memory"
+	redisstore "github.com/Plain-Auth/plain-auth/adapters/redis"
 	"github.com/redis/go-redis/v9"
 )
 

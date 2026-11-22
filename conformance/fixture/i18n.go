@@ -1,8 +1,8 @@
 package main
 
 import (
-	auth "github.com/Stonewrit/stonewrit-auth"
-	"github.com/Stonewrit/stonewrit-auth/plugins/i18n"
+	auth "github.com/Plain-Auth/plain-auth"
+	"github.com/Plain-Auth/plain-auth/plugins/i18n"
 )
 
 func fixtureI18n() (auth.Plugin, error) {

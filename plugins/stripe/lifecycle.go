@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 
-	auth "github.com/Stonewrit/stonewrit-auth"
+	auth "github.com/Plain-Auth/plain-auth"
 	sdk "github.com/stripe/stripe-go/v87"
 )
 

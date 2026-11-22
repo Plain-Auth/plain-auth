@@ -1,5 +1,5 @@
 // Package authtest provides in-process fixtures for applications testing their
-// StoneWrit Auth integration. Import it from your tests.
+// Plain Auth integration. Import it from your tests.
 package authtest
 
 import (
@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	auth "github.com/Stonewrit/stonewrit-auth"
-	"github.com/Stonewrit/stonewrit-auth/plugins/organization"
+	auth "github.com/Plain-Auth/plain-auth"
+	"github.com/Plain-Auth/plain-auth/plugins/organization"
 )
 
 // NewUser returns an unsaved, verified user. Set any fields before saving it.

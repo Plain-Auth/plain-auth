@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
-	auth "github.com/Stonewrit/stonewrit-auth"
-	"github.com/Stonewrit/stonewrit-auth/adapters/memory"
-	"github.com/Stonewrit/stonewrit-auth/authtest"
+	auth "github.com/Plain-Auth/plain-auth"
+	"github.com/Plain-Auth/plain-auth/adapters/memory"
+	"github.com/Plain-Auth/plain-auth/authtest"
 )
 
 func TestFixtureSessionFieldOptions(t *testing.T) {

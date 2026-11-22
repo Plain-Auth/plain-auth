@@ -9,10 +9,10 @@ import (
 	"strings"
 	"testing"
 
-	auth "github.com/Stonewrit/stonewrit-auth"
-	"github.com/Stonewrit/stonewrit-auth/client"
-	browser "github.com/Stonewrit/stonewrit-auth/client/stripe"
-	billing "github.com/Stonewrit/stonewrit-auth/plugins/stripe"
+	auth "github.com/Plain-Auth/plain-auth"
+	"github.com/Plain-Auth/plain-auth/client"
+	browser "github.com/Plain-Auth/plain-auth/client/stripe"
+	billing "github.com/Plain-Auth/plain-auth/plugins/stripe"
 )
 
 // This transport delegates customer and ownership metadata to the existing

@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	auth "github.com/Stonewrit/stonewrit-auth"
+	auth "github.com/Plain-Auth/plain-auth"
 )
 
 func (s *Store) ReadPhoneNumber(ctx context.Context, id string) (*auth.PhoneNumberFields, error) {

@@ -4277,7 +4277,7 @@
     {
       "label": "Require a live owner session and protect previously assigned immutable names from clearing",
       "test": "adapters/sqlstore/username_test.go",
-      "marker": "err = fixed.UpdateUser(ctx, h, stonewrit.ProfileUpdate{ClearUsername: true})"
+      "marker": "err = fixed.UpdateUser(ctx, h, plainauth.ProfileUpdate{ClearUsername: true})"
     }
   ],
   "docs/content/docs/plugins/username.mdx#L365": [

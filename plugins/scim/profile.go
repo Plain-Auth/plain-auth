@@ -6,7 +6,7 @@ import (
 	"strings"
 	"unicode/utf16"
 
-	"github.com/Stonewrit/stonewrit-auth/internal/jsjson"
+	"github.com/Plain-Auth/plain-auth/internal/jsjson"
 )
 
 var userFields = strings.Fields("schemas userName displayName externalId name emails active title userType preferredLanguage locale timezone roles")

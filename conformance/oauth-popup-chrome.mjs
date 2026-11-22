@@ -65,7 +65,7 @@ export async function chromePopup(t, goFixture) {
 
       const audit = {calls: [], notifications: 0, hostListener: 0};
       window.addEventListener("message", event => {
-        if (event.data?.type === "stonewrit:oauth-popup") audit.hostListener++;
+        if (event.data?.type === "plainauth:oauth-popup") audit.hostListener++;
       });
       const client = createPopupClient({
         baseURL: ${JSON.stringify(authURL)},
@@ -118,7 +118,7 @@ export async function chromePopup(t, goFixture) {
   authURL = (await goFixture(t, [], { CONFORMANCE_POPUP_ORIGIN: app })).baseURL;
   for (const embedded of [false, true]) {
     const site = embedded ? "http://localhost:" + server.address().port + "/frame" : app + "/app";
-    const profile = await mkdtemp(join(tmpdir(), "stonewrit-popup-"));
+    const profile = await mkdtemp(join(tmpdir(), "plainauth-popup-"));
     const result = new Promise((resolve) => (report = resolve));
     const chrome = spawn(
       binary,

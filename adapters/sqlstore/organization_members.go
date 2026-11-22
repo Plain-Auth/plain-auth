@@ -5,8 +5,8 @@ import (
 	"database/sql"
 	"errors"
 
-	auth "github.com/Stonewrit/stonewrit-auth"
-	org "github.com/Stonewrit/stonewrit-auth/plugins/organization"
+	auth "github.com/Plain-Auth/plain-auth"
+	org "github.com/Plain-Auth/plain-auth/plugins/organization"
 )
 
 // AddOrganizationMember adds an existing account from trusted application code.

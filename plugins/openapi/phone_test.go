@@ -4,9 +4,9 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/Stonewrit/stonewrit-auth/plugins/bearer"
-	"github.com/Stonewrit/stonewrit-auth/plugins/openapi"
-	"github.com/Stonewrit/stonewrit-auth/plugins/phonenumber"
+	"github.com/Plain-Auth/plain-auth/plugins/bearer"
+	"github.com/Plain-Auth/plain-auth/plugins/openapi"
+	"github.com/Plain-Auth/plain-auth/plugins/phonenumber"
 )
 
 func TestPhoneSchemaMatchesInstalledAccountOperations(t *testing.T) {

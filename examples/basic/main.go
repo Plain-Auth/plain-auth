@@ -13,8 +13,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/Stonewrit/stonewrit-auth"
-	"github.com/Stonewrit/stonewrit-auth/adapters/sqlite"
+	"github.com/Plain-Auth/plain-auth"
+	"github.com/Plain-Auth/plain-auth/adapters/sqlite"
 )
 
 func main() {
@@ -33,7 +33,7 @@ func run() error {
 		return err
 	}
 	defer store.Close()
-	auth, err := stonewrit.New(stonewrit.Options{
+	auth, err := plainauth.New(plainauth.Options{
 		Store:            store,
 		EmailAndPassword: true,
 	})

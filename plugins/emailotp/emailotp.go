@@ -1,7 +1,7 @@
 // Package emailotp adds single-use email verification, login and recovery codes.
 package emailotp
 
-import auth "github.com/Stonewrit/stonewrit-auth"
+import auth "github.com/Plain-Auth/plain-auth"
 
 type Options = auth.EmailOTPOptions
 type Message = auth.EmailOTPMessage

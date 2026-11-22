@@ -1,7 +1,7 @@
 // Package deviceauthorization adds RFC 8628 first-party device sign-in.
 package deviceauthorization
 
-import authn "github.com/Stonewrit/stonewrit-auth"
+import authn "github.com/Plain-Auth/plain-auth"
 
 type Options = authn.DeviceAuthorizationOptions
 

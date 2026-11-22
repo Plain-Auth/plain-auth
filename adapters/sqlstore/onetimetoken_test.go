@@ -15,8 +15,8 @@ import (
 	"testing"
 	"time"
 
-	auth "github.com/Stonewrit/stonewrit-auth"
-	"github.com/Stonewrit/stonewrit-auth/plugins/onetimetoken"
+	auth "github.com/Plain-Auth/plain-auth"
+	"github.com/Plain-Auth/plain-auth/plugins/onetimetoken"
 )
 
 func TestOneTimeSessionTransfer(t *testing.T) {

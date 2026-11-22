@@ -9,11 +9,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Stonewrit/stonewrit-auth"
-	"github.com/Stonewrit/stonewrit-auth/adapters/memory"
-	"github.com/Stonewrit/stonewrit-auth/client"
-	"github.com/Stonewrit/stonewrit-auth/plugins/customsession"
-	"github.com/Stonewrit/stonewrit-auth/plugins/multisession"
+	"github.com/Plain-Auth/plain-auth"
+	"github.com/Plain-Auth/plain-auth/adapters/memory"
+	"github.com/Plain-Auth/plain-auth/client"
+	"github.com/Plain-Auth/plain-auth/plugins/customsession"
+	"github.com/Plain-Auth/plain-auth/plugins/multisession"
 )
 
 func TestTypedSessionViews(t *testing.T) {
@@ -37,10 +37,10 @@ func TestTypedSessionViews(t *testing.T) {
 			}
 			multi, err := multisession.New(multisession.Options{})
 			must(err)
-			plugins := []stonewrit.Plugin{multi}
+			plugins := []plainauth.Plugin{multi}
 			fail := false
 			if mode != "standard" {
-				projection, err := customsession.NewWithOptions(func(_ stonewrit.EndpointContext, s stonewrit.SessionResult) (any, error) {
+				projection, err := customsession.NewWithOptions(func(_ plainauth.EndpointContext, s plainauth.SessionResult) (any, error) {
 					if fail && s.User.Name == "Alice" {
 						return nil, errors.New("private account lookup failed")
 					}
@@ -51,7 +51,7 @@ func TestTypedSessionViews(t *testing.T) {
 			}
 			const origin = "https://session-view.test"
 			immediate := time.Duration(0)
-			auth, err := stonewrit.New(stonewrit.Options{BaseURL: origin, Store: memory.New(), Secret: strings.Repeat("x", 32), EmailAndPassword: true, Plugins: plugins, SessionUpdateAge: &immediate})
+			auth, err := plainauth.New(plainauth.Options{BaseURL: origin, Store: memory.New(), Secret: strings.Repeat("x", 32), EmailAndPassword: true, Plugins: plugins, SessionUpdateAge: &immediate})
 			must(err)
 			var last *http.Response
 			c, err := client.New(origin, &http.Client{Transport: transport(func(r *http.Request) (*http.Response, error) {
@@ -84,7 +84,7 @@ func TestTypedSessionViews(t *testing.T) {
 				t.Fatal("remembered account selection returned a different user")
 			}
 			if mode == "standard" {
-				standard, err := client.GetSessionView[stonewrit.SessionResult](ctx, c)
+				standard, err := client.GetSessionView[plainauth.SessionResult](ctx, c)
 				must(err)
 				ordinary, err := c.GetSession(ctx)
 				must(err)
@@ -121,7 +121,7 @@ func TestTypedSessionViews(t *testing.T) {
 				fail = true
 				assertRedacted := func(err error) {
 					t.Helper()
-					var public *stonewrit.APIError
+					var public *plainauth.APIError
 					if !errors.As(err, &public) || public.Status != 500 || strings.Contains(err.Error(), "private") {
 						t.Fatal("expected a redacted server failure", err)
 					}
@@ -134,7 +134,7 @@ func TestTypedSessionViews(t *testing.T) {
 					t.Fatal("projection failure returned partial account data")
 				}
 			} else {
-				rows, err := client.ListDeviceSessionViews[stonewrit.SessionResult](ctx, c)
+				rows, err := client.ListDeviceSessionViews[plainauth.SessionResult](ctx, c)
 				must(err)
 				if len(rows) != 2 || rows[0].User.ID == rows[1].User.ID || rows[0].Session.Token == "" {
 					t.Fatal("device list must retain its standard shape by default")
@@ -148,7 +148,7 @@ func TestProjectedSessionReadOptions(t *testing.T) {
 	type view struct {
 		Viewer string `json:"viewer"`
 	}
-	plugin, err := customsession.New(func(_ stonewrit.EndpointContext, data stonewrit.SessionResult) (any, error) {
+	plugin, err := customsession.New(func(_ plainauth.EndpointContext, data plainauth.SessionResult) (any, error) {
 		return view{data.User.Email}, nil
 	})
 	if err != nil {
@@ -156,7 +156,7 @@ func TestProjectedSessionReadOptions(t *testing.T) {
 	}
 	const origin = "https://view.example"
 	immediate := time.Duration(0)
-	host, err := stonewrit.New(stonewrit.Options{BaseURL: origin, Store: memory.New(), Secret: strings.Repeat("x", 32), EmailAndPassword: true, SessionUpdateAge: &immediate, Plugins: []stonewrit.Plugin{plugin}})
+	host, err := plainauth.New(plainauth.Options{BaseURL: origin, Store: memory.New(), Secret: strings.Repeat("x", 32), EmailAndPassword: true, SessionUpdateAge: &immediate, Plugins: []plainauth.Plugin{plugin}})
 	if err != nil {
 		t.Fatal(err)
 	}

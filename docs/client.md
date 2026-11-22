@@ -6,11 +6,11 @@ Create one client per user session. An origin uses the default `/api/auth` mount
 import (
     "context"
 
-    "github.com/Stonewrit/stonewrit-auth"
-    "github.com/Stonewrit/stonewrit-auth/client"
+    "github.com/Plain-Auth/plain-auth"
+    "github.com/Plain-Auth/plain-auth/client"
 )
 
-func login(ctx context.Context, endpoint, email, password string) (*stonewrit.SessionResult, error) {
+func login(ctx context.Context, endpoint, email, password string) (*plainauth.SessionResult, error) {
     c, err := client.New(endpoint, nil)
     if err != nil {
         return nil, err

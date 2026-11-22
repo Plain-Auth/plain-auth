@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"testing"
 
-	"github.com/Stonewrit/stonewrit-auth/schema"
+	"github.com/Plain-Auth/plain-auth/schema"
 )
 
 func TestPhoneNumberProfileMigration(t *testing.T) {

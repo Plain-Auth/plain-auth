@@ -1,4 +1,4 @@
-package stonewrit_test
+package plainauth_test
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	auth "github.com/Stonewrit/stonewrit-auth"
+	auth "github.com/Plain-Auth/plain-auth"
 )
 
 func TestPasswordCallbackFailuresAndCancellation(t *testing.T) {

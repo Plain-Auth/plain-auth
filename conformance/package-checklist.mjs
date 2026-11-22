@@ -86,7 +86,7 @@ export function renderDatabaseContracts({lines, interfaces, dialects, communityA
     addEvidence(lines, "database/redisStorage/" + name, "adapters.md", 2);
   }
   lines.push("");
-  lines.push("## SQL dialect integrations", "", "StoneWrit ships SQL adapters for SQLite, PostgreSQL and MySQL. The checklist also tracks additional database drivers and runtimes.", "");
+  lines.push("## SQL dialect integrations", "", "Plain Auth ships SQL adapters for SQLite, PostgreSQL and MySQL. The checklist also tracks additional database drivers and runtimes.", "");
   for (const [category, items] of dialects) {
     lines.push(pending(category));
     for (const item of items) {

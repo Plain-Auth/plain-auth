@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"net/url"
 
-	authn "github.com/Stonewrit/stonewrit-auth"
+	authn "github.com/Plain-Auth/plain-auth"
 )
 
 type DeviceCodeRequest struct {

@@ -1,13 +1,13 @@
 # Redis secondary storage
 
-Use the optional `github.com/Stonewrit/stonewrit-auth/adapters/redis` Go module to share rate limits across auth servers or store short-lived application values. It accepts a single-node `*redis.Client` from go-redis v9. The primary store continues to manage users, sessions and account data.
+Use the optional `github.com/Plain-Auth/plain-auth/adapters/redis` Go module to share rate limits across auth servers or store short-lived application values. It accepts a single-node `*redis.Client` from go-redis v9. The primary store continues to manage users, sessions and account data.
 
 Install the adapter from your application's Go module. During private development, use the same GitHub credentials as for the main module.
 
 ```sh
-GOPRIVATE=github.com/Stonewrit/stonewrit-auth go get \
-  github.com/Stonewrit/stonewrit-auth@main \
-  github.com/Stonewrit/stonewrit-auth/adapters/redis@main
+GOPRIVATE=github.com/Plain-Auth/plain-auth go get \
+  github.com/Plain-Auth/plain-auth@main \
+  github.com/Plain-Auth/plain-auth/adapters/redis@main
 ```
 
 ## Share rate limits
@@ -19,12 +19,12 @@ import (
     "context"
     "time"
 
-    stonewrit "github.com/Stonewrit/stonewrit-auth"
-    redisstore "github.com/Stonewrit/stonewrit-auth/adapters/redis"
+    plainauth "github.com/Plain-Auth/plain-auth"
+    redisstore "github.com/Plain-Auth/plain-auth/adapters/redis"
     "github.com/redis/go-redis/v9"
 )
 
-func configure(ctx context.Context, opts stonewrit.Options, redisURL string) (*stonewrit.Auth, *redis.Client, error) {
+func configure(ctx context.Context, opts plainauth.Options, redisURL string) (*plainauth.Auth, *redis.Client, error) {
     connection, err := redis.ParseURL(redisURL)
     if err != nil {
         return nil, nil, err
@@ -44,8 +44,8 @@ func configure(ctx context.Context, opts stonewrit.Options, redisURL string) (*s
     on := true
     opts.RateLimit = &on
     opts.RateLimitStorage = limits
-    opts.RateLimitDefault = &stonewrit.RateLimitRule{Max: 100, Window: time.Minute}
-    handler, err := stonewrit.New(opts)
+    opts.RateLimitDefault = &plainauth.RateLimitRule{Max: 100, Window: time.Minute}
+    handler, err := plainauth.New(opts)
     if err != nil {
         client.Close()
         return nil, nil, err
@@ -58,7 +58,7 @@ Redis opens a fixed window on the first request from a peer to a route. Every ma
 
 ## Store and consume values
 
-The default prefix is `stonewrit:`. Choose separate, disjoint prefixes for environments, application-owned values and rate counters. Every operation accepts a Go context. `Set(ctx, key, value, ttl)` stores a string for a whole number of seconds. A zero or negative TTL stores it persistently. `Get` and `GetAndDelete` return the value, a presence flag and an error. The presence flag distinguishes a stored empty string from a missing key. `Delete` succeeds on an absent key.
+The default prefix is `plainauth:`. Choose separate, disjoint prefixes for environments, application-owned values and rate counters. Every operation accepts a Go context. `Set(ctx, key, value, ttl)` stores a string for a whole number of seconds. A zero or negative TTL stores it persistently. `Get` and `GetAndDelete` return the value, a presence flag and an error. The presence flag distinguishes a stored empty string from a missing key. `Delete` succeeds on an absent key.
 
 `GetAndDelete` atomically consumes one value with `GETDEL`, falling back to a single-key Lua script when the server reports that the command is unknown. `Increment` returns the new signed 64-bit count. Supply a positive whole-second TTL. Redis assigns it only when it creates the key. An existing integer keeps its original expiry. [Redis GETDEL](https://redis.io/docs/latest/commands/getdel/)
 

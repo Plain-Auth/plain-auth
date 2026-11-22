@@ -11,12 +11,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Stonewrit/stonewrit-auth"
-	"github.com/Stonewrit/stonewrit-auth/client"
-	stripeclient "github.com/Stonewrit/stonewrit-auth/client/stripe"
-	org "github.com/Stonewrit/stonewrit-auth/plugins/organization"
-	billing "github.com/Stonewrit/stonewrit-auth/plugins/stripe"
-	"github.com/Stonewrit/stonewrit-auth/schema"
+	"github.com/Plain-Auth/plain-auth"
+	"github.com/Plain-Auth/plain-auth/client"
+	stripeclient "github.com/Plain-Auth/plain-auth/client/stripe"
+	org "github.com/Plain-Auth/plain-auth/plugins/organization"
+	billing "github.com/Plain-Auth/plain-auth/plugins/stripe"
+	"github.com/Plain-Auth/plain-auth/schema"
 	sdk "github.com/stripe/stripe-go/v87"
 	"github.com/stripe/stripe-go/v87/webhook"
 )
@@ -136,7 +136,7 @@ func TestOrganizationBillingIsolation(t *testing.T) {
 					return policy.Role == "owner" || policy.Role == "admin" || (policy.Role == "finance" && policy.Action == "list-subscription")
 				}}})
 			off := false
-			auth, err := stonewrit.New(stonewrit.Options{Store: store, Secret: strings.Repeat("s", 32), BaseURL: origin, EmailAndPassword: true, RateLimit: &off, Plugins: []stonewrit.Plugin{orgPlugin, stripePlugin}})
+			auth, err := plainauth.New(plainauth.Options{Store: store, Secret: strings.Repeat("s", 32), BaseURL: origin, EmailAndPassword: true, RateLimit: &off, Plugins: []plainauth.Plugin{orgPlugin, stripePlugin}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -171,7 +171,7 @@ func TestOrganizationBillingIsolation(t *testing.T) {
 			exec(`INSERT INTO "member" ("id","organizationId","userId","role","createdAt") VALUES(?,?,?,?,?)`, "deputy_member", group, did, "finance", store.date(time.Now()))
 			code := func(err error, status int, label string) {
 				t.Helper()
-				var api *stonewrit.APIError
+				var api *plainauth.APIError
 				if !errors.As(err, &api) || api.Status != status || api.Code != label {
 					t.Fatalf("expected %d/%s: %v", status, label, err)
 				}

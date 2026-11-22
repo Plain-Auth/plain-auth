@@ -6,7 +6,7 @@ import (
 	"errors"
 	"time"
 
-	auth "github.com/Stonewrit/stonewrit-auth"
+	auth "github.com/Plain-Auth/plain-auth"
 )
 
 var _ auth.JWTStore = (*Store)(nil)

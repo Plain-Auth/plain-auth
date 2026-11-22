@@ -6,12 +6,12 @@ import (
 	"strconv"
 	"time"
 
-	stonewrit "github.com/Stonewrit/stonewrit-auth"
+	plainauth "github.com/Plain-Auth/plain-auth"
 )
 
 // Plugin exposes session-authorized management routes. Verification and
 // expired-key cleanup are trusted Go methods on the Service.
-func (s *Service) Plugin() stonewrit.Plugin {
+func (s *Service) Plugin() plainauth.Plugin {
 	p, _ := NewPlugin(s)
 	return p
 }
@@ -27,7 +27,7 @@ func stringValue(body map[string]any, k string) (string, error) {
 	}
 	return s, nil
 }
-func (s *Service) handle(c stonewrit.EndpointContext, action string) (any, error) {
+func (s *Service) handle(c plainauth.EndpointContext, action string) (any, error) {
 	r, ctx := c.Request, c.Request.Context()
 	session, err := c.Auth.GetSession(ctx, r.Header)
 	if err != nil {

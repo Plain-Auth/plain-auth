@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	auth "github.com/Stonewrit/stonewrit-auth"
-	"github.com/Stonewrit/stonewrit-auth/plugins/sso"
+	auth "github.com/Plain-Auth/plain-auth"
+	"github.com/Plain-Auth/plain-auth/plugins/sso"
 )
 
 var errSAMLSessionSetChanged = errors.New("SAML logout session set changed during locking")

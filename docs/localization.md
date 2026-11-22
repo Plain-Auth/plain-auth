@@ -3,7 +3,7 @@
 Add the `plugins/i18n` plugin to send translated error messages to browser and Go clients. Each error retains its HTTP status and stable code. A translated response also includes `originalMessage`, the message the endpoint produced.
 
 ```go
-import "github.com/Stonewrit/stonewrit-auth/plugins/i18n"
+import "github.com/Plain-Auth/plain-auth/plugins/i18n"
 
 dicts := i18n.Builtins()
 dicts["fr"]["INVALID_EMAIL_OR_PASSWORD"] = "Adresse e-mail ou mot de passe incorrect"
@@ -32,11 +32,11 @@ When no strategy finds a locale, the plugin selects `DefaultLocale`, which defau
 ## Read a localized error in Go
 
 ```go
-var localized *stonewrit.LocalizedError
+var localized *plainauth.LocalizedError
 if errors.As(err, &localized) {
     log.Printf("%s: %s", localized.Code, localized.OriginalMessage)
     return showMessage(localized.Message)
 }
 ```
 
-Existing `errors.As(err, &apiErr)` checks with `var apiErr *stonewrit.APIError` continue to expose the status, code and message. [Native client tests](../plugins/i18n/i18n_test.go)
+Existing `errors.As(err, &apiErr)` checks with `var apiErr *plainauth.APIError` continue to expose the status, code and message. [Native client tests](../plugins/i18n/i18n_test.go)

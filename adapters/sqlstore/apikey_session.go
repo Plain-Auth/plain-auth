@@ -11,8 +11,8 @@ import (
 	"slices"
 	"time"
 
-	stonewrit "github.com/Stonewrit/stonewrit-auth"
-	ak "github.com/Stonewrit/stonewrit-auth/plugins/apikey"
+	plainauth "github.com/Plain-Auth/plain-auth"
+	ak "github.com/Plain-Auth/plain-auth/plugins/apikey"
 )
 
 // UniqueSessionKeyConfiguration resolves a shared header only when exactly one
@@ -41,8 +41,8 @@ func (s *Store) UniqueSessionKeyConfiguration(ctx context.Context, digest string
 	return id, rows.Err()
 }
 
-func (s *Store) APIKeySessionUser(ctx context.Context, id string) (stonewrit.User, error) {
-	var u stonewrit.User
+func (s *Store) APIKeySessionUser(ctx context.Context, id string) (plainauth.User, error) {
+	var u plainauth.User
 	fields := userFields(&u)
 	cols := userColumns
 	var finish func()
@@ -60,7 +60,7 @@ func (s *Store) APIKeySessionUser(ctx context.Context, id string) (stonewrit.Use
 	if finish == nil {
 		admin, err := s.detectAdminSchema(ctx, s.db)
 		if err != nil {
-			return stonewrit.User{}, err
+			return plainauth.User{}, err
 		}
 		if admin {
 			return s.APIKeySessionUser(ctx, id)
@@ -81,7 +81,7 @@ func (s *Store) lockKeySession(ctx context.Context, tx *sql.Tx, p ak.SessionProo
 	var saved sql.NullString
 	e := tx.QueryRowContext(ctx, s.readForUpdate(`SELECT "permissions" FROM "apikey" WHERE "id"=? AND "referenceId"=? AND "configId"=? AND "key"=`+param+` AND COALESCE("enabled",true) AND ("expiresAt" IS NULL OR "expiresAt">?)`), p.ID, p.UserID, p.ConfigID, p.Digest, s.date(now)).Scan(&saved)
 	if errors.Is(e, sql.ErrNoRows) {
-		return stonewrit.ErrNotFound
+		return plainauth.ErrNotFound
 	}
 	if e != nil {
 		return e
@@ -101,7 +101,7 @@ func (s *Store) lockKeySession(ctx context.Context, tx *sql.Tx, p ak.SessionProo
 func (s *Store) SupportsKeyFactorEnrollment() bool { return true }
 
 // UpdateCredentialProfile rechecks the key and write scope while the user row is locked.
-func (s *Store) UpdateCredentialProfile(ctx context.Context, user string, update stonewrit.ProfileUpdate, now time.Time) error {
+func (s *Store) UpdateCredentialProfile(ctx context.Context, user string, update plainauth.ProfileUpdate, now time.Time) error {
 	p, ok := ak.SessionProofFrom(ctx)
 	if !ok || user != p.UserID || update.Username != nil || update.DisplayUsername != nil || update.ClearUsername || update.ClearDisplayUsername {
 		return ak.ErrPermission
@@ -127,18 +127,18 @@ func keyFactorPrefix(user string) string {
 func enrollmentMarker(p ak.SessionProof) string {
 	return keyFactorPrefix(p.UserID) + ak.Digest(p.ConfigID+"\x00"+p.ID)
 }
-func (s *Store) checkKeyEnrollment(ctx context.Context, tx *sql.Tx, p ak.SessionProof, state stonewrit.FactorState, now time.Time) error {
+func (s *Store) checkKeyEnrollment(ctx context.Context, tx *sql.Tx, p ak.SessionProof, state plainauth.FactorState, now time.Time) error {
 	if state.Record == nil {
-		return stonewrit.ErrNotFound
+		return plainauth.ErrNotFound
 	}
 	var present int
 	err := tx.QueryRowContext(ctx, s.readForUpdate(`SELECT 1 FROM "verification" WHERE "identifier"=? AND "value"=? AND "expiresAt">?`), enrollmentMarker(p), ak.Digest(state.PasswordHash+"\x00"+state.Record.Secret), s.date(now)).Scan(&present)
 	if errors.Is(err, sql.ErrNoRows) {
-		return stonewrit.ErrNotFound
+		return plainauth.ErrNotFound
 	}
 	return err
 }
-func (s *Store) saveKeyEnrollment(ctx context.Context, tx *sql.Tx, p ak.SessionProof, sub stonewrit.FactorSubject, state stonewrit.FactorState, ch stonewrit.FactorChange) error {
+func (s *Store) saveKeyEnrollment(ctx context.Context, tx *sql.Tx, p ak.SessionProof, sub plainauth.FactorSubject, state plainauth.FactorState, ch plainauth.FactorChange) error {
 	if ch.SaveRecord == nil {
 		return nil
 	}

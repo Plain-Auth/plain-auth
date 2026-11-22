@@ -15,9 +15,9 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 
-	auth "github.com/Stonewrit/stonewrit-auth"
-	"github.com/Stonewrit/stonewrit-auth/adapters/memory"
-	"github.com/Stonewrit/stonewrit-auth/schema"
+	auth "github.com/Plain-Auth/plain-auth"
+	"github.com/Plain-Auth/plain-auth/adapters/memory"
+	"github.com/Plain-Auth/plain-auth/schema"
 )
 
 func verificationRequest(a *auth.Auth, token string, headers http.Header) *httptest.ResponseRecorder {

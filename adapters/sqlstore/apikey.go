@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	stonewrit "github.com/Stonewrit/stonewrit-auth"
-	ak "github.com/Stonewrit/stonewrit-auth/plugins/apikey"
+	plainauth "github.com/Plain-Auth/plain-auth"
+	ak "github.com/Plain-Auth/plain-auth/plugins/apikey"
 )
 
 var _ ak.Store = (*Store)(nil)
@@ -72,10 +72,10 @@ func (s *Store) apiKeyOwner(ctx context.Context, tx *sql.Tx, owner ak.Owner, now
 	} else {
 		_, err = s.lockAllowedAccount(ctx, tx, owner.UserID, now)
 	}
-	if errors.Is(err, stonewrit.ErrNotFound) {
+	if errors.Is(err, plainauth.ErrNotFound) {
 		return ak.ErrSession
 	}
-	var api *stonewrit.APIError
+	var api *plainauth.APIError
 	if errors.As(err, &api) && api.Code == "BANNED_USER" {
 		return ak.ErrBanned
 	}
@@ -155,7 +155,7 @@ func (s *Store) CheckAPIKeyCreator(ctx context.Context, owner ak.Owner) error {
 // Reserve a fingerprint atomically across all key types and owners. Existing keys
 // may predate this guard, since the canonical key digest index is not unique.
 func (s *Store) reserveKeyDigest(ctx context.Context, tx *sql.Tx, digest string) error {
-	_, err := tx.ExecContext(ctx, s.bind(`INSERT INTO "stonewrit_api_key_digest" ("digest") VALUES (?)`), apiKeyFingerprint(digest))
+	_, err := tx.ExecContext(ctx, s.bind(`INSERT INTO "plainauth_api_key_digest" ("digest") VALUES (?)`), apiKeyFingerprint(digest))
 	if duplicateConstraint(err) {
 		return ak.ErrKeyCollision
 	}
@@ -323,7 +323,7 @@ func (s *Store) ListAPIKeys(ctx context.Context, owner ak.Owner, config string, 
 	switch sort {
 	case "id", "name", "expiresAt", "createdAt", "updatedAt", "remaining", "lastRequest", "requestCount", "enabled":
 	default:
-		return page, &stonewrit.APIError{Status: 400, Code: "VALIDATION_ERROR", Message: "Unsupported sort field"}
+		return page, &plainauth.APIError{Status: 400, Code: "VALIDATION_ERROR", Message: "Unsupported sort field"}
 	}
 	dir := "ASC"
 	switch o.SortDirection {
@@ -331,7 +331,7 @@ func (s *Store) ListAPIKeys(ctx context.Context, owner ak.Owner, config string, 
 	case "desc":
 		dir = "DESC"
 	default:
-		return page, &stonewrit.APIError{Status: 400, Code: "VALIDATION_ERROR", Message: "Unsupported sort direction"}
+		return page, &plainauth.APIError{Status: 400, Code: "VALIDATION_ERROR", Message: "Unsupported sort direction"}
 	}
 	q := `SELECT ` + apiKeyFields + where + ` ORDER BY "` + sort + `" ` + dir + `,"id" ASC LIMIT ? OFFSET ?`
 	limit, off := page.Total, 0

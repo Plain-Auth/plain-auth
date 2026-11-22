@@ -13,8 +13,8 @@ import (
 	"strings"
 	"time"
 
-	authn "github.com/Stonewrit/stonewrit-auth"
-	org "github.com/Stonewrit/stonewrit-auth/plugins/organization"
+	authn "github.com/Plain-Auth/plain-auth"
+	org "github.com/Plain-Auth/plain-auth/plugins/organization"
 )
 
 func (s *Store) WithOrganizationTeams(opts org.TeamOptions) (org.TeamStore, error) {

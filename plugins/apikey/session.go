@@ -7,11 +7,11 @@ import (
 	"slices"
 	"time"
 
-	stonewrit "github.com/Stonewrit/stonewrit-auth"
+	plainauth "github.com/Plain-Auth/plain-auth"
 )
 
 type sessionUserStore interface {
-	APIKeySessionUser(context.Context, string) (stonewrit.User, error)
+	APIKeySessionUser(context.Context, string) (plainauth.User, error)
 	UniqueSessionKeyConfiguration(context.Context, string, []string) (string, error)
 }
 type SessionProof struct{ ID, UserID, ConfigID, Digest string }
@@ -24,7 +24,7 @@ func SessionProofFrom(ctx context.Context) (SessionProof, bool) {
 	return p, ok
 }
 
-func sessionResolver(services []*Service) *stonewrit.CredentialSessionResolver {
+func sessionResolver(services []*Service) *plainauth.CredentialSessionResolver {
 	var enabled []*Service
 	for _, service := range services {
 		if service.opts.EnableSession {
@@ -34,7 +34,7 @@ func sessionResolver(services []*Service) *stonewrit.CredentialSessionResolver {
 	if len(enabled) == 0 {
 		return nil
 	}
-	return &stonewrit.CredentialSessionResolver{SelectRequest: func(r *http.Request) (stonewrit.CredentialVerifier, error) {
+	return &plainauth.CredentialSessionResolver{SelectRequest: func(r *http.Request) (plainauth.CredentialVerifier, error) {
 		var secret, source string
 		var candidates []*Service
 		for _, service := range enabled {
@@ -54,7 +54,7 @@ func sessionResolver(services []*Service) *stonewrit.CredentialSessionResolver {
 		if len(candidates) == 0 {
 			return nil, nil
 		}
-		return func(ctx context.Context, meta stonewrit.RequestMeta, ttl time.Duration) (*stonewrit.CredentialSession, error) {
+		return func(ctx context.Context, meta plainauth.RequestMeta, ttl time.Duration) (*plainauth.CredentialSession, error) {
 			service := candidates[0]
 			if len(candidates) > 1 {
 				ids := make([]string, len(candidates))
@@ -79,7 +79,7 @@ func sessionResolver(services []*Service) *stonewrit.CredentialSessionResolver {
 
 var invalidSessionKey = problem(401, "INVALID_API_KEY", "Invalid API key")
 
-func (s *Service) resolveSession(ctx context.Context, secret string, meta stonewrit.RequestMeta, ttl time.Duration) (*stonewrit.CredentialSession, error) {
+func (s *Service) resolveSession(ctx context.Context, secret string, meta plainauth.RequestMeta, ttl time.Duration) (*plainauth.CredentialSession, error) {
 	if len(secret) < s.opts.KeyLength {
 		return nil, invalidSessionKey
 	}
@@ -120,8 +120,8 @@ func (s *Service) resolveSession(ctx context.Context, secret string, meta stonew
 		expires = *k.ExpiresAt
 	}
 	proof := SessionProof{ID: k.ID, UserID: user.ID, ConfigID: k.ConfigID, Digest: Digest(secret)}
-	return &stonewrit.CredentialSession{
-		Identity: stonewrit.SessionResult{User: user, Session: stonewrit.Session{
+	return &plainauth.CredentialSession{
+		Identity: plainauth.SessionResult{User: user, Session: plainauth.Session{
 			ID: k.ID, UserID: user.ID, Token: secret, IPAddress: meta.IPAddress,
 			UserAgent: meta.UserAgent, CreatedAt: now, UpdatedAt: now, ExpiresAt: expires,
 		}},

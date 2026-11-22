@@ -10,12 +10,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Stonewrit/stonewrit-auth"
-	"github.com/Stonewrit/stonewrit-auth/client"
-	stripeclient "github.com/Stonewrit/stonewrit-auth/client/stripe"
-	org "github.com/Stonewrit/stonewrit-auth/plugins/organization"
-	billing "github.com/Stonewrit/stonewrit-auth/plugins/stripe"
-	"github.com/Stonewrit/stonewrit-auth/schema"
+	"github.com/Plain-Auth/plain-auth"
+	"github.com/Plain-Auth/plain-auth/client"
+	stripeclient "github.com/Plain-Auth/plain-auth/client/stripe"
+	org "github.com/Plain-Auth/plain-auth/plugins/organization"
+	billing "github.com/Plain-Auth/plain-auth/plugins/stripe"
+	"github.com/Plain-Auth/plain-auth/schema"
 	sdk "github.com/stripe/stripe-go/v87"
 	"github.com/stripe/stripe-go/v87/webhook"
 )
@@ -53,7 +53,7 @@ func TestOrganizationSubscriptionManagement(t *testing.T) {
 					m.Role == "restore-only" && m.Action == "restore-subscription" || m.Role == "reader" && m.Action == "list-subscription"
 			}}, Subscriptions: &billing.SubscriptionOptions{Client: remote, Plans: []billing.Plan{{Name: "basic", PriceID: "price_month"}, {Name: "team", PriceID: "price_team", AnnualPriceID: "price_year"}}}})
 			off := false
-			auth, err := stonewrit.New(stonewrit.Options{Store: store, BaseURL: origin, Secret: strings.Repeat("s", 32), EmailAndPassword: true, RateLimit: &off, Plugins: []stonewrit.Plugin{orgPlugin, stripePlugin}})
+			auth, err := plainauth.New(plainauth.Options{Store: store, BaseURL: origin, Secret: strings.Repeat("s", 32), EmailAndPassword: true, RateLimit: &off, Plugins: []plainauth.Plugin{orgPlugin, stripePlugin}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -87,7 +87,7 @@ func TestOrganizationSubscriptionManagement(t *testing.T) {
 			}
 			mustCode := func(err error, code int, name string) {
 				t.Helper()
-				var api *stonewrit.APIError
+				var api *plainauth.APIError
 				if !errors.As(err, &api) || api.Status != code || api.Code != name {
 					t.Fatalf("want %d %s, got %v", code, name, err)
 				}

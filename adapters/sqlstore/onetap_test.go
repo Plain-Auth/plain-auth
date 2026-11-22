@@ -15,9 +15,9 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	authn "github.com/Stonewrit/stonewrit-auth"
-	"github.com/Stonewrit/stonewrit-auth/plugins/onetap"
-	"github.com/Stonewrit/stonewrit-auth/providers"
+	authn "github.com/Plain-Auth/plain-auth"
+	"github.com/Plain-Auth/plain-auth/plugins/onetap"
+	"github.com/Plain-Auth/plain-auth/providers"
 )
 
 type googleJWKS func(*http.Request) (*http.Response, error)

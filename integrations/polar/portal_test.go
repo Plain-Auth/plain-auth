@@ -13,10 +13,10 @@ import (
 	"testing"
 	"time"
 
-	auth "github.com/Stonewrit/stonewrit-auth"
-	"github.com/Stonewrit/stonewrit-auth/adapters/sqlstore"
-	"github.com/Stonewrit/stonewrit-auth/plugins/bearer"
-	"github.com/Stonewrit/stonewrit-auth/schema"
+	auth "github.com/Plain-Auth/plain-auth"
+	"github.com/Plain-Auth/plain-auth/adapters/sqlstore"
+	"github.com/Plain-Auth/plain-auth/plugins/bearer"
+	"github.com/Plain-Auth/plain-auth/schema"
 	"github.com/google/uuid"
 	polargo "github.com/polarsource/polar-go"
 )

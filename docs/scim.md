@@ -17,7 +17,7 @@ if err != nil {
 }
 defer store.Close() // Keep this store open while serving requests.
 
-host, err := stonewrit.New(stonewrit.Options{
+host, err := plainauth.New(plainauth.Options{
     BaseURL: "https://accounts.example.org", BasePath: "/identity",
     Secret: authSecret, Store: store,
 })
@@ -40,7 +40,7 @@ if err != nil {
 mux.Handle("/identity/", directory)
 ```
 
-Import the root `github.com/Stonewrit/stonewrit-auth` package and its `schema`, `adapters/sqlstore` and `plugins/scim` packages. Configure the identity provider's directory URL as `https://accounts.example.org/identity/scim/v2` for this example. Return links use the configured public URL. Supply the directory credential through your application's secret configuration.
+Import the root `github.com/Plain-Auth/plain-auth` package and its `schema`, `adapters/sqlstore` and `plugins/scim` packages. Configure the identity provider's directory URL as `https://accounts.example.org/identity/scim/v2` for this example. Return links use the configured public URL. Supply the directory credential through your application's secret configuration.
 
 A credential can have an absolute `ExpiresAt`. An omitted scope list permits reads and writes for this directory. Configure both old and new credentials during rotation, then remove the old entry from each serving process. Tokens must be unique across connections. The first authenticated lookup fixes the connection's provisioning domain in the shared database. Reassigning an existing connection ID to a different domain returns HTTP 409.
 
@@ -225,4 +225,4 @@ The first activation reconciles existing directory sources and validates importe
 
 After changing a mapping or the application role catalog, call `configured.ReconcileSCIMProjection(ctx, domainID)`. Call `configured.DisableSCIMProjection(ctx, domainID)` to submit empty grant sets to the current reconciler and release the domain. User activity and source metadata still describe the current directory facts during withdrawal. Activation, withdrawal and explicit replay each run in a single transaction across the domain. Plan a maintenance window for large domains. Paged replay, custom identity resolution and a built-in organization-role policy remain open.
 
-The first activation creates the small `stonewritSCIMProjectionPolicy` table. Its keys have no expiry. Transaction-scoped PostgreSQL locks, MySQL connection locks held through commit, and SQLite’s immediate transactions serialize domain writes with policy changes. A MySQL connection with an uncertain transaction or lock-release result is discarded. Expiring verification records has no effect on policy ownership. Updated Go nodes sharing a domain must use the same policy ID and equivalent callbacks. While a policy is active, an unconfigured node can read the directory, and its writes receive a conflict. Older binaries, external SQL writers and other directory implementations cannot enforce this extension. Route writes and account deletion through the configured Go store when those processes share the database. [Three-database projection and failure tests](../adapters/sqlstore/scim_projection_test.go) · [MySQL connection lifecycle tests](../adapters/sqlstore/scim_projection_mysql_test.go) · [Shared SQLite HTTP comparison](../conformance/scim-contract.mjs)
+The first activation creates the small `plainauthSCIMProjectionPolicy` table. Its keys have no expiry. Transaction-scoped PostgreSQL locks, MySQL connection locks held through commit, and SQLite’s immediate transactions serialize domain writes with policy changes. A MySQL connection with an uncertain transaction or lock-release result is discarded. Expiring verification records has no effect on policy ownership. Updated Go nodes sharing a domain must use the same policy ID and equivalent callbacks. While a policy is active, an unconfigured node can read the directory, and its writes receive a conflict. Older binaries, external SQL writers and other directory implementations cannot enforce this extension. Route writes and account deletion through the configured Go store when those processes share the database. [Three-database projection and failure tests](../adapters/sqlstore/scim_projection_test.go) · [MySQL connection lifecycle tests](../adapters/sqlstore/scim_projection_mysql_test.go) · [Shared SQLite HTTP comparison](../conformance/scim-contract.mjs)

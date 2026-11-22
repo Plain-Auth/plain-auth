@@ -14,8 +14,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	org "github.com/Stonewrit/stonewrit-auth/plugins/organization"
-	"github.com/Stonewrit/stonewrit-auth/plugins/scim"
+	org "github.com/Plain-Auth/plain-auth/plugins/organization"
+	"github.com/Plain-Auth/plain-auth/plugins/scim"
 	"github.com/go-sql-driver/mysql"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	_ "github.com/mattn/go-sqlite3"

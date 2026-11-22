@@ -14,10 +14,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Stonewrit/stonewrit-auth"
-	stripeclient "github.com/Stonewrit/stonewrit-auth/client/stripe"
-	billing "github.com/Stonewrit/stonewrit-auth/plugins/stripe"
-	"github.com/Stonewrit/stonewrit-auth/schema"
+	"github.com/Plain-Auth/plain-auth"
+	stripeclient "github.com/Plain-Auth/plain-auth/client/stripe"
+	billing "github.com/Plain-Auth/plain-auth/plugins/stripe"
+	"github.com/Plain-Auth/plain-auth/schema"
 	sdk "github.com/stripe/stripe-go/v87"
 )
 
@@ -46,7 +46,7 @@ func (p *scheduleProvider) response() map[string]any {
 	meta := map[string]string{}
 	if p.target != "" {
 		phases = append(phases, map[string]any{"start_date": p.end, "proration_behavior": "none", "items": []any{map[string]any{"price": p.target, "quantity": 1}}})
-		meta["source"], meta["stonewritPlanChange"] = "stonewrit-auth", p.attempt
+		meta["source"], meta["plainauthPlanChange"] = "plain-auth", p.attempt
 	}
 	customer := "cus_owner"
 	if p.mode == "otherCustomer" {
@@ -138,7 +138,7 @@ func (p *scheduleProvider) RoundTrip(r *http.Request) (*http.Response, error) {
 		return stripeJSON(200, p.response()), nil
 	case p.attached != "" && path == "/v1/subscription_schedules/"+p.attached && r.Method == "POST":
 		f := r.PostForm
-		if key == "" || key == p.createKey || f.Get("metadata[source]") != "stonewrit-auth" || f.Get("metadata[stonewritPlanChange]") == "" || f.Get("end_behavior") != "release" ||
+		if key == "" || key == p.createKey || f.Get("metadata[source]") != "plain-auth" || f.Get("metadata[plainauthPlanChange]") == "" || f.Get("end_behavior") != "release" ||
 			f.Get("phases[0][start_date]") != strconv.FormatInt(p.start, 10) || f.Get("phases[0][end_date]") != strconv.FormatInt(p.end, 10) ||
 			f.Get("phases[0][items][0][price]") != "price_month" || f.Get("phases[0][items][0][quantity]") != "1" ||
 			f.Get("phases[1][start_date]") != strconv.FormatInt(p.end, 10) || f.Get("phases[1][items][0][quantity]") != "1" || f.Get("phases[1][proration_behavior]") != "none" {
@@ -154,7 +154,7 @@ func (p *scheduleProvider) RoundTrip(r *http.Request) (*http.Response, error) {
 		if p.target == "" {
 			p.updated++
 		}
-		p.target, p.updateKey, p.attempt = next, key, f.Get("metadata[stonewritPlanChange]")
+		p.target, p.updateKey, p.attempt = next, key, f.Get("metadata[plainauthPlanChange]")
 		if p.loseUpdate {
 			p.loseUpdate = false
 			return nil, errors.New("lost schedule update response")
@@ -192,14 +192,14 @@ func TestPeriodEndPlanChanges(t *testing.T) {
 			plugin := billing.New(billing.Options{WebhookSecret: "whsec_local", Subscriptions: &billing.SubscriptionOptions{Client: sdk.NewClient("sk_test_local", sdk.WithBackends(backends)),
 				Plans: []billing.Plan{{Name: "basic", PriceID: "price_month"}, {Name: "team", PriceID: "price_team", AnnualPriceID: "price_year"}}}})
 			const origin = "https://billing.example"
-			newServer := func() (*stonewrit.Auth, *Store) {
+			newServer := func() (*plainauth.Auth, *Store) {
 				s, err := OpenWithSchema(ctx, kind, dsn, ddl)
 				if err != nil {
 					t.Fatal(err)
 				}
 				t.Cleanup(func() { s.Close() })
 				off := false
-				a, err := stonewrit.New(stonewrit.Options{BaseURL: origin, Secret: strings.Repeat("s", 32), EmailAndPassword: true, Store: s, RateLimit: &off, Plugins: []stonewrit.Plugin{plugin}})
+				a, err := plainauth.New(plainauth.Options{BaseURL: origin, Secret: strings.Repeat("s", 32), EmailAndPassword: true, Store: s, RateLimit: &off, Plugins: []plainauth.Plugin{plugin}})
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -214,7 +214,7 @@ func TestPeriodEndPlanChanges(t *testing.T) {
 				}
 			}
 			register := func(name string) (string, *http.Cookie) {
-				u, err := a.SignUpEmail(ctx, stonewrit.SignUpInput{Name: name, Email: name + "@example.test", Password: "local-fixture-pass"}, stonewrit.RequestMeta{})
+				u, err := a.SignUpEmail(ctx, plainauth.SignUpInput{Name: name, Email: name + "@example.test", Password: "local-fixture-pass"}, plainauth.RequestMeta{})
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -224,7 +224,7 @@ func TestPeriodEndPlanChanges(t *testing.T) {
 			_, peer := register("other")
 			exec(`UPDATE "user" SET "stripeCustomerId"=? WHERE "id"=?`, "cus_owner", uid)
 			exec(`INSERT INTO "subscription" ("id","plan","referenceId","stripeCustomerId","stripeSubscriptionId","status","seats") VALUES(?,?,?,?,?,'active',1)`, "local_owner", "basic", uid, "cus_owner", "sub_owner")
-			call := func(server *stonewrit.Auth, cookie *http.Cookie, path string, annual bool) (int, string) {
+			call := func(server *plainauth.Auth, cookie *http.Cookie, path string, annual bool) (int, string) {
 				var input any = map[string]string{"subscriptionId": "sub_owner"}
 				if path == "upgrade" {
 					input = stripeclient.Checkout{SubscriptionID: "sub_owner", Plan: "team", Annual: annual, ReturnURL: "/account", DisableRedirect: true, ScheduleAtPeriodEnd: true}
@@ -238,7 +238,7 @@ func TestPeriodEndPlanChanges(t *testing.T) {
 				server.ServeHTTP(w, r)
 				return w.Code, w.Body.String()
 			}
-			check := func(server *stonewrit.Auth, cookie *http.Cookie, path string, annual bool, code int, content string) {
+			check := func(server *plainauth.Auth, cookie *http.Cookie, path string, annual bool, code int, content string) {
 				t.Helper()
 				got, body := call(server, cookie, path, annual)
 				if got != code || !strings.Contains(body, content) {
@@ -293,7 +293,7 @@ func TestPeriodEndPlanChanges(t *testing.T) {
 			}
 			start := make(chan struct{})
 			codes := make(chan int, 2)
-			for i, server := range []*stonewrit.Auth{a, b} {
+			for i, server := range []*plainauth.Auth{a, b} {
 				go func() { <-start; code, _ := call(server, owner, "upgrade", i == 0); codes <- code }()
 			}
 			close(start)

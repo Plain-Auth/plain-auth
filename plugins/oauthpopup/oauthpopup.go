@@ -5,8 +5,8 @@ import (
 	_ "embed"
 	"net/http"
 
-	"github.com/Stonewrit/stonewrit-auth"
-	"github.com/Stonewrit/stonewrit-auth/internal/popupwire"
+	"github.com/Plain-Auth/plain-auth"
+	"github.com/Plain-Auth/plain-auth/internal/popupwire"
 )
 
 // Browser protocol constants for custom host integrations.
@@ -18,18 +18,18 @@ const (
 	ScriptCSPHash    = popupwire.ScriptCSPHash
 )
 
-type Options = stonewrit.OAuthPopupOptions
+type Options = plainauth.OAuthPopupOptions
 
 type Message = popupwire.Message
 type Data = popupwire.Data
 type Error = popupwire.Error
 
 // New installs popup start and completion handling for configured OAuth providers.
-func New() stonewrit.Plugin { return stonewrit.NewOAuthPopup() }
+func New() plainauth.Plugin { return plainauth.NewOAuthPopup() }
 
 // NewWithOptions selects the message type used by a host-supplied browser client.
-func NewWithOptions(options Options) (stonewrit.Plugin, error) {
-	return stonewrit.NewOAuthPopupWithOptions(options)
+func NewWithOptions(options Options) (plainauth.Plugin, error) {
+	return plainauth.NewOAuthPopupWithOptions(options)
 }
 
 //go:embed browser.mjs

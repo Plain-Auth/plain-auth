@@ -9,8 +9,8 @@ import (
 	"errors"
 	"time"
 
-	auth "github.com/Stonewrit/stonewrit-auth"
-	pk "github.com/Stonewrit/stonewrit-auth/plugins/passkey"
+	auth "github.com/Plain-Auth/plain-auth"
+	pk "github.com/Plain-Auth/plain-auth/plugins/passkey"
 	"github.com/go-sql-driver/mysql"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/mattn/go-sqlite3"

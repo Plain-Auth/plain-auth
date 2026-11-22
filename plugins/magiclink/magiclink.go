@@ -1,7 +1,7 @@
 // Package magiclink adds single-use mailbox sign-in links.
 package magiclink
 
-import auth "github.com/Stonewrit/stonewrit-auth"
+import auth "github.com/Plain-Auth/plain-auth"
 
 type Options = auth.MagicLinkOptions
 type Message = auth.MagicLinkMessage

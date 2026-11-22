@@ -6,8 +6,8 @@ Enable email and password authentication and register the plugin. SQLite, Postgr
 
 ```go
 import (
-    "github.com/Stonewrit/stonewrit-auth"
-    "github.com/Stonewrit/stonewrit-auth/plugins/username"
+    "github.com/Plain-Auth/plain-auth"
+    "github.com/Plain-Auth/plain-auth/plugins/username"
 )
 
 p, err := username.New(username.Options{})
@@ -16,7 +16,7 @@ if err != nil {
 }
 opts.EmailAndPassword = true
 opts.Plugins = append(opts.Plugins, p)
-service, err := stonewrit.New(opts)
+service, err := plainauth.New(opts)
 ```
 
 For SQL storage, apply the `username` schema profile. The fields are nullable so existing accounts can choose a name later. SQLite adds a unique index when upgrading a populated user table. A fresh installation declares the same uniqueness directly on the column.

@@ -10,9 +10,9 @@ import (
 	"os"
 	"time"
 
-	auth "github.com/Stonewrit/stonewrit-auth"
-	"github.com/Stonewrit/stonewrit-auth/adapters/sqlstore"
-	"github.com/Stonewrit/stonewrit-auth/plugins/scim"
+	auth "github.com/Plain-Auth/plain-auth"
+	"github.com/Plain-Auth/plain-auth/adapters/sqlstore"
+	"github.com/Plain-Auth/plain-auth/plugins/scim"
 )
 
 type input struct {

@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/Stonewrit/stonewrit-auth"
+	"github.com/Plain-Auth/plain-auth"
 )
 
 // ReferenceAuthorization contains the membership read under the database lock.
@@ -38,7 +38,7 @@ func OrganizationFromContext(ctx context.Context) (OrganizationScope, bool) {
 	v, ok := ctx.Value(organizationScopeKey{}).(OrganizationScope)
 	return v, ok
 }
-func withOrganization(c stonewrit.EndpointContext, v OrganizationScope) stonewrit.EndpointContext {
+func withOrganization(c plainauth.EndpointContext, v OrganizationScope) plainauth.EndpointContext {
 	c.Request = c.Request.WithContext(context.WithValue(c.Request.Context(), organizationScopeKey{}, v))
 	return c
 }
@@ -53,13 +53,13 @@ var ErrOrganizationBillingAccess = billingError(401, "UNAUTHORIZED", "Unauthoriz
 var errOrganizationReference = billingError(400, "ORGANIZATION_REFERENCE_ID_REQUIRED", "Reference ID is required. Provide referenceId or set activeOrganizationId in session")
 
 type billingSelection struct {
-	session      *stonewrit.SessionResult
+	session      *plainauth.SessionResult
 	reference    string
 	organization bool
 	account      OrganizationAccount
 }
 
-func selectBilling(c *stonewrit.EndpointContext, fields []billingField, action string, options *OrganizationOptions) (billingSelection, error) {
+func selectBilling(c *plainauth.EndpointContext, fields []billingField, action string, options *OrganizationOptions) (billingSelection, error) {
 	user, err := billingSession(*c, fields, options != nil)
 	if err != nil {
 		return billingSelection{}, err
@@ -93,7 +93,7 @@ func selectBilling(c *stonewrit.EndpointContext, fields []billingField, action s
 	return billingSelection{session: user, reference: id, organization: true, account: account}, err
 }
 
-func (s *subscriptions) organizationEvent(c stonewrit.EndpointContext, event sdk.Event) (stonewrit.EndpointContext, error) {
+func (s *subscriptions) organizationEvent(c plainauth.EndpointContext, event sdk.Event) (plainauth.EndpointContext, error) {
 	switch event.Type {
 	case sdk.EventTypeCheckoutSessionCompleted, sdk.EventTypeCheckoutSessionExpired, sdk.EventTypeCustomerSubscriptionCreated, sdk.EventTypeCustomerSubscriptionUpdated, sdk.EventTypeCustomerSubscriptionDeleted:
 	default:

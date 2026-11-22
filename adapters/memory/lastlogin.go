@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	auth "github.com/Stonewrit/stonewrit-auth"
+	auth "github.com/Plain-Auth/plain-auth"
 )
 
 func (s *Store) SaveSessionLoginMethod(ctx context.Context, token, method string, now time.Time) error {

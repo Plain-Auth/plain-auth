@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"time"
 
-	authn "github.com/Stonewrit/stonewrit-auth"
+	authn "github.com/Plain-Auth/plain-auth"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/endpoints"
 )

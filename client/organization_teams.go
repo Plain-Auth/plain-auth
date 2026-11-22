@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"net/url"
 
-	org "github.com/Stonewrit/stonewrit-auth/plugins/organization"
+	org "github.com/Plain-Auth/plain-auth/plugins/organization"
 )
 
 // TeamMembershipRequest identifies one explicit team membership. An empty

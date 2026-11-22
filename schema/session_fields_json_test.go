@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	auth "github.com/Stonewrit/stonewrit-auth"
-	"github.com/Stonewrit/stonewrit-auth/schema"
+	auth "github.com/Plain-Auth/plain-auth"
+	"github.com/Plain-Auth/plain-auth/schema"
 )
 
 func TestReadSessionFieldFile(t *testing.T) {

@@ -11,11 +11,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Stonewrit/stonewrit-auth"
-	"github.com/Stonewrit/stonewrit-auth/client"
-	ak "github.com/Stonewrit/stonewrit-auth/plugins/apikey"
-	org "github.com/Stonewrit/stonewrit-auth/plugins/organization"
-	"github.com/Stonewrit/stonewrit-auth/schema"
+	"github.com/Plain-Auth/plain-auth"
+	"github.com/Plain-Auth/plain-auth/client"
+	ak "github.com/Plain-Auth/plain-auth/plugins/apikey"
+	org "github.com/Plain-Auth/plain-auth/plugins/organization"
+	"github.com/Plain-Auth/plain-auth/schema"
 )
 
 func TestAPIKeyGenerationAndExtraction(t *testing.T) {
@@ -30,7 +30,7 @@ func TestAPIKeyGenerationAndExtraction(t *testing.T) {
 			}
 			wantCode := func(e error, code string) {
 				t.Helper()
-				var api *stonewrit.APIError
+				var api *plainauth.APIError
 				if !errors.As(e, &api) || api.Code != code {
 					t.Fatalf("expected %s, got %v", code, e)
 				}
@@ -46,7 +46,7 @@ func TestAPIKeyGenerationAndExtraction(t *testing.T) {
 			defer peer.Close()
 			const root = "https://keyhooks.example"
 			const custom = "X-Client-Credential"
-			boom := &stonewrit.APIError{Status: 418, Code: "PRIVATE_DETAIL", Message: "private hook text"}
+			boom := &plainauth.APIError{Status: 418, Code: "PRIVATE_DETAIL", Message: "private hook text"}
 			var sequence atomic.Int64
 			var extractions atomic.Int64
 			var called ak.Generation
@@ -85,7 +85,7 @@ func TestAPIKeyGenerationAndExtraction(t *testing.T) {
 			must(e)
 			op, e := org.New(org.Options{Store: db})
 			must(e)
-			host, e := stonewrit.New(stonewrit.Options{Store: db, BaseURL: root, Secret: strings.Repeat("h", 40), EmailAndPassword: true, RateLimit: new(bool), Plugins: []stonewrit.Plugin{kp, op}})
+			host, e := plainauth.New(plainauth.Options{Store: db, BaseURL: root, Secret: strings.Repeat("h", 40), EmailAndPassword: true, RateLimit: new(bool), Plugins: []plainauth.Plugin{kp, op}})
 			must(e)
 			signup := func(email string) (*client.Client, *client.EmailResult) {
 				c, e := client.New(root, &http.Client{Transport: guestTransport{host}})
@@ -219,7 +219,7 @@ func TestAPIKeyGenerationAndExtraction(t *testing.T) {
 			_, e = second.Create(ctx, b.id, ak.CreateInput{})
 			wantCode(e, "API_KEY_ALREADY_ISSUED")
 			// Pre-upgrade keys have no reservation but must also block reissuance.
-			_, e = db.db.ExecContext(ctx, db.bind(`DELETE FROM "stonewrit_api_key_digest" WHERE "digest"=?`), apiKeyFingerprint(ak.Digest(key.Secret)))
+			_, e = db.db.ExecContext(ctx, db.bind(`DELETE FROM "plainauth_api_key_digest" WHERE "digest"=?`), apiKeyFingerprint(ak.Digest(key.Secret)))
 			must(e)
 			options.GenerateKey = func(context.Context, ak.Generation) (string, error) { return key.Secret, nil }
 			legacy, e := ak.New(options)

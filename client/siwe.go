@@ -4,7 +4,7 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/Stonewrit/stonewrit-auth/plugins/siwe"
+	"github.com/Plain-Auth/plain-auth/plugins/siwe"
 )
 
 // SIWENonce issues a 15-minute EIP-4361 challenge before the wallet is known.

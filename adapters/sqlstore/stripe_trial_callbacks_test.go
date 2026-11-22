@@ -11,9 +11,9 @@ import (
 	"sync"
 	"testing"
 
-	auth "github.com/Stonewrit/stonewrit-auth"
-	stripeclient "github.com/Stonewrit/stonewrit-auth/client/stripe"
-	billing "github.com/Stonewrit/stonewrit-auth/plugins/stripe"
+	auth "github.com/Plain-Auth/plain-auth"
+	stripeclient "github.com/Plain-Auth/plain-auth/client/stripe"
+	billing "github.com/Plain-Auth/plain-auth/plugins/stripe"
 	sdk "github.com/stripe/stripe-go/v87"
 	"github.com/stripe/stripe-go/v87/webhook"
 )

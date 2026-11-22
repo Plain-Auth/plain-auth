@@ -4,7 +4,7 @@ package mysql
 import (
 	"context"
 
-	"github.com/Stonewrit/stonewrit-auth/adapters/sqlstore"
+	"github.com/Plain-Auth/plain-auth/adapters/sqlstore"
 )
 
 // Store persists users, credentials, and sessions.

@@ -1,4 +1,4 @@
-package stonewrit
+package plainauth
 
 import (
 	"errors"
@@ -6,7 +6,7 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/Stonewrit/stonewrit-auth/internal/configenv"
+	"github.com/Plain-Auth/plain-auth/internal/configenv"
 )
 
 // CrossSubDomainCookiesOptions selects the host and descendants that receive

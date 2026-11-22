@@ -13,8 +13,8 @@ import (
 	"runtime/debug"
 	"strings"
 
-	"github.com/Stonewrit/stonewrit-auth/internal/configenv"
-	"github.com/Stonewrit/stonewrit-auth/schema"
+	"github.com/Plain-Auth/plain-auth/internal/configenv"
+	"github.com/Plain-Auth/plain-auth/schema"
 )
 
 func generateSecret() string { var b [32]byte; rand.Read(b[:]); return hex.EncodeToString(b[:]) }

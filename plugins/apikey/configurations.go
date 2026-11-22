@@ -10,23 +10,23 @@ import (
 	"strconv"
 	"time"
 
-	stonewrit "github.com/Stonewrit/stonewrit-auth"
+	plainauth "github.com/Plain-Auth/plain-auth"
 )
 
 // NewPlugin shares management routes among independently configured key types.
-func NewPlugin(services ...*Service) (stonewrit.Plugin, error) {
+func NewPlugin(services ...*Service) (plainauth.Plugin, error) {
 	if len(services) == 0 {
-		return stonewrit.Plugin{}, errors.New("apikey: at least one configuration is required")
+		return plainauth.Plugin{}, errors.New("apikey: at least one configuration is required")
 	}
 	services = slices.Clone(services)
 	byID := map[string]*Service{}
 	for _, s := range services {
 		if s == nil || byID[s.opts.ConfigID] != nil {
-			return stonewrit.Plugin{}, errors.New("apikey: nil or duplicate configuration")
+			return plainauth.Plugin{}, errors.New("apikey: nil or duplicate configuration")
 		}
 		byID[s.opts.ConfigID] = s
 	}
-	p := stonewrit.Plugin{ID: "api-key", CredentialSessions: sessionResolver(services), ValidateStore: func(host stonewrit.Store) error {
+	p := plainauth.Plugin{ID: "api-key", CredentialSessions: sessionResolver(services), ValidateStore: func(host plainauth.Store) error {
 		for _, s := range services {
 			if s.opts.EnableSession && (!reflect.ValueOf(s.opts.Store).Comparable() || any(host) != any(s.opts.Store)) {
 				return errors.New("apikey: session authentication requires the host's own store")
@@ -38,7 +38,7 @@ func NewPlugin(services ...*Service) (stonewrit.Plugin, error) {
 		return nil
 	}}
 	for _, r := range []struct{ method, path string }{{"POST", "create"}, {"POST", "update"}, {"GET", "get"}, {"GET", "list"}, {"POST", "delete"}} {
-		p.Endpoints = append(p.Endpoints, stonewrit.Endpoint{Method: r.method, Path: "/api-key/" + r.path, Handler: func(c stonewrit.EndpointContext) (any, error) {
+		p.Endpoints = append(p.Endpoints, plainauth.Endpoint{Method: r.method, Path: "/api-key/" + r.path, Handler: func(c plainauth.EndpointContext) (any, error) {
 			id := c.Request.URL.Query().Get("configId")
 			if c.Request.Method == http.MethodPost {
 				var e error
@@ -68,7 +68,7 @@ func NewPlugin(services ...*Service) (stonewrit.Plugin, error) {
 	}
 	return p, nil
 }
-func listConfigurations(c stonewrit.EndpointContext, services []*Service) (*Page, error) {
+func listConfigurations(c plainauth.EndpointContext, services []*Service) (*Page, error) {
 	session, e := c.Auth.GetSession(c.Request.Context(), c.Request.Header)
 	if e != nil {
 		return nil, e

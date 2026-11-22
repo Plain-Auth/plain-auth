@@ -11,8 +11,8 @@ import (
 	"slices"
 	"time"
 
-	auth "github.com/Stonewrit/stonewrit-auth"
-	billing "github.com/Stonewrit/stonewrit-auth/plugins/stripe"
+	auth "github.com/Plain-Auth/plain-auth"
+	billing "github.com/Plain-Auth/plain-auth/plugins/stripe"
 	sdk "github.com/stripe/stripe-go/v87"
 )
 

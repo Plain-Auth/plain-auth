@@ -1,8 +1,8 @@
 package main
 
 import (
-	auth "github.com/Stonewrit/stonewrit-auth"
-	pk "github.com/Stonewrit/stonewrit-auth/plugins/passkey"
+	auth "github.com/Plain-Auth/plain-auth"
+	pk "github.com/Plain-Auth/plain-auth/plugins/passkey"
 )
 
 func fixturePasskeyFirst(base string) pk.Options {

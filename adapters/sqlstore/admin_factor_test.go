@@ -11,15 +11,15 @@ import (
 	"testing"
 	"time"
 
-	stonewrit "github.com/Stonewrit/stonewrit-auth"
-	"github.com/Stonewrit/stonewrit-auth/client"
-	"github.com/Stonewrit/stonewrit-auth/plugins/admin"
-	"github.com/Stonewrit/stonewrit-auth/plugins/anonymous"
-	"github.com/Stonewrit/stonewrit-auth/plugins/organization"
-	"github.com/Stonewrit/stonewrit-auth/plugins/passkey"
-	"github.com/Stonewrit/stonewrit-auth/plugins/stripe"
-	"github.com/Stonewrit/stonewrit-auth/plugins/twofactor"
-	"github.com/Stonewrit/stonewrit-auth/schema"
+	plainauth "github.com/Plain-Auth/plain-auth"
+	"github.com/Plain-Auth/plain-auth/client"
+	"github.com/Plain-Auth/plain-auth/plugins/admin"
+	"github.com/Plain-Auth/plain-auth/plugins/anonymous"
+	"github.com/Plain-Auth/plain-auth/plugins/organization"
+	"github.com/Plain-Auth/plain-auth/plugins/passkey"
+	"github.com/Plain-Auth/plain-auth/plugins/stripe"
+	"github.com/Plain-Auth/plain-auth/plugins/twofactor"
+	"github.com/Plain-Auth/plain-auth/schema"
 )
 
 func TestAdminGuestAndFactorSessionBoundaries(t *testing.T) {
@@ -34,7 +34,7 @@ func TestAdminGuestAndFactorSessionBoundaries(t *testing.T) {
 			}
 			expect := func(err error, code string) {
 				t.Helper()
-				var api *stonewrit.APIError
+				var api *plainauth.APIError
 				if !errors.As(err, &api) || api.Code != code {
 					t.Fatalf("expected %s, got %v", code, err)
 				}
@@ -60,17 +60,17 @@ func TestAdminGuestAndFactorSessionBoundaries(t *testing.T) {
 			const origin = "https://accounts.example"
 			keys, err := passkey.New(passkey.Options{RPID: "accounts.example", RPName: "Accounts", Origins: []string{origin}})
 			must(err)
-			devices, err := stonewrit.NewDeviceAuthorization(stonewrit.DeviceAuthorizationOptions{})
+			devices, err := plainauth.NewDeviceAuthorization(plainauth.DeviceAuthorizationOptions{})
 			must(err)
 			orgs, err := organization.New(organization.Options{Store: s})
 			must(err)
-			transfers, err := stonewrit.NewOneTimeToken(stonewrit.OneTimeTokenOptions{})
+			transfers, err := plainauth.NewOneTimeToken(plainauth.OneTimeTokenOptions{})
 			must(err)
-			jwt, err := stonewrit.NewJWT(stonewrit.JWTOptions{})
+			jwt, err := plainauth.NewJWT(plainauth.JWTOptions{})
 			must(err)
 			billing := stripe.New(stripe.Options{Portal: &stripe.PortalOptions{Customers: s}})
 			off := false
-			service, err := stonewrit.New(stonewrit.Options{Store: s, BaseURL: origin, Secret: strings.Repeat("s", 32), EmailAndPassword: true, RateLimit: &off, Plugins: []stonewrit.Plugin{factors, guests, administration, keys, devices, orgs, transfers, jwt, billing}})
+			service, err := plainauth.New(plainauth.Options{Store: s, BaseURL: origin, Secret: strings.Repeat("s", 32), EmailAndPassword: true, RateLimit: &off, Plugins: []plainauth.Plugin{factors, guests, administration, keys, devices, orgs, transfers, jwt, billing}})
 			must(err)
 			browser := func(credentials ...*http.Cookie) *client.Client {
 				t.Helper()
@@ -105,7 +105,7 @@ func TestAdminGuestAndFactorSessionBoundaries(t *testing.T) {
 			must(err)
 			ownerErr := s.lockActiveAccount(ctx, tx, account.User.ID, delegated.Session.Token, time.Now())
 			must(tx.Rollback())
-			if !errors.Is(ownerErr, stonewrit.ErrNotFound) {
+			if !errors.Is(ownerErr, plainauth.ErrNotFound) {
 				t.Fatalf("delegated source authorized a credential write: %v", ownerErr)
 			}
 			expect(staff.EnableDeliveredFactor(ctx, password), "UNAUTHORIZED")
@@ -154,8 +154,8 @@ func TestAdminGuestAndFactorSessionBoundaries(t *testing.T) {
 			_, err = staff.AdminBanUser(ctx, account.User.ID, "", time.Hour)
 			must(err)
 			expect(challenged.SendFactorOTP(ctx), "INVALID_TWO_FACTOR_COOKIE")
-			err = s.WithTwoFactor(ctx, stonewrit.FactorSubject{UserID: account.User.ID, Now: time.Now()}, func(stonewrit.FactorState) (stonewrit.FactorChange, error) {
-				return stonewrit.FactorChange{}, errors.New("suspended owner reached a factor operation")
+			err = s.WithTwoFactor(ctx, plainauth.FactorSubject{UserID: account.User.ID, Now: time.Now()}, func(plainauth.FactorState) (plainauth.FactorChange, error) {
+				return plainauth.FactorChange{}, errors.New("suspended owner reached a factor operation")
 			})
 			expect(err, "BANNED_USER")
 			if deliveries != 0 {

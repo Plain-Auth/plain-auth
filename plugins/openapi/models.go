@@ -7,11 +7,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Stonewrit/stonewrit-auth"
-	"github.com/Stonewrit/stonewrit-auth/plugins/apikey"
-	"github.com/Stonewrit/stonewrit-auth/plugins/organization"
-	"github.com/Stonewrit/stonewrit-auth/plugins/passkey"
-	billing "github.com/Stonewrit/stonewrit-auth/plugins/stripe"
+	"github.com/Plain-Auth/plain-auth"
+	"github.com/Plain-Auth/plain-auth/plugins/apikey"
+	"github.com/Plain-Auth/plain-auth/plugins/organization"
+	"github.com/Plain-Auth/plain-auth/plugins/passkey"
+	billing "github.com/Plain-Auth/plain-auth/plugins/stripe"
 )
 
 type object = map[string]any
@@ -77,9 +77,9 @@ func modelSchema(t reflect.Type) object {
 	}
 }
 
-func models(a *stonewrit.Auth, info stonewrit.HTTPDescription) object {
-	user := modelSchema(reflect.TypeFor[stonewrit.User]())
-	session := modelSchema(reflect.TypeFor[stonewrit.Session]())
+func models(a *plainauth.Auth, info plainauth.HTTPDescription) object {
+	user := modelSchema(reflect.TypeFor[plainauth.User]())
+	session := modelSchema(reflect.TypeFor[plainauth.Session]())
 	userFields := user["properties"].(object)
 	sessionFields := session["properties"].(object)
 	var requiredFields []string
@@ -106,13 +106,13 @@ func models(a *stonewrit.Auth, info stonewrit.HTTPDescription) object {
 			delete(sessionFields, name)
 		}
 	}
-	hasTeams := slices.ContainsFunc(info.Routes, func(r stonewrit.HTTPRoute) bool {
+	hasTeams := slices.ContainsFunc(info.Routes, func(r plainauth.HTTPRoute) bool {
 		return r.Plugin == "organization" && r.Path == "/organization/create-team"
 	})
 	if !hasTeams {
 		delete(sessionFields, "activeTeamId")
 	}
-	m := object{"User": user, "Session": session, "Account": modelSchema(reflect.TypeFor[stonewrit.LinkedAccount]()), "Error": modelSchema(reflect.TypeFor[stonewrit.APIError]()),
+	m := object{"User": user, "Session": session, "Account": modelSchema(reflect.TypeFor[plainauth.LinkedAccount]()), "Error": modelSchema(reflect.TypeFor[plainauth.APIError]()),
 		"SessionResult": responseObject(object{"user": modelRef("User"), "session": modelRef("Session")}, "user", "session")}
 	if a.HasPlugin("organization") {
 		m["Organization"] = modelSchema(reflect.TypeFor[organization.Organization]())
@@ -129,15 +129,15 @@ func models(a *stonewrit.Auth, info stonewrit.HTTPDescription) object {
 	if a.HasPlugin("passkey") {
 		m["Passkey"] = modelSchema(reflect.TypeFor[passkey.Record]())
 	}
-	if a.HasPlugin("stripe") && slices.ContainsFunc(info.Routes, func(r stonewrit.HTTPRoute) bool { return r.Plugin == "stripe" && r.Path == "/subscription/list" }) {
+	if a.HasPlugin("stripe") && slices.ContainsFunc(info.Routes, func(r plainauth.HTTPRoute) bool { return r.Plugin == "stripe" && r.Path == "/subscription/list" }) {
 		m["Subscription"] = modelSchema(reflect.TypeFor[billing.Subscription]())
 	}
 	return m
 }
 
-func sessionFieldSchema(f stonewrit.HTTPSessionField) object {
+func sessionFieldSchema(f plainauth.HTTPSessionField) object {
 	t := string(f.Type)
-	if f.Type == stonewrit.FieldNumber {
+	if f.Type == plainauth.FieldNumber {
 		t = "integer"
 	}
 	if !f.Required {

@@ -10,15 +10,15 @@ Register the popup plugin alongside your OAuth provider. For embedded apps, inst
 import (
     "net/http"
 
-    "github.com/Stonewrit/stonewrit-auth"
-    "github.com/Stonewrit/stonewrit-auth/plugins/bearer"
-    "github.com/Stonewrit/stonewrit-auth/plugins/oauthpopup"
+    "github.com/Plain-Auth/plain-auth"
+    "github.com/Plain-Auth/plain-auth/plugins/bearer"
+    "github.com/Plain-Auth/plain-auth/plugins/oauthpopup"
 )
 
 // opts already contains the store, secret, public BaseURL and SocialProviders.
 opts.TrustedOrigins = append(opts.TrustedOrigins, "https://app.example.com")
 opts.Plugins = append(opts.Plugins, oauthpopup.New(), bearer.New(bearer.Options{RequireSignature: true}))
-auth, err := stonewrit.New(opts)
+auth, err := plainauth.New(opts)
 if err != nil {
     return err
 }
@@ -56,11 +56,11 @@ Call `signIn.popup` directly from the click handler so the browser can open the 
 
 Use `provider` or `providerId` for a configured social or custom OAuth provider. `scopes` adds to the provider’s defaults, and `requestSignUp` requests enrollment when the provider requires explicit consent to create a user. `callbackURL`, `newUserCallbackURL`, and `errorCallbackURL` must satisfy the server’s redirect policy. The completion message includes the selected successful destination. The browser helper keeps the opener on its current page and calls `onSession` after confirming the session. A rejected provider login returns its error code.
 
-Pass small, non-secret application metadata in `additionalData`. It travels in the popup's navigation URL. The server accepts a JSON object of up to 8 KiB and makes it available to the configured provider’s exchange and profile callbacks through `stonewrit.OAuthPopupAdditionalData(ctx)`. Treat these fields as browser input. The server discards reserved fields for account linking, PKCE, signup policy, destinations, and its own state.
+Pass small, non-secret application metadata in `additionalData`. It travels in the popup's navigation URL. The server accepts a JSON object of up to 8 KiB and makes it available to the configured provider’s exchange and profile callbacks through `plainauth.OAuthPopupAdditionalData(ctx)`. Treat these fields as browser input. The server discards reserved fields for account linking, PKCE, signup policy, destinations, and its own state.
 
 ## Custom host clients
 
-The default message type is `stonewrit:oauth-popup`. Go exposes the JSON wire structures as `oauthpopup.Data`, `oauthpopup.Message`, and `oauthpopup.Error`. A host integrating an existing client can use `oauthpopup.NewWithOptions(oauthpopup.Options{MessageType: "company.auth:oauth-popup"})` and set `messageType: "company.auth:oauth-popup"` when creating its browser client. Each half of a `namespace:event` identifier starts with an ASCII letter or digit, followed by up to 63 letters, digits, periods, underscores, or hyphens. The server binds the selected type into the opener marker during sign-in. The client pins one type for the configured mount and checks the same window, origin and nonce for every handoff.
+The default message type is `plainauth:oauth-popup`. Go exposes the JSON wire structures as `oauthpopup.Data`, `oauthpopup.Message`, and `oauthpopup.Error`. A host integrating an existing client can use `oauthpopup.NewWithOptions(oauthpopup.Options{MessageType: "company.auth:oauth-popup"})` and set `messageType: "company.auth:oauth-popup"` when creating its browser client. Each half of a `namespace:event` identifier starts with an ASCII letter or digit, followed by up to 63 letters, digits, periods, underscores, or hyphens. The server binds the selected type into the opener marker during sign-in. The client pins one type for the configured mount and checks the same window, origin and nonce for every handoff.
 
 ## Browser and deployment behavior
 

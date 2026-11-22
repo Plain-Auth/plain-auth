@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	auth "github.com/Stonewrit/stonewrit-auth"
-	"github.com/Stonewrit/stonewrit-auth/internal/sessionfields"
+	auth "github.com/Plain-Auth/plain-auth"
+	"github.com/Plain-Auth/plain-auth/internal/sessionfields"
 )
 
 func (s *Store) ValidateSessionFields(fields map[string]auth.SessionField) error {

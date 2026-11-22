@@ -15,7 +15,7 @@ import (
 	"strings"
 	"sync"
 
-	auth "github.com/Stonewrit/stonewrit-auth"
+	auth "github.com/Plain-Auth/plain-auth"
 )
 
 // Dictionary maps stable error codes to messages in one locale.

@@ -1,6 +1,6 @@
 # Mounting the auth handler
 
-Construct one `*stonewrit.Auth` during application startup and reuse it across requests. It implements `http.Handler`. Mount the whole auth prefix so endpoint paths and repeated `Set-Cookie` headers reach the client intact. Set `Options.BasePath` to the same prefix when using a custom mount. Pass the original request path through to the library.
+Construct one `*plainauth.Auth` during application startup and reuse it across requests. It implements `http.Handler`. Mount the whole auth prefix so endpoint paths and repeated `Set-Cookie` headers reach the client intact. Set `Options.BasePath` to the same prefix when using a custom mount. Pass the original request path through to the library.
 
 Register both the auth handler and your own route with your router. The `me` handler below reads the session created by `auth`.
 

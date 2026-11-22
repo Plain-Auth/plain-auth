@@ -4,16 +4,16 @@ Register the password-checking plugin to reject newly chosen credentials that ap
 
 ```go
 import (
-    "github.com/Stonewrit/stonewrit-auth"
-    "github.com/Stonewrit/stonewrit-auth/plugins/pwnedpassword"
+    "github.com/Plain-Auth/plain-auth"
+    "github.com/Plain-Auth/plain-auth/plugins/pwnedpassword"
 )
 
 policy := pwnedpassword.New(pwnedpassword.Options{
     CustomPasswordCompromisedMessage: "Choose a password you have not used before.",
 })
-auth, err := stonewrit.New(stonewrit.Options{
+auth, err := plainauth.New(plainauth.Options{
     Store: store, BaseURL: origin, Secret: secret, EmailAndPassword: true,
-    Plugins: []stonewrit.Plugin{policy},
+    Plugins: []plainauth.Plugin{policy},
 })
 ```
 

@@ -12,8 +12,8 @@ import (
 	"os/signal"
 	"strings"
 
-	"github.com/Stonewrit/stonewrit-auth/adapters/sqlstore"
-	"github.com/Stonewrit/stonewrit-auth/schema"
+	"github.com/Plain-Auth/plain-auth/adapters/sqlstore"
+	"github.com/Plain-Auth/plain-auth/schema"
 )
 
 const usage = `Usage: authctl <command>

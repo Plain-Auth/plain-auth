@@ -9,7 +9,7 @@ import (
 	"math"
 	"time"
 
-	billing "github.com/Stonewrit/stonewrit-auth/plugins/stripe"
+	billing "github.com/Plain-Auth/plain-auth/plugins/stripe"
 )
 
 const seatsDue = "stripe-org-seats:due:"

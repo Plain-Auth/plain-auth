@@ -10,16 +10,16 @@ import (
 	"os"
 	"time"
 
-	"github.com/Stonewrit/stonewrit-auth"
-	"github.com/Stonewrit/stonewrit-auth/adapters/sqlstore"
-	billing "github.com/Stonewrit/stonewrit-auth/plugins/stripe"
+	"github.com/Plain-Auth/plain-auth"
+	"github.com/Plain-Auth/plain-auth/adapters/sqlstore"
+	billing "github.com/Plain-Auth/plain-auth/plugins/stripe"
 	sdk "github.com/stripe/stripe-go/v87"
 )
 
-func fixtureStripe(ctx context.Context, store *sqlstore.Store, endpoint string, organizations, managedSeats bool) (stonewrit.Plugin, error) {
+func fixtureStripe(ctx context.Context, store *sqlstore.Store, endpoint string, organizations, managedSeats bool) (plainauth.Plugin, error) {
 	u, err := url.Parse(endpoint)
 	if err != nil || u.Scheme != "http" || u.Hostname() != "127.0.0.1" || u.Port() == "" || u.User != nil || u.Path != "" || u.RawQuery != "" || u.Fragment != "" {
-		return stonewrit.Plugin{}, errors.New("Stripe fixture requires a loopback HTTP origin")
+		return plainauth.Plugin{}, errors.New("Stripe fixture requires a loopback HTTP origin")
 	}
 	client := &http.Client{
 		Transport: &http.Transport{}, Timeout: 5 * time.Second,
@@ -56,7 +56,7 @@ func fixtureStripe(ctx context.Context, store *sqlstore.Store, endpoint string, 
 		}
 		worker, err := billing.NewSeatWorker(store, *subscriptions)
 		if err != nil {
-			return stonewrit.Plugin{}, err
+			return plainauth.Plugin{}, err
 		}
 		go worker.Run(ctx, 25*time.Millisecond, func(err error) { log.Print(err) })
 	}

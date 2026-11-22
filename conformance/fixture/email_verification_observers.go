@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"os"
 
-	auth "github.com/Stonewrit/stonewrit-auth"
+	auth "github.com/Plain-Auth/plain-auth"
 )
 
 func verificationHookFixture(opts *auth.Options, path string) {

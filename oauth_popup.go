@@ -1,4 +1,4 @@
-package stonewrit
+package plainauth
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/Stonewrit/stonewrit-auth/internal/popupwire"
+	"github.com/Plain-Auth/plain-auth/internal/popupwire"
 )
 
 type popupOpener struct {
@@ -30,7 +30,7 @@ func OAuthPopupAdditionalData(ctx context.Context) map[string]any {
 
 // OAuthPopupOptions configures the fixed browser message protocol for a deployment.
 type OAuthPopupOptions struct {
-	// MessageType defaults to stonewrit:oauth-popup. A custom value is namespace:event.
+	// MessageType defaults to plainauth:oauth-popup. A custom value is namespace:event.
 	MessageType string
 }
 

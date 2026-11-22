@@ -12,7 +12,7 @@ import (
 	"net/mail"
 	"strings"
 
-	auth "github.com/Stonewrit/stonewrit-auth"
+	auth "github.com/Plain-Auth/plain-auth"
 )
 
 var _ auth.MagicLinkStore = (*Store)(nil)

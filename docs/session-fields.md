@@ -3,16 +3,16 @@
 An application can store scalar metadata on each login, such as a preferred language or a host-assigned device class. One account's sessions can hold different values. Configure the same field definitions on the nodes that create and manage those sessions.
 
 ```go
-fields := map[string]stonewrit.SessionField{
+fields := map[string]plainauth.SessionField{
     "locale": {
-        Type: stonewrit.FieldString, Column: "preferred_locale",
+        Type: plainauth.FieldString, Column: "preferred_locale",
         Required: true, Default: "en",
     },
     "deviceClass": {
-        Type: stonewrit.FieldString, ServerOnly: true, Default: "browser",
+        Type: plainauth.FieldString, ServerOnly: true, Default: "browser",
     },
     "internalRisk": {
-        Type: stonewrit.FieldNumber, ServerOnly: true, Hidden: true,
+        Type: plainauth.FieldNumber, ServerOnly: true, Hidden: true,
     },
 }
 
@@ -22,7 +22,7 @@ if err != nil {
 }
 defer store.Close()
 
-server, err := stonewrit.New(stonewrit.Options{
+server, err := plainauth.New(plainauth.Options{
     Store: store, BaseURL: origin, Secret: signingSecret,
     EmailAndPassword: true, SessionAdditionalFields: fields,
 })
@@ -50,7 +50,7 @@ locale, present := updated.AdditionalField("locale")
 
 ## Storage and deployment
 
-`schema.GenerateWithSessionFields(dialect, profiles, fields)` produces fresh SQL. `sqlstore.OpenWithSessionFields` applies the profile and field configuration to SQLite, PostgreSQL or MySQL. Pass the same map to `stonewrit.New`. The memory adapter accepts the runtime map directly. A custom adapter can implement `SessionFieldStore` and use `StoredSession.PhysicalSessionFields()` inside its normal session-insert transaction.
+`schema.GenerateWithSessionFields(dialect, profiles, fields)` produces fresh SQL. `sqlstore.OpenWithSessionFields` applies the profile and field configuration to SQLite, PostgreSQL or MySQL. Pass the same map to `plainauth.New`. The memory adapter accepts the runtime map directly. A custom adapter can implement `SessionFieldStore` and use `StoredSession.PhysicalSessionFields()` inside its normal session-insert transaction.
 
 On a fresh SQL database, the application supplies configured defaults on each insert. On an existing database the migration adds missing columns and uses their static defaults to backfill older sessions. Columns with compatible types and nullability are reused. The migration rejects incompatible, generated or identity columns. It also rejects adding a required column without a default to a populated session table. Coordinate required field deployments across writers, including older application nodes that omit a new column. Renames and changes to a column type or existing default need an application-managed migration.
 

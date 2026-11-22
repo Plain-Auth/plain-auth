@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	authn "github.com/Stonewrit/stonewrit-auth"
+	authn "github.com/Plain-Auth/plain-auth"
 )
 
 func openTestStore(t *testing.T, path string) *Store {

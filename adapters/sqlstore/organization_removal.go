@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	auth "github.com/Stonewrit/stonewrit-auth"
-	org "github.com/Stonewrit/stonewrit-auth/plugins/organization"
+	auth "github.com/Plain-Auth/plain-auth"
+	org "github.com/Plain-Auth/plain-auth/plugins/organization"
 )
 
 // Opaque identifiers use byte-exact comparison even on a case-insensitive MySQL database.

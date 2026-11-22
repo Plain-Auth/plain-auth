@@ -16,9 +16,9 @@ import (
 	"testing"
 	"time"
 
-	auth "github.com/Stonewrit/stonewrit-auth"
-	"github.com/Stonewrit/stonewrit-auth/plugins/bearer"
-	"github.com/Stonewrit/stonewrit-auth/plugins/emailotp"
+	auth "github.com/Plain-Auth/plain-auth"
+	"github.com/Plain-Auth/plain-auth/plugins/bearer"
+	"github.com/Plain-Auth/plain-auth/plugins/emailotp"
 )
 
 func TestEmailOTPAddressChangeAndTrustedOperations(t *testing.T) {

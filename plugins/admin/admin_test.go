@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Stonewrit/stonewrit-auth/plugins/admin"
+	"github.com/Plain-Auth/plain-auth/plugins/admin"
 )
 
 func TestAdministrativeRolePolicy(t *testing.T) {

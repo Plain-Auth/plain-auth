@@ -15,12 +15,12 @@ import (
 	"testing"
 	"time"
 
-	auth "github.com/Stonewrit/stonewrit-auth"
-	"github.com/Stonewrit/stonewrit-auth/client"
-	stripeclient "github.com/Stonewrit/stonewrit-auth/client/stripe"
-	org "github.com/Stonewrit/stonewrit-auth/plugins/organization"
-	billing "github.com/Stonewrit/stonewrit-auth/plugins/stripe"
-	"github.com/Stonewrit/stonewrit-auth/schema"
+	auth "github.com/Plain-Auth/plain-auth"
+	"github.com/Plain-Auth/plain-auth/client"
+	stripeclient "github.com/Plain-Auth/plain-auth/client/stripe"
+	org "github.com/Plain-Auth/plain-auth/plugins/organization"
+	billing "github.com/Plain-Auth/plain-auth/plugins/stripe"
+	"github.com/Plain-Auth/plain-auth/schema"
 	sdk "github.com/stripe/stripe-go/v87"
 	"github.com/stripe/stripe-go/v87/webhook"
 )

@@ -32,7 +32,7 @@ Each remembered login has an HTTP-only, same-site cookie under the application's
 
 Two tabs can submit sign-ins before either receives the other's cookies. The next list request reconciles the entries in cookie order, shows at most the configured maximum, and clears surplus, duplicate or expired entries. When simultaneous selections complete, the active cookie applied last by the browser controls its next request.
 
-SQLite, PostgreSQL, MySQL and the in-memory adapter support this plugin with the core session records. A custom adapter must implement `stonewrit.DeviceSessionStore`. Its guarded revocation operation validates the active login and deletes the target in one transaction.
+SQLite, PostgreSQL, MySQL and the in-memory adapter support this plugin with the core session records. A custom adapter must implement `plainauth.DeviceSessionStore`. Its guarded revocation operation validates the active login and deletes the target in one transaction.
 
 ## Customize list entries
 

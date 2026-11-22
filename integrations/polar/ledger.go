@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/Stonewrit/stonewrit-auth/internal/polarledger"
+	"github.com/Plain-Auth/plain-auth/internal/polarledger"
 	"github.com/google/uuid"
 )
 
@@ -96,11 +96,11 @@ func (l *Ledger) ignore(column string) string {
 }
 
 func (l *Ledger) read(ctx context.Context, slot string) (reservation, error) {
-	return scan(l.db.QueryRowContext(ctx, l.bind("SELECT "+columns+" FROM stonewrit_polar_checkout WHERE slot=?"), slot))
+	return scan(l.db.QueryRowContext(ctx, l.bind("SELECT "+columns+" FROM plainauth_polar_checkout WHERE slot=?"), slot))
 }
 
 func (l *Ledger) reserve(ctx context.Context, v reservation) (reservation, bool, error) {
-	q := `INSERT INTO stonewrit_polar_checkout (slot,attempt,owner_id,contact_hash,product,merchant,success_url,return_url,hosted_url,status,expires_ms,changed_us) VALUES (?,?,?,?,?,?,?,?,'','pending',0,0)`
+	q := `INSERT INTO plainauth_polar_checkout (slot,attempt,owner_id,contact_hash,product,merchant,success_url,return_url,hosted_url,status,expires_ms,changed_us) VALUES (?,?,?,?,?,?,?,?,'','pending',0,0)`
 	_, err := l.db.ExecContext(ctx, l.bind(q+l.ignore("slot")), v.Slot, v.Attempt, v.Owner, v.ContactHash, v.Product, v.Merchant, v.Success, v.Return)
 	if err != nil {
 		return v, false, err
@@ -114,13 +114,13 @@ func (l *Ledger) reserve(ctx context.Context, v reservation) (reservation, bool,
 
 func (l *Ledger) claimDelivery(ctx context.Context, tx *sql.Tx, event *delivery) (bool, error) {
 	nonce := uuid.NewString()
-	q := "INSERT INTO stonewrit_polar_delivery(event_key,body_hash,claim) VALUES (?,?,?)" + l.ignore("event_key")
+	q := "INSERT INTO plainauth_polar_delivery(event_key,body_hash,claim) VALUES (?,?,?)" + l.ignore("event_key")
 	_, err := tx.ExecContext(ctx, l.bind(q), event.key, event.hash, nonce)
 	if err != nil {
 		return false, err
 	}
 	var stored, claim string
-	err = tx.QueryRowContext(ctx, l.bind("SELECT body_hash,claim FROM stonewrit_polar_delivery WHERE event_key=?"), event.key).Scan(&stored, &claim)
+	err = tx.QueryRowContext(ctx, l.bind("SELECT body_hash,claim FROM plainauth_polar_delivery WHERE event_key=?"), event.key).Scan(&stored, &claim)
 	if err != nil {
 		return false, err
 	}

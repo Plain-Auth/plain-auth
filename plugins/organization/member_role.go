@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strings"
 
-	auth "github.com/Stonewrit/stonewrit-auth"
+	auth "github.com/Plain-Auth/plain-auth"
 )
 
 // UpdateMemberRoleRequest replaces all roles on one membership. An empty

@@ -6,11 +6,11 @@ import (
 	"strings"
 	"testing"
 
-	auth "github.com/Stonewrit/stonewrit-auth"
-	"github.com/Stonewrit/stonewrit-auth/adapters/sqlstore"
-	"github.com/Stonewrit/stonewrit-auth/plugins/openapi"
-	"github.com/Stonewrit/stonewrit-auth/plugins/passkey"
-	"github.com/Stonewrit/stonewrit-auth/schema"
+	auth "github.com/Plain-Auth/plain-auth"
+	"github.com/Plain-Auth/plain-auth/adapters/sqlstore"
+	"github.com/Plain-Auth/plain-auth/plugins/openapi"
+	"github.com/Plain-Auth/plain-auth/plugins/passkey"
+	"github.com/Plain-Auth/plain-auth/schema"
 )
 
 func TestPasskeyEnrollmentContract(t *testing.T) {

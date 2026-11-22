@@ -15,7 +15,7 @@ import (
 	"time"
 	"unicode/utf16"
 
-	stonewrit "github.com/Stonewrit/stonewrit-auth"
+	plainauth "github.com/Plain-Auth/plain-auth"
 )
 
 type Permissions map[string][]string
@@ -259,8 +259,8 @@ func (in UpdateInput) empty() bool {
 		p.RefillInterval == nil && p.Permissions == nil
 }
 
-func problem(status int, code, msg string) *stonewrit.APIError {
-	return &stonewrit.APIError{Status: status, Code: code, Message: msg}
+func problem(status int, code, msg string) *plainauth.APIError {
+	return &plainauth.APIError{Status: status, Code: code, Message: msg}
 }
 
 // ErrKeyCollision indicates the generated credential is already reserved or stored.

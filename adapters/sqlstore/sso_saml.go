@@ -8,8 +8,8 @@ import (
 	"errors"
 	"time"
 
-	auth "github.com/Stonewrit/stonewrit-auth"
-	"github.com/Stonewrit/stonewrit-auth/plugins/sso"
+	auth "github.com/Plain-Auth/plain-auth"
+	"github.com/Plain-Auth/plain-auth/plugins/sso"
 )
 
 func (s *Store) CompleteSAMLLogin(ctx context.Context, reference string, provision, verified bool, provider, subject string, receipt sso.AssertionReceipt, u auth.User, session auth.StoredSession, opts auth.OAuthLoginOptions) (auth.User, bool, error) {

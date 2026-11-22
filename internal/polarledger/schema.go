@@ -4,10 +4,10 @@ package polarledger
 
 import "strings"
 
-const CheckoutTable = "stonewrit_polar_checkout"
+const CheckoutTable = "plainauth_polar_checkout"
 
 // PostgresSchemaLock serializes optional runtime provisioning with CLI DDL.
-const PostgresSchemaLock = "SELECT pg_advisory_xact_lock(hashtext(current_schema()),hashtext('stonewrit_polar_ledger'))"
+const PostgresSchemaLock = "SELECT pg_advisory_xact_lock(hashtext(current_schema()),hashtext('plainauth_polar_ledger'))"
 
 type Table struct {
 	Name    string
@@ -27,7 +27,7 @@ func Tables(dialect string) []Table {
 			"success_url text not null", "return_url text not null", "checkout_id char(36) unique",
 			"hosted_url text not null", "status varchar(16) not null", "expires_ms bigint not null", "changed_us bigint not null",
 		}},
-		{"stonewrit_polar_delivery", []string{
+		{"plainauth_polar_delivery", []string{
 			"event_key char(64) primary key", "body_hash char(64) not null", "claim char(36) not null",
 		}},
 	}

@@ -5,12 +5,12 @@ import (
 	"strings"
 	"testing"
 
-	auth "github.com/Stonewrit/stonewrit-auth"
+	auth "github.com/Plain-Auth/plain-auth"
 )
 
 func TestDomainVerificationNameBounds(t *testing.T) {
 	opts, err := (DomainVerificationOptions{}).normalized()
-	if err != nil || opts.identifier("company") != "_stonewrit-auth-token-company" {
+	if err != nil || opts.identifier("company") != "_plain-auth-token-company" {
 		t.Fatalf("default TXT owner: %v", err)
 	}
 	if _, err := (DomainVerificationOptions{TokenPrefix: "tenant.child"}).normalized(); err == nil {

@@ -8,7 +8,7 @@ import (
 	"strings"
 	"unicode"
 
-	auth "github.com/Stonewrit/stonewrit-auth"
+	auth "github.com/Plain-Auth/plain-auth"
 )
 
 // SAMLDirectory identifies the current registration for a host's IdP-initiated

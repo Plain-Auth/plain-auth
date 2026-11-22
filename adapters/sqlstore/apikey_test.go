@@ -10,10 +10,10 @@ import (
 	"testing"
 	"time"
 
-	stonewrit "github.com/Stonewrit/stonewrit-auth"
-	"github.com/Stonewrit/stonewrit-auth/client"
-	ak "github.com/Stonewrit/stonewrit-auth/plugins/apikey"
-	"github.com/Stonewrit/stonewrit-auth/schema"
+	plainauth "github.com/Plain-Auth/plain-auth"
+	"github.com/Plain-Auth/plain-auth/client"
+	ak "github.com/Plain-Auth/plain-auth/plugins/apikey"
+	"github.com/Plain-Auth/plain-auth/schema"
 )
 
 func TestAPIKeyLifecycleAndPolicy(t *testing.T) {
@@ -28,7 +28,7 @@ func TestAPIKeyLifecycleAndPolicy(t *testing.T) {
 			}
 			expect := func(err error, code string) {
 				t.Helper()
-				var e *stonewrit.APIError
+				var e *plainauth.APIError
 				if !errors.As(err, &e) || e.Code != code {
 					t.Fatalf("expected %s got %v", code, err)
 				}
@@ -50,7 +50,7 @@ func TestAPIKeyLifecycleAndPolicy(t *testing.T) {
 			must(err)
 			const origin = "https://keys.example"
 			off := false
-			host, err := stonewrit.New(stonewrit.Options{Store: store, BaseURL: origin, Secret: strings.Repeat("s", 32), EmailAndPassword: true, RateLimit: &off, Plugins: []stonewrit.Plugin{keys.Plugin()}})
+			host, err := plainauth.New(plainauth.Options{Store: store, BaseURL: origin, Secret: strings.Repeat("s", 32), EmailAndPassword: true, RateLimit: &off, Plugins: []plainauth.Plugin{keys.Plugin()}})
 			must(err)
 			browser := func() *client.Client {
 				c, e := client.New(origin, &http.Client{Transport: guestTransport{host}})
@@ -136,7 +136,7 @@ func TestAPIKeyLifecycleAndPolicy(t *testing.T) {
 			expect(member.Do(ctx, "POST", "/api-key/update", map[string]any{"keyId": made.ID, "remaining": 300}, nil), "SERVER_ONLY_PROPERTY")
 			for _, endpoint := range []string{"/api-key/verify", "/api-key/delete-all-expired-api-keys"} {
 				err := member.Do(ctx, "POST", endpoint, map[string]any{}, nil)
-				var api *stonewrit.APIError
+				var api *plainauth.APIError
 				if !errors.As(err, &api) || api.Status != http.StatusNotFound {
 					t.Fatalf("server-only API exposed over HTTP: %s %v", endpoint, err)
 				}

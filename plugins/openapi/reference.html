@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>StoneWrit Auth API reference</title>
+<title>Plain Auth API reference</title>
 <style nonce="{{.Nonce}}">
 :root{color-scheme:light;--bg:#fafaf9;--paper:#fff;--fg:#182023;--accent:#146256;--line:#cbd4d1}
 [data-theme=alternate]{--bg:#edf1ef;--accent:#82404e}
@@ -26,7 +26,7 @@ pre{background:var(--paper);padding:1rem;overflow:auto;font-size:.875rem}[hidden
 </style>
 </head>
 <body><main>
-<header><h1>StoneWrit Auth API reference</h1><p><code>{{.Server}}</code></p><a href="{{.SchemaPath}}">OpenAPI schema (JSON)</a></header>
+<header><h1>Plain Auth API reference</h1><p><code>{{.Server}}</code></p><a href="{{.SchemaPath}}">OpenAPI schema (JSON)</a></header>
 <label for="filter">Filter operations</label><input id="filter" type="search" placeholder="Method or path" autocomplete="off">
 <section aria-label="HTTP operations">{{range .Operations}}
 <details><summary><strong>{{.Method}}</strong> <code>{{.Path}}</code></summary><pre>{{.Detail}}</pre></details>{{end}}</section>

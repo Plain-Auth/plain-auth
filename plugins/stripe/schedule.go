@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/Stonewrit/stonewrit-auth"
+	"github.com/Plain-Auth/plain-auth"
 	sdk "github.com/stripe/stripe-go/v87"
 )
 
@@ -28,9 +28,9 @@ type ScheduleReleaseStore interface {
 	PrepareStripeScheduleRelease(ctx context.Context, token string, subscription Subscription, schedule string, now time.Time) error
 }
 
-const scheduleSource = "stonewrit-auth"
+const scheduleSource = "plain-auth"
 
-func (s *subscriptions) scheduleChange(c stonewrit.EndpointContext, selection billingSelection, local Subscription, sub *sdk.Subscription, item *sdk.SubscriptionItem, target, returnURL string) (any, error) {
+func (s *subscriptions) scheduleChange(c plainauth.EndpointContext, selection billingSelection, local Subscription, sub *sdk.Subscription, item *sdk.SubscriptionItem, target, returnURL string) (any, error) {
 	store, ok := c.Store().(SubscriptionScheduleStore)
 	if !ok {
 		return nil, billingError(400, "SCHEDULING_UNAVAILABLE", "Subscription scheduling requires a schedule store")
@@ -86,7 +86,7 @@ func (s *subscriptions) scheduleChange(c stonewrit.EndpointContext, selection bi
 		// A retried create receives the original schedule, even if the first
 		// response was lost after Stripe attached it to the subscription.
 		params := &sdk.SubscriptionScheduleCreateParams{FromSubscription: sdk.String(sub.ID)}
-		params.SetIdempotencyKey("stonewrit-schedule-create-" + attempt.ID)
+		params.SetIdempotencyKey("plainauth-schedule-create-" + attempt.ID)
 		created, err := s.client.V1SubscriptionSchedules.Create(ctx, params)
 		if err != nil {
 			return nil, providerManagementError(err)
@@ -117,8 +117,8 @@ func (s *subscriptions) scheduleChange(c stonewrit.EndpointContext, selection bi
 		first := &sdk.SubscriptionScheduleUpdatePhaseParams{StartDate: sdk.Int64(attempt.Start), EndDate: sdk.Int64(attempt.End), Items: scheduleItem(attempt.Current)}
 		next := &sdk.SubscriptionScheduleUpdatePhaseParams{StartDate: sdk.Int64(attempt.End), ProrationBehavior: sdk.String("none"), Items: scheduleItem(attempt.Target)}
 		params := &sdk.SubscriptionScheduleUpdateParams{EndBehavior: sdk.String("release"), Phases: []*sdk.SubscriptionScheduleUpdatePhaseParams{first, next},
-			Metadata: map[string]string{"source": scheduleSource, "stonewritPlanChange": attempt.ID}}
-		params.SetIdempotencyKey("stonewrit-schedule-update-" + attempt.ID)
+			Metadata: map[string]string{"source": scheduleSource, "plainauthPlanChange": attempt.ID}}
+		params.SetIdempotencyKey("plainauth-schedule-update-" + attempt.ID)
 		updated, err := s.client.V1SubscriptionSchedules.Update(ctx, schedule.ID, params)
 		if err != nil {
 			return nil, providerManagementError(err)
@@ -154,7 +154,7 @@ func scheduleItem(price string) []*sdk.SubscriptionScheduleUpdatePhaseItemParams
 }
 
 func scheduledTarget(v *sdk.SubscriptionSchedule, a ScheduleChange) bool {
-	return v.Metadata["source"] == scheduleSource && v.Metadata["stonewritPlanChange"] == a.ID && v.EndBehavior == sdk.SubscriptionScheduleEndBehaviorRelease &&
+	return v.Metadata["source"] == scheduleSource && v.Metadata["plainauthPlanChange"] == a.ID && v.EndBehavior == sdk.SubscriptionScheduleEndBehaviorRelease &&
 		len(v.Phases) == 2 && phaseItem(v.Phases[0], a.Current) && v.Phases[0].StartDate == a.Start && v.Phases[0].EndDate == a.End &&
 		phaseItem(v.Phases[1], a.Target) && v.Phases[1].StartDate == a.End && v.Phases[1].ProrationBehavior == "none"
 }

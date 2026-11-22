@@ -1,9 +1,9 @@
-module github.com/Stonewrit/stonewrit-auth/adapters/redis
+module github.com/Plain-Auth/plain-auth/adapters/redis
 
 go 1.26.0
 
 require (
-	github.com/Stonewrit/stonewrit-auth v0.0.0-20261121202906-b6201be7a07b
+	github.com/Plain-Auth/plain-auth v0.0.0-20261121202906-b6201be7a07b
 	github.com/redis/go-redis/v9 v9.23.0
 )
 
@@ -22,4 +22,4 @@ require (
 	golang.org/x/text v0.44.0 // indirect
 )
 
-replace github.com/Stonewrit/stonewrit-auth => ../..
+replace github.com/Plain-Auth/plain-auth => ../..

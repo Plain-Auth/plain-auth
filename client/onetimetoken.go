@@ -2,7 +2,7 @@ package client
 
 import (
 	"context"
-	auth "github.com/Stonewrit/stonewrit-auth"
+	auth "github.com/Plain-Auth/plain-auth"
 	"net/http"
 )
 

@@ -7,9 +7,9 @@ import (
 	"strconv"
 	"strings"
 
-	auth "github.com/Stonewrit/stonewrit-auth"
-	"github.com/Stonewrit/stonewrit-auth/internal/sessionfields"
-	"github.com/Stonewrit/stonewrit-auth/schema"
+	auth "github.com/Plain-Auth/plain-auth"
+	"github.com/Plain-Auth/plain-auth/internal/sessionfields"
+	"github.com/Plain-Auth/plain-auth/schema"
 )
 
 // OpenWithSessionFields creates a fresh configured schema or applies additive

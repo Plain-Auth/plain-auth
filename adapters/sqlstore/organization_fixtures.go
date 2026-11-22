@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 
-	org "github.com/Stonewrit/stonewrit-auth/plugins/organization"
+	org "github.com/Plain-Auth/plain-auth/plugins/organization"
 )
 
 // SaveFixtureOrganization creates only the supplied row in a dedicated test database.

@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	auth "github.com/Stonewrit/stonewrit-auth"
+	auth "github.com/Plain-Auth/plain-auth"
 	"github.com/google/uuid"
 	polargo "github.com/polarsource/polar-go"
 	"github.com/polarsource/polar-go/models/components"
@@ -23,7 +23,7 @@ import (
 )
 
 const apiVersion = "2026-10"
-const attemptMetadata = "stonewrit_checkout_attempt"
+const attemptMetadata = "plainauth_checkout_attempt"
 
 type Options struct {
 	Client *polargo.Polar

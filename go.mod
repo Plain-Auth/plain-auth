@@ -1,4 +1,4 @@
-module github.com/Stonewrit/stonewrit-auth
+module github.com/Plain-Auth/plain-auth
 
 go 1.26.0
 

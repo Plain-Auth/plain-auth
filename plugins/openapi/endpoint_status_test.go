@@ -5,22 +5,22 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/Stonewrit/stonewrit-auth"
-	"github.com/Stonewrit/stonewrit-auth/plugins/openapi"
+	"github.com/Plain-Auth/plain-auth"
+	"github.com/Plain-Auth/plain-auth/plugins/openapi"
 )
 
 func TestDeclaredSuccessStatusAndResponseOverrides(t *testing.T) {
-	job := stonewrit.Endpoint{
+	job := plainauth.Endpoint{
 		Method: http.MethodGet, Path: "/job", SuccessStatus: http.StatusAccepted,
-		Handler: func(stonewrit.EndpointContext) (any, error) { return true, nil },
+		Handler: func(plainauth.EndpointContext) (any, error) { return true, nil },
 	}
 	overridden := job
 	overridden.Path = "/custom-job"
-	overridden.Handler = func(stonewrit.EndpointContext) (any, error) { return stonewrit.HTMLPage("<p>Queued</p>"), nil }
+	overridden.Handler = func(plainauth.EndpointContext) (any, error) { return plainauth.HTMLPage("<p>Queued</p>"), nil }
 	overridden.OpenAPI = json.RawMessage(`{"responses":{"202":{"description":"Queued for processing","content":{"text/html":{"schema":{"type":"string"}}}},"503":{"description":"Queue unavailable"}}}`)
 	silent := overridden
 	silent.Path, silent.SuccessStatus, silent.OpenAPI = "/empty-job", http.StatusNoContent, nil
-	a, server := fixture(t, openapi.Options{}, stonewrit.Plugin{ID: "jobs", Endpoints: []stonewrit.Endpoint{job, overridden, silent}})
+	a, server := fixture(t, openapi.Options{}, plainauth.Plugin{ID: "jobs", Endpoints: []plainauth.Endpoint{job, overridden, silent}})
 	paths := node(schemaDoc(t, server), "paths")
 
 	for _, route := range a.DescribeHTTP().Routes {

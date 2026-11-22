@@ -6,7 +6,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/Stonewrit/stonewrit-auth/plugins/access"
+	"github.com/Plain-Auth/plain-auth/plugins/access"
 )
 
 func TestRoleDecisions(t *testing.T) {

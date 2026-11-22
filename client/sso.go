@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/Stonewrit/stonewrit-auth/plugins/sso"
+	"github.com/Plain-Auth/plain-auth/plugins/sso"
 )
 
 type RegisterSAMLProviderRequest struct {

@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
-	authn "github.com/Stonewrit/stonewrit-auth"
-	"github.com/Stonewrit/stonewrit-auth/adapters/sqlite"
-	stripeplugin "github.com/Stonewrit/stonewrit-auth/plugins/stripe"
+	authn "github.com/Plain-Auth/plain-auth"
+	"github.com/Plain-Auth/plain-auth/adapters/sqlite"
+	stripeplugin "github.com/Plain-Auth/plain-auth/plugins/stripe"
 	stripesdk "github.com/stripe/stripe-go/v87"
 	"github.com/stripe/stripe-go/v87/webhook"
 )

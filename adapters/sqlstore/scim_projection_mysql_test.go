@@ -25,7 +25,7 @@ func TestSCIMMySQLProjectionPoolLifecycle(t *testing.T) {
 			t.Cleanup(func() { db.Close() })
 			store := &Store{db: db, dialect: "mysql"}
 			const domain = "pooled-directory"
-			const key = "SHA2(CONCAT(DATABASE(), '/stonewrit/scim-projection/', ?), 256)"
+			const key = "SHA2(CONCAT(DATABASE(), '/plainauth/scim-projection/', ?), 256)"
 			lockOwner := func() sql.NullInt64 {
 				t.Helper()
 				var id sql.NullInt64

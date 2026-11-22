@@ -32,7 +32,7 @@ AUTH_DSN=auth.db go run ./cmd/authctl migrate --dialect sqlite --plugins organiz
 | `stripe-organization` | Organization and subscription tables with a Stripe customer identifier on the organization |
 | `two-factor` | User enrollment state, factor secrets, recovery codes and lockout fields |
 
-Select `polar` to create `stonewrit_polar_checkout` and `stonewrit_polar_delivery`. The first table binds a purchase attempt to a merchant, customer and product. The second records verified webhook deliveries. A core-only installation adds neither table. [Polar hosted checkout](polar.md)
+Select `polar` to create `plainauth_polar_checkout` and `plainauth_polar_delivery`. The first table binds a purchase attempt to a merchant, customer and product. The second records verified webhook deliveries. A core-only installation adds neither table. [Polar hosted checkout](polar.md)
 
 Choose either `organization` or `organization-teams`, and at most one username profile. The `stripe-organization` option also works alongside `organization-teams`. Run `authctl info` for the full profile list in your build, or call `schema.Profiles()` from Go. Profile order produces deterministic output. The profile selector controls database structure. See the [feature checklist](parity/README.md) for runtime support.
 

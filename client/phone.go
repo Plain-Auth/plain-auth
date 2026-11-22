@@ -4,7 +4,7 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/Stonewrit/stonewrit-auth"
+	"github.com/Plain-Auth/plain-auth"
 )
 
 // SendPhoneNumberOTP requests a verification code for the supplied number.
@@ -22,7 +22,7 @@ type PhoneVerificationResult struct {
 	Status bool `json:"status"`
 }
 
-func (c *Client) VerifyPhoneNumber(ctx context.Context, input stonewrit.PhoneVerificationInput) (*PhoneVerificationResult, error) {
+func (c *Client) VerifyPhoneNumber(ctx context.Context, input plainauth.PhoneVerificationInput) (*PhoneVerificationResult, error) {
 	var out PhoneVerificationResult
 	if err := c.Do(ctx, http.MethodPost, "/phone-number/verify", input, &out); err != nil {
 		return nil, err

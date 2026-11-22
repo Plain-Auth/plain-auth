@@ -1,6 +1,6 @@
 package main
 
-import auth "github.com/Stonewrit/stonewrit-auth"
+import auth "github.com/Plain-Auth/plain-auth"
 
 func configuredSessionFields() map[string]auth.SessionField {
 	return map[string]auth.SessionField{

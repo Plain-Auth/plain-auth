@@ -8,9 +8,9 @@ import (
 	"strings"
 	"testing"
 
-	auth "github.com/Stonewrit/stonewrit-auth"
-	jwtplugin "github.com/Stonewrit/stonewrit-auth/plugins/jwt"
-	"github.com/Stonewrit/stonewrit-auth/schema"
+	auth "github.com/Plain-Auth/plain-auth"
+	jwtplugin "github.com/Plain-Auth/plain-auth/plugins/jwt"
+	"github.com/Plain-Auth/plain-auth/schema"
 )
 
 func TestCompactSessionSQLPrivilegeBoundaries(t *testing.T) {

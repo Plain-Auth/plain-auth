@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"os"
 
-	auth "github.com/Stonewrit/stonewrit-auth"
+	auth "github.com/Plain-Auth/plain-auth"
 )
 
 func configureSignUpObserver(opts *auth.Options, mode, path string) {

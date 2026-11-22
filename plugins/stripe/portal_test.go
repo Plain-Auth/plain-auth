@@ -8,9 +8,9 @@ import (
 	"strings"
 	"testing"
 
-	auth "github.com/Stonewrit/stonewrit-auth"
-	"github.com/Stonewrit/stonewrit-auth/adapters/memory"
-	billing "github.com/Stonewrit/stonewrit-auth/plugins/stripe"
+	auth "github.com/Plain-Auth/plain-auth"
+	"github.com/Plain-Auth/plain-auth/adapters/memory"
+	billing "github.com/Plain-Auth/plain-auth/plugins/stripe"
 	sdk "github.com/stripe/stripe-go/v87"
 )
 

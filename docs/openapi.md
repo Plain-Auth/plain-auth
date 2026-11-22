@@ -1,21 +1,21 @@
 # OpenAPI reference
 
-Install `plugins/openapi` to publish an OpenAPI 3.1.1 document for your configured StoneWrit Auth handler. The document and reference page are public GET endpoints. Mount them behind application middleware if your deployment requires a private reference.
+Install `plugins/openapi` to publish an OpenAPI 3.1.1 document for your configured Plain Auth handler. The document and reference page are public GET endpoints. Mount them behind application middleware if your deployment requires a private reference.
 
 ```go
 import (
-    "github.com/Stonewrit/stonewrit-auth"
-    "github.com/Stonewrit/stonewrit-auth/plugins/openapi"
+    "github.com/Plain-Auth/plain-auth"
+    "github.com/Plain-Auth/plain-auth/plugins/openapi"
 )
 
 // Start with the application's configured store, secret, public URL and plugins.
-func withReference(options stonewrit.Options) (*stonewrit.Auth, error) {
+func withReference(options plainauth.Options) (*plainauth.Auth, error) {
     reference, err := openapi.New(openapi.Options{Path: "/manual", Theme: "solarized"})
     if err != nil {
         return nil, err
     }
     options.Plugins = append(options.Plugins, reference)
-    return stonewrit.New(options)
+    return plainauth.New(options)
 }
 ```
 
@@ -35,10 +35,10 @@ When enterprise DNS verification is enabled, both management operations require 
 
 ## Custom operations
 
-Attach JSON OpenAPI operation metadata to a `stonewrit.Endpoint`. It can declare `parameters`, `requestBody`, `responses`, `security`, tags and an operation ID. Supply a unique operation ID and valid OpenAPI metadata. Root-relative `$ref` values may name public models included in the document. These declarations describe the handler. The handler implements validation and authorization. The generated success response uses `Endpoint.SuccessStatus`, which defaults to 200. A 204 response has no content schema. Explicit `responses` metadata replaces the generated response map.
+Attach JSON OpenAPI operation metadata to a `plainauth.Endpoint`. It can declare `parameters`, `requestBody`, `responses`, `security`, tags and an operation ID. Supply a unique operation ID and valid OpenAPI metadata. Root-relative `$ref` values may name public models included in the document. These declarations describe the handler. The handler implements validation and authorization. The generated success response uses `Endpoint.SuccessStatus`, which defaults to 200. A 204 response has no content schema. Explicit `responses` metadata replaces the generated response map.
 
 ```go
-endpoint := stonewrit.Endpoint{
+endpoint := plainauth.Endpoint{
     Method: http.MethodGet,
     Path:   "/service-status",
     OpenAPI: json.RawMessage(`{
@@ -50,7 +50,7 @@ endpoint := stonewrit.Endpoint{
             }
         }
     }`),
-    Handler: func(stonewrit.EndpointContext) (any, error) { return true, nil },
+    Handler: func(plainauth.EndpointContext) (any, error) { return true, nil },
 }
 ```
 

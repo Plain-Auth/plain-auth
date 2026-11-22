@@ -1,7 +1,7 @@
 package sqlstore
 
 import (
-	"github.com/Stonewrit/stonewrit-auth/internal/sessionfields"
+	"github.com/Plain-Auth/plain-auth/internal/sessionfields"
 	"maps"
 	"slices"
 
@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	authn "github.com/Stonewrit/stonewrit-auth"
+	authn "github.com/Plain-Auth/plain-auth"
 	"github.com/go-sql-driver/mysql"
 )
 

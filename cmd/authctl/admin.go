@@ -9,8 +9,8 @@ import (
 	"os"
 	"strings"
 
-	authn "github.com/Stonewrit/stonewrit-auth"
-	"github.com/Stonewrit/stonewrit-auth/adapters/sqlstore"
+	authn "github.com/Plain-Auth/plain-auth"
+	"github.com/Plain-Auth/plain-auth/adapters/sqlstore"
 )
 
 func createAdmin(ctx context.Context, args []string, in io.Reader, out, errOut io.Writer) error {

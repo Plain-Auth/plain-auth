@@ -6,8 +6,8 @@ import (
 	"slices"
 	"strings"
 
-	auth "github.com/Stonewrit/stonewrit-auth"
-	org "github.com/Stonewrit/stonewrit-auth/plugins/organization"
+	auth "github.com/Plain-Auth/plain-auth"
+	org "github.com/Plain-Auth/plain-auth/plugins/organization"
 )
 
 var _ org.MemberRoleStore = (*Store)(nil)

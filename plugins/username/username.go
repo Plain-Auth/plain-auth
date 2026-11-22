@@ -1,8 +1,8 @@
 // Package username adds optional public usernames and credential sign-in.
 package username
 
-import "github.com/Stonewrit/stonewrit-auth"
+import "github.com/Plain-Auth/plain-auth"
 
-type Options = stonewrit.UsernameOptions
+type Options = plainauth.UsernameOptions
 
-func New(options Options) (stonewrit.Plugin, error) { return stonewrit.NewUsername(options) }
+func New(options Options) (plainauth.Plugin, error) { return plainauth.NewUsername(options) }

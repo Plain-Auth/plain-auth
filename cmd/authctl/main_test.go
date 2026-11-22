@@ -71,7 +71,7 @@ func TestPrepareAPIKeyLedgerCommand(t *testing.T) {
 	}
 	defer db.Close()
 	var markers int
-	if err := db.QueryRowContext(t.Context(), "SELECT count(*) FROM stonewrit_api_key_digest WHERE digest = ?", []byte{1}).Scan(&markers); err != nil || markers != 1 {
+	if err := db.QueryRowContext(t.Context(), "SELECT count(*) FROM plainauth_api_key_digest WHERE digest = ?", []byte{1}).Scan(&markers); err != nil || markers != 1 {
 		t.Fatalf("expected one completed backfill, got %d: %v", markers, err)
 	}
 }
@@ -90,17 +90,17 @@ func TestPolarSchemaCommands(t *testing.T) {
 		if err := command("generate", "--dialect", dialect, "--plugins", "polar"); err != nil {
 			t.Fatal(err)
 		}
-		if !strings.Contains(out.String(), "stonewrit_polar_checkout") || !strings.Contains(out.String(), "stonewrit_polar_delivery") {
+		if !strings.Contains(out.String(), "plainauth_polar_checkout") || !strings.Contains(out.String(), "plainauth_polar_delivery") {
 			t.Fatal("missing Polar tables for", dialect)
 		}
-		if err := command("generate", "--dialect", dialect); err != nil || strings.Contains(out.String(), "stonewrit_polar_") {
+		if err := command("generate", "--dialect", dialect); err != nil || strings.Contains(out.String(), "plainauth_polar_") {
 			t.Fatal("ordinary installation selected billing tables", dialect, err)
 		}
 	}
 	if err := command("migrate", "--dialect", "sqlite"); err != nil {
 		t.Fatal(err)
 	}
-	if err := command("check", "schema", "--dialect", "sqlite", "--plugins", "polar", "--json"); err == nil || !strings.Contains(out.String(), "stonewrit_polar_delivery") {
+	if err := command("check", "schema", "--dialect", "sqlite", "--plugins", "polar", "--json"); err == nil || !strings.Contains(out.String(), "plainauth_polar_delivery") {
 		t.Fatal("pending billing setup not reported", err, out.String())
 	}
 	for range 2 {

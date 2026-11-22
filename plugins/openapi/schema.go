@@ -11,7 +11,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/Stonewrit/stonewrit-auth"
+	"github.com/Plain-Auth/plain-auth"
 )
 
 //go:embed catalog.json
@@ -25,7 +25,7 @@ var catalogue = sync.OnceValue(func() map[string]json.RawMessage {
 	return rows
 })
 
-func schemaPath(r stonewrit.HTTPRoute) string {
+func schemaPath(r plainauth.HTTPRoute) string {
 	if r.Plugin == "sso" && strings.HasSuffix(r.Path, "/:providerId") {
 		return strings.TrimSuffix(r.Path, "/:providerId") + "/{providerId}"
 	}
@@ -53,7 +53,7 @@ func response(media string, schema object) object {
 	return object{"description": "Success", "content": content(media, schema)}
 }
 
-func sessionProtection(route stonewrit.HTTPRoute) bool {
+func sessionProtection(route plainauth.HTTPRoute) bool {
 	switch route.Plugin {
 	case "admin", "organization", "api-key":
 		return true
@@ -83,7 +83,7 @@ func loginResponse(success object, factor bool) object {
 	return object{"oneOf": []object{success, challenge}}
 }
 
-func publicResponse(route stonewrit.HTTPRoute, info stonewrit.HTTPDescription, factor bool) object {
+func publicResponse(route plainauth.HTTPRoute, info plainauth.HTTPDescription, factor bool) object {
 	if route.Plugin == "sso" {
 		return ssoResponse(route.Path, info)
 	}
@@ -120,11 +120,11 @@ func publicResponse(route stonewrit.HTTPRoute, info stonewrit.HTTPDescription, f
 	case "/list-sessions":
 		return array(modelRef("Session"))
 	case "/get-access-token":
-		return modelSchema(reflect.TypeFor[stonewrit.AccessTokenResult]())
+		return modelSchema(reflect.TypeFor[plainauth.AccessTokenResult]())
 	case "/refresh-token":
-		return modelSchema(reflect.TypeFor[stonewrit.RefreshTokenResult]())
+		return modelSchema(reflect.TypeFor[plainauth.RefreshTokenResult]())
 	case "/account-info":
-		return modelSchema(reflect.TypeFor[stonewrit.AccountInfoResult]())
+		return modelSchema(reflect.TypeFor[plainauth.AccountInfoResult]())
 	case "/admin/get-user", "/admin/update-user":
 		return modelRef("User")
 	case "/admin/list-users":
@@ -200,7 +200,7 @@ func keepFields(schema object, names ...string) {
 	}
 }
 
-func adjustRequest(op object, r stonewrit.HTTPRoute, info stonewrit.HTTPDescription, a *stonewrit.Auth) {
+func adjustRequest(op object, r plainauth.HTTPRoute, info plainauth.HTTPDescription, a *plainauth.Auth) {
 	if r.Plugin == "sso" {
 		describeSSORequest(op, r, info)
 		return
@@ -338,7 +338,7 @@ func adjustRequest(op object, r stonewrit.HTTPRoute, info stonewrit.HTTPDescript
 	}
 }
 
-func standardOperation(r stonewrit.HTTPRoute, info stonewrit.HTTPDescription, a *stonewrit.Auth) (object, error) {
+func standardOperation(r plainauth.HTTPRoute, info plainauth.HTTPDescription, a *plainauth.Auth) (object, error) {
 	op := object{}
 	key := r.Method + " " + schemaPath(r)
 	builtin := knownPlugin(r.Plugin)
@@ -424,7 +424,7 @@ func standardOperation(r stonewrit.HTTPRoute, info stonewrit.HTTPDescription, a 
 }
 
 // Generate returns a fresh OpenAPI document for this configured instance.
-func Generate(a *stonewrit.Auth) (map[string]any, error) {
+func Generate(a *plainauth.Auth) (map[string]any, error) {
 	if a == nil {
 		return nil, errors.New("openapi: auth instance is required")
 	}
@@ -453,7 +453,7 @@ func Generate(a *stonewrit.Auth) (map[string]any, error) {
 		}
 		methods[strings.ToLower(r.Method)] = op
 	}
-	return object{"openapi": "3.1.1", "info": object{"title": "StoneWrit Auth", "version": "1.0"}, "servers": []object{{"url": info.ServerURL}},
+	return object{"openapi": "3.1.1", "info": object{"title": "Plain Auth", "version": "1.0"}, "servers": []object{{"url": info.ServerURL}},
 		"paths": paths, "components": object{"schemas": models(a, info), "securitySchemes": schemes,
 			"responses": object{"Error": object{"description": "Request failed", "content": content("application/json", modelRef("Error"))}}}}, nil
 }

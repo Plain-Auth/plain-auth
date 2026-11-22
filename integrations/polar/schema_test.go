@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Stonewrit/stonewrit-auth/adapters/sqlstore"
-	"github.com/Stonewrit/stonewrit-auth/schema"
+	"github.com/Plain-Auth/plain-auth/adapters/sqlstore"
+	"github.com/Plain-Auth/plain-auth/schema"
 )
 
 func TestCheckoutLedgerSchemaMigration(t *testing.T) {
@@ -44,7 +44,7 @@ func TestCheckoutLedgerSchemaMigration(t *testing.T) {
 				t.Fatal(err)
 			}
 			id := strings.Repeat("a", 64)
-			stmt := l.bind("INSERT INTO stonewrit_polar_delivery (event_key,body_hash,claim) VALUES (?,?,?)")
+			stmt := l.bind("INSERT INTO plainauth_polar_delivery (event_key,body_hash,claim) VALUES (?,?,?)")
 			if _, err := db.ExecContext(ctx, stmt, id, id, strings.Repeat("b", 36)); err != nil {
 				t.Fatal(err)
 			}
@@ -58,7 +58,7 @@ func TestCheckoutLedgerSchemaMigration(t *testing.T) {
 				t.Fatal("accepted an already recorded delivery")
 			}
 			var n int
-			if err := db.QueryRowContext(ctx, "SELECT COUNT(*) FROM stonewrit_polar_delivery").Scan(&n); err != nil || n != 1 {
+			if err := db.QueryRowContext(ctx, "SELECT COUNT(*) FROM plainauth_polar_delivery").Scan(&n); err != nil || n != 1 {
 				t.Fatal("lost checkout delivery receipt", err, n)
 			}
 			findings, err := sqlstore.CheckSchema(ctx, dialect, dsn, []string{"polar", "sso"})

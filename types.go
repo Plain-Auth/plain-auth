@@ -1,5 +1,5 @@
-// Package stonewrit embeds authentication in the host application's HTTP server.
-package stonewrit
+// Package plainauth embeds authentication in the host application's HTTP server.
+package plainauth
 
 import (
 	"context"

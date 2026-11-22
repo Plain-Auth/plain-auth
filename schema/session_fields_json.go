@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/Stonewrit/stonewrit-auth/internal/sessionfields"
+	"github.com/Plain-Auth/plain-auth/internal/sessionfields"
 )
 
 // SessionField describes one custom session column and its application policy.
-// The type is shared with stonewrit.SessionField.
+// The type is shared with plainauth.SessionField.
 type SessionField = sessionfields.Field
 
 // ReadSessionFields reads a JSON object keyed by logical field name. Definitions

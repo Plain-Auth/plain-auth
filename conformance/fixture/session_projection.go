@@ -6,8 +6,8 @@ import (
 	"os"
 	"time"
 
-	auth "github.com/Stonewrit/stonewrit-auth"
-	"github.com/Stonewrit/stonewrit-auth/plugins/customsession"
+	auth "github.com/Plain-Auth/plain-auth"
+	"github.com/Plain-Auth/plain-auth/plugins/customsession"
 )
 
 // These additional headers let the released client exercise the projection's

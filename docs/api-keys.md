@@ -10,7 +10,7 @@ Install the API-key tables and prepare the permanent digest ledger before starti
 AUTH_DSN=auth.db go run ./cmd/authctl migrate --dialect sqlite --api-key-ledger
 ```
 
-Import `github.com/Stonewrit/stonewrit-auth` and `github.com/Stonewrit/stonewrit-auth/plugins/apikey`. Pass the same SQL store to the host and key service.
+Import `github.com/Plain-Auth/plain-auth` and `github.com/Plain-Auth/plain-auth/plugins/apikey`. Pass the same SQL store to the host and key service.
 
 ```go
 keys, err := apikey.New(apikey.Options{
@@ -22,9 +22,9 @@ keys, err := apikey.New(apikey.Options{
 if err != nil {
     return err
 }
-auth, err := stonewrit.New(stonewrit.Options{
+auth, err := plainauth.New(plainauth.Options{
     Store: store, BaseURL: baseURL, Secret: secret,
-    EmailAndPassword: true, Plugins: []stonewrit.Plugin{keys.Plugin()},
+    EmailAndPassword: true, Plugins: []plainauth.Plugin{keys.Plugin()},
 })
 if err != nil {
     return err
@@ -43,7 +43,7 @@ The SQL store checks issuance authority before invoking the generator, then rech
 
 ### Upgrade existing SQL key stores
 
-The adapter keeps an additional table, `stonewrit_api_key_digest`, with a binary primary key and no owner, timestamps or expiry. Each credential contributes a 32-byte SHA-256 fingerprint of its stored digest. A separate one-byte completion marker allows subsequent service starts to skip the historical scan. New issuance reserves the digest and inserts the live key in the same transaction. Deleting a key or its owner retains that reservation. Verification cleanup cannot remove it. Back up and restore the ledger with the canonical `apikey` table.
+The adapter keeps an additional table, `plainauth_api_key_digest`, with a binary primary key and no owner, timestamps or expiry. Each credential contributes a 32-byte SHA-256 fingerprint of its stored digest. A separate one-byte completion marker allows subsequent service starts to skip the historical scan. New issuance reserves the digest and inserts the live key in the same transaction. Deleting a key or its owner retains that reservation. Verification cleanup cannot remove it. Back up and restore the ledger with the canonical `apikey` table.
 
 For a coordinated upgrade, pause every process that creates, rotates or deletes API keys, including jobs and older applications that share the database. Run `authctl migrate --dialect postgres --api-key-ledger` with your migration credentials and target dialect, or call `store.PrepareAPIKeyLedger(ctx)` from Go. The first key service on a store also initializes it automatically. Replace all key writers with ledger-aware adapters before resuming writes and enabling custom generators. Applications using restricted database roles can provision the table first and grant the adapter access for backfill and reservation.
 

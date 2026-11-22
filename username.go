@@ -1,4 +1,4 @@
-package stonewrit
+package plainauth
 
 import (
 	"context"
@@ -39,8 +39,8 @@ type UsernameStore interface {
 }
 
 var defaultUsername = regexp.MustCompile(`^[a-zA-Z0-9_.]+$`)
-var ErrUsernameTaken = errors.New("stonewrit: username already taken")
-var ErrUsernameImmutable = errors.New("stonewrit: username is immutable")
+var ErrUsernameTaken = errors.New("plainauth: username already taken")
+var ErrUsernameImmutable = errors.New("plainauth: username is immutable")
 
 func NewUsername(options UsernameOptions) (Plugin, error) {
 	if options.MinLength == 0 {
@@ -50,12 +50,12 @@ func NewUsername(options UsernameOptions) (Plugin, error) {
 		options.MaxLength = 30
 	}
 	if options.MinLength < 1 || options.MaxLength < options.MinLength || options.DisableNormalization && options.Normalize != nil {
-		return Plugin{}, errors.New("stonewrit: invalid username configuration")
+		return Plugin{}, errors.New("plainauth: invalid username configuration")
 	}
 	p := Plugin{ID: "username", username: &options, ValidateStore: func(s Store) error {
 		db, ok := s.(UsernameStore)
 		if !ok {
-			return errors.New("stonewrit: username requires a UsernameStore")
+			return errors.New("plainauth: username requires a UsernameStore")
 		}
 		return db.CheckUsernameSchema(context.Background(), !options.DisableDisplay)
 	}}

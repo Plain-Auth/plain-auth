@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
-	auth "github.com/Stonewrit/stonewrit-auth"
-	"github.com/Stonewrit/stonewrit-auth/plugins/apikey"
-	"github.com/Stonewrit/stonewrit-auth/schema"
+	auth "github.com/Plain-Auth/plain-auth"
+	"github.com/Plain-Auth/plain-auth/plugins/apikey"
+	"github.com/Plain-Auth/plain-auth/schema"
 )
 
 func TestAPIKeySessionRetiresDisabledBrowserCache(t *testing.T) {

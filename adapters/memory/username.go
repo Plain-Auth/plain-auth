@@ -4,20 +4,20 @@ import (
 	"context"
 	"time"
 
-	"github.com/Stonewrit/stonewrit-auth"
+	"github.com/Plain-Auth/plain-auth"
 )
 
-var _ stonewrit.UsernameStore = (*Store)(nil)
+var _ plainauth.UsernameStore = (*Store)(nil)
 
 func (s *Store) CheckUsernameSchema(ctx context.Context, display bool) error { return ctx.Err() }
 
-func cloneUsername(f *stonewrit.UsernameFields, display bool) *stonewrit.UsernameFields {
-	n := &stonewrit.UsernameFields{}
+func cloneUsername(f *plainauth.UsernameFields, display bool) *plainauth.UsernameFields {
+	n := &plainauth.UsernameFields{}
 	if f != nil {
 		n.Username = copyPointer(f.Username)
 	}
 	if display {
-		n.DisplayUsernameFields = &stonewrit.DisplayUsernameFields{}
+		n.DisplayUsernameFields = &plainauth.DisplayUsernameFields{}
 		if f != nil && f.DisplayUsernameFields != nil {
 			n.DisplayUsername = copyPointer(f.DisplayUsername)
 		}
@@ -42,20 +42,20 @@ func (s *Store) UsernameExists(ctx context.Context, name string) (bool, error) {
 	return s.usernameOwner(name) != "", ctx.Err()
 }
 
-func (s *Store) UsernameCredential(ctx context.Context, name string) (stonewrit.User, string, error) {
+func (s *Store) UsernameCredential(ctx context.Context, name string) (plainauth.User, string, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	if err := ctx.Err(); err != nil {
-		return stonewrit.User{}, "", err
+		return plainauth.User{}, "", err
 	}
 	rec, ok := s.users[s.usernameOwner(name)]
 	if !ok || rec.hash == "" {
-		return stonewrit.User{}, "", stonewrit.ErrNotFound
+		return plainauth.User{}, "", plainauth.ErrNotFound
 	}
 	return copyUser(rec.user), rec.hash, nil
 }
 
-func (s *Store) ReadUsername(ctx context.Context, id string, display bool) (*stonewrit.UsernameFields, error) {
+func (s *Store) ReadUsername(ctx context.Context, id string, display bool) (*plainauth.UsernameFields, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	if err := ctx.Err(); err != nil {
@@ -63,12 +63,12 @@ func (s *Store) ReadUsername(ctx context.Context, id string, display bool) (*sto
 	}
 	rec, ok := s.users[id]
 	if !ok {
-		return nil, stonewrit.ErrNotFound
+		return nil, plainauth.ErrNotFound
 	}
 	return cloneUsername(rec.user.UsernameFields, display), nil
 }
 
-func (s *Store) UpdateUsernameProfile(ctx context.Context, id, token string, p stonewrit.ProfileUpdate, now time.Time, immutable bool) error {
+func (s *Store) UpdateUsernameProfile(ctx context.Context, id, token string, p plainauth.ProfileUpdate, now time.Time, immutable bool) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if err := ctx.Err(); err != nil {
@@ -77,15 +77,15 @@ func (s *Store) UpdateUsernameProfile(ctx context.Context, id, token string, p s
 	rec, ok := s.users[id]
 	ss := s.sessions[token]
 	if !ok || ss.UserID != id || ss.ImpersonatedBy != nil || !ss.ExpiresAt.After(now) {
-		return stonewrit.ErrNotFound
+		return plainauth.ErrNotFound
 	}
 	old := rec.user.UsernameFields
 	if immutable && old != nil && old.Username != nil && *old.Username != "" && (p.ClearUsername || p.Username != nil && *old.Username != *p.Username) {
-		return stonewrit.ErrUsernameImmutable
+		return plainauth.ErrUsernameImmutable
 	}
 	if p.Username != nil && !p.ClearUsername {
 		if owner := s.usernameOwner(*p.Username); owner != "" && owner != id {
-			return stonewrit.ErrUsernameTaken
+			return plainauth.ErrUsernameTaken
 		}
 	}
 	f := cloneUsername(old, p.ClearDisplayUsername || p.DisplayUsername != nil || old != nil && old.DisplayUsernameFields != nil)

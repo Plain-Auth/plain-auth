@@ -1,4 +1,4 @@
-package stonewrit
+package plainauth
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Stonewrit/stonewrit-auth/plugins/access"
+	"github.com/Plain-Auth/plain-auth/plugins/access"
 )
 
 // AdminUserFields is present on profiles managed by the administration plugin.

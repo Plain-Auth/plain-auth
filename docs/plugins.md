@@ -1,6 +1,6 @@
 # Plugins and Stripe
 
-Pass plugins to `stonewrit.Options.Plugins` during startup. A plugin declares an ID and endpoint definitions with a method and a path relative to the auth mount. Registration checks IDs and route conflicts before the application begins serving. Assign an `Endpoint.RateLimit` rule to limit requests to a plugin endpoint. The host application can [override rate rules](authentication.md#set-limits-for-an-application).
+Pass plugins to `plainauth.Options.Plugins` during startup. A plugin declares an ID and endpoint definitions with a method and a path relative to the auth mount. Registration checks IDs and route conflicts before the application begins serving. Assign an `Endpoint.RateLimit` rule to limit requests to a plugin endpoint. The host application can [override rate rules](authentication.md#set-limits-for-an-application).
 
 The i18n plugin localizes coded errors from core and plugin endpoints. [Localization guide](localization.md)
 
@@ -15,18 +15,18 @@ Plugins can write structured records through `c.Auth.Logger()`. [Configure insta
 ## Create a session-aware endpoint
 
 ```go
-profile := stonewrit.Plugin{
+profile := plainauth.Plugin{
     ID: "profile",
-    Endpoints: []stonewrit.Endpoint{{
+    Endpoints: []plainauth.Endpoint{{
         Method: http.MethodGet,
         Path:   "/profile",
-        Handler: func(c stonewrit.EndpointContext) (any, error) {
+        Handler: func(c plainauth.EndpointContext) (any, error) {
             session, err := c.Auth.GetSession(c.Request.Context(), c.Request.Header)
             if err != nil {
                 return nil, err
             }
             if session == nil {
-                return nil, &stonewrit.APIError{
+                return nil, &plainauth.APIError{
                     Status: 401, Code: "UNAUTHORIZED", Message: "Sign in first",
                 }
             }
@@ -34,14 +34,14 @@ profile := stonewrit.Plugin{
         },
     }},
 }
-opts.Plugins = []stonewrit.Plugin{profile}
+opts.Plugins = []plainauth.Plugin{profile}
 ```
 
 The handler is then available at `GET /api/auth/profile`. Endpoint handlers run concurrently. Synchronize state they share or persist it in a transactional store. See the [plugin API](../plugins.go) and [registration tests](../plugins_test.go).
 
 ## Receive Stripe webhooks
 
-Import `github.com/Stonewrit/stonewrit-auth/plugins/stripe` as `authstripe` and the official `github.com/stripe/stripe-go/v87` as `stripesdk`.
+Import `github.com/Plain-Auth/plain-auth/plugins/stripe` as `authstripe` and the official `github.com/stripe/stripe-go/v87` as `stripesdk`.
 
 ```go
 opts.Plugins = append(opts.Plugins, authstripe.New(authstripe.Options{
@@ -90,7 +90,7 @@ Send an authenticated `POST /api/auth/subscription/billing-portal` with `{"retur
 Register `customsession.New` from `plugins/customsession` to select the data returned by `GET /get-session`. The function receives the authenticated request context, user, and session. It can perform an application lookup through `c.Request.Context()`.
 
 ```go
-view, err := customsession.New(func(c stonewrit.EndpointContext, data stonewrit.SessionResult) (any, error) {
+view, err := customsession.New(func(c plainauth.EndpointContext, data plainauth.SessionResult) (any, error) {
     return map[string]string{"viewer": data.User.ID, "displayName": data.User.Name}, nil
 })
 if err != nil {

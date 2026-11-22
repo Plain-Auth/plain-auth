@@ -4,7 +4,7 @@ import (
 	"context"
 	"net/http"
 
-	authn "github.com/Stonewrit/stonewrit-auth"
+	authn "github.com/Plain-Auth/plain-auth"
 )
 
 // ListDeviceSessions returns the accounts remembered by this client's cookie jar.

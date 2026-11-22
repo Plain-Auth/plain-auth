@@ -15,7 +15,7 @@ import { passkeyClient } from "@better-auth/passkey/client";
 const chromePaths = [process.env.CHROME_BIN, "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", "/usr/bin/google-chrome", "/usr/bin/chromium"].filter(Boolean);
 
 async function authenticator(t, url, binary) {
-  const dir = await mkdtemp(join(tmpdir(), "stonewrit-webauthn-"));
+  const dir = await mkdtemp(join(tmpdir(), "plainauth-webauthn-"));
   const proc = spawn(binary, ["--headless=new","--disable-background-networking","--disable-default-apps","--disable-sync","--no-first-run","--no-default-browser-check","--remote-debugging-address=127.0.0.1","--remote-debugging-port=0","--user-data-dir="+dir,url], {stdio:"ignore"});
   const exit = once(proc,"exit");
   let socket;

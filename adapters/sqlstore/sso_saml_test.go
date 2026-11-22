@@ -24,10 +24,10 @@ import (
 	"testing"
 	"time"
 
-	auth "github.com/Stonewrit/stonewrit-auth"
-	"github.com/Stonewrit/stonewrit-auth/client"
-	"github.com/Stonewrit/stonewrit-auth/plugins/sso"
-	"github.com/Stonewrit/stonewrit-auth/schema"
+	auth "github.com/Plain-Auth/plain-auth"
+	"github.com/Plain-Auth/plain-auth/client"
+	"github.com/Plain-Auth/plain-auth/plugins/sso"
+	"github.com/Plain-Auth/plain-auth/schema"
 	"github.com/beevik/etree"
 	"github.com/crewjam/saml"
 	"github.com/crewjam/saml/xmlenc"
@@ -285,7 +285,7 @@ func runEnterpriseSAMLBrowser(t *testing.T, encrypted, logout bool) {
 			})
 			token, e := owner.RequestSSODomainVerification(ctx, "work")
 			must(e)
-			dns.put("_stonewrit-auth-token-work.staff.example.", token)
+			dns.put("_plain-auth-token-work.staff.example.", token)
 			must(owner.VerifySSODomain(ctx, "work"))
 
 			if logout {
@@ -632,7 +632,7 @@ func runEnterpriseSAMLBrowser(t *testing.T, encrypted, logout bool) {
 			}
 			newProof, e := owner.RequestSSODomainVerification(ctx, "work")
 			must(e)
-			dns.put("_stonewrit-auth-token-work.staff.example.", newProof)
+			dns.put("_plain-auth-token-work.staff.example.", newProof)
 			must(owner.VerifySSODomain(ctx, "work"))
 			portal, e := idp.NewIdpInitiatedRequest(httptest.NewRequest("GET", entry, nil), cfg.SPMetadata.EntityID, "")
 			must(e)

@@ -7,17 +7,17 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Stonewrit/stonewrit-auth"
-	"github.com/Stonewrit/stonewrit-auth/adapters/memory"
-	"github.com/Stonewrit/stonewrit-auth/client"
-	"github.com/Stonewrit/stonewrit-auth/plugins/bearer"
+	"github.com/Plain-Auth/plain-auth"
+	"github.com/Plain-Auth/plain-auth/adapters/memory"
+	"github.com/Plain-Auth/plain-auth/client"
+	"github.com/Plain-Auth/plain-auth/plugins/bearer"
 )
 
 func TestSignedBearerClient(t *testing.T) {
 	server := httptest.NewUnstartedServer(nil)
 	origin := "https://" + server.Listener.Addr().String()
-	instance, err := stonewrit.New(stonewrit.Options{BaseURL: origin, Store: memory.New(), Secret: strings.Repeat("x", 32),
-		EmailAndPassword: true, Plugins: []stonewrit.Plugin{bearer.New(bearer.Options{RequireSignature: true})}})
+	instance, err := plainauth.New(plainauth.Options{BaseURL: origin, Store: memory.New(), Secret: strings.Repeat("x", 32),
+		EmailAndPassword: true, Plugins: []plainauth.Plugin{bearer.New(bearer.Options{RequireSignature: true})}})
 	if err != nil {
 		t.Fatal(err)
 	}

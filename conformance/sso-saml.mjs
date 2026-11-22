@@ -124,7 +124,7 @@ function inlineIdP(certificates, entity=issuer) {
 }
 
 export async function compareEnterpriseSAML(t, {goFixture,instrument,privateDeployment=false,inline=false,encrypted=false,portal=false,logout=false,incoming=false}) {
-  const keys = await mkdtemp(join(tmpdir(),"stonewrit-idp-"));
+  const keys = await mkdtemp(join(tmpdir(),"plainauth-idp-"));
   t.after(()=>rm(keys,{recursive:true,force:true}));
   const keyFile=join(keys,"private.pem"), certFile=join(keys,"cert.pem");
   execFileSync("openssl",["req","-x509","-newkey","rsa:2048","-nodes","-keyout",keyFile,"-out",certFile,"-days","1","-subj","/CN=Local identity provider"],{stdio:"ignore"});

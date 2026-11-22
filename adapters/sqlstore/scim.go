@@ -14,8 +14,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Stonewrit/stonewrit-auth/internal/jsjson"
-	"github.com/Stonewrit/stonewrit-auth/plugins/scim"
+	"github.com/Plain-Auth/plain-auth/internal/jsjson"
+	"github.com/Plain-Auth/plain-auth/plugins/scim"
 )
 
 var _ scim.Store = (*Store)(nil)

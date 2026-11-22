@@ -6,7 +6,7 @@ import (
 	"net/url"
 	"strings"
 
-	auth "github.com/Stonewrit/stonewrit-auth"
+	auth "github.com/Plain-Auth/plain-auth"
 )
 
 type Options struct{ RequireSignature bool }

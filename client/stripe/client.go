@@ -1,5 +1,5 @@
 // Package stripe calls the hosted Checkout and subscription endpoints with an
-// existing StoneWrit client. The application retains control of redirects.
+// existing Plain Auth client. The application retains control of redirects.
 package stripe
 
 import (
@@ -7,8 +7,8 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/Stonewrit/stonewrit-auth/client"
-	billing "github.com/Stonewrit/stonewrit-auth/plugins/stripe"
+	"github.com/Plain-Auth/plain-auth/client"
+	billing "github.com/Plain-Auth/plain-auth/plugins/stripe"
 	sdk "github.com/stripe/stripe-go/v87"
 )
 

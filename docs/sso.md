@@ -11,17 +11,17 @@ defer store.Close()
 
 providers, err := sso.New(sso.Options{})
 if err != nil { return err }
-host, err := stonewrit.New(stonewrit.Options{
+host, err := plainauth.New(plainauth.Options{
     BaseURL: "https://accounts.example.org",
     Secret: authSecret, Store: store,
     TrustedOrigins: []string{"https://identity.example.org"},
-    Plugins: []stonewrit.Plugin{providers},
+    Plugins: []plainauth.Plugin{providers},
 })
 if err != nil { return err }
 mux.Handle("/api/auth/", host)
 ```
 
-The host imports the root `github.com/Stonewrit/stonewrit-auth` module and its `plugins/sso`, `schema` and `adapters/sqlstore` packages. Serve these routes from an existing auth deployment that lets administrators sign in.
+The host imports the root `github.com/Plain-Auth/plain-auth` module and its `plugins/sso`, `schema` and `adapters/sqlstore` packages. Serve these routes from an existing auth deployment that lets administrators sign in.
 
 | Route under the auth mount | Access and behavior |
 | --- | --- |
@@ -56,7 +56,7 @@ Post a trusted `callbackURL` and a `providerId`, `organizationSlug`, `domain` or
 
 The default redirect URI ends in `/sso/callback/{providerId}`. Set `sso.Options.SharedCallback` to register `/sso/callback` for all providers. Both routes use the host's configured auth mount. Each attempt stores its return destinations, nonce and PKCE verifier in a ten-minute database record bound to the initiating browser, session and callback path. The callback consumes the record once. Two Go nodes with the same configuration and database can handle opposite ends of a sign-in. [Cross-instance tests](../adapters/sqlstore/sso_browser_test.go)
 
-Token exchange supports confidential clients using `client_secret_basic` and `client_secret_post`. The callback validates the ID token's signature against the provider’s JWKS, issuer, audience, authorized party, nonce and validity window. If configured, UserInfo supplies profile data using the provider-issued access token. When both sources are available they must name the same subject. Profile resolution supports the standard claims and configured email, name and image claim names. The provider ID and subject select a canonical account row. StoneWrit also checks the row’s recorded authority before issuing a session. Email addresses start unverified. A returning user needs a matching account link or the verified-domain linking conditions below. `DisableImplicitSignUp` requires `requestSignUp` before account creation. The host's global signup policy and administrator bans also apply. [Released client round trips](../conformance/sso-browser.mjs)
+Token exchange supports confidential clients using `client_secret_basic` and `client_secret_post`. The callback validates the ID token's signature against the provider’s JWKS, issuer, audience, authorized party, nonce and validity window. If configured, UserInfo supplies profile data using the provider-issued access token. When both sources are available they must name the same subject. Profile resolution supports the standard claims and configured email, name and image claim names. The provider ID and subject select a canonical account row. Plain Auth also checks the row’s recorded authority before issuing a session. Email addresses start unverified. A returning user needs a matching account link or the verified-domain linking conditions below. `DisableImplicitSignUp` requires `requestSignUp` before account creation. The host's global signup policy and administrator bans also apply. [Released client round trips](../conformance/sso-browser.mjs)
 
 Provider endpoints use HTTPS. Explicitly trusted loopback HTTP origins are supported for local tests. For public tenant endpoints, the token, UserInfo and key requests connect directly to a validated public IP and preserve TLS hostname verification. Host-provided transports apply only to exact trusted origins. Each outbound response is limited to one megabyte. Redirects fail the exchange. [Network policy tests](../plugins/sso/identity_test.go)
 
@@ -77,7 +77,7 @@ providers, err := sso.New(sso.Options{
 ```
 
 1. Register the provider. The response includes `domainVerified: false` and a 24-character `domainVerificationToken`. For an existing registration, send `{"providerId":"company"}` to `POST /sso/request-domain-verification`. A 201 response returns the current token. A challenge lasts seven days. Requesting an expired challenge generates a new token.
-2. Publish a TXT record at `_stonewrit-auth-token-company` under **each** registered domain. For example, publish at `_stonewrit-auth-token-company.example.org.` and `_stonewrit-auth-token-company.subsidiary.example.org.` for the registration above. Its value can be the token alone or `_stonewrit-auth-token-company=<token>`. Set `TokenPrefix` to customize the part after the underscore and before the provider ID. Use a provider ID containing letters, digits, underscores or hyphens for DNS verification. The complete label must fit within 63 characters, and each full TXT name within 253. Dotted IDs can still be managed as ordinary OIDC registrations. You can supply a private DNS resolver through `Resolver`.
+2. Publish a TXT record at `_plain-auth-token-company` under **each** registered domain. For example, publish at `_plain-auth-token-company.example.org.` and `_plain-auth-token-company.subsidiary.example.org.` for the registration above. Its value can be the token alone or `_plain-auth-token-company=<token>`. Set `TokenPrefix` to customize the part after the underscore and before the provider ID. Use a provider ID containing letters, digits, underscores or hyphens for DNS verification. The complete label must fit within 63 characters, and each full TXT name within 253. Dotted IDs can still be managed as ordinary OIDC registrations. You can supply a private DNS resolver through `Resolver`.
 3. Send the same provider ID to `POST /sso/verify-domain`. A successful response is HTTP 204 with an empty body. A missing or incorrect TXT answer returns 502. An expired or absent challenge returns 404. Repeating either operation after verification returns 409. The native client exposes `RequestSSODomainVerification` and `VerifySSODomain`. [Released client and local DNS tests](../conformance/sso-domains.mjs)
 
 Both operations require the creator's direct session for a personal directory, or a current organization owner or administrator for an organization directory. The SQL adapter rechecks that authority and the active token after DNS lookup. It binds the proof to the registration ID, provider ID, domain list, issuer, creator, organization and OIDC configuration. Rotating just the client secret preserves the proof. Changing the client ID, key source, claim mapping or UserInfo endpoint requires a new challenge. Back up the related verification records with the provider catalog. A deployment importing a standalone verification flag or an externally generated challenge must request and complete a fresh challenge. Existing deployments should switch every public sign-in node to the new policy before accepting enterprise logins. [Three-engine migration and authorization tests](../adapters/sqlstore/sso_domain_test.go)

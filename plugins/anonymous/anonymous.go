@@ -1,7 +1,7 @@
 // Package anonymous creates guest sessions and transfers application data on sign-in.
 package anonymous
 
-import authn "github.com/Stonewrit/stonewrit-auth"
+import authn "github.com/Plain-Auth/plain-auth"
 
 type Options = authn.AnonymousOptions
 type Link = authn.AnonymousLink

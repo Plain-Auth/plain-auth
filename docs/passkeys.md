@@ -24,9 +24,9 @@ keys, err := passkey.New(passkey.Options{
 if err != nil {
     return err
 }
-auth, err := stonewrit.New(stonewrit.Options{
+auth, err := plainauth.New(plainauth.Options{
     Store: store, BaseURL: "https://accounts.example.com", Secret: secret,
-    Plugins: []stonewrit.Plugin{keys},
+    Plugins: []plainauth.Plugin{keys},
 })
 ```
 
@@ -59,7 +59,7 @@ Use passkey-first registration for an application that can identify an enrollmen
 ```go
 options.Registration = passkey.RegistrationOptions{
     AllowWithoutSession: true,
-    ResolveUser: func(c stonewrit.EndpointContext, value *string) (passkey.RegistrationUser, error) {
+    ResolveUser: func(c plainauth.EndpointContext, value *string) (passkey.RegistrationUser, error) {
         invite, err := invitations.Authorize(c.Request.Context(), value)
         if err != nil {
             return passkey.RegistrationUser{}, err
@@ -68,7 +68,7 @@ options.Registration = passkey.RegistrationOptions{
             ID: invite.ID, Name: invite.Email, DisplayName: invite.Name,
         }, nil
     },
-    AfterVerification: func(c stonewrit.EndpointContext, proof passkey.VerifiedRegistration) (passkey.RegistrationDecision, error) {
+    AfterVerification: func(c plainauth.EndpointContext, proof passkey.VerifiedRegistration) (passkey.RegistrationDecision, error) {
         invite, err := invitations.Authorize(c.Request.Context(), proof.Context)
         if err != nil {
             return passkey.RegistrationDecision{}, err

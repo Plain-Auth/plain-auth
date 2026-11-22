@@ -1,6 +1,8 @@
-# StoneWrit Auth
+# Plain Auth
 
-StoneWrit Auth embeds authentication in your Go API. Mount the auth handler on your router and use the same instance to read the signed-in user inside your own handlers. Your application owns its listener, database lifetime, middleware, and routes.
+Plain Auth embeds authentication in your Go API. Mount the auth handler on your router and use the same instance to read the signed-in user inside your own handlers. Your application owns its listener, database lifetime, middleware, and routes.
+
+[plain-auth.com](https://plain-auth.com) · [GitHub organization](https://github.com/Plain-Auth) · [Go setup](#mount-it-in-an-application)
 
 **Development status.** The [feature checklist](docs/parity/README.md) lists supported behavior, passing tests, and planned features. Browse [authentication](docs/parity/authentication.md), [databases](docs/parity/adapters.md), [integrations](docs/parity/integrations.md), or [Stripe](docs/parity/plugins/stripe.md).
 
@@ -63,14 +65,14 @@ curl -sS -b cookies.txt -c cookies.txt http://127.0.0.1:3000/api/auth/sign-out \
 
 ## Mount it in an application
 
-Import the current module to use the `stonewrit` package.
+Import the current module to use the `plainauth` package.
 
 ```go
 import (
     "strings"
 
-    "github.com/Stonewrit/stonewrit-auth"
-    "github.com/Stonewrit/stonewrit-auth/adapters/sqlite"
+    "github.com/Plain-Auth/plain-auth"
+    "github.com/Plain-Auth/plain-auth/adapters/sqlite"
 )
 ```
 
@@ -81,7 +83,7 @@ if err != nil {
 }
 defer store.Close() // in the function that owns the application's lifetime
 
-instance, err := stonewrit.New(stonewrit.Options{
+instance, err := plainauth.New(plainauth.Options{
     Store:            store,
     EmailAndPassword: true,
 })
@@ -93,13 +95,13 @@ mux.Handle(strings.TrimRight(instance.BasePath(), "/")+"/", instance)
 
 This reads the signing secret and public URL from the host environment configured above. Explicit options, environment settings and their precedence are documented in the [configuration guide](docs/environment.md).
 
-During private development, authenticate Git for the StoneWrit Auth repository and run the following in the consuming module.
+During private development, authenticate Git for the Plain Auth repository and run the following in the consuming module.
 
 ```sh
-GOPRIVATE=github.com/Stonewrit/stonewrit-auth go get github.com/Stonewrit/stonewrit-auth@main
+GOPRIVATE=github.com/Plain-Auth/plain-auth go get github.com/Plain-Auth/plain-auth@main
 ```
 
-Go records the resolved commit in the consuming project’s `go.mod`. The module path is `github.com/Stonewrit/stonewrit-auth`. Its Go package name is `stonewrit`. The SQLite adapter lives at `github.com/Stonewrit/stonewrit-auth/adapters/sqlite`. A complete host application, including a protected route and graceful shutdown, is in [examples/basic](examples/basic/main.go).
+Go records the resolved commit in the consuming project’s `go.mod`. The module path is `github.com/Plain-Auth/plain-auth`. Its Go package name is `plainauth`. The SQLite adapter lives at `github.com/Plain-Auth/plain-auth/adapters/sqlite`. A complete host application, including a protected route and graceful shutdown, is in [examples/basic](examples/basic/main.go).
 
 | Task | Guide |
 | --- | --- |

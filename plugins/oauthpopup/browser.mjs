@@ -1,5 +1,5 @@
 // The application can select a single alternative wire protocol when creating the client.
-export const POPUP_MESSAGE_TYPE = "stonewrit:oauth-popup";
+export const POPUP_MESSAGE_TYPE = "plainauth:oauth-popup";
 export const POPUP_ERRORS = Object.freeze({
   POPUP_SIGN_IN_FAILED: "Popup sign-in failed",
   POPUP_BLOCKED: "Sign-in popup was blocked by the browser",
@@ -90,7 +90,7 @@ export function createPopupClient({
   }
   const mount = base.pathname.replace(/\/$/, "") || "/api/auth";
   base.pathname = mount;
-  const storageKey = "stonewrit.oauth-popup:" + base.href;
+  const storageKey = "plainauth.oauth-popup:" + base.href;
   const getStoredPopupToken = () => {
     try {
       return window.localStorage.getItem(storageKey);

@@ -1,4 +1,4 @@
-package stonewrit
+package plainauth
 
 import (
 	"context"
@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Stonewrit/stonewrit-auth/internal/jsjson"
+	"github.com/Plain-Auth/plain-auth/internal/jsjson"
 )
 
 // SessionCookieCacheStrategy selects the wire format of a browser session snapshot.

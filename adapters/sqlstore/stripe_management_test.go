@@ -10,11 +10,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Stonewrit/stonewrit-auth"
-	"github.com/Stonewrit/stonewrit-auth/client"
-	stripeclient "github.com/Stonewrit/stonewrit-auth/client/stripe"
-	billing "github.com/Stonewrit/stonewrit-auth/plugins/stripe"
-	"github.com/Stonewrit/stonewrit-auth/schema"
+	"github.com/Plain-Auth/plain-auth"
+	"github.com/Plain-Auth/plain-auth/client"
+	stripeclient "github.com/Plain-Auth/plain-auth/client/stripe"
+	billing "github.com/Plain-Auth/plain-auth/plugins/stripe"
+	"github.com/Plain-Auth/plain-auth/schema"
 	sdk "github.com/stripe/stripe-go/v87"
 )
 
@@ -93,7 +93,7 @@ func TestOwnerSubscriptionManagement(t *testing.T) {
 			plugin := billing.New(billing.Options{WebhookSecret: "whsec_local",
 				Portal:        &billing.PortalOptions{Client: remote, Customers: db},
 				Subscriptions: &billing.SubscriptionOptions{Client: remote, RequireEmailVerification: true, Plans: []billing.Plan{{Name: "Pro", PriceID: "price_pro"}}}})
-			instance, err := stonewrit.New(stonewrit.Options{BaseURL: origin, Secret: strings.Repeat("s", 32), EmailAndPassword: true, Store: db, Plugins: []stonewrit.Plugin{plugin}})
+			instance, err := plainauth.New(plainauth.Options{BaseURL: origin, Secret: strings.Repeat("s", 32), EmailAndPassword: true, Store: db, Plugins: []plainauth.Plugin{plugin}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -109,7 +109,7 @@ func TestOwnerSubscriptionManagement(t *testing.T) {
 			}
 			mustCode := func(err error, status int, code string) {
 				t.Helper()
-				var api *stonewrit.APIError
+				var api *plainauth.APIError
 				if !errors.As(err, &api) || api.Status != status || api.Code != code {
 					t.Fatalf("expected %d %s, got %v", status, code, err)
 				}

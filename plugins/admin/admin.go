@@ -1,7 +1,7 @@
 // Package admin provides role-checked user and session administration.
 package admin
 
-import authn "github.com/Stonewrit/stonewrit-auth"
+import authn "github.com/Plain-Auth/plain-auth"
 
 type Options = authn.AdminOptions
 type Permissions = authn.AdminPermissions

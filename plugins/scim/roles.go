@@ -7,7 +7,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/Stonewrit/stonewrit-auth/internal/jsjson"
+	"github.com/Plain-Auth/plain-auth/internal/jsjson"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 )

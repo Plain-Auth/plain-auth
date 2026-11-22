@@ -6,7 +6,7 @@ import (
 	"net/url"
 	"strconv"
 
-	"github.com/Stonewrit/stonewrit-auth/plugins/apikey"
+	"github.com/Plain-Auth/plain-auth/plugins/apikey"
 )
 
 // CreateAPIKeyRequest sets client-editable fields. ExpiresIn is in seconds.
