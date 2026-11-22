@@ -20,7 +20,8 @@
     "scim-managed",
     "sso",
     "sso-domain-verification",
-    "siwe"
+    "siwe",
+    "oauth-provider"
   ],
   "dialects": {
     "sqlite": [
@@ -1154,6 +1155,362 @@
         ]
       },
       {
+        "sql": "create table \"oauthClient\"",
+        "profiles": [
+          "oauth-provider"
+        ],
+        "columns": [
+          {
+            "sql": "\"id\" text not null primary key"
+          },
+          {
+            "sql": "\"clientId\" text not null unique"
+          },
+          {
+            "sql": "\"clientSecret\" text"
+          },
+          {
+            "sql": "\"clientDiscoveryId\" text"
+          },
+          {
+            "sql": "\"disabled\" integer"
+          },
+          {
+            "sql": "\"skipConsent\" integer"
+          },
+          {
+            "sql": "\"enableEndSession\" integer"
+          },
+          {
+            "sql": "\"subjectType\" text"
+          },
+          {
+            "sql": "\"scopes\" text"
+          },
+          {
+            "sql": "\"clientCredentialsScopes\" text"
+          },
+          {
+            "sql": "\"userId\" text references \"user\" (\"id\") on delete cascade"
+          },
+          {
+            "sql": "\"createdAt\" date"
+          },
+          {
+            "sql": "\"updatedAt\" date"
+          },
+          {
+            "sql": "\"name\" text"
+          },
+          {
+            "sql": "\"uri\" text"
+          },
+          {
+            "sql": "\"icon\" text"
+          },
+          {
+            "sql": "\"contacts\" text"
+          },
+          {
+            "sql": "\"tos\" text"
+          },
+          {
+            "sql": "\"policy\" text"
+          },
+          {
+            "sql": "\"softwareId\" text"
+          },
+          {
+            "sql": "\"softwareVersion\" text"
+          },
+          {
+            "sql": "\"softwareStatement\" text"
+          },
+          {
+            "sql": "\"redirectUris\" text not null"
+          },
+          {
+            "sql": "\"postLogoutRedirectUris\" text"
+          },
+          {
+            "sql": "\"backchannelLogoutUri\" text"
+          },
+          {
+            "sql": "\"backchannelLogoutSessionRequired\" integer"
+          },
+          {
+            "sql": "\"tokenEndpointAuthMethod\" text"
+          },
+          {
+            "sql": "\"applicationType\" text"
+          },
+          {
+            "sql": "\"jwks\" text"
+          },
+          {
+            "sql": "\"jwksUri\" text"
+          },
+          {
+            "sql": "\"grantTypes\" text"
+          },
+          {
+            "sql": "\"responseTypes\" text"
+          },
+          {
+            "sql": "\"requirePKCE\" integer"
+          },
+          {
+            "sql": "\"dpopBoundAccessTokens\" integer"
+          },
+          {
+            "sql": "\"referenceId\" text"
+          },
+          {
+            "sql": "\"metadata\" text"
+          }
+        ]
+      },
+      {
+        "sql": "create table \"oauthResource\"",
+        "profiles": [
+          "oauth-provider"
+        ],
+        "columns": [
+          {
+            "sql": "\"id\" text not null primary key"
+          },
+          {
+            "sql": "\"identifier\" text not null unique"
+          },
+          {
+            "sql": "\"name\" text not null"
+          },
+          {
+            "sql": "\"accessTokenTtl\" integer"
+          },
+          {
+            "sql": "\"refreshTokenTtl\" integer"
+          },
+          {
+            "sql": "\"signingAlgorithm\" text"
+          },
+          {
+            "sql": "\"signingKeyId\" text"
+          },
+          {
+            "sql": "\"allowedScopes\" text"
+          },
+          {
+            "sql": "\"customClaims\" text"
+          },
+          {
+            "sql": "\"dpopBoundAccessTokensRequired\" integer"
+          },
+          {
+            "sql": "\"disabled\" integer"
+          },
+          {
+            "sql": "\"createdAt\" date"
+          },
+          {
+            "sql": "\"updatedAt\" date"
+          },
+          {
+            "sql": "\"policyVersion\" integer"
+          },
+          {
+            "sql": "\"metadata\" text"
+          }
+        ]
+      },
+      {
+        "sql": "create table \"oauthClientResource\"",
+        "profiles": [
+          "oauth-provider"
+        ],
+        "columns": [
+          {
+            "sql": "\"id\" text not null primary key"
+          },
+          {
+            "sql": "\"clientId\" text not null references \"oauthClient\" (\"clientId\") on delete cascade"
+          },
+          {
+            "sql": "\"resourceId\" text not null references \"oauthResource\" (\"identifier\") on delete cascade"
+          },
+          {
+            "sql": "\"metadata\" text"
+          },
+          {
+            "sql": "\"createdAt\" date"
+          }
+        ]
+      },
+      {
+        "sql": "create table \"oauthRefreshToken\"",
+        "profiles": [
+          "oauth-provider"
+        ],
+        "columns": [
+          {
+            "sql": "\"id\" text not null primary key"
+          },
+          {
+            "sql": "\"token\" text not null unique"
+          },
+          {
+            "sql": "\"clientId\" text not null references \"oauthClient\" (\"clientId\") on delete cascade"
+          },
+          {
+            "sql": "\"sessionId\" text references \"session\" (\"id\") on delete set null"
+          },
+          {
+            "sql": "\"userId\" text not null references \"user\" (\"id\") on delete cascade"
+          },
+          {
+            "sql": "\"referenceId\" text"
+          },
+          {
+            "sql": "\"authorizationCodeId\" text"
+          },
+          {
+            "sql": "\"resources\" text"
+          },
+          {
+            "sql": "\"requestedUserInfoClaims\" text"
+          },
+          {
+            "sql": "\"expiresAt\" date not null"
+          },
+          {
+            "sql": "\"createdAt\" date not null"
+          },
+          {
+            "sql": "\"revoked\" date"
+          },
+          {
+            "sql": "\"rotatedAt\" date"
+          },
+          {
+            "sql": "\"rotationReplayResponse\" text"
+          },
+          {
+            "sql": "\"rotationReplayExpiresAt\" date"
+          },
+          {
+            "sql": "\"authTime\" date"
+          },
+          {
+            "sql": "\"confirmation\" text"
+          },
+          {
+            "sql": "\"scopes\" text not null"
+          }
+        ]
+      },
+      {
+        "sql": "create table \"oauthAccessToken\"",
+        "profiles": [
+          "oauth-provider"
+        ],
+        "columns": [
+          {
+            "sql": "\"id\" text not null primary key"
+          },
+          {
+            "sql": "\"token\" text not null unique"
+          },
+          {
+            "sql": "\"clientId\" text not null references \"oauthClient\" (\"clientId\") on delete cascade"
+          },
+          {
+            "sql": "\"sessionId\" text references \"session\" (\"id\") on delete set null"
+          },
+          {
+            "sql": "\"userId\" text references \"user\" (\"id\") on delete cascade"
+          },
+          {
+            "sql": "\"referenceId\" text"
+          },
+          {
+            "sql": "\"authorizationCodeId\" text"
+          },
+          {
+            "sql": "\"resources\" text"
+          },
+          {
+            "sql": "\"requestedUserInfoClaims\" text"
+          },
+          {
+            "sql": "\"refreshId\" text references \"oauthRefreshToken\" (\"id\") on delete cascade"
+          },
+          {
+            "sql": "\"expiresAt\" date not null"
+          },
+          {
+            "sql": "\"createdAt\" date not null"
+          },
+          {
+            "sql": "\"revoked\" date"
+          },
+          {
+            "sql": "\"confirmation\" text"
+          },
+          {
+            "sql": "\"scopes\" text not null"
+          }
+        ]
+      },
+      {
+        "sql": "create table \"oauthConsent\"",
+        "profiles": [
+          "oauth-provider"
+        ],
+        "columns": [
+          {
+            "sql": "\"id\" text not null primary key"
+          },
+          {
+            "sql": "\"clientId\" text not null references \"oauthClient\" (\"clientId\") on delete cascade"
+          },
+          {
+            "sql": "\"userId\" text references \"user\" (\"id\") on delete cascade"
+          },
+          {
+            "sql": "\"referenceId\" text"
+          },
+          {
+            "sql": "\"resources\" text"
+          },
+          {
+            "sql": "\"requestedUserInfoClaims\" text"
+          },
+          {
+            "sql": "\"scopes\" text not null"
+          },
+          {
+            "sql": "\"createdAt\" date not null"
+          },
+          {
+            "sql": "\"updatedAt\" date not null"
+          }
+        ]
+      },
+      {
+        "sql": "create table \"oauthClientAssertion\"",
+        "profiles": [
+          "oauth-provider"
+        ],
+        "columns": [
+          {
+            "sql": "\"id\" text not null primary key"
+          },
+          {
+            "sql": "\"expiresAt\" date not null"
+          }
+        ]
+      },
+      {
         "sql": "create table \"rateLimit\"",
         "profiles": [
           "rate-limit"
@@ -1418,6 +1775,90 @@
         ]
       },
       {
+        "sql": "create index \"oauthClient_userId_idx\" on \"oauthClient\" (\"userId\");",
+        "profiles": [
+          "oauth-provider"
+        ]
+      },
+      {
+        "sql": "create index \"oauthClientResource_clientId_idx\" on \"oauthClientResource\" (\"clientId\");",
+        "profiles": [
+          "oauth-provider"
+        ]
+      },
+      {
+        "sql": "create index \"oauthClientResource_resourceId_idx\" on \"oauthClientResource\" (\"resourceId\");",
+        "profiles": [
+          "oauth-provider"
+        ]
+      },
+      {
+        "sql": "create index \"oauthRefreshToken_clientId_idx\" on \"oauthRefreshToken\" (\"clientId\");",
+        "profiles": [
+          "oauth-provider"
+        ]
+      },
+      {
+        "sql": "create index \"oauthRefreshToken_sessionId_idx\" on \"oauthRefreshToken\" (\"sessionId\");",
+        "profiles": [
+          "oauth-provider"
+        ]
+      },
+      {
+        "sql": "create index \"oauthRefreshToken_userId_idx\" on \"oauthRefreshToken\" (\"userId\");",
+        "profiles": [
+          "oauth-provider"
+        ]
+      },
+      {
+        "sql": "create index \"oauthRefreshToken_authorizationCodeId_idx\" on \"oauthRefreshToken\" (\"authorizationCodeId\");",
+        "profiles": [
+          "oauth-provider"
+        ]
+      },
+      {
+        "sql": "create index \"oauthAccessToken_clientId_idx\" on \"oauthAccessToken\" (\"clientId\");",
+        "profiles": [
+          "oauth-provider"
+        ]
+      },
+      {
+        "sql": "create index \"oauthAccessToken_sessionId_idx\" on \"oauthAccessToken\" (\"sessionId\");",
+        "profiles": [
+          "oauth-provider"
+        ]
+      },
+      {
+        "sql": "create index \"oauthAccessToken_userId_idx\" on \"oauthAccessToken\" (\"userId\");",
+        "profiles": [
+          "oauth-provider"
+        ]
+      },
+      {
+        "sql": "create index \"oauthAccessToken_authorizationCodeId_idx\" on \"oauthAccessToken\" (\"authorizationCodeId\");",
+        "profiles": [
+          "oauth-provider"
+        ]
+      },
+      {
+        "sql": "create index \"oauthAccessToken_refreshId_idx\" on \"oauthAccessToken\" (\"refreshId\");",
+        "profiles": [
+          "oauth-provider"
+        ]
+      },
+      {
+        "sql": "create index \"oauthConsent_clientId_idx\" on \"oauthConsent\" (\"clientId\");",
+        "profiles": [
+          "oauth-provider"
+        ]
+      },
+      {
+        "sql": "create index \"oauthConsent_userId_idx\" on \"oauthConsent\" (\"userId\");",
+        "profiles": [
+          "oauth-provider"
+        ]
+      },
+      {
         "sql": "create unique index \"deviceCode_deviceCode_uidx\" on \"deviceCode\" (\"deviceCode\");",
         "profiles": [
           "device-authorization"
@@ -1427,6 +1868,12 @@
         "sql": "create unique index \"deviceCode_userCode_uidx\" on \"deviceCode\" (\"userCode\");",
         "profiles": [
           "device-authorization"
+        ]
+      },
+      {
+        "sql": "create unique index \"oauthClientResource_clientId_resourceId_uidx\" on \"oauthClientResource\" (\"clientId\", \"resourceId\");",
+        "profiles": [
+          "oauth-provider"
         ]
       }
     ],
@@ -2561,6 +3008,362 @@
         ]
       },
       {
+        "sql": "create table \"oauthClient\"",
+        "profiles": [
+          "oauth-provider"
+        ],
+        "columns": [
+          {
+            "sql": "\"id\" text not null primary key"
+          },
+          {
+            "sql": "\"clientId\" text not null unique"
+          },
+          {
+            "sql": "\"clientSecret\" text"
+          },
+          {
+            "sql": "\"clientDiscoveryId\" text"
+          },
+          {
+            "sql": "\"disabled\" boolean"
+          },
+          {
+            "sql": "\"skipConsent\" boolean"
+          },
+          {
+            "sql": "\"enableEndSession\" boolean"
+          },
+          {
+            "sql": "\"subjectType\" text"
+          },
+          {
+            "sql": "\"scopes\" jsonb"
+          },
+          {
+            "sql": "\"clientCredentialsScopes\" jsonb"
+          },
+          {
+            "sql": "\"userId\" text references \"user\" (\"id\") on delete cascade"
+          },
+          {
+            "sql": "\"createdAt\" timestamptz"
+          },
+          {
+            "sql": "\"updatedAt\" timestamptz"
+          },
+          {
+            "sql": "\"name\" text"
+          },
+          {
+            "sql": "\"uri\" text"
+          },
+          {
+            "sql": "\"icon\" text"
+          },
+          {
+            "sql": "\"contacts\" jsonb"
+          },
+          {
+            "sql": "\"tos\" text"
+          },
+          {
+            "sql": "\"policy\" text"
+          },
+          {
+            "sql": "\"softwareId\" text"
+          },
+          {
+            "sql": "\"softwareVersion\" text"
+          },
+          {
+            "sql": "\"softwareStatement\" text"
+          },
+          {
+            "sql": "\"redirectUris\" jsonb not null"
+          },
+          {
+            "sql": "\"postLogoutRedirectUris\" jsonb"
+          },
+          {
+            "sql": "\"backchannelLogoutUri\" text"
+          },
+          {
+            "sql": "\"backchannelLogoutSessionRequired\" boolean"
+          },
+          {
+            "sql": "\"tokenEndpointAuthMethod\" text"
+          },
+          {
+            "sql": "\"applicationType\" text"
+          },
+          {
+            "sql": "\"jwks\" text"
+          },
+          {
+            "sql": "\"jwksUri\" text"
+          },
+          {
+            "sql": "\"grantTypes\" jsonb"
+          },
+          {
+            "sql": "\"responseTypes\" jsonb"
+          },
+          {
+            "sql": "\"requirePKCE\" boolean"
+          },
+          {
+            "sql": "\"dpopBoundAccessTokens\" boolean"
+          },
+          {
+            "sql": "\"referenceId\" text"
+          },
+          {
+            "sql": "\"metadata\" jsonb"
+          }
+        ]
+      },
+      {
+        "sql": "create table \"oauthResource\"",
+        "profiles": [
+          "oauth-provider"
+        ],
+        "columns": [
+          {
+            "sql": "\"id\" text not null primary key"
+          },
+          {
+            "sql": "\"identifier\" text not null unique"
+          },
+          {
+            "sql": "\"name\" text not null"
+          },
+          {
+            "sql": "\"accessTokenTtl\" integer"
+          },
+          {
+            "sql": "\"refreshTokenTtl\" integer"
+          },
+          {
+            "sql": "\"signingAlgorithm\" text"
+          },
+          {
+            "sql": "\"signingKeyId\" text"
+          },
+          {
+            "sql": "\"allowedScopes\" jsonb"
+          },
+          {
+            "sql": "\"customClaims\" jsonb"
+          },
+          {
+            "sql": "\"dpopBoundAccessTokensRequired\" boolean"
+          },
+          {
+            "sql": "\"disabled\" boolean"
+          },
+          {
+            "sql": "\"createdAt\" timestamptz"
+          },
+          {
+            "sql": "\"updatedAt\" timestamptz"
+          },
+          {
+            "sql": "\"policyVersion\" integer"
+          },
+          {
+            "sql": "\"metadata\" jsonb"
+          }
+        ]
+      },
+      {
+        "sql": "create table \"oauthClientResource\"",
+        "profiles": [
+          "oauth-provider"
+        ],
+        "columns": [
+          {
+            "sql": "\"id\" text not null primary key"
+          },
+          {
+            "sql": "\"clientId\" text not null references \"oauthClient\" (\"clientId\") on delete cascade"
+          },
+          {
+            "sql": "\"resourceId\" text not null references \"oauthResource\" (\"identifier\") on delete cascade"
+          },
+          {
+            "sql": "\"metadata\" jsonb"
+          },
+          {
+            "sql": "\"createdAt\" timestamptz"
+          }
+        ]
+      },
+      {
+        "sql": "create table \"oauthRefreshToken\"",
+        "profiles": [
+          "oauth-provider"
+        ],
+        "columns": [
+          {
+            "sql": "\"id\" text not null primary key"
+          },
+          {
+            "sql": "\"token\" text not null unique"
+          },
+          {
+            "sql": "\"clientId\" text not null references \"oauthClient\" (\"clientId\") on delete cascade"
+          },
+          {
+            "sql": "\"sessionId\" text references \"session\" (\"id\") on delete set null"
+          },
+          {
+            "sql": "\"userId\" text not null references \"user\" (\"id\") on delete cascade"
+          },
+          {
+            "sql": "\"referenceId\" text"
+          },
+          {
+            "sql": "\"authorizationCodeId\" text"
+          },
+          {
+            "sql": "\"resources\" jsonb"
+          },
+          {
+            "sql": "\"requestedUserInfoClaims\" jsonb"
+          },
+          {
+            "sql": "\"expiresAt\" timestamptz not null"
+          },
+          {
+            "sql": "\"createdAt\" timestamptz not null"
+          },
+          {
+            "sql": "\"revoked\" timestamptz"
+          },
+          {
+            "sql": "\"rotatedAt\" timestamptz"
+          },
+          {
+            "sql": "\"rotationReplayResponse\" text"
+          },
+          {
+            "sql": "\"rotationReplayExpiresAt\" timestamptz"
+          },
+          {
+            "sql": "\"authTime\" timestamptz"
+          },
+          {
+            "sql": "\"confirmation\" jsonb"
+          },
+          {
+            "sql": "\"scopes\" jsonb not null"
+          }
+        ]
+      },
+      {
+        "sql": "create table \"oauthAccessToken\"",
+        "profiles": [
+          "oauth-provider"
+        ],
+        "columns": [
+          {
+            "sql": "\"id\" text not null primary key"
+          },
+          {
+            "sql": "\"token\" text not null unique"
+          },
+          {
+            "sql": "\"clientId\" text not null references \"oauthClient\" (\"clientId\") on delete cascade"
+          },
+          {
+            "sql": "\"sessionId\" text references \"session\" (\"id\") on delete set null"
+          },
+          {
+            "sql": "\"userId\" text references \"user\" (\"id\") on delete cascade"
+          },
+          {
+            "sql": "\"referenceId\" text"
+          },
+          {
+            "sql": "\"authorizationCodeId\" text"
+          },
+          {
+            "sql": "\"resources\" jsonb"
+          },
+          {
+            "sql": "\"requestedUserInfoClaims\" jsonb"
+          },
+          {
+            "sql": "\"refreshId\" text references \"oauthRefreshToken\" (\"id\") on delete cascade"
+          },
+          {
+            "sql": "\"expiresAt\" timestamptz not null"
+          },
+          {
+            "sql": "\"createdAt\" timestamptz not null"
+          },
+          {
+            "sql": "\"revoked\" timestamptz"
+          },
+          {
+            "sql": "\"confirmation\" jsonb"
+          },
+          {
+            "sql": "\"scopes\" jsonb not null"
+          }
+        ]
+      },
+      {
+        "sql": "create table \"oauthConsent\"",
+        "profiles": [
+          "oauth-provider"
+        ],
+        "columns": [
+          {
+            "sql": "\"id\" text not null primary key"
+          },
+          {
+            "sql": "\"clientId\" text not null references \"oauthClient\" (\"clientId\") on delete cascade"
+          },
+          {
+            "sql": "\"userId\" text references \"user\" (\"id\") on delete cascade"
+          },
+          {
+            "sql": "\"referenceId\" text"
+          },
+          {
+            "sql": "\"resources\" jsonb"
+          },
+          {
+            "sql": "\"requestedUserInfoClaims\" jsonb"
+          },
+          {
+            "sql": "\"scopes\" jsonb not null"
+          },
+          {
+            "sql": "\"createdAt\" timestamptz not null"
+          },
+          {
+            "sql": "\"updatedAt\" timestamptz not null"
+          }
+        ]
+      },
+      {
+        "sql": "create table \"oauthClientAssertion\"",
+        "profiles": [
+          "oauth-provider"
+        ],
+        "columns": [
+          {
+            "sql": "\"id\" text not null primary key"
+          },
+          {
+            "sql": "\"expiresAt\" timestamptz not null"
+          }
+        ]
+      },
+      {
         "sql": "create table \"rateLimit\"",
         "profiles": [
           "rate-limit"
@@ -2825,6 +3628,90 @@
         ]
       },
       {
+        "sql": "create index \"oauthClient_userId_idx\" on \"oauthClient\" (\"userId\");",
+        "profiles": [
+          "oauth-provider"
+        ]
+      },
+      {
+        "sql": "create index \"oauthClientResource_clientId_idx\" on \"oauthClientResource\" (\"clientId\");",
+        "profiles": [
+          "oauth-provider"
+        ]
+      },
+      {
+        "sql": "create index \"oauthClientResource_resourceId_idx\" on \"oauthClientResource\" (\"resourceId\");",
+        "profiles": [
+          "oauth-provider"
+        ]
+      },
+      {
+        "sql": "create index \"oauthRefreshToken_clientId_idx\" on \"oauthRefreshToken\" (\"clientId\");",
+        "profiles": [
+          "oauth-provider"
+        ]
+      },
+      {
+        "sql": "create index \"oauthRefreshToken_sessionId_idx\" on \"oauthRefreshToken\" (\"sessionId\");",
+        "profiles": [
+          "oauth-provider"
+        ]
+      },
+      {
+        "sql": "create index \"oauthRefreshToken_userId_idx\" on \"oauthRefreshToken\" (\"userId\");",
+        "profiles": [
+          "oauth-provider"
+        ]
+      },
+      {
+        "sql": "create index \"oauthRefreshToken_authorizationCodeId_idx\" on \"oauthRefreshToken\" (\"authorizationCodeId\");",
+        "profiles": [
+          "oauth-provider"
+        ]
+      },
+      {
+        "sql": "create index \"oauthAccessToken_clientId_idx\" on \"oauthAccessToken\" (\"clientId\");",
+        "profiles": [
+          "oauth-provider"
+        ]
+      },
+      {
+        "sql": "create index \"oauthAccessToken_sessionId_idx\" on \"oauthAccessToken\" (\"sessionId\");",
+        "profiles": [
+          "oauth-provider"
+        ]
+      },
+      {
+        "sql": "create index \"oauthAccessToken_userId_idx\" on \"oauthAccessToken\" (\"userId\");",
+        "profiles": [
+          "oauth-provider"
+        ]
+      },
+      {
+        "sql": "create index \"oauthAccessToken_authorizationCodeId_idx\" on \"oauthAccessToken\" (\"authorizationCodeId\");",
+        "profiles": [
+          "oauth-provider"
+        ]
+      },
+      {
+        "sql": "create index \"oauthAccessToken_refreshId_idx\" on \"oauthAccessToken\" (\"refreshId\");",
+        "profiles": [
+          "oauth-provider"
+        ]
+      },
+      {
+        "sql": "create index \"oauthConsent_clientId_idx\" on \"oauthConsent\" (\"clientId\");",
+        "profiles": [
+          "oauth-provider"
+        ]
+      },
+      {
+        "sql": "create index \"oauthConsent_userId_idx\" on \"oauthConsent\" (\"userId\");",
+        "profiles": [
+          "oauth-provider"
+        ]
+      },
+      {
         "sql": "create unique index \"deviceCode_deviceCode_uidx\" on \"deviceCode\" (\"deviceCode\");",
         "profiles": [
           "device-authorization"
@@ -2834,6 +3721,12 @@
         "sql": "create unique index \"deviceCode_userCode_uidx\" on \"deviceCode\" (\"userCode\");",
         "profiles": [
           "device-authorization"
+        ]
+      },
+      {
+        "sql": "create unique index \"oauthClientResource_clientId_resourceId_uidx\" on \"oauthClientResource\" (\"clientId\", \"resourceId\");",
+        "profiles": [
+          "oauth-provider"
         ]
       }
     ],
@@ -3968,6 +4861,384 @@
         ]
       },
       {
+        "sql": "create table `oauthClient`",
+        "profiles": [
+          "oauth-provider"
+        ],
+        "columns": [
+          {
+            "sql": "`id` varchar(36) not null primary key"
+          },
+          {
+            "sql": "`clientId` varchar(255) character set utf8mb4 collate utf8mb4_0900_bin not null unique"
+          },
+          {
+            "sql": "`clientSecret` text"
+          },
+          {
+            "sql": "`clientDiscoveryId` text"
+          },
+          {
+            "sql": "`disabled` boolean"
+          },
+          {
+            "sql": "`skipConsent` boolean"
+          },
+          {
+            "sql": "`enableEndSession` boolean"
+          },
+          {
+            "sql": "`subjectType` text"
+          },
+          {
+            "sql": "`scopes` json"
+          },
+          {
+            "sql": "`clientCredentialsScopes` json"
+          },
+          {
+            "sql": "`userId` varchar(36)"
+          },
+          {
+            "sql": "`createdAt` timestamp(3)"
+          },
+          {
+            "sql": "`updatedAt` timestamp(3)"
+          },
+          {
+            "sql": "`name` text"
+          },
+          {
+            "sql": "`uri` text"
+          },
+          {
+            "sql": "`icon` text"
+          },
+          {
+            "sql": "`contacts` json"
+          },
+          {
+            "sql": "`tos` text"
+          },
+          {
+            "sql": "`policy` text"
+          },
+          {
+            "sql": "`softwareId` text"
+          },
+          {
+            "sql": "`softwareVersion` text"
+          },
+          {
+            "sql": "`softwareStatement` text"
+          },
+          {
+            "sql": "`redirectUris` json not null"
+          },
+          {
+            "sql": "`postLogoutRedirectUris` json"
+          },
+          {
+            "sql": "`backchannelLogoutUri` text"
+          },
+          {
+            "sql": "`backchannelLogoutSessionRequired` boolean"
+          },
+          {
+            "sql": "`tokenEndpointAuthMethod` text"
+          },
+          {
+            "sql": "`applicationType` text"
+          },
+          {
+            "sql": "`jwks` text"
+          },
+          {
+            "sql": "`jwksUri` text"
+          },
+          {
+            "sql": "`grantTypes` json"
+          },
+          {
+            "sql": "`responseTypes` json"
+          },
+          {
+            "sql": "`requirePKCE` boolean"
+          },
+          {
+            "sql": "`dpopBoundAccessTokens` boolean"
+          },
+          {
+            "sql": "`referenceId` text"
+          },
+          {
+            "sql": "`metadata` json"
+          }
+        ],
+        "constraints": [
+          "constraint `oauthClient_userId_fk` foreign key (`userId`) references `user` (`id`) on delete cascade"
+        ]
+      },
+      {
+        "sql": "create table `oauthResource`",
+        "profiles": [
+          "oauth-provider"
+        ],
+        "columns": [
+          {
+            "sql": "`id` varchar(36) not null primary key"
+          },
+          {
+            "sql": "`identifier` varchar(255) character set utf8mb4 collate utf8mb4_0900_bin not null unique"
+          },
+          {
+            "sql": "`name` text not null"
+          },
+          {
+            "sql": "`accessTokenTtl` integer"
+          },
+          {
+            "sql": "`refreshTokenTtl` integer"
+          },
+          {
+            "sql": "`signingAlgorithm` text"
+          },
+          {
+            "sql": "`signingKeyId` text"
+          },
+          {
+            "sql": "`allowedScopes` json"
+          },
+          {
+            "sql": "`customClaims` json"
+          },
+          {
+            "sql": "`dpopBoundAccessTokensRequired` boolean"
+          },
+          {
+            "sql": "`disabled` boolean"
+          },
+          {
+            "sql": "`createdAt` timestamp(3)"
+          },
+          {
+            "sql": "`updatedAt` timestamp(3)"
+          },
+          {
+            "sql": "`policyVersion` integer"
+          },
+          {
+            "sql": "`metadata` json"
+          }
+        ]
+      },
+      {
+        "sql": "create table `oauthClientResource`",
+        "profiles": [
+          "oauth-provider"
+        ],
+        "columns": [
+          {
+            "sql": "`id` varchar(36) not null primary key"
+          },
+          {
+            "sql": "`clientId` varchar(255) character set utf8mb4 collate utf8mb4_0900_bin not null"
+          },
+          {
+            "sql": "`resourceId` varchar(255) character set utf8mb4 collate utf8mb4_0900_bin not null"
+          },
+          {
+            "sql": "`metadata` json"
+          },
+          {
+            "sql": "`createdAt` timestamp(3)"
+          }
+        ],
+        "constraints": [
+          "constraint `oauthClientResource_clientId_fk` foreign key (`clientId`) references `oauthClient` (`clientId`) on delete cascade",
+          "constraint `oauthClientResource_resourceId_fk` foreign key (`resourceId`) references `oauthResource` (`identifier`) on delete cascade"
+        ]
+      },
+      {
+        "sql": "create table `oauthRefreshToken`",
+        "profiles": [
+          "oauth-provider"
+        ],
+        "columns": [
+          {
+            "sql": "`id` varchar(36) not null primary key"
+          },
+          {
+            "sql": "`token` varchar(255) character set utf8mb4 collate utf8mb4_0900_bin not null unique"
+          },
+          {
+            "sql": "`clientId` varchar(255) character set utf8mb4 collate utf8mb4_0900_bin not null"
+          },
+          {
+            "sql": "`sessionId` varchar(36)"
+          },
+          {
+            "sql": "`userId` varchar(36) not null"
+          },
+          {
+            "sql": "`referenceId` text"
+          },
+          {
+            "sql": "`authorizationCodeId` varchar(255)"
+          },
+          {
+            "sql": "`resources` json"
+          },
+          {
+            "sql": "`requestedUserInfoClaims` json"
+          },
+          {
+            "sql": "`expiresAt` timestamp(3) not null"
+          },
+          {
+            "sql": "`createdAt` timestamp(3) not null"
+          },
+          {
+            "sql": "`revoked` timestamp(3)"
+          },
+          {
+            "sql": "`rotatedAt` timestamp(3)"
+          },
+          {
+            "sql": "`rotationReplayResponse` text"
+          },
+          {
+            "sql": "`rotationReplayExpiresAt` timestamp(3)"
+          },
+          {
+            "sql": "`authTime` timestamp(3)"
+          },
+          {
+            "sql": "`confirmation` json"
+          },
+          {
+            "sql": "`scopes` json not null"
+          }
+        ],
+        "constraints": [
+          "constraint `oauthRefreshToken_clientId_fk` foreign key (`clientId`) references `oauthClient` (`clientId`) on delete cascade",
+          "constraint `oauthRefreshToken_sessionId_fk` foreign key (`sessionId`) references `session` (`id`) on delete set null",
+          "constraint `oauthRefreshToken_userId_fk` foreign key (`userId`) references `user` (`id`) on delete cascade"
+        ]
+      },
+      {
+        "sql": "create table `oauthAccessToken`",
+        "profiles": [
+          "oauth-provider"
+        ],
+        "columns": [
+          {
+            "sql": "`id` varchar(36) not null primary key"
+          },
+          {
+            "sql": "`token` varchar(255) character set utf8mb4 collate utf8mb4_0900_bin not null unique"
+          },
+          {
+            "sql": "`clientId` varchar(255) character set utf8mb4 collate utf8mb4_0900_bin not null"
+          },
+          {
+            "sql": "`sessionId` varchar(36)"
+          },
+          {
+            "sql": "`userId` varchar(36)"
+          },
+          {
+            "sql": "`referenceId` text"
+          },
+          {
+            "sql": "`authorizationCodeId` varchar(255)"
+          },
+          {
+            "sql": "`resources` json"
+          },
+          {
+            "sql": "`requestedUserInfoClaims` json"
+          },
+          {
+            "sql": "`refreshId` varchar(36)"
+          },
+          {
+            "sql": "`expiresAt` timestamp(3) not null"
+          },
+          {
+            "sql": "`createdAt` timestamp(3) not null"
+          },
+          {
+            "sql": "`revoked` timestamp(3)"
+          },
+          {
+            "sql": "`confirmation` json"
+          },
+          {
+            "sql": "`scopes` json not null"
+          }
+        ],
+        "constraints": [
+          "constraint `oauthAccessToken_clientId_fk` foreign key (`clientId`) references `oauthClient` (`clientId`) on delete cascade",
+          "constraint `oauthAccessToken_sessionId_fk` foreign key (`sessionId`) references `session` (`id`) on delete set null",
+          "constraint `oauthAccessToken_userId_fk` foreign key (`userId`) references `user` (`id`) on delete cascade",
+          "constraint `oauthAccessToken_refreshId_fk` foreign key (`refreshId`) references `oauthRefreshToken` (`id`) on delete cascade"
+        ]
+      },
+      {
+        "sql": "create table `oauthConsent`",
+        "profiles": [
+          "oauth-provider"
+        ],
+        "columns": [
+          {
+            "sql": "`id` varchar(36) not null primary key"
+          },
+          {
+            "sql": "`clientId` varchar(255) character set utf8mb4 collate utf8mb4_0900_bin not null"
+          },
+          {
+            "sql": "`userId` varchar(36)"
+          },
+          {
+            "sql": "`referenceId` text"
+          },
+          {
+            "sql": "`resources` json"
+          },
+          {
+            "sql": "`requestedUserInfoClaims` json"
+          },
+          {
+            "sql": "`scopes` json not null"
+          },
+          {
+            "sql": "`createdAt` timestamp(3) not null"
+          },
+          {
+            "sql": "`updatedAt` timestamp(3) not null"
+          }
+        ],
+        "constraints": [
+          "constraint `oauthConsent_clientId_fk` foreign key (`clientId`) references `oauthClient` (`clientId`) on delete cascade",
+          "constraint `oauthConsent_userId_fk` foreign key (`userId`) references `user` (`id`) on delete cascade"
+        ]
+      },
+      {
+        "sql": "create table `oauthClientAssertion`",
+        "profiles": [
+          "oauth-provider"
+        ],
+        "columns": [
+          {
+            "sql": "`id` varchar(36) character set utf8mb4 collate utf8mb4_0900_bin not null primary key"
+          },
+          {
+            "sql": "`expiresAt` timestamp(3) not null"
+          }
+        ]
+      },
+      {
         "sql": "create table `rateLimit`",
         "profiles": [
           "rate-limit"
@@ -4232,6 +5503,90 @@
         ]
       },
       {
+        "sql": "create index `oauthClient_userId_idx` on `oauthClient` (`userId`);",
+        "profiles": [
+          "oauth-provider"
+        ]
+      },
+      {
+        "sql": "create index `oauthClientResource_clientId_idx` on `oauthClientResource` (`clientId`);",
+        "profiles": [
+          "oauth-provider"
+        ]
+      },
+      {
+        "sql": "create index `oauthClientResource_resourceId_idx` on `oauthClientResource` (`resourceId`);",
+        "profiles": [
+          "oauth-provider"
+        ]
+      },
+      {
+        "sql": "create index `oauthRefreshToken_clientId_idx` on `oauthRefreshToken` (`clientId`);",
+        "profiles": [
+          "oauth-provider"
+        ]
+      },
+      {
+        "sql": "create index `oauthRefreshToken_sessionId_idx` on `oauthRefreshToken` (`sessionId`);",
+        "profiles": [
+          "oauth-provider"
+        ]
+      },
+      {
+        "sql": "create index `oauthRefreshToken_userId_idx` on `oauthRefreshToken` (`userId`);",
+        "profiles": [
+          "oauth-provider"
+        ]
+      },
+      {
+        "sql": "create index `oauthRefreshToken_authorizationCodeId_idx` on `oauthRefreshToken` (`authorizationCodeId`);",
+        "profiles": [
+          "oauth-provider"
+        ]
+      },
+      {
+        "sql": "create index `oauthAccessToken_clientId_idx` on `oauthAccessToken` (`clientId`);",
+        "profiles": [
+          "oauth-provider"
+        ]
+      },
+      {
+        "sql": "create index `oauthAccessToken_sessionId_idx` on `oauthAccessToken` (`sessionId`);",
+        "profiles": [
+          "oauth-provider"
+        ]
+      },
+      {
+        "sql": "create index `oauthAccessToken_userId_idx` on `oauthAccessToken` (`userId`);",
+        "profiles": [
+          "oauth-provider"
+        ]
+      },
+      {
+        "sql": "create index `oauthAccessToken_authorizationCodeId_idx` on `oauthAccessToken` (`authorizationCodeId`);",
+        "profiles": [
+          "oauth-provider"
+        ]
+      },
+      {
+        "sql": "create index `oauthAccessToken_refreshId_idx` on `oauthAccessToken` (`refreshId`);",
+        "profiles": [
+          "oauth-provider"
+        ]
+      },
+      {
+        "sql": "create index `oauthConsent_clientId_idx` on `oauthConsent` (`clientId`);",
+        "profiles": [
+          "oauth-provider"
+        ]
+      },
+      {
+        "sql": "create index `oauthConsent_userId_idx` on `oauthConsent` (`userId`);",
+        "profiles": [
+          "oauth-provider"
+        ]
+      },
+      {
         "sql": "create unique index `deviceCode_deviceCode_uidx` on `deviceCode` (`deviceCode`);",
         "profiles": [
           "device-authorization"
@@ -4241,6 +5596,12 @@
         "sql": "create unique index `deviceCode_userCode_uidx` on `deviceCode` (`userCode`);",
         "profiles": [
           "device-authorization"
+        ]
+      },
+      {
+        "sql": "create unique index `oauthClientResource_clientId_resourceId_uidx` on `oauthClientResource` (`clientId`, `resourceId`);",
+        "profiles": [
+          "oauth-provider"
         ]
       }
     ]

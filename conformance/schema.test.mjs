@@ -8,7 +8,7 @@ import { DatabaseSync } from "node:sqlite";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 import { getMigrations } from "better-auth/db/migration";
-import { walletCombinations, verifiedCombinations, ssoCombinations, ssoDomainCombinations, scimCombinations, managedSCIMCombinations, organizationBillingCombinations, dialects, freshSchema, schemaOptions } from "./plugin-schema.mjs";
+import { oauthProviderCombinations, walletCombinations, verifiedCombinations, ssoCombinations, ssoDomainCombinations, scimCombinations, managedSCIMCombinations, organizationBillingCombinations, dialects, freshSchema, schemaOptions } from "./plugin-schema.mjs";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
 
@@ -346,4 +346,72 @@ test("custom wallet model, columns and owner indexes match the three released SQ
       } finally { actual.close(); reference.close(); }
     }
   } finally { await batch.close(); rmSync(dir,{recursive:true,force:true}); }
+});
+
+// Recover the reference spelling of the new MySQL tables for a full column,
+// key and index comparison. Only the declared MySQL differences are accepted.
+function referenceMySQLOAuthSQL(sql) {
+  return sql.replace(/^create table `(oauth\w+)` \((.+)\);$/gm, (_, table, body) => {
+    const columns = new Map();
+    for (const part of body.split(", ")) {
+      const key = /^constraint `\w+` foreign key \((`\w+`)\)( references .+)$/.exec(part);
+      if (key) {
+        assert.ok(columns.has(key[1]));
+        columns.set(key[1], columns.get(key[1]) + key[2]);
+        continue;
+      }
+      const name = part.split(" ")[0];
+      let column = part.replace(" character set utf8mb4 collate utf8mb4_0900_bin", "");
+      if ((name === "`clientId`" && table !== "oauthClient") || name === "`resourceId`") {
+        assert.match(column, /varchar\(255\)/);
+        column = column.replace("varchar(255)", table === "oauthClientResource" ? "varchar(191)" : "varchar(36)");
+      }
+      columns.set(name, column);
+    }
+    return "create table `" + table + "` (" + [...columns.values()].join(", ") + ");";
+  });
+}
+
+test("OAuth provider schema preserves all seven models and composes with other profiles on three dialects", async t => {
+  const dir = mkdtempSync(join(tmpdir(), "plain-auth-oauth-provider-schema-"));
+  const batch = batchFixture(dir);
+  t.after(async () => { await batch.close(); rmSync(dir, {recursive:true, force:true}); });
+  const expectedTables = ["oauthAccessToken", "oauthClient", "oauthClientAssertion", "oauthClientResource", "oauthConsent", "oauthRefreshToken", "oauthResource"];
+  for (const dialect of Object.keys(dialects)) {
+    for (const profiles of oauthProviderCombinations()) {
+      const baseline = await batch.call(dialect, profiles.filter(p => p !== "oauth-provider"));
+      const generated = await batch.call(dialect, profiles);
+      const statements = generated.trim().split("\n\n");
+      const existing = new Set(baseline.trim().split("\n\n"));
+      const additions = statements.filter(s => !existing.has(s));
+      assert.deepEqual(additions.flatMap(s => /^create table ["`](\w+)["`]/.exec(s)?.slice(1) ?? []).sort(), expectedTables);
+      assert.equal(statements.filter(s => !additions.includes(s)).join("\n\n") + "\n", baseline);
+      const logical = dialect === "mysql" ? referenceMySQLOAuthSQL(generated) : generated;
+      assert.equal(logical, await freshSchema(dialect, profiles), dialect + " " + profiles.join(","));
+    }
+  }
+});
+
+test("authctl installs the OAuth provider schema on an existing database and preserves clients on rerun", async t => {
+  const dir = mkdtempSync(join(tmpdir(), "plain-auth-oauth-provider-cli-"));
+  t.after(() => rmSync(dir, {recursive:true, force:true}));
+  const cli = join(dir, "authctl"), file = join(dir, "auth.db");
+  execFileSync("go", ["build", "-o", cli, "./cmd/authctl"], {cwd: root, timeout:180000});
+  const run = (command, ...args) => execFileSync(cli, [command, "--dialect", "sqlite", ...args],
+    {encoding:"utf8", env:{...process.env, AUTH_DSN:file}, stdio:["ignore","pipe","pipe"]});
+  const flags = ["--plugins", "oauth-provider"];
+  run("migrate");
+  assert.throws(() => run("check", "--json", ...flags), err =>
+    err.status === 1 && JSON.parse(err.stdout).filter(f => f.kind === "missing-table").length === 7);
+  assert.equal(run("generate", ...flags), await freshSchema("sqlite", ["oauth-provider"]));
+  run("migrate", ...flags);
+  const db = new DatabaseSync(file), ref = new DatabaseSync(":memory:");
+  try {
+    db.prepare('INSERT INTO oauthClient (id,clientId,redirectUris) VALUES (?,?,?)').run("one","app","[]");
+    run("migrate", ...flags);
+    assert.deepEqual(JSON.parse(run("check", "--json", ...flags)), []);
+    await (await getMigrations({database:ref, ...schemaOptions(["oauth-provider"])})).runMigrations();
+    assert.deepEqual(sqliteSchema(db), sqliteSchema(ref));
+    assert.equal(db.prepare("SELECT clientId FROM oauthClient WHERE id = 'one'").get().clientId, "app");
+  } finally { ref.close(); db.close(); }
 });

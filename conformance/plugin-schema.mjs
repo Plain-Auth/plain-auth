@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFile, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { apiKey } from "@better-auth/api-key";
+import { oauthProvider } from "@better-auth/oauth-provider";
 import { passkey } from "@better-auth/passkey";
 import { stripe } from "@better-auth/stripe";
 import { sso } from "@better-auth/sso";
@@ -15,6 +16,10 @@ import Stripe from "stripe";
 export const dialects = { sqlite: SqliteDialect, postgres: PostgresDialect, mysql: MysqlDialect };
 
 export function pluginInstances(profiles) {
+  if (profiles.includes("oauth-provider")) {
+    return [...pluginInstances(profiles.filter(p => p !== "oauth-provider")),
+      oauthProvider({ loginPage: "/login", consentPage: "/consent" })];
+  }
   if (profiles.includes("siwe")) {
     return [...pluginInstances(profiles.filter(p => p !== "siwe")), siwe({ domain: "wallet.test" })];
   }
@@ -68,7 +73,8 @@ const profileGroups = [
 ];
 // SCIM owns separate tables. The existing cross product remains exhaustive;
 // its new combinations are checked with structural isolation and explicit witnesses.
-const profileNames = [...profileGroups.flat(), "scim", "stripe-organization", "scim-managed", "sso", "sso-domain-verification", "siwe"];
+const existingProfiles = [...profileGroups.flat(), "scim", "stripe-organization", "scim-managed", "sso", "sso-domain-verification", "siwe"];
+const profileNames = [...existingProfiles, "oauth-provider"];
 export function* scimCombinations() {
   yield ["scim"];
   for (const name of profileGroups.flat()) yield [name, "scim"];
@@ -100,7 +106,7 @@ export function* managedSCIMCombinations() {
 
 export function* ssoCombinations() {
   yield ["sso"];
-  for (const name of profileNames.filter(id => id !== "sso" && id !== "sso-domain-verification" && id !== "siwe")) yield [name, "sso"];
+  for (const name of existingProfiles.filter(id => id !== "sso" && id !== "sso-domain-verification" && id !== "siwe")) yield [name, "sso"];
   for (const profiles of managedSCIMCombinations()) {
     if (profiles.includes("stripe-organization") && profiles.length > 2) yield [...profiles, "sso"];
   }
@@ -113,7 +119,13 @@ export function* ssoDomainCombinations() {
 
 export function* walletCombinations() {
   yield ["siwe"];
-  for (const profile of profileNames.filter(id => id !== "siwe")) yield [profile, "siwe"];
+  for (const profile of existingProfiles.filter(id => id !== "siwe")) yield [profile, "siwe"];
+}
+
+export function* oauthProviderCombinations() {
+  yield ["oauth-provider"];
+  for (const name of existingProfiles) yield [name, "oauth-provider"];
+  yield [...existingProfiles.filter(p => !["username-only", "organization"].includes(p)), "oauth-provider"];
 }
 
 export function* verifiedCombinations() {
@@ -226,6 +238,9 @@ async function catalog() {
           return { sql: column, ...owners(always, (one) => one.get(sql)?.includes(column)) };
         });
       }
+      if (dialect === "mysql" && columns && item.profiles?.includes("oauth-provider")) {
+        mysqlOAuthConstraints(item);
+      }
       return item;
     });
     for (const [profile, schema] of singles) {
@@ -236,6 +251,27 @@ async function catalog() {
     }
   }
   return JSON.stringify({profiles: profileNames, dialects: data}, null, 2) + "\n";
+}
+
+// MySQL 8.4 ignores inline REFERENCES. Emit enforceable table constraints,
+// and give public key references the same length and collation as their target.
+function mysqlOAuthConstraints(item) {
+  const table = item.sql.split("`")[1];
+  const constraints = [];
+  for (const column of item.columns) {
+    const name = column.sql.split("`")[1];
+    const ref = / references (`\w+`) \((`\w+`)\) on delete (cascade|set null)$/.exec(column.sql);
+    if (ref) {
+      constraints.push("constraint `" + table + "_" + name + "_fk` foreign key (`" + name + "`)" + ref[0]);
+      column.sql = column.sql.slice(0, ref.index);
+    }
+    const publicKey = ["clientId", "resourceId", "identifier"].includes(name);
+    if (publicKey || name === "token" || (table === "oauthClientAssertion" && name === "id")) {
+      column.sql = column.sql.replace(/varchar\((\d+)\)/, (_, width) =>
+        "varchar(" + (publicKey ? 255 : width) + ") character set utf8mb4 collate utf8mb4_0900_bin");
+    }
+  }
+  if (constraints.length) item.constraints = constraints;
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {

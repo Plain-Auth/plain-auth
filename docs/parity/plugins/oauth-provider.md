@@ -397,14 +397,29 @@
       - [ ] Access token
       - [ ] ID token
       - [ ] UserInfo
-  - [ ] Schema
-    - [ ] OAuth Client
-    - [ ] OAuth Resource
-    - [ ] OAuth Client Resource
-    - [ ] OAuth Refresh Token
-    - [ ] OAuth Access Token
-    - [ ] OAuth Consent
-    - [ ] OAuth Client Assertion
+  - [x] Schema ([test](../../../conformance/schema.test.mjs#L395))
+    - [x] Migrate the seven authorization-server models onto an existing database and repeat the CLI migration ([test](../../../conformance/schema.test.mjs#L395))
+    - [x] OAuth Client ([test](../../../conformance/schema.test.mjs#L375))
+      - [x] Match every declared column, type, index and relationship across supported dialects ([test](../../../conformance/schema.test.mjs#L375))
+      - [x] Public client identifiers, callback lists and optional client owners ([test](../../../adapters/sqlstore/oauth_provider_schema_test.go#L65))
+    - [x] OAuth Resource ([test](../../../conformance/schema.test.mjs#L375))
+      - [x] Match every declared column, type, index and relationship across supported dialects ([test](../../../conformance/schema.test.mjs#L375))
+      - [x] Unique resource identifiers, policy values and custom claims ([test](../../../adapters/sqlstore/oauth_provider_schema_test.go#L69))
+    - [x] OAuth Client Resource ([test](../../../conformance/schema.test.mjs#L375))
+      - [x] Match every declared column, type, index and relationship across supported dialects ([test](../../../conformance/schema.test.mjs#L375))
+      - [x] Client-resource business keys, composite uniqueness and cascading removal ([test](../../../adapters/sqlstore/oauth_provider_schema_test.go#L72))
+    - [x] OAuth Refresh Token ([test](../../../conformance/schema.test.mjs#L375))
+      - [x] Match every declared column, type, index and relationship across supported dialects ([test](../../../conformance/schema.test.mjs#L375))
+      - [x] Refresh-token uniqueness, session removal, confirmation data and parent-client ownership ([test](../../../adapters/sqlstore/oauth_provider_schema_test.go#L76))
+    - [x] OAuth Access Token ([test](../../../conformance/schema.test.mjs#L375))
+      - [x] Match every declared column, type, index and relationship across supported dialects ([test](../../../conformance/schema.test.mjs#L375))
+      - [x] Opaque access tokens, client credentials and refresh-token deletion ([test](../../../adapters/sqlstore/oauth_provider_schema_test.go#L79))
+    - [x] OAuth Consent ([test](../../../conformance/schema.test.mjs#L375))
+      - [x] Match every declared column, type, index and relationship across supported dialects ([test](../../../conformance/schema.test.mjs#L375))
+      - [x] Persist consent scopes and require a registered client ([test](../../../adapters/sqlstore/oauth_provider_schema_test.go#L83))
+    - [x] OAuth Client Assertion ([test](../../../conformance/schema.test.mjs#L375))
+      - [x] Match every declared column, type, index and relationship across supported dialects ([test](../../../conformance/schema.test.mjs#L375))
+      - [x] Allow one writer to claim each assertion digest across independent connections ([test](../../../adapters/sqlstore/oauth_provider_schema_test.go#L86))
   - [ ] Optimizations
 
 ## Protect your API

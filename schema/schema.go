@@ -22,7 +22,8 @@ type fragment struct {
 
 type statement struct {
 	fragment
-	Columns []fragment `json:"columns"`
+	Columns     []fragment `json:"columns"`
+	Constraints []string   `json:"constraints"`
 }
 
 var layouts struct {
@@ -173,7 +174,7 @@ func GenerateWithOptions(dialect string, profiles []string, opts Options) (strin
 					columns = append(columns, extras[name].Definition(dialect))
 				}
 			}
-			sql += " (" + strings.Join(columns, ", ") + ");"
+			sql += " (" + strings.Join(append(columns, object.Constraints...), ", ") + ");"
 		}
 		statements = append(statements, sql)
 	}

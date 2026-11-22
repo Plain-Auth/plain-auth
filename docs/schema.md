@@ -20,6 +20,7 @@ AUTH_DSN=auth.db go run ./cmd/authctl migrate --dialect sqlite --plugins organiz
 | `anonymous` | Anonymous-account status on the user |
 | `last-login-method` | Most recent authentication method on the user |
 | `device-authorization` | Expiring device grants with unique device and user codes and client binding |
+| `oauth-provider` | Registered OAuth clients, protected resources, client-resource permissions, consent, tokens and single-use client assertions |
 | `jwt` | Public verification keys, encrypted signing keys and rotation times |
 | `organization` | Organizations, memberships, invitations and active organization selection |
 | `organization-teams` | Organization schema with teams, team membership, invitation team selection and active team selection |
@@ -109,6 +110,31 @@ authctl check schema --dialect postgres --account-fields account-fields.json
 ```
 
 Account ownership, credentials, scopes and timestamps use reserved column names. The CLI validates both logical names and physical aliases before applying a migration. [Configure provider account mapping](social.md#store-fields-on-a-linked-account) · [Account migration tests](../cmd/authctl/account_fields_test.go)
+
+## OAuth authorization-server tables
+
+Use the `oauth-provider` profile to prepare storage for an application that will issue tokens to registered clients. You can add it to an existing Plain Auth database. The HTTP authorization and token endpoints have separate entries on the [authorization-server checklist](parity/plugins/oauth-provider.md).
+
+```sh
+# Set AUTH_DSN to the target database before running migrate or check.
+authctl generate --dialect postgres --plugins oauth-provider
+authctl migrate  --dialect postgres --plugins oauth-provider
+authctl check schema --dialect postgres --plugins oauth-provider
+```
+
+Use `--dialect mysql` or `--dialect sqlite` for those engines. Pass `--plugins oauth-provider,jwt` when the application also needs the signing-key table. In Go, pass the same profile names to `schema.Generate` or `sqlstore.OpenWithOptions`.
+
+| Table | Stored values and relationships |
+| --- | --- |
+| `oauthClient` | A unique public client ID, redirect URIs, authentication method, optional owner, scopes and registration metadata. Public clients can omit the secret. |
+| `oauthResource` | A unique resource identifier, display name, and optional token lifetimes, scopes, signing policy and custom claims. |
+| `oauthClientResource` | Links the public client ID to the resource identifier. The database permits one row per pair and removes links when either side is deleted. |
+| `oauthRefreshToken` | A unique token value, client, user, scopes, expiry, and optional session, rotation, revocation and proof-of-possession data. |
+| `oauthAccessToken` | A unique token value, client, expiry and scopes. A machine grant can omit the user and session. Deleting the parent refresh token also deletes its linked access tokens. |
+| `oauthConsent` | The client, optional user and reference, approved scopes and resources, requested claims, and timestamps. |
+| `oauthClientAssertion` | A single-use assertion digest as the primary key and the time when that record may be removed. Concurrent inserts for the same digest permit one writer. |
+
+The database clears the session reference on access and refresh tokens when the session is deleted. Deleting a client cascades to its tokens, consent and resource links. On MySQL 8.4 the profile emits explicit foreign keys, uses case-sensitive comparisons for token values and public identifiers, and allows 255-character public identifiers on both sides of a relationship. Reapplying the migration restores a missing foreign key and reports conflicting deletion rules. [Three-database lifecycle test](../adapters/sqlstore/oauth_provider_schema_test.go)
 
 ## Schema migrations
 

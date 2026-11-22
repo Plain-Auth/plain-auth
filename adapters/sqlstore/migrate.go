@@ -200,5 +200,43 @@ func (s *Store) ensureTable(ctx context.Context, db migrationConnection, stmt st
 			}
 		}
 	}
+	if s.dialect == "mysql" {
+		// CREATE TABLE IF NOT EXISTS leaves constraints on existing tables
+		// untouched. Add any missing keys only after all columns are present.
+		for _, key := range mysqlForeignKeyDDL.FindAllStringSubmatch(match[2], -1) {
+			if err := ensureMySQLForeignKey(ctx, db, table, key); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+var mysqlForeignKeyDDL = regexp.MustCompile("constraint `\\w+` foreign key \\(`(\\w+)`\\) references `(\\w+)` \\(`(\\w+)`\\) on delete (cascade|set null)")
+
+func ensureMySQLForeignKey(ctx context.Context, db migrationConnection, table string, key []string) error {
+	definition, column, parent, parentColumn, deleteRule := key[0], key[1], key[2], key[3], key[4]
+	const query = `SELECT COUNT(*), COALESCE(SUM(k.referenced_table_schema = DATABASE()
+		AND k.referenced_table_name = ? AND (@@lower_case_table_names <> 0 OR BINARY k.referenced_table_name = BINARY ?)
+		AND k.referenced_column_name = ? AND r.delete_rule = ?), 0)
+		FROM information_schema.key_column_usage k
+		JOIN information_schema.referential_constraints r
+		ON r.constraint_schema = k.constraint_schema AND r.constraint_name = k.constraint_name AND r.table_name = k.table_name
+		WHERE k.table_schema = DATABASE() AND k.table_name = ? AND k.column_name = ?
+		AND k.referenced_table_name IS NOT NULL
+		AND (@@lower_case_table_names <> 0 OR BINARY k.table_name = BINARY ?)`
+	name := strings.Trim(table, "`")
+	var total, matching int
+	if err := db.QueryRowContext(ctx, query, parent, parent, parentColumn, strings.ToUpper(deleteRule), name, column, name).Scan(&total, &matching); err != nil {
+		return err
+	}
+	if total != matching {
+		return fmt.Errorf("sqlstore: existing foreign key for %s.%s has an incompatible target or delete rule", name, column)
+	}
+	if matching == 0 {
+		if _, err := db.ExecContext(ctx, "ALTER TABLE "+table+" ADD "+definition); err != nil {
+			return fmt.Errorf("sqlstore: add foreign key on %s.%s: %w", name, column, err)
+		}
+	}
 	return nil
 }

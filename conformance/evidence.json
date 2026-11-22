@@ -10780,5 +10780,104 @@
       "marker": "func TestPluginOptions(",
       "complete": true
     }
+  ],
+  "docs/content/docs/plugins/oauth-provider/reference.mdx#L499": [
+    {
+      "label": "Migrate the seven authorization-server models onto an existing database and repeat the CLI migration",
+      "test": "conformance/schema.test.mjs",
+      "marker": "test(\"authctl installs the OAuth provider schema",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/reference.mdx#L503": [
+    {
+      "label": "Match every declared column, type, index and relationship across supported dialects",
+      "test": "conformance/schema.test.mjs",
+      "marker": "test(\"OAuth provider schema preserves all seven",
+      "complete": true
+    },
+    {
+      "label": "Public client identifiers, callback lists and optional client owners",
+      "test": "adapters/sqlstore/oauth_provider_schema_test.go",
+      "marker": "const clientRow ="
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/reference.mdx#L548": [
+    {
+      "label": "Match every declared column, type, index and relationship across supported dialects",
+      "test": "conformance/schema.test.mjs",
+      "marker": "test(\"OAuth provider schema preserves all seven",
+      "complete": true
+    },
+    {
+      "label": "Unique resource identifiers, policy values and custom claims",
+      "test": "adapters/sqlstore/oauth_provider_schema_test.go",
+      "marker": "const resourceRow ="
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/reference.mdx#L574": [
+    {
+      "label": "Match every declared column, type, index and relationship across supported dialects",
+      "test": "conformance/schema.test.mjs",
+      "marker": "test(\"OAuth provider schema preserves all seven",
+      "complete": true
+    },
+    {
+      "label": "Client-resource business keys, composite uniqueness and cascading removal",
+      "test": "adapters/sqlstore/oauth_provider_schema_test.go",
+      "marker": "const linkRow ="
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/reference.mdx#L590": [
+    {
+      "label": "Match every declared column, type, index and relationship across supported dialects",
+      "test": "conformance/schema.test.mjs",
+      "marker": "test(\"OAuth provider schema preserves all seven",
+      "complete": true
+    },
+    {
+      "label": "Refresh-token uniqueness, session removal, confirmation data and parent-client ownership",
+      "test": "adapters/sqlstore/oauth_provider_schema_test.go",
+      "marker": "const refreshRow ="
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/reference.mdx#L617": [
+    {
+      "label": "Match every declared column, type, index and relationship across supported dialects",
+      "test": "conformance/schema.test.mjs",
+      "marker": "test(\"OAuth provider schema preserves all seven",
+      "complete": true
+    },
+    {
+      "label": "Opaque access tokens, client credentials and refresh-token deletion",
+      "test": "adapters/sqlstore/oauth_provider_schema_test.go",
+      "marker": "const accessRow ="
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/reference.mdx#L643": [
+    {
+      "label": "Match every declared column, type, index and relationship across supported dialects",
+      "test": "conformance/schema.test.mjs",
+      "marker": "test(\"OAuth provider schema preserves all seven",
+      "complete": true
+    },
+    {
+      "label": "Persist consent scopes and require a registered client",
+      "test": "adapters/sqlstore/oauth_provider_schema_test.go",
+      "marker": "const consentRow ="
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/reference.mdx#L661": [
+    {
+      "label": "Match every declared column, type, index and relationship across supported dialects",
+      "test": "conformance/schema.test.mjs",
+      "marker": "test(\"OAuth provider schema preserves all seven",
+      "complete": true
+    },
+    {
+      "label": "Allow one writer to claim each assertion digest across independent connections",
+      "test": "adapters/sqlstore/oauth_provider_schema_test.go",
+      "marker": "const assertionRow ="
+    }
   ]
 }
