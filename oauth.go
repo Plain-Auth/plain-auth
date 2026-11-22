@@ -17,7 +17,7 @@ import (
 // OAuthProfile identifies a person by their stable provider subject.
 type OAuthProfile struct {
 	// AdditionalFields is an explicit mapping from the authenticated provider
-	// profile to configured user attributes for first-time account creation.
+	// profile to writable user attributes at registration and optional sign-in updates.
 	AdditionalFields map[string]any `json:"-"`
 
 	// Data is the authenticated provider profile returned by the account-info endpoint.
@@ -52,6 +52,9 @@ type OAuthProvider struct {
 	DisableSignUp bool
 	// DisableImplicitSignUp requires requestSignUp for new browser and direct ID-token accounts.
 	DisableImplicitSignUp bool
+	// OverrideUserInfoOnSignIn updates the local profile from this provider on
+	// successful sign-in. Explicit account linking preserves the owner's profile.
+	OverrideUserInfoOnSignIn bool
 	// GoogleHostedDomain restricts the verified Google Workspace hd claim. Use * for any Workspace.
 	GoogleHostedDomain  string
 	AuthorizationParams url.Values
@@ -105,18 +108,31 @@ type OAuthStore interface {
 	CompleteOAuth(ctx context.Context, provider, subject string, tokens OAuthTokens, candidate User, session StoredSession, options OAuthLoginOptions) (User, bool, error)
 }
 
-// OAuthRegistrationFields resolves the configured scalar values for a new
-// account. It has no side effects and can be called again when retrying a write.
+// OAuthRegistrationFields resolves configured columns for a new account.
 type OAuthRegistrationFields func() (UserFieldValues, error)
 
-type oauthRegistrationFieldError struct{ error }
+// OAuthProfileFields supplies the creation defaults or the mapped update for
+// the selected owner. Call only the matching resolver inside the transaction.
+type OAuthProfileFields struct {
+	Create OAuthRegistrationFields
+	Update func() (UserFieldValues, error)
+}
 
-func (e oauthRegistrationFieldError) Unwrap() error { return e.error }
+type oauthProfileFieldError struct{ error }
+
+func (e oauthProfileFieldError) Unwrap() error { return e.error }
 
 // OAuthRegistrationStore resolves fields only for new users after selecting the
 // exact identity. It commits them with the user, account link and initial session.
 type OAuthRegistrationStore interface {
 	CompleteOAuthRegistration(ctx context.Context, provider, subject string, tokens OAuthTokens, candidate User, session StoredSession, options OAuthLoginOptions, fields OAuthRegistrationFields) (User, bool, error)
+}
+
+// OAuthProfileSyncStore applies an authenticated provider profile to the owner
+// selected by the ordinary sign-in and linking rules. Profile, credentials,
+// token consumption and session creation must commit together.
+type OAuthProfileSyncStore interface {
+	CompleteOAuthProfile(ctx context.Context, provider, subject string, tokens OAuthTokens, candidate User, session StoredSession, options OAuthLoginOptions, fields OAuthProfileFields) (User, bool, error)
 }
 
 // OAuthLinkRefreshStore updates an already-owned provider identity after verifying
@@ -128,6 +144,7 @@ type OAuthLinkRefreshStore interface {
 
 var ErrOAuthLinkingDisabled = errors.New("account linking is disabled")
 var ErrOAuthAccountAlreadyLinked = errors.New("social identity belongs to another account")
+var ErrOAuthProfileConflict = errors.New("provider profile conflicts with an existing profile")
 
 var ErrOAuthSignupDisabled = errors.New("OAuth account creation disabled")
 var ErrOAuthLinkRequired = errors.New("account must be linked by its existing owner")
@@ -143,7 +160,11 @@ func prepareOAuthProviders(in map[string]OAuthProvider, store Store, userFieldsO
 	}
 	out := make(map[string]OAuthProvider, len(in))
 	for id, p := range in {
-		if userFieldsOnSignup && !p.DisableSignUp {
+		if p.OverrideUserInfoOnSignIn {
+			if _, ok := store.(OAuthProfileSyncStore); !ok {
+				return nil, fmt.Errorf("auth: profile updates from provider %q require an OAuthProfileSyncStore", id)
+			}
+		} else if userFieldsOnSignup && !p.DisableSignUp {
 			if _, ok := store.(OAuthRegistrationStore); !ok {
 				return nil, errors.New("auth: social signup with configured user fields requires an OAuthRegistrationStore")
 			}

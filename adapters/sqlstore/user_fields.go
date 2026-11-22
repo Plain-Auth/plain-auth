@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"maps"
+	"slices"
 	"time"
 
 	auth "github.com/Plain-Auth/plain-auth"
@@ -11,6 +13,14 @@ import (
 )
 
 var _ auth.UserFieldStore = (*Store)(nil)
+
+func (s *Store) appendUserFieldUpdates(fields []string, args []any, columns map[string]any) ([]string, []any) {
+	for _, column := range slices.Sorted(maps.Keys(columns)) {
+		fields = append(fields, `"`+column+`"=?`)
+		args = append(args, s.fieldParameter(columns[column]))
+	}
+	return fields, args
+}
 
 func (s *Store) CreateUserWithFields(ctx context.Context, user auth.User, hash string, first *auth.StoredSession, values auth.UserFieldValues) error {
 	return s.createUser(ctx, user, &hash, first, values.Columns())

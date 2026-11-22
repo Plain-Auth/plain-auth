@@ -37,7 +37,7 @@ Choose a source for each required field on every registration path enabled in yo
 | Email code | Send writable fields with the code on the first successful sign-in for a new mailbox. Returning sign-ins use the saved profile. [Email OTP](email-otp.md#registration-profile-fields) |
 | Phone verification | Send writable fields with the verification code. The host's resolvers supply the temporary email and display name. [Phone accounts](phone-number.md#registration-profile-fields) |
 | Magic link | Configure static defaults for required fields. Verification writes them when it creates the account. [Magic links](magic-link.md#registration-fields) |
-| Social authorization code | Map authenticated claims in the provider resolver or provide defaults. A returning sign-in keeps the stored values. [Social sign-in](social.md#user-fields-on-social-registration) |
+| Social sign-in | Map authenticated claims in the provider resolver or provide defaults. Set `OverrideUserInfoOnSignIn` on a provider to refresh mapped fields on returning sign-ins. [Social profile configuration](social.md#refresh-a-profile-on-social-sign-in) |
 | Administrator provisioning | Put attributes in the request's `data` object. Trusted application code can use `Auth.AdminCreateUser` to set server-owned values. [Administrator accounts](admin.md#create-users-with-application-profile-fields) |
 
 ## Reading and updating a profile

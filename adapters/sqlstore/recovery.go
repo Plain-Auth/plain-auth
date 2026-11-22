@@ -5,8 +5,6 @@ import (
 	"crypto/rand"
 	"database/sql"
 	"errors"
-	"maps"
-	"slices"
 	"strings"
 	"time"
 
@@ -57,11 +55,7 @@ func (s *Store) updateProfile(ctx context.Context, db executor, userID string, p
 		fields = append(fields, `"phoneNumber"=NULL`, `"phoneNumberVerified"=?`)
 		args = append(args, false)
 	}
-	extra := patch.PhysicalUserFields()
-	for _, column := range slices.Sorted(maps.Keys(extra)) {
-		fields = append(fields, `"`+column+`"=?`)
-		args = append(args, s.fieldParameter(extra[column]))
-	}
+	fields, args = s.appendUserFieldUpdates(fields, args, patch.PhysicalUserFields())
 	args = append(args, userID)
 	_, err := db.ExecContext(ctx, s.bind(`UPDATE "user" SET `+strings.Join(fields, ", ")+` WHERE "id" = ?`), args...)
 	if patch.Username != nil && duplicateConstraint(err) {

@@ -1687,3 +1687,8 @@ test("computed additional fields honor trusted ownership, explicit input and per
   const { compareComputedFields } = await import("./computed-fields.mjs");
   await compareComputedFields(t, { reference, goFixture, instrument });
 });
+
+test("social callbacks refresh existing profiles across both servers when the provider opts in", async t => {
+  const {compareSocialProfileSync} = await import("./social-user-fields.mjs");
+  await compareSocialProfileSync(t, {reference, goFixture, instrument});
+});

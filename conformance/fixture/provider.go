@@ -13,7 +13,9 @@ import (
 // A fixed protocol double for the differential harness. It never sends traffic.
 func fixtureSocialProvider() map[string]auth.OAuthProvider {
 	if issuer := os.Getenv("CONFORMANCE_SOCIAL_FIELD_ISSUER"); issuer != "" {
-		return map[string]auth.OAuthProvider{"work": fixtureProfileProvider(issuer)}
+		p := fixtureProfileProvider(issuer)
+		p.OverrideUserInfoOnSignIn = os.Getenv("CONFORMANCE_SOCIAL_PROFILE_SYNC") == "1"
+		return map[string]auth.OAuthProvider{"work": p}
 	}
 	if os.Getenv("CONFORMANCE_EXPLICIT_SIGNUP") == "1" || os.Getenv("CONFORMANCE_LINK_POLICY") != "" {
 		return map[string]auth.OAuthProvider{"work": {

@@ -78,7 +78,7 @@ function browser(target, instrument) {
   }};
 }
 
-export async function compareSocialUserFields(t, { reference, goFixture, instrument }, defaults) {
+async function profileServers(t, {reference, goFixture}, defaults, syncProfile = false) {
   const issuer=await issuerFixture(t);
   const fields={...mappings,locale:{...mappings.locale}};
   if (defaults) fields.locale.defaultValue="en";
@@ -86,11 +86,17 @@ export async function compareSocialUserFields(t, { reference, goFixture, instrum
     authorizationUrl:issuer.base+"/authorize",tokenUrl:issuer.base+"/token",userInfoUrl:issuer.base+"/userinfo",
     accountSubject:({profile})=>profile.id,
     mapProfileToUser:raw=>raw.mapped??{},
+    overrideUserInfo: syncProfile,
   }]});
-  const go=await goFixture(t,[],{CONFORMANCE_PROVIDER:"1",CONFORMANCE_USER_FIELDS:"1",CONFORMANCE_SOCIAL_FIELD_ISSUER:issuer.base,CONFORMANCE_SOCIAL_FIELD_DEFAULT:defaults?"1":"0"});
+  const go=await goFixture(t,[],{CONFORMANCE_PROVIDER:"1",CONFORMANCE_USER_FIELDS:"1",CONFORMANCE_SOCIAL_FIELD_ISSUER:issuer.base,CONFORMANCE_SOCIAL_FIELD_DEFAULT:defaults?"1":"0",CONFORMANCE_SOCIAL_PROFILE_SYNC:syncProfile?"1":"0"});
   const database=new DatabaseSync(go.databasePath);
   t.after(()=>database.close());
   const ref=await reference(t,[provider],{database,user:{additionalFields:fields},rateLimit:{enabled:false}});
+  return {go, ref, issuer, database};
+}
+
+export async function compareSocialUserFields(t, { reference, goFixture, instrument }, defaults) {
+  const {go, ref, issuer, database} = await profileServers(t, {reference, goFixture}, defaults);
   for (const [first,other,label] of [[go,ref,"go"],[ref,go,"ts"]]) {
     const raw={id:label+"-subject",name:"Hosted "+label,email:label+"@provider.test",emailVerified:true,locale:"unmapped-raw",privateNote:"unmapped-raw-private"};
     const actor=browser(first,instrument), peer=browser(other,instrument);
@@ -122,4 +128,59 @@ export async function compareSocialUserFields(t, { reference, goFixture, instrum
     const saved=database.prepare('SELECT preferred_locale,privateNote,internalRisk FROM "user" WHERE id=?').get(id);
     assert.deepEqual({...saved},{preferred_locale:expected.locale,privateNote:defaults?null:"provider-private",internalRisk:9});
   }
+}
+
+export async function compareSocialProfileSync(t, harness) {
+  const {go, ref, issuer, database} = await profileServers(t, harness, false, true);
+  for (const [first, second, label] of [[go, ref, "native"], [ref, go, "reference"]]) {
+    const subject = label + "-sync";
+    const email = subject + "@example.test";
+    const picture = "https://images.example.test/initial";
+    async function signIn(server, profile, verified) {
+      issuer.profile({id: subject, email, emailVerified: verified, email_verified: verified, ...profile});
+      const actor = browser(server, harness.instrument);
+      assert.equal((await actor.login()).pathname, "/done");
+      const result = await actor.client.getSession();
+      assert.equal(result.error, null);
+      return result.data.user;
+    }
+    const initial = await signIn(first, {name: "Original", picture, mapped: {locale: "fr", count: 7, flag: true}}, true);
+    const changed = await signIn(second, {
+      name: "Updated", email: email.toUpperCase(),
+      mapped: {count: 0, flag: false, accountClass: "other", privateNote: "updated", internalRisk: 100},
+    }, false);
+    assert.equal(changed.id, initial.id);
+    assert.equal(changed.name, "Updated");
+    assert.equal(changed.image, picture);
+    assert.equal(changed.email, email);
+    assert.equal(changed.emailVerified, true);
+    assert.equal(changed.locale, "fr");
+    assert.equal(changed.count, 0);
+    assert.equal(changed.flag, false);
+    assert.equal(changed.accountClass, "standard");
+    assert.ok(!("privateNote" in changed));
+    const saved = database.prepare('SELECT privateNote, internalRisk FROM "user" WHERE id=?').get(initial.id);
+    assert.deepEqual({...saved}, {privateNote: "updated", internalRisk: 9});
+
+    const newEmail = "new-" + email;
+    const newImage = "https://images.example.test/updated";
+    const moved = await signIn(first, {name: "Updated", email: newEmail.toUpperCase(), picture: newImage}, false);
+    assert.equal(moved.id, initial.id);
+    assert.equal(moved.image, newImage);
+    assert.equal(moved.email, newEmail);
+    assert.equal(moved.emailVerified, false);
+    const verified = await signIn(second, {email: newEmail, name: "Verified"}, true);
+    assert.equal(verified.id, initial.id);
+    assert.equal(verified.emailVerified, true);
+    assert.equal(database.prepare('SELECT count(*) AS n FROM "account" WHERE userId=?').get(initial.id).n, 1);
+  }
+  const snapshot = () => database.prepare('SELECT id, name, email, emailVerified FROM "user" ORDER BY id').all();
+  const before = snapshot();
+  issuer.profile({id: "native-sync", email: "new-reference-sync@example.test", emailVerified: true, name: "Conflict"});
+  const visitor = browser(go, harness.instrument);
+  const refused = await visitor.login();
+  assert.equal(refused.pathname, "/retry");
+  assert.equal(refused.searchParams.get("error"), "profile_conflict");
+  assert.equal((await visitor.client.getSession()).data, null);
+  assert.deepEqual(snapshot(), before);
 }

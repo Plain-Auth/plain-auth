@@ -40,7 +40,11 @@ func fixtureProfileProvider(issuer string) auth.OAuthProvider {
 			email, _ := data["email"].(string)
 			verified, _ := data["emailVerified"].(bool)
 			mapped, _ := data["mapped"].(map[string]any)
-			return auth.OAuthProfile{Subject: subject, Name: name, Email: email, EmailVerified: verified, Data: data, AdditionalFields: mapped}, nil
+			profile := auth.OAuthProfile{Subject: subject, Name: name, Email: email, EmailVerified: verified, Data: data, AdditionalFields: mapped}
+			if image, ok := data["picture"].(string); ok {
+				profile.Image = &image
+			}
+			return profile, nil
 		},
 	}
 }

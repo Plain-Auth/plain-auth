@@ -1127,6 +1127,11 @@
       "label": "Exercise required profile failures, stored field privacy and unchanged returning and linked owners through the Go client on all three SQL engines",
       "test": "adapters/sqlstore/oauth_user_fields_test.go",
       "marker": "func TestOAuthRegistrationUserFields("
+    },
+    {
+      "label": "Apply the provider policy on direct sign-in, Google One Tap and permitted automatic links across three SQL engines",
+      "test": "adapters/sqlstore/oauth_profile_sync_test.go",
+      "marker": "func TestOAuthProfileSync("
     }
   ],
   "core/callbackOAuth": [
@@ -1134,6 +1139,11 @@
       "label": "Redeem the authorization code and establish a local authenticated session",
       "test": "oauth_test.go",
       "marker": "func TestOAuthBrowserFlow("
+    },
+    {
+      "label": "Refresh a returning profile with either server, preserve protected fields and use the new mailbox verification status",
+      "test": "conformance/social-user-fields.mjs",
+      "marker": "export async function compareSocialProfileSync("
     }
   ],
   "provider/google": [
@@ -3145,6 +3155,11 @@
       "label": "Require the Google CSRF cookie and escape the relay document for redirect submissions",
       "test": "plugins/onetap/redirect_test.go",
       "marker": "func TestRedirectFormRequiresGoogleProof("
+    },
+    {
+      "label": "Apply the provider policy on direct sign-in, Google One Tap and permitted automatic links across three SQL engines",
+      "test": "adapters/sqlstore/oauth_profile_sync_test.go",
+      "marker": "func TestOAuthProfileSync("
     }
   ],
   "plugin-symbol/one-tap/OneTapOptions/disableSignup": [
@@ -10440,6 +10455,61 @@
       "label": "Evaluate application defaults when creating a record and preserve explicit writable input and nulls",
       "test": "conformance/computed-fields.mjs",
       "marker": "export async function compareComputedFields("
+    }
+  ],
+  "provider-option/shared/overrideUserInfoOnSignIn": [
+    {
+      "label": "Refresh a returning profile with either server, preserve protected fields and use the new mailbox verification status",
+      "test": "conformance/social-user-fields.mjs",
+      "marker": "export async function compareSocialProfileSync(",
+      "complete": true
+    },
+    {
+      "label": "Apply the provider policy on direct sign-in, Google One Tap and permitted automatic links across three SQL engines",
+      "test": "adapters/sqlstore/oauth_profile_sync_test.go",
+      "marker": "func TestOAuthProfileSync("
+    },
+    {
+      "label": "Preserve the stored owner and mapped fields on a returning sign-in with the default provider settings",
+      "test": "conformance/social-user-fields.mjs",
+      "marker": "export async function compareSocialUserFields("
+    },
+    {
+      "label": "Commit only the winning profile, credential and session when two account owners request the same address",
+      "test": "adapters/sqlstore/oauth_profile_sync_test.go",
+      "marker": "func TestOAuthConcurrentProfileEmailChange("
+    }
+  ],
+  "docs/content/docs/concepts/oauth.mdx#L596": [
+    {
+      "label": "Refresh a returning profile with either server, preserve protected fields and use the new mailbox verification status",
+      "test": "conformance/social-user-fields.mjs",
+      "marker": "export async function compareSocialProfileSync(",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/reference/options.mdx#L362/`overrideUserInfoOnSignIn`": [
+    {
+      "label": "Refresh a returning profile with either server, preserve protected fields and use the new mailbox verification status",
+      "test": "conformance/social-user-fields.mjs",
+      "marker": "export async function compareSocialProfileSync(",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/generic-oauth/GenericOAuthConfig/overrideUserInfo": [
+    {
+      "label": "Refresh a returning profile with either server, preserve protected fields and use the new mailbox verification status",
+      "test": "conformance/social-user-fields.mjs",
+      "marker": "export async function compareSocialProfileSync(",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/generic-oauth.mdx#L399/overrideUserInfo": [
+    {
+      "label": "Refresh a returning profile with either server, preserve protected fields and use the new mailbox verification status",
+      "test": "conformance/social-user-fields.mjs",
+      "marker": "export async function compareSocialProfileSync(",
+      "complete": true
     }
   ]
 }

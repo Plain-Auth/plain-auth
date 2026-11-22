@@ -17,6 +17,7 @@ import (
 
 var _ authn.OAuthStore = (*Store)(nil)
 var _ authn.OAuthLinkRefreshStore = (*Store)(nil)
+var _ authn.OAuthProfileSyncStore = (*Store)(nil)
 
 func (s *Store) SaveOAuthFlow(ctx context.Context, flow authn.OAuthFlow, now time.Time) error {
 	payload, err := json.Marshal(flow)
@@ -78,7 +79,14 @@ func (s *Store) CompleteOAuthRegistration(ctx context.Context, provider, subject
 	if fields == nil || options.LinkUserID != "" {
 		return authn.User{}, false, errors.New("sqlstore: invalid OAuth registration")
 	}
-	return s.completeOAuthWith(ctx, provider, subject, tokens, candidate, session, options, nil, false, fields)
+	return s.completeOAuthWith(ctx, provider, subject, tokens, candidate, session, options, nil, false, &authn.OAuthProfileFields{Create: fields})
+}
+
+func (s *Store) CompleteOAuthProfile(ctx context.Context, provider, subject string, tokens authn.OAuthTokens, candidate authn.User, session authn.StoredSession, options authn.OAuthLoginOptions, fields authn.OAuthProfileFields) (authn.User, bool, error) {
+	if options.LinkUserID != "" || fields.Create == nil || fields.Update == nil {
+		return authn.User{}, false, errors.New("sqlstore: invalid OAuth profile sync")
+	}
+	return s.completeOAuthWith(ctx, provider, subject, tokens, candidate, session, options, nil, false, &fields)
 }
 
 // RefreshOwnedOAuthLink can only update an existing provider identity, even if
@@ -97,7 +105,7 @@ type oauthTransactionHooks struct {
 	afterIdentity    func(*sql.Tx, authn.User) error
 }
 
-func (s *Store) completeOAuthWith(ctx context.Context, provider, subject string, tokens authn.OAuthTokens, candidate authn.User, session authn.StoredSession, options authn.OAuthLoginOptions, hooks *oauthTransactionHooks, existingOnly bool, fields authn.OAuthRegistrationFields) (authn.User, bool, error) {
+func (s *Store) completeOAuthWith(ctx context.Context, provider, subject string, tokens authn.OAuthTokens, candidate authn.User, session authn.StoredSession, options authn.OAuthLoginOptions, hooks *oauthTransactionHooks, existingOnly bool, fields *authn.OAuthProfileFields) (authn.User, bool, error) {
 	candidate.Email = strings.ToLower(candidate.Email)
 	var u authn.User
 	var created bool
@@ -123,7 +131,7 @@ func retryIdentity(err error) bool {
 	return false
 }
 
-func (s *Store) completeOAuth(ctx context.Context, provider, subject string, tokens authn.OAuthTokens, candidate authn.User, session authn.StoredSession, options authn.OAuthLoginOptions, hooks *oauthTransactionHooks, existingOnly bool, fields authn.OAuthRegistrationFields) (authn.User, bool, error) {
+func (s *Store) completeOAuth(ctx context.Context, provider, subject string, tokens authn.OAuthTokens, candidate authn.User, session authn.StoredSession, options authn.OAuthLoginOptions, hooks *oauthTransactionHooks, existingOnly bool, fields *authn.OAuthProfileFields) (authn.User, bool, error) {
 	var u authn.User
 	var txOptions *sql.TxOptions
 	if hooks != nil && s.dialect != "sqlite" {
@@ -205,7 +213,7 @@ func (s *Store) completeOAuth(ctx context.Context, provider, subject string, tok
 			created = true
 			var values authn.UserFieldValues
 			if fields != nil {
-				values, err = fields()
+				values, err = fields.Create()
 				if err != nil {
 					return u, false, err
 				}
@@ -270,6 +278,16 @@ func (s *Store) completeOAuth(ctx context.Context, provider, subject string, tok
 			return u, false, err
 		}
 	}
+	if !created && fields != nil && fields.Update != nil {
+		values, err := fields.Update()
+		if err != nil {
+			return u, false, err
+		}
+		u, err = s.syncOAuthProfile(ctx, tx, u, candidate, values, session.CreatedAt)
+		if err != nil {
+			return u, false, err
+		}
+	}
 	if hooks != nil {
 		if err := hooks.afterIdentity(tx, u); err != nil {
 			return u, false, err
@@ -282,6 +300,28 @@ func (s *Store) completeOAuth(ctx context.Context, provider, subject string, tok
 		}
 	}
 	return u, created, tx.Commit()
+}
+
+// The caller locks and authorizes the exact owner before applying provider data.
+func (s *Store) syncOAuthProfile(ctx context.Context, tx *sql.Tx, owner, candidate authn.User, values authn.UserFieldValues, now time.Time) (authn.User, error) {
+	owner.EmailVerified = candidate.EmailVerified || (strings.ToLower(owner.Email) == candidate.Email && owner.EmailVerified)
+	owner.Email = candidate.Email
+	owner.UpdatedAt = now
+	if candidate.Name != "" {
+		owner.Name = candidate.Name
+	}
+	if candidate.Image != nil {
+		owner.Image = candidate.Image
+	}
+	fields := []string{`"name"=?`, `"image"=?`, `"email"=?`, `"emailVerified"=?`, `"updatedAt"=?`}
+	args := []any{owner.Name, owner.Image, owner.Email, owner.EmailVerified, s.date(now)}
+	fields, args = s.appendUserFieldUpdates(fields, args, values.Columns())
+	args = append(args, owner.ID)
+	_, err := tx.ExecContext(ctx, s.bind(`UPDATE "user" SET `+strings.Join(fields, ",")+` WHERE "id"=?`), args...)
+	if duplicateConstraint(err) {
+		return authn.User{}, authn.ErrOAuthProfileConflict
+	}
+	return owner, err
 }
 
 func (s *Store) claimIDToken(ctx context.Context, tx *sql.Tx, provider string, hash [32]byte, now, expires time.Time) error {

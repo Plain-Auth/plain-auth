@@ -329,7 +329,8 @@
     - [ ] disableSignUp
     - [ ] disableIdTokenSignIn
     - [ ] verifyIdToken
-    - [ ] overrideUserInfoOnSignIn
+    - [x] overrideUserInfoOnSignIn ([test](../../conformance/social-user-fields.mjs#L133))
+      - [x] Refresh a returning profile with either server, preserve protected fields and use the new mailbox verification status ([test](../../conformance/social-user-fields.mjs#L133))
     - [ ] requireEmailVerification
     - [ ] mapProfileToUser
       - [ ] Server-Owned Fields and Authorization Claims

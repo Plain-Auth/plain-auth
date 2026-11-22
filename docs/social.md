@@ -98,7 +98,25 @@ return plainauth.OAuthProfile{
 
 Use the logical names from `Options.UserAdditionalFields`. The service accepts declared writable values, skips server-owned claims and fills missing fields from application defaults. A required field without a default needs a mapped value. The SQL adapter checks the field policy when creating the user and commits the profile, account link and session together. Hidden values stay in storage.
 
-The server reads application attributes only from the explicit resolver mapping. Browser `additionalData`, callback parameters, tokens and the raw provider profile in `OAuthProfile.Data` are never copied into profile columns. A returning login reads the stored profile and a default verified-email link preserves the existing owner's values. Use the authenticated update API or a trusted host update for subsequent changes. Custom stores with social registration and user fields enabled implement `OAuthRegistrationStore`. Profile resynchronization on every sign-in or link and enterprise SSO attribute mapping are separate integrations. [Additional user fields](user-fields.md)
+Only the resolver's explicit mapping supplies application attributes. With the default provider configuration, users manage their profiles through the authenticated update API, and a returning login reads their saved values. Custom stores that support mapped registration fields implement `OAuthRegistrationStore`. [Additional user fields](user-fields.md)
+
+## Refresh a profile on social sign-in
+
+Enable `OverrideUserInfoOnSignIn` on a provider whose profile should supply the current name, photo, email and mapped attributes. For example, an application can use Google Workspace as the source of employee profiles.
+
+```go
+google := providers.GoogleWithOptions(providers.GoogleOptions{
+    ClientID: clientID, ClientSecret: clientSecret, HostedDomain: "example.org",
+})
+google.OverrideUserInfoOnSignIn = true
+opts.SocialProviders = map[string]plainauth.OAuthProvider{"google": google}
+```
+
+The setting applies to authorization-code sign-in, direct ID-token sign-in and Google One Tap. A returning user keeps the local ID associated with the provider subject. A first-time link during sign-in can refresh the profile after it passes the application's verified-email linking policy. Explicit linking through `/link-social` only attaches or refreshes the credential.
+
+The server lowercases the provider's email. For the same address, either the existing local verification or the provider's verification is sufficient. A changed address takes its verification status from the provider. An omitted name or image keeps the stored value. Mapped attributes update only when supplied, including `false`, zero and an explicit `nil` for a nullable field. Server-owned fields keep their application values, and hidden fields stay out of responses.
+
+SQLite, PostgreSQL and MySQL commit the profile, provider credential and session in one transaction. If another user already owns the proposed email, the browser receives `profile_conflict` at its configured error callback. Direct grants return HTTP 409 with `OAUTH_PROFILE_CONFLICT`. A custom adapter implements `OAuthProfileSyncStore` to enable the same transaction. [Browser callback tests](../conformance/social-user-fields.mjs) · [SQL and native sign-in tests](../adapters/sqlstore/oauth_profile_sync_test.go)
 
 ## Auth0, Keycloak and Okta
 

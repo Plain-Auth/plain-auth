@@ -310,22 +310,25 @@ func (a *Auth) finishBrowserOAuth(w http.ResponseWriter, r *http.Request, id str
 		disableSignUp = disableSignUp || returned.DisableSignUp
 	}
 	result, created, err := a.completeProfile(ctx, r, id, profile, tokens, OAuthLoginOptions{DisableSignUp: disableSignUp, AllowVerifiedEmailLink: p.AllowVerifiedEmailLink, LinkUserID: flow.LinkUserID, LinkSessionToken: a.cookieToken(r.Header)})
-	var signupError *APIError
-	if errors.As(err, &signupError) && signupError.Code == "SIGN_UP_DISABLED" {
+	var apiError *APIError
+	if errors.As(err, &apiError) && apiError.Code == "SIGN_UP_DISABLED" {
 		if flow.ErrorCallbackURL == "" {
 			flow.ErrorCallbackURL = a.opts.BaseURL + a.opts.BasePath + "/error"
 		}
 		return fail("signup_disabled")
 	}
-	var fieldError oauthRegistrationFieldError
-	if errors.As(err, &fieldError) && errors.As(fieldError, &signupError) {
+	var fieldError oauthProfileFieldError
+	if errors.As(err, &fieldError) && errors.As(fieldError, &apiError) {
 		if flow.ErrorCallbackURL == "" {
 			flow.ErrorCallbackURL = a.opts.BaseURL + a.opts.BasePath + "/error"
 		}
-		return failWithDescription(signupError.Code, signupError.Message)
+		return failWithDescription(apiError.Code, apiError.Message)
 	}
 	if errors.Is(err, ErrOAuthLinkingDisabled) {
 		return fail("unable_to_link_account")
+	}
+	if errors.As(err, &apiError) && apiError.Code == "OAUTH_PROFILE_CONFLICT" {
+		return fail("profile_conflict")
 	}
 	if errors.Is(err, ErrOAuthLinkRequired) || errors.Is(err, ErrNotFound) {
 		return fail("account_not_linked")
@@ -445,8 +448,11 @@ func (a *Auth) redirectOAuthForm(w http.ResponseWriter, r *http.Request, id stri
 func (a *Auth) completeProfile(ctx context.Context, r *http.Request, id string, p OAuthProfile, tokens OAuthTokens, options OAuthLoginOptions) (AuthResult, bool, error) {
 	complete := a.opts.Store.(OAuthStore).CompleteOAuth
 	provider, registered := a.opts.SocialProviders[id]
-	if registered && options.LinkUserID == "" && !options.DisableSignUp && !a.opts.DisableSignUp && !provider.DisableSignUp && len(a.opts.UserAdditionalFields) > 0 {
-		complete = a.socialRegistrationWithFields(p)
+	if registered && options.LinkUserID == "" {
+		signupFields := len(a.opts.UserAdditionalFields) > 0 && !options.DisableSignUp && !a.opts.DisableSignUp && !provider.DisableSignUp
+		if provider.OverrideUserInfoOnSignIn || signupFields {
+			complete = a.socialProfileCompletion(p, provider.OverrideUserInfoOnSignIn)
+		}
 	}
 	if a.opts.DisableAccountLinking && options.LinkUserID != "" {
 		store, ok := a.opts.Store.(OAuthLinkRefreshStore)
@@ -481,6 +487,9 @@ func (a *Auth) completeProfileWith(ctx context.Context, r *http.Request, id stri
 		}
 	}
 	user, created, err := complete(ctx, id, p.Subject, tokens, candidate, session, options)
+	if errors.Is(err, ErrOAuthProfileConflict) {
+		return AuthResult{}, false, &APIError{409, "OAUTH_PROFILE_CONFLICT", "Provider profile conflicts with an existing profile"}
+	}
 	if errors.Is(err, ErrOAuthSignupDisabled) {
 		return AuthResult{}, false, &APIError{403, "SIGN_UP_DISABLED", "Sign-up is disabled"}
 	}

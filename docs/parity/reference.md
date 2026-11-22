@@ -327,7 +327,8 @@
     - [ ] `getAccountFields`
     - [ ] `disableSignUp`
     - [ ] `disableImplicitSignUp`
-    - [ ] `overrideUserInfoOnSignIn`
+    - [x] `overrideUserInfoOnSignIn` ([test](../../conformance/social-user-fields.mjs#L133))
+      - [x] Refresh a returning profile with either server, preserve protected fields and use the new mailbox verification status ([test](../../conformance/social-user-fields.mjs#L133))
     - [ ] `requireEmailVerification`
     - [ ] `prompt`
     - [ ] `responseMode`
@@ -345,7 +346,7 @@
       - [x] Declare portable user columns, inspect compatibility and migrate preexisting profiles alongside independent session declarations ([test](../../adapters/sqlstore/user_fields_test.go#L192))
       - [x] Apply public and host-owned fields on memory, SQLite, PostgreSQL and MySQL ([test](../../adapters/sqlstore/user_fields_test.go#L47))
       - [x] Apply declared user fields only on first-time email OTP registration and retain the original values during sign-in ([test](../../conformance/user-fields.mjs#L111))
-      - [x] Keep browser state and raw provider claims separate from declared public, hidden and server-owned fields on social signup ([test](../../conformance/social-user-fields.mjs#L122))
+      - [x] Keep browser state and raw provider claims separate from declared public, hidden and server-owned fields on social signup ([test](../../conformance/social-user-fields.mjs#L128))
       - [x] Write phone registration profiles once across competing nodes, preserve owner values, and keep verification credentials and flags out of stored profile columns ([test](../../adapters/sqlstore/phone_registration_fields_test.go#L148))
       - [x] Accept date input with an explicit time zone, persist trusted updates and clear optional timestamps on four stores ([test](../../adapters/sqlstore/date_fields_test.go#L17))
       - [x] Compute server-owned profile defaults on creation and roll back invalid generated values across four stores ([test](../../adapters/sqlstore/computed_fields_test.go#L17))
