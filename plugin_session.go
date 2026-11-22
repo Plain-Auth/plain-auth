@@ -37,14 +37,14 @@ func (c EndpointContext) IssueSession(userID string, commit func(context.Context
 		return nil, err
 	}
 	if user.ID != userID {
-		return nil, ErrNotFound
+		return nil, a.discardUnpublishedSession(r.Context(), session.Token, ErrNotFound)
 	}
 	result, err := a.withSessionPlugins(r.Context(), session.Session, user)
 	if err != nil {
-		return nil, err
+		return nil, a.discardUnpublishedSession(r.Context(), session.Token, err)
 	}
 	if err := a.addSessionCookieHeaders(c.ResponseHeader, r, session.Token, true); err != nil {
-		return nil, err
+		return nil, a.discardUnpublishedSession(r.Context(), session.Token, err)
 	}
 	return result, nil
 }

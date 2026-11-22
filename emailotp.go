@@ -284,7 +284,7 @@ func (a *Auth) SignInEmailOTP(ctx context.Context, in EmailOTPSignInInput, meta 
 		return AuthResult{}, err
 	}
 	if err := a.readPublicUserFields(ctx, &u); err != nil {
-		return AuthResult{}, err
+		return AuthResult{}, a.discardUnpublishedSession(ctx, session.Token, err)
 	}
 	return AuthResult{Token: session.Token, User: u}, nil
 }
@@ -404,7 +404,7 @@ func (a *Auth) serveEmailOTP(c EndpointContext, path string) (any, error) {
 			return nil, err
 		}
 		if err := a.addSessionCookieHeaders(c.ResponseHeader, c.Request, result.Token, true); err != nil {
-			return nil, err
+			return nil, a.discardUnpublishedSession(ctx, result.Token, err)
 		}
 		return result, nil
 	default:
