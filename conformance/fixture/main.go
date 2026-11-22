@@ -308,7 +308,7 @@ func main() {
 			}
 			plugins = append(plugins, p)
 		case "jwt":
-			p, err := jwtplugin.New(jwtplugin.Options{DisableHeader: os.Getenv("CONFORMANCE_MUTE_JWT_HEADER") == "1", Issuer: os.Getenv("CONFORMANCE_DISCOVERY_ISSUER")})
+			p, err := jwtplugin.New(jwtplugin.Options{DisableHeader: os.Getenv("CONFORMANCE_MUTE_JWT_HEADER") == "1", Issuer: os.Getenv("CONFORMANCE_DISCOVERY_ISSUER"), JWKSPath: os.Getenv("CONFORMANCE_JWKS_PATH")})
 			if err != nil {
 				log.Fatal(err)
 			}

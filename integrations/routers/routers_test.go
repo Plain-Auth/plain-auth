@@ -11,8 +11,9 @@ import (
 	"time"
 
 	authn "github.com/Plain-Auth/plain-auth"
-	"github.com/Plain-Auth/plain-auth/adapters/sqlite"
+	"github.com/Plain-Auth/plain-auth/adapters/sqlstore"
 	"github.com/Plain-Auth/plain-auth/plugins/oauthprovider"
+	"github.com/Plain-Auth/plain-auth/schema"
 	"github.com/gin-gonic/gin"
 	"github.com/go-chi/chi/v5"
 	"github.com/gofiber/fiber/v3"
@@ -33,6 +34,7 @@ func httpRunner(handler http.Handler) runner {
 
 func TestFrameworkMounts(t *testing.T) {
 	gin.SetMode(gin.TestMode)
+	const issuerDiscovery = "/.well-known/oauth-authorization-server/api/auth"
 	discovery, err := oauthprovider.NewResourceDiscovery(oauthprovider.ResourceMetadata{
 		Resource: "https://api.example.test/reports", AuthorizationServers: []string{"https://issuer.example.test"},
 	}, oauthprovider.DiscoveryOptions{})
@@ -46,6 +48,7 @@ func TestFrameworkMounts(t *testing.T) {
 		{"ServeMux", func(h http.Handler, me http.HandlerFunc) runner {
 			r := http.NewServeMux()
 			r.Handle("/api/auth/", h)
+			r.Handle(issuerDiscovery, h)
 			r.Handle(discovery.Path(), discovery)
 			r.HandleFunc("GET /me", me)
 			return httpRunner(r)
@@ -53,6 +56,7 @@ func TestFrameworkMounts(t *testing.T) {
 		{"chi", func(h http.Handler, me http.HandlerFunc) runner {
 			r := chi.NewRouter()
 			r.Handle("/api/auth/*", h)
+			r.Handle(issuerDiscovery, h)
 			r.Handle(discovery.Path(), discovery)
 			r.Get("/me", me)
 			return httpRunner(r)
@@ -60,6 +64,7 @@ func TestFrameworkMounts(t *testing.T) {
 		{"Gorilla", func(h http.Handler, me http.HandlerFunc) runner {
 			r := mux.NewRouter()
 			r.PathPrefix("/api/auth/").Handler(h)
+			r.Handle(issuerDiscovery, h)
 			r.Handle(discovery.Path(), discovery)
 			r.HandleFunc("/me", me).Methods("GET")
 			return httpRunner(r)
@@ -67,6 +72,7 @@ func TestFrameworkMounts(t *testing.T) {
 		{"Gin", func(h http.Handler, me http.HandlerFunc) runner {
 			r := gin.New()
 			r.Any("/api/auth/*path", gin.WrapH(h))
+			r.Any(issuerDiscovery, gin.WrapH(h))
 			r.Any(discovery.Path(), gin.WrapH(discovery))
 			r.GET("/me", gin.WrapH(me))
 			return httpRunner(r)
@@ -74,6 +80,7 @@ func TestFrameworkMounts(t *testing.T) {
 		{"Echo", func(h http.Handler, me http.HandlerFunc) runner {
 			r := echo.New()
 			r.Any("/api/auth/*", echo.WrapHandler(h))
+			r.Any(issuerDiscovery, echo.WrapHandler(h))
 			r.Any(discovery.Path(), echo.WrapHandler(discovery))
 			r.GET("/me", echo.WrapHandler(me))
 			return httpRunner(r)
@@ -81,6 +88,7 @@ func TestFrameworkMounts(t *testing.T) {
 		{"Fiber", func(h http.Handler, me http.HandlerFunc) runner {
 			r := fiber.New()
 			r.All("/api/auth/*", adaptor.HTTPHandler(h))
+			r.All(issuerDiscovery, adaptor.HTTPHandler(h))
 			r.All(discovery.Path(), adaptor.HTTPHandler(discovery))
 			r.Get("/me", adaptor.HTTPHandler(me))
 			return func(req *http.Request) (*http.Response, error) {
@@ -90,13 +98,17 @@ func TestFrameworkMounts(t *testing.T) {
 		}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			s, err := sqlite.Open(":memory:")
+			s, err := sqlstore.OpenWithOptions(t.Context(), "sqlite", ":memory:", []string{"oauth-provider"}, schema.Options{})
 			if err != nil {
 				t.Fatal(err)
 			}
 			defer s.Close()
 			const origin = "http://localhost"
-			auth, err := authn.New(authn.Options{BaseURL: origin, Secret: strings.Repeat("r", 32), Store: s, EmailAndPassword: true})
+			provider, err := oauthprovider.New(oauthprovider.Options{Scopes: []string{"reports"}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			auth, err := authn.New(authn.Options{BaseURL: origin, Secret: strings.Repeat("r", 32), Store: s, EmailAndPassword: true, Plugins: []authn.Plugin{provider}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -141,6 +153,17 @@ func TestFrameworkMounts(t *testing.T) {
 				return res, strings.TrimSpace(string(b))
 			}
 			send("GET", "/app-owned", "", nil, 404)
+			for _, path := range []string{issuerDiscovery, "/api/auth/.well-known/oauth-authorization-server"} {
+				_, raw := send("GET", path, "", nil, 200)
+				var issuer oauthprovider.AuthorizationServerMetadata
+				if err := json.Unmarshal([]byte(raw), &issuer); err != nil || issuer.TokenEndpoint != origin+"/api/auth/oauth2/token" {
+					t.Fatal("unexpected authorization-server discovery document", raw, err)
+				}
+				res, body := send("HEAD", path, "", nil, 200)
+				if body != "" || res.Header.Get("Cache-Control") == "" {
+					t.Fatal("unexpected discovery HEAD response", res.Header, body)
+				}
+			}
 			_, metadata := send("GET", discovery.Path(), "", nil, http.StatusOK)
 			var doc oauthprovider.ResourceMetadata
 			if err := json.Unmarshal([]byte(metadata), &doc); err != nil || doc.Resource != "https://api.example.test/reports" {

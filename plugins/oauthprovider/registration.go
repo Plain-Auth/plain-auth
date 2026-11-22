@@ -125,6 +125,7 @@ type Options struct {
 	Tokens             TokenOptions
 	Assertions         AssertionOptions
 	UserInfo           UserInfoOptions
+	Metadata           IssuerMetadataOptions
 	// DPoP controls sender proofs at the token endpoint. The host SQL store
 	// shares reservations automatically when ReplayStore is omitted.
 	DPoP          DPoPOptions
@@ -148,6 +149,9 @@ func (opts Options) clientManagementOptions() Options {
 // Dynamic registration is disabled until the host explicitly enables it.
 func New(opts Options) (auth.Plugin, error) {
 	opts = opts.clientManagementOptions()
+	if err := opts.Metadata.prepare(opts.Scopes); err != nil {
+		return auth.Plugin{}, err
+	}
 	if err := opts.Assertions.defaults(); err != nil {
 		return auth.Plugin{}, err
 	}
@@ -212,6 +216,7 @@ func New(opts Options) (auth.Plugin, error) {
 		limit = *r.RateLimit
 	}
 	p := ConsentManagement(ConsentOptions{Scopes: opts.Scopes})
+	p.WellKnown = opts.issuerDocuments
 	validateConsent := p.ValidateStore
 	p.ValidateStore = func(s auth.Store) error {
 		if _, ok := s.(ClientKeyRotationStore); opts.Assertions.AllowKeyRotation && !ok {

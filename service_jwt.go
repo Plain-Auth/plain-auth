@@ -107,6 +107,17 @@ func NewJWT(opts JWTOptions) (Plugin, error) {
 	}, nil
 }
 
+// PublicJWKSURL returns the configured key-set endpoint when it is served.
+func (a *Auth) PublicJWKSURL() string {
+	if a.serviceJWT == nil {
+		return ""
+	}
+	if _, disabled := a.disabledPaths[a.serviceJWT.JWKSPath]; disabled {
+		return ""
+	}
+	return a.PublicURL() + a.serviceJWT.JWKSPath
+}
+
 // PublicJWKS returns public verification material. Private key data is excluded
 // from the store query used to publish the set.
 func (a *Auth) PublicJWKS(ctx context.Context) (jose.JSONWebKeySet, error) {

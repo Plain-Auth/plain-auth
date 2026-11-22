@@ -22,9 +22,14 @@
   - [ ] `oauthDeviceAuthorization`
   - [ ] `extendOAuthProvider`
   - [ ] `authServerMetadata`
-  - [ ] `metadataResponse`
+    - [x] Discover endpoints and capabilities for the machine grant, then register a client, verify a signed token and revoke an opaque token ([test](../../../conformance/oauth-issuer-metadata.mjs#L95))
+  - [x] `metadataResponse` ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L30))
+    - [x] Serialize the value once, preserve independent multi-value headers, honor custom cache rules and serve JSON ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L30))
   - [ ] `oauthAuthorizationServerMetadata`
+    - [x] Discover endpoints and capabilities for the machine grant, then register a client, verify a signed token and revoke an opaque token ([test](../../../conformance/oauth-issuer-metadata.mjs#L95))
   - [ ] `oauthProviderAuthServerMetadata`
+    - [x] Mount both issuer discovery paths through ServeMux, chi, Gorilla Mux, Gin, Echo and Fiber and read them with GET and HEAD ([test](../../../integrations/routers/routers_test.go#L160))
+    - [x] Retrieve the native issuer document, preserve escaped issuer paths and omit disabled endpoints and unavailable store capabilities ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L61))
   - [ ] `oauthProviderOpenIdConfigMetadata`
   - [ ] `oidcServerMetadata`
   - [ ] `publicSessionMiddleware`
@@ -36,6 +41,8 @@
   - [ ] `OAuthRedirectOnError`
   - [ ] `GET / POST /oauth2/authorize`
   - [ ] `GET /.well-known/oauth-authorization-server` (server API only)
+    - [x] Discover endpoints and capabilities for the machine grant, then register a client, verify a signed token and revoke an opaque token ([test](../../../conformance/oauth-issuer-metadata.mjs#L95))
+    - [x] Mount both issuer discovery paths through ServeMux, chi, Gorilla Mux, Gin, Echo and Fiber and read them with GET and HEAD ([test](../../../integrations/routers/routers_test.go#L160))
   - [ ] `GET /.well-known/openid-configuration` (server API only)
   - [ ] `POST /oauth2/consent`
   - [ ] `POST /oauth2/continue`
@@ -300,6 +307,8 @@
     - [ ] `customAccessTokenClaims`
     - [ ] `customTokenResponseFields`
     - [ ] `advertisedMetadata`
+      - [x] Preserve configured discovery scope and authentication method order independently of introspection and revocation ([test](../../../conformance/oauth-issuer-metadata.mjs#L65))
+      - [x] Reject unknown scopes, unsupported machine authentication, duplicate methods and an explicitly empty method list ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L17))
     - [ ] `prefix`
       - [x] Return prefixed shared credentials accepted by an independent issuer ([test](../../../conformance/oauth-registration.mjs#L217))
     - [ ] `generateClientId`
@@ -339,6 +348,7 @@
     - [x] Compare every resource metadata field, including identity, algorithms, scopes, localized names and boolean overrides ([test](../../../conformance/resource-discovery.mjs#L28))
   - [ ] `AuthMethod`
   - [ ] `AuthServerMetadata`
+    - [x] Discover endpoints and capabilities for the machine grant, then register a client, verify a signed token and revoke an opaque token ([test](../../../conformance/oauth-issuer-metadata.mjs#L95))
   - [ ] `BearerMethodsSupported`
   - [ ] `Confirmation`
   - [ ] `GrantType`
@@ -555,6 +565,8 @@
     - [ ] Other
   - [ ] Endpoints
     - [ ] `GET /.well-known/oauth-authorization-server` (server API only)
+      - [x] Discover endpoints and capabilities for the machine grant, then register a client, verify a signed token and revoke an opaque token ([test](../../../conformance/oauth-issuer-metadata.mjs#L95))
+      - [x] Retrieve the native issuer document, preserve escaped issuer paths and omit disabled endpoints and unavailable store capabilities ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L61))
     - [ ] `GET /.well-known/openid-configuration` (server API only)
     - [ ] `GET / POST /oauth2/authorize`
     - [ ] `POST /oauth2/consent`
@@ -705,7 +717,7 @@
   - [x] Protected resource metadata ([test](../../../conformance/resource-discovery.mjs#L7))
     - [x] Publish a path-specific HTTPS document with local issuer defaults, explicit issuers, filtered scopes and empty capabilities ([test](../../../conformance/resource-discovery.mjs#L7))
     - [x] Preserve escaped paths and query identity and serve public GET, HEAD and preflight over TLS ([test](../../../plugins/oauthprovider/discovery_test.go#L15))
-    - [x] Mount the same discovery document on ServeMux, chi, Gorilla Mux, Gin, Echo and Fiber ([test](../../../integrations/routers/routers_test.go#L147))
+    - [x] Mount the same discovery document on ServeMux, chi, Gorilla Mux, Gin, Echo and Fiber ([test](../../../integrations/routers/routers_test.go#L170))
 
 ## Sign-in and consent screens
 

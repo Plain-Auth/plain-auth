@@ -46,6 +46,7 @@ type Auth struct {
 	factorStore           TwoFactorStore
 	passwordSlots         chan struct{}
 	plugins               map[endpointKey]Endpoint
+	wellKnown             map[string]WellKnownDocument
 	opts                  Options
 	now                   func() time.Time
 	limiter               rateLimiter
@@ -323,6 +324,9 @@ func New(opts Options) (*Auth, error) {
 		if _, ok := a.opts.Store.(EmailOTPVerificationObserverStore); a.emailOTP != nil && !ok {
 			return nil, errors.New("auth: email OTP verification callbacks require an EmailOTPVerificationObserverStore")
 		}
+	}
+	if err := a.prepareWellKnown(); err != nil {
+		return nil, err
 	}
 	return a, nil
 }

@@ -46,6 +46,9 @@ type Plugin struct {
 	OnReadSession func(context.Context, *SessionResult) error
 	ID            string
 	Endpoints     []Endpoint
+	// WellKnown publishes static JSON documents at issuer-relative discovery
+	// paths. It runs once per host after all plugins and stores are configured.
+	WellKnown func(*Auth, Store) (map[string]WellKnownDocument, error)
 	// SessionToken can supply an alternate credential for session lookups.
 	SessionToken func(*Auth, http.Header) string
 	// OnSessionCookie runs when a handler issues a session cookie.

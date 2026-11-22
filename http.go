@@ -35,6 +35,10 @@ var coreMethods = map[string]string{
 
 // ServeHTTP serves the auth endpoints beneath the configured base path.
 func (a *Auth) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if doc, ok := a.wellKnown[r.URL.EscapedPath()]; ok {
+		doc.ServeHTTP(w, r)
+		return
+	}
 	route, mounted := strings.CutPrefix(r.URL.EscapedPath(), strings.TrimSuffix(a.opts.BasePath, "/"))
 	if mounted && (route == "" || strings.HasPrefix(route, "/")) {
 		if a.HTTPPathDisabled(r) {

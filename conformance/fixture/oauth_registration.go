@@ -59,6 +59,11 @@ func clientScopeFixture(a *auth.Auth, store op.ClientCredentialsScopeStore, fall
 func registrationFixtureOptions() op.Options {
 	mode := os.Getenv("CONFORMANCE_CLIENT_REGISTRATION")
 	opts := op.Options{}
+	if os.Getenv("CONFORMANCE_ISSUER_METADATA") == "1" {
+		opts.Metadata.Scopes = []string{"reports"}
+		opts.Metadata.TokenAuthMethods = []string{"private_key_jwt", "client_secret_post"}
+		opts.DPoP.SigningAlgorithms = []string{"ES256"}
+	}
 	if mode == "directory" {
 		opts.Registration.Enabled = true
 		opts.ImmutableClientIDs = []string{"operator-managed"}

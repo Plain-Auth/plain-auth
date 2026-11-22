@@ -12806,5 +12806,82 @@
       "test": "adapters/sqlstore/oauth_machine_resources_test.go",
       "marker": "func TestMachineResourceIssuance("
     }
+  ],
+  "plugin/oauth-provider/GET /.well-known/oauth-authorization-server": [
+    {
+      "label": "Discover endpoints and capabilities for the machine grant, then register a client, verify a signed token and revoke an opaque token",
+      "test": "conformance/oauth-issuer-metadata.mjs",
+      "marker": "const { payload } = await jwtVerify(signed, keys,"
+    },
+    {
+      "label": "Mount both issuer discovery paths through ServeMux, chi, Gorilla Mux, Gin, Echo and Fiber and read them with GET and HEAD",
+      "test": "integrations/routers/routers_test.go",
+      "marker": "unexpected authorization-server discovery document"
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/reference.mdx#L316/`GET /.well-known/oauth-authorization-server`": [
+    {
+      "label": "Discover endpoints and capabilities for the machine grant, then register a client, verify a signed token and revoke an opaque token",
+      "test": "conformance/oauth-issuer-metadata.mjs",
+      "marker": "const { payload } = await jwtVerify(signed, keys,"
+    },
+    {
+      "label": "Retrieve the native issuer document, preserve escaped issuer paths and omit disabled endpoints and unavailable store capabilities",
+      "test": "plugins/oauthprovider/issuer_metadata_test.go",
+      "marker": "func TestIssuerDiscoveryMounts("
+    }
+  ],
+  "plugin-symbol/oauth-provider/authServerMetadata": [
+    {
+      "label": "Discover endpoints and capabilities for the machine grant, then register a client, verify a signed token and revoke an opaque token",
+      "test": "conformance/oauth-issuer-metadata.mjs",
+      "marker": "const { payload } = await jwtVerify(signed, keys,"
+    }
+  ],
+  "plugin-symbol/oauth-provider/oauthAuthorizationServerMetadata": [
+    {
+      "label": "Discover endpoints and capabilities for the machine grant, then register a client, verify a signed token and revoke an opaque token",
+      "test": "conformance/oauth-issuer-metadata.mjs",
+      "marker": "const { payload } = await jwtVerify(signed, keys,"
+    }
+  ],
+  "plugin-symbol/oauth-provider/AuthServerMetadata": [
+    {
+      "label": "Discover endpoints and capabilities for the machine grant, then register a client, verify a signed token and revoke an opaque token",
+      "test": "conformance/oauth-issuer-metadata.mjs",
+      "marker": "const { payload } = await jwtVerify(signed, keys,"
+    }
+  ],
+  "plugin-symbol/oauth-provider/oauthProviderAuthServerMetadata": [
+    {
+      "label": "Mount both issuer discovery paths through ServeMux, chi, Gorilla Mux, Gin, Echo and Fiber and read them with GET and HEAD",
+      "test": "integrations/routers/routers_test.go",
+      "marker": "unexpected authorization-server discovery document"
+    },
+    {
+      "label": "Retrieve the native issuer document, preserve escaped issuer paths and omit disabled endpoints and unavailable store capabilities",
+      "test": "plugins/oauthprovider/issuer_metadata_test.go",
+      "marker": "func TestIssuerDiscoveryMounts("
+    }
+  ],
+  "plugin-symbol/oauth-provider/metadataResponse": [
+    {
+      "label": "Serialize the value once, preserve independent multi-value headers, honor custom cache rules and serve JSON",
+      "test": "plugins/oauthprovider/issuer_metadata_test.go",
+      "marker": "func TestMetadataResponse(",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/oauth-provider/OAuthOptions/advertisedMetadata": [
+    {
+      "label": "Preserve configured discovery scope and authentication method order independently of introspection and revocation",
+      "test": "conformance/oauth-issuer-metadata.mjs",
+      "marker": "assert.deepEqual(common, expected);"
+    },
+    {
+      "label": "Reject unknown scopes, unsupported machine authentication, duplicate methods and an explicitly empty method list",
+      "test": "plugins/oauthprovider/issuer_metadata_test.go",
+      "marker": "func TestIssuerDiscoveryConfiguration("
+    }
   ]
 }

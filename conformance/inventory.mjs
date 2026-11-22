@@ -413,6 +413,7 @@ const index = [
   "| Google One Tap popup, button and browser challenges | [Google One Tap](../one-tap.md) |",
   "| Read OpenID Connect profile and email claims for a signed or opaque access token | [UserInfo](../oauth-userinfo.md) |",
   "| Publish discovery metadata and respond to access-token failures | [Resource discovery and challenges](../oauth-resource-discovery.md) |",
+  "| Discover machine grant endpoints, authentication methods and signing keys from an issuer URL | [Authorization-server discovery](../oauth-issuer-discovery.md) |",
   "| Manage OAuth resource policies and client grants from server code | [Resource management](../oauth-resource-management.md) |",
   "| Manage the signed-in user’s OAuth consent grants | [Authorized applications](../oauth-consents.md) |",
   "| Register OAuth clients and rotate shared secrets | [OAuth client registration](../oauth-client-registration.md) |",

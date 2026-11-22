@@ -4,6 +4,8 @@ An application exchanges its own credentials for an access token at `POST /api/a
 
 ## Configure the issuer
 
+A client can find the token endpoint and public verification keys from the issuer URL using [authorization-server discovery](oauth-issuer-discovery.md).
+
 Enable the `oauth-provider` schema profile on SQLite, PostgreSQL or MySQL. Mount the plugin returned by `oauthprovider.New`. Register a confidential application with the `client_credentials` grant and the authentication method it will use, then have an authorized operator grant it machine scopes. A new client starts with an empty grant. [Registration and scope management](oauth-client-registration.md#grant-machine-to-machine-scopes) · [Mount the handler](routers.md) · [Database setup](schema.md#oauth-authorization-server-tables)
 
 ```go

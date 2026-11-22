@@ -1784,3 +1784,8 @@ test("machine clients obtain signed and opaque access tokens for their registere
   const { compareResourceMachineTokens } = await import("./oauth-resource-machine-tokens.mjs");
   await compareResourceMachineTokens(t, { reference, goFixture });
 });
+
+test("a machine client discovers its issuer and verifies a token through advertised endpoints", async t => {
+  const { compareIssuerMetadata } = await import("./oauth-issuer-metadata.mjs");
+  await compareIssuerMetadata(t, { reference, goFixture });
+});
