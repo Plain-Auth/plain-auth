@@ -10578,5 +10578,31 @@
       "marker": "export async function compareProviderEmailVerification(",
       "complete": true
     }
+  ],
+  "docs/content/docs/reference/options.mdx#L510": [
+    {
+      "label": "Preserve or renew provider credentials on returning sign-ins while applying profile changes and issuing sessions",
+      "test": "conformance/social-user-fields.mjs",
+      "marker": "export async function compareAccountUpdateOnSignIn(",
+      "complete": true
+    },
+    {
+      "label": "Preserve the account timestamp, claim single-use grants and retain omitted expiry values on three SQL engines",
+      "test": "adapters/sqlstore/oauth_account_update_test.go",
+      "marker": "func TestOAuthAccountUpdateOnSignIn("
+    },
+    {
+      "label": "Keep the original encryption key version on sign-in and rotate credentials through explicit refresh",
+      "test": "adapters/sqlstore/oauth_encryption_test.go",
+      "marker": "preserved encrypted grant allowed replay"
+    }
+  ],
+  "docs/content/docs/concepts/oauth.mdx#L207": [
+    {
+      "label": "Request additional scopes as the signed-in owner and merge the approved grant once across both servers",
+      "test": "conformance/social-user-fields.mjs",
+      "marker": "const landing = await returning.login([\"write\"]);",
+      "complete": true
+    }
   ]
 }

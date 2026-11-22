@@ -85,7 +85,10 @@ type Options struct {
 	DisableAccountLinking bool
 	// DisableImplicitAccountLinking requires an authenticated owner to link an additional provider.
 	DisableImplicitAccountLinking bool
-	AllowUnlinkingAll             bool
+	// DisableAccountUpdateOnSignIn preserves credentials on existing provider
+	// accounts during sign-in. New links and explicit reauthorization still store grants.
+	DisableAccountUpdateOnSignIn bool
+	AllowUnlinkingAll            bool
 
 	SessionTTL time.Duration
 	FreshAge   time.Duration

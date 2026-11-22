@@ -2,15 +2,15 @@
 
 ## Verification progress
 
-**361 of 6,957 inventory entries are fully verified (5.2%).**
+**363 of 6,957 inventory entries are fully verified (5.2%).**
 
 | Inventory status | Entries |
 | --- | ---: |
-| Fully verified | 361 |
-| Partially verified | 869 |
-| No linked test evidence | 5,727 |
+| Fully verified | 363 |
+| Partially verified | 870 |
+| No linked test evidence | 5,724 |
 
-The inventory covers features, options, integrations and documentation topics. Partial verification means an open entry has a passing case somewhere beneath it. The checklists also contain 1,724 links from passing scenarios to tests. Adding a scenario leaves the inventory denominator unchanged.
+The inventory covers features, options, integrations and documentation topics. Partial verification means an open entry has a passing case somewhere beneath it. The checklists also contain 1,728 links from passing scenarios to tests. Adding a scenario leaves the inventory denominator unchanged.
 
 A checked item links to a local test for that behavior. An open parent means the feature still has unverified cases. Browser, protocol and storage options each have their own checkboxes.
 
@@ -63,10 +63,10 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 | [Core API, sign-in providers and CLI](runtime.md) | 153 | 278 |
 | [Database adapters](adapters.md) | 32 | 224 |
 | [Authentication](authentication.md) | 26 | 415 |
-| [Core concepts](concepts.md) | 60 | 508 |
+| [Core concepts](concepts.md) | 62 | 507 |
 | [Managed infrastructure](infrastructure.md) | 0 | 528 |
 | [Framework integrations](integrations.md) | 0 | 228 |
-| [Reference and configuration](reference.md) | 85 | 393 |
+| [Reference and configuration](reference.md) | 89 | 392 |
 
 ## Plugins and integrations
 

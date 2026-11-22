@@ -162,6 +162,10 @@ Construct each provider at startup. Discovery uses its configured issuer to obta
 
 ## Linked provider credentials
 
+By default, a returning social sign-in saves each fresh access token, refresh token, ID token and expiry the provider supplies. The account keeps the previous value for an omitted field. To keep the original credentials through routine sign-ins, set `Options.DisableAccountUpdateOnSignIn = true`. The first grant is still stored. Returning users receive sessions under the usual verification policy, and providers can still synchronize the user's profile. With a custom store, honor `OAuthLoginOptions.DisableAccountUpdateOnSignIn` when updating an existing provider account. [Credential policy tests](../adapters/sqlstore/oauth_account_update_test.go)
+
+To expand a grant, have the signed-in owner call `linkSocial` with the additional scopes. An approved callback saves the new credentials and appends newly granted scopes to the account in provider order. Ordinary sign-ins keep the recorded scope list. Explicit token refresh also works with either sign-in policy. [Browser sign-in and relinking tests](../conformance/social-user-fields.mjs)
+
 Find a linked account's local record ID with `GET /api/auth/list-accounts`. The following routes use that ID. HTTP callers need a live session belonging to the account owner.
 
 | Request | Response |

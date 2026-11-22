@@ -494,6 +494,7 @@ func (a *Auth) completeProfile(ctx context.Context, r *http.Request, id, callbac
 }
 
 func (a *Auth) completeProfileWith(ctx context.Context, r *http.Request, id string, p OAuthProfile, tokens OAuthTokens, options OAuthLoginOptions, complete OAuthCompletion) (AuthResult, bool, error) {
+	options.DisableAccountUpdateOnSignIn = a.opts.DisableAccountUpdateOnSignIn && options.LinkUserID == ""
 	if a.opts.DisableImplicitAccountLinking || a.opts.DisableAccountLinking {
 		options.DisableImplicitLinking = true
 		options.AllowVerifiedEmailLink = false

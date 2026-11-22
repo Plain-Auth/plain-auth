@@ -16,14 +16,14 @@ const mappings = {
 };
 
 async function issuerFixture(t) {
-  let profile, sequence = 0;
+  let profile, grantFields, sequence = 0;
   const codes = new Map(), tokens = new Map();
   const server = createServer(async (req, res) => {
     const url = new URL(req.url, "http://localhost");
     if (url.pathname === "/authorize") {
       const callback = new URL(url.searchParams.get("redirect_uri"));
       const code = "approved-" + (++sequence);
-      codes.set(code, { profile, callback: callback.href });
+      codes.set(code, { profile, grantFields, callback: callback.href });
       callback.searchParams.set("code", code);
       callback.searchParams.set("state", url.searchParams.get("state"));
       res.writeHead(302, { location: callback.href }).end();
@@ -41,7 +41,7 @@ async function issuerFixture(t) {
       codes.delete(form.get("code"));
       const token = "authorized-" + form.get("code");
       tokens.set(token, approval.profile);
-      res.writeHead(200, { "content-type": "application/json" }).end(JSON.stringify({ access_token: token, token_type: "Bearer" }));
+      res.writeHead(200, { "content-type": "application/json" }).end(JSON.stringify({ access_token: token, token_type: "Bearer", ...approval.grantFields }));
       return;
     }
     const data = tokens.get(req.headers.authorization?.replace(/^Bearer /, ""));
@@ -51,7 +51,7 @@ async function issuerFixture(t) {
   server.listen(0, "127.0.0.1");
   await once(server, "listening");
   t.after(() => new Promise(resolve => server.close(resolve)));
-  return { base: "http://127.0.0.1:" + server.address().port, profile: value => { profile = value; } };
+  return { base: "http://127.0.0.1:" + server.address().port, profile(value, fields) { profile = value; grantFields = fields; } };
 }
 
 function browser(target, instrument) {
@@ -67,10 +67,15 @@ function browser(target, instrument) {
     return response;
   }};
   const {client} = instrument(transport,[inferAdditionalFields()]);
-  return {client, async login() {
-    const start = await client.signIn.social({ provider:"work", disableRedirect:true, callbackURL:"/done", errorCallbackURL:"/retry",
-      locale:"browser-body", privateNote:"browser-body-private", additionalData:{locale:"browser-state",accountClass:"browser-owned",privateNote:"browser-state-private"} });
+  return {client, async login(linkScopes) {
+    const body = { provider:"work", disableRedirect:true, callbackURL:"/done", errorCallbackURL:"/retry",
+      locale:"browser-body", privateNote:"browser-body-private", additionalData:{locale:"browser-state",accountClass:"browser-owned",privateNote:"browser-state-private"} };
+    const start = await (linkScopes ? client.linkSocial({...body, scopes:linkScopes}) : client.signIn.social(body));
     assert.equal(start.error,null);
+    if (linkScopes) {
+      const requested = new URL(start.data.url).searchParams.get("scope").split(/\s+/);
+      for (const scope of linkScopes) assert.ok(requested.includes(scope));
+    }
     const approval = await fetch(start.data.url,{redirect:"manual"});
     assert.equal(approval.status,302);
     const res = await transport.send(new Request(approval.headers.get("location"), {redirect:"manual",headers:{"user-agent":"authn-conformance"}}));
@@ -254,5 +259,56 @@ export async function compareProviderEmailVerification(t, {reference, goFixture,
       assert.equal(session.user.id, owner.id);
       assert.equal(session.user.emailVerified, true);
     }
+  }
+}
+
+export async function compareAccountUpdateOnSignIn(t, {reference, goFixture, instrument}, preserve) {
+  const issuer = await issuerFixture(t);
+  const go = await goFixture(t, [], {
+    CONFORMANCE_PROVIDER: "1", CONFORMANCE_SOCIAL_FIELD_ISSUER: issuer.base,
+    CONFORMANCE_SOCIAL_PROFILE_SYNC: "1", CONFORMANCE_PRESERVE_PROVIDER_CREDENTIALS: preserve ? "1" : "0",
+  });
+  const database = new DatabaseSync(go.databasePath);
+  t.after(() => database.close());
+  const ref = await reference(t, [referenceProvider(issuer, {overrideUserInfo: true})], {
+    database, account: preserve ? {updateAccountOnSignIn: false} : {}, rateLimit: {enabled: false},
+  });
+  for (const [first, second, id] of [[go, ref, "go-first"], [ref, go, "ref-first"]]) {
+    const profile = {id, email: id + "@example.test", name: "Initial", emailVerified: true, email_verified: true};
+    const read = () => database.prepare('SELECT * FROM account WHERE providerId=? AND accountId=?').get("work", id);
+    issuer.profile(profile, {scope: "profile email", refresh_token: "original", expires_in: 600, refresh_token_expires_in: 3600});
+    assert.equal((await browser(first, instrument).login()).pathname, "/done");
+    const initial = read();
+    assert.equal(initial.scope, "profile,email");
+    assert.equal(initial.refreshToken, "original");
+    assert.ok(initial.accessTokenExpiresAt && initial.refreshTokenExpiresAt);
+
+    issuer.profile({...profile, name: "Returning"}, {scope: "write", refresh_token: "rotated", expires_in: 7200});
+    const returning = browser(second, instrument);
+    assert.equal((await returning.login()).pathname, "/done");
+    const {data, error} = await returning.client.getSession();
+    assert.equal(error, null);
+    assert.equal(data.user.id, initial.userId);
+    assert.equal(data.user.name, "Returning");
+    const after = read();
+    if (preserve) {
+      assert.deepEqual(after, initial);
+    } else {
+      assert.notEqual(after.accessToken, initial.accessToken);
+      assert.notEqual(after.accessTokenExpiresAt, initial.accessTokenExpiresAt);
+      assert.equal(after.refreshToken, "rotated");
+      assert.equal(after.refreshTokenExpiresAt, initial.refreshTokenExpiresAt);
+      assert.equal(after.scope, initial.scope);
+    }
+
+    issuer.profile(profile, {scope: "email write write", refresh_token: "relinked"});
+    const landing = await returning.login(["write"]);
+    assert.equal(landing.pathname, "/done", landing.search);
+    const linked = read();
+    assert.equal(linked.id, initial.id);
+    assert.equal(linked.userId, initial.userId);
+    assert.equal(linked.scope, "profile,email,write");
+    assert.equal(linked.refreshToken, "relinked");
+    assert.notEqual(linked.accessToken, after.accessToken);
   }
 }

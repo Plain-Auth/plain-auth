@@ -220,10 +220,10 @@
     - [ ] `authentication`
     - [ ] `discoveryHeaders`
     - [ ] `authorizationHeaders`
-    - [x] `overrideUserInfo` ([test](../../../conformance/social-user-fields.mjs#L138))
-      - [x] Refresh a returning profile with either server, preserve protected fields and use the new mailbox verification status ([test](../../../conformance/social-user-fields.mjs#L138))
-    - [x] `requireEmailVerification` ([test](../../../conformance/social-user-fields.mjs#L193))
-      - [x] Withhold sessions for unverified social accounts, honor mail delivery settings and accept confirmation by either server ([test](../../../conformance/social-user-fields.mjs#L193))
+    - [x] `overrideUserInfo` ([test](../../../conformance/social-user-fields.mjs#L143))
+      - [x] Refresh a returning profile with either server, preserve protected fields and use the new mailbox verification status ([test](../../../conformance/social-user-fields.mjs#L143))
+    - [x] `requireEmailVerification` ([test](../../../conformance/social-user-fields.mjs#L198))
+      - [x] Withhold sessions for unverified social accounts, honor mail delivery settings and accept confirmation by either server ([test](../../../conformance/social-user-fields.mjs#L198))
     - [ ] `allowIdpInitiated`
     - [ ] `disableIdTokenNonceBinding`
   - [ ] `GenericOAuthOptions`
@@ -288,8 +288,8 @@
       - [ ] authentication
       - [ ] discoveryHeaders
       - [ ] authorizationHeaders
-      - [x] overrideUserInfo ([test](../../../conformance/social-user-fields.mjs#L138))
-        - [x] Refresh a returning profile with either server, preserve protected fields and use the new mailbox verification status ([test](../../../conformance/social-user-fields.mjs#L138))
+      - [x] overrideUserInfo ([test](../../../conformance/social-user-fields.mjs#L143))
+        - [x] Refresh a returning profile with either server, preserve protected fields and use the new mailbox verification status ([test](../../../conformance/social-user-fields.mjs#L143))
   - [ ] Advanced Usage
     - [ ] Custom Token Exchange
     - [ ] Custom User Info Fetching

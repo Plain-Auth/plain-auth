@@ -293,7 +293,8 @@
     - [ ] Get Access Token
     - [ ] Refresh Access Token
     - [ ] Get Account Info Provided by the provider
-    - [ ] Requesting Additional Scopes
+    - [x] Requesting Additional Scopes ([test](../../conformance/social-user-fields.mjs#L305))
+      - [x] Request additional scopes as the signed-in owner and merge the approved grant once across both servers ([test](../../conformance/social-user-fields.mjs#L305))
     - [ ] Customizing the Authorization URL
     - [ ] Passing Additional Data Through OAuth Flow
       - [ ] Accessing Additional Data in Hooks
@@ -329,10 +330,10 @@
     - [ ] disableSignUp
     - [ ] disableIdTokenSignIn
     - [ ] verifyIdToken
-    - [x] overrideUserInfoOnSignIn ([test](../../conformance/social-user-fields.mjs#L138))
-      - [x] Refresh a returning profile with either server, preserve protected fields and use the new mailbox verification status ([test](../../conformance/social-user-fields.mjs#L138))
-    - [x] requireEmailVerification ([test](../../conformance/social-user-fields.mjs#L193))
-      - [x] Withhold sessions for unverified social accounts, honor mail delivery settings and accept confirmation by either server ([test](../../conformance/social-user-fields.mjs#L193))
+    - [x] overrideUserInfoOnSignIn ([test](../../conformance/social-user-fields.mjs#L143))
+      - [x] Refresh a returning profile with either server, preserve protected fields and use the new mailbox verification status ([test](../../conformance/social-user-fields.mjs#L143))
+    - [x] requireEmailVerification ([test](../../conformance/social-user-fields.mjs#L198))
+      - [x] Withhold sessions for unverified social accounts, honor mail delivery settings and accept confirmation by either server ([test](../../conformance/social-user-fields.mjs#L198))
     - [ ] mapProfileToUser
       - [ ] Server-Owned Fields and Authorization Claims
     - [ ] getAccountFields

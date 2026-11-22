@@ -185,12 +185,10 @@ func (s *Store) completeOAuth(ctx context.Context, provider, subject string, tok
 	}
 	var account string
 	var accountCreated time.Time
-	q := `SELECT ` + userColumns + `,a."id",a."createdAt" FROM "account" a JOIN "user" u ON u."id"=a."userId" WHERE a."providerId"=? AND a."accountId"=?`
-	// MySQL deployments may use case-insensitive collations by default.
-	if s.dialect == "mysql" {
-		q = `SELECT ` + userColumns + `,a."id",a."createdAt" FROM "account" a JOIN "user" u ON u."id"=a."userId" WHERE BINARY a."providerId"=? AND BINARY a."accountId"=?`
-	}
-	err = tx.QueryRowContext(ctx, s.bind(q+suffix), provider, subject).Scan(append(userFields(&u), &account, &accountCreated)...)
+	var storedScope sql.NullString
+	q := `SELECT ` + userColumns + `,a."id",a."createdAt",a."scope" FROM "account" a JOIN "user" u ON u."id"=a."userId" WHERE `
+	q += s.exactSQLValue(`a."providerId"`) + "=? AND " + s.exactSQLValue(`a."accountId"`) + "=?"
+	err = tx.QueryRowContext(ctx, s.bind(q+suffix), provider, subject).Scan(append(userFields(&u), &account, &accountCreated, &storedScope)...)
 	existing := err == nil
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return u, false, err
@@ -272,12 +270,17 @@ func (s *Store) completeOAuth(ctx context.Context, provider, subject string, tok
 	if !tokens.ExpiresAt.IsZero() {
 		expires = s.date(tokens.ExpiresAt)
 	}
-	if existing {
-		_, err = tx.ExecContext(ctx, s.bind(`UPDATE "account" SET "accessToken"=COALESCE(NULLIF(?,''),"accessToken"),"refreshToken"=COALESCE(NULLIF(?,''),"refreshToken"),"idToken"=COALESCE(NULLIF(?,''),"idToken"),"scope"=COALESCE(NULLIF(?,''),"scope"),"accessTokenExpiresAt"=CASE WHEN ?='' THEN "accessTokenExpiresAt" ELSE ? END,"refreshTokenExpiresAt"=COALESCE(?,"refreshTokenExpiresAt"),"updatedAt"=? WHERE "id"=?`),
-			tokens.AccessToken, tokens.RefreshToken, tokens.IDToken, tokens.Scope, tokens.AccessToken, expires, refreshExpires, s.date(session.CreatedAt), account)
-	} else {
+	switch {
+	case !existing:
 		_, err = tx.ExecContext(ctx, s.bind(`INSERT INTO "account" ("id","accountId","providerId","userId","accessToken","refreshToken","idToken","scope","accessTokenExpiresAt","refreshTokenExpiresAt","createdAt","updatedAt") VALUES (?,?,?,?,NULLIF(?,''),NULLIF(?,''),NULLIF(?,''),NULLIF(?,''),?,?,?,?)`),
 			account, subject, provider, u.ID, tokens.AccessToken, tokens.RefreshToken, tokens.IDToken, tokens.Scope, expires, refreshExpires, s.date(session.CreatedAt), s.date(session.CreatedAt))
+	case options.LinkUserID != "" || !options.DisableAccountUpdateOnSignIn:
+		var scope any
+		if options.LinkUserID != "" && tokens.Scope != "" {
+			scope = mergeGrantedScopes(storedScope.String, tokens.Scope)
+		}
+		_, err = tx.ExecContext(ctx, s.bind(`UPDATE "account" SET "accessToken"=COALESCE(NULLIF(?,''),"accessToken"),"refreshToken"=COALESCE(NULLIF(?,''),"refreshToken"),"idToken"=COALESCE(NULLIF(?,''),"idToken"),"scope"=COALESCE(?,"scope"),"accessTokenExpiresAt"=COALESCE(?,"accessTokenExpiresAt"),"refreshTokenExpiresAt"=COALESCE(?,"refreshTokenExpiresAt"),"updatedAt"=? WHERE "id"=?`),
+			tokens.AccessToken, tokens.RefreshToken, tokens.IDToken, scope, expires, refreshExpires, s.date(session.CreatedAt), account)
 	}
 	if err != nil {
 		return u, false, err
@@ -324,6 +327,20 @@ func (s *Store) completeOAuth(ctx context.Context, provider, subject string, tok
 		}
 	}
 	return u, created, tx.Commit()
+}
+
+// Explicit reauthorization can extend a grant. Preserve the original ordering.
+func mergeGrantedScopes(stored, incoming string) string {
+	var scopes []string
+	seen := make(map[string]bool)
+	for item := range strings.SplitSeq(stored+","+incoming, ",") {
+		scope := strings.TrimSpace(item)
+		if scope != "" && !seen[scope] {
+			scopes = append(scopes, scope)
+			seen[scope] = true
+		}
+	}
+	return strings.Join(scopes, ",")
 }
 
 // The caller locks and authorizes the exact owner before applying provider data.

@@ -40,7 +40,7 @@ func TestEncryptedProviderCredentialLifecycle(t *testing.T) {
 					return &oauth2.Token{AccessToken: "next-access", RefreshToken: "next-refresh", Expiry: time.Now().Add(time.Hour)}, nil
 				},
 				VerifyIDToken: func(_ context.Context, raw, nonce string) (auth.OAuthProfile, time.Time, error) {
-					if raw != "native-identity" || nonce != "nonce" {
+					if (raw != "native-identity" && raw != "preserved-identity") || nonce != "nonce" {
 						return auth.OAuthProfile{}, time.Time{}, fmt.Errorf("invalid fixture identity")
 					}
 					return profile, time.Now().Add(time.Hour), nil
@@ -99,9 +99,18 @@ func TestEncryptedProviderCredentialLifecycle(t *testing.T) {
 				t.Fatal("read encrypted provider credential", err)
 			}
 			opts.Secrets = []auth.VersionedSecret{{Version: 1, Value: strings.Repeat("b", 32)}, {Version: 0, Value: opts.Secret}}
+			opts.DisableAccountUpdateOnSignIn = true
 			instance, err = auth.New(opts)
 			if err != nil {
 				t.Fatal(err)
+			}
+			const preservedGrant = `{"provider":"demo","idToken":{"token":"preserved-identity","nonce":"nonce"}}`
+			if w := call("POST", "sign-in/social", preservedGrant, nil); w.Code != 200 {
+				t.Fatal("sign-in with preserved encrypted grant", w.Code)
+			}
+			assertSealed("0")
+			if w := call("POST", "sign-in/social", preservedGrant, nil); w.Code != 401 {
+				t.Fatal("preserved encrypted grant allowed replay", w.Code)
 			}
 			rotated, err := instance.RefreshToken(ctx, nil, selection)
 			if err != nil || rotated.AccessToken != "next-access" || rotated.RefreshToken != "next-refresh" || rotated.IDToken == nil || *rotated.IDToken != "initial-identity" {
@@ -109,6 +118,7 @@ func TestEncryptedProviderCredentialLifecycle(t *testing.T) {
 			}
 			assertSealed("1")
 			opts.Secrets = opts.Secrets[:1]
+			opts.DisableAccountUpdateOnSignIn = false
 			instance, err = auth.New(opts)
 			if err != nil {
 				t.Fatal(err)

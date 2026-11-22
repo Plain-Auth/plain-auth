@@ -1699,3 +1699,10 @@ test("providers require a verified mailbox before issuing a session on either se
     await t.test(mode, t => compareProviderEmailVerification(t, {reference, goFixture, instrument}, mode));
   }
 });
+
+test("returning sign-ins respect stored provider credentials and explicit scope grants", async t => {
+  const {compareAccountUpdateOnSignIn} = await import("./social-user-fields.mjs");
+  for (const preserve of [false, true]) {
+    await t.test(preserve ? "preserve" : "default", t => compareAccountUpdateOnSignIn(t, {reference, goFixture, instrument}, preserve));
+  }
+});

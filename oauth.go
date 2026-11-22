@@ -93,6 +93,9 @@ type OAuthLoginOptions struct {
 	DisableSignUp bool
 	// RequireEmailVerification commits an unverified identity without issuing a session.
 	RequireEmailVerification bool
+	// DisableAccountUpdateOnSignIn skips the existing account row update during
+	// login. Adapters still claim single-use grants and apply the session policy.
+	DisableAccountUpdateOnSignIn bool
 	// DisableImplicitLinking also takes precedence over directory-based trust in custom stores.
 	DisableImplicitLinking       bool
 	OneTapNonce                  string
