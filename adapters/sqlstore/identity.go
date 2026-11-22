@@ -49,6 +49,9 @@ func (s *Store) UnlinkAccount(ctx context.Context, userID, id string, allowLast 
 			return auth.ErrLastAccount
 		}
 	}
+	if err := s.unlinkWallet(ctx, tx, userID, id); err != nil {
+		return err
+	}
 	result, err := tx.ExecContext(ctx, s.bind(`DELETE FROM "account" WHERE "id"=? AND "userId"=?`), id, userID)
 	if err != nil {
 		return err

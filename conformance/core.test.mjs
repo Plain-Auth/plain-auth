@@ -1578,3 +1578,8 @@ test("both runtimes exchange configured session fields and enforce update visibi
   const {compareSessionFields} = await import("./session-fields.mjs");
   await compareSessionFields(t,{reference,goFixture,instrument});
 });
+
+test("Ethereum wallet sign-in verifies actual signatures, cross-chain ownership and one-time nonces on shared SQLite", async t => {
+  const { walletSignIn } = await import("./siwe-wallet.mjs");
+  await walletSignIn(t, { reference, goFixture, instrument });
+});

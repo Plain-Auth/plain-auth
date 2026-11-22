@@ -157,6 +157,9 @@ func (s *Store) deleteAccountRows(ctx context.Context, tx *sql.Tx, userID string
 	if err := s.cleanupAPIKeys(ctx, tx, userID); err != nil {
 		return err
 	}
+	if err := s.cleanupWallets(ctx, tx, userID); err != nil {
+		return err
+	}
 	if err := s.cleanupPasskeys(ctx, tx, userID); err != nil {
 		return err
 	}

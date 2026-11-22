@@ -21,6 +21,7 @@
   "devDependencies": {
     "@authenio/xml-encryption": "6.0.2",
     "typescript": "6.0.3",
+    "viem": "2.58.4",
     "xml-crypto": "6.4.0"
   }
 }

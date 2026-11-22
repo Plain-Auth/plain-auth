@@ -25,6 +25,7 @@ AUTH_DSN=auth.db go run ./cmd/authctl migrate --dialect sqlite --plugins organiz
 | `rate-limit` | Shared per-route counters with a unique key, request count and timestamp in milliseconds |
 | `scim` | Directory connection bindings, Users, Groups, memberships, subjects, retained external identities and projection grants |
 | `scim-managed` | Directory tables plus managed connections, credential digests and the ordered audit log |
+| `siwe` | Ethereum wallet addresses, chain IDs, primary designation and owner reference |
 | `sso` | Enterprise provider registration with globally unique provider ID, creator, organization, issuer, domains and serialized OIDC configuration |
 | `sso-domain-verification` | Enterprise provider catalog with the nullable DNS ownership flag |
 | `stripe-subscriptions` | Customer identifiers and subscription records with status, plan, billing and lifecycle fields |

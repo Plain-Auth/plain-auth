@@ -14,6 +14,7 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 | OAuth popup sign-in for top-level and embedded applications | [OAuth popup sign-in](../oauth-popup.md) |
 | Google One Tap popup, button and browser challenges | [Google One Tap](../one-tap.md) |
 | First-party device grants and authorization | [Sign in a device](../device-authorization.md) |
+| Sign in with an Ethereum wallet | [Wallet sign-in](../siwe.md) |
 | Passkey registration, login and credential management | [Passkeys](../passkeys.md) |
 | Email link sign-in and single-use session transfer | [Magic links](../magic-link.md) · [One-time tokens](../one-time-token.md) |
 | Breached-password screening for credential writes | [Password checks](../password-checks.md) |
@@ -89,7 +90,7 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 | [Passkey](plugins/passkey.md) | 26 | 94 |
 | [Phone number](plugins/phone-number.md) | 34 | 67 |
 | [SCIM provisioning](plugins/scim.md) | 66 | 251 |
-| [Sign in with Ethereum](plugins/siwe.md) | 0 | 40 |
+| [Sign in with Ethereum](plugins/siwe.md) | 49 | 22 |
 | [Single sign-on](plugins/sso.md) | 75 | 308 |
 | [Stripe](plugins/stripe.md) | 206 | 175 |
 | [Test utils](plugins/test-utils.md) | 63 | 19 |

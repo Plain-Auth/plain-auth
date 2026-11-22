@@ -19,7 +19,8 @@
     "stripe-organization",
     "scim-managed",
     "sso",
-    "sso-domain-verification"
+    "sso-domain-verification",
+    "siwe"
   ],
   "dialects": {
     "sqlite": [
@@ -1127,6 +1128,32 @@
         ]
       },
       {
+        "sql": "create table \"walletAddress\"",
+        "profiles": [
+          "siwe"
+        ],
+        "columns": [
+          {
+            "sql": "\"id\" text not null primary key"
+          },
+          {
+            "sql": "\"userId\" text not null references \"user\" (\"id\") on delete cascade"
+          },
+          {
+            "sql": "\"address\" text not null"
+          },
+          {
+            "sql": "\"chainId\" integer not null"
+          },
+          {
+            "sql": "\"isPrimary\" integer not null"
+          },
+          {
+            "sql": "\"createdAt\" date not null"
+          }
+        ]
+      },
+      {
         "sql": "create table \"rateLimit\"",
         "profiles": [
           "rate-limit"
@@ -1382,6 +1409,12 @@
         "profiles": [
           "scim",
           "scim-managed"
+        ]
+      },
+      {
+        "sql": "create index \"walletAddress_userId_idx\" on \"walletAddress\" (\"userId\");",
+        "profiles": [
+          "siwe"
         ]
       },
       {
@@ -2502,6 +2535,32 @@
         ]
       },
       {
+        "sql": "create table \"walletAddress\"",
+        "profiles": [
+          "siwe"
+        ],
+        "columns": [
+          {
+            "sql": "\"id\" text not null primary key"
+          },
+          {
+            "sql": "\"userId\" text not null references \"user\" (\"id\") on delete cascade"
+          },
+          {
+            "sql": "\"address\" text not null"
+          },
+          {
+            "sql": "\"chainId\" integer not null"
+          },
+          {
+            "sql": "\"isPrimary\" boolean not null"
+          },
+          {
+            "sql": "\"createdAt\" timestamptz not null"
+          }
+        ]
+      },
+      {
         "sql": "create table \"rateLimit\"",
         "profiles": [
           "rate-limit"
@@ -2757,6 +2816,12 @@
         "profiles": [
           "scim",
           "scim-managed"
+        ]
+      },
+      {
+        "sql": "create index \"walletAddress_userId_idx\" on \"walletAddress\" (\"userId\");",
+        "profiles": [
+          "siwe"
         ]
       },
       {
@@ -3877,6 +3942,32 @@
         ]
       },
       {
+        "sql": "create table `walletAddress`",
+        "profiles": [
+          "siwe"
+        ],
+        "columns": [
+          {
+            "sql": "`id` varchar(36) not null primary key"
+          },
+          {
+            "sql": "`userId` varchar(36) not null references `user` (`id`) on delete cascade"
+          },
+          {
+            "sql": "`address` text not null"
+          },
+          {
+            "sql": "`chainId` integer not null"
+          },
+          {
+            "sql": "`isPrimary` boolean not null"
+          },
+          {
+            "sql": "`createdAt` timestamp(3) not null"
+          }
+        ]
+      },
+      {
         "sql": "create table `rateLimit`",
         "profiles": [
           "rate-limit"
@@ -4132,6 +4223,12 @@
         "profiles": [
           "scim",
           "scim-managed"
+        ]
+      },
+      {
+        "sql": "create index `walletAddress_userId_idx` on `walletAddress` (`userId`);",
+        "profiles": [
+          "siwe"
         ]
       },
       {

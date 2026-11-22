@@ -117,6 +117,7 @@ Go records the resolved commit in the consuming project’s `go.mod`. The module
 | Authorize a TV, CLI or input-constrained device | [Device authorization](docs/device-authorization.md) |
 | Transfer an active session using a single-use credential | [One-time tokens](docs/one-time-token.md) |
 | Integrate the Google One Tap prompt or sign-in button | [Google One Tap](docs/one-tap.md) |
+| Sign in with an Ethereum wallet | [Wallet sign-in](docs/siwe.md) |
 | Register and use a WebAuthn passkey | [Passkeys](docs/passkeys.md) |
 | Verify an address, sign in or recover a password with an email code | [Email one-time passwords](docs/email-otp.md) |
 | Let users sign in through a single-use email link | [Magic links](docs/magic-link.md) |

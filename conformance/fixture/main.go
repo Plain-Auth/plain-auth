@@ -29,6 +29,7 @@ import (
 	"github.com/Stonewrit/stonewrit-auth/plugins/organization"
 	"github.com/Stonewrit/stonewrit-auth/plugins/passkey"
 	"github.com/Stonewrit/stonewrit-auth/plugins/pwnedpassword"
+	"github.com/Stonewrit/stonewrit-auth/plugins/siwe"
 	"github.com/Stonewrit/stonewrit-auth/plugins/sso"
 	"github.com/Stonewrit/stonewrit-auth/plugins/twofactor"
 	"github.com/Stonewrit/stonewrit-auth/providers"
@@ -92,6 +93,12 @@ func main() {
 	var directoryEnabled bool
 	for _, id := range os.Args[2:] {
 		switch id {
+		case "siwe":
+			p, err := siwe.New(siwe.Options{Domain: "wallet.example.test"})
+			if err != nil {
+				log.Fatal(err)
+			}
+			plugins = append(plugins, p)
 		case "sso", "sso-domain-verification":
 			opts := sso.Options{SharedCallback: os.Getenv("CONFORMANCE_SSO_SHARED_CALLBACK") == "1"}
 			if samlFixture {

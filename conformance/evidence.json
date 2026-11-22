@@ -9344,5 +9344,224 @@
       "test": "conformance/auth-test-helpers.test.mjs",
       "marker": "trusted login, headers and browser-cookie fixtures"
     }
+  ],
+  "plugin/siwe/ /siwe/nonce": [
+    {
+      "label": "Issue a random 15-minute challenge using either public client method",
+      "test": "conformance/siwe-wallet.mjs",
+      "marker": "await borrower.siwe.nonce()",
+      "complete": true
+    },
+    {
+      "label": "Reject an expired stored nonce and clean it up at the next issuance",
+      "test": "adapters/sqlstore/siwe_test.go",
+      "marker": "expired wallet challenges were not removed"
+    }
+  ],
+  "plugin/siwe/ /siwe/get-nonce": [
+    {
+      "label": "Issue a random 15-minute challenge using either public client method",
+      "test": "conformance/siwe-wallet.mjs",
+      "marker": "await borrower.siwe.nonce()",
+      "complete": true
+    },
+    {
+      "label": "Reject an expired stored nonce and clean it up at the next issuance",
+      "test": "adapters/sqlstore/siwe_test.go",
+      "marker": "expired wallet challenges were not removed"
+    }
+  ],
+  "docs/content/docs/plugins/siwe.mdx#L90": [
+    {
+      "label": "Issue a random 15-minute challenge using either public client method",
+      "test": "conformance/siwe-wallet.mjs",
+      "marker": "await borrower.siwe.nonce()",
+      "complete": true
+    },
+    {
+      "label": "Reject an expired stored nonce and clean it up at the next issuance",
+      "test": "adapters/sqlstore/siwe_test.go",
+      "marker": "expired wallet challenges were not removed"
+    }
+  ],
+  "plugin/siwe/POST /siwe/verify": [
+    {
+      "label": "Verify an Ethereum wallet signature, return the account and issue a session cookie",
+      "test": "conformance/siwe-wallet.mjs",
+      "marker": "assert.equal(session.session.token"
+    },
+    {
+      "label": "Two simultaneous presentations of the same signed challenge issue one session",
+      "test": "adapters/sqlstore/siwe_test.go",
+      "marker": "a signed wallet nonce must issue exactly one session"
+    },
+    {
+      "label": "Refuse a database account with an ambiguous wallet binding",
+      "test": "adapters/sqlstore/siwe_test.go",
+      "marker": "ambiguous imported wallet accounts issued a session"
+    }
+  ],
+  "docs/content/docs/plugins/siwe.mdx#L104": [
+    {
+      "label": "Verify an Ethereum wallet signature, return the account and issue a session cookie",
+      "test": "conformance/siwe-wallet.mjs",
+      "marker": "assert.equal(session.session.token"
+    },
+    {
+      "label": "Two simultaneous presentations of the same signed challenge issue one session",
+      "test": "adapters/sqlstore/siwe_test.go",
+      "marker": "a signed wallet nonce must issue exactly one session"
+    },
+    {
+      "label": "Refuse a database account with an ambiguous wallet binding",
+      "test": "adapters/sqlstore/siwe_test.go",
+      "marker": "ambiguous imported wallet accounts issued a session"
+    }
+  ],
+  "plugin-symbol/siwe/siweClient": [
+    {
+      "label": "Use both nonce aliases and sign in through the released client and a locally generated signing key",
+      "test": "conformance/siwe-wallet.mjs",
+      "marker": "const client = runtime => instrument(runtime, [siweClient()])",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/siwe.mdx#L164": [
+    {
+      "label": "Use both nonce aliases and sign in through the released client and a locally generated signing key",
+      "test": "conformance/siwe-wallet.mjs",
+      "marker": "const client = runtime => instrument(runtime, [siweClient()])",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/siwe/SIWEPluginOptions/domain": [
+    {
+      "label": "Match the signed authority, scheme and URI including the relying-party port",
+      "test": "plugins/siwe/message_test.go",
+      "marker": "func TestSignedMessageContract",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/siwe.mdx#L157/domain": [
+    {
+      "label": "Match the signed authority, scheme and URI including the relying-party port",
+      "test": "plugins/siwe/message_test.go",
+      "marker": "func TestSignedMessageContract",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/siwe/SIWEPluginOptions/emailDomainName": [
+    {
+      "label": "Apply a configured placeholder domain without verifying the user’s email",
+      "test": "adapters/sqlstore/siwe_test.go",
+      "marker": "custom wallet email domain was not applied",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/siwe.mdx#L158/emailDomainName": [
+    {
+      "label": "Apply a configured placeholder domain without verifying the user’s email",
+      "test": "adapters/sqlstore/siwe_test.go",
+      "marker": "custom wallet email domain was not applied",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/siwe/SIWEPluginOptions/anonymous": [
+    {
+      "label": "Establish a wallet-only identity and ignore contact email supplied in the signing request",
+      "test": "conformance/siwe-wallet.mjs",
+      "marker": "assert.equal(session.user.email,"
+    }
+  ],
+  "docs/content/docs/plugins/siwe.mdx#L159/anonymous": [
+    {
+      "label": "Establish a wallet-only identity and ignore contact email supplied in the signing request",
+      "test": "conformance/siwe-wallet.mjs",
+      "marker": "assert.equal(session.user.email,"
+    }
+  ],
+  "docs/content/docs/plugins/siwe.mdx#L130": [
+    {
+      "label": "A second signed chain for the same wallet keeps its local owner and creates a second association",
+      "test": "conformance/siwe-wallet.mjs",
+      "marker": "assert.deepEqual(associations.map",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/siwe/siwe": [
+    {
+      "label": "Respect closed registration and refuse wallet sessions for a banned owner",
+      "test": "adapters/sqlstore/siwe_test.go",
+      "marker": "banned wallet created a session"
+    },
+    {
+      "label": "Delete the wallet credential when its owner unlinks or deletes the account",
+      "test": "adapters/sqlstore/siwe_test.go",
+      "marker": "deletion retained wallet identity or sessions"
+    }
+  ],
+  "plugin-symbol/siwe/WalletAddress": [
+    {
+      "label": "Match the table, all six fields, owner relationship and index in the three SQL dialects",
+      "test": "conformance/schema.test.mjs",
+      "marker": "wallet registrations add the canonical address table and owner index on each dialect",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/siwe.mdx#L179": [
+    {
+      "label": "Match the table, all six fields, owner relationship and index in the three SQL dialects",
+      "test": "conformance/schema.test.mjs",
+      "marker": "wallet registrations add the canonical address table and owner index on each dialect",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/siwe.mdx#L185/id": [
+    {
+      "label": "Match the generated wallet schema on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "wallet registrations add the canonical address table and owner index on each dialect",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/siwe.mdx#L186/userId": [
+    {
+      "label": "Match the generated wallet schema on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "wallet registrations add the canonical address table and owner index on each dialect",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/siwe.mdx#L187/address": [
+    {
+      "label": "Match the generated wallet schema on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "wallet registrations add the canonical address table and owner index on each dialect",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/siwe.mdx#L188/chainId": [
+    {
+      "label": "Match the generated wallet schema on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "wallet registrations add the canonical address table and owner index on each dialect",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/siwe.mdx#L189/isPrimary": [
+    {
+      "label": "Match the generated wallet schema on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "wallet registrations add the canonical address table and owner index on each dialect",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/siwe.mdx#L190/createdAt": [
+    {
+      "label": "Match the generated wallet schema on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "wallet registrations add the canonical address table and owner index on each dialect",
+      "complete": true
+    }
   ]
 }

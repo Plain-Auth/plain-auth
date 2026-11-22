@@ -8,7 +8,7 @@ import { DatabaseSync } from "node:sqlite";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 import { getMigrations } from "better-auth/db/migration";
-import { verifiedCombinations, ssoCombinations, ssoDomainCombinations, scimCombinations, managedSCIMCombinations, organizationBillingCombinations, dialects, freshSchema, schemaOptions } from "./plugin-schema.mjs";
+import { walletCombinations, verifiedCombinations, ssoCombinations, ssoDomainCombinations, scimCombinations, managedSCIMCombinations, organizationBillingCombinations, dialects, freshSchema, schemaOptions } from "./plugin-schema.mjs";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
 
@@ -284,5 +284,26 @@ test("enterprise DNS verification extends only the canonical provider flag acros
   } finally {
     await batch.close();
     rmSync(dir,{recursive:true,force:true});
+  }
+});
+
+test("wallet registrations add the canonical address table and owner index on each dialect", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "auth-wallet-schema-"));
+  const batch = batchFixture(dir);
+  try {
+    for (const dialect of Object.keys(dialects)) {
+      for (const profiles of walletCombinations()) {
+        const before = await freshSchema(dialect, profiles.filter(p => p !== "siwe"));
+        const expected = await freshSchema(dialect, profiles);
+        assert.equal((await batch.call(dialect, profiles)).trim(), expected.trim(), dialect + " " + profiles);
+        const additions = expected.trim().split(/;\s*\n\s*\n/).filter(statement => !before.includes(statement.replace(/;$/, "")));
+        assert.equal(additions.length, 2);
+        assert.match(additions[0], /^create table ["`]walletAddress["`]/);
+        assert.match(additions[1], /create index ["`]walletAddress_userId_idx["`]/);
+      }
+    }
+  } finally {
+    await batch.close();
+    rmSync(dir, { recursive: true, force: true });
   }
 });
