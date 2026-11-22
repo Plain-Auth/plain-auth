@@ -12,6 +12,7 @@ import (
 
 	authn "github.com/Plain-Auth/plain-auth"
 	"github.com/Plain-Auth/plain-auth/adapters/sqlite"
+	"github.com/Plain-Auth/plain-auth/plugins/oauthprovider"
 	"github.com/gin-gonic/gin"
 	"github.com/go-chi/chi/v5"
 	"github.com/gofiber/fiber/v3"
@@ -32,6 +33,12 @@ func httpRunner(handler http.Handler) runner {
 
 func TestFrameworkMounts(t *testing.T) {
 	gin.SetMode(gin.TestMode)
+	discovery, err := oauthprovider.NewResourceDiscovery(oauthprovider.ResourceMetadata{
+		Resource: "https://api.example.test/reports", AuthorizationServers: []string{"https://issuer.example.test"},
+	}, oauthprovider.DiscoveryOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
 	for _, tc := range []struct {
 		name  string
 		mount func(http.Handler, http.HandlerFunc) runner
@@ -39,36 +46,42 @@ func TestFrameworkMounts(t *testing.T) {
 		{"ServeMux", func(h http.Handler, me http.HandlerFunc) runner {
 			r := http.NewServeMux()
 			r.Handle("/api/auth/", h)
+			r.Handle(discovery.Path(), discovery)
 			r.HandleFunc("GET /me", me)
 			return httpRunner(r)
 		}},
 		{"chi", func(h http.Handler, me http.HandlerFunc) runner {
 			r := chi.NewRouter()
 			r.Handle("/api/auth/*", h)
+			r.Handle(discovery.Path(), discovery)
 			r.Get("/me", me)
 			return httpRunner(r)
 		}},
 		{"Gorilla", func(h http.Handler, me http.HandlerFunc) runner {
 			r := mux.NewRouter()
 			r.PathPrefix("/api/auth/").Handler(h)
+			r.Handle(discovery.Path(), discovery)
 			r.HandleFunc("/me", me).Methods("GET")
 			return httpRunner(r)
 		}},
 		{"Gin", func(h http.Handler, me http.HandlerFunc) runner {
 			r := gin.New()
 			r.Any("/api/auth/*path", gin.WrapH(h))
+			r.Any(discovery.Path(), gin.WrapH(discovery))
 			r.GET("/me", gin.WrapH(me))
 			return httpRunner(r)
 		}},
 		{"Echo", func(h http.Handler, me http.HandlerFunc) runner {
 			r := echo.New()
 			r.Any("/api/auth/*", echo.WrapHandler(h))
+			r.Any(discovery.Path(), echo.WrapHandler(discovery))
 			r.GET("/me", echo.WrapHandler(me))
 			return httpRunner(r)
 		}},
 		{"Fiber", func(h http.Handler, me http.HandlerFunc) runner {
 			r := fiber.New()
 			r.All("/api/auth/*", adaptor.HTTPHandler(h))
+			r.All(discovery.Path(), adaptor.HTTPHandler(discovery))
 			r.Get("/me", adaptor.HTTPHandler(me))
 			return func(req *http.Request) (*http.Response, error) {
 				// Real password hashing under -race can exceed Fiber's one-second test default.
@@ -128,6 +141,11 @@ func TestFrameworkMounts(t *testing.T) {
 				return res, strings.TrimSpace(string(b))
 			}
 			send("GET", "/app-owned", "", nil, 404)
+			_, metadata := send("GET", discovery.Path(), "", nil, http.StatusOK)
+			var doc oauthprovider.ResourceMetadata
+			if err := json.Unmarshal([]byte(metadata), &doc); err != nil || doc.Resource != "https://api.example.test/reports" {
+				t.Fatal("unexpected resource discovery document", metadata, err)
+			}
 			send("GET", "/me", "", nil, http.StatusUnauthorized)
 			res, _ := send("POST", "/api/auth/sign-up/email", `{"name":"Ada","email":"ada@example.com","password":"example-password"}`, nil, 200)
 			cookies := res.Cookies()

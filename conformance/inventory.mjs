@@ -392,6 +392,7 @@ const index = [
   "| OAuth popup sign-in for top-level and embedded applications | [OAuth popup sign-in](../oauth-popup.md) |",
   "| Share a registered OAuth callback across trusted preview deployments | [OAuth proxy setup](../oauth-proxy.md) |",
   "| Google One Tap popup, button and browser challenges | [Google One Tap](../one-tap.md) |",
+  "| Publish discovery metadata for an OAuth-protected API | [Protected-resource discovery](../oauth-resource-discovery.md) |",
   "| OAuth authorization-server database tables | [Schema and migration](../schema.md#oauth-authorization-server-tables) |",
   "| First-party device grants and authorization | [Sign in a device](../device-authorization.md) |",
   "| Sign in with an Ethereum wallet | [Wallet sign-in](../siwe.md) |",

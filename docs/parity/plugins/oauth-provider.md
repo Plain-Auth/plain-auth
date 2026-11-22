@@ -10,6 +10,7 @@
   - [ ] `validatePublicClientJwks`
   - [ ] `isForbiddenCimdClientMetadataField`
   - [ ] `oauthProviderResourceClient`
+    - [x] Derive protected-resource discovery from a local auth mount and issuer or from standalone configuration ([test](../../../conformance/resource-discovery.mjs#L7))
   - [ ] `VerifyAccessTokenRemote`
   - [ ] `oauthProviderClient`
   - [ ] `oauthDeviceAuthorizationClient`
@@ -191,7 +192,8 @@
   - [ ] `OAuthRefreshToken`
   - [ ] `OAuthConsent`
   - [ ] `OAuthClient`
-  - [ ] `ResourceServerMetadata`
+  - [x] `ResourceServerMetadata` ([test](../../../conformance/resource-discovery.mjs#L28))
+    - [x] Compare every resource metadata field, including identity, algorithms, scopes, localized names and boolean overrides ([test](../../../conformance/resource-discovery.mjs#L28))
   - [ ] `AuthMethod`
   - [ ] `AuthServerMetadata`
   - [ ] `BearerMethodsSupported`
@@ -432,7 +434,10 @@
     - [ ] Claims
   - [ ] Introspection
   - [ ] Scopes and permissions
-  - [ ] Protected resource metadata
+  - [x] Protected resource metadata ([test](../../../conformance/resource-discovery.mjs#L7))
+    - [x] Publish a path-specific HTTPS document with local issuer defaults, explicit issuers, filtered scopes and empty capabilities ([test](../../../conformance/resource-discovery.mjs#L7))
+    - [x] Preserve escaped paths and query identity and serve public GET, HEAD and preflight over TLS ([test](../../../plugins/oauthprovider/discovery_test.go#L15))
+    - [x] Mount the same discovery document on ServeMux, chi, Gorilla Mux, Gin, Echo and Fiber ([test](../../../integrations/routers/routers_test.go#L147))
 
 ## Sign-in and consent screens
 

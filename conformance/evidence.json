@@ -10879,5 +10879,38 @@
       "test": "adapters/sqlstore/oauth_provider_schema_test.go",
       "marker": "const assertionRow ="
     }
+  ],
+  "docs/content/docs/plugins/oauth-provider/resource-server.mdx#L208": [
+    {
+      "label": "Publish a path-specific HTTPS document with local issuer defaults, explicit issuers, filtered scopes and empty capabilities",
+      "test": "conformance/resource-discovery.mjs",
+      "marker": "export async function compareResourceDiscovery(",
+      "complete": true
+    },
+    {
+      "label": "Preserve escaped paths and query identity and serve public GET, HEAD and preflight over TLS",
+      "test": "plugins/oauthprovider/discovery_test.go",
+      "marker": "func TestProtectedResourceMetadataHTTP("
+    },
+    {
+      "label": "Mount the same discovery document on ServeMux, chi, Gorilla Mux, Gin, Echo and Fiber",
+      "test": "integrations/routers/routers_test.go",
+      "marker": "unexpected resource discovery document"
+    }
+  ],
+  "plugin-symbol/oauth-provider/ResourceServerMetadata": [
+    {
+      "label": "Compare every resource metadata field, including identity, algorithms, scopes, localized names and boolean overrides",
+      "test": "conformance/resource-discovery.mjs",
+      "marker": "[\"multiple issuers and all declared metadata\"",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/oauth-provider/oauthProviderResourceClient": [
+    {
+      "label": "Derive protected-resource discovery from a local auth mount and issuer or from standalone configuration",
+      "test": "conformance/resource-discovery.mjs",
+      "marker": "export async function compareResourceDiscovery("
+    }
   ]
 }

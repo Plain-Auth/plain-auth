@@ -24,6 +24,7 @@ import (
 	"github.com/Plain-Auth/plain-auth/plugins/lastlogin"
 	"github.com/Plain-Auth/plain-auth/plugins/magiclink"
 	"github.com/Plain-Auth/plain-auth/plugins/multisession"
+	"github.com/Plain-Auth/plain-auth/plugins/oauthprovider"
 	"github.com/Plain-Auth/plain-auth/plugins/openapi"
 	"github.com/Plain-Auth/plain-auth/plugins/organization"
 	"github.com/Plain-Auth/plain-auth/plugins/passkey"
@@ -301,7 +302,7 @@ func main() {
 			}
 			plugins = append(plugins, p)
 		case "jwt":
-			p, err := jwtplugin.New(jwtplugin.Options{DisableHeader: os.Getenv("CONFORMANCE_MUTE_JWT_HEADER") == "1"})
+			p, err := jwtplugin.New(jwtplugin.Options{DisableHeader: os.Getenv("CONFORMANCE_MUTE_JWT_HEADER") == "1", Issuer: os.Getenv("CONFORMANCE_DISCOVERY_ISSUER")})
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -563,11 +564,36 @@ func main() {
 			return nil
 		}
 	}
+	discoveryConfig := os.Getenv("CONFORMANCE_RESOURCE_DISCOVERY")
+	if discoveryConfig != "" {
+		opts.BaseURL = "https://accounts.example.test/gateway/auth"
+	}
 	auth, err := authWithBrowserFixture(opts, os.Getenv("CONFORMANCE_BROWSER_COOKIE_FILE"))
 	if err != nil {
 		log.Fatal(err)
 	}
 	var handler http.Handler = auth
+	if discoveryConfig != "" {
+		var config struct {
+			Metadata oauthprovider.ResourceMetadata
+			Options  oauthprovider.DiscoveryOptions
+			UseAuth  bool
+		}
+		if err := json.Unmarshal([]byte(discoveryConfig), &config); err != nil {
+			log.Fatal(err)
+		}
+		if config.UseAuth {
+			config.Options.Auth = auth
+		}
+		discovery, err := oauthprovider.NewResourceDiscovery(config.Metadata, config.Options)
+		if err != nil {
+			log.Fatal(err)
+		}
+		mux := http.NewServeMux()
+		mux.Handle(discovery.Path(), discovery)
+		mux.Handle("/", handler)
+		handler = mux
+	}
 	if popupOrigin != "" {
 		handler = popupCORS(auth, popupOrigin)
 	}

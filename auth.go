@@ -718,3 +718,17 @@ func (a *Auth) Logger() *slog.Logger {
 	}
 	return slog.Default()
 }
+
+// PublicURL returns the configured public URL of the auth mount.
+func (a *Auth) PublicURL() string {
+	return a.opts.BaseURL + strings.TrimRight(a.opts.BasePath, "/")
+}
+
+// OAuthIssuer returns the authorization-server issuer advertised by OAuth
+// discovery. An explicit JWT issuer takes precedence over the public auth URL.
+func (a *Auth) OAuthIssuer() string {
+	if a.serviceJWT != nil && a.serviceJWT.Issuer != "" {
+		return a.serviceJWT.Issuer
+	}
+	return a.PublicURL()
+}

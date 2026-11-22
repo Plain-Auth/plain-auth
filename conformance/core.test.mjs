@@ -1734,3 +1734,8 @@ test("screen all seven default password writes and preserve rejected account cha
   const { comparePasswordScreening } = await import("./password-screening.mjs");
   await comparePasswordScreening(t, { reference, goFixture, instrument });
 });
+
+test("Go protected-resource discovery agrees with the OAuth resource client", async t => {
+  const { compareResourceDiscovery } = await import("./resource-discovery.mjs");
+  await compareResourceDiscovery(t, goFixture);
+});
