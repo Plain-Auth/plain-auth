@@ -21,6 +21,7 @@ Each row tracks the behavior exposed by a published entry point. The Go implemen
   - [ ] Default interface (`.`)
     - [x] Create a password account and return a usable session token on SQLite ([test](../../conformance/core.test.mjs#L193))
     - [x] Apply configured email-verification gates ([test](../../account_lifecycle_test.go#L15))
+    - [x] Keep callback failures private and honor cancellation while password operations are queued ([test](../../password_codec_test.go#L15))
     - [x] Return the signed-in user and session with the default seven-day lifetime ([test](../../conformance/core.test.mjs#L195))
     - [x] Support the sliding session window, deferred writes and expiration ([test](../../session_refresh_test.go#L46))
     - [x] Expose the application credential type and keep the presented key out of browser session lookup ([test](../../adapters/sqlstore/apikey_session_test.go#L201))

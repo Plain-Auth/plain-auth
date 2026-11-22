@@ -14,6 +14,8 @@ opts.Plugins = append(opts.Plugins, p)
 
 Import `plugins/admin` from this module. New accounts default to the `user` role. The built-in `admin` role can read and update users, manage credentials, ban users, revoke sessions and impersonate ordinary users.
 
+For applications with an existing password format, call `auth.BootstrapAdmin(ctx, name, email, password)` on your configured instance after applying the admin schema. It runs your password policy and hashing callbacks and enforces the bootstrap length range of 16–128 UTF-16 code units. [Host-managed passwords](authentication.md#use-an-existing-password-database)
+
 ## Create the first administrator
 
 Supply the target database in `AUTH_DSN`. Apply the admin schema and provide the first password from your secret manager or a private file.

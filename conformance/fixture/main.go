@@ -364,6 +364,10 @@ func main() {
 		Secret:              "local-conformance-0123456789-abcdefghijk",
 		Store:               store,
 	}
+	if os.Getenv("CONFORMANCE_PASSWORD_CODEC") == "1" {
+		opts.PasswordHash = fixturePasswordHash
+		opts.PasswordVerify = fixturePasswordVerify
+	}
 	if mode := os.Getenv("CONFORMANCE_LOG_LEVEL"); mode != "" {
 		logFile, err := os.OpenFile(os.Args[1]+".log", os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
 		if err != nil {

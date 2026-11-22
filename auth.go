@@ -392,14 +392,19 @@ func (a *Auth) completeCredentialSignIn(ctx context.Context, user User, hash str
 	if err != nil && !errors.Is(err, ErrNotFound) {
 		return AuthResult{}, err
 	}
-	if errors.Is(err, ErrNotFound) {
-		hash = dummyPasswordHash
+	if errors.Is(err, ErrNotFound) || hash == "" || user.ID == "" {
+		// Spend a password derivation on unsuccessful lookups with the configured
+		// algorithm. This result is discarded even if the password matches.
+		if _, err := a.derivePassword(ctx, password); err != nil {
+			return AuthResult{}, err
+		}
+		return AuthResult{}, denied
 	}
 	valid, err := a.checkCredential(ctx, hash, password)
 	if err != nil {
 		return AuthResult{}, err
 	}
-	if !valid || user.ID == "" {
+	if !valid {
 		return AuthResult{}, denied
 	}
 	if a.admin != nil && user.AdminUserFields != nil && user.Banned {

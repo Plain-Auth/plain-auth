@@ -9,6 +9,11 @@
       "label": "Apply configured email-verification gates",
       "test": "account_lifecycle_test.go",
       "marker": "func TestVerificationGatedSignUpAndSignIn("
+    },
+    {
+      "label": "Keep callback failures private and honor cancellation while password operations are queued",
+      "test": "password_codec_test.go",
+      "marker": "func TestPasswordCallbackFailuresAndCancellation("
     }
   ],
   "core/getSession": [
@@ -63,6 +68,11 @@
       "label": "Require an enrolled second factor for native and HTTP credential sign-in",
       "test": "adapters/sqlstore/twofactor_test.go",
       "marker": "native password sign-in bypassed the challenge:"
+    },
+    {
+      "label": "Run the configured password derivation for an unknown account and accept preexisting hashes on three SQL engines",
+      "test": "adapters/sqlstore/password_codec_test.go",
+      "marker": "func TestPasswordCodecAcrossEngines("
     }
   ],
   "core/signOut": [
@@ -7695,6 +7705,38 @@
       "label": "Disable both the browser token endpoint and the session JWT response header while retaining ordinary sessions",
       "test": "conformance/core.test.mjs",
       "marker": "disabled HTTP paths suppress core, username and JWT endpoints on a custom mount"
+    }
+  ],
+  "docs/content/docs/reference/security.mdx#L9": [
+    {
+      "label": "Open and replace host-encoded credentials from either runtime in the same account database",
+      "test": "conformance/core.test.mjs",
+      "marker": "test(\"custom password callbacks open",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/authentication/email-password.mdx#L434/Password Hashing": [
+    {
+      "label": "Open and replace host-encoded credentials from either runtime in the same account database",
+      "test": "conformance/core.test.mjs",
+      "marker": "test(\"custom password callbacks open",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/reference/options.mdx#L329/`password`": [
+    {
+      "label": "Open and replace host-encoded credentials from either runtime in the same account database",
+      "test": "conformance/core.test.mjs",
+      "marker": "test(\"custom password callbacks open",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/authentication/email-password.mdx#L546/`emailPasswordOptionsType.password`": [
+    {
+      "label": "Open and replace host-encoded credentials from either runtime in the same account database",
+      "test": "conformance/core.test.mjs",
+      "marker": "test(\"custom password callbacks open",
+      "complete": true
     }
   ]
 }

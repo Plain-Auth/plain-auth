@@ -299,7 +299,8 @@
     - [ ] `resetPasswordTokenExpiresIn`
     - [ ] `onExistingUserSignUp`
     - [ ] `customSyntheticUser`
-    - [ ] `password`
+    - [x] `password` ([test](../../conformance/core.test.mjs#L1391))
+      - [x] Open and replace host-encoded credentials from either runtime in the same account database ([test](../../conformance/core.test.mjs#L1391))
   - [ ] `socialProviders`
     - [ ] `clientId`
     - [ ] `clientSecret`
@@ -449,7 +450,8 @@
 ## Security
 
 - [ ] Security
-  - [ ] Password Hashing
+  - [x] Password Hashing ([test](../../conformance/core.test.mjs#L1391))
+    - [x] Open and replace host-encoded credentials from either runtime in the same account database ([test](../../conformance/core.test.mjs#L1391))
   - [ ] Secret Rotation
   - [ ] Session Management
     - [ ] Session Expiration

@@ -46,6 +46,26 @@ If the mount is `/identity`, a request to `/identity/sign-up/email` returns 404 
 
 Create one auth instance per configuration and share it among handlers. Use the same secret on application replicas. The default in-process rate limiter keys requests by connection peer and route. Behind a reverse proxy, set `Options.ClientIP.TrustedProxies` to its CIDR ranges as `[]netip.Prefix`. Each proxy should append the actual peer to `X-Forwarded-For` or overwrite the configured `ForwardedHeader`. The library follows trusted hops from right to left and uses the first untrusted address. Direct connections use the socket address. Set `ClientIP.IPv6Subnet` to a prefix length to override the default /64 rate-limit scope. Set `ClientIP.DisableTracking` to omit the address from new sessions and disable per-IP limits. See the [proxy and privacy tests](../ip_test.go).
 
+## Use an existing password database
+
+Stonewrit stores a salted scrypt hash on the credential account. The built-in format uses NFKC normalization, a 16-byte random salt encoded as hex, and scrypt with N=16384, r=16, p=1 and a 64-byte key. To use a host-managed format, set `Options.PasswordHash` and `Options.PasswordVerify` before calling `stonewrit.New`. Each callback receives the request context. A nil callback uses the built-in implementation for that operation.
+
+For a gradual migration, have your verifier recognize both stored formats. The example assumes the application has a `credentials` service whose encoded hashes start with `v2$`.
+
+```go
+opts.PasswordHash = credentials.Hash
+opts.PasswordVerify = func(ctx context.Context, encoded, password string) (bool, error) {
+    if strings.HasPrefix(encoded, "v2$") {
+        return credentials.Verify(ctx, encoded, password)
+    }
+    return stonewrit.VerifyPasswordHash(ctx, encoded, password)
+}
+```
+
+The hasher must return a nonempty, self-describing encoding and generate a fresh salt for each password. The verifier returns `false, nil` for a wrong password. Return an error when a dependency fails. Ordinary callback errors produce a generic HTTP 500. Registration, administrator password changes, reset and recovery use the same hasher. Email, phone and username sign-in, reauthentication and two-factor management use the same verifier. An unknown login spends one hash operation and discards its output. The instance limits concurrent password operations and honors cancellation while a request waits.
+
+Existing accounts keep their stored credentials until a password-setting operation succeeds. Deploy a verifier that accepts the new format on every replica before switching the hasher. Applications with a custom codec can provision their first administrator through `auth.BootstrapAdmin(ctx, name, email, password)`. The standalone `authctl` command uses the built-in format. [Database lifecycle tests](../adapters/sqlstore/password_codec_test.go) · [Cross-runtime password rotation](../conformance/core.test.mjs)
+
 ## Set limits for an application
 
 `RateLimitDefault` controls routes without a built-in or plugin rule. `RateLimitRules` overrides all other rules. The most specific match wins. An exact path takes priority over a trailing `/*` pattern. A nil rule exempts a route. The rules apply to HTTP requests.

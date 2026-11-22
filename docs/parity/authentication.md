@@ -137,7 +137,8 @@
         - [ ] Parameter `revokeOtherSessions` (optional)
     - [ ] Configuration
       - [ ] Password
-      - [ ] Password Hashing
+      - [x] Password Hashing ([test](../../conformance/core.test.mjs#L1391))
+        - [x] Open and replace host-encoded credentials from either runtime in the same account database ([test](../../conformance/core.test.mjs#L1391))
       - [ ] Example
       - [ ] `emailPasswordOptionsType.enabled`
       - [ ] `emailPasswordOptionsType.disableSignUp`
@@ -151,7 +152,8 @@
       - [ ] `emailPasswordOptionsType.requireEmailVerification`
       - [ ] `emailPasswordOptionsType.revokeSessionsOnPasswordReset`
       - [ ] `emailPasswordOptionsType.resetPasswordTokenExpiresIn`
-      - [ ] `emailPasswordOptionsType.password`
+      - [x] `emailPasswordOptionsType.password` ([test](../../conformance/core.test.mjs#L1391))
+        - [x] Open and replace host-encoded credentials from either runtime in the same account database ([test](../../conformance/core.test.mjs#L1391))
 
 ## Facebook
 

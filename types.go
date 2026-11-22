@@ -38,6 +38,12 @@ type Options struct {
 	Secret  string
 	Secrets []VersionedSecret
 
+	// PasswordHash derives a stored credential from a plaintext password.
+	// PasswordVerify checks a stored credential against a plaintext password.
+	// A nil callback uses the built-in scrypt implementation for that operation.
+	PasswordHash   func(ctx context.Context, password string) (string, error)
+	PasswordVerify func(ctx context.Context, encoded, password string) (bool, error)
+
 	EmailAndPassword              bool
 	MinPasswordLength             int
 	MaxPasswordLength             int

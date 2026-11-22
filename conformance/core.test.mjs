@@ -1387,3 +1387,39 @@ test("disabled HTTP paths suppress core, username and JWT endpoints on a custom 
     assert.equal((await send("/ok")).status,200);
   }
 });
+
+test("custom password callbacks open stored credentials from either runtime and rotate them", async (t) => {
+  const { pbkdf2Sync, randomBytes, timingSafeEqual } = await import("node:crypto");
+  const go = await goFixture(t, [], { CONFORMANCE_PASSWORD_CODEC: "1" });
+  const database = new DatabaseSync(go.databasePath);
+  t.after(() => database.close());
+  const derive = (raw, salt) => pbkdf2Sync(raw, salt, 600_000, 32, "sha256");
+  const codec = {
+    hash: async (raw) => {
+      const salt = randomBytes(16);
+      return ["fixture-v1", salt.toString("hex"), derive(raw, salt).toString("hex")].join("$");
+    },
+    verify: async ({ hash, password }) => {
+      const [format, salt, encoded] = hash.split("$");
+      return format === "fixture-v1" && timingSafeEqual(derive(password, Buffer.from(salt, "hex")), Buffer.from(encoded, "hex"));
+    },
+  };
+  const auth = betterAuth({ baseURL: go.baseURL, database, secret: "local-conformance-0123456789-abcdefghijk",
+    emailAndPassword: { enabled: true, password: codec }, telemetry: { enabled: false } });
+  const peer = { baseURL: go.baseURL, send: req => auth.handler(req) };
+  for (const [i, [writer, reader]] of [[go, peer], [peer, go]].entries()) {
+    const address = "codec-" + i + "@example.test";
+    const original = "Vérify this passphrase 🔑";
+    const changed = "A replacement passphrase 🔑";
+    const create = instrument(writer).client;
+    const login = instrument(reader).client;
+    assert.equal((await create.signUp.email({ name, email: address, password: original })).error, null);
+    assert.match(database.prepare("SELECT a.password FROM account a JOIN user u ON u.id=a.userId WHERE u.email=?").get(address).password,
+      /^fixture-v1\$[0-9a-f]{32}\$[0-9a-f]{64}$/);
+    assert.equal((await login.signIn.email({ email: address, password: "incorrect password" })).error?.code, "INVALID_EMAIL_OR_PASSWORD");
+    assert.equal((await login.signIn.email({ email: address, password: original })).error, null);
+    assert.equal((await login.changePassword({ currentPassword: original, newPassword: changed })).error, null);
+    assert.equal((await create.signIn.email({ email: address, password: original })).error?.code, "INVALID_EMAIL_OR_PASSWORD");
+    assert.equal((await create.signIn.email({ email: address, password: changed })).error, null);
+  }
+});

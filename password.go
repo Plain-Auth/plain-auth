@@ -17,7 +17,12 @@ func passwordKey(password, salt string) ([]byte, error) {
 	return scrypt.Key([]byte(norm.NFKC.String(password)), []byte(salt), 16384, 16, 1, 64)
 }
 
-func hashPassword(password string) (string, error) {
+// HashPassword uses the built-in salted scrypt credential format. Hosts can
+// delegate to it when adapting an existing password database.
+func HashPassword(ctx context.Context, password string) (string, error) {
+	if err := ctx.Err(); err != nil {
+		return "", err
+	}
 	var raw [16]byte
 	rand.Read(raw[:])
 	salt := hex.EncodeToString(raw[:])
@@ -28,11 +33,12 @@ func hashPassword(password string) (string, error) {
 	return salt + ":" + hex.EncodeToString(key), nil
 }
 
-const dummyPasswordHash = "00000000000000000000000000000000:" +
-	"0000000000000000000000000000000000000000000000000000000000000000" +
-	"0000000000000000000000000000000000000000000000000000000000000000"
-
-func verifyPassword(hash, password string) (bool, error) {
+// VerifyPasswordHash checks the built-in scrypt format. It returns false for
+// an incorrect password and an error for a malformed stored credential.
+func VerifyPasswordHash(ctx context.Context, hash, password string) (bool, error) {
+	if err := ctx.Err(); err != nil {
+		return false, err
+	}
 	salt, encoded, ok := strings.Cut(hash, ":")
 	if !ok || len(salt) != 32 || len(encoded) != 128 {
 		return false, errors.New("authn: invalid stored credential")
@@ -79,16 +85,31 @@ func (a *Auth) hashCredential(ctx context.Context, path, password string) (strin
 	if err := a.ValidateNewPassword(ctx, path, password); err != nil {
 		return "", err
 	}
+	return a.derivePassword(ctx, password)
+}
+
+func (a *Auth) derivePassword(ctx context.Context, password string) (string, error) {
 	if err := a.acquirePasswordSlot(ctx); err != nil {
 		return "", err
 	}
 	defer func() { <-a.passwordSlots }()
-	return hashPassword(password)
+	if a.opts.PasswordHash == nil {
+		return HashPassword(ctx, password)
+	}
+	hash, err := a.opts.PasswordHash(ctx, password)
+	if err == nil && hash == "" {
+		return "", errors.New("authn: password hasher returned an empty credential")
+	}
+	return hash, err
 }
+
 func (a *Auth) checkCredential(ctx context.Context, hash, password string) (bool, error) {
 	if err := a.acquirePasswordSlot(ctx); err != nil {
 		return false, err
 	}
 	defer func() { <-a.passwordSlots }()
-	return verifyPassword(hash, password)
+	if a.opts.PasswordVerify != nil {
+		return a.opts.PasswordVerify(ctx, hash, password)
+	}
+	return VerifyPasswordHash(ctx, hash, password)
 }
