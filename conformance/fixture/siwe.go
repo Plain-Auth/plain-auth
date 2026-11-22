@@ -10,7 +10,7 @@ import (
 )
 
 func walletFixtureOptions() siwe.Options {
-	o := siwe.Options{Domain: "wallet.example.test"}
+	o := siwe.Options{Domain: "wallet.example.test", RequireEmail: os.Getenv("CONFORMANCE_WALLET_CONTACT") == "1"}
 	controller := os.Getenv("CONFORMANCE_WALLET_CONTROLLER")
 	if controller == "" {
 		return o

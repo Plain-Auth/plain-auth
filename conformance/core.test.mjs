@@ -1618,3 +1618,8 @@ test("transferred sessions publish only the current owner's configured user and 
   const { compareTransferFields } = await import("./transfer-fields.mjs");
   await compareTransferFields(t, { reference, goFixture, instrument });
 });
+
+test("Ethereum wallet contact mode reserves unverified mailboxes without linking existing accounts on either server", async t => {
+  const { walletContact } = await import("./siwe-contact.mjs");
+  await walletContact(t, { reference, goFixture, instrument });
+});

@@ -97,6 +97,11 @@ func (o Options) checkStore(s auth.Store) error {
 	if err := w.CheckWalletSchema(context.Background()); err != nil {
 		return err
 	}
+	if o.RequireEmail {
+		if _, ok := s.(ContactStore); !ok {
+			return errors.New("siwe: required contact email needs a ContactStore")
+		}
+	}
 	if o.VerifyMessage != nil || o.ENSLookup != nil {
 		if _, ok := s.(CallbackStore); !ok {
 			return errors.New("siwe: wallet callbacks require consumption with a stored deadline")

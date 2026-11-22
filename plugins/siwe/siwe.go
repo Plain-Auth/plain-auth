@@ -12,6 +12,7 @@ import (
 	"time"
 
 	auth "github.com/Plain-Auth/plain-auth"
+	"github.com/Plain-Auth/plain-auth/internal/emailaddress"
 )
 
 type Options struct {
@@ -19,6 +20,8 @@ type Options struct {
 	Domain string
 	// Chains restricts accepted chain IDs. An empty list permits any positive ID supported by the shared SQL schema.
 	Chains []int64
+	// RequireEmail requires a contact address on each verification. Only new owners can claim one.
+	RequireEmail bool
 	// EmailDomainName sets the domain used for a new wallet account's placeholder email.
 	EmailDomainName string
 	// GetNonce supplies a cryptographically random, globally unique challenge.
@@ -125,12 +128,17 @@ func New(o Options) (auth.Plugin, error) {
 		if len(text) == 0 || len(text) > 16384 || signature == "" || strings.ContainsRune(text, 0) {
 			return nil, bad
 		}
-		if v, ok := c.Body["email"]; ok {
-			email, _ := v.(string)
-			a, err := mail.ParseAddress(email)
-			if err != nil || a.Address != email {
-				return nil, bad
+		var contact string
+		if v, present := c.Body["email"]; present {
+			email, ok := v.(string)
+			if !ok || !emailaddress.ValidWalletContact(email) {
+				return nil, &auth.APIError{Status: 400, Code: "VALIDATION_ERROR", Message: "[body.email] Invalid email address"}
 			}
+			if o.RequireEmail {
+				contact = strings.ToLower(email)
+			}
+		} else if o.RequireEmail {
+			return nil, &auth.APIError{Status: 400, Code: "VALIDATION_ERROR", Message: "[body.email] Email is required when the anonymous plugin option is disabled."}
 		}
 		lines := strings.Split(strings.ReplaceAll(text, "\r\n", "\n"), "\n")
 		n := nonceFrom(lines)
@@ -175,6 +183,8 @@ func New(o Options) (auth.Plugin, error) {
 			emailLocal += "+" + strconv.FormatInt(m.chain, 10)
 		}
 		var profile ENSLookupResult
+		var claim *ContactClaim
+		triedContact := false
 		for range 2 {
 			var id string
 			if contract {
@@ -191,6 +201,19 @@ func New(o Options) (auth.Plugin, error) {
 					return nil, &auth.APIError{Status: 403, Code: "SIGN_UP_DISABLED", Message: "Sign up is disabled"}
 				}
 				id = rand.Text()
+				if contact != "" && !triedContact && !walletPlaceholder(contact, emailDomain) {
+					triedContact = true
+					claim, err = store.(ContactStore).ReserveWalletContact(ctx, contact, m.address)
+					if err != nil {
+						claim = nil
+					}
+					if claim != nil {
+						defer releaseContact(ctx, store.(ContactStore), *claim)
+					}
+					if ctx.Err() != nil {
+						return nil, ctx.Err()
+					}
+				}
 				if profile.Name == "" {
 					profile, err = o.profile(ctx, m)
 					if err != nil {
@@ -213,6 +236,9 @@ func New(o Options) (auth.Plugin, error) {
 				}
 				if !m.expiration.IsZero() && !now.Before(m.expiration) {
 					return auth.User{}, errExpired
+				}
+				if claim != nil && !input.Existing {
+					return store.(ContactStore).FinishWalletContactLogin(ctx, input, s, *claim)
 				}
 				return store.FinishWalletLogin(ctx, input, s)
 			})

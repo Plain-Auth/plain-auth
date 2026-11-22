@@ -193,6 +193,10 @@ func (s *Store) ContractWalletOwner(ctx context.Context, address string, chain i
 }
 
 func (s *Store) FinishWalletLogin(ctx context.Context, in siwe.Login, session auth.StoredSession) (auth.User, error) {
+	return s.finishWalletLogin(ctx, in, session, nil)
+}
+
+func (s *Store) finishWalletLogin(ctx context.Context, in siwe.Login, session auth.StoredSession, claim *siwe.ContactClaim) (auth.User, error) {
 	var user auth.User
 	if in.Profile.Name == "" {
 		in.Profile.Name = in.Address
@@ -233,11 +237,7 @@ func (s *Store) FinishWalletLogin(ctx context.Context, in siwe.Login, session au
 			if !in.AllowSignUp {
 				return &auth.APIError{Status: 403, Code: "SIGN_UP_DISABLED", Message: "Sign up is disabled"}, nil
 			}
-			_, err = tx.ExecContext(ctx, s.bind(`INSERT INTO "user" ("id","name","email","emailVerified","image","createdAt","updatedAt") VALUES(?,?,?,?,?,?,?)`), in.CandidateID, in.Profile.Name, in.Email, false, in.Profile.Avatar, now, now)
-			if duplicateConstraint(err) {
-				return nil, &auth.APIError{Status: 409, Code: "WALLET_ACCOUNT_CONFLICT", Message: "Unable to register this wallet"}
-			}
-			if err != nil {
+			if err := s.createWalletUser(ctx, tx, in, now, claim); err != nil {
 				return nil, err
 			}
 		}
@@ -271,11 +271,12 @@ func (s *Store) walletTable(ctx context.Context, tx *sql.Tx) (bool, error) {
 	var q string
 	switch s.dialect {
 	case "sqlite":
-		q = `SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type='table' AND name='walletAddress')`
+		q = `SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type='table' AND name='walletAddress' COLLATE NOCASE)`
 	case "postgres":
 		q = `SELECT pg_catalog.to_regclass('"walletAddress"') IS NOT NULL`
 	case "mysql":
-		q = `SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_schema=database() AND table_name='walletAddress')`
+		q = `SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_schema=database() AND table_name='walletAddress'
+            AND (@@lower_case_table_names<>0 OR (BINARY table_schema=BINARY DATABASE() AND BINARY table_name=BINARY 'walletAddress')))`
 	}
 	var exists bool
 	err := tx.QueryRowContext(ctx, q).Scan(&exists)
@@ -319,10 +320,14 @@ func (s *Store) cleanupWallets(ctx context.Context, tx *sql.Tx, userID string) e
 	if s.dialect != "mysql" {
 		return nil
 	}
+	return s.deleteOwnerWalletAddresses(ctx, tx, userID)
+}
+
+func (s *Store) deleteOwnerWalletAddresses(ctx context.Context, tx *sql.Tx, userID string) error {
 	exists, err := s.walletTable(ctx, tx)
 	if err != nil || !exists {
 		return err
 	}
-	_, err = tx.ExecContext(ctx, s.bind(`DELETE FROM "walletAddress" WHERE "userId"=?`), userID)
+	_, err = tx.ExecContext(ctx, s.bind(`DELETE FROM "walletAddress" WHERE "userId"=`+s.exactSQLValue("?")), userID)
 	return err
 }

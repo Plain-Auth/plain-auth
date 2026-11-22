@@ -135,3 +135,5 @@ export async function walletCallbacks(t, { reference, goFixture, instrument }) {
     assert.equal(replay.error.code, "UNAUTHORIZED_INVALID_OR_EXPIRED_NONCE");
   }
 }
+
+export { domain, signingText };

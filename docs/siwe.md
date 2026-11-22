@@ -34,7 +34,17 @@ These paths are relative to the authentication mount. When verification receives
 
 Each EOA chain association has its own account record. The first successful signature for an address creates a local user. Further signatures for that address on permitted chains return the same user. A closed registration policy allows existing wallets to sign in. The server checks account bans before issuing the session. Unlinking a chain removes that association. A signer who still has another association for the same address can authenticate again on any allowed chain.
 
-New wallet accounts receive an unverified placeholder email at `siwe.placeholder.invalid`. Set `EmailDomainName` to a dedicated non-deliverable domain to customize this namespace. Wallet ownership comes from the signature. The server ignores an optional email in the verification body. If an existing account already uses the generated placeholder, registration returns HTTP 409 and preserves its owner.
+New wallet accounts receive an unverified placeholder email at `siwe.placeholder.invalid`. Set `EmailDomainName` to a dedicated non-deliverable domain to customize this namespace. Wallet ownership comes from the signature. In the default mode the server validates an optional email in the verification body and uses the generated placeholder. If an existing account already uses the generated placeholder, registration returns HTTP 409 and preserves its owner.
+
+## Require a contact email
+
+Set `siwe.Options{Domain: "wallet.example.com", RequireEmail: true}` to require an `email` string on every `POST /siwe/verify`. The native client exposes `VerifySIWEWithEmail(ctx, message, signature, email)`. An omitted or malformed email returns HTTP 400 before spending the signed nonce. The server accepts ASCII contact addresses up to 254 bytes and lowercases them.
+
+For a new wallet, the SQL adapter tries to reserve the address for one minute. If available at commit, the new user receives it with `emailVerified: false`. A busy, expired or unavailable reservation and an already registered address produce the same successful wallet sign-in using its placeholder. Addresses matching the configured wallet placeholder format remain reserved for their own wallet. On MySQL a contact whose reservation identifier exceeds the canonical 255-byte column also uses the placeholder. Inspect `GetSession` for the stored email. Returning wallets keep their original profile, including when they sign on a new chain.
+
+The signature proves control of the wallet. Treat the email as unverified until your mailbox-verification flow succeeds. Explicit email verification confirms the address for the account named in the verification message and preserves its existing sign-in methods. When a mailbox holder signs into an unverified account through a magic link or an email sign-in code, Plain Auth retires the old wallet associations and sessions in the same transaction as the verified sign-in. The mailbox holder keeps the account’s configured user fields. The new session receives its own configured defaults. A failed session insert rolls back the promotion and leaves the proof available for retry. The signer can subsequently register an independent wallet account. Apply the wallet-aware SQL adapter on every node that performs this passwordless promotion.
+
+Custom wallet stores enabling this mode implement `siwe.ContactStore`. Acquire the short-lived contact claim before the host profile lookup, recheck its owner and lifetime in the account-creation transaction, and release only the exact claim that was issued. Select the user by the signed wallet address and applicable chain. Look up a contact only to decide whether it is available.
 
 ## Application callbacks
 
@@ -56,4 +66,4 @@ When a custom generator is installed, the SQL adapter creates `plainauth_siwe_no
 
 Custom stores can implement `siwe.CustomNonceStore` for nonce generation, `siwe.CallbackStore` for timed consumption, and `siwe.ContractStore` to resolve a contract owner on its signed chain. Store initialization verifies the interfaces needed by the enabled callbacks.
 
-Mandatory contact-email mode and custom schema field mappings remain open. Hosts supply their own ERC-1271 and ENS services. The integration tests use local signers and resolver fixtures. [Feature checklist](parity/plugins/siwe.md)
+Custom schema field mappings remain open. Hosts supply their own ERC-1271 and ENS services. The integration tests use local signers and resolver fixtures. [Feature checklist](parity/plugins/siwe.md)

@@ -18,8 +18,17 @@ func (c *Client) SIWENonce(ctx context.Context) (string, error) {
 
 // VerifySIWE submits the exact bytes authorized by the wallet and records the session cookie.
 func (c *Client) VerifySIWE(ctx context.Context, message, signature string) (*siwe.Result, error) {
+	return c.verifyWallet(ctx, map[string]string{"message": message, "signature": signature})
+}
+
+// VerifySIWEWithEmail supplies an unverified contact address alongside a signed wallet proof.
+func (c *Client) VerifySIWEWithEmail(ctx context.Context, message, signature, email string) (*siwe.Result, error) {
+	return c.verifyWallet(ctx, map[string]string{"message": message, "signature": signature, "email": email})
+}
+
+func (c *Client) verifyWallet(ctx context.Context, body map[string]string) (*siwe.Result, error) {
 	var result siwe.Result
-	if err := c.Do(ctx, http.MethodPost, "/siwe/verify", map[string]string{"message": message, "signature": signature}, &result); err != nil {
+	if err := c.Do(ctx, http.MethodPost, "/siwe/verify", body, &result); err != nil {
 		return nil, err
 	}
 	return &result, nil
