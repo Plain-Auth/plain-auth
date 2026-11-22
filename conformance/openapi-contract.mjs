@@ -60,3 +60,59 @@ export async function compareOpenAPI(t, goFixture) {
   assert.deepEqual(signup.properties.phoneNumber.enum,[null,""]);
 
 }
+
+export async function compareProfileFieldSchemas(t, reference, goFixture) {
+  const { userFields } = await import("./user-fields.mjs");
+  const hosts = [
+    await reference(t, [openAPI()], { basePath: "/identity", user: { additionalFields: userFields } }),
+    await goFixture(t, [], { CONFORMANCE_OPENAPI: "1", CONFORMANCE_USER_FIELDS: "1" }),
+  ];
+  for (const host of hosts) {
+    const schemaReply = await host.send(new Request(host.baseURL + "/identity/open-api/generate-schema"));
+    assert.equal(schemaReply.status, 200);
+    const doc = await schemaReply.json();
+    const user = doc.components.schemas.User;
+    assert.ok(user.required.includes("locale"));
+    assert.equal(user.properties.accountClass.readOnly, true);
+    for (const path of ["/sign-up/email", "/update-user"]) {
+      const body = doc.paths[path].post.requestBody.content["application/json"].schema;
+      for (const key of ["locale", "count", "flag", "privateNote"]) {
+        assert.ok(Object.hasOwn(body.properties, key), path + " accepts " + key);
+      }
+      for (const key of ["preferred_locale", "accountClass", "internalRisk"]) {
+        assert.ok(!Object.hasOwn(body.properties, key), path + " excludes " + key);
+      }
+      assert.equal((body.required ?? []).includes("locale"), path === "/sign-up/email");
+      assert.ok(!(body.required ?? []).includes("count"));
+    }
+    const signup = (profile) => host.send(new Request(host.baseURL + "/identity/sign-up/email", {
+      method: "POST",
+      headers: {"Content-Type": "application/json", Origin: host.baseURL},
+      body: JSON.stringify({name: "Profile", email: "schema@example.test", password: "local-example-password", ...profile}),
+    }));
+    assert.equal((await signup({})).status, 400);
+    const created = await signup({locale: "fr", privateNote: "only a fixture"});
+    assert.equal(created.status, 200);
+    const { user: saved } = await created.json();
+    assert.equal(saved.locale, "fr");
+    assert.equal(saved.count, 4);
+    assert.equal(saved.accountClass, "standard");
+    assert.equal(Object.hasOwn(saved, "privateNote"), false);
+    assert.equal(Object.hasOwn(saved, "internalRisk"), false);
+    const cookie = created.headers.getSetCookie().map(value => value.split(";")[0]).join("; ");
+    assert.ok(cookie);
+    const patched = await host.send(new Request(host.baseURL + "/identity/update-user", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Origin: host.baseURL, Cookie: cookie },
+      body: JSON.stringify({ count: 0, flag: false, privateNote: "changed" }),
+    }));
+    assert.equal(patched.status, 200);
+    const session = await host.send(new Request(host.baseURL + "/identity/get-session", { headers: { Cookie: cookie } }));
+    assert.equal(session.status, 200);
+    const { user: updated } = await session.json();
+    assert.equal(updated.locale, "fr");
+    assert.equal(updated.count, 0);
+    assert.equal(updated.flag, false);
+    assert.equal(Object.hasOwn(updated, "privateNote"), false);
+  }
+}

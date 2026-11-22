@@ -18,6 +18,8 @@
     - [x] Serve the mounted versioned JSON document and match required fields for core and username operations ([test](../../../conformance/openapi-contract.mjs#L48))
     - [x] Expose the actual response fields, cookie name, optional bearer scheme and custom operation metadata ([test](../../../plugins/openapi/openapi_test.go#L76))
     - [x] Resolve every local schema reference and suppress unavailable routes for a configured SQL-backed instance ([test](../../../plugins/openapi/profile_test.go#L136))
+    - [x] Describe the public user model and writable registration fields across owner updates, administrative creation and first OTP sign-in ([test](../../../plugins/openapi/user_fields_test.go#L21))
+    - [x] Compare both live schema endpoints and verify required signup inputs, partial profile updates and hidden response fields ([test](../../../conformance/openapi-contract.mjs#L64))
   - [ ] `GET /reference (configurable)`
     - [x] Filter a local interactive reference in headless Chrome under its nonce policy ([test](../../../plugins/openapi/openapi_test.go#L231))
   - [ ] `OpenAPIOptions`

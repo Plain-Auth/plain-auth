@@ -33,6 +33,12 @@ With enterprise OIDC installed, the reference describes registration, list, look
 
 When enterprise DNS verification is enabled, both management operations require a JSON body containing `providerId` and a direct session belonging to the personal directory creator or a current organization owner or administrator. Requesting a challenge returns HTTP 201 with a `domainVerificationToken` string. Successful verification returns HTTP 204 with an empty body. [Enterprise DNS verification](sso.md#verify-directory-domains-with-dns)
 
+## Configured profile fields
+
+The public `User` schema lists the logical names of returned fields. Server-owned values are read-only. A hidden field that accepts input appears as write-only in the request schema. Physical column names, private defaults and host-only hidden fields stay private.
+
+Email signup requires each writable field marked `Required` that has no default. Owner updates accept partial changes. For administrative creation the same registration fields belong in `data`. Email OTP sign-in and phone verification describe these inputs only when they can register a new account. Returning users can sign in with their proof alone. A field named `otp` or `code` keeps its credential meaning on its verification route. Use JSON to supply integer, boolean or null values. [Configure profile fields](user-fields.md)
+
 ## Custom operations
 
 Attach JSON OpenAPI operation metadata to a `plainauth.Endpoint`. It can declare `parameters`, `requestBody`, `responses`, `security`, tags and an operation ID. Supply a unique operation ID and valid OpenAPI metadata. Root-relative `$ref` values may name public models included in the document. These declarations describe the handler. The handler implements validation and authorization. The generated success response uses `Endpoint.SuccessStatus`, which defaults to 200. A 204 response has no content schema. Explicit `responses` metadata replaces the generated response map.

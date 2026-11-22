@@ -22,15 +22,35 @@ type HTTPRoute struct {
 	OpenAPI       json.RawMessage
 }
 
-// HTTPSessionField describes only a configured public input or output.
-type HTTPSessionField struct {
+// HTTPField describes the public input and output permissions of a configured scalar.
+type HTTPField struct {
 	Type                         SessionFieldType
 	Required, Writable, Returned bool
+}
+
+// HTTPSessionField describes a configured session field.
+type HTTPSessionField = HTTPField
+
+func describeFields(fields map[string]SessionField) map[string]HTTPField {
+	if len(fields) == 0 {
+		return nil
+	}
+	out := make(map[string]HTTPField)
+	for name, field := range fields {
+		if !field.Hidden || !field.ServerOnly {
+			out[name] = HTTPField{Type: field.Type, Required: field.Required, Writable: !field.ServerOnly, Returned: !field.Hidden}
+		}
+	}
+	return out
 }
 
 // HTTPDescription describes public settings used to document the handler.
 type HTTPDescription struct {
 	SessionFields map[string]HTTPSessionField
+	UserFields    map[string]HTTPField
+	// RequiredUserInputs lists writable fields that have no registration default.
+	RequiredUserInputs                      []string
+	EmailOTPRegistration, PhoneRegistration bool
 
 	ServerURL, SessionCookie string
 	// SSOStateCookie is the browser binding cookie for installed enterprise OIDC callbacks.
@@ -52,14 +72,16 @@ func (a *Auth) DescribeHTTP() HTTPDescription {
 	d := HTTPDescription{ServerURL: strings.TrimRight(o.BaseURL, "/") + o.BasePath, SessionCookie: a.cookieName(),
 		MinPassword: o.MinPasswordLength, MaxPassword: o.MaxPasswordLength, CustomSession: a.sessionResponse != nil,
 		DisplayUsername: a.username != nil && !a.username.DisableDisplay}
-	if len(o.SessionAdditionalFields) > 0 {
-		d.SessionFields = make(map[string]HTTPSessionField)
-		for name, field := range o.SessionAdditionalFields {
-			if !field.Hidden || !field.ServerOnly {
-				d.SessionFields[name] = HTTPSessionField{Type: field.Type, Required: field.Required, Writable: !field.ServerOnly, Returned: !field.Hidden}
-			}
+	d.SessionFields = describeFields(o.SessionAdditionalFields)
+	d.UserFields = describeFields(o.UserAdditionalFields)
+	for name, field := range o.UserAdditionalFields {
+		if field.Required && !field.ServerOnly && field.Default == nil {
+			d.RequiredUserInputs = append(d.RequiredUserInputs, name)
 		}
 	}
+	slices.Sort(d.RequiredUserInputs)
+	d.EmailOTPRegistration = a.emailOTP != nil && !a.emailOTP.DisableSignUp
+	d.PhoneRegistration = a.phoneNumber != nil && a.phoneNumber.SignUpOnVerification != nil && !o.DisableSignUp
 	if a.HasPlugin("sso") {
 		d.SSOStateCookie = a.prefixedCookieName("sso_state")
 		if ep, ok := a.plugins[endpointKey{http.MethodGet, "/sso/saml2/sp/slo/:providerId"}]; ok && ep.pluginID == "sso" {

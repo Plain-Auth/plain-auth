@@ -5756,6 +5756,16 @@
       "label": "Resolve every local schema reference and suppress unavailable routes for a configured SQL-backed instance",
       "test": "plugins/openapi/profile_test.go",
       "marker": "unresolved schema reference"
+    },
+    {
+      "label": "Describe the public user model and writable registration fields across owner updates, administrative creation and first OTP sign-in",
+      "test": "plugins/openapi/user_fields_test.go",
+      "marker": "func TestProfileFieldContracts("
+    },
+    {
+      "label": "Compare both live schema endpoints and verify required signup inputs, partial profile updates and hidden response fields",
+      "test": "conformance/openapi-contract.mjs",
+      "marker": "export async function compareProfileFieldSchemas("
     }
   ],
   "plugin/open-api/GET /reference (configurable)": [

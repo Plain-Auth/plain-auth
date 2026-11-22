@@ -1657,3 +1657,8 @@ test("administrative creation persists public and protected profile fields under
   const { adminFields } = await import("./admin-fields.mjs");
   await adminFields(t, { goFixture, reference, instrument });
 });
+
+test("OpenAPI describes configured writable profile fields and their live registration requirements", async (t) => {
+  const { compareProfileFieldSchemas } = await import("./openapi-contract.mjs");
+  await compareProfileFieldSchemas(t, reference, goFixture);
+});

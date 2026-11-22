@@ -2,6 +2,7 @@ package openapi
 
 import (
 	"encoding/json"
+	"math"
 	"reflect"
 	"slices"
 	"strings"
@@ -82,20 +83,8 @@ func models(a *plainauth.Auth, info plainauth.HTTPDescription) object {
 	session := modelSchema(reflect.TypeFor[plainauth.Session]())
 	userFields := user["properties"].(object)
 	sessionFields := session["properties"].(object)
-	var requiredFields []string
-	for name, f := range info.SessionFields {
-		if f.Returned {
-			sessionFields[name] = sessionFieldSchema(f)
-			if f.Required {
-				requiredFields = append(requiredFields, name)
-			}
-		}
-	}
-	if len(requiredFields) != 0 {
-		slices.Sort(requiredFields)
-		required := session["required"].([]string)
-		session["required"] = append(required, requiredFields...)
-	}
+	addOutputFields(session, info.SessionFields)
+	addOutputFields(user, info.UserFields)
 	for name, plugin := range map[string]string{"phoneNumber": "phone-number", "phoneNumberVerified": "phone-number", "username": "username", "displayUsername": "username", "twoFactorEnabled": "two-factor", "role": "admin", "banned": "admin", "banExpires": "admin", "banReason": "admin", "isAnonymous": "anonymous", "lastLoginMethod": "last-login-method"} {
 		if !a.HasPlugin(plugin) || name == "displayUsername" && !info.DisplayUsername {
 			delete(userFields, name)
@@ -135,13 +124,39 @@ func models(a *plainauth.Auth, info plainauth.HTTPDescription) object {
 	return m
 }
 
-func sessionFieldSchema(f plainauth.HTTPSessionField) object {
-	t := string(f.Type)
-	if f.Type == plainauth.FieldNumber {
+func addOutputFields(schema object, fields map[string]plainauth.HTTPField) {
+	properties := schema["properties"].(object)
+	var required []string
+	for name, field := range fields {
+		if !field.Returned {
+			continue
+		}
+		property := scalarFieldSchema(field)
+		if !field.Writable {
+			property["readOnly"] = true
+		}
+		properties[name] = property
+		if field.Required {
+			required = append(required, name)
+		}
+	}
+	if len(required) != 0 {
+		slices.Sort(required)
+		schema["required"] = append(schema["required"].([]string), required...)
+	}
+}
+
+func scalarFieldSchema(field plainauth.HTTPField) object {
+	t := string(field.Type)
+	schema := object{}
+	if field.Type == plainauth.FieldNumber {
 		t = "integer"
+		schema["minimum"], schema["maximum"] = math.MinInt32, math.MaxInt32
 	}
-	if !f.Required {
-		return object{"type": []string{t, "null"}}
+	if field.Required {
+		schema["type"] = t
+	} else {
+		schema["type"] = []string{t, "null"}
 	}
-	return object{"type": t}
+	return schema
 }

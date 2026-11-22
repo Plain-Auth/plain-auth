@@ -5,8 +5,10 @@ import (
 	_ "embed"
 	"encoding/json"
 	"errors"
+	"maps"
 	"net/http"
 	"reflect"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -125,6 +127,10 @@ func publicResponse(route plainauth.HTTPRoute, info plainauth.HTTPDescription, f
 		return modelSchema(reflect.TypeFor[plainauth.RefreshTokenResult]())
 	case "/account-info":
 		return modelSchema(reflect.TypeFor[plainauth.AccountInfoResult]())
+	case "/sign-in/email-otp":
+		return responseObject(object{"user": modelRef("User"), "token": object{"type": "string"}}, "token", "user")
+	case "/admin/create-user":
+		return responseObject(object{"user": modelRef("User")}, "user")
 	case "/admin/get-user", "/admin/update-user":
 		return modelRef("User")
 	case "/admin/list-users":
@@ -200,6 +206,72 @@ func keepFields(schema object, names ...string) {
 	}
 }
 
+type userInputMode int
+
+const (
+	partialUpdate userInputMode = iota
+	createUser
+	createOrSignIn
+)
+
+// addUserInputs extends a request without shadowing credentials such as an OTP code.
+// For a combined sign-in or registration route, the existing account needs only its proof.
+func addUserInputs(schema object, info plainauth.HTTPDescription, mode userInputMode) {
+	properties, _ := schema["properties"].(object)
+	if properties == nil {
+		properties = object{}
+		schema["properties"] = properties
+	}
+	for name, field := range info.UserFields {
+		if !field.Writable || properties[name] != nil {
+			continue
+		}
+		property := scalarFieldSchema(field)
+		if !field.Returned {
+			property["writeOnly"] = true
+		}
+		if mode == createOrSignIn {
+			property["description"] = "Applied only when creating a user."
+			if slices.Contains(info.RequiredUserInputs, name) {
+				property["description"] = "Required when creating a user."
+			}
+		}
+		properties[name] = property
+	}
+	if mode == createUser && len(info.RequiredUserInputs) > 0 {
+		required, _ := schema["required"].([]any)
+		for _, name := range info.RequiredUserInputs {
+			required = append(required, name)
+		}
+		schema["required"] = required
+	}
+}
+
+// Form decoding preserves text. JSON is the only signup encoding that can supply
+// a required boolean or integer without a default.
+func signupFormSchema(schema object, info plainauth.HTTPDescription) object {
+	form := maps.Clone(schema)
+	properties := maps.Clone(schema["properties"].(object))
+	form["properties"] = properties
+	properties["rememberMe"] = false
+	for name, field := range info.UserFields {
+		if !field.Writable {
+			continue
+		}
+		if field.Type != plainauth.FieldString {
+			if slices.Contains(info.RequiredUserInputs, name) {
+				return nil
+			}
+			properties[name] = false
+			continue
+		}
+		property := maps.Clone(properties[name].(object))
+		property["type"] = "string"
+		properties[name] = property
+	}
+	return form
+}
+
 func adjustRequest(op object, r plainauth.HTTPRoute, info plainauth.HTTPDescription, a *plainauth.Auth) {
 	if r.Plugin == "sso" {
 		describeSSORequest(op, r, info)
@@ -210,7 +282,7 @@ func adjustRequest(op object, r plainauth.HTTPRoute, info plainauth.HTTPDescript
 		fields := object{}
 		for name, f := range info.SessionFields {
 			if f.Writable {
-				fields[name] = sessionFieldSchema(f)
+				fields[name] = scalarFieldSchema(f)
 			}
 		}
 		op["requestBody"] = object{"required": true, "content": content("application/json", responseObject(fields))}
@@ -297,9 +369,29 @@ func adjustRequest(op object, r plainauth.HTTPRoute, info plainauth.HTTPDescript
 				fields["displayUsername"] = userType
 			}
 		}
+		mode := partialUpdate
+		if r.Path == "/sign-up/email" {
+			mode = createUser
+		}
+		addUserInputs(schema, info, mode)
+	case "/admin/create-user":
+		if len(info.UserFields) != 0 {
+			data := fields["data"].(object)
+			addUserInputs(data, info, createUser)
+			if len(info.RequiredUserInputs) != 0 {
+				schema["required"] = append(schema["required"].([]any), "data")
+			}
+		}
+	case "/sign-in/email-otp":
+		if info.EmailOTPRegistration {
+			addUserInputs(schema, info, createOrSignIn)
+		}
 	case "/phone-number/verify":
 		fields["updatePhoneNumber"] = object{"type": "boolean", "description": "Link this number to the account in a direct owner session."}
 		fields["code"] = object{"type": "string", "writeOnly": true}
+		if info.PhoneRegistration {
+			addUserInputs(schema, info, createOrSignIn)
+		}
 	case "/sign-in/phone-number":
 		fields["password"] = object{"type": "string", "format": "password", "writeOnly": true, "maxLength": info.MaxPassword}
 	case "/phone-number/reset-password":
@@ -329,7 +421,13 @@ func adjustRequest(op object, r plainauth.HTTPRoute, info plainauth.HTTPDescript
 		}
 	}
 	switch r.Path {
-	case "/sign-up/email", "/sign-in/email", "/device/code", "/device/token":
+	case "/sign-up/email":
+		if form := signupFormSchema(schema, info); form != nil {
+			media["application/x-www-form-urlencoded"] = object{"schema": form}
+		} else {
+			delete(media, "application/x-www-form-urlencoded")
+		}
+	case "/sign-in/email", "/device/code", "/device/token":
 		media["application/x-www-form-urlencoded"] = jsonMedia
 	case "/callback/:id":
 		delete(media, "application/json")
