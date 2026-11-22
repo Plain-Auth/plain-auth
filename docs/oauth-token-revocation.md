@@ -26,7 +26,7 @@ A successful request returns HTTP 200 with an empty body. The same response cove
 
 JWT recognition uses the configured issuer and signing keys. Every audience must be the issuer’s UserInfo endpoint or a registered resource. Disabling a resource preserves previously issued tokens. Deleting the resource makes tokens naming it inactive. A session JWT without an OAuth client claim is outside this flow.
 
-Clients should retry after a transient server or transport error. A malformed request returns `invalid_request`. Invalid credentials return `invalid_client`. HTTP Basic authentication failures include a 401 challenge. A client registered with a public key can sign a fresh assertion for this endpoint. Introspection returns an inactive response for revoked machine access tokens and refresh tokens. [Refresh token introspection](machine-tokens.md#inspect-a-refresh-token) · [Signed client assertions](oauth-client-assertions.md) · [Machine access tokens](machine-tokens.md) · [OAuth checklist](parity/plugins/oauth-provider.md)
+Clients should retry after a transient server or transport error. A malformed request returns `invalid_request`. Invalid credentials return `invalid_client`. HTTP Basic authentication failures include a 401 challenge. A client registered with a public key can sign a fresh assertion for this endpoint. Introspection returns an inactive response for revoked opaque access tokens and refresh tokens. [Refresh token introspection](machine-tokens.md#inspect-a-refresh-token) · [Signed client assertions](oauth-client-assertions.md) · [Machine access tokens](machine-tokens.md) · [OAuth checklist](parity/plugins/oauth-provider.md)
 
 ## When a user session ends
 

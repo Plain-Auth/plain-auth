@@ -102,14 +102,20 @@ func TestOAuthMachineIntrospection(t *testing.T) {
 			inactive(clientID, "value")
 			call(strings.ToLower(clientID), "token-value", 401)
 			call(clientID, "token-fail", 500)
+			// Internal grant references never become claims. A stored key binding
+			// does change token_type, and all explicit audiences must exist.
 			for _, binding := range []struct{ column, value string }{
-				{"authorizationCodeId", "code"}, {"referenceId", "tenant"}, {"resources", `["urn:reports"]`},
-				{"requestedUserInfoClaims", `["email"]`}, {"confirmation", `{"jkt":"test"}`},
+				{"authorizationCodeId", "code"}, {"referenceId", "tenant"}, {"requestedUserInfoClaims", `["email"]`},
 			} {
 				write(`UPDATE "oauthAccessToken" SET "`+binding.column+`"=? WHERE "id"='issued'`, binding.value)
-				inactive(clientID, "token-value")
+				if v := call(clientID, "token-value", 200); !reflect.DeepEqual(v, want) {
+					t.Fatal("internal grant fields became claims", v)
+				}
 				write(`UPDATE "oauthAccessToken" SET "` + binding.column + `"=NULL WHERE "id"='issued'`)
 			}
+			write(`UPDATE "oauthAccessToken" SET "resources"=? WHERE "id"='issued'`, `["urn:missing"]`)
+			inactive(clientID, "token-value")
+			write(`UPDATE "oauthAccessToken" SET "resources"=NULL WHERE "id"='issued'`)
 			write(`UPDATE "oauthAccessToken" SET "expiresAt"=? WHERE "id"='issued'`, s.date(now))
 			inactive(clientID, "token-value")
 			write(`UPDATE "oauthAccessToken" SET "expiresAt"=? WHERE "id"='issued'`, s.date(now.Add(time.Hour)))

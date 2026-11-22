@@ -47,9 +47,12 @@
     - [x] Inspect a machine token issued independently, verify its exact claims, and report it inactive after revocation ([test](../../../conformance/oauth-introspection.mjs#L32))
     - [x] Read credentials, ownership and token state consistently across rotation, disablement, deletion and revocation on three SQL engines ([test](../../../adapters/sqlstore/oauth_introspection_test.go#L97))
     - [x] Authenticate issuance, introspection and revocation with independently signed assertions and reject replay across issuers ([test](../../../conformance/oauth-client-assertions.mjs#L5))
-    - [x] Inspect a refresh token issued by an independent authorization-code exchange and compare expiry, issuer, binding, subject and session across runtimes ([test](../../../conformance/oauth-refresh-introspection.mjs#L4))
-    - [x] Apply offline and session-bound grants across session expiry, deletion and revocation while preserving the issuing application’s ownership ([test](../../../conformance/oauth-refresh-introspection.mjs#L70))
+    - [x] Inspect a refresh token issued by an independent authorization-code exchange and compare expiry, issuer, binding, subject and session across runtimes ([test](../../../conformance/oauth-refresh-introspection.mjs#L6))
+    - [x] Apply offline and session-bound grants across session expiry, deletion and revocation while preserving the issuing application’s ownership ([test](../../../conformance/oauth-refresh-introspection.mjs#L74))
     - [x] Check opaque access-token precedence, custom refresh prefixes, decoder and digest failures, expiry and concurrent credential changes on three SQL engines ([test](../../../adapters/sqlstore/oauth_refresh_introspection_test.go#L20))
+    - [x] Inspect an independently issued delegated access token as the issuer and as a linked resource server with the issuing sector’s pairwise subject ([test](../../../conformance/oauth-opaque-introspection.mjs#L26))
+    - [x] Reject deleted audiences and unlinked callers while honoring disabled resources, sender binding and ordered custom claims ([test](../../../conformance/oauth-opaque-introspection.mjs#L24))
+    - [x] Keep the grant and its audience authorization in one snapshot during concurrent changes on three database engines ([test](../../../adapters/sqlstore/oauth_opaque_introspection_test.go#L13))
   - [ ] `POST /oauth2/revoke`
     - [x] Revoke an independently issued opaque token and confirm that the issuing server reports it inactive ([test](../../../conformance/oauth-revocation.mjs#L50))
     - [x] Revoke refresh tokens transactionally and isolate a replayed family by client and user during simultaneous requests on three SQL engines ([test](../../../adapters/sqlstore/oauth_revocation_test.go#L153))
@@ -511,10 +514,11 @@
     - [ ] `profile`
     - [ ] `email`
   - [ ] Pairwise subject identifiers
+    - [x] Inspect an independently issued delegated access token as the issuer and as a linked resource server with the issuing sector’s pairwise subject ([test](../../../conformance/oauth-opaque-introspection.mjs#L26))
   - [ ] RP-initiated logout
   - [ ] Back-channel logout
     - [x] Revoke session-bound stored grants atomically across bulk deletion, rollback and concurrent issuance on three SQL engines ([test](../../../adapters/sqlstore/session_deletion_test.go#L12))
-    - [x] Remove an issuing browser session through the HTTP API and preserve only its offline refresh grant ([test](../../../conformance/oauth-refresh-introspection.mjs#L88))
+    - [x] Remove an issuing browser session through the HTTP API and preserve only its offline refresh grant ([test](../../../conformance/oauth-refresh-introspection.mjs#L92))
 
 ## OAuth Provider reference
 
@@ -537,8 +541,9 @@
       - [x] Issue opaque bearer tokens with Basic or form authentication and verify their scope, expiry, introspection and revocation at an independent server ([test](../../../conformance/oauth-machine-tokens.mjs#L61))
     - [ ] `POST /oauth2/introspect`
       - [x] Inspect a machine token issued independently, verify its exact claims, and report it inactive after revocation ([test](../../../conformance/oauth-introspection.mjs#L32))
-      - [x] Inspect a refresh token issued by an independent authorization-code exchange and compare expiry, issuer, binding, subject and session across runtimes ([test](../../../conformance/oauth-refresh-introspection.mjs#L4))
-      - [x] Apply offline and session-bound grants across session expiry, deletion and revocation while preserving the issuing application’s ownership ([test](../../../conformance/oauth-refresh-introspection.mjs#L70))
+      - [x] Inspect a refresh token issued by an independent authorization-code exchange and compare expiry, issuer, binding, subject and session across runtimes ([test](../../../conformance/oauth-refresh-introspection.mjs#L6))
+      - [x] Apply offline and session-bound grants across session expiry, deletion and revocation while preserving the issuing application’s ownership ([test](../../../conformance/oauth-refresh-introspection.mjs#L74))
+      - [x] Inspect an independently issued delegated access token as the issuer and as a linked resource server with the issuing sector’s pairwise subject ([test](../../../conformance/oauth-opaque-introspection.mjs#L26))
     - [ ] `POST /oauth2/revoke`
       - [x] Accept registered shared-secret and public clients while preserving token ownership ([test](../../../conformance/oauth-revocation.mjs#L42))
     - [ ] `GET / POST /oauth2/userinfo`
@@ -600,16 +605,16 @@
   - [ ] Rate limits
     - [ ] `token`
     - [ ] `authorize`
-    - [x] `introspect` ([test](../../../adapters/sqlstore/oauth_introspection_test.go#L136))
-      - [x] Enforce the default introspection limit, a route override or the host's global rule ([test](../../../adapters/sqlstore/oauth_introspection_test.go#L136))
+    - [x] `introspect` ([test](../../../adapters/sqlstore/oauth_introspection_test.go#L142))
+      - [x] Enforce the default introspection limit, a route override or the host's global rule ([test](../../../adapters/sqlstore/oauth_introspection_test.go#L142))
       - [x] Apply a 100-request, one-minute default to the form endpoint ([test](../../../plugins/oauthprovider/machine_token_test.go#L57))
-    - [x] `revoke` ([test](../../../adapters/sqlstore/oauth_introspection_test.go#L140))
-      - [x] Enforce 30 revocation requests per minute per IP, a host override or the global fallback ([test](../../../adapters/sqlstore/oauth_introspection_test.go#L140))
+    - [x] `revoke` ([test](../../../adapters/sqlstore/oauth_introspection_test.go#L146))
+      - [x] Enforce 30 revocation requests per minute per IP, a host override or the global fallback ([test](../../../adapters/sqlstore/oauth_introspection_test.go#L146))
       - [x] Expose POST, form media type and the default one-minute limit on the revocation route ([test](../../../plugins/oauthprovider/machine_token_test.go#L61))
     - [x] `register` ([test](../../../adapters/sqlstore/oauth_registration_test.go#L170))
       - [x] Enforce the five-per-minute route limit and honor a host override ([test](../../../adapters/sqlstore/oauth_registration_test.go#L170))
-    - [x] `rotateClientKeys` ([test](../../../adapters/sqlstore/oauth_introspection_test.go#L144))
-      - [x] Apply the default five-request limit, a custom limit and the host global limit through the HTTP endpoint ([test](../../../adapters/sqlstore/oauth_introspection_test.go#L144))
+    - [x] `rotateClientKeys` ([test](../../../adapters/sqlstore/oauth_introspection_test.go#L150))
+      - [x] Apply the default five-request limit, a custom limit and the host global limit through the HTTP endpoint ([test](../../../adapters/sqlstore/oauth_introspection_test.go#L150))
     - [ ] `userinfo`
   - [ ] Provider extensions
     - [ ] `authorization`
@@ -656,8 +661,11 @@
     - [ ] Claims
   - [ ] Introspection
     - [x] Authenticate the issuing application and hide unbound machine token details from another registered client ([test](../../../conformance/oauth-introspection.mjs#L48))
-    - [x] Inspect a refresh token issued by an independent authorization-code exchange and compare expiry, issuer, binding, subject and session across runtimes ([test](../../../conformance/oauth-refresh-introspection.mjs#L4))
-    - [x] Apply offline and session-bound grants across session expiry, deletion and revocation while preserving the issuing application’s ownership ([test](../../../conformance/oauth-refresh-introspection.mjs#L70))
+    - [x] Inspect a refresh token issued by an independent authorization-code exchange and compare expiry, issuer, binding, subject and session across runtimes ([test](../../../conformance/oauth-refresh-introspection.mjs#L6))
+    - [x] Apply offline and session-bound grants across session expiry, deletion and revocation while preserving the issuing application’s ownership ([test](../../../conformance/oauth-refresh-introspection.mjs#L74))
+    - [x] Inspect an independently issued delegated access token as the issuer and as a linked resource server with the issuing sector’s pairwise subject ([test](../../../conformance/oauth-opaque-introspection.mjs#L26))
+    - [x] Reject deleted audiences and unlinked callers while honoring disabled resources, sender binding and ordered custom claims ([test](../../../conformance/oauth-opaque-introspection.mjs#L24))
+    - [x] Keep the grant and its audience authorization in one snapshot during concurrent changes on three database engines ([test](../../../adapters/sqlstore/oauth_opaque_introspection_test.go#L13))
   - [ ] Scopes and permissions
   - [x] Protected resource metadata ([test](../../../conformance/resource-discovery.mjs#L7))
     - [x] Publish a path-specific HTTPS document with local issuer defaults, explicit issuers, filtered scopes and empty capabilities ([test](../../../conformance/resource-discovery.mjs#L7))
@@ -763,7 +771,7 @@
     - [x] `assertionMaxLifetime` ([test](../../../plugins/oauthprovider/client_assertion_test.go#L25))
       - [x] Apply the configured lifetime and skew to expiry, not-before and issued-at claims, including exact boundaries ([test](../../../plugins/oauthprovider/client_assertion_test.go#L25))
   - [ ] Refresh tokens
-    - [x] Apply offline and session-bound grants across session expiry, deletion and revocation while preserving the issuing application’s ownership ([test](../../../conformance/oauth-refresh-introspection.mjs#L70))
+    - [x] Apply offline and session-bound grants across session expiry, deletion and revocation while preserving the issuing application’s ownership ([test](../../../conformance/oauth-refresh-introspection.mjs#L74))
   - [ ] PKCE
   - [ ] DPoP
   - [ ] Custom claims

@@ -12143,6 +12143,21 @@
       "label": "Check opaque access-token precedence, custom refresh prefixes, decoder and digest failures, expiry and concurrent credential changes on three SQL engines",
       "test": "adapters/sqlstore/oauth_refresh_introspection_test.go",
       "marker": "func TestOAuthRefreshIntrospection("
+    },
+    {
+      "label": "Inspect an independently issued delegated access token as the issuer and as a linked resource server with the issuing sector’s pairwise subject",
+      "test": "conformance/oauth-opaque-introspection.mjs",
+      "marker": "assert.deepEqual(await check(resourceCredentials), bound);"
+    },
+    {
+      "label": "Reject deleted audiences and unlinked callers while honoring disabled resources, sender binding and ordered custom claims",
+      "test": "conformance/oauth-opaque-introspection.mjs",
+      "marker": "const bound = { ...details,"
+    },
+    {
+      "label": "Keep the grant and its audience authorization in one snapshot during concurrent changes on three database engines",
+      "test": "adapters/sqlstore/oauth_opaque_introspection_test.go",
+      "marker": "func TestOpaqueIntrospectionResourceSnapshot("
     }
   ],
   "docs/content/docs/plugins/oauth-provider/reference.mdx#L322/`POST /oauth2/introspect`": [
@@ -12160,6 +12175,11 @@
       "label": "Apply offline and session-bound grants across session expiry, deletion and revocation while preserving the issuing application’s ownership",
       "test": "conformance/oauth-refresh-introspection.mjs",
       "marker": "const detached = { ...expected };"
+    },
+    {
+      "label": "Inspect an independently issued delegated access token as the issuer and as a linked resource server with the issuing sector’s pairwise subject",
+      "test": "conformance/oauth-opaque-introspection.mjs",
+      "marker": "assert.deepEqual(await check(resourceCredentials), bound);"
     }
   ],
   "docs/content/docs/plugins/oauth-provider/resource-server.mdx#L185": [
@@ -12177,6 +12197,21 @@
       "label": "Apply offline and session-bound grants across session expiry, deletion and revocation while preserving the issuing application’s ownership",
       "test": "conformance/oauth-refresh-introspection.mjs",
       "marker": "const detached = { ...expected };"
+    },
+    {
+      "label": "Inspect an independently issued delegated access token as the issuer and as a linked resource server with the issuing sector’s pairwise subject",
+      "test": "conformance/oauth-opaque-introspection.mjs",
+      "marker": "assert.deepEqual(await check(resourceCredentials), bound);"
+    },
+    {
+      "label": "Reject deleted audiences and unlinked callers while honoring disabled resources, sender binding and ordered custom claims",
+      "test": "conformance/oauth-opaque-introspection.mjs",
+      "marker": "const bound = { ...details,"
+    },
+    {
+      "label": "Keep the grant and its audience authorization in one snapshot during concurrent changes on three database engines",
+      "test": "adapters/sqlstore/oauth_opaque_introspection_test.go",
+      "marker": "func TestOpaqueIntrospectionResourceSnapshot("
     }
   ],
   "docs/content/docs/plugins/oauth-provider/reference.mdx#L400/`introspect`": [
@@ -12482,6 +12517,13 @@
       "label": "Remove an issuing browser session through the HTTP API and preserve only its offline refresh grant",
       "test": "conformance/oauth-refresh-introspection.mjs",
       "marker": "const endSession = await server.send("
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/openid-connect.mdx#L121": [
+    {
+      "label": "Inspect an independently issued delegated access token as the issuer and as a linked resource server with the issuing sector’s pairwise subject",
+      "test": "conformance/oauth-opaque-introspection.mjs",
+      "marker": "assert.deepEqual(await check(resourceCredentials), bound);"
     }
   ]
 }

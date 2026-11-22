@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { createHash, createHmac, randomUUID } from "node:crypto";
 
+import { exerciseOpaqueGrant } from "./oauth-opaque-introspection.mjs";
+
 export async function exerciseRefreshIntrospection({ server, issuer, db, credentials }) {
   const mount = server.baseURL + "/api/auth";
   const peer = "http://issuer.localhost/api/auth";
@@ -53,6 +55,7 @@ export async function exerciseRefreshIntrospection({ server, issuer, db, credent
   const expected = { active: true, client_id: app.client_id, iss: mount, iat: Math.floor(Date.parse(row.createdAt) / 1000),
     exp: Math.floor(Date.parse(row.expiresAt) / 1000), scope: scopes.join(" "), token_type: "Bearer", sid: row.sessionId,
     sub: createHmac("sha256", "p".repeat(32)).update("reports.example.test:8443." + user).digest("base64") };
+  const inspectAccess = await exerciseOpaqueGrant({ inspect, issued, db, app, credentials, expected, mount });
   for (const hint of [{ token_type_hint: "refresh_token" }, {}, { token_type_hint: "unknown" }]) {
     assert.deepEqual(await inspect(hint), expected);
   }
@@ -67,6 +70,7 @@ export async function exerciseRefreshIntrospection({ server, issuer, db, credent
   db.prepare("UPDATE oauthRefreshToken SET confirmation=NULL WHERE id=?").run(row.id);
   const browser = db.prepare("SELECT token,expiresAt FROM session WHERE id=?").get(row.sessionId);
   db.prepare("UPDATE session SET expiresAt=? WHERE id=?").run("2020-01-01T00:00:00.000Z", row.sessionId);
+  assert.deepEqual(await inspectAccess(), { active: false });
   const detached = { ...expected };
   delete detached.sid;
   assert.deepEqual(await inspect(), detached);
@@ -88,6 +92,7 @@ export async function exerciseRefreshIntrospection({ server, issuer, db, credent
   const endSession = await server.send(new Request(mount + "/revoke-session", { method: "POST", headers: { ...headers, cookie },
     body: JSON.stringify({ token: browser.token }) }));
   assert.equal(endSession.status, 200);
+  assert.deepEqual(await inspectAccess(), { active: false });
   assert.equal(db.prepare("SELECT id FROM session WHERE id=?").get(row.sessionId), undefined);
   assert.ok(db.prepare("SELECT revoked FROM oauthRefreshToken WHERE id=?").get(narrowed).revoked);
   assert.ok(db.prepare("SELECT revoked FROM oauthAccessToken WHERE id=?").get(access).revoked);

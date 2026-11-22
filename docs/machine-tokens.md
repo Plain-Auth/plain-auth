@@ -77,7 +77,7 @@ This flow issues opaque tokens for confidential registrations using a shared sec
 
 ## Check whether a token is active
 
-A confidential application can inspect its own opaque machine tokens and refresh tokens at `POST /api/auth/oauth2/introspect`. Authenticate using the registered method. A signed client assertion can address the introspection endpoint or the issuer. For a `client_secret_post` registration, send the following request from your server.
+A confidential application can inspect its own opaque machine tokens, delegated access tokens, and refresh tokens at `POST /api/auth/oauth2/introspect`. Authenticate using the registered method. A signed client assertion can address the introspection endpoint or the issuer. For a `client_secret_post` registration, send the following request from your server.
 
 ```sh
 curl --request POST "$AUTH_URL/api/auth/oauth2/introspect" \
@@ -87,13 +87,21 @@ curl --request POST "$AUTH_URL/api/auth/oauth2/introspect" \
   --data-urlencode 'token_type_hint=access_token'
 ```
 
-An active token returns `active: true`, the issuer in `iss`, the client ID in both `client_id` and `azp`, its space-separated `scope`, `token_type: "Bearer"`, and Unix timestamps in `iat` and `exp`. Before authorizing an operation, check the active flag and the scope that operation requires. A failed introspection request provides no authorization.
+An active access token returns the issuer in `iss`, the issuing application in `client_id` and `azp`, its space-separated `scope`, and Unix timestamps in `iat` and `exp`. Before authorizing an operation, check `active`, the intended audience, the required scopes, and any sender binding in `cnf`.
 
-An unknown, expired, revoked or differently owned token returns HTTP 200 with only `{"active":false}`. This also applies to token kinds outside this endpoint's current coverage, including resource-bound access tokens and delegated user access tokens. Invalid client credentials produce an OAuth error. The optional `token_type_hint` can be omitted. The response uses `Cache-Control: no-store`.
+An unknown, expired, revoked or unauthorized token returns HTTP 200 with only `{"active":false}`. Invalid client credentials produce an OAuth error. The optional `token_type_hint` can be omitted. The response uses `Cache-Control: no-store`.
 
-With rate limiting enabled, the default is 100 introspection requests per minute per client IP. Set `Tokens.IntrospectionRateLimit` to override the limit, or supply an empty `auth.RateLimitRule` to use your host's global rule. If you customize `Tokens.HashOpaqueToken`, return the same digest each time for the same unprefixed token. A custom store implements `oauthprovider.MachineIntrospectionStore` and returns the current caller and token from one consistent read. [Cross-runtime tests](../conformance/oauth-introspection.mjs) · [SQL adapter tests](../adapters/sqlstore/oauth_introspection_test.go)
+With rate limiting enabled, the default is 100 introspection requests per minute per client IP. Set `Tokens.IntrospectionRateLimit` to override the limit, or supply an empty `auth.RateLimitRule` to use your host's global rule. If you customize `Tokens.HashOpaqueToken`, return the same digest each time for the same unprefixed token. Custom stores supporting delegated grants implement `oauthprovider.OpaqueAccessIntrospectionStore`. Return the caller registration, token, issuing registration, session, audiences, and resource links from a consistent database snapshot. Custom stores serving only machine tokens can implement `oauthprovider.MachineIntrospectionStore`. [Cross-runtime tests](../conformance/oauth-introspection.mjs) · [SQL adapter tests](../adapters/sqlstore/oauth_introspection_test.go)
 
 To end access early, submit the token to `POST /api/auth/oauth2/revoke` using the issuing application's credentials. Its next introspection returns `{"active":false}`. [Revoke a token](oauth-token-revocation.md)
+
+## Inspect a delegated token as a resource server
+
+Register your API as a confidential OAuth client, then link that client to its registered resource identifier. Submit the access token to the introspection endpoint using the API’s own client credentials. A link to any one of the token’s explicit resource audiences authorizes inspection. Every audience must still exist. The implicit UserInfo endpoint can appear in the audience but grants no other client access. A token without a resource audience is visible only to its issuing application. [Manage resources and link a client](oauth-resource-management.md)
+
+For a delegated opaque access token, `sub` identifies the user. A pairwise registration uses the issuing application’s sector even when another client inspects the token. A session-bound grant includes `sid` and becomes inactive when the session expires or ends. An unbound grant can remain active without a session. Key-bound tokens report `token_type: "DPoP"` and their confirmation key. Other tokens report `"Bearer"`. The introspection response describes the binding. Your resource server still verifies the proof accompanying each protected request.
+
+The `aud` claim is a string for one audience and an array for several. For a resource-targeted grant with the `openid` scope, the issuer also includes its UserInfo endpoint. Resource policy claims are merged in audience order, with later resources taking precedence. The issuer controls identity, audience, binding, expiry and other protocol fields. Disabling a resource preserves outstanding grants. Deleting any named resource makes the token inactive. Signed JWT introspection and host-defined claim callbacks are tracked separately. [Delegated access tests](../conformance/oauth-opaque-introspection.mjs) · [SQL consistency tests](../adapters/sqlstore/oauth_opaque_introspection_test.go)
 
 ## Inspect a refresh token
 

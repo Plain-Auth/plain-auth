@@ -72,22 +72,7 @@ func (opts Options) introspectRefresh(c auth.EndpointContext, req tokenAction, f
 	if sessionLive {
 		claims["sid"] = record.SessionID
 	}
-	if subject := record.UserID; subject != "" {
-		if record.SubjectType == "pairwise" && subject != current.ClientID {
-			subject, err = pairwiseSubject(opts.PairwiseSecret, subject, record.RedirectURIs)
-			if err != nil {
-				return nil, err
-			}
-		}
-		claims["sub"] = subject
-	}
-	if record.Confirmation != nil {
-		claims["cnf"] = record.Confirmation
-		if jkt, _ := record.Confirmation["jkt"].(string); jkt != "" {
-			claims["token_type"] = "DPoP"
-		}
-	}
-	return claims, nil
+	return opts.addTokenIdentity(claims, current.ClientID, record.UserID, record.SubjectType, record.RedirectURIs, record.Confirmation)
 }
 
 func pairwiseSubject(secret, userID string, redirects []string) (string, error) {

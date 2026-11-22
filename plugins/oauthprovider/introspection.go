@@ -3,7 +3,6 @@ package oauthprovider
 import (
 	"context"
 	"strings"
-	"time"
 	"unicode"
 
 	auth "github.com/Plain-Auth/plain-auth"
@@ -21,9 +20,9 @@ type MachineIntrospectionStore interface {
 }
 
 const introspectionOperation = `{
-  "summary":"Check the status of an opaque machine access token or refresh token",
+  "summary":"Check the status of an stored OAuth access or refresh token",
   "security":[{"clientSecretBasic":[]},{}],
-  "description":"Authenticate as the issuing application using its registered method: HTTP Basic, client_secret_post or private_key_jwt.",
+  "description":"Authenticate as the issuing application or as a resource server linked to an access token audience.",
   "requestBody":{"required":true,"content":{"application/x-www-form-urlencoded":{"schema":{
     "type":"object","required":["token"],"properties":{"token":{"type":"string"},"token_type_hint":{"type":"string"},
       "client_id":{"type":"string"},"client_secret":{"type":"string","format":"password"},"client_assertion_type":{"type":"string","enum":["urn:ietf:params:oauth:client-assertion-type:jwt-bearer"]},
@@ -31,7 +30,7 @@ const introspectionOperation = `{
   }}}},
   "responses":{"200":{"description":"Current token status","content":{"application/json":{"schema":{
     "type":"object","required":["active"],"properties":{"active":{"type":"boolean"},"iss":{"type":"string"},
-      "client_id":{"type":"string"},"azp":{"type":"string"},"sub":{"type":"string"},"sid":{"type":"string"},"cnf":{"type":"object"},"scope":{"type":"string"},
+      "client_id":{"type":"string"},"azp":{"type":"string"},"aud":{"oneOf":[{"type":"string"},{"type":"array","items":{"type":"string"}}]},"sub":{"type":"string"},"sid":{"type":"string"},"cnf":{"type":"object"},"scope":{"type":"string"},
       "token_type":{"type":"string"},"exp":{"type":"integer"},"iat":{"type":"integer"}}
   }}}},"400":{"description":"Invalid form or client credentials"},"401":{"description":"Client authentication required"},
   "415":{"description":"Unsupported request media type"}}
@@ -42,17 +41,19 @@ func (opts Options) introspect(c auth.EndpointContext) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	store, ok := c.Store().(MachineIntrospectionStore)
-	if !ok {
+	reader, ok := c.Store().(MachineClientReader)
+	store, machine := c.Store().(MachineIntrospectionStore)
+	opaque, supportsOpaque := c.Store().(OpaqueAccessIntrospectionStore)
+	if !ok || !machine && !supportsOpaque {
 		return nil, &auth.APIError{Status: 501, Code: "OAUTH_INTROSPECTION_STORE_UNAVAILABLE", Message: "The configured store does not support OAuth token introspection"}
 	}
 	ctx := c.Request.Context()
 	in := req.client
-	first, err := opts.authenticateClient(c, store, in, "/oauth2/introspect")
+	first, err := opts.authenticateClient(c, reader, in, "/oauth2/introspect")
 	if err != nil {
 		return nil, tokenEndpointError(c.ResponseHeader, req.challenge, err)
 	}
-	refreshStore, supportsRefresh := store.(RefreshIntrospectionStore)
+	refreshStore, supportsRefresh := c.Store().(RefreshIntrospectionStore)
 	if req.hint == "refresh_token" && supportsRefresh {
 		return opts.introspectRefresh(c, req, first, refreshStore)
 	}
@@ -65,8 +66,12 @@ func (opts Options) introspect(c auth.EndpointContext) (any, error) {
 	}
 	var current MachineClient
 	var record *MachineTokenRecord
+	var access *OpaqueAccessTokenRecord
+	userInfoURL := c.Auth.PublicURL() + "/oauth2/userinfo"
 	var knownAccess bool
-	if supportsRefresh {
+	if supportsOpaque {
+		current, access, knownAccess, err = opaque.InspectOpaqueAccessToken(ctx, in.id, digest, userInfoURL)
+	} else if supportsRefresh {
 		current, record, knownAccess, err = refreshStore.InspectOpaqueMachineToken(ctx, in.id, digest)
 	} else {
 		current, record, err = store.InspectMachineToken(ctx, in.id, digest)
@@ -80,14 +85,10 @@ func (opts Options) introspect(c auth.EndpointContext) (any, error) {
 	if supportsRefresh && !knownAccess && req.hint != "access_token" {
 		return opts.introspectRefresh(c, req, first, refreshStore)
 	}
-	if digest == "" || record == nil || record.StoredToken != digest || !record.ExpiresAt.After(time.Now()) {
-		return map[string]bool{"active": false}, nil
+	if record != nil {
+		access = &OpaqueAccessTokenRecord{MachineTokenRecord: *record, ClientID: in.id}
 	}
-	return map[string]any{
-		"active": true, "iss": c.Auth.OAuthIssuer(), "client_id": in.id, "azp": in.id,
-		"scope": strings.Join(record.Scopes, " "), "token_type": "Bearer",
-		"exp": record.ExpiresAt.Unix(), "iat": record.IssuedAt.Unix(),
-	}, nil
+	return opts.opaqueIntrospectionClaims(access, digest, c.Auth.OAuthIssuer(), userInfoURL)
 }
 
 type tokenAction struct {

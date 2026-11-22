@@ -1,0 +1,139 @@
+package sqlstore
+
+import (
+	"context"
+	"database/sql"
+	"encoding/json"
+	"errors"
+	"maps"
+	"slices"
+	"time"
+
+	op "github.com/Plain-Auth/plain-auth/plugins/oauthprovider"
+)
+
+var _ op.OpaqueAccessIntrospectionStore = (*Store)(nil)
+
+func (s *Store) InspectOpaqueAccessToken(ctx context.Context, callerID, digest, userInfoURL string) (op.MachineClient, *op.OpaqueAccessTokenRecord, bool, error) {
+	var options *sql.TxOptions
+	if s.dialect != "sqlite" {
+		options = &sql.TxOptions{Isolation: sql.LevelRepeatableRead, ReadOnly: true}
+	}
+	tx, err := s.db.BeginTx(ctx, options)
+	if err != nil {
+		return op.MachineClient{}, nil, false, err
+	}
+	defer tx.Rollback()
+	current, err := scanMachineClient(tx.QueryRowContext(ctx, s.bind(machineClientSelect), callerID), callerID)
+	if err != nil || digest == "" {
+		return current, nil, false, err
+	}
+	record, known, err := s.readOpaqueGrant(ctx, tx, callerID, digest, userInfoURL)
+	if err != nil {
+		return current, nil, known, err
+	}
+	return current, record, known, tx.Commit()
+}
+
+func (s *Store) readOpaqueGrant(ctx context.Context, tx *sql.Tx, callerID, digest, userInfoURL string) (*op.OpaqueAccessTokenRecord, bool, error) {
+	q := `SELECT t."clientId",t."revoked",t."createdAt",t."expiresAt",t."scopes",t."resources",t."confirmation",
+		t."userId",u."id",t."sessionId",s."expiresAt",c."id",c."subjectType",c."redirectUris",c."disabled"
+		FROM "oauthAccessToken" t LEFT JOIN "oauthClient" c ON c."clientId"=` + s.exactSQLValue(`t."clientId"`) + ` AND (c."clientDiscoveryId" IS NULL OR c."clientDiscoveryId"='')
+		LEFT JOIN "user" u ON u."id"=` + s.exactSQLValue(`t."userId"`) + `
+		LEFT JOIN "session" s ON s."id"=` + s.exactSQLValue(`t."sessionId"`) + ` AND (t."userId" IS NULL OR s."userId"=` + s.exactSQLValue(`t."userId"`) + `)
+		WHERE t."token"=` + s.exactSQLValue("?")
+	r := op.OpaqueAccessTokenRecord{}
+	var clientRow, subject, owner, user, sid sql.NullString
+	var revoked, sessionEnd sql.NullTime
+	var disabled sql.NullBool
+	var scopes, resources, confirmation, redirects []byte
+	err := tx.QueryRowContext(ctx, s.bind(q), digest).Scan(&r.ClientID, &revoked, &r.IssuedAt, &r.ExpiresAt, &scopes, &resources, &confirmation,
+		&owner, &user, &sid, &sessionEnd, &clientRow, &subject, &redirects, &disabled)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, false, nil
+	}
+	if err != nil {
+		return nil, false, err
+	}
+	now := time.Now()
+	if revoked.Valid || !clientRow.Valid || disabled.Bool || !r.ExpiresAt.After(now) || (owner.Valid && !user.Valid) || (sid.Valid && !sessionEnd.Time.After(now)) {
+		return nil, true, nil
+	}
+	r.StoredToken, r.SubjectType, r.UserID, r.SessionID, r.SessionExpiresAt = digest, subject.String, user.String, sid.String, sessionEnd.Time
+	if len(resources) > 0 && json.Unmarshal(resources, &r.Resources) != nil {
+		return nil, true, nil
+	}
+	ok, err := s.resolveAccessAudiences(ctx, tx, callerID, userInfoURL, &r)
+	if err != nil || !ok {
+		return nil, true, err
+	}
+	if err := json.Unmarshal(scopes, &r.Scopes); err != nil {
+		return nil, true, err
+	}
+	if r.SubjectType == "pairwise" && r.UserID != "" && len(redirects) > 0 {
+		if err := json.Unmarshal(redirects, &r.RedirectURIs); err != nil {
+			return nil, true, err
+		}
+	}
+	if len(confirmation) > 0 {
+		if err := json.Unmarshal(confirmation, &r.Confirmation); err != nil {
+			return nil, true, err
+		}
+	}
+	return &r, true, nil
+}
+
+func (s *Store) resolveAccessAudiences(ctx context.Context, tx *sql.Tx, callerID, userInfoURL string, r *op.OpaqueAccessTokenRecord) (bool, error) {
+	if len(r.Resources) > 64 {
+		return false, nil
+	}
+	authorized := callerID == r.ClientID
+	resources := slices.DeleteFunc(slices.Clone(r.Resources), func(id string) bool { return id == userInfoURL })
+	if len(resources) == 0 {
+		return authorized, nil
+	}
+	// Existing tokens retain disabled resources. Deletion invalidates every
+	// token naming the missing audience, even when another audience still exists.
+	found := make(map[string][]byte, len(resources))
+	list, args := s.deviceTokenParameters(resources)
+	q := `SELECT r."identifier",r."customClaims",EXISTS(SELECT 1 FROM "oauthClientResource" l WHERE l."resourceId"=` + s.exactSQLValue(`r."identifier"`) + ` AND l."clientId"=` + s.exactSQLValue("?") + `) FROM "oauthResource" r WHERE r."identifier" IN (` + list + `)`
+	rows, err := tx.QueryContext(ctx, s.bind(q), append([]any{callerID}, args...)...)
+	if err != nil {
+		return false, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id string
+		var claims []byte
+		var linked bool
+		if err := rows.Scan(&id, &claims, &linked); err != nil {
+			return false, err
+		}
+		found[id] = claims
+		authorized = authorized || linked
+	}
+	if err := rows.Err(); err != nil {
+		return false, err
+	}
+	if !authorized {
+		return false, nil
+	}
+	for _, id := range resources {
+		if _, ok := found[id]; !ok {
+			return false, nil
+		}
+	}
+	for _, id := range resources {
+		if raw := found[id]; len(raw) > 0 {
+			var claims map[string]json.RawMessage
+			if err := json.Unmarshal(raw, &claims); err != nil {
+				return false, err
+			}
+			if r.ResourceClaims == nil {
+				r.ResourceClaims = make(map[string]json.RawMessage)
+			}
+			maps.Copy(r.ResourceClaims, claims)
+		}
+	}
+	return true, nil
+}
