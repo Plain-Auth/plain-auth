@@ -63,10 +63,12 @@ func (a *Auth) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if token, ok := strings.CutPrefix(route, "/reset-password/"); ok && token != "" && !strings.ContainsAny(token, "/%") {
 		route = "/reset-password/:token"
 	}
-	if id, ok := strings.CutPrefix(route, "/sso/callback/"); ok && id != "" && !strings.ContainsAny(id, "/%:") {
-		_, exact := a.plugins[endpointKey{r.Method, route}]
-		if _, exists := a.plugins[endpointKey{r.Method, "/sso/callback/:providerId"}]; exists && !exact {
-			route = "/sso/callback/:providerId"
+	for _, prefix := range []string{"/sso/callback/", "/sso/saml2/sp/acs/"} {
+		if id, ok := strings.CutPrefix(route, prefix); ok && id != "" && !strings.ContainsAny(id, "/%:") {
+			_, exact := a.plugins[endpointKey{r.Method, route}]
+			if _, exists := a.plugins[endpointKey{r.Method, prefix + ":providerId"}]; exists && !exact {
+				route = prefix + ":providerId"
+			}
 		}
 	}
 	method, known := coreMethods[route]
@@ -91,9 +93,13 @@ func (a *Auth) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	var body wireBody
 	if r.Method != http.MethodGet {
-		if err := a.validateRequestOrigin(r, isEmailRoute(route) || route == "/sign-in/sso" || route == "/sign-in/username" || route == "/sign-in/anonymous" || route == "/sign-in/magic-link" || route == "/sign-in/email-otp" || strings.HasPrefix(route, "/email-otp/") || route == "/forget-password/email-otp"); err != nil {
-			a.writeAuthError(w, r, err)
-			return
+		// A SAML assertion consumer authenticates its cross-site POST using a
+		// signed IdP assertion and browser-bound, single-use RelayState.
+		if ep.pluginID != "sso" || route != "/sso/saml2/sp/acs/:providerId" || !ep.RawBody {
+			if err := a.validateRequestOrigin(r, isEmailRoute(route) || route == "/sign-in/sso" || route == "/sign-in/username" || route == "/sign-in/anonymous" || route == "/sign-in/magic-link" || route == "/sign-in/email-otp" || strings.HasPrefix(route, "/email-otp/") || route == "/forget-password/email-otp"); err != nil {
+				a.writeAuthError(w, r, err)
+				return
+			}
 		}
 		if ep.RawBody {
 			r.Body = http.MaxBytesReader(w, r.Body, maxBodyBytes)
@@ -136,6 +142,13 @@ func (a *Auth) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	if status == http.StatusNoContent {
 		w.WriteHeader(status)
+		return
+	}
+	if doc, ok := result.(XMLDocument); ok {
+		w.Header().Set("Content-Type", "application/xml")
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.WriteHeader(status)
+		_, _ = w.Write(doc)
 		return
 	}
 	if page, ok := result.(HTMLPage); ok {

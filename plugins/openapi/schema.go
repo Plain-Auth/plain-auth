@@ -26,8 +26,8 @@ var catalogue = sync.OnceValue(func() map[string]json.RawMessage {
 })
 
 func schemaPath(r stonewrit.HTTPRoute) string {
-	if r.Plugin == "sso" && r.Path == "/sso/callback/:providerId" {
-		return "/sso/callback/{providerId}"
+	if r.Plugin == "sso" && strings.HasSuffix(r.Path, "/:providerId") {
+		return strings.TrimSuffix(r.Path, "/:providerId") + "/{providerId}"
 	}
 	if r.Plugin == "" {
 		switch r.Path {
@@ -372,12 +372,14 @@ func standardOperation(r stonewrit.HTTPRoute, info stonewrit.HTTPDescription, a 
 	}
 	if builtin {
 		switch r.Path {
+		case "/sso/saml2/sp/metadata":
+			responses[success] = response("application/xml", object{"type": "string"})
 		case "/oauth-popup/start":
 			responses["302"] = object{"description": "Navigate the popup to the provider", "headers": object{"Location": object{"schema": object{"type": "string"}}}}
 			responses[success] = response("text/html", object{"type": "string"})
 		case "/error":
 			responses[success] = response("text/html", object{"type": "string"})
-		case "/reset-password/:token", "/callback/:id", "/subscription/success", "/sso/callback", "/sso/callback/:providerId":
+		case "/reset-password/:token", "/callback/:id", "/subscription/success", "/sso/callback", "/sso/callback/:providerId", "/sso/saml2/sp/acs/:providerId":
 			delete(responses, success)
 			responses["302"] = object{"description": "Redirect to the configured destination", "headers": object{"Location": object{"schema": object{"type": "string"}}}}
 			if r.Path == "/callback/:id" && r.Method == "GET" && a.HasPlugin("oauth-popup") {

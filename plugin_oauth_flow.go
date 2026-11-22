@@ -3,6 +3,7 @@ package stonewrit
 import (
 	"context"
 	"errors"
+	"net/http"
 	"net/url"
 	"strings"
 	"time"
@@ -17,6 +18,24 @@ type OAuthCompletion func(context.Context, string, string, OAuthTokens, User, St
 // BeginEnterpriseFlow persists the provider reference and browser return destinations.
 // Only the random browser binding is placed in a cookie.
 func (c EndpointContext) BeginEnterpriseFlow(provider, reference, redirectURI string, signup bool) (OAuthFlow, error) {
+	return c.beginEnterpriseFlow(provider, reference, redirectURI, signup, false)
+}
+
+// BeginEnterprisePostFlow binds a cross-site form return to an independent
+// Secure, SameSite=None cookie. The ordinary session cookie may be absent on POST.
+func (c EndpointContext) BeginEnterprisePostFlow(provider, reference, redirectURI string, signup bool) (OAuthFlow, error) {
+	return c.beginEnterpriseFlow(provider, reference, redirectURI, signup, true)
+}
+func (a *Auth) enterpriseStateCookie(form bool, value string, age int) *http.Cookie {
+	if !form {
+		return a.oauthCookie("sso_state", value, age)
+	}
+	cookie := a.oauthCookie("saml_state", value, age)
+	cookie.SameSite = http.SameSiteNoneMode
+	cookie.Secure = true
+	return cookie
+}
+func (c EndpointContext) beginEnterpriseFlow(provider, reference, redirectURI string, signup, form bool) (OAuthFlow, error) {
 	a := c.Auth
 	store, ok := c.Store().(OAuthStore)
 	if !ok {
@@ -46,6 +65,9 @@ func (c EndpointContext) BeginEnterpriseFlow(provider, reference, redirectURI st
 	}
 	namespace := "sso:" + callback.EscapedPath()
 	f.Binding = a.oauthBinding(browser, namespace, c.Request)
+	if form {
+		f.Binding = digest(browser + "\x00" + namespace + "\x00")
+	}
 	if a.anonymous != nil {
 		guest, err := a.guestToken(c.Request)
 		if err != nil {
@@ -63,25 +85,38 @@ func (c EndpointContext) BeginEnterpriseFlow(provider, reference, redirectURI st
 	if err := store.SaveOAuthFlow(c.Request.Context(), f, now); err != nil {
 		return OAuthFlow{}, err
 	}
-	c.ResponseHeader.Add("Set-Cookie", a.oauthCookie("sso_state", browser, 600).String())
+	c.ResponseHeader.Add("Set-Cookie", a.enterpriseStateCookie(form, browser, 600).String())
 	return f, nil
 }
 
 // ConsumeEnterpriseFlow accepts only a single use of the browser-bound state at
 // the auth host and callback path originally selected during sign-in.
 func (c *EndpointContext) ConsumeEnterpriseFlow() (OAuthFlow, error) {
-	a := c.Auth
-	bad := &APIError{Status: 400, Code: "INVALID_OAUTH_STATE", Message: "Invalid or expired enterprise sign-in state"}
-	base, _ := url.Parse(a.opts.BaseURL)
 	q := c.Request.URL.Query()
-	state := q.Get("state")
-	cookie, e := c.Request.Cookie(a.oauthCookie("sso_state", "", 0).Name)
-	if canonicalOrigin(&url.URL{Scheme: base.Scheme, Host: c.Request.Host}) != canonicalOrigin(base) || e != nil || state == "" || len(state) > 128 || len(q["state"]) != 1 || len(q["code"]) > 1 || len(q["error"]) > 1 || len(q["iss"]) > 1 {
+	if len(q["state"]) != 1 || len(q["code"]) > 1 || len(q["error"]) > 1 || len(q["iss"]) > 1 {
+		return OAuthFlow{}, invalidEnterpriseState()
+	}
+	return c.consumeEnterpriseFlow(q.Get("state"), false)
+}
+
+// ConsumeEnterprisePostFlow consumes the RelayState received in the form body.
+func (c *EndpointContext) ConsumeEnterprisePostFlow(state string) (OAuthFlow, error) {
+	return c.consumeEnterpriseFlow(state, true)
+}
+func invalidEnterpriseState() *APIError {
+	return &APIError{Status: 400, Code: "INVALID_OAUTH_STATE", Message: "Invalid or expired enterprise sign-in state"}
+}
+func (c *EndpointContext) consumeEnterpriseFlow(state string, form bool) (OAuthFlow, error) {
+	a := c.Auth
+	bad := invalidEnterpriseState()
+	base, _ := url.Parse(a.opts.BaseURL)
+	cookie, e := c.Request.Cookie(a.enterpriseStateCookie(form, "", 0).Name)
+	if canonicalOrigin(&url.URL{Scheme: base.Scheme, Host: c.Request.Host}) != canonicalOrigin(base) || e != nil || state == "" || len(state) > 128 {
 		return OAuthFlow{}, bad
 	}
 	namespace := "sso:" + c.Request.URL.EscapedPath()
 	binding := a.oauthBinding(cookie.Value, namespace, c.Request)
-	if strings.HasPrefix(cookie.Value, "guest-") {
+	if form || strings.HasPrefix(cookie.Value, "guest-") {
 		binding = digest(cookie.Value + "\x00" + namespace + "\x00")
 	}
 	store, ok := c.Store().(OAuthStore)
@@ -95,7 +130,7 @@ func (c *EndpointContext) ConsumeEnterpriseFlow() (OAuthFlow, error) {
 	if e != nil {
 		return OAuthFlow{}, e
 	}
-	c.ResponseHeader.Add("Set-Cookie", a.oauthCookie("sso_state", "", -1).String())
+	c.ResponseHeader.Add("Set-Cookie", a.enterpriseStateCookie(form, "", -1).String())
 	original, e := url.Parse(f.RedirectURI)
 	if e != nil || f.ProviderReference == "" || canonicalOrigin(original) != canonicalOrigin(base) || original.EscapedPath() != c.Request.URL.EscapedPath() {
 		return OAuthFlow{}, bad

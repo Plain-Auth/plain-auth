@@ -8,6 +8,20 @@ import (
 	"github.com/Stonewrit/stonewrit-auth/plugins/sso"
 )
 
+type RegisterSAMLProviderRequest struct {
+	ProviderID     string         `json:"providerId"`
+	Domain         string         `json:"domain"`
+	Issuer         string         `json:"issuer"`
+	OrganizationID string         `json:"organizationId,omitempty"`
+	SAML           sso.SAMLConfig `json:"samlConfig"`
+}
+
+func (c *Client) RegisterSAMLProvider(ctx context.Context, in RegisterSAMLProviderRequest) (sso.Registered, error) {
+	var out sso.Registered
+	err := c.Do(ctx, http.MethodPost, "/sso/register", in, &out)
+	return out, err
+}
+
 type RegisterOIDCProviderRequest struct {
 	ProviderID       string           `json:"providerId"`
 	Domain           string           `json:"domain"`
@@ -44,6 +58,7 @@ func (c *Client) GetSSOProvider(ctx context.Context, id string) (sso.PublicProvi
 // SSOSignInRequest selects a persisted enterprise provider and trusted application
 // return destinations. CallbackURL is required.
 type SSOSignInRequest struct {
+	ProviderType       string            `json:"providerType,omitempty"`
 	ProviderID         string            `json:"providerId,omitempty"`
 	OrganizationSlug   string            `json:"organizationSlug,omitempty"`
 	Domain             string            `json:"domain,omitempty"`

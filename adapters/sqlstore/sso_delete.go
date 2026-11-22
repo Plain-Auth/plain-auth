@@ -150,7 +150,7 @@ func (s *Store) ownedEnterpriseLinks(ctx context.Context, tx *sql.Tx, p sso.Brow
 			return nil, e
 		}
 		if origin.Kind == "enterprise" && origin.RecordID == p.ID {
-			if origin != enterpriseAuthority(p.ID, p.Issuer, p.OrganizationID) {
+			if origin != providerAuthority(p.Provider) {
 				return nil, sso.ErrUnclassifiedAccounts
 			}
 			owned = append(owned, link)

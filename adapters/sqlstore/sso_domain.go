@@ -24,8 +24,9 @@ func (s *Store) CheckSSODomainSchema(ctx context.Context) error {
 func (s *Store) domainMetadata(ctx context.Context, db rowQuerier, p sso.Provider) (bool, string, string, error) {
 	var raw string
 	var flag sql.NullBool
+	var saml bool
 	var state sql.NullString
-	q := `SELECT p."domainVerified", v."value", p."oidcConfig" FROM "ssoProvider" p LEFT JOIN "verification" v ON v."id"=? AND v."identifier"='enterprise-domain-proof' WHERE ` + browserProviderWhere + ` AND ` + s.scimExact(`p."id"`) + `=? AND ` + s.scimExact(`p."providerId"`) + `=? AND ` + s.scimExact(`p."domain"`) + `=? AND ` + s.scimExact(`p."userId"`) + `=? AND ` + s.scimExact(`p."issuer"`) + `=?`
+	q := `SELECT p."domainVerified", v."value", COALESCE(p."oidcConfig",p."samlConfig"),p."samlConfig" IS NOT NULL FROM "ssoProvider" p LEFT JOIN "verification" v ON v."id"=? AND v."identifier"='enterprise-domain-proof' WHERE ` + browserProviderWhere + ` AND ` + s.scimExact(`p."id"`) + `=? AND ` + s.scimExact(`p."providerId"`) + `=? AND ` + s.scimExact(`p."domain"`) + `=? AND ` + s.scimExact(`p."userId"`) + `=? AND ` + s.scimExact(`p."issuer"`) + `=?`
 	args := []any{originDigest("dp-", p.ID), p.ID, p.ProviderID, p.Domain, p.UserID, p.Issuer}
 	if p.OrganizationID == nil {
 		q += ` AND p."organizationId" IS NULL`
@@ -33,12 +34,17 @@ func (s *Store) domainMetadata(ctx context.Context, db rowQuerier, p sso.Provide
 		q += ` AND ` + s.scimExact(`p."organizationId"`) + `=?`
 		args = append(args, *p.OrganizationID)
 	}
-	err := db.QueryRowContext(ctx, s.bind(q), args...).Scan(&flag, &state, &raw)
+	err := db.QueryRowContext(ctx, s.bind(q), args...).Scan(&flag, &state, &raw, &saml)
 	if errors.Is(err, sql.ErrNoRows) {
 		return false, "", "", nil
 	}
 	if err != nil {
 		return false, "", "", err
+	}
+	if saml {
+		p.SAML = &sso.SAMLConfig{}
+	} else {
+		p.SAML = nil
 	}
 	scope, err := enterpriseReference(p, raw)
 	if err != nil {

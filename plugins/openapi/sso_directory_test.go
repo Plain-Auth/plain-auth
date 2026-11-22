@@ -153,3 +153,62 @@ func TestEnterpriseDirectoryOpenAPI(t *testing.T) {
 		})
 	}
 }
+
+func TestEnterpriseSAMLDocumentation(t *testing.T) {
+	ddl, err := schema.Generate("sqlite", []string{"sso"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	store, err := sqlstore.OpenWithSchema(t.Context(), "sqlite", filepath.Join(t.TempDir(), "saml.db"), ddl)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { store.Close() })
+	for _, enabled := range []bool{false, true} {
+		options := sso.Options{}
+		if enabled {
+			options.SAML = &sso.SAMLOptions{}
+		}
+		plugin, err := sso.New(options)
+		if err != nil {
+			t.Fatal(err)
+		}
+		reference, err := openapi.New(openapi.Options{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		const origin = "https://saml.example.test"
+		host, err := stonewrit.New(stonewrit.Options{BaseURL: origin, BasePath: "/identity", Store: store, Secret: strings.Repeat("a", 48), CookiePrefix: "portal", Plugins: []stonewrit.Plugin{plugin, reference}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		wire := ssoWire{t, host, origin}
+		paths := node(wire.decode(wire.call("GET", "/open-api/generate-schema", nil, nil, 200)), "paths")
+		schema := node(paths, "/sso/register", "post", "requestBody", "content", "application/json", "schema")
+		_, registered := node(schema, "properties")["samlConfig"]
+		if registered != enabled {
+			t.Fatal("wrong registration options", enabled)
+		}
+		const acs = "/sso/saml2/sp/acs/{providerId}"
+		if _, ok := paths[acs]; ok != enabled {
+			t.Fatalf("unexpected ACS route, enabled=%v", enabled)
+		}
+		if !enabled {
+			continue
+		}
+		if len(schema["oneOf"].([]any)) != 2 {
+			t.Fatal("missing mutually exclusive SSO protocols")
+		}
+		if node(paths, "/sso/saml2/sp/metadata", "get", "responses", "200", "content")["application/xml"] == nil {
+			t.Fatal("missing XML metadata")
+		}
+		op := node(paths, acs, "post")
+		if node(op, "requestBody", "content", "application/x-www-form-urlencoded", "schema", "properties")["RelayState"] == nil || node(op, "responses")["302"] == nil || node(op, "responses")["200"] != nil || len(op["security"].([]any)) != 0 {
+			t.Fatal("incorrect callback response, transport or authentication")
+		}
+		params := op["parameters"].([]any)
+		if params[0].(obj)["in"] != "path" || params[1].(obj)["in"] != "cookie" || !strings.HasSuffix(params[1].(obj)["name"].(string), "portal.saml_state") {
+			t.Fatal("incorrect path or browser binding", params)
+		}
+	}
+}

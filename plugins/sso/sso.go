@@ -18,6 +18,8 @@ import (
 )
 
 type Options struct {
+	// SAML enables service-provider initiated sign-in with signed assertions.
+	SAML *SAMLOptions
 	// DomainVerification enables DNS ownership checks for managed OIDC domains.
 	DomainVerification *DomainVerificationOptions
 	// GuardProviderMutation can reject a deletion after the exact provider and
@@ -52,13 +54,14 @@ type Config struct {
 }
 
 type Provider struct {
-	ID             string  `json:"id"`
-	ProviderID     string  `json:"providerId"`
-	Issuer         string  `json:"issuer"`
-	Domain         string  `json:"domain"`
-	UserID         string  `json:"userId"`
-	OrganizationID *string `json:"organizationId,omitempty"`
-	OIDC           *Config `json:"oidcConfig"`
+	ID             string      `json:"id"`
+	ProviderID     string      `json:"providerId"`
+	Issuer         string      `json:"issuer"`
+	Domain         string      `json:"domain"`
+	UserID         string      `json:"userId"`
+	OrganizationID *string     `json:"organizationId,omitempty"`
+	OIDC           *Config     `json:"oidcConfig"`
+	SAML           *SAMLConfig `json:"samlConfig,omitempty"`
 }
 
 type Registered struct {
@@ -149,6 +152,13 @@ func domains(value string) (string, error) {
 
 // New registers the provider management routes under the auth mount.
 func New(o Options) (auth.Plugin, error) {
+	if o.SAML != nil {
+		v := *o.SAML
+		if err := v.validate(); err != nil {
+			return auth.Plugin{}, err
+		}
+		o.SAML = &v
+	}
 	if o.DomainVerification != nil {
 		cfg, err := o.DomainVerification.normalized()
 		if err != nil {
@@ -190,7 +200,8 @@ func New(o Options) (auth.Plugin, error) {
 			return nil, ErrDisabled
 		}
 		oidc, ok := c.Body["oidcConfig"].(map[string]any)
-		if !ok || c.Body["samlConfig"] != nil {
+		samlInput, usesSAML := c.Body["samlConfig"].(map[string]any)
+		if (usesSAML && (ok || o.SAML == nil)) || (!usesSAML && (!ok || c.Body["samlConfig"] != nil)) {
 			return nil, apiError(400, "Supply an OpenID Connect configuration")
 		}
 		id, _ := c.Body["providerId"].(string)
@@ -226,38 +237,53 @@ func New(o Options) (auth.Plugin, error) {
 		if err = store.CheckSSORegistration(ctx, actor, p, limit); err != nil {
 			return nil, err
 		}
-		raw, err := json.Marshal(oidc)
-		if err != nil {
-			return nil, apiError(400, "Invalid OpenID Connect configuration")
-		}
-		var cfg Config
-		if err = json.Unmarshal(raw, &cfg); err != nil || cfg.ClientID == "" || cfg.ClientSecret == "" {
-			return nil, apiError(400, "OpenID Connect client credentials are required")
-		}
-		cfg.Issuer = issuer
-		if cfg.PKCE == nil {
-			enabled := true
-			cfg.PKCE = &enabled
-		}
-		if override, ok := c.Body["overrideUserInfo"]; ok {
-			v, ok := override.(bool)
-			if !ok {
-				return nil, apiError(400, "Invalid overrideUserInfo")
+		if usesSAML {
+			raw, e := json.Marshal(samlInput)
+			if e != nil {
+				return nil, ErrInvalidSAML
 			}
-			cfg.OverrideUserInfo = v
-		}
-		skip := false
-		if v, ok := oidc["skipDiscovery"]; ok {
-			var valid bool
-			skip, valid = v.(bool)
-			if !valid {
-				return nil, apiError(400, "Invalid skipDiscovery")
+			p.SAML, e = DecodeSAMLConfig(raw)
+			if e != nil {
+				return nil, ErrInvalidSAML
 			}
+			p.SAML.Issuer = issuer
+			if _, e = o.samlSP(c, p); e != nil {
+				return nil, e
+			}
+		} else {
+			raw, err := json.Marshal(oidc)
+			if err != nil {
+				return nil, apiError(400, "Invalid OpenID Connect configuration")
+			}
+			var cfg Config
+			if err = json.Unmarshal(raw, &cfg); err != nil || cfg.ClientID == "" || cfg.ClientSecret == "" {
+				return nil, apiError(400, "OpenID Connect client credentials are required")
+			}
+			cfg.Issuer = issuer
+			if cfg.PKCE == nil {
+				enabled := true
+				cfg.PKCE = &enabled
+			}
+			if override, ok := c.Body["overrideUserInfo"]; ok {
+				v, ok := override.(bool)
+				if !ok {
+					return nil, apiError(400, "Invalid overrideUserInfo")
+				}
+				cfg.OverrideUserInfo = v
+			}
+			skip := false
+			if v, ok := oidc["skipDiscovery"]; ok {
+				var valid bool
+				skip, valid = v.(bool)
+				if !valid {
+					return nil, apiError(400, "Invalid skipDiscovery")
+				}
+			}
+			if err = hydrate(ctx, c.Auth, o.HTTPClient, &cfg, skip); err != nil {
+				return nil, err
+			}
+			p.OIDC = &cfg
 		}
-		if err = hydrate(ctx, c.Auth, o.HTTPClient, &cfg, skip); err != nil {
-			return nil, err
-		}
-		p.OIDC = &cfg
 		var result Registered
 		if opt := o.DomainVerification; opt != nil {
 			result.DomainVerificationToken, err = store.(DomainStore).CreateSSODomainProvider(ctx, actor, p, limit, opt.identifier(id))
@@ -272,6 +298,9 @@ func New(o Options) (auth.Plugin, error) {
 		callback, err := callbackURI(c, id, o.SharedCallback)
 		if err != nil {
 			return nil, err
+		}
+		if p.SAML != nil {
+			result.SAMLConfig = p.SAML
 		}
 		result.Provider = p
 		result.RedirectURI = callback
@@ -311,6 +340,11 @@ func New(o Options) (auth.Plugin, error) {
 		if _, ok := s.(Store); !ok {
 			return errors.New("sso: provider management requires a directory store")
 		}
+		if o.SAML != nil {
+			if _, ok := s.(SAMLStore); !ok {
+				return errors.New("sso: SAML requires a browser and assertion receipt store")
+			}
+		}
 		if o.DomainVerification != nil {
 			ds, ok := s.(DomainStore)
 			if !ok {
@@ -330,12 +364,18 @@ func New(o Options) (auth.Plugin, error) {
 		verify.SuccessStatus = 204
 		plugin.Endpoints = append(plugin.Endpoints, request, verify)
 	}
+	if o.SAML != nil {
+		plugin.Endpoints = append(plugin.Endpoints, auth.Endpoint{Method: "GET", Path: "/sso/saml2/sp/metadata", Handler: o.samlMetadata}, auth.Endpoint{Method: "POST", Path: "/sso/saml2/sp/acs/:providerId", RawBody: true, Handler: o.samlFinish})
+	}
 	return plugin, nil
 }
 
 func sanitized(c auth.EndpointContext, p Provider) PublicProvider {
 	metadata, _ := c.Auth.CallbackURL(strings.TrimRight(c.Auth.BasePath(), "/") + "/sso/saml2/sp/metadata?providerId=" + url.QueryEscape(p.ProviderID))
 	out := PublicProvider{ProviderID: p.ProviderID, Issuer: p.Issuer, Domain: p.Domain, OrganizationID: p.OrganizationID, Type: "oidc", SPMetadataURL: metadata}
+	if p.SAML != nil {
+		out.Type = "saml"
+	}
 	if cfg := p.OIDC; cfg != nil {
 		masked := "****"
 		if utf8.RuneCountInString(cfg.ClientID) > 4 {

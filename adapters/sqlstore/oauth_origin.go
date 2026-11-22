@@ -13,7 +13,19 @@ import (
 	"github.com/Stonewrit/stonewrit-auth/plugins/sso"
 )
 
-type oauthAuthority struct{ Kind, RecordID, Issuer, OrganizationID string }
+type oauthAuthority struct {
+	Kind, RecordID, Issuer, OrganizationID string
+	Protocol                               string `json:",omitempty"`
+}
+
+func providerAuthority(p sso.Provider) oauthAuthority {
+	a := enterpriseAuthority(p.ID, p.Issuer, p.OrganizationID)
+	if p.SAML != nil {
+		a.Protocol = "saml"
+		a.Issuer = p.SAML.IDPMetadata.EntityID
+	}
+	return a
+}
 
 func enterpriseAuthority(record, issuer string, org *string) oauthAuthority {
 	result := oauthAuthority{Kind: "enterprise", RecordID: record, Issuer: issuer}

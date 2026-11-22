@@ -1,6 +1,6 @@
-# Enterprise OpenID Connect
+# Enterprise single sign-on
 
-Signed-in users can register a confidential OpenID Connect client and read the providers they administer. Adding the `sso` schema profile creates the provider catalog. Add `organization` or `organization-teams` when providers belong to organizations.
+Signed-in users can register an OpenID Connect client or a SAML identity provider and read the providers they administer. Adding the `sso` schema profile creates the provider catalog. Add `organization` or `organization-teams` when providers belong to organizations.
 
 ```go
 ddl, err := schema.Generate("postgres", []string{"sso"})
@@ -28,7 +28,7 @@ The host imports the root `github.com/Stonewrit/stonewrit-auth` module and its `
 | `POST /sso/register` | Registers a provider with the account owner's direct session. An organization administrator can supply an organization ID. |
 | `GET /sso/providers` | Lists the caller's personal registrations and the organization providers they currently administer. |
 | `GET /sso/get-provider?providerId=company` | Returns sanitized management metadata for a single registration. |
-| `POST /sso/delete-provider` | Deletes a managed OIDC registration and the account links for its exact provider ID. |
+| `POST /sso/delete-provider` | Deletes a managed registration and its attributed account links. |
 
 ```json
 {
@@ -44,7 +44,7 @@ The host imports the root `github.com/Stonewrit/stonewrit-auth` module and its `
 
 Registration fetches the issuer's discovery document and stores the configured issuer, authorization, token and signing-key endpoints. Give the discovery origin its own exact entry in `TrustedOrigins`, or use the auth server's own origin. Browser wildcard grants apply only to browser requests and callbacks. The discovery request has a ten-second deadline and a one-megabyte response limit. Redirects and mismatched issuers fail registration. You can set `skipDiscovery: true` inside `oidcConfig` and provide `authorizationEndpoint`, `tokenEndpoint` and `jwksEndpoint` directly. Both `client_secret_basic` and `client_secret_post` are supported for persisted configuration. [Discovery tests](../plugins/sso/discovery_test.go)
 
-Treat the registration response and the provider table as confidential. The successful registration response includes the submitted OIDC configuration and its client secret, with `Cache-Control: no-store`. The database stores that configuration as JSON in `ssoProvider.oidcConfig`. List and read responses expose only the masked client ID, the selected endpoints and public configuration. Domain names are normalized to ASCII and lowercase, with duplicate entries removed. Recording a domain supplies routing metadata. Management reads cover OIDC registrations and report whether the current registration holds a bound DNS proof. Imported SAML-only and dual-protocol rows still count toward the creator quota.
+Treat the registration response and the provider table as confidential. The successful registration response includes the submitted OIDC configuration and its client secret, with `Cache-Control: no-store`. The database stores that configuration as JSON in `ssoProvider.oidcConfig`. List and read responses expose only the masked client ID, the selected endpoints and public configuration. Domain names are normalized to ASCII and lowercase, with duplicate entries removed. Recording a domain supplies routing metadata. Management reads cover single-protocol OIDC and supported SAML registrations and report whether the current registration holds a bound DNS proof. All records count toward the creator quota.
 
 The default quota is ten provider records per creator across their personal and organization registrations. Set `Options.ProvidersLimit` to a pointer to a different maximum, or to zero to disable registration. The live organization membership controls access on every node that shares the database, including nodes that serve only the SSO routes. Only owners and administrators can register or inspect the organization's providers. Membership and session authority are checked again before the new provider commits. An impersonated administrator cannot register a provider. Personal registrations disappear when their creator's account is deleted, and previously linked account provider IDs stay reserved. [Ownership, cleanup and concurrency tests](../adapters/sqlstore/sso_test.go)
 
@@ -64,7 +64,7 @@ The SQL adapter rechecks the provider's immutable record ID and configuration be
 
 An organization-bound provider adds the authenticated user as a member of the bound tenant in the session transaction. Existing roles and live invitations are preserved. A full or deleted organization cannot leave a partial identity or session. These checks also apply on sign-in nodes that share the organization database and serve only the SSO routes. Set `DisableOrganizationProvisioning` to manage membership separately. [Membership and concurrent removal tests](../adapters/sqlstore/sso_browser_test.go)
 
-The native client starts the flow with `SignInSSO`. A Go flow must finish on a Go instance. The released client can use Go-created enterprise accounts on both tested implementations. Imported links require an explicit source classification before the Go runtime can use them. Arbitrary callback aliases, stateless IdP-initiated entry, private-key client authentication, custom resolver/provisioning hooks, profile replacement on subsequent sign-in, provider updates, automatic organization assignment on ordinary signup and SAML remain open.
+The native client starts the flow with `SignInSSO`. A Go flow must finish on a Go instance. The released client can use Go-created enterprise accounts on both tested implementations. Imported links require an explicit source classification before the Go runtime can use them. Arbitrary callback aliases, stateless IdP-initiated entry, private-key client authentication, custom resolver/provisioning hooks, profile replacement on subsequent sign-in, provider updates, and automatic organization assignment on ordinary signup remain open.
 
 ## Verify directory domains with DNS
 
@@ -109,3 +109,39 @@ err := store.ReconcileOAuthAccount(ctx, sqlstore.OAuthAccountAttribution{
 ```
 
 Source records use the existing verification table and contain no provider tokens. Include them when backing up and restoring account rows. The Go SQL adapter maintains these records when linking, unlinking and deleting accounts. External writers and earlier library versions can write canonical links without recording their source and may delete all links under a shared name. Assign separate names to those writers or route link management through a source-aware deployment. [Deletion and reconciliation tests](../adapters/sqlstore/sso_delete_test.go)
+
+## SP-initiated SAML sign-in
+
+Enable SAML on each instance handling enterprise sign-in. Use the public HTTPS auth URL and the same SQL provider catalog, signing secret, cookie prefix and auth mount across those instances. The default SSO configuration enables OIDC. SAML uses the same `sso` schema profile. Add `sso-domain-verification` and enable DNS verification when a directory should link existing verified accounts by email.
+
+```go
+directory, err := sso.New(sso.Options{
+    SAML:               &sso.SAMLOptions{},
+    DomainVerification: &sso.DomainVerificationOptions{},
+})
+```
+
+With an authorized administrator's cookie, send an identity provider registration to `POST /sso/register`. The native client exposes `RegisterSAMLProvider`. The top-level `issuer` is a URL and supplies the default service provider entity ID. Use `spMetadata.entityID` to give the application its own identifier. Set `idpMetadata.entityID` to the exact issuer in the IdP's signed assertions, and supply its trusted RSA signing certificate. The app accepts a PEM certificate or an array of up to eight certificates for planned overlap. A certificate list in `idpMetadata.cert` takes precedence over `samlConfig.cert`.
+
+```json
+{
+  "providerId": "company",
+  "issuer": "https://idp.example.org/metadata",
+  "domain": "staff.example.org",
+  "samlConfig": {
+    "entryPoint": "https://idp.example.org/login",
+    "idpMetadata": { "entityID": "https://idp.example.org/metadata" },
+    "spMetadata": { "entityID": "https://accounts.example.org/saml" },
+    "cert": "<PEM-encoded IdP signing certificate>",
+    "wantAssertionsSigned": true
+  }
+}
+```
+
+The registration response retains the catalog’s OIDC-style `redirectURI` field. Use the ACS advertised by SAML metadata when configuring your identity provider. Give the IdP the public `GET /sso/saml2/sp/metadata?providerId=company` URL under the auth mount. It publishes the entity ID and exact HTTP-POST assertion consumer service (ACS) URL. To sign outgoing HTTP-Redirect requests with RSA-SHA256, set `SAMLOptions.RequestSigner` and `RequestCertificate` to the host-managed matching RSA key and certificate, then register the provider with `authnRequestsSigned: true`. Signing and verification require RSA keys of at least 2048 bits. The SQL catalog holds public IdP configuration.
+
+Start with `POST /sign-in/sso` or the native `SignInSSO` method. Supply `providerId`, `providerType: "saml"` and a trusted `callbackURL`. Open the returned URL in the initiating browser. The IdP sends a URL-encoded POST containing `SAMLResponse` and `RelayState` to `/sso/saml2/sp/acs/company`. The browser must return the ten-minute `Secure; HttpOnly; SameSite=None` state cookie. When the IdP sends an Origin header, it must match the entry point's origin. The ACS accepts forms up to 1 MiB. It validates the signed assertion, issuer, audience, response destination, bearer recipient, request correlation and validity times. A valid form redirects both new and returning users to `callbackURL` and issues the configured application session. A second browser cannot continue the first browser's request.
+
+`NameID` identifies the external account. Use `identifierFormat` to request a persistent NameID when your IdP offers one. Default attributes are `email`, `givenName`, `surname` and `displayName`; set `mapping` to select other single-valued attribute names. An email-shaped NameID supplies a missing email. To accept the IdP's verification claim, set both `SAMLOptions.TrustEmailVerified` and `mapping.emailVerified`. Existing verified mailboxes still require a live matching DNS domain proof for automatic linking. Current provider configuration, organization binding and domain proof are checked in the SQL transaction that claims the assertion and creates the account or session. A SHA-256 fingerprint identifies each accepted issuer and assertion ID for replay prevention. The receipt lasts 24 hours. Avoid recording assertion forms and state cookies in proxy or request logs.
+
+This profile supports plaintext, directly signed assertions over HTTP-POST. IdP-initiated sign-in, a GET or JSON ACS, encrypted assertions, XML metadata import, SAML single logout and registration-time private keys remain open. Configure an IdP to use the posted HTTPS ACS and a modern SHA-256-or-stronger signature. The `additionalParams` OAuth option is unavailable for this protocol. Imported SAML links without recorded identity authority are rejected; the historical account reconciliation interface currently supports OIDC and static social identities.

@@ -6642,6 +6642,11 @@
       "label": "Read a seven-day registration challenge with the released client and return HTTP 201 for a repeated request",
       "test": "conformance/sso-domains.mjs",
       "marker": "const req=seen.at(-1)"
+    },
+    {
+      "label": "Register an IdP signing certificate and separate SP entity ID through the released client on both runtimes",
+      "test": "conformance/sso-saml.mjs",
+      "marker": "export async function compareEnterpriseSAML("
     }
   ],
   "plugin/sso/GET /sso/providers": [
@@ -6835,6 +6840,16 @@
       "label": "Select a proved directory ahead of overlapping pending registrations",
       "test": "adapters/sqlstore/sso_domain_test.go",
       "marker": "pending directory shadowed a verified route"
+    },
+    {
+      "label": "Start an SP-initiated Redirect request and complete first and repeat SAML sign-in with the same account",
+      "test": "conformance/sso-saml.mjs",
+      "marker": "export async function compareEnterpriseSAML("
+    },
+    {
+      "label": "Issue first and returning SAML sessions with public signup and metadata disabled; retain the installed ACS and registration in OpenAPI",
+      "test": "conformance/core.test.mjs",
+      "marker": "test(\"enterprise SAML works with hidden metadata and private signup\""
     }
   ],
   "plugin/sso/ /sso/callback/:providerId": [
@@ -7762,6 +7777,35 @@
       "test": "conformance/core.test.mjs",
       "marker": "test(\"custom password callbacks open",
       "complete": true
+    }
+  ],
+  "plugin/sso/GET /sso/saml2/sp/metadata": [
+    {
+      "label": "Read public XML metadata with the configured entity ID and mounted HTTP-POST ACS on both runtimes",
+      "test": "conformance/sso-saml.mjs",
+      "marker": "const descriptor=await metadata.text();"
+    },
+    {
+      "label": "Publish the host signing certificate and verify the resulting RSA-SHA256 Redirect at a local IdP",
+      "test": "adapters/sqlstore/sso_saml_test.go",
+      "marker": "req, e := saml.NewIdpAuthnRequest"
+    }
+  ],
+  "plugin/sso/GET / POST /sso/saml2/sp/acs/:providerId": [
+    {
+      "label": "POST a separately signed browser assertion, receive the application session and reuse the original account",
+      "test": "conformance/sso-saml.mjs",
+      "marker": "const callback=await send(new Request(acs"
+    },
+    {
+      "label": "Validate a signed issuer, audience, recipient, request and validity window on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_saml_test.go",
+      "marker": "// Independent signed fixtures exercise"
+    },
+    {
+      "label": "Consume an assertion once across independent instances and maintain the live DNS boundary on automatic linking",
+      "test": "adapters/sqlstore/sso_saml_test.go",
+      "marker": "t.Fatal(\"assertion replay results\""
     }
   ]
 }

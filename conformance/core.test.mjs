@@ -117,10 +117,10 @@ async function goFixture(t, profiles = [], env = {}) {
 
 // The official client calls this fetch hook for both runtimes. Each client owns
 // one origin and a fresh, root-path cookie jar for this loopback HTTP fixture.
-function instrument({ baseURL, send }, plugins = []) {
+function instrument({ baseURL, basePath, send }, plugins = []) {
   const cookies = new Map();
   const requests = [];
-  const client = createAuthClient({ baseURL, plugins, fetchOptions: {
+  const client = createAuthClient({ baseURL, ...(basePath && {basePath}), plugins, fetchOptions: {
     customFetchImpl: async (url, options) => {
       assert.equal(new URL(url).origin, baseURL);
       const headers = new Headers(options.headers);
@@ -1437,3 +1437,13 @@ for (const strategy of ["jwt", "jwe"]) {
     await compareJOSESessionRollover(t, { reference, goFixture }, strategy);
   });
 }
+
+test("enterprise SAML metadata, signed assertion and repeat sign-in through the pinned client", async t => {
+  const { compareEnterpriseSAML } = await import("./sso-saml.mjs");
+  await compareEnterpriseSAML(t, {goFixture,instrument});
+});
+
+test("enterprise SAML works with hidden metadata and private signup", async t => {
+  const { compareEnterpriseSAML } = await import("./sso-saml.mjs");
+  await compareEnterpriseSAML(t, {goFixture,instrument,privateDeployment:true});
+});

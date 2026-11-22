@@ -101,11 +101,24 @@ func (s *Store) ssoRegister(ctx context.Context, a sso.Actor, p sso.Provider, li
 	if !insert {
 		return nil
 	}
-	cfg, err := json.Marshal(p.OIDC)
+	config := any(p.OIDC)
+	if p.SAML != nil {
+		config = p.SAML
+	}
+	if (p.OIDC == nil) == (p.SAML == nil) {
+		return sso.ErrMissing
+	}
+	cfg, err := json.Marshal(config)
 	if err != nil {
 		return err
 	}
-	_, err = tx.ExecContext(ctx, s.bind(`INSERT INTO "ssoProvider" ("id","issuer","domain","oidcConfig","providerId","userId","organizationId") VALUES (?,?,?,?,?,?,?)`), p.ID, p.Issuer, p.Domain, string(cfg), p.ProviderID, a.UserID, p.OrganizationID)
+	var oidcConfig, samlConfig any
+	if p.SAML != nil {
+		samlConfig = string(cfg)
+	} else {
+		oidcConfig = string(cfg)
+	}
+	_, err = tx.ExecContext(ctx, s.bind(`INSERT INTO "ssoProvider" ("id","issuer","domain","oidcConfig","samlConfig","providerId","userId","organizationId") VALUES (?,?,?,?,?,?,?,?)`), p.ID, p.Issuer, p.Domain, oidcConfig, samlConfig, p.ProviderID, a.UserID, p.OrganizationID)
 	if duplicateConstraint(err) {
 		return sso.ErrDuplicate
 	}
@@ -148,7 +161,7 @@ func (s *Store) ReadSSOProviders(ctx context.Context, a sso.Actor, id string) ([
 	if err != nil {
 		return nil, err
 	}
-	q := `SELECT p."id",p."providerId",p."issuer",p."domain",p."userId",p."organizationId",p."oidcConfig"`
+	q := `SELECT ` + browserProviderCols
 	args := []any{}
 	if orgTables {
 		q += `,m."role"`
@@ -158,7 +171,7 @@ func (s *Store) ReadSSOProviders(ctx context.Context, a sso.Actor, id string) ([
 		q += ` LEFT JOIN "organization" o ON ` + s.scimExact(`o."id"`) + `=p."organizationId" LEFT JOIN "member" m ON ` + s.scimExact(`m."organizationId"`) + `=o."id" AND ` + s.scimExact(`m."userId"`) + `=?`
 		args = append(args, a.UserID)
 	}
-	q += ` WHERE p."oidcConfig" IS NOT NULL AND p."samlConfig" IS NULL`
+	q += ` WHERE ` + browserProviderWhere
 	if id != "" {
 		q += ` AND ` + s.scimExact(`p."providerId"`) + `=?`
 		args = append(args, id)
@@ -178,9 +191,9 @@ func (s *Store) ReadSSOProviders(ctx context.Context, a sso.Actor, id string) ([
 	var out []sso.Provider
 	for rows.Next() {
 		var p sso.Provider
-		var raw string
+		var oidc, saml sql.NullString
 		var role sql.NullString
-		dest := []any{&p.ID, &p.ProviderID, &p.Issuer, &p.Domain, &p.UserID, &p.OrganizationID, &raw}
+		dest := []any{&p.ID, &p.ProviderID, &p.Issuer, &p.Domain, &p.UserID, &p.OrganizationID, &oidc, &saml}
 		if orgTables {
 			dest = append(dest, &role)
 		}
@@ -197,8 +210,11 @@ func (s *Store) ReadSSOProviders(ctx context.Context, a sso.Actor, id string) ([
 			}
 			continue
 		}
-		if err = json.Unmarshal([]byte(raw), &p.OIDC); err != nil {
-			return nil, errors.New("sqlstore: invalid persisted OIDC configuration")
+		if _, err = providerConfiguration(&p, oidc, saml); err != nil {
+			if errors.Is(err, sso.ErrInvalidSAML) {
+				continue
+			}
+			return nil, err
 		}
 		out = append(out, p)
 	}

@@ -17,23 +17,34 @@ import (
 
 var _ sso.BrowserStore = (*Store)(nil)
 
-const browserProviderCols = `p."id",p."providerId",p."issuer",p."domain",p."userId",p."organizationId",p."oidcConfig"`
-const browserProviderWhere = `p."oidcConfig" IS NOT NULL AND p."samlConfig" IS NULL`
+const browserProviderCols = `p."id",p."providerId",p."issuer",p."domain",p."userId",p."organizationId",p."oidcConfig",p."samlConfig"`
+const browserProviderWhere = `((p."oidcConfig" IS NOT NULL AND p."samlConfig" IS NULL) OR (p."oidcConfig" IS NULL AND p."samlConfig" IS NOT NULL))`
 
 func scanBrowserProvider(row rowScanner) (sso.BrowserProvider, error) {
 	var p sso.BrowserProvider
-	var raw string
-	if err := row.Scan(&p.ID, &p.ProviderID, &p.Issuer, &p.Domain, &p.UserID, &p.OrganizationID, &raw); err != nil {
+	var oidc, saml sql.NullString
+	if err := row.Scan(&p.ID, &p.ProviderID, &p.Issuer, &p.Domain, &p.UserID, &p.OrganizationID, &oidc, &saml); err != nil {
 		return p, err
 	}
-	if e := json.Unmarshal([]byte(raw), &p.OIDC); e != nil {
-		return p, errors.New("sqlstore: invalid enterprise provider")
+	raw, err := providerConfiguration(&p.Provider, oidc, saml)
+	if err != nil {
+		return p, err
 	}
-	var err error
 	p.Reference, err = enterpriseReference(p.Provider, raw)
 	return p, err
 }
 
+func providerConfiguration(p *sso.Provider, oidc, rawSAML sql.NullString) (string, error) {
+	if oidc.Valid == rawSAML.Valid {
+		return "", sso.ErrMissing
+	}
+	if rawSAML.Valid {
+		cfg, err := sso.DecodeSAMLConfig([]byte(rawSAML.String))
+		p.SAML = cfg
+		return rawSAML.String, err
+	}
+	return oidc.String, json.Unmarshal([]byte(oidc.String), &p.OIDC)
+}
 func enterpriseReference(p sso.Provider, raw string) (string, error) {
 	var cfg map[string]any
 	decoder := json.NewDecoder(strings.NewReader(raw))
@@ -43,8 +54,13 @@ func enterpriseReference(p sso.Provider, raw string) (string, error) {
 	}
 	// Secret rotation keeps the same authority. The immutable registration,
 	// tenant and every other configuration key bind the identity and DNS proof.
-	delete(cfg, "clientSecret")
-	payload, err := json.Marshal([]any{p.ID, p.ProviderID, p.UserID, p.OrganizationID, p.Issuer, p.Domain, cfg})
+	payloadValues := []any{p.ID, p.ProviderID, p.UserID, p.OrganizationID, p.Issuer, p.Domain, cfg}
+	if p.SAML != nil {
+		payloadValues = append(payloadValues, "saml")
+	} else {
+		delete(cfg, "clientSecret")
+	}
+	payload, err := json.Marshal(payloadValues)
 	if err != nil {
 		return "", err
 	}
@@ -61,6 +77,11 @@ func (s *Store) FindVerifiedBrowserProvider(ctx context.Context, sel sso.Selecto
 func (s *Store) findBrowserProvider(ctx context.Context, sel sso.Selector, requireProof bool) (sso.BrowserProvider, error) {
 	var found sso.BrowserProvider
 	query := `SELECT ` + browserProviderCols + ` FROM "ssoProvider" p WHERE ` + browserProviderWhere
+	if sel.Protocol == "oidc" {
+		query += ` AND p."oidcConfig" IS NOT NULL`
+	} else if sel.Protocol == "saml" {
+		query += ` AND p."samlConfig" IS NOT NULL`
+	}
 	args := []any{}
 	switch {
 	case sel.ProviderID != "":
@@ -93,6 +114,9 @@ func (s *Store) findBrowserProvider(ctx context.Context, sel sso.Selector, requi
 	var matches []candidate
 	for rows.Next() {
 		p, e := scanBrowserProvider(rows)
+		if errors.Is(e, sso.ErrInvalidSAML) {
+			continue
+		}
 		if e != nil {
 			return found, e
 		}
@@ -159,12 +183,12 @@ func (s *Store) findBrowserProvider(ctx context.Context, sel sso.Selector, requi
 }
 
 func (s *Store) CompleteEnterpriseLogin(ctx context.Context, ref string, provision bool, id, subject string, tokens auth.OAuthTokens, user auth.User, session auth.StoredSession, opts auth.OAuthLoginOptions) (auth.User, bool, error) {
-	return s.completeEnterpriseLogin(ctx, ref, provision, id, subject, tokens, user, session, opts, false)
+	return s.completeEnterpriseLogin(ctx, ref, provision, id, subject, tokens, user, session, opts, false, nil)
 }
 func (s *Store) CompleteVerifiedEnterpriseLogin(ctx context.Context, ref string, provision bool, id, subject string, tokens auth.OAuthTokens, user auth.User, session auth.StoredSession, opts auth.OAuthLoginOptions) (auth.User, bool, error) {
-	return s.completeEnterpriseLogin(ctx, ref, provision, id, subject, tokens, user, session, opts, true)
+	return s.completeEnterpriseLogin(ctx, ref, provision, id, subject, tokens, user, session, opts, true, nil)
 }
-func (s *Store) completeEnterpriseLogin(ctx context.Context, ref string, provision bool, id, subject string, tokens auth.OAuthTokens, user auth.User, session auth.StoredSession, opts auth.OAuthLoginOptions, requireProof bool) (auth.User, bool, error) {
+func (s *Store) completeEnterpriseLogin(ctx context.Context, ref string, provision bool, id, subject string, tokens auth.OAuthTokens, user auth.User, session auth.StoredSession, opts auth.OAuthLoginOptions, requireProof bool, assertion *sso.AssertionReceipt) (auth.User, bool, error) {
 	var orgID *string
 	var hooks oauthTransactionHooks
 	hooks = oauthTransactionHooks{
@@ -176,6 +200,14 @@ func (s *Store) completeEnterpriseLogin(ctx context.Context, ref string, provisi
 			}
 			if err != nil {
 				return err
+			}
+			if (assertion != nil) != (p.SAML != nil) {
+				return sso.ErrChanged
+			}
+			if assertion != nil {
+				if err = s.consumeSAMLAssertion(ctx, tx, p, *assertion, session.CreatedAt); err != nil {
+					return err
+				}
 			}
 			required := requireProof
 			if !required {
@@ -203,7 +235,7 @@ func (s *Store) completeEnterpriseLogin(ctx context.Context, ref string, provisi
 			if matches > 1 {
 				return auth.ErrOAuthLinkRequired
 			}
-			hooks.authority = enterpriseAuthority(p.ID, p.Issuer, p.OrganizationID)
+			hooks.authority = providerAuthority(p.Provider)
 			orgID = p.OrganizationID
 			if orgID != nil {
 				return s.lockOrganization(ctx, tx, *orgID)

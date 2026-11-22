@@ -10,6 +10,9 @@ import (
 // HTMLPage is trusted HTML returned by an endpoint. Escape all dynamic text before constructing it.
 type HTMLPage string
 
+// XMLDocument is an XML representation encoded by a trusted plugin.
+type XMLDocument []byte
+
 // HTTPRoute describes one registered, enabled HTTP operation. OpenAPI is a private copy for the caller.
 type HTTPRoute struct {
 	Method, Path, Plugin string
@@ -23,7 +26,9 @@ type HTTPRoute struct {
 type HTTPDescription struct {
 	ServerURL, SessionCookie string
 	// SSOStateCookie is the browser binding cookie for installed enterprise OIDC callbacks.
-	SSOStateCookie           string
+	SSOStateCookie string
+	// SAMLStateCookie is set when the SP-initiated SAML form handler is installed.
+	SAMLStateCookie          string
 	Routes                   []HTTPRoute
 	Providers                []string
 	MinPassword, MaxPassword int
@@ -40,6 +45,9 @@ func (a *Auth) DescribeHTTP() HTTPDescription {
 		DisplayUsername: a.username != nil && !a.username.DisableDisplay}
 	if a.HasPlugin("sso") {
 		d.SSOStateCookie = a.prefixedCookieName("sso_state")
+		if ep, ok := a.plugins[endpointKey{http.MethodPost, "/sso/saml2/sp/acs/:providerId"}]; ok && ep.pluginID == "sso" {
+			d.SAMLStateCookie = a.prefixedCookieName("saml_state")
+		}
 	}
 	for name := range o.SocialProviders {
 		d.Providers = append(d.Providers, name)

@@ -385,7 +385,7 @@ const index = [
   "| TOTP enrollment, challenge verification and backup codes | [Two-factor authentication](../2fa.md) |",
   "| Runtime settings, key rotation and startup | [Environment](../environment.md) |",
   "| OAuth sign-in, identity verification and account linking | [Social providers](../social.md) |",
-  "| Enterprise provider registration, browser sign-in and organization membership | [Enterprise OpenID Connect](../sso.md) |",
+  "| Enterprise provider registration, browser sign-in and organization membership | [Enterprise single sign-on](../sso.md) |",
   "| Go client and router integrations | [HTTP client](../client.md) · [Routers](../routers.md) |",
   "| Memory, SQLite, PostgreSQL and MySQL | [Databases](../databases.md) · [Schema generation and migrations](../schema.md) |",
   "| Username registration, sign-in and availability | [Username sign-in](../username.md) |",

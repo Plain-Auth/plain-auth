@@ -8,6 +8,15 @@ import (
 	"github.com/Stonewrit/stonewrit-auth/plugins/sso"
 )
 
+func samlConfigSchema() object {
+	text := object{"type": "string", "minLength": 1}
+	cert := object{"oneOf": []object{text, {"type": "array", "items": text, "minItems": 1, "maxItems": 8}}}
+	idp := responseObject(object{"entityID": text, "cert": cert}, "entityID")
+	config := responseObject(object{"entryPoint": object{"type": "string", "format": "uri"}, "cert": cert, "audience": text, "idpMetadata": idp, "spMetadata": responseObject(object{"entityID": text}, "entityID"), "wantAssertionsSigned": object{"const": true}, "authnRequestsSigned": object{"type": "boolean"}, "identifierFormat": text, "mapping": modelSchema(reflect.TypeFor[sso.SAMLMapping]())}, "entryPoint", "idpMetadata")
+	config["anyOf"] = []object{{"required": []string{"cert"}}, {"properties": object{"idpMetadata": object{"required": []string{"cert"}}}}}
+	return config
+}
+
 func ssoResponse(path string, info stonewrit.HTTPDescription) object {
 	text := object{"type": "string"}
 	switch path {
@@ -19,6 +28,10 @@ func ssoResponse(path string, info stonewrit.HTTPDescription) object {
 			"redirectURI": object{"type": "string", "format": "uri"}, "samlConfig": object{"type": "null"},
 			"oidcConfig": responseObject(object{"issuer": text, "discoveryEndpoint": text, "authorizationEndpoint": text,
 				"tokenEndpoint": text, "jwksEndpoint": text, "userInfoEndpoint": text, "pkce": object{"type": "boolean"}}),
+		}
+		if info.SAMLStateCookie != "" {
+			fields["samlConfig"] = object{"oneOf": []object{samlConfigSchema(), {"type": "null"}}}
+			fields["oidcConfig"] = object{"oneOf": []object{fields["oidcConfig"].(object), {"type": "null"}}}
 		}
 		required := []string{"id", "providerId", "userId", "domain", "issuer", "redirectURI", "oidcConfig", "samlConfig"}
 		if slices.ContainsFunc(info.Routes, func(r stonewrit.HTTPRoute) bool {
@@ -62,8 +75,14 @@ func describeSSORequest(op object, path string, info stonewrit.HTTPDescription) 
 		config["required"] = []string{"clientId", "clientSecret"}
 		config["if"] = object{"properties": object{"skipDiscovery": object{"const": true}}, "required": []string{"skipDiscovery"}}
 		config["then"] = object{"required": []string{"authorizationEndpoint", "tokenEndpoint", "jwksEndpoint"}}
-		body(responseObject(object{"providerId": providerID, "domain": text, "issuer": object{"type": "string", "format": "uri"},
-			"organizationId": text, "overrideUserInfo": object{"type": "boolean"}, "oidcConfig": config}, "providerId", "domain", "issuer", "oidcConfig"))
+		registration := responseObject(object{"providerId": providerID, "domain": text, "issuer": object{"type": "string", "format": "uri"}, "organizationId": text, "overrideUserInfo": object{"type": "boolean"}, "oidcConfig": config}, "providerId", "domain", "issuer", "oidcConfig")
+		if info.SAMLStateCookie != "" {
+			registration["properties"].(object)["samlConfig"] = samlConfigSchema()
+			registration["required"] = []string{"providerId", "domain", "issuer"}
+			registration["oneOf"] = []object{{"required": []string{"oidcConfig"}}, {"required": []string{"samlConfig"}}}
+		}
+		body(registration)
+
 	case "/sso/providers":
 		op["description"] = "List the caller’s personal directories and directories in organizations they own or administer. Client identifiers are masked."
 	case "/sso/get-provider":
@@ -79,8 +98,16 @@ func describeSSORequest(op object, path string, info stonewrit.HTTPDescription) 
 			"callbackURL": callback, "newUserCallbackURL": callback, "errorCallbackURL": callback, "providerType": object{"enum": []string{"oidc", ""}},
 			"loginHint": text, "requestSignUp": object{"type": "boolean"}, "scopes": array(object{"type": "string", "minLength": 1}),
 			"additionalParams": object{"type": "object", "additionalProperties": text, "description": "Additional authorization parameters. Protocol parameters are reserved."}}, "callbackURL")
+		if info.SAMLStateCookie != "" {
+			schema["properties"].(object)["providerType"] = object{"enum": []string{"oidc", "saml", ""}}
+		}
 		schema["anyOf"] = []object{{"required": []string{"providerId"}}, {"required": []string{"organizationSlug"}}, {"required": []string{"domain"}}, {"required": []string{"email"}}}
 		body(schema)
+	case "/sso/saml2/sp/metadata":
+		op["parameters"] = []object{{"name": "providerId", "in": "query", "required": true, "schema": providerID}}
+	case "/sso/saml2/sp/acs/:providerId":
+		op["parameters"] = []object{{"name": "providerId", "in": "path", "required": true, "schema": providerID}, {"name": info.SAMLStateCookie, "in": "cookie", "required": true, "schema": text}}
+		op["requestBody"] = object{"required": true, "content": content("application/x-www-form-urlencoded", responseObject(object{"SAMLResponse": text, "RelayState": text}, "SAMLResponse", "RelayState"))}
 	case "/sso/callback", "/sso/callback/:providerId":
 		op["description"] = "Complete the browser-bound OIDC flow. Successful authentication redirects to the trusted application callback. Invalid state or rejected authentication may redirect to an error page. No signed-in session is required."
 		params := []object{

@@ -27,11 +27,11 @@ StoneWrit Auth embeds authentication in your Go API. Mount the auth handler on y
 - [x] Start recurring Checkout, confirm a personal plan change, schedule a price for the next billing period, cancel or restore the subscription. [Subscription billing](docs/subscriptions.md)
 - [x] Choose licensed seat quantities for personal and organization checkout, review quantity changes in Stripe, and list confirmed subscriptions. [Organization billing](docs/subscriptions.md)
 - [x] Bill organization seats monthly or annually, with an optional fixed base price, and synchronize the quantity after membership changes. [Automatic seats](docs/subscriptions.md#bill-by-organization-membership)
-- [x] Register enterprise OIDC providers, optionally verify their domains with DNS, sign in with a browser, and provision members in the provider’s organization. [Enterprise OpenID Connect](docs/sso.md)
+- [x] Register enterprise OIDC or SAML providers, optionally verify their domains with DNS, sign in with a browser, and provision members in the provider’s organization. [Enterprise single sign-on](docs/sso.md)
 - [x] Provision directory Users and Groups, synchronize direct memberships and rotate or revoke scoped SCIM credentials. [Directory provisioning](docs/scim.md)
 - [x] Map directory Group memberships to application roles and withdraw grants when their last source is removed. [SCIM role mapping](docs/scim.md#project-group-memberships-into-application-roles)
 
-Enterprise SAML sign-in and metered billing remain open. The [complete checklist](docs/parity/README.md) records which parts of each integration have passing tests.
+IdP-initiated SAML, SAML single logout and metered billing remain open. The [complete checklist](docs/parity/README.md) records which parts of each integration have passing tests.
 
 ## Run it locally
 

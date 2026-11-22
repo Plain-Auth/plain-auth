@@ -22,7 +22,7 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 | TOTP enrollment, challenge verification and backup codes | [Two-factor authentication](../2fa.md) |
 | Runtime settings, key rotation and startup | [Environment](../environment.md) |
 | OAuth sign-in, identity verification and account linking | [Social providers](../social.md) |
-| Enterprise provider registration, browser sign-in and organization membership | [Enterprise OpenID Connect](../sso.md) |
+| Enterprise provider registration, browser sign-in and organization membership | [Enterprise single sign-on](../sso.md) |
 | Go client and router integrations | [HTTP client](../client.md) · [Routers](../routers.md) |
 | Memory, SQLite, PostgreSQL and MySQL | [Databases](../databases.md) · [Schema generation and migrations](../schema.md) |
 | Username registration, sign-in and availability | [Username sign-in](../username.md) |
@@ -89,7 +89,7 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 | [Phone number](plugins/phone-number.md) | 33 | 67 |
 | [SCIM provisioning](plugins/scim.md) | 66 | 251 |
 | [Sign in with Ethereum](plugins/siwe.md) | 0 | 40 |
-| [Single sign-on](plugins/sso.md) | 45 | 308 |
+| [Single sign-on](plugins/sso.md) | 53 | 308 |
 | [Stripe](plugins/stripe.md) | 130 | 193 |
 | [Test utils](plugins/test-utils.md) | 0 | 42 |
 | [Username](plugins/username.md) | 33 | 54 |

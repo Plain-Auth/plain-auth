@@ -1,0 +1,287 @@
+package sso
+
+import (
+	"bytes"
+	"context"
+	"encoding/base64"
+	"encoding/xml"
+	"errors"
+	"io"
+	"mime"
+	"net/url"
+	"strings"
+	"time"
+
+	auth "github.com/Stonewrit/stonewrit-auth"
+	"github.com/crewjam/saml"
+)
+
+type AssertionReceipt struct{ Issuer, ID string }
+type SAMLStore interface {
+	BrowserStore
+	CompleteSAMLLogin(ctx context.Context, reference string, provision, verified bool, provider, subject string, receipt AssertionReceipt, u auth.User, session auth.StoredSession, opts auth.OAuthLoginOptions) (auth.User, bool, error)
+}
+
+var ErrAssertionUsed = apiError(400, "SAML assertion has already been consumed")
+var errSAMLResponse = apiError(400, "Invalid SAML response")
+
+// The supported HTTP-POST profile has one plaintext, directly signed assertion
+// and no encrypted assertions. This pass bounds the XML and checks the envelope;
+// all identity data below comes from the library's authenticated assertion.
+func assertionEnvelope(raw []byte, acs, requestID string) (string, error) {
+	const protocol = "urn:oasis:names:tc:SAML:2.0:protocol"
+	const assertion = "urn:oasis:names:tc:SAML:2.0:assertion"
+	const ds = "http://www.w3.org/2000/09/xmldsig#"
+	attr := func(e xml.StartElement, name string) string {
+		var val string
+		seen := false
+		for _, a := range e.Attr {
+			if a.Name == (xml.Name{Local: name}) {
+				if seen {
+					return ""
+				}
+				seen = true
+				val = a.Value
+			}
+		}
+		return val
+	}
+	d := xml.NewDecoder(bytes.NewReader(raw))
+	var stack []xml.Name
+	var id string
+	roots, signatures, elements := 0, 0, 0
+	for {
+		tok, err := d.Token()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return "", errSAMLResponse
+		}
+		switch t := tok.(type) {
+		case xml.Directive:
+			return "", errSAMLResponse
+		case xml.StartElement:
+			elements++
+			if elements > 5000 || len(stack) >= 64 {
+				return "", errSAMLResponse
+			}
+			switch {
+			case len(stack) == 0:
+				roots++
+				if roots != 1 || t.Name != (xml.Name{Space: protocol, Local: "Response"}) || attr(t, "Destination") != acs || attr(t, "InResponseTo") != requestID {
+					return "", errSAMLResponse
+				}
+			case t.Name == (xml.Name{Space: assertion, Local: "EncryptedAssertion"}):
+				return "", errSAMLResponse
+			case t.Name == (xml.Name{Space: assertion, Local: "Assertion"}):
+				if len(stack) != 1 || id != "" {
+					return "", errSAMLResponse
+				}
+				id = attr(t, "ID")
+				if id == "" || len(id) > 512 {
+					return "", errSAMLResponse
+				}
+			case len(stack) == 2 && stack[1] == (xml.Name{Space: assertion, Local: "Assertion"}) && t.Name == (xml.Name{Space: ds, Local: "Signature"}):
+				signatures++
+			}
+			stack = append(stack, t.Name)
+		case xml.EndElement:
+			stack = stack[:len(stack)-1]
+		case xml.CharData:
+			if len(stack) == 0 && len(bytes.TrimSpace(t)) != 0 {
+				return "", errSAMLResponse
+			}
+		}
+	}
+	if id == "" || signatures != 1 {
+		return "", errSAMLResponse
+	}
+	return id, nil
+}
+func samlProfile(a *saml.Assertion, m SAMLMapping, trust bool) (auth.OAuthProfile, error) {
+	if a.Subject == nil || a.Subject.NameID == nil {
+		return auth.OAuthProfile{}, errSAMLResponse
+	}
+	attrs := map[string][]string{}
+	for _, stmt := range a.AttributeStatements {
+		for _, v := range stmt.Attributes {
+			for _, item := range v.Values {
+				if !item.Nil {
+					attrs[v.Name] = append(attrs[v.Name], item.Value)
+				}
+			}
+		}
+	}
+	get := func(configured, fallback string) (string, error) {
+		if configured == "" {
+			configured = fallback
+		}
+		values := attrs[configured]
+		if len(values) > 1 {
+			return "", errSAMLResponse
+		}
+		if len(values) == 0 {
+			return "", nil
+		}
+		return strings.TrimSpace(values[0]), nil
+	}
+	email, err := get(m.Email, "email")
+	if err != nil {
+		return auth.OAuthProfile{}, err
+	}
+	id := a.Subject.NameID.Value
+	if email == "" {
+		email = id
+	}
+	first, err := get(m.FirstName, "givenName")
+	if err != nil {
+		return auth.OAuthProfile{}, err
+	}
+	last, err := get(m.LastName, "surname")
+	if err != nil {
+		return auth.OAuthProfile{}, err
+	}
+	name := strings.TrimSpace(first + " " + last)
+	if name == "" {
+		name, err = get(m.Name, "displayName")
+		if err != nil {
+			return auth.OAuthProfile{}, err
+		}
+	}
+	if name == "" {
+		name = id
+	}
+	result := auth.OAuthProfile{Subject: id, Email: strings.ToLower(email), Name: name}
+	if trust && m.EmailVerified != "" {
+		verified, e := get(m.EmailVerified, "")
+		if e != nil {
+			return result, e
+		}
+		result.EmailVerified = verified == "true"
+	}
+	return result, nil
+}
+
+// A browser serializes an Origin with a lowercase host and no default port.
+func sameSAMLOrigin(raw, entryPoint string) bool {
+	origin, err := endpointURL(raw)
+	if err != nil || origin.Path != "" || strings.ContainsAny(raw, "?#") {
+		return false
+	}
+	entry, err := endpointURL(entryPoint)
+	if err != nil || origin.Scheme != entry.Scheme || !strings.EqualFold(origin.Hostname(), entry.Hostname()) {
+		return false
+	}
+	port := func(u *url.URL) string {
+		if u.Port() != "" {
+			return u.Port()
+		}
+		if u.Scheme == "https" {
+			return "443"
+		}
+		return "80"
+	}
+	return port(origin) == port(entry)
+}
+
+func (o Options) samlFinish(c auth.EndpointContext) (any, error) {
+	store, ok := c.Store().(SAMLStore)
+	if !ok {
+		return nil, apiError(501, "The configured store does not support SAML sign-in")
+	}
+	media, _, err := mime.ParseMediaType(c.Request.Header.Get("Content-Type"))
+	if err != nil || media != "application/x-www-form-urlencoded" {
+		return nil, apiError(415, "SAML requires a URL-encoded form")
+	}
+	if c.Request.URL.RawQuery != "" {
+		return nil, errSAMLResponse
+	}
+	if err = c.Request.ParseForm(); err != nil {
+		return nil, errSAMLResponse
+	}
+	form := c.Request.PostForm
+	if len(form["RelayState"]) != 1 || len(form["SAMLResponse"]) != 1 || form.Get("SAMLResponse") == "" {
+		return nil, errSAMLResponse
+	}
+	flow, err := c.ConsumeEnterprisePostFlow(form.Get("RelayState"))
+	if err != nil {
+		return nil, err
+	}
+	fail := func(code string) (any, error) { return enterpriseFailure(c, flow, code) }
+	p, err := store.FindBrowserProvider(c.Request.Context(), Selector{ProviderID: flow.Provider, Protocol: "saml"})
+	if err != nil {
+		if errors.Is(err, ErrMissing) {
+			return fail("invalid_provider")
+		}
+		return nil, err
+	}
+	if p.SAML == nil || !available(c, p) || p.Reference != strings.TrimSuffix(flow.ProviderReference, ".dns") {
+		return fail("invalid_state")
+	}
+	proof, err := o.domainGate(c, p)
+	if err != nil {
+		return nil, err
+	}
+	if strings.HasSuffix(flow.ProviderReference, ".dns") && !proof {
+		return nil, ErrDomainUnverified
+	}
+	sp, err := o.samlSP(c, p.Provider)
+	if err != nil || sp.AcsURL.String() != flow.RedirectURI {
+		return fail("invalid_provider")
+	}
+	if origins := c.Request.Header.Values("Origin"); len(origins) != 0 {
+		if len(origins) != 1 || !sameSAMLOrigin(origins[0], p.SAML.EntryPoint) {
+			return fail("invalid_origin")
+		}
+	}
+	raw, err := base64.StdEncoding.DecodeString(form.Get("SAMLResponse"))
+	if err != nil {
+		return fail("invalid_saml_response")
+	}
+	requestID := "_" + flow.Nonce
+	id, err := assertionEnvelope(raw, sp.AcsURL.String(), requestID)
+	if err != nil {
+		return fail("invalid_saml_response")
+	}
+	a, err := sp.ParseXMLResponse(raw, []string{requestID}, sp.AcsURL)
+	// Require bounded assertion validity even if library-wide clock settings
+	// are adjusted by another application component.
+	now := time.Now()
+	if err != nil || a == nil || a.ID != id || a.Issuer.Value != p.SAML.IDPMetadata.EntityID || a.Conditions == nil {
+		return fail("invalid_saml_response")
+	}
+	latest := now.Add(3 * time.Minute)
+	if a.Conditions.NotOnOrAfter.IsZero() || !a.Conditions.NotOnOrAfter.After(now.Add(-3*time.Minute)) ||
+		a.Conditions.NotBefore.After(latest) || a.IssueInstant.Before(now.Add(-5*time.Minute)) || a.IssueInstant.After(latest) {
+		return fail("invalid_saml_response")
+	}
+	profile, err := samlProfile(a, p.SAML.Mapping, o.SAML.TrustEmailVerified)
+	if err != nil {
+		return fail("invalid_saml_response")
+	}
+	complete := func(ctx context.Context, provider, subject string, _ auth.OAuthTokens, u auth.User, session auth.StoredSession, opts auth.OAuthLoginOptions) (auth.User, bool, error) {
+		return store.CompleteSAMLLogin(ctx, p.Reference, !o.DisableOrganizationProvisioning, proof, provider, subject, AssertionReceipt{Issuer: a.Issuer.Value, ID: id}, u, session, opts)
+	}
+	// SAML relays the trusted callback URL for both new and returning users.
+	flow.NewUserCallbackURL = ""
+	result, err := c.CompleteEnterpriseFlow(flow, profile, auth.OAuthTokens{}, o.DisableImplicitSignUp && !flow.RequestSignUp, complete)
+	switch {
+	case errors.Is(err, ErrDomainUnverified):
+		return nil, err
+	case errors.Is(err, auth.ErrOAuthLinkRequired):
+		return fail("account_not_linked")
+	case errors.Is(err, ErrChanged):
+		return fail("SSO_PROVIDER_CHANGED")
+	case errors.Is(err, ErrAssertionUsed):
+		return fail("invalid_saml_response")
+	}
+	var ae *auth.APIError
+	if errors.As(err, &ae) {
+		if ae.Code == "SIGN_UP_DISABLED" {
+			return fail("signup_disabled")
+		}
+		return fail("access_denied")
+	}
+	return result, err
+}

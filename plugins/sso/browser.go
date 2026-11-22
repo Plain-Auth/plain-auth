@@ -12,7 +12,7 @@ import (
 	"golang.org/x/oauth2"
 )
 
-type Selector struct{ ProviderID, Domain, OrganizationSlug string }
+type Selector struct{ ProviderID, Domain, OrganizationSlug, Protocol string }
 type BrowserProvider struct {
 	Provider
 	Reference string
@@ -46,7 +46,7 @@ func DomainMatch(domain, list string) int {
 }
 
 func available(c auth.EndpointContext, p BrowserProvider) bool {
-	return p.OIDC != nil && p.Reference != "" && MutableProviderID(p.ProviderID) && !c.Auth.HasOAuthProvider(p.ProviderID)
+	return (p.OIDC != nil || p.SAML != nil) && p.Reference != "" && MutableProviderID(p.ProviderID) && !c.Auth.HasOAuthProvider(p.ProviderID)
 }
 func (o Options) start(c auth.EndpointContext) (any, error) {
 	store, ok := c.Store().(BrowserStore)
@@ -62,10 +62,15 @@ func (o Options) start(c auth.EndpointContext) (any, error) {
 			}
 		}
 	}
-	if kind := read("providerType"); kind != "" && kind != "oidc" {
+	kind := read("providerType")
+	if kind != "" && kind != "oidc" && (kind != "saml" || o.SAML == nil) {
 		return nil, apiError(400, "OIDC provider is not configured")
 	}
 	sel := Selector{ProviderID: read("providerId"), OrganizationSlug: read("organizationSlug"), Domain: read("domain")}
+	sel.Protocol = kind
+	if o.SAML == nil {
+		sel.Protocol = "oidc"
+	}
 	if sel.Domain == "" && read("email") != "" {
 		_, sel.Domain, _ = strings.Cut(read("email"), "@")
 	}
@@ -97,6 +102,9 @@ func (o Options) start(c auth.EndpointContext) (any, error) {
 	proof, err := o.domainGate(c, p)
 	if err != nil {
 		return nil, err
+	}
+	if p.SAML != nil {
+		return o.samlStart(c, p, proof, signup)
 	}
 	cfg, err := o.oauthConfig(c, p)
 	if err != nil {
@@ -212,20 +220,7 @@ func (o Options) finish(c auth.EndpointContext) (any, error) {
 		}
 		return nil, err
 	}
-	fail := func(code string) (any, error) {
-		target := flow.ErrorCallbackURL
-		if target == "" {
-			target = flow.CallbackURL
-		}
-		u, e := url.Parse(target)
-		if e != nil {
-			return nil, e
-		}
-		v := u.Query()
-		v.Set("error", code)
-		u.RawQuery = v.Encode()
-		return c.Redirect(u.String())
-	}
+	fail := func(code string) (any, error) { return enterpriseFailure(c, flow, code) }
 	q := c.Request.URL.Query()
 	if q.Get("error") != "" || q.Get("code") == "" {
 		return fail("invalid_request")
@@ -237,7 +232,7 @@ func (o Options) finish(c auth.EndpointContext) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	if !available(c, p) || strings.TrimSuffix(flow.ProviderReference, ".dns") != p.Reference {
+	if p.OIDC == nil || !available(c, p) || strings.TrimSuffix(flow.ProviderReference, ".dns") != p.Reference {
 		return fail("invalid_state")
 	}
 	proof, err := o.domainGate(c, p)
@@ -297,4 +292,19 @@ func (o Options) finish(c auth.EndpointContext) (any, error) {
 		return fail("access_denied")
 	}
 	return result, err
+}
+
+func enterpriseFailure(c auth.EndpointContext, flow auth.OAuthFlow, code string) (any, error) {
+	target := flow.ErrorCallbackURL
+	if target == "" {
+		target = flow.CallbackURL
+	}
+	u, e := url.Parse(target)
+	if e != nil {
+		return nil, e
+	}
+	v := u.Query()
+	v.Set("error", code)
+	u.RawQuery = v.Encode()
+	return c.Redirect(u.String())
 }

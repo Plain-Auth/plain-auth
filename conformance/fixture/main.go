@@ -62,6 +62,10 @@ func main() {
 	}
 	defer listener.Close()
 	baseURL := "http://" + listener.Addr().String()
+	samlFixture := os.Getenv("CONFORMANCE_SAML") == "1"
+	if samlFixture {
+		baseURL = "https://" + listener.Addr().String()
+	}
 	passkeyFirst := os.Getenv("CONFORMANCE_PASSKEY_FIRST") == "1"
 	if passkeyFirst {
 		baseURL = strings.Replace(baseURL, "127.0.0.1", "localhost", 1)
@@ -82,6 +86,9 @@ func main() {
 		switch id {
 		case "sso", "sso-domain-verification":
 			opts := sso.Options{SharedCallback: os.Getenv("CONFORMANCE_SSO_SHARED_CALLBACK") == "1"}
+			if samlFixture {
+				opts.SAML = &sso.SAMLOptions{}
+			}
 			if id == "sso-domain-verification" {
 				address := os.Getenv("CONFORMANCE_SSO_DNS")
 				host, _, err := net.SplitHostPort(address)
@@ -426,6 +433,9 @@ func main() {
 			_ = json.NewEncoder(w).Encode(map[string]string{"owner": key.ReferenceID, "id": key.ID})
 		})))
 		handler = mux
+	}
+	if samlFixture {
+		log.Fatal(serveSAMLFixture(listener, handler, baseURL, os.Args[1]))
 	}
 	fmt.Println(baseURL)
 	log.Fatal(http.Serve(listener, handler))
