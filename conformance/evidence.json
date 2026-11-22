@@ -2010,6 +2010,21 @@
       "label": "Charge a single yearly item at the organization member count and synchronize that same item after a member joins or leaves",
       "test": "conformance/stripe-organization-fixture.mjs",
       "marker": "[[\"price_basic_annual\", 2]]"
+    },
+    {
+      "label": "Buy a configured annual metered price through the browser client and omit the Checkout item quantity even when the caller specifies seats",
+      "test": "conformance/stripe-organization-fixture.mjs",
+      "marker": "assert.equal(Object.hasOwn(line, \"quantity\"), false)"
+    },
+    {
+      "label": "Retry the original monthly or annual metered purchase across replicas using the native Go client and three SQL engines",
+      "test": "adapters/sqlstore/stripe_metered_test.go",
+      "marker": "replica did not replay the original Checkout"
+    },
+    {
+      "label": "Leave the database free of an ambiguous purchase if the provider cannot identify the price’s billing mode",
+      "test": "adapters/sqlstore/stripe_metered_test.go",
+      "marker": "catalog outage reserved an unknown billing mode"
     }
   ],
   "docs/content/docs/plugins/stripe.mdx#L221": [
@@ -2054,6 +2069,11 @@
       "label": "Update the existing Stripe item when an invitation is accepted or a member is removed, using default proration",
       "test": "conformance/stripe-organization-fixture.mjs",
       "marker": "assert.deepEqual(remote.state.seatUpdates, ["
+    },
+    {
+      "label": "List the metered owner’s actual monthly or yearly plan and apply the default of one when Stripe omits the subscription quantity",
+      "test": "adapters/sqlstore/stripe_metered_test.go",
+      "marker": "metered subscription did not reconcile its owner, price, period and default quantity"
     }
   ],
   "docs/content/docs/plugins/stripe.mdx#L362": [
@@ -2120,6 +2140,11 @@
       "label": "Reject an invalid base-price receipt in either webhook order and grant only the verified two-item subscription",
       "test": "adapters/sqlstore/stripe_seats_test.go",
       "marker": "invalid fixed base receipt activated the seat entitlement"
+    },
+    {
+      "label": "Settle the original metered purchase and synchronize a signed renewal with no subscription item quantity on both runtimes",
+      "test": "conformance/stripe-organization-fixture.mjs",
+      "marker": "[referenceId, \"team\", priceID, \"year\", 1]"
     }
   ],
   "plugin-symbol/captcha/captcha": [
@@ -4498,6 +4523,11 @@
       "label": "Preserve the original Stripe success URL and checkout attempt on retries across an upgrade",
       "test": "adapters/sqlstore/stripe_return_test.go",
       "marker": "legacy retry changed its provider parameters"
+    },
+    {
+      "label": "Require an owner-bound original receipt for the correct metered price and billing mode before granting the subscription",
+      "test": "adapters/sqlstore/stripe_metered_test.go",
+      "marker": "mismatched receipt changed metered subscription state"
     }
   ],
   "plugin/stripe/POST /subscription/cancel": [

@@ -15,7 +15,7 @@ import (
 	sdk "github.com/stripe/stripe-go/v87"
 )
 
-// Plan supplies recurring Stripe price IDs for licensed subscriptions.
+// Plan supplies monthly and annual recurring Stripe price IDs.
 type Plan struct {
 	Name, PriceID, AnnualPriceID string
 	// SeatPriceID opts organization checkout into membership-based billing.
@@ -59,6 +59,10 @@ type CheckoutAttempt struct {
 	SeatPrice                                 string `json:"seatPrice,omitempty"` // distinct from Price for a two-item reservation
 	// PriceVerified preserves the price preflight across a lost Checkout response.
 	PriceVerified bool `json:"priceVerified,omitempty"`
+	// Metered reservations omit quantity from the original Checkout line.
+	Metered bool `json:"metered,omitempty"`
+	// CheckPrice requests a price lookup for a new reservation only.
+	CheckPrice bool `json:"-"`
 	// ReturnURL holds the provider success URL issued for this reservation.
 	// Older reservations use their stored SuccessURL directly.
 	ReturnURL                                                                                                     string
@@ -75,7 +79,7 @@ func (a CheckoutAttempt) Quantity() int64 {
 }
 
 // ErrCheckoutPriceCheck asks the handler to verify the price outside the database transaction.
-var ErrCheckoutPriceCheck = errors.New("stripe: verify the recurring price before reserving multiple seats")
+var ErrCheckoutPriceCheck = errors.New("stripe: verify recurring prices before reserving checkout")
 
 type SubscriptionStore interface {
 	CheckSubscriptionSchema(context.Context) error
@@ -252,7 +256,7 @@ func (s *subscriptions) checkout(c auth.EndpointContext) (any, error) {
 	}
 	ctx := c.Request.Context()
 	store := c.Store().(SubscriptionStore)
-	want := CheckoutAttempt{AutomaticSeats: automatic, Seats: quantity, Owner: selection.reference, Plan: p.Name, Interval: interval, Price: price, SuccessURL: success, CancelURL: cancel}
+	want := CheckoutAttempt{CheckPrice: true, AutomaticSeats: automatic, Seats: quantity, Owner: selection.reference, Plan: p.Name, Interval: interval, Price: price, SuccessURL: success, CancelURL: cancel}
 	if automatic && p.SeatPriceID != price {
 		want.SeatPrice = p.SeatPriceID
 	}
@@ -272,10 +276,12 @@ func (s *subscriptions) checkout(c auth.EndpointContext) (any, error) {
 	}
 	a, err := store.ReserveStripeCheckout(ctx, selection.reference, ss.Session.Token, want, time.Now().UTC())
 	if errors.Is(err, ErrCheckoutPriceCheck) {
-		if err := s.verifyCheckoutPrices(ctx, want); err != nil {
+		if err := s.prepareCheckoutPrices(ctx, &want); err != nil {
 			return nil, err
 		}
-		want.PriceVerified = true
+		if _, supported := store.(SubscriptionLifecycleStore); want.Metered && !supported {
+			return nil, billingError(409, "METERED_CHECKOUT_UNAVAILABLE", "Metered checkout requires subscription lifecycle storage")
+		}
 		a, err = store.ReserveStripeCheckout(ctx, selection.reference, ss.Session.Token, want, time.Now().UTC())
 	}
 	if errors.Is(err, ErrExistingSubscription) {

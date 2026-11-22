@@ -12,7 +12,12 @@ const checked = result => { assert.equal(result.error, null, JSON.stringify(resu
 
 const intervalOf = id => id.endsWith("_annual") ? "year" : "month";
 
-async function provider(t) {
+async function provider(t, meteredID) {
+  function price(id) {
+    return { id, object: "price", active: true, recurring: {
+      interval: intervalOf(id), interval_count: 1, usage_type: id === meteredID ? "metered" : "licensed",
+    } };
+  }
   const state = { calls: [], customer: null, checkout: null, subscription: null, seatUpdates: [] };
   const server = createServer(async (req, res) => {
     const url = new URL(req.url, "http://127.0.0.1");
@@ -30,12 +35,15 @@ async function provider(t) {
     if (url.pathname === "/v1/subscriptions" && req.method === "GET") result = { object: "list", has_more: false, data: [] };
     if (url.pathname.startsWith("/v1/prices/")) {
       const id = url.pathname.split("/").at(-1);
-      result = { id, object: "price", active: true, recurring: { interval: intervalOf(id), interval_count: 1, usage_type: "licensed" } };
+      result = price(id);
     }
     if (url.pathname === "/v1/checkout/sessions" && req.method === "POST") {
       const lines = [];
       for (let i = 0; form.has(`line_items[${i}][price]`); i++) {
-        lines.push({ id: "li_" + i, price: { id: form.get(`line_items[${i}][price]`) }, quantity: Number(form.get(`line_items[${i}][quantity]`)) });
+        const line = { id: "li_" + i, price: price(form.get(`line_items[${i}][price]`)) };
+        const quantity = form.get(`line_items[${i}][quantity]`);
+        if (quantity !== null) line.quantity = Number(quantity);
+        lines.push(line);
       }
       result = state.checkout = { id: "cs_org", object: "checkout.session", mode: form.get("mode"), customer: form.get("customer"),
         url: "https://checkout.example.test/org", client_reference_id: form.get("client_reference_id"), metadata: fields("metadata["),
@@ -44,7 +52,7 @@ async function provider(t) {
       state.subscription = { id: "sub_org", object: "subscription", customer: result.customer, status: "active",
         metadata: fields("subscription_data[metadata]["), livemode: false, items: { object: "list", has_more: false, data: lines.map((line, i) => ({
           id: i === 0 ? "si_org" : "si_member", quantity: line.quantity, current_period_start: start,
-          current_period_end: start + (intervalOf(line.price.id) === "year" ? 31_536_000 : 2_592_000), price: { ...line.price, recurring: { interval: intervalOf(line.price.id), interval_count: 1, usage_type: "licensed" } },
+          current_period_end: start + (intervalOf(line.price.id) === "year" ? 31_536_000 : 2_592_000), price: line.price,
         })) } };
     }
     if (url.pathname === "/v1/checkout/sessions/cs_org" && req.method === "GET") result = state.checkout;
@@ -72,6 +80,13 @@ async function provider(t) {
   return { state, api, url: "http://127.0.0.1:" + port };
 }
 
+async function organizationBillingPolicy({ user, referenceId }, ctx) {
+  const member = await ctx.context.adapter.findOne({ model: "member", where: [
+    { field: "organizationId", value: referenceId }, { field: "userId", value: user.id },
+  ] });
+  return member?.role === "owner" || member?.role === "admin";
+}
+
 export async function organizationBilling(t, { reference, goFixture, instrument }, { automatic = false, separate = false, annual = false } = {}) {
   for (const runtime of ["reference", "Go"]) await t.test(runtime, async t => {
     const remote = await provider(t);
@@ -90,10 +105,7 @@ export async function organizationBilling(t, { reference, goFixture, instrument 
       : await reference(t, [organization(), stripe({
         stripeClient: remote.api, stripeWebhookSecret: secret, organization: { enabled: true },
         subscription: { enabled: true, plans: [basicPlan, { name: "team", priceId: "price_team", annualDiscountPriceId: "price_team_annual" }],
-          authorizeReference: async ({ user, referenceId }, ctx) => {
-            const member = await ctx.context.adapter.findOne({ model: "member", where: [{ field: "organizationId", value: referenceId }, { field: "userId", value: user.id }] });
-            return member?.role === "owner" || member?.role === "admin";
-          } },
+          authorizeReference: organizationBillingPolicy },
       })]);
     const browser = () => instrument(server, [organizationClient(), stripeClient({ subscription: true })]).client;
     const owner = browser(), peer = browser();
@@ -193,4 +205,59 @@ async function automaticSeats({ browser, owner, peer, group, remote, deliver, se
     { item: seatID, quantity: 2, proration: "create_prorations" },
   ]);
   assert.deepEqual(checked(await owner.subscription.list()), []);
+}
+
+export async function meteredCheckout(t, { reference, goFixture, instrument }, isOrganization) {
+  const priceID = "price_team_annual";
+  for (const runtime of ["reference", "Go"]) await t.test(runtime, async t => {
+    const remote = await provider(t, priceID);
+    const profile = isOrganization ? ["organization", "stripe-organization"] : ["stripe-subscriptions"];
+    const server = runtime === "Go"
+      ? await goFixture(t, profile, { CONFORMANCE_STRIPE_URL: remote.url })
+      : await reference(t, [organization(), stripe({
+        stripeClient: remote.api, stripeWebhookSecret: secret, organization: { enabled: true },
+        subscription: { enabled: true, authorizeReference: organizationBillingPolicy,
+          plans: [{ name: "team", priceId: "price_team", annualDiscountPriceId: priceID }] },
+      })]);
+    const browser = () => instrument(server, [organizationClient(), stripeClient({ subscription: true })]).client;
+    const owner = browser(), other = browser();
+    const signup = (client, name) => client.signUp.email({ name, email: name + "@example.test", password: "meter-fixture-password" });
+    const account = checked(await signup(owner, "buyer"));
+    checked(await signup(other, "peer"));
+    let referenceId = account.user.id;
+    let selection = {};
+    if (isOrganization) {
+      const group = checked(await owner.organization.create({ name: "Metered org", slug: "metered" }));
+      referenceId = group.id;
+      selection = { referenceId, customerType: "organization" };
+      const denied = await other.subscription.upgrade({ ...selection, plan: "team", annual: true });
+      assert.equal(denied.error.status, 401);
+      assert.equal(remote.state.calls.length, 0);
+    }
+    const checkout = checked(await owner.subscription.upgrade({ ...selection, plan: "team", annual: true, seats: 9, disableRedirect: true }));
+    assert.equal(checkout.redirect, false);
+    assert.equal(checkout.url, remote.state.checkout.url);
+    assert.equal(remote.state.checkout.client_reference_id, referenceId);
+    const [line] = remote.state.checkout.line_items.data;
+    assert.equal(line.price.id, priceID);
+    assert.equal(Object.hasOwn(line, "quantity"), false);
+    const list = () => owner.subscription.list({ query: selection });
+    assert.deepEqual(checked(await list()), []);
+    // An event may identify the bought price without expanding its recurring details.
+    const receipt = structuredClone(remote.state.checkout);
+    receipt.line_items.data[0].price = priceID;
+    for (const [type, object] of [["checkout.session.completed", receipt], ["customer.subscription.updated", remote.state.subscription]]) {
+      const payload = JSON.stringify({ id: "evt_" + type, type, object: "event", api_version: Stripe.API_VERSION,
+        created: Math.floor(Date.now() / 1000), livemode: false, data: { object } });
+      const signature = remote.api.webhooks.generateTestHeaderString({ payload, secret });
+      const reply = await server.send(new Request(server.baseURL + "/api/auth/stripe/webhook", {
+        method: "POST", headers: { "content-type": "application/json", "stripe-signature": signature }, body: payload,
+      }));
+      assert.equal(reply.status, 200, await reply.text());
+      const [row] = checked(await list());
+      assert.deepEqual([row.referenceId, row.plan, row.priceId, row.billingInterval, row.seats], [referenceId, "team", priceID, "year", 1]);
+      assert.deepEqual(checked(await other.subscription.list()), []);
+      if (isOrganization) assert.deepEqual(checked(await owner.subscription.list()), []);
+    }
+  });
 }

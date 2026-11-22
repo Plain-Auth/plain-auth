@@ -142,7 +142,11 @@ func (s *subscriptions) licensedPrice(p *sdk.Price) bool {
 }
 
 func licensedAtInterval(p *sdk.Price, interval string) bool {
+	return recurringAtInterval(p, interval, sdk.PriceRecurringUsageTypeLicensed)
+}
+
+func recurringAtInterval(p *sdk.Price, interval string, usage sdk.PriceRecurringUsageType) bool {
 	return (interval == "month" || interval == "year") && p != nil && p.Recurring != nil &&
 		string(p.Recurring.Interval) == interval && p.Recurring.IntervalCount == 1 &&
-		p.Recurring.UsageType == sdk.PriceRecurringUsageTypeLicensed
+		p.Recurring.UsageType == usage
 }

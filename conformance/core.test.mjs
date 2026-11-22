@@ -1484,3 +1484,10 @@ test("enterprise SAML accepts an independently encrypted signed assertion throug
   const {compareEnterpriseSAML}=await import("./sso-saml.mjs");
   await compareEnterpriseSAML(t,{goFixture,instrument,encrypted:true});
 });
+
+test("the released billing client buys one metered price without a Checkout quantity on both runtimes", async t => {
+  const { meteredCheckout } = await import("./stripe-organization-fixture.mjs");
+  for (const organization of [false, true]) {
+    await t.test(organization ? "organization" : "user", t => meteredCheckout(t, { reference, goFixture, instrument }, organization));
+  }
+});

@@ -10,6 +10,9 @@ import (
 // A reservation predating separate seat prices has a single immutable line.
 func (a CheckoutAttempt) checkoutLines() []*sdk.CheckoutSessionCreateLineItemParams {
 	base := &sdk.CheckoutSessionCreateLineItemParams{Price: sdk.String(a.Price), Quantity: sdk.Int64(a.Quantity())}
+	if a.Metered {
+		base.Quantity = nil
+	}
 	lines := []*sdk.CheckoutSessionCreateLineItemParams{base}
 	if a.SeatPrice != "" {
 		base.Quantity = sdk.Int64(1)
@@ -19,13 +22,16 @@ func (a CheckoutAttempt) checkoutLines() []*sdk.CheckoutSessionCreateLineItemPar
 }
 
 func (a CheckoutAttempt) matchesLines(actual []*sdk.LineItem) bool {
+	if a.Metered {
+		return len(actual) == 1 && actual[0] != nil && a.matchesMeteredPrice(actual[0].Price)
+	}
 	want := a.checkoutLines()
 	if len(actual) != len(want) {
 		return false
 	}
 	purchased := make(map[string]int64, len(actual))
 	for _, line := range actual {
-		if line == nil || line.Price == nil || line.Price.ID == "" {
+		if line == nil || line.Price == nil || line.Price.ID == "" || line.Price.Recurring != nil && line.Price.Recurring.UsageType == sdk.PriceRecurringUsageTypeMetered {
 			return false
 		}
 		if _, duplicate := purchased[line.Price.ID]; duplicate {
@@ -39,6 +45,33 @@ func (a CheckoutAttempt) matchesLines(actual []*sdk.LineItem) bool {
 		}
 	}
 	return true
+}
+
+func (a CheckoutAttempt) matchesMeteredPrice(price *sdk.Price) bool {
+	return price != nil && price.ID == a.Price && recurringAtInterval(price, a.Interval, sdk.PriceRecurringUsageTypeMetered)
+}
+
+func (s *subscriptions) prepareCheckoutPrices(ctx context.Context, a *CheckoutAttempt) error {
+	if a.AutomaticSeats {
+		if err := s.verifyCheckoutPrices(ctx, *a); err != nil {
+			return err
+		}
+		a.PriceVerified = true
+		return nil
+	}
+	price, err := s.client.V1Prices.Retrieve(ctx, a.Price, nil)
+	if err != nil {
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+		return billingError(502, "STRIPE_PRICE_UNAVAILABLE", "Could not retrieve the configured checkout price")
+	}
+	a.Metered = a.matchesMeteredPrice(price)
+	if price == nil || price.ID != a.Price || !price.Active || (!a.Metered && !licensedAtInterval(price, a.Interval)) {
+		return billingError(409, errUnsupportedItem.Code, "Checkout requires an active recurring price with the selected interval")
+	}
+	a.PriceVerified = true
+	return nil
 }
 
 func (s *subscriptions) verifyCheckoutPrices(ctx context.Context, a CheckoutAttempt) error {

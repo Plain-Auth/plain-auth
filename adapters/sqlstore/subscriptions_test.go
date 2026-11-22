@@ -66,6 +66,8 @@ func TestSubscriptionCheckout(t *testing.T) {
 				}
 				key := r.Header.Get("Idempotency-Key")
 				switch r.URL.Path {
+				case "/v1/prices/price_month":
+					return stripeJSON(200, map[string]any{"id": "price_month", "active": true, "recurring": map[string]any{"interval": "month", "interval_count": 1, "usage_type": "licensed"}}), nil
 				case "/v1/prices/price_year":
 					priceReads++
 					return stripeJSON(200, map[string]any{"id": "price_year", "active": true, "recurring": map[string]any{"interval": "year", "interval_count": 1, "usage_type": usage}}), nil
@@ -181,7 +183,7 @@ func TestSubscriptionCheckout(t *testing.T) {
 			for _, seats := range []any{-2, 1.5, 2147483648, "4"} {
 				check(400, first, "upgrade", map[string]any{"plan": "pro", "seats": seats}, cookie)
 			}
-			usage = "metered"
+			usage = "unknown"
 			check(409, first, "upgrade", body, cookie)
 			usage = "licensed"
 			// An invalid price did not reserve a purchase. Lose the first valid

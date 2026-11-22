@@ -43,6 +43,9 @@ func (f *returnFixture) event(context.Context, sdk.Event) error { f.onEvent++; r
 
 func (f *returnFixture) provider(r *http.Request) (*http.Response, error) {
 	const sessions = "/v1/checkout/sessions"
+	if r.Method == "GET" && r.URL.Path == "/v1/prices/price_pro" {
+		return stripeJSON(200, map[string]any{"id": "price_pro", "active": true, "recurring": map[string]any{"usage_type": "licensed", "interval": "month", "interval_count": 1}}), nil
+	}
 	if r.Method == "POST" && r.URL.Path == sessions {
 		if err := r.ParseForm(); err != nil {
 			return nil, err
@@ -106,6 +109,11 @@ func (f *returnFixture) provider(r *http.Request) (*http.Response, error) {
 
 func newReturnFixture(t *testing.T, dialect string) *returnFixture {
 	t.Helper()
+	return configuredReturnFixture(t, dialect, billing.Plan{Name: "pro", PriceID: "price_pro"}, (*returnFixture).provider)
+}
+
+func configuredReturnFixture(t *testing.T, dialect string, plan billing.Plan, provider func(*returnFixture, *http.Request) (*http.Response, error)) *returnFixture {
+	t.Helper()
 	f := &returnFixture{t: t, sessions: map[string]returnCheckout{}}
 	dsn := organizationTestDSN(t, dialect)
 	ddl, err := schema.Generate(dialect, []string{"stripe-subscriptions", "anonymous"})
@@ -121,8 +129,8 @@ func newReturnFixture(t *testing.T, dialect string) *returnFixture {
 		return s
 	}
 	f.store = newStore()
-	back := sdk.NewBackendsWithConfig(&sdk.BackendConfig{HTTPClient: &http.Client{Transport: localBillingTransport(f.provider)}, MaxNetworkRetries: sdk.Int64(0)})
-	plug := billing.New(billing.Options{WebhookSecret: returnSecret, Subscriptions: &billing.SubscriptionOptions{Client: sdk.NewClient("sk_test_local", sdk.WithBackends(back)), Plans: []billing.Plan{{Name: "pro", PriceID: "price_pro"}}}, OnEvent: f.event})
+	back := sdk.NewBackendsWithConfig(&sdk.BackendConfig{HTTPClient: &http.Client{Transport: localBillingTransport(func(r *http.Request) (*http.Response, error) { return provider(f, r) })}, MaxNetworkRetries: sdk.Int64(0)})
+	plug := billing.New(billing.Options{WebhookSecret: returnSecret, Subscriptions: &billing.SubscriptionOptions{Client: sdk.NewClient("sk_test_local", sdk.WithBackends(back)), Plans: []billing.Plan{plan}}, OnEvent: f.event})
 	guest, err := auth.NewAnonymous(auth.AnonymousOptions{})
 	if err != nil {
 		t.Fatal(err)

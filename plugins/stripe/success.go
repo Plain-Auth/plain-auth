@@ -167,7 +167,11 @@ func checkoutMetadataMatches(a CheckoutAttempt, meta map[string]string) bool {
 func (s *subscriptions) checkoutReceipt(c auth.EndpointContext, a CheckoutAttempt, checkout *sdk.CheckoutSession, token string) (CheckoutReceipt, error) {
 	ctx := c.Request.Context()
 	remote, live := checkout.Subscription.ID, checkout.Livemode
-	if lifecycle, ok := c.Store().(SubscriptionLifecycleStore); ok && a.Seats > 0 {
+	lifecycle, supportsLifecycle := c.Store().(SubscriptionLifecycleStore)
+	if a.Metered && !supportsLifecycle {
+		return CheckoutReceipt{}, ErrCheckoutReconcile
+	}
+	if supportsLifecycle && a.Seats > 0 {
 		purchase, err := s.checkoutPurchase(ctx, a, checkout.ID, remote, live, checkout)
 		if err != nil {
 			return CheckoutReceipt{}, err

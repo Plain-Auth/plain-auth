@@ -3,6 +3,7 @@ package stripe
 import (
 	"context"
 	"errors"
+
 	auth "github.com/Stonewrit/stonewrit-auth"
 	sdk "github.com/stripe/stripe-go/v87"
 )
@@ -20,7 +21,9 @@ func (s *subscriptions) checkoutPurchase(ctx context.Context, a CheckoutAttempt,
 	if id == "" || a.CheckoutID != "" && a.CheckoutID != id {
 		return nil, ErrCheckoutReconcile
 	}
-	if session == nil || session.LineItems == nil {
+	// A signed event can include price IDs without the recurring details.
+	// Retrieve the expanded receipt before deciding its billing mode.
+	if session == nil || session.LineItems == nil || a.Metered && !a.matchesLines(session.LineItems.Data) {
 		params := &sdk.CheckoutSessionRetrieveParams{}
 		params.AddExpand("line_items")
 		var err error

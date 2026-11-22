@@ -135,8 +135,11 @@ func (s *Store) ReserveStripeCheckout(ctx context.Context, owner, token string, 
 				return billing.ErrInvalidSeatQuantity
 			}
 		}
-		if (want.AutomaticSeats || want.Quantity() > 1) && !want.PriceVerified {
+		if (want.CheckPrice || want.AutomaticSeats || want.Quantity() > 1) && !want.PriceVerified {
 			return billing.ErrCheckoutPriceCheck
+		}
+		if want.Metered && (!want.PriceVerified || want.AutomaticSeats || want.SeatPrice != "") {
+			return billing.ErrCheckoutReconcile
 		}
 		var customer sql.NullString
 		err = tx.QueryRowContext(ctx, s.bind(`SELECT "stripeCustomerId" FROM `+billingTable(ctx)+` WHERE "id"=?`), owner).Scan(&customer)
@@ -267,7 +270,7 @@ func (s *Store) applyStripeCheckout(ctx context.Context, want billing.CheckoutAt
 		if a.ID != want.ID {
 			return nil
 		}
-		if a.LocalSubscription != want.LocalSubscription || a.Quantity() != want.Quantity() || a.Customer != want.Customer || (a.CheckoutID != "" && a.CheckoutID != id) {
+		if a.LocalSubscription != want.LocalSubscription || a.Quantity() != want.Quantity() || a.Metered != want.Metered || a.Customer != want.Customer || (a.CheckoutID != "" && a.CheckoutID != id) {
 			return billing.ErrCheckoutReconcile
 		}
 		var customer sql.NullString
