@@ -6,10 +6,21 @@ import (
 	"strings"
 
 	auth "github.com/Plain-Auth/plain-auth"
+	"github.com/Plain-Auth/plain-auth/internal/sessionfields"
 )
 
 func (s *Store) ListUserAccounts(ctx context.Context, userID string) ([]auth.LinkedAccount, error) {
-	rows, err := s.db.QueryContext(ctx, s.bind(`SELECT "id","accountId","providerId","userId","scope","createdAt","updatedAt" FROM "account" WHERE "userId"=? ORDER BY "createdAt","id"`), userID)
+	columns := `"id","accountId","providerId","userId","scope","createdAt","updatedAt"`
+	var visible []string
+	for _, name := range sessionfields.Names(s.accountFields) {
+		f := s.accountFields[name]
+		if !f.Hidden {
+			columns += `,"` + f.Column + `"`
+			visible = append(visible, name)
+		}
+	}
+	query := `SELECT ` + columns + ` FROM "account" WHERE ` + s.exactSQLValue(`"userId"`) + `=? ORDER BY "createdAt","id"`
+	rows, err := s.db.QueryContext(ctx, s.bind(query), userID)
 	if err != nil {
 		return nil, err
 	}
@@ -18,8 +29,23 @@ func (s *Store) ListUserAccounts(ctx context.Context, userID string) ([]auth.Lin
 	for rows.Next() {
 		row := auth.LinkedAccount{Scopes: []string{}}
 		var scope sql.NullString
-		if err := rows.Scan(&row.ID, &row.AccountID, &row.ProviderID, &row.UserID, &scope, &row.CreatedAt, &row.UpdatedAt); err != nil {
+		dest := []any{&row.ID, &row.AccountID, &row.ProviderID, &row.UserID, &scope, &row.CreatedAt, &row.UpdatedAt}
+		coreCount := len(dest)
+		for _, name := range visible {
+			dest = append(dest, scalarDestination(s.accountFields[name].Type))
+		}
+		if err := rows.Scan(dest...); err != nil {
 			return nil, err
+		}
+		if len(visible) > 0 {
+			row.AdditionalFields = make(map[string]any, len(visible))
+			for i, name := range visible {
+				value, err := s.accountFields[name].PublicValue(scannedScalar(dest[coreCount+i]))
+				if err != nil {
+					return nil, err
+				}
+				row.AdditionalFields[name] = value
+			}
 		}
 		for field := range strings.SplitSeq(scope.String, ",") {
 			if v := strings.TrimSpace(field); v != "" {

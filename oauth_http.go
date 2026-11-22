@@ -286,15 +286,24 @@ func (a *Auth) finishBrowserOAuth(w http.ResponseWriter, r *http.Request, id str
 	}
 	var profile OAuthProfile
 	var tokens OAuthTokens
+	var accountFields *MappedAccountFields
 	disableSignUp := p.DisableImplicitSignUp && !flow.RequestSignUp
 	if returned != nil && flow.ErrorCallbackURL == "" {
 		flow.ErrorCallbackURL = a.opts.BasePath + "/error"
 	}
 	if returned == nil {
-		var failure string
-		profile, tokens, failure = a.exchangeProviderCode(ctx, p, flow, q)
+		grant, failure := a.exchangeProviderCode(ctx, p, flow, q)
 		if failure != "" {
 			return fail(failure)
+		}
+		profile, tokens = grant.Profile, grant.Tokens
+		var fieldErr *APIError
+		accountFields, fieldErr = a.mapAccountFields(ctx, p, grant)
+		if fieldErr != nil {
+			if flow.ErrorCallbackURL == "" {
+				flow.ErrorCallbackURL = a.opts.BaseURL + a.opts.BasePath + "/error"
+			}
+			return failWithDescription(fieldErr.Code, fieldErr.Message)
 		}
 	} else {
 		if returned.Error != "" {
@@ -311,7 +320,7 @@ func (a *Auth) finishBrowserOAuth(w http.ResponseWriter, r *http.Request, id str
 		disableSignUp = disableSignUp || returned.DisableSignUp
 		p.RequireEmailVerification = p.RequireEmailVerification || returned.RequireEmailVerification
 	}
-	result, created, err := a.completeProfile(ctx, r, id, flow.CallbackURL, profile, tokens, OAuthLoginOptions{DisableSignUp: disableSignUp, RequireEmailVerification: p.RequireEmailVerification, AllowVerifiedEmailLink: p.AllowVerifiedEmailLink, LinkUserID: flow.LinkUserID, LinkSessionToken: a.cookieToken(r.Header)})
+	result, created, err := a.completeProfile(ctx, r, id, flow.CallbackURL, profile, tokens, OAuthLoginOptions{AccountFields: accountFields, DisableSignUp: disableSignUp, RequireEmailVerification: p.RequireEmailVerification, AllowVerifiedEmailLink: p.AllowVerifiedEmailLink, LinkUserID: flow.LinkUserID, LinkSessionToken: a.cookieToken(r.Header)})
 	var apiError *APIError
 	if errors.As(err, &apiError) && apiError.Code == "EMAIL_NOT_VERIFIED" {
 		if flow.ErrorCallbackURL == "" {
@@ -326,7 +335,7 @@ func (a *Auth) finishBrowserOAuth(w http.ResponseWriter, r *http.Request, id str
 		return fail("signup_disabled")
 	}
 	var fieldError oauthProfileFieldError
-	if errors.As(err, &fieldError) && errors.As(fieldError, &apiError) {
+	if errors.As(err, &apiError) && (errors.As(err, &fieldError) || apiError.Code == "MISSING_FIELD" || apiError.Code == "VALIDATION_ERROR") {
 		if flow.ErrorCallbackURL == "" {
 			flow.ErrorCallbackURL = a.opts.BaseURL + a.opts.BasePath + "/error"
 		}
@@ -364,7 +373,7 @@ func (a *Auth) finishBrowserOAuth(w http.ResponseWriter, r *http.Request, id str
 	return nil
 }
 
-func (a *Auth) exchangeProviderCode(ctx context.Context, p OAuthProvider, flow OAuthFlow, q url.Values) (OAuthProfile, OAuthTokens, string) {
+func (a *Auth) exchangeProviderCode(ctx context.Context, p OAuthProvider, flow OAuthFlow, q url.Values) (OAuthAccountFieldInput, string) {
 	var params []oauth2.AuthCodeOption
 	if !p.DisablePKCE {
 		params = append(params, oauth2.VerifierOption(flow.Verifier))
@@ -376,12 +385,12 @@ func (a *Auth) exchangeProviderCode(ctx context.Context, p OAuthProvider, flow O
 	} else {
 		token, err = p.ExchangeCode(ctx, p.Config, q.Get("code"), flow.Verifier, q)
 	}
-	if err != nil {
-		return OAuthProfile{}, OAuthTokens{}, "OAUTH_TOKEN_EXCHANGE_FAILED"
+	if err != nil || token == nil {
+		return OAuthAccountFieldInput{}, "OAUTH_TOKEN_EXCHANGE_FAILED"
 	}
 	profile, err := p.Resolve(ctx, token, flow.Nonce)
 	if err != nil || !validSocialProfile(profile) {
-		return OAuthProfile{}, OAuthTokens{}, "OAUTH_PROFILE_INVALID"
+		return OAuthAccountFieldInput{}, "OAUTH_PROFILE_INVALID"
 	}
 	if p.FormPostName && q.Get("user") != "" {
 		var newUser struct {
@@ -410,7 +419,7 @@ func (a *Auth) exchangeProviderCode(ctx context.Context, p OAuthProvider, flow O
 	if lifetime := refreshLifetime(token); lifetime > 0 {
 		tokens.RefreshExpiresAt = a.now().Add(lifetime)
 	}
-	return profile, tokens, ""
+	return OAuthAccountFieldInput{Profile: profile, Tokens: tokens, ExchangedToken: token}, ""
 }
 
 func validSocialProfile(p OAuthProfile) bool {
@@ -551,7 +560,15 @@ func (a *Auth) directOAuth(w http.ResponseWriter, r *http.Request, id string, p 
 	}
 	// Direct grants authenticate the signed ID token. A client-supplied access
 	// or refresh token has no independently verified binding to its subject.
-	account, _, err := a.completeProfile(ctx, r, id, callback, profile, OAuthTokens{IDToken: raw}, OAuthLoginOptions{DisableSignUp: p.DisableImplicitSignUp && !requestSignUp, AllowVerifiedEmailLink: p.AllowVerifiedEmailLink, LinkUserID: linkUserID, LinkSessionToken: a.cookieToken(r.Header), IDTokenValidUntil: expires})
+	tokens := OAuthTokens{IDToken: raw}
+	input := OAuthAccountFieldInput{Profile: profile, Tokens: tokens}
+	input.ClientAccessToken, _ = data["accessToken"].(string)
+	input.ClientRefreshToken, _ = data["refreshToken"].(string)
+	fields, fieldErr := a.mapAccountFields(ctx, p, input)
+	if fieldErr != nil {
+		return fieldErr
+	}
+	account, _, err := a.completeProfile(ctx, r, id, callback, profile, tokens, OAuthLoginOptions{AccountFields: fields, DisableSignUp: p.DisableImplicitSignUp && !requestSignUp, AllowVerifiedEmailLink: p.AllowVerifiedEmailLink, LinkUserID: linkUserID, LinkSessionToken: a.cookieToken(r.Header), IDTokenValidUntil: expires})
 	var signupError *APIError
 	if errors.As(err, &signupError) && signupError.Code == "SIGN_UP_DISABLED" {
 		return &APIError{401, "OAUTH_LINK_ERROR", "signup disabled"}

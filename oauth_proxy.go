@@ -217,7 +217,8 @@ func (a *Auth) exchangeProxyCallback(w http.ResponseWriter, r *http.Request, id 
 			ctx = context.WithValue(ctx, popupDataKey{}, grant.PopupAdditionalData)
 		}
 		provider.Config.RedirectURL = grant.Production + grant.BasePath + "/callback/" + id
-		profile, tokens, failure := a.exchangeProviderCode(ctx, provider, OAuthFlow{Verifier: grant.Verifier, Nonce: grant.Nonce}, q)
+		exchange, failure := a.exchangeProviderCode(ctx, provider, OAuthFlow{Verifier: grant.Verifier, Nonce: grant.Nonce}, q)
+		profile, tokens := exchange.Profile, exchange.Tokens
 		if failure == "" && id == "google" && !googleDomainAllowed(provider.GoogleHostedDomain, profile) {
 			failure = "INVALID_TOKEN"
 		}

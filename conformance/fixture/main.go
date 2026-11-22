@@ -84,6 +84,10 @@ func main() {
 	var store *sqlstore.Store
 	var additionalSessionFields map[string]authn.SessionField
 	var additionalUserFields map[string]authn.UserField
+	var accountFields map[string]authn.AccountField
+	if os.Getenv("CONFORMANCE_ACCOUNT_FIELDS") == "1" {
+		accountFields = fixtureAccountFields()
+	}
 	if os.Getenv("CONFORMANCE_SESSION_FIELDS") == "1" {
 		additionalSessionFields = configuredSessionFields()
 	}
@@ -114,9 +118,9 @@ func main() {
 		additionalSessionFields = map[string]authn.SessionField{"remindAt": {Type: authn.FieldDate, Column: "session_remind_at"}}
 	}
 	if os.Getenv("CONFORMANCE_WALLET_SCHEMA") == "1" {
-		store, err = sqlstore.OpenWithOptions(context.Background(), "sqlite", os.Args[1], os.Args[2:], schema.Options{Wallet: walletFixtureOptions().Schema, AdditionalFields: schema.AdditionalFields{Session: additionalSessionFields, User: additionalUserFields}})
-	} else if len(additionalSessionFields)+len(additionalUserFields) > 0 {
-		store, err = sqlstore.OpenWithAdditionalFields(context.Background(), "sqlite", os.Args[1], os.Args[2:], schema.AdditionalFields{Session: additionalSessionFields, User: additionalUserFields})
+		store, err = sqlstore.OpenWithOptions(context.Background(), "sqlite", os.Args[1], os.Args[2:], schema.Options{Wallet: walletFixtureOptions().Schema, AdditionalFields: schema.AdditionalFields{Session: additionalSessionFields, User: additionalUserFields, Account: accountFields}})
+	} else if len(additionalSessionFields)+len(additionalUserFields)+len(accountFields) > 0 {
+		store, err = sqlstore.OpenWithAdditionalFields(context.Background(), "sqlite", os.Args[1], os.Args[2:], schema.AdditionalFields{Session: additionalSessionFields, User: additionalUserFields, Account: accountFields})
 	} else {
 		store, err = sqlstore.OpenWithSchema(context.Background(), "sqlite", os.Args[1], ddl)
 	}
@@ -400,6 +404,12 @@ func main() {
 		social = oneTapFixtureProvider(oneTapKeys)
 		plugins = append(plugins, authn.NewOneTap(authn.OneTapOptions{}, authn.OAuthProvider{}))
 	}
+	if len(accountFields) > 0 {
+		for id, provider := range social {
+			provider.GetAccountFields = fixtureAccountMapping
+			social[id] = provider
+		}
+	}
 	if id := os.Getenv("CONFORMANCE_DISABLE_DIRECT_ID_TOKEN"); id != "" {
 		p, ok := social[id]
 		if !ok {
@@ -468,6 +478,7 @@ func main() {
 	opts := authn.Options{
 		SessionAdditionalFields: additionalSessionFields,
 		UserAdditionalFields:    additionalUserFields,
+		AccountAdditionalFields: accountFields,
 		SessionCookieCache:      sessionCache,
 		SessionUpdateAge:        fixtureSessionUpdateAge(),
 		DeferSessionRefresh:     os.Getenv("CONFORMANCE_DEFER_SESSION_REFRESH") == "1",
@@ -480,6 +491,11 @@ func main() {
 		EmailAndPassword:        true,
 		Secret:                  "local-conformance-0123456789-abcdefghijk",
 		Store:                   store,
+	}
+	if len(accountFields) > 0 {
+		opts.AccountFieldRules = map[string]authn.AccountFieldRule{"grantKind": {
+			TransformInput: func(v any) (any, error) { return v.(string) + "-saved", nil },
+		}}
 	}
 	if os.Getenv("CONFORMANCE_MAGIC_MEMORY") == "1" {
 		opts.Store = memory.New()

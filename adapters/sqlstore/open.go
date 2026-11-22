@@ -14,6 +14,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	auth "github.com/Plain-Auth/plain-auth"
 	"github.com/Plain-Auth/plain-auth/internal/walletschema"
 	org "github.com/Plain-Auth/plain-auth/plugins/organization"
 	"github.com/Plain-Auth/plain-auth/plugins/scim"
@@ -24,6 +25,8 @@ import (
 
 // Store persists users, credentials, and sessions in a SQL database.
 type Store struct {
+	accountFields          map[string]auth.AccountField
+	accountFieldRules      map[string]auth.AccountFieldRule
 	walletMapping          walletschema.Mapping
 	walletQueryNames       *strings.Replacer
 	scimPolicies           map[string]scim.Projection

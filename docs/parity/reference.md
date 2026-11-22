@@ -324,7 +324,9 @@
     - [ ] `redirectURI`
     - [ ] `scope`
     - [ ] `mapProfileToUser`
-    - [ ] `getAccountFields`
+    - [x] `getAccountFields` ([test](../../conformance/apple-native.mjs#L87))
+      - [x] Map signed provider account fields across both servers, preserve credentials and explicitly reauthorize an existing link ([test](../../conformance/apple-native.mjs#L87))
+      - [x] Map browser grants on first links and verified email linking, keep identity bindings and reject invalid updates atomically ([test](../../conformance/account-fields.mjs#L25))
     - [ ] `disableSignUp`
     - [ ] `disableImplicitSignUp`
     - [x] `overrideUserInfoOnSignIn` ([test](../../conformance/social-user-fields.mjs#L143))
@@ -336,8 +338,8 @@
     - [ ] `getUserInfo`
     - [ ] `refreshAccessToken`
     - [ ] `verifyIdToken`
-    - [x] `disableIdTokenSignIn` ([test](../../conformance/apple-native.mjs#L50))
-      - [x] Decline signed client ID tokens for sign-in and account linking while preserving browser authorization ([test](../../conformance/apple-native.mjs#L50))
+    - [x] `disableIdTokenSignIn` ([test](../../conformance/apple-native.mjs#L51))
+      - [x] Decline signed client ID tokens for sign-in and account linking while preserving browser authorization ([test](../../conformance/apple-native.mjs#L51))
     - [ ] `disableDefaultScope`
     - [ ] `authorizationEndpoint`
   - [ ] `plugins`

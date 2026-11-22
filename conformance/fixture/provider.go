@@ -17,6 +17,10 @@ func fixtureSocialProvider() map[string]auth.OAuthProvider {
 		p.OverrideUserInfoOnSignIn = os.Getenv("CONFORMANCE_SOCIAL_PROFILE_SYNC") == "1"
 		mode := os.Getenv("CONFORMANCE_SOCIAL_VERIFY")
 		p.RequireEmailVerification = mode != "" && mode != "ungated"
+		if os.Getenv("CONFORMANCE_ACCOUNT_FIELDS") == "1" {
+			p.AllowVerifiedEmailLink = true
+			return map[string]auth.OAuthProvider{"github": p}
+		}
 		return map[string]auth.OAuthProvider{"work": p}
 	}
 	if os.Getenv("CONFORMANCE_EXPLICIT_SIGNUP") == "1" || os.Getenv("CONFORMANCE_LINK_POLICY") != "" {

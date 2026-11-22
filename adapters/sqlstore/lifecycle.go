@@ -2,7 +2,6 @@ package sqlstore
 
 import (
 	"context"
-	"crypto/rand"
 	"database/sql"
 	"errors"
 	"strings"
@@ -46,7 +45,7 @@ func (s *Store) SetInitialPassword(ctx context.Context, userID, sessionToken, ne
 	hash, err := s.credentialHash(ctx, tx, userID)
 	switch {
 	case errors.Is(err, authn.ErrNotFound):
-		_, err = tx.ExecContext(ctx, s.bind(`INSERT INTO "account" ("id","userId","accountId","providerId","password","createdAt","updatedAt") VALUES (?,?,?,'credential',?,?,?)`), rand.Text(), userID, userID, newHash, s.date(now), s.date(now))
+		err = s.insertPasswordAccount(ctx, tx, userID, newHash, now, now)
 	case err != nil:
 		return err
 	case hash != "":

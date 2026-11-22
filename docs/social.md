@@ -180,6 +180,36 @@ Access-token and account-info reads refresh a credential within five seconds of 
 
 Go services can call `GetAccessToken`, `RefreshToken` and `AccountInfo` directly. With session headers the authenticated user owns the operation. With nil headers trusted application code supplies `auth.AccountSelection{AccountID: account.ID, UserID: user.ID}`. These adapters persist credentials in SQL. Cookie-based account selection requires a separate account-cookie implementation. OIDC account info requires a provider credential that can still be validated. WeChat also requires the transient openID issued during its original code exchange. The standard account row stores the stable unionID when available, so a later WeChat account-info read may be unavailable.
 
+## Store fields on a linked account
+
+Use account fields for attributes that belong to one provider identity. For example, a user can have a different provider email on each linked account. Declare the columns in your SQL schema, then pass the same declarations to the auth instance.
+
+```go
+fields := map[string]auth.AccountField{
+    "providerEmail": {Type: auth.FieldString, Column: "provider_mail"},
+    "directoryNote": {Type: auth.FieldString, Hidden: true},
+    "ownerClass":    {Type: auth.FieldString, ServerOnly: true, Default: "member"},
+}
+store, err := sqlstore.OpenWithAdditionalFields(ctx, "postgres", dsn, nil, schema.AdditionalFields{Account: fields})
+if err != nil {
+    return err
+}
+opts.Store = store
+opts.AccountAdditionalFields = fields
+work.GetAccountFields = func(ctx context.Context, grant auth.OAuthAccountFieldInput) (map[string]any, error) {
+    return map[string]any{"providerEmail": grant.Profile.Email}, nil
+}
+opts.SocialProviders = map[string]auth.OAuthProvider{"work": work}
+```
+
+`GetAccountFields` runs after the provider verifies a browser authorization or a direct ID token. The SQL adapter saves accepted values when it creates or links an account. Returning sign-ins update supplied fields unless `DisableAccountUpdateOnSignIn` is enabled. An explicit link can update them under either policy. Omit a key to preserve its current value. Return a present `nil` to clear a nullable column.
+
+Map keys use logical field names. The mapper can set declared writable fields. Account IDs, user IDs, provider IDs, credentials and other core columns are protected. `ServerOnly` fields can receive application defaults. `Hidden` fields are stored and omitted from the account list. Public fields appear at the top level of each item in `GET /list-accounts` and under `LinkedAccount.AdditionalFields` in the Go client.
+
+Use `Options.AccountFieldRules` to validate or transform individual fields. A validator checks the normalized scalar returned by the provider. A transform runs when the adapter writes the field, including creation defaults. A validation or transform error rolls back the account and session write. Password and wallet accounts apply creation defaults too. Choose nullable fields or supply defaults for accounts that receive no provider mapping.
+
+Browser exchanges pass the provider's tokens to the hook. Read a provider-specific response field with `grant.ExchangedToken.Extra("field_name")`. Direct sign-in passes the verified ID token in `grant.Tokens`. Optional access and refresh strings sent by the native client are separately available as `ClientAccessToken` and `ClientRefreshToken`. Their ownership has not been verified. One Tap and the OAuth proxy apply ordinary account defaults without calling the provider mapper. [Schema and CLI configuration](schema.md#configure-user-session-and-account-fields) · [Signed-token comparisons](../conformance/apple-native.mjs) · [Browser linking and rollback](../conformance/account-fields.mjs) · [Three-engine storage tests](../adapters/sqlstore/account_fields_test.go)
+
 ## Encrypt provider credentials
 
 Set `Options.EncryptOAuthTokens` to `true` on every instance before accepting social sign-ins to store encrypted access, refresh and ID tokens. The default is `false`. Encryption uses the configured key ring, authenticates the provider, account subject and token field, and preserves the provider's expiry and scopes for lookup. New grants and refreshed tokens use the active encryption key. Keep a retiring key available until all accounts that use it have refreshed or reauthorized. Applications continue to use the same account-selection, access, refresh and user-info APIs. [Storage and rotation tests](../adapters/sqlstore/oauth_encryption_test.go)

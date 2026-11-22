@@ -1045,6 +1045,11 @@
       "label": "List only the current user’s linked accounts and decode provider scopes",
       "test": "adapters/sqlstore/identity_test.go",
       "marker": "rows, err := s.ListUserAccounts(ctx, \"one\")"
+    },
+    {
+      "label": "Keep provider credentials separate from native input, transform fields once and expose only owned public account fields on three SQL engines",
+      "test": "adapters/sqlstore/account_fields_test.go",
+      "marker": "func TestMappedAccountFields("
     }
   ],
   "docs/content/docs/concepts/users-accounts.mdx#L409": [
@@ -10644,6 +10649,60 @@
       "label": "Generate, inspect and migrate declared provider account fields across SQLite, PostgreSQL and MySQL",
       "test": "cmd/authctl/account_fields_test.go",
       "marker": "func TestAccountFieldCommands("
+    }
+  ],
+  "provider-option/shared/getAccountFields": [
+    {
+      "label": "Map signed provider account fields across both servers, preserve credentials and explicitly reauthorize an existing link",
+      "test": "conformance/apple-native.mjs",
+      "marker": "export async function compareAccountFields(",
+      "complete": true
+    },
+    {
+      "label": "Map browser grants on first links and verified email linking, keep identity bindings and reject invalid updates atomically",
+      "test": "conformance/account-fields.mjs",
+      "marker": "export async function compareBrowserAccountFields("
+    },
+    {
+      "label": "Keep provider credentials separate from native input, transform fields once and expose only owned public account fields on three SQL engines",
+      "test": "adapters/sqlstore/account_fields_test.go",
+      "marker": "func TestMappedAccountFields("
+    },
+    {
+      "label": "Use creation defaults while completing the separately verified One Tap challenge",
+      "test": "conformance/core.test.mjs",
+      "marker": "One Tap should apply creation defaults and skip provider mapping"
+    },
+    {
+      "label": "Complete proxy sign-in across two deployments without invoking provider account mapping on either host",
+      "test": "adapters/sqlstore/oauth_proxy_test.go",
+      "marker": "proxy invoked the provider account mapper"
+    }
+  ],
+  "docs/content/docs/reference/options.mdx#L359/`getAccountFields`": [
+    {
+      "label": "Map signed provider account fields across both servers, preserve credentials and explicitly reauthorize an existing link",
+      "test": "conformance/apple-native.mjs",
+      "marker": "export async function compareAccountFields(",
+      "complete": true
+    },
+    {
+      "label": "Map browser grants on first links and verified email linking, keep identity bindings and reject invalid updates atomically",
+      "test": "conformance/account-fields.mjs",
+      "marker": "export async function compareBrowserAccountFields("
+    }
+  ],
+  "docs/content/docs/concepts/oauth.mdx#L672": [
+    {
+      "label": "Map signed provider account fields across both servers, preserve credentials and explicitly reauthorize an existing link",
+      "test": "conformance/apple-native.mjs",
+      "marker": "export async function compareAccountFields(",
+      "complete": true
+    },
+    {
+      "label": "Map browser grants on first links and verified email linking, keep identity bindings and reject invalid updates atomically",
+      "test": "conformance/account-fields.mjs",
+      "marker": "export async function compareBrowserAccountFields("
     }
   ]
 }

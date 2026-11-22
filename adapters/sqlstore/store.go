@@ -6,7 +6,6 @@ import (
 	"slices"
 
 	"context"
-	"crypto/rand"
 	"database/sql"
 	"errors"
 	"strings"
@@ -69,9 +68,7 @@ func (s *Store) createUser(ctx context.Context, user authn.User, passwordHash *s
 		return authn.ErrEmailTaken
 	}
 	if passwordHash != nil {
-		_, err = tx.ExecContext(ctx, s.bind(`INSERT INTO "account"
-        ("id","accountId","providerId","userId","password","createdAt","updatedAt") VALUES (?,?,'credential',?,?,?,?)`),
-			rand.Text(), user.ID, user.ID, *passwordHash, s.date(user.CreatedAt), s.date(user.UpdatedAt))
+		err = s.insertPasswordAccount(ctx, tx, user.ID, *passwordHash, user.CreatedAt, user.UpdatedAt)
 		if err != nil {
 			return err
 		}

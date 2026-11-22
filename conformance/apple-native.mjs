@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import {accountFieldOptions, mapProviderAccount} from "./account-fields.mjs";
 import {generateKeyPair, exportJWK, SignJWT} from "jose";
 
 async function localAppleKeys(t) {
@@ -80,5 +81,60 @@ export async function compareDisabledIDTokenSignIn(t, {reference, goFixture, ins
       assert.equal(target.searchParams.get("response_mode"), "form_post");
       assert.ok(target.searchParams.get("state"));
     }
+  }
+}
+
+export async function compareAccountFields(t, {reference, goFixture, instrument}, preserve) {
+  const {DatabaseSync} = await import("node:sqlite");
+  const {keys, privateKey, kid} = await localAppleKeys(t);
+  const mobile = "org.example.mobile";
+  const apple = {clientId: "org.example.web", clientSecret: "local-assertion", appBundleIdentifier: mobile,
+    getAccountFields: mapProviderAccount,
+  };
+  const go = await goFixture(t, [], {CONFORMANCE_APPLE_JWKS: JSON.stringify(keys), CONFORMANCE_ACCOUNT_FIELDS: "1",
+    CONFORMANCE_PRESERVE_PROVIDER_CREDENTIALS: preserve ? "1" : "0"});
+  const database = new DatabaseSync(go.databasePath);
+  t.after(() => database.close());
+  const ref = await reference(t, [], {database, socialProviders: {apple}, account: accountFieldOptions(preserve)});
+  async function grant(subject, email) {
+    const nonce = crypto.randomUUID();
+    const token = await new SignJWT({email, email_verified: true, nonce}).setProtectedHeader({alg:"RS256", kid})
+      .setSubject(subject).setIssuer("https://appleid.apple.com").setAudience(mobile).setIssuedAt().setExpirationTime("5m").sign(privateKey);
+    return {provider:"apple", idToken:{token, nonce}};
+  }
+  for (const [first, second, subject] of [[go,ref,"go-first"],[ref,go,"reference-first"]]) {
+    const email = subject + "@example.test", nextEmail = "changed-" + email;
+    const initial = instrument(first).client;
+    const result = await initial.signIn.social(await grant(subject, email));
+    assert.equal(result.error, null);
+    const ownerID = result.data.user.id;
+    const read = () => database.prepare('SELECT * FROM account WHERE providerId=? AND accountId=?').get("apple", subject);
+    const row = read();
+    assert.equal(row.userId, ownerID);
+    assert.notEqual(row.id, "injected");
+    assert.equal(row.provider_mail, email);
+    assert.equal(row.grantKind, "native-saved");
+    assert.equal(row.privateLabel, "private");
+    assert.equal(row.ownerClass, "member");
+    assert.equal(row.accessToken, null);
+    assert.equal(row.password, null);
+
+    const returning = instrument(second).client;
+    assert.equal((await returning.signIn.social(await grant(subject, nextEmail))).data?.user.id, ownerID);
+    const expected = preserve ? email : nextEmail;
+    assert.equal(read().provider_mail, expected);
+    const listed = await returning.listAccounts();
+    assert.equal(listed.error, null);
+    assert.equal(listed.data.length, 1);
+    assert.equal(listed.data[0].providerEmail, expected);
+    assert.equal(listed.data[0].ownerClass, "member");
+    for (const field of ["privateLabel", "unknown", "provider_mail", "accessToken", "refreshToken", "idToken", "password"]) {
+      assert.ok(!(field in listed.data[0]), "unsafe listed field " + field);
+    }
+    // An earlier integration can have stored a different value even when the verified mailbox is the same.
+    database.prepare("UPDATE account SET provider_mail=? WHERE id=?").run("prior-grant@example.test", row.id);
+    assert.equal((await returning.linkSocial(await grant(subject, email))).error, null);
+    assert.equal(read().provider_mail, email);
+    assert.equal(read().id, row.id);
   }
 }

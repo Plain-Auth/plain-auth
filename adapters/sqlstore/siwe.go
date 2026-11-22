@@ -287,7 +287,7 @@ func (s *Store) finishWalletLogin(ctx context.Context, in siwe.Login, session au
 			if in.Contract {
 				id = walletLock("contract", acct).digest[:36]
 			}
-			if _, err = tx.ExecContext(ctx, s.bind(`INSERT INTO "account" ("id","providerId","accountId","userId","createdAt","updatedAt") VALUES(?,'siwe',?,?,?,?)`), id, acct, in.CandidateID, now, now); err != nil {
+			if err = s.insertAccount(ctx, tx, `"id","providerId","accountId","userId","createdAt","updatedAt"`, "?,'siwe',?,?,?,?", []any{id, acct, in.CandidateID, now, now}, nil); err != nil {
 				return nil, err
 			}
 		}

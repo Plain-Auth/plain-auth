@@ -13,6 +13,8 @@ import (
 type Options struct {
 	UserAdditionalFields    map[string]UserField
 	SessionAdditionalFields map[string]SessionField
+	AccountAdditionalFields map[string]AccountField
+	AccountFieldRules       map[string]AccountFieldRule
 
 	// Logger receives diagnostics for this instance. A nil logger uses slog.Default().
 	Logger *slog.Logger

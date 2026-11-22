@@ -75,14 +75,16 @@ func NormalizeUser(fields map[string]Field) (map[string]Field, error) {
 	return normalize(fields, "user", UserNameOK)
 }
 
+func AccountNameOK(name string) bool {
+	switch strings.ToLower(name) {
+	case "id", "userid", "providerid", "accountid", "accesstoken", "refreshtoken", "idtoken", "accesstokenexpiresat", "refreshtokenexpiresat", "scope", "scopes", "password", "createdat", "updatedat", "constructor", "prototype":
+		return false
+	}
+	return identifier.MatchString(name)
+}
+
 func NormalizeAccount(fields map[string]Field) (map[string]Field, error) {
-	return normalize(fields, "account", func(name string) bool {
-		switch strings.ToLower(name) {
-		case "id", "userid", "providerid", "accountid", "accesstoken", "refreshtoken", "idtoken", "accesstokenexpiresat", "refreshtokenexpiresat", "scope", "scopes", "password", "createdat", "updatedat", "constructor", "prototype":
-			return false
-		}
-		return identifier.MatchString(name)
-	})
+	return normalize(fields, "account", AccountNameOK)
 }
 
 func normalize(fields map[string]Field, model string, validName func(string) bool) (map[string]Field, error) {

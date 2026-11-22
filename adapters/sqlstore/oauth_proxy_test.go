@@ -57,6 +57,9 @@ func TestOAuthProxyAcrossDeployments(t *testing.T) {
 				}
 				provider := issuer.provider()
 				provider.RequireEmailVerification = origin == production
+				provider.GetAccountFields = func(context.Context, auth.OAuthAccountFieldInput) (map[string]any, error) {
+					return nil, errors.New("proxy invoked the provider account mapper")
+				}
 				resolve := provider.Resolve
 				provider.Resolve = func(ctx context.Context, token *oauth2.Token, nonce string) (auth.OAuthProfile, error) {
 					profile, err := resolve(ctx, token, nonce)

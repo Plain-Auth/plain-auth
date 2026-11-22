@@ -2,7 +2,6 @@ package sqlstore
 
 import (
 	"context"
-	"crypto/rand"
 	"database/sql"
 	"errors"
 	"strings"
@@ -263,7 +262,7 @@ func (s *Store) finishPasswordReset(ctx context.Context, token, newHash string, 
 func (s *Store) replaceResetCredential(ctx context.Context, tx *sql.Tx, id, newHash string, now time.Time, revoke bool) error {
 	_, err := s.credentialHash(ctx, tx, id)
 	if errors.Is(err, authn.ErrNotFound) {
-		_, err = tx.ExecContext(ctx, s.bind(`INSERT INTO "account" ("id","userId","providerId","accountId","password","createdAt","updatedAt") VALUES (?,?,'credential',?,?,?,?)`), rand.Text(), id, id, newHash, s.date(now), s.date(now))
+		err = s.insertPasswordAccount(ctx, tx, id, newHash, now, now)
 	} else if err == nil {
 		err = s.writeCredential(ctx, tx, id, newHash, now)
 	}

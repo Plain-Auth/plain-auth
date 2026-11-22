@@ -7,9 +7,9 @@
 - [ ] OAuth proxy endpoints, types and options
   - [x] Use one registered callback with independent deployments and session stores ([test](../../../adapters/sqlstore/oauth_proxy_test.go#L42))
   - [ ] `GET /callback/:id/oauth-proxy`
-    - [x] Consume the originating browser state once and verify the provider before creating the preview session ([test](../../../adapters/sqlstore/oauth_proxy_test.go#L173))
+    - [x] Consume the originating browser state once and verify the provider before creating the preview session ([test](../../../adapters/sqlstore/oauth_proxy_test.go#L176))
     - [x] Complete a popup across sites and return its session to the trusted opener ([test](../../../conformance/core.test.mjs#L1676))
-    - [x] Enforce verification required by the production provider when completing sign-in on a separately configured preview ([test](../../../adapters/sqlstore/oauth_proxy_test.go#L259))
+    - [x] Enforce verification required by the production provider when completing sign-in on a separately configured preview ([test](../../../adapters/sqlstore/oauth_proxy_test.go#L262))
   - [ ] `GET /oauth-proxy-callback`
     - [x] Accept the unqualified return path for a returning account through the released browser client ([test](../../../conformance/core.test.mjs#L1666))
   - [x] `OAuthProxyOptions` ([test](../../../oauth_proxy_test.go#L12))
@@ -32,8 +32,8 @@
   - [x] How it works ([test](../../../conformance/core.test.mjs#L1671))
     - [x] Follow the complete production-to-preview return with host-scoped cookies in Chrome ([test](../../../conformance/core.test.mjs#L1671))
   - [ ] Options
-    - [x] productionURL ([test](../../../adapters/sqlstore/oauth_proxy_test.go#L159))
-      - [x] Send the production redirect URI and bypass the proxy on production itself ([test](../../../adapters/sqlstore/oauth_proxy_test.go#L159))
+    - [x] productionURL ([test](../../../adapters/sqlstore/oauth_proxy_test.go#L162))
+      - [x] Send the production redirect URI and bypass the proxy on production itself ([test](../../../adapters/sqlstore/oauth_proxy_test.go#L162))
     - [x] currentURL ([test](../../../oauth_proxy_test.go#L101))
       - [x] Check all supported host environment fallbacks ([test](../../../oauth_proxy_test.go#L101))
     - [x] maxAge ([test](../../../oauth_proxy_test.go#L53))

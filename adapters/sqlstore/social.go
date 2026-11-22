@@ -272,15 +272,21 @@ func (s *Store) completeOAuth(ctx context.Context, provider, subject string, tok
 	}
 	switch {
 	case !existing:
-		_, err = tx.ExecContext(ctx, s.bind(`INSERT INTO "account" ("id","accountId","providerId","userId","accessToken","refreshToken","idToken","scope","accessTokenExpiresAt","refreshTokenExpiresAt","createdAt","updatedAt") VALUES (?,?,?,?,NULLIF(?,''),NULLIF(?,''),NULLIF(?,''),NULLIF(?,''),?,?,?,?)`),
-			account, subject, provider, u.ID, tokens.AccessToken, tokens.RefreshToken, tokens.IDToken, tokens.Scope, expires, refreshExpires, s.date(session.CreatedAt), s.date(session.CreatedAt))
+		err = s.insertAccount(ctx, tx, `"id","accountId","providerId","userId","accessToken","refreshToken","idToken","scope","accessTokenExpiresAt","refreshTokenExpiresAt","createdAt","updatedAt"`, `?,?,?,?,NULLIF(?,''),NULLIF(?,''),NULLIF(?,''),NULLIF(?,''),?,?,?,?`,
+			[]any{account, subject, provider, u.ID, tokens.AccessToken, tokens.RefreshToken, tokens.IDToken, tokens.Scope, expires, refreshExpires, s.date(session.CreatedAt), s.date(session.CreatedAt)}, options.AccountFields)
 	case options.LinkUserID != "" || !options.DisableAccountUpdateOnSignIn:
 		var scope any
 		if options.LinkUserID != "" && tokens.Scope != "" {
 			scope = mergeGrantedScopes(storedScope.String, tokens.Scope)
 		}
-		_, err = tx.ExecContext(ctx, s.bind(`UPDATE "account" SET "accessToken"=COALESCE(NULLIF(?,''),"accessToken"),"refreshToken"=COALESCE(NULLIF(?,''),"refreshToken"),"idToken"=COALESCE(NULLIF(?,''),"idToken"),"scope"=COALESCE(?,"scope"),"accessTokenExpiresAt"=COALESCE(?,"accessTokenExpiresAt"),"refreshTokenExpiresAt"=COALESCE(?,"refreshTokenExpiresAt"),"updatedAt"=? WHERE "id"=?`),
-			tokens.AccessToken, tokens.RefreshToken, tokens.IDToken, scope, expires, refreshExpires, s.date(session.CreatedAt), account)
+		extra, values, fieldErr := s.accountFieldUpdates(options.AccountFields)
+		if fieldErr != nil {
+			return u, false, fieldErr
+		}
+		q := `UPDATE "account" SET "accessToken"=COALESCE(NULLIF(?,''),"accessToken"),"refreshToken"=COALESCE(NULLIF(?,''),"refreshToken"),"idToken"=COALESCE(NULLIF(?,''),"idToken"),"scope"=COALESCE(?,"scope"),"accessTokenExpiresAt"=COALESCE(?,"accessTokenExpiresAt"),"refreshTokenExpiresAt"=COALESCE(?,"refreshTokenExpiresAt"),"updatedAt"=?`
+		args := []any{tokens.AccessToken, tokens.RefreshToken, tokens.IDToken, scope, expires, refreshExpires, s.date(session.CreatedAt)}
+		args = append(args, values...)
+		_, err = tx.ExecContext(ctx, s.bind(q+extra+` WHERE "id"=?`), append(args, account)...)
 	}
 	if err != nil {
 		return u, false, err

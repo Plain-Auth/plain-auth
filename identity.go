@@ -9,13 +9,14 @@ import (
 
 // LinkedAccount contains fields safe to return to the signed-in account owner.
 type LinkedAccount struct {
-	ID         string    `json:"id"`
-	AccountID  string    `json:"accountId"`
-	ProviderID string    `json:"providerId"`
-	UserID     string    `json:"userId"`
-	Scopes     []string  `json:"scopes"`
-	CreatedAt  time.Time `json:"createdAt"`
-	UpdatedAt  time.Time `json:"updatedAt"`
+	AdditionalFields map[string]any `json:"-"`
+	ID               string         `json:"id"`
+	AccountID        string         `json:"accountId"`
+	ProviderID       string         `json:"providerId"`
+	UserID           string         `json:"userId"`
+	Scopes           []string       `json:"scopes"`
+	CreatedAt        time.Time      `json:"createdAt"`
+	UpdatedAt        time.Time      `json:"updatedAt"`
 }
 
 var ErrLastAccount = errors.New("auth: cannot unlink last account")

@@ -329,8 +329,8 @@
     - [ ] scope
     - [ ] redirectURI
     - [ ] disableSignUp
-    - [x] disableIdTokenSignIn ([test](../../conformance/apple-native.mjs#L50))
-      - [x] Decline signed client ID tokens for sign-in and account linking while preserving browser authorization ([test](../../conformance/apple-native.mjs#L50))
+    - [x] disableIdTokenSignIn ([test](../../conformance/apple-native.mjs#L51))
+      - [x] Decline signed client ID tokens for sign-in and account linking while preserving browser authorization ([test](../../conformance/apple-native.mjs#L51))
     - [ ] verifyIdToken
     - [x] overrideUserInfoOnSignIn ([test](../../conformance/social-user-fields.mjs#L143))
       - [x] Refresh a returning profile with either server, preserve protected fields and use the new mailbox verification status ([test](../../conformance/social-user-fields.mjs#L143))
@@ -338,7 +338,9 @@
       - [x] Withhold sessions for unverified social accounts, honor mail delivery settings and accept confirmation by either server ([test](../../conformance/social-user-fields.mjs#L198))
     - [ ] mapProfileToUser
       - [ ] Server-Owned Fields and Authorization Claims
-    - [ ] getAccountFields
+    - [x] getAccountFields ([test](../../conformance/apple-native.mjs#L87))
+      - [x] Map signed provider account fields across both servers, preserve credentials and explicitly reauthorize an existing link ([test](../../conformance/apple-native.mjs#L87))
+      - [x] Map browser grants on first links and verified email linking, keep identity bindings and reject invalid updates atomically ([test](../../conformance/account-fields.mjs#L25))
     - [ ] refreshAccessToken
     - [ ] clientKey
     - [ ] getUserInfo

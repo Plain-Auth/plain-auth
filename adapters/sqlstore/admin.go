@@ -2,7 +2,6 @@ package sqlstore
 
 import (
 	"context"
-	"crypto/rand"
 	"crypto/sha256"
 	"database/sql"
 	"encoding/hex"
@@ -332,7 +331,7 @@ func (t *adminTX) SetPassword(user, hash string) error {
 	var id string
 	err := t.tx.QueryRowContext(t.ctx, s.bind(`SELECT "id" FROM "account" WHERE "providerId"='credential' AND "userId"=? AND "accountId"=?`), user, user).Scan(&id)
 	if errors.Is(err, sql.ErrNoRows) {
-		_, err = t.tx.ExecContext(t.ctx, s.bind(`INSERT INTO "account" ("id","providerId","accountId","userId","password","createdAt","updatedAt") VALUES (?,'credential',?,?,?,?,?)`), rand.Text(), user, user, hash, s.date(t.now), s.date(t.now))
+		err = s.insertPasswordAccount(t.ctx, t.tx, user, hash, t.now, t.now)
 	} else if err == nil {
 		_, err = t.tx.ExecContext(t.ctx, s.bind(`UPDATE "account" SET "password"=?,"updatedAt"=? WHERE "id"=?`), hash, s.date(t.now), id)
 	}

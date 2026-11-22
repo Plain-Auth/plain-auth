@@ -31,7 +31,9 @@ type OAuthProfile struct {
 // identity from an authenticated provider endpoint or a verified ID token.
 // For OpenID Connect it must verify the supplied nonce.
 type OAuthProvider struct {
-	Config oauth2.Config
+	// GetAccountFields maps a verified social grant to declared writable account attributes.
+	GetAccountFields func(context.Context, OAuthAccountFieldInput) (map[string]any, error)
+	Config           oauth2.Config
 	// EndSessionEndpoint is the provider's registered OIDC logout endpoint.
 	EndSessionEndpoint string
 	// PostLogoutRedirectURI is the default application return URI after provider logout.
@@ -93,6 +95,8 @@ type OAuthTokens struct {
 // OAuthLoginOptions binds an explicit link to a live session or a direct
 // ID-token grant to the verified token's expiry.
 type OAuthLoginOptions struct {
+	// AccountFields holds validated provider values keyed by logical account field name.
+	AccountFields *MappedAccountFields
 	DisableSignUp bool
 	// RequireEmailVerification commits an unverified identity without issuing a session.
 	RequireEmailVerification bool

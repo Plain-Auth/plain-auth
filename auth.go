@@ -106,6 +106,9 @@ func New(opts Options) (*Auth, error) {
 			return nil, err
 		}
 	}
+	if err := configureAccountFields(&opts); err != nil {
+		return nil, err
+	}
 	opts.BaseURL, opts.BasePath, err = configenv.ServerEndpoint(opts.BaseURL, opts.BasePath)
 	if err != nil {
 		return nil, fmt.Errorf("authn: BaseURL: %w", err)

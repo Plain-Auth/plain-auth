@@ -108,7 +108,7 @@ authctl migrate --dialect postgres --account-fields account-fields.json
 authctl check schema --dialect postgres --account-fields account-fields.json
 ```
 
-Account ownership, credentials, scopes and timestamps use reserved column names. The CLI validates both logical names and physical aliases before applying a migration. [Account migration tests](../cmd/authctl/account_fields_test.go)
+Account ownership, credentials, scopes and timestamps use reserved column names. The CLI validates both logical names and physical aliases before applying a migration. [Configure provider account mapping](social.md#store-fields-on-a-linked-account) · [Account migration tests](../cmd/authctl/account_fields_test.go)
 
 ## Schema migrations
 

@@ -645,7 +645,7 @@ test("the pinned One Tap client signs in to Go with a nonce issued by the applic
   const { generateKeyPair, exportJWK, SignJWT } = await import("jose");
   const { publicKey, privateKey } = await generateKeyPair("RS256", { extractable: true });
   const key = await exportJWK(publicKey);
-  const go = await goFixture(t, ["anonymous"], { CONFORMANCE_ONE_TAP_JWKS: JSON.stringify({ keys: [{ ...key, alg: "RS256", kid: "local" }] }), CONFORMANCE_DISABLE_DIRECT_ID_TOKEN: "google" });
+  const go = await goFixture(t, ["anonymous"], { CONFORMANCE_ONE_TAP_JWKS: JSON.stringify({ keys: [{ ...key, alg: "RS256", kid: "local" }] }), CONFORMANCE_DISABLE_DIRECT_ID_TOKEN: "google", CONFORMANCE_ACCOUNT_FIELDS: "1" });
   const clientId = "fixture.apps.googleusercontent.com";
   const { client } = instrument(go, [oneTapClient({ clientId }), anonymousClient()]);
   const guest = await client.signIn.anonymous();
@@ -666,7 +666,7 @@ test("the pinned One Tap client signs in to Go with a nonce issued by the applic
   assert.equal(init.nonce, data.nonce);
   assert.equal((await client.getSession()).data.user.email, email);
   const db = new DatabaseSync(go.databasePath);
-  try { assert.equal(db.prepare("SELECT COUNT(*) AS n FROM user WHERE id=?").get(guest.data.user.id).n, 0, "One Tap did not retire the current guest"); }
+  try { assertOneTapAccount(db, guest.data.user.id); }
   finally { db.close(); }
   const replay = await client.$fetch("/one-tap/callback", { method: "POST", body: { idToken: credential } });
   assert.equal(replay.error.status, 400);
@@ -1711,3 +1711,21 @@ test("providers can disable client ID tokens for sign-in and account linking", a
   const {compareDisabledIDTokenSignIn} = await import("./apple-native.mjs");
   await compareDisabledIDTokenSignIn(t, {reference, goFixture, instrument});
 });
+
+test("signed providers map declared account fields through registration, return and explicit linking", async t => {
+  const {compareAccountFields} = await import("./apple-native.mjs");
+  for (const preserve of [false, true]) {
+    await t.test(preserve ? "preserve" : "update", t => compareAccountFields(t, {reference, goFixture, instrument}, preserve));
+  }
+});
+
+test("browser callbacks map account fields on explicit links and reject invalid updates atomically", async t => {
+  const {compareBrowserAccountFields} = await import("./account-fields.mjs");
+  await compareBrowserAccountFields(t, {reference, goFixture, instrument});
+});
+
+function assertOneTapAccount(db, previousUser) {
+  assert.equal(db.prepare("SELECT COUNT(*) AS n FROM user WHERE id=?").get(previousUser).n, 0, "One Tap did not retire the current guest");
+  const mapped = db.prepare("SELECT grantKind, ownerClass FROM account WHERE providerId='google'").get();
+  assert.deepEqual({...mapped}, {grantKind:null, ownerClass:"member"}, "One Tap should apply creation defaults and skip provider mapping");
+}

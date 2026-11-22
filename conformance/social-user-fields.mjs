@@ -15,7 +15,7 @@ const mappings = {
   internalRisk: { type: "number", required: false, input: false, returned: false, defaultValue: 9 },
 };
 
-async function issuerFixture(t) {
+export async function issuerFixture(t) {
   let profile, grantFields, sequence = 0;
   const codes = new Map(), tokens = new Map();
   const server = createServer(async (req, res) => {
@@ -54,7 +54,7 @@ async function issuerFixture(t) {
   return { base: "http://127.0.0.1:" + server.address().port, profile(value, fields) { profile = value; grantFields = fields; } };
 }
 
-function browser(target, instrument) {
+export function browser(target, instrument, provider = "work") {
   const jar = new Map();
   const transport = { ...target, async send(req) {
     if (jar.size) req.headers.set("cookie", [...jar].map(([k,v]) => k+"="+v).join("; "));
@@ -68,7 +68,7 @@ function browser(target, instrument) {
   }};
   const {client} = instrument(transport,[inferAdditionalFields()]);
   return {client, async login(linkScopes) {
-    const body = { provider:"work", disableRedirect:true, callbackURL:"/done", errorCallbackURL:"/retry",
+    const body = { provider, disableRedirect:true, callbackURL:"/done", errorCallbackURL:"/retry",
       locale:"browser-body", privateNote:"browser-body-private", additionalData:{locale:"browser-state",accountClass:"browser-owned",privateNote:"browser-state-private"} };
     const start = await (linkScopes ? client.linkSocial({...body, scopes:linkScopes}) : client.signIn.social(body));
     assert.equal(start.error,null);
