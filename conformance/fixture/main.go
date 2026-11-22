@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	authn "github.com/Stonewrit/stonewrit-auth"
 	"github.com/Stonewrit/stonewrit-auth/adapters/sqlstore"
@@ -347,8 +348,11 @@ func main() {
 		plugins = append(plugins, popup, bearer.New(bearer.Options{RequireSignature: true}))
 	}
 	var sessionCache *authn.SessionCookieCacheOptions
-	if os.Getenv("CONFORMANCE_COMPACT_CACHE") == "1" {
-		sessionCache = &authn.SessionCookieCacheOptions{Version: "release-test"}
+	if strategy := os.Getenv("CONFORMANCE_CACHE_STRATEGY"); strategy != "" || os.Getenv("CONFORMANCE_COMPACT_CACHE") == "1" {
+		sessionCache = &authn.SessionCookieCacheOptions{Version: "release-test", Strategy: authn.SessionCookieCacheStrategy(strategy)}
+		if strategy == "jwt" || strategy == "jwe" {
+			sessionCache.MaxAge = 90 * time.Second
+		}
 	}
 	opts := authn.Options{
 		SessionCookieCache:  sessionCache,

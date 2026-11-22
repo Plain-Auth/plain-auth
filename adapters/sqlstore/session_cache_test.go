@@ -13,6 +13,17 @@ import (
 )
 
 func TestCompactSessionSQLPrivilegeBoundaries(t *testing.T) {
+	checkCachePrivilegeBoundaries(t, auth.SessionCacheCompact)
+}
+
+func TestJOSESessionSQLPrivilegeBoundaries(t *testing.T) {
+	for _, strategy := range []auth.SessionCookieCacheStrategy{auth.SessionCacheJWT, auth.SessionCacheJWE} {
+		t.Run(string(strategy), func(t *testing.T) { checkCachePrivilegeBoundaries(t, strategy) })
+	}
+}
+
+func checkCachePrivilegeBoundaries(t *testing.T, strategy auth.SessionCookieCacheStrategy) {
+	t.Helper()
 	for _, dialect := range []string{"sqlite", "postgres", "mysql"} {
 		t.Run(dialect, func(t *testing.T) {
 			ctx := t.Context()
@@ -33,11 +44,12 @@ func TestCompactSessionSQLPrivilegeBoundaries(t *testing.T) {
 			}
 			cold := open("jwt")
 			const origin = "https://cache.example.test"
-			opts := auth.Options{Store: cold, BaseURL: origin, Secret: strings.Repeat("s", 32), EmailAndPassword: true, SessionCookieCache: &auth.SessionCookieCacheOptions{}}
+			opts := auth.Options{Store: cold, BaseURL: origin, Secret: strings.Repeat("s", 32), EmailAndPassword: true, SessionCookieCache: &auth.SessionCookieCacheOptions{Strategy: strategy}}
 			plain, err := auth.New(opts)
 			must(err)
 			jwt, err := jwtplugin.New(jwtplugin.Options{})
 			must(err)
+			opts.Store = open("jwt")
 			opts.Plugins = []auth.Plugin{jwt}
 			withJWT, err := auth.New(opts)
 			must(err)

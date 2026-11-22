@@ -16,7 +16,7 @@ type Options struct {
 	// OnAPIError observes an HTTP endpoint error before its response is written.
 	// It runs synchronously and may use the request's context for cancellation.
 	OnAPIError func(ErrorContext, error) error
-	// SessionCookieCache enables signed compact snapshots for public browser session reads.
+	// SessionCookieCache enables authenticated snapshots for public browser session reads.
 	SessionCookieCache *SessionCookieCacheOptions
 	// Store persists identities and sessions. Configure one store per auth instance.
 	Store Store

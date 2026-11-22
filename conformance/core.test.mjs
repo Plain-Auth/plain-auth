@@ -1423,3 +1423,17 @@ test("custom password callbacks open stored credentials from either runtime and 
     assert.equal((await create.signIn.email({ email: address, password: changed })).error, null);
   }
 });
+
+for (const strategy of ["jwt", "jwe"]) {
+  test("both runtimes exchange " + strategy + " browser snapshots, short sessions, and chunks", async t => {
+    const { exchangeSessionCache } = await import("./session-cache-compact.mjs");
+    await exchangeSessionCache(t, { reference, goFixture }, strategy);
+  });
+}
+
+for (const strategy of ["jwt", "jwe"]) {
+  test("both runtimes check " + strategy + " cache key rollover and removal", async t => {
+    const { compareJOSESessionRollover } = await import("./session-cache-compact.mjs");
+    await compareJOSESessionRollover(t, { reference, goFixture }, strategy);
+  });
+}

@@ -42,15 +42,15 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 
 | Checklist | Checked | Open |
 | --- | ---: | ---: |
-| [Published package interfaces](packages.md) | 70 | 161 |
+| [Published package interfaces](packages.md) | 71 | 161 |
 | [Native Go client, routers and databases](go.md) | 36 | 4 |
-| [Core API, sign-in providers and CLI](runtime.md) | 110 | 280 |
+| [Core API, sign-in providers and CLI](runtime.md) | 111 | 280 |
 | [Database adapters](adapters.md) | 32 | 224 |
 | [Authentication](authentication.md) | 12 | 420 |
-| [Core concepts](concepts.md) | 32 | 514 |
+| [Core concepts](concepts.md) | 35 | 514 |
 | [Managed infrastructure](infrastructure.md) | 0 | 528 |
 | [Framework integrations](integrations.md) | 0 | 228 |
-| [Reference and configuration](reference.md) | 34 | 403 |
+| [Reference and configuration](reference.md) | 35 | 403 |
 
 ## Plugins and integrations
 

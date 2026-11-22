@@ -469,13 +469,15 @@
     - [ ] Cookie Cache
       - [x] Expire the disabled cache and its canonical chunks on signed-in and anonymous reads ([test](../../conformance/session-cache-cleanup.mjs#L28))
       - [x] Clear each received cache chunk on the issuing host and shared domain using the configured cookie namespace ([test](../../session_cache_cookies_test.go#L11))
-      - [x] Exchange HMAC-signed snapshots, browser-only lifetimes and chunked cookies in both directions on shared SQLite ([test](../../conformance/session-cache-compact.mjs#L48))
-      - [x] Retain live JWT issuance, protected session checks and administrative controls after a physical schema migration on another node ([test](../../adapters/sqlstore/session_cache_test.go#L103))
+      - [x] Exchange HMAC-signed snapshots, browser-only lifetimes and chunked cookies in both directions on shared SQLite ([test](../../conformance/session-cache-compact.mjs#L73))
+      - [x] Retain live JWT issuance, protected session checks and administrative controls after a physical schema migration on another node ([test](../../adapters/sqlstore/session_cache_test.go#L115))
       - [ ] Notes
       - [ ] If immediate session revocation is critical:
       - [ ] Cookie Cache Strategies
-        - [x] Exchange HMAC-signed snapshots, browser-only lifetimes and chunked cookies in both directions on shared SQLite ([test](../../conformance/session-cache-compact.mjs#L48))
+        - [x] Exchange HMAC-signed snapshots, browser-only lifetimes and chunked cookies in both directions on shared SQLite ([test](../../conformance/session-cache-compact.mjs#L73))
         - [x] Reject incomplete, oversized, wrong-key or ambiguous cached credentials and retain per-cookie scope ([test](../../session_cache_compact_test.go#L293))
+        - [x] Exchange HS256 JWT and direct A256CBC-HS512 JWE snapshots bidirectionally on shared SQLite and verify their headers, session binding, expiry, chunks and logout ([test](../../conformance/session-cache-compact.mjs#L34))
+        - [x] Reject modified, incomplete, cross-strategy, expired, future and wrong-key envelopes ([test](../../session_cache_jose_test.go#L15))
         - [ ] `compact`
         - [ ] `jwt`
         - [ ] `jwe`
@@ -493,6 +495,7 @@
       - [ ] `object`
     - [ ] Versioning Stateless Sessions
       - [x] Invalidate prior compact snapshots across a fixed cache-version change or signing key removal ([test](../../session_cache_compact_test.go#L120))
+      - [x] Verify newly issued snapshots, retained keys and retired keys during a signed or encrypted cookie rollout ([test](../../conformance/session-cache-compact.mjs#L198))
     - [ ] Stateless with Secondary Storage
   - [ ] Customizing Session Response
     - [ ] Infer on the Client

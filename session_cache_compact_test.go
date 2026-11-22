@@ -140,7 +140,7 @@ func TestCompactSessionLifetimeAndBinding(t *testing.T) {
 		t.Helper()
 		copy := data
 		change(&copy)
-		raw, err := json.Marshal(compactSessionPayload{Session: copy.Session, User: copy.User, UpdatedAt: now.UnixMilli(), Version: "1"})
+		raw, err := json.Marshal(sessionCachePayload{Session: copy.Session, User: copy.User, UpdatedAt: now.UnixMilli(), Version: "1"})
 		if err != nil {
 			t.Fatal(err)
 		}

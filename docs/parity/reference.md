@@ -338,6 +338,7 @@
     - [ ] `preserveSessionInDatabase`
     - [ ] `cookieCache`
       - [x] Enable compact browser snapshots with a fixed version and whole-second lifetime ([test](../../session_cache_compact_test.go#L367))
+      - [x] Select a signed JWT or encrypted JWE and enforce the configured format and lifetime ([test](../../session_cache_jose_test.go#L71))
   - [ ] `account`
     - [ ] `modelName`
     - [ ] `fields`

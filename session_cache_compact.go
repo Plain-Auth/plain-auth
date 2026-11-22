@@ -15,10 +15,23 @@ import (
 	"github.com/Stonewrit/stonewrit-auth/internal/jsjson"
 )
 
-// SessionCookieCacheOptions configures a signed snapshot for browser session views.
+// SessionCookieCacheStrategy selects the wire format of a browser session snapshot.
+type SessionCookieCacheStrategy string
+
+const (
+	SessionCacheCompact SessionCookieCacheStrategy = "compact"
+	SessionCacheJWT     SessionCookieCacheStrategy = "jwt"
+	SessionCacheJWE     SessionCookieCacheStrategy = "jwe"
+)
+
+// SessionCookieCacheOptions configures authenticated snapshots for browser session views.
 // GetSession and authenticated operations continue to read the backing store.
 type SessionCookieCacheOptions struct {
-	// MaxAge defaults to five minutes. A browser-session cookie holds a one-minute snapshot.
+	// Strategy defaults to compact. JWT signs the snapshot with HS256.
+	// JWE encrypts it using a symmetric key derived for this cookie.
+	Strategy SessionCookieCacheStrategy
+	// MaxAge defaults to five minutes for persistent logins. A browser-session
+	// cookie holds a one-minute compact snapshot or a five-minute JWT or JWE.
 	MaxAge time.Duration
 	// Version defaults to "1". Change it across replicas to invalidate older snapshots.
 	Version string
@@ -29,6 +42,13 @@ func prepareSessionCookieCache(o *Options) error {
 		return nil
 	}
 	cache := *o.SessionCookieCache
+	switch cache.Strategy {
+	case "":
+		cache.Strategy = SessionCacheCompact
+	case SessionCacheCompact, SessionCacheJWT, SessionCacheJWE:
+	default:
+		return errors.New("auth: invalid session cookie cache strategy")
+	}
 	if cache.MaxAge == 0 {
 		cache.MaxAge = 5 * time.Minute
 	}
@@ -42,7 +62,7 @@ func prepareSessionCookieCache(o *Options) error {
 	return nil
 }
 
-type compactSessionPayload struct {
+type sessionCachePayload struct {
 	Session   Session `json:"session"`
 	User      User    `json:"user"`
 	UpdatedAt int64   `json:"updatedAt"`
@@ -51,7 +71,7 @@ type compactSessionPayload struct {
 
 // JavaScript revives timestamp strings into Date objects before verifying the
 // signature. Its UTC millisecond spelling must be stable even at .000 or .120.
-func (p compactSessionPayload) marshal() ([]byte, error) {
+func (p sessionCachePayload) marshal(claims *sessionJOSEClaims) ([]byte, error) {
 	const millisecondUTC = "2006-01-02T15:04:05.000Z"
 	type sessionWire struct {
 		Session
@@ -65,11 +85,13 @@ func (p compactSessionPayload) marshal() ([]byte, error) {
 		UpdatedAt string `json:"updatedAt"`
 	}
 	return jsjson.Marshal(struct {
+		*sessionJOSEClaims
 		Session   sessionWire `json:"session"`
 		User      userWire    `json:"user"`
 		UpdatedAt int64       `json:"updatedAt"`
 		Version   string      `json:"version"`
 	}{
+		sessionJOSEClaims: claims,
 		Session: sessionWire{
 			Session:   p.Session,
 			CreatedAt: p.Session.CreatedAt.UTC().Format(millisecondUTC),
@@ -149,25 +171,14 @@ func (a *Auth) cachedSessionView(r *http.Request, token string) *SessionResult {
 	if encoded == "" {
 		return nil
 	}
-	wire, err := base64.RawURLEncoding.DecodeString(encoded)
-	if err != nil {
-		return nil
-	}
-	var envelope compactSessionEnvelope
 	now := a.now()
-	if json.Unmarshal(wire, &envelope) != nil || envelope.ExpiresAt <= now.UnixMilli() {
-		return nil
+	var raw []byte
+	if a.opts.SessionCookieCache.Strategy == SessionCacheCompact {
+		raw = a.readCompactSnapshot(encoded, now)
+	} else {
+		raw = a.readJOSESnapshot(encoded, now)
 	}
-	input := envelope.signingInput()
-	signature, err := base64.RawURLEncoding.DecodeString(envelope.Signature)
-	if err != nil || len(input) == 0 || len(signature) != sha256.Size {
-		return nil
-	}
-	match := hmac.Equal(sessionCacheMAC(a.opts.Secret, input), signature)
-	for i := 1; !match && i < len(a.opts.Secrets); i++ {
-		match = hmac.Equal(sessionCacheMAC(a.opts.Secrets[i].Value, input), signature)
-	}
-	if !match {
+	if len(raw) == 0 {
 		return nil
 	}
 	// Track presence separately for required zero-valued profile fields.
@@ -181,7 +192,7 @@ func (a *Auth) cachedSessionView(r *http.Request, token string) *SessionResult {
 		UpdatedAt int64  `json:"updatedAt"`
 		Version   string `json:"version"`
 	}
-	if json.Unmarshal(envelope.Payload, &payload) != nil || payload.User.Name == nil || payload.User.Verified == nil {
+	if json.Unmarshal(raw, &payload) != nil || payload.User.Name == nil || payload.User.Verified == nil {
 		return nil
 	}
 	if payload.Version == "" {
@@ -197,6 +208,30 @@ func (a *Auth) cachedSessionView(r *http.Request, token string) *SessionResult {
 		return nil
 	}
 	return &SessionResult{Session: ss, User: user}
+}
+
+func (a *Auth) readCompactSnapshot(encoded string, now time.Time) []byte {
+	wire, err := base64.RawURLEncoding.DecodeString(encoded)
+	if err != nil {
+		return nil
+	}
+	var envelope compactSessionEnvelope
+	if json.Unmarshal(wire, &envelope) != nil || envelope.ExpiresAt <= now.UnixMilli() {
+		return nil
+	}
+	input := envelope.signingInput()
+	signature, err := base64.RawURLEncoding.DecodeString(envelope.Signature)
+	if err != nil || len(input) == 0 || len(signature) != sha256.Size {
+		return nil
+	}
+	match := hmac.Equal(sessionCacheMAC(a.opts.Secret, input), signature)
+	for i := 1; !match && i < len(a.opts.Secrets); i++ {
+		match = hmac.Equal(sessionCacheMAC(a.opts.Secrets[i].Value, input), signature)
+	}
+	if !match {
+		return nil
+	}
+	return envelope.Payload
 }
 
 func readSessionCacheCookie(r *http.Request, name string) string {
@@ -279,17 +314,20 @@ func (a *Auth) encodeSessionCache(data SessionResult, persistent bool) []*http.C
 	ttl := cache.MaxAge
 	maxAge := int(ttl / time.Second)
 	if !persistent {
-		ttl = time.Minute
+		ttl = 5 * time.Minute
+		if cache.Strategy == SessionCacheCompact {
+			ttl = time.Minute
+		}
 		maxAge = 0
 	}
-	payload := compactSessionPayload{Session: data.Session, User: data.User, UpdatedAt: now.UnixMilli(), Version: cache.Version}
-	raw, err := payload.marshal()
-	if err != nil {
-		return nil
+	payload := sessionCachePayload{Session: data.Session, User: data.User, UpdatedAt: now.UnixMilli(), Version: cache.Version}
+	var value string
+	var err error
+	if cache.Strategy == SessionCacheCompact {
+		value, err = a.writeCompactSnapshot(payload, now.Add(ttl))
+	} else {
+		value, err = a.writeJOSESnapshot(payload, now, ttl)
 	}
-	envelope := compactSessionEnvelope{Payload: raw, ExpiresAt: now.Add(ttl).UnixMilli()}
-	envelope.Signature = base64.RawURLEncoding.EncodeToString(sessionCacheMAC(a.opts.Secret, envelope.signingInput()))
-	wire, err := jsjson.Marshal(envelope)
 	if err != nil {
 		return nil
 	}
@@ -297,11 +335,9 @@ func (a *Auth) encodeSessionCache(data SessionResult, persistent bool) []*http.C
 	base := cookie.Name
 	cookie.Name = base + ".99"
 	chunkSize := maxSessionChunkSize - len(cookie.String())
-	length := base64.RawURLEncoding.EncodedLen(len(wire))
-	if chunkSize <= 0 || length > maxSessionChunks*chunkSize {
+	if chunkSize <= 0 || len(value) > maxSessionChunks*chunkSize {
 		return nil
 	}
-	value := base64.RawURLEncoding.EncodeToString(wire)
 	if len(value) <= chunkSize {
 		cookie.Name, cookie.Value = base, value
 		return []*http.Cookie{cookie}
@@ -315,6 +351,23 @@ func (a *Auth) encodeSessionCache(data SessionResult, persistent bool) []*http.C
 		value = value[end:]
 	}
 	return cookies
+}
+
+func (a *Auth) writeCompactSnapshot(payload sessionCachePayload, expiry time.Time) (string, error) {
+	raw, err := payload.marshal(nil)
+	if err != nil {
+		return "", err
+	}
+	envelope := compactSessionEnvelope{Payload: raw, ExpiresAt: expiry.UnixMilli()}
+	envelope.Signature = base64.RawURLEncoding.EncodeToString(sessionCacheMAC(a.opts.Secret, envelope.signingInput()))
+	wire, err := jsjson.Marshal(envelope)
+	if err != nil {
+		return "", err
+	}
+	if base64.RawURLEncoding.EncodedLen(len(wire)) > maxSessionChunkSize*maxSessionChunks {
+		return "", errors.New("auth: browser session snapshot exceeds cookie capacity")
+	}
+	return base64.RawURLEncoding.EncodeToString(wire), nil
 }
 
 // Only release core fields. An issuer sharing the signing keys may have

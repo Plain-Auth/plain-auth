@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { hkdfSync } from "node:crypto";
+import { calculateJwkThumbprint, decodeProtectedHeader, jwtDecrypt, jwtVerify } from "jose";
 import { DatabaseSync } from "node:sqlite";
 import { customSession } from "better-auth/plugins";
 
@@ -26,10 +28,33 @@ function request(runtime, path, cookies = {}, body) {
 }
 
 export async function compareCompactSessionCache(t, { reference, goFixture }) {
-  const go = await goFixture(t, [], { CONFORMANCE_COMPACT_CACHE: "1" });
+  await exchangeSessionCache(t, { reference, goFixture }, "compact");
+}
+
+export async function exchangeSessionCache(t, { reference, goFixture }, strategy) {
+  const maxAge = strategy === "compact" ? 300 : 90;
+  const go = await goFixture(t, [], { CONFORMANCE_CACHE_STRATEGY: strategy });
   const database = new DatabaseSync(go.databasePath);
   t.after(() => database.close());
-  const ref = await reference(t, [], { database, session: { cookieCache: { enabled: true, version: "release-test" } } });
+  const ref = await reference(t, [], { database, session: { cookieCache: { enabled: true, version: "release-test", strategy, maxAge } } });
+  const secret = Buffer.from("local-conformance-0123456789-abcdefghijk");
+  const key = new Uint8Array(hkdfSync("sha256", secret, "better-auth-session", "BetterAuth.js Generated Encryption Key", 64));
+  const thumbprint = await calculateJwkThumbprint({ kty: "oct", k: Buffer.from(key).toString("base64url") });
+  async function unpack(value, lifetime) {
+    if (strategy === "compact") return JSON.parse(Buffer.from(value, "base64url").toString());
+    const header = decodeProtectedHeader(value);
+    let claims;
+    if (strategy === "jwt") {
+      assert.equal(header.alg, "HS256");
+      ({ payload: claims } = await jwtVerify(value, secret, { algorithms: ["HS256"] }));
+    } else {
+      assert.deepEqual(header, {alg: "dir", enc: "A256CBC-HS512", kid: thumbprint});
+      ({ payload: claims } = await jwtDecrypt(value, key, { keyManagementAlgorithms: ["dir"], contentEncryptionAlgorithms: ["A256CBC-HS512"] }));
+      assert.match(claims.jti, /^[a-f0-9-]{36}$/i);
+    }
+    assert.equal(claims.exp - claims.iat, lifetime);
+    return { session: claims, expiresAt: claims.exp * 1000 };
+  }
   for (const [issuer, reader, prefix] of [[go, ref, "go"], [ref, go, "reference"]]) {
     const email = prefix + "@example.test";
     const password = "cache-fixture-password";
@@ -39,7 +64,7 @@ export async function compareCompactSessionCache(t, { reference, goFixture }) {
     assert.equal(signup.status, 200);
     const signed = pairs(signup);
     assert.ok(signed[name] && signed[tokenName]);
-    const issued = JSON.parse(Buffer.from(signed[name], "base64url").toString()).session;
+    const issued = (await unpack(signed[name], maxAge)).session;
     for (const timestamp of [issued.user.createdAt, issued.user.updatedAt, issued.session.createdAt, issued.session.updatedAt, issued.session.expiresAt]) {
       assert.equal(timestamp, new Date(timestamp).toISOString());
     }
@@ -61,8 +86,9 @@ export async function compareCompactSessionCache(t, { reference, goFixture }) {
     const cacheLines = login.headers.getSetCookie().filter(line => line.startsWith(name + "."));
     assert.ok(cacheLines.every(line => !/max-age=/i.test(line) && line.length <= 4050));
     const raw = Object.entries(chunks).filter(([k]) => k.startsWith(name + ".")).sort((a,b) => Number(a[0].split(".").pop()) - Number(b[0].split(".").pop())).map(([,v]) => v).join("");
-    const envelope = JSON.parse(Buffer.from(raw, "base64url").toString());
-    assert.ok(Math.abs(envelope.expiresAt - envelope.session.updatedAt - 60000) < 1000);
+    const shortLifetime = strategy === "compact" ? 60 : 300;
+    const envelope = await unpack(raw, shortLifetime);
+    assert.ok(Math.abs(envelope.expiresAt - envelope.session.updatedAt - shortLifetime * 1000) < 1000);
     database.prepare('UPDATE "user" SET name=? WHERE email=?').run("Latest", email);
     assert.equal((await (await request(reader, "get-session", chunks)).json()).user.name, "Updated");
     const mixed = { ...chunks, [tokenName]: signed[tokenName] };
@@ -167,4 +193,40 @@ export async function compareDeferredCompactSession(t, { reference, goFixture })
       assert.ok(pairs(authoritative)[name]);
     }
   }
+}
+
+export async function compareJOSESessionRollover(t, { reference, goFixture }, strategy) {
+  const oldKey = "local-conformance-0123456789-abcdefghijk";
+  const currentKey = "local-next-session-cache-key-0123456789-abcdef";
+  const keys = [{version: 2, value: currentKey}, {version: 1, value: oldKey}];
+  const go = await goFixture(t, [], {
+    CONFORMANCE_CACHE_STRATEGY: strategy, CONFORMANCE_IMMEDIATE_SESSION_REFRESH: "1",
+    AUTH_SECRETS: keys.map(entry => entry.version + ":" + entry.value).join(","),
+  });
+  const database = new DatabaseSync(go.databasePath);
+  t.after(() => database.close());
+  const session = { cookieCache: { enabled: true, strategy, version: "release-test", maxAge: 90 } };
+  const prior = await reference(t, [], { database, session, secret: oldKey });
+  const rotated = await reference(t, [], { database, session, secret: currentKey, secrets: keys });
+  const removed = await reference(t, [], { database, session, secret: currentKey, secrets: keys.slice(0,1) });
+  const email = strategy + "@rotation.example.test";
+  const signup = await request(prior, "sign-up/email", {}, {email, name: "Issued", password: "local-cache-password"});
+  assert.equal(signup.status, 200);
+  const signed = pairs(signup);
+  database.prepare('UPDATE "user" SET name=? WHERE email=?').run("Live", email);
+  const retained = await request(go, "get-session", signed);
+  assert.equal((await retained.json()).user.name, "Issued", "Go accepts an explicitly retained cookie and cache key");
+  const fresh = await request(go, "get-session?disableCookieCache=true", signed);
+  assert.equal((await fresh.json()).user.name, "Live");
+  const current = pairs(fresh);
+  assert.ok(current[name] && current[tokenName] && current[tokenName] !== signed[tokenName]);
+  const earlierSnapshot = {...current, [name]: signed[name]};
+  database.prepare('UPDATE "user" SET name=? WHERE email=?').run("Latest", email);
+  const readName = async (node, cookies) => (await (await request(node, "get-session", cookies)).json()).user.name;
+  assert.equal(await readName(go, earlierSnapshot), "Issued");
+  // The pinned rotation-aware JWE decoder consults retained keys. The pinned
+  // default HS256 cache verifier uses only the current application secret.
+  assert.equal(await readName(rotated, earlierSnapshot), strategy === "jwe" ? "Issued" : "Latest");
+  assert.equal(await readName(removed, earlierSnapshot), "Latest");
+  assert.equal(await readName(removed, current), "Live", "newly issued cache uses the first configured key");
 }

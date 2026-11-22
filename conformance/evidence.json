@@ -51,6 +51,11 @@
       "label": "Compare deferred GET and POST cache hits, forced store reads and independent renewal flags on both runtimes",
       "test": "conformance/session-cache-compact.mjs",
       "marker": "export async function compareDeferredCompactSession("
+    },
+    {
+      "label": "Use live authorization on independently opened JWT and administration nodes for signed or encrypted session views",
+      "test": "adapters/sqlstore/session_cache_test.go",
+      "marker": "func TestJOSESessionSQLPrivilegeBoundaries("
     }
   ],
   "core/signInEmail": [
@@ -7365,6 +7370,16 @@
       "label": "Reject incomplete, oversized, wrong-key or ambiguous cached credentials and retain per-cookie scope",
       "test": "session_cache_compact_test.go",
       "marker": "ambiguous or incomplete chunked cache"
+    },
+    {
+      "label": "Exchange HS256 JWT and direct A256CBC-HS512 JWE snapshots bidirectionally on shared SQLite and verify their headers, session binding, expiry, chunks and logout",
+      "test": "conformance/session-cache-compact.mjs",
+      "marker": "export async function exchangeSessionCache("
+    },
+    {
+      "label": "Reject modified, incomplete, cross-strategy, expired, future and wrong-key envelopes",
+      "test": "session_cache_jose_test.go",
+      "marker": "func TestJOSESessionCookieValidityAndRotation("
     }
   ],
   "docs/content/docs/concepts/session-management.mdx#L462": [
@@ -7372,6 +7387,11 @@
       "label": "Invalidate prior compact snapshots across a fixed cache-version change or signing key removal",
       "test": "session_cache_compact_test.go",
       "marker": "cache version did not invalidate"
+    },
+    {
+      "label": "Verify newly issued snapshots, retained keys and retired keys during a signed or encrypted cookie rollout",
+      "test": "conformance/session-cache-compact.mjs",
+      "marker": "export async function compareJOSESessionRollover("
     }
   ],
   "docs/content/docs/reference/options.mdx#L477/`cookieCache`": [
@@ -7379,6 +7399,11 @@
       "label": "Enable compact browser snapshots with a fixed version and whole-second lifetime",
       "test": "session_cache_compact_test.go",
       "marker": "func TestCompactSessionConfiguration("
+    },
+    {
+      "label": "Select a signed JWT or encrypted JWE and enforce the configured format and lifetime",
+      "test": "session_cache_jose_test.go",
+      "marker": "accepted another strategy"
     }
   ],
   "docs/content/docs/concepts/plugins.mdx#L148/`logger`": [
