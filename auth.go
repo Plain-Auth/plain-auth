@@ -283,9 +283,9 @@ func (a *Auth) validatePasswordLength(password string, enforceMinimum bool) erro
 	n := 0
 	for _, r := range password {
 		n += utf16.RuneLen(r)
-	}
-	if n > a.opts.MaxPasswordLength {
-		return &APIError{400, "PASSWORD_TOO_LONG", "Password too long"}
+		if n > a.opts.MaxPasswordLength {
+			return &APIError{400, "PASSWORD_TOO_LONG", "Password too long"}
+		}
 	}
 	if enforceMinimum && n < a.opts.MinPasswordLength {
 		return &APIError{400, "PASSWORD_TOO_SHORT", "Password too short"}

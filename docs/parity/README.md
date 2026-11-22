@@ -47,11 +47,11 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 | [Native Go client, routers and databases](go.md) | 36 | 4 |
 | [Core API, sign-in providers and CLI](runtime.md) | 117 | 280 |
 | [Database adapters](adapters.md) | 32 | 224 |
-| [Authentication](authentication.md) | 18 | 419 |
+| [Authentication](authentication.md) | 26 | 415 |
 | [Core concepts](concepts.md) | 42 | 513 |
 | [Managed infrastructure](infrastructure.md) | 0 | 528 |
 | [Framework integrations](integrations.md) | 0 | 228 |
-| [Reference and configuration](reference.md) | 45 | 401 |
+| [Reference and configuration](reference.md) | 53 | 397 |
 
 ## Plugins and integrations
 

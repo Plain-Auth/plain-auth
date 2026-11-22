@@ -246,6 +246,12 @@ func (a *Auth) ResetPassword(ctx context.Context, token, newPassword string) err
 }
 
 func (a *Auth) resetPassword(ctx context.Context, token, newPassword string, request *http.Request) error {
+	if token == "" {
+		return &APIError{400, "INVALID_TOKEN", "Invalid token"}
+	}
+	if err := a.validatePasswordLength(newPassword, true); err != nil {
+		return err
+	}
 	s, err := a.accountStore()
 	if err != nil {
 		return err
@@ -255,9 +261,6 @@ func (a *Auth) resetPassword(ctx context.Context, token, newPassword string, req
 		return &APIError{400, "INVALID_TOKEN", "Invalid token"}
 	}
 	if err != nil {
-		return err
-	}
-	if err := a.validatePasswordLength(newPassword, true); err != nil {
 		return err
 	}
 	hash, err := a.hashCredential(ctx, "/reset-password", newPassword)

@@ -287,11 +287,15 @@
     - [ ] `autoSignInAfterVerification`
     - [ ] `expiresIn`
   - [ ] `emailAndPassword`
-    - [ ] `enabled`
-    - [ ] `disableSignUp`
+    - [x] `enabled` ([test](../../conformance/email-password-options.mjs#L77))
+      - [x] Compare disabled email sign-in and closed registration with a pre-existing credential and a fresh browser ([test](../../conformance/email-password-options.mjs#L77))
+    - [x] `disableSignUp` ([test](../../conformance/email-password-options.mjs#L77))
+      - [x] Compare disabled email sign-in and closed registration with a pre-existing credential and a fresh browser ([test](../../conformance/email-password-options.mjs#L77))
     - [ ] `requireEmailVerification`
-    - [ ] `minPasswordLength`
-    - [ ] `maxPasswordLength`
+    - [x] `minPasswordLength` ([test](../../conformance/email-password-options.mjs#L18))
+      - [x] Verify inclusive UTF-16 limits on registration, password changes and link recovery, and sign in with an existing shorter password ([test](../../conformance/email-password-options.mjs#L18))
+    - [x] `maxPasswordLength` ([test](../../conformance/email-password-options.mjs#L18))
+      - [x] Verify inclusive UTF-16 limits on registration, password changes and link recovery, and sign in with an existing shorter password ([test](../../conformance/email-password-options.mjs#L18))
     - [ ] `autoSignIn`
     - [ ] `sendResetPassword`
     - [x] `onPasswordReset` ([test](../../conformance/password-reset-hook.mjs#L8))

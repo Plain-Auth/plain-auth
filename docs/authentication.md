@@ -46,6 +46,12 @@ If the mount is `/identity`, a request to `/identity/sign-up/email` returns 404 
 
 Create one auth instance per configuration and share it among handlers. Use the same secret on application replicas. The default in-process rate limiter keys requests by connection peer and route. Behind a reverse proxy, set `Options.ClientIP.TrustedProxies` to its CIDR ranges as `[]netip.Prefix`. Each proxy should append the actual peer to `X-Forwarded-For` or overwrite the configured `ForwardedHeader`. The library follows trusted hops from right to left and uses the first untrusted address. Direct connections use the socket address. Set `ClientIP.IPv6Subnet` to a prefix length to override the default /64 rate-limit scope. Set `ClientIP.DisableTracking` to omit the address from new sessions and disable per-IP limits. See the [proxy and privacy tests](../ip_test.go).
 
+### Set email registration and password length
+
+Set `EmailAndPassword: true` to enable registration and sign-in. Add `DisableSignUp: true` to close public email registration while existing users continue to sign in. With email and password disabled, both operations return HTTP 400.
+
+Use `MinPasswordLength` and `MaxPasswordLength` to change the default bounds of 8 and 128. Both endpoints of the range are inclusive. A character such as 🔑 counts as two UTF-16 code units. Registration, password changes and recovery enforce both limits on new passwords. When you raise the minimum, users with shorter existing passwords can still sign in and choose a replacement. Sign-in also enforces the maximum, so lowering it can require password recovery for an existing account. A rejected replacement leaves the reset link available for another attempt. [Client behavior tests](../conformance/email-password-options.mjs)
+
 ## Notify an existing account owner about a sign-up attempt
 
 Set `Options.OnExistingUserSignUp` when `RequireEmailVerification` or `DisableAutoSignIn` is enabled. A valid sign-up attempt for an already registered address returns the submitted public profile with a fresh ID and a null token. When the guest and phone plugins are enabled, both fresh and generated profiles report a regular account with empty phone fields. The observer receives the persisted account owner, including a customer who signed up through a social provider. A new account produces no duplicate notification. With ordinary automatic sign-in, an existing address returns HTTP 422 and the observer does not run.

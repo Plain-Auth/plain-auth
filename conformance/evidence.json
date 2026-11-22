@@ -8111,5 +8111,69 @@
       "test": "adapters/sqlstore/existing_signup_test.go",
       "marker": "protected HTTP sign-up had different public plugin fields"
     }
+  ],
+  "docs/content/docs/reference/options.mdx#L317/`enabled`": [
+    {
+      "label": "Compare disabled email sign-in and closed registration with a pre-existing credential and a fresh browser",
+      "test": "conformance/email-password-options.mjs",
+      "marker": "export async function comparePasswordSwitches",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/authentication/email-password.mdx#L482/`emailPasswordOptionsType.enabled`": [
+    {
+      "label": "Compare disabled email sign-in and closed registration with a pre-existing credential and a fresh browser",
+      "test": "conformance/email-password-options.mjs",
+      "marker": "export async function comparePasswordSwitches",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/reference/options.mdx#L318/`disableSignUp`": [
+    {
+      "label": "Compare disabled email sign-in and closed registration with a pre-existing credential and a fresh browser",
+      "test": "conformance/email-password-options.mjs",
+      "marker": "export async function comparePasswordSwitches",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/authentication/email-password.mdx#L487/`emailPasswordOptionsType.disableSignUp`": [
+    {
+      "label": "Compare disabled email sign-in and closed registration with a pre-existing credential and a fresh browser",
+      "test": "conformance/email-password-options.mjs",
+      "marker": "export async function comparePasswordSwitches",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/reference/options.mdx#L320/`minPasswordLength`": [
+    {
+      "label": "Verify inclusive UTF-16 limits on registration, password changes and link recovery, and sign in with an existing shorter password",
+      "test": "conformance/email-password-options.mjs",
+      "marker": "export async function comparePasswordBounds",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/authentication/email-password.mdx#L492/`emailPasswordOptionsType.minPasswordLength`": [
+    {
+      "label": "Verify inclusive UTF-16 limits on registration, password changes and link recovery, and sign in with an existing shorter password",
+      "test": "conformance/email-password-options.mjs",
+      "marker": "export async function comparePasswordBounds",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/reference/options.mdx#L321/`maxPasswordLength`": [
+    {
+      "label": "Verify inclusive UTF-16 limits on registration, password changes and link recovery, and sign in with an existing shorter password",
+      "test": "conformance/email-password-options.mjs",
+      "marker": "export async function comparePasswordBounds",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/authentication/email-password.mdx#L497/`emailPasswordOptionsType.maxPasswordLength`": [
+    {
+      "label": "Verify inclusive UTF-16 limits on registration, password changes and link recovery, and sign in with an existing shorter password",
+      "test": "conformance/email-password-options.mjs",
+      "marker": "export async function comparePasswordBounds",
+      "complete": true
+    }
   ]
 }

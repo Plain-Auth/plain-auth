@@ -142,10 +142,14 @@
       - [x] Password Hashing ([test](../../conformance/core.test.mjs#L1391))
         - [x] Open and replace host-encoded credentials from either runtime in the same account database ([test](../../conformance/core.test.mjs#L1391))
       - [ ] Example
-      - [ ] `emailPasswordOptionsType.enabled`
-      - [ ] `emailPasswordOptionsType.disableSignUp`
-      - [ ] `emailPasswordOptionsType.minPasswordLength`
-      - [ ] `emailPasswordOptionsType.maxPasswordLength`
+      - [x] `emailPasswordOptionsType.enabled` ([test](../../conformance/email-password-options.mjs#L77))
+        - [x] Compare disabled email sign-in and closed registration with a pre-existing credential and a fresh browser ([test](../../conformance/email-password-options.mjs#L77))
+      - [x] `emailPasswordOptionsType.disableSignUp` ([test](../../conformance/email-password-options.mjs#L77))
+        - [x] Compare disabled email sign-in and closed registration with a pre-existing credential and a fresh browser ([test](../../conformance/email-password-options.mjs#L77))
+      - [x] `emailPasswordOptionsType.minPasswordLength` ([test](../../conformance/email-password-options.mjs#L18))
+        - [x] Verify inclusive UTF-16 limits on registration, password changes and link recovery, and sign in with an existing shorter password ([test](../../conformance/email-password-options.mjs#L18))
+      - [x] `emailPasswordOptionsType.maxPasswordLength` ([test](../../conformance/email-password-options.mjs#L18))
+        - [x] Verify inclusive UTF-16 limits on registration, password changes and link recovery, and sign in with an existing shorter password ([test](../../conformance/email-password-options.mjs#L18))
       - [ ] `emailPasswordOptionsType.sendResetPassword`
       - [ ] `emailPasswordOptionsType.onPasswordReset`
       - [x] `emailPasswordOptionsType.onExistingUserSignUp` ([test](../../conformance/core.test.mjs#L1461))

@@ -398,6 +398,14 @@ func main() {
 		Secret:              "local-conformance-0123456789-abcdefghijk",
 		Store:               store,
 	}
+	switch os.Getenv("CONFORMANCE_EMAIL_POLICY") {
+	case "disabled":
+		opts.EmailAndPassword = false
+	case "invitation":
+		opts.DisableSignUp = true
+	case "bounded":
+		opts.MinPasswordLength, opts.MaxPasswordLength = 10, 14
+	}
 	if mode := os.Getenv("CONFORMANCE_SIGNUP_OBSERVER"); mode != "" {
 		configureSignUpObserver(&opts, mode, os.Args[1]+".signup-events")
 	}

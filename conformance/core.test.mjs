@@ -1469,3 +1469,13 @@ for (const format of ["compact", "jwt", "jwe"]) {
     await compareSessionCacheVersions(t, { reference, goFixture, instrument }, format);
   });
 }
+
+test("email password length options count UTF-16 units and admit prior shorter passwords", async t => {
+  const { comparePasswordBounds } = await import("./email-password-options.mjs");
+  await comparePasswordBounds(t, {reference, goFixture, instrument});
+});
+
+test("email password and signup switches control registration and existing account login independently", async t => {
+  const { comparePasswordSwitches } = await import("./email-password-options.mjs");
+  await comparePasswordSwitches(t, {reference, goFixture, instrument});
+});
