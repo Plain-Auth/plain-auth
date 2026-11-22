@@ -113,7 +113,7 @@ Account ownership, credentials, scopes and timestamps use reserved column names.
 
 ## OAuth authorization-server tables
 
-Use the `oauth-provider` profile to prepare storage for an application that will issue tokens to registered clients. You can add it to an existing Plain Auth database. The HTTP authorization and token endpoints have separate entries on the [authorization-server checklist](parity/plugins/oauth-provider.md).
+Use the `oauth-provider` profile to prepare storage for an application that will issue tokens to registered clients. You can add it to an existing Plain Auth database and use the resource manager to maintain audiences and client links. HTTP authorization and token issuance have separate checklist entries. [Resource management](oauth-resource-management.md) · [Authorization-server checklist](parity/plugins/oauth-provider.md)
 
 ```sh
 # Set AUTH_DSN to the target database before running migrate or check.

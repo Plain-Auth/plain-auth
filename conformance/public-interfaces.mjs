@@ -130,9 +130,16 @@ export function readInterfaces(root, tracked) {
   function serverOperations(file) {
     const ast = sourceFile(file);
     const result = [];
+    function property(obj, name) {
+      if (!obj || !ts.isObjectLiteralExpression(obj)) return;
+      return obj.properties.find(p => ts.isPropertyAssignment(p) && p.name.text === name)?.initializer;
+    }
     function visit(node) {
-      if (ts.isCallExpression(node) && node.arguments[0] && ts.isObjectLiteralExpression(node.arguments[0]) && ["createAuthEndpoint", "createAuthEndpoint.serverOnly"].includes(node.expression.getText(ast))) {
-        // The pathless overload registers a callable server API without an HTTP path.
+      if (ts.isCallExpression(node) && ["createAuthEndpoint", "createAuthEndpoint.serverOnly"].includes(node.expression.getText(ast))) {
+        const [first, options] = node.arguments;
+        const pathless = first && ts.isObjectLiteralExpression(first);
+        const marked = first && ts.isStringLiteral(first) && property(property(options, "metadata"), "SERVER_ONLY")?.kind === ts.SyntaxKind.TrueKeyword;
+        if (!pathless && !marked) return ts.forEachChild(node, visit);
         let name;
         for (let parent = node.parent; parent; parent = parent.parent) {
           if ((ts.isFunctionDeclaration(parent) || ts.isVariableDeclaration(parent) || ts.isPropertyAssignment(parent)) && parent.name && ts.isIdentifier(parent.name)) {
@@ -142,7 +149,7 @@ export function readInterfaces(root, tracked) {
         }
         assert.ok(name, "Unresolved server-only operation in " + file);
         if (name.endsWith("Endpoint")) name = name.replace(/Endpoint$/, "").replace(/^create([A-Z])/, (_, c) => c.toLowerCase());
-        result.push({name, ...origin(node)});
+        result.push({name, ...(marked && {path:first.text}), ...origin(node)});
       }
       ts.forEachChild(node, visit);
     }

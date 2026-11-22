@@ -17,7 +17,7 @@ test("published entry points resolve aliases, overloads, wildcard files and thir
     "src/index.ts": 'export * from "./definitions"; export { internal as publicName } from "./implementation"; export type * from "outside";',
     "src/implementation.ts": "export const internal = true;",
     "src/definitions.ts": 'type Base = { first: boolean; second: number }; export type PublicOptions = Pick<Base, "first">; export function auth(input: string): boolean; export function auth(input: string) { return true; } interface Unrelated { wrongProperty: boolean }',
-    "src/utils/service.ts": 'export const consumeToken = () => createAuthEndpoint({method:"POST"}, () => true);',
+    "src/utils/service.ts": 'export const consumeToken = () => createAuthEndpoint({method:"POST"}, () => true); export const manage = () => createAuthEndpoint("/manage", {method:"POST",metadata:{SERVER_ONLY:true}}, () => true); export const read = () => createAuthEndpoint("/read", {method:"GET"}, () => true);',
     "src/utils/service.test.ts": "export const testArtifact = true;",
   };
   for (const [file, content] of Object.entries(sources)) {
@@ -32,7 +32,9 @@ test("published entry points resolve aliases, overloads, wildcard files and thir
   assert.deepEqual(entries[0].externalForwards, ["types outside"]);
   const options = interfaces.exportsOf(directory + "src/index.ts").find(e => e.name === "PublicOptions");
   assert.deepEqual(interfaces.members(options.symbol).map(p => p.name), ["first"]);
-  assert.equal(interfaces.serverOperations(entries[1].file)[0].name, "consumeToken");
+  assert.deepEqual(interfaces.serverOperations(entries[1].file).map(({name,path}) => [name,path]), [
+    ["consumeToken", undefined], ["manage", "/manage"],
+  ]);
 });
 
 const json = file => JSON.parse(readFileSync(new URL(file, import.meta.url), "utf8"));

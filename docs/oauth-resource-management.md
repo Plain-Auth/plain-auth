@@ -1,0 +1,88 @@
+# Manage OAuth resources
+
+An OAuth resource identifies a protected API, for example `https://api.example.com/reports` or `urn:example:billing`. Use `oauthprovider.ResourceManager` in your application’s server code to register an audience, edit its policy, and link it to registered clients. The manager uses your existing signed-in session and the same database as your auth handler. Its methods are available from any Go router.
+
+## Configure the store and permissions
+
+Enable the `oauth-provider` SQL profile on SQLite, PostgreSQL, or MySQL. The application owns the store and closes it at shutdown. Configure the auth instance with `AUTH_URL` and `AUTH_SECRET` or the corresponding Go options. [Schema and CLI commands](schema.md#oauth-authorization-server-tables) · [Environment settings](environment.md)
+
+```go
+import (
+    "context"
+
+    auth "github.com/Plain-Auth/plain-auth"
+    "github.com/Plain-Auth/plain-auth/adapters/sqlstore"
+    "github.com/Plain-Auth/plain-auth/plugins/oauthprovider"
+    "github.com/Plain-Auth/plain-auth/schema"
+)
+
+func openRegistry(ctx context.Context, dialect, dsn, operatorID string) (*sqlstore.Store, *auth.Auth, *oauthprovider.ResourceManager, error) {
+    store, err := sqlstore.OpenWithOptions(ctx, dialect, dsn, []string{"oauth-provider"}, schema.Options{})
+    if err != nil {
+        return nil, nil, nil, err
+    }
+    api, err := auth.New(auth.Options{Store: store, EmailAndPassword: true})
+    if err != nil {
+        store.Close()
+        return nil, nil, nil, err
+    }
+    registry, err := oauthprovider.NewResourceManager(api, store, oauthprovider.ResourceManagerOptions{
+        Privileges: func(ctx context.Context, access oauthprovider.ResourceAccess) (bool, error) {
+            return access.User.ID == operatorID, nil
+        },
+    })
+    if err != nil {
+        store.Close()
+        return nil, nil, nil, err
+    }
+    return store, api, registry, nil
+}
+```
+
+Mount `api` on your application’s auth route. Keep `registry` in the server code handling your administrative actions. Each call accepts the request context and headers from your application. The auth handler exposes no public resource-management endpoints. An unauthenticated or revoked session receives a 401. With no `Privileges` callback, any authenticated session passed by the host application can perform all seven operations. Install a callback to restrict access as in the example.
+
+The callback receives the user, session, headers and action. The actions are `create`, `list`, `read`, `update`, `delete`, `link` and `unlink`. The last five include the affected resource identifier. A denied caller receives a 401 before the registry reads or changes the resource. A callback error propagates to the host.
+
+## Register and edit an audience
+
+Pass an absolute URI with no fragment. A URN is valid. To use application-defined names, set `ResourceManagerOptions.IdentifierValidator` to a function accepting `(context.Context, string)` and returning `(bool, error)`. The function replaces the URI check on creation. Lookups accept the exact stored identifier, including case, query and literal percent escapes. When forwarding an identifier from a Go HTTP route, pass the decoded path parameter, such as `r.PathValue("identifier")`.
+
+```go
+func registerReports(ctx context.Context, h http.Header, registry *oauthprovider.ResourceManager) (oauthprovider.Resource, error) {
+    return registry.Create(ctx, h, "https://api.example.com/reports", oauthprovider.ResourcePatch{
+        Name:           oauthprovider.Set("Reports"),
+        AllowedScopes:  oauthprovider.Set([]string{"reports:read"}),
+        AccessTokenTTL: oauthprovider.Set(int64(300)),
+    })
+}
+```
+
+The example uses `net/http` for `http.Header`. The name defaults to the identifier. A new row has a generated ID, creation and update timestamps, policy version 1, and both boolean flags set to false. `Get` returns one resource by identifier and `List` returns all stored resources. A duplicate identifier returns a 400. Missing resources return a 404 on read, update or delete.
+
+| Policy field | Values |
+| --- | --- |
+| `Name` | Display name, including an explicitly empty name |
+| `AccessTokenTTL`, `RefreshTokenTTL` | Positive 32-bit token lifetimes in seconds |
+| `SigningAlgorithm`, `SigningKeyID` | A signing algorithm and optional key identifier. Supported algorithm values are EdDSA, ES256, ES512, PS256 and RS256. |
+| `AllowedScopes` | A list of scope names. The registry preserves an empty list and SQL NULL as distinct values. |
+| `CustomClaims`, `Metadata` | JSON objects expressed in Go as `map[string]json.RawMessage` |
+| `DPoPBoundAccessTokensRequired`, `Disabled` | Boolean resource-policy flags |
+
+On update, omit a field to preserve its stored value. Use `Set` to write a value, including false or an empty list. Use `Clear` on a nullable setting to restore inheritance. A JSON patch follows the same rules for omitted properties and explicit nulls. The identifier and policy version are immutable through this API.
+
+```go
+updated, err := registry.Update(ctx, headers, resource.Identifier, oauthprovider.ResourcePatch{
+    AllowedScopes:   oauthprovider.Set([]string{"reports:read", "reports:export"}),
+    RefreshTokenTTL: oauthprovider.Clear[int64](),
+})
+```
+
+## Grant or remove client access
+
+Pass the public client ID from a registered OAuth client. `Link` verifies that both the resource and client exist and persists one link per pair. First-time success returns `Linked: true`. Repeated or concurrent calls return `AlreadyLinked: true` for the existing link.
+
+```go
+grant, err := registry.Link(ctx, headers, resource.Identifier, clientID)
+```
+
+`Unlink(ctx, headers, identifier, clientID)` succeeds when the pair is already absent. `Delete(ctx, headers, identifier)` removes the resource and its client links. Policy and grant changes are visible to other processes using the same database. Token issuance and enforcement of these policies have their own progress entries. [OAuth provider checklist](parity/plugins/oauth-provider.md) · [Database lifecycle tests](../adapters/sqlstore/oauth_resources_test.go) · [Cross-runtime registry tests](../conformance/resource-registry.mjs)

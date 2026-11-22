@@ -98,7 +98,7 @@ func NewResourceDiscovery(doc ResourceMetadata, opts DiscoveryOptions) (*Resourc
 	if doc.DPoPSigningAlgorithms == nil {
 		doc.DPoPSigningAlgorithms = opts.DefaultDPoPSigningAlgorithms
 		if doc.DPoPSigningAlgorithms == nil {
-			doc.DPoPSigningAlgorithms = defaultDPoPAlgorithms()
+			doc.DPoPSigningAlgorithms = resourceSigningAlgorithms()
 		}
 	}
 	for _, alg := range doc.ResourceSigningAlgorithms {
@@ -122,7 +122,9 @@ func NewResourceDiscovery(doc ResourceMetadata, opts DiscoveryOptions) (*Resourc
 	return &ResourceDiscovery{url: u.Scheme + "://" + u.Host + target, path: path, requestURI: target, body: body}, nil
 }
 
-func defaultDPoPAlgorithms() []string { return []string{"EdDSA", "ES256", "ES512", "PS256", "RS256"} }
+func resourceSigningAlgorithms() []string {
+	return []string{"EdDSA", "ES256", "ES512", "PS256", "RS256"}
+}
 
 func validDPoPAlgorithm(alg string) bool {
 	return validScope(alg) && !strings.EqualFold(alg, "none") && !strings.HasPrefix(strings.ToUpper(alg), "HS")

@@ -32,8 +32,8 @@
   - [ ] `OAuthFieldErrorCodeMap`
   - [ ] `OAuthRedirectOnError`
   - [ ] `GET / POST /oauth2/authorize`
-  - [ ] `GET /.well-known/oauth-authorization-server`
-  - [ ] `GET /.well-known/openid-configuration`
+  - [ ] `GET /.well-known/oauth-authorization-server` (server API only)
+  - [ ] `GET /.well-known/openid-configuration` (server API only)
   - [ ] `POST /oauth2/consent`
   - [ ] `POST /oauth2/continue`
   - [ ] `POST /oauth2/token`
@@ -46,13 +46,13 @@
   - [ ] `DEFAULT_OAUTH_SCOPES`
   - [ ] `getOAuthProviderState`
   - [ ] `oauthProvider`
-  - [ ] `POST /admin/oauth2/create-client`
+  - [ ] `POST /admin/oauth2/create-client` (server API only)
   - [ ] `POST /oauth2/create-client`
   - [ ] `GET /oauth2/get-client`
   - [ ] `GET /oauth2/public-client`
   - [ ] `POST /oauth2/public-client-prelogin`
   - [ ] `GET /oauth2/get-clients`
-  - [ ] `PATCH /admin/oauth2/update-client`
+  - [ ] `PATCH /admin/oauth2/update-client` (server API only)
   - [ ] `POST /oauth2/update-client`
   - [ ] `POST /oauth2/client/rotate-secret`
   - [ ] `POST /oauth2/client/rotate-keys`
@@ -76,20 +76,36 @@
   - [ ] `getOAuthConsents`
   - [ ] `updateOAuthConsent`
   - [ ] `deleteOAuthConsent`
-  - [ ] `POST /admin/oauth2/resources`
-  - [ ] `GET /admin/oauth2/resources`
-  - [ ] `GET /admin/oauth2/resources/:identifier`
-  - [ ] `PATCH /admin/oauth2/resources/:identifier`
-  - [ ] `DELETE /admin/oauth2/resources/:identifier`
-  - [ ] `POST /admin/oauth2/resources/:identifier/clients/:client_id`
-  - [ ] `DELETE /admin/oauth2/resources/:identifier/clients/:client_id`
-  - [ ] `adminCreateOAuthResource`
-  - [ ] `adminListOAuthResources`
-  - [ ] `adminGetOAuthResource`
-  - [ ] `adminUpdateOAuthResource`
-  - [ ] `adminDeleteOAuthResource`
-  - [ ] `adminLinkClientResource`
-  - [ ] `adminUnlinkClientResource`
+  - [x] `POST /admin/oauth2/resources` (server API only) ([test](../../../conformance/resource-registry.mjs#L58))
+    - [x] Create an audience and read all persisted policy fields from the other runtime ([test](../../../conformance/resource-registry.mjs#L58))
+  - [x] `GET /admin/oauth2/resources` (server API only) ([test](../../../conformance/resource-registry.mjs#L77))
+    - [x] List stored resources with matching values through both server APIs ([test](../../../conformance/resource-registry.mjs#L77))
+  - [x] `GET /admin/oauth2/resources/:identifier` (server API only) ([test](../../../conformance/resource-registry.mjs#L61))
+    - [x] Read the exact case-sensitive audience and its typed policy across runtimes ([test](../../../conformance/resource-registry.mjs#L61))
+  - [x] `PATCH /admin/oauth2/resources/:identifier` (server API only) ([test](../../../conformance/resource-registry.mjs#L68))
+    - [x] Preserve omitted settings, clear nullable fields and return the committed policy ([test](../../../conformance/resource-registry.mjs#L68))
+  - [x] `DELETE /admin/oauth2/resources/:identifier` (server API only) ([test](../../../conformance/resource-registry.mjs#L95))
+    - [x] Delete the audience and observe the missing resource and cascaded grants ([test](../../../conformance/resource-registry.mjs#L95))
+  - [x] `POST /admin/oauth2/resources/:identifier/clients/:client_id` (server API only) ([test](../../../conformance/resource-registry.mjs#L84))
+    - [x] Link an existing client once and recognize an existing grant across runtimes ([test](../../../conformance/resource-registry.mjs#L84))
+  - [x] `DELETE /admin/oauth2/resources/:identifier/clients/:client_id` (server API only) ([test](../../../conformance/resource-registry.mjs#L89))
+    - [x] Remove an existing client grant and permit a subsequent fresh link ([test](../../../conformance/resource-registry.mjs#L89))
+  - [x] `adminCreateOAuthResource` ([test](../../../conformance/resource-registry.mjs#L58))
+    - [x] Create an audience and read all persisted policy fields from the other runtime ([test](../../../conformance/resource-registry.mjs#L58))
+  - [x] `adminListOAuthResources` ([test](../../../conformance/resource-registry.mjs#L77))
+    - [x] List stored resources with matching values through both server APIs ([test](../../../conformance/resource-registry.mjs#L77))
+  - [x] `adminGetOAuthResource` ([test](../../../conformance/resource-registry.mjs#L61))
+    - [x] Read the exact case-sensitive audience and its typed policy across runtimes ([test](../../../conformance/resource-registry.mjs#L61))
+  - [x] `adminUpdateOAuthResource` ([test](../../../conformance/resource-registry.mjs#L68))
+    - [x] Preserve omitted settings, clear nullable fields and return the committed policy ([test](../../../conformance/resource-registry.mjs#L68))
+    - [x] Preserve disjoint concurrent edits made through separate database pools ([test](../../../adapters/sqlstore/oauth_resources_test.go#L172))
+  - [x] `adminDeleteOAuthResource` ([test](../../../conformance/resource-registry.mjs#L95))
+    - [x] Delete the audience and observe the missing resource and cascaded grants ([test](../../../conformance/resource-registry.mjs#L95))
+  - [x] `adminLinkClientResource` ([test](../../../conformance/resource-registry.mjs#L84))
+    - [x] Link an existing client once and recognize an existing grant across runtimes ([test](../../../conformance/resource-registry.mjs#L84))
+    - [x] Create exactly one grant under concurrent requests on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_resources_test.go#L158))
+  - [x] `adminUnlinkClientResource` ([test](../../../conformance/resource-registry.mjs#L89))
+    - [x] Remove an existing client grant and permit a subsequent fresh link ([test](../../../conformance/resource-registry.mjs#L89))
   - [ ] `OAuthClientRegistrationResult`
   - [ ] `RegisterClientMetadataDocumentInput`
   - [ ] `registerClientMetadataDocument`
@@ -136,7 +152,10 @@
     - [ ] `clientRegistrationDefaultResources`
     - [ ] `clientRegistrationAllowedResources`
     - [ ] `identifierValidator`
+      - [x] Replace URI validation for resource creation with the application’s validator ([test](../../../adapters/sqlstore/oauth_resources_test.go#L206))
     - [ ] `resourcePrivileges`
+      - [x] Authorize every registry action before looking up resources or grants ([test](../../../conformance/resource-registry.mjs#L102))
+      - [x] Provide the session, caller, action, headers and target to the Go privilege callback ([test](../../../adapters/sqlstore/oauth_resources_test.go#L195))
     - [ ] `cachedTrustedClients`
     - [ ] `accessTokenExpiresIn`
     - [ ] `m2mAccessTokenExpiresIn`
@@ -185,8 +204,11 @@
     - [ ] `requestUriResolver`
     - [ ] `dpop`
   - [ ] `OAuthAuthorizationQuery`
-  - [ ] `OAuthResource`
+  - [x] `OAuthResource` ([test](../../../conformance/resource-registry.mjs#L72))
+    - [x] Round-trip the full persisted resource, including IDs, timestamps and nullable policy fields ([test](../../../conformance/resource-registry.mjs#L72))
   - [ ] `OAuthResourceInput`
+    - [x] Supply every per-resource policy on creation and preserve missing and cleared values on patch ([test](../../../plugins/oauthprovider/resource_test.go#L24))
+    - [x] Create and load all administrative input fields in both runtimes ([test](../../../conformance/resource-registry.mjs#L49))
   - [ ] `OAuthClientResource`
   - [ ] `StoredAuthorizationQuery`
   - [ ] `VerificationValue`
@@ -208,6 +230,7 @@
   - [ ] `OAuthClientMetadata`
   - [ ] `oauthClientMetadataSchema`
   - [ ] `ResourceUriSchema`
+    - [x] Validate absolute URI and URN audience identifiers and reject fragments, unsafe schemes and malformed escapes ([test](../../../plugins/oauthprovider/resource_test.go#L11))
   - [ ] `ClientRegistrationRequest`
   - [ ] `consumeClientAssertion`
   - [ ] `verifyOAuthQueryParams`
@@ -366,6 +389,7 @@
     - [ ] Sign-in flow
     - [ ] Scopes and claims
     - [ ] Clients and registration
+    - [ ] Resources
     - [ ] Tokens
     - [ ] Storage and generation
     - [ ] Other
@@ -482,6 +506,35 @@
     - [ ] `profile`
     - [ ] `email`
     - [ ] `offline_access`
+  - [ ] Resources
+    - [ ] `name`
+    - [ ] `allowedScopes`
+    - [ ] `accessTokenTtl`
+    - [ ] `refreshTokenTtl`
+    - [ ] `signingAlgorithm`
+    - [ ] `signingKeyId`
+    - [ ] `customClaims`
+    - [ ] `dpopBoundAccessTokensRequired`
+    - [ ] `disabled`
+    - [ ] `insertOnly`
+    - [ ] `merge`
+    - [ ] `overwrite`
+    - [x] Manage resources at runtime ([test](../../../conformance/resource-registry.mjs#L129))
+      - [x] Manage all seven resource operations through host calls and keep them off the public auth router ([test](../../../conformance/resource-registry.mjs#L129))
+      - [x] `adminCreateOAuthResource` ([test](../../../conformance/resource-registry.mjs#L58))
+        - [x] Create an audience and read all persisted policy fields from the other runtime ([test](../../../conformance/resource-registry.mjs#L58))
+      - [x] `adminListOAuthResources` ([test](../../../conformance/resource-registry.mjs#L77))
+        - [x] List stored resources with matching values through both server APIs ([test](../../../conformance/resource-registry.mjs#L77))
+      - [x] `adminGetOAuthResource` ([test](../../../conformance/resource-registry.mjs#L61))
+        - [x] Read the exact case-sensitive audience and its typed policy across runtimes ([test](../../../conformance/resource-registry.mjs#L61))
+      - [x] `adminUpdateOAuthResource` ([test](../../../conformance/resource-registry.mjs#L68))
+        - [x] Preserve omitted settings, clear nullable fields and return the committed policy ([test](../../../conformance/resource-registry.mjs#L68))
+      - [x] `adminDeleteOAuthResource` ([test](../../../conformance/resource-registry.mjs#L95))
+        - [x] Delete the audience and observe the missing resource and cascaded grants ([test](../../../conformance/resource-registry.mjs#L95))
+      - [x] `adminLinkClientResource` ([test](../../../conformance/resource-registry.mjs#L84))
+        - [x] Link an existing client once and recognize an existing grant across runtimes ([test](../../../conformance/resource-registry.mjs#L84))
+      - [x] `adminUnlinkClientResource` ([test](../../../conformance/resource-registry.mjs#L89))
+        - [x] Remove an existing client grant and permit a subsequent fresh link ([test](../../../conformance/resource-registry.mjs#L89))
   - [ ] Lifetimes
     - [ ] `accessTokenExpiresIn`
     - [ ] `m2mAccessTokenExpiresIn`

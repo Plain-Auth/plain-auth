@@ -10937,5 +10937,237 @@
       "test": "conformance/resource-challenges.mjs",
       "marker": "[\"expired bearer\","
     }
+  ],
+  "plugin-symbol/oauth-provider/adminCreateOAuthResource": [
+    {
+      "label": "Create an audience and read all persisted policy fields from the other runtime",
+      "test": "conformance/resource-registry.mjs",
+      "marker": "const result = await call(\"create\", id, rich);",
+      "complete": true
+    }
+  ],
+  "plugin/oauth-provider/POST /admin/oauth2/resources": [
+    {
+      "label": "Create an audience and read all persisted policy fields from the other runtime",
+      "test": "conformance/resource-registry.mjs",
+      "marker": "const result = await call(\"create\", id, rich);",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/tokens.mdx#L97/`adminCreateOAuthResource`": [
+    {
+      "label": "Create an audience and read all persisted policy fields from the other runtime",
+      "test": "conformance/resource-registry.mjs",
+      "marker": "const result = await call(\"create\", id, rich);",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/oauth-provider/adminListOAuthResources": [
+    {
+      "label": "List stored resources with matching values through both server APIs",
+      "test": "conformance/resource-registry.mjs",
+      "marker": "const refList = await api.adminListOAuthResources",
+      "complete": true
+    }
+  ],
+  "plugin/oauth-provider/GET /admin/oauth2/resources": [
+    {
+      "label": "List stored resources with matching values through both server APIs",
+      "test": "conformance/resource-registry.mjs",
+      "marker": "const refList = await api.adminListOAuthResources",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/tokens.mdx#L98/`adminListOAuthResources`": [
+    {
+      "label": "List stored resources with matching values through both server APIs",
+      "test": "conformance/resource-registry.mjs",
+      "marker": "const refList = await api.adminListOAuthResources",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/oauth-provider/adminGetOAuthResource": [
+    {
+      "label": "Read the exact case-sensitive audience and its typed policy across runtimes",
+      "test": "conformance/resource-registry.mjs",
+      "marker": "read = await api.adminGetOAuthResource",
+      "complete": true
+    }
+  ],
+  "plugin/oauth-provider/GET /admin/oauth2/resources/:identifier": [
+    {
+      "label": "Read the exact case-sensitive audience and its typed policy across runtimes",
+      "test": "conformance/resource-registry.mjs",
+      "marker": "read = await api.adminGetOAuthResource",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/tokens.mdx#L99/`adminGetOAuthResource`": [
+    {
+      "label": "Read the exact case-sensitive audience and its typed policy across runtimes",
+      "test": "conformance/resource-registry.mjs",
+      "marker": "read = await api.adminGetOAuthResource",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/oauth-provider/adminUpdateOAuthResource": [
+    {
+      "label": "Preserve omitted settings, clear nullable fields and return the committed policy",
+      "test": "conformance/resource-registry.mjs",
+      "marker": "const edit = await call(\"update\", id, patch);",
+      "complete": true
+    },
+    {
+      "label": "Preserve disjoint concurrent edits made through separate database pools",
+      "test": "adapters/sqlstore/oauth_resources_test.go",
+      "marker": "lost concurrent update"
+    }
+  ],
+  "plugin/oauth-provider/PATCH /admin/oauth2/resources/:identifier": [
+    {
+      "label": "Preserve omitted settings, clear nullable fields and return the committed policy",
+      "test": "conformance/resource-registry.mjs",
+      "marker": "const edit = await call(\"update\", id, patch);",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/tokens.mdx#L100/`adminUpdateOAuthResource`": [
+    {
+      "label": "Preserve omitted settings, clear nullable fields and return the committed policy",
+      "test": "conformance/resource-registry.mjs",
+      "marker": "const edit = await call(\"update\", id, patch);",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/oauth-provider/adminDeleteOAuthResource": [
+    {
+      "label": "Delete the audience and observe the missing resource and cascaded grants",
+      "test": "conformance/resource-registry.mjs",
+      "marker": "assert.deepEqual((await call(\"delete\", id)).body",
+      "complete": true
+    }
+  ],
+  "plugin/oauth-provider/DELETE /admin/oauth2/resources/:identifier": [
+    {
+      "label": "Delete the audience and observe the missing resource and cascaded grants",
+      "test": "conformance/resource-registry.mjs",
+      "marker": "assert.deepEqual((await call(\"delete\", id)).body",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/tokens.mdx#L101/`adminDeleteOAuthResource`": [
+    {
+      "label": "Delete the audience and observe the missing resource and cascaded grants",
+      "test": "conformance/resource-registry.mjs",
+      "marker": "assert.deepEqual((await call(\"delete\", id)).body",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/oauth-provider/adminLinkClientResource": [
+    {
+      "label": "Link an existing client once and recognize an existing grant across runtimes",
+      "test": "conformance/resource-registry.mjs",
+      "marker": "assert.deepEqual(await api.adminLinkClientResource({headers: refHeaders, params: linkedParams(id)}), {linked: true, alreadyLinked: true});",
+      "complete": true
+    },
+    {
+      "label": "Create exactly one grant under concurrent requests on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_resources_test.go",
+      "marker": "if newLinks != 1"
+    }
+  ],
+  "plugin/oauth-provider/POST /admin/oauth2/resources/:identifier/clients/:client_id": [
+    {
+      "label": "Link an existing client once and recognize an existing grant across runtimes",
+      "test": "conformance/resource-registry.mjs",
+      "marker": "assert.deepEqual(await api.adminLinkClientResource({headers: refHeaders, params: linkedParams(id)}), {linked: true, alreadyLinked: true});",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/tokens.mdx#L102/`adminLinkClientResource`": [
+    {
+      "label": "Link an existing client once and recognize an existing grant across runtimes",
+      "test": "conformance/resource-registry.mjs",
+      "marker": "assert.deepEqual(await api.adminLinkClientResource({headers: refHeaders, params: linkedParams(id)}), {linked: true, alreadyLinked: true});",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/oauth-provider/adminUnlinkClientResource": [
+    {
+      "label": "Remove an existing client grant and permit a subsequent fresh link",
+      "test": "conformance/resource-registry.mjs",
+      "marker": "assert.deepEqual((await call(\"unlink\", id, {}, client.client_id)).body",
+      "complete": true
+    }
+  ],
+  "plugin/oauth-provider/DELETE /admin/oauth2/resources/:identifier/clients/:client_id": [
+    {
+      "label": "Remove an existing client grant and permit a subsequent fresh link",
+      "test": "conformance/resource-registry.mjs",
+      "marker": "assert.deepEqual((await call(\"unlink\", id, {}, client.client_id)).body",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/tokens.mdx#L103/`adminUnlinkClientResource`": [
+    {
+      "label": "Remove an existing client grant and permit a subsequent fresh link",
+      "test": "conformance/resource-registry.mjs",
+      "marker": "assert.deepEqual((await call(\"unlink\", id, {}, client.client_id)).body",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/tokens.mdx#L91": [
+    {
+      "label": "Manage all seven resource operations through host calls and keep them off the public auth router",
+      "test": "conformance/resource-registry.mjs",
+      "marker": "await t.test(\"server operations stay off both public routers\"",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/oauth-provider/OAuthResource": [
+    {
+      "label": "Round-trip the full persisted resource, including IDs, timestamps and nullable policy fields",
+      "test": "conformance/resource-registry.mjs",
+      "marker": "assert.deepEqual(persisted(read), persisted(created))",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/oauth-provider/OAuthResourceInput": [
+    {
+      "label": "Supply every per-resource policy on creation and preserve missing and cleared values on patch",
+      "test": "plugins/oauthprovider/resource_test.go",
+      "marker": "func TestResourcePolicyPatch("
+    },
+    {
+      "label": "Create and load all administrative input fields in both runtimes",
+      "test": "conformance/resource-registry.mjs",
+      "marker": "const rich = {name: \"Reporting\""
+    }
+  ],
+  "plugin-symbol/oauth-provider/ResourceUriSchema": [
+    {
+      "label": "Validate absolute URI and URN audience identifiers and reject fragments, unsafe schemes and malformed escapes",
+      "test": "plugins/oauthprovider/resource_test.go",
+      "marker": "func TestResourceIdentifiers("
+    }
+  ],
+  "plugin-symbol/oauth-provider/OAuthOptions/resourcePrivileges": [
+    {
+      "label": "Authorize every registry action before looking up resources or grants",
+      "test": "conformance/resource-registry.mjs",
+      "marker": "await t.test(\"privilege checks precede resource existence checks\""
+    },
+    {
+      "label": "Provide the session, caller, action, headers and target to the Go privilege callback",
+      "test": "adapters/sqlstore/oauth_resources_test.go",
+      "marker": "missing privilege check %q"
+    }
+  ],
+  "plugin-symbol/oauth-provider/OAuthOptions/identifierValidator": [
+    {
+      "label": "Replace URI validation for resource creation with the application’s validator",
+      "test": "adapters/sqlstore/oauth_resources_test.go",
+      "marker": "customResource, err := custom.Create("
+    }
   ]
 }

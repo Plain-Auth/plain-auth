@@ -158,14 +158,15 @@ for (const slug of [...bundled, ...standalone]) {
   for (const file of sources) {
     const content = read(file);
     const rows = content.split("\n");
-    function addRoute(method, label, line) {
+    function addRoute(method, label, line, serverOnly = false) {
       const route = method + " " + label;
       if (seenRoutes.has(route)) return;
       seenRoutes.add(route);
-      lines.push(pending(link(file + "#L" + line, inline(route.trim())), 1));
+      lines.push(pending(link(file + "#L" + line, inline(route.trim())) + (serverOnly ? " (server API only)" : ""), 1));
       addEvidence(lines, "plugin/" + publicName + "/" + route, filename, 2);
     }
-    for (const op of interfaces.serverOperations(file)) addRoute("", op.name + " (server API only)", op.line);
+    const serverOperations = interfaces.serverOperations(file);
+    for (const op of serverOperations.filter(op => !op.path)) addRoute("", op.name + " (server API only)", op.line);
     const declaration = /\b(?:createAuthEndpoint|createOAuthEndpoint|createSiweNonceEndpoint)\(\s*(?:"([^"]+)"|([\w.]+),)/g;
     for (const match of content.matchAll(declaration)) {
       const line = content.slice(0, match.index).split("\n").length;
@@ -175,7 +176,8 @@ for (const slug of [...bundled, ...standalone]) {
       if (label === "jwksPath") label = "/jwks (configurable)";
       if (!label.startsWith("/")) continue;
       const method = content.slice(match.index + match[0].length).match(/^\s*,?\s*\{?\s*method:\s*("[A-Z]+"|\[[^\]]+\])/);
-      addRoute(method ? [...method[1].matchAll(/"([A-Z]+)"/g)].map(m => m[1]).join(" / ") : "", label, line);
+      addRoute(method ? [...method[1].matchAll(/"([A-Z]+)"/g)].map(m => m[1]).join(" / ") : "", label, line,
+        serverOperations.some(op => op.path === label && op.line === line));
     }
     const declarations = ["index.ts", "client.ts", "types.ts", "options.ts"].includes(basename(file))
       ? interfaces.declarationExports(file) : [...(interfaces.published.get(file)?.values() ?? [])];
@@ -238,7 +240,10 @@ function extractPage(file, lines) {
     if (heading) {
       if (hiddenDepth && heading[1].length > hiddenDepth) continue;
       hiddenDepth = undefined;
-      if (/^(?:installation|install .+?|getting started|quick start|quickstart|what is saml|youre now ready|thats it|wrapping up|example usage|usage example|next steps|additional resources|additional information|further reading|see also|troubleshooting|faq|frequently asked questions|changelog|release notes|migration from.*|contributing|resources|related|done|credits|prerequisites|before you (?:begin|start)|table of contents|features overview)$/i.test(clean(heading[2]).replace(/[^\p{L}\p{N} ]/gu, "").trim())) {
+      const headingName = clean(heading[2]).replace(/[^\p{L}\p{N} ]/gu, "").trim();
+      // "Resources" can introduce a protocol concept or a list of external reading.
+      const resourceLinks = /^resources$/i.test(headingName) && /^\s*[-*]\s+\[/.test(parts.slice(i + 1).find(line => line.trim()) ?? "");
+      if (resourceLinks || /^(?:installation|install .+?|getting started|quick start|quickstart|what is saml|youre now ready|thats it|wrapping up|example usage|usage example|next steps|additional resources|additional information|further reading|see also|troubleshooting|faq|frequently asked questions|changelog|release notes|migration from.*|contributing|related|done|credits|prerequisites|before you (?:begin|start)|table of contents|features overview)$/i.test(headingName)) {
         hiddenDepth = heading[1].length;
         continue;
       }
@@ -393,6 +398,7 @@ const index = [
   "| Share a registered OAuth callback across trusted preview deployments | [OAuth proxy setup](../oauth-proxy.md) |",
   "| Google One Tap popup, button and browser challenges | [Google One Tap](../one-tap.md) |",
   "| Publish discovery metadata and respond to access-token failures | [Resource discovery and challenges](../oauth-resource-discovery.md) |",
+  "| Manage OAuth resource policies and client grants from server code | [Resource management](../oauth-resource-management.md) |",
   "| OAuth authorization-server database tables | [Schema and migration](../schema.md#oauth-authorization-server-tables) |",
   "| First-party device grants and authorization | [Sign in a device](../device-authorization.md) |",
   "| Sign in with an Ethereum wallet | [Wallet sign-in](../siwe.md) |",

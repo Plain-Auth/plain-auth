@@ -301,6 +301,8 @@ func main() {
 				log.Fatal(err)
 			}
 			plugins = append(plugins, p)
+		case "oauth-provider":
+			// Its resource registry is a host-side API using the generated SQL profile.
 		case "jwt":
 			p, err := jwtplugin.New(jwtplugin.Options{DisableHeader: os.Getenv("CONFORMANCE_MUTE_JWT_HEADER") == "1", Issuer: os.Getenv("CONFORMANCE_DISCOVERY_ISSUER")})
 			if err != nil {
@@ -573,6 +575,9 @@ func main() {
 		log.Fatal(err)
 	}
 	var handler http.Handler = auth
+	if os.Getenv("CONFORMANCE_RESOURCE_REGISTRY") == "1" {
+		handler = resourceRegistryFixture(auth, store, handler)
+	}
 	if config := os.Getenv("CONFORMANCE_RESOURCE_CHALLENGES"); config != "" {
 		handler = resourceChallengeFixture(config, handler)
 	}

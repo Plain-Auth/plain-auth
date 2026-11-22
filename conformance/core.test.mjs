@@ -1744,3 +1744,8 @@ test("protected APIs return the same Bearer and DPoP challenges as the released 
   const { compareResourceChallenges } = await import("./resource-challenges.mjs");
   await compareResourceChallenges(t, goFixture);
 });
+
+test("OAuth resource administrators interoperate through a shared SQL registry", async t => {
+  const { compareResourceRegistry } = await import("./resource-registry.mjs");
+  await compareResourceRegistry(t, goFixture);
+});

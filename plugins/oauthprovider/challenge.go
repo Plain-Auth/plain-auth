@@ -38,7 +38,7 @@ func NewResourceChallenges(resources []string, opts ChallengeOptions) (*Resource
 	}
 	algs := opts.DPoPSigningAlgorithms
 	if algs == nil {
-		algs = defaultDPoPAlgorithms()
+		algs = resourceSigningAlgorithms()
 	}
 	for _, alg := range algs {
 		if !validDPoPAlgorithm(alg) {
