@@ -207,6 +207,7 @@ func New(opts Options) (auth.Plugin, error) {
 	p.Endpoints = append(p.Endpoints, auth.Endpoint{Method: http.MethodPost, Path: "/oauth2/delete-client", Handler: opts.deleteClient})
 	p.Endpoints = append(p.Endpoints, auth.Endpoint{Method: http.MethodPost, Path: "/oauth2/token", RawBody: true, OpenAPI: json.RawMessage(machineTokenOperation), RateLimit: opts.Tokens.RateLimit, Handler: opts.token})
 	p.Endpoints = append(p.Endpoints, auth.Endpoint{Method: http.MethodPost, Path: "/oauth2/introspect", RawBody: true, OpenAPI: json.RawMessage(introspectionOperation), RateLimit: opts.Tokens.IntrospectionRateLimit, Handler: opts.introspect})
+	p.Endpoints = append(p.Endpoints, auth.Endpoint{Method: http.MethodPost, Path: "/oauth2/revoke", RawBody: true, OpenAPI: json.RawMessage(revocationOperation), RateLimit: opts.Tokens.RevocationRateLimit, Handler: opts.revoke})
 	return p, nil
 }
 

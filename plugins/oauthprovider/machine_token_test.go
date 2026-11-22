@@ -54,16 +54,25 @@ func TestMachineTokenConfiguration(t *testing.T) {
 }
 
 func TestIntrospectionEndpoint(t *testing.T) {
+	testTokenActionEndpoint(t, "/oauth2/introspect", 100)
+}
+
+func TestRevocationEndpoint(t *testing.T) {
+	testTokenActionEndpoint(t, "/oauth2/revoke", 30)
+}
+
+func testTokenActionEndpoint(t *testing.T, path string, max int) {
+	t.Helper()
 	p, err := New(Options{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	for _, ep := range p.Endpoints {
-		if ep.Path != "/oauth2/introspect" {
+		if ep.Path != path {
 			continue
 		}
-		if ep.Method != http.MethodPost || !ep.RawBody || ep.RateLimit == nil || ep.RateLimit.Max != 100 || ep.RateLimit.Window != time.Minute {
-			t.Fatal("incorrect introspection method, body or default limit")
+		if ep.Method != http.MethodPost || !ep.RawBody || ep.RateLimit == nil || ep.RateLimit.Max != max || ep.RateLimit.Window != time.Minute {
+			t.Fatalf("%s: incorrect method, body or default limit", path)
 		}
 		var operation struct {
 			RequestBody struct {
@@ -75,9 +84,9 @@ func TestIntrospectionEndpoint(t *testing.T) {
 			t.Fatal(err)
 		}
 		if len(operation.RequestBody.Content) != 1 || operation.RequestBody.Content[tokenFormType] == nil || operation.Responses["200"] == nil {
-			t.Fatal("introspection form or response missing from OpenAPI")
+			t.Fatal(path, "form or response missing from OpenAPI")
 		}
 		return
 	}
-	t.Fatal("introspection endpoint missing")
+	t.Fatal(path, "endpoint missing")
 }

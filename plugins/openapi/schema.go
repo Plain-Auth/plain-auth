@@ -565,7 +565,7 @@ func Generate(a *plainauth.Auth) (map[string]any, error) {
 		if r.Plugin == "stripe" && r.Path == "/stripe/webhook" {
 			schemes["stripeSignature"] = object{"type": "apiKey", "in": "header", "name": "Stripe-Signature"}
 		}
-		if r.Plugin == "oauth-provider" && (r.Path == "/oauth2/token" || r.Path == "/oauth2/introspect") {
+		if r.Plugin == "oauth-provider" && (r.Path == "/oauth2/token" || r.Path == "/oauth2/introspect" || r.Path == "/oauth2/revoke") {
 			schemes["clientSecretBasic"] = object{"type": "http", "scheme": "basic"}
 		}
 		path := schemaPath(r)

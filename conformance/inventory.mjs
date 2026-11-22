@@ -417,6 +417,7 @@ const index = [
   "| Register OAuth clients and rotate shared secrets | [OAuth client registration](../oauth-client-registration.md) |",
   "| Grant or revoke machine-to-machine scopes from Go server code | [Machine scope management](../oauth-client-registration.md#grant-machine-to-machine-scopes) |",
   "| Issue opaque machine access tokens and check their current scopes and expiry | [Machine access tokens](../machine-tokens.md) · [Token introspection](../machine-tokens.md#check-whether-a-token-is-active) |",
+  "| Revoke an OAuth token or invalidate a replayed refresh-token family | [Token revocation](../oauth-token-revocation.md) |",
   "| List or delete owned applications and show public client details | [Manage registered applications](../oauth-client-directory.md) |",
   "| OAuth authorization-server database tables | [Schema and migration](../schema.md#oauth-authorization-server-tables) |",
   "| First-party device grants and authorization | [Sign in a device](../device-authorization.md) |",

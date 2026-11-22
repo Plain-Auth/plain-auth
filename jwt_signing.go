@@ -124,43 +124,111 @@ func (a *Auth) SignJWT(ctx context.Context, subject string, settings JWTSignOpti
 // published keys. The caller receives claims only after signature, identity,
 // audience, expiry and activation checks have succeeded.
 func (a *Auth) VerifyJWT(ctx context.Context, token string, settings JWTVerifyOptions) (map[string]any, error) {
+	now := a.now().UTC()
+	var claims jwt.Claims
+	var payload map[string]any
+	if err := a.readSignedJWT(ctx, token, now, true, &claims, &payload); err != nil {
+		return nil, err
+	}
+	if claims.Subject == "" || claims.Expiry == nil || !now.Before(claims.Expiry.Time()) {
+		return nil, ErrInvalidJWT
+	}
+	settings = a.jwtExpectations(settings)
+	expected := jwt.Expected{Issuer: settings.Issuer, AnyAudience: jwt.Audience{settings.Audience}, Subject: settings.Subject, Time: now}
+	if err := claims.ValidateWithLeeway(expected, 0); err != nil {
+		return nil, ErrInvalidJWT
+	}
+	return payload, nil
+}
+
+func (a *Auth) readSignedJWT(ctx context.Context, token string, now time.Time, requireKeyID bool, claims ...any) error {
 	opts := a.serviceJWT
 	if opts == nil {
-		return nil, &APIError{404, "NOT_FOUND", "JWT plugin is not enabled"}
+		return &APIError{404, "NOT_FOUND", "JWT plugin is not enabled"}
 	}
 	algorithms := []jose.SignatureAlgorithm{jose.SignatureAlgorithm(opts.Algorithm)}
 	for _, alg := range opts.AdditionalAlgorithms {
 		algorithms = append(algorithms, jose.SignatureAlgorithm(alg))
 	}
 	signed, err := jwt.ParseSigned(token, algorithms)
-	if err != nil || len(signed.Headers) != 1 || signed.Headers[0].KeyID == "" {
-		return nil, ErrInvalidJWT
+	if err != nil || len(signed.Headers) != 1 || requireKeyID && signed.Headers[0].KeyID == "" {
+		return ErrInvalidJWT
 	}
-	now := a.now().UTC()
 	rows, err := a.opts.Store.(JWTStore).PublicJWTKeys(ctx, now.Add(-*opts.GracePeriod))
 	if err != nil {
-		return nil, err
+		return err
 	}
 	header := signed.Headers[0]
-	settings = a.jwtExpectations(settings)
+	if header.KeyID == "" {
+		// An OAuth JWS can omit kid. JOSE may choose a verification key
+		// only when the header unambiguously identifies one local key.
+		for _, row := range rows {
+			if row.Algorithm == header.Algorithm {
+				if header.KeyID != "" {
+					return errors.New("jwt: multiple verification keys match the token algorithm")
+				}
+				header.KeyID = row.ID
+			}
+		}
+	}
 	for _, row := range rows {
 		if row.ID != header.KeyID || row.Algorithm != header.Algorithm {
 			continue
 		}
 		var key jose.JSONWebKey
 		if err := key.UnmarshalJSON([]byte(row.PublicKey)); err != nil || !key.Valid() || !key.IsPublic() {
-			return nil, errors.New("jwt: invalid stored public key")
+			return errors.New("jwt: invalid stored public key")
 		}
-		var claims jwt.Claims
-		var payload map[string]any
-		if err := signed.Claims(key.Key, &claims, &payload); err != nil || claims.Subject == "" || claims.Expiry == nil || !now.Before(claims.Expiry.Time()) {
-			return nil, ErrInvalidJWT
+		if err := signed.Claims(key.Key, claims...); err != nil {
+			return ErrInvalidJWT
 		}
-		expected := jwt.Expected{Issuer: settings.Issuer, AnyAudience: jwt.Audience{settings.Audience}, Subject: settings.Subject, Time: now}
-		if err := claims.ValidateWithLeeway(expected, 0); err != nil {
-			return nil, ErrInvalidJWT
-		}
-		return payload, nil
+		return nil
 	}
-	return nil, ErrInvalidJWT
+	return ErrInvalidJWT
+}
+
+// CheckOAuthJWTRevocation recognizes self-contained tokens during revocation.
+// A recognized inactive token needs no further action. A live access token
+// returns unsupported_token_type. Unknown signatures and issuers fall through
+// to stored-token lookup. This check never authorizes access to a resource.
+func (c EndpointContext) CheckOAuthJWTRevocation(token string, resourceKnown func(context.Context, string) (bool, error)) (bool, error) {
+	a, ctx := c.Auth, c.Request.Context()
+	if a.serviceJWT == nil {
+		return false, nil
+	}
+	now := a.now().UTC()
+	var claims struct {
+		jwt.Claims
+		Client string `json:"azp"`
+	}
+	if err := a.readSignedJWT(ctx, token, now, false, &claims); err != nil {
+		if errors.Is(err, ErrInvalidJWT) {
+			return false, nil
+		}
+		return false, err
+	}
+	if claims.Expiry != nil && !now.Before(claims.Expiry.Time()) {
+		return true, nil
+	}
+	if claims.Issuer != a.OAuthIssuer() || claims.NotBefore != nil && now.Before(claims.NotBefore.Time()) {
+		return false, nil
+	}
+	if claims.Client == "" || len(claims.Audience) > 64 {
+		return true, nil
+	}
+	seen := map[string]bool{a.PublicURL() + "/oauth2/userinfo": true}
+	for _, audience := range claims.Audience {
+		if seen[audience] {
+			continue
+		}
+		if resourceKnown == nil {
+			return true, errors.New("jwt: OAuth resource lookup unavailable")
+		}
+		known, err := resourceKnown(ctx, audience)
+		if err != nil || !known {
+			return true, err
+		}
+		seen[audience] = true
+	}
+	return true, &OAuthError{Status: 400, Code: "unsupported_token_type", Description: "JWT access tokens are self-contained and cannot be revoked server-side"}
 }

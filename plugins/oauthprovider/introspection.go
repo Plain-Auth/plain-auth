@@ -37,40 +37,23 @@ const introspectionOperation = `{
 }`
 
 func (opts Options) introspect(c auth.EndpointContext) (any, error) {
-	c.ResponseHeader.Set("Cache-Control", "no-store")
-	c.ResponseHeader.Set("Pragma", "no-cache")
-	form, err := readTokenForm(c.Request)
+	req, err := readTokenAction(c, true)
 	if err != nil {
 		return nil, err
-	}
-	tokens := form["token"]
-	if len(tokens) == 0 {
-		return nil, registrationProblem(400, "invalid_request", "token is required")
-	}
-	in, challenge, err := parseTokenCredentials(form, c.Request.Header.Values("Authorization"))
-	if err != nil {
-		return nil, tokenEndpointError(c.ResponseHeader, challenge, err)
-	}
-	if in.id == "" || in.secret == "" {
-		return nil, tokenEndpointError(c.ResponseHeader, "Basic", invalidClient("missing required credentials"))
-	}
-	token := tokens[len(tokens)-1]
-	if token == "" {
-		return nil, registrationProblem(400, "invalid_request", "missing a required token for introspection")
 	}
 	store, ok := c.Store().(MachineIntrospectionStore)
 	if !ok {
 		return nil, &auth.APIError{Status: 501, Code: "OAUTH_INTROSPECTION_STORE_UNAVAILABLE", Message: "The configured store does not support OAuth token introspection"}
 	}
 	ctx := c.Request.Context()
+	in := req.client
 	first, err := opts.Registration.authenticateClient(ctx, store, in)
 	if err != nil {
-		return nil, tokenEndpointError(c.ResponseHeader, challenge, err)
+		return nil, tokenEndpointError(c.ResponseHeader, req.challenge, err)
 	}
 	var digest string
-	hints := form["token_type_hint"]
-	raw, prefixed := strings.CutPrefix(introspectionToken(token), opts.Tokens.OpaquePrefix)
-	if prefixed && raw != "" && (len(hints) == 0 || hints[len(hints)-1] != "refresh_token") {
+	raw, prefixed := strings.CutPrefix(req.token, opts.Tokens.OpaquePrefix)
+	if prefixed && raw != "" && req.hint != "refresh_token" {
 		digest, err = opts.Tokens.storedOpaque(ctx, raw)
 		if err != nil {
 			return nil, err
@@ -81,7 +64,7 @@ func (opts Options) introspect(c auth.EndpointContext) (any, error) {
 		err = in.recheckClient(first, current)
 	}
 	if err != nil {
-		return nil, tokenEndpointError(c.ResponseHeader, challenge, err)
+		return nil, tokenEndpointError(c.ResponseHeader, req.challenge, err)
 	}
 	if digest == "" || record == nil || record.StoredToken != digest || !record.ExpiresAt.After(time.Now()) {
 		return map[string]bool{"active": false}, nil
@@ -93,7 +76,44 @@ func (opts Options) introspect(c auth.EndpointContext) (any, error) {
 	}, nil
 }
 
-func introspectionToken(token string) string {
+type tokenAction struct {
+	client                 tokenRequest
+	challenge, token, hint string
+}
+
+func readTokenAction(c auth.EndpointContext, requireSecret bool) (tokenAction, error) {
+	c.ResponseHeader.Set("Cache-Control", "no-store")
+	c.ResponseHeader.Set("Pragma", "no-cache")
+	form, err := readTokenForm(c.Request)
+	if err != nil {
+		return tokenAction{}, err
+	}
+	tokens := form["token"]
+	if len(tokens) == 0 {
+		return tokenAction{}, registrationProblem(400, "invalid_request", "token is required")
+	}
+	in, challenge, err := parseTokenCredentials(form, c.Request.Header.Values("Authorization"))
+	if err != nil {
+		return tokenAction{}, tokenEndpointError(c.ResponseHeader, challenge, err)
+	}
+	if in.id == "" || (requireSecret && in.secret == "") {
+		return tokenAction{}, tokenEndpointError(c.ResponseHeader, "Basic", invalidClient("missing required credentials"))
+	}
+	raw := tokens[len(tokens)-1]
+	if raw == "" {
+		if !requireSecret {
+			return tokenAction{}, registrationProblem(400, "invalid_request", "missing a required token for revocation")
+		}
+		return tokenAction{}, registrationProblem(400, "invalid_request", "missing a required token for introspection")
+	}
+	req := tokenAction{client: in, challenge: challenge, token: stripTokenScheme(raw)}
+	if hints := form["token_type_hint"]; len(hints) != 0 {
+		req.hint = hints[len(hints)-1]
+	}
+	return req, nil
+}
+
+func stripTokenScheme(token string) string {
 	token = jsjson.TrimSpace(token)
 	space := strings.IndexFunc(token, unicode.IsSpace)
 	if space > 0 && (strings.EqualFold(token[:space], "Bearer") || strings.EqualFold(token[:space], "DPoP")) {

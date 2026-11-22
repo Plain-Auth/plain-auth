@@ -25,6 +25,13 @@ type TokenOptions struct {
 	// IntrospectionRateLimit defaults to 100 per minute. An empty rule
 	// selects the host's global rate limit for this endpoint.
 	IntrospectionRateLimit *auth.RateLimitRule
+	// RevocationRateLimit defaults to 30 per minute. An empty rule uses the host's global limit.
+	RevocationRateLimit *auth.RateLimitRule
+	RefreshPrefix       string
+	// DecodeRefreshToken unwraps an unprefixed refresh token before lookup.
+	// Return ErrInvalidRefreshToken for an unrecognized encoding.
+	DecodeRefreshToken func(context.Context, string) (string, error)
+	HashRefreshToken   func(context.Context, string) (string, error)
 }
 
 func (opts *TokenOptions) defaults() error {
@@ -45,16 +52,20 @@ func (opts *TokenOptions) defaults() error {
 		rule = *opts.RateLimit
 	}
 	opts.RateLimit = &rule
-	switch {
-	case opts.IntrospectionRateLimit == nil:
-		opts.IntrospectionRateLimit = &auth.RateLimitRule{Window: time.Minute, Max: 100}
-	case *opts.IntrospectionRateLimit == (auth.RateLimitRule{}):
-		opts.IntrospectionRateLimit = nil
-	default:
-		introspection := *opts.IntrospectionRateLimit
-		opts.IntrospectionRateLimit = &introspection
-	}
+	opts.IntrospectionRateLimit = tokenRouteLimit(opts.IntrospectionRateLimit, 100)
+	opts.RevocationRateLimit = tokenRouteLimit(opts.RevocationRateLimit, 30)
 	return nil
+}
+
+func tokenRouteLimit(rule *auth.RateLimitRule, max int) *auth.RateLimitRule {
+	if rule == nil {
+		return &auth.RateLimitRule{Window: time.Minute, Max: max}
+	}
+	if *rule == (auth.RateLimitRule{}) {
+		return nil
+	}
+	copy := *rule
+	return &copy
 }
 
 // MachineClient contains the server-only registration fields required for authentication.

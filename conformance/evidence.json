@@ -12134,7 +12134,58 @@
     {
       "label": "Apply a 100-request, one-minute default to the form endpoint",
       "test": "plugins/oauthprovider/machine_token_test.go",
-      "marker": "incorrect introspection method, body or default limit"
+      "marker": "testTokenActionEndpoint(t, \"/oauth2/introspect\", 100)"
+    }
+  ],
+  "plugin/oauth-provider/POST /oauth2/revoke": [
+    {
+      "label": "Revoke an independently issued opaque token and confirm that the issuing server reports it inactive",
+      "test": "conformance/oauth-revocation.mjs",
+      "marker": "assert.equal(await active(), false)"
+    },
+    {
+      "label": "Revoke refresh tokens transactionally and isolate a replayed family by client and user during simultaneous requests on three SQL engines",
+      "test": "adapters/sqlstore/oauth_revocation_test.go",
+      "marker": "Two independent pools racing to revoke the same refresh token"
+    },
+    {
+      "label": "Recognize independently signed live access tokens and check every resource audience before reporting unsupported token type",
+      "test": "conformance/oauth-revocation.mjs",
+      "marker": "await problem({ ...owner, token: await sign(claims)"
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/reference.mdx#L323/`POST /oauth2/revoke`": [
+    {
+      "label": "Accept registered shared-secret and public clients while preserving token ownership",
+      "test": "conformance/oauth-revocation.mjs",
+      "marker": "await success({ client_id: other.client_id, token });"
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/tokens.mdx#L273": [
+    {
+      "label": "Handle stored access and refresh tokens, linked access tokens, self-contained JWTs and repeated requests",
+      "test": "conformance/oauth-revocation.mjs",
+      "marker": "const foreignReplay = await revoke("
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/reference.mdx#L401/`revoke`": [
+    {
+      "label": "Enforce 30 revocation requests per minute per IP, a host override or the global fallback",
+      "test": "adapters/sqlstore/oauth_introspection_test.go",
+      "marker": "func TestOAuthRevocationRateLimit(",
+      "complete": true
+    },
+    {
+      "label": "Expose POST, form media type and the default one-minute limit on the revocation route",
+      "test": "plugins/oauthprovider/machine_token_test.go",
+      "marker": "testTokenActionEndpoint(t, \"/oauth2/revoke\", 30)"
+    }
+  ],
+  "plugin-symbol/oauth-provider/OAuthOptions/formatRefreshToken": [
+    {
+      "label": "Unwrap custom refresh-token values before hashing and distinguish unknown encodings from decoder errors",
+      "test": "adapters/sqlstore/oauth_revocation_test.go",
+      "marker": "revoke(\"Reports\", \"rt_key-error\", \"refresh_token\", 500)"
     }
   ],
   "plugin-symbol/oauth-provider/OAuthOptions/cachedTrustedClients": [

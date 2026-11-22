@@ -134,19 +134,29 @@ func TestOAuthMachineIntrospection(t *testing.T) {
 }
 
 func TestOAuthIntrospectionRateLimit(t *testing.T) {
+	testOAuthTokenRouteLimit(t, "introspect", 100)
+}
+
+func TestOAuthRevocationRateLimit(t *testing.T) {
+	testOAuthTokenRouteLimit(t, "revoke", 30)
+}
+
+func testOAuthTokenRouteLimit(t *testing.T, route string, defaultMax int) {
+	t.Helper()
 	s, err := OpenWithOptions(t.Context(), "sqlite", organizationTestDSN(t, "sqlite"), []string{"oauth-provider"}, schema.Options{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { s.Close() })
-	for _, max := range []int{100, 2, 3} {
+	for _, max := range []int{defaultMax, 2, 3} {
 		t.Run(strconv.Itoa(max), func(t *testing.T) {
-			opts := op.TokenOptions{}
+			var rule *auth.RateLimitRule
 			if max == 2 {
-				opts.IntrospectionRateLimit = &auth.RateLimitRule{Window: time.Minute, Max: max}
+				rule = &auth.RateLimitRule{Window: time.Minute, Max: max}
 			} else if max == 3 {
-				opts.IntrospectionRateLimit = &auth.RateLimitRule{}
+				rule = &auth.RateLimitRule{}
 			}
+			opts := op.TokenOptions{IntrospectionRateLimit: rule, RevocationRateLimit: rule}
 			p, err := op.New(op.Options{Tokens: opts})
 			if err != nil {
 				t.Fatal(err)
@@ -158,7 +168,7 @@ func TestOAuthIntrospectionRateLimit(t *testing.T) {
 				t.Fatal(err)
 			}
 			for i := 0; i <= max; i++ {
-				r := httptest.NewRequest(http.MethodPost, origin+"/api/auth/oauth2/introspect", strings.NewReader("token=x"))
+				r := httptest.NewRequest(http.MethodPost, origin+"/api/auth/oauth2/"+route, strings.NewReader("token=x"))
 				r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 				w := httptest.NewRecorder()
 				host.ServeHTTP(w, r)
@@ -167,7 +177,7 @@ func TestOAuthIntrospectionRateLimit(t *testing.T) {
 					expected = http.StatusTooManyRequests
 				}
 				if w.Code != expected {
-					t.Fatalf("introspection request %d returned %d, want %d", i+1, w.Code, expected)
+					t.Fatalf("%s request %d returned %d, want %d", route, i+1, w.Code, expected)
 				}
 			}
 		})
