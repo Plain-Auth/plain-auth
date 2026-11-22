@@ -24,7 +24,7 @@ func failureCode(args []string, err error) int {
 	return 1
 }
 
-func checkDatabase(ctx context.Context, dialect string, profiles []string, asJSON bool, out io.Writer) error {
+func checkDatabase(ctx context.Context, dialect string, profiles []string, fields map[string]schema.SessionField, asJSON bool, out io.Writer) error {
 	dsn := os.Getenv("AUTH_DSN")
 	if dsn == "" {
 		if _, err := schema.Tables(dialect, profiles); err != nil {
@@ -32,7 +32,7 @@ func checkDatabase(ctx context.Context, dialect string, profiles []string, asJSO
 		}
 		return errors.New("set AUTH_DSN to the target database")
 	}
-	findings, err := sqlstore.CheckSchema(ctx, dialect, dsn, profiles)
+	findings, err := sqlstore.CheckSchemaWithSessionFields(ctx, dialect, dsn, profiles, fields)
 	if err != nil {
 		return err
 	}

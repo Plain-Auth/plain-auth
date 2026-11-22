@@ -353,6 +353,7 @@ Each entry groups the configured endpoint’s behaviors. A checked child records
     - [x] Resolve PostgreSQL tables in the connection's search path ([test](../../adapters/sqlstore/check_test.go#L159))
     - [x] Return distinct success, drift and operational exit codes with JSON findings and redacted connection errors ([test](../../cmd/authctl/check_test.go#L42))
     - [x] Report an uninstalled Polar profile and an empty finding list after provisioning ([test](../../cmd/authctl/main_test.go#L104))
+    - [x] Report missing or incompatible configured session columns on all three engines without changing the database ([test](../../adapters/sqlstore/check_session_fields_test.go#L46))
     - [ ] `check schema`
     - [ ] `-c, --cwd <cwd>`
     - [ ] `--config <config>`
@@ -374,6 +375,7 @@ Each entry groups the configured endpoint’s behaviors. A checked child records
     - [x] Compare every base-profile combination and independent SCIM profile witnesses across all three dialects ([test](../../conformance/schema.test.mjs#L106))
     - [x] Prove SCIM adds exactly seven disjoint tables and preserves every preexisting schema statement ([test](../../conformance/schema.test.mjs#L169))
     - [x] Generate the optional Polar checkout and delivery tables on every SQL dialect ([test](../../cmd/authctl/main_test.go#L79))
+    - [x] Emit physical columns from a JSON field definition for each supported SQL dialect ([test](../../cmd/authctl/session_fields_test.go#L13))
     - [ ] `-c, --cwd <cwd>`
     - [ ] `--config <config>`
     - [ ] `--output <output>`
@@ -407,6 +409,7 @@ Each entry groups the configured endpoint’s behaviors. A checked child records
     - [x] Upgrade existing PostgreSQL and MySQL schemas with combined team, billing and factor profiles ([test](../../adapters/sqlstore/profiles_test.go#L14))
     - [x] Reopen a populated SCIM profile twice on SQLite, PostgreSQL and MySQL and retain the original account ([test](../../adapters/sqlstore/scim_test.go#L33))
     - [x] Preserve Polar delivery receipts and their uniqueness across repeated CLI-compatible migrations on three SQL engines ([test](../../integrations/polar/schema_test.go#L11))
+    - [x] Backfill existing sessions, preserve the owner's data and report incompatible definitions on live servers ([test](../../cmd/authctl/session_fields_live_test.go#L128))
     - [ ] `-c, --cwd <cwd>`
     - [ ] `--config <config>`
     - [ ] `-y, --yes`

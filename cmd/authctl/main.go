@@ -28,6 +28,7 @@ const usage = `Usage: authctl <command>
   secret                                       Print a new signing secret
 
   check, generate and migrate accept --plugins with comma-separated schema profiles.
+  check, generate and migrate accept --session-fields FILE with a JSON field definition map.
   migrate --api-key-ledger includes the API-key schema and reserves existing key digests.
 `
 
@@ -71,6 +72,14 @@ func run(ctx context.Context, args []string, out, errOut io.Writer) error {
 		fs.SetOutput(errOut)
 		dialect := fs.String("dialect", "", "Database dialect (sqlite, postgres, mysql)")
 		pluginNames := fs.String("plugins", "", "Comma-separated schema profiles ("+strings.Join(schema.Profiles(), ", ")+")")
+		var fieldFile string
+		fs.Func("session-fields", "Read additional session fields from a JSON file", func(v string) error {
+			if v == "" {
+				return errors.New("a session fields file is required")
+			}
+			fieldFile = v
+			return nil
+		})
 		var asJSON, prepareKeyLedger bool
 		if args[0] == "check" {
 			fs.BoolVar(&asJSON, "json", false, "Write findings as a JSON array")
@@ -93,13 +102,24 @@ func run(ctx context.Context, args []string, out, errOut io.Writer) error {
 				profiles = append(profiles, strings.TrimSpace(name))
 			}
 		}
+		var fields map[string]schema.SessionField
+		if fieldFile != "" {
+			file, err := os.Open(fieldFile)
+			if err != nil {
+				return fmt.Errorf("read session fields: %w", err)
+			}
+			fields, err = schema.ReadSessionFields(file)
+			if err = errors.Join(err, file.Close()); err != nil {
+				return fmt.Errorf("read session fields: %w", err)
+			}
+		}
 		if args[0] == "check" {
-			return checkDatabase(ctx, *dialect, profiles, asJSON, out)
+			return checkDatabase(ctx, *dialect, profiles, fields, asJSON, out)
 		}
 		if prepareKeyLedger {
 			profiles = append(profiles, "api-key")
 		}
-		ddl, err := schema.Generate(*dialect, profiles)
+		ddl, err := schema.GenerateWithSessionFields(*dialect, profiles, fields)
 		if err != nil {
 			return err
 		}
@@ -111,7 +131,12 @@ func run(ctx context.Context, args []string, out, errOut io.Writer) error {
 		if dsn == "" {
 			return errors.New("set AUTH_DSN to the target database")
 		}
-		store, err := sqlstore.OpenWithSchema(ctx, *dialect, dsn, ddl)
+		var store *sqlstore.Store
+		if len(fields) > 0 {
+			store, err = sqlstore.OpenWithSessionFields(ctx, *dialect, dsn, profiles, fields)
+		} else {
+			store, err = sqlstore.OpenWithSchema(ctx, *dialect, dsn, ddl)
+		}
 		if err != nil {
 			return fmt.Errorf("migrate: %w", err)
 		}

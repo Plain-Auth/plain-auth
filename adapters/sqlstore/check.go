@@ -9,6 +9,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/Stonewrit/stonewrit-auth/internal/sessionfields"
 	"github.com/Stonewrit/stonewrit-auth/schema"
 )
 
@@ -23,6 +24,16 @@ type SchemaFinding struct {
 // It reports missing tables and columns, and extra required columns an insert
 // could not omit. Additional tables and optional columns are allowed.
 func CheckSchema(ctx context.Context, dialect, dsn string, profiles []string) ([]SchemaFinding, error) {
+	return CheckSchemaWithSessionFields(ctx, dialect, dsn, profiles, nil)
+}
+
+// CheckSchemaWithSessionFields additionally checks each configured physical
+// session column using the same compatibility rules as the SQL store.
+func CheckSchemaWithSessionFields(ctx context.Context, dialect, dsn string, profiles []string, fields map[string]schema.SessionField) ([]SchemaFinding, error) {
+	fields, err := sessionfields.Normalize(fields)
+	if err != nil {
+		return nil, err
+	}
 	name, err := normalizeDialect(dialect)
 	if err != nil {
 		return nil, err
@@ -37,7 +48,7 @@ func CheckSchema(ctx context.Context, dialect, dsn string, profiles []string) ([
 	if name == "sqlite" && dsn == ":memory:" {
 		return nil, errors.New("sqlstore: checking SQLite requires an existing database file")
 	}
-	findings, err := readSchema(ctx, name, dsn, tables)
+	findings, err := readSchema(ctx, name, dsn, tables, fields)
 	if err == nil {
 		return findings, nil
 	}
@@ -48,7 +59,7 @@ func CheckSchema(ctx context.Context, dialect, dsn string, profiles []string) ([
 	return nil, errors.New("could not read the database schema (check the connection and permissions)")
 }
 
-func readSchema(ctx context.Context, dialect, dsn string, tables []schema.Table) ([]SchemaFinding, error) {
+func readSchema(ctx context.Context, dialect, dsn string, tables []schema.Table, fields map[string]schema.SessionField) ([]SchemaFinding, error) {
 	var db *sql.DB
 	var query string
 	var err error
@@ -111,6 +122,25 @@ func readSchema(ctx context.Context, dialect, dsn string, tables []schema.Table)
 				findings = append(findings, SchemaFinding{Kind: "missing-column", Table: table.Name, Column: col})
 			}
 			delete(cols, col)
+		}
+		if table.Name == "session" && len(fields) > 0 {
+			store := Store{dialect: dialect}
+			catalog, err := store.sessionColumnCatalog(ctx, tx)
+			if err != nil {
+				return nil, err
+			}
+			for _, name := range sessionfields.Names(fields) {
+				f := fields[name]
+				column, ok := catalog[strings.ToLower(f.Column)]
+				if !ok {
+					findings = append(findings, SchemaFinding{Kind: "missing-column", Table: table.Name, Column: f.Column})
+					continue
+				}
+				delete(cols, column.name)
+				if store.checkSessionField(f, column) != nil {
+					findings = append(findings, SchemaFinding{Kind: "incompatible-column", Table: table.Name, Column: f.Column})
+				}
+			}
 		}
 		var required []string
 		for col, optional := range cols {

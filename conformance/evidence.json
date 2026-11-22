@@ -173,6 +173,11 @@
       "label": "Report an uninstalled Polar profile and an empty finding list after provisioning",
       "test": "cmd/authctl/main_test.go",
       "marker": "pending billing setup not reported"
+    },
+    {
+      "label": "Report missing or incompatible configured session columns on all three engines without changing the database",
+      "test": "adapters/sqlstore/check_session_fields_test.go",
+      "marker": "check mutated a populated target"
     }
   ],
   "cli/generate": [
@@ -195,6 +200,11 @@
       "label": "Generate the optional Polar checkout and delivery tables on every SQL dialect",
       "test": "cmd/authctl/main_test.go",
       "marker": "func TestPolarSchemaCommands("
+    },
+    {
+      "label": "Emit physical columns from a JSON field definition for each supported SQL dialect",
+      "test": "cmd/authctl/session_fields_test.go",
+      "marker": "func TestSessionFieldCommands("
     }
   ],
   "cli/migrate": [
@@ -222,6 +232,11 @@
       "label": "Preserve Polar delivery receipts and their uniqueness across repeated CLI-compatible migrations on three SQL engines",
       "test": "integrations/polar/schema_test.go",
       "marker": "func TestCheckoutLedgerSchemaMigration("
+    },
+    {
+      "label": "Backfill existing sessions, preserve the owner's data and report incompatible definitions on live servers",
+      "test": "cmd/authctl/session_fields_live_test.go",
+      "marker": "old row lost its default"
     }
   ],
   "docs/content/docs/concepts/cookies.mdx#L62": [

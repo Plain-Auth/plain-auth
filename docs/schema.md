@@ -35,6 +35,45 @@ Select `polar` to create `stonewrit_polar_checkout` and `stonewrit_polar_deliver
 
 Choose either `organization` or `organization-teams`, and at most one username profile. The `stripe-organization` option also works alongside `organization-teams`. Run `authctl info` for the full profile list in your build, or call `schema.Profiles()` from Go. Profile order produces deterministic output. The profile selector controls database structure. See the [feature checklist](parity/README.md) for runtime support.
 
+## Configure session fields
+
+Pass `--session-fields FILE` to `authctl generate`, `check schema` or `migrate`. The file is a JSON object keyed by the field name your application reads. Each definition requires a `type` of `string`, `number` (signed 32-bit integer) or `boolean`. Optional keys are `column`, `default`, `required`, `serverOnly` and `hidden`. Boolean settings default to false. The physical column defaults to the field name. A default must match the field type. Optional fields can use JSON null. Unknown properties, duplicate keys, reserved names and conflicting aliases produce configuration errors before the command accesses the database.
+
+```json
+{
+  "locale": {"type": "string", "column": "preferred_locale", "required": true, "default": "en"},
+  "attempts": {"type": "number", "default": 0, "serverOnly": true},
+  "privateFlag": {"type": "boolean", "hidden": true}
+}
+```
+
+```sh
+authctl generate --dialect postgres --session-fields session-fields.json
+authctl check schema --dialect postgres --session-fields session-fields.json --json
+authctl migrate --dialect postgres --session-fields session-fields.json
+```
+
+Set `AUTH_DSN` for `check` and `migrate`. Add the same `--plugins` selector to each command when using schema profiles. `generate` emits fresh-schema SQL. `check` opens a read-only transaction and reports missing physical columns and incompatible types, nullability or names. Exit status 0 means the selected schema matches, 1 means drift, and 2 means the command could not inspect the configuration or database. The check compares column compatibility. Application defaults and visibility settings come from the field configuration.
+
+On an existing installation, `migrate` adds missing columns and uses supplied scalar defaults to backfill existing session rows. A required field on a populated table needs a default or an explicit database backfill. Migrations reject incompatible existing columns. Fresh-schema defaults are supplied by the auth instance when issuing sessions. Load the same file into your Go options so session creation and update use the declared policies.
+
+```go
+file, err := os.Open("session-fields.json")
+if err != nil {
+    return err
+}
+defer file.Close()
+fields, err := schema.ReadSessionFields(file)
+if err != nil {
+    return err
+}
+opts.SessionAdditionalFields = fields
+```
+
+The Go equivalents are `schema.GenerateWithSessionFields`, `sqlstore.CheckSchemaWithSessionFields` and `sqlstore.OpenWithSessionFields`. [CLI lifecycle tests](../cmd/authctl/session_fields_live_test.go) · [Physical compatibility tests](../adapters/sqlstore/check_session_fields_test.go)
+
+## Schema migrations
+
 The `phone-number` profile adds nullable `phoneNumber` and `phoneNumberVerified` fields to the user table. Existing users keep both fields unset. The database enforces uniqueness for assigned numbers, including after upgrading a populated table. Telephone sign-in, SMS delivery, and number verification are tracked separately. [Phone authentication checklist](parity/plugins/phone-number.md)
 
 ```go
