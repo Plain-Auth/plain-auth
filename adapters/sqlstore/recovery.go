@@ -60,7 +60,7 @@ func (s *Store) updateProfile(ctx context.Context, db executor, userID string, p
 	extra := patch.PhysicalUserFields()
 	for _, column := range slices.Sorted(maps.Keys(extra)) {
 		fields = append(fields, `"`+column+`"=?`)
-		args = append(args, extra[column])
+		args = append(args, s.fieldParameter(extra[column]))
 	}
 	args = append(args, userID)
 	_, err := db.ExecContext(ctx, s.bind(`UPDATE "user" SET `+strings.Join(fields, ", ")+` WHERE "id" = ?`), args...)

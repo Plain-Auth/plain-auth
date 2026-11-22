@@ -1677,3 +1677,8 @@ test("Chrome returns a proxied OAuth popup to its opener with the preview sessio
   const { browserProxyPopup } = await import("./oauth-proxy.mjs");
   await browserProxyPopup(t, goFixture);
 });
+
+test("configured date fields persist public instants across profile and session clients", async t => {
+  const { compareDateFields } = await import("./date-fields.mjs");
+  await compareDateFields(t, { reference, goFixture, instrument });
+});

@@ -261,7 +261,7 @@ func signupFormSchema(schema object, info plainauth.HTTPDescription) object {
 		if !field.Writable {
 			continue
 		}
-		if field.Type != plainauth.FieldString {
+		if field.Type != plainauth.FieldString && field.Type != plainauth.FieldDate {
 			if slices.Contains(info.RequiredUserInputs, name) {
 				return nil
 			}

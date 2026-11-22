@@ -11,6 +11,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 )
 
 type Type string
@@ -19,7 +20,10 @@ const (
 	String  Type = "string"
 	Number  Type = "number"
 	Boolean Type = "boolean"
+	Date    Type = "date"
 )
+
+const MillisecondUTC = "2006-01-02T15:04:05.000Z"
 
 type Field struct {
 	Type                         Type
@@ -29,6 +33,11 @@ type Field struct {
 }
 
 var identifier = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9_]{0,62}$`)
+
+// The Go parser alone also admits a comma fraction, one-digit hour and
+// overflowed numeric timezone offsets. Accept the date-time shape exposed in OpenAPI.
+var dateTimeShape = regexp.MustCompile(`^[0-9]{4}-[0-9]{2}-[0-9]{2}[Tt][0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]+)?([Zz]|[+-]([01][0-9]|2[0-3]):[0-5][0-9])$`)
+
 var reserved = map[string]bool{"id": true, "userid": true, "token": true, "expiresat": true, "updatedat": true, "createdat": true, "ipaddress": true, "useragent": true, "credentialtype": true, "impersonatedby": true, "activeorganizationid": true, "activeteamid": true, "__proto__": true, "constructor": true, "prototype": true}
 
 func NameOK(name string) bool {
@@ -87,7 +96,7 @@ func normalize(fields map[string]Field, model string, validName func(string) boo
 			used[lower] = name
 		}
 		switch f.Type {
-		case String, Number, Boolean:
+		case String, Number, Boolean, Date:
 		default:
 			return nil, fmt.Errorf("unsupported type %q for %s field %q", f.Type, model, name)
 		}
@@ -120,6 +129,27 @@ func (f Field) Value(raw any) (any, error) {
 		if v, ok := raw.(bool); ok {
 			return v, nil
 		}
+	case Date:
+		var instant time.Time
+		switch value := raw.(type) {
+		case time.Time:
+			instant = value
+		case string:
+			var err error
+			if !dateTimeShape.MatchString(value) {
+				return nil, fmt.Errorf("expected an RFC 3339 date-time")
+			}
+			instant, err = time.Parse(time.RFC3339Nano, strings.ToUpper(value))
+			if err != nil {
+				return nil, fmt.Errorf("expected an RFC 3339 date-time")
+			}
+		default:
+			return nil, fmt.Errorf("expected an RFC 3339 date-time")
+		}
+		instant = instant.UTC().Truncate(time.Millisecond)
+		if instant.Year() >= 1 && instant.Year() <= 9999 {
+			return instant, nil
+		}
 	case Number:
 		var n int64
 		if number, ok := raw.(json.Number); ok {
@@ -148,6 +178,15 @@ func (f Field) Value(raw any) (any, error) {
 		}
 	}
 	return nil, fmt.Errorf("expected %s", f.Type)
+}
+
+// PublicValue preserves milliseconds in the JSON representation of a date.
+func (f Field) PublicValue(raw any) (any, error) {
+	value, err := f.Value(raw)
+	if date, ok := value.(time.Time); ok {
+		return date.Format(MillisecondUTC), nil
+	}
+	return value, err
 }
 
 // Compare the exact JSON decimal with a signed INTEGER. Trim powers of ten
@@ -206,6 +245,15 @@ func (f Field) Definition(dialect string) string {
 		}
 	case Number:
 		sqlType = "integer"
+	case Date:
+		switch dialect {
+		case "postgres", "postgresql":
+			sqlType = "timestamptz"
+		case "mysql":
+			sqlType = "timestamp(3)"
+		default:
+			sqlType = "date"
+		}
 	}
 	column := quote + f.Column + quote + " " + sqlType
 	if f.Required {

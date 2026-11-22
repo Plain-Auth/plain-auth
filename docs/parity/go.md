@@ -44,3 +44,4 @@ These checks exercise the Go HTTP client, router mounts and SQL drivers.
   - [x] Serialize organization-team additions, preserve seat limits and roll back failed invitations on all three SQL engines ([test](../../adapters/sqlstore/organization_teams_test.go#L21))
   - [x] Serialize first-administrator provisioning across independent connections on all three SQL engines ([test](../../adapters/sqlstore/admin_test.go#L314))
   - [x] Require database-enforced unique usernames and reject a partial unique index ([test](../../adapters/sqlstore/username_test.go#L474))
+  - [x] Backfill populated date columns with the correct UTC instant and check existing timestamp precision ([test](../../adapters/sqlstore/date_fields_test.go#L102))

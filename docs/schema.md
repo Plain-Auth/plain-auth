@@ -46,6 +46,7 @@ For example, save this user profile as `user-fields.json`.
 {
   "locale": {"type": "string", "column": "preferred_locale", "required": true, "default": "en"},
   "newsletter": {"type": "boolean", "default": false},
+  "reviewedAt": {"type": "date", "column": "profile_reviewed_at"},
   "supportNote": {"type": "string", "serverOnly": true, "hidden": true}
 }
 ```
@@ -58,7 +59,9 @@ For per-login metadata, save a separate `session-fields.json`.
 }
 ```
 
-Each definition requires a `type` of `string`, `boolean` or `number` (a signed 32-bit integer). Optional keys are `column`, `default`, `required`, `serverOnly` and `hidden`. Boolean options default to false. The physical column defaults to the logical name. A typed default may be zero, false or an empty string. Optional fields also accept a null default. Duplicate keys, unknown properties, reserved names, incompatible defaults and conflicting aliases are configuration errors.
+Each definition requires a `type` of `string`, `boolean`, `number` (a signed 32-bit integer), or `date` (a timestamp). Optional keys are `column`, `default`, `required`, `serverOnly` and `hidden`. Boolean options default to false. The physical column defaults to the logical name. A typed default may be zero, false or an empty string. Optional fields also accept a null default. Duplicate keys, unknown properties, reserved names, incompatible defaults and conflicting aliases are configuration errors.
+
+A date field accepts a timestamp with an explicit offset, such as `"2026-02-15T06:02:03.123-05:00"`. The API returns `"2026-02-15T11:02:03.123Z"`. New schemas use SQLite `date`, PostgreSQL `timestamptz`, and MySQL `timestamp(3)`. Values must fit the selected database's timestamp range. For example, dates of birth before 1970 exceed MySQL's `TIMESTAMP` range. When adding a required date column to a populated table, supply a static timestamp default to backfill existing rows. Repeated migration preserves previously written values.
 
 Use the same declarations and plugin selection for each command. Set `AUTH_DSN` for `check` and `migrate`.
 

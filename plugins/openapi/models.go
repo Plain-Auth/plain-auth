@@ -149,9 +149,13 @@ func addOutputFields(schema object, fields map[string]plainauth.HTTPField) {
 func scalarFieldSchema(field plainauth.HTTPField) object {
 	t := string(field.Type)
 	schema := object{}
-	if field.Type == plainauth.FieldNumber {
+	switch field.Type {
+	case plainauth.FieldNumber:
 		t = "integer"
 		schema["minimum"], schema["maximum"] = math.MinInt32, math.MaxInt32
+	case plainauth.FieldDate:
+		t = "string"
+		schema["format"] = "date-time"
 	}
 	if field.Required {
 		schema["type"] = t

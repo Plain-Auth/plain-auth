@@ -54,6 +54,7 @@ func (s *Store) validateModelFields(model string, fields map[string]auth.Session
 
 type sessionColumn struct {
 	name, kind                     string
+	precision                      int
 	required, generated, ambiguous bool
 }
 
@@ -71,13 +72,13 @@ func (s *Store) fieldColumnCatalog(ctx context.Context, db interface {
 	if model != "user" && model != "session" {
 		return nil, errors.New("sqlstore: invalid profile table")
 	}
-	query := `SELECT name,type,"notnull",hidden<>0 FROM pragma_table_xinfo(?)`
+	query := `SELECT name,type,"notnull",hidden<>0,3 FROM pragma_table_xinfo(?)`
 	args := []any{model}
 	switch s.dialect {
 	case "postgres":
-		query = `SELECT a.attname,t.typname,a.attnotnull,(a.attidentity<>'' OR a.attgenerated<>'') FROM pg_catalog.pg_attribute a JOIN pg_catalog.pg_type t ON a.atttypid=t.oid WHERE a.attrelid=pg_catalog.to_regclass(pg_catalog.quote_ident(?::text)) AND a.attnum>0 AND NOT a.attisdropped`
+		query = `SELECT a.attname,t.typname,a.attnotnull,(a.attidentity<>'' OR a.attgenerated<>''),a.atttypmod FROM pg_catalog.pg_attribute a JOIN pg_catalog.pg_type t ON a.atttypid=t.oid WHERE a.attrelid=pg_catalog.to_regclass(pg_catalog.quote_ident(?::text)) AND a.attnum>0 AND NOT a.attisdropped`
 	case "mysql":
-		query = `SELECT column_name,data_type,is_nullable='NO',(COALESCE(generation_expression,'')<>'' OR extra LIKE '%auto_increment%') FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name=?
+		query = `SELECT column_name,data_type,is_nullable='NO',(COALESCE(generation_expression,'')<>'' OR extra LIKE '%auto_increment%'),COALESCE(datetime_precision,0) FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name=?
 			AND (@@lower_case_table_names<>0 OR (BINARY table_schema=BINARY DATABASE() AND BINARY table_name=BINARY ?))`
 		args = append(args, model)
 	}
@@ -89,7 +90,7 @@ func (s *Store) fieldColumnCatalog(ctx context.Context, db interface {
 	result := make(map[string]sessionColumn)
 	for rows.Next() {
 		var col sessionColumn
-		if err = rows.Scan(&col.name, &col.kind, &col.required, &col.generated); err != nil {
+		if err = rows.Scan(&col.name, &col.kind, &col.required, &col.generated, &col.precision); err != nil {
 			return nil, err
 		}
 		folded := strings.ToLower(col.name)
@@ -115,6 +116,15 @@ func (s *Store) checkModelField(model string, f auth.SessionField, column sessio
 		matching = t == "int4" || t == "integer" || t == "int"
 	case auth.FieldString:
 		matching = t == "text"
+	case auth.FieldDate:
+		switch s.dialect {
+		case "sqlite":
+			matching = t == "date"
+		case "postgres":
+			matching = t == "timestamptz" && (column.precision == -1 || column.precision >= 3)
+		case "mysql":
+			matching = t == "timestamp" && column.precision >= 3
+		}
 	}
 	if column.generated {
 		return fmt.Errorf("sqlstore: %s column %q must accept explicit writes", model, f.Column)
@@ -125,12 +135,21 @@ func (s *Store) checkModelField(model string, f auth.SessionField, column sessio
 	return nil
 }
 
+func (s *Store) fieldParameter(value any) any {
+	if instant, ok := value.(time.Time); ok {
+		return s.date(instant)
+	}
+	return value
+}
+
 func scalarDestination(kind sessionfields.Type) any {
 	switch kind {
 	case auth.FieldBoolean:
 		return new(sql.NullBool)
 	case auth.FieldNumber:
 		return new(sql.NullInt64)
+	case auth.FieldDate:
+		return new(sql.NullTime)
 	default:
 		return new(sql.NullString)
 	}
@@ -145,6 +164,10 @@ func scannedScalar(dest any) any {
 	case *sql.NullInt64:
 		if value.Valid {
 			return value.Int64
+		}
+	case *sql.NullTime:
+		if value.Valid {
+			return value.Time.UTC()
 		}
 	case *sql.NullBool:
 		if value.Valid {
@@ -242,7 +265,7 @@ func (s *Store) UpdateSessionFields(ctx context.Context, actor auth.Session, fie
 		if err != nil {
 			return err
 		}
-		params = append(params, value)
+		params = append(params, s.fieldParameter(value))
 		cols = append(cols, `"`+f.Column+`"=?`)
 	}
 	if len(cols)-1 != len(changes) || len(changes) == 0 {

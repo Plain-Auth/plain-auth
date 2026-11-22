@@ -21,6 +21,7 @@ const (
 	FieldString  = sessionfields.String
 	FieldNumber  = sessionfields.Number
 	FieldBoolean = sessionfields.Boolean
+	FieldDate    = sessionfields.Date
 )
 
 // SessionFieldStore persists configured physical columns. Reads must return only
@@ -172,7 +173,7 @@ func (a *Auth) projectSessionFields(ctx context.Context, rows []Session) error {
 		values := make(map[string]any)
 		for name, f := range fields {
 			if !f.Hidden {
-				value, err := f.Value(raw[name])
+				value, err := f.PublicValue(raw[name])
 				if err != nil {
 					return fmt.Errorf("invalid stored session field %q: %w", name, err)
 				}

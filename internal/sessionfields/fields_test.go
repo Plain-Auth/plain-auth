@@ -19,3 +19,18 @@ func TestExactPortableNumbers(t *testing.T) {
 		}
 	}
 }
+
+func TestDateValue(t *testing.T) {
+	f := Field{Type: Date}
+	for _, raw := range []string{"2024-02-29T12:02:03.120456+01:00", "2024-02-29t11:02:03.120z"} {
+		got, err := f.PublicValue(raw)
+		if err != nil || got != "2024-02-29T11:02:03.120Z" {
+			t.Errorf("normalized date %v, %v", got, err)
+		}
+	}
+	for _, raw := range []any{false, 0, "2025-02-29T12:02:00Z", "2024-02-29", "2024-02-29T12:02:00", "2024-02-29T12:02:00+13:60", "2024-02-29T12:02:00+24:00", "0001-01-01T00:00:00+05:00"} {
+		if _, err := f.Value(raw); err == nil {
+			t.Errorf("accepted invalid date %v", raw)
+		}
+	}
+}

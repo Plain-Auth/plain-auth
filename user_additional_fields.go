@@ -164,7 +164,7 @@ func (a *Auth) projectPublicUser(user *User, columns map[string]any) error {
 		if f.Hidden {
 			continue
 		}
-		value, err := f.Value(columns[f.Column])
+		value, err := f.PublicValue(columns[f.Column])
 		if err != nil {
 			return fmt.Errorf("invalid stored user field %q: %w", name, err)
 		}

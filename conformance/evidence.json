@@ -250,6 +250,11 @@
       "label": "Generate the configured wallet model alongside user and session fields from one portable JSON declaration",
       "test": "cmd/authctl/wallet_schema_test.go",
       "marker": "wallet CLI generated different SQL than the configured public API"
+    },
+    {
+      "label": "Generate typed date columns for both models on each SQL dialect and reject invalid static timestamps",
+      "test": "cmd/authctl/user_fields_test.go",
+      "marker": "func TestGenerateDateFieldDDL("
     }
   ],
   "cli/migrate": [
@@ -558,6 +563,11 @@
       "label": "Require database-enforced unique usernames and reject a partial unique index",
       "test": "adapters/sqlstore/username_test.go",
       "marker": "partial username uniqueness accepted"
+    },
+    {
+      "label": "Backfill populated date columns with the correct UTC instant and check existing timestamp precision",
+      "test": "adapters/sqlstore/date_fields_test.go",
+      "marker": "func TestDateFieldMigrationAcrossEngines("
     }
   ],
   "cli/secret": [
@@ -5766,6 +5776,11 @@
       "label": "Compare both live schema endpoints and verify required signup inputs, partial profile updates and hidden response fields",
       "test": "conformance/openapi-contract.mjs",
       "marker": "export async function compareProfileFieldSchemas("
+    },
+    {
+      "label": "Describe date-time fields in public models, JSON input and email signup form input",
+      "test": "plugins/openapi/user_fields_test.go",
+      "marker": "func TestConfiguredDateSchemasAndSignupForm("
     }
   ],
   "plugin/open-api/GET /reference (configurable)": [
@@ -9564,6 +9579,11 @@
       "label": "Document public inputs and responses separately from physical names and private defaults",
       "test": "plugins/openapi/session_fields_test.go",
       "marker": "func TestConfigurableSessionFieldSchemas("
+    },
+    {
+      "label": "Read date-valued session and profile attributes written by either runtime through the same session",
+      "test": "conformance/date-fields.mjs",
+      "marker": "export async function compareDateFields("
     }
   ],
   "plugin-symbol/test-utils/TestAuthOptions": [
@@ -9919,6 +9939,11 @@
       "label": "Write phone registration profiles once across competing nodes, preserve owner values, and keep verification credentials and flags out of stored profile columns",
       "test": "adapters/sqlstore/phone_registration_fields_test.go",
       "marker": "persisted phone profile or transport protection"
+    },
+    {
+      "label": "Accept date input with an explicit time zone, persist trusted updates and clear optional timestamps on four stores",
+      "test": "adapters/sqlstore/date_fields_test.go",
+      "marker": "func TestDateFieldsAcrossStores("
     }
   ],
   "plugin-symbol/one-time-token/oneTimeTokenClient": [

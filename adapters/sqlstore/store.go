@@ -102,7 +102,7 @@ func (s *Store) userInsert(user authn.User, columns map[string]any) (string, []a
 	args := []any{user.ID, strings.ToLower(user.Email), user.Name, user.Image, user.EmailVerified, s.date(user.CreatedAt), s.date(user.UpdatedAt)}
 	for _, column := range slices.Sorted(maps.Keys(columns)) {
 		cols += `,"` + column + `"`
-		args = append(args, columns[column])
+		args = append(args, s.fieldParameter(columns[column]))
 	}
 	query := `INSERT INTO "user" (` + cols + `) VALUES (?` + strings.Repeat(",?", len(args)-1) + `)`
 	return query, args
@@ -158,7 +158,7 @@ func (s *Store) insertSession(ctx context.Context, tx *sql.Tx, ss authn.StoredSe
 		}
 		cols += `,"` + column + `"`
 		params += ",?"
-		args = append(args, additional[column])
+		args = append(args, s.fieldParameter(additional[column]))
 	}
 	admin, err := s.detectAdminSchema(ctx, tx)
 	if err != nil {

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	auth "github.com/Plain-Auth/plain-auth"
 	"github.com/Plain-Auth/plain-auth/internal/sessionfields"
@@ -156,6 +157,11 @@ func (s *Store) sessionFieldDefault(value any) string {
 		return strconv.FormatBool(v)
 	case int64:
 		return strconv.FormatInt(v, 10)
+	case time.Time:
+		if s.dialect == "mysql" {
+			return "'" + v.UTC().Format("2006-01-02 15:04:05.000") + "'"
+		}
+		return "'" + v.UTC().Format(sessionfields.MillisecondUTC) + "'"
 	case string:
 		if s.dialect == "mysql" {
 			return "(CONVERT(X'" + hex.EncodeToString([]byte(v)) + "' USING utf8mb4))"

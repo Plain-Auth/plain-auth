@@ -174,3 +174,45 @@ func TestSignupWithRequiredNonTextFieldUsesJSON(t *testing.T) {
 		t.Fatal("form signup cannot supply the required boolean", content)
 	}
 }
+
+func TestConfiguredDateSchemasAndSignupForm(t *testing.T) {
+	fields := map[string]auth.UserField{"reviewedAt": {Type: auth.FieldDate, Required: true}}
+	sessions := map[string]auth.SessionField{"remindAt": {Type: auth.FieldDate}}
+	store, err := sqlstore.OpenWithAdditionalFields(t.Context(), "sqlite", filepath.Join(t.TempDir(), "dates.db"), nil, schema.AdditionalFields{User: fields, Session: sessions})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	p, err := openapi.New(openapi.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	const origin = "https://dates.example.test"
+	a, err := auth.New(auth.Options{Store: store, BaseURL: origin, BasePath: "/identity", Secret: strings.Repeat("k", 40), EmailAndPassword: true, UserAdditionalFields: fields, SessionAdditionalFields: sessions, Plugins: []auth.Plugin{p}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	w := ssoWire{t, a, origin}
+	doc := w.decode(w.call("GET", "/open-api/generate-schema", nil, nil, 200))
+	for _, media := range []string{"application/json", "application/x-www-form-urlencoded"} {
+		body := node(doc, "paths", "/sign-up/email", "post", "requestBody", "content", media, "schema")
+		property := node(body, "properties", "reviewedAt")
+		if property["type"] != "string" || property["format"] != "date-time" || !slices.Contains(body["required"].([]any), any("reviewedAt")) {
+			t.Fatalf("%s date input %v", media, property)
+		}
+	}
+	for model, name := range map[string]string{"Session": "remindAt", "User": "reviewedAt"} {
+		if node(doc, "components", "schemas", model, "properties", name)["format"] != "date-time" {
+			t.Fatalf("missing format for %s.%s", model, name)
+		}
+	}
+	body := url.Values{"name": {"Reader"}, "email": {"reader@example.test"}, "password": {"local fixture password"}, "reviewedAt": {"2025-03-23T15:04:05-04:00"}}
+	req := httptest.NewRequest("POST", origin+"/identity/sign-up/email", strings.NewReader(body.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Origin", origin)
+	out := httptest.NewRecorder()
+	a.ServeHTTP(out, req)
+	if out.Code != 200 || node(w.decode(out), "user")["reviewedAt"] != "2025-03-23T19:04:05.000Z" {
+		t.Fatalf("form sign-up returned %d", out.Code)
+	}
+}

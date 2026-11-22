@@ -201,3 +201,22 @@ func addGeneratedUserColumn(t *testing.T, dialect, dsn string) {
 		t.Fatal(err)
 	}
 }
+
+func TestGenerateDateFieldDDL(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "dates.json")
+	writeFieldConfig(t, path, `{"deadline":{"type":"date","column":"review_at","required":true,"default":"2026-04-03T10:00:00Z"}}`)
+	for dialect, kind := range map[string]string{"sqlite": "date", "postgres": "timestamptz", "mysql": "timestamp(3)"} {
+		out, err := fieldCommand(t, "generate", "--dialect", dialect, "--user-fields", path, "--session-fields", path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		sql := strings.ReplaceAll(out, "`", "\"")
+		if strings.Count(sql, `"review_at" `+kind+" not null") != 2 {
+			t.Fatalf("%s did not generate both date columns", dialect)
+		}
+	}
+	writeFieldConfig(t, path, `{"deadline":{"type":"date","default":"2025-02-29T01:00:00Z"}}`)
+	if out, err := fieldCommand(t, "generate", "--dialect", "sqlite", "--user-fields", path); err == nil || out != "" {
+		t.Fatal("invalid timestamp default produced SQL")
+	}
+}

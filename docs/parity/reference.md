@@ -347,6 +347,7 @@
       - [x] Apply declared user fields only on first-time email OTP registration and retain the original values during sign-in ([test](../../conformance/user-fields.mjs#L111))
       - [x] Keep browser state and raw provider claims separate from declared public, hidden and server-owned fields on social signup ([test](../../conformance/social-user-fields.mjs#L122))
       - [x] Write phone registration profiles once across competing nodes, preserve owner values, and keep verification credentials and flags out of stored profile columns ([test](../../adapters/sqlstore/phone_registration_fields_test.go#L148))
+      - [x] Accept date input with an explicit time zone, persist trusted updates and clear optional timestamps on four stores ([test](../../adapters/sqlstore/date_fields_test.go#L17))
     - [ ] `changeEmail`
     - [ ] `deleteUser`
   - [ ] `session`
@@ -360,6 +361,7 @@
       - [x] Migrate populated session tables with nullable fields, escaped defaults and preflight checks on all three engines ([test](../../adapters/sqlstore/session_fields_test.go#L233))
       - [x] Keep first-session issuance atomic when a required value must come from a trusted host ([test](../../adapters/sqlstore/session_fields_test.go#L436))
       - [x] Document public inputs and responses separately from physical names and private defaults ([test](../../plugins/openapi/session_fields_test.go#L16))
+      - [x] Read date-valued session and profile attributes written by either runtime through the same session ([test](../../conformance/date-fields.mjs#L5))
     - [ ] `storeSessionInDatabase`
     - [ ] `preserveSessionInDatabase`
     - [ ] `cookieCache`

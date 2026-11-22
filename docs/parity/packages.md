@@ -77,6 +77,7 @@ Each row tracks the behavior exposed by a published entry point. The Go implemen
     - [x] Emit physical columns from a JSON field definition for each supported SQL dialect ([test](../../cmd/authctl/session_fields_test.go#L13))
     - [x] Generate the selected plugin schema with independent user and session JSON declarations on all three dialects ([test](../../cmd/authctl/user_fields_test.go#L111))
     - [x] Generate the configured wallet model alongside user and session fields from one portable JSON declaration ([test](../../cmd/authctl/wallet_schema_test.go#L124))
+    - [x] Generate typed date columns for both models on each SQL dialect and reject invalid static timestamps ([test](../../cmd/authctl/user_fields_test.go#L205))
   - [ ] Adapter binding for prisma (`./adapters/prisma`)
   - [ ] Adapter binding for drizzle (`./adapters/drizzle`)
   - [ ] Adapter binding for mongodb (`./adapters/mongodb`)

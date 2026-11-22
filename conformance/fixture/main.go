@@ -100,6 +100,10 @@ func main() {
 			additionalUserFields["locale"] = field
 		}
 	}
+	if os.Getenv("CONFORMANCE_DATE_FIELDS") == "1" {
+		additionalUserFields = map[string]authn.UserField{"reviewedAt": {Type: authn.FieldDate, Column: "profile_reviewed_at"}}
+		additionalSessionFields = map[string]authn.SessionField{"remindAt": {Type: authn.FieldDate, Column: "session_remind_at"}}
+	}
 	if os.Getenv("CONFORMANCE_WALLET_SCHEMA") == "1" {
 		store, err = sqlstore.OpenWithOptions(context.Background(), "sqlite", os.Args[1], os.Args[2:], schema.Options{Wallet: walletFixtureOptions().Schema, AdditionalFields: schema.AdditionalFields{Session: additionalSessionFields, User: additionalUserFields}})
 	} else if len(additionalSessionFields)+len(additionalUserFields) > 0 {

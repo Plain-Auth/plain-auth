@@ -7,6 +7,7 @@ fields := map[string]plainauth.UserField{
 	"locale":       {Type: plainauth.FieldString, Required: true, Column: "preferred_locale"},
 	"score":        {Type: plainauth.FieldNumber, Default: 0},
 	"newsletter":   {Type: plainauth.FieldBoolean},
+	"reviewedAt":   {Type: plainauth.FieldDate, Column: "profile_reviewed_at"},
 	"accountClass": {Type: plainauth.FieldString, ServerOnly: true, Default: "standard"},
 	"supportNote":  {Type: plainauth.FieldString, ServerOnly: true, Hidden: true},
 }
@@ -69,7 +70,7 @@ err = auth.UpdateTrustedUserFields(ctx, userID, map[string]any{
 
 `schema.GenerateWithAdditionalFields(dialect, profiles, decl)` renders fresh DDL. `sqlstore.CheckSchemaWithAdditionalFields(ctx, dialect, dsn, profiles, decl)` checks the existing catalog without changing it. `OpenWithAdditionalFields` validates all requested user and session additions under the migration lock. A populated table can gain a nullable field or a required field with a supplied static default. Plan a backfill before requiring a column whose value must be computed for each row. Existing columns must have a compatible type and nullability and accept writes.
 
-Supported values are strings, booleans and signed 32-bit integers. A required field needs a value or static default when the account is created. Explicit null is valid only on nullable fields. Choose logical and physical names that are distinct from core, plugin and reserved request fields.
+Supported values include strings, booleans, signed 32-bit integers, and timestamps. Set a timestamp with a Go `time.Time` or an RFC 3339 string. The public profile returns a UTC string with three fractional digits. SQL storage details are in the [schema guide](schema.md#configure-user-and-session-fields). A required field needs a value or static default when the account is created. Explicit null is valid only on nullable fields. Choose logical and physical names that are distinct from core, plugin and reserved request fields.
 
 Use `--user-fields FILE` with `authctl generate`, `authctl migrate` and `authctl check schema`. Applications can read the same declaration with `schema.ReadUserFields`. [Schema commands](schema.md#configure-user-and-session-fields)
 
