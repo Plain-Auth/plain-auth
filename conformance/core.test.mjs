@@ -1645,3 +1645,10 @@ test("Ethereum clients exchange signed wallet identities using one custom physic
   const {walletSchema}=await import("./siwe-schema.mjs");
   await walletSchema(t,{reference,goFixture,instrument});
 });
+
+test("phone verification uses configured user inputs only when creating an owner", async t => {
+  const { comparePhoneUserFields } = await import("./phone-user-fields.mjs");
+  const fixture = { reference, goFixture, instrument };
+  await t.test("writable fields and resolver identity", t => comparePhoneUserFields(t, fixture, false));
+  await t.test("static defaults and number as name", t => comparePhoneUserFields(t, fixture, true));
+});

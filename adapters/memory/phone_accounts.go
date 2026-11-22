@@ -97,6 +97,9 @@ func (s *Store) ClearPhoneProfile(ctx context.Context, id, token string, p auth.
 	return s.applyProfile(id, s.users[id], p, now)
 }
 func (s *Store) ApplyPhoneOTP(ctx context.Context, act auth.PhoneAccountAction) (auth.PhoneAccountResult, error) {
+	return s.ApplyPhoneRegistration(ctx, act, auth.RegistrationUserFields{})
+}
+func (s *Store) ApplyPhoneRegistration(ctx context.Context, act auth.PhoneAccountAction, registration auth.RegistrationUserFields) (auth.PhoneAccountResult, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	var out auth.PhoneAccountResult
@@ -141,9 +144,14 @@ func (s *Store) ApplyPhoneOTP(ctx context.Context, act auth.PhoneAccountAction) 
 		return out, nil
 	}
 	if id == "" {
+		columns, err := registration.Columns()
+		if err != nil {
+			return out, err
+		}
 		if act.Create == nil {
 			return out, &auth.APIError{Status: 500, Code: "FAILED_TO_UPDATE_USER", Message: "Failed to update user"}
 		}
+		r.fields = columns
 		if _, ok := s.emailToID[strings.ToLower(act.Create.Email)]; ok {
 			s.phoneOTPs[phoneKey{number, act.Use.Purpose}] = proof
 			return out, auth.ErrEmailTaken

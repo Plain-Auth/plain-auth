@@ -19,15 +19,14 @@ type UserField = sessionfields.Field
 // UserFieldValues carries validated physical values into the account creation transaction.
 type UserFieldValues struct{ columns map[string]any }
 
-// RegistrationUserFields holds the configured defaults for a new profile.
+// RegistrationUserFields holds the prepared values or validation error for a new profile.
 // Adapters inspect it only after determining that the verified identity is new.
 type RegistrationUserFields struct {
 	values UserFieldValues
 	err    error
 }
 
-// Columns returns validated physical columns, or an error when a required
-// field has no default that the registration flow can supply.
+// Columns returns validated physical columns or the registration validation error.
 func (f RegistrationUserFields) Columns() (map[string]any, error) {
 	return f.values.Columns(), f.err
 }

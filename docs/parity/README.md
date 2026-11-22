@@ -52,7 +52,7 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 | [Core concepts](concepts.md) | 55 | 510 |
 | [Managed infrastructure](infrastructure.md) | 0 | 528 |
 | [Framework integrations](integrations.md) | 0 | 228 |
-| [Reference and configuration](reference.md) | 76 | 395 |
+| [Reference and configuration](reference.md) | 77 | 395 |
 
 ## Plugins and integrations
 
@@ -88,7 +88,7 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 | [OpenAPI](plugins/open-api.md) | 12 | 24 |
 | [Organization](plugins/organization.md) | 84 | 385 |
 | [Passkey](plugins/passkey.md) | 26 | 94 |
-| [Phone number](plugins/phone-number.md) | 34 | 67 |
+| [Phone number](plugins/phone-number.md) | 36 | 67 |
 | [SCIM provisioning](plugins/scim.md) | 66 | 251 |
 | [Sign in with Ethereum](plugins/siwe.md) | 90 | 11 |
 | [Single sign-on](plugins/sso.md) | 75 | 308 |

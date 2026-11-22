@@ -196,6 +196,11 @@ func New(opts Options) (*Auth, error) {
 			a.translateError = p.TranslateError
 		}
 		if p.phoneNumber != nil {
+			if !opts.DisableSignUp && p.phoneNumber.SignUpOnVerification != nil && len(opts.UserAdditionalFields) > 0 {
+				if _, ok := opts.Store.(PhoneRegistrationStore); !ok {
+					return nil, errors.New("phone signup with configured user fields requires a PhoneRegistrationStore")
+				}
+			}
 			a.phoneNumber = p.phoneNumber
 		}
 		if p.admin != nil {

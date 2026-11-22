@@ -19,6 +19,7 @@
   - [ ] `POST /phone-number/verify`
     - [x] Verify a first-use number, suppress session creation, link to an owner and reject reuse ([test](../../../conformance/phone-contract.mjs#L68))
     - [x] Count an incorrect anonymous link attempt, spend a correct proof and keep the caller signed out on both servers ([test](../../../conformance/phone-contract.mjs#L31))
+    - [x] Exchange phone proofs between both runtimes, accept declared new-user inputs, then preserve the profile on returning verification and phone replacement ([test](../../../conformance/phone-user-fields.mjs#L87))
   - [ ] `POST /phone-number/request-password-reset`
     - [x] Hide unknown and unverified users from reset callers and suppress ineligible SMS ([test](../../../adapters/sqlstore/phone_accounts_test.go#L280))
   - [ ] `POST /phone-number/reset-password`
@@ -44,6 +45,7 @@
       - [x] Run the callback on confirmed signup, existing-account verification and owner linking ([test](../../../adapters/sqlstore/phone_accounts_test.go#L152))
     - [ ] `signUpOnVerification`
       - [x] Generate the first account’s unique email and name from its verified phone ([test](../../../adapters/sqlstore/phone_accounts_test.go#L77))
+      - [x] Compare resolver-supplied identity, phone-number display name, required attributes, static defaults and public versus hidden fields across both runtimes ([test](../../../conformance/phone-user-fields.mjs#L73))
     - [ ] `schema`
     - [ ] `allowedAttempts`
       - [x] Honor a configured zero-attempt budget and default wrong-code limits ([test](../../../adapters/sqlstore/phone_accounts_test.go#L215))

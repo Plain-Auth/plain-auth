@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"net/http"
-	"strings"
 	"time"
 )
 
@@ -17,10 +16,12 @@ type PhoneNumberFields struct {
 }
 type PhoneSignUpOptions struct{ GetTempEmail, GetTempName func(string) string }
 type PhoneVerificationInput struct {
-	PhoneNumber       string `json:"phoneNumber"`
-	Code              string `json:"code"`
-	UpdatePhoneNumber bool   `json:"updatePhoneNumber,omitempty"`
-	DisableSession    bool   `json:"disableSession,omitempty"`
+	// AdditionalFields supplies writable user attributes only for first-time registration.
+	AdditionalFields  map[string]any `json:"-"`
+	PhoneNumber       string         `json:"phoneNumber"`
+	Code              string         `json:"code"`
+	UpdatePhoneNumber bool           `json:"updatePhoneNumber,omitempty"`
+	DisableSession    bool           `json:"disableSession,omitempty"`
 }
 type PhoneVerificationResult struct {
 	Factor *AuthResult `json:"-"`
@@ -111,6 +112,10 @@ func (a *Auth) readPhone(ctx context.Context, u *User) error {
 
 // VerifyPhoneNumber consumes a verification proof and links, creates or signs in the account.
 func (a *Auth) VerifyPhoneNumber(ctx context.Context, h http.Header, in PhoneVerificationInput, meta RequestMeta) (PhoneVerificationResult, error) {
+	return a.verifyPhoneNumber(ctx, h, in, meta, nil)
+}
+
+func (a *Auth) verifyPhoneNumber(ctx context.Context, h http.Header, in PhoneVerificationInput, meta RequestMeta, requestedVerified any) (PhoneVerificationResult, error) {
 	var out PhoneVerificationResult
 	if _, err := a.phoneStore(); err != nil {
 		return out, err
@@ -122,6 +127,7 @@ func (a *Auth) VerifyPhoneNumber(ctx context.Context, h http.Header, in PhoneVer
 	if err != nil {
 		return out, err
 	}
+	var registration RegistrationUserFields
 	act := PhoneAccountAction{Use: use}
 	if in.UpdatePhoneNumber {
 		current, err := a.requireOwnerSession(ctx, h)
@@ -143,24 +149,28 @@ func (a *Auth) VerifyPhoneNumber(ctx context.Context, h http.Header, in PhoneVer
 		act.SourceID, act.SourceToken = current.User.ID, current.Session.Token
 	} else {
 		if !a.opts.DisableSignUp && a.phoneNumber.SignUpOnVerification != nil {
-			o := a.phoneNumber.SignUpOnVerification
-			addr := strings.ToLower(o.GetTempEmail(in.PhoneNumber))
-			if !emailPattern.MatchString(addr) || strings.Contains(addr, "..") {
-				return out, errors.New("phone-number: temporary email address is invalid")
+			registration, err = a.preparePhoneRegistration(ctx, &act, in, requestedVerified)
+			if err != nil {
+				return out, err
 			}
-			name := in.PhoneNumber
-			if o.GetTempName != nil {
-				name = o.GetTempName(in.PhoneNumber)
-			}
-			now := a.now().UTC()
-			act.Create = &User{ID: randomID(), Email: addr, Name: name, CreatedAt: now, UpdatedAt: now}
 		}
 		if !in.DisableSession {
 			ss, _ := a.newSession("", meta)
 			act.Session = &ss
 		}
 	}
-	result, err := a.opts.Store.(PhoneAccountStore).ApplyPhoneOTP(ctx, act)
+	act.Use.Now = a.now().UTC()
+	var result PhoneAccountResult
+	if ext, ok := a.opts.Store.(PhoneRegistrationStore); ok && (registration.err != nil || act.Create != nil && len(a.opts.UserAdditionalFields) > 0) {
+		result, err = ext.ApplyPhoneRegistration(ctx, act, registration)
+	} else if registration.err != nil {
+		// A legacy adapter can enforce the built-in phone flag without custom columns.
+		if err = a.opts.Store.(PhoneAccountStore).ConsumePhoneOTP(ctx, act.Use); err == nil {
+			err = registration.err
+		}
+	} else {
+		result, err = a.opts.Store.(PhoneAccountStore).ApplyPhoneOTP(ctx, act)
+	}
 	if errors.Is(err, ErrEmailTaken) {
 		return out, &APIError{400, "USER_ALREADY_EXISTS", "User already exists"}
 	}
@@ -169,6 +179,9 @@ func (a *Auth) VerifyPhoneNumber(ctx context.Context, h http.Header, in PhoneVer
 	}
 	user := result.User
 	if err = a.readPublicUserFields(ctx, &user); err != nil {
+		if act.Session != nil && !result.NeedsFactor {
+			return out, a.discardUnpublishedSession(ctx, act.Session.Token, err)
+		}
 		return out, err
 	}
 	out.Status, out.User = true, user

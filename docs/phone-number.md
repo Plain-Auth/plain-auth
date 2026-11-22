@@ -45,6 +45,22 @@ To enable first-use registration, set `SignUpOnVerification` to a `phonenumber.S
 
 The Go HTTP client exposes `SendPhoneNumberOTP`, `VerifyPhoneNumber`, `SignInPhoneNumber`, `RequestPhonePasswordReset` and `ResetPhonePassword`. For an application-owned server workflow, call `auth.ConsumePhoneNumberOTP(ctx, number, code)`. Success spends the code without creating a user, issuing a session or running the account verification callback. This operation is available only in Go.
 
+### Registration profile fields
+
+With `SignUpOnVerification` and `UserAdditionalFields` enabled, send writable profile values as top-level properties of `POST /phone-number/verify`. In Go, use `PhoneVerificationInput.AdditionalFields`. The verified number supplies the identity for `GetTempEmail` and `GetTempName`. Omitting `GetTempName` uses the number as the display name. The application controls the email and name even if the request includes both.
+
+```go
+result, err := browser.VerifyPhoneNumber(ctx, plainauth.PhoneVerificationInput{
+    PhoneNumber: number,
+    Code: code,
+    AdditionalFields: map[string]any{"locale": "fr"},
+})
+```
+
+The first successful registration applies configured defaults and accepts declared writable fields. Hidden attributes stay in storage. Server-owned fields follow the same input and default rules as email signup. The proof and the `phoneNumber`, `disableSession`, and `updatePhoneNumber` controls are excluded from profile input. A caller who sets `phoneNumberVerified: true` on a new registration receives `FIELD_NOT_ALLOWED`. A correct code is spent if a required field is missing or a prohibited field is supplied. Request a new code before retrying. `disableSession` can create the verified user without opening a session.
+
+Verifying an existing number or replacing an authenticated owner's number preserves that owner's current profile. Implement temporary identity resolvers as deterministic lookups. Concurrent submissions can both prepare a candidate before one transaction spends the proof. An adapter that supports first-use phone signup with configured fields implements `PhoneRegistrationStore`. [Configured user fields](user-fields.md) · [Released-client verification](../conformance/phone-user-fields.mjs)
+
 ## Administrative phone changes
 
 Install the `admin` and `phone-number` SQL profiles and plugins to enable administrative management. A current, direct admin session with both `user:update` and `user:set-phone` can send `data.phoneNumber` or `data.phoneNumberVerified` to `POST /admin/update-user`. The response is the updated user. A custom support role with these grants may change ordinary accounts. Protected admin identities require a caller who is also a configured admin. Organization roles and application keys confer no global admin privileges.

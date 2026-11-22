@@ -115,6 +115,9 @@ func (s *Store) SavePhoneReset(ctx context.Context, r auth.PhoneOTPRecord, verif
 	return s.savePhone(ctx, r, verified)
 }
 func (s *Store) ApplyPhoneOTP(ctx context.Context, act auth.PhoneAccountAction) (auth.PhoneAccountResult, error) {
+	return s.ApplyPhoneRegistration(ctx, act, auth.RegistrationUserFields{})
+}
+func (s *Store) ApplyPhoneRegistration(ctx context.Context, act auth.PhoneAccountAction, registration auth.RegistrationUserFields) (auth.PhoneAccountResult, error) {
 	key := phoneProofKey(act.Use.PhoneNumber, act.Use.Purpose)
 	var out auth.PhoneAccountResult
 	err := s.emailOTPTransaction(ctx, key, func(tx *sql.Tx) (error, error) {
@@ -155,11 +158,16 @@ func (s *Store) ApplyPhoneOTP(ctx context.Context, act auth.PhoneAccountAction) 
 			return nil, s.replaceResetCredential(ctx, tx, user.ID, act.PasswordHash, act.Use.Now, act.RevokeSessions)
 		}
 		if user.ID == "" {
+			columns, fieldErr := registration.Columns()
+			if fieldErr != nil {
+				return fieldErr, nil // spend the valid proof without creating the user
+			}
 			if act.Create == nil {
 				return &auth.APIError{Status: 500, Code: "FAILED_TO_UPDATE_USER", Message: "Failed to update user"}, nil
 			}
 			user = *act.Create
-			_, err = tx.ExecContext(ctx, s.bind(`INSERT INTO "user"("id","email","name","emailVerified","createdAt","updatedAt") VALUES (?,?,?,?,?,?)`), user.ID, user.Email, user.Name, false, s.date(act.Use.Now), s.date(act.Use.Now))
+			query, args := s.userInsert(user, columns)
+			_, err = tx.ExecContext(ctx, s.bind(query), args...)
 			if duplicateConstraint(err) {
 				return nil, auth.ErrEmailTaken
 			}

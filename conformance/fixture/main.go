@@ -81,9 +81,14 @@ func main() {
 	if os.Getenv("CONFORMANCE_SESSION_FIELDS") == "1" {
 		additionalSessionFields = configuredSessionFields()
 	}
-	if mode := os.Getenv("CONFORMANCE_USER_FIELDS"); mode == "1" || mode == "magic-defaults" {
+	if mode := os.Getenv("CONFORMANCE_USER_FIELDS"); mode == "1" || mode == "magic-defaults" || mode == "phone" || mode == "phone-defaults" {
 		additionalUserFields = configuredUserFields()
-		if mode == "magic-defaults" || os.Getenv("CONFORMANCE_SOCIAL_FIELD_DEFAULT") == "1" {
+		if mode == "phone" || mode == "phone-defaults" {
+			additionalUserFields["code"] = authn.UserField{Type: authn.FieldString, Column: "profile_code"}
+			additionalUserFields["disableSession"] = authn.UserField{Type: authn.FieldBoolean, Column: "profile_quiet"}
+			additionalUserFields["updatePhoneNumber"] = authn.UserField{Type: authn.FieldBoolean, Column: "profile_replace"}
+		}
+		if mode == "phone-defaults" || mode == "magic-defaults" || os.Getenv("CONFORMANCE_SOCIAL_FIELD_DEFAULT") == "1" {
 			field := additionalUserFields["locale"]
 			field.Default = "en"
 			additionalUserFields["locale"] = field
@@ -206,7 +211,11 @@ func main() {
 				}
 				return os.WriteFile(filepath.Join(filepath.Dir(os.Args[1]), "sms.json"), b, 0600)
 			}
-			p, err := authn.NewPhoneNumber(authn.PhoneNumberOptions{SendOTP: sms, SendPasswordResetOTP: sms, RequireVerification: true, SignUpOnVerification: &authn.PhoneSignUpOptions{GetTempEmail: func(n string) string { return n + "@phone.test" }}})
+			signup := &authn.PhoneSignUpOptions{GetTempEmail: func(n string) string { return n + "@phone.test" }}
+			if os.Getenv("CONFORMANCE_USER_FIELDS") == "phone" {
+				signup.GetTempName = func(n string) string { return "Phone " + n }
+			}
+			p, err := authn.NewPhoneNumber(authn.PhoneNumberOptions{SendOTP: sms, SendPasswordResetOTP: sms, RequireVerification: true, SignUpOnVerification: signup})
 			if err != nil {
 				log.Fatal(err)
 			}

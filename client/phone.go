@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 
 	"github.com/Plain-Auth/plain-auth"
@@ -24,7 +25,14 @@ type PhoneVerificationResult struct {
 
 func (c *Client) VerifyPhoneNumber(ctx context.Context, input plainauth.PhoneVerificationInput) (*PhoneVerificationResult, error) {
 	var out PhoneVerificationResult
-	if err := c.Do(ctx, http.MethodPost, "/phone-number/verify", input, &out); err != nil {
+	if err := input.CheckProfileKeys(); err != nil {
+		return nil, err
+	}
+	body, err := marshalProfileInput(input, input.AdditionalFields)
+	if err != nil {
+		return nil, err
+	}
+	if err := c.Do(ctx, http.MethodPost, "/phone-number/verify", json.RawMessage(body), &out); err != nil {
 		return nil, err
 	}
 	return &out, nil

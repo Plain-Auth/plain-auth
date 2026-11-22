@@ -30,7 +30,11 @@ func (a *Auth) phoneHTTP(c EndpointContext, path string) (any, error) {
 		if err != nil {
 			return nil, err
 		}
-		in := PhoneVerificationInput{PhoneNumber: number, Code: code}
+		fields := a.userFieldInput(c.Body)
+		for _, key := range phoneVerificationKeys {
+			delete(fields, key)
+		}
+		in := PhoneVerificationInput{PhoneNumber: number, Code: code, AdditionalFields: fields}
 		for name, target := range map[string]*bool{"disableSession": &in.DisableSession, "updatePhoneNumber": &in.UpdatePhoneNumber} {
 			if v, ok := b[name]; ok {
 				flag, ok := v.(bool)
@@ -40,7 +44,7 @@ func (a *Auth) phoneHTTP(c EndpointContext, path string) (any, error) {
 				*target = flag
 			}
 		}
-		result, err := a.VerifyPhoneNumber(ctx, r.Header, in, meta)
+		result, err := a.verifyPhoneNumber(ctx, r.Header, in, meta, b["phoneNumberVerified"])
 		if err != nil {
 			return nil, err
 		}

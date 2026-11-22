@@ -6315,6 +6315,11 @@
       "label": "Count an incorrect anonymous link attempt, spend a correct proof and keep the caller signed out on both servers",
       "test": "conformance/phone-contract.mjs",
       "marker": "assert.equal(denied.error.code,\"USER_NOT_FOUND\")"
+    },
+    {
+      "label": "Exchange phone proofs between both runtimes, accept declared new-user inputs, then preserve the profile on returning verification and phone replacement",
+      "test": "conformance/phone-user-fields.mjs",
+      "marker": "assert.equal(linked.data.token, returning.data.token)"
     }
   ],
   "plugin/phone-number/POST /phone-number/request-password-reset": [
@@ -6409,6 +6414,11 @@
       "label": "Generate the first account’s unique email and name from its verified phone",
       "test": "adapters/sqlstore/phone_accounts_test.go",
       "marker": "unexpected phone signup fields"
+    },
+    {
+      "label": "Compare resolver-supplied identity, phone-number display name, required attributes, static defaults and public versus hidden fields across both runtimes",
+      "test": "conformance/phone-user-fields.mjs",
+      "marker": "assert.equal(user.name, defaults ? phone :"
     }
   ],
   "plugin-symbol/phone-number/PhoneNumberOptions/expiresIn": [
@@ -9849,6 +9859,11 @@
       "label": "Keep browser state and raw provider claims separate from declared public, hidden and server-owned fields on social signup",
       "test": "conformance/social-user-fields.mjs",
       "marker": "const saved=database.prepare("
+    },
+    {
+      "label": "Write phone registration profiles once across competing nodes, preserve owner values, and keep verification credentials and flags out of stored profile columns",
+      "test": "adapters/sqlstore/phone_registration_fields_test.go",
+      "marker": "persisted phone profile or transport protection"
     }
   ],
   "plugin-symbol/one-time-token/oneTimeTokenClient": [

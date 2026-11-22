@@ -346,6 +346,7 @@
       - [x] Apply public and host-owned fields on memory, SQLite, PostgreSQL and MySQL ([test](../../adapters/sqlstore/user_fields_test.go#L47))
       - [x] Apply declared user fields only on first-time email OTP registration and retain the original values during sign-in ([test](../../conformance/user-fields.mjs#L111))
       - [x] Keep browser state and raw provider claims separate from declared public, hidden and server-owned fields on social signup ([test](../../conformance/social-user-fields.mjs#L122))
+      - [x] Write phone registration profiles once across competing nodes, preserve owner values, and keep verification credentials and flags out of stored profile columns ([test](../../adapters/sqlstore/phone_registration_fields_test.go#L148))
     - [ ] `changeEmail`
     - [ ] `deleteUser`
   - [ ] `session`
