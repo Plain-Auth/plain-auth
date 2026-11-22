@@ -47,6 +47,23 @@ router.ServeHTTP(res, req) // router mounts server.Auth and your protected /prof
 
 `GetAuthHeaders(ctx, userID)` and `GetCookies(ctx, userID, domain)` each create a new session. An empty domain selects the configured cookie domain or the auth hostname. To remove a fixture and its sessions, call `server.DeleteUser(ctx, user.ID)` while the test database is still open. Custom adapters can provide profile persistence and cleanup through `authtest.UserStore`. [Four-adapter tests](../authtest/server_test.go)
 
+## Import a fixture login into a browser
+
+Call `login.BrowserCookies("")` to export the current fixture login as browser automation cookie objects. An empty domain uses the cookie's issued scope. Pass a test domain such as `.example.test` when testing across subdomains. The export reuses the signed cookie and the session's original deadline. Each object contains `name`, `value`, `domain`, `path`, `httpOnly`, `secure`, and `sameSite`. Persistent cookies also contain `expires` in Unix seconds.
+
+```go
+cookies, err := login.BrowserCookies("")
+if err != nil {
+    t.Fatal(err)
+}
+cookieJSON, err := json.Marshal(cookies)
+if err != nil {
+    t.Fatal(err)
+}
+```
+
+Pass the decoded `cookieJSON` array to the browser context's cookie importer before opening your protected route. Keep it in the test process or a private temporary file. The signed values grant access to this fixture user's session. The [Chromium test](../conformance/browser-fixture-cookies.mjs) imports the array, reads the authenticated user, and verifies that deleting the fixture revokes the browser login.
+
 ## Save and remove organization fixtures
 
 Use `authtest.NewWithOrganizations` with a dedicated SQLite, PostgreSQL or MySQL database initialized with the `organization` schema profile. Use `organization-teams` when the test needs teams. Pass the organization options to the constructor once. It installs the plugin and retains the same configured adapter for trusted grants and fixture persistence. An empty `organization.Options.Store` selects the auth store. A custom organization adapter can implement `authtest.OrganizationStore` and `organization.MemberWriter`.

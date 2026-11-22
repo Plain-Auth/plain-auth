@@ -9,6 +9,7 @@
   - [x] `LoginResult` ([test](../../../authtest/server_test.go#L85))
     - [x] Return the authenticated user, session, signed cookie, request headers and token ([test](../../../authtest/server_test.go#L85))
     - [x] Read the authenticated user and configured session values from the published runtime ([test](../../../conformance/auth-test-helpers.test.mjs#L101))
+    - [x] Export a fixture login without creating another session or changing its issued cookie ([test](../../../authtest/browser_cookie_test.go#L51))
   - [x] `TestAuthOptions` ([test](../../../adapters/sqlstore/fixture_session_fields_test.go#L60))
     - [x] Issue a session for the selected user with configured application fields ([test](../../../adapters/sqlstore/fixture_session_fields_test.go#L60))
     - [x] Read the authenticated user and configured session values from the published runtime ([test](../../../conformance/auth-test-helpers.test.mjs#L101))
@@ -18,7 +19,9 @@
     - [x] `session` ([test](../../../adapters/sqlstore/fixture_session_fields_test.go#L117))
       - [x] Apply typed attributes, protect generated fields and reject invalid input without a session ([test](../../../adapters/sqlstore/fixture_session_fields_test.go#L117))
       - [x] Read the authenticated user and configured session values from the published runtime ([test](../../../conformance/auth-test-helpers.test.mjs#L101))
-  - [ ] `TestCookie`
+  - [x] `TestCookie` ([test](../../../conformance/browser-fixture-cookies.mjs#L28))
+    - [x] Import the published browser cookie JSON shape into Chrome and authenticate with either implementation ([test](../../../conformance/browser-fixture-cookies.mjs#L28))
+    - [x] Preserve the original deadline, browser flags, host scope and session-only expiry omission ([test](../../../authtest/browser_cookie_test.go#L68))
   - [ ] `TestHelpers`
   - [ ] `TestUtilsOptions`
     - [ ] `captureOTP`
@@ -63,6 +66,7 @@
         - [x] Supply a signed browser cookie and optionally override its domain ([test](../../../authtest/server_test.go#L118))
         - [x] Supply trusted required attributes and read the session through an independent instance ([test](../../../adapters/sqlstore/fixture_session_fields_test.go#L96))
         - [x] Compare all three helper results and generated session fields on the released runtime ([test](../../../conformance/auth-test-helpers.test.mjs#L101))
+        - [x] Import a signed fixture into Chromium and reject it after the original user is removed ([test](../../../conformance/browser-fixture-cookies.mjs#L55))
         - [x] `name` ([test](../../../authtest/server_test.go#L82))
           - [x] Use the issued session cookie’s name when a browser fixture logs in ([test](../../../authtest/server_test.go#L82))
         - [x] `value` ([test](../../../authtest/server_test.go#L82))
@@ -86,6 +90,7 @@
   - [ ] Examples
     - [ ] Integration Test (Vitest)
     - [ ] E2E Test (Playwright)
+      - [x] Seed an isolated Chromium context with a local fixture cookie and read the signed-in user over HTTP ([test](../../../conformance/browser-fixture-cookies.mjs#L44))
     - [x] OTP Verification Test ([test](../../../authtest/fixtures_test.go#L92))
       - [x] Read the code from a local recorder and verify the account through the public client ([test](../../../authtest/fixtures_test.go#L92))
       - [x] Redeem the captured proof on the pinned runtime ([test](../../../conformance/auth-test-helpers.test.mjs#L44))

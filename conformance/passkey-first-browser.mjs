@@ -1,58 +1,14 @@
 import assert from "node:assert/strict";
-import { once } from "node:events";
-import { spawn } from "node:child_process";
-import { existsSync } from "node:fs";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { setTimeout as sleep } from "node:timers/promises";
+import { chromeBinary, openChromePage } from "./browser-debug.mjs";
 import { DatabaseSync } from "node:sqlite";
 import { betterAuth } from "better-auth";
 import { getMigrations } from "better-auth/db/migration";
 import { passkey } from "@better-auth/passkey";
 import { passkeyClient } from "@better-auth/passkey/client";
 
-const chromePaths = [process.env.CHROME_BIN, "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", "/usr/bin/google-chrome", "/usr/bin/chromium"].filter(Boolean);
 
 async function authenticator(t, url, binary) {
-  const dir = await mkdtemp(join(tmpdir(), "plainauth-webauthn-"));
-  const proc = spawn(binary, ["--headless=new","--disable-background-networking","--disable-default-apps","--disable-sync","--no-first-run","--no-default-browser-check","--remote-debugging-address=127.0.0.1","--remote-debugging-port=0","--user-data-dir="+dir,url], {stdio:"ignore"});
-  const exit = once(proc,"exit");
-  let socket;
-  t.after(async () => {
-    socket?.close();
-    if (proc.exitCode===null && proc.signalCode===null) proc.kill();
-    await exit;
-    await rm(dir,{recursive:true,force:true,maxRetries:3});
-  });
-  let target;
-  for (let i=0;i<150 && !target;i++){
-    if(proc.exitCode!==null) throw Error("Local browser exited during startup");
-    try {
-      const [port] = (await readFile(join(dir,"DevToolsActivePort"),"utf8")).split("\n");
-      if(!/^\d+$/.test(port)) throw Error("Invalid local browser port");
-      const targets = await (await fetch("http://127.0.0.1:"+port+"/json/list")).json();
-      target=targets.find(tab=>tab.type==="page" && tab.url===url);
-    }catch(e){if(e.code!=="ENOENT" && !(e instanceof TypeError)) throw e;}
-    if(!target) await sleep(70);
-  }
-  assert.ok(target,"Chrome did not open the local fixture");
-  socket=new WebSocket(target.webSocketDebuggerUrl);
-  await new Promise((r,j)=>{socket.onopen=r;socket.onerror=j});
-  let id=0;
-  const pending=new Map();
-  socket.onmessage=({data})=>{
-    const result=JSON.parse(data),p=pending.get(result.id);
-    if(!p)return;
-    pending.delete(result.id);
-    if(result.error)p.reject(Error(result.error.message));else p.resolve(result.result);
-  };
-  function call(method,params={}){
-    const current=++id;
-    return new Promise((resolve,reject)=>{
-      pending.set(current,{resolve,reject});socket.send(JSON.stringify({id:current,method,params}));
-    });
-  }
+  const call = await openChromePage(t, url, binary);
   await call("WebAuthn.enable");
   const add=()=>call("WebAuthn.addVirtualAuthenticator",{options:{protocol:"ctap2",transport:"internal",hasResidentKey:true,hasUserVerification:true,isUserVerified:true,automaticPresenceSimulation:true}});
   let device=await add();
@@ -83,7 +39,7 @@ async function authenticator(t, url, binary) {
 }
 
 export async function comparePasskeyFirst(t,{goFixture,instrument}) {
-  const binary=chromePaths.find(existsSync);
+  const binary=chromeBinary();
   if(!binary){t.skip("requires Chrome or Chromium for the virtual WebAuthn authenticator");return}
   const go=await goFixture(t,["passkey"],{CONFORMANCE_PASSKEY_FIRST:"1"});
   const database=new DatabaseSync(":memory:");t.after(()=>database.close());

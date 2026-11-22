@@ -161,11 +161,8 @@ func (s *Server) GetCookies(ctx context.Context, userID, domain string) ([]*http
 
 // GetCookiesWithOptions creates a session with fixture attributes and returns its browser cookie.
 func (s *Server) GetCookiesWithOptions(ctx context.Context, opts LoginOptions, domain string) ([]*http.Cookie, error) {
-	if domain != "" {
-		probe := &http.Cookie{Name: "test", Value: "test", Domain: domain}
-		if err := probe.Valid(); err != nil {
-			return nil, err
-		}
+	if err := validateCookieDomain(domain); err != nil {
+		return nil, err
 	}
 	login, err := s.LoginWithOptions(ctx, opts)
 	if err != nil {

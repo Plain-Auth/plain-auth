@@ -9,7 +9,7 @@
   - [ ] `getAuthenticatorName`
   - [ ] `getPasskeyActions`
   - [ ] `passkeyClient`
-    - [x] Use the published client to register a discoverable credential and authenticate in a local Chrome virtual authenticator on both servers ([test](../../../conformance/passkey-first-browser.mjs#L114))
+    - [x] Use the published client to register a discoverable credential and authenticate in a local Chrome virtual authenticator on both servers ([test](../../../conformance/passkey-first-browser.mjs#L70))
   - [ ] `PASSKEY_ERROR_CODES`
   - [ ] `passkey`
   - [ ] `GET /passkey/generate-register-options`
@@ -62,11 +62,11 @@
 - [ ] Passkey
   - [ ] Configuration (Optional)
     - [ ] Passkey-first registration (pre-auth)
-      - [x] Complete the two-request registration and session-creation ceremony in the public client on both servers ([test](../../../conformance/passkey-first-browser.mjs#L110))
+      - [x] Complete the two-request registration and session-creation ceremony in the public client on both servers ([test](../../../conformance/passkey-first-browser.mjs#L66))
   - [ ] Usage
     - [ ] Add/Register a passkey
       - [x] Enroll two independent public-key credentials from a fresh session ([test](../../../adapters/sqlstore/passkey_test.go#L273))
-      - [x] Use the public addPasskey action with application context, createSession and the real WebAuthn result ([test](../../../conformance/passkey-first-browser.mjs#L112))
+      - [x] Use the public addPasskey action with application context, createSession and the real WebAuthn result ([test](../../../conformance/passkey-first-browser.mjs#L68))
       - [ ] Browser client action `passkey.addPasskey`
         - [ ] Parameter `name` (optional)
         - [ ] Parameter `authenticatorAttachment` (optional)
@@ -75,7 +75,7 @@
         - [ ] Parameter `createSession` (optional)
     - [ ] Sign in with a passkey
       - [x] Sign in with a locally generated software authenticator and honor counter progression ([test](../../../adapters/sqlstore/passkey_test.go#L267))
-      - [x] Sign in using the passkey the browser enrolled before login ([test](../../../conformance/passkey-first-browser.mjs#L116))
+      - [x] Sign in using the passkey the browser enrolled before login ([test](../../../conformance/passkey-first-browser.mjs#L72))
       - [ ] Browser client action `signIn.passkey`
         - [ ] Parameter `autoFill` (optional)
         - [ ] Parameter `returnWebAuthnResponse` (optional)

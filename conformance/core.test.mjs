@@ -1635,3 +1635,8 @@ test("local social callbacks exchange mapped user fields and ignore browser prof
   await t.test("application defaults", t => compareSocialUserFields(t, harness, true));
   await t.test("required mapped claims", t => compareSocialUserFields(t, harness, false));
 });
+
+test("Chrome imports signed browser fixture cookies, switches owners and observes revocation", {timeout: 60000}, async t => {
+  const { browserFixtureCookies } = await import("./browser-fixture-cookies.mjs");
+  await browserFixtureCookies(t, goFixture);
+});

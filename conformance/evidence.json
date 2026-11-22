@@ -9173,6 +9173,11 @@
       "label": "Compare all three helper results and generated session fields on the released runtime",
       "test": "conformance/auth-test-helpers.test.mjs",
       "marker": "trusted login, headers and browser-cookie fixtures"
+    },
+    {
+      "label": "Import a signed fixture into Chromium and reject it after the original user is removed",
+      "test": "conformance/browser-fixture-cookies.mjs",
+      "marker": "assert.equal(await session(), null);"
     }
   ],
   "docs/content/docs/plugins/test-utils.mdx#L213/`name`": [
@@ -9546,6 +9551,11 @@
       "label": "Read the authenticated user and configured session values from the published runtime",
       "test": "conformance/auth-test-helpers.test.mjs",
       "marker": "trusted login, headers and browser-cookie fixtures"
+    },
+    {
+      "label": "Export a fixture login without creating another session or changing its issued cookie",
+      "test": "authtest/browser_cookie_test.go",
+      "marker": "export changed the number of sessions"
     }
   ],
   "plugin/siwe/ /siwe/nonce": [
@@ -10137,6 +10147,26 @@
       "test": "conformance/transfer-options.mjs",
       "marker": "the transfer lifetime follows the configured duration",
       "complete": true
+    }
+  ],
+  "plugin-symbol/test-utils/TestCookie": [
+    {
+      "label": "Import the published browser cookie JSON shape into Chrome and authenticate with either implementation",
+      "test": "conformance/browser-fixture-cookies.mjs",
+      "marker": "assert.deepEqual(Object.keys(projected).sort(), Object.keys(js.cookies[0]).sort());",
+      "complete": true
+    },
+    {
+      "label": "Preserve the original deadline, browser flags, host scope and session-only expiry omission",
+      "test": "authtest/browser_cookie_test.go",
+      "marker": "wrong browser cookie JSON keys"
+    }
+  ],
+  "docs/content/docs/plugins/test-utils.mdx#L301": [
+    {
+      "label": "Seed an isolated Chromium context with a local fixture cookie and read the signed-in user over HTTP",
+      "test": "conformance/browser-fixture-cookies.mjs",
+      "marker": "await call(\"Network.setCookies\", {cookies});"
     }
   ]
 }

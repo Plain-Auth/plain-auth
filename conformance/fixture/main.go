@@ -505,7 +505,7 @@ func main() {
 			return nil
 		}
 	}
-	auth, err := authn.New(opts)
+	auth, err := authWithBrowserFixture(opts, os.Getenv("CONFORMANCE_BROWSER_COOKIE_FILE"))
 	if err != nil {
 		log.Fatal(err)
 	}
