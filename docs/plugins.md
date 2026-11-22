@@ -10,6 +10,8 @@ The SCIM handler wraps the auth handler and serves directory provisioning under 
 
 The phone-number plugin supports verified numbers, account linking, sign-in and password recovery. [Phone-number guide](phone-number.md)
 
+Plugins can write structured records through `c.Auth.Logger()`. [Configure instance logging](environment.md#route-authentication-logs)
+
 ## Create a session-aware endpoint
 
 ```go

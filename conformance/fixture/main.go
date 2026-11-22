@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"log/slog"
 	"net"
 	"net/http"
 	"os"
@@ -335,7 +336,7 @@ func main() {
 	if os.Getenv("CONFORMANCE_COMPACT_CACHE") == "1" {
 		sessionCache = &authn.SessionCookieCacheOptions{Version: "release-test"}
 	}
-	auth, err := authn.New(authn.Options{
+	opts := authn.Options{
 		SessionCookieCache:  sessionCache,
 		SessionUpdateAge:    fixtureSessionUpdateAge(),
 		DeferSessionRefresh: os.Getenv("CONFORMANCE_DEFER_SESSION_REFRESH") == "1",
@@ -347,7 +348,36 @@ func main() {
 		EmailAndPassword:    true,
 		Secret:              "local-conformance-0123456789-abcdefghijk",
 		Store:               store,
-	})
+	}
+	if mode := os.Getenv("CONFORMANCE_LOG_LEVEL"); mode != "" {
+		logFile, err := os.OpenFile(os.Args[1]+".log", os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer logFile.Close()
+		opts.Logger = slog.New(slog.NewJSONHandler(logFile, &slog.HandlerOptions{Level: slog.LevelError}))
+		if mode == "silent" {
+			opts.Logger = slog.New(slog.DiscardHandler)
+		}
+		enabled := true
+		opts.SendVerificationOnSignUp = &enabled
+		opts.SendVerificationEmail = func(context.Context, authn.MailLink) error { return fmt.Errorf("private fixture sender error") }
+	}
+	if mode := os.Getenv("CONFORMANCE_ERROR_REPORTER"); mode != "" {
+		opts.Plugins = append(opts.Plugins, authn.Plugin{ID: "report-errors", Endpoints: []authn.Endpoint{{
+			Method: http.MethodGet, Path: "/report-failure", Handler: func(authn.EndpointContext) (any, error) { return nil, fmt.Errorf("private endpoint failure") },
+		}}})
+		opts.OnAPIError = func(c authn.ErrorContext, cause error) error {
+			if err := os.WriteFile(os.Args[1]+".report", []byte(c.Request.Method), 0600); err != nil {
+				return err
+			}
+			if mode == "fail" {
+				return fmt.Errorf("private reporting failure")
+			}
+			return nil
+		}
+	}
+	auth, err := authn.New(opts)
 	if err != nil {
 		log.Fatal(err)
 	}

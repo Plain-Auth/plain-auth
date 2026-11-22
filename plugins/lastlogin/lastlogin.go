@@ -3,7 +3,6 @@ package lastlogin
 
 import (
 	"context"
-	"log/slog"
 	"net/http"
 	"net/url"
 	"strings"
@@ -45,7 +44,7 @@ func New(opts Options) auth.Plugin {
 		if opts.Database != nil {
 			token := e.Auth.VerifySignedSessionToken(e.Cookie.Value)
 			if err := opts.Database.SaveSessionLoginMethod(e.Request.Context(), token, method, time.Now().UTC()); err != nil {
-				slog.ErrorContext(e.Request.Context(), "Could not save last login method")
+				e.Auth.Logger().ErrorContext(e.Request.Context(), "Could not save last login method")
 			}
 		}
 		if opts.Allow != nil && !opts.Allow(e.Request, method) {

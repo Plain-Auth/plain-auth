@@ -351,7 +351,8 @@
       - [ ] `session`
       - [ ] `secret`
       - [ ] `authCookie`
-      - [ ] `logger`
+      - [x] `logger` ([test](../../logger_test.go#L57))
+        - [x] Use the instance logger from plugin hooks and keep records from separate hosts isolated ([test](../../logger_test.go#L57))
       - [ ] `db`
       - [ ] `adapter`
       - [ ] `internalAdapter`

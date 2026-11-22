@@ -353,7 +353,7 @@ func (a *Auth) SignUpEmail(ctx context.Context, in SignUpInput, meta RequestMeta
 	}
 	if a.emailOTP != nil && a.emailOTP.SendVerificationOnSignUp && !a.emailOTP.OverrideDefaultEmailVerification {
 		if err := a.SendEmailOTP(ctx, user.Email, OTPVerifyEmail); err != nil {
-			slog.ErrorContext(ctx, "Could not deliver sign-up verification code")
+			a.Logger().ErrorContext(ctx, "Could not deliver sign-up verification code")
 		}
 	}
 	send := a.opts.RequireEmailVerification
@@ -362,7 +362,7 @@ func (a *Auth) SignUpEmail(ctx context.Context, in SignUpInput, meta RequestMeta
 	}
 	if send && a.opts.SendVerificationEmail != nil {
 		if err := a.sendEmailProof(ctx, user, "", "", meta.CallbackURL, a.opts.SendVerificationEmail); err != nil {
-			slog.ErrorContext(ctx, "Could not deliver sign-up verification email")
+			a.Logger().ErrorContext(ctx, "Could not deliver sign-up verification email")
 		}
 	}
 	if err := a.readPublicUserFields(ctx, &user); err != nil {
@@ -559,3 +559,11 @@ func (a *Auth) RevokeSessions(ctx context.Context, h http.Header) error {
 
 // BasePath reports the effective mount path after configuration resolution.
 func (a *Auth) BasePath() string { return a.opts.BasePath }
+
+// Logger returns this instance’s logger for host handlers and plugins.
+func (a *Auth) Logger() *slog.Logger {
+	if a.opts.Logger != nil {
+		return a.opts.Logger
+	}
+	return slog.Default()
+}

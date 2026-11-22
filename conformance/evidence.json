@@ -7365,5 +7365,71 @@
       "test": "session_cache_compact_test.go",
       "marker": "func TestCompactSessionConfiguration("
     }
+  ],
+  "docs/content/docs/concepts/plugins.mdx#L148/`logger`": [
+    {
+      "label": "Use the instance logger from plugin hooks and keep records from separate hosts isolated",
+      "test": "logger_test.go",
+      "marker": "expected the mail and plugin errors",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/reference/options.mdx#L762": [
+    {
+      "label": "Report a verification-mail delivery failure to the selected logger while preserving the new account and session",
+      "test": "conformance/core.test.mjs",
+      "marker": "application loggers receive a verification delivery error only when enabled"
+    }
+  ],
+  "docs/content/docs/reference/options.mdx#L783/`disabled`": [
+    {
+      "label": "Silence one instance without suppressing error records from another",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.deepEqual(referenceLevels, muted ? [] : [\"error\"]);",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/reference/options.mdx#L785/`level`": [
+    {
+      "label": "Use the configured handler severity threshold for events from core and plugin hooks",
+      "test": "logger_test.go",
+      "marker": "below the configured level"
+    }
+  ],
+  "docs/content/docs/reference/options.mdx#L789/`\"error\"`": [
+    {
+      "label": "Record errors and suppress warnings with the standard error threshold",
+      "test": "logger_test.go",
+      "marker": "below the configured level",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/reference/options.mdx#L790/`log`": [
+    {
+      "label": "Route core and plugin diagnostics to a host JSON handler with application attributes",
+      "test": "logger_test.go",
+      "marker": "event[\"service\"] != \"customer\"",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/reference/options.mdx#L856": [
+    {
+      "label": "Report the original error and already-resolved user before writing the localized HTTP response",
+      "test": "error_reporting_test.go",
+      "marker": "func TestHTTPErrorReporterSeesResolvedIdentityBeforeTranslation"
+    }
+  ],
+  "docs/content/docs/reference/options.mdx#L907/`onError`": [
+    {
+      "label": "Wait for the host reporter and preserve the endpoint error when the reporter fails",
+      "test": "conformance/core.test.mjs",
+      "marker": "host error reporters finish before the response and preserve endpoint failures",
+      "complete": true
+    },
+    {
+      "label": "Contain reporter panics and keep callback errors and credentials out of client responses and logs",
+      "test": "error_reporting_test.go",
+      "marker": "reporter replaced the endpoint response"
+    }
   ]
 }

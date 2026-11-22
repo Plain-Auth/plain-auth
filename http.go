@@ -35,7 +35,7 @@ var coreMethods = map[string]string{
 func (a *Auth) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	route, mounted := strings.CutPrefix(r.URL.EscapedPath(), strings.TrimSuffix(a.opts.BasePath, "/"))
 	if mounted && (route == "" || strings.HasPrefix(route, "/")) {
-		if a.translateError != nil {
+		if a.translateError != nil || a.opts.OnAPIError != nil {
 			r = a.withErrorContext(r)
 		}
 		ctx, identity, authErr := a.resolveCredentialSession(r.Context(), r.Header, RequestMeta{IPAddress: a.clientIP(r), UserAgent: r.UserAgent()}, r)
@@ -380,6 +380,9 @@ func writeAuthJSON(w http.ResponseWriter, status int, body any) {
 }
 
 func (a *Auth) writeAuthError(w http.ResponseWriter, r *http.Request, err error) {
+	if a.opts.OnAPIError != nil {
+		a.reportAPIError(r, err)
+	}
 	var status interface{ statusOnlyCode() int }
 	if errors.As(err, &status) {
 		w.WriteHeader(status.statusOnlyCode())

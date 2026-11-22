@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"log/slog"
 	"net/http"
 	"strings"
 	"time"
@@ -109,7 +108,7 @@ func (a *Auth) rememberDeviceSession(h http.Header, r *http.Request, token strin
 	ctx := r.Context()
 	live, err := a.deviceSessions.DeviceSessions(ctx, append(held.tokens, token), a.now())
 	if err != nil {
-		slog.Warn("could not read remembered sessions")
+		a.Logger().WarnContext(ctx, "could not read remembered sessions")
 		return
 	}
 	newSession, ok := live[token]
@@ -131,7 +130,7 @@ func (a *Auth) rememberDeviceSession(h http.Header, r *http.Request, token strin
 	}
 	if len(replaced) > 0 {
 		if err := a.deviceSessions.DeleteDeviceSessions(ctx, replaced); err != nil {
-			slog.Warn("could not replace remembered sessions")
+			a.Logger().WarnContext(ctx, "could not replace remembered sessions")
 			return
 		}
 	}

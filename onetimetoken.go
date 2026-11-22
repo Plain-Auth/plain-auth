@@ -5,7 +5,6 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"errors"
-	"log/slog"
 	"net/http"
 	"strings"
 	"time"
@@ -164,17 +163,17 @@ func (a *Auth) addOneTimeTokenHeader(headers http.Header, r *http.Request, token
 	// Use the newly created session. The incoming cookie can belong to an older account.
 	row, u, err := a.opts.Store.Session(r.Context(), token)
 	if err != nil {
-		slog.ErrorContext(r.Context(), "Could not resolve the new session for token transfer")
+		a.Logger().ErrorContext(r.Context(), "Could not resolve the new session for token transfer")
 		return
 	}
 	session, err := a.withSessionPlugins(r.Context(), row.Session, u)
 	if err != nil {
-		slog.ErrorContext(r.Context(), "Could not read the new session for token transfer")
+		a.Logger().ErrorContext(r.Context(), "Could not read the new session for token transfer")
 		return
 	}
 	transfer, err := a.newOneTimeToken(r.Context(), opts, *session)
 	if err != nil {
-		slog.ErrorContext(r.Context(), "Could not issue an optional one-time token header")
+		a.Logger().ErrorContext(r.Context(), "Could not issue an optional one-time token header")
 		return
 	}
 	headers.Set("Set-Ott", transfer)

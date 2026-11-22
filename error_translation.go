@@ -48,3 +48,15 @@ func (a *Auth) errorContext(r *http.Request) ErrorContext {
 	}
 	return c
 }
+
+// A failure in the host reporter must leave the original client response intact.
+func (a *Auth) reportAPIError(r *http.Request, original error) {
+	defer func() {
+		if recover() != nil {
+			a.Logger().ErrorContext(r.Context(), "Authentication error reporter panicked")
+		}
+	}()
+	if err := a.opts.OnAPIError(a.errorContext(r), original); err != nil {
+		a.Logger().ErrorContext(r.Context(), "Authentication error reporter failed")
+	}
+}

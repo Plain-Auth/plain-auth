@@ -389,20 +389,28 @@
     - [ ] `validateSchema`
     - [ ] `backgroundTasks`
   - [ ] `logger`
-    - [ ] `disabled`
+    - [x] Report a verification-mail delivery failure to the selected logger while preserving the new account and session ([test](../../conformance/core.test.mjs#L1307))
+    - [x] `disabled` ([test](../../conformance/core.test.mjs#L1323))
+      - [x] Silence one instance without suppressing error records from another ([test](../../conformance/core.test.mjs#L1323))
     - [ ] `disableColors`
     - [ ] `level`
+      - [x] Use the configured handler severity threshold for events from core and plugin hooks ([test](../../logger_test.go#L46))
     - [ ] `"debug"`
     - [ ] `"info"`
     - [ ] `"warn"`
-    - [ ] `"error"`
-    - [ ] `log`
+    - [x] `"error"` ([test](../../logger_test.go#L46))
+      - [x] Record errors and suppress warnings with the standard error threshold ([test](../../logger_test.go#L46))
+    - [x] `log` ([test](../../logger_test.go#L51))
+      - [x] Route core and plugin diagnostics to a host JSON handler with application attributes ([test](../../logger_test.go#L51))
     - [ ] `message`
     - [ ] `...args`
   - [ ] `databaseHooks`
   - [ ] `onAPIError`
+    - [x] Report the original error and already-resolved user before writing the localized HTTP response ([test](../../error_reporting_test.go#L88))
     - [ ] `throw`
-    - [ ] `onError`
+    - [x] `onError` ([test](../../conformance/core.test.mjs#L1329))
+      - [x] Wait for the host reporter and preserve the endpoint error when the reporter fails ([test](../../conformance/core.test.mjs#L1329))
+      - [x] Contain reporter panics and keep callback errors and credentials out of client responses and logs ([test](../../error_reporting_test.go#L67))
     - [ ] `errorURL`
     - [ ] `customizeDefaultErrorPage`
     - [ ] `colors`

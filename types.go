@@ -4,12 +4,18 @@ package stonewrit
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"net/http"
 	"time"
 )
 
 // Options configures one isolated authentication instance.
 type Options struct {
+	// Logger receives diagnostics for this instance. A nil logger uses slog.Default().
+	Logger *slog.Logger
+	// OnAPIError observes an HTTP endpoint error before its response is written.
+	// It runs synchronously and may use the request's context for cancellation.
+	OnAPIError func(ErrorContext, error) error
 	// SessionCookieCache enables signed compact snapshots for public browser session reads.
 	SessionCookieCache *SessionCookieCacheOptions
 	// Store persists identities and sessions. Configure one store per auth instance.

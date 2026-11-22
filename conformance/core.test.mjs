@@ -1303,3 +1303,55 @@ test("ordinary deferred POST and GET share compact cache and authoritative query
   const { compareDeferredCompactSession } = await import("./session-cache-compact.mjs");
   await compareDeferredCompactSession(t, { reference, goFixture });
 });
+
+test("application loggers receive a verification delivery error only when enabled", async t => {
+  for (const muted of [false, true]) {
+    const referenceLevels = [];
+    const server = await reference(t, [], {
+      logger: { level: "error", disabled: muted, log: level => referenceLevels.push(level) },
+      emailVerification: { sendOnSignUp: true, sendVerificationEmail: async () => { throw new Error("private fixture sender error"); } },
+    });
+    const go = await goFixture(t, [], { CONFORMANCE_LOG_LEVEL: muted ? "silent" : "error" });
+    for (const runtime of [server, go]) {
+      const { client } = instrument(runtime);
+      const result = await client.signUp.email({name, email, password});
+      assert.equal(result.error, null);
+      assert.equal((await client.getSession()).data.user.email, email);
+    }
+    const log = await readFile(go.databasePath + ".log", "utf8");
+    const goLevels = log.trim() ? log.trim().split("\n").map(line => JSON.parse(line).level.toLowerCase()) : [];
+    assert.deepEqual(referenceLevels, muted ? [] : ["error"]);
+    assert.deepEqual(goLevels, referenceLevels);
+    assert.ok(!log.includes("private fixture sender error") && !log.includes(email) && !log.includes(password));
+  }
+});
+
+test("host error reporters finish before the response and preserve endpoint failures", async t => {
+  const { createAuthEndpoint } = await import("better-auth/api");
+  for (const fail of [false, true]) {
+    let reported = 0;
+    const levels = [];
+    const ref = await reference(t, [{id: "report-errors", endpoints: {
+      fail: createAuthEndpoint("/report-failure", {method:"GET"}, async () => {throw new Error("private endpoint failure");}),
+    }}], {
+      onAPIError: { onError: async () => {
+        await new Promise(resolve => setImmediate(resolve));
+        reported++;
+        if (fail) throw new Error("private reporting failure");
+      } },
+      logger:{level:"error", log:level=>levels.push(level)},
+    });
+    const go = await goFixture(t, [], { CONFORMANCE_LOG_LEVEL:"error", CONFORMANCE_ERROR_REPORTER:fail ? "fail":"ok" });
+    for (const runtime of [ref, go]) {
+      const response = await runtime.send(new Request(runtime.baseURL + "/api/auth/report-failure"));
+      assert.equal(response.status, 500);
+      assert.ok(!(await response.text()).includes("private reporting failure"));
+    }
+    assert.equal(reported, 1);
+    assert.equal(await readFile(go.databasePath + ".report", "utf8"), "GET");
+    assert.deepEqual(levels, fail ? ["error"] : []);
+    const diagnostics = (await readFile(go.databasePath + ".log", "utf8")).trim();
+    assert.equal(diagnostics.length > 0, fail);
+    assert.ok(!diagnostics.includes("private"));
+  }
+});
