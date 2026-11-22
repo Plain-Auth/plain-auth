@@ -79,6 +79,8 @@ Cognito accepts user-pool ID tokens for direct sign-in as well. Paybin uses the 
 
 The default PayPal registration uses the sandbox. Notion requests the workspace owner's profile with the versioned API. Facebook verifies the returned access token against the configured app before reading the profile. X reads confirmed email using a second provider request. TikTok, WeChat, Reddit, Roblox and X can return a provider-specific placeholder when the service withholds email. Placeholder addresses remain unverified. VK requires the device ID on its callback. The local tests use provider response fixtures and test signing keys.
 
+To complete sign-in while keeping the opener on its current page, use [OAuth popup sign-in](oauth-popup.md).
+
 ## Auth0, Keycloak and Okta
 
 Set the provider's browser callback to your public auth mount followed by `/callback/` and its registration name. For example, a provider registered as `work` under the mount `/identity` uses `https://app.example.com/identity/callback/work`.

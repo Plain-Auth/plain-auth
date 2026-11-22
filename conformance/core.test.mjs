@@ -1355,3 +1355,13 @@ test("host error reporters finish before the response and preserve endpoint fail
     assert.ok(!diagnostics.includes("private"));
   }
 });
+
+test("the released popup client signs in and receives provider errors on both runtimes", async t => {
+  const { comparePopup } = await import("./oauth-popup.mjs");
+  await comparePopup(t, { reference, goFixture });
+});
+
+test("Chrome signs in through a real popup at top level and inside a cross-site iframe", async t => {
+  const { chromePopup } = await import("./oauth-popup-chrome.mjs");
+  await chromePopup(t, goFixture);
+});

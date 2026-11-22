@@ -7431,5 +7431,245 @@
       "test": "error_reporting_test.go",
       "marker": "reporter replaced the endpoint response"
     }
+  ],
+  "plugin-symbol/oauth-popup/getStoredPopupToken": [
+    {
+      "label": "Read the current mount’s stored credential and distinguish other auth origins or mounts",
+      "test": "conformance/oauth-popup-browser.test.mjs",
+      "marker": "different auth mounts isolate",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/oauth-popup/createSignInPopup": [
+    {
+      "label": "Open synchronously, focus a pending popup and correlate its result to the initiating window",
+      "test": "conformance/oauth-popup-browser.test.mjs",
+      "marker": "popup messages require exact origin",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/oauth-popup/SignInPopupOptions": [
+    {
+      "label": "Accept provider identifiers, trusted return locations, enrollment flags, request metadata, window features and timeout",
+      "test": "conformance/oauth-popup-browser.test.mjs",
+      "marker": "[\"https://app.example\", \"/ok\", \"/error\", \"/welcome\"",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/oauth-popup/SignInPopupOptions/provider": [
+    {
+      "label": "Prefer the configured provider when both provider fields are supplied",
+      "test": "conformance/oauth-popup-browser.test.mjs",
+      "marker": "assert.equal(u.searchParams.get(\"provider\"), \"built-in\")",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/oauth-popup/SignInPopupOptions/providerId": [
+    {
+      "label": "Sign in with a custom provider through the released client",
+      "test": "conformance/oauth-popup.mjs",
+      "marker": "const opts = {",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/oauth-popup/SignInPopupOptions/callbackURL": [
+    {
+      "label": "Return the configured destination for a returning account",
+      "test": "conformance/oauth-popup.mjs",
+      "marker": "assert.equal(posted.redirectTo, app +",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/oauth-popup/SignInPopupOptions/errorCallbackURL": [
+    {
+      "label": "Reject an untrusted error destination before navigating the provider",
+      "test": "plugins/oauthpopup/oauthpopup_test.go",
+      "marker": "map[string]string{\"callbackURL\": \"invalid_callback_url\"",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/oauth-popup/SignInPopupOptions/newUserCallbackURL": [
+    {
+      "label": "Relay the first registration destination to the opener",
+      "test": "conformance/oauth-popup.mjs",
+      "marker": "assert.equal(posted.redirectTo, app +",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/oauth-popup/SignInPopupOptions/requestSignUp": [
+    {
+      "label": "Honor explicit account enrollment in the provider login flow",
+      "test": "conformance/oauth-popup.mjs",
+      "marker": "const opts = {",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/oauth-popup/SignInPopupOptions/scopes": [
+    {
+      "label": "Include the requested email scope in the authorization URL on both runtimes",
+      "test": "conformance/oauth-popup.mjs",
+      "marker": "auth.searchParams.get(\"scope\").split(\" \").includes(\"email\")",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/oauth-popup/SignInPopupOptions/additionalData": [
+    {
+      "label": "Recover browser metadata in the Go profile callback while stripping reserved state",
+      "test": "conformance/fixture/popup.go",
+      "marker": "d[\"campaign\"] != \"local\"",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/oauth-popup/SignInPopupOptions/windowFeatures": [
+    {
+      "label": "Accept caller-specified features and compute the default centered window",
+      "test": "conformance/oauth-popup-browser.test.mjs",
+      "marker": "assert.equal(b.opened.features, \"width=500",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/oauth-popup/SignInPopupOptions/timeoutMs": [
+    {
+      "label": "Return the timeout outcome and release the active window",
+      "test": "conformance/oauth-popup-browser.test.mjs",
+      "marker": "timeoutMs: 1 })).error.code",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/oauth-popup/SignInPopupResult": [
+    {
+      "label": "Return a confirmed success or a structured error including a failed session check's HTTP status",
+      "test": "conformance/oauth-popup-browser.test.mjs",
+      "marker": "assert.equal(denied.error.status, 401)",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/oauth-popup/popupBearerFetchPlugin": [
+    {
+      "label": "Scope embedded bearer requests to one auth mount, preserve explicit authorization, and clear the token on session termination",
+      "test": "conformance/oauth-popup-browser.test.mjs",
+      "marker": "embedded bearers are confined",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/oauth-popup/oauthPopupClient": [
+    {
+      "label": "Confirm a session with the released browser client on both local runtimes",
+      "test": "conformance/oauth-popup.mjs",
+      "marker": "const promise = client.signIn.popup("
+    },
+    {
+      "label": "Open a real browser popup from a standalone application and a cross-site iframe",
+      "test": "conformance/oauth-popup-chrome.mjs",
+      "marker": "assert.equal(audit.notifications, 1)"
+    }
+  ],
+  "plugin-symbol/oauth-popup/POPUP_TOKEN_STORAGE_KEY": [
+    {
+      "label": "Namespace saved credentials by configured auth origin and mount",
+      "test": "conformance/oauth-popup-browser.test.mjs",
+      "marker": "different auth mounts isolate"
+    }
+  ],
+  "plugin-symbol/oauth-popup/OAUTH_POPUP_DATA_ELEMENT_ID": [
+    {
+      "label": "Expose the identifier of the inert completion payload",
+      "test": "plugins/oauthpopup/oauthpopup_test.go",
+      "marker": "pieces[2] != oauthpopup.CompletionScript",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/oauth-popup/OAUTH_POPUP_MESSAGE_TYPE": [
+    {
+      "label": "Post a protocol-compatible typed outcome to the correlated opener",
+      "test": "plugins/oauthpopup/oauthpopup_test.go",
+      "marker": "m[\"type\"] != oauthpopup.MessageType",
+      "complete": true
+    },
+    {
+      "label": "Bind a host-selected protocol into both startup and callback messages independently of browser input",
+      "test": "plugins/oauthpopup/oauthpopup_test.go",
+      "marker": "func TestHostSelectsPopupMessageProtocol("
+    },
+    {
+      "label": "Retain origin, window and nonce checks with a custom message protocol",
+      "test": "conformance/oauth-popup-browser.test.mjs",
+      "marker": "a host-selected message protocol retains origin, window and nonce binding"
+    }
+  ],
+  "plugin-symbol/oauth-popup/POPUP_MARKER_COOKIE": [
+    {
+      "label": "Authenticate a short-lived browser marker against its one-use OAuth state",
+      "test": "plugins/oauthpopup/oauthpopup_test.go",
+      "marker": "func TestPopupMarkerAndSingleUseOAuthState(",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/oauth-popup/OAUTH_POPUP_ERROR_CODES": [
+    {
+      "label": "Return distinct blocked, closed, timed-out and failed sign-in outcomes",
+      "test": "conformance/oauth-popup-browser.test.mjs",
+      "marker": "blocked, closed, aborted",
+      "complete": true
+    }
+  ],
+  "plugin/oauth-popup/GET /oauth-popup/start": [
+    {
+      "label": "Validate the opener and three return destinations, reject missing providers and safely render start-stage failures",
+      "test": "plugins/oauthpopup/oauthpopup_test.go",
+      "marker": "func TestPopupOriginAndFailurePages("
+    },
+    {
+      "label": "Describe the active navigation and callback formats in the generated HTTP contract",
+      "test": "plugins/oauthpopup/oauthpopup_test.go",
+      "marker": "func TestPopupDescribesNavigationAndCompletion("
+    }
+  ],
+  "plugin-symbol/oauth-popup/OAUTH_POPUP_COMPLETE_SCRIPT": [
+    {
+      "label": "Preserve the host listener and deliver the confirmed session in a real popup",
+      "test": "conformance/oauth-popup-chrome.mjs",
+      "marker": "assert.equal(audit.notifications, 1)",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/oauth-popup/OAUTH_POPUP_SCRIPT_CSP_HASH": [
+    {
+      "label": "Independently verify the exact script bytes against the declared browser policy",
+      "test": "plugins/oauthpopup/oauthpopup_test.go",
+      "marker": "oauthpopup.ScriptCSPHash !=",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/oauth-popup/oauthPopup": [
+    {
+      "label": "Keep ordinary redirects and host cookies, bind the popup marker to state, and prevent duplicate session issuance",
+      "test": "plugins/oauthpopup/oauthpopup_test.go",
+      "marker": "func TestPopupMarkerAndSingleUseOAuthState("
+    }
+  ],
+  "plugin-symbol/oauth-popup/OAuthPopupData": [
+    {
+      "label": "Render an exact trusted target origin and safely encode browser-controlled strings",
+      "test": "plugins/oauthpopup/oauthpopup_test.go",
+      "marker": "m[\"type\"] != oauthpopup.MessageType",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/oauth-popup/OAuthPopupMessage": [
+    {
+      "label": "Hand the opener the signed session credential and correct destination, or an error without a token",
+      "test": "conformance/oauth-popup.mjs",
+      "marker": "assert.equal(posted.token, undefined)",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/oauth-popup/OAuthPopupError": [
+    {
+      "label": "Carry the provider's code and optional description to the opener",
+      "test": "conformance/oauth-popup-browser.test.mjs",
+      "marker": "assert.deepEqual(await rejected,",
+      "complete": true
+    }
   ]
 }

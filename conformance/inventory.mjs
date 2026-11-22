@@ -374,6 +374,7 @@ const index = [
   "| Credentials, cookies and session lifecycle | [Authentication](../authentication.md) · [Account management](../account.md) |",
   "| Remember and switch accounts in one browser | [Account switching](../multi-session.md) |",
   "| Guest sessions and account upgrades | [Guest sessions](../anonymous.md) |",
+  "| OAuth popup sign-in for top-level and embedded applications | [OAuth popup sign-in](../oauth-popup.md) |",
   "| Google One Tap popup, button and browser challenges | [Google One Tap](../one-tap.md) |",
   "| First-party device grants and authorization | [Sign in a device](../device-authorization.md) |",
   "| Passkey registration, login and credential management | [Passkeys](../passkeys.md) |",

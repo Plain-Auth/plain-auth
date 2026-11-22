@@ -332,6 +332,20 @@ func main() {
 	if origin := os.Getenv("CONFORMANCE_SSO_DISCOVERY_ORIGIN"); origin != "" {
 		discoveryOrigins = []string{origin}
 	}
+	popupOrigin := os.Getenv("CONFORMANCE_POPUP_ORIGIN")
+	if popupOrigin != "" {
+		p, err := popupProvider(popupOrigin)
+		if err != nil {
+			log.Fatal(err)
+		}
+		social = map[string]authn.OAuthProvider{"work": p}
+		discoveryOrigins = append(discoveryOrigins, popupOrigin)
+		popup, err := authn.NewOAuthPopupWithOptions(authn.OAuthPopupOptions{MessageType: os.Getenv("CONFORMANCE_POPUP_MESSAGE_TYPE")})
+		if err != nil {
+			log.Fatal(err)
+		}
+		plugins = append(plugins, popup, bearer.New(bearer.Options{RequireSignature: true}))
+	}
 	var sessionCache *authn.SessionCookieCacheOptions
 	if os.Getenv("CONFORMANCE_COMPACT_CACHE") == "1" {
 		sessionCache = &authn.SessionCookieCacheOptions{Version: "release-test"}
@@ -382,6 +396,9 @@ func main() {
 		log.Fatal(err)
 	}
 	var handler http.Handler = auth
+	if popupOrigin != "" {
+		handler = popupCORS(auth, popupOrigin)
+	}
 	if directoryEnabled {
 		handler, err = scimFixture(auth, store)
 		if err != nil {

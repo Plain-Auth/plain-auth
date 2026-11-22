@@ -102,23 +102,36 @@ func (a *Auth) startOAuth(w http.ResponseWriter, r *http.Request, link bool) err
 	if value, found := body["idToken"]; found {
 		return a.directOAuth(w, r, id, p, value, linkUserID, requestSignUp)
 	}
+	flow := OAuthFlow{Provider: id, LinkUserID: linkUserID, RequestSignUp: requestSignUp}
+	target, _, err := a.beginBrowserOAuth(w.Header(), r, p, body, flow, requestedParams)
+	if err != nil {
+		return err
+	}
+	if !disable {
+		w.Header().Set("Location", target)
+	}
+	writeAuthJSON(w, 200, map[string]any{"url": target, "redirect": !disable})
+	return nil
+}
+
+// beginBrowserOAuth creates the same provider-bound, single-use grant for redirect and popup sign-in.
+func (a *Auth) beginBrowserOAuth(h http.Header, r *http.Request, p OAuthProvider, body wireBody, flow OAuthFlow, requestedParams []oauth2.AuthCodeOption) (string, string, error) {
 	browser := randomID()
 	now := a.now().UTC()
-	flow := OAuthFlow{State: randomID(), Binding: a.oauthBinding(browser, id, r), Provider: id, Verifier: oauth2.GenerateVerifier(),
-		Nonce: randomID(), ExpiresAt: now.Add(10 * time.Minute)}
-	flow.LinkUserID = linkUserID
-	flow.RequestSignUp = requestSignUp
-	if a.anonymous != nil && !link {
+	id := flow.Provider
+	flow.State, flow.Binding = randomID(), a.oauthBinding(browser, id, r)
+	flow.Verifier, flow.Nonce, flow.ExpiresAt = oauth2.GenerateVerifier(), randomID(), now.Add(10*time.Minute)
+	if a.anonymous != nil && flow.LinkUserID == "" {
 		guest, err := a.guestToken(r)
 		if err != nil {
-			return err
+			return "", "", err
 		}
 		if guest != "" {
 			browser = "guest-" + browser
 			flow.Binding = digest(browser + "\x00" + id + "\x00")
 			flow.AnonymousSessionProof, err = a.sealRecord("guest-oauth:"+flow.State, []byte(guest))
 			if err != nil {
-				return err
+				return "", "", err
 			}
 		}
 	}
@@ -128,10 +141,6 @@ func (a *Auth) startOAuth(w http.ResponseWriter, r *http.Request, link bool) err
 	if flow.CallbackURL == "" {
 		flow.CallbackURL = a.opts.BaseURL
 	}
-	if err := a.opts.Store.(OAuthStore).SaveOAuthFlow(r.Context(), flow, now); err != nil {
-		return err
-	}
-	http.SetCookie(w, a.oauthCookie("oauth_state", browser, 600))
 	var opts []oauth2.AuthCodeOption
 	if !p.OmitNonce {
 		opts = append(opts, oauth2.SetAuthURLParam("nonce", flow.Nonce))
@@ -149,19 +158,19 @@ func (a *Auth) startOAuth(w http.ResponseWriter, r *http.Request, link bool) err
 	if p.CustomizeAuthorization != nil {
 		u, err := url.Parse(target)
 		if err != nil {
-			return err
+			return "", "", err
 		}
 		p.CustomizeAuthorization(u)
 		target = u.String()
 	}
-	if !disable {
-		w.Header().Set("Location", target)
+	if err := a.opts.Store.(OAuthStore).SaveOAuthFlow(r.Context(), flow, now); err != nil {
+		return "", "", err
 	}
-	writeAuthJSON(w, 200, map[string]any{"url": target, "redirect": !disable})
-	return nil
+	h.Add("Set-Cookie", a.oauthCookie("oauth_state", browser, 600).String())
+	return target, flow.State, nil
 }
 
-func (a *Auth) finishOAuth(w http.ResponseWriter, r *http.Request, id string) error {
+func (a *Auth) finishOAuth(w http.ResponseWriter, r *http.Request, id string) (resultErr error) {
 	p, err := a.providerConfig(id)
 	if err != nil {
 		return err
@@ -173,6 +182,18 @@ func (a *Auth) finishOAuth(w http.ResponseWriter, r *http.Request, id string) er
 	}
 	q := r.URL.Query()
 	state := q.Get("state")
+	var popup *popupOpener
+	if len(q["state"]) == 1 && state != "" && len(state) <= 128 {
+		popup = a.callbackPopup(w.Header(), r, state)
+	}
+	if popup != nil {
+		defer func() {
+			if resultErr != nil {
+				popup.write(w, "", "", &popupError{Code: "popup_sign_in_failed", Description: "Unable to complete social sign-in"})
+				resultErr = nil
+			}
+		}()
+	}
 	cookie, err := r.Cookie(a.oauthCookie("oauth_state", "", 0).Name)
 	if err != nil || len(q["state"]) != 1 || len(state) > 128 || state == "" || len(q["code"]) > 1 || len(q["error"]) > 1 {
 		return &APIError{400, "INVALID_OAUTH_STATE", "Invalid or expired OAuth state"}
@@ -184,6 +205,10 @@ func (a *Auth) finishOAuth(w http.ResponseWriter, r *http.Request, id string) er
 	}
 	flow, err := store.ConsumeOAuthFlow(r.Context(), state, binding, a.now().UTC())
 	if errors.Is(err, ErrNotFound) {
+		if popup != nil {
+			popup.write(w, "", "", &popupError{Code: "INVALID_OAUTH_STATE", Description: "Invalid or expired OAuth state"})
+			return nil
+		}
 		return &APIError{400, "INVALID_OAUTH_STATE", "Invalid or expired OAuth state"}
 	}
 	if err != nil {
@@ -191,6 +216,10 @@ func (a *Auth) finishOAuth(w http.ResponseWriter, r *http.Request, id string) er
 	}
 	http.SetCookie(w, a.oauthCookie("oauth_state", "", -1))
 	fail := func(code string) error {
+		if popup != nil {
+			popup.write(w, "", "", &popupError{Code: code})
+			return nil
+		}
 		if flow.ErrorCallbackURL != "" && a.trustedURL(flow.ErrorCallbackURL, true) {
 			target, _ := url.Parse(flow.ErrorCallbackURL)
 			v := target.Query()
@@ -209,11 +238,18 @@ func (a *Auth) finishOAuth(w http.ResponseWriter, r *http.Request, id string) er
 		}
 		r = r.WithContext(context.WithValue(r.Context(), anonymousSourceKey{}, string(guest)))
 	}
+	if popup != nil && flow.Provider == id && q.Get("error") != "" {
+		popup.write(w, "", "", &popupError{Code: q.Get("error"), Description: q.Get("error_description")})
+		return nil
+	}
 	if flow.Provider != id || q.Get("error") != "" || q.Get("code") == "" {
 		return fail("OAUTH_CALLBACK_ERROR")
 	}
 	ctx, cancel := context.WithTimeout(context.WithValue(r.Context(), oauth2.HTTPClient, p.HTTPClient), 30*time.Second)
 	defer cancel()
+	if flow.PopupAdditionalData != nil {
+		ctx = context.WithValue(ctx, popupDataKey{}, flow.PopupAdditionalData)
+	}
 	var params []oauth2.AuthCodeOption
 	if !p.DisablePKCE {
 		params = append(params, oauth2.VerifierOption(flow.Verifier))
@@ -283,6 +319,10 @@ func (a *Auth) finishOAuth(w http.ResponseWriter, r *http.Request, id string) er
 	}
 	if !a.trustedURL(target, true) {
 		target = a.opts.BaseURL
+	}
+	if popup != nil && flow.LinkUserID == "" {
+		popup.write(w, a.sessionCookie(result.Token, true).Value, target, nil)
+		return nil
 	}
 	http.Redirect(w, r, target, http.StatusFound)
 	return nil

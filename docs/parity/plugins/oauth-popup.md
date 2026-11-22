@@ -5,31 +5,63 @@
 ## Interfaces
 
 - [ ] OAuth popup endpoints, types and options
-  - [ ] `getStoredPopupToken`
-  - [ ] `createSignInPopup`
-  - [ ] `SignInPopupOptions`
-    - [ ] `provider`
-    - [ ] `providerId`
-    - [ ] `callbackURL`
-    - [ ] `errorCallbackURL`
-    - [ ] `newUserCallbackURL`
-    - [ ] `requestSignUp`
-    - [ ] `scopes`
-    - [ ] `additionalData`
-    - [ ] `windowFeatures`
-    - [ ] `timeoutMs`
-  - [ ] `SignInPopupResult`
-  - [ ] `popupBearerFetchPlugin`
+  - [x] `getStoredPopupToken` ([test](../../../conformance/oauth-popup-browser.test.mjs#L223))
+    - [x] Read the current mount’s stored credential and distinguish other auth origins or mounts ([test](../../../conformance/oauth-popup-browser.test.mjs#L223))
+  - [x] `createSignInPopup` ([test](../../../conformance/oauth-popup-browser.test.mjs#L85))
+    - [x] Open synchronously, focus a pending popup and correlate its result to the initiating window ([test](../../../conformance/oauth-popup-browser.test.mjs#L85))
+  - [x] `SignInPopupOptions` ([test](../../../conformance/oauth-popup-browser.test.mjs#L116))
+    - [x] Accept provider identifiers, trusted return locations, enrollment flags, request metadata, window features and timeout ([test](../../../conformance/oauth-popup-browser.test.mjs#L116))
+    - [x] `provider` ([test](../../../conformance/oauth-popup-browser.test.mjs#L104))
+      - [x] Prefer the configured provider when both provider fields are supplied ([test](../../../conformance/oauth-popup-browser.test.mjs#L104))
+    - [x] `providerId` ([test](../../../conformance/oauth-popup.mjs#L104))
+      - [x] Sign in with a custom provider through the released client ([test](../../../conformance/oauth-popup.mjs#L104))
+    - [x] `callbackURL` ([test](../../../conformance/oauth-popup.mjs#L133))
+      - [x] Return the configured destination for a returning account ([test](../../../conformance/oauth-popup.mjs#L133))
+    - [x] `errorCallbackURL` ([test](../../../plugins/oauthpopup/oauthpopup_test.go#L112))
+      - [x] Reject an untrusted error destination before navigating the provider ([test](../../../plugins/oauthpopup/oauthpopup_test.go#L112))
+    - [x] `newUserCallbackURL` ([test](../../../conformance/oauth-popup.mjs#L133))
+      - [x] Relay the first registration destination to the opener ([test](../../../conformance/oauth-popup.mjs#L133))
+    - [x] `requestSignUp` ([test](../../../conformance/oauth-popup.mjs#L104))
+      - [x] Honor explicit account enrollment in the provider login flow ([test](../../../conformance/oauth-popup.mjs#L104))
+    - [x] `scopes` ([test](../../../conformance/oauth-popup.mjs#L77))
+      - [x] Include the requested email scope in the authorization URL on both runtimes ([test](../../../conformance/oauth-popup.mjs#L77))
+    - [x] `additionalData` ([test](../../../conformance/fixture/popup.go#L28))
+      - [x] Recover browser metadata in the Go profile callback while stripping reserved state ([test](../../../conformance/fixture/popup.go#L28))
+    - [x] `windowFeatures` ([test](../../../conformance/oauth-popup-browser.test.mjs#L150))
+      - [x] Accept caller-specified features and compute the default centered window ([test](../../../conformance/oauth-popup-browser.test.mjs#L150))
+    - [x] `timeoutMs` ([test](../../../conformance/oauth-popup-browser.test.mjs#L155))
+      - [x] Return the timeout outcome and release the active window ([test](../../../conformance/oauth-popup-browser.test.mjs#L155))
+  - [x] `SignInPopupResult` ([test](../../../conformance/oauth-popup-browser.test.mjs#L236))
+    - [x] Return a confirmed success or a structured error including a failed session check's HTTP status ([test](../../../conformance/oauth-popup-browser.test.mjs#L236))
+  - [x] `popupBearerFetchPlugin` ([test](../../../conformance/oauth-popup-browser.test.mjs#L167))
+    - [x] Scope embedded bearer requests to one auth mount, preserve explicit authorization, and clear the token on session termination ([test](../../../conformance/oauth-popup-browser.test.mjs#L167))
   - [ ] `oauthPopupClient`
+    - [x] Confirm a session with the released browser client on both local runtimes ([test](../../../conformance/oauth-popup.mjs#L119))
+    - [x] Open a real browser popup from a standalone application and a cross-site iframe ([test](../../../conformance/oauth-popup-chrome.mjs#L162))
   - [ ] `POPUP_TOKEN_STORAGE_KEY`
-  - [ ] `OAUTH_POPUP_DATA_ELEMENT_ID`
-  - [ ] `OAUTH_POPUP_MESSAGE_TYPE`
-  - [ ] `POPUP_MARKER_COOKIE`
-  - [ ] `OAUTH_POPUP_ERROR_CODES`
+    - [x] Namespace saved credentials by configured auth origin and mount ([test](../../../conformance/oauth-popup-browser.test.mjs#L223))
+  - [x] `OAUTH_POPUP_DATA_ELEMENT_ID` ([test](../../../plugins/oauthpopup/oauthpopup_test.go#L78))
+    - [x] Expose the identifier of the inert completion payload ([test](../../../plugins/oauthpopup/oauthpopup_test.go#L78))
+  - [x] `OAUTH_POPUP_MESSAGE_TYPE` ([test](../../../plugins/oauthpopup/oauthpopup_test.go#L121))
+    - [x] Post a protocol-compatible typed outcome to the correlated opener ([test](../../../plugins/oauthpopup/oauthpopup_test.go#L121))
+    - [x] Bind a host-selected protocol into both startup and callback messages independently of browser input ([test](../../../plugins/oauthpopup/oauthpopup_test.go#L261))
+    - [x] Retain origin, window and nonce checks with a custom message protocol ([test](../../../conformance/oauth-popup-browser.test.mjs#L240))
+  - [x] `POPUP_MARKER_COOKIE` ([test](../../../plugins/oauthpopup/oauthpopup_test.go#L126))
+    - [x] Authenticate a short-lived browser marker against its one-use OAuth state ([test](../../../plugins/oauthpopup/oauthpopup_test.go#L126))
+  - [x] `OAUTH_POPUP_ERROR_CODES` ([test](../../../conformance/oauth-popup-browser.test.mjs#L138))
+    - [x] Return distinct blocked, closed, timed-out and failed sign-in outcomes ([test](../../../conformance/oauth-popup-browser.test.mjs#L138))
   - [ ] `GET /oauth-popup/start`
-  - [ ] `OAUTH_POPUP_COMPLETE_SCRIPT`
-  - [ ] `OAUTH_POPUP_SCRIPT_CSP_HASH`
+    - [x] Validate the opener and three return destinations, reject missing providers and safely render start-stage failures ([test](../../../plugins/oauthpopup/oauthpopup_test.go#L98))
+    - [x] Describe the active navigation and callback formats in the generated HTTP contract ([test](../../../plugins/oauthpopup/oauthpopup_test.go#L192))
+  - [x] `OAUTH_POPUP_COMPLETE_SCRIPT` ([test](../../../conformance/oauth-popup-chrome.mjs#L162))
+    - [x] Preserve the host listener and deliver the confirmed session in a real popup ([test](../../../conformance/oauth-popup-chrome.mjs#L162))
+  - [x] `OAUTH_POPUP_SCRIPT_CSP_HASH` ([test](../../../plugins/oauthpopup/oauthpopup_test.go#L82))
+    - [x] Independently verify the exact script bytes against the declared browser policy ([test](../../../plugins/oauthpopup/oauthpopup_test.go#L82))
   - [ ] `oauthPopup`
-  - [ ] `OAuthPopupData`
-  - [ ] `OAuthPopupMessage`
-  - [ ] `OAuthPopupError`
+    - [x] Keep ordinary redirects and host cookies, bind the popup marker to state, and prevent duplicate session issuance ([test](../../../plugins/oauthpopup/oauthpopup_test.go#L126))
+  - [x] `OAuthPopupData` ([test](../../../plugins/oauthpopup/oauthpopup_test.go#L121))
+    - [x] Render an exact trusted target origin and safely encode browser-controlled strings ([test](../../../plugins/oauthpopup/oauthpopup_test.go#L121))
+  - [x] `OAuthPopupMessage` ([test](../../../conformance/oauth-popup.mjs#L130))
+    - [x] Hand the opener the signed session credential and correct destination, or an error without a token ([test](../../../conformance/oauth-popup.mjs#L130))
+  - [x] `OAuthPopupError` ([test](../../../conformance/oauth-popup-browser.test.mjs#L160))
+    - [x] Carry the provider's code and optional description to the opener ([test](../../../conformance/oauth-popup-browser.test.mjs#L160))

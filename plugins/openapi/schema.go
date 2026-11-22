@@ -42,7 +42,7 @@ func schemaPath(r stonewrit.HTTPRoute) string {
 
 func knownPlugin(id string) bool {
 	switch id {
-	case "", "admin", "anonymous", "api-key", "device-authorization", "email-otp", "jwt", "magic-link", "multi-session", "one-tap", "one-time-token", "organization", "passkey", "phone-number", "sso", "stripe", "two-factor", "username":
+	case "", "admin", "anonymous", "api-key", "device-authorization", "email-otp", "jwt", "magic-link", "multi-session", "oauth-popup", "one-tap", "one-time-token", "organization", "passkey", "phone-number", "sso", "stripe", "two-factor", "username":
 		return true
 	}
 	return false
@@ -200,6 +200,13 @@ func adjustRequest(op object, r stonewrit.HTTPRoute, info stonewrit.HTTPDescript
 		return
 	}
 	switch r.Path {
+	case "/oauth-popup/start":
+		var parameters []object
+		for _, field := range []string{"provider", "popupOrigin", "popupNonce", "callbackURL", "errorCallbackURL", "newUserCallbackURL", "scopes", "requestSignUp", "additionalData"} {
+			parameters = append(parameters, object{"in": "query", "name": field, "required": field == "provider" || field == "popupOrigin", "schema": object{"type": "string"}})
+		}
+		op["parameters"] = parameters
+		return
 	case "/account-info":
 		op["parameters"] = []object{{"name": "accountId", "in": "query", "required": true, "schema": object{"type": "string"}}}
 		return
@@ -365,11 +372,17 @@ func standardOperation(r stonewrit.HTTPRoute, info stonewrit.HTTPDescription, a 
 	}
 	if builtin {
 		switch r.Path {
+		case "/oauth-popup/start":
+			responses["302"] = object{"description": "Navigate the popup to the provider", "headers": object{"Location": object{"schema": object{"type": "string"}}}}
+			responses[success] = response("text/html", object{"type": "string"})
 		case "/error":
 			responses[success] = response("text/html", object{"type": "string"})
 		case "/reset-password/:token", "/callback/:id", "/subscription/success", "/sso/callback", "/sso/callback/:providerId":
 			delete(responses, success)
 			responses["302"] = object{"description": "Redirect to the configured destination", "headers": object{"Location": object{"schema": object{"type": "string"}}}}
+			if r.Path == "/callback/:id" && r.Method == "GET" && a.HasPlugin("oauth-popup") {
+				responses["200"] = response("text/html", object{"type": "string"})
+			}
 		case "/verify-email", "/magic-link/verify", "/delete-user/callback":
 			responses["302"] = object{"description": "Redirect to the trusted callback"}
 		case "/device/code", "/device/token":

@@ -11,6 +11,7 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 | Credentials, cookies and session lifecycle | [Authentication](../authentication.md) · [Account management](../account.md) |
 | Remember and switch accounts in one browser | [Account switching](../multi-session.md) |
 | Guest sessions and account upgrades | [Guest sessions](../anonymous.md) |
+| OAuth popup sign-in for top-level and embedded applications | [OAuth popup sign-in](../oauth-popup.md) |
 | Google One Tap popup, button and browser challenges | [Google One Tap](../one-tap.md) |
 | First-party device grants and authorization | [Sign in a device](../device-authorization.md) |
 | Passkey registration, login and credential management | [Passkeys](../passkeys.md) |
@@ -77,7 +78,7 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 | [Magic link](plugins/magic-link.md) | 10 | 44 |
 | [Model Context Protocol](plugins/mcp.md) | 0 | 108 |
 | [Multi session](plugins/multi-session.md) | 15 | 22 |
-| [OAuth popup](plugins/oauth-popup.md) | 0 | 29 |
+| [OAuth popup](plugins/oauth-popup.md) | 56 | 5 |
 | [OAuth provider](plugins/oauth-provider.md) | 0 | 455 |
 | [OAuth proxy](plugins/oauth-proxy.md) | 0 | 17 |
 | [One tap](plugins/one-tap.md) | 36 | 18 |
