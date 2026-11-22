@@ -111,11 +111,7 @@ func (s *Server) LoginWithOptions(ctx context.Context, opts LoginOptions) (*Logi
 			fields[name] = value
 		}
 	}
-	session, err := call.IssueSession(opts.UserID, func(ctx context.Context, row auth.StoredSession) (auth.User, error) {
-		row, err := s.Auth.WithTrustedSessionFields(row, fields)
-		if err != nil {
-			return auth.User{}, err
-		}
+	session, err := call.IssueSessionWithFields(opts.UserID, fields, func(ctx context.Context, row auth.StoredSession) (auth.User, error) {
 		if err := s.store.CreateSession(ctx, row); err != nil {
 			return auth.User{}, err
 		}

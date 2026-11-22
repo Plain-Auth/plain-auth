@@ -92,8 +92,8 @@ func OpenWithOptions(ctx context.Context, dialect, dsn string, profiles []string
 		for _, col := range additions {
 			f := col.field
 			column := f.Definition(s.dialect)
-			if f.Default != nil {
-				column += " default " + s.sessionFieldDefault(f.Default)
+			if value := f.StaticDefault(); value != nil {
+				column += " default " + s.sessionFieldDefault(value)
 			}
 			if _, err := db.ExecContext(ctx, s.bind(`ALTER TABLE "`+col.model+`" ADD COLUMN `)+column); err != nil {
 				return fmt.Errorf("sqlstore: add %s column %q: %w", col.model, f.Column, err)
@@ -127,7 +127,7 @@ func (s *Store) missingModelFields(ctx context.Context, db migrationConnection, 
 			}
 			continue
 		}
-		if f.Required && f.Default == nil {
+		if f.Required && f.StaticDefault() == nil {
 			if !checked {
 				if err := db.QueryRowContext(ctx, s.bind(`SELECT EXISTS (SELECT 1 FROM "`+model+`")`)).Scan(&populated); err != nil {
 					return nil, err

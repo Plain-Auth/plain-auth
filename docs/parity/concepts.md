@@ -185,6 +185,7 @@
       - [ ] `type`
       - [ ] `required`
       - [ ] `defaultValue`
+        - [x] Evaluate application defaults when creating a record and preserve explicit writable input and nulls ([test](../../conformance/computed-fields.mjs#L4))
       - [ ] `input`
       - [ ] `returned`
       - [ ] `{ input: true, returned: true }`

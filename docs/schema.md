@@ -63,6 +63,8 @@ Each definition requires a `type` of `string`, `boolean`, `number` (a signed 32-
 
 A date field accepts a timestamp with an explicit offset, such as `"2026-02-15T06:02:03.123-05:00"`. The API returns `"2026-02-15T11:02:03.123Z"`. New schemas use SQLite `date`, PostgreSQL `timestamptz`, and MySQL `timestamp(3)`. Values must fit the selected database's timestamp range. For example, dates of birth before 1970 exceed MySQL's `TIMESTAMP` range. When adding a required date column to a populated table, supply a static timestamp default to backfill existing rows. Repeated migration preserves previously written values.
 
+Go applications may configure a zero-argument function as a creation default. Schema generation and migration never call it. A nullable column added to a populated table begins with null for existing rows. A required column on that table needs an explicit static backfill before deploying the callback. CLI JSON declaration files accept static defaults.
+
 Use the same declarations and plugin selection for each command. Set `AUTH_DSN` for `check` and `migrate`.
 
 ```sh

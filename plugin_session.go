@@ -30,8 +30,25 @@ func (c EndpointContext) RequireFreshSession() (*SessionResult, error) {
 // resulting session in one transaction. The callback must verify the current
 // proof owner and commit the provided session before returning its user.
 func (c EndpointContext) IssueSession(userID string, commit func(context.Context, StoredSession) (User, error)) (*SessionResult, error) {
+	r := c.Request
+	session, _ := c.Auth.newSession(userID, RequestMeta{IPAddress: c.Auth.clientIP(r), UserAgent: r.UserAgent()})
+	return c.commitIssuedSession(userID, session, commit)
+}
+
+// IssueSessionWithFields applies trusted overrides before evaluating defaults,
+// then publishes the session only after commit persists it.
+func (c EndpointContext) IssueSessionWithFields(userID string, fields map[string]any, commit func(context.Context, StoredSession) (User, error)) (*SessionResult, error) {
+	r := c.Request
+	row := c.Auth.sessionDraft(userID, RequestMeta{IPAddress: c.Auth.clientIP(r), UserAgent: r.UserAgent()})
+	session, err := c.Auth.WithTrustedSessionFields(row, fields)
+	if err != nil {
+		return nil, err
+	}
+	return c.commitIssuedSession(userID, session, commit)
+}
+
+func (c EndpointContext) commitIssuedSession(userID string, session StoredSession, commit func(context.Context, StoredSession) (User, error)) (*SessionResult, error) {
 	a, r := c.Auth, c.Request
-	session, _ := a.newSession(userID, RequestMeta{IPAddress: a.clientIP(r), UserAgent: r.UserAgent()})
 	user, err := commit(r.Context(), session)
 	if err != nil {
 		return nil, err

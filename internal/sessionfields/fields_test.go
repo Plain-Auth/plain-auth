@@ -34,3 +34,25 @@ func TestDateValue(t *testing.T) {
 		}
 	}
 }
+
+func TestComputedDefaultSignaturesAndValidation(t *testing.T) {
+	var nilCallback func() string
+	for _, invalid := range []any{nilCallback, func(int) string { return "" }, func() {}, func() (int, int) { return 0, 0 }} {
+		if _, err := NormalizeUser(map[string]Field{"example": {Type: String, Default: invalid}}); err == nil {
+			t.Fatal("accepted invalid callback signature")
+		}
+	}
+	for _, generate := range []any{func() int { return 3 }, func() any { panic("private application detail") }} {
+		fields, err := Normalize(map[string]Field{"value": {Type: String, Required: true, Default: generate}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		f := fields["value"]
+		if f.StaticDefault() != nil {
+			t.Fatal("callback offered as a SQL default")
+		}
+		if _, err := f.CreationDefault(); err == nil || err.Error() == "private application detail" {
+			t.Fatalf("invalid callback returned %v", err)
+		}
+	}
+}

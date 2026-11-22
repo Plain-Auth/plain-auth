@@ -83,29 +83,30 @@ func (a *Auth) prepareUserFields(input map[string]any, create, trusted bool) (Us
 		field := a.opts.UserAdditionalFields[name]
 		raw, ok := input[name]
 		if ok && field.ServerOnly && !trusted {
-			switch {
-			case create && field.Default != nil:
-				raw = field.Default
-			case emptyUserInput(raw):
-				// A false, zero, empty or null browser value for an input:false
-				// field is ignored by the profile parser.
+			if create && field.Default != nil || emptyUserInput(raw) {
 				ok = false
-			default:
+			} else {
 				return out, &APIError{400, "FIELD_NOT_ALLOWED", name + " is not allowed to be set"}
 			}
 		}
-		if !ok {
+		var value any
+		var err error
+		if ok {
+			value, err = field.Value(raw)
+			if err != nil {
+				return out, &APIError{400, "VALIDATION_ERROR", "Invalid field " + name}
+			}
+		} else {
 			if !create {
 				continue
 			}
-			raw = field.Default
-			if field.Required && raw == nil {
+			if field.Required && field.Default == nil {
 				return out, &APIError{400, "MISSING_FIELD", name + " is required"}
 			}
-		}
-		value, err := field.Value(raw)
-		if err != nil {
-			return out, &APIError{400, "VALIDATION_ERROR", "Invalid field " + name}
+			value, err = field.CreationDefault()
+			if err != nil {
+				return out, fmt.Errorf("invalid default for user field %q: %w", name, err)
+			}
 		}
 		if out.columns == nil {
 			out.columns = make(map[string]any)

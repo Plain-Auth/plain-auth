@@ -1682,3 +1682,8 @@ test("configured date fields persist public instants across profile and session 
   const { compareDateFields } = await import("./date-fields.mjs");
   await compareDateFields(t, { reference, goFixture, instrument });
 });
+
+test("computed additional fields honor trusted ownership, explicit input and per-session defaults", async t => {
+  const { compareComputedFields } = await import("./computed-fields.mjs");
+  await compareComputedFields(t, { reference, goFixture, instrument });
+});

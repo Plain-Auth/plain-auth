@@ -36,7 +36,7 @@ func (s *Store) ReadUserFields(ctx context.Context, id string, fields map[string
 		}
 		raw, ok := rec.fields[f.Column]
 		if !ok {
-			raw = f.Default
+			raw = f.StaticDefault()
 		}
 		out[f.Column] = raw
 	}

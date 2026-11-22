@@ -374,14 +374,7 @@ func digest(token string) string {
 	return hex.EncodeToString(sum[:])
 }
 func (a *Auth) newSession(id string, meta RequestMeta) (StoredSession, string) {
-	now := a.now().UTC().Truncate(time.Millisecond)
-	ttl := a.opts.SessionTTL
-	if meta.RememberMe != nil && !*meta.RememberMe {
-		ttl = min(ttl, 24*time.Hour)
-	}
-	s := Session{ID: randomID(), UserID: id, IPAddress: meta.IPAddress, UserAgent: meta.UserAgent, CreatedAt: now, UpdatedAt: now, ExpiresAt: now.Add(ttl)}
-	s.Token = randomID()
-	row := StoredSession{Session: s}
+	row := a.sessionDraft(id, meta)
 	if len(a.opts.SessionAdditionalFields) > 0 {
 		prepared, err := a.WithTrustedSessionFields(row, nil)
 		if err != nil {
@@ -390,7 +383,18 @@ func (a *Auth) newSession(id string, meta RequestMeta) (StoredSession, string) {
 			row = prepared
 		}
 	}
-	return row, s.Token
+	return row, row.Token
+}
+
+func (a *Auth) sessionDraft(id string, meta RequestMeta) StoredSession {
+	now := a.now().UTC().Truncate(time.Millisecond)
+	ttl := a.opts.SessionTTL
+	if meta.RememberMe != nil && !*meta.RememberMe {
+		ttl = min(ttl, 24*time.Hour)
+	}
+	s := Session{ID: randomID(), UserID: id, IPAddress: meta.IPAddress, UserAgent: meta.UserAgent, CreatedAt: now, UpdatedAt: now, ExpiresAt: now.Add(ttl)}
+	s.Token = randomID()
+	return StoredSession{Session: s}
 }
 
 // SignUpEmail creates a credential account and its first session atomically.

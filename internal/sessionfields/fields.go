@@ -26,8 +26,9 @@ const (
 const MillisecondUTC = "2006-01-02T15:04:05.000Z"
 
 type Field struct {
-	Type                         Type
-	Column                       string
+	Type   Type
+	Column string
+	// Default accepts a scalar or a non-nil func() T returning one scalar.
 	Default                      any
 	Required, ServerOnly, Hidden bool
 }
@@ -101,7 +102,7 @@ func normalize(fields map[string]Field, model string, validName func(string) boo
 			return nil, fmt.Errorf("unsupported type %q for %s field %q", f.Type, model, name)
 		}
 		if f.Default != nil {
-			value, err := f.Value(f.Default)
+			value, err := f.normalizeDefault()
 			if err != nil {
 				return nil, fmt.Errorf("invalid default for %s field %q: %w", model, name, err)
 			}
@@ -110,6 +111,48 @@ func normalize(fields map[string]Field, model string, validName func(string) boo
 		result[name] = f
 	}
 	return result, nil
+}
+
+type computedDefault func() any
+
+// Validate the signature at setup, leaving evaluation to creation.
+func (f Field) normalizeDefault() (any, error) {
+	if _, ok := f.Default.(computedDefault); ok {
+		return f.Default, nil
+	}
+	v := reflect.ValueOf(f.Default)
+	if v.Kind() != reflect.Func {
+		return f.Value(f.Default)
+	}
+	if v.IsNil() || v.Type().NumIn() != 0 || v.Type().NumOut() != 1 {
+		return nil, fmt.Errorf("computed default must be a non-nil function with no arguments and one result")
+	}
+	if generate, ok := f.Default.(func() any); ok {
+		return computedDefault(generate), nil
+	}
+	return computedDefault(func() any { return v.Call(nil)[0].Interface() }), nil
+}
+
+// StaticDefault returns the configured backfill value. A callback can only
+// provide values for new records and never runs during reads or migrations.
+func (f Field) StaticDefault() any {
+	if reflect.ValueOf(f.Default).Kind() == reflect.Func {
+		return nil
+	}
+	return f.Default
+}
+
+// CreationDefault obtains and validates a new value for a normalized field.
+func (f Field) CreationDefault() (value any, err error) {
+	if generate, ok := f.Default.(computedDefault); ok {
+		defer func() {
+			if recover() != nil {
+				value, err = nil, fmt.Errorf("computed default panicked")
+			}
+		}()
+		return f.Value(generate())
+	}
+	return f.Value(f.Default)
 }
 
 // Value normalizes scalar numbers to the portable signed INTEGER range.

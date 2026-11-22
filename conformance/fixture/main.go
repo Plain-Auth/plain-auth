@@ -100,6 +100,15 @@ func main() {
 			additionalUserFields["locale"] = field
 		}
 	}
+	if os.Getenv("CONFORMANCE_COMPUTED_FIELDS") == "1" {
+		additionalUserFields = map[string]authn.UserField{
+			"approval": {Type: authn.FieldString, Required: true, ServerOnly: true, Default: func() string { return "generated" }},
+			"shade":    {Type: authn.FieldString, Default: func() string { return "blue" }},
+		}
+		additionalSessionFields = map[string]authn.SessionField{
+			"channel": {Type: authn.FieldString, Required: true, Default: func() string { return "browser" }},
+		}
+	}
 	if os.Getenv("CONFORMANCE_DATE_FIELDS") == "1" {
 		additionalUserFields = map[string]authn.UserField{"reviewedAt": {Type: authn.FieldDate, Column: "profile_reviewed_at"}}
 		additionalSessionFields = map[string]authn.SessionField{"remindAt": {Type: authn.FieldDate, Column: "session_remind_at"}}

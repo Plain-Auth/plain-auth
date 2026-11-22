@@ -72,10 +72,13 @@ func (a *Auth) WithTrustedSessionFields(row StoredSession, overrides map[string]
 	for _, name := range sessionfields.Names(fields) {
 		f := fields[name]
 		raw, ok := overrides[name]
-		if !ok {
-			raw = f.Default
+		var v any
+		var err error
+		if ok {
+			v, err = f.Value(raw)
+		} else {
+			v, err = f.CreationDefault()
 		}
-		v, err := f.Value(raw)
 		if err != nil {
 			return StoredSession{}, fmt.Errorf("session field %q: %w", name, err)
 		}

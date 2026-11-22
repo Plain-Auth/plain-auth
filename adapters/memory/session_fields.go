@@ -37,7 +37,7 @@ func (s *Store) ReadSessionFields(ctx context.Context, rows []auth.Session, fiel
 			if !f.Hidden {
 				value, exists := values[f.Column]
 				if !exists {
-					value = f.Default
+					value = f.StaticDefault()
 				}
 				public[name] = value
 			}

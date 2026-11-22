@@ -45,3 +45,4 @@ These checks exercise the Go HTTP client, router mounts and SQL drivers.
   - [x] Serialize first-administrator provisioning across independent connections on all three SQL engines ([test](../../adapters/sqlstore/admin_test.go#L314))
   - [x] Require database-enforced unique usernames and reject a partial unique index ([test](../../adapters/sqlstore/username_test.go#L474))
   - [x] Backfill populated date columns with the correct UTC instant and check existing timestamp precision ([test](../../adapters/sqlstore/date_fields_test.go#L102))
+  - [x] Keep computed defaults out of schema migrations and preserve existing nullable values across three SQL engines ([test](../../adapters/sqlstore/computed_fields_test.go#L120))

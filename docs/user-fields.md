@@ -66,12 +66,18 @@ err = auth.UpdateTrustedUserFields(ctx, userID, map[string]any{
 
 `Hidden` excludes a column from public user reads, even when the owner may write it. Pair it with `ServerOnly` when only a trusted application may supply the value. Hidden fields are ordinary database values. Apply your storage access controls and encryption requirements to them. Configured nodes read user profiles from storage for current-session requests and bypass the browser session snapshot. Use the same field declarations across nodes serving your application.
 
+## Compute a default at registration
+
+Give `Default` a zero-argument Go function with one return value. For example, record when a profile is prepared using `plainauth.UserField{Type: plainauth.FieldDate, Required: true, ServerOnly: true, Default: time.Now}`. The callback runs on creation attempts that need the value. A later read or ordinary profile update uses the stored value. A browser-supplied value for this server-owned field at registration is replaced with the application's default.
+
+For a writable field, an explicit value takes precedence. Explicit null clears an optional field. Keep callbacks safe for concurrent requests and free of external side effects, since a creation attempt may fail after a default has been evaluated. A callback that panics or returns an invalid value fails creation.
+
 ## Database upgrades
 
 `schema.GenerateWithAdditionalFields(dialect, profiles, decl)` renders fresh DDL. `sqlstore.CheckSchemaWithAdditionalFields(ctx, dialect, dsn, profiles, decl)` checks the existing catalog without changing it. `OpenWithAdditionalFields` validates all requested user and session additions under the migration lock. A populated table can gain a nullable field or a required field with a supplied static default. Plan a backfill before requiring a column whose value must be computed for each row. Existing columns must have a compatible type and nullability and accept writes.
 
-Supported values include strings, booleans, signed 32-bit integers, and timestamps. Set a timestamp with a Go `time.Time` or an RFC 3339 string. The public profile returns a UTC string with three fractional digits. SQL storage details are in the [schema guide](schema.md#configure-user-and-session-fields). A required field needs a value or static default when the account is created. Explicit null is valid only on nullable fields. Choose logical and physical names that are distinct from core, plugin and reserved request fields.
+Supported values include strings, booleans, signed 32-bit integers, and timestamps. Set a timestamp with a Go `time.Time` or an RFC 3339 string. The public profile returns a UTC string with three fractional digits. SQL storage details are in the [schema guide](schema.md#configure-user-and-session-fields). A required field needs a supplied value or a valid default when the account is created. Explicit null is valid only on nullable fields. Choose logical and physical names that are distinct from core, plugin and reserved request fields.
 
 Use `--user-fields FILE` with `authctl generate`, `authctl migrate` and `authctl check schema`. Applications can read the same declaration with `schema.ReadUserFields`. [Schema commands](schema.md#configure-user-and-session-fields)
 
-The [feature checklist](parity/plugins/additional-fields.md) tracks further field types, computed defaults, custom validators and transforms.
+The [feature checklist](parity/plugins/additional-fields.md) tracks the additional-fields interface.
