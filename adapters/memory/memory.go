@@ -107,6 +107,11 @@ func (s *Store) CreateUser(ctx context.Context, u auth.User, hash string, first 
 	return nil
 }
 
+// SaveFixtureUser persists a test profile without an authenticating credential.
+func (s *Store) SaveFixtureUser(ctx context.Context, u auth.User) error {
+	return s.CreateUser(ctx, u, "", nil)
+}
+
 func (s *Store) Credential(ctx context.Context, email string) (auth.User, string, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()

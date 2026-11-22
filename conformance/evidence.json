@@ -8861,5 +8861,98 @@
       "test": "adapters/sqlstore/stripe_checkout_completion_test.go",
       "marker": "func TestStripeCheckoutCompletionObserver("
     }
+  ],
+  "docs/content/docs/plugins/test-utils.mdx#L109": [
+    {
+      "label": "Save a user fixture with no linked account or issued login on the four supported stores",
+      "test": "authtest/server_test.go",
+      "marker": "fixture acquired a credential",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/test-utils.mdx#L118": [
+    {
+      "label": "Remove the fixture and revoke its sessions on another instance",
+      "test": "authtest/server_test.go",
+      "marker": "deleted fixture signed in",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/test-utils.mdx#L161": [
+    {
+      "label": "Issue an authenticated session with the configured lifetime and owner",
+      "test": "authtest/server_test.go",
+      "marker": "fixture session did not use host policy"
+    }
+  ],
+  "docs/content/docs/plugins/test-utils.mdx#L178": [
+    {
+      "label": "Generate independent authenticated request headers for a stored user",
+      "test": "authtest/server_test.go",
+      "marker": "header helper reused"
+    }
+  ],
+  "docs/content/docs/plugins/test-utils.mdx#L192": [
+    {
+      "label": "Supply a signed browser cookie and optionally override its domain",
+      "test": "authtest/server_test.go",
+      "marker": "cookie override"
+    }
+  ],
+  "docs/content/docs/plugins/test-utils.mdx#L213/`name`": [
+    {
+      "label": "Use the issued session cookie’s name when a browser fixture logs in",
+      "test": "authtest/server_test.go",
+      "marker": "wrong fixture cookie attributes",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/test-utils.mdx#L214/`value`": [
+    {
+      "label": "Use the issued session cookie’s value when a browser fixture logs in",
+      "test": "authtest/server_test.go",
+      "marker": "wrong fixture cookie attributes",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/test-utils.mdx#L215/`domain`": [
+    {
+      "label": "Use the issued session cookie’s domain when a browser fixture logs in",
+      "test": "authtest/server_test.go",
+      "marker": "wrong fixture cookie attributes",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/test-utils.mdx#L216/`path`": [
+    {
+      "label": "Use the issued session cookie’s path when a browser fixture logs in",
+      "test": "authtest/server_test.go",
+      "marker": "wrong fixture cookie attributes",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/test-utils.mdx#L217/`httpOnly`": [
+    {
+      "label": "Use the issued session cookie’s httpOnly when a browser fixture logs in",
+      "test": "authtest/server_test.go",
+      "marker": "wrong fixture cookie attributes",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/test-utils.mdx#L218/`secure`": [
+    {
+      "label": "Use the issued session cookie’s secure when a browser fixture logs in",
+      "test": "authtest/server_test.go",
+      "marker": "wrong fixture cookie attributes",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/test-utils.mdx#L219/`sameSite`": [
+    {
+      "label": "Use the issued session cookie’s sameSite when a browser fixture logs in",
+      "test": "authtest/server_test.go",
+      "marker": "wrong fixture cookie attributes",
+      "complete": true
+    }
   ]
 }

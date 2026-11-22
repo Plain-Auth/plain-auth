@@ -69,6 +69,19 @@ func (s *Store) DeleteAccount(ctx context.Context, id, token, expectedHash, dele
 	return nil
 }
 
+// DeleteFixtureUser removes the supplied user and its dependent records in a test store.
+func (s *Store) DeleteFixtureUser(ctx context.Context, id string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if rec, ok := s.users[id]; ok {
+		s.deleteUserRecords(id, rec)
+	}
+	return nil
+}
+
 func (s *Store) deleteUserRecords(id string, rec credential) {
 	s.deleteSessions(id, "")
 	for key, t := range s.resets {

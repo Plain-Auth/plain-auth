@@ -19,6 +19,15 @@ func (s *Store) Close() error { return s.db.Close() }
 
 // CreateUser commits the user, credential account, and optional session together.
 func (s *Store) CreateUser(ctx context.Context, user authn.User, passwordHash string, initial *authn.StoredSession) error {
+	return s.createUser(ctx, user, &passwordHash, initial)
+}
+
+// SaveFixtureUser persists a test user without creating a credential or session.
+func (s *Store) SaveFixtureUser(ctx context.Context, user authn.User) error {
+	return s.createUser(ctx, user, nil, nil)
+}
+
+func (s *Store) createUser(ctx context.Context, user authn.User, passwordHash *string, initial *authn.StoredSession) error {
 	if initial != nil && initial.UserID != user.ID {
 		return errors.New("sqlstore: initial session belongs to a different user")
 	}
@@ -56,11 +65,13 @@ func (s *Store) CreateUser(ctx context.Context, user authn.User, passwordHash st
 	if n == 0 {
 		return authn.ErrEmailTaken
 	}
-	_, err = tx.ExecContext(ctx, s.bind(`INSERT INTO "account"
+	if passwordHash != nil {
+		_, err = tx.ExecContext(ctx, s.bind(`INSERT INTO "account"
         ("id","accountId","providerId","userId","password","createdAt","updatedAt") VALUES (?,?,'credential',?,?,?,?)`),
-		rand.Text(), user.ID, user.ID, passwordHash, s.date(user.CreatedAt), s.date(user.UpdatedAt))
-	if err != nil {
-		return err
+			rand.Text(), user.ID, user.ID, *passwordHash, s.date(user.CreatedAt), s.date(user.UpdatedAt))
+		if err != nil {
+			return err
+		}
 	}
 	if err := s.persistUsernames(ctx, tx, user, false); err != nil {
 		return err

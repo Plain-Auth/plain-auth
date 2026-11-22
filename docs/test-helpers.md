@@ -16,6 +16,37 @@ team := authtest.NewOrganization("Support Team")
 team.Slug = "support"
 ```
 
+## Test a protected handler
+
+Construct a test server with the same public options as your application and a dedicated database. Mount `server.Auth` on your normal router. The example below uses the in-memory adapter. SQLite, PostgreSQL and MySQL support the same setup and teardown operations.
+
+```go
+server, err := authtest.New(auth.Options{
+    BaseURL: "https://app.example.test",
+    Secret: strings.Repeat("x", 40),
+    Store: memory.New(),
+})
+if err != nil {
+    t.Fatal(err)
+}
+user, err := server.SaveUser(t.Context(), authtest.NewUser())
+if err != nil {
+    t.Fatal(err)
+}
+login, err := server.Login(t.Context(), user.ID)
+if err != nil {
+    t.Fatal(err)
+}
+req := httptest.NewRequest(http.MethodGet, "https://app.example.test/profile", nil)
+req.Header = login.Headers.Clone()
+res := httptest.NewRecorder()
+router.ServeHTTP(res, req) // router mounts server.Auth and your protected /profile handler
+```
+
+`SaveUser` writes the user's profile without adding a password, linked provider, or session. `Login` creates a session for that user and returns the user, session, token, request headers, and signed HTTP cookie. The cookie uses the auth instance's name, signing secret, security settings, and expiration policy. Pass `login.Headers` to a native auth call or set `login.Cookies` in your browser fixture. Reusing this result keeps requests in the same session.
+
+`GetAuthHeaders(ctx, userID)` and `GetCookies(ctx, userID, domain)` each create a new session. An empty domain selects the configured cookie domain or the auth hostname. To remove a fixture and its sessions, call `server.DeleteUser(ctx, user.ID)` while the test database is still open. Custom adapters can provide profile persistence and cleanup through `authtest.UserStore`. [Four-adapter tests](../authtest/server_test.go)
+
 ## Test email and phone codes
 
 Create one recorder per test and wrap the sender when configuring the plugin. The wrapper captures the issued code under its delivery address and calls the sender you supply. Pass `nil` for a test that uses only the recorder. A sender error still reaches the caller. Captured proofs stay in the test process even if the database stores a hash.

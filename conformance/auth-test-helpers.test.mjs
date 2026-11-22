@@ -11,7 +11,7 @@ test("in-process test fixtures create unsaved defaults and retain the last OTP s
     t.after(() => database.close());
     const deliveries = [];
     const options = {
-      baseURL: "http://localhost:3000",
+      baseURL: "https://app.example.test",
       secret: "fixture-only-secret-for-test-helpers-0123456789",
       database,
       telemetry: { enabled: false },
@@ -45,4 +45,26 @@ test("in-process test fixtures create unsaved defaults and retain the last OTP s
   assert.equal(result.user.id, user.id);
   helpers.clearOTPs();
   assert.equal(helpers.getOTP(user.email), undefined);
+
+  const profile = await helpers.saveUser(helpers.createUser({emailVerified:false}));
+  assert.equal(profile.emailVerified,false);
+  assert.equal(database.prepare('SELECT count(*) AS n FROM account WHERE userId=?').get(profile.id).n, 0);
+  const login = await helpers.login({userId:profile.id});
+  assert.equal(login.session.userId,profile.id);
+  assert.equal(login.user.id,profile.id);
+  assert.equal(login.token,login.session.token);
+  const {name,value,domain,path,httpOnly,secure,sameSite} = login.cookies[0];
+  assert.deepEqual({domain,path,httpOnly,secure,sameSite},{domain:"app.example.test",path:"/",httpOnly:true,secure:true,sameSite:"Lax"});
+  assert.notEqual(value,login.token);
+  const headers = await helpers.getAuthHeaders({userId:profile.id});
+  const browserCookies = await helpers.getCookies({userId:profile.id,domain:".example.test"});
+  assert.equal(browserCookies[0].domain,".example.test");
+  const supplied = [login.headers, headers, new Headers({cookie:name+"="+value}), new Headers({cookie:browserCookies[0].name+"="+browserCookies[0].value})];
+  for (const headers of supplied) {
+    const who = await auth.api.getSession({headers});
+    assert.equal(who.user.id,profile.id);
+  }
+  await helpers.deleteUser(profile.id);
+  for (const headers of supplied) assert.equal(await auth.api.getSession({headers}),null);
+  assert.equal(database.prepare('SELECT count(*) AS n FROM session WHERE userId=?').get(profile.id).n,0);
 });

@@ -102,6 +102,24 @@ func (s *Store) DeleteAccount(ctx context.Context, userID, sessionToken, expecte
 	return tx.Commit()
 }
 
+// DeleteFixtureUser removes the supplied user and its dependent records in a test database.
+func (s *Store) DeleteFixtureUser(ctx context.Context, id string) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	if err = s.lockAccount(ctx, tx, id); errors.Is(err, authn.ErrNotFound) {
+		return nil
+	} else if err != nil {
+		return err
+	}
+	if err = s.deleteAccountRows(ctx, tx, id); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
 func (s *Store) deleteAccountRows(ctx context.Context, tx *sql.Tx, userID string) error {
 	if _, err := tx.ExecContext(ctx, s.bind(`DELETE FROM "verification" WHERE "identifier"=?`), sourceOwner(userID)); err != nil {
 		return err

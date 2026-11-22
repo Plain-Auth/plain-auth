@@ -92,7 +92,7 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 | [Sign in with Ethereum](plugins/siwe.md) | 0 | 40 |
 | [Single sign-on](plugins/sso.md) | 72 | 308 |
 | [Stripe](plugins/stripe.md) | 177 | 183 |
-| [Test utils](plugins/test-utils.md) | 12 | 38 |
+| [Test utils](plugins/test-utils.md) | 33 | 29 |
 | [Username](plugins/username.md) | 33 | 54 |
 
 ## Third-party integrations
