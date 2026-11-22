@@ -48,7 +48,7 @@ func database(t *testing.T, dialect string) (*sql.DB, string) {
 	driver, dsn := "sqlite3", filepath.Join(t.TempDir(), "state.db")
 	switch dialect {
 	case "sqlite":
-		dsn += "?_busy_timeout=5000&_journal_mode=WAL&_txlock=immediate"
+		dsn += "?_busy_timeout=5000&_txlock=immediate"
 	case "postgres", "mysql":
 		dsn = os.Getenv("AUTH_TEST_" + strings.ToUpper(dialect) + "_DSN")
 		if dsn == "" {
@@ -111,6 +111,12 @@ func database(t *testing.T, dialect string) (*sql.DB, string) {
 	}
 	t.Cleanup(func() { db.Close() })
 	if dialect == "sqlite" {
+		// WAL is a persistent file setting. Select it before opening competing
+		// connections so first-use journal conversion cannot race ledger DDL.
+		var mode string
+		if err := db.QueryRowContext(ctx, "PRAGMA journal_mode=WAL").Scan(&mode); err != nil || mode != "wal" {
+			t.Fatalf("enable SQLite WAL: mode %q, error %v", mode, err)
+		}
 		dsn, _, _ = strings.Cut(dsn, "?")
 	}
 	return db, dsn

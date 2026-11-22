@@ -13,11 +13,6 @@ func TestCheckoutLedgerSchemaMigration(t *testing.T) {
 		t.Run(dialect, func(t *testing.T) {
 			ctx := t.Context()
 			db, dsn := database(t, dialect)
-			// The host owns the pool and its journal mode. Establish the fixture
-			// connection before testing concurrent schema provisioning.
-			if err := db.PingContext(ctx); err != nil {
-				t.Fatal(err)
-			}
 			ddl, err := schema.Generate(dialect, []string{"polar", "sso"})
 			if err != nil {
 				t.Fatal(err)
