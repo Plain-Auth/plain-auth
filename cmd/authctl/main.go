@@ -28,7 +28,7 @@ const usage = `Usage: authctl <command>
   secret                                       Print a new signing secret
 
   check, generate and migrate accept --plugins with comma-separated schema profiles.
-  check, generate and migrate accept --session-fields FILE with a JSON field definition map.
+  check, generate and migrate accept --user-fields FILE and --session-fields FILE with JSON field definitions.
   migrate --api-key-ledger includes the API-key schema and reserves existing key digests.
 `
 
@@ -72,14 +72,8 @@ func run(ctx context.Context, args []string, out, errOut io.Writer) error {
 		fs.SetOutput(errOut)
 		dialect := fs.String("dialect", "", "Database dialect (sqlite, postgres, mysql)")
 		pluginNames := fs.String("plugins", "", "Comma-separated schema profiles ("+strings.Join(schema.Profiles(), ", ")+")")
-		var fieldFile string
-		fs.Func("session-fields", "Read additional session fields from a JSON file", func(v string) error {
-			if v == "" {
-				return errors.New("a session fields file is required")
-			}
-			fieldFile = v
-			return nil
-		})
+		userFile := fieldPathFlag(fs, "user")
+		sessionFile := fieldPathFlag(fs, "session")
 		var asJSON, prepareKeyLedger bool
 		if args[0] == "check" {
 			fs.BoolVar(&asJSON, "json", false, "Write findings as a JSON array")
@@ -102,24 +96,22 @@ func run(ctx context.Context, args []string, out, errOut io.Writer) error {
 				profiles = append(profiles, strings.TrimSpace(name))
 			}
 		}
-		var fields map[string]schema.SessionField
-		if fieldFile != "" {
-			file, err := os.Open(fieldFile)
-			if err != nil {
-				return fmt.Errorf("read session fields: %w", err)
-			}
-			fields, err = schema.ReadSessionFields(file)
-			if err = errors.Join(err, file.Close()); err != nil {
-				return fmt.Errorf("read session fields: %w", err)
-			}
+		users, err := loadFieldFile(*userFile, "user", schema.ReadUserFields)
+		if err != nil {
+			return err
 		}
+		sessions, err := loadFieldFile(*sessionFile, "session", schema.ReadSessionFields)
+		if err != nil {
+			return err
+		}
+		fields := schema.AdditionalFields{User: users, Session: sessions}
 		if args[0] == "check" {
 			return checkDatabase(ctx, *dialect, profiles, fields, asJSON, out)
 		}
 		if prepareKeyLedger {
 			profiles = append(profiles, "api-key")
 		}
-		ddl, err := schema.GenerateWithSessionFields(*dialect, profiles, fields)
+		ddl, err := schema.GenerateWithAdditionalFields(*dialect, profiles, fields)
 		if err != nil {
 			return err
 		}
@@ -132,8 +124,8 @@ func run(ctx context.Context, args []string, out, errOut io.Writer) error {
 			return errors.New("set AUTH_DSN to the target database")
 		}
 		var store *sqlstore.Store
-		if len(fields) > 0 {
-			store, err = sqlstore.OpenWithSessionFields(ctx, *dialect, dsn, profiles, fields)
+		if len(fields.User)+len(fields.Session) > 0 {
+			store, err = sqlstore.OpenWithAdditionalFields(ctx, *dialect, dsn, profiles, fields)
 		} else {
 			store, err = sqlstore.OpenWithSchema(ctx, *dialect, dsn, ddl)
 		}
@@ -151,4 +143,31 @@ func run(ctx context.Context, args []string, out, errOut io.Writer) error {
 	default:
 		return fmt.Errorf("unknown command %q\n%s", args[0], usage)
 	}
+}
+
+func fieldPathFlag(fs *flag.FlagSet, model string) *string {
+	var file string
+	fs.Func(model+"-fields", "Read additional "+model+" fields from a JSON file", func(value string) error {
+		if value == "" {
+			return fmt.Errorf("a %s fields file is required", model)
+		}
+		file = value
+		return nil
+	})
+	return &file
+}
+
+func loadFieldFile[T any](path, model string, parse func(io.Reader) (map[string]T, error)) (map[string]T, error) {
+	if path == "" {
+		return nil, nil
+	}
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, fmt.Errorf("read %s fields: %w", model, err)
+	}
+	fields, err := parse(file)
+	if err = errors.Join(err, file.Close()); err != nil {
+		return nil, fmt.Errorf("read %s fields: %w", model, err)
+	}
+	return fields, nil
 }

@@ -17,12 +17,30 @@ type SessionField = sessionfields.Field
 // accept type, column, default, required, serverOnly and hidden. Configuration
 // is validated using the same rules as session issuance and schema generation.
 func ReadSessionFields(r io.Reader) (map[string]SessionField, error) {
+	fields, err := readFields(r, "session")
+	if err != nil {
+		return nil, err
+	}
+	return sessionfields.Normalize(fields)
+}
+
+// ReadUserFields reads a profile declaration file, applying the same scalar,
+// reserved-name and column mapping rules as configured user profiles.
+func ReadUserFields(r io.Reader) (map[string]UserField, error) {
+	fields, err := readFields(r, "user")
+	if err != nil {
+		return nil, err
+	}
+	return sessionfields.NormalizeUser(fields)
+}
+
+func readFields(r io.Reader, model string) (map[string]sessionfields.Field, error) {
 	d := json.NewDecoder(r)
 	d.UseNumber()
 	if err := startFieldObject(d); err != nil {
 		return nil, err
 	}
-	fields := make(map[string]SessionField)
+	fields := make(map[string]sessionfields.Field)
 	for d.More() {
 		token, err := d.Token()
 		if err != nil {
@@ -30,9 +48,9 @@ func ReadSessionFields(r io.Reader) (map[string]SessionField, error) {
 		}
 		name := token.(string)
 		if _, used := fields[name]; used {
-			return nil, fmt.Errorf("duplicate session field %q", name)
+			return nil, fmt.Errorf("duplicate %s field %q", model, name)
 		}
-		field, err := readFieldDefinition(d, name)
+		field, err := readFieldDefinition(d, model, name)
 		if err != nil {
 			return nil, err
 		}
@@ -45,9 +63,9 @@ func ReadSessionFields(r io.Reader) (map[string]SessionField, error) {
 		if err != nil {
 			return nil, err
 		}
-		return nil, errors.New("expected exactly one session fields JSON object")
+		return nil, fmt.Errorf("expected exactly one %s fields JSON object", model)
 	}
-	return sessionfields.Normalize(fields)
+	return fields, nil
 }
 
 func startFieldObject(d *json.Decoder) error {
@@ -61,10 +79,10 @@ func startFieldObject(d *json.Decoder) error {
 	return nil
 }
 
-func readFieldDefinition(d *json.Decoder, name string) (SessionField, error) {
-	var f SessionField
+func readFieldDefinition(d *json.Decoder, model, name string) (sessionfields.Field, error) {
+	var f sessionfields.Field
 	if err := startFieldObject(d); err != nil {
-		return f, fmt.Errorf("session field %q: %w", name, err)
+		return f, fmt.Errorf("%s field %q: %w", model, name, err)
 	}
 	seen := make(map[string]bool)
 	for d.More() {
@@ -74,7 +92,7 @@ func readFieldDefinition(d *json.Decoder, name string) (SessionField, error) {
 		}
 		k := key.(string)
 		if seen[k] {
-			return f, fmt.Errorf("duplicate property %q on session field %q", k, name)
+			return f, fmt.Errorf("duplicate property %q on %s field %q", k, model, name)
 		}
 		seen[k] = true
 		value, err := d.Token()
@@ -85,7 +103,7 @@ func readFieldDefinition(d *json.Decoder, name string) (SessionField, error) {
 		case "type", "column":
 			v, ok := value.(string)
 			if !ok {
-				return f, fmt.Errorf("session field %q property %q requires a string", name, k)
+				return f, fmt.Errorf("%s field %q property %q requires a string", model, name, k)
 			}
 			if k == "type" {
 				f.Type = sessionfields.Type(v)
@@ -95,7 +113,7 @@ func readFieldDefinition(d *json.Decoder, name string) (SessionField, error) {
 		case "required", "serverOnly", "hidden":
 			v, ok := value.(bool)
 			if !ok {
-				return f, fmt.Errorf("session field %q property %q requires a boolean", name, k)
+				return f, fmt.Errorf("%s field %q property %q requires a boolean", model, name, k)
 			}
 			switch k {
 			case "required":
@@ -107,18 +125,18 @@ func readFieldDefinition(d *json.Decoder, name string) (SessionField, error) {
 			}
 		case "default":
 			if _, compound := value.(json.Delim); compound {
-				return f, fmt.Errorf("session field %q requires a scalar default", name)
+				return f, fmt.Errorf("%s field %q requires a scalar default", model, name)
 			}
 			f.Default = value
 		default:
-			return f, fmt.Errorf("unknown property %q on session field %q", k, name)
+			return f, fmt.Errorf("unknown property %q on %s field %q", k, model, name)
 		}
 	}
 	if _, err := d.Token(); err != nil {
 		return f, err
 	}
 	if seen["default"] && f.Default == nil && f.Required {
-		return f, fmt.Errorf("required session field %q cannot default to null", name)
+		return f, fmt.Errorf("required %s field %q cannot default to null", model, name)
 	}
 	return f, nil
 }

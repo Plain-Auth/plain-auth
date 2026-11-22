@@ -2,7 +2,7 @@
 
 Create an empty application database and provide credentials that can create tables and indexes. For SQLite, choose a path in a writable directory. The CLI and application adapters use the same schema implementation. The target is a fresh Go installation.
 
-For per-login metadata, configure the application and schema with the same [session fields](session-fields.md).
+Configure account profile and per-login metadata with the same user and session field declarations in your application and schema commands. [Schema configuration](schema.md#configure-user-and-session-fields)
 
 ## Inspect and apply the schema
 

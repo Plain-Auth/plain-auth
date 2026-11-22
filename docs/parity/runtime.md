@@ -360,6 +360,8 @@ Each entry groups the configured endpoint’s behaviors. A checked child records
     - [x] Return distinct success, drift and operational exit codes with JSON findings and redacted connection errors ([test](../../cmd/authctl/check_test.go#L42))
     - [x] Report an uninstalled Polar profile and an empty finding list after provisioning ([test](../../cmd/authctl/main_test.go#L104))
     - [x] Report missing or incompatible configured session columns on all three engines without changing the database ([test](../../adapters/sqlstore/check_session_fields_test.go#L46))
+    - [x] Report missing, incompatible and generated user columns in read-only JSON checks across all three engines ([test](../../cmd/authctl/user_fields_test.go#L178))
+    - [x] Reject malformed user configuration before opening a target database ([test](../../cmd/authctl/user_fields_test.go#L36))
     - [ ] `check schema`
     - [ ] `-c, --cwd <cwd>`
     - [ ] `--config <config>`
@@ -382,6 +384,7 @@ Each entry groups the configured endpoint’s behaviors. A checked child records
     - [x] Prove SCIM adds exactly seven disjoint tables and preserves every preexisting schema statement ([test](../../conformance/schema.test.mjs#L169))
     - [x] Generate the optional Polar checkout and delivery tables on every SQL dialect ([test](../../cmd/authctl/main_test.go#L79))
     - [x] Emit physical columns from a JSON field definition for each supported SQL dialect ([test](../../cmd/authctl/session_fields_test.go#L13))
+    - [x] Generate the selected plugin schema with independent user and session JSON declarations on all three dialects ([test](../../cmd/authctl/user_fields_test.go#L111))
     - [ ] `-c, --cwd <cwd>`
     - [ ] `--config <config>`
     - [ ] `--output <output>`
@@ -416,6 +419,7 @@ Each entry groups the configured endpoint’s behaviors. A checked child records
     - [x] Reopen a populated SCIM profile twice on SQLite, PostgreSQL and MySQL and retain the original account ([test](../../adapters/sqlstore/scim_test.go#L33))
     - [x] Preserve Polar delivery receipts and their uniqueness across repeated CLI-compatible migrations on three SQL engines ([test](../../integrations/polar/schema_test.go#L11))
     - [x] Backfill existing sessions, preserve the owner's data and report incompatible definitions on live servers ([test](../../cmd/authctl/session_fields_live_test.go#L128))
+    - [x] Upgrade a populated account with zero, false and null values while preserving its original fields and session schema ([test](../../cmd/authctl/user_fields_test.go#L167))
     - [ ] `-c, --cwd <cwd>`
     - [ ] `--config <config>`
     - [ ] `-y, --yes`

@@ -198,6 +198,16 @@
       "label": "Report missing or incompatible configured session columns on all three engines without changing the database",
       "test": "adapters/sqlstore/check_session_fields_test.go",
       "marker": "check mutated a populated target"
+    },
+    {
+      "label": "Report missing, incompatible and generated user columns in read-only JSON checks across all three engines",
+      "test": "cmd/authctl/user_fields_test.go",
+      "marker": "generated user column accepted as writable"
+    },
+    {
+      "label": "Reject malformed user configuration before opening a target database",
+      "test": "cmd/authctl/user_fields_test.go",
+      "marker": "func TestUserFieldCommandsValidateBeforeConnecting("
     }
   ],
   "cli/generate": [
@@ -225,6 +235,11 @@
       "label": "Emit physical columns from a JSON field definition for each supported SQL dialect",
       "test": "cmd/authctl/session_fields_test.go",
       "marker": "func TestSessionFieldCommands("
+    },
+    {
+      "label": "Generate the selected plugin schema with independent user and session JSON declarations on all three dialects",
+      "test": "cmd/authctl/user_fields_test.go",
+      "marker": "generated combined schema"
     }
   ],
   "cli/migrate": [
@@ -257,6 +272,11 @@
       "label": "Backfill existing sessions, preserve the owner's data and report incompatible definitions on live servers",
       "test": "cmd/authctl/session_fields_live_test.go",
       "marker": "old row lost its default"
+    },
+    {
+      "label": "Upgrade a populated account with zero, false and null values while preserving its original fields and session schema",
+      "test": "cmd/authctl/user_fields_test.go",
+      "marker": "populated account backfill:"
     }
   ],
   "docs/content/docs/concepts/cookies.mdx#L62": [
