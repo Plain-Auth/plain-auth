@@ -133,3 +133,9 @@ func (c EndpointContext) ReissueSessionCookie(session Session) {
 func (c EndpointContext) TryReissueSessionCookie(session Session) error {
 	return c.Auth.writeSessionCookieHeaders(c.ResponseHeader, c.Request, session.Token, !c.Auth.dontRemember(c.Request))
 }
+
+// PopulateUserProfile loads the user's public fields from enabled plugins and
+// the host's profile schema for a plugin that has authenticated this account.
+func (c EndpointContext) PopulateUserProfile(user *User) error {
+	return c.Auth.readPublicUserFields(c.Request.Context(), user)
+}

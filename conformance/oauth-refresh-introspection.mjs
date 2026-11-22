@@ -5,42 +5,12 @@ import { exerciseOpaqueGrant } from "./oauth-opaque-introspection.mjs";
 
 export async function exerciseRefreshIntrospection({ server, issuer, db, credentials }) {
   const mount = server.baseURL + "/api/auth";
-  const peer = "http://issuer.localhost/api/auth";
-  const callback = "https://reports.example.test:8443/return";
+  const { peer, app, fields, issued, user } = await issueDelegatedGrant(issuer, db, {
+    name: "Refresh user", email: "refresh-grant@issuer.test", callback: "https://reports.example.test:8443/return",
+    scopes: ["reports", "offline_access"],
+  });
   const scopes = ["reports", "offline_access"];
-  const account = await issuer.api.signUpEmail({ body: { name: "Refresh user", email: "refresh-grant@issuer.test", password: "refresh fixture password" }, asResponse: true });
-  assert.equal(account.status, 200);
-  const user = (await account.json()).user.id;
-  const login = account.headers.getSetCookie().map(line => line.split(";")[0]).join("; ");
-  const registration = await issuer.handler(new Request(peer + "/oauth2/register", {
-    method: "POST", headers: { cookie: login, origin: "http://issuer.localhost", "content-type": "application/json" },
-    body: JSON.stringify({ grant_types: ["authorization_code", "refresh_token"], redirect_uris: [callback],
-      token_endpoint_auth_method: "client_secret_post", subject_type: "pairwise", scope: scopes.join(" ") }),
-  }));
-  const app = await registration.json();
-  assert.equal(registration.status, 201, JSON.stringify(app));
-  const fields = { client_id: app.client_id, client_secret: app.client_secret };
   const now = new Date().toISOString();
-  db.prepare("INSERT INTO oauthConsent(id,clientId,userId,scopes,createdAt,updatedAt) VALUES(?,?,?,?,?,?)")
-    .run(randomUUID(), app.client_id, user, JSON.stringify(scopes), now, now);
-  const verifier = randomUUID() + randomUUID();
-  const query = new URLSearchParams({ response_type: "code", client_id: app.client_id, redirect_uri: callback,
-    state: randomUUID(), scope: scopes.join(" "), code_challenge_method: "S256",
-    code_challenge: createHash("sha256").update(verifier).digest("base64url") });
-  const authorize = await issuer.handler(new Request(peer + "/oauth2/authorize?" + query, { headers: { cookie: login } }));
-  const location = authorize.headers.get("location");
-  assert.ok(location, "expected an authorization redirect, HTTP " + authorize.status);
-  const redirected = new URL(location);
-  assert.equal(redirected.origin + redirected.pathname, callback);
-  const code = redirected.searchParams.get("code");
-  assert.ok(code, redirected.searchParams.get("error_description") ?? "missing authorization code");
-  function post(base, path, form) {
-    return new Request(base + "/oauth2/" + path, { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams(form) });
-  }
-  const exchange = await issuer.handler(post(peer, "token", { ...fields, grant_type: "authorization_code", code, code_verifier: verifier, redirect_uri: callback }));
-  const issued = await exchange.json();
-  assert.equal(exchange.status, 200, JSON.stringify(issued));
   assert.ok(issued.refresh_token, "the independent issuer returned a refresh token");
   const row = db.prepare("SELECT * FROM oauthRefreshToken WHERE clientId=?").get(app.client_id);
   assert.equal(row.userId, user);
@@ -100,4 +70,48 @@ export async function exerciseRefreshIntrospection({ server, issuer, db, credent
   const revoke = await issuer.handler(post(peer, "revoke", { ...fields, token: issued.refresh_token, token_type_hint: "refresh_token" }));
   assert.equal(revoke.status, 200);
   assert.deepEqual(await inspect(), { active: false });
+}
+
+function post(base, path, form) {
+  return new Request(base + "/oauth2/" + path, {
+    method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams(form),
+  });
+}
+
+export async function issueDelegatedGrant(issuer, db, { name, email, scopes, callback, resource, origin = "http://issuer.localhost" }) {
+  const peer = origin + "/api/auth";
+  const account = await issuer.api.signUpEmail({ body: { name, email, password: "refresh fixture password" }, asResponse: true });
+  assert.equal(account.status, 200);
+  const user = (await account.json()).user.id;
+  const login = account.headers.getSetCookie().map(line => line.split(";")[0]).join("; ");
+  const registration = await issuer.handler(new Request(peer + "/oauth2/register", {
+    method: "POST", headers: { cookie: login, origin, "content-type": "application/json" },
+    body: JSON.stringify({ grant_types: ["authorization_code", "refresh_token"], redirect_uris: [callback],
+      token_endpoint_auth_method: "client_secret_post", subject_type: "pairwise", scope: scopes.join(" ") }),
+  }));
+  const app = await registration.json();
+  assert.equal(registration.status, 201, JSON.stringify(app));
+  const fields = { client_id: app.client_id, client_secret: app.client_secret };
+  if (resource) {
+    db.prepare("INSERT INTO oauthClientResource(id,clientId,resourceId) VALUES(?,?,?)").run(randomUUID(), app.client_id, resource);
+  }
+  const now = new Date().toISOString();
+  db.prepare("INSERT INTO oauthConsent(id,clientId,userId,scopes,resources,createdAt,updatedAt) VALUES(?,?,?,?,?,?,?)")
+    .run(randomUUID(), app.client_id, user, JSON.stringify(scopes), resource ? JSON.stringify([resource]) : null, now, now);
+  const verifier = randomUUID() + randomUUID();
+  const query = new URLSearchParams({ response_type: "code", client_id: app.client_id, redirect_uri: callback,
+    state: randomUUID(), scope: scopes.join(" "), ...(resource && { resource }), code_challenge_method: "S256",
+    code_challenge: createHash("sha256").update(verifier).digest("base64url") });
+  const authorize = await issuer.handler(new Request(peer + "/oauth2/authorize?" + query, { headers: { cookie: login } }));
+  const location = authorize.headers.get("location");
+  assert.ok(location, "expected an authorization redirect, HTTP " + authorize.status);
+  const redirected = new URL(location);
+  assert.equal(redirected.origin + redirected.pathname, callback);
+  const code = redirected.searchParams.get("code");
+  assert.ok(code, redirected.searchParams.get("error_description") ?? "missing authorization code");
+  const exchange = await issuer.handler(post(peer, "token", { ...fields, grant_type: "authorization_code", code, code_verifier: verifier, redirect_uri: callback, ...(resource && { resource }) }));
+  const issued = await exchange.json();
+  assert.equal(exchange.status, 200, JSON.stringify(issued));
+  return { peer, app, fields, issued, user };
 }

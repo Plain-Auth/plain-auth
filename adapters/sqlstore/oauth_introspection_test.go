@@ -143,6 +143,10 @@ func TestOAuthIntrospectionRateLimit(t *testing.T) {
 	testOAuthTokenRouteLimit(t, "introspect", 100)
 }
 
+func TestOAuthUserInfoRateLimit(t *testing.T) {
+	testOAuthTokenRouteLimit(t, "userinfo", 60)
+}
+
 func TestOAuthRevocationRateLimit(t *testing.T) {
 	testOAuthTokenRouteLimit(t, "revoke", 30)
 }
@@ -167,7 +171,7 @@ func testOAuthTokenRouteLimit(t *testing.T, route string, defaultMax int) {
 				rule = &auth.RateLimitRule{}
 			}
 			opts := op.TokenOptions{IntrospectionRateLimit: rule, RevocationRateLimit: rule}
-			p, err := op.New(op.Options{Tokens: opts, Assertions: op.AssertionOptions{KeyRotationRateLimit: rule}})
+			p, err := op.New(op.Options{Tokens: opts, Assertions: op.AssertionOptions{KeyRotationRateLimit: rule}, UserInfo: op.UserInfoOptions{RateLimit: rule}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -182,7 +186,11 @@ func testOAuthTokenRouteLimit(t *testing.T, route string, defaultMax int) {
 				body, media, normal = `{"client_assertion":"unused","client_assertion_type":"unused","jwks":{"keys":[{}]}}`, "application/json", http.StatusForbidden
 			}
 			for i := 0; i <= max; i++ {
-				r := httptest.NewRequest(http.MethodPost, origin+"/api/auth/oauth2/"+route, strings.NewReader(body))
+				method := http.MethodPost
+				if route == "userinfo" && i%2 == 0 {
+					method = http.MethodGet
+				}
+				r := httptest.NewRequest(method, origin+"/api/auth/oauth2/"+route, strings.NewReader(body))
 				r.Header.Set("Content-Type", media)
 				w := httptest.NewRecorder()
 				host.ServeHTTP(w, r)

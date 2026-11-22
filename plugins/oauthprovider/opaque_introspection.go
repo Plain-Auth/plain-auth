@@ -28,13 +28,14 @@ type OpaqueAccessTokenRecord struct {
 	RedirectURIs, Resources     []string
 	Confirmation                map[string]any
 	ResourceClaims              map[string]json.RawMessage
+	RequestedUserInfoClaims     []string
 }
 
-func (opts Options) opaqueIntrospectionClaims(token *OpaqueAccessTokenRecord, digest, issuer, userInfoURL string) (any, error) {
+func opaqueAccessClaims(token *OpaqueAccessTokenRecord, digest, issuer, userInfoURL string) map[string]any {
 	now := time.Now()
 	if token == nil || digest == "" || token.StoredToken != digest || token.ClientID == "" || !token.ExpiresAt.After(now) ||
 		token.SessionID != "" && !token.SessionExpiresAt.After(now) {
-		return map[string]bool{"active": false}, nil
+		return map[string]any{"active": false}
 	}
 	claims := map[string]any{"active": true, "iss": issuer, "client_id": token.ClientID, "azp": token.ClientID,
 		"token_type": "Bearer", "iat": token.IssuedAt.Unix(), "exp": token.ExpiresAt.Unix(), "scope": strings.Join(token.Scopes, " ")}
@@ -59,7 +60,11 @@ func (opts Options) opaqueIntrospectionClaims(token *OpaqueAccessTokenRecord, di
 	if token.SessionID != "" {
 		claims["sid"] = token.SessionID
 	}
-	return opts.addTokenIdentity(claims, token.ClientID, token.UserID, token.SubjectType, token.RedirectURIs, token.Confirmation)
+	if token.UserID != "" {
+		claims["sub"] = token.UserID
+	}
+	addTokenConfirmation(claims, token.Confirmation)
+	return claims
 }
 
 func (opts Options) addTokenIdentity(claims map[string]any, clientID, userID, subjectType string, redirects []string, confirmation map[string]any) (map[string]any, error) {
@@ -73,11 +78,15 @@ func (opts Options) addTokenIdentity(claims map[string]any, clientID, userID, su
 		}
 		claims["sub"] = userID
 	}
+	addTokenConfirmation(claims, confirmation)
+	return claims, nil
+}
+
+func addTokenConfirmation(claims, confirmation map[string]any) {
 	if confirmation != nil {
 		claims["cnf"] = confirmation
 		if jkt, _ := confirmation["jkt"].(string); jkt != "" {
 			claims["token_type"] = "DPoP"
 		}
 	}
-	return claims, nil
 }

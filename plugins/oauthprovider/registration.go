@@ -124,6 +124,7 @@ type Options struct {
 	Registration       RegistrationOptions
 	Tokens             TokenOptions
 	Assertions         AssertionOptions
+	UserInfo           UserInfoOptions
 	// DPoP controls sender proofs at the token endpoint. The host SQL store
 	// shares reservations automatically when ReplayStore is omitted.
 	DPoP          DPoPOptions
@@ -156,6 +157,13 @@ func New(opts Options) (auth.Plugin, error) {
 		return auth.Plugin{}, err
 	}
 	opts.proofVerifier = proofs
+	opts.DPoP.SigningAlgorithms = slices.Clone(opts.DPoP.SigningAlgorithms)
+	opts.UserInfo.Extensions = slices.Clone(opts.UserInfo.Extensions)
+	for _, extension := range opts.UserInfo.Extensions {
+		if extension == nil {
+			return auth.Plugin{}, errors.New("oauthprovider: nil UserInfo claim extension")
+		}
+	}
 	if opts.GrantTypes == nil {
 		opts.GrantTypes = []string{"authorization_code", "client_credentials", "refresh_token"}
 	}
@@ -226,6 +234,10 @@ func New(opts Options) (auth.Plugin, error) {
 		RateLimit: tokenRouteLimit(opts.Assertions.KeyRotationRateLimit, 5), OpenAPI: json.RawMessage(keyRotationOperation)})
 	p.Endpoints = append(p.Endpoints, auth.Endpoint{Method: http.MethodPost, Path: "/oauth2/delete-client", Handler: opts.deleteClient})
 	p.Endpoints = append(p.Endpoints, auth.Endpoint{Method: http.MethodPost, Path: "/oauth2/token", RawBody: true, OpenAPI: json.RawMessage(machineTokenOperation), RateLimit: opts.Tokens.RateLimit, Handler: opts.token})
+
+	for _, method := range []string{http.MethodGet, http.MethodPost} {
+		p.Endpoints = append(p.Endpoints, auth.Endpoint{Method: method, Path: "/oauth2/userinfo", RawBody: method == http.MethodPost, RateLimit: tokenRouteLimit(opts.UserInfo.RateLimit, 60), Handler: opts.userInfo, OpenAPI: userInfoOperation(method)})
+	}
 	p.Endpoints = append(p.Endpoints, auth.Endpoint{Method: http.MethodPost, Path: "/oauth2/introspect", RawBody: true, OpenAPI: json.RawMessage(introspectionOperation), RateLimit: opts.Tokens.IntrospectionRateLimit, Handler: opts.introspect})
 	p.Endpoints = append(p.Endpoints, auth.Endpoint{Method: http.MethodPost, Path: "/oauth2/revoke", RawBody: true, OpenAPI: json.RawMessage(revocationOperation), RateLimit: opts.Tokens.RevocationRateLimit, Handler: opts.revoke})
 	return p, nil

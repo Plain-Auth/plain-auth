@@ -1750,6 +1750,11 @@ test("DPoP proofs enforce sender binding and shared single use across runtimes",
   await compareDPoPProofs(t, goFixture);
 });
 
+test("OIDC UserInfo returns the subject of independently issued ID tokens and enforces signed and opaque access grants", async t => {
+  const { compareUserInfo } = await import("./oauth-userinfo.mjs");
+  await compareUserInfo(t, { reference, goFixture });
+});
+
 test("OAuth resource administrators interoperate through a shared SQL registry", async t => {
   const { compareResourceRegistry } = await import("./resource-registry.mjs");
   await compareResourceRegistry(t, goFixture);

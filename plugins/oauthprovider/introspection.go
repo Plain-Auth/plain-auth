@@ -95,7 +95,11 @@ func (opts Options) introspect(c auth.EndpointContext) (any, error) {
 	if record != nil {
 		access = &OpaqueAccessTokenRecord{MachineTokenRecord: *record, ClientID: in.id}
 	}
-	return opts.opaqueIntrospectionClaims(access, digest, c.Auth.OAuthIssuer(), userInfoURL)
+	claims := opaqueAccessClaims(access, digest, c.Auth.OAuthIssuer(), userInfoURL)
+	if claims["active"] != true {
+		return claims, nil
+	}
+	return opts.addTokenIdentity(claims, access.ClientID, access.UserID, access.SubjectType, access.RedirectURIs, nil)
 }
 
 type tokenAction struct {

@@ -12621,5 +12621,110 @@
       "test": "adapters/sqlstore/oauth_dpop_issuance_test.go",
       "marker": "func TestDPoPMachineTokenIssuance("
     }
+  ],
+  "plugin/oauth-provider/GET / POST /oauth2/userinfo": [
+    {
+      "label": "Read scoped profile claims over GET and form POST and match the subject of an independently issued ID token for signed and opaque grants",
+      "test": "conformance/oauth-userinfo.mjs",
+      "marker": "const sub = decodeJwt(issued.id_token).sub;",
+      "complete": true
+    },
+    {
+      "label": "Apply standard, extension and operator claim precedence, preserve the pairwise subject and propagate hook failures on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_userinfo_test.go",
+      "marker": "func TestOAuthUserInfoClaims("
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/reference.mdx#L324/`GET / POST /oauth2/userinfo`": [
+    {
+      "label": "Read scoped profile claims over GET and form POST and match the subject of an independently issued ID token for signed and opaque grants",
+      "test": "conformance/oauth-userinfo.mjs",
+      "marker": "const sub = decodeJwt(issued.id_token).sub;",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/reference.mdx#L404/`userinfo`": [
+    {
+      "label": "Share the default 60-request limit, explicit limits and the host global limit on the UserInfo route",
+      "test": "adapters/sqlstore/oauth_introspection_test.go",
+      "marker": "func TestOAuthUserInfoRateLimit(",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/reference.mdx#L495/UserInfo": [
+    {
+      "label": "Apply standard, extension and operator claim precedence, preserve the pairwise subject and propagate hook failures on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_userinfo_test.go",
+      "marker": "func TestOAuthUserInfoClaims(",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/oauth-provider/OAuthOptions/customUserInfoClaims": [
+    {
+      "label": "Apply standard, extension and operator claim precedence, preserve the pairwise subject and propagate hook failures on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_userinfo_test.go",
+      "marker": "func TestOAuthUserInfoClaims(",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/openid-connect.mdx#L74": [
+    {
+      "label": "Read scoped profile claims over GET and form POST and match the subject of an independently issued ID token for signed and opaque grants",
+      "test": "conformance/oauth-userinfo.mjs",
+      "marker": "const sub = decodeJwt(issued.id_token).sub;"
+    },
+    {
+      "label": "Apply standard, extension and operator claim precedence, preserve the pairwise subject and propagate hook failures on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_userinfo_test.go",
+      "marker": "func TestOAuthUserInfoClaims("
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/openid-connect.mdx#L82/No access token": [
+    {
+      "label": "Offer both Bearer and DPoP without an error parameter when credentials are absent",
+      "test": "conformance/oauth-userinfo.mjs",
+      "marker": "/^Bearer, DPoP algs=/",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/openid-connect.mdx#L83/A token sent with the `Bearer` scheme or in the form body, when the token is not DPoP-bound": [
+    {
+      "label": "Challenge inactive bearer credentials and accept a single form token on POST",
+      "test": "conformance/oauth-userinfo.mjs",
+      "marker": "await ok(await call(\"POST\", null, { access_token: token }), expected)",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/openid-connect.mdx#L84/A DPoP-bound token, or any request that uses the `DPoP` scheme": [
+    {
+      "label": "Require the bound sender proof, reject replay and return a DPoP challenge for invalid tokens and proofs",
+      "test": "conformance/oauth-userinfo.mjs",
+      "marker": "await ok(await call(\"GET\", \"DPoP \" + token, null, proof)",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/openid-connect.mdx#L98/`openid`": [
+    {
+      "label": "Return only the pairwise subject for an openid-only grant",
+      "test": "conformance/oauth-userinfo.mjs",
+      "marker": "await ok(await call(\"GET\", \"Bearer \" + token), { sub });",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/openid-connect.mdx#L99/`profile`": [
+    {
+      "label": "Read the current name and picture and derive given and family names when available",
+      "test": "adapters/sqlstore/oauth_userinfo_test.go",
+      "marker": "\"profile and email\"",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/openid-connect.mdx#L100/`email`": [
+    {
+      "label": "Return the current address and verification status only when authorized",
+      "test": "adapters/sqlstore/oauth_userinfo_test.go",
+      "marker": "\"profile and email\"",
+      "complete": true
+    }
   ]
 }

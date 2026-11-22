@@ -13,6 +13,7 @@ import (
 	"net/url"
 	"os"
 	"path"
+	"slices"
 	"strings"
 
 	authn "github.com/Plain-Auth/plain-auth"
@@ -85,6 +86,10 @@ func (c *Client) Do(ctx context.Context, method, route string, input, output any
 // including Set-Auth-Token when the server issues a signed bearer credential.
 // A transport or request construction error returns nil headers.
 func (c *Client) DoWithHeaders(ctx context.Context, method, route string, input, output any) (http.Header, error) {
+	return c.doWithHeaders(ctx, method, route, input, output, nil)
+}
+
+func (c *Client) doWithHeaders(ctx context.Context, method, route string, input, output any, headers http.Header) (http.Header, error) {
 	ref, err := url.ParseRequestURI(route)
 	if err != nil || !strings.HasPrefix(route, "/") || ref.Host != "" || strings.Contains(route, "#") ||
 		path.Clean(ref.Path) != ref.Path || strings.Contains(ref.Path, "\\") {
@@ -104,6 +109,9 @@ func (c *Client) DoWithHeaders(ctx context.Context, method, route string, input,
 	}
 	if c.bearer != "" {
 		req.Header.Set("Authorization", "Bearer "+c.bearer)
+	}
+	for name, values := range headers {
+		req.Header[name] = slices.Clone(values)
 	}
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Origin", c.origin)

@@ -24,7 +24,7 @@ func (s *Store) InspectOpaqueAccessToken(ctx context.Context, callerID, digest, 
 	if err != nil || digest == "" {
 		return current, nil, false, err
 	}
-	record, known, err := s.readOpaqueGrant(ctx, tx, callerID, digest, userInfoURL)
+	record, known, err := s.readOpaqueGrant(ctx, tx, &callerID, digest, userInfoURL)
 	if err != nil {
 		return current, nil, known, err
 	}
@@ -39,8 +39,8 @@ func (s *Store) beginIntrospectionSnapshot(ctx context.Context) (*sql.Tx, error)
 	return s.db.BeginTx(ctx, options)
 }
 
-func (s *Store) readOpaqueGrant(ctx context.Context, tx *sql.Tx, callerID, digest, userInfoURL string) (*op.OpaqueAccessTokenRecord, bool, error) {
-	q := `SELECT t."clientId",t."revoked",t."createdAt",t."expiresAt",t."scopes",t."resources",t."confirmation",
+func (s *Store) readOpaqueGrant(ctx context.Context, tx *sql.Tx, callerID *string, digest, userInfoURL string) (*op.OpaqueAccessTokenRecord, bool, error) {
+	q := `SELECT t."clientId",t."revoked",t."createdAt",t."expiresAt",t."scopes",t."resources",t."confirmation",t."requestedUserInfoClaims",
 		t."userId",u."id",t."sessionId",s."expiresAt",c."id",c."subjectType",c."redirectUris",c."disabled"
 		FROM "oauthAccessToken" t LEFT JOIN "oauthClient" c ON c."clientId"=` + s.exactSQLValue(`t."clientId"`) + ` AND (c."clientDiscoveryId" IS NULL OR c."clientDiscoveryId"='')
 		LEFT JOIN "user" u ON u."id"=` + s.exactSQLValue(`t."userId"`) + `
@@ -50,8 +50,8 @@ func (s *Store) readOpaqueGrant(ctx context.Context, tx *sql.Tx, callerID, diges
 	var clientRow, subject, owner, user, sid sql.NullString
 	var revoked, sessionEnd sql.NullTime
 	var disabled sql.NullBool
-	var scopes, resources, confirmation, redirects []byte
-	err := tx.QueryRowContext(ctx, s.bind(q), digest).Scan(&r.ClientID, &revoked, &r.IssuedAt, &r.ExpiresAt, &scopes, &resources, &confirmation,
+	var scopes, resources, confirmation, redirects, requested []byte
+	err := tx.QueryRowContext(ctx, s.bind(q), digest).Scan(&r.ClientID, &revoked, &r.IssuedAt, &r.ExpiresAt, &scopes, &resources, &confirmation, &requested,
 		&owner, &user, &sid, &sessionEnd, &clientRow, &subject, &redirects, &disabled)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, false, nil
@@ -67,7 +67,17 @@ func (s *Store) readOpaqueGrant(ctx context.Context, tx *sql.Tx, callerID, diges
 	if len(resources) > 0 && json.Unmarshal(resources, &r.Resources) != nil {
 		return nil, true, nil
 	}
-	ok, policy, err := s.resolveAccessAudiences(ctx, tx, callerID, r.ClientID, userInfoURL, r.Resources, true)
+	// The issuer's UserInfo endpoint reads the grant directly. Introspection
+	// must separately authorize its authenticated caller against the audiences.
+	reader := r.ClientID
+	if callerID != nil {
+		reader = *callerID
+	} else if len(requested) > 0 {
+		if err := json.Unmarshal(requested, &r.RequestedUserInfoClaims); err != nil {
+			return nil, true, err
+		}
+	}
+	ok, policy, err := s.resolveAccessAudiences(ctx, tx, reader, r.ClientID, userInfoURL, r.Resources, true)
 	r.ResourceClaims = policy
 	if err != nil || !ok {
 		return nil, true, err
