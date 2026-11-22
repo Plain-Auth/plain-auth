@@ -257,14 +257,14 @@ export async function compareClientRegistration(t, reference, goFixture) {
           emailAndPassword: { enabled: true },
           plugins: [jwt(), oauthProvider(config)],
         });
-        async function exchange(secret) {
+        async function exchange(secret, clientID = credentials.client_id) {
           return issuer.handler(
             new Request("http://issuer.localhost/api/auth/oauth2/token", {
               method: "POST",
               headers: { "content-type": "application/x-www-form-urlencoded" },
               body: new URLSearchParams({
                 grant_type: "client_credentials",
-                client_id: credentials.client_id,
+                client_id: clientID,
                 client_secret: secret,
                 scope: "reports",
               }),
@@ -375,6 +375,24 @@ export async function compareClientRegistration(t, reference, goFixture) {
           assert.equal(personalResponse.status, 200);
           assert.equal(personal.user_id, user.id);
           assert.notEqual(personal.client_secret, app.client_secret);
+        });
+        await t.test("deleting a machine client ends further token exchanges", async () => {
+          const machine = await created(
+            { grant_types: ["client_credentials"], token_endpoint_auth_method: "client_secret_post" },
+            { cookie },
+          );
+          await issuer.api.adminUpdateOAuthClient({
+            headers: { cookie: operatorCookie },
+            body: { client_id: machine.client_id, update: { client_credentials_scopes: ["reports"] } },
+          });
+          const token = await exchange(machine.client_secret, machine.client_id);
+          assert.equal(token.status, 200);
+          assert.ok((await token.json()).access_token);
+          const deleted = await request("oauth2/delete-client", { client_id: machine.client_id }, { cookie });
+          assert.equal(deleted.status, 200);
+          const refused = await exchange(machine.client_secret, machine.client_id);
+          assert.equal((await refused.json()).error, "invalid_client");
+          assert.ok(refused.status >= 400);
         });
       });
     }

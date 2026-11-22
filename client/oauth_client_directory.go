@@ -35,3 +35,8 @@ func (c *Client) RotateOAuthClientSecret(ctx context.Context, id string) (oauthp
 	err := c.Do(ctx, http.MethodPost, "/oauth2/client/rotate-secret", map[string]string{"client_id": id}, &result)
 	return result, err
 }
+
+// DeleteOAuthClient removes the owned registration and its stored grants and tokens.
+func (c *Client) DeleteOAuthClient(ctx context.Context, id string) error {
+	return c.Do(ctx, http.MethodPost, "/oauth2/delete-client", map[string]string{"client_id": id}, nil)
+}

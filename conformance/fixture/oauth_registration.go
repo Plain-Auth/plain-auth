@@ -16,6 +16,7 @@ func registrationFixtureOptions() op.Options {
 	opts := op.Options{}
 	if mode == "directory" {
 		opts.Registration.Enabled = true
+		opts.ImmutableClientIDs = []string{"operator-managed"}
 		opts.ClientReference = func(_ context.Context, a op.RegistrationAccess) (string, error) {
 			if strings.HasPrefix(a.User.Email, "team-") {
 				return "reports-team", nil

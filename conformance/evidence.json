@@ -11922,6 +11922,55 @@
       "complete": true
     }
   ],
+  "plugin/oauth-provider/POST /oauth2/delete-client": [
+    {
+      "label": "Delete personally owned or tenant-owned registrations with an empty success response and enforce the session, privilege and immutable-client rules",
+      "test": "conformance/oauth-client-directory.mjs",
+      "marker": "await t.test(\"owners delete personal and tenant registrations\""
+    },
+    {
+      "label": "Remove the client’s stored tokens, consents and resource links atomically across three SQL engines and preserve other applications",
+      "test": "adapters/sqlstore/oauth_client_deletion_test.go",
+      "marker": "checkRows(\"remove\", 0)"
+    },
+    {
+      "label": "Recheck current ownership after tenant resolution and serialize deletion across independent database connections",
+      "test": "adapters/sqlstore/oauth_client_deletion_test.go",
+      "marker": "t.Fatalf(\"concurrent deletion outcomes:"
+    },
+    {
+      "label": "Stop new token exchanges at an independent issuer after deleting a previously working machine client",
+      "test": "conformance/oauth-registration.mjs",
+      "marker": "await t.test(\"deleting a machine client ends further token exchanges\""
+    }
+  ],
+  "plugin-symbol/oauth-provider/deleteOAuthClient": [
+    {
+      "label": "Delete personally owned or tenant-owned registrations with an empty success response and enforce the session, privilege and immutable-client rules",
+      "test": "conformance/oauth-client-directory.mjs",
+      "marker": "await t.test(\"owners delete personal and tenant registrations\""
+    },
+    {
+      "label": "Stop new token exchanges at an independent issuer after deleting a previously working machine client",
+      "test": "conformance/oauth-registration.mjs",
+      "marker": "await t.test(\"deleting a machine client ends further token exchanges\""
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/clients.mdx#L65/`deleteOAuthClient`": [
+    {
+      "label": "Delete personally owned or tenant-owned registrations with an empty success response and enforce the session, privilege and immutable-client rules",
+      "test": "conformance/oauth-client-directory.mjs",
+      "marker": "await t.test(\"owners delete personal and tenant registrations\"",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/reference.mdx#L338/`POST /oauth2/delete-client`": [
+    {
+      "label": "Delete personally owned or tenant-owned registrations with an empty success response and enforce the session, privilege and immutable-client rules",
+      "test": "conformance/oauth-client-directory.mjs",
+      "marker": "await t.test(\"owners delete personal and tenant registrations\""
+    }
+  ],
   "plugin-symbol/oauth-provider/OAuthOptions/cachedTrustedClients": [
     {
       "label": "Keep an operator-managed credential immutable from the owner endpoint",

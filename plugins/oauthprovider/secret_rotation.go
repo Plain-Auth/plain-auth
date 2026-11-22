@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
-	"slices"
 	"time"
 
 	auth "github.com/Plain-Auth/plain-auth"
@@ -62,29 +61,10 @@ func (c ClientDetails) canRotateSecret() bool {
 }
 
 func (opts Options) rotateClientSecret(c auth.EndpointContext) (any, error) {
-	c.ResponseHeader.Set("Cache-Control", "no-store")
-	c.ResponseHeader.Set("Pragma", "no-cache")
-	id, ok := c.Body["client_id"].(string)
-	if !ok {
-		return nil, &auth.APIError{Status: 400, Code: "VALIDATION_ERROR", Message: "[body.client_id] Invalid input: expected string, received " + consentFieldType(c.Body, "client_id")}
-	}
 	ctx := c.Request.Context()
-	session, err := c.Auth.GetSession(ctx, c.Request.Header)
+	id, access, err := opts.clientMutationAccess(c, "rotate")
 	if err != nil {
 		return nil, err
-	}
-	if session == nil {
-		return nil, &auth.APIError{Status: 401, Code: "UNAUTHORIZED", Message: "Unauthorized"}
-	}
-	if err := session.Session.RequireOwner(); err != nil {
-		return nil, err
-	}
-	access := RegistrationAccess{SessionResult: *session, Headers: c.Request.Header.Clone()}
-	if err := opts.allowClient(ctx, access, "rotate", id); err != nil {
-		return nil, err
-	}
-	if slices.Contains(opts.ImmutableClientIDs, id) {
-		return nil, registrationProblem(400, "invalid_client", "trusted clients must be updated manually")
 	}
 	store, ok := c.Store().(SecretRotationStore)
 	if !ok {
@@ -100,12 +80,7 @@ func (opts Options) rotateClientSecret(c auth.EndpointContext) (any, error) {
 	if !client.canRotateSecret() {
 		return nil, rotationUnavailable()
 	}
-	var user, ref string
-	if client.UserID != nil && *client.UserID != "" {
-		user = *client.UserID
-	} else if client.ReferenceID != nil {
-		ref = *client.ReferenceID
-	}
+	user, ref := client.ownerIDs()
 	issued, stored, err := opts.Registration.issueSecret(ctx)
 	if err != nil {
 		return nil, err

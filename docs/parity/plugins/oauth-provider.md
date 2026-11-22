@@ -54,13 +54,13 @@
   - [ ] `POST /admin/oauth2/create-client` (server API only)
   - [ ] `POST /oauth2/create-client`
   - [ ] `GET /oauth2/get-client`
-    - [x] Read locally registered owner metadata and omit internal fields and the shared secret ([test](../../../conformance/oauth-client-directory.mjs#L116))
+    - [x] Read locally registered owner metadata and omit internal fields and the shared secret ([test](../../../conformance/oauth-client-directory.mjs#L117))
     - [x] Enforce account-owner sessions, exact tenant IDs and current ownership on three SQL engines ([test](../../../adapters/sqlstore/oauth_client_directory_test.go#L20))
   - [ ] `GET /oauth2/public-client`
-    - [x] Expose only display metadata for an enabled local registration to a signed-in user ([test](../../../conformance/oauth-client-directory.mjs#L130))
+    - [x] Expose only display metadata for an enabled local registration to a signed-in user ([test](../../../conformance/oauth-client-directory.mjs#L131))
   - [ ] `POST /oauth2/public-client-prelogin`
-  - [x] `GET /oauth2/get-clients` ([test](../../../conformance/oauth-client-directory.mjs#L128))
-    - [x] List personally or tenant-owned registrations with filtered metadata and return an empty list for a new owner ([test](../../../conformance/oauth-client-directory.mjs#L128))
+  - [x] `GET /oauth2/get-clients` ([test](../../../conformance/oauth-client-directory.mjs#L129))
+    - [x] List personally or tenant-owned registrations with filtered metadata and return an empty list for a new owner ([test](../../../conformance/oauth-client-directory.mjs#L129))
     - [x] Honor personal ownership on mixed records even when listing a tenant ([test](../../../adapters/sqlstore/oauth_client_directory_test.go#L137))
   - [ ] `PATCH /admin/oauth2/update-client` (server API only)
   - [ ] `POST /oauth2/update-client`
@@ -70,21 +70,27 @@
     - [x] Serialize rotations by two application instances and persist exactly one of the issued credentials ([test](../../../adapters/sqlstore/oauth_secret_rotation_test.go#L214))
   - [ ] `POST /oauth2/client/rotate-keys`
   - [ ] `POST /oauth2/delete-client`
+    - [x] Delete personally owned or tenant-owned registrations with an empty success response and enforce the session, privilege and immutable-client rules ([test](../../../conformance/oauth-client-directory.mjs#L188))
+    - [x] Remove the client’s stored tokens, consents and resource links atomically across three SQL engines and preserve other applications ([test](../../../adapters/sqlstore/oauth_client_deletion_test.go#L88))
+    - [x] Recheck current ownership after tenant resolution and serialize deletion across independent database connections ([test](../../../adapters/sqlstore/oauth_client_deletion_test.go#L118))
+    - [x] Stop new token exchanges at an independent issuer after deleting a previously working machine client ([test](../../../conformance/oauth-registration.mjs#L379))
   - [ ] `adminCreateOAuthClient`
   - [ ] `createOAuthClient`
   - [ ] `getOAuthClient`
-    - [x] Read locally registered owner metadata and omit internal fields and the shared secret ([test](../../../conformance/oauth-client-directory.mjs#L116))
+    - [x] Read locally registered owner metadata and omit internal fields and the shared secret ([test](../../../conformance/oauth-client-directory.mjs#L117))
   - [ ] `getOAuthClientPublic`
-    - [x] Expose only display metadata for an enabled local registration to a signed-in user ([test](../../../conformance/oauth-client-directory.mjs#L130))
+    - [x] Expose only display metadata for an enabled local registration to a signed-in user ([test](../../../conformance/oauth-client-directory.mjs#L131))
   - [ ] `getOAuthClientPublicPrelogin`
-  - [x] `getOAuthClients` ([test](../../../conformance/oauth-client-directory.mjs#L128))
-    - [x] List personally or tenant-owned registrations with filtered metadata and return an empty list for a new owner ([test](../../../conformance/oauth-client-directory.mjs#L128))
+  - [x] `getOAuthClients` ([test](../../../conformance/oauth-client-directory.mjs#L129))
+    - [x] List personally or tenant-owned registrations with filtered metadata and return an empty list for a new owner ([test](../../../conformance/oauth-client-directory.mjs#L129))
   - [ ] `adminUpdateOAuthClient`
   - [ ] `updateOAuthClient`
   - [ ] `rotateClientSecret`
     - [x] Replace a shared secret for its owner and immediately authenticate only the replacement at an independent issuer ([test](../../../conformance/oauth-registration.mjs#L367))
   - [ ] `rotateClientKeys`
   - [ ] `deleteOAuthClient`
+    - [x] Delete personally owned or tenant-owned registrations with an empty success response and enforce the session, privilege and immutable-client rules ([test](../../../conformance/oauth-client-directory.mjs#L188))
+    - [x] Stop new token exchanges at an independent issuer after deleting a previously working machine client ([test](../../../conformance/oauth-registration.mjs#L379))
   - [x] `GET /oauth2/get-consent` ([test](../../../conformance/oauth-consent.mjs#L55))
     - [x] Read a single grant through an authenticated session and retain the resource and claim lists ([test](../../../conformance/oauth-consent.mjs#L55))
   - [x] `GET /oauth2/get-consents` ([test](../../../conformance/oauth-consent.mjs#L56))
@@ -228,7 +234,7 @@
       - [x] Resolve tenant membership for shared registrations and keep owner lookups independent of tenant callback failures ([test](../../../adapters/sqlstore/oauth_client_directory_test.go#L143))
     - [ ] `clientPrivileges`
       - [x] Check the host create privilege for a signed-in registration ([test](../../../conformance/oauth-registration.mjs#L205))
-      - [x] Apply the host privilege hook to authenticated create, read and list actions before checking ownership ([test](../../../conformance/oauth-client-directory.mjs#L97))
+      - [x] Apply the host privilege hook to authenticated create, read and list actions before checking ownership ([test](../../../conformance/oauth-client-directory.mjs#L98))
       - [x] Enforce the rotate privilege on the authenticated session before replacing a tenant credential ([test](../../../conformance/oauth-registration.mjs#L343))
     - [ ] `grantTypes`
       - [x] Register only the mutually supported requested grant types ([test](../../../conformance/oauth-registration.mjs#L172))
@@ -356,17 +362,18 @@
       - [ ] Parameter `application_type` (optional)
       - [ ] Parameter `scope` (optional)
     - [ ] `getOAuthClient`
-      - [x] Read locally registered owner metadata and omit internal fields and the shared secret ([test](../../../conformance/oauth-client-directory.mjs#L116))
+      - [x] Read locally registered owner metadata and omit internal fields and the shared secret ([test](../../../conformance/oauth-client-directory.mjs#L117))
     - [ ] `getOAuthClientPublic`
-      - [x] Expose only display metadata for an enabled local registration to a signed-in user ([test](../../../conformance/oauth-client-directory.mjs#L130))
+      - [x] Expose only display metadata for an enabled local registration to a signed-in user ([test](../../../conformance/oauth-client-directory.mjs#L131))
     - [ ] `getOAuthClientPublicPrelogin`
-    - [x] `getOAuthClients` ([test](../../../conformance/oauth-client-directory.mjs#L128))
-      - [x] List personally or tenant-owned registrations with filtered metadata and return an empty list for a new owner ([test](../../../conformance/oauth-client-directory.mjs#L128))
+    - [x] `getOAuthClients` ([test](../../../conformance/oauth-client-directory.mjs#L129))
+      - [x] List personally or tenant-owned registrations with filtered metadata and return an empty list for a new owner ([test](../../../conformance/oauth-client-directory.mjs#L129))
     - [ ] `updateOAuthClient`
     - [ ] `adminUpdateOAuthClient`
     - [x] `rotateClientSecret` ([test](../../../conformance/oauth-registration.mjs#L367))
       - [x] Replace a shared secret for its owner and immediately authenticate only the replacement at an independent issuer ([test](../../../conformance/oauth-registration.mjs#L367))
-    - [ ] `deleteOAuthClient`
+    - [x] `deleteOAuthClient` ([test](../../../conformance/oauth-client-directory.mjs#L188))
+      - [x] Delete personally owned or tenant-owned registrations with an empty success response and enforce the session, privilege and immutable-client rules ([test](../../../conformance/oauth-client-directory.mjs#L188))
     - [ ] Restricted fields
       - [ ] `skip_consent`
       - [ ] `enable_end_session`
@@ -408,7 +415,7 @@
     - [ ] Rotating client keys
   - [ ] Trusted clients
   - [ ] Client CRUD privileges
-    - [x] Check read and list privileges on the owner endpoints while keeping public display accessible to signed-in users ([test](../../../conformance/oauth-client-directory.mjs#L129))
+    - [x] Check read and list privileges on the owner endpoints while keeping public display accessible to signed-in users ([test](../../../conformance/oauth-client-directory.mjs#L130))
   - [ ] Organizations
     - [ ] An organization uses the client
     - [ ] An organization owns the client
@@ -484,17 +491,18 @@
     - [ ] `PATCH /admin/oauth2/update-client` (server API only)
     - [ ] `POST /oauth2/create-client`
     - [ ] `GET /oauth2/get-client`
-      - [x] Read locally registered owner metadata and omit internal fields and the shared secret ([test](../../../conformance/oauth-client-directory.mjs#L116))
+      - [x] Read locally registered owner metadata and omit internal fields and the shared secret ([test](../../../conformance/oauth-client-directory.mjs#L117))
     - [ ] `GET /oauth2/public-client`
-      - [x] Expose only display metadata for an enabled local registration to a signed-in user ([test](../../../conformance/oauth-client-directory.mjs#L130))
+      - [x] Expose only display metadata for an enabled local registration to a signed-in user ([test](../../../conformance/oauth-client-directory.mjs#L131))
     - [ ] `POST /oauth2/public-client-prelogin`
-    - [x] `GET /oauth2/get-clients` ([test](../../../conformance/oauth-client-directory.mjs#L128))
-      - [x] List personally or tenant-owned registrations with filtered metadata and return an empty list for a new owner ([test](../../../conformance/oauth-client-directory.mjs#L128))
+    - [x] `GET /oauth2/get-clients` ([test](../../../conformance/oauth-client-directory.mjs#L129))
+      - [x] List personally or tenant-owned registrations with filtered metadata and return an empty list for a new owner ([test](../../../conformance/oauth-client-directory.mjs#L129))
     - [ ] `POST /oauth2/update-client`
     - [ ] `POST /oauth2/client/rotate-secret`
       - [x] Replace a shared secret for its owner and immediately authenticate only the replacement at an independent issuer ([test](../../../conformance/oauth-registration.mjs#L367))
     - [ ] `POST /oauth2/client/rotate-keys`
     - [ ] `POST /oauth2/delete-client`
+      - [x] Delete personally owned or tenant-owned registrations with an empty success response and enforce the session, privilege and immutable-client rules ([test](../../../conformance/oauth-client-directory.mjs#L188))
     - [x] `GET /oauth2/get-consent` ([test](../../../conformance/oauth-consent.mjs#L55))
       - [x] Read a single grant through an authenticated session and retain the resource and claim lists ([test](../../../conformance/oauth-consent.mjs#L55))
     - [x] `GET /oauth2/get-consents` ([test](../../../conformance/oauth-consent.mjs#L56))

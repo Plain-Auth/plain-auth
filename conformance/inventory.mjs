@@ -415,7 +415,7 @@ const index = [
   "| Manage OAuth resource policies and client grants from server code | [Resource management](../oauth-resource-management.md) |",
   "| Manage the signed-in user’s OAuth consent grants | [Authorized applications](../oauth-consents.md) |",
   "| Register OAuth clients and rotate shared secrets | [OAuth client registration](../oauth-client-registration.md) |",
-  "| List owned applications and show public client details | [Read registered applications](../oauth-client-directory.md) |",
+  "| List or delete owned applications and show public client details | [Manage registered applications](../oauth-client-directory.md) |",
   "| OAuth authorization-server database tables | [Schema and migration](../schema.md#oauth-authorization-server-tables) |",
   "| First-party device grants and authorization | [Sign in a device](../device-authorization.md) |",
   "| Sign in with an Ethereum wallet | [Wallet sign-in](../siwe.md) |",

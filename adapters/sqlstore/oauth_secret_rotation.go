@@ -32,11 +32,7 @@ func (s *Store) RotateOAuthClientSecret(ctx context.Context, change op.ClientSec
 	if err != nil {
 		return op.ClientDetails{}, err
 	}
-	if owner != nil && *owner != "" {
-		if change.UserID != *owner {
-			return op.ClientDetails{}, auth.StatusOnlyError(401)
-		}
-	} else if change.UserID != "" || change.ReferenceID == "" || tenant == nil || *tenant != change.ReferenceID {
+	if !clientOwnerMatches(owner, tenant, change.UserID, change.ReferenceID) {
 		return op.ClientDetails{}, auth.StatusOnlyError(401)
 	}
 	if oldSecret == nil || *oldSecret == "" || (method != nil && *method != "client_secret_basic" && *method != "client_secret_post") {

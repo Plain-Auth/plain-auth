@@ -132,7 +132,7 @@ Go records the resolved commit in the consuming project’s `go.mod`. The module
 | Register OAuth resources, change their policies, and link registered clients | [Resource management](docs/oauth-resource-management.md) |
 | List, inspect, update and remove a user’s OAuth consent grants | [Authorized applications](docs/oauth-consents.md) |
 | Register OAuth clients and rotate confidential client secrets | [OAuth client registration](docs/oauth-client-registration.md) |
-| Build an application dashboard or show public client details on a consent screen | [Read registered applications](docs/oauth-client-directory.md) |
+| List or delete registered applications and show client details on a consent screen | [Manage registered applications](docs/oauth-client-directory.md) |
 | Issue signed service tokens and publish verification keys | [JWT and JWKS](docs/jwt.md) |
 | Check new passwords against a breached-password service | [Password screening](docs/password-checks.md) |
 | Configure profile updates, password reset, and verification email | [Account management and recovery](docs/account.md) |

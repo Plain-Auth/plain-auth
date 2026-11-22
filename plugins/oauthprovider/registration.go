@@ -111,7 +111,7 @@ type RegistrationOptions struct {
 }
 
 type Options struct {
-	// ClientPrivileges checks authenticated create, read, list, and rotate actions.
+	// ClientPrivileges checks authenticated create, read, list, rotate, and delete actions.
 	ClientPrivileges func(context.Context, ClientAccess) (bool, error)
 	// ClientReference resolves the active tenant. It defaults to Registration.ClientReference.
 	ClientReference func(context.Context, RegistrationAccess) (string, error)
@@ -194,6 +194,7 @@ func New(opts Options) (auth.Plugin, error) {
 		p.Endpoints = append(p.Endpoints, opts.clientEndpoint(action))
 	}
 	p.Endpoints = append(p.Endpoints, auth.Endpoint{Method: http.MethodPost, Path: "/oauth2/client/rotate-secret", Handler: opts.rotateClientSecret})
+	p.Endpoints = append(p.Endpoints, auth.Endpoint{Method: http.MethodPost, Path: "/oauth2/delete-client", Handler: opts.deleteClient})
 	return p, nil
 }
 

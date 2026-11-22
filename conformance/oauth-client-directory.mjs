@@ -9,6 +9,7 @@ export async function compareClientDirectory(t, reference, goFixture) {
     loginPage: "/login",
     consentPage: "/consent",
     allowDynamicClientRegistration: true,
+    cachedTrustedClients: new Set(["operator-managed"]),
     clientReference: ({ user }) => (user.email.startsWith("team-") ? "reports-team" : undefined),
     clientPrivileges: ({ action, clientId, headers }) =>
       headers.get("X-Deny-Action") !== action && (!clientId || headers.get("X-Deny-Client") !== clientId),
@@ -184,6 +185,41 @@ export async function compareClientDirectory(t, reference, goFixture) {
       assert.equal((await call(get(id), individual.cookie)).status, 404);
       assert.equal((await call(display(id), individual.cookie)).status, 404);
       assert.ok((await ok(list, individual.cookie)).some((c) => c.client_id === id));
+      await t.test("owners delete personal and tenant registrations", async () => {
+        const remove = (cookie, body, extra) => call("oauth2/delete-client", cookie, body, extra);
+        const payload = { client_id: personal.client_id };
+        for (const [cookie, body, extra] of [
+          [null, payload],
+          [other.cookie, { ...payload, user_id: individual.id }],
+          [individual.cookie, payload, { "X-Deny-Action": "delete" }],
+          [member.cookie, { client_id: shared.client_id }, { "X-Deny-Client": shared.client_id }],
+          [individual.cookie, { client_id: shared.client_id, reference_id: "reports-team" }],
+        ]) {
+          assert.equal((await remove(cookie, body, extra)).status, 401);
+        }
+        for (const [body, kind] of [[{}, "undefined"], [{ client_id: null }, "null"], [{ client_id: 1 }, "number"]]) {
+          const bad = await remove(individual.cookie, body);
+          assert.equal(bad.status, 400);
+          assert.deepEqual(await bad.json(), {
+            code: "VALIDATION_ERROR",
+            message: "[body.client_id] Invalid input: expected string, received " + kind,
+          });
+        }
+        const immutable = await remove(individual.cookie, { client_id: "operator-managed" });
+        assert.equal(immutable.status, 400);
+        assert.deepEqual(await immutable.json(), { error: "invalid_client", error_description: "trusted clients must be updated manually" });
+        for (const [cookie, clientID] of [[individual.cookie, personal.client_id], [member.cookie, shared.client_id]]) {
+          const deleted = await remove(cookie, { client_id: clientID });
+          assert.equal(deleted.status, 200);
+          assert.equal(await deleted.text(), "");
+          assert.equal((await call(get(clientID), cookie)).status, 404);
+          const again = await remove(cookie, { client_id: clientID });
+          assert.equal(again.status, 404);
+          assert.deepEqual(await again.json(), { error: "not_found", error_description: "client not found" });
+        }
+        assert.deepEqual((await ok(list, individual.cookie)).map((app) => app.client_id), [id]);
+        assert.deepEqual(await ok(list, member.cookie), []);
+      });
       await call("sign-out", member.cookie, {});
       assert.equal((await call(list, member.cookie)).status, 401);
     });

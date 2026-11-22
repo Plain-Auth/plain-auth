@@ -2,15 +2,15 @@
 
 ## Verification progress
 
-**456 of 7,025 inventory entries are fully verified (6.5%).**
+**457 of 7,025 inventory entries are fully verified (6.5%).**
 
 | Inventory status | Entries |
 | --- | ---: |
-| Fully verified | 456 |
-| Partially verified | 926 |
-| No linked test evidence | 5,643 |
+| Fully verified | 457 |
+| Partially verified | 929 |
+| No linked test evidence | 5,639 |
 
-The inventory covers features, options, integrations and documentation topics. Partial verification means an open entry has a passing case somewhere beneath it. The checklists also contain 1,917 links from passing scenarios to tests. Adding a scenario leaves the inventory denominator unchanged.
+The inventory covers features, options, integrations and documentation topics. Partial verification means an open entry has a passing case somewhere beneath it. The checklists also contain 1,925 links from passing scenarios to tests. Adding a scenario leaves the inventory denominator unchanged.
 
 A checked item links to a local test for that behavior. An open parent means the feature still has unverified cases. Browser, protocol and storage options each have their own checkboxes.
 
@@ -30,7 +30,7 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 | Manage OAuth resource policies and client grants from server code | [Resource management](../oauth-resource-management.md) |
 | Manage the signed-in user’s OAuth consent grants | [Authorized applications](../oauth-consents.md) |
 | Register OAuth clients and rotate shared secrets | [OAuth client registration](../oauth-client-registration.md) |
-| List owned applications and show public client details | [Read registered applications](../oauth-client-directory.md) |
+| List or delete owned applications and show public client details | [Manage registered applications](../oauth-client-directory.md) |
 | OAuth authorization-server database tables | [Schema and migration](../schema.md#oauth-authorization-server-tables) |
 | First-party device grants and authorization | [Sign in a device](../device-authorization.md) |
 | Sign in with an Ethereum wallet | [Wallet sign-in](../siwe.md) |
@@ -101,7 +101,7 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 | [Model Context Protocol](plugins/mcp.md) | 0 | 108 |
 | [Multi session](plugins/multi-session.md) | 15 | 22 |
 | [OAuth popup](plugins/oauth-popup.md) | 56 | 5 |
-| [OAuth provider](plugins/oauth-provider.md) | 238 | 429 |
+| [OAuth provider](plugins/oauth-provider.md) | 247 | 428 |
 | [OAuth proxy](plugins/oauth-proxy.md) | 27 | 6 |
 | [One tap](plugins/one-tap.md) | 38 | 18 |
 | [One time token](plugins/one-time-token.md) | 76 | 0 |
