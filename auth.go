@@ -230,6 +230,11 @@ func New(opts Options) (*Auth, error) {
 			a.serviceJWT = p.serviceJWT
 		}
 		if p.emailOTP != nil {
+			if len(opts.UserAdditionalFields) > 0 && !p.emailOTP.DisableSignUp {
+				if _, ok := opts.Store.(EmailOTPRegistrationStore); !ok {
+					return nil, errors.New("auth: email OTP signup with configured user fields requires an EmailOTPRegistrationStore")
+				}
+			}
 			if opts.OnPasswordReset != nil {
 				if _, ok := opts.Store.(EmailOTPResetHookStore); !ok {
 					return nil, errors.New("auth: email OTP password reset callbacks require an EmailOTPResetHookStore")

@@ -40,13 +40,7 @@ func (s *Store) createUser(ctx context.Context, user authn.User, passwordHash *s
 		return err
 	}
 	defer tx.Rollback()
-	cols := `"id","email","name","image","emailVerified","createdAt","updatedAt"`
-	args := []any{user.ID, strings.ToLower(user.Email), user.Name, user.Image, user.EmailVerified, s.date(user.CreatedAt), s.date(user.UpdatedAt)}
-	for _, column := range slices.Sorted(maps.Keys(columns)) {
-		cols += `,"` + column + `"`
-		args = append(args, columns[column])
-	}
-	userInsert := `INSERT INTO "user" (` + cols + `) VALUES (?` + strings.Repeat(",?", len(args)-1) + `)`
+	userInsert, args := s.userInsert(user, columns)
 	if s.dialect != "mysql" {
 		userInsert += ` ON CONFLICT("email") DO NOTHING`
 	}
@@ -100,6 +94,18 @@ func (s *Store) createUser(ctx context.Context, user authn.User, passwordHash *s
 		}
 	}
 	return tx.Commit()
+}
+
+// userInsert builds the canonical profile row for each account creation transaction.
+func (s *Store) userInsert(user authn.User, columns map[string]any) (string, []any) {
+	cols := `"id","email","name","image","emailVerified","createdAt","updatedAt"`
+	args := []any{user.ID, strings.ToLower(user.Email), user.Name, user.Image, user.EmailVerified, s.date(user.CreatedAt), s.date(user.UpdatedAt)}
+	for _, column := range slices.Sorted(maps.Keys(columns)) {
+		cols += `,"` + column + `"`
+		args = append(args, columns[column])
+	}
+	query := `INSERT INTO "user" (` + cols + `) VALUES (?` + strings.Repeat(",?", len(args)-1) + `)`
+	return query, args
 }
 
 const userColumns = `u."id",u."email",u."name",u."image",u."emailVerified",u."createdAt",u."updatedAt"`

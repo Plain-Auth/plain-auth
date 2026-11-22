@@ -344,6 +344,7 @@
     - [ ] `additionalFields`
       - [x] Declare portable user columns, inspect compatibility and migrate preexisting profiles alongside independent session declarations ([test](../../adapters/sqlstore/user_fields_test.go#L192))
       - [x] Apply public and host-owned fields on memory, SQLite, PostgreSQL and MySQL ([test](../../adapters/sqlstore/user_fields_test.go#L47))
+      - [x] Apply declared user fields only on first-time email OTP registration and retain the original values during sign-in ([test](../../conformance/user-fields.mjs#L111))
     - [ ] `changeEmail`
     - [ ] `deleteUser`
   - [ ] `session`

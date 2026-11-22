@@ -75,12 +75,20 @@ func (a *Auth) saveEmailOTP(ctx context.Context, req EmailOTPRequest, allowNew, 
 	return a.opts.Store.(EmailOTPStore).SaveEmailOTP(ctx, req, allowNew, req.Now.Add(o.ExpiresIn), prepare)
 }
 func (a *Auth) consumeEmailOTP(ctx context.Context, req EmailOTPRequest, code string, act EmailOTPAction) (User, error) {
+	return a.consumeEmailOTPWithFields(ctx, req, code, act, nil)
+}
+
+func (a *Auth) consumeEmailOTPWithFields(ctx context.Context, req EmailOTPRequest, code string, act EmailOTPAction, fields EmailOTPRegistrationFields) (User, error) {
 	if code == "" || len(code) > 256 {
 		return User{}, &APIError{400, "INVALID_OTP", "Invalid OTP"}
 	}
 	act.EmailOTPRequest = req
 	act.MaxAttempts = a.emailOTP.AllowedAttempts
-	return a.opts.Store.(EmailOTPStore).UseEmailOTP(ctx, act, a.matchEmailOTP(ctx, code))
+	match := a.matchEmailOTP(ctx, code)
+	if fields != nil {
+		return a.opts.Store.(EmailOTPRegistrationStore).UseEmailOTPRegistration(ctx, act, match, fields)
+	}
+	return a.opts.Store.(EmailOTPStore).UseEmailOTP(ctx, act, match)
 }
 
 // CreateEmailOTP creates a fresh code without sending mail. Only trusted Go

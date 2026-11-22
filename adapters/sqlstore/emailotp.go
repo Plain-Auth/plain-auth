@@ -199,8 +199,15 @@ func (s *Store) SaveEmailOTP(ctx context.Context, req auth.EmailOTPRequest, allo
 	return delivery, err
 }
 
+func (s *Store) UseEmailOTPRegistration(ctx context.Context, act auth.EmailOTPAction, matches func(string) (bool, error), fields auth.EmailOTPRegistrationFields) (auth.User, error) {
+	if fields == nil || act.Purpose != auth.OTPSignIn || act.Source != nil || act.CheckOnly || act.Session.Token == "" || !act.AllowSignUp {
+		return auth.User{}, errors.New("invalid email OTP registration action")
+	}
+	return s.useEmailOTP(ctx, act, matches, false, fields)
+}
+
 func (s *Store) UseEmailOTP(ctx context.Context, act auth.EmailOTPAction, matches func(string) (bool, error)) (auth.User, error) {
-	return s.useEmailOTP(ctx, act, matches, false)
+	return s.useEmailOTP(ctx, act, matches, false, nil)
 }
 
 // ConsumeObservedEmailOTP spends a valid code without verifying the address.
@@ -208,7 +215,7 @@ func (s *Store) ConsumeObservedEmailOTP(ctx context.Context, req auth.EmailOTPRe
 	if req.Observation == nil || req.Observation.ID == "" || !req.Observation.ExpiresAt.After(req.Now) || !(req.Purpose == auth.OTPVerifyEmail && req.Source == nil || req.Purpose == auth.OTPChangeEmail && req.Source != nil) || req.CurrentMatches != nil {
 		return auth.User{}, errors.New("invalid observed email OTP verification")
 	}
-	return s.useEmailOTP(ctx, auth.EmailOTPAction{EmailOTPRequest: req, MaxAttempts: req.MaxAttempts}, matches, true)
+	return s.useEmailOTP(ctx, auth.EmailOTPAction{EmailOTPRequest: req, MaxAttempts: req.MaxAttempts}, matches, true, nil)
 }
 
 // UseEmailOTPBeforeVerification commits one recovery proof, the new password,
@@ -217,10 +224,10 @@ func (s *Store) UseEmailOTPBeforeVerification(ctx context.Context, act auth.Emai
 	if act.Purpose != auth.OTPResetPassword || act.PasswordHash == "" || act.Source != nil || act.CheckOnly || act.Session.Token != "" {
 		return auth.User{}, errors.New("invalid email OTP password reset action")
 	}
-	return s.useEmailOTP(ctx, act, matches, true)
+	return s.useEmailOTP(ctx, act, matches, true, nil)
 }
 
-func (s *Store) useEmailOTP(ctx context.Context, act auth.EmailOTPAction, matches func(string) (bool, error), deferVerification bool) (auth.User, error) {
+func (s *Store) useEmailOTP(ctx context.Context, act auth.EmailOTPAction, matches func(string) (bool, error), deferVerification bool, fields auth.EmailOTPRegistrationFields) (auth.User, error) {
 	key := newEmailOTPKey(act.EmailOTPRequest)
 	invalid := &auth.APIError{Status: 400, Code: "INVALID_OTP", Message: "Invalid OTP"}
 	missing := &auth.APIError{Status: 400, Code: "USER_NOT_FOUND", Message: "User not found"}
@@ -303,7 +310,15 @@ func (s *Store) useEmailOTP(ctx context.Context, act auth.EmailOTPAction, matche
 				user.EmailVerified = true
 				user.CreatedAt = act.Now
 				user.UpdatedAt = act.Now
-				_, err = tx.ExecContext(ctx, s.bind(`INSERT INTO "user" ("id","email","name","image","emailVerified","createdAt","updatedAt") VALUES (?,?,?,?,?,?,?)`), user.ID, user.Email, user.Name, user.Image, true, s.date(act.Now), s.date(act.Now))
+				var values auth.UserFieldValues
+				if fields != nil {
+					values, err = fields()
+					if err != nil {
+						return err, nil
+					}
+				}
+				query, args := s.userInsert(user, values.Columns())
+				_, err = tx.ExecContext(ctx, s.bind(query), args...)
 				if err != nil {
 					return nil, err
 				}

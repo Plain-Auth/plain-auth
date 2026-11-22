@@ -20,11 +20,15 @@ func profileInput(fields map[string]any) (map[string]any, error) {
 
 func (r SignUpRequest) MarshalJSON() ([]byte, error) {
 	type wire SignUpRequest
-	raw, err := json.Marshal(wire(r))
-	if err != nil || len(r.AdditionalFields) == 0 {
+	return marshalProfileInput(wire(r), r.AdditionalFields)
+}
+
+func marshalProfileInput(base any, additional map[string]any) ([]byte, error) {
+	raw, err := json.Marshal(base)
+	if err != nil || len(additional) == 0 {
 		return raw, err
 	}
-	fields, err := profileInput(r.AdditionalFields)
+	fields, err := profileInput(additional)
 	if err != nil {
 		return nil, err
 	}
@@ -33,6 +37,9 @@ func (r SignUpRequest) MarshalJSON() ([]byte, error) {
 		return nil, err
 	}
 	for k, v := range standard {
+		if _, duplicate := fields[k]; duplicate {
+			return nil, fmt.Errorf("additional user field %q conflicts with a request field", k)
+		}
 		fields[k] = v
 	}
 	return json.Marshal(fields)

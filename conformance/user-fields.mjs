@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import { DatabaseSync } from "node:sqlite";
-import { inferAdditionalFields } from "better-auth/client/plugins";
+import { inferAdditionalFields, emailOTPClient } from "better-auth/client/plugins";
+import { emailOTP } from "better-auth/plugins";
+import { readFile } from "node:fs/promises";
+import { dirname, join } from "node:path";
 
 const fields = {
   locale: { type: "string", required: true, fieldName: "preferred_locale" },
@@ -64,5 +67,55 @@ export async function compareUserFields(t, { reference, goFixture, instrument })
     const refused = await consumer.updateUser({ accountClass: "untrusted", locale: "discard" });
     assert.equal(refused.error?.code, "FIELD_NOT_ALLOWED");
     visible((await actor.getSession()).data.user, "es", 0, null);
+  }
+}
+
+export async function compareEmailOTPUserFields(t, { reference, goFixture, instrument }) {
+  const go = await goFixture(t, [], { CONFORMANCE_USER_FIELDS: "1", AUTH_TEST_EMAIL_OTP_MAILBOX: "1" });
+  const database = new DatabaseSync(go.databasePath);
+  t.after(() => database.close());
+  let message;
+  const ref = await reference(t, [emailOTP({
+    storeOTP: "hashed",
+    sendVerificationOTP: async value => { message = value; },
+  })], { database, user: { additionalFields: fields }, rateLimit: { enabled: false } });
+  const make = runtime => instrument(runtime, [emailOTPClient(), inferAdditionalFields()]).client;
+  const goClient = make(go), refClient = make(ref);
+  async function issue(issuer, email) {
+    const sent = await issuer.emailOtp.sendVerificationOtp({ email, type: "sign-in" });
+    assert.equal(sent.error, null);
+    if (issuer === refClient) {
+      assert.equal(message.email, email);
+      return message.otp;
+    }
+    const file = JSON.parse(await readFile(join(dirname(go.databasePath), "email-otp.json"), "utf8"));
+    assert.equal(file.Email, email);
+    return file.OTP;
+  }
+  for (const [actor, other, label] of [[goClient, refClient, "go"], [refClient, goClient, "ts"]]) {
+    const email = label + "@otp-fields.test";
+    const failed = await issue(other, email);
+    assert.equal((await actor.signIn.emailOtp({ email, otp: "wrong-code" })).error?.code, "INVALID_OTP");
+    assert.equal((await actor.signIn.emailOtp({ email, otp: failed })).error?.code, "MISSING_FIELD");
+    assert.equal((await other.signIn.emailOtp({ email, otp: failed, locale: "en" })).error?.code, "INVALID_OTP");
+    assert.equal(database.prepare('SELECT COUNT(*) AS n FROM "user" WHERE email = ?').get(email).n, 0);
+
+    const otp = await issue(other, email);
+    const created = await actor.signIn.emailOtp({ email, otp, name: label, locale: "fr", count: 0, flag: false, accountClass: "override", privateNote: "secret input" });
+    assert.equal(created.error, null);
+    assert.equal(created.data.user.emailVerified, true);
+    visible(created.data.user, "fr", 0, false);
+    assert.equal((await other.signIn.emailOtp({ email, otp })).error?.code, "INVALID_OTP");
+
+    for (const extra of [{}, { locale: "forged", accountClass: "forged", name: "changed", privateNote: "altered" }]) {
+      const established = await other.signIn.emailOtp({ email, otp: await issue(actor,email), ...extra });
+      assert.equal(established.error, null);
+      assert.equal(established.data.user.id, created.data.user.id);
+      assert.equal(established.data.user.name, label);
+      visible(established.data.user, "fr", 0, false);
+      visible((await actor.getSession()).data.user, "fr", 0, false);
+    }
+    const stored = database.prepare('SELECT preferred_locale,privateNote,internalRisk FROM "user" WHERE id = ?').get(created.data.user.id);
+    assert.deepEqual({ ...stored }, { preferred_locale: "fr", privateNote: "secret input", internalRisk: 9 });
   }
 }

@@ -183,8 +183,15 @@ func (s *Store) SaveEmailOTP(ctx context.Context, req auth.EmailOTPRequest, allo
 	}
 }
 
+func (s *Store) UseEmailOTPRegistration(ctx context.Context, act auth.EmailOTPAction, matches func(string) (bool, error), fields auth.EmailOTPRegistrationFields) (auth.User, error) {
+	if fields == nil || act.Purpose != auth.OTPSignIn || act.Source != nil || act.CheckOnly || act.Session.Token == "" || !act.AllowSignUp {
+		return auth.User{}, errors.New("invalid email OTP registration action")
+	}
+	return s.useEmailOTP(ctx, act, matches, false, fields)
+}
+
 func (s *Store) UseEmailOTP(ctx context.Context, act auth.EmailOTPAction, matches func(string) (bool, error)) (auth.User, error) {
-	return s.useEmailOTP(ctx, act, matches, false)
+	return s.useEmailOTP(ctx, act, matches, false, nil)
 }
 
 // ConsumeObservedEmailOTP spends a valid code without verifying the address.
@@ -192,7 +199,7 @@ func (s *Store) ConsumeObservedEmailOTP(ctx context.Context, req auth.EmailOTPRe
 	if req.Observation == nil || req.Observation.ID == "" || !req.Observation.ExpiresAt.After(req.Now) || !(req.Purpose == auth.OTPVerifyEmail && req.Source == nil || req.Purpose == auth.OTPChangeEmail && req.Source != nil) || req.CurrentMatches != nil {
 		return auth.User{}, errors.New("invalid observed email OTP verification")
 	}
-	return s.useEmailOTP(ctx, auth.EmailOTPAction{EmailOTPRequest: req, MaxAttempts: req.MaxAttempts}, matches, true)
+	return s.useEmailOTP(ctx, auth.EmailOTPAction{EmailOTPRequest: req, MaxAttempts: req.MaxAttempts}, matches, true, nil)
 }
 
 // UseEmailOTPBeforeVerification commits one recovery proof, the new password,
@@ -201,10 +208,10 @@ func (s *Store) UseEmailOTPBeforeVerification(ctx context.Context, act auth.Emai
 	if act.Purpose != auth.OTPResetPassword || act.PasswordHash == "" || act.Source != nil || act.CheckOnly || act.Session.Token != "" {
 		return auth.User{}, errors.New("invalid email OTP password reset action")
 	}
-	return s.useEmailOTP(ctx, act, matches, true)
+	return s.useEmailOTP(ctx, act, matches, true, nil)
 }
 
-func (s *Store) useEmailOTP(ctx context.Context, act auth.EmailOTPAction, matches func(string) (bool, error), deferVerification bool) (auth.User, error) {
+func (s *Store) useEmailOTP(ctx context.Context, act auth.EmailOTPAction, matches func(string) (bool, error), deferVerification bool, fields auth.EmailOTPRegistrationFields) (auth.User, error) {
 	key := keyForMail(act.EmailOTPRequest)
 	for {
 		if err := ctx.Err(); err != nil {
@@ -228,12 +235,12 @@ func (s *Store) useEmailOTP(ctx context.Context, act auth.EmailOTPAction, matche
 			s.mu.Unlock()
 			return auth.User{}, denied
 		}
-		u, err := s.finishMailProof(key, p, act, deferVerification)
+		u, err := s.finishMailProof(key, p, act, deferVerification, fields)
 		s.mu.Unlock()
 		return u, err
 	}
 }
-func (s *Store) finishMailProof(key mailKey, p mailProof, act auth.EmailOTPAction, deferVerification bool) (auth.User, error) {
+func (s *Store) finishMailProof(key mailKey, p mailProof, act auth.EmailOTPAction, deferVerification bool, fields auth.EmailOTPRegistrationFields) (auth.User, error) {
 	state, err := s.snapshotMail(act.EmailOTPRequest, true)
 	if err != nil {
 		return auth.User{}, err
@@ -278,6 +285,14 @@ func (s *Store) finishMailProof(key mailKey, p mailProof, act auth.EmailOTPActio
 			}
 			if _, taken := s.users[act.NewUser.ID]; taken {
 				return auth.User{}, errors.New("memory: duplicate user ID")
+			}
+			if fields != nil {
+				values, err := fields()
+				if err != nil {
+					delete(s.emailOTPs, key)
+					return auth.User{}, err
+				}
+				rec.fields = values.Columns()
 			}
 			rec.user = copyUser(act.NewUser)
 			rec.user.Email = act.Email

@@ -94,6 +94,17 @@ type EmailOTPStore interface {
 	UseEmailOTP(ctx context.Context, action EmailOTPAction, matches func(stored string) (bool, error)) (User, error)
 }
 
+// EmailOTPRegistrationFields prepares configured attributes for a new mailbox
+// owner. It has no storage or delivery side effects and can be retried.
+type EmailOTPRegistrationFields func() (UserFieldValues, error)
+
+// EmailOTPRegistrationStore consumes a valid proof before applying the new-account
+// field policy. A rejected field set spends the proof without creating a user or
+// session. Existing mailbox owners sign in without evaluating registration data.
+type EmailOTPRegistrationStore interface {
+	UseEmailOTPRegistration(context.Context, EmailOTPAction, func(string) (bool, error), EmailOTPRegistrationFields) (User, error)
+}
+
 // EmailOTPResetHookStore separates a successful credential reset from promotion
 // of the same mailbox. The latter runs only after the host callback succeeds.
 type EmailOTPResetHookStore interface {
@@ -238,10 +249,11 @@ func (a *Auth) VerifyEmailOTP(ctx context.Context, email, code string) (User, er
 }
 
 type EmailOTPSignInInput struct {
-	Email string  `json:"email"`
-	OTP   string  `json:"otp"`
-	Name  string  `json:"name,omitempty"`
-	Image *string `json:"image,omitempty"`
+	AdditionalFields map[string]any `json:"-"`
+	Email            string         `json:"email"`
+	OTP              string         `json:"otp"`
+	Name             string         `json:"name,omitempty"`
+	Image            *string        `json:"image,omitempty"`
 }
 
 // SignInEmailOTP consumes a sign-in code and creates a session.
@@ -253,7 +265,21 @@ func (a *Auth) SignInEmailOTP(ctx context.Context, in EmailOTPSignInInput, meta 
 		return AuthResult{}, validationError("Invalid name")
 	}
 	session, _ := a.newSession("", meta)
-	u, err := a.useEmailOTP(ctx, in.Email, in.OTP, OTPSignIn, EmailOTPAction{AllowSignUp: !a.emailOTP.DisableSignUp, Session: session, NewUser: User{ID: randomID(), Name: in.Name, Image: in.Image}})
+	request, err := a.emailOTPRequest(in.Email, OTPSignIn)
+	if err != nil {
+		return AuthResult{}, err
+	}
+	act := EmailOTPAction{AllowSignUp: !a.emailOTP.DisableSignUp, Session: session, NewUser: User{ID: randomID(), Name: in.Name, Image: in.Image}}
+	var registration EmailOTPRegistrationFields
+	if act.AllowSignUp && len(a.opts.UserAdditionalFields) > 0 {
+		registration = func() (UserFieldValues, error) {
+			if _, collision := in.AdditionalFields["otp"]; collision {
+				return UserFieldValues{}, validationError("Additional user field otp conflicts with the verification code")
+			}
+			return a.prepareUserFields(in.AdditionalFields, true, false)
+		}
+	}
+	u, err := a.consumeEmailOTPWithFields(ctx, request, in.OTP, act, registration)
 	if err != nil {
 		return AuthResult{}, err
 	}
@@ -355,7 +381,11 @@ func (a *Auth) serveEmailOTP(c EndpointContext, path string) (any, error) {
 		}
 		return success, a.resetPasswordEmailOTP(ctx, email, code, pass, c.Request)
 	case "/sign-in/email-otp":
-		in := EmailOTPSignInInput{Email: email, OTP: code}
+		fields := a.userFieldInput(c.Body)
+		// The proof belongs to the protocol, including when an application uses
+		// "otp" as the name of an unrelated profile field.
+		delete(fields, "otp")
+		in := EmailOTPSignInInput{Email: email, OTP: code, AdditionalFields: fields}
 		if _, ok := c.Body["name"]; ok {
 			in.Name, err = requiredString(c.Body, "name")
 			if err != nil {

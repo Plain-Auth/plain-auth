@@ -22,7 +22,7 @@ Import `plugins/emailotp` from this module. Each HTTP route accepts JSON under t
 | `/email-otp/send-verification-otp` | `email`, `type` | Requests a code and returns `{"success":true}`. Types are `email-verification`, `sign-in` and `forget-password`. |
 | `/email-otp/check-verification-otp` | `email`, `type`, `otp` | Checks a registered mailbox's code and preserves a successful proof for its final action. |
 | `/email-otp/verify-email` | `email`, `otp` | Confirms the current account's email, preserves its credential and returns `status`, `user` and a null `token` by default. Enable `AutoSignInAfterVerification` to issue a session. |
-| `/sign-in/email-otp` | `email`, `otp`, optional `name` and `image` | Registers or authenticates the mailbox owner. The response contains the user and token, and the client receives a session cookie. |
+| `/sign-in/email-otp` | `email`, `otp`, optional `name`, `image` and configured profile fields | Registers or authenticates the mailbox owner. The response contains the user and token, and the client receives a session cookie. |
 | `/email-otp/request-password-reset` or `/forget-password/email-otp` | `email` | Requests a recovery code for an existing mailbox. |
 | `/email-otp/reset-password` | `email`, `otp`, `password` | Applies the host's credential policy and sets the password. `RevokeSessionsOnPasswordReset` revokes existing sessions when enabled. |
 | `/email-otp/request-email-change` | `newEmail`, optional `otp` from the current mailbox | An authenticated user requests a code for the new address. |
@@ -31,6 +31,21 @@ Import `plugins/emailotp` from this module. Each HTTP route accepts JSON under t
 A sign-in code can create a verified account. Set `DisableSignUp` in the plugin to restrict sign-in to existing users. Recovery and verification return the same successful request response for unknown addresses and skip delivery. Signing in to a previously unverified account removes credentials and sessions created before the mailbox owner proved control.
 
 Set `SendVerificationOnSignUp` in the plugin to send a code when registering a password account. `OverrideDefaultEmailVerification` routes the host's address-verification mail through this plugin, including verification-gated sign-up. An application that also enables the core email-change workflow can keep its existing mail-link sender for that workflow.
+
+## Registration profile fields
+
+When a verified mailbox first signs in, `POST /sign-in/email-otp` accepts writable `UserAdditionalFields` at the top level beside `email` and `otp`. The direct Go method and HTTP client use the same input type.
+
+```go
+result, err := client.SignInEmailOTP(ctx, plainauth.EmailOTPSignInInput{
+    Email: email, OTP: code, Name: "Jo",
+    AdditionalFields: map[string]any{"locale": "fr", "newsletter": false},
+})
+```
+
+The registration path applies configured defaults, column aliases and the host-owned input policy. Public fields appear under `result.User` and are available from the current session. Hidden values stay in storage. The wire property `otp` is reserved for the submitted proof. A valid proof is spent if required profile data is missing or invalid. Request a fresh code after correcting the registration data.
+
+A returning user can send only their email and code. Sign-in reads their stored profile and ignores registration input. Use the authenticated profile update endpoint to change writable fields. Custom adapters that enable email OTP signup and configured user fields implement `EmailOTPRegistrationStore`. The built-in memory and SQL adapters commit the new profile, session and successful proof consumption together. If session storage fails and the transaction rolls back, the code can be retried within its original lifetime. [Additional user fields](user-fields.md)
 
 ## Expiry, retries and resends
 

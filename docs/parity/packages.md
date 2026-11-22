@@ -24,7 +24,7 @@ Each row tracks the behavior exposed by a published entry point. The Go implemen
     - [x] Keep callback failures private and honor cancellation while password operations are queued ([test](../../password_codec_test.go#L15))
     - [x] Keep failed version lookup retryable and issue a snapshot only for the stored ordinary profile ([test](../../session_cache_version_test.go#L147))
     - [x] Keep private duplicate observers and password recovery independent of cache version callbacks until a real session is issued ([test](../../client/session_cache_version_test.go#L88))
-    - [x] Round-trip configured profile values, private inputs, required fields and server-owned signup defaults on shared SQLite ([test](../../conformance/user-fields.mjs#L29))
+    - [x] Round-trip configured profile values, private inputs, required fields and server-owned signup defaults on shared SQLite ([test](../../conformance/user-fields.mjs#L32))
     - [x] Keep another account’s profile and hidden inputs out of protected duplicate signup and verification output ([test](../../adapters/sqlstore/user_fields_test.go#L264))
     - [x] Return the signed-in user and session with the default seven-day lifetime ([test](../../conformance/core.test.mjs#L195))
     - [x] Support the sliding session window, deferred writes and expiration ([test](../../session_refresh_test.go#L46))

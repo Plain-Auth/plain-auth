@@ -2810,6 +2810,21 @@
       "label": "Consume a memory-backed sign-in proof once across handlers and revoke unproven access",
       "test": "adapters/memory/emailotp_test.go",
       "marker": "memory proof was not single-use"
+    },
+    {
+      "label": "Register a new mailbox with public, hidden and host-owned user fields through both released-client runtimes on shared SQLite",
+      "test": "conformance/user-fields.mjs",
+      "marker": "export async function compareEmailOTPUserFields("
+    },
+    {
+      "label": "Spend invalid registration claims and authenticate returning owners without changing stored fields across four adapters",
+      "test": "adapters/sqlstore/emailotp_user_fields_test.go",
+      "marker": "func TestEmailOTPRegistrationUserFields("
+    },
+    {
+      "label": "Roll back a new profile when required session storage fails, then redeem the original proof once after correcting the configuration",
+      "test": "adapters/sqlstore/emailotp_user_fields_test.go",
+      "marker": "func TestEmailOTPProfileSignupRollsBackSessionFailure("
     }
   ],
   "plugin/email-otp/POST /email-otp/request-password-reset": [
@@ -9742,6 +9757,11 @@
       "label": "Apply public and host-owned fields on memory, SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/user_fields_test.go",
       "marker": "func TestConfiguredUserFieldsAcrossStores("
+    },
+    {
+      "label": "Apply declared user fields only on first-time email OTP registration and retain the original values during sign-in",
+      "test": "conformance/user-fields.mjs",
+      "marker": "const established = await other.signIn.emailOtp("
     }
   ],
   "plugin-symbol/one-time-token/oneTimeTokenClient": [

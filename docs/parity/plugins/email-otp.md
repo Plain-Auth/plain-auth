@@ -25,6 +25,9 @@
   - [ ] `POST /sign-in/email-otp`
     - [x] Create one verified account and one session when eight sign-ins race across two pools ([test](../../../adapters/sqlstore/emailotp_test.go#L155))
     - [x] Consume a memory-backed sign-in proof once across handlers and revoke unproven access ([test](../../../adapters/memory/emailotp_test.go#L79))
+    - [x] Register a new mailbox with public, hidden and host-owned user fields through both released-client runtimes on shared SQLite ([test](../../../conformance/user-fields.mjs#L73))
+    - [x] Spend invalid registration claims and authenticate returning owners without changing stored fields across four adapters ([test](../../../adapters/sqlstore/emailotp_user_fields_test.go#L29))
+    - [x] Roll back a new profile when required session storage fails, then redeem the original proof once after correcting the configuration ([test](../../../adapters/sqlstore/emailotp_user_fields_test.go#L191))
   - [ ] `POST /email-otp/request-password-reset`
     - [x] Deliver recovery mail to an existing owner and accept the stored proof in a second runtime ([test](../../../conformance/core.test.mjs#L521))
   - [x] `POST /forget-password/email-otp` ([test](../../../adapters/sqlstore/emailotp_test.go#L173))

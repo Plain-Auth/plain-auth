@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 
 	auth "github.com/Plain-Auth/plain-auth"
@@ -26,7 +27,11 @@ func (c *Client) VerifyEmailOTP(ctx context.Context, email, otp string) (*auth.U
 }
 func (c *Client) SignInEmailOTP(ctx context.Context, in auth.EmailOTPSignInInput) (*auth.AuthResult, error) {
 	var result auth.AuthResult
-	if err := c.Do(ctx, http.MethodPost, "/sign-in/email-otp", in, &result); err != nil {
+	body, err := marshalProfileInput(in, in.AdditionalFields)
+	if err != nil {
+		return nil, err
+	}
+	if err := c.Do(ctx, http.MethodPost, "/sign-in/email-otp", json.RawMessage(body), &result); err != nil {
 		return nil, err
 	}
 	return &result, nil

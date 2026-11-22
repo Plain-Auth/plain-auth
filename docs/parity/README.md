@@ -52,7 +52,7 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 | [Core concepts](concepts.md) | 55 | 510 |
 | [Managed infrastructure](infrastructure.md) | 0 | 528 |
 | [Framework integrations](integrations.md) | 0 | 228 |
-| [Reference and configuration](reference.md) | 74 | 395 |
+| [Reference and configuration](reference.md) | 75 | 395 |
 
 ## Plugins and integrations
 
@@ -70,7 +70,7 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 | [Custom session](plugins/custom-session.md) | 21 | 3 |
 | [Device authorization](plugins/device-authorization.md) | 22 | 99 |
 | [Electron](plugins/electron.md) | 0 | 52 |
-| [Email otp](plugins/email-otp.md) | 40 | 95 |
+| [Email otp](plugins/email-otp.md) | 43 | 95 |
 | [Expo](plugins/expo.md) | 0 | 19 |
 | [Generic OAuth](plugins/generic-oauth.md) | 22 | 265 |
 | [Have I Been Pwned](plugins/have-i-been-pwned.md) | 26 | 10 |

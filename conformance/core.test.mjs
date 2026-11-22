@@ -1608,3 +1608,8 @@ test("session transfers match the released client generation guards, deadlines a
   const { transferContract } = await import("./transfer-options.mjs");
   await transferContract(t, { reference, goFixture, instrument });
 });
+
+test("both runtimes register email OTP users with configured fields and preserve returning profiles", async t => {
+  const { compareEmailOTPUserFields } = await import("./user-fields.mjs");
+  await compareEmailOTPUserFields(t, { reference, goFixture, instrument });
+});

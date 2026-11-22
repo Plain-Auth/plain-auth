@@ -1,6 +1,6 @@
 # Additional user fields
 
-Declare application profile attributes in `Options.UserAdditionalFields`. Email/password signup accepts each writable attribute at the top level of the request. The signed-in owner can change writable attributes through `POST /update-user`. Signup, credential signin and current-session responses expose the configured public values under `user`.
+Declare application profile attributes in `Options.UserAdditionalFields`. Email/password signup and first-time email OTP sign-in accept each writable attribute at the top level of the request. The signed-in owner can change writable attributes through `POST /update-user`. Signup, credential signin and current-session responses expose the configured public values under `user`.
 
 ```go
 fields := map[string]plainauth.UserField{
@@ -58,4 +58,4 @@ err = auth.UpdateTrustedUserFields(ctx, userID, map[string]any{
 
 Supported values are strings, booleans and signed 32-bit integers. `Required` rejects missing values without defaults at signup and rejects explicit null on writes. Logical and physical names must be distinct from core, plugin and reserved request fields. Signup on a fresh database applies defaults in the application. Other provisioning flows such as social signup, SCIM, administration and fixtures have their own input contracts. A required column needs a value from each enabled writer. The CLI reads these declarations from `--user-fields FILE`. An application can load the same JSON with `schema.ReadUserFields`. [Schema commands](schema.md#configure-user-and-session-fields)
 
-This profile covers static scalar defaults and the email/password account lifecycle. Collections, dates, computed defaults, custom validators and transforms, and per-field compile-time client inference remain open.
+This profile covers static scalar defaults, the email/password account lifecycle and email OTP registration. Collections, dates, computed defaults, custom validators and transforms, and per-field compile-time client inference remain open.
