@@ -326,6 +326,7 @@ for (const file of tracked.filter((f) => f.startsWith(docPrefix) && f.endsWith("
 const screeningPage = "plugins/have-i-been-pwned.md";
 const screening = pages.get(screeningPage);
 screening.push("## Credential-setting paths", "", pending("Apply default checks inside each credential-setting flow"));
+addEvidence(screening, "password-screening/default-paths", screeningPage, 1);
 const pathDeclaration = read(corePrefix + "haveibeenpwned/index.ts").match(/const paths = options\?\.paths \|\| \[([^\]]+)\]/);
 assert.ok(pathDeclaration, "Missing default password-screening paths");
 for (const [, path] of pathDeclaration[1].matchAll(/"([^"]+)"/g)) {

@@ -1497,6 +1497,12 @@
       "label": "Reject a breached password in native and HTTP credential-setting operations",
       "test": "plugins/pwnedpassword/pwnedpassword_test.go",
       "marker": "func TestCredentialSettingPaths("
+    },
+    {
+      "label": "Verify public error responses, preservation of credentials and successful clean retries",
+      "test": "conformance/password-screening.mjs",
+      "marker": "export async function comparePasswordScreening(",
+      "complete": true
     }
   ],
   "plugin-symbol/have-i-been-pwned/haveIBeenPwned": [
@@ -1504,6 +1510,12 @@
       "label": "Reject compromised credentials through the public JavaScript client",
       "test": "conformance/core.test.mjs",
       "marker": "test(\"the official client enforces the password range policy"
+    },
+    {
+      "label": "Apply the installed policy to all seven default paths and allow ordinary sign-in",
+      "test": "conformance/password-screening.mjs",
+      "marker": "export async function comparePasswordScreening(",
+      "complete": true
     }
   ],
   "password-screening//sign-up/email": [
@@ -10703,6 +10715,70 @@
       "label": "Map browser grants on first links and verified email linking, keep identity bindings and reject invalid updates atomically",
       "test": "conformance/account-fields.mjs",
       "marker": "export async function compareBrowserAccountFields("
+    }
+  ],
+  "password-screening//email-otp/reset-password": [
+    {
+      "label": "Reject a breached password and accept a clean retry with the same email code",
+      "test": "conformance/password-screening.mjs",
+      "marker": "await checkRecovery(password => owner.emailOtp.resetPassword",
+      "complete": true
+    }
+  ],
+  "password-screening//phone-number/reset-password": [
+    {
+      "label": "Reject a breached password and accept a clean retry with the same SMS code",
+      "test": "conformance/password-screening.mjs",
+      "marker": "await checkRecovery(password => owner.phoneNumber.resetPassword",
+      "complete": true
+    }
+  ],
+  "password-screening//admin/create-user": [
+    {
+      "label": "Reject a breached initial credential before creating the user, then allow a clean password",
+      "test": "conformance/password-screening.mjs",
+      "marker": "denied(await manager.admin.createUser",
+      "complete": true
+    }
+  ],
+  "password-screening//admin/set-user-password": [
+    {
+      "label": "Preserve a member's password on rejection and verify an administrator can replace it with a clean one",
+      "test": "conformance/password-screening.mjs",
+      "marker": "denied(await manager.admin.setUserPassword",
+      "complete": true
+    }
+  ],
+  "password-screening/default-paths": [
+    {
+      "label": "Exercise all seven default writes through the browser client on both runtimes",
+      "test": "conformance/password-screening.mjs",
+      "marker": "export async function comparePasswordScreening(",
+      "complete": true
+    }
+  ],
+  "plugin/have-i-been-pwned": [
+    {
+      "label": "Install the policy and verify the default range checks across registration, recovery and administration",
+      "test": "conformance/password-screening.mjs",
+      "marker": "export async function comparePasswordScreening(",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/have-i-been-pwned.mdx": [
+    {
+      "label": "Use the installed policy across personal and administrator credential changes with a local padded range service",
+      "test": "conformance/password-screening.mjs",
+      "marker": "export async function comparePasswordScreening(",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/have-i-been-pwned.mdx#L50": [
+    {
+      "label": "Set the enabled state, path filter and custom rejection message",
+      "test": "plugins/pwnedpassword/pwnedpassword_test.go",
+      "marker": "func TestPluginOptions(",
+      "complete": true
     }
   ]
 }

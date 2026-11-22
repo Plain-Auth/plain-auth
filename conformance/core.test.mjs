@@ -1729,3 +1729,8 @@ function assertOneTapAccount(db, previousUser) {
   const mapped = db.prepare("SELECT grantKind, ownerClass FROM account WHERE providerId='google'").get();
   assert.deepEqual({...mapped}, {grantKind:null, ownerClass:"member"}, "One Tap should apply creation defaults and skip provider mapping");
 }
+
+test("screen all seven default password writes and preserve rejected account changes", async (t) => {
+  const { comparePasswordScreening } = await import("./password-screening.mjs");
+  await comparePasswordScreening(t, { reference, goFixture, instrument });
+});

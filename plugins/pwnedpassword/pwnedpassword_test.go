@@ -192,7 +192,7 @@ func TestCredentialSettingPaths(t *testing.T) {
 }
 
 func TestPluginOptions(t *testing.T) {
-	off := false
+	on, off := true, false
 	calls := 0
 	const sample = "a local sample"
 	hash := digest(sample)
@@ -212,6 +212,7 @@ func TestPluginOptions(t *testing.T) {
 		{"disabled", "/sign-up/email", pwnedpassword.Options{Enabled: &off}, false},
 		{"empty path list", "/sign-up/email", pwnedpassword.Options{Paths: []string{}}, false},
 		{"custom path", "/custom/set", pwnedpassword.Options{Paths: []string{"/custom/set"}}, true},
+		{"enabled with custom path and message", "/custom/set", pwnedpassword.Options{Enabled: &on, Paths: []string{"/custom/set"}, CustomPasswordCompromisedMessage: "Choose another password"}, true},
 		{"replaced defaults", "/sign-up/email", pwnedpassword.Options{Paths: []string{"/custom/set"}}, false},
 		{"native initial credential outside defaults", "/set-password", pwnedpassword.Options{}, false},
 	} {
@@ -226,8 +227,15 @@ func TestPluginOptions(t *testing.T) {
 			if (err != nil) != tc.reject || (calls != before) != tc.reject {
 				t.Fatalf("route selection: %v (%d requests)", err, calls-before)
 			}
-			if tc.reject && err.Error() != "The password you entered has been compromised. Please choose a different password." {
-				t.Fatalf("default rejection: %v", err)
+			if tc.reject {
+				want := tc.opts.CustomPasswordCompromisedMessage
+				if want == "" {
+					want = "The password you entered has been compromised. Please choose a different password."
+				}
+				var api *authn.APIError
+				if !errors.As(err, &api) || api.Status != http.StatusBadRequest || api.Code != "PASSWORD_COMPROMISED" || api.Message != want {
+					t.Fatalf("password policy returned %v, expected PASSWORD_COMPROMISED with message %q", err, want)
+				}
 			}
 		})
 	}

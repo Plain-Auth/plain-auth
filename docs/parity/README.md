@@ -2,15 +2,15 @@
 
 ## Verification progress
 
-**369 of 6,957 inventory entries are fully verified (5.3%).**
+**379 of 6,957 inventory entries are fully verified (5.4%).**
 
 | Inventory status | Entries |
 | --- | ---: |
-| Fully verified | 369 |
-| Partially verified | 870 |
-| No linked test evidence | 5,718 |
+| Fully verified | 379 |
+| Partially verified | 864 |
+| No linked test evidence | 5,714 |
 
-The inventory covers features, options, integrations and documentation topics. Partial verification means an open entry has a passing case somewhere beneath it. The checklists also contain 1,744 links from passing scenarios to tests. Adding a scenario leaves the inventory denominator unchanged.
+The inventory covers features, options, integrations and documentation topics. Partial verification means an open entry has a passing case somewhere beneath it. The checklists also contain 1,754 links from passing scenarios to tests. Adding a scenario leaves the inventory denominator unchanged.
 
 A checked item links to a local test for that behavior. An open parent means the feature still has unverified cases. Browser, protocol and storage options each have their own checkboxes.
 
@@ -87,7 +87,7 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 | [Email otp](plugins/email-otp.md) | 43 | 95 |
 | [Expo](plugins/expo.md) | 0 | 19 |
 | [Generic OAuth](plugins/generic-oauth.md) | 28 | 262 |
-| [Have I Been Pwned](plugins/have-i-been-pwned.md) | 26 | 10 |
+| [Have I Been Pwned](plugins/have-i-been-pwned.md) | 46 | 0 |
 | [Internationalization](plugins/i18n.md) | 116 | 36 |
 | [JSON Web Tokens](plugins/jwt.md) | 13 | 75 |
 | [Last login method](plugins/last-login-method.md) | 24 | 48 |
