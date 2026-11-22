@@ -11,10 +11,11 @@ import (
 )
 
 type verificationClaims struct {
-	Email       string `json:"email"`
-	UserID      string `json:"userId"`
-	UpdateTo    string `json:"updateTo,omitempty"`
-	RequestType string `json:"requestType,omitempty"`
+	ProfileUpdatedAtMillis *int64 `json:"profileUpdatedAtMs,omitempty"`
+	Email                  string `json:"email"`
+	UserID                 string `json:"userId"`
+	UpdateTo               string `json:"updateTo,omitempty"`
+	RequestType            string `json:"requestType,omitempty"`
 	jwt.RegisteredClaims
 }
 
@@ -29,6 +30,10 @@ func (a *Auth) sendEmailProof(ctx context.Context, u User, newEmail, requestType
 	claims := verificationClaims{Email: strings.ToLower(u.Email), UserID: u.ID, UpdateTo: newEmail, RequestType: requestType, RegisteredClaims: jwt.RegisteredClaims{
 		IssuedAt: jwt.NewNumericDate(now), ExpiresAt: jwt.NewNumericDate(now.Add(a.opts.EmailVerificationTokenTTL)),
 	}}
+	if a.opts.AutoSignInAfterVerification && requestType == "" && newEmail == "" && !u.UpdatedAt.IsZero() {
+		revision := u.UpdatedAt.UnixMilli()
+		claims.ProfileUpdatedAtMillis = &revision
+	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	delete(token.Header, "typ")
 	raw, err := token.SignedString([]byte(a.opts.Secret))
@@ -73,6 +78,10 @@ func (a *Auth) VerifyEmail(ctx context.Context, raw string) error {
 	if claims.UpdateTo != "" || claims.RequestType != "" {
 		return &APIError{401, "INVALID_TOKEN", "Invalid token"}
 	}
+	if a.opts.AutoSignInAfterVerification {
+		_, _, err := a.consumeVerification(ctx, claims, raw, nil)
+		return err
+	}
 	return a.verifyAddress(ctx, claims)
 }
 
@@ -88,12 +97,16 @@ func (a *Auth) verifyAddress(ctx context.Context, claims verificationClaims) err
 	return err
 }
 
-func (a *Auth) applyEmailProof(ctx context.Context, h http.Header, raw, callback string) (map[string]any, error) {
+func (a *Auth) applyEmailProof(r *http.Request, response http.Header, raw, callback string) (map[string]any, error) {
+	ctx, h := r.Context(), r.Header
 	claims, err := a.parseEmailProof(raw)
 	if err != nil {
 		return nil, err
 	}
 	if claims.UpdateTo == "" && claims.RequestType == "" {
+		if a.opts.AutoSignInAfterVerification {
+			return map[string]any{"status": true, "user": nil}, a.verifyEmailBrowser(r, response, claims, raw)
+		}
 		return map[string]any{"status": true, "user": nil}, a.verifyAddress(ctx, claims)
 	}
 	if !a.opts.ChangeEmailEnabled || !emailPattern.MatchString(claims.UpdateTo) || strings.Contains(claims.UpdateTo, "..") {

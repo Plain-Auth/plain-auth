@@ -81,6 +81,11 @@ func (s *Store) deleteUserRecords(id string, rec credential) {
 			delete(s.deletions, key)
 		}
 	}
+	for key, proof := range s.spentEmailProofs {
+		if proof.owner == id {
+			delete(s.spentEmailProofs, key)
+		}
+	}
 	delete(s.users, id)
 	delete(s.emailToID, strings.ToLower(rec.user.Email))
 }

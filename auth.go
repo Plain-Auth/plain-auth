@@ -250,6 +250,11 @@ func New(opts Options) (*Auth, error) {
 	if opts.ErrorRedirectURL != "" && !a.trustedURL(opts.ErrorRedirectURL, true) {
 		return nil, errors.New("auth: ErrorRedirectURL must be a trusted callback")
 	}
+	if opts.AutoSignInAfterVerification {
+		if _, ok := a.opts.Store.(EmailVerificationSessionStore); !ok {
+			return nil, errors.New("auth: automatic email verification sign-in requires an EmailVerificationSessionStore")
+		}
+	}
 	return a, nil
 }
 

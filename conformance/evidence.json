@@ -572,6 +572,11 @@
       "label": "Verify a signed link against the same stored account across runtimes",
       "test": "conformance/core.test.mjs",
       "marker": "test(\"a shared SQLite account consumes reference verification and password reset links in Go\""
+    },
+    {
+      "label": "Cross-verify signed ordinary mail links and compare first use, duplicate use, trusted redirects and foreign or same-owner browser sessions",
+      "test": "conformance/email-verification-session.mjs",
+      "marker": "export async function compareVerifiedEmailSignIn("
     }
   ],
   "docs/content/docs/plugins/bearer.mdx#L85": [
@@ -8502,6 +8507,33 @@
       "label": "Keep personal and organization billing separate through a licensed purchase with two metered additions on three SQL engines",
       "test": "adapters/sqlstore/stripe_addons_test.go",
       "marker": "organization purchase appeared on personal account"
+    }
+  ],
+  "docs/content/docs/reference/options.mdx#L282/`autoSignInAfterVerification`": [
+    {
+      "label": "Cross-verify signed ordinary mail links and compare first use, duplicate use, trusted redirects and foreign or same-owner browser sessions",
+      "test": "conformance/email-verification-session.mjs",
+      "marker": "export async function compareVerifiedEmailSignIn("
+    },
+    {
+      "label": "Serialize concurrent browser verification across memory and three SQL engines, keeping native verification and application credentials sessionless",
+      "test": "adapters/sqlstore/email_verification_session_test.go",
+      "marker": "func TestEmailVerificationSessionAcrossStores("
+    },
+    {
+      "label": "Enforce enrollment, bans, delegation, mailbox ownership and spent-proof policy from an independently mounted SQL node",
+      "test": "adapters/sqlstore/email_verification_session_test.go",
+      "marker": "func TestEmailVerificationSessionLivePolicies("
+    },
+    {
+      "label": "Authenticate the native HTTP client and remove a newly minted session when cookie publication fails",
+      "test": "client/email_verification_session_test.go",
+      "marker": "func TestClientSignInAfterEmailVerification("
+    },
+    {
+      "label": "Reject a proof that expires while waiting for the account lock on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/email_verification_session_test.go",
+      "marker": "proof remained valid after waiting beyond expiry for the owner lock"
     }
   ]
 }

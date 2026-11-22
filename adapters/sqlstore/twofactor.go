@@ -24,7 +24,7 @@ func (s *Store) detectFactorSchema(ctx context.Context, db rowQuerier) (bool, er
 	case "sqlite":
 		q = `SELECT count(*) FROM pragma_table_info('user') WHERE name='twoFactorEnabled'`
 	case "postgres":
-		q = `SELECT count(*) FROM information_schema.columns WHERE table_schema=current_schema() AND table_name='user' AND column_name='twoFactorEnabled'`
+		q = `SELECT count(*) FROM pg_catalog.pg_attribute WHERE attrelid=pg_catalog.to_regclass('"user"') AND attname='twoFactorEnabled' AND attnum>0 AND NOT attisdropped`
 	case "mysql":
 		q = `SELECT count(*) FROM information_schema.columns WHERE table_schema=database() AND table_name='user' AND column_name='twoFactorEnabled'`
 	}

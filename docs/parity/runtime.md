@@ -96,6 +96,7 @@ Each entry groups the configured endpoint’s behaviors. A checked child records
   - [ ] `verifyEmail` (`GET /verify-email`)
     - [x] Reflect the verified email address in the current session ([test](../../account_test.go#L59))
     - [x] Verify a signed link against the same stored account across runtimes ([test](../../conformance/core.test.mjs#L217))
+    - [x] Cross-verify signed ordinary mail links and compare first use, duplicate use, trusted redirects and foreign or same-owner browser sessions ([test](../../conformance/email-verification-session.mjs#L7))
   - [ ] `verifyPassword` (`POST /verify-password`)
     - [x] Validate the password of the signed-in user ([test](../../account_test.go#L36))
 

@@ -112,7 +112,7 @@ func (s *Store) deleteAccountRows(ctx context.Context, tx *sql.Tx, userID string
 	if _, err = tx.ExecContext(ctx, s.bind(`DELETE FROM "verification" WHERE "value"=? AND ("identifier" LIKE 'delete-account-%' OR "identifier" LIKE 'reset-password:%')`), userID); err != nil {
 		return err
 	}
-	if _, err := tx.ExecContext(ctx, s.bind(`DELETE FROM "verification" WHERE "identifier"=?`), "anonymous-link:"+userID); err != nil {
+	if _, err := tx.ExecContext(ctx, s.bind(`DELETE FROM "verification" WHERE "identifier" IN (?,?)`), "anonymous-link:"+userID, "verified-email-proof:"+userID); err != nil {
 		return err
 	}
 	hasFactor, err := s.detectFactorSchema(ctx, tx)

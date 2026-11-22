@@ -48,12 +48,14 @@ type Options struct {
 	// sign-up. An HTTP call supplies request metadata; direct calls supply nil.
 	OnExistingUserSignUp func(context.Context, User, *http.Request) error
 
-	EmailAndPassword              bool
-	MinPasswordLength             int
-	MaxPasswordLength             int
-	DisableSignUp                 bool
-	DisableAutoSignIn             bool
-	RequireEmailVerification      bool
+	EmailAndPassword         bool
+	MinPasswordLength        int
+	MaxPasswordLength        int
+	DisableSignUp            bool
+	DisableAutoSignIn        bool
+	RequireEmailVerification bool
+	// AutoSignInAfterVerification issues or reuses a browser session on first email-link verification.
+	AutoSignInAfterVerification   bool
 	SendVerificationOnSignUp      *bool
 	SendVerificationOnSignIn      bool
 	SendVerificationEmail         MailSender

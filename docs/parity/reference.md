@@ -285,6 +285,11 @@
     - [ ] `sendOnSignUp`
     - [ ] `sendOnSignIn`
     - [ ] `autoSignInAfterVerification`
+      - [x] Cross-verify signed ordinary mail links and compare first use, duplicate use, trusted redirects and foreign or same-owner browser sessions ([test](../../conformance/email-verification-session.mjs#L7))
+      - [x] Serialize concurrent browser verification across memory and three SQL engines, keeping native verification and application credentials sessionless ([test](../../adapters/sqlstore/email_verification_session_test.go#L33))
+      - [x] Enforce enrollment, bans, delegation, mailbox ownership and spent-proof policy from an independently mounted SQL node ([test](../../adapters/sqlstore/email_verification_session_test.go#L135))
+      - [x] Authenticate the native HTTP client and remove a newly minted session when cookie publication fails ([test](../../client/email_verification_session_test.go#L16))
+      - [x] Reject a proof that expires while waiting for the account lock on SQLite, PostgreSQL and MySQL ([test](../../adapters/sqlstore/email_verification_session_test.go#L291))
     - [ ] `expiresIn`
   - [ ] `emailAndPassword`
     - [x] `enabled` ([test](../../conformance/email-password-options.mjs#L77))

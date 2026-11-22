@@ -439,6 +439,14 @@ func main() {
 		opts.SendVerificationOnSignUp = &enabled
 		opts.SendVerificationEmail = func(context.Context, authn.MailLink) error { return fmt.Errorf("private fixture sender error") }
 	}
+	if path := os.Getenv("CONFORMANCE_EMAIL_VERIFY_LINK"); path != "" {
+		enabled := true
+		opts.AutoSignInAfterVerification = true
+		opts.SendVerificationOnSignUp = &enabled
+		opts.SendVerificationEmail = func(_ context.Context, message authn.MailLink) error {
+			return os.WriteFile(path, []byte(message.Token), 0600)
+		}
+	}
 	if mode := os.Getenv("CONFORMANCE_ERROR_REPORTER"); mode != "" {
 		opts.Plugins = append(opts.Plugins, authn.Plugin{ID: "report-errors", Endpoints: []authn.Endpoint{{
 			Method: http.MethodGet, Path: "/report-failure", Handler: func(authn.EndpointContext) (any, error) { return nil, fmt.Errorf("private endpoint failure") },

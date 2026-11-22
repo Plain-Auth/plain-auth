@@ -1508,3 +1508,8 @@ test("the released client buys a licensed base with two metered add-ons for pers
     await t.test(organization ? "organization" : "user", t => meteredCheckout(t, { reference, goFixture, instrument }, organization, true));
   }
 });
+
+test("both runtimes verify ordinary mail links and sign in only on first use", async t => {
+  const { compareVerifiedEmailSignIn } = await import("./email-verification-session.mjs");
+  await compareVerifiedEmailSignIn(t, {reference, goFixture, instrument});
+});

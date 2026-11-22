@@ -188,7 +188,7 @@ func (a *Auth) handleAccountRequest(route string, w http.ResponseWriter, r *http
 			if token == "" {
 				return nil, validationError("[query.token] Invalid input: expected string, received undefined")
 			}
-			result, err := a.applyEmailProof(ctx, r.Header, token, callback)
+			result, err := a.applyEmailProof(r, w.Header(), token, callback)
 			if callback != "" {
 				var apiErr *APIError
 				if errors.As(err, &apiErr) {
