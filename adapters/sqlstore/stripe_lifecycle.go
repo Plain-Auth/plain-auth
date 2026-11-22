@@ -162,6 +162,13 @@ func (s *Store) ApplyStripeSubscriptionChange(ctx context.Context, key billing.S
 		currentTime := time.Now().UTC()
 		now := s.date(currentTime)
 		if key.EventID != "" {
+			// A validated Checkout claim can identify an existing incomplete
+			// local row before its provider subscription ID has been bound.
+			if key.UpdateFingerprint != "" && (r.LocalID != "" || c.Metadata["subscriptionId"] != "") {
+				if err := s.saveSubscriptionUpdate(ctx, tx, key, r.Owner, currentTime); err != nil {
+					return err
+				}
+			}
 			identifier := stripeOwnerKey(ctx, "event", r.Owner)
 			if _, err = tx.ExecContext(ctx, s.bind(`DELETE FROM "verification" WHERE "identifier"=? AND "expiresAt"<=?`), identifier, now); err != nil {
 				return err

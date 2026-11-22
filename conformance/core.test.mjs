@@ -1513,3 +1513,8 @@ test("both runtimes verify ordinary mail links and sign in only on first use", a
   const { compareVerifiedEmailSignIn } = await import("./email-verification-session.mjs");
   await compareVerifiedEmailSignIn(t, {reference, goFixture, instrument});
 });
+
+test("signed subscription updates call the host observer before OnEvent on both runtimes, including redeliveries", async t => {
+  const { subscriptionUpdateCallback } = await import("./stripe-lifecycle-fixture.mjs");
+  await subscriptionUpdateCallback(t, { reference, goFixture, instrument });
+});

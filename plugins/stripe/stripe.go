@@ -100,6 +100,11 @@ func New(opts Options) authn.Plugin {
 			if !ok {
 				return errors.New("stripe: store does not support subscriptions")
 			}
+			if subs.onUpdate != nil {
+				if _, ok := store.(SubscriptionUpdateStore); !ok {
+					return errors.New("stripe: subscription update callbacks require a store with committed update receipts")
+				}
+			}
 			if err := s.CheckSubscriptionSchema(context.Background()); err != nil {
 				return err
 			}

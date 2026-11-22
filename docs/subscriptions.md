@@ -198,6 +198,24 @@ Processing is safe across replicas. The adapter records processed event IDs for 
 
 Custom stores can implement `stripeplugin.SubscriptionLifecycleStore` to enable these writes. The optional `OnEvent` callback receives authenticated notifications, including retries. Use the Stripe event ID when the callback sends messages or performs other side effects. The SQL tests use a local provider transport and independent database connections. [Subscription lifecycle tests](../adapters/sqlstore/stripe_lifecycle_test.go)
 
+### Observe committed subscription updates
+
+Set `OnSubscriptionUpdate` on `stripeplugin.SubscriptionOptions` to receive signed `customer.subscription.updated` deliveries for a subscription that is already linked locally or has a verified pending checkout.
+
+```go
+subscriptions.OnSubscriptionUpdate = func(ctx context.Context, update stripeplugin.SubscriptionUpdate) error {
+    // The event ID identifies this delivery across Stripe retries.
+    return app.RecordBillingChange(ctx, update.Event.ID, update.Subscription.ReferenceID,
+        update.Subscription.Status, update.StripeSubscription.Status)
+}
+```
+
+The callback runs after the SQL transaction commits and releases its locks, before the general `OnEvent` hook. `Subscription` holds the local row committed for that event, including its verified personal or organization reference. `StripeSubscription` and `Event` hold the signed provider snapshot. A delayed event can describe an older status than the local row, because reconciliation reads the provider’s current subscription. [Post-commit callback tests](../adapters/sqlstore/stripe_update_callback_test.go)
+
+Each authenticated redelivery can invoke the callback again, including concurrent deliveries on different servers. The adapters retain the committed local result with the event for 45 days. A retry during that window uses the original result even if a later event changed the row. Use the event ID as an idempotency key for application side effects. Events handled while the callback was disabled have no saved notification. Enable it on every webhook-serving instance before relying on it. Custom stores must implement `stripeplugin.SubscriptionUpdateStore`.
+
+A billing or receipt-storage failure returns HTTP 500 so Stripe can retry. A callback error or panic is logged with the Stripe event ID. The general hook still runs and the webhook can acknowledge the delivery. An application that requires guaranteed processing should persist its own work and monitor its failures. [Released-client delivery and failure tests](../conformance/stripe-lifecycle-fixture.mjs)
+
 ## Cancel or restore a subscription
 
 To open the Stripe cancellation page, send an authenticated POST to `/api/auth/subscription/cancel`. Pass the provider subscription ID from the `stripeSubscriptionId` field returned by the list endpoint. Omitting the ID selects the first active or trialing subscription ordered by local ID.

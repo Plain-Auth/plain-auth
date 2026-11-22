@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"log"
 	"net/http"
@@ -56,7 +57,25 @@ func fixtureStripe(ctx context.Context, store *sqlstore.Store, endpoint string, 
 		}
 		go worker.Run(ctx, 25*time.Millisecond, func(err error) { log.Print(err) })
 	}
-	return billing.New(billing.Options{Organization: org, WebhookSecret: "whsec_offline_fixture",
+	opts := billing.Options{Organization: org, WebhookSecret: "whsec_offline_fixture",
 		Portal: &billing.PortalOptions{Client: provider, Customers: store}, Subscriptions: subscriptions,
-	}), nil
+	}
+	if os.Getenv("CONFORMANCE_STRIPE_UPDATE_OBSERVER") == "1" {
+		appendRecord := func(record any) error {
+			f, err := os.OpenFile(os.Args[1]+".stripe-updates", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0600)
+			if err != nil {
+				return err
+			}
+			defer f.Close()
+			return json.NewEncoder(f).Encode(record)
+		}
+		subscriptions.OnSubscriptionUpdate = func(ctx context.Context, u billing.SubscriptionUpdate) error {
+			if err := appendRecord([]any{"update", u.Event.ID, u.StripeSubscription.ID, u.Subscription.ReferenceID, u.Subscription.Status, u.StripeSubscription.Status}); err != nil {
+				return err
+			}
+			return errors.New("expected test observer failure")
+		}
+		opts.OnEvent = func(ctx context.Context, e sdk.Event) error { return appendRecord([]string{"event", e.ID}) }
+	}
+	return billing.New(opts), nil
 }

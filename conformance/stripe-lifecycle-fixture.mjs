@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { once } from "node:events";
+import { readFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import { DatabaseSync } from "node:sqlite";
 import { stripe } from "@better-auth/stripe";
@@ -466,5 +467,40 @@ export async function organizationManagement(t, { reference, goFixture, instrume
     assert.equal((await list()).billingInterval, "year");
     assert.deepEqual(ok(await buyer.subscription.list()), []);
     assert.deepEqual(ok(await peer.subscription.list()), []);
+  });
+}
+
+export async function subscriptionUpdateCallback(t, { reference, goFixture, instrument }) {
+  for (const runtime of ["reference", "Go"]) await t.test(runtime, async t => {
+    const provider = await localStripe(t);
+    const calls = [];
+    const server = runtime === "Go"
+      ? await goFixture(t, ["stripe-subscriptions"], { CONFORMANCE_STRIPE_URL: provider.url, CONFORMANCE_STRIPE_UPDATE_OBSERVER: "1" })
+      : await reference(t, [stripe({ stripeClient: provider.api, stripeWebhookSecret: webhookSecret,
+        subscription: { enabled: true, plans: [{ name: "basic", priceId: basicPrice }],
+          onSubscriptionUpdate: async ({event, stripeSubscription, subscription}) => {
+            calls.push(["update", event.id, stripeSubscription.id, subscription.referenceId, subscription.status, stripeSubscription.status]);
+            throw new Error("expected test observer failure");
+          },
+        },
+        onEvent: async event => { calls.push(["event", event.id]); },
+      })]);
+    const db = server.database ?? new DatabaseSync(server.databasePath);
+    if (!server.database) t.after(() => db.close());
+    const owner = instrument(server, [stripeClient({ subscription: true })]).client;
+    const signup = ok(await owner.signUp.email({ name: "Buyer", email: "notice@example.test", password: "offline-callback-password" }));
+    const subscription = provider.subscriptions.get("sub_owner");
+    seed(db, signup.user.id, subscription);
+    subscription.status = "past_due";
+    const id = "evt_update_observer";
+    const expected = [];
+    for (let delivery = 0; delivery < 2; delivery++) {
+      await signedUpdate(server, provider, id, subscription);
+      expected.push(["update", id, subscription.id, signup.user.id, "past_due", "past_due"], ["event", id]);
+      const observed = runtime === "Go" ? (await readFile(server.databasePath + ".stripe-updates", "utf8")).trim().split("\n").map(JSON.parse) : calls;
+      assert.deepEqual(observed, expected);
+      assert.equal(db.prepare('SELECT status FROM subscription WHERE "stripeSubscriptionId"=?').get(subscription.id).status, "past_due");
+      assert.deepEqual(ok(await owner.subscription.list()), []);
+    }
   });
 }

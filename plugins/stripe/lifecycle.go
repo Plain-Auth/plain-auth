@@ -14,6 +14,8 @@ import (
 type SubscriptionIdentity struct {
 	RemoteID, CustomerID, Owner, LocalID string
 	EventID                              string
+	// UpdateFingerprint requests a post-commit receipt for this signed update.
+	UpdateFingerprint string `json:"-"`
 	// Purchase links an immutable Checkout receipt to its original reservation.
 	Purchase *CheckoutPurchase `json:"-"`
 	// SessionToken accompanies a browser-authorized synchronization and is never persisted.
@@ -67,8 +69,26 @@ func (s *subscriptions) handleSubscriptionEvent(c auth.EndpointContext, event sd
 	}
 	deleted := event.Type == sdk.EventTypeCustomerSubscriptionDeleted
 	key := SubscriptionIdentity{RemoteID: sub.ID, CustomerID: sub.Customer.ID, EventID: event.ID}
-	_, err := s.reconcile(c.Request.Context(), store, key, &sub, deleted)
-	return err
+	ctx := c.Request.Context()
+	notify := s.onUpdate != nil && event.Type == sdk.EventTypeCustomerSubscriptionUpdated
+	if notify {
+		var err error
+		key.UpdateFingerprint, err = updateFingerprint(event.Data.Raw)
+		if err != nil {
+			return err
+		}
+	}
+	if _, err := s.reconcile(ctx, store, key, &sub, deleted); err != nil {
+		return err
+	}
+	if notify {
+		row, err := store.(SubscriptionUpdateStore).ReadStripeSubscriptionUpdate(ctx, key)
+		if err != nil || row == nil {
+			return err
+		}
+		return s.notifySubscriptionUpdate(c, event, &sub, *row)
+	}
+	return nil
 }
 
 // refreshManagedSubscription synchronizes only the account-bound row selected

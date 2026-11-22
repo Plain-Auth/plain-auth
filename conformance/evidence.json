@@ -2209,6 +2209,11 @@
       "label": "Remove the active entitlement if an existing add-on is substituted and restore it once the configured items return",
       "test": "adapters/sqlstore/stripe_addons_test.go",
       "marker": "unrecognized replacement kept the old entitlement"
+    },
+    {
+      "label": "Recover a committed subscription update after a receipt read fails without applying the provider state twice",
+      "test": "adapters/sqlstore/stripe_update_callback_test.go",
+      "marker": "a retry could not deliver the already committed update"
     }
   ],
   "plugin-symbol/captcha/captcha": [
@@ -8534,6 +8539,32 @@
       "label": "Reject a proof that expires while waiting for the account lock on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/email_verification_session_test.go",
       "marker": "proof remained valid after waiting beyond expiry for the owner lock"
+    }
+  ],
+  "plugin-symbol/stripe/SubscriptionOptions/onSubscriptionUpdate": [
+    {
+      "label": "Invoke the update callback after commit with the signed event, provider subscription and verified local record for a personal or organization owner",
+      "test": "adapters/sqlstore/stripe_update_callback_test.go",
+      "marker": "wrong signed snapshot or committed user subscription",
+      "complete": true
+    },
+    {
+      "label": "Preserve the original committed local snapshot on a duplicate delivery after a different update",
+      "test": "adapters/sqlstore/stripe_update_callback_test.go",
+      "marker": "redelivery lost its own committed snapshot"
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L865/`onSubscriptionUpdate`": [
+    {
+      "label": "Call the configured update hook before the general event hook on each authenticated delivery, even when the update hook fails",
+      "test": "conformance/stripe-lifecycle-fixture.mjs",
+      "marker": "assert.deepEqual(observed, expected)",
+      "complete": true
+    },
+    {
+      "label": "Isolate callback panics and errors while preserving independent event data and redacting diagnostics",
+      "test": "adapters/sqlstore/stripe_update_callback_test.go",
+      "marker": "misbound delivery notified the host"
     }
   ]
 }

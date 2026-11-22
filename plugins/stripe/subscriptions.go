@@ -30,6 +30,8 @@ type SubscriptionOptions struct {
 	Plans  []Plan
 	// RequireEmailVerification restricts starting Checkout to a verified owner.
 	RequireEmailVerification bool
+	// OnSubscriptionUpdate runs after a signed subscription update commits.
+	OnSubscriptionUpdate func(context.Context, SubscriptionUpdate) error
 }
 
 type Subscription struct {
@@ -117,6 +119,7 @@ type subscriptions struct {
 	plans                    map[string]Plan
 	requireEmailVerification bool
 	hasMeteredAddons         bool
+	onUpdate                 func(context.Context, SubscriptionUpdate) error
 }
 
 func configureSubscriptions(o *SubscriptionOptions) (*subscriptions, error) {
@@ -126,7 +129,7 @@ func configureSubscriptions(o *SubscriptionOptions) (*subscriptions, error) {
 	if o.Client == nil || len(o.Plans) == 0 {
 		return nil, errors.New("stripe: subscriptions require a client and plans")
 	}
-	s := &subscriptions{client: o.Client, plans: map[string]Plan{}, requireEmailVerification: o.RequireEmailVerification}
+	s := &subscriptions{client: o.Client, plans: map[string]Plan{}, requireEmailVerification: o.RequireEmailVerification, onUpdate: o.OnSubscriptionUpdate}
 	s.prices = make(map[string]subscriptionPrice)
 	for _, p := range o.Plans {
 		p.Name = strings.ToLower(strings.TrimSpace(p.Name))
