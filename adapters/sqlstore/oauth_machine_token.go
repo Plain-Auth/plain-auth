@@ -12,14 +12,14 @@ import (
 
 var _ op.MachineTokenStore = (*Store)(nil)
 
-const machineClientSelect = `SELECT "id","clientId","clientSecret","tokenEndpointAuthMethod","grantTypes","clientCredentialsScopes","disabled","dpopBoundAccessTokens","metadata" FROM "oauthClient"` + localClientFilter
+const machineClientSelect = `SELECT "id","clientId","clientSecret","tokenEndpointAuthMethod","grantTypes","clientCredentialsScopes","disabled","dpopBoundAccessTokens","metadata","jwks","jwksUri" FROM "oauthClient"` + localClientFilter
 
 func scanMachineClient(row rowScanner, id string) (op.MachineClient, error) {
 	var client op.MachineClient
-	var secret, method sql.NullString
+	var secret, method, jwks, uri sql.NullString
 	var disabled, dpop sql.NullBool
 	var grants, scopes, metadata []byte
-	err := row.Scan(&client.RowID, &client.ClientID, &secret, &method, &grants, &scopes, &disabled, &dpop, &metadata)
+	err := row.Scan(&client.RowID, &client.ClientID, &secret, &method, &grants, &scopes, &disabled, &dpop, &metadata, &jwks, &uri)
 	if errors.Is(err, sql.ErrNoRows) || err == nil && client.ClientID != id {
 		return op.MachineClient{}, op.ErrClientNotFound
 	}
@@ -27,6 +27,7 @@ func scanMachineClient(row rowScanner, id string) (op.MachineClient, error) {
 		return op.MachineClient{}, err
 	}
 	client.StoredSecret, client.AuthMethod = secret.String, method.String
+	client.JWKS, client.JWKSURI = jwks.String, uri.String
 	client.Disabled, client.RequireDPoP = disabled.Bool, dpop.Bool
 	if grants != nil {
 		if err := json.Unmarshal(grants, &client.GrantTypes); err != nil {

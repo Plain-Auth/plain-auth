@@ -123,6 +123,8 @@ type Options struct {
 	PairwiseSecret     string
 	Registration       RegistrationOptions
 	Tokens             TokenOptions
+	Assertions         AssertionOptions
+	assertionKeys      *clientKeyCache
 }
 
 func (opts Options) clientManagementOptions() Options {
@@ -141,6 +143,10 @@ func (opts Options) clientManagementOptions() Options {
 // Dynamic registration is disabled until the host explicitly enables it.
 func New(opts Options) (auth.Plugin, error) {
 	opts = opts.clientManagementOptions()
+	if err := opts.Assertions.defaults(); err != nil {
+		return auth.Plugin{}, err
+	}
+	opts.assertionKeys = newClientKeyCache(opts.Assertions.JWKSTransport)
 	if opts.GrantTypes == nil {
 		opts.GrantTypes = []string{"authorization_code", "client_credentials", "refresh_token"}
 	}

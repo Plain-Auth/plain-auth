@@ -14,7 +14,7 @@ var _ op.MachineIntrospectionStore = (*Store)(nil)
 func (s *Store) InspectMachineToken(ctx context.Context, clientID, digest string) (op.MachineClient, *op.MachineTokenRecord, error) {
 	// Keep credential rotation, deletion, revocation and token ownership in one
 	// snapshot. Delegated and sender-constrained tokens need additional checks.
-	const query = `SELECT c."id",c."clientId",c."clientSecret",c."tokenEndpointAuthMethod",c."disabled",
+	const query = `SELECT c."id",c."clientId",c."clientSecret",c."tokenEndpointAuthMethod",c."disabled",c."jwks",c."jwksUri",
 		t."token",t."clientId",t."createdAt",t."expiresAt",t."scopes",t."resources"
 		FROM "oauthClient" c LEFT JOIN "oauthAccessToken" t
 		ON t."clientId"=c."clientId" AND t."token"=? AND t."revoked" IS NULL
@@ -23,12 +23,12 @@ func (s *Store) InspectMachineToken(ctx context.Context, clientID, digest string
 		AND t."confirmation" IS NULL AND t."requestedUserInfoClaims" IS NULL
 		WHERE c."clientId"=? AND (c."clientDiscoveryId" IS NULL OR c."clientDiscoveryId"='')`
 	var client op.MachineClient
-	var secret, method, stored, owner sql.NullString
+	var secret, method, stored, owner, jwks, uri sql.NullString
 	var disabled sql.NullBool
 	var issued, expires sql.NullTime
 	var scopes, resources []byte
 	err := s.db.QueryRowContext(ctx, s.bind(query), digest, clientID).Scan(
-		&client.RowID, &client.ClientID, &secret, &method, &disabled, &stored, &owner, &issued, &expires, &scopes, &resources)
+		&client.RowID, &client.ClientID, &secret, &method, &disabled, &jwks, &uri, &stored, &owner, &issued, &expires, &scopes, &resources)
 	if errors.Is(err, sql.ErrNoRows) || err == nil && client.ClientID != clientID {
 		return op.MachineClient{}, nil, op.ErrClientNotFound
 	}
@@ -36,6 +36,7 @@ func (s *Store) InspectMachineToken(ctx context.Context, clientID, digest string
 		return op.MachineClient{}, nil, err
 	}
 	client.StoredSecret, client.AuthMethod, client.Disabled = secret.String, method.String, disabled.Bool
+	client.JWKS, client.JWKSURI = jwks.String, uri.String
 	if digest == "" || stored.String != digest || owner.String != clientID || !issued.Valid || !expires.Valid {
 		return client, nil, nil
 	}

@@ -23,10 +23,11 @@ type MachineIntrospectionStore interface {
 const introspectionOperation = `{
   "summary":"Check the status of an opaque machine access token",
   "security":[{"clientSecretBasic":[]},{}],
-  "description":"Authenticate as the issuing application using HTTP Basic or its registered client_secret_post method.",
+  "description":"Authenticate as the issuing application using its registered method: HTTP Basic, client_secret_post or private_key_jwt.",
   "requestBody":{"required":true,"content":{"application/x-www-form-urlencoded":{"schema":{
     "type":"object","required":["token"],"properties":{"token":{"type":"string"},"token_type_hint":{"type":"string"},
-      "client_id":{"type":"string"},"client_secret":{"type":"string","format":"password"}}
+      "client_id":{"type":"string"},"client_secret":{"type":"string","format":"password"},"client_assertion_type":{"type":"string","enum":["urn:ietf:params:oauth:client-assertion-type:jwt-bearer"]},
+      "client_assertion":{"type":"string","format":"jwt"}}
   }}}},
   "responses":{"200":{"description":"Current token status","content":{"application/json":{"schema":{
     "type":"object","required":["active"],"properties":{"active":{"type":"boolean"},"iss":{"type":"string"},
@@ -47,7 +48,7 @@ func (opts Options) introspect(c auth.EndpointContext) (any, error) {
 	}
 	ctx := c.Request.Context()
 	in := req.client
-	first, err := opts.Registration.authenticateClient(ctx, store, in)
+	first, err := opts.authenticateClient(c, store, in, "/oauth2/introspect")
 	if err != nil {
 		return nil, tokenEndpointError(c.ResponseHeader, req.challenge, err)
 	}
@@ -96,7 +97,7 @@ func readTokenAction(c auth.EndpointContext, requireSecret bool) (tokenAction, e
 	if err != nil {
 		return tokenAction{}, tokenEndpointError(c.ResponseHeader, challenge, err)
 	}
-	if in.id == "" || (requireSecret && in.secret == "") {
+	if in.id == "" || (requireSecret && in.secret == "" && in.assertion == nil) {
 		return tokenAction{}, tokenEndpointError(c.ResponseHeader, "Basic", invalidClient("missing required credentials"))
 	}
 	raw := tokens[len(tokens)-1]

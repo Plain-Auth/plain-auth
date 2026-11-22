@@ -7,6 +7,7 @@ import { betterAuth } from "better-auth";
 import { exportJWK, generateKeyPair, SignJWT } from "jose";
 import { exerciseMachineTokens } from "./oauth-machine-tokens.mjs";
 import { exerciseIntrospection } from "./oauth-introspection.mjs";
+import { exerciseClientAssertions } from "./oauth-client-assertions.mjs";
 import { exerciseRevocation } from "./oauth-revocation.mjs";
 
 function options(mode) {
@@ -344,6 +345,9 @@ export async function compareClientRegistration(t, reference, goFixture) {
         await issuer.api.adminUpdateOAuthClient({
           headers: { cookie: operatorCookie },
           body: { client_id: keyed.client_id, update: { client_credentials_scopes: ["reports"] } },
+        });
+        await t.test("authenticate with signed client assertions and share replay protection between issuers", async () => {
+          await exerciseClientAssertions({ server, issuer, keyed, signer, key });
         });
         const endpoint = "http://issuer.localhost/api/auth/oauth2/token";
         const assertion = await new SignJWT({})

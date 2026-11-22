@@ -32,7 +32,8 @@ const revocationOperation = `{
   "security":[{"clientSecretBasic":[]},{}],
   "requestBody":{"required":true,"content":{"application/x-www-form-urlencoded":{"schema":{
     "type":"object","required":["token"],"properties":{"token":{"type":"string"},"token_type_hint":{"type":"string"},
-      "client_id":{"type":"string"},"client_secret":{"type":"string","format":"password"}}
+      "client_id":{"type":"string"},"client_secret":{"type":"string","format":"password"},"client_assertion_type":{"type":"string","enum":["urn:ietf:params:oauth:client-assertion-type:jwt-bearer"]},
+      "client_assertion":{"type":"string","format":"jwt"}}
   }}}},
   "responses":{"200":{"description":"Revocation processed. The body is empty."},
   "400":{"description":"Invalid request, rejected credentials or unsupported self-contained access token"},
@@ -49,7 +50,7 @@ func (opts Options) revoke(c auth.EndpointContext) (any, error) {
 		return nil, &auth.APIError{Status: 501, Code: "OAUTH_REVOCATION_STORE_UNAVAILABLE", Message: "The configured store does not support OAuth token revocation"}
 	}
 	ctx := c.Request.Context()
-	first, err := opts.Registration.authenticateClient(ctx, store, req.client)
+	first, err := opts.authenticateClient(c, store, req.client, "/oauth2/revoke")
 	if err != nil {
 		return nil, tokenEndpointError(c.ResponseHeader, req.challenge, err)
 	}

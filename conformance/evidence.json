@@ -12043,6 +12043,11 @@
       "label": "Recheck credential rotation, registered scopes, sender constraints and client deletion during issuance on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/oauth_machine_token_test.go",
       "marker": "failed exchanges persisted access tokens"
+    },
+    {
+      "label": "Authenticate issuance, introspection and revocation with independently signed assertions and reject replay across issuers",
+      "test": "conformance/oauth-client-assertions.mjs",
+      "marker": "export async function exerciseClientAssertions("
     }
   ],
   "docs/content/docs/plugins/oauth-provider/reference.mdx#L321/`POST /oauth2/token`": [
@@ -12108,6 +12113,11 @@
       "label": "Read credentials, ownership and token state consistently across rotation, disablement, deletion and revocation on three SQL engines",
       "test": "adapters/sqlstore/oauth_introspection_test.go",
       "marker": "inactive response disclosed claims"
+    },
+    {
+      "label": "Authenticate issuance, introspection and revocation with independently signed assertions and reject replay across issuers",
+      "test": "conformance/oauth-client-assertions.mjs",
+      "marker": "export async function exerciseClientAssertions("
     }
   ],
   "docs/content/docs/plugins/oauth-provider/reference.mdx#L322/`POST /oauth2/introspect`": [
@@ -12152,6 +12162,11 @@
       "label": "Recognize independently signed live access tokens and check every resource audience before reporting unsupported token type",
       "test": "conformance/oauth-revocation.mjs",
       "marker": "await problem({ ...owner, token: await sign(claims)"
+    },
+    {
+      "label": "Authenticate issuance, introspection and revocation with independently signed assertions and reject replay across issuers",
+      "test": "conformance/oauth-client-assertions.mjs",
+      "marker": "export async function exerciseClientAssertions("
     }
   ],
   "docs/content/docs/plugins/oauth-provider/reference.mdx#L323/`POST /oauth2/revoke`": [
@@ -12193,6 +12208,131 @@
       "label": "Keep an operator-managed credential immutable from the owner endpoint",
       "test": "conformance/oauth-registration.mjs",
       "marker": "[\"operator-managed\", 400, \"invalid_client\"]"
+    }
+  ],
+  "plugin-symbol/oauth-provider/OAuthOptions/assertionMaxLifetime": [
+    {
+      "label": "Apply the configured lifetime and skew to expiry, not-before and issued-at claims, including exact boundaries",
+      "test": "plugins/oauthprovider/client_assertion_test.go",
+      "marker": "func TestAssertionLifetimeAndClockTolerance(",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/oauth-provider/OAuthOptions/assertionClockTolerance": [
+    {
+      "label": "Apply the configured lifetime and skew to expiry, not-before and issued-at claims, including exact boundaries",
+      "test": "plugins/oauthprovider/client_assertion_test.go",
+      "marker": "func TestAssertionLifetimeAndClockTolerance(",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/tokens.mdx#L129/`assertionMaxLifetime`": [
+    {
+      "label": "Apply the configured lifetime and skew to expiry, not-before and issued-at claims, including exact boundaries",
+      "test": "plugins/oauthprovider/client_assertion_test.go",
+      "marker": "func TestAssertionLifetimeAndClockTolerance(",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/clients.mdx#L260": [
+    {
+      "label": "Authenticate issuance, introspection and revocation with independently signed assertions and reject replay across issuers",
+      "test": "conformance/oauth-client-assertions.mjs",
+      "marker": "export async function exerciseClientAssertions("
+    },
+    {
+      "label": "Verify signatures with all ten asymmetric signing algorithms and enforce registered key restrictions",
+      "test": "plugins/oauthprovider/client_assertion_test.go",
+      "marker": "func TestClientAssertionSigningAlgorithms("
+    },
+    {
+      "label": "Refresh a registered remote key set after rotation and enforce trust, media type, size and stale-key limits",
+      "test": "plugins/oauthprovider/client_assertion_test.go",
+      "marker": "func TestRemoteAssertionKeyRotation("
+    },
+    {
+      "label": "Allow one concurrent use across independent SQL connections and recheck the registered key before issuing a token",
+      "test": "adapters/sqlstore/oauth_client_assertion_test.go",
+      "marker": "func TestOAuthClientAssertionAcrossPools("
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/tokens.mdx#L16/`private_key_jwt`": [
+    {
+      "label": "Authenticate issuance, introspection and revocation with independently signed assertions and reject replay across issuers",
+      "test": "conformance/oauth-client-assertions.mjs",
+      "marker": "export async function exerciseClientAssertions(",
+      "complete": true
+    },
+    {
+      "label": "Verify signatures with all ten asymmetric signing algorithms and enforce registered key restrictions",
+      "test": "plugins/oauthprovider/client_assertion_test.go",
+      "marker": "func TestClientAssertionSigningAlgorithms("
+    },
+    {
+      "label": "Refresh a registered remote key set after rotation and enforce trust, media type, size and stale-key limits",
+      "test": "plugins/oauthprovider/client_assertion_test.go",
+      "marker": "func TestRemoteAssertionKeyRotation("
+    },
+    {
+      "label": "Allow one concurrent use across independent SQL connections and recheck the registered key before issuing a token",
+      "test": "adapters/sqlstore/oauth_client_assertion_test.go",
+      "marker": "func TestOAuthClientAssertionAcrossPools("
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/clients.mdx#L289/`iss`": [
+    {
+      "label": "Require the registered client as issuer",
+      "test": "conformance/oauth-client-assertions.mjs",
+      "marker": "{ iss: \"another-client\" }",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/clients.mdx#L290/`sub`": [
+    {
+      "label": "Require a signed subject equal to the registered client, even when issuer identifies the key",
+      "test": "conformance/oauth-client-assertions.mjs",
+      "marker": "{ sub: undefined }",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/clients.mdx#L291/`aud`": [
+    {
+      "label": "Accept the issuer or receiving endpoint and reject an assertion addressed to a different endpoint",
+      "test": "conformance/oauth-client-assertions.mjs",
+      "marker": "await problem(send(\"revoke\", await sign({ aud: mount + \"/oauth2/token\" })",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/clients.mdx#L292/`exp`": [
+    {
+      "label": "Enforce expiry and the maximum remaining lifetime with bounded clock skew",
+      "test": "plugins/oauthprovider/client_assertion_test.go",
+      "marker": "func TestAssertionLifetimeAndClockTolerance(",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/clients.mdx#L293/`nbf`": [
+    {
+      "label": "Enforce the not-before claim using the configured clock tolerance",
+      "test": "plugins/oauthprovider/client_assertion_test.go",
+      "marker": "func TestAssertionLifetimeAndClockTolerance(",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/clients.mdx#L294/`jti`": [
+    {
+      "label": "Require a unique signed identifier and reject simultaneous reuse across connections on all three engines",
+      "test": "adapters/sqlstore/oauth_client_assertion_test.go",
+      "marker": "func TestOAuthClientAssertionAcrossPools(",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/clients.mdx#L295/`iat`": [
+    {
+      "label": "Limit the age of an optional issued-at claim including the configured tolerance",
+      "test": "plugins/oauthprovider/client_assertion_test.go",
+      "marker": "func TestAssertionLifetimeAndClockTolerance(",
+      "complete": true
     }
   ]
 }

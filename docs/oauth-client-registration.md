@@ -110,7 +110,7 @@ Import `github.com/Plain-Auth/plain-auth/client` for the SDK. A successful respo
 | Secret handling | By default, SQL stores the base64url SHA-256 digest. The optional `SecretPrefix` appears on the issued credential. A custom `StoreSecret` callback receives the unprefixed value. Shared secrets currently have no expiry and return `client_secret_expires_at: 0`. |
 | Other metadata | The server also stores display information, contacts, software metadata, post-logout URIs and DPoP preferences. Client credentials, ownership and privilege fields are assigned by the server. |
 
-Use a registered confidential application's shared secret at the Go token endpoint to obtain an opaque machine token. The registration tests also exercise shared-secret and signed-JWT clients at an independent issuer. [Machine access tokens](machine-tokens.md) · [Resource management](oauth-resource-management.md) · [Feature checklist](parity/plugins/oauth-provider.md) · [Registration tests](../conformance/oauth-registration.mjs)
+A registered confidential application can exchange a shared secret or a signed client assertion for an opaque machine token after an operator grants it machine scopes. [Machine access tokens](machine-tokens.md) · [Signed client assertions](oauth-client-assertions.md) · [Resource management](oauth-resource-management.md) · [Feature checklist](parity/plugins/oauth-provider.md) · [Registration tests](../conformance/oauth-registration.mjs)
 
 ## Rotate a shared secret
 

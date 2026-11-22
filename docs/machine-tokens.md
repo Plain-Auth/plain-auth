@@ -73,11 +73,11 @@ The SQL adapters recheck the registration, credential, grant, and scopes when in
 | 400 `invalid_scope` | A requested permission falls outside the current machine grant. |
 | 415 `UNSUPPORTED_MEDIA_TYPE` | Send the token request as `application/x-www-form-urlencoded`. |
 
-This flow issues opaque tokens for shared-secret registrations without a resource indicator. Resource-targeted issuance, DPoP, client assertions, authorization codes and refresh tokens have separate checklist entries. Requests requiring those capabilities cannot obtain an unbound machine token through this flow. [OAuth feature checklist](parity/plugins/oauth-provider.md)
+This flow issues opaque tokens for confidential registrations using a shared secret or a signed client assertion. For a key-based registration, generate a fresh assertion for each exchange. Resource-targeted issuance, DPoP, authorization codes and refresh tokens have separate checklist entries. Requests requiring those capabilities cannot obtain an unbound machine token through this flow. [Signed client assertions](oauth-client-assertions.md) · [OAuth feature checklist](parity/plugins/oauth-provider.md)
 
 ## Check whether a token is active
 
-A confidential application can inspect its own opaque machine tokens at `POST /api/auth/oauth2/introspect`. Authenticate with the same Basic or form method the application registered. For a `client_secret_post` registration, send the following request from your server.
+A confidential application can inspect its own opaque machine tokens at `POST /api/auth/oauth2/introspect`. Authenticate using the registered method. A signed client assertion can address the introspection endpoint or the issuer. For a `client_secret_post` registration, send the following request from your server.
 
 ```sh
 curl --request POST "$AUTH_URL/api/auth/oauth2/introspect" \

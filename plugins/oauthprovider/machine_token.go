@@ -72,8 +72,10 @@ func tokenRouteLimit(rule *auth.RateLimitRule, max int) *auth.RateLimitRule {
 // RowID identifies a particular registration even if a client ID is later reused.
 type MachineClient struct {
 	RowID, ClientID, StoredSecret, AuthMethod string
-	GrantTypes, MachineScopes                 []string
-	Disabled, RequireDPoP                     bool
+	// JWKS and JWKSURI identify the key material registered for private_key_jwt.
+	JWKS, JWKSURI             string
+	GrantTypes, MachineScopes []string
+	Disabled, RequireDPoP     bool
 }
 
 type MachineTokenRecord struct {
@@ -192,7 +194,8 @@ func userDelegatedScope(scope string) bool {
 	return scope == "openid" || scope == "profile" || scope == "email" || scope == "offline_access"
 }
 
-func (r RegistrationOptions) authenticateClient(ctx context.Context, store MachineClientReader, in tokenRequest) (MachineClient, error) {
+func (opts Options) authenticateClient(c auth.EndpointContext, store MachineClientReader, in tokenRequest, endpoint string) (MachineClient, error) {
+	ctx := c.Request.Context()
 	first, err := store.LookupMachineClient(ctx, in.id)
 	if err != nil {
 		return MachineClient{}, err
@@ -200,8 +203,12 @@ func (r RegistrationOptions) authenticateClient(ctx context.Context, store Machi
 	if err := in.checkMethod(first); err != nil {
 		return MachineClient{}, err
 	}
+	if in.assertion != nil {
+		err := opts.verifyClientAssertion(c, store, in, first, endpoint)
+		return first, err
+	}
 	if in.method != "none" {
-		ok, err := r.checkSecret(ctx, in.secret, first.StoredSecret)
+		ok, err := opts.Registration.checkSecret(ctx, in.secret, first.StoredSecret)
 		if err != nil {
 			return MachineClient{}, err
 		}
@@ -219,6 +226,9 @@ func (in tokenRequest) recheckClient(first, current MachineClient) error {
 	if first.RowID != current.RowID || subtle.ConstantTimeCompare([]byte(first.StoredSecret), []byte(current.StoredSecret)) != 1 {
 		return invalidClient("invalid client_secret")
 	}
+	if in.assertion != nil && (first.JWKS != current.JWKS || first.JWKSURI != current.JWKSURI) {
+		return invalidClient("registered client assertion keys have changed")
+	}
 	return nil
 }
 
@@ -233,15 +243,12 @@ func (opts TokenOptions) storedOpaque(ctx context.Context, raw string) (string, 
 	return stored, err
 }
 
-func (opts Options) issueMachineToken(ctx context.Context, store MachineTokenStore, in tokenRequest) (MachineToken, error) {
-	first, err := opts.Registration.authenticateClient(ctx, store, in)
-	if err != nil {
-		return MachineToken{}, err
-	}
+func (opts Options) issueMachineToken(ctx context.Context, store MachineTokenStore, in tokenRequest, first MachineClient) (MachineToken, error) {
 	if _, err := in.authorizedScopes(first); err != nil {
 		return MachineToken{}, err
 	}
 	var raw string
+	var err error
 	if gen := opts.Tokens.GenerateOpaqueToken; gen != nil {
 		raw, err = gen(ctx)
 	} else {

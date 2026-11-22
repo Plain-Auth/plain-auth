@@ -18,6 +18,7 @@ type tokenRequest struct {
 	id, secret, method string
 	scopes, resources  []string
 	dpop               bool
+	assertion          *clientAssertion
 }
 
 const tokenFormType = "application/x-www-form-urlencoded"
@@ -25,11 +26,12 @@ const tokenFormType = "application/x-www-form-urlencoded"
 const machineTokenOperation = `{
   "summary":"Exchange confidential application credentials for an opaque access token",
   "security":[{"clientSecretBasic":[]},{}],
-  "description":"Authenticate with HTTP Basic or the registered client_secret_post method. Browser session cookies do not authorize this grant.",
+  "description":"Use the registered HTTP Basic, client_secret_post or private_key_jwt method. A signed assertion replaces the client secret and must be fresh for each request.",
   "requestBody":{"required":true,"content":{"application/x-www-form-urlencoded":{"schema":{
     "type":"object","required":["grant_type"],"properties":{
       "grant_type":{"type":"string","enum":["client_credentials"]},"client_id":{"type":"string"},
-      "client_secret":{"type":"string","format":"password"},"scope":{"type":"string"}
+      "client_secret":{"type":"string","format":"password"},"client_assertion_type":{"type":"string","enum":["urn:ietf:params:oauth:client-assertion-type:jwt-bearer"]},
+      "client_assertion":{"type":"string","format":"jwt"},"scope":{"type":"string"}
     }}}}},
   "responses":{"200":{"description":"Machine access token","content":{"application/json":{"schema":{
     "type":"object","required":["access_token","token_type","expires_in","expires_at","scope"],"properties":{
@@ -72,7 +74,11 @@ func (opts Options) token(c auth.EndpointContext) (any, error) {
 	if !ok {
 		return nil, &auth.APIError{Status: 501, Code: "OAUTH_TOKEN_STORE_UNAVAILABLE", Message: "The configured store does not support OAuth machine tokens"}
 	}
-	token, err := opts.issueMachineToken(c.Request.Context(), store, in)
+	first, err := opts.authenticateClient(c, store, in, "/oauth2/token")
+	if err != nil {
+		return nil, tokenEndpointError(c.ResponseHeader, challenge, err)
+	}
+	token, err := opts.issueMachineToken(c.Request.Context(), store, in, first)
 	return token, tokenEndpointError(c.ResponseHeader, challenge, err)
 }
 
@@ -81,7 +87,10 @@ func tokenEndpointError(headers http.Header, challenge string, err error) error 
 		err = invalidClient("client not found")
 	}
 	var problem *auth.OAuthError
-	if challenge != "" && errors.As(err, &problem) && problem.Code == "invalid_client" {
+	if errors.As(err, &problem) && problem.Code == "invalid_client" && (challenge != "" || problem.Status == 401) {
+		if challenge == "" {
+			challenge = "Basic"
+		}
 		headers.Set("WWW-Authenticate", challenge)
 		headers.Set("Access-Control-Expose-Headers", "WWW-Authenticate")
 		return registrationProblem(401, problem.Code, problem.Description)
@@ -172,7 +181,12 @@ func parseTokenCredentials(form url.Values, headers []string) (tokenRequest, str
 		if fields["client_assertion"] == "" || fields["client_assertion_type"] == "" {
 			return in, "", invalidClient("client_assertion and client_assertion_type must both be provided")
 		}
-		return in, "", invalidClient("client assertion could not be verified")
+		a, err := parseClientAssertion(fields["client_assertion_type"], fields["client_assertion"], fields["client_id"])
+		if err != nil {
+			return in, "", err
+		}
+		in.id, in.method, in.assertion = a.clientID, "private_key_jwt", a
+		return in, "", nil
 	}
 	if header != "" {
 		scheme, payload, space := strings.Cut(header, " ")

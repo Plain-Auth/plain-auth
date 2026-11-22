@@ -19,32 +19,7 @@ import (
 
 var invalidIdentity = errors.New("invalid identity provider response")
 
-// Resolve and dial the same vetted address. A proxy, custom dialer, or second
-// DNS resolution must not redirect untrusted tenant endpoints to internal hosts.
-var publicTransport = &http.Transport{TLSHandshakeTimeout: 5 * time.Second, IdleConnTimeout: 30 * time.Second, MaxResponseHeaderBytes: 32 << 10,
-	DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-		host, port, e := net.SplitHostPort(addr)
-		if e != nil {
-			return nil, e
-		}
-		ips, e := net.DefaultResolver.LookupNetIP(ctx, "ip", host)
-		if e != nil || len(ips) == 0 {
-			return nil, invalidIdentity
-		}
-		for _, ip := range ips {
-			if !publicnet.Address(ip) {
-				return nil, invalidIdentity
-			}
-		}
-		var d net.Dialer
-		for _, ip := range ips {
-			conn, e := d.DialContext(ctx, network, net.JoinHostPort(ip.String(), port))
-			if e == nil {
-				return conn, nil
-			}
-		}
-		return nil, invalidIdentity
-	}}
+var publicTransport = publicnet.Transport(invalidIdentity)
 
 type providerTransport struct {
 	auth    *auth.Auth
