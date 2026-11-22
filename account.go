@@ -354,5 +354,18 @@ func (a *Auth) notifyPasswordReset(ctx context.Context, user User, request *http
 			err = errors.New("auth: password reset callback panicked")
 		}
 	}()
-	return a.opts.OnPasswordReset(ctx, user, request)
+	return a.opts.OnPasswordReset(ctx, user, accountObserverRequest(ctx, request))
+}
+
+// accountObserverRequest retains HTTP metadata after the credential-setting
+// operation without sharing its headers or exposing a replayable password body.
+func accountObserverRequest(ctx context.Context, request *http.Request) *http.Request {
+	if request == nil {
+		return nil
+	}
+	metadata := request.Clone(ctx)
+	metadata.Body, metadata.GetBody, metadata.ContentLength = http.NoBody, nil, 0
+	metadata.Form, metadata.PostForm, metadata.MultipartForm = nil, nil, nil
+	metadata.Header.Del("Content-Length")
+	return metadata
 }

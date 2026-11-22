@@ -46,6 +46,21 @@ If the mount is `/identity`, a request to `/identity/sign-up/email` returns 404 
 
 Create one auth instance per configuration and share it among handlers. Use the same secret on application replicas. The default in-process rate limiter keys requests by connection peer and route. Behind a reverse proxy, set `Options.ClientIP.TrustedProxies` to its CIDR ranges as `[]netip.Prefix`. Each proxy should append the actual peer to `X-Forwarded-For` or overwrite the configured `ForwardedHeader`. The library follows trusted hops from right to left and uses the first untrusted address. Direct connections use the socket address. Set `ClientIP.IPv6Subnet` to a prefix length to override the default /64 rate-limit scope. Set `ClientIP.DisableTracking` to omit the address from new sessions and disable per-IP limits. See the [proxy and privacy tests](../ip_test.go).
 
+## Notify an existing account owner about a sign-up attempt
+
+Set `Options.OnExistingUserSignUp` when `RequireEmailVerification` or `DisableAutoSignIn` is enabled. A valid sign-up attempt for an already registered address returns the submitted public profile with a fresh ID and a null token. When the guest and phone plugins are enabled, both fresh and generated profiles report a regular account with empty phone fields. The observer receives the persisted account owner, including a customer who signed up through a social provider. A new account produces no duplicate notification. With ordinary automatic sign-in, an existing address returns HTTP 422 and the observer does not run.
+
+```go
+opts.RequireEmailVerification = true
+opts.OnExistingUserSignUp = func(ctx context.Context, owner stonewrit.User, request *http.Request) error {
+    return notifications.EnqueueExistingSignUp(ctx, owner.ID, owner.Email)
+}
+```
+
+StoneWrit waits for the observer after the insert attempt has released its transaction. Enqueuing a short notification job keeps delivery latency out of the sign-up request. Each duplicate attempt can emit a notification, including concurrent retries. Observer errors and panics produce a fixed diagnostic and preserve the private response. If the mailbox disappears before it can be read, the observer is skipped.
+
+The callback receives the call’s context and the stored public account fields, including ID, name, email, verification status, image and timestamps. A mounted request supplies a copy of its URL and headers with an empty body. Direct calls to `SignUpEmail` pass a nil request. Third-party stores using this option in protected mode must implement `FindAccountUser(context.Context, string) (stonewrit.User, error)` to read the mailbox owner independently of its sign-in methods.
+
 ## Use an existing password database
 
 Stonewrit stores a salted scrypt hash on the credential account. The built-in format uses NFKC normalization, a 16-byte random salt encoded as hex, and scrypt with N=16384, r=16, p=1 and a 64-byte key. To use a host-managed format, set `Options.PasswordHash` and `Options.PasswordVerify` before calling `stonewrit.New`. Each callback receives the request context. A nil callback uses the built-in implementation for that operation.

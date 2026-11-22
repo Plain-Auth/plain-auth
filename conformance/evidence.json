@@ -8015,5 +8015,71 @@
       "test": "adapters/sqlstore/sso_saml_metadata_test.go",
       "marker": "t.Fatal(\"demoted organization member retained metadata authority\""
     }
+  ],
+  "docs/content/docs/reference/options.mdx#L327/`onExistingUserSignUp`": [
+    {
+      "label": "Deliver the stored owner to the host while preserving private responses across both modes and ordinary 422 behavior in the released client",
+      "test": "conformance/core.test.mjs",
+      "marker": "the released email client keeps duplicate profiles private",
+      "complete": true
+    },
+    {
+      "label": "Run the callback after storage releases the account, isolate errors and panics, and preserve owned request metadata",
+      "test": "adapters/sqlstore/existing_signup_test.go",
+      "marker": "mounted hook did not preserve isolated request metadata"
+    },
+    {
+      "label": "Use one committed owner for concurrent registrations across separate instances and storage connections",
+      "test": "adapters/sqlstore/existing_signup_test.go",
+      "marker": "concurrent observer received a synthetic or unrelated account"
+    }
+  ],
+  "docs/content/docs/authentication/email-password.mdx#L512/`emailPasswordOptionsType.onExistingUserSignUp`": [
+    {
+      "label": "Deliver the stored owner to the host while preserving private responses across both modes and ordinary 422 behavior in the released client",
+      "test": "conformance/core.test.mjs",
+      "marker": "the released email client keeps duplicate profiles private",
+      "complete": true
+    },
+    {
+      "label": "Run the callback after storage releases the account, isolate errors and panics, and preserve owned request metadata",
+      "test": "adapters/sqlstore/existing_signup_test.go",
+      "marker": "mounted hook did not preserve isolated request metadata"
+    },
+    {
+      "label": "Use one committed owner for concurrent registrations across separate instances and storage connections",
+      "test": "adapters/sqlstore/existing_signup_test.go",
+      "marker": "concurrent observer received a synthetic or unrelated account"
+    }
+  ],
+  "docs/content/docs/concepts/email.mdx#L210": [
+    {
+      "label": "Deliver the stored owner to the host while preserving private responses across both modes and ordinary 422 behavior in the released client",
+      "test": "conformance/core.test.mjs",
+      "marker": "the released email client keeps duplicate profiles private",
+      "complete": true
+    },
+    {
+      "label": "Run the callback after storage releases the account, isolate errors and panics, and preserve owned request metadata",
+      "test": "adapters/sqlstore/existing_signup_test.go",
+      "marker": "mounted hook did not preserve isolated request metadata"
+    },
+    {
+      "label": "Use one committed owner for concurrent registrations across separate instances and storage connections",
+      "test": "adapters/sqlstore/existing_signup_test.go",
+      "marker": "concurrent observer received a synthetic or unrelated account"
+    }
+  ],
+  "docs/content/docs/authentication/email-password.mdx#L165": [
+    {
+      "label": "Deliver the stored owner to the host while preserving private responses across both modes and ordinary 422 behavior in the released client",
+      "test": "conformance/core.test.mjs",
+      "marker": "the released email client keeps duplicate profiles private"
+    },
+    {
+      "label": "Return the same default guest and phone fields on fresh and duplicate private registrations",
+      "test": "adapters/sqlstore/existing_signup_test.go",
+      "marker": "protected HTTP sign-up had different public plugin fields"
+    }
   ]
 }

@@ -37,7 +37,7 @@ For a browser reset form, pass its URL as `redirectTo` when requesting the email
 
 ### Observe a completed password reset
 
-Set `Options.OnPasswordReset` to run a synchronous host callback after email-link, email-code or phone-code recovery. It receives the winning account and request context. The mounted HTTP endpoint also passes its request. Direct calls to `ResetPassword`, `ResetPasswordEmailOTP` and `ResetPhonePassword` pass a nil request.
+Set `Options.OnPasswordReset` to run a synchronous host callback after email-link, email-code or phone-code recovery. It receives the winning account and request context. The mounted HTTP endpoint also passes a copy of the request URL and headers with an empty body. Direct calls to `ResetPassword`, `ResetPasswordEmailOTP` and `ResetPhonePassword` pass a nil request.
 
 ```go
 opts.OnPasswordReset = func(ctx context.Context, user stonewrit.User, request *http.Request) error {

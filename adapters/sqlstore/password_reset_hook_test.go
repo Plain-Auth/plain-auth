@@ -66,7 +66,7 @@ func TestPasswordResetHookAfterCommit(t *testing.T) {
 									t.Error("missing bound verified phone profile")
 								}
 								if fail {
-									if r == nil || r.URL.Path != "/api/auth"+path || r.Header.Get("X-Reset-Fixture") != "present" || r.Context() != ctx {
+									if r == nil || r.URL.Path != "/api/auth"+path || r.Header.Get("X-Reset-Fixture") != "present" || r.Context() != ctx || r.Body != http.NoBody || r.GetBody != nil {
 										t.Error("mounted callback lost the original request")
 									}
 								} else if r != nil {

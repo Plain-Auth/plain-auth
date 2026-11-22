@@ -44,6 +44,10 @@ type Options struct {
 	PasswordHash   func(ctx context.Context, password string) (string, error)
 	PasswordVerify func(ctx context.Context, encoded, password string) (bool, error)
 
+	// OnExistingUserSignUp receives the persisted mailbox owner on a protected duplicate
+	// sign-up. An HTTP call supplies request metadata; direct calls supply nil.
+	OnExistingUserSignUp func(context.Context, User, *http.Request) error
+
 	EmailAndPassword              bool
 	MinPasswordLength             int
 	MaxPasswordLength             int

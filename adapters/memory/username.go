@@ -11,22 +11,15 @@ var _ stonewrit.UsernameStore = (*Store)(nil)
 
 func (s *Store) CheckUsernameSchema(ctx context.Context, display bool) error { return ctx.Err() }
 
-func copyString(v *string) *string {
-	if v == nil {
-		return nil
-	}
-	value := *v
-	return &value
-}
 func cloneUsername(f *stonewrit.UsernameFields, display bool) *stonewrit.UsernameFields {
 	n := &stonewrit.UsernameFields{}
 	if f != nil {
-		n.Username = copyString(f.Username)
+		n.Username = copyPointer(f.Username)
 	}
 	if display {
 		n.DisplayUsernameFields = &stonewrit.DisplayUsernameFields{}
 		if f != nil && f.DisplayUsernameFields != nil {
-			n.DisplayUsername = copyString(f.DisplayUsername)
+			n.DisplayUsername = copyPointer(f.DisplayUsername)
 		}
 	}
 	return n
@@ -99,12 +92,12 @@ func (s *Store) UpdateUsernameProfile(ctx context.Context, id, token string, p s
 	if p.ClearUsername {
 		f.Username = nil
 	} else if p.Username != nil {
-		f.Username = copyString(p.Username)
+		f.Username = copyPointer(p.Username)
 	}
 	if p.ClearDisplayUsername {
 		f.DisplayUsername = nil
 	} else if p.DisplayUsername != nil {
-		f.DisplayUsername = copyString(p.DisplayUsername)
+		f.DisplayUsername = copyPointer(p.DisplayUsername)
 	}
 	rec.user.UsernameFields = f
 	return s.applyProfile(id, rec, p, now)

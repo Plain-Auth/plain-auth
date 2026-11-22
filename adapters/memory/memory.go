@@ -43,6 +43,14 @@ var _ auth.Store = (*Store)(nil)
 // AllowSessionCookieCache permits browser-only snapshots in this store.
 func (s *Store) AllowSessionCookieCache(ctx context.Context) (bool, error) { return true, ctx.Err() }
 
+func copyPointer[T any](ptr *T) *T {
+	if ptr == nil {
+		return nil
+	}
+	value := *ptr
+	return &value
+}
+
 func copyUser(u auth.User) auth.User {
 	if u.PhoneNumberFields != nil {
 		u.PhoneNumberFields = clonePhone(u.PhoneNumberFields)
@@ -50,13 +58,14 @@ func copyUser(u auth.User) auth.User {
 	if u.UsernameFields != nil {
 		u.UsernameFields = cloneUsername(u.UsernameFields, u.DisplayUsernameFields != nil)
 	}
-	if u.IsAnonymous != nil {
-		v := *u.IsAnonymous
-		u.IsAnonymous = &v
-	}
-	if u.Image != nil {
-		image := *u.Image
-		u.Image = &image
+	u.LastLoginMethod = copyPointer(u.LastLoginMethod)
+	u.IsAnonymous = copyPointer(u.IsAnonymous)
+	u.TwoFactorEnabled = copyPointer(u.TwoFactorEnabled)
+	u.Image = copyPointer(u.Image)
+	if u.AdminUserFields != nil {
+		u.AdminUserFields = copyPointer(u.AdminUserFields)
+		u.BanReason = copyPointer(u.BanReason)
+		u.BanExpires = copyPointer(u.BanExpires)
 	}
 	return u
 }

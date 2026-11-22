@@ -1457,3 +1457,8 @@ test("enterprise SAML imports a directory XML document and rotates its signing c
   const {compareEnterpriseSAML}=await import("./sso-saml.mjs");
   await compareEnterpriseSAML(t,{goFixture,instrument,inline:true});
 });
+
+test("the released email client keeps duplicate profiles private and notifies only the stored owner", async (t) => {
+  const { existingSignUp } = await import("./existing-signup.mjs");
+  await existingSignUp(t, {reference, goFixture, instrument});
+});

@@ -375,6 +375,9 @@ func main() {
 		Secret:              "local-conformance-0123456789-abcdefghijk",
 		Store:               store,
 	}
+	if mode := os.Getenv("CONFORMANCE_SIGNUP_OBSERVER"); mode != "" {
+		configureSignUpObserver(&opts, mode, os.Args[1]+".signup-events")
+	}
 	if os.Getenv("CONFORMANCE_RESET_HOOK") == "1" {
 		resetHookFixture(&opts, os.Args[1])
 	}

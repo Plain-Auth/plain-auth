@@ -67,6 +67,11 @@ func New(opts Options) (*Auth, error) {
 	if opts.Store == nil {
 		return nil, errors.New("authn: Store is required")
 	}
+	if opts.EmailAndPassword && !opts.DisableSignUp && opts.OnExistingUserSignUp != nil && (opts.RequireEmailVerification || opts.DisableAutoSignIn) {
+		if _, ok := opts.Store.(signUpUserFinder); !ok {
+			return nil, errors.New("auth: protected sign-up observer requires a store implementing FindAccountUser")
+		}
+	}
 	if len(opts.Secret) < 32 {
 		return nil, errors.New("authn: Secret needs at least 32 bytes")
 	}
@@ -310,6 +315,10 @@ func (a *Auth) newSession(id string, meta RequestMeta) (StoredSession, string) {
 
 // SignUpEmail creates a credential account and its first session atomically.
 func (a *Auth) SignUpEmail(ctx context.Context, in SignUpInput, meta RequestMeta) (AuthResult, error) {
+	return a.signUpEmail(ctx, in, meta, nil)
+}
+
+func (a *Auth) signUpEmail(ctx context.Context, in SignUpInput, meta RequestMeta, request *http.Request) (AuthResult, error) {
 	if a.opts.DisableSignUp {
 		return AuthResult{}, &APIError{400, "EMAIL_PASSWORD_SIGN_UP_DISABLED", "Email and password sign up is not enabled"}
 	}
@@ -358,6 +367,17 @@ func (a *Auth) SignUpEmail(ctx context.Context, in SignUpInput, meta RequestMeta
 	err = usernameWriteError(a.opts.Store.CreateUser(ctx, user, hash, first))
 	if errors.Is(err, ErrEmailTaken) {
 		if first == nil {
+			// A generated profile has the same enabled public fields as a new account.
+			if a.anonymous != nil {
+				guest := false
+				user.IsAnonymous = &guest
+			}
+			if a.phoneNumber != nil {
+				user.PhoneNumberFields = &PhoneNumberFields{}
+			}
+			if a.opts.OnExistingUserSignUp != nil {
+				a.notifyExistingSignUp(ctx, user.Email, request)
+			}
 			return AuthResult{User: user}, nil
 		}
 		return AuthResult{}, &APIError{422, "USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL", "User already exists. Use another email."}

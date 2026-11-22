@@ -237,7 +237,10 @@
     - [ ] Auto Sign In After Verification
     - [ ] Callback before email verification
     - [ ] Callback after successful email verification
-    - [ ] Callback on duplicate sign-up attempt
+    - [x] Callback on duplicate sign-up attempt ([test](../../conformance/core.test.mjs#L1461))
+      - [x] Deliver the stored owner to the host while preserving private responses across both modes and ordinary 422 behavior in the released client ([test](../../conformance/core.test.mjs#L1461))
+      - [x] Run the callback after storage releases the account, isolate errors and panics, and preserve owned request metadata ([test](../../adapters/sqlstore/existing_signup_test.go#L83))
+      - [x] Use one committed owner for concurrent registrations across separate instances and storage connections ([test](../../adapters/sqlstore/existing_signup_test.go#L197))
   - [ ] Password Reset Email
 
 ## Hooks
