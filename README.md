@@ -4,7 +4,7 @@ Plain Auth embeds authentication in your Go API. Mount the auth handler on your 
 
 [plain-auth.com](https://plain-auth.com) · [GitHub organization](https://github.com/Plain-Auth) · [Go setup](#mount-it-in-an-application)
 
-**Development status.** The [feature checklist](docs/parity/README.md) lists supported behavior, passing tests, and planned features. Browse [authentication](docs/parity/authentication.md), [databases](docs/parity/adapters.md), [integrations](docs/parity/integrations.md), or [Stripe](docs/parity/plugins/stripe.md).
+**Development status.** The [verification summary](docs/parity/README.md#verification-progress) reports fully verified entries, partially verified entries, and entries awaiting test evidence. Each checked behavior links to its test. Browse [authentication](docs/parity/authentication.md), [databases](docs/parity/adapters.md), [integrations](docs/parity/integrations.md), or [Stripe](docs/parity/plugins/stripe.md).
 
 ## Supported workflows
 

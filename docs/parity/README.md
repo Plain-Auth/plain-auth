@@ -1,5 +1,17 @@
 # Feature checklist
 
+## Verification progress
+
+**352 of 6,957 inventory entries are fully verified (5.1%).**
+
+| Inventory status | Entries |
+| --- | ---: |
+| Fully verified | 352 |
+| Partially verified | 858 |
+| No linked test evidence | 5,747 |
+
+The inventory covers features, options, integrations and documentation topics. Partial verification means an open entry has a passing case somewhere beneath it. The checklists also contain 1,698 links from passing scenarios to tests. Adding a scenario leaves the inventory denominator unchanged.
+
 A checked item links to a local test for that behavior. An open parent means the feature still has unverified cases. Browser, protocol and storage options each have their own checkboxes.
 
 Browse [authentication, storage and tools](#authentication-storage-and-tools), [plugins](#plugins-and-integrations) or [third-party integrations](#third-party-integrations). Each table counts the checked and open boxes on its linked pages, including individual options and tested scenarios. A behavior can appear in more than one checklist.

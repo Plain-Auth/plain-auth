@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import { betterAuth } from "better-auth";
 import { socialProviderList } from "better-auth/social-providers";
 
-import { renderChecklist } from "./checklist-state.mjs";
+import { checklistReport } from "./checklist-state.mjs";
 import { readInterfaces, documentedDialects, readCommunityAdapters } from "./public-interfaces.mjs";
 import { renderPublicPackages, renderDatabaseContracts } from "./package-checklist.mjs";
 
@@ -359,14 +359,28 @@ for (const { name } of community) {
 }
 communityPage.push("");
 const progressHeader = ["| Checklist | Checked | Open |", "| --- | ---: | ---: |"];
+const reports = new Map();
+const totals = {verified:0, partial:0, unverified:0, scenarios:0};
+for (const [path, lines] of pages) {
+  const report = checklistReport(lines);
+  reports.set(path, report);
+  for (const key of Object.keys(totals)) totals[key] += report.counts[key];
+}
+const inventoryTotal = totals.verified + totals.partial + totals.unverified;
+const count = value => value.toLocaleString("en-US");
 function progressRow(title, path) {
-  const checklist = renderChecklist(pages.get(path));
-  const checked = checklist.match(/^ *- \[x\] /gm)?.length ?? 0;
-  const open = checklist.match(/^ *- \[ \] /gm)?.length ?? 0;
-  return `| [${title}](${path}) | ${checked} | ${open} |`;
+  const {verified, partial, unverified, scenarios} = reports.get(path).counts;
+  return `| [${title}](${path}) | ${verified + scenarios} | ${partial + unverified} |`;
 }
 const index = [
   "# Feature checklist", "",
+  "## Verification progress", "",
+  `**${count(totals.verified)} of ${count(inventoryTotal)} inventory entries are fully verified (${(totals.verified * 100 / inventoryTotal).toFixed(1)}%).**`, "",
+  "| Inventory status | Entries |", "| --- | ---: |",
+  `| Fully verified | ${count(totals.verified)} |`,
+  `| Partially verified | ${count(totals.partial)} |`,
+  `| No linked test evidence | ${count(totals.unverified)} |`, "",
+  `The inventory covers features, options, integrations and documentation topics. Partial verification means an open entry has a passing case somewhere beneath it. The checklists also contain ${count(totals.scenarios)} links from passing scenarios to tests. Adding a scenario leaves the inventory denominator unchanged.`, "",
   "A checked item links to a local test for that behavior. An open parent means the feature still has unverified cases. Browser, protocol and storage options each have their own checkboxes.", "",
   "Browse [authentication, storage and tools](#authentication-storage-and-tools), [plugins](#plugins-and-integrations) or [third-party integrations](#third-party-integrations). Each table counts the checked and open boxes on its linked pages, including individual options and tested scenarios. A behavior can appear in more than one checklist.", "",
   "## Implementation guides", "",
@@ -421,7 +435,7 @@ for (const [name, lines] of pages) {
   // Documentation headings can contain the reference project's product name.
   // Product-facing pages describe capabilities independently; the verification
   // guide retains exact source names and package coordinates for maintainers.
-  const body = renderChecklist(lines).split(/(\]\([^)]+\))/).map(part =>
+  const body = (reports.get(name)?.markdown ?? checklistReport(lines).markdown).split(/(\]\([^)]+\))/).map(part =>
     part.startsWith("](") ? part : part.replace(/@better-auth\//gi, "")
       .replace(/better[- ]auth(?:’s|'s)?/gi, "authentication").replace(/BetterAuth/g, "Auth")
       .replace(/better_auth\./g, "auth.").replace(/(?:process\.env\.)?BETTER_AUTH_/g, "AUTH_")

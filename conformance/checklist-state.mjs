@@ -1,6 +1,7 @@
 // A reviewer attaches a test covering the whole task. New or incomplete nested
 // requirements keep that task open even when its existing scenarios all pass.
-export function renderChecklist(lines) {
+export function checklistReport(lines) {
+  const counts = { verified: 0, partial: 0, unverified: 0, scenarios: 0 };
   const rendered = [];
   const nodes = [];
   const ancestors = [];
@@ -14,16 +15,26 @@ export function renderChecklist(lines) {
     }
     const depth = task[1].length;
     while (ancestors.length && ancestors.at(-1).depth >= depth) ancestors.pop();
-    const node = { index, depth, wholeTest: line.wholeTest, checked: task[2] === "x", parent: ancestors.at(-1), openChildren: false };
+    const node = { index, depth, wholeTest: line.wholeTest, checked: task[2] === "x", parent: ancestors.at(-1), openChildren: false, testedChild: false };
     nodes.push(node);
     ancestors.push(node);
   }
   for (const node of nodes.reverse()) {
+    // Rows checked when inserted are passing scenarios. Inventory rows start
+    // open and close only when the reviewer and all their children agree.
+    const scenario = node.checked;
     if (node.wholeTest && !node.openChildren) {
       rendered[node.index] = rendered[node.index].replace("- [ ] ", "- [x] ") + " (" + node.wholeTest + ")";
       node.checked = true;
     }
-    if (node.parent && (!node.checked || node.openChildren)) node.parent.openChildren = true;
+    if (scenario) counts.scenarios++;
+    else if (node.checked) counts.verified++;
+    else if (node.testedChild) counts.partial++;
+    else counts.unverified++;
+    if (node.parent) {
+      if (!node.checked || node.openChildren) node.parent.openChildren = true;
+      if (node.checked || node.testedChild) node.parent.testedChild = true;
+    }
   }
-  return rendered.join("\n");
+  return { markdown: rendered.join("\n"), counts };
 }
