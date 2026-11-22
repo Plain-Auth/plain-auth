@@ -3,11 +3,9 @@ package sqlstore
 import (
 	"context"
 	"database/sql"
-	"database/sql/driver"
 	"errors"
 	"maps"
 	"strings"
-	"time"
 	"unicode/utf8"
 
 	"github.com/Stonewrit/stonewrit-auth/plugins/scim"
@@ -167,48 +165,18 @@ func (s *Store) beginSCIMTransaction(ctx context.Context, domain string, write b
 		// SQLite connections use BEGIN IMMEDIATE.
 		return tx, &scimTransactionEnd{tx: tx}, nil
 	}
-	conn, err := s.db.Conn(ctx)
-	if err != nil {
-		return nil, nil, err
-	}
 	const name = "SHA2(CONCAT(DATABASE(), '/stonewrit/scim-projection/', ?), 256)"
-	discard := func() {
-		_ = conn.Raw(func(any) error { return driver.ErrBadConn })
-		_ = conn.Close()
-	}
-	var got sql.NullInt64
-	if err = conn.QueryRowContext(ctx, "SELECT GET_LOCK("+name+",15)", domain).Scan(&got); err != nil {
-		discard()
-		return nil, nil, err
-	}
-	if !got.Valid || got.Int64 != 1 {
-		conn.Close()
-		return nil, nil, &scim.Error{Status: 503, Detail: "The provisioning domain is busy. Retry the request."}
-	}
-	release := func(outcome error) {
-		// ErrTxDone can mean the context watcher has started, but has not
-		// finished, rolling back. An ambiguous START, COMMIT or ROLLBACK
-		// also must never leave a live transaction in an idle pool session.
-		if outcome != nil {
-			discard()
-			return
-		}
-		cleanup, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		var released sql.NullInt64
-		if err := conn.QueryRowContext(cleanup, "SELECT RELEASE_LOCK("+name+")", domain).Scan(&released); err != nil || !released.Valid || released.Int64 != 1 {
-			// A connection with an uncertain lock must not re-enter the pool.
-			discard()
-			return
-		}
-		conn.Close()
-	}
-	tx, err := conn.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelReadCommitted})
+	busy := &scim.Error{Status: 503, Detail: "The provisioning domain is busy. Retry the request."}
+	lock, err := s.acquireMySQLNamedLock(ctx, name, 15, busy, domain)
 	if err != nil {
-		discard()
 		return nil, nil, err
 	}
-	return tx, &scimTransactionEnd{tx: tx, release: release}, nil
+	tx, err := lock.conn.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelReadCommitted})
+	if err != nil {
+		lock.discard()
+		return nil, nil, err
+	}
+	return tx, &scimTransactionEnd{tx: tx, release: lock.release}, nil
 }
 func (s *Store) scimPolicyID(ctx context.Context, tx *sql.Tx, domain string) (string, error) {
 	exists, err := s.hasKeyOwnerTable(ctx, tx, scimPolicyTable)

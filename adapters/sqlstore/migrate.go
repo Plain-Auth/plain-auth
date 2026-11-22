@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
-	"time"
 )
 
 //go:embed schema/*.sql
@@ -41,25 +40,13 @@ func (s *Store) withMigrationConnection(ctx context.Context, apply func(migratio
 	if s.dialect == "mysql" {
 		// MySQL's DDL commits implicitly. Keep the lock on one connection until
 		// the full set of tables and indexes has been initialized.
-		conn, err := s.db.Conn(ctx)
+		const name = "CONCAT('authn/migration/', MD5(DATABASE()))"
+		lock, err := s.acquireMySQLNamedLock(ctx, name, 30, errors.New("sqlstore: unable to acquire MySQL schema migration lock"))
 		if err != nil {
 			return err
 		}
-		defer conn.Close()
-		const lock = "CONCAT('authn/migration/', MD5(DATABASE()))"
-		var locked sql.NullInt64
-		if err := conn.QueryRowContext(ctx, "SELECT GET_LOCK("+lock+", 30)").Scan(&locked); err != nil {
-			return err
-		}
-		if !locked.Valid || locked.Int64 != 1 {
-			return errors.New("sqlstore: unable to acquire MySQL schema migration lock")
-		}
-		defer func() {
-			cleanup, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-			defer cancel()
-			_, _ = conn.ExecContext(cleanup, "SELECT RELEASE_LOCK("+lock+")")
-		}()
-		return apply(conn)
+		defer lock.release(nil)
+		return apply(lock.conn)
 	}
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {

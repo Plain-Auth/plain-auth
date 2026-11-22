@@ -3,117 +3,22 @@ package sqlstore
 import (
 	"context"
 	"database/sql"
-	"database/sql/driver"
 	"errors"
-	"strings"
 	"testing"
 	"time"
-
-	"github.com/go-sql-driver/mysql"
 )
 
-var errSCIMPoolFixture = errors.New("injected SCIM transaction boundary error")
-
-// Use the real driver's transaction, connection and lock behavior, with a
-// controlled failure at one boundary. No production connection is faulted.
-type scimPoolConnector struct {
-	driver.Connector
-	fault                           string
-	rollbackEntered, resumeRollback chan struct{}
-}
-
-func (c *scimPoolConnector) Connect(ctx context.Context) (driver.Conn, error) {
-	conn, err := c.Connector.Connect(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return &scimPoolConn{scimMySQLDriverConn: conn.(scimMySQLDriverConn), fixture: c}, nil
-}
-
-type scimMySQLDriverConn interface {
-	driver.Conn
-	driver.ConnBeginTx
-	driver.ExecerContext
-	driver.QueryerContext
-	driver.SessionResetter
-	driver.Validator
-}
-type scimPoolConn struct {
-	scimMySQLDriverConn
-	fixture *scimPoolConnector
-}
-
-func (c *scimPoolConn) BeginTx(ctx context.Context, opts driver.TxOptions) (driver.Tx, error) {
-	tx, err := c.scimMySQLDriverConn.BeginTx(ctx, opts)
-	if err != nil {
-		return nil, err
-	}
-	if c.fixture.fault == "begin" {
-		return nil, errSCIMPoolFixture
-	}
-	return &scimPoolTx{Tx: tx, fixture: c.fixture}, nil
-}
-func (c *scimPoolConn) QueryContext(ctx context.Context, q string, args []driver.NamedValue) (driver.Rows, error) {
-	if c.fixture.fault == "release" && strings.Contains(q, "RELEASE_LOCK(") {
-		return nil, errSCIMPoolFixture
-	}
-	rows, err := c.scimMySQLDriverConn.QueryContext(ctx, q, args)
-	if err == nil && c.fixture.fault == "acquire" && strings.Contains(q, "GET_LOCK(") {
-		// The server executed the query, but its successful result was lost.
-		value := make([]driver.Value, 1)
-		if err = rows.Next(value); err != nil {
-			rows.Close()
-			return nil, err
-		}
-		if err = rows.Close(); err != nil {
-			return nil, err
-		}
-		return nil, errSCIMPoolFixture
-	}
-	return rows, err
-}
-
-type scimPoolTx struct {
-	driver.Tx
-	fixture *scimPoolConnector
-}
-
-func (t *scimPoolTx) Commit() error {
-	if t.fixture.fault == "commit" {
-		return errSCIMPoolFixture
-	}
-	return t.Tx.Commit()
-}
-func (t *scimPoolTx) Rollback() error {
-	switch t.fixture.fault {
-	case "rollback":
-		return errSCIMPoolFixture
-	case "cancel":
-		close(t.fixture.rollbackEntered)
-		<-t.fixture.resumeRollback
-	}
-	return t.Tx.Rollback()
-}
 func TestSCIMMySQLProjectionPoolLifecycle(t *testing.T) {
 	ctx := t.Context()
-	dsn := organizationTestDSN(t, "mysql")
-	cfg, err := mysql.ParseDSN(dsn)
-	if err != nil {
-		t.Fatal(err)
-	}
-	cfg.InterpolateParams = true
-	real, err := mysql.NewConnector(cfg)
-	if err != nil {
-		t.Fatal(err)
-	}
+	real := mysqlTestConnector(t)
 	observer := sql.OpenDB(real)
 	t.Cleanup(func() { observer.Close() })
-	if _, err = observer.ExecContext(ctx, "CREATE TABLE scim_pool_probe (name VARCHAR(32) PRIMARY KEY)"); err != nil {
+	if _, err := observer.ExecContext(ctx, "CREATE TABLE scim_pool_probe (name VARCHAR(32) PRIMARY KEY)"); err != nil {
 		t.Fatal(err)
 	}
 	for _, fault := range []string{"success", "abort", "acquire", "begin", "commit", "release", "rollback", "cancel"} {
 		t.Run(fault, func(t *testing.T) {
-			fixture := &scimPoolConnector{Connector: real, fault: fault, rollbackEntered: make(chan struct{}), resumeRollback: make(chan struct{})}
+			fixture := &mysqlPoolConnector{Connector: real, fault: fault, rollbackEntered: make(chan struct{}), resumeRollback: make(chan struct{})}
 			db := sql.OpenDB(fixture)
 			db.SetMaxOpenConns(1)
 			db.SetMaxIdleConns(1)
@@ -129,20 +34,12 @@ func TestSCIMMySQLProjectionPoolLifecycle(t *testing.T) {
 				}
 				return id
 			}
-			physicalID := func() int64 {
-				t.Helper()
-				var id int64
-				if e := db.QueryRowContext(ctx, "SELECT CONNECTION_ID()").Scan(&id); e != nil {
-					t.Fatal(e)
-				}
-				return id
-			}
-			before := physicalID()
+			before := mysqlPhysicalID(t, db)
 			req, cancel := context.WithCancel(ctx)
 			defer cancel()
 			tx, end, err := store.beginSCIMTransaction(req, domain, true)
 			if fault == "begin" || fault == "acquire" {
-				if !errors.Is(err, errSCIMPoolFixture) || tx != nil {
+				if !errors.Is(err, errMySQLPoolFixture) || tx != nil {
 					t.Fatal(err)
 				}
 			} else {
@@ -178,7 +75,7 @@ func TestSCIMMySQLProjectionPoolLifecycle(t *testing.T) {
 				default:
 					err = end.commit()
 					if fault == "commit" {
-						if !errors.Is(err, errSCIMPoolFixture) {
+						if !errors.Is(err, errMySQLPoolFixture) {
 							t.Fatal(err)
 						}
 					} else if err != nil {
@@ -187,7 +84,7 @@ func TestSCIMMySQLProjectionPoolLifecycle(t *testing.T) {
 				}
 				end.rollback() // The ordinary deferred cleanup is harmless after completion.
 			}
-			after := physicalID()
+			after := mysqlPhysicalID(t, db)
 			healthy := fault == "success" || fault == "abort"
 			if healthy != (before == after) {
 				t.Fatalf("unexpected physical session reuse: %d -> %d", before, after)
