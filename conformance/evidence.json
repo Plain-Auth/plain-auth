@@ -12098,6 +12098,45 @@
       "marker": "incorrect machine token defaults"
     }
   ],
+  "plugin/oauth-provider/POST /oauth2/introspect": [
+    {
+      "label": "Inspect a machine token issued independently, verify its exact claims, and report it inactive after revocation",
+      "test": "conformance/oauth-introspection.mjs",
+      "marker": "assert.deepEqual(active, {"
+    },
+    {
+      "label": "Read credentials, ownership and token state consistently across rotation, disablement, deletion and revocation on three SQL engines",
+      "test": "adapters/sqlstore/oauth_introspection_test.go",
+      "marker": "inactive response disclosed claims"
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/reference.mdx#L322/`POST /oauth2/introspect`": [
+    {
+      "label": "Inspect a machine token issued independently, verify its exact claims, and report it inactive after revocation",
+      "test": "conformance/oauth-introspection.mjs",
+      "marker": "assert.deepEqual(active, {"
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/resource-server.mdx#L185": [
+    {
+      "label": "Authenticate the issuing application and hide unbound machine token details from another registered client",
+      "test": "conformance/oauth-introspection.mjs",
+      "marker": "assert.deepEqual(await response({ token: token.access_token }, { authorization }), { active: false });"
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/reference.mdx#L400/`introspect`": [
+    {
+      "label": "Enforce the default introspection limit, a route override or the host's global rule",
+      "test": "adapters/sqlstore/oauth_introspection_test.go",
+      "marker": "func TestOAuthIntrospectionRateLimit(",
+      "complete": true
+    },
+    {
+      "label": "Apply a 100-request, one-minute default to the form endpoint",
+      "test": "plugins/oauthprovider/machine_token_test.go",
+      "marker": "incorrect introspection method, body or default limit"
+    }
+  ],
   "plugin-symbol/oauth-provider/OAuthOptions/cachedTrustedClients": [
     {
       "label": "Keep an operator-managed credential immutable from the owner endpoint",

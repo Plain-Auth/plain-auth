@@ -6,6 +6,7 @@ import { oauthProvider } from "@better-auth/oauth-provider";
 import { betterAuth } from "better-auth";
 import { exportJWK, generateKeyPair, SignJWT } from "jose";
 import { exerciseMachineTokens } from "./oauth-machine-tokens.mjs";
+import { exerciseIntrospection } from "./oauth-introspection.mjs";
 
 function options(mode) {
   if (mode === "disabled") return { loginPage: "/login", consentPage: "/consent" };
@@ -306,6 +307,9 @@ export async function compareClientRegistration(t, reference, goFixture) {
         assert.deepEqual(configured.client_credentials_scopes, ["reports"]);
         await t.test("issue opaque machine tokens accepted by an independent authorization server", async () => {
           await exerciseMachineTokens({ server, issuer, db, credentials, cookie, created, setMachineScopes });
+        });
+        await t.test("introspect opaque machine tokens minted and revoked by an independent issuer", async () => {
+          await exerciseIntrospection({ server, issuer, exchange, credentials, created, cookie, setMachineScopes });
         });
         const exchanged = await exchange(credentials.client_secret);
         const result = await exchanged.json();

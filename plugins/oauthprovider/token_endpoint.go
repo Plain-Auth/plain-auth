@@ -60,6 +60,9 @@ func (opts Options) token(c auth.EndpointContext) (any, error) {
 	if err != nil {
 		return nil, tokenEndpointError(c.ResponseHeader, challenge, err)
 	}
+	if in.id == "" {
+		return nil, registrationProblem(400, "invalid_request", "Missing required client_id")
+	}
 	in.resources = form["resource"]
 	if scopes := form["scope"]; len(scopes) != 0 {
 		in.scopes = strings.Split(scopes[len(scopes)-1], " ")
@@ -195,9 +198,6 @@ func parseTokenCredentials(form url.Values, headers []string) (tokenRequest, str
 		return in, "Basic", nil
 	}
 	in.id, in.secret = fields["client_id"], secret
-	if in.id == "" {
-		return in, "", registrationProblem(400, "invalid_request", "Missing required client_id")
-	}
 	in.method = "none"
 	if in.secret != "" {
 		in.method = "client_secret_post"

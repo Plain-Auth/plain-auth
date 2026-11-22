@@ -52,3 +52,32 @@ func TestMachineTokenConfiguration(t *testing.T) {
 	}
 	t.Fatal("token endpoint missing when dynamic registration is disabled")
 }
+
+func TestIntrospectionEndpoint(t *testing.T) {
+	p, err := New(Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, ep := range p.Endpoints {
+		if ep.Path != "/oauth2/introspect" {
+			continue
+		}
+		if ep.Method != http.MethodPost || !ep.RawBody || ep.RateLimit == nil || ep.RateLimit.Max != 100 || ep.RateLimit.Window != time.Minute {
+			t.Fatal("incorrect introspection method, body or default limit")
+		}
+		var operation struct {
+			RequestBody struct {
+				Content map[string]json.RawMessage
+			}
+			Responses map[string]json.RawMessage
+		}
+		if err := json.Unmarshal(ep.OpenAPI, &operation); err != nil {
+			t.Fatal(err)
+		}
+		if len(operation.RequestBody.Content) != 1 || operation.RequestBody.Content[tokenFormType] == nil || operation.Responses["200"] == nil {
+			t.Fatal("introspection form or response missing from OpenAPI")
+		}
+		return
+	}
+	t.Fatal("introspection endpoint missing")
+}

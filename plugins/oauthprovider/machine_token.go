@@ -22,6 +22,9 @@ type TokenOptions struct {
 	GenerateOpaqueToken func(context.Context) (string, error)
 	HashOpaqueToken     func(context.Context, string) (string, error)
 	RateLimit           *auth.RateLimitRule
+	// IntrospectionRateLimit defaults to 100 per minute. An empty rule
+	// selects the host's global rate limit for this endpoint.
+	IntrospectionRateLimit *auth.RateLimitRule
 }
 
 func (opts *TokenOptions) defaults() error {
@@ -42,6 +45,15 @@ func (opts *TokenOptions) defaults() error {
 		rule = *opts.RateLimit
 	}
 	opts.RateLimit = &rule
+	switch {
+	case opts.IntrospectionRateLimit == nil:
+		opts.IntrospectionRateLimit = &auth.RateLimitRule{Window: time.Minute, Max: 100}
+	case *opts.IntrospectionRateLimit == (auth.RateLimitRule{}):
+		opts.IntrospectionRateLimit = nil
+	default:
+		introspection := *opts.IntrospectionRateLimit
+		opts.IntrospectionRateLimit = &introspection
+	}
 	return nil
 }
 
@@ -64,8 +76,13 @@ type MachineTokenRecord struct {
 // and inserts only the returned record in the same transaction. Missing clients
 // return ErrClientNotFound. prepare performs no I/O or host callbacks.
 type MachineTokenStore interface {
-	LookupMachineClient(context.Context, string) (MachineClient, error)
+	MachineClientReader
 	StoreMachineToken(ctx context.Context, clientID string, prepare func(MachineClient) (MachineTokenRecord, error)) error
+}
+
+// MachineClientReader loads the local client registration for secret verification.
+type MachineClientReader interface {
+	LookupMachineClient(context.Context, string) (MachineClient, error)
 }
 
 // MachineToken is returned to a confidential application after a client credentials exchange.
@@ -164,22 +181,51 @@ func userDelegatedScope(scope string) bool {
 	return scope == "openid" || scope == "profile" || scope == "email" || scope == "offline_access"
 }
 
-func (opts Options) issueMachineToken(ctx context.Context, store MachineTokenStore, in tokenRequest) (MachineToken, error) {
+func (r RegistrationOptions) authenticateClient(ctx context.Context, store MachineClientReader, in tokenRequest) (MachineClient, error) {
 	first, err := store.LookupMachineClient(ctx, in.id)
 	if err != nil {
-		return MachineToken{}, err
+		return MachineClient{}, err
 	}
 	if err := in.checkMethod(first); err != nil {
-		return MachineToken{}, err
+		return MachineClient{}, err
 	}
 	if in.method != "none" {
-		ok, err := opts.Registration.checkSecret(ctx, in.secret, first.StoredSecret)
+		ok, err := r.checkSecret(ctx, in.secret, first.StoredSecret)
 		if err != nil {
-			return MachineToken{}, err
+			return MachineClient{}, err
 		}
 		if !ok {
-			return MachineToken{}, invalidClient("invalid client_secret")
+			return MachineClient{}, invalidClient("invalid client_secret")
 		}
+	}
+	return first, nil
+}
+
+func (in tokenRequest) recheckClient(first, current MachineClient) error {
+	if err := in.checkMethod(current); err != nil {
+		return err
+	}
+	if first.RowID != current.RowID || subtle.ConstantTimeCompare([]byte(first.StoredSecret), []byte(current.StoredSecret)) != 1 {
+		return invalidClient("invalid client_secret")
+	}
+	return nil
+}
+
+func (opts TokenOptions) storedOpaque(ctx context.Context, raw string) (string, error) {
+	if opts.HashOpaqueToken == nil {
+		return tokenDigest(raw), nil
+	}
+	stored, err := opts.HashOpaqueToken(ctx, raw)
+	if err == nil && stored == "" {
+		return "", errors.New("oauthprovider: empty stored access token")
+	}
+	return stored, err
+}
+
+func (opts Options) issueMachineToken(ctx context.Context, store MachineTokenStore, in tokenRequest) (MachineToken, error) {
+	first, err := opts.Registration.authenticateClient(ctx, store, in)
+	if err != nil {
+		return MachineToken{}, err
 	}
 	if _, err := in.authorizedScopes(first); err != nil {
 		return MachineToken{}, err
@@ -196,23 +242,14 @@ func (opts Options) issueMachineToken(ctx context.Context, store MachineTokenSto
 	if raw == "" {
 		return MachineToken{}, errors.New("oauthprovider: empty generated access token")
 	}
-	stored := tokenDigest(raw)
-	if hash := opts.Tokens.HashOpaqueToken; hash != nil {
-		stored, err = hash(ctx, raw)
-		if err != nil {
-			return MachineToken{}, err
-		}
-		if stored == "" {
-			return MachineToken{}, errors.New("oauthprovider: empty stored access token")
-		}
+	stored, err := opts.Tokens.storedOpaque(ctx, raw)
+	if err != nil {
+		return MachineToken{}, err
 	}
 	var result MachineToken
 	err = store.StoreMachineToken(ctx, in.id, func(current MachineClient) (MachineTokenRecord, error) {
-		if err := in.checkMethod(current); err != nil {
+		if err := in.recheckClient(first, current); err != nil {
 			return MachineTokenRecord{}, err
-		}
-		if first.RowID != current.RowID || subtle.ConstantTimeCompare([]byte(first.StoredSecret), []byte(current.StoredSecret)) != 1 {
-			return MachineTokenRecord{}, invalidClient("invalid client_secret")
 		}
 		scopes, err := in.authorizedScopes(current)
 		if err != nil {

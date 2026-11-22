@@ -74,3 +74,21 @@ The SQL adapters recheck the registration, credential, grant, and scopes when in
 | 415 `UNSUPPORTED_MEDIA_TYPE` | Send the token request as `application/x-www-form-urlencoded`. |
 
 This flow issues opaque tokens for shared-secret registrations without a resource indicator. Resource-targeted issuance, DPoP, client assertions, authorization codes and refresh tokens have separate checklist entries. Requests requiring those capabilities cannot obtain an unbound machine token through this flow. [OAuth feature checklist](parity/plugins/oauth-provider.md)
+
+## Check whether a token is active
+
+A confidential application can inspect its own opaque machine tokens at `POST /api/auth/oauth2/introspect`. Authenticate with the same Basic or form method the application registered. For a `client_secret_post` registration, send the following request from your server.
+
+```sh
+curl --request POST "$AUTH_URL/api/auth/oauth2/introspect" \
+  --data-urlencode "client_id=$CLIENT_ID" \
+  --data-urlencode "client_secret=$CLIENT_SECRET" \
+  --data-urlencode "token=$ACCESS_TOKEN" \
+  --data-urlencode 'token_type_hint=access_token'
+```
+
+An active token returns `active: true`, the issuer in `iss`, the client ID in both `client_id` and `azp`, its space-separated `scope`, `token_type: "Bearer"`, and Unix timestamps in `iat` and `exp`. Before authorizing an operation, check the active flag and the scope that operation requires. A failed introspection request provides no authorization.
+
+An unknown, expired, revoked or differently owned token returns HTTP 200 with only `{"active":false}`. This also applies to token kinds outside this endpoint's current coverage, including resource-bound tokens, user tokens and refresh tokens. Invalid client credentials produce an OAuth error. The optional `token_type_hint` can be omitted. The response uses `Cache-Control: no-store`.
+
+With rate limiting enabled, the default is 100 introspection requests per minute per client IP. Set `Tokens.IntrospectionRateLimit` to override the limit, or supply an empty `auth.RateLimitRule` to use your host's global rule. If you customize `Tokens.HashOpaqueToken`, return the same digest each time for the same unprefixed token. A custom store implements `oauthprovider.MachineIntrospectionStore` and returns the current caller and token from one consistent read. [Cross-runtime tests](../conformance/oauth-introspection.mjs) · [SQL adapter tests](../adapters/sqlstore/oauth_introspection_test.go)
