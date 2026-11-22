@@ -207,6 +207,7 @@
     - [x] Backfill exact historical digests and reject reissuance after revocation, verification cleanup and restart ([test](../../../adapters/sqlstore/apikey_ledger_test.go#L16))
     - [x] Create personal and organization credentials with the effective prefix, current issuance authority and atomic digest collision checks ([test](../../../adapters/sqlstore/apikey_hooks_test.go#L102))
     - [x] Use the same generator and custom credential source with the released client on both runtimes ([test](../../../conformance/core.test.mjs#L1250))
+    - [x] Validate the digest table when another PostgreSQL installer finishes during schema discovery ([test](../../../adapters/sqlstore/migrate_postgres_test.go#L108))
   - [ ] Metadata
     - [x] Round-trip opted-in JSON metadata ([test](../../../adapters/sqlstore/apikey_test.go#L88))
 

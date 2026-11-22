@@ -50,7 +50,14 @@ func (s *Store) withMigrationConnection(ctx context.Context, apply func(migratio
 		defer lock.release(nil)
 		return apply(lock.conn)
 	}
-	tx, err := s.db.BeginTx(ctx, nil)
+	var opts *sql.TxOptions
+	if s.dialect == "postgres" {
+		// Taking the advisory lock can start a snapshot before a preceding
+		// migrator commits. Catalog probes and backfills need a fresh snapshot
+		// after the lock is granted, regardless of the application's isolation.
+		opts = &sql.TxOptions{Isolation: sql.LevelReadCommitted}
+	}
+	tx, err := s.db.BeginTx(ctx, opts)
 	if err != nil {
 		return err
 	}

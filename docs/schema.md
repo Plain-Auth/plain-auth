@@ -2,6 +2,8 @@
 
 Use `authctl generate` to print a complete fresh-database schema for SQLite, PostgreSQL or MySQL. Use `authctl migrate` to apply the selected schema to the database specified by `AUTH_DSN`. Go applications can generate the same SQL with `schema.Generate` and use it with `sqlstore.OpenWithSchema`.
 
+On PostgreSQL, concurrent Plain Auth migrations share a transaction-scoped advisory lock. Each migration uses `READ COMMITTED` so its schema checks and backfills see the preceding migration's committed changes. Other transactions retain the application's configured isolation. [PostgreSQL concurrency tests](../adapters/sqlstore/migrate_postgres_test.go)
+
 ```sh
 go run ./cmd/authctl generate --dialect postgres --plugins organization-teams,two-factor
 AUTH_DSN=auth.db go run ./cmd/authctl migrate --dialect sqlite --plugins organization-teams,two-factor

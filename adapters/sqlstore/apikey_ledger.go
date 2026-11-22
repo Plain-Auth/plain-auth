@@ -20,24 +20,7 @@ func (s *Store) prepareAPIKeyLedger(ctx context.Context, rescan bool) error {
 		return err
 	}
 	err := s.withMigrationConnection(ctx, func(db migrationConnection) error {
-		exists, err := s.hasKeyOwnerTable(ctx, db, "plainauth_api_key_digest")
-		if err != nil {
-			return err
-		}
-		binaryType := "BLOB"
-		switch s.dialect {
-		case "postgres":
-			binaryType = "bytea"
-		case "mysql":
-			binaryType = "varbinary(32)"
-		}
-		if !exists {
-			q := `CREATE TABLE "plainauth_api_key_digest" ("digest" ` + binaryType + ` NOT NULL PRIMARY KEY)`
-			if _, err = db.ExecContext(ctx, s.bind(q)); err != nil {
-				return err
-			}
-		}
-		if err := s.checkDigestLedger(ctx, db, "plainauth_api_key_digest"); err != nil {
+		if err := s.ensureDigestLedger(ctx, db, "plainauth_api_key_digest"); err != nil {
 			return err
 		}
 		// A one-byte completion marker cannot collide with a 32-byte fingerprint.
@@ -57,7 +40,6 @@ func (s *Store) prepareAPIKeyLedger(ctx context.Context, rescan bool) error {
 			return err
 		}
 		return s.mergeDigests(ctx, db, "plainauth_api_key_digest", []any{version})
-
 	})
 	if err == nil {
 		s.apiKeyLedgerReady.Store(true)
@@ -133,6 +115,29 @@ func (s *Store) ensureAPIKeyLedger(ctx context.Context) error {
 		return nil
 	}
 	return s.prepareAPIKeyLedger(ctx, false)
+}
+
+// table is an adapter-owned constant. Reuse a visible ledger on the search
+// path and validate its shape even if another installer created it first.
+func (s *Store) ensureDigestLedger(ctx context.Context, db migrationConnection, table string) error {
+	exists, err := s.hasKeyOwnerTable(ctx, db, table)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		kind := "BLOB"
+		switch s.dialect {
+		case "postgres":
+			kind = "bytea"
+		case "mysql":
+			kind = "varbinary(32)"
+		}
+		q := `CREATE TABLE IF NOT EXISTS "` + table + `" ("digest" ` + kind + ` NOT NULL PRIMARY KEY)`
+		if _, err := db.ExecContext(ctx, s.bind(q)); err != nil {
+			return err
+		}
+	}
+	return s.checkDigestLedger(ctx, db, table)
 }
 
 // An existing extension table must enforce a whole, binary primary key. A table

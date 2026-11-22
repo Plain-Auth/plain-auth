@@ -11,24 +11,7 @@ import (
 func (s *Store) PrepareWalletNonceHistory(ctx context.Context) error {
 	const table = "plainauth_siwe_nonce_digest"
 	return s.withMigrationConnection(ctx, func(db migrationConnection) error {
-		exists, err := s.hasKeyOwnerTable(ctx, db, table)
-		if err != nil {
-			return err
-		}
-		if !exists {
-			kind := "BLOB"
-			switch s.dialect {
-			case "postgres":
-				kind = "bytea"
-			case "mysql":
-				kind = "varbinary(32)"
-			}
-			_, err = db.ExecContext(ctx, s.bind(`CREATE TABLE "plainauth_siwe_nonce_digest" ("digest" `+kind+` NOT NULL PRIMARY KEY)`))
-			if err != nil {
-				return err
-			}
-		}
-		if err := s.checkDigestLedger(ctx, db, table); err != nil {
+		if err := s.ensureDigestLedger(ctx, db, table); err != nil {
 			return err
 		}
 		// Migrate outstanding challenges from a database that has only used

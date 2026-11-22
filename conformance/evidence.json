@@ -7842,6 +7842,11 @@
       "label": "Use the same generator and custom credential source with the released client on both runtimes",
       "test": "conformance/core.test.mjs",
       "marker": "custom key generators and credential extractors work across runtimes"
+    },
+    {
+      "label": "Validate the digest table when another PostgreSQL installer finishes during schema discovery",
+      "test": "adapters/sqlstore/migrate_postgres_test.go",
+      "marker": "func TestPostgresConcurrentLedgerInstaller("
     }
   ],
   "docs/content/docs/plugins/scim/reference.mdx#L464": [

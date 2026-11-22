@@ -10,7 +10,7 @@
 | Partially verified | 869 |
 | No linked test evidence | 5,727 |
 
-The inventory covers features, options, integrations and documentation topics. Partial verification means an open entry has a passing case somewhere beneath it. The checklists also contain 1,723 links from passing scenarios to tests. Adding a scenario leaves the inventory denominator unchanged.
+The inventory covers features, options, integrations and documentation topics. Partial verification means an open entry has a passing case somewhere beneath it. The checklists also contain 1,724 links from passing scenarios to tests. Adding a scenario leaves the inventory denominator unchanged.
 
 A checked item links to a local test for that behavior. An open parent means the feature still has unverified cases. Browser, protocol and storage options each have their own checkboxes.
 
@@ -77,7 +77,7 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 | [Additional fields](plugins/additional-fields.md) | 0 | 2 |
 | [Admin](plugins/admin.md) | 74 | 141 |
 | [Anonymous](plugins/anonymous.md) | 27 | 25 |
-| [API keys](plugins/api-key.md) | 113 | 210 |
+| [API keys](plugins/api-key.md) | 114 | 210 |
 | [Bearer](plugins/bearer.md) | 30 | 0 |
 | [Captcha](plugins/captcha.md) | 17 | 65 |
 | [Client ID metadata documents](plugins/cimd.md) | 0 | 48 |
