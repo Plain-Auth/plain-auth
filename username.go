@@ -312,5 +312,8 @@ func (a *Auth) readPublicUserFields(ctx context.Context, user *User) error {
 	if err := a.readGuestFlag(ctx, user); err != nil {
 		return err
 	}
-	return a.readUsername(ctx, user)
+	if err := a.readUsername(ctx, user); err != nil {
+		return err
+	}
+	return a.readUserExtras(ctx, user)
 }

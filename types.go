@@ -11,6 +11,7 @@ import (
 
 // Options configures one isolated authentication instance.
 type Options struct {
+	UserAdditionalFields    map[string]UserField
 	SessionAdditionalFields map[string]SessionField
 
 	// Logger receives diagnostics for this instance. A nil logger uses slog.Default().
@@ -111,6 +112,8 @@ type Options struct {
 
 // User is the public account profile shared by all authentication methods.
 type User struct {
+	extraJSON string
+
 	*PhoneNumberFields
 	*UsernameFields
 	LastLoginMethod *string `json:"lastLoginMethod,omitempty"`
@@ -172,6 +175,7 @@ type AuthResult struct {
 
 // SignUpInput describes a new email credential and public profile.
 type SignUpInput struct {
+	AdditionalFields          map[string]any
 	Username, DisplayUsername *string
 	Name, Email, Password     string
 	Image                     *string

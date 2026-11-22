@@ -21,16 +21,31 @@ func (s *Store) ValidateSessionFields(fields map[string]auth.SessionField) error
 	if len(fields) == 0 {
 		return nil
 	}
-	columns, err := s.sessionColumnCatalog(context.Background(), s.db)
+	return s.validateModelFields("session", fields)
+}
+
+func (s *Store) ValidateUserFields(fields map[string]auth.UserField) error {
+	fields, err := sessionfields.NormalizeUser(fields)
+	if err != nil {
+		return err
+	}
+	return s.validateModelFields("user", fields)
+}
+
+func (s *Store) validateModelFields(model string, fields map[string]auth.SessionField) error {
+	if len(fields) == 0 {
+		return nil
+	}
+	columns, err := s.fieldColumnCatalog(context.Background(), s.db, model)
 	if err != nil {
 		return err
 	}
 	for name, field := range fields {
 		column, ok := columns[strings.ToLower(field.Column)]
 		if !ok {
-			return fmt.Errorf("sqlstore: session column %q for %q is missing", field.Column, name)
+			return fmt.Errorf("sqlstore: %s column %q for %q is missing", model, field.Column, name)
 		}
-		if err := s.checkSessionField(field, column); err != nil {
+		if err := s.checkModelField(model, field, column); err != nil {
 			return err
 		}
 	}
@@ -47,15 +62,26 @@ type sessionColumn struct {
 func (s *Store) sessionColumnCatalog(ctx context.Context, db interface {
 	QueryContext(context.Context, string, ...any) (*sql.Rows, error)
 }) (map[string]sessionColumn, error) {
-	query := `SELECT name,type,"notnull",hidden<>0 FROM pragma_table_xinfo('session')`
+	return s.fieldColumnCatalog(ctx, db, "session")
+}
+
+func (s *Store) fieldColumnCatalog(ctx context.Context, db interface {
+	QueryContext(context.Context, string, ...any) (*sql.Rows, error)
+}, model string) (map[string]sessionColumn, error) {
+	if model != "user" && model != "session" {
+		return nil, errors.New("sqlstore: invalid profile table")
+	}
+	query := `SELECT name,type,"notnull",hidden<>0 FROM pragma_table_xinfo(?)`
+	args := []any{model}
 	switch s.dialect {
 	case "postgres":
-		query = `SELECT a.attname,t.typname,a.attnotnull,(a.attidentity<>'' OR a.attgenerated<>'') FROM pg_catalog.pg_attribute a JOIN pg_catalog.pg_type t ON a.atttypid=t.oid WHERE a.attrelid=pg_catalog.to_regclass('session') AND a.attnum>0 AND NOT a.attisdropped`
+		query = `SELECT a.attname,t.typname,a.attnotnull,(a.attidentity<>'' OR a.attgenerated<>'') FROM pg_catalog.pg_attribute a JOIN pg_catalog.pg_type t ON a.atttypid=t.oid WHERE a.attrelid=pg_catalog.to_regclass(pg_catalog.quote_ident(?::text)) AND a.attnum>0 AND NOT a.attisdropped`
 	case "mysql":
-		query = `SELECT column_name,data_type,is_nullable='NO',(COALESCE(generation_expression,'')<>'' OR extra LIKE '%auto_increment%') FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='session'
-			AND (@@lower_case_table_names<>0 OR (BINARY table_schema=BINARY DATABASE() AND BINARY table_name=BINARY 'session'))`
+		query = `SELECT column_name,data_type,is_nullable='NO',(COALESCE(generation_expression,'')<>'' OR extra LIKE '%auto_increment%') FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name=?
+			AND (@@lower_case_table_names<>0 OR (BINARY table_schema=BINARY DATABASE() AND BINARY table_name=BINARY ?))`
+		args = append(args, model)
 	}
-	rows, err := db.QueryContext(ctx, query)
+	rows, err := db.QueryContext(ctx, s.bind(query), args...)
 	if err != nil {
 		return nil, err
 	}
@@ -73,12 +99,12 @@ func (s *Store) sessionColumnCatalog(ctx context.Context, db interface {
 	return result, rows.Err()
 }
 
-func (s *Store) checkSessionField(f auth.SessionField, column sessionColumn) error {
+func (s *Store) checkModelField(model string, f auth.SessionField, column sessionColumn) error {
 	if column.ambiguous {
-		return fmt.Errorf("sqlstore: multiple columns match the session field %q", f.Column)
+		return fmt.Errorf("sqlstore: multiple columns match the %s field %q", model, f.Column)
 	}
 	if f.Column != column.name {
-		return fmt.Errorf("sqlstore: session column %q collides with existing %q", f.Column, column.name)
+		return fmt.Errorf("sqlstore: %s column %q collides with existing %q", model, f.Column, column.name)
 	}
 	t := strings.ToLower(column.kind)
 	var matching bool
@@ -91,10 +117,39 @@ func (s *Store) checkSessionField(f auth.SessionField, column sessionColumn) err
 		matching = t == "text"
 	}
 	if column.generated {
-		return fmt.Errorf("sqlstore: session column %q must accept explicit writes", f.Column)
+		return fmt.Errorf("sqlstore: %s column %q must accept explicit writes", model, f.Column)
 	}
 	if !matching || f.Required != column.required {
-		return fmt.Errorf("sqlstore: incompatible type or nullability for session column %q", f.Column)
+		return fmt.Errorf("sqlstore: incompatible type or nullability for %s column %q", model, f.Column)
+	}
+	return nil
+}
+
+func scalarDestination(kind sessionfields.Type) any {
+	switch kind {
+	case auth.FieldBoolean:
+		return new(sql.NullBool)
+	case auth.FieldNumber:
+		return new(sql.NullInt64)
+	default:
+		return new(sql.NullString)
+	}
+}
+
+func scannedScalar(dest any) any {
+	switch value := dest.(type) {
+	case *sql.NullString:
+		if value.Valid {
+			return value.String
+		}
+	case *sql.NullInt64:
+		if value.Valid {
+			return value.Int64
+		}
+	case *sql.NullBool:
+		if value.Valid {
+			return value.Bool
+		}
 	}
 	return nil
 }
@@ -131,14 +186,7 @@ func (s *Store) ReadSessionFields(ctx context.Context, wanted []auth.Session, fi
 			var id, owner, token string
 			dest := []any{&id, &owner, &token}
 			for _, name := range public {
-				switch normalized[name].Type {
-				case auth.FieldString:
-					dest = append(dest, new(sql.NullString))
-				case auth.FieldNumber:
-					dest = append(dest, new(sql.NullInt64))
-				case auth.FieldBoolean:
-					dest = append(dest, new(sql.NullBool))
-				}
+				dest = append(dest, scalarDestination(normalized[name].Type))
 			}
 			if err = rows.Scan(dest...); err != nil {
 				rows.Close()
@@ -149,22 +197,7 @@ func (s *Store) ReadSessionFields(ctx context.Context, wanted []auth.Session, fi
 			}
 			values := make(map[string]any, len(public))
 			for i, name := range public {
-				var value any
-				switch v := dest[i+3].(type) {
-				case *sql.NullString:
-					if v.Valid {
-						value = v.String
-					}
-				case *sql.NullInt64:
-					if v.Valid {
-						value = v.Int64
-					}
-				case *sql.NullBool:
-					if v.Valid {
-						value = v.Bool
-					}
-				}
-				values[name] = value
+				values[name] = scannedScalar(dest[i+3])
 			}
 			out[token] = values
 		}

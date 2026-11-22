@@ -1583,3 +1583,8 @@ test("Ethereum wallet sign-in verifies actual signatures, cross-chain ownership 
   const { walletSignIn } = await import("./siwe-wallet.mjs");
   await walletSignIn(t, { reference, goFixture, instrument });
 });
+
+test("both runtimes share configured user fields through signup, signin and owner updates", async t => {
+  const { compareUserFields } = await import("./user-fields.mjs");
+  await compareUserFields(t, { reference, goFixture, instrument });
+});

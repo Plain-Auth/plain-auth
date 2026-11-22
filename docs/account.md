@@ -2,6 +2,8 @@
 
 An authenticated user can update their name or profile image, verify their current password, and change it. Configure mail delivery to offer password recovery and email verification. The application owns the sender address, message text, and delivery service.
 
+The email/password profile accepts configured application fields at signup and on authenticated updates. [Additional user fields](user-fields.md)
+
 ## Mail delivery
 
 Set either sender on `Options`. Each callback receives the request context and a `MailLink` containing the destination user, a complete URL, and the token. Deliver the URL only to the address on `link.User.Email`. For example, an application with an existing `mailer` can set the following options.

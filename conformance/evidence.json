@@ -24,6 +24,16 @@
       "label": "Keep private duplicate observers and password recovery independent of cache version callbacks until a real session is issued",
       "test": "client/session_cache_version_test.go",
       "marker": "func TestSessionCacheVersionWithPrivateSignupAndPasswordRecovery("
+    },
+    {
+      "label": "Round-trip configured profile values, private inputs, required fields and server-owned signup defaults on shared SQLite",
+      "test": "conformance/user-fields.mjs",
+      "marker": "export async function compareUserFields("
+    },
+    {
+      "label": "Keep another account’s profile and hidden inputs out of protected duplicate signup and verification output",
+      "test": "adapters/sqlstore/user_fields_test.go",
+      "marker": "func TestUserFieldProtectedSignupAndVerification("
     }
   ],
   "core/getSession": [
@@ -66,6 +76,11 @@
       "label": "Use live authorization on independently opened JWT and administration nodes for signed or encrypted session views",
       "test": "adapters/sqlstore/session_cache_test.go",
       "marker": "func TestJOSESessionSQLPrivilegeBoundaries("
+    },
+    {
+      "label": "Read configured user fields under their logical names and keep hidden storage values out of session views",
+      "test": "adapters/sqlstore/user_fields_test.go",
+      "marker": "func TestConfiguredUserFieldsAcrossStores("
     }
   ],
   "core/signInEmail": [
@@ -88,6 +103,11 @@
       "label": "Run the configured password derivation for an unknown account and accept preexisting hashes on three SQL engines",
       "test": "adapters/sqlstore/password_codec_test.go",
       "marker": "func TestPasswordCodecAcrossEngines("
+    },
+    {
+      "label": "Read the issuing runtime’s public scalar user fields on credential signin with the released client",
+      "test": "conformance/user-fields.mjs",
+      "marker": "const signin = await consumer.signIn.email("
     }
   ],
   "core/signOut": [
@@ -523,6 +543,16 @@
       "label": "Apply scoped application-key profile updates through a native call",
       "test": "adapters/sqlstore/apikey_session_test.go",
       "marker": "must(host.UpdateUser(ctx, http.Header{\"X-Api-Key\": {profile.Secret}},"
+    },
+    {
+      "label": "Apply a profile patch with configured scalar and nullable user fields through either runtime",
+      "test": "conformance/user-fields.mjs",
+      "marker": "const update = await consumer.updateUser("
+    },
+    {
+      "label": "Revalidate live direct-owner authority before committing configured profile changes on three SQL engines",
+      "test": "adapters/sqlstore/user_fields_test.go",
+      "marker": "func TestUserFieldWritesRecheckLiveAuthority("
     }
   ],
   "core/verifyPassword": [
@@ -9562,6 +9592,18 @@
       "test": "conformance/schema.test.mjs",
       "marker": "wallet registrations add the canonical address table and owner index on each dialect",
       "complete": true
+    }
+  ],
+  "docs/content/docs/reference/options.mdx#L435/`additionalFields`": [
+    {
+      "label": "Declare portable user columns, inspect compatibility and migrate preexisting profiles alongside independent session declarations",
+      "test": "adapters/sqlstore/user_fields_test.go",
+      "marker": "func TestUserFieldSchemaAndLiveUpgrades("
+    },
+    {
+      "label": "Apply public and host-owned fields on memory, SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/user_fields_test.go",
+      "marker": "func TestConfiguredUserFieldsAcrossStores("
     }
   ]
 }

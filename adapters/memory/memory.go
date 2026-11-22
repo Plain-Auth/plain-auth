@@ -14,6 +14,7 @@ import (
 )
 
 type credential struct {
+	fields          map[string]any
 	guestLinked     bool
 	lastLoginMethod string
 	accountID       string
@@ -74,6 +75,10 @@ func copyUser(u auth.User) auth.User {
 }
 
 func (s *Store) CreateUser(ctx context.Context, u auth.User, hash string, first *auth.StoredSession) error {
+	return s.CreateUserWithFields(ctx, u, hash, first, auth.UserFieldValues{})
+}
+
+func (s *Store) CreateUserWithFields(ctx context.Context, u auth.User, hash string, first *auth.StoredSession, fields auth.UserFieldValues) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if err := ctx.Err(); err != nil {
@@ -102,7 +107,7 @@ func (s *Store) CreateUser(ctx context.Context, u auth.User, hash string, first 
 			return err
 		}
 	}
-	s.users[u.ID] = credential{user: copyUser(u), hash: hash, accountID: rand.Text()}
+	s.users[u.ID] = credential{fields: fields.Columns(), user: copyUser(u), hash: hash, accountID: rand.Text()}
 	s.emailToID[key] = u.ID
 	return nil
 }

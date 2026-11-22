@@ -112,6 +112,7 @@ func (a *Auth) handleAccountRequest(route string, w http.ResponseWriter, r *http
 				update.Image = &image
 			}
 		}
+		update.AdditionalFields = a.userFieldInput(b)
 		if err := a.UpdateUser(ctx, r.Header, update); err != nil {
 			return nil, err
 		}

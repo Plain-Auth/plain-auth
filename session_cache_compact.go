@@ -87,7 +87,7 @@ func (p sessionCachePayload) marshal(claims *sessionJOSEClaims) ([]byte, error) 
 		ExpiresAt string `json:"expiresAt"`
 	}
 	type userWire struct {
-		User
+		wireUser
 		CreatedAt string `json:"createdAt"`
 		UpdatedAt string `json:"updatedAt"`
 	}
@@ -106,7 +106,7 @@ func (p sessionCachePayload) marshal(claims *sessionJOSEClaims) ([]byte, error) 
 			ExpiresAt:   p.Session.ExpiresAt.UTC().Format(millisecondUTC),
 		},
 		User: userWire{
-			User:      p.User,
+			wireUser:  wireUser(p.User),
 			CreatedAt: p.User.CreatedAt.UTC().Format(millisecondUTC),
 			UpdatedAt: p.User.UpdatedAt.UTC().Format(millisecondUTC),
 		},
@@ -131,7 +131,7 @@ type SessionCacheStore interface {
 }
 
 func (a *Auth) canCacheSessionView(r *http.Request) bool {
-	if a.opts.SessionCookieCache == nil || len(a.opts.SessionAdditionalFields) > 0 || a.admin != nil || a.factorStore != nil ||
+	if a.opts.SessionCookieCache == nil || len(a.opts.UserAdditionalFields) > 0 || len(a.opts.SessionAdditionalFields) > 0 || a.admin != nil || a.factorStore != nil ||
 		a.phoneNumber != nil || a.username != nil || a.anonymous != nil ||
 		a.serviceJWT != nil && !a.serviceJWT.DisableHeader || r.Header.Get("Authorization") != "" {
 		return false
@@ -192,7 +192,7 @@ func (a *Auth) cachedSessionView(r *http.Request, token string) (*SessionResult,
 	var payload struct {
 		Session Session `json:"session"`
 		User    struct {
-			User
+			wireUser
 			Name     *string `json:"name"`
 			Verified *bool   `json:"emailVerified"`
 		} `json:"user"`
@@ -205,7 +205,7 @@ func (a *Auth) cachedSessionView(r *http.Request, token string) (*SessionResult,
 	if payload.Version == "" {
 		payload.Version = "1"
 	}
-	user := payload.User.User
+	user := User(payload.User.wireUser)
 	user.Name, user.EmailVerified = *payload.User.Name, *payload.User.Verified
 	ss := payload.Session
 	if payload.UpdatedAt <= 0 || ss.ID == "" || ss.Token != token ||
@@ -412,7 +412,7 @@ func (a *Auth) writeCompactSnapshot(payload sessionCachePayload, expiry time.Tim
 // Only release core fields. An issuer sharing the signing keys may have
 // installed extensions that require live projection on a different node.
 func ordinaryCacheFields(s Session, u User) bool {
-	return s.extraJSON == "" && s.ImpersonatedBy == nil && s.CredentialType == "" &&
+	return u.extraJSON == "" && s.extraJSON == "" && s.ImpersonatedBy == nil && s.CredentialType == "" &&
 		s.ActiveOrganizationID == nil && s.ActiveTeamID == nil &&
 		u.AdminUserFields == nil && u.TwoFactorEnabled == nil && u.PhoneNumberFields == nil &&
 		u.UsernameFields == nil && u.IsAnonymous == nil && u.LastLoginMethod == nil

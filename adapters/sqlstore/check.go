@@ -30,7 +30,12 @@ func CheckSchema(ctx context.Context, dialect, dsn string, profiles []string) ([
 // CheckSchemaWithSessionFields additionally checks each configured physical
 // session column using the same compatibility rules as the SQL store.
 func CheckSchemaWithSessionFields(ctx context.Context, dialect, dsn string, profiles []string, fields map[string]schema.SessionField) ([]SchemaFinding, error) {
-	fields, err := sessionfields.Normalize(fields)
+	return CheckSchemaWithAdditionalFields(ctx, dialect, dsn, profiles, schema.AdditionalFields{Session: fields})
+}
+
+// CheckSchemaWithAdditionalFields compares both sets of declarations in a read-only transaction.
+func CheckSchemaWithAdditionalFields(ctx context.Context, dialect, dsn string, profiles []string, fields schema.AdditionalFields) ([]SchemaFinding, error) {
+	fields, err := fields.Normalize()
 	if err != nil {
 		return nil, err
 	}
@@ -59,7 +64,7 @@ func CheckSchemaWithSessionFields(ctx context.Context, dialect, dsn string, prof
 	return nil, errors.New("could not read the database schema (check the connection and permissions)")
 }
 
-func readSchema(ctx context.Context, dialect, dsn string, tables []schema.Table, fields map[string]schema.SessionField) ([]SchemaFinding, error) {
+func readSchema(ctx context.Context, dialect, dsn string, tables []schema.Table, fields schema.AdditionalFields) ([]SchemaFinding, error) {
 	var db *sql.DB
 	var query string
 	var err error
@@ -123,21 +128,28 @@ func readSchema(ctx context.Context, dialect, dsn string, tables []schema.Table,
 			}
 			delete(cols, col)
 		}
-		if table.Name == "session" && len(fields) > 0 {
+		var extras map[string]sessionfields.Field
+		switch table.Name {
+		case "user":
+			extras = fields.User
+		case "session":
+			extras = fields.Session
+		}
+		if len(extras) > 0 {
 			store := Store{dialect: dialect}
-			catalog, err := store.sessionColumnCatalog(ctx, tx)
+			catalog, err := store.fieldColumnCatalog(ctx, tx, table.Name)
 			if err != nil {
 				return nil, err
 			}
-			for _, name := range sessionfields.Names(fields) {
-				f := fields[name]
+			for _, name := range sessionfields.Names(extras) {
+				f := extras[name]
 				column, ok := catalog[strings.ToLower(f.Column)]
 				if !ok {
 					findings = append(findings, SchemaFinding{Kind: "missing-column", Table: table.Name, Column: f.Column})
 					continue
 				}
 				delete(cols, column.name)
-				if store.checkSessionField(f, column) != nil {
+				if store.checkModelField(table.Name, f, column) != nil {
 					findings = append(findings, SchemaFinding{Kind: "incompatible-column", Table: table.Name, Column: f.Column})
 				}
 			}

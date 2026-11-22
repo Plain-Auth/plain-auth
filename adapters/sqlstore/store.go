@@ -23,15 +23,15 @@ func (s *Store) Close() error { return s.db.Close() }
 
 // CreateUser commits the user, credential account, and optional session together.
 func (s *Store) CreateUser(ctx context.Context, user authn.User, passwordHash string, initial *authn.StoredSession) error {
-	return s.createUser(ctx, user, &passwordHash, initial)
+	return s.createUser(ctx, user, &passwordHash, initial, nil)
 }
 
 // SaveFixtureUser persists a test user without creating a credential or session.
 func (s *Store) SaveFixtureUser(ctx context.Context, user authn.User) error {
-	return s.createUser(ctx, user, nil, nil)
+	return s.createUser(ctx, user, nil, nil, nil)
 }
 
-func (s *Store) createUser(ctx context.Context, user authn.User, passwordHash *string, initial *authn.StoredSession) error {
+func (s *Store) createUser(ctx context.Context, user authn.User, passwordHash *string, initial *authn.StoredSession, columns map[string]any) error {
 	if initial != nil && initial.UserID != user.ID {
 		return errors.New("sqlstore: initial session belongs to a different user")
 	}
@@ -40,12 +40,17 @@ func (s *Store) createUser(ctx context.Context, user authn.User, passwordHash *s
 		return err
 	}
 	defer tx.Rollback()
-	userInsert := `INSERT INTO "user"
-        ("id","email","name","image","emailVerified","createdAt","updatedAt") VALUES (?,?,?,?,?,?,?)`
+	cols := `"id","email","name","image","emailVerified","createdAt","updatedAt"`
+	args := []any{user.ID, strings.ToLower(user.Email), user.Name, user.Image, user.EmailVerified, s.date(user.CreatedAt), s.date(user.UpdatedAt)}
+	for _, column := range slices.Sorted(maps.Keys(columns)) {
+		cols += `,"` + column + `"`
+		args = append(args, columns[column])
+	}
+	userInsert := `INSERT INTO "user" (` + cols + `) VALUES (?` + strings.Repeat(",?", len(args)-1) + `)`
 	if s.dialect != "mysql" {
 		userInsert += ` ON CONFLICT("email") DO NOTHING`
 	}
-	result, err := tx.ExecContext(ctx, s.bind(userInsert), user.ID, strings.ToLower(user.Email), user.Name, user.Image, user.EmailVerified, s.date(user.CreatedAt), s.date(user.UpdatedAt))
+	result, err := tx.ExecContext(ctx, s.bind(userInsert), args...)
 	if err != nil {
 		var mysqlError *mysql.MySQLError
 		if errors.As(err, &mysqlError) && mysqlError.Number == 1062 {

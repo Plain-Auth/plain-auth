@@ -36,6 +36,10 @@ Select `polar` to create `plainauth_polar_checkout` and `plainauth_polar_deliver
 
 Choose either `organization` or `organization-teams`, and at most one username profile. The `stripe-organization` option also works alongside `organization-teams`. Run `authctl info` for the full profile list in your build, or call `schema.Profiles()` from Go. Profile order produces deterministic output. The profile selector controls database structure. See the [feature checklist](parity/README.md) for runtime support.
 
+## Configure user fields
+
+Supply `schema.AdditionalFields{User: fields, Session: sessionFields}` to the Go schema generator, read-only checker and migration API. [Additional user fields](user-fields.md)
+
 ## Configure session fields
 
 Pass `--session-fields FILE` to `authctl generate`, `check schema` or `migrate`. The file is a JSON object keyed by the field name your application reads. Each definition requires a `type` of `string`, `number` (signed 32-bit integer) or `boolean`. Optional keys are `column`, `default`, `required`, `serverOnly` and `hidden`. Boolean settings default to false. The physical column defaults to the field name. A default must match the field type. Optional fields can use JSON null. Unknown properties, duplicate keys, reserved names and conflicting aliases produce configuration errors before the command accesses the database.

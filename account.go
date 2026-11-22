@@ -12,6 +12,8 @@ import (
 // ProfileUpdate changes the supplied fields. A Clear flag removes its field and
 // takes precedence over a supplied value.
 type ProfileUpdate struct {
+	AdditionalFields                                map[string]any
+	validatedFields                                 UserFieldValues
 	ClearPhoneNumber                                bool
 	Username, DisplayUsername                       *string
 	Name, Image                                     *string
@@ -62,6 +64,16 @@ func (a *Auth) UpdateUser(ctx context.Context, h http.Header, update ProfileUpda
 	if err != nil {
 		return err
 	}
+	values, err := a.prepareUserFields(update.AdditionalFields, false, false)
+	if err != nil {
+		return err
+	}
+	update.validatedFields = values
+	if values.Present() {
+		if err := session.Session.RequireOwner(); err != nil {
+			return err
+		}
+	}
 	if update.ClearPhoneNumber {
 		if a.phoneNumber == nil {
 			return &APIError{400, "BAD_REQUEST", "Phone number is not enabled"}
@@ -106,6 +118,13 @@ func (a *Auth) UpdateUser(ctx context.Context, h http.Header, update ProfileUpda
 	update.ClearUsername, update.ClearDisplayUsername = false, false
 	if update.ClearPhoneNumber {
 		err := a.opts.Store.(PhoneAccountStore).ClearPhoneProfile(ctx, session.User.ID, session.Session.Token, update, a.now().UTC())
+		if errors.Is(err, ErrNotFound) {
+			return &APIError{401, "UNAUTHORIZED", "Unauthorized"}
+		}
+		return err
+	}
+	if values.Present() {
+		err := a.opts.Store.(UserFieldStore).UpdateUserFields(ctx, session.User.ID, &session.Session, update, a.now().UTC())
 		if errors.Is(err, ErrNotFound) {
 			return &APIError{401, "UNAUTHORIZED", "Unauthorized"}
 		}

@@ -87,11 +87,15 @@ func (a *Auth) WithTrustedSessionFields(row StoredSession, overrides map[string]
 // AdditionalField reads a public field returned by the configured instance.
 // Numbers use int64. A present null is distinct from an absent field.
 func (s Session) AdditionalField(name string) (any, bool) {
-	if s.extraJSON == "" {
+	return additionalField(s.extraJSON, name)
+}
+
+func additionalField(data, name string) (any, bool) {
+	if data == "" {
 		return nil, false
 	}
 	var fields map[string]json.RawMessage
-	if json.Unmarshal([]byte(s.extraJSON), &fields) != nil {
+	if json.Unmarshal([]byte(data), &fields) != nil {
 		return nil, false
 	}
 	raw, ok := fields[name]

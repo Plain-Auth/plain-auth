@@ -99,7 +99,32 @@ func Generate(dialect string, profiles []string) (string, error) {
 // GenerateWithSessionFields generates the physical session columns alongside
 // the selected core and plugin schema. Fresh columns have application defaults.
 func GenerateWithSessionFields(dialect string, profiles []string, fields map[string]sessionfields.Field) (string, error) {
-	fields, err := sessionfields.Normalize(fields)
+	return GenerateWithAdditionalFields(dialect, profiles, AdditionalFields{Session: fields})
+}
+
+// UserField declares a scalar column in the user profile.
+type UserField = sessionfields.Field
+
+// AdditionalFields names independent user and session physical-column declarations.
+type AdditionalFields struct {
+	User    map[string]UserField
+	Session map[string]SessionField
+}
+
+// Normalize validates both namespaces and returns owned copies of their declarations.
+func (f AdditionalFields) Normalize() (AdditionalFields, error) {
+	var err error
+	f.User, err = sessionfields.NormalizeUser(f.User)
+	if err != nil {
+		return AdditionalFields{}, err
+	}
+	f.Session, err = sessionfields.Normalize(f.Session)
+	return f, err
+}
+
+// GenerateWithAdditionalFields includes configured user and session columns in fresh DDL.
+func GenerateWithAdditionalFields(dialect string, profiles []string, fields AdditionalFields) (string, error) {
+	fields, err := fields.Normalize()
 	if err != nil {
 		return "", err
 	}
@@ -120,9 +145,17 @@ func GenerateWithSessionFields(dialect string, profiles []string, fields map[str
 					columns = append(columns, column.SQL)
 				}
 			}
-			if strings.Trim(strings.TrimPrefix(object.SQL, "create table "), "\"`") == "session" {
-				for _, name := range sessionfields.Names(fields) {
-					columns = append(columns, fields[name].Definition(dialect))
+			model := strings.Trim(strings.TrimPrefix(object.SQL, "create table "), "\"`")
+			var extras map[string]sessionfields.Field
+			switch model {
+			case "user":
+				extras = fields.User
+			case "session":
+				extras = fields.Session
+			}
+			if len(extras) > 0 {
+				for _, name := range sessionfields.Names(extras) {
+					columns = append(columns, extras[name].Definition(dialect))
 				}
 			}
 			sql += " (" + strings.Join(columns, ", ") + ");"

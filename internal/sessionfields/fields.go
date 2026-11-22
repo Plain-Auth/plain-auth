@@ -34,6 +34,19 @@ var reserved = map[string]bool{"id": true, "userid": true, "token": true, "expir
 func NameOK(name string) bool {
 	return identifier.MatchString(name) && !reserved[strings.ToLower(name)]
 }
+
+// UserNameOK reserves core profile, authentication input and installed plugin attributes.
+func UserNameOK(name string) bool {
+	if !NameOK(name) {
+		return false
+	}
+	switch strings.ToLower(name) {
+	case "name", "email", "emailverified", "image", "password", "callbackurl", "rememberme", "username", "displayusername", "phonenumber", "phonenumberverified", "lastloginmethod", "isanonymous", "twofactorenabled", "role", "banned", "banreason", "banexpires", "stripecustomerid", "newpassword", "currentpassword", "redirect", "url":
+		return false
+	}
+	return true
+}
+
 func Names(fields map[string]Field) []string {
 	names := make([]string, 0, len(fields))
 	for name := range fields {
@@ -45,6 +58,14 @@ func Names(fields map[string]Field) []string {
 
 // Normalize resolves physical names and freezes static scalar defaults.
 func Normalize(fields map[string]Field) (map[string]Field, error) {
+	return normalize(fields, "session", NameOK)
+}
+
+func NormalizeUser(fields map[string]Field) (map[string]Field, error) {
+	return normalize(fields, "user", UserNameOK)
+}
+
+func normalize(fields map[string]Field, model string, validName func(string) bool) (map[string]Field, error) {
 	if len(fields) == 0 {
 		return nil, nil
 	}
@@ -56,24 +77,24 @@ func Normalize(fields map[string]Field) (map[string]Field, error) {
 			f.Column = name
 		}
 		for _, key := range []string{name, f.Column} {
-			if !NameOK(key) {
-				return nil, fmt.Errorf("invalid additional session field name %q", key)
+			if !validName(key) {
+				return nil, fmt.Errorf("invalid additional %s field name %q", model, key)
 			}
 			lower := strings.ToLower(key)
 			if other, ok := used[lower]; ok && other != name {
-				return nil, fmt.Errorf("session field %q collides with %q", name, other)
+				return nil, fmt.Errorf("%s field %q collides with %q", model, name, other)
 			}
 			used[lower] = name
 		}
 		switch f.Type {
 		case String, Number, Boolean:
 		default:
-			return nil, fmt.Errorf("unsupported type %q for session field %q", f.Type, name)
+			return nil, fmt.Errorf("unsupported type %q for %s field %q", f.Type, model, name)
 		}
 		if f.Default != nil {
 			value, err := f.Value(f.Default)
 			if err != nil {
-				return nil, fmt.Errorf("invalid default for session field %q: %w", name, err)
+				return nil, fmt.Errorf("invalid default for %s field %q: %w", model, name, err)
 			}
 			f.Default = value
 		}

@@ -79,6 +79,19 @@ func New(opts Options) (*Auth, error) {
 		return nil, errors.New("authn: Secret needs at least 32 bytes")
 	}
 	var err error
+	opts.UserAdditionalFields, err = sessionfields.NormalizeUser(opts.UserAdditionalFields)
+	if err != nil {
+		return nil, err
+	}
+	if len(opts.UserAdditionalFields) > 0 {
+		store, ok := opts.Store.(UserFieldStore)
+		if !ok {
+			return nil, errors.New("auth: additional user fields require a UserFieldStore")
+		}
+		if err = store.ValidateUserFields(opts.UserAdditionalFields); err != nil {
+			return nil, err
+		}
+	}
 	opts.SessionAdditionalFields, err = sessionfields.Normalize(opts.SessionAdditionalFields)
 	if err != nil {
 		return nil, err
@@ -366,8 +379,11 @@ func (a *Auth) signUpEmail(ctx context.Context, in SignUpInput, meta RequestMeta
 	if err := a.validateCredential(in.Email, in.Password, true); err != nil {
 		return AuthResult{}, err
 	}
+	extras, err := a.prepareUserFields(in.AdditionalFields, true, false)
+	if err != nil {
+		return AuthResult{}, err
+	}
 	var fields *UsernameFields
-	var err error
 	if a.username != nil {
 		fields, err = a.username.fields(ctx, in.Username, in.DisplayUsername, true)
 		if err != nil {
@@ -407,7 +423,12 @@ func (a *Auth) signUpEmail(ctx context.Context, in SignUpInput, meta RequestMeta
 			}
 		}
 	}
-	err = usernameWriteError(a.opts.Store.CreateUser(ctx, user, hash, first))
+	if extras.Present() {
+		err = a.opts.Store.(UserFieldStore).CreateUserWithFields(ctx, user, hash, first, extras)
+	} else {
+		err = a.opts.Store.CreateUser(ctx, user, hash, first)
+	}
+	err = usernameWriteError(err)
 	if errors.Is(err, ErrEmailTaken) {
 		if first == nil {
 			// A generated profile has the same enabled public fields as a new account.
@@ -417,6 +438,9 @@ func (a *Auth) signUpEmail(ctx context.Context, in SignUpInput, meta RequestMeta
 			}
 			if a.phoneNumber != nil {
 				user.PhoneNumberFields = &PhoneNumberFields{}
+			}
+			if err := a.projectPublicUser(&user, extras.columns); err != nil {
+				return AuthResult{}, err
 			}
 			if a.opts.OnExistingUserSignUp != nil {
 				a.notifyExistingSignUp(ctx, user.Email, request)

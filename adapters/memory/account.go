@@ -49,6 +49,12 @@ func (s *Store) applyProfile(id string, record credential, in auth.ProfileUpdate
 		image := *in.Image
 		record.user.Image = &image
 	}
+	for k, v := range in.PhysicalUserFields() {
+		if record.fields == nil {
+			record.fields = map[string]any{}
+		}
+		record.fields[k] = v
+	}
 	record.user.UpdatedAt = now
 	s.users[id] = record
 	return nil

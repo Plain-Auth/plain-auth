@@ -78,9 +78,15 @@ func main() {
 	}
 	var store *sqlstore.Store
 	var additionalSessionFields map[string]authn.SessionField
+	var additionalUserFields map[string]authn.UserField
 	if os.Getenv("CONFORMANCE_SESSION_FIELDS") == "1" {
 		additionalSessionFields = configuredSessionFields()
-		store, err = sqlstore.OpenWithSessionFields(context.Background(), "sqlite", os.Args[1], os.Args[2:], additionalSessionFields)
+	}
+	if os.Getenv("CONFORMANCE_USER_FIELDS") == "1" {
+		additionalUserFields = configuredUserFields()
+	}
+	if len(additionalSessionFields)+len(additionalUserFields) > 0 {
+		store, err = sqlstore.OpenWithAdditionalFields(context.Background(), "sqlite", os.Args[1], os.Args[2:], schema.AdditionalFields{Session: additionalSessionFields, User: additionalUserFields})
 	} else {
 		store, err = sqlstore.OpenWithSchema(context.Background(), "sqlite", os.Args[1], ddl)
 	}
@@ -416,6 +422,7 @@ func main() {
 	}
 	opts := authn.Options{
 		SessionAdditionalFields: additionalSessionFields,
+		UserAdditionalFields:    additionalUserFields,
 		SessionCookieCache:      sessionCache,
 		SessionUpdateAge:        fixtureSessionUpdateAge(),
 		DeferSessionRefresh:     os.Getenv("CONFORMANCE_DEFER_SESSION_REFRESH") == "1",
