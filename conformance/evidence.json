@@ -12334,5 +12334,78 @@
       "marker": "func TestAssertionLifetimeAndClockTolerance(",
       "complete": true
     }
+  ],
+  "plugin/oauth-provider/POST /oauth2/client/rotate-keys": [
+    {
+      "label": "Rotate without a user session, overlap old and new keys, and confirm their acceptance and retirement at an independent issuer",
+      "test": "conformance/oauth-key-rotation.mjs",
+      "marker": "export async function exerciseClientKeyRotation(",
+      "complete": true
+    },
+    {
+      "label": "Serialize competing replacements, roll back the replay identifier on write failure, and allow an unchanged signed retry on three SQL engines",
+      "test": "adapters/sqlstore/oauth_key_rotation_test.go",
+      "marker": "func TestOAuthClientKeyRotation("
+    }
+  ],
+  "plugin-symbol/oauth-provider/rotateClientKeys": [
+    {
+      "label": "Rotate without a user session, overlap old and new keys, and confirm their acceptance and retirement at an independent issuer",
+      "test": "conformance/oauth-key-rotation.mjs",
+      "marker": "export async function exerciseClientKeyRotation(",
+      "complete": true
+    },
+    {
+      "label": "Serialize competing replacements, roll back the replay identifier on write failure, and allow an unchanged signed retry on three SQL engines",
+      "test": "adapters/sqlstore/oauth_key_rotation_test.go",
+      "marker": "func TestOAuthClientKeyRotation("
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/clients.mdx#L299": [
+    {
+      "label": "Rotate without a user session, overlap old and new keys, and confirm their acceptance and retirement at an independent issuer",
+      "test": "conformance/oauth-key-rotation.mjs",
+      "marker": "export async function exerciseClientKeyRotation(",
+      "complete": true
+    },
+    {
+      "label": "Serialize competing replacements, roll back the replay identifier on write failure, and allow an unchanged signed retry on three SQL engines",
+      "test": "adapters/sqlstore/oauth_key_rotation_test.go",
+      "marker": "func TestOAuthClientKeyRotation("
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/reference.mdx#L337/`POST /oauth2/client/rotate-keys`": [
+    {
+      "label": "Rotate without a user session, overlap old and new keys, and confirm their acceptance and retirement at an independent issuer",
+      "test": "conformance/oauth-key-rotation.mjs",
+      "marker": "export async function exerciseClientKeyRotation(",
+      "complete": true
+    },
+    {
+      "label": "Serialize competing replacements, roll back the replay identifier on write failure, and allow an unchanged signed retry on three SQL engines",
+      "test": "adapters/sqlstore/oauth_key_rotation_test.go",
+      "marker": "func TestOAuthClientKeyRotation("
+    }
+  ],
+  "plugin-symbol/oauth-provider/OAuthOptions/allowClientKeyRotation": [
+    {
+      "label": "Reject rotation by default and require atomic single-use assertion storage at startup when enabled",
+      "test": "plugins/oauthprovider/key_rotation_test.go",
+      "marker": "func TestKeyRotationConfiguration(",
+      "complete": true
+    },
+    {
+      "label": "Return access_denied when a client requests rotation from an issuer that has kept the default",
+      "test": "conformance/oauth-registration.mjs",
+      "marker": "assert.equal(closed.status, 403);"
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/reference.mdx#L403/`rotateClientKeys`": [
+    {
+      "label": "Apply the default five-request limit, a custom limit and the host global limit through the HTTP endpoint",
+      "test": "adapters/sqlstore/oauth_introspection_test.go",
+      "marker": "func TestOAuthClientKeyRotationRateLimit(",
+      "complete": true
+    }
   ]
 }

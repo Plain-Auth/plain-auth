@@ -141,6 +141,10 @@ func TestOAuthRevocationRateLimit(t *testing.T) {
 	testOAuthTokenRouteLimit(t, "revoke", 30)
 }
 
+func TestOAuthClientKeyRotationRateLimit(t *testing.T) {
+	testOAuthTokenRouteLimit(t, "client/rotate-keys", 5)
+}
+
 func testOAuthTokenRouteLimit(t *testing.T, route string, defaultMax int) {
 	t.Helper()
 	s, err := OpenWithOptions(t.Context(), "sqlite", organizationTestDSN(t, "sqlite"), []string{"oauth-provider"}, schema.Options{})
@@ -157,7 +161,7 @@ func testOAuthTokenRouteLimit(t *testing.T, route string, defaultMax int) {
 				rule = &auth.RateLimitRule{}
 			}
 			opts := op.TokenOptions{IntrospectionRateLimit: rule, RevocationRateLimit: rule}
-			p, err := op.New(op.Options{Tokens: opts})
+			p, err := op.New(op.Options{Tokens: opts, Assertions: op.AssertionOptions{KeyRotationRateLimit: rule}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -167,12 +171,16 @@ func testOAuthTokenRouteLimit(t *testing.T, route string, defaultMax int) {
 			if err != nil {
 				t.Fatal(err)
 			}
+			body, media, normal := "token=x", "application/x-www-form-urlencoded", http.StatusUnauthorized
+			if route == "client/rotate-keys" {
+				body, media, normal = `{"client_assertion":"unused","client_assertion_type":"unused","jwks":{"keys":[{}]}}`, "application/json", http.StatusForbidden
+			}
 			for i := 0; i <= max; i++ {
-				r := httptest.NewRequest(http.MethodPost, origin+"/api/auth/oauth2/"+route, strings.NewReader("token=x"))
-				r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+				r := httptest.NewRequest(http.MethodPost, origin+"/api/auth/oauth2/"+route, strings.NewReader(body))
+				r.Header.Set("Content-Type", media)
 				w := httptest.NewRecorder()
 				host.ServeHTTP(w, r)
-				expected := http.StatusUnauthorized
+				expected := normal
 				if i == max {
 					expected = http.StatusTooManyRequests
 				}

@@ -38,7 +38,7 @@ func TestAssertionLifetimeAndClockTolerance(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		_, expiry, err := opts.checkClaims(raw, "id", "endpoint", "issuer", now)
+		_, expiry, err := opts.checkClaims(raw, "id", now, "endpoint", "issuer")
 		return expiry, err
 	}
 	for _, tc := range []struct {

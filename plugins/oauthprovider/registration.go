@@ -197,6 +197,9 @@ func New(opts Options) (auth.Plugin, error) {
 	p := ConsentManagement(ConsentOptions{Scopes: opts.Scopes})
 	validateConsent := p.ValidateStore
 	p.ValidateStore = func(s auth.Store) error {
+		if _, ok := s.(ClientKeyRotationStore); opts.Assertions.AllowKeyRotation && !ok {
+			return errors.New("oauthprovider: client key rotation requires a store with atomic single-use assertions and key replacement")
+		}
 		if err := validateConsent(s); err != nil {
 			return err
 		}
@@ -210,6 +213,8 @@ func New(opts Options) (auth.Plugin, error) {
 		p.Endpoints = append(p.Endpoints, opts.clientEndpoint(action))
 	}
 	p.Endpoints = append(p.Endpoints, auth.Endpoint{Method: http.MethodPost, Path: "/oauth2/client/rotate-secret", Handler: opts.rotateClientSecret})
+	p.Endpoints = append(p.Endpoints, auth.Endpoint{Method: http.MethodPost, Path: keyRotationPath, Handler: opts.rotateClientKeys,
+		RateLimit: tokenRouteLimit(opts.Assertions.KeyRotationRateLimit, 5), OpenAPI: json.RawMessage(keyRotationOperation)})
 	p.Endpoints = append(p.Endpoints, auth.Endpoint{Method: http.MethodPost, Path: "/oauth2/delete-client", Handler: opts.deleteClient})
 	p.Endpoints = append(p.Endpoints, auth.Endpoint{Method: http.MethodPost, Path: "/oauth2/token", RawBody: true, OpenAPI: json.RawMessage(machineTokenOperation), RateLimit: opts.Tokens.RateLimit, Handler: opts.token})
 	p.Endpoints = append(p.Endpoints, auth.Endpoint{Method: http.MethodPost, Path: "/oauth2/introspect", RawBody: true, OpenAPI: json.RawMessage(introspectionOperation), RateLimit: opts.Tokens.IntrospectionRateLimit, Handler: opts.introspect})

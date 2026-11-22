@@ -67,3 +67,31 @@ Set `oauthprovider.Options.Assertions.MaxLifetime` to a positive whole number of
 The SQL adapter reserves a digest of the client ID and `jti` in `oauthClientAssertion` before evaluating grant scopes. All instances using the same database share this protection across the three endpoints. Generate a new assertion for retries, including after an invalid scope response. A custom store implements `oauthprovider.ClientAssertionStore` and reserves identifiers atomically. Replay records carry an `expiresAt` that includes the configured clock tolerance.
 
 Signature, issuer, subject, audience and time verification failures return HTTP 401 with `invalid_client`. A reused identifier, excessive lifetime or malformed assertion returns HTTP 400. [Interoperability tests](../conformance/oauth-client-assertions.mjs) · [Three-engine concurrency tests](../adapters/sqlstore/oauth_client_assertion_test.go)
+
+## Rotate inline public keys
+
+A registered application can rotate its own inline keys when the issuer enables `oauthprovider.AssertionOptions{AllowKeyRotation: true}` in `Options.Assertions`. The built-in SQL adapters support it. At startup, Plain Auth checks for a store capable of atomically reserving the assertion identifier and replacing the keys. The endpoint defaults to five requests per minute per client IP. Set `Assertions.KeyRotationRateLimit` to override the rule or use an empty rule to inherit the global limit.
+
+1. Generate the next signing key in the application and export its public JWK with a new `kid`.
+2. Sign an assertion with a current key. Set `aud` to the full public URL ending in `/oauth2/client/rotate-keys`. This operation requires the rotation URL, including when `aud` is a list.
+3. Send the complete set of old and new public keys. After the response succeeds, deploy clients that sign with the new key.
+4. Once all clients have switched, sign a fresh rotation assertion and send only the new public key. Inline keys omitted from the replacement stop authenticating immediately.
+
+With the Go SDK, `keys` is a `json.RawMessage` containing the full public JWK Set. The call returns the client ID and registered keys.
+
+```go
+updated, err := c.RotateOAuthClientKeys(ctx, signedRotationAssertion, keys)
+```
+
+The equivalent HTTP call uses `application/json`. Set `AUTH_URL` to the public origin and place the complete public JWK Set in `public-keys.json`.
+
+```sh
+jq -n --arg assertion "$ROTATION_ASSERTION" --slurpfile keys public-keys.json '{
+  client_assertion: $assertion,
+  client_assertion_type: "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
+  jwks: $keys[0]
+}' | curl --request POST "$AUTH_URL/api/auth/oauth2/client/rotate-keys" \
+  --header 'Content-Type: application/json' --data-binary @-
+```
+
+HTTP 403 means rotation is disabled. HTTP 409 means another request changed the registration between signature verification and the write. Read the current registered keys and sign a fresh request with a current key. If a network failure obscures the result, inspect the registration before retrying. Clients with a remote key set rotate at their registered `jwks_uri`. Operator-managed registrations use the operator's administrative process. [Two-stage rollover tests](../conformance/oauth-key-rotation.mjs) · [Concurrent rotation and rollback tests](../adapters/sqlstore/oauth_key_rotation_test.go)

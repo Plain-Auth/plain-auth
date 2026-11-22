@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/url"
 
@@ -39,4 +40,14 @@ func (c *Client) RotateOAuthClientSecret(ctx context.Context, id string) (oauthp
 // DeleteOAuthClient removes the owned registration and its stored grants and tokens.
 func (c *Client) DeleteOAuthClient(ctx context.Context, id string) error {
 	return c.Do(ctx, http.MethodPost, "/oauth2/delete-client", map[string]string{"client_id": id}, nil)
+}
+
+// RotateOAuthClientKeys replaces an application's complete inline public JWK Set.
+// Sign the assertion with a current key and use the full rotation URL for its audience.
+func (c *Client) RotateOAuthClientKeys(ctx context.Context, assertion string, keys json.RawMessage) (oauthprovider.RotatedClientKeys, error) {
+	var result oauthprovider.RotatedClientKeys
+	err := c.Do(ctx, http.MethodPost, "/oauth2/client/rotate-keys", map[string]any{
+		"client_assertion": assertion, "client_assertion_type": oauthprovider.ClientAssertionType, "jwks": keys,
+	}, &result)
+	return result, err
 }

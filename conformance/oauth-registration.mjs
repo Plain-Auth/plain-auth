@@ -7,6 +7,7 @@ import { betterAuth } from "better-auth";
 import { exportJWK, generateKeyPair, SignJWT } from "jose";
 import { exerciseMachineTokens } from "./oauth-machine-tokens.mjs";
 import { exerciseIntrospection } from "./oauth-introspection.mjs";
+import { exerciseClientKeyRotation } from "./oauth-key-rotation.mjs";
 import { exerciseClientAssertions } from "./oauth-client-assertions.mjs";
 import { exerciseRevocation } from "./oauth-revocation.mjs";
 
@@ -25,7 +26,7 @@ function options(mode) {
     clientRegistrationDefaultApplicationType: "infer",
     clientRegistrationRequirePKCE: false,
     prefix: { clientSecret: "fixture_", ...(mode === "protected" && { opaqueAccessToken: "access_" }) },
-    ...(mode === "protected" && { m2mAccessTokenExpiresIn: 600, scopeExpirations: { reports: "90s" } }),
+    ...(mode === "protected" && { allowClientKeyRotation: true, m2mAccessTokenExpiresIn: 600, scopeExpirations: { reports: "90s" } }),
     pairwiseSecret: "p".repeat(32),
     allowInsecureRedirectUri: (u) => u.hostname === "dev.example.test",
     clientPrivileges: ({ headers }) => !headers.get("X-Deny"),
@@ -77,6 +78,19 @@ export async function compareClientRegistration(t, reference, goFixture) {
         }
         if (mode === "disabled") {
           await problem(standard, {}, 403, "access_denied");
+          const closed = await request("oauth2/client/rotate-keys", {
+            client_assertion_type: "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
+            client_assertion: "unused", jwks: { keys: [{ kty: "EC", crv: "P-256", x: "x", y: "y" }] },
+          });
+          assert.equal(closed.status, 403);
+          assert.equal((await closed.json()).error, "access_denied");
+          for (const jwks of [{}, { keys: [] }, { keys: ["invalid"] }]) {
+            const invalid = await request("oauth2/client/rotate-keys", {
+              client_assertion: "unused", client_assertion_type: "unused", jwks,
+            });
+            assert.equal(invalid.status, 400);
+            assert.equal((await invalid.json()).error, "invalid_client_metadata");
+          }
           return;
         }
         async function created(input, headers) {
@@ -376,6 +390,9 @@ export async function compareClientRegistration(t, reference, goFixture) {
         assert.equal(signedExchange.status, 200, JSON.stringify(signedToken));
         assert.ok(signedToken.access_token);
 
+        await t.test("rotate inline application keys with a single-use endpoint-specific assertion", async () => {
+          await exerciseClientKeyRotation({ server, issuer, keyed, signer, key });
+        });
         await t.test("rotate shared client secrets and invalidate the original credential", async () => {
           const rotate = (headers, payload) => request("oauth2/client/rotate-secret", payload, headers);
           const tenant = await request("sign-up/email", {

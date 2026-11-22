@@ -21,6 +21,11 @@ const ClientAssertionType = "urn:ietf:params:oauth:client-assertion-type:jwt-bea
 
 // AssertionOptions configures signed assertions from registered OAuth clients.
 type AssertionOptions struct {
+	// AllowKeyRotation lets an inline-key registration replace its keys using a
+	// single-use assertion addressed to the rotation endpoint.
+	AllowKeyRotation bool
+	// KeyRotationRateLimit defaults to five requests per minute. An empty rule uses the global limit.
+	KeyRotationRateLimit *auth.RateLimitRule
 	// MaxLifetime limits remaining validity and the age of iat. Defaults to five minutes.
 	MaxLifetime time.Duration
 	// ClockTolerance permits clock differences of up to one minute.
@@ -96,34 +101,47 @@ func (opts Options) verifyClientAssertion(c auth.EndpointContext, reader Machine
 	if !ok {
 		return &auth.APIError{Status: 501, Code: "OAUTH_ASSERTION_STORE_UNAVAILABLE", Message: "The configured store does not support OAuth client assertions"}
 	}
-	token := in.assertion.token
-	key, err := opts.assertionKeys.verificationKey(c, first, token.Signatures[0].Protected)
+	digest, expires, err := opts.signedAssertion(c, in.assertion, first, c.Auth.PublicURL()+endpoint, c.Auth.OAuthIssuer())
 	if err != nil {
 		return err
 	}
-	data, err := token.Verify(key.Key)
-	if err != nil {
-		return failedAssertion()
-	}
-	jti, expires, err := opts.Assertions.checkClaims(data, first.ClientID, c.Auth.PublicURL()+endpoint, c.Auth.OAuthIssuer(), time.Now())
-	if err != nil {
-		return err
-	}
-	sum := sha256.Sum256([]byte("private_key_jwt:" + first.ClientID + ":" + jti))
-	digest := base64.RawURLEncoding.EncodeToString(sum[:24])
 	err = store.ConsumeOAuthClientAssertion(c.Request.Context(), first.ClientID, digest, expires, func(current MachineClient) error {
 		if !time.Now().Before(expires) {
 			return failedAssertion()
 		}
 		return in.recheckClient(first, current)
 	})
+	return assertionStoreError(err)
+}
+
+func assertionStoreError(err error) error {
 	if errors.Is(err, ErrAssertionReplay) {
 		return invalidClient("client assertion jti has already been used")
 	}
 	return err
 }
 
-func (opts AssertionOptions) checkClaims(data []byte, id, endpoint, issuer string, now time.Time) (string, time.Time, error) {
+// signedAssertion verifies the JWT before any replay or credential state is written.
+func (opts Options) signedAssertion(c auth.EndpointContext, assertion *clientAssertion, first MachineClient, audiences ...string) (string, time.Time, error) {
+	token := assertion.token
+	key, err := opts.assertionKeys.verificationKey(c, first, token.Signatures[0].Protected)
+	if err != nil {
+		return "", time.Time{}, err
+	}
+	data, err := token.Verify(key.Key)
+	if err != nil {
+		return "", time.Time{}, failedAssertion()
+	}
+	jti, expires, err := opts.Assertions.checkClaims(data, first.ClientID, time.Now(), audiences...)
+	if err != nil {
+		return "", time.Time{}, err
+	}
+	sum := sha256.Sum256([]byte("private_key_jwt:" + first.ClientID + ":" + jti))
+	digest := base64.RawURLEncoding.EncodeToString(sum[:24])
+	return digest, expires, nil
+}
+
+func (opts AssertionOptions) checkClaims(data []byte, id string, now time.Time, accepted ...string) (string, time.Time, error) {
 	var claims map[string]json.RawMessage
 	var iss, sub string
 	if json.Unmarshal(data, &claims) != nil || json.Unmarshal(claims["iss"], &iss) != nil ||
@@ -137,7 +155,7 @@ func (opts AssertionOptions) checkClaims(data []byte, id, endpoint, issuer strin
 	} else if json.Unmarshal(claims["aud"], &audiences) != nil {
 		return "", time.Time{}, failedAssertion()
 	}
-	if !slices.Contains(audiences, endpoint) && !slices.Contains(audiences, issuer) {
+	if !slices.ContainsFunc(accepted, func(v string) bool { return slices.Contains(audiences, v) }) {
 		return "", time.Time{}, failedAssertion()
 	}
 	if claims["exp"] == nil {

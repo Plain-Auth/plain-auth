@@ -134,7 +134,7 @@ Go records the resolved commit in the consuming project’s `go.mod`. The module
 | Register OAuth clients and rotate confidential client secrets | [OAuth client registration](docs/oauth-client-registration.md) |
 | Grant or revoke machine-to-machine scopes from Go server code | [Machine scope management](docs/oauth-client-registration.md#grant-machine-to-machine-scopes) |
 | Issue opaque machine access tokens and check their current scopes and expiry | [Machine access tokens](docs/machine-tokens.md) · [Token introspection](docs/machine-tokens.md#check-whether-a-token-is-active) |
-| Authenticate an OAuth application with its own signing key | [Signed client assertions](docs/oauth-client-assertions.md) |
+| Authenticate an OAuth application with its own signing key and rotate its keys | [Signed client assertions](docs/oauth-client-assertions.md) |
 | Revoke an OAuth token or invalidate a replayed refresh-token family | [Token revocation](docs/oauth-token-revocation.md) |
 | List or delete registered applications and show client details on a consent screen | [Manage registered applications](docs/oauth-client-directory.md) |
 | Issue signed service tokens and publish verification keys | [JWT and JWKS](docs/jwt.md) |

@@ -114,7 +114,7 @@ A registered confidential application can exchange a shared secret or a signed c
 
 ## Rotate a shared secret
 
-A personal owner or an authorized member of the owning tenant can rotate a confidential application's credential. Send a signed-in session to `POST /api/auth/oauth2/client/rotate-secret` with the JSON body `{"client_id":"your-client-id"}`. Rotation also works when dynamic registration is disabled. Native and browser clients that use `none` or `private_key_jwt` use different credential mechanisms.
+A personal owner or an authorized member of the owning tenant can rotate a confidential application's credential. Send a signed-in session to `POST /api/auth/oauth2/client/rotate-secret` with the JSON body `{"client_id":"your-client-id"}`. Rotation also works when dynamic registration is disabled. A client registered with `private_key_jwt` can rotate inline public keys using its current signing key when the issuer enables key rotation. [Rotate inline public keys](oauth-client-assertions.md#rotate-inline-public-keys)
 
 On success, HTTP 200 returns the owner-visible client metadata and the replacement in `client_secret`. Capture the replacement in your application's secret manager, then use it for the next client authentication. The previous secret stops authenticating as soon as the transaction commits. If the one-time response is lost, the owner can rotate again. Rotation changes the credential used for future token requests. Previously issued tokens follow their own expiration and revocation policies.
 

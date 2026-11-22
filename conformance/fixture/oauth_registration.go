@@ -81,6 +81,7 @@ func registrationFixtureOptions() op.Options {
 	opts.PairwiseSecret = strings.Repeat("p", 32)
 	opts.Scopes = []string{"openid", "email", "reports", "extra"}
 	if mode == "protected" {
+		opts.Assertions.AllowKeyRotation = true
 		opts.Tokens = op.TokenOptions{MachineLifetime: 10 * time.Minute, ScopeLifetimes: map[string]time.Duration{"reports": 90 * time.Second}, OpaquePrefix: "access_"}
 	}
 	optional := false
