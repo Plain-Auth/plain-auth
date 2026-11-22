@@ -47,31 +47,12 @@ func (s *Store) emailOTPTransaction(ctx context.Context, key emailOTPKey, run fu
 	return err
 }
 func (s *Store) emailOTPTransactionOnce(ctx context.Context, key emailOTPKey, run func(*sql.Tx) (error, error)) error {
-	conn, err := s.db.Conn(ctx)
+	const lockName = "SHA2(CONCAT(DATABASE(), '/auth/email-otp/', ?), 256)"
+	tx, end, err := s.beginTransactionWithMySQLLock(ctx, nil, lockName, 15, errors.New("email OTP mailbox lock unavailable"), key.digest)
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
-	if s.dialect == "mysql" {
-		const lockName = "SHA2(CONCAT(DATABASE(), '/auth/email-otp/', ?), 256)"
-		var got sql.NullInt64
-		if err = conn.QueryRowContext(ctx, "SELECT GET_LOCK("+lockName+",15)", key.digest).Scan(&got); err != nil {
-			return err
-		}
-		if !got.Valid || got.Int64 != 1 {
-			return errors.New("email OTP mailbox lock unavailable")
-		}
-		defer func() {
-			cleanup, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-			defer cancel()
-			_, _ = conn.ExecContext(cleanup, "SELECT RELEASE_LOCK("+lockName+")", key.digest)
-		}()
-	}
-	tx, err := conn.BeginTx(ctx, nil)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
+	defer end.rollback()
 	if s.dialect == "postgres" {
 		if _, err = tx.ExecContext(ctx, "SELECT pg_advisory_xact_lock(hashtextextended($1,0))", key.owner); err != nil {
 			return err
@@ -81,7 +62,7 @@ func (s *Store) emailOTPTransactionOnce(ctx context.Context, key emailOTPKey, ru
 	if err != nil {
 		return err
 	}
-	if err = tx.Commit(); err != nil {
+	if err = end.commit(); err != nil {
 		return err
 	}
 	return denial

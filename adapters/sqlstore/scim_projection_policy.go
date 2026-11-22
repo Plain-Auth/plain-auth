@@ -124,32 +124,10 @@ func (s *Store) changeSCIMProjection(ctx context.Context, domain string, disable
 	return finish.commit()
 }
 
-// The owner of a reserved connection needs the outcome of the physical
-// transaction before deciding whether that connection can return to the pool.
-type scimTransactionEnd struct {
-	tx      *sql.Tx
-	done    bool
-	release func(error)
-}
-
-func (end *scimTransactionEnd) finish(action func() error) error {
-	if end.done {
-		return sql.ErrTxDone
-	}
-	end.done = true
-	err := action()
-	if end.release != nil {
-		end.release(err)
-	}
-	return err
-}
-func (end *scimTransactionEnd) commit() error { return end.finish(end.tx.Commit) }
-func (end *scimTransactionEnd) rollback()     { _ = end.finish(end.tx.Rollback) }
-
 // Upgraded plain and configured writers always acquire the same logical lock,
 // including before the first policy row exists. Keep the MySQL connection
 // reserved until commit or rollback completes and the advisory lock is released.
-func (s *Store) beginSCIMTransaction(ctx context.Context, domain string, write bool) (*sql.Tx, *scimTransactionEnd, error) {
+func (s *Store) beginSCIMTransaction(ctx context.Context, domain string, write bool) (*sql.Tx, *transactionEnd, error) {
 	if !write || s.dialect != "mysql" {
 		tx, err := s.beginMembershipChange(ctx)
 		if err != nil {
@@ -163,20 +141,11 @@ func (s *Store) beginSCIMTransaction(ctx context.Context, domain string, write b
 			}
 		}
 		// SQLite connections use BEGIN IMMEDIATE.
-		return tx, &scimTransactionEnd{tx: tx}, nil
+		return tx, &transactionEnd{tx: tx}, nil
 	}
 	const name = "SHA2(CONCAT(DATABASE(), '/stonewrit/scim-projection/', ?), 256)"
 	busy := &scim.Error{Status: 503, Detail: "The provisioning domain is busy. Retry the request."}
-	lock, err := s.acquireMySQLNamedLock(ctx, name, 15, busy, domain)
-	if err != nil {
-		return nil, nil, err
-	}
-	tx, err := lock.conn.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelReadCommitted})
-	if err != nil {
-		lock.discard()
-		return nil, nil, err
-	}
-	return tx, &scimTransactionEnd{tx: tx, release: lock.release}, nil
+	return s.beginTransactionWithMySQLLock(ctx, &sql.TxOptions{Isolation: sql.LevelReadCommitted}, name, 15, busy, domain)
 }
 func (s *Store) scimPolicyID(ctx context.Context, tx *sql.Tx, domain string) (string, error) {
 	exists, err := s.hasKeyOwnerTable(ctx, tx, scimPolicyTable)

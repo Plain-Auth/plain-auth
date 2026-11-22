@@ -59,3 +59,48 @@ func (lock *mysqlNamedLock) release(transactionErr error) {
 	}
 	_ = lock.conn.Close()
 }
+
+// The owner of a reserved connection needs the outcome of the physical
+// transaction before deciding whether that connection can return to the pool.
+type transactionEnd struct {
+	tx      *sql.Tx
+	done    bool
+	release func(error)
+}
+
+func (end *transactionEnd) finish(action func() error) error {
+	if end.done {
+		return sql.ErrTxDone
+	}
+	end.done = true
+	err := action()
+	if end.release != nil {
+		end.release(err)
+	}
+	return err
+}
+func (end *transactionEnd) commit() error { return end.finish(end.tx.Commit) }
+func (end *transactionEnd) rollback()     { _ = end.finish(end.tx.Rollback) }
+
+// beginTransactionWithMySQLLock reserves the named lock through the physical
+// commit or rollback on MySQL. Other engines use their ordinary transaction.
+// Their callers establish the corresponding table or transaction-level lock.
+func (s *Store) beginTransactionWithMySQLLock(ctx context.Context, opts *sql.TxOptions, nameSQL string, waitSeconds int, busy error, args ...any) (*sql.Tx, *transactionEnd, error) {
+	if s.dialect != "mysql" {
+		tx, err := s.db.BeginTx(ctx, opts)
+		if err != nil {
+			return nil, nil, err
+		}
+		return tx, &transactionEnd{tx: tx}, nil
+	}
+	lock, err := s.acquireMySQLNamedLock(ctx, nameSQL, waitSeconds, busy, args...)
+	if err != nil {
+		return nil, nil, err
+	}
+	tx, err := lock.conn.BeginTx(ctx, opts)
+	if err != nil {
+		lock.discard()
+		return nil, nil, err
+	}
+	return tx, &transactionEnd{tx: tx, release: lock.release}, nil
+}

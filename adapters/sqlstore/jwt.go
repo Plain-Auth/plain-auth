@@ -55,31 +55,12 @@ func (s *Store) ActiveJWTKey(ctx context.Context, alg string, now time.Time, gen
 	if !errors.Is(err, sql.ErrNoRows) {
 		return row, err
 	}
-	conn, err := s.db.Conn(ctx)
+	const lockName = "CONCAT('authn/jwks/',MD5(DATABASE()))"
+	tx, end, err := s.beginTransactionWithMySQLLock(ctx, nil, lockName, 15, errors.New("jwt: signing key lock unavailable"))
 	if err != nil {
 		return row, err
 	}
-	defer conn.Close()
-	if s.dialect == "mysql" {
-		const lock = "CONCAT('authn/jwks/',MD5(DATABASE()))"
-		var got sql.NullInt64
-		if err = conn.QueryRowContext(ctx, "SELECT GET_LOCK("+lock+", 15)").Scan(&got); err != nil {
-			return row, err
-		}
-		if !got.Valid || got.Int64 != 1 {
-			return row, errors.New("jwt: signing key lock unavailable")
-		}
-		defer func() {
-			cleanup, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-			defer cancel()
-			_, _ = conn.ExecContext(cleanup, "SELECT RELEASE_LOCK("+lock+")")
-		}()
-	}
-	tx, err := conn.BeginTx(ctx, nil)
-	if err != nil {
-		return row, err
-	}
-	defer tx.Rollback()
+	defer end.rollback()
 	// SQLite begins an immediate transaction. PostgreSQL locks only during
 	// cold key generation, including an initially empty key table.
 	if s.dialect == "postgres" {
@@ -89,7 +70,7 @@ func (s *Store) ActiveJWTKey(ctx context.Context, alg string, now time.Time, gen
 	}
 	row, err = s.readSigningKey(ctx, tx, alg, now)
 	if err == nil {
-		return row, tx.Commit()
+		return row, end.commit()
 	}
 	if !errors.Is(err, sql.ErrNoRows) {
 		return row, err
@@ -106,7 +87,7 @@ func (s *Store) ActiveJWTKey(ctx context.Context, alg string, now time.Time, gen
 	if err != nil {
 		return row, err
 	}
-	return row, tx.Commit()
+	return row, end.commit()
 }
 
 // JWTKeyByID resolves an explicit signing key and never generates a replacement.

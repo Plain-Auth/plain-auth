@@ -18,6 +18,7 @@ func mysqlTestConnector(t *testing.T) driver.Connector {
 		t.Fatal(err)
 	}
 	cfg.InterpolateParams = true
+	cfg.ParseTime = true
 	connector, err := mysql.NewConnector(cfg)
 	if err != nil {
 		t.Fatal(err)
@@ -137,7 +138,12 @@ func (t *mysqlPoolTx) Commit() error {
 	if t.fixture.fault == "commit" {
 		return errMySQLPoolFixture
 	}
-	return t.Tx.Commit()
+	err := t.Tx.Commit()
+	if err == nil && t.fixture.fault == "commit-reply" {
+		// The server committed the change, but its reply did not arrive.
+		return errMySQLPoolFixture
+	}
+	return err
 }
 func (t *mysqlPoolTx) Rollback() error {
 	switch t.fixture.fault {
