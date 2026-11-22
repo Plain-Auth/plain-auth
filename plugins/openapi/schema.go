@@ -69,7 +69,7 @@ func sessionProtection(route stonewrit.HTTPRoute) bool {
 		return route.Path != "/passkey/generate-authenticate-options" && route.Path != "/passkey/verify-authentication"
 	}
 	switch route.Path {
-	case "/list-accounts", "/list-sessions", "/revoke-session", "/revoke-sessions", "/revoke-other-sessions", "/unlink-account", "/update-user", "/change-password", "/verify-password", "/change-email", "/delete-user", "/delete-user/callback", "/link-social", "/get-access-token", "/refresh-token", "/account-info", "/delete-anonymous-user", "/device/approve", "/device/deny", "/one-time-token/generate", "/token", "/two-factor/enable", "/two-factor/disable", "/two-factor/get-totp-uri", "/two-factor/generate-backup-codes", "/email-otp/change-email", "/email-otp/request-email-change":
+	case "/update-session", "/list-accounts", "/list-sessions", "/revoke-session", "/revoke-sessions", "/revoke-other-sessions", "/unlink-account", "/update-user", "/change-password", "/verify-password", "/change-email", "/delete-user", "/delete-user/callback", "/link-social", "/get-access-token", "/refresh-token", "/account-info", "/delete-anonymous-user", "/device/approve", "/device/deny", "/one-time-token/generate", "/token", "/two-factor/enable", "/two-factor/disable", "/two-factor/get-totp-uri", "/two-factor/generate-backup-codes", "/email-otp/change-email", "/email-otp/request-email-change":
 		return true
 	}
 	return false
@@ -91,6 +91,8 @@ func publicResponse(route stonewrit.HTTPRoute, info stonewrit.HTTPDescription, f
 		return responseObject(object{"keys": array(object{"type": "object"})}, "keys")
 	}
 	switch route.Path {
+	case "/update-session":
+		return responseObject(object{"session": modelRef("Session")}, "session")
 	case "/get-session":
 		if info.CustomSession {
 			return object{}
@@ -204,6 +206,15 @@ func adjustRequest(op object, r stonewrit.HTTPRoute, info stonewrit.HTTPDescript
 		return
 	}
 	switch r.Path {
+	case "/update-session":
+		fields := object{}
+		for name, f := range info.SessionFields {
+			if f.Writable {
+				fields[name] = sessionFieldSchema(f)
+			}
+		}
+		op["requestBody"] = object{"required": true, "content": content("application/json", responseObject(fields))}
+		return
 	case "/oauth-popup/start":
 		var parameters []object
 		for _, field := range []string{"provider", "popupOrigin", "popupNonce", "callbackURL", "errorCallbackURL", "newUserCallbackURL", "scopes", "requestSignUp", "additionalData"} {

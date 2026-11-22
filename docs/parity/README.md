@@ -45,13 +45,13 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 | --- | ---: | ---: |
 | [Published package interfaces](packages.md) | 80 | 161 |
 | [Native Go client, routers and databases](go.md) | 36 | 4 |
-| [Core API, sign-in providers and CLI](runtime.md) | 118 | 280 |
+| [Core API, sign-in providers and CLI](runtime.md) | 121 | 280 |
 | [Database adapters](adapters.md) | 32 | 224 |
 | [Authentication](authentication.md) | 26 | 415 |
 | [Core concepts](concepts.md) | 55 | 510 |
 | [Managed infrastructure](infrastructure.md) | 0 | 528 |
 | [Framework integrations](integrations.md) | 0 | 228 |
-| [Reference and configuration](reference.md) | 67 | 395 |
+| [Reference and configuration](reference.md) | 72 | 395 |
 
 ## Plugins and integrations
 

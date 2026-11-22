@@ -350,6 +350,11 @@
     - [ ] `expiresIn`
     - [ ] `updateAge`
     - [ ] `additionalFields`
+      - [x] Exchange scalar session defaults and updates across runtimes through the released client, including private input and renamed columns ([test](../../conformance/session-fields.mjs#L22))
+      - [x] Apply static scalar defaults and trusted-only overrides on memory and three SQL engines ([test](../../adapters/sqlstore/session_fields_test.go#L31))
+      - [x] Migrate populated session tables with nullable fields, escaped defaults and preflight checks on all three engines ([test](../../adapters/sqlstore/session_fields_test.go#L233))
+      - [x] Keep first-session issuance atomic when a required value must come from a trusted host ([test](../../adapters/sqlstore/session_fields_test.go#L436))
+      - [x] Document public inputs and responses separately from physical names and private defaults ([test](../../plugins/openapi/session_fields_test.go#L16))
     - [ ] `storeSessionInDatabase`
     - [ ] `preserveSessionInDatabase`
     - [ ] `cookieCache`

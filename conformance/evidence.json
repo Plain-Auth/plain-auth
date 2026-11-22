@@ -9200,5 +9200,49 @@
       "test": "conformance/auth-test-helpers.test.mjs",
       "marker": "test(\"trusted organization fixtures save without members"
     }
+  ],
+  "core/updateSession": [
+    {
+      "label": "Exchange scalar session defaults and updates across runtimes through the released client, including private input and renamed columns",
+      "test": "conformance/session-fields.mjs",
+      "marker": "export async function compareSessionFields("
+    },
+    {
+      "label": "Project live session fields and reject expired cache authority for compact, JWT and JWE views",
+      "test": "adapters/sqlstore/session_fields_test.go",
+      "marker": "func TestConfiguredSessionFieldsRequireLiveProjection("
+    },
+    {
+      "label": "Recheck the session owner, delegation and live bans after a separate node migrates the physical schema",
+      "test": "adapters/sqlstore/session_fields_test.go",
+      "marker": "func TestConfiguredSessionFieldAuthorizationAfterMigration("
+    }
+  ],
+  "docs/content/docs/reference/options.mdx#L474/`additionalFields`": [
+    {
+      "label": "Exchange scalar session defaults and updates across runtimes through the released client, including private input and renamed columns",
+      "test": "conformance/session-fields.mjs",
+      "marker": "export async function compareSessionFields("
+    },
+    {
+      "label": "Apply static scalar defaults and trusted-only overrides on memory and three SQL engines",
+      "test": "adapters/sqlstore/session_fields_test.go",
+      "marker": "func TestConfiguredSessionFieldsAcrossStores("
+    },
+    {
+      "label": "Migrate populated session tables with nullable fields, escaped defaults and preflight checks on all three engines",
+      "test": "adapters/sqlstore/session_fields_test.go",
+      "marker": "func TestConfiguredSessionFieldMigrations("
+    },
+    {
+      "label": "Keep first-session issuance atomic when a required value must come from a trusted host",
+      "test": "adapters/sqlstore/session_fields_test.go",
+      "marker": "func TestRequiredSessionFieldOnFirstLogin("
+    },
+    {
+      "label": "Document public inputs and responses separately from physical names and private defaults",
+      "test": "plugins/openapi/session_fields_test.go",
+      "marker": "func TestConfigurableSessionFieldSchemas("
+    }
   ]
 }

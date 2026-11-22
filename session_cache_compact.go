@@ -81,7 +81,7 @@ type sessionCachePayload struct {
 func (p sessionCachePayload) marshal(claims *sessionJOSEClaims) ([]byte, error) {
 	const millisecondUTC = "2006-01-02T15:04:05.000Z"
 	type sessionWire struct {
-		Session
+		wireSession
 		CreatedAt string `json:"createdAt"`
 		UpdatedAt string `json:"updatedAt"`
 		ExpiresAt string `json:"expiresAt"`
@@ -100,10 +100,10 @@ func (p sessionCachePayload) marshal(claims *sessionJOSEClaims) ([]byte, error) 
 	}{
 		sessionJOSEClaims: claims,
 		Session: sessionWire{
-			Session:   p.Session,
-			CreatedAt: p.Session.CreatedAt.UTC().Format(millisecondUTC),
-			UpdatedAt: p.Session.UpdatedAt.UTC().Format(millisecondUTC),
-			ExpiresAt: p.Session.ExpiresAt.UTC().Format(millisecondUTC),
+			wireSession: wireSession(p.Session),
+			CreatedAt:   p.Session.CreatedAt.UTC().Format(millisecondUTC),
+			UpdatedAt:   p.Session.UpdatedAt.UTC().Format(millisecondUTC),
+			ExpiresAt:   p.Session.ExpiresAt.UTC().Format(millisecondUTC),
 		},
 		User: userWire{
 			User:      p.User,
@@ -131,7 +131,7 @@ type SessionCacheStore interface {
 }
 
 func (a *Auth) canCacheSessionView(r *http.Request) bool {
-	if a.opts.SessionCookieCache == nil || a.admin != nil || a.factorStore != nil ||
+	if a.opts.SessionCookieCache == nil || len(a.opts.SessionAdditionalFields) > 0 || a.admin != nil || a.factorStore != nil ||
 		a.phoneNumber != nil || a.username != nil || a.anonymous != nil ||
 		a.serviceJWT != nil && !a.serviceJWT.DisableHeader || r.Header.Get("Authorization") != "" {
 		return false
@@ -412,7 +412,7 @@ func (a *Auth) writeCompactSnapshot(payload sessionCachePayload, expiry time.Tim
 // Only release core fields. An issuer sharing the signing keys may have
 // installed extensions that require live projection on a different node.
 func ordinaryCacheFields(s Session, u User) bool {
-	return s.ImpersonatedBy == nil && s.CredentialType == "" &&
+	return s.extraJSON == "" && s.ImpersonatedBy == nil && s.CredentialType == "" &&
 		s.ActiveOrganizationID == nil && s.ActiveTeamID == nil &&
 		u.AdminUserFields == nil && u.TwoFactorEnabled == nil && u.PhoneNumberFields == nil &&
 		u.UsernameFields == nil && u.IsAnonymous == nil && u.LastLoginMethod == nil

@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/Stonewrit/stonewrit-auth/internal/polarledger"
+	"github.com/Stonewrit/stonewrit-auth/internal/sessionfields"
 )
 
 //go:embed catalog.json
@@ -92,6 +93,16 @@ func selection(dialect string, profiles []string) ([]statement, map[string]bool,
 // Generate returns SQL for SQLite, PostgreSQL or MySQL. Profile order does
 // not affect output. The organization-teams profile includes organization.
 func Generate(dialect string, profiles []string) (string, error) {
+	return GenerateWithSessionFields(dialect, profiles, nil)
+}
+
+// GenerateWithSessionFields generates the physical session columns alongside
+// the selected core and plugin schema. Fresh columns have application defaults.
+func GenerateWithSessionFields(dialect string, profiles []string, fields map[string]sessionfields.Field) (string, error) {
+	fields, err := sessionfields.Normalize(fields)
+	if err != nil {
+		return "", err
+	}
 	objects, selected, err := selection(dialect, profiles)
 	if err != nil {
 		return "", err
@@ -107,6 +118,11 @@ func Generate(dialect string, profiles []string) (string, error) {
 			for _, column := range object.Columns {
 				if column.included(selected) {
 					columns = append(columns, column.SQL)
+				}
+			}
+			if strings.Trim(strings.TrimPrefix(object.SQL, "create table "), "\"`") == "session" {
+				for _, name := range sessionfields.Names(fields) {
+					columns = append(columns, fields[name].Definition(dialect))
 				}
 			}
 			sql += " (" + strings.Join(columns, ", ") + ");"

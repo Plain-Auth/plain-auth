@@ -72,6 +72,11 @@ func (a *Auth) sessionHTTP(headers http.Header, r *http.Request) (body any, resp
 		a.expireStoredSessionData(headers, r, false)
 	}
 	result, err := a.withSessionPlugins(ctx, row.Session, user)
+	if errors.Is(err, ErrNotFound) {
+		retireStaleOnError = false
+		a.expireSessionCookieHeaders(headers, r)
+		return nil, nil
+	}
 	if err != nil {
 		return nil, err
 	}

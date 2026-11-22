@@ -37,6 +37,10 @@ func (v EmailVerificationAttempt) receiptFields() []string {
 	fields := []string{v.ProofID, v.OwnerID, v.Email, v.ExistingToken, strconv.FormatBool(v.AlwaysCreateSession)}
 	if s := v.NewSession; s != nil {
 		fields = append(fields, s.ID, s.Token, s.UserID, s.CredentialType, s.IPAddress, s.UserAgent, strconv.FormatInt(s.CreatedAt.UnixNano(), 10), strconv.FormatInt(s.UpdatedAt.UnixNano(), 10), strconv.FormatInt(s.ExpiresAt.UnixNano(), 10))
+		if s.storageFields != nil {
+			data, _ := json.Marshal(s.storageFields.columns)
+			fields = append(fields, "session-fields", string(data), s.storageFields.invalid)
+		}
 		for _, field := range []*string{s.ActiveOrganizationID, s.ActiveTeamID, s.ImpersonatedBy} {
 			if field == nil {
 				fields = append(fields, "null")

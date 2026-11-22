@@ -11,6 +11,8 @@ import (
 
 // Options configures one isolated authentication instance.
 type Options struct {
+	SessionAdditionalFields map[string]SessionField
+
 	// Logger receives diagnostics for this instance. A nil logger uses slog.Default().
 	Logger *slog.Logger
 	// OnAPIError observes an HTTP endpoint error before its response is written.
@@ -126,6 +128,8 @@ type User struct {
 
 // Session identifies one authenticated login.
 type Session struct {
+	extraJSON string
+
 	CredentialType       string `json:"credentialType,omitempty"`
 	credentialAccess     *credentialSessionAccess
 	ImpersonatedBy       *string   `json:"impersonatedBy,omitempty"`
@@ -143,6 +147,7 @@ type Session struct {
 
 // StoredSession is the record passed to the storage adapter.
 type StoredSession struct {
+	storageFields *storedSessionFields
 	Session
 }
 

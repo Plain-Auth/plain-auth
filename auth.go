@@ -1,6 +1,9 @@
 package stonewrit
 
 import (
+	"github.com/Stonewrit/stonewrit-auth/internal/sessionfields"
+	"slices"
+
 	"context"
 	"crypto/rand"
 	"crypto/sha256"
@@ -76,6 +79,19 @@ func New(opts Options) (*Auth, error) {
 		return nil, errors.New("authn: Secret needs at least 32 bytes")
 	}
 	var err error
+	opts.SessionAdditionalFields, err = sessionfields.Normalize(opts.SessionAdditionalFields)
+	if err != nil {
+		return nil, err
+	}
+	if len(opts.SessionAdditionalFields) > 0 {
+		store, ok := opts.Store.(SessionFieldStore)
+		if !ok {
+			return nil, errors.New("auth: additional session fields require a SessionFieldStore")
+		}
+		if err = store.ValidateSessionFields(opts.SessionAdditionalFields); err != nil {
+			return nil, err
+		}
+	}
 	opts.BaseURL, opts.BasePath, err = configenv.ServerEndpoint(opts.BaseURL, opts.BasePath)
 	if err != nil {
 		return nil, fmt.Errorf("authn: BaseURL: %w", err)
@@ -323,7 +339,16 @@ func (a *Auth) newSession(id string, meta RequestMeta) (StoredSession, string) {
 	}
 	s := Session{ID: randomID(), UserID: id, IPAddress: meta.IPAddress, UserAgent: meta.UserAgent, CreatedAt: now, UpdatedAt: now, ExpiresAt: now.Add(ttl)}
 	s.Token = randomID()
-	return StoredSession{Session: s}, s.Token
+	row := StoredSession{Session: s}
+	if len(a.opts.SessionAdditionalFields) > 0 {
+		prepared, err := a.WithTrustedSessionFields(row, nil)
+		if err != nil {
+			row.storageFields = &storedSessionFields{invalid: err.Error()}
+		} else {
+			row = prepared
+		}
+	}
+	return row, s.Token
 }
 
 // SignUpEmail creates a credential account and its first session atomically.
@@ -522,6 +547,9 @@ func (a *Auth) GetSession(ctx context.Context, headers http.Header) (*SessionRes
 	}
 	row.Token = token
 	result, err := a.withSessionPlugins(ctx, row.Session, user)
+	if errors.Is(err, ErrNotFound) {
+		return nil, nil
+	}
 	if err == nil && a.translateError != nil {
 		a.noteErrorUser(ctx, token, result.User)
 	}
@@ -590,6 +618,12 @@ func (a *Auth) ListSessions(ctx context.Context, headers http.Header) ([]Session
 		if row.ExpiresAt.After(now) && row.ImpersonatedBy == nil {
 			sessions = append(sessions, row.Session)
 		}
+	}
+	if err := a.projectSessionFields(ctx, sessions); err != nil {
+		return nil, err
+	}
+	if len(a.opts.SessionAdditionalFields) != 0 {
+		sessions = slices.DeleteFunc(sessions, func(s Session) bool { return s.ID == "" })
 	}
 	return sessions, nil
 }

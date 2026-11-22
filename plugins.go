@@ -179,6 +179,17 @@ type SessionCookieEvent struct {
 }
 
 func (a *Auth) withSessionPlugins(ctx context.Context, session Session, user User) (*SessionResult, error) {
+	session.extraJSON = ""
+	if len(a.opts.SessionAdditionalFields) > 0 && !session.IsApplicationCredential() {
+		rows := []Session{session}
+		if err := a.projectSessionFields(ctx, rows); err != nil {
+			return nil, err
+		}
+		session = rows[0]
+		if session.ID == "" {
+			return nil, ErrNotFound
+		}
+	}
 	if a.admin != nil && user.AdminUserFields == nil && !session.IsApplicationCredential() {
 		stored, owner, err := a.adminStore.Session(ctx, session.Token)
 		if errors.Is(err, ErrNotFound) {

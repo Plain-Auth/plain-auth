@@ -161,11 +161,15 @@ func listDeviceSessions(c EndpointContext) (any, error) {
 			a.clearDeviceCookie(c.ResponseHeader, token)
 			continue
 		}
-		seen[item.User.ID] = true
 		result, err := a.withSessionPlugins(r.Context(), item.Session, item.User)
+		if errors.Is(err, ErrNotFound) {
+			a.clearDeviceCookie(c.ResponseHeader, token)
+			continue
+		}
 		if err != nil {
 			return nil, err
 		}
+		seen[item.User.ID] = true
 		var view any = result
 		if a.deviceSessionResponse != nil {
 			view, err = a.deviceSessionResponse(c, *result)

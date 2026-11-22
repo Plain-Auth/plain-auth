@@ -2,6 +2,8 @@
 
 Create an empty application database and provide credentials that can create tables and indexes. For SQLite, choose a path in a writable directory. The CLI and application adapters use the same schema implementation. The target is a fresh Go installation.
 
+For per-login metadata, configure the application and schema with the same [session fields](session-fields.md).
+
 ## Inspect and apply the schema
 
 From the repository checkout, generate SQL for review. Generation writes to stdout and needs no database connection.

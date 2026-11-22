@@ -75,7 +75,14 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	store, err := sqlstore.OpenWithSchema(context.Background(), "sqlite", os.Args[1], ddl)
+	var store *sqlstore.Store
+	var additionalSessionFields map[string]authn.SessionField
+	if os.Getenv("CONFORMANCE_SESSION_FIELDS") == "1" {
+		additionalSessionFields = configuredSessionFields()
+		store, err = sqlstore.OpenWithSessionFields(context.Background(), "sqlite", os.Args[1], os.Args[2:], additionalSessionFields)
+	} else {
+		store, err = sqlstore.OpenWithSchema(context.Background(), "sqlite", os.Args[1], ddl)
+	}
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -401,18 +408,19 @@ func main() {
 		}
 	}
 	opts := authn.Options{
-		SessionCookieCache:  sessionCache,
-		SessionUpdateAge:    fixtureSessionUpdateAge(),
-		DeferSessionRefresh: os.Getenv("CONFORMANCE_DEFER_SESSION_REFRESH") == "1",
-		TrustedOrigins:      discoveryOrigins,
-		BasePath:            mount,
-		SocialProviders:     social,
-		DisabledPaths:       strings.Fields(os.Getenv("CONFORMANCE_DISABLED_PATHS")),
-		Plugins:             plugins,
-		BaseURL:             baseURL,
-		EmailAndPassword:    true,
-		Secret:              "local-conformance-0123456789-abcdefghijk",
-		Store:               store,
+		SessionAdditionalFields: additionalSessionFields,
+		SessionCookieCache:      sessionCache,
+		SessionUpdateAge:        fixtureSessionUpdateAge(),
+		DeferSessionRefresh:     os.Getenv("CONFORMANCE_DEFER_SESSION_REFRESH") == "1",
+		TrustedOrigins:          discoveryOrigins,
+		BasePath:                mount,
+		SocialProviders:         social,
+		DisabledPaths:           strings.Fields(os.Getenv("CONFORMANCE_DISABLED_PATHS")),
+		Plugins:                 plugins,
+		BaseURL:                 baseURL,
+		EmailAndPassword:        true,
+		Secret:                  "local-conformance-0123456789-abcdefghijk",
+		Store:                   store,
 	}
 	if os.Getenv("CONFORMANCE_MAGIC_MEMORY") == "1" {
 		opts.Store = memory.New()

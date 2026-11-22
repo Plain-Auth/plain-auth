@@ -70,7 +70,12 @@ func OpenWithSchema(ctx context.Context, dialect, dsn, baseline string) (*Store,
 		_ = db.Close()
 		return nil, err
 	}
-	_, err = store.detectAdminSchema(ctx, db)
+	return store.detectInitialProfiles(ctx)
+}
+
+func (store *Store) detectInitialProfiles(ctx context.Context) (*Store, error) {
+	db := store.db
+	_, err := store.detectAdminSchema(ctx, db)
 	if err != nil {
 		db.Close()
 		return nil, err

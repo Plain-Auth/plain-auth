@@ -22,8 +22,16 @@ type HTTPRoute struct {
 	OpenAPI       json.RawMessage
 }
 
+// HTTPSessionField describes only a configured public input or output.
+type HTTPSessionField struct {
+	Type                         SessionFieldType
+	Required, Writable, Returned bool
+}
+
 // HTTPDescription describes public settings used to document the handler.
 type HTTPDescription struct {
+	SessionFields map[string]HTTPSessionField
+
 	ServerURL, SessionCookie string
 	// SSOStateCookie is the browser binding cookie for installed enterprise OIDC callbacks.
 	SSOStateCookie string
@@ -44,6 +52,14 @@ func (a *Auth) DescribeHTTP() HTTPDescription {
 	d := HTTPDescription{ServerURL: strings.TrimRight(o.BaseURL, "/") + o.BasePath, SessionCookie: a.cookieName(),
 		MinPassword: o.MinPasswordLength, MaxPassword: o.MaxPasswordLength, CustomSession: a.sessionResponse != nil,
 		DisplayUsername: a.username != nil && !a.username.DisableDisplay}
+	if len(o.SessionAdditionalFields) > 0 {
+		d.SessionFields = make(map[string]HTTPSessionField)
+		for name, field := range o.SessionAdditionalFields {
+			if !field.Hidden || !field.ServerOnly {
+				d.SessionFields[name] = HTTPSessionField{Type: field.Type, Required: field.Required, Writable: !field.ServerOnly, Returned: !field.Hidden}
+			}
+		}
+	}
 	if a.HasPlugin("sso") {
 		d.SSOStateCookie = a.prefixedCookieName("sso_state")
 		if ep, ok := a.plugins[endpointKey{http.MethodGet, "/sso/saml2/sp/slo/:providerId"}]; ok && ep.pluginID == "sso" {

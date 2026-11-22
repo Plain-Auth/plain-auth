@@ -126,6 +126,9 @@ func (s *Store) Credential(ctx context.Context, email string) (auth.User, string
 }
 
 func (s *Store) insertSession(row auth.StoredSession) error {
+	if _, err := row.PhysicalSessionFields(); err != nil {
+		return err
+	}
 	if row.Token == "" || row.ID == "" {
 		return errors.New("memory: missing session ID or token")
 	}

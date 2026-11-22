@@ -1573,3 +1573,8 @@ test("organization profile edits and slug availability match for owners, admins 
   const { compareOrganizationProfiles } = await import("./organization-profile.mjs");
   await compareOrganizationProfiles(t, {reference, goFixture, instrument});
 });
+
+test("both runtimes exchange configured session fields and enforce update visibility through the released client", async t => {
+  const {compareSessionFields} = await import("./session-fields.mjs");
+  await compareSessionFields(t,{reference,goFixture,instrument});
+});

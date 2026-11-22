@@ -82,6 +82,20 @@ func models(a *stonewrit.Auth, info stonewrit.HTTPDescription) object {
 	session := modelSchema(reflect.TypeFor[stonewrit.Session]())
 	userFields := user["properties"].(object)
 	sessionFields := session["properties"].(object)
+	var requiredFields []string
+	for name, f := range info.SessionFields {
+		if f.Returned {
+			sessionFields[name] = sessionFieldSchema(f)
+			if f.Required {
+				requiredFields = append(requiredFields, name)
+			}
+		}
+	}
+	if len(requiredFields) != 0 {
+		slices.Sort(requiredFields)
+		required := session["required"].([]string)
+		session["required"] = append(required, requiredFields...)
+	}
 	for name, plugin := range map[string]string{"phoneNumber": "phone-number", "phoneNumberVerified": "phone-number", "username": "username", "displayUsername": "username", "twoFactorEnabled": "two-factor", "role": "admin", "banned": "admin", "banExpires": "admin", "banReason": "admin", "isAnonymous": "anonymous", "lastLoginMethod": "last-login-method"} {
 		if !a.HasPlugin(plugin) || name == "displayUsername" && !info.DisplayUsername {
 			delete(userFields, name)
@@ -119,4 +133,15 @@ func models(a *stonewrit.Auth, info stonewrit.HTTPDescription) object {
 		m["Subscription"] = modelSchema(reflect.TypeFor[billing.Subscription]())
 	}
 	return m
+}
+
+func sessionFieldSchema(f stonewrit.HTTPSessionField) object {
+	t := string(f.Type)
+	if f.Type == stonewrit.FieldNumber {
+		t = "integer"
+	}
+	if !f.Required {
+		return object{"type": []string{t, "null"}}
+	}
+	return object{"type": t}
 }

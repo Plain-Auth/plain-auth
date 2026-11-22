@@ -1,6 +1,10 @@
 package sqlstore
 
 import (
+	"github.com/Stonewrit/stonewrit-auth/internal/sessionfields"
+	"maps"
+	"slices"
+
 	"context"
 	"crypto/rand"
 	"database/sql"
@@ -133,6 +137,18 @@ func (s *Store) insertSession(ctx context.Context, tx *sql.Tx, ss authn.StoredSe
 	cols := `"id","userId","token","ipAddress","userAgent","createdAt","updatedAt","expiresAt"`
 	params := "?,?,?,?,?,?,?,?"
 	args := []any{ss.ID, ss.UserID, ss.Token, ss.IPAddress, ss.UserAgent, s.date(ss.CreatedAt), s.date(ss.UpdatedAt), s.date(ss.ExpiresAt)}
+	additional, err := ss.PhysicalSessionFields()
+	if err != nil {
+		return err
+	}
+	for _, column := range slices.Sorted(maps.Keys(additional)) {
+		if !sessionfields.NameOK(column) {
+			return errors.New("sqlstore: invalid additional session column")
+		}
+		cols += `,"` + column + `"`
+		params += ",?"
+		args = append(args, additional[column])
+	}
 	admin, err := s.detectAdminSchema(ctx, tx)
 	if err != nil {
 		return err

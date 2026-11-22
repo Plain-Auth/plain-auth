@@ -26,7 +26,7 @@ var coreMethods = map[string]string{
 	"/verify-password": http.MethodPost, "/update-user": http.MethodPost, "/change-password": http.MethodPost,
 	"/request-password-reset": http.MethodPost, "/reset-password": http.MethodPost, "/reset-password/:token": http.MethodGet,
 	"/send-verification-email": http.MethodPost, "/verify-email": http.MethodGet,
-	"/ok": http.MethodGet, "/get-session": http.MethodGet, "/list-sessions": http.MethodGet,
+	"/update-session": http.MethodPost, "/ok": http.MethodGet, "/get-session": http.MethodGet, "/list-sessions": http.MethodGet,
 	"/sign-up/email": http.MethodPost, "/sign-in/email": http.MethodPost, "/sign-out": http.MethodPost,
 	"/revoke-session": http.MethodPost, "/revoke-sessions": http.MethodPost, "/revoke-other-sessions": http.MethodPost,
 }
@@ -168,6 +168,8 @@ func (a *Auth) handleCoreRequest(route string, w http.ResponseWriter, r *http.Re
 	switch route {
 	case "/ok":
 		return map[string]bool{"ok": true}, nil
+	case "/update-session":
+		return a.sessionFieldsHTTP(w, r, body)
 	case "/get-session":
 		return a.presentSession(w, r)
 	case "/get-access-token", "/refresh-token", "/account-info":
