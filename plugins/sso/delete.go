@@ -14,6 +14,7 @@ type ProviderMutation struct {
 	Action, ID, ProviderID, Reference string
 	OrganizationID                    *string
 	LinkedAccounts                    int
+	AuthenticationBoundaryChanged     bool
 }
 
 // MutationGuard runs inside a transaction and may be retried after a database

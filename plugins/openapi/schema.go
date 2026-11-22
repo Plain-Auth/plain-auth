@@ -59,7 +59,7 @@ func sessionProtection(route stonewrit.HTTPRoute) bool {
 		return true
 	case "sso":
 		switch route.Path {
-		case "/sso/register", "/sso/providers", "/sso/get-provider", "/sso/delete-provider", "/sso/request-domain-verification", "/sso/verify-domain":
+		case "/sso/register", "/sso/update-provider", "/sso/providers", "/sso/get-provider", "/sso/delete-provider", "/sso/request-domain-verification", "/sso/verify-domain":
 			return true
 		}
 		return false

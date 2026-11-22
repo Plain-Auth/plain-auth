@@ -32,3 +32,24 @@ func TestSAMLBrowserOrigin(t *testing.T) {
 		}
 	}
 }
+
+func TestInlineSAMLMetadataSizeOption(t *testing.T) {
+	for _, size := range []int{-1, (1 << 20) + 1} {
+		if _, err := New(Options{SAML: &SAMLOptions{MaxMetadataSize: size}}); err == nil {
+			t.Fatalf("accepted size %d", size)
+		}
+	}
+	for _, size := range []int{0, 4096, 1 << 20} {
+		option := SAMLOptions{MaxMetadataSize: size}
+		if _, err := New(Options{SAML: &option}); err != nil {
+			t.Fatal(err)
+		}
+		want := size
+		if want == 0 {
+			want = 100 * 1024
+		}
+		if option.metadataLimit() != want {
+			t.Fatal("metadata size default")
+		}
+	}
+}

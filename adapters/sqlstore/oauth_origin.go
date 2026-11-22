@@ -22,7 +22,7 @@ func providerAuthority(p sso.Provider) oauthAuthority {
 	a := enterpriseAuthority(p.ID, p.Issuer, p.OrganizationID)
 	if p.SAML != nil {
 		a.Protocol = "saml"
-		a.Issuer = p.SAML.IDPMetadata.EntityID
+		a.Issuer = p.SAML.IdentityProviderEntityID()
 	}
 	return a
 }

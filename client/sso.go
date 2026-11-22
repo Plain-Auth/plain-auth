@@ -101,3 +101,10 @@ func (c *Client) RequestSSODomainVerification(ctx context.Context, providerID st
 func (c *Client) VerifySSODomain(ctx context.Context, providerID string) error {
 	return c.Do(ctx, http.MethodPost, "/sso/verify-domain", map[string]string{"providerId": providerID}, nil)
 }
+
+// UpdateSAMLMetadata rotates the trusted inline IdP metadata for a managed directory.
+func (c *Client) UpdateSAMLMetadata(ctx context.Context, id, metadata string) (sso.PublicProvider, error) {
+	var result sso.PublicProvider
+	err := c.Do(ctx, "POST", "/sso/update-provider", map[string]any{"providerId": id, "samlConfig": map[string]any{"idpMetadata": map[string]string{"metadata": metadata}}}, &result)
+	return result, err
+}

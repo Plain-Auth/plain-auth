@@ -101,21 +101,29 @@ func (s *Store) ssoRegister(ctx context.Context, a sso.Actor, p sso.Provider, li
 	if !insert {
 		return nil
 	}
-	config := any(p.OIDC)
-	if p.SAML != nil {
-		config = p.SAML
-	}
 	if (p.OIDC == nil) == (p.SAML == nil) {
 		return sso.ErrMissing
 	}
-	cfg, err := json.Marshal(config)
-	if err != nil {
-		return err
-	}
 	var oidcConfig, samlConfig any
+	var cfg []byte
 	if p.SAML != nil {
+		cfg, err = s.marshalSAMLConfig(p.SAML)
+		if err != nil {
+			return err
+		}
+		if p.SAML.IDPMetadata.Metadata != "" {
+			parsed, e := sso.DecodeSAMLConfig(cfg)
+			if e != nil || !parsed.MetadataValidAt(time.Now()) {
+				return sso.ErrInvalidSAML
+			}
+			p.SAML = parsed
+		}
 		samlConfig = string(cfg)
 	} else {
+		cfg, err = json.Marshal(p.OIDC)
+		if err != nil {
+			return err
+		}
 		oidcConfig = string(cfg)
 	}
 	_, err = tx.ExecContext(ctx, s.bind(`INSERT INTO "ssoProvider" ("id","issuer","domain","oidcConfig","samlConfig","providerId","userId","organizationId") VALUES (?,?,?,?,?,?,?,?)`), p.ID, p.Issuer, p.Domain, oidcConfig, samlConfig, p.ProviderID, a.UserID, p.OrganizationID)

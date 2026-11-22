@@ -85,12 +85,27 @@ function browserFor(runtime) {
   };
 }
 
-export async function compareEnterpriseSAML(t, {goFixture,instrument,privateDeployment=false}) {
+function inlineIdP(certificates, entity=issuer) {
+  const ds="http://www.w3.org/2000/09/xmldsig#";
+  const descriptors=certificates.map(cert=>{
+    const data=cert.replace(/-----[^-]+-----/g,"").replace(/\s/g,"");
+    return `<md:KeyDescriptor use="signing"><ds:KeyInfo><ds:X509Data><ds:X509Certificate>${data}</ds:X509Certificate></ds:X509Data></ds:KeyInfo></md:KeyDescriptor>`;
+  });
+  return `<md:EntityDescriptor xmlns:md="urn:oasis:names:tc:SAML:2.0:metadata" xmlns:ds="${ds}" entityID="${xml(entity)}"><md:IDPSSODescriptor protocolSupportEnumeration="${protocolNS}">${descriptors.join("")}<md:SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect" Location="${entryPoint}"/></md:IDPSSODescriptor></md:EntityDescriptor>`;
+}
+
+export async function compareEnterpriseSAML(t, {goFixture,instrument,privateDeployment=false,inline=false}) {
   const keys = await mkdtemp(join(tmpdir(),"stonewrit-idp-"));
   t.after(()=>rm(keys,{recursive:true,force:true}));
   const keyFile=join(keys,"private.pem"), certFile=join(keys,"cert.pem");
   execFileSync("openssl",["req","-x509","-newkey","rsa:2048","-nodes","-keyout",keyFile,"-out",certFile,"-days","1","-subj","/CN=Local identity provider"],{stdio:"ignore"});
   const [key,cert]=await Promise.all([readFile(keyFile,"utf8"),readFile(certFile,"utf8")]);
+  let rotating;
+  if (inline) {
+    const privateFile=join(keys,"next-private.pem"),publicFile=join(keys,"next-cert.pem");
+    execFileSync("openssl",["req","-x509","-newkey","rsa:2048","-nodes","-keyout",privateFile,"-out",publicFile,"-days","1","-subj","/CN=Next local identity provider"],{stdio:"ignore"});
+    rotating={key:await readFile(privateFile,"utf8"),cert:await readFile(publicFile,"utf8")};
+  }
   const fixtureEnv={CONFORMANCE_SAML:"1"};
   if (privateDeployment) {
     fixtureEnv.CONFORMANCE_DISABLED_PATHS="/sso/saml2/sp/metadata /sign-up/email";
@@ -125,9 +140,10 @@ export async function compareEnterpriseSAML(t, {goFixture,instrument,privateDepl
       ok(await admin.signUp.email(user));
     }
     const registration = ok(await admin.sso.register({providerId:"work",domain:"enterprise.example",issuer,
-      samlConfig:{entryPoint,cert,spMetadata:{entityID:audience},idpMetadata:{entityID:issuer},wantAssertionsSigned:true}}));
+      samlConfig:{...(inline ? {entryPoint:"https://manual.example.test/unused",idpMetadata:{metadata:inlineIdP([cert])}} : {entryPoint,cert,idpMetadata:{entityID:issuer}}),spMetadata:{entityID:audience},wantAssertionsSigned:true}}));
     assert.equal(registration.redirectURI,runtime.baseURL+mount+"/sso/callback/work");
-    assert.equal(registration.samlConfig.cert,cert);
+    if (inline) assert.equal(registration.samlConfig.idpMetadata.metadata,inlineIdP([cert]));
+    else assert.equal(registration.samlConfig.cert,cert);
     assert.equal(registration.samlConfig.issuer,issuer);
     const metadata=await runtime.send(new Request(runtime.baseURL+mount+"/sso/saml2/sp/metadata?providerId=work"));
     if (privateDeployment) {
@@ -171,7 +187,7 @@ export async function compareEnterpriseSAML(t, {goFixture,instrument,privateDepl
       assert.ok(request.includes(audience));
       const relay=url.searchParams.get("RelayState");
       assert.ok(relay);
-      const form=new URLSearchParams({SAMLResponse:signedReply({id,acs,audience,key,cert}),RelayState:relay});
+      const form=new URLSearchParams({SAMLResponse:signedReply({id,acs,audience,...(inline && !first ? rotating : {key,cert})}),RelayState:relay});
       const callback=await send(new Request(acs,{method:"POST",headers:{origin:new URL(entryPoint).origin},body:form}));
       assert.equal(callback.status,302,await callback.text());
       assert.equal(callback.headers.get("location"),runtime.baseURL+"/home");
@@ -181,6 +197,15 @@ export async function compareEnterpriseSAML(t, {goFixture,instrument,privateDepl
       assert.equal(current.user.name,"Enterprise Employee");
       if (first) initialID=current.user.id;
       else assert.equal(current.user.id,initialID);
+      if (inline && first) {
+        const change=xml=>admin.sso.updateProvider({providerId:"work",samlConfig:{idpMetadata:{metadata:xml}}});
+        const updated=ok(await change(inlineIdP([cert,rotating.cert])));
+        assert.equal(updated.type,"saml");
+        assert.equal(updated.samlConfig.entryPoint,"https://manual.example.test/unused");
+        assert.ok(!JSON.stringify(updated).includes("X509Certificate"));
+        assert.equal((await change(inlineIdP([rotating.cert],"urn:example:different-authority"))).error.status,409);
+        ok(await change(inlineIdP([rotating.cert])));
+      }
     }
   }
 }

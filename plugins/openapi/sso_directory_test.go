@@ -193,8 +193,18 @@ func TestEnterpriseSAMLDocumentation(t *testing.T) {
 		if _, ok := paths[acs]; ok != enabled {
 			t.Fatalf("unexpected ACS route, enabled=%v", enabled)
 		}
+		if _, present := paths["/sso/update-provider"]; present != enabled {
+			t.Fatal("metadata update route availability", enabled)
+		}
 		if !enabled {
 			continue
+		}
+		update := node(paths, "/sso/update-provider", "post")
+		if len(update["security"].([]any)) != 1 || node(update, "requestBody", "content", "application/json", "schema", "properties", "samlConfig", "properties", "idpMetadata", "properties")["metadata"] == nil {
+			t.Fatal("missing update authorization or XML metadata schema")
+		}
+		if node(schema, "properties", "samlConfig", "properties", "idpMetadata", "properties")["metadata"] == nil {
+			t.Fatal("registration lacks inline metadata")
 		}
 		if len(schema["oneOf"].([]any)) != 2 {
 			t.Fatal("missing mutually exclusive SSO protocols")

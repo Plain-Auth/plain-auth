@@ -11,9 +11,10 @@ import (
 func samlConfigSchema() object {
 	text := object{"type": "string", "minLength": 1}
 	cert := object{"oneOf": []object{text, {"type": "array", "items": text, "minItems": 1, "maxItems": 8}}}
-	idp := responseObject(object{"entityID": text, "cert": cert}, "entityID")
+	idp := responseObject(object{"entityID": text, "cert": cert, "metadata": text})
+	idp["anyOf"] = []object{{"required": []string{"entityID"}}, {"required": []string{"metadata"}}}
 	config := responseObject(object{"entryPoint": object{"type": "string", "format": "uri"}, "cert": cert, "audience": text, "idpMetadata": idp, "spMetadata": responseObject(object{"entityID": text}, "entityID"), "wantAssertionsSigned": object{"const": true}, "authnRequestsSigned": object{"type": "boolean"}, "identifierFormat": text, "mapping": modelSchema(reflect.TypeFor[sso.SAMLMapping]())}, "entryPoint", "idpMetadata")
-	config["anyOf"] = []object{{"required": []string{"cert"}}, {"properties": object{"idpMetadata": object{"required": []string{"cert"}}}}}
+	config["anyOf"] = []object{{"properties": object{"idpMetadata": object{"required": []string{"metadata"}}}}, {"required": []string{"cert"}}, {"properties": object{"idpMetadata": object{"required": []string{"cert"}}}}}
 	return config
 }
 
@@ -44,7 +45,7 @@ func ssoResponse(path string, info stonewrit.HTTPDescription) object {
 		return responseObject(fields, required...)
 	case "/sso/providers":
 		return responseObject(object{"providers": array(modelSchema(reflect.TypeFor[sso.PublicProvider]()))}, "providers")
-	case "/sso/get-provider":
+	case "/sso/get-provider", "/sso/update-provider":
 		return modelSchema(reflect.TypeFor[sso.PublicProvider]())
 	case "/sso/delete-provider":
 		return responseObject(object{"success": object{"const": true}}, "success")
@@ -83,6 +84,9 @@ func describeSSORequest(op object, path string, info stonewrit.HTTPDescription) 
 		}
 		body(registration)
 
+	case "/sso/update-provider":
+		op["description"] = "Replace a managed SAML directory’s inline IdP metadata. A certificate rotation preserves existing account links; changing the authority of linked accounts returns a conflict."
+		body(responseObject(object{"providerId": providerID, "samlConfig": responseObject(object{"idpMetadata": responseObject(object{"metadata": text}, "metadata")}, "idpMetadata")}, "providerId", "samlConfig"))
 	case "/sso/providers":
 		op["description"] = "List the caller’s personal directories and directories in organizations they own or administer. Client identifiers are masked."
 	case "/sso/get-provider":

@@ -231,7 +231,7 @@ func (o Options) samlFinish(c auth.EndpointContext) (any, error) {
 		return fail("invalid_provider")
 	}
 	if origins := c.Request.Header.Values("Origin"); len(origins) != 0 {
-		if len(origins) != 1 || !sameSAMLOrigin(origins[0], p.SAML.EntryPoint) {
+		if len(origins) != 1 || !sameSAMLOrigin(origins[0], sp.GetSSOBindingLocation(saml.HTTPRedirectBinding)) {
 			return fail("invalid_origin")
 		}
 	}
@@ -248,7 +248,7 @@ func (o Options) samlFinish(c auth.EndpointContext) (any, error) {
 	// Require bounded assertion validity even if library-wide clock settings
 	// are adjusted by another application component.
 	now := time.Now()
-	if err != nil || a == nil || a.ID != id || a.Issuer.Value != p.SAML.IDPMetadata.EntityID || a.Conditions == nil {
+	if err != nil || a == nil || a.ID != id || a.Issuer.Value != p.SAML.IdentityProviderEntityID() || a.Conditions == nil {
 		return fail("invalid_saml_response")
 	}
 	latest := now.Add(3 * time.Minute)

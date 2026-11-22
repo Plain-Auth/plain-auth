@@ -91,6 +91,9 @@ func (s *Store) issueDomainToken(ctx context.Context, tx *sql.Tx, p sso.Provider
 }
 
 func (s *Store) domainMutation(ctx context.Context, actor sso.Actor, id string, fn func(*sql.Tx, sso.Provider) error) error {
+	return s.withManagedSSOProvider(ctx, actor, id, func(tx *sql.Tx, p sso.BrowserProvider) error { return fn(tx, p.Provider) })
+}
+func (s *Store) withManagedSSOProvider(ctx context.Context, actor sso.Actor, id string, fn func(*sql.Tx, sso.BrowserProvider) error) error {
 	if !sso.MutableProviderID(id) {
 		return sso.ErrMissing
 	}
@@ -115,7 +118,7 @@ func (s *Store) domainMutation(ctx context.Context, actor sso.Actor, id string, 
 	if err = s.authorizeSSOManager(ctx, tx, actor, p.Provider); err != nil {
 		return err
 	}
-	if err = fn(tx, p.Provider); err != nil {
+	if err = fn(tx, p); err != nil {
 		return err
 	}
 	return tx.Commit()

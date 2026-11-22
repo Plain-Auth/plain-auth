@@ -64,7 +64,7 @@ The SQL adapter rechecks the provider's immutable record ID and configuration be
 
 An organization-bound provider adds the authenticated user as a member of the bound tenant in the session transaction. Existing roles and live invitations are preserved. A full or deleted organization cannot leave a partial identity or session. These checks also apply on sign-in nodes that share the organization database and serve only the SSO routes. Set `DisableOrganizationProvisioning` to manage membership separately. [Membership and concurrent removal tests](../adapters/sqlstore/sso_browser_test.go)
 
-The native client starts the flow with `SignInSSO`. A Go flow must finish on a Go instance. The released client can use Go-created enterprise accounts on both tested implementations. Imported links require an explicit source classification before the Go runtime can use them. Arbitrary callback aliases, stateless IdP-initiated entry, private-key client authentication, custom resolver/provisioning hooks, profile replacement on subsequent sign-in, provider updates, and automatic organization assignment on ordinary signup remain open.
+The native client starts the flow with `SignInSSO`. A Go flow must finish on a Go instance. The released client can use Go-created enterprise accounts on both tested implementations. Imported links require an explicit source classification before the Go runtime can use them. Arbitrary callback aliases, stateless IdP-initiated entry, private-key client authentication, custom resolver/provisioning hooks, profile replacement on subsequent sign-in, general provider updates, and automatic organization assignment on ordinary signup remain open.
 
 ## Verify directory domains with DNS
 
@@ -144,4 +144,23 @@ Start with `POST /sign-in/sso` or the native `SignInSSO` method. Supply `provide
 
 `NameID` identifies the external account. Use `identifierFormat` to request a persistent NameID when your IdP offers one. Default attributes are `email`, `givenName`, `surname` and `displayName`; set `mapping` to select other single-valued attribute names. An email-shaped NameID supplies a missing email. To accept the IdP's verification claim, set both `SAMLOptions.TrustEmailVerified` and `mapping.emailVerified`. Existing verified mailboxes still require a live matching DNS domain proof for automatic linking. Current provider configuration, organization binding and domain proof are checked in the SQL transaction that claims the assertion and creates the account or session. A SHA-256 fingerprint identifies each accepted issuer and assertion ID for replay prevention. The receipt lasts 24 hours. Avoid recording assertion forms and state cookies in proxy or request logs.
 
-This profile supports plaintext, directly signed assertions over HTTP-POST. IdP-initiated sign-in, a GET or JSON ACS, encrypted assertions, XML metadata import, SAML single logout and registration-time private keys remain open. Configure an IdP to use the posted HTTPS ACS and a modern SHA-256-or-stronger signature. The `additionalParams` OAuth option is unavailable for this protocol. Imported SAML links without recorded identity authority are rejected; the historical account reconciliation interface currently supports OIDC and static social identities.
+This profile supports plaintext, directly signed assertions over HTTP-POST. IdP-initiated sign-in, a GET or JSON ACS, encrypted assertions, SP metadata XML import, SAML single logout and registration-time private keys remain open. Configure an IdP to use the posted HTTPS ACS and a modern SHA-256-or-stronger signature. The `additionalParams` OAuth option is unavailable for this protocol. Imported SAML links require a recorded identity authority. The historical account reconciliation interface currently supports OIDC and static social identities.
+
+### Import and rotate IdP metadata
+
+An authorized directory manager can submit the IdP’s metadata XML directly in `samlConfig.idpMetadata.metadata` on registration. Obtain it over a trusted channel and verify the issuer and signing certificates with the IdP administrator. Include the top-level `issuer`, `domain`, `providerId` and `samlConfig.entryPoint` from the registration example. The XML supplies the effective IdP entity ID, redirect endpoint and signing certificates. A URL string is rejected. The service parses the submitted bytes locally.
+
+Use one SAML 2.0 `EntityDescriptor` containing one `IDPSSODescriptor`, one HTTPS HTTP-Redirect SSO service, and up to eight signing keys. For each signing key, use a separate `KeyDescriptor` with one X.509 certificate and a 2048-bit or larger RSA public key. Signing and unspecified key usage are accepted. Encryption-only keys cannot authorize a login. Where the IdP requires signed requests, configure the host’s request signer and certificate. Entity and role expiry apply to the resulting authority. The default XML limit is 100 KiB. Set `SAMLOptions.MaxMetadataSize` in bytes for another limit within the 1 MiB request-body cap. MySQL’s canonical TEXT column also limits the complete serialized provider configuration to 65,535 bytes. Federation aggregates, remote metadata retrieval, periodic refresh and metadata-signature trust anchors remain open.
+
+Use `POST /sso/update-provider` with the same manager session to replace the XML. The Go client exposes `UpdateSAMLMetadata(ctx, providerID, xml)`. The response contains sanitized directory details.
+
+```json
+{
+  "providerId": "company",
+  "samlConfig": {
+    "idpMetadata": { "metadata": "<md:EntityDescriptor …>…</md:EntityDescriptor>" }
+  }
+}
+```
+
+For a rotation, publish an overlapping document containing the current and next certificates. Switch signing keys at the IdP, verify a new login, then replace the document with the next certificate alone. Each replacement invalidates sign-ins started under the prior configuration. Existing account links and an established DNS proof survive a signing-key rotation. The update holds a database lock, checks the live direct session and organization role, and rejects an issuer or SSO-service change with HTTP 409 while accounts are linked. A change of identity on an unused directory requires a new DNS proof when verification is enabled. The optional `GuardProviderMutation` receives the linked account count and the authentication-boundary change flag before the update commits. This endpoint currently accepts only replacement of the inline IdP metadata.

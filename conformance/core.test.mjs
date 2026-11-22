@@ -1452,3 +1452,8 @@ test("password reset callbacks on both runtimes observe committed credentials, r
   const { comparePasswordResetHook } = await import("./password-reset-hook.mjs");
   await comparePasswordResetHook(t, { reference, goFixture, instrument });
 });
+
+test("enterprise SAML imports a directory XML document and rotates its signing certificate through the released client", async t => {
+  const {compareEnterpriseSAML}=await import("./sso-saml.mjs");
+  await compareEnterpriseSAML(t,{goFixture,instrument,inline:true});
+});

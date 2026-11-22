@@ -22,7 +22,7 @@ type Options struct {
 	SAML *SAMLOptions
 	// DomainVerification enables DNS ownership checks for managed OIDC domains.
 	DomainVerification *DomainVerificationOptions
-	// GuardProviderMutation can reject a deletion after the exact provider and
+	// GuardProviderMutation can reject a metadata update or deletion after the exact provider and
 	// its authorization have been checked inside the store transaction.
 	GuardProviderMutation MutationGuard
 	// SharedCallback registers the same /sso/callback URL for every enterprise client.
@@ -83,15 +83,24 @@ type PublicConfig struct {
 	PKCE                        *bool    `json:"pkce,omitempty"`
 	Scopes                      []string `json:"scopes,omitempty"`
 }
+type PublicSAMLConfig struct {
+	EntryPoint           string `json:"entryPoint"`
+	Audience             string `json:"audience,omitempty"`
+	WantAssertionsSigned *bool  `json:"wantAssertionsSigned,omitempty"`
+	AuthnRequestsSigned  bool   `json:"authnRequestsSigned,omitempty"`
+	IdentifierFormat     string `json:"identifierFormat,omitempty"`
+}
+
 type PublicProvider struct {
-	ProviderID     string        `json:"providerId"`
-	Type           string        `json:"type"`
-	Issuer         string        `json:"issuer"`
-	Domain         string        `json:"domain"`
-	OrganizationID *string       `json:"organizationId"`
-	DomainVerified bool          `json:"domainVerified"`
-	OIDC           *PublicConfig `json:"oidcConfig,omitempty"`
-	SPMetadataURL  string        `json:"spMetadataUrl"`
+	SAML           *PublicSAMLConfig `json:"samlConfig,omitempty"`
+	ProviderID     string            `json:"providerId"`
+	Type           string            `json:"type"`
+	Issuer         string            `json:"issuer"`
+	Domain         string            `json:"domain"`
+	OrganizationID *string           `json:"organizationId"`
+	DomainVerified bool              `json:"domainVerified"`
+	OIDC           *PublicConfig     `json:"oidcConfig,omitempty"`
+	SPMetadataURL  string            `json:"spMetadataUrl"`
 }
 
 type Actor struct {
@@ -238,6 +247,11 @@ func New(o Options) (auth.Plugin, error) {
 			return nil, err
 		}
 		if usesSAML {
+			if input, ok := samlInput["idpMetadata"].(map[string]any); ok {
+				if doc, ok := input["metadata"].(string); ok && len(doc) > o.SAML.metadataLimit() {
+					return nil, ErrInvalidSAML
+				}
+			}
 			raw, e := json.Marshal(samlInput)
 			if e != nil {
 				return nil, ErrInvalidSAML
@@ -365,7 +379,7 @@ func New(o Options) (auth.Plugin, error) {
 		plugin.Endpoints = append(plugin.Endpoints, request, verify)
 	}
 	if o.SAML != nil {
-		plugin.Endpoints = append(plugin.Endpoints, auth.Endpoint{Method: "GET", Path: "/sso/saml2/sp/metadata", Handler: o.samlMetadata}, auth.Endpoint{Method: "POST", Path: "/sso/saml2/sp/acs/:providerId", RawBody: true, Handler: o.samlFinish})
+		plugin.Endpoints = append(plugin.Endpoints, endpoint("/sso/update-provider", "POST", o.updateSAMLMetadata), auth.Endpoint{Method: "GET", Path: "/sso/saml2/sp/metadata", Handler: o.samlMetadata}, auth.Endpoint{Method: "POST", Path: "/sso/saml2/sp/acs/:providerId", RawBody: true, Handler: o.samlFinish})
 	}
 	return plugin, nil
 }
@@ -375,6 +389,7 @@ func sanitized(c auth.EndpointContext, p Provider) PublicProvider {
 	out := PublicProvider{ProviderID: p.ProviderID, Issuer: p.Issuer, Domain: p.Domain, OrganizationID: p.OrganizationID, Type: "oidc", SPMetadataURL: metadata}
 	if p.SAML != nil {
 		out.Type = "saml"
+		out.SAML = &PublicSAMLConfig{EntryPoint: p.SAML.EntryPoint, Audience: p.SAML.Audience, WantAssertionsSigned: p.SAML.WantAssertionsSigned, AuthnRequestsSigned: p.SAML.AuthnRequestsSigned, IdentifierFormat: p.SAML.IdentifierFormat}
 	}
 	if cfg := p.OIDC; cfg != nil {
 		masked := "****"

@@ -6677,6 +6677,11 @@
       "label": "Register an IdP signing certificate and separate SP entity ID through the released client on both runtimes",
       "test": "conformance/sso-saml.mjs",
       "marker": "export async function compareEnterpriseSAML("
+    },
+    {
+      "label": "Import the issuer, Redirect service and signing anchors from one submitted IdP XML document through the published client on both runtimes",
+      "test": "conformance/sso-saml.mjs",
+      "marker": "if (inline) assert.equal(registration.samlConfig.idpMetadata.metadata"
     }
   ],
   "plugin/sso/GET /sso/providers": [
@@ -7836,6 +7841,11 @@
       "label": "Consume an assertion once across independent instances and maintain the live DNS boundary on automatic linking",
       "test": "adapters/sqlstore/sso_saml_test.go",
       "marker": "t.Fatal(\"assertion replay results\""
+    },
+    {
+      "label": "Invalidate requests that predate a certificate rotation and check the current XML trust anchors on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_saml_metadata_test.go",
+      "marker": "t.Fatal(\"old request survived certificate rotation\""
     }
   ],
   "docs/content/docs/plugins/polar.mdx#L17/Checkout Integration": [
@@ -7982,6 +7992,28 @@
       "label": "Retain custom account adapters, forward native callback errors and contain a host panic after commit",
       "test": "password_reset_hook_test.go",
       "marker": "func TestPasswordResetHookWithExistingAccountAdapter("
+    }
+  ],
+  "plugin/sso/POST /sso/update-provider": [
+    {
+      "label": "Rotate a directory’s signing certificate through the released client and retain the existing subject on both runtimes",
+      "test": "conformance/sso-saml.mjs",
+      "marker": "const updated=ok(await change(inlineIdP([cert,rotating.cert])))"
+    },
+    {
+      "label": "Authorize metadata replacement under a current manager session and reject stale competing revisions on three SQL engines",
+      "test": "adapters/sqlstore/sso_saml_metadata_test.go",
+      "marker": "t.Fatal(\"concurrent XML revisions\""
+    },
+    {
+      "label": "Reject issuer and endpoint replacement on linked directories, accept overlapping signing keys, and reject retired keys after rotation",
+      "test": "adapters/sqlstore/sso_saml_metadata_test.go",
+      "marker": "t.Fatal(\"retired certificate accepted\""
+    },
+    {
+      "label": "Allow an active organization administrator to replace metadata and deny the same live session after demotion",
+      "test": "adapters/sqlstore/sso_saml_metadata_test.go",
+      "marker": "t.Fatal(\"demoted organization member retained metadata authority\""
     }
   ]
 }

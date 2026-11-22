@@ -13,6 +13,7 @@ import (
 	"io"
 	"net/url"
 	"strings"
+	"time"
 
 	auth "github.com/Stonewrit/stonewrit-auth"
 	"github.com/crewjam/saml"
@@ -22,12 +23,17 @@ var ErrInvalidSAML = apiError(400, "Invalid or unsupported SAML configuration")
 
 // SAMLOptions enables SP-initiated SAML. Request signing keys stay in the host.
 type SAMLOptions struct {
+	// MaxMetadataSize limits inline IdP XML in bytes, defaulting to 100 KiB.
+	MaxMetadataSize    int
 	RequestSigner      crypto.Signer
 	RequestCertificate *x509.Certificate
 	TrustEmailVerified bool
 }
 
 func (o SAMLOptions) validate() error {
+	if o.MaxMetadataSize < 0 || o.MaxMetadataSize > maxSAMLMetadataBytes {
+		return errors.New("sso: SAML metadata size must be between 1 byte and 1 MiB when set")
+	}
 	if o.RequestSigner == nil && o.RequestCertificate == nil {
 		return nil
 	}
@@ -68,7 +74,8 @@ type SAMLMapping struct {
 	EmailVerified string `json:"emailVerified,omitempty"`
 }
 type SAMLIDPMetadata struct {
-	EntityID     string       `json:"entityID"`
+	Metadata     string       `json:"metadata,omitempty"`
+	EntityID     string       `json:"entityID,omitempty"`
 	Certificates Certificates `json:"cert,omitempty"`
 }
 type SAMLSPMetadata struct {
@@ -76,6 +83,7 @@ type SAMLSPMetadata struct {
 }
 
 type SAMLConfig struct {
+	imported             *samlIDPAuthority
 	SPMetadata           *SAMLSPMetadata `json:"spMetadata,omitempty"`
 	Issuer               string          `json:"issuer,omitempty"`
 	EntryPoint           string          `json:"entryPoint"`
@@ -95,8 +103,15 @@ func DecodeSAMLConfig(raw []byte) (*SAMLConfig, error) {
 	if d.Decode(&c) != nil || d.Decode(&struct{}{}) != io.EOF {
 		return nil, ErrInvalidSAML
 	}
-	if c.EntryPoint == "" || c.IDPMetadata.EntityID == "" || c.WantAssertionsSigned != nil && !*c.WantAssertionsSigned {
+	if c.EntryPoint == "" || (c.IDPMetadata.EntityID == "" && c.IDPMetadata.Metadata == "") || c.WantAssertionsSigned != nil && !*c.WantAssertionsSigned {
 		return nil, ErrInvalidSAML
+	}
+	if c.IDPMetadata.Metadata != "" {
+		var err error
+		c.imported, err = parseInlineMetadata(c.IDPMetadata.Metadata)
+		if err != nil {
+			return nil, err
+		}
 	}
 	return &c, nil
 }
@@ -116,10 +131,17 @@ func (o Options) samlSP(c auth.EndpointContext, p Provider) (*saml.ServiceProvid
 	if err != nil || !entity.IsAbs() || entity.Fragment != "" || entity.User != nil {
 		return nil, ErrInvalidSAML
 	}
-	if err = secureBrowserEndpoint(c.Auth, cfg.EntryPoint); err != nil {
+	if _, err := endpointURL(cfg.EntryPoint); err != nil {
 		return nil, ErrInvalidSAML
 	}
-	endpoint, _ := url.Parse(cfg.EntryPoint)
+	authority := cfg.authority()
+	if len(cfg.IDPMetadata.Metadata) > o.SAML.metadataLimit() || !cfg.MetadataValidAt(time.Now()) {
+		return nil, ErrInvalidSAML
+	}
+	if err = secureBrowserEndpoint(c.Auth, authority.redirect); err != nil {
+		return nil, ErrInvalidSAML
+	}
+	endpoint, _ := url.Parse(authority.redirect)
 	if endpoint.RawQuery != "" || endpoint.Fragment != "" {
 		return nil, ErrInvalidSAML
 	}
@@ -136,14 +158,11 @@ func (o Options) samlSP(c auth.EndpointContext, p Provider) (*saml.ServiceProvid
 		return nil, err
 	}
 	metadataURL, _ := url.Parse(meta)
-	certs := cfg.Certificates
-	if len(cfg.IDPMetadata.Certificates) > 0 {
-		certs = cfg.IDPMetadata.Certificates
-	}
+	certs := authority.certs
 	if len(certs) == 0 || len(certs) > 8 {
 		return nil, ErrInvalidSAML
 	}
-	idp := saml.IDPSSODescriptor{SingleSignOnServices: []saml.Endpoint{{Binding: saml.HTTPRedirectBinding, Location: cfg.EntryPoint}}}
+	idp := saml.IDPSSODescriptor{SingleSignOnServices: []saml.Endpoint{{Binding: saml.HTTPRedirectBinding, Location: authority.redirect}}}
 	idp.ProtocolSupportEnumeration = "urn:oasis:names:tc:SAML:2.0:protocol"
 	for _, raw := range certs {
 		block, rest := pem.Decode([]byte(strings.TrimSpace(raw)))
@@ -167,11 +186,11 @@ func (o Options) samlSP(c auth.EndpointContext, p Provider) (*saml.ServiceProvid
 		AcsURL:                           *acsURL,
 		AuthnNameIDFormat:                saml.NameIDFormat(cfg.IdentifierFormat),
 		AssertionConsumerServiceBindings: []string{saml.HTTPPostBinding},
-		IDPMetadata:                      &saml.EntityDescriptor{EntityID: cfg.IDPMetadata.EntityID, IDPSSODescriptors: []saml.IDPSSODescriptor{idp}},
+		IDPMetadata:                      &saml.EntityDescriptor{EntityID: authority.entity, IDPSSODescriptors: []saml.IDPSSODescriptor{idp}},
 		RejectUnknownConditions:          true,
 		RejectSHA1Signatures:             true,
 	}
-	if cfg.AuthnRequestsSigned {
+	if cfg.AuthnRequestsSigned || authority.signedRequests {
 		if o.SAML.RequestSigner == nil {
 			return nil, apiError(400, "SAML request signing is not configured")
 		}
@@ -241,7 +260,7 @@ func (o Options) samlStart(c auth.EndpointContext, p BrowserProvider, proof, sig
 	if err != nil {
 		return nil, err
 	}
-	req, err := sp.MakeAuthenticationRequest(p.SAML.EntryPoint, saml.HTTPRedirectBinding, saml.HTTPPostBinding)
+	req, err := sp.MakeAuthenticationRequest(sp.GetSSOBindingLocation(saml.HTTPRedirectBinding), saml.HTTPRedirectBinding, saml.HTTPPostBinding)
 	if err != nil {
 		return nil, ErrInvalidSAML
 	}

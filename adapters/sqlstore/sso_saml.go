@@ -18,7 +18,7 @@ func (s *Store) CompleteSAMLLogin(ctx context.Context, reference string, provisi
 	return s.completeEnterpriseLogin(ctx, reference, provision, provider, subject, auth.OAuthTokens{}, u, session, opts, verified, &receipt)
 }
 func (s *Store) consumeSAMLAssertion(ctx context.Context, tx *sql.Tx, p sso.BrowserProvider, r sso.AssertionReceipt, now time.Time) error {
-	if r.ID == "" || len(r.ID) > 512 || r.Issuer != p.SAML.IDPMetadata.EntityID {
+	if !p.SAML.MetadataValidAt(now) || r.ID == "" || len(r.ID) > 512 || r.Issuer != p.SAML.IdentityProviderEntityID() {
 		return sso.ErrInvalidSAML
 	}
 	key, _ := json.Marshal([]string{"saml-assertion", r.Issuer, r.ID})

@@ -333,6 +333,28 @@ func TestEnterpriseSAMLBrowser(t *testing.T) {
 			if pass != 1 || denied != 1 {
 				t.Fatal("assertion replay results", pathsOut)
 			}
+			t.Run("inline metadata registration and signing key rotation", func(t *testing.T) {
+				outsider := sdk(newBrowser())
+				_, e := outsider.SignUpEmail(ctx, client.SignUpRequest{Name: "Other", Email: "other-admin@outside.example", Password: "local-test-secret-1234"})
+				must(e)
+				pending := func(key *rsa.PrivateKey, cert *x509.Certificate) func() string {
+					b := newBrowser()
+					req, e := start(b)
+					must(e)
+					previousKey, previousCert := idp.Key, idp.Certificate
+					idp.Key, idp.Certificate = key, cert
+					body := form(req, "metadata-user", "rotation@staff.example", nil)
+					idp.Key, idp.Certificate = previousKey, previousCert
+					return func() string {
+						code, headers, _ := post(b, body, acs)
+						if code != 302 {
+							t.Fatalf("ACS %d", code)
+						}
+						return headers.Get("Location")
+					}
+				}
+				testSAMLMetadataRotation(t, first, second, owner, outsider, cfg, idpKey, idpCert, pending)
+			})
 			h = newBrowser()
 			r, e = start(h)
 			must(e)

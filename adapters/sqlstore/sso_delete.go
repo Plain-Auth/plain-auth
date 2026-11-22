@@ -79,7 +79,7 @@ func (s *Store) deleteSSOProvider(ctx context.Context, actor sso.Actor, id, reco
 		return err
 	}
 	if guard != nil {
-		mutation := sso.ProviderMutation{Action: "delete", ID: recordID, ProviderID: id, OrganizationID: p.OrganizationID, Reference: p.Reference}
+		mutation := sso.ProviderMutation{Action: "delete", AuthenticationBoundaryChanged: true, ID: recordID, ProviderID: id, OrganizationID: p.OrganizationID, Reference: p.Reference}
 		mutation.LinkedAccounts = len(owned)
 		if err = guard(ctx, mutation); err != nil {
 			return sso.ErrMutationRejected
