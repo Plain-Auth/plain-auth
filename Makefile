@@ -1,8 +1,9 @@
 .PHONY: test test-routers test-redis test-polar test-conformance vet verify verify-commit
 
-# The SQL package runs the full lifecycle suite on three database engines.
+# Go applies this deadline to the entire package. The three-engine SQL race
+# suite can exceed 18 minutes on a hosted runner. The workflow has a 45-minute limit.
 test:
-	go test -race -count=1 -timeout=18m ./...
+	go test -race -count=1 -timeout=30m ./...
 
 test-routers:
 	cd integrations/routers && go test -race -count=1 ./...
