@@ -12,6 +12,8 @@ function options(mode) {
     loginPage: "/login",
     consentPage: "/consent",
     allowDynamicClientRegistration: true,
+    cachedTrustedClients: new Set(["operator-managed"]),
+    clientReference: ({ user }) => (user.email === "tenant-rotation@registration.test" ? "workspace" : undefined),
     allowUnauthenticatedClientRegistration: mode === "open",
     scopes: ["openid", "email", "reports", "extra"],
     clientRegistrationDefaultScopes: ["openid", "email"],
@@ -322,6 +324,58 @@ export async function compareClientRegistration(t, reference, goFixture) {
         const signedToken = await signedExchange.json();
         assert.equal(signedExchange.status, 200, JSON.stringify(signedToken));
         assert.ok(signedToken.access_token);
+
+        await t.test("rotate shared client secrets and invalidate the original credential", async () => {
+          const rotate = (headers, payload) => request("oauth2/client/rotate-secret", payload, headers);
+          const tenant = await request("sign-up/email", {
+            name: "Workspace",
+            email: "tenant-rotation@registration.test",
+            password: "local tenant password",
+          });
+          assert.equal(tenant.status, 200);
+          const tenantCookie = tenant.headers
+            .getSetCookie()
+            .map((line) => line.split(";")[0])
+            .join("; ");
+          const machine = { client_id: credentials.client_id };
+          assert.equal((await rotate({}, machine)).status, 401);
+          assert.equal((await rotate({ cookie }, machine)).status, 401);
+          assert.equal((await rotate({ cookie: tenantCookie, "X-Deny": "yes" }, machine)).status, 401);
+          for (const [id, status, code] of [
+            ["missing", 404, "not_found"],
+            ["operator-managed", 400, "invalid_client"],
+            [keyed.client_id, 400, "invalid_client"],
+            [pub.client_id, 400, "invalid_client"],
+          ]) {
+            const failure = await rotate({ cookie: tenantCookie }, { client_id: id });
+            assert.equal(failure.status, status);
+            assert.equal((await failure.json()).error, code);
+          }
+          const invalid = await rotate({ cookie }, { client_id: 123 });
+          assert.equal(invalid.status, 400);
+          assert.equal((await invalid.json()).code, "VALIDATION_ERROR");
+          const response = await rotate({ cookie: tenantCookie }, machine);
+          const updated = await response.json();
+          assert.equal(response.status, 200, JSON.stringify(updated));
+          assert.match(response.headers.get("cache-control") ?? "", /no-store/);
+          assert.match(updated.client_secret, /^fixture_[a-zA-Z]{32}$/);
+          assert.notEqual(updated.client_secret, credentials.client_secret);
+          assert.deepEqual({ ...updated, client_secret: credentials.client_secret }, credentials);
+          assert.equal((await (await exchange(credentials.client_secret)).json()).error, "invalid_client");
+          const issuedAfterRotation = await exchange(updated.client_secret);
+          assert.equal(issuedAfterRotation.status, 200);
+          assert.ok((await issuedAfterRotation.json()).access_token);
+          assert.equal(
+            db.prepare("SELECT clientSecret FROM oauthClient WHERE clientId=?").get(credentials.client_id)
+              .clientSecret,
+            createHash("sha256").update(updated.client_secret.slice("fixture_".length)).digest("base64url"),
+          );
+          const personalResponse = await rotate({ cookie }, { client_id: app.client_id });
+          const personal = await personalResponse.json();
+          assert.equal(personalResponse.status, 200);
+          assert.equal(personal.user_id, user.id);
+          assert.notEqual(personal.client_secret, app.client_secret);
+        });
       });
     }
   }

@@ -11636,6 +11636,11 @@
       "label": "Apply the host privilege hook to authenticated create, read and list actions before checking ownership",
       "test": "conformance/oauth-client-directory.mjs",
       "marker": "assert.equal(deniedCreate.status, 401);"
+    },
+    {
+      "label": "Enforce the rotate privilege on the authenticated session before replacing a tenant credential",
+      "test": "conformance/oauth-registration.mjs",
+      "marker": "assert.equal((await rotate({ cookie: tenantCookie, \"X-Deny\": \"yes\" }, machine)).status, 401);"
     }
   ],
   "plugin-symbol/oauth-provider/OAuthOptions/clientReference": [
@@ -11662,6 +11667,11 @@
       "label": "Issue the generated secret and store its digest on all SQL engines",
       "test": "adapters/sqlstore/oauth_registration_test.go",
       "marker": "incorrect registration at rest"
+    },
+    {
+      "label": "Reuse the configured generator for rotation and reject an ineffective repeated digest",
+      "test": "adapters/sqlstore/oauth_secret_rotation_test.go",
+      "marker": "failed generation changed an active credential"
     }
   ],
   "plugin-symbol/oauth-provider/OAuthOptions/storeClientSecret": [
@@ -11669,6 +11679,11 @@
       "label": "Pass the unprefixed secret to a custom storage function and persist its result",
       "test": "adapters/sqlstore/oauth_registration_test.go",
       "marker": "custom secret storage differs from the issued credential"
+    },
+    {
+      "label": "Reuse the host storage function and retain the active credential when it fails",
+      "test": "adapters/sqlstore/oauth_secret_rotation_test.go",
+      "marker": "failed generation changed an active credential"
     }
   ],
   "plugin-symbol/oauth-provider/OAuthOptions/prefix": [
@@ -11856,6 +11871,52 @@
       "label": "Represent owner metadata, display data, extension values and optional fields in the Go SDK",
       "test": "adapters/sqlstore/oauth_client_directory_test.go",
       "marker": "SDK lost host metadata"
+    }
+  ],
+  "plugin/oauth-provider/POST /oauth2/client/rotate-secret": [
+    {
+      "label": "Replace a shared secret for its owner and immediately authenticate only the replacement at an independent issuer",
+      "test": "conformance/oauth-registration.mjs",
+      "marker": "assert.ok((await issuedAfterRotation.json()).access_token);"
+    },
+    {
+      "label": "Recheck the owner and credential type after host callbacks and roll back when the updated record cannot be returned",
+      "test": "adapters/sqlstore/oauth_secret_rotation_test.go",
+      "marker": "failed response projection committed the replacement"
+    },
+    {
+      "label": "Serialize rotations by two application instances and persist exactly one of the issued credentials",
+      "test": "adapters/sqlstore/oauth_secret_rotation_test.go",
+      "marker": "concurrent rotation left an unissued or superseded credential"
+    }
+  ],
+  "plugin-symbol/oauth-provider/rotateClientSecret": [
+    {
+      "label": "Replace a shared secret for its owner and immediately authenticate only the replacement at an independent issuer",
+      "test": "conformance/oauth-registration.mjs",
+      "marker": "assert.ok((await issuedAfterRotation.json()).access_token);"
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/reference.mdx#L336/`POST /oauth2/client/rotate-secret`": [
+    {
+      "label": "Replace a shared secret for its owner and immediately authenticate only the replacement at an independent issuer",
+      "test": "conformance/oauth-registration.mjs",
+      "marker": "assert.ok((await issuedAfterRotation.json()).access_token);"
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/clients.mdx#L64/`rotateClientSecret`": [
+    {
+      "label": "Replace a shared secret for its owner and immediately authenticate only the replacement at an independent issuer",
+      "test": "conformance/oauth-registration.mjs",
+      "marker": "assert.ok((await issuedAfterRotation.json()).access_token);",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/oauth-provider/OAuthOptions/cachedTrustedClients": [
+    {
+      "label": "Keep an operator-managed credential immutable from the owner endpoint",
+      "test": "conformance/oauth-registration.mjs",
+      "marker": "[\"operator-managed\", 400, \"invalid_client\"]"
     }
   ]
 }

@@ -111,3 +111,32 @@ Import `github.com/Plain-Auth/plain-auth/client` for the SDK. A successful respo
 | Other metadata | The server also stores display information, contacts, software metadata, post-logout URIs and DPoP preferences. Client credentials, ownership and privilege fields are assigned by the server. |
 
 This endpoint creates registrations. The Go authorization, token issuance and backchannel logout flows have separate implementation statuses. The interoperability tests use an independent issuer to exercise stored shared-secret and signed-JWT clients. [Resource management](oauth-resource-management.md) · [Feature checklist](parity/plugins/oauth-provider.md) · [Registration tests](../conformance/oauth-registration.mjs)
+
+## Rotate a shared secret
+
+A personal owner or an authorized member of the owning tenant can rotate a confidential application's credential. Send a signed-in session to `POST /api/auth/oauth2/client/rotate-secret` with the JSON body `{"client_id":"your-client-id"}`. Rotation also works when dynamic registration is disabled. Native and browser clients that use `none` or `private_key_jwt` use different credential mechanisms.
+
+On success, HTTP 200 returns the owner-visible client metadata and the replacement in `client_secret`. Capture the replacement in your application's secret manager, then use it for the next client authentication. The previous secret stops authenticating as soon as the transaction commits. If the one-time response is lost, the owner can rotate again. Rotation changes the credential used for future token requests. Previously issued tokens follow their own expiration and revocation policies.
+
+The Go SDK accepts a signed-in client. This helper hands the issued credential directly to the host's secret manager.
+
+```go
+func rotate(ctx context.Context, signedIn *client.Client, id string, save func(context.Context, string, string) error) error {
+    updated, err := signedIn.RotateOAuthClientSecret(ctx, id)
+    if err != nil {
+        return err
+    }
+    return save(ctx, id, updated.ClientSecret)
+}
+```
+
+Configure the host's `ClientPrivileges` callback to restrict the `rotate` action. Set `Options.ImmutableClientIDs` for credentials managed exclusively by the operator. Both the client ID and action are available to the privilege callback. Rotation uses the same credential generator, secret prefix and storage hook as registration. A custom generator should return a fresh random credential each time.
+
+| Response | Meaning |
+| --- | --- |
+| 400 `invalid_client` | The client is operator-managed or has no shared credential to rotate. |
+| 401 | The session is absent, the caller lacks the rotate privilege, or the registration belongs to another owner. |
+| 403 `OWNER_SESSION_REQUIRED` | The caller uses an impersonation session or delegated application credential. |
+| 404 `not_found` | The client is missing or requires an unresolved discovery provider. |
+
+The SQL adapters recheck ownership and authentication method under a database lock. A failed storage operation rolls back. If multiple rotations succeed, the last committed credential is the active one. A custom adapter implements `oauthprovider.SecretRotationStore` for the same transaction guarantee. [Client directory and tenant authorization](oauth-client-directory.md) · [Database concurrency tests](../adapters/sqlstore/oauth_secret_rotation_test.go) · [Protocol tests](../conformance/oauth-registration.mjs)

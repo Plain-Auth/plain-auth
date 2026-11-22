@@ -131,7 +131,7 @@ Go records the resolved commit in the consuming project’s `go.mod`. The module
 | Publish OAuth issuers and scopes, and return Bearer or DPoP challenges from a protected API | [Resource discovery and challenges](docs/oauth-resource-discovery.md) |
 | Register OAuth resources, change their policies, and link registered clients | [Resource management](docs/oauth-resource-management.md) |
 | List, inspect, update and remove a user’s OAuth consent grants | [Authorized applications](docs/oauth-consents.md) |
-| Register public and confidential OAuth clients from a browser or Go | [OAuth client registration](docs/oauth-client-registration.md) |
+| Register OAuth clients and rotate confidential client secrets | [OAuth client registration](docs/oauth-client-registration.md) |
 | Build an application dashboard or show public client details on a consent screen | [Read registered applications](docs/oauth-client-directory.md) |
 | Issue signed service tokens and publish verification keys | [JWT and JWKS](docs/jwt.md) |
 | Check new passwords against a breached-password service | [Password screening](docs/password-checks.md) |

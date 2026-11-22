@@ -55,7 +55,7 @@ document.querySelector("#application-name").textContent = app.client_name ?? app
 
 Use `Options.ClientReference` when tenants can own registrations. Resolve the active tenant from the signed-in user's verified membership. Return an empty string for a personal account. The resolver also applies to authenticated registration. If the top-level resolver is unset, `Registration.ClientReference` supplies it.
 
-Use `Options.ClientPrivileges` to restrict authenticated `create`, `read` and `list` operations. The callback receives the session, user, request headers, action, and the client ID for `read`. Returning false denies access with HTTP 401. An approved read still requires ownership. The public display endpoint requires a session and bypasses the management privilege check.
+Use `Options.ClientPrivileges` to restrict authenticated `create`, `read`, `list` and `rotate` operations. The callback receives the session, user, request headers, action, and the client ID for `read` and `rotate`. Returning false denies access with HTTP 401. An approved read still requires ownership. The public display endpoint requires a session and bypasses the management privilege check.
 
 A host can supply membership and permission functions from its own application.
 

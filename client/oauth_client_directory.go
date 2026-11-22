@@ -28,3 +28,10 @@ func (c *Client) PublicOAuthClient(ctx context.Context, id string) (oauthprovide
 	err := c.Do(ctx, http.MethodGet, "/oauth2/public-client?client_id="+url.QueryEscape(id), nil, &result)
 	return result, err
 }
+
+// RotateOAuthClientSecret replaces a shared credential and returns its new value once.
+func (c *Client) RotateOAuthClientSecret(ctx context.Context, id string) (oauthprovider.RotatedClient, error) {
+	var result oauthprovider.RotatedClient
+	err := c.Do(ctx, http.MethodPost, "/oauth2/client/rotate-secret", map[string]string{"client_id": id}, &result)
+	return result, err
+}

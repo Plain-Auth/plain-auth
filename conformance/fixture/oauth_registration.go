@@ -30,6 +30,8 @@ func registrationFixtureOptions() op.Options {
 	if mode == "" || mode == "disabled" {
 		return opts
 	}
+	opts.ImmutableClientIDs = []string{"operator-managed"}
+	opts.ClientPrivileges = func(_ context.Context, a op.ClientAccess) (bool, error) { return a.Headers.Get("X-Deny") == "", nil }
 	opts.PairwiseSecret = strings.Repeat("p", 32)
 	opts.Scopes = []string{"openid", "email", "reports", "extra"}
 	optional := false
@@ -40,7 +42,12 @@ func registrationFixtureOptions() op.Options {
 		MayCreate: func(_ context.Context, a op.RegistrationAccess) (bool, error) {
 			return a.Headers.Get("X-Deny") == "", nil
 		},
-		ClientReference: func(_ context.Context, a op.RegistrationAccess) (string, error) { return a.Headers.Get("X-Ref"), nil },
+		ClientReference: func(_ context.Context, a op.RegistrationAccess) (string, error) {
+			if a.User.Email == "tenant-rotation@registration.test" {
+				return "workspace", nil
+			}
+			return a.Headers.Get("X-Ref"), nil
+		},
 		ValidateInitialToken: func(_ context.Context, token string, _ http.Header, m op.RegistrationMetadata) (*op.InitialAuthorization, error) {
 			switch token {
 			case "initial":

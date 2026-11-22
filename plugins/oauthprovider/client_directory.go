@@ -99,7 +99,14 @@ func (c *ClientDetails) SetMetadataExtensions(raw []byte) error {
 type clientDetailsFields ClientDetails
 
 func (c ClientDetails) MarshalJSON() ([]byte, error) {
-	data, err := json.Marshal(clientDetailsFields(c))
+	return c.marshalWithSecret("")
+}
+
+func (c ClientDetails) marshalWithSecret(secret string) ([]byte, error) {
+	data, err := json.Marshal(struct {
+		clientDetailsFields
+		Secret string `json:"client_secret,omitempty"`
+	}{clientDetailsFields(c), secret})
 	if err != nil || len(c.Extensions) == 0 {
 		return data, err
 	}
@@ -185,9 +192,6 @@ func (opts Options) activeClientReference(ctx context.Context, a RegistrationAcc
 }
 
 func (opts Options) ownedClient(ctx context.Context, store ClientDirectoryStore, access RegistrationAccess, id string) (ClientDetails, error) {
-	if err := opts.allowClient(ctx, access, "read", id); err != nil {
-		return ClientDetails{}, err
-	}
 	c, err := store.LookupOAuthClient(ctx, id)
 	if err != nil {
 		return ClientDetails{}, err
@@ -257,6 +261,9 @@ func (opts Options) clientEndpoint(action string) auth.Endpoint {
 				return nil, err
 			}
 			return store.ListOAuthClients(ctx, session.User.ID, ref)
+		}
+		if err := opts.allowClient(ctx, access, "read", id); err != nil {
+			return nil, err
 		}
 		client, err := opts.ownedClient(ctx, store, access, id)
 		if errors.Is(err, ErrClientNotFound) {

@@ -111,10 +111,12 @@ type RegistrationOptions struct {
 }
 
 type Options struct {
-	// ClientPrivileges checks authenticated create, read, and list actions.
+	// ClientPrivileges checks authenticated create, read, list, and rotate actions.
 	ClientPrivileges func(context.Context, ClientAccess) (bool, error)
 	// ClientReference resolves the active tenant. It defaults to Registration.ClientReference.
-	ClientReference    func(context.Context, RegistrationAccess) (string, error)
+	ClientReference func(context.Context, RegistrationAccess) (string, error)
+	// ImmutableClientIDs are operator-managed registrations protected against owner mutations.
+	ImmutableClientIDs []string
 	Scopes, GrantTypes []string
 	PairwiseSecret     string
 	Registration       RegistrationOptions
@@ -128,6 +130,7 @@ func New(opts Options) (auth.Plugin, error) {
 		scopes = []string{"openid", "profile", "email", "offline_access"}
 	}
 	opts.Scopes = distinct(scopes)
+	opts.ImmutableClientIDs = distinct(opts.ImmutableClientIDs)
 	if opts.GrantTypes == nil {
 		opts.GrantTypes = []string{"authorization_code", "client_credentials", "refresh_token"}
 	}
@@ -190,6 +193,7 @@ func New(opts Options) (auth.Plugin, error) {
 	for _, action := range []string{"get-client", "get-clients", "public-client"} {
 		p.Endpoints = append(p.Endpoints, opts.clientEndpoint(action))
 	}
+	p.Endpoints = append(p.Endpoints, auth.Endpoint{Method: http.MethodPost, Path: "/oauth2/client/rotate-secret", Handler: opts.rotateClientSecret})
 	return p, nil
 }
 
@@ -259,31 +263,39 @@ func (opts Options) register(c auth.EndpointContext) (any, error) {
 		result.RequirePKCE = r.RequirePKCE
 	}
 	if m.TokenEndpointAuthMethod == "client_secret_basic" || m.TokenEndpointAuthMethod == "client_secret_post" {
-		secret, err := r.GenerateClientSecret()
+		result.ClientSecret, row.StoredSecret, err = r.issueSecret(ctx)
 		if err != nil {
 			return nil, err
 		}
-		if secret == "" {
-			return nil, errors.New("oauthprovider: empty generated client secret")
-		}
-		digest := sha256.Sum256([]byte(secret))
-		row.StoredSecret = base64.RawURLEncoding.EncodeToString(digest[:])
-		if r.StoreSecret != nil {
-			row.StoredSecret, err = r.StoreSecret(ctx, secret)
-			if err != nil {
-				return nil, err
-			}
-			if row.StoredSecret == "" {
-				return nil, errors.New("oauthprovider: empty stored client secret")
-			}
-		}
-		result.ClientSecret = r.SecretPrefix + secret
 		result.SecretExpiresAt = new(int64)
 	}
 	if err = c.Store().(RegistrationStore).CreateRegisteredClient(ctx, row); err != nil {
 		return nil, err
 	}
 	return result, nil
+}
+
+func (r RegistrationOptions) issueSecret(ctx context.Context) (issued, stored string, err error) {
+	secret, err := r.GenerateClientSecret()
+	if err != nil {
+		return "", "", err
+	}
+	if secret == "" {
+		return "", "", errors.New("oauthprovider: empty generated client secret")
+	}
+	if r.StoreSecret != nil {
+		stored, err = r.StoreSecret(ctx, secret)
+		if err != nil {
+			return "", "", err
+		}
+		if stored == "" {
+			return "", "", errors.New("oauthprovider: empty stored client secret")
+		}
+	} else {
+		digest := sha256.Sum256([]byte(secret))
+		stored = base64.RawURLEncoding.EncodeToString(digest[:])
+	}
+	return r.SecretPrefix + secret, stored, nil
 }
 
 func (opts Options) authorize(c auth.EndpointContext) (owner, reference string, authenticated bool, err error) {
