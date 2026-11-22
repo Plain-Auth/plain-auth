@@ -1,0 +1,17 @@
+name: Feature request
+description: Propose a capability, integration, or change to an existing workflow.
+body:
+  - type: textarea
+    id: use_case
+    attributes:
+      label: What are you trying to build?
+      description: Describe the workflow and where the current API falls short.
+    validations:
+      required: true
+  - type: textarea
+    id: behavior
+    attributes:
+      label: What behavior would meet that need?
+      description: Include an example. Link an existing roadmap item if one applies.
+    validations:
+      required: true

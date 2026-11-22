@@ -1,0 +1,26 @@
+name: Bug report
+description: Report unexpected behavior in Plain Auth.
+body:
+  - type: markdown
+    attributes:
+      value: "For suspected vulnerabilities, use the [private security reporting guide](https://github.com/Plain-Auth/plain-auth/blob/main/SECURITY.md). Remove credentials, tokens, and personal data from examples."
+  - type: input
+    id: version
+    attributes:
+      label: Plain Auth version or commit
+      description: Run `go list -m github.com/Plain-Auth/plain-auth` in the application or `git rev-parse --short HEAD` in a checkout.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: How can we reproduce the behavior?
+      description: Include a minimal example and the Go version, database, router, or plugin involved.
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: What happened, and what did you expect?
+    validations:
+      required: true

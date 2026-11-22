@@ -4,8 +4,8 @@ Use the [feature checklist](docs/parity/README.md) to find an open capability. A
 
 ## Local setup
 
-1. Clone the repository using a GitHub account with access.
-2. Install Go 1.26 or newer and a C compiler. Install Node 24 and npm if you will run the JavaScript client conformance tests.
+1. Fork the [repository](https://github.com/Plain-Auth/plain-auth) and clone your fork.
+2. Install a patched Go 1.26 or newer toolchain and a C compiler. Install Node 24 and npm if you will run the JavaScript client conformance tests.
 3. Run `go mod download` and start the [example application](README.md#run-it-locally).
 4. For PostgreSQL and MySQL changes, set up dedicated test databases using the [database guide](docs/databases.md#run-database-integration-tests).
 
@@ -34,9 +34,14 @@ npm --prefix conformance test
 
 ## Working in GitHub
 
-During private development, work directly on `main`, one feature at a time. The same implementer writes the code, tests it locally, updates the feature checklist, and commits it before starting the next feature. Subagents may help with research and planning only.
+Anyone with a GitHub account can [report a bug or request a feature](https://github.com/Plain-Auth/plain-auth/issues/new/choose). For a new integration, schema change, or public API, open a feature request first so maintainers and contributors can agree on the behavior. Use the [security reporting guide](SECURITY.md) for suspected vulnerabilities.
 
-Update the local checkout with `git pull --ff-only origin main` before starting. Review `git diff` and `git status`, stage the files for one change, and use a specific commit message such as `feat: add PostgreSQL session storage` or `test: cover sign-out on Gin`. After committing, run `make verify-commit` with the test database and Chrome settings. This runs the suite against an archive of `HEAD`, so an uncommitted local file cannot hide a missing dependency. Push the verified commit with `git push origin main`.
+1. Create a branch in your fork for one change. A documentation fix or a small bug fix can go straight to a pull request.
+2. Implement the change, add or update the relevant tests and docs, and link the evidence in the checklist. Review `git diff` and use a descriptive commit such as `feat: add PostgreSQL session storage`.
+3. Run the checks above. Use `make verify-commit` to run the full suite from an archive of your commit. In the pull request, say what you ran and which services you used.
+4. Push your branch to your fork. On GitHub, select **Compare & pull request**, set the base to **Plain-Auth/plain-auth** and **main**, and describe the user-visible change. A maintainer reviews the change and merges it when the checks pass. [GitHub's fork pull-request guide](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks/creating-a-pull-request-from-a-fork)
+
+During the preview, the maintainer also develops directly on `main`, one feature at a time. The maintainer updates the local checkout with `git pull --ff-only origin main`, implements and tests the feature, updates the checklist, commits, runs `make verify-commit`, and pushes the verified commit before starting the next feature.
 
 On GitHub, open the [feature checklist](docs/parity/README.md), follow the test link on a completed behavior, and use the file's **History** to find the implementing commit. Changes to checkboxes are reviewed alongside the feature implementation and test evidence. Keep credentials, local database files, and session cookie jars out of commits.
 

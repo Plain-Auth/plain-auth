@@ -2,10 +2,10 @@
 
 Use the optional `github.com/Plain-Auth/plain-auth/adapters/redis` Go module to share rate limits across auth servers or store short-lived application values. It accepts a single-node `*redis.Client` from go-redis v9. The primary store continues to manage users, sessions and account data.
 
-Install the adapter from your application's Go module. During private development, use the same GitHub credentials as for the main module.
+Install the adapter and core from the same preview revision in your application's Go module.
 
 ```sh
-GOPRIVATE=github.com/Plain-Auth/plain-auth go get \
+go get \
   github.com/Plain-Auth/plain-auth@main \
   github.com/Plain-Auth/plain-auth/adapters/redis@main
 ```

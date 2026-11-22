@@ -2,9 +2,76 @@
 
 Plain Auth embeds authentication in your Go API. Mount the auth handler on your router and use the same instance to read the signed-in user inside your own handlers. Your application owns its listener, database lifetime, middleware, and routes.
 
-[plain-auth.com](https://plain-auth.com) · [GitHub organization](https://github.com/Plain-Auth) · [Go setup](#mount-it-in-an-application)
+[Run locally](#run-it-locally) · [Install in a Go app](#mount-it-in-an-application) · [Supported workflows](#supported-workflows) · [Roadmap](docs/parity/README.md)
 
-**Development status.** The [verification summary](docs/parity/README.md#verification-progress) reports fully verified entries, partially verified entries, and entries awaiting test evidence. Each checked behavior links to its test. Browse [authentication](docs/parity/authentication.md), [databases](docs/parity/adapters.md), [integrations](docs/parity/integrations.md), or [Stripe](docs/parity/plugins/stripe.md).
+**Developer preview.** Start with email and password, persistent sessions, and a protected route in your own Go server. APIs and SQL migrations may change during the preview. Each supported workflow below links to its tests or guide. The [roadmap](docs/parity/README.md) tracks the remaining features and the evidence for each completed behavior.
+
+## Run it locally
+
+Use a currently patched Go 1.26 or newer toolchain and a C compiler for SQLite. The example creates its tables on first start. Clone the repository, generate a signing secret, and start the app.
+
+```sh
+git clone https://github.com/Plain-Auth/plain-auth.git
+cd plain-auth
+export "$(go run ./cmd/authctl secret)"
+export AUTH_URL=http://127.0.0.1:3000
+go run ./examples/basic
+```
+
+The example listens on `http://127.0.0.1:3000` and creates `auth.db` in the working directory. Set `AUTH_DB` to change the path. Keep the same secret and database when restarting the example to preserve sessions.
+
+In another terminal, create an account, call an application-owned route, and sign out.
+
+```sh
+curl -sS -c cookies.txt http://127.0.0.1:3000/api/auth/sign-up/email \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"Ada","email":"ada@example.com","password":"example-password"}'
+
+curl -sS -b cookies.txt http://127.0.0.1:3000/me
+
+curl -sS -b cookies.txt -c cookies.txt http://127.0.0.1:3000/api/auth/sign-out \
+  -H 'Origin: http://127.0.0.1:3000' -H 'Content-Type: application/json' -d '{}'
+```
+
+## Mount it in an application
+
+From your application's Go module, install the SQLite adapter and the core library from `main`.
+
+```sh
+go get github.com/Plain-Auth/plain-auth/adapters/sqlite@main
+```
+
+Import the library and mount it on your router.
+
+```go
+import (
+    "strings"
+
+    "github.com/Plain-Auth/plain-auth"
+    "github.com/Plain-Auth/plain-auth/adapters/sqlite"
+)
+```
+
+```go
+store, err := sqlite.Open("auth.db")
+if err != nil {
+    return err
+}
+defer store.Close() // in the function that owns the application's lifetime
+
+instance, err := plainauth.New(plainauth.Options{
+    Store:            store,
+    EmailAndPassword: true,
+})
+if err != nil {
+    return err
+}
+mux.Handle(strings.TrimRight(instance.BasePath(), "/")+"/", instance)
+```
+
+This reads the signing secret and public URL from the host environment configured above. Explicit options, environment settings and their precedence are documented in the [configuration guide](docs/environment.md).
+
+Go records the resolved commit in the consuming project’s `go.mod`. The module path is `github.com/Plain-Auth/plain-auth`. Its Go package name is `plainauth`. The SQLite adapter lives at `github.com/Plain-Auth/plain-auth/adapters/sqlite`. A complete host application, including a protected route and graceful shutdown, is in [examples/basic](examples/basic/main.go).
 
 ## Supported workflows
 
@@ -40,70 +107,7 @@ Stripe Checkout and signed billing updates support a single metered price or met
 
 For integration tests, create fixture users and organizations, capture email or SMS codes, or import an existing test login into a browser. [Test helpers](docs/test-helpers.md)
 
-## Run it locally
-
-Use Go 1.26 or newer and a C compiler for the SQLite driver. Clone this repository using a GitHub account with access. From the checkout, generate a signing secret once and start the example.
-
-```sh
-export "$(go run ./cmd/authctl secret)"
-export AUTH_URL=http://127.0.0.1:3000
-go run ./examples/basic
-```
-
-The example listens on `http://127.0.0.1:3000` and creates `auth.db` in the working directory. Set `AUTH_DB` to change the path. Keep the same secret and database when restarting the example to preserve sessions.
-
-In another terminal, create an account, call an application-owned route, and sign out.
-
-```sh
-curl -sS -c cookies.txt http://127.0.0.1:3000/api/auth/sign-up/email \
-  -H 'Content-Type: application/json' \
-  -d '{"name":"Ada","email":"ada@example.com","password":"example-password"}'
-
-curl -sS -b cookies.txt http://127.0.0.1:3000/me
-
-curl -sS -b cookies.txt -c cookies.txt http://127.0.0.1:3000/api/auth/sign-out \
-  -H 'Origin: http://127.0.0.1:3000' -H 'Content-Type: application/json' -d '{}'
-```
-
-## Mount it in an application
-
-Import the current module to use the `plainauth` package.
-
-```go
-import (
-    "strings"
-
-    "github.com/Plain-Auth/plain-auth"
-    "github.com/Plain-Auth/plain-auth/adapters/sqlite"
-)
-```
-
-```go
-store, err := sqlite.Open("auth.db")
-if err != nil {
-    return err
-}
-defer store.Close() // in the function that owns the application's lifetime
-
-instance, err := plainauth.New(plainauth.Options{
-    Store:            store,
-    EmailAndPassword: true,
-})
-if err != nil {
-    return err
-}
-mux.Handle(strings.TrimRight(instance.BasePath(), "/")+"/", instance)
-```
-
-This reads the signing secret and public URL from the host environment configured above. Explicit options, environment settings and their precedence are documented in the [configuration guide](docs/environment.md).
-
-During private development, authenticate Git for the Plain Auth repository and run the following in the consuming module.
-
-```sh
-GOPRIVATE=github.com/Plain-Auth/plain-auth go get github.com/Plain-Auth/plain-auth/adapters/sqlite@main
-```
-
-Go records the resolved commit in the consuming project’s `go.mod`. The module path is `github.com/Plain-Auth/plain-auth`. Its Go package name is `plainauth`. The SQLite adapter lives at `github.com/Plain-Auth/plain-auth/adapters/sqlite`. A complete host application, including a protected route and graceful shutdown, is in [examples/basic](examples/basic/main.go).
+## Documentation
 
 | Task | Guide |
 | --- | --- |
