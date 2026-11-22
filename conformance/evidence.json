@@ -672,6 +672,11 @@
       "label": "Cross-verify signed ordinary mail links and compare first use, duplicate use, trusted redirects and foreign or same-owner browser sessions",
       "test": "conformance/email-verification-session.mjs",
       "marker": "export async function compareVerifiedEmailSignIn("
+    },
+    {
+      "label": "Compare original, earlier and ambiguous millisecond profile revisions against an actual signed link’s whole-second issue time",
+      "test": "conformance/email-verification-session.mjs",
+      "marker": "[\"timestamps differ within the issue second\", 0, 1, false]"
     }
   ],
   "docs/content/docs/plugins/bearer.mdx#L85": [
@@ -8919,6 +8924,11 @@
       "label": "Reject a proof that expires while waiting for the account lock on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/email_verification_session_test.go",
       "marker": "proof remained valid after waiting beyond expiry for the owner lock"
+    },
+    {
+      "label": "Compare original, earlier and ambiguous millisecond profile revisions against an actual signed link’s whole-second issue time",
+      "test": "conformance/email-verification-session.mjs",
+      "marker": "[\"timestamps differ within the issue second\", 0, 1, false]"
     }
   ],
   "plugin-symbol/stripe/SubscriptionOptions/onSubscriptionUpdate": [

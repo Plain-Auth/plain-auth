@@ -10,7 +10,7 @@
 | Partially verified | 926 |
 | No linked test evidence | 5,643 |
 
-The inventory covers features, options, integrations and documentation topics. Partial verification means an open entry has a passing case somewhere beneath it. The checklists also contain 1,915 links from passing scenarios to tests. Adding a scenario leaves the inventory denominator unchanged.
+The inventory covers features, options, integrations and documentation topics. Partial verification means an open entry has a passing case somewhere beneath it. The checklists also contain 1,917 links from passing scenarios to tests. Adding a scenario leaves the inventory denominator unchanged.
 
 A checked item links to a local test for that behavior. An open parent means the feature still has unverified cases. Browser, protocol and storage options each have their own checkboxes.
 
@@ -66,13 +66,13 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 | --- | ---: | ---: |
 | [Published package interfaces](packages.md) | 89 | 160 |
 | [Native Go client, routers and databases](go.md) | 38 | 4 |
-| [Core API, sign-in providers and CLI](runtime.md) | 164 | 276 |
+| [Core API, sign-in providers and CLI](runtime.md) | 165 | 276 |
 | [Database adapters](adapters.md) | 32 | 224 |
 | [Authentication](authentication.md) | 26 | 415 |
 | [Core concepts](concepts.md) | 68 | 505 |
 | [Managed infrastructure](infrastructure.md) | 0 | 528 |
 | [Framework integrations](integrations.md) | 0 | 228 |
-| [Reference and configuration](reference.md) | 94 | 390 |
+| [Reference and configuration](reference.md) | 95 | 390 |
 
 ## Plugins and integrations
 
