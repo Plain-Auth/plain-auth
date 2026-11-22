@@ -16,7 +16,10 @@ import (
 	"github.com/crewjam/saml"
 )
 
-type AssertionReceipt struct{ Issuer, ID string }
+type AssertionReceipt struct {
+	Issuer, ID string
+	Logout     *SAMLLogoutIdentity
+}
 type SAMLStore interface {
 	BrowserStore
 	CompleteSAMLLogin(ctx context.Context, reference string, provision, verified bool, provider, subject string, receipt AssertionReceipt, u auth.User, session auth.StoredSession, opts auth.OAuthLoginOptions) (auth.User, bool, error)
@@ -301,7 +304,11 @@ func (o Options) samlFinish(c auth.EndpointContext) (any, error) {
 		return fail("invalid_saml_response")
 	}
 	complete := func(ctx context.Context, provider, subject string, _ auth.OAuthTokens, u auth.User, session auth.StoredSession, opts auth.OAuthLoginOptions) (auth.User, bool, error) {
-		return store.CompleteSAMLLogin(ctx, p.Reference, !o.DisableOrganizationProvisioning, proof, provider, subject, AssertionReceipt{Issuer: a.Issuer.Value, ID: id}, u, session, opts)
+		receipt := AssertionReceipt{Issuer: a.Issuer.Value, ID: id}
+		if o.SAML.EnableSingleLogout && availableSAMLLogout(c, p.Provider) == nil {
+			receipt.Logout = logoutIdentity(a)
+		}
+		return store.CompleteSAMLLogin(ctx, p.Reference, !o.DisableOrganizationProvisioning, proof, provider, subject, receipt, u, session, opts)
 	}
 	// SAML relays the trusted callback URL for both new and returning users.
 	flow.NewUserCallbackURL = ""

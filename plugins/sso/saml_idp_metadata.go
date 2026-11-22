@@ -27,10 +27,10 @@ func (o SAMLOptions) metadataLimit() int {
 }
 
 type samlIDPAuthority struct {
-	entity, redirect, post string
-	certs                  Certificates
-	validUntil             time.Time
-	signedRequests         bool
+	entity, redirect, post, logout string
+	certs                          Certificates
+	validUntil                     time.Time
+	signedRequests                 bool
 }
 
 // IdentityProviderEntityID returns the assertion issuer from a decoded directory configuration.
@@ -49,7 +49,8 @@ func (c SAMLConfig) authority() samlIDPAuthority {
 	if len(cs) == 0 {
 		cs = c.Certificates
 	}
-	return samlIDPAuthority{entity: c.IDPMetadata.EntityID, redirect: c.EntryPoint, certs: cs}
+	logout, _ := logoutLocation(c.IDPMetadata.SingleLogoutService)
+	return samlIDPAuthority{entity: c.IDPMetadata.EntityID, redirect: c.EntryPoint, certs: cs, logout: logout}
 }
 
 // SameSAMLIdentity reports whether changing only IdP metadata preserves the
@@ -150,6 +151,17 @@ func parseInlineMetadata(raw string) (*samlIDPAuthority, error) {
 		}
 		*target = service.Location
 	}
+	var logoutServices []SAMLService
+	for _, endpoint := range role.SingleLogoutServices {
+		logoutServices = append(logoutServices, SAMLService{Binding: endpoint.Binding, Location: endpoint.Location})
+	}
+	// An unsupported or ambiguous optional logout service leaves the existing
+	// authentication metadata usable. Only an unambiguous Redirect endpoint can
+	// receive a signed NameID.
+	idp.logout, _ = logoutLocation(logoutServices)
+	if idp.logout != "" && !validInlineLogoutNamespace(data) {
+		idp.logout = ""
+	}
 	if idp.redirect == "" {
 		return nil, ErrInvalidSAML
 	}
@@ -212,4 +224,20 @@ func SAMLTrustChanged(current, next SAMLConfig) bool {
 	}
 	a, b := current.authority(), next.authority()
 	return a.signedRequests != b.signedRequests || !slices.Equal(keys(a.certs), keys(b.certs))
+}
+
+func validInlineLogoutNamespace(data []byte) bool {
+	d := xml.NewDecoder(bytes.NewReader(data))
+	for {
+		tok, err := d.Token()
+		if err == io.EOF {
+			return true
+		}
+		if err != nil {
+			return false
+		}
+		if start, ok := tok.(xml.StartElement); ok && start.Name.Local == "SingleLogoutService" && start.Name.Space != "urn:oasis:names:tc:SAML:2.0:metadata" {
+			return false
+		}
+	}
 }

@@ -59,9 +59,18 @@ func samlTestCertificate(t *testing.T) (*rsa.PrivateKey, *x509.Certificate, stri
 	}
 	return key, cert, string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der}))
 }
-func TestEnterpriseSAMLBrowser(t *testing.T)          { runEnterpriseSAMLBrowser(t, false) }
-func TestEnterpriseSAMLEncryptedBrowser(t *testing.T) { runEnterpriseSAMLBrowser(t, true) }
-func runEnterpriseSAMLBrowser(t *testing.T, encrypted bool) {
+func TestEnterpriseSAMLBrowser(t *testing.T)          { runEnterpriseSAMLBrowser(t, false, false) }
+func TestEnterpriseSAMLEncryptedBrowser(t *testing.T) { runEnterpriseSAMLBrowser(t, true, false) }
+func TestEnterpriseSAMLSingleLogout(t *testing.T) {
+	for _, encrypted := range []bool{false, true} {
+		name := "signed"
+		if encrypted {
+			name = "encrypted"
+		}
+		t.Run(name, func(t *testing.T) { runEnterpriseSAMLBrowser(t, encrypted, true) })
+	}
+}
+func runEnterpriseSAMLBrowser(t *testing.T, encrypted, logout bool) {
 	idpKey, idpCert, idpPEM := samlTestCertificate(t)
 	spKey, spCert, _ := samlTestCertificate(t)
 	encKey, encCert, _ := samlTestCertificate(t)
@@ -85,7 +94,7 @@ func runEnterpriseSAMLBrowser(t *testing.T, encrypted bool) {
 			t.Cleanup(func() { second.Close() })
 			var node, peer http.Handler
 			app := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				if strings.Contains(r.URL.Path, "/sp/acs/") {
+				if strings.Contains(r.URL.Path, "/sp/acs/") || strings.Contains(r.URL.Path, "/sp/slo/") {
 					peer.ServeHTTP(w, r)
 				} else {
 					node.ServeHTTP(w, r)
@@ -102,7 +111,7 @@ func runEnterpriseSAMLBrowser(t *testing.T, encrypted bool) {
 				return expected != nil && *expected == d, nil
 			}
 			host := func(s *Store, encryption *sso.SAMLEncryption, policy sso.SAMLDirectoryPolicy, disableSignup bool) *auth.Auth {
-				plug, e := sso.New(sso.Options{DisableImplicitSignUp: disableSignup, SAML: &sso.SAMLOptions{AllowIDPInitiated: policy, IDPInitiatedCallbackURL: "/global-portal", Encryption: encryption, RequestSigner: spKey, RequestCertificate: spCert, TrustEmailVerified: true}, DomainVerification: &sso.DomainVerificationOptions{Resolver: dns}})
+				plug, e := sso.New(sso.Options{DisableImplicitSignUp: disableSignup, SAML: &sso.SAMLOptions{EnableSingleLogout: logout, AllowIDPInitiated: policy, IDPInitiatedCallbackURL: "/global-portal", Encryption: encryption, RequestSigner: spKey, RequestCertificate: spCert, TrustEmailVerified: true}, DomainVerification: &sso.DomainVerificationOptions{Resolver: dns}})
 				must(e)
 				a, e := auth.New(auth.Options{BaseURL: app.URL, BasePath: "/identity", Secret: strings.Repeat("s", 40), Store: s, RateLimit: new(bool), EmailAndPassword: true, Plugins: []auth.Plugin{plug}})
 				must(e)
@@ -141,6 +150,9 @@ func runEnterpriseSAMLBrowser(t *testing.T, encrypted bool) {
 				t.Fatal(status, string(data))
 			}
 			cfg := sso.SAMLConfig{IDPInitiatedCallbackURL: "/company-portal", CallbackURL: "/fallback-portal", SPMetadata: &sso.SAMLSPMetadata{EntityID: app.URL + "/sp"}, EntryPoint: entry, IDPMetadata: sso.SAMLIDPMetadata{EntityID: idpEntity, IsAssertionEncrypted: encrypted}, Certificates: sso.Certificates{idpPEM}, AuthnRequestsSigned: true, Mapping: sso.SAMLMapping{EmailVerified: "verified"}}
+			if logout {
+				cfg.IDPMetadata.SingleLogoutService = []sso.SAMLService{{Binding: saml.HTTPRedirectBinding, Location: idpBase + "/logout"}}
+			}
 			if encrypted {
 				withoutKey := host(first, nil, portalPolicy, false)
 				requestBody, e := json.Marshal(client.RegisterSAMLProviderRequest{ProviderID: "missing-key", Domain: "staff.example", Issuer: idpEntity, SAML: cfg})
@@ -168,9 +180,18 @@ func runEnterpriseSAMLBrowser(t *testing.T, encrypted bool) {
 			}
 			var metadata saml.EntityDescriptor
 			must(xml.Unmarshal(data, &metadata))
-			if metadata.EntityID != cfg.SPMetadata.EntityID || len(metadata.SPSSODescriptors) != 1 || metadata.SPSSODescriptors[0].AssertionConsumerServices[0].Location != api+"/sso/saml2/sp/acs/work" || len(metadata.SPSSODescriptors[0].SingleLogoutServices) != 0 {
+			if metadata.EntityID != cfg.SPMetadata.EntityID || len(metadata.SPSSODescriptors) != 1 || metadata.SPSSODescriptors[0].AssertionConsumerServices[0].Location != api+"/sso/saml2/sp/acs/work" {
 				t.Fatal("wrong SP metadata", string(data))
 			}
+			endpoints := metadata.SPSSODescriptors[0].SingleLogoutServices
+			if logout {
+				if len(endpoints) != 1 || endpoints[0].Binding != saml.HTTPRedirectBinding || endpoints[0].Location != api+"/sso/saml2/sp/slo/work" {
+					t.Fatal("wrong SP logout service", endpoints)
+				}
+			} else if len(endpoints) != 0 {
+				t.Fatal("unexpected SP logout service")
+			}
+
 			var advertised bool
 			for _, k := range metadata.SPSSODescriptors[0].KeyDescriptors {
 				switch k.Use {
@@ -201,6 +222,9 @@ func runEnterpriseSAMLBrowser(t *testing.T, encrypted bool) {
 			idpURL, _ := url.Parse(idpEntity)
 			ssoURL, _ := url.Parse(entry)
 			idp := &saml.IdentityProvider{Key: idpKey, Certificate: idpCert, MetadataURL: *idpURL, SSOURL: *ssoURL, ServiceProviderProvider: samlTestMetadata{cfg.SPMetadata.EntityID: &metadata}, SignatureMethod: "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256"}
+			if logout {
+				idp.LogoutURL = *mustTestURL(t, idpBase+"/logout")
+			}
 			if encrypted {
 				protection := xmlenc.OAEP_SHA256()
 				protection.BlockCipher = xmlenc.AES256GCM
@@ -263,6 +287,21 @@ func runEnterpriseSAMLBrowser(t *testing.T, encrypted bool) {
 			must(e)
 			dns.put("_stonewrit-auth-token-work.staff.example.", token)
 			must(owner.VerifySSODomain(ctx, "work"))
+
+			if logout {
+				login := func(t *testing.T, h *http.Client, subject string, adjust func(*saml.Assertion)) {
+					request, e := start(h)
+					if e != nil {
+						t.Fatal(e)
+					}
+					status, head, _ := post(h, form(request, subject, subject+"@staff.example", adjust), acs)
+					if status != 302 || head.Get("Location") != app.URL+"/home" {
+						t.Fatal("SAML login failed", status, head.Get("Location"))
+					}
+				}
+				testSAMLLogout(t, first, second, idp, api, idpBase, newBrowser, sdk, login, owner, node, peer)
+				return
+			}
 
 			t.Run("reviewed identity provider portal", func(t *testing.T) {
 				directory := sso.SAMLDirectory{RecordID: reg.ID, Reference: catalog.Reference, ProviderID: "work", Issuer: idpEntity, EntryPoint: entry}

@@ -93,8 +93,17 @@ func main() {
 					opts.SAML.AllowIDPInitiated = fixtureSAMLPortal(file)
 					opts.SAML.IDPInitiatedCallbackURL = "/global-landing"
 				}
+				if dir := os.Getenv("CONFORMANCE_SAML_SLO_DIR"); dir != "" {
+					signer, e := fixtureSAMLEncryption(dir, "logout")
+					if e != nil {
+						log.Fatal(e)
+					}
+					opts.SAML.EnableSingleLogout = true
+					opts.SAML.RequestSigner = signer.PrivateKey
+					opts.SAML.RequestCertificate = signer.Certificate
+				}
 				if dir := os.Getenv("CONFORMANCE_SAML_ENCRYPTION_DIR"); dir != "" {
-					keys, e := fixtureSAMLEncryption(dir)
+					keys, e := fixtureSAMLEncryption(dir, "sp")
 					if e != nil {
 						log.Fatal(e)
 					}

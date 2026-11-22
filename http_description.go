@@ -29,6 +29,7 @@ type HTTPDescription struct {
 	SSOStateCookie string
 	// SAMLStateCookie is set when the SP-initiated SAML form handler is installed.
 	SAMLStateCookie          string
+	SAMLLogoutCookie         string
 	Routes                   []HTTPRoute
 	Providers                []string
 	MinPassword, MaxPassword int
@@ -45,6 +46,9 @@ func (a *Auth) DescribeHTTP() HTTPDescription {
 		DisplayUsername: a.username != nil && !a.username.DisableDisplay}
 	if a.HasPlugin("sso") {
 		d.SSOStateCookie = a.prefixedCookieName("sso_state")
+		if ep, ok := a.plugins[endpointKey{http.MethodGet, "/sso/saml2/sp/slo/:providerId"}]; ok && ep.pluginID == "sso" {
+			d.SAMLLogoutCookie = a.prefixedCookieName("saml_logout")
+		}
 		if ep, ok := a.plugins[endpointKey{http.MethodPost, "/sso/saml2/sp/acs/:providerId"}]; ok && ep.pluginID == "sso" {
 			d.SAMLStateCookie = a.prefixedCookieName("saml_state")
 		}

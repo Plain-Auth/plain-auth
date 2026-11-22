@@ -29,8 +29,8 @@ func serveSAMLFixture(listener net.Listener, handler http.Handler, baseURL, dbPa
 	select {}
 }
 
-func fixtureSAMLEncryption(dir string) (*sso.SAMLEncryption, error) {
-	pair, err := tls.LoadX509KeyPair(filepath.Join(dir, "sp-cert.pem"), filepath.Join(dir, "sp-key.pem"))
+func fixtureSAMLEncryption(dir, prefix string) (*sso.SAMLEncryption, error) {
+	pair, err := tls.LoadX509KeyPair(filepath.Join(dir, prefix+"-cert.pem"), filepath.Join(dir, prefix+"-key.pem"))
 	if err != nil {
 		return nil, err
 	}

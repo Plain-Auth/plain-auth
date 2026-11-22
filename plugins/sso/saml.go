@@ -23,6 +23,10 @@ var ErrInvalidSAML = apiError(400, "Invalid or unsupported SAML configuration")
 
 // SAMLOptions enables SP-initiated SAML. Request signing keys stay in the host.
 type SAMLOptions struct {
+	// EnableSingleLogout enables SP-initiated signed HTTP-Redirect logout.
+	EnableSingleLogout bool
+	// LogoutRequestTTL defaults to five minutes.
+	LogoutRequestTTL time.Duration
 	// AllowIDPInitiated is a host-owned directory policy. Nil disables unsolicited sign-in.
 	AllowIDPInitiated SAMLDirectoryPolicy
 	// IDPInitiatedCallbackURL is the public landing page when a directory provides none.
@@ -36,6 +40,12 @@ type SAMLOptions struct {
 }
 
 func (o SAMLOptions) validate() error {
+	if o.LogoutRequestTTL < 0 || o.LogoutRequestTTL != 0 && (o.LogoutRequestTTL < time.Second || o.LogoutRequestTTL%time.Second != 0) {
+		return errors.New("sso: SAML logout lifetime must be a positive whole number of seconds")
+	}
+	if o.EnableSingleLogout && (o.RequestSigner == nil || o.RequestCertificate == nil) {
+		return errors.New("sso: SAML single logout requires the host signing key and certificate")
+	}
 	if !validSAMLLanding(o.IDPInitiatedCallbackURL) {
 		return errors.New("sso: invalid IdP-initiated SAML callback URL")
 	}
@@ -84,11 +94,18 @@ type SAMLMapping struct {
 	Name          string `json:"name,omitempty"`
 	EmailVerified string `json:"emailVerified,omitempty"`
 }
+
+// SAMLService is a published SAML protocol binding and its destination.
+type SAMLService struct {
+	Binding  string `json:"Binding"`
+	Location string `json:"Location"`
+}
 type SAMLIDPMetadata struct {
-	IsAssertionEncrypted bool         `json:"isAssertionEncrypted,omitempty"`
-	Metadata             string       `json:"metadata,omitempty"`
-	EntityID             string       `json:"entityID,omitempty"`
-	Certificates         Certificates `json:"cert,omitempty"`
+	SingleLogoutService  []SAMLService `json:"singleLogoutService,omitempty"`
+	IsAssertionEncrypted bool          `json:"isAssertionEncrypted,omitempty"`
+	Metadata             string        `json:"metadata,omitempty"`
+	EntityID             string        `json:"entityID,omitempty"`
+	Certificates         Certificates  `json:"cert,omitempty"`
 }
 type SAMLSPMetadata struct {
 	IsAssertionEncrypted bool   `json:"isAssertionEncrypted,omitempty"`
@@ -120,6 +137,9 @@ func DecodeSAMLConfig(raw []byte) (*SAMLConfig, error) {
 	}
 	if !validSAMLLanding(c.IDPInitiatedCallbackURL) || strings.Contains(c.CallbackURL, "#") || c.EntryPoint == "" || (c.IDPMetadata.EntityID == "" && c.IDPMetadata.Metadata == "") || c.WantAssertionsSigned != nil && !*c.WantAssertionsSigned {
 		return nil, ErrInvalidSAML
+	}
+	if _, err := logoutLocation(c.IDPMetadata.SingleLogoutService); err != nil {
+		return nil, err
 	}
 	if c.IDPMetadata.Metadata != "" {
 		var err error
@@ -260,10 +280,21 @@ func (o Options) samlMetadata(c auth.EndpointContext) (any, error) {
 	if err != nil {
 		return nil, err
 	}
+	signAuthentication := sp.SignatureMethod != ""
+	logout := o.SAML.EnableSingleLogout && availableSAMLLogout(c, p.Provider) == nil
+	if logout {
+		if err := o.enableLogoutSP(c, p.Provider, sp); err != nil {
+			return nil, err
+		}
+	}
 	meta := sp.Metadata()
 	for i := range meta.SPSSODescriptors {
 		desc := &meta.SPSSODescriptors[i]
-		desc.SingleLogoutServices = nil
+		if logout {
+			desc.AuthnRequestsSigned = &signAuthentication
+		} else {
+			desc.SingleLogoutServices = nil
+		}
 		descriptors := desc.KeyDescriptors
 		desc.KeyDescriptors = nil
 		for _, k := range descriptors {

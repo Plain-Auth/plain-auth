@@ -7968,6 +7968,11 @@
       "label": "Advertise the public SP recipient certificate, AES-256-GCM and explicit RSA-OAEP SHA-256 parameters when a directory requires encryption",
       "test": "adapters/sqlstore/sso_saml_test.go",
       "marker": "t.Fatal(\"key transport parameters missing from SP metadata\""
+    },
+    {
+      "label": "Advertise a single HTTP-Redirect logout service and the signed request key for a configured directory",
+      "test": "adapters/sqlstore/sso_saml_test.go",
+      "marker": "t.Fatal(\"wrong SP logout service\""
     }
   ],
   "plugin/sso/GET / POST /sso/saml2/sp/acs/:providerId": [
@@ -8712,6 +8717,30 @@
       "label": "Commit owned credential refresh without issuing another session across all three SQL engines",
       "test": "adapters/sqlstore/social_test.go",
       "marker": "refresh minted a new session"
+    }
+  ],
+  "plugin/sso/POST /sso/saml2/logout/:providerId": [
+    {
+      "label": "Use the native SDK to revoke exactly the recorded local SAML login and sign the original IdP NameID and SessionIndex on three SQL engines",
+      "test": "adapters/sqlstore/sso_saml_logout_test.go",
+      "marker": "func testSAMLLogout("
+    },
+    {
+      "label": "Revoke the current local login through the released client on both runtimes and verify the Go request’s RSA-SHA256 Redirect signature",
+      "test": "conformance/sso-saml.mjs",
+      "marker": "assert.ok(verify(\"RSA-SHA256\",Buffer.from(signed),actorCert"
+    }
+  ],
+  "plugin/sso/GET / POST /sso/saml2/sp/slo/:providerId": [
+    {
+      "label": "Accept a signed HTTP-Redirect acknowledgement once across replicas and preserve a newer login during the round trip",
+      "test": "adapters/sqlstore/sso_saml_logout_test.go",
+      "marker": "t.Fatal(\"non-atomic logout acknowledgement\""
+    },
+    {
+      "label": "Complete the strict Go Redirect return with an independent IdP and capture the pinned reference’s signed-response rejection",
+      "test": "conformance/core.test.mjs",
+      "marker": "test(\"enterprise SAML logs out a recorded IdP session"
     }
   ]
 }

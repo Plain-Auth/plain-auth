@@ -1528,3 +1528,8 @@ test("signed Stripe lifecycle deliveries distinguish dashboard creation, pending
   const { subscriptionLifecycleCallbacks } = await import("./stripe-lifecycle-fixture.mjs");
   await subscriptionLifecycleCallbacks(t, { reference, goFixture, instrument });
 });
+
+test("enterprise SAML logs out a recorded IdP session through a signed Redirect response", async t => {
+  const {compareEnterpriseSAML}=await import("./sso-saml.mjs");
+  await compareEnterpriseSAML(t,{goFixture,instrument,logout:true});
+});

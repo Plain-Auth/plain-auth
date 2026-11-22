@@ -14,6 +14,7 @@ func samlConfigSchema() object {
 	cert := object{"oneOf": []object{text, {"type": "array", "items": text, "minItems": 1, "maxItems": 8}}}
 	encryption := object{"type": "boolean", "description": "Require encrypted assertions. The host must configure an RSA recipient key and certificate."}
 	idp := responseObject(object{"entityID": text, "cert": cert, "metadata": text, "isAssertionEncrypted": encryption})
+	idp["properties"].(object)["singleLogoutService"] = array(responseObject(object{"Binding": text, "Location": object{"type": "string", "format": "uri"}}, "Binding", "Location"))
 	idp["additionalProperties"] = false
 	sp := responseObject(object{"entityID": text, "isAssertionEncrypted": encryption})
 	sp["additionalProperties"] = false
@@ -115,6 +116,20 @@ func describeSSORequest(op object, route stonewrit.HTTPRoute, info stonewrit.HTT
 		body(schema)
 	case "/sso/saml2/sp/metadata":
 		op["parameters"] = []object{{"name": "providerId", "in": "query", "required": true, "schema": providerID}}
+	case "/sso/saml2/logout/:providerId":
+		op["description"] = "Revoke the active SAML browser session and redirect to its registered identity provider."
+		op["security"] = []object{{"apiKeyCookie": []string{}}}
+		op["parameters"] = []object{{"name": "providerId", "in": "path", "required": true, "schema": providerID}}
+		body(responseObject(object{"callbackURL": text}))
+	case "/sso/saml2/sp/slo/:providerId":
+		op["description"] = "Consume the initiating browser's signed HTTP-Redirect logout acknowledgement."
+		op["security"] = []object{}
+		params := []object{{"name": "providerId", "in": "path", "required": true, "schema": providerID}, {"name": info.SAMLLogoutCookie, "in": "cookie", "required": true, "schema": text}}
+		for _, key := range []string{"SAMLResponse", "RelayState", "SigAlg", "Signature"} {
+			params = append(params, object{"name": key, "in": "query", "required": true, "schema": text})
+		}
+		op["parameters"] = params
+
 	case "/sso/saml2/sp/acs/:providerId":
 		var mode struct {
 			Portal bool `json:"x-stonewrit-idp-initiated"`

@@ -4,8 +4,10 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
+	"github.com/crewjam/saml"
 	"math/big"
 	"testing"
+	"time"
 )
 
 func TestSAMLConfigurationModes(t *testing.T) {
@@ -83,5 +85,25 @@ func TestSAMLEncryptionHostKeys(t *testing.T) {
 	}
 	if _, err := New(Options{SAML: &SAMLOptions{Encryption: &SAMLEncryption{PrivateKey: key, Certificate: cert}}}); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestSAMLLogoutConfiguration(t *testing.T) {
+	if _, e := New(Options{SAML: &SAMLOptions{EnableSingleLogout: true}}); e == nil {
+		t.Fatal("missing SP signing credentials accepted")
+	}
+	for _, ttl := range []time.Duration{-time.Second, time.Millisecond, 1500 * time.Millisecond} {
+		if _, e := New(Options{SAML: &SAMLOptions{LogoutRequestTTL: ttl}}); e == nil {
+			t.Fatal("invalid logout request lifetime", ttl)
+		}
+	}
+	for _, list := range [][]SAMLService{
+		{{Binding: saml.HTTPRedirectBinding, Location: "http://idp.example/logout"}},
+		{{Binding: saml.HTTPRedirectBinding, Location: "https://idp.example/logout?binding=x"}},
+		{{Binding: saml.HTTPRedirectBinding, Location: "https://idp.example/logout"}, {Binding: saml.HTTPRedirectBinding, Location: "https://idp.example/alternate"}},
+	} {
+		if _, e := logoutLocation(list); e == nil {
+			t.Fatal("unusable logout service accepted")
+		}
 	}
 }

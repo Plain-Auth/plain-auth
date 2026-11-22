@@ -2,6 +2,9 @@ package openapi_test
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
 	"encoding/json"
 	"net/http"
 	"net/url"
@@ -165,11 +168,20 @@ func TestEnterpriseSAMLDocumentation(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { store.Close() })
-	for _, mode := range []string{"off", "sp", "portal"} {
+	for _, mode := range []string{"off", "sp", "portal", "logout"} {
 		enabled := mode != "off"
 		options := sso.Options{}
 		if enabled {
 			options.SAML = &sso.SAMLOptions{}
+			if mode == "logout" {
+				key, e := rsa.GenerateKey(rand.Reader, 2048)
+				if e != nil {
+					t.Fatal(e)
+				}
+				options.SAML.EnableSingleLogout = true
+				options.SAML.RequestSigner = key
+				options.SAML.RequestCertificate = &x509.Certificate{PublicKey: &key.PublicKey}
+			}
 			if mode == "portal" {
 				options.SAML.AllowIDPInitiated = func(context.Context, sso.SAMLDirectory) (bool, error) { return false, nil }
 			}
@@ -193,6 +205,24 @@ func TestEnterpriseSAMLDocumentation(t *testing.T) {
 		_, registered := node(schema, "properties")["samlConfig"]
 		if registered != enabled {
 			t.Fatal("wrong registration options", enabled)
+		}
+		const startLogout = "/sso/saml2/logout/{providerId}"
+		const finishLogout = "/sso/saml2/sp/slo/{providerId}"
+		for _, route := range []string{startLogout, finishLogout} {
+			if _, ok := paths[route]; ok != (mode == "logout") {
+				t.Fatal("logout route availability", mode, route)
+			}
+		}
+		if mode == "logout" {
+			start := node(paths, startLogout, "post")
+			finish := node(paths, finishLogout, "get")
+			if node(start, "responses")["302"] == nil || node(start, "responses")["200"] != nil || len(start["security"].([]any)) != 1 || len(finish["security"].([]any)) != 0 || node(finish, "responses")["302"] == nil {
+				t.Fatal("incorrect SAML logout redirect contract")
+			}
+			params := finish["parameters"].([]any)
+			if len(params) != 6 || params[1].(obj)["name"] != "__Secure-portal.saml_logout" || node(start, "requestBody", "content", "application/json", "schema", "properties")["callbackURL"] == nil {
+				t.Fatal("incorrect SAML logout browser binding", params)
+			}
 		}
 		const acs = "/sso/saml2/sp/acs/{providerId}"
 		if _, ok := paths[acs]; ok != enabled {

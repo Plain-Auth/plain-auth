@@ -379,7 +379,7 @@ func standardOperation(r stonewrit.HTTPRoute, info stonewrit.HTTPDescription, a 
 			responses[success] = response("text/html", object{"type": "string"})
 		case "/error":
 			responses[success] = response("text/html", object{"type": "string"})
-		case "/reset-password/:token", "/callback/:id", "/subscription/success", "/sso/callback", "/sso/callback/:providerId", "/sso/saml2/sp/acs/:providerId":
+		case "/reset-password/:token", "/callback/:id", "/subscription/success", "/sso/callback", "/sso/callback/:providerId", "/sso/saml2/sp/acs/:providerId", "/sso/saml2/logout/:providerId", "/sso/saml2/sp/slo/:providerId":
 			delete(responses, success)
 			responses["302"] = object{"description": "Redirect to the configured destination", "headers": object{"Location": object{"schema": object{"type": "string"}}}}
 			if r.Path == "/callback/:id" && r.Method == "GET" && a.HasPlugin("oauth-popup") {

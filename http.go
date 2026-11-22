@@ -63,7 +63,7 @@ func (a *Auth) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if token, ok := strings.CutPrefix(route, "/reset-password/"); ok && token != "" && !strings.ContainsAny(token, "/%") {
 		route = "/reset-password/:token"
 	}
-	for _, prefix := range []string{"/sso/callback/", "/sso/saml2/sp/acs/"} {
+	for _, prefix := range []string{"/sso/callback/", "/sso/saml2/sp/acs/", "/sso/saml2/logout/", "/sso/saml2/sp/slo/"} {
 		if id, ok := strings.CutPrefix(route, prefix); ok && id != "" && !strings.ContainsAny(id, "/%:") {
 			_, exact := a.plugins[endpointKey{r.Method, route}]
 			if _, exists := a.plugins[endpointKey{r.Method, prefix + ":providerId"}]; exists && !exact {

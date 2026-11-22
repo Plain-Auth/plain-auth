@@ -144,7 +144,32 @@ Start with `POST /sign-in/sso` or the native `SignInSSO` method. Supply `provide
 
 `NameID` identifies the external account. Use `identifierFormat` to request a persistent NameID when your IdP offers one. Default attributes are `email`, `givenName`, `surname` and `displayName`; set `mapping` to select other single-valued attribute names. An email-shaped NameID supplies a missing email. To accept the IdP's verification claim, set both `SAMLOptions.TrustEmailVerified` and `mapping.emailVerified`. Existing verified mailboxes still require a live matching DNS domain proof for automatic linking. Current provider configuration, organization binding and domain proof are checked in the SQL transaction that claims the assertion and creates the account or session. A SHA-256 fingerprint identifies each accepted issuer and assertion ID for replay prevention. The receipt lasts 24 hours. Avoid recording assertion forms and state cookies in proxy or request logs.
 
-The default profile accepts a directly signed plaintext assertion over HTTP-POST. A GET or JSON ACS, SP metadata XML import, SAML single logout and registration-time private keys remain open. Configure an IdP to use the posted HTTPS ACS and a modern SHA-256-or-stronger signature. The `additionalParams` OAuth option is unavailable for this protocol. Imported SAML links require a recorded identity authority. The historical account reconciliation interface currently supports OIDC and static social identities.
+The default profile accepts a directly signed plaintext assertion over HTTP-POST. A GET or JSON ACS, SP metadata XML import and registration-time private keys remain open. Configure an IdP to use the posted HTTPS ACS and a modern SHA-256-or-stronger signature. The `additionalParams` OAuth option is unavailable for this protocol. Imported SAML links require a recorded identity authority. The historical account reconciliation interface currently supports OIDC and static social identities.
+
+### Start single logout from the application
+
+Set `SAMLOptions.EnableSingleLogout` on the instances serving the provider. Supply the host’s matching RSA `RequestSigner` and `RequestCertificate`. An IdP directory can specify a HTTP-Redirect logout service in its imported metadata XML or register it explicitly.
+
+```json
+{
+  "singleLogoutService": [
+    {
+      "Binding": "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect",
+      "Location": "https://identity.example.org/logout"
+    }
+  ]
+}
+```
+
+Put this object’s `singleLogoutService` field under `samlConfig.idpMetadata`. The supported IdP logout endpoint uses HTTPS, shares the configured sign-in origin, and has no preset query or fragment. The SP metadata publishes the service’s Redirect SLO URL and the request-signing certificate for eligible directories. Enabling logout alone leaves the existing AuthnRequest signing policy in effect.
+
+After logging in with SAML, send `POST /sso/saml2/logout/{providerId}` with the active browser cookie and an optional trusted `callbackURL`. The native SDK’s `StartSAMLLogout(ctx, providerID, callbackURL)` returns a URL for the same browser to open. The signed IdP assertion must have supplied exactly one authentication statement with a nonempty SessionIndex. The Go service requires a record from that login and the same directory configuration. A password session or a SAML login predating this setting can use ordinary application sign-out.
+
+The start transaction revokes the selected local session and records a single-use return before issuing its HTTP 302. Other logins for the same user stay active. The IdP receives the original NameID, qualifiers and SessionIndex in a signed Redirect LogoutRequest. Its successful HTTP-Redirect response must include the original request ID, the exact issuer and HTTPS destination, the opaque RelayState and a query signature using RSA-SHA256, RSA-SHA384 or RSA-SHA512. The browser returns a dedicated Secure, HttpOnly, SameSite=Lax cookie. Set `SAMLOptions.LogoutRequestTTL` to a positive whole number of seconds to change the five-minute default.
+
+The auth host consumes the pending response once and redirects to the previously stored callback. A timeout or failed IdP response leaves the local session revoked. If the browser signed in again during the round trip, the acknowledgement preserves the newer session. A short-lived verification row holds the external NameID and SessionIndex through the original local session expiry. A second row holds the return destination and browser-binding digest through the logout deadline. Neither row needs a reusable session token. Avoid logging the signed Redirect query, which carries protocol identifiers.
+
+This profile covers SP-initiated logout over HTTP-Redirect. IdP-initiated logout, POST and SOAP logout bindings, alternate logout origins, multiple SessionIndexes and an encrypted logout NameID remain open.
 
 ### Sign in from a reviewed IdP portal
 
