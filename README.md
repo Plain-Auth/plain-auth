@@ -130,6 +130,7 @@ Go records the resolved commit in the consuming project’s `go.mod`. The module
 | Require a CAPTCHA verdict on selected routes | [CAPTCHA providers](docs/captcha.md) |
 | Publish OAuth issuers and scopes, and return Bearer or DPoP challenges from a protected API | [Resource discovery and challenges](docs/oauth-resource-discovery.md) |
 | Register OAuth resources, change their policies, and link registered clients | [Resource management](docs/oauth-resource-management.md) |
+| List, inspect, update and remove a user’s OAuth consent grants | [Authorized applications](docs/oauth-consents.md) |
 | Issue signed service tokens and publish verification keys | [JWT and JWKS](docs/jwt.md) |
 | Check new passwords against a breached-password service | [Password screening](docs/password-checks.md) |
 | Configure profile updates, password reset, and verification email | [Account management and recovery](docs/account.md) |

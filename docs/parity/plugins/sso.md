@@ -336,9 +336,20 @@
     - [ ] oidcConfig
     - [ ] samlConfig
   - [ ] Endpoints
-    - [ ] `POST`
-    - [ ] `GET`
-    - [ ] `GET` `POST`
+    - [ ] `POST /sso/register`
+    - [ ] `POST /sign-in/sso`
+    - [ ] `GET /sso/callback/:providerId`
+    - [ ] `GET /sso/callback`
+    - [ ] `GET / POST /sso/saml2/sp/acs/:providerId`
+    - [ ] `GET /sso/saml2/sp/metadata?providerId=`
+    - [ ] `GET / POST /sso/saml2/sp/slo/:providerId`
+    - [ ] `POST /sso/saml2/logout/:providerId`
+    - [ ] `GET /sso/providers`
+    - [ ] `GET /sso/get-provider`
+    - [ ] `POST /sso/update-provider`
+    - [ ] `POST /sso/delete-provider`
+    - [ ] `POST /sso/request-domain-verification`
+    - [ ] `POST /sso/verify-domain`
   - [ ] Additional provider fields
   - [ ] Schema
     - [ ] Verification records

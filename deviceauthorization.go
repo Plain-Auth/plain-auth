@@ -51,14 +51,7 @@ type DeviceAuthorizationStore interface {
 	PollDeviceGrant(ctx context.Context, code, clientID string, session StoredSession) (scope, outcome string, err error)
 }
 
-type deviceFlowError struct {
-	Status      int    `json:"-"`
-	Code        string `json:"error"`
-	Description string `json:"error_description"`
-}
-
-func (e *deviceFlowError) Error() string  { return e.Description }
-func deviceError(code, desc string) error { return &deviceFlowError{400, code, desc} }
+func deviceError(code, desc string) error { return &OAuthError{400, code, desc} }
 func deviceOutcome(outcome string) error {
 	switch outcome {
 	case "":
@@ -86,11 +79,11 @@ func deviceOutcome(outcome string) error {
 	case "different_client":
 		return deviceError("invalid_grant", "Client ID mismatch")
 	case "unauthorized":
-		return &deviceFlowError{401, outcome, "Authentication required"}
+		return &OAuthError{401, outcome, "Authentication required"}
 	case "forbidden":
-		return &deviceFlowError{403, "access_denied", "You are not authorized to decide this device authorization"}
+		return &OAuthError{403, "access_denied", "You are not authorized to decide this device authorization"}
 	default:
-		return &deviceFlowError{500, "server_error", "Device authorization is unavailable"}
+		return &OAuthError{500, "server_error", "Device authorization is unavailable"}
 	}
 }
 
@@ -171,7 +164,7 @@ func deviceFields(r *http.Request, keys ...string) (map[string]string, error) {
 			}
 		}
 	default:
-		return nil, &deviceFlowError{415, "invalid_request", "Expected JSON or form data"}
+		return nil, &OAuthError{415, "invalid_request", "Expected JSON or form data"}
 	}
 	return fields, nil
 }
@@ -262,7 +255,7 @@ func (o DeviceAuthorizationOptions) createCode(c EndpointContext) (any, error) {
 		complete.RawQuery = q.Encode()
 		return map[string]any{"device_code": device, "user_code": user, "verification_uri": verification.String(), "verification_uri_complete": complete.String(), "expires_in": int64(o.ExpiresIn / time.Second), "interval": int64(o.Interval / time.Second)}, nil
 	}
-	return nil, &deviceFlowError{500, "server_error", "Failed to generate a unique device code"}
+	return nil, &OAuthError{500, "server_error", "Failed to generate a unique device code"}
 }
 
 func (o DeviceAuthorizationOptions) token(c EndpointContext) (any, error) {

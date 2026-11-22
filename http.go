@@ -14,6 +14,8 @@ import (
 	"strconv"
 	"strings"
 	"unicode"
+
+	"github.com/Plain-Auth/plain-auth/internal/jsjson"
 )
 
 const maxBodyBytes = 1 << 20
@@ -140,7 +142,7 @@ func (a *Auth) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if status == 0 {
 		status = http.StatusOK
 	}
-	if status == http.StatusNoContent {
+	if _, empty := result.(EmptyResponse); status == http.StatusNoContent || empty {
 		w.WriteHeader(status)
 		return
 	}
@@ -407,9 +409,9 @@ func (a *Auth) writeAuthError(w http.ResponseWriter, r *http.Request, err error)
 		w.WriteHeader(status.statusOnlyCode())
 		return
 	}
-	var deviceErr *deviceFlowError
-	if errors.As(err, &deviceErr) {
-		writeAuthJSON(w, deviceErr.Status, deviceErr)
+	var oauthErr *OAuthError
+	if errors.As(err, &oauthErr) && oauthErr.Status >= 400 && oauthErr.Status <= 599 {
+		writeAuthJSON(w, oauthErr.Status, oauthErr)
 		return
 	}
 	var apiErr *APIError
@@ -428,23 +430,6 @@ func (a *Auth) writeAuthError(w http.ResponseWriter, r *http.Request, err error)
 
 type wireBody map[string]any
 
-func jsonType(value any) string {
-	switch value.(type) {
-	case nil:
-		return "null"
-	case bool:
-		return "boolean"
-	case string:
-		return "string"
-	case []any:
-		return "array"
-	case json.Number:
-		return "number"
-	default:
-		return "object"
-	}
-}
-
 func validationError(message string) *APIError {
 	return &APIError{Status: 400, Code: "VALIDATION_ERROR", Message: message}
 }
@@ -452,7 +437,7 @@ func validationError(message string) *APIError {
 func fieldTypeError(field, want string, body wireBody) *APIError {
 	got := "undefined"
 	if value, exists := body[field]; exists {
-		got = jsonType(value)
+		got = jsjson.TypeName(value)
 	}
 	return validationError("[body." + field + "] Invalid input: expected " + want + ", received " + got)
 }
@@ -504,9 +489,9 @@ func decodeWireBody(w http.ResponseWriter, r *http.Request, route string) (wireB
 	}
 	body, ok := decoded.(map[string]any)
 	if !ok {
-		message := "[body] Invalid input: expected object, received " + jsonType(decoded)
+		message := "[body] Invalid input: expected object, received " + jsjson.TypeName(decoded)
 		if route == "/sign-up/email" {
-			message += "; [body] Invalid input: expected record, received " + jsonType(decoded)
+			message += "; [body] Invalid input: expected record, received " + jsjson.TypeName(decoded)
 		}
 		return nil, validationError(message)
 	}

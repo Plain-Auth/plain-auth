@@ -5,6 +5,7 @@
 ## Interfaces
 
 - [ ] OAuth provider endpoints, types and options
+  - [x] Enforce consent owner and client scope rules when a signed-in account manages its authorized applications ([test](../../../conformance/oauth-consent.mjs#L6))
   - [ ] `getIssuer`
   - [ ] `PublicClientJwksValidationResult`
   - [ ] `validatePublicClientJwks`
@@ -68,14 +69,24 @@
   - [ ] `rotateClientSecret`
   - [ ] `rotateClientKeys`
   - [ ] `deleteOAuthClient`
-  - [ ] `GET /oauth2/get-consent`
-  - [ ] `GET /oauth2/get-consents`
+  - [x] `GET /oauth2/get-consent` ([test](../../../conformance/oauth-consent.mjs#L55))
+    - [x] Read a single grant through an authenticated session and retain the resource and claim lists ([test](../../../conformance/oauth-consent.mjs#L55))
+  - [x] `GET /oauth2/get-consents` ([test](../../../conformance/oauth-consent.mjs#L56))
+    - [x] List only the current user’s grants, with an empty array for an account without consents ([test](../../../conformance/oauth-consent.mjs#L56))
+    - [x] Require a direct owner session for consent management and reject a delegated application key ([test](../../../adapters/sqlstore/oauth_consent_test.go#L138))
   - [ ] `POST /oauth2/update-consent`
-  - [ ] `POST /oauth2/delete-consent`
-  - [ ] `getOAuthConsent`
-  - [ ] `getOAuthConsents`
+    - [x] Change the scopes of locally registered clients and preserve grant identity, resources and requested claims ([test](../../../conformance/oauth-consent.mjs#L84))
+    - [x] Keep grants deleted when an owner edits from a second database connection at the same time ([test](../../../adapters/sqlstore/oauth_consent_test.go#L129))
+  - [x] `POST /oauth2/delete-consent` ([test](../../../conformance/oauth-consent.mjs#L119))
+    - [x] Delete an owned grant, leave the other account’s grants intact and return 404 on a second removal ([test](../../../conformance/oauth-consent.mjs#L119))
+  - [x] `getOAuthConsent` ([test](../../../conformance/oauth-consent.mjs#L55))
+    - [x] Read a single grant through an authenticated session and retain the resource and claim lists ([test](../../../conformance/oauth-consent.mjs#L55))
+  - [x] `getOAuthConsents` ([test](../../../conformance/oauth-consent.mjs#L56))
+    - [x] List only the current user’s grants, with an empty array for an account without consents ([test](../../../conformance/oauth-consent.mjs#L56))
   - [ ] `updateOAuthConsent`
-  - [ ] `deleteOAuthConsent`
+    - [x] Change the scopes of locally registered clients and preserve grant identity, resources and requested claims ([test](../../../conformance/oauth-consent.mjs#L84))
+  - [x] `deleteOAuthConsent` ([test](../../../conformance/oauth-consent.mjs#L119))
+    - [x] Delete an owned grant, leave the other account’s grants intact and return 404 on a second removal ([test](../../../conformance/oauth-consent.mjs#L119))
   - [x] `POST /admin/oauth2/resources` (server API only) ([test](../../../conformance/resource-registry.mjs#L58))
     - [x] Create an audience and read all persisted policy fields from the other runtime ([test](../../../conformance/resource-registry.mjs#L58))
   - [x] `GET /admin/oauth2/resources` (server API only) ([test](../../../conformance/resource-registry.mjs#L77))
@@ -403,11 +414,51 @@
     - [ ] Storage and generation
     - [ ] Other
   - [ ] Endpoints
-    - [ ] `GET`
-    - [ ] `GET` `POST`
-    - [ ] `POST`
-    - [ ] `PATCH`
-    - [ ] `DELETE`
+    - [ ] `GET /.well-known/oauth-authorization-server` (server API only)
+    - [ ] `GET /.well-known/openid-configuration` (server API only)
+    - [ ] `GET / POST /oauth2/authorize`
+    - [ ] `POST /oauth2/consent`
+    - [ ] `POST /oauth2/continue`
+    - [ ] `POST /oauth2/token`
+    - [ ] `POST /oauth2/introspect`
+    - [ ] `POST /oauth2/revoke`
+    - [ ] `GET / POST /oauth2/userinfo`
+    - [ ] `GET / POST /oauth2/end-session`
+    - [ ] `POST /oauth2/end-session/confirm`
+    - [ ] `POST /oauth2/register`
+    - [ ] `POST /admin/oauth2/create-client` (server API only)
+    - [ ] `PATCH /admin/oauth2/update-client` (server API only)
+    - [ ] `POST /oauth2/create-client`
+    - [ ] `GET /oauth2/get-client`
+    - [ ] `GET /oauth2/public-client`
+    - [ ] `POST /oauth2/public-client-prelogin`
+    - [ ] `GET /oauth2/get-clients`
+    - [ ] `POST /oauth2/update-client`
+    - [ ] `POST /oauth2/client/rotate-secret`
+    - [ ] `POST /oauth2/client/rotate-keys`
+    - [ ] `POST /oauth2/delete-client`
+    - [x] `GET /oauth2/get-consent` ([test](../../../conformance/oauth-consent.mjs#L55))
+      - [x] Read a single grant through an authenticated session and retain the resource and claim lists ([test](../../../conformance/oauth-consent.mjs#L55))
+    - [x] `GET /oauth2/get-consents` ([test](../../../conformance/oauth-consent.mjs#L56))
+      - [x] List only the current user’s grants, with an empty array for an account without consents ([test](../../../conformance/oauth-consent.mjs#L56))
+    - [ ] `POST /oauth2/update-consent`
+      - [x] Change the scopes of locally registered clients and preserve grant identity, resources and requested claims ([test](../../../conformance/oauth-consent.mjs#L84))
+    - [x] `POST /oauth2/delete-consent` ([test](../../../conformance/oauth-consent.mjs#L119))
+      - [x] Delete an owned grant, leave the other account’s grants intact and return 404 on a second removal ([test](../../../conformance/oauth-consent.mjs#L119))
+    - [x] `POST /admin/oauth2/resources` (server API only) ([test](../../../conformance/resource-registry.mjs#L58))
+      - [x] Create an audience and read all persisted policy fields from the other runtime ([test](../../../conformance/resource-registry.mjs#L58))
+    - [x] `GET /admin/oauth2/resources` (server API only) ([test](../../../conformance/resource-registry.mjs#L77))
+      - [x] List stored resources with matching values through both server APIs ([test](../../../conformance/resource-registry.mjs#L77))
+    - [x] `GET /admin/oauth2/resources/:identifier` (server API only) ([test](../../../conformance/resource-registry.mjs#L61))
+      - [x] Read the exact case-sensitive audience and its typed policy across runtimes ([test](../../../conformance/resource-registry.mjs#L61))
+    - [x] `PATCH /admin/oauth2/resources/:identifier` (server API only) ([test](../../../conformance/resource-registry.mjs#L68))
+      - [x] Preserve omitted settings, clear nullable fields and return the committed policy ([test](../../../conformance/resource-registry.mjs#L68))
+    - [x] `DELETE /admin/oauth2/resources/:identifier` (server API only) ([test](../../../conformance/resource-registry.mjs#L95))
+      - [x] Delete the audience and observe the missing resource and cascaded grants ([test](../../../conformance/resource-registry.mjs#L95))
+    - [x] `POST /admin/oauth2/resources/:identifier/clients/:client_id` (server API only) ([test](../../../conformance/resource-registry.mjs#L84))
+      - [x] Link an existing client once and recognize an existing grant across runtimes ([test](../../../conformance/resource-registry.mjs#L84))
+    - [x] `DELETE /admin/oauth2/resources/:identifier/clients/:client_id` (server API only) ([test](../../../conformance/resource-registry.mjs#L89))
+      - [x] Remove an existing client grant and permit a subsequent fresh link ([test](../../../conformance/resource-registry.mjs#L89))
   - [ ] Token errors
     - [ ] `invalid_request`
     - [ ] `invalid_client`
@@ -497,10 +548,14 @@
       - [ ] Parameter `postLogin` (optional)
       - [ ] Parameter `oauth_query` (optional)
   - [ ] Manage consents
-    - [ ] `getOAuthConsent`
-    - [ ] `getOAuthConsents`
+    - [x] `getOAuthConsent` ([test](../../../conformance/oauth-consent.mjs#L55))
+      - [x] Read a single grant through an authenticated session and retain the resource and claim lists ([test](../../../conformance/oauth-consent.mjs#L55))
+    - [x] `getOAuthConsents` ([test](../../../conformance/oauth-consent.mjs#L56))
+      - [x] List only the current user’s grants, with an empty array for an account without consents ([test](../../../conformance/oauth-consent.mjs#L56))
     - [ ] `updateOAuthConsent`
-    - [ ] `deleteOAuthConsent`
+      - [x] Change the scopes of locally registered clients and preserve grant identity, resources and requested claims ([test](../../../conformance/oauth-consent.mjs#L84))
+    - [x] `deleteOAuthConsent` ([test](../../../conformance/oauth-consent.mjs#L119))
+      - [x] Delete an owned grant, leave the other account’s grants intact and return 404 on a second removal ([test](../../../conformance/oauth-consent.mjs#L119))
 
 ## Tokens, scopes, and resources
 

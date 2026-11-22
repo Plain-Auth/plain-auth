@@ -1754,3 +1754,8 @@ test("configured OAuth audiences seed consistently across restarts", async t => 
   const { compareResourceSeeds } = await import("./resource-seeds.mjs");
   await compareResourceSeeds(t, goFixture);
 });
+
+test("signed-in users manage their stored OAuth consents", async t => {
+  const { compareOAuthConsents } = await import("./oauth-consent.mjs");
+  await compareOAuthConsents(t, reference, goFixture);
+});

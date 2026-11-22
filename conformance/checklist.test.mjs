@@ -88,3 +88,13 @@ test("every checked scenario links to its current local test line", () => {
     if (expected) assert.ok(expected.has(target), "Stale checklist link for " + label + ": " + target);
   }
 });
+
+test("OAuth endpoint reference lists distinct paths for repeated HTTP methods", () => {
+  const guide = readFileSync(join(root, "docs/parity/plugins/oauth-provider.md"), "utf8");
+  const reference = guide.split("## OAuth Provider reference")[1]?.split("\n## ")[0];
+  assert.ok(reference, "missing endpoint reference section");
+  assert.ok(reference.includes("`POST /admin/oauth2/resources` (server API only)"));
+  for (const route of ["GET /oauth2/get-consent", "GET /oauth2/get-consents", "POST /oauth2/delete-consent", "GET / POST /oauth2/authorize"]) {
+    assert.ok(reference.includes("`" + route + "`"), route);
+  }
+});

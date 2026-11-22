@@ -302,7 +302,7 @@ func main() {
 			}
 			plugins = append(plugins, p)
 		case "oauth-provider":
-			// Its resource registry is a host-side API using the generated SQL profile.
+			plugins = append(plugins, oauthprovider.ConsentManagement(oauthprovider.ConsentOptions{}))
 		case "jwt":
 			p, err := jwtplugin.New(jwtplugin.Options{DisableHeader: os.Getenv("CONFORMANCE_MUTE_JWT_HEADER") == "1", Issuer: os.Getenv("CONFORMANCE_DISCOVERY_ISSUER")})
 			if err != nil {

@@ -11312,5 +11312,202 @@
       "test": "conformance/resource-seeds.mjs",
       "marker": "assert.equal(first.disabled,"
     }
+  ],
+  "plugin/oauth-provider/GET /oauth2/get-consent": [
+    {
+      "label": "Read a single grant through an authenticated session and retain the resource and claim lists",
+      "test": "conformance/oauth-consent.mjs",
+      "marker": "assert.deepEqual(await firstRead.json(), initial);",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/oauth-provider/getOAuthConsent": [
+    {
+      "label": "Read a single grant through an authenticated session and retain the resource and claim lists",
+      "test": "conformance/oauth-consent.mjs",
+      "marker": "assert.deepEqual(await firstRead.json(), initial);",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/sign-in-flow.mdx#L240/`getOAuthConsent`": [
+    {
+      "label": "Read a single grant through an authenticated session and retain the resource and claim lists",
+      "test": "conformance/oauth-consent.mjs",
+      "marker": "assert.deepEqual(await firstRead.json(), initial);",
+      "complete": true
+    }
+  ],
+  "plugin/oauth-provider/GET /oauth2/get-consents": [
+    {
+      "label": "List only the current user’s grants, with an empty array for an account without consents",
+      "test": "conformance/oauth-consent.mjs",
+      "marker": "assert.deepEqual(await (await request(list, owner.cookie)).json(), [initial]);",
+      "complete": true
+    },
+    {
+      "label": "Require a direct owner session for consent management and reject a delegated application key",
+      "test": "adapters/sqlstore/oauth_consent_test.go",
+      "marker": "delegated key could manage consent"
+    }
+  ],
+  "plugin-symbol/oauth-provider/getOAuthConsents": [
+    {
+      "label": "List only the current user’s grants, with an empty array for an account without consents",
+      "test": "conformance/oauth-consent.mjs",
+      "marker": "assert.deepEqual(await (await request(list, owner.cookie)).json(), [initial]);",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/sign-in-flow.mdx#L241/`getOAuthConsents`": [
+    {
+      "label": "List only the current user’s grants, with an empty array for an account without consents",
+      "test": "conformance/oauth-consent.mjs",
+      "marker": "assert.deepEqual(await (await request(list, owner.cookie)).json(), [initial]);",
+      "complete": true
+    }
+  ],
+  "plugin/oauth-provider/POST /oauth2/update-consent": [
+    {
+      "label": "Change the scopes of locally registered clients and preserve grant identity, resources and requested claims",
+      "test": "conformance/oauth-consent.mjs",
+      "marker": "assert.deepEqual(result, { ...initial, scopes: valid.update.scopes"
+    },
+    {
+      "label": "Keep grants deleted when an owner edits from a second database connection at the same time",
+      "test": "adapters/sqlstore/oauth_consent_test.go",
+      "marker": "deleted grant restored"
+    }
+  ],
+  "plugin-symbol/oauth-provider/updateOAuthConsent": [
+    {
+      "label": "Change the scopes of locally registered clients and preserve grant identity, resources and requested claims",
+      "test": "conformance/oauth-consent.mjs",
+      "marker": "assert.deepEqual(result, { ...initial, scopes: valid.update.scopes"
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/sign-in-flow.mdx#L242/`updateOAuthConsent`": [
+    {
+      "label": "Change the scopes of locally registered clients and preserve grant identity, resources and requested claims",
+      "test": "conformance/oauth-consent.mjs",
+      "marker": "assert.deepEqual(result, { ...initial, scopes: valid.update.scopes"
+    }
+  ],
+  "plugin/oauth-provider/POST /oauth2/delete-consent": [
+    {
+      "label": "Delete an owned grant, leave the other account’s grants intact and return 404 on a second removal",
+      "test": "conformance/oauth-consent.mjs",
+      "marker": "await problem(remove, { id }, 404, \"not_found\", \"no consent\");",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/oauth-provider/deleteOAuthConsent": [
+    {
+      "label": "Delete an owned grant, leave the other account’s grants intact and return 404 on a second removal",
+      "test": "conformance/oauth-consent.mjs",
+      "marker": "await problem(remove, { id }, 404, \"not_found\", \"no consent\");",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/sign-in-flow.mdx#L243/`deleteOAuthConsent`": [
+    {
+      "label": "Delete an owned grant, leave the other account’s grants intact and return 404 on a second removal",
+      "test": "conformance/oauth-consent.mjs",
+      "marker": "await problem(remove, { id }, 404, \"not_found\", \"no consent\");",
+      "complete": true
+    }
+  ],
+  "plugin/oauth-provider": [
+    {
+      "label": "Enforce consent owner and client scope rules when a signed-in account manages its authorized applications",
+      "test": "conformance/oauth-consent.mjs",
+      "marker": "export async function compareOAuthConsents("
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/reference.mdx#L339/`GET /oauth2/get-consent`": [
+    {
+      "label": "Read a single grant through an authenticated session and retain the resource and claim lists",
+      "test": "conformance/oauth-consent.mjs",
+      "marker": "assert.deepEqual(await firstRead.json(), initial);",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/reference.mdx#L340/`GET /oauth2/get-consents`": [
+    {
+      "label": "List only the current user’s grants, with an empty array for an account without consents",
+      "test": "conformance/oauth-consent.mjs",
+      "marker": "assert.deepEqual(await (await request(list, owner.cookie)).json(), [initial]);",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/reference.mdx#L341/`POST /oauth2/update-consent`": [
+    {
+      "label": "Change the scopes of locally registered clients and preserve grant identity, resources and requested claims",
+      "test": "conformance/oauth-consent.mjs",
+      "marker": "assert.deepEqual(result, { ...initial, scopes: valid.update.scopes"
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/reference.mdx#L342/`POST /oauth2/delete-consent`": [
+    {
+      "label": "Delete an owned grant, leave the other account’s grants intact and return 404 on a second removal",
+      "test": "conformance/oauth-consent.mjs",
+      "marker": "await problem(remove, { id }, 404, \"not_found\", \"no consent\");",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/reference.mdx#L343/`POST /admin/oauth2/resources`": [
+    {
+      "label": "Create an audience and read all persisted policy fields from the other runtime",
+      "test": "conformance/resource-registry.mjs",
+      "marker": "const result = await call(\"create\", id, rich);",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/reference.mdx#L344/`GET /admin/oauth2/resources`": [
+    {
+      "label": "List stored resources with matching values through both server APIs",
+      "test": "conformance/resource-registry.mjs",
+      "marker": "const refList = await api.adminListOAuthResources",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/reference.mdx#L345/`GET /admin/oauth2/resources/:identifier`": [
+    {
+      "label": "Read the exact case-sensitive audience and its typed policy across runtimes",
+      "test": "conformance/resource-registry.mjs",
+      "marker": "read = await api.adminGetOAuthResource",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/reference.mdx#L346/`PATCH /admin/oauth2/resources/:identifier`": [
+    {
+      "label": "Preserve omitted settings, clear nullable fields and return the committed policy",
+      "test": "conformance/resource-registry.mjs",
+      "marker": "const edit = await call(\"update\", id, patch);",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/reference.mdx#L347/`DELETE /admin/oauth2/resources/:identifier`": [
+    {
+      "label": "Delete the audience and observe the missing resource and cascaded grants",
+      "test": "conformance/resource-registry.mjs",
+      "marker": "assert.deepEqual((await call(\"delete\", id)).body",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/reference.mdx#L348/`POST /admin/oauth2/resources/:identifier/clients/:client_id`": [
+    {
+      "label": "Link an existing client once and recognize an existing grant across runtimes",
+      "test": "conformance/resource-registry.mjs",
+      "marker": "assert.deepEqual(await api.adminLinkClientResource({headers: refHeaders, params: linkedParams(id)}), {linked: true, alreadyLinked: true});",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/reference.mdx#L349/`DELETE /admin/oauth2/resources/:identifier/clients/:client_id`": [
+    {
+      "label": "Remove an existing client grant and permit a subsequent fresh link",
+      "test": "conformance/resource-registry.mjs",
+      "marker": "assert.deepEqual((await call(\"unlink\", id, {}, client.client_id)).body",
+      "complete": true
+    }
   ]
 }

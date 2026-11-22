@@ -44,3 +44,21 @@ func TrimSpace(s string) string {
 	// ECMAScript whitespace includes the byte order mark and excludes NEXT LINE.
 	return strings.TrimFunc(s, func(r rune) bool { return r == '\uFEFF' || r != '\u0085' && unicode.IsSpace(r) })
 }
+
+// TypeName describes a value from a JSON request for validation errors.
+func TypeName(value any) string {
+	switch value.(type) {
+	case nil:
+		return "null"
+	case bool:
+		return "boolean"
+	case string:
+		return "string"
+	case []any:
+		return "array"
+	case json.Number, float64:
+		return "number"
+	default:
+		return "object"
+	}
+}

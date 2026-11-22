@@ -229,6 +229,18 @@ type APIError struct {
 
 func (e *APIError) Error() string { return e.Message }
 
+// OAuthError represents the public error fields of an OAuth protocol response.
+type OAuthError struct {
+	Status      int    `json:"-"`
+	Code        string `json:"error"`
+	Description string `json:"error_description"`
+}
+
+func (e *OAuthError) Error() string { return e.Description }
+
+// EmptyResponse sends a successful endpoint response with its declared status and no body.
+type EmptyResponse struct{}
+
 // StatusOnlyError writes an HTTP status without a response body. Native
 // callers can also retrieve its status and standard text with errors.As and *APIError.
 type StatusOnlyError int

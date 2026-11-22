@@ -247,11 +247,12 @@
       - [ ] A subattribute of a value in a PATCH that adds or replaces whole values, such as `emails` or `addresses`
     - [ ] Microsoft Entra Group compatibility
   - [ ] Users
-    - [ ] `POST`
-    - [ ] `GET`
-    - [ ] `PUT`
-    - [ ] `PATCH`
-    - [ ] `DELETE`
+    - [ ] `POST /scim/v2/Users`
+    - [ ] `GET /scim/v2/Users`
+    - [ ] `GET /scim/v2/Users/:userId`
+    - [ ] `PUT /scim/v2/Users/:userId`
+    - [ ] `PATCH /scim/v2/Users/:userId`
+    - [ ] `DELETE /scim/v2/Users/:userId`
     - [ ] Supported User attributes
       - [ ] `userName`
       - [ ] `externalId`
@@ -264,13 +265,18 @@
       - [ ] `phoneNumbers`, `addresses`, `roles`, `entitlements`
       - [ ] `urn:ietf:params:scim:schemas:extension:enterprise:2.0:User`
   - [ ] Groups
-    - [ ] `POST`
-    - [ ] `GET`
-    - [ ] `PUT`
-    - [ ] `PATCH`
-    - [ ] `DELETE`
+    - [ ] `POST /scim/v2/Groups`
+    - [ ] `GET /scim/v2/Groups`
+    - [ ] `GET /scim/v2/Groups/:groupId`
+    - [ ] `PUT /scim/v2/Groups/:groupId`
+    - [ ] `PATCH /scim/v2/Groups/:groupId`
+    - [ ] `DELETE /scim/v2/Groups/:groupId`
   - [ ] Discovery
-    - [ ] `GET`
+    - [ ] `GET /scim/v2/ServiceProviderConfig`
+    - [ ] `GET /scim/v2/Schemas`
+    - [ ] `GET /scim/v2/Schemas/:schemaId`
+    - [ ] `GET /scim/v2/ResourceTypes`
+    - [ ] `GET /scim/v2/ResourceTypes/:resourceTypeId`
   - [ ] Filters and pagination
     - [ ] User
     - [ ] Group

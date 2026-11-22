@@ -291,9 +291,23 @@ function extractPage(file, lines) {
       continue;
     }
     if (text.startsWith("|")) {
-      const first = text.split("|")[1]?.trim();
-      if (!table) { table = first; continue; }
-      if (first && !/^[-:]+$/.test(first)) add(clean(first), depth);
+      const cells = text.split("|").slice(1).map(cell => cell.trim());
+      const [first, second] = cells;
+      if (!table) {
+        table = {
+          routes: /^method$/i.test(first) && /^(path|endpoint|route)$/i.test(second),
+          serverOnly: cells.findIndex(cell => /^server[- ]only$/i.test(cell)),
+        };
+        continue;
+      }
+      if (first && !/^[-:]+$/.test(first)) {
+        // A method repeats for many endpoints in a routing table.
+        const path = table.routes && second?.match(/^`?(\/[^\s`]+)`?$/)?.[1];
+        const methods = path && first.match(/\b(?:GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)\b/g);
+        const label = methods?.length ? inline(methods.join(" / ") + " " + path) : clean(first);
+        const serverOnly = methods?.length && /^yes$/i.test(cells[table.serverOnly]);
+        add(label + (serverOnly ? " (server API only)" : ""), depth, label);
+      }
       continue;
     }
     table = undefined;
@@ -399,6 +413,7 @@ const index = [
   "| Google One Tap popup, button and browser challenges | [Google One Tap](../one-tap.md) |",
   "| Publish discovery metadata and respond to access-token failures | [Resource discovery and challenges](../oauth-resource-discovery.md) |",
   "| Manage OAuth resource policies and client grants from server code | [Resource management](../oauth-resource-management.md) |",
+  "| Manage the signed-in user’s OAuth consent grants | [Authorized applications](../oauth-consents.md) |",
   "| OAuth authorization-server database tables | [Schema and migration](../schema.md#oauth-authorization-server-tables) |",
   "| First-party device grants and authorization | [Sign in a device](../device-authorization.md) |",
   "| Sign in with an Ethereum wallet | [Wallet sign-in](../siwe.md) |",
