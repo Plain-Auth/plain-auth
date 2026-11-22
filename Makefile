@@ -1,4 +1,4 @@
-.PHONY: test test-routers test-redis test-conformance vet verify verify-commit
+.PHONY: test test-routers test-redis test-polar test-conformance vet verify verify-commit
 
 test:
 	go test -race -count=1 ./...
@@ -9,6 +9,9 @@ test-routers:
 test-redis:
 	cd adapters/redis && go test -race -count=1 ./...
 
+test-polar:
+	cd integrations/polar && go test -race -count=1 ./...
+
 test-conformance:
 	npm --prefix conformance ci --ignore-scripts --no-audit --no-fund
 	npm --prefix conformance test
@@ -17,8 +20,9 @@ vet:
 	go vet ./...
 	cd integrations/routers && go vet ./...
 	cd adapters/redis && go vet ./...
+	cd integrations/polar && go vet ./...
 
-verify: test test-routers test-redis vet test-conformance
+verify: test test-routers test-redis test-polar vet test-conformance
 
 # Run from the files a clean clone will receive, including the nested Go modules.
 verify-commit:

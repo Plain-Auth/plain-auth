@@ -23,6 +23,7 @@ StoneWrit Auth embeds authentication in your Go API. Mount the auth handler on y
 - [x] Create a guest account and transfer its application records on sign-up. [Guest sessions](docs/anonymous.md)
 - [x] Verify an authenticator, delivered code or single-use backup code and remember a trusted browser. [Two-factor authentication](docs/2fa.md)
 - [x] Create organizations and teams, enforce seat limits and accept scoped invitations. [Organization tests](plugins/organization/organization_test.go)
+- [x] Open a Polar checkout for a verified customer and reconcile signed checkout updates. [Polar setup and recovery](docs/polar.md)
 - [x] Verify Stripe webhook signatures and open an authenticated customer’s billing portal. [Webhook tests](plugins/stripe/stripe_test.go) · [Billing portal tests](plugins/stripe/portal_test.go)
 - [x] Start recurring Checkout, confirm a personal plan change, schedule a price for the next billing period, cancel or restore the subscription. [Subscription billing](docs/subscriptions.md)
 - [x] Choose licensed seat quantities for personal and organization checkout, review quantity changes in Stripe, and list confirmed subscriptions. [Organization billing](docs/subscriptions.md)
@@ -128,6 +129,7 @@ Go records the resolved commit in the consuming project’s `go.mod`. The module
 | Manage users, ban accounts and grant administrative access | [Administrator accounts](docs/admin.md) |
 | Create organizations and teams, grant memberships, and accept invitations | [Organizations](docs/organizations.md) |
 | Start recurring Checkout, synchronize subscription changes, cancel, and restore | [Subscription billing](docs/subscriptions.md) |
+| Accept Polar checkouts and process signed checkout events | [Polar hosted checkout](docs/polar.md) |
 | Add a custom endpoint, verify Stripe webhooks, or open the billing portal | [Plugins and Stripe](docs/plugins.md) |
 | Configure browser sign-in, native ID tokens and linked provider credentials | [Social sign-in](docs/social.md) |
 | Call the API from a Go service | [Go client](docs/client.md) |

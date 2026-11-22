@@ -7807,5 +7807,82 @@
       "test": "adapters/sqlstore/sso_saml_test.go",
       "marker": "t.Fatal(\"assertion replay results\""
     }
+  ],
+  "docs/content/docs/plugins/polar.mdx#L17/Checkout Integration": [
+    {
+      "label": "Open an allowlisted personal checkout by slug or product ID through the Polar SDK",
+      "test": "integrations/polar/checkout_test.go",
+      "marker": "checkout ownership crossed users"
+    }
+  ],
+  "docs/content/docs/plugins/polar.mdx#L21/Handle Polar Webhooks securely with signature verification": [
+    {
+      "label": "Verify raw-body and time-bound delivery signatures for current and legacy merchant secrets",
+      "test": "integrations/polar/checkout_test.go",
+      "marker": "\"wrong-mode\", time.Now(), true"
+    }
+  ],
+  "docs/content/docs/plugins/polar.mdx#L39": [
+    {
+      "label": "Reject guests and delegated billing sessions even when the serving node omits the guest plugin",
+      "test": "integrations/polar/checkout_test.go",
+      "marker": "guest or impersonated session reached checkout"
+    },
+    {
+      "label": "Reject a verified guest on a checkout-only node when a PostgreSQL search path resolves the auth table from another schema",
+      "test": "integrations/polar/checkout_test.go",
+      "marker": "func TestGuestOwnerAcrossPostgresSearchPath("
+    }
+  ],
+  "docs/content/docs/plugins/polar.mdx#L150/`client`": [
+    {
+      "label": "Send checkout requests with the configured SDK, scoped bearer and pinned API version",
+      "test": "integrations/polar/checkout_test.go",
+      "marker": "incorrect SDK request",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/polar.mdx#L163": [
+    {
+      "label": "Recover a lost checkout response from a signed delivery and retain the owner binding after restart",
+      "test": "integrations/polar/checkout_test.go",
+      "marker": "signed event failed to recover lost response"
+    },
+    {
+      "label": "Reconcile an existing checkout by ID without creating another checkout or fabricating an event",
+      "test": "integrations/polar/checkout_test.go",
+      "marker": "operator recovery synthesized a provider delivery"
+    },
+    {
+      "label": "Allow one sender across competing sessions and withhold the hosted checkout after session revocation",
+      "test": "integrations/polar/checkout_test.go",
+      "marker": "revoked owner recovered a hosted checkout"
+    }
+  ],
+  "docs/content/docs/plugins/polar.mdx#L406": [
+    {
+      "label": "Apply an authenticated merchant and customer purchase, verify freshness, and reject redirect or product changes",
+      "test": "integrations/polar/checkout_test.go",
+      "marker": "\"mismatch-\""
+    },
+    {
+      "label": "Close an expired checkout and preserve completed state when the original creation response arrives late",
+      "test": "integrations/polar/checkout_test.go",
+      "marker": "an expired checkout still disclosed its hosted URL"
+    }
+  ],
+  "docs/content/docs/plugins/polar.mdx#L444/`onCheckoutCreated`": [
+    {
+      "label": "Run a callback in the same transaction as its checkout and receipt, with rollback and redelivery",
+      "test": "integrations/polar/checkout_test.go",
+      "marker": "transactional callback count"
+    }
+  ],
+  "docs/content/docs/plugins/polar.mdx#L445/`onCheckoutUpdated`": [
+    {
+      "label": "Handle concurrent repeat deliveries once and prevent stale notifications from reopening checkout",
+      "test": "integrations/polar/checkout_test.go",
+      "marker": "duplicate/out-of-order delivery executed"
+    }
   ]
 }

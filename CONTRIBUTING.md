@@ -16,7 +16,7 @@ Use the [feature checklist](docs/parity/README.md) to find an open capability. A
 - Prefer an existing maintained SDK for a provider's protocol. Keep it inside the integration package and exercise it with local fixtures.
 - Link the test to the feature it proves in [the evidence registry](conformance/evidence.json). Regenerate the [checklist](docs/parity/README.md) with the [inventory instructions](conformance/README.md). If a database test was skipped or a provider option remains pending, leave that behavior open.
 
-Run `make verify` for the Go packages, routers, Redis adapter, vet, and cross-runtime checks. Set the four database test DSNs for PostgreSQL and MySQL. Set `CHROME_BIN` for the browser tests. For the Redis tests, install `valkey-server` or `redis-server`, set `AUTH_TEST_REDIS_SERVER` to the executable, or point `AUTH_TEST_REDIS_URL` at a disposable test instance. [Database setup](docs/databases.md#run-database-integration-tests) · [Redis setup](docs/redis.md)
+Run `make verify` for the Go packages, routers, Redis adapter, Polar integration, vet, and cross-runtime checks. Set the four database test DSNs for PostgreSQL and MySQL. Set `CHROME_BIN` for the browser tests. For the Redis tests, install `valkey-server` or `redis-server`, set `AUTH_TEST_REDIS_SERVER` to the executable, or point `AUTH_TEST_REDIS_URL` at a disposable test instance. [Database setup](docs/databases.md#run-database-integration-tests) · [Redis setup](docs/redis.md)
 
 Run individual checks from the repository root. The router and Redis integrations use separate modules.
 
@@ -26,6 +26,7 @@ go vet ./...
 (cd integrations/routers && go test -race -count=1 ./...)
 (cd integrations/routers && go vet ./...)
 (cd adapters/redis && go test -race -count=1 ./...)
+(cd integrations/polar && go test -race -count=1 ./...)
 (cd adapters/redis && go vet ./...)
 npm --prefix conformance ci --ignore-scripts --no-audit --no-fund
 npm --prefix conformance test

@@ -7,22 +7,30 @@
 - [ ] Polar
   - [ ] Features
     - [ ] Checkout Integration
+      - [x] Open an allowlisted personal checkout by slug or product ID through the Polar SDK ([test](../../../integrations/polar/checkout_test.go#L357))
     - [ ] Customer Portal
     - [ ] Automatic Customer creation on signup
     - [ ] Event Ingestion & Customer Meters for flexible Usage Based Billing
     - [ ] Handle Polar Webhooks securely with signature verification
+      - [x] Verify raw-body and time-bound delivery signatures for current and legacy merchant secrets ([test](../../../integrations/polar/checkout_test.go#L489))
     - [ ] Reference System to associate purchases with organizations
   - [ ] Preparation
     - [ ] Configuring Auth Server
+      - [x] Reject guests and delegated billing sessions even when the serving node omits the guest plugin ([test](../../../integrations/polar/checkout_test.go#L340))
+      - [x] Reject a verified guest on a checkout-only node when a PostgreSQL search path resolves the auth table from another schema ([test](../../../integrations/polar/checkout_test.go#L494))
     - [ ] Configuring Auth Client
   - [ ] Configuration Options
     - [ ] Required Options
-      - [ ] `client`
+      - [x] `client` ([test](../../../integrations/polar/checkout_test.go#L141))
+        - [x] Send checkout requests with the configured SDK, scoped bearer and pinned API version ([test](../../../integrations/polar/checkout_test.go#L141))
     - [ ] Optional Options
       - [ ] `createCustomerOnSignUp`
       - [ ] `getCustomerCreateParams`
     - [ ] Customers
   - [ ] Checkout Plugin
+    - [x] Recover a lost checkout response from a signed delivery and retain the owner binding after restart ([test](../../../integrations/polar/checkout_test.go#L391))
+    - [x] Reconcile an existing checkout by ID without creating another checkout or fabricating an event ([test](../../../integrations/polar/checkout_test.go#L433))
+    - [x] Allow one sender across competing sessions and withhold the hosted checkout after session revocation ([test](../../../integrations/polar/checkout_test.go#L477))
     - [ ] Organization Support
   - [ ] Portal Plugin
     - [ ] Customer Portal Management
@@ -36,9 +44,13 @@
     - [ ] Event Ingestion
     - [ ] Customer Meters
   - [ ] Webhooks Plugin
+    - [x] Apply an authenticated merchant and customer purchase, verify freshness, and reject redirect or product changes ([test](../../../integrations/polar/checkout_test.go#L378))
+    - [x] Close an expired checkout and preserve completed state when the original creation response arrives late ([test](../../../integrations/polar/checkout_test.go#L442))
     - [ ] `onPayload`
     - [ ] `onCheckoutCreated`
+      - [x] Run a callback in the same transaction as its checkout and receipt, with rollback and redelivery ([test](../../../integrations/polar/checkout_test.go#L397))
     - [ ] `onCheckoutUpdated`
+      - [x] Handle concurrent repeat deliveries once and prevent stale notifications from reopening checkout ([test](../../../integrations/polar/checkout_test.go#L417))
     - [ ] `onOrderCreated`
     - [ ] `onOrderPaid`
     - [ ] `onOrderRefunded`
