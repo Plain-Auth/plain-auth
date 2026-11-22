@@ -67,7 +67,9 @@ func NewOneTimeToken(opts OneTimeTokenOptions) (Plugin, error) {
 					return nil, err
 				}
 				if !opts.DisableSetSessionCookie {
-					c.Auth.writeSessionCookieHeaders(c.ResponseHeader, c.Request, s.Session.Token, true)
+					if err := c.Auth.writeSessionCookieHeaders(c.ResponseHeader, c.Request, s.Session.Token, true); err != nil {
+						return nil, err
+					}
 				}
 				return s, nil
 			}},

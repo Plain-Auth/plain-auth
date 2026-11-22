@@ -101,7 +101,9 @@ func (a *Auth) addSessionCookieHeaders(headers http.Header, r *http.Request, tok
 	if err := a.finishAnonymous(r, token); err != nil {
 		return err
 	}
-	a.writeSessionCookieHeaders(headers, r, token, persistent)
+	if err := a.writeSessionCookieHeaders(headers, r, token, persistent); err != nil {
+		return err
+	}
 	a.addOneTimeTokenHeader(headers, r, token)
 	if a.deviceSessions != nil {
 		a.rememberDeviceSession(headers, r, token, persistent)
@@ -109,12 +111,23 @@ func (a *Auth) addSessionCookieHeaders(headers http.Header, r *http.Request, tok
 	return nil
 }
 
-func (a *Auth) writeSessionCookieHeaders(headers http.Header, r *http.Request, token string, persistent bool) {
-	cookie := a.sessionCookie(token, persistent)
-	a.emitSessionCookieHeaders(headers, r, cookie)
+func (a *Auth) writeSessionCookieHeaders(headers http.Header, r *http.Request, token string, persistent bool) error {
+	return a.publishSessionCookie(headers, r, a.sessionCookie(token, persistent))
+}
+
+func (a *Auth) publishSessionCookie(headers http.Header, r *http.Request, cookie *http.Cookie) error {
+	var snapshot http.Header
 	if a.opts.SessionCookieCache != nil {
-		a.cacheIssuedSession(headers, r, cookie)
+		snapshot = make(http.Header)
+		if err := a.cacheIssuedSession(snapshot, r, cookie); err != nil {
+			return sessionVersionIssueError(err)
+		}
 	}
+	a.emitSessionCookieHeaders(headers, r, cookie)
+	for _, value := range snapshot.Values("Set-Cookie") {
+		headers.Add("Set-Cookie", value)
+	}
+	return nil
 }
 
 func (a *Auth) emitSessionCookieHeaders(headers http.Header, r *http.Request, c *http.Cookie) {

@@ -106,5 +106,13 @@ func mergeSessionHeaders(to, from http.Header) {
 // hooks after a plugin changes that session's active context. It preserves the
 // browser's persistence choice and leaves the stored session lifetime intact.
 func (c EndpointContext) ReissueSessionCookie(session Session) {
-	c.Auth.writeSessionCookieHeaders(c.ResponseHeader, c.Request, session.Token, !c.Auth.dontRemember(c.Request))
+	if err := c.TryReissueSessionCookie(session); err != nil {
+		c.Auth.Logger().ErrorContext(c.Request.Context(), "Could not reissue the session cookie")
+	}
+}
+
+// TryReissueSessionCookie reissues the cookie and reports host configuration
+// errors to plugins that need to fail the response when publication fails.
+func (c EndpointContext) TryReissueSessionCookie(session Session) error {
+	return c.Auth.writeSessionCookieHeaders(c.ResponseHeader, c.Request, session.Token, !c.Auth.dontRemember(c.Request))
 }

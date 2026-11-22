@@ -203,17 +203,17 @@ func provenDeviceToken(c EndpointContext) (string, deviceCookies, error) {
 	return token, cookies, nil
 }
 
-func (a *Auth) activateDeviceCookie(c EndpointContext, row Session, persistent bool) {
+func (a *Auth) activateDeviceCookie(c EndpointContext, row Session, persistent bool) error {
 	cookie := a.sessionCookie(row.Token, persistent)
 	if persistent {
 		remaining := row.ExpiresAt.Sub(a.now()).Round(time.Second)
 		cookie.MaxAge = max(1, min(cookie.MaxAge, int(remaining/time.Second)))
 	}
-	a.emitSessionCookieHeaders(c.ResponseHeader, c.Request, cookie)
-	if a.opts.SessionCookieCache != nil {
-		a.cacheIssuedSession(c.ResponseHeader, c.Request, cookie)
+	if err := a.publishSessionCookie(c.ResponseHeader, c.Request, cookie); err != nil {
+		return err
 	}
 	a.writeRememberPreference(c.ResponseHeader, c.Request, persistent)
+	return nil
 }
 
 func setActiveDeviceSession(c EndpointContext) (any, error) {
@@ -235,7 +235,9 @@ func setActiveDeviceSession(c EndpointContext) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	a.activateDeviceCookie(c, item.Session, held.persistent[token])
+	if err := a.activateDeviceCookie(c, item.Session, held.persistent[token]); err != nil {
+		return nil, err
+	}
 	return result, nil
 }
 
@@ -264,7 +266,9 @@ func revokeDeviceSession(c EndpointContext) (any, error) {
 		}
 		for _, next := range held.tokens {
 			if item, ok := live[next]; ok {
-				a.activateDeviceCookie(c, item.Session, held.persistent[next])
+				if err := a.activateDeviceCookie(c, item.Session, held.persistent[next]); err != nil {
+					return nil, err
+				}
 				return map[string]bool{"status": true}, nil
 			}
 		}

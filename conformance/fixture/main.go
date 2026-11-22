@@ -357,6 +357,29 @@ func main() {
 	var sessionCache *authn.SessionCookieCacheOptions
 	if strategy := os.Getenv("CONFORMANCE_CACHE_STRATEGY"); strategy != "" || os.Getenv("CONFORMANCE_COMPACT_CACHE") == "1" {
 		sessionCache = &authn.SessionCookieCacheOptions{Version: "release-test", Strategy: authn.SessionCookieCacheStrategy(strategy)}
+		if file := os.Getenv("CONFORMANCE_SESSION_VERSION_FILE"); file != "" {
+			sessionCache.Version = ""
+			sessionCache.VersionFor = func(ctx context.Context, session authn.Session, user authn.User) (string, error) {
+				if err := ctx.Err(); err != nil {
+					return "", err
+				}
+				mode, err := os.ReadFile(file)
+				if err != nil {
+					return "", err
+				}
+				switch string(mode) {
+				case "error":
+					return "", fmt.Errorf("fixture version lookup failed")
+				case "reject-replacement":
+					if user.Name == "Live" {
+						return "", fmt.Errorf("fixture replacement failed")
+					}
+				case "empty":
+					return "", nil
+				}
+				return string(mode) + "|" + session.ID + "|" + user.ID + "|" + user.Name, nil
+			}
+		}
 		if strategy == "jwt" || strategy == "jwe" {
 			sessionCache.MaxAge = 90 * time.Second
 		}

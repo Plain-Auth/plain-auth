@@ -299,7 +299,7 @@ func (a *Auth) handleEmail(route string, w http.ResponseWriter, r *http.Request,
 				return nil, err
 			}
 		}
-		result, err = a.signUpEmail(r.Context(), in, meta, r)
+		result, r, err = a.browserSignUpEmail(r, in, meta)
 	} else {
 		if c, err := r.Cookie(a.TrustedDeviceCookieName()); err == nil {
 			meta.TrustedDeviceCookie = c.Value

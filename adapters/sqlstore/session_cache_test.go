@@ -1,6 +1,7 @@
 package sqlstore
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -13,16 +14,22 @@ import (
 )
 
 func TestCompactSessionSQLPrivilegeBoundaries(t *testing.T) {
-	checkCachePrivilegeBoundaries(t, auth.SessionCacheCompact)
+	checkCachePrivilegeBoundaries(t, auth.SessionCacheCompact, false)
 }
 
 func TestJOSESessionSQLPrivilegeBoundaries(t *testing.T) {
 	for _, strategy := range []auth.SessionCookieCacheStrategy{auth.SessionCacheJWT, auth.SessionCacheJWE} {
-		t.Run(string(strategy), func(t *testing.T) { checkCachePrivilegeBoundaries(t, strategy) })
+		t.Run(string(strategy), func(t *testing.T) { checkCachePrivilegeBoundaries(t, strategy, false) })
 	}
 }
 
-func checkCachePrivilegeBoundaries(t *testing.T, strategy auth.SessionCookieCacheStrategy) {
+func TestSessionVersionSQLPrivilegeBoundaries(t *testing.T) {
+	for _, strategy := range []auth.SessionCookieCacheStrategy{auth.SessionCacheCompact, auth.SessionCacheJWT, auth.SessionCacheJWE} {
+		t.Run(string(strategy), func(t *testing.T) { checkCachePrivilegeBoundaries(t, strategy, true) })
+	}
+}
+
+func checkCachePrivilegeBoundaries(t *testing.T, strategy auth.SessionCookieCacheStrategy, dynamicVersion bool) {
 	t.Helper()
 	for _, dialect := range []string{"sqlite", "postgres", "mysql"} {
 		t.Run(dialect, func(t *testing.T) {
@@ -45,6 +52,16 @@ func checkCachePrivilegeBoundaries(t *testing.T, strategy auth.SessionCookieCach
 			cold := open("jwt")
 			const origin = "https://cache.example.test"
 			opts := auth.Options{Store: cold, BaseURL: origin, Secret: strings.Repeat("s", 32), EmailAndPassword: true, SessionCookieCache: &auth.SessionCookieCacheOptions{Strategy: strategy}}
+			calls := 0
+			if dynamicVersion {
+				opts.SessionCookieCache.VersionFor = func(_ context.Context, session auth.Session, user auth.User) (string, error) {
+					calls++
+					if calls > 2 {
+						t.Fatal("protected live session verification invoked a cache version callback")
+					}
+					return session.ID + "/" + user.ID, nil
+				}
+			}
 			plain, err := auth.New(opts)
 			must(err)
 			jwt, err := jwtplugin.New(jwtplugin.Options{})
@@ -92,6 +109,9 @@ func checkCachePrivilegeBoundaries(t *testing.T, strategy auth.SessionCookieCach
 			old, _ := read(plain)
 			if old == nil || old.User.Name != "Before" {
 				t.Fatal("browser view did not use its bounded snapshot")
+			}
+			if dynamicVersion && calls != 2 {
+				t.Fatal("expected one version lookup on issuance and one bound snapshot lookup", calls)
 			}
 			var request http.Request
 			request.Header = make(http.Header)

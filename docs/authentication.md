@@ -162,7 +162,22 @@ Configure replicas with the same format, secrets, cookie scope and cache version
 
 During migration between implementations, a reader that checks only its active HS256 secret needs a fresh signed JWT snapshot after rotation. Shared-key JWE readers can identify snapshots from a retained key. [Cross-runtime rollover tests](../conformance/session-cache-compact.mjs)
 
-Custom stores can implement `stonewrit.SessionCacheStore` to permit cached views when current access rules allow them. Other stores use live reads. The expiry and version are fixed for each snapshot. Rolling cache renewal, callback-based versions, JWKS-backed public verification of browser snapshots, and global partitioned-cookie defaults remain open.
+For per-user invalidation, supply a concurrency-safe `VersionFor` callback and use the same revision source on every replica. Choose either a fixed `Version` or `VersionFor`. The callback receives the request context and the session and user that will be written or read. For example, an application can keep a per-account revision in its own store.
+
+```go
+opts.SessionCookieCache = &stonewrit.SessionCookieCacheOptions{
+    Strategy: stonewrit.SessionCacheJWE,
+    VersionFor: func(ctx context.Context, session stonewrit.Session, user stonewrit.User) (string, error) {
+        return accountRevisions.Lookup(ctx, user.ID)
+    },
+}
+```
+
+On a cache hit, the callback receives the authenticated snapshot. StoneWrit checks the signature, expiry, ordinary profile fields and session-token binding before passing snapshot data to the callback. An update to a profile in storage therefore becomes visible after the shared revision changes, the snapshot expires, or the caller requests a live read. When the versions differ, StoneWrit reads the session from storage and computes the replacement version using the live data. Return a stable, nonempty revision. An empty stored revision is read as `"1"`, so a callback that always returns an empty string causes a live lookup on every read. [Public client and replica tests](../conformance/session-cache-version.mjs)
+
+A callback error on a session view fails the request. If a version mismatch is already known, the response clears the stale snapshot even when preparing the replacement fails. The combination `disableCookieCache=true&disableRefresh=true` skips cache reads and writes. Native authorization, protected operations, and administrative or JWT-issuing reads use live identity. Give the callback a bounded lookup and keep it free of side effects. Concurrent registration attempts can prepare a version before storage chooses the successful registration. Private duplicate registration and password recovery keep their account observers and skip cache versioning until a session is actually issued. A failed version lookup during new email registration leaves the address available to retry. If the stored profile changes before publication, the browser receives its session credential and the next live view computes a version from the updated profile. [Callback tests](../session_cache_version_test.go) · [Live authorization tests](../adapters/sqlstore/session_cache_test.go)
+
+Custom stores can implement `stonewrit.SessionCacheStore` to permit cached views when current access rules allow them. Other stores use live reads. The expiry and version are fixed for each snapshot. Rolling cache renewal, JWKS-backed public verification of browser snapshots, and global partitioned-cookie defaults remain open.
 
 The Go methods `SignUpEmail`, `SignInEmail`, `GetSession`, `SignOut`, and the session management methods accept a request context. `GetSession(ctx, headers)` distinguishes an absent session from a storage failure. Use `errors.As(err, &apiErr)` with `var apiErr *stonewrit.APIError` to inspect a public error code and HTTP status. Other errors can carry infrastructure details and belong in application logs.
 

@@ -1462,3 +1462,10 @@ test("the released email client keeps duplicate profiles private and notifies on
   const { existingSignUp } = await import("./existing-signup.mjs");
   await existingSignUp(t, {reference, goFixture, instrument});
 });
+
+for (const format of ["compact", "jwt", "jwe"]) {
+  test("the official client exchanges callback-versioned " + format + " snapshots across replicas", async t => {
+    const { compareSessionCacheVersions } = await import("./session-cache-version.mjs");
+    await compareSessionCacheVersions(t, { reference, goFixture, instrument }, format);
+  });
+}

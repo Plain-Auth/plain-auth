@@ -211,7 +211,7 @@ func TestCompactSessionLifetimeAndBinding(t *testing.T) {
 	if got, _ := read(a, "", token, tampered); got != nil {
 		t.Fatal("tampered expiry accepted")
 	}
-	short := a.encodeSessionCache(data, false)[0]
+	short := testSessionCache(t, a, data, false)[0]
 	if short.MaxAge != 0 {
 		t.Fatal("nonpersistent cache became persistent")
 	}
@@ -266,7 +266,7 @@ func TestCompactSessionChunksAndRequestCredentials(t *testing.T) {
 	data := SessionResult{Session: f.row.Session, User: f.owner}
 	image := strings.Repeat("z", 11000)
 	data.User.Image = &image
-	chunks := a.encodeSessionCache(data, true)
+	chunks := testSessionCache(t, a, data, true)
 	if len(chunks) < 2 {
 		t.Fatal("large profile must be chunked")
 	}
@@ -280,7 +280,7 @@ func TestCompactSessionChunksAndRequestCredentials(t *testing.T) {
 	token := a.SessionCookie(f.row.Token, true)
 	base := a.prefixedCookieName("session_data")
 	complete := append([]*http.Cookie{token}, chunks...)
-	if got := a.cachedSessionView(request(complete...), f.row.Token); got == nil || *got.User.Image != image {
+	if got, err := a.cachedSessionView(request(complete...), f.row.Token); err != nil || got == nil || *got.User.Image != image {
 		t.Fatal("complete chunked cache lost")
 	}
 	for _, pieces := range [][]*http.Cookie{
@@ -289,7 +289,7 @@ func TestCompactSessionChunksAndRequestCredentials(t *testing.T) {
 		append(append([]*http.Cookie{}, chunks...), &http.Cookie{Name: base, Value: "other"}),
 		{&http.Cookie{Name: base + ".100", Value: "x"}},
 	} {
-		if a.cachedSessionView(request(append([]*http.Cookie{token}, pieces...)...), f.row.Token) != nil {
+		if got, err := a.cachedSessionView(request(append([]*http.Cookie{token}, pieces...)...), f.row.Token); err != nil || got != nil {
 			t.Fatal("ambiguous or incomplete chunked cache")
 		}
 	}
@@ -313,17 +313,17 @@ func TestCompactSessionChunksAndRequestCredentials(t *testing.T) {
 	}
 	oversize := strings.Repeat("x", maxSessionChunkSize*maxSessionChunks)
 	data.User.Image = &oversize
-	if a.encodeSessionCache(data, true) != nil {
+	if testSessionCache(t, a, data, true) != nil {
 		t.Fatal("oversized profile partially issued")
 	}
 	delegated := "admin"
 	shrunk.Session.ImpersonatedBy = &delegated
-	if a.encodeSessionCache(shrunk, true) != nil {
+	if testSessionCache(t, a, shrunk, true) != nil {
 		t.Fatal("delegated session entered browser cache")
 	}
 	shrunk.Session.ImpersonatedBy = nil
 	shrunk.Session.CredentialType = "application"
-	if a.encodeSessionCache(shrunk, true) != nil {
+	if testSessionCache(t, a, shrunk, true) != nil {
 		t.Fatal("application credential entered browser cache")
 	}
 	f.owner.Name = "Live"
@@ -381,4 +381,13 @@ func TestCompactSessionConfiguration(t *testing.T) {
 			t.Fatal("invalid cookie cache max age accepted")
 		}
 	}
+}
+
+func testSessionCache(t *testing.T, a *Auth, data SessionResult, persistent bool) []*http.Cookie {
+	t.Helper()
+	cookies, err := a.prepareSessionCache(t.Context(), data, persistent)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return cookies
 }

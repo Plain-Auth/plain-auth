@@ -32,8 +32,22 @@ func (a *Auth) sessionHTTP(headers http.Header, r *http.Request) (body any, resp
 	}
 	allowCache := a.canCacheSessionView(r)
 	readCache := allowCache && r.URL.Query().Get("disableCookieCache") == ""
+	var retireStaleOnError bool
 	if readCache {
-		if cached := a.cachedSessionView(r, token); cached != nil {
+		cached, err := a.cachedSessionView(r, token)
+		switch {
+		case err == errSessionCacheVersionChanged:
+			retireStaleOnError = true
+			// A failed replacement must still retire the stale snapshot. The
+			// normal success path already reconciles its cookies exactly once.
+			defer func() {
+				if responseErr != nil && retireStaleOnError {
+					a.expireStoredSessionData(headers, r, false)
+				}
+			}()
+		case err != nil:
+			return nil, sessionVersionReadError(err)
+		case cached != nil:
 			return cached, nil
 		}
 	}
@@ -45,6 +59,7 @@ func (a *Auth) sessionHTTP(headers http.Header, r *http.Request) (body any, resp
 	store, canRefresh := a.opts.Store.(SessionRefreshStore)
 	deferredRead := a.opts.DeferSessionRefresh && r.Method == http.MethodGet
 	if errors.Is(err, ErrNotFound) || !row.ExpiresAt.After(now) {
+		retireStaleOnError = false
 		a.expireSessionCookieHeaders(headers, r)
 		if err == nil && canRefresh && !deferredRead {
 			if err := store.DeleteExpiredSession(ctx, token, now); err != nil {
@@ -86,7 +101,9 @@ func (a *Auth) sessionHTTP(headers http.Header, r *http.Request) (body any, resp
 	due := canRefresh && !a.opts.DisableSessionRefresh && !now.Before(threshold)
 	if deferredRead || !due {
 		if allowCache {
-			a.writeCachedSessionView(headers, r, *result, true)
+			if err := a.writeCachedSessionView(headers, r, *result, true); err != nil {
+				return nil, sessionVersionReadError(err)
+			}
 		}
 		if deferredRead {
 			result.NeedsRefresh = &due
@@ -106,20 +123,25 @@ func (a *Auth) sessionHTTP(headers http.Header, r *http.Request) (body any, resp
 			return nil, err
 		}
 		if current == nil {
+			retireStaleOnError = false
 			a.expireSessionCookieHeaders(headers, r)
 			return nil, &APIError{401, "FAILED_TO_GET_SESSION", "Failed to get session"}
 		}
 		result = current
 		if allowCache {
-			a.writeCachedSessionView(headers, r, *current, true)
+			if err := a.writeCachedSessionView(headers, r, *current, true); err != nil {
+				return nil, sessionVersionReadError(err)
+			}
 		}
 		return current, nil
 	}
 	result.Session.ExpiresAt = next
 	result.Session.UpdatedAt = now
-	a.emitSessionCookieHeaders(headers, r, a.sessionCookie(token, true))
 	if allowCache {
-		a.writeCachedSessionView(headers, r, *result, true)
+		if err := a.writeCachedSessionView(headers, r, *result, true); err != nil {
+			return nil, sessionVersionReadError(err)
+		}
 	}
+	a.emitSessionCookieHeaders(headers, r, a.sessionCookie(token, true))
 	return result, nil
 }

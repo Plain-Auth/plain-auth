@@ -35,6 +35,10 @@ type SessionCookieCacheOptions struct {
 	MaxAge time.Duration
 	// Version defaults to "1". Change it across replicas to invalidate older snapshots.
 	Version string
+	// VersionFor derives the version from the session and user being issued or read.
+	// It may perform I/O with ctx and must be safe for concurrent requests.
+	// Choose either Version or VersionFor.
+	VersionFor func(ctx context.Context, session Session, user User) (string, error)
 }
 
 func prepareSessionCookieCache(o *Options) error {
@@ -55,7 +59,10 @@ func prepareSessionCookieCache(o *Options) error {
 	if cache.MaxAge < time.Second || cache.MaxAge%time.Second != 0 {
 		return errors.New("auth: session cookie cache max age must be a positive whole number of seconds")
 	}
-	if cache.Version == "" {
+	if cache.Version != "" && cache.VersionFor != nil {
+		return errors.New("auth: choose either a fixed session cache version or VersionFor")
+	}
+	if cache.Version == "" && cache.VersionFor == nil {
 		cache.Version = "1"
 	}
 	o.SessionCookieCache = &cache
@@ -161,15 +168,15 @@ func sessionCacheMAC(key string, input []byte) []byte {
 	return h.Sum(nil)
 }
 
-func (a *Auth) cachedSessionView(r *http.Request, token string) *SessionResult {
+func (a *Auth) cachedSessionView(r *http.Request, token string) (*SessionResult, error) {
 	// A bearer or plugin-derived credential alone cannot activate a browser cache.
 	cookies := r.CookiesNamed(a.cookieName())
 	if len(cookies) != 1 || a.VerifySignedSessionToken(cookies[0].Value) != token {
-		return nil
+		return nil, nil
 	}
 	encoded := readSessionCacheCookie(r, a.prefixedCookieName("session_data"))
 	if encoded == "" {
-		return nil
+		return nil, nil
 	}
 	now := a.now()
 	var raw []byte
@@ -179,7 +186,7 @@ func (a *Auth) cachedSessionView(r *http.Request, token string) *SessionResult {
 		raw = a.readJOSESnapshot(encoded, now)
 	}
 	if len(raw) == 0 {
-		return nil
+		return nil, nil
 	}
 	// Track presence separately for required zero-valued profile fields.
 	var payload struct {
@@ -193,7 +200,7 @@ func (a *Auth) cachedSessionView(r *http.Request, token string) *SessionResult {
 		Version   string `json:"version"`
 	}
 	if json.Unmarshal(raw, &payload) != nil || payload.User.Name == nil || payload.User.Verified == nil {
-		return nil
+		return nil, nil
 	}
 	if payload.Version == "" {
 		payload.Version = "1"
@@ -201,13 +208,21 @@ func (a *Auth) cachedSessionView(r *http.Request, token string) *SessionResult {
 	user := payload.User.User
 	user.Name, user.EmailVerified = *payload.User.Name, *payload.User.Verified
 	ss := payload.Session
-	if payload.Version != a.opts.SessionCookieCache.Version || payload.UpdatedAt <= 0 || ss.ID == "" || ss.Token != token ||
+	if payload.UpdatedAt <= 0 || ss.ID == "" || ss.Token != token ||
 		ss.UserID == "" || ss.UserID != user.ID || !ss.ExpiresAt.After(now) ||
 		ss.CreatedAt.IsZero() || ss.UpdatedAt.IsZero() || user.Email == "" || user.CreatedAt.IsZero() || user.UpdatedAt.IsZero() ||
 		!ordinaryCacheFields(ss, user) {
-		return nil
+		return nil, nil
 	}
-	return &SessionResult{Session: ss, User: user}
+	result := &SessionResult{Session: ss, User: user}
+	expected, err := a.opts.SessionCookieCache.versionFor(r.Context(), *result)
+	if err != nil {
+		return nil, err
+	}
+	if expected != payload.Version {
+		return nil, errSessionCacheVersionChanged
+	}
+	return result, nil
 }
 
 func (a *Auth) readCompactSnapshot(encoded string, now time.Time) []byte {
@@ -275,26 +290,34 @@ func readSessionCacheCookie(r *http.Request, name string) string {
 	return strings.Join(chunks[:last+1], "")
 }
 
-func (a *Auth) cacheIssuedSession(h http.Header, r *http.Request, c *http.Cookie) {
+func (a *Auth) cacheIssuedSession(h http.Header, r *http.Request, c *http.Cookie) error {
 	if !a.canCacheSessionView(r) {
 		a.expireStoredSessionData(h, r, false)
-		return
+		return nil
 	}
 	token := a.VerifySignedSessionToken(c.Value)
 	if token == "" {
-		return
+		return nil
 	}
 	ctx := r.Context()
 	row, user, err := a.opts.Store.Session(ctx, token)
 	if err != nil || row.Token != token || row.UserID != user.ID || !row.ExpiresAt.After(a.now()) {
 		a.expireStoredSessionData(h, r, false)
-		return
+		return nil
 	}
-	a.writeCachedSessionView(h, r, SessionResult{Session: row.Session, User: user}, c.MaxAge > 0)
+	return a.writeCachedSessionView(h, r, SessionResult{Session: row.Session, User: user}, c.MaxAge > 0)
 }
 
-func (a *Auth) writeCachedSessionView(h http.Header, r *http.Request, data SessionResult, persistent bool) {
-	cookies := a.encodeSessionCache(data, persistent)
+func (a *Auth) writeCachedSessionView(h http.Header, r *http.Request, data SessionResult, persistent bool) error {
+	cookies, err := a.prepareSessionCache(r.Context(), data, persistent)
+	if err != nil {
+		return err
+	}
+	a.setSessionCacheCookies(h, r, cookies)
+	return nil
+}
+
+func (a *Auth) setSessionCacheCookies(h http.Header, r *http.Request, cookies []*http.Cookie) {
 	replacements := make(map[string]bool, len(cookies))
 	for _, c := range cookies {
 		replacements[c.Name] = true
@@ -305,10 +328,26 @@ func (a *Auth) writeCachedSessionView(h http.Header, r *http.Request, data Sessi
 	}
 }
 
-func (a *Auth) encodeSessionCache(data SessionResult, persistent bool) []*http.Cookie {
+func (a *Auth) prepareSessionCache(ctx context.Context, data SessionResult, persistent bool) ([]*http.Cookie, error) {
 	if data.Session.ID == "" || data.Session.Token == "" || data.User.ID == "" || data.Session.UserID != data.User.ID || !ordinaryCacheFields(data.Session, data.User) {
-		return nil
+		return nil, nil
 	}
+	if prepared, ok := ctx.Value(signupCacheKey{}).(signupCacheVersion); ok && prepared.input.session.Token == data.Session.Token {
+		// A store can transform a profile or another writer can update it after
+		// registration. Defer caching to the next live read in that case.
+		if prepared.input != signupVersionInput(data) {
+			return nil, nil
+		}
+		return a.encodeSessionCache(data, persistent, prepared.version), nil
+	}
+	version, err := a.opts.SessionCookieCache.versionFor(ctx, data)
+	if err != nil {
+		return nil, err
+	}
+	return a.encodeSessionCache(data, persistent, version), nil
+}
+
+func (a *Auth) encodeSessionCache(data SessionResult, persistent bool, version string) []*http.Cookie {
 	cache := a.opts.SessionCookieCache
 	now := a.now()
 	ttl := cache.MaxAge
@@ -320,7 +359,7 @@ func (a *Auth) encodeSessionCache(data SessionResult, persistent bool) []*http.C
 		}
 		maxAge = 0
 	}
-	payload := sessionCachePayload{Session: data.Session, User: data.User, UpdatedAt: now.UnixMilli(), Version: cache.Version}
+	payload := sessionCachePayload{Session: data.Session, User: data.User, UpdatedAt: now.UnixMilli(), Version: version}
 	var value string
 	var err error
 	if cache.Strategy == SessionCacheCompact {

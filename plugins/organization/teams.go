@@ -188,7 +188,7 @@ func (o Options) teamRequest(c authn.EndpointContext, actor TeamActor, session a
 		}
 		selected, err := store.SetActiveTeam(ctx, actor, id)
 		if err == nil {
-			c.ReissueSessionCookie(session)
+			err = c.TryReissueSessionCookie(session)
 		}
 		return selected, err
 	}

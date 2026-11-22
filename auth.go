@@ -315,10 +315,10 @@ func (a *Auth) newSession(id string, meta RequestMeta) (StoredSession, string) {
 
 // SignUpEmail creates a credential account and its first session atomically.
 func (a *Auth) SignUpEmail(ctx context.Context, in SignUpInput, meta RequestMeta) (AuthResult, error) {
-	return a.signUpEmail(ctx, in, meta, nil)
+	return a.signUpEmail(ctx, in, meta, nil, nil)
 }
 
-func (a *Auth) signUpEmail(ctx context.Context, in SignUpInput, meta RequestMeta, request *http.Request) (AuthResult, error) {
+func (a *Auth) signUpEmail(ctx context.Context, in SignUpInput, meta RequestMeta, request *http.Request, beforeCreate func(SessionResult) error) (AuthResult, error) {
 	if a.opts.DisableSignUp {
 		return AuthResult{}, &APIError{400, "EMAIL_PASSWORD_SIGN_UP_DISABLED", "Email and password sign up is not enabled"}
 	}
@@ -363,6 +363,11 @@ func (a *Auth) signUpEmail(ctx context.Context, in SignUpInput, meta RequestMeta
 	if !a.opts.RequireEmailVerification && !a.opts.DisableAutoSignIn {
 		row, raw := a.newSession(user.ID, meta)
 		first, token = &row, raw
+		if beforeCreate != nil {
+			if err := beforeCreate(SessionResult{Session: row.Session, User: user}); err != nil {
+				return AuthResult{}, err
+			}
+		}
 	}
 	err = usernameWriteError(a.opts.Store.CreateUser(ctx, user, hash, first))
 	if errors.Is(err, ErrEmailTaken) {
@@ -380,7 +385,7 @@ func (a *Auth) signUpEmail(ctx context.Context, in SignUpInput, meta RequestMeta
 			}
 			return AuthResult{User: user}, nil
 		}
-		return AuthResult{}, &APIError{422, "USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL", "User already exists. Use another email."}
+		return AuthResult{}, duplicateSignupError()
 	}
 	if err != nil {
 		return AuthResult{}, err
@@ -403,6 +408,10 @@ func (a *Auth) signUpEmail(ctx context.Context, in SignUpInput, meta RequestMeta
 		return AuthResult{}, err
 	}
 	return AuthResult{User: user, Token: token}, nil
+}
+
+func duplicateSignupError() *APIError {
+	return &APIError{422, "USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL", "User already exists. Use another email."}
 }
 
 // SignInEmail verifies credentials and returns a new session or a pending second-factor challenge.

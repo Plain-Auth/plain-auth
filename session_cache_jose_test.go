@@ -36,7 +36,7 @@ func TestJOSESessionCookieValidityAndRotation(t *testing.T) {
 			data := SessionResult{Session: Session{ID: "s", Token: "value", UserID: "u", CreatedAt: now, UpdatedAt: now, ExpiresAt: now.Add(time.Hour)}, User: User{ID: "u", Name: "public", Email: "owner@example.test", CreatedAt: now, UpdatedAt: now}}
 			issue := func(node *Auth, data SessionResult, remember bool) *http.Cookie {
 				t.Helper()
-				cookies := node.encodeSessionCache(data, remember)
+				cookies := testSessionCache(t, node, data, remember)
 				if len(cookies) != 1 {
 					t.Fatal("expected one session snapshot")
 				}
@@ -48,7 +48,11 @@ func TestJOSESessionCookieValidityAndRotation(t *testing.T) {
 					r.AddCookie(node.SessionCookie(token, true))
 				}
 				r.AddCookie(&http.Cookie{Name: node.prefixedCookieName("session_data"), Value: value})
-				return node.cachedSessionView(r, token) != nil
+				got, err := node.cachedSessionView(r, token)
+				if err != nil && err != errSessionCacheVersionChanged {
+					t.Fatal(err)
+				}
+				return got != nil
 			}
 			c := issue(a, data, true)
 			if !c.HttpOnly || !c.Secure || c.Domain != "example.test" || c.MaxAge != 90 || !read(a, "value", c.Value) {

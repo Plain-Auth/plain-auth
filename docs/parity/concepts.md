@@ -473,7 +473,7 @@
       - [x] Expire the disabled cache and its canonical chunks on signed-in and anonymous reads ([test](../../conformance/session-cache-cleanup.mjs#L28))
       - [x] Clear each received cache chunk on the issuing host and shared domain using the configured cookie namespace ([test](../../session_cache_cookies_test.go#L11))
       - [x] Exchange HMAC-signed snapshots, browser-only lifetimes and chunked cookies in both directions on shared SQLite ([test](../../conformance/session-cache-compact.mjs#L73))
-      - [x] Retain live JWT issuance, protected session checks and administrative controls after a physical schema migration on another node ([test](../../adapters/sqlstore/session_cache_test.go#L115))
+      - [x] Retain live JWT issuance, protected session checks and administrative controls after a physical schema migration on another node ([test](../../adapters/sqlstore/session_cache_test.go#L135))
       - [ ] Notes
       - [ ] If immediate session revocation is critical:
       - [ ] Cookie Cache Strategies
@@ -499,6 +499,9 @@
     - [ ] Versioning Stateless Sessions
       - [x] Invalidate prior compact snapshots across a fixed cache-version change or signing key removal ([test](../../session_cache_compact_test.go#L120))
       - [x] Verify newly issued snapshots, retained keys and retired keys during a signed or encrypted cookie rollout ([test](../../conformance/session-cache-compact.mjs#L198))
+      - [x] Recalculate compact, signed and encrypted snapshot versions across replicas through the official client, including async lookup, failure and stale replacement ([test](../../conformance/session-cache-version.mjs#L7))
+      - [x] Reject a removed session after its revision changes and propagate cancellation with isolated concurrent requests ([test](../../session_cache_version_test.go#L13))
+      - [x] Exercise all three versioned cache strategies, revocation and typed errors using the native client across two auth hosts ([test](../../client/session_cache_version_test.go#L17))
     - [ ] Stateless with Secondary Storage
   - [ ] Customizing Session Response
     - [ ] Infer on the Client

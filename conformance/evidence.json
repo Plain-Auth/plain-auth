@@ -14,6 +14,16 @@
       "label": "Keep callback failures private and honor cancellation while password operations are queued",
       "test": "password_codec_test.go",
       "marker": "func TestPasswordCallbackFailuresAndCancellation("
+    },
+    {
+      "label": "Keep failed version lookup retryable and issue a snapshot only for the stored ordinary profile",
+      "test": "session_cache_version_test.go",
+      "marker": "func TestSessionVersionRechecksStoredSignup("
+    },
+    {
+      "label": "Keep private duplicate observers and password recovery independent of cache version callbacks until a real session is issued",
+      "test": "client/session_cache_version_test.go",
+      "marker": "func TestSessionCacheVersionWithPrivateSignupAndPasswordRecovery("
     }
   ],
   "core/getSession": [
@@ -7442,6 +7452,21 @@
       "label": "Verify newly issued snapshots, retained keys and retired keys during a signed or encrypted cookie rollout",
       "test": "conformance/session-cache-compact.mjs",
       "marker": "export async function compareJOSESessionRollover("
+    },
+    {
+      "label": "Recalculate compact, signed and encrypted snapshot versions across replicas through the official client, including async lookup, failure and stale replacement",
+      "test": "conformance/session-cache-version.mjs",
+      "marker": "export async function compareSessionCacheVersions("
+    },
+    {
+      "label": "Reject a removed session after its revision changes and propagate cancellation with isolated concurrent requests",
+      "test": "session_cache_version_test.go",
+      "marker": "func TestSessionCacheVersionCallbackBoundaries("
+    },
+    {
+      "label": "Exercise all three versioned cache strategies, revocation and typed errors using the native client across two auth hosts",
+      "test": "client/session_cache_version_test.go",
+      "marker": "func TestClientSessionCacheVersionAcrossInstances("
     }
   ],
   "docs/content/docs/reference/options.mdx#L477/`cookieCache`": [
@@ -7454,6 +7479,11 @@
       "label": "Select a signed JWT or encrypted JWE and enforce the configured format and lifetime",
       "test": "session_cache_jose_test.go",
       "marker": "accepted another strategy"
+    },
+    {
+      "label": "Derive a per-session and user revision for each format, keeping native, administrative and JWT-authorized reads live on three SQL engines",
+      "test": "adapters/sqlstore/session_cache_test.go",
+      "marker": "func TestSessionVersionSQLPrivilegeBoundaries("
     }
   ],
   "docs/content/docs/concepts/plugins.mdx#L148/`logger`": [
