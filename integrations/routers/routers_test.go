@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	authn "github.com/Stonewrit/stonewrit-auth"
 	"github.com/Stonewrit/stonewrit-auth/adapters/sqlite"
@@ -69,7 +70,10 @@ func TestFrameworkMounts(t *testing.T) {
 			r := fiber.New()
 			r.All("/api/auth/*", adaptor.HTTPHandler(h))
 			r.Get("/me", adaptor.HTTPHandler(me))
-			return func(req *http.Request) (*http.Response, error) { return r.Test(req) }
+			return func(req *http.Request) (*http.Response, error) {
+				// Real password hashing under -race can exceed Fiber's one-second test default.
+				return r.Test(req, fiber.TestConfig{Timeout: 15 * time.Second, FailOnTimeout: true})
+			}
 		}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -111,7 +115,7 @@ func TestFrameworkMounts(t *testing.T) {
 				}
 				res, err := run(req)
 				if err != nil {
-					t.Fatal(err)
+					t.Fatalf("%s %s: %v", method, path, err)
 				}
 				defer res.Body.Close()
 				b, err := io.ReadAll(res.Body)
