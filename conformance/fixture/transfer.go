@@ -8,12 +8,23 @@ import (
 	"errors"
 	"net/http"
 	"path"
+	"time"
 
 	auth "github.com/Plain-Auth/plain-auth"
 	"github.com/Plain-Auth/plain-auth/plugins/onetimetoken"
 )
 
 func transferPlugin(mode string) (auth.Plugin, error) {
+	switch mode {
+	case "default":
+		return onetimetoken.New(onetimetoken.Options{})
+	case "header", "restricted", "suppress":
+		return onetimetoken.New(onetimetoken.Options{SetHeaderOnNewSession: true, DisableClientRequest: mode == "restricted", DisableSetSessionCookie: mode == "suppress"})
+	case "immediate":
+		return onetimetoken.New(onetimetoken.Options{ExpireImmediately: true})
+	case "short":
+		return onetimetoken.New(onetimetoken.Options{ExpiresIn: 600 * time.Millisecond})
+	}
 	if mode == "1" {
 		return onetimetoken.New(onetimetoken.Options{HashTokens: true})
 	}

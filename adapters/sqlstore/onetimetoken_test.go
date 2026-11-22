@@ -108,12 +108,12 @@ func TestOneTimeSessionTransfer(t *testing.T) {
 			if w := call(first, "GET", "one-time-token/generate", nil); w.Code != 401 {
 				t.Fatal("unauthenticated transfer request")
 			}
-			if w := call(first, "POST", "update-user", map[string]any{"name": "Updated"}, ownerCookie); w.Code != 200 || w.Header().Get("Set-Ott") != "" {
-				t.Fatal("profile update generated a transfer credential")
+			if w := call(first, "POST", "update-user", map[string]any{"name": "Updated"}, ownerCookie); w.Code != 200 || w.Header().Get("Set-Ott") == "" {
+				t.Fatal("profile cookie publication omitted its transfer credential")
 			}
 			win := verify(second, fromHeader, otherCookie)
 			var state auth.SessionResult
-			if win.Code != 200 || json.Unmarshal(win.Body.Bytes(), &state) != nil || state.User.ID != owner.User.ID || state.Session.Token != owner.Token || win.Header().Get("Set-Ott") != "" {
+			if win.Code != 200 || json.Unmarshal(win.Body.Bytes(), &state) != nil || state.User.ID != owner.User.ID || state.Session.Token != owner.Token || win.Header().Get("Set-Ott") == "" {
 				t.Fatal("token did not transfer its bound identity exactly once")
 			}
 			if w := verify(first, fromHeader); w.Code != 400 || len(w.Result().Cookies()) != 0 {
@@ -177,6 +177,27 @@ func TestOneTimeSessionTransfer(t *testing.T) {
 			}
 			if _, err := b.ConsumeOneTimeToken(ctx, expired, time.Now()); !errors.Is(err, auth.ErrNotFound) {
 				t.Fatal("expired transfer accepted")
+			}
+			// A compatible writer uses a random verification ID. A host-supplied
+			// generator must not issue an imported credential to a second account.
+			collision := rand.Text()
+			insert := a.bind(`INSERT INTO "verification" ("id","identifier","value","expiresAt","createdAt","updatedAt") VALUES (?,?,?,?,?,?)`)
+			stamp := time.Now()
+			importProof := func(token string) {
+				t.Helper()
+				if _, err := a.db.ExecContext(ctx, insert, rand.Text(), "one-time-token:"+collision, token, a.date(stamp.Add(time.Minute)), a.date(stamp), a.date(stamp)); err != nil {
+					t.Fatal(err)
+				}
+			}
+			importProof(other.Token)
+			if err := a.SaveOneTimeToken(ctx, collision, row.Session, stamp, stamp.Add(time.Minute)); err == nil {
+				t.Fatal("issued an already imported transfer key")
+			}
+			importProof(owner.Token)
+			for range 2 {
+				if _, err := b.ConsumeOneTimeToken(ctx, collision, stamp); !errors.Is(err, auth.ErrNotFound) {
+					t.Fatal("ambiguous transfer proofs must be burned together", err)
+				}
 			}
 			sourceExpired := generate(first, ownerCookie)
 			if _, err := a.db.ExecContext(ctx, a.bind(`UPDATE "session" SET "expiresAt"=? WHERE "token"=?`), a.date(time.Now().Add(-time.Hour)), owner.Token); err != nil {

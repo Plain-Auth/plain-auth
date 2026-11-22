@@ -59,7 +59,7 @@ async function reference(t, plugins = [], settings = {}) {
   }, settings);
   await (await getMigrations(options)).runMigrations();
   const auth = betterAuth(options);
-  return { baseURL, send: (request) => auth.handler(request), database };
+  return { baseURL, send: (request) => auth.handler(request), database, api: auth.api };
 }
 
 test("the pinned Stripe client manages owner billing and observes renewals on both runtimes", async (t) => {
@@ -1602,4 +1602,9 @@ test("the released organization client observes validated input, merged changes 
 test("Ethereum host callbacks bind the signed address and chain and populate the first wallet profile", async t => {
   const { walletCallbacks } = await import("./siwe-wallet.mjs");
   await walletCallbacks(t, { reference, goFixture, instrument });
+});
+
+test("session transfers match the released client generation guards, deadlines and cookie issuance", async t => {
+  const { transferContract } = await import("./transfer-options.mjs");
+  await transferContract(t, { reference, goFixture, instrument });
 });

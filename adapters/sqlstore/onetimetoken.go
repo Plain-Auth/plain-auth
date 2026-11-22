@@ -52,6 +52,15 @@ func (s *Store) saveOneTimeToken(ctx context.Context, key string, source auth.Se
 	if id != source.ID || owner != source.UserID || token != source.Token || !sessionExpires.After(at) {
 		return auth.ErrNotFound
 	}
+	// Other compatible writers use random row IDs for verification records.
+	var existing string
+	err = tx.QueryRowContext(ctx, s.readForUpdate(`SELECT "id" FROM "verification" WHERE `+s.scimExact(`"identifier"`)+`=? LIMIT 1`), "one-time-token:"+key).Scan(&existing)
+	if err == nil {
+		return errors.New("duplicate one-time transfer key")
+	}
+	if !errors.Is(err, sql.ErrNoRows) {
+		return err
+	}
 	hash := sha256.Sum256([]byte(key))
 	vid := "ot-" + hex.EncodeToString(hash[:16])
 	insert := s.bind(`INSERT INTO "verification" ("id","identifier","value","expiresAt","createdAt","updatedAt") VALUES (?,?,?,?,?,?)`)
@@ -91,6 +100,22 @@ func (s *Store) consumeOneTimeToken(ctx context.Context, key string, now time.Ti
 	}
 	if identifier != want {
 		return result, auth.ErrNotFound
+	}
+	// Imported records can share a key because the canonical identifier is not
+	// unique. Refuse an ambiguous transfer and burn every matching primary row.
+	var other string
+	err = tx.QueryRowContext(ctx, s.readForUpdate(`SELECT "id" FROM "verification" WHERE `+s.scimExact(`"identifier"`)+`=? AND "id"<>? AND "expiresAt">? LIMIT 1`), want, id, s.date(now)).Scan(&other)
+	if err == nil {
+		if _, err = tx.ExecContext(ctx, s.bind(`DELETE FROM "verification" WHERE `+s.scimExact(`"identifier"`)+`=?`), want); err != nil {
+			return result, err
+		}
+		if err = tx.Commit(); err != nil {
+			return result, err
+		}
+		return result, auth.ErrNotFound
+	}
+	if !errors.Is(err, sql.ErrNoRows) {
+		return result, err
 	}
 	var owner string
 	marker := "one-time-token-owner:" + id

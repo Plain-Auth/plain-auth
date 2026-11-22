@@ -104,7 +104,6 @@ func (a *Auth) addSessionCookieHeaders(headers http.Header, r *http.Request, tok
 	if err := a.writeSessionCookieHeaders(headers, r, token, persistent); err != nil {
 		return err
 	}
-	a.addOneTimeTokenHeader(headers, r, token)
 	if a.deviceSessions != nil {
 		a.rememberDeviceSession(headers, r, token, persistent)
 	}
@@ -137,6 +136,13 @@ func (a *Auth) emitSessionCookieHeaders(headers http.Header, r *http.Request, c 
 	for _, p := range a.opts.Plugins {
 		if p.OnSessionCookie != nil {
 			p.OnSessionCookie(event)
+		}
+	}
+	// Cookie publication includes authentication, renewal, and returning an
+	// existing session to another browser. A deletion does not publish a login.
+	if a.oneTimeToken != nil && a.oneTimeToken.SetHeaderOnNewSession && c.MaxAge >= 0 {
+		if token := a.VerifySignedSessionToken(c.Value); token != "" {
+			a.addOneTimeTokenHeader(headers, r, token)
 		}
 	}
 }

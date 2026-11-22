@@ -23,13 +23,14 @@ Both paths are relative to the auth mount. In the Go HTTP client, use `GenerateO
 
 | Option | Behavior |
 | --- | --- |
-| `ExpiresIn` | Sets the transfer lifetime. The default is three minutes. |
-| `DisableClientRequest` | Restricts generation to the host application's direct Go method. Verification remains available over HTTP. |
+| `ExpiresIn` | Sets the transfer lifetime using a Go duration. An unset duration uses the three-minute default. A positive duration can be shorter than a minute. Set `ExpireImmediately: true` to issue an already-expired proof. |
+| `DisableClientRequest` | Restricts generation to the direct Go method. HTTP generation first checks authentication. A signed-out request receives 401 and a signed-in request receives 400. |
 | `DisableSetSessionCookie` | Returns the session and user in JSON while suppressing the session cookie on verification. The JSON session token remains a credential. |
-| `SetHeaderOnNewSession` | Adds `Set-Ott` to a successful new-session response and exposes that header to browser clients. If optional header generation fails, the host logs the failure and omits the header. |
+| `SetHeaderOnNewSession` | Publishes and exposes a fresh `Set-Ott` response header when the handler writes a valid session cookie. This includes sign-in, profile updates that reissue a cookie, sliding renewal and cookie-setting transfer verification. |
 | `HashTokens` | Stores the transfer key using SHA-256 and unpadded URL-safe Base64. The default stores the raw key. |
-| `HashToken`, `GenerateToken` | Supply a deterministic storage-key function or a cryptographically random token generator. Use one storage-key mode on every server. |
+| `HashToken`, `GenerateToken` | Supply a deterministic storage-key function or a cryptographically random token generator. Use the same deterministic storage-key mode on every server. |
 
+A verification response that sets cookies honors the receiving browser’s signed temporary-session preference. With cookie suppression, verification returns the transferred identity in JSON and the browser keeps its current login. A replacement `Set-Ott` belongs to the returned session, including when the recipient had another account signed in. Reads without cookie renewal, explicit token generation, sign-out and rejected requests omit this header.
 
 ### Request-aware token generation
 
@@ -48,3 +49,7 @@ plugin, err := onetimetoken.New(onetimetoken.Options{
 ```
 
 Generation and redemption both check that the original user still owns a live, direct session. A ban, an administrator’s delegated login or a replacement session prevents transfer. A completed redemption consumes its proof across handlers. [SQL authorization tests](../adapters/sqlstore/onetimetoken_policy_test.go) · [In-memory adapter tests](../adapters/memory/onetimetoken_test.go) · [Go client example](../client/onetimetoken_context_test.go)
+
+A custom generator must produce a fresh, unpredictable credential on every call. Its output must be suitable for an HTTP header. A custom hasher needs to distinguish credentials and fit the canonical verification identifier, which has room for 240 bytes after the prefix. Hashed modes can accept longer raw credentials. SQL issuance rejects an already-live transfer key, including one issued by a compatible writer. Redemption rejects and consumes ambiguous live records. Generate globally unique values even after old proofs are spent or expire.
+
+Explicit operations return generator and hasher errors to the native caller. HTTP callers receive a failure response. Cancellation during a generator or hasher prevents issuance or consumption. An optional header failure leaves the successful session cookie in place and writes a diagnostic without the credential. [Callback failure tests](../client/onetimetoken_contract_test.go) · [Released client and cookie tests](../conformance/transfer-options.mjs)

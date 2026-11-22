@@ -307,3 +307,12 @@ test("wallet registrations add the canonical address table and owner index on ea
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test("session transfer uses the canonical verification table on every SQL dialect", async () => {
+  const { oneTimeToken } = await import("better-auth/plugins");
+  for (const dialect of Object.keys(dialects)) {
+    const baseline = await freshSchema(dialect, []);
+    assert.match(baseline, /create table ["`]?verification/i);
+    assert.equal(await freshSchema(dialect, [], [oneTimeToken()]), baseline);
+  }
+});

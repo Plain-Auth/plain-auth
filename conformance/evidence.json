@@ -1542,6 +1542,12 @@
       "label": "Generate from a direct signed-in session using the configured host callback and the current HTTP request",
       "test": "conformance/transfer-options.mjs",
       "marker": "raw.startsWith"
+    },
+    {
+      "label": "Check the current session before the server-only HTTP policy and accept generation from the direct host API",
+      "test": "conformance/transfer-options.mjs",
+      "marker": "session validation precedes the HTTP generation policy",
+      "complete": true
     }
   ],
   "plugin/one-time-token/POST /one-time-token/verify": [
@@ -1564,6 +1570,22 @@
       "label": "Limit concurrent redemptions on a shared in-memory store to one owner session",
       "test": "adapters/memory/onetimetoken_test.go",
       "marker": "one transfer produced multiple logins"
+    },
+    {
+      "label": "Accept a string credential, return the owning session and reject missing, ill-typed or spent proofs",
+      "test": "conformance/transfer-options.mjs",
+      "marker": "verification requires a valid string credential",
+      "complete": true
+    },
+    {
+      "label": "Prevent imported credentials from being reissued and burn ambiguous live proofs",
+      "test": "adapters/sqlstore/onetimetoken_test.go",
+      "marker": "ambiguous transfer proofs must be burned together"
+    },
+    {
+      "label": "Preserve temporary-session cookies when the receiving browser changes accounts",
+      "test": "conformance/transfer-options.mjs",
+      "marker": "temporary-session preference"
     }
   ],
   "plugin-symbol/magic-link/MagicLinkOptions/expiresIn": [
@@ -1625,6 +1647,12 @@
       "label": "Persist the configured transfer lifetime",
       "test": "adapters/sqlstore/onetimetoken_test.go",
       "marker": "custom transfer lifetime was not stored"
+    },
+    {
+      "label": "Use the three-minute default, a fractional-minute deadline or an immediately expired proof",
+      "test": "conformance/transfer-options.mjs",
+      "marker": "the transfer lifetime follows the configured duration",
+      "complete": true
     }
   ],
   "plugin-symbol/one-time-token/OneTimeTokenOptions/disableClientRequest": [
@@ -1632,6 +1660,12 @@
       "label": "Allow direct host generation and deny HTTP generation",
       "test": "adapters/sqlstore/onetimetoken_test.go",
       "marker": "server-only generation exposed"
+    },
+    {
+      "label": "Check the current session before the server-only HTTP policy and accept generation from the direct host API",
+      "test": "conformance/transfer-options.mjs",
+      "marker": "session validation precedes the HTTP generation policy",
+      "complete": true
     }
   ],
   "plugin-symbol/one-time-token/OneTimeTokenOptions/generateToken": [
@@ -1645,6 +1679,11 @@
       "test": "client/onetimetoken_context_test.go",
       "marker": "generator received the wrong source session or route",
       "complete": true
+    },
+    {
+      "label": "Protect optional session cookies and propagate explicit callback errors, panics and cancellation",
+      "test": "client/onetimetoken_contract_test.go",
+      "marker": "optional token failure disrupted login"
     }
   ],
   "plugin-symbol/one-time-token/OneTimeTokenOptions/disableSetSessionCookie": [
@@ -1658,6 +1697,11 @@
       "test": "conformance/transfer-options.mjs",
       "marker": "recipient.getSession()",
       "complete": true
+    },
+    {
+      "label": "Keep a receiving account signed in while returning the transferred identity in JSON",
+      "test": "conformance/transfer-options.mjs",
+      "marker": "assert.equal((await recipient.client.getSession()).data.user.id, transient.data.user.id)"
     }
   ],
   "plugin-symbol/one-time-token/OneTimeTokenOptions/storeToken": [
@@ -1671,19 +1715,39 @@
       "test": "conformance/transfer-options.mjs",
       "marker": "assert.equal(stored.value",
       "complete": true
+    },
+    {
+      "label": "Keep proofs retryable when their host-defined hasher fails or is canceled",
+      "test": "client/onetimetoken_contract_test.go",
+      "marker": "retry lost unconsumed proof"
     }
   ],
   "plugin-symbol/one-time-token/OneTimeTokenOptions/setOttHeaderOnNewSession": [
-    {
-      "label": "Send and expose Set-Ott on creation and exclude ordinary profile updates",
-      "test": "adapters/sqlstore/onetimetoken_test.go",
-      "marker": "profile update generated a transfer credential"
-    },
     {
       "label": "Expose the configured token on a new login and issue an independent token on request",
       "test": "conformance/transfer-options.mjs",
       "marker": "signupHeader.startsWith",
       "complete": true
+    },
+    {
+      "label": "Emit a new transfer header when a profile update republishes the current signed session",
+      "test": "adapters/sqlstore/onetimetoken_test.go",
+      "marker": "profile cookie publication omitted its transfer credential"
+    },
+    {
+      "label": "Issue a new proof on session cookie renewal",
+      "test": "conformance/transfer-options.mjs",
+      "marker": "sliding renewal republishes a session cookie"
+    },
+    {
+      "label": "Bind a replacement transfer header to the redeemed account and preserve the incoming temporary-cookie preference",
+      "test": "conformance/transfer-options.mjs",
+      "marker": "const forwarded = checkEmission("
+    },
+    {
+      "label": "Keep a committed login usable when optional token generation or hashing fails",
+      "test": "client/onetimetoken_contract_test.go",
+      "marker": "optional token failure disrupted login"
     }
   ],
   "plugin/passkey/GET /passkey/generate-register-options": [
@@ -9871,6 +9935,110 @@
       "label": "Persist the resolver name and avatar in the new user profile",
       "test": "adapters/sqlstore/siwe_callbacks_test.go",
       "marker": "ENS profile was not persisted",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/one-time-token/oneTimeToken": [
+    {
+      "label": "Compile the unchanged verification schema for all three database engines",
+      "test": "conformance/schema.test.mjs",
+      "marker": "await freshSchema(dialect, [], [oneTimeToken()])",
+      "complete": true
+    }
+  ],
+  "plugin/one-time-token": [
+    {
+      "label": "Generate and redeem a short-lived transfer credential with the released client",
+      "test": "conformance/core.test.mjs",
+      "marker": "session transfers match the released client generation guards",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/one-time-token/OneTimeTokenOptions": [
+    {
+      "label": "Select storage, host generation, request restrictions, token lifetimes and cookie or response-header behavior",
+      "test": "conformance/core.test.mjs",
+      "marker": "session transfers match the released client generation guards",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/one-time-token.mdx": [
+    {
+      "label": "Generate and redeem a short-lived transfer credential with the released client",
+      "test": "conformance/core.test.mjs",
+      "marker": "session transfers match the released client generation guards",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/one-time-token.mdx#L49": [
+    {
+      "label": "Generate and redeem a short-lived transfer credential with the released client",
+      "test": "conformance/core.test.mjs",
+      "marker": "session transfers match the released client generation guards",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/one-time-token.mdx#L51": [
+    {
+      "label": "Check the current session before the server-only HTTP policy and accept generation from the direct host API",
+      "test": "conformance/transfer-options.mjs",
+      "marker": "session validation precedes the HTTP generation policy",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/one-time-token.mdx#L55/`GET /one-time-token/generate`": [
+    {
+      "label": "Check the current session before the server-only HTTP policy and accept generation from the direct host API",
+      "test": "conformance/transfer-options.mjs",
+      "marker": "session validation precedes the HTTP generation policy",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/one-time-token.mdx#L64": [
+    {
+      "label": "Preserve temporary-session cookies when the receiving browser changes accounts",
+      "test": "conformance/transfer-options.mjs",
+      "marker": "temporary-session preference",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/one-time-token.mdx#L68/`POST /one-time-token/verify`": [
+    {
+      "label": "Accept a string credential, return the owning session and reject missing, ill-typed or spent proofs",
+      "test": "conformance/transfer-options.mjs",
+      "marker": "verification requires a valid string credential",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/one-time-token.mdx#L74/Parameter `token`": [
+    {
+      "label": "Accept a string credential, return the owning session and reject missing, ill-typed or spent proofs",
+      "test": "conformance/transfer-options.mjs",
+      "marker": "verification requires a valid string credential",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/one-time-token.mdx#L81": [
+    {
+      "label": "Select storage, host generation, request restrictions, token lifetimes and cookie or response-header behavior",
+      "test": "conformance/core.test.mjs",
+      "marker": "session transfers match the released client generation guards",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/one-time-token.mdx#L85/`disableClientRequest`": [
+    {
+      "label": "Check the current session before the server-only HTTP policy and accept generation from the direct host API",
+      "test": "conformance/transfer-options.mjs",
+      "marker": "session validation precedes the HTTP generation policy",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/one-time-token.mdx#L86/`expiresIn`": [
+    {
+      "label": "Use the three-minute default, a fractional-minute deadline or an immediately expired proof",
+      "test": "conformance/transfer-options.mjs",
+      "marker": "the transfer lifetime follows the configured duration",
       "complete": true
     }
   ]

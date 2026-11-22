@@ -146,14 +146,15 @@ export function schemaOptions(profiles) {
   };
 }
 
-export async function freshSchema(type, profiles) {
+export async function freshSchema(type, profiles, additionalPlugins = []) {
   const Dialect = dialects[type];
   const dialect = new Dialect({});
   // No catalog tables exist. The actual dialect compiles all types and constraints.
   dialect.createDriver = () => new DummyDriver();
   const db = new Kysely({ dialect });
   try {
-    const config = { database: { db, type }, ...schemaOptions(profiles) };
+    const options = schemaOptions(profiles);
+    const config = { ...options, database: { db, type }, plugins: [...options.plugins, ...additionalPlugins] };
     return (await (await getMigrations(config)).compileMigrations()).trim() + "\n";
   } finally {
     await db.destroy();
