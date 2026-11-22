@@ -12,11 +12,12 @@ import (
 
 // A fixed protocol double for the differential harness. It never sends traffic.
 func fixtureSocialProvider() map[string]auth.OAuthProvider {
-	if os.Getenv("CONFORMANCE_EXPLICIT_SIGNUP") == "1" {
+	if os.Getenv("CONFORMANCE_EXPLICIT_SIGNUP") == "1" || os.Getenv("CONFORMANCE_LINK_POLICY") != "" {
 		return map[string]auth.OAuthProvider{"work": {
-			Config:                oauth2.Config{ClientID: "fixture-client", Scopes: []string{"profile"}, Endpoint: oauth2.Endpoint{AuthURL: "https://id.example/authorize", TokenURL: "https://id.example/token"}},
-			DisableImplicitSignUp: true,
-			EndSessionEndpoint:    "https://id.example/end?tenant=work",
+			Config:                 oauth2.Config{ClientID: "fixture-client", Scopes: []string{"profile"}, Endpoint: oauth2.Endpoint{AuthURL: "https://id.example/authorize", TokenURL: "https://id.example/token"}},
+			DisableImplicitSignUp:  os.Getenv("CONFORMANCE_EXPLICIT_SIGNUP") == "1",
+			AllowVerifiedEmailLink: os.Getenv("CONFORMANCE_LINK_POLICY") != "",
+			EndSessionEndpoint:     "https://id.example/end?tenant=work",
 			ExchangeCode: func(context.Context, oauth2.Config, string, string, url.Values) (*oauth2.Token, error) {
 				return &oauth2.Token{AccessToken: "local-test"}, nil
 			},

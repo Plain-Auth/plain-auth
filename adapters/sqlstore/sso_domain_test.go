@@ -100,18 +100,18 @@ func TestEnterpriseDomainVerification(t *testing.T) {
 			a := open("sso")
 			dns := &dnsAnswers{records: map[string][]string{}}
 			idp := newSSOIssuer(t)
-			host := func(s *Store, o *sso.DomainVerificationOptions) (*auth.Auth, error) {
+			host := func(s *Store, o *sso.DomainVerificationOptions, explicitOnly bool) (*auth.Auth, error) {
 				pl, e := sso.New(sso.Options{DomainVerification: o})
 				if e != nil {
 					return nil, e
 				}
-				return auth.New(auth.Options{BaseURL: "https://domain.test", BasePath: "/identity", Store: s, Secret: strings.Repeat("x", 32), TrustedOrigins: []string{idp.URL}, EmailAndPassword: true, RateLimit: new(bool), Plugins: []auth.Plugin{pl}})
+				return auth.New(auth.Options{BaseURL: "https://domain.test", BasePath: "/identity", Store: s, DisableImplicitAccountLinking: explicitOnly, Secret: strings.Repeat("x", 32), TrustedOrigins: []string{idp.URL}, EmailAndPassword: true, RateLimit: new(bool), Plugins: []auth.Plugin{pl}})
 			}
 			opt := &sso.DomainVerificationOptions{Resolver: dns}
-			if _, err := host(a, opt); err == nil {
+			if _, err := host(a, opt, false); err == nil {
 				t.Fatal("enabled DNS without migrated schema")
 			}
-			plain, e := host(a, nil)
+			plain, e := host(a, nil, false)
 			must(e)
 			sdk := func(h *auth.Auth) *client.Client {
 				c, e := client.New("https://domain.test/identity", &http.Client{Transport: guestTransport{h}})
@@ -132,9 +132,9 @@ func TestEnterpriseDomainVerification(t *testing.T) {
 			if err := a.CheckSSODomainSchema(ctx); err != nil {
 				t.Fatalf("existing instance did not see migrated profile: %v", err)
 			}
-			first, e := host(a, opt)
+			first, e := host(a, opt, false)
 			must(e)
-			second, e := host(b, opt)
+			second, e := host(b, opt, false)
 			must(e)
 			signed := func(h *auth.Auth) *client.Client {
 				c := sdk(h)
@@ -258,6 +258,7 @@ func TestEnterpriseDomainVerification(t *testing.T) {
 			existingID := person("existing@team.proof.example", true)
 			person("existing@unrelated.example", true)
 			person("unverified@proof.example", false)
+			callbackHost := plain
 			browser := func(email string, finish func()) *httptest.ResponseRecorder {
 				t.Helper()
 				request := httptest.NewRequest("POST", "https://domain.test/identity/sign-in/sso", strings.NewReader(`{"email":"hint@proof.example","callbackURL":"/home"}`))
@@ -288,10 +289,18 @@ func TestEnterpriseDomainVerification(t *testing.T) {
 					cb.AddCookie(cookie)
 				}
 				w = httptest.NewRecorder()
-				plain.ServeHTTP(w, cb)
+				callbackHost.ServeHTTP(w, cb)
 				return w
 			}
+			strict, e := host(b, opt, true)
+			must(e)
+			callbackHost = strict
 			w := browser("existing@team.proof.example", nil)
+			if w.Code != 302 || !strings.Contains(w.Header().Get("Location"), "account_not_linked") {
+				t.Fatal("DNS-based authority bypassed explicit account linking", w.Code, w.Header().Get("Location"))
+			}
+			callbackHost = plain
+			w = browser("existing@team.proof.example", nil)
 			if w.Code != 302 || !strings.HasSuffix(w.Header().Get("Location"), "/home") {
 				t.Fatal("proved subdomain failed to link verified existing identity", w.Code, w.Body.String(), w.Header().Get("Location"))
 			}

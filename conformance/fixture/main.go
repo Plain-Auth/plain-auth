@@ -407,6 +407,7 @@ func main() {
 	if os.Getenv("CONFORMANCE_MAGIC_MEMORY") == "1" {
 		opts.Store = memory.New()
 	}
+	opts.DisableImplicitAccountLinking = os.Getenv("CONFORMANCE_LINK_POLICY") == "explicit"
 	switch os.Getenv("CONFORMANCE_EMAIL_POLICY") {
 	case "disabled":
 		opts.EmailAndPassword = false

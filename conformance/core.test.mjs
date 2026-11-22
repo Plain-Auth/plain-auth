@@ -1518,3 +1518,8 @@ test("signed subscription updates call the host observer before OnEvent on both 
   const { subscriptionUpdateCallback } = await import("./stripe-lifecycle-fixture.mjs");
   await subscriptionUpdateCallback(t, { reference, goFixture, instrument });
 });
+
+test("social sign-in can require explicit account linking even for a trusted verified provider", async t => {
+  const {compareImplicitLinking}=await import("./social-link-policy.mjs");
+  await compareImplicitLinking(t,{reference,goFixture,instrument});
+});

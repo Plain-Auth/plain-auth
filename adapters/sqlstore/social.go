@@ -199,7 +199,7 @@ func (s *Store) completeOAuth(ctx context.Context, provider, subject string, tok
 			return u, false, err
 		}
 	}
-	if emailLink && (strings.ToLower(u.Email) != candidate.Email || !u.EmailVerified || (!(options.AllowVerifiedEmailLink && candidate.EmailVerified) && !(hooks != nil && hooks.trustEmailDomain))) {
+	if emailLink && (options.DisableImplicitLinking || strings.ToLower(u.Email) != candidate.Email || !u.EmailVerified || (!(options.AllowVerifiedEmailLink && candidate.EmailVerified) && !(hooks != nil && hooks.trustEmailDomain))) {
 		return u, false, authn.ErrOAuthLinkRequired
 	}
 	authority := socialAuthority

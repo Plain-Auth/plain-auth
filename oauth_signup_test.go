@@ -125,3 +125,65 @@ func TestOAuthExplicitRegistration(t *testing.T) {
 		})
 	}
 }
+
+func TestIDTokenExplicitAccountLinking(t *testing.T) {
+	ctx := t.Context()
+	store, err := sqlite.Open(":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	const email = "owner@example.test"
+	profile := auth.OAuthProfile{Subject: "identity", Email: email, EmailVerified: true, Name: "Owner"}
+	p := auth.OAuthProvider{
+		Config:                 oauth2.Config{ClientID: "mobile-test", Endpoint: oauth2.Endpoint{AuthURL: "https://issuer.example/authorize", TokenURL: "https://issuer.example/token"}},
+		AllowVerifiedEmailLink: true,
+		Resolve:                func(context.Context, *oauth2.Token, string) (auth.OAuthProfile, error) { return profile, nil },
+		VerifyIDToken: func(context.Context, string, string) (auth.OAuthProfile, time.Time, error) {
+			return profile, time.Now().Add(time.Hour), nil
+		},
+	}
+	host := httptest.NewUnstartedServer(nil)
+	base := "http://" + host.Listener.Addr().String()
+	node, err := auth.New(auth.Options{Store: store, Secret: strings.Repeat("s", 40), BaseURL: base, EmailAndPassword: true, DisableImplicitAccountLinking: true, SocialProviders: map[string]auth.OAuthProvider{"mobile": p}, RateLimit: new(bool)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	host.Config.Handler = node
+	host.Start()
+	defer host.Close()
+	newClient := func() *client.Client {
+		t.Helper()
+		c, e := client.New(base, &http.Client{})
+		if e != nil {
+			t.Fatal(e)
+		}
+		return c
+	}
+	owner, visitor := newClient(), newClient()
+	created, err := owner.SignUpEmail(ctx, client.SignUpRequest{Email: email, Name: "Owner", Password: "credential fixture"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := store.VerifyAccountEmail(ctx, created.User.ID, email, time.Now()); err != nil {
+		t.Fatal(err)
+	}
+	input := func(token string) client.SocialSignInRequest {
+		return client.SocialSignInRequest{Provider: "mobile", IDToken: &client.SocialIDToken{Token: token, Nonce: "device-nonce"}}
+	}
+	_, err = visitor.SignInSocial(ctx, input("unlinked"))
+	var api *auth.APIError
+	if !errors.As(err, &api) || api.Status != 401 || api.Code != "ACCOUNT_NOT_LINKED" {
+		t.Fatal("direct sign-in linked an unapproved account", err)
+	}
+	if got, err := visitor.GetSession(ctx); err != nil || got != nil {
+		t.Fatal("denied visitor retained a session", got, err)
+	}
+	if _, err := owner.LinkSocial(ctx, input("explicit")); err != nil {
+		t.Fatal("authenticated explicit link failed", err)
+	}
+	login, err := visitor.SignInSocial(ctx, input("returning"))
+	if err != nil || login.User == nil || login.User.ID != created.User.ID {
+		t.Fatal("existing mobile identity failed to sign in", err)
+	}
+}

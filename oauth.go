@@ -79,7 +79,9 @@ type OAuthTokens struct {
 // OAuthLoginOptions binds an explicit link to a live session or a direct
 // ID-token grant to the verified token's expiry.
 type OAuthLoginOptions struct {
-	DisableSignUp                bool
+	DisableSignUp bool
+	// DisableImplicitLinking also takes precedence over directory-based trust in custom stores.
+	DisableImplicitLinking       bool
 	OneTapNonce                  string
 	OneTapExpires                time.Time
 	AllowVerifiedEmailLink       bool

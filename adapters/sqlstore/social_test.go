@@ -92,6 +92,21 @@ func TestSocialStore(t *testing.T) {
 			if _, err = store.db.ExecContext(ctx, store.bind(`UPDATE "user" SET "emailVerified"=? WHERE "id"=?`), true, cred.ID); err != nil {
 				t.Fatal(err)
 			}
+			// The global linking preference overrides even an affirmative provider policy.
+			strict := auth.OAuthLoginOptions{DisableImplicitLinking: true, AllowVerifiedEmailLink: true}
+			if _, _, err := store.CompleteOAuth(ctx, "demo", subject, tokens, candidate, session, strict); !errors.Is(err, auth.ErrOAuthLinkRequired) {
+				t.Fatal("explicit-link policy admitted a verified same-email collision", err)
+			}
+			if _, _, err := store.Session(ctx, session.Token); !errors.Is(err, auth.ErrNotFound) {
+				t.Fatal("declined automatic link left a session", err)
+			}
+			first := testUser(rand.Text())
+			first.EmailVerified = true
+			separate, fresh, err := store.CompleteOAuth(ctx, "demo", rand.Text(), tokens, first, testSession(first, rand.Text()), strict)
+			if err != nil || !fresh || separate.ID != first.ID {
+				t.Fatal("explicit linking closed signup for a new mailbox", err)
+			}
+			defer remove(separate.ID)
 			actual, created, err := store.CompleteOAuth(ctx, "demo", subject, tokens, candidate, session, auth.OAuthLoginOptions{AllowVerifiedEmailLink: true})
 			if err != nil || created || actual.ID != cred.ID {
 				t.Fatalf("verified link %#v, %v, %v", actual, created, err)
@@ -103,7 +118,7 @@ func TestSocialStore(t *testing.T) {
 			tokens.AccessToken = "second"
 			tokens.RefreshToken = ""
 			candidate.Email = "different-" + strings.ToLower(rand.Text()) + "@example.org"
-			actual, created, err = store.CompleteOAuth(ctx, "demo", subject, tokens, candidate, testSession(candidate, rand.Text()), auth.OAuthLoginOptions{})
+			actual, created, err = store.CompleteOAuth(ctx, "demo", subject, tokens, candidate, testSession(candidate, rand.Text()), strict)
 			if err != nil || created || actual.ID != cred.ID {
 				t.Fatalf("existing subject unexpectedly changed identity %#v, %v, %v", actual, created, err)
 			}

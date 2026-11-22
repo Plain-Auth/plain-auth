@@ -75,7 +75,9 @@ type Options struct {
 	ChangeEmailEnabled             bool
 	UpdateEmailWithoutVerification bool
 	SendChangeEmailConfirmation    MailSender
-	AllowUnlinkingAll              bool
+	// DisableImplicitAccountLinking requires an authenticated owner to link an additional provider.
+	DisableImplicitAccountLinking bool
+	AllowUnlinkingAll             bool
 
 	SessionTTL time.Duration
 	FreshAge   time.Duration

@@ -43,9 +43,9 @@
     - [x] Replace an expired challenge once across two database instances ([test](../../../adapters/sqlstore/sso_domain_test.go#L202))
   - [ ] `POST /sso/verify-domain`
     - [x] Require each domain to publish the token and accept split TXT character strings and labeled values ([test](../../../conformance/sso-domains.mjs#L92))
-    - [x] Recheck the manager’s tenant role after DNS answers and before committing the proof ([test](../../../adapters/sqlstore/sso_domain_test.go#L379))
-    - [x] Bind DNS verification to the nonsecret identity source and require fresh proof when it changes ([test](../../../adapters/sqlstore/sso_domain_test.go#L435))
-    - [x] Reject dotted, overlong and oversized verification names before the resolver is called ([test](../../../adapters/sqlstore/sso_domain_test.go#L401))
+    - [x] Recheck the manager’s tenant role after DNS answers and before committing the proof ([test](../../../adapters/sqlstore/sso_domain_test.go#L388))
+    - [x] Bind DNS verification to the nonsecret identity source and require fresh proof when it changes ([test](../../../adapters/sqlstore/sso_domain_test.go#L444))
+    - [x] Reject dotted, overlong and oversized verification names before the resolver is called ([test](../../../adapters/sqlstore/sso_domain_test.go#L410))
   - [ ] `deriveSAMLIdentityProviderEntityID`
   - [ ] `deriveSAMLServiceProviderPolicy`
   - [ ] `SAMLServiceProviderPolicy`
@@ -88,9 +88,9 @@
     - [x] Reject changed provider configuration before exchange and inside the account, membership and session transaction ([test](../../../adapters/sqlstore/sso_browser_test.go#L320))
     - [x] Use validated public addresses for tenant-controlled endpoints and reject redirects and oversized responses ([test](../../../plugins/sso/identity_test.go#L15))
     - [x] Reject a shared public subject from another authority on both enterprise and static OAuth nodes ([test](../../../adapters/sqlstore/sso_browser_test.go#L348))
-    - [x] Deny the session and roll back identity creation when the DNS proof is withdrawn during token exchange ([test](../../../adapters/sqlstore/sso_domain_test.go#L320))
-    - [x] Link a verified local mailbox within the proved subdomain to the authenticated identity ([test](../../../adapters/sqlstore/sso_domain_test.go#L296))
-    - [x] Reject two distinct mailboxes that compare equal under an accent-insensitive MySQL collation ([test](../../../adapters/sqlstore/sso_domain_test.go#L330))
+    - [x] Deny the session and roll back identity creation when the DNS proof is withdrawn during token exchange ([test](../../../adapters/sqlstore/sso_domain_test.go#L329))
+    - [x] Link a verified local mailbox within the proved subdomain to the authenticated identity ([test](../../../adapters/sqlstore/sso_domain_test.go#L305))
+    - [x] Reject two distinct mailboxes that compare equal under an accent-insensitive MySQL collation ([test](../../../adapters/sqlstore/sso_domain_test.go#L339))
   - [ ] `/sso/callback`
     - [x] Authenticate using the shared callback on both servers and preserve the canonical linked account in SQLite ([test](../../../conformance/sso-browser.mjs#L54))
   - [ ] `GET / POST /sso/saml2/sp/acs/:providerId`
@@ -180,7 +180,7 @@
     - [ ] `trustEmailVerified`
     - [ ] `domainVerification`
       - [x] Migrate a populated enterprise provider to the DNS profile and compare 24 profile selections on all three SQL dialects ([test](../../../conformance/schema.test.mjs#L252))
-      - [x] Bind DNS verification to the nonsecret identity source and require fresh proof when it changes ([test](../../../adapters/sqlstore/sso_domain_test.go#L435))
+      - [x] Bind DNS verification to the nonsecret identity source and require fresh proof when it changes ([test](../../../adapters/sqlstore/sso_domain_test.go#L444))
     - [ ] `redirectURI`
       - [x] Select the shared callback for all registered providers or the provider-specific URL under the auth mount ([test](../../../conformance/sso-browser.mjs#L57))
     - [ ] `resolvePrivateKey`
@@ -215,7 +215,7 @@
     - [ ] Publish a TXT record
       - [x] Require each domain to publish the token and accept split TXT character strings and labeled values ([test](../../../conformance/sso-domains.mjs#L92))
     - [ ] Submit verification
-      - [x] Recheck the manager’s tenant role after DNS answers and before committing the proof ([test](../../../adapters/sqlstore/sso_domain_test.go#L379))
+      - [x] Recheck the manager’s tenant role after DNS answers and before committing the proof ([test](../../../adapters/sqlstore/sso_domain_test.go#L388))
       - [ ] `POST /sso/verify-domain`
         - [ ] Parameter `providerId`
   - [ ] Request a verification token

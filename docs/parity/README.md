@@ -48,10 +48,10 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 | [Core API, sign-in providers and CLI](runtime.md) | 118 | 280 |
 | [Database adapters](adapters.md) | 32 | 224 |
 | [Authentication](authentication.md) | 26 | 415 |
-| [Core concepts](concepts.md) | 42 | 513 |
+| [Core concepts](concepts.md) | 47 | 512 |
 | [Managed infrastructure](infrastructure.md) | 0 | 528 |
 | [Framework integrations](integrations.md) | 0 | 228 |
-| [Reference and configuration](reference.md) | 58 | 397 |
+| [Reference and configuration](reference.md) | 63 | 396 |
 
 ## Plugins and integrations
 

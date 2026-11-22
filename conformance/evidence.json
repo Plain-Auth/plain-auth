@@ -8566,5 +8566,51 @@
       "test": "adapters/sqlstore/stripe_update_callback_test.go",
       "marker": "misbound delivery notified the host"
     }
+  ],
+  "docs/content/docs/reference/options.mdx#L555/`disableImplicitLinking`": [
+    {
+      "label": "Require an authenticated owner to link a trusted provider, preserve the stable owner, and accept subsequent logins",
+      "test": "conformance/social-link-policy.mjs",
+      "marker": "export async function compareImplicitLinking",
+      "complete": true
+    },
+    {
+      "label": "Deny an automatic link even when a registered enterprise IdP has a verified matching domain",
+      "test": "adapters/sqlstore/sso_domain_test.go",
+      "marker": "DNS-based authority bypassed explicit account linking"
+    },
+    {
+      "label": "Keep new social registration available and leave no partial session on a same-email collision on all SQL engines",
+      "test": "adapters/sqlstore/social_test.go",
+      "marker": "explicit linking closed signup"
+    },
+    {
+      "label": "Use a mobile ID token to sign in only after the authenticated account owner explicitly links the provider",
+      "test": "oauth_signup_test.go",
+      "marker": "func TestIDTokenExplicitAccountLinking"
+    }
+  ],
+  "docs/content/docs/concepts/users-accounts.mdx#L493": [
+    {
+      "label": "Require an authenticated owner to link a trusted provider, preserve the stable owner, and accept subsequent logins",
+      "test": "conformance/social-link-policy.mjs",
+      "marker": "export async function compareImplicitLinking",
+      "complete": true
+    },
+    {
+      "label": "Deny an automatic link even when a registered enterprise IdP has a verified matching domain",
+      "test": "adapters/sqlstore/sso_domain_test.go",
+      "marker": "DNS-based authority bypassed explicit account linking"
+    },
+    {
+      "label": "Keep new social registration available and leave no partial session on a same-email collision on all SQL engines",
+      "test": "adapters/sqlstore/social_test.go",
+      "marker": "explicit linking closed signup"
+    },
+    {
+      "label": "Use a mobile ID token to sign in only after the authenticated account owner explicitly links the provider",
+      "test": "oauth_signup_test.go",
+      "marker": "func TestIDTokenExplicitAccountLinking"
+    }
   ]
 }

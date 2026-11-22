@@ -303,7 +303,7 @@ func (a *Auth) finishOAuth(w http.ResponseWriter, r *http.Request, id string) (r
 		return fail("signup_disabled")
 	}
 	if errors.Is(err, ErrOAuthLinkRequired) || errors.Is(err, ErrNotFound) {
-		return fail("ACCOUNT_NOT_LINKED")
+		return fail("account_not_linked")
 	}
 	if err != nil {
 		return err
@@ -373,6 +373,10 @@ func (a *Auth) completeProfile(ctx context.Context, r *http.Request, id string, 
 }
 
 func (a *Auth) completeProfileWith(ctx context.Context, r *http.Request, id string, p OAuthProfile, tokens OAuthTokens, options OAuthLoginOptions, complete OAuthCompletion) (AuthResult, bool, error) {
+	if a.opts.DisableImplicitAccountLinking {
+		options.DisableImplicitLinking = true
+		options.AllowVerifiedEmailLink = false
+	}
 	options.DisableSignUp = options.DisableSignUp || a.opts.DisableSignUp || a.opts.SocialProviders[id].DisableSignUp
 	if id == "google" && !googleDomainAllowed(a.opts.SocialProviders[id].GoogleHostedDomain, p) {
 		return AuthResult{}, false, &APIError{401, "INVALID_TOKEN", "Invalid token"}
