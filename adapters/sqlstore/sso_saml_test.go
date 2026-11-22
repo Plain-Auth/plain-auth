@@ -6,6 +6,7 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"encoding/base64"
 	"encoding/json"
 	"encoding/pem"
 	"encoding/xml"
@@ -25,7 +26,9 @@ import (
 	"github.com/Stonewrit/stonewrit-auth/client"
 	"github.com/Stonewrit/stonewrit-auth/plugins/sso"
 	"github.com/Stonewrit/stonewrit-auth/schema"
+	"github.com/beevik/etree"
 	"github.com/crewjam/saml"
+	"github.com/crewjam/saml/xmlenc"
 )
 
 type samlTestMetadata map[string]*saml.EntityDescriptor
@@ -43,7 +46,7 @@ func samlTestCertificate(t *testing.T) (*rsa.PrivateKey, *x509.Certificate, stri
 	if e != nil {
 		t.Fatal(e)
 	}
-	cert := &x509.Certificate{SerialNumber: big.NewInt(1), Subject: pkix.Name{CommonName: "local SAML signing fixture"}, NotBefore: time.Now().Add(-time.Hour), NotAfter: time.Now().Add(2 * time.Hour), KeyUsage: x509.KeyUsageDigitalSignature}
+	cert := &x509.Certificate{SerialNumber: big.NewInt(1), Subject: pkix.Name{CommonName: "local SAML signing fixture"}, NotBefore: time.Now().Add(-time.Hour), NotAfter: time.Now().Add(2 * time.Hour), KeyUsage: x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment}
 	der, e := x509.CreateCertificate(rand.Reader, cert, cert, &key.PublicKey, key)
 	if e != nil {
 		t.Fatal(e)
@@ -54,9 +57,12 @@ func samlTestCertificate(t *testing.T) (*rsa.PrivateKey, *x509.Certificate, stri
 	}
 	return key, cert, string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der}))
 }
-func TestEnterpriseSAMLBrowser(t *testing.T) {
+func TestEnterpriseSAMLBrowser(t *testing.T)          { runEnterpriseSAMLBrowser(t, false) }
+func TestEnterpriseSAMLEncryptedBrowser(t *testing.T) { runEnterpriseSAMLBrowser(t, true) }
+func runEnterpriseSAMLBrowser(t *testing.T, encrypted bool) {
 	idpKey, idpCert, idpPEM := samlTestCertificate(t)
 	spKey, spCert, _ := samlTestCertificate(t)
+	encKey, encCert, _ := samlTestCertificate(t)
 	for _, dialect := range []string{"sqlite", "postgres", "mysql"} {
 		t.Run(dialect, func(t *testing.T) {
 			ctx := t.Context()
@@ -88,14 +94,15 @@ func TestEnterpriseSAMLBrowser(t *testing.T) {
 			idpEntity := idpBase + "/metadata"
 			entry := "https://IDENTITY.example.test:443/sso"
 			dns := &dnsAnswers{records: map[string][]string{}}
-			host := func(s *Store) *auth.Auth {
-				plug, e := sso.New(sso.Options{SAML: &sso.SAMLOptions{RequestSigner: spKey, RequestCertificate: spCert, TrustEmailVerified: true}, DomainVerification: &sso.DomainVerificationOptions{Resolver: dns}})
+			host := func(s *Store, encryption *sso.SAMLEncryption) *auth.Auth {
+				plug, e := sso.New(sso.Options{SAML: &sso.SAMLOptions{Encryption: encryption, RequestSigner: spKey, RequestCertificate: spCert, TrustEmailVerified: true}, DomainVerification: &sso.DomainVerificationOptions{Resolver: dns}})
 				must(e)
 				a, e := auth.New(auth.Options{BaseURL: app.URL, BasePath: "/identity", Secret: strings.Repeat("s", 40), Store: s, RateLimit: new(bool), EmailAndPassword: true, Plugins: []auth.Plugin{plug}})
 				must(e)
 				return a
 			}
-			node, peer = host(first), host(second)
+			keys := &sso.SAMLEncryption{PrivateKey: encKey, Certificate: encCert}
+			node, peer = host(first, keys), host(second, keys)
 			newBrowser := func() *http.Client {
 				jar, e := cookiejar.New(nil)
 				must(e)
@@ -126,7 +133,23 @@ func TestEnterpriseSAMLBrowser(t *testing.T) {
 			if status != 200 {
 				t.Fatal(status, string(data))
 			}
-			cfg := sso.SAMLConfig{SPMetadata: &sso.SAMLSPMetadata{EntityID: app.URL + "/sp"}, EntryPoint: entry, IDPMetadata: sso.SAMLIDPMetadata{EntityID: idpEntity}, Certificates: sso.Certificates{idpPEM}, AuthnRequestsSigned: true, Mapping: sso.SAMLMapping{EmailVerified: "verified"}}
+			cfg := sso.SAMLConfig{SPMetadata: &sso.SAMLSPMetadata{EntityID: app.URL + "/sp"}, EntryPoint: entry, IDPMetadata: sso.SAMLIDPMetadata{EntityID: idpEntity, IsAssertionEncrypted: encrypted}, Certificates: sso.Certificates{idpPEM}, AuthnRequestsSigned: true, Mapping: sso.SAMLMapping{EmailVerified: "verified"}}
+			if encrypted {
+				withoutKey := host(first, nil)
+				requestBody, e := json.Marshal(client.RegisterSAMLProviderRequest{ProviderID: "missing-key", Domain: "staff.example", Issuer: idpEntity, SAML: cfg})
+				must(e)
+				r := httptest.NewRequest(http.MethodPost, api+"/sso/register", bytes.NewReader(requestBody))
+				r.Header.Set("Content-Type", "application/json")
+				r.Header.Set("Origin", app.URL)
+				for _, cookie := range ownerBrowser.Jar.Cookies(r.URL) {
+					r.AddCookie(cookie)
+				}
+				result := httptest.NewRecorder()
+				withoutKey.ServeHTTP(result, r)
+				if result.Code != 400 || !strings.Contains(result.Body.String(), "decryption is not configured") {
+					t.Fatal("encrypted registration on a keyless host", result.Code, result.Body.String())
+				}
+			}
 			reg, e := owner.RegisterSAMLProvider(ctx, client.RegisterSAMLProviderRequest{ProviderID: "work", Domain: "staff.example", Issuer: idpEntity, SAML: cfg})
 			must(e)
 			if reg.RedirectURI != api+"/sso/callback/work" || reg.DomainVerificationToken == "" {
@@ -141,16 +164,41 @@ func TestEnterpriseSAMLBrowser(t *testing.T) {
 			if metadata.EntityID != cfg.SPMetadata.EntityID || len(metadata.SPSSODescriptors) != 1 || metadata.SPSSODescriptors[0].AssertionConsumerServices[0].Location != api+"/sso/saml2/sp/acs/work" || len(metadata.SPSSODescriptors[0].SingleLogoutServices) != 0 {
 				t.Fatal("wrong SP metadata", string(data))
 			}
+			var advertised bool
 			for _, k := range metadata.SPSSODescriptors[0].KeyDescriptors {
-				if k.Use != "signing" {
-					t.Fatal("unexpected metadata encryption key")
+				switch k.Use {
+				case "signing":
+					if len(k.KeyInfo.X509Data.X509Certificates) != 1 || k.KeyInfo.X509Data.X509Certificates[0].Data != base64.StdEncoding.EncodeToString(spCert.Raw) {
+						t.Fatal("wrong request-signing certificate")
+					}
+				case "encryption":
+					if advertised || len(k.KeyInfo.X509Data.X509Certificates) != 1 || k.KeyInfo.X509Data.X509Certificates[0].Data != base64.StdEncoding.EncodeToString(encCert.Raw) {
+						t.Fatal("incorrect assertion encryption certificate")
+					}
+					if len(k.EncryptionMethods) != 2 || k.EncryptionMethods[0].Algorithm != xmlenc.AES256GCM.Algorithm() || k.EncryptionMethods[1].Algorithm != "http://www.w3.org/2009/xmlenc11#rsa-oaep" {
+						t.Fatal("incorrect encryption profiles", k.EncryptionMethods)
+					}
+					if !bytes.Contains(data, []byte("http://www.w3.org/2009/xmlenc11#mgf1sha256")) || !bytes.Contains(data, []byte("http://www.w3.org/2001/04/xmlenc#sha256")) {
+						t.Fatal("key transport parameters missing from SP metadata")
+					}
+					advertised = true
+				default:
+					t.Fatal("unrecognized metadata key usage")
 				}
+			}
+			if advertised != encrypted {
+				t.Fatal("encryption-key visibility does not match provider policy")
 			}
 			// The remote IdP parses and validates the real Redirect signature against
 			// the public SP metadata before it constructs any test assertion.
 			idpURL, _ := url.Parse(idpEntity)
 			ssoURL, _ := url.Parse(entry)
 			idp := &saml.IdentityProvider{Key: idpKey, Certificate: idpCert, MetadataURL: *idpURL, SSOURL: *ssoURL, ServiceProviderProvider: samlTestMetadata{cfg.SPMetadata.EntityID: &metadata}, SignatureMethod: "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256"}
+			if encrypted {
+				protection := xmlenc.OAEP_SHA256()
+				protection.BlockCipher = xmlenc.AES256GCM
+				idp.AssertionEncrypter = protection
+			}
 			start := func(h *http.Client) (*saml.IdpAuthnRequest, error) {
 				out, e := sdk(h).SignInSSO(ctx, client.SSOSignInRequest{ProviderID: "work", ProviderType: "saml", CallbackURL: "/home", NewUserCallbackURL: "/welcome", ErrorCallbackURL: "/failed"})
 				if e != nil {
@@ -231,6 +279,85 @@ func TestEnterpriseSAMLBrowser(t *testing.T) {
 			if status != 302 || headers.Get("Location") != app.URL+"/home" {
 				t.Fatal("repeat login", status, headers)
 			}
+			if encrypted {
+				for _, mode := range []string{"plaintext", "AES-128-GCM", "AES-256-CBC", "legacy RSA-OAEP", "RSA-OAEP SHA-384", "different recipient certificate", "only the response is signed"} {
+					t.Run(mode, func(t *testing.T) {
+						h := newBrowser()
+						request, e := start(h)
+						must(e)
+						// Prepare a fresh, correctly signed assertion, then configure the test
+						// IdP's protection mode independently of the directory's requirements.
+						descriptor := *request.SPSSODescriptor
+						descriptor.KeyDescriptors = nil
+						request.SPSSODescriptor = &descriptor
+						fields := form(request, "alternate-mode", "alternate@staff.example", nil)
+						if mode != "plaintext" {
+							cert := encCert
+							protection := xmlenc.OAEP_SHA256()
+							protection.BlockCipher = xmlenc.AES256GCM
+							switch mode {
+							case "AES-128-GCM":
+								protection.BlockCipher = xmlenc.AES128GCM
+							case "AES-256-CBC":
+								protection.BlockCipher = xmlenc.AES256CBC
+							case "RSA-OAEP SHA-384":
+								protection = xmlenc.OAEP_SHA384()
+								protection.BlockCipher = xmlenc.AES256GCM
+							case "legacy RSA-OAEP":
+								protection = xmlenc.OAEP()
+								protection.BlockCipher = xmlenc.AES256GCM
+							case "different recipient certificate":
+								cert = spCert
+							case "only the response is signed":
+								request.Assertion.Signature = nil
+							}
+							doc := etree.NewDocument()
+							doc.SetRoot(request.Assertion.Element())
+							raw, e := doc.WriteToBytes()
+							must(e)
+							ciphertext, e := protection.Encrypt(cert, raw, nil)
+							must(e)
+							wrapper := etree.NewElement("saml:EncryptedAssertion")
+							wrapper.AddChild(ciphertext)
+							request.AssertionEl = wrapper
+							request.ResponseEl = nil
+							signed, e := request.PostBinding()
+							must(e)
+							fields.Set("SAMLResponse", signed.SAMLResponse)
+						}
+						status, hd, _ := post(h, fields, acs)
+						if status != 302 || !strings.Contains(hd.Get("Location"), "error=invalid_saml_response") || strings.Contains(strings.Join(hd.Values("Set-Cookie"), ";"), "session_token=") {
+							t.Fatal("unexpected session or redirect for", mode, status)
+						}
+						_, _, body := send(h, "GET", "/get-session", "", "", "")
+						if string(bytes.TrimSpace(body)) != "null" {
+							t.Fatalf("unexpected active session for %s", mode)
+						}
+					})
+				}
+			}
+			if !encrypted {
+				t.Run("recipient key requires directory opt-in", func(t *testing.T) {
+					h := newBrowser()
+					request, e := start(h)
+					must(e)
+					// Some IdPs reuse the SP request-signing certificate for encryption.
+					// The ordinary signed-assertion directory requires explicit opt-in.
+					descriptor := *request.SPSSODescriptor
+					descriptor.KeyDescriptors = []saml.KeyDescriptor{{Use: "encryption", KeyInfo: saml.KeyInfo{X509Data: saml.X509Data{X509Certificates: []saml.X509Certificate{{Data: base64.StdEncoding.EncodeToString(spCert.Raw)}}}}}}
+					request.SPSSODescriptor = &descriptor
+					remote := *idp
+					cipher := xmlenc.OAEP_SHA256()
+					cipher.BlockCipher = xmlenc.AES256GCM
+					remote.AssertionEncrypter = cipher
+					request.IDP = &remote
+					status, hd, _ := post(h, form(request, "other-format", "other-format@staff.example", nil), acs)
+					if status != 302 || !strings.Contains(hd.Get("Location"), "error=invalid_saml_response") || strings.Contains(strings.Join(hd.Values("Set-Cookie"), ";"), "session_token=") {
+						t.Fatal("directory accepted ciphertext without opt-in", status)
+					}
+				})
+			}
+
 			// Independent signed fixtures exercise the ordinary validation contracts.
 			for name, adjust := range map[string]func(*saml.Assertion){
 				"issuer": func(a *saml.Assertion) { a.Issuer.Value = "https://another.example.test/idp" },

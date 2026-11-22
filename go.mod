@@ -3,6 +3,7 @@ module github.com/Stonewrit/stonewrit-auth
 go 1.26.0
 
 require (
+	github.com/beevik/etree v1.8.1
 	github.com/coreos/go-oidc/v3 v3.21.0
 	github.com/crewjam/saml v0.6.3
 	github.com/fxamacker/cbor/v2 v2.9.4
@@ -23,7 +24,6 @@ require (
 
 require (
 	filippo.io/edwards25519 v1.2.0 // indirect
-	github.com/beevik/etree v1.8.1 // indirect
 	github.com/boombuler/barcode v1.0.1-0.20190219062509-6c824513bacc // indirect
 	github.com/go-viper/mapstructure/v2 v2.5.0 // indirect
 	github.com/go-webauthn/x v0.3.1 // indirect

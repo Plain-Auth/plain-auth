@@ -206,6 +206,13 @@ func TestEnterpriseSAMLDocumentation(t *testing.T) {
 		if node(schema, "properties", "samlConfig", "properties", "idpMetadata", "properties")["metadata"] == nil {
 			t.Fatal("registration lacks inline metadata")
 		}
+		for _, field := range []string{"idpMetadata", "spMetadata"} {
+			properties := node(schema, "properties", "samlConfig", "properties", field)
+			fields := node(properties, "properties")
+			if node(fields, "isAssertionEncrypted")["type"] != "boolean" || properties["additionalProperties"] != false || fields["encPrivateKey"] != nil {
+				t.Fatal("incorrect directory encryption options", field)
+			}
+		}
 		if len(schema["oneOf"].([]any)) != 2 {
 			t.Fatal("missing mutually exclusive SSO protocols")
 		}

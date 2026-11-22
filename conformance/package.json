@@ -19,6 +19,7 @@
     "stripe": "23.0.0"
   },
   "devDependencies": {
+    "@authenio/xml-encryption": "6.0.2",
     "typescript": "6.0.3",
     "xml-crypto": "6.4.0"
   }

@@ -72,7 +72,7 @@ func assertionEnvelope(raw []byte, acs, requestID string) (string, error) {
 				if roots != 1 || t.Name != (xml.Name{Space: protocol, Local: "Response"}) || attr(t, "Destination") != acs || attr(t, "InResponseTo") != requestID {
 					return "", errSAMLResponse
 				}
-			case t.Name == (xml.Name{Space: assertion, Local: "EncryptedAssertion"}):
+			case t.Name.Local == "EncryptedAssertion" || t.Name.Local == "EncryptedID" || t.Name.Local == "EncryptedAttribute" || t.Name.Local == "EncryptedData" || t.Name.Local == "EncryptedKey":
 				return "", errSAMLResponse
 			case t.Name == (xml.Name{Space: assertion, Local: "Assertion"}):
 				if len(stack) != 1 || id != "" {
@@ -240,7 +240,7 @@ func (o Options) samlFinish(c auth.EndpointContext) (any, error) {
 		return fail("invalid_saml_response")
 	}
 	requestID := "_" + flow.Nonce
-	id, err := assertionEnvelope(raw, sp.AcsURL.String(), requestID)
+	id, err := assertionDocumentID(raw, sp, requestID)
 	if err != nil {
 		return fail("invalid_saml_response")
 	}

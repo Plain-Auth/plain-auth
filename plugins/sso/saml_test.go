@@ -1,12 +1,16 @@
 package sso
 
 import (
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
+	"math/big"
 	"testing"
 )
 
 func TestSAMLConfigurationModes(t *testing.T) {
 	const supported = `{"entryPoint":"https://idp.example/sso","idpMetadata":{"entityID":"urn:example:idp"}`
-	for _, suffix := range []string{`,"wantAssertionsSigned":false}`, `,"spMetadata":{"metadata":"<xml/>"}}`, `,"privateKey":"unused"}`, `,"idpInitiatedCallbackUrl":"/home"}`, `}{ }`} {
+	for _, suffix := range []string{`,"wantAssertionsSigned":false}`, `,"spMetadata":{"metadata":"<xml/>"}}`, `,"privateKey":"unused"}`, `,"spMetadata":{"encPrivateKey":"unused"}}`, `,"spMetadata":{"encPrivateKeyPass":"unused"}}`, `,"idpInitiatedCallbackUrl":"/home"}`, `}{ }`} {
 		if _, err := DecodeSAMLConfig([]byte(supported + suffix)); err == nil {
 			t.Errorf("unexpected supported mode %s", suffix)
 		}
@@ -51,5 +55,33 @@ func TestInlineSAMLMetadataSizeOption(t *testing.T) {
 		if option.metadataLimit() != want {
 			t.Fatal("metadata size default")
 		}
+	}
+}
+
+func TestSAMLEncryptionHostKeys(t *testing.T) {
+	key, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatal(err)
+	}
+	other, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatal(err)
+	}
+	template := &x509.Certificate{SerialNumber: big.NewInt(1), KeyUsage: x509.KeyUsageKeyEncipherment}
+	der, err := x509.CreateCertificate(rand.Reader, template, template, &key.PublicKey, key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cert, err := x509.ParseCertificate(der)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, keys := range []SAMLEncryption{{}, {PrivateKey: key}, {Certificate: cert}, {PrivateKey: other, Certificate: cert}, {PrivateKey: key, Certificate: &x509.Certificate{PublicKey: &key.PublicKey}}} {
+		if _, err := New(Options{SAML: &SAMLOptions{Encryption: &keys}}); err == nil {
+			t.Fatal("accepted an incomplete or inconsistent recipient identity")
+		}
+	}
+	if _, err := New(Options{SAML: &SAMLOptions{Encryption: &SAMLEncryption{PrivateKey: key, Certificate: cert}}}); err != nil {
+		t.Fatal(err)
 	}
 }

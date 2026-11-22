@@ -1479,3 +1479,8 @@ test("email password and signup switches control registration and existing accou
   const { comparePasswordSwitches } = await import("./email-password-options.mjs");
   await comparePasswordSwitches(t, {reference, goFixture, instrument});
 });
+
+test("enterprise SAML accepts an independently encrypted signed assertion through the released client", async t => {
+  const {compareEnterpriseSAML}=await import("./sso-saml.mjs");
+  await compareEnterpriseSAML(t,{goFixture,instrument,encrypted:true});
+});

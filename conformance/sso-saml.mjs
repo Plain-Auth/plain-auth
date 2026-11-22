@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { randomUUID } from "node:crypto";
+import { createPublicKey, randomUUID } from "node:crypto";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { request as httpsRequest } from "node:https";
 import { tmpdir } from "node:os";
@@ -13,6 +13,7 @@ import { NodeSqliteDialect } from "@better-auth/kysely-adapter/node-sqlite-diale
 import { betterAuth } from "better-auth";
 import { getMigrations } from "better-auth/db/migration";
 import { SignedXml } from "xml-crypto";
+import xmlEncryption from "@authenio/xml-encryption";
 
 const issuer = "https://idp.example.test/metadata";
 const entryPoint = "https://idp.example.test/sign-in";
@@ -35,7 +36,7 @@ function signedReply({ id, acs, audience, cert, key }) {
   const attribute = (name, value) => '<saml:Attribute Name="' + xml(name) + '"><saml:AttributeValue>' + xml(value) + '</saml:AttributeValue></saml:Attribute>';
   const response = `<samlp:Response xmlns:samlp="${protocolNS}" xmlns:saml="${assertionNS}" ID="_${randomUUID()}" Version="2.0" IssueInstant="${date(0)}" Destination="${xml(acs)}" InResponseTo="${xml(id)}">
   <saml:Issuer>${issuer}</saml:Issuer><samlp:Status><samlp:StatusCode Value="urn:oasis:names:tc:SAML:2.0:status:Success"/></samlp:Status>
-  <saml:Assertion ID="_${randomUUID()}" Version="2.0" IssueInstant="${date(0)}"><saml:Issuer>${issuer}</saml:Issuer>
+  <saml:Assertion xmlns:saml="${assertionNS}" ID="_${randomUUID()}" Version="2.0" IssueInstant="${date(0)}"><saml:Issuer>${issuer}</saml:Issuer>
   <saml:Subject><saml:NameID Format="urn:oasis:names:tc:SAML:2.0:nameid-format:persistent">stable-user</saml:NameID>
   <saml:SubjectConfirmation Method="urn:oasis:names:tc:SAML:2.0:cm:bearer"><saml:SubjectConfirmationData NotOnOrAfter="${date(60000)}" InResponseTo="${xml(id)}" Recipient="${xml(acs)}"/></saml:SubjectConfirmation></saml:Subject>
   <saml:Conditions NotBefore="${date(-15000)}" NotOnOrAfter="${date(60000)}"><saml:AudienceRestriction><saml:Audience>${xml(audience)}</saml:Audience></saml:AudienceRestriction></saml:Conditions>
@@ -47,6 +48,20 @@ function signedReply({ id, acs, audience, cert, key }) {
     transforms:["http://www.w3.org/2000/09/xmldsig#enveloped-signature",excC14n]});
   signature.computeSignature(response,{prefix:"ds", location:{reference:"//*[local-name()='Assertion']/*[local-name()='Issuer']",action:"after"}});
   return Buffer.from(signature.getSignedXml()).toString("base64");
+}
+
+// An independent IdP encrypts the already signed assertion using solely the
+// recipient's published certificate. The surrounding response stays unsigned.
+async function encryptSignedReply(encoded, cert) {
+  const original=Buffer.from(encoded,"base64").toString();
+  const assertion=original.match(/<saml:Assertion (?:.|\n)*?<\/saml:Assertion>/)?.[0];
+  assert.ok(assertion);
+  const options={rsa_pub:createPublicKey(cert).export({type:"spki",format:"pem"}),pem:cert,
+    encryptionAlgorithm:"http://www.w3.org/2009/xmlenc11#aes256-gcm",
+    keyEncryptionAlgorithm:"http://www.w3.org/2009/xmlenc11#rsa-oaep",
+    keyEncryptionDigest:"sha256",keyEncryptionMgf:"sha256"};
+  const encrypted=await new Promise((resolve,reject)=>xmlEncryption.encrypt(assertion,options,(err,value)=>err?reject(err):resolve(value)));
+  return Buffer.from(original.replace(assertion,"<saml:EncryptedAssertion>"+encrypted+"</saml:EncryptedAssertion>")).toString("base64");
 }
 
 function trustedFixtureTransport(ca) {
@@ -94,7 +109,7 @@ function inlineIdP(certificates, entity=issuer) {
   return `<md:EntityDescriptor xmlns:md="urn:oasis:names:tc:SAML:2.0:metadata" xmlns:ds="${ds}" entityID="${xml(entity)}"><md:IDPSSODescriptor protocolSupportEnumeration="${protocolNS}">${descriptors.join("")}<md:SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect" Location="${entryPoint}"/></md:IDPSSODescriptor></md:EntityDescriptor>`;
 }
 
-export async function compareEnterpriseSAML(t, {goFixture,instrument,privateDeployment=false,inline=false}) {
+export async function compareEnterpriseSAML(t, {goFixture,instrument,privateDeployment=false,inline=false,encrypted=false}) {
   const keys = await mkdtemp(join(tmpdir(),"stonewrit-idp-"));
   t.after(()=>rm(keys,{recursive:true,force:true}));
   const keyFile=join(keys,"private.pem"), certFile=join(keys,"cert.pem");
@@ -107,6 +122,13 @@ export async function compareEnterpriseSAML(t, {goFixture,instrument,privateDepl
     rotating={key:await readFile(privateFile,"utf8"),cert:await readFile(publicFile,"utf8")};
   }
   const fixtureEnv={CONFORMANCE_SAML:"1"};
+  let spKey,spCert;
+  if (encrypted) {
+    const spKeyFile=join(keys,"sp-key.pem"),spCertFile=join(keys,"sp-cert.pem");
+    execFileSync("openssl",["req","-x509","-newkey","rsa:2048","-nodes","-keyout",spKeyFile,"-out",spCertFile,"-days","1","-subj","/CN=Local SAML assertion recipient"],{stdio:"ignore"});
+    [spKey,spCert]=await Promise.all([readFile(spKeyFile,"utf8"),readFile(spCertFile,"utf8")]);
+    fixtureEnv.CONFORMANCE_SAML_ENCRYPTION_DIR=keys;
+  }
   if (privateDeployment) {
     fixtureEnv.CONFORMANCE_DISABLED_PATHS="/sso/saml2/sp/metadata /sign-up/email";
     fixtureEnv.CONFORMANCE_OPENAPI="1";
@@ -139,8 +161,18 @@ export async function compareEnterpriseSAML(t, {goFixture,instrument,privateDepl
     } else {
       ok(await admin.signUp.email(user));
     }
-    const registration = ok(await admin.sso.register({providerId:"work",domain:"enterprise.example",issuer,
-      samlConfig:{...(inline ? {entryPoint:"https://manual.example.test/unused",idpMetadata:{metadata:inlineIdP([cert])}} : {entryPoint,cert,idpMetadata:{entityID:issuer}}),spMetadata:{entityID:audience},wantAssertionsSigned:true}}));
+    const idpMetadata=inline ? {metadata:inlineIdP([cert])} : {entityID:issuer};
+    const spMetadata={entityID:audience};
+    if (encrypted) {
+      spMetadata.isAssertionEncrypted=true;
+      if (runtime===reference) {
+        idpMetadata.isAssertionEncrypted=true;
+        spMetadata.encPrivateKey=spKey;
+      }
+    }
+    const samlConfig={entryPoint:inline ? "https://manual.example.test/unused" : entryPoint,
+      ...(inline ? {} : {cert}),idpMetadata,spMetadata,wantAssertionsSigned:true};
+    const registration = ok(await admin.sso.register({providerId:"work",domain:"enterprise.example",issuer,samlConfig}));
     assert.equal(registration.redirectURI,runtime.baseURL+mount+"/sso/callback/work");
     if (inline) assert.equal(registration.samlConfig.idpMetadata.metadata,inlineIdP([cert]));
     else assert.equal(registration.samlConfig.cert,cert);
@@ -160,6 +192,13 @@ export async function compareEnterpriseSAML(t, {goFixture,instrument,privateDepl
       assert.equal(metadata.status,200);
       assert.match(metadata.headers.get("content-type"),/application\/xml/);
       const descriptor=await metadata.text();
+      if (encrypted && runtime===go) {
+        const advertised=descriptor.match(/use="encryption"[\s\S]*?<X509Certificate(?: [^>]*)?>([^<]+)<\/X509Certificate>/)?.[1];
+        assert.equal(advertised,spCert.replace(/-----[^-]+-----/g,"").replace(/\s/g,""));
+        for (const algorithm of ["http://www.w3.org/2009/xmlenc11#aes256-gcm","http://www.w3.org/2009/xmlenc11#rsa-oaep",
+          "http://www.w3.org/2001/04/xmlenc#sha256","http://www.w3.org/2009/xmlenc11#mgf1sha256"]) assert.ok(descriptor.includes(algorithm));
+        assert.ok(!descriptor.includes("PRIVATE KEY"));
+      }
       assert.ok(descriptor.includes('entityID="'+audience+'"'));
       assert.ok(descriptor.includes('Location="'+acs+'"'));
     }
@@ -187,7 +226,9 @@ export async function compareEnterpriseSAML(t, {goFixture,instrument,privateDepl
       assert.ok(request.includes(audience));
       const relay=url.searchParams.get("RelayState");
       assert.ok(relay);
-      const form=new URLSearchParams({SAMLResponse:signedReply({id,acs,audience,...(inline && !first ? rotating : {key,cert})}),RelayState:relay});
+      let reply=signedReply({id,acs,audience,...(inline && !first ? rotating : {key,cert})});
+      if (encrypted) reply=await encryptSignedReply(reply,spCert);
+      const form=new URLSearchParams({SAMLResponse:reply,RelayState:relay});
       const callback=await send(new Request(acs,{method:"POST",headers:{origin:new URL(entryPoint).origin},body:form}));
       assert.equal(callback.status,302,await callback.text());
       assert.equal(callback.headers.get("location"),runtime.baseURL+"/home");

@@ -144,7 +144,35 @@ Start with `POST /sign-in/sso` or the native `SignInSSO` method. Supply `provide
 
 `NameID` identifies the external account. Use `identifierFormat` to request a persistent NameID when your IdP offers one. Default attributes are `email`, `givenName`, `surname` and `displayName`; set `mapping` to select other single-valued attribute names. An email-shaped NameID supplies a missing email. To accept the IdP's verification claim, set both `SAMLOptions.TrustEmailVerified` and `mapping.emailVerified`. Existing verified mailboxes still require a live matching DNS domain proof for automatic linking. Current provider configuration, organization binding and domain proof are checked in the SQL transaction that claims the assertion and creates the account or session. A SHA-256 fingerprint identifies each accepted issuer and assertion ID for replay prevention. The receipt lasts 24 hours. Avoid recording assertion forms and state cookies in proxy or request logs.
 
-This profile supports plaintext, directly signed assertions over HTTP-POST. IdP-initiated sign-in, a GET or JSON ACS, encrypted assertions, SP metadata XML import, SAML single logout and registration-time private keys remain open. Configure an IdP to use the posted HTTPS ACS and a modern SHA-256-or-stronger signature. The `additionalParams` OAuth option is unavailable for this protocol. Imported SAML links require a recorded identity authority. The historical account reconciliation interface currently supports OIDC and static social identities.
+The default profile accepts a directly signed plaintext assertion over HTTP-POST. IdP-initiated sign-in, a GET or JSON ACS, SP metadata XML import, SAML single logout and registration-time private keys remain open. Configure an IdP to use the posted HTTPS ACS and a modern SHA-256-or-stronger signature. The `additionalParams` OAuth option is unavailable for this protocol. Imported SAML links require a recorded identity authority. The historical account reconciliation interface currently supports OIDC and static social identities.
+
+### Encrypt assertions for a directory
+
+Configure the same RSA recipient key and its X.509 certificate on each instance serving that directory. Load them through the host’s secret manager or protected files. The key must be at least 2048 bits. The following helper loads PEM files and returns the setting for `SAMLOptions.Encryption`.
+
+```go
+func assertionRecipient(certFile, keyFile string) (*sso.SAMLEncryption, error) {
+    pair, err := tls.LoadX509KeyPair(certFile, keyFile)
+    if err != nil {
+        return nil, err
+    }
+    key, ok := pair.PrivateKey.(*rsa.PrivateKey)
+    if !ok {
+        return nil, errors.New("SAML assertion recipient requires an RSA key")
+    }
+    cert, err := x509.ParseCertificate(pair.Certificate[0])
+    if err != nil {
+        return nil, err
+    }
+    return &sso.SAMLEncryption{PrivateKey: key, Certificate: cert}, nil
+}
+```
+
+Set `samlConfig.idpMetadata.isAssertionEncrypted` to `true` when registering the directory. The Go service also accepts `samlConfig.spMetadata.isAssertionEncrypted` as a requirement for incoming assertions. When either flag is true, a host with no recipient key rejects that registration. The SQL catalog stores the directory’s public settings. Supply only public settings in HTTP registrations.
+
+Give the IdP this directory’s SP metadata. Its encryption key descriptor advertises the public recipient certificate, AES-256-GCM and XML Encryption 1.1 RSA-OAEP with SHA-256 and MGF1-SHA256. Configure the IdP to sign the assertion, then encrypt the entire signed assertion. The content and wrapped key must each use an inline `CipherValue`. The IdP may additionally sign the outer response. The ACS checks the recovered assertion’s signature, claims, browser state, directory authority and issuer-bound replay receipt. A signed outer response with an unsigned assertion is rejected.
+
+One recipient key is active per host. Coordinate recipient-key changes across instances and the IdP, and start a fresh login after the switch. Each host accepts requests encrypted for its active key. The separate request-signing key and the IdP’s verification certificates can be managed independently. Encrypted NameID or attribute fields, detached encrypted keys, additional ciphers and multiple simultaneous recipient keys remain open.
 
 ### Import and rotate IdP metadata
 

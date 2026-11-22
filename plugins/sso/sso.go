@@ -163,6 +163,10 @@ func domains(value string) (string, error) {
 func New(o Options) (auth.Plugin, error) {
 	if o.SAML != nil {
 		v := *o.SAML
+		if v.Encryption != nil {
+			keys := *v.Encryption
+			v.Encryption = &keys
+		}
 		if err := v.validate(); err != nil {
 			return auth.Plugin{}, err
 		}

@@ -11,9 +11,13 @@ import (
 func samlConfigSchema() object {
 	text := object{"type": "string", "minLength": 1}
 	cert := object{"oneOf": []object{text, {"type": "array", "items": text, "minItems": 1, "maxItems": 8}}}
-	idp := responseObject(object{"entityID": text, "cert": cert, "metadata": text})
+	encryption := object{"type": "boolean", "description": "Require encrypted assertions. The host must configure an RSA recipient key and certificate."}
+	idp := responseObject(object{"entityID": text, "cert": cert, "metadata": text, "isAssertionEncrypted": encryption})
+	idp["additionalProperties"] = false
+	sp := responseObject(object{"entityID": text, "isAssertionEncrypted": encryption})
+	sp["additionalProperties"] = false
 	idp["anyOf"] = []object{{"required": []string{"entityID"}}, {"required": []string{"metadata"}}}
-	config := responseObject(object{"entryPoint": object{"type": "string", "format": "uri"}, "cert": cert, "audience": text, "idpMetadata": idp, "spMetadata": responseObject(object{"entityID": text}, "entityID"), "wantAssertionsSigned": object{"const": true}, "authnRequestsSigned": object{"type": "boolean"}, "identifierFormat": text, "mapping": modelSchema(reflect.TypeFor[sso.SAMLMapping]())}, "entryPoint", "idpMetadata")
+	config := responseObject(object{"entryPoint": object{"type": "string", "format": "uri"}, "cert": cert, "audience": text, "idpMetadata": idp, "spMetadata": sp, "wantAssertionsSigned": object{"const": true}, "authnRequestsSigned": object{"type": "boolean"}, "identifierFormat": text, "mapping": modelSchema(reflect.TypeFor[sso.SAMLMapping]())}, "entryPoint", "idpMetadata")
 	config["anyOf"] = []object{{"properties": object{"idpMetadata": object{"required": []string{"metadata"}}}}, {"required": []string{"cert"}}, {"properties": object{"idpMetadata": object{"required": []string{"cert"}}}}}
 	return config
 }

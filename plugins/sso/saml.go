@@ -23,6 +23,7 @@ var ErrInvalidSAML = apiError(400, "Invalid or unsupported SAML configuration")
 
 // SAMLOptions enables SP-initiated SAML. Request signing keys stay in the host.
 type SAMLOptions struct {
+	Encryption *SAMLEncryption
 	// MaxMetadataSize limits inline IdP XML in bytes, defaulting to 100 KiB.
 	MaxMetadataSize    int
 	RequestSigner      crypto.Signer
@@ -31,6 +32,9 @@ type SAMLOptions struct {
 }
 
 func (o SAMLOptions) validate() error {
+	if o.Encryption != nil && !o.Encryption.valid() {
+		return errors.New("sso: SAML decryption requires a matching RSA private key and certificate of at least 2048 bits")
+	}
 	if o.MaxMetadataSize < 0 || o.MaxMetadataSize > maxSAMLMetadataBytes {
 		return errors.New("sso: SAML metadata size must be between 1 byte and 1 MiB when set")
 	}
@@ -74,12 +78,14 @@ type SAMLMapping struct {
 	EmailVerified string `json:"emailVerified,omitempty"`
 }
 type SAMLIDPMetadata struct {
-	Metadata     string       `json:"metadata,omitempty"`
-	EntityID     string       `json:"entityID,omitempty"`
-	Certificates Certificates `json:"cert,omitempty"`
+	IsAssertionEncrypted bool         `json:"isAssertionEncrypted,omitempty"`
+	Metadata             string       `json:"metadata,omitempty"`
+	EntityID             string       `json:"entityID,omitempty"`
+	Certificates         Certificates `json:"cert,omitempty"`
 }
 type SAMLSPMetadata struct {
-	EntityID string `json:"entityID"`
+	IsAssertionEncrypted bool   `json:"isAssertionEncrypted,omitempty"`
+	EntityID             string `json:"entityID,omitempty"`
 }
 
 type SAMLConfig struct {
@@ -124,7 +130,7 @@ func (o Options) samlSP(c auth.EndpointContext, p Provider) (*saml.ServiceProvid
 		return nil, ErrInvalidSAML
 	}
 	spEntity := cfg.Issuer
-	if cfg.SPMetadata != nil {
+	if cfg.SPMetadata != nil && cfg.SPMetadata.EntityID != "" {
 		spEntity = cfg.SPMetadata.EntityID
 	}
 	entity, err := url.Parse(spEntity)
@@ -190,6 +196,14 @@ func (o Options) samlSP(c auth.EndpointContext, p Provider) (*saml.ServiceProvid
 		RejectUnknownConditions:          true,
 		RejectSHA1Signatures:             true,
 	}
+	if cfg.IDPMetadata.IsAssertionEncrypted || (cfg.SPMetadata != nil && cfg.SPMetadata.IsAssertionEncrypted) {
+		if o.SAML.Encryption == nil {
+			return nil, apiError(400, "SAML assertion decryption is not configured")
+		}
+		sp.EncryptionKey = o.SAML.Encryption.PrivateKey
+		sp.EncryptionCertificate = o.SAML.Encryption.Certificate
+		sp.RequireSignedResponseForCBC = true
+	}
 	if cfg.AuthnRequestsSigned || authority.signedRequests {
 		if o.SAML.RequestSigner == nil {
 			return nil, apiError(400, "SAML request signing is not configured")
@@ -244,12 +258,19 @@ func (o Options) samlMetadata(c auth.EndpointContext) (any, error) {
 		descriptors := desc.KeyDescriptors
 		desc.KeyDescriptors = nil
 		for _, k := range descriptors {
+			if k.Use == "encryption" && sp.EncryptionKey != nil {
+				k.EncryptionMethods = []saml.EncryptionMethod{{Algorithm: aesGCM256}, {Algorithm: rsaOAEP}}
+				desc.KeyDescriptors = append(desc.KeyDescriptors, k)
+			}
 			if k.Use == "signing" {
 				desc.KeyDescriptors = append(desc.KeyDescriptors, k)
 			}
 		}
 	}
 	raw, err := xml.Marshal(meta)
+	if err == nil && sp.EncryptionKey != nil {
+		raw, err = advertiseOAEPParameters(raw)
+	}
 	return auth.XMLDocument(raw), err
 }
 func (o Options) samlStart(c auth.EndpointContext, p BrowserProvider, proof, signup bool) (any, error) {

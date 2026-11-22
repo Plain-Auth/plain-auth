@@ -6692,6 +6692,11 @@
       "label": "Import the issuer, Redirect service and signing anchors from one submitted IdP XML document through the published client on both runtimes",
       "test": "conformance/sso-saml.mjs",
       "marker": "if (inline) assert.equal(registration.samlConfig.idpMetadata.metadata"
+    },
+    {
+      "label": "Require host-managed recipient credentials for encrypted directory registrations on each SQL engine",
+      "test": "adapters/sqlstore/sso_saml_test.go",
+      "marker": "t.Fatal(\"encrypted registration on a keyless host\""
     }
   ],
   "plugin/sso/GET /sso/providers": [
@@ -7854,6 +7859,11 @@
       "label": "Publish the host signing certificate and verify the resulting RSA-SHA256 Redirect at a local IdP",
       "test": "adapters/sqlstore/sso_saml_test.go",
       "marker": "req, e := saml.NewIdpAuthnRequest"
+    },
+    {
+      "label": "Advertise the public SP recipient certificate, AES-256-GCM and explicit RSA-OAEP SHA-256 parameters when a directory requires encryption",
+      "test": "adapters/sqlstore/sso_saml_test.go",
+      "marker": "t.Fatal(\"key transport parameters missing from SP metadata\""
     }
   ],
   "plugin/sso/GET / POST /sso/saml2/sp/acs/:providerId": [
@@ -7876,6 +7886,16 @@
       "label": "Invalidate requests that predate a certificate rotation and check the current XML trust anchors on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/sso_saml_metadata_test.go",
       "marker": "t.Fatal(\"old request survived certificate rotation\""
+    },
+    {
+      "label": "Complete first and returning sign-in with the published client using a directly signed, independently encrypted assertion on both runtimes",
+      "test": "conformance/core.test.mjs",
+      "marker": "test(\"enterprise SAML accepts an independently encrypted signed assertion"
+    },
+    {
+      "label": "Enforce the encrypted assertion profile, issuer, browser, DNS binding and durable replay checks on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_saml_test.go",
+      "marker": "func TestEnterpriseSAMLEncryptedBrowser("
     }
   ],
   "docs/content/docs/plugins/polar.mdx#L17/Checkout Integration": [

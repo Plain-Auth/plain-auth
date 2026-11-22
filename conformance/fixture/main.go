@@ -88,6 +88,13 @@ func main() {
 			opts := sso.Options{SharedCallback: os.Getenv("CONFORMANCE_SSO_SHARED_CALLBACK") == "1"}
 			if samlFixture {
 				opts.SAML = &sso.SAMLOptions{}
+				if dir := os.Getenv("CONFORMANCE_SAML_ENCRYPTION_DIR"); dir != "" {
+					keys, e := fixtureSAMLEncryption(dir)
+					if e != nil {
+						log.Fatal(e)
+					}
+					opts.SAML.Encryption = keys
+				}
 			}
 			if id == "sso-domain-verification" {
 				address := os.Getenv("CONFORMANCE_SSO_DNS")
