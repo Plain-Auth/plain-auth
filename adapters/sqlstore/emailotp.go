@@ -203,6 +203,14 @@ func (s *Store) UseEmailOTP(ctx context.Context, act auth.EmailOTPAction, matche
 	return s.useEmailOTP(ctx, act, matches, false)
 }
 
+// ConsumeObservedEmailOTP spends a valid code without verifying the address.
+func (s *Store) ConsumeObservedEmailOTP(ctx context.Context, req auth.EmailOTPRequest, matches func(string) (bool, error)) (auth.User, error) {
+	if req.Observation == nil || req.Observation.ID == "" || !req.Observation.ExpiresAt.After(req.Now) || !(req.Purpose == auth.OTPVerifyEmail && req.Source == nil || req.Purpose == auth.OTPChangeEmail && req.Source != nil) || req.CurrentMatches != nil {
+		return auth.User{}, errors.New("invalid observed email OTP verification")
+	}
+	return s.useEmailOTP(ctx, auth.EmailOTPAction{EmailOTPRequest: req, MaxAttempts: req.MaxAttempts}, matches, true)
+}
+
 // UseEmailOTPBeforeVerification commits one recovery proof, the new password,
 // and requested session revocation, leaving mailbox verification to the caller.
 func (s *Store) UseEmailOTPBeforeVerification(ctx context.Context, act auth.EmailOTPAction, matches func(string) (bool, error)) (auth.User, error) {
@@ -245,6 +253,16 @@ func (s *Store) useEmailOTP(ctx context.Context, act auth.EmailOTPAction, matche
 			if target.ID != "" {
 				return &auth.APIError{Status: 400, Code: "BAD_REQUEST", Message: "Email already in use"}, nil
 			}
+			if deferVerification {
+				user, err = s.emailOTPUser(ctx, tx, act.Source.Email)
+				if err == nil && (user.ID != act.Source.UserID || user.Email != act.Source.Email) {
+					return invalid, nil
+				}
+				if err == nil {
+					err = s.saveVerificationReceipt(ctx, tx, act.ObservationReceipt(user), act.Now)
+				}
+				return nil, err
+			}
 			_, err = tx.ExecContext(ctx, s.bind(`UPDATE "user" SET "email"=?,"emailVerified"=?,"updatedAt"=? WHERE "id"=? AND "email"=?`), act.Email, true, s.date(act.Now), act.Source.UserID, act.Source.Email)
 			return nil, err
 		}
@@ -270,6 +288,9 @@ func (s *Store) useEmailOTP(ctx context.Context, act auth.EmailOTPAction, matche
 		}
 		if user.ID == "" && act.Purpose != auth.OTPSignIn {
 			return missing, nil
+		}
+		if deferVerification && act.Purpose == auth.OTPVerifyEmail && user.Email != act.Email {
+			return invalid, nil
 		}
 		switch act.Purpose {
 		case auth.OTPSignIn:
@@ -304,6 +325,9 @@ func (s *Store) useEmailOTP(ctx context.Context, act auth.EmailOTPAction, matche
 				return nil, err
 			}
 		case auth.OTPVerifyEmail:
+			if deferVerification {
+				return nil, s.saveVerificationReceipt(ctx, tx, act.ObservationReceipt(user), act.Now)
+			}
 		default:
 			return nil, errors.New("unsupported email OTP action")
 		}
@@ -398,4 +422,82 @@ func (s *Store) authorizeEmailOTPChange(ctx context.Context, tx *sql.Tx, req aut
 		return &auth.APIError{Status: 400, Code: "INVALID_OTP", Message: "Invalid OTP"}, s.clearEmailOTP(ctx, tx, key)
 	}
 	return nil, s.clearEmailOTP(ctx, tx, key)
+}
+
+// FinishObservedEmailOTP commits the mailbox mutation after the host callback.
+// The spent code cannot be used to switch accounts or to revive a lost session.
+func (s *Store) FinishObservedEmailOTP(ctx context.Context, req auth.EmailOTPRequest, before auth.User) (auth.User, error) {
+	started := time.Now()
+	invalid := &auth.APIError{Status: 400, Code: "INVALID_OTP", Message: "Invalid OTP"}
+	if req.Observation == nil || req.Observation.ID == "" || before.ID == "" || req.Source == nil && (req.Purpose != auth.OTPVerifyEmail || before.Email != req.Email) ||
+		req.Source != nil && (req.Purpose != auth.OTPChangeEmail || req.Source.Email != before.Email || req.Source.UserID != before.ID || req.CurrentMatches != nil) {
+		return auth.User{}, invalid
+	}
+	tx, err := s.beginMembershipChange(ctx)
+	if err != nil {
+		return auth.User{}, err
+	}
+	defer tx.Rollback()
+	if req.Source != nil {
+		denial, err := s.authorizeEmailOTPChange(ctx, tx, req)
+		if err != nil {
+			return auth.User{}, err
+		}
+		if denial != nil {
+			return auth.User{}, denial
+		}
+	}
+	owner, err := s.emailOTPUser(ctx, tx, before.Email)
+	if err != nil {
+		return auth.User{}, err
+	}
+	if owner.ID != before.ID || owner.Email != before.Email || !owner.UpdatedAt.Equal(before.UpdatedAt) {
+		return auth.User{}, invalid
+	}
+	if req.Source != nil {
+		other, err := s.emailOTPUser(ctx, tx, req.Email)
+		if err != nil {
+			return auth.User{}, err
+		}
+		if other.ID != "" {
+			return auth.User{}, &auth.APIError{Status: 400, Code: "BAD_REQUEST", Message: "Email already in use"}
+		}
+	}
+	valid, err := s.takeVerificationReceipt(ctx, tx, req.ObservationReceipt(before), req.Now.Add(time.Since(started)))
+	if err != nil {
+		return auth.User{}, err
+	}
+	if !valid {
+		return auth.User{}, invalid
+	}
+	_, err = tx.ExecContext(ctx, s.bind(`UPDATE "user" SET "email"=?,"emailVerified"=?,"updatedAt"=? WHERE "id"=?`), req.Email, true, s.date(req.Now), owner.ID)
+	if err != nil {
+		if req.Source != nil {
+			if rollbackErr := tx.Rollback(); rollbackErr == nil {
+				if other, lookupErr := s.FindAccountUser(ctx, req.Email); lookupErr == nil && other.ID != owner.ID {
+					return auth.User{}, &auth.APIError{Status: 400, Code: "BAD_REQUEST", Message: "Email already in use"}
+				}
+			}
+		}
+		return auth.User{}, err
+	}
+	after, err := s.emailOTPUser(ctx, tx, req.Email)
+	if err != nil {
+		return auth.User{}, err
+	}
+	if after.Email != req.Email || after.ID != owner.ID {
+		return auth.User{}, invalid
+	}
+	if v := req.ObservationAttempt(after); v.NewSession != nil {
+		_, allowed, err := s.emailVerificationSessionPolicy(ctx, tx, v)
+		if err != nil {
+			return auth.User{}, err
+		}
+		if allowed {
+			if err := s.saveVerificationReceipt(ctx, tx, v.SessionReceipt(after), req.Now); err != nil {
+				return auth.User{}, err
+			}
+		}
+	}
+	return after, tx.Commit()
 }

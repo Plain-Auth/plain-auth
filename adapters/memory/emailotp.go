@@ -187,6 +187,14 @@ func (s *Store) UseEmailOTP(ctx context.Context, act auth.EmailOTPAction, matche
 	return s.useEmailOTP(ctx, act, matches, false)
 }
 
+// ConsumeObservedEmailOTP spends a valid code without verifying the address.
+func (s *Store) ConsumeObservedEmailOTP(ctx context.Context, req auth.EmailOTPRequest, matches func(string) (bool, error)) (auth.User, error) {
+	if req.Observation == nil || req.Observation.ID == "" || !req.Observation.ExpiresAt.After(req.Now) || !(req.Purpose == auth.OTPVerifyEmail && req.Source == nil || req.Purpose == auth.OTPChangeEmail && req.Source != nil) || req.CurrentMatches != nil {
+		return auth.User{}, errors.New("invalid observed email OTP verification")
+	}
+	return s.useEmailOTP(ctx, auth.EmailOTPAction{EmailOTPRequest: req, MaxAttempts: req.MaxAttempts}, matches, true)
+}
+
 // UseEmailOTPBeforeVerification commits one recovery proof, the new password,
 // and requested session revocation, leaving mailbox verification to the caller.
 func (s *Store) UseEmailOTPBeforeVerification(ctx context.Context, act auth.EmailOTPAction, matches func(string) (bool, error)) (auth.User, error) {
@@ -241,6 +249,10 @@ func (s *Store) finishMailProof(key mailKey, p mailProof, act auth.EmailOTPActio
 		}
 		id := act.Source.UserID
 		rec := s.users[id]
+		if deferVerification {
+			s.saveVerificationReceipt(act.ObservationReceipt(rec.user), act.Now)
+			return copyUser(rec.user), nil
+		}
 		delete(s.emailToID, rec.user.Email)
 		rec.user.Email, rec.user.EmailVerified, rec.user.UpdatedAt = act.Email, true, act.Now
 		s.emailToID[act.Email] = id
@@ -276,6 +288,9 @@ func (s *Store) finishMailProof(key mailKey, p mailProof, act auth.EmailOTPActio
 			return auth.User{}, errors.New("memory: empty password reset hash")
 		}
 	case auth.OTPVerifyEmail:
+		if deferVerification {
+			s.saveVerificationReceipt(act.ObservationReceipt(rec.user), act.Now)
+		}
 	default:
 		return auth.User{}, errors.New("memory: unsupported email OTP action")
 	}
@@ -305,5 +320,49 @@ func (s *Store) finishMailProof(key mailKey, p mailProof, act auth.EmailOTPActio
 	s.emailToID[rec.user.Email] = rec.user.ID
 	s.users[rec.user.ID] = rec
 	delete(s.emailOTPs, key)
+	return copyUser(rec.user), nil
+}
+
+func (s *Store) FinishObservedEmailOTP(ctx context.Context, req auth.EmailOTPRequest, before auth.User) (auth.User, error) {
+	started := time.Now()
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if err := ctx.Err(); err != nil {
+		return auth.User{}, err
+	}
+	rec := s.users[before.ID]
+	if req.Observation == nil || req.Observation.ID == "" || before.ID == "" || rec.user.ID != before.ID || rec.user.Email != before.Email || !rec.user.UpdatedAt.Equal(before.UpdatedAt) {
+		return auth.User{}, invalidMailOTP()
+	}
+	if req.Source == nil {
+		if req.Purpose != auth.OTPVerifyEmail || req.Email != before.Email {
+			return auth.User{}, invalidMailOTP()
+		}
+	} else {
+		if req.Purpose != auth.OTPChangeEmail || req.Source.Email != before.Email || req.Source.UserID != before.ID || req.CurrentMatches != nil {
+			return auth.User{}, invalidMailOTP()
+		}
+		state, err := s.snapshotMail(req, true)
+		if err != nil {
+			return auth.User{}, err
+		}
+		if state.suppress {
+			return auth.User{}, &auth.APIError{Status: 400, Code: "BAD_REQUEST", Message: "Email already in use"}
+		}
+	}
+	if !s.takeVerificationReceipt(req.ObservationReceipt(before), req.Now.Add(time.Since(started))) {
+		return auth.User{}, invalidMailOTP()
+	}
+	if req.Source != nil {
+		delete(s.emailToID, before.Email)
+		s.emailToID[req.Email] = before.ID
+	}
+	rec.user.Email, rec.user.EmailVerified, rec.user.UpdatedAt = req.Email, true, req.Now
+	s.users[before.ID] = rec
+	if v := req.ObservationAttempt(rec.user); v.NewSession != nil {
+		if _, allowed := s.verificationSessionPolicy(v, rec.user); allowed {
+			s.saveVerificationReceipt(v.SessionReceipt(rec.user), req.Now)
+		}
+	}
 	return copyUser(rec.user), nil
 }

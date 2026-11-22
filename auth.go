@@ -255,6 +255,14 @@ func New(opts Options) (*Auth, error) {
 			return nil, errors.New("auth: automatic email verification sign-in requires an EmailVerificationSessionStore")
 		}
 	}
+	if a.hasVerificationObservers() {
+		if _, ok := a.opts.Store.(EmailVerificationObserverStore); !ok {
+			return nil, errors.New("auth: email verification callbacks require an EmailVerificationObserverStore")
+		}
+		if _, ok := a.opts.Store.(EmailOTPVerificationObserverStore); a.emailOTP != nil && !ok {
+			return nil, errors.New("auth: email OTP verification callbacks require an EmailOTPVerificationObserverStore")
+		}
+	}
 	return a, nil
 }
 

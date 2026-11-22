@@ -5,6 +5,7 @@ import (
 	"crypto/subtle"
 	"errors"
 	"net/http"
+	"strings"
 )
 
 func (a *Auth) encodeEmailOTP(ctx context.Context, code string) (string, error) {
@@ -112,13 +113,20 @@ func (a *Auth) ReadEmailOTP(ctx context.Context, email string, purpose EmailOTPP
 
 // CompleteEmailVerificationOTP optionally issues a session according to the plugin's policy.
 func (a *Auth) CompleteEmailVerificationOTP(ctx context.Context, email, code string, meta RequestMeta) (AuthResult, error) {
+	return a.completeEmailVerificationOTP(ctx, email, code, meta, true, nil)
+}
+
+func (a *Auth) completeEmailVerificationOTP(ctx context.Context, email, code string, meta RequestMeta, allowSession bool, r *http.Request) (AuthResult, error) {
 	req, err := a.emailOTPRequest(email, OTPVerifyEmail)
 	if err != nil {
 		return AuthResult{}, err
 	}
 	var act EmailOTPAction
-	if a.emailOTP.AutoSignInAfterVerification {
+	if allowSession && a.emailOTP.AutoSignInAfterVerification {
 		act.Session, _ = a.newSession("", meta)
+	}
+	if a.hasVerificationObservers() {
+		return a.observeEmailOTP(ctx, req, code, act.Session, r)
 	}
 	u, err := a.consumeEmailOTP(ctx, req, code, act)
 	if err != nil {
@@ -167,8 +175,16 @@ func (a *Auth) RequestEmailChangeOTP(ctx context.Context, h http.Header, newEmai
 
 // ChangeEmailOTP consumes the new mailbox's proof for the authenticated account.
 func (a *Auth) ChangeEmailOTP(ctx context.Context, h http.Header, newEmail, code string) error {
+	return a.changeEmailOTP(ctx, h, newEmail, code, nil)
+}
+
+func (a *Auth) changeEmailOTP(ctx context.Context, h http.Header, newEmail, code string, r *http.Request) error {
 	req, err := a.emailChangeOTPRequest(ctx, h, newEmail)
 	if err != nil {
+		return err
+	}
+	if a.hasVerificationObservers() {
+		_, err = a.observeEmailOTP(ctx, req, code, StoredSession{}, r)
 		return err
 	}
 	_, err = a.consumeEmailOTP(ctx, req, code, EmailOTPAction{})
@@ -194,10 +210,19 @@ func (a *Auth) serveEmailOTPChange(c EndpointContext, path string) (any, error) 
 	if err != nil {
 		return nil, err
 	}
-	if err = a.ChangeEmailOTP(c.Request.Context(), c.Request.Header, newEmail, code); err != nil {
+	if err = a.changeEmailOTP(c.Request.Context(), c.Request.Header, newEmail, code, c.Request); err != nil {
 		return nil, err
 	}
 	if token := a.cookieToken(c.Request.Header); token != "" {
+		if a.hasVerificationObservers() {
+			identity, err := a.GetSession(c.Request.Context(), c.Request.Header)
+			if err != nil {
+				return nil, err
+			}
+			if identity == nil || identity.Session.Token != token || identity.Session.RequireOwner() != nil || identity.User.Email != strings.ToLower(newEmail) {
+				return success, nil
+			}
+		}
 		if err := a.addSessionCookieHeaders(c.ResponseHeader, c.Request, token, !a.dontRemember(c.Request)); err != nil {
 			return nil, err
 		}

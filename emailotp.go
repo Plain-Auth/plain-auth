@@ -61,6 +61,8 @@ type EmailOTPSource struct {
 	UserID, Email, SessionToken string
 }
 type EmailOTPRequest struct {
+	// Observation is present only while completing host-observed verification.
+	Observation *EmailOTPObservation
 	// Source binds email changes to the authenticated original account.
 	Source         *EmailOTPSource
 	CurrentMatches func(string) (bool, error)
@@ -231,7 +233,8 @@ func (a *Auth) CheckEmailOTP(ctx context.Context, email, code string, purpose Em
 
 // VerifyEmailOTP confirms an address without creating a session.
 func (a *Auth) VerifyEmailOTP(ctx context.Context, email, code string) (User, error) {
-	return a.useEmailOTP(ctx, email, code, OTPVerifyEmail, EmailOTPAction{})
+	res, err := a.completeEmailVerificationOTP(ctx, email, code, RequestMeta{}, false, nil)
+	return res.User, err
 }
 
 type EmailOTPSignInInput struct {
@@ -333,7 +336,7 @@ func (a *Auth) serveEmailOTP(c EndpointContext, path string) (any, error) {
 	}
 	switch path {
 	case "/email-otp/verify-email":
-		res, err := a.CompleteEmailVerificationOTP(ctx, email, code, RequestMeta{IPAddress: a.clientIP(c.Request), UserAgent: c.Request.UserAgent()})
+		res, err := a.completeEmailVerificationOTP(ctx, email, code, RequestMeta{IPAddress: a.clientIP(c.Request), UserAgent: c.Request.UserAgent()}, true, c.Request)
 		if err != nil {
 			return nil, err
 		}
@@ -341,7 +344,7 @@ func (a *Auth) serveEmailOTP(c EndpointContext, path string) (any, error) {
 		if res.Token != "" {
 			token = &res.Token
 			if err := a.addSessionCookieHeaders(c.ResponseHeader, c.Request, res.Token, true); err != nil {
-				return nil, err
+				return nil, a.discardUnpublishedSession(ctx, res.Token, err)
 			}
 		}
 		return map[string]any{"status": true, "user": res.User, "token": token}, nil

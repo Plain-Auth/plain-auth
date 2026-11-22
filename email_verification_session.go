@@ -18,6 +18,8 @@ type EmailVerificationAttempt struct {
 	OwnerID, Email, ProofID, ExistingToken string
 	Now, IssuedAt, ExpiresAt               time.Time
 	NewSession                             *StoredSession
+	// The explicit OTP sign-in route issues a new session even for its current owner.
+	AlwaysCreateSession bool
 }
 
 // MatchesProfileRevision checks the signed profile revision before issuing a
@@ -58,17 +60,20 @@ func (a *Auth) consumeVerification(ctx context.Context, claims verificationClaim
 			return "", false, &APIError{401, "INVALID_TOKEN", "Invalid token"}
 		}
 	}
-	if browser != nil && ctx.Value(credentialSessionKey{a}) == nil && browser.Header.Get("Authorization") == "" {
-		cookies := browser.CookiesNamed(a.cookieName())
-		if len(cookies) == 1 {
-			v.ExistingToken = a.VerifySignedSessionToken(cookies[0].Value)
-		}
-		if (len(cookies) == 0 || len(cookies) == 1 && v.ExistingToken != "") && a.cookieToken(browser.Header) == v.ExistingToken {
+	if a.opts.AutoSignInAfterVerification && browser != nil {
+		if existing, ok := a.verificationBrowserCredential(ctx, browser); ok {
+			v.ExistingToken = existing
 			row, _ := a.newSession(v.OwnerID, RequestMeta{IPAddress: a.clientIP(browser), UserAgent: browser.UserAgent()})
 			v.NewSession = &row
 		}
 	}
-	token, err := a.opts.Store.(EmailVerificationSessionStore).CompleteEmailVerification(ctx, v)
+	var token string
+	var err error
+	if a.hasVerificationObservers() {
+		token, err = a.observeAddressVerification(ctx, v, browser)
+	} else {
+		token, err = a.opts.Store.(EmailVerificationSessionStore).CompleteEmailVerification(ctx, v)
+	}
 	if errors.Is(err, ErrNotFound) {
 		err = &APIError{401, "INVALID_TOKEN", "Invalid token"}
 	}
@@ -85,14 +90,30 @@ func (a *Auth) verifyEmailBrowser(r *http.Request, h http.Header, claims verific
 	err = a.addSessionCookieHeaders(h, r, token, persistent)
 	if err != nil {
 		if created {
-			cleanup, cancel := context.WithTimeout(context.WithoutCancel(r.Context()), 5*time.Second)
-			defer cancel()
-			if cleanupErr := a.opts.Store.DeleteSession(cleanup, token); cleanupErr != nil {
-				return errors.Join(err, cleanupErr)
-			}
+			return a.discardUnpublishedSession(r.Context(), token, err)
 		}
 		return err
 	}
 	a.writeRememberPreference(h, r, persistent)
 	return nil
+}
+
+// Only a direct browser session, or a browser without credentials, can receive
+// a login from mailbox verification. The store checks live session authority.
+func (a *Auth) verificationBrowserCredential(ctx context.Context, r *http.Request) (string, bool) {
+	if ctx.Value(credentialSessionKey{a}) != nil || r.Header.Get("Authorization") != "" {
+		return "", false
+	}
+	cookies := r.CookiesNamed(a.cookieName())
+	var token string
+	if len(cookies) == 1 {
+		token = a.VerifySignedSessionToken(cookies[0].Value)
+	}
+	return token, (len(cookies) == 0 || len(cookies) == 1 && token != "") && a.cookieToken(r.Header) == token
+}
+
+func (a *Auth) discardUnpublishedSession(ctx context.Context, token string, cause error) error {
+	cleanup, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+	defer cancel()
+	return errors.Join(cause, a.opts.Store.DeleteSession(cleanup, token))
 }

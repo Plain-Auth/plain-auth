@@ -280,7 +280,7 @@ func main() {
 	}
 	if os.Getenv("AUTH_TEST_EMAIL_OTP_MAILBOX") == "1" {
 		mailbox := filepath.Join(filepath.Dir(os.Args[1]), "email-otp.json")
-		p, err := emailotp.New(emailotp.Options{StoreOTP: "hashed", ChangeEmail: emailotp.ChangeOptions{Enabled: true, VerifyCurrentEmail: true}, Send: func(_ context.Context, message emailotp.Message) error {
+		p, err := emailotp.New(emailotp.Options{StoreOTP: "hashed", AutoSignInAfterVerification: os.Getenv("CONFORMANCE_VERIFY_HOOKS") == "1", ChangeEmail: emailotp.ChangeOptions{Enabled: true, VerifyCurrentEmail: true}, Send: func(_ context.Context, message emailotp.Message) error {
 			data, err := json.Marshal(message)
 			if err != nil {
 				return err
@@ -428,6 +428,9 @@ func main() {
 	}
 	if mode := os.Getenv("CONFORMANCE_SIGNUP_OBSERVER"); mode != "" {
 		configureSignUpObserver(&opts, mode, os.Args[1]+".signup-events")
+	}
+	if os.Getenv("CONFORMANCE_VERIFY_HOOKS") == "1" {
+		verificationHookFixture(&opts, os.Args[1])
 	}
 	if os.Getenv("CONFORMANCE_RESET_HOOK") == "1" {
 		resetHookFixture(&opts, os.Args[1])

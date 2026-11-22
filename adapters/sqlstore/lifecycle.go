@@ -172,7 +172,7 @@ func (s *Store) ChangeAccountEmail(ctx context.Context, userID, oldEmail, newEma
 		return user, err
 	}
 	oldEmail, newEmail = strings.ToLower(oldEmail), strings.ToLower(newEmail)
-	update := s.bind(`UPDATE "user" SET "email"=?,"updatedAt"=? WHERE "id"=? AND "email"=? AND "emailVerified"=?`)
+	update := s.bind(`UPDATE "user" SET "email"=?,"updatedAt"=? WHERE "id"=? AND ` + s.exactSQLValue(`LOWER("email")`) + `=? AND "emailVerified"=?`)
 	res, err := tx.ExecContext(ctx, update, newEmail, s.date(now), userID, oldEmail, verified)
 	if err != nil {
 		// PostgreSQL rejects subsequent queries in a failed transaction. Roll

@@ -63,6 +63,9 @@ type Options struct {
 	SendResetPassword             MailSender
 	PasswordResetTokenTTL         time.Duration
 	RevokeSessionsOnPasswordReset bool
+	// BeforeEmailVerification and AfterEmailVerification run outside store locks.
+	BeforeEmailVerification, AfterEmailVerification EmailVerificationHook
+
 	// OnPasswordReset runs after a recovery proof is consumed, the password is
 	// replaced, and any requested session revocation commits. Mounted endpoints
 	// pass the HTTP request. Direct Go calls pass nil.

@@ -38,7 +38,7 @@ Codes default to six random decimal digits, five minutes of validity and three f
 
 `StoreOTP` accepts `plain` (default), `hashed` (SHA-256) and `encrypted` (authenticated encryption under the instance secret). The default `ResendStrategy` is `rotate`. Setting it to `reuse` extends the validity of an unexpired, recoverable code and preserves its accumulated failed attempts. Hashed codes rotate on resend. Invalid attempts return `INVALID_OTP`. The next submission after the budget is exhausted returns `TOO_MANY_ATTEMPTS` and removes the proof. An expired stored code returns `OTP_EXPIRED`.
 
-Go callers can use `Auth.SendEmailOTP`, `CheckEmailOTP`, `VerifyEmailOTP`, `SignInEmailOTP` and `ResetPasswordEmailOTP`. The HTTP client provides the same operations plus `RequestPasswordResetEmailOTP` and retains the login cookie in its jar. The server consumes a successful proof and commits the requested account or session change in one transaction.
+Go callers can use `Auth.SendEmailOTP`, `CheckEmailOTP`, `VerifyEmailOTP`, `SignInEmailOTP` and `ResetPasswordEmailOTP`. The HTTP client provides the same operations plus `RequestPasswordResetEmailOTP` and retains the login cookie in its jar. With the default verification policy, the server consumes a successful proof and commits the requested account or session change in one transaction. With account verification callbacks enabled, it first consumes the code, runs the before hook, commits the exact owner’s address change, and runs the after hook. An after-hook error preserves the address change and stops session issuance. [Email verification callbacks](account.md#verify-an-address-with-application-callbacks)
 
 ## Change an address
 

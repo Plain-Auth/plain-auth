@@ -1533,3 +1533,8 @@ test("enterprise SAML logs out a recorded IdP session through a signed Redirect 
   const {compareEnterpriseSAML}=await import("./sso-saml.mjs");
   await compareEnterpriseSAML(t,{goFixture,instrument,logout:true});
 });
+
+test("mail verification callbacks observe the same committed transitions and retries through the released client", async t => {
+  const { compareVerificationObservers } = await import("./email-verification-observers.mjs");
+  await compareVerificationObservers(t, {reference, goFixture, instrument});
+});

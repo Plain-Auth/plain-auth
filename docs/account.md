@@ -82,3 +82,20 @@ With `ChangeEmailEnabled`, a signed-in client can post `{"newEmail":"new@example
 Enable `DeleteUserEnabled` to expose `POST /delete-user`. The default flow accepts a fresh session, or the correct current password in the `password` field. With `SendDeleteAccountVerification` configured, the service mails a confirmation link. The link expires after 24 hours by default, configurable through `DeleteTokenTTL`. The `GET /delete-user/callback` request must carry both the token and an active session belonging to that user. Deletion removes the user, accounts, sessions and outstanding core mail-link records.
 
 A trusted Go caller can use `SetPassword(ctx, headers, newPassword)` to attach the first password to an account signed in through another provider. The HTTP API does not expose this operation.
+
+## Verify an address with application callbacks
+
+Set `Options.BeforeEmailVerification` and `Options.AfterEmailVerification` independently. Each function receives a context, the stored core user profile, and a request. The profile includes the ID, name, mailbox, verification flag, image, and timestamps. Mounted endpoints pass a private copy of the request URL and headers with an empty body. The verification token is removed from the query string and request URI. Headers can still contain sensitive cookies or authorization credentials. Direct Go calls pass a nil request. An error stops that request. HTTP callers receive a generic server error for a private callback failure.
+
+| Verification | Before | After |
+| --- | --- | --- |
+| First use of an ordinary verification link | Current unverified profile | Committed verified profile |
+| Another visit to a verified address link | Skipped | Skipped |
+| Verification with an email code | Current profile, including an already verified profile | Committed verified profile |
+| Change by link, previously verified owner | Skipped on both legs | New address after the final confirmation |
+| Change by link, previously unverified owner | Skipped | Skipped |
+| Change with a new-address code | Current account at its old address | The same account at its new, verified address |
+
+For ordinary links, a before-hook error leaves verification pending and the same link can be retried until expiry. Email verification and change codes are spent before the before hook. A rejected code operation needs a fresh code. An after-hook error leaves the mailbox change committed. Each route waits for the after hook before issuing or refreshing browser credentials. Code-based sign-in and password recovery follow their own callback policies. [Browser compatibility tests](../conformance/email-verification-observers.mjs)
+
+The built-in adapters release locks before calling application code. Simultaneous link requests can both inspect the unverified profile in their before hooks. Use that hook for repeatable checks. Only the request that commits ordinary verification runs the after hook. A process interruption between the commit and the callback can interrupt delivery. An expiring, single-use receipt binds each delayed OTP change or session grant to its original proof, owner and proposed operation. Callback failures discard the corresponding receipt. When granting a session after a callback, StoneWrit rechecks the verified account, session authority and applicable sign-in restrictions. Custom adapters that enable these callbacks implement `EmailVerificationObserverStore` and, when using the email-code plugin, `EmailOTPVerificationObserverStore`. [Storage and concurrency tests](../adapters/sqlstore/email_verification_observers_test.go)

@@ -97,7 +97,7 @@ func (s *Store) ChangeAccountEmail(ctx context.Context, id, oldEmail, newEmail s
 		return auth.User{}, err
 	}
 	rec, ok := s.users[id]
-	if !ok || !strings.EqualFold(oldEmail, rec.user.Email) || rec.user.EmailVerified != verified {
+	if !ok || strings.ToLower(oldEmail) != strings.ToLower(rec.user.Email) || rec.user.EmailVerified != verified {
 		return auth.User{}, auth.ErrNotFound
 	}
 	key := strings.ToLower(newEmail)

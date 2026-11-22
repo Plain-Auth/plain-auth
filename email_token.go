@@ -78,7 +78,7 @@ func (a *Auth) VerifyEmail(ctx context.Context, raw string) error {
 	if claims.UpdateTo != "" || claims.RequestType != "" {
 		return &APIError{401, "INVALID_TOKEN", "Invalid token"}
 	}
-	if a.opts.AutoSignInAfterVerification {
+	if a.opts.AutoSignInAfterVerification || a.hasVerificationObservers() {
 		_, _, err := a.consumeVerification(ctx, claims, raw, nil)
 		return err
 	}
@@ -104,7 +104,7 @@ func (a *Auth) applyEmailProof(r *http.Request, response http.Header, raw, callb
 		return nil, err
 	}
 	if claims.UpdateTo == "" && claims.RequestType == "" {
-		if a.opts.AutoSignInAfterVerification {
+		if a.opts.AutoSignInAfterVerification || a.hasVerificationObservers() {
 			return map[string]any{"status": true, "user": nil}, a.verifyEmailBrowser(r, response, claims, raw)
 		}
 		return map[string]any{"status": true, "user": nil}, a.verifyAddress(ctx, claims)
@@ -117,7 +117,7 @@ func (a *Auth) applyEmailProof(r *http.Request, response http.Header, raw, callb
 		return nil, err
 	}
 	user, err := store.FindAccountUser(ctx, claims.Email)
-	if errors.Is(err, ErrNotFound) || (err == nil && user.ID != claims.UserID) {
+	if errors.Is(err, ErrNotFound) || (err == nil && (user.ID != claims.UserID || strings.ToLower(user.Email) != strings.ToLower(claims.Email))) {
 		return nil, &APIError{401, "INVALID_TOKEN", "Invalid token"}
 	}
 	if err != nil {
@@ -144,6 +144,9 @@ func (a *Auth) applyEmailProof(r *http.Request, response http.Header, raw, callb
 		u, err := store.ChangeAccountEmail(ctx, user.ID, user.Email, claims.UpdateTo, user.EmailVerified, a.now().UTC())
 		if errors.Is(err, ErrEmailTaken) || errors.Is(err, ErrNotFound) {
 			return nil, &APIError{401, "INVALID_TOKEN", "Invalid token"}
+		}
+		if err == nil && u.EmailVerified {
+			err = runEmailVerificationHook(ctx, a.opts.AfterEmailVerification, u, r)
 		}
 		return map[string]any{"status": true, "user": u}, err
 	default:

@@ -235,8 +235,14 @@
       - [ ] 3. Manually
     - [ ] Verifying the Email
     - [ ] Auto Sign In After Verification
-    - [ ] Callback before email verification
-    - [ ] Callback after successful email verification
+    - [x] Callback before email verification ([test](../../conformance/email-verification-observers.mjs#L8))
+      - [x] Observe the persisted profile before link and code verification, including the original mailbox for a code-based address change ([test](../../conformance/email-verification-observers.mjs#L8))
+      - [x] Retry a rejected ordinary link, burn a rejected email code and recheck the owner and source session after the host returns ([test](../../adapters/sqlstore/email_verification_observers_test.go#L17))
+      - [x] Reject a fabricated or previously consumed code continuation on independently mounted adapters ([test](../../adapters/sqlstore/email_verification_observers_test.go#L337))
+    - [x] Callback after successful email verification ([test](../../conformance/email-verification-observers.mjs#L8))
+      - [x] Deliver the committed profile on each explicit verification path and preserve verified state when the host callback fails ([test](../../conformance/email-verification-observers.mjs#L8))
+      - [x] Run a single after callback for competing ordinary links without holding the owner lock during host code ([test](../../adapters/sqlstore/email_verification_observers_test.go#L217))
+      - [x] Bind delayed session issuance to the exact proposed credential and redeem it only once across stores ([test](../../adapters/sqlstore/email_verification_observers_test.go#L287))
     - [x] Callback on duplicate sign-up attempt ([test](../../conformance/core.test.mjs#L1461))
       - [x] Deliver the stored owner to the host while preserving private responses across both modes and ordinary 422 behavior in the released client ([test](../../conformance/core.test.mjs#L1461))
       - [x] Run the callback after storage releases the account, isolate errors and panics, and preserve owned request metadata ([test](../../adapters/sqlstore/existing_signup_test.go#L83))

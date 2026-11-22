@@ -8794,5 +8794,41 @@
       "test": "conformance/auth-test-helpers.test.mjs",
       "marker": "result = await auth.api.signInEmailOTP"
     }
+  ],
+  "docs/content/docs/concepts/email.mdx#L172": [
+    {
+      "label": "Observe the persisted profile before link and code verification, including the original mailbox for a code-based address change",
+      "test": "conformance/email-verification-observers.mjs",
+      "marker": "export async function compareVerificationObservers(",
+      "complete": true
+    },
+    {
+      "label": "Retry a rejected ordinary link, burn a rejected email code and recheck the owner and source session after the host returns",
+      "test": "adapters/sqlstore/email_verification_observers_test.go",
+      "marker": "func TestEmailVerificationObserverBoundaries("
+    },
+    {
+      "label": "Reject a fabricated or previously consumed code continuation on independently mounted adapters",
+      "test": "adapters/sqlstore/email_verification_observers_test.go",
+      "marker": "unissued OTP continuation changed a mailbox"
+    }
+  ],
+  "docs/content/docs/concepts/email.mdx#L189": [
+    {
+      "label": "Deliver the committed profile on each explicit verification path and preserve verified state when the host callback fails",
+      "test": "conformance/email-verification-observers.mjs",
+      "marker": "export async function compareVerificationObservers(",
+      "complete": true
+    },
+    {
+      "label": "Run a single after callback for competing ordinary links without holding the owner lock during host code",
+      "test": "adapters/sqlstore/email_verification_observers_test.go",
+      "marker": "expected a single committed after callback"
+    },
+    {
+      "label": "Bind delayed session issuance to the exact proposed credential and redeem it only once across stores",
+      "test": "adapters/sqlstore/email_verification_observers_test.go",
+      "marker": "func TestVerificationObserverHandoffsAreSingleUse("
+    }
   ]
 }
