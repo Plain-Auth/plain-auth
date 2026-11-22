@@ -58,6 +58,14 @@ An existing local Stripe customer is reused. For a user without one, the server 
 
 A checkout expires after 23 hours. Its signed expiration event releases the reservation. If an outcome remains ambiguous, the server keeps the reservation and returns `CHECKOUT_RECONCILIATION_REQUIRED`. Inspect the matching Stripe Checkout Session and redeliver its completion or expiration event before starting a replacement. For a reservation that never reached Stripe, verify the absence of the remote checkout before clearing the incomplete reservation administratively.
 
+## Offer a free trial
+
+Set `FreeTrial` on a plan to offer a positive number of days on a new Checkout. For example, `stripeplugin.Plan{Name: "pro", PriceID: "price_pro", FreeTrial: &stripeplugin.FreeTrial{Days: 14}}` offers two weeks. The client selects the plan by name. The server sends the eligible duration to Stripe as `subscription_data[trial_period_days]`. [Stripe Checkout parameters](https://docs.stripe.com/api/checkout/sessions/create)
+
+The SQL adapters check every subscription belonging to the selected personal account or organization. Any trial start date, trial end date, or current `trialing` status shows prior use across plans. A canceled paid subscription or an abandoned checkout with no trial history leaves the account eligible. Keep historical subscription rows when retaining eligibility across renewals. An organization administrator’s personal subscription history applies only to their personal purchases. [Released-client eligibility cases](../conformance/stripe-organization-fixture.mjs)
+
+The store records the trial decision with the checkout reservation. Concurrent requests and retries after a lost Stripe response reuse the same term and idempotency key. A reservation opened before trial support keeps its original terms. Custom stores supporting trial plans must implement `stripeplugin.TrialCheckoutStore`. Signed subscription events record the provider’s status and trial dates. [Cross-database trial tests](../adapters/sqlstore/stripe_trial_test.go)
+
 ## Start a metered subscription
 
 Configure the monthly or annual Stripe price ID for the usage-based plan and omit `SeatPriceID`. The subscription’s initial Checkout supports one recurring price with an interval of one month or one year. The server reads the configured price from Stripe before reserving the purchase. If the price lookup fails, the client can retry after Stripe becomes available. Give the Stripe API key permission to read prices. [Stripe Price object](https://docs.stripe.com/api/prices/object)

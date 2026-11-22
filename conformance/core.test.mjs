@@ -1551,3 +1551,11 @@ test("enterprise SAML accepts signed directory logout and returns a correlated s
   const {compareEnterpriseSAML}=await import("./sso-saml.mjs");
   await compareEnterpriseSAML(t,{goFixture,instrument,logout:true,incoming:true});
 });
+
+test("signed Stripe trial checkout uses the selected reference's history across plans on both runtimes", async t => {
+  const { trialEligibility } = await import("./stripe-organization-fixture.mjs");
+  for (const group of [false, true]) for (const prior of [false, true]) {
+    await t.test((group ? "organization" : "personal") + (prior ? " with prior trial" : " first trial"),
+      t => trialEligibility(t, { reference, goFixture, instrument }, group, prior));
+  }
+});

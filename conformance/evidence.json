@@ -2074,6 +2074,11 @@
       "label": "Replay the exact original add-on basket after a lost Checkout response on independent SQL connections",
       "test": "adapters/sqlstore/stripe_addons_test.go",
       "marker": "incorrect cross-node checkout retry"
+    },
+    {
+      "label": "Offer the configured trial only for a new personal or organization billing reference with no trial history across plans",
+      "test": "conformance/stripe-organization-fixture.mjs",
+      "marker": "assert.equal(remote.state.trialDays, priorTrial ? null : \"14\")"
     }
   ],
   "docs/content/docs/plugins/stripe.mdx#L221": [
@@ -8968,6 +8973,71 @@
       "test": "authtest/server_test.go",
       "marker": "wrong fixture cookie attributes",
       "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L644": [
+    {
+      "label": "Offer the configured trial only for a new personal or organization billing reference with no trial history across plans",
+      "test": "conformance/stripe-organization-fixture.mjs",
+      "marker": "assert.equal(remote.state.trialDays, priorTrial ? null : \"14\")"
+    },
+    {
+      "label": "Record the signed trial and expose its start, end and status through the public billing client",
+      "test": "conformance/stripe-organization-fixture.mjs",
+      "marker": "if (!priorTrial) assert.equal(Date.parse(row.trialEnd) - Date.parse(row.trialStart)"
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L883/`freeTrial`": [
+    {
+      "label": "Offer the configured trial only for a new personal or organization billing reference with no trial history across plans",
+      "test": "conformance/stripe-organization-fixture.mjs",
+      "marker": "assert.equal(remote.state.trialDays, priorTrial ? null : \"14\")"
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L889": [
+    {
+      "label": "Offer the configured trial only for a new personal or organization billing reference with no trial history across plans",
+      "test": "conformance/stripe-organization-fixture.mjs",
+      "marker": "assert.equal(remote.state.trialDays, priorTrial ? null : \"14\")"
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L17/Automatic trial abuse prevention": [
+    {
+      "label": "Offer the configured trial only for a new personal or organization billing reference with no trial history across plans",
+      "test": "conformance/stripe-organization-fixture.mjs",
+      "marker": "assert.equal(remote.state.trialDays, priorTrial ? null : \"14\")",
+      "complete": true
+    },
+    {
+      "label": "Preserve the granted trial and provider idempotency key after lost responses and across replicas",
+      "test": "adapters/sqlstore/stripe_trial_test.go",
+      "marker": "cross-replica retry changed the reserved trial or idempotency key"
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L1087": [
+    {
+      "label": "Offer the configured trial only for a new personal or organization billing reference with no trial history across plans",
+      "test": "conformance/stripe-organization-fixture.mjs",
+      "marker": "assert.equal(remote.state.trialDays, priorTrial ? null : \"14\")",
+      "complete": true
+    },
+    {
+      "label": "Preserve the granted trial and provider idempotency key after lost responses and across replicas",
+      "test": "adapters/sqlstore/stripe_trial_test.go",
+      "marker": "cross-replica retry changed the reserved trial or idempotency key"
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L893/`days`": [
+    {
+      "label": "Offer the configured trial only for a new personal or organization billing reference with no trial history across plans",
+      "test": "conformance/stripe-organization-fixture.mjs",
+      "marker": "assert.equal(remote.state.trialDays, priorTrial ? null : \"14\")",
+      "complete": true
+    },
+    {
+      "label": "Require a positive duration and copy the configured number of days at startup",
+      "test": "plugins/stripe/lifecycle_test.go",
+      "marker": "func TestFreeTrialRequiresPositiveDays("
     }
   ]
 }

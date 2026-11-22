@@ -96,6 +96,10 @@ func (s *subscriptions) observeCheckoutCompletion(c auth.EndpointContext, event 
 	_, err = callSubscriptionHook(c, event, *delivery.local, "completion", remote, func(p SubscriptionEvent) error {
 		request := c.Request.Clone(ctx)
 		plan.MeteredPriceIDs = slices.Clone(plan.MeteredPriceIDs)
+		if plan.FreeTrial != nil {
+			trial := *plan.FreeTrial
+			plan.FreeTrial = &trial
+		}
 		request.Body = http.NoBody
 		request.GetBody = nil
 		return s.onComplete(ctx, SubscriptionComplete{SubscriptionEvent: p, Plan: plan, Request: request})

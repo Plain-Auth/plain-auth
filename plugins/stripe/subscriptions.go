@@ -16,9 +16,15 @@ import (
 	sdk "github.com/stripe/stripe-go/v87"
 )
 
+// FreeTrial offers an eligible billing reference a trial on a new subscription.
+type FreeTrial struct {
+	Days int64
+}
+
 // Plan supplies monthly and annual recurring Stripe price IDs.
 type Plan struct {
 	Name, PriceID, AnnualPriceID string
+	FreeTrial                    *FreeTrial `json:",omitempty"`
 	// SeatPriceID opts organization checkout into membership-based billing.
 	// Use the base price for seat-only billing, or a distinct seat price matching the selected base interval.
 	SeatPriceID, ProrationBehavior string
@@ -72,6 +78,8 @@ type CheckoutAttempt struct {
 	MeteredPriceIDs []string `json:"meteredPriceIds,omitempty"`
 	// Metered reservations omit quantity from the original Checkout line.
 	Metered bool `json:"metered,omitempty"`
+	// TrialDays is the immutable trial term approved for this purchase.
+	TrialDays int64 `json:"trialDays,omitempty"`
 	// CheckPrice requests a price lookup for a new reservation only.
 	CheckPrice bool `json:"-"`
 	// RetainCompletion keeps the settled checkout binding for signed callbacks.
@@ -94,6 +102,12 @@ func (a CheckoutAttempt) Quantity() int64 {
 
 // ErrCheckoutPriceCheck asks the handler to verify the price outside the database transaction.
 var ErrCheckoutPriceCheck = errors.New("stripe: verify recurring prices before reserving checkout")
+
+// TrialCheckoutStore checks the reference's trial history across every plan and
+// persists the eligible term with the reservation before issuing a provider request.
+type TrialCheckoutStore interface {
+	ReserveStripeTrialCheckout(context.Context, string, string, CheckoutAttempt, time.Time) (CheckoutAttempt, error)
+}
 
 type SubscriptionStore interface {
 	CheckSubscriptionSchema(context.Context) error
@@ -143,6 +157,13 @@ func configureSubscriptions(o *SubscriptionOptions) (*subscriptions, error) {
 	s := &subscriptions{client: o.Client, plans: map[string]Plan{}, requireEmailVerification: o.RequireEmailVerification, onUpdate: o.OnSubscriptionUpdate, onCreated: o.OnSubscriptionCreated, onCancel: o.OnSubscriptionCancel, onDeleted: o.OnSubscriptionDeleted, onComplete: o.OnSubscriptionComplete}
 	s.prices = make(map[string]subscriptionPrice)
 	for _, p := range o.Plans {
+		if p.FreeTrial != nil {
+			trial := *p.FreeTrial
+			if trial.Days < 1 {
+				return nil, errors.New("stripe: a free trial must last at least one day")
+			}
+			p.FreeTrial = &trial
+		}
 		p.Name = strings.ToLower(strings.TrimSpace(p.Name))
 		if p.Name == "" || !strings.HasPrefix(p.PriceID, "price_") || len(p.PriceID) == 6 || (p.AnnualPriceID != "" && (!strings.HasPrefix(p.AnnualPriceID, "price_") || len(p.AnnualPriceID) == 6)) || s.plans[p.Name].Name != "" {
 			return nil, errors.New("stripe: invalid or duplicate subscription plan")
@@ -298,7 +319,12 @@ func (s *subscriptions) checkout(c auth.EndpointContext) (any, error) {
 			return nil, err
 		}
 	}
-	a, err := store.ReserveStripeCheckout(ctx, selection.reference, ss.Session.Token, want, time.Now().UTC())
+	reserve := store.ReserveStripeCheckout
+	if p.FreeTrial != nil {
+		want.TrialDays = p.FreeTrial.Days
+		reserve = c.Store().(TrialCheckoutStore).ReserveStripeTrialCheckout
+	}
+	a, err := reserve(ctx, selection.reference, ss.Session.Token, want, time.Now().UTC())
 	if errors.Is(err, ErrCheckoutPriceCheck) {
 		if err := s.prepareCheckoutPrices(ctx, &want); err != nil {
 			return nil, err
@@ -306,7 +332,7 @@ func (s *subscriptions) checkout(c auth.EndpointContext) (any, error) {
 		if _, supported := store.(SubscriptionLifecycleStore); (want.Metered || len(want.MeteredPriceIDs) > 0) && !supported {
 			return nil, billingError(409, "METERED_CHECKOUT_UNAVAILABLE", "Metered checkout requires subscription lifecycle storage")
 		}
-		a, err = store.ReserveStripeCheckout(ctx, selection.reference, ss.Session.Token, want, time.Now().UTC())
+		a, err = reserve(ctx, selection.reference, ss.Session.Token, want, time.Now().UTC())
 	}
 	if errors.Is(err, ErrExistingSubscription) {
 		// With multiple subscriptions the customer must name the one to change.
@@ -381,6 +407,9 @@ func (s *subscriptions) checkout(c auth.EndpointContext) (any, error) {
 			LineItems:         a.checkoutLines(),
 			Metadata:          meta,
 			SubscriptionData:  &sdk.CheckoutSessionCreateSubscriptionDataParams{Metadata: meta},
+		}
+		if a.TrialDays > 0 {
+			params.SubscriptionData.TrialPeriodDays = sdk.Int64(a.TrialDays)
 		}
 		params.SetIdempotencyKey("auth-checkout-" + a.ID)
 		if selection.organization {

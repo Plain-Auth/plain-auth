@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { once } from "node:events";
 import { readFile } from "node:fs/promises";
 import { createServer } from "node:http";
+import { DatabaseSync } from "node:sqlite";
 import { organization } from "better-auth/plugins";
 import { organizationClient } from "better-auth/client/plugins";
 import { stripe } from "@better-auth/stripe";
@@ -39,6 +40,7 @@ async function provider(t, meteredIDs = []) {
       result = price(id);
     }
     if (url.pathname === "/v1/checkout/sessions" && req.method === "POST") {
+      state.trialDays = form.get("subscription_data[trial_period_days]");
       const lines = [];
       for (let i = 0; form.has(`line_items[${i}][price]`); i++) {
         const line = { id: "li_" + i, price: price(form.get(`line_items[${i}][price]`)) };
@@ -55,6 +57,11 @@ async function provider(t, meteredIDs = []) {
           id: ["si_org", "si_member"][i] ?? "si_addon_" + i, quantity: line.quantity, current_period_start: start,
           current_period_end: start + (intervalOf(line.price.id) === "year" ? 31_536_000 : 2_592_000), price: line.price,
         })) } };
+      if (state.trialDays) {
+        state.subscription.status = "trialing";
+        state.subscription.trial_start = start;
+        state.subscription.trial_end = start + Number(state.trialDays) * 86400;
+      }
     }
     if (url.pathname === "/v1/checkout/sessions/cs_org" && req.method === "GET") result = state.checkout;
     if (url.pathname === "/v1/subscriptions/sub_org" && req.method === "GET") result = state.subscription;
@@ -348,5 +355,51 @@ export async function checkoutCompletionObserver(t, { reference, goFixture, inst
     assert.equal(row.referenceId, referenceID);
     assert.equal(row.stripeSubscriptionId, remote.state.subscription.id);
     assert.deepEqual([row.plan, row.status, row.seats], ["team", "trialing", 7]);
+  });
+}
+
+export async function trialEligibility(t, { reference, goFixture, instrument }, groupBilling, priorTrial) {
+  const remote = await provider(t);
+  for (const runtime of ["reference", "Go"]) await t.test(runtime, async t => {
+    const server = runtime === "Go"
+      ? await goFixture(t, groupBilling ? ["organization", "stripe-organization"] : ["stripe-subscriptions"],
+        { CONFORMANCE_STRIPE_URL: remote.url, CONFORMANCE_STRIPE_FREE_TRIAL: "1" })
+      : await reference(t, [organization(), stripe({
+        stripeClient: remote.api, stripeWebhookSecret: secret, organization: { enabled: true },
+        subscription: { enabled: true, plans: [{ name: "basic", priceId: "price_basic", freeTrial: { days: 14 } }],
+          authorizeReference: organizationBillingPolicy },
+      })]);
+    const db = server.database ?? new DatabaseSync(server.databasePath);
+    if (!server.database) t.after(() => db.close());
+    const client = instrument(server, [organizationClient(), stripeClient({ subscription: true })]).client;
+    const { user } = checked(await client.signUp.email({
+      name: "Trial buyer", email: "trial@example.test", password: "trial-fixture-password",
+    }));
+    let referenceID = user.id;
+    let selection = {};
+    if (groupBilling) {
+      const group = checked(await client.organization.create({ name: "Trial group", slug: "trial-group" }));
+      referenceID = group.id;
+      selection = { referenceId: group.id, customerType: "organization" };
+    }
+    if (priorTrial) {
+      db.prepare('INSERT INTO "subscription" ("id","plan","referenceId","status","trialEnd") VALUES(?,?,?,?,?)')
+        .run("original", "older-plan", referenceID, "canceled", new Date("2025-01-02").toISOString());
+    }
+    // Only the configured plan and the selected reference's persisted history determine the term.
+    const result = checked(await client.subscription.upgrade({ ...selection, plan: "basic", disableRedirect: true }));
+    assert.equal(result.url, remote.state.checkout.url);
+    assert.equal(remote.state.trialDays, priorTrial ? null : "14");
+    const body = JSON.stringify({ id: "evt_trial_receipt", type: "checkout.session.completed", object: "event",
+      api_version: Stripe.API_VERSION, livemode: false, data: { object: remote.state.checkout } });
+    const signature = remote.api.webhooks.generateTestHeaderString({ payload: body, secret });
+    const reply = await server.send(new Request(server.baseURL + "/api/auth/stripe/webhook", {
+      method: "POST", headers: { "content-type": "application/json", "stripe-signature": signature }, body,
+    }));
+    assert.equal(reply.status, 200, await reply.text());
+    const [row] = checked(await client.subscription.list({ query: selection }));
+    assert.equal(row.referenceId, referenceID);
+    assert.equal(row.status, priorTrial ? "active" : "trialing");
+    if (!priorTrial) assert.equal(Date.parse(row.trialEnd) - Date.parse(row.trialStart), 14 * 86400000);
   });
 }

@@ -87,6 +87,13 @@ func (s *Store) FindStripeCheckout(ctx context.Context, owner, id string) (billi
 	}
 	return a, err
 }
+func (s *Store) ReserveStripeTrialCheckout(ctx context.Context, owner, token string, want billing.CheckoutAttempt, now time.Time) (billing.CheckoutAttempt, error) {
+	if want.TrialDays < 1 {
+		return billing.CheckoutAttempt{}, billing.ErrCheckoutReconcile
+	}
+	return s.ReserveStripeCheckout(ctx, owner, token, want, now)
+}
+
 func (s *Store) ReserveStripeCheckout(ctx context.Context, owner, token string, want billing.CheckoutAttempt, now time.Time) (billing.CheckoutAttempt, error) {
 	var result billing.CheckoutAttempt
 	if want.Seats < 0 || want.Seats > math.MaxInt32 {
@@ -153,6 +160,16 @@ func (s *Store) ReserveStripeCheckout(ctx context.Context, owner, token string, 
 		if customer.String != "" {
 			if err := s.checkCustomerOwner(ctx, tx, owner, customer.String); err != nil {
 				return err
+			}
+		}
+		if want.TrialDays > 0 {
+			var used bool
+			err = tx.QueryRowContext(ctx, s.bind(`SELECT EXISTS(SELECT 1 FROM "subscription" WHERE "referenceId"=? AND ("trialStart" IS NOT NULL OR "trialEnd" IS NOT NULL OR "status"='trialing'))`), owner).Scan(&used)
+			if err != nil {
+				return err
+			}
+			if used {
+				want.TrialDays = 0
 			}
 		}
 		want.ID, want.Owner, want.LocalSubscription, want.Customer = rand.Text(), owner, rand.Text(), customer.String

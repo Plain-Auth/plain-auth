@@ -124,6 +124,11 @@ func New(opts Options) authn.Plugin {
 				return err
 			}
 			for _, plan := range subs.plans {
+				if plan.FreeTrial != nil {
+					if _, ok := store.(TrialCheckoutStore); !ok {
+						return errors.New("stripe: free trials require a store with reservation-bound trial eligibility")
+					}
+				}
 				if plan.SeatPriceID != "" {
 					if opts.Organization == nil || opts.Organization.AuthorizeReference == nil {
 						return errors.New("stripe: membership-based billing requires organization authorization")
