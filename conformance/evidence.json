@@ -12158,6 +12158,21 @@
       "label": "Keep the grant and its audience authorization in one snapshot during concurrent changes on three database engines",
       "test": "adapters/sqlstore/oauth_opaque_introspection_test.go",
       "marker": "func TestOpaqueIntrospectionResourceSnapshot("
+    },
+    {
+      "label": "Introspect a resource-bound JWT minted by an independent issuer and preserve the claims originally signed for the grant",
+      "test": "conformance/oauth-signed-introspection.mjs",
+      "marker": "const signed = decodeJwt(issued.access_token);"
+    },
+    {
+      "label": "Distinguish an expired or malformed signed JWT from an unrecognized token that still matches an independently stored refresh grant",
+      "test": "conformance/oauth-signed-introspection.mjs",
+      "marker": "async function collision(token, fallsThrough)"
+    },
+    {
+      "label": "Recheck current credentials, session and resource state and surface key-store failures on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_signed_introspection_test.go",
+      "marker": "func TestSignedAccessIntrospection("
     }
   ],
   "docs/content/docs/plugins/oauth-provider/reference.mdx#L322/`POST /oauth2/introspect`": [
@@ -12180,6 +12195,21 @@
       "label": "Inspect an independently issued delegated access token as the issuer and as a linked resource server with the issuing sector’s pairwise subject",
       "test": "conformance/oauth-opaque-introspection.mjs",
       "marker": "assert.deepEqual(await check(resourceCredentials), bound);"
+    },
+    {
+      "label": "Introspect a resource-bound JWT minted by an independent issuer and preserve the claims originally signed for the grant",
+      "test": "conformance/oauth-signed-introspection.mjs",
+      "marker": "const signed = decodeJwt(issued.access_token);"
+    },
+    {
+      "label": "Distinguish an expired or malformed signed JWT from an unrecognized token that still matches an independently stored refresh grant",
+      "test": "conformance/oauth-signed-introspection.mjs",
+      "marker": "async function collision(token, fallsThrough)"
+    },
+    {
+      "label": "Recheck current credentials, session and resource state and surface key-store failures on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_signed_introspection_test.go",
+      "marker": "func TestSignedAccessIntrospection("
     }
   ],
   "docs/content/docs/plugins/oauth-provider/resource-server.mdx#L185": [
@@ -12212,6 +12242,21 @@
       "label": "Keep the grant and its audience authorization in one snapshot during concurrent changes on three database engines",
       "test": "adapters/sqlstore/oauth_opaque_introspection_test.go",
       "marker": "func TestOpaqueIntrospectionResourceSnapshot("
+    },
+    {
+      "label": "Introspect a resource-bound JWT minted by an independent issuer and preserve the claims originally signed for the grant",
+      "test": "conformance/oauth-signed-introspection.mjs",
+      "marker": "const signed = decodeJwt(issued.access_token);"
+    },
+    {
+      "label": "Distinguish an expired or malformed signed JWT from an unrecognized token that still matches an independently stored refresh grant",
+      "test": "conformance/oauth-signed-introspection.mjs",
+      "marker": "async function collision(token, fallsThrough)"
+    },
+    {
+      "label": "Recheck current credentials, session and resource state and surface key-store failures on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_signed_introspection_test.go",
+      "marker": "func TestSignedAccessIntrospection("
     }
   ],
   "docs/content/docs/plugins/oauth-provider/reference.mdx#L400/`introspect`": [
@@ -12524,6 +12569,13 @@
       "label": "Inspect an independently issued delegated access token as the issuer and as a linked resource server with the issuing sector’s pairwise subject",
       "test": "conformance/oauth-opaque-introspection.mjs",
       "marker": "assert.deepEqual(await check(resourceCredentials), bound);"
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/resource-server.mdx#L144": [
+    {
+      "label": "Introspect a resource-bound JWT minted by an independent issuer and preserve the claims originally signed for the grant",
+      "test": "conformance/oauth-signed-introspection.mjs",
+      "marker": "const signed = decodeJwt(issued.access_token);"
     }
   ]
 }

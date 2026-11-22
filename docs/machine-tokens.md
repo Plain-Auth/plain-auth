@@ -77,7 +77,7 @@ This flow issues opaque tokens for confidential registrations using a shared sec
 
 ## Check whether a token is active
 
-A confidential application can inspect its own opaque machine tokens, delegated access tokens, and refresh tokens at `POST /api/auth/oauth2/introspect`. Authenticate using the registered method. A signed client assertion can address the introspection endpoint or the issuer. For a `client_secret_post` registration, send the following request from your server.
+A confidential application can inspect its own signed or opaque access tokens and refresh tokens at `POST /api/auth/oauth2/introspect`. Authenticate using the registered method. A signed client assertion can address the introspection endpoint or the issuer. For a `client_secret_post` registration, send the following request from your server.
 
 ```sh
 curl --request POST "$AUTH_URL/api/auth/oauth2/introspect" \
@@ -101,7 +101,17 @@ Register your API as a confidential OAuth client, then link that client to its r
 
 For a delegated opaque access token, `sub` identifies the user. A pairwise registration uses the issuing application’s sector even when another client inspects the token. A session-bound grant includes `sid` and becomes inactive when the session expires or ends. An unbound grant can remain active without a session. Key-bound tokens report `token_type: "DPoP"` and their confirmation key. Other tokens report `"Bearer"`. The introspection response describes the binding. Your resource server still verifies the proof accompanying each protected request.
 
-The `aud` claim is a string for one audience and an array for several. For a resource-targeted grant with the `openid` scope, the issuer also includes its UserInfo endpoint. Resource policy claims are merged in audience order, with later resources taking precedence. The issuer controls identity, audience, binding, expiry and other protocol fields. Disabling a resource preserves outstanding grants. Deleting any named resource makes the token inactive. Signed JWT introspection and host-defined claim callbacks are tracked separately. [Delegated access tests](../conformance/oauth-opaque-introspection.mjs) · [SQL consistency tests](../adapters/sqlstore/oauth_opaque_introspection_test.go)
+The `aud` claim is a string for one audience and an array for several. For a resource-targeted grant with the `openid` scope, the issuer also includes its UserInfo endpoint. Resource policy claims are merged in audience order, with later resources taking precedence. The issuer controls identity, audience, binding, expiry and other protocol fields. Disabling a resource preserves outstanding grants. Deleting any named resource makes the token inactive. [Delegated access tests](../conformance/oauth-opaque-introspection.mjs) · [SQL consistency tests](../adapters/sqlstore/oauth_opaque_introspection_test.go)
+
+## Inspect a signed access token
+
+Enable `auth.NewJWT` alongside the OAuth provider and install the `jwt` and `oauth-provider` SQL profiles. Send the compact signed token to the same form-encoded introspection endpoint using the issuing application's credentials or a linked resource server's credentials. Set `token_type_hint=access_token` to limit the request to access tokens. [Signing keys and algorithms](jwt.md) · [Database profiles](databases.md)
+
+Plain Auth verifies the signature using its published keys and configured algorithms. The expected `iss` comes from `auth.JWTOptions.Issuer` when set and otherwise from the auth mount's public URL. The implicit UserInfo audience always uses the public mount, including a custom base path. A token can omit `kid` when exactly one eligible key matches the algorithm. A key-store outage or an ambiguous signing key returns a server error so the caller can retry.
+
+The signed `azp` identifies the issuing client. It must still be enabled, every explicit resource audience must still exist, and any session named by `sid` must still be active. A resource server needs a current link to at least one explicit resource audience. The response retains claims from issuance, including custom claims. Introspection adds the current activity result, the issuing client ID, the binding type, and any applicable pairwise subject. Editing a resource's custom claims affects previously issued opaque tokens and newly minted JWTs. Existing JWTs retain their signed values.
+
+An expired signed token or an inactive grant returns only `{"active":false}`. An unrecognized signature or issuer can still match a stored opaque token. This also supports hosts that generate opaque tokens containing periods. A custom store implements `oauthprovider.SignedAccessIntrospectionStore` to check the caller, issuing registration, session and resource links in a single snapshot. [Cross-runtime tests](../conformance/oauth-signed-introspection.mjs) · [Three-engine tests](../adapters/sqlstore/oauth_signed_introspection_test.go) · [RFC 7662](https://www.rfc-editor.org/rfc/rfc7662.html#section-2.2)
 
 ## Inspect a refresh token
 

@@ -20,7 +20,7 @@ type MachineIntrospectionStore interface {
 }
 
 const introspectionOperation = `{
-  "summary":"Check the status of an stored OAuth access or refresh token",
+  "summary":"Check the status of an OAuth access or refresh token",
   "security":[{"clientSecretBasic":[]},{}],
   "description":"Authenticate as the issuing application or as a resource server linked to an access token audience.",
   "requestBody":{"required":true,"content":{"application/x-www-form-urlencoded":{"schema":{
@@ -44,7 +44,8 @@ func (opts Options) introspect(c auth.EndpointContext) (any, error) {
 	reader, ok := c.Store().(MachineClientReader)
 	store, machine := c.Store().(MachineIntrospectionStore)
 	opaque, supportsOpaque := c.Store().(OpaqueAccessIntrospectionStore)
-	if !ok || !machine && !supportsOpaque {
+	_, supportsSigned := c.Store().(SignedAccessIntrospectionStore)
+	if !ok || !machine && !supportsOpaque && !supportsSigned {
 		return nil, &auth.APIError{Status: 501, Code: "OAUTH_INTROSPECTION_STORE_UNAVAILABLE", Message: "The configured store does not support OAuth token introspection"}
 	}
 	ctx := c.Request.Context()
@@ -59,6 +60,10 @@ func (opts Options) introspect(c auth.EndpointContext) (any, error) {
 	}
 	var digest string
 	if req.hint != "refresh_token" {
+		result, recognized, err := opts.introspectSigned(c, req, first, reader)
+		if err != nil || recognized {
+			return result, err
+		}
 		digest, err = opts.Tokens.storedTokenDigest(ctx, req.token, StoredAccessToken)
 		if err != nil {
 			return nil, err
@@ -73,8 +78,10 @@ func (opts Options) introspect(c auth.EndpointContext) (any, error) {
 		current, access, knownAccess, err = opaque.InspectOpaqueAccessToken(ctx, in.id, digest, userInfoURL)
 	} else if supportsRefresh {
 		current, record, knownAccess, err = refreshStore.InspectOpaqueMachineToken(ctx, in.id, digest)
-	} else {
+	} else if machine {
 		current, record, err = store.InspectMachineToken(ctx, in.id, digest)
+	} else {
+		current, err = reader.LookupMachineClient(ctx, in.id)
 	}
 	if err == nil {
 		err = in.recheckClient(first, current)

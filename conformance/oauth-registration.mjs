@@ -10,6 +10,7 @@ import { exerciseIntrospection } from "./oauth-introspection.mjs";
 import { exerciseClientKeyRotation } from "./oauth-key-rotation.mjs";
 import { exerciseClientAssertions } from "./oauth-client-assertions.mjs";
 import { exerciseRefreshIntrospection } from "./oauth-refresh-introspection.mjs";
+import { exerciseSignedIntrospection } from "./oauth-signed-introspection.mjs";
 import { exerciseRevocation } from "./oauth-revocation.mjs";
 
 function options(mode) {
@@ -333,6 +334,9 @@ export async function compareClientRegistration(t, reference, goFixture) {
         });
         await t.test("revoke access and refresh tokens and recognize independently signed access tokens", async () => {
           await exerciseRevocation({ runtime, server, issuer, db, credentials, created, cookie, exchange });
+        });
+        await t.test("introspect signed access tokens issued independently and authorize their resource servers", async () => {
+          await exerciseSignedIntrospection({ server, db, credentials, config, created, cookie });
         });
         const exchanged = await exchange(credentials.client_secret);
         const result = await exchanged.json();

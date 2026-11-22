@@ -137,6 +137,7 @@ Go records the resolved commit in the consuming project’s `go.mod`. The module
 | Authenticate an OAuth application with its own signing key and rotate its keys | [Signed client assertions](docs/oauth-client-assertions.md) |
 | Check whether a refresh token or its original session is still active | [Refresh token introspection](docs/machine-tokens.md#inspect-a-refresh-token) |
 | Inspect a delegated opaque token using an application or resource server credential | [Delegated token introspection](docs/machine-tokens.md#inspect-a-delegated-token-as-a-resource-server) |
+| Check signed OAuth access tokens against current client, session and resource state | [Signed token introspection](docs/machine-tokens.md#inspect-a-signed-access-token) |
 | Revoke an OAuth token or invalidate a replayed refresh-token family | [Token revocation](docs/oauth-token-revocation.md) |
 | List or delete registered applications and show client details on a consent screen | [Manage registered applications](docs/oauth-client-directory.md) |
 | Issue signed service tokens and publish verification keys | [JWT and JWKS](docs/jwt.md) |

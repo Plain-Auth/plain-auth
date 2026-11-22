@@ -15,11 +15,7 @@ import (
 var _ op.OpaqueAccessIntrospectionStore = (*Store)(nil)
 
 func (s *Store) InspectOpaqueAccessToken(ctx context.Context, callerID, digest, userInfoURL string) (op.MachineClient, *op.OpaqueAccessTokenRecord, bool, error) {
-	var options *sql.TxOptions
-	if s.dialect != "sqlite" {
-		options = &sql.TxOptions{Isolation: sql.LevelRepeatableRead, ReadOnly: true}
-	}
-	tx, err := s.db.BeginTx(ctx, options)
+	tx, err := s.beginIntrospectionSnapshot(ctx)
 	if err != nil {
 		return op.MachineClient{}, nil, false, err
 	}
@@ -33,6 +29,14 @@ func (s *Store) InspectOpaqueAccessToken(ctx context.Context, callerID, digest, 
 		return current, nil, known, err
 	}
 	return current, record, known, tx.Commit()
+}
+
+func (s *Store) beginIntrospectionSnapshot(ctx context.Context) (*sql.Tx, error) {
+	var options *sql.TxOptions
+	if s.dialect != "sqlite" {
+		options = &sql.TxOptions{Isolation: sql.LevelRepeatableRead, ReadOnly: true}
+	}
+	return s.db.BeginTx(ctx, options)
 }
 
 func (s *Store) readOpaqueGrant(ctx context.Context, tx *sql.Tx, callerID, digest, userInfoURL string) (*op.OpaqueAccessTokenRecord, bool, error) {
@@ -63,7 +67,8 @@ func (s *Store) readOpaqueGrant(ctx context.Context, tx *sql.Tx, callerID, diges
 	if len(resources) > 0 && json.Unmarshal(resources, &r.Resources) != nil {
 		return nil, true, nil
 	}
-	ok, err := s.resolveAccessAudiences(ctx, tx, callerID, userInfoURL, &r)
+	ok, policy, err := s.resolveAccessAudiences(ctx, tx, callerID, r.ClientID, userInfoURL, r.Resources, true)
+	r.ResourceClaims = policy
 	if err != nil || !ok {
 		return nil, true, err
 	}
@@ -83,23 +88,27 @@ func (s *Store) readOpaqueGrant(ctx context.Context, tx *sql.Tx, callerID, diges
 	return &r, true, nil
 }
 
-func (s *Store) resolveAccessAudiences(ctx context.Context, tx *sql.Tx, callerID, userInfoURL string, r *op.OpaqueAccessTokenRecord) (bool, error) {
-	if len(r.Resources) > 64 {
-		return false, nil
+func (s *Store) resolveAccessAudiences(ctx context.Context, tx *sql.Tx, callerID, ownerID, userInfoURL string, audiences []string, includePolicy bool) (bool, map[string]json.RawMessage, error) {
+	if len(audiences) > 64 {
+		return false, nil, nil
 	}
-	authorized := callerID == r.ClientID
-	resources := slices.DeleteFunc(slices.Clone(r.Resources), func(id string) bool { return id == userInfoURL })
+	authorized := callerID == ownerID
+	resources := slices.DeleteFunc(slices.Clone(audiences), func(id string) bool { return id == userInfoURL })
 	if len(resources) == 0 {
-		return authorized, nil
+		return authorized, nil, nil
 	}
 	// Existing tokens retain disabled resources. Deletion invalidates every
 	// token naming the missing audience, even when another audience still exists.
 	found := make(map[string][]byte, len(resources))
 	list, args := s.deviceTokenParameters(resources)
-	q := `SELECT r."identifier",r."customClaims",EXISTS(SELECT 1 FROM "oauthClientResource" l WHERE l."resourceId"=` + s.exactSQLValue(`r."identifier"`) + ` AND l."clientId"=` + s.exactSQLValue("?") + `) FROM "oauthResource" r WHERE r."identifier" IN (` + list + `)`
+	column := "NULL"
+	if includePolicy {
+		column = `r."customClaims"`
+	}
+	q := `SELECT r."identifier",` + column + `,EXISTS(SELECT 1 FROM "oauthClientResource" l WHERE l."resourceId"=` + s.exactSQLValue(`r."identifier"`) + ` AND l."clientId"=` + s.exactSQLValue("?") + `) FROM "oauthResource" r WHERE r."identifier" IN (` + list + `)`
 	rows, err := tx.QueryContext(ctx, s.bind(q), append([]any{callerID}, args...)...)
 	if err != nil {
-		return false, err
+		return false, nil, err
 	}
 	defer rows.Close()
 	for rows.Next() {
@@ -107,33 +116,38 @@ func (s *Store) resolveAccessAudiences(ctx context.Context, tx *sql.Tx, callerID
 		var claims []byte
 		var linked bool
 		if err := rows.Scan(&id, &claims, &linked); err != nil {
-			return false, err
+			return false, nil, err
 		}
 		found[id] = claims
 		authorized = authorized || linked
 	}
 	if err := rows.Err(); err != nil {
-		return false, err
+		return false, nil, err
 	}
 	if !authorized {
-		return false, nil
+		return false, nil, nil
 	}
 	for _, id := range resources {
 		if _, ok := found[id]; !ok {
-			return false, nil
+			return false, nil, nil
 		}
 	}
+	if !includePolicy {
+		return true, nil, nil
+	}
+	var policy map[string]json.RawMessage
 	for _, id := range resources {
 		if raw := found[id]; len(raw) > 0 {
 			var claims map[string]json.RawMessage
 			if err := json.Unmarshal(raw, &claims); err != nil {
-				return false, err
+				return false, nil, err
 			}
-			if r.ResourceClaims == nil {
-				r.ResourceClaims = make(map[string]json.RawMessage)
+			if policy == nil {
+				policy = claims
+			} else {
+				maps.Copy(policy, claims)
 			}
-			maps.Copy(r.ResourceClaims, claims)
 		}
 	}
-	return true, nil
+	return true, policy, nil
 }

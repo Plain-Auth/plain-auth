@@ -146,26 +146,40 @@ func (a *Auth) readSignedJWT(ctx context.Context, token string, now time.Time, r
 	if opts == nil {
 		return &APIError{404, "NOT_FOUND", "JWT plugin is not enabled"}
 	}
+	signed, err := jwt.ParseSigned(token, opts.verificationAlgorithms())
+	if err != nil || len(signed.Headers) != 1 || requireKeyID && signed.Headers[0].KeyID == "" {
+		return ErrInvalidJWT
+	}
+	key, err := a.jwtVerificationKey(ctx, now, signed.Headers[0])
+	if err != nil {
+		return err
+	}
+	if err := signed.Claims(key, claims...); err != nil {
+		return ErrInvalidJWT
+	}
+	return nil
+}
+
+func (opts *JWTOptions) verificationAlgorithms() []jose.SignatureAlgorithm {
 	algorithms := []jose.SignatureAlgorithm{jose.SignatureAlgorithm(opts.Algorithm)}
 	for _, alg := range opts.AdditionalAlgorithms {
 		algorithms = append(algorithms, jose.SignatureAlgorithm(alg))
 	}
-	signed, err := jwt.ParseSigned(token, algorithms)
-	if err != nil || len(signed.Headers) != 1 || requireKeyID && signed.Headers[0].KeyID == "" {
-		return ErrInvalidJWT
-	}
-	rows, err := a.opts.Store.(JWTStore).PublicJWTKeys(ctx, now.Add(-*opts.GracePeriod))
+	return algorithms
+}
+
+func (a *Auth) jwtVerificationKey(ctx context.Context, now time.Time, header jose.Header) (any, error) {
+	rows, err := a.opts.Store.(JWTStore).PublicJWTKeys(ctx, now.Add(-*a.serviceJWT.GracePeriod))
 	if err != nil {
-		return err
+		return nil, err
 	}
-	header := signed.Headers[0]
 	if header.KeyID == "" {
 		// An OAuth JWS can omit kid. JOSE may choose a verification key
 		// only when the header unambiguously identifies one local key.
 		for _, row := range rows {
 			if row.Algorithm == header.Algorithm {
 				if header.KeyID != "" {
-					return errors.New("jwt: multiple verification keys match the token algorithm")
+					return nil, errors.New("jwt: multiple verification keys match the token algorithm")
 				}
 				header.KeyID = row.ID
 			}
@@ -177,14 +191,11 @@ func (a *Auth) readSignedJWT(ctx context.Context, token string, now time.Time, r
 		}
 		var key jose.JSONWebKey
 		if err := key.UnmarshalJSON([]byte(row.PublicKey)); err != nil || !key.Valid() || !key.IsPublic() {
-			return errors.New("jwt: invalid stored public key")
+			return nil, errors.New("jwt: invalid stored public key")
 		}
-		if err := signed.Claims(key.Key, claims...); err != nil {
-			return ErrInvalidJWT
-		}
-		return nil
+		return key.Key, nil
 	}
-	return ErrInvalidJWT
+	return nil, ErrInvalidJWT
 }
 
 // CheckOAuthJWTRevocation recognizes self-contained tokens during revocation.
