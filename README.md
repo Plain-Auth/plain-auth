@@ -13,6 +13,7 @@ Plain Auth embeds authentication in your Go API. Mount the auth handler on your 
 - [x] Issue revocable API keys, check permissions, and enforce usage limits on application routes. [API keys](docs/api-keys.md)
 - [x] Use the same handler with ServeMux, chi, Gorilla Mux, Gin, Echo, or Fiber. [Router tests](integrations/routers/routers_test.go)
 - [x] Generate auth tables and persist sessions on SQLite, PostgreSQL, and MySQL. [Storage contract](adapters/sqlstore/engines_test.go)
+- [x] Store application fields on users and sessions, control which values clients can read or write, and migrate their SQL columns with `authctl`. [User fields](docs/user-fields.md) · [Session fields](docs/session-fields.md) · [Schema commands](docs/schema.md)
 - [x] Recover a password and verify an email address through an application-provided sender. [Account tests](account_test.go)
 - [x] Register a passkey and authenticate with it. [Software authenticator tests](adapters/sqlstore/passkey_test.go)
 - [x] Sign in with a built-in provider. Use `providers.Names()` for the current catalog. [Browser fixtures](providers/catalog_test.go) · [OpenID Connect fixtures](providers/issuer_test.go) · [Apple and Microsoft](providers/apple_microsoft_test.go)
@@ -36,7 +37,7 @@ Plain Auth embeds authentication in your Go API. Mount the auth handler on your 
 
 Stripe Checkout and signed billing updates support a single metered price or metered add-ons with a licensed base. IdP-initiated SAML, SAML single logout, and plan switches involving metered prices remain open. The [complete checklist](docs/parity/README.md) records which parts of each integration have passing tests.
 
-For application integration tests, build fixture users and organizations and capture email or SMS verification codes with the [test helpers](docs/test-helpers.md).
+For integration tests, create fixture users and organizations, capture email or SMS codes, or import an existing test login into a browser. [Test helpers](docs/test-helpers.md)
 
 ## Run it locally
 

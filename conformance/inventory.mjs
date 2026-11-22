@@ -380,6 +380,7 @@ const index = [
   "| Sign in with an Ethereum wallet | [Wallet sign-in](../siwe.md) |",
   "| Passkey registration, login and credential management | [Passkeys](../passkeys.md) |",
   "| Email link sign-in and single-use session transfer | [Magic links](../magic-link.md) · [One-time tokens](../one-time-token.md) |",
+  "| Application-defined fields on users and sessions | [User fields](../user-fields.md) · [Session fields](../session-fields.md) · [Schema commands](../schema.md) |",
   "| Breached-password screening for credential writes | [Password checks](../password-checks.md) |",
   "| CAPTCHA verification and trusted request conditions | [CAPTCHA](../captcha.md) |",
   "| Service tokens, key rotation and public verification keys | [JWT and JWKS](../jwt.md) |",
