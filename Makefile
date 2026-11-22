@@ -1,7 +1,8 @@
 .PHONY: test test-routers test-redis test-polar test-conformance vet verify verify-commit
 
+# The SQL package runs the full lifecycle suite on three database engines.
 test:
-	go test -race -count=1 ./...
+	go test -race -count=1 -timeout=18m ./...
 
 test-routers:
 	cd integrations/routers && go test -race -count=1 ./...
