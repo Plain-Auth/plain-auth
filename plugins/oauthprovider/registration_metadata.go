@@ -201,9 +201,9 @@ func (o Options) prepareMetadata(host *auth.Auth, m *RegistrationMetadata, autho
 			if u.Host != "" && u.Scheme != "http" && u.Scheme != "https" {
 				return metadataProblem("pairwise clients cannot use custom-scheme redirect URIs that include a host")
 			}
-			h := strings.ToLower(u.Host)
-			if (u.Scheme == "https" && u.Port() == "443") || (u.Scheme == "http" && u.Port() == "80") {
-				h = strings.ToLower(u.Hostname())
+			h, err := pairwiseSector(u.Hostname(), u.Port(), u.Scheme)
+			if err != nil {
+				return metadataProblem("invalid pairwise redirect URI host")
 			}
 			if i > 0 && h != first {
 				return metadataProblem("pairwise clients with redirect_uris on different hosts require a sector_identifier_uri, which is not yet supported. All redirect_uris must share the same host.")

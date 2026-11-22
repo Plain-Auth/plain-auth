@@ -70,7 +70,7 @@ func (opts Options) revoke(c auth.EndpointContext) (any, error) {
 				return auth.EmptyResponse{}, jwtErr
 			}
 		}
-		digest, err := opts.Tokens.revocationDigest(ctx, req.token, kind)
+		digest, err := opts.Tokens.storedTokenDigest(ctx, req.token, kind)
 		if err != nil {
 			return nil, err
 		}
@@ -112,7 +112,7 @@ func checkRevocationJWT(c auth.EndpointContext, token string) (bool, error) {
 	})
 }
 
-func (opts TokenOptions) revocationDigest(ctx context.Context, token string, kind StoredTokenKind) (string, error) {
+func (opts TokenOptions) storedTokenDigest(ctx context.Context, token string, kind StoredTokenKind) (string, error) {
 	if kind == StoredAccessToken {
 		raw, ok := strings.CutPrefix(token, opts.OpaquePrefix)
 		if !ok || raw == "" {

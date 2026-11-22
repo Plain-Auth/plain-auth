@@ -12088,6 +12088,11 @@
       "label": "Use a host token generator, credential verifier and digest function without storing cleartext tokens",
       "test": "adapters/sqlstore/oauth_machine_token_test.go",
       "marker": "machine token persistence or lifetime incorrect"
+    },
+    {
+      "label": "Check opaque access-token precedence, custom refresh prefixes, decoder and digest failures, expiry and concurrent credential changes on three SQL engines",
+      "test": "adapters/sqlstore/oauth_refresh_introspection_test.go",
+      "marker": "func TestOAuthRefreshIntrospection("
     }
   ],
   "docs/content/docs/plugins/oauth-provider/tokens.mdx#L125/`m2mAccessTokenExpiresIn`": [
@@ -12118,6 +12123,21 @@
       "label": "Authenticate issuance, introspection and revocation with independently signed assertions and reject replay across issuers",
       "test": "conformance/oauth-client-assertions.mjs",
       "marker": "export async function exerciseClientAssertions("
+    },
+    {
+      "label": "Inspect a refresh token issued by an independent authorization-code exchange and compare expiry, issuer, binding, subject and session across runtimes",
+      "test": "conformance/oauth-refresh-introspection.mjs",
+      "marker": "export async function exerciseRefreshIntrospection("
+    },
+    {
+      "label": "Apply offline and session-bound grants across session expiry, deletion and revocation while preserving the issuing application’s ownership",
+      "test": "conformance/oauth-refresh-introspection.mjs",
+      "marker": "const detached = { ...expected };"
+    },
+    {
+      "label": "Check opaque access-token precedence, custom refresh prefixes, decoder and digest failures, expiry and concurrent credential changes on three SQL engines",
+      "test": "adapters/sqlstore/oauth_refresh_introspection_test.go",
+      "marker": "func TestOAuthRefreshIntrospection("
     }
   ],
   "docs/content/docs/plugins/oauth-provider/reference.mdx#L322/`POST /oauth2/introspect`": [
@@ -12125,6 +12145,16 @@
       "label": "Inspect a machine token issued independently, verify its exact claims, and report it inactive after revocation",
       "test": "conformance/oauth-introspection.mjs",
       "marker": "assert.deepEqual(active, {"
+    },
+    {
+      "label": "Inspect a refresh token issued by an independent authorization-code exchange and compare expiry, issuer, binding, subject and session across runtimes",
+      "test": "conformance/oauth-refresh-introspection.mjs",
+      "marker": "export async function exerciseRefreshIntrospection("
+    },
+    {
+      "label": "Apply offline and session-bound grants across session expiry, deletion and revocation while preserving the issuing application’s ownership",
+      "test": "conformance/oauth-refresh-introspection.mjs",
+      "marker": "const detached = { ...expected };"
     }
   ],
   "docs/content/docs/plugins/oauth-provider/resource-server.mdx#L185": [
@@ -12132,6 +12162,16 @@
       "label": "Authenticate the issuing application and hide unbound machine token details from another registered client",
       "test": "conformance/oauth-introspection.mjs",
       "marker": "assert.deepEqual(await response({ token: token.access_token }, { authorization }), { active: false });"
+    },
+    {
+      "label": "Inspect a refresh token issued by an independent authorization-code exchange and compare expiry, issuer, binding, subject and session across runtimes",
+      "test": "conformance/oauth-refresh-introspection.mjs",
+      "marker": "export async function exerciseRefreshIntrospection("
+    },
+    {
+      "label": "Apply offline and session-bound grants across session expiry, deletion and revocation while preserving the issuing application’s ownership",
+      "test": "conformance/oauth-refresh-introspection.mjs",
+      "marker": "const detached = { ...expected };"
     }
   ],
   "docs/content/docs/plugins/oauth-provider/reference.mdx#L400/`introspect`": [
@@ -12406,6 +12446,25 @@
       "test": "adapters/sqlstore/oauth_introspection_test.go",
       "marker": "func TestOAuthClientKeyRotationRateLimit(",
       "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/tokens.mdx#L144": [
+    {
+      "label": "Apply offline and session-bound grants across session expiry, deletion and revocation while preserving the issuing application’s ownership",
+      "test": "conformance/oauth-refresh-introspection.mjs",
+      "marker": "const detached = { ...expected };"
+    }
+  ],
+  "plugin-symbol/oauth-provider/OAuthOptions/pairwiseSecret": [
+    {
+      "label": "Derive pairwise refresh subjects from the first redirect host with normalized international names, IPv6 literals and non-default ports",
+      "test": "plugins/oauthprovider/pairwise_subject_test.go",
+      "marker": "func TestPairwiseSubjectSector("
+    },
+    {
+      "label": "Keep a stored pairwise account identifier private if the required secret is missing",
+      "test": "adapters/sqlstore/oauth_refresh_introspection_test.go",
+      "marker": "pairwise client disclosed a public subject"
     }
   ]
 }

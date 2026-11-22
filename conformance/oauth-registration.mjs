@@ -9,6 +9,7 @@ import { exerciseMachineTokens } from "./oauth-machine-tokens.mjs";
 import { exerciseIntrospection } from "./oauth-introspection.mjs";
 import { exerciseClientKeyRotation } from "./oauth-key-rotation.mjs";
 import { exerciseClientAssertions } from "./oauth-client-assertions.mjs";
+import { exerciseRefreshIntrospection } from "./oauth-refresh-introspection.mjs";
 import { exerciseRevocation } from "./oauth-revocation.mjs";
 
 function options(mode) {
@@ -274,7 +275,7 @@ export async function compareClientRegistration(t, reference, goFixture) {
           secret: "local-registration-fixture-secret-0123456789",
           telemetry: { enabled: false },
           emailAndPassword: { enabled: true },
-          plugins: [jwt(), oauthProvider(config)],
+          plugins: [jwt(), oauthProvider({ ...config, scopes: [...config.scopes, "offline_access"], clientRegistrationAllowedScopes: ["reports", "offline_access"] })],
         });
         async function exchange(secret, clientID = credentials.client_id, scope = "reports") {
           const body = new URLSearchParams({
@@ -326,6 +327,9 @@ export async function compareClientRegistration(t, reference, goFixture) {
         });
         await t.test("introspect opaque machine tokens minted and revoked by an independent issuer", async () => {
           await exerciseIntrospection({ server, issuer, exchange, credentials, created, cookie, setMachineScopes });
+        });
+        await t.test("introspect a refresh token from an independent authorization-code exchange", async () => {
+          await exerciseRefreshIntrospection({ server, issuer, db, credentials });
         });
         await t.test("revoke access and refresh tokens and recognize independently signed access tokens", async () => {
           await exerciseRevocation({ runtime, server, issuer, db, credentials, created, cookie, exchange });

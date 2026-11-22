@@ -21,7 +21,7 @@ type MachineIntrospectionStore interface {
 }
 
 const introspectionOperation = `{
-  "summary":"Check the status of an opaque machine access token",
+  "summary":"Check the status of an opaque machine access token or refresh token",
   "security":[{"clientSecretBasic":[]},{}],
   "description":"Authenticate as the issuing application using its registered method: HTTP Basic, client_secret_post or private_key_jwt.",
   "requestBody":{"required":true,"content":{"application/x-www-form-urlencoded":{"schema":{
@@ -31,7 +31,7 @@ const introspectionOperation = `{
   }}}},
   "responses":{"200":{"description":"Current token status","content":{"application/json":{"schema":{
     "type":"object","required":["active"],"properties":{"active":{"type":"boolean"},"iss":{"type":"string"},
-      "client_id":{"type":"string"},"azp":{"type":"string"},"scope":{"type":"string"},
+      "client_id":{"type":"string"},"azp":{"type":"string"},"sub":{"type":"string"},"sid":{"type":"string"},"cnf":{"type":"object"},"scope":{"type":"string"},
       "token_type":{"type":"string"},"exp":{"type":"integer"},"iat":{"type":"integer"}}
   }}}},"400":{"description":"Invalid form or client credentials"},"401":{"description":"Client authentication required"},
   "415":{"description":"Unsupported request media type"}}
@@ -52,20 +52,33 @@ func (opts Options) introspect(c auth.EndpointContext) (any, error) {
 	if err != nil {
 		return nil, tokenEndpointError(c.ResponseHeader, req.challenge, err)
 	}
+	refreshStore, supportsRefresh := store.(RefreshIntrospectionStore)
+	if req.hint == "refresh_token" && supportsRefresh {
+		return opts.introspectRefresh(c, req, first, refreshStore)
+	}
 	var digest string
-	raw, prefixed := strings.CutPrefix(req.token, opts.Tokens.OpaquePrefix)
-	if prefixed && raw != "" && req.hint != "refresh_token" {
-		digest, err = opts.Tokens.storedOpaque(ctx, raw)
+	if req.hint != "refresh_token" {
+		digest, err = opts.Tokens.storedTokenDigest(ctx, req.token, StoredAccessToken)
 		if err != nil {
 			return nil, err
 		}
 	}
-	current, record, err := store.InspectMachineToken(ctx, in.id, digest)
+	var current MachineClient
+	var record *MachineTokenRecord
+	var knownAccess bool
+	if supportsRefresh {
+		current, record, knownAccess, err = refreshStore.InspectOpaqueMachineToken(ctx, in.id, digest)
+	} else {
+		current, record, err = store.InspectMachineToken(ctx, in.id, digest)
+	}
 	if err == nil {
 		err = in.recheckClient(first, current)
 	}
 	if err != nil {
 		return nil, tokenEndpointError(c.ResponseHeader, req.challenge, err)
+	}
+	if supportsRefresh && !knownAccess && req.hint != "access_token" {
+		return opts.introspectRefresh(c, req, first, refreshStore)
 	}
 	if digest == "" || record == nil || record.StoredToken != digest || !record.ExpiresAt.After(time.Now()) {
 		return map[string]bool{"active": false}, nil

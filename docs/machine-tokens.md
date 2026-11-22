@@ -77,7 +77,7 @@ This flow issues opaque tokens for confidential registrations using a shared sec
 
 ## Check whether a token is active
 
-A confidential application can inspect its own opaque machine tokens at `POST /api/auth/oauth2/introspect`. Authenticate using the registered method. A signed client assertion can address the introspection endpoint or the issuer. For a `client_secret_post` registration, send the following request from your server.
+A confidential application can inspect its own opaque machine tokens and refresh tokens at `POST /api/auth/oauth2/introspect`. Authenticate using the registered method. A signed client assertion can address the introspection endpoint or the issuer. For a `client_secret_post` registration, send the following request from your server.
 
 ```sh
 curl --request POST "$AUTH_URL/api/auth/oauth2/introspect" \
@@ -89,8 +89,34 @@ curl --request POST "$AUTH_URL/api/auth/oauth2/introspect" \
 
 An active token returns `active: true`, the issuer in `iss`, the client ID in both `client_id` and `azp`, its space-separated `scope`, `token_type: "Bearer"`, and Unix timestamps in `iat` and `exp`. Before authorizing an operation, check the active flag and the scope that operation requires. A failed introspection request provides no authorization.
 
-An unknown, expired, revoked or differently owned token returns HTTP 200 with only `{"active":false}`. This also applies to token kinds outside this endpoint's current coverage, including resource-bound tokens, user tokens and refresh tokens. Invalid client credentials produce an OAuth error. The optional `token_type_hint` can be omitted. The response uses `Cache-Control: no-store`.
+An unknown, expired, revoked or differently owned token returns HTTP 200 with only `{"active":false}`. This also applies to token kinds outside this endpoint's current coverage, including resource-bound access tokens and delegated user access tokens. Invalid client credentials produce an OAuth error. The optional `token_type_hint` can be omitted. The response uses `Cache-Control: no-store`.
 
 With rate limiting enabled, the default is 100 introspection requests per minute per client IP. Set `Tokens.IntrospectionRateLimit` to override the limit, or supply an empty `auth.RateLimitRule` to use your host's global rule. If you customize `Tokens.HashOpaqueToken`, return the same digest each time for the same unprefixed token. A custom store implements `oauthprovider.MachineIntrospectionStore` and returns the current caller and token from one consistent read. [Cross-runtime tests](../conformance/oauth-introspection.mjs) · [SQL adapter tests](../adapters/sqlstore/oauth_introspection_test.go)
 
 To end access early, submit the token to `POST /api/auth/oauth2/revoke` using the issuing application's credentials. Its next introspection returns `{"active":false}`. [Revoke a token](oauth-token-revocation.md)
+
+## Inspect a refresh token
+
+Send a form-encoded request to the introspection endpoint with the refresh token and the issuing application's registered client credentials. Set `token_type_hint=refresh_token` to look up a refresh token directly. An omitted or unknown hint checks for a matching access token first. A recognized inactive access token yields `{"active":false}`.
+
+```sh
+curl --request POST "$AUTH_URL/api/auth/oauth2/introspect" \
+  --data-urlencode "client_id=$CLIENT_ID" \
+  --data-urlencode "client_secret=$CLIENT_SECRET" \
+  --data-urlencode "token=$REFRESH_TOKEN" \
+  --data-urlencode 'token_type_hint=refresh_token'
+```
+
+An active refresh grant returns its `client_id`, issuer, issue time, expiry, granted scopes and token type. A stored confirmation binding is returned in `cnf`. A DPoP thumbprint sets `token_type` to `DPoP`. The issuing application authenticates to introspect any of its grants, including those with a binding. The resulting claims describe the grant.
+
+| Grant state | Introspection result |
+| --- | --- |
+| Live browser session | Includes the user's `sub` and the live session's `sid`. |
+| Expired or deleted session, grant has `offline_access` | Stays active until token expiry or revocation. The response omits `sid`. |
+| Expired or deleted session, session-bound grant without `offline_access` | Returns only `{"active":false}`. |
+| Grant issued without a browser session or authorization code | Can stay active without `sid`. |
+| Unknown, expired, revoked or owned by another application | Returns only `{"active":false}`. |
+
+For a registration with `subject_type=pairwise`, configure the same `Options.PairwiseSecret` on every issuer instance. The subject derives from the user ID and the normalized host of the first registered redirect URI, including a non-default port. If the configured secret is missing for a stored pairwise client, the request fails and the user's account ID stays private.
+
+`Tokens.RefreshPrefix`, `Tokens.DecodeRefreshToken` and `Tokens.HashRefreshToken` apply to both introspection and revocation. A decoder can return `oauthprovider.ErrInvalidRefreshToken` for an unrecognized envelope. Storage and operational decoder failures return an HTTP error, allowing callers to distinguish a service failure from an inactive token. For a custom adapter, implement `oauthprovider.RefreshIntrospectionStore` alongside `MachineIntrospectionStore`. [Cross-runtime authorization-code exchange](../conformance/oauth-refresh-introspection.mjs) · [Database integration tests](../adapters/sqlstore/oauth_refresh_introspection_test.go)
