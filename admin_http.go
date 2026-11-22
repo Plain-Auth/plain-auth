@@ -13,6 +13,8 @@ func parseAdminRoles(v any) ([]string, error) {
 	switch x := v.(type) {
 	case string:
 		return []string{x}, nil
+	case []string:
+		return x, nil
 	case []any:
 		roles := make([]string, 0, len(x))
 		for _, r := range x {
@@ -28,7 +30,7 @@ func parseAdminRoles(v any) ([]string, error) {
 	}
 }
 
-func (a *Auth) adminUpdateFields(ctx context.Context, actor User, u *User, req AdminRequest, creating bool) error {
+func (a *Auth) adminUpdateFields(ctx context.Context, actor *User, u *User, req AdminRequest, creating bool) error {
 	if req.Operation == "update-user" && len(req.Data) == 0 {
 		return adminError(400, "NO_DATA_TO_UPDATE", "No data to update")
 	}
@@ -70,7 +72,7 @@ func (a *Auth) adminUpdateFields(ctx context.Context, actor User, u *User, req A
 		return validationError("Role is required")
 	}
 	if role != nil {
-		if err := a.requireAdminGrant(actor, "set-role"); err != nil {
+		if err := a.requireAdminFieldGrant(actor, "set-role"); err != nil {
 			return err
 		}
 		if len(role) == 0 {
@@ -118,7 +120,7 @@ func (a *Auth) adminUpdateFields(ctx context.Context, actor User, u *User, req A
 			if key == "email" && creating {
 				continue
 			}
-			if err := a.requireAdminGrant(actor, "set-email"); err != nil {
+			if err := a.requireAdminFieldGrant(actor, "set-email"); err != nil {
 				return err
 			}
 			if key == "emailVerified" {
@@ -135,7 +137,7 @@ func (a *Auth) adminUpdateFields(ctx context.Context, actor User, u *User, req A
 			}
 			u.Email = strings.ToLower(value)
 		case "banned", "banReason", "banExpires":
-			if err := a.requireAdminGrant(actor, "ban-user"); err != nil {
+			if err := a.requireAdminFieldGrant(actor, "ban-user"); err != nil {
 				return err
 			}
 			switch key {
@@ -144,7 +146,7 @@ func (a *Auth) adminUpdateFields(ctx context.Context, actor User, u *User, req A
 				if !ok {
 					return validationError("Invalid banned flag")
 				}
-				if value && actor.ID == u.ID {
+				if value && actor != nil && actor.ID == u.ID {
 					return adminError(400, "YOU_CANNOT_BAN_YOURSELF", "You cannot ban yourself")
 				}
 				u.Banned = value
@@ -171,7 +173,9 @@ func (a *Auth) adminUpdateFields(ctx context.Context, actor User, u *User, req A
 				u.BanExpires = &until
 			}
 		default:
-			return validationError("Unknown user field")
+			if _, declared := a.opts.UserAdditionalFields[key]; !creating || !declared {
+				return validationError("Unknown user field")
+			}
 		}
 	}
 	return nil

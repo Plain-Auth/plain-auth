@@ -272,7 +272,7 @@ func main() {
 			}
 			plugins = append(plugins, p)
 		case "admin":
-			p, err := authn.NewAdmin(authn.AdminOptions{})
+			p, err := authn.NewAdmin(fixtureAdminOptions())
 			if err != nil {
 				log.Fatal(err)
 			}

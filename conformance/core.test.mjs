@@ -1652,3 +1652,8 @@ test("phone verification uses configured user inputs only when creating an owner
   await t.test("writable fields and resolver identity", t => comparePhoneUserFields(t, fixture, false));
   await t.test("static defaults and number as name", t => comparePhoneUserFields(t, fixture, true));
 });
+
+test("administrative creation persists public and protected profile fields under live grants", async t => {
+  const { adminFields } = await import("./admin-fields.mjs");
+  await adminFields(t, { goFixture, reference, instrument });
+});

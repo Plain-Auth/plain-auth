@@ -61,7 +61,7 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 | [Two-factor authentication](plugins/2fa.md) | 40 | 141 |
 | [Access](plugins/access.md) | 7 | 14 |
 | [Additional fields](plugins/additional-fields.md) | 0 | 2 |
-| [Admin](plugins/admin.md) | 65 | 141 |
+| [Admin](plugins/admin.md) | 74 | 141 |
 | [Anonymous](plugins/anonymous.md) | 27 | 25 |
 | [API keys](plugins/api-key.md) | 113 | 210 |
 | [Bearer](plugins/bearer.md) | 30 | 0 |

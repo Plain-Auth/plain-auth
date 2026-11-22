@@ -18,7 +18,7 @@ func (o *AdminOptions) protectedIdentity(u User) bool {
 	return false
 }
 
-func (a *Auth) adminPhoneFields(ctx context.Context, actor User, u *User, data map[string]any, creating bool) error {
+func (a *Auth) adminPhoneFields(ctx context.Context, actor *User, u *User, data map[string]any, creating bool) error {
 	number, hasNumber := data["phoneNumber"]
 	flag, hasFlag := data["phoneNumberVerified"]
 	if !hasNumber && !hasFlag {
@@ -31,10 +31,10 @@ func (a *Auth) adminPhoneFields(ctx context.Context, actor User, u *User, data m
 		return validationError("Unknown user field")
 	}
 	denied := &APIError{403, "YOU_ARE_NOT_ALLOWED_TO_SET_USERS_PHONE_NUMBER", "You are not allowed to update users phone number"}
-	if !a.admin.HasPermission(actor.ID, actor.Role, AdminPermissions{"user": {"set-phone"}}) {
+	if actor != nil && !a.admin.HasPermission(actor.ID, actor.Role, AdminPermissions{"user": {"set-phone"}}) {
 		return denied
 	}
-	if a.admin.protectedIdentity(*u) && !a.admin.protectedIdentity(actor) {
+	if actor != nil && a.admin.protectedIdentity(*u) && !a.admin.protectedIdentity(*actor) {
 		return denied
 	}
 	f := PhoneNumberFields{}

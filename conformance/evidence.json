@@ -3778,6 +3778,11 @@
       "label": "Fetch the authorized record and deny an ordinary account",
       "test": "adapters/sqlstore/admin_test.go",
       "marker": "userBrowser.AdminGetUser(ctx, u.ID)"
+    },
+    {
+      "label": "Read persisted public fields through an authorized operator after a host update",
+      "test": "adapters/sqlstore/admin_user_fields_test.go",
+      "marker": "checkUserField(t, *read, \"locale\", \"stored-new\")"
     }
   ],
   "docs/content/docs/plugins/admin.mdx#L211": [
@@ -3797,6 +3802,26 @@
       "label": "Drop unproven phone numbers at account creation and admit explicit, authorized verified imports",
       "test": "conformance/phone-admin-contract.mjs",
       "marker": "assert.deepEqual(view(explicit),[n,true])"
+    },
+    {
+      "label": "Persist typed fields from data and return public values through the released administrative client",
+      "test": "conformance/admin-fields.mjs",
+      "marker": "assert.deepEqual({ ...saved },"
+    },
+    {
+      "label": "Create profiles with trusted server-owned values and omit protected fields from the native response",
+      "test": "adapters/sqlstore/admin_user_fields_test.go",
+      "marker": "host API exposed protected output"
+    },
+    {
+      "label": "Roll back the new account and credential when the stored public profile cannot be read",
+      "test": "adapters/sqlstore/admin_user_fields_test.go",
+      "marker": "uncommitted profile left an account"
+    },
+    {
+      "label": "Keep one profile and its matching credential when trusted and authenticated creates compete for the same address",
+      "test": "adapters/sqlstore/admin_user_fields_test.go",
+      "marker": "winning credential could not sign in"
     }
   ],
   "docs/content/docs/plugins/admin.mdx#L82": [
@@ -3840,6 +3865,11 @@
       "label": "Combine search, role filtering, sorting and pagination",
       "test": "adapters/sqlstore/admin_test.go",
       "marker": "admin search/filter/pagination"
+    },
+    {
+      "label": "Project stored public values and omit hidden fields on each listed account",
+      "test": "adapters/sqlstore/admin_user_fields_test.go",
+      "marker": "administrative browse exposed hidden fields"
     }
   ],
   "docs/content/docs/plugins/admin.mdx#L113": [
@@ -10214,6 +10244,23 @@
       "label": "Reopen and check mapped layouts, keep ownership consistent on unlink and mailbox promotion, and refuse mismatched nodes",
       "test": "adapters/sqlstore/siwe_schema_test.go",
       "marker": "wrong layout consumed a mailbox proof without reclaiming the wallet"
+    }
+  ],
+  "docs/content/docs/plugins/admin.mdx#L108/Parameter `data` (optional)": [
+    {
+      "label": "Persist typed fields from data and return public values through the released administrative client",
+      "test": "conformance/admin-fields.mjs",
+      "marker": "assert.deepEqual({ ...saved },"
+    },
+    {
+      "label": "Create profiles with trusted server-owned values and omit protected fields from the native response",
+      "test": "adapters/sqlstore/admin_user_fields_test.go",
+      "marker": "host API exposed protected output"
+    },
+    {
+      "label": "Enforce role and ban permissions on nested data and refuse unauthorized accounts",
+      "test": "conformance/admin-fields.mjs",
+      "marker": "const denied = await creator.admin.createUser("
     }
   ]
 }

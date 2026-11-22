@@ -10,13 +10,7 @@ import (
 	authn "github.com/Plain-Auth/plain-auth"
 )
 
-type AdminCreateUserRequest struct {
-	Name     string         `json:"name"`
-	Email    string         `json:"email"`
-	Password string         `json:"password,omitempty"`
-	Role     []string       `json:"role,omitempty"`
-	Data     map[string]any `json:"data,omitempty"`
-}
+type AdminCreateUserRequest = authn.AdminCreateUserRequest
 
 func (c *Client) adminUser(ctx context.Context, operation string, body any) (*authn.User, error) {
 	var out struct {

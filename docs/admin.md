@@ -1,6 +1,6 @@
 # Administrator accounts
 
-The admin plugin manages users and sessions through the same HTTP mount as ordinary sign-in. Every administrative operation authenticates the calling session and checks the operator’s current database role. SQLite, PostgreSQL and MySQL support the `admin` schema profile.
+The admin plugin manages users and sessions through the same HTTP mount as ordinary sign-in. Every administrative HTTP operation authenticates the calling session and checks the operator’s current database role. SQLite, PostgreSQL and MySQL support the `admin` schema profile.
 
 When another process applies the `admin` profile, running SQL stores detect its ban and impersonation fields on subsequent session reads and account authorization checks. They also enforce those controls when their HTTP server exposes only ordinary sign-in. If a database exposes a ban or impersonation column before all five administrative columns are present, those operations return an error until the migration finishes.
 
@@ -28,7 +28,7 @@ go run ./cmd/authctl create-admin --dialect sqlite \
   --password-stdin < /run/secrets/initial-admin-password
 ```
 
-Use `--dialect postgres` or `--dialect mysql` with the corresponding connection string for a network database. The command requires an existing admin schema, a new email address, and a password 16–128 UTF-16 code units long. It reads one line from a pipe or file, hashes the password using the regular credential hasher, and prints the new administrator’s email. Concurrent attempts can create one administrator. Once someone holds the `admin` role, subsequent grants go through an authenticated administrator. Applications that provision accounts directly can call `plainauth.BootstrapAdmin` with a trusted store.
+Use `--dialect postgres` or `--dialect mysql` with the corresponding connection string for a network database. The command requires an existing admin schema, a new email address, and a password 16–128 UTF-16 code units long. It reads one line from a pipe or file, hashes the password using the regular credential hasher, and prints the new administrator’s email. Concurrent attempts can create one administrator. Subsequent grants through the HTTP API require an operator with `user:set-role`. Applications that provision accounts directly can call `plainauth.BootstrapAdmin` with a trusted store.
 
 ## Permissions
 
@@ -49,6 +49,28 @@ p, err := admin.New(admin.Options{
 ```
 
 Creating a user with an explicit role requires both `user:create` and `user:set-role`. Updating an email or its verification status requires `user:set-email`. Ban-related fields require `user:ban`. Password changes use a dedicated endpoint. Profile updates accept the standard name, image, email, verification, role and ban fields. Roles assigned through the API must exist in the configured role map. To use role checks in your own handlers, see [Role permissions](access.md).
+
+## Create users with application profile fields
+
+Include declared profile fields in the `data` object of `POST /admin/create-user`. Use their public names even when the SQL column has a different name. The operator needs `user:create`. An explicit role requires `user:set-role`, whether supplied at the top level or inside `data`. The top-level name, email and role take precedence. Ban changes and email verification retain their separate permission checks.
+
+The Go HTTP client accepts the same input through `client.AdminCreateUser`. An operator can supply writable fields, including hidden ones. Fields marked `ServerOnly` follow the signup input rules, even for an administrator. The create, get and list responses include stored public fields and omit hidden fields and their physical column names. [Additional user fields](user-fields.md)
+
+Trusted application code can provision an account without a session through the native auth instance. Apply your application's authorization policy before calling this method. It accepts server-owned values and validates the role against the configured roles.
+
+```go
+user, err := auth.AdminCreateUser(ctx, plainauth.AdminCreateUserRequest{
+    Name:  "Jo",
+    Email: "jo@example.org",
+    Data: map[string]any{
+        "locale":       "fr",
+        "accountClass": "staff",
+        "supportNote":  "Account reviewed",
+    },
+})
+```
+
+The profile, optional password credential and field readback share a transaction. An invalid field or failed readback rolls back the creation. For operations on behalf of a signed-in caller, pass their headers to `auth.Admin`. To change server-owned fields on an existing account, use `auth.UpdateTrustedUserFields`. [Three-database tests](../adapters/sqlstore/admin_user_fields_test.go)
 
 ## HTTP operations
 

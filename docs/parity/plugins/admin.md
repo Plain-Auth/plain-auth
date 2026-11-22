@@ -21,9 +21,14 @@
     - [x] Assign a configured role and reject an unknown role ([test](../../../adapters/sqlstore/admin_test.go#L154))
   - [ ] `GET /admin/get-user`
     - [x] Fetch the authorized record and deny an ordinary account ([test](../../../adapters/sqlstore/admin_test.go#L95))
+    - [x] Read persisted public fields through an authorized operator after a host update ([test](../../../adapters/sqlstore/admin_user_fields_test.go#L136))
   - [ ] `POST /admin/create-user`
     - [x] Create a credential account and assign multiple roles ([test](../../../adapters/sqlstore/admin_test.go#L104))
     - [x] Drop unproven phone numbers at account creation and admit explicit, authorized verified imports ([test](../../../conformance/phone-admin-contract.mjs#L46))
+    - [x] Persist typed fields from data and return public values through the released administrative client ([test](../../../conformance/admin-fields.mjs#L72))
+    - [x] Create profiles with trusted server-owned values and omit protected fields from the native response ([test](../../../adapters/sqlstore/admin_user_fields_test.go#L77))
+    - [x] Roll back the new account and credential when the stored public profile cannot be read ([test](../../../adapters/sqlstore/admin_user_fields_test.go#L223))
+    - [x] Keep one profile and its matching credential when trusted and authenticated creates compete for the same address ([test](../../../adapters/sqlstore/admin_user_fields_test.go#L191))
   - [ ] `POST /admin/update-user`
     - [x] Update a user’s profile and gate changes to protected fields ([test](../../../adapters/sqlstore/admin_test.go#L159))
     - [x] Persist independent nullable username fields on authorized profile edits ([test](../../../adapters/sqlstore/username_test.go#L448))
@@ -31,6 +36,7 @@
     - [x] Keep one owner under competing authorized assignments on three database engines ([test](../../../adapters/sqlstore/phone_admin_test.go#L170))
   - [ ] `GET /admin/list-users`
     - [x] Combine search, role filtering, sorting and pagination ([test](../../../adapters/sqlstore/admin_test.go#L164))
+    - [x] Project stored public values and omit hidden fields on each listed account ([test](../../../adapters/sqlstore/admin_user_fields_test.go#L143))
   - [ ] `POST /admin/list-user-sessions`
     - [x] Retrieve the target’s current session through the typed client ([test](../../../adapters/sqlstore/admin_test.go#L198))
     - [x] List a protected account without issuing a bearer credential ([test](../../../adapters/sqlstore/admin_test.go#L123))
@@ -95,6 +101,9 @@
         - [ ] Parameter `name`
         - [ ] Parameter `role` (optional)
         - [ ] Parameter `data` (optional)
+          - [x] Persist typed fields from data and return public values through the released administrative client ([test](../../../conformance/admin-fields.mjs#L72))
+          - [x] Create profiles with trusted server-owned values and omit protected fields from the native response ([test](../../../adapters/sqlstore/admin_user_fields_test.go#L77))
+          - [x] Enforce role and ban permissions on nested data and refuse unauthorized accounts ([test](../../../conformance/admin-fields.mjs#L58))
     - [ ] List Users
       - [x] Combine search, role filtering, sorting and pagination ([test](../../../adapters/sqlstore/admin_test.go#L164))
       - [ ] `GET /admin/list-users`

@@ -263,18 +263,8 @@ func (a *Auth) executeAdmin(ctx context.Context, h http.Header, req AdminRequest
 	now := a.now().UTC().Truncate(time.Millisecond)
 	err := a.adminStore.AdminTransaction(ctx, token, req.UserID, now, func(tx AdminTransaction, actor SessionResult) error {
 		out = AdminResult{}
-		if a.phoneNumber != nil {
-			projection, ok := tx.(interface{ SelectPhoneFields() })
-			if !ok {
-				return errors.New("admin: store does not support phone fields")
-			}
-			projection.SelectPhoneFields()
-		}
-		if a.username != nil {
-			// Composite stores enable these fields only for this authorized transaction.
-			if projection, ok := tx.(interface{ SelectUsernameFields(bool) }); ok {
-				projection.SelectUsernameFields(!a.username.DisableDisplay)
-			}
+		if err := a.configureAdminProjection(tx, op); err != nil {
+			return err
 		}
 		if op == "has-permission" {
 			if len(req.Permissions) == 0 {
@@ -316,29 +306,9 @@ func (a *Auth) executeAdmin(ctx context.Context, h http.Header, req AdminRequest
 			}
 			return a.revokeAdminSession(tx, actor.User.ID, req.SessionToken, now)
 		case "create-user":
-			u := User{ID: randomID(), Name: req.Name, Email: strings.ToLower(req.Email), CreatedAt: now, UpdatedAt: now, AdminUserFields: &AdminUserFields{Role: a.admin.DefaultRole}}
-			if len(u.Email) > 254 || strings.Contains(u.Email, "..") || !emailPattern.MatchString(u.Email) || req.Name == "" {
-				return validationError("A valid email and name are required")
-			}
-			if err := a.adminUpdateFields(ctx, actor.User, &u, req, true); err != nil {
-				return err
-			}
-			var hash string
-			if req.Password != "" {
-				if err := a.validatePasswordLength(req.Password, false); err != nil {
-					return err
-				}
-				var err error
-				hash, err = a.hashCredential(ctx, "/admin/create-user", req.Password)
-				if err != nil {
-					return err
-				}
-			}
-			if err := tx.CreateUser(u, hash); err != nil {
-				return err
-			}
-			out.User = &u
-			return nil
+			var err error
+			out.User, err = a.createAdministrativeUser(ctx, tx, &actor.User, req, now)
+			return err
 		}
 		if req.UserID == "" {
 			return validationError("User ID is required")
@@ -388,7 +358,7 @@ func (a *Auth) executeAdmin(ctx context.Context, h http.Header, req AdminRequest
 			}
 			return tx.SetPassword(u.ID, hash)
 		case "update-user", "set-role":
-			if err := a.adminUpdateFields(ctx, actor.User, &u, req, false); err != nil {
+			if err := a.adminUpdateFields(ctx, &actor.User, &u, req, false); err != nil {
 				return err
 			}
 		case "ban-user":

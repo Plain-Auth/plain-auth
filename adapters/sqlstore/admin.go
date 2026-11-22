@@ -177,6 +177,8 @@ func (s *Store) adminSession(ctx context.Context, db rowQuerier, token string) (
 }
 
 type adminTX struct {
+	profileFields       []authn.UserField
+	projectProfile      func(*authn.User, map[string]any) error
 	phone               bool
 	names, displayNames bool
 	s                   *Store
@@ -266,16 +268,30 @@ func (t *adminTX) User(id string) (authn.User, error) {
 	if errors.Is(err, sql.ErrNoRows) {
 		return u, authn.ErrNotFound
 	}
-	finish()
+	if err != nil {
+		return u, err
+	}
+	err = finish()
 	return u, err
 }
 func (t *adminTX) CreateUser(u authn.User, hash string) error {
+	return t.CreateAdminUserWithFields(u, hash, authn.UserFieldValues{})
+}
+
+func (t *adminTX) CreateAdminUserWithFields(u authn.User, hash string, fields authn.UserFieldValues) error {
 	s := t.s
 	var expires any
 	if u.BanExpires != nil {
 		expires = s.date(*u.BanExpires)
 	}
-	_, err := t.tx.ExecContext(t.ctx, s.bind(`INSERT INTO "user" ("id","email","name","image","emailVerified","createdAt","updatedAt","role","banned","banReason","banExpires") VALUES (?,?,?,?,?,?,?,?,?,?,?)`), u.ID, u.Email, u.Name, u.Image, u.EmailVerified, s.date(u.CreatedAt), s.date(u.UpdatedAt), u.Role, u.Banned, u.BanReason, expires)
+	columns := fields.Columns()
+	if columns == nil {
+		columns = make(map[string]any, 4)
+	}
+	columns["role"], columns["banned"] = u.Role, u.Banned
+	columns["banReason"], columns["banExpires"] = u.BanReason, expires
+	insert, args := s.userInsert(u, columns)
+	_, err := t.tx.ExecContext(t.ctx, s.bind(insert), args...)
 	if duplicateConstraint(err) {
 		return authn.ErrEmailTaken
 	}
@@ -520,7 +536,9 @@ func (t *adminTX) Users(q authn.AdminQuery) (authn.AdminPage, error) {
 		if err = rows.Scan(fields...); err != nil {
 			return out, err
 		}
-		finish()
+		if err := finish(); err != nil {
+			return out, err
+		}
 		out.Users = append(out.Users, u)
 	}
 	return out, rows.Err()

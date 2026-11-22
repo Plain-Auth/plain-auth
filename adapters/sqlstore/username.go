@@ -121,10 +121,13 @@ func (t *adminTX) publicColumns() string {
 	if t.displayNames {
 		cols += `,u."displayUsername"`
 	}
+	for _, field := range t.profileFields {
+		cols += `,u."` + field.Column + `"`
+	}
 	return cols
 }
 
-func (t *adminTX) publicFields(u *plainauth.User) ([]any, func()) {
+func (t *adminTX) publicFields(u *plainauth.User) ([]any, func() error) {
 	fields, finish := t.s.adminUserScanner(u)
 	if t.phone {
 		u.PhoneNumberFields = &plainauth.PhoneNumberFields{}
@@ -138,5 +141,19 @@ func (t *adminTX) publicFields(u *plainauth.User) ([]any, func()) {
 		u.DisplayUsernameFields = &plainauth.DisplayUsernameFields{}
 		fields = append(fields, &u.DisplayUsername)
 	}
-	return fields, finish
+	coreFields := len(fields)
+	for _, field := range t.profileFields {
+		fields = append(fields, scalarDestination(field.Type))
+	}
+	return fields, func() error {
+		finish()
+		if t.projectProfile == nil {
+			return nil
+		}
+		values := make(map[string]any, len(t.profileFields))
+		for i, field := range t.profileFields {
+			values[field.Column] = scannedScalar(fields[coreFields+i])
+		}
+		return t.projectProfile(u, values)
+	}
 }
