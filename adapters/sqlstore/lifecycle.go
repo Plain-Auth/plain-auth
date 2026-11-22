@@ -170,10 +170,11 @@ func (s *Store) deleteAccountRows(ctx context.Context, tx *sql.Tx, userID string
 	}
 	// MySQL accepts the canonical inline REFERENCES syntax without enforcing
 	// its cascade. Perform child removal explicitly on every dialect.
-	for _, q := range []string{`DELETE FROM "session" WHERE "userId"=?`, `DELETE FROM "account" WHERE "userId"=?`} {
-		if _, err = tx.ExecContext(ctx, s.bind(q), userID); err != nil {
-			return err
-		}
+	if _, err := s.deleteSessionsTx(ctx, tx, `"userId"=?`, userID); err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, s.bind(`DELETE FROM "account" WHERE "userId"=?`), userID); err != nil {
+		return err
 	}
 	if _, err = tx.ExecContext(ctx, s.bind(`DELETE FROM "user" WHERE "id"=?`), userID); err != nil {
 		return err

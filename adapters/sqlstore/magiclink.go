@@ -183,9 +183,11 @@ func (s *Store) promoteMagicLinkOwner(ctx context.Context, tx *sql.Tx, id string
 	if _, err := tx.ExecContext(ctx, s.bind(`DELETE FROM "verification" WHERE "identifier"=?`), sourceOwner(id)); err != nil {
 		return err
 	}
+	if _, err := s.deleteSessionsTx(ctx, tx, `"userId"=?`, id); err != nil {
+		return err
+	}
 	for _, q := range []string{
 		`DELETE FROM "account" WHERE "userId"=?`,
-		`DELETE FROM "session" WHERE "userId"=?`,
 		`DELETE FROM "verification" WHERE "value"=? AND ("identifier" LIKE 'reset-password:%' OR "identifier" LIKE 'delete-account-%')`,
 	} {
 		if _, err := tx.ExecContext(ctx, s.bind(q), id); err != nil {

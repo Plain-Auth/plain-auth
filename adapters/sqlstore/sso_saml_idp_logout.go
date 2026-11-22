@@ -147,11 +147,7 @@ func (s *Store) revokeIDPLogout(ctx context.Context, req sso.SAMLIDPLogout, brow
 		token := previous.token
 		if token != "" {
 			param, _ := s.deviceTokenParameters([]string{token})
-			result, err := tx.ExecContext(ctx, s.bind(`DELETE FROM "session" WHERE `+sessionWhere+` AND "token"=`+param), rec.SessionID, rec.UserID, token)
-			if err != nil {
-				return false, err
-			}
-			n, err := result.RowsAffected()
+			n, err := s.deleteSessionsTx(ctx, tx, sessionWhere+` AND "token"=`+param, rec.SessionID, rec.UserID, token)
 			if err != nil {
 				return false, err
 			}

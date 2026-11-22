@@ -76,7 +76,7 @@ func TestMappedWalletOwnership(t *testing.T) {
 				s.Close()
 				t.Fatal("migration silently selected a new table for existing wallet accounts")
 			}
-			seen, err := first.walletTableExists(ctx, first.db, wrong.Table)
+			seen, err := first.tableExists(ctx, first.db, wrong.Table)
 			if err != nil || seen {
 				t.Fatal("rejected new mapping created a table", seen, err)
 			}

@@ -95,7 +95,7 @@ func (s *Store) deleteDeviceSessions(ctx context.Context, tokens []string) error
 	defer tx.Rollback()
 	for chunk := range slices.Chunk(tokens, 400) {
 		params, args := s.deviceTokenParameters(chunk)
-		if _, err := tx.ExecContext(ctx, s.bind(`DELETE FROM "session" WHERE "token" IN (`+params+`)`), args...); err != nil {
+		if _, err := s.deleteSessionsTx(ctx, tx, `"token" IN (`+params+`)`, args...); err != nil {
 			return err
 		}
 	}
@@ -128,7 +128,7 @@ func (s *Store) revokeDeviceSession(ctx context.Context, active, target string, 
 	if err != nil {
 		return err
 	}
-	_, err = tx.ExecContext(ctx, s.bind(`DELETE FROM "session" WHERE "token"=`+p), target)
+	_, err = s.deleteSessionsTx(ctx, tx, `"token"=`+p, target)
 	if err != nil {
 		return err
 	}

@@ -372,7 +372,7 @@ func (s *Store) deleteOwnerWalletAddresses(ctx context.Context, tx *sql.Tx, user
 			return errWalletLayout
 		}
 	}
-	exists, err := s.walletTableExists(ctx, tx, s.walletNames().Table)
+	exists, err := s.tableExists(ctx, tx, s.walletNames().Table)
 	if err != nil || !exists {
 		return err
 	}

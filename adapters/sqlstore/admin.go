@@ -359,15 +359,15 @@ func (t *adminTX) UserSessions(user string) ([]authn.Session, error) {
 }
 func (t *adminTX) RevokeSession(token string) error {
 	p, _ := t.s.deviceTokenParameters([]string{token})
-	_, err := t.tx.ExecContext(t.ctx, t.s.bind(`DELETE FROM "session" WHERE "token"=`+p), token)
+	_, err := t.s.deleteSessionsTx(t.ctx, t.tx, `"token"=`+p, token)
 	return err
 }
 func (t *adminTX) RevokeListedSession(userID, sessionID string) error {
-	_, err := t.tx.ExecContext(t.ctx, t.s.bind(`DELETE FROM "session" WHERE "userId"=? AND "id"=?`), userID, sessionID)
+	_, err := t.s.deleteSessionsTx(t.ctx, t.tx, `"userId"=? AND "id"=?`, userID, sessionID)
 	return err
 }
 func (t *adminTX) RevokeUserSessions(id string) error {
-	_, err := t.tx.ExecContext(t.ctx, t.s.bind(`DELETE FROM "session" WHERE "userId"=? OR "impersonatedBy"=?`), id, id)
+	_, err := t.s.deleteSessionsTx(t.ctx, t.tx, `"userId"=? OR "impersonatedBy"=?`, id, id)
 	if err != nil {
 		return err
 	}

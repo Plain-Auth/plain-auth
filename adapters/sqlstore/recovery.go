@@ -179,7 +179,7 @@ func (s *Store) ChangeCredentialForSession(ctx context.Context, userID, oldHash,
 		return err
 	}
 	if replacement != nil {
-		if _, err = tx.ExecContext(ctx, s.bind(`DELETE FROM "session" WHERE "userId"=?`), userID); err != nil {
+		if _, err = s.deleteSessionsTx(ctx, tx, `"userId"=?`, userID); err != nil {
 			return err
 		}
 		if err = s.insertSession(ctx, tx, *replacement); err != nil {
@@ -279,7 +279,7 @@ func (s *Store) replaceResetCredential(ctx context.Context, tx *sql.Tx, id, newH
 		}
 	}
 	if revoke {
-		if _, err = tx.ExecContext(ctx, s.bind(`DELETE FROM "session" WHERE "userId"=?`), id); err != nil {
+		if _, err = s.deleteSessionsTx(ctx, tx, `"userId"=?`, id); err != nil {
 			return err
 		}
 	}

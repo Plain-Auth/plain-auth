@@ -159,6 +159,11 @@
       "label": "Revoke the current token and expire session cookies",
       "test": "http_test.go",
       "marker": "revoked := request(\"POST\", \"revoke-session\""
+    },
+    {
+      "label": "Remove an issuing browser session through the HTTP API and preserve only its offline refresh grant",
+      "test": "conformance/oauth-refresh-introspection.mjs",
+      "marker": "const endSession = await server.send("
     }
   ],
   "core/revokeSessions": [
@@ -12465,6 +12470,18 @@
       "label": "Keep a stored pairwise account identifier private if the required secret is missing",
       "test": "adapters/sqlstore/oauth_refresh_introspection_test.go",
       "marker": "pairwise client disclosed a public subject"
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/openid-connect.mdx#L181": [
+    {
+      "label": "Revoke session-bound stored grants atomically across bulk deletion, rollback and concurrent issuance on three SQL engines",
+      "test": "adapters/sqlstore/session_deletion_test.go",
+      "marker": "func TestSessionDeletionRevokesOAuthGrants("
+    },
+    {
+      "label": "Remove an issuing browser session through the HTTP API and preserve only its offline refresh grant",
+      "test": "conformance/oauth-refresh-introspection.mjs",
+      "marker": "const endSession = await server.send("
     }
   ]
 }

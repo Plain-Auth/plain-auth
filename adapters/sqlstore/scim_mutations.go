@@ -37,7 +37,7 @@ func (s *Store) scimRevokeIfInactive(ctx context.Context, tx *sql.Tx, id string)
 	var active string
 	err := tx.QueryRowContext(ctx, s.readForUpdate(query), id, true).Scan(&active)
 	if errors.Is(err, sql.ErrNoRows) {
-		_, err = tx.ExecContext(ctx, s.bind(`DELETE FROM "session" WHERE "userId"=?`), id)
+		_, err = s.deleteSessionsTx(ctx, tx, `"userId"=?`, id)
 	}
 	return err
 }

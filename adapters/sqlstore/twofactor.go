@@ -304,7 +304,7 @@ func (s *Store) writeFactorChange(ctx context.Context, tx *sql.Tx, sub auth.Fact
 		}
 	}
 	if ch.RevokeSessions {
-		if err := exec(`DELETE FROM "session" WHERE "userId"=?`, uid); err != nil {
+		if _, err := s.deleteSessionsTx(ctx, tx, `"userId"=?`, uid); err != nil {
 			return err
 		}
 		if err := s.invalidateFactorChallenges(ctx, tx, uid); err != nil {

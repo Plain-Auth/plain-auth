@@ -257,18 +257,44 @@ func (s *Store) ListSessions(ctx context.Context, userID string) ([]authn.Stored
 
 // DeleteSession revokes a session by its token.
 func (s *Store) DeleteSession(ctx context.Context, token string) error {
-	_, err := s.db.ExecContext(ctx, s.bind(`DELETE FROM "session" WHERE "token" = ?`), token)
-	return err
+	return s.deleteSessions(ctx, `"token" = ?`, token)
 }
 
 // DeleteOtherSessions revokes every session of a user except the one specified.
 func (s *Store) DeleteOtherSessions(ctx context.Context, userID, keepToken string) error {
-	_, err := s.db.ExecContext(ctx, s.bind(`DELETE FROM "session" WHERE "userId" = ? AND "token" <> ?`), userID, keepToken)
-	return err
+	return s.deleteSessions(ctx, `"userId" = ? AND "token" <> ?`, userID, keepToken)
 }
 
 // DeleteUserSession revokes a session only when it belongs to the specified user.
 func (s *Store) DeleteUserSession(ctx context.Context, userID, token string) error {
-	_, err := s.db.ExecContext(ctx, s.bind(`DELETE FROM "session" WHERE "userId" = ? AND "token" = ?`), userID, token)
-	return err
+	return s.deleteSessions(ctx, `"userId" = ? AND "token" = ?`, userID, token)
+}
+
+func scanStrings(rows *sql.Rows) ([]string, error) {
+	defer rows.Close()
+	var ids []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	return ids, rows.Err()
+}
+
+func (s *Store) tableExists(ctx context.Context, db rowQuerier, name string) (bool, error) {
+	q := `SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type='table' AND name=? COLLATE NOCASE)`
+	args := []any{name}
+	switch s.dialect {
+	case "postgres":
+		q = `SELECT pg_catalog.to_regclass(pg_catalog.quote_ident(?::text)) IS NOT NULL`
+	case "mysql":
+		q = `SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name=?
+			AND (@@lower_case_table_names<>0 OR (BINARY table_schema=BINARY DATABASE() AND BINARY table_name=BINARY ?)))`
+		args = append(args, name)
+	}
+	var exists bool
+	err := db.QueryRowContext(ctx, s.bind(q), args...).Scan(&exists)
+	return exists, err
 }

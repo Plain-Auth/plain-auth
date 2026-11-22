@@ -65,6 +65,7 @@ Each entry groups the configured endpoint’s behaviors. A checked child records
     - [x] Invalidate an older session while retaining the current one ([test](../../http_test.go#L99))
   - [ ] `revokeSession` (`POST /revoke-session`)
     - [x] Revoke the current token and expire session cookies ([test](../../http_test.go#L102))
+    - [x] Remove an issuing browser session through the HTTP API and preserve only its offline refresh grant ([test](../../conformance/oauth-refresh-introspection.mjs#L88))
   - [ ] `revokeSessions` (`POST /revoke-sessions`)
     - [x] Revoke every session from the native client ([test](../../client/client_test.go#L94))
   - [ ] `sendVerificationEmail` (`POST /send-verification-email`)

@@ -48,7 +48,7 @@
     - [x] Read credentials, ownership and token state consistently across rotation, disablement, deletion and revocation on three SQL engines ([test](../../../adapters/sqlstore/oauth_introspection_test.go#L97))
     - [x] Authenticate issuance, introspection and revocation with independently signed assertions and reject replay across issuers ([test](../../../conformance/oauth-client-assertions.mjs#L5))
     - [x] Inspect a refresh token issued by an independent authorization-code exchange and compare expiry, issuer, binding, subject and session across runtimes ([test](../../../conformance/oauth-refresh-introspection.mjs#L4))
-    - [x] Apply offline and session-bound grants across session expiry, deletion and revocation while preserving the issuing application’s ownership ([test](../../../conformance/oauth-refresh-introspection.mjs#L69))
+    - [x] Apply offline and session-bound grants across session expiry, deletion and revocation while preserving the issuing application’s ownership ([test](../../../conformance/oauth-refresh-introspection.mjs#L70))
     - [x] Check opaque access-token precedence, custom refresh prefixes, decoder and digest failures, expiry and concurrent credential changes on three SQL engines ([test](../../../adapters/sqlstore/oauth_refresh_introspection_test.go#L20))
   - [ ] `POST /oauth2/revoke`
     - [x] Revoke an independently issued opaque token and confirm that the issuing server reports it inactive ([test](../../../conformance/oauth-revocation.mjs#L50))
@@ -513,6 +513,8 @@
   - [ ] Pairwise subject identifiers
   - [ ] RP-initiated logout
   - [ ] Back-channel logout
+    - [x] Revoke session-bound stored grants atomically across bulk deletion, rollback and concurrent issuance on three SQL engines ([test](../../../adapters/sqlstore/session_deletion_test.go#L12))
+    - [x] Remove an issuing browser session through the HTTP API and preserve only its offline refresh grant ([test](../../../conformance/oauth-refresh-introspection.mjs#L88))
 
 ## OAuth Provider reference
 
@@ -536,7 +538,7 @@
     - [ ] `POST /oauth2/introspect`
       - [x] Inspect a machine token issued independently, verify its exact claims, and report it inactive after revocation ([test](../../../conformance/oauth-introspection.mjs#L32))
       - [x] Inspect a refresh token issued by an independent authorization-code exchange and compare expiry, issuer, binding, subject and session across runtimes ([test](../../../conformance/oauth-refresh-introspection.mjs#L4))
-      - [x] Apply offline and session-bound grants across session expiry, deletion and revocation while preserving the issuing application’s ownership ([test](../../../conformance/oauth-refresh-introspection.mjs#L69))
+      - [x] Apply offline and session-bound grants across session expiry, deletion and revocation while preserving the issuing application’s ownership ([test](../../../conformance/oauth-refresh-introspection.mjs#L70))
     - [ ] `POST /oauth2/revoke`
       - [x] Accept registered shared-secret and public clients while preserving token ownership ([test](../../../conformance/oauth-revocation.mjs#L42))
     - [ ] `GET / POST /oauth2/userinfo`
@@ -655,7 +657,7 @@
   - [ ] Introspection
     - [x] Authenticate the issuing application and hide unbound machine token details from another registered client ([test](../../../conformance/oauth-introspection.mjs#L48))
     - [x] Inspect a refresh token issued by an independent authorization-code exchange and compare expiry, issuer, binding, subject and session across runtimes ([test](../../../conformance/oauth-refresh-introspection.mjs#L4))
-    - [x] Apply offline and session-bound grants across session expiry, deletion and revocation while preserving the issuing application’s ownership ([test](../../../conformance/oauth-refresh-introspection.mjs#L69))
+    - [x] Apply offline and session-bound grants across session expiry, deletion and revocation while preserving the issuing application’s ownership ([test](../../../conformance/oauth-refresh-introspection.mjs#L70))
   - [ ] Scopes and permissions
   - [x] Protected resource metadata ([test](../../../conformance/resource-discovery.mjs#L7))
     - [x] Publish a path-specific HTTPS document with local issuer defaults, explicit issuers, filtered scopes and empty capabilities ([test](../../../conformance/resource-discovery.mjs#L7))
@@ -761,7 +763,7 @@
     - [x] `assertionMaxLifetime` ([test](../../../plugins/oauthprovider/client_assertion_test.go#L25))
       - [x] Apply the configured lifetime and skew to expiry, not-before and issued-at claims, including exact boundaries ([test](../../../plugins/oauthprovider/client_assertion_test.go#L25))
   - [ ] Refresh tokens
-    - [x] Apply offline and session-bound grants across session expiry, deletion and revocation while preserving the issuing application’s ownership ([test](../../../conformance/oauth-refresh-introspection.mjs#L69))
+    - [x] Apply offline and session-bound grants across session expiry, deletion and revocation while preserving the issuing application’s ownership ([test](../../../conformance/oauth-refresh-introspection.mjs#L70))
   - [ ] PKCE
   - [ ] DPoP
   - [ ] Custom claims

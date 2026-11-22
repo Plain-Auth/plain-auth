@@ -131,11 +131,7 @@ func (s *Store) StartSAMLLogout(ctx context.Context, actor sso.Actor, identity s
 		return err
 	}
 	exactToken, _ := s.deviceTokenParameters([]string{actor.SessionToken})
-	result, err := tx.ExecContext(ctx, s.bind(`DELETE FROM "session" WHERE `+s.scimExact(`"id"`)+`=? AND `+s.scimExact(`"userId"`)+`=? AND "token"=`+exactToken), actor.SessionID, actor.UserID, actor.SessionToken)
-	if err != nil {
-		return err
-	}
-	n, err := result.RowsAffected()
+	n, err := s.deleteSessionsTx(ctx, tx, s.scimExact(`"id"`)+`=? AND `+s.scimExact(`"userId"`)+`=? AND "token"=`+exactToken, actor.SessionID, actor.UserID, actor.SessionToken)
 	if err != nil {
 		return err
 	}

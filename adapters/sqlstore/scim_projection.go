@@ -32,18 +32,6 @@ func (t scimProjectionTx) QueryRowContext(c context.Context, q string, args ...a
 	return t.tx.QueryRowContext(c, q, args...)
 }
 
-func scanSCIMStrings(rows *sql.Rows) ([]string, error) {
-	defer rows.Close()
-	var ids []string
-	for rows.Next() {
-		var id string
-		if err := rows.Scan(&id); err != nil {
-			return nil, err
-		}
-		ids = append(ids, id)
-	}
-	return ids, rows.Err()
-}
 func (s *Store) projectSCIMDomain(ctx context.Context, tx *sql.Tx, domain string, withdraw bool) error {
 	// Include imported ledger entries for sources that were removed outside
 	// this process. Unsupported provenance must fail the entire transition.
@@ -52,7 +40,7 @@ func (s *Store) projectSCIMDomain(ctx context.Context, tx *sql.Tx, domain string
 	if err != nil {
 		return err
 	}
-	ids, err := scanSCIMStrings(rows)
+	ids, err := scanStrings(rows)
 	if err != nil {
 		return err
 	}
@@ -83,7 +71,7 @@ func (s *Store) projectSCIMMembers(ctx context.Context, tx *sql.Tx, d scim.Direc
 		if err != nil {
 			return err
 		}
-		found, err := scanSCIMStrings(rows)
+		found, err := scanStrings(rows)
 		if err != nil {
 			return err
 		}
@@ -267,7 +255,7 @@ func (s *Store) scimAccountPolicies(ctx context.Context, tx *sql.Tx, user string
 	if err != nil {
 		return nil, err
 	}
-	domains, err := scanSCIMStrings(rows)
+	domains, err := scanStrings(rows)
 	if err != nil {
 		return nil, err
 	}

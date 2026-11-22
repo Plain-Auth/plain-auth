@@ -65,15 +65,32 @@ export async function exerciseRefreshIntrospection({ server, issuer, db, credent
     assert.deepEqual(await inspect({}, true), { ...expected, iss: peer, token_type, cnf });
   }
   db.prepare("UPDATE oauthRefreshToken SET confirmation=NULL WHERE id=?").run(row.id);
+  const browser = db.prepare("SELECT token,expiresAt FROM session WHERE id=?").get(row.sessionId);
   db.prepare("UPDATE session SET expiresAt=? WHERE id=?").run("2020-01-01T00:00:00.000Z", row.sessionId);
   const detached = { ...expected };
   delete detached.sid;
   assert.deepEqual(await inspect(), detached);
   db.prepare("UPDATE oauthRefreshToken SET scopes=? WHERE id=?").run('["reports"]', row.id);
   assert.deepEqual(await inspect(), { active: false });
-  db.prepare("DELETE FROM session WHERE id=?").run(row.sessionId);
-  assert.deepEqual(await inspect(), { active: false });
   db.prepare("UPDATE oauthRefreshToken SET scopes=? WHERE id=?").run(JSON.stringify(scopes), row.id);
+  db.prepare("UPDATE session SET expiresAt=? WHERE id=?").run(browser.expiresAt, row.sessionId);
+  const narrowed = randomUUID();
+  db.prepare("INSERT INTO oauthRefreshToken(id,token,userId,sessionId,clientId,scopes,createdAt,expiresAt) VALUES(?,?,?,?,?,?,?,?)")
+    .run(narrowed, randomUUID(), user, row.sessionId, app.client_id, '["reports"]', now, row.expiresAt);
+  const access = randomUUID();
+  db.prepare("INSERT INTO oauthAccessToken(id,token,userId,sessionId,clientId,scopes,createdAt,expiresAt) VALUES(?,?,?,?,?,?,?,?)")
+    .run(access, randomUUID(), user, row.sessionId, app.client_id, '["reports"]', now, row.expiresAt);
+  const headers = { "content-type": "application/json", origin: server.baseURL };
+  const signIn = await server.send(new Request(mount + "/sign-in/email", { method: "POST", headers,
+    body: JSON.stringify({ email: "refresh-grant@issuer.test", password: "refresh fixture password" }) }));
+  assert.equal(signIn.status, 200);
+  const cookie = signIn.headers.getSetCookie().map(line => line.split(";")[0]).join("; ");
+  const endSession = await server.send(new Request(mount + "/revoke-session", { method: "POST", headers: { ...headers, cookie },
+    body: JSON.stringify({ token: browser.token }) }));
+  assert.equal(endSession.status, 200);
+  assert.equal(db.prepare("SELECT id FROM session WHERE id=?").get(row.sessionId), undefined);
+  assert.ok(db.prepare("SELECT revoked FROM oauthRefreshToken WHERE id=?").get(narrowed).revoked);
+  assert.ok(db.prepare("SELECT revoked FROM oauthAccessToken WHERE id=?").get(access).revoked);
   assert.deepEqual(await inspect(), detached);
   const revoke = await issuer.handler(post(peer, "revoke", { ...fields, token: issued.refresh_token, token_type_hint: "refresh_token" }));
   assert.equal(revoke.status, 200);

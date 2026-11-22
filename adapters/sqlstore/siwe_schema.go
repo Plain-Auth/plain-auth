@@ -39,27 +39,11 @@ func (s *Store) CheckWalletMapping(_ context.Context, configured siwe.Schema) er
 	return nil
 }
 
-func (s *Store) walletTableExists(ctx context.Context, db rowQuerier, name string) (bool, error) {
-	q := `SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type='table' AND name=? COLLATE NOCASE)`
-	args := []any{name}
-	switch s.dialect {
-	case "postgres":
-		q = `SELECT pg_catalog.to_regclass(pg_catalog.quote_ident(?::text)) IS NOT NULL`
-	case "mysql":
-		q = `SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name=?
-			AND (@@lower_case_table_names<>0 OR (BINARY table_schema=BINARY DATABASE() AND BINARY table_name=BINARY ?)))`
-		args = append(args, name)
-	}
-	var exists bool
-	err := db.QueryRowContext(ctx, s.bind(q), args...).Scan(&exists)
-	return exists, err
-}
-
 func (s *Store) preflightWalletMapping(ctx context.Context, db migrationConnection) error {
 	m := s.walletNames()
 	canonical := walletschema.Default()
 	if m.Table != canonical.Table {
-		exists, err := s.walletTableExists(ctx, db, canonical.Table)
+		exists, err := s.tableExists(ctx, db, canonical.Table)
 		if err != nil {
 			return err
 		}
@@ -75,7 +59,7 @@ func (s *Store) preflightWalletMapping(ctx context.Context, db migrationConnecti
 			}
 		}
 	}
-	exists, err := s.walletTableExists(ctx, db, m.Table)
+	exists, err := s.tableExists(ctx, db, m.Table)
 	if err != nil {
 		return err
 	}
@@ -87,7 +71,7 @@ func (s *Store) preflightWalletMapping(ctx context.Context, db migrationConnecti
 		}
 		return rows.Close()
 	}
-	core, err := s.walletTableExists(ctx, db, "account")
+	core, err := s.tableExists(ctx, db, "account")
 	if err != nil || !core {
 		return err
 	}

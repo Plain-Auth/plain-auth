@@ -47,6 +47,5 @@ func (s *Store) RefreshSession(ctx context.Context, token string, previousExpiry
 }
 
 func (s *Store) DeleteExpiredSession(ctx context.Context, token string, now time.Time) error {
-	_, err := s.db.ExecContext(ctx, s.bind(`DELETE FROM "session" WHERE "token"=? AND "expiresAt"<=?`), token, s.date(now))
-	return err
+	return s.deleteSessions(ctx, `"token"=? AND "expiresAt"<=?`, token, s.date(now))
 }

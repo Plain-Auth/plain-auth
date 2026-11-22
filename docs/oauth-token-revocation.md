@@ -28,6 +28,12 @@ JWT recognition uses the configured issuer and signing keys. Every audience must
 
 Clients should retry after a transient server or transport error. A malformed request returns `invalid_request`. Invalid credentials return `invalid_client`. HTTP Basic authentication failures include a 401 challenge. A client registered with a public key can sign a fresh assertion for this endpoint. Introspection returns an inactive response for revoked machine access tokens and refresh tokens. [Refresh token introspection](machine-tokens.md#inspect-a-refresh-token) · [Signed client assertions](oauth-client-assertions.md) · [Machine access tokens](machine-tokens.md) · [OAuth checklist](parity/plugins/oauth-provider.md)
 
+## When a user session ends
+
+With the SQL store and the `oauth-provider` schema installed, signing out revokes every stored access token tied to that session. A refresh token survives if its current scopes include `offline_access`. Introspection then omits the deleted session’s `sid`. A refresh token whose scopes were narrowed to remove `offline_access` is revoked. Grants tied to another browser session and grants issued independently of a session keep their existing state.
+
+Use the session APIs for administrative removal or expiry cleanup. Plain Auth records the token changes and deletes the session in the same transaction on SQLite, PostgreSQL and MySQL. If the transaction rolls back, the session and its grants retain their previous state. A direct SQL deletion bypasses these operations and only applies the foreign-key rules. A resource server validating a signed access token locally can continue to accept it until its expiry. [Session-deletion tests](../adapters/sqlstore/session_deletion_test.go) · [Refresh token introspection](machine-tokens.md#inspect-a-refresh-token)
+
 ## Configure storage and limits
 
 Plain Auth stores token lookups as SHA-256 digests encoded in unpadded base64url by default. The access-token path uses `Tokens.OpaquePrefix` and `Tokens.HashOpaqueToken`. For refresh tokens, revocation removes `Tokens.RefreshPrefix`, calls an optional `Tokens.DecodeRefreshToken`, then applies `Tokens.HashRefreshToken`. Return `oauthprovider.ErrInvalidRefreshToken` from the decoder for an unrecognized value. Operational errors from the decoder or digest function return a server error so clients know to retry.
