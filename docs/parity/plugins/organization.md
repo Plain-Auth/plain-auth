@@ -158,6 +158,9 @@
     - [ ] `schema`
     - [ ] `disableOrganizationDeletion`
     - [ ] `organizationHooks`
+      - [x] Run profile callbacks in released-client order with supplied fields, selective overrides, committed data and distinct failure outcomes ([test](../../../conformance/organization-profile-hooks.mjs#L7))
+      - [x] Recheck the original tenant, member, active selection and session across unlocked host callbacks on three database engines ([test](../../../adapters/sqlstore/organization_profile_hooks_test.go#L16))
+      - [x] Require transactional reauthorization from custom stores only when profile hooks are enabled ([test](../../../adapters/sqlstore/organization_profile_hooks_test.go#L176))
 
 ## Organization
 
@@ -184,6 +187,9 @@
       - [ ] Legacy organizationCreation hooks
       - [ ] Modern organizationHooks
       - [ ] Organization Creation and Management Hooks
+        - [x] Run profile callbacks in released-client order with supplied fields, selective overrides, committed data and distinct failure outcomes ([test](../../../conformance/organization-profile-hooks.mjs#L7))
+        - [x] Recheck the original tenant, member, active selection and session across unlocked host callbacks on three database engines ([test](../../../adapters/sqlstore/organization_profile_hooks_test.go#L16))
+        - [x] Require transactional reauthorization from custom stores only when profile hooks are enabled ([test](../../../adapters/sqlstore/organization_profile_hooks_test.go#L176))
       - [ ] Member Hooks
       - [ ] Invitation Hooks
       - [ ] Team Hooks

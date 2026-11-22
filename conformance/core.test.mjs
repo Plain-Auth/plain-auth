@@ -1593,3 +1593,8 @@ test("session transfer storage modes and request-aware generation agree across b
   const { compareTransferOptions } = await import("./transfer-options.mjs");
   await compareTransferOptions(t, { reference, goFixture, instrument });
 });
+
+test("the released organization client observes validated input, merged changes and committed profile updates", async t => {
+  const { compareOrganizationProfileHooks } = await import("./organization-profile-hooks.mjs");
+  await compareOrganizationProfileHooks(t, { reference, goFixture, instrument });
+});

@@ -81,6 +81,10 @@ var ErrUpdateDenied = problem(403, "YOU_ARE_NOT_ALLOWED_TO_UPDATE_THIS_ORGANIZAT
 var ErrUpdateNotMember = problem(400, "USER_IS_NOT_A_MEMBER_OF_THE_ORGANIZATION", "User is not a member of the organization")
 
 func (s *Service) UpdateOrganization(ctx context.Context, session auth.Session, id string, change ProfileUpdate) (*Organization, error) {
+	return s.updateOrganization(ctx, session, nil, id, change)
+}
+
+func (s *Service) updateOrganization(ctx context.Context, session auth.Session, actor *auth.User, id string, change ProfileUpdate) (*Organization, error) {
 	store, ok := s.options.Store.(ProfileStore)
 	if !ok {
 		return nil, errors.New("organization: store does not support profile updates")
@@ -91,14 +95,11 @@ func (s *Service) UpdateOrganization(ctx context.Context, session auth.Session, 
 	if err := session.RequireOwner(); err != nil {
 		return nil, err
 	}
-	if change.Name != nil && *change.Name == "" {
-		return nil, validation("name")
+	if err := validateProfileChange(change); err != nil {
+		return nil, err
 	}
-	if change.Slug != nil && *change.Slug == "" {
-		return nil, validation("slug")
-	}
-	if change.Logo != nil && change.ClearLogo {
-		return nil, validation("logo")
+	if s.options.BeforeUpdateOrganization != nil || s.options.AfterUpdateOrganization != nil {
+		return s.observedProfileUpdate(ctx, session, actor, id, change)
 	}
 	return store.UpdateOrganizationProfile(ctx, session.UserID, session.Token, id, change)
 }
@@ -119,7 +120,7 @@ func (s *Service) profileEndpoints(store ProfileStore) []auth.Endpoint {
 			if err != nil {
 				return nil, err
 			}
-			return s.UpdateOrganization(c.Request.Context(), actor.Session, id, changes)
+			return s.updateOrganization(c.Request.Context(), actor.Session, &actor.User, id, changes)
 		}),
 		o.endpoint(http.MethodPost, "check-slug", func(c auth.EndpointContext, _ *auth.SessionResult) (any, error) {
 			slug, ok := c.Body["slug"].(string)

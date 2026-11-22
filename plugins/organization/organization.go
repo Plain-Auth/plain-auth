@@ -57,11 +57,13 @@ type Store interface {
 }
 
 type Options struct {
-	Teams                *TeamOptions
-	teamStore            TeamStore
-	Store                Store
-	SendInvitation       func(context.Context, Invitation) error
-	RequireVerifiedEmail bool
+	BeforeUpdateOrganization func(context.Context, BeforeProfileUpdate) (*ProfileUpdate, error)
+	AfterUpdateOrganization  func(context.Context, AfterProfileUpdate) error
+	Teams                    *TeamOptions
+	teamStore                TeamStore
+	Store                    Store
+	SendInvitation           func(context.Context, Invitation) error
+	RequireVerifiedEmail     bool
 }
 
 func problem(status int, code, message string) *authn.APIError {
@@ -132,6 +134,11 @@ type Service struct{ options Options }
 func NewService(o Options) (*Service, error) {
 	if o.Store == nil {
 		return nil, errors.New("organization: Store is required")
+	}
+	if o.BeforeUpdateOrganization != nil || o.AfterUpdateOrganization != nil {
+		if _, ok := o.Store.(ObservedProfileStore); !ok {
+			return nil, errors.New("organization: profile hooks require an ObservedProfileStore")
+		}
 	}
 	if err := o.configureTeams(); err != nil {
 		return nil, err

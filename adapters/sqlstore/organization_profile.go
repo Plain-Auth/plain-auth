@@ -2,6 +2,7 @@ package sqlstore
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"time"
@@ -39,27 +40,45 @@ func (s *Store) updateOrganizationProfileOnce(ctx context.Context, userID, token
 		return nil, err
 	}
 	defer tx.Rollback()
-	group, err = s.lockMembershipScope(ctx, tx, userID, token, group)
-	if errors.Is(err, org.ErrNoActiveOrg) {
-		return nil, org.ErrNotFound
-	}
+	row, _, err := s.lockProfile(ctx, tx, userID, token, group)
 	if err != nil {
 		return nil, err
+	}
+	if err = s.applyOrganizationProfile(ctx, tx, userID, token, row, change); err != nil {
+		return nil, err
+	}
+	if err = tx.Commit(); err != nil {
+		return nil, err
+	}
+	return row, nil
+}
+
+func (s *Store) lockProfile(ctx context.Context, tx *sql.Tx, userID, token, group string) (*org.Organization, org.Member, error) {
+	group, err := s.lockMembershipScope(ctx, tx, userID, token, group)
+	if errors.Is(err, org.ErrNoActiveOrg) {
+		return nil, org.Member{}, org.ErrNotFound
+	}
+	if err != nil {
+		return nil, org.Member{}, err
 	}
 	actor, err := s.lockMembershipActor(ctx, tx, userID, group)
 	if errors.Is(err, org.ErrMemberMissing) {
-		return nil, org.ErrUpdateNotMember
+		return nil, org.Member{}, org.ErrUpdateNotMember
 	}
 	if err != nil {
-		return nil, err
+		return nil, org.Member{}, err
 	}
 	if !membershipHasRole(actor.Role, "owner") && !membershipHasRole(actor.Role, "admin") {
-		return nil, org.ErrUpdateDenied
+		return nil, org.Member{}, org.ErrUpdateDenied
 	}
 	row, err := readOrg(tx.QueryRowContext(ctx, s.bind(`SELECT `+orgFields+` FROM "organization" o WHERE o."id"=?`), group))
 	if err != nil {
-		return nil, err
+		return nil, org.Member{}, err
 	}
+	return row, actor.Member, nil
+}
+
+func (s *Store) applyOrganizationProfile(ctx context.Context, tx *sql.Tx, userID, token string, row *org.Organization, change org.ProfileUpdate) error {
 	if change.Name != nil {
 		row.Name = *change.Name
 	}
@@ -74,7 +93,7 @@ func (s *Store) updateOrganizationProfileOnce(ctx context.Context, userID, token
 	if change.Metadata != nil {
 		raw, e := json.Marshal(change.Metadata)
 		if e != nil {
-			return nil, e
+			return e
 		}
 		row.Metadata = raw
 	}
@@ -82,21 +101,18 @@ func (s *Store) updateOrganizationProfileOnce(ctx context.Context, userID, token
 	if len(row.Metadata) > 0 {
 		data = string(row.Metadata)
 	}
-	_, err = tx.ExecContext(ctx, s.bind(`UPDATE "organization" SET "name"=?,"slug"=?,"logo"=?,"metadata"=? WHERE "id"=?`), row.Name, row.Slug, row.Logo, data, group)
+	_, err := tx.ExecContext(ctx, s.bind(`UPDATE "organization" SET "name"=?,"slug"=?,"logo"=?,"metadata"=? WHERE "id"=?`), row.Name, row.Slug, row.Logo, data, row.ID)
 	if duplicateConstraint(err) {
-		return nil, org.ErrSlugTaken
+		return org.ErrSlugTaken
 	}
 	if err != nil {
-		return nil, err
+		return err
 	}
 	// Recheck expiry after waiting for the organization or its unique slug.
 	if err = s.lockActiveAccount(ctx, tx, userID, token, time.Now()); errors.Is(err, auth.ErrNotFound) {
-		return nil, org.ErrUnauthenticated
+		return org.ErrUnauthenticated
 	} else if err != nil {
-		return nil, err
+		return err
 	}
-	if err = tx.Commit(); err != nil {
-		return nil, err
-	}
-	return row, nil
+	return nil
 }

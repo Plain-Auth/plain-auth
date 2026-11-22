@@ -9712,5 +9712,39 @@
       "marker": "assert.equal(stored.value",
       "complete": true
     }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L161": [
+    {
+      "label": "Run profile callbacks in released-client order with supplied fields, selective overrides, committed data and distinct failure outcomes",
+      "test": "conformance/organization-profile-hooks.mjs",
+      "marker": "export async function compareOrganizationProfileHooks("
+    },
+    {
+      "label": "Recheck the original tenant, member, active selection and session across unlocked host callbacks on three database engines",
+      "test": "adapters/sqlstore/organization_profile_hooks_test.go",
+      "marker": "func TestOrganizationProfileHookBoundary("
+    },
+    {
+      "label": "Require transactional reauthorization from custom stores only when profile hooks are enabled",
+      "test": "adapters/sqlstore/organization_profile_hooks_test.go",
+      "marker": "func TestOrganizationProfileHooksRequireGuardedStore("
+    }
+  ],
+  "plugin-symbol/organization/OrganizationOptions/organizationHooks": [
+    {
+      "label": "Run profile callbacks in released-client order with supplied fields, selective overrides, committed data and distinct failure outcomes",
+      "test": "conformance/organization-profile-hooks.mjs",
+      "marker": "export async function compareOrganizationProfileHooks("
+    },
+    {
+      "label": "Recheck the original tenant, member, active selection and session across unlocked host callbacks on three database engines",
+      "test": "adapters/sqlstore/organization_profile_hooks_test.go",
+      "marker": "func TestOrganizationProfileHookBoundary("
+    },
+    {
+      "label": "Require transactional reauthorization from custom stores only when profile hooks are enabled",
+      "test": "adapters/sqlstore/organization_profile_hooks_test.go",
+      "marker": "func TestOrganizationProfileHooksRequireGuardedStore("
+    }
   ]
 }

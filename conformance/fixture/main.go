@@ -244,6 +244,9 @@ func main() {
 			plugins = append(plugins, p)
 		case "organization", "organization-teams":
 			options := organization.Options{Store: store}
+			if os.Getenv("CONFORMANCE_ORG_PROFILE_HOOKS") == "1" {
+				configureOrganizationProfileHooks(&options, os.Args[1]+".org-profile-events")
+			}
 			if id == "organization-teams" {
 				options.Teams = &organization.TeamOptions{}
 			}

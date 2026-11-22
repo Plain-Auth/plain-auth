@@ -59,6 +59,12 @@ An owner or admin can change the profile in one request. Use the signed-in Go cl
 
 Only the supplied fields change. A JSON null clears the logo. Metadata replaces the entire object. The response contains the updated organization with its original ID and creation time. A slug collision returns `400 ORGANIZATION_SLUG_ALREADY_TAKEN` and rolls back every field in the request. An ordinary member receives `403 YOU_ARE_NOT_ALLOWED_TO_UPDATE_THIS_ORGANIZATION`.
 
+Set `organization.Options.BeforeUpdateOrganization` to inspect submitted profile fields, the signed-in user and their current membership. Return a `*organization.ProfileUpdate` to replace selected fields or return nil to accept the request. Its `Metadata` replaces the entire metadata object. Set `ClearLogo` to remove the logo. Initial validation, membership permission and the requested slug's availability are checked before the callback. Only explicitly returned overrides change the request.
+
+`AfterUpdateOrganization` receives the committed organization and the actor and membership snapshots from the request. A before-hook error prevents the update. An after-hook error reaches the caller after the change has committed. Retrying a request runs the hooks again. The SQL adapter supplies the updated row. A custom adapter that cannot return an updated row can supply nil to the after hook.
+
+The SQL adapter releases its locks while host callbacks run. Before writing, it checks the original organization and membership, their creation times, the acting session, current role and account status. An implicitly selected organization must still be active. An explicit organization ID remains the target if the browser switches its active selection. A concurrent update to an unrelated profile field survives when the request and returned overrides omit that field. The Go service enforces the same checks for native calls. A custom store that enables either callback must implement `organization.ObservedProfileStore`.
+
 A signed-in user can call `POST /organization/check-slug` with `{"slug":"support"}`. It returns `{"status":true}` for an available slug. Another request can claim the slug before the update. Check the update’s result when saving. The Go client exposes both methods.
 
 ```go
