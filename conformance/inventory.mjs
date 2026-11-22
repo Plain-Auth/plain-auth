@@ -414,6 +414,7 @@ const index = [
   "| Publish discovery metadata and respond to access-token failures | [Resource discovery and challenges](../oauth-resource-discovery.md) |",
   "| Manage OAuth resource policies and client grants from server code | [Resource management](../oauth-resource-management.md) |",
   "| Manage the signed-in user’s OAuth consent grants | [Authorized applications](../oauth-consents.md) |",
+  "| Register public and confidential OAuth clients | [OAuth client registration](../oauth-client-registration.md) |",
   "| OAuth authorization-server database tables | [Schema and migration](../schema.md#oauth-authorization-server-tables) |",
   "| First-party device grants and authorization | [Sign in a device](../device-authorization.md) |",
   "| Sign in with an Ethereum wallet | [Wallet sign-in](../siwe.md) |",

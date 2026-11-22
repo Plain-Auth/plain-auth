@@ -8,29 +8,16 @@ import (
 	"io"
 	"net"
 	"net/http"
-	"net/netip"
 	"strings"
 	"time"
 
 	auth "github.com/Plain-Auth/plain-auth"
+	"github.com/Plain-Auth/plain-auth/internal/publicnet"
 	"github.com/coreos/go-oidc/v3/oidc"
 	"golang.org/x/oauth2"
 )
 
 var invalidIdentity = errors.New("invalid identity provider response")
-
-func publicAddress(a netip.Addr) bool {
-	a = a.Unmap()
-	if !a.IsGlobalUnicast() || a.IsPrivate() || a.Zone() != "" || a.Is6() && !v6Global.Contains(a) {
-		return false
-	}
-	for _, prefix := range specialIPs {
-		if prefix.Contains(a) {
-			return false
-		}
-	}
-	return true
-}
 
 // Resolve and dial the same vetted address. A proxy, custom dialer, or second
 // DNS resolution must not redirect untrusted tenant endpoints to internal hosts.
@@ -45,7 +32,7 @@ var publicTransport = &http.Transport{TLSHandshakeTimeout: 5 * time.Second, Idle
 			return nil, invalidIdentity
 		}
 		for _, ip := range ips {
-			if !publicAddress(ip) {
+			if !publicnet.Address(ip) {
 				return nil, invalidIdentity
 			}
 		}

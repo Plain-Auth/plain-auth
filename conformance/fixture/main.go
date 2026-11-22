@@ -302,7 +302,11 @@ func main() {
 			}
 			plugins = append(plugins, p)
 		case "oauth-provider":
-			plugins = append(plugins, oauthprovider.ConsentManagement(oauthprovider.ConsentOptions{}))
+			p, err := oauthprovider.New(registrationFixtureOptions())
+			if err != nil {
+				log.Fatal(err)
+			}
+			plugins = append(plugins, p)
 		case "jwt":
 			p, err := jwtplugin.New(jwtplugin.Options{DisableHeader: os.Getenv("CONFORMANCE_MUTE_JWT_HEADER") == "1", Issuer: os.Getenv("CONFORMANCE_DISCOVERY_ISSUER")})
 			if err != nil {

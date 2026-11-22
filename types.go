@@ -232,7 +232,7 @@ func (e *APIError) Error() string { return e.Message }
 // OAuthError represents the public error fields of an OAuth protocol response.
 type OAuthError struct {
 	Status      int    `json:"-"`
-	Code        string `json:"error"`
+	Code        string `json:"error,omitempty"`
 	Description string `json:"error_description"`
 }
 

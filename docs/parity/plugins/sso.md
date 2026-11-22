@@ -87,7 +87,7 @@
   - [ ] `/sso/callback/:providerId`
     - [x] Redeem a browser-bound code with PKCE and either secret authentication method, then issue a session for the stable provider subject ([test](../../../adapters/sqlstore/sso_browser_test.go#L123))
     - [x] Reject changed provider configuration before exchange and inside the account, membership and session transaction ([test](../../../adapters/sqlstore/sso_browser_test.go#L320))
-    - [x] Use validated public addresses for tenant-controlled endpoints and reject redirects and oversized responses ([test](../../../plugins/sso/identity_test.go#L15))
+    - [x] Use validated public addresses for tenant-controlled endpoints and reject redirects and oversized responses ([test](../../../plugins/sso/identity_test.go#L16))
     - [x] Reject a shared public subject from another authority on both enterprise and static OAuth nodes ([test](../../../adapters/sqlstore/sso_browser_test.go#L348))
     - [x] Deny the session and roll back identity creation when the DNS proof is withdrawn during token exchange ([test](../../../adapters/sqlstore/sso_domain_test.go#L329))
     - [x] Link a verified local mailbox within the proved subdomain to the authenticated identity ([test](../../../adapters/sqlstore/sso_domain_test.go#L305))

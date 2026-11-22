@@ -11509,5 +11509,231 @@
       "marker": "assert.deepEqual((await call(\"unlink\", id, {}, client.client_id)).body",
       "complete": true
     }
+  ],
+  "plugin/oauth-provider/POST /oauth2/register": [
+    {
+      "label": "Register public and confidential clients and exchange both a shared secret and an ES256 assertion at an independent issuer",
+      "test": "conformance/oauth-registration.mjs",
+      "marker": "assert.ok(signedToken.access_token);"
+    },
+    {
+      "label": "Commit the client and its resource links atomically across concurrent registrations on three SQL engines",
+      "test": "adapters/sqlstore/oauth_registration_test.go",
+      "marker": "func TestDynamicOAuthRegistration("
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/reference.mdx#L327/`POST /oauth2/register`": [
+    {
+      "label": "Register public and confidential clients and exchange both a shared secret and an ES256 assertion at an independent issuer",
+      "test": "conformance/oauth-registration.mjs",
+      "marker": "assert.ok(signedToken.access_token);"
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/clients.mdx#L119": [
+    {
+      "label": "Register public and confidential clients and exchange both a shared secret and an ES256 assertion at an independent issuer",
+      "test": "conformance/oauth-registration.mjs",
+      "marker": "assert.ok(signedToken.access_token);"
+    }
+  ],
+  "plugin-symbol/oauth-provider/validatePublicClientJwks": [
+    {
+      "label": "Validate public RSA, EC and Ed25519 keys and compatible signing algorithms and reject private key material",
+      "test": "plugins/oauthprovider/registration_test.go",
+      "marker": "func TestRegistrationPublicKeys(",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/oauth-provider/PublicClientJwksValidationResult": [
+    {
+      "label": "Return a validation error for unsupported algorithms and private key members",
+      "test": "plugins/oauthprovider/registration_test.go",
+      "marker": "func TestRegistrationPublicKeys("
+    }
+  ],
+  "plugin-symbol/oauth-provider/ClientRegistrationRequest": [
+    {
+      "label": "Apply application metadata while keeping ownership, credentials and privilege fields under server control",
+      "test": "conformance/oauth-registration.mjs",
+      "marker": "const app = await created(input, { cookie, authorization:"
+    }
+  ],
+  "plugin-symbol/oauth-provider/OAuthOptions/allowDynamicClientRegistration": [
+    {
+      "label": "Reject dynamic registrations until the host enables them",
+      "test": "conformance/oauth-registration.mjs",
+      "marker": "await problem(standard, {}, 403,",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/oauth-provider/OAuthOptions/allowUnauthenticatedClientRegistration": [
+    {
+      "label": "Allow open registration while reserving the machine grant for authenticated callers",
+      "test": "conformance/oauth-registration.mjs",
+      "marker": "await problem({ grant_types: [\"client_credentials\"] }, {},",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/oauth-provider/OAuthOptions/validateInitialAccessToken": [
+    {
+      "label": "Check initial bearer tokens, preserve session precedence and return challenges or callback failures",
+      "test": "conformance/oauth-registration.mjs",
+      "marker": "await problem(standard, { authorization: \"Bearer callback-error\" }",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/oauth-provider/OAuthOptions/clientRegistrationDefaultScopes": [
+    {
+      "label": "Apply the host registration ceiling even when a client requests a narrower subset",
+      "test": "conformance/oauth-registration.mjs",
+      "marker": "assert.equal(app.scope,"
+    }
+  ],
+  "plugin-symbol/oauth-provider/OAuthOptions/clientRegistrationAllowedScopes": [
+    {
+      "label": "Persist the allowed registration scopes and reject a scope outside that set",
+      "test": "conformance/oauth-registration.mjs",
+      "marker": "assert.deepEqual(JSON.parse(row.scopes)"
+    }
+  ],
+  "plugin-symbol/oauth-provider/OAuthOptions/clientRegistrationDefaultResources": [
+    {
+      "label": "Link the configured default resources once per dynamic registration",
+      "test": "conformance/oauth-registration.mjs",
+      "marker": "assert.deepEqual(app.resources"
+    }
+  ],
+  "plugin-symbol/oauth-provider/OAuthOptions/clientRegistrationAllowedResources": [
+    {
+      "label": "Accept explicitly allowed resources and roll back a request for a disallowed, disabled or missing target",
+      "test": "adapters/sqlstore/oauth_registration_test.go",
+      "marker": "rejected registrations changed the database"
+    }
+  ],
+  "plugin-symbol/oauth-provider/OAuthOptions/clientRegistrationRequirePKCE": [
+    {
+      "label": "Allow a confidential registration to relax PKCE while retaining the public client requirement",
+      "test": "conformance/oauth-registration.mjs",
+      "marker": "assert.equal(pub.require_pkce,",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/oauth-provider/OAuthOptions/clientRegistrationDefaultApplicationType": [
+    {
+      "label": "Infer native redirects and apply the web default to HTTPS applications",
+      "test": "conformance/oauth-registration.mjs",
+      "marker": "assert.equal(pub.application_type,",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/oauth-provider/OAuthOptions/clientPrivileges": [
+    {
+      "label": "Check the host create privilege for a signed-in registration",
+      "test": "conformance/oauth-registration.mjs",
+      "marker": "assert.equal(denied.status,"
+    }
+  ],
+  "plugin-symbol/oauth-provider/OAuthOptions/clientReference": [
+    {
+      "label": "Record a trusted tenant reference and omit the personal owner when a reference is assigned",
+      "test": "adapters/sqlstore/oauth_registration_test.go",
+      "marker": "incorrect registration at rest"
+    }
+  ],
+  "plugin-symbol/oauth-provider/OAuthOptions/generateClientId": [
+    {
+      "label": "Use the configured ID generator and keep a single complete registration after a collision",
+      "test": "adapters/sqlstore/oauth_registration_test.go",
+      "marker": "colliding registrations did not leave one complete client"
+    }
+  ],
+  "plugin-symbol/oauth-provider/OAuthOptions/generateClientSecret": [
+    {
+      "label": "Issue the generated secret and store its digest on all SQL engines",
+      "test": "adapters/sqlstore/oauth_registration_test.go",
+      "marker": "incorrect registration at rest"
+    }
+  ],
+  "plugin-symbol/oauth-provider/OAuthOptions/storeClientSecret": [
+    {
+      "label": "Pass the unprefixed secret to a custom storage function and persist its result",
+      "test": "adapters/sqlstore/oauth_registration_test.go",
+      "marker": "custom secret storage differs from the issued credential"
+    }
+  ],
+  "plugin-symbol/oauth-provider/OAuthOptions/prefix": [
+    {
+      "label": "Return prefixed shared credentials accepted by an independent issuer",
+      "test": "conformance/oauth-registration.mjs",
+      "marker": "assert.match(app.client_secret,"
+    }
+  ],
+  "plugin-symbol/oauth-provider/OAuthOptions/grantTypes": [
+    {
+      "label": "Register only the mutually supported requested grant types",
+      "test": "conformance/oauth-registration.mjs",
+      "marker": "assert.deepEqual(app.grant_types,"
+    }
+  ],
+  "plugin-symbol/oauth-provider/OAuthOptions/allowInsecureRedirectUri": [
+    {
+      "label": "Apply the HTTP redirect exception while enforcing native loopback address restrictions",
+      "test": "plugins/oauthprovider/registration_test.go",
+      "marker": "func TestRegistrationRedirectPolicy("
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/clients.mdx#L156/`clientRegistrationDefaultScopes`": [
+    {
+      "label": "Apply the host registration ceiling even when a client requests a narrower subset",
+      "test": "conformance/oauth-registration.mjs",
+      "marker": "assert.equal(app.scope,",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/clients.mdx#L157/`clientRegistrationAllowedScopes`": [
+    {
+      "label": "Persist the allowed registration scopes and reject a scope outside that set",
+      "test": "conformance/oauth-registration.mjs",
+      "marker": "assert.deepEqual(JSON.parse(row.scopes)",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/clients.mdx#L159/`clientRegistrationRequirePKCE`": [
+    {
+      "label": "Allow a confidential registration to relax PKCE while retaining the public client requirement",
+      "test": "conformance/oauth-registration.mjs",
+      "marker": "assert.equal(pub.require_pkce,",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/clients.mdx#L160/`clientRegistrationDefaultApplicationType`": [
+    {
+      "label": "Infer native redirects and apply the web default to HTTPS applications",
+      "test": "conformance/oauth-registration.mjs",
+      "marker": "assert.equal(pub.application_type,",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/clients.mdx#L166": [
+    {
+      "label": "Link allowed resources in the same transaction as the new dynamic client",
+      "test": "adapters/sqlstore/oauth_registration_test.go",
+      "marker": "incorrect number of resource links"
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/clients.mdx#L183": [
+    {
+      "label": "Exercise HTTPS web, native private scheme and exact HTTP loopback redirects",
+      "test": "plugins/oauthprovider/registration_test.go",
+      "marker": "func TestRegistrationRedirectPolicy("
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/reference.mdx#L402/`register`": [
+    {
+      "label": "Enforce the five-per-minute route limit and honor a host override",
+      "test": "adapters/sqlstore/oauth_registration_test.go",
+      "marker": "func TestRegistrationLimitsAndCustomSecretStore(",
+      "complete": true
+    }
   ]
 }

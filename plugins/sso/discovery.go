@@ -13,6 +13,7 @@ import (
 	"time"
 
 	auth "github.com/Plain-Auth/plain-auth"
+	"github.com/Plain-Auth/plain-auth/internal/publicnet"
 )
 
 func discoveryError(status int, code, msg string) error {
@@ -26,18 +27,6 @@ func endpointURL(raw string) (*url.URL, error) {
 	return u, nil
 }
 
-// Additional special-purpose prefixes that netip.IsGlobalUnicast does not exclude.
-var specialIPs = []netip.Prefix{
-	netip.MustParsePrefix("0.0.0.0/8"), netip.MustParsePrefix("100.64.0.0/10"),
-	netip.MustParsePrefix("192.0.0.0/24"), netip.MustParsePrefix("192.0.2.0/24"),
-	netip.MustParsePrefix("192.88.99.0/24"), netip.MustParsePrefix("198.18.0.0/15"),
-	netip.MustParsePrefix("198.51.100.0/24"), netip.MustParsePrefix("203.0.113.0/24"),
-	netip.MustParsePrefix("240.0.0.0/4"), netip.MustParsePrefix("2001:db8::/32"),
-	netip.MustParsePrefix("2001::/32"), netip.MustParsePrefix("2002::/16"),
-	netip.MustParsePrefix("3fff::/20"),
-}
-var v6Global = netip.MustParsePrefix("2000::/3")
-
 func checkEndpoint(host *auth.Auth, raw string) error {
 	u, err := endpointURL(raw)
 	if err != nil {
@@ -49,15 +38,9 @@ func checkEndpoint(host *auth.Auth, raw string) error {
 	name := strings.ToLower(strings.TrimSuffix(u.Hostname(), "."))
 	isLocal := name == "metadata.goog" || !strings.Contains(name, ".") || strings.HasSuffix(name, ".localhost") || strings.HasSuffix(name, ".local") || strings.HasSuffix(name, ".internal")
 	if a, err := netip.ParseAddr(name); err == nil {
-		a = a.Unmap()
-		isLocal = !a.IsGlobalUnicast() || a.IsPrivate() || a.IsLoopback() || a.IsLinkLocalUnicast() || a.IsMulticast() || a.IsUnspecified() || a.Zone() != "" || a.Is6() && !v6Global.Contains(a)
-		for _, prefix := range specialIPs {
-			if prefix.Contains(a) {
-				isLocal = true
-				break
-			}
-		}
+		isLocal = !publicnet.Address(a)
 	}
+
 	if isLocal {
 		return discoveryError(400, "discovery_private_host", "An internal identity provider endpoint needs an explicitly trusted origin")
 	}

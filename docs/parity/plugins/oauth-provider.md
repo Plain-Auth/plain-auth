@@ -8,7 +8,9 @@
   - [x] Enforce consent owner and client scope rules when a signed-in account manages its authorized applications ([test](../../../conformance/oauth-consent.mjs#L6))
   - [ ] `getIssuer`
   - [ ] `PublicClientJwksValidationResult`
-  - [ ] `validatePublicClientJwks`
+    - [x] Return a validation error for unsupported algorithms and private key members ([test](../../../plugins/oauthprovider/registration_test.go#L35))
+  - [x] `validatePublicClientJwks` ([test](../../../plugins/oauthprovider/registration_test.go#L35))
+    - [x] Validate public RSA, EC and Ed25519 keys and compatible signing algorithms and reject private key material ([test](../../../plugins/oauthprovider/registration_test.go#L35))
   - [ ] `isForbiddenCimdClientMetadataField`
   - [ ] `oauthProviderResourceClient`
     - [x] Derive protected-resource discovery from a local auth mount and issuer or from standalone configuration ([test](../../../conformance/resource-discovery.mjs#L7))
@@ -44,6 +46,8 @@
   - [ ] `GET / POST /oauth2/end-session`
   - [ ] `POST /oauth2/end-session/confirm`
   - [ ] `POST /oauth2/register`
+    - [x] Register public and confidential clients and exchange both a shared secret and an ES256 assertion at an independent issuer ([test](../../../conformance/oauth-registration.mjs#L324))
+    - [x] Commit the client and its resource links atomically across concurrent registrations on three SQL engines ([test](../../../adapters/sqlstore/oauth_registration_test.go#L23))
   - [ ] `DEFAULT_OAUTH_SCOPES`
   - [ ] `getOAuthProviderState`
   - [ ] `oauthProvider`
@@ -155,6 +159,7 @@
     - [ ] `requireOpenId`
     - [ ] `validateRedirectUri`
     - [ ] `allowInsecureRedirectUri`
+      - [x] Apply the HTTP redirect exception while enforcing native loopback address restrictions ([test](../../../plugins/oauthprovider/registration_test.go#L14))
     - [ ] `resources`
       - [x] Load string and object declarations and retry unfinished rows after a migration ([test](../../../adapters/sqlstore/oauth_resource_seed_test.go#L209))
       - [x] Keep a snapshot of configured scope lists, settings and JSON objects ([test](../../../plugins/oauthprovider/resource_seed_test.go#L36))
@@ -168,7 +173,9 @@
     - [ ] `cachedResources`
     - [ ] `enforcePerClientResources`
     - [ ] `clientRegistrationDefaultResources`
+      - [x] Link the configured default resources once per dynamic registration ([test](../../../conformance/oauth-registration.mjs#L104))
     - [ ] `clientRegistrationAllowedResources`
+      - [x] Accept explicitly allowed resources and roll back a request for a disallowed, disabled or missing target ([test](../../../adapters/sqlstore/oauth_registration_test.go#L130))
     - [x] `identifierValidator` ([test](../../../adapters/sqlstore/oauth_resource_seed_test.go#L169))
       - [x] Replace URI validation for resource creation with the application’s validator ([test](../../../adapters/sqlstore/oauth_resources_test.go#L206))
       - [x] Run the configured identifier validator for startup declarations as well as administrative creates ([test](../../../adapters/sqlstore/oauth_resource_seed_test.go#L169))
@@ -187,18 +194,28 @@
     - [ ] `assertionClockTolerance`
     - [ ] `allowClientKeyRotation`
     - [ ] `allowPublicClientPrelogin`
-    - [ ] `allowUnauthenticatedClientRegistration`
-    - [ ] `allowDynamicClientRegistration`
-    - [ ] `validateInitialAccessToken`
+    - [x] `allowUnauthenticatedClientRegistration` ([test](../../../conformance/oauth-registration.mjs#L129))
+      - [x] Allow open registration while reserving the machine grant for authenticated callers ([test](../../../conformance/oauth-registration.mjs#L129))
+    - [x] `allowDynamicClientRegistration` ([test](../../../conformance/oauth-registration.mjs#L72))
+      - [x] Reject dynamic registrations until the host enables them ([test](../../../conformance/oauth-registration.mjs#L72))
+    - [x] `validateInitialAccessToken` ([test](../../../conformance/oauth-registration.mjs#L124))
+      - [x] Check initial bearer tokens, preserve session precedence and return challenges or callback failures ([test](../../../conformance/oauth-registration.mjs#L124))
     - [ ] `extensions`
     - [ ] `clientRegistrationDefaultScopes`
+      - [x] Apply the host registration ceiling even when a client requests a narrower subset ([test](../../../conformance/oauth-registration.mjs#L174))
     - [ ] `clientRegistrationAllowedScopes`
-    - [ ] `clientRegistrationRequirePKCE`
-    - [ ] `clientRegistrationDefaultApplicationType`
+      - [x] Persist the allowed registration scopes and reject a scope outside that set ([test](../../../conformance/oauth-registration.mjs#L200))
+    - [x] `clientRegistrationRequirePKCE` ([test](../../../conformance/oauth-registration.mjs#L214))
+      - [x] Allow a confidential registration to relax PKCE while retaining the public client requirement ([test](../../../conformance/oauth-registration.mjs#L214))
+    - [x] `clientRegistrationDefaultApplicationType` ([test](../../../conformance/oauth-registration.mjs#L211))
+      - [x] Infer native redirects and apply the web default to HTTPS applications ([test](../../../conformance/oauth-registration.mjs#L211))
     - [ ] `clientRegistrationClientSecretExpiration`
     - [ ] `clientReference`
+      - [x] Record a trusted tenant reference and omit the personal owner when a reference is assigned ([test](../../../adapters/sqlstore/oauth_registration_test.go#L96))
     - [ ] `clientPrivileges`
+      - [x] Check the host create privilege for a signed-in registration ([test](../../../conformance/oauth-registration.mjs#L203))
     - [ ] `grantTypes`
+      - [x] Register only the mutually supported requested grant types ([test](../../../conformance/oauth-registration.mjs#L170))
     - [ ] `loginPage`
     - [ ] `consentPage`
     - [ ] `signup`
@@ -206,6 +223,7 @@
     - [ ] `postLogin`
     - [ ] `formatRefreshToken`
     - [ ] `storeClientSecret`
+      - [x] Pass the unprefixed secret to a custom storage function and persist its result ([test](../../../adapters/sqlstore/oauth_registration_test.go#L216))
     - [ ] `storeTokens`
     - [ ] `customUserInfoClaims`
     - [ ] `customIdTokenClaims`
@@ -213,8 +231,11 @@
     - [ ] `customTokenResponseFields`
     - [ ] `advertisedMetadata`
     - [ ] `prefix`
+      - [x] Return prefixed shared credentials accepted by an independent issuer ([test](../../../conformance/oauth-registration.mjs#L193))
     - [ ] `generateClientId`
+      - [x] Use the configured ID generator and keep a single complete registration after a collision ([test](../../../adapters/sqlstore/oauth_registration_test.go#L164))
     - [ ] `generateClientSecret`
+      - [x] Issue the generated secret and store its digest on all SQL engines ([test](../../../adapters/sqlstore/oauth_registration_test.go#L96))
     - [ ] `generateOpaqueAccessToken`
     - [ ] `generateRefreshToken`
     - [ ] `disableJwtPlugin`
@@ -252,6 +273,7 @@
   - [ ] `ResourceUriSchema`
     - [x] Validate absolute URI and URN audience identifiers and reject fragments, unsafe schemes and malformed escapes ([test](../../../plugins/oauthprovider/resource_test.go#L11))
   - [ ] `ClientRegistrationRequest`
+    - [x] Apply application metadata while keeping ownership, credentials and privilege fields under server control ([test](../../../conformance/oauth-registration.mjs#L167))
   - [ ] `consumeClientAssertion`
   - [ ] `verifyOAuthQueryParams`
   - [ ] `getLocalJwksSource`
@@ -332,13 +354,20 @@
       - [ ] `metadata`
     - [ ] Client credentials scopes
   - [ ] Dynamic client registration
-    - [ ] `clientRegistrationDefaultScopes`
-    - [ ] `clientRegistrationAllowedScopes`
+    - [x] Register public and confidential clients and exchange both a shared secret and an ES256 assertion at an independent issuer ([test](../../../conformance/oauth-registration.mjs#L324))
+    - [x] `clientRegistrationDefaultScopes` ([test](../../../conformance/oauth-registration.mjs#L174))
+      - [x] Apply the host registration ceiling even when a client requests a narrower subset ([test](../../../conformance/oauth-registration.mjs#L174))
+    - [x] `clientRegistrationAllowedScopes` ([test](../../../conformance/oauth-registration.mjs#L200))
+      - [x] Persist the allowed registration scopes and reject a scope outside that set ([test](../../../conformance/oauth-registration.mjs#L200))
     - [ ] `clientRegistrationClientSecretExpiration`
-    - [ ] `clientRegistrationRequirePKCE`
-    - [ ] `clientRegistrationDefaultApplicationType`
+    - [x] `clientRegistrationRequirePKCE` ([test](../../../conformance/oauth-registration.mjs#L214))
+      - [x] Allow a confidential registration to relax PKCE while retaining the public client requirement ([test](../../../conformance/oauth-registration.mjs#L214))
+    - [x] `clientRegistrationDefaultApplicationType` ([test](../../../conformance/oauth-registration.mjs#L211))
+      - [x] Infer native redirects and apply the web default to HTTPS applications ([test](../../../conformance/oauth-registration.mjs#L211))
     - [ ] Resources for registered clients
+      - [x] Link allowed resources in the same transaction as the new dynamic client ([test](../../../adapters/sqlstore/oauth_registration_test.go#L105))
     - [ ] Redirect URI forms
+      - [x] Exercise HTTPS web, native private scheme and exact HTTP loopback redirects ([test](../../../plugins/oauthprovider/registration_test.go#L14))
       - [ ] HTTPS on a non-loopback host
       - [ ] HTTP loopback, any port (RFC 8252 §7.3)
       - [ ] Reverse-domain private-use scheme (RFC 8252 §7.1)
@@ -426,6 +455,7 @@
     - [ ] `GET / POST /oauth2/end-session`
     - [ ] `POST /oauth2/end-session/confirm`
     - [ ] `POST /oauth2/register`
+      - [x] Register public and confidential clients and exchange both a shared secret and an ES256 assertion at an independent issuer ([test](../../../conformance/oauth-registration.mjs#L324))
     - [ ] `POST /admin/oauth2/create-client` (server API only)
     - [ ] `PATCH /admin/oauth2/update-client` (server API only)
     - [ ] `POST /oauth2/create-client`
@@ -474,7 +504,8 @@
     - [ ] `authorize`
     - [ ] `introspect`
     - [ ] `revoke`
-    - [ ] `register`
+    - [x] `register` ([test](../../../adapters/sqlstore/oauth_registration_test.go#L170))
+      - [x] Enforce the five-per-minute route limit and honor a host override ([test](../../../adapters/sqlstore/oauth_registration_test.go#L170))
     - [ ] `rotateClientKeys`
     - [ ] `userinfo`
   - [ ] Provider extensions

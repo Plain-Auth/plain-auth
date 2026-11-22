@@ -10,6 +10,7 @@ import (
 
 	auth "github.com/Plain-Auth/plain-auth"
 	"github.com/Plain-Auth/plain-auth/adapters/memory"
+	"github.com/Plain-Auth/plain-auth/internal/publicnet"
 )
 
 func TestEnterpriseIdentityTransport(t *testing.T) {
@@ -28,11 +29,11 @@ func TestEnterpriseIdentityTransport(t *testing.T) {
 		}
 	}
 	for _, addr := range []string{"10.0.0.4", "127.0.0.1", "::ffff:10.0.0.4", "fd42::123", "169.254.0.4", "100.64.0.8", "2001:db8::1", "2002:c000:201::1", "64:ff9b::7f00:0001", "fe80::1"} {
-		if publicAddress(netip.MustParseAddr(addr)) {
+		if publicnet.Address(netip.MustParseAddr(addr)) {
 			t.Fatal("restricted address accepted", addr)
 		}
 	}
-	if !publicAddress(netip.MustParseAddr("8.8.8.8")) || !publicAddress(netip.MustParseAddr("2606:4700:4700::1111")) {
+	if !publicnet.Address(netip.MustParseAddr("8.8.8.8")) || !publicnet.Address(netip.MustParseAddr("2606:4700:4700::1111")) {
 		t.Fatal("public address rejected")
 	}
 	if conn, e := publicTransport.DialContext(t.Context(), "tcp", "localhost:10999"); e == nil || conn != nil {
