@@ -92,7 +92,7 @@ func (a *Auth) phoneHTTP(c EndpointContext, path string) (any, error) {
 		if err != nil {
 			return nil, err
 		}
-		return map[string]bool{"status": true}, a.ResetPhonePassword(ctx, number, code, pw)
+		return map[string]bool{"status": true}, a.resetPhonePassword(ctx, number, code, pw, c.Request)
 	}
 	return nil, &APIError{http.StatusNotFound, "NOT_FOUND", "Not found"}
 }

@@ -200,6 +200,19 @@ func (s *Store) SaveEmailOTP(ctx context.Context, req auth.EmailOTPRequest, allo
 }
 
 func (s *Store) UseEmailOTP(ctx context.Context, act auth.EmailOTPAction, matches func(string) (bool, error)) (auth.User, error) {
+	return s.useEmailOTP(ctx, act, matches, false)
+}
+
+// UseEmailOTPBeforeVerification commits one recovery proof, the new password,
+// and requested session revocation, leaving mailbox verification to the caller.
+func (s *Store) UseEmailOTPBeforeVerification(ctx context.Context, act auth.EmailOTPAction, matches func(string) (bool, error)) (auth.User, error) {
+	if act.Purpose != auth.OTPResetPassword || act.PasswordHash == "" || act.Source != nil || act.CheckOnly || act.Session.Token != "" {
+		return auth.User{}, errors.New("invalid email OTP password reset action")
+	}
+	return s.useEmailOTP(ctx, act, matches, true)
+}
+
+func (s *Store) useEmailOTP(ctx context.Context, act auth.EmailOTPAction, matches func(string) (bool, error), deferVerification bool) (auth.User, error) {
 	key := newEmailOTPKey(act.EmailOTPRequest)
 	invalid := &auth.APIError{Status: 400, Code: "INVALID_OTP", Message: "Invalid OTP"}
 	missing := &auth.APIError{Status: 400, Code: "USER_NOT_FOUND", Message: "User not found"}
@@ -294,7 +307,7 @@ func (s *Store) UseEmailOTP(ctx context.Context, act auth.EmailOTPAction, matche
 		default:
 			return nil, errors.New("unsupported email OTP action")
 		}
-		if !user.EmailVerified {
+		if !deferVerification && !user.EmailVerified {
 			_, err = tx.ExecContext(ctx, s.bind(`UPDATE "user" SET "emailVerified"=?,"updatedAt"=? WHERE "id"=?`), true, s.date(act.Now), user.ID)
 			user.EmailVerified = true
 			user.UpdatedAt = act.Now

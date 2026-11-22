@@ -57,6 +57,10 @@ type Options struct {
 	SendResetPassword             MailSender
 	PasswordResetTokenTTL         time.Duration
 	RevokeSessionsOnPasswordReset bool
+	// OnPasswordReset runs after a recovery proof is consumed, the password is
+	// replaced, and any requested session revocation commits. Mounted endpoints
+	// pass the HTTP request. Direct Go calls pass nil.
+	OnPasswordReset func(context.Context, User, *http.Request) error
 
 	// Account lifecycle operations with destructive or identity-changing effects are opt-in.
 	DeleteUserEnabled              bool

@@ -375,6 +375,9 @@ func main() {
 		Secret:              "local-conformance-0123456789-abcdefghijk",
 		Store:               store,
 	}
+	if os.Getenv("CONFORMANCE_RESET_HOOK") == "1" {
+		resetHookFixture(&opts, os.Args[1])
+	}
 	if os.Getenv("CONFORMANCE_PASSWORD_CODEC") == "1" {
 		opts.PasswordHash = fixturePasswordHash
 		opts.PasswordVerify = fixturePasswordVerify

@@ -213,6 +213,17 @@ func (s *Store) FindPasswordResetToken(ctx context.Context, token string, now ti
 }
 
 func (s *Store) FinishPasswordReset(ctx context.Context, token, newHash string, now time.Time, revoke bool) error {
+	return s.finishPasswordReset(ctx, token, newHash, now, revoke, nil)
+}
+
+// FinishPasswordResetWithUser returns the owner selected by the winning reset.
+func (s *Store) FinishPasswordResetWithUser(ctx context.Context, token, newHash string, now time.Time, revoke bool) (authn.User, error) {
+	var owner authn.User
+	err := s.finishPasswordReset(ctx, token, newHash, now, revoke, &owner)
+	return owner, err
+}
+
+func (s *Store) finishPasswordReset(ctx context.Context, token, newHash string, now time.Time, revoke bool, owner *authn.User) error {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
@@ -224,6 +235,12 @@ func (s *Store) FinishPasswordReset(ctx context.Context, token, newHash string, 
 	}
 	if err = s.lockAccount(ctx, tx, t.UserID); err != nil {
 		return err
+	}
+	if owner != nil {
+		err = tx.QueryRowContext(ctx, s.bind(`SELECT `+userColumns+` FROM "user" u WHERE u."id"=?`), t.UserID).Scan(userFields(owner)...)
+		if err != nil {
+			return err
+		}
 	}
 	res, err := tx.ExecContext(ctx, s.bind(`DELETE FROM "verification" WHERE "id"=? AND "identifier"=? AND "value"=? AND "expiresAt">?`), t.ID, "reset-password:"+token, t.UserID, s.date(now))
 	if err != nil {
@@ -270,7 +287,7 @@ func (s *Store) replaceResetCredential(ctx context.Context, tx *sql.Tx, id, newH
 }
 
 func (s *Store) VerifyAccountEmail(ctx context.Context, userID, email string, now time.Time) error {
-	res, err := s.db.ExecContext(ctx, s.bind(`UPDATE "user" SET "emailVerified"=?,"updatedAt"=? WHERE "id"=? AND "email"=? AND "emailVerified"=?`), true, s.date(now), userID, strings.ToLower(email), false)
+	res, err := s.db.ExecContext(ctx, s.bind(`UPDATE "user" SET "emailVerified"=?,"updatedAt"=? WHERE `+s.exactSQLValue(`"id"`)+`=? AND `+s.exactSQLValue(`LOWER("email")`)+`=? AND "emailVerified"=?`), true, s.date(now), userID, strings.ToLower(email), false)
 	if err != nil {
 		return err
 	}
@@ -284,7 +301,7 @@ func (s *Store) VerifyAccountEmail(ctx context.Context, userID, email string, no
 	if err != nil {
 		return err
 	}
-	if u.ID != userID || !u.EmailVerified {
+	if u.ID != userID || strings.ToLower(u.Email) != strings.ToLower(email) || !u.EmailVerified {
 		return authn.ErrNotFound
 	}
 	return nil

@@ -184,6 +184,19 @@ func (s *Store) SaveEmailOTP(ctx context.Context, req auth.EmailOTPRequest, allo
 }
 
 func (s *Store) UseEmailOTP(ctx context.Context, act auth.EmailOTPAction, matches func(string) (bool, error)) (auth.User, error) {
+	return s.useEmailOTP(ctx, act, matches, false)
+}
+
+// UseEmailOTPBeforeVerification commits one recovery proof, the new password,
+// and requested session revocation, leaving mailbox verification to the caller.
+func (s *Store) UseEmailOTPBeforeVerification(ctx context.Context, act auth.EmailOTPAction, matches func(string) (bool, error)) (auth.User, error) {
+	if act.Purpose != auth.OTPResetPassword || act.PasswordHash == "" || act.Source != nil || act.CheckOnly || act.Session.Token != "" {
+		return auth.User{}, errors.New("invalid email OTP password reset action")
+	}
+	return s.useEmailOTP(ctx, act, matches, true)
+}
+
+func (s *Store) useEmailOTP(ctx context.Context, act auth.EmailOTPAction, matches func(string) (bool, error), deferVerification bool) (auth.User, error) {
 	key := keyForMail(act.EmailOTPRequest)
 	for {
 		if err := ctx.Err(); err != nil {
@@ -207,12 +220,12 @@ func (s *Store) UseEmailOTP(ctx context.Context, act auth.EmailOTPAction, matche
 			s.mu.Unlock()
 			return auth.User{}, denied
 		}
-		u, err := s.finishMailProof(key, p, act)
+		u, err := s.finishMailProof(key, p, act, deferVerification)
 		s.mu.Unlock()
 		return u, err
 	}
 }
-func (s *Store) finishMailProof(key mailKey, p mailProof, act auth.EmailOTPAction) (auth.User, error) {
+func (s *Store) finishMailProof(key mailKey, p mailProof, act auth.EmailOTPAction, deferVerification bool) (auth.User, error) {
 	state, err := s.snapshotMail(act.EmailOTPRequest, true)
 	if err != nil {
 		return auth.User{}, err
@@ -297,7 +310,7 @@ func (s *Store) finishMailProof(key mailKey, p mailProof, act auth.EmailOTPActio
 			s.deleteSessions(rec.user.ID, "")
 		}
 	}
-	if !rec.user.EmailVerified {
+	if !deferVerification && !rec.user.EmailVerified {
 		rec.user.EmailVerified = true
 		rec.user.UpdatedAt = act.Now
 	}

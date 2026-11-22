@@ -196,6 +196,11 @@ func New(opts Options) (*Auth, error) {
 			a.serviceJWT = p.serviceJWT
 		}
 		if p.emailOTP != nil {
+			if opts.OnPasswordReset != nil {
+				if _, ok := opts.Store.(EmailOTPResetHookStore); !ok {
+					return nil, errors.New("auth: email OTP password reset callbacks require an EmailOTPResetHookStore")
+				}
+			}
 			a.emailOTP = p.emailOTP
 			if p.emailOTP.OverrideDefaultEmailVerification {
 				original := a.opts.SendVerificationEmail

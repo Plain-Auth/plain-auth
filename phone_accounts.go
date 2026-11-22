@@ -68,6 +68,7 @@ type PhoneAccountStore interface {
 	ReadPhoneNumber(ctx context.Context, userID string) (*PhoneNumberFields, error)
 	PhoneCredential(ctx context.Context, number string) (User, string, error)
 	SavePhoneReset(ctx context.Context, r PhoneOTPRecord, requireVerified bool) (bool, error)
+	// A successful password reset returns the account selected by the consumed proof.
 	ApplyPhoneOTP(context.Context, PhoneAccountAction) (PhoneAccountResult, error)
 	ClearPhoneProfile(ctx context.Context, userID, token string, p ProfileUpdate, now time.Time) error
 }
@@ -248,6 +249,10 @@ func (a *Auth) RequestPhonePasswordReset(ctx context.Context, number string) err
 
 // ResetPhonePassword changes the bound account's credential atomically with proof consumption.
 func (a *Auth) ResetPhonePassword(ctx context.Context, number, code, password string) error {
+	return a.resetPhonePassword(ctx, number, code, password, nil)
+}
+
+func (a *Auth) resetPhonePassword(ctx context.Context, number, code, password string, request *http.Request) error {
 	if _, err := a.phoneStore(); err != nil {
 		return err
 	}
@@ -281,6 +286,9 @@ func (a *Auth) ResetPhonePassword(ctx context.Context, number, code, password st
 	}
 	use.ProviderProof, use.ProviderAccepted = r.ID, true
 	use.Now = a.now().UTC()
-	_, err = store.ApplyPhoneOTP(ctx, PhoneAccountAction{Use: use, PasswordHash: hash, RevokeSessions: a.opts.RevokeSessionsOnPasswordReset, RequireVerification: a.phoneNumber.RequireVerification})
-	return err
+	out, err := store.ApplyPhoneOTP(ctx, PhoneAccountAction{Use: use, PasswordHash: hash, RevokeSessions: a.opts.RevokeSessionsOnPasswordReset, RequireVerification: a.phoneNumber.RequireVerification})
+	if err != nil || a.opts.OnPasswordReset == nil {
+		return err
+	}
+	return a.notifyPasswordReset(ctx, out.User, request)
 }

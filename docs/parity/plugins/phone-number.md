@@ -23,6 +23,7 @@
     - [x] Hide unknown and unverified users from reset callers and suppress ineligible SMS ([test](../../../adapters/sqlstore/phone_accounts_test.go#L280))
   - [ ] `POST /phone-number/reset-password`
     - [x] Reset the verified owner’s credential once and reject a proof after ownership changes ([test](../../../adapters/sqlstore/phone_accounts_test.go#L148))
+    - [x] Deliver the verified phone profile to the callback after password recovery ([test](../../../adapters/sqlstore/password_reset_hook_test.go#L66))
   - [ ] `UserWithPhoneNumber`
     - [x] Return the verified phone number and clear the verification flag on disassociation ([test](../../../conformance/phone-contract.mjs#L62))
   - [ ] `PhoneNumberOptions`

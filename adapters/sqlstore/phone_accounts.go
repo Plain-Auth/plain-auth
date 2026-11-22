@@ -151,6 +151,7 @@ func (s *Store) ApplyPhoneOTP(ctx context.Context, act auth.PhoneAccountAction) 
 			if act.RequireVerification && (user.PhoneNumberVerified == nil || !*user.PhoneNumberVerified) {
 				return &auth.APIError{Status: 400, Code: "PHONE_NUMBER_PENDING_VERIFICATION", Message: "Phone number requires account ownership proof"}, nil
 			}
+			out.User = user
 			return nil, s.replaceResetCredential(ctx, tx, user.ID, act.PasswordHash, act.Use.Now, act.RevokeSessions)
 		}
 		if user.ID == "" {

@@ -45,13 +45,13 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 | --- | ---: | ---: |
 | [Published package interfaces](packages.md) | 72 | 161 |
 | [Native Go client, routers and databases](go.md) | 36 | 4 |
-| [Core API, sign-in providers and CLI](runtime.md) | 114 | 280 |
+| [Core API, sign-in providers and CLI](runtime.md) | 115 | 280 |
 | [Database adapters](adapters.md) | 32 | 224 |
 | [Authentication](authentication.md) | 12 | 420 |
 | [Core concepts](concepts.md) | 35 | 514 |
 | [Managed infrastructure](infrastructure.md) | 0 | 528 |
 | [Framework integrations](integrations.md) | 0 | 228 |
-| [Reference and configuration](reference.md) | 35 | 403 |
+| [Reference and configuration](reference.md) | 40 | 402 |
 
 ## Plugins and integrations
 
@@ -69,7 +69,7 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 | [Custom session](plugins/custom-session.md) | 21 | 3 |
 | [Device authorization](plugins/device-authorization.md) | 22 | 99 |
 | [Electron](plugins/electron.md) | 0 | 52 |
-| [Email otp](plugins/email-otp.md) | 39 | 95 |
+| [Email otp](plugins/email-otp.md) | 40 | 95 |
 | [Expo](plugins/expo.md) | 0 | 19 |
 | [Generic OAuth](plugins/generic-oauth.md) | 22 | 265 |
 | [Have I Been Pwned](plugins/have-i-been-pwned.md) | 26 | 10 |
@@ -87,7 +87,7 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 | [OpenAPI](plugins/open-api.md) | 12 | 24 |
 | [Organization](plugins/organization.md) | 67 | 386 |
 | [Passkey](plugins/passkey.md) | 26 | 94 |
-| [Phone number](plugins/phone-number.md) | 33 | 67 |
+| [Phone number](plugins/phone-number.md) | 34 | 67 |
 | [SCIM provisioning](plugins/scim.md) | 66 | 251 |
 | [Sign in with Ethereum](plugins/siwe.md) | 0 | 40 |
 | [Single sign-on](plugins/sso.md) | 53 | 308 |

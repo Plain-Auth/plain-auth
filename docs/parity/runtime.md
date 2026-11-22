@@ -56,6 +56,7 @@ Each entry groups the configured endpoint’s behaviors. A checked child records
   - [ ] `resetPassword` (`POST /reset-password`)
     - [x] Apply an unexpired reset link only once under concurrent use ([test](../../account_test.go#L96))
     - [x] Consume a reset token issued by another compatible server ([test](../../conformance/core.test.mjs#L217))
+    - [x] Notify the winning owner after committing the new credential and configured database-session revocation ([test](../../adapters/sqlstore/password_reset_hook_test.go#L77))
   - [ ] `revokeOtherSessions` (`POST /revoke-other-sessions`)
     - [x] Invalidate an older session while retaining the current one ([test](../../http_test.go#L99))
   - [ ] `revokeSession` (`POST /revoke-session`)

@@ -538,6 +538,11 @@
       "label": "Consume a reset token issued by another compatible server",
       "test": "conformance/core.test.mjs",
       "marker": "test(\"a shared SQLite account consumes reference verification and password reset links in Go\""
+    },
+    {
+      "label": "Notify the winning owner after committing the new credential and configured database-session revocation",
+      "test": "adapters/sqlstore/password_reset_hook_test.go",
+      "marker": "callback preceded credential commit"
     }
   ],
   "core/sendVerificationEmail": [
@@ -2540,6 +2545,11 @@
       "label": "Enforce the password policy, consume one proof and revoke sessions when configured",
       "test": "adapters/sqlstore/emailotp_test.go",
       "marker": "pre-reset session persisted"
+    },
+    {
+      "label": "Promote the original mailbox only after the callback succeeds on both runtimes",
+      "test": "conformance/password-reset-hook.mjs",
+      "marker": "assert.equal(Boolean(stored.emailVerified)"
     }
   ],
   "plugin/email-otp/POST /email-otp/request-email-change": [
@@ -5972,6 +5982,11 @@
       "label": "Reset the verified owner’s credential once and reject a proof after ownership changes",
       "test": "adapters/sqlstore/phone_accounts_test.go",
       "marker": "other.ResetPhonePassword(ctx, number, stale"
+    },
+    {
+      "label": "Deliver the verified phone profile to the callback after password recovery",
+      "test": "adapters/sqlstore/password_reset_hook_test.go",
+      "marker": "missing bound verified phone profile"
     }
   ],
   "plugin/phone-number/ consumePhoneNumberOTP (server API only)": [
@@ -7944,6 +7959,29 @@
       "label": "Reject customer selectors and delegated, unverified or guest sessions before calling the provider",
       "test": "integrations/polar/portal_test.go",
       "marker": "untrusted personal billing request reached the provider"
+    }
+  ],
+  "docs/content/docs/reference/options.mdx#L324/`onPasswordReset`": [
+    {
+      "label": "Observe committed resets through the official client on both runtimes, including hook rejection and email-code verification ordering",
+      "test": "conformance/password-reset-hook.mjs",
+      "marker": "export async function comparePasswordResetHook(",
+      "complete": true
+    },
+    {
+      "label": "Reject proof replay while the host callback is running across memory and three SQL engines",
+      "test": "adapters/sqlstore/password_reset_hook_test.go",
+      "marker": "func TestPasswordResetHookAfterCommit("
+    },
+    {
+      "label": "Bind post-callback mailbox verification to the same owner and address across a concurrent address change",
+      "test": "adapters/sqlstore/password_reset_hook_test.go",
+      "marker": "func TestResetObserverCannotVerifyAChangedMailbox("
+    },
+    {
+      "label": "Retain custom account adapters, forward native callback errors and contain a host panic after commit",
+      "test": "password_reset_hook_test.go",
+      "marker": "func TestPasswordResetHookWithExistingAccountAdapter("
     }
   ]
 }

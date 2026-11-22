@@ -128,6 +128,17 @@ func (s *Store) FindPasswordResetToken(ctx context.Context, token string, now ti
 }
 
 func (s *Store) FinishPasswordReset(ctx context.Context, token, newHash string, now time.Time, revoke bool) error {
+	return s.finishPasswordReset(ctx, token, newHash, now, revoke, nil)
+}
+
+// FinishPasswordResetWithUser returns the owner selected by the winning reset.
+func (s *Store) FinishPasswordResetWithUser(ctx context.Context, token, newHash string, now time.Time, revoke bool) (auth.User, error) {
+	var owner auth.User
+	err := s.finishPasswordReset(ctx, token, newHash, now, revoke, &owner)
+	return owner, err
+}
+
+func (s *Store) finishPasswordReset(ctx context.Context, token, newHash string, now time.Time, revoke bool, owner *auth.User) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if err := ctx.Err(); err != nil {
@@ -140,6 +151,9 @@ func (s *Store) FinishPasswordReset(ctx context.Context, token, newHash string, 
 	rec, ok := s.users[row.UserID]
 	if !ok || !strings.EqualFold(rec.user.Email, row.Email) {
 		return auth.ErrNotFound
+	}
+	if owner != nil {
+		*owner = copyUser(rec.user)
 	}
 	rec.hash = newHash
 	s.users[row.UserID] = rec
@@ -157,7 +171,7 @@ func (s *Store) VerifyAccountEmail(ctx context.Context, id, email string, now ti
 		return err
 	}
 	rec, ok := s.users[id]
-	if !ok || !strings.EqualFold(rec.user.Email, email) {
+	if !ok || strings.ToLower(rec.user.Email) != strings.ToLower(email) {
 		return auth.ErrNotFound
 	}
 	rec.user.EmailVerified = true

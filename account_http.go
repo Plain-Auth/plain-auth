@@ -175,7 +175,7 @@ func (a *Auth) handleAccountRequest(route string, w http.ResponseWriter, r *http
 		if token == "" {
 			token = query.Get("token")
 		}
-		return ok, a.ResetPassword(ctx, token, password)
+		return ok, a.resetPassword(ctx, token, password, r)
 	case "/reset-password/:token", "/verify-email":
 		if err := a.validateCallbacks(nil, query); err != nil {
 			return nil, err

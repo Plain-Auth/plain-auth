@@ -92,6 +92,13 @@ type EmailOTPStore interface {
 	UseEmailOTP(ctx context.Context, action EmailOTPAction, matches func(stored string) (bool, error)) (User, error)
 }
 
+// EmailOTPResetHookStore separates a successful credential reset from promotion
+// of the same mailbox. The latter runs only after the host callback succeeds.
+type EmailOTPResetHookStore interface {
+	UseEmailOTPBeforeVerification(context.Context, EmailOTPAction, func(string) (bool, error)) (User, error)
+	VerifyAccountEmail(ctx context.Context, userID, email string, now time.Time) error
+}
+
 // NewEmailOTP enables single-use mailbox codes for registration, sign-in, verification and password recovery.
 func NewEmailOTP(o EmailOTPOptions) (Plugin, error) {
 	if o.Send == nil {
@@ -255,6 +262,10 @@ func (a *Auth) SignInEmailOTP(ctx context.Context, in EmailOTPSignInInput, meta 
 
 // ResetPasswordEmailOTP consumes the recovery proof under the configured password policy.
 func (a *Auth) ResetPasswordEmailOTP(ctx context.Context, email, code, password string) error {
+	return a.resetPasswordEmailOTP(ctx, email, code, password, nil)
+}
+
+func (a *Auth) resetPasswordEmailOTP(ctx context.Context, email, code, password string, request *http.Request) error {
 	if err := a.validatePasswordLength(password, true); err != nil {
 		return err
 	}
@@ -265,8 +276,28 @@ func (a *Auth) ResetPasswordEmailOTP(ctx context.Context, email, code, password 
 	if err != nil {
 		return err
 	}
-	_, err = a.useEmailOTP(ctx, email, code, OTPResetPassword, EmailOTPAction{PasswordHash: hash, RevokeSessions: a.opts.RevokeSessionsOnPasswordReset})
-	return err
+	act := EmailOTPAction{PasswordHash: hash, RevokeSessions: a.opts.RevokeSessionsOnPasswordReset}
+	if a.opts.OnPasswordReset == nil {
+		_, err = a.useEmailOTP(ctx, email, code, OTPResetPassword, act)
+		return err
+	}
+	store := a.opts.Store.(EmailOTPResetHookStore)
+	act.EmailOTPRequest, err = a.emailOTPRequest(email, OTPResetPassword)
+	if err != nil {
+		return err
+	}
+	act.MaxAttempts = a.emailOTP.AllowedAttempts
+	owner, err := store.UseEmailOTPBeforeVerification(ctx, act, a.matchEmailOTP(ctx, code))
+	if err != nil {
+		return err
+	}
+	if err := a.notifyPasswordReset(ctx, owner, request); err != nil {
+		return err
+	}
+	if owner.EmailVerified {
+		return nil
+	}
+	return store.VerifyAccountEmail(ctx, owner.ID, owner.Email, a.now().UTC())
 }
 
 func (a *Auth) serveEmailOTP(c EndpointContext, path string) (any, error) {
@@ -319,7 +350,7 @@ func (a *Auth) serveEmailOTP(c EndpointContext, path string) (any, error) {
 		if err != nil {
 			return nil, err
 		}
-		return success, a.ResetPasswordEmailOTP(ctx, email, code, pass)
+		return success, a.resetPasswordEmailOTP(ctx, email, code, pass, c.Request)
 	case "/sign-in/email-otp":
 		in := EmailOTPSignInInput{Email: email, OTP: code}
 		if _, ok := c.Body["name"]; ok {

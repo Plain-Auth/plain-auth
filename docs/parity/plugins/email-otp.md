@@ -32,6 +32,7 @@
     - [x] Deliver a recovery code through the alias for a registered mailbox ([test](../../../adapters/sqlstore/emailotp_test.go#L173))
   - [ ] `POST /email-otp/reset-password`
     - [x] Enforce the password policy, consume one proof and revoke sessions when configured ([test](../../../adapters/sqlstore/emailotp_test.go#L286))
+    - [x] Promote the original mailbox only after the callback succeeds on both runtimes ([test](../../../conformance/password-reset-hook.mjs#L74))
   - [ ] `POST /email-otp/request-email-change`
     - [x] Require one current mailbox proof for a new destination across concurrent requests ([test](../../../adapters/sqlstore/emailotp_management_test.go#L151))
   - [ ] `POST /email-otp/change-email`

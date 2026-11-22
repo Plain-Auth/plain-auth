@@ -35,6 +35,22 @@ Paths below are relative to the configured auth base path. Authenticated browser
 
 For a browser reset form, pass its URL as `redirectTo` when requesting the email. Read the delivered token from the callback query and submit it with the new password. A successful reset preserves existing sessions by default. Set `RevokeSessionsOnPasswordReset` to revoke them during the reset transaction.
 
+### Observe a completed password reset
+
+Set `Options.OnPasswordReset` to run a synchronous host callback after email-link, email-code or phone-code recovery. It receives the winning account and request context. The mounted HTTP endpoint also passes its request. Direct calls to `ResetPassword`, `ResetPasswordEmailOTP` and `ResetPhonePassword` pass a nil request.
+
+```go
+opts.OnPasswordReset = func(ctx context.Context, user stonewrit.User, request *http.Request) error {
+    return sendPasswordChangedNotice(ctx, user.Email)
+}
+```
+
+The callback runs after the new credential and requested database session revocation have committed. By this time the proof is spent. A second instance cannot run the hook again by replaying the proof, even while the first callback is still running. A callback error reaches the caller, and the new password stays in effect. A process interruption after the commit can prevent the callback from running. Applications that require durable delivery need their own delivery tracking. [Transaction and replay tests](../adapters/sqlstore/password_reset_hook_test.go)
+
+For an email-code reset, the callback sees the mailbox’s previous verification state. On success the adapter marks that same mailbox verified if needed. A callback failure leaves an unverified mailbox unverified. If the account changes its address during the callback, the library declines to apply the old mailbox proof to the new address. Link and phone resets preserve the email verification state. The phone recovery path supplies the bound phone number and its stored verification flag. [Paired HTTP lifecycle tests](../conformance/password-reset-hook.mjs)
+
+The built-in SQL and memory adapters support all three callbacks. Custom email-code adapters that enable this callback must implement `EmailOTPResetHookStore` to separate the committed reset from subsequent email verification. A custom `PhoneAccountStore` returns the proof owner in `PhoneAccountResult.User` after a successful password reset. [Custom adapter tests](../password_reset_hook_test.go)
+
 ## Session lifetime
 
 Persistent sessions last seven days by default. After the first 24 hours, an HTTP session lookup extends the expiry to seven days from that lookup and reissues the cookie. Set `SessionTTL` and `SessionUpdateAge` to adjust these intervals. A signed `dont_remember` marker keeps a browser-session login from sliding.

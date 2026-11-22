@@ -294,7 +294,11 @@
     - [ ] `maxPasswordLength`
     - [ ] `autoSignIn`
     - [ ] `sendResetPassword`
-    - [ ] `onPasswordReset`
+    - [x] `onPasswordReset` ([test](../../conformance/password-reset-hook.mjs#L8))
+      - [x] Observe committed resets through the official client on both runtimes, including hook rejection and email-code verification ordering ([test](../../conformance/password-reset-hook.mjs#L8))
+      - [x] Reject proof replay while the host callback is running across memory and three SQL engines ([test](../../adapters/sqlstore/password_reset_hook_test.go#L20))
+      - [x] Bind post-callback mailbox verification to the same owner and address across a concurrent address change ([test](../../adapters/sqlstore/password_reset_hook_test.go#L194))
+      - [x] Retain custom account adapters, forward native callback errors and contain a host panic after commit ([test](../../password_reset_hook_test.go#L14))
     - [ ] `revokeSessionsOnPasswordReset`
     - [ ] `resetPasswordTokenExpiresIn`
     - [ ] `onExistingUserSignUp`

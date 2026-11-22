@@ -1447,3 +1447,8 @@ test("enterprise SAML works with hidden metadata and private signup", async t =>
   const { compareEnterpriseSAML } = await import("./sso-saml.mjs");
   await compareEnterpriseSAML(t, {goFixture,instrument,privateDeployment:true});
 });
+
+test("password reset callbacks on both runtimes observe committed credentials, revocation and email OTP promotion ordering", async t => {
+  const { comparePasswordResetHook } = await import("./password-reset-hook.mjs");
+  await comparePasswordResetHook(t, { reference, goFixture, instrument });
+});

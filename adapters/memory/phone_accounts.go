@@ -137,6 +137,7 @@ func (s *Store) ApplyPhoneOTP(ctx context.Context, act auth.PhoneAccountAction) 
 		if act.RevokeSessions {
 			s.deleteSessions(id, "")
 		}
+		out.User = copyUser(r.user)
 		return out, nil
 	}
 	if id == "" {

@@ -242,6 +242,10 @@ func (a *Auth) RequestPasswordReset(ctx context.Context, email, redirectTo strin
 
 // ResetPassword consumes an unexpired recovery token atomically with the credential update.
 func (a *Auth) ResetPassword(ctx context.Context, token, newPassword string) error {
+	return a.resetPassword(ctx, token, newPassword, nil)
+}
+
+func (a *Auth) resetPassword(ctx context.Context, token, newPassword string, request *http.Request) error {
 	s, err := a.accountStore()
 	if err != nil {
 		return err
@@ -260,11 +264,32 @@ func (a *Auth) ResetPassword(ctx context.Context, token, newPassword string) err
 	if err != nil {
 		return err
 	}
-	err = s.FinishPasswordReset(ctx, row.Token, hash, a.now().UTC(), a.opts.RevokeSessionsOnPasswordReset)
+	now := a.now().UTC()
+	var owner User
+	if a.opts.OnPasswordReset == nil {
+		err = s.FinishPasswordReset(ctx, row.Token, hash, now, a.opts.RevokeSessionsOnPasswordReset)
+	} else if store, ok := s.(interface {
+		FinishPasswordResetWithUser(context.Context, string, string, time.Time, bool) (User, error)
+	}); ok {
+		owner, err = store.FinishPasswordResetWithUser(ctx, row.Token, hash, now, a.opts.RevokeSessionsOnPasswordReset)
+	} else {
+		// Older custom account stores bind each token to its original owner.
+		// Read the projection before consumption and confirm its immutable ID.
+		owner, err = s.FindAccountUser(ctx, row.Email)
+		if err == nil && owner.ID != row.UserID {
+			err = ErrNotFound
+		}
+		if err == nil {
+			err = s.FinishPasswordReset(ctx, row.Token, hash, now, a.opts.RevokeSessionsOnPasswordReset)
+		}
+	}
 	if errors.Is(err, ErrNotFound) {
 		return &APIError{400, "INVALID_TOKEN", "Invalid token"}
 	}
-	return err
+	if err != nil || a.opts.OnPasswordReset == nil {
+		return err
+	}
+	return a.notifyPasswordReset(ctx, owner, request)
 }
 
 // SendVerificationEmail delivers a verification link bound to the email's current owner.
@@ -316,4 +341,18 @@ func (a *Auth) SendVerificationEmail(ctx context.Context, h http.Header, email, 
 		}
 	}
 	return a.sendEmailProof(ctx, u, "", "", callback, a.opts.SendVerificationEmail)
+}
+
+// The caller has finished its transaction. The observer may read the new
+// credential state or start a separate transaction through another pool.
+func (a *Auth) notifyPasswordReset(ctx context.Context, user User, request *http.Request) (err error) {
+	if user.ID == "" || user.Email == "" {
+		return errors.New("auth: password reset store did not return the account owner")
+	}
+	defer func() {
+		if recover() != nil {
+			err = errors.New("auth: password reset callback panicked")
+		}
+	}()
+	return a.opts.OnPasswordReset(ctx, user, request)
 }
