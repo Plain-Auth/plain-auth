@@ -34,6 +34,15 @@ func ReadUserFields(r io.Reader) (map[string]UserField, error) {
 	return sessionfields.NormalizeUser(fields)
 }
 
+// ReadAccountFields reads field declarations for provider and credential accounts.
+func ReadAccountFields(r io.Reader) (map[string]AccountField, error) {
+	fields, err := readFields(r, "account")
+	if err != nil {
+		return nil, err
+	}
+	return sessionfields.NormalizeAccount(fields)
+}
+
 func readFields(r io.Reader, model string) (map[string]sessionfields.Field, error) {
 	d := json.NewDecoder(r)
 	d.UseNumber()

@@ -19,7 +19,7 @@ func OpenWithSessionFields(ctx context.Context, dialect, dsn string, profiles []
 	return OpenWithAdditionalFields(ctx, dialect, dsn, profiles, schema.AdditionalFields{Session: fields})
 }
 
-// OpenWithAdditionalFields applies selected profiles and both sets of additional columns.
+// OpenWithAdditionalFields applies selected profiles and additional columns.
 func OpenWithAdditionalFields(ctx context.Context, dialect, dsn string, profiles []string, fields schema.AdditionalFields) (*Store, error) {
 	return OpenWithOptions(ctx, dialect, dsn, profiles, schema.Options{AdditionalFields: fields})
 }
@@ -61,17 +61,17 @@ func OpenWithOptions(ctx context.Context, dialect, dsn string, profiles []string
 		for _, entry := range []struct {
 			model string
 			defs  map[string]auth.SessionField
-		}{{"user", fields.User}, {"session", fields.Session}} {
+			fresh *map[string]auth.SessionField
+		}{{"user", fields.User, &fresh.User}, {"session", fields.Session, &fresh.Session}, {"account", fields.Account, &fresh.Account}} {
+			if len(entry.defs) == 0 {
+				continue
+			}
 			columns, err := s.fieldColumnCatalog(ctx, db, entry.model)
 			if err != nil {
 				return err
 			}
 			if len(columns) == 0 {
-				if entry.model == "user" {
-					fresh.User = entry.defs
-				} else {
-					fresh.Session = entry.defs
-				}
+				*entry.fresh = entry.defs
 				continue
 			}
 			missing, err := s.missingModelFields(ctx, db, entry.model, entry.defs, columns)
@@ -106,6 +106,9 @@ func OpenWithOptions(ctx context.Context, dialect, dsn string, profiles []string
 	}
 	if err == nil {
 		err = s.ValidateUserFields(fields.User)
+	}
+	if err == nil {
+		err = s.validateModelFields("account", fields.Account)
 	}
 	if err != nil {
 		s.Close()

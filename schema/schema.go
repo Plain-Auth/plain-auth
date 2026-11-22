@@ -105,13 +105,17 @@ func GenerateWithSessionFields(dialect string, profiles []string, fields map[str
 // UserField declares a scalar column in the user profile.
 type UserField = sessionfields.Field
 
-// AdditionalFields names independent user and session physical-column declarations.
+// AccountField declares a scalar column on a linked provider or credential account.
+type AccountField = sessionfields.Field
+
+// AdditionalFields declares additional columns independently for each model.
 type AdditionalFields struct {
 	User    map[string]UserField
 	Session map[string]SessionField
+	Account map[string]AccountField
 }
 
-// Normalize validates both namespaces and returns owned copies of their declarations.
+// Normalize validates each namespace and returns owned copies of its declarations.
 func (f AdditionalFields) Normalize() (AdditionalFields, error) {
 	var err error
 	f.User, err = sessionfields.NormalizeUser(f.User)
@@ -119,10 +123,14 @@ func (f AdditionalFields) Normalize() (AdditionalFields, error) {
 		return AdditionalFields{}, err
 	}
 	f.Session, err = sessionfields.Normalize(f.Session)
+	if err != nil {
+		return AdditionalFields{}, err
+	}
+	f.Account, err = sessionfields.NormalizeAccount(f.Account)
 	return f, err
 }
 
-// GenerateWithAdditionalFields includes configured user and session columns in fresh DDL.
+// GenerateWithAdditionalFields includes configured additional columns in fresh DDL.
 func GenerateWithAdditionalFields(dialect string, profiles []string, fields AdditionalFields) (string, error) {
 	return GenerateWithOptions(dialect, profiles, Options{AdditionalFields: fields})
 }
@@ -157,6 +165,8 @@ func GenerateWithOptions(dialect string, profiles []string, opts Options) (strin
 				extras = fields.User
 			case "session":
 				extras = fields.Session
+			case "account":
+				extras = fields.Account
 			}
 			if len(extras) > 0 {
 				for _, name := range sessionfields.Names(extras) {

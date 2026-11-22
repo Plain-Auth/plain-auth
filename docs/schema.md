@@ -38,9 +38,9 @@ Select `polar` to create `plainauth_polar_checkout` and `plainauth_polar_deliver
 
 Choose either `organization` or `organization-teams`, and at most one username profile. The `stripe-organization` option also works alongside `organization-teams`. Run `authctl info` for the full profile list in your build, or call `schema.Profiles()` from Go. Profile order produces deterministic output. The profile selector controls database structure. See the [feature checklist](parity/README.md) for runtime support.
 
-## Configure user and session fields
+## Configure user, session and account fields
 
-Pass `--user-fields FILE`, `--session-fields FILE` or both to `authctl generate`, `check schema` and `migrate`. Each file is a JSON object keyed by the logical name your app uses. The user and session models have separate namespaces. A `column` value selects a physical column on that model. The file can use application names while preserving an existing database column name.
+Pass `--user-fields FILE`, `--session-fields FILE` and `--account-fields FILE` in any combination to `authctl generate`, `check schema` and `migrate`. Each file is a JSON object keyed by the logical name your app uses. Each model has its own field names. A `column` value selects a physical column on that model. The file can use application names while preserving an existing database column name.
 
 For example, save this user profile as `user-fields.json`.
 
@@ -77,7 +77,7 @@ authctl migrate --dialect postgres --plugins admin --user-fields user-fields.jso
 
 `generate` emits fresh-schema SQL. `check schema` inspects the target in a read-only transaction. Exit status 0 means the selection matches, 1 reports schema differences, and 2 indicates a configuration or connection error. Findings identify the table and physical column. An existing generated column is incompatible with a declared writable attribute.
 
-`migrate` checks both sets of declarations before applying their column additions. An existing row receives a supplied scalar default when the migration adds a column. Adding a required column to a populated table requires a default or an explicit database backfill. For fresh tables, the auth instance supplies defaults on email/password signup and session issuance. Load the same declarations into that instance to enforce input and visibility.
+`migrate` checks all supplied declarations before applying their column additions. An existing row receives a supplied scalar default when the migration adds a column. Adding a required column to a populated table requires a default or an explicit database backfill. For fresh tables, the auth instance supplies defaults on email/password signup and session issuance. Load the same declarations into that instance to enforce input and visibility.
 
 ```go
 file, err := os.Open("user-fields.json")
@@ -91,7 +91,24 @@ if err != nil {
 }
 ```
 
-Use `schema.ReadSessionFields` for `opts.SessionAdditionalFields`. Go applications can pass both sets in `schema.AdditionalFields` to `schema.GenerateWithAdditionalFields`, `sqlstore.CheckSchemaWithAdditionalFields` and `sqlstore.OpenWithAdditionalFields`. [User fields](user-fields.md) · [Session fields](session-fields.md) · [CLI lifecycle tests](../cmd/authctl/user_fields_test.go)
+Use `schema.ReadSessionFields` for `opts.SessionAdditionalFields`. Use `schema.ReadAccountFields` to read an account declaration. Go applications can pass all three sets in `schema.AdditionalFields` to `schema.GenerateWithAdditionalFields`, `sqlstore.CheckSchemaWithAdditionalFields` and `sqlstore.OpenWithAdditionalFields`. [User fields](user-fields.md) · [Session fields](session-fields.md) · [CLI lifecycle tests](../cmd/authctl/user_fields_test.go)
+
+To add provider-specific metadata to the account table, save a declaration such as the following in `account-fields.json`. A nullable field also fits password accounts and providers that do not supply that information.
+
+```json
+{
+  "tenant": {"type": "string", "column": "directory_tenant"},
+  "lastConsent": {"type": "date", "column": "consented_at"}
+}
+```
+
+```sh
+authctl generate --dialect postgres --account-fields account-fields.json
+authctl migrate --dialect postgres --account-fields account-fields.json
+authctl check schema --dialect postgres --account-fields account-fields.json
+```
+
+Account ownership, credentials, scopes and timestamps use reserved column names. The CLI validates both logical names and physical aliases before applying a migration. [Account migration tests](../cmd/authctl/account_fields_test.go)
 
 ## Schema migrations
 

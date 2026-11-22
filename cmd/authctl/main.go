@@ -28,7 +28,7 @@ const usage = `Usage: authctl <command>
   secret                                       Print a new signing secret
 
   check, generate and migrate accept --plugins with comma-separated schema profiles.
-  check, generate and migrate accept --user-fields FILE and --session-fields FILE with JSON field definitions.
+  check, generate and migrate accept --user-fields FILE, --session-fields FILE and --account-fields FILE with JSON field definitions.
   With the siwe plugin, --wallet-schema FILE selects the physical wallet table and columns.
   migrate --api-key-ledger includes the API-key schema and reserves existing key digests.
 `
@@ -75,6 +75,7 @@ func run(ctx context.Context, args []string, out, errOut io.Writer) error {
 		pluginNames := fs.String("plugins", "", "Comma-separated schema profiles ("+strings.Join(schema.Profiles(), ", ")+")")
 		userFile := schemaPathFlag(fs, "user-fields", "user fields")
 		sessionFile := schemaPathFlag(fs, "session-fields", "session fields")
+		accountFile := schemaPathFlag(fs, "account-fields", "account fields")
 		walletFile := schemaPathFlag(fs, "wallet-schema", "wallet schema")
 		var asJSON, prepareKeyLedger bool
 		if args[0] == "check" {
@@ -110,7 +111,11 @@ func run(ctx context.Context, args []string, out, errOut io.Writer) error {
 		if err != nil {
 			return err
 		}
-		options := schema.Options{AdditionalFields: schema.AdditionalFields{User: users, Session: sessions}, Wallet: wallet}
+		accounts, err := loadSchemaFile(*accountFile, "account fields", schema.ReadAccountFields)
+		if err != nil {
+			return err
+		}
+		options := schema.Options{AdditionalFields: schema.AdditionalFields{User: users, Session: sessions, Account: accounts}, Wallet: wallet}
 		if args[0] == "check" {
 			return checkDatabase(ctx, *dialect, profiles, options, asJSON, out)
 		}
@@ -130,7 +135,7 @@ func run(ctx context.Context, args []string, out, errOut io.Writer) error {
 			return errors.New("set AUTH_DSN to the target database")
 		}
 		var store *sqlstore.Store
-		if len(users)+len(sessions) > 0 || *walletFile != "" {
+		if len(users)+len(sessions)+len(accounts) > 0 || *walletFile != "" {
 			store, err = sqlstore.OpenWithOptions(ctx, *dialect, dsn, profiles, options)
 		} else {
 			store, err = sqlstore.OpenWithSchema(ctx, *dialect, dsn, ddl)

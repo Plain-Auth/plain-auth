@@ -182,6 +182,7 @@
   - [ ] Custom Tables
     - [ ] Custom Table Names
     - [ ] Extending Core Schema
+      - [x] Generate, inspect and migrate declared provider account fields across SQLite, PostgreSQL and MySQL ([test](../../cmd/authctl/account_fields_test.go#L13))
       - [ ] `type`
       - [ ] `required`
       - [ ] `defaultValue`

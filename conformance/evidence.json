@@ -10638,5 +10638,12 @@
       "marker": "export async function compareDisabledIDTokenSignIn(",
       "complete": true
     }
+  ],
+  "docs/content/docs/concepts/database.mdx#L617": [
+    {
+      "label": "Generate, inspect and migrate declared provider account fields across SQLite, PostgreSQL and MySQL",
+      "test": "cmd/authctl/account_fields_test.go",
+      "marker": "func TestAccountFieldCommands("
+    }
   ]
 }

@@ -139,6 +139,8 @@ func readSchema(ctx context.Context, dialect, dsn string, tables []schema.Table,
 			extras = fields.User
 		case "session":
 			extras = fields.Session
+		case "account":
+			extras = fields.Account
 		}
 		if len(extras) > 0 {
 			store := Store{dialect: dialect}
