@@ -64,6 +64,11 @@ func New(opts Options) authn.Plugin {
 				if err := subs.handleCheckoutEvent(ctx, event); err != nil {
 					return nil, &authn.APIError{Status: 500, Code: "STRIPE_WEBHOOK_ERROR", Message: "Subscription reconciliation failed"}
 				}
+				if subs.onComplete != nil && event.Type == stripesdk.EventTypeCheckoutSessionCompleted {
+					if err := subs.observeCheckoutCompletion(ctx, event); err != nil {
+						return nil, &authn.APIError{Status: 500, Code: "STRIPE_WEBHOOK_ERROR", Message: "Checkout completion reconciliation failed"}
+					}
+				}
 				if err := subs.handleSubscriptionEvent(ctx, event); err != nil {
 					return nil, &authn.APIError{Status: 500, Code: "STRIPE_WEBHOOK_ERROR", Message: "Subscription reconciliation failed"}
 				}
@@ -108,6 +113,11 @@ func New(opts Options) authn.Plugin {
 			if subs.onCreated != nil || subs.onDeleted != nil || subs.onCancel != nil {
 				if _, ok := store.(SubscriptionNotificationStore); !ok {
 					return errors.New("stripe: subscription lifecycle callbacks require a store with transition receipts")
+				}
+			}
+			if subs.onComplete != nil {
+				if _, ok := store.(CheckoutCompletionStore); !ok {
+					return errors.New("stripe: checkout completion callbacks require a store with settled checkout and event receipts")
 				}
 			}
 			if err := s.CheckSubscriptionSchema(context.Background()); err != nil {

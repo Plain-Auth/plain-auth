@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { once } from "node:events";
+import { readFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import { organization } from "better-auth/plugins";
 import { organizationClient } from "better-auth/client/plugins";
@@ -275,5 +276,77 @@ export async function meteredCheckout(t, { reference, goFixture, instrument }, i
       assert.deepEqual(checked(await other.subscription.list()), []);
       if (isOrganization) assert.deepEqual(checked(await owner.subscription.list()), []);
     }
+  });
+}
+
+export async function checkoutCompletionObserver(t, { reference, goFixture, instrument }, groupBilling) {
+  for (const runtime of ["reference", "Go"]) await t.test(runtime, async t => {
+    const remote = await provider(t);
+    const calls = [];
+    const profiles = groupBilling ? ["organization", "stripe-organization"] : ["stripe-subscriptions"];
+    const server = runtime === "Go"
+      ? await goFixture(t, profiles, { CONFORMANCE_STRIPE_URL: remote.url, CONFORMANCE_STRIPE_COMPLETION_OBSERVER: "1" })
+      : await reference(t, [organization(), stripe({
+        stripeClient: remote.api,
+        stripeWebhookSecret: secret,
+        organization: { enabled: true },
+        subscription: {
+          enabled: true,
+          plans: [{ name: "basic", priceId: "price_basic" }, { name: "team", priceId: "price_team" }],
+          authorizeReference: organizationBillingPolicy,
+          onSubscriptionComplete: async (p, ctx) => calls.push([
+            "complete", p.event.id, p.stripeSubscription.id, p.subscription.referenceId,
+            p.subscription.status, p.plan.name, new URL(ctx.request.url).pathname,
+          ]),
+        },
+        onEvent: async event => calls.push(["event", event.id]),
+      })]);
+    const client = instrument(server, [organizationClient(), stripeClient({ subscription: true })]).client;
+    const { user } = checked(await client.signUp.email({
+      name: "Buyer", email: "complete@example.test", password: "complete-fixture-password",
+    }));
+    let selection = {};
+    let referenceID = user.id;
+    if (groupBilling) {
+      const group = checked(await client.organization.create({ name: "Billing group", slug: "checkout-complete" }));
+      selection = { referenceId: group.id, customerType: "organization" };
+      referenceID = group.id;
+    }
+    const purchase = checked(await client.subscription.upgrade({ ...selection, plan: "basic", seats: 3, disableRedirect: true }));
+    assert.equal(purchase.url, remote.state.checkout.url);
+
+    const expected = [];
+    async function deliver(id, type, object, plan) {
+      const body = JSON.stringify({ id, type, object: "event", api_version: Stripe.API_VERSION,
+        created: 1712345678, livemode: false, data: { object } });
+      const signature = remote.api.webhooks.generateTestHeaderString({ payload: body, secret });
+      const result = await server.send(new Request(server.baseURL + "/api/auth/stripe/webhook", {
+        method: "POST", headers: { "content-type": "application/json", "stripe-signature": signature }, body,
+      }));
+      assert.equal(result.status, 200, await result.text());
+      if (plan) {
+        expected.push(["complete", id, remote.state.subscription.id, referenceID, remote.state.subscription.status, plan, "/api/auth/stripe/webhook"]);
+      }
+      expected.push(["event", id]);
+      const actual = runtime === "Go"
+        ? (await readFile(server.databasePath + ".stripe-updates", "utf8")).trim().split("\n").map(JSON.parse)
+        : calls;
+      assert.deepEqual(actual, expected);
+    }
+    await deliver("evt_before_checkout", "customer.subscription.created", remote.state.subscription);
+    const signedCheckout = structuredClone(remote.state.checkout);
+    await deliver("evt_completed", "checkout.session.completed", signedCheckout, "basic");
+    // Stripe changed the live subscription between deliveries of the identical Checkout event.
+    remote.state.subscription.status = "trialing";
+    const [item] = remote.state.subscription.items.data;
+    item.price = { ...item.price, id: "price_team" };
+    item.quantity = 7;
+    await deliver("evt_completed", "checkout.session.completed", signedCheckout, "team");
+    item.price = { ...item.price, id: "price_unconfigured" };
+    await deliver("evt_completed", "checkout.session.completed", signedCheckout);
+    const [row] = checked(await client.subscription.list({ query: selection }));
+    assert.equal(row.referenceId, referenceID);
+    assert.equal(row.stripeSubscriptionId, remote.state.subscription.id);
+    assert.deepEqual([row.plan, row.status, row.seats], ["team", "trialing", 7]);
   });
 }

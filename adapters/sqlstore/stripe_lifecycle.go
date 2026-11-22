@@ -110,7 +110,7 @@ func (s *Store) subscriptionRevision(ctx context.Context, db stripeCatalog, key 
 	}
 	r.Version = cursor.Version
 	if key.EventID != "" {
-		if cursor.Terminal != "" && key.NoticeType != sdk.EventTypeCustomerSubscriptionDeleted {
+		if cursor.Terminal != "" && key.NoticeType != sdk.EventTypeCustomerSubscriptionDeleted && key.NoticeType != sdk.EventTypeCheckoutSessionCompleted {
 			r.Skip = true
 			return r, cursor, nil
 		}
@@ -134,13 +134,41 @@ func (s *Store) ReadStripeSubscriptionRevision(ctx context.Context, key billing.
 }
 
 func (s *Store) ApplyStripeSubscriptionChange(ctx context.Context, key billing.SubscriptionIdentity, before billing.SubscriptionRevision, c billing.SubscriptionChange) error {
+	return s.applyStripeSubscriptionChange(ctx, key, before, c, nil)
+}
+
+func (s *Store) ApplyStripeCheckoutDelivery(ctx context.Context, key billing.SubscriptionIdentity, before billing.SubscriptionRevision, change billing.SubscriptionChange) (*billing.Subscription, error) {
+	var row billing.Subscription
+	err := s.applyStripeSubscriptionChange(ctx, key, before, change, &row)
+	if err != nil || row.ID == "" {
+		return nil, err
+	}
+	return &row, nil
+}
+
+func (s *Store) applyStripeSubscriptionChange(ctx context.Context, key billing.SubscriptionIdentity, before billing.SubscriptionRevision, c billing.SubscriptionChange, completion *billing.Subscription) error {
 	if before.Owner == "" {
 		return billing.ErrCheckoutReconcile
 	}
 	return s.billingTransaction(ctx, before.Owner, key.SessionToken, time.Now(), func(tx *sql.Tx) error {
 		r, cursor, err := s.subscriptionRevision(ctx, tx, key)
-		if err != nil || r.Skip {
+		if err != nil {
 			return err
+		}
+		repeated := false
+		if completion != nil {
+			*completion = billing.Subscription{}
+			confirmed, prior, err := s.stripeCheckoutDelivery(ctx, tx, key)
+			if err != nil || !confirmed {
+				return err
+			}
+			// All repetitions must present the same Checkout event and purchase.
+			if r.Skip && !prior {
+				return billing.ErrCheckoutReconcile
+			}
+			repeated = prior
+		} else if r.Skip {
+			return nil
 		}
 		if before.Version != r.Version || before.LocalID != r.LocalID || before.Owner != r.Owner {
 			return billing.ErrStripeRevisionChanged
@@ -155,6 +183,13 @@ func (s *Store) ApplyStripeSubscriptionChange(ctx context.Context, key billing.S
 		if err := s.applyCurrentSubscription(ctx, tx, key, r, c); err != nil {
 			return err
 		}
+		if completion != nil && c.Plan != "" {
+			row, err := s.stripeDeliverySubscription(ctx, tx, key, r.Owner)
+			if err != nil {
+				return err
+			}
+			*completion = row
+		}
 		if c.Deleted || c.Status == "canceled" || c.Status == "incomplete_expired" {
 			cursor.Terminal = c.Status
 		}
@@ -166,7 +201,7 @@ func (s *Store) ApplyStripeSubscriptionChange(ctx context.Context, key billing.S
 		id := stripeRecordID("subscription", key.RemoteID)
 		currentTime := time.Now().UTC()
 		now := s.date(currentTime)
-		if key.EventID != "" {
+		if key.EventID != "" && !repeated {
 			if receipt != nil {
 				if err := s.saveSubscriptionUpdate(ctx, tx, key, r.Owner, currentTime, receipt); err != nil {
 					return err

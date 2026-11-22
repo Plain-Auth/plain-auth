@@ -31,10 +31,11 @@ type SubscriptionOptions struct {
 	// RequireEmailVerification restricts starting Checkout to a verified owner.
 	RequireEmailVerification bool
 	// OnSubscriptionUpdate runs after a signed subscription update commits.
-	OnSubscriptionUpdate  func(context.Context, SubscriptionUpdate) error
-	OnSubscriptionCreated func(context.Context, SubscriptionCreated) error
-	OnSubscriptionCancel  func(context.Context, SubscriptionCancellation) error
-	OnSubscriptionDeleted func(context.Context, SubscriptionEvent) error
+	OnSubscriptionUpdate   func(context.Context, SubscriptionUpdate) error
+	OnSubscriptionCreated  func(context.Context, SubscriptionCreated) error
+	OnSubscriptionCancel   func(context.Context, SubscriptionCancellation) error
+	OnSubscriptionDeleted  func(context.Context, SubscriptionEvent) error
+	OnSubscriptionComplete func(context.Context, SubscriptionComplete) error
 }
 
 type Subscription struct {
@@ -73,6 +74,9 @@ type CheckoutAttempt struct {
 	Metered bool `json:"metered,omitempty"`
 	// CheckPrice requests a price lookup for a new reservation only.
 	CheckPrice bool `json:"-"`
+	// RetainCompletion keeps the settled checkout binding for signed callbacks.
+	RetainCompletion bool  `json:"retainCompletion,omitempty"`
+	SettledAt        int64 `json:"settledAt,omitempty"`
 	// ReturnURL holds the provider success URL issued for this reservation.
 	// Older reservations use their stored SuccessURL directly.
 	ReturnURL                                                                                                     string
@@ -126,6 +130,7 @@ type subscriptions struct {
 	onCreated                func(context.Context, SubscriptionCreated) error
 	onCancel                 func(context.Context, SubscriptionCancellation) error
 	onDeleted                func(context.Context, SubscriptionEvent) error
+	onComplete               func(context.Context, SubscriptionComplete) error
 }
 
 func configureSubscriptions(o *SubscriptionOptions) (*subscriptions, error) {
@@ -135,7 +140,7 @@ func configureSubscriptions(o *SubscriptionOptions) (*subscriptions, error) {
 	if o.Client == nil || len(o.Plans) == 0 {
 		return nil, errors.New("stripe: subscriptions require a client and plans")
 	}
-	s := &subscriptions{client: o.Client, plans: map[string]Plan{}, requireEmailVerification: o.RequireEmailVerification, onUpdate: o.OnSubscriptionUpdate, onCreated: o.OnSubscriptionCreated, onCancel: o.OnSubscriptionCancel, onDeleted: o.OnSubscriptionDeleted}
+	s := &subscriptions{client: o.Client, plans: map[string]Plan{}, requireEmailVerification: o.RequireEmailVerification, onUpdate: o.OnSubscriptionUpdate, onCreated: o.OnSubscriptionCreated, onCancel: o.OnSubscriptionCancel, onDeleted: o.OnSubscriptionDeleted, onComplete: o.OnSubscriptionComplete}
 	s.prices = make(map[string]subscriptionPrice)
 	for _, p := range o.Plans {
 		p.Name = strings.ToLower(strings.TrimSpace(p.Name))
@@ -275,7 +280,7 @@ func (s *subscriptions) checkout(c auth.EndpointContext) (any, error) {
 	}
 	ctx := c.Request.Context()
 	store := c.Store().(SubscriptionStore)
-	want := CheckoutAttempt{CheckPrice: true, MeteredPriceIDs: slices.Clone(p.MeteredPriceIDs), AutomaticSeats: automatic, Seats: quantity, Owner: selection.reference, Plan: p.Name, Interval: interval, Price: price, SuccessURL: success, CancelURL: cancel}
+	want := CheckoutAttempt{CheckPrice: true, RetainCompletion: s.onComplete != nil, MeteredPriceIDs: slices.Clone(p.MeteredPriceIDs), AutomaticSeats: automatic, Seats: quantity, Owner: selection.reference, Plan: p.Name, Interval: interval, Price: price, SuccessURL: success, CancelURL: cancel}
 	if automatic && p.SeatPriceID != price {
 		want.SeatPrice = p.SeatPriceID
 	}

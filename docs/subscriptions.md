@@ -216,6 +216,20 @@ Each authenticated redelivery can invoke the callback again, including concurren
 
 A billing or receipt-storage failure returns HTTP 500 so Stripe can retry. A callback error or panic is logged with the Stripe event ID. The general hook still runs and the webhook can acknowledge the delivery. An application that requires guaranteed processing should persist its own work and monitor its failures. [Released-client delivery and failure tests](../conformance/stripe-lifecycle-fixture.mjs)
 
+### Observe a completed Checkout
+
+Set `OnSubscriptionComplete` on `stripeplugin.SubscriptionOptions` to receive a signed `checkout.session.completed` for a personal or organization purchase. The mounted webhook, the browser return, and an earlier subscription event can arrive in any order. Only the signed Checkout delivery invokes this callback. It runs after the database commit and before the general `OnEvent` hook. [Released-client delivery tests](../conformance/stripe-organization-fixture.mjs)
+
+```go
+subscriptions.OnSubscriptionComplete = func(ctx context.Context, p stripeplugin.SubscriptionComplete) error {
+    return app.RecordPurchase(ctx, p.Event.ID, p.Subscription.ReferenceID, p.Plan.Name)
+}
+```
+
+`Event` contains the signed Checkout session. `StripeSubscription` contains the subscription retrieved from Stripe for this delivery. `Subscription` and `Plan` describe the local record and configured plan committed for this delivery. `Request` is a clone of the mounted webhook request, with its body already consumed. On an authenticated retry, the server checks the original purchase and ownership, fetches the current subscription, and commits its current plan, status and quantity before the callback. If the live subscription no longer contains a configured plan, the delivery skips this callback and the general hook still runs. Use the Stripe event ID to make application side effects idempotent.
+
+Enable the callback on your checkout-serving and webhook-serving instances. The SQL adapters retain the original purchase binding for 45 days for new checkouts opened with this option. Older checkouts retain their original seven-day window. The first accepted delivery stores a separate event receipt for 45 days. A provider or storage failure allows Stripe to retry. A host callback error or panic is logged by event ID and the general callback still runs. Custom stores must implement `stripeplugin.CheckoutCompletionStore`. [Owner, retry, and retention tests](../adapters/sqlstore/stripe_checkout_completion_test.go)
+
 ### Observe creation, cancellation, and deletion
 
 The following hooks on `stripeplugin.SubscriptionOptions` run after a signed provider event commits. Each payload includes the signed event, the provider’s subscription, and the associated local subscription. The local record’s `ReferenceID` identifies the user or organization.

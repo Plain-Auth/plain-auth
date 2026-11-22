@@ -1538,3 +1538,11 @@ test("mail verification callbacks observe the same committed transitions and ret
   const { compareVerificationObservers } = await import("./email-verification-observers.mjs");
   await compareVerificationObservers(t, {reference, goFixture, instrument});
 });
+
+test("signed Checkout completion delivers a retrieved subscription and local owner after early lifecycle events on both runtimes", async t => {
+  const { checkoutCompletionObserver } = await import("./stripe-organization-fixture.mjs");
+  for (const organization of [false, true]) {
+    await t.test(organization ? "organization" : "personal", t =>
+      checkoutCompletionObserver(t, { reference, goFixture, instrument }, organization));
+  }
+});

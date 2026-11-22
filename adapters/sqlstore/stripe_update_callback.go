@@ -28,6 +28,11 @@ func (s *Store) subscriptionEventReceipt(ctx context.Context, tx *sql.Tx, key bi
 	known := r.LocalID != "" || c.Metadata["subscriptionId"] != ""
 	m := &stripeUpdateReceipt{EventID: key.EventID, Fingerprint: key.UpdateFingerprint, Kind: key.NoticeType}
 	switch key.NoticeType {
+	case sdk.EventTypeCheckoutSessionCompleted:
+		// The calling transaction has already matched the signed purchase or its event receipt.
+		if key.ConfirmedCheckout == nil {
+			return nil, billing.ErrCheckoutReconcile
+		}
 	case sdk.EventTypeCustomerSubscriptionCreated:
 		// Checkout creates a local row before Stripe creates the subscription.
 		if known || key.CreatedPlan == nil || c.Plan == "" {
@@ -68,13 +73,9 @@ func (s *Store) subscriptionEventReceipt(ctx context.Context, tx *sql.Tx, key bi
 // This row shares the existing event retention period and owner cleanup.
 // Only the committed local projection is retained, never the Stripe payload.
 func (s *Store) saveSubscriptionUpdate(ctx context.Context, tx *sql.Tx, key billing.SubscriptionIdentity, owner string, now time.Time, receipt *stripeUpdateReceipt) error {
-	query := s.bind(`SELECT ` + subscriptionFields + ` FROM "subscription" WHERE "stripeSubscriptionId"=? AND "referenceId"=? AND "stripeCustomerId"=?`)
-	row, err := scanStripeSubscription(tx.QueryRowContext(ctx, query, key.RemoteID, owner, key.CustomerID))
+	row, err := s.stripeDeliverySubscription(ctx, tx, key, owner)
 	if err != nil {
 		return err
-	}
-	if row.ReferenceID != owner || row.SubscriptionID == nil || *row.SubscriptionID != key.RemoteID || row.CustomerID == nil || *row.CustomerID != key.CustomerID {
-		return billing.ErrCheckoutReconcile
 	}
 	receipt.Subscription = row
 	data, err := json.Marshal(receipt)
@@ -90,13 +91,13 @@ func (s *Store) saveSubscriptionUpdate(ctx context.Context, tx *sql.Tx, key bill
 	return err
 }
 
-func (s *Store) readSubscriptionReceipt(ctx context.Context, key billing.SubscriptionIdentity) (*stripeUpdateReceipt, []byte, error) {
+func (s *Store) readSubscriptionReceipt(ctx context.Context, db stripeCatalog, key billing.SubscriptionIdentity) (*stripeUpdateReceipt, []byte, error) {
 	if key.EventID == "" || key.UpdateFingerprint == "" {
 		return nil, nil, billing.ErrCheckoutReconcile
 	}
 	var id string
 	var raw []byte
-	err := s.db.QueryRowContext(ctx, s.bind(`SELECT "identifier","value" FROM "verification" WHERE "id"=? AND "expiresAt">?`), stripeRecordID("subscription-update-receipt", key.EventID), s.date(time.Now())).Scan(&id, &raw)
+	err := db.QueryRowContext(ctx, s.bind(`SELECT "identifier","value" FROM "verification" WHERE "id"=? AND "expiresAt">?`), stripeRecordID("subscription-update-receipt", key.EventID), s.date(time.Now())).Scan(&id, &raw)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil, nil
 	}
@@ -111,14 +112,14 @@ func (s *Store) readSubscriptionReceipt(ctx context.Context, key billing.Subscri
 	if receipt.EventID != key.EventID || receipt.Fingerprint != key.UpdateFingerprint || row.CustomerID == nil || *row.CustomerID != key.CustomerID || row.SubscriptionID == nil || *row.SubscriptionID != key.RemoteID || id != stripeOwnerKey(ctx, "event", row.ReferenceID) {
 		return nil, nil, billing.ErrCheckoutReconcile
 	}
-	r, _, err := s.subscriptionRevision(ctx, s.db, billing.SubscriptionIdentity{RemoteID: key.RemoteID, CustomerID: key.CustomerID})
+	r, _, err := s.subscriptionRevision(ctx, db, billing.SubscriptionIdentity{RemoteID: key.RemoteID, CustomerID: key.CustomerID})
 	if err != nil {
 		return nil, nil, err
 	}
 	if r.Owner == "" || r.LocalID == "" {
 		return nil, nil, nil
 	}
-	if r.Owner != row.ReferenceID || r.LocalID != row.ID {
+	if r.Owner != row.ReferenceID || r.LocalID != row.ID || key.Owner != "" && (key.Owner != row.ReferenceID || key.LocalID != row.ID) {
 		return nil, nil, billing.ErrCheckoutReconcile
 	}
 	kind := receipt.Kind
@@ -137,7 +138,7 @@ func (s *Store) readSubscriptionReceipt(ctx context.Context, key billing.Subscri
 }
 
 func (s *Store) ReadStripeSubscriptionUpdate(ctx context.Context, key billing.SubscriptionIdentity) (*billing.Subscription, error) {
-	m, _, err := s.readSubscriptionReceipt(ctx, key)
+	m, _, err := s.readSubscriptionReceipt(ctx, s.db, key)
 	if err != nil || m == nil || !m.Update {
 		return nil, err
 	}
@@ -145,7 +146,7 @@ func (s *Store) ReadStripeSubscriptionUpdate(ctx context.Context, key billing.Su
 }
 
 func (s *Store) ReadStripeSubscriptionNotification(ctx context.Context, key billing.SubscriptionIdentity) (*billing.SubscriptionNotification, error) {
-	m, original, err := s.readSubscriptionReceipt(ctx, key)
+	m, original, err := s.readSubscriptionReceipt(ctx, s.db, key)
 	if err != nil || m == nil {
 		return nil, err
 	}
@@ -169,4 +170,16 @@ func (s *Store) ReadStripeSubscriptionNotification(ctx context.Context, key bill
 		result.Transition = n == 1
 	}
 	return result, nil
+}
+
+func (s *Store) stripeDeliverySubscription(ctx context.Context, tx *sql.Tx, key billing.SubscriptionIdentity, owner string) (billing.Subscription, error) {
+	query := s.bind(`SELECT ` + subscriptionFields + ` FROM "subscription" WHERE "stripeSubscriptionId"=? AND "referenceId"=? AND "stripeCustomerId"=?`)
+	row, err := scanStripeSubscription(tx.QueryRowContext(ctx, query, key.RemoteID, owner, key.CustomerID))
+	if err != nil {
+		return row, err
+	}
+	if row.ReferenceID != owner || row.SubscriptionID == nil || *row.SubscriptionID != key.RemoteID || row.CustomerID == nil || *row.CustomerID != key.CustomerID {
+		return row, billing.ErrCheckoutReconcile
+	}
+	return row, nil
 }

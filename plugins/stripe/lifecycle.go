@@ -20,6 +20,8 @@ type SubscriptionIdentity struct {
 	NoticeType                       sdk.EventType `json:"-"`
 	CreatedPlan                      *Plan         `json:"-"`
 	NotifyUpdate, NotifyCancellation bool          `json:"-"`
+	// ConfirmedCheckout binds a signed completion to the previously settled purchase.
+	ConfirmedCheckout *CheckoutAttempt `json:"-"`
 	// Purchase links an immutable Checkout receipt to its original reservation.
 	Purchase *CheckoutPurchase `json:"-"`
 	// SessionToken accompanies a browser-authorized synchronization and is never persisted.
@@ -144,6 +146,18 @@ func (s *subscriptions) reconcile(ctx context.Context, store SubscriptionLifecyc
 		}
 		_, organization := OrganizationFromContext(ctx)
 		change := s.subscriptionChange(sub, deleted, organization)
+		if key.ConfirmedCheckout != nil {
+			if sub.Object != "subscription" {
+				return nil, ErrCheckoutReconcile
+			}
+			if _, err := (&CheckoutPurchase{Attempt: *key.ConfirmedCheckout}).claims(sub.Metadata); err != nil {
+				return nil, err
+			}
+			if change.Plan == "" {
+				// A completed Checkout only reports a recognized configured plan.
+				return nil, nil
+			}
+		}
 		if key.NoticeType == sdk.EventTypeCustomerSubscriptionCreated && change.Plan != "" {
 			plan := s.plans[change.Plan]
 			key.CreatedPlan = &plan

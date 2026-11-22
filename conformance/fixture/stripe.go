@@ -61,7 +61,9 @@ func fixtureStripe(ctx context.Context, store *sqlstore.Store, endpoint string, 
 		Portal: &billing.PortalOptions{Client: provider, Customers: store}, Subscriptions: subscriptions,
 	}
 	family := os.Getenv("CONFORMANCE_STRIPE_LIFECYCLE_OBSERVERS") == "1"
-	if family || os.Getenv("CONFORMANCE_STRIPE_UPDATE_OBSERVER") == "1" {
+	complete := os.Getenv("CONFORMANCE_STRIPE_COMPLETION_OBSERVER") == "1"
+	updates := family || os.Getenv("CONFORMANCE_STRIPE_UPDATE_OBSERVER") == "1"
+	if complete || updates {
 		appendRecord := func(record any) error {
 			f, err := os.OpenFile(os.Args[1]+".stripe-updates", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0600)
 			if err != nil {
@@ -70,14 +72,21 @@ func fixtureStripe(ctx context.Context, store *sqlstore.Store, endpoint string, 
 			defer f.Close()
 			return json.NewEncoder(f).Encode(record)
 		}
-		subscriptions.OnSubscriptionUpdate = func(ctx context.Context, u billing.SubscriptionUpdate) error {
-			if err := appendRecord([]any{"update", u.Event.ID, u.StripeSubscription.ID, u.Subscription.ReferenceID, u.Subscription.Status, u.StripeSubscription.Status}); err != nil {
-				return err
+		if updates {
+			subscriptions.OnSubscriptionUpdate = func(ctx context.Context, u billing.SubscriptionUpdate) error {
+				if err := appendRecord([]any{"update", u.Event.ID, u.StripeSubscription.ID, u.Subscription.ReferenceID, u.Subscription.Status, u.StripeSubscription.Status}); err != nil {
+					return err
+				}
+				if family {
+					return nil
+				}
+				return errors.New("expected test observer failure")
 			}
-			if family {
-				return nil
+		}
+		if complete {
+			subscriptions.OnSubscriptionComplete = func(ctx context.Context, p billing.SubscriptionComplete) error {
+				return appendRecord([]string{"complete", p.Event.ID, p.StripeSubscription.ID, p.Subscription.ReferenceID, p.Subscription.Status, p.Plan.Name, p.Request.URL.Path})
 			}
-			return errors.New("expected test observer failure")
 		}
 		if family {
 			subscriptions.OnSubscriptionCreated = func(ctx context.Context, p billing.SubscriptionCreated) error {

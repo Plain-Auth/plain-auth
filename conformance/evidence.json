@@ -2219,6 +2219,11 @@
       "label": "Call a fresh pending-cancellation observer before the update hook and continue to the general event hook after a host failure",
       "test": "conformance/stripe-lifecycle-fixture.mjs",
       "marker": "await deliver(\"updated\", \"evt_dated\", \"cancel\")"
+    },
+    {
+      "label": "Verify the signed Checkout callback for personal and organization subscriptions even when subscription creation arrived first",
+      "test": "conformance/stripe-organization-fixture.mjs",
+      "marker": "await deliver(\"evt_before_checkout\", \"customer.subscription.created\", remote.state.subscription)"
     }
   ],
   "plugin-symbol/captcha/captcha": [
@@ -8829,6 +8834,32 @@
       "label": "Bind delayed session issuance to the exact proposed credential and redeem it only once across stores",
       "test": "adapters/sqlstore/email_verification_observers_test.go",
       "marker": "func TestVerificationObserverHandoffsAreSingleUse("
+    }
+  ],
+  "plugin-symbol/stripe/SubscriptionOptions/onSubscriptionComplete": [
+    {
+      "label": "Deliver signed personal and organization Checkout events before the general callback, including retries that change the current plan, status and quantity",
+      "test": "conformance/stripe-organization-fixture.mjs",
+      "marker": "await deliver(\"evt_completed\", \"checkout.session.completed\", signedCheckout, \"team\")",
+      "complete": true
+    },
+    {
+      "label": "Bind completion to the settled purchaser, preserve the browser return window and isolate concurrent or failed deliveries",
+      "test": "adapters/sqlstore/stripe_checkout_completion_test.go",
+      "marker": "func TestStripeCheckoutCompletionObserver("
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L863/`onSubscriptionComplete`": [
+    {
+      "label": "Deliver signed personal and organization Checkout events before the general callback, including retries that change the current plan, status and quantity",
+      "test": "conformance/stripe-organization-fixture.mjs",
+      "marker": "await deliver(\"evt_completed\", \"checkout.session.completed\", signedCheckout, \"team\")",
+      "complete": true
+    },
+    {
+      "label": "Bind completion to the settled purchaser, preserve the browser return window and isolate concurrent or failed deliveries",
+      "test": "adapters/sqlstore/stripe_checkout_completion_test.go",
+      "marker": "func TestStripeCheckoutCompletionObserver("
     }
   ]
 }
