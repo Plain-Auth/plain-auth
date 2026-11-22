@@ -145,14 +145,22 @@
     - [ ] `validateRedirectUri`
     - [ ] `allowInsecureRedirectUri`
     - [ ] `resources`
-    - [ ] `resourceSeedMode`
-    - [ ] `resourceSeedScope`
+      - [x] Load string and object declarations and retry unfinished rows after a migration ([test](../../../adapters/sqlstore/oauth_resource_seed_test.go#L209))
+      - [x] Keep a snapshot of configured scope lists, settings and JSON objects ([test](../../../plugins/oauthprovider/resource_seed_test.go#L36))
+    - [x] `resourceSeedMode` ([test](../../../conformance/resource-seeds.mjs#L35))
+      - [x] Compare insert-only, merge and overwrite for existing rows, administrative edits and new audiences ([test](../../../conformance/resource-seeds.mjs#L35))
+      - [x] Keep both configured policies after two database connections observe a missing audience ([test](../../../adapters/sqlstore/oauth_resource_seed_test.go#L156))
+    - [x] `resourceSeedScope` ([test](../../../conformance/resource-seeds.mjs#L116))
+      - [x] Share finished entries across managers for one database, apply changed declarations and isolate default manager state ([test](../../../conformance/resource-seeds.mjs#L116))
+      - [x] Cancel a waiting caller without interrupting another startup ([test](../../../plugins/oauthprovider/resource_seed_test.go#L12))
+      - [x] Retry rejected entries when a second manager supplies a different validator ([test](../../../adapters/sqlstore/oauth_resource_seed_test.go#L169))
     - [ ] `cachedResources`
     - [ ] `enforcePerClientResources`
     - [ ] `clientRegistrationDefaultResources`
     - [ ] `clientRegistrationAllowedResources`
-    - [ ] `identifierValidator`
+    - [x] `identifierValidator` ([test](../../../adapters/sqlstore/oauth_resource_seed_test.go#L169))
       - [x] Replace URI validation for resource creation with the application’s validator ([test](../../../adapters/sqlstore/oauth_resources_test.go#L206))
+      - [x] Run the configured identifier validator for startup declarations as well as administrative creates ([test](../../../adapters/sqlstore/oauth_resource_seed_test.go#L169))
     - [ ] `resourcePrivileges`
       - [x] Authorize every registry action before looking up resources or grants ([test](../../../conformance/resource-registry.mjs#L102))
       - [x] Provide the session, caller, action, headers and target to the Go privilege callback ([test](../../../adapters/sqlstore/oauth_resources_test.go#L195))
@@ -206,9 +214,10 @@
   - [ ] `OAuthAuthorizationQuery`
   - [x] `OAuthResource` ([test](../../../conformance/resource-registry.mjs#L72))
     - [x] Round-trip the full persisted resource, including IDs, timestamps and nullable policy fields ([test](../../../conformance/resource-registry.mjs#L72))
-  - [ ] `OAuthResourceInput`
+  - [x] `OAuthResourceInput` ([test](../../../conformance/resource-seeds.mjs#L37))
     - [x] Supply every per-resource policy on creation and preserve missing and cleared values on patch ([test](../../../plugins/oauthprovider/resource_test.go#L24))
     - [x] Create and load all administrative input fields in both runtimes ([test](../../../conformance/resource-registry.mjs#L49))
+    - [x] Accept identifier strings and full policy objects, including signing, lifetimes, scopes, claims, metadata and flags ([test](../../../conformance/resource-seeds.mjs#L37))
   - [ ] `OAuthClientResource`
   - [ ] `StoredAuthorizationQuery`
   - [ ] `VerificationValue`
@@ -507,18 +516,30 @@
     - [ ] `email`
     - [ ] `offline_access`
   - [ ] Resources
-    - [ ] `name`
+    - [x] `name` ([test](../../../conformance/resource-seeds.mjs#L53))
+      - [x] Persist and return the configured display name across restarts ([test](../../../conformance/resource-seeds.mjs#L53))
     - [ ] `allowedScopes`
+      - [x] Persist and reset the allowedScopes policy through startup configuration ([test](../../../conformance/resource-seeds.mjs#L58))
     - [ ] `accessTokenTtl`
+      - [x] Persist and reset the accessTokenTtl policy through startup configuration ([test](../../../conformance/resource-seeds.mjs#L54))
     - [ ] `refreshTokenTtl`
+      - [x] Persist and reset the refreshTokenTtl policy through startup configuration ([test](../../../conformance/resource-seeds.mjs#L55))
     - [ ] `signingAlgorithm`
+      - [x] Persist and reset the signingAlgorithm policy through startup configuration ([test](../../../conformance/resource-seeds.mjs#L56))
     - [ ] `signingKeyId`
+      - [x] Persist and reset the signingKeyId policy through startup configuration ([test](../../../conformance/resource-seeds.mjs#L57))
     - [ ] `customClaims`
+      - [x] Persist and reset the customClaims policy through startup configuration ([test](../../../conformance/resource-seeds.mjs#L59))
     - [ ] `dpopBoundAccessTokensRequired`
+      - [x] Persist and reset the dpopBoundAccessTokensRequired policy through startup configuration ([test](../../../conformance/resource-seeds.mjs#L60))
     - [ ] `disabled`
-    - [ ] `insertOnly`
-    - [ ] `merge`
-    - [ ] `overwrite`
+      - [x] Persist and reset the disabled policy through startup configuration ([test](../../../conformance/resource-seeds.mjs#L61))
+    - [x] `insertOnly` ([test](../../../conformance/resource-seeds.mjs#L67))
+      - [x] Keep existing policy values and the update timestamp ([test](../../../conformance/resource-seeds.mjs#L67))
+    - [x] `merge` ([test](../../../conformance/resource-seeds.mjs#L76))
+      - [x] Apply configured fields and keep the other stored policy values ([test](../../../conformance/resource-seeds.mjs#L76))
+    - [x] `overwrite` ([test](../../../conformance/resource-seeds.mjs#L96))
+      - [x] Reset missing fields, preserve row identity and creation time, and restore policy version one ([test](../../../conformance/resource-seeds.mjs#L96))
     - [x] Manage resources at runtime ([test](../../../conformance/resource-registry.mjs#L129))
       - [x] Manage all seven resource operations through host calls and keep them off the public auth router ([test](../../../conformance/resource-registry.mjs#L129))
       - [x] `adminCreateOAuthResource` ([test](../../../conformance/resource-registry.mjs#L58))

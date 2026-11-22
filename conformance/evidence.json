@@ -11142,6 +11142,12 @@
       "label": "Create and load all administrative input fields in both runtimes",
       "test": "conformance/resource-registry.mjs",
       "marker": "const rich = {name: \"Reporting\""
+    },
+    {
+      "label": "Accept identifier strings and full policy objects, including signing, lifetimes, scopes, claims, metadata and flags",
+      "test": "conformance/resource-seeds.mjs",
+      "marker": "const initial = {",
+      "complete": true
     }
   ],
   "plugin-symbol/oauth-provider/ResourceUriSchema": [
@@ -11168,6 +11174,143 @@
       "label": "Replace URI validation for resource creation with the application’s validator",
       "test": "adapters/sqlstore/oauth_resources_test.go",
       "marker": "customResource, err := custom.Create("
+    },
+    {
+      "label": "Run the configured identifier validator for startup declarations as well as administrative creates",
+      "test": "adapters/sqlstore/oauth_resource_seed_test.go",
+      "marker": "rejected entry suppressed another validator",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/oauth-provider/OAuthOptions/resources": [
+    {
+      "label": "Load string and object declarations and retry unfinished rows after a migration",
+      "test": "adapters/sqlstore/oauth_resource_seed_test.go",
+      "marker": "func TestOAuthResourceSeedRecovery("
+    },
+    {
+      "label": "Keep a snapshot of configured scope lists, settings and JSON objects",
+      "test": "plugins/oauthprovider/resource_seed_test.go",
+      "marker": "func TestResourceSeedConfigSnapshot("
+    }
+  ],
+  "plugin-symbol/oauth-provider/OAuthOptions/resourceSeedMode": [
+    {
+      "label": "Compare insert-only, merge and overwrite for existing rows, administrative edits and new audiences",
+      "test": "conformance/resource-seeds.mjs",
+      "marker": "await t.test(runtime + \" applies insert-only, merge and overwrite on boot\"",
+      "complete": true
+    },
+    {
+      "label": "Keep both configured policies after two database connections observe a missing audience",
+      "test": "adapters/sqlstore/oauth_resource_seed_test.go",
+      "marker": "concurrent seed lost a policy"
+    }
+  ],
+  "plugin-symbol/oauth-provider/OAuthOptions/resourceSeedScope": [
+    {
+      "label": "Share finished entries across managers for one database, apply changed declarations and isolate default manager state",
+      "test": "conformance/resource-seeds.mjs",
+      "marker": "await t.test(runtime + \" shares successful entries across short-lived managers\"",
+      "complete": true
+    },
+    {
+      "label": "Cancel a waiting caller without interrupting another startup",
+      "test": "plugins/oauthprovider/resource_seed_test.go",
+      "marker": "func TestResourceSeedCacheCancellation("
+    },
+    {
+      "label": "Retry rejected entries when a second manager supplies a different validator",
+      "test": "adapters/sqlstore/oauth_resource_seed_test.go",
+      "marker": "rejected entry suppressed another validator"
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/tokens.mdx#L85/`insertOnly`": [
+    {
+      "label": "Keep existing policy values and the update timestamp",
+      "test": "conformance/resource-seeds.mjs",
+      "marker": "assert.equal(lookup(id).updatedAt, first.updatedAt)",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/tokens.mdx#L86/`merge`": [
+    {
+      "label": "Apply configured fields and keep the other stored policy values",
+      "test": "conformance/resource-seeds.mjs",
+      "marker": "assert.equal(merged.refreshTokenTtl, 1200)",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/tokens.mdx#L87/`overwrite`": [
+    {
+      "label": "Reset missing fields, preserve row identity and creation time, and restore policy version one",
+      "test": "conformance/resource-seeds.mjs",
+      "marker": "assert.equal(replaced.policyVersion, 1)",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/tokens.mdx#L67/`name`": [
+    {
+      "label": "Persist and return the configured display name across restarts",
+      "test": "conformance/resource-seeds.mjs",
+      "marker": "assert.equal(first.name,",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/tokens.mdx#L69/`accessTokenTtl`": [
+    {
+      "label": "Persist and reset the accessTokenTtl policy through startup configuration",
+      "test": "conformance/resource-seeds.mjs",
+      "marker": "assert.equal(first.accessTokenTtl,"
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/tokens.mdx#L70/`refreshTokenTtl`": [
+    {
+      "label": "Persist and reset the refreshTokenTtl policy through startup configuration",
+      "test": "conformance/resource-seeds.mjs",
+      "marker": "assert.equal(first.refreshTokenTtl,"
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/tokens.mdx#L68/`allowedScopes`": [
+    {
+      "label": "Persist and reset the allowedScopes policy through startup configuration",
+      "test": "conformance/resource-seeds.mjs",
+      "marker": "JSON.parse(first.allowedScopes)"
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/tokens.mdx#L71/`signingAlgorithm`": [
+    {
+      "label": "Persist and reset the signingAlgorithm policy through startup configuration",
+      "test": "conformance/resource-seeds.mjs",
+      "marker": "assert.equal(first.signingAlgorithm,"
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/tokens.mdx#L72/`signingKeyId`": [
+    {
+      "label": "Persist and reset the signingKeyId policy through startup configuration",
+      "test": "conformance/resource-seeds.mjs",
+      "marker": "assert.equal(first.signingKeyId,"
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/tokens.mdx#L73/`customClaims`": [
+    {
+      "label": "Persist and reset the customClaims policy through startup configuration",
+      "test": "conformance/resource-seeds.mjs",
+      "marker": "JSON.parse(first.customClaims)"
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/tokens.mdx#L74/`dpopBoundAccessTokensRequired`": [
+    {
+      "label": "Persist and reset the dpopBoundAccessTokensRequired policy through startup configuration",
+      "test": "conformance/resource-seeds.mjs",
+      "marker": "assert.equal(first.dpopBoundAccessTokensRequired,"
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/tokens.mdx#L75/`disabled`": [
+    {
+      "label": "Persist and reset the disabled policy through startup configuration",
+      "test": "conformance/resource-seeds.mjs",
+      "marker": "assert.equal(first.disabled,"
     }
   ]
 }

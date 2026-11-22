@@ -1749,3 +1749,8 @@ test("OAuth resource administrators interoperate through a shared SQL registry",
   const { compareResourceRegistry } = await import("./resource-registry.mjs");
   await compareResourceRegistry(t, goFixture);
 });
+
+test("configured OAuth audiences seed consistently across restarts", async t => {
+  const { compareResourceSeeds } = await import("./resource-seeds.mjs");
+  await compareResourceSeeds(t, goFixture);
+});

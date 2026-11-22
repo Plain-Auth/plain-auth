@@ -23,6 +23,7 @@ func resourceRegistryFixture(a *auth.Auth, store op.ResourceStore, fallback http
 		log.Fatal(err)
 	}
 	mux := http.NewServeMux()
+	mountResourceSeedFixture(mux, a, store)
 	mux.HandleFunc("POST /__fixture/resource-registry", func(w http.ResponseWriter, r *http.Request) {
 		var req struct {
 			Action, Identifier, ClientID string

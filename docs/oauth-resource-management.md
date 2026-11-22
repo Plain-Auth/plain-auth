@@ -77,6 +77,47 @@ updated, err := registry.Update(ctx, headers, resource.Identifier, oauthprovider
 })
 ```
 
+## Seed resources at startup
+
+Declare audiences in `ResourceManagerOptions.Resources` when an application needs the same initial policies on each installation. Call `Seed(ctx)` after applying the SQL migrations. The call uses trusted application configuration and can run before a user signs in.
+
+```go
+func seedResources(ctx context.Context, api *auth.Auth, store *sqlstore.Store, operatorID string) (*oauthprovider.ResourceManager, error) {
+    registry, err := oauthprovider.NewResourceManager(api, store, oauthprovider.ResourceManagerOptions{
+        Privileges: func(_ context.Context, access oauthprovider.ResourceAccess) (bool, error) {
+            return access.User.ID == operatorID, nil
+        },
+        SeedMode: oauthprovider.SeedInsertOnly,
+        Resources: []oauthprovider.ResourceDefinition{
+            {Identifier: "urn:example:billing"},
+            {Identifier: "https://api.example.com/reports", Policy: oauthprovider.ResourcePatch{
+                Name:           oauthprovider.Set("Reports"),
+                AccessTokenTTL: oauthprovider.Set(int64(300)),
+                AllowedScopes:  oauthprovider.Set([]string{"reports:read"}),
+            }},
+        },
+    })
+    if err != nil {
+        return nil, err
+    }
+    return registry, registry.Seed(ctx)
+}
+```
+
+JSON configuration accepts both a string identifier and a flat object. For example, decode `["urn:example:billing", {"identifier":"urn:example:reports","accessTokenTtl":300}]` into `[]oauthprovider.ResourceDefinition`. The manager takes a snapshot of this configuration when it is constructed.
+
+| Mode | Behavior for an existing resource |
+| --- | --- |
+| `SeedInsertOnly` (default) | Preserves the existing row, including administrative edits and its update time. |
+| `SeedMerge` | Updates the supplied fields. An explicit null clears a nullable setting. |
+| `SeedOverwrite` | Replaces every policy field. Omitted fields return to defaults and policy version returns to 1. The identifier, row ID and creation time are preserved. |
+
+All three modes insert missing resources. Concurrent application starts can seed the same identifier. If another process inserts it first, merge and overwrite still apply the configured policy. An invalid identifier is skipped and logged. An unsupported signing algorithm is logged and omitted from the seed, so other audiences and valid fields can still be applied.
+
+If a table or connection is unavailable, `Seed` returns an error. A later call to `Seed` or an authorized registry operation retries unfinished entries. Completed entries keep subsequent administrative edits during that retry.
+
+By default the manager remembers its completed configuration. For applications that construct a manager per request, allocate one `new(oauthprovider.ResourceSeedCache)` for each logical database and pass it as `ResourceManagerOptions.SharedSeeds` to each manager using that database. Each successful entry is remembered by its configuration and seed mode for the lifetime of that cache. Changed declarations and previously rejected identifiers can still run. Custom adapters that support overwrite implement `ResourcePolicyReplacer` as well as `ResourceStore`. [Concurrent startup and migration recovery tests](../adapters/sqlstore/oauth_resource_seed_test.go) · [Startup comparison tests](../conformance/resource-seeds.mjs)
+
 ## Grant or remove client access
 
 Pass the public client ID from a registered OAuth client. `Link` verifies that both the resource and client exist and persists one link per pair. First-time success returns `Linked: true`. Repeated or concurrent calls return `AlreadyLinked: true` for the existing link.

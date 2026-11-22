@@ -140,6 +140,20 @@ func (s *Store) UpdateOAuthResource(ctx context.Context, id string, patch op.Res
 	if err != nil {
 		return op.Resource{}, err
 	}
+	return s.updateResourceColumns(ctx, id, cols, args, now)
+}
+
+func (s *Store) ReplaceOAuthResourcePolicy(ctx context.Context, policy op.Resource) error {
+	cols, args, err := resourceColumns(policy, nil)
+	if err != nil {
+		return err
+	}
+	cols, args = append(cols, `"policyVersion"`), append(args, policy.PolicyVersion)
+	_, err = s.updateResourceColumns(ctx, policy.Identifier, cols, args, policy.UpdatedAt)
+	return err
+}
+
+func (s *Store) updateResourceColumns(ctx context.Context, id string, cols []string, args []any, now time.Time) (op.Resource, error) {
 	cols = append(cols, `"updatedAt"`)
 	args = append(args, s.date(now), id)
 	tx, err := s.db.BeginTx(ctx, nil)
@@ -151,7 +165,7 @@ func (s *Store) UpdateOAuthResource(ctx context.Context, id string, patch op.Res
 	if _, err = tx.ExecContext(ctx, s.bind(query), args...); err != nil {
 		return op.Resource{}, err
 	}
-	r, err = scanOAuthResource(tx.QueryRowContext(ctx, s.bind(resourceByID), id))
+	r, err := scanOAuthResource(tx.QueryRowContext(ctx, s.bind(resourceByID), id))
 	if err != nil {
 		return op.Resource{}, err
 	}
