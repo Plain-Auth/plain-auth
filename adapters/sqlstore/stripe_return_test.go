@@ -113,7 +113,7 @@ func newReturnFixture(t *testing.T, dialect string) *returnFixture {
 	return configuredReturnFixture(t, dialect, billing.Plan{Name: "pro", PriceID: "price_pro"}, false, (*returnFixture).provider)
 }
 
-func configuredReturnFixture(t *testing.T, dialect string, plan billing.Plan, organizations bool, provider func(*returnFixture, *http.Request) (*http.Response, error)) *returnFixture {
+func configuredReturnFixture(t *testing.T, dialect string, plan billing.Plan, organizations bool, provider func(*returnFixture, *http.Request) (*http.Response, error), configure ...func(*billing.Options)) *returnFixture {
 	t.Helper()
 	f := &returnFixture{t: t, sessions: map[string]returnCheckout{}}
 	dsn := organizationTestDSN(t, dialect)
@@ -148,6 +148,9 @@ func configuredReturnFixture(t *testing.T, dialect string, plan billing.Plan, or
 			t.Fatal(err)
 		}
 		plugins = append(plugins, group)
+	}
+	for _, apply := range configure {
+		apply(&stripeOptions)
 	}
 	plugins = append(plugins, billing.New(stripeOptions))
 	off := false

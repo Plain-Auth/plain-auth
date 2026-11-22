@@ -1523,3 +1523,8 @@ test("social sign-in can require explicit account linking even for a trusted ver
   const {compareImplicitLinking}=await import("./social-link-policy.mjs");
   await compareImplicitLinking(t,{reference,goFixture,instrument});
 });
+
+test("signed Stripe lifecycle deliveries distinguish dashboard creation, pending cancellation, updates, and deletion on both runtimes", async t => {
+  const { subscriptionLifecycleCallbacks } = await import("./stripe-lifecycle-fixture.mjs");
+  await subscriptionLifecycleCallbacks(t, { reference, goFixture, instrument });
+});

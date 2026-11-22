@@ -11,12 +11,37 @@ import (
 	sdk "github.com/stripe/stripe-go/v87"
 )
 
-// SubscriptionUpdate contains the signed provider snapshot and the local record
+// SubscriptionEvent contains the signed provider snapshot and the local record
 // committed for its event. They can differ when Stripe delivers an older update.
-type SubscriptionUpdate struct {
+type SubscriptionEvent struct {
 	Event              sdk.Event
 	StripeSubscription *sdk.Subscription
 	Subscription       Subscription
+}
+
+type SubscriptionUpdate = SubscriptionEvent
+
+type SubscriptionCreated struct {
+	SubscriptionEvent
+	Plan Plan
+}
+
+type SubscriptionCancellation struct {
+	SubscriptionEvent
+	CancellationDetails *sdk.SubscriptionCancellationDetails
+}
+
+type SubscriptionNotification struct {
+	Subscription       Subscription
+	Transition, Update bool
+	CreatedPlan        *Plan
+}
+
+// SubscriptionNotificationStore returns the committed local snapshot. Transition
+// is true for at most one reader of a creation or cancellation transition.
+type SubscriptionNotificationStore interface {
+	SubscriptionUpdateStore
+	ReadStripeSubscriptionNotification(context.Context, SubscriptionIdentity) (*SubscriptionNotification, error)
 }
 
 // SubscriptionUpdateStore saves the local result atomically with the event in
@@ -43,24 +68,88 @@ func updateFingerprint(raw json.RawMessage) (string, error) {
 	return hex.EncodeToString(sum[:]), nil
 }
 
-func (s *subscriptions) notifySubscriptionUpdate(c auth.EndpointContext, event sdk.Event, provider *sdk.Subscription, row Subscription) error {
-	// Give each host hook its own event. SDK envelopes contain maps and pointers.
-	raw, err := json.Marshal(event)
-	if err != nil {
-		return err
+func (s *subscriptions) selectSubscriptionHooks(key *SubscriptionIdentity, kind sdk.EventType, sub *sdk.Subscription) bool {
+	switch kind {
+	case sdk.EventTypeCustomerSubscriptionCreated:
+		if s.onCreated == nil {
+			return false
+		}
+	case sdk.EventTypeCustomerSubscriptionDeleted:
+		if s.onDeleted == nil {
+			return false
+		}
+	case sdk.EventTypeCustomerSubscriptionUpdated:
+		key.NotifyUpdate = s.onUpdate != nil
+		key.NotifyCancellation = s.onCancel != nil && sub.Status == sdk.SubscriptionStatusActive && (sub.CancelAtPeriodEnd || sub.CancelAt != 0)
+		if !key.NotifyUpdate && !key.NotifyCancellation {
+			return false
+		}
 	}
-	var copied sdk.Event
-	if err := json.Unmarshal(raw, &copied); err != nil {
-		return err
-	}
+	key.NoticeType = kind
+	return true
+}
+
+func (s *subscriptions) dispatchSubscriptionHooks(c auth.EndpointContext, store SubscriptionLifecycleStore, key SubscriptionIdentity, event sdk.Event) error {
 	ctx := c.Request.Context()
-	failed := true
+	if event.Type == sdk.EventTypeCustomerSubscriptionUpdated && !key.NotifyCancellation {
+		row, err := store.(SubscriptionUpdateStore).ReadStripeSubscriptionUpdate(ctx, key)
+		if err != nil || row == nil {
+			return err
+		}
+		_, err = callSubscriptionHook(c, event, *row, "update", func(p SubscriptionEvent) error { return s.onUpdate(ctx, p) })
+		return err
+	}
+	notice, err := store.(SubscriptionNotificationStore).ReadStripeSubscriptionNotification(ctx, key)
+	if err != nil || notice == nil {
+		return err
+	}
+	switch event.Type {
+	case sdk.EventTypeCustomerSubscriptionCreated:
+		if notice.Transition {
+			if notice.CreatedPlan == nil {
+				return ErrCheckoutReconcile
+			}
+			_, err = callSubscriptionHook(c, event, notice.Subscription, "creation", func(p SubscriptionEvent) error { return s.onCreated(ctx, SubscriptionCreated{p, *notice.CreatedPlan}) })
+		}
+	case sdk.EventTypeCustomerSubscriptionDeleted:
+		_, err = callSubscriptionHook(c, event, notice.Subscription, "deletion", func(p SubscriptionEvent) error { return s.onDeleted(ctx, p) })
+	case sdk.EventTypeCustomerSubscriptionUpdated:
+		if notice.Transition {
+			ok, err := callSubscriptionHook(c, event, notice.Subscription, "cancellation", func(p SubscriptionEvent) error {
+				return s.onCancel(ctx, SubscriptionCancellation{p, p.StripeSubscription.CancellationDetails})
+			})
+			if err != nil || !ok {
+				return err
+			}
+		}
+		if notice.Update && s.onUpdate != nil {
+			_, err = callSubscriptionHook(c, event, notice.Subscription, "update", func(p SubscriptionEvent) error { return s.onUpdate(ctx, p) })
+		}
+	}
+	return err
+}
+
+func callSubscriptionHook(c auth.EndpointContext, event sdk.Event, row Subscription, name string, hook func(SubscriptionEvent) error) (ok bool, err error) {
+	// Keep the signed event and pointer fields independent of other host hooks.
+	source := struct {
+		Event        sdk.Event
+		Subscription Subscription
+	}{event, row}
+	raw, err := json.Marshal(source)
+	if err != nil {
+		return false, err
+	}
+	var payload SubscriptionEvent
+	if err := json.Unmarshal(raw, &payload); err != nil {
+		return false, err
+	}
+	if err := json.Unmarshal(payload.Event.Data.Raw, &payload.StripeSubscription); err != nil {
+		return false, err
+	}
 	defer func() {
-		if recover() != nil || failed {
-			// Host errors and panics can contain customer or payment details.
-			c.Auth.Logger().ErrorContext(ctx, "Stripe subscription update callback failed", "event_id", event.ID)
+		if recover() != nil || !ok {
+			c.Auth.Logger().ErrorContext(c.Request.Context(), "Stripe subscription "+name+" callback failed", "event_id", event.ID)
 		}
 	}()
-	failed = s.onUpdate(ctx, SubscriptionUpdate{Event: copied, StripeSubscription: provider, Subscription: row}) != nil
-	return nil
+	return hook(payload) == nil, nil
 }

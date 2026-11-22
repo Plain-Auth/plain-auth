@@ -13,6 +13,7 @@ import (
 
 	auth "github.com/Stonewrit/stonewrit-auth"
 	billing "github.com/Stonewrit/stonewrit-auth/plugins/stripe"
+	sdk "github.com/stripe/stripe-go/v87"
 )
 
 var _ billing.SubscriptionLifecycleStore = (*Store)(nil)
@@ -109,7 +110,7 @@ func (s *Store) subscriptionRevision(ctx context.Context, db stripeCatalog, key 
 	}
 	r.Version = cursor.Version
 	if key.EventID != "" {
-		if cursor.Terminal != "" {
+		if cursor.Terminal != "" && key.NoticeType != sdk.EventTypeCustomerSubscriptionDeleted {
 			r.Skip = true
 			return r, cursor, nil
 		}
@@ -147,6 +148,10 @@ func (s *Store) ApplyStripeSubscriptionChange(ctx context.Context, key billing.S
 		if cursor.Terminal != "" && c.Status != "canceled" && c.Status != "incomplete_expired" {
 			return billing.ErrCheckoutReconcile
 		}
+		receipt, err := s.subscriptionEventReceipt(ctx, tx, key, r, c)
+		if err != nil {
+			return err
+		}
 		if err := s.applyCurrentSubscription(ctx, tx, key, r, c); err != nil {
 			return err
 		}
@@ -162,10 +167,8 @@ func (s *Store) ApplyStripeSubscriptionChange(ctx context.Context, key billing.S
 		currentTime := time.Now().UTC()
 		now := s.date(currentTime)
 		if key.EventID != "" {
-			// A validated Checkout claim can identify an existing incomplete
-			// local row before its provider subscription ID has been bound.
-			if key.UpdateFingerprint != "" && (r.LocalID != "" || c.Metadata["subscriptionId"] != "") {
-				if err := s.saveSubscriptionUpdate(ctx, tx, key, r.Owner, currentTime); err != nil {
+			if receipt != nil {
+				if err := s.saveSubscriptionUpdate(ctx, tx, key, r.Owner, currentTime, receipt); err != nil {
 					return err
 				}
 			}

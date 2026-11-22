@@ -216,6 +216,20 @@ Each authenticated redelivery can invoke the callback again, including concurren
 
 A billing or receipt-storage failure returns HTTP 500 so Stripe can retry. A callback error or panic is logged with the Stripe event ID. The general hook still runs and the webhook can acknowledge the delivery. An application that requires guaranteed processing should persist its own work and monitor its failures. [Released-client delivery and failure tests](../conformance/stripe-lifecycle-fixture.mjs)
 
+### Observe creation, cancellation, and deletion
+
+The following hooks on `stripeplugin.SubscriptionOptions` run after a signed provider event commits. Each payload includes the signed event, the provider’s subscription, and the associated local subscription. The local record’s `ReferenceID` identifies the user or organization.
+
+| Hook | Trigger | Additional payload |
+| --- | --- | --- |
+| `OnSubscriptionCreated` | A signed `customer.subscription.created` first establishes a configured subscription outside Checkout, such as a purchase created in the Stripe Dashboard. | `SubscriptionCreated.Plan` captures the plan configuration used for the purchase. |
+| `OnSubscriptionCancel` | A signed update and the current active Stripe subscription both show a pending cancellation, and the local row moves from no cancellation to a period-end flag or an explicit date. Restoring the subscription permits a later cancellation to trigger again. | `SubscriptionCancellation.CancellationDetails` contains Stripe’s optional reason, feedback, and comment. |
+| `OnSubscriptionDeleted` | A signed `customer.subscription.deleted` identifies a locally bound subscription. It also runs when an earlier update already set the local status to canceled. | `SubscriptionEvent.Subscription` contains the committed canceled record. |
+
+Creation and cancellation are claimed once across replicas for each transition. A process that stops after claiming and before running host code can miss that notification. Deletion and update run per authenticated delivery and can repeat. Use the Stripe event ID for application idempotency. The SQL adapters keep one compact receipt per event for 45 days. Custom stores that enable these hooks must implement `SubscriptionNotificationStore`.
+
+Within a pending-cancellation delivery, `OnSubscriptionCancel` runs first, followed by `OnSubscriptionUpdate`, then `OnEvent`. A cancellation callback that returns an error or panics skips the update callback on that delivery. The general event callback still runs. On redelivery, the claimed transition stays consumed and the update hook can run. [Signed event comparison](../conformance/stripe-lifecycle-fixture.mjs) · [Concurrent lifecycle tests](../adapters/sqlstore/stripe_lifecycle_callbacks_test.go)
+
 ## Cancel or restore a subscription
 
 To open the Stripe cancellation page, send an authenticated POST to `/api/auth/subscription/cancel`. Pass the provider subscription ID from the `stripeSubscriptionId` field returned by the list endpoint. Omitting the ID selects the first active or trialing subscription ordered by local ID.

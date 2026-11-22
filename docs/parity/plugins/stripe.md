@@ -60,12 +60,12 @@
     - [x] List the metered owner’s actual monthly or yearly plan and apply the default of one when Stripe omits the subscription quantity ([test](../../../adapters/sqlstore/stripe_metered_test.go#L153))
     - [x] Read the licensed base quantity after metered add-ons move ahead of it on a paid subscription ([test](../../../conformance/stripe-organization-fixture.mjs#L271))
   - [ ] `GET /subscription/success`
-    - [x] Use the configured auth mount and pass Stripe the literal Checkout Session placeholder ([test](../../../adapters/sqlstore/stripe_return_test.go#L249))
-    - [x] Validate the callback and require a signed-in owner and known checkout before reading Stripe ([test](../../../adapters/sqlstore/stripe_return_test.go#L271))
-    - [x] Confirm paid or trial checkouts and leave unpaid, unavailable and mismatched receipts pending ([test](../../../adapters/sqlstore/stripe_return_test.go#L284))
-    - [x] Reuse a completed receipt across replicas and preserve webhook updates during browser confirmation ([test](../../../adapters/sqlstore/stripe_return_test.go#L336))
-    - [x] Recheck the owner session before committing the provider result ([test](../../../adapters/sqlstore/stripe_return_test.go#L325))
-    - [x] Preserve the original Stripe success URL and checkout attempt on retries across an upgrade ([test](../../../adapters/sqlstore/stripe_return_test.go#L346))
+    - [x] Use the configured auth mount and pass Stripe the literal Checkout Session placeholder ([test](../../../adapters/sqlstore/stripe_return_test.go#L252))
+    - [x] Validate the callback and require a signed-in owner and known checkout before reading Stripe ([test](../../../adapters/sqlstore/stripe_return_test.go#L274))
+    - [x] Confirm paid or trial checkouts and leave unpaid, unavailable and mismatched receipts pending ([test](../../../adapters/sqlstore/stripe_return_test.go#L287))
+    - [x] Reuse a completed receipt across replicas and preserve webhook updates during browser confirmation ([test](../../../adapters/sqlstore/stripe_return_test.go#L339))
+    - [x] Recheck the owner session before committing the provider result ([test](../../../adapters/sqlstore/stripe_return_test.go#L328))
+    - [x] Preserve the original Stripe success URL and checkout attempt on retries across an upgrade ([test](../../../adapters/sqlstore/stripe_return_test.go#L349))
     - [x] Require an owner-bound original receipt for the correct metered price and billing mode before granting the subscription ([test](../../../adapters/sqlstore/stripe_metered_test.go#L137))
   - [ ] `POST /subscription/billing-portal`
     - [x] Open a billing portal for the authenticated customer and enforce its owner and return URL ([test](../../../plugins/stripe/portal_test.go#L27))
@@ -87,6 +87,7 @@
     - [x] Require the full original purchase, recover a signed creation after an add-on receipt is corrected, and preserve the current base quantity ([test](../../../adapters/sqlstore/stripe_addons_test.go#L167))
     - [x] Remove the active entitlement if an existing add-on is substituted and restore it once the configured items return ([test](../../../adapters/sqlstore/stripe_addons_test.go#L182))
     - [x] Recover a committed subscription update after a receipt read fails without applying the provider state twice ([test](../../../adapters/sqlstore/stripe_update_callback_test.go#L220))
+    - [x] Call a fresh pending-cancellation observer before the update hook and continue to the general event hook after a host failure ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L563))
   - [ ] `AuthorizeReferenceAction`
   - [ ] `CustomerType`
   - [ ] `WithStripeCustomerId`
@@ -104,10 +105,16 @@
     - [x] `onSubscriptionUpdate` ([test](../../../adapters/sqlstore/stripe_update_callback_test.go#L182))
       - [x] Invoke the update callback after commit with the signed event, provider subscription and verified local record for a personal or organization owner ([test](../../../adapters/sqlstore/stripe_update_callback_test.go#L182))
       - [x] Preserve the original committed local snapshot on a duplicate delivery after a different update ([test](../../../adapters/sqlstore/stripe_update_callback_test.go#L195))
-    - [ ] `onSubscriptionCancel`
+    - [x] `onSubscriptionCancel` ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L555))
+      - [x] Notify on both period-end and explicitly dated cancellation transitions, before the update and general hooks ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L555))
+      - [x] Suppress a stale pending-cancellation event and report a fresh transition after restoration ([test](../../../adapters/sqlstore/stripe_lifecycle_callbacks_test.go#L156))
     - [ ] `authorizeReference`
-    - [ ] `onSubscriptionDeleted`
-    - [ ] `onSubscriptionCreated`
+    - [x] `onSubscriptionDeleted` ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L570))
+      - [x] Notify after a signed deletion, including redeliveries after an earlier terminal update ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L570))
+      - [x] Preserve the organization’s local subscription identity across concurrent signed deletion deliveries ([test](../../../adapters/sqlstore/stripe_lifecycle_callbacks_test.go#L169))
+    - [x] `onSubscriptionCreated` ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L550))
+      - [x] Notify once for a new Dashboard subscription with its configured plan and committed owner reference ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L550))
+      - [x] Exclude Checkout’s existing incomplete local row and claim concurrent Dashboard creation once ([test](../../../adapters/sqlstore/stripe_lifecycle_callbacks_test.go#L179))
     - [ ] `getCheckoutSessionParams`
   - [ ] `StripeOptions`
     - [ ] `stripeClient`
@@ -289,12 +296,18 @@
       - [ ] `authorizeReference`
       - [ ] `getCheckoutSessionParams`
       - [ ] `onSubscriptionComplete`
-      - [ ] `onSubscriptionCreated`
+      - [x] `onSubscriptionCreated` ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L550))
+        - [x] Notify once for a new Dashboard subscription with its configured plan and committed owner reference ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L550))
+        - [x] Exclude Checkout’s existing incomplete local row and claim concurrent Dashboard creation once ([test](../../../adapters/sqlstore/stripe_lifecycle_callbacks_test.go#L179))
       - [x] `onSubscriptionUpdate` ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L501))
         - [x] Call the configured update hook before the general event hook on each authenticated delivery, even when the update hook fails ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L501))
         - [x] Isolate callback panics and errors while preserving independent event data and redacting diagnostics ([test](../../../adapters/sqlstore/stripe_update_callback_test.go#L200))
-      - [ ] `onSubscriptionCancel`
-      - [ ] `onSubscriptionDeleted`
+      - [x] `onSubscriptionCancel` ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L555))
+        - [x] Notify on both period-end and explicitly dated cancellation transitions, before the update and general hooks ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L555))
+        - [x] Suppress a stale pending-cancellation event and report a fresh transition after restoration ([test](../../../adapters/sqlstore/stripe_lifecycle_callbacks_test.go#L156))
+      - [x] `onSubscriptionDeleted` ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L570))
+        - [x] Notify after a signed deletion, including redeliveries after an earlier terminal update ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L570))
+        - [x] Preserve the organization’s local subscription identity across concurrent signed deletion deliveries ([test](../../../adapters/sqlstore/stripe_lifecycle_callbacks_test.go#L169))
       - [ ] Plan Configuration
         - [ ] `name`
         - [ ] `priceId`

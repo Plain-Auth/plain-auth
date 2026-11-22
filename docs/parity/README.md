@@ -91,7 +91,7 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 | [SCIM provisioning](plugins/scim.md) | 66 | 251 |
 | [Sign in with Ethereum](plugins/siwe.md) | 0 | 40 |
 | [Single sign-on](plugins/sso.md) | 67 | 308 |
-| [Stripe](plugins/stripe.md) | 151 | 191 |
+| [Stripe](plugins/stripe.md) | 170 | 185 |
 | [Test utils](plugins/test-utils.md) | 0 | 42 |
 | [Username](plugins/username.md) | 33 | 54 |
 

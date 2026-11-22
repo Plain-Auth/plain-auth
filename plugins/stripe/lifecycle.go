@@ -16,6 +16,10 @@ type SubscriptionIdentity struct {
 	EventID                              string
 	// UpdateFingerprint requests a post-commit receipt for this signed update.
 	UpdateFingerprint string `json:"-"`
+	// NoticeType and flags select callbacks for the accepted event.
+	NoticeType                       sdk.EventType `json:"-"`
+	CreatedPlan                      *Plan         `json:"-"`
+	NotifyUpdate, NotifyCancellation bool          `json:"-"`
 	// Purchase links an immutable Checkout receipt to its original reservation.
 	Purchase *CheckoutPurchase `json:"-"`
 	// SessionToken accompanies a browser-authorized synchronization and is never persisted.
@@ -70,7 +74,7 @@ func (s *subscriptions) handleSubscriptionEvent(c auth.EndpointContext, event sd
 	deleted := event.Type == sdk.EventTypeCustomerSubscriptionDeleted
 	key := SubscriptionIdentity{RemoteID: sub.ID, CustomerID: sub.Customer.ID, EventID: event.ID}
 	ctx := c.Request.Context()
-	notify := s.onUpdate != nil && event.Type == sdk.EventTypeCustomerSubscriptionUpdated
+	notify := s.selectSubscriptionHooks(&key, event.Type, &sub)
 	if notify {
 		var err error
 		key.UpdateFingerprint, err = updateFingerprint(event.Data.Raw)
@@ -82,11 +86,7 @@ func (s *subscriptions) handleSubscriptionEvent(c auth.EndpointContext, event sd
 		return err
 	}
 	if notify {
-		row, err := store.(SubscriptionUpdateStore).ReadStripeSubscriptionUpdate(ctx, key)
-		if err != nil || row == nil {
-			return err
-		}
-		return s.notifySubscriptionUpdate(c, event, &sub, *row)
+		return s.dispatchSubscriptionHooks(c, store, key, event)
 	}
 	return nil
 }
@@ -144,6 +144,10 @@ func (s *subscriptions) reconcile(ctx context.Context, store SubscriptionLifecyc
 		}
 		_, organization := OrganizationFromContext(ctx)
 		change := s.subscriptionChange(sub, deleted, organization)
+		if key.NoticeType == sdk.EventTypeCustomerSubscriptionCreated && change.Plan != "" {
+			plan := s.plans[change.Plan]
+			key.CreatedPlan = &plan
+		}
 		if purchase := key.Purchase; purchase != nil {
 			a := purchase.Attempt
 			if before.Owner != a.Owner || before.LocalID != "" && before.LocalID != a.LocalSubscription || sub.Livemode != purchase.Live {

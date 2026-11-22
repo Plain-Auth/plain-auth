@@ -60,7 +60,8 @@ func fixtureStripe(ctx context.Context, store *sqlstore.Store, endpoint string, 
 	opts := billing.Options{Organization: org, WebhookSecret: "whsec_offline_fixture",
 		Portal: &billing.PortalOptions{Client: provider, Customers: store}, Subscriptions: subscriptions,
 	}
-	if os.Getenv("CONFORMANCE_STRIPE_UPDATE_OBSERVER") == "1" {
+	family := os.Getenv("CONFORMANCE_STRIPE_LIFECYCLE_OBSERVERS") == "1"
+	if family || os.Getenv("CONFORMANCE_STRIPE_UPDATE_OBSERVER") == "1" {
 		appendRecord := func(record any) error {
 			f, err := os.OpenFile(os.Args[1]+".stripe-updates", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0600)
 			if err != nil {
@@ -73,7 +74,31 @@ func fixtureStripe(ctx context.Context, store *sqlstore.Store, endpoint string, 
 			if err := appendRecord([]any{"update", u.Event.ID, u.StripeSubscription.ID, u.Subscription.ReferenceID, u.Subscription.Status, u.StripeSubscription.Status}); err != nil {
 				return err
 			}
+			if family {
+				return nil
+			}
 			return errors.New("expected test observer failure")
+		}
+		if family {
+			subscriptions.OnSubscriptionCreated = func(ctx context.Context, p billing.SubscriptionCreated) error {
+				return appendRecord([]string{"created", p.Event.ID, p.StripeSubscription.ID, p.Subscription.ReferenceID, p.Plan.Name, p.Subscription.Status})
+			}
+			subscriptions.OnSubscriptionCancel = func(ctx context.Context, p billing.SubscriptionCancellation) error {
+				details := ""
+				if p.CancellationDetails != nil {
+					details = p.CancellationDetails.Comment
+				}
+				if err := appendRecord([]string{"cancel", p.Event.ID, p.StripeSubscription.ID, p.Subscription.ReferenceID, details}); err != nil {
+					return err
+				}
+				if details == "fixture-failure" {
+					return errors.New("expected cancellation observer failure")
+				}
+				return nil
+			}
+			subscriptions.OnSubscriptionDeleted = func(ctx context.Context, p billing.SubscriptionEvent) error {
+				return appendRecord([]string{"deleted", p.Event.ID, p.StripeSubscription.ID, p.Subscription.ReferenceID, p.Subscription.Status})
+			}
 		}
 		opts.OnEvent = func(ctx context.Context, e sdk.Event) error { return appendRecord([]string{"event", e.ID}) }
 	}

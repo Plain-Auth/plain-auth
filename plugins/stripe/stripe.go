@@ -105,6 +105,11 @@ func New(opts Options) authn.Plugin {
 					return errors.New("stripe: subscription update callbacks require a store with committed update receipts")
 				}
 			}
+			if subs.onCreated != nil || subs.onDeleted != nil || subs.onCancel != nil {
+				if _, ok := store.(SubscriptionNotificationStore); !ok {
+					return errors.New("stripe: subscription lifecycle callbacks require a store with transition receipts")
+				}
+			}
 			if err := s.CheckSubscriptionSchema(context.Background()); err != nil {
 				return err
 			}

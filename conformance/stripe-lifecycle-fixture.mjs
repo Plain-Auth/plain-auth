@@ -504,3 +504,71 @@ export async function subscriptionUpdateCallback(t, { reference, goFixture, inst
     }
   });
 }
+
+export async function subscriptionLifecycleCallbacks(t, { reference, goFixture, instrument }) {
+  for (const runtime of ["reference", "Go"]) await t.test(runtime, async t => {
+    const remote = await localStripe(t);
+    const calls = [];
+    const server = runtime === "Go"
+      ? await goFixture(t, ["stripe-subscriptions"], { CONFORMANCE_STRIPE_URL: remote.url, CONFORMANCE_STRIPE_LIFECYCLE_OBSERVERS: "1" })
+      : await reference(t, [stripe({
+        stripeClient: remote.api, stripeWebhookSecret: webhookSecret,
+        subscription: { enabled: true, plans: [{ name: "basic", priceId: basicPrice }],
+          onSubscriptionCreated: async p => calls.push(["created", p.event.id, p.stripeSubscription.id, p.subscription.referenceId, p.plan.name, p.subscription.status]),
+          onSubscriptionCancel: async p => {
+            const comment = p.cancellationDetails?.comment ?? "";
+            calls.push(["cancel", p.event.id, p.stripeSubscription.id, p.subscription.referenceId, comment]);
+            if (comment === "fixture-failure") throw new Error("expected cancellation observer failure");
+          },
+          onSubscriptionUpdate: async p => calls.push(["update", p.event.id, p.stripeSubscription.id, p.subscription.referenceId, p.subscription.status, p.stripeSubscription.status]),
+          onSubscriptionDeleted: async p => calls.push(["deleted", p.event.id, p.stripeSubscription.id, p.subscription.referenceId, p.subscription.status]),
+        }, onEvent: async e => calls.push(["event", e.id]),
+      })]);
+    const db = server.database ?? new DatabaseSync(server.databasePath);
+    if (!server.database) t.after(() => db.close());
+    const client = instrument(server, [stripeClient({ subscription: true })]).client;
+    const {user} = ok(await client.signUp.email({ name: "Buyer", email: "lifecycle@example.test", password: "local-billing-password" }));
+    const sub = remote.subscriptions.get("sub_owner");
+    db.prepare('UPDATE "user" SET "stripeCustomerId"=? WHERE id=?').run(sub.customer, user.id);
+    const expected = [];
+    async function deliver(kind, id, ...stages) {
+      const body = JSON.stringify({ id, object: "event", type: "customer.subscription." + kind,
+        api_version: Stripe.API_VERSION, created: 1712345678, livemode: false, data: { object: sub } });
+      const signature = remote.api.webhooks.generateTestHeaderString({ payload: body, secret: webhookSecret });
+      const response = await server.send(new Request(server.baseURL + "/api/auth/stripe/webhook", { method: "POST",
+        headers: { "content-type": "application/json", "stripe-signature": signature }, body }));
+      assert.equal(response.status, 200, await response.text());
+      for (const stage of stages) {
+        const detail = { created: ["basic", sub.status], cancel: [sub.cancellation_details?.comment ?? ""],
+          update: [sub.status, sub.status], deleted: ["canceled"] }[stage];
+        expected.push([stage, id, sub.id, user.id, ...detail]);
+      }
+      expected.push(["event", id]);
+      const actual = runtime === "Go" ? (await readFile(server.databasePath + ".stripe-updates", "utf8")).trim().split("\n").map(JSON.parse) : calls;
+      assert.deepEqual(actual, expected);
+    }
+    await deliver("created", "evt_created", "created");
+    await deliver("created", "evt_created");
+    assert.equal(ok(await client.subscription.list())[0].referenceId, user.id);
+    sub.cancel_at_period_end = true;
+    sub.cancellation_details = { reason: "cancellation_requested", comment: "period-end" };
+    await deliver("updated", "evt_period_end", "cancel", "update");
+    await deliver("updated", "evt_period_end", "update");
+    await deliver("updated", "evt_still_pending", "update");
+    sub.cancel_at_period_end = false;
+    sub.cancellation_details = null;
+    await deliver("updated", "evt_restored", "update");
+    sub.cancel_at = sub.items.data[0].current_period_end;
+    sub.cancellation_details = { reason: "cancellation_requested", comment: "fixture-failure" };
+    await deliver("updated", "evt_dated", "cancel");
+    await deliver("updated", "evt_dated", "update");
+    sub.status = "canceled";
+    sub.cancel_at = null;
+    sub.canceled_at = sub.items.data[0].current_period_end;
+    await deliver("updated", "evt_terminal_update", "update");
+    for (let delivery = 0; delivery < 2; delivery++) {
+      await deliver("deleted", "evt_deleted", "deleted");
+    }
+    assert.deepEqual(ok(await client.subscription.list()), []);
+  });
+}

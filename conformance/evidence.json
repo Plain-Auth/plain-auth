@@ -2214,6 +2214,11 @@
       "label": "Recover a committed subscription update after a receipt read fails without applying the provider state twice",
       "test": "adapters/sqlstore/stripe_update_callback_test.go",
       "marker": "a retry could not deliver the already committed update"
+    },
+    {
+      "label": "Call a fresh pending-cancellation observer before the update hook and continue to the general event hook after a host failure",
+      "test": "conformance/stripe-lifecycle-fixture.mjs",
+      "marker": "await deliver(\"updated\", \"evt_dated\", \"cancel\")"
     }
   ],
   "plugin-symbol/captcha/captcha": [
@@ -8611,6 +8616,84 @@
       "label": "Use a mobile ID token to sign in only after the authenticated account owner explicitly links the provider",
       "test": "oauth_signup_test.go",
       "marker": "func TestIDTokenExplicitAccountLinking"
+    }
+  ],
+  "plugin-symbol/stripe/SubscriptionOptions/onSubscriptionCreated": [
+    {
+      "label": "Notify once for a new Dashboard subscription with its configured plan and committed owner reference",
+      "test": "conformance/stripe-lifecycle-fixture.mjs",
+      "marker": "await deliver(\"created\", \"evt_created\", \"created\")",
+      "complete": true
+    },
+    {
+      "label": "Exclude Checkout’s existing incomplete local row and claim concurrent Dashboard creation once",
+      "test": "adapters/sqlstore/stripe_lifecycle_callbacks_test.go",
+      "marker": "count(\"created:evt_cart\", 0)"
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L864/`onSubscriptionCreated`": [
+    {
+      "label": "Notify once for a new Dashboard subscription with its configured plan and committed owner reference",
+      "test": "conformance/stripe-lifecycle-fixture.mjs",
+      "marker": "await deliver(\"created\", \"evt_created\", \"created\")",
+      "complete": true
+    },
+    {
+      "label": "Exclude Checkout’s existing incomplete local row and claim concurrent Dashboard creation once",
+      "test": "adapters/sqlstore/stripe_lifecycle_callbacks_test.go",
+      "marker": "count(\"created:evt_cart\", 0)"
+    }
+  ],
+  "plugin-symbol/stripe/SubscriptionOptions/onSubscriptionCancel": [
+    {
+      "label": "Notify on both period-end and explicitly dated cancellation transitions, before the update and general hooks",
+      "test": "conformance/stripe-lifecycle-fixture.mjs",
+      "marker": "await deliver(\"updated\", \"evt_period_end\", \"cancel\", \"update\")",
+      "complete": true
+    },
+    {
+      "label": "Suppress a stale pending-cancellation event and report a fresh transition after restoration",
+      "test": "adapters/sqlstore/stripe_lifecycle_callbacks_test.go",
+      "marker": "count(\"cancel:evt_stale\", 0)"
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L866/`onSubscriptionCancel`": [
+    {
+      "label": "Notify on both period-end and explicitly dated cancellation transitions, before the update and general hooks",
+      "test": "conformance/stripe-lifecycle-fixture.mjs",
+      "marker": "await deliver(\"updated\", \"evt_period_end\", \"cancel\", \"update\")",
+      "complete": true
+    },
+    {
+      "label": "Suppress a stale pending-cancellation event and report a fresh transition after restoration",
+      "test": "adapters/sqlstore/stripe_lifecycle_callbacks_test.go",
+      "marker": "count(\"cancel:evt_stale\", 0)"
+    }
+  ],
+  "plugin-symbol/stripe/SubscriptionOptions/onSubscriptionDeleted": [
+    {
+      "label": "Notify after a signed deletion, including redeliveries after an earlier terminal update",
+      "test": "conformance/stripe-lifecycle-fixture.mjs",
+      "marker": "await deliver(\"deleted\", \"evt_deleted\", \"deleted\")",
+      "complete": true
+    },
+    {
+      "label": "Preserve the organization’s local subscription identity across concurrent signed deletion deliveries",
+      "test": "adapters/sqlstore/stripe_lifecycle_callbacks_test.go",
+      "marker": "deletion changed the local organization subscription identity"
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L867/`onSubscriptionDeleted`": [
+    {
+      "label": "Notify after a signed deletion, including redeliveries after an earlier terminal update",
+      "test": "conformance/stripe-lifecycle-fixture.mjs",
+      "marker": "await deliver(\"deleted\", \"evt_deleted\", \"deleted\")",
+      "complete": true
+    },
+    {
+      "label": "Preserve the organization’s local subscription identity across concurrent signed deletion deliveries",
+      "test": "adapters/sqlstore/stripe_lifecycle_callbacks_test.go",
+      "marker": "deletion changed the local organization subscription identity"
     }
   ]
 }
