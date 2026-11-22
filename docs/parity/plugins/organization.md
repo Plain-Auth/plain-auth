@@ -78,8 +78,13 @@
   - [ ] `GET /organization/get-active-member-role`
   - [ ] `POST /organization/create`
     - [x] Create an organization and its owner membership atomically ([test](../../../plugins/organization/organization_test.go#L93))
-  - [ ] `POST /organization/check-slug`
+  - [x] `POST /organization/check-slug` ([test](../../../conformance/organization-profile.mjs#L39))
+    - [x] Check available and occupied slugs using a signed-in client, including after a rename ([test](../../../conformance/organization-profile.mjs#L39))
+    - [x] Reject anonymous slug lookup and preserve the authenticated callback contract ([test](../../../conformance/organization-profile.mjs#L20))
   - [ ] `POST /organization/update`
+    - [x] Update an explicit or active organization, clear its logo and replace metadata using the released client ([test](../../../conformance/organization-profile.mjs#L30))
+    - [x] Require active owner or admin membership and roll back other changes on a slug collision ([test](../../../conformance/organization-profile.mjs#L38))
+    - [x] Serialize competing slug claims across two connections and reject revoked sessions on three SQL engines ([test](../../../adapters/sqlstore/organization_profile_test.go#L112))
   - [ ] `POST /organization/delete`
   - [ ] `GET /organization/get-organization`
     - [x] Resolve the active organization and enforce membership ([test](../../../plugins/organization/organization_test.go#L98))
@@ -172,6 +177,8 @@
       - [ ] Restrict who can create an organization
       - [ ] Check if organization slug is taken
         - [ ] `POST /organization/check-slug`
+          - [x] Check available and occupied slugs using a signed-in client, including after a rename ([test](../../../conformance/organization-profile.mjs#L39))
+          - [x] Reject anonymous slug lookup and preserve the authenticated callback contract ([test](../../../conformance/organization-profile.mjs#L20))
           - [ ] Parameter `slug`
     - [ ] Organization Hooks
       - [ ] Legacy organizationCreation hooks
@@ -203,6 +210,9 @@
         - [ ] Parameter `membersLimit` (optional)
     - [ ] Update Organization
       - [ ] `POST /organization/update`
+        - [x] Update an explicit or active organization, clear its logo and replace metadata using the released client ([test](../../../conformance/organization-profile.mjs#L30))
+        - [x] Require active owner or admin membership and roll back other changes on a slug collision ([test](../../../conformance/organization-profile.mjs#L38))
+        - [x] Serialize competing slug claims across two connections and reject revoked sessions on three SQL engines ([test](../../../adapters/sqlstore/organization_profile_test.go#L112))
         - [ ] Parameter `data`
         - [ ] Parameter `name` (optional)
         - [ ] Parameter `slug` (optional)
@@ -261,7 +271,7 @@
     - [ ] Update Member Role
       - [x] Use the Go HTTP client and authenticated native service to update an existing membership ([test](../../../adapters/sqlstore/organization_role_test.go#L86))
       - [ ] `POST /organization/update-member-role`
-        - [x] Publish the string-or-array request and direct member response in the configured OpenAPI document ([test](../../../plugins/openapi/profile_test.go#L76))
+        - [x] Publish the string-or-array request and direct member response in the configured OpenAPI document ([test](../../../plugins/openapi/profile_test.go#L84))
         - [ ] Parameter `role`
         - [ ] Parameter `memberId`
         - [ ] Parameter `organizationId` (optional)

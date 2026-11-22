@@ -71,6 +71,14 @@ func TestConfiguredOrganizationAndBillingSchema(t *testing.T) {
 	if node(paths, "/organization/list-teams", "get", "responses", "200", "content", "application/json", "schema", "items")["$ref"] != "#/components/schemas/Team" {
 		t.Fatal("list team response schema")
 	}
+	profile := node(paths, "/organization/update", "post", "responses", "200", "content", "application/json", "schema")
+	if profile["$ref"] != "#/components/schemas/Organization" {
+		t.Fatal("profile update must return the organization directly", profile)
+	}
+	slug := node(paths, "/organization/check-slug", "post", "responses", "200", "content", "application/json", "schema", "properties", "status")
+	if slug["type"] != "boolean" {
+		t.Fatal("slug availability must describe a boolean result", slug)
+	}
 	role := node(paths, "/organization/update-member-role", "post")
 	if node(role, "responses", "200", "content", "application/json", "schema")["$ref"] != "#/components/schemas/Member" {
 		t.Fatal("role update must return the public member directly")

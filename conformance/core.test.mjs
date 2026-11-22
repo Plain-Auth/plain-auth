@@ -1568,3 +1568,8 @@ test("signed trial start, conversion, and expiry invoke each plan callback in or
   await t.test("trial callbacks without subscription observers",
     t => trialCallbacks(t, { reference, goFixture, instrument }, "active", true));
 });
+
+test("organization profile edits and slug availability match for owners, admins and other sessions", async t => {
+  const { compareOrganizationProfiles } = await import("./organization-profile.mjs");
+  await compareOrganizationProfiles(t, {reference, goFixture, instrument});
+});

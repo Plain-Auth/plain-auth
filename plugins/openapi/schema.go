@@ -137,6 +137,10 @@ func publicResponse(route stonewrit.HTTPRoute, info stonewrit.HTTPDescription, f
 		return responseObject(object{"apiKeys": array(modelRef("APIKey")), "total": object{"type": "integer"}, "limit": object{"type": "integer"}, "offset": object{"type": "integer"}}, "apiKeys", "total")
 	case "/organization/create":
 		return object{"allOf": []object{modelRef("Organization"), responseObject(object{"members": array(modelRef("Member"))}, "members")}}
+	case "/organization/update":
+		return modelRef("Organization")
+	case "/organization/check-slug":
+		return responseObject(object{"status": object{"type": "boolean"}}, "status")
 	case "/organization/get-organization", "/organization/set-active":
 		return object{"anyOf": []object{modelRef("Organization"), {"type": "null"}}}
 	case "/organization/update-member-role":

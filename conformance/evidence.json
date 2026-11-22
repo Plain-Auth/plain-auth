@@ -9101,5 +9101,65 @@
       "test": "adapters/sqlstore/stripe_trial_callbacks_test.go",
       "marker": "func TestStripePlanTrialCallbacks("
     }
+  ],
+  "plugin/organization/POST /organization/update": [
+    {
+      "label": "Update an explicit or active organization, clear its logo and replace metadata using the released client",
+      "test": "conformance/organization-profile.mjs",
+      "marker": "const updated=ok(await patch"
+    },
+    {
+      "label": "Require active owner or admin membership and roll back other changes on a slug collision",
+      "test": "conformance/organization-profile.mjs",
+      "marker": "assert.equal(confirmed.name,\"Second\")"
+    },
+    {
+      "label": "Serialize competing slug claims across two connections and reject revoked sessions on three SQL engines",
+      "test": "adapters/sqlstore/organization_profile_test.go",
+      "marker": "slug did not have exactly one owner"
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L787/`POST /organization/update`": [
+    {
+      "label": "Update an explicit or active organization, clear its logo and replace metadata using the released client",
+      "test": "conformance/organization-profile.mjs",
+      "marker": "const updated=ok(await patch"
+    },
+    {
+      "label": "Require active owner or admin membership and roll back other changes on a slug collision",
+      "test": "conformance/organization-profile.mjs",
+      "marker": "assert.equal(confirmed.name,\"Second\")"
+    },
+    {
+      "label": "Serialize competing slug claims across two connections and reject revoked sessions on three SQL engines",
+      "test": "adapters/sqlstore/organization_profile_test.go",
+      "marker": "slug did not have exactly one owner"
+    }
+  ],
+  "plugin/organization/POST /organization/check-slug": [
+    {
+      "label": "Check available and occupied slugs using a signed-in client, including after a rename",
+      "test": "conformance/organization-profile.mjs",
+      "marker": "assert.deepEqual(ok(await check(owner,\"org-early\"))",
+      "complete": true
+    },
+    {
+      "label": "Reject anonymous slug lookup and preserve the authenticated callback contract",
+      "test": "conformance/organization-profile.mjs",
+      "marker": "check(anonymous,\"org-late\")"
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L143/`POST /organization/check-slug`": [
+    {
+      "label": "Check available and occupied slugs using a signed-in client, including after a rename",
+      "test": "conformance/organization-profile.mjs",
+      "marker": "assert.deepEqual(ok(await check(owner,\"org-early\"))",
+      "complete": true
+    },
+    {
+      "label": "Reject anonymous slug lookup and preserve the authenticated callback contract",
+      "test": "conformance/organization-profile.mjs",
+      "marker": "check(anonymous,\"org-late\")"
+    }
   ]
 }

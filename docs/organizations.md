@@ -40,12 +40,36 @@ The application provides `sendInvitation`, its configured public `origin` and it
 | POST | `/organization/invite-member` | Invite by email and role, using an explicit organization ID or the active selection |
 | POST | `/organization/accept-invitation` | Accept by invitation ID, create the membership, and select the organization |
 | POST | `/organization/remove-member` | Remove by membership ID or email. Omit `organizationId` to use the active organization. |
+| POST | `/organization/check-slug` | Check whether a slug is available to register. Requires a signed-in user. |
+| POST | `/organization/update` | Update an organization's name, slug, logo or metadata as an owner or admin. |
 | POST | `/organization/update-member-role` | Replace roles by membership ID in the supplied or active organization. |
 | POST | `/organization/leave` | End the signed-in user's own membership in the supplied `organizationId`. |
 
 An owner can invite members, admins or other owners. An admin can invite members or admins. The member role grants no invitation permission. The SQL store commits invitation acceptance and the resulting membership together. The [organization feature checklist](parity/plugins/organization.md) tracks additional role policies and operations.
 
 Browser membership changes check the acting account and session inside the database transaction. Acceptance reads the current account email and verification status. Account deletion removes invitations that user sent, their organization and team memberships, and updates affected team counts. Other members keep their memberships and invitations.
+
+## Update an organization's profile
+
+An owner or admin can change the profile in one request. Use the signed-in Go client or send `POST /organization/update` under your auth mount. Supply `organizationId` to select a specific organization. Omit it to use the organization selected on the current session.
+
+```json
+{"organizationId":"org_example","data":{"name":"Customer Support","slug":"support","logo":null,"metadata":{"region":"west"}}}
+```
+
+Only the supplied fields change. A JSON null clears the logo. Metadata replaces the entire object. The response contains the updated organization with its original ID and creation time. A slug collision returns `400 ORGANIZATION_SLUG_ALREADY_TAKEN` and rolls back every field in the request. An ordinary member receives `403 YOU_ARE_NOT_ALLOWED_TO_UPDATE_THIS_ORGANIZATION`.
+
+A signed-in user can call `POST /organization/check-slug` with `{"slug":"support"}`. It returns `{"status":true}` for an available slug. Another request can claim the slug before the update. Check the update’s result when saving. The Go client exposes both methods.
+
+```go
+name := "Customer Support"
+updated, err := c.UpdateOrganization(ctx, orgID, organization.ProfileUpdate{
+    Name: &name, ClearLogo: true,
+    Metadata: map[string]any{"region": "west"},
+})
+```
+
+SQL adapters check the live session and current membership in the update transaction. The authenticated native service accepts the same change through `service.UpdateOrganization`. [Browser and role tests](../conformance/organization-profile.mjs) · [Concurrent slug claims](../adapters/sqlstore/organization_profile_test.go)
 
 ## Change membership roles
 
