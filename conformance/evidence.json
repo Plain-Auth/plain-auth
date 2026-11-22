@@ -208,6 +208,11 @@
       "label": "Reject malformed user configuration before opening a target database",
       "test": "cmd/authctl/user_fields_test.go",
       "marker": "func TestUserFieldCommandsValidateBeforeConnecting("
+    },
+    {
+      "label": "Report mapped wallet drift through the process exit code and JSON findings on three SQL engines",
+      "test": "cmd/authctl/wallet_schema_test.go",
+      "marker": "read-only check missed mapped wallet table"
     }
   ],
   "cli/generate": [
@@ -240,6 +245,11 @@
       "label": "Generate the selected plugin schema with independent user and session JSON declarations on all three dialects",
       "test": "cmd/authctl/user_fields_test.go",
       "marker": "generated combined schema"
+    },
+    {
+      "label": "Generate the configured wallet model alongside user and session fields from one portable JSON declaration",
+      "test": "cmd/authctl/wallet_schema_test.go",
+      "marker": "wallet CLI generated different SQL than the configured public API"
     }
   ],
   "cli/migrate": [
@@ -277,6 +287,11 @@
       "label": "Upgrade a populated account with zero, false and null values while preserving its original fields and session schema",
       "test": "cmd/authctl/user_fields_test.go",
       "marker": "populated account backfill:"
+    },
+    {
+      "label": "Replay the mapped wallet schema with profile fields and the API-key ledger while retaining a populated wallet",
+      "test": "cmd/authctl/wallet_schema_test.go",
+      "marker": "repeated CLI migration lost mapped wallet ownership"
     }
   ],
   "docs/content/docs/concepts/cookies.mdx#L62": [

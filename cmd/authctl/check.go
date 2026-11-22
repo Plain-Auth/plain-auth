@@ -24,15 +24,15 @@ func failureCode(args []string, err error) int {
 	return 1
 }
 
-func checkDatabase(ctx context.Context, dialect string, profiles []string, fields schema.AdditionalFields, asJSON bool, out io.Writer) error {
+func checkDatabase(ctx context.Context, dialect string, profiles []string, options schema.Options, asJSON bool, out io.Writer) error {
 	dsn := os.Getenv("AUTH_DSN")
 	if dsn == "" {
-		if _, err := schema.Tables(dialect, profiles); err != nil {
+		if _, err := schema.TablesWithOptions(dialect, profiles, options); err != nil {
 			return err
 		}
 		return errors.New("set AUTH_DSN to the target database")
 	}
-	findings, err := sqlstore.CheckSchemaWithAdditionalFields(ctx, dialect, dsn, profiles, fields)
+	findings, err := sqlstore.CheckSchemaWithOptions(ctx, dialect, dsn, profiles, options)
 	if err != nil {
 		return err
 	}

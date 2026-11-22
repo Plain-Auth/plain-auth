@@ -111,3 +111,26 @@ The `scim-managed` comparison covers 26 selections per dialect and repeats their
 The `sso` schema comparison verifies that its provider table and indexes compose with 23 selections per dialect. These include the profile alone, each other profile in isolation and four maximal combinations containing managed SCIM and organization billing. The tests repeat each selected populated SQLite upgrade. The local SQL lifecycle tests also upgrade existing accounts on PostgreSQL and MySQL. [Schema tests](../conformance/schema.test.mjs) · [Provider management tests](../adapters/sqlstore/sso_test.go)
 
 The `sso-domain-verification` checks cover 24 profile selections per SQL dialect, including the base SSO profile combined with its verification extension. Each selection upgrades a populated SQLite provider catalog and repeats the migration. Three-engine tests exercise a live upgrade and domain verification through the public API. [Profile comparison](../conformance/schema.test.mjs) · [Live migration](../adapters/sqlstore/sso_domain_test.go)
+
+## Configure the wallet table
+
+Pass `--wallet-schema wallet.json` with the `siwe` profile on `generate`, `check` and `migrate`. The JSON object accepts the following physical names. Supply only the names you want to override.
+
+```json
+{
+  "table": "wallet_address",
+  "userId": "user_id",
+  "address": "wallet_address",
+  "chainId": "chain_id",
+  "isPrimary": "is_primary",
+  "createdAt": "created_at"
+}
+```
+
+```sh
+authctl generate --dialect postgres --plugins siwe --wallet-schema wallet.json
+authctl check schema --dialect postgres --plugins siwe --wallet-schema wallet.json --json
+authctl migrate --dialect postgres --plugins siwe --wallet-schema wallet.json
+```
+
+The commands also accept your user-field and session-field declarations. Repeating the same migration preserves existing wallet associations. To change a populated layout, migrate the physical names and data before applying the new configuration. A Go application can read the same file with `schema.ReadWalletSchema` and pass the result to `schema.Options.Wallet` and `siwe.Options.Schema`. [Wallet schema configuration](siwe.md#map-an-existing-wallet-schema)

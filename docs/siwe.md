@@ -100,4 +100,6 @@ if err != nil {
 
 Opening the same mapping again preserves populated records. When renaming existing storage, migrate the table, columns and owner index with your normal database migration before deploying the new declaration. Stop writers during that cutover and back up the database. The store checks an existing target’s expected columns and refuses to create an alternate wallet table when it detects established wallet accounts. A mapped database can also be opened by a server without wallet routes. Pass the same schema options there so mailbox promotion, credential unlinking and account deletion can clean up wallet rows. Go nodes compare the wallet associations with the canonical account subjects before authorizing cross-chain access or deleting established links.
 
+Pass the same JSON declaration to `authctl generate`, `check` and `migrate` with `--wallet-schema FILE`. [Wallet schema commands](schema.md#configure-the-wallet-table)
+
 A custom wallet adapter implements `siwe.MappingStore` to check the configured schema against its own physical layout. [Database configuration](databases.md)

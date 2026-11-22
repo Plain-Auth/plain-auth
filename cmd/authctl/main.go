@@ -29,6 +29,7 @@ const usage = `Usage: authctl <command>
 
   check, generate and migrate accept --plugins with comma-separated schema profiles.
   check, generate and migrate accept --user-fields FILE and --session-fields FILE with JSON field definitions.
+  With the siwe plugin, --wallet-schema FILE selects the physical wallet table and columns.
   migrate --api-key-ledger includes the API-key schema and reserves existing key digests.
 `
 
@@ -72,8 +73,9 @@ func run(ctx context.Context, args []string, out, errOut io.Writer) error {
 		fs.SetOutput(errOut)
 		dialect := fs.String("dialect", "", "Database dialect (sqlite, postgres, mysql)")
 		pluginNames := fs.String("plugins", "", "Comma-separated schema profiles ("+strings.Join(schema.Profiles(), ", ")+")")
-		userFile := fieldPathFlag(fs, "user")
-		sessionFile := fieldPathFlag(fs, "session")
+		userFile := schemaPathFlag(fs, "user-fields", "user fields")
+		sessionFile := schemaPathFlag(fs, "session-fields", "session fields")
+		walletFile := schemaPathFlag(fs, "wallet-schema", "wallet schema")
 		var asJSON, prepareKeyLedger bool
 		if args[0] == "check" {
 			fs.BoolVar(&asJSON, "json", false, "Write findings as a JSON array")
@@ -96,22 +98,26 @@ func run(ctx context.Context, args []string, out, errOut io.Writer) error {
 				profiles = append(profiles, strings.TrimSpace(name))
 			}
 		}
-		users, err := loadFieldFile(*userFile, "user", schema.ReadUserFields)
+		users, err := loadSchemaFile(*userFile, "user fields", schema.ReadUserFields)
 		if err != nil {
 			return err
 		}
-		sessions, err := loadFieldFile(*sessionFile, "session", schema.ReadSessionFields)
+		sessions, err := loadSchemaFile(*sessionFile, "session fields", schema.ReadSessionFields)
 		if err != nil {
 			return err
 		}
-		fields := schema.AdditionalFields{User: users, Session: sessions}
+		wallet, err := loadSchemaFile(*walletFile, "wallet schema", schema.ReadWalletSchema)
+		if err != nil {
+			return err
+		}
+		options := schema.Options{AdditionalFields: schema.AdditionalFields{User: users, Session: sessions}, Wallet: wallet}
 		if args[0] == "check" {
-			return checkDatabase(ctx, *dialect, profiles, fields, asJSON, out)
+			return checkDatabase(ctx, *dialect, profiles, options, asJSON, out)
 		}
 		if prepareKeyLedger {
 			profiles = append(profiles, "api-key")
 		}
-		ddl, err := schema.GenerateWithAdditionalFields(*dialect, profiles, fields)
+		ddl, err := schema.GenerateWithOptions(*dialect, profiles, options)
 		if err != nil {
 			return err
 		}
@@ -124,8 +130,8 @@ func run(ctx context.Context, args []string, out, errOut io.Writer) error {
 			return errors.New("set AUTH_DSN to the target database")
 		}
 		var store *sqlstore.Store
-		if len(fields.User)+len(fields.Session) > 0 {
-			store, err = sqlstore.OpenWithAdditionalFields(ctx, *dialect, dsn, profiles, fields)
+		if len(users)+len(sessions) > 0 || *walletFile != "" {
+			store, err = sqlstore.OpenWithOptions(ctx, *dialect, dsn, profiles, options)
 		} else {
 			store, err = sqlstore.OpenWithSchema(ctx, *dialect, dsn, ddl)
 		}
@@ -145,11 +151,11 @@ func run(ctx context.Context, args []string, out, errOut io.Writer) error {
 	}
 }
 
-func fieldPathFlag(fs *flag.FlagSet, model string) *string {
+func schemaPathFlag(fs *flag.FlagSet, name, description string) *string {
 	var file string
-	fs.Func(model+"-fields", "Read additional "+model+" fields from a JSON file", func(value string) error {
+	fs.Func(name, "Read "+description+" from a JSON file", func(value string) error {
 		if value == "" {
-			return fmt.Errorf("a %s fields file is required", model)
+			return fmt.Errorf("a %s file is required", description)
 		}
 		file = value
 		return nil
@@ -157,17 +163,18 @@ func fieldPathFlag(fs *flag.FlagSet, model string) *string {
 	return &file
 }
 
-func loadFieldFile[T any](path, model string, parse func(io.Reader) (map[string]T, error)) (map[string]T, error) {
+func loadSchemaFile[T any](path, description string, parse func(io.Reader) (T, error)) (T, error) {
+	var zero T
 	if path == "" {
-		return nil, nil
+		return zero, nil
 	}
 	file, err := os.Open(path)
 	if err != nil {
-		return nil, fmt.Errorf("read %s fields: %w", model, err)
+		return zero, fmt.Errorf("read %s: %w", description, err)
 	}
-	fields, err := parse(file)
+	value, err := parse(file)
 	if err = errors.Join(err, file.Close()); err != nil {
-		return nil, fmt.Errorf("read %s fields: %w", model, err)
+		return zero, fmt.Errorf("read %s: %w", description, err)
 	}
-	return fields, nil
+	return value, nil
 }
