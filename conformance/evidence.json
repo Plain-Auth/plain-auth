@@ -2229,6 +2229,11 @@
       "label": "Verify the signed Checkout callback for personal and organization subscriptions even when subscription creation arrived first",
       "test": "conformance/stripe-organization-fixture.mjs",
       "marker": "await deliver(\"evt_before_checkout\", \"customer.subscription.created\", remote.state.subscription)"
+    },
+    {
+      "label": "Claim trial conversion and expiration once across replicas and preserve general webhook delivery after callback failures",
+      "test": "adapters/sqlstore/stripe_trial_callbacks_test.go",
+      "marker": "func TestStripePlanTrialCallbacks("
     }
   ],
   "plugin-symbol/captcha/captcha": [
@@ -8985,6 +8990,12 @@
       "label": "Record the signed trial and expose its start, end and status through the public billing client",
       "test": "conformance/stripe-organization-fixture.mjs",
       "marker": "if (!priorTrial) assert.equal(Date.parse(row.trialEnd) - Date.parse(row.trialStart)"
+    },
+    {
+      "label": "Claim trial conversion and expiration once across replicas and preserve general webhook delivery after callback failures",
+      "test": "adapters/sqlstore/stripe_trial_callbacks_test.go",
+      "marker": "func TestStripePlanTrialCallbacks(",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/stripe.mdx#L883/`freeTrial`": [
@@ -8992,6 +9003,12 @@
       "label": "Offer the configured trial only for a new personal or organization billing reference with no trial history across plans",
       "test": "conformance/stripe-organization-fixture.mjs",
       "marker": "assert.equal(remote.state.trialDays, priorTrial ? null : \"14\")"
+    },
+    {
+      "label": "Claim trial conversion and expiration once across replicas and preserve general webhook delivery after callback failures",
+      "test": "adapters/sqlstore/stripe_trial_callbacks_test.go",
+      "marker": "func TestStripePlanTrialCallbacks(",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/stripe.mdx#L889": [
@@ -8999,6 +9016,12 @@
       "label": "Offer the configured trial only for a new personal or organization billing reference with no trial history across plans",
       "test": "conformance/stripe-organization-fixture.mjs",
       "marker": "assert.equal(remote.state.trialDays, priorTrial ? null : \"14\")"
+    },
+    {
+      "label": "Claim trial conversion and expiration once across replicas and preserve general webhook delivery after callback failures",
+      "test": "adapters/sqlstore/stripe_trial_callbacks_test.go",
+      "marker": "func TestStripePlanTrialCallbacks(",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/stripe.mdx#L17/Automatic trial abuse prevention": [
@@ -9038,6 +9061,45 @@
       "label": "Require a positive duration and copy the configured number of days at startup",
       "test": "plugins/stripe/lifecycle_test.go",
       "marker": "func TestFreeTrialRequiresPositiveDays("
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L894/`onTrialStart`": [
+    {
+      "label": "Run the checkout trial-start callback before subscription completion on each verified delivery carrying trial dates",
+      "test": "conformance/stripe-organization-fixture.mjs",
+      "marker": "await deliver(\"evt_trial_checkout\", \"checkout.session.completed\", remote.state.checkout, \"start\", \"complete\")",
+      "complete": true
+    },
+    {
+      "label": "Claim trial conversion and expiration once across replicas and preserve general webhook delivery after callback failures",
+      "test": "adapters/sqlstore/stripe_trial_callbacks_test.go",
+      "marker": "func TestStripePlanTrialCallbacks("
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L895/`onTrialEnd`": [
+    {
+      "label": "Notify once on confirmed trial-to-active conversion with the committed subscription and mounted webhook request",
+      "test": "conformance/stripe-organization-fixture.mjs",
+      "marker": "await deliver(\"evt_trial_change\", \"customer.subscription.updated\", remote.state.subscription, \"update\", \"end\")",
+      "complete": true
+    },
+    {
+      "label": "Claim trial conversion and expiration once across replicas and preserve general webhook delivery after callback failures",
+      "test": "adapters/sqlstore/stripe_trial_callbacks_test.go",
+      "marker": "func TestStripePlanTrialCallbacks("
+    }
+  ],
+  "docs/content/docs/plugins/stripe.mdx#L896/`onTrialExpired`": [
+    {
+      "label": "Notify once on confirmed trial expiry after the subscription update hook, preserving the billed organization or user",
+      "test": "conformance/stripe-organization-fixture.mjs",
+      "marker": "await deliver(\"evt_trial_change\", \"customer.subscription.updated\", remote.state.subscription, \"update\", \"expired\")",
+      "complete": true
+    },
+    {
+      "label": "Claim trial conversion and expiration once across replicas and preserve general webhook delivery after callback failures",
+      "test": "adapters/sqlstore/stripe_trial_callbacks_test.go",
+      "marker": "func TestStripePlanTrialCallbacks("
     }
   ]
 }

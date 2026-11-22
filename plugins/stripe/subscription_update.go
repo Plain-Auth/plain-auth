@@ -35,6 +35,7 @@ type SubscriptionNotification struct {
 	Subscription       Subscription
 	Transition, Update bool
 	CreatedPlan        *Plan
+	TrialStatus        string
 }
 
 // SubscriptionNotificationStore returns the committed local snapshot. Transition
@@ -68,7 +69,7 @@ func updateFingerprint(raw json.RawMessage) (string, error) {
 	return hex.EncodeToString(sum[:]), nil
 }
 
-func (s *subscriptions) selectSubscriptionHooks(key *SubscriptionIdentity, kind sdk.EventType, sub *sdk.Subscription) bool {
+func (s *subscriptions) selectSubscriptionHooks(key *SubscriptionIdentity, kind sdk.EventType, sub *sdk.Subscription, organization bool) bool {
 	switch kind {
 	case sdk.EventTypeCustomerSubscriptionCreated:
 		if s.onCreated == nil {
@@ -81,7 +82,13 @@ func (s *subscriptions) selectSubscriptionHooks(key *SubscriptionIdentity, kind 
 	case sdk.EventTypeCustomerSubscriptionUpdated:
 		key.NotifyUpdate = s.onUpdate != nil
 		key.NotifyCancellation = s.onCancel != nil && sub.Status == sdk.SubscriptionStatusActive && (sub.CancelAtPeriodEnd || sub.CancelAt != 0)
-		if !key.NotifyUpdate && !key.NotifyCancellation {
+		if s.observeTrialTransitions && (sub.Status == sdk.SubscriptionStatusActive || sub.Status == sdk.SubscriptionStatusIncompleteExpired) {
+			plan := s.plans[s.subscriptionChange(sub, false, organization).Plan]
+			if trialHook(plan, string(sub.Status)) != nil {
+				key.TrialPlan, key.TrialStatus = plan.Name, string(sub.Status)
+			}
+		}
+		if !key.NotifyUpdate && !key.NotifyCancellation && key.TrialStatus == "" {
 			return false
 		}
 	}
@@ -91,7 +98,7 @@ func (s *subscriptions) selectSubscriptionHooks(key *SubscriptionIdentity, kind 
 
 func (s *subscriptions) dispatchSubscriptionHooks(c auth.EndpointContext, store SubscriptionLifecycleStore, key SubscriptionIdentity, event sdk.Event) error {
 	ctx := c.Request.Context()
-	if event.Type == sdk.EventTypeCustomerSubscriptionUpdated && !key.NotifyCancellation {
+	if event.Type == sdk.EventTypeCustomerSubscriptionUpdated && !key.NotifyCancellation && key.TrialStatus == "" {
 		row, err := store.(SubscriptionUpdateStore).ReadStripeSubscriptionUpdate(ctx, key)
 		if err != nil || row == nil {
 			return err
@@ -114,7 +121,7 @@ func (s *subscriptions) dispatchSubscriptionHooks(c auth.EndpointContext, store 
 	case sdk.EventTypeCustomerSubscriptionDeleted:
 		_, err = callSubscriptionHook(c, event, notice.Subscription, "deletion", nil, func(p SubscriptionEvent) error { return s.onDeleted(ctx, p) })
 	case sdk.EventTypeCustomerSubscriptionUpdated:
-		if notice.Transition {
+		if notice.Transition && s.onCancel != nil {
 			ok, err := callSubscriptionHook(c, event, notice.Subscription, "cancellation", nil, func(p SubscriptionEvent) error {
 				return s.onCancel(ctx, SubscriptionCancellation{p, p.StripeSubscription.CancellationDetails})
 			})
@@ -123,7 +130,15 @@ func (s *subscriptions) dispatchSubscriptionHooks(c auth.EndpointContext, store 
 			}
 		}
 		if notice.Update && s.onUpdate != nil {
-			_, err = callSubscriptionHook(c, event, notice.Subscription, "update", nil, func(p SubscriptionEvent) error { return s.onUpdate(ctx, p) })
+			ok, err := callSubscriptionHook(c, event, notice.Subscription, "update", nil, func(p SubscriptionEvent) error { return s.onUpdate(ctx, p) })
+			if err != nil || !ok {
+				return err
+			}
+		}
+		if hook := trialHook(s.plans[notice.Subscription.Plan], notice.TrialStatus); hook != nil {
+			_, err = callSubscriptionHook(c, event, notice.Subscription, "trial transition", nil, func(p SubscriptionEvent) error {
+				return hook(ctx, TrialTransition{Subscription: p.Subscription, Request: webhookRequest(c.Request)})
+			})
 		}
 	}
 	return err

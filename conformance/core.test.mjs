@@ -1559,3 +1559,12 @@ test("signed Stripe trial checkout uses the selected reference's history across 
       t => trialEligibility(t, { reference, goFixture, instrument }, group, prior));
   }
 });
+
+test("signed trial start, conversion, and expiry invoke each plan callback in order on both runtimes", async t => {
+  const { trialCallbacks } = await import("./stripe-organization-fixture.mjs");
+  for (const target of ["active", "incomplete_expired"]) {
+    await t.test(target, t => trialCallbacks(t, { reference, goFixture, instrument }, target));
+  }
+  await t.test("trial callbacks without subscription observers",
+    t => trialCallbacks(t, { reference, goFixture, instrument }, "active", true));
+});

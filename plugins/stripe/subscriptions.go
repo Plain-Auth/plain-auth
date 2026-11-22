@@ -18,7 +18,10 @@ import (
 
 // FreeTrial offers an eligible billing reference a trial on a new subscription.
 type FreeTrial struct {
-	Days int64
+	Days           int64
+	OnTrialStart   func(context.Context, Subscription) error    `json:"-"`
+	OnTrialEnd     func(context.Context, TrialTransition) error `json:"-"`
+	OnTrialExpired func(context.Context, TrialTransition) error `json:"-"`
 }
 
 // Plan supplies monthly and annual recurring Stripe price IDs.
@@ -134,17 +137,18 @@ var (
 type subscriptionPrice struct{ plan, interval string }
 
 type subscriptions struct {
-	organization             *OrganizationOptions
-	prices                   map[string]subscriptionPrice
-	client                   *sdk.Client
-	plans                    map[string]Plan
-	requireEmailVerification bool
-	hasMeteredAddons         bool
-	onUpdate                 func(context.Context, SubscriptionUpdate) error
-	onCreated                func(context.Context, SubscriptionCreated) error
-	onCancel                 func(context.Context, SubscriptionCancellation) error
-	onDeleted                func(context.Context, SubscriptionEvent) error
-	onComplete               func(context.Context, SubscriptionComplete) error
+	organization                                *OrganizationOptions
+	prices                                      map[string]subscriptionPrice
+	client                                      *sdk.Client
+	plans                                       map[string]Plan
+	requireEmailVerification                    bool
+	hasMeteredAddons                            bool
+	observeTrialStarts, observeTrialTransitions bool
+	onUpdate                                    func(context.Context, SubscriptionUpdate) error
+	onCreated                                   func(context.Context, SubscriptionCreated) error
+	onCancel                                    func(context.Context, SubscriptionCancellation) error
+	onDeleted                                   func(context.Context, SubscriptionEvent) error
+	onComplete                                  func(context.Context, SubscriptionComplete) error
 }
 
 func configureSubscriptions(o *SubscriptionOptions) (*subscriptions, error) {
@@ -163,6 +167,8 @@ func configureSubscriptions(o *SubscriptionOptions) (*subscriptions, error) {
 				return nil, errors.New("stripe: a free trial must last at least one day")
 			}
 			p.FreeTrial = &trial
+			s.observeTrialStarts = s.observeTrialStarts || trial.OnTrialStart != nil
+			s.observeTrialTransitions = s.observeTrialTransitions || trial.OnTrialEnd != nil || trial.OnTrialExpired != nil
 		}
 		p.Name = strings.ToLower(strings.TrimSpace(p.Name))
 		if p.Name == "" || !strings.HasPrefix(p.PriceID, "price_") || len(p.PriceID) == 6 || (p.AnnualPriceID != "" && (!strings.HasPrefix(p.AnnualPriceID, "price_") || len(p.AnnualPriceID) == 6)) || s.plans[p.Name].Name != "" {
@@ -301,7 +307,7 @@ func (s *subscriptions) checkout(c auth.EndpointContext) (any, error) {
 	}
 	ctx := c.Request.Context()
 	store := c.Store().(SubscriptionStore)
-	want := CheckoutAttempt{CheckPrice: true, RetainCompletion: s.onComplete != nil, MeteredPriceIDs: slices.Clone(p.MeteredPriceIDs), AutomaticSeats: automatic, Seats: quantity, Owner: selection.reference, Plan: p.Name, Interval: interval, Price: price, SuccessURL: success, CancelURL: cancel}
+	want := CheckoutAttempt{CheckPrice: true, RetainCompletion: s.onComplete != nil || p.FreeTrial != nil && p.FreeTrial.OnTrialStart != nil, MeteredPriceIDs: slices.Clone(p.MeteredPriceIDs), AutomaticSeats: automatic, Seats: quantity, Owner: selection.reference, Plan: p.Name, Interval: interval, Price: price, SuccessURL: success, CancelURL: cancel}
 	if automatic && p.SeatPriceID != price {
 		want.SeatPrice = p.SeatPriceID
 	}

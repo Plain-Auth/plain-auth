@@ -17,6 +17,7 @@ type stripeUpdateReceipt struct {
 	Kind                 sdk.EventType `json:",omitempty"`
 	Update               bool          `json:",omitempty"`
 	Transition           bool          `json:",omitempty"`
+	TrialStatus          string        `json:",omitempty"`
 	Claimed              bool          `json:",omitempty"`
 	CreatedPlan          *billing.Plan `json:",omitempty"`
 }
@@ -49,19 +50,25 @@ func (s *Store) subscriptionEventReceipt(ctx context.Context, tx *sql.Tx, key bi
 			return nil, nil
 		}
 		m.Update = key.NotifyUpdate || key.NoticeType == ""
-		if key.NotifyCancellation && c.Status == "active" && (c.CancelAtPeriodEnd || c.CancelAt != 0) {
+		pendingCancel := key.NotifyCancellation && c.Status == "active" && (c.CancelAtPeriodEnd || c.CancelAt != 0)
+		trialChange := key.TrialStatus != "" && key.TrialStatus == c.Status && key.TrialPlan == c.Plan
+		if pendingCancel || trialChange {
 			id := r.LocalID
 			if id == "" {
 				id = c.Metadata["subscriptionId"]
 			}
+			var status string
 			var flag sql.NullBool
 			var cancelAt sql.NullTime
-			if err := tx.QueryRowContext(ctx, s.bind(`SELECT "cancelAtPeriodEnd","cancelAt" FROM "subscription" WHERE "id"=? AND "referenceId"=? AND "stripeCustomerId"=?`), id, r.Owner, key.CustomerID).Scan(&flag, &cancelAt); err != nil {
+			if err := tx.QueryRowContext(ctx, s.bind(`SELECT "status","cancelAtPeriodEnd","cancelAt" FROM "subscription" WHERE "id"=? AND "referenceId"=? AND "stripeCustomerId"=?`), id, r.Owner, key.CustomerID).Scan(&status, &flag, &cancelAt); err != nil {
 				return nil, err
 			}
-			m.Transition = !flag.Bool && !cancelAt.Valid
+			m.Transition = pendingCancel && !flag.Bool && !cancelAt.Valid
+			if trialChange && status == "trialing" {
+				m.TrialStatus = c.Status
+			}
 		}
-		if !m.Transition && !m.Update {
+		if !m.Transition && !m.Update && m.TrialStatus == "" {
 			return nil, nil
 		}
 	default:
@@ -151,7 +158,7 @@ func (s *Store) ReadStripeSubscriptionNotification(ctx context.Context, key bill
 		return nil, err
 	}
 	result := &billing.SubscriptionNotification{Subscription: m.Subscription, Update: m.Update, CreatedPlan: m.CreatedPlan}
-	if m.Transition && !m.Claimed {
+	if (m.Transition || m.TrialStatus != "") && !m.Claimed {
 		m.Claimed = true
 		raw, err := json.Marshal(m)
 		if err != nil {
@@ -167,7 +174,10 @@ func (s *Store) ReadStripeSubscriptionNotification(ctx context.Context, key bill
 		if err != nil {
 			return nil, err
 		}
-		result.Transition = n == 1
+		if n == 1 {
+			result.Transition = m.Transition
+			result.TrialStatus = m.TrialStatus
+		}
 	}
 	return result, nil
 }

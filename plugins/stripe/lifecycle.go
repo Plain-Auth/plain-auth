@@ -20,6 +20,7 @@ type SubscriptionIdentity struct {
 	NoticeType                       sdk.EventType `json:"-"`
 	CreatedPlan                      *Plan         `json:"-"`
 	NotifyUpdate, NotifyCancellation bool          `json:"-"`
+	TrialStatus, TrialPlan           string        `json:"-"`
 	// ConfirmedCheckout binds a signed completion to the previously settled purchase.
 	ConfirmedCheckout *CheckoutAttempt `json:"-"`
 	// Purchase links an immutable Checkout receipt to its original reservation.
@@ -76,7 +77,8 @@ func (s *subscriptions) handleSubscriptionEvent(c auth.EndpointContext, event sd
 	deleted := event.Type == sdk.EventTypeCustomerSubscriptionDeleted
 	key := SubscriptionIdentity{RemoteID: sub.ID, CustomerID: sub.Customer.ID, EventID: event.ID}
 	ctx := c.Request.Context()
-	notify := s.selectSubscriptionHooks(&key, event.Type, &sub)
+	_, organization := OrganizationFromContext(ctx)
+	notify := s.selectSubscriptionHooks(&key, event.Type, &sub, organization)
 	if notify {
 		var err error
 		key.UpdateFingerprint, err = updateFingerprint(event.Data.Raw)

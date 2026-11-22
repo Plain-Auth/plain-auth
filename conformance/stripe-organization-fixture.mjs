@@ -403,3 +403,62 @@ export async function trialEligibility(t, { reference, goFixture, instrument }, 
     if (!priorTrial) assert.equal(Date.parse(row.trialEnd) - Date.parse(row.trialStart), 14 * 86400000);
   });
 }
+
+export async function trialCallbacks(t, { reference, goFixture, instrument }, target, standalone = false) {
+  for (const runtime of ["reference", "Go"]) await t.test(runtime, async t => {
+    const remote = await provider(t);
+    const calls = [];
+    const server = runtime === "Go"
+      ? await goFixture(t, ["stripe-subscriptions"], { CONFORMANCE_STRIPE_URL: remote.url, CONFORMANCE_STRIPE_TRIAL_CALLBACKS: standalone ? "solo" : "1" })
+      : await reference(t, [stripe({
+        stripeClient: remote.api, stripeWebhookSecret: secret,
+        subscription: {
+          enabled: true, plans: [{ name: "basic", priceId: "price_basic", freeTrial: {
+            days: 14,
+            onTrialStart: async s => calls.push(["start", s.referenceId, s.status]),
+            onTrialEnd: async ({ subscription }, ctx) =>
+              calls.push(["end", subscription.referenceId, subscription.status, new URL(ctx.request.url).pathname]),
+            onTrialExpired: async (s, ctx) => calls.push(["expired", s.referenceId, s.status, new URL(ctx.request.url).pathname]),
+          } }],
+          onSubscriptionComplete: standalone ? undefined : async ({ event }) => calls.push(["complete", event.id]),
+          onSubscriptionUpdate: standalone ? undefined : async ({ event }) => calls.push(["update", event.id]),
+        },
+        onEvent: async event => calls.push(["event", event.id]),
+      })]);
+    const client = instrument(server, [stripeClient({ subscription: true })]).client;
+    const { user } = checked(await client.signUp.email({
+      name: "Trial buyer", email: "callbacks@example.test", password: "trial-callback-fixture",
+    }));
+    checked(await client.subscription.upgrade({ plan: "basic", disableRedirect: true }));
+    const expected = [];
+    async function deliver(id, type, object, ...order) {
+      const body = JSON.stringify({ id, type, object: "event", api_version: Stripe.API_VERSION,
+        livemode: false, data: { object } });
+      const signature = remote.api.webhooks.generateTestHeaderString({ payload: body, secret });
+      const reply = await server.send(new Request(server.baseURL + "/api/auth/stripe/webhook", {
+        method: "POST", headers: { "content-type": "application/json", "stripe-signature": signature }, body,
+      }));
+      assert.equal(reply.status, 200, await reply.text());
+      for (const operation of order) {
+        if (operation === "start") expected.push(["start", user.id, "trialing"]);
+        else if (operation === "end" || operation === "expired") expected.push([operation, user.id, target, "/api/auth/stripe/webhook"]);
+        else if (!standalone) expected.push([operation, id]);
+      }
+      expected.push(["event", id]);
+      const actual = runtime === "Go"
+        ? (await readFile(server.databasePath + ".stripe-updates", "utf8")).trim().split("\n").map(JSON.parse)
+        : calls;
+      assert.deepEqual(actual, expected);
+    }
+    for (let attempt = 0; attempt < 2; attempt++) {
+      await deliver("evt_trial_checkout", "checkout.session.completed", remote.state.checkout, "start", "complete");
+    }
+    remote.state.subscription.status = target;
+    if (target === "active") {
+      await deliver("evt_trial_change", "customer.subscription.updated", remote.state.subscription, "update", "end");
+    } else {
+      await deliver("evt_trial_change", "customer.subscription.updated", remote.state.subscription, "update", "expired");
+    }
+    await deliver("evt_trial_change", "customer.subscription.updated", remote.state.subscription, "update");
+  });
+}

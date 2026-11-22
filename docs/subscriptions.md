@@ -66,6 +66,18 @@ The SQL adapters check every subscription belonging to the selected personal acc
 
 The store records the trial decision with the checkout reservation. Concurrent requests and retries after a lost Stripe response reuse the same term and idempotency key. A reservation opened before trial support keeps its original terms. Custom stores supporting trial plans must implement `stripeplugin.TrialCheckoutStore`. Signed subscription events record the provider’s status and trial dates. [Cross-database trial tests](../adapters/sqlstore/stripe_trial_test.go)
 
+Configure trial callbacks on the same `FreeTrial` to observe the following signed events.
+
+| Callback | Signed event and condition |
+| --- | --- |
+| `OnTrialStart(ctx, subscription)` | A completed Checkout for this plan, when Stripe's current subscription has both trial dates. The start callback runs on each authenticated delivery, before `OnSubscriptionComplete`. |
+| `OnTrialEnd(ctx, transition)` | A signed subscription update converts the locally trialing subscription to `active`. This follows `OnSubscriptionUpdate`. |
+| `OnTrialExpired(ctx, transition)` | A signed subscription update moves the locally trialing subscription to `incomplete_expired`. This also follows `OnSubscriptionUpdate`. |
+
+`TrialTransition` includes the committed local subscription and a clone of the mounted webhook request. End and expiry require the signed transition and the current provider plan and status to agree. The SQL adapters claim a transition once across replicas. A process that stops after claiming and before invoking host code can miss that notification. These callbacks can run without any subscription observers. [Signed delivery and callback order tests](../conformance/stripe-organization-fixture.mjs)
+
+A callback error or panic skips subsequent lifecycle callbacks for that delivery. The general webhook `OnEvent` still runs. A redelivery of the same completed Checkout can invoke `OnTrialStart` again. Use your application's subscription identity and trial dates to deduplicate trial-start side effects. [Concurrent owner and failure tests](../adapters/sqlstore/stripe_trial_callbacks_test.go)
+
 ## Start a metered subscription
 
 Configure the monthly or annual Stripe price ID for the usage-based plan and omit `SeatPriceID`. The subscription’s initial Checkout supports one recurring price with an interval of one month or one year. The server reads the configured price from Stripe before reserving the purchase. If the price lookup fails, the client can retry after Stripe becomes available. Give the Stripe API key permission to read prices. [Stripe Price object](https://docs.stripe.com/api/prices/object)

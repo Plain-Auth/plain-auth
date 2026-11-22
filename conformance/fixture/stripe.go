@@ -63,10 +63,12 @@ func fixtureStripe(ctx context.Context, store *sqlstore.Store, endpoint string, 
 	opts := billing.Options{Organization: org, WebhookSecret: "whsec_offline_fixture",
 		Portal: &billing.PortalOptions{Client: provider, Customers: store}, Subscriptions: subscriptions,
 	}
+	trialCallbacks := os.Getenv("CONFORMANCE_STRIPE_TRIAL_CALLBACKS")
+	trials := trialCallbacks == "1" || trialCallbacks == "solo"
 	family := os.Getenv("CONFORMANCE_STRIPE_LIFECYCLE_OBSERVERS") == "1"
 	complete := os.Getenv("CONFORMANCE_STRIPE_COMPLETION_OBSERVER") == "1"
 	updates := family || os.Getenv("CONFORMANCE_STRIPE_UPDATE_OBSERVER") == "1"
-	if complete || updates {
+	if complete || updates || trials {
 		appendRecord := func(record any) error {
 			f, err := os.OpenFile(os.Args[1]+".stripe-updates", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0600)
 			if err != nil {
@@ -74,6 +76,27 @@ func fixtureStripe(ctx context.Context, store *sqlstore.Store, endpoint string, 
 			}
 			defer f.Close()
 			return json.NewEncoder(f).Encode(record)
+		}
+		if trials {
+			trial := &billing.FreeTrial{Days: 14}
+			subscriptions.Plans[0].FreeTrial = trial
+			trial.OnTrialStart = func(ctx context.Context, row billing.Subscription) error {
+				return appendRecord([]string{"start", row.ReferenceID, row.Status})
+			}
+			trial.OnTrialEnd = func(ctx context.Context, p billing.TrialTransition) error {
+				return appendRecord([]string{"end", p.Subscription.ReferenceID, p.Subscription.Status, p.Request.URL.Path})
+			}
+			trial.OnTrialExpired = func(ctx context.Context, p billing.TrialTransition) error {
+				return appendRecord([]string{"expired", p.Subscription.ReferenceID, p.Subscription.Status, p.Request.URL.Path})
+			}
+			if trialCallbacks != "solo" {
+				subscriptions.OnSubscriptionComplete = func(ctx context.Context, p billing.SubscriptionComplete) error {
+					return appendRecord([]string{"complete", p.Event.ID})
+				}
+				subscriptions.OnSubscriptionUpdate = func(ctx context.Context, p billing.SubscriptionUpdate) error {
+					return appendRecord([]string{"update", p.Event.ID})
+				}
+			}
 		}
 		if updates {
 			subscriptions.OnSubscriptionUpdate = func(ctx context.Context, u billing.SubscriptionUpdate) error {

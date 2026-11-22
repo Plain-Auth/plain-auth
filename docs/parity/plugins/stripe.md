@@ -90,6 +90,7 @@
     - [x] Recover a committed subscription update after a receipt read fails without applying the provider state twice ([test](../../../adapters/sqlstore/stripe_update_callback_test.go#L220))
     - [x] Call a fresh pending-cancellation observer before the update hook and continue to the general event hook after a host failure ([test](../../../conformance/stripe-lifecycle-fixture.mjs#L563))
     - [x] Verify the signed Checkout callback for personal and organization subscriptions even when subscription creation arrived first ([test](../../../conformance/stripe-organization-fixture.mjs#L343))
+    - [x] Claim trial conversion and expiration once across replicas and preserve general webhook delivery after callback failures ([test](../../../adapters/sqlstore/stripe_trial_callbacks_test.go#L21))
   - [ ] `AuthorizeReferenceAction`
   - [ ] `CustomerType`
   - [ ] `WithStripeCustomerId`
@@ -257,9 +258,10 @@
       - [ ] `customer.subscription.updated`
       - [ ] `customer.subscription.deleted`
     - [ ] Subscription Lifecycle Hooks
-    - [ ] Trial Periods
+    - [x] Trial Periods ([test](../../../adapters/sqlstore/stripe_trial_callbacks_test.go#L21))
       - [x] Offer the configured trial only for a new personal or organization billing reference with no trial history across plans ([test](../../../conformance/stripe-organization-fixture.mjs#L392))
       - [x] Record the signed trial and expose its start, end and status through the public billing client ([test](../../../conformance/stripe-organization-fixture.mjs#L403))
+      - [x] Claim trial conversion and expiration once across replicas and preserve general webhook delivery after callback failures ([test](../../../adapters/sqlstore/stripe_trial_callbacks_test.go#L21))
   - [ ] Schema
     - [x] Generate and migrate the subscriptions schema and customer ID field ([test](../../../conformance/schema.test.mjs#L129))
     - [x] Upgrade existing PostgreSQL and MySQL schemas with combined team, billing and factor profiles ([test](../../../adapters/sqlstore/profiles_test.go#L14))
@@ -342,16 +344,24 @@
           - [x] Configure up to 19 separate metered add-ons, validate price roles and isolate the installed plan from later host mutations ([test](../../../plugins/stripe/metered_addons_test.go#L11))
           - [x] Validate the add-on price intervals and retain the original price IDs and ordering across a configuration change ([test](../../../adapters/sqlstore/stripe_addons_test.go#L154))
           - [x] Keep personal and organization billing separate through a licensed purchase with two metered additions on three SQL engines ([test](../../../adapters/sqlstore/stripe_addons_test.go#L237))
-        - [ ] `freeTrial`
+        - [x] `freeTrial` ([test](../../../adapters/sqlstore/stripe_trial_callbacks_test.go#L21))
           - [x] Offer the configured trial only for a new personal or organization billing reference with no trial history across plans ([test](../../../conformance/stripe-organization-fixture.mjs#L392))
-      - [ ] Free Trial Configuration
+          - [x] Claim trial conversion and expiration once across replicas and preserve general webhook delivery after callback failures ([test](../../../adapters/sqlstore/stripe_trial_callbacks_test.go#L21))
+      - [x] Free Trial Configuration ([test](../../../adapters/sqlstore/stripe_trial_callbacks_test.go#L21))
         - [x] Offer the configured trial only for a new personal or organization billing reference with no trial history across plans ([test](../../../conformance/stripe-organization-fixture.mjs#L392))
+        - [x] Claim trial conversion and expiration once across replicas and preserve general webhook delivery after callback failures ([test](../../../adapters/sqlstore/stripe_trial_callbacks_test.go#L21))
         - [x] `days` ([test](../../../conformance/stripe-organization-fixture.mjs#L392))
           - [x] Offer the configured trial only for a new personal or organization billing reference with no trial history across plans ([test](../../../conformance/stripe-organization-fixture.mjs#L392))
           - [x] Require a positive duration and copy the configured number of days at startup ([test](../../../plugins/stripe/lifecycle_test.go#L19))
-        - [ ] `onTrialStart`
-        - [ ] `onTrialEnd`
-        - [ ] `onTrialExpired`
+        - [x] `onTrialStart` ([test](../../../conformance/stripe-organization-fixture.mjs#L454))
+          - [x] Run the checkout trial-start callback before subscription completion on each verified delivery carrying trial dates ([test](../../../conformance/stripe-organization-fixture.mjs#L454))
+          - [x] Claim trial conversion and expiration once across replicas and preserve general webhook delivery after callback failures ([test](../../../adapters/sqlstore/stripe_trial_callbacks_test.go#L21))
+        - [x] `onTrialEnd` ([test](../../../conformance/stripe-organization-fixture.mjs#L458))
+          - [x] Notify once on confirmed trial-to-active conversion with the committed subscription and mounted webhook request ([test](../../../conformance/stripe-organization-fixture.mjs#L458))
+          - [x] Claim trial conversion and expiration once across replicas and preserve general webhook delivery after callback failures ([test](../../../adapters/sqlstore/stripe_trial_callbacks_test.go#L21))
+        - [x] `onTrialExpired` ([test](../../../conformance/stripe-organization-fixture.mjs#L460))
+          - [x] Notify once on confirmed trial expiry after the subscription update hook, preserving the billed organization or user ([test](../../../conformance/stripe-organization-fixture.mjs#L460))
+          - [x] Claim trial conversion and expiration once across replicas and preserve general webhook delivery after callback failures ([test](../../../adapters/sqlstore/stripe_trial_callbacks_test.go#L21))
     - [ ] Organization Options
       - [ ] `enabled`
       - [ ] `getCustomerCreateParams`
