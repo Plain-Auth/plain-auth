@@ -107,7 +107,9 @@ func models(a *plainauth.Auth, info plainauth.HTTPDescription) object {
 		if slices.ContainsFunc(info.Routes, func(r plainauth.HTTPRoute) bool {
 			return r.Plugin == "organization" && (r.Path == "/organization/get-role" || r.Path == "/organization/list-roles" || r.Path == "/organization/create-role" || r.Path == "/organization/update-role")
 		}) {
-			m["OrganizationRole"] = modelSchema(reflect.TypeFor[organization.RoleDefinition]())
+			role := modelSchema(reflect.TypeFor[organization.RoleDefinition]())
+			addOutputFields(role, info.OrganizationRoleFields)
+			m["OrganizationRole"] = role
 		}
 		m["Organization"] = modelSchema(reflect.TypeFor[organization.Organization]())
 		m["Member"] = modelSchema(reflect.TypeFor[organization.Member]())

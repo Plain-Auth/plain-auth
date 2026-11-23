@@ -2022,3 +2022,8 @@ test("organization role updates replace grants and rename one tenant definition 
   const { compareOrganizationRoleUpdates } = await import("./organization-update-role.mjs");
   await compareOrganizationRoleUpdates(t, { reference, goFixture, instrument });
 });
+
+test("organization role fields round-trip between independent applications", async t => {
+  const { compareOrganizationRoleFields } = await import("./organization-role-fields.mjs");
+  await compareOrganizationRoleFields(t, { goFixture, instrument });
+});

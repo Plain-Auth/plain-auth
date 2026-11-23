@@ -87,6 +87,15 @@ func main() {
 	var additionalSessionFields map[string]authn.SessionField
 	var additionalUserFields map[string]authn.UserField
 	var accountFields map[string]authn.AccountField
+	var roleFields map[string]organization.RoleField
+	if os.Getenv("CONFORMANCE_ROLE_FIELDS") == "1" {
+		roleFields = map[string]organization.RoleField{
+			"color":    {Type: authn.FieldString, Column: "display_color", Default: "blue"},
+			"priority": {Type: authn.FieldNumber},
+			"enabled":  {Type: authn.FieldBoolean},
+			"source":   {Type: authn.FieldString, ServerOnly: true, Default: "host"},
+		}
+	}
 	if os.Getenv("CONFORMANCE_ACCOUNT_FIELDS") == "1" {
 		accountFields = fixtureAccountFields()
 	}
@@ -120,9 +129,9 @@ func main() {
 		additionalSessionFields = map[string]authn.SessionField{"remindAt": {Type: authn.FieldDate, Column: "session_remind_at"}}
 	}
 	if os.Getenv("CONFORMANCE_WALLET_SCHEMA") == "1" {
-		store, err = sqlstore.OpenWithOptions(context.Background(), "sqlite", os.Args[1], os.Args[2:], schema.Options{Wallet: walletFixtureOptions().Schema, AdditionalFields: schema.AdditionalFields{Session: additionalSessionFields, User: additionalUserFields, Account: accountFields}})
-	} else if len(additionalSessionFields)+len(additionalUserFields)+len(accountFields) > 0 {
-		store, err = sqlstore.OpenWithAdditionalFields(context.Background(), "sqlite", os.Args[1], os.Args[2:], schema.AdditionalFields{Session: additionalSessionFields, User: additionalUserFields, Account: accountFields})
+		store, err = sqlstore.OpenWithOptions(context.Background(), "sqlite", os.Args[1], os.Args[2:], schema.Options{Wallet: walletFixtureOptions().Schema, AdditionalFields: schema.AdditionalFields{Session: additionalSessionFields, User: additionalUserFields, Account: accountFields, OrganizationRole: roleFields}})
+	} else if len(additionalSessionFields)+len(additionalUserFields)+len(accountFields)+len(roleFields) > 0 {
+		store, err = sqlstore.OpenWithAdditionalFields(context.Background(), "sqlite", os.Args[1], os.Args[2:], schema.AdditionalFields{Session: additionalSessionFields, User: additionalUserFields, Account: accountFields, OrganizationRole: roleFields})
 	} else {
 		store, err = sqlstore.OpenWithSchema(context.Background(), "sqlite", os.Args[1], ddl)
 	}
@@ -288,6 +297,7 @@ func main() {
 				continue
 			}
 			options := organization.Options{Store: store, MembershipLimit: fixtureMembershipLimit(), RequireVerifiedEmail: os.Getenv("CONFORMANCE_VERIFY_INVITATION_EMAIL") == "1"}
+			options.RoleAdditionalFields = roleFields
 			options.DynamicAccessControl = slices.Contains(os.Args[2:], "organization-roles")
 			if options.DynamicAccessControl && os.Getenv("CONFORMANCE_ROLE_CONTROL") != "none" {
 				options.RoleControl = organization.DefaultRoleControl()

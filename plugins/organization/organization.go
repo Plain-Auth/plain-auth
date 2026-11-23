@@ -6,11 +6,13 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"errors"
+	"maps"
 	"net/http"
 	"strings"
 	"time"
 
 	authn "github.com/Plain-Auth/plain-auth"
+	"github.com/Plain-Auth/plain-auth/internal/sessionfields"
 	"github.com/Plain-Auth/plain-auth/plugins/access"
 )
 
@@ -64,6 +66,8 @@ type Options struct {
 	DynamicAccessControl bool
 	// RoleControl declares the resources available to role management.
 	RoleControl *access.Control
+	// RoleAdditionalFields declares the stored role's application-defined columns.
+	RoleAdditionalFields map[string]RoleField
 	// RoleLimit optionally bounds the number of stored roles in each organization.
 	RoleLimit       *RoleLimit
 	rolePolicy      RolePolicy
@@ -208,6 +212,24 @@ func NewService(o Options) (*Service, error) {
 		}
 		o.Store = store
 	}
+	if len(o.RoleAdditionalFields) > 0 {
+		if !o.DynamicAccessControl {
+			return nil, errors.New("organization: role fields require dynamic access control")
+		}
+		defs, err := sessionfields.NormalizeRole(o.RoleAdditionalFields)
+		if err != nil {
+			return nil, err
+		}
+		provider, ok := o.Store.(RoleFieldStoreProvider)
+		if !ok {
+			return nil, errors.New("organization: additional role fields require a RoleFieldStoreProvider")
+		}
+		o.Store, err = provider.WithOrganizationRoleFields(defs)
+		if err != nil {
+			return nil, err
+		}
+		o.RoleAdditionalFields = defs
+	}
 	if err := o.MembershipLimit.Validate(); err != nil {
 		return nil, err
 	}
@@ -282,7 +304,8 @@ func NewService(o Options) (*Service, error) {
 func (service *Service) Plugin() authn.Plugin {
 	o := service.options
 	plugin := authn.Plugin{
-		ID: "organization",
+		ID:                     "organization",
+		OrganizationRoleFields: maps.Clone(o.RoleAdditionalFields),
 		OnReadSession: func(ctx context.Context, s *authn.SessionResult) error {
 			if s.Session.IsApplicationCredential() {
 				return nil

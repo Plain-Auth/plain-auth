@@ -7,10 +7,10 @@
 | Inventory status | Entries |
 | --- | ---: |
 | Fully verified | 598 |
-| Partially verified | 1,063 |
-| No linked test evidence | 5,364 |
+| Partially verified | 1,064 |
+| No linked test evidence | 5,363 |
 
-The inventory covers features, options, integrations and documentation topics. Partial verification means an open entry has a passing case somewhere beneath it. The checklists also contain 2,584 links from passing scenarios to tests. Adding a scenario leaves the inventory denominator unchanged.
+The inventory covers features, options, integrations and documentation topics. Partial verification means an open entry has a passing case somewhere beneath it. The checklists also contain 2,600 links from passing scenarios to tests. Adding a scenario leaves the inventory denominator unchanged.
 
 A checked item links to a local test for that behavior. An open parent means the feature still has unverified cases. Browser, protocol and storage options each have their own checkboxes.
 
@@ -114,7 +114,7 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 | [One tap](plugins/one-tap.md) | 38 | 18 |
 | [One time token](plugins/one-time-token.md) | 76 | 0 |
 | [OpenAPI](plugins/open-api.md) | 16 | 24 |
-| [Organization](plugins/organization.md) | 511 | 304 |
+| [Organization](plugins/organization.md) | 527 | 304 |
 | [Passkey](plugins/passkey.md) | 26 | 94 |
 | [Phone number](plugins/phone-number.md) | 36 | 67 |
 | [SCIM provisioning](plugins/scim.md) | 66 | 257 |

@@ -43,6 +43,15 @@ func ReadAccountFields(r io.Reader) (map[string]AccountField, error) {
 	return sessionfields.NormalizeAccount(fields)
 }
 
+// ReadRoleFields reads column declarations for stored organization roles.
+func ReadRoleFields(r io.Reader) (map[string]RoleField, error) {
+	fields, err := readFields(r, "organization role")
+	if err != nil {
+		return nil, err
+	}
+	return sessionfields.NormalizeRole(fields)
+}
+
 func readFields(r io.Reader, model string) (map[string]sessionfields.Field, error) {
 	d := json.NewDecoder(r)
 	d.UseNumber()

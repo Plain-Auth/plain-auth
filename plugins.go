@@ -23,10 +23,12 @@ type OAuthLoginContinuation func(Session) (*http.Request, error)
 type Plugin struct {
 	// StoredUserFields declares this plugin's scalar user columns for trusted
 	// profile readers. The keys are logical names and may map to different columns.
-	StoredUserFields      map[string]UserField
-	oauthProxy            *OAuthProxyOptions
-	magicLinkRegistration bool
-	phoneNumber           *PhoneNumberOptions
+	StoredUserFields map[string]UserField
+	// OrganizationRoleFields describes fields on the installed role endpoints.
+	OrganizationRoleFields map[string]SessionField
+	oauthProxy             *OAuthProxyOptions
+	magicLinkRegistration  bool
+	phoneNumber            *PhoneNumberOptions
 	// TranslateError returns a localized HTTP error message for the request.
 	// An empty result preserves the original error response.
 	TranslateError     func(ErrorContext, APIError) string

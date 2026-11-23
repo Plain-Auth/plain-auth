@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"github.com/Plain-Auth/plain-auth/internal/sessionfields"
 	"time"
 
 	auth "github.com/Plain-Auth/plain-auth"
@@ -38,13 +39,14 @@ func (s *Store) CreateOrganizationRole(ctx context.Context, actor auth.Session, 
 		grants[key] = append([]string{}, actions...)
 	}
 	row := org.RoleDefinition{ID: rand.Text(), Role: cases.Lower(language.Und).String(request.Role), Permission: grants}
+	var fields map[string]any
 	var maximum *int
 	var expectedGroup string
 	run := func(preflight bool) (string, error) {
 		var group string
 		var err error
 		for range 3 {
-			group, err = s.createOrganizationRoleOnce(ctx, actor, request.OrganizationID, expectedGroup, row, control, maximum, preflight)
+			group, err = s.createOrganizationRoleOnce(ctx, actor, request.OrganizationID, expectedGroup, row, fields, control, maximum, preflight)
 			if !retryIdentity(err) {
 				break
 			}
@@ -69,6 +71,26 @@ func (s *Store) CreateOrganizationRole(ctx context.Context, actor auth.Session, 
 		}
 		maximum = &value
 	}
+	if len(s.roleFields) > 0 {
+		// A host-supplied default may run application code. Run it once, outside
+		// the write transaction, after checking the caller's current scope.
+		if expectedGroup == "" && s.hasComputedRoleDefault() {
+			group, err := run(true)
+			if err != nil {
+				return nil, err
+			}
+			expectedGroup = group
+		}
+		var err error
+		fields, err = s.newRoleFields(request.AdditionalFields)
+		if err != nil {
+			return nil, err
+		}
+		row.AdditionalFields, err = s.publicRoleFields(fields)
+		if err != nil {
+			return nil, err
+		}
+	}
 	row.CreatedAt = time.Now().UTC().Truncate(time.Millisecond)
 	group, err := run(false)
 	if err != nil {
@@ -78,7 +100,7 @@ func (s *Store) CreateOrganizationRole(ctx context.Context, actor auth.Session, 
 	return &row, nil
 }
 
-func (s *Store) createOrganizationRoleOnce(ctx context.Context, actor auth.Session, explicit, expected string, row org.RoleDefinition, control access.Control, maximum *int, preflight bool) (string, error) {
+func (s *Store) createOrganizationRoleOnce(ctx context.Context, actor auth.Session, explicit, expected string, row org.RoleDefinition, fields map[string]any, control access.Control, maximum *int, preflight bool) (string, error) {
 	tx, err := s.beginMembershipChange(ctx)
 	if err != nil {
 		return "", err
@@ -134,7 +156,14 @@ func (s *Store) createOrganizationRoleOnce(ctx context.Context, actor auth.Sessi
 	if err != nil {
 		return "", err
 	}
-	_, err = tx.ExecContext(ctx, s.bind(`INSERT INTO "organizationRole" ("id","organizationId","role","permission","createdAt") VALUES (?,?,?,?,?)`), row.ID, group, row.Role, string(raw), s.date(row.CreatedAt))
+	columns, params := `"id","organizationId","role","permission","createdAt"`, "?,?,?,?,?"
+	args := []any{row.ID, group, row.Role, string(raw), s.date(row.CreatedAt)}
+	for _, name := range sessionfields.Names(s.roleFields) {
+		columns += `,"` + s.roleFields[name].Column + `"`
+		params += ",?"
+		args = append(args, s.fieldParameter(fields[name]))
+	}
+	_, err = tx.ExecContext(ctx, s.bind(`INSERT INTO "organizationRole" (`+columns+`) VALUES (`+params+`)`), args...)
 	if err != nil {
 		return "", err
 	}

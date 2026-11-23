@@ -109,11 +109,15 @@ type UserField = sessionfields.Field
 // AccountField declares a scalar column on a linked provider or credential account.
 type AccountField = sessionfields.Field
 
+// RoleField declares an additional column on an organization role.
+type RoleField = sessionfields.Field
+
 // AdditionalFields declares additional columns independently for each model.
 type AdditionalFields struct {
-	User    map[string]UserField
-	Session map[string]SessionField
-	Account map[string]AccountField
+	User             map[string]UserField
+	Session          map[string]SessionField
+	Account          map[string]AccountField
+	OrganizationRole map[string]RoleField
 }
 
 // Normalize validates each namespace and returns owned copies of its declarations.
@@ -128,6 +132,10 @@ func (f AdditionalFields) Normalize() (AdditionalFields, error) {
 		return AdditionalFields{}, err
 	}
 	f.Account, err = sessionfields.NormalizeAccount(f.Account)
+	if err != nil {
+		return AdditionalFields{}, err
+	}
+	f.OrganizationRole, err = sessionfields.NormalizeRole(f.OrganizationRole)
 	return f, err
 }
 
@@ -142,7 +150,7 @@ func GenerateWithOptions(dialect string, profiles []string, opts Options) (strin
 	if err != nil {
 		return "", err
 	}
-	objects, selected, err := mappedObjects(dialect, profiles, opts.Wallet)
+	objects, selected, err := mappedObjects(dialect, profiles, opts)
 	if err != nil {
 		return "", err
 	}
@@ -168,6 +176,8 @@ func GenerateWithOptions(dialect string, profiles []string, opts Options) (strin
 				extras = fields.Session
 			case "account":
 				extras = fields.Account
+			case "organizationRole":
+				extras = fields.OrganizationRole
 			}
 			if len(extras) > 0 {
 				for _, name := range sessionfields.Names(extras) {
@@ -194,7 +204,7 @@ func Tables(dialect string, profiles []string) ([]Table, error) {
 
 // TablesWithOptions includes mapped wallet table and column identifiers.
 func TablesWithOptions(dialect string, profiles []string, opts Options) ([]Table, error) {
-	objects, selected, err := mappedObjects(dialect, profiles, opts.Wallet)
+	objects, selected, err := mappedObjects(dialect, profiles, opts)
 	if err != nil {
 		return nil, err
 	}

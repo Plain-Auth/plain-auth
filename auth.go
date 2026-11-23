@@ -12,6 +12,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"maps"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -180,6 +181,9 @@ func New(opts Options) (*Auth, error) {
 		}
 	}
 	opts.Plugins = append([]Plugin(nil), opts.Plugins...)
+	for i := range opts.Plugins {
+		opts.Plugins[i].OrganizationRoleFields = maps.Clone(opts.Plugins[i].OrganizationRoleFields)
+	}
 	opts.SocialProviders, err = prepareOAuthProviders(opts.SocialProviders, opts.Store, len(opts.UserAdditionalFields) > 0 && !opts.DisableSignUp)
 	if err != nil {
 		return nil, err

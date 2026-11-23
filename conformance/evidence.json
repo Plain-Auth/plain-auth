@@ -15539,6 +15539,11 @@
       "label": "Create, read, list and remove a stored role through six different Go HTTP routers",
       "test": "integrations/routers/routers_test.go",
       "marker": "router failed to retire the stored role"
+    },
+    {
+      "label": "List the values written through another application with the original logical keys",
+      "test": "conformance/organization-role-fields.mjs",
+      "marker": "assert.deepEqual([row.color, row.priority, row.enabled, row.source]"
     }
   ],
   "plugin/organization/GET /organization/get-role": [
@@ -15561,6 +15566,11 @@
       "label": "Create, read, list and remove a stored role through six different Go HTTP routers",
       "test": "integrations/routers/routers_test.go",
       "marker": "router failed to retire the stored role"
+    },
+    {
+      "label": "Read mapped role fields across applications and preserve defaults, explicit nulls, false and zero",
+      "test": "conformance/organization-role-fields.mjs",
+      "marker": "assert.deepEqual([created.color, created.priority, created.enabled, created.source]"
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L1586": [
@@ -15595,6 +15605,11 @@
       "label": "Use the Go client against three SQL engines and honor withdrawal of directory access",
       "test": "adapters/sqlstore/organization_role_directory_test.go",
       "marker": "read directory after losing ac.read"
+    },
+    {
+      "label": "List the values written through another application with the original logical keys",
+      "test": "conformance/organization-role-fields.mjs",
+      "marker": "assert.deepEqual([row.color, row.priority, row.enabled, row.source]"
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L1602": [
@@ -15629,6 +15644,11 @@
       "label": "Keep SQL lookup case-sensitive across all three engines and check live session ownership",
       "test": "adapters/sqlstore/organization_role_directory_test.go",
       "marker": "expected strict stored-role lookup"
+    },
+    {
+      "label": "Read mapped role fields across applications and preserve defaults, explicit nulls, false and zero",
+      "test": "conformance/organization-role-fields.mjs",
+      "marker": "assert.deepEqual([created.color, created.priority, created.enabled, created.source]"
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L1597/Parameter `organizationId` (optional)": [
@@ -15761,6 +15781,11 @@
       "label": "Create, read, list and remove a stored role through six different Go HTTP routers",
       "test": "integrations/routers/routers_test.go",
       "marker": "router failed to retire the stored role"
+    },
+    {
+      "label": "Read mapped role fields across applications and preserve defaults, explicit nulls, false and zero",
+      "test": "conformance/organization-role-fields.mjs",
+      "marker": "assert.deepEqual([created.color, created.priority, created.enabled, created.source]"
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L1527": [
@@ -15778,6 +15803,11 @@
       "label": "Create, read, list and remove a stored role through six different Go HTTP routers",
       "test": "integrations/routers/routers_test.go",
       "marker": "router failed to retire the stored role"
+    },
+    {
+      "label": "Read mapped role fields across applications and preserve defaults, explicit nulls, false and zero",
+      "test": "conformance/organization-role-fields.mjs",
+      "marker": "assert.deepEqual([created.color, created.priority, created.enabled, created.source]"
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L1535/`POST /organization/create-role`": [
@@ -15795,6 +15825,11 @@
       "label": "Create, read, list and remove a stored role through six different Go HTTP routers",
       "test": "integrations/routers/routers_test.go",
       "marker": "router failed to retire the stored role"
+    },
+    {
+      "label": "Read mapped role fields across applications and preserve defaults, explicit nulls, false and zero",
+      "test": "conformance/organization-role-fields.mjs",
+      "marker": "assert.deepEqual([created.color, created.priority, created.enabled, created.source]"
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L1547/Parameter `role`": [
@@ -15848,6 +15883,11 @@
       "label": "Require delegation of retained grants when moving a role to a new name",
       "test": "adapters/sqlstore/organization_update_role_test.go",
       "marker": "renaming an existing grant requires authority to delegate it"
+    },
+    {
+      "label": "Update declared fields and retain omitted values and host-owned defaults",
+      "test": "conformance/organization-role-fields.mjs",
+      "marker": "assert.deepEqual([changed.color, changed.priority, changed.enabled, changed.source]"
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L1626": [
@@ -15865,6 +15905,11 @@
       "label": "Require delegation of retained grants when moving a role to a new name",
       "test": "adapters/sqlstore/organization_update_role_test.go",
       "marker": "renaming an existing grant requires authority to delegate it"
+    },
+    {
+      "label": "Update declared fields and retain omitted values and host-owned defaults",
+      "test": "conformance/organization-role-fields.mjs",
+      "marker": "assert.deepEqual([changed.color, changed.priority, changed.enabled, changed.source]"
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L1630/`POST /organization/update-role`": [
@@ -15882,6 +15927,11 @@
       "label": "Require delegation of retained grants when moving a role to a new name",
       "test": "adapters/sqlstore/organization_update_role_test.go",
       "marker": "renaming an existing grant requires authority to delegate it"
+    },
+    {
+      "label": "Update declared fields and retain omitted values and host-owned defaults",
+      "test": "conformance/organization-role-fields.mjs",
+      "marker": "assert.deepEqual([changed.color, changed.priority, changed.enabled, changed.source]"
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L1636/Parameter `roleName` (optional)": [
@@ -15929,6 +15979,38 @@
       "test": "plugins/openapi/organization_selection_test.go",
       "marker": "} else if roleSchema != nil || getRole != nil || listRoles != nil || deleteRole != nil || createRole != nil || updateRole != nil",
       "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1705": [
+    {
+      "label": "Read mapped role fields across applications and preserve defaults, explicit nulls, false and zero",
+      "test": "conformance/organization-role-fields.mjs",
+      "marker": "assert.deepEqual([created.color, created.priority, created.enabled, created.source]"
+    },
+    {
+      "label": "Update declared fields and retain omitted values and host-owned defaults",
+      "test": "conformance/organization-role-fields.mjs",
+      "marker": "assert.deepEqual([changed.color, changed.priority, changed.enabled, changed.source]"
+    },
+    {
+      "label": "List the values written through another application with the original logical keys",
+      "test": "conformance/organization-role-fields.mjs",
+      "marker": "assert.deepEqual([row.color, row.priority, row.enabled, row.source]"
+    },
+    {
+      "label": "Keep hidden role properties out of SDK responses and protect server-owned input on three databases",
+      "test": "adapters/sqlstore/organization_role_fields_test.go",
+      "marker": "wrong public field projection"
+    },
+    {
+      "label": "Generate and repeatedly migrate populated role columns on all three SQL engines",
+      "test": "cmd/authctl/organization_role_fields_test.go",
+      "marker": "migration did not preserve and backfill populated role fields"
+    },
+    {
+      "label": "Describe input, output and required role fields to generated clients",
+      "test": "plugins/openapi/organization_role_fields_test.go",
+      "marker": "incorrect role field input description"
     }
   ]
 }

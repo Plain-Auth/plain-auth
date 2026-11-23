@@ -62,7 +62,7 @@ func OpenWithOptions(ctx context.Context, dialect, dsn string, profiles []string
 			model string
 			defs  map[string]auth.SessionField
 			fresh *map[string]auth.SessionField
-		}{{"user", fields.User, &fresh.User}, {"session", fields.Session, &fresh.Session}, {"account", fields.Account, &fresh.Account}} {
+		}{{"user", fields.User, &fresh.User}, {"session", fields.Session, &fresh.Session}, {"account", fields.Account, &fresh.Account}, {"organizationRole", fields.OrganizationRole, &fresh.OrganizationRole}} {
 			if len(entry.defs) == 0 {
 				continue
 			}
@@ -109,6 +109,9 @@ func OpenWithOptions(ctx context.Context, dialect, dsn string, profiles []string
 	}
 	if err == nil {
 		err = s.validateModelFields("account", fields.Account)
+	}
+	if err == nil {
+		err = s.validateModelFields("organizationRole", fields.OrganizationRole)
 	}
 	if err != nil {
 		s.Close()

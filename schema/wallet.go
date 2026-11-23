@@ -39,10 +39,17 @@ func NormalizeWallet(m WalletSchema) (WalletSchema, error) {
 	return m, nil
 }
 
-func mappedObjects(dialect string, profiles []string, wallet WalletSchema) ([]statement, map[string]bool, error) {
+func mappedObjects(dialect string, profiles []string, opts Options) ([]statement, map[string]bool, error) {
 	objects, selected, err := selection(dialect, profiles)
-	if err != nil || wallet == (WalletSchema{}) {
-		return objects, selected, err
+	if err != nil {
+		return nil, nil, err
+	}
+	if len(opts.AdditionalFields.OrganizationRole) > 0 && !selected["organization-roles"] {
+		return nil, nil, fmt.Errorf("schema: organization role fields require the organization-roles profile")
+	}
+	wallet := opts.Wallet
+	if wallet == (WalletSchema{}) {
+		return objects, selected, nil
 	}
 	m, err := NormalizeWallet(wallet)
 	if err != nil {

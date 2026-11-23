@@ -23,12 +23,26 @@ func roleLookupFilter(query org.RoleQuery) (string, string, error) {
 
 const organizationRoleColumns = `"id","organizationId","role","permission","createdAt","updatedAt"`
 
-func scanOrganizationRole(row rowScanner) (org.RoleDefinition, error) {
+func (s *Store) scanOrganizationRole(row rowScanner) (org.RoleDefinition, error) {
 	var role org.RoleDefinition
 	var raw string
-	err := row.Scan(&role.ID, &role.OrganizationID, &role.Role, &raw, &role.CreatedAt, &role.UpdatedAt)
+	dest := []any{&role.ID, &role.OrganizationID, &role.Role, &raw, &role.CreatedAt, &role.UpdatedAt}
+	names := s.roleReadNames
+	for _, name := range names {
+		dest = append(dest, scalarDestination(s.roleFields[name].Type))
+	}
+	err := row.Scan(dest...)
 	if err != nil {
 		return role, err
+	}
+	if len(names) > 0 {
+		role.AdditionalFields = make(map[string]any, len(names))
+		for i, name := range names {
+			role.AdditionalFields[name], err = s.roleFields[name].PublicValue(scannedScalar(dest[6+i]))
+			if err != nil {
+				return role, err
+			}
+		}
 	}
 	role.Permission, err = org.DecodeStoredRoleGrants(raw)
 	return role, err
@@ -40,8 +54,8 @@ func (s *Store) lockStoredRole(ctx context.Context, tx *sql.Tx, group string, q 
 		return org.RoleDefinition{}, err
 	}
 	arg := s.exactSQLValue("?")
-	statement := "SELECT " + organizationRoleColumns + ` FROM "organizationRole" WHERE "organizationId"=` + arg + " AND " + field + "=" + arg + " LIMIT 1"
-	role, err := scanOrganizationRole(tx.QueryRowContext(ctx, s.readForUpdate(statement), group, selector))
+	statement := "SELECT " + organizationRoleColumns + s.roleReadColumns + ` FROM "organizationRole" WHERE "organizationId"=` + arg + " AND " + field + "=" + arg + " LIMIT 1"
+	role, err := s.scanOrganizationRole(tx.QueryRowContext(ctx, s.readForUpdate(statement), group, selector))
 	if errors.Is(err, sql.ErrNoRows) {
 		return role, org.ErrRoleNotFound
 	}
@@ -86,7 +100,7 @@ func (s *Store) readOrganizationRoles(ctx context.Context, sessionID, actorID st
 		return nil, err
 	}
 
-	statement := "SELECT " + organizationRoleColumns + ` FROM "organizationRole" WHERE "organizationId"=` + s.exactSQLValue("?")
+	statement := "SELECT " + organizationRoleColumns + s.roleReadColumns + ` FROM "organizationRole" WHERE "organizationId"=` + s.exactSQLValue("?")
 	args := []any{group}
 	if lookup {
 		field, selector, err := roleLookupFilter(query)
@@ -105,7 +119,7 @@ func (s *Store) readOrganizationRoles(ctx context.Context, sessionID, actorID st
 	defer rows.Close()
 	definitions := []org.RoleDefinition{}
 	for rows.Next() {
-		definition, err := scanOrganizationRole(rows)
+		definition, err := s.scanOrganizationRole(rows)
 		if err != nil {
 			return nil, err
 		}

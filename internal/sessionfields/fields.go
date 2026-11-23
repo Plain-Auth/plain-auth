@@ -83,6 +83,19 @@ func AccountNameOK(name string) bool {
 	return identifier.MatchString(name)
 }
 
+// RoleNameOK reserves the stored columns and the selectors used on role updates.
+func RoleNameOK(name string) bool {
+	switch strings.ToLower(name) {
+	case "id", "organizationid", "role", "permission", "createdat", "updatedat", "roleid", "rolename", "additionalfields", "constructor", "prototype":
+		return false
+	}
+	return identifier.MatchString(name)
+}
+
+func NormalizeRole(fields map[string]Field) (map[string]Field, error) {
+	return normalize(fields, "organization role", RoleNameOK)
+}
+
 func NormalizeAccount(fields map[string]Field) (map[string]Field, error) {
 	return normalize(fields, "account", AccountNameOK)
 }

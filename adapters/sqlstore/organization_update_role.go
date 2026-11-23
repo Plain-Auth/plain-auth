@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"github.com/Plain-Auth/plain-auth/internal/sessionfields"
 	"strings"
 	"time"
 
@@ -99,6 +100,25 @@ func (s *Store) updateOrganizationRole(ctx context.Context, userID, token string
 		role.Role = name
 		updates = append(updates, `"role"=?`)
 		args = append(args, name)
+	}
+	values, err := org.ParseRoleFieldInput(s.roleFields, change.AdditionalFields, true)
+	if err != nil {
+		return nil, err
+	}
+	for _, name := range sessionfields.Names(s.roleFields) {
+		value, present := values[name]
+		if !present {
+			continue
+		}
+		f := s.roleFields[name]
+		updates = append(updates, `"`+f.Column+`"=?`)
+		args = append(args, s.fieldParameter(value))
+		if !f.Hidden {
+			role.AdditionalFields[name], err = f.PublicValue(value)
+			if err != nil {
+				return nil, err
+			}
+		}
 	}
 	arg := s.exactSQLValue("?")
 	statement := `UPDATE "organizationRole" SET ` + strings.Join(updates, ",") + ` WHERE "organizationId"=` + arg + ` AND "id"=` + arg

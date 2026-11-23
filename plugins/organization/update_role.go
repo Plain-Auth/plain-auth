@@ -12,8 +12,9 @@ import (
 // RoleUpdate replaces the stored grant map when Permission is non-nil. A
 // nonempty RoleName renames the definition. Memberships keep their own labels.
 type RoleUpdate struct {
-	RoleName   string
-	Permission access.Statements
+	RoleName         string
+	Permission       access.Statements
+	AdditionalFields map[string]any
 }
 
 type UpdatedRole struct {
@@ -29,7 +30,7 @@ type RoleUpdateStore interface {
 
 var ErrUpdateRoleDenied = problem(403, "YOU_ARE_NOT_ALLOWED_TO_UPDATE_A_ROLE", "You are not allowed to update a role")
 
-func roleUpdateInput(body map[string]any) (RoleQuery, RoleUpdate, error) {
+func roleUpdateInput(body map[string]any, defs map[string]RoleField) (RoleQuery, RoleUpdate, error) {
 	group, issues := roleOrganizationInput(body)
 	query := RoleQuery{OrganizationID: group}
 	change := RoleUpdate{}
@@ -38,6 +39,11 @@ func roleUpdateInput(body map[string]any) (RoleQuery, RoleUpdate, error) {
 	if !ok {
 		issues = append(issues, roleInputTypeIssue("data", "object", raw, present))
 	} else {
+		var err error
+		change.AdditionalFields, err = ParseRoleFieldInput(defs, data, true)
+		if err != nil {
+			issues = append(issues, err.Error())
+		}
 		if grants, has := data["permission"]; has {
 			var invalid []string
 			change.Permission, invalid = rolePermissionInput("data.permission", grants, true)
@@ -60,7 +66,7 @@ func roleUpdateInput(body map[string]any) (RoleQuery, RoleUpdate, error) {
 
 func (o Options) updateRoleEndpoint(store RoleUpdateStore) auth.Endpoint {
 	return auth.Endpoint{Method: http.MethodPost, Path: "/organization/update-role", Handler: func(c auth.EndpointContext) (any, error) {
-		q, change, err := roleUpdateInput(c.Body)
+		q, change, err := roleUpdateInput(c.Body, o.RoleAdditionalFields)
 		if err != nil {
 			return nil, err
 		}

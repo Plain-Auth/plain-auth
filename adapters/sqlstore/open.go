@@ -27,6 +27,9 @@ import (
 type Store struct {
 	organizationRoles        org.RolePolicy
 	dynamicOrganizationRoles bool
+	roleFields               map[string]org.RoleField
+	roleReadNames            []string
+	roleReadColumns          string
 	invitationLimit          *org.InvitationLimit
 	accountFields            map[string]auth.AccountField
 	accountFieldRules        map[string]auth.AccountFieldRule

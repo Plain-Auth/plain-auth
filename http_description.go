@@ -46,8 +46,10 @@ func describeFields(fields map[string]SessionField) map[string]HTTPField {
 
 // HTTPDescription describes public settings used to document the handler.
 type HTTPDescription struct {
-	SessionFields map[string]HTTPSessionField
-	UserFields    map[string]HTTPField
+	SessionFields              map[string]HTTPSessionField
+	UserFields                 map[string]HTTPField
+	OrganizationRoleFields     map[string]HTTPField
+	RoleFieldsRequiredOnCreate bool
 	// RequiredUserInputs lists writable fields that have no registration default.
 	RequiredUserInputs                      []string
 	EmailOTPRegistration, PhoneRegistration bool
@@ -80,6 +82,17 @@ func (a *Auth) DescribeHTTP() HTTPDescription {
 		DisplayUsername: a.username != nil && !a.username.DisableDisplay}
 	d.SessionFields = describeFields(o.SessionAdditionalFields)
 	d.UserFields = describeFields(o.UserAdditionalFields)
+	for _, plugin := range o.Plugins {
+		if plugin.ID != "organization" {
+			continue
+		}
+		d.OrganizationRoleFields = describeFields(plugin.OrganizationRoleFields)
+		for _, field := range plugin.OrganizationRoleFields {
+			if field.Required && !field.ServerOnly && field.Default == nil {
+				d.RoleFieldsRequiredOnCreate = true
+			}
+		}
+	}
 	for name, field := range o.UserAdditionalFields {
 		if field.Required && !field.ServerOnly && field.Default == nil {
 			d.RequiredUserInputs = append(d.RequiredUserInputs, name)

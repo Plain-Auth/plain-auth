@@ -27,9 +27,10 @@ type RoleLimit struct {
 }
 
 type CreateRoleRequest struct {
-	OrganizationID string
-	Role           string
-	Permission     access.Statements
+	OrganizationID   string
+	Role             string
+	Permission       access.Statements
+	AdditionalFields map[string]any
 }
 
 type CreatedRole struct {
@@ -117,7 +118,7 @@ func roleOrganizationInput(body map[string]any) (string, []string) {
 	return "", nil
 }
 
-func roleCreationInput(body map[string]any) (CreateRoleRequest, error) {
+func roleCreationInput(body map[string]any, defs map[string]RoleField) (CreateRoleRequest, error) {
 	group, issues := roleOrganizationInput(body)
 	q := CreateRoleRequest{OrganizationID: group}
 	role, present := body["role"]
@@ -129,9 +130,15 @@ func roleCreationInput(body map[string]any) (CreateRoleRequest, error) {
 	var invalid []string
 	q.Permission, invalid = rolePermissionInput("permission", permission, present)
 	issues = append(issues, invalid...)
-	if raw, supplied := body["additionalFields"]; supplied {
-		if _, ok := raw.(map[string]any); !ok {
-			issues = append(issues, roleInputTypeIssue("additionalFields", "object", raw, true))
+	raw, supplied := body["additionalFields"]
+	input, isObject := raw.(map[string]any)
+	if supplied && !isObject {
+		issues = append(issues, roleInputTypeIssue("additionalFields", "object", raw, true))
+	} else {
+		var err error
+		q.AdditionalFields, err = ParseRoleFieldInput(defs, input, false)
+		if err != nil {
+			issues = append(issues, err.Error())
 		}
 	}
 	if len(issues) > 0 {
@@ -142,7 +149,7 @@ func roleCreationInput(body map[string]any) (CreateRoleRequest, error) {
 
 func (o Options) createRoleEndpoint(store RoleCreationStore) auth.Endpoint {
 	return auth.Endpoint{Method: http.MethodPost, Path: "/organization/create-role", Handler: func(c auth.EndpointContext) (any, error) {
-		q, err := roleCreationInput(c.Body)
+		q, err := roleCreationInput(c.Body, o.RoleAdditionalFields)
 		if err != nil {
 			return nil, err
 		}

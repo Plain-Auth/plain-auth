@@ -329,6 +329,20 @@ func signupFormSchema(schema object, info plainauth.HTTPDescription) object {
 	return form
 }
 
+func addRoleInputFields(properties object, defs map[string]plainauth.HTTPField) []string {
+	var required []string
+	for name, f := range defs {
+		if f.Writable {
+			properties[name] = scalarFieldSchema(f)
+			if f.Required {
+				required = append(required, name)
+			}
+		}
+	}
+	slices.Sort(required)
+	return required
+}
+
 func adjustRequest(op object, r plainauth.HTTPRoute, info plainauth.HTTPDescription, a *plainauth.Auth) {
 	if r.Plugin == "organization" && r.Path == "/organization/create-role" {
 		body := responseObject(object{
@@ -336,6 +350,12 @@ func adjustRequest(op object, r plainauth.HTTPRoute, info plainauth.HTTPDescript
 			"role":           object{"type": "string", "minLength": 1},
 			"permission":     object{"type": "object", "additionalProperties": array(object{"type": "string"})},
 		}, "role", "permission")
+		properties := object{}
+		required := addRoleInputFields(properties, info.OrganizationRoleFields)
+		body["properties"].(object)["additionalFields"] = responseObject(properties, required...)
+		if info.RoleFieldsRequiredOnCreate {
+			body["required"] = append(body["required"].([]string), "additionalFields")
+		}
 		op["requestBody"] = object{"required": true, "content": content("application/json", body)}
 	}
 	if r.Plugin == "organization" && (r.Path == "/organization/delete-role" || r.Path == "/organization/update-role") {
@@ -345,7 +365,9 @@ func adjustRequest(op object, r plainauth.HTTPRoute, info plainauth.HTTPDescript
 			"roleId":         object{"type": "string"},
 		})
 		if r.Path == "/organization/update-role" {
-			body["properties"].(object)["data"] = responseObject(object{"roleName": object{"type": "string"}, "permission": object{"type": "object", "additionalProperties": array(object{"type": "string"})}})
+			properties := object{"roleName": object{"type": "string"}, "permission": object{"type": "object", "additionalProperties": array(object{"type": "string"})}}
+			addRoleInputFields(properties, info.OrganizationRoleFields)
+			body["properties"].(object)["data"] = responseObject(properties)
 			body["required"] = []string{"data"}
 		}
 		body["anyOf"] = []object{

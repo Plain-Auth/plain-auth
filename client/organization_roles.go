@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"github.com/Plain-Auth/plain-auth/internal/sessionfields"
 	"net/http"
 	"net/url"
 
@@ -37,6 +38,9 @@ func (c *Client) DeleteOrganizationRole(ctx context.Context, q organization.Role
 // CreateOrganizationRole creates a stored role with the given grants.
 func (c *Client) CreateOrganizationRole(ctx context.Context, q organization.CreateRoleRequest) (*organization.CreatedRole, error) {
 	body := map[string]any{"role": q.Role, "permission": nil}
+	if q.AdditionalFields != nil {
+		body["additionalFields"] = q.AdditionalFields
+	}
 	if q.Permission != nil {
 		body["permission"] = organizationPermissionObject(q.Permission)
 	}
@@ -80,6 +84,11 @@ func roleSelectorBody(q organization.RoleQuery) map[string]any {
 func (c *Client) UpdateOrganizationRole(ctx context.Context, q organization.RoleQuery, change organization.RoleUpdate) (*organization.UpdatedRole, error) {
 	body := roleSelectorBody(q)
 	data := map[string]any{}
+	for name, value := range change.AdditionalFields {
+		if sessionfields.RoleNameOK(name) {
+			data[name] = value
+		}
+	}
 	if change.RoleName != "" {
 		data["roleName"] = change.RoleName
 	}

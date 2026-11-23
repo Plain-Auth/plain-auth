@@ -1,6 +1,7 @@
 package organization
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"net/http"
@@ -9,17 +10,19 @@ import (
 	"time"
 
 	auth "github.com/Plain-Auth/plain-auth"
+	"github.com/Plain-Auth/plain-auth/internal/sessionfields"
 	"github.com/Plain-Auth/plain-auth/plugins/access"
 )
 
 // RoleDefinition is a stored permission definition in a single organization.
 type RoleDefinition struct {
-	ID             string            `json:"id"`
-	OrganizationID string            `json:"organizationId"`
-	Role           string            `json:"role"`
-	Permission     access.Statements `json:"permission"`
-	CreatedAt      time.Time         `json:"createdAt"`
-	UpdatedAt      *time.Time        `json:"updatedAt"`
+	AdditionalFields map[string]any    `json:"-"`
+	ID               string            `json:"id"`
+	OrganizationID   string            `json:"organizationId"`
+	Role             string            `json:"role"`
+	Permission       access.Statements `json:"permission"`
+	CreatedAt        time.Time         `json:"createdAt"`
+	UpdatedAt        *time.Time        `json:"updatedAt"`
 }
 
 func (r RoleDefinition) MarshalJSON() ([]byte, error) {
@@ -30,11 +33,58 @@ func (r RoleDefinition) MarshalJSON() ([]byte, error) {
 		updated = &value
 	}
 	type fields RoleDefinition
-	return json.Marshal(struct {
+	base, err := json.Marshal(struct {
 		fields
 		CreatedAt string  `json:"createdAt"`
 		UpdatedAt *string `json:"updatedAt"`
 	}{fields(r), r.CreatedAt.UTC().Format(millis), updated})
+	if err != nil || len(r.AdditionalFields) == 0 {
+		return base, err
+	}
+	extras := make(map[string]any)
+	for name, value := range r.AdditionalFields {
+		if sessionfields.RoleNameOK(name) {
+			extras[name] = value
+		}
+	}
+	if len(extras) == 0 {
+		return base, nil
+	}
+	b, err := json.Marshal(extras)
+	if err != nil {
+		return nil, err
+	}
+	base[len(base)-1] = ','
+	return append(base, b[1:]...), nil
+}
+
+// UnmarshalJSON retains the logical custom field names returned by the server.
+func (r *RoleDefinition) UnmarshalJSON(b []byte) error {
+	type fields RoleDefinition
+	var fixed fields
+	if err := json.Unmarshal(b, &fixed); err != nil {
+		return err
+	}
+	var extra map[string]any
+	d := json.NewDecoder(bytes.NewReader(b))
+	d.UseNumber()
+	if err := d.Decode(&extra); err != nil {
+		return err
+	}
+	for name, value := range extra {
+		if !sessionfields.RoleNameOK(name) {
+			delete(extra, name)
+		} else if n, ok := value.(json.Number); ok {
+			if v, err := n.Int64(); err == nil {
+				extra[name] = v
+			}
+		}
+	}
+	if len(extra) > 0 {
+		fixed.AdditionalFields = extra
+	}
+	*r = RoleDefinition(fixed)
+	return nil
 }
 
 // RoleQuery selects a stored definition by exact name or ID. Name takes precedence.

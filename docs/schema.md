@@ -56,6 +56,20 @@ Each row has a primary key `id`, the owning `organizationId`, a `role` name, a `
 
 Enable `DynamicAccessControl` in the organization plugin to apply stored grants to permission checks, invitations, profile edits and team operations. [Runtime configuration](organizations.md#use-roles-stored-by-an-organization) · [Role management checklist](parity/plugins/organization.md)
 
+To add role fields, save the declaration below as `role-fields.json`. Use the same declarations in the application and in every schema command.
+
+```json
+{"color":{"type":"string","column":"display_color","default":"blue"},"rank":{"type":"number"}}
+```
+
+```sh
+authctl generate --dialect postgres --plugins organization-roles --organization-role-fields role-fields.json
+authctl migrate --dialect postgres --plugins organization-roles --organization-role-fields role-fields.json
+authctl check schema --dialect postgres --plugins organization-roles --organization-role-fields role-fields.json
+```
+
+For a populated table, supply a static default when adding a required column, or backfill it explicitly. A successful migration preserves existing values and can be rerun. In Go, read the file with `schema.ReadRoleFields` and pass the result as `schema.AdditionalFields.OrganizationRole` and `organization.Options.RoleAdditionalFields`. [Role field configuration](organizations.md#add-fields-to-organization-roles) · [Three-dialect migration tests](../cmd/authctl/organization_role_fields_test.go)
+
 ## Configure user, session and account fields
 
 Pass `--user-fields FILE`, `--session-fields FILE` and `--account-fields FILE` in any combination to `authctl generate`, `check schema` and `migrate`. Each file is a JSON object keyed by the logical name your app uses. Each model has its own field names. A `column` value selects a physical column on that model. The file can use application names while preserving an existing database column name.
