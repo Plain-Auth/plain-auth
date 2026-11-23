@@ -20,6 +20,16 @@ func (c *Client) UpdateOrganization(ctx context.Context, organizationID string, 
 	return &result, nil
 }
 
+// DeleteOrganization deletes an organization the caller may delete and returns
+// its final profile. Its members, invitations and teams are removed with it.
+func (c *Client) DeleteOrganization(ctx context.Context, organizationID string) (*org.Organization, error) {
+	var result org.Organization
+	if err := c.Do(ctx, http.MethodPost, "/organization/delete", map[string]string{"organizationId": organizationID}, &result); err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
 // CheckOrganizationSlug returns an API error for a slug already in use.
 func (c *Client) CheckOrganizationSlug(ctx context.Context, slug string) (bool, error) {
 	var result struct {

@@ -398,6 +398,25 @@ updated, err := c.UpdateOrganization(ctx, orgID, organization.ProfileUpdate{
 
 SQL adapters check the live session and current membership in the update transaction. The authenticated native service accepts the same change through `service.UpdateOrganization`. [Browser and role tests](../conformance/organization-profile.mjs) · [Concurrent slug claims](../adapters/sqlstore/organization_profile_test.go)
 
+## Delete an organization
+
+A member whose role grants `organization.delete` can delete the organization. The built-in `owner` role has it, and `admin` does not. Send `POST /organization/delete` with `{"organizationId":"org_example"}`, or call `c.DeleteOrganization(ctx, orgID)` from the Go client. The response contains the deleted organization's profile.
+
+The SQL adapter deletes the organization with its members, invitations, teams and team memberships, stored roles and organization-owned API keys in one transaction. Every session that selected the organization or one of its teams loses that selection, including other users' sessions. User accounts remain.
+
+| Result | Status and code |
+| --- | --- |
+| Missing or non-string `organizationId` | `400 VALIDATION_ERROR` |
+| Empty `organizationId` | `400 ORGANIZATION_NOT_FOUND` |
+| No session | `401 UNAUTHORIZED` |
+| Caller is not a member, or the organization does not exist | `400 USER_IS_NOT_A_MEMBER_OF_THE_ORGANIZATION` |
+| Caller's role lacks `organization.delete` | `403 YOU_ARE_NOT_ALLOWED_TO_DELETE_THIS_ORGANIZATION` |
+| `DisableOrganizationDeletion: true` | `404 ORGANIZATION_DELETION_DISABLED` |
+
+Set `BeforeDeleteOrganization` to inspect the organization and the signed-in user after the permission check. Returning an error cancels the deletion. The adapter checks the session and permission again in the deleting transaction, so a member demoted while the hook runs cannot delete. `AfterDeleteOrganization` runs after the deletion commits; its error reaches the caller and the organization stays deleted. A custom store must implement `organization.OrganizationDeletionStore` to serve the route.
+
+Stripe organization subscriptions are not checked yet. Cancel an organization's subscription before deleting it. [HTTP, hook and cleanup tests on three SQL engines](../adapters/sqlstore/organization_deletion_test.go)
+
 ## Change membership roles
 
 Send the membership ID in `memberId` and the replacement roles in `role`. The endpoint accepts a string or an array of strings, trims whitespace, splits comma-separated entries and preserves their order. Omit `organizationId` to use the organization selected on this session. The response is the updated member with its ID, organization ID, user ID, role and creation time.

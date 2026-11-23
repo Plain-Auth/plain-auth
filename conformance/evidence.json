@@ -10519,6 +10519,16 @@
       "label": "Skip preparation for live renewals and preserve the pending grant when a replacement fails",
       "test": "adapters/sqlstore/organization_invitation_preparation_test.go",
       "marker": "t.Fatal(\"failed preparation disturbed the original invitation\")"
+    },
+    {
+      "label": "Cancel an organization deletion from the before hook with the organization and the signed-in user",
+      "test": "adapters/sqlstore/organization_deletion_test.go",
+      "marker": "// A before hook can cancel the deletion."
+    },
+    {
+      "label": "Return an after-hook error once the organization deletion has committed",
+      "test": "adapters/sqlstore/organization_deletion_test.go",
+      "marker": "// An after-hook error reaches the caller once the deletion has committed."
     }
   ],
   "plugin-symbol/siwe/SIWEPluginOptions/getNonce": [
@@ -16229,6 +16239,76 @@
       "label": "Resolve each team's member cap from the acting session when adding, inviting and accepting, with zero admitting no new members",
       "test": "adapters/sqlstore/organization_team_seats_test.go",
       "marker": "func TestResolvedTeamMemberLimits("
+    }
+  ],
+  "plugin/organization/POST /organization/delete": [
+    {
+      "label": "Delete an organization over HTTP with permission, hook, cleanup and session-selection checks on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/organization_deletion_test.go",
+      "marker": "func TestOrganizationDeletion(",
+      "complete": true
+    },
+    {
+      "label": "Delete the organization with its members, invitations, teams, stored roles and organization API keys, clear every session selection and keep neighboring tenants",
+      "test": "adapters/sqlstore/organization_deletion_test.go",
+      "marker": "deleted, err := ownerHTTP.DeleteOrganization(ctx, group.ID)"
+    },
+    {
+      "label": "Require a member holding organization.delete and reject outsiders, unknown organizations and anonymous callers",
+      "test": "adapters/sqlstore/organization_deletion_test.go",
+      "marker": "// Only a member holding organization.delete can delete."
+    },
+    {
+      "label": "Recheck the caller's permission in the deleting transaction after the before hook returns",
+      "test": "adapters/sqlstore/organization_deletion_test.go",
+      "marker": "// The deletion rechecks the permission after the before hook returns."
+    },
+    {
+      "label": "Clear only the organization selection on a store without teams",
+      "test": "adapters/sqlstore/organization_deletion_test.go",
+      "marker": "// Without the teams profile only the organization selection is cleared."
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L819": [
+    {
+      "label": "Delete an organization over HTTP with permission, hook, cleanup and session-selection checks on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/organization_deletion_test.go",
+      "marker": "func TestOrganizationDeletion(",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L823/`POST /organization/delete`": [
+    {
+      "label": "Delete an organization over HTTP with permission, hook, cleanup and session-selection checks on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/organization_deletion_test.go",
+      "marker": "func TestOrganizationDeletion(",
+      "complete": true
+    },
+    {
+      "label": "Delete the organization with its members, invitations, teams, stored roles and organization API keys, clear every session selection and keep neighboring tenants",
+      "test": "adapters/sqlstore/organization_deletion_test.go",
+      "marker": "deleted, err := ownerHTTP.DeleteOrganization(ctx, group.ID)"
+    },
+    {
+      "label": "Require a member holding organization.delete and reject outsiders, unknown organizations and anonymous callers",
+      "test": "adapters/sqlstore/organization_deletion_test.go",
+      "marker": "// Only a member holding organization.delete can delete."
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L829/Parameter `organizationId`": [
+    {
+      "label": "Require a string organizationId and treat an empty one as no organization",
+      "test": "adapters/sqlstore/organization_deletion_test.go",
+      "marker": "// The body is validated before the session, and an empty ID names no organization.",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/organization/OrganizationOptions/disableOrganizationDeletion": [
+    {
+      "label": "Answer 404 ORGANIZATION_DELETION_DISABLED before authentication when deletion is disabled",
+      "test": "adapters/sqlstore/organization_deletion_test.go",
+      "marker": "// Disabled deletion answers before authentication.",
+      "complete": true
     }
   ]
 }

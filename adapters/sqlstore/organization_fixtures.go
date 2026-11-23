@@ -87,6 +87,16 @@ func (s *Store) deleteFixtureOrganization(ctx context.Context, id string) error 
 	if err = s.cleanupFixtureOrganizationKeys(ctx, tx, id); err != nil {
 		return err
 	}
+	if err = s.deleteOrganizationRows(ctx, tx, id); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+// deleteOrganizationRows removes an organization and the rows that belong to
+// it, and clears every session selection that pointed at it. MySQL ignores
+// the schema's inline foreign keys, so nothing here relies on a cascade.
+func (s *Store) deleteOrganizationRows(ctx context.Context, tx *sql.Tx, id string) error {
 	eqOrg := s.scimExact(`"organizationId"`) + `=?`
 	activeOrg := s.scimExact(`"activeOrganizationId"`) + `=?`
 	teams, err := s.hasKeyOwnerTable(ctx, tx, "team")
@@ -110,15 +120,19 @@ func (s *Store) deleteFixtureOrganization(ctx context.Context, id string) error 
 	if _, err = tx.ExecContext(ctx, s.bind(clearSelected), id); err != nil {
 		return err
 	}
-	for _, table := range []string{"invitation", "member"} {
+	tables := []string{"invitation", "member"}
+	if roles, err := s.hasKeyOwnerTable(ctx, tx, "organizationRole"); err != nil {
+		return err
+	} else if roles {
+		tables = append(tables, "organizationRole")
+	}
+	for _, table := range tables {
 		if _, err = tx.ExecContext(ctx, s.bind(`DELETE FROM "`+table+`" WHERE `+eqOrg), id); err != nil {
 			return err
 		}
 	}
-	if _, err = tx.ExecContext(ctx, s.bind(`DELETE FROM "organization" WHERE `+s.scimExact(`"id"`)+`=?`), id); err != nil {
-		return err
-	}
-	return tx.Commit()
+	_, err = tx.ExecContext(ctx, s.bind(`DELETE FROM "organization" WHERE `+s.scimExact(`"id"`)+`=?`), id)
+	return err
 }
 
 func (s *Store) cleanupFixtureOrganizationKeys(ctx context.Context, tx *sql.Tx, id string) error {
@@ -136,6 +150,18 @@ func (s *Store) cleanupFixtureOrganizationKeys(ctx context.Context, tx *sql.Tx, 
 	if unknown {
 		return errors.New("authtest: classify the owner namespace of imported API keys before deleting the organization")
 	}
+	return s.deleteOrganizationKeys(ctx, tx, id)
+}
+
+// deleteOrganizationKeys removes API keys issued in an organization namespace.
+// Imported keys without a recorded namespace are left for the host to classify.
+func (s *Store) deleteOrganizationKeys(ctx context.Context, tx *sql.Tx, id string) error {
+	exists, err := s.hasKeyOwnerTable(ctx, tx, "apikey")
+	if err != nil || !exists {
+		return err
+	}
+	where := s.scimExact(`"apikey"."referenceId"`) + `=?`
+	classified := `SELECT 1 FROM "verification" v WHERE ` + s.scimExact(`v."value"`) + `=` + s.scimExact(`"apikey"."configId"`)
 	_, err = tx.ExecContext(ctx, s.bind(`DELETE FROM "apikey" WHERE `+where+` AND EXISTS (`+classified+` AND v."identifier"='apikey-org-config')`), id)
 	return err
 }

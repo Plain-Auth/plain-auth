@@ -176,7 +176,12 @@
     - [x] Update an explicit or active organization, clear its logo and replace metadata using the released client ([test](../../../conformance/organization-profile.mjs#L30))
     - [x] Require active owner or admin membership and roll back other changes on a slug collision ([test](../../../conformance/organization-profile.mjs#L38))
     - [x] Serialize competing slug claims across two connections and reject revoked sessions on three SQL engines ([test](../../../adapters/sqlstore/organization_profile_test.go#L112))
-  - [ ] `POST /organization/delete`
+  - [x] `POST /organization/delete` ([test](../../../adapters/sqlstore/organization_deletion_test.go#L18))
+    - [x] Delete an organization over HTTP with permission, hook, cleanup and session-selection checks on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/organization_deletion_test.go#L18))
+    - [x] Delete the organization with its members, invitations, teams, stored roles and organization API keys, clear every session selection and keep neighboring tenants ([test](../../../adapters/sqlstore/organization_deletion_test.go#L133))
+    - [x] Require a member holding organization.delete and reject outsiders, unknown organizations and anonymous callers ([test](../../../adapters/sqlstore/organization_deletion_test.go#L113))
+    - [x] Recheck the caller's permission in the deleting transaction after the before hook returns ([test](../../../adapters/sqlstore/organization_deletion_test.go#L163))
+    - [x] Clear only the organization selection on a store without teams ([test](../../../adapters/sqlstore/organization_deletion_test.go#L194))
   - [ ] `GET /organization/get-organization`
     - [x] Resolve the active organization and enforce membership ([test](../../../plugins/organization/organization_test.go#L102))
   - [ ] `GET /organization/get-full-organization`
@@ -286,7 +291,8 @@
       - [x] Capture the issuing member on creation, renewal and replacement across all three engines ([test](../../../adapters/sqlstore/organization_delivery_test.go#L36))
       - [x] Deliver exactly once through a permitted application credential after the SQL transaction commits ([test](../../../adapters/sqlstore/apikey_session_test.go#L253))
     - [ ] `schema`
-    - [ ] `disableOrganizationDeletion`
+    - [x] `disableOrganizationDeletion` ([test](../../../adapters/sqlstore/organization_deletion_test.go#L175))
+      - [x] Answer 404 ORGANIZATION_DELETION_DISABLED before authentication when deletion is disabled ([test](../../../adapters/sqlstore/organization_deletion_test.go#L175))
     - [ ] `organizationHooks`
       - [x] Run profile callbacks in released-client order with supplied fields, selective overrides, committed data and distinct failure outcomes ([test](../../../conformance/organization-profile-hooks.mjs#L7))
       - [x] Recheck the original tenant, member, active selection and session across unlocked host callbacks on three database engines ([test](../../../adapters/sqlstore/organization_profile_hooks_test.go#L16))
@@ -298,6 +304,8 @@
       - [x] Keep a committed grant available for resend after the creation callback fails ([test](../../../conformance/invitation-creation.mjs#L65))
       - [x] Apply the host’s recipient, role, team and deadline changes before sending the saved invitation ([test](../../../conformance/invitation-preparation.mjs#L54))
       - [x] Skip preparation for live renewals and preserve the pending grant when a replacement fails ([test](../../../adapters/sqlstore/organization_invitation_preparation_test.go#L52))
+      - [x] Cancel an organization deletion from the before hook with the organization and the signed-in user ([test](../../../adapters/sqlstore/organization_deletion_test.go#L122))
+      - [x] Return an after-hook error once the organization deletion has committed ([test](../../../adapters/sqlstore/organization_deletion_test.go#L181))
 
 ## Organization
 
@@ -392,9 +400,14 @@
         - [ ] Parameter `logo` (optional)
         - [ ] Parameter `metadata` (optional)
         - [ ] Parameter `organizationId` (optional)
-    - [ ] Delete Organization
-      - [ ] `POST /organization/delete`
-        - [ ] Parameter `organizationId`
+    - [x] Delete Organization ([test](../../../adapters/sqlstore/organization_deletion_test.go#L18))
+      - [x] Delete an organization over HTTP with permission, hook, cleanup and session-selection checks on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/organization_deletion_test.go#L18))
+      - [x] `POST /organization/delete` ([test](../../../adapters/sqlstore/organization_deletion_test.go#L18))
+        - [x] Delete an organization over HTTP with permission, hook, cleanup and session-selection checks on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/organization_deletion_test.go#L18))
+        - [x] Delete the organization with its members, invitations, teams, stored roles and organization API keys, clear every session selection and keep neighboring tenants ([test](../../../adapters/sqlstore/organization_deletion_test.go#L133))
+        - [x] Require a member holding organization.delete and reject outsiders, unknown organizations and anonymous callers ([test](../../../adapters/sqlstore/organization_deletion_test.go#L113))
+        - [x] Parameter `organizationId` ([test](../../../adapters/sqlstore/organization_deletion_test.go#L107))
+          - [x] Require a string organizationId and treat an empty one as no organization ([test](../../../adapters/sqlstore/organization_deletion_test.go#L107))
   - [ ] Invitations
     - [x] Setup Invitation Email ([test](../../../conformance/invitation-delivery.mjs#L51))
       - [x] Deliver the committed grant with the sending membership, public user profile, destination organization and request metadata ([test](../../../conformance/invitation-delivery.mjs#L51))

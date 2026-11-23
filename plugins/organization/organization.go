@@ -88,12 +88,21 @@ type Options struct {
 	MembershipLimit          MembershipLimit
 	BeforeUpdateOrganization func(context.Context, BeforeProfileUpdate) (*ProfileUpdate, error)
 	AfterUpdateOrganization  func(context.Context, AfterProfileUpdate) error
-	Teams                    *TeamOptions
-	teamStore                TeamStore
-	Store                    Store
-	SendInvitation           func(context.Context, Invitation) error
-	SendInvitationEmail      func(context.Context, InvitationDelivery) error
-	RequireVerifiedEmail     bool
+	// DisableOrganizationDeletion makes POST /organization/delete answer 404
+	// with ORGANIZATION_DELETION_DISABLED.
+	DisableOrganizationDeletion bool
+	// BeforeDeleteOrganization runs after the caller's permission check and
+	// before anything is deleted. Returning an error cancels the deletion.
+	BeforeDeleteOrganization func(context.Context, OrganizationDeletion) error
+	// AfterDeleteOrganization runs after the deletion commits. Its error is
+	// returned to the caller, and the organization stays deleted.
+	AfterDeleteOrganization func(context.Context, OrganizationDeletion) error
+	Teams                   *TeamOptions
+	teamStore               TeamStore
+	Store                   Store
+	SendInvitation          func(context.Context, Invitation) error
+	SendInvitationEmail     func(context.Context, InvitationDelivery) error
+	RequireVerifiedEmail    bool
 }
 
 func problem(status int, code, message string) *authn.APIError {
@@ -271,6 +280,11 @@ func NewService(o Options) (*Service, error) {
 			return nil, errors.New("organization: profile hooks require an ObservedProfileStore")
 		}
 	}
+	if o.BeforeDeleteOrganization != nil || o.AfterDeleteOrganization != nil {
+		if _, ok := o.Store.(OrganizationDeletionStore); !ok {
+			return nil, errors.New("organization: deletion hooks require an OrganizationDeletionStore")
+		}
+	}
 	if o.SendInvitationEmail != nil && o.SendInvitation != nil {
 		return nil, errors.New("organization: configure one invitation sender")
 	}
@@ -342,6 +356,9 @@ func (service *Service) Plugin() authn.Plugin {
 	}
 	if store, ok := o.Store.(ProfileStore); ok {
 		plugin.Endpoints = append(plugin.Endpoints, service.profileEndpoints(store)...)
+	}
+	if store, ok := o.Store.(OrganizationDeletionStore); ok {
+		plugin.Endpoints = append(plugin.Endpoints, o.deleteOrganizationEndpoint(store))
 	}
 	if _, ok := o.Store.(MemberRoleStore); ok {
 		plugin.Endpoints = append(plugin.Endpoints, service.memberRoleEndpoint())

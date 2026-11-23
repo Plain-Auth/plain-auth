@@ -2,16 +2,16 @@
 
 ## Verification progress
 
-**603 of 6,683 inventory entries are fully verified (9.0%).**
+**608 of 6,683 inventory entries are fully verified (9.1%).**
 
 | Inventory status | Entries |
 | --- | ---: |
-| Fully verified | 603 |
+| Fully verified | 608 |
 | Partially verified | 1,063 |
-| No linked test evidence | 5,017 |
+| No linked test evidence | 5,012 |
 | Not applicable to a Go server | 342 |
 
-The inventory covers features, options, integrations and documentation topics. Partial verification means an open entry has a passing case somewhere beneath it. The checklists also contain 2,641 links from passing scenarios to tests. Adding a scenario leaves the inventory denominator unchanged.
+The inventory covers features, options, integrations and documentation topics. Partial verification means an open entry has a passing case somewhere beneath it. The checklists also contain 2,654 links from passing scenarios to tests. Adding a scenario leaves the inventory denominator unchanged.
 
 Entries that exist only for JavaScript clients, frameworks or runtimes are listed as not applicable, with the reason, and are left out of the totals. Backlog entries stay open on the roadmap but are not scheduled.
 
@@ -117,7 +117,7 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 | [One tap](plugins/one-tap.md) | 38 | 18 | 0 |
 | [One time token](plugins/one-time-token.md) | 76 | 0 | 0 |
 | [OpenAPI](plugins/open-api.md) | 16 | 24 | 0 |
-| [Organization](plugins/organization.md) | 573 | 299 | 0 |
+| [Organization](plugins/organization.md) | 591 | 294 | 0 |
 | [Passkey](plugins/passkey.md) | 26 | 94 | 0 |
 | [Phone number](plugins/phone-number.md) | 36 | 67 | 0 |
 | [SCIM provisioning](plugins/scim.md) | 66 | 257 | 0 |
