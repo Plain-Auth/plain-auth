@@ -21,28 +21,69 @@ func (s *Store) exactSQLValue(value string) string {
 }
 
 func (s *Store) RemoveOrganizationMember(ctx context.Context, userID, token, group, target string) (*org.RemovedMember, error) {
-	return s.removeMembership(ctx, userID, token, group, target, false)
+	member, _, err := s.removeMembership(ctx, userID, token, group, target, false, false)
+	return member, err
 }
 func (s *Store) LeaveOrganization(ctx context.Context, userID, token, group string) (*org.RemovedMember, error) {
 	if group == "" {
 		return nil, org.ErrMemberMissing
 	}
-	return s.removeMembership(ctx, userID, token, group, "", true)
+	member, _, err := s.removeMembership(ctx, userID, token, group, "", true, false)
+	return member, err
 }
 
-func (s *Store) removeMembership(ctx context.Context, userID, token, group, target string, leave bool) (*org.RemovedMember, error) {
+// PrepareMemberRemoval runs every check of a removal without writing and
+// returns the member, their account and the organization for the hooks.
+func (s *Store) PrepareMemberRemoval(ctx context.Context, userID, token, group, target string) (org.MemberRemoval, error) {
+	_, prepared, err := s.removeMembership(ctx, userID, token, group, target, false, true)
+	return prepared, err
+}
+
+// CommitMemberRemoval removes the prepared membership after checking the
+// caller's session and permission again.
+func (s *Store) CommitMemberRemoval(ctx context.Context, userID, token, group, memberID string) (*org.RemovedMember, error) {
+	if strings.Contains(memberID, "@") {
+		return nil, org.ErrMemberMissing
+	}
+	return s.RemoveOrganizationMember(ctx, userID, token, group, memberID)
+}
+
+func (s *Store) removeMembership(ctx context.Context, userID, token, group, target string, leave, prepare bool) (*org.RemovedMember, org.MemberRemoval, error) {
 	var member *org.RemovedMember
+	var prepared org.MemberRemoval
 	var err error
 	for range 3 {
-		member, err = s.removeMembershipOnce(ctx, userID, token, group, target, leave)
+		member, prepared, err = s.removeMembershipOnce(ctx, userID, token, group, target, leave, prepare)
 		if !retryIdentity(err) {
 			break
 		}
 	}
-	return member, err
+	return member, prepared, err
 }
 
-func (s *Store) removeMembershipOnce(ctx context.Context, userID, token, group, target string, leave bool) (*org.RemovedMember, error) {
+func (s *Store) removeMembershipOnce(ctx context.Context, userID, token, group, target string, leave, prepare bool) (*org.RemovedMember, org.MemberRemoval, error) {
+	var prepared org.MemberRemoval
+	removed, err := s.removeMembershipTx(ctx, userID, token, group, target, leave, func(tx *sql.Tx, group string, member *org.RemovedMember) (bool, error) {
+		if !prepare {
+			return true, nil
+		}
+		exact := s.exactSQLValue("?")
+		account := &prepared.User
+		if err := tx.QueryRowContext(ctx, s.bind(`SELECT `+userColumns+` FROM "user" u WHERE u."id"=`+exact), member.UserID).Scan(userFields(account)...); err != nil {
+			return false, err
+		}
+		row, err := readOrg(tx.QueryRowContext(ctx, s.bind(`SELECT `+orgFields+` FROM "organization" o WHERE o."id"=`+exact), group))
+		if err != nil {
+			return false, err
+		}
+		prepared.Member, prepared.Organization = member.Member, *row
+		return false, nil
+	})
+	return removed, prepared, err
+}
+
+// removeMembershipTx authorizes a removal; write decides whether to delete.
+func (s *Store) removeMembershipTx(ctx context.Context, userID, token, group, target string, leave bool, write func(*sql.Tx, string, *org.RemovedMember) (bool, error)) (*org.RemovedMember, error) {
 	tx, err := s.beginMembershipChange(ctx)
 	if err != nil {
 		return nil, err
@@ -100,6 +141,9 @@ func (s *Store) removeMembershipOnce(ctx context.Context, userID, token, group, 
 		if err := s.requireOrganizationAction(ctx, tx, group, actor.Role, "member", "delete", org.ErrMemberRemove); err != nil {
 			return nil, err
 		}
+	}
+	if proceed, err := write(tx, group, member); err != nil || !proceed {
+		return member, err
 	}
 	teams, err := s.hasKeyOwnerTable(ctx, tx, "teamMember")
 	if err != nil {

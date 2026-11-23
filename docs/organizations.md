@@ -504,6 +504,8 @@ The Go HTTP client provides `RemoveOrganizationMember(ctx, memberIDOrEmail, orga
 
 Removal releases the member's team seats in that organization and clears its organization and team selections from every affected session. This also works when the handling process uses the organization plugin without teams while sharing a team-enabled database. Sessions selecting another organization retain that selection. [Client comparison](../conformance/organization-removal.mjs) · [Three-database concurrency tests](../adapters/sqlstore/organization_removal_test.go)
 
+Set `BeforeRemoveMember` and `AfterRemoveMember` to observe removals through `POST /organization/remove-member`. Each receives the membership, the account that held it and the organization. The before hook runs only after every check passes, including the final-owner rule and the caller's `member.delete` permission; returning an error cancels the removal. The store then checks the caller again and removes that exact membership. `AfterRemoveMember` runs after the removal commits; its error is returned and the member stays removed. Leaving an organization does not run these hooks. A custom store must implement `organization.ObservedMemberRemovalStore` to enable them. [Hook tests on three SQL engines](../adapters/sqlstore/organization_member_removal_hooks_test.go)
+
 ## List organization invitations
 
 Use a signed-in owner or admin session to call `GET /organization/list-invitations`. The optional `organizationId` selects another organization you belong to. Without an ID, the request uses the current session's active organization. This endpoint preserves both organization and team selections on success and on error.

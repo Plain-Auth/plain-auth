@@ -108,7 +108,13 @@ type Options struct {
 	BeforeAddMember func(context.Context, BeforeMemberAddition) (*MemberOverride, error)
 	// AfterAddMember runs after such a membership commits. Its error is
 	// returned and the membership remains.
-	AfterAddMember           func(context.Context, AfterMemberAddition) error
+	AfterAddMember func(context.Context, AfterMemberAddition) error
+	// BeforeRemoveMember runs after POST /organization/remove-member passes
+	// its checks and before the membership is removed. An error cancels it.
+	BeforeRemoveMember func(context.Context, MemberRemoval) error
+	// AfterRemoveMember runs after the removal commits. Its error is
+	// returned and the membership stays removed.
+	AfterRemoveMember        func(context.Context, MemberRemoval) error
 	BeforeUpdateOrganization func(context.Context, BeforeProfileUpdate) (*ProfileUpdate, error)
 	AfterUpdateOrganization  func(context.Context, AfterProfileUpdate) error
 	// DisableOrganizationDeletion makes POST /organization/delete answer 404
@@ -304,6 +310,11 @@ func NewService(o Options) (*Service, error) {
 	if o.BeforeUpdateOrganization != nil || o.AfterUpdateOrganization != nil {
 		if _, ok := o.Store.(ObservedProfileStore); !ok {
 			return nil, errors.New("organization: profile hooks require an ObservedProfileStore")
+		}
+	}
+	if o.BeforeRemoveMember != nil || o.AfterRemoveMember != nil {
+		if _, ok := o.Store.(ObservedMemberRemovalStore); !ok {
+			return nil, errors.New("organization: member removal hooks require an ObservedMemberRemovalStore")
 		}
 	}
 	if o.BeforeDeleteOrganization != nil || o.AfterDeleteOrganization != nil {

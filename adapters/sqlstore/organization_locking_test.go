@@ -87,11 +87,11 @@ func TestOrganizationMembershipLockOrder(t *testing.T) {
 			}
 			removed := make(chan error, 2)
 			go func() {
-				_, err := first.removeMembershipOnce(ctx, owner.ID, "Owner-t", "Opposed", "Opposed-Other", false)
+				_, _, err := first.removeMembershipOnce(ctx, owner.ID, "Owner-t", "Opposed", "Opposed-Other", false, false)
 				removed <- err
 			}()
 			go func() {
-				_, err := second.removeMembershipOnce(ctx, other.ID, "Other-t", "Opposed", "Opposed-Owner", false)
+				_, _, err := second.removeMembershipOnce(ctx, other.ID, "Other-t", "Opposed", "Opposed-Owner", false, false)
 				removed <- err
 			}()
 			if release != nil {

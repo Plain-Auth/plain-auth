@@ -7504,6 +7504,21 @@
       "label": "Serialize opposing owner removals and reread the losing actor's membership",
       "test": "adapters/sqlstore/organization_removal_test.go",
       "marker": "competing owner removals left"
+    },
+    {
+      "label": "Give the member removal hooks the membership, its account and the organization",
+      "test": "adapters/sqlstore/organization_member_removal_hooks_test.go",
+      "marker": "// Both hooks see the member, their account and the organization."
+    },
+    {
+      "label": "Keep unpermitted, final-owner and unknown-member removals away from the removal hooks",
+      "test": "adapters/sqlstore/organization_member_removal_hooks_test.go",
+      "marker": "// Refused removals never reach the hooks."
+    },
+    {
+      "label": "Recheck the caller's permission after the before hook and keep the member when it was revoked",
+      "test": "adapters/sqlstore/organization_member_removal_hooks_test.go",
+      "marker": "// The removal rechecks the caller's permission after the before hook."
     }
   ],
   "plugin/organization/POST /organization/leave": [
@@ -10599,6 +10614,16 @@
       "label": "Run the member addition hooks for a trusted grant with the member's profile and organization and save the returned roles",
       "test": "adapters/sqlstore/organization_member_hooks_test.go",
       "marker": "// A trusted grant runs the hooks with the member's profile and organization."
+    },
+    {
+      "label": "Give the member removal hooks the membership, its account and the organization",
+      "test": "adapters/sqlstore/organization_member_removal_hooks_test.go",
+      "marker": "// Both hooks see the member, their account and the organization."
+    },
+    {
+      "label": "Cancel a member removal when the before hook fails",
+      "test": "adapters/sqlstore/organization_member_removal_hooks_test.go",
+      "marker": "// A before-hook error cancels the removal."
     }
   ],
   "plugin-symbol/siwe/SIWEPluginOptions/getNonce": [
@@ -16469,6 +16494,31 @@
       "label": "Cancel a trusted grant when the member addition hook fails",
       "test": "adapters/sqlstore/organization_member_hooks_test.go",
       "marker": "// A before-hook error cancels the grant."
+    },
+    {
+      "label": "Give the member removal hooks the membership, its account and the organization",
+      "test": "adapters/sqlstore/organization_member_removal_hooks_test.go",
+      "marker": "// Both hooks see the member, their account and the organization."
+    },
+    {
+      "label": "Cancel a member removal when the before hook fails",
+      "test": "adapters/sqlstore/organization_member_removal_hooks_test.go",
+      "marker": "// A before-hook error cancels the removal."
+    },
+    {
+      "label": "Keep unpermitted, final-owner and unknown-member removals away from the removal hooks",
+      "test": "adapters/sqlstore/organization_member_removal_hooks_test.go",
+      "marker": "// Refused removals never reach the hooks."
+    },
+    {
+      "label": "Recheck the caller's permission after the before hook and keep the member when it was revoked",
+      "test": "adapters/sqlstore/organization_member_removal_hooks_test.go",
+      "marker": "// The removal rechecks the caller's permission after the before hook."
+    },
+    {
+      "label": "Return the account for removal by email and report an after-hook error once the removal has committed",
+      "test": "adapters/sqlstore/organization_member_removal_hooks_test.go",
+      "marker": "// Removal by email returns the account, and an after-hook error keeps the removal."
     }
   ]
 }
