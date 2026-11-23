@@ -22,29 +22,9 @@ func TestAtomicInvitationReplacement(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			dsn := organizationTestDSN(t, dialect)
-			store, err := OpenWithOptions(ctx, dialect, dsn, []string{"organization-teams"}, schema.Options{})
-			must(err)
-			defer store.Close()
-			peer, err := Open(ctx, dialect, dsn)
-			must(err)
-			defer peer.Close()
+			store, peer, owner, admin, group := invitationWriterFixture(t, dialect)
 			teams, err := store.WithOrganizationTeams(org.TeamOptions{})
 			must(err)
-			app, err := authtest.New(auth.Options{Store: store, BaseURL: "https://org.example.test", Secret: strings.Repeat("s", 40)})
-			must(err)
-			newSession := func() auth.Session {
-				t.Helper()
-				user, err := app.SaveUser(ctx, authtest.NewUser())
-				must(err)
-				login, err := app.Login(ctx, user.ID)
-				must(err)
-				return login.Session
-			}
-			owner, admin := newSession(), newSession()
-			group := authtest.NewOrganization("studio")
-			must(store.CreateOrganization(ctx, group, org.Member{ID: "owner", UserID: owner.UserID, Role: "owner", OrganizationID: group.ID, CreatedAt: group.CreatedAt}, owner.ID, false))
-			must(store.AddOrganizationMember(ctx, org.Member{ID: "admin", UserID: admin.UserID, Role: "admin", OrganizationID: group.ID, CreatedAt: group.CreatedAt}, ""))
 			base := org.Invitation{ID: "initial", InviterID: owner.UserID, Email: "guest@example.test", Role: "member", OrganizationID: group.ID, Status: "pending", CreatedAt: group.CreatedAt, ExpiresAt: group.CreatedAt.Add(time.Hour)}
 			_, err = store.InviteOrganizationMember(ctx, base, owner.ID, false)
 			must(err)
@@ -85,4 +65,37 @@ func TestAtomicInvitationReplacement(t *testing.T) {
 			}
 		})
 	}
+}
+
+func invitationWriterFixture(t *testing.T, dialect string) (*Store, *Store, auth.Session, auth.Session, org.Organization) {
+	t.Helper()
+	ctx := t.Context()
+	must := func(err error) {
+		t.Helper()
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	dsn := organizationTestDSN(t, dialect)
+	store, err := OpenWithOptions(ctx, dialect, dsn, []string{"organization-teams"}, schema.Options{})
+	must(err)
+	t.Cleanup(func() { store.Close() })
+	peer, err := Open(ctx, dialect, dsn)
+	must(err)
+	t.Cleanup(func() { peer.Close() })
+	app, err := authtest.New(auth.Options{Store: store, BaseURL: "https://org.example.test", Secret: strings.Repeat("s", 40)})
+	must(err)
+	newSession := func() auth.Session {
+		t.Helper()
+		user, err := app.SaveUser(ctx, authtest.NewUser())
+		must(err)
+		login, err := app.Login(ctx, user.ID)
+		must(err)
+		return login.Session
+	}
+	owner, admin := newSession(), newSession()
+	group := authtest.NewOrganization("studio")
+	must(store.CreateOrganization(ctx, group, org.Member{ID: "owner", UserID: owner.UserID, Role: "owner", OrganizationID: group.ID, CreatedAt: group.CreatedAt}, owner.ID, false))
+	must(store.AddOrganizationMember(ctx, org.Member{ID: "admin", UserID: admin.UserID, Role: "admin", OrganizationID: group.ID, CreatedAt: group.CreatedAt}, ""))
+	return store, peer, owner, admin, group
 }

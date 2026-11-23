@@ -25,6 +25,7 @@ import (
 
 // Store persists users, credentials, and sessions in a SQL database.
 type Store struct {
+	invitationLimit        *org.InvitationLimit
 	accountFields          map[string]auth.AccountField
 	accountFieldRules      map[string]auth.AccountFieldRule
 	walletMapping          walletschema.Mapping

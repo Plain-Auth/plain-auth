@@ -234,6 +234,25 @@ The database reads up to 100 invitations in creation order, using the ID to brea
 
 In Go, call `authClient.ListOrganizationInvitations(ctx, organizationID)`, using an empty string for the active organization. To require recipients to verify their account email before accepting an invitation, set `RequireVerifiedEmail: true` in the organization options. [HTTP client comparison](../conformance/organization-invitations.mjs) · [Go client and session tests](../adapters/sqlstore/organization_selection_http_test.go)
 
+## Limit outstanding invitations
+
+Each organization can have 100 unexpired pending invitations by default. Configure `InvitationLimit: &organization.InvitationLimit{Maximum: 10}` for a fixed cap. An explicit maximum of zero prevents new grants. An explicit resend renews an existing live invitation without consuming a slot. A successful replacement uses the previous grant’s slot. Expired, accepted, rejected and canceled invitations consume no slots.
+
+To choose a limit using application policy, set a resolver on the organization plugin.
+
+```go
+groups, err := organization.New(organization.Options{
+    Store: store,
+    InvitationLimit: &organization.InvitationLimit{
+        Resolve: func(ctx context.Context, input organization.InvitationLimitInput) (int, error) {
+            return invitationAllowance(ctx, input.Organization.ID, input.Member.Role)
+        },
+    },
+})
+```
+
+The host implements `invitationAllowance`. The resolver receives the inviter’s core account, current membership and destination organization after the server checks permission. It runs outside database locks. The SQL adapter rechecks those inputs and counts live invitations in the transaction that issues the grant. Competing issuers share the same quota. At capacity the API returns HTTP 403 with `INVITATION_LIMIT_REACHED`. Changed resolver inputs can return HTTP 409 with `INVITATION_POLICY_INPUT_CHANGED`. A failed replacement leaves the previous invitation usable. [Client comparison](../conformance/invitation-limits.mjs) · [Three-engine quota tests](../adapters/sqlstore/organization_invitation_limit_test.go)
+
 ## Replace an outstanding invitation
 
 By default, inviting the same email address to the same organization again returns `USER_IS_ALREADY_INVITED_TO_THIS_ORGANIZATION` while the earlier invitation is pending and unexpired. To send the original invitation again, pass `"resend": true` to `POST /organization/invite-member`. The recipient keeps the original ID, roles and team targets.

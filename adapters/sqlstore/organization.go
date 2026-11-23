@@ -248,7 +248,7 @@ func (s *Store) ReplaceOrganizationInvitation(ctx context.Context, inv org.Invit
 	return s.issueOrganizationInvitation(ctx, inv, sessionID, false, true)
 }
 
-func (s *Store) issueOrganizationInvitation(ctx context.Context, inv org.Invitation, sessionID string, resend, replace bool) (org.Invitation, error) {
+func (s *Store) issueInvitationTx(ctx context.Context, inv org.Invitation, sessionID string, resend, replace bool, capacity *invitationCapacity) (org.Invitation, error) {
 	tx, err := s.beginMembershipChange(ctx)
 	if err != nil {
 		return org.Invitation{}, err
@@ -267,17 +267,15 @@ func (s *Store) issueOrganizationInvitation(ctx context.Context, inv org.Invitat
 	if err = s.lockOrganization(ctx, tx, inv.OrganizationID); err != nil {
 		return org.Invitation{}, err
 	}
-	var role string
-	err = tx.QueryRowContext(ctx, s.bind(`SELECT "role" FROM "member" WHERE "organizationId"=? AND "userId"=?`), inv.OrganizationID, inv.InviterID).Scan(&role)
-	if errors.Is(err, sql.ErrNoRows) {
+	member, err := s.memberForChange(ctx, tx, inv.OrganizationID, `m."userId"=`+s.exactSQLValue("?"), inv.InviterID)
+	if errors.Is(err, org.ErrMemberMissing) {
 		return org.Invitation{}, org.ErrInviteDenied
 	}
 	if err != nil {
 		return org.Invitation{}, err
 	}
-	roles := strings.Split(role, ",")
-	owner := slices.Contains(roles, "owner")
-	if !owner && !slices.Contains(roles, "admin") {
+	owner := membershipHasRole(member.Role, "owner")
+	if !owner && !membershipHasRole(member.Role, "admin") {
 		return org.Invitation{}, org.ErrInviteDenied
 	}
 	if !owner && slices.Contains(strings.Split(inv.Role, ","), "owner") {
@@ -296,7 +294,7 @@ func (s *Store) issueOrganizationInvitation(ctx context.Context, inv org.Invitat
 		return org.Invitation{}, err
 	}
 	exact := s.exactSQLValue("?")
-	pending, err := scanInvitation(tx.QueryRowContext(ctx, s.bind(`SELECT `+invitationColumns(teamField)+` FROM "invitation" WHERE "organizationId"=`+exact+` AND LOWER("email")=? AND "status"='pending' AND "expiresAt">? ORDER BY "createdAt" DESC LIMIT 1`), inv.OrganizationID, inv.Email, s.date(inv.CreatedAt)), teamField)
+	pending, err := scanInvitation(tx.QueryRowContext(ctx, s.bind(`SELECT `+invitationColumns(teamField)+` FROM "invitation" WHERE "organizationId"=`+exact+` AND LOWER("email")=? AND "status"='pending' AND "expiresAt">? ORDER BY "createdAt" DESC LIMIT 1`), inv.OrganizationID, inv.Email, s.date(time.Now())), teamField)
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
 		// Issue a fresh invitation.
@@ -321,6 +319,9 @@ func (s *Store) issueOrganizationInvitation(ctx context.Context, inv org.Invitat
 		}
 	default:
 		return org.Invitation{}, org.ErrAlreadyInvited
+	}
+	if err := s.checkInvitationCapacity(ctx, tx, inv, member.Member, capacity); err != nil {
+		return org.Invitation{}, err
 	}
 	args := []any{inv.ID, inv.OrganizationID, inv.InviterID, inv.Email, inv.Role, inv.Status, s.date(inv.ExpiresAt), s.date(inv.CreatedAt)}
 	if inv.TeamID != nil {

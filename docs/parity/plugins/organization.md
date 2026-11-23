@@ -200,10 +200,13 @@
     - [x] `invitationExpiresIn` ([test](../../../conformance/invitation-expiration.mjs#L25))
       - [x] Apply the default or configured validity period on creation and renewal, including an elapsed deadline ([test](../../../conformance/invitation-expiration.mjs#L25))
       - [x] Persist the renewed deadline on all three engines while retaining the original grant identity and role ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L220))
-    - [ ] `invitationLimit`
+    - [x] `invitationLimit` ([test](../../../conformance/invitation-limits.mjs#L7))
+      - [x] Apply the default hundred live invitations or an explicit fixed or host-resolved quota per organization ([test](../../../conformance/invitation-limits.mjs#L7))
+      - [x] Reserve the last invitation slot once across competing senders and revalidate the actor and organization after the resolver ([test](../../../adapters/sqlstore/organization_invitation_limit_test.go#L72))
+      - [x] Keep a prior grant pending when an attempted replacement exceeds the quota ([test](../../../adapters/sqlstore/organization_invitation_limit_test.go#L87))
     - [x] `cancelPendingInvitationsOnReInvite` ([test](../../../conformance/invitation-expiration.mjs#L81))
       - [x] Replace a live grant with the newly requested roles and teams while an explicit resend preserves the existing grant ([test](../../../conformance/invitation-expiration.mjs#L81))
-      - [x] Roll back invalid replacements and serialize competing administrators on all three engines ([test](../../../adapters/sqlstore/organization_replacement_test.go#L83))
+      - [x] Roll back invalid replacements and serialize competing administrators on all three engines ([test](../../../adapters/sqlstore/organization_replacement_test.go#L63))
     - [ ] `requireEmailVerificationOnInvitation`
     - [ ] `sendInvitationEmail`
     - [ ] `schema`
@@ -620,6 +623,9 @@
       - [x] Persist the renewed deadline on all three engines while retaining the original grant identity and role ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L220))
     - [x] cancelPendingInvitationsOnReInvite ([test](../../../conformance/invitation-expiration.mjs#L81))
       - [x] Replace a live grant with the newly requested roles and teams while an explicit resend preserves the existing grant ([test](../../../conformance/invitation-expiration.mjs#L81))
-      - [x] Roll back invalid replacements and serialize competing administrators on all three engines ([test](../../../adapters/sqlstore/organization_replacement_test.go#L83))
-    - [ ] invitationLimit
+      - [x] Roll back invalid replacements and serialize competing administrators on all three engines ([test](../../../adapters/sqlstore/organization_replacement_test.go#L63))
+    - [x] invitationLimit ([test](../../../conformance/invitation-limits.mjs#L7))
+      - [x] Apply the default hundred live invitations or an explicit fixed or host-resolved quota per organization ([test](../../../conformance/invitation-limits.mjs#L7))
+      - [x] Reserve the last invitation slot once across competing senders and revalidate the actor and organization after the resolver ([test](../../../adapters/sqlstore/organization_invitation_limit_test.go#L72))
+      - [x] Keep a prior grant pending when an attempted replacement exceeds the quota ([test](../../../adapters/sqlstore/organization_invitation_limit_test.go#L87))
     - [ ] requireEmailVerificationOnInvitation

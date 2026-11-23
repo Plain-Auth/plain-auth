@@ -57,6 +57,7 @@ type Store interface {
 }
 
 type Options struct {
+	InvitationLimit *InvitationLimit
 	// CancelPendingInvitationsOnReInvite replaces an existing live grant when
 	// the application invites the same address again without requesting resend.
 	CancelPendingInvitationsOnReInvite bool
@@ -162,6 +163,20 @@ func NewService(o Options) (*Service, error) {
 			return nil, errors.New("organization: configured membership limits require a MembershipLimitStoreProvider")
 		}
 		store, err := provider.WithOrganizationMembershipLimit(o.MembershipLimit)
+		if err != nil {
+			return nil, err
+		}
+		o.Store = store
+	}
+	if o.InvitationLimit != nil {
+		if err := o.InvitationLimit.Validate(); err != nil {
+			return nil, err
+		}
+		provider, ok := o.Store.(InvitationLimitStoreProvider)
+		if !ok {
+			return nil, errors.New("organization: configured invitation limits require an InvitationLimitStoreProvider")
+		}
+		store, err := provider.WithOrganizationInvitationLimit(*o.InvitationLimit)
 		if err != nil {
 			return nil, err
 		}

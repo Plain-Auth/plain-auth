@@ -14731,5 +14731,41 @@
       "test": "adapters/sqlstore/organization_replacement_test.go",
       "marker": "t.Fatalf(\"competing replacements left %d %s invitations, want %d\""
     }
+  ],
+  "plugin-symbol/organization/OrganizationOptions/invitationLimit": [
+    {
+      "label": "Apply the default hundred live invitations or an explicit fixed or host-resolved quota per organization",
+      "test": "conformance/invitation-limits.mjs",
+      "marker": "for (const mode of [\"default\", \"zero\", \"fixed\", \"dynamic\"])",
+      "complete": true
+    },
+    {
+      "label": "Reserve the last invitation slot once across competing senders and revalidate the actor and organization after the resolver",
+      "test": "adapters/sqlstore/organization_invitation_limit_test.go",
+      "marker": "t.Fatalf(\"competing issuers did not share the last invitation slot: %v / %v\""
+    },
+    {
+      "label": "Keep a prior grant pending when an attempted replacement exceeds the quota",
+      "test": "adapters/sqlstore/organization_invitation_limit_test.go",
+      "marker": "t.Fatal(\"denied replacement did not restore the prior grant\")"
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L2588/invitationLimit": [
+    {
+      "label": "Apply the default hundred live invitations or an explicit fixed or host-resolved quota per organization",
+      "test": "conformance/invitation-limits.mjs",
+      "marker": "for (const mode of [\"default\", \"zero\", \"fixed\", \"dynamic\"])",
+      "complete": true
+    },
+    {
+      "label": "Reserve the last invitation slot once across competing senders and revalidate the actor and organization after the resolver",
+      "test": "adapters/sqlstore/organization_invitation_limit_test.go",
+      "marker": "t.Fatalf(\"competing issuers did not share the last invitation slot: %v / %v\""
+    },
+    {
+      "label": "Keep a prior grant pending when an attempted replacement exceeds the quota",
+      "test": "adapters/sqlstore/organization_invitation_limit_test.go",
+      "marker": "t.Fatal(\"denied replacement did not restore the prior grant\")"
+    }
   ]
 }

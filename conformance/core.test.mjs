@@ -1942,3 +1942,8 @@ test("hosts can replace a pending invitation while explicit resends retain the o
   const { compareInvitationReplacement } = await import("./invitation-expiration.mjs");
   await compareInvitationReplacement(t, { reference, goFixture, instrument });
 });
+
+test("organization invitation quotas count live grants and support host policies", async t => {
+  const { compareInvitationLimits } = await import("./invitation-limits.mjs");
+  await compareInvitationLimits(t, { reference, goFixture, instrument });
+});

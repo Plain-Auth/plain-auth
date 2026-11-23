@@ -52,3 +52,20 @@ func fixtureMembershipLimit() organization.MembershipLimit {
 		return organization.MembershipLimit{}
 	}
 }
+
+func fixtureInvitationLimit() *organization.InvitationLimit {
+	switch os.Getenv("CONFORMANCE_INVITATION_LIMIT") {
+	case "zero":
+		return &organization.InvitationLimit{}
+	case "fixed":
+		return &organization.InvitationLimit{Maximum: 1}
+	case "dynamic":
+		return &organization.InvitationLimit{Resolve: func(_ context.Context, in organization.InvitationLimitInput) (int, error) {
+			if in.User.Name == "Owner" && in.Member.Role == "owner" && in.Member.UserID == in.User.ID && in.Member.OrganizationID == in.Organization.ID && in.Organization.Slug == "studio" {
+				return 1, nil
+			}
+			return 0, nil
+		}}
+	}
+	return nil
+}
