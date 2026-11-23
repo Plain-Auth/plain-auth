@@ -41,7 +41,7 @@ func (s *Store) IssuePreparedInvitation(ctx context.Context, inv org.Invitation,
 	if before != nil {
 		prep = &invitationPreparation{before: before, useActive: how.UseActiveOrganization, targets: how.TeamTargets}
 	}
-	_, err := s.issueOrganizationInvitation(ctx, inv, invitationIssue{sessionID: actor.ID, resend: how.Resend, replace: how.Replace, delivery: &delivery, preparation: prep, targets: how.TeamTargets})
+	_, err := s.issueOrganizationInvitation(ctx, inv, invitationIssue{sessionID: actor.ID, resend: how.Resend, replace: how.Replace, delivery: &delivery, preparation: prep, targets: how.TeamTargets, validateRoles: true})
 	if err != nil {
 		return nil, err
 	}

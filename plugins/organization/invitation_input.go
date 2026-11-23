@@ -80,7 +80,8 @@ func builtinRole(role string) bool {
 	return role == "admin" || role == "owner" || role == "member"
 }
 
-func normalizedInvitationRoles(input []string) (string, error) {
+// ParseInvitationRoles validates the built-in invitation roles and preserves their order.
+func ParseInvitationRoles(input ...string) (string, error) {
 	roles := NormalizeRoles(input...)
 	if len(roles) == 0 {
 		return "", problem(400, "ROLE_NOT_FOUND", "Role not found")

@@ -245,12 +245,13 @@ func (s *Store) ReplaceOrganizationInvitation(ctx context.Context, inv org.Invit
 }
 
 type invitationIssue struct {
-	sessionID   string
-	resend      bool
-	replace     bool
-	delivery    *invitationDelivery
-	preparation *invitationPreparation
-	targets     *org.InvitationTeamTargets
+	sessionID     string
+	resend        bool
+	replace       bool
+	delivery      *invitationDelivery
+	preparation   *invitationPreparation
+	targets       *org.InvitationTeamTargets
+	validateRoles bool
 }
 
 func (s *Store) issueInvitationTx(ctx context.Context, inv org.Invitation, issue invitationIssue, capacity *invitationCapacity) (org.Invitation, error) {
@@ -289,6 +290,12 @@ func (s *Store) issueInvitationTx(ctx context.Context, inv org.Invitation, issue
 	owner := membershipHasRole(member.Role, "owner")
 	if !owner && !membershipHasRole(member.Role, "admin") {
 		return org.Invitation{}, org.ErrInviteDenied
+	}
+	if issue.validateRoles {
+		inv.Role, err = org.ParseInvitationRoles(inv.Role)
+		if err != nil {
+			return org.Invitation{}, err
+		}
 	}
 	if !owner && membershipHasRole(inv.Role, "owner") {
 		return org.Invitation{}, org.ErrRoleDenied

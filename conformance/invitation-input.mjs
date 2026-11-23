@@ -51,6 +51,19 @@ export async function compareInvitationInput(t, { reference, goFixture, instrume
       assert.equal(renewed.id, first.id);
       assert.equal(renewed.role, "admin,member");
       assert.equal(ok(await owner.getSession()).session.activeOrganizationId, other.id);
+      const reader = connect();
+      ok(await reader.signUp.email({name: "Reader", email: "reader@example.test", password: "invitation-input-test"}));
+      for (const role of [[], "unknown-role", "owner"]) {
+        error(await issue(reader, { email, role, organizationId: group.id }), 400, "MEMBER_NOT_FOUND");
+      }
+      const readerGrant = ok(await issue(owner, { email: "reader@example.test", role: "member", organizationId: group.id }));
+      ok(await reader.organization.acceptInvitation({ invitationId: readerGrant.id }));
+      for (const role of ["member", [], "unknown-role", "owner"]) {
+        error(await issue(reader, { email, role }), 403, "YOU_ARE_NOT_ALLOWED_TO_INVITE_USERS_TO_THIS_ORGANIZATION");
+      }
+      error(await issue(reader, { email: "invalid", role: [] }), 400, "INVALID_EMAIL");
+      error(await issue(admin, { email, role: "owner,missing-role" }), 400, undefined, "ROLE_NOT_FOUND: missing-role");
+
     }
   }
 }

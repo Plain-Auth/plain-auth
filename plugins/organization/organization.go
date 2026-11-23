@@ -424,9 +424,13 @@ func (o Options) invite(c authn.EndpointContext) (any, error) {
 	if !invitationEmailPattern.MatchString(email) {
 		return nil, problem(400, "INVALID_EMAIL", "Invalid email")
 	}
-	role, err := normalizedInvitationRoles(input.roles)
-	if err != nil {
-		return nil, err
+	_, supportsPreparation := o.Store.(PreparedInvitationStore)
+	role := strings.Join(input.roles, ",")
+	if !supportsPreparation {
+		role, err = ParseInvitationRoles(input.roles...)
+		if err != nil {
+			return nil, err
+		}
 	}
 	resend := input.resend
 	now := time.Now().UTC().Truncate(time.Millisecond)
@@ -436,7 +440,6 @@ func (o Options) invite(c authn.EndpointContext) (any, error) {
 	}
 	inv := Invitation{ID: rand.Text(), OrganizationID: id, InviterID: s.User.ID, Email: email, Role: role, Status: "pending", CreatedAt: now, ExpiresAt: now.Add(validFor).Truncate(time.Millisecond)}
 	how := InvitationIssueOptions{Resend: resend, Replace: o.CancelPendingInvitationsOnReInvite && !resend, UseActiveOrganization: input.organizationID == ""}
-	_, supportsPreparation := o.Store.(PreparedInvitationStore)
 	if input.teamIDs != nil {
 		_, single := c.Body["teamId"].(string)
 		how.TeamTargets = &InvitationTeamTargets{IDs: input.teamIDs, Single: single}
@@ -447,7 +450,7 @@ func (o Options) invite(c authn.EndpointContext) (any, error) {
 			}
 		}
 	}
-	if o.BeforeCreateInvitation != nil || o.SendInvitationEmail != nil || o.AfterCreateInvitation != nil || supportsPreparation && how.TeamTargets != nil {
+	if supportsPreparation || o.SendInvitationEmail != nil || o.AfterCreateInvitation != nil {
 		inv, err = o.issueObservedInvitation(c, s, inv, how)
 		if err != nil {
 			return nil, err

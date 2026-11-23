@@ -48,7 +48,7 @@ func (changes *InvitationChanges) Apply(inv Invitation) (Invitation, error) {
 	}
 	var err error
 	if changes.Roles != nil {
-		inv.Role, err = normalizedInvitationRoles(changes.Roles)
+		inv.Role, err = ParseInvitationRoles(changes.Roles...)
 		if err != nil {
 			return Invitation{}, err
 		}

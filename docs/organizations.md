@@ -239,7 +239,7 @@ In Go, call `authClient.ListOrganizationInvitations(ctx, organizationID)`, using
 
 Call `POST /organization/invite-member` as an owner or administrator. The request must include `email` and `role`. Supply an `organizationId` to choose the destination, or omit it to use the current session’s active organization. An explicit destination leaves the sender’s selection in place.
 
-The handler lowercases the recipient address. Send a single role, a comma-separated string, or an array of strings. It trims role names, drops empty entries and keeps their submitted order. The built-in roles are `owner`, `admin` and `member`. Granting `owner` requires an owner.
+The handler lowercases the recipient address. Send a single role, a comma-separated string, or an array of strings. It trims role names, drops empty entries and keeps their submitted order. The built-in roles are `owner`, `admin` and `member`. Granting `owner` requires an owner. The SQL adapter checks membership and permission to invite before validating the requested role names. A nonmember receives `MEMBER_NOT_FOUND`, and an ordinary member receives HTTP 403. A sender with permission to invite receives an error identifying any unknown roles.
 
 Omit `teamId` to invite someone to the organization alone. An explicit JSON `null` in the request returns HTTP 400 with `VALIDATION_ERROR`. With teams enabled, send a team ID or an array of IDs from the destination organization. Accepting a single-team invitation selects that team for the accepting session. Accepting an invitation to several teams grants membership in each and leaves the active team empty. The client can then select one with `POST /organization/set-active-team`.
 

@@ -903,6 +903,11 @@
       "label": "Keep organization-only grants unscoped and targeted grants intact across mixed team configurations",
       "test": "adapters/sqlstore/organization_topology_test.go",
       "marker": "t.Fatal(\"mixed-node issuance or resend changed stored team targets\")"
+    },
+    {
+      "label": "Check issuing membership and permission before reporting unknown or empty role names",
+      "test": "adapters/sqlstore/organization_invitation_preparation_test.go",
+      "marker": "check(\"YOU_ARE_NOT_ALLOWED_TO_INVITE_USERS_TO_THIS_ORGANIZATION\")"
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L893": [
@@ -955,6 +960,11 @@
       "label": "Keep organization-only grants unscoped and targeted grants intact across mixed team configurations",
       "test": "adapters/sqlstore/organization_topology_test.go",
       "marker": "t.Fatal(\"mixed-node issuance or resend changed stored team targets\")"
+    },
+    {
+      "label": "Check issuing membership and permission before reporting unknown or empty role names",
+      "test": "adapters/sqlstore/organization_invitation_preparation_test.go",
+      "marker": "check(\"YOU_ARE_NOT_ALLOWED_TO_INVITE_USERS_TO_THIS_ORGANIZATION\")"
     }
   ],
   "plugin/organization/POST /organization/accept-invitation": [
@@ -15120,6 +15130,11 @@
       "label": "Accept comma-separated roles within strings or arrays, preserve their order and check owner grants",
       "test": "conformance/invitation-input.mjs",
       "marker": "assert.equal(wide.role, \"admin,member,admin\")"
+    },
+    {
+      "label": "Check issuing membership and permission before reporting unknown or empty role names",
+      "test": "adapters/sqlstore/organization_invitation_preparation_test.go",
+      "marker": "check(\"YOU_ARE_NOT_ALLOWED_TO_INVITE_USERS_TO_THIS_ORGANIZATION\")"
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L911/Parameter `organizationId` (optional)": [

@@ -39,7 +39,7 @@ func (o Options) issueObservedInvitation(c auth.EndpointContext, session *auth.S
 	ctx := c.Request.Context()
 	var event *InvitationDelivery
 	var err error
-	if store, ok := o.Store.(PreparedInvitationStore); ok && (o.BeforeCreateInvitation != nil || how.TeamTargets != nil) {
+	if store, ok := o.Store.(PreparedInvitationStore); ok {
 		event, err = store.IssuePreparedInvitation(ctx, inv, session.Session, how, o.creationHook(session.User))
 	} else {
 		event, err = o.Store.(InvitationDeliveryStore).IssueInvitationForDelivery(ctx, inv, session.Session, how.Resend, how.Replace)

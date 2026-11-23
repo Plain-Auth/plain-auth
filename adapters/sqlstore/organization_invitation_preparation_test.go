@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	auth "github.com/Plain-Auth/plain-auth"
 	org "github.com/Plain-Auth/plain-auth/plugins/organization"
 )
 
@@ -141,6 +142,39 @@ func TestInvitationPreparationAcrossEngines(t *testing.T) {
 				t.Fatal("ended session committed its prepared invitation", err)
 			}
 
+		})
+	}
+}
+
+func TestInvitationRoleAdmissionAcrossEngines(t *testing.T) {
+	for _, dialect := range []string{"sqlite", "postgres", "mysql"} {
+		t.Run(dialect, func(t *testing.T) {
+			ctx := t.Context()
+			store, _, _, admin, group := invitationWriterFixture(t, dialect)
+			inv := org.Invitation{ID: "proposal", OrganizationID: group.ID, InviterID: admin.UserID, Email: "guest@example.test", Role: "", Status: "pending", CreatedAt: group.CreatedAt, ExpiresAt: group.CreatedAt.Add(time.Hour)}
+			hook := func(context.Context, org.InvitationCreationEvent) (*org.InvitationChanges, error) {
+				t.Fatal("rejected invitation reached host preparation")
+				return nil, nil
+			}
+			check := func(code string) {
+				t.Helper()
+				_, err := store.IssuePreparedInvitation(ctx, inv, admin, org.InvitationIssueOptions{}, hook)
+				var failure *auth.APIError
+				if !errors.As(err, &failure) || failure.Code != code {
+					t.Fatalf("unexpected role decision: %v, want %s", err, code)
+				}
+			}
+			check("ROLE_NOT_FOUND")
+			_, err := store.db.ExecContext(ctx, store.bind(`UPDATE "member" SET "role"='member' WHERE "id"=?`), "admin")
+			if err != nil {
+				t.Fatal(err)
+			}
+			check("YOU_ARE_NOT_ALLOWED_TO_INVITE_USERS_TO_THIS_ORGANIZATION")
+			_, err = store.db.ExecContext(ctx, store.bind(`DELETE FROM "member" WHERE "id"=?`), "admin")
+			if err != nil {
+				t.Fatal(err)
+			}
+			check("MEMBER_NOT_FOUND")
 		})
 	}
 }

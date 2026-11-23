@@ -48,9 +48,10 @@
     - [x] Report invalid field types before sign-in and validate recipient addresses after resolving the destination ([test](../../../conformance/invitation-input.mjs#L22))
     - [x] Issue and renew an invitation through the native Go client against three databases ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L212))
     - [x] Apply the host’s recipient, role, team and deadline changes before sending the saved invitation ([test](../../../conformance/invitation-preparation.mjs#L54))
-    - [x] Skip preparation for live renewals and preserve the pending grant when a replacement fails ([test](../../../adapters/sqlstore/organization_invitation_preparation_test.go#L51))
+    - [x] Skip preparation for live renewals and preserve the pending grant when a replacement fails ([test](../../../adapters/sqlstore/organization_invitation_preparation_test.go#L52))
     - [x] Preserve team target shapes on issue and renewal, grant unique memberships, and leave multi-entry grants unselected ([test](../../../conformance/invitation-team-targets.mjs#L56))
     - [x] Keep organization-only grants unscoped and targeted grants intact across mixed team configurations ([test](../../../adapters/sqlstore/organization_topology_test.go#L183))
+    - [x] Check issuing membership and permission before reporting unknown or empty role names ([test](../../../adapters/sqlstore/organization_invitation_preparation_test.go#L172))
   - [x] `POST /organization/accept-invitation` ([test](../../../conformance/organization-invitations.mjs#L390))
     - [x] Reject an invitation ID with different casing without consuming the invitation or granting membership on any SQL engine ([test](../../../adapters/sqlstore/organization_topology_test.go#L147))
     - [x] Accept an organization-only invitation through a plain node sharing the upgraded database ([test](../../../adapters/sqlstore/organization_topology_test.go#L154))
@@ -241,7 +242,7 @@
       - [x] Notify host code of a new or replaced invitation after delivery and skip the creation callback on renewal ([test](../../../conformance/invitation-creation.mjs#L38))
       - [x] Keep a committed grant available for resend after the creation callback fails ([test](../../../conformance/invitation-creation.mjs#L65))
       - [x] Apply the host’s recipient, role, team and deadline changes before sending the saved invitation ([test](../../../conformance/invitation-preparation.mjs#L54))
-      - [x] Skip preparation for live renewals and preserve the pending grant when a replacement fails ([test](../../../adapters/sqlstore/organization_invitation_preparation_test.go#L51))
+      - [x] Skip preparation for live renewals and preserve the pending grant when a replacement fails ([test](../../../adapters/sqlstore/organization_invitation_preparation_test.go#L52))
 
 ## Organization
 
@@ -283,7 +284,7 @@
         - [x] Notify host code of a new or replaced invitation after delivery and skip the creation callback on renewal ([test](../../../conformance/invitation-creation.mjs#L38))
         - [x] Keep a committed grant available for resend after the creation callback fails ([test](../../../conformance/invitation-creation.mjs#L65))
         - [x] Apply the host’s recipient, role, team and deadline changes before sending the saved invitation ([test](../../../conformance/invitation-preparation.mjs#L54))
-        - [x] Skip preparation for live renewals and preserve the pending grant when a replacement fails ([test](../../../adapters/sqlstore/organization_invitation_preparation_test.go#L51))
+        - [x] Skip preparation for live renewals and preserve the pending grant when a replacement fails ([test](../../../adapters/sqlstore/organization_invitation_preparation_test.go#L52))
       - [ ] Team Hooks
       - [ ] Hook Error Handling
     - [ ] List User's Organizations
@@ -347,9 +348,10 @@
       - [x] Report invalid field types before sign-in and validate recipient addresses after resolving the destination ([test](../../../conformance/invitation-input.mjs#L22))
       - [x] Issue and renew an invitation through the native Go client against three databases ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L212))
       - [x] Apply the host’s recipient, role, team and deadline changes before sending the saved invitation ([test](../../../conformance/invitation-preparation.mjs#L54))
-      - [x] Skip preparation for live renewals and preserve the pending grant when a replacement fails ([test](../../../adapters/sqlstore/organization_invitation_preparation_test.go#L51))
+      - [x] Skip preparation for live renewals and preserve the pending grant when a replacement fails ([test](../../../adapters/sqlstore/organization_invitation_preparation_test.go#L52))
       - [x] Preserve team target shapes on issue and renewal, grant unique memberships, and leave multi-entry grants unselected ([test](../../../conformance/invitation-team-targets.mjs#L56))
       - [x] Keep organization-only grants unscoped and targeted grants intact across mixed team configurations ([test](../../../adapters/sqlstore/organization_topology_test.go#L183))
+      - [x] Check issuing membership and permission before reporting unknown or empty role names ([test](../../../adapters/sqlstore/organization_invitation_preparation_test.go#L172))
       - [ ] `POST /organization/invite-member`
         - [x] Accept comma-separated roles within strings or arrays, preserve their order and check owner grants ([test](../../../conformance/invitation-input.mjs#L41))
         - [x] Report invalid field types before sign-in and validate recipient addresses after resolving the destination ([test](../../../conformance/invitation-input.mjs#L22))
@@ -358,6 +360,7 @@
           - [x] Require a mailbox string, reject malformed addresses and lowercase the saved delivery address ([test](../../../conformance/invitation-input.mjs#L42))
         - [ ] Parameter `role`
           - [x] Accept comma-separated roles within strings or arrays, preserve their order and check owner grants ([test](../../../conformance/invitation-input.mjs#L41))
+          - [x] Check issuing membership and permission before reporting unknown or empty role names ([test](../../../adapters/sqlstore/organization_invitation_preparation_test.go#L172))
         - [x] Parameter `organizationId` (optional) ([test](../../../conformance/invitation-input.mjs#L43))
           - [x] Use the active destination when unset or empty and require membership in an explicitly selected organization ([test](../../../conformance/invitation-input.mjs#L43))
         - [x] Parameter `resend` (optional) ([test](../../../conformance/invitation-input.mjs#L52))
