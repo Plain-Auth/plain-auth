@@ -323,7 +323,7 @@ func (service *Service) Plugin() authn.Plugin {
 				return o.Store.OrganizationsForUser(c.Request.Context(), s.User.ID)
 			}),
 			o.endpoint(http.MethodGet, "get-organization", o.get),
-			o.endpoint(http.MethodPost, "set-active", o.selectActive),
+			{Method: http.MethodPost, Path: "/organization/set-active", Handler: o.selectActive},
 			{Method: http.MethodPost, Path: "/organization/invite-member", Handler: o.invite},
 			{Method: http.MethodPost, Path: "/organization/accept-invitation", Handler: o.accept},
 		},
@@ -451,48 +451,6 @@ func (o Options) get(c authn.EndpointContext, s *authn.SessionResult) (any, erro
 		return nil, nil
 	}
 	return o.Store.OrganizationForMember(c.Request.Context(), s.User.ID, id, slug)
-}
-
-func (o Options) selectActive(c authn.EndpointContext, s *authn.SessionResult) (any, error) {
-	ctx := c.Request.Context()
-	slug, isString := c.Body["organizationSlug"].(string)
-	if _, supplied := c.Body["organizationSlug"]; supplied && !isString {
-		return nil, validation("organizationSlug")
-	}
-	value, exists := c.Body["organizationId"]
-	if exists && value == nil {
-		if err := o.Store.SetActiveOrganization(ctx, s.Session.ID, s.User.ID, nil); err != nil {
-			return nil, err
-		}
-		if s.Session.ActiveOrganizationID != nil && c.DirectBrowserSession(s.Session.Token) {
-			return nil, c.TryReissueSessionCookie(s.Session)
-		}
-		return nil, nil
-	}
-	id, ok := value.(string)
-	if exists && !ok {
-		return nil, validation("organizationId")
-	}
-	if id != "" {
-		slug = ""
-	}
-	if id == "" && slug == "" {
-		id = activeID(s)
-	}
-	if id == "" && slug == "" {
-		return nil, nil
-	}
-	org, err := o.Store.OrganizationForMember(ctx, s.User.ID, id, slug)
-	if err != nil {
-		return nil, err
-	}
-	if err := o.Store.SetActiveOrganization(ctx, s.Session.ID, s.User.ID, &org.ID); err != nil {
-		return nil, err
-	}
-	if c.DirectBrowserSession(s.Session.Token) {
-		return org, c.TryReissueSessionCookie(s.Session)
-	}
-	return org, nil
 }
 
 func (o Options) invite(c authn.EndpointContext) (any, error) {

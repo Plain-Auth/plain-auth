@@ -459,10 +459,10 @@
   - [ ] `extractClientCredentials`
   - [ ] `parsePrompt`
   - [ ] `resolveSubjectIdentifier`
-  - [x] `getConsentReferenceId` ([test](../../../adapters/sqlstore/oauth_post_login_test.go#L192))
-    - [x] Resolve the approval reference for the requested or accepted scopes and support personal approval when the host returns an empty reference ([test](../../../adapters/sqlstore/oauth_post_login_test.go#L192))
-  - [x] `findConsent` ([test](../../../adapters/sqlstore/oauth_post_login_test.go#L210))
-    - [x] Match an explicit organization or a personal grant among more than 100 references, preferring NULL to the legacy empty string ([test](../../../adapters/sqlstore/oauth_post_login_test.go#L210))
+  - [x] `getConsentReferenceId` ([test](../../../adapters/sqlstore/oauth_post_login_test.go#L209))
+    - [x] Resolve the approval reference for the requested or accepted scopes and support personal approval when the host returns an empty reference ([test](../../../adapters/sqlstore/oauth_post_login_test.go#L209))
+  - [x] `findConsent` ([test](../../../adapters/sqlstore/oauth_post_login_test.go#L227))
+    - [x] Match an explicit organization or a personal grant among more than 100 references, preferring NULL to the legacy empty string ([test](../../../adapters/sqlstore/oauth_post_login_test.go#L227))
   - [ ] `searchParamsToQuery`
   - [ ] `isSessionFreshForSignedQuery`
   - [ ] `removePromptFromQuery`

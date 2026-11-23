@@ -829,6 +829,21 @@
       "label": "Switch the session’s organization and team using plain HTTP and JSON on six Go routers",
       "test": "integrations/routers/routers_test.go",
       "marker": "organization operation did not return JSON to the calling application"
+    },
+    {
+      "label": "Clear a denied selection for the calling login and preserve the other login on both organization profiles",
+      "test": "conformance/organization-selection.mjs",
+      "marker": "denied(await select(first, destination), 403"
+    },
+    {
+      "label": "Persist a consistent organization and team when a successful switch races a denied switch",
+      "test": "adapters/sqlstore/organization_selector_test.go",
+      "marker": "competing selectors left a mismatched"
+    },
+    {
+      "label": "Reject a denied signed selector before resuming the authorization request",
+      "test": "adapters/sqlstore/oauth_post_login_test.go",
+      "marker": "denied organization switch resumed authorization"
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L621": [
@@ -841,6 +856,16 @@
       "label": "Switch and clear the current session’s selection with independent HTTP clients across three SQL engines",
       "test": "adapters/sqlstore/organization_selection_http_test.go",
       "marker": "func TestOrganizationAndTeamSelectionHTTP("
+    },
+    {
+      "label": "Clear a denied selection for the calling login and preserve the other login on both organization profiles",
+      "test": "conformance/organization-selection.mjs",
+      "marker": "denied(await select(first, destination), 403"
+    },
+    {
+      "label": "Persist a consistent organization and team when a successful switch races a denied switch",
+      "test": "adapters/sqlstore/organization_selector_test.go",
+      "marker": "competing selectors left a mismatched"
     }
   ],
   "plugin/organization/POST /organization/invite-member": [
@@ -14067,6 +14092,21 @@
       "label": "Describe nullable selection results across enabled profiles and expose signed destinations when the host supports them",
       "test": "plugins/openapi/organization_selection_test.go",
       "marker": "func TestOrganizationSelectionSchema("
+    },
+    {
+      "label": "Clear a denied selection for the calling login and preserve the other login on both organization profiles",
+      "test": "conformance/organization-selection.mjs",
+      "marker": "denied(await select(first, destination), 403"
+    },
+    {
+      "label": "Persist a consistent organization and team when a successful switch races a denied switch",
+      "test": "adapters/sqlstore/organization_selector_test.go",
+      "marker": "competing selectors left a mismatched"
+    },
+    {
+      "label": "Reject all invalid selector fields before authentication",
+      "test": "conformance/organization-selection.mjs",
+      "marker": "assert.equal(validation.error.message, invalidMessage)"
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L1903/`POST /organization/set-active-team`": [
@@ -14089,6 +14129,12 @@
       "label": "Accept a string slug and reject a null slug before changing the current session",
       "test": "conformance/core.test.mjs",
       "marker": "organizationId: null, organizationSlug: null"
+    },
+    {
+      "label": "Use the slug when the ID is empty, honor ID precedence and preserve the selection for an unknown slug",
+      "test": "conformance/organization-selection.mjs",
+      "marker": "denied(unknownSlug, 400",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L1910/Parameter `teamId` (optional)": [

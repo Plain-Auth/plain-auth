@@ -93,6 +93,18 @@ curl --fail-with-body -b cookies.txt -c cookies.txt \
   https://app.example.com/api/auth/organization/set-active
 ```
 
+A nonempty `organizationId` takes precedence over `organizationSlug`. An explicit null ID clears the selection even if you also send a valid slug. An unknown slug returns HTTP 400 with `ORGANIZATION_NOT_FOUND` and preserves the current selection. Selecting an unknown ID or an organization the user does not belong to returns HTTP 403 with `USER_IS_NOT_A_MEMBER_OF_THE_ORGANIZATION` and clears this login's organization and team. Other logins keep their selections. Invalid field types return HTTP 400 with `VALIDATION_ERROR` and leave the session untouched. [Selection contract tests](../conformance/organization-selection.mjs)
+
+In Go, pass an `organization.OrganizationSelection` to the client. The returned organization is nil when the session has no selection.
+
+```go
+selected, err := authClient.SetActiveOrganization(ctx, &organization.OrganizationSelection{
+    OrganizationSlug: "studio",
+})
+```
+
+Use `OrganizationID: id` to select by ID. Pass `&organization.OrganizationSelection{}` to use the current organization or `nil` to clear it. SQL adapters authorize and save the selection in a single transaction. Custom stores can implement `organization.OrganizationSelectionStore` for the same transactional behavior. [Go client and concurrent switch tests](../adapters/sqlstore/organization_selector_test.go)
+
 Read `GET /get-session` under the auth mount for the active organization and team. A second login for the same user has its own selection. Creating an organization selects it by default. Pass `keepCurrentActiveOrganization: true` to retain the current selection when creating another organization. [Plain HTTP session-isolation tests](../adapters/sqlstore/organization_selection_http_test.go) · [Organization and team switching on six routers](../integrations/routers/routers_test.go)
 
 Applications acting as an OAuth issuer can also configure a host-owned page for organization or team selection during authorization. A signed OAuth request can then return a protocol redirect or a JSON destination. [Post-login authorization](oauth-authorization-code.md#select-an-organization-or-team-after-login)

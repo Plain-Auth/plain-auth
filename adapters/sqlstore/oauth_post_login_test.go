@@ -135,6 +135,23 @@ func TestBrowserPostLoginSelection(t *testing.T) {
 			if session.Session.ActiveTeamID != nil {
 				t.Fatal("invalid signed form changed selected team")
 			}
+			beforeDenial := checks
+			err = sdk.Do(ctx, "POST", "/organization/set-active", map[string]string{"organizationId": "unknown", "oauth_query": bad}, &next)
+			problem(err, 400)
+			current, err := sdk.GetSession(ctx)
+			must(err)
+			if current.Session.ActiveOrganizationID == nil || *current.Session.ActiveOrganizationID != first {
+				t.Fatal("invalid signed selector cleared the current organization")
+			}
+			err = sdk.Do(ctx, "POST", "/organization/set-active", map[string]string{"organizationId": "unknown", "oauth_query": choose.Encode()}, &next)
+			problem(err, 403)
+			current, err = sdk.GetSession(ctx)
+			must(err)
+			if current.Session.ActiveOrganizationID != nil || checks != beforeDenial || next.URL != "" {
+				t.Fatal("denied organization switch resumed authorization")
+			}
+			_, err = sdk.SetActiveOrganization(ctx, &org.OrganizationSelection{OrganizationID: first})
+			must(err)
 			target, err := sdk.ContinueOAuthPostLogin(ctx, choose.Encode())
 			must(err)
 			fields(target, "/choose-team")

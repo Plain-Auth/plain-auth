@@ -160,39 +160,6 @@ func (s *Store) ActiveOrganization(ctx context.Context, sessionID, userID string
 	return id, err
 }
 
-func (s *Store) SetActiveOrganization(ctx context.Context, sessionID, userID string, id *string) error {
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-	if _, err := s.organizationActor(ctx, tx, userID, sessionID, time.Now()); err != nil {
-		return err
-	}
-	if id == nil {
-		if err := s.selectOrganizationAndTeam(ctx, tx, sessionID, userID, nil, nil); err != nil {
-			return err
-		}
-		return tx.Commit()
-	}
-	if err = s.lockOrganization(ctx, tx, *id); err != nil {
-		return err
-	}
-	var member bool
-	err = tx.QueryRowContext(ctx, s.bind(`SELECT EXISTS(SELECT 1 FROM "member" WHERE "organizationId"=? AND "userId"=?)`), *id, userID).Scan(&member)
-	if err != nil {
-		return err
-	}
-	if !member {
-		return org.ErrNotMember
-	}
-	err = s.selectOrganizationAndTeam(ctx, tx, sessionID, userID, id, nil)
-	if err != nil {
-		return err
-	}
-	return tx.Commit()
-}
-
 // All invitation/membership decisions for an organization use the same row
 // lock. This also protects the membership limit and duplicate-invitation check.
 func (s *Store) lockOrganization(ctx context.Context, tx *sql.Tx, id string) error {

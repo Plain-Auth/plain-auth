@@ -1805,6 +1805,11 @@ test("a machine client discovers its issuer and verifies a token through adverti
   await compareIssuerMetadata(t, { reference, goFixture });
 });
 
+test("organization selection authorizes IDs and slugs and isolates denial to one login", async t => {
+  const { compareOrganizationSelection } = await import("./organization-selection.mjs");
+  await compareOrganizationSelection(t, { reference, goFixture, instrument });
+});
+
 test("organization selectors distinguish omitted IDs from JSON null on both runtimes", async t => {
   const options = {teams: {enabled: true}};
   for (const runtime of [await reference(t, [organization(options)]), await goFixture(t, ["organization-teams"])]) {

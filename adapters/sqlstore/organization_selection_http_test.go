@@ -153,6 +153,13 @@ func TestOrganizationAndTeamSelectionHTTP(t *testing.T) {
 			session(two, second, "")
 			sdk, err := client.New(origin, two)
 			must(err)
+			t.Run("typed selectors and concurrent writes", func(t *testing.T) {
+				firstLogin, err := client.New(origin, one)
+				if err != nil {
+					t.Fatal(err)
+				}
+				checkConcurrentOrganizationSelection(t, store, firstLogin, sdk, first, second, team)
+			})
 			for _, scope := range []string{"", first} {
 				allowed, err := sdk.HasOrganizationPermission(ctx, scope, access.Statements{"organization": {"delete"}, "ac": {"read"}})
 				must(err)
