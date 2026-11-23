@@ -787,6 +787,11 @@
       "label": "Create an organization for a named user from server code with hooks and limits, without a session selection",
       "test": "adapters/sqlstore/organization_creation_hooks_test.go",
       "marker": "// Trusted creation names a user, skips AllowUserToCreateOrganization and selects nothing."
+    },
+    {
+      "label": "Store the submitted name, slug, logo and metadata, select the new organization, and reject invalid parameters without storing anything",
+      "test": "adapters/sqlstore/organization_contract_test.go",
+      "marker": "// Missing or invalid create parameters are rejected before anything is stored."
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L71": [
@@ -15003,6 +15008,11 @@
       "label": "Clear the calling session’s selection after a denied lookup and preserve other sessions",
       "test": "conformance/organization-full.mjs",
       "marker": "assert.equal(ok(await full(otherSession)).id, group.id)"
+    },
+    {
+      "label": "Default the member page to the fixed membership limit and honor an explicit membersLimit",
+      "test": "adapters/sqlstore/organization_contract_test.go",
+      "marker": "// The full organization's default member page is the fixed membership limit."
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L757": [
@@ -15020,6 +15030,11 @@
       "label": "Clear the calling session’s selection after a denied lookup and preserve other sessions",
       "test": "conformance/organization-full.mjs",
       "marker": "assert.equal(ok(await full(otherSession)).id, group.id)"
+    },
+    {
+      "label": "Default the member page to the fixed membership limit and honor an explicit membersLimit",
+      "test": "adapters/sqlstore/organization_contract_test.go",
+      "marker": "// The full organization's default member page is the fixed membership limit."
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L762/`GET /organization/get-full-organization`": [
@@ -15037,6 +15052,11 @@
       "label": "Clear the calling session’s selection after a denied lookup and preserve other sessions",
       "test": "conformance/organization-full.mjs",
       "marker": "assert.equal(ok(await full(otherSession)).id, group.id)"
+    },
+    {
+      "label": "Default the member page to the fixed membership limit and honor an explicit membersLimit",
+      "test": "adapters/sqlstore/organization_contract_test.go",
+      "marker": "// The full organization's default member page is the fixed membership limit."
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L768/Parameter `organizationId` (optional)": [
@@ -16484,6 +16504,11 @@
       "label": "Read mapped role fields across applications and preserve defaults, explicit nulls, false and zero",
       "test": "conformance/organization-role-fields.mjs",
       "marker": "assert.deepEqual([created.color, created.priority, created.enabled, created.source]"
+    },
+    {
+      "label": "Refuse role creation to a member without ac:create and create the role for an owner",
+      "test": "adapters/sqlstore/organization_contract_test.go",
+      "marker": "// Only a role holding ac:create can create a stored role."
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L1527": [
@@ -16506,6 +16531,11 @@
       "label": "Read mapped role fields across applications and preserve defaults, explicit nulls, false and zero",
       "test": "conformance/organization-role-fields.mjs",
       "marker": "assert.deepEqual([created.color, created.priority, created.enabled, created.source]"
+    },
+    {
+      "label": "Refuse role creation to a member without ac:create and create the role for an owner",
+      "test": "adapters/sqlstore/organization_contract_test.go",
+      "marker": "// Only a role holding ac:create can create a stored role."
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L1535/`POST /organization/create-role`": [
@@ -16528,6 +16558,11 @@
       "label": "Read mapped role fields across applications and preserve defaults, explicit nulls, false and zero",
       "test": "conformance/organization-role-fields.mjs",
       "marker": "assert.deepEqual([created.color, created.priority, created.enabled, created.source]"
+    },
+    {
+      "label": "Refuse role creation to a member without ac:create and create the role for an owner",
+      "test": "adapters/sqlstore/organization_contract_test.go",
+      "marker": "// Only a role holding ac:create can create a stored role."
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L1547/Parameter `role`": [
@@ -17923,6 +17958,61 @@
       "label": "Remove only the named user from the named team",
       "test": "adapters/sqlstore/organization_team_contract_test.go",
       "marker": "// remove-team-member removes only the named user from the named team.",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L81/Parameter `name`": [
+    {
+      "label": "Require a nonempty name and store it on the new organization",
+      "test": "adapters/sqlstore/organization_contract_test.go",
+      "marker": "// Create stores name, slug, logo and metadata and selects the new organization.",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L89/Parameter `logo` (optional)": [
+    {
+      "label": "Store a logo URL on the new organization and reject a non-string logo",
+      "test": "adapters/sqlstore/organization_contract_test.go",
+      "marker": "// Create stores name, slug, logo and metadata and selects the new organization.",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L93/Parameter `metadata` (optional)": [
+    {
+      "label": "Store a metadata object on the new organization and reject a non-object value",
+      "test": "adapters/sqlstore/organization_contract_test.go",
+      "marker": "// Create stores name, slug, logo and metadata and selects the new organization.",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L102/Parameter `keepCurrentActiveOrganization` (optional)": [
+    {
+      "label": "Leave the session's selection on the previous organization when keepCurrentActiveOrganization is set",
+      "test": "adapters/sqlstore/organization_contract_test.go",
+      "marker": "// keepCurrentActiveOrganization leaves the selection on the previous organization.",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L73/`POST /organization/create`": [
+    {
+      "label": "Store the submitted name, slug, logo and metadata, select the new organization, and reject invalid parameters without storing anything",
+      "test": "adapters/sqlstore/organization_contract_test.go",
+      "marker": "// Missing or invalid create parameters are rejected before anything is stored."
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L805/Parameter `logo` (optional)": [
+    {
+      "label": "Set a new logo URL on an existing organization and keep its other fields",
+      "test": "adapters/sqlstore/organization_contract_test.go",
+      "marker": "// Update sets a new logo.",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L491": [
+    {
+      "label": "Return a hook's API error to the caller with its status and code for organization and team creation",
+      "test": "adapters/sqlstore/organization_contract_test.go",
+      "marker": "// A hook's API error reaches the caller with its status and code.",
       "complete": true
     }
   ]
