@@ -33,11 +33,10 @@ var ErrTeamLimitChanged = problem(409, "TEAM_POLICY_INPUT_CHANGED", "Team policy
 
 // CreateTeam creates a team from trusted server code. The caller supplies the destination.
 func (s *Service) CreateTeam(ctx context.Context, input CreateTeamRequest) (*Team, error) {
-	store, ok := s.options.teamStore.(TeamCreationStore)
-	if !ok {
+	if _, ok := s.options.teamStore.(TeamCreationStore); !ok {
 		return nil, errors.New("organization: trusted team creation requires a TeamCreationStore")
 	}
-	return store.CreateOrganizationTeam(ctx, nil, input, nil)
+	return s.options.createTeam(ctx, nil, input, nil)
 }
 
 func (o Options) teamCreationEndpoint() auth.Endpoint {
@@ -62,8 +61,8 @@ func (o Options) teamCreationEndpoint() auth.Endpoint {
 			return nil, err
 		}
 		actor := TeamActor{UserID: session.User.ID, SessionID: session.Session.ID}
-		if store, ok := o.teamStore.(TeamCreationStore); ok {
-			return store.CreateOrganizationTeam(c.Request.Context(), &actor, input, c.Request)
+		if _, ok := o.teamStore.(TeamCreationStore); ok {
+			return o.createTeam(c.Request.Context(), &actor, input, c.Request)
 		}
 		return o.teamStore.CreateTeam(c.Request.Context(), actor, input.OrganizationID, input.Name)
 	}}

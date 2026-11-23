@@ -251,9 +251,12 @@ func (o Options) teamRequest(c authn.EndpointContext, actor TeamActor, session a
 			}
 			name = &value
 		}
-		return store.UpdateTeam(ctx, actor, orgID, id, name)
+		return o.updateTeam(ctx, actor, orgID, id, name)
 	case "remove-team":
-		return map[string]string{"message": "Team removed successfully."}, store.RemoveTeam(ctx, actor, orgID, id)
+		if err := o.removeTeam(ctx, actor, orgID, id); err != nil {
+			return nil, err
+		}
+		return map[string]string{"message": "Team removed successfully."}, nil
 	default:
 		user, err := textField(body, "userId")
 		if err != nil {

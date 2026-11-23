@@ -121,7 +121,17 @@ type Options struct {
 	BeforeUpdateMemberRole func(context.Context, BeforeMemberRoleUpdate) (*MemberOverride, error)
 	// AfterUpdateMemberRole runs after the change commits. Its error is
 	// returned and the new roles remain.
-	AfterUpdateMemberRole    func(context.Context, AfterMemberRoleUpdate) error
+	AfterUpdateMemberRole func(context.Context, AfterMemberRoleUpdate) error
+	// BeforeCreateTeam, BeforeUpdateTeam and BeforeDeleteTeam run after a team
+	// change passes its checks. Create and update may return a new name. An
+	// error cancels the change. The After hooks run once it commits; their
+	// error is returned and the change remains. Team hooks require Teams.
+	BeforeCreateTeam         func(context.Context, TeamChange) (*TeamOverride, error)
+	AfterCreateTeam          func(context.Context, TeamChange) error
+	BeforeUpdateTeam         func(context.Context, BeforeTeamUpdate) (*TeamOverride, error)
+	AfterUpdateTeam          func(context.Context, TeamChange) error
+	BeforeDeleteTeam         func(context.Context, TeamChange) error
+	AfterDeleteTeam          func(context.Context, TeamChange) error
 	BeforeUpdateOrganization func(context.Context, BeforeProfileUpdate) (*ProfileUpdate, error)
 	AfterUpdateOrganization  func(context.Context, AfterProfileUpdate) error
 	// DisableOrganizationDeletion makes POST /organization/delete answer 404
@@ -307,6 +317,9 @@ func NewService(o Options) (*Service, error) {
 		o.Store = store
 	}
 	if err := o.configureTeams(); err != nil {
+		return nil, err
+	}
+	if err := o.validateTeamHooks(); err != nil {
 		return nil, err
 	}
 	if o.DynamicAccessControl {

@@ -219,10 +219,16 @@
     - [x] Reserve the last team slot across authenticated requests and trusted creation on independent database connections ([test](../../../adapters/sqlstore/organization_team_creation_test.go#L88))
     - [x] Require live creation authority and recheck the policy inputs after the host resolves capacity ([test](../../../adapters/sqlstore/organization_team_creation_test.go#L145))
     - [x] Apply the same team cap to trusted creation without a session ([test](../../../conformance/organization-team-limits.mjs#L45))
+    - [x] Give the team creation hooks the proposed team, the creator and the organization, and save a returned name ([test](../../../adapters/sqlstore/organization_team_hooks_test.go#L93))
+    - [x] Cancel team creation, update and removal when the before hook fails ([test](../../../adapters/sqlstore/organization_team_hooks_test.go#L130))
   - [ ] `POST /organization/remove-team`
     - [x] Protect the active team and final team, and prune pending invitations when a team is removed ([test](../../../adapters/sqlstore/organization_teams_test.go#L136))
+    - [x] Give the team removal hooks the team being removed ([test](../../../adapters/sqlstore/organization_team_hooks_test.go#L143))
+    - [x] Keep unpermitted, unknown and final-team changes away from the team hooks ([test](../../../adapters/sqlstore/organization_team_hooks_test.go#L118))
   - [ ] `POST /organization/update-team`
     - [x] Update the team name and reject another organization’s team ID ([test](../../../adapters/sqlstore/organization_teams_test.go#L114))
+    - [x] Give the team update hooks the current team and the requested name, and save a returned name ([test](../../../adapters/sqlstore/organization_team_hooks_test.go#L108))
+    - [x] Keep unpermitted, unknown and final-team changes away from the team hooks ([test](../../../adapters/sqlstore/organization_team_hooks_test.go#L118))
   - [ ] `GET /organization/list-teams`
     - [x] Read the organization’s teams and deny outsiders using the browser client ([test](../../../conformance/core.test.mjs#L626))
   - [ ] `POST /organization/set-active-team`
@@ -332,6 +338,9 @@
       - [x] Cancel a member removal when the before hook fails ([test](../../../adapters/sqlstore/organization_member_removal_hooks_test.go#L98))
       - [x] Give the member role hooks the member, the requested and previous roles, the account and the organization ([test](../../../adapters/sqlstore/organization_member_role_hooks_test.go#L82))
       - [x] Save the roles returned by the before hook in place of the requested roles ([test](../../../adapters/sqlstore/organization_member_role_hooks_test.go#L89))
+      - [x] Give the team creation hooks the proposed team, the creator and the organization, and save a returned name ([test](../../../adapters/sqlstore/organization_team_hooks_test.go#L93))
+      - [x] Give the team update hooks the current team and the requested name, and save a returned name ([test](../../../adapters/sqlstore/organization_team_hooks_test.go#L108))
+      - [x] Give the team removal hooks the team being removed ([test](../../../adapters/sqlstore/organization_team_hooks_test.go#L143))
 
 ## Organization
 
@@ -394,6 +403,11 @@
         - [x] Apply the host’s recipient, role, team and deadline changes before sending the saved invitation ([test](../../../conformance/invitation-preparation.mjs#L54))
         - [x] Skip preparation for live renewals and preserve the pending grant when a replacement fails ([test](../../../adapters/sqlstore/organization_invitation_preparation_test.go#L52))
       - [ ] Team Hooks
+        - [x] Give the team creation hooks the proposed team, the creator and the organization, and save a returned name ([test](../../../adapters/sqlstore/organization_team_hooks_test.go#L93))
+        - [x] Give the team update hooks the current team and the requested name, and save a returned name ([test](../../../adapters/sqlstore/organization_team_hooks_test.go#L108))
+        - [x] Keep unpermitted, unknown and final-team changes away from the team hooks ([test](../../../adapters/sqlstore/organization_team_hooks_test.go#L118))
+        - [x] Cancel team creation, update and removal when the before hook fails ([test](../../../adapters/sqlstore/organization_team_hooks_test.go#L130))
+        - [x] Give the team removal hooks the team being removed ([test](../../../adapters/sqlstore/organization_team_hooks_test.go#L143))
       - [ ] Hook Error Handling
     - [ ] List User's Organizations
       - [x] List only organizations the current user belongs to ([test](../../../plugins/organization/organization_test.go#L113))

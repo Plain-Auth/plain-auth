@@ -3596,6 +3596,16 @@
       "label": "Apply the same team cap to trusted creation without a session",
       "test": "conformance/organization-team-limits.mjs",
       "marker": "assert.equal((await ref.api.createTeam({body:trusted})).organizationId,north.id)"
+    },
+    {
+      "label": "Give the team creation hooks the proposed team, the creator and the organization, and save a returned name",
+      "test": "adapters/sqlstore/organization_team_hooks_test.go",
+      "marker": "// Creation hooks see the proposed team and the creator, and can rename it."
+    },
+    {
+      "label": "Cancel team creation, update and removal when the before hook fails",
+      "test": "adapters/sqlstore/organization_team_hooks_test.go",
+      "marker": "// A before-hook error cancels creation, update and removal."
     }
   ],
   "plugin/organization/POST /organization/update-team": [
@@ -3603,6 +3613,16 @@
       "label": "Update the team name and reject another organization’s team ID",
       "test": "adapters/sqlstore/organization_teams_test.go",
       "marker": "err = owner.UpdateTeam(ctx, foreign[0].ID"
+    },
+    {
+      "label": "Give the team update hooks the current team and the requested name, and save a returned name",
+      "test": "adapters/sqlstore/organization_team_hooks_test.go",
+      "marker": "// Update hooks see the current team and the requested name."
+    },
+    {
+      "label": "Keep unpermitted, unknown and final-team changes away from the team hooks",
+      "test": "adapters/sqlstore/organization_team_hooks_test.go",
+      "marker": "// Refused changes never reach the hooks."
     }
   ],
   "plugin/organization/POST /organization/remove-team": [
@@ -3610,6 +3630,16 @@
       "label": "Protect the active team and final team, and prune pending invitations when a team is removed",
       "test": "adapters/sqlstore/organization_teams_test.go",
       "marker": "single surviving invited team not active"
+    },
+    {
+      "label": "Give the team removal hooks the team being removed",
+      "test": "adapters/sqlstore/organization_team_hooks_test.go",
+      "marker": "// Removal hooks see the team being removed."
+    },
+    {
+      "label": "Keep unpermitted, unknown and final-team changes away from the team hooks",
+      "test": "adapters/sqlstore/organization_team_hooks_test.go",
+      "marker": "// Refused changes never reach the hooks."
     }
   ],
   "plugin/organization/GET /organization/list-teams": [
@@ -10649,6 +10679,21 @@
       "label": "Save the roles returned by the before hook in place of the requested roles",
       "test": "adapters/sqlstore/organization_member_role_hooks_test.go",
       "marker": "// The before hook can replace the roles to set."
+    },
+    {
+      "label": "Give the team creation hooks the proposed team, the creator and the organization, and save a returned name",
+      "test": "adapters/sqlstore/organization_team_hooks_test.go",
+      "marker": "// Creation hooks see the proposed team and the creator, and can rename it."
+    },
+    {
+      "label": "Give the team update hooks the current team and the requested name, and save a returned name",
+      "test": "adapters/sqlstore/organization_team_hooks_test.go",
+      "marker": "// Update hooks see the current team and the requested name."
+    },
+    {
+      "label": "Give the team removal hooks the team being removed",
+      "test": "adapters/sqlstore/organization_team_hooks_test.go",
+      "marker": "// Removal hooks see the team being removed."
     }
   ],
   "plugin-symbol/siwe/SIWEPluginOptions/getNonce": [
@@ -16574,6 +16619,33 @@
       "label": "Report an after-hook error once the role change has committed",
       "test": "adapters/sqlstore/organization_member_role_hooks_test.go",
       "marker": "// An after-hook error is returned and the new role remains."
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L387": [
+    {
+      "label": "Give the team creation hooks the proposed team, the creator and the organization, and save a returned name",
+      "test": "adapters/sqlstore/organization_team_hooks_test.go",
+      "marker": "// Creation hooks see the proposed team and the creator, and can rename it."
+    },
+    {
+      "label": "Give the team update hooks the current team and the requested name, and save a returned name",
+      "test": "adapters/sqlstore/organization_team_hooks_test.go",
+      "marker": "// Update hooks see the current team and the requested name."
+    },
+    {
+      "label": "Keep unpermitted, unknown and final-team changes away from the team hooks",
+      "test": "adapters/sqlstore/organization_team_hooks_test.go",
+      "marker": "// Refused changes never reach the hooks."
+    },
+    {
+      "label": "Cancel team creation, update and removal when the before hook fails",
+      "test": "adapters/sqlstore/organization_team_hooks_test.go",
+      "marker": "// A before-hook error cancels creation, update and removal."
+    },
+    {
+      "label": "Give the team removal hooks the team being removed",
+      "test": "adapters/sqlstore/organization_team_hooks_test.go",
+      "marker": "// Removal hooks see the team being removed."
     }
   ]
 }

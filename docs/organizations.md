@@ -835,6 +835,22 @@ To invite a new organization member into teams, include `teamId` in `/organizati
 The native client includes `CreateTeam`, `UpdateTeam`, `RemoveTeam`, `ListOrganizationTeams`, `ListUserTeams`, `SetActiveTeam`, `ListTeamMembers`, `AddTeamMember` and `RemoveTeamMember`. Each client uses its own session when resolving an omitted organization or team. [Multi-engine team tests](../adapters/sqlstore/organization_teams_test.go)
 
 
+### Observe team changes
+
+Set `BeforeCreateTeam`, `BeforeUpdateTeam` and `BeforeDeleteTeam` to inspect a team change after it passes its permission and limit checks. Each receives an `organization.TeamChange` with the team, its organization and the signed-in user, which is nil for trusted `CreateTeam` calls. A proposed team has no ID yet, and `BeforeTeamUpdate.Updates` holds the requested name. Return an `*organization.TeamOverride` with a `Name` from the create or update hook to rename the team. Returning an error cancels the change. `AfterCreateTeam`, `AfterUpdateTeam` and `AfterDeleteTeam` run after the change commits; their error is returned and the change remains.
+
+```go
+groups, err := organization.NewService(organization.Options{
+    Store: store,
+    Teams: &organization.TeamOptions{},
+    AfterCreateTeam: func(ctx context.Context, in organization.TeamChange) error {
+        return chat.CreateChannel(ctx, in.Organization.ID, in.Team.ID, in.Team.Name)
+    },
+})
+```
+
+`chat.CreateChannel` is an application function. A refused change, such as one from a member without `team.create`, an unknown team or the organization's last team, never reaches the hooks. The store checks the caller again when it writes. A team limit decided by `ResolveMaximumTeams` is checked at that point, after the before hook. The default team created with an organization does not run the team hooks. A custom store must implement `organization.ObservedTeamStore`. [Hook tests on three SQL engines](../adapters/sqlstore/organization_team_hooks_test.go)
+
 ### Set a team limit per organization
 
 Set `TeamOptions.ResolveMaximumTeams` to look up the total number of teams an organization may have. For example, a billing policy can use the organization's plan. Return a positive count to set a cap or zero to allow unlimited teams. Choose the resolver or a fixed `MaximumTeams` value.
