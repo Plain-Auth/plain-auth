@@ -107,10 +107,15 @@ func models(a *plainauth.Auth, info plainauth.HTTPDescription) object {
 		m["Organization"] = modelSchema(reflect.TypeFor[organization.Organization]())
 		m["Member"] = modelSchema(reflect.TypeFor[organization.Member]())
 		m["Invitation"] = modelSchema(reflect.TypeFor[organization.Invitation]())
+		lists := object{"members": array(organizationMemberProfile()), "invitations": array(modelRef("Invitation"))}
+		required := []string{"members", "invitations"}
 		if hasTeams {
+			lists["teams"] = array(modelRef("Team"))
+			required = append(required, "teams")
 			m["Team"] = modelSchema(reflect.TypeFor[organization.Team]())
 			m["TeamMember"] = modelSchema(reflect.TypeFor[organization.TeamMember]())
 		}
+		m["FullOrganization"] = object{"allOf": []object{modelRef("Organization"), responseObject(lists, required...)}}
 	}
 	if a.HasPlugin("api-key") {
 		m["APIKey"] = modelSchema(reflect.TypeFor[apikey.Key]())

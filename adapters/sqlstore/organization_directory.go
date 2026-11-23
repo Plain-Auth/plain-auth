@@ -2,6 +2,7 @@ package sqlstore
 
 import (
 	"context"
+	"database/sql"
 	"strings"
 	"time"
 
@@ -128,23 +129,8 @@ func (s *Store) ListOrganizationMembers(ctx context.Context, sessionID, actorID 
 	}
 	page.Members = []org.MemberWithUser{}
 	if page.Total > q.Offset {
-		query := `SELECT m."id", m."organizationId", m."userId", m."role", m."createdAt", u."id", u."name", u."email", u."image"
-			FROM "member" m LEFT JOIN "user" u ON u."id"=` + s.exactSQLValue(`m."userId"`) + where +
-			" ORDER BY " + order + " LIMIT ? OFFSET ?"
-		rows, err := tx.QueryContext(ctx, s.bind(query), append(args, limit, q.Offset)...)
+		page.Members, err = s.organizationMemberRows(ctx, tx, where, order, append(args, limit, q.Offset)...)
 		if err != nil {
-			return org.MemberPage{}, err
-		}
-		defer rows.Close()
-		for rows.Next() {
-			var member org.MemberWithUser
-			err := rows.Scan(&member.ID, &member.OrganizationID, &member.UserID, &member.Role, &member.CreatedAt, &member.User.ID, &member.User.Name, &member.User.Email, &member.User.Image)
-			if err != nil {
-				return org.MemberPage{}, err
-			}
-			page.Members = append(page.Members, member)
-		}
-		if err := rows.Err(); err != nil {
 			return org.MemberPage{}, err
 		}
 	}
@@ -152,4 +138,23 @@ func (s *Store) ListOrganizationMembers(ctx context.Context, sessionID, actorID 
 		return org.MemberPage{}, err
 	}
 	return page, nil
+}
+
+func (s *Store) organizationMemberRows(ctx context.Context, tx *sql.Tx, where, order string, args ...any) ([]org.MemberWithUser, error) {
+	query := `SELECT m."id", m."organizationId", m."userId", m."role", m."createdAt", u."id", u."name", u."email", u."image"
+		FROM "member" m LEFT JOIN "user" u ON u."id"=` + s.exactSQLValue(`m."userId"`) + where + " ORDER BY " + order + " LIMIT ? OFFSET ?"
+	rows, err := tx.QueryContext(ctx, s.bind(query), args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	members := []org.MemberWithUser{}
+	for rows.Next() {
+		var m org.MemberWithUser
+		if err := rows.Scan(&m.ID, &m.OrganizationID, &m.UserID, &m.Role, &m.CreatedAt, &m.User.ID, &m.User.Name, &m.User.Email, &m.User.Image); err != nil {
+			return nil, err
+		}
+		members = append(members, m)
+	}
+	return members, rows.Err()
 }

@@ -273,8 +273,13 @@ func (s *Store) pruneTeamInvitations(ctx context.Context, tx *sql.Tx, group, id 
 	}
 	return nil
 }
-func listTeamsQuery(t teamTransaction, query string, args ...any) ([]org.Team, error) {
-	rows, err := t.tx.QueryContext(t.ctx, t.bind(`SELECT `+teamFields+` FROM "team" t `+query+` ORDER BY t."createdAt",t."id"`), args...)
+func (s *Store) listTeamsQuery(ctx context.Context, tx *sql.Tx, query string, limit int, args ...any) ([]org.Team, error) {
+	query = `SELECT ` + teamFields + ` FROM "team" t ` + query + ` ORDER BY t."createdAt",t."id"`
+	if limit > 0 {
+		query += " LIMIT ?"
+		args = append(args, limit)
+	}
+	rows, err := tx.QueryContext(ctx, s.bind(query), args...)
 	if err != nil {
 		return nil, err
 	}
@@ -295,7 +300,7 @@ func (s *Store) ListTeams(ctx context.Context, a org.TeamActor, explicit string)
 		if err != nil {
 			return err
 		}
-		out, err = listTeamsQuery(t, ` WHERE t."organizationId"=?`, id)
+		out, err = s.listTeamsQuery(ctx, t.tx, ` WHERE t."organizationId"=?`, 0, id)
 		return err
 	})
 	return
@@ -329,7 +334,7 @@ func (s *Store) ListUserTeams(ctx context.Context, a org.TeamActor, explicit, us
 			args = append(args, id)
 		}
 		var listErr error
-		out, listErr = listTeamsQuery(t, query, args...)
+		out, listErr = s.listTeamsQuery(ctx, t.tx, query, 0, args...)
 		return listErr
 	})
 	return

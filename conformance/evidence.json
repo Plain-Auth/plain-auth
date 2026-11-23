@@ -14209,5 +14209,80 @@
       "test": "adapters/sqlstore/organization_limit_test.go",
       "marker": "competing admissions failed to serialize at the configured limit"
     }
+  ],
+  "plugin/organization/GET /organization/get-full-organization": [
+    {
+      "label": "Return the shared roster and enabled teams with invitations filtered to the caller’s role",
+      "test": "conformance/organization-full.mjs",
+      "marker": "assert.deepEqual(basic.invitations, [])"
+    },
+    {
+      "label": "Read the member’s current role and the visible invitations from the same snapshot on three SQL engines",
+      "test": "adapters/sqlstore/organization_full_test.go",
+      "marker": "invitation visibility and caller role came from different snapshots"
+    },
+    {
+      "label": "Clear the calling session’s selection after a denied lookup and preserve other sessions",
+      "test": "conformance/organization-full.mjs",
+      "marker": "assert.equal(ok(await full(otherSession)).id, group.id)"
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L757": [
+    {
+      "label": "Return the shared roster and enabled teams with invitations filtered to the caller’s role",
+      "test": "conformance/organization-full.mjs",
+      "marker": "assert.deepEqual(basic.invitations, [])"
+    },
+    {
+      "label": "Read the member’s current role and the visible invitations from the same snapshot on three SQL engines",
+      "test": "adapters/sqlstore/organization_full_test.go",
+      "marker": "invitation visibility and caller role came from different snapshots"
+    },
+    {
+      "label": "Clear the calling session’s selection after a denied lookup and preserve other sessions",
+      "test": "conformance/organization-full.mjs",
+      "marker": "assert.equal(ok(await full(otherSession)).id, group.id)"
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L762/`GET /organization/get-full-organization`": [
+    {
+      "label": "Return the shared roster and enabled teams with invitations filtered to the caller’s role",
+      "test": "conformance/organization-full.mjs",
+      "marker": "assert.deepEqual(basic.invitations, [])"
+    },
+    {
+      "label": "Read the member’s current role and the visible invitations from the same snapshot on three SQL engines",
+      "test": "adapters/sqlstore/organization_full_test.go",
+      "marker": "invitation visibility and caller role came from different snapshots"
+    },
+    {
+      "label": "Clear the calling session’s selection after a denied lookup and preserve other sessions",
+      "test": "conformance/organization-full.mjs",
+      "marker": "assert.equal(ok(await full(otherSession)).id, group.id)"
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L768/Parameter `organizationId` (optional)": [
+    {
+      "label": "Read by explicit ID, bound to membership and independent of the returned page",
+      "test": "conformance/organization-full.mjs",
+      "marker": "const adminPage = ok(await full(admin, { organizationId: group.id, membersLimit: 1 }))",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L772/Parameter `organizationSlug` (optional)": [
+    {
+      "label": "Resolve a slug ahead of an ID and preserve the selection after a successful lookup",
+      "test": "conformance/organization-full.mjs",
+      "marker": "organizationSlug: group.slug, organizationId: privateGroup.id",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L776/Parameter `membersLimit` (optional)": [
+    {
+      "label": "Choose the member page size, hydrate pages exceeding 100, and use the configured default when omitted",
+      "test": "adapters/sqlstore/organization_full_test.go",
+      "marker": "failed to hydrate a member page beyond the default limit",
+      "complete": true
+    }
   ]
 }

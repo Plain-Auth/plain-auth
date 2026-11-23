@@ -36,7 +36,8 @@ The application provides `sendInvitation`, its configured public `origin` and it
 | POST | `/organization/create` | Create an organization with `name` and `slug` and select it on the creator's session |
 | GET | `/organization/list` | List the current user's organizations |
 | GET | `/organization/list-members` | List public member profiles and a filtered total for an organization you belong to. |
-| GET | `/organization/get-organization` | Read by `organizationId`, `organizationSlug` or active selection |
+| GET | `/organization/get-organization` | Read the organization profile by ID, slug or active selection |
+| GET | `/organization/get-full-organization` | Read the profile together with members, visible invitations and configured teams |
 | GET | `/organization/get-active-member` | Read your membership, role and public profile in this session's active organization. Requires a signed-in session. |
 | GET | `/organization/get-active-member-role` | Read a user's role in an organization you both belong to. Omit all query parameters for your own role in the active organization. |
 | POST | `/organization/set-active` | Select by ID or slug. Send `{"organizationId":null}` to clear the current selection |
@@ -85,6 +86,35 @@ Read `GET /get-session` under the auth mount for the active organization and tea
 Applications acting as an OAuth issuer can also configure a host-owned page for organization or team selection during authorization. A signed OAuth request can then return a protocol redirect or a JSON destination. [Post-login authorization](oauth-authorization-code.md#select-an-organization-or-team-after-login)
 
 If you generate a client from OpenAPI, the ordinary response is a nullable `Organization` or `Team`. A host that enables signed post-login selection also exposes the optional `oauth_query` input, a JSON result with `redirect` and `url`, and an HTTP 302 response for navigation. [OpenAPI reference](openapi.md) · [Configured schema tests](../plugins/openapi/organization_selection_test.go)
+
+## Read an organization and its directory
+
+Send `GET /organization/get-full-organization` with a session cookie. A nonempty `organizationSlug` selects the destination first, followed by `organizationId`, then the session's active organization. With no selector and no active organization, the response is HTTP 200 with JSON `null`. Looking up another organization you belong to preserves your active organization and team.
+
+```sh
+curl --fail-with-body -b cookies.txt --get \
+  https://app.example.com/api/auth/organization/get-full-organization \
+  --data-urlencode 'organizationSlug=studio' --data-urlencode 'membersLimit=20'
+```
+
+The response includes the organization's profile fields and these collections, all read from the same database snapshot.
+
+| Field | What the signed-in user can see |
+| --- | --- |
+| `members` | Each membership and its user's public `id`, `name`, `email` and `image`. `membersLimit` controls this collection only. The default is the fixed membership limit, or 100. Use `list-members` to filter or page through the roster. |
+| `invitations` | Owners see invitations across all statuses. Admins can see invitations for roles they may grant. Invitations containing the owner role are visible only to an owner. Other members receive an empty array. The endpoint reads up to 100 invitations before applying role visibility. |
+| `teams` | When teams are enabled, every member can read the first 100 teams in the organization, including teams they have not joined. An empty organization returns `[]` for this field. With teams disabled the field is omitted. |
+
+The member list, team list and invitation list each sort by creation time, then ID. Membership permission is checked even if the caller falls outside the requested member page. An unknown ID or slug returns HTTP 400 with `ORGANIZATION_NOT_FOUND`. An existing organization the caller does not belong to returns HTTP 403 with `USER_IS_NOT_A_MEMBER_OF_THE_ORGANIZATION` and clears the calling session's observed organization and team selection. Other sessions retain their selections. Your client decides which screen to display after either response.
+
+```go
+view, err := authClient.FullOrganization(ctx, organization.FullOrganizationQuery{
+    OrganizationSlug: "studio",
+    MembersLimit:     20,
+})
+```
+
+With an empty query, a nil result and nil error indicate a signed-in session without a selection. [Client comparison](../conformance/organization-full.mjs) · [Three-database visibility tests](../adapters/sqlstore/organization_full_test.go)
 
 ## List organization members
 

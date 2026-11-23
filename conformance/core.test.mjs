@@ -1897,3 +1897,8 @@ test("fixed and application-resolved membership limits govern admissions and dir
   const { compareMembershipLimits } = await import("./organization-capacity.mjs");
   await compareMembershipLimits(t, { reference, goFixture, instrument, fixtureBinary: () => fixtureBuild });
 });
+
+test("the full organization lookup projects members, teams and authorized invitations on both servers", async t => {
+  const { compareFullOrganization } = await import("./organization-full.mjs");
+  await compareFullOrganization(t, { reference, goFixture, instrument });
+});

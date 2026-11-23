@@ -96,3 +96,15 @@ func (c *Client) UpdateOrganizationMemberRole(ctx context.Context, request org.U
 	}
 	return &out, nil
 }
+
+// FullOrganization returns the visible members, invitations and configured teams.
+// It returns nil when the session has no selected organization and no selector is supplied.
+func (c *Client) FullOrganization(ctx context.Context, q org.FullOrganizationQuery) (*org.FullOrganization, error) {
+	params := url.Values{"organizationId": {q.OrganizationID}, "organizationSlug": {q.OrganizationSlug}}
+	if q.MembersLimit != 0 {
+		params.Set("membersLimit", strconv.Itoa(q.MembersLimit))
+	}
+	var out *org.FullOrganization
+	err := c.Do(ctx, http.MethodGet, organizationRoute("get-full-organization", params), nil, &out)
+	return out, err
+}

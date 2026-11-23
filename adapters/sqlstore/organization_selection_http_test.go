@@ -155,6 +155,18 @@ func TestOrganizationAndTeamSelectionHTTP(t *testing.T) {
 			if page.Total != 1 || len(page.Members) != 1 || page.Members[0].OrganizationID != first || page.Members[0].User.Email != login["email"] {
 				t.Fatal("Go directory client lost its filter or tenant selection", page)
 			}
+			full, err := sdk.FullOrganization(ctx, org.FullOrganizationQuery{OrganizationID: second, OrganizationSlug: "a-group", MembersLimit: 1})
+			must(err)
+			if full == nil || full.ID != first || len(full.Members) != 1 || full.Members[0].User.Email != login["email"] || len(full.Teams) != 1 || full.Teams[0].ID != team || full.Invitations == nil {
+				t.Fatal("Go full organization client returned the wrong session view", full)
+			}
+			emptySDK, err := client.New(origin, one)
+			must(err)
+			unselected, err := emptySDK.FullOrganization(ctx, org.FullOrganizationQuery{})
+			must(err)
+			if unselected != nil {
+				t.Fatal("Go client did not preserve the null selection")
+			}
 			active, err := sdk.ActiveOrganizationMember(ctx)
 			must(err)
 			if active.OrganizationID != second || active.ID == "" || active.Role != "owner" || active.UserID != active.User.ID || active.User.Email != login["email"] || active.CreatedAt.IsZero() {

@@ -89,6 +89,10 @@ func loginResponse(success object, factor bool) object {
 	return object{"oneOf": []object{success, challenge}}
 }
 
+func organizationMemberProfile() object {
+	return object{"allOf": []object{modelRef("Member"), responseObject(object{"user": modelSchema(reflect.TypeFor[organization.MemberUser]())}, "user")}}
+}
+
 func publicResponse(route plainauth.HTTPRoute, info plainauth.HTTPDescription, factor bool) object {
 	if route.Plugin == "sso" {
 		return ssoResponse(route.Path, info)
@@ -158,6 +162,8 @@ func publicResponse(route plainauth.HTTPRoute, info plainauth.HTTPDescription, f
 		return modelRef("Organization")
 	case "/organization/check-slug":
 		return responseObject(object{"status": object{"type": "boolean"}}, "status")
+	case "/organization/get-full-organization":
+		return object{"anyOf": []object{modelRef("FullOrganization"), {"type": "null"}}}
 	case "/organization/get-organization":
 		return object{"anyOf": []object{modelRef("Organization"), {"type": "null"}}}
 	case "/organization/set-active", "/organization/set-active-team":
@@ -173,7 +179,7 @@ func publicResponse(route plainauth.HTTPRoute, info plainauth.HTTPDescription, f
 	case "/organization/update-member-role":
 		return modelRef("Member")
 	case "/organization/get-active-member", "/organization/list-members":
-		member := object{"allOf": []object{modelRef("Member"), responseObject(object{"user": modelSchema(reflect.TypeFor[organization.MemberUser]())}, "user")}}
+		member := organizationMemberProfile()
 		if route.Path == "/organization/list-members" {
 			return responseObject(object{"members": array(member), "total": object{"type": "integer"}}, "members", "total")
 		}

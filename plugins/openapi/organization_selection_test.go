@@ -77,6 +77,14 @@ func TestOrganizationSelectionSchema(t *testing.T) {
 			if len(user) != 4 || user["id"] == nil || user["name"] == nil || user["email"] == nil || user["image"] == nil {
 				t.Fatal("unexpected public member user fields", user)
 			}
+			full := node(paths, "/organization/get-full-organization", "get")
+			nullable := node(full, "responses", "200", "content", "application/json", "schema")["anyOf"].([]any)
+			fullSchema := node(doc, "components", "schemas", "FullOrganization")["allOf"].([]any)
+			lists := node(fullSchema[1].(obj), "properties")
+			if len(full["parameters"].([]any)) != 3 || nullable[0].(obj)["$ref"] != "#/components/schemas/FullOrganization" || nullable[1].(obj)["type"] != "null" ||
+				lists["members"] == nil || lists["invitations"] == nil || (lists["teams"] != nil) != tc.teams {
+				t.Fatal("full organization description does not match the configured collections", lists)
+			}
 			lookup := node(paths, "/organization/get-active-member-role", "get")
 			directory := node(paths, "/organization/list-members", "get")
 			queries, _ := directory["parameters"].([]any)

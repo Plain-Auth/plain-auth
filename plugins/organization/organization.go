@@ -202,6 +202,9 @@ func (service *Service) Plugin() authn.Plugin {
 	if _, ok := o.Store.(MemberRoleStore); ok {
 		plugin.Endpoints = append(plugin.Endpoints, service.memberRoleEndpoint())
 	}
+	if store, ok := o.Store.(FullOrganizationStore); ok {
+		plugin.Endpoints = append(plugin.Endpoints, o.fullOrganizationEndpoint(store))
+	}
 	if store, ok := o.Store.(MemberDirectoryStore); ok {
 		plugin.Endpoints = append(plugin.Endpoints, o.memberDirectoryEndpoint(store))
 	}
