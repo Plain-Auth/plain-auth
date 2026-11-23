@@ -41,17 +41,19 @@ func copyRoles(source map[string]access.Statements) map[string]access.Statements
 // that want to add or change selected roles.
 func DefaultRoles() map[string]access.Statements { return copyRoles(defaultPermissions) }
 
+// ValidRoleName reports whether a name is one assignable membership label.
+func ValidRoleName(name string) bool {
+	return name != "" && strings.TrimSpace(name) == name && !strings.Contains(name, ",")
+}
+
 // NewRolePolicy copies the supplied grants for use by services, custom storage
 // adapters and local permission checks. A nil role map selects the defaults.
 func NewRolePolicy(creator string, roles map[string]access.Statements) (RolePolicy, error) {
-	valid := func(name string) bool {
-		return name != "" && strings.TrimSpace(name) == name && !strings.Contains(name, ",")
-	}
-	if creator != "" && !valid(creator) {
+	if creator != "" && !ValidRoleName(creator) {
 		return RolePolicy{}, fmt.Errorf("organization: invalid creator role %q", creator)
 	}
 	for name := range roles {
-		if !valid(name) {
+		if !ValidRoleName(name) {
 			return RolePolicy{}, fmt.Errorf("organization: invalid role name %q", name)
 		}
 	}
@@ -89,7 +91,7 @@ func (p RolePolicy) HasPermission(membership string, request access.Statements) 
 		grants = defaultPermissions
 	}
 	for role := range strings.SplitSeq(membership, ",") {
-		if grants[strings.TrimSpace(role)].AllowsAll(request) {
+		if role = strings.TrimSpace(role); role != "" && grants[role].AllowsAll(request) {
 			return true
 		}
 	}

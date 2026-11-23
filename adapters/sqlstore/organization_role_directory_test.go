@@ -93,12 +93,12 @@ func TestOrganizationRoleDirectory(t *testing.T) {
 	}
 }
 
-func organizationRoleClient(t *testing.T, db *Store, service *org.Service, session auth.Session) *client.Client {
+func organizationRoleClient(t *testing.T, db *Store, service *org.Service, session auth.Session, plugins ...auth.Plugin) *client.Client {
 	t.Helper()
 	host := httptest.NewUnstartedServer(nil)
 	t.Cleanup(host.Close)
 	base := "http://" + host.Listener.Addr().String()
-	instance, err := auth.New(auth.Options{Store: db, BaseURL: base, Secret: strings.Repeat("R", 32), Plugins: []auth.Plugin{service.Plugin()}})
+	instance, err := auth.New(auth.Options{Store: db, BaseURL: base, Secret: strings.Repeat("R", 32), Plugins: append([]auth.Plugin{service.Plugin()}, plugins...)})
 	if err != nil {
 		t.Fatal(err)
 	}

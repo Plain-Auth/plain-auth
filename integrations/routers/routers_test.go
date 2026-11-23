@@ -99,7 +99,7 @@ func TestFrameworkMounts(t *testing.T) {
 		}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			s, err := sqlstore.OpenWithOptions(t.Context(), "sqlite", ":memory:", []string{"oauth-provider", "jwt", "organization-teams"}, schema.Options{})
+			s, err := sqlstore.OpenWithOptions(t.Context(), "sqlite", ":memory:", []string{"oauth-provider", "jwt", "organization-teams", "organization-roles"}, schema.Options{})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -113,7 +113,7 @@ func TestFrameworkMounts(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			groups, err := organization.New(organization.Options{Store: s, Teams: &organization.TeamOptions{}})
+			groups, err := organization.New(organization.Options{Store: s, Teams: &organization.TeamOptions{}, DynamicAccessControl: true, RoleControl: organization.DefaultRoleControl()})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -195,22 +195,22 @@ func TestFrameworkMounts(t *testing.T) {
 			if json.Unmarshal([]byte(session), &result) != nil || result.User.Email != "ada@example.com" {
 				t.Fatalf("unexpected session: %s", session)
 			}
-			checkSelection := func(method, path, body string, out any) {
+			organizationJSON := func(method, path, body string, out any) {
 				t.Helper()
 				resp, raw := send(method, "/api/auth/organization/"+path, body, cookies, 200)
 				if resp.Header.Get("Location") != "" || !strings.HasPrefix(resp.Header.Get("Content-Type"), "application/json") {
-					t.Fatal("ordinary selection did not return JSON to the calling application", tc.name)
+					t.Fatal("organization operation did not return JSON to the calling application", tc.name)
 				}
 				if err := json.Unmarshal([]byte(raw), out); err != nil {
 					t.Fatal(err)
 				}
 			}
 			var studio, shop, selected organization.Organization
-			checkSelection("POST", "create", `{"name":"Studio","slug":"studio"}`, &studio)
-			checkSelection("POST", "create", `{"name":"Shop","slug":"shop"}`, &shop)
-			checkSelection("POST", "set-active", `{"organizationSlug":"studio"}`, &selected)
+			organizationJSON("POST", "create", `{"name":"Studio","slug":"studio"}`, &studio)
+			organizationJSON("POST", "create", `{"name":"Shop","slug":"shop"}`, &shop)
+			organizationJSON("POST", "set-active", `{"organizationSlug":"studio"}`, &selected)
 			var view organization.FullOrganization
-			checkSelection("GET", "get-full-organization?membersLimit=1", "", &view)
+			organizationJSON("GET", "get-full-organization?membersLimit=1", "", &view)
 			if selected.ID != studio.ID || view.ID != studio.ID || len(view.Teams) != 1 || len(view.Members) != 1 || view.Members[0].User.Email != result.User.Email {
 				t.Fatal("router lost the selected organization's members or teams", tc.name)
 			}
@@ -219,11 +219,26 @@ func TestFrameworkMounts(t *testing.T) {
 				t.Fatal(err)
 			}
 			var team organization.Team
-			checkSelection("POST", "set-active-team", string(teamRequest), &team)
+			organizationJSON("POST", "set-active-team", string(teamRequest), &team)
 			if team.ID != view.Teams[0].ID || team.OrganizationID != studio.ID {
 				t.Fatal("router returned an unrelated team", tc.name)
 			}
-			checkSelection("POST", "set-active", `{"organizationSlug":"shop"}`, &selected)
+			var created organization.CreatedRole
+			organizationJSON("POST", "create-role", `{"role":"Copy Desk","permission":{"team":["create"]}}`, &created)
+			var definition organization.RoleDefinition
+			organizationJSON("GET", "get-role?roleName=copy%20desk", "", &definition)
+			var definitions []organization.RoleDefinition
+			organizationJSON("GET", "list-roles", "", &definitions)
+			if !created.Success || definition.Role != "copy desk" || definition.OrganizationID != studio.ID || definition.ID != created.RoleData.ID || len(definitions) != 1 || definitions[0].ID != definition.ID {
+				t.Fatal("router lost a stored role or its organization", tc.name)
+			}
+			var removed struct{ Success bool }
+			organizationJSON("POST", "delete-role", `{"roleName":"copy desk"}`, &removed)
+			organizationJSON("GET", "list-roles", "", &definitions)
+			if !removed.Success || len(definitions) != 0 {
+				t.Fatal("router failed to retire the stored role", tc.name)
+			}
+			organizationJSON("POST", "set-active", `{"organizationSlug":"shop"}`, &selected)
 			_, session = send("GET", "/api/auth/get-session", "", cookies, 200)
 			var switched authn.SessionResult
 			if err := json.Unmarshal([]byte(session), &switched); err != nil {

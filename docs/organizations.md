@@ -41,6 +41,7 @@ The application provides `sendInvitation`, its configured public `origin` and it
 | GET | `/organization/get-full-organization` | Read the profile together with members, visible invitations and configured teams |
 | GET | `/organization/get-active-member` | Read your membership, role and public profile in this session's active organization. Requires a signed-in session. |
 | POST | `/organization/has-permission` | Check the signed-in member’s permissions in an explicit or active organization. |
+| POST | `/organization/create-role` | Create a stored role using the configured resource vocabulary and the caller’s own grants. |
 | GET | `/organization/list-roles` | Read up to 100 stored definitions when dynamic access control is enabled. |
 | GET | `/organization/get-role` | Read a stored definition by exact name or ID. Requires dynamic access control. |
 | POST | `/organization/delete-role` | Retire an unassigned stored role with the organization's `ac.delete` permission. |
@@ -142,11 +143,12 @@ Install the `organization-roles` schema profile and set `DynamicAccessControl` o
 groups, err := organization.New(organization.Options{
     Store: store,
     DynamicAccessControl: true,
+    RoleControl: organization.DefaultRoleControl(),
     Teams: &organization.TeamOptions{},
 })
 ```
 
-The host can provision a role definition in the organization's `organizationRole` table. For example, this PostgreSQL statement gives one organization's `desk` role permission to create teams. Supply the role definition ID and organization ID as parameters from trusted server code.
+The HTTP role API creates definitions in the organization's `organizationRole` table. Trusted provisioning code can also write that table directly. For example, this PostgreSQL statement gives one organization's `desk` role permission to create teams. Supply the role definition ID and organization ID as parameters from trusted server code.
 
 ```sql
 INSERT INTO "organizationRole" ("id", "organizationId", "role", "permission", "createdAt")
@@ -156,6 +158,30 @@ VALUES ($1, $2, 'desk', '{"team":["create"]}', CURRENT_TIMESTAMP);
 Assign `desk` through the ordinary invitation or member-role endpoints. A different organization can grant different actions to the same name. A database definition can also extend a host-defined role in that organization. One named role must still grant the whole request. The permission endpoint resolves the session, membership and grants in one database snapshot. Organization mutations load the grants in their transaction, including a fresh check when control returns from an invitation callback.
 
 Editing or removing a stored grant takes effect on the next request across replicas. A host using only static roles on the same database continues to use its configured grants. Local `RolePolicy.HasPermission` evaluates the definitions supplied to that policy. Use the HTTP permission check for a current user's database-backed decision. [Cross-application role test](../conformance/organization-stored-roles.mjs) · [SQLite, PostgreSQL and MySQL tests](../adapters/sqlstore/organization_stored_roles_test.go)
+
+### Create a stored role
+
+Enable `DynamicAccessControl` and set `RoleControl` as above. The built-in vocabulary covers organizations, members, invitations, teams, and role administration. For a custom vocabulary, build an `access.Control` with `access.New` and pass its address as `RoleControl`. Configure the actions an actor can grant through the organization's static or stored roles. With no configured control, role creation returns HTTP 501 with `MISSING_AC_INSTANCE`.
+
+Send `POST /organization/create-role` with a signed-in session. For example, this request creates a role that can create teams in one organization.
+
+```json
+{"organizationId":"org_a","role":"Desk","permission":{"team":["create"]}}
+```
+
+A successful response contains `success: true`, the stored definition in `roleData`, and the granted resource-action map in `statements`. Names are stored in lowercase. Use a single nonempty membership label with no commas or surrounding whitespace. Each name is unique within its organization. Host-defined role names are reserved. Both predefined and duplicate names produce HTTP 400 with `ROLE_NAME_IS_ALREADY_TAKEN`.
+
+Omit `organizationId` to use the active organization. The caller needs `ac.create` and must already hold every requested action in that organization. Actions can come from different roles held by that member. An unknown resource returns HTTP 400 with `INVALID_RESOURCE`. Attempting to delegate an unavailable action returns HTTP 403 and lists the missing resource-action pairs in `missingPermissions`. An empty permission object creates a role with no grants. Go clients can use `errors.As` with `*plainauth.MissingPermissionsError` to inspect the denied grants.
+
+```go
+created, err := authClient.CreateOrganizationRole(ctx, organization.CreateRoleRequest{
+    OrganizationID: organizationID,
+    Role:           "Desk",
+    Permission:     access.Statements{"team": {"create"}},
+})
+```
+
+There is no default limit on the number of stored roles. Set `RoleLimit: &organization.RoleLimit{Maximum: 20}` on the plugin to cap each organization at 20. An explicit zero prevents new roles. Set `Resolve: func(ctx context.Context, organizationID string) (int, error)` instead for a per-organization limit. The host callback runs outside the database transaction. On return the server rechecks the actor, destination, current grants, and remaining capacity. A full organization gets HTTP 400 with `TOO_MANY_ROLES`. [HTTP creation tests](../conformance/organization-create-role.mjs) · [Concurrent creation and quota tests](../adapters/sqlstore/organization_create_role_test.go)
 
 ### Read stored roles from any client
 

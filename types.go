@@ -229,6 +229,20 @@ type APIError struct {
 
 func (e *APIError) Error() string { return e.Message }
 
+// MissingPermissionsError identifies individual grants that an actor may not delegate.
+type MissingPermissionsError struct {
+	*APIError
+	MissingPermissions []string `json:"missingPermissions"`
+	OriginalMessage    string   `json:"originalMessage,omitempty"`
+}
+
+func (e *MissingPermissionsError) Unwrap() error {
+	if e.OriginalMessage != "" {
+		return &LocalizedError{APIError: e.APIError, OriginalMessage: e.OriginalMessage}
+	}
+	return e.APIError
+}
+
 // OAuthError represents the public error fields of an OAuth protocol response.
 type OAuthError struct {
 	Status      int    `json:"-"`

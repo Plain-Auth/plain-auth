@@ -184,6 +184,8 @@ func publicResponse(route plainauth.HTTPRoute, info plainauth.HTTPDescription, f
 			return responseObject(object{"members": array(member), "total": object{"type": "integer"}}, "members", "total")
 		}
 		return member
+	case "/organization/create-role":
+		return responseObject(object{"success": object{"const": true}, "roleData": modelRef("OrganizationRole"), "statements": object{"type": "object", "additionalProperties": array(object{"type": "string"})}}, "success", "roleData", "statements")
 	case "/organization/delete-role":
 		return responseObject(object{"success": object{"const": true}}, "success")
 	case "/organization/get-role":
@@ -326,6 +328,14 @@ func signupFormSchema(schema object, info plainauth.HTTPDescription) object {
 }
 
 func adjustRequest(op object, r plainauth.HTTPRoute, info plainauth.HTTPDescription, a *plainauth.Auth) {
+	if r.Plugin == "organization" && r.Path == "/organization/create-role" {
+		body := responseObject(object{
+			"organizationId": object{"type": "string"},
+			"role":           object{"type": "string", "minLength": 1},
+			"permission":     object{"type": "object", "additionalProperties": array(object{"type": "string"})},
+		}, "role", "permission")
+		op["requestBody"] = object{"required": true, "content": content("application/json", body)}
+	}
 	if r.Plugin == "organization" && r.Path == "/organization/delete-role" {
 		body := responseObject(object{
 			"organizationId": object{"type": "string"},

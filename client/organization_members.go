@@ -207,14 +207,7 @@ func (c *Client) CancelOrganizationInvitation(ctx context.Context, invitationID 
 // HasOrganizationPermission checks the caller's live membership. An empty
 // organizationID uses the active organization on this session.
 func (c *Client) HasOrganizationPermission(ctx context.Context, organizationID string, permissions access.Statements) (bool, error) {
-	requested := make(access.Statements, len(permissions))
-	for resource, actions := range permissions {
-		if actions == nil {
-			actions = []string{}
-		}
-		requested[resource] = actions
-	}
-	body := map[string]any{"permissions": requested}
+	body := map[string]any{"permissions": organizationPermissionObject(permissions)}
 	if organizationID != "" {
 		body["organizationId"] = organizationID
 	}

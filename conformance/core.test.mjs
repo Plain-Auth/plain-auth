@@ -2012,3 +2012,8 @@ test("organization role deletion requires live authority and an unassigned role 
   const { compareOrganizationRoleDeletion } = await import("./organization-delete-role.mjs");
   await compareOrganizationRoleDeletion(t, { reference, goFixture, instrument });
 });
+
+test("organization role creation enforces resource delegation and per-tenant capacity", async t => {
+  const { compareOrganizationRoleCreation } = await import("./organization-create-role.mjs");
+  await compareOrganizationRoleCreation(t, { reference, goFixture, instrument });
+});

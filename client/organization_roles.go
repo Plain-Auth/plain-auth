@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/url"
 
+	"github.com/Plain-Auth/plain-auth/plugins/access"
 	"github.com/Plain-Auth/plain-auth/plugins/organization"
 )
 
@@ -40,4 +41,32 @@ func (c *Client) DeleteOrganizationRole(ctx context.Context, q organization.Role
 		body["organizationId"] = q.OrganizationID
 	}
 	return c.Do(ctx, http.MethodPost, "/organization/delete-role", body, nil)
+}
+
+// CreateOrganizationRole creates a stored role with the given grants.
+func (c *Client) CreateOrganizationRole(ctx context.Context, q organization.CreateRoleRequest) (*organization.CreatedRole, error) {
+	body := map[string]any{"role": q.Role, "permission": nil}
+	if q.Permission != nil {
+		body["permission"] = organizationPermissionObject(q.Permission)
+	}
+	if q.OrganizationID != "" {
+		body["organizationId"] = q.OrganizationID
+	}
+	var out organization.CreatedRole
+	if err := c.Do(ctx, http.MethodPost, "/organization/create-role", body, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// Encode every action list as a JSON array, including a nil Go slice.
+func organizationPermissionObject(grants access.Statements) access.Statements {
+	out := make(access.Statements, len(grants))
+	for resource, actions := range grants {
+		if actions == nil {
+			actions = []string{}
+		}
+		out[resource] = actions
+	}
+	return out
 }

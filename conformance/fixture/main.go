@@ -289,6 +289,12 @@ func main() {
 			}
 			options := organization.Options{Store: store, MembershipLimit: fixtureMembershipLimit(), RequireVerifiedEmail: os.Getenv("CONFORMANCE_VERIFY_INVITATION_EMAIL") == "1"}
 			options.DynamicAccessControl = slices.Contains(os.Args[2:], "organization-roles")
+			if options.DynamicAccessControl && os.Getenv("CONFORMANCE_ROLE_CONTROL") != "none" {
+				options.RoleControl = organization.DefaultRoleControl()
+			}
+			if os.Getenv("CONFORMANCE_ROLE_LIMIT") == "one" {
+				options.RoleLimit = &organization.RoleLimit{Maximum: 1}
+			}
 			configureFixtureRoles(&options)
 			options.InvitationLimit = fixtureInvitationLimit()
 			options.CancelPendingInvitationsOnReInvite = os.Getenv("CONFORMANCE_REPLACE_INVITATION") == "1"

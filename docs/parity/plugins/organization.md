@@ -45,18 +45,24 @@
   - [ ] `OrganizationPlugin`
   - [ ] `parseRoles`
   - [ ] `POST /organization/create-role`
+    - [x] Normalize Unicode case on stored role names and reserve predefined and duplicate names ([test](../../../conformance/organization-create-role.mjs#L69))
+    - [x] Combine individually held grants for delegation and reject unavailable actions ([test](../../../conformance/organization-create-role.mjs#L80))
+    - [x] Create, read, list and remove a stored role through six different Go HTTP routers ([test](../../../integrations/routers/routers_test.go#L239))
   - [x] `POST /organization/delete-role` ([test](../../../adapters/sqlstore/organization_delete_role_test.go#L63))
     - [x] Require a live member with permission to remove roles and reject predefined names ([test](../../../conformance/organization-delete-role.mjs#L48))
     - [x] Preserve a stored role while any tenant member holds it, including among multiple role names ([test](../../../conformance/organization-delete-role.mjs#L59))
     - [x] Serialize role removal with membership changes across SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/organization_delete_role_test.go#L63))
+    - [x] Create, read, list and remove a stored role through six different Go HTTP routers ([test](../../../integrations/routers/routers_test.go#L239))
   - [ ] `GET /organization/list-roles`
     - [x] Read up to 100 stored definitions in the selected organization and use a direct lookup beyond the list ([test](../../../conformance/organization-role-directory.mjs#L67))
     - [x] Require the current membership and ac.read before listing stored roles ([test](../../../conformance/organization-role-directory.mjs#L61))
     - [x] Use the Go client against three SQL engines and honor withdrawal of directory access ([test](../../../adapters/sqlstore/organization_role_directory_test.go#L79))
+    - [x] Create, read, list and remove a stored role through six different Go HTTP routers ([test](../../../integrations/routers/routers_test.go#L239))
   - [ ] `GET /organization/get-role`
     - [x] Read the tenant’s stored permission object and timestamps with a case-sensitive selector ([test](../../../conformance/organization-role-directory.mjs#L41))
     - [x] Require the current membership and ac.read before looking up a role ([test](../../../conformance/organization-role-directory.mjs#L60))
     - [x] Keep SQL lookup case-sensitive across all three engines and check live session ownership ([test](../../../adapters/sqlstore/organization_role_directory_test.go#L68))
+    - [x] Create, read, list and remove a stored role through six different Go HTTP routers ([test](../../../integrations/routers/routers_test.go#L239))
   - [ ] `POST /organization/update-role`
   - [ ] `POST /organization/invite-member`
     - [x] Authorize the inviter, constrain role grants, and resend the same invitation ([test](../../../plugins/organization/organization_test.go#L133))
@@ -577,10 +583,19 @@
     - [ ] Enabling Dynamic Access Control
       - [x] Resolve the same role independently per organization and apply changes from another application on the next operation ([test](../../../conformance/organization-stored-roles.mjs#L54))
     - [ ] Creating a role
+      - [x] Normalize Unicode case on stored role names and reserve predefined and duplicate names ([test](../../../conformance/organization-create-role.mjs#L69))
+      - [x] Combine individually held grants for delegation and reject unavailable actions ([test](../../../conformance/organization-create-role.mjs#L80))
+      - [x] Create, read, list and remove a stored role through six different Go HTTP routers ([test](../../../integrations/routers/routers_test.go#L239))
       - [ ] `POST /organization/create-role`
+        - [x] Normalize Unicode case on stored role names and reserve predefined and duplicate names ([test](../../../conformance/organization-create-role.mjs#L69))
+        - [x] Combine individually held grants for delegation and reject unavailable actions ([test](../../../conformance/organization-create-role.mjs#L80))
+        - [x] Create, read, list and remove a stored role through six different Go HTTP routers ([test](../../../integrations/routers/routers_test.go#L239))
         - [ ] Parameter `role`
-        - [ ] Parameter `permission` (optional)
-        - [ ] Parameter `organizationId` (optional)
+          - [x] Normalize Unicode case on stored role names and reserve predefined and duplicate names ([test](../../../conformance/organization-create-role.mjs#L69))
+        - [x] Parameter `permission` (optional) ([test](../../../conformance/organization-create-role.mjs#L67))
+          - [x] Require the caller to hold each requested action and return the missing grants on denial ([test](../../../conformance/organization-create-role.mjs#L67))
+        - [x] Parameter `organizationId` (optional) ([test](../../../conformance/organization-create-role.mjs#L56))
+          - [x] Use an explicit or active tenant, keep sessions isolated and reuse a name in a different organization ([test](../../../conformance/organization-create-role.mjs#L56))
     - [x] Deleting a role ([test](../../../adapters/sqlstore/organization_delete_role_test.go#L63))
       - [x] Require a live member with permission to remove roles and reject predefined names ([test](../../../conformance/organization-delete-role.mjs#L48))
       - [x] Preserve a stored role while any tenant member holds it, including among multiple role names ([test](../../../conformance/organization-delete-role.mjs#L59))
@@ -628,7 +643,9 @@
         - [ ] Parameter `permission` (optional)
     - [ ] Configuration Options
       - [ ] `enabled`
-      - [ ] `maximumRolesPerOrganization`
+      - [x] `maximumRolesPerOrganization` ([test](../../../adapters/sqlstore/organization_create_role_test.go#L131))
+        - [x] Enforce the last available slot across concurrent requests to the same organization ([test](../../../adapters/sqlstore/organization_create_role_test.go#L117))
+        - [x] Resolve host limits outside the transaction and reauthorize the caller before saving ([test](../../../adapters/sqlstore/organization_create_role_test.go#L131))
     - [ ] Additional Fields
   - [ ] Teams
     - [ ] Enabling Teams

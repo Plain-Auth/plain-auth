@@ -73,6 +73,7 @@ func TestOrganizationSelectionSchema(t *testing.T) {
 			getRole := node(paths, "/organization/get-role", "get")
 			listRoles := node(paths, "/organization/list-roles", "get")
 			deleteRole := node(paths, "/organization/delete-role", "post")
+			createRole := node(paths, "/organization/create-role", "post")
 			if tc.dynamicRoles {
 				if node(getRole, "responses", "200", "content", "application/json", "schema")["$ref"] != "#/components/schemas/OrganizationRole" ||
 					node(listRoles, "responses", "200", "content", "application/json", "schema", "items")["$ref"] != "#/components/schemas/OrganizationRole" {
@@ -86,7 +87,11 @@ func TestOrganizationSelectionSchema(t *testing.T) {
 					node(deleteRole, "responses", "200", "content", "application/json", "schema", "properties", "success")["const"] != true {
 					t.Fatal("missing role removal selector alternatives or confirmation")
 				}
-			} else if roleSchema != nil || getRole != nil || listRoles != nil || deleteRole != nil {
+				if node(createRole, "requestBody", "content", "application/json", "schema", "properties", "permission", "additionalProperties", "items")["type"] != "string" ||
+					node(createRole, "responses", "200", "content", "application/json", "schema", "properties", "roleData")["$ref"] != "#/components/schemas/OrganizationRole" {
+					t.Fatal("missing role creation grant and response schemas")
+				}
+			} else if roleSchema != nil || getRole != nil || listRoles != nil || deleteRole != nil || createRole != nil {
 				t.Fatal("static role policy advertised a stored directory")
 			}
 			activeMember := node(paths, "/organization/get-active-member", "get")

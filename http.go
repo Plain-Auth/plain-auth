@@ -450,17 +450,30 @@ func (a *Auth) writeAuthError(w http.ResponseWriter, r *http.Request, err error)
 		return
 	}
 	var apiErr *APIError
+	var originalMessage *string
 	if !errors.As(err, &apiErr) {
 		apiErr = &APIError{Status: 500, Code: "INTERNAL_SERVER_ERROR", Message: "Internal Server Error"}
 	} else if a.translateError != nil && apiErr.Code != "" {
 		if message := a.translateError(a.errorContext(r), *apiErr); message != "" {
+			originalMessage = &apiErr.Message
 			translated := *apiErr
 			translated.Message = message
-			writeAuthJSON(w, apiErr.Status, &LocalizedError{APIError: &translated, OriginalMessage: apiErr.Message})
-			return
+			apiErr = &translated
 		}
 	}
-	writeAuthJSON(w, apiErr.Status, apiErr)
+	var denied *MissingPermissionsError
+	switch {
+	case errors.As(err, &denied):
+		response := &MissingPermissionsError{APIError: apiErr, MissingPermissions: denied.MissingPermissions}
+		if originalMessage != nil {
+			response.OriginalMessage = *originalMessage
+		}
+		writeAuthJSON(w, apiErr.Status, response)
+	case originalMessage != nil:
+		writeAuthJSON(w, apiErr.Status, &LocalizedError{APIError: apiErr, OriginalMessage: *originalMessage})
+	default:
+		writeAuthJSON(w, apiErr.Status, apiErr)
+	}
 }
 
 type wireBody map[string]any

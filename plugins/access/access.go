@@ -47,6 +47,17 @@ func New(vocabulary Statements) Control {
 	return Control{vocabulary: clone(vocabulary)}
 }
 
+// HasResource reports whether the vocabulary includes the named resource.
+func (c Control) HasResource(name string) bool {
+	_, exists := c.vocabulary[name]
+	return exists
+}
+
+// HasAction reports whether the vocabulary declares the resource-action pair.
+func (c Control) HasAction(resource, action string) bool {
+	return slices.Contains(c.vocabulary[resource], action)
+}
+
 // NewRole rejects grants outside the vocabulary. An empty grant list gives
 // the role no actions on that resource.
 func (c Control) NewRole(grants Statements) (Role, error) {

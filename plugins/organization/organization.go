@@ -62,8 +62,12 @@ type Options struct {
 	Roles map[string]access.Statements
 	// DynamicAccessControl adds grants from the destination organization's role table.
 	DynamicAccessControl bool
-	rolePolicy           RolePolicy
-	InvitationLimit      *InvitationLimit
+	// RoleControl declares the resources available to role management.
+	RoleControl *access.Control
+	// RoleLimit optionally bounds the number of stored roles in each organization.
+	RoleLimit       *RoleLimit
+	rolePolicy      RolePolicy
+	InvitationLimit *InvitationLimit
 	// CancelPendingInvitationsOnReInvite replaces an existing live grant when
 	// the application invites the same address again without requesting resend.
 	CancelPendingInvitationsOnReInvite bool
@@ -182,6 +186,17 @@ func NewService(o Options) (*Service, error) {
 	} else if supportsRoles {
 		o.rolePolicy = roleStore.OrganizationRolePolicy()
 	}
+	if o.RoleControl != nil {
+		control := *o.RoleControl
+		o.RoleControl = &control
+	}
+	if o.RoleLimit != nil {
+		limit := *o.RoleLimit
+		if limit.Maximum < 0 || (limit.Resolve != nil && limit.Maximum != 0) {
+			return nil, errors.New("organization: choose a nonnegative fixed role limit or a resolver")
+		}
+		o.RoleLimit = &limit
+	}
 	if o.DynamicAccessControl {
 		provider, ok := o.Store.(DynamicRoleStoreProvider)
 		if !ok {
@@ -289,6 +304,9 @@ func (service *Service) Plugin() authn.Plugin {
 			{Method: http.MethodPost, Path: "/organization/invite-member", Handler: o.invite},
 			{Method: http.MethodPost, Path: "/organization/accept-invitation", Handler: o.accept},
 		},
+	}
+	if store, ok := o.Store.(RoleCreationStore); ok && o.DynamicAccessControl {
+		plugin.Endpoints = append(plugin.Endpoints, o.createRoleEndpoint(store))
 	}
 	if store, ok := o.Store.(RoleDeletionStore); ok && o.DynamicAccessControl {
 		plugin.Endpoints = append(plugin.Endpoints, deleteRoleEndpoint(store))

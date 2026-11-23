@@ -828,7 +828,7 @@
     {
       "label": "Switch the session’s organization and team using plain HTTP and JSON on six Go routers",
       "test": "integrations/routers/routers_test.go",
-      "marker": "ordinary selection did not return JSON to the calling application"
+      "marker": "organization operation did not return JSON to the calling application"
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L621": [
@@ -3563,7 +3563,7 @@
     {
       "label": "Switch the session’s organization and team using plain HTTP and JSON on six Go routers",
       "test": "integrations/routers/routers_test.go",
-      "marker": "ordinary selection did not return JSON to the calling application"
+      "marker": "organization operation did not return JSON to the calling application"
     }
   ],
   "plugin/organization/GET /organization/list-user-teams": [
@@ -15534,6 +15534,11 @@
       "label": "Use the Go client against three SQL engines and honor withdrawal of directory access",
       "test": "adapters/sqlstore/organization_role_directory_test.go",
       "marker": "read directory after losing ac.read"
+    },
+    {
+      "label": "Create, read, list and remove a stored role through six different Go HTTP routers",
+      "test": "integrations/routers/routers_test.go",
+      "marker": "router failed to retire the stored role"
     }
   ],
   "plugin/organization/GET /organization/get-role": [
@@ -15551,6 +15556,11 @@
       "label": "Keep SQL lookup case-sensitive across all three engines and check live session ownership",
       "test": "adapters/sqlstore/organization_role_directory_test.go",
       "marker": "expected strict stored-role lookup"
+    },
+    {
+      "label": "Create, read, list and remove a stored role through six different Go HTTP routers",
+      "test": "integrations/routers/routers_test.go",
+      "marker": "router failed to retire the stored role"
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L1586": [
@@ -15669,6 +15679,11 @@
       "test": "adapters/sqlstore/organization_delete_role_test.go",
       "marker": "retired a role during a successful assignment",
       "complete": true
+    },
+    {
+      "label": "Create, read, list and remove a stored role through six different Go HTTP routers",
+      "test": "integrations/routers/routers_test.go",
+      "marker": "router failed to retire the stored role"
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L1562": [
@@ -15728,6 +15743,93 @@
       "label": "Remove roles in an explicit or active organization while preserving the session selection",
       "test": "conformance/organization-delete-role.mjs",
       "marker": "assert.equal(session.activeTeamId,team.id)",
+      "complete": true
+    }
+  ],
+  "plugin/organization/POST /organization/create-role": [
+    {
+      "label": "Normalize Unicode case on stored role names and reserve predefined and duplicate names",
+      "test": "conformance/organization-create-role.mjs",
+      "marker": "assert.equal(vacant.roleData.role,\"i\\u0307dea\")"
+    },
+    {
+      "label": "Combine individually held grants for delegation and reject unavailable actions",
+      "test": "conformance/organization-create-role.mjs",
+      "marker": "assert.deepEqual(delegated.statements"
+    },
+    {
+      "label": "Create, read, list and remove a stored role through six different Go HTTP routers",
+      "test": "integrations/routers/routers_test.go",
+      "marker": "router failed to retire the stored role"
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1527": [
+    {
+      "label": "Normalize Unicode case on stored role names and reserve predefined and duplicate names",
+      "test": "conformance/organization-create-role.mjs",
+      "marker": "assert.equal(vacant.roleData.role,\"i\\u0307dea\")"
+    },
+    {
+      "label": "Combine individually held grants for delegation and reject unavailable actions",
+      "test": "conformance/organization-create-role.mjs",
+      "marker": "assert.deepEqual(delegated.statements"
+    },
+    {
+      "label": "Create, read, list and remove a stored role through six different Go HTTP routers",
+      "test": "integrations/routers/routers_test.go",
+      "marker": "router failed to retire the stored role"
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1535/`POST /organization/create-role`": [
+    {
+      "label": "Normalize Unicode case on stored role names and reserve predefined and duplicate names",
+      "test": "conformance/organization-create-role.mjs",
+      "marker": "assert.equal(vacant.roleData.role,\"i\\u0307dea\")"
+    },
+    {
+      "label": "Combine individually held grants for delegation and reject unavailable actions",
+      "test": "conformance/organization-create-role.mjs",
+      "marker": "assert.deepEqual(delegated.statements"
+    },
+    {
+      "label": "Create, read, list and remove a stored role through six different Go HTTP routers",
+      "test": "integrations/routers/routers_test.go",
+      "marker": "router failed to retire the stored role"
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1547/Parameter `role`": [
+    {
+      "label": "Normalize Unicode case on stored role names and reserve predefined and duplicate names",
+      "test": "conformance/organization-create-role.mjs",
+      "marker": "assert.equal(vacant.roleData.role,\"i\\u0307dea\")"
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1551/Parameter `permission` (optional)": [
+    {
+      "label": "Require the caller to hold each requested action and return the missing grants on denial",
+      "test": "conformance/organization-create-role.mjs",
+      "marker": "assert.deepEqual(missing.missingPermissions,[\"team:ungranted\",\"team:another\"])",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1555/Parameter `organizationId` (optional)": [
+    {
+      "label": "Use an explicit or active tenant, keep sessions isolated and reuse a name in a different organization",
+      "test": "conformance/organization-create-role.mjs",
+      "marker": "assert.equal(unrelated.roleData.organizationId,south.id)",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1678": [
+    {
+      "label": "Enforce the last available slot across concurrent requests to the same organization",
+      "test": "adapters/sqlstore/organization_create_role_test.go",
+      "marker": "race([2]string{\"one\", \"two\"}"
+    },
+    {
+      "label": "Resolve host limits outside the transaction and reauthorize the caller before saving",
+      "test": "adapters/sqlstore/organization_create_role_test.go",
+      "marker": "role saved after the resolver revoked the actor",
       "complete": true
     }
   ]
