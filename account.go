@@ -213,8 +213,12 @@ func (a *Auth) ChangePassword(ctx context.Context, h http.Header, in ChangePassw
 	}
 	result := AuthResult{User: session.User}
 	var replacement *StoredSession
+	var replacementFields map[string]any
 	if in.RevokeOtherSessions {
 		row, token := a.newSession(session.User.ID, meta)
+		if row, replacementFields, err = a.beforeSessionCreate(ctx, row, nil, &APIError{500, "FAILED_TO_GET_SESSION", "Failed to get session"}); err != nil {
+			return AuthResult{}, err
+		}
 		replacement, result.Token = &row, token
 	}
 	if bound, ok := s.(interface {
@@ -226,6 +230,9 @@ func (a *Auth) ChangePassword(ctx context.Context, h http.Header, in ChangePassw
 	}
 	if errors.Is(err, ErrNotFound) {
 		return AuthResult{}, &APIError{400, "INVALID_PASSWORD", "Invalid password"}
+	}
+	if err == nil && replacement != nil {
+		err = a.afterSessionCreate(ctx, *replacement, replacementFields)
 	}
 	return result, err
 }

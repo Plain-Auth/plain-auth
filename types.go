@@ -19,6 +19,9 @@ type Options struct {
 	Logger *slog.Logger
 	// Hooks run before and after each mounted HTTP endpoint.
 	Hooks EndpointHooks
+	// DatabaseHooks run before and after user and session writes, after the
+	// plugins' database hooks.
+	DatabaseHooks DatabaseHooks
 	// OnAPIError observes an HTTP endpoint error before its response is written.
 	// It runs synchronously and may use the request's context for cancellation.
 	OnAPIError func(ErrorContext, error) error

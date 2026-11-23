@@ -1,6 +1,9 @@
-# Endpoint hooks
+# Hooks
 
-Hooks run your code around the mounted HTTP endpoints, so you can adjust one endpoint without writing your own. A before hook can reject a request, rewrite what the endpoint reads, or answer it directly. An after hook can read and replace the endpoint's outcome, read the session it issued and set cookies.
+Hooks run your code inside Plain Auth's request handling and writes:
+
+- [Endpoint hooks](#reject-or-rewrite-a-request) run around the mounted HTTP endpoints, so you can adjust one endpoint without writing your own. A before hook can reject a request, rewrite what the endpoint reads, or answer it directly. An after hook can read and replace the endpoint's outcome, read the session it issued and set cookies.
+- [Database hooks](#run-code-around-database-writes) run around the writes that create users and sessions, for HTTP requests and Go calls alike.
 
 Set `Options.Hooks` for the application. A plugin sets `Plugin.Hooks` to reuse hooks across applications. Options hooks run first, then each plugin's hooks in plugin order.
 
@@ -135,9 +138,51 @@ plainauth.Plugin{
   - When any plugin sets `OnResponse`, responses are buffered until the hooks finish.
   - Every plugin's `OnResponse` runs, in plugin order, and each sees the changes of the ones before.
 
+## Run code around database writes
+
+```go
+opts.DatabaseHooks.User.Create = plainauth.OperationHooks[plainauth.UserRecord]{
+    Before: func(ctx context.Context, u *plainauth.UserRecord, c *plainauth.HookContext) error {
+        if strings.HasSuffix(u.Email, "@example.com") {
+            u.EmailVerified = true
+        }
+        u.Fields["plan"] = "free"
+        return nil
+    },
+    After: func(ctx context.Context, u plainauth.UserRecord, c *plainauth.HookContext) error {
+        return billing.CreateCustomer(ctx, u.ID, u.Email)
+    },
+}
+```
+
+`Options.DatabaseHooks` and `Plugin.DatabaseHooks` hold `Create`, `Update` and `Delete` hooks for `User` and `Session`. Plugin hooks run first, in plugin order, then the Options hooks.
+
+- **Before** runs just before the write. It may change the fields the write stores; changing any other field fails the write with a 500.
+  - **Users:** `Name`, `Email`, `Image`, `EmailVerified` and `Fields`, the `UserAdditionalFields` values by name.
+  - **Sessions:** `ExpiresAt`, `IPAddress`, `UserAgent` and `Fields`, the `SessionAdditionalFields` values by name.
+  - Edited values are checked like caller input; defaults for omitted fields apply after the hooks. A hook may set server-only fields, and never sees a server-only value the caller tried to send.
+- **Return from Before** `plainauth.ErrSkipWrite` to cancel the write, an `APIError` to answer with that error, or another error to fail the write.
+- **After** receives the stored row. Its error is returned to the caller; the row stays stored, but a session that has not been delivered yet is removed.
+- **`c`** is the endpoint call that caused the write, or nil for a direct Go call such as `Auth.SignUpEmail`.
+
+Hooks never run inside a database transaction, so they may read and write through the Auth and the store. When one operation stores several rows, every before hook runs before anything is written: a sign-up runs the user hooks, then the session hooks, then stores both, then runs the after hooks in the same order. A sign-up with an email that already exists takes the duplicate path without running any hook.
+
+| Operation | User hooks | Session hooks | Skipped user | Skipped session |
+| --- | --- | --- | --- | --- |
+| `POST /sign-up/email`, `Auth.SignUpEmail` | Create | Create | 400 `FAILED_TO_CREATE_USER` | 400 `FAILED_TO_CREATE_SESSION` |
+| Email and username password sign-in | | Create | | 401 `FAILED_TO_CREATE_SESSION` |
+| `POST /sign-in/anonymous` | Create | Create | 500 `FAILED_TO_CREATE_USER` | 400 `COULD_NOT_CREATE_SESSION` |
+| `POST /change-password` with `revokeOtherSessions` | | Create | | 500 `FAILED_TO_GET_SESSION` |
+| Sessions plugins issue with `EndpointContext.IssueSession`, such as passkey and wallet sign-in | | Create | | 401 `FAILED_TO_CREATE_SESSION` |
+| `Auth.BootstrapAdmin` | Create | | an error | |
+
+On sign-up, any other error from a user before hook answers 422 `FAILED_TO_CREATE_USER`. When sign-up hides existing emails, a 403 `APIError` from a user before hook gets the same response as an existing email.
+
+Database hooks do not cover every flow yet. `New` refuses user or session create hooks when social sign-in, magic link, email OTP, phone number, One Tap, SSO or the admin plugin is enabled; user create hooks with passkey or wallet sign-in; and session create hooks with two-factor authentication, device authorization or `AutoSignInAfterVerification`. Update and delete hooks are refused for now.
+
 ## Errors and panics
 
-Return a `*plainauth.APIError` to choose the status, code and message. Any other error from a hook, and any panic, ends the request with a generic `500 INTERNAL_SERVER_ERROR`. A panic is logged with its source (`user` or `plugin:<id>`) and the route.
+Return a `*plainauth.APIError` to choose the status, code and message. Any other error from an endpoint hook, and any panic, ends the request with a generic `500 INTERNAL_SERVER_ERROR`. A panic is logged with its source (`user` or `plugin:<id>`).
 
 ## Use the request context
 
@@ -150,4 +195,4 @@ Return a `*plainauth.APIError` to choose the status, code and message. Any other
 
 Hooks run only for HTTP requests. Direct Go calls such as `Auth.SignUpEmail` run no endpoint hooks; wrap those call sites in your own code.
 
-See the [hook API](../hooks.go), the [middleware API](../middleware.go), the [hook tests](../conformance/goapi/endpoint_hooks_test.go) and the [middleware tests](../conformance/goapi/plugin_middleware_test.go).
+See the [hook API](../hooks.go), the [middleware API](../middleware.go), the [database hook API](../database_hooks.go), and the tests for [endpoint hooks](../conformance/goapi/endpoint_hooks_test.go), [middleware](../conformance/goapi/plugin_middleware_test.go), [database hooks](../conformance/goapi/database_hooks_test.go) and [database hooks on SQL engines](../adapters/sqlstore/database_hooks_test.go).

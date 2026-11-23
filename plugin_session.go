@@ -34,7 +34,7 @@ func (c EndpointContext) RequireFreshSession() (*SessionResult, error) {
 func (c EndpointContext) IssueSession(userID string, commit func(context.Context, StoredSession) (User, error)) (*SessionResult, error) {
 	r := c.Request
 	session, _ := c.Auth.newSession(userID, RequestMeta{IPAddress: c.Auth.clientIP(r), UserAgent: r.UserAgent()})
-	return c.commitIssuedSession(userID, session, commit)
+	return c.commitIssuedSession(userID, session, nil, commit)
 }
 
 // IssueSessionWithFields applies trusted overrides before evaluating defaults,
@@ -46,17 +46,24 @@ func (c EndpointContext) IssueSessionWithFields(userID string, fields map[string
 	if err != nil {
 		return nil, err
 	}
-	return c.commitIssuedSession(userID, session, commit)
+	return c.commitIssuedSession(userID, session, fields, commit)
 }
 
-func (c EndpointContext) commitIssuedSession(userID string, session StoredSession, commit func(context.Context, StoredSession) (User, error)) (*SessionResult, error) {
+func (c EndpointContext) commitIssuedSession(userID string, session StoredSession, fields map[string]any, commit func(context.Context, StoredSession) (User, error)) (*SessionResult, error) {
 	a, r := c.Auth, c.Request
+	session, fields, err := a.beforeSessionCreate(r.Context(), session, fields, &APIError{401, "FAILED_TO_CREATE_SESSION", "Failed to create session"})
+	if err != nil {
+		return nil, err
+	}
 	user, err := commit(r.Context(), session)
 	if err != nil {
 		return nil, err
 	}
 	if user.ID != userID {
 		return nil, a.discardUnpublishedSession(r.Context(), session.Token, ErrNotFound)
+	}
+	if err := a.afterSessionCreate(r.Context(), session, fields); err != nil {
+		return nil, err
 	}
 	result, err := a.withSessionPlugins(r.Context(), session.Session, user)
 	if err != nil {

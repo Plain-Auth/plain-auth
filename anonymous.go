@@ -103,7 +103,28 @@ func (o AnonymousOptions) signIn(c EndpointContext) (any, error) {
 		u.TwoFactorEnabled = &enabled
 	}
 	ss, _ := a.newSession(u.ID, RequestMeta{IPAddress: a.clientIP(c.Request), UserAgent: c.Request.UserAgent()})
+	u, userFields, err := a.beforeUserCreate(ctx, u, nil)
+	if errors.Is(err, ErrSkipWrite) {
+		return nil, &APIError{500, "FAILED_TO_CREATE_USER", "Failed to create user"}
+	}
+	if err == nil && len(userFields) > 0 {
+		// Guest accounts store no additional user fields.
+		err = errDatabaseHookEdit
+	}
+	if err != nil {
+		return nil, err
+	}
+	ss, sessionFields, err := a.beforeSessionCreate(ctx, ss, nil, &APIError{400, "COULD_NOT_CREATE_SESSION", "Could not create session"})
+	if err != nil {
+		return nil, err
+	}
 	if err := c.Store().(AnonymousStore).CreateAnonymous(ctx, u, ss); err != nil {
+		return nil, err
+	}
+	if err := a.afterUserCreate(ctx, u, userFields); err != nil {
+		return nil, a.discardUnpublishedSession(ctx, ss.Token, err)
+	}
+	if err := a.afterSessionCreate(ctx, ss, sessionFields); err != nil {
 		return nil, err
 	}
 	if err := a.addSessionCookieHeaders(c.ResponseHeader, c.Request, ss.Token, true); err != nil {

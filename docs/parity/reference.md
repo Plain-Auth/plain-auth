@@ -454,6 +454,7 @@
     - [ ] `message`
     - [ ] `...args`
   - [ ] `databaseHooks`
+    - [x] Configure user and session create hooks, and refuse hook configurations an enabled feature would bypass ([test](../../conformance/goapi/database_hooks_test.go#L299))
   - [ ] `onAPIError`
     - [x] Report the original error and already-resolved user before writing the localized HTTP response ([test](../../conformance/goapi/error_reporting_test.go#L88))
     - [ ] `throw`

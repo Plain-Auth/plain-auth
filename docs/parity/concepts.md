@@ -204,15 +204,26 @@
     - [ ] Mixed ID Types
       - [ ] Use Case
     - [ ] Database Hooks
+      - [x] Run plugin and application hooks around the users and sessions that sign-up, password sign-in, anonymous sign-in, plugin sessions and password changes create ([test](../../conformance/goapi/database_hooks_test.go#L21))
+      - [x] Run create hooks outside the write transaction so they can use the store on SQLite, PostgreSQL and MySQL ([test](../../adapters/sqlstore/database_hooks_test.go#L19))
       - [ ] 1. Before Hook
+        - [x] Edit the stored fields of a new user or session, or cancel its creation, before anything is written ([test](../../conformance/goapi/database_hooks_test.go#L124))
         - [ ] Purpose
+          - [x] Run before a user or session is created ([test](../../conformance/goapi/database_hooks_test.go#L124))
         - [ ] Behavior
+          - [x] Cancel a creation with ErrSkipWrite, edit the stored fields, and reject edits to other fields ([test](../../conformance/goapi/database_hooks_test.go#L167))
       - [ ] 2. After Hook
+        - [x] Observe the stored user and session after creation, and remove an undelivered session when an after hook fails ([test](../../conformance/goapi/database_hooks_test.go#L215))
         - [ ] Purpose
+          - [x] Run after a user or session is created, with the stored row visible to the store ([test](../../adapters/sqlstore/database_hooks_test.go#L95))
         - [ ] Behavior
+          - [x] Fire one after hook for concurrent sign-ups of one email and none for a sign-up that stores nothing ([test](../../adapters/sqlstore/database_hooks_test.go#L110))
         - [ ] Example Usage
-      - [ ] Throwing Errors
+          - [x] Derive user fields in a before hook and call another service from an after hook ([test](../../conformance/goapi/database_hooks_test.go#L130))
+      - [x] Throwing Errors ([test](../../conformance/goapi/database_hooks_test.go#L174))
+        - [x] Answer with a before hook's APIError, its status and code, and store nothing ([test](../../conformance/goapi/database_hooks_test.go#L174))
       - [ ] Using the Context Object
+        - [x] Pass the endpoint call to hooks during HTTP requests and nil for direct Go calls ([test](../../conformance/goapi/database_hooks_test.go#L290))
   - [ ] Plugins Schema
     - [ ] `twoFactorEnabled`
     - [ ] `twoFactorSecret`

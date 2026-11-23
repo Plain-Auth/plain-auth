@@ -1,6 +1,7 @@
 package plainauth
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -184,15 +185,17 @@ func publicError(err error) bool {
 // outcome. path is the route template and actual the request's mount-relative
 // path, which supplies the template's parameters.
 func (a *Auth) callEndpoint(w http.ResponseWriter, r *http.Request, path, actual string, body wireBody, endpoint func(*http.Request, wireBody) (any, error)) (any, error) {
-	if len(a.beforeHooks) == 0 && len(a.afterHooks) == 0 {
+	if len(a.beforeHooks) == 0 && len(a.afterHooks) == 0 && !a.dbHooks.set() {
 		return endpoint(r, body)
 	}
 	c := &HookContext{
-		EndpointContext: EndpointContext{Auth: a, Request: r.Clone(r.Context()), Body: body, ResponseHeader: w.Header()},
+		EndpointContext: EndpointContext{Auth: a, Body: body, ResponseHeader: w.Header()},
 		Path:            path,
 		Params:          routeParams(path, actual),
 		requestPath:     actual,
 	}
+	// Database hooks find the endpoint call through the request context.
+	c.Request = r.Clone(context.WithValue(r.Context(), hookContextKey{a}, c))
 	ran := false
 	for _, h := range a.beforeHooks {
 		matched, err := a.runHook(h, c)

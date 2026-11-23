@@ -52,6 +52,7 @@ type Auth struct {
 	beforeHooks           []boundHook
 	afterHooks            []boundHook
 	onResponse            bool
+	dbHooks               databaseHookChains
 	wellKnown             map[string]WellKnownDocument
 	opts                  Options
 	now                   func() time.Time
@@ -214,6 +215,10 @@ func New(opts Options) (*Auth, error) {
 	a := &Auth{opts: opts, disabledPaths: disabledPaths, trustedOrigins: trustedOrigins, now: time.Now, passwordSlots: make(chan struct{}, min(runtime.GOMAXPROCS(0), 4)), plugins: plugins}
 	a.beforeHooks, a.afterHooks = endpointHooks(opts)
 	a.onResponse = slices.ContainsFunc(opts.Plugins, func(p Plugin) bool { return p.OnResponse != nil })
+	a.dbHooks = composeDatabaseHooks(opts)
+	if err := a.checkDatabaseHooks(); err != nil {
+		return nil, err
+	}
 	a.trustedProfileFields, err = trustedProfileSchema(opts.UserAdditionalFields, opts.Plugins)
 	if err != nil {
 		return nil, err
@@ -489,19 +494,8 @@ func (a *Auth) signUpEmail(ctx context.Context, in SignUpInput, meta RequestMeta
 	if !a.opts.RequireEmailVerification && !a.opts.DisableAutoSignIn {
 		row, raw := a.newSession(user.ID, meta)
 		first, token = &row, raw
-		if beforeCreate != nil {
-			if err := beforeCreate(SessionResult{Session: row.Session, User: user}); err != nil {
-				return AuthResult{}, err
-			}
-		}
 	}
-	if extras.Present() {
-		err = a.opts.Store.(UserFieldStore).CreateUserWithFields(ctx, user, hash, first, extras)
-	} else {
-		err = a.opts.Store.CreateUser(ctx, user, hash, first)
-	}
-	err = usernameWriteError(err)
-	if errors.Is(err, ErrEmailTaken) {
+	duplicate := func() (AuthResult, error) {
 		if first == nil {
 			// A generated profile has the same enabled public fields as a new account.
 			if a.anonymous != nil {
@@ -521,8 +515,70 @@ func (a *Auth) signUpEmail(ctx context.Context, in SignUpInput, meta RequestMeta
 		}
 		return AuthResult{}, duplicateSignupError()
 	}
+	var userFields, sessionFields map[string]any
+	if a.dbHooks.user.create.set() || first != nil && a.dbHooks.session.create.set() {
+		// An existing email takes the duplicate path before any hook runs.
+		if _, err := a.opts.Store.(signUpUserFinder).FindAccountUser(ctx, user.Email); err == nil {
+			return duplicate()
+		} else if !errors.Is(err, ErrNotFound) {
+			return AuthResult{}, err
+		}
+		if user, userFields, err = a.beforeUserCreate(ctx, user, serverInput(a.opts.UserAdditionalFields, in.AdditionalFields)); err != nil {
+			var problem *APIError
+			switch {
+			case errors.Is(err, ErrSkipWrite):
+				return AuthResult{}, &APIError{400, "FAILED_TO_CREATE_USER", "Failed to create user"}
+			case errors.As(err, &problem) && problem.Status == 403 && first == nil:
+				// A protected sign-up answers a denial like an existing email.
+				return duplicate()
+			case errors.As(err, &problem):
+				return AuthResult{}, err
+			case !errors.Is(err, errDatabaseHookEdit):
+				a.Logger().ErrorContext(ctx, "Failed to create user", "error", err)
+				return AuthResult{}, &APIError{422, "FAILED_TO_CREATE_USER", "Failed to create user"}
+			}
+			return AuthResult{}, err
+		}
+		if len(a.dbHooks.user.create.before) > 0 {
+			if extras, err = a.prepareUserFields(userFields, true, true); err != nil {
+				return AuthResult{}, err
+			}
+		}
+		if first != nil {
+			row, fields, err := a.beforeSessionCreate(ctx, *first, nil, &APIError{400, "FAILED_TO_CREATE_SESSION", "Failed to create session"})
+			if err != nil {
+				return AuthResult{}, err
+			}
+			first, sessionFields = &row, fields
+		}
+	}
+	if first != nil && beforeCreate != nil {
+		if err := beforeCreate(SessionResult{Session: first.Session, User: user}); err != nil {
+			return AuthResult{}, err
+		}
+	}
+	if extras.Present() {
+		err = a.opts.Store.(UserFieldStore).CreateUserWithFields(ctx, user, hash, first, extras)
+	} else {
+		err = a.opts.Store.CreateUser(ctx, user, hash, first)
+	}
+	err = usernameWriteError(err)
+	if errors.Is(err, ErrEmailTaken) {
+		return duplicate()
+	}
 	if err != nil {
 		return AuthResult{}, err
+	}
+	if err := a.afterUserCreate(ctx, user, userFields); err != nil {
+		if first != nil {
+			return AuthResult{}, a.discardUnpublishedSession(ctx, first.Token, err)
+		}
+		return AuthResult{}, err
+	}
+	if first != nil {
+		if err := a.afterSessionCreate(ctx, *first, sessionFields); err != nil {
+			return AuthResult{}, err
+		}
 	}
 	if a.emailOTP != nil && a.emailOTP.SendVerificationOnSignUp && !a.emailOTP.OverrideDefaultEmailVerification {
 		if err := a.SendEmailOTP(ctx, user.Email, OTPVerifyEmail); err != nil {
@@ -596,14 +652,16 @@ func (a *Auth) completeCredentialSignIn(ctx context.Context, user User, hash str
 	if a.factorStore != nil {
 		return a.factorLogin(ctx, user, hash, session, meta.TrustedDeviceCookie)
 	}
-	if s, ok := a.opts.Store.(AccountStore); ok {
-		err = s.CreateCredentialSession(ctx, hash, session)
-		if errors.Is(err, ErrNotFound) {
-			return AuthResult{}, denied
+	_, err = a.createSessionWithHooks(ctx, session, &APIError{401, "FAILED_TO_CREATE_SESSION", "Failed to create session"}, func(session StoredSession) error {
+		if s, ok := a.opts.Store.(AccountStore); ok {
+			err := s.CreateCredentialSession(ctx, hash, session)
+			if errors.Is(err, ErrNotFound) {
+				return denied
+			}
+			return err
 		}
-	} else {
-		err = a.opts.Store.CreateSession(ctx, session)
-	}
+		return a.opts.Store.CreateSession(ctx, session)
+	})
 	if err != nil {
 		return AuthResult{}, err
 	}
