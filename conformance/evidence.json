@@ -14705,5 +14705,31 @@
       "test": "adapters/sqlstore/organization_selection_http_test.go",
       "marker": "t.Fatal(\"resend did not refresh the existing invitation using the configured lifetime\")"
     }
+  ],
+  "plugin-symbol/organization/OrganizationOptions/cancelPendingInvitationsOnReInvite": [
+    {
+      "label": "Replace a live grant with the newly requested roles and teams while an explicit resend preserves the existing grant",
+      "test": "conformance/invitation-expiration.mjs",
+      "marker": "assert.notEqual(fresh.id, original.id)",
+      "complete": true
+    },
+    {
+      "label": "Roll back invalid replacements and serialize competing administrators on all three engines",
+      "test": "adapters/sqlstore/organization_replacement_test.go",
+      "marker": "t.Fatalf(\"competing replacements left %d %s invitations, want %d\""
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L2586/cancelPendingInvitationsOnReInvite": [
+    {
+      "label": "Replace a live grant with the newly requested roles and teams while an explicit resend preserves the existing grant",
+      "test": "conformance/invitation-expiration.mjs",
+      "marker": "assert.notEqual(fresh.id, original.id)",
+      "complete": true
+    },
+    {
+      "label": "Roll back invalid replacements and serialize competing administrators on all three engines",
+      "test": "adapters/sqlstore/organization_replacement_test.go",
+      "marker": "t.Fatalf(\"competing replacements left %d %s invitations, want %d\""
+    }
   ]
 }

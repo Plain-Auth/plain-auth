@@ -1937,3 +1937,8 @@ test("host invitation lifetimes apply to new grants and resends", async t => {
   const { compareInvitationExpiration } = await import("./invitation-expiration.mjs");
   await compareInvitationExpiration(t, { reference, goFixture, instrument });
 });
+
+test("hosts can replace a pending invitation while explicit resends retain the original grant", async t => {
+  const { compareInvitationReplacement } = await import("./invitation-expiration.mjs");
+  await compareInvitationReplacement(t, { reference, goFixture, instrument });
+});

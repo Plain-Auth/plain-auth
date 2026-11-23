@@ -201,7 +201,9 @@
       - [x] Apply the default or configured validity period on creation and renewal, including an elapsed deadline ([test](../../../conformance/invitation-expiration.mjs#L25))
       - [x] Persist the renewed deadline on all three engines while retaining the original grant identity and role ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L220))
     - [ ] `invitationLimit`
-    - [ ] `cancelPendingInvitationsOnReInvite`
+    - [x] `cancelPendingInvitationsOnReInvite` ([test](../../../conformance/invitation-expiration.mjs#L81))
+      - [x] Replace a live grant with the newly requested roles and teams while an explicit resend preserves the existing grant ([test](../../../conformance/invitation-expiration.mjs#L81))
+      - [x] Roll back invalid replacements and serialize competing administrators on all three engines ([test](../../../adapters/sqlstore/organization_replacement_test.go#L83))
     - [ ] `requireEmailVerificationOnInvitation`
     - [ ] `sendInvitationEmail`
     - [ ] `schema`
@@ -616,6 +618,8 @@
     - [x] invitationExpiresIn ([test](../../../conformance/invitation-expiration.mjs#L25))
       - [x] Apply the default or configured validity period on creation and renewal, including an elapsed deadline ([test](../../../conformance/invitation-expiration.mjs#L25))
       - [x] Persist the renewed deadline on all three engines while retaining the original grant identity and role ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L220))
-    - [ ] cancelPendingInvitationsOnReInvite
+    - [x] cancelPendingInvitationsOnReInvite ([test](../../../conformance/invitation-expiration.mjs#L81))
+      - [x] Replace a live grant with the newly requested roles and teams while an explicit resend preserves the existing grant ([test](../../../conformance/invitation-expiration.mjs#L81))
+      - [x] Roll back invalid replacements and serialize competing administrators on all three engines ([test](../../../adapters/sqlstore/organization_replacement_test.go#L83))
     - [ ] invitationLimit
     - [ ] requireEmailVerificationOnInvitation

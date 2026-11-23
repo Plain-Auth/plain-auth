@@ -234,6 +234,14 @@ The database reads up to 100 invitations in creation order, using the ID to brea
 
 In Go, call `authClient.ListOrganizationInvitations(ctx, organizationID)`, using an empty string for the active organization. To require recipients to verify their account email before accepting an invitation, set `RequireVerifiedEmail: true` in the organization options. [HTTP client comparison](../conformance/organization-invitations.mjs) · [Go client and session tests](../adapters/sqlstore/organization_selection_http_test.go)
 
+## Replace an outstanding invitation
+
+By default, inviting the same email address to the same organization again returns `USER_IS_ALREADY_INVITED_TO_THIS_ORGANIZATION` while the earlier invitation is pending and unexpired. To send the original invitation again, pass `"resend": true` to `POST /organization/invite-member`. The recipient keeps the original ID, roles and team targets.
+
+Set `CancelPendingInvitationsOnReInvite: true` on `organization.Options` when a fresh invitation should replace the previous grant. An ordinary invite request then cancels the old invitation and issues a new ID with the requested roles and teams. An explicit resend still renews the original grant. Invitations for the same email in other organizations are independent.
+
+The SQL adapter commits the cancellation and replacement in one transaction. A rejected team assignment leaves the earlier invitation pending. Concurrent replacements for the same organization and mailbox leave one live grant. A custom store enabling this option implements `organization.InvitationReplacementStore`. [Client comparison](../conformance/invitation-expiration.mjs) · [Database concurrency and rollback tests](../adapters/sqlstore/organization_replacement_test.go)
+
 ## Cancel an invitation
 
 An owner or admin can send `POST /organization/cancel-invitation` with `{"invitationId":"invite_123"}` to withdraw an invitation sent by any member of that organization. The server checks the caller’s current membership in the invitation’s destination. The caller can have a different organization selected.

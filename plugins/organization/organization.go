@@ -57,6 +57,9 @@ type Store interface {
 }
 
 type Options struct {
+	// CancelPendingInvitationsOnReInvite replaces an existing live grant when
+	// the application invites the same address again without requesting resend.
+	CancelPendingInvitationsOnReInvite bool
 	// InvitationExpiresIn applies to new and resent invitations. Zero uses 48 hours.
 	InvitationExpiresIn      time.Duration
 	BeforeRejectInvitation   InvitationDecisionHook
@@ -170,6 +173,11 @@ func NewService(o Options) (*Service, error) {
 	if o.BeforeUpdateOrganization != nil || o.AfterUpdateOrganization != nil {
 		if _, ok := o.Store.(ObservedProfileStore); !ok {
 			return nil, errors.New("organization: profile hooks require an ObservedProfileStore")
+		}
+	}
+	if o.CancelPendingInvitationsOnReInvite {
+		if _, ok := o.Store.(InvitationReplacementStore); !ok {
+			return nil, errors.New("organization: replacing invitations requires an InvitationReplacementStore")
 		}
 	}
 	if o.BeforeRejectInvitation != nil || o.AfterRejectInvitation != nil || o.BeforeCancelInvitation != nil || o.AfterCancelInvitation != nil {
@@ -436,7 +444,11 @@ func (o Options) invite(c authn.EndpointContext, s *authn.SessionResult) (any, e
 	if err != nil {
 		return nil, err
 	}
-	inv, err = o.Store.InviteOrganizationMember(c.Request.Context(), inv, s.Session.ID, resend)
+	if o.CancelPendingInvitationsOnReInvite && !resend {
+		inv, err = o.Store.(InvitationReplacementStore).ReplaceOrganizationInvitation(c.Request.Context(), inv, s.Session.ID)
+	} else {
+		inv, err = o.Store.InviteOrganizationMember(c.Request.Context(), inv, s.Session.ID, resend)
+	}
 	if err != nil {
 		return nil, err
 	}

@@ -9,6 +9,12 @@ import (
 	"github.com/Plain-Auth/plain-auth/internal/jsjson"
 )
 
+// InvitationReplacementStore issues a fresh grant and cancels the previous
+// live invitation for the same mailbox and organization in one transaction.
+type InvitationReplacementStore interface {
+	ReplaceOrganizationInvitation(ctx context.Context, inv Invitation, sessionID string) (Invitation, error)
+}
+
 // InvitationRejectionStore verifies the live owner session and mailbox in the
 // transaction that declines the invitation.
 type InvitationRejectionStore interface {

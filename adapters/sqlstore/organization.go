@@ -239,7 +239,17 @@ func scanInvitation(r rowScanner, teamField bool, extra ...any) (org.Invitation,
 }
 
 func (s *Store) InviteOrganizationMember(ctx context.Context, inv org.Invitation, sessionID string, resend bool) (org.Invitation, error) {
-	tx, err := s.db.BeginTx(ctx, nil)
+	return s.issueOrganizationInvitation(ctx, inv, sessionID, resend, false)
+}
+
+// ReplaceOrganizationInvitation installs a fresh invitation. A failed issue
+// leaves the previous grant usable.
+func (s *Store) ReplaceOrganizationInvitation(ctx context.Context, inv org.Invitation, sessionID string) (org.Invitation, error) {
+	return s.issueOrganizationInvitation(ctx, inv, sessionID, false, true)
+}
+
+func (s *Store) issueOrganizationInvitation(ctx context.Context, inv org.Invitation, sessionID string, resend, replace bool) (org.Invitation, error) {
+	tx, err := s.beginMembershipChange(ctx)
 	if err != nil {
 		return org.Invitation{}, err
 	}
@@ -287,11 +297,13 @@ func (s *Store) InviteOrganizationMember(ctx context.Context, inv org.Invitation
 	}
 	exact := s.exactSQLValue("?")
 	pending, err := scanInvitation(tx.QueryRowContext(ctx, s.bind(`SELECT `+invitationColumns(teamField)+` FROM "invitation" WHERE "organizationId"=`+exact+` AND LOWER("email")=? AND "status"='pending' AND "expiresAt">? ORDER BY "createdAt" DESC LIMIT 1`), inv.OrganizationID, inv.Email, s.date(inv.CreatedAt)), teamField)
-	if err == nil {
-		if !resend {
-			return org.Invitation{}, org.ErrAlreadyInvited
-		}
-		if !owner && slices.Contains(strings.Split(pending.Role, ","), "owner") {
+	switch {
+	case errors.Is(err, sql.ErrNoRows):
+		// Issue a fresh invitation.
+	case err != nil:
+		return org.Invitation{}, err
+	case resend:
+		if !owner && membershipHasRole(pending.Role, "owner") {
 			return org.Invitation{}, org.ErrRoleDenied
 		}
 		pending.ExpiresAt = inv.ExpiresAt
@@ -303,9 +315,12 @@ func (s *Store) InviteOrganizationMember(ctx context.Context, inv org.Invitation
 			return org.Invitation{}, err
 		}
 		return pending, nil
-	}
-	if !errors.Is(err, sql.ErrNoRows) {
-		return org.Invitation{}, err
+	case replace:
+		if err := s.updateInvitationStatus(ctx, tx, &pending, "canceled"); err != nil {
+			return org.Invitation{}, err
+		}
+	default:
+		return org.Invitation{}, org.ErrAlreadyInvited
 	}
 	args := []any{inv.ID, inv.OrganizationID, inv.InviterID, inv.Email, inv.Role, inv.Status, s.date(inv.ExpiresAt), s.date(inv.CreatedAt)}
 	if inv.TeamID != nil {
