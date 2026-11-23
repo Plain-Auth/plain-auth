@@ -2002,3 +2002,8 @@ test("stored roles govern live organization operations across independent applic
   const { compareStoredOrganizationRoles } = await import("./organization-stored-roles.mjs");
   await compareStoredOrganizationRoles(t, { goFixture, instrument });
 });
+
+test("organization role directory uses live tenant permissions and leaves session selections intact", async t => {
+  const { compareOrganizationRoleDirectory } = await import("./organization-role-directory.mjs");
+  await compareOrganizationRoleDirectory(t, { reference, goFixture, instrument });
+});

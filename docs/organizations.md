@@ -154,6 +154,34 @@ Assign `desk` through the ordinary invitation or member-role endpoints. A differ
 
 Editing or removing a stored grant takes effect on the next request across replicas. A host using only static roles on the same database continues to use its configured grants. Local `RolePolicy.HasPermission` evaluates the definitions supplied to that policy. Use the HTTP permission check for a current user's database-backed decision. [Cross-application role test](../conformance/organization-stored-roles.mjs) · [SQLite, PostgreSQL and MySQL tests](../adapters/sqlstore/organization_stored_roles_test.go)
 
+### Read stored roles from any client
+
+With dynamic access control enabled, any client with a signed-in session and the `ac.read` permission can read the organization's stored definitions. The built-in owner, admin, and member roles grant this permission. The directory returns roles saved in the database. Use the [permission check](#check-organization-permissions) to evaluate the combined grants from the database and the host configuration.
+
+| Request relative to the auth mount | Result |
+| --- | --- |
+| `GET /organization/list-roles` | Up to 100 stored role definitions in the active organization. An empty directory returns `[]`. |
+| `GET /organization/list-roles?organizationId=org_a` | The directory of another organization where the caller has read access. |
+| `GET /organization/get-role?organizationId=org_a&roleName=desk` | The stored definition with the exact, case-sensitive name `desk`. |
+| `GET /organization/get-role?roleId=role_123` | One role in the active organization, including roles outside the returned list. |
+
+For example, a successful lookup returns this JSON.
+
+```json
+{
+  "id": "role_123",
+  "organizationId": "org_a",
+  "role": "desk",
+  "permission": {"team": ["create"]},
+  "createdAt": "2026-01-05T12:00:00.000Z",
+  "updatedAt": null
+}
+```
+
+Supply a nonempty name or ID for a lookup. A nonempty name takes precedence when both are supplied. Omit `organizationId` to use the current session's selection. An explicit empty organization ID returns HTTP 400 with `NO_ACTIVE_ORGANIZATION`. An unknown role in an authorized organization returns HTTP 400 with `ROLE_NOT_FOUND`. A caller without membership or read permission gets HTTP 403. Reading another organization preserves the session's active organization and team.
+
+Go callers can use `client.ListOrganizationRoles(ctx, organizationID)` and `client.GetOrganizationRole(ctx, organization.RoleQuery{OrganizationID: organizationID, RoleName: "desk"})`. Both methods use the client's session. [Client and database tests](../adapters/sqlstore/organization_role_directory_test.go) · [HTTP behavior tests](../conformance/organization-role-directory.mjs)
+
 ## Read an organization and its directory
 
 Send `GET /organization/get-full-organization` with a session cookie. A nonempty `organizationSlug` selects the destination first, followed by `organizationId`, then the session's active organization. With no selector and no active organization, the response is HTTP 200 with JSON `null`. Looking up another organization you belong to preserves your active organization and team.

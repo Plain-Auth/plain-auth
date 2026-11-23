@@ -104,6 +104,11 @@ func models(a *plainauth.Auth, info plainauth.HTTPDescription) object {
 	m := object{"User": user, "Session": session, "Account": modelSchema(reflect.TypeFor[plainauth.LinkedAccount]()), "Error": modelSchema(reflect.TypeFor[plainauth.APIError]()),
 		"SessionResult": responseObject(object{"user": modelRef("User"), "session": modelRef("Session")}, "user", "session")}
 	if a.HasPlugin("organization") {
+		if slices.ContainsFunc(info.Routes, func(r plainauth.HTTPRoute) bool {
+			return r.Plugin == "organization" && r.Path == "/organization/get-role"
+		}) {
+			m["OrganizationRole"] = modelSchema(reflect.TypeFor[organization.RoleDefinition]())
+		}
 		m["Organization"] = modelSchema(reflect.TypeFor[organization.Organization]())
 		m["Member"] = modelSchema(reflect.TypeFor[organization.Member]())
 		invitation := modelSchema(reflect.TypeFor[organization.Invitation]())

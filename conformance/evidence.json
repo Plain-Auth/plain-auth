@@ -15518,5 +15518,139 @@
       "test": "conformance/organization-stored-roles.mjs",
       "marker": "assert.equal(await query(reporter,north,{team:[\"create\"]}),false)"
     }
+  ],
+  "plugin/organization/GET /organization/list-roles": [
+    {
+      "label": "Read up to 100 stored definitions in the selected organization and use a direct lookup beyond the list",
+      "test": "conformance/organization-role-directory.mjs",
+      "marker": "assert.equal(page.length, 100)"
+    },
+    {
+      "label": "Require the current membership and ac.read before listing stored roles",
+      "test": "conformance/organization-role-directory.mjs",
+      "marker": "denied(await list(reader), 403, \"YOU_ARE_NOT_ALLOWED_TO_LIST_A_ROLE\")"
+    },
+    {
+      "label": "Use the Go client against three SQL engines and honor withdrawal of directory access",
+      "test": "adapters/sqlstore/organization_role_directory_test.go",
+      "marker": "read directory after losing ac.read"
+    }
+  ],
+  "plugin/organization/GET /organization/get-role": [
+    {
+      "label": "Read the tenant’s stored permission object and timestamps with a case-sensitive selector",
+      "test": "conformance/organization-role-directory.mjs",
+      "marker": "assert.deepEqual(ok(await get(owner, {roleName:\"desk\"})), expected)"
+    },
+    {
+      "label": "Require the current membership and ac.read before looking up a role",
+      "test": "conformance/organization-role-directory.mjs",
+      "marker": "denied(await get(reader, {roleName:\"desk\"}), 403"
+    },
+    {
+      "label": "Keep SQL lookup case-sensitive across all three engines and check live session ownership",
+      "test": "adapters/sqlstore/organization_role_directory_test.go",
+      "marker": "expected strict stored-role lookup"
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1586": [
+    {
+      "label": "Read up to 100 stored definitions in the selected organization and use a direct lookup beyond the list",
+      "test": "conformance/organization-role-directory.mjs",
+      "marker": "assert.equal(page.length, 100)"
+    },
+    {
+      "label": "Require the current membership and ac.read before listing stored roles",
+      "test": "conformance/organization-role-directory.mjs",
+      "marker": "denied(await list(reader), 403, \"YOU_ARE_NOT_ALLOWED_TO_LIST_A_ROLE\")"
+    },
+    {
+      "label": "Use the Go client against three SQL engines and honor withdrawal of directory access",
+      "test": "adapters/sqlstore/organization_role_directory_test.go",
+      "marker": "read directory after losing ac.read"
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1591/`GET /organization/list-roles`": [
+    {
+      "label": "Read up to 100 stored definitions in the selected organization and use a direct lookup beyond the list",
+      "test": "conformance/organization-role-directory.mjs",
+      "marker": "assert.equal(page.length, 100)"
+    },
+    {
+      "label": "Require the current membership and ac.read before listing stored roles",
+      "test": "conformance/organization-role-directory.mjs",
+      "marker": "denied(await list(reader), 403, \"YOU_ARE_NOT_ALLOWED_TO_LIST_A_ROLE\")"
+    },
+    {
+      "label": "Use the Go client against three SQL engines and honor withdrawal of directory access",
+      "test": "adapters/sqlstore/organization_role_directory_test.go",
+      "marker": "read directory after losing ac.read"
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1602": [
+    {
+      "label": "Read the tenant’s stored permission object and timestamps with a case-sensitive selector",
+      "test": "conformance/organization-role-directory.mjs",
+      "marker": "assert.deepEqual(ok(await get(owner, {roleName:\"desk\"})), expected)"
+    },
+    {
+      "label": "Require the current membership and ac.read before looking up a role",
+      "test": "conformance/organization-role-directory.mjs",
+      "marker": "denied(await get(reader, {roleName:\"desk\"}), 403"
+    },
+    {
+      "label": "Keep SQL lookup case-sensitive across all three engines and check live session ownership",
+      "test": "adapters/sqlstore/organization_role_directory_test.go",
+      "marker": "expected strict stored-role lookup"
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1607/`GET /organization/get-role`": [
+    {
+      "label": "Read the tenant’s stored permission object and timestamps with a case-sensitive selector",
+      "test": "conformance/organization-role-directory.mjs",
+      "marker": "assert.deepEqual(ok(await get(owner, {roleName:\"desk\"})), expected)"
+    },
+    {
+      "label": "Require the current membership and ac.read before looking up a role",
+      "test": "conformance/organization-role-directory.mjs",
+      "marker": "denied(await get(reader, {roleName:\"desk\"}), 403"
+    },
+    {
+      "label": "Keep SQL lookup case-sensitive across all three engines and check live session ownership",
+      "test": "adapters/sqlstore/organization_role_directory_test.go",
+      "marker": "expected strict stored-role lookup"
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1597/Parameter `organizationId` (optional)": [
+    {
+      "label": "Read stored definitions in an explicit organization while retaining the selected organization and team",
+      "test": "conformance/organization-role-directory.mjs",
+      "marker": "assert.equal(session.activeTeamId, team.id)",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1613/Parameter `roleName` (optional)": [
+    {
+      "label": "Prefer a nonempty role name when both name and ID are supplied",
+      "test": "conformance/organization-role-directory.mjs",
+      "marker": "assert.deepEqual(ok(await get(owner, {...explicit, roleName:\"desk\", roleId:\"south-desk\"})), northern)",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1617/Parameter `roleId` (optional)": [
+    {
+      "label": "Read by exact ID when the alternative name is empty",
+      "test": "conformance/organization-role-directory.mjs",
+      "marker": "assert.deepEqual(ok(await get(owner, {...explicit, roleName:\"\", roleId:\"north-desk\"})), northern)",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1621/Parameter `organizationId` (optional)": [
+    {
+      "label": "Read stored definitions in an explicit organization while retaining the selected organization and team",
+      "test": "conformance/organization-role-directory.mjs",
+      "marker": "assert.equal(session.activeTeamId, team.id)",
+      "complete": true
+    }
   ]
 }

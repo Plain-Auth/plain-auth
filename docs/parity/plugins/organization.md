@@ -47,7 +47,13 @@
   - [ ] `POST /organization/create-role`
   - [ ] `POST /organization/delete-role`
   - [ ] `GET /organization/list-roles`
+    - [x] Read up to 100 stored definitions in the selected organization and use a direct lookup beyond the list ([test](../../../conformance/organization-role-directory.mjs#L67))
+    - [x] Require the current membership and ac.read before listing stored roles ([test](../../../conformance/organization-role-directory.mjs#L61))
+    - [x] Use the Go client against three SQL engines and honor withdrawal of directory access ([test](../../../adapters/sqlstore/organization_role_directory_test.go#L92))
   - [ ] `GET /organization/get-role`
+    - [x] Read the tenant’s stored permission object and timestamps with a case-sensitive selector ([test](../../../conformance/organization-role-directory.mjs#L41))
+    - [x] Require the current membership and ac.read before looking up a role ([test](../../../conformance/organization-role-directory.mjs#L60))
+    - [x] Keep SQL lookup case-sensitive across all three engines and check live session ownership ([test](../../../adapters/sqlstore/organization_role_directory_test.go#L81))
   - [ ] `POST /organization/update-role`
   - [ ] `POST /organization/invite-member`
     - [x] Authorize the inviter, constrain role grants, and resend the same invitation ([test](../../../plugins/organization/organization_test.go#L133))
@@ -578,13 +584,29 @@
         - [ ] Parameter `roleId` (optional)
         - [ ] Parameter `organizationId` (optional)
     - [ ] Listing roles
+      - [x] Read up to 100 stored definitions in the selected organization and use a direct lookup beyond the list ([test](../../../conformance/organization-role-directory.mjs#L67))
+      - [x] Require the current membership and ac.read before listing stored roles ([test](../../../conformance/organization-role-directory.mjs#L61))
+      - [x] Use the Go client against three SQL engines and honor withdrawal of directory access ([test](../../../adapters/sqlstore/organization_role_directory_test.go#L92))
       - [ ] `GET /organization/list-roles`
-        - [ ] Parameter `organizationId` (optional)
+        - [x] Read up to 100 stored definitions in the selected organization and use a direct lookup beyond the list ([test](../../../conformance/organization-role-directory.mjs#L67))
+        - [x] Require the current membership and ac.read before listing stored roles ([test](../../../conformance/organization-role-directory.mjs#L61))
+        - [x] Use the Go client against three SQL engines and honor withdrawal of directory access ([test](../../../adapters/sqlstore/organization_role_directory_test.go#L92))
+        - [x] Parameter `organizationId` (optional) ([test](../../../conformance/organization-role-directory.mjs#L73))
+          - [x] Read stored definitions in an explicit organization while retaining the selected organization and team ([test](../../../conformance/organization-role-directory.mjs#L73))
     - [ ] Getting a specific role
+      - [x] Read the tenant’s stored permission object and timestamps with a case-sensitive selector ([test](../../../conformance/organization-role-directory.mjs#L41))
+      - [x] Require the current membership and ac.read before looking up a role ([test](../../../conformance/organization-role-directory.mjs#L60))
+      - [x] Keep SQL lookup case-sensitive across all three engines and check live session ownership ([test](../../../adapters/sqlstore/organization_role_directory_test.go#L81))
       - [ ] `GET /organization/get-role`
-        - [ ] Parameter `roleName` (optional)
-        - [ ] Parameter `roleId` (optional)
-        - [ ] Parameter `organizationId` (optional)
+        - [x] Read the tenant’s stored permission object and timestamps with a case-sensitive selector ([test](../../../conformance/organization-role-directory.mjs#L41))
+        - [x] Require the current membership and ac.read before looking up a role ([test](../../../conformance/organization-role-directory.mjs#L60))
+        - [x] Keep SQL lookup case-sensitive across all three engines and check live session ownership ([test](../../../adapters/sqlstore/organization_role_directory_test.go#L81))
+        - [x] Parameter `roleName` (optional) ([test](../../../conformance/organization-role-directory.mjs#L45))
+          - [x] Prefer a nonempty role name when both name and ID are supplied ([test](../../../conformance/organization-role-directory.mjs#L45))
+        - [x] Parameter `roleId` (optional) ([test](../../../conformance/organization-role-directory.mjs#L46))
+          - [x] Read by exact ID when the alternative name is empty ([test](../../../conformance/organization-role-directory.mjs#L46))
+        - [x] Parameter `organizationId` (optional) ([test](../../../conformance/organization-role-directory.mjs#L73))
+          - [x] Read stored definitions in an explicit organization while retaining the selected organization and team ([test](../../../conformance/organization-role-directory.mjs#L73))
     - [ ] Updating a role
       - [ ] `POST /organization/update-role`
         - [ ] Parameter `roleName` (optional)

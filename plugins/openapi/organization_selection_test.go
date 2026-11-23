@@ -18,22 +18,23 @@ import (
 )
 
 func TestOrganizationSelectionSchema(t *testing.T) {
-	store, err := sqlstore.OpenWithOptions(t.Context(), "sqlite", filepath.Join(t.TempDir(), "selection.db"), []string{"organization-teams", "oauth-provider"}, schema.Options{})
+	store, err := sqlstore.OpenWithOptions(t.Context(), "sqlite", filepath.Join(t.TempDir(), "selection.db"), []string{"organization-teams", "organization-roles", "oauth-provider"}, schema.Options{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { store.Close() })
 	for _, tc := range []struct {
-		name                    string
-		teams, login, postLogin bool
+		name                                  string
+		teams, login, postLogin, dynamicRoles bool
 	}{
 		{name: "organizations"},
 		{name: "teams", teams: true},
+		{name: "role directory", dynamicRoles: true},
 		{name: "issuer login only", teams: true, login: true},
 		{name: "post-login selection", teams: true, login: true, postLogin: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			options := organization.Options{Store: store}
+			options := organization.Options{Store: store, DynamicAccessControl: tc.dynamicRoles}
 			if tc.teams {
 				options.Teams = &organization.TeamOptions{}
 			}
@@ -68,6 +69,21 @@ func TestOrganizationSelectionSchema(t *testing.T) {
 				t.Fatal("schema request failed", w.Code, err)
 			}
 			paths := node(doc, "paths")
+			roleSchema := node(doc, "components", "schemas", "OrganizationRole")
+			getRole := node(paths, "/organization/get-role", "get")
+			listRoles := node(paths, "/organization/list-roles", "get")
+			if tc.dynamicRoles {
+				if node(getRole, "responses", "200", "content", "application/json", "schema")["$ref"] != "#/components/schemas/OrganizationRole" ||
+					node(listRoles, "responses", "200", "content", "application/json", "schema", "items")["$ref"] != "#/components/schemas/OrganizationRole" {
+					t.Fatal("missing directory response models")
+				}
+				if len(node(roleSchema, "properties")) != 6 || node(roleSchema, "properties", "permission", "additionalProperties", "items")["type"] != "string" ||
+					len(getRole["parameters"].([]any)) != 3 || len(listRoles["parameters"].([]any)) != 1 || len(getRole["security"].([]any)) == 0 {
+					t.Fatal("incomplete role directory contract")
+				}
+			} else if roleSchema != nil || getRole != nil || listRoles != nil {
+				t.Fatal("static role policy advertised a stored directory")
+			}
 			activeMember := node(paths, "/organization/get-active-member", "get")
 			memberFields, _ := node(activeMember, "responses", "200", "content", "application/json", "schema")["allOf"].([]any)
 			if len(memberFields) != 2 || memberFields[0].(obj)["$ref"] != "#/components/schemas/Member" {

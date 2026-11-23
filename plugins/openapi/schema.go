@@ -184,6 +184,10 @@ func publicResponse(route plainauth.HTTPRoute, info plainauth.HTTPDescription, f
 			return responseObject(object{"members": array(member), "total": object{"type": "integer"}}, "members", "total")
 		}
 		return member
+	case "/organization/get-role":
+		return modelRef("OrganizationRole")
+	case "/organization/list-roles":
+		return array(modelRef("OrganizationRole"))
 	case "/organization/get-active-member-role":
 		return responseObject(object{"role": object{"type": "string"}}, "role")
 	case "/organization/create-team", "/organization/update-team":
@@ -320,6 +324,16 @@ func signupFormSchema(schema object, info plainauth.HTTPDescription) object {
 }
 
 func adjustRequest(op object, r plainauth.HTTPRoute, info plainauth.HTTPDescription, a *plainauth.Auth) {
+	if r.Plugin == "organization" && (r.Path == "/organization/get-role" || r.Path == "/organization/list-roles") {
+		params := []object{{"name": "organizationId", "in": "query", "schema": object{"type": "string"}, "description": "Omit to use the active organization."}}
+		if r.Path == "/organization/get-role" {
+			op["description"] = "Supply a nonempty roleName or roleId. A valid name takes precedence."
+			for _, field := range []string{"roleName", "roleId"} {
+				params = append(params, object{"name": field, "in": "query", "schema": object{"type": "string", "minLength": 1}})
+			}
+		}
+		op["parameters"] = params
+	}
 	if r.Plugin == "organization" && r.Path == "/organization/get-invitation" {
 		op["parameters"] = []object{{"name": "id", "in": "query", "required": true, "schema": object{"type": "string"}}}
 	}
