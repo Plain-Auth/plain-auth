@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"slices"
 	"strings"
 	"time"
 
@@ -86,6 +87,18 @@ func registrationFixtureOptions() op.Options {
 	opts.PairwiseSecret = strings.Repeat("p", 32)
 	opts.Scopes = []string{"openid", "email", "reports", "extra"}
 	if mode == "protected" {
+		opts.Authorization.CheckSignup = func(_ context.Context, a op.RegistrationAccess, scopes []string) (*op.SignupStep, error) {
+			if a.User.Email != "onboarding@issuer.test" || a.User.ID != a.Session.UserID || a.Headers.Get("Cookie") == "" || !slices.Contains(scopes, "reports") {
+				return nil, nil
+			}
+			switch a.User.Name {
+			case "Registration":
+				return &op.SignupStep{}, nil
+			case "Profile":
+				return &op.SignupStep{Page: "/setup"}, nil
+			}
+			return nil, nil
+		}
 		opts.Authorization.SelectAccount = op.AccountSelectionOptions{
 			Page: "/choose-account",
 			ShouldRedirect: func(_ context.Context, a op.RegistrationAccess, scopes []string) (bool, error) {

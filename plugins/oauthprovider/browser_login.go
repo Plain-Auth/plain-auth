@@ -71,15 +71,19 @@ func (opts Options) openAccountPage(c auth.EndpointContext, path, marker string,
 	return c.RegisteredOAuthRedirect(target), nil
 }
 
-func signedAccountPage(c auth.EndpointContext, raw, marker string) (url.Values, error) {
+func signedAccountPage(c auth.EndpointContext, raw string, markers ...string) (url.Values, error) {
 	q, err := c.Auth.VerifyOAuthQuery(raw)
 	if err != nil {
 		return nil, registrationProblem(400, "invalid_signature", "invalid or expired oauth query")
 	}
-	if len(q[marker]) != 1 || q.Get(marker) != c.Auth.OAuthIssuer() || len(q["pa_client"]) != 1 || q.Get("pa_client") == "" || q.Has("pa_consent") {
-		return nil, registrationProblem(400, "invalid_request", "signed query does not belong to the requested account step")
+	if len(q["pa_client"]) == 1 && q.Get("pa_client") != "" && !q.Has("pa_consent") {
+		for _, marker := range markers {
+			if len(q[marker]) == 1 && q.Get(marker) == c.Auth.OAuthIssuer() {
+				return q, nil
+			}
+		}
 	}
-	return q, nil
+	return nil, registrationProblem(400, "invalid_request", "signed query does not belong to the requested account step")
 }
 
 func withoutPrompt(q url.Values, value string) {
@@ -98,7 +102,7 @@ func withoutPrompt(q url.Values, value string) {
 // registration identity across re-entry, including when a public ID is reused.
 func accountAuthorizationRequest(c auth.EndpointContext, q url.Values) *http.Request {
 	ctx := context.WithValue(c.Request.Context(), continuedClientKey{}, q.Get("pa_client"))
-	for _, k := range []string{"sig", "exp", "ba_iat", "ba_param", "pa_login", "pa_select", "pa_client"} {
+	for _, k := range []string{"sig", "exp", "ba_iat", "ba_param", "pa_login", "pa_signup", "pa_select", "pa_client"} {
 		q.Del(k)
 	}
 	r := c.Request.Clone(ctx)
@@ -144,9 +148,9 @@ func (opts Options) prepareLogin(c auth.EndpointContext, raw string) (auth.OAuth
 func (opts Options) continueAccount(c auth.EndpointContext) (any, error) {
 	selected, _ := c.Body["selected"].(bool)
 	created, _ := c.Body["created"].(bool)
-	marker, prompt := "pa_login", "create"
+	markers, prompt := []string{"pa_login", "pa_signup"}, "create"
 	if selected {
-		marker, prompt = "pa_select", "select_account"
+		markers, prompt = []string{"pa_select"}, "select_account"
 	} else if !created {
 		return nil, registrationProblem(400, "invalid_request", "an account step must be completed")
 	}
@@ -154,11 +158,11 @@ func (opts Options) continueAccount(c auth.EndpointContext) (any, error) {
 	if raw == "" {
 		return nil, registrationProblem(400, "invalid_request", "missing oauth query")
 	}
-	q, err := signedAccountPage(c, raw, marker)
+	q, err := signedAccountPage(c, raw, markers...)
 	if err != nil {
 		return nil, err
 	}
-	if !selected && !slices.Contains(strings.Fields(q.Get("prompt")), "create") {
+	if !selected && !q.Has("pa_signup") && !slices.Contains(strings.Fields(q.Get("prompt")), "create") {
 		return nil, registrationProblem(400, "invalid_request", "account creation was not requested")
 	}
 	session, err := c.Auth.GetSession(c.Request.Context(), c.Request.Header)
@@ -174,4 +178,4 @@ func (opts Options) continueAccount(c auth.EndpointContext) (any, error) {
 	return c.ResumeOAuthAuthorization(r)
 }
 
-const continueAccountOperation = `{"summary":"Continue browser authorization after account selection or creation","requestBody":{"required":true,"content":{"application/json":{"schema":{"type":"object","required":["oauth_query"],"anyOf":[{"required":["created"]},{"required":["selected"]}],"properties":{"selected":{"type":"boolean","enum":[true]},"created":{"type":"boolean","enum":[true]},"oauth_query":{"type":"string"}}}}}},"responses":{"200":{"description":"Authorization redirect instructions"},"400":{"description":"Invalid or expired account page query"},"401":{"description":"Browser session required"}}}`
+const continueAccountOperation = `{"summary":"Continue browser authorization after account selection or signup","requestBody":{"required":true,"content":{"application/json":{"schema":{"type":"object","required":["oauth_query"],"anyOf":[{"required":["created"]},{"required":["selected"]}],"properties":{"selected":{"type":"boolean","enum":[true]},"created":{"type":"boolean","enum":[true]},"oauth_query":{"type":"string"}}}}}},"responses":{"200":{"description":"Authorization redirect instructions"},"400":{"description":"Invalid or expired account page query"},"401":{"description":"Browser session required"}}}`

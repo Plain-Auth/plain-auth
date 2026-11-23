@@ -46,20 +46,36 @@ func (s *Store) LookupAuthorizationClient(ctx context.Context, id string) (op.Br
 }
 
 func (s *Store) IssueBrowserCode(ctx context.Context, input op.BrowserCodeIssue) error {
-	return s.finishBrowserCode(ctx, input, nil, false)
+	return s.finishBrowserCode(ctx, input, nil, issueBrowserCode)
 }
 
 func (s *Store) FinishBrowserConsent(ctx context.Context, input op.BrowserCodeIssue, prompt op.BrowserConsentPrompt, accept bool) error {
-	return s.finishBrowserCode(ctx, input, &prompt, accept)
+	action := declineBrowserConsent
+	if accept {
+		action = issueBrowserCode
+	}
+	return s.finishBrowserCode(ctx, input, &prompt, action)
 }
 
-func (s *Store) finishBrowserCode(ctx context.Context, input op.BrowserCodeIssue, prompt *op.BrowserConsentPrompt, accept bool) error {
+func (s *Store) ApproveBrowserConsent(ctx context.Context, input op.BrowserCodeIssue, prompt op.BrowserConsentPrompt) error {
+	return s.finishBrowserCode(ctx, input, &prompt, saveApprovalOnly)
+}
+
+type browserConsentAction int
+
+const (
+	issueBrowserCode browserConsentAction = iota
+	declineBrowserConsent
+	saveApprovalOnly
+)
+
+func (s *Store) finishBrowserCode(ctx context.Context, input op.BrowserCodeIssue, prompt *op.BrowserConsentPrompt, action browserConsentAction) error {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
-	if prompt == nil || accept {
+	if action != declineBrowserConsent {
 		client, err := scanBrowserClient(tx.QueryRowContext(ctx, s.readForUpdate(browserClientSelect), input.Client.ClientID), input.Client.ClientID)
 		if err != nil {
 			return err
@@ -89,7 +105,7 @@ func (s *Store) finishBrowserCode(ctx context.Context, input op.BrowserCodeIssue
 		if err := s.consumeConsentPrompt(ctx, tx, *prompt, now); err != nil {
 			return err
 		}
-		if !accept {
+		if action == declineBrowserConsent {
 			return tx.Commit()
 		}
 	}
@@ -111,6 +127,9 @@ func (s *Store) finishBrowserCode(ctx context.Context, input op.BrowserCodeIssue
 				}
 			}
 		}
+	}
+	if action == saveApprovalOnly {
+		return tx.Commit()
 	}
 	// Existing foreign-issued codes can have arbitrary row IDs. Also avoid
 	// reusing an identifier whose redeemed grant still has live descendants.

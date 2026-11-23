@@ -24,11 +24,20 @@ type AccountSelectionOptions struct {
 	ShouldRedirect func(context.Context, RegistrationAccess, []string) (bool, error)
 }
 
+// SignupStep asks the browser to finish registration. An empty Page selects
+// SignupPage, falling back to LoginPage. A nonempty Page must be a trusted URL.
+type SignupStep struct {
+	Page string
+}
+
 type BrowserAuthorizationOptions struct {
 	// LoginPage receives signed requests that need a browser login. SignupPage
 	// optionally selects a separate host page for prompt=create.
 	LoginPage, SignupPage string
 	SelectAccount         AccountSelectionOptions
+	// CheckSignup runs after login and account selection, including when a
+	// signed page resumes. Return nil when this account may proceed to consent.
+	CheckSignup func(context.Context, RegistrationAccess, []string) (*SignupStep, error)
 	// ConsentPage is the host's trusted page for first-time or forced approval.
 	ConsentPage string
 	// CodeLifetime defaults to ten minutes and uses whole seconds.
@@ -252,6 +261,31 @@ func (opts Options) runBrowserAuthorization(c auth.EndpointContext, q url.Values
 			issue.Query["prompt"] = strings.Join(remaining, " ")
 		}
 	}
+	// A policy change while consent is open can require onboarding again.
+	// Preserve the owner's decision for the chosen scopes and defer the code.
+	var signupRedirect any
+	if check := opts.Authorization.CheckSignup; check != nil {
+		step, err := check(ctx, RegistrationAccess{SessionResult: *session, Headers: c.Request.Header.Clone()}, slices.Clone(issue.Scopes))
+		if err != nil {
+			return nil, err
+		}
+		if step != nil {
+			if slices.Contains(grant.prompts, "none") {
+				return reject("interaction_required", "End-User interaction is required")
+			}
+			page := step.Page
+			if page == "" {
+				page = opts.loginPage([]string{"create"})
+			}
+			if page == "" {
+				return nil, errors.New("oauthprovider: required signup step has no page")
+			}
+			signupRedirect, err = opts.openAccountPage(c, page, "pa_signup", q, issue)
+			if err != nil || decision == nil {
+				return signupRedirect, err
+			}
+		}
+	}
 	if resolve := opts.Authorization.ConsentReference; resolve != nil {
 		issue.ReferenceID, err = resolve(ctx, RegistrationAccess{SessionResult: *session, Headers: c.Request.Header.Clone()}, slices.Clone(issue.Scopes))
 		if err != nil {
@@ -270,18 +304,23 @@ func (opts Options) runBrowserAuthorization(c auth.EndpointContext, q url.Values
 	if decision != nil {
 		decision.request.Binding = consentBinding(c.Auth.OAuthIssuer(), tokenDigest(client.RowID), issue)
 	}
-	code, err := randomCredential("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
-	if err != nil {
-		return nil, err
-	}
-	issue.Identifier, err = opts.Tokens.storedAuthorizationCode(ctx, code)
-	if err != nil {
-		return nil, err
-	}
-	if decision != nil {
-		err = decision.store.FinishBrowserConsent(ctx, issue, decision.request, true)
+	var code string
+	if signupRedirect != nil {
+		err = decision.store.(DeferredConsentStore).ApproveBrowserConsent(ctx, issue, decision.request)
 	} else {
-		err = store.IssueBrowserCode(ctx, issue)
+		code, err = randomCredential("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
+		if err != nil {
+			return nil, err
+		}
+		issue.Identifier, err = opts.Tokens.storedAuthorizationCode(ctx, code)
+		if err != nil {
+			return nil, err
+		}
+		if decision != nil {
+			err = decision.store.FinishBrowserConsent(ctx, issue, decision.request, true)
+		} else {
+			err = store.IssueBrowserCode(ctx, issue)
+		}
 	}
 	switch {
 	case errors.Is(err, ErrClientNotFound), errors.Is(err, ErrBrowserClientChanged):
@@ -294,6 +333,9 @@ func (opts Options) runBrowserAuthorization(c auth.EndpointContext, q url.Values
 		return nil, consentDecisionError(err)
 	case err != nil:
 		return nil, err
+	}
+	if signupRedirect != nil {
+		return signupRedirect, nil
 	}
 	return result(url.Values{"code": {code}}, false)
 }

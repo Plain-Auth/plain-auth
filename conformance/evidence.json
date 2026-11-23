@@ -13128,6 +13128,11 @@
       "label": "Apply host account-selection policy to an initial request, honor silent errors and preserve consent after selection",
       "test": "conformance/oauth-account-selection.mjs",
       "marker": "const silent = await start("
+    },
+    {
+      "label": "Return an interaction error for silent onboarding and wait for the host’s stored update before exposing consent",
+      "test": "conformance/oauth-signup-policy.mjs",
+      "marker": "const silent = await begin("
     }
   ],
   "docs/content/docs/plugins/oauth-provider/reference.mdx#L318/`GET / POST /oauth2/authorize`": [
@@ -13155,6 +13160,11 @@
       "label": "Apply host account-selection policy to an initial request, honor silent errors and preserve consent after selection",
       "test": "conformance/oauth-account-selection.mjs",
       "marker": "const silent = await start("
+    },
+    {
+      "label": "Return an interaction error for silent onboarding and wait for the host’s stored update before exposing consent",
+      "test": "conformance/oauth-signup-policy.mjs",
+      "marker": "const silent = await begin("
     }
   ],
   "plugin-symbol/oauth-provider/OAuthOptions/validateRedirectUri": [
@@ -13212,6 +13222,11 @@
       "label": "Consume a denial even when the callback has been removed and the operator later restores it",
       "test": "adapters/sqlstore/oauth_browser_consent_test.go",
       "marker": "restoring a callback revived an explicitly denied request"
+    },
+    {
+      "label": "Preserve narrowed approval when onboarding becomes required during consent and defer code issuance",
+      "test": "conformance/oauth-signup-policy.mjs",
+      "marker": "const deferred = await redirect("
     }
   ],
   "docs/content/docs/plugins/oauth-provider/reference.mdx#L319/`POST /oauth2/consent`": [
@@ -13236,6 +13251,11 @@
       "label": "Consume a decision once across two servers, isolate sessions and tenants, and roll back consent when code storage fails",
       "test": "adapters/sqlstore/oauth_browser_consent_test.go",
       "marker": "func TestInteractiveBrowserConsent("
+    },
+    {
+      "label": "Preserve narrowed approval when onboarding becomes required during consent and defer code issuance",
+      "test": "conformance/oauth-signup-policy.mjs",
+      "marker": "const deferred = await redirect("
     }
   ],
   "docs/content/docs/plugins/oauth-provider/sign-in-flow.mdx#L44": [
@@ -13281,6 +13301,11 @@
       "label": "Apply host account-selection policy to an initial request, honor silent errors and preserve consent after selection",
       "test": "conformance/oauth-account-selection.mjs",
       "marker": "const silent = await start("
+    },
+    {
+      "label": "Return an interaction error for silent onboarding and wait for the host’s stored update before exposing consent",
+      "test": "conformance/oauth-signup-policy.mjs",
+      "marker": "const silent = await begin("
     }
   ],
   "docs/content/docs/plugins/oauth-provider/sign-in-flow.mdx#L101/Parameter `accept`": [
@@ -13336,6 +13361,17 @@
       "label": "Create an account on the configured signup page and continue the signed request into consent",
       "test": "conformance/oauth-browser-login.mjs",
       "marker": "const create = await start("
+    },
+    {
+      "label": "Recheck saved onboarding, choose the default or a custom page, return silent errors and issue a code after completion",
+      "test": "conformance/oauth-signup-policy.mjs",
+      "marker": "const unfinished = await resume(",
+      "complete": true
+    },
+    {
+      "label": "Fall back to the login page or a dynamic URL, deny untrusted pages and host errors, and persist a deferred approval only once",
+      "test": "adapters/sqlstore/oauth_signup_step_test.go",
+      "marker": "func TestBrowserSignupPolicy("
     }
   ],
   "plugin-symbol/oauth-provider/OAuthOptions/signup": [
@@ -13343,6 +13379,17 @@
       "label": "Create an account on the configured signup page and continue the signed request into consent",
       "test": "conformance/oauth-browser-login.mjs",
       "marker": "const create = await start("
+    },
+    {
+      "label": "Recheck saved onboarding, choose the default or a custom page, return silent errors and issue a code after completion",
+      "test": "conformance/oauth-signup-policy.mjs",
+      "marker": "const unfinished = await resume(",
+      "complete": true
+    },
+    {
+      "label": "Fall back to the login page or a dynamic URL, deny untrusted pages and host errors, and persist a deferred approval only once",
+      "test": "adapters/sqlstore/oauth_signup_step_test.go",
+      "marker": "func TestBrowserSignupPolicy("
     }
   ],
   "plugin/oauth-provider/POST /oauth2/continue": [
@@ -13355,6 +13402,11 @@
       "label": "Resume the signed chooser with the selected browser account and preserve forced consent without repeating selection",
       "test": "conformance/oauth-account-selection.mjs",
       "marker": "const forcedConsent = await destination("
+    },
+    {
+      "label": "Re-evaluate the account on a signed created continuation and exchange its code only after the host records completion",
+      "test": "conformance/oauth-signup-policy.mjs",
+      "marker": "const returned = await resume("
     }
   ],
   "docs/content/docs/plugins/oauth-provider/reference.mdx#L320/`POST /oauth2/continue`": [
@@ -13367,6 +13419,11 @@
       "label": "Resume the signed chooser with the selected browser account and preserve forced consent without repeating selection",
       "test": "conformance/oauth-account-selection.mjs",
       "marker": "const forcedConsent = await destination("
+    },
+    {
+      "label": "Re-evaluate the account on a signed created continuation and exchange its code only after the host records completion",
+      "test": "conformance/oauth-signup-policy.mjs",
+      "marker": "const returned = await resume("
     }
   ],
   "docs/content/docs/plugins/oauth-provider/sign-in-flow.mdx#L205": [
@@ -13379,6 +13436,11 @@
       "label": "Resume the signed chooser with the selected browser account and preserve forced consent without repeating selection",
       "test": "conformance/oauth-account-selection.mjs",
       "marker": "const forcedConsent = await destination("
+    },
+    {
+      "label": "Re-evaluate the account on a signed created continuation and exchange its code only after the host records completion",
+      "test": "conformance/oauth-signup-policy.mjs",
+      "marker": "const returned = await resume("
     }
   ],
   "docs/content/docs/plugins/oauth-provider/sign-in-flow.mdx#L211/`POST /oauth2/continue`": [
@@ -13391,6 +13453,11 @@
       "label": "Resume the signed chooser with the selected browser account and preserve forced consent without repeating selection",
       "test": "conformance/oauth-account-selection.mjs",
       "marker": "const forcedConsent = await destination("
+    },
+    {
+      "label": "Re-evaluate the account on a signed created continuation and exchange its code only after the host records completion",
+      "test": "conformance/oauth-signup-policy.mjs",
+      "marker": "const returned = await resume("
     }
   ],
   "docs/content/docs/plugins/oauth-provider/sign-in-flow.mdx#L229/Parameter `oauth_query` (optional)": [
@@ -13411,6 +13478,11 @@
       "test": "adapters/sqlstore/oauth_browser_login_test.go",
       "marker": "signupQuery := start()",
       "complete": true
+    },
+    {
+      "label": "Re-evaluate the account on a signed created continuation and exchange its code only after the host records completion",
+      "test": "conformance/oauth-signup-policy.mjs",
+      "marker": "const returned = await resume("
     }
   ],
   "plugin-symbol/oauth-provider/OAuthOptions/selectAccount": [

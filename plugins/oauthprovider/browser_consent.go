@@ -30,6 +30,14 @@ type BrowserConsentStore interface {
 	FinishBrowserConsent(context.Context, BrowserCodeIssue, BrowserConsentPrompt, bool) error
 }
 
+// DeferredConsentStore supports recording approval when a host signup check
+// requires another step before the issuer can issue a code.
+type DeferredConsentStore interface {
+	// ApproveBrowserConsent validates the live client, session and bound prompt,
+	// consumes the prompt and records the selected scopes in one transaction.
+	ApproveBrowserConsent(context.Context, BrowserCodeIssue, BrowserConsentPrompt) error
+}
+
 type browserConsentDecision struct {
 	clientFingerprint string
 	session           *auth.SessionResult

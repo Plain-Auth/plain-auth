@@ -12,6 +12,7 @@ import { exerciseClientKeyRotation } from "./oauth-key-rotation.mjs";
 import { exerciseClientAssertions } from "./oauth-client-assertions.mjs";
 import { exerciseRefreshIntrospection } from "./oauth-refresh-introspection.mjs";
 import { exerciseRefreshGrant } from "./oauth-refresh-grant.mjs";
+import { exerciseSignupPolicy } from "./oauth-signup-policy.mjs";
 import { exerciseAccountSelection } from "./oauth-account-selection.mjs";
 import { exerciseBrowserLogin } from "./oauth-browser-login.mjs";
 import { exerciseBrowserAuthorization } from "./oauth-browser-authorization.mjs";
@@ -23,7 +24,11 @@ function options(mode) {
   if (mode === "disabled") return { loginPage: "/login", consentPage: "/consent" };
   return {
     loginPage: "/login",
-    signup: { page: "/signup" },
+    signup: { page: "/signup", shouldRedirect: ({ headers, user, session, scopes }) => {
+      if (user.email !== "onboarding@issuer.test" || session.userId !== user.id || !headers.get("Cookie") || !scopes.includes("reports")) return false;
+      if (user.name === "Registration") return true;
+      return user.name === "Profile" ? "/setup" : false;
+    } },
     ...(mode === "protected" && { selectAccount: {
       page: "/choose-account",
       shouldRedirect: ({ headers, session, user, scopes }) => headers.get("X-Choose-Account") === "yes"
@@ -352,6 +357,9 @@ export async function compareClientRegistration(t, reference, goFixture) {
         });
         await t.test("authorize a browser by GET or form POST and redeem the code locally or at a peer", async () => {
           await exerciseBrowserAuthorization({ server, issuer, db });
+        });
+        await t.test("finish host onboarding before issuing an authorization code", async () => {
+          await exerciseSignupPolicy({ server, db, created, cookie, request });
         });
         await t.test("choose a browser account, approve its scopes and exchange its code", async () => {
           await exerciseAccountSelection({ server, db, created, cookie, request });

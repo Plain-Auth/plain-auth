@@ -105,6 +105,33 @@ if err != nil {
 
 The newly active account supplies the session and any prior consent used for code issuance. If it needs consent, the returned URL is the consent page. The issuer checks the client registration and callback again, and a removed or replaced client cannot inherit a pending choice. [Multi-session setup](multi-session.md) · [Two remembered accounts on three databases](../adapters/sqlstore/oauth_account_selection_test.go) · [Protocol and token exchange](../conformance/oauth-account-selection.mjs)
 
+## Require onboarding before authorization
+
+A signed-in user may still need to accept terms or finish setting up a profile. Configure `Authorization.CheckSignup` to read your application's record for the active user. The issuer calls it after account selection and again when a signed interaction resumes. A client that requests `prompt=none` gets `interaction_required` at its registered callback if onboarding is required.
+
+For example, suppose your application stores terms acceptance by user ID and version. Here `terms.Accepted` is your storage lookup and `currentVersion` is the version you require.
+
+```go
+Authorization: oauthprovider.BrowserAuthorizationOptions{
+    LoginPage:   "/login",
+    SignupPage:  "/signup",
+    ConsentPage: "/consent",
+    CheckSignup: func(ctx context.Context, a oauthprovider.RegistrationAccess, scopes []string) (*oauthprovider.SignupStep, error) {
+        accepted, err := terms.Accepted(ctx, a.User.ID, currentVersion)
+        if err != nil || accepted {
+            return nil, err
+        }
+        return &oauthprovider.SignupStep{Page: "/accept-terms"}, nil
+    },
+},
+```
+
+Return `nil, nil` to continue. Return `&oauthprovider.SignupStep{}` for the configured signup page, with the login page as its fallback. Set `Page` to choose a specific trusted page. A lookup error stops authorization. The callback receives the current user, session, request headers and requested scopes. An approval for fewer scopes passes those chosen scopes on the next check.
+
+In the onboarding page's GET handler, verify the signed query with `api.VerifyOAuthPageQuery`. On submission, use your application's authenticated handler to persist the user's decision. Then use the same browser session to post `{"created":true,"oauth_query":"<verified page query>"}` to `/api/auth/oauth2/continue`, or call `sdk.ContinueOAuthSignup(ctx, fields.Encode())`. Follow the returned URL. If the saved record still requires onboarding, that URL leads back to the required page.
+
+If the policy changes while a consent screen is open, the issuer can record the user's approval for the selected scopes and return to onboarding. It consumes the consent prompt once. Code issuance waits until the check passes and the issuer revalidates the active session, client and approval. The bundled SQL adapters support this transaction. A custom store that enables both interactive consent and signup checks must implement `oauthprovider.DeferredConsentStore`. [End-to-end code exchange](../conformance/oauth-signup-policy.mjs) · [Three-database tests](../adapters/sqlstore/oauth_signup_step_test.go)
+
 ## Ask the user for consent
 
 Set `Authorization.ConsentPage` to a page in your application and mount it alongside the auth handler. When a signed-in user first visits a client or the client asks for additional scopes, the issuer redirects to that page. An explicit `prompt=consent` opens it again, including for operator-approved clients. With `prompt=none` the client receives an interaction error. Leaving the page unset supports applications that already have approval.
@@ -155,7 +182,7 @@ async function decide(accept, scope) {
 
 An application using the Go client can call `sdk.DecideOAuthConsent(ctx, fields.Encode(), accept, selectedScopes)` with the user’s cookie jar. It returns the destination URL. Pass `nil` for all requested scopes or an empty slice to approve zero scopes.
 
-Approval returns a callback URL containing a single-use code. The issuer stores the selected scopes and code together. A denial returns `access_denied` and preserves earlier approval. The issuer revalidates the registered callback before sending either decision. A disabled client or removed callback sends the user to the issuer's error page. A request can be decided once, by the browser session and tenant that saw the prompt. It expires after `CodeLifetime`. Start a new authorization request if an old tab or retry reports that the decision was already used. [Browser flow and independent signature verification](../conformance/oauth-browser-authorization.mjs) · [Database rollback and concurrent decisions](../adapters/sqlstore/oauth_browser_consent_test.go)
+When onboarding is complete, approval returns a callback URL containing a single-use code. The issuer stores the selected scopes and code together. A denial returns `access_denied` and preserves earlier approval. The issuer revalidates the registered callback before sending either decision. A disabled client or removed callback sends the user to the issuer's error page. A request can be decided once, by the browser session and tenant that saw the prompt. It expires after `CodeLifetime`. Start a new authorization request if an old tab or retry reports that the decision was already used. [Browser flow and independent signature verification](../conformance/oauth-browser-authorization.mjs) · [Database rollback and concurrent decisions](../adapters/sqlstore/oauth_browser_consent_test.go)
 
 ## Configure issuance
 
@@ -165,6 +192,7 @@ Approval returns a callback URL containing a single-use code. The issuer stores 
 | --- | --- |
 | `LoginPage` | Trusted host page for signing in or reauthenticating, such as `/login`. |
 | `SignupPage` | Optional account-creation page for `prompt=create`. Defaults to the login page. |
+| `CheckSignup` | Recheck the host’s onboarding requirements before issuing a code for the current account and scopes. |
 | `SelectAccount` | Optional account chooser page and policy for initial browser authorization. |
 | `ConsentPage` | Trusted host page for first-time and forced approvals, such as `/consent`. |
 | `CodeLifetime` | Codes and signed interaction prompts expire after ten minutes by default. Set a positive duration in whole seconds to change it. |

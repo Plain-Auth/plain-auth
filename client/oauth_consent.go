@@ -52,8 +52,8 @@ func (c *Client) DecideOAuthConsent(ctx context.Context, signedQuery string, acc
 	return result.URL, err
 }
 
-// ContinueOAuthSignup tells the issuer that the host's account-creation step is
-// complete. The signed-in user's cookie jar carries the session on this request.
+// ContinueOAuthSignup resumes after account creation or onboarding. The issuer
+// rechecks the active user's signup policy before it continues authorization.
 func (c *Client) ContinueOAuthSignup(ctx context.Context, signedQuery string) (string, error) {
 	return c.continueOAuthAccount(ctx, signedQuery, "created")
 }
