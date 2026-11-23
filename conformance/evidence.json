@@ -858,6 +858,16 @@
       "label": "Reject team IDs outside the invitation’s organization, including reserved delimiters",
       "test": "adapters/sqlstore/organization_teams_test.go",
       "marker": "err = invite(peerUser, \"member\", foreign[0].ID)"
+    },
+    {
+      "label": "Notify host code of a new or replaced invitation after delivery and skip the creation callback on renewal",
+      "test": "conformance/invitation-creation.mjs",
+      "marker": "assert.deepEqual(batch.map(e => e.phase), expected)"
+    },
+    {
+      "label": "Keep a committed grant available for resend after the creation callback fails",
+      "test": "conformance/invitation-creation.mjs",
+      "marker": "await check(saved, false)"
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L893": [
@@ -865,6 +875,16 @@
       "label": "Authorize the inviter, constrain role grants, and resend the same invitation",
       "test": "plugins/organization/organization_test.go",
       "marker": "resend lost the original invitation"
+    },
+    {
+      "label": "Notify host code of a new or replaced invitation after delivery and skip the creation callback on renewal",
+      "test": "conformance/invitation-creation.mjs",
+      "marker": "assert.deepEqual(batch.map(e => e.phase), expected)"
+    },
+    {
+      "label": "Keep a committed grant available for resend after the creation callback fails",
+      "test": "conformance/invitation-creation.mjs",
+      "marker": "await check(saved, false)"
     }
   ],
   "plugin/organization/POST /organization/accept-invitation": [
@@ -10289,6 +10309,16 @@
       "label": "Recheck the live recipient, grant and remaining seats after the host callback on all three SQL engines",
       "test": "adapters/sqlstore/organization_acceptance_hooks_test.go",
       "marker": "t.Fatal(\"unsuccessful acceptance changed the grant or membership\""
+    },
+    {
+      "label": "Notify host code of a new or replaced invitation after delivery and skip the creation callback on renewal",
+      "test": "conformance/invitation-creation.mjs",
+      "marker": "assert.deepEqual(batch.map(e => e.phase), expected)"
+    },
+    {
+      "label": "Keep a committed grant available for resend after the creation callback fails",
+      "test": "conformance/invitation-creation.mjs",
+      "marker": "await check(saved, false)"
     }
   ],
   "plugin-symbol/siwe/SIWEPluginOptions/getNonce": [
@@ -14769,6 +14799,16 @@
       "label": "Recheck the live recipient, grant and remaining seats after the host callback on all three SQL engines",
       "test": "adapters/sqlstore/organization_acceptance_hooks_test.go",
       "marker": "t.Fatal(\"unsuccessful acceptance changed the grant or membership\""
+    },
+    {
+      "label": "Notify host code of a new or replaced invitation after delivery and skip the creation callback on renewal",
+      "test": "conformance/invitation-creation.mjs",
+      "marker": "assert.deepEqual(batch.map(e => e.phase), expected)"
+    },
+    {
+      "label": "Keep a committed grant available for resend after the creation callback fails",
+      "test": "conformance/invitation-creation.mjs",
+      "marker": "await check(saved, false)"
     }
   ],
   "plugin-symbol/organization/OrganizationOptions/invitationExpiresIn": [

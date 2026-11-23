@@ -298,6 +298,9 @@ func main() {
 			if os.Getenv("CONFORMANCE_INVITATION_DELIVERY") == "1" {
 				options.SendInvitationEmail = recordInvitationEmail(os.Args[1] + ".invitation-mail")
 			}
+			if mode := os.Getenv("CONFORMANCE_INVITATION_CREATION"); mode != "" {
+				configureInvitationCreation(&options, os.Args[1]+".creation-events", mode)
+			}
 			if os.Getenv("CONFORMANCE_ORG_PROFILE_HOOKS") == "1" {
 				configureOrganizationProfileHooks(&options, os.Args[1]+".org-profile-events")
 			}

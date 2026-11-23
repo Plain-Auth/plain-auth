@@ -26,14 +26,14 @@ func (s *Store) IssueInvitationForDelivery(ctx context.Context, inv org.Invitati
 	return &delivery.message, nil
 }
 
-func (s *Store) commitIssuedInvitation(ctx context.Context, tx *sql.Tx, inv org.Invitation, member org.Member, delivery *invitationDelivery) (org.Invitation, error) {
+func (s *Store) commitIssuedInvitation(ctx context.Context, tx *sql.Tx, inv org.Invitation, member org.Member, delivery *invitationDelivery, resent bool) (org.Invitation, error) {
 	if delivery != nil {
 		issuer, err := s.invitationIssuer(ctx, tx, member)
 		if err != nil {
 			return org.Invitation{}, err
 		}
 		delivery.message = org.InvitationDelivery{
-			Invitation: inv, Email: strings.ToLower(inv.Email), Organization: issuer.Organization,
+			Invitation: inv, Email: strings.ToLower(inv.Email), Organization: issuer.Organization, Resent: resent,
 			Inviter: org.InvitationSender{Member: member, User: issuer.User},
 		}
 	}

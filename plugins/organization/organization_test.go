@@ -39,10 +39,14 @@ func TestMemberScopedOrganizationLifecycle(t *testing.T) {
 	}
 	defer store.Close()
 	var delivered []string
+	var observed []string
 	var deliveryError error
 	plugin, err := organization.New(organization.Options{Store: store, SendInvitation: func(_ context.Context, inv organization.Invitation) error {
 		delivered = append(delivered, inv.ID)
 		return deliveryError
+	}, AfterCreateInvitation: func(_ context.Context, event organization.InvitationDecisionEvent) error {
+		observed = append(observed, event.Invitation.ID)
+		return nil
 	}})
 	if err != nil {
 		t.Fatal(err)
@@ -128,6 +132,9 @@ func TestMemberScopedOrganizationLifecycle(t *testing.T) {
 	if len(delivered) != 2 || delivered[0] != i.ID || delivered[1] != i.ID {
 		t.Fatal("resend lost the original invitation")
 	}
+	if len(observed) != 0 {
+		t.Fatal("a failed simple sender or its renewal fired the creation callback")
+	}
 	denied(accept(outsider, i.ID), "YOU_ARE_NOT_THE_RECIPIENT_OF_THE_INVITATION")
 	foreign, err := outsider.GetSession(ctx)
 	must(err)
@@ -161,6 +168,9 @@ func TestMemberScopedOrganizationLifecycle(t *testing.T) {
 	}
 	adminInvite, err := invite(owner, "admin@example.test", "admin", false)
 	must(err)
+	if len(observed) != 1 || observed[0] != adminInvite.ID {
+		t.Fatal("successful simple sender did not precede the creation callback")
+	}
 	joined, err := admin.AcceptOrganizationInvitation(ctx, adminInvite.ID)
 	must(err)
 	if joined.Member.ID == "" || joined.Member.Role != "admin" || joined.Member.OrganizationID != created.ID || joined.Invitation.ID != adminInvite.ID || joined.Invitation.Status != "accepted" {

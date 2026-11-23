@@ -1948,6 +1948,11 @@ test("host invitation email receives the issuer, destination and request on issu
   await compareInvitationDelivery(t, { reference, goFixture, instrument });
 });
 
+test("invitation creation observers run once per new grant after mail delivery", async t => {
+  const { compareInvitationCreation } = await import("./invitation-creation.mjs");
+  await compareInvitationCreation(t, { reference, goFixture, instrument });
+});
+
 test("host invitation lifetimes apply to new grants and resends", async t => {
   const { compareInvitationExpiration } = await import("./invitation-expiration.mjs");
   await compareInvitationExpiration(t, { reference, goFixture, instrument });

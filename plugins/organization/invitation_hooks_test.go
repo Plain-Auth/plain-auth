@@ -50,6 +50,9 @@ func TestInvitationHooksRequireGuardedStore(t *testing.T) {
 		t.Fatal("acceptance hook accepted on a store without guarded admission")
 	}
 	sender := func(context.Context, InvitationDelivery) error { return nil }
+	if _, err := New(Options{Store: basic{}, AfterCreateInvitation: func(context.Context, InvitationDecisionEvent) error { return nil }}); err == nil {
+		t.Fatal("creation callback registered without a committed issuance snapshot")
+	}
 	if _, err := New(Options{Store: basic{}, SendInvitationEmail: sender}); err == nil {
 		t.Fatal("mail sender registered without a delivery store")
 	}

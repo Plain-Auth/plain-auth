@@ -18,6 +18,8 @@ type InvitationSender struct {
 // InvitationDelivery describes one committed invitation for a host mailer.
 // Email is the normalized delivery address. Request holds HTTP metadata.
 type InvitationDelivery struct {
+	// Resent identifies renewal of an existing invitation. A replacement is new.
+	Resent       bool             `json:"resent"`
 	Email        string           `json:"email"`
 	Invitation   Invitation       `json:"invitation"`
 	Organization Organization     `json:"organization"`
@@ -33,7 +35,7 @@ type InvitationDeliveryStore interface {
 
 var errInvitationDelivery = errors.New("organization: invitation delivery failed")
 
-func (o Options) deliverInvitation(c auth.EndpointContext, session *auth.SessionResult, inv Invitation, resend bool) (Invitation, error) {
+func (o Options) issueObservedInvitation(c auth.EndpointContext, session *auth.SessionResult, inv Invitation, resend bool) (Invitation, error) {
 	ctx := c.Request.Context()
 	store := o.Store.(InvitationDeliveryStore)
 	event, err := store.IssueInvitationForDelivery(ctx, inv, session.Session, resend, o.CancelPendingInvitationsOnReInvite && !resend)
@@ -43,19 +45,51 @@ func (o Options) deliverInvitation(c auth.EndpointContext, session *auth.Session
 	if event == nil {
 		return Invitation{}, errors.New("organization: invitation store returned no delivery")
 	}
-	actor, err := invitationActor(session.User, event.Inviter.User)
-	if err != nil {
+	if o.SendInvitationEmail != nil {
+		if err := o.deliverInvitationEmail(c, session.User, *event); err != nil {
+			return Invitation{}, err
+		}
+	} else if err := o.sendSimpleInvitation(ctx, event.Invitation); err != nil {
 		return Invitation{}, err
+	}
+	if !event.Resent && o.AfterCreateInvitation != nil {
+		created := InvitationDecisionEvent{Actor: event.Inviter.User, Organization: event.Organization, Invitation: event.Invitation}
+		if err := decisionHook(o.AfterCreateInvitation, session.User)(ctx, created); err != nil {
+			return Invitation{}, err
+		}
+	}
+	return event.Invitation, nil
+}
+
+func (o Options) deliverInvitationEmail(c auth.EndpointContext, user auth.User, event InvitationDelivery) error {
+	actor, err := invitationActor(user, event.Inviter.User)
+	if err != nil {
+		return err
 	}
 	event.Inviter.User = actor
 	event.Email = strings.ToLower(event.Invitation.Email)
-	message, err := detachedInvitationEvent(*event)
+	message, err := detachedInvitationEvent(event)
 	if err != nil {
-		return Invitation{}, err
+		return err
 	}
 	message.Request = c.RequestMetadata()
+	ctx := c.Request.Context()
 	if err := o.SendInvitationEmail(ctx, message); err != nil {
 		c.Auth.Logger().ErrorContext(ctx, "Could not deliver organization invitation email")
 	}
-	return event.Invitation, nil
+	return nil
+}
+
+func (o Options) sendSimpleInvitation(ctx context.Context, inv Invitation) error {
+	if o.SendInvitation == nil {
+		return nil
+	}
+	if inv.TeamID != nil {
+		teamID := *inv.TeamID
+		inv.TeamID = &teamID
+	}
+	if err := o.SendInvitation(ctx, inv); err != nil {
+		return errInvitationDelivery
+	}
+	return nil
 }

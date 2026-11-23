@@ -322,7 +322,7 @@ func (s *Store) issueInvitationTx(ctx context.Context, inv org.Invitation, issue
 		if err != nil {
 			return org.Invitation{}, err
 		}
-		return s.commitIssuedInvitation(ctx, tx, pending, member.Member, issue.delivery)
+		return s.commitIssuedInvitation(ctx, tx, pending, member.Member, issue.delivery, true)
 	case issue.replace:
 		if err := s.updateInvitationStatus(ctx, tx, &pending, "canceled"); err != nil {
 			return org.Invitation{}, err
@@ -355,7 +355,7 @@ func (s *Store) issueInvitationTx(ctx context.Context, inv org.Invitation, issue
 	if err != nil {
 		return org.Invitation{}, err
 	}
-	return s.commitIssuedInvitation(ctx, tx, inv, member.Member, issue.delivery)
+	return s.commitIssuedInvitation(ctx, tx, inv, member.Member, issue.delivery, false)
 }
 
 func (s *Store) AcceptOrganizationInvitation(ctx context.Context, id, sessionID string, u authn.User, now time.Time, requireVerified bool) (org.Invitation, org.Member, error) {

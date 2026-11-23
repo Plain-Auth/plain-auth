@@ -16,7 +16,7 @@ func TestInvitationDeliverySnapshot(t *testing.T) {
 			store, peer, owner, admin, group := invitationWriterFixture(t, dialect)
 			inv := org.Invitation{ID: "first", Email: "guest@example.test", Role: "member", InviterID: owner.UserID, OrganizationID: group.ID, CreatedAt: group.CreatedAt, ExpiresAt: group.CreatedAt.Add(time.Hour), Status: "pending"}
 			created, err := store.IssueInvitationForDelivery(ctx, inv, owner, false, false)
-			if err != nil || created.Invitation.ID != inv.ID || created.Inviter.ID != "owner" || created.Inviter.User.ID != owner.UserID {
+			if err != nil || created.Resent || created.Invitation.ID != inv.ID || created.Inviter.ID != "owner" || created.Inviter.User.ID != owner.UserID {
 				t.Fatal("issue did not capture its original sender", err)
 			}
 			if _, err := peer.db.ExecContext(ctx, peer.bind(`UPDATE "organization" SET "name"=? WHERE "id"=?`), "Renamed", group.ID); err != nil {
@@ -32,11 +32,11 @@ func TestInvitationDeliverySnapshot(t *testing.T) {
 				t.Fatal("inactive issuing session produced a delivery", err)
 			}
 			renewed, err := store.IssueInvitationForDelivery(ctx, inv, admin, true, true)
-			if err != nil || renewed.Invitation.ID != "first" || renewed.Invitation.Role != "member" || renewed.Invitation.InviterID != owner.UserID || renewed.Inviter.ID != "admin" || renewed.Inviter.User.ID != admin.UserID || renewed.Organization.Name != "Renamed" || renewed.Email != inv.Email || renewed.Invitation.Email != strings.ToUpper(inv.Email) {
+			if err != nil || !renewed.Resent || renewed.Invitation.ID != "first" || renewed.Invitation.Role != "member" || renewed.Invitation.InviterID != owner.UserID || renewed.Inviter.ID != "admin" || renewed.Inviter.User.ID != admin.UserID || renewed.Organization.Name != "Renamed" || renewed.Email != inv.Email || renewed.Invitation.Email != strings.ToUpper(inv.Email) {
 				t.Fatal("resend lost the stored grant or current delivery sender", err)
 			}
 			replaced, err := store.IssueInvitationForDelivery(ctx, inv, admin, false, true)
-			if err != nil || replaced.Invitation.ID != inv.ID || replaced.Invitation.InviterID != admin.UserID || replaced.Invitation.Role != "admin" {
+			if err != nil || replaced.Resent || replaced.Invitation.ID != inv.ID || replaced.Invitation.InviterID != admin.UserID || replaced.Invitation.Role != "admin" {
 				t.Fatal("replacement did not snapshot the newly issued grant", err)
 			}
 			var status string

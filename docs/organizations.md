@@ -241,7 +241,15 @@ Set `SendInvitationEmail` on `organization.Options` to deliver mail or enqueue a
 
 On a resend, `Inviter` identifies the member sending the new message. `Invitation.InviterID` still identifies the person who issued the original grant. The original ID, role and targeted teams remain available in `Invitation`. The SQL adapter captures these fields in the transaction that saves the grant. Delivery runs after commit, so the callback can read the invitation through another connection.
 
-The handler waits for `SendInvitationEmail`. If it returns an error, Plain Auth logs a delivery failure and returns the committed invitation. A successful invite response confirms the grant was saved. To retry delivery, send the same invitation request with `resend: true`. Applications that need delivery confirmation can record the mail provider’s receipt in their callback. The simpler `SendInvitation(ctx, invitation)` callback returns HTTP 500 on delivery failure and also preserves the grant. Configure one sender. Custom stores using `SendInvitationEmail` implement `organization.InvitationDeliveryStore`. [HTTP delivery and resend tests](../conformance/invitation-delivery.mjs) · [Three-engine delivery tests](../adapters/sqlstore/organization_delivery_test.go)
+The handler waits for `SendInvitationEmail`. If it returns an error, Plain Auth logs a delivery failure and returns the committed invitation. A successful invite response confirms the grant was saved. To retry delivery, send the same invitation request with `resend: true`. Applications that need delivery confirmation can record the mail provider’s receipt in their callback. The simpler `SendInvitation(ctx, invitation)` callback returns HTTP 500 on delivery failure and also preserves the grant. Configure one sender. Custom stores using `SendInvitationEmail` implement `organization.InvitationDeliveryStore`. Its result sets `Resent` to true when it renews an existing grant. [HTTP delivery and resend tests](../conformance/invitation-delivery.mjs) · [Three-engine delivery tests](../adapters/sqlstore/organization_delivery_test.go)
+
+## Observe newly issued invitations
+
+Set `AfterCreateInvitation` on `organization.Options` to record a new invitation in your application. The callback receives the committed invitation, its destination organization and the public account of the member who issued it. For example, store an audit record using `event.Invitation.ID`, `event.Organization.ID` and `event.Actor.ID`.
+
+The callback runs after the configured sender. With `SendInvitationEmail`, it also runs when delivery returns an error, since the grant still exists. With no sender configured, it runs immediately after commit. A replacement has a fresh ID and triggers the callback. Explicitly resending a live invitation renews its deadline and delivers mail without triggering another creation callback. A resend request that finds no live grant creates one and triggers the callback.
+
+A creation callback error fails the HTTP request. The invitation remains pending and can be retrieved with `ListOrganizationInvitations`. Resending that saved grant leaves the creation callback’s invocation count unchanged. [Creation and delivery order tests](../conformance/invitation-creation.mjs)
 
 ## Limit outstanding invitations
 
