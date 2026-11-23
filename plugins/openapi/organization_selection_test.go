@@ -68,6 +68,15 @@ func TestOrganizationSelectionSchema(t *testing.T) {
 				t.Fatal("schema request failed", w.Code, err)
 			}
 			paths := node(doc, "paths")
+			activeMember := node(paths, "/organization/get-active-member", "get")
+			memberFields, _ := node(activeMember, "responses", "200", "content", "application/json", "schema")["allOf"].([]any)
+			if len(memberFields) != 2 || memberFields[0].(obj)["$ref"] != "#/components/schemas/Member" {
+				t.Fatal("expected active member response to include the membership")
+			}
+			user := node(memberFields[1].(obj), "properties", "user", "properties")
+			if len(user) != 4 || user["id"] == nil || user["name"] == nil || user["email"] == nil || user["image"] == nil {
+				t.Fatal("unexpected public member user fields", user)
+			}
 			for path, model := range map[string]string{"/organization/set-active": "Organization", "/organization/set-active-team": "Team"} {
 				if model == "Team" && !tc.teams {
 					if paths[path] != nil {

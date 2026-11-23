@@ -13942,5 +13942,59 @@
       "test": "adapters/sqlstore/oauth_id_token_test.go",
       "marker": "received admin data outside the installed schema"
     }
+  ],
+  "plugin/organization/GET /organization/get-active-member": [
+    {
+      "label": "Read the live membership and its public user profile from each signed-in session across organization switches",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.equal(active.organizationId, expected.id)",
+      "complete": true
+    },
+    {
+      "label": "Distinguish a cleared selection from a removed membership and a signed-out client on all three SQL engines",
+      "test": "adapters/sqlstore/organization_selection_http_test.go",
+      "marker": "code(two, 400, \"MEMBER_NOT_FOUND\")"
+    },
+    {
+      "label": "Report role updates immediately and ignore caller-supplied organization and user selectors",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.equal(ok(await first.organization.getActiveMember()).role, \"admin,member\")"
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1163": [
+    {
+      "label": "Read the live membership and its public user profile from each signed-in session across organization switches",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.equal(active.organizationId, expected.id)",
+      "complete": true
+    },
+    {
+      "label": "Distinguish a cleared selection from a removed membership and a signed-out client on all three SQL engines",
+      "test": "adapters/sqlstore/organization_selection_http_test.go",
+      "marker": "code(two, 400, \"MEMBER_NOT_FOUND\")"
+    },
+    {
+      "label": "Report role updates immediately and ignore caller-supplied organization and user selectors",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.equal(ok(await first.organization.getActiveMember()).role, \"admin,member\")"
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1167/`GET /organization/get-active-member`": [
+    {
+      "label": "Read the live membership and its public user profile from each signed-in session across organization switches",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.equal(active.organizationId, expected.id)",
+      "complete": true
+    },
+    {
+      "label": "Distinguish a cleared selection from a removed membership and a signed-out client on all three SQL engines",
+      "test": "adapters/sqlstore/organization_selection_http_test.go",
+      "marker": "code(two, 400, \"MEMBER_NOT_FOUND\")"
+    },
+    {
+      "label": "Report role updates immediately and ignore caller-supplied organization and user selectors",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.equal(ok(await first.organization.getActiveMember()).role, \"admin,member\")"
+    }
   ]
 }

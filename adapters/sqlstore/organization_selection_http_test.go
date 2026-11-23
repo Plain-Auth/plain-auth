@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	auth "github.com/Plain-Auth/plain-auth"
+	"github.com/Plain-Auth/plain-auth/client"
 	org "github.com/Plain-Auth/plain-auth/plugins/organization"
 	"github.com/Plain-Auth/plain-auth/schema"
 )
@@ -147,6 +148,27 @@ func TestOrganizationAndTeamSelectionHTTP(t *testing.T) {
 			set(one, "set-active", "organizationId", nil, 200)
 			session(one, "", "")
 			session(two, second, "")
+			sdk, err := client.New(origin, two)
+			must(err)
+			active, err := sdk.ActiveOrganizationMember(ctx)
+			must(err)
+			if active.OrganizationID != second || active.ID == "" || active.Role != "owner" || active.UserID != active.User.ID || active.User.Email != login["email"] || active.CreatedAt.IsZero() {
+				t.Fatal("membership did not match the calling session")
+			}
+			code := func(c *http.Client, status int, expected string) {
+				t.Helper()
+				var body struct{ Code string }
+				must(json.Unmarshal(send(c, "GET", "organization/get-active-member?organizationId="+second, nil, status), &body))
+				if body.Code != expected {
+					t.Fatalf("active member error = %q, want %q", body.Code, expected)
+				}
+			}
+			code(one, 400, "NO_ACTIVE_ORGANIZATION")
+			_, err = store.db.ExecContext(ctx, store.bind(`DELETE FROM "member" WHERE "id"=?`), active.ID)
+			must(err)
+			code(two, 400, "MEMBER_NOT_FOUND")
+			send(two, "POST", "sign-out", nil, 200)
+			code(two, 401, "UNAUTHORIZED")
 		})
 	}
 }

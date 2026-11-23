@@ -156,7 +156,7 @@ For integration tests, create fixture users and organizations, capture email or 
 | Generate tables and migrate SQLite, PostgreSQL, or MySQL | [Databases and CLI](docs/databases.md) |
 | Register a username and sign in with a password | [Username sign-in](docs/username.md) |
 | Manage users, ban accounts and grant administrative access | [Administrator accounts](docs/admin.md) |
-| Create organizations and teams, grant memberships, and accept invitations | [Organizations](docs/organizations.md) |
+| Switch organizations and teams, read the current membership, grant memberships and accept invitations | [Organizations](docs/organizations.md) |
 | Start recurring Checkout, synchronize subscription changes, cancel, and restore | [Subscription billing](docs/subscriptions.md) |
 | Set up Polar checkout, billing state, the customer portal and signed webhooks | [Polar hosted checkout](docs/polar.md) |
 | Add a custom endpoint, verify Stripe webhooks, or open the billing portal | [Plugins and Stripe](docs/plugins.md) |

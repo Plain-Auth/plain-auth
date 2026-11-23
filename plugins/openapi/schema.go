@@ -14,6 +14,7 @@ import (
 	"sync"
 
 	"github.com/Plain-Auth/plain-auth"
+	"github.com/Plain-Auth/plain-auth/plugins/organization"
 )
 
 //go:embed catalog.json
@@ -171,6 +172,8 @@ func publicResponse(route plainauth.HTTPRoute, info plainauth.HTTPDescription, f
 		return object{"anyOf": shapes}
 	case "/organization/update-member-role":
 		return modelRef("Member")
+	case "/organization/get-active-member":
+		return object{"allOf": []object{modelRef("Member"), responseObject(object{"user": modelSchema(reflect.TypeFor[organization.MemberUser]())}, "user")}}
 	case "/organization/create-team", "/organization/update-team":
 		return modelRef("Team")
 	case "/organization/list-user-teams", "/organization/list-teams":

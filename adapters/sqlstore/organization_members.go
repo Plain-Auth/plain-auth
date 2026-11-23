@@ -4,10 +4,43 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"time"
 
 	auth "github.com/Plain-Auth/plain-auth"
 	org "github.com/Plain-Auth/plain-auth/plugins/organization"
 )
+
+// ActiveOrganizationMember reads the current selection and role in a single
+// snapshot, including when another request switches organizations or removes a member.
+func (s *Store) ActiveOrganizationMember(ctx context.Context, sessionID, userID string) (*org.ActiveMember, error) {
+	exact := s.exactSQLValue
+	query := `SELECT ss."activeOrganizationId", m."id", m."role", m."createdAt", u."id", u."name", u."email", u."image"
+		FROM "session" ss
+		JOIN "user" u ON u."id"=` + exact(`ss."userId"`) + `
+		LEFT JOIN "member" m ON m."userId"=` + exact(`ss."userId"`) + ` AND m."organizationId"=` + exact(`ss."activeOrganizationId"`) + `
+		WHERE ss."id"=` + exact("?") + ` AND ss."userId"=` + exact("?") + ` AND ss."expiresAt">?`
+	var active, memberID, role sql.NullString
+	var created sql.NullTime
+	var profile org.MemberUser
+	err := s.db.QueryRowContext(ctx, s.bind(query), sessionID, userID, s.date(time.Now())).Scan(
+		&active, &memberID, &role, &created, &profile.ID, &profile.Name, &profile.Email, &profile.Image)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, org.ErrUnauthenticated
+	}
+	if err != nil {
+		return nil, err
+	}
+	if active.String == "" {
+		return nil, org.ErrNoActiveOrg
+	}
+	if !memberID.Valid {
+		return nil, org.ErrMemberMissing
+	}
+	return &org.ActiveMember{
+		Member: org.Member{ID: memberID.String, OrganizationID: active.String, UserID: profile.ID, Role: role.String, CreatedAt: created.Time},
+		User:   profile,
+	}, nil
+}
 
 // AddOrganizationMember adds an existing account from trusted application code.
 func (s *Store) AddOrganizationMember(ctx context.Context, m org.Member, teamID string) error {

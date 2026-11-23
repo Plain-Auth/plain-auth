@@ -7,6 +7,19 @@ import (
 	"time"
 )
 
+// ActiveMember is the current membership and public profile of a signed-in user.
+type ActiveMember struct {
+	Member
+	User MemberUser `json:"user"`
+}
+
+// ActiveMemberStore resolves the live session selection, its membership and user
+// together. A session without a selection returns ErrNoActiveOrg. A selection
+// without a corresponding membership returns ErrMemberMissing.
+type ActiveMemberStore interface {
+	ActiveOrganizationMember(ctx context.Context, sessionID, userID string) (*ActiveMember, error)
+}
+
 // AddMemberRequest names an existing account and its destination. TeamID is optional.
 type AddMemberRequest struct {
 	OrganizationID string

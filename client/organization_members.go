@@ -7,6 +7,16 @@ import (
 	org "github.com/Plain-Auth/plain-auth/plugins/organization"
 )
 
+// ActiveOrganizationMember returns the signed-in user's membership in the
+// organization selected by this client's session.
+func (c *Client) ActiveOrganizationMember(ctx context.Context) (*org.ActiveMember, error) {
+	var out org.ActiveMember
+	if err := c.Do(ctx, http.MethodGet, "/organization/get-active-member", nil, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
 // RemoveOrganizationMember removes a member by membership ID or email. An empty
 // organizationID uses the calling session's active organization.
 func (c *Client) RemoveOrganizationMember(ctx context.Context, memberIDOrEmail, organizationID string) (*org.RemovedMember, error) {

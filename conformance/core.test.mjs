@@ -1837,3 +1837,48 @@ test("operator ID-token claims use current identity, scopes and metadata across 
   const {compareIDTokens} = await import("./oauth-id-tokens.mjs");
   await compareIDTokens(t, reference, goFixture, true);
 });
+
+test("active membership follows the calling session and returns its current public profile", async t => {
+  for (const server of [await reference(t, [organization()]), await goFixture(t, ["organization"])]) {
+    const connect = () => instrument(server, [organizationClient()]).client;
+    const first = connect(), second = connect();
+    const ok = reply => {
+      assert.equal(reply.error, null, JSON.stringify(reply.error));
+      return reply.data;
+    };
+    const denied = (reply, status, code) => {
+      assert.equal(reply.error?.status, status);
+      assert.equal(reply.error?.code, code);
+    };
+    denied(await first.organization.getActiveMember(), 401, "UNAUTHORIZED");
+    const user = ok(await first.signUp.email({email, name, password})).user;
+    ok(await second.signIn.email({email, password}));
+    denied(await first.organization.getActiveMember(), 400, "NO_ACTIVE_ORGANIZATION");
+    const a = ok(await first.organization.create({name: "A", slug: "active-a"}));
+    const b = ok(await first.organization.create({name: "B", slug: "active-b"}));
+    ok(await second.organization.setActive({organizationId: a.id}));
+    for (const [session, expected] of [[first, b], [second, a]]) {
+      const active = ok(await session.organization.getActiveMember());
+      assert.deepEqual(Object.keys(active).sort(), ["createdAt","id","organizationId","role","user","userId"]);
+      assert.equal(active.organizationId, expected.id);
+      assert.equal(active.id, expected.members[0].id);
+      assert.equal(active.role, "owner");
+      assert.equal(active.userId, user.id);
+      assert.deepEqual(active.user, {id: user.id, email, name, image: null});
+    }
+    ok(await second.updateUser({name: "Updated member"}));
+    const member = ok(await first.$fetch("/organization/get-active-member", {query: {organizationId: a.id, userId: "another-account"}}));
+    assert.equal(member.organizationId, b.id);
+    assert.equal(member.user.name, "Updated member");
+    const db = server.database ?? new DatabaseSync(server.databasePath);
+    try {
+      db.prepare('UPDATE "member" SET "role" = ? WHERE "id" = ?').run("admin,member", b.members[0].id);
+      assert.equal(ok(await first.organization.getActiveMember()).role, "admin,member");
+      db.prepare('DELETE FROM "member" WHERE "id" = ?').run(a.members[0].id);
+      denied(await second.organization.getActiveMember(), 400, "MEMBER_NOT_FOUND");
+      assert.equal(ok(await first.organization.getActiveMember()).id, b.members[0].id);
+    } finally {
+      if (!server.database) db.close();
+    }
+  }
+});

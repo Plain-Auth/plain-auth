@@ -36,6 +36,7 @@ The application provides `sendInvitation`, its configured public `origin` and it
 | POST | `/organization/create` | Create an organization with `name` and `slug` and select it on the creator's session |
 | GET | `/organization/list` | List the current user's organizations |
 | GET | `/organization/get-organization` | Read by `organizationId`, `organizationSlug` or active selection |
+| GET | `/organization/get-active-member` | Read your membership, role and public profile in this session's active organization. Requires a signed-in session. |
 | POST | `/organization/set-active` | Select by ID or slug. Send `{"organizationId":null}` to clear the current selection |
 | POST | `/organization/invite-member` | Invite by email and role, using an explicit organization ID or the active selection |
 | POST | `/organization/accept-invitation` | Accept by invitation ID, create the membership, and select the organization |
@@ -54,6 +55,8 @@ Browser membership changes check the acting account and session inside the datab
 Selection belongs to the current authenticated session. A web app, native app, server-rendered form or command-line client can use the same JSON API. Your application decides how to present the choices and what to display after a switch. The organization and team endpoints work independently of the OAuth provider plugin.
 
 To populate a picker, call `GET /organization/list` for the signed-in user's organizations. After selecting one, call `GET /organization/list-user-teams?organizationId=org_a` for that user's teams in the selected organization. All paths below are relative to your auth mount.
+
+To read the caller's role after a switch, send `GET /organization/get-active-member` with the same session cookie and no parameters. The JSON response contains the membership's `id`, `organizationId`, `userId`, `role` and `createdAt`, plus a `user` object with `id`, `name`, `email` and nullable `image`. A team switch preserves the organization membership. When the session has no selected organization the response is HTTP 400 with code `NO_ACTIVE_ORGANIZATION`. A stored selection whose membership has been removed yields HTTP 400 with code `MEMBER_NOT_FOUND`. Go callers can use `client.ActiveOrganizationMember(ctx)`.
 
 | Request | Successful response and session effect |
 | --- | --- |
