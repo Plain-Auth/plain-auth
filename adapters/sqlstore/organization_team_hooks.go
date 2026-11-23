@@ -81,14 +81,8 @@ func (s *Store) PrepareTeamRemoval(ctx context.Context, actor org.TeamActor, exp
 		if err != nil {
 			return err
 		}
-		if !s.teamOptions.AllowRemovingAllTeams {
-			var count int
-			if err = t.tx.QueryRowContext(ctx, s.bind(`SELECT COUNT(*) FROM "team" WHERE "organizationId"=?`), group).Scan(&count); err != nil {
-				return err
-			}
-			if count <= 1 {
-				return org.ErrTeamLast
-			}
+		if err = s.checkLastTeam(ctx, t.tx, group); err != nil {
+			return err
 		}
 		scope, err = t.teamScope(group, *team)
 		return err

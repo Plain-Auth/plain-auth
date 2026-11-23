@@ -214,26 +214,78 @@ func (s *Store) RemoveTeam(ctx context.Context, a org.TeamActor, explicit, id st
 		if _, err = s.findTeam(ctx, t.tx, group, id); err != nil {
 			return err
 		}
-		if !s.teamOptions.AllowRemovingAllTeams {
-			var count int
-			if err = t.tx.QueryRowContext(ctx, s.bind(`SELECT COUNT(*) FROM "team" WHERE "organizationId"=?`), group).Scan(&count); err != nil {
-				return err
-			}
-			if count <= 1 {
-				return org.ErrTeamLast
-			}
-		}
-		if _, err = t.tx.ExecContext(ctx, s.bind(`DELETE FROM "teamMember" WHERE "teamId"=?`), id); err != nil {
+		if err = s.checkLastTeam(ctx, t.tx, group); err != nil {
 			return err
 		}
-		if _, err = t.tx.ExecContext(ctx, s.bind(`UPDATE "session" SET "activeTeamId"=NULL WHERE "activeTeamId"=?`), id); err != nil {
-			return err
-		}
-		if _, err = t.tx.ExecContext(ctx, s.bind(`DELETE FROM "team" WHERE "id"=? AND "organizationId"=?`), id, group); err != nil {
-			return err
-		}
-		return s.pruneTeamInvitations(ctx, t.tx, group, id)
+		return s.deleteTeam(ctx, t.tx, group, id)
 	})
+}
+
+// RemoveOrganizationTeam removes a team from trusted server code. The caller
+// names the organization, and the final-team rule still applies.
+func (s *Store) RemoveOrganizationTeam(ctx context.Context, organizationID, teamID string) error {
+	_, err := s.trustedTeamRemoval(ctx, organizationID, teamID, false)
+	return err
+}
+
+// PrepareOrganizationTeamRemoval checks a trusted removal without writing.
+func (s *Store) PrepareOrganizationTeamRemoval(ctx context.Context, organizationID, teamID string) (org.TeamChange, error) {
+	return s.trustedTeamRemoval(ctx, organizationID, teamID, true)
+}
+
+func (s *Store) trustedTeamRemoval(ctx context.Context, organizationID, teamID string, prepare bool) (org.TeamChange, error) {
+	var scope org.TeamChange
+	if organizationID == "" {
+		return scope, org.ErrNoActiveOrg
+	}
+	err := s.withTeamTransaction(ctx, nil, "", func(t teamTransaction) error {
+		if err := t.lockOrganization(ctx, t.tx, organizationID); err != nil {
+			return err
+		}
+		team, err := s.findTeam(ctx, t.tx, organizationID, teamID)
+		if err != nil {
+			return err
+		}
+		if err = s.checkLastTeam(ctx, t.tx, organizationID); err != nil {
+			return err
+		}
+		if prepare {
+			scope, err = t.teamScope(organizationID, *team)
+			return err
+		}
+		return s.deleteTeam(ctx, t.tx, organizationID, teamID)
+	})
+	return scope, err
+}
+
+// checkLastTeam refuses to remove an organization's final team unless allowed.
+func (s *Store) checkLastTeam(ctx context.Context, tx *sql.Tx, group string) error {
+	if s.teamOptions.AllowRemovingAllTeams {
+		return nil
+	}
+	var count int
+	if err := tx.QueryRowContext(ctx, s.bind(`SELECT COUNT(*) FROM "team" WHERE "organizationId"=?`), group).Scan(&count); err != nil {
+		return err
+	}
+	if count <= 1 {
+		return org.ErrTeamLast
+	}
+	return nil
+}
+
+// deleteTeam removes a team, its memberships and selections, and drops it from
+// pending invitations.
+func (s *Store) deleteTeam(ctx context.Context, tx *sql.Tx, group, id string) error {
+	if _, err := tx.ExecContext(ctx, s.bind(`DELETE FROM "teamMember" WHERE "teamId"=?`), id); err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, s.bind(`UPDATE "session" SET "activeTeamId"=NULL WHERE "activeTeamId"=?`), id); err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, s.bind(`DELETE FROM "team" WHERE "id"=? AND "organizationId"=?`), id, group); err != nil {
+		return err
+	}
+	return s.pruneTeamInvitations(ctx, tx, group, id)
 }
 func (s *Store) pruneTeamInvitations(ctx context.Context, tx *sql.Tx, group, id string) error {
 	rows, err := tx.QueryContext(ctx, s.bind(`SELECT "id","teamId" FROM "invitation" WHERE "organizationId"=? AND "status"='pending' AND "teamId" IS NOT NULL`), group)

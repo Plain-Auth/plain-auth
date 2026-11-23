@@ -3662,6 +3662,11 @@
       "label": "Keep unpermitted, unknown and final-team changes away from the team hooks",
       "test": "adapters/sqlstore/organization_team_hooks_test.go",
       "marker": "// Refused changes never reach the hooks."
+    },
+    {
+      "label": "Use the active organization when update-team receives an empty organizationId",
+      "test": "adapters/sqlstore/organization_team_scope_test.go",
+      "marker": "// An empty organizationId selects the session's active organization."
     }
   ],
   "plugin/organization/POST /organization/remove-team": [
@@ -3679,6 +3684,16 @@
       "label": "Keep unpermitted, unknown and final-team changes away from the team hooks",
       "test": "adapters/sqlstore/organization_team_hooks_test.go",
       "marker": "// Refused changes never reach the hooks."
+    },
+    {
+      "label": "Remove a team from trusted server code without a session while keeping the final-team rule",
+      "test": "adapters/sqlstore/organization_team_scope_test.go",
+      "marker": "// Trusted removal needs no session but keeps the final-team rule."
+    },
+    {
+      "label": "Use the active organization when remove-team receives an empty organizationId",
+      "test": "adapters/sqlstore/organization_team_scope_test.go",
+      "marker": "// An empty organizationId selects the session's active organization."
     }
   ],
   "plugin/organization/GET /organization/list-teams": [
@@ -17738,6 +17753,53 @@
       "test": "conformance/schema.test.mjs",
       "marker": "(await freshSchema(type, profiles)).trim()",
       "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1866/Parameter `organizationId` (optional)": [
+    {
+      "label": "Use the active organization when update-team receives an empty organizationId",
+      "test": "adapters/sqlstore/organization_team_scope_test.go",
+      "marker": "// An empty organizationId selects the session's active organization.",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1870/Parameter `createdAt` (optional)": [
+    {
+      "label": "Ignore a client-supplied createdAt and keep the team's creation time",
+      "test": "adapters/sqlstore/organization_team_scope_test.go",
+      "marker": "// Client-supplied timestamps are ignored.",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1874/Parameter `updatedAt` (optional)": [
+    {
+      "label": "Ignore a client-supplied updatedAt and stamp the update time on the server",
+      "test": "adapters/sqlstore/organization_team_scope_test.go",
+      "marker": "// Client-supplied timestamps are ignored.",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1894/Parameter `organizationId` (optional)": [
+    {
+      "label": "Use the active organization when remove-team receives an empty organizationId",
+      "test": "adapters/sqlstore/organization_team_scope_test.go",
+      "marker": "// An empty organizationId selects the session's active organization.",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1932/Parameter `organizationId` (optional)": [
+    {
+      "label": "Use the active organization when listing another member's teams without organizationId",
+      "test": "adapters/sqlstore/organization_team_scope_test.go",
+      "marker": "// Listing another member's teams without organizationId uses the active organization.",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1884/`POST /organization/remove-team`": [
+    {
+      "label": "Remove a team from trusted server code without a session while keeping the final-team rule",
+      "test": "adapters/sqlstore/organization_team_scope_test.go",
+      "marker": "// Trusted removal needs no session but keeps the final-team rule."
     }
   ]
 }

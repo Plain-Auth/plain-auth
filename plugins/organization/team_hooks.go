@@ -249,3 +249,52 @@ func (o Options) removeTeamMember(ctx context.Context, actor TeamActor, organiza
 	}
 	return nil
 }
+
+// RemoveTeamRequest names a team to remove from trusted server code.
+type RemoveTeamRequest struct {
+	OrganizationID string
+	TeamID         string
+}
+
+// TrustedTeamRemovalStore removes a team without a session. The application
+// authorizes the call.
+type TrustedTeamRemovalStore interface {
+	RemoveOrganizationTeam(ctx context.Context, organizationID, teamID string) error
+	PrepareOrganizationTeamRemoval(ctx context.Context, organizationID, teamID string) (TeamChange, error)
+}
+
+// RemoveTeam removes a team from trusted server code. It skips the membership,
+// permission and active-team checks of the HTTP route but keeps the final-team
+// rule, and runs the team removal hooks with a nil User.
+func (s *Service) RemoveTeam(ctx context.Context, request RemoveTeamRequest) error {
+	o := s.options
+	store, ok := o.teamStore.(TrustedTeamRemovalStore)
+	if !ok {
+		return errors.New("organization: trusted team removal requires a TrustedTeamRemovalStore")
+	}
+	if request.TeamID == "" {
+		return validation("teamId")
+	}
+	if o.BeforeDeleteTeam == nil && o.AfterDeleteTeam == nil {
+		return store.RemoveOrganizationTeam(ctx, request.OrganizationID, request.TeamID)
+	}
+	scope, err := store.PrepareOrganizationTeamRemoval(ctx, request.OrganizationID, request.TeamID)
+	if err != nil {
+		return err
+	}
+	if scope, err = detachedTeamChange(scope); err != nil {
+		return err
+	}
+	if before := o.BeforeDeleteTeam; before != nil {
+		if err = before(ctx, scope); err != nil {
+			return err
+		}
+	}
+	if err = store.RemoveOrganizationTeam(ctx, scope.Organization.ID, scope.Team.ID); err != nil {
+		return err
+	}
+	if after := o.AfterDeleteTeam; after != nil {
+		return after(ctx, scope)
+	}
+	return nil
+}

@@ -241,10 +241,13 @@
     - [x] Protect the active team and final team, and prune pending invitations when a team is removed ([test](../../../adapters/sqlstore/organization_teams_test.go#L136))
     - [x] Give the team removal hooks the team being removed ([test](../../../adapters/sqlstore/organization_team_hooks_test.go#L143))
     - [x] Keep unpermitted, unknown and final-team changes away from the team hooks ([test](../../../adapters/sqlstore/organization_team_hooks_test.go#L118))
+    - [x] Remove a team from trusted server code without a session while keeping the final-team rule ([test](../../../adapters/sqlstore/organization_team_scope_test.go#L104))
+    - [x] Use the active organization when remove-team receives an empty organizationId ([test](../../../adapters/sqlstore/organization_team_scope_test.go#L83))
   - [ ] `POST /organization/update-team`
     - [x] Update the team name and reject another organization’s team ID ([test](../../../adapters/sqlstore/organization_teams_test.go#L114))
     - [x] Give the team update hooks the current team and the requested name, and save a returned name ([test](../../../adapters/sqlstore/organization_team_hooks_test.go#L108))
     - [x] Keep unpermitted, unknown and final-team changes away from the team hooks ([test](../../../adapters/sqlstore/organization_team_hooks_test.go#L118))
+    - [x] Use the active organization when update-team receives an empty organizationId ([test](../../../adapters/sqlstore/organization_team_scope_test.go#L83))
   - [x] `GET /organization/list-teams` ([test](../../../conformance/core.test.mjs#L612))
     - [x] Read the organization’s teams and deny outsiders using the browser client ([test](../../../conformance/core.test.mjs#L626))
     - [x] List the active organization's teams, including its default team, and deny an outsider who names the organization ([test](../../../conformance/core.test.mjs#L612))
@@ -901,15 +904,20 @@
             - [x] Rename a team from the data object and return and persist the new name ([test](../../../conformance/core.test.mjs#L617))
           - [x] Parameter `name` (optional) ([test](../../../adapters/sqlstore/organization_teams_test.go#L101))
             - [x] Renaming a team through the Go client returns the new name and an update timestamp on three SQL engines ([test](../../../adapters/sqlstore/organization_teams_test.go#L101))
-          - [ ] Parameter `organizationId` (optional)
-          - [ ] Parameter `createdAt` (optional)
-          - [ ] Parameter `updatedAt` (optional)
+          - [x] Parameter `organizationId` (optional) ([test](../../../adapters/sqlstore/organization_team_scope_test.go#L83))
+            - [x] Use the active organization when update-team receives an empty organizationId ([test](../../../adapters/sqlstore/organization_team_scope_test.go#L83))
+          - [x] Parameter `createdAt` (optional) ([test](../../../adapters/sqlstore/organization_team_scope_test.go#L88))
+            - [x] Ignore a client-supplied createdAt and keep the team's creation time ([test](../../../adapters/sqlstore/organization_team_scope_test.go#L88))
+          - [x] Parameter `updatedAt` (optional) ([test](../../../adapters/sqlstore/organization_team_scope_test.go#L88))
+            - [x] Ignore a client-supplied updatedAt and stamp the update time on the server ([test](../../../adapters/sqlstore/organization_team_scope_test.go#L88))
       - [ ] Remove Team
         - [x] Protect the active team and final team, and prune pending invitations when a team is removed ([test](../../../adapters/sqlstore/organization_teams_test.go#L136))
         - [ ] `POST /organization/remove-team`
+          - [x] Remove a team from trusted server code without a session while keeping the final-team rule ([test](../../../adapters/sqlstore/organization_team_scope_test.go#L104))
           - [x] Parameter `teamId` ([test](../../../conformance/core.test.mjs#L637))
             - [x] Remove the identified team and keep the organization's remaining team ([test](../../../conformance/core.test.mjs#L637))
-          - [ ] Parameter `organizationId` (optional)
+          - [x] Parameter `organizationId` (optional) ([test](../../../adapters/sqlstore/organization_team_scope_test.go#L83))
+            - [x] Use the active organization when remove-team receives an empty organizationId ([test](../../../adapters/sqlstore/organization_team_scope_test.go#L83))
       - [ ] Set Active Team
         - [x] Select a team belonging to the active organization and preserve session cookie persistence ([test](../../../adapters/sqlstore/organization_teams_test.go#L156))
         - [x] Switch and clear the current session’s selection with independent HTTP clients across three SQL engines ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L23))
@@ -922,7 +930,8 @@
         - [ ] `GET /organization/list-user-teams`
           - [x] Parameter `userId` (optional) ([test](../../../adapters/sqlstore/organization_teams_test.go#L263))
             - [x] An admin lists another member's teams by user ID, a plain member is refused another user's list, and an omitted ID lists the caller's own teams ([test](../../../adapters/sqlstore/organization_teams_test.go#L263))
-          - [ ] Parameter `organizationId` (optional)
+          - [x] Parameter `organizationId` (optional) ([test](../../../adapters/sqlstore/organization_team_scope_test.go#L97))
+            - [x] Use the active organization when listing another member's teams without organizationId ([test](../../../adapters/sqlstore/organization_team_scope_test.go#L97))
       - [ ] List Team Members
         - [x] List members of the selected team and reject a caller whose membership was removed ([test](../../../adapters/sqlstore/organization_teams_test.go#L277))
         - [ ] `POST /organization/list-team-members`

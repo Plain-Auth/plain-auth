@@ -142,11 +142,18 @@ func (o *Options) configureTeams() error {
 	return nil
 }
 
+// teamOrg reads an optional organizationId. An empty value, like an omitted
+// one, selects the session's active organization.
 func teamOrg(body map[string]any) (string, error) {
-	if _, exists := body["organizationId"]; exists {
-		return textField(body, "organizationId")
+	value, exists := body["organizationId"]
+	if !exists {
+		return "", nil
 	}
-	return "", nil
+	id, ok := value.(string)
+	if !ok {
+		return "", validation("organizationId")
+	}
+	return id, nil
 }
 
 // InvitationTeamTargets preserves the submitted order and whether the caller
