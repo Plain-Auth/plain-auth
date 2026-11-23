@@ -116,7 +116,8 @@ func TestMemberScopedOrganizationLifecycle(t *testing.T) {
 		return i, err
 	}
 	accept := func(c *client.Client, id string) error {
-		return request(c, "POST", "accept-invitation", map[string]string{"invitationId": id}, nil)
+		_, err := c.AcceptOrganizationInvitation(ctx, id)
+		return err
 	}
 	deliveryError = &authn.APIError{Status: 502, Code: "MAIL_PROVIDER", Message: "private mail provider diagnostics"}
 	_, err = invite(owner, "member@example.test", "member", false)
@@ -160,7 +161,11 @@ func TestMemberScopedOrganizationLifecycle(t *testing.T) {
 	}
 	adminInvite, err := invite(owner, "admin@example.test", "admin", false)
 	must(err)
-	must(accept(admin, adminInvite.ID))
+	joined, err := admin.AcceptOrganizationInvitation(ctx, adminInvite.ID)
+	must(err)
+	if joined.Member.ID == "" || joined.Member.Role != "admin" || joined.Member.OrganizationID != created.ID || joined.Invitation.ID != adminInvite.ID || joined.Invitation.Status != "accepted" {
+		t.Fatal("native client lost the invitation or granted membership", joined)
+	}
 	_, err = invite(admin, "outsider@example.test", "owner", false)
 	denied(err, "YOU_ARE_NOT_ALLOWED_TO_INVITE_USER_WITH_THIS_ROLE")
 	allowed, err := invite(admin, "outsider@example.test", "member", false)

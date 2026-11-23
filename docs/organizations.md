@@ -261,6 +261,23 @@ Set `CancelPendingInvitationsOnReInvite: true` on `organization.Options` when a 
 
 The SQL adapter commits the cancellation and replacement in one transaction. A rejected team assignment leaves the earlier invitation pending. Concurrent replacements for the same organization and mailbox leave one live grant. A custom store enabling this option implements `organization.InvitationReplacementStore`. [Client comparison](../conformance/invitation-expiration.mjs) · [Database concurrency and rollback tests](../adapters/sqlstore/organization_replacement_test.go)
 
+## Accept an invitation
+
+After the recipient signs in, send the invitation ID from your delivery callback to the auth handler. Treat the ID as an opaque, case-sensitive string. The same request works from a browser, a native app or a command-line client.
+
+```sh
+curl --fail-with-body -b cookies.txt -c cookies.txt \
+  -H 'Origin: https://app.example.com' -H 'Content-Type: application/json' \
+  --data '{"invitationId":"invite_123"}' \
+  https://app.example.com/api/auth/organization/accept-invitation
+```
+
+The JSON response contains an `invitation` with status `accepted` and a `member` with its own ID, organization ID, user ID, role and creation time. The SQL adapter grants the organization and targeted team memberships together. The accepting session selects the organization. An invitation to one team also selects that team. In a team-enabled organization, an organization-wide invitation returns `teamId: null`. Your application decides what the recipient sees next.
+
+The signed-in account's email must match the invitation address, ignoring case. Enable `RequireVerifiedEmail` to also require a verified address. An expired or previously decided invitation returns HTTP 400 with `INVITATION_NOT_FOUND`. If an organization or team is full, the grant stays pending so the recipient can retry when a seat opens.
+
+Go callers use `joined, err := authClient.AcceptOrganizationInvitation(ctx, invitationID)` and read `joined.Invitation` and `joined.Member` after success. [HTTP and session tests](../conformance/organization-invitations.mjs) · [Go client example](../plugins/organization/organization_test.go)
+
 ## Cancel an invitation
 
 An owner or admin can send `POST /organization/cancel-invitation` with `{"invitationId":"invite_123"}` to withdraw an invitation sent by any member of that organization. The server checks the caller’s current membership in the invitation’s destination. The caller can have a different organization selected.

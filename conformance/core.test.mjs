@@ -1938,6 +1938,11 @@ test("invitation acceptance hooks observe committed organization and team member
   await compareInvitationHooks(t, { reference, goFixture, instrument }, true);
 });
 
+test("organization invitation acceptance validates opaque IDs and normalizes the granted role", async t => {
+  const { compareInvitationAcceptance } = await import("./organization-invitations.mjs");
+  await compareInvitationAcceptance(t, { reference, goFixture, instrument });
+});
+
 test("host invitation lifetimes apply to new grants and resends", async t => {
   const { compareInvitationExpiration } = await import("./invitation-expiration.mjs");
   await compareInvitationExpiration(t, { reference, goFixture, instrument });

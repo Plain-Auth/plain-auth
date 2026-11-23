@@ -105,6 +105,20 @@ func TestInvitationDecisionsSerializeWithAcceptance(t *testing.T) {
 			if status != "canceled" || (acceptErr == nil && members != 1) || (acceptErr != nil && (!errors.Is(acceptErr, org.ErrInvitation) || members != 0)) {
 				t.Fatalf("cancellation did not preserve the serialized admission: status=%s members=%d accept=%v", status, members, acceptErr)
 			}
+
+			last := newAccount("Boundary")
+			invite.ID, invite.Email, invite.Status, invite.ExpiresAt = "AtDeadline", "boundary@example.test", "pending", now.Add(time.Minute)
+			_, err = store.InviteOrganizationMember(ctx, invite, host.ID, false)
+			must(err)
+			recipient := auth.User{ID: last.UserID}
+			if _, _, err := store.AcceptOrganizationInvitation(ctx, invite.ID, last.ID, recipient, invite.ExpiresAt.Add(time.Millisecond), true); !errors.Is(err, org.ErrInvitation) {
+				t.Fatal("accepted an invitation past its expiry", err)
+			}
+			atDeadline, _, err := store.AcceptOrganizationInvitation(ctx, invite.ID, last.ID, recipient, invite.ExpiresAt, true)
+			must(err)
+			if atDeadline.Status != "accepted" {
+				t.Fatal("pending invitation could not be accepted at its exact deadline")
+			}
 		})
 	}
 }

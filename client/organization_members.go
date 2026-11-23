@@ -135,6 +135,21 @@ func (c *Client) OrganizationInvitation(ctx context.Context, invitationID string
 	return &view, nil
 }
 
+// AcceptedInvitation contains the invitation and the membership it granted.
+type AcceptedInvitation struct {
+	Invitation org.Invitation `json:"invitation"`
+	Member     org.Member     `json:"member"`
+}
+
+// AcceptOrganizationInvitation joins the organization and selects it on the calling session.
+func (c *Client) AcceptOrganizationInvitation(ctx context.Context, invitationID string) (*AcceptedInvitation, error) {
+	var out AcceptedInvitation
+	if err := c.Do(ctx, http.MethodPost, "/organization/accept-invitation", map[string]string{"invitationId": invitationID}, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
 // RejectOrganizationInvitation declines a pending invitation for the signed-in recipient.
 func (c *Client) RejectOrganizationInvitation(ctx context.Context, invitationID string) (*org.Invitation, error) {
 	var out struct {

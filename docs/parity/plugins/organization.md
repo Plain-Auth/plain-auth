@@ -39,22 +39,26 @@
   - [ ] `GET /organization/get-role`
   - [ ] `POST /organization/update-role`
   - [ ] `POST /organization/invite-member`
-    - [x] Authorize the inviter, constrain role grants, and resend the same invitation ([test](../../../plugins/organization/organization_test.go#L128))
+    - [x] Authorize the inviter, constrain role grants, and resend the same invitation ([test](../../../plugins/organization/organization_test.go#L129))
     - [x] Require a live inviter session for invitation creation and resends ([test](../../../adapters/sqlstore/organization_cleanup_test.go#L169))
     - [x] Reject team IDs outside the invitation’s organization, including reserved delimiters ([test](../../../adapters/sqlstore/organization_teams_test.go#L123))
-  - [ ] `POST /organization/accept-invitation`
+  - [x] `POST /organization/accept-invitation` ([test](../../../conformance/organization-invitations.mjs#L390))
     - [x] Reject an invitation ID with different casing without consuming the invitation or granting membership on any SQL engine ([test](../../../adapters/sqlstore/organization_topology_test.go#L147))
     - [x] Accept an organization-only invitation through a plain node sharing the upgraded database ([test](../../../adapters/sqlstore/organization_topology_test.go#L154))
     - [x] Keep a team invitation pending on a plain node and retry under the configured team policy ([test](../../../adapters/sqlstore/organization_topology_test.go#L106))
-    - [x] Accept a matching invitation once, even during concurrent requests ([test](../../../plugins/organization/organization_test.go#L153))
+    - [x] Accept a matching invitation once, even during concurrent requests ([test](../../../plugins/organization/organization_test.go#L154))
     - [x] Read the current recipient email and verification status and keep rejected invitation details private ([test](../../../adapters/sqlstore/organization_cleanup_test.go#L117))
-    - [x] Return only the public error code and message to a different recipient ([test](../../../plugins/organization/organization_test.go#L142))
+    - [x] Return only the public error code and message to a different recipient ([test](../../../plugins/organization/organization_test.go#L143))
     - [x] Roll back every membership and keep the invitation pending when a team fills ([test](../../../adapters/sqlstore/organization_teams_test.go#L237))
     - [x] Read and update the same stored invitations, membership keys and seat counts in both runtime directions ([test](../../../conformance/core.test.mjs#L675))
     - [x] Retry a pending invitation after another member frees a seat ([test](../../../conformance/organization-capacity.mjs#L46))
     - [x] Deliver the recipient and pending invitation before acceptance and the committed membership afterward ([test](../../../conformance/invitation-hooks.mjs#L76))
     - [x] Keep the original selection on a before-hook failure and retain membership and team selection on an after-hook failure ([test](../../../conformance/invitation-hooks.mjs#L83))
     - [x] Recheck the live recipient, grant and remaining seats after the host callback on all three SQL engines ([test](../../../adapters/sqlstore/organization_acceptance_hooks_test.go#L109))
+    - [x] Return the accepted invitation and persisted membership with normalized roles and the configured team field ([test](../../../conformance/organization-invitations.mjs#L390))
+    - [x] Read both committed records through the native Go client ([test](../../../plugins/organization/organization_test.go#L167))
+    - [x] Consume the grant once and preserve a second login’s independent selection ([test](../../../conformance/organization-invitations.mjs#L393))
+    - [x] Allow the exact expiry millisecond and reject a later acceptance on all three SQL engines ([test](../../../adapters/sqlstore/organization_decision_test.go#L120))
   - [ ] `POST /organization/reject-invitation`
     - [x] Decline an expired pending invitation through the recipient's session and preserve the current organization and team ([test](../../../conformance/organization-invitations.mjs#L257))
     - [x] Allow only one decision when acceptance races rejection across two database connections ([test](../../../adapters/sqlstore/organization_decision_test.go#L79))
@@ -130,7 +134,7 @@
     - [x] Clear the calling session’s selection after a denied lookup and preserve other sessions ([test](../../../conformance/organization-full.mjs#L71))
   - [ ] `POST /organization/set-active`
     - [x] Preserve the same organization’s selected team and clear it across organization switches on a plain node ([test](../../../adapters/sqlstore/organization_topology_test.go#L123))
-    - [x] Select by slug or clear the current session selection ([test](../../../plugins/organization/organization_test.go#L175))
+    - [x] Select by slug or clear the current session selection ([test](../../../plugins/organization/organization_test.go#L180))
     - [x] Use HTTP JSON with separate cookie jars to switch or clear organizations and teams without affecting another login ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L22))
     - [x] Describe nullable selection results across enabled profiles and expose signed destinations when the host supports them ([test](../../../plugins/openapi/organization_selection_test.go#L20))
     - [x] On a signed browser navigation, send the Location of the consent page bound to the selecting session ([test](../../../adapters/sqlstore/oauth_post_login_test.go#L164))
@@ -266,7 +270,7 @@
       - [ ] `GET /organization/list`
     - [ ] Active Organization
       - [ ] Set Active Organization
-        - [x] Select by slug or clear the current session selection ([test](../../../plugins/organization/organization_test.go#L175))
+        - [x] Select by slug or clear the current session selection ([test](../../../plugins/organization/organization_test.go#L180))
         - [x] Switch and clear the current session’s selection with independent HTTP clients across three SQL engines ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L22))
         - [ ] `POST /organization/set-active`
           - [x] Describe nullable selection results across enabled profiles and expose signed destinations when the host supports them ([test](../../../plugins/openapi/organization_selection_test.go#L20))
@@ -311,7 +315,7 @@
   - [ ] Invitations
     - [ ] Setup Invitation Email
     - [ ] Send Invitation
-      - [x] Authorize the inviter, constrain role grants, and resend the same invitation ([test](../../../plugins/organization/organization_test.go#L128))
+      - [x] Authorize the inviter, constrain role grants, and resend the same invitation ([test](../../../plugins/organization/organization_test.go#L129))
       - [ ] `POST /organization/invite-member`
         - [ ] Parameter `email`
         - [ ] Parameter `role`
@@ -319,15 +323,22 @@
         - [ ] Parameter `resend` (optional)
         - [ ] Parameter `teamId` (optional)
     - [ ] Accept Invitation
-      - [x] Accept a matching invitation once, even during concurrent requests ([test](../../../plugins/organization/organization_test.go#L153))
+      - [x] Accept a matching invitation once, even during concurrent requests ([test](../../../plugins/organization/organization_test.go#L154))
       - [x] Accept an invitation through the JavaScript client and read the new membership ([test](../../../conformance/core.test.mjs#L260))
       - [x] Deliver the recipient and pending invitation before acceptance and the committed membership afterward ([test](../../../conformance/invitation-hooks.mjs#L76))
       - [x] Keep the original selection on a before-hook failure and retain membership and team selection on an after-hook failure ([test](../../../conformance/invitation-hooks.mjs#L83))
       - [x] Recheck the live recipient, grant and remaining seats after the host callback on all three SQL engines ([test](../../../adapters/sqlstore/organization_acceptance_hooks_test.go#L109))
-      - [ ] `POST /organization/accept-invitation`
-        - [ ] Parameter `invitationId`
+      - [x] Read both committed records through the native Go client ([test](../../../plugins/organization/organization_test.go#L167))
+      - [x] Return the accepted invitation and persisted membership with normalized roles and the configured team field ([test](../../../conformance/organization-invitations.mjs#L390))
+      - [x] `POST /organization/accept-invitation` ([test](../../../conformance/organization-invitations.mjs#L390))
+        - [x] Return the accepted invitation and persisted membership with normalized roles and the configured team field ([test](../../../conformance/organization-invitations.mjs#L390))
+        - [x] Read both committed records through the native Go client ([test](../../../plugins/organization/organization_test.go#L167))
+        - [x] Consume the grant once and preserve a second login’s independent selection ([test](../../../conformance/organization-invitations.mjs#L393))
+        - [x] Allow the exact expiry millisecond and reject a later acceptance on all three SQL engines ([test](../../../adapters/sqlstore/organization_decision_test.go#L120))
+        - [x] Parameter `invitationId` ([test](../../../conformance/organization-invitations.mjs#L370))
+          - [x] Validate the required string before session lookup and treat its contents as an opaque ID ([test](../../../conformance/organization-invitations.mjs#L370))
       - [ ] Email Verification Requirement
-        - [x] Require verified email before acceptance when configured ([test](../../../plugins/organization/organization_test.go#L184))
+        - [x] Require verified email before acceptance when configured ([test](../../../plugins/organization/organization_test.go#L189))
     - [ ] Cancel Invitation
       - [x] Cancel expired, rejected and accepted invitations and retain previously granted team and organization access ([test](../../../conformance/organization-invitations.mjs#L326))
       - [x] Recheck destination permissions for repeated cancellation after a role change ([test](../../../conformance/organization-invitations.mjs#L336))

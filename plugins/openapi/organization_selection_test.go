@@ -86,6 +86,11 @@ func TestOrganizationSelectionSchema(t *testing.T) {
 				t.Fatal("full organization description does not match the configured collections", lists)
 			}
 			cancel := node(paths, "/organization/cancel-invitation", "post")
+			accept := node(paths, "/organization/accept-invitation", "post")
+			joined := node(accept, "responses", "200", "content", "application/json", "schema", "properties")
+			if node(joined, "invitation")["$ref"] != "#/components/schemas/Invitation" || node(joined, "member")["$ref"] != "#/components/schemas/Member" || node(accept, "requestBody", "content", "application/json", "schema", "properties", "invitationId")["type"] != "string" {
+				t.Fatal("acceptance schema must describe the invitation ID and both committed records")
+			}
 			if node(cancel, "responses", "200", "content", "application/json", "schema")["$ref"] != "#/components/schemas/Invitation" || node(cancel, "requestBody", "content", "application/json", "schema", "properties", "invitationId")["type"] != "string" {
 				t.Fatal("invitation cancellation schema lost its ID or flat invitation response")
 			}

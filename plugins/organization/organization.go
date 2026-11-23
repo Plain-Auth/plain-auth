@@ -95,7 +95,7 @@ var (
 	ErrAlreadyInvited  = problem(400, "USER_IS_ALREADY_INVITED_TO_THIS_ORGANIZATION", "User is already invited to this organization")
 	ErrInvitation      = problem(400, "INVITATION_NOT_FOUND", "Invitation not found")
 	ErrRecipient       = problem(403, "YOU_ARE_NOT_THE_RECIPIENT_OF_THE_INVITATION", "You are not the recipient of the invitation")
-	ErrUnverified      = problem(403, "EMAIL_VERIFICATION_REQUIRED_BEFORE_ACCEPTING_OR_REJECTING_INVITATION", "Email verification is required before accepting the invitation")
+	ErrUnverified      = problem(403, "EMAIL_VERIFICATION_REQUIRED_BEFORE_ACCEPTING_OR_REJECTING_INVITATION", "Email verification required before accepting or rejecting invitation")
 	ErrMemberLimit     = problem(403, "ORGANIZATION_MEMBERSHIP_LIMIT_REACHED", "Organization membership limit reached")
 )
 
@@ -234,7 +234,7 @@ func (service *Service) Plugin() authn.Plugin {
 			o.endpoint(http.MethodGet, "get-organization", o.get),
 			o.endpoint(http.MethodPost, "set-active", o.selectActive),
 			o.endpoint(http.MethodPost, "invite-member", o.invite),
-			o.endpoint(http.MethodPost, "accept-invitation", o.accept),
+			{Method: http.MethodPost, Path: "/organization/accept-invitation", Handler: o.accept},
 		},
 	}
 	if store, ok := o.Store.(ProfileStore); ok {
@@ -484,23 +484,20 @@ func (o Options) invite(c authn.EndpointContext, s *authn.SessionResult) (any, e
 	return inv, nil
 }
 
-func (o Options) accept(c authn.EndpointContext, s *authn.SessionResult) (any, error) {
-	id, err := textField(c.Body, "invitationId")
+func (o Options) accept(c authn.EndpointContext) (any, error) {
+	id, s, err := invitationAction(c, "accept-invitation")
 	if err != nil {
 		return nil, err
 	}
 	var inv Invitation
 	var member Member
-	if o.BeforeAcceptInvitation != nil || o.AfterAcceptInvitation != nil {
-		inv, member, err = o.acceptWithHooks(c.Request.Context(), s, id)
+	if store, ok := o.Store.(ObservedInvitationAcceptanceStore); ok {
+		inv, member, err = o.acceptWithHooks(c.Request.Context(), store, s, id)
 	} else {
 		inv, member, err = o.Store.AcceptOrganizationInvitation(c.Request.Context(), id, s.Session.ID, s.User, time.Now().UTC().Truncate(time.Millisecond), o.RequireVerifiedEmail)
 	}
 	if err != nil {
 		return nil, err
 	}
-	return struct {
-		Invitation Invitation `json:"invitation"`
-		Member     Member     `json:"member"`
-	}{inv, member}, nil
+	return map[string]any{"invitation": o.invitationRow(inv), "member": member}, nil
 }

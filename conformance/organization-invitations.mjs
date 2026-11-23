@@ -340,3 +340,61 @@ export async function compareInvitationCancellation(t, { reference, goFixture, i
     }
   }
 }
+
+export async function compareInvitationAcceptance(t, { reference, goFixture, instrument }) {
+  for (const teams of [false, true]) {
+    const options = { requireEmailVerificationOnInvitation: teams, teams: { enabled: teams } };
+    const ref = await reference(t, [organization(options)]);
+    const go = await goFixture(t, [teams ? "organization-teams" : "organization"], { CONFORMANCE_VERIFY_INVITATION_EMAIL: teams ? "1" : "" });
+    for (const server of [ref, go]) {
+      const connect = () => instrument(server, [organizationClient(options)]).client;
+      const [owner, guest, otherSession] = [connect(), connect(), connect()];
+      const ok = reply => { assert.equal(reply.error, null, JSON.stringify(reply.error)); return reply.data; };
+      const deny = (reply, status, code, message) => {
+        assert.equal(reply.error?.status, status, JSON.stringify(reply));
+        assert.equal(reply.error.code, code);
+        if (message) assert.equal(reply.error.message, message);
+      };
+      const accept = (client, invitationId) => client.organization.acceptInvitation({ invitationId });
+      for (const [id, kind] of [[undefined, "undefined"], [null, "null"], [42, "number"], [[], "array"], [{}, "object"]]) {
+        deny(await accept(guest, id), 400, "VALIDATION_ERROR", "[body.invitationId] Invalid input: expected string, received " + kind);
+      }
+      deny(await accept(guest, ""), 401, "UNAUTHORIZED");
+      const password = "local-acceptance-contract", email = "guest@example.test";
+      ok(await owner.signUp.email({ email: "host@example.test", name: "Host", password }));
+      const user = ok(await guest.signUp.email({ email, name: "Guest", password })).user;
+      ok(await otherSession.signIn.email({ email, password }));
+      const group = ok(await owner.organization.create({ name: "Studio", slug: "studio" }));
+      const invite = ok(await owner.organization.inviteMember({ email, role: "member", organizationId: group.id }));
+      deny(await accept(guest, ""), 400, "INVITATION_NOT_FOUND", "Invitation not found");
+      deny(await accept(guest, " " + invite.id), 400, "INVITATION_NOT_FOUND", "Invitation not found");
+      deny(await accept(owner, invite.id), 403, "YOU_ARE_NOT_THE_RECIPIENT_OF_THE_INVITATION", "You are not the recipient of the invitation");
+      const db = server.database ?? new DatabaseSync(server.databasePath);
+      try {
+        if (teams) {
+          deny(await accept(guest, invite.id), 403, "EMAIL_VERIFICATION_REQUIRED_BEFORE_ACCEPTING_OR_REJECTING_INVITATION", "Email verification required before accepting or rejecting invitation");
+          db.prepare('UPDATE "user" SET emailVerified=1 WHERE id=?').run(user.id);
+        }
+        const storedRole = " admin, ,member,  admin ";
+        db.prepare('UPDATE invitation SET email=?, role=? WHERE id=?').run(email.toUpperCase(), storedRole, invite.id);
+        const joined = ok(await accept(guest, invite.id));
+        assert.deepEqual(Object.keys(joined).sort(), ["invitation", "member"]);
+        assert.equal(joined.invitation.id, invite.id);
+        assert.equal(joined.invitation.status, "accepted");
+        assert.equal(joined.invitation.role, storedRole);
+        assert.equal(joined.invitation.email, email.toUpperCase());
+        assert.equal("teamId" in joined.invitation, teams);
+        if (teams) assert.equal(joined.invitation.teamId, null);
+        assert.equal(joined.member.organizationId, group.id);
+        assert.equal(joined.member.userId, user.id);
+        assert.equal(joined.member.role, "admin,member,admin");
+        assert.equal(ok(await guest.organization.getActiveMember()).id, joined.member.id);
+        assert.equal(db.prepare('SELECT role FROM member WHERE id=?').get(joined.member.id).role, joined.member.role);
+        assert.equal(ok(await otherSession.getSession()).session.activeOrganizationId ?? null, null);
+        deny(await accept(otherSession, invite.id), 400, "INVITATION_NOT_FOUND", "Invitation not found");
+      } finally {
+        if (!server.database) db.close();
+      }
+    }
+  }
+}

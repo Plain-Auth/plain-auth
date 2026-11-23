@@ -390,7 +390,7 @@ func (s *Store) acceptOrganizationInvitation(ctx context.Context, id, sessionID 
 }
 
 func (s *Store) checkInvitationAcceptance(ctx context.Context, tx *sql.Tx, inv org.Invitation, u authn.User, now time.Time, requireVerified bool, admission *memberAdmission) error {
-	if inv.Status != "pending" || !now.Before(inv.ExpiresAt) {
+	if inv.Status != "pending" || now.After(inv.ExpiresAt) {
 		return org.ErrInvitation
 	}
 	if strings.ToLower(inv.Email) != strings.ToLower(u.Email) {
@@ -409,7 +409,7 @@ func (s *Store) grantInvitedMembership(ctx context.Context, tx *sql.Tx, inv *org
 	if err := s.updateInvitationStatus(ctx, tx, inv, "accepted"); err != nil {
 		return org.Member{}, err
 	}
-	m := org.Member{ID: rand.Text(), OrganizationID: inv.OrganizationID, UserID: userID, Role: inv.Role, CreatedAt: now}
+	m := org.Member{ID: rand.Text(), OrganizationID: inv.OrganizationID, UserID: userID, Role: strings.Join(org.NormalizeRoles(inv.Role), ","), CreatedAt: now}
 	if err := s.addMember(ctx, tx, m); err != nil {
 		return org.Member{}, err
 	}

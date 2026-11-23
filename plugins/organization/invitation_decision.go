@@ -50,8 +50,6 @@ func (o Options) rejectInvitationEndpoint(store InvitationRejectionStore) auth.E
 		switch {
 		case errors.Is(err, ErrInvitation):
 			return nil, problem(400, ErrInvitation.Code, "Invitation not found!")
-		case errors.Is(err, ErrUnverified):
-			return nil, problem(403, ErrUnverified.Code, "Email verification required before accepting or rejecting invitation")
 		case err != nil:
 			return nil, err
 		}

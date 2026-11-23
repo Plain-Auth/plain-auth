@@ -927,6 +927,27 @@
       "label": "Recheck the live recipient, grant and remaining seats after the host callback on all three SQL engines",
       "test": "adapters/sqlstore/organization_acceptance_hooks_test.go",
       "marker": "t.Fatal(\"unsuccessful acceptance changed the grant or membership\""
+    },
+    {
+      "label": "Return the accepted invitation and persisted membership with normalized roles and the configured team field",
+      "test": "conformance/organization-invitations.mjs",
+      "marker": "assert.equal(joined.member.role, \"admin,member,admin\")",
+      "complete": true
+    },
+    {
+      "label": "Read both committed records through the native Go client",
+      "test": "plugins/organization/organization_test.go",
+      "marker": "t.Fatal(\"native client lost the invitation or granted membership\""
+    },
+    {
+      "label": "Consume the grant once and preserve a second login’s independent selection",
+      "test": "conformance/organization-invitations.mjs",
+      "marker": "assert.equal(ok(await otherSession.getSession()).session.activeOrganizationId ?? null, null)"
+    },
+    {
+      "label": "Allow the exact expiry millisecond and reject a later acceptance on all three SQL engines",
+      "test": "adapters/sqlstore/organization_decision_test.go",
+      "marker": "t.Fatal(\"pending invitation could not be accepted at its exact deadline\")"
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L934": [
@@ -954,6 +975,16 @@
       "label": "Recheck the live recipient, grant and remaining seats after the host callback on all three SQL engines",
       "test": "adapters/sqlstore/organization_acceptance_hooks_test.go",
       "marker": "t.Fatal(\"unsuccessful acceptance changed the grant or membership\""
+    },
+    {
+      "label": "Read both committed records through the native Go client",
+      "test": "plugins/organization/organization_test.go",
+      "marker": "t.Fatal(\"native client lost the invitation or granted membership\""
+    },
+    {
+      "label": "Return the accepted invitation and persisted membership with normalized roles and the configured team field",
+      "test": "conformance/organization-invitations.mjs",
+      "marker": "assert.equal(joined.member.role, \"admin,member,admin\")"
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L951": [
@@ -14826,6 +14857,37 @@
       "label": "Keep a prior grant pending when an attempted replacement exceeds the quota",
       "test": "adapters/sqlstore/organization_invitation_limit_test.go",
       "marker": "t.Fatal(\"denied replacement did not restore the prior grant\")"
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L940/`POST /organization/accept-invitation`": [
+    {
+      "label": "Return the accepted invitation and persisted membership with normalized roles and the configured team field",
+      "test": "conformance/organization-invitations.mjs",
+      "marker": "assert.equal(joined.member.role, \"admin,member,admin\")",
+      "complete": true
+    },
+    {
+      "label": "Read both committed records through the native Go client",
+      "test": "plugins/organization/organization_test.go",
+      "marker": "t.Fatal(\"native client lost the invitation or granted membership\""
+    },
+    {
+      "label": "Consume the grant once and preserve a second login’s independent selection",
+      "test": "conformance/organization-invitations.mjs",
+      "marker": "assert.equal(ok(await otherSession.getSession()).session.activeOrganizationId ?? null, null)"
+    },
+    {
+      "label": "Allow the exact expiry millisecond and reject a later acceptance on all three SQL engines",
+      "test": "adapters/sqlstore/organization_decision_test.go",
+      "marker": "t.Fatal(\"pending invitation could not be accepted at its exact deadline\")"
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L946/Parameter `invitationId`": [
+    {
+      "label": "Validate the required string before session lookup and treat its contents as an opaque ID",
+      "test": "conformance/organization-invitations.mjs",
+      "marker": "deny(await accept(guest, \" \" + invite.id)",
+      "complete": true
     }
   ]
 }

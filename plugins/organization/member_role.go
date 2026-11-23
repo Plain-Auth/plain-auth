@@ -70,8 +70,14 @@ var (
 
 // NormalizedRoles splits comma-separated entries and keeps their submitted order.
 func (r UpdateMemberRoleRequest) NormalizedRoles() []string {
+	return NormalizeRoles(r.Roles...)
+}
+
+// NormalizeRoles splits stored or submitted role lists, trims whitespace, and
+// preserves the order of nonempty entries.
+func NormalizeRoles(roles ...string) []string {
 	var normalized []string
-	for _, entry := range r.Roles {
+	for _, entry := range roles {
 		for role := range strings.SplitSeq(entry, ",") {
 			if role = strings.TrimSpace(role); role != "" {
 				normalized = append(normalized, role)

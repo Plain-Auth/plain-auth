@@ -86,8 +86,7 @@ func (o Options) observedInvitation(ctx context.Context, session *auth.SessionRe
 	return &event.Invitation, nil
 }
 
-func (o Options) acceptWithHooks(ctx context.Context, session *auth.SessionResult, id string) (Invitation, Member, error) {
-	store := o.Store.(ObservedInvitationAcceptanceStore)
+func (o Options) acceptWithHooks(ctx context.Context, store ObservedInvitationAcceptanceStore, session *auth.SessionResult, id string) (Invitation, Member, error) {
 	event, err := store.ObserveInvitationAcceptance(ctx, session.Session, id, o.RequireVerifiedEmail, decisionHook(o.BeforeAcceptInvitation, session.User))
 	if err != nil {
 		return Invitation{}, Member{}, err
