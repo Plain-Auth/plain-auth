@@ -176,9 +176,18 @@ func TestTeamAccountsAcrossEngines(t *testing.T) {
 			if key != base64.RawURLEncoding.EncodeToString(sum[:]) {
 				t.Fatal("incorrect persisted membership key")
 			}
-			adminInvite, err := invite(adminUser, "admin", nil)
+			_, err = invite(adminUser, "admin", nil)
+			denied(err, "VALIDATION_ERROR")
+			adminInvite, err := owner.InviteOrganizationMember(ctx, client.InviteOrganizationMemberRequest{
+				Email: adminUser.Email, Roles: []string{"admin"},
+			})
 			must(err)
 			must(admin.Do(ctx, "POST", "/organization/accept-invitation", map[string]string{"invitationId": adminInvite.ID}, nil))
+			adminTeams, err := admin.ListUserTeams(ctx, group, "")
+			must(err)
+			if len(adminTeams) != 0 {
+				t.Fatalf("organization-wide invitation granted %d teams", len(adminTeams))
+			}
 			// Two server instances race to admit different organization members to the last seat.
 			type attempt struct {
 				id  string

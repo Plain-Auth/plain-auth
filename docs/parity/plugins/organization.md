@@ -44,7 +44,7 @@
     - [x] Reject team IDs outside the invitation’s organization, including reserved delimiters ([test](../../../adapters/sqlstore/organization_teams_test.go#L123))
     - [x] Notify host code of a new or replaced invitation after delivery and skip the creation callback on renewal ([test](../../../conformance/invitation-creation.mjs#L38))
     - [x] Keep a committed grant available for resend after the creation callback fails ([test](../../../conformance/invitation-creation.mjs#L65))
-    - [x] Accept comma-separated roles within strings or arrays, preserve their order and check owner grants ([test](../../../conformance/invitation-input.mjs#L40))
+    - [x] Accept comma-separated roles within strings or arrays, preserve their order and check owner grants ([test](../../../conformance/invitation-input.mjs#L41))
     - [x] Report invalid field types before sign-in and validate recipient addresses after resolving the destination ([test](../../../conformance/invitation-input.mjs#L22))
     - [x] Issue and renew an invitation through the native Go client against three databases ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L212))
   - [x] `POST /organization/accept-invitation` ([test](../../../conformance/organization-invitations.mjs#L390))
@@ -54,7 +54,7 @@
     - [x] Accept a matching invitation once, even during concurrent requests ([test](../../../plugins/organization/organization_test.go#L161))
     - [x] Read the current recipient email and verification status and keep rejected invitation details private ([test](../../../adapters/sqlstore/organization_cleanup_test.go#L117))
     - [x] Return only the public error code and message to a different recipient ([test](../../../plugins/organization/organization_test.go#L150))
-    - [x] Roll back every membership and keep the invitation pending when a team fills ([test](../../../adapters/sqlstore/organization_teams_test.go#L237))
+    - [x] Roll back every membership and keep the invitation pending when a team fills ([test](../../../adapters/sqlstore/organization_teams_test.go#L246))
     - [x] Read and update the same stored invitations, membership keys and seat counts in both runtime directions ([test](../../../conformance/core.test.mjs#L675))
     - [x] Retry a pending invitation after another member frees a seat ([test](../../../conformance/organization-capacity.mjs#L46))
     - [x] Deliver the recipient and pending invitation before acceptance and the committed membership afterward ([test](../../../conformance/invitation-hooks.mjs#L76))
@@ -162,13 +162,13 @@
     - [x] On a signed browser navigation, send the Location of the consent page bound to the selecting session ([test](../../../adapters/sqlstore/oauth_post_login_test.go#L164))
     - [x] Switch the session’s organization and team using plain HTTP and JSON on six Go routers ([test](../../../integrations/routers/routers_test.go#L202))
   - [ ] `GET /organization/list-user-teams`
-    - [x] Return self memberships across organizations and scope administrative queries to the selected organization ([test](../../../adapters/sqlstore/organization_teams_test.go#L257))
+    - [x] Return self memberships across organizations and scope administrative queries to the selected organization ([test](../../../adapters/sqlstore/organization_teams_test.go#L266))
   - [ ] `GET /organization/list-team-members`
-    - [x] List members of the selected team and reject a caller whose membership was removed ([test](../../../adapters/sqlstore/organization_teams_test.go#L268))
+    - [x] List members of the selected team and reject a caller whose membership was removed ([test](../../../adapters/sqlstore/organization_teams_test.go#L277))
   - [ ] `POST /organization/add-team-member`
-    - [x] Admit one candidate to the last seat across competing SQL-backed servers and return existing memberships on retry ([test](../../../adapters/sqlstore/organization_teams_test.go#L204))
+    - [x] Admit one candidate to the last seat across competing SQL-backed servers and return existing memberships on retry ([test](../../../adapters/sqlstore/organization_teams_test.go#L213))
   - [ ] `POST /organization/remove-team-member`
-    - [x] Remove membership and clear the affected user’s active team ([test](../../../adapters/sqlstore/organization_teams_test.go#L266))
+    - [x] Remove membership and clear the affected user’s active team ([test](../../../adapters/sqlstore/organization_teams_test.go#L275))
   - [ ] `OrganizationSchema`
   - [ ] `roleSchema`
   - [ ] `invitationStatus`
@@ -208,7 +208,7 @@
     - [ ] `roles`
     - [ ] `dynamicAccessControl`
     - [ ] `teams`
-      - [x] Create and select a default team for the owner, or disable automatic creation ([test](../../../adapters/sqlstore/organization_teams_test.go#L315))
+      - [x] Create and select a default team for the owner, or disable automatic creation ([test](../../../adapters/sqlstore/organization_teams_test.go#L324))
     - [x] `invitationExpiresIn` ([test](../../../conformance/invitation-expiration.mjs#L25))
       - [x] Apply the default or configured validity period on creation and renewal, including an elapsed deadline ([test](../../../conformance/invitation-expiration.mjs#L25))
       - [x] Persist the renewed deadline on all three engines while retaining the original grant identity and role ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L223))
@@ -335,23 +335,25 @@
       - [x] Authorize the inviter, constrain role grants, and resend the same invitation ([test](../../../plugins/organization/organization_test.go#L133))
       - [x] Notify host code of a new or replaced invitation after delivery and skip the creation callback on renewal ([test](../../../conformance/invitation-creation.mjs#L38))
       - [x] Keep a committed grant available for resend after the creation callback fails ([test](../../../conformance/invitation-creation.mjs#L65))
-      - [x] Accept comma-separated roles within strings or arrays, preserve their order and check owner grants ([test](../../../conformance/invitation-input.mjs#L40))
+      - [x] Accept comma-separated roles within strings or arrays, preserve their order and check owner grants ([test](../../../conformance/invitation-input.mjs#L41))
       - [x] Report invalid field types before sign-in and validate recipient addresses after resolving the destination ([test](../../../conformance/invitation-input.mjs#L22))
       - [x] Issue and renew an invitation through the native Go client against three databases ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L212))
       - [ ] `POST /organization/invite-member`
-        - [x] Accept comma-separated roles within strings or arrays, preserve their order and check owner grants ([test](../../../conformance/invitation-input.mjs#L40))
+        - [x] Accept comma-separated roles within strings or arrays, preserve their order and check owner grants ([test](../../../conformance/invitation-input.mjs#L41))
         - [x] Report invalid field types before sign-in and validate recipient addresses after resolving the destination ([test](../../../conformance/invitation-input.mjs#L22))
         - [x] Issue and renew an invitation through the native Go client against three databases ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L212))
-        - [x] Parameter `email` ([test](../../../conformance/invitation-input.mjs#L41))
-          - [x] Require a mailbox string, reject malformed addresses and lowercase the saved delivery address ([test](../../../conformance/invitation-input.mjs#L41))
+        - [x] Parameter `email` ([test](../../../conformance/invitation-input.mjs#L42))
+          - [x] Require a mailbox string, reject malformed addresses and lowercase the saved delivery address ([test](../../../conformance/invitation-input.mjs#L42))
         - [ ] Parameter `role`
-          - [x] Accept comma-separated roles within strings or arrays, preserve their order and check owner grants ([test](../../../conformance/invitation-input.mjs#L40))
-        - [x] Parameter `organizationId` (optional) ([test](../../../conformance/invitation-input.mjs#L42))
-          - [x] Use the active destination when unset or empty and require membership in an explicitly selected organization ([test](../../../conformance/invitation-input.mjs#L42))
-        - [x] Parameter `resend` (optional) ([test](../../../conformance/invitation-input.mjs#L51))
-          - [x] Renew the saved grant when requested, preserving its ID and roles ([test](../../../conformance/invitation-input.mjs#L51))
+          - [x] Accept comma-separated roles within strings or arrays, preserve their order and check owner grants ([test](../../../conformance/invitation-input.mjs#L41))
+        - [x] Parameter `organizationId` (optional) ([test](../../../conformance/invitation-input.mjs#L43))
+          - [x] Use the active destination when unset or empty and require membership in an explicitly selected organization ([test](../../../conformance/invitation-input.mjs#L43))
+        - [x] Parameter `resend` (optional) ([test](../../../conformance/invitation-input.mjs#L52))
+          - [x] Renew the saved grant when requested, preserving its ID and roles ([test](../../../conformance/invitation-input.mjs#L52))
         - [ ] Parameter `teamId` (optional)
           - [x] Grant multiple destination teams through the native Go client ([test](../../../adapters/sqlstore/organization_teams_test.go#L128))
+          - [x] Reject an explicit null team target in an otherwise valid invitation ([test](../../../conformance/invitation-input.mjs#L31))
+          - [x] Grant organization membership alone when the Go caller omits teams ([test](../../../adapters/sqlstore/organization_teams_test.go#L189))
     - [ ] Accept Invitation
       - [x] Accept a matching invitation once, even during concurrent requests ([test](../../../plugins/organization/organization_test.go#L161))
       - [x] Accept an invitation through the JavaScript client and read the new membership ([test](../../../conformance/core.test.mjs#L260))
@@ -570,21 +572,21 @@
           - [x] Parameter `teamId` (optional) ([test](../../../conformance/core.test.mjs#L1822))
             - [x] Use the current team for an omitted or empty ID, select a member team by ID, and clear it with JSON null ([test](../../../conformance/core.test.mjs#L1822))
       - [ ] List User Teams
-        - [x] Return self memberships across organizations and scope administrative queries to the selected organization ([test](../../../adapters/sqlstore/organization_teams_test.go#L257))
+        - [x] Return self memberships across organizations and scope administrative queries to the selected organization ([test](../../../adapters/sqlstore/organization_teams_test.go#L266))
         - [ ] `GET /organization/list-user-teams`
           - [ ] Parameter `userId` (optional)
           - [ ] Parameter `organizationId` (optional)
       - [ ] List Team Members
-        - [x] List members of the selected team and reject a caller whose membership was removed ([test](../../../adapters/sqlstore/organization_teams_test.go#L268))
+        - [x] List members of the selected team and reject a caller whose membership was removed ([test](../../../adapters/sqlstore/organization_teams_test.go#L277))
         - [ ] `POST /organization/list-team-members`
           - [ ] Parameter `teamId` (optional)
       - [ ] Add Team Member
-        - [x] Admit one candidate to the last seat across competing SQL-backed servers and return existing memberships on retry ([test](../../../adapters/sqlstore/organization_teams_test.go#L204))
+        - [x] Admit one candidate to the last seat across competing SQL-backed servers and return existing memberships on retry ([test](../../../adapters/sqlstore/organization_teams_test.go#L213))
         - [ ] `POST /organization/add-team-member`
           - [ ] Parameter `teamId`
           - [ ] Parameter `userId`
       - [ ] Remove Team Member
-        - [x] Remove membership and clear the affected user’s active team ([test](../../../adapters/sqlstore/organization_teams_test.go#L266))
+        - [x] Remove membership and clear the affected user’s active team ([test](../../../adapters/sqlstore/organization_teams_test.go#L275))
         - [ ] `POST /organization/remove-team-member`
           - [ ] Parameter `teamId`
           - [ ] Parameter `userId`
@@ -594,7 +596,7 @@
       - [ ] `team:update`
       - [ ] `team:delete`
     - [ ] Team Configuration Options
-      - [x] Honor fixed seat and team limits, and optionally permit removal of the final team ([test](../../../adapters/sqlstore/organization_teams_test.go#L322))
+      - [x] Honor fixed seat and team limits, and optionally permit removal of the final team ([test](../../../adapters/sqlstore/organization_teams_test.go#L331))
       - [ ] `maximumTeams`
       - [ ] `allowRemovingAllTeams`
     - [ ] Team Members

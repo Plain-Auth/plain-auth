@@ -15082,6 +15082,16 @@
       "label": "Grant multiple destination teams through the native Go client",
       "test": "adapters/sqlstore/organization_teams_test.go",
       "marker": "TeamIDs: []string{team.ID, third.ID}"
+    },
+    {
+      "label": "Reject an explicit null team target in an otherwise valid invitation",
+      "test": "conformance/invitation-input.mjs",
+      "marker": "error(await issue(owner, { email, role: \"member\", teamId: null })"
+    },
+    {
+      "label": "Grant organization membership alone when the Go caller omits teams",
+      "test": "adapters/sqlstore/organization_teams_test.go",
+      "marker": "organization-wide invitation granted %d teams"
     }
   ]
 }

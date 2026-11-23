@@ -28,6 +28,7 @@ export async function compareInvitationInput(t, { reference, goFixture, instrume
       error(await issue(owner, { email: "bad", role: "member" }), 400, "ORGANIZATION_NOT_FOUND");
       const group = ok(await owner.organization.create({name: "Studio", slug: "studio"}));
       const other = ok(await owner.organization.create({name: "Elsewhere", slug: "elsewhere"}));
+      error(await issue(owner, { email, role: "member", teamId: null }), 400, "VALIDATION_ERROR", "[body.teamId] Invalid input");
       for (const organizationId of [group.id, "missing-org"]) {
         error(await issue(admin, { email, role: "member", organizationId }), 400, "MEMBER_NOT_FOUND");
       }
