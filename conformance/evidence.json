@@ -7247,6 +7247,16 @@
       "label": "Allocate the final seat once when a trusted grant and an invitation compete across connections",
       "test": "adapters/sqlstore/organization_limit_test.go",
       "marker": "competing admissions failed to serialize at the configured limit"
+    },
+    {
+      "label": "Persist ordered role labels and empty roles when trusted application code grants membership",
+      "test": "conformance/organization-server-grants.mjs",
+      "marker": "assert.equal(grant.role, expected)"
+    },
+    {
+      "label": "Distinguish an unprivileged member from a missing membership on all three SQL engines",
+      "test": "adapters/sqlstore/organization_members_test.go",
+      "marker": "membership with an empty role lost its team"
     }
   ],
   "docs/content/docs/reference/options.mdx#L135": [
@@ -15452,6 +15462,18 @@
       "test": "conformance/schema.test.mjs",
       "marker": "assert.equal(logical, await freshSchema(dialect, profiles), dialect+\" \"+profiles.join(\",\"))",
       "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1185": [
+    {
+      "label": "Persist ordered role labels and empty roles when trusted application code grants membership",
+      "test": "conformance/organization-server-grants.mjs",
+      "marker": "assert.equal(grant.role, expected)"
+    },
+    {
+      "label": "Distinguish an unprivileged member from a missing membership on all three SQL engines",
+      "test": "adapters/sqlstore/organization_members_test.go",
+      "marker": "membership with an empty role lost its team"
     }
   ]
 }

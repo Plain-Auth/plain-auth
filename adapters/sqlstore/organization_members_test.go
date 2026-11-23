@@ -59,7 +59,7 @@ func TestServerOrganizationMembership(t *testing.T) {
 			must(err)
 			team, err := configured.CreateTeam(ctx, org.TeamActor{UserID: owner.ID, SessionID: "Owner-s"}, group.ID, "Support")
 			must(err)
-			req := org.AddMemberRequest{OrganizationID: group.ID, UserID: peer.ID, Roles: []string{"admin", "member"}, TeamID: team.ID}
+			req := org.AddMemberRequest{OrganizationID: group.ID, UserID: peer.ID, Roles: []string{"admin, editor", " editor ", "member"}, TeamID: team.ID}
 			check := func(bad org.AddMemberRequest, code string) {
 				t.Helper()
 				_, err := service.AddMember(ctx, bad)
@@ -75,8 +75,8 @@ func TestServerOrganizationMembership(t *testing.T) {
 			bad.TeamID = "unknown-team"
 			check(bad, "TEAM_NOT_FOUND")
 			bad = req
-			bad.Roles = []string{"unregistered"}
-			check(bad, "ROLE_NOT_FOUND")
+			bad.Roles = nil
+			check(bad, "VALIDATION_ERROR")
 			bare, err := org.NewService(org.Options{Store: store})
 			must(err)
 			_, err = bare.AddMember(ctx, req)
@@ -96,7 +96,7 @@ func TestServerOrganizationMembership(t *testing.T) {
 			}
 			must(a.err)
 			denied(b.err, "USER_IS_ALREADY_A_MEMBER_OF_THIS_ORGANIZATION")
-			if a.member.ID == "" || a.member.Role != "admin,member" || a.member.UserID != peer.ID {
+			if a.member.ID == "" || a.member.Role != "admin,editor,editor,member" || a.member.UserID != peer.ID {
 				t.Fatalf("incorrect member %+v", a.member)
 			}
 			var n int
@@ -140,6 +140,49 @@ func TestServerOrganizationMembership(t *testing.T) {
 			must(store.db.QueryRowContext(ctx, store.bind(`SELECT COUNT(*) FROM "member" WHERE "organizationId"=?`), group.ID).Scan(&n))
 			if n != 100 {
 				t.Fatalf("organization admitted %d members", n)
+			}
+		})
+	}
+}
+
+func TestTeamMembershipWithEmptyRole(t *testing.T) {
+	for _, dialect := range []string{"sqlite", "postgres", "mysql"} {
+		t.Run(dialect, func(t *testing.T) {
+			ctx := t.Context()
+			base, _, owner, peer, group := invitationWriterFixture(t, dialect)
+			must := func(err error) {
+				t.Helper()
+				if err != nil {
+					t.Fatal(err)
+				}
+			}
+			svc, err := org.NewService(org.Options{Store: base, Teams: &org.TeamOptions{}})
+			must(err)
+			store := svc.Store().(org.TeamStore)
+			leader := org.TeamActor{UserID: owner.UserID, SessionID: owner.ID}
+			target := org.TeamActor{UserID: peer.UserID, SessionID: peer.ID}
+			team, err := store.CreateTeam(ctx, leader, group.ID, "News")
+			must(err)
+			_, err = base.db.ExecContext(ctx, base.bind(`DELETE FROM "member" WHERE "organizationId"=? AND "userId"=?`), group.ID, peer.UserID)
+			must(err)
+			if _, err = store.AddTeamMember(ctx, leader, group.ID, team.ID, peer.UserID); !errors.Is(err, org.ErrTeamOrgMember) {
+				t.Fatalf("nonmember was accepted as a target: %v", err)
+			}
+			member, err := svc.AddMember(ctx, org.AddMemberRequest{OrganizationID: group.ID, UserID: peer.UserID, Roles: []string{}})
+			must(err)
+			if member.Role != "" {
+				t.Fatalf("unexpected role %q", member.Role)
+			}
+			_, err = store.AddTeamMember(ctx, leader, group.ID, team.ID, peer.UserID)
+			must(err)
+			teams, err := store.ListUserTeams(ctx, target, group.ID, "")
+			must(err)
+			if len(teams) != 1 || teams[0].ID != team.ID {
+				t.Fatal("membership with an empty role lost its team")
+			}
+			_, err = store.CreateTeam(ctx, target, group.ID, "Other")
+			if !errors.Is(err, org.ErrTeamCreate) {
+				t.Fatalf("member without grants attempted team creation: %v", err)
 			}
 		})
 	}

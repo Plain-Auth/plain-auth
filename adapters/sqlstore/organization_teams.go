@@ -108,9 +108,6 @@ func (s *Store) ActiveTeam(ctx context.Context, a org.TeamActor) (*string, error
 func (t teamTransaction) memberRole(orgID, userID string) (string, error) {
 	var role string
 	err := t.tx.QueryRowContext(t.ctx, t.bind(`SELECT "role" FROM "member" WHERE "organizationId"=? AND "userId"=?`), orgID, userID).Scan(&role)
-	if errors.Is(err, sql.ErrNoRows) {
-		return "", nil
-	}
 	return role, err
 }
 func (t teamTransaction) organizationMember(explicit string, missing *authn.APIError) (string, string, error) {
@@ -128,11 +125,11 @@ func (t teamTransaction) organizationMember(explicit string, missing *authn.APIE
 		return "", "", err
 	}
 	role, err := t.memberRole(id, t.actor.UserID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", "", missing
+	}
 	if err != nil {
 		return "", "", err
-	}
-	if role == "" {
-		return "", "", missing
 	}
 	return id, role, nil
 }
@@ -329,12 +326,12 @@ func (s *Store) ListUserTeams(ctx context.Context, a org.TeamActor, explicit, us
 			if target != a.UserID && !t.organizationRoles.HasAction(actorRole, "member", "update") {
 				return org.ErrTeamListUser
 			}
-			role, err := t.memberRole(id, target)
+			_, err = t.memberRole(id, target)
+			if errors.Is(err, sql.ErrNoRows) {
+				return org.ErrTeamOrgMember
+			}
 			if err != nil {
 				return err
-			}
-			if role == "" {
-				return org.ErrTeamOrgMember
 			}
 			query += ` AND t."organizationId"=?`
 			args = append(args, id)
@@ -471,12 +468,12 @@ func (t teamTransaction) authorizeMemberChange(explicit, id, user, action string
 	if err != nil {
 		return err
 	}
-	role, err := t.memberRole(group, user)
+	_, err = t.memberRole(group, user)
+	if errors.Is(err, sql.ErrNoRows) {
+		return org.ErrTeamOrgMember
+	}
 	if err != nil {
 		return err
-	}
-	if role == "" {
-		return org.ErrTeamOrgMember
 	}
 	_, err = t.findTeam(t.ctx, t.tx, group, id)
 	return err

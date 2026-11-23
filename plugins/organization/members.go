@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/rand"
 	"errors"
-	"slices"
 	"strings"
 	"time"
 )
@@ -29,8 +28,10 @@ type ActiveMemberStore interface {
 type AddMemberRequest struct {
 	OrganizationID string
 	UserID         string
-	Roles          []string
-	TeamID         string
+	// Roles carries the host's role labels. An empty slice grants membership
+	// with no role actions. A nil slice omits the required role input.
+	Roles  []string
+	TeamID string
 }
 
 // MemberWriter commits the organization membership and optional team membership together.
@@ -54,35 +55,17 @@ func (service *Service) AddMember(ctx context.Context, request AddMemberRequest)
 	if request.UserID == "" {
 		return nil, validation("userId")
 	}
-	role, err := service.options.rolePolicy.directMemberRoles(request.Roles)
-	if err != nil {
-		return nil, err
+	if request.Roles == nil {
+		return nil, validation("role")
 	}
 	member := &Member{
 		ID: rand.Text(), OrganizationID: request.OrganizationID, UserID: request.UserID,
-		Role: role, CreatedAt: time.Now().UTC().Truncate(time.Millisecond),
+		Role: strings.Join(NormalizeRoles(request.Roles...), ","), CreatedAt: time.Now().UTC().Truncate(time.Millisecond),
 	}
 	if err := store.AddOrganizationMember(ctx, *member, request.TeamID); err != nil {
 		return nil, err
 	}
 	return member, nil
-}
-
-func (p RolePolicy) directMemberRoles(entries []string) (string, error) {
-	if len(entries) == 0 {
-		return "", validation("role")
-	}
-	var roles []string
-	for _, entry := range entries {
-		role := strings.TrimSpace(entry)
-		if !p.Recognizes(role) {
-			return "", problem(400, "ROLE_NOT_FOUND", "Role not found")
-		}
-		if !slices.Contains(roles, role) {
-			roles = append(roles, role)
-		}
-	}
-	return strings.Join(roles, ","), nil
 }
 
 // Store returns the adapter used for membership, including its configured team policy.

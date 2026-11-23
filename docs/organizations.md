@@ -495,7 +495,9 @@ member, err := organizations.AddMember(ctx, organization.AddMemberRequest{
 })
 ```
 
-Supply the exact organization and user IDs. Built-in roles are `owner`, `admin`, and `member`. A duplicate grant returns `USER_IS_ALREADY_A_MEMBER_OF_THIS_ORGANIZATION`. To add the user to a team in the same transaction, enable `Teams` on the service and set `TeamID` to a team in that organization. A full team rolls back the entire grant. Granting membership preserves the user's current browser selection. [Three-database membership tests](../adapters/sqlstore/organization_members_test.go)
+The trusted server chooses the role labels. Commas split names, surrounding whitespace and empty components are removed, and order and repeated names are preserved. For example, `[]string{"editor, reviewer", "editor"}` is stored as `editor,reviewer,editor`. A label acquires actions from the organization’s configured policy. An explicit empty slice grants membership with no role actions. This member can still join or select a team. A nil slice omits the required role input and returns a validation error. HTTP invitations and member role changes validate role names against the host policy. [Server grant comparison](../conformance/organization-server-grants.mjs)
+
+Supply the exact organization and user IDs. A duplicate grant returns `USER_IS_ALREADY_A_MEMBER_OF_THIS_ORGANIZATION`. To add the user to a team in the same transaction, enable `Teams` on the service and set `TeamID` to a team in that organization. A full team rolls back the entire grant. Granting membership preserves the user's current browser selection. [Three-database membership tests](../adapters/sqlstore/organization_members_test.go)
 
 ## Limit organization membership
 

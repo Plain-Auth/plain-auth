@@ -1992,3 +1992,8 @@ test("custom organization roles govern grants, teams, invitations and creator su
   const { compareCustomOrganizationRoles } = await import("./organization-custom-roles.mjs");
   await compareCustomOrganizationRoles(t, { reference, goFixture, instrument });
 });
+
+test("trusted member grants retain normalized role labels and team membership", async t => {
+  const { compareServerGrantRoles } = await import("./organization-server-grants.mjs");
+  await compareServerGrantRoles(t, { reference, goFixture, instrument, fixtureBinary: () => fixtureBuild });
+});

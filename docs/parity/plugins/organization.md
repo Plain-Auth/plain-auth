@@ -109,6 +109,8 @@
     - [x] Read grants stored by either server through the other runtime’s browser client without changing the recipient’s active organization ([test](../../../conformance/core.test.mjs#L1042))
     - [x] Apply the configured capacity to trusted grants on both runtimes ([test](../../../conformance/organization-capacity.mjs#L70))
     - [x] Allocate the final seat once when a trusted grant and an invitation compete across connections ([test](../../../adapters/sqlstore/organization_limit_test.go#L194))
+    - [x] Persist ordered role labels and empty roles when trusted application code grants membership ([test](../../../conformance/organization-server-grants.mjs#L41))
+    - [x] Distinguish an unprivileged member from a missing membership on all three SQL engines ([test](../../../adapters/sqlstore/organization_members_test.go#L181))
   - [ ] `POST /organization/remove-member`
     - [x] Resolve simultaneous opposing owner removals in a single transaction attempt while both PostgreSQL connections wait on database locks ([test](../../../adapters/sqlstore/organization_locking_test.go#L106))
     - [x] Remove by case-insensitive email or exact membership ID and return the matching public member shape through the released client ([test](../../../conformance/organization-removal.mjs#L54))
@@ -512,6 +514,8 @@
         - [x] Require current membership from both users and deny an outsider access to an existing member’s role ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L264))
         - [x] Reject duplicate query selectors before authentication and distinguish missing selections and unknown slugs ([test](../../../conformance/organization-role.mjs#L88))
     - [ ] Add Member
+      - [x] Persist ordered role labels and empty roles when trusted application code grants membership ([test](../../../conformance/organization-server-grants.mjs#L41))
+      - [x] Distinguish an unprivileged member from a missing membership on all three SQL engines ([test](../../../adapters/sqlstore/organization_members_test.go#L181))
       - [ ] `POST /organization/add-member` (server API)
         - [ ] Parameter `userId`
         - [ ] Parameter `role`
