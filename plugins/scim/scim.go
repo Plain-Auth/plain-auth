@@ -109,6 +109,9 @@ func New(host *auth.Auth, opts Options) (*Handler, error) {
 	if host == nil || opts.Store == nil || len(opts.Connections) == 0 && opts.VerifyBearerToken == nil && opts.Managed == nil {
 		return nil, errors.New("scim: auth host, directory store and a credential source are required")
 	}
+	if host.HasDatabaseHooks() {
+		return nil, errors.New("scim: database hooks do not run for SCIM provisioning yet")
+	}
 	path := strings.TrimRight(host.BasePath(), "/") + "/scim/v2"
 	base, err := host.CallbackURL(path)
 	if err != nil {

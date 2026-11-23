@@ -157,6 +157,11 @@ func (a *Auth) checkDatabaseHooks() error {
 	return nil
 }
 
+// HasDatabaseHooks reports whether the instance or a plugin configured any
+// database hook. A handler that wraps the Auth and writes users or sessions
+// itself refuses a host with hooks it would bypass.
+func (a *Auth) HasDatabaseHooks() bool { return a.dbHooks.set() }
+
 type hookContextKey struct{ a *Auth }
 
 // hookContext returns the endpoint call that caused a write, or nil for a direct Go call.

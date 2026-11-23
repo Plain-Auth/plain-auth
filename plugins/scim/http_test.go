@@ -31,6 +31,17 @@ func TestSCIMProtocolAndCredentialConfiguration(t *testing.T) {
 		}
 	}
 	options := Options{Store: failureStore{}, Connections: []Connection{conn("a", "one")}}
+	// SCIM provisioning does not run database hooks yet, so it refuses a host with hooks.
+	hooked, err := auth.New(auth.Options{BaseURL: "https://directory.example.test", BasePath: "/identity", Secret: strings.Repeat("a", 32), Store: memory.New(),
+		DatabaseHooks: auth.DatabaseHooks{User: auth.ModelHooks[auth.UserRecord]{Create: auth.OperationHooks[auth.UserRecord]{
+			After: func(context.Context, auth.UserRecord, *auth.HookContext) error { return nil },
+		}}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := New(hooked, options); err == nil || !strings.Contains(err.Error(), "database hooks") {
+		t.Fatal("SCIM accepted a host whose database hooks it would bypass", err)
+	}
 	h, err := New(host, options)
 	if err != nil {
 		t.Fatal(err)

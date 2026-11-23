@@ -178,7 +178,7 @@ Hooks never run inside a database transaction, so they may read and write throug
 
 On sign-up, any other error from a user before hook answers 422 `FAILED_TO_CREATE_USER`. When sign-up hides existing emails, a 403 `APIError` from a user before hook gets the same response as an existing email.
 
-Database hooks do not cover every flow yet. `New` refuses user or session create hooks when social sign-in, magic link, email OTP, phone number, One Tap, SSO or the admin plugin is enabled; user create hooks with passkey or wallet sign-in; and session create hooks with two-factor authentication, device authorization or `AutoSignInAfterVerification`. Update and delete hooks are refused for now.
+Database hooks do not cover every flow yet. `New` refuses user or session create hooks when social sign-in, magic link, email OTP, phone number, One Tap, SSO or the admin plugin is enabled; user create hooks with passkey or wallet sign-in; and session create hooks with two-factor authentication, device authorization or `AutoSignInAfterVerification`. Update and delete hooks are refused for now. The SCIM handler refuses a host with any database hook, and `Auth.HasDatabaseHooks` lets your own wrapping handler do the same.
 
 ## Errors and panics
 
