@@ -118,7 +118,7 @@ For integration tests, create fixture users and organizations, capture email or 
 | Add account switching to a shared device | [Device sessions](docs/multi-session.md) |
 | Share login cookies across approved sibling hosts | [Cookie configuration](docs/authentication.md) |
 | Access application routes with revocable API keys | [API keys](docs/api-keys.md) |
-| Define roles and check resource permissions in application handlers | [Role permissions](docs/access.md) |
+| Check a member’s organization permissions or define roles for your own handlers | [Organization permissions](docs/organizations.md#check-organization-permissions) · [Application roles](docs/access.md) |
 | Share a request limit across server instances using Redis or Valkey | [Redis secondary storage](docs/redis.md) |
 | Return translated authentication errors in 22 bundled languages | [Localization](docs/localization.md) |
 | Generate an OpenAPI document and browse the routes enabled in this application | [OpenAPI reference](docs/openapi.md) |

@@ -194,6 +194,8 @@ func publicResponse(route plainauth.HTTPRoute, info plainauth.HTTPDescription, f
 		return array(modelRef("TeamMember"))
 	case "/token", "/one-time-token/generate":
 		return responseObject(object{"token": object{"type": "string"}}, "token")
+	case "/organization/has-permission":
+		return responseObject(object{"success": object{"type": "boolean"}, "error": object{"type": "null"}}, "success", "error")
 	case "/organization/invite-member", "/organization/cancel-invitation":
 		return modelRef("Invitation")
 	case "/organization/accept-invitation":
@@ -350,6 +352,15 @@ func adjustRequest(op object, r plainauth.HTTPRoute, info plainauth.HTTPDescript
 		return
 	}
 	switch r.Path {
+	case "/organization/has-permission":
+		actions := object{"type": "object", "additionalProperties": array(object{"type": "string"})}
+		legacy := object{"type": "object", "deprecated": true, "additionalProperties": array(object{"type": "string"})}
+		request := object{"type": "object", "properties": object{"organizationId": object{"type": "string"}}, "oneOf": []object{
+			responseObject(object{"permissions": actions}, "permissions"),
+			responseObject(object{"permission": legacy}, "permission"),
+		}}
+		op["requestBody"] = object{"required": true, "content": content("application/json", request)}
+		return
 	case "/update-session":
 		fields := object{}
 		for name, f := range info.SessionFields {

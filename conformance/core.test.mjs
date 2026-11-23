@@ -1982,3 +1982,8 @@ test("invitation team targets preserve ordering, empty shapes and tenant profile
   const { compareInvitationTeamTargets } = await import("./invitation-team-targets.mjs");
   await compareInvitationTeamTargets(t, { reference, goFixture, instrument });
 });
+
+test("organization permission queries evaluate live built-in memberships without changing session selection", async t => {
+  const { compareOrganizationPermissions } = await import("./organization-permissions.mjs");
+  await compareOrganizationPermissions(t, { reference, goFixture, instrument });
+});

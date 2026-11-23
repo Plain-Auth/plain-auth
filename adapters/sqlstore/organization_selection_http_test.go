@@ -13,6 +13,7 @@ import (
 
 	auth "github.com/Plain-Auth/plain-auth"
 	"github.com/Plain-Auth/plain-auth/client"
+	"github.com/Plain-Auth/plain-auth/plugins/access"
 	org "github.com/Plain-Auth/plain-auth/plugins/organization"
 	"github.com/Plain-Auth/plain-auth/schema"
 )
@@ -152,6 +153,19 @@ func TestOrganizationAndTeamSelectionHTTP(t *testing.T) {
 			session(two, second, "")
 			sdk, err := client.New(origin, two)
 			must(err)
+			for _, scope := range []string{"", first} {
+				allowed, err := sdk.HasOrganizationPermission(ctx, scope, access.Statements{"organization": {"delete"}, "ac": {"read"}})
+				must(err)
+				if !allowed {
+					t.Fatal("owner could not check permissions for the active or explicit organization")
+				}
+			}
+			allowed, err := sdk.HasOrganizationPermission(ctx, "", access.Statements{"member": nil})
+			must(err)
+			if allowed {
+				t.Fatal("empty action list granted permission")
+			}
+			session(two, second, "")
 			page, err := sdk.ListOrganizationMembers(ctx, org.MemberListQuery{OrganizationSlug: "a-group", Limit: 1, SortBy: "userId", FilterField: "role", FilterOperator: "in", FilterValues: []string{"", "owner"}})
 			must(err)
 			if page.Total != 1 || len(page.Members) != 1 || page.Members[0].OrganizationID != first || page.Members[0].User.Email != login["email"] {
@@ -261,6 +275,7 @@ func TestOrganizationAndTeamSelectionHTTP(t *testing.T) {
 			_, err = store.db.ExecContext(ctx, store.bind(`DELETE FROM "member" WHERE "id"=?`), active.ID)
 			must(err)
 			code(two, 400, "MEMBER_NOT_FOUND")
+			send(two, "POST", "organization/has-permission", map[string]any{"permissions": access.Statements{"ac": {"read"}}}, 401)
 			send(two, "POST", "organization/cancel-invitation", map[string]string{"invitationId": issued.ID}, 400)
 			send(two, "POST", "sign-out", nil, 200)
 			code(two, 401, "UNAUTHORIZED")

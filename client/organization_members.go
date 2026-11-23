@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"strconv"
 
+	"github.com/Plain-Auth/plain-auth/plugins/access"
 	org "github.com/Plain-Auth/plain-auth/plugins/organization"
 )
 
@@ -201,4 +202,25 @@ func (c *Client) CancelOrganizationInvitation(ctx context.Context, invitationID 
 		return nil, err
 	}
 	return &out, nil
+}
+
+// HasOrganizationPermission checks the caller's live membership. An empty
+// organizationID uses the active organization on this session.
+func (c *Client) HasOrganizationPermission(ctx context.Context, organizationID string, permissions access.Statements) (bool, error) {
+	requested := make(access.Statements, len(permissions))
+	for resource, actions := range permissions {
+		if actions == nil {
+			actions = []string{}
+		}
+		requested[resource] = actions
+	}
+	body := map[string]any{"permissions": requested}
+	if organizationID != "" {
+		body["organizationId"] = organizationID
+	}
+	var response struct {
+		Success bool `json:"success"`
+	}
+	err := c.Do(ctx, http.MethodPost, "/organization/has-permission", body, &response)
+	return response.Success, err
 }

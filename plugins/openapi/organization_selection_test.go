@@ -85,6 +85,12 @@ func TestOrganizationSelectionSchema(t *testing.T) {
 				lists["members"] == nil || lists["invitations"] == nil || (lists["teams"] != nil) != tc.teams {
 				t.Fatal("full organization description does not match the configured collections", lists)
 			}
+			permission := node(paths, "/organization/has-permission", "post")
+			decision := node(permission, "responses", "200", "content", "application/json", "schema", "properties")
+			check := node(permission, "requestBody", "content", "application/json", "schema")
+			if node(decision, "success")["type"] != "boolean" || node(decision, "error")["type"] != "null" || node(check, "properties", "organizationId")["type"] != "string" || len(check["oneOf"].([]any)) != 2 {
+				t.Fatal("permission schema lost the decision or request selector")
+			}
 			cancel := node(paths, "/organization/cancel-invitation", "post")
 			issue := node(paths, "/organization/invite-member", "post")
 			if node(issue, "responses", "200", "content", "application/json", "schema")["$ref"] != "#/components/schemas/Invitation" {

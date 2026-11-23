@@ -15180,5 +15180,115 @@
       "test": "adapters/sqlstore/organization_topology_test.go",
       "marker": "t.Fatal(\"mixed-node issuance or resend changed stored team targets\")"
     }
+  ],
+  "plugin/organization/POST /organization/has-permission": [
+    {
+      "label": "Evaluate every built-in role and resource action with the signed-in organization member",
+      "test": "conformance/organization-permissions.mjs",
+      "marker": "assert.deepEqual(decision,{error:null,success:grants[i]}"
+    },
+    {
+      "label": "Check an active or explicit organization with the Go client on three SQL engines",
+      "test": "adapters/sqlstore/organization_selection_http_test.go",
+      "marker": "t.Fatal(\"owner could not check permissions for the active or explicit organization\")"
+    }
+  ],
+  "plugin-symbol/organization/hasPermission": [
+    {
+      "label": "Evaluate every built-in role and resource action with the signed-in organization member",
+      "test": "conformance/organization-permissions.mjs",
+      "marker": "assert.deepEqual(decision,{error:null,success:grants[i]}"
+    },
+    {
+      "label": "Check an active or explicit organization with the Go client on three SQL engines",
+      "test": "adapters/sqlstore/organization_selection_http_test.go",
+      "marker": "t.Fatal(\"owner could not check permissions for the active or explicit organization\")"
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1395/Has Permission": [
+    {
+      "label": "Evaluate every built-in role and resource action with the signed-in organization member",
+      "test": "conformance/organization-permissions.mjs",
+      "marker": "assert.deepEqual(decision,{error:null,success:grants[i]}"
+    },
+    {
+      "label": "Check an active or explicit organization with the Go client on three SQL engines",
+      "test": "adapters/sqlstore/organization_selection_http_test.go",
+      "marker": "t.Fatal(\"owner could not check permissions for the active or explicit organization\")"
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1246": [
+    {
+      "label": "Evaluate every built-in role and resource action with the signed-in organization member",
+      "test": "conformance/organization-permissions.mjs",
+      "marker": "assert.deepEqual(decision,{error:null,success:grants[i]}",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1250/organization": [
+    {
+      "label": "Evaluate every built-in role and resource action with the signed-in organization member",
+      "test": "conformance/organization-permissions.mjs",
+      "marker": "assert.deepEqual(decision,{error:null,success:grants[i]}",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1254/member": [
+    {
+      "label": "Evaluate every built-in role and resource action with the signed-in organization member",
+      "test": "conformance/organization-permissions.mjs",
+      "marker": "assert.deepEqual(decision,{error:null,success:grants[i]}",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1258/invitation": [
+    {
+      "label": "Evaluate every built-in role and resource action with the signed-in organization member",
+      "test": "conformance/organization-permissions.mjs",
+      "marker": "assert.deepEqual(decision,{error:null,success:grants[i]}",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1231": [
+    {
+      "label": "Evaluate every built-in role and resource action with the signed-in organization member",
+      "test": "conformance/organization-permissions.mjs",
+      "marker": "assert.deepEqual(decision,{error:null,success:grants[i]}"
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1235/`owner`": [
+    {
+      "label": "Evaluate every built-in role and resource action with the signed-in organization member",
+      "test": "conformance/organization-permissions.mjs",
+      "marker": "assert.deepEqual(decision,{error:null,success:grants[i]}"
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1237/`admin`": [
+    {
+      "label": "Evaluate every built-in role and resource action with the signed-in organization member",
+      "test": "conformance/organization-permissions.mjs",
+      "marker": "assert.deepEqual(decision,{error:null,success:grants[i]}"
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1239/`member`": [
+    {
+      "label": "Evaluate every built-in role and resource action with the signed-in organization member",
+      "test": "conformance/organization-permissions.mjs",
+      "marker": "assert.deepEqual(decision,{error:null,success:grants[i]}"
+    }
+  ],
+  "plugin-symbol/organization/clientSideHasPermission": [
+    {
+      "label": "Calculate built-in role permissions locally from a comma-separated role list",
+      "test": "plugins/organization/permissions_test.go",
+      "marker": "func TestDefaultOrganizationRolePermissions"
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1442/Check Role Permission": [
+    {
+      "label": "Calculate built-in role permissions locally from a comma-separated role list",
+      "test": "plugins/organization/permissions_test.go",
+      "marker": "func TestDefaultOrganizationRolePermissions"
+    }
   ]
 }

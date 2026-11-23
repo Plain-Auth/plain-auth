@@ -133,7 +133,7 @@ func endpointSession(c authn.EndpointContext, method, action string) (*authn.Ses
 		}
 		return s, nil
 	}
-	if method != http.MethodGet && action != "set-active" && action != "set-active-team" {
+	if method != http.MethodGet && action != "set-active" && action != "set-active-team" && action != "has-permission" {
 		if err := s.Session.RequireOwner(); err != nil {
 			return nil, err
 		}
@@ -277,7 +277,7 @@ func (service *Service) Plugin() authn.Plugin {
 		plugin.Endpoints = append(plugin.Endpoints, o.memberDirectoryEndpoint(store))
 	}
 	if store, ok := o.Store.(MemberRoleReader); ok {
-		plugin.Endpoints = append(plugin.Endpoints, o.readMemberRoleEndpoint(store))
+		plugin.Endpoints = append(plugin.Endpoints, o.readMemberRoleEndpoint(store), permissionEndpoint(store))
 	}
 	if store, ok := o.Store.(ActiveMemberStore); ok {
 		plugin.Endpoints = append(plugin.Endpoints, o.endpoint(http.MethodGet, "get-active-member", func(c authn.EndpointContext, s *authn.SessionResult) (any, error) {

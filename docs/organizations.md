@@ -40,6 +40,7 @@ The application provides `sendInvitation`, its configured public `origin` and it
 | GET | `/organization/get-organization` | Read the organization profile by ID, slug or active selection |
 | GET | `/organization/get-full-organization` | Read the profile together with members, visible invitations and configured teams |
 | GET | `/organization/get-active-member` | Read your membership, role and public profile in this session's active organization. Requires a signed-in session. |
+| POST | `/organization/has-permission` | Check the signed-in member’s permissions in an explicit or active organization. |
 | GET | `/organization/get-active-member-role` | Read a user's role in an organization you both belong to. Omit all query parameters for your own role in the active organization. |
 | POST | `/organization/set-active` | Select by ID or slug. Send `{"organizationId":null}` to clear the current selection |
 | GET | `/organization/get-invitation` | Read one pending, unexpired invitation addressed to the signed-in account |
@@ -92,6 +93,22 @@ Read `GET /get-session` under the auth mount for the active organization and tea
 Applications acting as an OAuth issuer can also configure a host-owned page for organization or team selection during authorization. A signed OAuth request can then return a protocol redirect or a JSON destination. [Post-login authorization](oauth-authorization-code.md#select-an-organization-or-team-after-login)
 
 If you generate a client from OpenAPI, the ordinary response is a nullable `Organization` or `Team`. A host that enables signed post-login selection also exposes the optional `oauth_query` input, a JSON result with `redirect` and `url`, and an HTTP 302 response for navigation. [OpenAPI reference](openapi.md) · [Configured schema tests](../plugins/openapi/organization_selection_test.go)
+
+## Check organization permissions
+
+Send `POST /organization/has-permission` with the session cookie and a JSON object such as `{"permissions":{"invitation":["create"],"member":["update"]},"organizationId":"org_a"}`. Omit `organizationId` to use the current session’s active organization. The response is `{"success":true,"error":null}` when one of the member’s roles grants every requested action. A denied permission returns HTTP 200 with `success: false`. Unknown resources, unknown actions and empty requests yield a negative decision.
+
+| Resource | Owner | Admin | Member |
+| --- | --- | --- | --- |
+| `organization` | update, delete | update | — |
+| `member` | create, update, delete | create, update, delete | — |
+| `invitation` | create, cancel | create, cancel | — |
+| `team` | create, update, delete | create, update, delete | — |
+| `ac` (role definitions) | create, read, update, delete | create, read, update, delete | read |
+
+A signed-in caller with no active organization needs an explicit ID. A caller outside the selected organization receives HTTP 401 with `USER_IS_NOT_A_MEMBER_OF_THE_ORGANIZATION`. A lookup preserves the session’s current organization and team. Applications can use the result to decide which actions to display. Each protected mutation checks authority and its own conditions when it runs.
+
+In Go, call `authClient.HasOrganizationPermission(ctx, orgID, access.Statements{"invitation": {"create"}})` using `plugins/access`. For a local calculation with known built-in role names, use `organization.DefaultRoleHasPermission("admin,member", requested)`. The HTTP method also reads the current membership, including role changes and removals. The supported HTTP field is `permissions`. The legacy singular `permission` form yields a negative decision. [Role and request comparisons](../conformance/organization-permissions.mjs) · [Go client and database tests](../adapters/sqlstore/organization_selection_http_test.go)
 
 ## Read an organization and its directory
 
