@@ -16,9 +16,10 @@ import (
 	"github.com/Plain-Org/plain-auth/schema"
 )
 
-// Run user and session create hooks that use the Auth and the store on three
-// engines without holding a write transaction, fire once for concurrent
-// sign-ups of one email, and apply to anonymous sign-in and the admin bootstrap.
+// Run user and session create hooks, and session update and delete hooks,
+// that use the Auth and the store on three engines without holding a write
+// transaction; fire once for concurrent sign-ups of one email; and apply to
+// anonymous sign-in and the admin bootstrap.
 func TestDatabaseCreateHooksOnSQL(t *testing.T) {
 	for _, dialect := range []string{"sqlite", "postgres", "mysql"} {
 		t.Run(dialect, func(t *testing.T) {
@@ -120,6 +121,68 @@ func TestDatabaseCreateHooksOnSQL(t *testing.T) {
 			wg.Wait()
 			if n := created.Load(); n != 1 {
 				t.Fatalf("concurrent sign-ups fired %d user after hooks", n)
+			}
+
+			// Session update and delete hooks may also read through the store on every engine.
+			every := time.Duration(0)
+			var changes []string
+			note := func(e string) { mu.Lock(); changes = append(changes, e); mu.Unlock() }
+			sessions, err := auth.New(auth.Options{
+				BaseURL: "https://auth.example", Store: store, Secret: strings.Repeat("s", 32), EmailAndPassword: true, RateLimit: &off, SessionUpdateAge: &every,
+				DatabaseHooks: auth.DatabaseHooks{Session: auth.ModelHooks[auth.SessionRecord]{
+					Update: auth.OperationHooks[auth.SessionRecord]{After: func(ctx context.Context, s auth.SessionRecord, _ *auth.HookContext) error {
+						stored, _, err := store.Session(ctx, s.Token)
+						if err != nil {
+							return err
+						}
+						note("refreshed:" + fmt.Sprint(stored.ExpiresAt.Equal(s.ExpiresAt)))
+						return nil
+					}},
+					Delete: auth.OperationHooks[auth.SessionRecord]{
+						Before: func(ctx context.Context, s *auth.SessionRecord, _ *auth.HookContext) error {
+							_, err := store.ListSessions(ctx, s.UserID)
+							return err
+						},
+						After: func(ctx context.Context, s auth.SessionRecord, _ *auth.HookContext) error {
+							_, _, err := store.Session(ctx, s.Token)
+							note("deleted:" + fmt.Sprint(errors.Is(err, auth.ErrNotFound)))
+							return nil
+						},
+					},
+				}},
+			})
+			must(err)
+			signIn := func() http.Header {
+				r := httptest.NewRequest("POST", "https://auth.example/api/auth/sign-in/email", strings.NewReader(`{"email":"ada@example.com","password":"correct horse battery"}`))
+				r.Header = http.Header{"Origin": {"https://auth.example"}, "Content-Type": {"application/json"}}
+				w := httptest.NewRecorder()
+				sessions.ServeHTTP(w, r)
+				if w.Code != 200 {
+					t.Fatal("sign-in failed", w.Code, w.Body)
+				}
+				h := http.Header{"Origin": {"https://auth.example"}, "Content-Type": {"application/json"}}
+				for _, c := range w.Result().Cookies() {
+					h.Add("Cookie", c.Name+"="+c.Value)
+				}
+				return h
+			}
+			send := func(h http.Header, method, target string) int {
+				r := httptest.NewRequest(method, "https://auth.example/api/auth"+target, strings.NewReader(`{}`))
+				r.Header = h.Clone()
+				w := httptest.NewRecorder()
+				sessions.ServeHTTP(w, r)
+				return w.Code
+			}
+			browser := signIn()
+			signIn()
+			if send(browser, "GET", "/get-session") != 200 || send(browser, "POST", "/revoke-other-sessions") != 200 || send(browser, "POST", "/sign-out") != 200 {
+				t.Fatal("a session request failed")
+			}
+			mu.Lock()
+			got = strings.Join(changes, ",")
+			mu.Unlock()
+			if !strings.HasPrefix(got, "refreshed:true,deleted:true") || !strings.HasSuffix(got, "deleted:true") || strings.Contains(got, "false") {
+				t.Fatal("unexpected session hooks", got)
 			}
 
 			// The admin bootstrap creates its user through the hooks.

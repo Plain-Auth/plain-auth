@@ -245,9 +245,37 @@ func (a *Auth) UpdateSession(ctx context.Context, h http.Header, patch map[strin
 		return Session{}, &APIError{Status: 400, Message: "No fields to update"}
 	}
 	now := a.now().UTC().Truncate(time.Millisecond)
+	if a.dbHooks.session.update.set() {
+		draft := current.Session
+		draft.UpdatedAt = now
+		_, edited, err := a.beforeSessionUpdate(ctx, draft, changes, false)
+		if errors.Is(err, ErrSkipWrite) {
+			return Session{}, errSessionGone
+		}
+		if err != nil {
+			return Session{}, err
+		}
+		// Stores accept the same fields from hooks as from callers.
+		changes = make(map[string]any, len(edited))
+		for name, raw := range edited {
+			f, ok := fields[name]
+			if !ok {
+				return Session{}, &APIError{400, "VALIDATION_ERROR", "Unknown session field " + name}
+			}
+			if f.ServerOnly {
+				return Session{}, &APIError{400, "FIELD_NOT_ALLOWED", name + " is not allowed to be set"}
+			}
+			if changes[name], err = f.Value(raw); err != nil {
+				return Session{}, &APIError{400, "VALIDATION_ERROR", "Invalid field " + name}
+			}
+		}
+		if len(changes) == 0 {
+			return Session{}, &APIError{Status: 400, Message: "No fields to update"}
+		}
+	}
 	if err := a.opts.Store.(SessionFieldStore).UpdateSessionFields(ctx, current.Session, fields, changes, now); err != nil {
 		if errors.Is(err, ErrNotFound) {
-			return Session{}, &APIError{401, "FAILED_TO_GET_SESSION", "Failed to get session"}
+			return Session{}, errSessionGone
 		}
 		return Session{}, err
 	}
@@ -256,13 +284,23 @@ func (a *Auth) UpdateSession(ctx context.Context, h http.Header, patch map[strin
 		return Session{}, err
 	}
 	if updated == nil || updated.Session.ID != current.Session.ID {
-		return Session{}, &APIError{401, "FAILED_TO_GET_SESSION", "Failed to get session"}
+		return Session{}, errSessionGone
+	}
+	if err := a.afterSessionUpdate(ctx, updated.Session, changes); err != nil {
+		return Session{}, err
 	}
 	return updated.Session, nil
 }
 
+// errSessionGone answers an update to a session that no longer exists or
+// that a hook declined to update.
+var errSessionGone = &APIError{401, "FAILED_TO_GET_SESSION", "Failed to get session"}
+
 func (a *Auth) sessionFieldsHTTP(w http.ResponseWriter, r *http.Request, body wireBody) (any, error) {
 	s, err := a.UpdateSession(r.Context(), r.Header, body)
+	if errors.Is(err, errSessionGone) {
+		a.expireSessionCookieHeaders(w.Header(), r)
+	}
 	if err != nil {
 		return nil, err
 	}

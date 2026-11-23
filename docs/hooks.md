@@ -157,12 +157,14 @@ opts.DatabaseHooks.User.Create = plainauth.OperationHooks[plainauth.UserRecord]{
 
 `Options.DatabaseHooks` and `Plugin.DatabaseHooks` hold `Create`, `Update` and `Delete` hooks for `User` and `Session`. Plugin hooks run first, in plugin order, then the Options hooks.
 
-- **Before** runs just before the write. It may change the fields the write stores; changing any other field fails the write with a 500.
-  - **Users:** `Name`, `Email`, `Image`, `EmailVerified` and `Fields`, the `UserAdditionalFields` values by name.
-  - **Sessions:** `ExpiresAt`, `IPAddress`, `UserAgent` and `Fields`, the `SessionAdditionalFields` values by name.
-  - Edited values are checked like caller input; defaults for omitted fields apply after the hooks. A hook may set server-only fields, and never sees a server-only value the caller tried to send.
+- **Before** runs just before the write. For a create or an update it receives the full row with the change applied, and may change the fields the write stores; changing any other field fails the write with a 500.
+  - **Creating a user:** `Name`, `Email`, `Image`, `EmailVerified` and `Fields`, the `UserAdditionalFields` values by name.
+  - **Creating a session:** `ExpiresAt`, `IPAddress`, `UserAgent` and `Fields`, the `SessionAdditionalFields` values by name.
+  - **Refreshing a session:** `ExpiresAt`. **Updating session fields:** `Fields`, limited to the fields a caller may set.
+  - Edited values are checked like caller input; defaults for omitted fields apply after the hooks. A create hook may set server-only fields, and never sees a server-only value the caller tried to send.
+  - For a delete, Before receives the row about to be removed; edits are ignored.
 - **Return from Before** `plainauth.ErrSkipWrite` to cancel the write, an `APIError` to answer with that error, or another error to fail the write.
-- **After** receives the stored row. Its error is returned to the caller; the row stays stored, but a session that has not been delivered yet is removed.
+- **After** receives the stored row, or the removed one. Its error is returned to the caller; the change stays, but a session that has not been delivered yet is removed.
 - **`c`** is the endpoint call that caused the write, or nil for a direct Go call such as `Auth.SignUpEmail`.
 
 Hooks never run inside a database transaction, so they may read and write through the Auth and the store. When one operation stores several rows, every before hook runs before anything is written: a sign-up runs the user hooks, then the session hooks, then stores both, then runs the after hooks in the same order. A sign-up with an email that already exists takes the duplicate path without running any hook.
@@ -178,7 +180,31 @@ Hooks never run inside a database transaction, so they may read and write throug
 
 On sign-up, any other error from a user before hook answers 422 `FAILED_TO_CREATE_USER`. When sign-up hides existing emails, a 403 `APIError` from a user before hook gets the same response as an existing email.
 
-Database hooks do not cover every flow yet. `New` refuses user or session create hooks when social sign-in, magic link, email OTP, phone number, One Tap, SSO or the admin plugin is enabled; user create hooks with passkey or wallet sign-in; and session create hooks with two-factor authentication, device authorization or `AutoSignInAfterVerification`. Update and delete hooks are refused for now. The SCIM handler refuses a host with any database hook, and `Auth.HasDatabaseHooks` lets your own wrapping handler do the same.
+Session updates and deletes run these hooks:
+
+| Operation | Session hooks | Skipped write |
+| --- | --- | --- |
+| Sliding refresh on `GET /get-session` | Update, with the new `ExpiresAt` | 401 `FAILED_TO_GET_SESSION`, and the browser's session cookie expires |
+| `POST /update-session`, `Auth.UpdateSession` | Update, with the new `Fields` | 401 `FAILED_TO_GET_SESSION`, and the session cookie expires |
+| `POST /sign-out`, `Auth.SignOut`, including every remembered multi-session login | Delete | The browser is signed out, but the session stays stored |
+| `POST /revoke-session`, `/revoke-sessions`, `/revoke-other-sessions` | Delete, once per session | Every session stays |
+| Removing an expired session the browser presents | Delete | The session stays stored |
+| `POST /change-password` with `revokeOtherSessions` | Delete, for every session of the account | The password changes, every session stays and no new session is issued |
+| A new multi-session login of an account already signed in on the browser | Delete, for the older login | The older login stays remembered |
+| `POST /multi-session/revoke` | Delete | The login is forgotten by the browser but stays stored |
+
+A delete reads its sessions first, so the hooks see only sessions that existed then. A session created between that read and the delete is removed without hooks. A skip from any before hook cancels the whole delete.
+
+Database hooks do not cover every flow yet. `New` refuses:
+
+- user or session create hooks with social sign-in, magic link, email OTP, phone number, One Tap, SSO or the admin plugin;
+- user create hooks with passkey or wallet sign-in;
+- session create hooks with two-factor authentication, device authorization or `AutoSignInAfterVerification`;
+- session update hooks with the organization or admin plugin;
+- session delete hooks with the admin, anonymous, magic link, SSO or two-factor plugin, `DeleteUserEnabled` or `RevokeSessionsOnPasswordReset`;
+- user update and delete hooks.
+
+The SCIM handler refuses a host with any database hook, and `Auth.HasDatabaseHooks` lets your own wrapping handler do the same.
 
 ## Errors and panics
 

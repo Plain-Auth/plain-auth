@@ -18406,7 +18406,12 @@
     {
       "label": "Run create hooks outside the write transaction so they can use the store on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/database_hooks_test.go",
-      "marker": "// Run user and session create hooks that use the Auth and the store on three"
+      "marker": "// Run user and session create hooks, and session update and delete hooks,"
+    },
+    {
+      "label": "Run hooks around session refreshes, field updates, sign-out, revocation, expired-session cleanup, password changes and multi-session replacement",
+      "test": "conformance/goapi/database_session_hooks_test.go",
+      "marker": "// Run session update hooks around sliding refreshes and field updates, and"
     }
   ],
   "docs/content/docs/concepts/database.mdx#L881": [
@@ -18421,6 +18426,11 @@
       "label": "Run before a user or session is created",
       "test": "conformance/goapi/database_hooks_test.go",
       "marker": "// Plugin hooks run first; before hooks edit the user, its fields and its session."
+    },
+    {
+      "label": "Run before a session is refreshed, updated or deleted",
+      "test": "conformance/goapi/database_session_hooks_test.go",
+      "marker": "// A sliding refresh runs the update hooks with the new expiry, which a hook may shorten."
     }
   ],
   "docs/content/docs/concepts/database.mdx#L884/Behavior": [
@@ -18428,6 +18438,11 @@
       "label": "Cancel a creation with ErrSkipWrite, edit the stored fields, and reject edits to other fields",
       "test": "conformance/goapi/database_hooks_test.go",
       "marker": "// A skipped, rejected or failed user write stores nothing."
+    },
+    {
+      "label": "Cancel a session update or delete with ErrSkipWrite, let one declined row keep every session of a revocation, and reject edits to fields an update does not store",
+      "test": "conformance/goapi/database_session_hooks_test.go",
+      "marker": "// Revoking other sessions runs the hooks for each one; one declined row keeps them all."
     }
   ],
   "docs/content/docs/concepts/database.mdx#L886": [
@@ -18442,6 +18457,11 @@
       "label": "Run after a user or session is created, with the stored row visible to the store",
       "test": "adapters/sqlstore/database_hooks_test.go",
       "marker": "// Hooks that use the store finish well within the deadline on every engine."
+    },
+    {
+      "label": "Run after a session is updated or deleted, with the change visible to the store",
+      "test": "conformance/goapi/database_session_hooks_test.go",
+      "marker": "// The row is gone once the after hook runs."
     }
   ],
   "docs/content/docs/concepts/database.mdx#L889/Behavior": [
@@ -18449,6 +18469,11 @@
       "label": "Fire one after hook for concurrent sign-ups of one email and none for a sign-up that stores nothing",
       "test": "adapters/sqlstore/database_hooks_test.go",
       "marker": "// Concurrent sign-ups of one new email store one user and fire one after hook."
+    },
+    {
+      "label": "Run session update and delete after hooks once the change is stored, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/database_hooks_test.go",
+      "marker": "// Session update and delete hooks may also read through the store on every engine."
     }
   ],
   "docs/content/docs/concepts/database.mdx#L891/Example Usage": [
@@ -18456,6 +18481,11 @@
       "label": "Derive user fields in a before hook and call another service from an after hook",
       "test": "conformance/goapi/database_hooks_test.go",
       "marker": "u.Fields[\"plan\"], u.Fields[\"tier\"] = \"pro\", \"silver\""
+    },
+    {
+      "label": "Log a session as sign-out deletes it, or keep it by declining the delete",
+      "test": "conformance/goapi/database_session_hooks_test.go",
+      "marker": "// Sign-out runs the delete hooks; a declined delete still signs the browser out but keeps the row."
     }
   ],
   "docs/content/docs/concepts/database.mdx#L947": [
@@ -18471,6 +18501,12 @@
       "label": "Pass the endpoint call to hooks during HTTP requests and nil for direct Go calls",
       "test": "conformance/goapi/database_hooks_test.go",
       "marker": "// Direct Go calls run the hooks without an endpoint context."
+    },
+    {
+      "label": "Read the signed-in caller from the endpoint context in an update hook",
+      "test": "conformance/goapi/database_session_hooks_test.go",
+      "marker": "// An update hook reads the signed-in caller from the endpoint context.",
+      "complete": true
     }
   ],
   "docs/content/docs/reference/options.mdx#L815": [
@@ -18478,6 +18514,11 @@
       "label": "Configure user and session create hooks, and refuse hook configurations an enabled feature would bypass",
       "test": "conformance/goapi/database_hooks_test.go",
       "marker": "// New refuses database hooks that an enabled feature would bypass."
+    },
+    {
+      "label": "Configure session update and delete hooks, and refuse configurations an enabled feature would bypass",
+      "test": "conformance/goapi/database_session_hooks_test.go",
+      "marker": "// New refuses session update and delete hooks that an enabled feature would bypass."
     }
   ]
 }

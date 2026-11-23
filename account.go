@@ -221,12 +221,27 @@ func (a *Auth) ChangePassword(ctx context.Context, h http.Header, in ChangePassw
 		}
 		replacement, result.Token = &row, token
 	}
-	if bound, ok := s.(interface {
-		ChangeCredentialForSession(context.Context, string, string, string, *StoredSession, string, time.Time) error
-	}); ok {
-		err = bound.ChangeCredentialForSession(ctx, session.User.ID, old, hash, replacement, session.Session.Token, a.now().UTC())
+	change := func(replacement *StoredSession) error {
+		if bound, ok := s.(interface {
+			ChangeCredentialForSession(context.Context, string, string, string, *StoredSession, string, time.Time) error
+		}); ok {
+			return bound.ChangeCredentialForSession(ctx, session.User.ID, old, hash, replacement, session.Session.Token, a.now().UTC())
+		}
+		return s.ChangeCredential(ctx, session.User.ID, old, hash, replacement)
+	}
+	if replacement == nil {
+		err = change(nil)
 	} else {
-		err = s.ChangeCredential(ctx, session.User.ID, old, hash, replacement)
+		// Revocation replaces every session of the account.
+		var skipped bool
+		skipped, err = a.deleteSessionsWithHooks(ctx, func() ([]Session, error) { return a.userSessionRows(ctx, session.User.ID, "") }, func() error {
+			return change(replacement)
+		})
+		if skipped {
+			// A declined revocation still changes the password and keeps every session.
+			replacement, result.Token = nil, ""
+			err = change(nil)
+		}
 	}
 	if errors.Is(err, ErrNotFound) {
 		return AuthResult{}, &APIError{400, "INVALID_PASSWORD", "Invalid password"}

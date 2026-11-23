@@ -724,12 +724,18 @@ func (a *Auth) SignOut(ctx context.Context, headers http.Header) error {
 		if token != "" {
 			tokens = append(tokens, token)
 		}
-		return a.deviceSessions.DeleteDeviceSessions(ctx, tokens)
+		_, err := a.deleteSessionsWithHooks(ctx, func() ([]Session, error) { return a.sessionRows(ctx, tokens...) }, func() error {
+			return a.deviceSessions.DeleteDeviceSessions(ctx, tokens)
+		})
+		return err
 	}
 	if token == "" {
 		return nil
 	}
-	return a.opts.Store.DeleteSession(ctx, token)
+	_, err := a.deleteSessionsWithHooks(ctx, func() ([]Session, error) { return a.sessionRows(ctx, token) }, func() error {
+		return a.opts.Store.DeleteSession(ctx, token)
+	})
+	return err
 }
 
 func (a *Auth) requireSession(ctx context.Context, headers http.Header) (*SessionResult, error) {
@@ -790,7 +796,14 @@ func (a *Auth) RevokeSession(ctx context.Context, h http.Header, token string) e
 	if err != nil {
 		return err
 	}
-	return a.opts.Store.DeleteUserSession(ctx, s.User.ID, token)
+	_, err = a.deleteSessionsWithHooks(ctx, func() ([]Session, error) {
+		rows, err := a.sessionRows(ctx, token)
+		if len(rows) == 1 && rows[0].UserID != s.User.ID {
+			rows = nil
+		}
+		return rows, err
+	}, func() error { return a.opts.Store.DeleteUserSession(ctx, s.User.ID, token) })
+	return err
 }
 
 func (a *Auth) RevokeOtherSessions(ctx context.Context, h http.Header) error {
@@ -798,7 +811,10 @@ func (a *Auth) RevokeOtherSessions(ctx context.Context, h http.Header) error {
 	if err != nil {
 		return err
 	}
-	return a.opts.Store.DeleteOtherSessions(ctx, s.User.ID, s.Session.Token)
+	_, err = a.deleteSessionsWithHooks(ctx, func() ([]Session, error) { return a.userSessionRows(ctx, s.User.ID, s.Session.Token) }, func() error {
+		return a.opts.Store.DeleteOtherSessions(ctx, s.User.ID, s.Session.Token)
+	})
+	return err
 }
 
 func (a *Auth) RevokeSessions(ctx context.Context, h http.Header) error {
@@ -806,7 +822,10 @@ func (a *Auth) RevokeSessions(ctx context.Context, h http.Header) error {
 	if err != nil {
 		return err
 	}
-	return a.opts.Store.DeleteOtherSessions(ctx, s.User.ID, "")
+	_, err = a.deleteSessionsWithHooks(ctx, func() ([]Session, error) { return a.userSessionRows(ctx, s.User.ID, "") }, func() error {
+		return a.opts.Store.DeleteOtherSessions(ctx, s.User.ID, "")
+	})
+	return err
 }
 
 // BasePath reports the effective mount path after configuration resolution.

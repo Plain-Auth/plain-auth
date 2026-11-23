@@ -9,8 +9,9 @@ import (
 	"strings"
 )
 
-// DatabaseHooks run your code around the writes that create users and
-// sessions, for HTTP requests and direct Go calls alike. Plugin hooks run
+// DatabaseHooks run your code around the writes that create users and that
+// create, update and delete sessions, for HTTP requests and direct Go calls
+// alike. Plugin hooks run
 // first, in plugin order, then the Options hooks.
 //
 // A before hook runs just before the write and may edit the row or return
@@ -20,7 +21,7 @@ import (
 // first session, every before hook runs before anything is written.
 //
 // New refuses a hook that an enabled feature would bypass, naming the
-// feature. Update and delete hooks are not supported yet.
+// feature. User update and delete hooks are not supported yet.
 type DatabaseHooks struct {
 	User    ModelHooks[UserRecord]
 	Session ModelHooks[SessionRecord]
@@ -56,7 +57,9 @@ type UserRecord struct {
 }
 
 // SessionRecord is a session row in a database hook. When creating a
-// session, a hook may change ExpiresAt, IPAddress, UserAgent and Fields.
+// session, a hook may change ExpiresAt, IPAddress, UserAgent and Fields. A
+// refresh lets it change ExpiresAt, and a field update the Fields a caller
+// may set.
 type SessionRecord struct {
 	Session
 	// Fields holds the Options.SessionAdditionalFields values this write sets,
@@ -124,8 +127,8 @@ func composeDatabaseHooks(opts Options) databaseHookChains {
 // checkDatabaseHooks refuses a hook that an enabled feature would bypass.
 func (a *Auth) checkDatabaseHooks() error {
 	d := a.dbHooks
-	if d.user.update.set() || d.user.delete.set() || d.session.update.set() || d.session.delete.set() {
-		return errors.New("auth: database hooks for updating and deleting users and sessions are not supported yet")
+	if d.user.update.set() || d.user.delete.set() {
+		return errors.New("auth: database hooks for updating and deleting users are not supported yet")
 	}
 	var bypass []string
 	need := func(feature string, enabled bool) {
@@ -153,6 +156,20 @@ func (a *Auth) checkDatabaseHooks() error {
 	}
 	if len(bypass) > 0 {
 		return fmt.Errorf("auth: user and session create database hooks do not run yet for %s", strings.Join(bypass, ", "))
+	}
+	if d.session.update.set() {
+		need("organization", a.HasPlugin("organization"))
+		need("admin", a.HasPlugin("admin"))
+	}
+	if d.session.delete.set() {
+		for _, id := range []string{"admin", "anonymous", "magic-link", "sso", "two-factor"} {
+			need(id, a.HasPlugin(id))
+		}
+		need("DeleteUserEnabled", a.opts.DeleteUserEnabled)
+		need("RevokeSessionsOnPasswordReset", a.opts.RevokeSessionsOnPasswordReset)
+	}
+	if len(bypass) > 0 {
+		return fmt.Errorf("auth: session update and delete database hooks do not run yet for %s", strings.Join(bypass, ", "))
 	}
 	return nil
 }
@@ -294,6 +311,103 @@ func (a *Auth) afterSessionCreate(ctx context.Context, row StoredSession, fields
 		return a.discardUnpublishedSession(ctx, row.Token, err)
 	}
 	return nil
+}
+
+// beforeSessionUpdate runs the session update before hooks on row, the session
+// with the change applied, and fields, the additional field values the update
+// sets. A refresh lets hooks change only ExpiresAt; a field update only fields.
+func (a *Auth) beforeSessionUpdate(ctx context.Context, row Session, fields map[string]any, refresh bool) (Session, map[string]any, error) {
+	chain := a.dbHooks.session.update
+	if len(chain.before) == 0 {
+		return row, fields, nil
+	}
+	rec := SessionRecord{Session: row, Fields: cloneFields(fields)}
+	if err := runBefore(ctx, a, chain, &rec); err != nil {
+		return row, fields, err
+	}
+	edited, check := rec.Session, row
+	if refresh {
+		check.ExpiresAt = edited.ExpiresAt
+	}
+	if !reflect.DeepEqual(check, edited) || refresh && !reflect.DeepEqual(rec.Fields, cloneFields(fields)) {
+		a.Logger().ErrorContext(ctx, errDatabaseHookEdit.Error(), "model", "session")
+		return row, fields, errDatabaseHookEdit
+	}
+	return edited, rec.Fields, nil
+}
+
+func (a *Auth) afterSessionUpdate(ctx context.Context, row Session, fields map[string]any) error {
+	return runAfter(ctx, a, a.dbHooks.session.update, SessionRecord{Session: row, Fields: cloneFields(fields)})
+}
+
+// deleteSessionsWithHooks runs the session delete hooks around del. load
+// reads the sessions del removes, and runs only when delete hooks are set. A
+// skip from any before hook cancels the whole delete and reports true.
+func (a *Auth) deleteSessionsWithHooks(ctx context.Context, load func() ([]Session, error), del func() error) (bool, error) {
+	chain := a.dbHooks.session.delete
+	if !chain.set() {
+		return false, del()
+	}
+	rows, err := load()
+	if err != nil {
+		return false, err
+	}
+	for _, row := range rows {
+		rec := SessionRecord{Session: row, Fields: map[string]any{}}
+		if err := runBefore(ctx, a, chain, &rec); err != nil {
+			if errors.Is(err, ErrSkipWrite) {
+				return true, nil
+			}
+			return false, err
+		}
+	}
+	if err := del(); err != nil {
+		return false, err
+	}
+	for _, row := range rows {
+		if err := runAfter(ctx, a, chain, SessionRecord{Session: row, Fields: map[string]any{}}); err != nil {
+			return false, err
+		}
+	}
+	return false, nil
+}
+
+// sessionRows reads the stored sessions with these tokens. Unknown and
+// repeated tokens are skipped.
+func (a *Auth) sessionRows(ctx context.Context, tokens ...string) ([]Session, error) {
+	var rows []Session
+	seen := make(map[string]bool, len(tokens))
+	for _, token := range tokens {
+		if token == "" || seen[token] {
+			continue
+		}
+		seen[token] = true
+		row, _, err := a.opts.Store.Session(ctx, token)
+		if errors.Is(err, ErrNotFound) {
+			continue
+		}
+		if err != nil {
+			return nil, err
+		}
+		row.Token = token
+		rows = append(rows, row.Session)
+	}
+	return rows, nil
+}
+
+// userSessionRows reads userID's stored sessions except the one with token except.
+func (a *Auth) userSessionRows(ctx context.Context, userID, except string) ([]Session, error) {
+	list, err := a.opts.Store.ListSessions(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	var rows []Session
+	for _, s := range list {
+		if except == "" || s.Token != except {
+			rows = append(rows, s.Session)
+		}
+	}
+	return rows, nil
 }
 
 // createSessionWithHooks runs the session create hooks around write, which

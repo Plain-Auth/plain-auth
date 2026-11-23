@@ -299,7 +299,6 @@ func TestDatabaseCreateHooks(t *testing.T) {
 // New refuses database hooks that an enabled feature would bypass.
 func TestDatabaseHooksRefuseBypassingFeatures(t *testing.T) {
 	create := authn.OperationHooks[authn.UserRecord]{Before: func(context.Context, *authn.UserRecord, *authn.HookContext) error { return nil }}
-	update := authn.OperationHooks[authn.SessionRecord]{After: func(context.Context, authn.SessionRecord, *authn.HookContext) error { return nil }}
 	base := func() authn.Options {
 		return authn.Options{BaseURL: "https://auth.example", Store: memory.New(), Secret: strings.Repeat("s", 32), EmailAndPassword: true}
 	}
@@ -319,11 +318,6 @@ func TestDatabaseHooksRefuseBypassingFeatures(t *testing.T) {
 	social.DatabaseHooks.User.Create = create
 	if _, err := authn.New(social); err == nil || !strings.Contains(err.Error(), "social sign-in") {
 		t.Fatal("user create hooks were accepted with social sign-in", err)
-	}
-	later := base()
-	later.DatabaseHooks.Session.Update = update
-	if _, err := authn.New(later); err == nil || !strings.Contains(err.Error(), "not supported yet") {
-		t.Fatal("session update hooks were accepted", err)
 	}
 	ok := base()
 	ok.DatabaseHooks.User.Create = create

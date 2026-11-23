@@ -62,7 +62,11 @@ func (a *Auth) sessionHTTP(headers http.Header, r *http.Request) (body any, resp
 		retireStaleOnError = false
 		a.expireSessionCookieHeaders(headers, r)
 		if err == nil && canRefresh && !deferredRead {
-			if err := store.DeleteExpiredSession(ctx, token, now); err != nil {
+			expired := row.Session
+			expired.Token = token
+			if _, err := a.deleteSessionsWithHooks(ctx, func() ([]Session, error) { return []Session{expired}, nil }, func() error {
+				return store.DeleteExpiredSession(ctx, token, now)
+			}); err != nil {
 				return nil, err
 			}
 		}
@@ -116,6 +120,21 @@ func (a *Auth) sessionHTTP(headers http.Header, r *http.Request) (body any, resp
 		return result, nil
 	}
 	next := now.Add(a.opts.SessionTTL)
+	if a.dbHooks.session.update.set() {
+		draft := result.Session
+		draft.Token, draft.ExpiresAt, draft.UpdatedAt = token, next, now
+		edited, _, err := a.beforeSessionUpdate(ctx, draft, nil, true)
+		if errors.Is(err, ErrSkipWrite) {
+			// A cancelled refresh ends the browser session, like a missing one.
+			retireStaleOnError = false
+			a.expireSessionCookieHeaders(headers, r)
+			return nil, &APIError{401, "FAILED_TO_GET_SESSION", "Failed to get session"}
+		}
+		if err != nil {
+			return nil, err
+		}
+		next = edited.ExpiresAt
+	}
 	won, err := store.RefreshSession(ctx, token, row.ExpiresAt, now, next)
 	if err != nil {
 		return nil, err
@@ -142,6 +161,11 @@ func (a *Auth) sessionHTTP(headers http.Header, r *http.Request) (body any, resp
 	}
 	result.Session.ExpiresAt = next
 	result.Session.UpdatedAt = now
+	refreshed := result.Session
+	refreshed.Token = token
+	if err := a.afterSessionUpdate(ctx, refreshed, nil); err != nil {
+		return nil, err
+	}
 	if allowCache {
 		if err := a.writeCachedSessionView(headers, r, *result, true); err != nil {
 			return nil, sessionVersionReadError(err)

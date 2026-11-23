@@ -129,9 +129,20 @@ func (a *Auth) rememberDeviceSession(h http.Header, r *http.Request, token strin
 		}
 	}
 	if len(replaced) > 0 {
-		if err := a.deviceSessions.DeleteDeviceSessions(ctx, replaced); err != nil {
+		rows := make([]Session, 0, len(replaced))
+		for _, old := range replaced {
+			rows = append(rows, live[old].Session)
+		}
+		skipped, err := a.deleteSessionsWithHooks(ctx, func() ([]Session, error) { return rows, nil }, func() error {
+			return a.deviceSessions.DeleteDeviceSessions(ctx, replaced)
+		})
+		if err != nil {
 			a.Logger().WarnContext(ctx, "could not replace remembered sessions")
 			return
+		}
+		if skipped {
+			// A hook kept the older logins, so they stay remembered.
+			replaced = nil
 		}
 	}
 	for _, old := range append(stale, replaced...) {
@@ -255,7 +266,9 @@ func revokeDeviceSession(c EndpointContext) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := a.deviceSessions.RevokeDeviceSession(r.Context(), active, token, a.now()); err != nil {
+	if _, err := a.deleteSessionsWithHooks(r.Context(), func() ([]Session, error) { return a.sessionRows(r.Context(), token) }, func() error {
+		return a.deviceSessions.RevokeDeviceSession(r.Context(), active, token, a.now())
+	}); err != nil {
 		if errors.Is(err, ErrNotFound) {
 			return nil, &APIError{401, "UNAUTHORIZED", "Unauthorized"}
 		}
