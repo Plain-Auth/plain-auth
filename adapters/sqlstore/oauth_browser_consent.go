@@ -57,15 +57,23 @@ func (s *Store) writeBrowserConsent(ctx context.Context, tx *sql.Tx, input op.Br
 	if err != nil {
 		return err
 	}
+	claims := input.RequestedUserInfoClaims
+	if claims == nil {
+		claims = []string{}
+	}
+	approved, err := json.Marshal(claims)
+	if err != nil {
+		return err
+	}
 	when := s.date(now.UTC().Truncate(time.Second))
 	if existingID != "" {
-		_, err = tx.ExecContext(ctx, s.bind(`UPDATE "oauthConsent" SET "scopes"=?,"resources"=NULL,"requestedUserInfoClaims"=?,"updatedAt"=? WHERE "id"=?`), string(data), "[]", when, existingID)
+		_, err = tx.ExecContext(ctx, s.bind(`UPDATE "oauthConsent" SET "scopes"=?,"resources"=NULL,"requestedUserInfoClaims"=?,"updatedAt"=? WHERE "id"=?`), string(data), string(approved), when, existingID)
 		return err
 	}
 	var ref any
 	if input.ReferenceID != "" {
 		ref = input.ReferenceID
 	}
-	_, err = tx.ExecContext(ctx, s.bind(`INSERT INTO "oauthConsent" ("id","userId","clientId","referenceId","scopes","requestedUserInfoClaims","createdAt","updatedAt") VALUES (?,?,?,?,?,?,?,?)`), rand.Text(), input.UserID, input.Client.ClientID, ref, string(data), "[]", when, when)
+	_, err = tx.ExecContext(ctx, s.bind(`INSERT INTO "oauthConsent" ("id","userId","clientId","referenceId","scopes","requestedUserInfoClaims","createdAt","updatedAt") VALUES (?,?,?,?,?,?,?,?)`), rand.Text(), input.UserID, input.Client.ClientID, ref, string(data), string(approved), when, when)
 	return err
 }

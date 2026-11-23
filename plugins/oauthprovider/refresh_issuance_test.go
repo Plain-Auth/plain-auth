@@ -49,7 +49,7 @@ func TestAuthorizationCodeUserInfoClaims(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, raw := range []json.RawMessage{[]byte(req), wire} {
-		got, err := opts.authorizedUserInfoClaims(raw)
+		got, err := opts.grantUserInfoClaims(raw, true)
 		if err != nil || !slices.Equal(got, []string{"name", "sub"}) {
 			t.Fatal(got, err)
 		}

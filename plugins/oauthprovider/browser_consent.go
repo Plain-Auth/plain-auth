@@ -119,8 +119,19 @@ func (opts Options) browserConsent(c auth.EndpointContext) (any, error) {
 		}
 		decision.scopes = distinct(strings.Split(value, " "))
 	}
-	if _, present := c.Body["claims"]; present {
-		return nil, registrationProblem(400, "invalid_request", "claim selection requires OpenID authorization")
+	if selection, present := c.Body["claims"]; present {
+		if !slices.Contains(strings.Fields(q.Get("scope")), "openid") {
+			return nil, registrationProblem(400, "invalid_request", "claim selection requires OpenID authorization")
+		}
+		filtered, err := opts.consentClaims(q.Get("claims"), selection)
+		if err != nil {
+			return nil, err
+		}
+		if filtered == "" {
+			q.Del("claims")
+		} else {
+			q.Set("claims", filtered)
+		}
 	}
 	session, err := requireBrowserOwner(c)
 	if err != nil {
@@ -163,4 +174,4 @@ func (opts Options) browserConsent(c auth.EndpointContext) (any, error) {
 	return opts.runBrowserAuthorization(c, q, &decision)
 }
 
-const browserConsentOperation = `{"summary":"Approve or decline an OAuth authorization request","requestBody":{"required":true,"content":{"application/json":{"schema":{"type":"object","required":["accept","oauth_query"],"properties":{"accept":{"type":"boolean"},"oauth_query":{"type":"string"},"scope":{"type":"string"}}}}}},"responses":{"200":{"description":"Redirect instruction to the application callback or issuer error page"},"400":{"description":"Invalid, expired or previously decided request"},"401":{"description":"Browser session required"}}}`
+const browserConsentOperation = `{"summary":"Approve or decline an OAuth authorization request","requestBody":{"required":true,"content":{"application/json":{"schema":{"type":"object","required":["accept","oauth_query"],"properties":{"accept":{"type":"boolean"},"oauth_query":{"type":"string"},"scope":{"type":"string"},"claims":{"description":"Approved individual UserInfo claims","type":["object","string"]}}}}}},"responses":{"200":{"description":"Redirect instruction to the application callback or issuer error page"},"400":{"description":"Invalid, expired or previously decided request"},"401":{"description":"Browser session required"}}}`

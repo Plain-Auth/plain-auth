@@ -85,6 +85,7 @@ type BrowserCodeIssue struct {
 	UserID, SessionID, SessionToken, ReferenceID, Identifier string
 	Query                                                    map[string]string
 	Scopes                                                   []string
+	RequestedUserInfoClaims                                  []string
 	MaxAge                                                   *int64
 	Lifetime                                                 time.Duration
 }
@@ -215,6 +216,9 @@ func (opts Options) runBrowserAuthorization(c auth.EndpointContext, q url.Values
 		return reject(problem.Code, problem.Description)
 	}
 	issue := grant.BrowserCodeIssue
+	if slices.Contains(issue.Scopes, "openid") && !canIssueIDToken(c) {
+		return reject("invalid_request", "ID token issuance is unavailable")
+	}
 	var session *auth.SessionResult
 	if decision != nil {
 		session = decision.session
@@ -257,6 +261,10 @@ func (opts Options) runBrowserAuthorization(c auth.EndpointContext, q url.Values
 	if decision != nil {
 		if decision.scopes != nil {
 			issue.Scopes = decision.scopes
+			if !slices.Contains(issue.Scopes, "openid") {
+				delete(issue.Query, "claims")
+				issue.RequestedUserInfoClaims = nil
+			}
 		}
 		remaining := slices.DeleteFunc(slices.Clone(grant.prompts), func(p string) bool { return p == "consent" })
 		if len(remaining) == 0 {

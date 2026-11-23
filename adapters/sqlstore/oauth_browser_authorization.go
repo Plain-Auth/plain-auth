@@ -121,6 +121,11 @@ func (s *Store) finishBrowserCode(ctx context.Context, input op.BrowserCodeIssue
 		case errors.Is(err, auth.ErrNotFound):
 			return op.ErrBrowserConsentRequired
 		default:
+			for _, name := range input.RequestedUserInfoClaims {
+				if !slices.Contains(approval.RequestedUserInfoClaims, name) {
+					return op.ErrBrowserConsentRequired
+				}
+			}
 			for _, scope := range input.Scopes {
 				if !slices.Contains(approval.Scopes, scope) {
 					return op.ErrBrowserConsentRequired

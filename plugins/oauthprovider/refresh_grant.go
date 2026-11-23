@@ -15,6 +15,8 @@ type RefreshGrant struct {
 	Scopes, Resources              []string
 	SessionID, AuthorizationCodeID string
 	SessionLive, SenderBound       bool
+	UserID                         string
+	AuthTime                       time.Time
 }
 
 // RefreshGrantDigests contains only the storage keys of the credentials issued
@@ -69,15 +71,29 @@ func (opts Options) exchangeRefreshGrant(c auth.EndpointContext, in tokenRequest
 		return result, registrationProblem(400, "invalid_grant", "invalid refresh token")
 	}
 	var access string
+	now := time.Now().UTC().Truncate(time.Second)
+	openidStore, supportsOpenID := store.(OpenIDGrantStore)
 	prepare := func(client AuthorizationCodeClient, grant RefreshGrant) (DelegatedAccessRecord, error) {
 		scopes, err := grant.scopesForRefresh(client, in)
 		if err != nil {
 			return DelegatedAccessRecord{}, err
 		}
-		now := time.Now().UTC().Truncate(time.Second)
 		ttl := opts.Tokens.scopeLifetime(opts.Tokens.AccessLifetime, scopes)
 		result.MachineToken = machineResponse("", "", scopes, now, ttl)
 		record := DelegatedAccessRecord{MachineTokenRecord: MachineTokenRecord{Scopes: scopes, IssuedAt: now, ExpiresAt: now.Add(ttl)}}
+		if slices.Contains(scopes, "openid") {
+			if !canIssueIDToken(c) {
+				return DelegatedAccessRecord{}, registrationProblem(501, "server_error", "ID token issuance is unavailable")
+			}
+			var sid string
+			if grant.SessionLive {
+				sid = grant.SessionID
+			}
+			record.IDToken, err = opts.idTokenGrant(client, grant.UserID, sid, "", grant.AuthTime)
+			if err != nil {
+				return DelegatedAccessRecord{}, err
+			}
+		}
 		if slices.Contains(grant.Scopes, "offline_access") {
 			record.Refresh = &InitialRefreshGrant{ExpiresAt: now.Add(opts.Tokens.RefreshLifetime)}
 		}
@@ -92,7 +108,17 @@ func (opts Options) exchangeRefreshGrant(c auth.EndpointContext, in tokenRequest
 		}
 		return keys, err
 	}
-	err = store.ExchangeRefreshGrant(ctx, in.id, digest, checkClient, prepare, issue)
+	if supportsOpenID {
+		err = openidStore.ExchangeOpenIDRefresh(ctx, in.id, digest, checkClient, prepare, func(grant DelegatedTokenIssue) (RefreshGrantDigests, error) {
+			keys, err := issue(grant.SessionID, grant.Refresh)
+			if err == nil && grant.IDToken.Subject != "" {
+				result.IDToken, err = opts.Tokens.signIDToken(c, in.id, access, grant.IDToken, now)
+			}
+			return keys, err
+		})
+	} else {
+		err = store.ExchangeRefreshGrant(ctx, in.id, digest, checkClient, prepare, issue)
+	}
 	if errors.Is(err, ErrInvalidRefreshToken) {
 		err = registrationProblem(400, "invalid_grant", "invalid refresh token")
 	}
@@ -129,9 +155,6 @@ func (grant RefreshGrant) scopesForRefresh(client AuthorizationCodeClient, in to
 	}
 	if len(grant.Resources) > 0 || len(in.resources) > 0 {
 		return nil, registrationProblem(501, "server_error", "resource-targeted refresh issuance is unavailable")
-	}
-	if slices.Contains(scopes, "openid") {
-		return nil, registrationProblem(501, "server_error", "ID token issuance is unavailable")
 	}
 	return scopes, nil
 }

@@ -1,6 +1,7 @@
 package oauthprovider
 
 import (
+	"encoding/json"
 	"net/url"
 	"slices"
 	"strconv"
@@ -54,6 +55,25 @@ func (opts Options) browserGrant(client BrowserClient, q url.Values) (browserAut
 			}
 		}
 	}
+	request := browserAuthorizationRequest{BrowserCodeIssue: BrowserCodeIssue{Client: client, Scopes: scopes, Lifetime: opts.Authorization.CodeLifetime}}
+	request.Query = map[string]string{"redirect_uri": q.Get("redirect_uri")}
+	if q.Has("claims") && !slices.Contains(scopes, "openid") {
+		return fail("invalid_request", "openid scope must be requested when using the claims parameter")
+	}
+	if q.Has("claims") {
+		doc, problem := parseOIDCClaims(q.Get("claims"))
+		if problem != nil {
+			return browserAuthorizationRequest{}, problem
+		}
+		names, err := opts.authorizedUserInfoClaims(json.RawMessage(q.Get("claims")))
+		if err != nil {
+			return fail("invalid_request", "invalid UserInfo claim request")
+		}
+		request.RequestedUserInfoClaims = names
+		if encoded := filterUserInfoClaims(doc, names); encoded != "" {
+			request.Query["claims"] = encoded
+		}
+	}
 	policy := AuthorizationCodeClient{MachineClient: MachineClient{AuthMethod: client.AuthMethod}, RequirePKCE: client.RequirePKCE}
 	challenge, method := q.Get("code_challenge"), q.Get("code_challenge_method")
 	if reason := policy.PKCERequirement(scopes, q.Get("nonce")); reason != "" && (challenge == "" || method == "") {
@@ -62,14 +82,11 @@ func (opts Options) browserGrant(client BrowserClient, q url.Values) (browserAut
 	if (challenge != "" || method != "") && (challenge == "" || method != "S256") {
 		return fail("invalid_request", "PKCE requires a challenge and the S256 method")
 	}
-	if q.Has("claims") && !slices.Contains(scopes, "openid") {
-		return fail("invalid_request", "openid scope must be requested when using the claims parameter")
-	}
 	if q.Has("resource") {
 		return fail("invalid_target", "resource-targeted browser authorization is unavailable")
 	}
-	if q.Has("dpop_jkt") || client.RequireDPoP || slices.Contains(scopes, "openid") {
-		return fail("invalid_request", "this authorization request requires an unsupported token binding or ID token")
+	if q.Has("dpop_jkt") || client.RequireDPoP {
+		return fail("invalid_request", "this authorization request requires an unsupported token binding")
 	}
 	prompts := distinct(strings.Fields(q.Get("prompt")))
 	for _, prompt := range prompts {
@@ -80,7 +97,7 @@ func (opts Options) browserGrant(client BrowserClient, q url.Values) (browserAut
 	if q.Has("prompt") && (len(prompts) == 0 || len(prompts) > 1 && slices.Contains(prompts, "none")) {
 		return fail("invalid_request", "invalid combination of prompts")
 	}
-	request := browserAuthorizationRequest{BrowserCodeIssue: BrowserCodeIssue{Client: client, Scopes: scopes, Lifetime: opts.Authorization.CodeLifetime}, prompts: prompts}
+	request.prompts = prompts
 	if q.Has("max_age") {
 		age, err := strconv.ParseInt(strings.TrimSpace(q.Get("max_age")), 10, 64)
 		if err != nil || age < 0 {
@@ -88,8 +105,7 @@ func (opts Options) browserGrant(client BrowserClient, q url.Values) (browserAut
 		}
 		request.MaxAge = &age
 	}
-	request.Query = map[string]string{"redirect_uri": q.Get("redirect_uri")}
-	for _, k := range []string{"state", "code_challenge", "code_challenge_method", "nonce", "prompt", "display", "ui_locales", "login_hint", "response_mode"} {
+	for _, k := range []string{"state", "code_challenge", "code_challenge_method", "nonce", "acr_values", "prompt", "display", "ui_locales", "login_hint", "response_mode"} {
 		if q.Has(k) {
 			request.Query[k] = q.Get(k)
 		}

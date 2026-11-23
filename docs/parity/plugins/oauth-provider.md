@@ -49,6 +49,7 @@
     - [x] Return an interaction error for silent onboarding and wait for the host’s stored update before exposing consent ([test](../../../conformance/oauth-signup-policy.mjs#L45))
     - [x] Return a silent interaction error, ignore a supplied clearance on a new request and sign only a completed session’s consent page ([test](../../../conformance/oauth-post-login.mjs#L87))
     - [x] Resume the original client authorization with the enterprise employee’s new session and redeem the code after consent ([test](../../../conformance/oauth-enterprise-authorization.mjs#L43))
+    - [x] Reject malformed OpenID claims and unsatisfiable essential authentication context before authorizing a code ([test](../../../conformance/oauth-id-tokens.mjs#L62))
   - [ ] `GET /.well-known/oauth-authorization-server` (server API only)
     - [x] Discover endpoints and capabilities for the machine grant, then register a client, verify a signed token and revoke an opaque token ([test](../../../conformance/oauth-issuer-metadata.mjs#L95))
     - [x] Mount both issuer discovery paths through ServeMux, chi, Gorilla Mux, Gin, Echo and Fiber and read them with GET and HEAD ([test](../../../integrations/routers/routers_test.go#L160))
@@ -59,6 +60,7 @@
     - [x] Consume a denial even when the callback has been removed and the operator later restores it ([test](../../../adapters/sqlstore/oauth_browser_consent_test.go#L214))
     - [x] Preserve narrowed approval when onboarding becomes required during consent and defer code issuance ([test](../../../conformance/oauth-signup-policy.mjs#L68))
     - [x] Require a consent form to record an approval and send an earlier selector form back through the remaining steps ([test](../../../conformance/oauth-post-login.mjs#L133))
+    - [x] Approve a subset of individually requested UserInfo claims and require consent before adding more ([test](../../../conformance/oauth-id-tokens.mjs#L77))
   - [ ] `POST /oauth2/continue`
     - [x] Use the signed signup page query and the new browser session to complete the account-creation step ([test](../../../conformance/oauth-browser-login.mjs#L82))
     - [x] Resume the signed chooser with the selected browser account and preserve forced consent without repeating selection ([test](../../../conformance/oauth-account-selection.mjs#L44))
@@ -77,6 +79,8 @@
     - [x] Commit both tokens and consume the code together, retry after insert failures and isolate simultaneous redemptions on all three databases ([test](../../../adapters/sqlstore/oauth_offline_code_test.go#L21))
     - [x] Rotate an independently issued refresh token, narrow its scopes, renew offline access after session expiry and invalidate reused grants ([test](../../../conformance/oauth-refresh-grant.mjs#L5))
     - [x] Exchange refresh tokens through the Go OAuth client and verify atomic replacement, callback failures and concurrent reuse on all three engines ([test](../../../adapters/sqlstore/oauth_refresh_grant_test.go#L21))
+    - [x] Verify the signature, issuer, audience, authentication time and access-token hash of ID tokens issued on code and refresh exchanges with five algorithms ([test](../../../conformance/oauth-id-tokens.mjs#L40))
+    - [x] Retry a code or refresh token after a signing failure and recheck live session and client logout policy on three SQL databases ([test](../../../adapters/sqlstore/oauth_id_token_test.go#L19))
   - [ ] `POST /oauth2/introspect`
     - [x] Inspect a machine token issued independently, verify its exact claims, and report it inactive after revocation ([test](../../../conformance/oauth-introspection.mjs#L32))
     - [x] Read credentials, ownership and token state consistently across rotation, disablement, deletion and revocation on three SQL engines ([test](../../../adapters/sqlstore/oauth_introspection_test.go#L97))
@@ -274,7 +278,8 @@
       - [x] Apply the machine token lifetime and shortest applicable scope lifetime to the response and persisted expiry ([test](../../../conformance/oauth-machine-tokens.mjs#L65))
       - [x] Default to a one-hour machine lifetime and 20 token requests per minute ([test](../../../plugins/oauthprovider/machine_token_test.go#L26))
       - [x] Apply the machine grant lifetime together with scope and resource ceilings for signed and opaque grants ([test](../../../conformance/oauth-resource-machine-tokens.mjs#L89))
-    - [ ] `idTokenExpiresIn`
+    - [x] `idTokenExpiresIn` ([test](../../../conformance/oauth-id-tokens.mjs#L43))
+      - [x] Apply the ten-hour default or configured whole-second lifetime to signed ID tokens on code and refresh exchanges ([test](../../../conformance/oauth-id-tokens.mjs#L43))
     - [ ] `refreshTokenExpiresIn`
       - [x] Set the offline refresh lifetime independently of the scope-limited access token and retain the original authentication time ([test](../../../adapters/sqlstore/oauth_offline_code_test.go#L148))
       - [x] Restart the configured refresh lifetime on rotation and preserve original authentication time, session and authorization code ([test](../../../adapters/sqlstore/oauth_refresh_grant_test.go#L172))
@@ -584,6 +589,7 @@
 - [ ] OpenID Connect and logout
   - [ ] Discovery metadata
   - [ ] ID token claims
+    - [x] Issue protocol claims with authentication context 0 and place individually consented email and profile fields at UserInfo ([test](../../../conformance/oauth-id-tokens.mjs#L44))
   - [ ] UserInfo
     - [x] Read scoped profile claims over GET and form POST and match the subject of an independently issued ID token for signed and opaque grants ([test](../../../conformance/oauth-userinfo.mjs#L40))
     - [x] Apply standard, extension and operator claim precedence, preserve the pairwise subject and propagate hook failures on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_userinfo_test.go#L21))
@@ -601,6 +607,7 @@
       - [x] Return the current address and verification status only when authorized ([test](../../../adapters/sqlstore/oauth_userinfo_test.go#L136))
   - [ ] Pairwise subject identifiers
     - [x] Inspect an independently issued delegated access token as the issuer and as a linked resource server with the issuing sector’s pairwise subject ([test](../../../conformance/oauth-opaque-introspection.mjs#L26))
+    - [x] Use the same pairwise subject for ID tokens and UserInfo across code and refresh exchanges, including offline use ([test](../../../conformance/oauth-id-tokens.mjs#L86))
   - [ ] RP-initiated logout
   - [ ] Back-channel logout
     - [x] Revoke session-bound stored grants atomically across bulk deletion, rollback and concurrent issuance on three SQL engines ([test](../../../adapters/sqlstore/session_deletion_test.go#L12))
@@ -880,6 +887,7 @@
   - [ ] Scopes
     - [x] Reject client scopes withdrawn during token generation and leave the existing grant available for retry ([test](../../../adapters/sqlstore/oauth_refresh_grant_test.go#L145))
     - [ ] `openid`
+      - [x] Return signed ID tokens with a client-specific subject for OpenID scopes on untargeted grants and omit them when the scope is dropped ([test](../../../conformance/oauth-id-tokens.mjs#L93))
     - [ ] `profile`
     - [ ] `email`
     - [ ] `offline_access`
@@ -936,7 +944,8 @@
     - [x] `m2mAccessTokenExpiresIn` ([test](../../../conformance/oauth-machine-tokens.mjs#L65))
       - [x] Apply the machine token lifetime and shortest applicable scope lifetime to the response and persisted expiry ([test](../../../conformance/oauth-machine-tokens.mjs#L65))
       - [x] Default to a one-hour machine lifetime and 20 token requests per minute ([test](../../../plugins/oauthprovider/machine_token_test.go#L26))
-    - [ ] `idTokenExpiresIn`
+    - [x] `idTokenExpiresIn` ([test](../../../conformance/oauth-id-tokens.mjs#L43))
+      - [x] Apply the ten-hour default or configured whole-second lifetime to signed ID tokens on code and refresh exchanges ([test](../../../conformance/oauth-id-tokens.mjs#L43))
     - [ ] `refreshTokenExpiresIn`
       - [x] Set the offline refresh lifetime independently of the scope-limited access token and retain the original authentication time ([test](../../../adapters/sqlstore/oauth_offline_code_test.go#L148))
       - [x] Restart the configured refresh lifetime on rotation and preserve original authentication time, session and authorization code ([test](../../../adapters/sqlstore/oauth_refresh_grant_test.go#L172))

@@ -132,6 +132,7 @@ For integration tests, create fixture users and organizations, capture email or 
 | Enroll an authenticator and manage backup codes | [Two-factor authentication](docs/2fa.md) |
 | Generate optional organization, team, passkey, rate-limit, subscription, and two-factor tables | [Schema profiles](docs/schema.md) |
 | Require a CAPTCHA verdict on selected routes | [CAPTCHA providers](docs/captcha.md) |
+| Sign a user into an OAuth client with a verifiable ID token, then renew it with an offline grant | [OpenID Connect code and refresh exchanges](docs/oauth-authorization-code.md#receive-and-verify-an-openid-connect-id-token) |
 | Read current OIDC profile and email claims using a signed or opaque access token | [OpenID Connect UserInfo](docs/oauth-userinfo.md) |
 | Publish OAuth issuers and scopes, verify DPoP proofs and return authentication challenges from a protected API | [Resource discovery and challenges](docs/oauth-resource-discovery.md) |
 | Discover machine grant endpoints, authentication methods and signing keys from an issuer URL | [Authorization-server discovery](docs/oauth-issuer-discovery.md) |

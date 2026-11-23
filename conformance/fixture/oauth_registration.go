@@ -134,6 +134,14 @@ func registrationFixtureOptions() op.Options {
 			return nil, nil
 		},
 	}
+	if mode == "oidc" {
+		opts.Scopes = []string{"openid", "email", "profile", "offline_access"}
+		opts.Registration.AllowedScopes = opts.Scopes
+		opts.Tokens.OpaquePrefix = "at_"
+		if os.Getenv("CONFORMANCE_JWT_ALGORITHM") == "RS256" {
+			opts.Tokens.IDTokenLifetime = 2 * time.Minute
+		}
+	}
 	if mode == "resources" {
 		opts.Registration.DefaultResources = []string{"urn:reports"}
 		opts.Registration.AllowedResources = []string{"urn:billing", "urn:disabled", "urn:missing"}

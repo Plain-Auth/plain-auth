@@ -26,6 +26,7 @@ type DelegatedAccessRecord struct {
 	ReferenceID             *string
 	Refresh                 *InitialRefreshGrant
 	RequestedUserInfoClaims []string
+	IDToken                 IDTokenGrant
 }
 
 // InitialRefreshGrant holds the expiry and original authentication time of a
@@ -40,13 +41,17 @@ type InitialRefreshGrant struct {
 type DelegatedToken struct {
 	MachineToken
 	RefreshToken string `json:"refresh_token,omitempty"`
+	IDToken      string `json:"id_token,omitempty"`
 }
 
 // AuthorizationCodeClient contains the current policy for delegated issuance.
 type AuthorizationCodeClient struct {
 	MachineClient
-	Scopes      []string // nil means the client has no explicit scope restriction.
-	RequirePKCE *bool
+	Scopes        []string // nil means the client has no explicit scope restriction.
+	RequirePKCE   *bool
+	SubjectType   string
+	RedirectURIs  []string
+	EmitSessionID bool
 }
 
 // PKCERequirement returns the reason the request requires a code challenge.
@@ -153,6 +158,8 @@ func (opts Options) redeemAuthorizationCode(c auth.EndpointContext, in tokenRequ
 		return result, err
 	}
 	offlineStore, canIssueRefresh := store.(OfflineAuthorizationCodeStore)
+	now := time.Now().UTC().Truncate(time.Second)
+	openidStore, supportsOpenID := store.(OpenIDGrantStore)
 	prepare := func(client AuthorizationCodeClient, value json.RawMessage) (DelegatedAccessRecord, error) {
 		var code storedAuthorizationCode
 		if err := json.Unmarshal(value, &code); err != nil || code.Type != "authorization_code" || code.Query.ClientID == "" ||
@@ -163,11 +170,10 @@ func (opts Options) redeemAuthorizationCode(c auth.EndpointContext, in tokenRequ
 		if err != nil {
 			return DelegatedAccessRecord{}, err
 		}
-		claims, err := opts.authorizedUserInfoClaims(code.Query.Claims)
+		claims, err := opts.grantUserInfoClaims(code.Query.Claims, slices.Contains(scopes, "openid"))
 		if err != nil {
 			return DelegatedAccessRecord{}, registrationProblem(400, "invalid_grant", "malformed authorization claims")
 		}
-		now := time.Now().UTC().Truncate(time.Second)
 		lifetime := opts.Tokens.scopeLifetime(opts.Tokens.AccessLifetime, scopes)
 		result.MachineToken = machineResponse(issued, "", scopes, now, lifetime)
 		record := DelegatedAccessRecord{
@@ -175,24 +181,51 @@ func (opts Options) redeemAuthorizationCode(c auth.EndpointContext, in tokenRequ
 			UserID:             code.UserID, SessionID: code.SessionID, ReferenceID: code.ReferenceID,
 			RequestedUserInfoClaims: claims,
 		}
+		var authTime time.Time
+		if code.AuthTime != nil {
+			authTime = time.UnixMilli(*code.AuthTime).UTC()
+		}
+		if slices.Contains(scopes, "openid") {
+			if !canIssueIDToken(c) {
+				return DelegatedAccessRecord{}, registrationProblem(501, "server_error", "ID token issuance is unavailable")
+			}
+			record.IDToken, err = opts.idTokenGrant(client, code.UserID, code.SessionID, code.Query.Nonce, authTime)
+			if err != nil {
+				return DelegatedAccessRecord{}, err
+			}
+		}
 		if slices.Contains(scopes, "offline_access") {
 			if !canIssueRefresh {
 				return DelegatedAccessRecord{}, &auth.APIError{Status: 501, Code: "OAUTH_REFRESH_STORE_UNAVAILABLE", Message: "The configured store does not support offline grants"}
 			}
 			record.Refresh = &InitialRefreshGrant{ExpiresAt: now.Add(opts.Tokens.RefreshLifetime)}
 			if code.AuthTime != nil {
-				at := time.UnixMilli(*code.AuthTime).UTC()
-				record.Refresh.AuthTime = &at
+				record.Refresh.AuthTime = &authTime
 			}
 		}
 		return record, nil
 	}
-	if canIssueRefresh {
-		err = offlineStore.RedeemAuthorizationCodeWithRefresh(ctx, in.id, identifier, checkClient, prepare, func(sessionID string) (string, error) {
-			wire, digest, err := opts.Tokens.issueRefreshToken(ctx, sessionID)
-			result.RefreshToken = wire
-			return digest, err
+	issueRefresh := func(sessionID string) (string, error) {
+		wire, digest, err := opts.Tokens.issueRefreshToken(ctx, sessionID)
+		result.RefreshToken = wire
+		return digest, err
+	}
+	if supportsOpenID {
+		err = openidStore.RedeemOpenIDCode(ctx, in.id, identifier, checkClient, prepare, func(grant DelegatedTokenIssue) (string, error) {
+			if grant.IDToken.Subject != "" {
+				token, err := opts.Tokens.signIDToken(c, in.id, issued, grant.IDToken, now)
+				if err != nil {
+					return "", err
+				}
+				result.IDToken = token
+			}
+			if grant.Refresh {
+				return issueRefresh(grant.SessionID)
+			}
+			return "", nil
 		})
+	} else if canIssueRefresh {
+		err = offlineStore.RedeemAuthorizationCodeWithRefresh(ctx, in.id, identifier, checkClient, prepare, issueRefresh)
 	} else {
 		err = store.RedeemAuthorizationCode(ctx, in.id, identifier, checkClient, prepare)
 	}
@@ -249,9 +282,6 @@ func (code storedAuthorizationCode) scopesForExchange(client AuthorizationCodeCl
 	}
 	if len(code.Resources) > 0 || (len(q.Resource) > 0 && string(q.Resource) != "null") || len(in.resources) > 0 {
 		return nil, registrationProblem(501, "server_error", "resource-targeted authorization-code issuance is unavailable")
-	}
-	if slices.Contains(scopes, "openid") {
-		return nil, registrationProblem(501, "server_error", "ID token issuance is unavailable")
 	}
 	return scopes, nil
 }

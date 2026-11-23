@@ -1827,3 +1827,8 @@ test("organization selectors distinguish omitted IDs from JSON null on both runt
     assert.equal(ok(await owner.$fetch("/organization/set-active", {method: "POST", body: {}})), null);
   }
 });
+
+test("OpenID code and refresh exchanges issue independently verifiable ID tokens", async t => {
+  const {compareIDTokens} = await import("./oauth-id-tokens.mjs");
+  await compareIDTokens(t, reference, goFixture);
+});

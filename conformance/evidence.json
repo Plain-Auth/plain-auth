@@ -12223,6 +12223,16 @@
       "label": "Exchange refresh tokens through the Go OAuth client and verify atomic replacement, callback failures and concurrent reuse on all three engines",
       "test": "adapters/sqlstore/oauth_refresh_grant_test.go",
       "marker": "func TestRefreshGrantExchange("
+    },
+    {
+      "label": "Verify the signature, issuer, audience, authentication time and access-token hash of ID tokens issued on code and refresh exchanges with five algorithms",
+      "test": "conformance/oauth-id-tokens.mjs",
+      "marker": "const {payload, protectedHeader} = await jwtVerify"
+    },
+    {
+      "label": "Retry a code or refresh token after a signing failure and recheck live session and client logout policy on three SQL databases",
+      "test": "adapters/sqlstore/oauth_id_token_test.go",
+      "marker": "func TestOpenIDGrantRetry("
     }
   ],
   "docs/content/docs/plugins/oauth-provider/reference.mdx#L321/`POST /oauth2/token`": [
@@ -12835,6 +12845,11 @@
       "label": "Inspect an independently issued delegated access token as the issuer and as a linked resource server with the issuing sector’s pairwise subject",
       "test": "conformance/oauth-opaque-introspection.mjs",
       "marker": "assert.deepEqual(await check(resourceCredentials), bound);"
+    },
+    {
+      "label": "Use the same pairwise subject for ID tokens and UserInfo across code and refresh exchanges, including offline use",
+      "test": "conformance/oauth-id-tokens.mjs",
+      "marker": "assert.equal(rotated.sub, original.sub);"
     }
   ],
   "docs/content/docs/plugins/oauth-provider/resource-server.mdx#L144": [
@@ -13228,6 +13243,11 @@
       "label": "Resume the original client authorization with the enterprise employee’s new session and redeem the code after consent",
       "test": "conformance/oauth-enterprise-authorization.mjs",
       "marker": "await exerciseExternalLogin("
+    },
+    {
+      "label": "Reject malformed OpenID claims and unsatisfiable essential authentication context before authorizing a code",
+      "test": "conformance/oauth-id-tokens.mjs",
+      "marker": "assert.equal(rejected.searchParams.get(\"error\"), error);"
     }
   ],
   "docs/content/docs/plugins/oauth-provider/reference.mdx#L318/`GET / POST /oauth2/authorize`": [
@@ -13332,6 +13352,11 @@
       "label": "Require a consent form to record an approval and send an earlier selector form back through the remaining steps",
       "test": "conformance/oauth-post-login.mjs",
       "marker": "const misplaced = await destination("
+    },
+    {
+      "label": "Approve a subset of individually requested UserInfo claims and require consent before adding more",
+      "test": "conformance/oauth-id-tokens.mjs",
+      "marker": "assert.equal(more.searchParams.get(\"error\"),\"consent_required\");"
     }
   ],
   "docs/content/docs/plugins/oauth-provider/reference.mdx#L319/`POST /oauth2/consent`": [
@@ -13795,6 +13820,36 @@
       "label": "Use the current team for an omitted or empty ID, select a member team by ID, and clear it with JSON null",
       "test": "conformance/core.test.mjs",
       "marker": "org.setActiveTeam({teamId: \"\"})).id",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/openid-connect.mdx#L51": [
+    {
+      "label": "Issue protocol claims with authentication context 0 and place individually consented email and profile fields at UserInfo",
+      "test": "conformance/oauth-id-tokens.mjs",
+      "marker": "assert.equal(payload.acr, \"0\");"
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/tokens.mdx#L29/`openid`": [
+    {
+      "label": "Return signed ID tokens with a client-specific subject for OpenID scopes on untargeted grants and omit them when the scope is dropped",
+      "test": "conformance/oauth-id-tokens.mjs",
+      "marker": "assert.equal(reduced.id_token,undefined);"
+    }
+  ],
+  "plugin-symbol/oauth-provider/OAuthOptions/idTokenExpiresIn": [
+    {
+      "label": "Apply the ten-hour default or configured whole-second lifetime to signed ID tokens on code and refresh exchanges",
+      "test": "conformance/oauth-id-tokens.mjs",
+      "marker": "assert.equal(payload.exp - payload.iat, pairwise ? 120 : 36000);",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/tokens.mdx#L126/`idTokenExpiresIn`": [
+    {
+      "label": "Apply the ten-hour default or configured whole-second lifetime to signed ID tokens on code and refresh exchanges",
+      "test": "conformance/oauth-id-tokens.mjs",
+      "marker": "assert.equal(payload.exp - payload.iat, pairwise ? 120 : 36000);",
       "complete": true
     }
   ]

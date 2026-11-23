@@ -62,7 +62,6 @@ func TestAuthorizationCodeGrantBoundaries(t *testing.T) {
 	check(basic, "", 200, "")
 	check(basic, "unexpected", 400, "invalid_request")
 	check(`{"query":{"client_id":"app","scope":"offline_access"}}`, "", 400, "invalid_request")
-	check(`{"query":{"client_id":"app","scope":"openid"}}`, "", 501, "server_error")
 	check(`{"query":{"client_id":"app","scope":"read","dpop_jkt":"thumbprint"}}`, "", 400, "invalid_dpop_proof")
 	check(`{"resource":["urn:protected"],"query":{"client_id":"app","scope":"read"}}`, "", 501, "server_error")
 	check(`{"query":{"client_id":"app","scope":"read","resource":"urn:protected"}}`, "", 501, "server_error")

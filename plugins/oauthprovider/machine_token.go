@@ -23,6 +23,8 @@ type TokenOptions struct {
 	MachineLifetime        time.Duration
 	// AccessLifetime applies to access tokens issued on behalf of a user.
 	AccessLifetime time.Duration
+	// IDTokenLifetime defaults to ten hours for an OpenID Connect ID token.
+	IDTokenLifetime time.Duration
 	// HashAuthorizationCode derives the verification identifier from a presented code.
 	// The default is unpadded base64url of its SHA-256 digest.
 	HashAuthorizationCode func(context.Context, string) (string, error)
@@ -50,6 +52,12 @@ type TokenOptions struct {
 }
 
 func (opts *TokenOptions) defaults() error {
+	if opts.IDTokenLifetime == 0 {
+		opts.IDTokenLifetime = 10 * time.Hour
+	}
+	if opts.IDTokenLifetime < time.Second || opts.IDTokenLifetime%time.Second != 0 {
+		return errors.New("oauthprovider: ID token lifetime must be a positive whole number of seconds")
+	}
 	if opts.RefreshLifetime == 0 {
 		opts.RefreshLifetime = 30 * 24 * time.Hour
 	}

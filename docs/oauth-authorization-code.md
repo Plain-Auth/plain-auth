@@ -4,7 +4,7 @@ An application can send its user to `/oauth2/authorize` and exchange the resulti
 
 ## Obtain a code in the browser
 
-Register the application's callback URL and enable the `authorization_code` grant on both the issuer and the client. The issuer enables this grant by default. This flow supports untargeted scopes such as `reports` and `reports offline_access`. It requires the account owner's active browser session and approval covering each requested scope. Your application can host the login, signup and consent pages. An operator-managed client can use `skipConsent` to bypass a prior grant. Dynamic registration rejects `skip_consent`. Issuing ID tokens, sender binding and resource audiences for this grant remain on the roadmap. [Client registration](oauth-client-registration.md) · [Manage recorded approvals](oauth-consents.md) · [Feature checklist](parity/plugins/oauth-provider.md)
+Register the application's callback URL and enable the `authorization_code` grant on both the issuer and the client. The issuer enables this grant by default. This flow supports untargeted scopes such as `reports` and `reports offline_access`. It requires the account owner's active browser session and approval covering each requested scope. Your application can host the login, signup and consent pages. An operator-managed client can use `skipConsent` to bypass a prior grant. Dynamic registration rejects `skip_consent`. Request the `openid` scope for a signed ID token. Sender binding and resource audiences for this grant are tracked in the roadmap. [Client registration](oauth-client-registration.md) · [Manage recorded approvals](oauth-consents.md) · [Feature checklist](parity/plugins/oauth-provider.md)
 
 For a public client using `golang.org/x/oauth2`, configure both issuer endpoints. Generate new random state and a PKCE verifier for each visit. Save them with the expected issuer and callback in the application's session before redirecting the user's browser.
 
@@ -307,6 +307,35 @@ token, err := cfg.Exchange(ctx, code, oauth2.VerifierOption(verifier))
 
 The JSON response includes `access_token`, `token_type`, `scope`, `expires_in` and `expires_at`. The access token lifetime defaults to one hour. Configure `Tokens.AccessLifetime` and use `Tokens.ScopeLifetimes` to shorten the lifetime for particular scopes. The body is served with `Cache-Control: no-store`. [Token introspection](machine-tokens.md#inspect-a-delegated-token)
 
+## Receive and verify an OpenID Connect ID token
+
+Install the JWT and OAuth provider plugins on the same auth handler and apply both database profiles. Include `openid` in the issuer's and client's allowed scopes. The default signing algorithm is Ed25519 (`EdDSA`). The JWT plugin also supports `RS256`, `ES256`, `ES512` and `PS256`. The public key set defaults to `/api/auth/jwks`. [JWT configuration and key rotation](jwt.md) · [Database setup](schema.md)
+
+```go
+signer, err := auth.NewJWT(auth.JWTOptions{Algorithm: "RS256"})
+if err != nil {
+    return err
+}
+issuer, err := oauthprovider.New(oauthprovider.Options{
+    Scopes: []string{"openid", "profile", "email", "offline_access"},
+    Tokens: oauthprovider.TokenOptions{IDTokenLifetime: 15 * time.Minute},
+})
+if err != nil {
+    return err
+}
+// Include signer and issuer in auth.Options.Plugins on your existing handler.
+```
+
+Request `scope=openid` and supply a fresh random `nonce` together with state and the S256 challenge. Store all three values in the client's login session. After checking the callback's state and issuer, exchange the code with the original verifier. The token response includes a signed `id_token`. With `golang.org/x/oauth2`, retrieve it with `token.Extra("id_token").(string)` using a checked type assertion.
+
+Use an OpenID Connect verifier in your client's language. Configure the expected issuer, client ID, allowed signing algorithm and trusted JWKS URL. Verify the signature, issuer, audience, expiry and original nonce before accepting the login. Check `at_hash` against the entire access token string returned alongside the ID token, including any configured prefix. The client's account key is the pair `(iss, sub)`. When reading UserInfo, check that its `sub` matches. A pairwise registration receives a subject derived for its redirect sector. [UserInfo](oauth-userinfo.md) · [Independent client verification](../conformance/oauth-id-tokens.mjs)
+
+The ID token lasts ten hours by default. Set `Tokens.IDTokenLifetime` in whole seconds to override it. It includes the original authentication time when available and reports authentication context `acr: "0"`. An essential ACR request that excludes this value returns `access_denied`. The issuer includes `sid` for a live session when the client enables end-session or back-channel logout. A refresh that retains `openid` issues a new ID token with the original authentication time and a new access-token hash. The nonce belongs to the original code exchange. An offline refresh after session expiry omits `sid`.
+
+Profile and email fields are available from UserInfo. To request individual fields, pass a JSON `claims` authorization parameter such as `{"userinfo":{"email":null,"name":null}}`. Your consent page can approve email alone by including `"claims":{"userinfo":{"email":null}}` in its consent decision. In Go, use `sdk.DecideOAuthConsentWithClaims(ctx, query, true, []string{"openid"}, []string{"email"})`. Omitting the selection retains the requested names. An empty selection declines all individually requested names. Separately approved scopes still grant their usual fields. A silent request for a previously unapproved claim returns `consent_required`.
+
+Signing and persistence must both succeed before the issuer responds with credentials. If a signing key is temporarily unavailable, the client can retry using the same code or refresh token. A custom database adapter must implement `oauthprovider.OpenIDGrantStore` for these exchanges. [Credential retry tests on all three databases](../adapters/sqlstore/oauth_id_token_test.go)
+
 ## Request offline access
 
 Include `offline_access` in the scopes approved at authorization and use S256 PKCE. Send the same code exchange shown above. A successful response also includes `refresh_token`. With the Go client, read it from `token.RefreshToken`. The initial access token remains tied to the browser session. The offline refresh token can remain active after that session expires. [Refresh token introspection](machine-tokens.md#inspect-a-refresh-token) · [Revocation](oauth-token-revocation.md)
@@ -330,7 +359,7 @@ Omit `scope` to retain the grant’s scopes. To narrow access, send a space-sepa
 
 After the original session ends, an offline grant can still mint an access token. That access token omits `sid`. Dropping `offline_access` requires a live originating session for a code grant. While the session is active, narrowing an offline grant returns a session-bound replacement. A subsequent exchange of that replacement returns an access token and leaves the session-bound refresh token usable until its expiry, revocation or the end of its session. [Cross-runtime scope and session tests](../conformance/oauth-refresh-grant.mjs)
 
-Serialize refresh requests that share a credential. Plain Auth commits the parent revocation and both replacements together. Reuse of a rotated credential under the default policy returns `invalid_grant` and invalidates the client’s refresh tokens for that user and their linked access tokens. A failed callback or database insert rolls back the exchange and leaves the parent usable for retry. The grant currently supports untargeted bearer access. Returning a cached response inside a retry window, ID tokens, resource audiences and sender-bound refresh exchanges remain on the roadmap. [Token revocation](oauth-token-revocation.md) · [Feature checklist](parity/plugins/oauth-provider.md)
+Serialize refresh requests that share a credential. Plain Auth commits the parent revocation and both replacements together. Reuse of a rotated credential under the default policy returns `invalid_grant` and invalidates the client’s refresh tokens for that user and their linked access tokens. A failed callback or database insert rolls back the exchange and leaves the parent usable for retry. The grant currently supports untargeted bearer access. Returning a cached response inside a retry window, resource audiences and sender-bound refresh exchanges remain on the roadmap. [Token revocation](oauth-token-revocation.md) · [Feature checklist](parity/plugins/oauth-provider.md)
 
 ## Retries and replay
 

@@ -10,7 +10,7 @@ func browserAuthorizationOperation(method string) json.RawMessage {
 	required := []string{"response_type", "client_id", "redirect_uri"}
 	props := map[string]any{}
 	var params []map[string]any
-	for _, key := range []string{"response_type", "client_id", "redirect_uri", "scope", "state", "code_challenge", "code_challenge_method", "prompt", "max_age"} {
+	for _, key := range []string{"response_type", "client_id", "redirect_uri", "scope", "state", "code_challenge", "code_challenge_method", "prompt", "max_age", "nonce", "claims", "acr_values"} {
 		field := map[string]any{"type": "string"}
 		switch key {
 		case "response_type":

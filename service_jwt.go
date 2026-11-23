@@ -107,6 +107,15 @@ func NewJWT(opts JWTOptions) (Plugin, error) {
 	}, nil
 }
 
+// JWTSigningAlgorithm returns the configured primary algorithm, or an empty string
+// when the JWT plugin is disabled.
+func (a *Auth) JWTSigningAlgorithm() string {
+	if a.serviceJWT == nil {
+		return ""
+	}
+	return a.serviceJWT.Algorithm
+}
+
 // PublicJWKSURL returns the configured key-set endpoint when it is served.
 func (a *Auth) PublicJWKSURL() string {
 	if a.serviceJWT == nil {

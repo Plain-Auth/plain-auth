@@ -1,6 +1,6 @@
 # OpenID Connect UserInfo
 
-Clients can read a user's current profile at `GET /api/auth/oauth2/userinfo` or `POST /api/auth/oauth2/userinfo`. Supply an access token granted the `openid` scope. The endpoint works with signed and opaque access tokens. It checks the issuing registration, the grant's audiences and any bound session before releasing claims. The returned `sub` identifies the user for that client. An OpenID Connect client should compare it with the subject of its validated ID token. [OpenID Connect Core §5.3](https://openid.net/specs/openid-connect-core-1_0.html#UserInfo)
+Clients can read a user's current profile at `GET /api/auth/oauth2/userinfo` or `POST /api/auth/oauth2/userinfo`. Supply an access token granted the `openid` scope. The endpoint works with signed and opaque access tokens. It checks the issuing registration, the grant's audiences and any bound session before releasing claims. The returned `sub` identifies the user for that client. An OpenID Connect client should compare it with the subject of its validated ID token. [Issue and verify an ID token](oauth-authorization-code.md#receive-and-verify-an-openid-connect-id-token) · [OpenID Connect Core §5.3](https://openid.net/specs/openid-connect-core-1_0.html#UserInfo)
 
 ## Enable the endpoint
 

@@ -41,7 +41,21 @@ func (c *Client) DeleteOAuthConsent(ctx context.Context, id string) error {
 // DecideOAuthConsent submits the user's decision and returns the browser destination.
 // Nil scopes approve the original request. An empty slice explicitly grants no scopes.
 func (c *Client) DecideOAuthConsent(ctx context.Context, signedQuery string, accept bool, scopes []string) (string, error) {
+	return c.DecideOAuthConsentWithClaims(ctx, signedQuery, accept, scopes, nil)
+}
+
+// DecideOAuthConsentWithClaims also lets a user select individual UserInfo
+// claims. Nil retains the requested names. An empty list declines them all.
+// Approving the profile or email scope still grants that scope's claims.
+func (c *Client) DecideOAuthConsentWithClaims(ctx context.Context, signedQuery string, accept bool, scopes, userInfoClaims []string) (string, error) {
 	body := map[string]any{"oauth_query": signedQuery, "accept": accept}
+	if userInfoClaims != nil {
+		names := make(map[string]any, len(userInfoClaims))
+		for _, name := range userInfoClaims {
+			names[name] = nil
+		}
+		body["claims"] = map[string]any{"userinfo": names}
+	}
 	if scopes != nil {
 		body["scope"] = strings.Join(scopes, " ")
 	}

@@ -12,6 +12,7 @@ import (
 	op "github.com/Plain-Auth/plain-auth/plugins/oauthprovider"
 )
 
+var _ op.OpenIDGrantStore = (*Store)(nil)
 var _ op.AuthorizationCodeStore = (*Store)(nil)
 var _ op.OfflineAuthorizationCodeStore = (*Store)(nil)
 
@@ -20,23 +21,34 @@ func (s *Store) RedeemAuthorizationCode(ctx context.Context, clientID, identifie
 }
 
 type pendingOfflineCode struct {
-	rowID, sessionID, storedRefresh string
-	value                           []byte
+	rowID, storedRefresh string
+	value                []byte
+	issue                op.DelegatedTokenIssue
+	prepared             bool
 }
 
 func (s *Store) RedeemAuthorizationCodeWithRefresh(ctx context.Context, clientID, identifier string, checkClient func(op.MachineClient) error, prepare func(op.AuthorizationCodeClient, json.RawMessage) (op.DelegatedAccessRecord, error), issueRefresh func(string) (string, error)) error {
+	return s.RedeemOpenIDCode(ctx, clientID, identifier, checkClient, prepare, func(grant op.DelegatedTokenIssue) (string, error) {
+		if grant.IDToken.Subject != "" {
+			return "", errors.New("sqlstore: ID token requires an OpenID code exchange")
+		}
+		return issueRefresh(grant.SessionID)
+	})
+}
+
+func (s *Store) RedeemOpenIDCode(ctx context.Context, clientID, identifier string, checkClient func(op.MachineClient) error, prepare func(op.AuthorizationCodeClient, json.RawMessage) (op.DelegatedAccessRecord, error), issue func(op.DelegatedTokenIssue) (string, error)) error {
 	var pending pendingOfflineCode
 	if err := s.redeemCode(ctx, clientID, identifier, checkClient, prepare, &pending); err != nil || pending.rowID == "" {
 		return err
 	}
-	digest, err := issueRefresh(pending.sessionID)
+	digest, err := issue(pending.issue)
 	if err != nil {
 		return err
 	}
-	if digest == "" {
-		return errors.New("sqlstore: empty refresh token digest")
+	if pending.issue.Refresh != (digest != "") {
+		return errors.New("sqlstore: unexpected refresh token digest")
 	}
-	pending.storedRefresh = digest
+	pending.storedRefresh, pending.prepared = digest, true
 	return s.redeemCode(ctx, clientID, identifier, checkClient, prepare, &pending)
 }
 
@@ -73,15 +85,12 @@ func (s *Store) redeemCode(ctx context.Context, clientID, identifier string, che
 	if err != nil {
 		return err
 	}
-	if pending != nil && pending.storedRefresh != "" && (rowID != pending.rowID || !bytes.Equal(pending.value, value)) {
+	if pending != nil && pending.prepared && (rowID != pending.rowID || !bytes.Equal(pending.value, value)) {
 		return op.ErrAuthorizationCodeInvalid
 	}
 	record, err := prepare(client, value)
 	if err != nil {
 		return err
-	}
-	if pending != nil && pending.storedRefresh != "" && (record.Refresh == nil || record.SessionID != pending.sessionID) {
-		return op.ErrAuthorizationCodeInvalid
 	}
 	var userID, sessionOwner string
 	err = tx.QueryRowContext(ctx, s.readForUpdate(`SELECT "id" FROM "user" WHERE "id"=`+s.exactSQLValue("?")), record.UserID).Scan(&userID)
@@ -102,16 +111,22 @@ func (s *Store) redeemCode(ctx context.Context, clientID, identifier string, che
 	if !expires.After(time.Now()) {
 		return op.ErrAuthorizationCodeInvalid
 	}
-	if record.Refresh != nil {
+	if record.IDToken.Subject != "" && record.IDToken.AuthTime.IsZero() {
+		record.IDToken.AuthTime = sessionStart.UTC()
+	}
+	issue := op.DelegatedTokenIssue{SessionID: record.SessionID, Refresh: record.Refresh != nil, IDToken: record.IDToken}
+	if pending != nil && pending.prepared {
+		if pending.issue != issue {
+			return op.ErrAuthorizationCodeInvalid
+		}
+	} else if issue.Refresh || issue.IDToken.Subject != "" {
 		if pending == nil {
-			return errors.New("sqlstore: offline grant requires refresh token issuance")
+			return errors.New("sqlstore: grant requires deferred token issuance")
 		}
-		if pending.storedRefresh == "" {
-			// Release these locks before invoking application callbacks. On return
-			// we verify the same code row and recheck its current permissions.
-			pending.rowID, pending.sessionID, pending.value = rowID, record.SessionID, value
-			return nil
-		}
+		// Release row locks before key generation, signing or host callbacks.
+		// Recheck the precise grant and its current identity before spending it.
+		pending.rowID, pending.issue, pending.value = rowID, issue, value
+		return nil
 	}
 	if _, err := tx.ExecContext(ctx, s.bind(`DELETE FROM "verification" WHERE `+matches), identifier); err != nil {
 		return err
@@ -163,15 +178,24 @@ func (s *Store) insertDelegatedTokens(ctx context.Context, tx *sql.Tx, clientID 
 
 func (s *Store) readDelegatedClient(ctx context.Context, tx *sql.Tx, clientID string, check func(op.MachineClient) error) (op.AuthorizationCodeClient, error) {
 	var client op.AuthorizationCodeClient
-	var registeredScopes []byte
-	const clientSelect = "SELECT " + machineClientColumns + `,"scopes","requirePKCE" FROM "oauthClient"` + localClientFilter
+	var registeredScopes, redirects []byte
+	var subject, logoutURI sql.NullString
+	var logout sql.NullBool
+	const clientSelect = "SELECT " + machineClientColumns + `,"scopes","requirePKCE","subjectType","redirectUris","enableEndSession","backchannelLogoutUri" FROM "oauthClient"` + localClientFilter
 	var err error
-	client.MachineClient, err = scanMachineClient(tx.QueryRowContext(ctx, s.readForUpdate(clientSelect), clientID), clientID, &registeredScopes, &client.RequirePKCE)
+	client.MachineClient, err = scanMachineClient(tx.QueryRowContext(ctx, s.readForUpdate(clientSelect), clientID), clientID, &registeredScopes, &client.RequirePKCE, &subject, &redirects, &logout, &logoutURI)
 	if err != nil {
 		return client, err
 	}
 	if err := check(client.MachineClient); err != nil {
 		return client, err
+	}
+	client.SubjectType = subject.String
+	client.EmitSessionID = logout.Bool || logoutURI.String != ""
+	if client.SubjectType == "pairwise" && len(redirects) != 0 {
+		if err := json.Unmarshal(redirects, &client.RedirectURIs); err != nil {
+			return client, err
+		}
 	}
 	if registeredScopes != nil {
 		if err := json.Unmarshal(registeredScopes, &client.Scopes); err != nil {

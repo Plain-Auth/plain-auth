@@ -39,7 +39,7 @@ const machineTokenOperation = `{
     }}}}},
   "responses":{"200":{"description":"Access token","content":{"application/json":{"schema":{
     "type":"object","required":["access_token","token_type","expires_in","expires_at","scope"],"properties":{
-      "access_token":{"type":"string"},"refresh_token":{"type":"string","description":"Returned on supported delegated offline grants"},"token_type":{"type":"string","enum":["Bearer","DPoP"]},
+      "access_token":{"type":"string"},"id_token":{"type":"string","format":"jwt","description":"Signed ID token for a supported OpenID Connect grant"},"refresh_token":{"type":"string","description":"Returned on supported delegated offline grants"},"token_type":{"type":"string","enum":["Bearer","DPoP"]},
       "expires_in":{"type":"integer"},"expires_at":{"type":"integer"},"scope":{"type":"string"}
     }}}}},"400":{"description":"OAuth grant, client or scope rejected"},"401":{"description":"HTTP client authentication failed"},"415":{"description":"Unsupported token request media type"}}
 }`

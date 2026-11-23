@@ -10,16 +10,29 @@ import (
 	auth "github.com/Plain-Auth/plain-auth"
 )
 
-func (opts Options) authorizedUserInfoClaims(raw json.RawMessage) ([]string, error) {
+// A stored code can carry the claims object directly or as an encoded query parameter.
+func (opts Options) grantUserInfoClaims(raw json.RawMessage, openid bool) ([]string, error) {
 	if len(raw) == 0 {
 		return nil, nil
 	}
 	if raw[0] == '"' {
-		var s string
-		if err := json.Unmarshal(raw, &s); err != nil {
+		var value string
+		if err := json.Unmarshal(raw, &value); err != nil {
 			return nil, err
 		}
-		raw = []byte(s)
+		raw = []byte(value)
+	}
+	if openid {
+		if _, problem := parseOIDCClaims(string(raw)); problem != nil {
+			return nil, problem
+		}
+	}
+	return opts.authorizedUserInfoClaims(raw)
+}
+
+func (opts Options) authorizedUserInfoClaims(raw json.RawMessage) ([]string, error) {
+	if len(raw) == 0 {
+		return nil, nil
 	}
 	raw = bytes.TrimSpace(raw)
 	if len(raw) == 0 || raw[0] != '{' {
