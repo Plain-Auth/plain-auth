@@ -2,8 +2,7 @@ import assert from "node:assert/strict";
 import { DatabaseSync } from "node:sqlite";
 import { oAuthProxy } from "better-auth/plugins";
 import { genericOAuth } from "better-auth/plugins/generic-oauth";
-import { chromeBinary, openChromePage } from "./browser-debug.mjs";
-import { setTimeout as sleep } from "node:timers/promises";
+import { chromeBinary, openChromePage, waitForDocument } from "./browser-debug.mjs";
 
 const mount = "/identity";
 const cookieHeader = (res) => res.headers.getSetCookie().map(value => value.split(";")[0]).join("; ");
@@ -77,25 +76,6 @@ export async function compareProxyDeployments(t, { reference, goFixture, instrum
   }
 }
 
-// Chrome advertises the target URL before committing its initial navigation.
-// Wait until the evaluation context belongs to the loaded application document.
-async function waitForPreviewPage(call, url) {
-  const deadline = Date.now() + 15_000;
-  while (Date.now() < deadline) {
-    try {
-      const {result} = await call("Runtime.evaluate", {
-        expression: 'document.readyState === "complete" && document.URL === ' + JSON.stringify(url),
-        returnByValue: true,
-      });
-      if (result.value === true) return;
-    } catch (err) {
-      if (!/context was destroyed|Cannot find context/i.test(err.message)) throw err;
-    }
-    await sleep(40);
-  }
-  assert.fail("Chrome did not load the preview page at " + url);
-}
-
 async function openPreview(t, goFixture) {
   const binary = chromeBinary();
   if (!binary) {
@@ -105,7 +85,6 @@ async function openPreview(t, goFixture) {
   const {baseURL} = await goFixture(t, [], {CONFORMANCE_OAUTH_PROXY:"1"});
   const landing = baseURL + "/welcome?start";
   const call = await openChromePage(t, landing, binary);
-  await waitForPreviewPage(call, landing);
   return {baseURL, call};
 }
 
@@ -125,7 +104,7 @@ export async function browserProxySignIn(t, goFixture) {
   const registered = new URL(new URL(authorization).searchParams.get("redirect_uri"));
   assert.notEqual(registered.hostname, new URL(baseURL).hostname);
   await call("Page.navigate", {url:authorization});
-  await waitForPreviewPage(call, baseURL + "/welcome");
+  await waitForDocument(call, baseURL + "/welcome");
   const session = await evaluate('fetch("/identity/get-session").then(r => r.json())');
   assert.equal(session.user.email, "employee@example.test");
   const {cookies} = await call("Network.getCookies", {urls:[baseURL, registered.origin]});

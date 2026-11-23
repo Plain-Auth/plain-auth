@@ -62,9 +62,29 @@ export async function openChromePage(t, url, binary) {
     pending.clear();
   };
 
-  return (method, params = {}) => new Promise((resolve, reject) => {
+  const call = (method, params = {}) => new Promise((resolve, reject) => {
     const id = ++sequence;
     pending.set(id, {resolve, reject});
     socket.send(JSON.stringify({id, method, params}));
   });
+  await waitForDocument(call, url);
+  return call;
+}
+
+// The target URL is visible before Chrome has committed the new document.
+export async function waitForDocument(call, url) {
+  const deadline = Date.now() + 15_000;
+  while (Date.now() < deadline) {
+    try {
+      const {result} = await call("Runtime.evaluate", {
+        expression: 'document.readyState === "complete" && document.URL === ' + JSON.stringify(url),
+        returnByValue: true,
+      });
+      if (result.value === true) return;
+    } catch (err) {
+      if (!/context was destroyed|Cannot find context/i.test(err.message)) throw err;
+    }
+    await sleep(40);
+  }
+  assert.fail("Chrome did not load the fixture document at " + url);
 }
