@@ -13,10 +13,10 @@ import (
 	"testing"
 	"time"
 
-	libjwt "github.com/golang-jwt/jwt/v5"
 	auth "github.com/Plain-Auth/plain-auth"
 	jwtplugin "github.com/Plain-Auth/plain-auth/plugins/jwt"
 	"github.com/Plain-Auth/plain-auth/schema"
+	libjwt "github.com/golang-jwt/jwt/v5"
 )
 
 func TestJWTIssuanceAndKeyRotation(t *testing.T) {

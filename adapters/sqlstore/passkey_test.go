@@ -15,10 +15,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/fxamacker/cbor/v2"
 	auth "github.com/Plain-Auth/plain-auth"
 	pk "github.com/Plain-Auth/plain-auth/plugins/passkey"
 	"github.com/Plain-Auth/plain-auth/schema"
+	"github.com/fxamacker/cbor/v2"
 )
 
 type softwareKey struct {

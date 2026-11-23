@@ -10,8 +10,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/coreos/go-oidc/v3/oidc"
 	auth "github.com/Plain-Auth/plain-auth"
+	"github.com/coreos/go-oidc/v3/oidc"
 	"golang.org/x/oauth2"
 )
 

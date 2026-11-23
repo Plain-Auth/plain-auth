@@ -14,10 +14,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang-jwt/jwt/v5"
 	authn "github.com/Plain-Auth/plain-auth"
 	"github.com/Plain-Auth/plain-auth/plugins/onetap"
 	"github.com/Plain-Auth/plain-auth/providers"
+	"github.com/golang-jwt/jwt/v5"
 )
 
 type googleJWKS func(*http.Request) (*http.Response, error)
