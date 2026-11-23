@@ -41,6 +41,7 @@ The application provides `sendInvitation`, its configured public `origin` and it
 | GET | `/organization/get-active-member` | Read your membership, role and public profile in this session's active organization. Requires a signed-in session. |
 | GET | `/organization/get-active-member-role` | Read a user's role in an organization you both belong to. Omit all query parameters for your own role in the active organization. |
 | POST | `/organization/set-active` | Select by ID or slug. Send `{"organizationId":null}` to clear the current selection |
+| GET | `/organization/get-invitation` | Read one pending, unexpired invitation addressed to the signed-in account |
 | GET | `/organization/list-user-invitations` | Read pending invitations for the signed-in account’s verified email across organizations |
 | GET | `/organization/list-invitations` | List invitations visible to an owner or admin in the named or active organization |
 | POST | `/organization/invite-member` | Invite by email and role, using an explicit organization ID or the active selection |
@@ -230,6 +231,28 @@ The JSON response is an array. Each entry includes the invitation ID, organizati
 The database reads up to 100 invitations in creation order, using the ID to break ties. Owners can see the whole page. Admins see only invitations whose roles exclude `owner`. Ordinary members receive HTTP 403 with `YOU_ARE_NOT_ALLOWED_TO_LIST_INVITATIONS`, including when the organization has no invitations. A missing selection returns HTTP 400. An unknown organization or one the caller does not belong to returns HTTP 403.
 
 In Go, call `authClient.ListOrganizationInvitations(ctx, organizationID)`, using an empty string for the active organization. To require recipients to verify their account email before accepting an invitation, set `RequireVerifiedEmail: true` in the organization options. [HTTP client comparison](../conformance/organization-invitations.mjs) · [Go client and session tests](../adapters/sqlstore/organization_selection_http_test.go)
+
+## Read one invitation
+
+Use `GET /organization/get-invitation?id=INVITATION_ID` to display the details of an invitation before the recipient decides whether to accept. Send the recipient’s signed-in session. The opaque ID comes from your invitation delivery callback or the recipient’s inbox.
+
+```sh
+curl --fail-with-body -b cookies.txt --get \
+  https://app.example.com/api/auth/organization/get-invitation \
+  --data-urlencode "id=$INVITATION_ID"
+```
+
+The response includes the invitation fields, the current `organizationName`, `organizationSlug` and the current `inviterEmail`. The inviter must still belong to that organization. The recipient can read the invitation before joining. Reading it preserves the invitation status and the session’s organization and team.
+
+| Condition | HTTP result |
+| --- | --- |
+| Missing session | 401 |
+| Unknown ID, expired invitation or a status other than pending | 400 `INVITATION_NOT_FOUND` |
+| Signed-in account has a different email | 403 `YOU_ARE_NOT_THE_RECIPIENT_OF_THE_INVITATION` |
+| `RequireVerifiedEmail` is enabled and the recipient has an unverified email | 403 `EMAIL_VERIFICATION_REQUIRED_FOR_INVITATION` |
+| The original inviter has left the destination organization | 400 `INVITER_IS_NO_LONGER_A_MEMBER_OF_THE_ORGANIZATION` |
+
+In Go, call `authClient.OrganizationInvitation(ctx, invitationID)`. A client that only knows the recipient’s email can use the verified inbox described below once the recipient signs in. [Client comparison](../conformance/organization-invitations.mjs) · [Database and verification tests](../adapters/sqlstore/organization_received_test.go)
 
 ## Read the recipient’s invitations
 

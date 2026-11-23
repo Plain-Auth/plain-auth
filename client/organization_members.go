@@ -124,3 +124,13 @@ func (c *Client) ListUserInvitations(ctx context.Context) ([]org.ReceivedInvitat
 	err := c.Do(ctx, http.MethodGet, "/organization/list-user-invitations", nil, &out)
 	return out, err
 }
+
+// OrganizationInvitation reads a pending, unexpired invitation by its opaque ID.
+func (c *Client) OrganizationInvitation(ctx context.Context, invitationID string) (*org.InvitationDetails, error) {
+	var view org.InvitationDetails
+	path := "/organization/get-invitation?" + url.Values{"id": {invitationID}}.Encode()
+	if err := c.Do(ctx, http.MethodGet, path, nil, &view); err != nil {
+		return nil, err
+	}
+	return &view, nil
+}

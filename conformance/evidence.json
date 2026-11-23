@@ -14388,5 +14388,64 @@
       "test": "adapters/sqlstore/organization_received_test.go",
       "marker": "trusted mailbox lookup did not normalize the address and return its invitation"
     }
+  ],
+  "plugin/organization/GET /organization/get-invitation": [
+    {
+      "label": "Read the current inviter email and organization details for the pending invitation",
+      "test": "conformance/organization-invitations.mjs",
+      "marker": "assert.equal(view.inviterEmail, \"changed@example.test\")"
+    },
+    {
+      "label": "Apply the configured verification rule after matching the current recipient",
+      "test": "adapters/sqlstore/organization_received_test.go",
+      "marker": "unverified recipient bypassed the invitation detail policy"
+    },
+    {
+      "label": "Refuse details after the original inviter leaves the organization",
+      "test": "conformance/organization-invitations.mjs",
+      "marker": "code(await get(recipient, inv.id), 400, \"INVITER_IS_NO_LONGER_A_MEMBER_OF_THE_ORGANIZATION\")"
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1010": [
+    {
+      "label": "Read the current inviter email and organization details for the pending invitation",
+      "test": "conformance/organization-invitations.mjs",
+      "marker": "assert.equal(view.inviterEmail, \"changed@example.test\")"
+    },
+    {
+      "label": "Apply the configured verification rule after matching the current recipient",
+      "test": "adapters/sqlstore/organization_received_test.go",
+      "marker": "unverified recipient bypassed the invitation detail policy"
+    },
+    {
+      "label": "Refuse details after the original inviter leaves the organization",
+      "test": "conformance/organization-invitations.mjs",
+      "marker": "code(await get(recipient, inv.id), 400, \"INVITER_IS_NO_LONGER_A_MEMBER_OF_THE_ORGANIZATION\")"
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1014/`GET /organization/get-invitation`": [
+    {
+      "label": "Read the current inviter email and organization details for the pending invitation",
+      "test": "conformance/organization-invitations.mjs",
+      "marker": "assert.equal(view.inviterEmail, \"changed@example.test\")"
+    },
+    {
+      "label": "Apply the configured verification rule after matching the current recipient",
+      "test": "adapters/sqlstore/organization_received_test.go",
+      "marker": "unverified recipient bypassed the invitation detail policy"
+    },
+    {
+      "label": "Refuse details after the original inviter leaves the organization",
+      "test": "conformance/organization-invitations.mjs",
+      "marker": "code(await get(recipient, inv.id), 400, \"INVITER_IS_NO_LONGER_A_MEMBER_OF_THE_ORGANIZATION\")"
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1020/Parameter `id`": [
+    {
+      "label": "Resolve an exact invitation ID subject to current status, expiry and recipient ownership",
+      "test": "adapters/sqlstore/organization_received_test.go",
+      "marker": "inexact invitation ID was accepted",
+      "complete": true
+    }
   ]
 }

@@ -384,7 +384,7 @@ func (s *Store) acceptOrganizationInvitation(ctx context.Context, id, sessionID 
 	if inv.Status != "pending" || !now.Before(inv.ExpiresAt) {
 		return org.Invitation{}, org.Member{}, org.ErrInvitation
 	}
-	if !strings.EqualFold(inv.Email, u.Email) {
+	if strings.ToLower(inv.Email) != strings.ToLower(u.Email) {
 		return org.Invitation{}, org.Member{}, org.ErrRecipient
 	}
 	if requireVerified && !u.EmailVerified {

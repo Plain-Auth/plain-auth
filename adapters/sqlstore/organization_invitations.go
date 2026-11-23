@@ -85,9 +85,8 @@ func (s *Store) receivedInvitations(ctx context.Context, sessionID, userID, emai
 	exact := s.exactSQLValue
 	if email == "" {
 		var verified bool
-		query := `SELECT u."email",u."emailVerified" FROM "session" ss JOIN "user" u ON u."id"=` + exact(`ss."userId"`) + ` WHERE ss."id"=` + exact("?") + ` AND ss."userId"=` + exact("?") + ` AND ss."expiresAt">?`
-		err := tx.QueryRowContext(ctx, s.bind(query), sessionID, userID, s.date(time.Now())).Scan(&email, &verified)
-		if errors.Is(err, sql.ErrNoRows) {
+		email, verified, err = s.invitationSessionEmail(ctx, tx, sessionID, userID)
+		if errors.Is(err, org.ErrInvitationSignIn) {
 			return nil, org.ErrInvitationEmailRequired
 		}
 		if err != nil {
@@ -124,4 +123,63 @@ func (s *Store) receivedInvitations(ctx context.Context, sessionID, userID, emai
 		return nil, err
 	}
 	return out, nil
+}
+
+func (s *Store) invitationSessionEmail(ctx context.Context, tx *sql.Tx, sessionID, userID string) (string, bool, error) {
+	exact := s.exactSQLValue
+	query := `SELECT u."email",u."emailVerified" FROM "session" ss JOIN "user" u ON u."id"=` + exact(`ss."userId"`) + ` WHERE ss."id"=` + exact("?") + ` AND ss."userId"=` + exact("?") + ` AND ss."expiresAt">?`
+	var email string
+	var verified bool
+	err := tx.QueryRowContext(ctx, s.bind(query), sessionID, userID, s.date(time.Now())).Scan(&email, &verified)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", false, org.ErrInvitationSignIn
+	}
+	return email, verified, err
+}
+
+// OrganizationInvitation resolves an actionable invitation and its current
+// inviter from the same snapshot as the recipient account.
+func (s *Store) OrganizationInvitation(ctx context.Context, sessionID, userID, id string, requireVerified, teams bool) (*org.InvitationDetails, error) {
+	tx, err := s.beginReadSnapshot(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+	email, verified, err := s.invitationSessionEmail(ctx, tx, sessionID, userID)
+	if err != nil {
+		return nil, err
+	}
+	exact := s.exactSQLValue
+	query := `SELECT ` + invitationColumns(teams) + ` FROM "invitation" WHERE "id"=` + exact("?") + ` AND "status"='pending' AND "expiresAt">=?`
+	inv, err := scanInvitation(tx.QueryRowContext(ctx, s.bind(query), id, s.date(time.Now())), teams)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, org.ErrInvitation
+	}
+	if err != nil {
+		return nil, err
+	}
+	if strings.ToLower(inv.Email) != strings.ToLower(email) {
+		return nil, org.ErrRecipient
+	}
+	if requireVerified && !verified {
+		return nil, org.ErrInvitationAccountUnverified
+	}
+	view := &org.InvitationDetails{ReceivedInvitation: org.ReceivedInvitation{Invitation: inv}}
+	var sender sql.NullString
+	query = `SELECT o."name",o."slug",(SELECT u."email" FROM "member" m JOIN "user" u ON u."id"=` + exact(`m."userId"`) +
+		` WHERE m."organizationId"=` + exact(`o."id"`) + ` AND m."userId"=` + exact("?") + `) FROM "organization" o WHERE o."id"=` + exact("?")
+	err = tx.QueryRowContext(ctx, s.bind(query), inv.InviterID, inv.OrganizationID).Scan(&view.OrganizationName, &view.OrganizationSlug, &sender)
+	switch {
+	case errors.Is(err, sql.ErrNoRows):
+		return nil, org.ErrNotFound
+	case err != nil:
+		return nil, err
+	case !sender.Valid:
+		return nil, org.ErrInviterRemoved
+	}
+	view.InviterEmail = sender.String
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+	return view, nil
 }

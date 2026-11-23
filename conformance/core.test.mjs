@@ -1912,3 +1912,8 @@ test("verified recipients list pending invitations across organizations without 
   const { compareRecipientInbox } = await import("./organization-invitations.mjs");
   await compareRecipientInbox(t, { reference, goFixture, instrument });
 });
+
+test("invitation details resolve the current inviter and enforce recipient verification on both servers", async t => {
+  const { compareInvitationDetails } = await import("./organization-invitations.mjs");
+  await compareInvitationDetails(t, { reference, goFixture, instrument });
+});

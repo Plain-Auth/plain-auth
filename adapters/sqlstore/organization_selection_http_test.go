@@ -202,6 +202,15 @@ func TestOrganizationAndTeamSelectionHTTP(t *testing.T) {
 			}
 			outsider := newClient()
 			send(outsider, "POST", "sign-up/email", map[string]string{"email": "other@api.example", "name": "Other", "password": login["password"]}, 200)
+			guestSDK, err := client.New(origin, outsider)
+			must(err)
+			var issued org.Invitation
+			must(json.Unmarshal(send(two, "POST", "organization/invite-member", map[string]any{"email": "other@api.example", "role": "member", "organizationId": second}, 200), &issued))
+			detail, err := guestSDK.OrganizationInvitation(ctx, issued.ID)
+			must(err)
+			if detail.ID != issued.ID || detail.OrganizationID != second || detail.InviterEmail != login["email"] || detail.OrganizationSlug != "b-group" {
+				t.Fatal("Go client lost invitation details", detail)
+			}
 			var forbidden struct{ Code string }
 			must(json.Unmarshal(send(outsider, "GET", "organization/get-active-member-role?organizationId="+second+"&userId="+active.UserID, nil, 403), &forbidden))
 			if forbidden.Code != org.ErrRoleReadDenied.Code {

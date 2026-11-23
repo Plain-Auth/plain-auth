@@ -55,6 +55,9 @@
   - [ ] `POST /organization/reject-invitation`
   - [ ] `POST /organization/cancel-invitation`
   - [ ] `GET /organization/get-invitation`
+    - [x] Read the current inviter email and organization details for the pending invitation ([test](../../../conformance/organization-invitations.mjs#L180))
+    - [x] Apply the configured verification rule after matching the current recipient ([test](../../../adapters/sqlstore/organization_received_test.go#L56))
+    - [x] Refuse details after the original inviter leaves the organization ([test](../../../conformance/organization-invitations.mjs#L196))
   - [ ] `GET /organization/list-invitations`
     - [x] List every invitation status and preserve expired pending invitations ([test](../../../conformance/organization-invitations.mjs#L53))
     - [x] Restrict owner invitations to owners, including compound target roles ([test](../../../conformance/organization-invitations.mjs#L65))
@@ -62,8 +65,8 @@
   - [ ] `GET /organization/list-user-invitations`
     - [x] List pending invitations for a verified mailbox across organizations and return each destination name ([test](../../../conformance/organization-invitations.mjs#L119))
     - [x] Reject a mailbox selector on HTTP and require a verified recipient session ([test](../../../conformance/organization-invitations.mjs#L103))
-    - [x] Use the same database snapshot for current email verification and invitation rows ([test](../../../adapters/sqlstore/organization_received_test.go#L104))
-    - [x] Allow a trusted Go service to list pending invitations by normalized email without a session ([test](../../../adapters/sqlstore/organization_received_test.go#L50))
+    - [x] Use the same database snapshot for current email verification and invitation rows ([test](../../../adapters/sqlstore/organization_received_test.go#L121))
+    - [x] Allow a trusted Go service to list pending invitations by normalized email without a session ([test](../../../adapters/sqlstore/organization_received_test.go#L67))
   - [ ] `addMember (server API only)`
     - [x] Grant built-in roles and an optional team atomically, enforcing capacity alongside concurrent grants and invitation acceptance ([test](../../../adapters/sqlstore/organization_members_test.go#L15))
     - [x] Read grants stored by either server through the other runtime’s browser client without changing the recipient’s active organization ([test](../../../conformance/core.test.mjs#L1042))
@@ -82,7 +85,7 @@
     - [x] Reject revoked and delegated sessions and recheck the acting account ban inside the transaction ([test](../../../adapters/sqlstore/organization_role_test.go#L115))
   - [x] `GET /organization/get-active-member` ([test](../../../conformance/core.test.mjs#L1863))
     - [x] Read the live membership and its public user profile from each signed-in session across organization switches ([test](../../../conformance/core.test.mjs#L1863))
-    - [x] Distinguish a cleared selection from a removed membership and a signed-out client on all three SQL engines ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L221))
+    - [x] Distinguish a cleared selection from a removed membership and a signed-out client on all three SQL engines ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L230))
     - [x] Report role updates immediately and ignore caller-supplied organization and user selectors ([test](../../../conformance/core.test.mjs#L1876))
   - [ ] `POST /organization/leave`
     - [x] Return the signed-in user's membership and profile when leaving an organization ([test](../../../conformance/organization-removal.mjs#L47))
@@ -93,7 +96,7 @@
     - [x] Reject a removed caller and deny access to totals even on an empty page ([test](../../../conformance/organization-directory.mjs#L58))
   - [x] `GET /organization/get-active-member-role` ([test](../../../conformance/organization-role.mjs#L104))
     - [x] Read roles for yourself and fellow members, resolve slug before ID or active session, and preserve the session selection ([test](../../../conformance/organization-role.mjs#L104))
-    - [x] Require current membership from both users and deny an outsider access to an existing member’s role ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L208))
+    - [x] Require current membership from both users and deny an outsider access to an existing member’s role ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L217))
     - [x] Reject duplicate query selectors before authentication and distinguish missing selections and unknown slugs ([test](../../../conformance/organization-role.mjs#L88))
   - [ ] `POST /organization/create`
     - [x] Create an organization and its owner membership atomically ([test](../../../plugins/organization/organization_test.go#L93))
@@ -296,8 +299,15 @@
       - [ ] `POST /organization/reject-invitation`
         - [ ] Parameter `invitationId`
     - [ ] Get Invitation
+      - [x] Read the current inviter email and organization details for the pending invitation ([test](../../../conformance/organization-invitations.mjs#L180))
+      - [x] Apply the configured verification rule after matching the current recipient ([test](../../../adapters/sqlstore/organization_received_test.go#L56))
+      - [x] Refuse details after the original inviter leaves the organization ([test](../../../conformance/organization-invitations.mjs#L196))
       - [ ] `GET /organization/get-invitation`
-        - [ ] Parameter `id`
+        - [x] Read the current inviter email and organization details for the pending invitation ([test](../../../conformance/organization-invitations.mjs#L180))
+        - [x] Apply the configured verification rule after matching the current recipient ([test](../../../adapters/sqlstore/organization_received_test.go#L56))
+        - [x] Refuse details after the original inviter leaves the organization ([test](../../../conformance/organization-invitations.mjs#L196))
+        - [x] Parameter `id` ([test](../../../adapters/sqlstore/organization_received_test.go#L62))
+          - [x] Resolve an exact invitation ID subject to current status, expiry and recipient ownership ([test](../../../adapters/sqlstore/organization_received_test.go#L62))
     - [ ] List Invitations
       - [x] List every invitation status and preserve expired pending invitations ([test](../../../conformance/organization-invitations.mjs#L53))
       - [x] Restrict owner invitations to owners, including compound target roles ([test](../../../conformance/organization-invitations.mjs#L65))
@@ -311,8 +321,8 @@
     - [x] List user invitations ([test](../../../conformance/organization-invitations.mjs#L119))
       - [x] List pending invitations for a verified mailbox across organizations and return each destination name ([test](../../../conformance/organization-invitations.mjs#L119))
       - [x] Reject a mailbox selector on HTTP and require a verified recipient session ([test](../../../conformance/organization-invitations.mjs#L103))
-      - [x] Use the same database snapshot for current email verification and invitation rows ([test](../../../adapters/sqlstore/organization_received_test.go#L104))
-      - [x] Allow a trusted Go service to list pending invitations by normalized email without a session ([test](../../../adapters/sqlstore/organization_received_test.go#L50))
+      - [x] Use the same database snapshot for current email verification and invitation rows ([test](../../../adapters/sqlstore/organization_received_test.go#L121))
+      - [x] Allow a trusted Go service to list pending invitations by normalized email without a session ([test](../../../adapters/sqlstore/organization_received_test.go#L67))
   - [ ] Members
     - [ ] List Members
       - [x] Return public user profiles and membership fields exclusively for a shared organization, including pages larger than 100 ([test](../../../conformance/organization-directory.mjs#L74))
@@ -353,19 +363,19 @@
         - [ ] Parameter `organizationId` (optional)
     - [x] Get Active Member ([test](../../../conformance/core.test.mjs#L1863))
       - [x] Read the live membership and its public user profile from each signed-in session across organization switches ([test](../../../conformance/core.test.mjs#L1863))
-      - [x] Distinguish a cleared selection from a removed membership and a signed-out client on all three SQL engines ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L221))
+      - [x] Distinguish a cleared selection from a removed membership and a signed-out client on all three SQL engines ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L230))
       - [x] Report role updates immediately and ignore caller-supplied organization and user selectors ([test](../../../conformance/core.test.mjs#L1876))
       - [x] `GET /organization/get-active-member` ([test](../../../conformance/core.test.mjs#L1863))
         - [x] Read the live membership and its public user profile from each signed-in session across organization switches ([test](../../../conformance/core.test.mjs#L1863))
-        - [x] Distinguish a cleared selection from a removed membership and a signed-out client on all three SQL engines ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L221))
+        - [x] Distinguish a cleared selection from a removed membership and a signed-out client on all three SQL engines ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L230))
         - [x] Report role updates immediately and ignore caller-supplied organization and user selectors ([test](../../../conformance/core.test.mjs#L1876))
     - [x] Get Active Member Role ([test](../../../conformance/organization-role.mjs#L104))
       - [x] Read roles for yourself and fellow members, resolve slug before ID or active session, and preserve the session selection ([test](../../../conformance/organization-role.mjs#L104))
-      - [x] Require current membership from both users and deny an outsider access to an existing member’s role ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L208))
+      - [x] Require current membership from both users and deny an outsider access to an existing member’s role ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L217))
       - [x] Reject duplicate query selectors before authentication and distinguish missing selections and unknown slugs ([test](../../../conformance/organization-role.mjs#L88))
       - [x] `GET /organization/get-active-member-role` ([test](../../../conformance/organization-role.mjs#L104))
         - [x] Read roles for yourself and fellow members, resolve slug before ID or active session, and preserve the session selection ([test](../../../conformance/organization-role.mjs#L104))
-        - [x] Require current membership from both users and deny an outsider access to an existing member’s role ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L208))
+        - [x] Require current membership from both users and deny an outsider access to an existing member’s role ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L217))
         - [x] Reject duplicate query selectors before authentication and distinguish missing selections and unknown slugs ([test](../../../conformance/organization-role.mjs#L88))
     - [ ] Add Member
       - [ ] `POST /organization/add-member` (server API)

@@ -44,6 +44,23 @@ func TestRecipientInvitationMailbox(t *testing.T) {
 				_, err := store.InviteOrganizationMember(ctx, org.Invitation{ID: email, OrganizationID: group.ID, InviterID: "Host", Email: email, Role: "owner", Status: "pending", CreatedAt: now, ExpiresAt: now.Add(time.Hour)}, "Host-session", false)
 				must(err)
 			}
+			detail := func(id string, verified bool) (*org.InvitationDetails, error) {
+				return store.OrganizationInvitation(ctx, "Receiver-session", "Receiver", id, verified, false)
+			}
+			view, err := detail(first, false)
+			must(err)
+			if view.InviterEmail != "host@example.test" || view.OrganizationSlug != "office" || view.OrganizationName != first {
+				t.Fatal("invitation details lost its current sender or destination", view)
+			}
+			if view, err := detail(first, true); view != nil || !errors.Is(err, org.ErrInvitationAccountUnverified) {
+				t.Fatal("unverified recipient bypassed the invitation detail policy", err)
+			}
+			if view, err := detail(second, true); view != nil || !errors.Is(err, org.ErrRecipient) {
+				t.Fatal("nonrecipient read another mailbox's invitation", err)
+			}
+			if view, err := detail("FIRST@example.test", false); view != nil || !errors.Is(err, org.ErrInvitation) {
+				t.Fatal("inexact invitation ID was accepted", err)
+			}
 			trusted, err := service.ListInvitationsForEmail(ctx, "FIRST@EXAMPLE.TEST")
 			must(err)
 			if len(trusted) != 1 || trusted[0].OrganizationName != first || trusted[0].Email != first {
@@ -105,6 +122,15 @@ func TestRecipientInvitationMailbox(t *testing.T) {
 				}
 			}
 			must(<-done)
+			exec(`UPDATE "invitation" SET "expiresAt"=? WHERE "id"=?`, store.date(now.Add(-time.Minute)), first)
+			if view, err := detail(first, true); view != nil || !errors.Is(err, org.ErrInvitation) {
+				t.Fatal("expired invitation details were returned", err)
+			}
+			exec(`UPDATE "invitation" SET "expiresAt"=? WHERE "id"=?`, store.date(now.Add(time.Hour)), first)
+			exec(`DELETE FROM "member" WHERE "id"='owner'`)
+			if view, err := detail(first, true); view != nil || !errors.Is(err, org.ErrInviterRemoved) {
+				t.Fatal("removed inviter disclosed details", err)
+			}
 			exec(`DELETE FROM "session" WHERE "id"='Receiver-session'`)
 			if items, err := inbox(); items != nil || !errors.Is(err, org.ErrInvitationEmailRequired) {
 				t.Fatal("revoked session disclosed recipient invitations", err)

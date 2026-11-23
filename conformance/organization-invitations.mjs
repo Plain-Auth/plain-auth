@@ -139,3 +139,65 @@ export async function compareRecipientInbox(t, { reference, goFixture, instrumen
     }
   }
 }
+
+export async function compareInvitationDetails(t, { reference, goFixture, instrument }) {
+  for (const verified of [false, true]) {
+    const options = { requireEmailVerificationOnInvitation: verified, teams: { enabled: verified } };
+    const ref = await reference(t, [organization(options)]);
+    const go = await goFixture(t, [verified ? "organization-teams" : "organization"], { CONFORMANCE_VERIFY_INVITATION_EMAIL: verified ? "1" : "" });
+    for (const server of [ref, go]) {
+      const connect = () => instrument(server, [organizationClient(options)]).client;
+      const [sender, recipient, anonymous] = [connect(), connect(), connect()];
+      const ok = result => {
+        assert.equal(result.error, null, JSON.stringify(result.error));
+        return result.data;
+      };
+      const get = (client, id) => client.organization.getInvitation({ query: { id } });
+      const code = (res, status, name) => {
+        assert.equal(res.error?.status, status, JSON.stringify(res));
+        assert.equal(res.error.code, name);
+      };
+      code(await get(anonymous, "absent"), 401, undefined);
+      code(await get(anonymous), 400, "VALIDATION_ERROR");
+      for (const [client, email] of [[sender, "host@example.test"], [recipient, "person@example.test"]]) {
+        ok(await client.signUp.email({ name: email, email, password: "invitation-details-password" }));
+      }
+      const group = ok(await sender.organization.create({ name: "Workspace", slug: "workspace" }));
+      const inv = ok(await sender.organization.inviteMember({ email: "person@example.test", role: "member" }));
+      code(await get(sender, inv.id), 403, "YOU_ARE_NOT_THE_RECIPIENT_OF_THE_INVITATION");
+      code(await get(recipient, "absent"), 400, "INVITATION_NOT_FOUND");
+      const db = server.database ?? new DatabaseSync(server.databasePath);
+      try {
+        if (verified) {
+          code(await get(recipient, inv.id), 403, "EMAIL_VERIFICATION_REQUIRED_FOR_INVITATION");
+          db.prepare('UPDATE "user" SET "emailVerified"=1 WHERE email=?').run("person@example.test");
+        }
+        db.prepare('UPDATE "user" SET "email"=? WHERE "id"=?').run("changed@example.test", inv.inviterId);
+        db.prepare('UPDATE organization SET name=?, slug=? WHERE id=?').run("Renamed", "renamed", group.id);
+        const view = ok(await get(recipient, inv.id));
+        assert.equal(view.organizationName, "Renamed");
+        assert.equal(view.organizationSlug, "renamed");
+        assert.equal(view.inviterEmail, "changed@example.test");
+        assert.equal(view.id, inv.id);
+        assert.equal(view.organizationId, group.id);
+        assert.equal(view.email, "person@example.test");
+        assert.equal("teamId" in view, verified);
+        if (verified) assert.equal(view.teamId, null);
+        const originalExpiry = db.prepare("SELECT expiresAt FROM invitation WHERE id=?").get(inv.id).expiresAt;
+        for (const state of ["accepted", "rejected", "canceled"]) {
+          db.prepare('UPDATE invitation SET status=? WHERE id=?').run(state, inv.id);
+          code(await get(recipient, inv.id), 400, "INVITATION_NOT_FOUND");
+        }
+        db.prepare("UPDATE invitation SET status='pending',expiresAt=? WHERE id=?").run("2020-01-01T00:00:00Z", inv.id);
+        code(await get(recipient, inv.id), 400, "INVITATION_NOT_FOUND");
+        db.prepare("UPDATE invitation SET expiresAt=? WHERE id=?").run(originalExpiry, inv.id);
+        assert.equal(ok(await get(recipient, inv.id)).id, inv.id);
+        db.prepare('DELETE FROM member WHERE organizationId=? AND userId=?').run(group.id, inv.inviterId);
+        code(await get(recipient, inv.id), 400, "INVITER_IS_NO_LONGER_A_MEMBER_OF_THE_ORGANIZATION");
+        assert.equal(ok(await recipient.getSession()).session.activeOrganizationId ?? null, null);
+      } finally {
+        if (!server.database) db.close();
+      }
+    }
+  }
+}
