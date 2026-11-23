@@ -259,6 +259,10 @@ func (o Options) get(c authn.EndpointContext, s *authn.SessionResult) (any, erro
 
 func (o Options) selectActive(c authn.EndpointContext, s *authn.SessionResult) (any, error) {
 	ctx := c.Request.Context()
+	slug, isString := c.Body["organizationSlug"].(string)
+	if _, supplied := c.Body["organizationSlug"]; supplied && !isString {
+		return nil, validation("organizationSlug")
+	}
 	value, exists := c.Body["organizationId"]
 	if exists && value == nil {
 		if err := o.Store.SetActiveOrganization(ctx, s.Session.ID, s.User.ID, nil); err != nil {
@@ -272,10 +276,6 @@ func (o Options) selectActive(c authn.EndpointContext, s *authn.SessionResult) (
 	id, ok := value.(string)
 	if exists && !ok {
 		return nil, validation("organizationId")
-	}
-	slug, ok := c.Body["organizationSlug"].(string)
-	if c.Body["organizationSlug"] != nil && !ok {
-		return nil, validation("organizationSlug")
 	}
 	if id != "" {
 		slug = ""

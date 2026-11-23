@@ -53,6 +53,8 @@ type HTTPDescription struct {
 	EmailOTPRegistration, PhoneRegistration bool
 	// OAuthLoginContinuation indicates that a host can resume a signed issuer login.
 	OAuthLoginContinuation bool
+	// OAuthSelectionContinuation indicates that organization and team selection can resume a signed post-login request.
+	OAuthSelectionContinuation bool
 
 	ServerURL, SessionCookie string
 	// OAuthProxyStateCookie binds a preview return to the initiating browser.
@@ -86,6 +88,7 @@ func (a *Auth) DescribeHTTP() HTTPDescription {
 	slices.Sort(d.RequiredUserInputs)
 	d.EmailOTPRegistration = a.emailOTP != nil && !a.emailOTP.DisableSignUp
 	d.OAuthLoginContinuation = a.prepareOAuthLogin != nil
+	d.OAuthSelectionContinuation = a.prepareOAuthSelection != nil
 	d.PhoneRegistration = a.phoneNumber != nil && a.phoneNumber.SignUpOnVerification != nil && !o.DisableSignUp
 	if a.HasPlugin("sso") {
 		d.SSOStateCookie = a.prefixedCookieName("sso_state")

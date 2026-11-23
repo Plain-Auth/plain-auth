@@ -814,6 +814,16 @@
       "label": "Use HTTP JSON with separate cookie jars to switch or clear organizations and teams without affecting another login",
       "test": "adapters/sqlstore/organization_selection_http_test.go",
       "marker": "func TestOrganizationAndTeamSelectionHTTP("
+    },
+    {
+      "label": "Describe nullable selection results across enabled profiles and expose signed destinations when the host supports them",
+      "test": "plugins/openapi/organization_selection_test.go",
+      "marker": "func TestOrganizationSelectionSchema("
+    },
+    {
+      "label": "On a signed browser navigation, send the Location of the consent page bound to the selecting session",
+      "test": "adapters/sqlstore/oauth_post_login_test.go",
+      "marker": "signed selection navigation failed"
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L621": [
@@ -821,6 +831,11 @@
       "label": "Select by slug or clear the current session selection",
       "test": "plugins/organization/organization_test.go",
       "marker": "cleared organization still active"
+    },
+    {
+      "label": "Switch and clear the current session’s selection with independent HTTP clients across three SQL engines",
+      "test": "adapters/sqlstore/organization_selection_http_test.go",
+      "marker": "func TestOrganizationAndTeamSelectionHTTP("
     }
   ],
   "plugin/organization/POST /organization/invite-member": [
@@ -3363,6 +3378,16 @@
       "label": "Validate a signed selector before updating the team and keep an outstanding approval in its original organization",
       "test": "adapters/sqlstore/oauth_post_login_test.go",
       "marker": "bad := choose.Encode()"
+    },
+    {
+      "label": "Describe nullable selection results across enabled profiles and expose signed destinations when the host supports them",
+      "test": "plugins/openapi/organization_selection_test.go",
+      "marker": "func TestOrganizationSelectionSchema("
+    },
+    {
+      "label": "On a signed browser navigation, send the Location of the consent page bound to the selecting session",
+      "test": "adapters/sqlstore/oauth_post_login_test.go",
+      "marker": "signed selection navigation failed"
     }
   ],
   "plugin/organization/GET /organization/list-user-teams": [
@@ -3426,6 +3451,11 @@
       "label": "Select a team belonging to the active organization and preserve session cookie persistence",
       "test": "adapters/sqlstore/organization_teams_test.go",
       "marker": "team selection changed persistence"
+    },
+    {
+      "label": "Switch and clear the current session’s selection with independent HTTP clients across three SQL engines",
+      "test": "adapters/sqlstore/organization_selection_http_test.go",
+      "marker": "func TestOrganizationAndTeamSelectionHTTP("
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L1915": [
@@ -13728,6 +13758,43 @@
       "label": "Complete an OIDC exchange on the shared return path and issue the employee’s session",
       "test": "conformance/oauth-enterprise-authorization.mjs",
       "marker": "assert.equal(redirect, base + \"/sso/callback\"",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L631/`POST /organization/set-active`": [
+    {
+      "label": "Describe nullable selection results across enabled profiles and expose signed destinations when the host supports them",
+      "test": "plugins/openapi/organization_selection_test.go",
+      "marker": "func TestOrganizationSelectionSchema("
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1903/`POST /organization/set-active-team`": [
+    {
+      "label": "Describe nullable selection results across enabled profiles and expose signed destinations when the host supports them",
+      "test": "plugins/openapi/organization_selection_test.go",
+      "marker": "func TestOrganizationSelectionSchema("
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L637/Parameter `organizationId` (optional)": [
+    {
+      "label": "Select by ID, retain the selection when omitted, and clear both selections with a null organization ID",
+      "test": "adapters/sqlstore/organization_selection_http_test.go",
+      "marker": "empty POST did not return the session selection",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L641/Parameter `organizationSlug` (optional)": [
+    {
+      "label": "Accept a string slug and reject a null slug before changing the current session",
+      "test": "conformance/core.test.mjs",
+      "marker": "organizationId: null, organizationSlug: null"
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1910/Parameter `teamId` (optional)": [
+    {
+      "label": "Use the current team for an omitted or empty ID, select a member team by ID, and clear it with JSON null",
+      "test": "conformance/core.test.mjs",
+      "marker": "org.setActiveTeam({teamId: \"\"})).id",
       "complete": true
     }
   ]

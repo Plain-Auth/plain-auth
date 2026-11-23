@@ -1804,3 +1804,26 @@ test("a machine client discovers its issuer and verifies a token through adverti
   const { compareIssuerMetadata } = await import("./oauth-issuer-metadata.mjs");
   await compareIssuerMetadata(t, { reference, goFixture });
 });
+
+test("organization selectors distinguish omitted IDs from JSON null on both runtimes", async t => {
+  const options = {teams: {enabled: true}};
+  for (const runtime of [await reference(t, [organization(options)]), await goFixture(t, ["organization-teams"])]) {
+    const owner = instrument(runtime, [organizationClient(options)]).client;
+    const ok = res => { assert.equal(res.error, null, JSON.stringify(res.error)); return res.data; };
+    ok(await owner.signUp.email({name, email, password}));
+    const org = owner.organization;
+    const group = ok(await org.create({name: "Studio", slug: "studio"}));
+    const [initial] = ok(await org.listUserTeams({query: {organizationId: group.id}}));
+    assert.equal((await org.setActive({organizationId: null, organizationSlug: null})).error.status, 400);
+    assert.equal(ok(await owner.getSession()).session.activeOrganizationId, group.id);
+    assert.equal(ok(await org.setActive({organizationSlug: "studio"})).id, group.id);
+    assert.equal(ok(await owner.$fetch("/organization/set-active", {method: "POST", body: {}})).id, group.id);
+    assert.equal(ok(await owner.$fetch("/organization/set-active-team", {method: "POST", body: {}})).id, initial.id);
+    assert.equal(ok(await org.setActiveTeam({teamId: ""})).id, initial.id);
+    assert.equal(ok(await org.setActiveTeam({teamId: null})), null);
+    assert.equal(ok(await org.setActiveTeam({teamId: ""})), null);
+    assert.equal(ok(await owner.getSession()).session.activeOrganizationId, group.id);
+    assert.equal(ok(await org.setActive({organizationId: null})), null);
+    assert.equal(ok(await owner.$fetch("/organization/set-active", {method: "POST", body: {}})), null);
+  }
+});

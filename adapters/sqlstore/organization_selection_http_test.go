@@ -45,12 +45,10 @@ func TestOrganizationAndTeamSelectionHTTP(t *testing.T) {
 				must(err)
 				return &http.Client{Jar: jar, Transport: server.Client().Transport, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
 			}
-			send := func(c *http.Client, path string, body any, status int) json.RawMessage {
+			send := func(c *http.Client, method, path string, body any, status int) json.RawMessage {
 				t.Helper()
 				var data []byte
-				method := "GET"
 				if body != nil {
-					method = "POST"
 					var err error
 					data, err = json.Marshal(body)
 					must(err)
@@ -59,6 +57,8 @@ func TestOrganizationAndTeamSelectionHTTP(t *testing.T) {
 				must(err)
 				if body != nil {
 					req.Header.Set("Content-Type", "application/json")
+				}
+				if method == "POST" {
 					req.Header.Set("Origin", origin)
 				}
 				res, err := c.Do(req)
@@ -73,18 +73,18 @@ func TestOrganizationAndTeamSelectionHTTP(t *testing.T) {
 			}
 			one, two := newClient(), newClient()
 			login := map[string]string{"email": "member@api.example", "password": "local session selection", "name": "Member"}
-			send(one, "sign-up/email", login, 200)
-			send(two, "sign-in/email", login, 200)
+			send(one, "POST", "sign-up/email", login, 200)
+			send(two, "POST", "sign-in/email", login, 200)
 			create := func(slug string) string {
 				t.Helper()
 				var g org.Organization
-				must(json.Unmarshal(send(one, "organization/create", map[string]string{"slug": slug, "name": slug}, 200), &g))
+				must(json.Unmarshal(send(one, "POST", "organization/create", map[string]string{"slug": slug, "name": slug}, 200), &g))
 				return g.ID
 			}
 			first, second := create("a-group"), create("b-group")
 			set := func(c *http.Client, route, key string, id any, status int) string {
 				t.Helper()
-				response := send(c, "organization/"+route, map[string]any{key: id}, status)
+				response := send(c, "POST", "organization/"+route, map[string]any{key: id}, status)
 				if string(bytes.TrimSpace(response)) == "null" {
 					return ""
 				}
@@ -106,7 +106,7 @@ func TestOrganizationAndTeamSelectionHTTP(t *testing.T) {
 				var result struct {
 					Session struct{ ActiveOrganizationID, ActiveTeamID string }
 				}
-				must(json.Unmarshal(send(c, "get-session", nil, 200), &result))
+				must(json.Unmarshal(send(c, "GET", "get-session", nil, 200), &result))
 				if result.Session.ActiveOrganizationID != group || result.Session.ActiveTeamID != team {
 					t.Fatal("unexpected active organization or team on this session")
 				}
@@ -116,13 +116,20 @@ func TestOrganizationAndTeamSelectionHTTP(t *testing.T) {
 				t.Fatal("expected selected organization")
 			}
 			var teams []org.Team
-			must(json.Unmarshal(send(one, "organization/list-teams", nil, 200), &teams))
+			must(json.Unmarshal(send(one, "GET", "organization/list-teams", nil, 200), &teams))
 			if len(teams) != 1 {
 				t.Fatal("missing member team")
 			}
 			team := teams[0].ID
 			if set(one, "set-active-team", "teamId", team, 200) != team {
 				t.Fatal("expected selected team")
+			}
+			for path, id := range map[string]string{"organization/set-active": first, "organization/set-active-team": team} {
+				var selected struct{ ID string }
+				must(json.Unmarshal(send(one, "POST", path, nil, 200), &selected))
+				if selected.ID != id {
+					t.Fatal("empty POST did not return the session selection", path)
+				}
 			}
 			session(one, first, team)
 			set(two, "set-active", "organizationId", second, 200)

@@ -157,8 +157,18 @@ func publicResponse(route plainauth.HTTPRoute, info plainauth.HTTPDescription, f
 		return modelRef("Organization")
 	case "/organization/check-slug":
 		return responseObject(object{"status": object{"type": "boolean"}}, "status")
-	case "/organization/get-organization", "/organization/set-active":
+	case "/organization/get-organization":
 		return object{"anyOf": []object{modelRef("Organization"), {"type": "null"}}}
+	case "/organization/set-active", "/organization/set-active-team":
+		model := "Organization"
+		if route.Path == "/organization/set-active-team" {
+			model = "Team"
+		}
+		shapes := []object{modelRef(model), {"type": "null"}}
+		if info.OAuthSelectionContinuation {
+			shapes = append(shapes, responseObject(object{"redirect": object{"const": true}, "url": object{"type": "string"}}, "redirect", "url"))
+		}
+		return object{"anyOf": shapes}
 	case "/organization/update-member-role":
 		return modelRef("Member")
 	case "/organization/create-team", "/organization/update-team":
@@ -367,6 +377,18 @@ func adjustRequest(op object, r plainauth.HTTPRoute, info plainauth.HTTPDescript
 		body["required"] = true
 	}
 	switch r.Path {
+	case "/organization/set-active", "/organization/set-active-team":
+		delete(body, "required")
+		description := "Select an organization for the current session by ID or slug. An empty request uses the current selection. A null organizationId clears both organization and team."
+		if r.Path == "/organization/set-active-team" {
+			description = "Select a team in the current session’s active organization. An omitted or empty ID uses the current team. A null teamId clears the team."
+		}
+		if info.OAuthSelectionContinuation {
+			fields["oauth_query"] = object{"type": "string", "description": "Optional signed query from the host’s OAuth post-login page. Requires a direct browser session."}
+			description += " When a signed post-login request resumes, a JSON client receives the next URL and a browser navigation receives its location."
+			op["responses"].(object)["302"] = object{"description": "Navigate to the next step of the signed OAuth request", "headers": object{"Location": object{"schema": object{"type": "string"}}}}
+		}
+		op["description"] = description
 	case "/sign-up/email", "/update-user":
 		if fields == nil {
 			fields = object{}

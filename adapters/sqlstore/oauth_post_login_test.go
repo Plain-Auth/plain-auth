@@ -1,10 +1,13 @@
 package sqlstore
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
+	"net/http/cookiejar"
 	"net/url"
 	"slices"
 	"testing"
@@ -67,7 +70,10 @@ func TestBrowserPostLoginSelection(t *testing.T) {
 			off := false
 			h, err := auth.New(auth.Options{BaseURL: base, Store: s, Secret: "post-login-local-0123456789-abcdefghijk", EmailAndPassword: true, RateLimit: &off, Plugins: []auth.Plugin{groups, issuer}})
 			must(err)
-			sdk, err := client.New(base, &http.Client{Transport: guestTransport{h}})
+			jar, err := cookiejar.New(nil)
+			must(err)
+			browser := &http.Client{Jar: jar, Transport: guestTransport{h}, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
+			sdk, err := client.New(base, browser)
 			must(err)
 			user, err := sdk.SignUpEmail(ctx, client.SignUpRequest{Name: "Owner", Email: "select@post-login.test", Password: "local organization selection"})
 			must(err)
@@ -139,6 +145,28 @@ func TestBrowserPostLoginSelection(t *testing.T) {
 			approval := fields(next.URL, "/consent")
 			if lastContinuation || approval.Get("ba_pl") != session.Session.ID || !slices.Equal(referenceScopes, []string{"reports", "email"}) {
 				t.Fatal("team switch failed to reach bound consent")
+			}
+			for _, selection := range []struct{ path, field, id string }{
+				{"set-active", "organizationId", first}, {"set-active-team", "teamId", team},
+			} {
+				body, err := json.Marshal(map[string]string{selection.field: selection.id, "oauth_query": choose.Encode()})
+				must(err)
+				req, err := http.NewRequestWithContext(ctx, "POST", base+"/api/auth/organization/"+selection.path, bytes.NewReader(body))
+				must(err)
+				req.Header.Set("Content-Type", "application/json")
+				req.Header.Set("Origin", base)
+				req.Header.Set("Sec-Fetch-Mode", "navigate")
+				req.Header.Set("Accept", "text/html")
+				reply, err := browser.Do(req)
+				must(err)
+				reply.Body.Close()
+				if reply.StatusCode != http.StatusFound {
+					t.Fatal("signed selection navigation failed", selection.path, reply.StatusCode)
+				}
+				consent := fields(reply.Header.Get("Location"), "/consent")
+				if consent.Get("ba_pl") != session.Session.ID {
+					t.Fatal("selection navigation lost its session", selection.path)
+				}
 			}
 			count := checks
 			force = true

@@ -93,6 +93,8 @@
     - [x] Preserve the same organization’s selected team and clear it across organization switches on a plain node ([test](../../../adapters/sqlstore/organization_topology_test.go#L123))
     - [x] Select by slug or clear the current session selection ([test](../../../plugins/organization/organization_test.go#L175))
     - [x] Use HTTP JSON with separate cookie jars to switch or clear organizations and teams without affecting another login ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L20))
+    - [x] Describe nullable selection results across enabled profiles and expose signed destinations when the host supports them ([test](../../../plugins/openapi/organization_selection_test.go#L20))
+    - [x] On a signed browser navigation, send the Location of the consent page bound to the selecting session ([test](../../../adapters/sqlstore/oauth_post_login_test.go#L164))
   - [ ] `GET /organization/list`
     - [x] List only organizations the current user belongs to ([test](../../../plugins/organization/organization_test.go#L109))
   - [ ] `POST /organization/create-team`
@@ -106,7 +108,9 @@
   - [ ] `POST /organization/set-active-team`
     - [x] Select a team belonging to the active organization and preserve session cookie persistence ([test](../../../adapters/sqlstore/organization_teams_test.go#L156))
     - [x] Use HTTP JSON with separate cookie jars to switch or clear organizations and teams without affecting another login ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L20))
-    - [x] Validate a signed selector before updating the team and keep an outstanding approval in its original organization ([test](../../../adapters/sqlstore/oauth_post_login_test.go#L123))
+    - [x] Validate a signed selector before updating the team and keep an outstanding approval in its original organization ([test](../../../adapters/sqlstore/oauth_post_login_test.go#L129))
+    - [x] Describe nullable selection results across enabled profiles and expose signed destinations when the host supports them ([test](../../../plugins/openapi/organization_selection_test.go#L20))
+    - [x] On a signed browser navigation, send the Location of the consent page bound to the selecting session ([test](../../../adapters/sqlstore/oauth_post_login_test.go#L164))
   - [ ] `GET /organization/list-user-teams`
     - [x] Return self memberships across organizations and scope administrative queries to the selected organization ([test](../../../adapters/sqlstore/organization_teams_test.go#L257))
   - [ ] `GET /organization/list-team-members`
@@ -203,9 +207,13 @@
     - [ ] Active Organization
       - [ ] Set Active Organization
         - [x] Select by slug or clear the current session selection ([test](../../../plugins/organization/organization_test.go#L175))
+        - [x] Switch and clear the current session’s selection with independent HTTP clients across three SQL engines ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L20))
         - [ ] `POST /organization/set-active`
-          - [ ] Parameter `organizationId` (optional)
+          - [x] Describe nullable selection results across enabled profiles and expose signed destinations when the host supports them ([test](../../../plugins/openapi/organization_selection_test.go#L20))
+          - [x] Parameter `organizationId` (optional) ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L131))
+            - [x] Select by ID, retain the selection when omitted, and clear both selections with a null organization ID ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L131))
           - [ ] Parameter `organizationSlug` (optional)
+            - [x] Accept a string slug and reject a null slug before changing the current session ([test](../../../conformance/core.test.mjs#L1817))
       - [ ] Use Active Organization
     - [ ] Get Organization
       - [x] Resolve the active organization and enforce membership ([test](../../../plugins/organization/organization_test.go#L98))
@@ -373,8 +381,11 @@
           - [ ] Parameter `organizationId` (optional)
       - [ ] Set Active Team
         - [x] Select a team belonging to the active organization and preserve session cookie persistence ([test](../../../adapters/sqlstore/organization_teams_test.go#L156))
+        - [x] Switch and clear the current session’s selection with independent HTTP clients across three SQL engines ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L20))
         - [ ] `POST /organization/set-active-team`
-          - [ ] Parameter `teamId` (optional)
+          - [x] Describe nullable selection results across enabled profiles and expose signed destinations when the host supports them ([test](../../../plugins/openapi/organization_selection_test.go#L20))
+          - [x] Parameter `teamId` (optional) ([test](../../../conformance/core.test.mjs#L1822))
+            - [x] Use the current team for an omitted or empty ID, select a member team by ID, and clear it with JSON null ([test](../../../conformance/core.test.mjs#L1822))
       - [ ] List User Teams
         - [x] Return self memberships across organizations and scope administrative queries to the selected organization ([test](../../../adapters/sqlstore/organization_teams_test.go#L257))
         - [ ] `GET /organization/list-user-teams`

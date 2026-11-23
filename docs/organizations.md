@@ -53,9 +53,13 @@ Browser membership changes check the acting account and session inside the datab
 
 Selection belongs to the current authenticated session. A web app, native app, server-rendered form or command-line client can use the same JSON API. Your application decides how to present the choices and what to display after a switch. The organization and team endpoints work independently of the OAuth provider plugin.
 
+To populate a picker, call `GET /organization/list` for the signed-in user's organizations. After selecting one, call `GET /organization/list-user-teams?organizationId=org_a` for that user's teams in the selected organization. All paths below are relative to your auth mount.
+
 | Request | Successful response and session effect |
 | --- | --- |
 | `POST /organization/set-active` with `{"organizationId":"org_a"}` | Returns the selected organization. Switching organizations clears the previous team's selection. Selecting the same organization preserves its active team. |
+| `POST /organization/set-active` with `{"organizationSlug":"studio"}` | Selects by slug and returns the organization. Use a string for the slug. |
+| Either selection endpoint with `{}` | Returns the current organization or team, or JSON `null` when that session has none. An empty-string `teamId` also uses the current team. |
 | `POST /organization/set-active-team` with `{"teamId":"team_a"}` | Returns the selected team. The user must belong to the team and the team must belong to the active organization. Enable teams to use this endpoint. |
 | `POST /organization/set-active-team` with `{"teamId":null}` | Returns JSON `null` and clears the active team. The current organization stays selected. |
 | `POST /organization/set-active` with `{"organizationId":null}` | Returns JSON `null` and clears both selections. |
@@ -72,6 +76,8 @@ curl --fail-with-body -b cookies.txt -c cookies.txt \
 Read `GET /get-session` under the auth mount for the active organization and team. A second login for the same user has its own selection. Creating an organization selects it by default. Pass `keepCurrentActiveOrganization: true` to retain the current selection when creating another organization. [Plain HTTP session-isolation tests](../adapters/sqlstore/organization_selection_http_test.go)
 
 Applications acting as an OAuth issuer can also configure a host-owned page for organization or team selection during authorization. A signed OAuth request can then return a protocol redirect or a JSON destination. [Post-login authorization](oauth-authorization-code.md#select-an-organization-or-team-after-login)
+
+If you generate a client from OpenAPI, the ordinary response is a nullable `Organization` or `Team`. A host that enables signed post-login selection also exposes the optional `oauth_query` input, a JSON result with `redirect` and `url`, and an HTTP 302 response for navigation. [OpenAPI reference](openapi.md) · [Configured schema tests](../plugins/openapi/organization_selection_test.go)
 
 ## Update an organization's profile
 

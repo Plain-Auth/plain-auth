@@ -443,10 +443,10 @@
   - [ ] `extractClientCredentials`
   - [ ] `parsePrompt`
   - [ ] `resolveSubjectIdentifier`
-  - [x] `getConsentReferenceId` ([test](../../../adapters/sqlstore/oauth_post_login_test.go#L164))
-    - [x] Resolve the approval reference for the requested or accepted scopes and support personal approval when the host returns an empty reference ([test](../../../adapters/sqlstore/oauth_post_login_test.go#L164))
-  - [x] `findConsent` ([test](../../../adapters/sqlstore/oauth_post_login_test.go#L182))
-    - [x] Match an explicit organization or a personal grant among more than 100 references, preferring NULL to the legacy empty string ([test](../../../adapters/sqlstore/oauth_post_login_test.go#L182))
+  - [x] `getConsentReferenceId` ([test](../../../adapters/sqlstore/oauth_post_login_test.go#L192))
+    - [x] Resolve the approval reference for the requested or accepted scopes and support personal approval when the host returns an empty reference ([test](../../../adapters/sqlstore/oauth_post_login_test.go#L192))
+  - [x] `findConsent` ([test](../../../adapters/sqlstore/oauth_post_login_test.go#L210))
+    - [x] Match an explicit organization or a personal grant among more than 100 references, preferring NULL to the legacy empty string ([test](../../../adapters/sqlstore/oauth_post_login_test.go#L210))
   - [ ] `searchParamsToQuery`
   - [ ] `isSessionFreshForSignedQuery`
   - [ ] `removePromptFromQuery`
@@ -829,7 +829,7 @@
     - [x] Complete a PKCE exchange and check that the selected account owns both the access token and its session ([test](../../../conformance/oauth-account-selection.mjs#L71))
   - [x] Post-login screen ([test](../../../conformance/oauth-post-login.mjs#L90))
     - [x] Recheck live organization selection on continuation, require consent for each organization and redeem a token carrying its reference ([test](../../../conformance/oauth-post-login.mjs#L90))
-    - [x] Validate a signed selector before updating the team and keep an outstanding approval in its original organization ([test](../../../adapters/sqlstore/oauth_post_login_test.go#L123))
+    - [x] Validate a signed selector before updating the team and keep an outstanding approval in its original organization ([test](../../../adapters/sqlstore/oauth_post_login_test.go#L129))
   - [ ] Continue endpoint
     - [x] Use the signed signup page query and the new browser session to complete the account-creation step ([test](../../../conformance/oauth-browser-login.mjs#L82))
     - [x] Resume the signed chooser with the selected browser account and preserve forced consent without repeating selection ([test](../../../conformance/oauth-account-selection.mjs#L44))

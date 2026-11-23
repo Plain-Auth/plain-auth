@@ -174,13 +174,15 @@ func (o Options) teamRequest(c authn.EndpointContext, actor TeamActor, session a
 		value, exists := body["teamId"]
 		id := session.ActiveTeamID
 		if exists {
-			id = nil
-			if value != nil {
-				requested, err := textField(body, "teamId")
-				if err != nil {
-					return nil, err
+			switch requested := value.(type) {
+			case nil:
+				id = nil
+			case string:
+				if requested != "" {
+					id = &requested
 				}
-				id = &requested
+			default:
+				return nil, validation("teamId")
 			}
 		}
 		if id == nil && session.ActiveTeamID == nil {
