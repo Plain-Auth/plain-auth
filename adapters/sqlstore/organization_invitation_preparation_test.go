@@ -94,6 +94,8 @@ func TestInvitationPreparationAcrossEngines(t *testing.T) {
 				t.Fatal("renewal invoked a creation policy")
 			}
 
+			teams, err := store.WithOrganizationTeams(org.TeamOptions{})
+			must(err)
 			adminGrant := newGrant("admin-sent")
 			adminGrant.InviterID = admin.UserID
 			for _, tc := range []struct {
@@ -104,7 +106,7 @@ func TestInvitationPreparationAcrossEngines(t *testing.T) {
 				{org.InvitationChanges{TeamIDs: []string{"missing"}}, org.ErrTeamNotFound},
 				{org.InvitationChanges{Email: &draft.Email}, org.ErrAlreadyInvited},
 			} {
-				result, err := store.IssuePreparedInvitation(ctx, adminGrant, admin, org.InvitationIssueOptions{}, func(context.Context, org.InvitationCreationEvent) (*org.InvitationChanges, error) {
+				result, err := teams.(*Store).IssuePreparedInvitation(ctx, adminGrant, admin, org.InvitationIssueOptions{}, func(context.Context, org.InvitationCreationEvent) (*org.InvitationChanges, error) {
 					return &tc.changes, nil
 				})
 				if result != nil || !errors.Is(err, tc.want) {

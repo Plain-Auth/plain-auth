@@ -153,6 +153,47 @@ func TestMixedOrganizationTeamNodes(t *testing.T) {
 			if n != 1 {
 				t.Fatal("plain node did not accept the untargeted invitation")
 			}
+
+			t.Run("invitation target shapes survive mixed nodes", func(t *testing.T) {
+				spare, err := teams.CreateTeam(ctx, actor, main, "Research")
+				must(err)
+				for _, tc := range []struct {
+					user            string
+					issuer          *auth.Auth
+					target          any
+					want            *string
+					teamMemberships int
+				}{
+					{user: "Untargeted", issuer: plain, target: spare.ID},
+					{user: "EmptyTarget", issuer: full, target: "", want: new(string)},
+					{user: "Duplicate", issuer: full, target: []string{spare.ID, spare.ID}, want: new(spare.ID + "," + spare.ID), teamMemberships: 1},
+				} {
+					t.Run(tc.user, func(t *testing.T) {
+						id := tc.user
+						email := strings.ToLower(id) + "@example.test"
+						must(fullStore.CreateUser(ctx, auth.User{ID: id, Name: id, Email: email, CreatedAt: now, UpdatedAt: now}, "", &auth.StoredSession{Session: auth.Session{ID: id + "-s", UserID: id, Token: id + "-t", CreatedAt: now, UpdatedAt: now, ExpiresAt: now.Add(time.Hour)}}))
+						body := map[string]any{"email": email, "role": "member", "organizationId": main, "teamId": tc.target}
+						post(t, tc.issuer, "Owner", "invite-member", body, 200, "")
+						body["resend"], body["teamId"] = true, []string{"unrelated,team"}
+						post(t, plain, "Owner", "invite-member", body, 200, "")
+						var key string
+						var stored *string
+						must(fullStore.db.QueryRowContext(ctx, fullStore.bind(`SELECT "id","teamId" FROM "invitation" WHERE "email"=?`), email).Scan(&key, &stored))
+						if (stored == nil) != (tc.want == nil) || stored != nil && *stored != *tc.want {
+							t.Fatal("mixed-node issuance or resend changed stored team targets")
+						}
+						post(t, full, id, "accept-invitation", map[string]any{"invitationId": key}, 200, "")
+						var count int
+						must(fullStore.db.QueryRowContext(ctx, fullStore.bind(`SELECT COUNT(*) FROM "teamMember" WHERE "userId"=?`), id).Scan(&count))
+						var selected *string
+						var selectedOrg string
+						must(fullStore.db.QueryRowContext(ctx, fullStore.bind(`SELECT "activeTeamId","activeOrganizationId" FROM "session" WHERE "id"=?`), id+"-s").Scan(&selected, &selectedOrg))
+						if count != tc.teamMemberships || selected != nil || selectedOrg != main {
+							t.Fatal("acceptance changed the wrong team memberships or selection")
+						}
+					})
+				}
+			})
 		})
 	}
 }

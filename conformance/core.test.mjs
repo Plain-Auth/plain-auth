@@ -1977,3 +1977,8 @@ test("hosts customize fresh invitation proposals before delivery and persistence
   const { compareInvitationPreparation } = await import("./invitation-preparation.mjs");
   await compareInvitationPreparation(t, { reference, goFixture, instrument });
 });
+
+test("invitation team targets preserve ordering, empty shapes and tenant profile semantics", async t => {
+  const { compareInvitationTeamTargets } = await import("./invitation-team-targets.mjs");
+  await compareInvitationTeamTargets(t, { reference, goFixture, instrument });
+});

@@ -243,6 +243,18 @@ The handler lowercases the recipient address. Send a single role, a comma-separa
 
 Omit `teamId` to invite someone to the organization alone. An explicit JSON `null` in the request returns HTTP 400 with `VALIDATION_ERROR`. With teams enabled, send a team ID or an array of IDs from the destination organization. Accepting a single-team invitation selects that team for the accepting session. Accepting an invitation to several teams grants membership in each and leaves the active team empty. The client can then select one with `POST /organization/set-active-team`.
 
+| `teamId` in the request | Result when teams are enabled |
+| --- | --- |
+| Omitted or `[]` | Creates an organization-wide invitation. The saved `teamId` is `null`. |
+| `""` | Creates an organization-wide invitation and preserves the empty string in the response. |
+| A team ID or a list of IDs | Each team must belong to the destination and have capacity. The saved string preserves the submitted order, including repeats. |
+| A list containing an empty ID | Returns `TEAM_NOT_FOUND`. |
+| An ID containing a comma | Returns `INVALID_TEAM_ID`. |
+
+Repeating a team ID grants one membership in that team. Sending two entries leaves the active team unset, even when the IDs are identical. Resending a live grant preserves its saved team targets. It still validates the JSON type of the submitted field.
+
+A host with teams disabled accepts a string or a list of strings, creates an organization-wide grant and omits `teamId` from the response. Its before-creation callback can inspect the submitted IDs. A team-enabled host sharing that database sees the saved grant as organization-wide. [Team target comparison](../conformance/invitation-team-targets.mjs) · [Mixed-node database tests](../adapters/sqlstore/organization_topology_test.go)
+
 ```go
 invite, err := authClient.InviteOrganizationMember(ctx, client.InviteOrganizationMemberRequest{
     Email: "guest@example.com",

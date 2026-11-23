@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"reflect"
+	"slices"
 	"strings"
 	"time"
 
@@ -19,6 +20,7 @@ var errPrepareInvitation = errors.New("prepare invitation outside transaction")
 type invitationPreparation struct {
 	before    org.InvitationCreationHook
 	useActive bool
+	targets   *org.InvitationTeamTargets
 	event     org.InvitationCreationEvent
 	issuer    []byte
 	prior     *org.Invitation
@@ -29,12 +31,17 @@ func (s *Store) IssuePreparedInvitation(ctx context.Context, inv org.Invitation,
 	if actor.UserID != inv.InviterID || actor.ID == "" {
 		return nil, org.ErrUnauthenticated
 	}
-	if before == nil {
-		return nil, errors.New("organization: missing invitation creation hook")
+	if how.TeamTargets != nil {
+		targets := *how.TeamTargets
+		targets.IDs = slices.Clone(targets.IDs)
+		how.TeamTargets = &targets
 	}
 	delivery := invitationDelivery{actor: actor}
-	prep := invitationPreparation{before: before, useActive: how.UseActiveOrganization}
-	_, err := s.issueOrganizationInvitation(ctx, inv, invitationIssue{sessionID: actor.ID, resend: how.Resend, replace: how.Replace, delivery: &delivery, preparation: &prep})
+	var prep *invitationPreparation
+	if before != nil {
+		prep = &invitationPreparation{before: before, useActive: how.UseActiveOrganization, targets: how.TeamTargets}
+	}
+	_, err := s.issueOrganizationInvitation(ctx, inv, invitationIssue{sessionID: actor.ID, resend: how.Resend, replace: how.Replace, delivery: &delivery, preparation: prep, targets: how.TeamTargets})
 	if err != nil {
 		return nil, err
 	}
@@ -71,8 +78,12 @@ func (p *invitationPreparation) prepareGrant(ctx context.Context, s *Store, tx *
 	if p.issuer == nil {
 		p.prior, p.issuer = prior, current
 		draft := org.InvitationDraft{Email: inv.Email, Role: inv.Role, OrganizationID: inv.OrganizationID, InviterID: inv.InviterID, TeamIDs: []string{}}
-		if inv.TeamID != nil {
+		if p.targets != nil {
+			draft.TeamIDs = append(draft.TeamIDs, p.targets.IDs...)
+		} else if inv.TeamID != nil {
 			draft.TeamIDs = strings.Split(*inv.TeamID, ",")
+		}
+		if len(draft.TeamIDs) > 0 {
 			first := draft.TeamIDs[0]
 			draft.TeamID = &first
 		}
@@ -82,7 +93,13 @@ func (p *invitationPreparation) prepareGrant(ctx context.Context, s *Store, tx *
 	if !bytes.Equal(current, p.issuer) {
 		return inv, org.ErrInvitationCreationChanged
 	}
-	updated, err := p.changes.Apply(inv)
+	changes := p.changes
+	if changes != nil && changes.TeamIDs != nil && s.teamOptions == nil {
+		wide := *changes
+		wide.TeamIDs = nil
+		changes = &wide
+	}
+	updated, err := changes.Apply(inv)
 	if err != nil {
 		return inv, err
 	}
@@ -98,7 +115,7 @@ func (p *invitationPreparation) prepareGrant(ctx context.Context, s *Store, tx *
 			return inv, org.ErrAlreadyInvited
 		}
 	}
-	if p.changes != nil && p.changes.TeamIDs != nil {
+	if changes != nil && changes.TeamIDs != nil {
 		if err := s.checkInvitationTeams(ctx, tx, updated); err != nil {
 			return inv, err
 		}
@@ -128,7 +145,7 @@ func (s *Store) invitationRecipient(ctx context.Context, tx *sql.Tx, inv org.Inv
 }
 
 func (s *Store) checkInvitationTeams(ctx context.Context, tx *sql.Tx, inv org.Invitation) error {
-	if inv.TeamID == nil {
+	if inv.TeamID == nil || *inv.TeamID == "" {
 		return nil
 	}
 	if s.teamOptions == nil {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
@@ -108,25 +109,27 @@ func teamOrg(body map[string]any) (string, error) {
 	return "", nil
 }
 
-func teamInvitationIDs(values []string) (*string, error) {
-	ids := []string{}
-	seen := map[string]bool{}
-	for _, id := range values {
-		if id == "" {
-			return nil, validation("teamId")
-		}
+// InvitationTeamTargets preserves the submitted order and whether the caller
+// supplied a single string or a list. Both forms can express an empty value.
+type InvitationTeamTargets struct {
+	IDs    []string
+	Single bool
+}
+
+// StoredValue encodes the targets for an enabled team profile.
+func (t InvitationTeamTargets) StoredValue() (*string, error) {
+	if len(t.IDs) == 0 {
+		return nil, nil
+	}
+	for _, id := range t.IDs {
 		if strings.Contains(id, ",") {
 			return nil, problem(400, "INVALID_TEAM_ID", "Team id contains a reserved character")
 		}
-		if !seen[id] {
-			ids = append(ids, id)
-			seen[id] = true
-		}
 	}
-	if len(ids) == 0 {
-		return nil, nil
+	if !(t.Single && len(t.IDs) == 1) && slices.Contains(t.IDs, "") {
+		return nil, ErrTeamNotFound
 	}
-	joined := strings.Join(ids, ",")
+	joined := strings.Join(t.IDs, ",")
 	return &joined, nil
 }
 

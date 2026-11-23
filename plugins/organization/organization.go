@@ -428,9 +428,6 @@ func (o Options) invite(c authn.EndpointContext) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	if input.teamIDs != nil && o.teamStore == nil {
-		return nil, validation("teamId")
-	}
 	resend := input.resend
 	now := time.Now().UTC().Truncate(time.Millisecond)
 	validFor := o.InvitationExpiresIn
@@ -438,12 +435,19 @@ func (o Options) invite(c authn.EndpointContext) (any, error) {
 		validFor = 48 * time.Hour
 	}
 	inv := Invitation{ID: rand.Text(), OrganizationID: id, InviterID: s.User.ID, Email: email, Role: role, Status: "pending", CreatedAt: now, ExpiresAt: now.Add(validFor).Truncate(time.Millisecond)}
-	inv.TeamID, err = teamInvitationIDs(input.teamIDs)
-	if err != nil {
-		return nil, err
+	how := InvitationIssueOptions{Resend: resend, Replace: o.CancelPendingInvitationsOnReInvite && !resend, UseActiveOrganization: input.organizationID == ""}
+	_, supportsPreparation := o.Store.(PreparedInvitationStore)
+	if input.teamIDs != nil {
+		_, single := c.Body["teamId"].(string)
+		how.TeamTargets = &InvitationTeamTargets{IDs: input.teamIDs, Single: single}
+		if !supportsPreparation && o.teamStore != nil {
+			inv.TeamID, err = how.TeamTargets.StoredValue()
+			if err != nil {
+				return nil, err
+			}
+		}
 	}
-	if o.BeforeCreateInvitation != nil || o.SendInvitationEmail != nil || o.AfterCreateInvitation != nil {
-		how := InvitationIssueOptions{Resend: resend, Replace: o.CancelPendingInvitationsOnReInvite && !resend, UseActiveOrganization: input.organizationID == ""}
+	if o.BeforeCreateInvitation != nil || o.SendInvitationEmail != nil || o.AfterCreateInvitation != nil || supportsPreparation && how.TeamTargets != nil {
 		inv, err = o.issueObservedInvitation(c, s, inv, how)
 		if err != nil {
 			return nil, err

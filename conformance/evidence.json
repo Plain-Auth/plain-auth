@@ -893,6 +893,16 @@
       "label": "Skip preparation for live renewals and preserve the pending grant when a replacement fails",
       "test": "adapters/sqlstore/organization_invitation_preparation_test.go",
       "marker": "t.Fatal(\"failed preparation disturbed the original invitation\")"
+    },
+    {
+      "label": "Preserve team target shapes on issue and renewal, grant unique memberships, and leave multi-entry grants unselected",
+      "test": "conformance/invitation-team-targets.mjs",
+      "marker": "assert.deepEqual(memberships.map(t => t.id)"
+    },
+    {
+      "label": "Keep organization-only grants unscoped and targeted grants intact across mixed team configurations",
+      "test": "adapters/sqlstore/organization_topology_test.go",
+      "marker": "t.Fatal(\"mixed-node issuance or resend changed stored team targets\")"
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L893": [
@@ -935,6 +945,16 @@
       "label": "Skip preparation for live renewals and preserve the pending grant when a replacement fails",
       "test": "adapters/sqlstore/organization_invitation_preparation_test.go",
       "marker": "t.Fatal(\"failed preparation disturbed the original invitation\")"
+    },
+    {
+      "label": "Preserve team target shapes on issue and renewal, grant unique memberships, and leave multi-entry grants unselected",
+      "test": "conformance/invitation-team-targets.mjs",
+      "marker": "assert.deepEqual(memberships.map(t => t.id)"
+    },
+    {
+      "label": "Keep organization-only grants unscoped and targeted grants intact across mixed team configurations",
+      "test": "adapters/sqlstore/organization_topology_test.go",
+      "marker": "t.Fatal(\"mixed-node issuance or resend changed stored team targets\")"
     }
   ],
   "plugin/organization/POST /organization/accept-invitation": [
@@ -15133,6 +15153,17 @@
       "label": "Grant organization membership alone when the Go caller omits teams",
       "test": "adapters/sqlstore/organization_teams_test.go",
       "marker": "organization-wide invitation granted %d teams"
+    },
+    {
+      "label": "Preserve team target shapes on issue and renewal, grant unique memberships, and leave multi-entry grants unselected",
+      "test": "conformance/invitation-team-targets.mjs",
+      "marker": "assert.deepEqual(memberships.map(t => t.id)",
+      "complete": true
+    },
+    {
+      "label": "Keep organization-only grants unscoped and targeted grants intact across mixed team configurations",
+      "test": "adapters/sqlstore/organization_topology_test.go",
+      "marker": "t.Fatal(\"mixed-node issuance or resend changed stored team targets\")"
     }
   ]
 }

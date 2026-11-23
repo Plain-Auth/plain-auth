@@ -231,9 +231,6 @@ func scanInvitation(r rowScanner, teamField bool, extra ...any) (org.Invitation,
 	}
 	err := r.Scan(append(fields, extra...)...)
 	inv.Role = role.String
-	if inv.TeamID != nil && *inv.TeamID == "" {
-		inv.TeamID = nil
-	}
 	return inv, err
 }
 
@@ -253,6 +250,7 @@ type invitationIssue struct {
 	replace     bool
 	delivery    *invitationDelivery
 	preparation *invitationPreparation
+	targets     *org.InvitationTeamTargets
 }
 
 func (s *Store) issueInvitationTx(ctx context.Context, inv org.Invitation, issue invitationIssue, capacity *invitationCapacity) (org.Invitation, error) {
@@ -334,6 +332,15 @@ func (s *Store) issueInvitationTx(ctx context.Context, inv org.Invitation, issue
 	if err := s.checkInvitationCapacity(ctx, tx, inv, member.Member, capacity); err != nil {
 		return org.Invitation{}, err
 	}
+	if issue.targets != nil {
+		inv.TeamID = nil
+		if s.teamOptions != nil {
+			inv.TeamID, err = issue.targets.StoredValue()
+			if err != nil {
+				return org.Invitation{}, err
+			}
+		}
+	}
 	if err := s.checkInvitationTeams(ctx, tx, inv); err != nil {
 		return org.Invitation{}, err
 	}
@@ -403,7 +410,7 @@ func (s *Store) checkInvitationAcceptance(ctx context.Context, tx *sql.Tx, inv o
 	if requireVerified && !u.EmailVerified {
 		return org.ErrUnverified
 	}
-	if inv.TeamID != nil && s.teamOptions == nil {
+	if inv.TeamID != nil && *inv.TeamID != "" && s.teamOptions == nil {
 		return org.ErrTeamPolicyRequired
 	}
 	return s.checkNewMember(ctx, tx, inv.OrganizationID, u.ID, admission, &inv)
@@ -418,7 +425,7 @@ func (s *Store) grantInvitedMembership(ctx context.Context, tx *sql.Tx, inv *org
 		return org.Member{}, err
 	}
 	var activeTeam *string
-	if inv.TeamID != nil {
+	if inv.TeamID != nil && *inv.TeamID != "" {
 		ids := strings.Split(*inv.TeamID, ",")
 		for _, id := range ids {
 			if _, err := s.findTeam(ctx, tx, inv.OrganizationID, id); err != nil {

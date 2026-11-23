@@ -54,7 +54,7 @@ func (changes *InvitationChanges) Apply(inv Invitation) (Invitation, error) {
 		}
 	}
 	if changes.TeamIDs != nil {
-		inv.TeamID, err = teamInvitationIDs(changes.TeamIDs)
+		inv.TeamID, err = (InvitationTeamTargets{IDs: changes.TeamIDs}).StoredValue()
 		if err != nil {
 			return Invitation{}, err
 		}
@@ -70,9 +70,12 @@ func (changes *InvitationChanges) Apply(inv Invitation) (Invitation, error) {
 type InvitationIssueOptions struct {
 	Resend, Replace       bool
 	UseActiveOrganization bool
+	// TeamTargets holds the original request when the client supplied teamId.
+	TeamTargets *InvitationTeamTargets
 }
 
-// PreparedInvitationStore runs the host hook outside database locks after
+// PreparedInvitationStore resolves requested teams on fresh grants and keeps
+// existing targets on resends. It runs an optional hook outside database locks after
 // checking eligibility. It revalidates and commits the final grant atomically.
 type PreparedInvitationStore interface {
 	IssuePreparedInvitation(context.Context, Invitation, auth.Session, InvitationIssueOptions, InvitationCreationHook) (*InvitationDelivery, error)
@@ -81,6 +84,9 @@ type PreparedInvitationStore interface {
 var ErrInvitationCreationChanged = problem(409, "INVITATION_CREATION_CHANGED", "The invitation inputs changed. Retry the request.")
 
 func (o Options) creationHook(user auth.User) InvitationCreationHook {
+	if o.BeforeCreateInvitation == nil {
+		return nil
+	}
 	return func(ctx context.Context, event InvitationCreationEvent) (*InvitationChanges, error) {
 		actor, err := invitationActor(user, event.Inviter)
 		if err != nil {
