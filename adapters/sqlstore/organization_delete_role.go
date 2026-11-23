@@ -2,7 +2,6 @@ package sqlstore
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 
 	org "github.com/Plain-Auth/plain-auth/plugins/organization"
@@ -46,28 +45,19 @@ func (s *Store) deleteOrganizationRole(ctx context.Context, userID, token string
 	if query.RoleName != "" && s.organizationRoles.IsPredefined(query.RoleName) {
 		return org.ErrPredefinedRole
 	}
-	field, selector, err := roleLookupFilter(query)
+	role, err := s.lockStoredRole(ctx, tx, group, query)
 	if err != nil {
 		return err
 	}
-	arg := s.exactSQLValue("?")
-	statement := `SELECT "id","role" FROM "organizationRole" WHERE "organizationId"=` + arg + " AND " + field + "=" + arg + " LIMIT 1"
-	var id, role string
-	err = tx.QueryRowContext(ctx, s.readForUpdate(statement), group, selector).Scan(&id, &role)
-	if errors.Is(err, sql.ErrNoRows) {
-		return org.ErrRoleNotFound
-	}
-	if err != nil {
-		return err
-	}
-	assigned, err := s.organizationRoleAssigned(ctx, tx, group, role, "")
+	assigned, err := s.organizationRoleAssigned(ctx, tx, group, role.Role, "")
 	if err != nil {
 		return err
 	}
 	if assigned {
 		return org.ErrRoleAssigned
 	}
-	if _, err := tx.ExecContext(ctx, s.bind(`DELETE FROM "organizationRole" WHERE "organizationId"=`+arg+` AND "id"=`+arg), group, id); err != nil {
+	arg := s.exactSQLValue("?")
+	if _, err := tx.ExecContext(ctx, s.bind(`DELETE FROM "organizationRole" WHERE "organizationId"=`+arg+` AND "id"=`+arg), group, role.ID); err != nil {
 		return err
 	}
 	return tx.Commit()

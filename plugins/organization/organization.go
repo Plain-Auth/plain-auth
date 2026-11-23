@@ -305,6 +305,9 @@ func (service *Service) Plugin() authn.Plugin {
 			{Method: http.MethodPost, Path: "/organization/accept-invitation", Handler: o.accept},
 		},
 	}
+	if store, ok := o.Store.(RoleUpdateStore); ok && o.DynamicAccessControl {
+		plugin.Endpoints = append(plugin.Endpoints, o.updateRoleEndpoint(store))
+	}
 	if store, ok := o.Store.(RoleCreationStore); ok && o.DynamicAccessControl {
 		plugin.Endpoints = append(plugin.Endpoints, o.createRoleEndpoint(store))
 	}

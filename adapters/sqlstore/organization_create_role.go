@@ -3,6 +3,7 @@ package sqlstore
 import (
 	"context"
 	"crypto/rand"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"time"
@@ -126,12 +127,8 @@ func (s *Store) createOrganizationRoleOnce(ctx context.Context, actor auth.Sessi
 	if err := policy.CheckDelegation(member.Role, row.Permission, control, org.ErrCreateRoleDenied); err != nil {
 		return "", err
 	}
-	var taken bool
-	if err := tx.QueryRowContext(ctx, s.bind(`SELECT EXISTS(SELECT 1 FROM "organizationRole" WHERE "organizationId"=`+arg+` AND "role"=`+arg+`)`), group, row.Role).Scan(&taken); err != nil {
+	if err := s.requireUnusedRoleName(ctx, tx, group, row.Role); err != nil {
 		return "", err
-	}
-	if taken {
-		return "", org.ErrRoleNameTaken
 	}
 	raw, err := json.Marshal(row.Permission)
 	if err != nil {
@@ -145,4 +142,16 @@ func (s *Store) createOrganizationRoleOnce(ctx context.Context, actor auth.Sessi
 		return "", err
 	}
 	return group, nil
+}
+
+func (s *Store) requireUnusedRoleName(ctx context.Context, tx *sql.Tx, group, name string) error {
+	arg := s.exactSQLValue("?")
+	var taken bool
+	if err := tx.QueryRowContext(ctx, s.bind(`SELECT EXISTS(SELECT 1 FROM "organizationRole" WHERE "organizationId"=`+arg+` AND "role"=`+arg+`)`), group, name).Scan(&taken); err != nil {
+		return err
+	}
+	if taken {
+		return org.ErrRoleNameTaken
+	}
+	return nil
 }

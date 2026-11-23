@@ -232,8 +232,13 @@ func TestFrameworkMounts(t *testing.T) {
 			if !created.Success || definition.Role != "copy desk" || definition.OrganizationID != studio.ID || definition.ID != created.RoleData.ID || len(definitions) != 1 || definitions[0].ID != definition.ID {
 				t.Fatal("router lost a stored role or its organization", tc.name)
 			}
+			var updated organization.UpdatedRole
+			organizationJSON("POST", "update-role", `{"roleName":"copy desk","data":{"roleName":"review desk","permission":{}}}`, &updated)
+			if !updated.Success || updated.RoleData.Role != "review desk" || updated.RoleData.ID != definition.ID || len(updated.RoleData.Permission) != 0 {
+				t.Fatal("router lost the role update", tc.name)
+			}
 			var removed struct{ Success bool }
-			organizationJSON("POST", "delete-role", `{"roleName":"copy desk"}`, &removed)
+			organizationJSON("POST", "delete-role", `{"roleName":"review desk"}`, &removed)
 			organizationJSON("GET", "list-roles", "", &definitions)
 			if !removed.Success || len(definitions) != 0 {
 				t.Fatal("router failed to retire the stored role", tc.name)

@@ -74,52 +74,64 @@ func (p RolePolicy) CheckDelegation(actorRole string, grants access.Statements, 
 	return nil
 }
 
-func roleCreationInput(body map[string]any) (CreateRoleRequest, error) {
-	var q CreateRoleRequest
+func roleInputTypeIssue(path, expected string, value any, present bool) string {
+	got := "undefined"
+	if present {
+		got = jsjson.TypeName(value)
+	}
+	return "[body." + path + "] Invalid input: expected " + expected + ", received " + got
+}
+
+func rolePermissionInput(path string, raw any, present bool) (access.Statements, []string) {
+	fields, ok := raw.(map[string]any)
+	if !ok {
+		return nil, []string{roleInputTypeIssue(path, "record", raw, present)}
+	}
+	grants := make(access.Statements, len(fields))
 	var issues []string
-	invalid := func(path, expected string, value any, present bool) {
-		got := "undefined"
-		if present {
-			got = jsjson.TypeName(value)
+	for _, key := range slices.Sorted(maps.Keys(fields)) {
+		field := path + "." + key
+		list, ok := fields[key].([]any)
+		if !ok {
+			issues = append(issues, roleInputTypeIssue(field, "array", fields[key], true))
+			continue
 		}
-		issues = append(issues, "[body."+path+"] Invalid input: expected "+expected+", received "+got)
+		actions := make([]string, len(list))
+		for i, value := range list {
+			if actions[i], ok = value.(string); !ok {
+				issues = append(issues, roleInputTypeIssue(fmt.Sprintf("%s.%d", field, i), "string", value, true))
+			}
+		}
+		grants[key] = actions
 	}
+	return grants, issues
+}
+
+func roleOrganizationInput(body map[string]any) (string, []string) {
 	if raw, present := body["organizationId"]; present {
-		var ok bool
-		if q.OrganizationID, ok = raw.(string); !ok {
-			invalid("organizationId", "string", raw, true)
+		if id, ok := raw.(string); ok {
+			return id, nil
 		}
+		return "", []string{roleInputTypeIssue("organizationId", "string", raw, true)}
 	}
+	return "", nil
+}
+
+func roleCreationInput(body map[string]any) (CreateRoleRequest, error) {
+	group, issues := roleOrganizationInput(body)
+	q := CreateRoleRequest{OrganizationID: group}
 	role, present := body["role"]
 	var ok bool
 	if q.Role, ok = role.(string); !ok {
-		invalid("role", "string", role, present)
+		issues = append(issues, roleInputTypeIssue("role", "string", role, present))
 	}
 	permission, present := body["permission"]
-	fields, ok := permission.(map[string]any)
-	if !ok {
-		invalid("permission", "record", permission, present)
-	} else {
-		q.Permission = make(access.Statements, len(fields))
-		for _, key := range slices.Sorted(maps.Keys(fields)) {
-			path := "permission." + key
-			list, ok := fields[key].([]any)
-			if !ok {
-				invalid(path, "array", fields[key], true)
-				continue
-			}
-			actions := make([]string, len(list))
-			for i, value := range list {
-				if actions[i], ok = value.(string); !ok {
-					invalid(fmt.Sprintf("%s.%d", path, i), "string", value, true)
-				}
-			}
-			q.Permission[key] = actions
-		}
-	}
+	var invalid []string
+	q.Permission, invalid = rolePermissionInput("permission", permission, present)
+	issues = append(issues, invalid...)
 	if raw, supplied := body["additionalFields"]; supplied {
 		if _, ok := raw.(map[string]any); !ok {
-			invalid("additionalFields", "object", raw, true)
+			issues = append(issues, roleInputTypeIssue("additionalFields", "object", raw, true))
 		}
 	}
 	if len(issues) > 0 {

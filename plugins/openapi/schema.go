@@ -184,6 +184,8 @@ func publicResponse(route plainauth.HTTPRoute, info plainauth.HTTPDescription, f
 			return responseObject(object{"members": array(member), "total": object{"type": "integer"}}, "members", "total")
 		}
 		return member
+	case "/organization/update-role":
+		return responseObject(object{"success": object{"const": true}, "roleData": modelRef("OrganizationRole")}, "success", "roleData")
 	case "/organization/create-role":
 		return responseObject(object{"success": object{"const": true}, "roleData": modelRef("OrganizationRole"), "statements": object{"type": "object", "additionalProperties": array(object{"type": "string"})}}, "success", "roleData", "statements")
 	case "/organization/delete-role":
@@ -336,12 +338,16 @@ func adjustRequest(op object, r plainauth.HTTPRoute, info plainauth.HTTPDescript
 		}, "role", "permission")
 		op["requestBody"] = object{"required": true, "content": content("application/json", body)}
 	}
-	if r.Plugin == "organization" && r.Path == "/organization/delete-role" {
+	if r.Plugin == "organization" && (r.Path == "/organization/delete-role" || r.Path == "/organization/update-role") {
 		body := responseObject(object{
 			"organizationId": object{"type": "string"},
 			"roleName":       object{"type": "string"},
 			"roleId":         object{"type": "string"},
 		})
+		if r.Path == "/organization/update-role" {
+			body["properties"].(object)["data"] = responseObject(object{"roleName": object{"type": "string"}, "permission": object{"type": "object", "additionalProperties": array(object{"type": "string"})}})
+			body["required"] = []string{"data"}
+		}
 		body["anyOf"] = []object{
 			responseObject(object{"roleName": object{"type": "string", "minLength": 1}}, "roleName"),
 			responseObject(object{"roleId": object{"type": "string", "minLength": 1}}, "roleId"),

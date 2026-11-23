@@ -45,25 +45,28 @@
   - [ ] `OrganizationPlugin`
   - [ ] `parseRoles`
   - [ ] `POST /organization/create-role`
-    - [x] Normalize Unicode case on stored role names and reserve predefined and duplicate names ([test](../../../conformance/organization-create-role.mjs#L69))
-    - [x] Combine individually held grants for delegation and reject unavailable actions ([test](../../../conformance/organization-create-role.mjs#L80))
-    - [x] Create, read, list and remove a stored role through six different Go HTTP routers ([test](../../../integrations/routers/routers_test.go#L239))
+    - [x] Normalize Unicode case on stored role names and reserve predefined and duplicate names ([test](../../../conformance/organization-create-role.mjs#L70))
+    - [x] Combine individually held grants for delegation and reject unavailable actions ([test](../../../conformance/organization-create-role.mjs#L81))
+    - [x] Create, read, list and remove a stored role through six different Go HTTP routers ([test](../../../integrations/routers/routers_test.go#L244))
   - [x] `POST /organization/delete-role` ([test](../../../adapters/sqlstore/organization_delete_role_test.go#L63))
     - [x] Require a live member with permission to remove roles and reject predefined names ([test](../../../conformance/organization-delete-role.mjs#L48))
     - [x] Preserve a stored role while any tenant member holds it, including among multiple role names ([test](../../../conformance/organization-delete-role.mjs#L59))
     - [x] Serialize role removal with membership changes across SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/organization_delete_role_test.go#L63))
-    - [x] Create, read, list and remove a stored role through six different Go HTTP routers ([test](../../../integrations/routers/routers_test.go#L239))
+    - [x] Create, read, list and remove a stored role through six different Go HTTP routers ([test](../../../integrations/routers/routers_test.go#L244))
   - [ ] `GET /organization/list-roles`
     - [x] Read up to 100 stored definitions in the selected organization and use a direct lookup beyond the list ([test](../../../conformance/organization-role-directory.mjs#L67))
     - [x] Require the current membership and ac.read before listing stored roles ([test](../../../conformance/organization-role-directory.mjs#L61))
     - [x] Use the Go client against three SQL engines and honor withdrawal of directory access ([test](../../../adapters/sqlstore/organization_role_directory_test.go#L79))
-    - [x] Create, read, list and remove a stored role through six different Go HTTP routers ([test](../../../integrations/routers/routers_test.go#L239))
+    - [x] Create, read, list and remove a stored role through six different Go HTTP routers ([test](../../../integrations/routers/routers_test.go#L244))
   - [ ] `GET /organization/get-role`
     - [x] Read the tenant’s stored permission object and timestamps with a case-sensitive selector ([test](../../../conformance/organization-role-directory.mjs#L41))
     - [x] Require the current membership and ac.read before looking up a role ([test](../../../conformance/organization-role-directory.mjs#L60))
     - [x] Keep SQL lookup case-sensitive across all three engines and check live session ownership ([test](../../../adapters/sqlstore/organization_role_directory_test.go#L68))
-    - [x] Create, read, list and remove a stored role through six different Go HTTP routers ([test](../../../integrations/routers/routers_test.go#L239))
+    - [x] Create, read, list and remove a stored role through six different Go HTTP routers ([test](../../../integrations/routers/routers_test.go#L244))
   - [ ] `POST /organization/update-role`
+    - [x] Apply new grants on the next permission check and preserve assigned member and invitation labels after a rename ([test](../../../conformance/organization-update-role.mjs#L72))
+    - [x] Preserve concurrent changes to the same role and roll back a conflicting rename on each database ([test](../../../adapters/sqlstore/organization_update_role_test.go#L116))
+    - [x] Require delegation of retained grants when moving a role to a new name ([test](../../../adapters/sqlstore/organization_update_role_test.go#L54))
   - [ ] `POST /organization/invite-member`
     - [x] Authorize the inviter, constrain role grants, and resend the same invitation ([test](../../../plugins/organization/organization_test.go#L133))
     - [x] Require a live inviter session for invitation creation and resends ([test](../../../adapters/sqlstore/organization_cleanup_test.go#L169))
@@ -583,19 +586,19 @@
     - [ ] Enabling Dynamic Access Control
       - [x] Resolve the same role independently per organization and apply changes from another application on the next operation ([test](../../../conformance/organization-stored-roles.mjs#L54))
     - [ ] Creating a role
-      - [x] Normalize Unicode case on stored role names and reserve predefined and duplicate names ([test](../../../conformance/organization-create-role.mjs#L69))
-      - [x] Combine individually held grants for delegation and reject unavailable actions ([test](../../../conformance/organization-create-role.mjs#L80))
-      - [x] Create, read, list and remove a stored role through six different Go HTTP routers ([test](../../../integrations/routers/routers_test.go#L239))
+      - [x] Normalize Unicode case on stored role names and reserve predefined and duplicate names ([test](../../../conformance/organization-create-role.mjs#L70))
+      - [x] Combine individually held grants for delegation and reject unavailable actions ([test](../../../conformance/organization-create-role.mjs#L81))
+      - [x] Create, read, list and remove a stored role through six different Go HTTP routers ([test](../../../integrations/routers/routers_test.go#L244))
       - [ ] `POST /organization/create-role`
-        - [x] Normalize Unicode case on stored role names and reserve predefined and duplicate names ([test](../../../conformance/organization-create-role.mjs#L69))
-        - [x] Combine individually held grants for delegation and reject unavailable actions ([test](../../../conformance/organization-create-role.mjs#L80))
-        - [x] Create, read, list and remove a stored role through six different Go HTTP routers ([test](../../../integrations/routers/routers_test.go#L239))
+        - [x] Normalize Unicode case on stored role names and reserve predefined and duplicate names ([test](../../../conformance/organization-create-role.mjs#L70))
+        - [x] Combine individually held grants for delegation and reject unavailable actions ([test](../../../conformance/organization-create-role.mjs#L81))
+        - [x] Create, read, list and remove a stored role through six different Go HTTP routers ([test](../../../integrations/routers/routers_test.go#L244))
         - [ ] Parameter `role`
-          - [x] Normalize Unicode case on stored role names and reserve predefined and duplicate names ([test](../../../conformance/organization-create-role.mjs#L69))
-        - [x] Parameter `permission` (optional) ([test](../../../conformance/organization-create-role.mjs#L67))
-          - [x] Require the caller to hold each requested action and return the missing grants on denial ([test](../../../conformance/organization-create-role.mjs#L67))
-        - [x] Parameter `organizationId` (optional) ([test](../../../conformance/organization-create-role.mjs#L56))
-          - [x] Use an explicit or active tenant, keep sessions isolated and reuse a name in a different organization ([test](../../../conformance/organization-create-role.mjs#L56))
+          - [x] Normalize Unicode case on stored role names and reserve predefined and duplicate names ([test](../../../conformance/organization-create-role.mjs#L70))
+        - [x] Parameter `permission` (optional) ([test](../../../conformance/organization-create-role.mjs#L68))
+          - [x] Require the caller to hold each requested action and return the missing grants on denial ([test](../../../conformance/organization-create-role.mjs#L68))
+        - [x] Parameter `organizationId` (optional) ([test](../../../conformance/organization-create-role.mjs#L57))
+          - [x] Use an explicit or active tenant, keep sessions isolated and reuse a name in a different organization ([test](../../../conformance/organization-create-role.mjs#L57))
     - [x] Deleting a role ([test](../../../adapters/sqlstore/organization_delete_role_test.go#L63))
       - [x] Require a live member with permission to remove roles and reject predefined names ([test](../../../conformance/organization-delete-role.mjs#L48))
       - [x] Preserve a stored role while any tenant member holds it, including among multiple role names ([test](../../../conformance/organization-delete-role.mjs#L59))
@@ -635,14 +638,26 @@
         - [x] Parameter `organizationId` (optional) ([test](../../../conformance/organization-role-directory.mjs#L73))
           - [x] Read stored definitions in an explicit organization while retaining the selected organization and team ([test](../../../conformance/organization-role-directory.mjs#L73))
     - [ ] Updating a role
+      - [x] Apply new grants on the next permission check and preserve assigned member and invitation labels after a rename ([test](../../../conformance/organization-update-role.mjs#L72))
+      - [x] Preserve concurrent changes to the same role and roll back a conflicting rename on each database ([test](../../../adapters/sqlstore/organization_update_role_test.go#L116))
+      - [x] Require delegation of retained grants when moving a role to a new name ([test](../../../adapters/sqlstore/organization_update_role_test.go#L54))
       - [ ] `POST /organization/update-role`
-        - [ ] Parameter `roleName` (optional)
-        - [ ] Parameter `roleId` (optional)
-        - [ ] Parameter `organizationId` (optional)
+        - [x] Apply new grants on the next permission check and preserve assigned member and invitation labels after a rename ([test](../../../conformance/organization-update-role.mjs#L72))
+        - [x] Preserve concurrent changes to the same role and roll back a conflicting rename on each database ([test](../../../adapters/sqlstore/organization_update_role_test.go#L116))
+        - [x] Require delegation of retained grants when moving a role to a new name ([test](../../../adapters/sqlstore/organization_update_role_test.go#L54))
+        - [x] Parameter `roleName` (optional) ([test](../../../conformance/organization-update-role.mjs#L46))
+          - [x] Use a nonempty name ahead of the alternate role ID ([test](../../../conformance/organization-update-role.mjs#L46))
+        - [x] Parameter `roleId` (optional) ([test](../../../conformance/organization-update-role.mjs#L66))
+          - [x] Rename by role ID when the alternate name is empty ([test](../../../conformance/organization-update-role.mjs#L66))
+        - [x] Parameter `organizationId` (optional) ([test](../../../conformance/organization-update-role.mjs#L42))
+          - [x] Use the active organization by default and preserve its selected team when editing another organization ([test](../../../conformance/organization-update-role.mjs#L42))
         - [ ] Parameter `data`
-        - [ ] Parameter `permission` (optional)
+          - [x] Accept a role name, replacement grants, or an empty edit and return the prior modification timestamp ([test](../../../conformance/organization-update-role.mjs#L61))
+        - [x] Parameter `permission` (optional) ([test](../../../conformance/organization-update-role.mjs#L64))
+          - [x] Replace grants, clear them with an empty object and report unavailable actions before writing ([test](../../../conformance/organization-update-role.mjs#L64))
     - [ ] Configuration Options
-      - [ ] `enabled`
+      - [x] `enabled` ([test](../../../plugins/openapi/organization_selection_test.go#L100))
+        - [x] Expose the five stored-role routes and their schemas only when dynamic access control is enabled ([test](../../../plugins/openapi/organization_selection_test.go#L100))
       - [x] `maximumRolesPerOrganization` ([test](../../../adapters/sqlstore/organization_create_role_test.go#L131))
         - [x] Enforce the last available slot across concurrent requests to the same organization ([test](../../../adapters/sqlstore/organization_create_role_test.go#L117))
         - [x] Resolve host limits outside the transaction and reauthorize the caller before saving ([test](../../../adapters/sqlstore/organization_create_role_test.go#L131))

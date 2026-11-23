@@ -2017,3 +2017,8 @@ test("organization role creation enforces resource delegation and per-tenant cap
   const { compareOrganizationRoleCreation } = await import("./organization-create-role.mjs");
   await compareOrganizationRoleCreation(t, { reference, goFixture, instrument });
 });
+
+test("organization role updates replace grants and rename one tenant definition without changing memberships", async t => {
+  const { compareOrganizationRoleUpdates } = await import("./organization-update-role.mjs");
+  await compareOrganizationRoleUpdates(t, { reference, goFixture, instrument });
+});

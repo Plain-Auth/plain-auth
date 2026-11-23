@@ -36,6 +36,7 @@ export async function compareOrganizationRoleCreation(t, {reference,goFixture,in
       ok(await register(owner,"owner"));
       if (setting==="unconfigured") {
         denied(await make(owner,"Desk",{}),501,"MISSING_AC_INSTANCE");
+        denied(await owner.organization.updateRole({roleName:"desk",data:{}}),501,"MISSING_AC_INSTANCE");
         return;
       }
       denied(await make(owner,"Desk",{}),400,"YOU_MUST_BE_IN_AN_ORGANIZATION_TO_CREATE_A_ROLE");

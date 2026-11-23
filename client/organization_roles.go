@@ -30,16 +30,7 @@ func (c *Client) GetOrganizationRole(ctx context.Context, q organization.RoleQue
 
 // DeleteOrganizationRole removes a stored role after its last member is reassigned.
 func (c *Client) DeleteOrganizationRole(ctx context.Context, q organization.RoleQuery) error {
-	body := map[string]string{}
-	if q.RoleName != "" {
-		body["roleName"] = q.RoleName
-	}
-	if q.RoleID != "" {
-		body["roleId"] = q.RoleID
-	}
-	if q.OrganizationID != "" {
-		body["organizationId"] = q.OrganizationID
-	}
+	body := roleSelectorBody(q)
 	return c.Do(ctx, http.MethodPost, "/organization/delete-role", body, nil)
 }
 
@@ -69,4 +60,36 @@ func organizationPermissionObject(grants access.Statements) access.Statements {
 		out[resource] = actions
 	}
 	return out
+}
+
+func roleSelectorBody(q organization.RoleQuery) map[string]any {
+	body := map[string]any{}
+	if q.RoleName != "" {
+		body["roleName"] = q.RoleName
+	}
+	if q.RoleID != "" {
+		body["roleId"] = q.RoleID
+	}
+	if q.OrganizationID != "" {
+		body["organizationId"] = q.OrganizationID
+	}
+	return body
+}
+
+// UpdateOrganizationRole replaces grants, renames a definition, or does both in one request.
+func (c *Client) UpdateOrganizationRole(ctx context.Context, q organization.RoleQuery, change organization.RoleUpdate) (*organization.UpdatedRole, error) {
+	body := roleSelectorBody(q)
+	data := map[string]any{}
+	if change.RoleName != "" {
+		data["roleName"] = change.RoleName
+	}
+	if change.Permission != nil {
+		data["permission"] = organizationPermissionObject(change.Permission)
+	}
+	body["data"] = data
+	var out organization.UpdatedRole
+	if err := c.Do(ctx, http.MethodPost, "/organization/update-role", body, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
 }

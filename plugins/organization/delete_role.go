@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	auth "github.com/Plain-Auth/plain-auth"
-	"github.com/Plain-Auth/plain-auth/internal/jsjson"
 )
 
 // RoleDeletionStore removes an unused stored role after checking the live
@@ -23,15 +22,8 @@ var (
 
 func deleteRoleEndpoint(store RoleDeletionStore) auth.Endpoint {
 	return auth.Endpoint{Method: http.MethodPost, Path: "/organization/delete-role", Handler: func(c auth.EndpointContext) (any, error) {
-		query := RoleQuery{}
-		var issues []string
-		raw, explicit := c.Body["organizationId"]
-		if explicit {
-			var ok bool
-			if query.OrganizationID, ok = raw.(string); !ok {
-				issues = append(issues, "[body.organizationId] Invalid input: expected string, received "+jsjson.TypeName(raw))
-			}
-		}
+		group, issues := roleOrganizationInput(c.Body)
+		query := RoleQuery{OrganizationID: group}
 		if issue := query.selectRole(c.Body["roleName"], c.Body["roleId"], "body"); issue != "" {
 			issues = append(issues, issue)
 		}
@@ -42,7 +34,7 @@ func deleteRoleEndpoint(store RoleDeletionStore) auth.Endpoint {
 		if err != nil {
 			return nil, err
 		}
-		if explicit && query.OrganizationID == "" {
+		if _, explicit := c.Body["organizationId"]; explicit && query.OrganizationID == "" {
 			return nil, ErrNoActiveOrg
 		}
 		if err := store.DeleteOrganizationRole(c.Request.Context(), s.User.ID, s.Session.Token, query); err != nil {

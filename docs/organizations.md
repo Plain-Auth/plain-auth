@@ -44,6 +44,7 @@ The application provides `sendInvitation`, its configured public `origin` and it
 | POST | `/organization/create-role` | Create a stored role using the configured resource vocabulary and the caller’s own grants. |
 | GET | `/organization/list-roles` | Read up to 100 stored definitions when dynamic access control is enabled. |
 | GET | `/organization/get-role` | Read a stored definition by exact name or ID. Requires dynamic access control. |
+| POST | `/organization/update-role` | Replace grants or rename a stored role with the organization's `ac.update` permission. |
 | POST | `/organization/delete-role` | Retire an unassigned stored role with the organization's `ac.delete` permission. |
 | GET | `/organization/get-active-member-role` | Read a user's role in an organization you both belong to. Omit all query parameters for your own role in the active organization. |
 | POST | `/organization/set-active` | Select by ID or slug. Send `{"organizationId":null}` to clear the current selection |
@@ -210,6 +211,31 @@ For example, a successful lookup returns this JSON.
 Supply a nonempty name or ID for a lookup. A nonempty name takes precedence when both are supplied. Omit `organizationId` to use the current session's selection. An explicit empty organization ID returns HTTP 400 with `NO_ACTIVE_ORGANIZATION`. An unknown role in an authorized organization returns HTTP 400 with `ROLE_NOT_FOUND`. A caller without membership or read permission gets HTTP 403. Reading another organization preserves the session's active organization and team.
 
 Go callers can use `client.ListOrganizationRoles(ctx, organizationID)` and `client.GetOrganizationRole(ctx, organization.RoleQuery{OrganizationID: organizationID, RoleName: "desk"})`. Both methods use the client's session. [Client and database tests](../adapters/sqlstore/organization_role_directory_test.go) · [HTTP behavior tests](../conformance/organization-role-directory.mjs)
+
+### Update a stored role
+
+Send `POST /organization/update-role` with a signed-in session and a `data` object. For example, this request replaces every grant on one role. The next permission check by a member holding that role uses the new grants, including checks from an already-open session.
+
+```json
+{"organizationId":"org_a","roleId":"role_123","data":{"permission":{"team":["create"]}}}
+```
+
+You can select a role by its exact name or ID. A nonempty `roleName` takes precedence when you supply both. Omit `organizationId` to use the active organization. Updating a role in an explicitly selected organization preserves the session's active organization and team.
+
+Omit `data.permission` to retain grants, or send `"permission": {}` to clear them. Include `data.roleName` to rename the definition while keeping its ID. New names are lowercase, unique in the organization, and must be a single membership label. A collision with the current name, another stored name, or a host-defined name returns HTTP 400 with `ROLE_NAME_IS_ALREADY_TAKEN`. Members and pending invitations keep their assigned labels. If members should receive the renamed role's grants, assign the new label through the member-role API.
+
+The caller needs `ac.update` and must be able to delegate each replacement grant. A name-only edit checks the grants being moved to the new label. A failed check returns HTTP 403 with the missing resource-action pairs and leaves the definition intact. Set `RoleControl` on the plugin to configure the resource vocabulary.
+
+A successful write returns `success: true` and the resulting name and grants in `roleData`. Its `updatedAt` is the timestamp from before the write. Read the role again for the stored modification time. An empty `data` object touches that timestamp. Go clients can apply both changes in one request.
+
+```go
+updated, err := authClient.UpdateOrganizationRole(ctx,
+    organization.RoleQuery{OrganizationID: organizationID, RoleID: roleID},
+    organization.RoleUpdate{RoleName: "Copy Desk", Permission: access.Statements{"team": {"create"}}},
+)
+```
+
+[HTTP and membership tests](../conformance/organization-update-role.mjs) · [Concurrent update and delegation tests](../adapters/sqlstore/organization_update_role_test.go)
 
 ### Remove a stored role
 

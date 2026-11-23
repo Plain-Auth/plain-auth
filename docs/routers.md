@@ -13,7 +13,7 @@ Register both the auth handler and your own route with your router. The `me` han
 | Echo v5 | `router.Any("/api/auth/*", echo.WrapHandler(auth))` | `router.GET("/me", echo.WrapHandler(me))` |
 | Fiber v3 | `app.All("/api/auth/*", adaptor.HTTPHandler(auth))` | `app.Get("/me", adaptor.HTTPHandler(me))` |
 
-The same mount serves organization role creation, lookup, listing and removal. Each operation returns JSON to the caller. The integration tests exercise all four through every router in the table. [Router tests](../integrations/routers/routers_test.go)
+The same mount serves organization role creation, lookup, listing, updates and removal. Each operation returns JSON to the caller. The integration tests exercise all five through every router in the table. [Router tests](../integrations/routers/routers_test.go)
 
 Fiber uses `github.com/gofiber/fiber/v3/middleware/adaptor`. Gin's wrapper comes from `github.com/gin-gonic/gin`. Your service only needs the router it uses. Other routers that accept `http.Handler` can use the same mount pattern. A framework with its own request model needs an adapter that preserves the path, body, cookies, and response headers.
 

@@ -15832,5 +15832,103 @@
       "marker": "role saved after the resolver revoked the actor",
       "complete": true
     }
+  ],
+  "plugin/organization/POST /organization/update-role": [
+    {
+      "label": "Apply new grants on the next permission check and preserve assigned member and invitation labels after a rename",
+      "test": "conformance/organization-update-role.mjs",
+      "marker": "assert.equal(invitations.find(r=>r.id===pending.id).role,\"desk\")"
+    },
+    {
+      "label": "Preserve concurrent changes to the same role and roll back a conflicting rename on each database",
+      "test": "adapters/sqlstore/organization_update_role_test.go",
+      "marker": "failed rename changed the original definition"
+    },
+    {
+      "label": "Require delegation of retained grants when moving a role to a new name",
+      "test": "adapters/sqlstore/organization_update_role_test.go",
+      "marker": "renaming an existing grant requires authority to delegate it"
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1626": [
+    {
+      "label": "Apply new grants on the next permission check and preserve assigned member and invitation labels after a rename",
+      "test": "conformance/organization-update-role.mjs",
+      "marker": "assert.equal(invitations.find(r=>r.id===pending.id).role,\"desk\")"
+    },
+    {
+      "label": "Preserve concurrent changes to the same role and roll back a conflicting rename on each database",
+      "test": "adapters/sqlstore/organization_update_role_test.go",
+      "marker": "failed rename changed the original definition"
+    },
+    {
+      "label": "Require delegation of retained grants when moving a role to a new name",
+      "test": "adapters/sqlstore/organization_update_role_test.go",
+      "marker": "renaming an existing grant requires authority to delegate it"
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1630/`POST /organization/update-role`": [
+    {
+      "label": "Apply new grants on the next permission check and preserve assigned member and invitation labels after a rename",
+      "test": "conformance/organization-update-role.mjs",
+      "marker": "assert.equal(invitations.find(r=>r.id===pending.id).role,\"desk\")"
+    },
+    {
+      "label": "Preserve concurrent changes to the same role and roll back a conflicting rename on each database",
+      "test": "adapters/sqlstore/organization_update_role_test.go",
+      "marker": "failed rename changed the original definition"
+    },
+    {
+      "label": "Require delegation of retained grants when moving a role to a new name",
+      "test": "adapters/sqlstore/organization_update_role_test.go",
+      "marker": "renaming an existing grant requires authority to delegate it"
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1636/Parameter `roleName` (optional)": [
+    {
+      "label": "Use a nonempty name ahead of the alternate role ID",
+      "test": "conformance/organization-update-role.mjs",
+      "marker": "roleName:\"absent\",roleId:desk.id",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1640/Parameter `roleId` (optional)": [
+    {
+      "label": "Rename by role ID when the alternate name is empty",
+      "test": "conformance/organization-update-role.mjs",
+      "marker": "roleName:\"\",roleId:desk.id",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1644/Parameter `organizationId` (optional)": [
+    {
+      "label": "Use the active organization by default and preserve its selected team when editing another organization",
+      "test": "conformance/organization-update-role.mjs",
+      "marker": "assert.equal(implicit.roleData.organizationId,south.id)",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1648/Parameter `data`": [
+    {
+      "label": "Accept a role name, replacement grants, or an empty edit and return the prior modification timestamp",
+      "test": "conformance/organization-update-role.mjs",
+      "marker": "assert.deepEqual(empty.roleData,saved)"
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1652/Parameter `permission` (optional)": [
+    {
+      "label": "Replace grants, clear them with an empty object and report unavailable actions before writing",
+      "test": "conformance/organization-update-role.mjs",
+      "marker": "assert.deepEqual(refusal.missingPermissions,[\"team:delete\"])",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1666": [
+    {
+      "label": "Expose the five stored-role routes and their schemas only when dynamic access control is enabled",
+      "test": "plugins/openapi/organization_selection_test.go",
+      "marker": "} else if roleSchema != nil || getRole != nil || listRoles != nil || deleteRole != nil || createRole != nil || updateRole != nil",
+      "complete": true
+    }
   ]
 }

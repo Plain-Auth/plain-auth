@@ -74,6 +74,7 @@ func TestOrganizationSelectionSchema(t *testing.T) {
 			listRoles := node(paths, "/organization/list-roles", "get")
 			deleteRole := node(paths, "/organization/delete-role", "post")
 			createRole := node(paths, "/organization/create-role", "post")
+			updateRole := node(paths, "/organization/update-role", "post")
 			if tc.dynamicRoles {
 				if node(getRole, "responses", "200", "content", "application/json", "schema")["$ref"] != "#/components/schemas/OrganizationRole" ||
 					node(listRoles, "responses", "200", "content", "application/json", "schema", "items")["$ref"] != "#/components/schemas/OrganizationRole" {
@@ -91,7 +92,12 @@ func TestOrganizationSelectionSchema(t *testing.T) {
 					node(createRole, "responses", "200", "content", "application/json", "schema", "properties", "roleData")["$ref"] != "#/components/schemas/OrganizationRole" {
 					t.Fatal("missing role creation grant and response schemas")
 				}
-			} else if roleSchema != nil || getRole != nil || listRoles != nil || deleteRole != nil || createRole != nil {
+				if len(node(updateRole, "requestBody", "content", "application/json", "schema")["anyOf"].([]any)) != 2 ||
+					node(updateRole, "requestBody", "content", "application/json", "schema", "properties", "data", "properties", "permission", "additionalProperties", "items")["type"] != "string" ||
+					node(updateRole, "responses", "200", "content", "application/json", "schema", "properties", "roleData")["$ref"] != "#/components/schemas/OrganizationRole" {
+					t.Fatal("role update description lost its selector, grant patch, or response")
+				}
+			} else if roleSchema != nil || getRole != nil || listRoles != nil || deleteRole != nil || createRole != nil || updateRole != nil {
 				t.Fatal("static role policy advertised a stored directory")
 			}
 			activeMember := node(paths, "/organization/get-active-member", "get")
