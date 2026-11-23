@@ -5,11 +5,16 @@
 ## Interfaces
 
 - [ ] Organization endpoints, types and options
-  - [ ] `defaultStatements`
-  - [ ] `defaultAc`
-  - [ ] `adminAc`
-  - [ ] `ownerAc`
-  - [ ] `memberAc`
+  - [x] `defaultStatements` ([test](../../../plugins/organization/default_roles_test.go#L15))
+    - [x] Expose the built-in statement vocabulary through the default role control and refuse statements outside it ([test](../../../plugins/organization/default_roles_test.go#L15))
+  - [x] `defaultAc` ([test](../../../plugins/organization/default_roles_test.go#L15))
+    - [x] Build roles from the default role control and refuse grants outside its vocabulary ([test](../../../plugins/organization/default_roles_test.go#L15))
+  - [x] `adminAc` ([test](../../../plugins/organization/default_roles_test.go#L38))
+    - [x] Expose the default admin grants, without organization deletion, and extend them in a custom policy without changing the built-in role ([test](../../../plugins/organization/default_roles_test.go#L38))
+  - [x] `ownerAc` ([test](../../../plugins/organization/default_roles_test.go#L38))
+    - [x] Expose the default owner grants for composing custom roles ([test](../../../plugins/organization/default_roles_test.go#L38))
+  - [x] `memberAc` ([test](../../../plugins/organization/default_roles_test.go#L38))
+    - [x] Expose the default member grants and compose a custom role from them ([test](../../../plugins/organization/default_roles_test.go#L38))
   - [x] `defaultRoles` ([test](../../../plugins/organization/permissions_test.go#L48))
     - [x] Extend the built-in grants with an independent copy of the role definitions ([test](../../../plugins/organization/permissions_test.go#L48))
   - [ ] `getOrgAdapter`
@@ -45,7 +50,8 @@
   - `TeamEndpoints` — *not applicable: JavaScript only*
   - `OrganizationEndpoints` — *not applicable: JavaScript only*
   - `OrganizationPlugin` — *not applicable: JavaScript only*
-  - [ ] `parseRoles`
+  - [x] `parseRoles` ([test](../../../plugins/organization/default_roles_test.go#L70))
+    - [x] Split role lists on commas, trim entries, drop empty ones and keep their order and repeats ([test](../../../plugins/organization/default_roles_test.go#L70))
   - [ ] `POST /organization/create-role`
     - [x] Normalize Unicode case on stored role names and reserve predefined and duplicate names ([test](../../../conformance/organization-create-role.mjs#L70))
     - [x] Combine individually held grants for delegation and reject unavailable actions ([test](../../../conformance/organization-create-role.mjs#L81))

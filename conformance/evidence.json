@@ -18052,5 +18052,53 @@
       "marker": "// A hook's API error reaches the caller with its status and code.",
       "complete": true
     }
+  ],
+  "plugin-symbol/organization/defaultStatements": [
+    {
+      "label": "Expose the built-in statement vocabulary through the default role control and refuse statements outside it",
+      "test": "plugins/organization/default_roles_test.go",
+      "marker": "// The default control describes the built-in statement vocabulary.",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/organization/defaultAc": [
+    {
+      "label": "Build roles from the default role control and refuse grants outside its vocabulary",
+      "test": "plugins/organization/default_roles_test.go",
+      "marker": "// The default control describes the built-in statement vocabulary.",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/organization/ownerAc": [
+    {
+      "label": "Expose the default owner grants for composing custom roles",
+      "test": "plugins/organization/default_roles_test.go",
+      "marker": "// The default owner, admin and member roles can be reused to build custom ones.",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/organization/adminAc": [
+    {
+      "label": "Expose the default admin grants, without organization deletion, and extend them in a custom policy without changing the built-in role",
+      "test": "plugins/organization/default_roles_test.go",
+      "marker": "// The default owner, admin and member roles can be reused to build custom ones.",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/organization/memberAc": [
+    {
+      "label": "Expose the default member grants and compose a custom role from them",
+      "test": "plugins/organization/default_roles_test.go",
+      "marker": "// The default owner, admin and member roles can be reused to build custom ones.",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/organization/parseRoles": [
+    {
+      "label": "Split role lists on commas, trim entries, drop empty ones and keep their order and repeats",
+      "test": "plugins/organization/default_roles_test.go",
+      "marker": "// Role lists split on commas, trim entries, drop empty ones and keep order and repeats.",
+      "complete": true
+    }
   ]
 }
