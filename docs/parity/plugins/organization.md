@@ -47,6 +47,8 @@
     - [x] Accept comma-separated roles within strings or arrays, preserve their order and check owner grants ([test](../../../conformance/invitation-input.mjs#L41))
     - [x] Report invalid field types before sign-in and validate recipient addresses after resolving the destination ([test](../../../conformance/invitation-input.mjs#L22))
     - [x] Issue and renew an invitation through the native Go client against three databases ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L212))
+    - [x] Apply the host’s recipient, role, team and deadline changes before sending the saved invitation ([test](../../../conformance/invitation-preparation.mjs#L54))
+    - [x] Skip preparation for live renewals and preserve the pending grant when a replacement fails ([test](../../../adapters/sqlstore/organization_invitation_preparation_test.go#L51))
   - [x] `POST /organization/accept-invitation` ([test](../../../conformance/organization-invitations.mjs#L390))
     - [x] Reject an invitation ID with different casing without consuming the invitation or granting membership on any SQL engine ([test](../../../adapters/sqlstore/organization_topology_test.go#L147))
     - [x] Accept an organization-only invitation through a plain node sharing the upgraded database ([test](../../../adapters/sqlstore/organization_topology_test.go#L154))
@@ -224,7 +226,7 @@
       - [x] Deliver the committed grant with the sending membership, public user profile, destination organization and request metadata ([test](../../../conformance/invitation-delivery.mjs#L51))
       - [x] Return the saved grant after mail failure and permit a different administrator to resend it with its original identity ([test](../../../conformance/invitation-delivery.mjs#L47))
       - [x] Capture the issuing member on creation, renewal and replacement across all three engines ([test](../../../adapters/sqlstore/organization_delivery_test.go#L36))
-      - [x] Deliver exactly once through a permitted application credential after the SQL transaction commits ([test](../../../adapters/sqlstore/apikey_session_test.go#L246))
+      - [x] Deliver exactly once through a permitted application credential after the SQL transaction commits ([test](../../../adapters/sqlstore/apikey_session_test.go#L253))
     - [ ] `schema`
     - [ ] `disableOrganizationDeletion`
     - [ ] `organizationHooks`
@@ -236,6 +238,8 @@
       - [x] Recheck the live recipient, grant and remaining seats after the host callback on all three SQL engines ([test](../../../adapters/sqlstore/organization_acceptance_hooks_test.go#L109))
       - [x] Notify host code of a new or replaced invitation after delivery and skip the creation callback on renewal ([test](../../../conformance/invitation-creation.mjs#L38))
       - [x] Keep a committed grant available for resend after the creation callback fails ([test](../../../conformance/invitation-creation.mjs#L65))
+      - [x] Apply the host’s recipient, role, team and deadline changes before sending the saved invitation ([test](../../../conformance/invitation-preparation.mjs#L54))
+      - [x] Skip preparation for live renewals and preserve the pending grant when a replacement fails ([test](../../../adapters/sqlstore/organization_invitation_preparation_test.go#L51))
 
 ## Organization
 
@@ -266,7 +270,7 @@
         - [x] Recheck the original tenant, member, active selection and session across unlocked host callbacks on three database engines ([test](../../../adapters/sqlstore/organization_profile_hooks_test.go#L16))
         - [x] Require transactional reauthorization from custom stores only when profile hooks are enabled ([test](../../../adapters/sqlstore/organization_profile_hooks_test.go#L176))
       - [ ] Member Hooks
-      - [ ] Invitation Hooks
+      - [x] Invitation Hooks ([test](../../../conformance/invitation-preparation.mjs#L54))
         - [x] Deliver the signed-in actor, invitation and destination before and after an authorized decision ([test](../../../conformance/invitation-hooks.mjs#L61))
         - [x] Abort the write on a before-hook error and keep the committed status on an after-hook error ([test](../../../conformance/invitation-hooks.mjs#L66))
         - [x] Recheck changed invitation inputs, live recipient and administrator permissions after host code runs ([test](../../../adapters/sqlstore/organization_decision_hooks_test.go#L120))
@@ -276,6 +280,8 @@
         - [x] Recheck the live recipient, grant and remaining seats after the host callback on all three SQL engines ([test](../../../adapters/sqlstore/organization_acceptance_hooks_test.go#L109))
         - [x] Notify host code of a new or replaced invitation after delivery and skip the creation callback on renewal ([test](../../../conformance/invitation-creation.mjs#L38))
         - [x] Keep a committed grant available for resend after the creation callback fails ([test](../../../conformance/invitation-creation.mjs#L65))
+        - [x] Apply the host’s recipient, role, team and deadline changes before sending the saved invitation ([test](../../../conformance/invitation-preparation.mjs#L54))
+        - [x] Skip preparation for live renewals and preserve the pending grant when a replacement fails ([test](../../../adapters/sqlstore/organization_invitation_preparation_test.go#L51))
       - [ ] Team Hooks
       - [ ] Hook Error Handling
     - [ ] List User's Organizations
@@ -330,7 +336,7 @@
       - [x] Deliver the committed grant with the sending membership, public user profile, destination organization and request metadata ([test](../../../conformance/invitation-delivery.mjs#L51))
       - [x] Return the saved grant after mail failure and permit a different administrator to resend it with its original identity ([test](../../../conformance/invitation-delivery.mjs#L47))
       - [x] Capture the issuing member on creation, renewal and replacement across all three engines ([test](../../../adapters/sqlstore/organization_delivery_test.go#L36))
-      - [x] Deliver exactly once through a permitted application credential after the SQL transaction commits ([test](../../../adapters/sqlstore/apikey_session_test.go#L246))
+      - [x] Deliver exactly once through a permitted application credential after the SQL transaction commits ([test](../../../adapters/sqlstore/apikey_session_test.go#L253))
     - [ ] Send Invitation
       - [x] Authorize the inviter, constrain role grants, and resend the same invitation ([test](../../../plugins/organization/organization_test.go#L133))
       - [x] Notify host code of a new or replaced invitation after delivery and skip the creation callback on renewal ([test](../../../conformance/invitation-creation.mjs#L38))
@@ -338,6 +344,8 @@
       - [x] Accept comma-separated roles within strings or arrays, preserve their order and check owner grants ([test](../../../conformance/invitation-input.mjs#L41))
       - [x] Report invalid field types before sign-in and validate recipient addresses after resolving the destination ([test](../../../conformance/invitation-input.mjs#L22))
       - [x] Issue and renew an invitation through the native Go client against three databases ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L212))
+      - [x] Apply the host’s recipient, role, team and deadline changes before sending the saved invitation ([test](../../../conformance/invitation-preparation.mjs#L54))
+      - [x] Skip preparation for live renewals and preserve the pending grant when a replacement fails ([test](../../../adapters/sqlstore/organization_invitation_preparation_test.go#L51))
       - [ ] `POST /organization/invite-member`
         - [x] Accept comma-separated roles within strings or arrays, preserve their order and check owner grants ([test](../../../conformance/invitation-input.mjs#L41))
         - [x] Report invalid field types before sign-in and validate recipient addresses after resolving the destination ([test](../../../conformance/invitation-input.mjs#L22))
@@ -676,7 +684,7 @@
       - [x] Deliver the committed grant with the sending membership, public user profile, destination organization and request metadata ([test](../../../conformance/invitation-delivery.mjs#L51))
       - [x] Return the saved grant after mail failure and permit a different administrator to resend it with its original identity ([test](../../../conformance/invitation-delivery.mjs#L47))
       - [x] Capture the issuing member on creation, renewal and replacement across all three engines ([test](../../../adapters/sqlstore/organization_delivery_test.go#L36))
-      - [x] Deliver exactly once through a permitted application credential after the SQL transaction commits ([test](../../../adapters/sqlstore/apikey_session_test.go#L246))
+      - [x] Deliver exactly once through a permitted application credential after the SQL transaction commits ([test](../../../adapters/sqlstore/apikey_session_test.go#L253))
     - [x] invitationExpiresIn ([test](../../../conformance/invitation-expiration.mjs#L25))
       - [x] Apply the default or configured validity period on creation and renewal, including an elapsed deadline ([test](../../../conformance/invitation-expiration.mjs#L25))
       - [x] Persist the renewed deadline on all three engines while retaining the original grant identity and role ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L223))

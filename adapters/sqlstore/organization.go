@@ -248,10 +248,11 @@ func (s *Store) ReplaceOrganizationInvitation(ctx context.Context, inv org.Invit
 }
 
 type invitationIssue struct {
-	sessionID string
-	resend    bool
-	replace   bool
-	delivery  *invitationDelivery
+	sessionID   string
+	resend      bool
+	replace     bool
+	delivery    *invitationDelivery
+	preparation *invitationPreparation
 }
 
 func (s *Store) issueInvitationTx(ctx context.Context, inv org.Invitation, issue invitationIssue, capacity *invitationCapacity) (org.Invitation, error) {
@@ -294,25 +295,24 @@ func (s *Store) issueInvitationTx(ctx context.Context, inv org.Invitation, issue
 	if !owner && membershipHasRole(inv.Role, "owner") {
 		return org.Invitation{}, org.ErrRoleDenied
 	}
-	var existing bool
-	err = tx.QueryRowContext(ctx, s.bind(`SELECT EXISTS(SELECT 1 FROM "member" m JOIN "user" u ON u."id"=m."userId" WHERE m."organizationId"=? AND LOWER(u."email")=?)`), inv.OrganizationID, inv.Email).Scan(&existing)
-	if err != nil {
-		return org.Invitation{}, err
-	}
-	if existing {
-		return org.Invitation{}, org.ErrAlreadyMember
-	}
 	teamField, err := s.organizationTeamField(ctx, tx, "invitation", "teamId")
 	if err != nil {
 		return org.Invitation{}, err
 	}
-	exact := s.exactSQLValue("?")
-	pending, err := scanInvitation(tx.QueryRowContext(ctx, s.bind(`SELECT `+invitationColumns(teamField)+` FROM "invitation" WHERE "organizationId"=`+exact+` AND LOWER("email")=? AND "status"='pending' AND "expiresAt">? ORDER BY "createdAt" DESC LIMIT 1`), inv.OrganizationID, inv.Email, s.date(time.Now())), teamField)
-	switch {
-	case errors.Is(err, sql.ErrNoRows):
-		// Issue a fresh invitation.
-	case err != nil:
+	pending, err := s.invitationRecipient(ctx, tx, inv, teamField)
+	if err != nil {
 		return org.Invitation{}, err
+	}
+	prep := issue.preparation
+	if prep != nil {
+		if err := prep.checkScope(ctx, s, tx, issue.delivery.actor, inv.OrganizationID, pending); err != nil {
+			return org.Invitation{}, err
+		}
+	}
+	exact := s.exactSQLValue("?")
+	switch {
+	case pending == nil:
+		// Issue a fresh invitation.
 	case issue.resend:
 		if !owner && membershipHasRole(pending.Role, "owner") {
 			return org.Invitation{}, org.ErrRoleDenied
@@ -322,9 +322,10 @@ func (s *Store) issueInvitationTx(ctx context.Context, inv org.Invitation, issue
 		if err != nil {
 			return org.Invitation{}, err
 		}
-		return s.commitIssuedInvitation(ctx, tx, pending, member.Member, issue.delivery, true)
+		return s.commitIssuedInvitation(ctx, tx, *pending, member.Member, issue.delivery, true)
 	case issue.replace:
-		if err := s.updateInvitationStatus(ctx, tx, &pending, "canceled"); err != nil {
+		replaced := *pending
+		if err := s.updateInvitationStatus(ctx, tx, &replaced, "canceled"); err != nil {
 			return org.Invitation{}, err
 		}
 	default:
@@ -333,20 +334,16 @@ func (s *Store) issueInvitationTx(ctx context.Context, inv org.Invitation, issue
 	if err := s.checkInvitationCapacity(ctx, tx, inv, member.Member, capacity); err != nil {
 		return org.Invitation{}, err
 	}
-	args := []any{inv.ID, inv.OrganizationID, inv.InviterID, inv.Email, inv.Role, inv.Status, s.date(inv.ExpiresAt), s.date(inv.CreatedAt)}
-	if inv.TeamID != nil {
-		if s.teamOptions == nil {
-			return org.Invitation{}, org.ErrTeamNotFound
-		}
-		for _, id := range strings.Split(*inv.TeamID, ",") {
-			if _, err = s.findTeam(ctx, tx, inv.OrganizationID, id); err != nil {
-				return org.Invitation{}, err
-			}
-			if _, err = s.teamCapacity(ctx, tx, id); err != nil {
-				return org.Invitation{}, err
-			}
+	if err := s.checkInvitationTeams(ctx, tx, inv); err != nil {
+		return org.Invitation{}, err
+	}
+	if prep != nil {
+		inv, err = prep.prepareGrant(ctx, s, tx, inv, pending, member.Member, teamField)
+		if err != nil {
+			return org.Invitation{}, err
 		}
 	}
+	args := []any{inv.ID, inv.OrganizationID, inv.InviterID, inv.Email, inv.Role, inv.Status, s.date(inv.ExpiresAt), s.date(inv.CreatedAt)}
 	if teamField {
 		args = append(args, inv.TeamID)
 	}

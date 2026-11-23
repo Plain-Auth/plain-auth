@@ -883,6 +883,16 @@
       "label": "Issue and renew an invitation through the native Go client against three databases",
       "test": "adapters/sqlstore/organization_selection_http_test.go",
       "marker": "t.Fatal(\"native invitation issue lost the normalized roles, mailbox or active organization\")"
+    },
+    {
+      "label": "Apply the host’s recipient, role, team and deadline changes before sending the saved invitation",
+      "test": "conformance/invitation-preparation.mjs",
+      "marker": "assert.equal(new Date(grant.expiresAt).getTime(), deadline.getTime())"
+    },
+    {
+      "label": "Skip preparation for live renewals and preserve the pending grant when a replacement fails",
+      "test": "adapters/sqlstore/organization_invitation_preparation_test.go",
+      "marker": "t.Fatal(\"failed preparation disturbed the original invitation\")"
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L893": [
@@ -915,6 +925,16 @@
       "label": "Issue and renew an invitation through the native Go client against three databases",
       "test": "adapters/sqlstore/organization_selection_http_test.go",
       "marker": "t.Fatal(\"native invitation issue lost the normalized roles, mailbox or active organization\")"
+    },
+    {
+      "label": "Apply the host’s recipient, role, team and deadline changes before sending the saved invitation",
+      "test": "conformance/invitation-preparation.mjs",
+      "marker": "assert.equal(new Date(grant.expiresAt).getTime(), deadline.getTime())"
+    },
+    {
+      "label": "Skip preparation for live renewals and preserve the pending grant when a replacement fails",
+      "test": "adapters/sqlstore/organization_invitation_preparation_test.go",
+      "marker": "t.Fatal(\"failed preparation disturbed the original invitation\")"
     }
   ],
   "plugin/organization/POST /organization/accept-invitation": [
@@ -10349,6 +10369,16 @@
       "label": "Keep a committed grant available for resend after the creation callback fails",
       "test": "conformance/invitation-creation.mjs",
       "marker": "await check(saved, false)"
+    },
+    {
+      "label": "Apply the host’s recipient, role, team and deadline changes before sending the saved invitation",
+      "test": "conformance/invitation-preparation.mjs",
+      "marker": "assert.equal(new Date(grant.expiresAt).getTime(), deadline.getTime())"
+    },
+    {
+      "label": "Skip preparation for live renewals and preserve the pending grant when a replacement fails",
+      "test": "adapters/sqlstore/organization_invitation_preparation_test.go",
+      "marker": "t.Fatal(\"failed preparation disturbed the original invitation\")"
     }
   ],
   "plugin-symbol/siwe/SIWEPluginOptions/getNonce": [
@@ -14839,6 +14869,17 @@
       "label": "Keep a committed grant available for resend after the creation callback fails",
       "test": "conformance/invitation-creation.mjs",
       "marker": "await check(saved, false)"
+    },
+    {
+      "label": "Apply the host’s recipient, role, team and deadline changes before sending the saved invitation",
+      "test": "conformance/invitation-preparation.mjs",
+      "marker": "assert.equal(new Date(grant.expiresAt).getTime(), deadline.getTime())",
+      "complete": true
+    },
+    {
+      "label": "Skip preparation for live renewals and preserve the pending grant when a replacement fails",
+      "test": "adapters/sqlstore/organization_invitation_preparation_test.go",
+      "marker": "t.Fatal(\"failed preparation disturbed the original invitation\")"
     }
   ],
   "plugin-symbol/organization/OrganizationOptions/invitationExpiresIn": [

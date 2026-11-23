@@ -61,6 +61,7 @@ type Options struct {
 	CancelPendingInvitationsOnReInvite bool
 	// InvitationExpiresIn applies to new and resent invitations. Zero uses 48 hours.
 	InvitationExpiresIn      time.Duration
+	BeforeCreateInvitation   InvitationCreationHook
 	AfterCreateInvitation    InvitationDecisionHook
 	BeforeAcceptInvitation   InvitationDecisionHook
 	AfterAcceptInvitation    InvitationDecisionHook
@@ -195,7 +196,11 @@ func NewService(o Options) (*Service, error) {
 	if o.SendInvitationEmail != nil && o.SendInvitation != nil {
 		return nil, errors.New("organization: configure one invitation sender")
 	}
-	if o.SendInvitationEmail != nil || o.AfterCreateInvitation != nil {
+	if o.BeforeCreateInvitation != nil {
+		if _, ok := o.Store.(PreparedInvitationStore); !ok {
+			return nil, errors.New("organization: before invitation creation requires a PreparedInvitationStore")
+		}
+	} else if o.SendInvitationEmail != nil || o.AfterCreateInvitation != nil {
 		if _, ok := o.Store.(InvitationDeliveryStore); !ok {
 			return nil, errors.New("organization: invitation delivery and creation callbacks require an InvitationDeliveryStore")
 		}
@@ -437,8 +442,9 @@ func (o Options) invite(c authn.EndpointContext) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	if o.SendInvitationEmail != nil || o.AfterCreateInvitation != nil {
-		inv, err = o.issueObservedInvitation(c, s, inv, resend)
+	if o.BeforeCreateInvitation != nil || o.SendInvitationEmail != nil || o.AfterCreateInvitation != nil {
+		how := InvitationIssueOptions{Resend: resend, Replace: o.CancelPendingInvitationsOnReInvite && !resend, UseActiveOrganization: input.organizationID == ""}
+		inv, err = o.issueObservedInvitation(c, s, inv, how)
 		if err != nil {
 			return nil, err
 		}

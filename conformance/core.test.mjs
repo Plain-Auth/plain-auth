@@ -1972,3 +1972,8 @@ test("organization invitation quotas count live grants and support host policies
   const { compareInvitationLimits } = await import("./invitation-limits.mjs");
   await compareInvitationLimits(t, { reference, goFixture, instrument });
 });
+
+test("hosts customize fresh invitation proposals before delivery and persistence", async t => {
+  const { compareInvitationPreparation } = await import("./invitation-preparation.mjs");
+  await compareInvitationPreparation(t, { reference, goFixture, instrument });
+});

@@ -35,10 +35,15 @@ type InvitationDeliveryStore interface {
 
 var errInvitationDelivery = errors.New("organization: invitation delivery failed")
 
-func (o Options) issueObservedInvitation(c auth.EndpointContext, session *auth.SessionResult, inv Invitation, resend bool) (Invitation, error) {
+func (o Options) issueObservedInvitation(c auth.EndpointContext, session *auth.SessionResult, inv Invitation, how InvitationIssueOptions) (Invitation, error) {
 	ctx := c.Request.Context()
-	store := o.Store.(InvitationDeliveryStore)
-	event, err := store.IssueInvitationForDelivery(ctx, inv, session.Session, resend, o.CancelPendingInvitationsOnReInvite && !resend)
+	var event *InvitationDelivery
+	var err error
+	if o.BeforeCreateInvitation != nil {
+		event, err = o.Store.(PreparedInvitationStore).IssuePreparedInvitation(ctx, inv, session.Session, how, o.creationHook(session.User))
+	} else {
+		event, err = o.Store.(InvitationDeliveryStore).IssueInvitationForDelivery(ctx, inv, session.Session, how.Resend, how.Replace)
+	}
 	if err != nil {
 		return Invitation{}, err
 	}

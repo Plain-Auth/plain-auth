@@ -31,21 +31,26 @@ type invitationCapacity struct {
 
 func (s *Store) issueOrganizationInvitation(ctx context.Context, inv org.Invitation, issue invitationIssue) (org.Invitation, error) {
 	var capacity invitationCapacity
-	saved, err := s.issueInvitationTx(ctx, inv, issue, &capacity)
-	if err != errResolveInvitationLimit {
-		return saved, err
-	}
-	capacity.maximum, err = s.invitationLimit.Resolve(ctx, capacity.input)
-	if err != nil {
-		return org.Invitation{}, err
-	}
-	// Start the issued lifetime after the host has made its decision.
 	lifetime := inv.ExpiresAt.Sub(inv.CreatedAt)
-	now := time.Now().UTC().Truncate(time.Millisecond)
-	if now.After(inv.CreatedAt) {
-		inv.CreatedAt, inv.ExpiresAt = now, now.Add(lifetime)
+	for {
+		saved, err := s.issueInvitationTx(ctx, inv, issue, &capacity)
+		switch err {
+		case errResolveInvitationLimit:
+			capacity.maximum, err = s.invitationLimit.Resolve(ctx, capacity.input)
+		case errPrepareInvitation:
+			p := issue.preparation
+			p.changes, err = p.before(ctx, p.event)
+		default:
+			return saved, err
+		}
+		if err != nil {
+			return org.Invitation{}, err
+		}
+		// Start the default lifetime after the last host callback.
+		if now := time.Now().UTC().Truncate(time.Millisecond); now.After(inv.CreatedAt) {
+			inv.CreatedAt, inv.ExpiresAt = now, now.Add(lifetime)
+		}
 	}
-	return s.issueInvitationTx(ctx, inv, issue, &capacity)
 }
 
 func (s *Store) invitationIssuer(ctx context.Context, tx *sql.Tx, member org.Member) (org.InvitationLimitInput, error) {

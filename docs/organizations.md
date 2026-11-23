@@ -258,6 +258,26 @@ return recordPendingGrant(ctx, invite.ID)
 
 The example’s `recordPendingGrant` belongs to the host. Set `Resend: true` to renew a live grant for the same mailbox and destination. The response contains the saved ID, roles, team targets and deadline. A fresh organization-wide grant has `teamId: null` when teams are enabled. [Request and response comparison](../conformance/invitation-input.mjs) · [Native client tests on three databases](../adapters/sqlstore/organization_selection_http_test.go)
 
+## Customize an invitation before saving it
+
+Set `BeforeCreateInvitation` on `organization.Options` to review a new grant. The callback receives the normalized recipient address and roles, the ordered team targets, the destination organization, and the issuing user's public profile. For example, this host gives new invitations seven days to expire.
+
+```go
+groups, err := organization.New(organization.Options{
+    Store: store,
+    BeforeCreateInvitation: func(ctx context.Context, event organization.InvitationCreationEvent) (*organization.InvitationChanges, error) {
+        deadline := time.Now().UTC().Add(7 * 24 * time.Hour)
+        return &organization.InvitationChanges{ExpiresAt: &deadline}, nil
+    },
+})
+```
+
+Return `nil, nil` to accept the proposal as submitted. Return an error to stop issuance. Set `Email`, `Roles`, `TeamIDs`, or `ExpiresAt` in the returned changes to override those values. An empty `[]string{}` for `TeamIDs` makes the grant organization-wide. A nil slice keeps the proposed teams. `event.Invitation.TeamID` identifies the first proposed team when present.
+
+The SQL adapter checks the sender, destination, teams, and available invitation slots before the callback. It releases database locks while host code runs, then checks eligibility again before saving the grant. An implicitly selected organization must still be active in the issuing session. A changed recipient must be eligible for a fresh invitation. The host's final roles and teams must be within the sender's authority. A failed replacement preserves the original pending invitation.
+
+A successful write delivers the saved values to the configured email sender and then to `AfterCreateInvitation`. A resend of a live grant goes straight to renewal and delivery. A resend that creates a new grant runs the full creation sequence. Custom stores that support the before callback implement `organization.PreparedInvitationStore`. [HTTP lifecycle tests](../conformance/invitation-preparation.mjs) · [Concurrent database changes](../adapters/sqlstore/organization_invitation_preparation_test.go)
+
 ## Deliver invitation email
 
 Set `SendInvitationEmail` on `organization.Options` to deliver mail or enqueue a message in your own system. The callback receives the committed invitation, its destination organization, the sending membership with its public user profile, and the normalized recipient address in `Email`. Use `Request` for request metadata such as a language header. JSON serialization excludes the request. Your application chooses the mail provider, template and link destination.
