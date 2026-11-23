@@ -7,7 +7,6 @@ import (
 	"errors"
 	"net/http"
 
-	auth "github.com/Plain-Auth/plain-auth"
 	org "github.com/Plain-Auth/plain-auth/plugins/organization"
 )
 
@@ -22,17 +21,9 @@ func (t teamTransaction) teamLimitInput(id string) (org.TeamLimitInput, error) {
 	if t.actor.SessionID == "" {
 		return input, nil
 	}
-	var ss auth.StoredSession
-	var user auth.User
-	arg := t.exactSQLValue("?")
-	q := `SELECT ` + sessionColumns + `,` + userColumns + `,s."activeOrganizationId",s."activeTeamId" FROM "session" s JOIN "user" u ON u."id"=s."userId" WHERE s."id"=` + arg + ` AND u."id"=` + arg
-	dest := append(sessionFields(&ss), userFields(&user)...)
-	dest = append(dest, &ss.ActiveOrganizationID, &ss.ActiveTeamID)
-	if err := t.tx.QueryRowContext(t.ctx, t.bind(q), t.actor.SessionID, t.actor.UserID).Scan(dest...); err != nil {
-		return input, err
-	}
-	input.Session = &auth.SessionResult{Session: ss.Session, User: user}
-	return input, nil
+	session, err := t.sessionResult(t.ctx, t.tx, t.actor.SessionID, t.actor.UserID)
+	input.Session = session
+	return input, err
 }
 
 var errResolveTeamLimit = errors.New("resolve team limit outside transaction")

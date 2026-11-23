@@ -424,15 +424,10 @@ func teamMembershipKey(id, user string) string {
 	sum := sha256.Sum256(bytes.TrimSuffix(b.Bytes(), []byte{'\n'}))
 	return base64.RawURLEncoding.EncodeToString(sum[:])
 }
-func (s *Store) teamCapacity(ctx context.Context, tx *sql.Tx, id string) (int, error) {
-	var n int
-	err := tx.QueryRowContext(ctx, s.bind(`SELECT COUNT(*) FROM "teamMember" WHERE "teamId"=?`), id).Scan(&n)
-	if err == nil && s.teamOptions.MaximumMembersPerTeam != nil && n >= *s.teamOptions.MaximumMembersPerTeam {
-		return n, org.ErrTeamMemberLimit
-	}
-	return n, err
-}
-func (s *Store) insertTeamMember(ctx context.Context, tx *sql.Tx, id, user string, limit bool) (*org.TeamMember, error) {
+
+// insertTeamMember adds user to the team once. With limit set, a new member
+// must also fit the team's cap. The organization's first team skips the cap.
+func (s *Store) insertTeamMember(ctx context.Context, tx *sql.Tx, organizationID, id, user string, limit bool, seats *teamSeats) (*org.TeamMember, error) {
 	last, err := s.readTeamMember(ctx, tx, id, user)
 	if err == nil {
 		return last, nil
@@ -441,7 +436,7 @@ func (s *Store) insertTeamMember(ctx context.Context, tx *sql.Tx, id, user strin
 		return nil, err
 	}
 	if limit {
-		if _, err = s.teamCapacity(ctx, tx, id); err != nil {
+		if err = s.checkTeamSeat(ctx, tx, organizationID, id, seats); err != nil {
 			return nil, err
 		}
 	}
@@ -458,35 +453,40 @@ func (s *Store) updateTeamCount(ctx context.Context, tx *sql.Tx, id string) erro
 	return err
 }
 
-func (t teamTransaction) authorizeMemberChange(explicit, id, user, action string, denied *authn.APIError) error {
+// authorizeMemberChange returns the team's organization after checking the
+// caller's permission and the target's membership.
+func (t teamTransaction) authorizeMemberChange(explicit, id, user, action string, denied *authn.APIError) (string, error) {
 	group, err := t.authorizeOrg(explicit, "member", action, org.ErrTeamOrgMember, denied)
 	if err != nil {
-		return err
+		return "", err
 	}
 	_, err = t.memberRole(group, user)
 	if errors.Is(err, sql.ErrNoRows) {
-		return org.ErrTeamOrgMember
+		return "", org.ErrTeamOrgMember
 	}
 	if err != nil {
-		return err
+		return "", err
 	}
 	_, err = t.findTeam(t.ctx, t.tx, group, id)
-	return err
+	return group, err
 }
 func (s *Store) AddTeamMember(ctx context.Context, a org.TeamActor, explicit, id, user string) (out *org.TeamMember, err error) {
-	err = s.withTeamActor(ctx, a, user, func(t teamTransaction) error {
-		if err := t.authorizeMemberChange(explicit, id, user, "update", org.ErrTeamAdd); err != nil {
+	seats := teamSeats{sessionID: a.SessionID, userID: a.UserID}
+	err = s.withTeamSeats(ctx, &seats, func() error {
+		return s.withTeamActor(ctx, a, user, func(t teamTransaction) error {
+			group, err := t.authorizeMemberChange(explicit, id, user, "update", org.ErrTeamAdd)
+			if err != nil {
+				return err
+			}
+			out, err = s.insertTeamMember(ctx, t.tx, group, id, user, true, &seats)
 			return err
-		}
-		var err error
-		out, err = s.insertTeamMember(ctx, t.tx, id, user, true)
-		return err
+		})
 	})
 	return
 }
 func (s *Store) RemoveTeamMember(ctx context.Context, a org.TeamActor, explicit, id, user string) error {
 	return s.withTeamActor(ctx, a, user, func(t teamTransaction) error {
-		if err := t.authorizeMemberChange(explicit, id, user, "delete", org.ErrTeamRemove); err != nil {
+		if _, err := t.authorizeMemberChange(explicit, id, user, "delete", org.ErrTeamRemove); err != nil {
 			return err
 		}
 		res, err := t.tx.ExecContext(ctx, s.bind(`DELETE FROM "teamMember" WHERE "teamId"=? AND "userId"=?`), id, user)

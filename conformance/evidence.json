@@ -933,6 +933,16 @@
       "label": "Check issuing membership and permission before reporting unknown or empty role names",
       "test": "adapters/sqlstore/organization_invitation_preparation_test.go",
       "marker": "check(\"YOU_ARE_NOT_ALLOWED_TO_INVITE_USERS_TO_THIS_ORGANIZATION\")"
+    },
+    {
+      "label": "Check the resolved cap of every invited team with the inviter's session before storing the invitation",
+      "test": "adapters/sqlstore/organization_team_seats_test.go",
+      "marker": "// A fresh invitation checks every requested team with the inviter's session."
+    },
+    {
+      "label": "Renew a pending team invitation without checking its team caps again",
+      "test": "adapters/sqlstore/organization_team_seats_test.go",
+      "marker": "// Renewing only extends the pending grant and keeps its teams unchecked."
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L893": [
@@ -1073,6 +1083,16 @@
       "label": "Allow the exact expiry millisecond and reject a later acceptance on all three SQL engines",
       "test": "adapters/sqlstore/organization_decision_test.go",
       "marker": "t.Fatal(\"pending invitation could not be accepted at its exact deadline\")"
+    },
+    {
+      "label": "Join the organization and every invited team or none under resolved caps checked with the recipient's session",
+      "test": "adapters/sqlstore/organization_team_seats_test.go",
+      "marker": "// Acceptance asks with the recipient's session and commits all teams or none."
+    },
+    {
+      "label": "Settle every invited team's resolved cap before running the acceptance hook once",
+      "test": "adapters/sqlstore/organization_team_seats_test.go",
+      "marker": "// An observed acceptance settles every team before the host's hook runs once."
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L934": [
@@ -3625,6 +3645,16 @@
       "label": "Admit one candidate to the last seat across competing SQL-backed servers and return existing memberships on retry",
       "test": "adapters/sqlstore/organization_teams_test.go",
       "marker": "oversubscribed team capacity"
+    },
+    {
+      "label": "Ask the host for a team's cap with the manager's session, admit members only within it and return existing memberships without asking",
+      "test": "adapters/sqlstore/organization_team_seats_test.go",
+      "marker": "// Direct adds ask the host with the manager's session and enforce the answer."
+    },
+    {
+      "label": "Admit exactly one of two concurrent adds competing for the last seat of a resolved team on separate connections",
+      "test": "adapters/sqlstore/organization_team_seats_test.go",
+      "marker": "// Two instances racing for a team's last seat admit exactly one member."
     }
   ],
   "plugin/organization/POST /organization/remove-team-member": [
@@ -3708,6 +3738,11 @@
       "label": "Admit one candidate to the last seat across competing SQL-backed servers and return existing memberships on retry",
       "test": "adapters/sqlstore/organization_teams_test.go",
       "marker": "oversubscribed team capacity"
+    },
+    {
+      "label": "Ask the host for a team's cap with the manager's session, admit members only within it and return existing memberships without asking",
+      "test": "adapters/sqlstore/organization_team_seats_test.go",
+      "marker": "// Direct adds ask the host with the manager's session and enforce the answer."
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L1971": [
@@ -3743,6 +3778,11 @@
       "label": "Honor fixed seat and team limits, and optionally permit removal of the final team",
       "test": "adapters/sqlstore/organization_teams_test.go",
       "marker": "last team removal enabled"
+    },
+    {
+      "label": "Write nothing when the caller's session changes during resolution, the host fails or returns a negative cap, or a fixed cap is combined with a resolver",
+      "test": "adapters/sqlstore/organization_team_seats_test.go",
+      "marker": "// A changed session, host errors and invalid answers write nothing."
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L2039": [
@@ -7312,6 +7352,11 @@
       "label": "Distinguish an unprivileged member from a missing membership on all three SQL engines",
       "test": "adapters/sqlstore/organization_members_test.go",
       "marker": "membership with an empty role lost its team"
+    },
+    {
+      "label": "Reject a trusted team grant under a resolved cap because no session is available, and keep the organization membership unwritten",
+      "test": "adapters/sqlstore/organization_team_seats_test.go",
+      "marker": "// A trusted grant has no session for the host to judge."
     }
   ],
   "docs/content/docs/reference/options.mdx#L135": [
@@ -15107,6 +15152,11 @@
       "label": "Allow the exact expiry millisecond and reject a later acceptance on all three SQL engines",
       "test": "adapters/sqlstore/organization_decision_test.go",
       "marker": "t.Fatal(\"pending invitation could not be accepted at its exact deadline\")"
+    },
+    {
+      "label": "Join the organization and every invited team or none under resolved caps checked with the recipient's session",
+      "test": "adapters/sqlstore/organization_team_seats_test.go",
+      "marker": "// Acceptance asks with the recipient's session and commits all teams or none."
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L946/Parameter `invitationId`": [
@@ -15201,6 +15251,11 @@
       "label": "Issue and renew an invitation through the native Go client against three databases",
       "test": "adapters/sqlstore/organization_selection_http_test.go",
       "marker": "t.Fatal(\"native invitation issue lost the normalized roles, mailbox or active organization\")"
+    },
+    {
+      "label": "Check the resolved cap of every invited team with the inviter's session before storing the invitation",
+      "test": "adapters/sqlstore/organization_team_seats_test.go",
+      "marker": "// A fresh invitation checks every requested team with the inviter's session."
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L903/Parameter `email`": [
@@ -16169,6 +16224,11 @@
       "test": "conformance/organization-team-limits.mjs",
       "marker": "for (let i=0;i<5;i++) assert.equal(ok(await make(other,\"Team \"+i)).organizationId,free.id)",
       "complete": true
+    },
+    {
+      "label": "Resolve each team's member cap from the acting session when adding, inviting and accepting, with zero admitting no new members",
+      "test": "adapters/sqlstore/organization_team_seats_test.go",
+      "marker": "func TestResolvedTeamMemberLimits("
     }
   ]
 }

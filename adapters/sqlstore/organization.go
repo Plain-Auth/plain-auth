@@ -77,7 +77,7 @@ func (s *Store) CreateOrganization(ctx context.Context, o org.Organization, owne
 		if err != nil {
 			return err
 		}
-		if _, err = s.insertTeamMember(ctx, tx, team.ID, owner.UserID, false); err != nil {
+		if _, err = s.insertTeamMember(ctx, tx, team.OrganizationID, team.ID, owner.UserID, false, nil); err != nil {
 			return err
 		}
 		initialTeam = &team.ID
@@ -219,6 +219,7 @@ type invitationIssue struct {
 	preparation   *invitationPreparation
 	targets       *org.InvitationTeamTargets
 	validateRoles bool
+	seats         *teamSeats
 }
 
 func (s *Store) issueInvitationTx(ctx context.Context, inv org.Invitation, issue invitationIssue, capacity *invitationCapacity) (org.Invitation, error) {
@@ -320,11 +321,11 @@ func (s *Store) issueInvitationTx(ctx context.Context, inv org.Invitation, issue
 			}
 		}
 	}
-	if err := s.checkInvitationTeams(ctx, tx, inv); err != nil {
+	if err := s.checkInvitationTeams(ctx, tx, inv, issue.seats); err != nil {
 		return org.Invitation{}, err
 	}
 	if prep != nil {
-		inv, err = prep.prepareGrant(ctx, s, tx, inv, pending, member.Member, teamField, policy)
+		inv, err = prep.prepareGrant(ctx, s, tx, inv, pending, member.Member, teamField, policy, issue.seats)
 		if err != nil {
 			return org.Invitation{}, err
 		}
@@ -344,15 +345,18 @@ func (s *Store) issueInvitationTx(ctx context.Context, inv org.Invitation, issue
 func (s *Store) AcceptOrganizationInvitation(ctx context.Context, id, sessionID string, u authn.User, now time.Time, requireVerified bool) (org.Invitation, org.Member, error) {
 	var invitation org.Invitation
 	var member org.Member
+	seats := teamSeats{sessionID: sessionID, userID: u.ID}
 	err := s.withMemberAdmission(ctx, func(admission *memberAdmission) error {
-		var err error
-		invitation, member, err = s.acceptOrganizationInvitation(ctx, id, sessionID, u, admission.checkedAt(now), requireVerified, admission)
-		return err
+		return s.withTeamSeats(ctx, &seats, func() error {
+			var err error
+			invitation, member, err = s.acceptOrganizationInvitation(ctx, id, sessionID, u, admission.checkedAt(now), requireVerified, admission, &seats)
+			return err
+		})
 	})
 	return invitation, member, err
 }
 
-func (s *Store) acceptOrganizationInvitation(ctx context.Context, id, sessionID string, u authn.User, now time.Time, requireVerified bool, admission *memberAdmission) (org.Invitation, org.Member, error) {
+func (s *Store) acceptOrganizationInvitation(ctx context.Context, id, sessionID string, u authn.User, now time.Time, requireVerified bool, admission *memberAdmission, seats *teamSeats) (org.Invitation, org.Member, error) {
 	tx, err := s.beginMembershipChange(ctx)
 	if err != nil {
 		return org.Invitation{}, org.Member{}, err
@@ -369,7 +373,7 @@ func (s *Store) acceptOrganizationInvitation(ctx context.Context, id, sessionID 
 	if err := s.checkInvitationAcceptance(ctx, tx, inv, u, now, requireVerified, admission); err != nil {
 		return org.Invitation{}, org.Member{}, err
 	}
-	m, err := s.grantInvitedMembership(ctx, tx, &inv, sessionID, u.ID, now)
+	m, err := s.grantInvitedMembership(ctx, tx, &inv, sessionID, u.ID, now, seats)
 	if err != nil {
 		return org.Invitation{}, org.Member{}, err
 	}
@@ -395,7 +399,7 @@ func (s *Store) checkInvitationAcceptance(ctx context.Context, tx *sql.Tx, inv o
 	return s.checkNewMember(ctx, tx, inv.OrganizationID, u.ID, admission, &inv)
 }
 
-func (s *Store) grantInvitedMembership(ctx context.Context, tx *sql.Tx, inv *org.Invitation, sessionID, userID string, now time.Time) (org.Member, error) {
+func (s *Store) grantInvitedMembership(ctx context.Context, tx *sql.Tx, inv *org.Invitation, sessionID, userID string, now time.Time, seats *teamSeats) (org.Member, error) {
 	if err := s.updateInvitationStatus(ctx, tx, inv, "accepted"); err != nil {
 		return org.Member{}, err
 	}
@@ -410,7 +414,7 @@ func (s *Store) grantInvitedMembership(ctx context.Context, tx *sql.Tx, inv *org
 			if _, err := s.findTeam(ctx, tx, inv.OrganizationID, id); err != nil {
 				return org.Member{}, err
 			}
-			if _, err := s.insertTeamMember(ctx, tx, id, userID, true); err != nil {
+			if _, err := s.insertTeamMember(ctx, tx, inv.OrganizationID, id, userID, true, seats); err != nil {
 				return org.Member{}, err
 			}
 		}

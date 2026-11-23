@@ -740,7 +740,7 @@ Owners and admins manage teams and membership. An organization member can list t
 
 To invite a new organization member into teams, include `teamId` in `/organization/invite-member`. Supply one ID or an array of IDs from that organization. Acceptance commits the organization membership and every team membership together. A single invited team becomes active on the accepting session. Removing a team updates outstanding invitations. An invitation whose final team is removed can still grant organization membership.
 
-`MaximumTeams` limits the number of teams per organization. A positive value enables the limit. `MaximumMembersPerTeam` sets a fixed seat limit for added and invited members, and `nil` leaves capacity unrestricted. Removing an organization's last team requires `AllowRemovingAllTeams: true`. See the [organization checklist](parity/plugins/organization.md) for team membership policies and lifecycle callbacks.
+`MaximumTeams` limits the number of teams per organization. A positive value enables the limit. `MaximumMembersPerTeam` sets a fixed seat limit for added and invited members. `nil` leaves capacity unrestricted and zero admits no new members. To decide each team's seats at runtime, see [Set a member limit per team](#set-a-member-limit-per-team). Removing an organization's last team requires `AllowRemovingAllTeams: true`. See the [organization checklist](parity/plugins/organization.md) for team membership policies and lifecycle callbacks.
 
 The native client includes `CreateTeam`, `UpdateTeam`, `RemoveTeam`, `ListOrganizationTeams`, `ListUserTeams`, `SetActiveTeam`, `ListTeamMembers`, `AddTeamMember` and `RemoveTeamMember`. Each client uses its own session when resolving an omitted organization or team. [Multi-engine team tests](../adapters/sqlstore/organization_teams_test.go)
 
@@ -765,6 +765,33 @@ groups, err := organization.NewService(organization.Options{
 Trusted backend code can call `groups.CreateTeam(ctx, organization.CreateTeamRequest{OrganizationID: organizationID, Name: "Design"})`. The application authorizes this call. It requires an explicit destination and gives the resolver a nil session and request. Both entry points count the same teams, including the default team created with an organization. Creating that initial team skips the resolver.
 
 Plain Auth calls the resolver outside the database transaction. Before saving, it checks the actor, destination and available capacity again. A full organization receives HTTP 400 with `YOU_HAVE_REACHED_THE_MAXIMUM_NUMBER_OF_TEAMS`. If the callback's session or profile inputs change while it runs, retry after HTTP 409 with `TEAM_POLICY_INPUT_CHANGED`. A revoked session or membership gets its authentication or permission error. Creating a team preserves the active selection. [HTTP and server API comparisons](../conformance/organization-team-limits.mjs) · [Concurrent creation on three SQL engines](../adapters/sqlstore/organization_team_creation_test.go)
+
+### Set a member limit per team
+
+Set `TeamOptions.ResolveMaximumMembersPerTeam` to decide how many members a team may hold each time someone would join it. For example, a billing policy can read the organization's plan. Return the team's capacity; zero admits no new members. Choose the resolver or a fixed `MaximumMembersPerTeam` value.
+
+```go
+groups, err := organization.NewService(organization.Options{
+    Store: store,
+    Teams: &organization.TeamOptions{
+        ResolveMaximumMembersPerTeam: func(ctx context.Context, in organization.TeamMemberLimitInput) (int, error) {
+            return plans.TeamSeats(ctx, in.OrganizationID, in.TeamID)
+        },
+    },
+})
+```
+
+`plans.TeamSeats` is an application function. `in.TeamID` and `in.OrganizationID` name the destination, and `in.Session` holds the signed-in user making the change with their core profile:
+
+| Entry point | `in.Session` | When the resolver runs |
+| --- | --- | --- |
+| `POST /organization/add-team-member` | The owner or admin adding the member | Once. Adding an existing team member returns the membership without asking. |
+| `POST /organization/invite-member` with `teamId` | The inviter | Once per requested team. Renewing a pending invitation with `resend: true` keeps its teams without checking them again. |
+| `POST /organization/accept-invitation` | The recipient | Once per invited team, before any `BeforeAcceptInvitation` hook. The organization and every team are joined together or not at all. |
+
+Trusted `groups.AddMember` calls have no session. With a resolver configured, a request that includes a `TeamID` returns `organization.ErrUnauthenticated` and adds nothing. The same request without a team still grants organization membership.
+
+Plain Auth calls the resolver outside the database transaction. Before saving, it rereads the caller's session and counts the team's members under the organization lock, so concurrent joins on any node cannot exceed the answer. A full team receives HTTP 403 with `TEAM_MEMBER_LIMIT_REACHED`. If the session or profile changes while the resolver runs, retry after HTTP 409 with `TEAM_POLICY_INPUT_CHANGED`. A resolver error or a negative count fails the request without writing. [HTTP, invitation and concurrency tests on three SQL engines](../adapters/sqlstore/organization_team_seats_test.go)
 
 ### Share a database between nodes
 

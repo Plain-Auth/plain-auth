@@ -133,7 +133,8 @@ func (s *Store) addOrganizationMember(ctx context.Context, m org.Member, teamID 
 		return admissionErr
 	}
 	if teamID != "" {
-		if _, err = s.insertTeamMember(ctx, tx, teamID, m.UserID, true); err != nil {
+		// A trusted call has no session for a resolved team cap.
+		if _, err = s.insertTeamMember(ctx, tx, m.OrganizationID, teamID, m.UserID, true, &teamSeats{}); err != nil {
 			return err
 		}
 	}

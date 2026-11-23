@@ -86,6 +86,8 @@
     - [x] Preserve team target shapes on issue and renewal, grant unique memberships, and leave multi-entry grants unselected ([test](../../../conformance/invitation-team-targets.mjs#L56))
     - [x] Keep organization-only grants unscoped and targeted grants intact across mixed team configurations ([test](../../../adapters/sqlstore/organization_topology_test.go#L183))
     - [x] Check issuing membership and permission before reporting unknown or empty role names ([test](../../../adapters/sqlstore/organization_invitation_preparation_test.go#L172))
+    - [x] Check the resolved cap of every invited team with the inviter's session before storing the invitation ([test](../../../adapters/sqlstore/organization_team_seats_test.go#L120))
+    - [x] Renew a pending team invitation without checking its team caps again ([test](../../../adapters/sqlstore/organization_team_seats_test.go#L137))
   - [x] `POST /organization/accept-invitation` ([test](../../../conformance/organization-invitations.mjs#L390))
     - [x] Reject an invitation ID with different casing without consuming the invitation or granting membership on any SQL engine ([test](../../../adapters/sqlstore/organization_topology_test.go#L147))
     - [x] Accept an organization-only invitation through a plain node sharing the upgraded database ([test](../../../adapters/sqlstore/organization_topology_test.go#L154))
@@ -103,6 +105,8 @@
     - [x] Read both committed records through the native Go client ([test](../../../plugins/organization/organization_test.go#L177))
     - [x] Consume the grant once and preserve a second login’s independent selection ([test](../../../conformance/organization-invitations.mjs#L393))
     - [x] Allow the exact expiry millisecond and reject a later acceptance on all three SQL engines ([test](../../../adapters/sqlstore/organization_decision_test.go#L120))
+    - [x] Join the organization and every invited team or none under resolved caps checked with the recipient's session ([test](../../../adapters/sqlstore/organization_team_seats_test.go#L147))
+    - [x] Settle every invited team's resolved cap before running the acceptance hook once ([test](../../../adapters/sqlstore/organization_team_seats_test.go#L164))
   - [ ] `POST /organization/reject-invitation`
     - [x] Decline an expired pending invitation through the recipient's session and preserve the current organization and team ([test](../../../conformance/organization-invitations.mjs#L257))
     - [x] Allow only one decision when acceptance races rejection across two database connections ([test](../../../adapters/sqlstore/organization_decision_test.go#L79))
@@ -136,6 +140,7 @@
     - [x] Allocate the final seat once when a trusted grant and an invitation compete across connections ([test](../../../adapters/sqlstore/organization_limit_test.go#L194))
     - [x] Persist ordered role labels and empty roles when trusted application code grants membership ([test](../../../conformance/organization-server-grants.mjs#L41))
     - [x] Distinguish an unprivileged member from a missing membership on all three SQL engines ([test](../../../adapters/sqlstore/organization_members_test.go#L181))
+    - [x] Reject a trusted team grant under a resolved cap because no session is available, and keep the organization membership unwritten ([test](../../../adapters/sqlstore/organization_team_seats_test.go#L178))
   - [ ] `POST /organization/remove-member`
     - [x] Resolve simultaneous opposing owner removals in a single transaction attempt while both PostgreSQL connections wait on database locks ([test](../../../adapters/sqlstore/organization_locking_test.go#L106))
     - [x] Remove by case-insensitive email or exact membership ID and return the matching public member shape through the released client ([test](../../../conformance/organization-removal.mjs#L54))
@@ -214,6 +219,8 @@
     - [x] List members of the selected team and reject a caller whose membership was removed ([test](../../../adapters/sqlstore/organization_teams_test.go#L277))
   - [ ] `POST /organization/add-team-member`
     - [x] Admit one candidate to the last seat across competing SQL-backed servers and return existing memberships on retry ([test](../../../adapters/sqlstore/organization_teams_test.go#L213))
+    - [x] Ask the host for a team's cap with the manager's session, admit members only within it and return existing memberships without asking ([test](../../../adapters/sqlstore/organization_team_seats_test.go#L100))
+    - [x] Admit exactly one of two concurrent adds competing for the last seat of a resolved team on separate connections ([test](../../../adapters/sqlstore/organization_team_seats_test.go#L225))
   - [ ] `POST /organization/remove-team-member`
     - [x] Remove membership and clear the affected user’s active team ([test](../../../adapters/sqlstore/organization_teams_test.go#L275))
   - [ ] `OrganizationSchema`
@@ -410,6 +417,7 @@
         - [x] Accept comma-separated roles within strings or arrays, preserve their order and check owner grants ([test](../../../conformance/invitation-input.mjs#L41))
         - [x] Report invalid field types before sign-in and validate recipient addresses after resolving the destination ([test](../../../conformance/invitation-input.mjs#L22))
         - [x] Issue and renew an invitation through the native Go client against three databases ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L233))
+        - [x] Check the resolved cap of every invited team with the inviter's session before storing the invitation ([test](../../../adapters/sqlstore/organization_team_seats_test.go#L120))
         - [x] Parameter `email` ([test](../../../conformance/invitation-input.mjs#L42))
           - [x] Require a mailbox string, reject malformed addresses and lowercase the saved delivery address ([test](../../../conformance/invitation-input.mjs#L42))
         - [ ] Parameter `role`
@@ -438,6 +446,7 @@
         - [x] Read both committed records through the native Go client ([test](../../../plugins/organization/organization_test.go#L177))
         - [x] Consume the grant once and preserve a second login’s independent selection ([test](../../../conformance/organization-invitations.mjs#L393))
         - [x] Allow the exact expiry millisecond and reject a later acceptance on all three SQL engines ([test](../../../adapters/sqlstore/organization_decision_test.go#L120))
+        - [x] Join the organization and every invited team or none under resolved caps checked with the recipient's session ([test](../../../adapters/sqlstore/organization_team_seats_test.go#L147))
         - [x] Parameter `invitationId` ([test](../../../conformance/organization-invitations.mjs#L370))
           - [x] Validate the required string before session lookup and treat its contents as an opaque ID ([test](../../../conformance/organization-invitations.mjs#L370))
       - [ ] Email Verification Requirement
@@ -748,6 +757,7 @@
           - [ ] Parameter `teamId` (optional)
       - [ ] Add Team Member
         - [x] Admit one candidate to the last seat across competing SQL-backed servers and return existing memberships on retry ([test](../../../adapters/sqlstore/organization_teams_test.go#L213))
+        - [x] Ask the host for a team's cap with the manager's session, admit members only within it and return existing memberships without asking ([test](../../../adapters/sqlstore/organization_team_seats_test.go#L100))
         - [ ] `POST /organization/add-team-member`
           - [ ] Parameter `teamId`
           - [ ] Parameter `userId`
@@ -763,10 +773,12 @@
       - [ ] `team:delete`
     - [ ] Team Configuration Options
       - [x] Honor fixed seat and team limits, and optionally permit removal of the final team ([test](../../../adapters/sqlstore/organization_teams_test.go#L331))
+      - [x] Write nothing when the caller's session changes during resolution, the host fails or returns a negative cap, or a fixed cap is combined with a resolver ([test](../../../adapters/sqlstore/organization_team_seats_test.go#L190))
       - [x] `maximumTeams` ([test](../../../conformance/organization-team-limits.mjs#L42))
         - [x] Reserve the last team slot across authenticated requests and trusted creation on independent database connections ([test](../../../adapters/sqlstore/organization_team_creation_test.go#L88))
         - [x] Require live creation authority and recheck the policy inputs after the host resolves capacity ([test](../../../adapters/sqlstore/organization_team_creation_test.go#L145))
         - [x] Resolve the total using the caller and organization, and allow unlimited teams when the host returns zero ([test](../../../conformance/organization-team-limits.mjs#L42))
+        - [x] Resolve each team's member cap from the acting session when adding, inviting and accepting, with zero admitting no new members ([test](../../../adapters/sqlstore/organization_team_seats_test.go#L18))
       - [ ] `allowRemovingAllTeams`
     - [ ] Team Members
       - [x] Persist the team membership key and maintain the database member count across mutations ([test](../../../adapters/sqlstore/organization_teams_test.go#L177))

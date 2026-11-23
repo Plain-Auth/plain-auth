@@ -15,10 +15,29 @@ import (
 type TeamOptions struct {
 	MaximumTeams int
 	// ResolveMaximumTeams determines the total team limit per creation. Zero means unlimited.
-	ResolveMaximumTeams   func(context.Context, TeamLimitInput) (int, error)
+	ResolveMaximumTeams func(context.Context, TeamLimitInput) (int, error)
+	// MaximumMembersPerTeam caps every team. Nil means unlimited and zero
+	// admits no new members.
 	MaximumMembersPerTeam *int
-	DisableDefaultTeam    bool
-	AllowRemovingAllTeams bool
+	// ResolveMaximumMembersPerTeam decides the cap for one team each time a
+	// member would join it. Zero admits no new members. It cannot be combined
+	// with MaximumMembersPerTeam. If the caller's session changes while the
+	// host decides, the request fails with ErrTeamLimitChanged and can be
+	// retried. Custom stores receive it through WithOrganizationTeams and
+	// must apply it themselves.
+	ResolveMaximumMembersPerTeam func(context.Context, TeamMemberLimitInput) (int, error)
+	DisableDefaultTeam           bool
+	AllowRemovingAllTeams        bool
+}
+
+// TeamMemberLimitInput describes the team a member would join and the signed-in
+// user making the change: the inviter, the person accepting an invitation, or
+// the member manager. A trusted Service.AddMember call has no session, so a
+// resolved team cap rejects it with ErrUnauthenticated.
+type TeamMemberLimitInput struct {
+	TeamID         string
+	OrganizationID string
+	Session        *authn.SessionResult
 }
 
 type Team struct {
@@ -86,6 +105,9 @@ func (opts TeamOptions) Validate() error {
 	}
 	if opts.ResolveMaximumTeams != nil && opts.MaximumTeams != 0 {
 		return errors.New("organization: choose a fixed team limit or a resolver")
+	}
+	if opts.ResolveMaximumMembersPerTeam != nil && opts.MaximumMembersPerTeam != nil {
+		return errors.New("organization: choose a fixed team member limit or a resolver")
 	}
 	return nil
 }

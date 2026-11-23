@@ -42,6 +42,7 @@ type invitationDecisionRequest struct {
 	decision        org.InvitationDecision
 	requireVerified bool
 	admission       *memberAdmission
+	seats           *teamSeats
 }
 
 type invitationDecisionPhase int
@@ -68,11 +69,14 @@ func (s *Store) ObserveInvitationDecision(ctx context.Context, actor auth.Sessio
 
 func (s *Store) ObserveInvitationAcceptance(ctx context.Context, actor auth.Session, id string, requireVerified bool, before org.InvitationDecisionHook) (*org.InvitationDecisionEvent, error) {
 	var event *org.InvitationDecisionEvent
+	seats := teamSeats{sessionID: actor.ID, userID: actor.UserID}
 	err := s.withMemberAdmission(ctx, func(admission *memberAdmission) error {
-		request := invitationDecisionRequest{actor: actor, id: id, decision: acceptInvitation, requireVerified: requireVerified, admission: admission}
-		var err error
-		event, err = s.observeDecision(ctx, request, before)
-		return err
+		return s.withTeamSeats(ctx, &seats, func() error {
+			request := invitationDecisionRequest{actor: actor, id: id, decision: acceptInvitation, requireVerified: requireVerified, admission: admission, seats: &seats}
+			var err error
+			event, err = s.observeDecision(ctx, request, before)
+			return err
+		})
 	})
 	return event, err
 }
@@ -127,6 +131,12 @@ func (s *Store) invitationDecisionTx(ctx context.Context, request invitationDeci
 		if err := s.checkInvitationAcceptance(ctx, tx, inv, account.user, now, request.requireVerified, request.admission); err != nil {
 			return nil, err
 		}
+		// Settle every team cap before the host's hook sees the acceptance.
+		if phase == prepareObservedDecision {
+			if err := s.checkInvitationTeams(ctx, tx, inv, request.seats); err != nil {
+				return nil, err
+			}
+		}
 	case org.RejectInvitation:
 		if inv.Status != "pending" {
 			return nil, org.ErrInvitation
@@ -167,7 +177,7 @@ func (s *Store) invitationDecisionTx(ctx context.Context, request invitationDeci
 	}
 	if phase != prepareObservedDecision {
 		if request.decision == acceptInvitation {
-			member, err := s.grantInvitedMembership(ctx, tx, &scope.Invitation, account.id, account.user.ID, now)
+			member, err := s.grantInvitedMembership(ctx, tx, &scope.Invitation, account.id, account.user.ID, now, request.seats)
 			if err != nil {
 				return nil, err
 			}

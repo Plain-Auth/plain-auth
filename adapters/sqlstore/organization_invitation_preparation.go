@@ -66,7 +66,7 @@ func (p *invitationPreparation) checkScope(ctx context.Context, s *Store, tx *sq
 
 // The first pass captures the issuer and proposed values after all admission
 // checks. The second checks the same grant and applies the host's overrides.
-func (p *invitationPreparation) prepareGrant(ctx context.Context, s *Store, tx *sql.Tx, inv org.Invitation, prior *org.Invitation, member org.Member, teamField bool, policy org.RolePolicy) (org.Invitation, error) {
+func (p *invitationPreparation) prepareGrant(ctx context.Context, s *Store, tx *sql.Tx, inv org.Invitation, prior *org.Invitation, member org.Member, teamField bool, policy org.RolePolicy, seats *teamSeats) (org.Invitation, error) {
 	issuer, err := s.invitationIssuer(ctx, tx, member)
 	if err != nil {
 		return inv, err
@@ -117,7 +117,7 @@ func (p *invitationPreparation) prepareGrant(ctx context.Context, s *Store, tx *
 		}
 	}
 	if changes != nil && changes.TeamIDs != nil {
-		if err := s.checkInvitationTeams(ctx, tx, updated); err != nil {
+		if err := s.checkInvitationTeams(ctx, tx, updated, seats); err != nil {
 			return inv, err
 		}
 	}
@@ -145,7 +145,7 @@ func (s *Store) invitationRecipient(ctx context.Context, tx *sql.Tx, inv org.Inv
 	return &pending, nil
 }
 
-func (s *Store) checkInvitationTeams(ctx context.Context, tx *sql.Tx, inv org.Invitation) error {
+func (s *Store) checkInvitationTeams(ctx context.Context, tx *sql.Tx, inv org.Invitation, seats *teamSeats) error {
 	if inv.TeamID == nil || *inv.TeamID == "" {
 		return nil
 	}
@@ -156,7 +156,7 @@ func (s *Store) checkInvitationTeams(ctx context.Context, tx *sql.Tx, inv org.In
 		if _, err := s.findTeam(ctx, tx, inv.OrganizationID, id); err != nil {
 			return err
 		}
-		if _, err := s.teamCapacity(ctx, tx, id); err != nil {
+		if err := s.checkTeamSeat(ctx, tx, inv.OrganizationID, id, seats); err != nil {
 			return err
 		}
 	}

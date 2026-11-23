@@ -31,6 +31,7 @@ type invitationCapacity struct {
 
 func (s *Store) issueOrganizationInvitation(ctx context.Context, inv org.Invitation, issue invitationIssue) (org.Invitation, error) {
 	var capacity invitationCapacity
+	issue.seats = &teamSeats{sessionID: issue.sessionID, userID: inv.InviterID}
 	lifetime := inv.ExpiresAt.Sub(inv.CreatedAt)
 	for {
 		saved, err := s.issueInvitationTx(ctx, inv, issue, &capacity)
@@ -40,6 +41,8 @@ func (s *Store) issueOrganizationInvitation(ctx context.Context, inv org.Invitat
 		case errPrepareInvitation:
 			p := issue.preparation
 			p.changes, err = p.before(ctx, p.event)
+		case errResolveTeamSeat:
+			err = s.resolveTeamSeat(ctx, issue.seats)
 		default:
 			return saved, err
 		}
