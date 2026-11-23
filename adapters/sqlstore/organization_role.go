@@ -2,6 +2,7 @@ package sqlstore
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"slices"
 	"strings"
@@ -25,18 +26,52 @@ func (s *Store) WithOrganizationRolePolicy(policy org.RolePolicy) (org.Store, er
 // UpdateOrganizationMemberRole uses the same account and tenant locks as
 // membership removal. Each retry authorizes the actor against current data.
 func (s *Store) UpdateOrganizationMemberRole(ctx context.Context, userID, token string, request org.UpdateMemberRoleRequest) (*org.Member, error) {
+	m, _, err := s.updateMemberRole(ctx, userID, token, request, false)
+	return m, err
+}
+
+// PrepareMemberRoleUpdate runs every check of a role change without writing
+// and returns the member, the proposed roles, their account and organization.
+func (s *Store) PrepareMemberRoleUpdate(ctx context.Context, userID, token string, request org.UpdateMemberRoleRequest) (org.MemberRoleChange, error) {
+	_, change, err := s.updateMemberRole(ctx, userID, token, request, true)
+	return change, err
+}
+
+func (s *Store) updateMemberRole(ctx context.Context, userID, token string, request org.UpdateMemberRoleRequest, prepare bool) (*org.Member, org.MemberRoleChange, error) {
 	var m *org.Member
+	var change org.MemberRoleChange
 	var err error
 	for range 3 {
-		m, err = s.updateMemberRoleOnce(ctx, userID, token, request)
+		m, change, err = s.updateMemberRoleOnce(ctx, userID, token, request, prepare)
 		if !retryIdentity(err) {
 			break
 		}
 	}
-	return m, err
+	return m, change, err
 }
 
-func (s *Store) updateMemberRoleOnce(ctx context.Context, userID, token string, request org.UpdateMemberRoleRequest) (*org.Member, error) {
+func (s *Store) updateMemberRoleOnce(ctx context.Context, userID, token string, request org.UpdateMemberRoleRequest, prepare bool) (*org.Member, org.MemberRoleChange, error) {
+	var change org.MemberRoleChange
+	m, err := s.updateMemberRoleTx(ctx, userID, token, request, func(tx *sql.Tx, group string, m *org.Member, roles []string) (bool, error) {
+		if !prepare {
+			return true, nil
+		}
+		exact := s.exactSQLValue("?")
+		if err := tx.QueryRowContext(ctx, s.bind(`SELECT `+userColumns+` FROM "user" u WHERE u."id"=`+exact), m.UserID).Scan(userFields(&change.User)...); err != nil {
+			return false, err
+		}
+		row, err := readOrg(tx.QueryRowContext(ctx, s.bind(`SELECT `+orgFields+` FROM "organization" o WHERE o."id"=`+exact), group))
+		if err != nil {
+			return false, err
+		}
+		change.Member, change.Roles, change.Organization = *m, roles, *row
+		return false, nil
+	})
+	return m, change, err
+}
+
+// updateMemberRoleTx authorizes a role change; write decides whether to save it.
+func (s *Store) updateMemberRoleTx(ctx context.Context, userID, token string, request org.UpdateMemberRoleRequest, write func(*sql.Tx, string, *org.Member, []string) (bool, error)) (*org.Member, error) {
 	tx, err := s.beginMembershipChange(ctx)
 	if err != nil {
 		return nil, err
@@ -108,6 +143,9 @@ func (s *Store) updateMemberRoleOnce(ctx context.Context, userID, token string, 
 	}
 	if len(unknown) > 0 {
 		return nil, &auth.APIError{Status: 400, Code: "ROLE_NOT_FOUND", Message: "ROLE_NOT_FOUND: " + strings.Join(unknown, ", ")}
+	}
+	if proceed, err := write(tx, group, &m.Member, roles); err != nil || !proceed {
+		return &m.Member, err
 	}
 	m.Role = strings.Join(roles, ",")
 	_, err = tx.ExecContext(ctx, s.bind(`UPDATE "member" SET "role"=? WHERE "id"=`+arg+` AND "organizationId"=`+arg+` AND "userId"=`+arg), m.Role, m.ID, group, m.UserID)

@@ -1,6 +1,7 @@
 package organization
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"net/http"
@@ -87,6 +88,38 @@ func NormalizeRoles(roles ...string) []string {
 	return normalized
 }
 
+// MemberRoleChange is a role change that passed every check: the member with
+// their current roles, the roles to set, their account and the organization.
+type MemberRoleChange struct {
+	Member       Member
+	Roles        []string
+	User         auth.User
+	Organization Organization
+}
+
+// BeforeMemberRoleUpdate describes a role change about to be saved. NewRole
+// holds the comma-separated roles requested.
+type BeforeMemberRoleUpdate struct {
+	Member       Member
+	NewRole      string
+	User         auth.User
+	Organization Organization
+}
+
+// AfterMemberRoleUpdate describes a saved role change.
+type AfterMemberRoleUpdate struct {
+	Member       Member
+	PreviousRole string
+	User         auth.User
+	Organization Organization
+}
+
+// ObservedMemberRoleStore checks a role change without writing so the host's
+// hooks see only changes that can proceed.
+type ObservedMemberRoleStore interface {
+	PrepareMemberRoleUpdate(ctx context.Context, userID, sessionToken string, request UpdateMemberRoleRequest) (MemberRoleChange, error)
+}
+
 // UpdateMemberRole authorizes an authenticated actor against the current
 // session and membership inside the same transaction as the update.
 func (service *Service) UpdateMemberRole(ctx context.Context, session auth.Session, request UpdateMemberRoleRequest) (*Member, error) {
@@ -100,7 +133,41 @@ func (service *Service) UpdateMemberRole(ctx context.Context, session auth.Sessi
 	if err := session.RequireOwner(); err != nil {
 		return nil, err
 	}
-	return store.UpdateOrganizationMemberRole(ctx, session.UserID, session.Token, request)
+	o := service.options
+	if o.BeforeUpdateMemberRole == nil && o.AfterUpdateMemberRole == nil {
+		return store.UpdateOrganizationMemberRole(ctx, session.UserID, session.Token, request)
+	}
+	change, err := o.Store.(ObservedMemberRoleStore).PrepareMemberRoleUpdate(ctx, session.UserID, session.Token, request)
+	if err != nil {
+		return nil, err
+	}
+	user, err := detachedUser(change.User)
+	if err != nil {
+		return nil, err
+	}
+	group := change.Organization
+	group.Metadata = bytes.Clone(group.Metadata)
+	// The change proceeds against the prepared organization and membership.
+	request = UpdateMemberRoleRequest{MemberID: change.Member.ID, OrganizationID: group.ID, Roles: change.Roles}
+	if before := o.BeforeUpdateMemberRole; before != nil {
+		override, err := before(ctx, BeforeMemberRoleUpdate{Member: change.Member, NewRole: strings.Join(change.Roles, ","), User: user, Organization: group})
+		if err != nil {
+			return nil, err
+		}
+		if override != nil && override.Roles != nil {
+			request.Roles = override.Roles
+		}
+	}
+	updated, err := store.UpdateOrganizationMemberRole(ctx, session.UserID, session.Token, request)
+	if err != nil {
+		return nil, err
+	}
+	if after := o.AfterUpdateMemberRole; after != nil {
+		if err = after(ctx, AfterMemberRoleUpdate{Member: *updated, PreviousRole: change.Member.Role, User: user, Organization: group}); err != nil {
+			return nil, err
+		}
+	}
+	return updated, nil
 }
 
 func (service *Service) memberRoleEndpoint() auth.Endpoint {

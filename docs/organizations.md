@@ -490,7 +490,9 @@ change := organization.UpdateMemberRoleRequest{
 updated, err := authClient.UpdateOrganizationMemberRole(ctx, change)
 ```
 
-A Go server can call `organizations.UpdateMemberRole(ctx, session.Session, change)` with a signed-in session returned by `auth.GetSession`. Both entry points recheck the session and current membership before committing. The built-in policy covers `owner`, `admin` and `member`. Hosts can [configure custom roles](#configure-organization-roles). Role-change hooks remain open on the [organization checklist](parity/plugins/organization.md). [Released client comparison](../conformance/organization-role.mjs) · [Database concurrency tests](../adapters/sqlstore/organization_role_test.go)
+A Go server can call `organizations.UpdateMemberRole(ctx, session.Session, change)` with a signed-in session returned by `auth.GetSession`. Both entry points recheck the session and current membership before committing. The built-in policy covers `owner`, `admin` and `member`. Hosts can [configure custom roles](#configure-organization-roles). [Released client comparison](../conformance/organization-role.mjs) · [Database concurrency tests](../adapters/sqlstore/organization_role_test.go)
+
+`BeforeUpdateMemberRole` runs for both entry points after a change passes every check. It receives the member with their current roles, the requested roles in `NewRole`, the member's account and the organization. Return an `*organization.MemberOverride` to replace the roles to set; the replacement is checked like the caller's own request, so an admin cannot grant `owner` through a hook. Returning an error cancels the change. `AfterUpdateMemberRole` receives the saved member and `PreviousRole`; its error is returned and the new roles remain. A custom store must implement `organization.ObservedMemberRoleStore` to enable them. [Hook tests on three SQL engines](../adapters/sqlstore/organization_member_role_hooks_test.go)
 
 ## Remove a member or leave
 

@@ -7468,6 +7468,21 @@
       "label": "Reject revoked and delegated sessions and recheck the acting account ban inside the transaction",
       "test": "adapters/sqlstore/organization_role_test.go",
       "marker": "problem(raw(second, \"Peer\", stale.Token, change), \"UNAUTHORIZED\")"
+    },
+    {
+      "label": "Give the member role hooks the member, the requested and previous roles, the account and the organization",
+      "test": "adapters/sqlstore/organization_member_role_hooks_test.go",
+      "marker": "// Both hooks see the member, the roles, the account and the organization."
+    },
+    {
+      "label": "Save the roles returned by the before hook in place of the requested roles",
+      "test": "adapters/sqlstore/organization_member_role_hooks_test.go",
+      "marker": "// The before hook can replace the roles to set."
+    },
+    {
+      "label": "Keep unpermitted, unknown-role and sole-owner changes away from the role hooks",
+      "test": "adapters/sqlstore/organization_member_role_hooks_test.go",
+      "marker": "// Refused changes never reach the hooks."
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L1140": [
@@ -10624,6 +10639,16 @@
       "label": "Cancel a member removal when the before hook fails",
       "test": "adapters/sqlstore/organization_member_removal_hooks_test.go",
       "marker": "// A before-hook error cancels the removal."
+    },
+    {
+      "label": "Give the member role hooks the member, the requested and previous roles, the account and the organization",
+      "test": "adapters/sqlstore/organization_member_role_hooks_test.go",
+      "marker": "// Both hooks see the member, the roles, the account and the organization."
+    },
+    {
+      "label": "Save the roles returned by the before hook in place of the requested roles",
+      "test": "adapters/sqlstore/organization_member_role_hooks_test.go",
+      "marker": "// The before hook can replace the roles to set."
     }
   ],
   "plugin-symbol/siwe/SIWEPluginOptions/getNonce": [
@@ -16519,6 +16544,36 @@
       "label": "Return the account for removal by email and report an after-hook error once the removal has committed",
       "test": "adapters/sqlstore/organization_member_removal_hooks_test.go",
       "marker": "// Removal by email returns the account, and an after-hook error keeps the removal."
+    },
+    {
+      "label": "Give the member role hooks the member, the requested and previous roles, the account and the organization",
+      "test": "adapters/sqlstore/organization_member_role_hooks_test.go",
+      "marker": "// Both hooks see the member, the roles, the account and the organization."
+    },
+    {
+      "label": "Save the roles returned by the before hook in place of the requested roles",
+      "test": "adapters/sqlstore/organization_member_role_hooks_test.go",
+      "marker": "// The before hook can replace the roles to set."
+    },
+    {
+      "label": "Check a hook's replacement roles like the caller's own request",
+      "test": "adapters/sqlstore/organization_member_role_hooks_test.go",
+      "marker": "// A replacement is checked like the caller's own request."
+    },
+    {
+      "label": "Cancel a role change when the before hook fails",
+      "test": "adapters/sqlstore/organization_member_role_hooks_test.go",
+      "marker": "// A before-hook error cancels the change."
+    },
+    {
+      "label": "Keep unpermitted, unknown-role and sole-owner changes away from the role hooks",
+      "test": "adapters/sqlstore/organization_member_role_hooks_test.go",
+      "marker": "// Refused changes never reach the hooks."
+    },
+    {
+      "label": "Report an after-hook error once the role change has committed",
+      "test": "adapters/sqlstore/organization_member_role_hooks_test.go",
+      "marker": "// An after-hook error is returned and the new role remains."
     }
   ]
 }

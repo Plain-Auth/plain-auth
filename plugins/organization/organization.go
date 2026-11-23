@@ -114,7 +114,14 @@ type Options struct {
 	BeforeRemoveMember func(context.Context, MemberRemoval) error
 	// AfterRemoveMember runs after the removal commits. Its error is
 	// returned and the membership stays removed.
-	AfterRemoveMember        func(context.Context, MemberRemoval) error
+	AfterRemoveMember func(context.Context, MemberRemoval) error
+	// BeforeUpdateMemberRole runs after a role change passes its checks and
+	// may replace the roles to set. The replacement is checked like the
+	// caller's own request. An error cancels the change.
+	BeforeUpdateMemberRole func(context.Context, BeforeMemberRoleUpdate) (*MemberOverride, error)
+	// AfterUpdateMemberRole runs after the change commits. Its error is
+	// returned and the new roles remain.
+	AfterUpdateMemberRole    func(context.Context, AfterMemberRoleUpdate) error
 	BeforeUpdateOrganization func(context.Context, BeforeProfileUpdate) (*ProfileUpdate, error)
 	AfterUpdateOrganization  func(context.Context, AfterProfileUpdate) error
 	// DisableOrganizationDeletion makes POST /organization/delete answer 404
@@ -310,6 +317,11 @@ func NewService(o Options) (*Service, error) {
 	if o.BeforeUpdateOrganization != nil || o.AfterUpdateOrganization != nil {
 		if _, ok := o.Store.(ObservedProfileStore); !ok {
 			return nil, errors.New("organization: profile hooks require an ObservedProfileStore")
+		}
+	}
+	if o.BeforeUpdateMemberRole != nil || o.AfterUpdateMemberRole != nil {
+		if _, ok := o.Store.(ObservedMemberRoleStore); !ok {
+			return nil, errors.New("organization: member role hooks require an ObservedMemberRoleStore")
 		}
 	}
 	if o.BeforeRemoveMember != nil || o.AfterRemoveMember != nil {

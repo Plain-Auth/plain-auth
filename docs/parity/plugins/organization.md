@@ -158,6 +158,9 @@
     - [x] Distinguish an unknown membership from a membership belonging to another tenant ([test](../../../conformance/organization-role.mjs#L42))
     - [x] Preserve a final owner under simultaneous self-demotions, opposing demotions and departures on all three SQL engines ([test](../../../adapters/sqlstore/organization_role_test.go#L168))
     - [x] Reject revoked and delegated sessions and recheck the acting account ban inside the transaction ([test](../../../adapters/sqlstore/organization_role_test.go#L115))
+    - [x] Give the member role hooks the member, the requested and previous roles, the account and the organization ([test](../../../adapters/sqlstore/organization_member_role_hooks_test.go#L82))
+    - [x] Save the roles returned by the before hook in place of the requested roles ([test](../../../adapters/sqlstore/organization_member_role_hooks_test.go#L89))
+    - [x] Keep unpermitted, unknown-role and sole-owner changes away from the role hooks ([test](../../../adapters/sqlstore/organization_member_role_hooks_test.go#L116))
   - [x] `GET /organization/get-active-member` ([test](../../../conformance/core.test.mjs#L1864))
     - [x] Read the live membership and its public user profile from each signed-in session across organization switches ([test](../../../conformance/core.test.mjs#L1864))
     - [x] Distinguish a cleared selection from a removed membership and a signed-out client on all three SQL engines ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L284))
@@ -327,6 +330,8 @@
       - [x] Run the member addition hooks for a trusted grant with the member's profile and organization and save the returned roles ([test](../../../adapters/sqlstore/organization_member_hooks_test.go#L96))
       - [x] Give the member removal hooks the membership, its account and the organization ([test](../../../adapters/sqlstore/organization_member_removal_hooks_test.go#L88))
       - [x] Cancel a member removal when the before hook fails ([test](../../../adapters/sqlstore/organization_member_removal_hooks_test.go#L98))
+      - [x] Give the member role hooks the member, the requested and previous roles, the account and the organization ([test](../../../adapters/sqlstore/organization_member_role_hooks_test.go#L82))
+      - [x] Save the roles returned by the before hook in place of the requested roles ([test](../../../adapters/sqlstore/organization_member_role_hooks_test.go#L89))
 
 ## Organization
 
@@ -370,6 +375,12 @@
         - [x] Keep unpermitted, final-owner and unknown-member removals away from the removal hooks ([test](../../../adapters/sqlstore/organization_member_removal_hooks_test.go#L108))
         - [x] Recheck the caller's permission after the before hook and keep the member when it was revoked ([test](../../../adapters/sqlstore/organization_member_removal_hooks_test.go#L119))
         - [x] Return the account for removal by email and report an after-hook error once the removal has committed ([test](../../../adapters/sqlstore/organization_member_removal_hooks_test.go#L132))
+        - [x] Give the member role hooks the member, the requested and previous roles, the account and the organization ([test](../../../adapters/sqlstore/organization_member_role_hooks_test.go#L82))
+        - [x] Save the roles returned by the before hook in place of the requested roles ([test](../../../adapters/sqlstore/organization_member_role_hooks_test.go#L89))
+        - [x] Check a hook's replacement roles like the caller's own request ([test](../../../adapters/sqlstore/organization_member_role_hooks_test.go#L97))
+        - [x] Cancel a role change when the before hook fails ([test](../../../adapters/sqlstore/organization_member_role_hooks_test.go#L106))
+        - [x] Keep unpermitted, unknown-role and sole-owner changes away from the role hooks ([test](../../../adapters/sqlstore/organization_member_role_hooks_test.go#L116))
+        - [x] Report an after-hook error once the role change has committed ([test](../../../adapters/sqlstore/organization_member_role_hooks_test.go#L127))
       - [x] Invitation Hooks ([test](../../../conformance/invitation-preparation.mjs#L54))
         - [x] Deliver the signed-in actor, invitation and destination before and after an authorized decision ([test](../../../conformance/invitation-hooks.mjs#L61))
         - [x] Abort the write on a before-hook error and keep the committed status on an after-hook error ([test](../../../conformance/invitation-hooks.mjs#L66))
