@@ -56,3 +56,51 @@ export async function exerciseAuthorizationCode({ server, issuer, db }) {
   assert.deepEqual(await inspect(token), { active: false });
   assert.equal((await inspect(second)).active, true);
 }
+
+export async function exerciseOfflineCode({ server, issuer, db }) {
+  const { peer, app, fields, user, authorizeCode } = await authorizationCodeClient(issuer, db, {
+    name: "Offline owner", email: "offline-issuance@issuer.test", scopes: ["reports", "offline_access"],
+    callback: "https://reports.example.test/offline",
+  });
+  const post = (base, route, values) => new Request(base + "/oauth2/" + route, {
+    method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: new URLSearchParams(values),
+  });
+  const code = await authorizeCode();
+  const mount = server.baseURL + "/api/auth";
+  const res = await server.send(post(mount, "token", code));
+  const pair = await res.json();
+  assert.equal(res.status, 200, JSON.stringify(pair));
+  assert.equal(pair.scope, "reports offline_access");
+  assert.equal(pair.expires_in, 90);
+  assert.match(pair.refresh_token, /^[a-zA-Z]{32}$/);
+  const digest = s => createHash("sha256").update(s).digest("base64url");
+  const refresh = db.prepare("SELECT * FROM oauthRefreshToken WHERE token=?").get(digest(pair.refresh_token));
+  const access = db.prepare("SELECT * FROM oauthAccessToken WHERE refreshId=?").get(refresh.id);
+  const browser = db.prepare("SELECT * FROM session WHERE id=?").get(refresh.sessionId);
+  assert.equal(refresh.userId, user);
+  assert.equal(refresh.clientId, app.client_id);
+  assert.equal(access.authorizationCodeId, digest(code.code));
+  assert.equal(refresh.authorizationCodeId, access.authorizationCodeId);
+  assert.equal(access.sessionId, browser.id);
+  assert.equal(Date.parse(refresh.expiresAt) - Date.parse(refresh.createdAt), 30 * 24 * 3600 * 1000);
+  assert.equal(Date.parse(refresh.authTime), Date.parse(browser.createdAt));
+  const inspect = async raw => {
+    const r = await issuer.handler(post(peer, "introspect", { ...fields, token: raw }));
+    assert.equal(r.status, 200);
+    return r.json();
+  };
+  assert.equal((await inspect(pair.refresh_token)).sid, browser.id);
+  db.prepare("UPDATE session SET expiresAt=? WHERE id=?").run("2020-01-01T00:00:00.000Z", browser.id);
+  assert.equal((await inspect(pair.access_token)).active, false);
+  assert.equal((await inspect(pair.refresh_token)).active, true);
+  const rotation = await issuer.handler(post(peer, "token", { ...fields, grant_type: "refresh_token", refresh_token: pair.refresh_token }));
+  const rotated = await rotation.json();
+  assert.equal(rotation.status, 200, JSON.stringify(rotated));
+  assert.ok(rotated.refresh_token && rotated.refresh_token !== pair.refresh_token);
+  assert.equal((await inspect(rotated.refresh_token)).active, true);
+  const replay = await server.send(post(mount, "token", code));
+  assert.equal(replay.status, 400);
+  assert.equal((await replay.json()).error, "invalid_grant");
+  assert.deepEqual(await inspect(rotated.refresh_token), { active: false });
+  assert.deepEqual(await inspect(rotated.access_token), { active: false });
+}

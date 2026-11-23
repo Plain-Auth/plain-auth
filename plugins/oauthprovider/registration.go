@@ -163,6 +163,7 @@ func New(opts Options) (auth.Plugin, error) {
 	opts.proofVerifier = proofs
 	opts.DPoP.SigningAlgorithms = slices.Clone(opts.DPoP.SigningAlgorithms)
 	opts.UserInfo.Extensions = slices.Clone(opts.UserInfo.Extensions)
+	opts.UserInfo.SupportedClaims = slices.Clone(opts.UserInfo.SupportedClaims)
 	for _, extension := range opts.UserInfo.Extensions {
 		if extension == nil {
 			return auth.Plugin{}, errors.New("oauthprovider: nil UserInfo claim extension")

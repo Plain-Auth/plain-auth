@@ -22,8 +22,23 @@ var (
 // DelegatedAccessRecord is an opaque access token bound to the browser grant.
 type DelegatedAccessRecord struct {
 	MachineTokenRecord
-	UserID, SessionID string
-	ReferenceID       *string
+	UserID, SessionID       string
+	ReferenceID             *string
+	Refresh                 *InitialRefreshGrant
+	RequestedUserInfoClaims []string
+}
+
+// InitialRefreshGrant shares the user, session, client, scopes and code lineage
+// of its access token. A nil AuthTime uses the browser session's creation time.
+type InitialRefreshGrant struct {
+	ExpiresAt time.Time
+	AuthTime  *time.Time
+}
+
+// DelegatedToken is the response to a successful authorization-code exchange.
+type DelegatedToken struct {
+	MachineToken
+	RefreshToken string `json:"refresh_token,omitempty"`
 }
 
 // AuthorizationCodeClient contains the current policy for delegated issuance.
@@ -59,11 +74,22 @@ type AuthorizationCodeStore interface {
 	RedeemAuthorizationCode(ctx context.Context, clientID, identifier string, checkClient func(MachineClient) error, prepare func(AuthorizationCodeClient, json.RawMessage) (DelegatedAccessRecord, error)) error
 }
 
+// OfflineAuthorizationCodeStore atomically consumes a code and inserts the
+// authorized tokens. For an offline grant it calls issueRefresh with the
+// verified session ID outside database locks, then rechecks the client, code,
+// user and session before persisting the returned digest and linking both rows.
+// prepare can run again during this final check and must perform no I/O.
+type OfflineAuthorizationCodeStore interface {
+	AuthorizationCodeStore
+	RedeemAuthorizationCodeWithRefresh(ctx context.Context, clientID, identifier string, checkClient func(MachineClient) error, prepare func(AuthorizationCodeClient, json.RawMessage) (DelegatedAccessRecord, error), issueRefresh func(sessionID string) (string, error)) error
+}
+
 type storedAuthorizationCode struct {
 	Type        string   `json:"type"`
 	UserID      string   `json:"userId"`
 	SessionID   string   `json:"sessionId"`
 	ReferenceID *string  `json:"referenceId"`
+	AuthTime    *int64   `json:"authTime"`
 	Resources   []string `json:"resource"`
 	Query       struct {
 		ClientID        string          `json:"client_id"`
@@ -71,6 +97,7 @@ type storedAuthorizationCode struct {
 		RedirectURI     string          `json:"redirect_uri"`
 		Scope           *string         `json:"scope"`
 		Nonce           string          `json:"nonce"`
+		Claims          json.RawMessage `json:"claims"`
 		Challenge       string          `json:"code_challenge"`
 		ChallengeMethod string          `json:"code_challenge_method"`
 		Thumbprint      string          `json:"dpop_jkt"`
@@ -78,8 +105,8 @@ type storedAuthorizationCode struct {
 	} `json:"query"`
 }
 
-func (opts Options) redeemAuthorizationCode(c auth.EndpointContext, in tokenRequest, form url.Values) (MachineToken, error) {
-	var result MachineToken
+func (opts Options) redeemAuthorizationCode(c auth.EndpointContext, in tokenRequest, form url.Values) (DelegatedToken, error) {
+	var result DelegatedToken
 	for _, field := range []string{"code", "code_verifier", "redirect_uri"} {
 		if len(form[field]) > 1 {
 			return result, registrationProblem(400, "invalid_request", field+" must not be repeated")
@@ -130,6 +157,7 @@ func (opts Options) redeemAuthorizationCode(c auth.EndpointContext, in tokenRequ
 	if err != nil {
 		return result, err
 	}
+	offlineStore, canIssueRefresh := store.(OfflineAuthorizationCodeStore)
 	prepare := func(client AuthorizationCodeClient, value json.RawMessage) (DelegatedAccessRecord, error) {
 		var code storedAuthorizationCode
 		if err := json.Unmarshal(value, &code); err != nil || code.Type != "authorization_code" || code.Query.ClientID == "" ||
@@ -140,15 +168,39 @@ func (opts Options) redeemAuthorizationCode(c auth.EndpointContext, in tokenRequ
 		if err != nil {
 			return DelegatedAccessRecord{}, err
 		}
+		claims, err := opts.authorizedUserInfoClaims(code.Query.Claims)
+		if err != nil {
+			return DelegatedAccessRecord{}, registrationProblem(400, "invalid_grant", "malformed authorization claims")
+		}
 		now := time.Now().UTC().Truncate(time.Second)
 		lifetime := opts.Tokens.scopeLifetime(opts.Tokens.AccessLifetime, scopes)
-		result = machineResponse(issued, "", scopes, now, lifetime)
-		return DelegatedAccessRecord{
+		result.MachineToken = machineResponse(issued, "", scopes, now, lifetime)
+		record := DelegatedAccessRecord{
 			MachineTokenRecord: MachineTokenRecord{StoredToken: stored, Scopes: scopes, IssuedAt: now, ExpiresAt: now.Add(lifetime)},
 			UserID:             code.UserID, SessionID: code.SessionID, ReferenceID: code.ReferenceID,
-		}, nil
+			RequestedUserInfoClaims: claims,
+		}
+		if slices.Contains(scopes, "offline_access") {
+			if !canIssueRefresh {
+				return DelegatedAccessRecord{}, &auth.APIError{Status: 501, Code: "OAUTH_REFRESH_STORE_UNAVAILABLE", Message: "The configured store does not support offline grants"}
+			}
+			record.Refresh = &InitialRefreshGrant{ExpiresAt: now.Add(opts.Tokens.RefreshLifetime)}
+			if code.AuthTime != nil {
+				at := time.UnixMilli(*code.AuthTime).UTC()
+				record.Refresh.AuthTime = &at
+			}
+		}
+		return record, nil
 	}
-	err = store.RedeemAuthorizationCode(ctx, in.id, identifier, checkClient, prepare)
+	if canIssueRefresh {
+		err = offlineStore.RedeemAuthorizationCodeWithRefresh(ctx, in.id, identifier, checkClient, prepare, func(sessionID string) (string, error) {
+			wire, digest, err := opts.Tokens.issueRefreshToken(ctx, sessionID)
+			result.RefreshToken = wire
+			return digest, err
+		})
+	} else {
+		err = store.RedeemAuthorizationCode(ctx, in.id, identifier, checkClient, prepare)
+	}
 	switch {
 	case errors.Is(err, ErrAuthorizationCodeInvalid):
 		err = registrationProblem(400, "invalid_grant", "invalid code")
@@ -158,7 +210,7 @@ func (opts Options) redeemAuthorizationCode(c auth.EndpointContext, in tokenRequ
 		err = registrationProblem(400, "invalid_request", "session no longer exists")
 	}
 	if err != nil {
-		return MachineToken{}, err
+		return DelegatedToken{}, err
 	}
 	return result, nil
 }
@@ -203,8 +255,38 @@ func (code storedAuthorizationCode) scopesForExchange(client AuthorizationCodeCl
 	if len(code.Resources) > 0 || (len(q.Resource) > 0 && string(q.Resource) != "null") || len(in.resources) > 0 {
 		return nil, registrationProblem(501, "server_error", "resource-targeted authorization-code issuance is unavailable")
 	}
-	if slices.Contains(scopes, "openid") || slices.Contains(scopes, "offline_access") {
-		return nil, registrationProblem(501, "server_error", "ID and refresh token issuance is unavailable")
+	if slices.Contains(scopes, "openid") {
+		return nil, registrationProblem(501, "server_error", "ID token issuance is unavailable")
 	}
 	return scopes, nil
+}
+
+func (opts TokenOptions) issueRefreshToken(ctx context.Context, sessionID string) (wire, digest string, err error) {
+	var raw string
+	if opts.GenerateRefreshToken != nil {
+		raw, err = opts.GenerateRefreshToken(ctx)
+	} else {
+		raw, err = randomClientCredential()
+	}
+	if err != nil {
+		return "", "", err
+	}
+	if raw == "" {
+		return "", "", errors.New("oauthprovider: empty generated refresh token")
+	}
+	digest, err = opts.storedRefresh(ctx, raw)
+	if err != nil {
+		return "", "", err
+	}
+	wire = raw
+	if opts.EncodeRefreshToken != nil {
+		wire, err = opts.EncodeRefreshToken(ctx, raw, sessionID)
+		if err != nil {
+			return "", "", err
+		}
+		if wire == "" {
+			return "", "", errors.New("oauthprovider: empty encoded refresh token")
+		}
+	}
+	return opts.RefreshPrefix + wire, digest, nil
 }

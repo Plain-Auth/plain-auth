@@ -11746,6 +11746,11 @@
       "label": "Return prefixed shared credentials accepted by an independent issuer",
       "test": "conformance/oauth-registration.mjs",
       "marker": "assert.match(app.client_secret,"
+    },
+    {
+      "label": "Generate and hash the raw refresh token, encode it for its session, then apply the public prefix",
+      "test": "adapters/sqlstore/oauth_offline_code_test.go",
+      "marker": "unexpected refresh format or access lifetime"
     }
   ],
   "plugin-symbol/oauth-provider/OAuthOptions/grantTypes": [
@@ -12118,6 +12123,16 @@
       "label": "Roll back failed token inserts and serialize simultaneous redemptions across independent SQL connections on all three databases",
       "test": "adapters/sqlstore/oauth_authorization_code_test.go",
       "marker": "func TestAuthorizationCodeRedemption("
+    },
+    {
+      "label": "Issue an offline token pair, rotate the refresh token at an independent issuer after session expiry and remove the rotated tokens on code replay",
+      "test": "conformance/oauth-authorization-code.mjs",
+      "marker": "export async function exerciseOfflineCode("
+    },
+    {
+      "label": "Commit both tokens and consume the code together, retry after insert failures and isolate simultaneous redemptions on all three databases",
+      "test": "adapters/sqlstore/oauth_offline_code_test.go",
+      "marker": "func testOfflineCodeTransactions("
     }
   ],
   "docs/content/docs/plugins/oauth-provider/reference.mdx#L321/`POST /oauth2/token`": [
@@ -12145,6 +12160,11 @@
       "label": "Roll back failed token inserts and serialize simultaneous redemptions across independent SQL connections on all three databases",
       "test": "adapters/sqlstore/oauth_authorization_code_test.go",
       "marker": "func TestAuthorizationCodeRedemption("
+    },
+    {
+      "label": "Issue an offline token pair, rotate the refresh token at an independent issuer after session expiry and remove the rotated tokens on code replay",
+      "test": "conformance/oauth-authorization-code.mjs",
+      "marker": "export async function exerciseOfflineCode("
     }
   ],
   "plugin-symbol/oauth-provider/OAuthOptions/m2mAccessTokenExpiresIn": [
@@ -12204,6 +12224,11 @@
       "label": "Redeem codes using the configured verification identifier and keep stored token families isolated after replay",
       "test": "adapters/sqlstore/oauth_authorization_code_test.go",
       "marker": "func TestAuthorizationCodeRedemption("
+    },
+    {
+      "label": "Generate and hash the raw refresh token, encode it for its session, then apply the public prefix",
+      "test": "adapters/sqlstore/oauth_offline_code_test.go",
+      "marker": "unexpected refresh format or access lifetime"
     }
   ],
   "docs/content/docs/plugins/oauth-provider/tokens.mdx#L125/`m2mAccessTokenExpiresIn`": [
@@ -12432,6 +12457,11 @@
       "label": "Unwrap custom refresh-token values before hashing and distinguish unknown encodings from decoder errors",
       "test": "adapters/sqlstore/oauth_revocation_test.go",
       "marker": "revoke(\"Reports\", \"rt_key-error\", \"refresh_token\", 500)"
+    },
+    {
+      "label": "Generate and hash the raw refresh token, encode it for its session, then apply the public prefix",
+      "test": "adapters/sqlstore/oauth_offline_code_test.go",
+      "marker": "unexpected refresh format or access lifetime"
     }
   ],
   "plugin-symbol/oauth-provider/OAuthOptions/cachedTrustedClients": [
@@ -12644,6 +12674,16 @@
       "label": "Apply offline and session-bound grants across session expiry, deletion and revocation while preserving the issuing application’s ownership",
       "test": "conformance/oauth-refresh-introspection.mjs",
       "marker": "const detached = { ...expected };"
+    },
+    {
+      "label": "Issue an offline token pair, rotate the refresh token at an independent issuer after session expiry and remove the rotated tokens on code replay",
+      "test": "conformance/oauth-authorization-code.mjs",
+      "marker": "export async function exerciseOfflineCode("
+    },
+    {
+      "label": "Commit both tokens and consume the code together, retry after insert failures and isolate simultaneous redemptions on all three databases",
+      "test": "adapters/sqlstore/oauth_offline_code_test.go",
+      "marker": "func testOfflineCodeTransactions("
     }
   ],
   "plugin-symbol/oauth-provider/OAuthOptions/pairwiseSecret": [
@@ -12924,6 +12964,11 @@
       "label": "Roll back failed token inserts and serialize simultaneous redemptions across independent SQL connections on all three databases",
       "test": "adapters/sqlstore/oauth_authorization_code_test.go",
       "marker": "func TestAuthorizationCodeRedemption("
+    },
+    {
+      "label": "Issue an offline token pair, rotate the refresh token at an independent issuer after session expiry and remove the rotated tokens on code replay",
+      "test": "conformance/oauth-authorization-code.mjs",
+      "marker": "export async function exerciseOfflineCode("
     }
   ],
   "docs/content/docs/plugins/oauth-provider/index.mdx#L20/PKCE": [
@@ -12963,6 +13008,27 @@
       "label": "Apply the configured delegated lifetime for a successful headless public-client exchange on all SQL engines",
       "test": "adapters/sqlstore/oauth_authorization_code_test.go",
       "marker": "reply.ExpiresIn != 120"
+    }
+  ],
+  "plugin-symbol/oauth-provider/OAuthOptions/refreshTokenExpiresIn": [
+    {
+      "label": "Set the offline refresh lifetime independently of the scope-limited access token and retain the original authentication time",
+      "test": "adapters/sqlstore/oauth_offline_code_test.go",
+      "marker": "offline grant bindings or lifetime were lost"
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/tokens.mdx#L127/`refreshTokenExpiresIn`": [
+    {
+      "label": "Set the offline refresh lifetime independently of the scope-limited access token and retain the original authentication time",
+      "test": "adapters/sqlstore/oauth_offline_code_test.go",
+      "marker": "offline grant bindings or lifetime were lost"
+    }
+  ],
+  "plugin-symbol/oauth-provider/OAuthOptions/generateRefreshToken": [
+    {
+      "label": "Generate and hash the raw refresh token, encode it for its session, then apply the public prefix",
+      "test": "adapters/sqlstore/oauth_offline_code_test.go",
+      "marker": "unexpected refresh format or access lifetime"
     }
   ]
 }

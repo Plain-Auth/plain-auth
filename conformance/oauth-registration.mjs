@@ -11,7 +11,7 @@ import { exerciseIntrospection } from "./oauth-introspection.mjs";
 import { exerciseClientKeyRotation } from "./oauth-key-rotation.mjs";
 import { exerciseClientAssertions } from "./oauth-client-assertions.mjs";
 import { exerciseRefreshIntrospection } from "./oauth-refresh-introspection.mjs";
-import { exerciseAuthorizationCode } from "./oauth-authorization-code.mjs";
+import { exerciseAuthorizationCode, exerciseOfflineCode } from "./oauth-authorization-code.mjs";
 import { exerciseSignedIntrospection } from "./oauth-signed-introspection.mjs";
 import { exerciseRevocation } from "./oauth-revocation.mjs";
 
@@ -339,6 +339,9 @@ export async function compareClientRegistration(t, reference, goFixture) {
         });
         await t.test("redeem independently issued PKCE codes and isolate replay cleanup", async () => {
           await exerciseAuthorizationCode({ server, issuer, db });
+        });
+        await t.test("issue offline access and rotate the issued refresh token at an independent issuer", async () => {
+          await exerciseOfflineCode({ server, issuer, db });
         });
         await t.test("revoke access and refresh tokens and recognize independently signed access tokens", async () => {
           await exerciseRevocation({ runtime, server, issuer, db, credentials, created, cookie, exchange });

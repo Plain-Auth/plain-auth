@@ -189,6 +189,9 @@ func TestAuthorizationCodeRedemption(t *testing.T) {
 			if !token.Valid() || token.Extra("scope") != "reports" {
 				t.Fatal("Go OAuth client received an unusable delegated token")
 			}
+			t.Run("offline", func(t *testing.T) {
+				testOfflineCodeTransactions(t, s, peer, verifier, now)
+			})
 		})
 	}
 }

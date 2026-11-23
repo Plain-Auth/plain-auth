@@ -14,7 +14,7 @@ import (
 	auth "github.com/Plain-Auth/plain-auth"
 )
 
-// TokenOptions controls access token issuance. Lifetimes use whole seconds.
+// TokenOptions controls access and refresh tokens. Lifetimes use whole seconds.
 type TokenOptions struct {
 	// OpaqueResourceTokens selects stored tokens even when the JWT plugin is installed.
 	OpaqueResourceTokens bool
@@ -37,6 +37,12 @@ type TokenOptions struct {
 	// RevocationRateLimit defaults to 30 per minute. An empty rule uses the host's global limit.
 	RevocationRateLimit *auth.RateLimitRule
 	RefreshPrefix       string
+	// RefreshLifetime defaults to 30 days and is independent of the access token lifetime.
+	RefreshLifetime      time.Duration
+	GenerateRefreshToken func(context.Context) (string, error)
+	// EncodeRefreshToken formats an issued refresh credential for its session.
+	// The configured prefix is added after encoding. Supply a corresponding decoder.
+	EncodeRefreshToken func(ctx context.Context, raw, sessionID string) (string, error)
 	// DecodeRefreshToken unwraps an unprefixed refresh token before lookup.
 	// Return ErrInvalidRefreshToken for an unrecognized encoding.
 	DecodeRefreshToken func(context.Context, string) (string, error)
@@ -44,6 +50,15 @@ type TokenOptions struct {
 }
 
 func (opts *TokenOptions) defaults() error {
+	if opts.RefreshLifetime == 0 {
+		opts.RefreshLifetime = 30 * 24 * time.Hour
+	}
+	if opts.RefreshLifetime < time.Second || opts.RefreshLifetime%time.Second != 0 {
+		return errors.New("oauthprovider: refresh token lifetime must be a positive whole number of seconds")
+	}
+	if opts.EncodeRefreshToken != nil && opts.DecodeRefreshToken == nil {
+		return errors.New("oauthprovider: a refresh token encoder requires a matching decoder")
+	}
 	if opts.MachineLifetime == 0 {
 		opts.MachineLifetime = time.Hour
 	}

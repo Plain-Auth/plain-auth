@@ -1,11 +1,66 @@
 package oauthprovider
 
 import (
+	"bytes"
+	"encoding/json"
+	"errors"
 	"slices"
 	"strings"
 
 	auth "github.com/Plain-Auth/plain-auth"
 )
+
+func (opts Options) authorizedUserInfoClaims(raw json.RawMessage) ([]string, error) {
+	if len(raw) == 0 {
+		return nil, nil
+	}
+	if raw[0] == '"' {
+		var s string
+		if err := json.Unmarshal(raw, &s); err != nil {
+			return nil, err
+		}
+		raw = []byte(s)
+	}
+	raw = bytes.TrimSpace(raw)
+	if len(raw) == 0 || raw[0] != '{' {
+		return nil, errors.New("invalid authorization claims object")
+	}
+	var claims map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &claims); err != nil || claims["userinfo"] == nil {
+		return nil, err
+	}
+	d := json.NewDecoder(bytes.NewReader(claims["userinfo"]))
+	if kind, err := d.Token(); err != nil || kind != json.Delim('{') {
+		return nil, errors.New("invalid userinfo claim request")
+	}
+	allowed := opts.UserInfo.SupportedClaims
+	if allowed == nil {
+		allowed = []string{"sub", "iss", "aud", "exp", "iat", "sid", "scope", "azp"}
+		if slices.Contains(opts.Scopes, "profile") {
+			allowed = append(allowed, "name", "picture", "given_name", "family_name")
+		}
+		if slices.Contains(opts.Scopes, "email") {
+			allowed = append(allowed, "email", "email_verified")
+		}
+	}
+	var granted []string
+	for d.More() {
+		key, err := d.Token()
+		if err != nil {
+			return nil, err
+		}
+		// A requested member is null or an object carrying claim preferences.
+		var member map[string]json.RawMessage
+		if err := d.Decode(&member); err != nil {
+			return nil, err
+		}
+		name := key.(string)
+		if slices.Contains(allowed, name) && !slices.Contains(granted, name) {
+			granted = append(granted, name)
+		}
+	}
+	return granted, nil
+}
 
 func (opts UserInfoOptions) projectClaims(c auth.EndpointContext, in UserInfoInput, subject string) (map[string]any, error) {
 	// An unresolved standard claim remains reserved when its scope or its

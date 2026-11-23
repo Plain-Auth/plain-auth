@@ -134,6 +134,10 @@ func (opts TokenOptions) storedTokenDigest(ctx context.Context, token string, ki
 			return "", err
 		}
 	}
+	return opts.storedRefresh(ctx, raw)
+}
+
+func (opts TokenOptions) storedRefresh(ctx context.Context, raw string) (string, error) {
 	if opts.HashRefreshToken == nil {
 		return tokenDigest(raw), nil
 	}

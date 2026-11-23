@@ -14,6 +14,9 @@ import (
 // UserInfoOptions configures OpenID Connect profile claims and the endpoint limit.
 type UserInfoOptions struct {
 	RateLimit *auth.RateLimitRule
+	// SupportedClaims limits individual claim names retained from authorized requests.
+	// A nil list uses the standard claims supported by the configured scopes.
+	SupportedClaims []string
 	// Extensions contribute additional claims in order. The first extension
 	// contributing a name owns it. Standard claims take precedence.
 	Extensions []UserInfoClaimsFunc
