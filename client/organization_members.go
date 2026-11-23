@@ -108,3 +108,12 @@ func (c *Client) FullOrganization(ctx context.Context, q org.FullOrganizationQue
 	err := c.Do(ctx, http.MethodGet, organizationRoute("get-full-organization", params), nil, &out)
 	return out, err
 }
+
+// ListOrganizationInvitations returns invitations the member can manage,
+// including accepted, canceled and rejected invitations. An empty ID uses
+// the session's active organization.
+func (c *Client) ListOrganizationInvitations(ctx context.Context, organizationID string) ([]org.Invitation, error) {
+	var list []org.Invitation
+	err := c.Do(ctx, http.MethodGet, organizationRoute("list-invitations", url.Values{"organizationId": {organizationID}}), nil, &list)
+	return list, err
+}

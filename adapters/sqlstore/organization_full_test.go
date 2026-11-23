@@ -62,6 +62,23 @@ func TestFullOrganizationSnapshot(t *testing.T) {
 				}
 				return got
 			}
+			invites, err := store.ListOrganizationInvitations(ctx, "actorSession", host.ID, group.ID, true)
+			must(err)
+			if len(invites) != 1 || invites[0].Role != "member, owner" {
+				t.Fatal("compound owner could not list an owner invitation")
+			}
+			exec(`UPDATE "member" SET "role"='member, admin' WHERE "id"='z-host'`)
+			invites, err = store.ListOrganizationInvitations(ctx, "actorSession", host.ID, "", true)
+			must(err)
+			if invites == nil || len(invites) != 0 {
+				t.Fatal("compound admin saw an owner invitation")
+			}
+			exec(`UPDATE "member" SET "role"='member' WHERE "id"='z-host'`)
+			invites, err = store.ListOrganizationInvitations(ctx, "actorSession", host.ID, "", false)
+			if invites != nil || !errors.Is(err, org.ErrInvitationListDenied) {
+				t.Fatal("unexpected invitation permissions for a member")
+			}
+			exec(`UPDATE "member" SET "role"='member, owner' WHERE "id"='z-host'`)
 			defaultPage := read(0)
 			if len(defaultPage.Members) != 100 || defaultPage.Teams == nil || len(defaultPage.Invitations) != 1 {
 				t.Fatal("incorrect defaults, invitations or empty teams")

@@ -160,6 +160,11 @@ func TestOrganizationAndTeamSelectionHTTP(t *testing.T) {
 			if full == nil || full.ID != first || len(full.Members) != 1 || full.Members[0].User.Email != login["email"] || len(full.Teams) != 1 || full.Teams[0].ID != team || full.Invitations == nil {
 				t.Fatal("Go full organization client returned the wrong session view", full)
 			}
+			inviteList, err := sdk.ListOrganizationInvitations(ctx, first)
+			must(err)
+			if inviteList == nil || len(inviteList) != 0 {
+				t.Fatal("Go invitation client failed to read an empty organization list")
+			}
 			emptySDK, err := client.New(origin, one)
 			must(err)
 			unselected, err := emptySDK.FullOrganization(ctx, org.FullOrganizationQuery{})

@@ -106,7 +106,11 @@ func models(a *plainauth.Auth, info plainauth.HTTPDescription) object {
 	if a.HasPlugin("organization") {
 		m["Organization"] = modelSchema(reflect.TypeFor[organization.Organization]())
 		m["Member"] = modelSchema(reflect.TypeFor[organization.Member]())
-		m["Invitation"] = modelSchema(reflect.TypeFor[organization.Invitation]())
+		invitation := modelSchema(reflect.TypeFor[organization.Invitation]())
+		if !hasTeams {
+			delete(invitation["properties"].(object), "teamId")
+		}
+		m["Invitation"] = invitation
 		lists := object{"members": array(organizationMemberProfile()), "invitations": array(modelRef("Invitation"))}
 		required := []string{"members", "invitations"}
 		if hasTeams {

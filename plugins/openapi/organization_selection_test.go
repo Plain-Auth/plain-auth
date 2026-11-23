@@ -85,6 +85,12 @@ func TestOrganizationSelectionSchema(t *testing.T) {
 				lists["members"] == nil || lists["invitations"] == nil || (lists["teams"] != nil) != tc.teams {
 				t.Fatal("full organization description does not match the configured collections", lists)
 			}
+			invites := node(paths, "/organization/list-invitations", "get")
+			inviteItems := node(invites, "responses", "200", "content", "application/json", "schema", "items")
+			inviteFields := node(doc, "components", "schemas", "Invitation", "properties")
+			if len(invites["parameters"].([]any)) != 1 || inviteItems["$ref"] != "#/components/schemas/Invitation" || (inviteFields["teamId"] != nil) != tc.teams {
+				t.Fatal("invitation list schema disagrees with configured team fields")
+			}
 			lookup := node(paths, "/organization/get-active-member-role", "get")
 			directory := node(paths, "/organization/list-members", "get")
 			queries, _ := directory["parameters"].([]any)

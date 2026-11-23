@@ -56,6 +56,13 @@ func (o Options) fullOrganizationEndpoint(store FullOrganizationStore) auth.Endp
 		if err != nil {
 			return nil, err
 		}
-		return store.FullOrganization(c.Request.Context(), session.Session.ID, session.User.ID, q, o.Teams != nil)
+		full, err := store.FullOrganization(c.Request.Context(), session.Session.ID, session.User.ID, q, o.Teams != nil)
+		if err != nil || full == nil || o.Teams == nil {
+			return full, err
+		}
+		return struct {
+			*FullOrganization
+			Invitations []teamInvitationRow `json:"invitations"`
+		}{full, teamInvitationRows(full.Invitations)}, nil
 	}}
 }

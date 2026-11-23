@@ -71,7 +71,7 @@ func (s *Store) FullOrganization(ctx context.Context, sessionID, userID string, 
 	}
 	owner := membershipHasRole(role.String, "owner")
 	if owner || membershipHasRole(role.String, "admin") {
-		result.Invitations, err = s.fullOrganizationInvitations(ctx, tx, group.ID, owner, includeTeams)
+		result.Invitations, err = s.visibleOrganizationInvitations(ctx, tx, group.ID, owner, includeTeams)
 		if err != nil {
 			return nil, err
 		}
@@ -111,24 +111,4 @@ func (s *Store) clearDeniedSelection(ctx context.Context, session, user, observe
 		return err
 	}
 	return tx.Commit()
-}
-
-func (s *Store) fullOrganizationInvitations(ctx context.Context, tx *sql.Tx, group string, owner, teams bool) ([]org.Invitation, error) {
-	query := `SELECT ` + invitationColumns(teams) + ` FROM "invitation" WHERE "organizationId"=` + s.exactSQLValue("?") + ` ORDER BY "createdAt","id" LIMIT 100`
-	rows, err := tx.QueryContext(ctx, s.bind(query), group)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	out := []org.Invitation{}
-	for rows.Next() {
-		invite, err := scanInvitation(rows, teams)
-		if err != nil {
-			return nil, err
-		}
-		if owner || !membershipHasRole(invite.Role, "owner") {
-			out = append(out, invite)
-		}
-	}
-	return out, rows.Err()
 }

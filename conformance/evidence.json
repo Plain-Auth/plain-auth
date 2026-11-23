@@ -14284,5 +14284,64 @@
       "marker": "failed to hydrate a member page beyond the default limit",
       "complete": true
     }
+  ],
+  "plugin/organization/GET /organization/list-invitations": [
+    {
+      "label": "List every invitation status and preserve expired pending invitations",
+      "test": "conformance/organization-invitations.mjs",
+      "marker": "assert.deepEqual([...new Set(all.map(inv => inv.status))]"
+    },
+    {
+      "label": "Restrict owner invitations to owners, including compound target roles",
+      "test": "conformance/organization-invitations.mjs",
+      "marker": "assert.equal(adminList.some(inv => inv.id === ownerGrant.id), false)"
+    },
+    {
+      "label": "Expose a nullable team ID only on a team-enabled installation",
+      "test": "conformance/organization-invitations.mjs",
+      "marker": "assert.equal(\"teamId\" in orgWide, teams)"
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1030": [
+    {
+      "label": "List every invitation status and preserve expired pending invitations",
+      "test": "conformance/organization-invitations.mjs",
+      "marker": "assert.deepEqual([...new Set(all.map(inv => inv.status))]"
+    },
+    {
+      "label": "Restrict owner invitations to owners, including compound target roles",
+      "test": "conformance/organization-invitations.mjs",
+      "marker": "assert.equal(adminList.some(inv => inv.id === ownerGrant.id), false)"
+    },
+    {
+      "label": "Expose a nullable team ID only on a team-enabled installation",
+      "test": "conformance/organization-invitations.mjs",
+      "marker": "assert.equal(\"teamId\" in orgWide, teams)"
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1034/`GET /organization/list-invitations`": [
+    {
+      "label": "List every invitation status and preserve expired pending invitations",
+      "test": "conformance/organization-invitations.mjs",
+      "marker": "assert.deepEqual([...new Set(all.map(inv => inv.status))]"
+    },
+    {
+      "label": "Restrict owner invitations to owners, including compound target roles",
+      "test": "conformance/organization-invitations.mjs",
+      "marker": "assert.equal(adminList.some(inv => inv.id === ownerGrant.id), false)"
+    },
+    {
+      "label": "Expose a nullable team ID only on a team-enabled installation",
+      "test": "conformance/organization-invitations.mjs",
+      "marker": "assert.equal(\"teamId\" in orgWide, teams)"
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1040/Parameter `organizationId` (optional)": [
+    {
+      "label": "Use the explicit organization ID or the active selection without switching organizations",
+      "test": "conformance/organization-invitations.mjs",
+      "marker": "assert.equal(ok(await owner.getSession()).session.activeOrganizationId, annex.id)",
+      "complete": true
+    }
   ]
 }

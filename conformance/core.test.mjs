@@ -1902,3 +1902,8 @@ test("the full organization lookup projects members, teams and authorized invita
   const { compareFullOrganization } = await import("./organization-full.mjs");
   await compareFullOrganization(t, { reference, goFixture, instrument });
 });
+
+test("organization invitation lists enforce current permissions and preserve team targets on both servers", async t => {
+  const { compareOrganizationInvitations } = await import("./organization-invitations.mjs");
+  await compareOrganizationInvitations(t, { reference, goFixture, instrument });
+});

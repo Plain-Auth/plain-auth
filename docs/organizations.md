@@ -41,6 +41,7 @@ The application provides `sendInvitation`, its configured public `origin` and it
 | GET | `/organization/get-active-member` | Read your membership, role and public profile in this session's active organization. Requires a signed-in session. |
 | GET | `/organization/get-active-member-role` | Read a user's role in an organization you both belong to. Omit all query parameters for your own role in the active organization. |
 | POST | `/organization/set-active` | Select by ID or slug. Send `{"organizationId":null}` to clear the current selection |
+| GET | `/organization/list-invitations` | List invitations visible to an owner or admin in the named or active organization |
 | POST | `/organization/invite-member` | Invite by email and role, using an explicit organization ID or the active selection |
 | POST | `/organization/accept-invitation` | Accept by invitation ID, create the membership, and select the organization |
 | POST | `/organization/remove-member` | Remove by membership ID or email. Omit `organizationId` to use the active organization. |
@@ -212,6 +213,22 @@ Pass a membership ID or the account's email as `memberIdOrEmail`. IDs are case-s
 The Go HTTP client provides `RemoveOrganizationMember(ctx, memberIDOrEmail, organizationID)` and `LeaveOrganization(ctx, organizationID)`. An empty organization ID on removal uses that client's active selection.
 
 Removal releases the member's team seats in that organization and clears its organization and team selections from every affected session. This also works when the handling process uses the organization plugin without teams while sharing a team-enabled database. Sessions selecting another organization retain that selection. [Client comparison](../conformance/organization-removal.mjs) · [Three-database concurrency tests](../adapters/sqlstore/organization_removal_test.go)
+
+## List organization invitations
+
+Use a signed-in owner or admin session to call `GET /organization/list-invitations`. The optional `organizationId` selects another organization you belong to. Without an ID, the request uses the current session's active organization. This endpoint preserves both organization and team selections on success and on error.
+
+```sh
+curl --fail-with-body -b cookies.txt --get \
+  https://app.example.com/api/auth/organization/list-invitations \
+  --data-urlencode 'organizationId=org_a'
+```
+
+The JSON response is an array. Each entry includes the invitation ID, organization ID, inviter ID, recipient email, granted roles, status, creation time and expiry. The list includes expired invitations and all stored statuses. Branch on `status` and `expiresAt` when displaying actions. With teams enabled, `teamId` is null for an organization-wide invitation or a string containing its team IDs separated by commas. The field is absent when teams are disabled.
+
+The database reads up to 100 invitations in creation order, using the ID to break ties. Owners can see the whole page. Admins see only invitations whose roles exclude `owner`. Ordinary members receive HTTP 403 with `YOU_ARE_NOT_ALLOWED_TO_LIST_INVITATIONS`, including when the organization has no invitations. A missing selection returns HTTP 400. An unknown organization or one the caller does not belong to returns HTTP 403.
+
+In Go, call `authClient.ListOrganizationInvitations(ctx, organizationID)`, using an empty string for the active organization. To require recipients to verify their account email before accepting an invitation, set `RequireVerifiedEmail: true` in the organization options. [HTTP client comparison](../conformance/organization-invitations.mjs) · [Go client and session tests](../adapters/sqlstore/organization_selection_http_test.go)
 
 ## Grant membership from your application
 
