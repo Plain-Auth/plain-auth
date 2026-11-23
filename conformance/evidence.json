@@ -7382,6 +7382,21 @@
       "label": "Reject a trusted team grant under a resolved cap because no session is available, and keep the organization membership unwritten",
       "test": "adapters/sqlstore/organization_team_seats_test.go",
       "marker": "// A trusted grant has no session for the host to judge."
+    },
+    {
+      "label": "Run the member addition hooks for a trusted grant with the member's profile and organization and save the returned roles",
+      "test": "adapters/sqlstore/organization_member_hooks_test.go",
+      "marker": "// A trusted grant runs the hooks with the member's profile and organization."
+    },
+    {
+      "label": "Keep duplicate, unknown, wrong-team and full-organization grants away from the member addition hooks",
+      "test": "adapters/sqlstore/organization_member_hooks_test.go",
+      "marker": "// Grants that cannot proceed never reach the hooks."
+    },
+    {
+      "label": "Cancel a trusted grant when the member addition hook fails",
+      "test": "adapters/sqlstore/organization_member_hooks_test.go",
+      "marker": "// A before-hook error cancels the grant."
     }
   ],
   "docs/content/docs/reference/options.mdx#L135": [
@@ -10574,6 +10589,16 @@
       "label": "Store nothing when the creation hook fails or returns an invalid override, and keep the organization when the after hook fails",
       "test": "adapters/sqlstore/organization_creation_hooks_test.go",
       "marker": "// A before-hook error or an invalid override stores nothing; an after-hook error keeps the organization."
+    },
+    {
+      "label": "Run the member addition hooks for an organization's creator between the creation hooks and save the returned roles",
+      "test": "adapters/sqlstore/organization_member_hooks_test.go",
+      "marker": "// The creator's membership runs both hooks, and its override is saved."
+    },
+    {
+      "label": "Run the member addition hooks for a trusted grant with the member's profile and organization and save the returned roles",
+      "test": "adapters/sqlstore/organization_member_hooks_test.go",
+      "marker": "// A trusted grant runs the hooks with the member's profile and organization."
     }
   ],
   "plugin-symbol/siwe/SIWEPluginOptions/getNonce": [
@@ -16422,6 +16447,28 @@
       "test": "adapters/sqlstore/organization_creation_hooks_test.go",
       "marker": "// Trusted creation names a user, skips AllowUserToCreateOrganization and selects nothing.",
       "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L220": [
+    {
+      "label": "Run the member addition hooks for an organization's creator between the creation hooks and save the returned roles",
+      "test": "adapters/sqlstore/organization_member_hooks_test.go",
+      "marker": "// The creator's membership runs both hooks, and its override is saved."
+    },
+    {
+      "label": "Run the member addition hooks for a trusted grant with the member's profile and organization and save the returned roles",
+      "test": "adapters/sqlstore/organization_member_hooks_test.go",
+      "marker": "// A trusted grant runs the hooks with the member's profile and organization."
+    },
+    {
+      "label": "Keep duplicate, unknown, wrong-team and full-organization grants away from the member addition hooks",
+      "test": "adapters/sqlstore/organization_member_hooks_test.go",
+      "marker": "// Grants that cannot proceed never reach the hooks."
+    },
+    {
+      "label": "Cancel a trusted grant when the member addition hook fails",
+      "test": "adapters/sqlstore/organization_member_hooks_test.go",
+      "marker": "// A before-hook error cancels the grant."
     }
   ]
 }

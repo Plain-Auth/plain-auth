@@ -141,6 +141,9 @@
     - [x] Persist ordered role labels and empty roles when trusted application code grants membership ([test](../../../conformance/organization-server-grants.mjs#L41))
     - [x] Distinguish an unprivileged member from a missing membership on all three SQL engines ([test](../../../adapters/sqlstore/organization_members_test.go#L181))
     - [x] Reject a trusted team grant under a resolved cap because no session is available, and keep the organization membership unwritten ([test](../../../adapters/sqlstore/organization_team_seats_test.go#L178))
+    - [x] Run the member addition hooks for a trusted grant with the member's profile and organization and save the returned roles ([test](../../../adapters/sqlstore/organization_member_hooks_test.go#L96))
+    - [x] Keep duplicate, unknown, wrong-team and full-organization grants away from the member addition hooks ([test](../../../adapters/sqlstore/organization_member_hooks_test.go#L108))
+    - [x] Cancel a trusted grant when the member addition hook fails ([test](../../../adapters/sqlstore/organization_member_hooks_test.go#L122))
   - [ ] `POST /organization/remove-member`
     - [x] Resolve simultaneous opposing owner removals in a single transaction attempt while both PostgreSQL connections wait on database locks ([test](../../../adapters/sqlstore/organization_locking_test.go#L106))
     - [x] Remove by case-insensitive email or exact membership ID and return the matching public member shape through the released client ([test](../../../conformance/organization-removal.mjs#L54))
@@ -317,6 +320,8 @@
       - [x] Return an after-hook error once the organization deletion has committed ([test](../../../adapters/sqlstore/organization_deletion_test.go#L181))
       - [x] Give the creation hook the proposed organization and creator, and save the name, slug and metadata it returns ([test](../../../adapters/sqlstore/organization_creation_hooks_test.go#L90))
       - [x] Store nothing when the creation hook fails or returns an invalid override, and keep the organization when the after hook fails ([test](../../../adapters/sqlstore/organization_creation_hooks_test.go#L109))
+      - [x] Run the member addition hooks for an organization's creator between the creation hooks and save the returned roles ([test](../../../adapters/sqlstore/organization_member_hooks_test.go#L85))
+      - [x] Run the member addition hooks for a trusted grant with the member's profile and organization and save the returned roles ([test](../../../adapters/sqlstore/organization_member_hooks_test.go#L96))
 
 ## Organization
 
@@ -351,6 +356,10 @@
         - [x] Give the creation hook the proposed organization and creator, and save the name, slug and metadata it returns ([test](../../../adapters/sqlstore/organization_creation_hooks_test.go#L90))
         - [x] Store nothing when the creation hook fails or returns an invalid override, and keep the organization when the after hook fails ([test](../../../adapters/sqlstore/organization_creation_hooks_test.go#L109))
       - [ ] Member Hooks
+        - [x] Run the member addition hooks for an organization's creator between the creation hooks and save the returned roles ([test](../../../adapters/sqlstore/organization_member_hooks_test.go#L85))
+        - [x] Run the member addition hooks for a trusted grant with the member's profile and organization and save the returned roles ([test](../../../adapters/sqlstore/organization_member_hooks_test.go#L96))
+        - [x] Keep duplicate, unknown, wrong-team and full-organization grants away from the member addition hooks ([test](../../../adapters/sqlstore/organization_member_hooks_test.go#L108))
+        - [x] Cancel a trusted grant when the member addition hook fails ([test](../../../adapters/sqlstore/organization_member_hooks_test.go#L122))
       - [x] Invitation Hooks ([test](../../../conformance/invitation-preparation.mjs#L54))
         - [x] Deliver the signed-in actor, invitation and destination before and after an authorized decision ([test](../../../conformance/invitation-hooks.mjs#L61))
         - [x] Abort the write on a before-hook error and keep the committed status on an after-hook error ([test](../../../conformance/invitation-hooks.mjs#L66))

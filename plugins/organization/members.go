@@ -62,7 +62,25 @@ func (service *Service) AddMember(ctx context.Context, request AddMemberRequest)
 		ID: rand.Text(), OrganizationID: request.OrganizationID, UserID: request.UserID,
 		Role: strings.Join(NormalizeRoles(request.Roles...), ","), CreatedAt: time.Now().UTC().Truncate(time.Millisecond),
 	}
+	o := service.options
+	var candidate MemberCandidate
+	if o.BeforeAddMember != nil || o.AfterAddMember != nil {
+		prepared, ok := o.Store.(MemberAdditionStore)
+		if !ok {
+			return nil, errMemberHookStore
+		}
+		var err error
+		if candidate, err = prepared.PrepareMemberAddition(ctx, *member, request.TeamID); err != nil {
+			return nil, err
+		}
+		if err = o.beforeAddMember(ctx, member, candidate.User, candidate.Organization); err != nil {
+			return nil, err
+		}
+	}
 	if err := store.AddOrganizationMember(ctx, *member, request.TeamID); err != nil {
+		return nil, err
+	}
+	if err := o.afterAddMember(ctx, *member, candidate.User, candidate.Organization); err != nil {
 		return nil, err
 	}
 	return member, nil

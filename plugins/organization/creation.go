@@ -111,7 +111,13 @@ func (o Options) createOrganization(ctx context.Context, user authn.User, group 
 		}
 	}
 	member := Member{ID: rand.Text(), OrganizationID: group.ID, UserID: user.ID, Role: o.rolePolicy.CreatorRole(), CreatedAt: group.CreatedAt}
+	if err := o.beforeAddMember(ctx, &member, user, group); err != nil {
+		return nil, err
+	}
 	if err := o.Store.CreateOrganization(ctx, group, member, sessionID, keep); err != nil {
+		return nil, err
+	}
+	if err := o.afterAddMember(ctx, member, user, group); err != nil {
 		return nil, err
 	}
 	if after := o.AfterCreateOrganization; after != nil {

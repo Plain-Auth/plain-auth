@@ -101,7 +101,14 @@ type Options struct {
 	BeforeCreateOrganization func(context.Context, BeforeOrganizationCreation) (*ProfileUpdate, error)
 	// AfterCreateOrganization runs after the organization and the creator's
 	// membership commit. Its error is returned and the organization remains.
-	AfterCreateOrganization  func(context.Context, AfterOrganizationCreation) error
+	AfterCreateOrganization func(context.Context, AfterOrganizationCreation) error
+	// BeforeAddMember sees a membership about to be granted to an
+	// organization's creator or through Service.AddMember, and may replace its
+	// roles. An error cancels the grant.
+	BeforeAddMember func(context.Context, BeforeMemberAddition) (*MemberOverride, error)
+	// AfterAddMember runs after such a membership commits. Its error is
+	// returned and the membership remains.
+	AfterAddMember           func(context.Context, AfterMemberAddition) error
 	BeforeUpdateOrganization func(context.Context, BeforeProfileUpdate) (*ProfileUpdate, error)
 	AfterUpdateOrganization  func(context.Context, AfterProfileUpdate) error
 	// DisableOrganizationDeletion makes POST /organization/delete answer 404

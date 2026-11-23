@@ -746,6 +746,21 @@ The trusted server chooses the role labels. Commas split names, surrounding whit
 
 Supply the exact organization and user IDs. A duplicate grant returns `USER_IS_ALREADY_A_MEMBER_OF_THIS_ORGANIZATION`. To add the user to a team in the same transaction, enable `Teams` on the service and set `TeamID` to a team in that organization. A full team rolls back the entire grant. Granting membership preserves the user's current browser selection. [Three-database membership tests](../adapters/sqlstore/organization_members_test.go)
 
+### Observe new memberships
+
+`BeforeAddMember` sees the proposed membership, the user receiving it and the organization. Return an `*organization.MemberOverride` with `Roles` to replace the roles, or nil to keep them. Returning an error cancels the grant. `AfterAddMember` sees the committed membership; its error is returned and the membership remains. Both hooks run for an organization's creator, between the creation hooks, and for `AddMember`. Invitation acceptance has its own [decision hooks](#observe-invitation-decisions).
+
+```go
+organizations, err := organization.NewService(organization.Options{
+    Store: store,
+    AfterAddMember: func(ctx context.Context, in organization.AfterMemberAddition) error {
+        return billing.SyncSeats(ctx, in.Organization.ID)
+    },
+})
+```
+
+`billing.SyncSeats` is an application function. For `AddMember`, the store first checks without writing that the user and organization exist, the user is not yet a member, the team belongs to the organization and a fixed membership limit has room, so a grant that cannot proceed never reaches the hooks. The grant then checks everything again in its transaction. A custom store must implement `organization.MemberAdditionStore` to use these hooks with `AddMember`. [Hook tests on three SQL engines](../adapters/sqlstore/organization_member_hooks_test.go)
+
 ## Limit organization membership
 
 An organization starts with one owner, who counts toward its seat limit. The default limit is 100. A direct grant or invitation acceptance that would exceed the limit returns `ORGANIZATION_MEMBERSHIP_LIMIT_REACHED` (HTTP 403). A denied invitation stays pending and the session keeps its current organization and team. Sending an invitation takes no seat. Lowering a limit preserves existing memberships.
