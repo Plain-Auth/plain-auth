@@ -113,6 +113,12 @@ func readFieldDefinition(d *json.Decoder, model, name string) (sessionfields.Fie
 			return f, fmt.Errorf("duplicate property %q on %s field %q", k, model, name)
 		}
 		seen[k] = true
+		if k == "default" && model == "organization role" {
+			if err := d.Decode(&f.Default); err != nil {
+				return f, err
+			}
+			continue
+		}
 		value, err := d.Token()
 		if err != nil {
 			return f, err

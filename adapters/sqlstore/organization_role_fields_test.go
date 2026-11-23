@@ -2,8 +2,10 @@ package sqlstore
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"maps"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -35,18 +37,11 @@ func TestOrganizationRoleFieldLifecycle(t *testing.T) {
 			store, err := OpenWithAdditionalFields(ctx, dialect, organizationTestDSN(t, dialect), []string{"organization-roles"}, schema.AdditionalFields{OrganizationRole: defs})
 			must(err)
 			t.Cleanup(func() { store.Close() })
-			app, err := authtest.New(auth.Options{Store: store, BaseURL: "https://roles.example.test", Secret: strings.Repeat("s", 40)})
-			must(err)
-			user, err := app.SaveUser(ctx, authtest.NewUser())
-			must(err)
-			login, err := app.Login(ctx, user.ID)
-			must(err)
-			group := authtest.NewOrganization("studio")
-			must(store.CreateOrganization(ctx, group, org.Member{ID: "owner", Role: "owner", UserID: user.ID, OrganizationID: group.ID, CreatedAt: group.CreatedAt}, login.Session.ID, false))
+			owner, group := createRoleFieldOwner(t, store)
 			options := org.Options{Store: store, RoleAdditionalFields: defs, RoleControl: org.DefaultRoleControl(), DynamicAccessControl: true}
 			service, err := org.NewService(options)
 			must(err)
-			sdk := organizationRoleClient(t, store, service, login.Session)
+			sdk := organizationRoleClient(t, store, service, owner)
 			request := org.CreateRoleRequest{Role: "editor", Permission: access.Statements{}}
 			created, err := sdk.CreateOrganizationRole(ctx, request)
 			must(err)
@@ -107,7 +102,7 @@ func TestOrganizationRoleFieldLifecycle(t *testing.T) {
 			// A callback may revoke a membership. Recheck authority before saving the generated value.
 			delete(defs, "color")
 			defs["issued"] = org.RoleField{Type: auth.FieldNumber, ServerOnly: true, Required: true, Default: func() int {
-				_, err := store.db.ExecContext(ctx, store.bind(`UPDATE "member" SET "role"='member' WHERE "organizationId"=? AND "userId"=?`), group.ID, user.ID)
+				_, err := store.db.ExecContext(ctx, store.bind(`UPDATE "member" SET "role"='member' WHERE "organizationId"=? AND "userId"=?`), group.ID, owner.UserID)
 				must(err)
 				return 3
 			}}
@@ -115,9 +110,99 @@ func TestOrganizationRoleFieldLifecycle(t *testing.T) {
 			must(err)
 			ctx2, cancel := context.WithTimeout(ctx, 5*time.Second)
 			defer cancel()
-			_, err = limited.Store().(org.RoleCreationStore).CreateOrganizationRole(ctx2, login.Session, org.CreateRoleRequest{Role: "after-revocation", Permission: access.Statements{}}, *options.RoleControl, nil)
+			_, err = limited.Store().(org.RoleCreationStore).CreateOrganizationRole(ctx2, owner, org.CreateRoleRequest{Role: "after-revocation", Permission: access.Statements{}}, *options.RoleControl, nil)
 			if !errors.Is(err, org.ErrCreateRoleDenied) {
 				t.Fatal("created role after its default revoked authority", err)
+			}
+		})
+	}
+}
+
+func createRoleFieldOwner(t *testing.T, store *Store) (auth.Session, org.Organization) {
+	t.Helper()
+	ctx := t.Context()
+	app, err := authtest.New(auth.Options{Store: store, BaseURL: "https://roles.example.test", Secret: strings.Repeat("s", 40)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	user, err := app.SaveUser(ctx, authtest.NewUser())
+	if err != nil {
+		t.Fatal(err)
+	}
+	login, err := app.Login(ctx, user.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	group := authtest.NewOrganization("studio")
+	if err := store.CreateOrganization(ctx, group, org.Member{ID: "owner", Role: "owner", UserID: user.ID, OrganizationID: group.ID, CreatedAt: group.CreatedAt}, login.Session.ID, false); err != nil {
+		t.Fatal(err)
+	}
+	return login.Session, group
+}
+
+func TestOrganizationRoleStructuredFields(t *testing.T) {
+	for _, dialect := range []string{"sqlite", "postgres", "mysql"} {
+		t.Run(dialect, func(t *testing.T) {
+			ctx := t.Context()
+			defaults := []string{"desk"}
+			fields := map[string]org.RoleField{
+				"meta":    {Type: org.RoleJSON, Column: "role_meta"},
+				"tags":    {Type: org.RoleStringArray, Required: true, Default: defaults},
+				"weights": {Type: org.RoleNumberArray},
+			}
+			store, err := OpenWithAdditionalFields(ctx, dialect, organizationTestDSN(t, dialect), []string{"organization-roles"}, schema.AdditionalFields{OrganizationRole: fields})
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() { store.Close() })
+			owner, _ := createRoleFieldOwner(t, store)
+			svc, err := org.NewService(org.Options{Store: store, DynamicAccessControl: true, RoleControl: org.DefaultRoleControl(), RoleAdditionalFields: fields})
+			if err != nil {
+				t.Fatal(err)
+			}
+			defaults[0] = "mutated"
+			sdk := organizationRoleClient(t, store, svc, owner)
+			out, err := sdk.CreateOrganizationRole(ctx, org.CreateRoleRequest{Role: "desk", Permission: access.Statements{}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(out.RoleData.AdditionalFields["tags"], []any{"desk"}) {
+				t.Fatal("configured array default lent mutable state to the caller", out.RoleData)
+			}
+			q := org.RoleQuery{RoleID: out.RoleData.ID}
+			members := []any{json.Number("1.25"), json.Number("-3"), json.Number("0")}
+			for _, value := range []any{"a plain JSON string", false, json.Number("7"), map[string]any{"key": []any{"✓", nil}}, []any{}, nil} {
+				update := org.RoleUpdate{AdditionalFields: map[string]any{"meta": value, "tags": []string{}, "weights": members}}
+				changed, err := sdk.UpdateOrganizationRole(ctx, q, update)
+				if err != nil {
+					t.Fatal(err)
+				}
+				saved, err := sdk.GetOrganizationRole(ctx, q)
+				if err != nil {
+					t.Fatal(err)
+				}
+				// The SDK represents top-level integral JSON numbers as int64.
+				want := value
+				if _, ok := want.(json.Number); ok {
+					want = int64(7)
+				}
+				for _, role := range []org.RoleDefinition{changed.RoleData, *saved} {
+					extra := role.AdditionalFields
+					if !reflect.DeepEqual(extra["meta"], want) || !reflect.DeepEqual(extra["tags"], []any{}) || !reflect.DeepEqual(extra["weights"], members) {
+						t.Fatalf("stored JSON or array lost its logical type: %#v; want %#v", extra, want)
+					}
+				}
+			}
+			for _, invalid := range []map[string]any{{"tags": []any{"ok", false}}, {"weights": []any{2, "2"}}, {"tags": nil}, {"meta": map[string]any{"bad": "bad\x00text"}}} {
+				_, err := sdk.UpdateOrganizationRole(ctx, q, org.RoleUpdate{RoleName: "rolled-back", AdditionalFields: invalid})
+				var problem *auth.APIError
+				if !errors.As(err, &problem) || problem.Code != "VALIDATION_ERROR" {
+					t.Fatalf("invalid structured field accepted: %#v, %v", invalid, err)
+				}
+			}
+			row, err := sdk.GetOrganizationRole(ctx, q)
+			if err != nil || row.Role != "desk" {
+				t.Fatal("invalid structured update changed role", row, err)
 			}
 		})
 	}

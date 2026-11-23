@@ -259,9 +259,29 @@ groups, err := organization.New(organization.Options{
 
 On creation, send `{"role":"editor","permission":{},"additionalFields":{"color":"amber","rank":0}}`. On update, send `{"roleName":"editor","data":{"color":"green"}}`. Create, update, get and list return public custom properties directly on the role object. The Go SDK accepts `AdditionalFields` on `organization.CreateRoleRequest` and `organization.RoleUpdate`. Results expose them on `organization.RoleDefinition.AdditionalFields`.
 
-String, boolean, signed 32-bit integer, and RFC 3339 date-time fields are supported. An omitted optional field gets its creation default or `null`. An update preserves omitted fields, and explicit `null` clears an optional value. A required column always retains a value. Inside a supplied creation envelope, include all required writable fields. Omitting the entire envelope allows configured creation defaults to supply them.
+Scalar fields accept strings, booleans, signed 32-bit integers, and RFC 3339 date-times. An omitted optional field gets its creation default or `null`. An update preserves omitted fields, and explicit `null` clears an optional value. A required column always retains a value. Inside a supplied creation envelope, include all required writable fields. Omitting the entire envelope allows configured creation defaults to supply them.
 
 Use `ServerOnly` for values the host supplies. Use `Hidden` for values that must stay out of responses, including the write acknowledgement. Unknown input fields are ignored. The generated OpenAPI description includes writable fields on requests and returned fields on responses. [Migrations](schema.md#organization-role-storage) · [Cross-application HTTP tests](../conformance/organization-role-fields.mjs) · [SDK and database tests](../adapters/sqlstore/organization_role_fields_test.go)
+
+#### Store JSON and arrays on roles
+
+Use `organization.RoleJSON`, `organization.RoleStringArray`, or `organization.RoleNumberArray` as a field's `Type`. The CLI type names are `json`, `string[]`, and `number[]`. For example, a host can store display preferences and ranking weights with these declarations.
+
+```json
+{
+  "display": {"type":"json","column":"role_display"},
+  "tags": {"type":"string[]","default":["review"]},
+  "weights": {"type":"number[]"}
+}
+```
+
+To replace these values, send the following request to `POST /organization/update-role`.
+
+```json
+{"roleName":"editor","data":{"display":{"color":"amber","featured":false},"tags":[],"weights":[0,-1.75,2.125]}}
+```
+
+Each supplied value replaces the whole field. An empty array is stored as an array. Explicit `null` clears an optional field. Omitting it preserves the saved value. String arrays accept strings, and number arrays accept finite numbers including fractions. JSON accepts objects, arrays, strings, numbers, booleans, and nullable fields accept null. Keys and strings must be free of NUL characters for portability across databases. The OpenAPI description publishes array item types. PostgreSQL stores these fields as `jsonb`, MySQL as `json`, and SQLite as JSON text. [Cross-application comparisons](../conformance/organization-role-fields.mjs) · [SQL round trips](../adapters/sqlstore/organization_role_fields_test.go)
 
 ### Remove a stored role
 

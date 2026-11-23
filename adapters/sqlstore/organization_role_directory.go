@@ -3,6 +3,7 @@ package sqlstore
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 
 	org "github.com/Plain-Auth/plain-auth/plugins/organization"
@@ -38,7 +39,12 @@ func (s *Store) scanOrganizationRole(row rowScanner) (org.RoleDefinition, error)
 	if len(names) > 0 {
 		role.AdditionalFields = make(map[string]any, len(names))
 		for i, name := range names {
-			role.AdditionalFields[name], err = s.roleFields[name].PublicValue(scannedScalar(dest[6+i]))
+			field := s.roleFields[name]
+			value := scannedScalar(dest[6+i])
+			if field.JSONColumn() && value != nil {
+				value = json.RawMessage(value.(string))
+			}
+			role.AdditionalFields[name], err = field.PublicValue(value)
 			if err != nil {
 				return role, err
 			}

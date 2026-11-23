@@ -123,6 +123,10 @@ func normalize(fields map[string]Field, model string, validName func(string) boo
 		}
 		switch f.Type {
 		case String, Number, Boolean, Date:
+		case JSON, StringArray, NumberArray:
+			if model != "organization role" {
+				return nil, fmt.Errorf("unsupported type %q for %s field %q", f.Type, model, name)
+			}
 		default:
 			return nil, fmt.Errorf("unsupported type %q for %s field %q", f.Type, model, name)
 		}
@@ -189,6 +193,8 @@ func (f Field) Value(raw any) (any, error) {
 		return nil, nil
 	}
 	switch f.Type {
+	case JSON, StringArray, NumberArray:
+		return f.jsonValue(raw)
 	case String:
 		if v, ok := raw.(string); ok && !strings.ContainsRune(v, 0) {
 			return v, nil
@@ -306,6 +312,13 @@ func (f Field) Definition(dialect string) string {
 	}
 	sqlType := "text"
 	switch f.Type {
+	case JSON, StringArray, NumberArray:
+		switch dialect {
+		case "postgres", "postgresql":
+			sqlType = "jsonb"
+		case "mysql":
+			sqlType = "json"
+		}
 	case Boolean:
 		sqlType = "boolean"
 		if dialect == "sqlite" || dialect == "sqlite3" {

@@ -1,14 +1,24 @@
 package organization
 
 import (
+	"errors"
+	"github.com/Plain-Auth/plain-auth/internal/jsjson"
+	"strconv"
 	"strings"
 
 	auth "github.com/Plain-Auth/plain-auth"
 	"github.com/Plain-Auth/plain-auth/internal/sessionfields"
 )
 
-// RoleField declares a host-defined scalar column on a stored organization role.
+// RoleField declares a host-defined column on a stored organization role.
 type RoleField = auth.SessionField
+
+// Structured field types for organization.RoleField.Type.
+const (
+	RoleJSON        = sessionfields.JSON
+	RoleStringArray = sessionfields.StringArray
+	RoleNumberArray = sessionfields.NumberArray
+)
 
 // RoleFieldStoreProvider binds declarations to an independent store view.
 type RoleFieldStoreProvider interface {
@@ -35,7 +45,23 @@ func ParseRoleFieldInput(defs map[string]RoleField, input map[string]any, patch 
 		}
 		v, err := f.Value(value)
 		if err != nil {
-			issues = append(issues, roleInputTypeIssue(path+name, string(f.Type), value, present))
+			fieldPath := path + name
+			expected := string(f.Type)
+			var elements sessionfields.ElementErrors
+			if errors.As(err, &elements) {
+				for _, e := range elements {
+					issues = append(issues, roleInputTypeIssue(fieldPath+"."+strconv.Itoa(e.Index), e.Expected, e.Value, true))
+				}
+				continue
+			}
+			if f.Type == RoleStringArray || f.Type == RoleNumberArray {
+				expected = "array"
+			}
+			if present && (jsjson.TypeName(value) == expected || f.Type == RoleJSON) {
+				issues = append(issues, "[body."+fieldPath+"] "+err.Error())
+			} else {
+				issues = append(issues, roleInputTypeIssue(fieldPath, expected, value, present))
+			}
 			continue
 		}
 		if values == nil {

@@ -2,8 +2,10 @@ package main
 
 import (
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -58,7 +60,7 @@ func TestOrganizationRoleFieldCommands(t *testing.T) {
 			if _, err := call("migrate"); err == nil {
 				t.Fatal("upgraded a populated table without a required backfill")
 			}
-			writeFieldConfig(t, file, `{"color":{"type":"string","column":"display_color"},"rank":{"type":"number","column":"display_rank","required":true,"default":4}}`)
+			writeFieldConfig(t, file, `{"color":{"type":"string","column":"display_color"},"rank":{"type":"number","column":"display_rank","required":true,"default":4},"meta":{"type":"json","column":"role_meta","required":true,"default":{"title":"O'Neil","tags":["β",null]}},"weights":{"type":"number[]","default":[1.5,-2]}}`)
 			for range 2 {
 				if _, err := call("migrate"); err != nil {
 					t.Fatal(err)
@@ -71,6 +73,15 @@ func TestOrganizationRoleFieldCommands(t *testing.T) {
 			var rank int
 			if err := db.QueryRowContext(t.Context(), query(`SELECT "display_color","display_rank" FROM "organizationRole" WHERE "id"='row'`)).Scan(&color, &rank); err != nil || color != "red" || rank != 4 {
 				t.Fatal("migration did not preserve and backfill populated role fields", color, rank, err)
+			}
+			var meta, weights string
+			if err := db.QueryRowContext(t.Context(), query(`SELECT "role_meta","weights" FROM "organizationRole" WHERE "id"='row'`)).Scan(&meta, &weights); err != nil {
+				t.Fatal(err)
+			}
+			var value map[string]any
+			var nums []float64
+			if json.Unmarshal([]byte(meta), &value) != nil || value["title"] != "O'Neil" || !reflect.DeepEqual(value["tags"], []any{"β", nil}) || json.Unmarshal([]byte(weights), &nums) != nil || !reflect.DeepEqual(nums, []float64{1.5, -2}) {
+				t.Fatal("populated roles did not get structured backfill values", meta, weights)
 			}
 			for _, verb := range []string{"check", "migrate", "generate"} {
 				if _, err := fieldCommand(t, verb, "--dialect", dialect, "--organization-role-fields", file); err == nil {

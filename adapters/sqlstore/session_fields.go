@@ -3,6 +3,7 @@ package sqlstore
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"slices"
@@ -110,6 +111,8 @@ func (s *Store) checkModelField(model string, f auth.SessionField, column sessio
 	t := strings.ToLower(column.kind)
 	var matching bool
 	switch f.Type {
+	case sessionfields.JSON, sessionfields.StringArray, sessionfields.NumberArray:
+		matching = s.dialect == "sqlite" && t == "text" || s.dialect == "postgres" && t == "jsonb" || s.dialect == "mysql" && t == "json"
 	case auth.FieldBoolean:
 		matching = t == "bool" || t == "boolean" || s.dialect == "sqlite" && t == "integer" || s.dialect == "mysql" && t == "tinyint"
 	case auth.FieldNumber:
@@ -136,6 +139,9 @@ func (s *Store) checkModelField(model string, f auth.SessionField, column sessio
 }
 
 func (s *Store) fieldParameter(value any) any {
+	if raw, ok := value.(json.RawMessage); ok {
+		return string(raw)
+	}
 	if instant, ok := value.(time.Time); ok {
 		return s.date(instant)
 	}

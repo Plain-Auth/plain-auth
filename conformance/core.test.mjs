@@ -2027,3 +2027,8 @@ test("organization role fields round-trip between independent applications", asy
   const { compareOrganizationRoleFields } = await import("./organization-role-fields.mjs");
   await compareOrganizationRoleFields(t, { goFixture, instrument });
 });
+
+test("organization roles store structured values across runtimes", async t => {
+  const { compareStructuredRoleFields } = await import("./organization-role-fields.mjs");
+  await compareStructuredRoleFields(t, { goFixture, instrument });
+});

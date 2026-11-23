@@ -166,6 +166,18 @@ func scalarFieldSchema(field plainauth.HTTPField) object {
 	t := string(field.Type)
 	schema := object{}
 	switch field.Type {
+	case organization.RoleJSON:
+		if field.Required {
+			return object{"not": object{"type": "null"}}
+		}
+		return object{}
+	case organization.RoleStringArray, organization.RoleNumberArray:
+		t = "array"
+		itemType := "string"
+		if field.Type == organization.RoleNumberArray {
+			itemType = "number"
+		}
+		schema["items"] = object{"type": itemType}
 	case plainauth.FieldNumber:
 		t = "integer"
 		schema["minimum"], schema["maximum"] = math.MinInt32, math.MaxInt32

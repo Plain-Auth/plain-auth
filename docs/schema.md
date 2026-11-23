@@ -68,7 +68,7 @@ authctl migrate --dialect postgres --plugins organization-roles --organization-r
 authctl check schema --dialect postgres --plugins organization-roles --organization-role-fields role-fields.json
 ```
 
-For a populated table, supply a static default when adding a required column, or backfill it explicitly. A successful migration preserves existing values and can be rerun. In Go, read the file with `schema.ReadRoleFields` and pass the result as `schema.AdditionalFields.OrganizationRole` and `organization.Options.RoleAdditionalFields`. [Role field configuration](organizations.md#add-fields-to-organization-roles) · [Three-dialect migration tests](../cmd/authctl/organization_role_fields_test.go)
+Role fields also accept types `json`, `string[]`, and `number[]`. Their defaults can be JSON objects or arrays. For a populated table, supply a static default when adding a required column, or backfill it explicitly. A successful migration preserves existing values and can be rerun. In Go, read the file with `schema.ReadRoleFields` and pass the result as `schema.AdditionalFields.OrganizationRole` and `organization.Options.RoleAdditionalFields`. [Role field configuration](organizations.md#add-fields-to-organization-roles) · [Three-dialect migration tests](../cmd/authctl/organization_role_fields_test.go)
 
 ## Configure user, session and account fields
 

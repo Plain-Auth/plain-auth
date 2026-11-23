@@ -3,6 +3,7 @@ package sqlstore
 import (
 	"context"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -153,6 +154,8 @@ func (s *Store) missingModelFields(ctx context.Context, db migrationConnection, 
 // expression for TEXT defaults. Encode MySQL text independently of SQL mode.
 func (s *Store) sessionFieldDefault(value any) string {
 	switch v := value.(type) {
+	case json.RawMessage:
+		return s.sessionFieldDefault(string(v))
 	case bool:
 		if s.dialect == "sqlite" {
 			if v {

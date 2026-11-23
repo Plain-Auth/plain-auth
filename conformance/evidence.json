@@ -15888,6 +15888,11 @@
       "label": "Update declared fields and retain omitted values and host-owned defaults",
       "test": "conformance/organization-role-fields.mjs",
       "marker": "assert.deepEqual([changed.color, changed.priority, changed.enabled, changed.source]"
+    },
+    {
+      "label": "Exchange JSON objects and typed arrays between clients while preserving empty arrays, explicit nulls and fractional weights",
+      "test": "conformance/organization-role-fields.mjs",
+      "marker": "assert.deepEqual([fetched.metadata, fetched.tags, fetched.weights]"
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L1626": [
@@ -15932,6 +15937,11 @@
       "label": "Update declared fields and retain omitted values and host-owned defaults",
       "test": "conformance/organization-role-fields.mjs",
       "marker": "assert.deepEqual([changed.color, changed.priority, changed.enabled, changed.source]"
+    },
+    {
+      "label": "Exchange JSON objects and typed arrays between clients while preserving empty arrays, explicit nulls and fractional weights",
+      "test": "conformance/organization-role-fields.mjs",
+      "marker": "assert.deepEqual([fetched.metadata, fetched.tags, fetched.weights]"
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L1636/Parameter `roleName` (optional)": [
@@ -15963,6 +15973,12 @@
       "label": "Accept a role name, replacement grants, or an empty edit and return the prior modification timestamp",
       "test": "conformance/organization-update-role.mjs",
       "marker": "assert.deepEqual(empty.roleData,saved)"
+    },
+    {
+      "label": "Exchange JSON objects and typed arrays between clients while preserving empty arrays, explicit nulls and fractional weights",
+      "test": "conformance/organization-role-fields.mjs",
+      "marker": "assert.deepEqual([fetched.metadata, fetched.tags, fetched.weights]",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L1652/Parameter `permission` (optional)": [
@@ -16011,6 +16027,21 @@
       "label": "Describe input, output and required role fields to generated clients",
       "test": "plugins/openapi/organization_role_fields_test.go",
       "marker": "incorrect role field input description"
+    },
+    {
+      "label": "Exchange JSON objects and typed arrays between clients while preserving empty arrays, explicit nulls and fractional weights",
+      "test": "conformance/organization-role-fields.mjs",
+      "marker": "assert.deepEqual([fetched.metadata, fetched.tags, fetched.weights]"
+    },
+    {
+      "label": "Backfill existing roles with a structured default on SQLite, PostgreSQL and MySQL",
+      "test": "cmd/authctl/organization_role_fields_test.go",
+      "marker": "populated roles did not get structured backfill values"
+    },
+    {
+      "label": "Round-trip JSON strings, booleans, numbers, objects, arrays and null on every SQL adapter",
+      "test": "adapters/sqlstore/organization_role_fields_test.go",
+      "marker": "stored JSON or array lost its logical type"
     }
   ]
 }

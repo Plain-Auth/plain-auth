@@ -96,6 +96,13 @@ func main() {
 			"source":   {Type: authn.FieldString, ServerOnly: true, Default: "host"},
 		}
 	}
+	if os.Getenv("CONFORMANCE_ROLE_FIELDS") == "structured" {
+		roleFields = map[string]organization.RoleField{
+			"metadata": {Type: organization.RoleJSON, Column: "role_metadata"},
+			"tags":     {Type: organization.RoleStringArray, Column: "role_tags", Default: []string{"review"}},
+			"weights":  {Type: organization.RoleNumberArray, Column: "role_weights"},
+		}
+	}
 	if os.Getenv("CONFORMANCE_ACCOUNT_FIELDS") == "1" {
 		accountFields = fixtureAccountFields()
 	}

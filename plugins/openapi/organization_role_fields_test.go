@@ -21,6 +21,9 @@ func TestOrganizationRoleFieldDescription(t *testing.T) {
 			"color":        {Type: auth.FieldString, Required: true, Default: "blue", Column: "display_color"},
 			"audit":        {Type: auth.FieldString, ServerOnly: true},
 			"note":         {Type: auth.FieldString, Hidden: true},
+			"metadata":     {Type: organization.RoleJSON},
+			"tags":         {Type: organization.RoleStringArray},
+			"weights":      {Type: organization.RoleNumberArray, Required: true, Default: []float64{}},
 			"issuerSecret": {Type: auth.FieldString, Hidden: true, ServerOnly: true},
 		}
 		if mandatory {
@@ -63,6 +66,11 @@ func TestOrganizationRoleFieldDescription(t *testing.T) {
 		for _, props := range []obj{input, node(patch, "properties")} {
 			if props["color"] == nil || props["note"] == nil || props["audit"] != nil || props["issuerSecret"] != nil || props["display_color"] != nil {
 				t.Fatal("incorrect role field input description", props)
+			}
+		}
+		for _, properties := range []obj{model, input, node(patch, "properties")} {
+			if node(properties, "tags", "items")["type"] != "string" || node(properties, "weights", "items")["type"] != "number" || properties["metadata"] == nil {
+				t.Fatal("missing JSON and typed array schemas", properties)
 			}
 		}
 		if slices.Contains(create["required"].([]any), any("additionalFields")) != mandatory || !slices.Contains(envelope["required"].([]any), any("color")) || patch["required"] != nil {
