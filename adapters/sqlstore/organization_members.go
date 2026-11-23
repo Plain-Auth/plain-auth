@@ -6,7 +6,6 @@ import (
 	"errors"
 	"time"
 
-	auth "github.com/Plain-Auth/plain-auth"
 	org "github.com/Plain-Auth/plain-auth/plugins/organization"
 )
 
@@ -105,7 +104,7 @@ func (s *Store) addOrganizationMember(ctx context.Context, m org.Member, teamID 
 	var userID string
 	err = tx.QueryRowContext(ctx, s.readForUpdate(`SELECT "id" FROM "user" WHERE "id"=?`), m.UserID).Scan(&userID)
 	if errors.Is(err, sql.ErrNoRows) || err == nil && userID != m.UserID {
-		return &auth.APIError{Status: 400, Code: "USER_NOT_FOUND", Message: "User not found"}
+		return errUserNotFound
 	}
 	if err != nil {
 		return err

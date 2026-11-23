@@ -86,6 +86,37 @@ groups, err := organization.NewService(organization.Options{
 
 A user at their limit receives `403 YOU_HAVE_REACHED_THE_MAXIMUM_NUMBER_OF_ORGANIZATIONS`. A callback error fails the request, and a refused creation stores nothing. In Go, `c.CreateOrganization(ctx, client.CreateOrganizationRequest{Name: "Acme", Slug: "acme"})` returns the new organization and the creator's membership. Set `KeepCurrentActiveOrganization` to leave the session's current selection in place. [HTTP, policy and concurrency tests on three SQL engines](../adapters/sqlstore/organization_creation_policy_test.go)
 
+### Customize and observe creation
+
+`BeforeCreateOrganization` receives the proposed organization and its creator. Return a `*organization.ProfileUpdate` to replace the name, slug, logo or metadata, or nil to keep the proposal. Returning an error cancels the creation and stores nothing. `AfterCreateOrganization` receives the committed organization, the creator and their membership. Its error reaches the caller, and the organization remains.
+
+```go
+groups, err := organization.NewService(organization.Options{
+    Store: store,
+    BeforeCreateOrganization: func(ctx context.Context, in organization.BeforeOrganizationCreation) (*organization.ProfileUpdate, error) {
+        return &organization.ProfileUpdate{Metadata: map[string]any{"plan": plans.Default(in.User)}}, nil
+    },
+    AfterCreateOrganization: func(ctx context.Context, in organization.AfterOrganizationCreation) error {
+        return audit.Record(ctx, "organization.created", in.Organization.ID, in.User.ID)
+    },
+})
+```
+
+`plans.Default` and `audit.Record` are application functions. An override is validated like a profile update, and a returned slug that is already taken fails with `400 ORGANIZATION_ALREADY_EXISTS`.
+
+### Create an organization from server code
+
+Trusted backend code can create an organization for a user without a session, for example when importing accounts. The application authorizes the call.
+
+```go
+created, err := groups.CreateOrganization(ctx, organization.CreateOrganizationRequest{
+    UserID: userID, Name: "Acme", Slug: "acme",
+    Metadata: map[string]any{"source": "import"},
+})
+```
+
+The named user becomes the first member with the creator role and joins the default team when teams are enabled. No session selects the new organization. `AllowUserToCreateOrganization` applies only to signed-in users, while `OrganizationLimit`, `OrganizationLimitReached` and both creation hooks also apply here. An unknown user returns `400 USER_NOT_FOUND`. A custom store must implement `organization.OrganizationCreatorStore` for trusted creation with callbacks. [Hook and trusted creation tests on three SQL engines](../adapters/sqlstore/organization_creation_hooks_test.go)
+
 ## Switch organizations and teams from any client
 
 Selection belongs to the current authenticated session. A web app, native app, server-rendered form or command-line client can use the same JSON API. Your application decides how to present the choices and what to display after a switch. The organization and team endpoints work independently of the OAuth provider plugin.

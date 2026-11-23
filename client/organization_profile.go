@@ -32,10 +32,7 @@ type CreateOrganizationRequest struct {
 }
 
 // CreatedOrganization is the new organization with its creator's membership.
-type CreatedOrganization struct {
-	org.Organization
-	Members []org.Member `json:"members"`
-}
+type CreatedOrganization = org.CreatedOrganization
 
 // CreateOrganization creates an organization owned by the signed-in user.
 func (c *Client) CreateOrganization(ctx context.Context, request CreateOrganizationRequest) (*CreatedOrganization, error) {

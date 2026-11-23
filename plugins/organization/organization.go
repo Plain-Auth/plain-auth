@@ -86,16 +86,22 @@ type Options struct {
 	// the application invites the same address again without requesting resend.
 	CancelPendingInvitationsOnReInvite bool
 	// InvitationExpiresIn applies to new and resent invitations. Zero uses 48 hours.
-	InvitationExpiresIn      time.Duration
-	BeforeCreateInvitation   InvitationCreationHook
-	AfterCreateInvitation    InvitationDecisionHook
-	BeforeAcceptInvitation   InvitationDecisionHook
-	AfterAcceptInvitation    InvitationDecisionHook
-	BeforeRejectInvitation   InvitationDecisionHook
-	AfterRejectInvitation    InvitationDecisionHook
-	BeforeCancelInvitation   InvitationDecisionHook
-	AfterCancelInvitation    InvitationDecisionHook
-	MembershipLimit          MembershipLimit
+	InvitationExpiresIn    time.Duration
+	BeforeCreateInvitation InvitationCreationHook
+	AfterCreateInvitation  InvitationDecisionHook
+	BeforeAcceptInvitation InvitationDecisionHook
+	AfterAcceptInvitation  InvitationDecisionHook
+	BeforeRejectInvitation InvitationDecisionHook
+	AfterRejectInvitation  InvitationDecisionHook
+	BeforeCancelInvitation InvitationDecisionHook
+	AfterCancelInvitation  InvitationDecisionHook
+	MembershipLimit        MembershipLimit
+	// BeforeCreateOrganization sees the proposed organization and its creator
+	// and may return fields that replace the proposal. An error cancels it.
+	BeforeCreateOrganization func(context.Context, BeforeOrganizationCreation) (*ProfileUpdate, error)
+	// AfterCreateOrganization runs after the organization and the creator's
+	// membership commit. Its error is returned and the organization remains.
+	AfterCreateOrganization  func(context.Context, AfterOrganizationCreation) error
 	BeforeUpdateOrganization func(context.Context, BeforeProfileUpdate) (*ProfileUpdate, error)
 	AfterUpdateOrganization  func(context.Context, AfterProfileUpdate) error
 	// DisableOrganizationDeletion makes POST /organization/delete answer 404
@@ -440,38 +446,35 @@ func (o Options) create(c authn.EndpointContext, s *authn.SessionResult) (any, e
 	if err != nil {
 		return nil, err
 	}
-	now := time.Now().UTC().Truncate(time.Millisecond)
-	org := Organization{ID: rand.Text(), Name: name, Slug: slug, CreatedAt: now}
+	var logo *string
 	if value := c.Body["logo"]; value != nil {
-		logo, ok := value.(string)
+		text, ok := value.(string)
 		if !ok {
 			return nil, validation("logo")
 		}
-		org.Logo = &logo
+		logo = &text
 	}
+	var metadata map[string]any
 	if value, exists := c.Body["metadata"]; exists {
 		m, ok := value.(map[string]any)
 		if !ok {
 			return nil, validation("metadata")
 		}
-		org.Metadata, err = json.Marshal(m)
-		if err != nil {
-			return nil, err
-		}
+		metadata = m
 	}
 	keep, ok := c.Body["keepCurrentActiveOrganization"].(bool)
 	if c.Body["keepCurrentActiveOrganization"] != nil && !ok {
 		return nil, validation("keepCurrentActiveOrganization")
 	}
-	if err := o.checkCreationPolicy(c.Request.Context(), s.User); err != nil {
+	group, err := newOrganization(name, slug, logo, metadata)
+	if err != nil {
 		return nil, err
 	}
-	member := Member{ID: rand.Text(), OrganizationID: org.ID, UserID: s.User.ID, Role: o.rolePolicy.CreatorRole(), CreatedAt: now}
-	err = o.Store.CreateOrganization(c.Request.Context(), org, member, s.Session.ID, keep)
-	return struct {
-		Organization
-		Members []Member `json:"members"`
-	}{org, []Member{member}}, err
+	ctx := c.Request.Context()
+	if err := o.checkCreationPolicy(ctx, s.User); err != nil {
+		return nil, err
+	}
+	return o.createOrganization(ctx, s.User, group, s.Session.ID, keep)
 }
 
 func (o Options) get(c authn.EndpointContext, s *authn.SessionResult) (any, error) {

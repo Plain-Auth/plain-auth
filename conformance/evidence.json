@@ -777,6 +777,16 @@
       "label": "Admit one organization when two instances race for the creator's last slot",
       "test": "adapters/sqlstore/organization_creation_policy_test.go",
       "marker": "// Two instances racing for the creator's last slot admit one organization."
+    },
+    {
+      "label": "Give the creation hook the proposed organization and creator, and save the name, slug and metadata it returns",
+      "test": "adapters/sqlstore/organization_creation_hooks_test.go",
+      "marker": "// The before hook sees the proposal and the creator and can replace fields."
+    },
+    {
+      "label": "Create an organization for a named user from server code with hooks and limits, without a session selection",
+      "test": "adapters/sqlstore/organization_creation_hooks_test.go",
+      "marker": "// Trusted creation names a user, skips AllowUserToCreateOrganization and selects nothing."
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L71": [
@@ -10482,6 +10492,16 @@
       "label": "Require transactional reauthorization from custom stores only when profile hooks are enabled",
       "test": "adapters/sqlstore/organization_profile_hooks_test.go",
       "marker": "func TestOrganizationProfileHooksRequireGuardedStore("
+    },
+    {
+      "label": "Give the creation hook the proposed organization and creator, and save the name, slug and metadata it returns",
+      "test": "adapters/sqlstore/organization_creation_hooks_test.go",
+      "marker": "// The before hook sees the proposal and the creator and can replace fields."
+    },
+    {
+      "label": "Store nothing when the creation hook fails or returns an invalid override, and keep the organization when the after hook fails",
+      "test": "adapters/sqlstore/organization_creation_hooks_test.go",
+      "marker": "// A before-hook error or an invalid override stores nothing; an after-hook error keeps the organization."
     }
   ],
   "plugin-symbol/organization/OrganizationOptions/organizationHooks": [
@@ -10544,6 +10564,16 @@
       "label": "Return an after-hook error once the organization deletion has committed",
       "test": "adapters/sqlstore/organization_deletion_test.go",
       "marker": "// An after-hook error reaches the caller once the deletion has committed."
+    },
+    {
+      "label": "Give the creation hook the proposed organization and creator, and save the name, slug and metadata it returns",
+      "test": "adapters/sqlstore/organization_creation_hooks_test.go",
+      "marker": "// The before hook sees the proposal and the creator and can replace fields."
+    },
+    {
+      "label": "Store nothing when the creation hook fails or returns an invalid override, and keep the organization when the after hook fails",
+      "test": "adapters/sqlstore/organization_creation_hooks_test.go",
+      "marker": "// A before-hook error or an invalid override stores nothing; an after-hook error keeps the organization."
     }
   ],
   "plugin-symbol/siwe/SIWEPluginOptions/getNonce": [
@@ -16383,6 +16413,14 @@
       "label": "Ask the host whether the signed-in user may create an organization and store nothing when it refuses",
       "test": "adapters/sqlstore/organization_creation_policy_test.go",
       "marker": "// The host decides who may create and when a plan is full.",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L98/Parameter `userId` (optional)": [
+    {
+      "label": "Create an organization for a named user from server code with hooks and limits, without a session selection",
+      "test": "adapters/sqlstore/organization_creation_hooks_test.go",
+      "marker": "// Trusted creation names a user, skips AllowUserToCreateOrganization and selects nothing.",
       "complete": true
     }
   ]

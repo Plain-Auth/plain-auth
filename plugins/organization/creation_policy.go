@@ -52,6 +52,11 @@ func (o Options) checkCreationPolicy(ctx context.Context, user authn.User) error
 			return ErrCreateDenied
 		}
 	}
+	return o.checkOrganizationLimit(ctx, user)
+}
+
+// checkOrganizationLimit applies a host-defined limit to any creator.
+func (o Options) checkOrganizationLimit(ctx context.Context, user authn.User) error {
 	if reached := o.OrganizationLimitReached; reached != nil {
 		full, err := reached(ctx, user)
 		if err != nil {

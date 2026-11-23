@@ -42,7 +42,15 @@ func (s *Store) CreateOrganization(ctx context.Context, o org.Organization, owne
 		return err
 	}
 	defer tx.Rollback()
-	if _, err := s.organizationActor(ctx, tx, owner.UserID, sessionID, time.Now()); err != nil {
+	// A trusted creation has no session; it locks the named account instead.
+	if sessionID == "" {
+		if _, err := s.lockAllowedAccount(ctx, tx, owner.UserID, time.Now()); errors.Is(err, authn.ErrNotFound) {
+			return errUserNotFound
+		} else if err != nil {
+			return err
+		}
+		keep = true
+	} else if _, err := s.organizationActor(ctx, tx, owner.UserID, sessionID, time.Now()); err != nil {
 		return err
 	}
 	// The actor's account lock serializes this user's concurrent creations.

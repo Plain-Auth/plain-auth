@@ -172,6 +172,8 @@
     - [x] Ask the host whether the signed-in user may create an organization and store nothing when it refuses ([test](../../../adapters/sqlstore/organization_creation_policy_test.go#L104))
     - [x] Count every membership of the creator, including organizations they joined, against a fixed organization limit ([test](../../../adapters/sqlstore/organization_creation_policy_test.go#L63))
     - [x] Admit one organization when two instances race for the creator's last slot ([test](../../../adapters/sqlstore/organization_creation_policy_test.go#L80))
+    - [x] Give the creation hook the proposed organization and creator, and save the name, slug and metadata it returns ([test](../../../adapters/sqlstore/organization_creation_hooks_test.go#L90))
+    - [x] Create an organization for a named user from server code with hooks and limits, without a session selection ([test](../../../adapters/sqlstore/organization_creation_hooks_test.go#L127))
   - [x] `POST /organization/check-slug` ([test](../../../conformance/organization-profile.mjs#L39))
     - [x] Check available and occupied slugs using a signed-in client, including after a rename ([test](../../../conformance/organization-profile.mjs#L39))
     - [x] Reject anonymous slug lookup and preserve the authenticated callback contract ([test](../../../conformance/organization-profile.mjs#L20))
@@ -313,6 +315,8 @@
       - [x] Skip preparation for live renewals and preserve the pending grant when a replacement fails ([test](../../../adapters/sqlstore/organization_invitation_preparation_test.go#L52))
       - [x] Cancel an organization deletion from the before hook with the organization and the signed-in user ([test](../../../adapters/sqlstore/organization_deletion_test.go#L122))
       - [x] Return an after-hook error once the organization deletion has committed ([test](../../../adapters/sqlstore/organization_deletion_test.go#L181))
+      - [x] Give the creation hook the proposed organization and creator, and save the name, slug and metadata it returns ([test](../../../adapters/sqlstore/organization_creation_hooks_test.go#L90))
+      - [x] Store nothing when the creation hook fails or returns an invalid override, and keep the organization when the after hook fails ([test](../../../adapters/sqlstore/organization_creation_hooks_test.go#L109))
 
 ## Organization
 
@@ -326,7 +330,8 @@
         - [ ] Parameter `slug`
         - [ ] Parameter `logo` (optional)
         - [ ] Parameter `metadata` (optional)
-        - [ ] Parameter `userId` (optional)
+        - [x] Parameter `userId` (optional) ([test](../../../adapters/sqlstore/organization_creation_hooks_test.go#L127))
+          - [x] Create an organization for a named user from server code with hooks and limits, without a session selection ([test](../../../adapters/sqlstore/organization_creation_hooks_test.go#L127))
         - [ ] Parameter `keepCurrentActiveOrganization` (optional)
       - [ ] Mutually Exclusive Parameters
       - [x] Restrict who can create an organization ([test](../../../adapters/sqlstore/organization_creation_policy_test.go#L104))
@@ -343,6 +348,8 @@
         - [x] Run profile callbacks in released-client order with supplied fields, selective overrides, committed data and distinct failure outcomes ([test](../../../conformance/organization-profile-hooks.mjs#L7))
         - [x] Recheck the original tenant, member, active selection and session across unlocked host callbacks on three database engines ([test](../../../adapters/sqlstore/organization_profile_hooks_test.go#L16))
         - [x] Require transactional reauthorization from custom stores only when profile hooks are enabled ([test](../../../adapters/sqlstore/organization_profile_hooks_test.go#L176))
+        - [x] Give the creation hook the proposed organization and creator, and save the name, slug and metadata it returns ([test](../../../adapters/sqlstore/organization_creation_hooks_test.go#L90))
+        - [x] Store nothing when the creation hook fails or returns an invalid override, and keep the organization when the after hook fails ([test](../../../adapters/sqlstore/organization_creation_hooks_test.go#L109))
       - [ ] Member Hooks
       - [x] Invitation Hooks ([test](../../../conformance/invitation-preparation.mjs#L54))
         - [x] Deliver the signed-in actor, invitation and destination before and after an authorized decision ([test](../../../conformance/invitation-hooks.mjs#L61))
