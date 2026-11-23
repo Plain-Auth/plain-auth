@@ -19,7 +19,7 @@ var (
 	ErrAuthorizationSessionExpired = errors.New("oauthprovider: authorization session no longer active")
 )
 
-// DelegatedAccessRecord is an opaque access token bound to the browser grant.
+// DelegatedAccessRecord describes an opaque access token issued for a user's grant.
 type DelegatedAccessRecord struct {
 	MachineTokenRecord
 	UserID, SessionID       string
@@ -28,14 +28,15 @@ type DelegatedAccessRecord struct {
 	RequestedUserInfoClaims []string
 }
 
-// InitialRefreshGrant shares the user, session, client, scopes and code lineage
-// of its access token. A nil AuthTime uses the browser session's creation time.
+// InitialRefreshGrant holds the expiry and original authentication time of a
+// refresh token issued with delegated access. Code redemption defaults AuthTime
+// to the browser session's creation time. Rotation carries it from the parent.
 type InitialRefreshGrant struct {
 	ExpiresAt time.Time
 	AuthTime  *time.Time
 }
 
-// DelegatedToken is the response to a successful authorization-code exchange.
+// DelegatedToken is the response to an authorization-code or refresh exchange.
 type DelegatedToken struct {
 	MachineToken
 	RefreshToken string `json:"refresh_token,omitempty"`

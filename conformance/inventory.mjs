@@ -421,7 +421,7 @@ const index = [
   "| Grant or revoke machine-to-machine scopes from Go server code | [Machine scope management](../oauth-client-registration.md#grant-machine-to-machine-scopes) |",
   "| Issue signed or opaque machine tokens with resource audiences, scoped permissions and sender binding | [Machine access tokens](../machine-tokens.md#request-access-to-a-resource) · [Token introspection](../machine-tokens.md#check-whether-a-token-is-active) |",
   "| Authenticate an OAuth application with its own signing key and rotate its keys | [Signed client assertions](../oauth-client-assertions.md) |",
-  "| Check whether a refresh token or its original session is still active | [Refresh token introspection](../machine-tokens.md#inspect-a-refresh-token) |",
+  "| Rotate a refresh token, narrow its scopes or check its session | [Refresh exchange](../oauth-authorization-code.md#exchange-a-refresh-token) · [Refresh token introspection](../machine-tokens.md#inspect-a-refresh-token) |",
   "| Revoke an OAuth token or invalidate a replayed refresh-token family | [Token revocation](../oauth-token-revocation.md) |",
   "| List or delete owned applications and show public client details | [Manage registered applications](../oauth-client-directory.md) |",
   "| OAuth authorization-server database tables | [Schema and migration](../schema.md#oauth-authorization-server-tables) |",

@@ -24,13 +24,14 @@ type tokenRequest struct {
 const tokenFormType = "application/x-www-form-urlencoded"
 
 const machineTokenOperation = `{
-  "summary":"Exchange application credentials or a delegated authorization code for an access token",
+  "summary":"Exchange application credentials, a delegated authorization code or a refresh token",
   "security":[{"clientSecretBasic":[]},{}],
-  "description":"Machine clients use their registered HTTP Basic, client_secret_post or private_key_jwt method and may bind tokens with DPoP. A delegated opaque exchange uses the registered client method, the code, its original redirect URI and its S256 verifier when PKCE was used. Public clients always use PKCE.",
+  "description":"Machine clients use their registered HTTP Basic, client_secret_post or private_key_jwt method and may bind tokens with DPoP. A delegated opaque exchange uses the registered client method, the code, its original redirect URI and its S256 verifier when PKCE was used. Public clients always use PKCE at authorization. An untargeted bearer refresh grant may retain or narrow its scopes. An offline parent rotates on success.",
   "parameters":[{"name":"DPoP","in":"header","schema":{"type":"string"},"description":"A signed proof for a sender-bound machine token"}],
   "requestBody":{"required":true,"content":{"application/x-www-form-urlencoded":{"schema":{
     "type":"object","required":["grant_type"],"properties":{
-      "grant_type":{"type":"string","enum":["client_credentials","authorization_code"]},"client_id":{"type":"string"},
+      "grant_type":{"type":"string","enum":["client_credentials","authorization_code","refresh_token"]},"client_id":{"type":"string"},
+      "refresh_token":{"type":"string","description":"Credential to exchange on a refresh_token grant"},
       "code":{"type":"string"},"code_verifier":{"type":"string"},"redirect_uri":{"type":"string","format":"uri"},
       "client_secret":{"type":"string","format":"password"},"client_assertion_type":{"type":"string","enum":["urn:ietf:params:oauth:client-assertion-type:jwt-bearer"]},
       "client_assertion":{"type":"string","format":"jwt"},"scope":{"type":"string"},
@@ -66,7 +67,7 @@ func (opts Options) token(c auth.EndpointContext) (any, error) {
 			return nil, registrationProblem(400, "invalid_request", "resource must be an absolute URI without a fragment")
 		}
 	}
-	if (grant != "client_credentials" && grant != "authorization_code") || !slices.Contains(opts.GrantTypes, grant) {
+	if !slices.Contains(opts.GrantTypes, grant) || (grant != "client_credentials" && grant != "authorization_code" && grant != "refresh_token") {
 		return nil, registrationProblem(400, "unsupported_grant_type", "unsupported grant_type "+grant)
 	}
 	in, challenge, err := parseTokenCredentials(form, c.Request.Header.Values("Authorization"))
@@ -81,6 +82,10 @@ func (opts Options) token(c auth.EndpointContext) (any, error) {
 		in.scopes = strings.Split(scopes[len(scopes)-1], " ")
 	}
 	in.proof = c.Request.Header.Get("DPoP")
+	if grant == "refresh_token" {
+		token, err := opts.exchangeRefreshGrant(c, in, form)
+		return token, tokenEndpointError(c.ResponseHeader, challenge, err)
+	}
 	if grant == "authorization_code" {
 		token, err := opts.redeemAuthorizationCode(c, in, form)
 		return token, tokenEndpointError(c.ResponseHeader, challenge, err)

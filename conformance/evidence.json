@@ -12133,6 +12133,16 @@
       "label": "Commit both tokens and consume the code together, retry after insert failures and isolate simultaneous redemptions on all three databases",
       "test": "adapters/sqlstore/oauth_offline_code_test.go",
       "marker": "func testOfflineCodeTransactions("
+    },
+    {
+      "label": "Rotate an independently issued refresh token, narrow its scopes, renew offline access after session expiry and invalidate reused grants",
+      "test": "conformance/oauth-refresh-grant.mjs",
+      "marker": "export async function exerciseRefreshGrant("
+    },
+    {
+      "label": "Exchange refresh tokens through the Go OAuth client and verify atomic replacement, callback failures and concurrent reuse on all three engines",
+      "test": "adapters/sqlstore/oauth_refresh_grant_test.go",
+      "marker": "func TestRefreshGrantExchange("
     }
   ],
   "docs/content/docs/plugins/oauth-provider/reference.mdx#L321/`POST /oauth2/token`": [
@@ -12165,6 +12175,11 @@
       "label": "Issue an offline token pair, rotate the refresh token at an independent issuer after session expiry and remove the rotated tokens on code replay",
       "test": "conformance/oauth-authorization-code.mjs",
       "marker": "export async function exerciseOfflineCode("
+    },
+    {
+      "label": "Rotate an independently issued refresh token, narrow its scopes, renew offline access after session expiry and invalidate reused grants",
+      "test": "conformance/oauth-refresh-grant.mjs",
+      "marker": "export async function exerciseRefreshGrant("
     }
   ],
   "plugin-symbol/oauth-provider/OAuthOptions/m2mAccessTokenExpiresIn": [
@@ -12229,6 +12244,11 @@
       "label": "Generate and hash the raw refresh token, encode it for its session, then apply the public prefix",
       "test": "adapters/sqlstore/oauth_offline_code_test.go",
       "marker": "unexpected refresh format or access lifetime"
+    },
+    {
+      "label": "Exchange refresh tokens through the Go OAuth client and verify atomic replacement, callback failures and concurrent reuse on all three engines",
+      "test": "adapters/sqlstore/oauth_refresh_grant_test.go",
+      "marker": "func TestRefreshGrantExchange("
     }
   ],
   "docs/content/docs/plugins/oauth-provider/tokens.mdx#L125/`m2mAccessTokenExpiresIn`": [
@@ -12462,6 +12482,11 @@
       "label": "Generate and hash the raw refresh token, encode it for its session, then apply the public prefix",
       "test": "adapters/sqlstore/oauth_offline_code_test.go",
       "marker": "unexpected refresh format or access lifetime"
+    },
+    {
+      "label": "Exchange refresh tokens through the Go OAuth client and verify atomic replacement, callback failures and concurrent reuse on all three engines",
+      "test": "adapters/sqlstore/oauth_refresh_grant_test.go",
+      "marker": "func TestRefreshGrantExchange("
     }
   ],
   "plugin-symbol/oauth-provider/OAuthOptions/cachedTrustedClients": [
@@ -12684,6 +12709,16 @@
       "label": "Commit both tokens and consume the code together, retry after insert failures and isolate simultaneous redemptions on all three databases",
       "test": "adapters/sqlstore/oauth_offline_code_test.go",
       "marker": "func testOfflineCodeTransactions("
+    },
+    {
+      "label": "Rotate an independently issued refresh token, narrow its scopes, renew offline access after session expiry and invalidate reused grants",
+      "test": "conformance/oauth-refresh-grant.mjs",
+      "marker": "export async function exerciseRefreshGrant("
+    },
+    {
+      "label": "Exchange refresh tokens through the Go OAuth client and verify atomic replacement, callback failures and concurrent reuse on all three engines",
+      "test": "adapters/sqlstore/oauth_refresh_grant_test.go",
+      "marker": "func TestRefreshGrantExchange("
     }
   ],
   "plugin-symbol/oauth-provider/OAuthOptions/pairwiseSecret": [
@@ -12969,6 +13004,11 @@
       "label": "Issue an offline token pair, rotate the refresh token at an independent issuer after session expiry and remove the rotated tokens on code replay",
       "test": "conformance/oauth-authorization-code.mjs",
       "marker": "export async function exerciseOfflineCode("
+    },
+    {
+      "label": "Rotate an independently issued refresh token, narrow its scopes, renew offline access after session expiry and invalidate reused grants",
+      "test": "conformance/oauth-refresh-grant.mjs",
+      "marker": "export async function exerciseRefreshGrant("
     }
   ],
   "docs/content/docs/plugins/oauth-provider/index.mdx#L20/PKCE": [
@@ -13015,6 +13055,11 @@
       "label": "Set the offline refresh lifetime independently of the scope-limited access token and retain the original authentication time",
       "test": "adapters/sqlstore/oauth_offline_code_test.go",
       "marker": "offline grant bindings or lifetime were lost"
+    },
+    {
+      "label": "Restart the configured refresh lifetime on rotation and preserve original authentication time, session and authorization code",
+      "test": "adapters/sqlstore/oauth_refresh_grant_test.go",
+      "marker": "replacement lifetime or grant lineage changed"
     }
   ],
   "docs/content/docs/plugins/oauth-provider/tokens.mdx#L127/`refreshTokenExpiresIn`": [
@@ -13022,6 +13067,11 @@
       "label": "Set the offline refresh lifetime independently of the scope-limited access token and retain the original authentication time",
       "test": "adapters/sqlstore/oauth_offline_code_test.go",
       "marker": "offline grant bindings or lifetime were lost"
+    },
+    {
+      "label": "Restart the configured refresh lifetime on rotation and preserve original authentication time, session and authorization code",
+      "test": "adapters/sqlstore/oauth_refresh_grant_test.go",
+      "marker": "replacement lifetime or grant lineage changed"
     }
   ],
   "plugin-symbol/oauth-provider/OAuthOptions/generateRefreshToken": [
@@ -13029,6 +13079,13 @@
       "label": "Generate and hash the raw refresh token, encode it for its session, then apply the public prefix",
       "test": "adapters/sqlstore/oauth_offline_code_test.go",
       "marker": "unexpected refresh format or access lifetime"
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/tokens.mdx#L23": [
+    {
+      "label": "Reject client scopes withdrawn during token generation and leave the existing grant available for retry",
+      "test": "adapters/sqlstore/oauth_refresh_grant_test.go",
+      "marker": "expect(\"app\", original, 400, \"invalid_scope\")"
     }
   ]
 }

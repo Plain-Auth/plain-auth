@@ -48,20 +48,9 @@ func (s *Store) redeemCode(ctx context.Context, clientID, identifier string, che
 	defer tx.Rollback()
 	// Serialize redemption and replay cleanup for the same registration, even
 	// after the verification row itself is gone.
-	var client op.AuthorizationCodeClient
-	var registeredScopes []byte
-	const clientSelect = "SELECT " + machineClientColumns + `,"scopes","requirePKCE" FROM "oauthClient"` + localClientFilter
-	client.MachineClient, err = scanMachineClient(tx.QueryRowContext(ctx, s.readForUpdate(clientSelect), clientID), clientID, &registeredScopes, &client.RequirePKCE)
+	client, err := s.readDelegatedClient(ctx, tx, clientID, checkClient)
 	if err != nil {
 		return err
-	}
-	if err := checkClient(client.MachineClient); err != nil {
-		return err
-	}
-	if registeredScopes != nil {
-		if err := json.Unmarshal(registeredScopes, &client.Scopes); err != nil {
-			return err
-		}
 	}
 	matches := `"identifier"=` + s.exactSQLValue("?")
 	var value []byte
@@ -127,6 +116,20 @@ func (s *Store) redeemCode(ctx context.Context, clientID, identifier string, che
 	if _, err := tx.ExecContext(ctx, s.bind(`DELETE FROM "verification" WHERE `+matches), identifier); err != nil {
 		return err
 	}
+	var refreshDigest string
+	if record.Refresh != nil {
+		refreshDigest = pending.storedRefresh
+		if record.Refresh.AuthTime == nil {
+			record.Refresh.AuthTime = &sessionStart
+		}
+	}
+	if err := s.insertDelegatedTokens(ctx, tx, clientID, &identifier, &record.SessionID, &record.SessionID, refreshDigest, record); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+func (s *Store) insertDelegatedTokens(ctx context.Context, tx *sql.Tx, clientID string, codeID, accessSessionID, refreshSessionID *string, refreshDigest string, record op.DelegatedAccessRecord) error {
 	scopes, err := json.Marshal(record.Scopes)
 	if err != nil {
 		return err
@@ -144,18 +147,36 @@ func (s *Store) redeemCode(ctx context.Context, clientID, identifier string, che
 	if refresh := record.Refresh; refresh != nil {
 		id := rand.Text()
 		refreshID = &id
-		authTime := sessionStart
+		var authTime any
 		if refresh.AuthTime != nil {
-			authTime = *refresh.AuthTime
+			authTime = s.date(*refresh.AuthTime)
 		}
 		const insertRefresh = `INSERT INTO "oauthRefreshToken" ("id","token","clientId","userId","sessionId","referenceId","authorizationCodeId","scopes","createdAt","expiresAt","authTime","requestedUserInfoClaims") VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`
-		if _, err := tx.ExecContext(ctx, s.bind(insertRefresh), id, pending.storedRefresh, clientID, userID, record.SessionID, record.ReferenceID, identifier, string(scopes), s.date(record.IssuedAt), s.date(refresh.ExpiresAt), s.date(authTime), claims); err != nil {
+		if _, err := tx.ExecContext(ctx, s.bind(insertRefresh), id, refreshDigest, clientID, record.UserID, refreshSessionID, record.ReferenceID, codeID, string(scopes), s.date(record.IssuedAt), s.date(refresh.ExpiresAt), authTime, claims); err != nil {
 			return err
 		}
 	}
 	const insert = `INSERT INTO "oauthAccessToken" ("id","token","clientId","userId","sessionId","referenceId","authorizationCodeId","scopes","createdAt","expiresAt","refreshId","requestedUserInfoClaims") VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`
-	if _, err := tx.ExecContext(ctx, s.bind(insert), rand.Text(), record.StoredToken, clientID, userID, record.SessionID, record.ReferenceID, identifier, string(scopes), s.date(record.IssuedAt), s.date(record.ExpiresAt), refreshID, claims); err != nil {
-		return err
+	_, err = tx.ExecContext(ctx, s.bind(insert), rand.Text(), record.StoredToken, clientID, record.UserID, accessSessionID, record.ReferenceID, codeID, string(scopes), s.date(record.IssuedAt), s.date(record.ExpiresAt), refreshID, claims)
+	return err
+}
+
+func (s *Store) readDelegatedClient(ctx context.Context, tx *sql.Tx, clientID string, check func(op.MachineClient) error) (op.AuthorizationCodeClient, error) {
+	var client op.AuthorizationCodeClient
+	var registeredScopes []byte
+	const clientSelect = "SELECT " + machineClientColumns + `,"scopes","requirePKCE" FROM "oauthClient"` + localClientFilter
+	var err error
+	client.MachineClient, err = scanMachineClient(tx.QueryRowContext(ctx, s.readForUpdate(clientSelect), clientID), clientID, &registeredScopes, &client.RequirePKCE)
+	if err != nil {
+		return client, err
 	}
-	return tx.Commit()
+	if err := check(client.MachineClient); err != nil {
+		return client, err
+	}
+	if registeredScopes != nil {
+		if err := json.Unmarshal(registeredScopes, &client.Scopes); err != nil {
+			return client, err
+		}
+	}
+	return client, nil
 }
