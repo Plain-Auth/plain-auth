@@ -41,6 +41,7 @@ type Store struct {
 	dpopNextSweep            *atomic.Int64
 	adminRole, adminDenial   string
 	membershipLimit          org.MembershipLimit
+	organizationLimit        int
 	teamOptions              *org.TeamOptions
 	factorSchema             bool
 	db                       *sql.DB

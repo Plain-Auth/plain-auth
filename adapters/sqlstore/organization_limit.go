@@ -27,6 +27,17 @@ func (s *Store) WithOrganizationMembershipLimit(policy org.MembershipLimit) (org
 	return s.WithMembershipLimit(policy)
 }
 
+// WithOrganizationLimit implements the organization plugin's creation limit.
+// The returned view counts a creator's memberships before each creation.
+func (s *Store) WithOrganizationLimit(limit int) (org.Store, error) {
+	if limit < 0 {
+		return nil, errors.New("sqlstore: organization limit cannot be negative")
+	}
+	scoped := *s
+	scoped.organizationLimit = limit
+	return &scoped, nil
+}
+
 var errResolveMemberAdmission = errors.New("resolve membership limit outside transaction")
 
 type memberAdmission struct {

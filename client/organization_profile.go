@@ -20,6 +20,42 @@ func (c *Client) UpdateOrganization(ctx context.Context, organizationID string, 
 	return &result, nil
 }
 
+// CreateOrganizationRequest describes a new organization. The signed-in user
+// becomes its creator. KeepCurrentActiveOrganization leaves the session's
+// current selection in place instead of selecting the new organization.
+type CreateOrganizationRequest struct {
+	Name                          string
+	Slug                          string
+	Logo                          *string
+	Metadata                      map[string]any
+	KeepCurrentActiveOrganization bool
+}
+
+// CreatedOrganization is the new organization with its creator's membership.
+type CreatedOrganization struct {
+	org.Organization
+	Members []org.Member `json:"members"`
+}
+
+// CreateOrganization creates an organization owned by the signed-in user.
+func (c *Client) CreateOrganization(ctx context.Context, request CreateOrganizationRequest) (*CreatedOrganization, error) {
+	body := map[string]any{"name": request.Name, "slug": request.Slug}
+	if request.Logo != nil {
+		body["logo"] = *request.Logo
+	}
+	if request.Metadata != nil {
+		body["metadata"] = request.Metadata
+	}
+	if request.KeepCurrentActiveOrganization {
+		body["keepCurrentActiveOrganization"] = true
+	}
+	var result CreatedOrganization
+	if err := c.Do(ctx, http.MethodPost, "/organization/create", body, &result); err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
 // DeleteOrganization deletes an organization the caller may delete and returns
 // its final profile. Its members, invitations and teams are removed with it.
 func (c *Client) DeleteOrganization(ctx context.Context, organizationID string) (*org.Organization, error) {

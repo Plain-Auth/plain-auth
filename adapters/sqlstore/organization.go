@@ -45,6 +45,16 @@ func (s *Store) CreateOrganization(ctx context.Context, o org.Organization, owne
 	if _, err := s.organizationActor(ctx, tx, owner.UserID, sessionID, time.Now()); err != nil {
 		return err
 	}
+	// The actor's account lock serializes this user's concurrent creations.
+	if s.organizationLimit > 0 {
+		var memberships int
+		if err := tx.QueryRowContext(ctx, s.bind(`SELECT COUNT(*) FROM "member" WHERE "userId"=`+s.exactSQLValue("?")), owner.UserID).Scan(&memberships); err != nil {
+			return err
+		}
+		if memberships >= s.organizationLimit {
+			return org.ErrOrganizationLimit
+		}
+	}
 	query := `INSERT INTO "organization" ("id","name","slug","logo","metadata","createdAt") VALUES(?,?,?,?,?,?)`
 	if s.dialect != "mysql" {
 		query += ` ON CONFLICT ("slug") DO NOTHING`

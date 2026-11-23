@@ -169,6 +169,9 @@
     - [x] Reject duplicate query selectors before authentication and distinguish missing selections and unknown slugs ([test](../../../conformance/organization-role.mjs#L88))
   - [ ] `POST /organization/create`
     - [x] Create an organization and its owner membership atomically ([test](../../../plugins/organization/organization_test.go#L97))
+    - [x] Ask the host whether the signed-in user may create an organization and store nothing when it refuses ([test](../../../adapters/sqlstore/organization_creation_policy_test.go#L104))
+    - [x] Count every membership of the creator, including organizations they joined, against a fixed organization limit ([test](../../../adapters/sqlstore/organization_creation_policy_test.go#L63))
+    - [x] Admit one organization when two instances race for the creator's last slot ([test](../../../adapters/sqlstore/organization_creation_policy_test.go#L80))
   - [x] `POST /organization/check-slug` ([test](../../../conformance/organization-profile.mjs#L39))
     - [x] Check available and occupied slugs using a signed-in client, including after a rename ([test](../../../conformance/organization-profile.mjs#L39))
     - [x] Reject anonymous slug lookup and preserve the authenticated callback contract ([test](../../../conformance/organization-profile.mjs#L20))
@@ -257,8 +260,12 @@
   - [ ] `InferTeam`
   - [ ] `InferInvitation`
   - [ ] `OrganizationOptions`
-    - [ ] `allowUserToCreateOrganization`
-    - [ ] `organizationLimit`
+    - [x] `allowUserToCreateOrganization` ([test](../../../adapters/sqlstore/organization_creation_policy_test.go#L104))
+      - [x] Ask the host whether the signed-in user may create an organization and store nothing when it refuses ([test](../../../adapters/sqlstore/organization_creation_policy_test.go#L104))
+    - [x] `organizationLimit` ([test](../../../adapters/sqlstore/organization_creation_policy_test.go#L63))
+      - [x] Count every membership of the creator, including organizations they joined, against a fixed organization limit ([test](../../../adapters/sqlstore/organization_creation_policy_test.go#L63))
+      - [x] Let the host report a reached organization limit and fail the creation when its lookup fails ([test](../../../adapters/sqlstore/organization_creation_policy_test.go#L104))
+      - [x] Admit one organization when two instances race for the creator's last slot ([test](../../../adapters/sqlstore/organization_creation_policy_test.go#L80))
     - [x] `creatorRole` ([test](../../../conformance/organization-custom-roles.mjs#L29))
       - [x] Assign a custom creator membership, protect the final holder and transfer it to a successor ([test](../../../conformance/organization-custom-roles.mjs#L29))
       - [x] Enforce creator-only grants and filter creator invitations in organization listings ([test](../../../conformance/organization-custom-roles.mjs#L54))
@@ -322,7 +329,8 @@
         - [ ] Parameter `userId` (optional)
         - [ ] Parameter `keepCurrentActiveOrganization` (optional)
       - [ ] Mutually Exclusive Parameters
-      - [ ] Restrict who can create an organization
+      - [x] Restrict who can create an organization ([test](../../../adapters/sqlstore/organization_creation_policy_test.go#L104))
+        - [x] Ask the host whether the signed-in user may create an organization and store nothing when it refuses ([test](../../../adapters/sqlstore/organization_creation_policy_test.go#L104))
       - [ ] Check if organization slug is taken
         - [ ] `POST /organization/check-slug`
           - [x] Check available and occupied slugs using a signed-in client, including after a rename ([test](../../../conformance/organization-profile.mjs#L39))
@@ -868,8 +876,12 @@
     - [ ] Customizing the Schema
       - [ ] Additional Fields
   - [ ] Options
-    - [ ] allowUserToCreateOrganization
-    - [ ] organizationLimit
+    - [x] allowUserToCreateOrganization ([test](../../../adapters/sqlstore/organization_creation_policy_test.go#L104))
+      - [x] Ask the host whether the signed-in user may create an organization and store nothing when it refuses ([test](../../../adapters/sqlstore/organization_creation_policy_test.go#L104))
+    - [x] organizationLimit ([test](../../../adapters/sqlstore/organization_creation_policy_test.go#L63))
+      - [x] Count every membership of the creator, including organizations they joined, against a fixed organization limit ([test](../../../adapters/sqlstore/organization_creation_policy_test.go#L63))
+      - [x] Let the host report a reached organization limit and fail the creation when its lookup fails ([test](../../../adapters/sqlstore/organization_creation_policy_test.go#L104))
+      - [x] Admit one organization when two instances race for the creator's last slot ([test](../../../adapters/sqlstore/organization_creation_policy_test.go#L80))
     - [x] creatorRole ([test](../../../conformance/organization-custom-roles.mjs#L29))
       - [x] Assign a custom creator membership, protect the final holder and transfer it to a successor ([test](../../../conformance/organization-custom-roles.mjs#L29))
       - [x] Enforce creator-only grants and filter creator invitations in organization listings ([test](../../../conformance/organization-custom-roles.mjs#L54))

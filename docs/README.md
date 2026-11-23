@@ -59,6 +59,7 @@ Each guide explains one capability and links to the tests that prove it. New to 
 | Task | Guide |
 | --- | --- |
 | Switch organizations and teams, read a shared organization directory, grant memberships and accept invitations | [Organizations](organizations.md) |
+| Limit who can create organizations and how many each user may join | [Organization creation](organizations.md#control-who-can-create-organizations) |
 | Delete an organization with its members, invitations and teams | [Organization deletion](organizations.md#delete-an-organization) |
 | Page through an organization's member directory and filter by role or join date | [Member directory](organizations.md#list-organization-members) |
 | Enforce fixed or application-defined membership and team limits | [Organization membership limits](organizations.md#limit-organization-membership) |

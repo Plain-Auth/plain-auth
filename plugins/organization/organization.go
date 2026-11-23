@@ -60,6 +60,16 @@ type Store interface {
 type Options struct {
 	// CreatorRole is the membership assigned to an organization's creator.
 	CreatorRole string
+	// AllowUserToCreateOrganization decides whether a signed-in user may
+	// create organizations. Nil allows every user.
+	AllowUserToCreateOrganization func(context.Context, authn.User) (bool, error)
+	// OrganizationLimit caps how many organizations a user may belong to when
+	// creating another. Zero means unlimited.
+	OrganizationLimit int
+	// OrganizationLimitReached reports whether a user has reached a limit the
+	// host defines, such as one based on their plan. It cannot be combined
+	// with OrganizationLimit.
+	OrganizationLimitReached func(context.Context, authn.User) (bool, error)
 	// Roles replaces the built-in grants when non-nil. Use DefaultRoles to extend them.
 	Roles map[string]access.Statements
 	// DynamicAccessControl adds grants from the destination organization's role table.
@@ -238,6 +248,9 @@ func NewService(o Options) (*Service, error) {
 			return nil, err
 		}
 		o.RoleAdditionalFields = defs
+	}
+	if err := o.configureCreationPolicy(); err != nil {
+		return nil, err
 	}
 	if err := o.MembershipLimit.Validate(); err != nil {
 		return nil, err
@@ -449,6 +462,9 @@ func (o Options) create(c authn.EndpointContext, s *authn.SessionResult) (any, e
 	keep, ok := c.Body["keepCurrentActiveOrganization"].(bool)
 	if c.Body["keepCurrentActiveOrganization"] != nil && !ok {
 		return nil, validation("keepCurrentActiveOrganization")
+	}
+	if err := o.checkCreationPolicy(c.Request.Context(), s.User); err != nil {
+		return nil, err
 	}
 	member := Member{ID: rand.Text(), OrganizationID: org.ID, UserID: s.User.ID, Role: o.rolePolicy.CreatorRole(), CreatedAt: now}
 	err = o.Store.CreateOrganization(c.Request.Context(), org, member, s.Session.ID, keep)

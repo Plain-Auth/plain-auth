@@ -762,6 +762,21 @@
       "label": "Create an organization and its owner membership atomically",
       "test": "plugins/organization/organization_test.go",
       "marker": "invalid owner membership:"
+    },
+    {
+      "label": "Ask the host whether the signed-in user may create an organization and store nothing when it refuses",
+      "test": "adapters/sqlstore/organization_creation_policy_test.go",
+      "marker": "// The host decides who may create and when a plan is full."
+    },
+    {
+      "label": "Count every membership of the creator, including organizations they joined, against a fixed organization limit",
+      "test": "adapters/sqlstore/organization_creation_policy_test.go",
+      "marker": "// A fixed limit counts every membership, including ones the user did not create."
+    },
+    {
+      "label": "Admit one organization when two instances race for the creator's last slot",
+      "test": "adapters/sqlstore/organization_creation_policy_test.go",
+      "marker": "// Two instances racing for the creator's last slot admit one organization."
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L71": [
@@ -16308,6 +16323,66 @@
       "label": "Answer 404 ORGANIZATION_DELETION_DISABLED before authentication when deletion is disabled",
       "test": "adapters/sqlstore/organization_deletion_test.go",
       "marker": "// Disabled deletion answers before authentication.",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/organization/OrganizationOptions/allowUserToCreateOrganization": [
+    {
+      "label": "Ask the host whether the signed-in user may create an organization and store nothing when it refuses",
+      "test": "adapters/sqlstore/organization_creation_policy_test.go",
+      "marker": "// The host decides who may create and when a plan is full.",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/organization/OrganizationOptions/organizationLimit": [
+    {
+      "label": "Count every membership of the creator, including organizations they joined, against a fixed organization limit",
+      "test": "adapters/sqlstore/organization_creation_policy_test.go",
+      "marker": "// A fixed limit counts every membership, including ones the user did not create.",
+      "complete": true
+    },
+    {
+      "label": "Let the host report a reached organization limit and fail the creation when its lookup fails",
+      "test": "adapters/sqlstore/organization_creation_policy_test.go",
+      "marker": "// The host decides who may create and when a plan is full."
+    },
+    {
+      "label": "Admit one organization when two instances race for the creator's last slot",
+      "test": "adapters/sqlstore/organization_creation_policy_test.go",
+      "marker": "// Two instances racing for the creator's last slot admit one organization."
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L2574/allowUserToCreateOrganization": [
+    {
+      "label": "Ask the host whether the signed-in user may create an organization and store nothing when it refuses",
+      "test": "adapters/sqlstore/organization_creation_policy_test.go",
+      "marker": "// The host decides who may create and when a plan is full.",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L2576/organizationLimit": [
+    {
+      "label": "Count every membership of the creator, including organizations they joined, against a fixed organization limit",
+      "test": "adapters/sqlstore/organization_creation_policy_test.go",
+      "marker": "// A fixed limit counts every membership, including ones the user did not create.",
+      "complete": true
+    },
+    {
+      "label": "Let the host report a reached organization limit and fail the creation when its lookup fails",
+      "test": "adapters/sqlstore/organization_creation_policy_test.go",
+      "marker": "// The host decides who may create and when a plan is full."
+    },
+    {
+      "label": "Admit one organization when two instances race for the creator's last slot",
+      "test": "adapters/sqlstore/organization_creation_policy_test.go",
+      "marker": "// Two instances racing for the creator's last slot admit one organization."
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L118": [
+    {
+      "label": "Ask the host whether the signed-in user may create an organization and store nothing when it refuses",
+      "test": "adapters/sqlstore/organization_creation_policy_test.go",
+      "marker": "// The host decides who may create and when a plan is full.",
       "complete": true
     }
   ]

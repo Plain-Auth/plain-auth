@@ -60,10 +60,31 @@ The application provides `sendInvitation`, its configured public `origin` and it
 | POST | `/organization/update` | Update an organization's name, slug, logo or metadata as an owner or admin. |
 | POST | `/organization/update-member-role` | Replace roles by membership ID in the supplied or active organization. |
 | POST | `/organization/leave` | End the signed-in user's own membership in the supplied `organizationId`. |
+| POST | `/organization/delete` | Delete an organization with its members, invitations and teams. See [Delete an organization](#delete-an-organization). |
 
 The role names in the workflow descriptions below describe the default policy. Hosts can [configure organization roles](#configure-organization-roles). An owner can invite members, admins or other owners. An admin can invite members or admins. The member role grants no invitation permission. The SQL store commits invitation acceptance and the resulting membership together. The [organization feature checklist](parity/plugins/organization.md) tracks additional role policies and operations.
 
 Browser membership changes check the acting account and session inside the database transaction. Acceptance reads the current account email and verification status. Account deletion removes invitations that user sent, their organization and team memberships, and updates affected team counts. Other members keep their memberships and invitations.
+
+## Control who can create organizations
+
+By default every signed-in user can create organizations. Restrict creation with any of these `organization.Options`:
+
+```go
+groups, err := organization.NewService(organization.Options{
+    Store: store,
+    AllowUserToCreateOrganization: func(ctx context.Context, user plainauth.User) (bool, error) {
+        return user.EmailVerified, nil
+    },
+    OrganizationLimit: 5,
+})
+```
+
+- `AllowUserToCreateOrganization` receives the signed-in user. Return `false` to answer `403 YOU_ARE_NOT_ALLOWED_TO_CREATE_A_NEW_ORGANIZATION`.
+- `OrganizationLimit` caps how many organizations a user may belong to when creating another, counting memberships they did not create. The SQL store counts inside the creating transaction while it holds the user's account lock, so concurrent requests on any node cannot exceed it. Zero means unlimited.
+- `OrganizationLimitReached` lets the host decide instead, for example from the user's plan. Return `true` when the user is at their limit. It cannot be combined with `OrganizationLimit`.
+
+A user at their limit receives `403 YOU_HAVE_REACHED_THE_MAXIMUM_NUMBER_OF_ORGANIZATIONS`. A callback error fails the request, and a refused creation stores nothing. In Go, `c.CreateOrganization(ctx, client.CreateOrganizationRequest{Name: "Acme", Slug: "acme"})` returns the new organization and the creator's membership. Set `KeepCurrentActiveOrganization` to leave the session's current selection in place. [HTTP, policy and concurrency tests on three SQL engines](../adapters/sqlstore/organization_creation_policy_test.go)
 
 ## Switch organizations and teams from any client
 
