@@ -215,7 +215,11 @@
       - [x] Replace a live grant with the newly requested roles and teams while an explicit resend preserves the existing grant ([test](../../../conformance/invitation-expiration.mjs#L81))
       - [x] Roll back invalid replacements and serialize competing administrators on all three engines ([test](../../../adapters/sqlstore/organization_replacement_test.go#L63))
     - [ ] `requireEmailVerificationOnInvitation`
-    - [ ] `sendInvitationEmail`
+    - [x] `sendInvitationEmail` ([test](../../../conformance/invitation-delivery.mjs#L51))
+      - [x] Deliver the committed grant with the sending membership, public user profile, destination organization and request metadata ([test](../../../conformance/invitation-delivery.mjs#L51))
+      - [x] Return the saved grant after mail failure and permit a different administrator to resend it with its original identity ([test](../../../conformance/invitation-delivery.mjs#L47))
+      - [x] Capture the issuing member on creation, renewal and replacement across all three engines ([test](../../../adapters/sqlstore/organization_delivery_test.go#L36))
+      - [x] Deliver exactly once through a permitted application credential after the SQL transaction commits ([test](../../../adapters/sqlstore/apikey_session_test.go#L246))
     - [ ] `schema`
     - [ ] `disableOrganizationDeletion`
     - [ ] `organizationHooks`
@@ -313,7 +317,11 @@
       - [ ] `POST /organization/delete`
         - [ ] Parameter `organizationId`
   - [ ] Invitations
-    - [ ] Setup Invitation Email
+    - [x] Setup Invitation Email ([test](../../../conformance/invitation-delivery.mjs#L51))
+      - [x] Deliver the committed grant with the sending membership, public user profile, destination organization and request metadata ([test](../../../conformance/invitation-delivery.mjs#L51))
+      - [x] Return the saved grant after mail failure and permit a different administrator to resend it with its original identity ([test](../../../conformance/invitation-delivery.mjs#L47))
+      - [x] Capture the issuing member on creation, renewal and replacement across all three engines ([test](../../../adapters/sqlstore/organization_delivery_test.go#L36))
+      - [x] Deliver exactly once through a permitted application credential after the SQL transaction commits ([test](../../../adapters/sqlstore/apikey_session_test.go#L246))
     - [ ] Send Invitation
       - [x] Authorize the inviter, constrain role grants, and resend the same invitation ([test](../../../plugins/organization/organization_test.go#L129))
       - [ ] `POST /organization/invite-member`
@@ -640,7 +648,11 @@
     - [x] membershipLimit ([test](../../../conformance/organization-capacity.mjs#L39))
       - [x] Enforce fixed or application-resolved seat limits for the candidate and destination organization ([test](../../../conformance/organization-capacity.mjs#L39))
       - [x] Allocate the final seat once when a trusted grant and an invitation compete across connections ([test](../../../adapters/sqlstore/organization_limit_test.go#L194))
-    - [ ] sendInvitationEmail
+    - [x] sendInvitationEmail ([test](../../../conformance/invitation-delivery.mjs#L51))
+      - [x] Deliver the committed grant with the sending membership, public user profile, destination organization and request metadata ([test](../../../conformance/invitation-delivery.mjs#L51))
+      - [x] Return the saved grant after mail failure and permit a different administrator to resend it with its original identity ([test](../../../conformance/invitation-delivery.mjs#L47))
+      - [x] Capture the issuing member on creation, renewal and replacement across all three engines ([test](../../../adapters/sqlstore/organization_delivery_test.go#L36))
+      - [x] Deliver exactly once through a permitted application credential after the SQL transaction commits ([test](../../../adapters/sqlstore/apikey_session_test.go#L246))
     - [x] invitationExpiresIn ([test](../../../conformance/invitation-expiration.mjs#L25))
       - [x] Apply the default or configured validity period on creation and renewal, including an elapsed deadline ([test](../../../conformance/invitation-expiration.mjs#L25))
       - [x] Persist the renewed deadline on all three engines while retaining the original grant identity and role ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L220))

@@ -14889,5 +14889,74 @@
       "marker": "deny(await accept(guest, \" \" + invite.id)",
       "complete": true
     }
+  ],
+  "plugin-symbol/organization/OrganizationOptions/sendInvitationEmail": [
+    {
+      "label": "Deliver the committed grant with the sending membership, public user profile, destination organization and request metadata",
+      "test": "conformance/invitation-delivery.mjs",
+      "marker": "assert.equal(data.inviter.id, member.id)",
+      "complete": true
+    },
+    {
+      "label": "Return the saved grant after mail failure and permit a different administrator to resend it with its original identity",
+      "test": "conformance/invitation-delivery.mjs",
+      "marker": "assert.equal(data.invitation.inviterId, host.id)"
+    },
+    {
+      "label": "Capture the issuing member on creation, renewal and replacement across all three engines",
+      "test": "adapters/sqlstore/organization_delivery_test.go",
+      "marker": "t.Fatal(\"resend lost the stored grant or current delivery sender\""
+    },
+    {
+      "label": "Deliver exactly once through a permitted application credential after the SQL transaction commits",
+      "test": "adapters/sqlstore/apikey_session_test.go",
+      "marker": "t.Fatal(\"application credential delivered an incorrect sender or destination\")"
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L864": [
+    {
+      "label": "Deliver the committed grant with the sending membership, public user profile, destination organization and request metadata",
+      "test": "conformance/invitation-delivery.mjs",
+      "marker": "assert.equal(data.inviter.id, member.id)",
+      "complete": true
+    },
+    {
+      "label": "Return the saved grant after mail failure and permit a different administrator to resend it with its original identity",
+      "test": "conformance/invitation-delivery.mjs",
+      "marker": "assert.equal(data.invitation.inviterId, host.id)"
+    },
+    {
+      "label": "Capture the issuing member on creation, renewal and replacement across all three engines",
+      "test": "adapters/sqlstore/organization_delivery_test.go",
+      "marker": "t.Fatal(\"resend lost the stored grant or current delivery sender\""
+    },
+    {
+      "label": "Deliver exactly once through a permitted application credential after the SQL transaction commits",
+      "test": "adapters/sqlstore/apikey_session_test.go",
+      "marker": "t.Fatal(\"application credential delivered an incorrect sender or destination\")"
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L2582/sendInvitationEmail": [
+    {
+      "label": "Deliver the committed grant with the sending membership, public user profile, destination organization and request metadata",
+      "test": "conformance/invitation-delivery.mjs",
+      "marker": "assert.equal(data.inviter.id, member.id)",
+      "complete": true
+    },
+    {
+      "label": "Return the saved grant after mail failure and permit a different administrator to resend it with its original identity",
+      "test": "conformance/invitation-delivery.mjs",
+      "marker": "assert.equal(data.invitation.inviterId, host.id)"
+    },
+    {
+      "label": "Capture the issuing member on creation, renewal and replacement across all three engines",
+      "test": "adapters/sqlstore/organization_delivery_test.go",
+      "marker": "t.Fatal(\"resend lost the stored grant or current delivery sender\""
+    },
+    {
+      "label": "Deliver exactly once through a permitted application credential after the SQL transaction commits",
+      "test": "adapters/sqlstore/apikey_session_test.go",
+      "marker": "t.Fatal(\"application credential delivered an incorrect sender or destination\")"
+    }
   ]
 }

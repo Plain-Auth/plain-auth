@@ -29,9 +29,9 @@ type invitationCapacity struct {
 	maximum  int
 }
 
-func (s *Store) issueOrganizationInvitation(ctx context.Context, inv org.Invitation, sessionID string, resend, replace bool) (org.Invitation, error) {
+func (s *Store) issueOrganizationInvitation(ctx context.Context, inv org.Invitation, issue invitationIssue) (org.Invitation, error) {
 	var capacity invitationCapacity
-	saved, err := s.issueInvitationTx(ctx, inv, sessionID, resend, replace, &capacity)
+	saved, err := s.issueInvitationTx(ctx, inv, issue, &capacity)
 	if err != errResolveInvitationLimit {
 		return saved, err
 	}
@@ -45,7 +45,20 @@ func (s *Store) issueOrganizationInvitation(ctx context.Context, inv org.Invitat
 	if now.After(inv.CreatedAt) {
 		inv.CreatedAt, inv.ExpiresAt = now, now.Add(lifetime)
 	}
-	return s.issueInvitationTx(ctx, inv, sessionID, resend, replace, &capacity)
+	return s.issueInvitationTx(ctx, inv, issue, &capacity)
+}
+
+func (s *Store) invitationIssuer(ctx context.Context, tx *sql.Tx, member org.Member) (org.InvitationLimitInput, error) {
+	input := org.InvitationLimitInput{Member: member}
+	exact := s.exactSQLValue("?")
+	group, err := readOrg(tx.QueryRowContext(ctx, s.bind(`SELECT `+orgFields+` FROM "organization" o WHERE o."id"=`+exact), member.OrganizationID))
+	if err != nil {
+		return input, err
+	}
+	input.Organization = *group
+	query := `SELECT ` + userColumns + ` FROM "user" u WHERE u."id"=` + exact
+	err = tx.QueryRowContext(ctx, s.bind(query), member.UserID).Scan(userFields(&input.User)...)
+	return input, err
 }
 
 // Called with the organization lock held. A provisional replacement is part
@@ -58,14 +71,8 @@ func (s *Store) checkInvitationCapacity(ctx context.Context, tx *sql.Tx, inv org
 	}
 	exact := s.exactSQLValue("?")
 	if policy != nil && policy.Resolve != nil {
-		input := org.InvitationLimitInput{Member: member}
-		group, err := readOrg(tx.QueryRowContext(ctx, s.bind(`SELECT `+orgFields+` FROM "organization" o WHERE o."id"=`+exact), inv.OrganizationID))
+		input, err := s.invitationIssuer(ctx, tx, member)
 		if err != nil {
-			return err
-		}
-		input.Organization = *group
-		query := `SELECT ` + userColumns + ` FROM "user" u WHERE u."id"=` + exact
-		if err := tx.QueryRowContext(ctx, s.bind(query), inv.InviterID).Scan(userFields(&input.User)...); err != nil {
 			return err
 		}
 		current, err := json.Marshal(input)

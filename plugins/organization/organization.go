@@ -76,6 +76,7 @@ type Options struct {
 	teamStore                TeamStore
 	Store                    Store
 	SendInvitation           func(context.Context, Invitation) error
+	SendInvitationEmail      func(context.Context, InvitationDelivery) error
 	RequireVerifiedEmail     bool
 }
 
@@ -192,7 +193,14 @@ func NewService(o Options) (*Service, error) {
 			return nil, errors.New("organization: profile hooks require an ObservedProfileStore")
 		}
 	}
-	if o.CancelPendingInvitationsOnReInvite {
+	if o.SendInvitationEmail != nil {
+		if o.SendInvitation != nil {
+			return nil, errors.New("organization: configure one invitation sender")
+		}
+		if _, ok := o.Store.(InvitationDeliveryStore); !ok {
+			return nil, errors.New("organization: SendInvitationEmail requires an InvitationDeliveryStore")
+		}
+	} else if o.CancelPendingInvitationsOnReInvite {
 		if _, ok := o.Store.(InvitationReplacementStore); !ok {
 			return nil, errors.New("organization: replacing invitations requires an InvitationReplacementStore")
 		}
@@ -466,6 +474,9 @@ func (o Options) invite(c authn.EndpointContext, s *authn.SessionResult) (any, e
 	if err != nil {
 		return nil, err
 	}
+	if o.SendInvitationEmail != nil {
+		return o.deliverInvitation(c, s, inv, resend)
+	}
 	if o.CancelPendingInvitationsOnReInvite && !resend {
 		inv, err = o.Store.(InvitationReplacementStore).ReplaceOrganizationInvitation(c.Request.Context(), inv, s.Session.ID)
 	} else {
@@ -478,7 +489,7 @@ func (o Options) invite(c authn.EndpointContext, s *authn.SessionResult) (any, e
 		if err := o.SendInvitation(c.Request.Context(), inv); err != nil {
 			// Delivery details belong to the application and can contain
 			// private mail provider diagnostics.
-			return nil, errors.New("organization: invitation delivery failed")
+			return nil, errInvitationDelivery
 		}
 	}
 	return inv, nil

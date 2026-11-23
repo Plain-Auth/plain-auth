@@ -109,17 +109,11 @@ func (s *Store) invitationDecisionTx(ctx context.Context, request invitationDeci
 		return nil, err
 	}
 	defer tx.Rollback()
-	if err = s.lockActiveAccount(ctx, tx, actor.UserID, actor.Token, time.Now()); err != nil {
-		if errors.Is(err, auth.ErrNotFound) {
-			return nil, org.ErrUnauthenticated
-		}
-		return nil, err
-	}
-	inv, err := s.lockInvitation(ctx, tx, request.id)
+	account, err := s.lockInvitationSession(ctx, tx, actor)
 	if err != nil {
 		return nil, err
 	}
-	account, err := s.organizationSessionAccount(ctx, tx, actor)
+	inv, err := s.lockInvitation(ctx, tx, request.id)
 	if err != nil {
 		return nil, err
 	}
@@ -186,6 +180,21 @@ func (s *Store) invitationDecisionTx(ctx context.Context, request invitationDeci
 		return nil, err
 	}
 	return scope, nil
+}
+
+func (s *Store) lockInvitationSession(ctx context.Context, tx *sql.Tx, actor auth.Session) (orgSessionAccount, error) {
+	err := s.lockActiveAccount(ctx, tx, actor.UserID, actor.Token, time.Now())
+	if errors.Is(err, auth.ErrNotFound) {
+		return orgSessionAccount{}, org.ErrUnauthenticated
+	}
+	if err != nil {
+		return orgSessionAccount{}, err
+	}
+	account, err := s.organizationSessionAccount(ctx, tx, actor)
+	if err == nil && !actor.CreatedAt.IsZero() && !account.createdAt.Equal(actor.CreatedAt) {
+		return orgSessionAccount{}, org.ErrUnauthenticated
+	}
+	return account, err
 }
 
 // The caller holds the tenant lock and has checked the transition and authority.

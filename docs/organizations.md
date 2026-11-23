@@ -16,8 +16,9 @@ defer store.Close()
 org, err := organization.New(organization.Options{
     Store: store,
     RequireVerifiedEmail: true,
-    SendInvitation: func(ctx context.Context, invite organization.Invitation) error {
-        return sendInvitation(ctx, invite.Email, invite.ID)
+    SendInvitationEmail: func(ctx context.Context, mail organization.InvitationDelivery) error {
+        link := origin + "/join?" + url.Values{"invitationId": {mail.Invitation.ID}}.Encode()
+        return sendInvitation(ctx, mail.Email, mail.Inviter.User.Name, mail.Organization.Name, link)
     },
 })
 if err != nil {
@@ -29,7 +30,7 @@ auth, err := plainauth.New(plainauth.Options{
 })
 ```
 
-The application provides `sendInvitation`, its configured public `origin` and its `secret`. A failed delivery leaves the pending invitation available for another attempt using `resend: true`. Invitation IDs are opaque. New invitations and resends use a 48-hour lifetime by default. Set `InvitationExpiresIn` on `organization.Options` to choose another duration, for example `30 * time.Minute`. Resending a live invitation refreshes its deadline and preserves its ID, creation time, role and teams. Once it expires, inviting the recipient again creates a new ID. The signed-in recipient must match the invitation email. Set `RequireVerifiedEmail` to also require a verified account.
+The application provides `sendInvitation`, its configured public `origin` and its `secret`. The example uses Go’s `net/url` package to build a link to the application’s join page. Invitation IDs are opaque. New invitations and resends use a 48-hour lifetime by default. Set `InvitationExpiresIn` on `organization.Options` to choose another duration, for example `30 * time.Minute`. Resending a live invitation refreshes its deadline and preserves its ID, creation time, role and teams. Once it expires, inviting the recipient again creates a new ID. The signed-in recipient must match the invitation email. Set `RequireVerifiedEmail` to also require a verified account.
 
 | Method | Path under the auth mount | Behavior |
 | --- | --- | --- |
@@ -233,6 +234,14 @@ The JSON response is an array. Each entry includes the invitation ID, organizati
 The database reads up to 100 invitations in creation order, using the ID to break ties. Owners can see the whole page. Admins see only invitations whose roles exclude `owner`. Ordinary members receive HTTP 403 with `YOU_ARE_NOT_ALLOWED_TO_LIST_INVITATIONS`, including when the organization has no invitations. A missing selection returns HTTP 400. An unknown organization or one the caller does not belong to returns HTTP 403.
 
 In Go, call `authClient.ListOrganizationInvitations(ctx, organizationID)`, using an empty string for the active organization. To require recipients to verify their account email before accepting an invitation, set `RequireVerifiedEmail: true` in the organization options. [HTTP client comparison](../conformance/organization-invitations.mjs) · [Go client and session tests](../adapters/sqlstore/organization_selection_http_test.go)
+
+## Deliver invitation email
+
+Set `SendInvitationEmail` on `organization.Options` to deliver mail or enqueue a message in your own system. The callback receives the committed invitation, its destination organization, the sending membership with its public user profile, and the normalized recipient address in `Email`. Use `Request` for request metadata such as a language header. JSON serialization excludes the request. Your application chooses the mail provider, template and link destination.
+
+On a resend, `Inviter` identifies the member sending the new message. `Invitation.InviterID` still identifies the person who issued the original grant. The original ID, role and targeted teams remain available in `Invitation`. The SQL adapter captures these fields in the transaction that saves the grant. Delivery runs after commit, so the callback can read the invitation through another connection.
+
+The handler waits for `SendInvitationEmail`. If it returns an error, Plain Auth logs a delivery failure and returns the committed invitation. A successful invite response confirms the grant was saved. To retry delivery, send the same invitation request with `resend: true`. Applications that need delivery confirmation can record the mail provider’s receipt in their callback. The simpler `SendInvitation(ctx, invitation)` callback returns HTTP 500 on delivery failure and also preserves the grant. Configure one sender. Custom stores using `SendInvitationEmail` implement `organization.InvitationDeliveryStore`. [HTTP delivery and resend tests](../conformance/invitation-delivery.mjs) · [Three-engine delivery tests](../adapters/sqlstore/organization_delivery_test.go)
 
 ## Limit outstanding invitations
 

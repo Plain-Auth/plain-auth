@@ -5,7 +5,6 @@ import (
 	"crypto/rand"
 	"database/sql"
 	"errors"
-	"slices"
 	"strings"
 	"time"
 
@@ -239,29 +238,43 @@ func scanInvitation(r rowScanner, teamField bool, extra ...any) (org.Invitation,
 }
 
 func (s *Store) InviteOrganizationMember(ctx context.Context, inv org.Invitation, sessionID string, resend bool) (org.Invitation, error) {
-	return s.issueOrganizationInvitation(ctx, inv, sessionID, resend, false)
+	return s.issueOrganizationInvitation(ctx, inv, invitationIssue{sessionID: sessionID, resend: resend})
 }
 
 // ReplaceOrganizationInvitation installs a fresh invitation. A failed issue
 // leaves the previous grant usable.
 func (s *Store) ReplaceOrganizationInvitation(ctx context.Context, inv org.Invitation, sessionID string) (org.Invitation, error) {
-	return s.issueOrganizationInvitation(ctx, inv, sessionID, false, true)
+	return s.issueOrganizationInvitation(ctx, inv, invitationIssue{sessionID: sessionID, replace: true})
 }
 
-func (s *Store) issueInvitationTx(ctx context.Context, inv org.Invitation, sessionID string, resend, replace bool, capacity *invitationCapacity) (org.Invitation, error) {
+type invitationIssue struct {
+	sessionID string
+	resend    bool
+	replace   bool
+	delivery  *invitationDelivery
+}
+
+func (s *Store) issueInvitationTx(ctx context.Context, inv org.Invitation, issue invitationIssue, capacity *invitationCapacity) (org.Invitation, error) {
 	tx, err := s.beginMembershipChange(ctx)
 	if err != nil {
 		return org.Invitation{}, err
 	}
 	defer tx.Rollback()
 	if proof, ok := ak.SessionProofFrom(ctx); ok {
-		if proof.ID != sessionID || proof.UserID != inv.InviterID {
+		if proof.ID != issue.sessionID || proof.UserID != inv.InviterID {
 			return inv, org.ErrUnauthenticated
 		}
 		if err := s.lockKeySession(ctx, tx, proof, "invitation", "create", time.Now()); err != nil {
 			return inv, err
 		}
-	} else if _, err := s.organizationActor(ctx, tx, inv.InviterID, sessionID, time.Now()); err != nil {
+	} else if issue.delivery != nil {
+		if err := issue.delivery.actor.RequireOwner(); err != nil {
+			return org.Invitation{}, err
+		}
+		if _, err := s.lockInvitationSession(ctx, tx, issue.delivery.actor); err != nil {
+			return org.Invitation{}, err
+		}
+	} else if _, err := s.organizationActor(ctx, tx, inv.InviterID, issue.sessionID, time.Now()); err != nil {
 		return org.Invitation{}, err
 	}
 	if err = s.lockOrganization(ctx, tx, inv.OrganizationID); err != nil {
@@ -278,7 +291,7 @@ func (s *Store) issueInvitationTx(ctx context.Context, inv org.Invitation, sessi
 	if !owner && !membershipHasRole(member.Role, "admin") {
 		return org.Invitation{}, org.ErrInviteDenied
 	}
-	if !owner && slices.Contains(strings.Split(inv.Role, ","), "owner") {
+	if !owner && membershipHasRole(inv.Role, "owner") {
 		return org.Invitation{}, org.ErrRoleDenied
 	}
 	var existing bool
@@ -300,7 +313,7 @@ func (s *Store) issueInvitationTx(ctx context.Context, inv org.Invitation, sessi
 		// Issue a fresh invitation.
 	case err != nil:
 		return org.Invitation{}, err
-	case resend:
+	case issue.resend:
 		if !owner && membershipHasRole(pending.Role, "owner") {
 			return org.Invitation{}, org.ErrRoleDenied
 		}
@@ -309,11 +322,8 @@ func (s *Store) issueInvitationTx(ctx context.Context, inv org.Invitation, sessi
 		if err != nil {
 			return org.Invitation{}, err
 		}
-		if err := tx.Commit(); err != nil {
-			return org.Invitation{}, err
-		}
-		return pending, nil
-	case replace:
+		return s.commitIssuedInvitation(ctx, tx, pending, member.Member, issue.delivery)
+	case issue.replace:
 		if err := s.updateInvitationStatus(ctx, tx, &pending, "canceled"); err != nil {
 			return org.Invitation{}, err
 		}
@@ -345,10 +355,7 @@ func (s *Store) issueInvitationTx(ctx context.Context, inv org.Invitation, sessi
 	if err != nil {
 		return org.Invitation{}, err
 	}
-	if err := tx.Commit(); err != nil {
-		return org.Invitation{}, err
-	}
-	return inv, nil
+	return s.commitIssuedInvitation(ctx, tx, inv, member.Member, issue.delivery)
 }
 
 func (s *Store) AcceptOrganizationInvitation(ctx context.Context, id, sessionID string, u authn.User, now time.Time, requireVerified bool) (org.Invitation, org.Member, error) {

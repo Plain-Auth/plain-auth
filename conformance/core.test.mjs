@@ -1943,6 +1943,11 @@ test("organization invitation acceptance validates opaque IDs and normalizes the
   await compareInvitationAcceptance(t, { reference, goFixture, instrument });
 });
 
+test("host invitation email receives the issuer, destination and request on issue and resend", async t => {
+  const { compareInvitationDelivery } = await import("./invitation-delivery.mjs");
+  await compareInvitationDelivery(t, { reference, goFixture, instrument });
+});
+
 test("host invitation lifetimes apply to new grants and resends", async t => {
   const { compareInvitationExpiration } = await import("./invitation-expiration.mjs");
   await compareInvitationExpiration(t, { reference, goFixture, instrument });

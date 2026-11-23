@@ -1,6 +1,7 @@
 package sqlstore
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -50,7 +51,16 @@ func TestOrgAPIKeyAndEphemeralSession(t *testing.T) {
 			must(e)
 			plugin, e := ak.NewPlugin(users, orgs, automation)
 			must(e)
-			organization, e := org.New(org.Options{Store: db})
+			var delivered []org.InvitationDelivery
+			organization, e := org.New(org.Options{Store: db, SendInvitationEmail: func(ctx context.Context, message org.InvitationDelivery) error {
+				var status string
+				err := db.db.QueryRowContext(ctx, db.bind(`SELECT "status" FROM "invitation" WHERE "id"=?`), message.Invitation.ID).Scan(&status)
+				if err != nil || status != "pending" {
+					t.Errorf("mail callback could not read its committed invitation: %v", err)
+				}
+				delivered = append(delivered, message)
+				return nil
+			}})
 			must(e)
 			const origin = "https://keys.example"
 			off := false
@@ -232,6 +242,9 @@ func TestOrgAPIKeyAndEphemeralSession(t *testing.T) {
 			}
 			expectHTTP(req("organization/invite-member", limited.Secret, "X-Api-Key", inv), 403, "INSUFFICIENT_API_KEY_PERMISSIONS")
 			expectHTTP(req("organization/invite-member", priv.Secret, "X-Api-Key", inv), 200, inv["email"])
+			if len(delivered) != 1 || delivered[0].Inviter.User.ID != ownerUser.User.ID || delivered[0].Inviter.User.Name != name || delivered[0].Organization.ID != group.ID || delivered[0].Email != inv["email"] {
+				t.Fatal("application credential delivered an incorrect sender or destination")
+			}
 			count := int64(1)
 			single, e := users.Create(ctx, ownerUser.User.ID, ak.CreateInput{Policy: ak.Policy{Remaining: &count}})
 			must(e)

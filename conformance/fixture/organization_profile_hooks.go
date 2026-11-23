@@ -65,3 +65,24 @@ func configureDecisionHooks(o *org.Options, path string) {
 	o.BeforeAcceptInvitation, o.AfterAcceptInvitation = record("before-accept"), record("after-accept")
 	o.BeforeCancelInvitation, o.AfterCancelInvitation = record("before-cancel"), record("after-cancel")
 }
+
+func recordInvitationEmail(path string) func(context.Context, org.InvitationDelivery) error {
+	return func(_ context.Context, event org.InvitationDelivery) error {
+		file, err := os.OpenFile(path, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
+		if err != nil {
+			return err
+		}
+		defer file.Close()
+		err = json.NewEncoder(file).Encode(map[string]any{
+			"data": event, "method": event.Request.Method, "path": event.Request.URL.Path,
+			"agent": event.Request.UserAgent(),
+		})
+		if event.Invitation.TeamID != nil {
+			*event.Invitation.TeamID = "detached-copy"
+		}
+		if err == nil && event.Email == "guest@example.test" && event.Inviter.Role == "owner" {
+			return errors.New("private mail fixture failure")
+		}
+		return err
+	}
+}

@@ -295,6 +295,9 @@ func main() {
 			if os.Getenv("CONFORMANCE_INVITATION_HOOKS") == "1" {
 				configureDecisionHooks(&options, os.Args[1]+".invitation-events")
 			}
+			if os.Getenv("CONFORMANCE_INVITATION_DELIVERY") == "1" {
+				options.SendInvitationEmail = recordInvitationEmail(os.Args[1] + ".invitation-mail")
+			}
 			if os.Getenv("CONFORMANCE_ORG_PROFILE_HOOKS") == "1" {
 				configureOrganizationProfileHooks(&options, os.Args[1]+".org-profile-events")
 			}

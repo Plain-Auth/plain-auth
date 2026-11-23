@@ -119,6 +119,15 @@ type EndpointContext struct {
 	ResponseHeader http.Header
 }
 
+// RequestMetadata returns a detached copy of the HTTP request headers and URL
+// for a host callback. The body and parsed form data are excluded.
+func (c EndpointContext) RequestMetadata() *http.Request {
+	if c.Request == nil {
+		return nil
+	}
+	return accountObserverRequest(c.Request.Context(), c.Request)
+}
+
 type endpointKey struct{ method, path string }
 
 func registerPlugins(plugins []Plugin) (map[endpointKey]Endpoint, error) {

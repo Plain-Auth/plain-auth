@@ -52,24 +52,36 @@ func decisionHook(hook InvitationDecisionHook, user auth.User) InvitationDecisio
 		return nil
 	}
 	return func(ctx context.Context, event InvitationDecisionEvent) error {
-		profile := user
-		core := event.Actor
-		if profile.ID != core.ID || !profile.CreatedAt.Equal(core.CreatedAt) {
-			return ErrUnauthenticated
-		}
-		profile.ID, profile.Name, profile.Email, profile.EmailVerified = core.ID, core.Name, core.Email, core.EmailVerified
-		profile.Image, profile.CreatedAt, profile.UpdatedAt = core.Image, core.CreatedAt, core.UpdatedAt
-		event.Actor = profile
-		encoded, err := json.Marshal(event)
+		actor, err := invitationActor(user, event.Actor)
 		if err != nil {
 			return err
 		}
-		var detached InvitationDecisionEvent
-		if err := json.Unmarshal(encoded, &detached); err != nil {
+		event.Actor = actor
+		detached, err := detachedInvitationEvent(event)
+		if err != nil {
 			return err
 		}
 		return hook(ctx, detached)
 	}
+}
+
+func invitationActor(profile, core auth.User) (auth.User, error) {
+	if profile.ID != core.ID || !profile.CreatedAt.Equal(core.CreatedAt) {
+		return auth.User{}, ErrUnauthenticated
+	}
+	profile.Name, profile.Email, profile.EmailVerified = core.Name, core.Email, core.EmailVerified
+	profile.Image, profile.UpdatedAt = core.Image, core.UpdatedAt
+	return profile, nil
+}
+
+func detachedInvitationEvent[T any](event T) (T, error) {
+	var detached T
+	encoded, err := json.Marshal(event)
+	if err != nil {
+		return detached, err
+	}
+	err = json.Unmarshal(encoded, &detached)
+	return detached, err
 }
 
 func (o Options) observedInvitation(ctx context.Context, session *auth.SessionResult, id string, decision InvitationDecision, before, after InvitationDecisionHook) (*Invitation, error) {

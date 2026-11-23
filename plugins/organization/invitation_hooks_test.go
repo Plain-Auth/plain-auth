@@ -49,4 +49,11 @@ func TestInvitationHooksRequireGuardedStore(t *testing.T) {
 	if _, err := New(Options{Store: basic{}, AfterAcceptInvitation: func(context.Context, InvitationDecisionEvent) error { return nil }}); err == nil {
 		t.Fatal("acceptance hook accepted on a store without guarded admission")
 	}
+	sender := func(context.Context, InvitationDelivery) error { return nil }
+	if _, err := New(Options{Store: basic{}, SendInvitationEmail: sender}); err == nil {
+		t.Fatal("mail sender registered without a delivery store")
+	}
+	if _, err := New(Options{Store: basic{}, SendInvitationEmail: sender, SendInvitation: func(context.Context, Invitation) error { return nil }}); err == nil {
+		t.Fatal("two invitation senders registered for the same grant")
+	}
 }

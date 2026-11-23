@@ -28,7 +28,7 @@ Each row tracks the behavior exposed by a published entry point. The Go implemen
     - [x] Keep another account’s profile and hidden inputs out of protected duplicate signup and verification output ([test](../../adapters/sqlstore/user_fields_test.go#L264))
     - [x] Return the signed-in user and session with the default seven-day lifetime ([test](../../conformance/core.test.mjs#L195))
     - [x] Support the sliding session window, deferred writes and expiration ([test](../../session_refresh_test.go#L46))
-    - [x] Expose the application credential type and keep the presented key out of browser session lookup ([test](../../adapters/sqlstore/apikey_session_test.go#L201))
+    - [x] Expose the application credential type and keep the presented key out of browser session lookup ([test](../../adapters/sqlstore/apikey_session_test.go#L211))
     - [x] Compare ordinary GET and deferred POST without the projection on both runtimes ([test](../../conformance/custom-session-contract.mjs#L113))
     - [x] Force live reads on request and preserve the exact signed cache deadline while a browser view remains cacheable ([test](../../session_cache_compact_test.go#L135))
     - [x] Retain live JWT issuance, protected session checks and administrative controls after a physical schema migration on another node ([test](../../adapters/sqlstore/session_cache_test.go#L135))
