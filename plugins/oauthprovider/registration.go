@@ -250,7 +250,9 @@ func New(opts Options) (auth.Plugin, error) {
 	if slices.Contains(opts.GrantTypes, "authorization_code") {
 		if opts.Authorization.LoginPage != "" || opts.Authorization.SignupPage != "" {
 			p.PrepareOAuthLogin = opts.prepareLogin
-			p.Endpoints = append(p.Endpoints, auth.Endpoint{Method: http.MethodPost, Path: "/oauth2/continue", Handler: opts.continueSignup, OpenAPI: json.RawMessage(continueSignupOperation)})
+		}
+		if p.PrepareOAuthLogin != nil || opts.Authorization.SelectAccount.Page != "" {
+			p.Endpoints = append(p.Endpoints, auth.Endpoint{Method: http.MethodPost, Path: "/oauth2/continue", Handler: opts.continueAccount, OpenAPI: json.RawMessage(continueAccountOperation)})
 		}
 		if opts.Authorization.ConsentPage != "" {
 			p.Endpoints = append(p.Endpoints, auth.Endpoint{Method: http.MethodPost, Path: "/oauth2/consent", Handler: opts.browserConsent, OpenAPI: json.RawMessage(browserConsentOperation)})

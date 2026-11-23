@@ -86,6 +86,12 @@ func registrationFixtureOptions() op.Options {
 	opts.PairwiseSecret = strings.Repeat("p", 32)
 	opts.Scopes = []string{"openid", "email", "reports", "extra"}
 	if mode == "protected" {
+		opts.Authorization.SelectAccount = op.AccountSelectionOptions{
+			Page: "/choose-account",
+			ShouldRedirect: func(_ context.Context, a op.RegistrationAccess, scopes []string) (bool, error) {
+				return a.Headers.Get("X-Choose-Account") == "yes" && a.Session.UserID == a.User.ID && len(scopes) == 1 && scopes[0] == "reports", nil
+			},
+		}
 		opts.Assertions.AllowKeyRotation = true
 		opts.Tokens = op.TokenOptions{MachineLifetime: 10 * time.Minute, ScopeLifetimes: map[string]time.Duration{"reports": 90 * time.Second}, OpaquePrefix: "access_"}
 		opts.Tokens.OpaqueResourceTokens = os.Getenv("CONFORMANCE_OPAQUE_RESOURCE_TOKENS") == "1"

@@ -15,10 +15,20 @@ import (
 	auth "github.com/Plain-Auth/plain-auth"
 )
 
+// AccountSelectionOptions configures an account chooser hosted by the application.
+type AccountSelectionOptions struct {
+	// Page is the chooser URL. An explicit prompt=select_account requires it.
+	Page string
+	// ShouldRedirect runs on the initial authorization with a direct browser
+	// session. An explicit account-selection prompt always opens the page.
+	ShouldRedirect func(context.Context, RegistrationAccess, []string) (bool, error)
+}
+
 type BrowserAuthorizationOptions struct {
 	// LoginPage receives signed requests that need a browser login. SignupPage
 	// optionally selects a separate host page for prompt=create.
 	LoginPage, SignupPage string
+	SelectAccount         AccountSelectionOptions
 	// ConsentPage is the host's trusted page for first-time or forced approval.
 	ConsentPage string
 	// CodeLifetime defaults to ten minutes and uses whole seconds.
@@ -37,6 +47,9 @@ func (o *BrowserAuthorizationOptions) defaults() error {
 	}
 	if o.CodeLifetime < time.Second || o.CodeLifetime%time.Second != 0 {
 		return errors.New("oauthprovider: code lifetime must be a positive whole number of seconds")
+	}
+	if o.SelectAccount.ShouldRedirect != nil && o.SelectAccount.Page == "" && o.LoginPage == "" {
+		return errors.New("oauthprovider: account selection requires a selection or login page")
 	}
 	o.RateLimit = tokenRouteLimit(o.RateLimit, 30)
 	return nil
@@ -117,6 +130,10 @@ func (opts Options) runBrowserAuthorization(c auth.EndpointContext, q url.Values
 		}
 		return browserRedirect(c, c.Auth.ErrorPageURL(), url.Values{"error": {code}, "error_description": {description}}, false), nil
 	}
+	selection := opts.Authorization.SelectAccount
+	if selection.Page == "" && slices.Contains(strings.Fields(q.Get("prompt")), "select_account") {
+		return serverError("unsupported_prompt_select_account", "unsupported prompt type")
+	}
 	store, ok := c.Store().(BrowserAuthorizationStore)
 	if !ok {
 		return nil, &auth.APIError{Status: 501, Code: "OAUTH_AUTHORIZE_STORE_UNAVAILABLE", Message: "The configured store does not support browser authorization"}
@@ -135,7 +152,8 @@ func (opts Options) runBrowserAuthorization(c auth.EndpointContext, q url.Values
 	if err != nil {
 		return nil, err
 	}
-	if fingerprint, _ := ctx.Value(loginClientKey{}).(string); fingerprint != "" && fingerprint != tokenDigest(client.RowID) {
+	continuedClient, _ := ctx.Value(continuedClientKey{}).(string)
+	if continuedClient != "" && continuedClient != tokenDigest(client.RowID) {
 		return serverError("invalid_client", "client registration changed")
 	}
 	if client.Disabled {
@@ -196,13 +214,31 @@ func (opts Options) runBrowserAuthorization(c auth.EndpointContext, q url.Values
 	if session == nil || session.Session.RequireOwner() != nil || !c.DirectBrowserSession(session.Session.Token) || !issue.SessionFresh(session.Session.CreatedAt, time.Now()) || slices.Contains(grant.prompts, "login") || slices.Contains(grant.prompts, "create") {
 		if decision == nil && !slices.Contains(grant.prompts, "none") {
 			if page := opts.loginPage(grant.prompts); page != "" {
-				return opts.openLoginPage(c, page, q, issue)
+				return opts.openAccountPage(c, page, "pa_login", q, issue)
 			}
 		}
 		return reject("login_required", "authentication required")
 	}
-	if slices.Contains(grant.prompts, "select_account") {
-		return reject("account_selection_required", "account selection is required")
+	// A real login or a choice on the host page has already selected the
+	// current browser account. Only an initial request may open the chooser.
+	if decision == nil && continuedClient == "" {
+		choose := slices.Contains(grant.prompts, "select_account")
+		if !choose && selection.ShouldRedirect != nil {
+			choose, err = selection.ShouldRedirect(ctx, RegistrationAccess{SessionResult: *session, Headers: c.Request.Header.Clone()}, slices.Clone(issue.Scopes))
+			if err != nil {
+				return nil, err
+			}
+		}
+		if choose {
+			if slices.Contains(grant.prompts, "none") {
+				return reject("account_selection_required", "End-User account selection is required")
+			}
+			page := selection.Page
+			if page == "" {
+				page = opts.Authorization.LoginPage
+			}
+			return opts.openAccountPage(c, page, "pa_select", q, issue)
+		}
 	}
 	issue.UserID, issue.SessionID, issue.SessionToken = session.User.ID, session.Session.ID, session.Session.Token
 	if decision != nil {

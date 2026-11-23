@@ -4,7 +4,7 @@ An application can send its user to `/oauth2/authorize` and exchange the resulti
 
 ## Obtain a code in the browser
 
-Register the application's callback URL and enable the `authorization_code` grant on both the issuer and the client. The issuer enables this grant by default. This flow supports untargeted scopes such as `reports` and `reports offline_access`. It requires the account owner's active browser session and approval covering each requested scope. Your application can host the login, signup and consent pages. An operator-managed client can use `skipConsent` to bypass a prior grant. Dynamic registration rejects `skip_consent`. Social sign-in continuation, account selection, ID tokens, sender binding and resource audiences for this grant remain on the roadmap. [Client registration](oauth-client-registration.md) · [Manage recorded approvals](oauth-consents.md) · [Feature checklist](parity/plugins/oauth-provider.md)
+Register the application's callback URL and enable the `authorization_code` grant on both the issuer and the client. The issuer enables this grant by default. This flow supports untargeted scopes such as `reports` and `reports offline_access`. It requires the account owner's active browser session and approval covering each requested scope. Your application can host the login, signup and consent pages. An operator-managed client can use `skipConsent` to bypass a prior grant. Dynamic registration rejects `skip_consent`. Social sign-in continuation, ID tokens, sender binding and resource audiences for this grant remain on the roadmap. [Client registration](oauth-client-registration.md) · [Manage recorded approvals](oauth-consents.md) · [Feature checklist](parity/plugins/oauth-provider.md)
 
 For a public client using `golang.org/x/oauth2`, configure both issuer endpoints. Generate new random state and a PKCE verifier for each visit. Save them with the expected issuer and callback in the application's session before redirecting the user's browser.
 
@@ -72,6 +72,39 @@ When a second factor is required, submit the same signed field with the verifica
 
 For an explicit `prompt=create`, call `POST /api/auth/sign-up/email` with the signed field and the new account credentials. After a session is issued, the browser returns to the signup page. Verify the query on that visit, then post `{"created":true,"oauth_query":"<signed query>"}` to `/api/auth/oauth2/continue` using the same browser session. Follow its returned URL to the next step. The Go equivalent is `sdk.ContinueOAuthSignup(ctx, fields.Encode())`. Expired or altered queries require a fresh authorization request. [Login through code exchange](../conformance/oauth-browser-login.mjs) · [Session replacement and two-factor verification](../adapters/sqlstore/oauth_browser_login_test.go)
 
+## Choose a remembered account
+
+Set `Authorization.SelectAccount.Page` to the account chooser served by your application. An application requesting `prompt=select_account` opens this page for a signed-in browser. Combine it with `consent` to ask for approval again after selection. A signed-out browser goes through login first. Without a configured chooser page, an explicit selection prompt returns `unsupported_prompt_select_account` on the issuer's error page.
+
+An optional host policy can prompt for selection even when the client omits the prompt. It receives the active user, session, request headers and requested scopes. For example, an issuer can ask users to confirm the account for billing access.
+
+```go
+SelectAccount: oauthprovider.AccountSelectionOptions{
+    Page: "/choose-account",
+    ShouldRedirect: func(_ context.Context, _ oauthprovider.RegistrationAccess, scopes []string) (bool, error) {
+        return slices.Contains(scopes, "billing"), nil
+    },
+},
+```
+
+The issuer runs that check on the initial authorization request. A silent request that needs selection returns `account_selection_required` with the original state and issuer at the registered callback. A host policy error stops authorization. When only the callback is configured, an implicit selection uses `LoginPage`.
+
+On the chooser page, verify `r.URL.RawQuery` using `api.VerifyOAuthPageQuery` as on the login and consent pages. When you enable the multi-session plugin, load `GET /api/auth/multi-session/list-device-sessions` in the same browser and display the remembered users by name or email. On a user gesture, send the chosen entry's `session.token` to `POST /api/auth/multi-session/set-active` as `sessionToken`. Keep session tokens out of URLs and logs. After the switch succeeds, send `{"selected":true,"oauth_query":"<verified chooser query>"}` to `POST /api/auth/oauth2/continue` in the same browser. Follow its returned URL. The Go client equivalents share one cookie jar.
+
+```go
+_, err := sdk.SetActiveSession(ctx, selected.Session.Token)
+if err != nil {
+    return err
+}
+target, err := sdk.ContinueOAuthAccountSelection(ctx, fields.Encode())
+if err != nil {
+    return err
+}
+// Send this browser to target.
+```
+
+The newly active account supplies the session and any prior consent used for code issuance. If it needs consent, the returned URL is the consent page. The issuer checks the client registration and callback again, and a removed or replaced client cannot inherit a pending choice. [Multi-session setup](multi-session.md) · [Two remembered accounts on three databases](../adapters/sqlstore/oauth_account_selection_test.go) · [Protocol and token exchange](../conformance/oauth-account-selection.mjs)
+
 ## Ask the user for consent
 
 Set `Authorization.ConsentPage` to a page in your application and mount it alongside the auth handler. When a signed-in user first visits a client or the client asks for additional scopes, the issuer redirects to that page. An explicit `prompt=consent` opens it again, including for operator-approved clients. With `prompt=none` the client receives an interaction error. Leaving the page unset supports applications that already have approval.
@@ -132,6 +165,7 @@ Approval returns a callback URL containing a single-use code. The issuer stores 
 | --- | --- |
 | `LoginPage` | Trusted host page for signing in or reauthenticating, such as `/login`. |
 | `SignupPage` | Optional account-creation page for `prompt=create`. Defaults to the login page. |
+| `SelectAccount` | Optional account chooser page and policy for initial browser authorization. |
 | `ConsentPage` | Trusted host page for first-time and forced approvals, such as `/consent`. |
 | `CodeLifetime` | Codes and signed interaction prompts expire after ten minutes by default. Set a positive duration in whole seconds to change it. |
 | `ConsentReference` | Choose an approval namespace, such as the active organization's ID, from the verified session. An empty value selects personal consent. Approval for another namespace cannot authorize a code. |

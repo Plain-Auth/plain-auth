@@ -13123,6 +13123,11 @@
       "label": "Take a signed-out user through local login, consent and PKCE redemption and require fresh credentials when requested",
       "test": "conformance/oauth-browser-login.mjs",
       "marker": "const page = await start("
+    },
+    {
+      "label": "Apply host account-selection policy to an initial request, honor silent errors and preserve consent after selection",
+      "test": "conformance/oauth-account-selection.mjs",
+      "marker": "const silent = await start("
     }
   ],
   "docs/content/docs/plugins/oauth-provider/reference.mdx#L318/`GET / POST /oauth2/authorize`": [
@@ -13145,6 +13150,11 @@
       "label": "Take a signed-out user through local login, consent and PKCE redemption and require fresh credentials when requested",
       "test": "conformance/oauth-browser-login.mjs",
       "marker": "const page = await start("
+    },
+    {
+      "label": "Apply host account-selection policy to an initial request, honor silent errors and preserve consent after selection",
+      "test": "conformance/oauth-account-selection.mjs",
+      "marker": "const silent = await start("
     }
   ],
   "plugin-symbol/oauth-provider/OAuthOptions/validateRedirectUri": [
@@ -13266,6 +13276,11 @@
       "label": "Take a signed-out user through local login, consent and PKCE redemption and require fresh credentials when requested",
       "test": "conformance/oauth-browser-login.mjs",
       "marker": "const page = await start("
+    },
+    {
+      "label": "Apply host account-selection policy to an initial request, honor silent errors and preserve consent after selection",
+      "test": "conformance/oauth-account-selection.mjs",
+      "marker": "const silent = await start("
     }
   ],
   "docs/content/docs/plugins/oauth-provider/sign-in-flow.mdx#L101/Parameter `accept`": [
@@ -13335,6 +13350,11 @@
       "label": "Use the signed signup page query and the new browser session to complete the account-creation step",
       "test": "conformance/oauth-browser-login.mjs",
       "marker": "const next = await request("
+    },
+    {
+      "label": "Resume the signed chooser with the selected browser account and preserve forced consent without repeating selection",
+      "test": "conformance/oauth-account-selection.mjs",
+      "marker": "const forcedConsent = await destination("
     }
   ],
   "docs/content/docs/plugins/oauth-provider/reference.mdx#L320/`POST /oauth2/continue`": [
@@ -13342,6 +13362,11 @@
       "label": "Use the signed signup page query and the new browser session to complete the account-creation step",
       "test": "conformance/oauth-browser-login.mjs",
       "marker": "const next = await request("
+    },
+    {
+      "label": "Resume the signed chooser with the selected browser account and preserve forced consent without repeating selection",
+      "test": "conformance/oauth-account-selection.mjs",
+      "marker": "const forcedConsent = await destination("
     }
   ],
   "docs/content/docs/plugins/oauth-provider/sign-in-flow.mdx#L205": [
@@ -13349,6 +13374,11 @@
       "label": "Use the signed signup page query and the new browser session to complete the account-creation step",
       "test": "conformance/oauth-browser-login.mjs",
       "marker": "const next = await request("
+    },
+    {
+      "label": "Resume the signed chooser with the selected browser account and preserve forced consent without repeating selection",
+      "test": "conformance/oauth-account-selection.mjs",
+      "marker": "const forcedConsent = await destination("
     }
   ],
   "docs/content/docs/plugins/oauth-provider/sign-in-flow.mdx#L211/`POST /oauth2/continue`": [
@@ -13356,6 +13386,11 @@
       "label": "Use the signed signup page query and the new browser session to complete the account-creation step",
       "test": "conformance/oauth-browser-login.mjs",
       "marker": "const next = await request("
+    },
+    {
+      "label": "Resume the signed chooser with the selected browser account and preserve forced consent without repeating selection",
+      "test": "conformance/oauth-account-selection.mjs",
+      "marker": "const forcedConsent = await destination("
     }
   ],
   "docs/content/docs/plugins/oauth-provider/sign-in-flow.mdx#L229/Parameter `oauth_query` (optional)": [
@@ -13363,6 +13398,11 @@
       "label": "Use the signed signup page query and the new browser session to complete the account-creation step",
       "test": "conformance/oauth-browser-login.mjs",
       "marker": "const next = await request("
+    },
+    {
+      "label": "Resume the signed chooser with the selected browser account and preserve forced consent without repeating selection",
+      "test": "conformance/oauth-account-selection.mjs",
+      "marker": "const forcedConsent = await destination("
     }
   ],
   "docs/content/docs/plugins/oauth-provider/sign-in-flow.mdx#L221/Parameter `created` (optional)": [
@@ -13370,6 +13410,35 @@
       "label": "Continue after confirmed account creation, require a browser session and reject an unfinished step",
       "test": "adapters/sqlstore/oauth_browser_login_test.go",
       "marker": "signupQuery := start()",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/oauth-provider/OAuthOptions/selectAccount": [
+    {
+      "label": "Open the explicit or policy-driven chooser, use the live session and requested scopes, fall back for implicit selection and stop on policy errors",
+      "test": "adapters/sqlstore/oauth_account_selection_test.go",
+      "marker": "func TestOAuthRememberedAccountSelection(",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/sign-in-flow.mdx#L149": [
+    {
+      "label": "List remembered accounts, switch the active session and record consent for the chosen account on all three databases",
+      "test": "adapters/sqlstore/oauth_account_selection_test.go",
+      "marker": "accounts, err := sdk.ListDeviceSessions(",
+      "complete": true
+    },
+    {
+      "label": "Complete a PKCE exchange and check that the selected account owns both the access token and its session",
+      "test": "conformance/oauth-account-selection.mjs",
+      "marker": "const issued = db.prepare("
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/sign-in-flow.mdx#L217/Parameter `selected` (optional)": [
+    {
+      "label": "Continue the account choice with selected=true after an explicit prompt or a host policy, including a required second consent",
+      "test": "conformance/oauth-account-selection.mjs",
+      "marker": "const reconfirm = await destination(",
       "complete": true
     }
   ]

@@ -12,6 +12,7 @@ import { exerciseClientKeyRotation } from "./oauth-key-rotation.mjs";
 import { exerciseClientAssertions } from "./oauth-client-assertions.mjs";
 import { exerciseRefreshIntrospection } from "./oauth-refresh-introspection.mjs";
 import { exerciseRefreshGrant } from "./oauth-refresh-grant.mjs";
+import { exerciseAccountSelection } from "./oauth-account-selection.mjs";
 import { exerciseBrowserLogin } from "./oauth-browser-login.mjs";
 import { exerciseBrowserAuthorization } from "./oauth-browser-authorization.mjs";
 import { exerciseAuthorizationCode, exerciseOfflineCode } from "./oauth-authorization-code.mjs";
@@ -23,6 +24,11 @@ function options(mode) {
   return {
     loginPage: "/login",
     signup: { page: "/signup" },
+    ...(mode === "protected" && { selectAccount: {
+      page: "/choose-account",
+      shouldRedirect: ({ headers, session, user, scopes }) => headers.get("X-Choose-Account") === "yes"
+        && session.userId === user.id && scopes.length === 1 && scopes[0] === "reports",
+    } }),
     consentPage: "/consent",
     allowDynamicClientRegistration: true,
     cachedTrustedClients: new Set(["operator-managed"]),
@@ -346,6 +352,9 @@ export async function compareClientRegistration(t, reference, goFixture) {
         });
         await t.test("authorize a browser by GET or form POST and redeem the code locally or at a peer", async () => {
           await exerciseBrowserAuthorization({ server, issuer, db });
+        });
+        await t.test("choose a browser account, approve its scopes and exchange its code", async () => {
+          await exerciseAccountSelection({ server, db, created, cookie, request });
         });
         await t.test("sign in or create an account and resume a signed browser authorization", async () => {
           await exerciseBrowserLogin({ server, db, created, cookie, request });
