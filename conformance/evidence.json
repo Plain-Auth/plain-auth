@@ -14343,5 +14343,50 @@
       "marker": "assert.equal(ok(await owner.getSession()).session.activeOrganizationId, annex.id)",
       "complete": true
     }
+  ],
+  "plugin/organization/GET /organization/list-user-invitations": [
+    {
+      "label": "List pending invitations for a verified mailbox across organizations and return each destination name",
+      "test": "conformance/organization-invitations.mjs",
+      "marker": "assert.deepEqual(records.map(row => row.organizationName).sort(), [\"ALPHA\", \"GAMMA\"])"
+    },
+    {
+      "label": "Reject a mailbox selector on HTTP and require a verified recipient session",
+      "test": "conformance/organization-invitations.mjs",
+      "marker": "assert.equal(rejected.error.message, \"User email cannot be passed for client side API calls.\")"
+    },
+    {
+      "label": "Use the same database snapshot for current email verification and invitation rows",
+      "test": "adapters/sqlstore/organization_received_test.go",
+      "marker": "inbox used different snapshots for the verified mailbox and invitation"
+    },
+    {
+      "label": "Allow a trusted Go service to list pending invitations by normalized email without a session",
+      "test": "adapters/sqlstore/organization_received_test.go",
+      "marker": "trusted mailbox lookup did not normalize the address and return its invitation"
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1049": [
+    {
+      "label": "List pending invitations for a verified mailbox across organizations and return each destination name",
+      "test": "conformance/organization-invitations.mjs",
+      "marker": "assert.deepEqual(records.map(row => row.organizationName).sort(), [\"ALPHA\", \"GAMMA\"])",
+      "complete": true
+    },
+    {
+      "label": "Reject a mailbox selector on HTTP and require a verified recipient session",
+      "test": "conformance/organization-invitations.mjs",
+      "marker": "assert.equal(rejected.error.message, \"User email cannot be passed for client side API calls.\")"
+    },
+    {
+      "label": "Use the same database snapshot for current email verification and invitation rows",
+      "test": "adapters/sqlstore/organization_received_test.go",
+      "marker": "inbox used different snapshots for the verified mailbox and invitation"
+    },
+    {
+      "label": "Allow a trusted Go service to list pending invitations by normalized email without a session",
+      "test": "adapters/sqlstore/organization_received_test.go",
+      "marker": "trusted mailbox lookup did not normalize the address and return its invitation"
+    }
   ]
 }

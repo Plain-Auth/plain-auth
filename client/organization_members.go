@@ -117,3 +117,10 @@ func (c *Client) ListOrganizationInvitations(ctx context.Context, organizationID
 	err := c.Do(ctx, http.MethodGet, organizationRoute("list-invitations", url.Values{"organizationId": {organizationID}}), nil, &list)
 	return list, err
 }
+
+// ListUserInvitations reads pending invitations for the authenticated account's verified email.
+func (c *Client) ListUserInvitations(ctx context.Context) ([]org.ReceivedInvitation, error) {
+	var out []org.ReceivedInvitation
+	err := c.Do(ctx, http.MethodGet, "/organization/list-user-invitations", nil, &out)
+	return out, err
+}

@@ -91,6 +91,10 @@ func TestOrganizationSelectionSchema(t *testing.T) {
 			if len(invites["parameters"].([]any)) != 1 || inviteItems["$ref"] != "#/components/schemas/Invitation" || (inviteFields["teamId"] != nil) != tc.teams {
 				t.Fatal("invitation list schema disagrees with configured team fields")
 			}
+			inbox := node(paths, "/organization/list-user-invitations", "get")
+			if inbox["parameters"] != nil || node(inbox, "responses", "200", "content", "application/json", "schema", "items")["allOf"] == nil {
+				t.Fatal("recipient HTTP description permits selecting another mailbox or omits organization names")
+			}
 			lookup := node(paths, "/organization/get-active-member-role", "get")
 			directory := node(paths, "/organization/list-members", "get")
 			queries, _ := directory["parameters"].([]any)

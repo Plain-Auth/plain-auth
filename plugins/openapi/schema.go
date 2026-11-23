@@ -194,6 +194,8 @@ func publicResponse(route plainauth.HTTPRoute, info plainauth.HTTPDescription, f
 		return array(modelRef("TeamMember"))
 	case "/token", "/one-time-token/generate":
 		return responseObject(object{"token": object{"type": "string"}}, "token")
+	case "/organization/list-user-invitations":
+		return array(object{"allOf": []object{modelRef("Invitation"), responseObject(object{"organizationName": object{"type": "string"}}, "organizationName")}})
 	case "/organization/list-invitations":
 		return array(modelRef("Invitation"))
 	case "/organization/list":
@@ -308,6 +310,10 @@ func signupFormSchema(schema object, info plainauth.HTTPDescription) object {
 }
 
 func adjustRequest(op object, r plainauth.HTTPRoute, info plainauth.HTTPDescription, a *plainauth.Auth) {
+	if r.Plugin == "organization" && r.Path == "/organization/list-user-invitations" {
+		// Selecting a mailbox is a trusted Go operation.
+		delete(op, "parameters")
+	}
 	if r.Plugin == "oauth-proxy" {
 		params := []object{
 			{"name": "callbackURL", "in": "query", "required": true, "schema": object{"type": "string"}},

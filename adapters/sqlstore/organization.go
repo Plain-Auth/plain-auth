@@ -223,14 +223,14 @@ func invitationColumns(teamField bool) string {
 	}
 	return invitationFields
 }
-func scanInvitation(r rowScanner, teamField bool) (org.Invitation, error) {
+func scanInvitation(r rowScanner, teamField bool, extra ...any) (org.Invitation, error) {
 	var inv org.Invitation
 	var role sql.NullString
 	fields := []any{&inv.ID, &inv.OrganizationID, &inv.InviterID, &inv.Email, &role, &inv.Status, &inv.ExpiresAt, &inv.CreatedAt}
 	if teamField {
 		fields = append(fields, &inv.TeamID)
 	}
-	err := r.Scan(fields...)
+	err := r.Scan(append(fields, extra...)...)
 	inv.Role = role.String
 	if inv.TeamID != nil && *inv.TeamID == "" {
 		inv.TeamID = nil

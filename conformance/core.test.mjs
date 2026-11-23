@@ -1907,3 +1907,8 @@ test("organization invitation lists enforce current permissions and preserve tea
   const { compareOrganizationInvitations } = await import("./organization-invitations.mjs");
   await compareOrganizationInvitations(t, { reference, goFixture, instrument });
 });
+
+test("verified recipients list pending invitations across organizations without selecting another mailbox", async t => {
+  const { compareRecipientInbox } = await import("./organization-invitations.mjs");
+  await compareRecipientInbox(t, { reference, goFixture, instrument });
+});

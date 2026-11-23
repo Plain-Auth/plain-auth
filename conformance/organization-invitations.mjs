@@ -76,3 +76,66 @@ export async function compareOrganizationInvitations(t, { reference, goFixture, 
     }
   }
 }
+
+export async function compareRecipientInbox(t, { reference, goFixture, instrument }) {
+  for (const teams of [false, true]) {
+    const options = teams ? { teams: { enabled: true } } : {};
+    const ref = await reference(t, [organization(options)]);
+    const go = await goFixture(t, [teams ? "organization-teams" : "organization"]);
+    for (const server of [ref, go]) {
+      const connect = () => instrument(server, [organizationClient(options)]).client;
+      const [creator, recipient, other] = [connect(), connect(), connect()];
+      const ok = result => {
+        assert.equal(result.error, null, JSON.stringify(result.error));
+        return result.data;
+      };
+      const inbox = (client, email) => client.organization.listUserInvitations({ query: { email } });
+      const email = "recipient@example.test";
+      const unauth = await inbox(recipient);
+      assert.equal(unauth.error.status, 400);
+      assert.equal(unauth.error.message, "Missing session headers, or email query parameter.");
+      for (const [client, email] of [[creator, "owner@example.test"], [recipient, "recipient@example.test"], [other, "other@example.test"]]) {
+        ok(await client.signUp.email({ name: email, email, password: "recipient-directory-password" }));
+      }
+      for (const selector of [email, "other@example.test"]) {
+        const rejected = await inbox(recipient, selector);
+        assert.equal(rejected.error.status, 400);
+        assert.equal(rejected.error.message, "User email cannot be passed for client side API calls.");
+      }
+      assert.equal((await inbox(recipient)).error.code, "EMAIL_VERIFICATION_REQUIRED_FOR_INVITATION");
+      const db = server.database ?? new DatabaseSync(server.databasePath);
+      try {
+        db.prepare('UPDATE "user" SET "emailVerified"=1 WHERE email IN (?,?)').run(email, "other@example.test");
+        const sent = [];
+        for (const [slug, role] of [["alpha", "owner"], ["beta", "admin"], ["gamma", "member"]]) {
+          const org = ok(await creator.organization.create({ name: slug.toUpperCase(), slug }));
+          let teamId;
+          if (teams && slug === "gamma") teamId = ok(await creator.organization.createTeam({ organizationId: org.id, name: "Gamma team" })).id;
+          sent.push(ok(await creator.organization.inviteMember({ organizationId: org.id, email, role, teamId })));
+        }
+        db.prepare("UPDATE invitation SET status='rejected' WHERE id=?").run(sent[1].id);
+        db.prepare("UPDATE invitation SET expiresAt=? WHERE id=?").run("2020-01-01T00:00:00Z", sent[0].id);
+        const records = ok(await inbox(recipient, ""));
+        assert.deepEqual(records.map(row => row.organizationName).sort(), ["ALPHA", "GAMMA"]);
+        const first = records.find(row => row.id === sent[0].id);
+        assert.equal(first.role, "owner");
+        assert.equal(first.status, "pending");
+        assert.equal("organization" in first, false);
+        assert.equal("teamId" in first, teams);
+        if (teams) {
+          assert.equal(first.teamId, null);
+          assert.equal(records.find(row => row.id === sent[2].id).teamId, sent[2].teamId);
+        }
+        assert.deepEqual(ok(await inbox(other)), []);
+        if (server === ref) {
+          const trusted = await ref.api.listUserInvitations({ query: { email: email.toUpperCase() } });
+          assert.deepEqual(trusted.map(row => row.id).sort(), records.map(row => row.id).sort());
+        }
+        db.prepare('UPDATE "user" SET "emailVerified"=0 WHERE email=?').run(email);
+        assert.equal((await inbox(recipient)).error.code, "EMAIL_VERIFICATION_REQUIRED_FOR_INVITATION");
+      } finally {
+        if (!server.database) db.close();
+      }
+    }
+  }
+}

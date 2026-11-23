@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"strings"
+	"time"
 
 	org "github.com/Plain-Auth/plain-auth/plugins/organization"
 )
@@ -57,4 +59,69 @@ func (s *Store) visibleOrganizationInvitations(ctx context.Context, tx *sql.Tx, 
 		}
 	}
 	return out, rows.Err()
+}
+
+// ListReceivedInvitations reads the live, verified account and the mailbox's
+// invitation rows in the same snapshot. Session data supplied by a client
+// cannot choose the email address.
+func (s *Store) ListReceivedInvitations(ctx context.Context, sessionID, userID string, teams bool) ([]org.ReceivedInvitation, error) {
+	return s.receivedInvitations(ctx, sessionID, userID, "", teams)
+}
+
+// ListInvitationsForEmail is a trusted in-process operation.
+func (s *Store) ListInvitationsForEmail(ctx context.Context, email string, teams bool) ([]org.ReceivedInvitation, error) {
+	if email == "" {
+		return nil, org.ErrInvitationEmailRequired
+	}
+	return s.receivedInvitations(ctx, "", "", email, teams)
+}
+
+func (s *Store) receivedInvitations(ctx context.Context, sessionID, userID, email string, teams bool) ([]org.ReceivedInvitation, error) {
+	tx, err := s.beginReadSnapshot(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+	exact := s.exactSQLValue
+	if email == "" {
+		var verified bool
+		query := `SELECT u."email",u."emailVerified" FROM "session" ss JOIN "user" u ON u."id"=` + exact(`ss."userId"`) + ` WHERE ss."id"=` + exact("?") + ` AND ss."userId"=` + exact("?") + ` AND ss."expiresAt">?`
+		err := tx.QueryRowContext(ctx, s.bind(query), sessionID, userID, s.date(time.Now())).Scan(&email, &verified)
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, org.ErrInvitationEmailRequired
+		}
+		if err != nil {
+			return nil, err
+		}
+		if !verified {
+			return nil, org.ErrInvitationAccountUnverified
+		}
+	}
+	// Limit the mailbox page before selecting its pending entries. Expiry is
+	// enforced when a recipient acts on an invitation.
+	query := `SELECT ` + invitationColumns(teams) + `, (SELECT o."name" FROM "organization" o WHERE o."id"=` + exact(`i."organizationId"`) + `)
+		FROM "invitation" i WHERE i."email"=` + exact("?") + ` ORDER BY i."createdAt",i."id" LIMIT 100`
+	rows, err := tx.QueryContext(ctx, s.bind(query), strings.ToLower(email))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []org.ReceivedInvitation{}
+	for rows.Next() {
+		var name string
+		inv, err := scanInvitation(rows, teams, &name)
+		if err != nil {
+			return nil, err
+		}
+		if inv.Status == "pending" {
+			out = append(out, org.ReceivedInvitation{Invitation: inv, OrganizationName: name})
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+	return out, nil
 }

@@ -165,6 +165,13 @@ func TestOrganizationAndTeamSelectionHTTP(t *testing.T) {
 			if inviteList == nil || len(inviteList) != 0 {
 				t.Fatal("Go invitation client failed to read an empty organization list")
 			}
+			_, err = store.db.ExecContext(ctx, store.bind(`UPDATE "user" SET "emailVerified"=? WHERE "email"=?`), true, login["email"])
+			must(err)
+			received, err := sdk.ListUserInvitations(ctx)
+			must(err)
+			if received == nil || len(received) != 0 {
+				t.Fatal("Go client failed to read the verified recipient's empty inbox")
+			}
 			emptySDK, err := client.New(origin, one)
 			must(err)
 			unselected, err := emptySDK.FullOrganization(ctx, org.FullOrganizationQuery{})
