@@ -46,17 +46,27 @@ func (s *Store) LookupAuthorizationClient(ctx context.Context, id string) (op.Br
 }
 
 func (s *Store) IssueBrowserCode(ctx context.Context, input op.BrowserCodeIssue) error {
+	return s.finishBrowserCode(ctx, input, nil, false)
+}
+
+func (s *Store) FinishBrowserConsent(ctx context.Context, input op.BrowserCodeIssue, prompt op.BrowserConsentPrompt, accept bool) error {
+	return s.finishBrowserCode(ctx, input, &prompt, accept)
+}
+
+func (s *Store) finishBrowserCode(ctx context.Context, input op.BrowserCodeIssue, prompt *op.BrowserConsentPrompt, accept bool) error {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
-	client, err := scanBrowserClient(tx.QueryRowContext(ctx, s.readForUpdate(browserClientSelect), input.Client.ClientID), input.Client.ClientID)
-	if err != nil {
-		return err
-	}
-	if client.Disabled || !reflect.DeepEqual(client, input.Client) {
-		return op.ErrBrowserClientChanged
+	if prompt == nil || accept {
+		client, err := scanBrowserClient(tx.QueryRowContext(ctx, s.readForUpdate(browserClientSelect), input.Client.ClientID), input.Client.ClientID)
+		if err != nil {
+			return err
+		}
+		if client.Disabled || !reflect.DeepEqual(client, input.Client) {
+			return op.ErrBrowserClientChanged
+		}
 	}
 	p := s.exactSQLValue("?")
 	q := `SELECT "createdAt","expiresAt" FROM "session" WHERE "id"=` + p + ` AND "userId"=` + p + ` AND "token"=` + p
@@ -71,26 +81,34 @@ func (s *Store) IssueBrowserCode(ctx context.Context, input op.BrowserCodeIssue)
 	if err != nil {
 		return err
 	}
-	if !client.SkipConsent {
-		query := consentSelect + ` WHERE "clientId"=` + p + ` AND "userId"=` + p
-		args := []any{client.ClientID, input.UserID}
-		if input.ReferenceID != "" {
-			query += ` AND "referenceId"=` + p + ` ORDER BY "id"`
-			args = append(args, input.ReferenceID)
-		} else {
-			query += ` AND ("referenceId" IS NULL OR "referenceId"=` + p + `) ORDER BY CASE WHEN "referenceId" IS NULL THEN 0 ELSE 1 END,"id"`
-			args = append(args, "")
-		}
-		approval, err := scanConsent(tx.QueryRowContext(ctx, s.readForUpdate(query+" LIMIT 1"), args...))
-		if errors.Is(err, auth.ErrNotFound) {
-			return op.ErrBrowserConsentRequired
-		}
-		if err != nil {
+	now := time.Now().UTC()
+	if !expires.After(now) || !input.SessionFresh(created, now) {
+		return op.ErrAuthorizationSessionExpired
+	}
+	if prompt != nil {
+		if err := s.consumeConsentPrompt(ctx, tx, *prompt, now); err != nil {
 			return err
 		}
-		for _, scope := range input.Scopes {
-			if !slices.Contains(approval.Scopes, scope) {
-				return op.ErrBrowserConsentRequired
+		if !accept {
+			return tx.Commit()
+		}
+	}
+	if prompt != nil || !input.Client.SkipConsent {
+		approval, err := s.findBrowserConsent(ctx, tx, input)
+		switch {
+		case err != nil && !errors.Is(err, auth.ErrNotFound):
+			return err
+		case prompt != nil:
+			if err := s.writeBrowserConsent(ctx, tx, input, approval.ID, now); err != nil {
+				return err
+			}
+		case errors.Is(err, auth.ErrNotFound):
+			return op.ErrBrowserConsentRequired
+		default:
+			for _, scope := range input.Scopes {
+				if !slices.Contains(approval.Scopes, scope) {
+					return op.ErrBrowserConsentRequired
+				}
 			}
 		}
 	}
@@ -104,7 +122,7 @@ func (s *Store) IssueBrowserCode(ctx context.Context, input op.BrowserCodeIssue)
 	if collision {
 		return errors.New("sqlstore: authorization code identifier already exists")
 	}
-	now := time.Now().UTC()
+	now = time.Now().UTC()
 	if !expires.After(now) || !input.SessionFresh(created, now) {
 		return op.ErrAuthorizationSessionExpired
 	}
@@ -122,4 +140,18 @@ func (s *Store) IssueBrowserCode(ctx context.Context, input op.BrowserCodeIssue)
 		return err
 	}
 	return tx.Commit()
+}
+
+func (s *Store) findBrowserConsent(ctx context.Context, tx *sql.Tx, input op.BrowserCodeIssue) (op.Consent, error) {
+	p := s.exactSQLValue("?")
+	query := consentSelect + ` WHERE "clientId"=` + p + ` AND "userId"=` + p
+	args := []any{input.Client.ClientID, input.UserID}
+	if input.ReferenceID != "" {
+		query += ` AND "referenceId"=` + p + ` ORDER BY "id"`
+		args = append(args, input.ReferenceID)
+	} else {
+		query += ` AND ("referenceId" IS NULL OR "referenceId"=` + p + `) ORDER BY CASE WHEN "referenceId" IS NULL THEN 0 ELSE 1 END,"id"`
+		args = append(args, "")
+	}
+	return scanConsent(tx.QueryRowContext(ctx, s.readForUpdate(query+" LIMIT 1"), args...))
 }

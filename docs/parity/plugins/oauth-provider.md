@@ -40,13 +40,17 @@
   - [ ] `OAuthFieldErrorCodeMap`
   - [ ] `OAuthRedirectOnError`
   - [ ] `GET / POST /oauth2/authorize`
-    - [x] Sign in and register a public client, then obtain a code by GET or form POST and redeem it at either issuer with S256 PKCE ([test](../../../conformance/oauth-browser-authorization.mjs#L4))
+    - [x] Sign in and register a public client, then obtain a code by GET or form POST and redeem it at either issuer with S256 PKCE ([test](../../../conformance/oauth-browser-authorization.mjs#L5))
     - [x] Recheck the registered callback, owner session and scoped consent in the issuing transaction on all three databases ([test](../../../adapters/sqlstore/oauth_browser_authorization_test.go#L20))
+    - [x] Visit a host consent page, verify the signed query independently, deny a first request or exchange a code approved for fewer scopes ([test](../../../conformance/oauth-browser-authorization.mjs#L57))
   - [ ] `GET /.well-known/oauth-authorization-server` (server API only)
     - [x] Discover endpoints and capabilities for the machine grant, then register a client, verify a signed token and revoke an opaque token ([test](../../../conformance/oauth-issuer-metadata.mjs#L95))
     - [x] Mount both issuer discovery paths through ServeMux, chi, Gorilla Mux, Gin, Echo and Fiber and read them with GET and HEAD ([test](../../../integrations/routers/routers_test.go#L160))
   - [ ] `GET /.well-known/openid-configuration` (server API only)
   - [ ] `POST /oauth2/consent`
+    - [x] Visit a host consent page, verify the signed query independently, deny a first request or exchange a code approved for fewer scopes ([test](../../../conformance/oauth-browser-authorization.mjs#L57))
+    - [x] Consume a decision once across two servers, isolate sessions and tenants, and roll back consent when code storage fails ([test](../../../adapters/sqlstore/oauth_browser_consent_test.go#L25))
+    - [x] Consume a denial even when the callback has been removed and the operator later restores it ([test](../../../adapters/sqlstore/oauth_browser_consent_test.go#L214))
   - [ ] `POST /oauth2/continue`
   - [ ] `POST /oauth2/token`
     - [x] Issue opaque bearer tokens with Basic or form authentication and verify their scope, expiry, introspection and revocation at an independent server ([test](../../../conformance/oauth-machine-tokens.mjs#L61))
@@ -265,6 +269,7 @@
     - [ ] `refreshTokenReuseInterval`
     - [ ] `codeExpiresIn`
       - [x] Apply a custom lifetime and code digest and redeem the stored browser grant on a second server ([test](../../../adapters/sqlstore/oauth_browser_authorization_test.go#L151))
+      - [x] Expire a pending consent request before approval and accept a fresh prompt on another issuer process ([test](../../../adapters/sqlstore/oauth_browser_consent_test.go#L138))
     - [ ] `scopeExpirations`
       - [x] Apply the machine token lifetime and shortest applicable scope lifetime to the response and persisted expiry ([test](../../../conformance/oauth-machine-tokens.mjs#L65))
       - [x] Apply the shortest lifetime from the original machine scopes and every requested API, including scopes dropped at issuance ([test](../../../conformance/oauth-resource-machine-tokens.mjs#L89))
@@ -303,7 +308,8 @@
     - [ ] `grantTypes`
       - [x] Register only the mutually supported requested grant types ([test](../../../conformance/oauth-registration.mjs#L197))
     - [ ] `loginPage`
-    - [ ] `consentPage`
+    - [x] `consentPage` ([test](../../../conformance/oauth-browser-authorization.mjs#L57))
+      - [x] Redirect a signed-in user to the configured page for a missing approval or an explicit consent prompt ([test](../../../conformance/oauth-browser-authorization.mjs#L57))
     - [ ] `signup`
     - [ ] `selectAccount`
     - [ ] `postLogin`
@@ -384,7 +390,9 @@
   - [ ] `ClientRegistrationRequest`
     - [x] Apply application metadata while keeping ownership, credentials and privilege fields under server control ([test](../../../conformance/oauth-registration.mjs#L194))
   - [ ] `consumeClientAssertion`
-  - [ ] `verifyOAuthQueryParams`
+  - [x] `verifyOAuthQueryParams` ([test](../../../oauth_signed_query_test.go#L11))
+    - [x] Verify browser form signatures, repeated fields, UTF-16 ordering, signature alphabets, rotation and the expiration boundary ([test](../../../oauth_signed_query_test.go#L11))
+    - [x] Validate the form in an independently implemented OAuth provider before presenting the user’s choice ([test](../../../conformance/oauth-browser-authorization.mjs#L61))
   - [ ] `getLocalJwksSource`
   - [ ] `parseBearerToken`
   - [ ] `getOAuthProviderPlugin`
@@ -531,7 +539,7 @@
     - [ ] PKCE
       - [x] Exchange a browser-issued S256 code, verify the delegated access token with an independent issuer and isolate replay cleanup to that code ([test](../../../conformance/oauth-authorization-code.mjs#L5))
       - [x] Resolve public and confidential client PKCE requirements, including offline scopes, OIDC nonces and explicit registration policy ([test](../../../plugins/oauthprovider/authorization_code_test.go#L12))
-      - [x] Sign in and register a public client, then obtain a code by GET or form POST and redeem it at either issuer with S256 PKCE ([test](../../../conformance/oauth-browser-authorization.mjs#L4))
+      - [x] Sign in and register a public client, then obtain a code by GET or form POST and redeem it at either issuer with S256 PKCE ([test](../../../conformance/oauth-browser-authorization.mjs#L5))
     - [ ] Redirect URIs
     - [ ] Client authentication
     - [ ] Client registration
@@ -595,9 +603,12 @@
       - [x] Retrieve the native issuer document, preserve escaped issuer paths and omit disabled endpoints and unavailable store capabilities ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L61))
     - [ ] `GET /.well-known/openid-configuration` (server API only)
     - [ ] `GET / POST /oauth2/authorize`
-      - [x] Sign in and register a public client, then obtain a code by GET or form POST and redeem it at either issuer with S256 PKCE ([test](../../../conformance/oauth-browser-authorization.mjs#L4))
+      - [x] Sign in and register a public client, then obtain a code by GET or form POST and redeem it at either issuer with S256 PKCE ([test](../../../conformance/oauth-browser-authorization.mjs#L5))
       - [x] Recheck the registered callback, owner session and scoped consent in the issuing transaction on all three databases ([test](../../../adapters/sqlstore/oauth_browser_authorization_test.go#L20))
+      - [x] Visit a host consent page, verify the signed query independently, deny a first request or exchange a code approved for fewer scopes ([test](../../../conformance/oauth-browser-authorization.mjs#L57))
     - [ ] `POST /oauth2/consent`
+      - [x] Visit a host consent page, verify the signed query independently, deny a first request or exchange a code approved for fewer scopes ([test](../../../conformance/oauth-browser-authorization.mjs#L57))
+      - [x] Consume a decision once across two servers, isolate sessions and tenants, and roll back consent when code storage fails ([test](../../../adapters/sqlstore/oauth_browser_consent_test.go#L25))
     - [ ] `POST /oauth2/continue`
     - [ ] `POST /oauth2/token`
       - [x] Issue opaque bearer tokens with Basic or form authentication and verify their scope, expiry, introspection and revocation at an independent server ([test](../../../conformance/oauth-machine-tokens.mjs#L61))
@@ -756,13 +767,21 @@
 
 - [ ] Sign-in and consent screens
   - [ ] How the redirect works
+    - [x] Validate the form in an independently implemented OAuth provider before presenting the user’s choice ([test](../../../conformance/oauth-browser-authorization.mjs#L61))
   - [ ] Login page
   - [ ] Consent page
+    - [x] Visit a host consent page, verify the signed query independently, deny a first request or exchange a code approved for fewer scopes ([test](../../../conformance/oauth-browser-authorization.mjs#L57))
     - [ ] `POST /oauth2/consent`
-      - [ ] Parameter `accept`
-      - [ ] Parameter `scope` (optional)
+      - [x] Visit a host consent page, verify the signed query independently, deny a first request or exchange a code approved for fewer scopes ([test](../../../conformance/oauth-browser-authorization.mjs#L57))
+      - [x] Consume a decision once across two servers, isolate sessions and tenants, and roll back consent when code storage fails ([test](../../../adapters/sqlstore/oauth_browser_consent_test.go#L25))
+      - [x] Parameter `accept` ([test](../../../conformance/oauth-browser-authorization.mjs#L101))
+        - [x] Grant access on approval and preserve the prior grant when the user denies a later request ([test](../../../conformance/oauth-browser-authorization.mjs#L101))
+      - [x] Parameter `scope` (optional) ([test](../../../conformance/oauth-browser-authorization.mjs#L98))
+        - [x] Reject an expanded grant, redeem a narrowed code and grant the original scopes when the decision omits scope ([test](../../../conformance/oauth-browser-authorization.mjs#L98))
+        - [x] Use the Go client to distinguish explicitly granting zero scopes from granting the original scope list ([test](../../../adapters/sqlstore/oauth_browser_consent_test.go#L199))
       - [ ] Parameter `claims` (optional)
       - [ ] Parameter `oauth_query` (optional)
+        - [x] Verify a signed page query before applying a decision and reject altered authorization parameters ([test](../../../conformance/oauth-browser-authorization.mjs#L78))
   - [ ] Sign-up account screen
   - [ ] Select account screen
   - [ ] Post-login screen
@@ -863,7 +882,7 @@
       - [x] Restart the configured refresh lifetime on rotation and preserve original authentication time, session and authorization code ([test](../../../adapters/sqlstore/oauth_refresh_grant_test.go#L172))
     - [x] `codeExpiresIn` ([test](../../../adapters/sqlstore/oauth_browser_authorization_test.go#L151))
       - [x] Expire authorization codes after the configured whole-second lifetime on all three SQL engines ([test](../../../adapters/sqlstore/oauth_browser_authorization_test.go#L151))
-      - [x] Check the default ten-minute lifetime on a code issued to a registered browser client ([test](../../../conformance/oauth-browser-authorization.mjs#L67))
+      - [x] Check the default ten-minute lifetime on a code issued to a registered browser client ([test](../../../conformance/oauth-browser-authorization.mjs#L113))
     - [x] `assertionMaxLifetime` ([test](../../../plugins/oauthprovider/client_assertion_test.go#L25))
       - [x] Apply the configured lifetime and skew to expiry, not-before and issued-at claims, including exact boundaries ([test](../../../plugins/oauthprovider/client_assertion_test.go#L25))
   - [ ] Refresh tokens
@@ -875,7 +894,7 @@
   - [ ] PKCE
     - [x] Exchange a browser-issued S256 code, verify the delegated access token with an independent issuer and isolate replay cleanup to that code ([test](../../../conformance/oauth-authorization-code.mjs#L5))
     - [x] Resolve public and confidential client PKCE requirements, including offline scopes, OIDC nonces and explicit registration policy ([test](../../../plugins/oauthprovider/authorization_code_test.go#L12))
-    - [x] Sign in and register a public client, then obtain a code by GET or form POST and redeem it at either issuer with S256 PKCE ([test](../../../conformance/oauth-browser-authorization.mjs#L4))
+    - [x] Sign in and register a public client, then obtain a code by GET or form POST and redeem it at either issuer with S256 PKCE ([test](../../../conformance/oauth-browser-authorization.mjs#L5))
   - [ ] DPoP
     - [x] Verify signed DPoP proofs, their token hashes, permitted algorithms, normalized targets, validity windows and sender thumbprints ([test](../../../plugins/oauthprovider/dpop_test.go#L58))
     - [x] Exchange proof reservations with an independent runtime and reject reuse in both directions ([test](../../../conformance/dpop-proofs.mjs#L39))

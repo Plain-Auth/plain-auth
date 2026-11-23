@@ -25,7 +25,7 @@ func browserAuthorizationOperation(method string) json.RawMessage {
 	}
 	operation := map[string]any{
 		"summary":     "Authorize an OAuth client using a browser session",
-		"description": "Issues a code for a registered callback when the signed-in owner has approved the requested scopes or the operator has configured the client to skip consent. An unauthenticated or unapproved request receives an OAuth interaction error.",
+		"description": "Issues a code for a registered callback when the signed-in owner has approved the requested scopes or the operator has configured the client to skip consent. A signed-in owner may be redirected to the host consent page. Silent requests that require interaction receive an OAuth error.",
 		"responses": map[string]any{
 			"302": map[string]string{"description": "Navigate to the registered callback or to the issuer’s error page"},
 			"200": map[string]any{"description": "Redirect instruction for a fetch or JSON client", "content": map[string]any{"application/json": map[string]any{"schema": map[string]any{"type": "object", "required": []string{"redirect", "url"}, "properties": map[string]any{"redirect": map[string]any{"type": "boolean"}, "url": map[string]any{"type": "string", "format": "uri"}}}}}},

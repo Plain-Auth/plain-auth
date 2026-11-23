@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"net/url"
+	"strings"
 
 	"github.com/Plain-Auth/plain-auth/plugins/oauthprovider"
 )
@@ -35,4 +36,18 @@ func (c *Client) UpdateOAuthConsent(ctx context.Context, id string, scopes []str
 // DeleteOAuthConsent removes a grant from the user's authorized applications.
 func (c *Client) DeleteOAuthConsent(ctx context.Context, id string) error {
 	return c.Do(ctx, http.MethodPost, "/oauth2/delete-consent", map[string]string{"id": id}, nil)
+}
+
+// DecideOAuthConsent submits the user's decision and returns the browser destination.
+// Nil scopes approve the original request. An empty slice explicitly grants no scopes.
+func (c *Client) DecideOAuthConsent(ctx context.Context, signedQuery string, accept bool, scopes []string) (string, error) {
+	body := map[string]any{"oauth_query": signedQuery, "accept": accept}
+	if scopes != nil {
+		body["scope"] = strings.Join(scopes, " ")
+	}
+	var result struct {
+		URL string `json:"url"`
+	}
+	err := c.Do(ctx, http.MethodPost, "/oauth2/consent", body, &result)
+	return result.URL, err
 }

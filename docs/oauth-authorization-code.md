@@ -4,7 +4,7 @@ An application can send a signed-in user to `/oauth2/authorize` and exchange the
 
 ## Obtain a code in the browser
 
-Register the application's callback URL and enable the `authorization_code` grant on both the issuer and the client. The issuer enables this grant by default. This flow supports untargeted scopes such as `reports` and `reports offline_access`. It requires the account owner's active browser session and either a recorded approval covering every requested scope or an operator-managed client with `skipConsent` enabled. Dynamic registration rejects `skip_consent`. First-time interactive consent, ID tokens, sender binding and resource audiences for this grant remain on the roadmap. [Client registration](oauth-client-registration.md) · [Manage recorded approvals](oauth-consents.md) · [Feature checklist](parity/plugins/oauth-provider.md)
+Register the application's callback URL and enable the `authorization_code` grant on both the issuer and the client. The issuer enables this grant by default. This flow supports untargeted scopes such as `reports` and `reports offline_access`. It requires the account owner's active browser session and approval covering each requested scope. The user can approve the request on a host consent page. An operator-managed client can use `skipConsent` to bypass a prior grant. Dynamic registration rejects `skip_consent`. Interactive login continuation, ID tokens, sender binding and resource audiences for this grant remain on the roadmap. [Client registration](oauth-client-registration.md) · [Manage recorded approvals](oauth-consents.md) · [Feature checklist](parity/plugins/oauth-provider.md)
 
 For a public client using `golang.org/x/oauth2`, configure both issuer endpoints. Generate new random state and a PKCE verifier for each visit. Save them with the expected issuer and callback in the application's session before redirecting the user's browser.
 
@@ -29,13 +29,66 @@ The endpoint accepts GET query parameters or an `application/x-www-form-urlencod
 
 A successful navigation returns HTTP 302 to the callback with `code`, `iss` and the supplied `state`. A CORS fetch or a request accepting `application/json` receives HTTP 200 with `{"redirect":true,"url":"…"}`. On the callback, check `state` against the saved request, verify `iss` against the expected issuer, and check for `error` before exchanging the code. Unrecognized clients and unapproved callback URLs go to the issuer's error page. With `prompt=none`, `login_required` means the user needs to sign in and `consent_required` means the recorded approval does not cover this request. `max_age` limits the age of the login in seconds. Zero requests fresh authentication. [End-to-end browser and exchange tests](../conformance/oauth-browser-authorization.mjs)
 
-### Configure issuance
+## Ask the user for consent
+
+Set `Authorization.ConsentPage` to a page in your application and mount it alongside the auth handler. When a signed-in user first visits a client or the client asks for additional scopes, the issuer redirects to that page. An explicit `prompt=consent` opens it again, including for operator-approved clients. With `prompt=none` the client receives an interaction error. Leaving the page unset supports applications that already have approval.
+
+```go
+plugin, err := oauthprovider.New(oauthprovider.Options{
+    Scopes: []string{"reports", "export"},
+    Authorization: oauthprovider.BrowserAuthorizationOptions{
+        ConsentPage: "/consent",
+    },
+})
+```
+
+On the page's GET handler, verify the query before displaying the client ID or scopes. Render the verified values through `html/template`. The following handler assumes `page` is a parsed template and `api` is the same `*plainauth.Auth` mounted on the router.
+
+```go
+mux.HandleFunc("GET /consent", func(w http.ResponseWriter, r *http.Request) {
+    w.Header().Set("Cache-Control", "no-store")
+    w.Header().Set("Referrer-Policy", "no-referrer")
+    fields, err := api.VerifyOAuthPageQuery(r.URL.RawQuery)
+    if err != nil {
+        http.Error(w, "This approval request has expired or changed.", http.StatusBadRequest)
+        return
+    }
+    page.Execute(w, struct{ Client, Scope, Query string }{
+        fields.Get("client_id"), fields.Get("scope"), fields.Encode(),
+    })
+})
+```
+
+For example, bind the template values to `<p>{{.Client}} requests {{.Scope}}</p>` and `<input type="hidden" id="oauth-query" value="{{.Query}}">`. The page verifier removes unsigned page preferences, such as `theme`, before returning the signed form. From the same-origin page, call this function when the user selects **Allow** or **Deny**. Omit `scope` to approve the full request. To offer scope selection, pass the selected names joined with a space.
+
+```js
+async function decide(accept, scope) {
+    const response = await fetch("/api/auth/oauth2/consent", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            accept, scope, oauth_query: document.querySelector("#oauth-query").value,
+        }),
+    })
+    const result = await response.json()
+    if (!response.ok) throw new Error(result.error_description || "Could not record consent")
+    window.location.assign(result.url)
+}
+```
+
+An application using the Go client can call `sdk.DecideOAuthConsent(ctx, fields.Encode(), accept, selectedScopes)` with the user’s cookie jar. It returns the destination URL. Pass `nil` for all requested scopes or an empty slice to approve zero scopes.
+
+Approval returns a callback URL containing a single-use code. The issuer stores the selected scopes and code together. A denial returns `access_denied` and preserves earlier approval. The issuer revalidates the registered callback before sending either decision. A disabled client or removed callback sends the user to the issuer's error page. A request can be decided once, by the browser session and tenant that saw the prompt. It expires after `CodeLifetime`. Start a new authorization request if an old tab or retry reports that the decision was already used. [Browser flow and independent signature verification](../conformance/oauth-browser-authorization.mjs) · [Database rollback and concurrent decisions](../adapters/sqlstore/oauth_browser_consent_test.go)
+
+## Configure issuance
 
 `oauthprovider.Options.Authorization` accepts these settings. Host callbacks receive the request context and run outside database transactions.
 
 | Setting | Behavior |
 | --- | --- |
-| `CodeLifetime` | A code expires after ten minutes by default. Set a positive duration in whole seconds to change it. |
+| `ConsentPage` | Trusted host page for first-time and forced approvals, such as `/consent`. |
+| `CodeLifetime` | Codes and signed consent prompts expire after ten minutes by default. Set a positive duration in whole seconds to change it. |
 | `ConsentReference` | Choose an approval namespace, such as the active organization's ID, from the verified session. An empty value selects personal consent. Approval for another namespace cannot authorize a code. |
 | `ValidateRedirectURI` | Receives the requested URL, a copy of the client's registered URLs and the default match result. Return the decision from your host policy. Syntax and transport checks run first. An error rejects the redirect. |
 | `RateLimit` | GET and POST share a default allowance of 30 requests per minute per client IP when rate limiting is enabled. Set a route rule to change it, or supply an empty rule to inherit the host default. |

@@ -13113,6 +13113,11 @@
       "label": "Recheck the registered callback, owner session and scoped consent in the issuing transaction on all three databases",
       "test": "adapters/sqlstore/oauth_browser_authorization_test.go",
       "marker": "func TestBrowserAuthorization("
+    },
+    {
+      "label": "Visit a host consent page, verify the signed query independently, deny a first request or exchange a code approved for fewer scopes",
+      "test": "conformance/oauth-browser-authorization.mjs",
+      "marker": "async function consentPage(prompt)"
     }
   ],
   "docs/content/docs/plugins/oauth-provider/reference.mdx#L318/`GET / POST /oauth2/authorize`": [
@@ -13125,6 +13130,11 @@
       "label": "Recheck the registered callback, owner session and scoped consent in the issuing transaction on all three databases",
       "test": "adapters/sqlstore/oauth_browser_authorization_test.go",
       "marker": "func TestBrowserAuthorization("
+    },
+    {
+      "label": "Visit a host consent page, verify the signed query independently, deny a first request or exchange a code approved for fewer scopes",
+      "test": "conformance/oauth-browser-authorization.mjs",
+      "marker": "async function consentPage(prompt)"
     }
   ],
   "plugin-symbol/oauth-provider/OAuthOptions/validateRedirectUri": [
@@ -13139,6 +13149,11 @@
       "label": "Apply a custom lifetime and code digest and redeem the stored browser grant on a second server",
       "test": "adapters/sqlstore/oauth_browser_authorization_test.go",
       "marker": "stored code lost lifetime, scope, or bound browser context"
+    },
+    {
+      "label": "Expire a pending consent request before approval and accept a fresh prompt on another issuer process",
+      "test": "adapters/sqlstore/oauth_browser_consent_test.go",
+      "marker": "expired consent was accepted"
     }
   ],
   "docs/content/docs/plugins/oauth-provider/tokens.mdx#L128/`codeExpiresIn`": [
@@ -13160,6 +13175,110 @@
       "test": "adapters/sqlstore/oauth_browser_authorization_test.go",
       "marker": "func TestBrowserAuthorizationRateLimit(",
       "complete": true
+    }
+  ],
+  "plugin/oauth-provider/POST /oauth2/consent": [
+    {
+      "label": "Visit a host consent page, verify the signed query independently, deny a first request or exchange a code approved for fewer scopes",
+      "test": "conformance/oauth-browser-authorization.mjs",
+      "marker": "async function consentPage(prompt)"
+    },
+    {
+      "label": "Consume a decision once across two servers, isolate sessions and tenants, and roll back consent when code storage fails",
+      "test": "adapters/sqlstore/oauth_browser_consent_test.go",
+      "marker": "func TestInteractiveBrowserConsent("
+    },
+    {
+      "label": "Consume a denial even when the callback has been removed and the operator later restores it",
+      "test": "adapters/sqlstore/oauth_browser_consent_test.go",
+      "marker": "restoring a callback revived an explicitly denied request"
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/reference.mdx#L319/`POST /oauth2/consent`": [
+    {
+      "label": "Visit a host consent page, verify the signed query independently, deny a first request or exchange a code approved for fewer scopes",
+      "test": "conformance/oauth-browser-authorization.mjs",
+      "marker": "async function consentPage(prompt)"
+    },
+    {
+      "label": "Consume a decision once across two servers, isolate sessions and tenants, and roll back consent when code storage fails",
+      "test": "adapters/sqlstore/oauth_browser_consent_test.go",
+      "marker": "func TestInteractiveBrowserConsent("
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/sign-in-flow.mdx#L95/`POST /oauth2/consent`": [
+    {
+      "label": "Visit a host consent page, verify the signed query independently, deny a first request or exchange a code approved for fewer scopes",
+      "test": "conformance/oauth-browser-authorization.mjs",
+      "marker": "async function consentPage(prompt)"
+    },
+    {
+      "label": "Consume a decision once across two servers, isolate sessions and tenants, and roll back consent when code storage fails",
+      "test": "adapters/sqlstore/oauth_browser_consent_test.go",
+      "marker": "func TestInteractiveBrowserConsent("
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/sign-in-flow.mdx#L44": [
+    {
+      "label": "Visit a host consent page, verify the signed query independently, deny a first request or exchange a code approved for fewer scopes",
+      "test": "conformance/oauth-browser-authorization.mjs",
+      "marker": "async function consentPage(prompt)"
+    }
+  ],
+  "plugin-symbol/oauth-provider/OAuthOptions/consentPage": [
+    {
+      "label": "Redirect a signed-in user to the configured page for a missing approval or an explicit consent prompt",
+      "test": "conformance/oauth-browser-authorization.mjs",
+      "marker": "async function consentPage(prompt)",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/oauth-provider/verifyOAuthQueryParams": [
+    {
+      "label": "Verify browser form signatures, repeated fields, UTF-16 ordering, signature alphabets, rotation and the expiration boundary",
+      "test": "oauth_signed_query_test.go",
+      "marker": "func TestSignedOAuthPageQuery(",
+      "complete": true
+    },
+    {
+      "label": "Validate the form in an independently implemented OAuth provider before presenting the user’s choice",
+      "test": "conformance/oauth-browser-authorization.mjs",
+      "marker": "await verifyOAuthQueryParams(raw,"
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/sign-in-flow.mdx#L10": [
+    {
+      "label": "Validate the form in an independently implemented OAuth provider before presenting the user’s choice",
+      "test": "conformance/oauth-browser-authorization.mjs",
+      "marker": "await verifyOAuthQueryParams(raw,"
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/sign-in-flow.mdx#L101/Parameter `accept`": [
+    {
+      "label": "Grant access on approval and preserve the prior grant when the user denies a later request",
+      "test": "conformance/oauth-browser-authorization.mjs",
+      "marker": "const laterDenial = await decide(",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/sign-in-flow.mdx#L105/Parameter `scope` (optional)": [
+    {
+      "label": "Reject an expanded grant, redeem a narrowed code and grant the original scopes when the decision omits scope",
+      "test": "conformance/oauth-browser-authorization.mjs",
+      "marker": "const full = await decide(",
+      "complete": true
+    },
+    {
+      "label": "Use the Go client to distinguish explicitly granting zero scopes from granting the original scope list",
+      "test": "adapters/sqlstore/oauth_browser_consent_test.go",
+      "marker": "SDK lost distinction between omitted and explicit empty scopes"
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/sign-in-flow.mdx#L113/Parameter `oauth_query` (optional)": [
+    {
+      "label": "Verify a signed page query before applying a decision and reject altered authorization parameters",
+      "test": "conformance/oauth-browser-authorization.mjs",
+      "marker": "altered.set(\"state\", \"changed\")"
     }
   ]
 }

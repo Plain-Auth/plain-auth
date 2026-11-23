@@ -227,6 +227,9 @@ func New(opts Options) (auth.Plugin, error) {
 		if _, ok := s.(ClientKeyRotationStore); opts.Assertions.AllowKeyRotation && !ok {
 			return errors.New("oauthprovider: client key rotation requires a store with atomic single-use assertions and key replacement")
 		}
+		if _, ok := s.(BrowserConsentStore); opts.Authorization.ConsentPage != "" && !ok {
+			return errors.New("oauthprovider: interactive consent requires a BrowserConsentStore")
+		}
 		if err := validateConsent(s); err != nil {
 			return err
 		}
@@ -245,6 +248,9 @@ func New(opts Options) (auth.Plugin, error) {
 	p.Endpoints = append(p.Endpoints, auth.Endpoint{Method: http.MethodPost, Path: "/oauth2/delete-client", Handler: opts.deleteClient})
 	p.Endpoints = append(p.Endpoints, auth.Endpoint{Method: http.MethodPost, Path: "/oauth2/token", RawBody: true, OpenAPI: json.RawMessage(machineTokenOperation), RateLimit: opts.Tokens.RateLimit, Handler: opts.token})
 	if slices.Contains(opts.GrantTypes, "authorization_code") {
+		if opts.Authorization.ConsentPage != "" {
+			p.Endpoints = append(p.Endpoints, auth.Endpoint{Method: http.MethodPost, Path: "/oauth2/consent", Handler: opts.browserConsent, OpenAPI: json.RawMessage(browserConsentOperation)})
+		}
 		for _, method := range []string{http.MethodGet, http.MethodPost} {
 			p.Endpoints = append(p.Endpoints, auth.Endpoint{Method: method, Path: "/oauth2/authorize", RawBody: method == http.MethodPost, RateLimit: opts.Authorization.RateLimit, Handler: opts.browserAuthorize, OpenAPI: browserAuthorizationOperation(method)})
 		}

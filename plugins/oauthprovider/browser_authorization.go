@@ -7,6 +7,7 @@ import (
 	"maps"
 	"net/http"
 	"net/url"
+	"reflect"
 	"slices"
 	"strings"
 	"time"
@@ -15,6 +16,8 @@ import (
 )
 
 type BrowserAuthorizationOptions struct {
+	// ConsentPage is the host's trusted page for first-time or forced approval.
+	ConsentPage string
 	// CodeLifetime defaults to ten minutes and uses whole seconds.
 	CodeLifetime time.Duration
 	// ConsentReference identifies a host tenant's approval. An empty value selects personal consent.
@@ -101,7 +104,14 @@ func (opts Options) browserAuthorize(c auth.EndpointContext) (any, error) {
 		}
 		q = nil
 	}
+	return opts.runBrowserAuthorization(c, q, nil)
+}
+
+func (opts Options) runBrowserAuthorization(c auth.EndpointContext, q url.Values, decision *browserConsentDecision) (any, error) {
 	serverError := func(code, description string) (any, error) {
+		if decision != nil && !decision.accept {
+			code, description = "access_denied", "User denied access"
+		}
 		return browserRedirect(c, c.Auth.ErrorPageURL(), url.Values{"error": {code}, "error_description": {description}}, false), nil
 	}
 	store, ok := c.Store().(BrowserAuthorizationStore)
@@ -153,14 +163,29 @@ func (opts Options) browserAuthorize(c auth.EndpointContext) (any, error) {
 	reject := func(code, description string) (any, error) {
 		return result(url.Values{"error": {code}, "error_description": {description}}, browserFragmentError(q))
 	}
+	if decision != nil && !decision.accept {
+		current, err := store.LookupAuthorizationClient(ctx, client.ClientID)
+		if err != nil && !errors.Is(err, ErrClientNotFound) {
+			return nil, err
+		}
+		if err != nil || !reflect.DeepEqual(current, client) || tokenDigest(client.RowID) != decision.clientFingerprint {
+			return serverError("access_denied", "User denied access")
+		}
+		return reject("access_denied", "User denied access")
+	}
 	grant, problem := opts.browserGrant(client, q)
 	if problem != nil {
 		return reject(problem.Code, problem.Description)
 	}
 	issue := grant.BrowserCodeIssue
-	session, err := c.Auth.GetSession(ctx, c.Request.Header)
-	if err != nil {
-		return nil, err
+	var session *auth.SessionResult
+	if decision != nil {
+		session = decision.session
+	} else {
+		session, err = c.Auth.GetSession(ctx, c.Request.Header)
+		if err != nil {
+			return nil, err
+		}
 	}
 	if session == nil || session.Session.RequireOwner() != nil || !c.DirectBrowserSession(session.Session.Token) || !issue.SessionFresh(session.Session.CreatedAt, time.Now()) || slices.Contains(grant.prompts, "login") || slices.Contains(grant.prompts, "create") {
 		return reject("login_required", "authentication required")
@@ -168,15 +193,35 @@ func (opts Options) browserAuthorize(c auth.EndpointContext) (any, error) {
 	if slices.Contains(grant.prompts, "select_account") {
 		return reject("account_selection_required", "account selection is required")
 	}
-	if slices.Contains(grant.prompts, "consent") {
-		return reject("consent_required", "End-User consent is required")
-	}
 	issue.UserID, issue.SessionID, issue.SessionToken = session.User.ID, session.Session.ID, session.Session.Token
+	if decision != nil {
+		if decision.scopes != nil {
+			issue.Scopes = decision.scopes
+		}
+		remaining := slices.DeleteFunc(slices.Clone(grant.prompts), func(p string) bool { return p == "consent" })
+		if len(remaining) == 0 {
+			delete(issue.Query, "prompt")
+		} else {
+			issue.Query["prompt"] = strings.Join(remaining, " ")
+		}
+	}
 	if resolve := opts.Authorization.ConsentReference; resolve != nil {
 		issue.ReferenceID, err = resolve(ctx, RegistrationAccess{SessionResult: *session, Headers: c.Request.Header.Clone()}, slices.Clone(issue.Scopes))
 		if err != nil {
 			return nil, err
 		}
+	}
+	consentPage := func() (any, error) {
+		if opts.Authorization.ConsentPage == "" || slices.Contains(grant.prompts, "none") {
+			return reject("consent_required", "End-User consent is required")
+		}
+		return opts.openConsentPage(c, q, issue)
+	}
+	if decision == nil && slices.Contains(grant.prompts, "consent") {
+		return consentPage()
+	}
+	if decision != nil {
+		decision.request.Binding = consentBinding(c.Auth.OAuthIssuer(), tokenDigest(client.RowID), issue)
 	}
 	code, err := randomCredential("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
 	if err != nil {
@@ -186,14 +231,20 @@ func (opts Options) browserAuthorize(c auth.EndpointContext) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = store.IssueBrowserCode(ctx, issue)
+	if decision != nil {
+		err = decision.store.FinishBrowserConsent(ctx, issue, decision.request, true)
+	} else {
+		err = store.IssueBrowserCode(ctx, issue)
+	}
 	switch {
 	case errors.Is(err, ErrClientNotFound), errors.Is(err, ErrBrowserClientChanged):
 		return serverError("invalid_client", "client registration changed")
 	case errors.Is(err, ErrAuthorizationSessionExpired):
 		return reject("login_required", "authentication required")
-	case errors.Is(err, ErrBrowserConsentRequired):
-		return reject("consent_required", "End-User consent is required")
+	case errors.Is(err, ErrBrowserConsentRequired) && decision == nil:
+		return consentPage()
+	case errors.Is(err, ErrBrowserConsentExpired):
+		return nil, consentDecisionError(err)
 	case err != nil:
 		return nil, err
 	}
