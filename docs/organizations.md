@@ -235,6 +235,27 @@ The database reads up to 100 invitations in creation order, using the ID to brea
 
 In Go, call `authClient.ListOrganizationInvitations(ctx, organizationID)`, using an empty string for the active organization. To require recipients to verify their account email before accepting an invitation, set `RequireVerifiedEmail: true` in the organization options. [HTTP client comparison](../conformance/organization-invitations.mjs) · [Go client and session tests](../adapters/sqlstore/organization_selection_http_test.go)
 
+## Issue an invitation
+
+Call `POST /organization/invite-member` as an owner or administrator. The request must include `email` and `role`. Supply an `organizationId` to choose the destination, or omit it to use the current session’s active organization. An explicit destination leaves the sender’s selection in place.
+
+The handler lowercases the recipient address. Send a single role, a comma-separated string, or an array of strings. It trims role names, drops empty entries and keeps their submitted order. The built-in roles are `owner`, `admin` and `member`. Granting `owner` requires an owner. With teams enabled, set `teamId` to a team ID or an array of IDs from the destination organization.
+
+```go
+invite, err := authClient.InviteOrganizationMember(ctx, client.InviteOrganizationMemberRequest{
+    Email: "guest@example.com",
+    Roles: []string{"member"},
+    OrganizationID: studioID,
+    TeamIDs: []string{designTeamID, researchTeamID},
+})
+if err != nil {
+    return err
+}
+return recordPendingGrant(ctx, invite.ID)
+```
+
+The example’s `recordPendingGrant` belongs to the host. Set `Resend: true` to renew a live grant for the same mailbox and destination. The response contains the saved ID, roles, team targets and deadline. A fresh organization-wide grant has `teamId: null` when teams are enabled. [Request and response comparison](../conformance/invitation-input.mjs) · [Native client tests on three databases](../adapters/sqlstore/organization_selection_http_test.go)
+
 ## Deliver invitation email
 
 Set `SendInvitationEmail` on `organization.Options` to deliver mail or enqueue a message in your own system. The callback receives the committed invitation, its destination organization, the sending membership with its public user profile, and the normalized recipient address in `Email`. Use `Request` for request metadata such as a language header. JSON serialization excludes the request. Your application chooses the mail provider, template and link destination.

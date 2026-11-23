@@ -108,24 +108,11 @@ func teamOrg(body map[string]any) (string, error) {
 	return "", nil
 }
 
-func teamInvitationIDs(value any) (*string, error) {
-	if value == nil {
-		return nil, nil
-	}
-	var values []any
-	switch v := value.(type) {
-	case string:
-		values = []any{v}
-	case []any:
-		values = v
-	default:
-		return nil, validation("teamId")
-	}
+func teamInvitationIDs(values []string) (*string, error) {
 	ids := []string{}
 	seen := map[string]bool{}
-	for _, value := range values {
-		id, ok := value.(string)
-		if !ok || id == "" {
+	for _, id := range values {
+		if id == "" {
 			return nil, validation("teamId")
 		}
 		if strings.Contains(id, ",") {

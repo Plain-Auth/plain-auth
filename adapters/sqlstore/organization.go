@@ -278,12 +278,12 @@ func (s *Store) issueInvitationTx(ctx context.Context, inv org.Invitation, issue
 		return org.Invitation{}, err
 	}
 	if err = s.lockOrganization(ctx, tx, inv.OrganizationID); err != nil {
+		if errors.Is(err, org.ErrNotFound) {
+			return org.Invitation{}, org.ErrMemberMissing
+		}
 		return org.Invitation{}, err
 	}
 	member, err := s.memberForChange(ctx, tx, inv.OrganizationID, `m."userId"=`+s.exactSQLValue("?"), inv.InviterID)
-	if errors.Is(err, org.ErrMemberMissing) {
-		return org.Invitation{}, org.ErrInviteDenied
-	}
 	if err != nil {
 		return org.Invitation{}, err
 	}

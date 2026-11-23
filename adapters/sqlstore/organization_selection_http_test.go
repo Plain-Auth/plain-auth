@@ -206,16 +206,19 @@ func TestOrganizationAndTeamSelectionHTTP(t *testing.T) {
 			send(outsider, "POST", "sign-up/email", map[string]string{"email": "other@api.example", "name": "Other", "password": login["password"]}, 200)
 			guestSDK, err := client.New(origin, outsider)
 			must(err)
-			var issued org.Invitation
-			must(json.Unmarshal(send(two, "POST", "organization/invite-member", map[string]any{"email": "other@api.example", "role": "member", "organizationId": second}, 200), &issued))
+			issued, err := sdk.InviteOrganizationMember(ctx, client.InviteOrganizationMemberRequest{Email: "OTHER@api.example", Roles: []string{"member, admin", "member"}})
+			must(err)
+			if issued.Role != "member,admin,member" || issued.Email != "other@api.example" || issued.OrganizationID != second {
+				t.Fatal("native invitation issue lost the normalized roles, mailbox or active organization")
+			}
 			if !issued.ExpiresAt.Equal(issued.CreatedAt.Add(invitationLifetime)) {
 				t.Fatal("new invitation did not use the configured lifetime")
 			}
 			_, err = store.db.ExecContext(ctx, store.bind(`UPDATE "invitation" SET "expiresAt"=? WHERE "id"=?`), store.date(issued.ExpiresAt.Add(24*time.Hour)), issued.ID)
 			must(err)
 			beginRenewal := time.Now().UTC().Truncate(time.Millisecond)
-			var renewed org.Invitation
-			must(json.Unmarshal(send(two, "POST", "organization/invite-member", map[string]any{"email": "other@api.example", "role": "admin", "organizationId": second, "resend": true}, 200), &renewed))
+			renewed, err := sdk.InviteOrganizationMember(ctx, client.InviteOrganizationMemberRequest{Email: issued.Email, Roles: []string{"admin"}, OrganizationID: second, Resend: true})
+			must(err)
 			if renewed.ID != issued.ID || renewed.Role != issued.Role || !renewed.CreatedAt.Equal(issued.CreatedAt) || renewed.ExpiresAt.Before(beginRenewal.Add(invitationLifetime)) || renewed.ExpiresAt.After(time.Now().Add(invitationLifetime)) {
 				t.Fatal("resend did not refresh the existing invitation using the configured lifetime")
 			}

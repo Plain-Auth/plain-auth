@@ -141,6 +141,39 @@ type AcceptedInvitation struct {
 	Member     org.Member     `json:"member"`
 }
 
+// InviteOrganizationMemberRequest describes a grant. An empty OrganizationID
+// uses the caller's active organization. TeamIDs can select several teams.
+type InviteOrganizationMemberRequest struct {
+	Email          string
+	Roles          []string
+	OrganizationID string
+	TeamIDs        []string
+	Resend         bool
+}
+
+// InviteOrganizationMember issues an invitation or renews it when Resend is set.
+func (c *Client) InviteOrganizationMember(ctx context.Context, request InviteOrganizationMemberRequest) (*org.Invitation, error) {
+	roles := request.Roles
+	if roles == nil {
+		roles = []string{}
+	}
+	body := map[string]any{"email": request.Email, "role": roles}
+	if request.OrganizationID != "" {
+		body["organizationId"] = request.OrganizationID
+	}
+	if len(request.TeamIDs) != 0 {
+		body["teamId"] = request.TeamIDs
+	}
+	if request.Resend {
+		body["resend"] = true
+	}
+	var inv org.Invitation
+	if err := c.Do(ctx, http.MethodPost, "/organization/invite-member", body, &inv); err != nil {
+		return nil, err
+	}
+	return &inv, nil
+}
+
 // AcceptOrganizationInvitation joins the organization and selects it on the calling session.
 func (c *Client) AcceptOrganizationInvitation(ctx context.Context, invitationID string) (*AcceptedInvitation, error) {
 	var out AcceptedInvitation

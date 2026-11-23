@@ -868,6 +868,21 @@
       "label": "Keep a committed grant available for resend after the creation callback fails",
       "test": "conformance/invitation-creation.mjs",
       "marker": "await check(saved, false)"
+    },
+    {
+      "label": "Accept comma-separated roles within strings or arrays, preserve their order and check owner grants",
+      "test": "conformance/invitation-input.mjs",
+      "marker": "assert.equal(wide.role, \"admin,member,admin\")"
+    },
+    {
+      "label": "Report invalid field types before sign-in and validate recipient addresses after resolving the destination",
+      "test": "conformance/invitation-input.mjs",
+      "marker": "error(await issue(owner, { email: 42"
+    },
+    {
+      "label": "Issue and renew an invitation through the native Go client against three databases",
+      "test": "adapters/sqlstore/organization_selection_http_test.go",
+      "marker": "t.Fatal(\"native invitation issue lost the normalized roles, mailbox or active organization\")"
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L893": [
@@ -885,6 +900,21 @@
       "label": "Keep a committed grant available for resend after the creation callback fails",
       "test": "conformance/invitation-creation.mjs",
       "marker": "await check(saved, false)"
+    },
+    {
+      "label": "Accept comma-separated roles within strings or arrays, preserve their order and check owner grants",
+      "test": "conformance/invitation-input.mjs",
+      "marker": "assert.equal(wide.role, \"admin,member,admin\")"
+    },
+    {
+      "label": "Report invalid field types before sign-in and validate recipient addresses after resolving the destination",
+      "test": "conformance/invitation-input.mjs",
+      "marker": "error(await issue(owner, { email: 42"
+    },
+    {
+      "label": "Issue and renew an invitation through the native Go client against three databases",
+      "test": "adapters/sqlstore/organization_selection_http_test.go",
+      "marker": "t.Fatal(\"native invitation issue lost the normalized roles, mailbox or active organization\")"
     }
   ],
   "plugin/organization/POST /organization/accept-invitation": [
@@ -14997,6 +15027,61 @@
       "label": "Deliver exactly once through a permitted application credential after the SQL transaction commits",
       "test": "adapters/sqlstore/apikey_session_test.go",
       "marker": "t.Fatal(\"application credential delivered an incorrect sender or destination\")"
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L897/`POST /organization/invite-member`": [
+    {
+      "label": "Accept comma-separated roles within strings or arrays, preserve their order and check owner grants",
+      "test": "conformance/invitation-input.mjs",
+      "marker": "assert.equal(wide.role, \"admin,member,admin\")"
+    },
+    {
+      "label": "Report invalid field types before sign-in and validate recipient addresses after resolving the destination",
+      "test": "conformance/invitation-input.mjs",
+      "marker": "error(await issue(owner, { email: 42"
+    },
+    {
+      "label": "Issue and renew an invitation through the native Go client against three databases",
+      "test": "adapters/sqlstore/organization_selection_http_test.go",
+      "marker": "t.Fatal(\"native invitation issue lost the normalized roles, mailbox or active organization\")"
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L903/Parameter `email`": [
+    {
+      "label": "Require a mailbox string, reject malformed addresses and lowercase the saved delivery address",
+      "test": "conformance/invitation-input.mjs",
+      "marker": "assert.equal(wide.email, \"guest+list@example.test\")",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L907/Parameter `role`": [
+    {
+      "label": "Accept comma-separated roles within strings or arrays, preserve their order and check owner grants",
+      "test": "conformance/invitation-input.mjs",
+      "marker": "assert.equal(wide.role, \"admin,member,admin\")"
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L911/Parameter `organizationId` (optional)": [
+    {
+      "label": "Use the active destination when unset or empty and require membership in an explicitly selected organization",
+      "test": "conformance/invitation-input.mjs",
+      "marker": "assert.equal(wide.organizationId, other.id)",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L915/Parameter `resend` (optional)": [
+    {
+      "label": "Renew the saved grant when requested, preserving its ID and roles",
+      "test": "conformance/invitation-input.mjs",
+      "marker": "assert.equal(renewed.role, \"admin,member\")",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L919/Parameter `teamId` (optional)": [
+    {
+      "label": "Grant multiple destination teams through the native Go client",
+      "test": "adapters/sqlstore/organization_teams_test.go",
+      "marker": "TeamIDs: []string{team.ID, third.ID}"
     }
   ]
 }

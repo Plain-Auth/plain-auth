@@ -1953,6 +1953,11 @@ test("invitation creation observers run once per new grant after mail delivery",
   await compareInvitationCreation(t, { reference, goFixture, instrument });
 });
 
+test("invitation issuance validates request types and stores normalized mailbox and role lists", async t => {
+  const { compareInvitationInput } = await import("./invitation-input.mjs");
+  await compareInvitationInput(t, { reference, goFixture, instrument });
+});
+
 test("host invitation lifetimes apply to new grants and resends", async t => {
   const { compareInvitationExpiration } = await import("./invitation-expiration.mjs");
   await compareInvitationExpiration(t, { reference, goFixture, instrument });

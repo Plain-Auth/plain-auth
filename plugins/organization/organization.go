@@ -7,8 +7,6 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
-	"net/mail"
-	"slices"
 	"strings"
 	"time"
 
@@ -242,7 +240,7 @@ func (service *Service) Plugin() authn.Plugin {
 			}),
 			o.endpoint(http.MethodGet, "get-organization", o.get),
 			o.endpoint(http.MethodPost, "set-active", o.selectActive),
-			o.endpoint(http.MethodPost, "invite-member", o.invite),
+			{Method: http.MethodPost, Path: "/organization/invite-member", Handler: o.invite},
 			{Method: http.MethodPost, Path: "/organization/accept-invitation", Handler: o.accept},
 		},
 	}
@@ -401,82 +399,50 @@ func (o Options) selectActive(c authn.EndpointContext, s *authn.SessionResult) (
 	return org, nil
 }
 
-func parseRoles(value any) (string, error) {
-	var all []string
-	switch v := value.(type) {
-	case string:
-		all = strings.Split(v, ",")
-	case []string:
-		all = v
-	case []any:
-		for _, field := range v {
-			role, ok := field.(string)
-			if !ok {
-				return "", validation("role")
-			}
-			all = append(all, role)
-		}
-	default:
-		return "", validation("role")
-	}
-	roles := []string{}
-	for _, r := range all {
-		r = strings.TrimSpace(r)
-		if r != "admin" && r != "owner" && r != "member" {
-			return "", problem(400, "ROLE_NOT_FOUND", "Role not found")
-		}
-		if !slices.Contains(roles, r) {
-			roles = append(roles, r)
-		}
-	}
-	if len(roles) == 0 {
-		return "", validation("role")
-	}
-	return strings.Join(roles, ","), nil
-}
-
-func (o Options) invite(c authn.EndpointContext, s *authn.SessionResult) (any, error) {
-	email, err := textField(c.Body, "email")
+func (o Options) invite(c authn.EndpointContext) (any, error) {
+	input, err := readInvitationInput(c.Body)
 	if err != nil {
 		return nil, err
 	}
-	addr, err := mail.ParseAddress(email)
-	if err != nil || addr.Address != email {
-		return nil, problem(400, "INVALID_EMAIL", "Invalid email")
-	}
-	role, err := parseRoles(c.Body["role"])
+	s, err := endpointSession(c, http.MethodPost, "invite-member")
 	if err != nil {
 		return nil, err
 	}
-	id := activeID(s)
-	if _, ok := c.Body["organizationId"]; ok {
-		id, err = textField(c.Body, "organizationId")
-		if err != nil {
-			return nil, err
-		}
+	id := input.organizationID
+	if id == "" {
+		id = activeID(s)
 	}
 	if id == "" {
 		return nil, ErrNotFound
 	}
-	if c.Body["teamId"] != nil && o.teamStore == nil {
+	email := strings.ToLower(input.email)
+	if !invitationEmailPattern.MatchString(email) {
+		return nil, problem(400, "INVALID_EMAIL", "Invalid email")
+	}
+	role, err := normalizedInvitationRoles(input.roles)
+	if err != nil {
+		return nil, err
+	}
+	if input.teamIDs != nil && o.teamStore == nil {
 		return nil, validation("teamId")
 	}
-	resend, ok := c.Body["resend"].(bool)
-	if c.Body["resend"] != nil && !ok {
-		return nil, validation("resend")
-	}
+	resend := input.resend
 	now := time.Now().UTC().Truncate(time.Millisecond)
 	validFor := o.InvitationExpiresIn
 	if validFor == 0 {
 		validFor = 48 * time.Hour
 	}
-	inv := Invitation{ID: rand.Text(), OrganizationID: id, InviterID: s.User.ID, Email: strings.ToLower(email), Role: role, Status: "pending", CreatedAt: now, ExpiresAt: now.Add(validFor).Truncate(time.Millisecond)}
-	inv.TeamID, err = teamInvitationIDs(c.Body["teamId"])
+	inv := Invitation{ID: rand.Text(), OrganizationID: id, InviterID: s.User.ID, Email: email, Role: role, Status: "pending", CreatedAt: now, ExpiresAt: now.Add(validFor).Truncate(time.Millisecond)}
+	inv.TeamID, err = teamInvitationIDs(input.teamIDs)
 	if err != nil {
 		return nil, err
 	}
 	if o.SendInvitationEmail != nil || o.AfterCreateInvitation != nil {
-		return o.issueObservedInvitation(c, s, inv, resend)
+		inv, err = o.issueObservedInvitation(c, s, inv, resend)
+		if err != nil {
+			return nil, err
+		}
+		return o.invitationRow(inv), nil
 	}
 	if o.CancelPendingInvitationsOnReInvite && !resend {
 		inv, err = o.Store.(InvitationReplacementStore).ReplaceOrganizationInvitation(c.Request.Context(), inv, s.Session.ID)
@@ -489,7 +455,7 @@ func (o Options) invite(c authn.EndpointContext, s *authn.SessionResult) (any, e
 	if err := o.sendSimpleInvitation(c.Request.Context(), inv); err != nil {
 		return nil, err
 	}
-	return inv, nil
+	return o.invitationRow(inv), nil
 }
 
 func (o Options) accept(c authn.EndpointContext) (any, error) {

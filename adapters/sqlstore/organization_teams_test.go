@@ -125,7 +125,7 @@ func TestTeamAccountsAcrossEngines(t *testing.T) {
 			_, err = invite(peerUser, "member", []string{team.ID + "," + third.ID})
 			denied(err, "INVALID_TEAM_ID")
 			// Removing one of two pending team IDs leaves an acceptable, single-team invitation.
-			pending, err := invite(peerUser, "member", []string{team.ID, third.ID})
+			pending, err := owner.InviteOrganizationMember(ctx, client.InviteOrganizationMemberRequest{Email: peerUser.Email, Roles: []string{"member"}, OrganizationID: group, TeamIDs: []string{team.ID, third.ID}})
 			must(err)
 			must(owner.RemoveTeam(ctx, third.ID, group))
 			err = peer.Do(ctx, "POST", "/organization/accept-invitation", map[string]string{"invitationId": pending.ID}, nil)

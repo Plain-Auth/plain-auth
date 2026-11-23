@@ -4,6 +4,8 @@ import (
 	"context"
 	"crypto/rand"
 	"errors"
+	"slices"
+	"strings"
 	"time"
 )
 
@@ -52,7 +54,7 @@ func (service *Service) AddMember(ctx context.Context, request AddMemberRequest)
 	if request.UserID == "" {
 		return nil, validation("userId")
 	}
-	role, err := parseRoles(request.Roles)
+	role, err := directMemberRoles(request.Roles)
 	if err != nil {
 		return nil, err
 	}
@@ -64,6 +66,23 @@ func (service *Service) AddMember(ctx context.Context, request AddMemberRequest)
 		return nil, err
 	}
 	return member, nil
+}
+
+func directMemberRoles(entries []string) (string, error) {
+	if len(entries) == 0 {
+		return "", validation("role")
+	}
+	var roles []string
+	for _, entry := range entries {
+		role := strings.TrimSpace(entry)
+		if !builtinRole(role) {
+			return "", problem(400, "ROLE_NOT_FOUND", "Role not found")
+		}
+		if !slices.Contains(roles, role) {
+			roles = append(roles, role)
+		}
+	}
+	return strings.Join(roles, ","), nil
 }
 
 // Store returns the adapter used for membership, including its configured team policy.

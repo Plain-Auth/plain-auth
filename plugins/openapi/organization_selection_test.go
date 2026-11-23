@@ -86,6 +86,10 @@ func TestOrganizationSelectionSchema(t *testing.T) {
 				t.Fatal("full organization description does not match the configured collections", lists)
 			}
 			cancel := node(paths, "/organization/cancel-invitation", "post")
+			issue := node(paths, "/organization/invite-member", "post")
+			if node(issue, "responses", "200", "content", "application/json", "schema")["$ref"] != "#/components/schemas/Invitation" {
+				t.Fatal("invitation issuance must return the configured invitation schema")
+			}
 			accept := node(paths, "/organization/accept-invitation", "post")
 			joined := node(accept, "responses", "200", "content", "application/json", "schema", "properties")
 			if node(joined, "invitation")["$ref"] != "#/components/schemas/Invitation" || node(joined, "member")["$ref"] != "#/components/schemas/Member" || node(accept, "requestBody", "content", "application/json", "schema", "properties", "invitationId")["type"] != "string" {
