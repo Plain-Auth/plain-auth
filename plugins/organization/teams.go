@@ -73,7 +73,7 @@ var (
 	ErrTeamRemove         = problem(403, "YOU_ARE_NOT_ALLOWED_TO_REMOVE_A_TEAM_MEMBER", "You are not allowed to remove a team member")
 	ErrTeamList           = problem(403, "YOU_ARE_NOT_ALLOWED_TO_ACCESS_THIS_ORGANIZATION", "You are not allowed to access this organization as an owner")
 	ErrTeamListUser       = problem(403, "YOU_ARE_NOT_ALLOWED_TO_UPDATE_THIS_MEMBER", "You are not allowed to update this member")
-	ErrTeamListOrg        = problem(403, "YOU_ARE_NOT_A_MEMBER_OF_THIS_ORGANIZATION", "You are not a member of this organization")
+	ErrTeamListOrg        = ErrRoleReadDenied
 )
 
 func (o *Options) configureTeams() error {

@@ -1882,3 +1882,8 @@ test("active membership follows the calling session and returns its current publ
     }
   }
 });
+
+test("member role lookups require a shared organization and preserve the session selection", async t => {
+  const {compareRoleLookup} = await import("./organization-role.mjs");
+  await compareRoleLookup(t, {reference, goFixture, instrument});
+});

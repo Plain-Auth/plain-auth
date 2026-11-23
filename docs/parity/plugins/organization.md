@@ -72,13 +72,16 @@
     - [x] Reject revoked and delegated sessions and recheck the acting account ban inside the transaction ([test](../../../adapters/sqlstore/organization_role_test.go#L115))
   - [x] `GET /organization/get-active-member` ([test](../../../conformance/core.test.mjs#L1863))
     - [x] Read the live membership and its public user profile from each signed-in session across organization switches ([test](../../../conformance/core.test.mjs#L1863))
-    - [x] Distinguish a cleared selection from a removed membership and a signed-out client on all three SQL engines ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L169))
+    - [x] Distinguish a cleared selection from a removed membership and a signed-out client on all three SQL engines ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L192))
     - [x] Report role updates immediately and ignore caller-supplied organization and user selectors ([test](../../../conformance/core.test.mjs#L1876))
   - [ ] `POST /organization/leave`
     - [x] Return the signed-in user's membership and profile when leaving an organization ([test](../../../conformance/organization-removal.mjs#L47))
     - [x] Keep one owner when two separate database connections attempt to leave simultaneously ([test](../../../adapters/sqlstore/organization_removal_test.go#L200))
   - [ ] `GET /organization/list-members`
-  - [ ] `GET /organization/get-active-member-role`
+  - [x] `GET /organization/get-active-member-role` ([test](../../../conformance/organization-role.mjs#L104))
+    - [x] Read roles for yourself and fellow members, resolve slug before ID or active session, and preserve the session selection ([test](../../../conformance/organization-role.mjs#L104))
+    - [x] Require current membership from both users and deny an outsider access to an existing member’s role ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L179))
+    - [x] Reject duplicate query selectors before authentication and distinguish missing selections and unknown slugs ([test](../../../conformance/organization-role.mjs#L88))
   - [ ] `POST /organization/create`
     - [x] Create an organization and its owner membership atomically ([test](../../../plugins/organization/organization_test.go#L93))
   - [x] `POST /organization/check-slug` ([test](../../../conformance/organization-profile.mjs#L39))
@@ -297,14 +300,20 @@
         - [ ] Parameter `organizationId` (optional)
     - [x] Get Active Member ([test](../../../conformance/core.test.mjs#L1863))
       - [x] Read the live membership and its public user profile from each signed-in session across organization switches ([test](../../../conformance/core.test.mjs#L1863))
-      - [x] Distinguish a cleared selection from a removed membership and a signed-out client on all three SQL engines ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L169))
+      - [x] Distinguish a cleared selection from a removed membership and a signed-out client on all three SQL engines ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L192))
       - [x] Report role updates immediately and ignore caller-supplied organization and user selectors ([test](../../../conformance/core.test.mjs#L1876))
       - [x] `GET /organization/get-active-member` ([test](../../../conformance/core.test.mjs#L1863))
         - [x] Read the live membership and its public user profile from each signed-in session across organization switches ([test](../../../conformance/core.test.mjs#L1863))
-        - [x] Distinguish a cleared selection from a removed membership and a signed-out client on all three SQL engines ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L169))
+        - [x] Distinguish a cleared selection from a removed membership and a signed-out client on all three SQL engines ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L192))
         - [x] Report role updates immediately and ignore caller-supplied organization and user selectors ([test](../../../conformance/core.test.mjs#L1876))
-    - [ ] Get Active Member Role
-      - [ ] `GET /organization/get-active-member-role`
+    - [x] Get Active Member Role ([test](../../../conformance/organization-role.mjs#L104))
+      - [x] Read roles for yourself and fellow members, resolve slug before ID or active session, and preserve the session selection ([test](../../../conformance/organization-role.mjs#L104))
+      - [x] Require current membership from both users and deny an outsider access to an existing member’s role ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L179))
+      - [x] Reject duplicate query selectors before authentication and distinguish missing selections and unknown slugs ([test](../../../conformance/organization-role.mjs#L88))
+      - [x] `GET /organization/get-active-member-role` ([test](../../../conformance/organization-role.mjs#L104))
+        - [x] Read roles for yourself and fellow members, resolve slug before ID or active session, and preserve the session selection ([test](../../../conformance/organization-role.mjs#L104))
+        - [x] Require current membership from both users and deny an outsider access to an existing member’s role ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L179))
+        - [x] Reject duplicate query selectors before authentication and distinguish missing selections and unknown slugs ([test](../../../conformance/organization-role.mjs#L88))
     - [ ] Add Member
       - [ ] `POST /organization/add-member` (server API)
         - [ ] Parameter `userId`

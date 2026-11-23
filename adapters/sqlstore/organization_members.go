@@ -42,6 +42,48 @@ func (s *Store) ActiveOrganizationMember(ctx context.Context, sessionID, userID 
 	}, nil
 }
 
+// OrganizationMemberRole resolves the requested tenant and both memberships in
+// one statement so concurrent membership or session changes cannot cross tenants.
+func (s *Store) OrganizationMemberRole(ctx context.Context, sessionID, actorID string, query org.MemberRoleQuery) (string, error) {
+	exact := s.exactSQLValue
+	scope := `ss."activeOrganizationId"`
+	var args []any
+	switch {
+	case query.OrganizationSlug != "":
+		scope = `(SELECT "id" FROM "organization" WHERE "slug"=` + exact("?") + `)`
+		args = append(args, query.OrganizationSlug)
+	case query.OrganizationID != "":
+		scope = "?"
+		args = append(args, query.OrganizationID)
+	}
+	target := query.UserID
+	if target == "" {
+		target = actorID
+	}
+	statement := `SELECT selection.org_id, member_role."role"
+		FROM (SELECT ` + scope + ` AS org_id, ss."userId" AS caller
+		      FROM "session" ss WHERE ss."id"=` + exact("?") + ` AND ss."userId"=` + exact("?") + ` AND ss."expiresAt">?) selection
+		LEFT JOIN "member" actor ON actor."organizationId"=` + exact("selection.org_id") + ` AND actor."userId"=` + exact("selection.caller") + `
+		LEFT JOIN "member" member_role ON member_role."organizationId"=` + exact(`actor."organizationId"`) + ` AND member_role."userId"=` + exact("?")
+	args = append(args, sessionID, actorID, s.date(time.Now()), target)
+	var organization, role sql.NullString
+	err := s.db.QueryRowContext(ctx, s.bind(statement), args...).Scan(&organization, &role)
+	switch {
+	case errors.Is(err, sql.ErrNoRows):
+		return "", org.ErrUnauthenticated
+	case err != nil:
+		return "", err
+	case organization.String == "" && query.OrganizationSlug != "":
+		return "", org.ErrNotFound
+	case organization.String == "":
+		return "", org.ErrNoActiveOrg
+	case !role.Valid:
+		return "", org.ErrRoleReadDenied
+	default:
+		return role.String, nil
+	}
+}
+
 // AddOrganizationMember adds an existing account from trusted application code.
 func (s *Store) AddOrganizationMember(ctx context.Context, m org.Member, teamID string) error {
 	tx, err := s.beginMembershipChange(ctx)

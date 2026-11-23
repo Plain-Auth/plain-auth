@@ -3,9 +3,19 @@ package client
 import (
 	"context"
 	"net/http"
+	"net/url"
 
 	org "github.com/Plain-Auth/plain-auth/plugins/organization"
 )
+
+// OrganizationMemberRole reads the role of a user in a shared organization.
+// An empty query reads the caller's role in the current session selection.
+func (c *Client) OrganizationMemberRole(ctx context.Context, query org.MemberRoleQuery) (string, error) {
+	route := organizationRoute("get-active-member-role", url.Values{"organizationSlug": {query.OrganizationSlug}, "organizationId": {query.OrganizationID}, "userId": {query.UserID}})
+	var out struct{ Role string }
+	err := c.Do(ctx, http.MethodGet, route, nil, &out)
+	return out.Role, err
+}
 
 // ActiveOrganizationMember returns the signed-in user's membership in the
 // organization selected by this client's session.

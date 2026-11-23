@@ -53,7 +53,7 @@ func (c *Client) SetActiveTeam(ctx context.Context, teamID *string) (*org.Team, 
 	return t, err
 }
 
-func teamRoute(name string, values url.Values) string {
+func organizationRoute(name string, values url.Values) string {
 	path := "/organization/" + name
 	for key := range values {
 		if values.Get(key) == "" {
@@ -67,17 +67,17 @@ func teamRoute(name string, values url.Values) string {
 }
 func (c *Client) ListOrganizationTeams(ctx context.Context, organizationID string) ([]org.Team, error) {
 	var out []org.Team
-	err := c.Do(ctx, http.MethodGet, teamRoute("list-teams", url.Values{"organizationId": {organizationID}}), nil, &out)
+	err := c.Do(ctx, http.MethodGet, organizationRoute("list-teams", url.Values{"organizationId": {organizationID}}), nil, &out)
 	return out, err
 }
 func (c *Client) ListUserTeams(ctx context.Context, organizationID, userID string) ([]org.Team, error) {
 	var out []org.Team
-	err := c.Do(ctx, http.MethodGet, teamRoute("list-user-teams", url.Values{"organizationId": {organizationID}, "userId": {userID}}), nil, &out)
+	err := c.Do(ctx, http.MethodGet, organizationRoute("list-user-teams", url.Values{"organizationId": {organizationID}, "userId": {userID}}), nil, &out)
 	return out, err
 }
 func (c *Client) ListTeamMembers(ctx context.Context, teamID string) ([]org.TeamMember, error) {
 	var out []org.TeamMember
-	err := c.Do(ctx, http.MethodGet, teamRoute("list-team-members", url.Values{"teamId": {teamID}}), nil, &out)
+	err := c.Do(ctx, http.MethodGet, organizationRoute("list-team-members", url.Values{"teamId": {teamID}}), nil, &out)
 	return out, err
 }
 func (c *Client) AddTeamMember(ctx context.Context, request TeamMembershipRequest) (*org.TeamMember, error) {

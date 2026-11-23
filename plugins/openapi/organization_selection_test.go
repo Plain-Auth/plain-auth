@@ -77,6 +77,12 @@ func TestOrganizationSelectionSchema(t *testing.T) {
 			if len(user) != 4 || user["id"] == nil || user["name"] == nil || user["email"] == nil || user["image"] == nil {
 				t.Fatal("unexpected public member user fields", user)
 			}
+			lookup := node(paths, "/organization/get-active-member-role", "get")
+			params, _ := lookup["parameters"].([]any)
+			role := node(lookup, "responses", "200", "content", "application/json", "schema", "properties", "role")
+			if len(params) != 3 || role["type"] != "string" {
+				t.Fatal("missing organization role query parameters or response")
+			}
 			for path, model := range map[string]string{"/organization/set-active": "Organization", "/organization/set-active-team": "Team"} {
 				if model == "Team" && !tc.teams {
 					if paths[path] != nil {

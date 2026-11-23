@@ -155,6 +155,29 @@ func TestOrganizationAndTeamSelectionHTTP(t *testing.T) {
 			if active.OrganizationID != second || active.ID == "" || active.Role != "owner" || active.UserID != active.User.ID || active.User.Email != login["email"] || active.CreatedAt.IsZero() {
 				t.Fatal("membership did not match the calling session")
 			}
+			_, err = store.db.ExecContext(ctx, store.bind(`UPDATE "member" SET "role"='admin,member' WHERE "organizationId"=? AND "userId"=?`), first, active.UserID)
+			must(err)
+			for _, tc := range []struct {
+				query org.MemberRoleQuery
+				want  string
+			}{
+				{org.MemberRoleQuery{}, "owner"},
+				{org.MemberRoleQuery{OrganizationID: first}, "admin,member"},
+				{org.MemberRoleQuery{OrganizationID: second, OrganizationSlug: "a-group", UserID: active.UserID}, "admin,member"},
+			} {
+				role, err := sdk.OrganizationMemberRole(ctx, tc.query)
+				must(err)
+				if role != tc.want {
+					t.Fatalf("role lookup returned %q, want %q", role, tc.want)
+				}
+			}
+			outsider := newClient()
+			send(outsider, "POST", "sign-up/email", map[string]string{"email": "other@api.example", "name": "Other", "password": login["password"]}, 200)
+			var forbidden struct{ Code string }
+			must(json.Unmarshal(send(outsider, "GET", "organization/get-active-member-role?organizationId="+second+"&userId="+active.UserID, nil, 403), &forbidden))
+			if forbidden.Code != org.ErrRoleReadDenied.Code {
+				t.Fatal("role disclosed to an outsider", forbidden.Code)
+			}
 			code := func(c *http.Client, status int, expected string) {
 				t.Helper()
 				var body struct{ Code string }

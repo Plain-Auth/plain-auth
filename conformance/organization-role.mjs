@@ -69,3 +69,50 @@ export async function compareMemberRoles(t, { reference, goFixture, instrument }
     assert.equal(ok(await role(peer, ownerMember.id, "admin")).role,"admin");
   }
 }
+
+export async function compareRoleLookup(t, { reference, goFixture, instrument }) {
+  for (const server of [await reference(t, [organization()]), await goFixture(t, ["organization"])]) {
+    const connect = () => instrument(server, [organizationClient()]).client;
+    const owner = connect(), member = connect(), outsider = connect();
+    const ok = reply => {
+      assert.equal(reply.error, null, JSON.stringify(reply.error));
+      return reply.data;
+    };
+    const deny = (reply, status, code) => {
+      assert.equal(reply.error?.status, status);
+      assert.equal(reply.error?.code, code);
+    };
+    const role = (client, query = {}) => client.organization.getActiveMemberRole({query});
+    const repeated = "/organization/get-active-member-role?userId=one&userId=two";
+    const unauthenticatedDuplicate = await owner.$fetch(repeated);
+    deny(unauthenticatedDuplicate, 400, "VALIDATION_ERROR");
+    deny(await role(owner), 401, "UNAUTHORIZED");
+    const signup = async (c, name) => ok(await c.signUp.email({name, email: name + "@example.test", password: "role-lookup-fixture-password"})).user;
+    const actor = await signup(owner, "owner");
+    const peer = await signup(member, "peer");
+    await signup(outsider, "outsider");
+    deny(await role(member), 400, "NO_ACTIVE_ORGANIZATION");
+    const a = ok(await owner.organization.create({name: "Studio", slug: "studio"}));
+    const b = ok(await owner.organization.create({name: "Warehouse", slug: "warehouse"}));
+    const invite = ok(await owner.organization.inviteMember({organizationId: a.id, email: peer.email, role: "member"}));
+    const joined = ok(await member.organization.acceptInvitation({invitationId: invite.id})).member;
+    ok(await member.organization.setActive({organizationId: a.id}));
+    assert.deepEqual(ok(await role(member)), {role: "member"});
+    assert.deepEqual(ok(await role(member, {userId: actor.id})), {role: "owner"});
+    assert.deepEqual(ok(await role(owner, {organizationId: a.id, userId: peer.id})), {role: "member"});
+    ok(await owner.organization.updateMemberRole({organizationId: a.id, memberId: joined.id, role: ["admin", "member"]}));
+    assert.deepEqual(ok(await role(owner, {organizationId: b.id, organizationSlug: a.slug, userId: peer.id})), {role: "admin,member"});
+    assert.deepEqual(ok(await role(owner, {organizationId: "", organizationSlug: "", userId: ""})), {role: "owner"});
+    assert.equal(ok(await owner.getSession()).session.activeOrganizationId, b.id);
+    const forbidden = "YOU_ARE_NOT_A_MEMBER_OF_THIS_ORGANIZATION";
+    deny(await role(outsider, {organizationId: a.id, userId: actor.id}), 403, forbidden);
+    deny(await role(owner, {userId: peer.id}), 403, forbidden);
+    deny(await role(owner, {organizationId: "missing"}), 403, forbidden);
+    deny(await role(owner, {organizationId: a.id, organizationSlug: "absent"}), 400, "ORGANIZATION_NOT_FOUND");
+    const duplicate = await owner.$fetch(repeated);
+    deny(duplicate, 400, "VALIDATION_ERROR");
+    assert.equal(duplicate.error.message, "[query.userId] Invalid input: expected string, received array");
+    ok(await owner.organization.removeMember({organizationId: a.id, memberIdOrEmail: joined.id}));
+    deny(await role(member, {organizationId: a.id, userId: actor.id}), 403, forbidden);
+  }
+}

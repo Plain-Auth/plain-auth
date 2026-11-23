@@ -179,6 +179,9 @@ func (service *Service) Plugin() authn.Plugin {
 	if _, ok := o.Store.(MemberRoleStore); ok {
 		plugin.Endpoints = append(plugin.Endpoints, service.memberRoleEndpoint())
 	}
+	if store, ok := o.Store.(MemberRoleReader); ok {
+		plugin.Endpoints = append(plugin.Endpoints, o.readMemberRoleEndpoint(store))
+	}
 	if store, ok := o.Store.(ActiveMemberStore); ok {
 		plugin.Endpoints = append(plugin.Endpoints, o.endpoint(http.MethodGet, "get-active-member", func(c authn.EndpointContext, s *authn.SessionResult) (any, error) {
 			return store.ActiveOrganizationMember(c.Request.Context(), s.Session.ID, s.User.ID)

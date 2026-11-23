@@ -37,6 +37,7 @@ The application provides `sendInvitation`, its configured public `origin` and it
 | GET | `/organization/list` | List the current user's organizations |
 | GET | `/organization/get-organization` | Read by `organizationId`, `organizationSlug` or active selection |
 | GET | `/organization/get-active-member` | Read your membership, role and public profile in this session's active organization. Requires a signed-in session. |
+| GET | `/organization/get-active-member-role` | Read a user's role in an organization you both belong to. Omit all query parameters for your own role in the active organization. |
 | POST | `/organization/set-active` | Select by ID or slug. Send `{"organizationId":null}` to clear the current selection |
 | POST | `/organization/invite-member` | Invite by email and role, using an explicit organization ID or the active selection |
 | POST | `/organization/accept-invitation` | Accept by invitation ID, create the membership, and select the organization |
@@ -57,6 +58,8 @@ Selection belongs to the current authenticated session. A web app, native app, s
 To populate a picker, call `GET /organization/list` for the signed-in user's organizations. After selecting one, call `GET /organization/list-user-teams?organizationId=org_a` for that user's teams in the selected organization. All paths below are relative to your auth mount.
 
 To read the caller's role after a switch, send `GET /organization/get-active-member` with the same session cookie and no parameters. The JSON response contains the membership's `id`, `organizationId`, `userId`, `role` and `createdAt`, plus a `user` object with `id`, `name`, `email` and nullable `image`. A team switch preserves the organization membership. When the session has no selected organization the response is HTTP 400 with code `NO_ACTIVE_ORGANIZATION`. A stored selection whose membership has been removed yields HTTP 400 with code `MEMBER_NOT_FOUND`. Go callers can use `client.ActiveOrganizationMember(ctx)`.
+
+For just the role, call `GET /organization/get-active-member-role`. For example, `?organizationSlug=studio&userId=user_123` returns an object such as `{"role":"admin,member"}`. A nonempty slug takes precedence over an organization ID, which takes precedence over the session selection. Omit `userId` to query yourself. Any current member can read a fellow member's role. If either user lacks membership the response is HTTP 403. Looking up another organization preserves the session's active organization and team. In Go, pass these optional selectors to `client.OrganizationMemberRole(ctx, organization.MemberRoleQuery{OrganizationSlug: "studio", UserID: "user_123"})`.
 
 | Request | Successful response and session effect |
 | --- | --- |

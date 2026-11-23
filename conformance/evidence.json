@@ -13996,5 +13996,59 @@
       "test": "conformance/core.test.mjs",
       "marker": "assert.equal(ok(await first.organization.getActiveMember()).role, \"admin,member\")"
     }
+  ],
+  "plugin/organization/GET /organization/get-active-member-role": [
+    {
+      "label": "Read roles for yourself and fellow members, resolve slug before ID or active session, and preserve the session selection",
+      "test": "conformance/organization-role.mjs",
+      "marker": "organizationId: b.id, organizationSlug: a.slug, userId: peer.id",
+      "complete": true
+    },
+    {
+      "label": "Require current membership from both users and deny an outsider access to an existing member’s role",
+      "test": "adapters/sqlstore/organization_selection_http_test.go",
+      "marker": "role disclosed to an outsider"
+    },
+    {
+      "label": "Reject duplicate query selectors before authentication and distinguish missing selections and unknown slugs",
+      "test": "conformance/organization-role.mjs",
+      "marker": "deny(unauthenticatedDuplicate, 400, \"VALIDATION_ERROR\")"
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1174": [
+    {
+      "label": "Read roles for yourself and fellow members, resolve slug before ID or active session, and preserve the session selection",
+      "test": "conformance/organization-role.mjs",
+      "marker": "organizationId: b.id, organizationSlug: a.slug, userId: peer.id",
+      "complete": true
+    },
+    {
+      "label": "Require current membership from both users and deny an outsider access to an existing member’s role",
+      "test": "adapters/sqlstore/organization_selection_http_test.go",
+      "marker": "role disclosed to an outsider"
+    },
+    {
+      "label": "Reject duplicate query selectors before authentication and distinguish missing selections and unknown slugs",
+      "test": "conformance/organization-role.mjs",
+      "marker": "deny(unauthenticatedDuplicate, 400, \"VALIDATION_ERROR\")"
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1178/`GET /organization/get-active-member-role`": [
+    {
+      "label": "Read roles for yourself and fellow members, resolve slug before ID or active session, and preserve the session selection",
+      "test": "conformance/organization-role.mjs",
+      "marker": "organizationId: b.id, organizationSlug: a.slug, userId: peer.id",
+      "complete": true
+    },
+    {
+      "label": "Require current membership from both users and deny an outsider access to an existing member’s role",
+      "test": "adapters/sqlstore/organization_selection_http_test.go",
+      "marker": "role disclosed to an outsider"
+    },
+    {
+      "label": "Reject duplicate query selectors before authentication and distinguish missing selections and unknown slugs",
+      "test": "conformance/organization-role.mjs",
+      "marker": "deny(unauthenticatedDuplicate, 400, \"VALIDATION_ERROR\")"
+    }
   ]
 }

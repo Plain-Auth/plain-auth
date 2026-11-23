@@ -21,7 +21,48 @@ type MemberRoleStore interface {
 	UpdateOrganizationMemberRole(ctx context.Context, userID, sessionToken string, request UpdateMemberRoleRequest) (*Member, error)
 }
 
+// MemberRoleQuery selects an organization by slug, ID, or current session, in
+// that order. An empty UserID selects the signed-in user's own membership.
+type MemberRoleQuery struct {
+	OrganizationSlug, OrganizationID, UserID string
+}
+
+// MemberRoleReader requires both users to belong to the resolved organization
+// at the time of the read.
+type MemberRoleReader interface {
+	OrganizationMemberRole(ctx context.Context, sessionID, actorID string, query MemberRoleQuery) (string, error)
+}
+
+func (o Options) readMemberRoleEndpoint(store MemberRoleReader) auth.Endpoint {
+	endpoint := o.endpoint(http.MethodGet, "get-active-member-role", func(c auth.EndpointContext, s *auth.SessionResult) (any, error) {
+		q := c.Request.URL.Query()
+		query := MemberRoleQuery{UserID: q.Get("userId"), OrganizationID: q.Get("organizationId"), OrganizationSlug: q.Get("organizationSlug")}
+		role, err := store.OrganizationMemberRole(c.Request.Context(), s.Session.ID, s.User.ID, query)
+		if err != nil {
+			return nil, err
+		}
+		return map[string]string{"role": role}, nil
+	})
+	// Reject ambiguous selectors before running session middleware.
+	authenticated := endpoint.Handler
+	endpoint.Handler = func(c auth.EndpointContext) (any, error) {
+		q := c.Request.URL.Query()
+		var issues []string
+		for _, key := range []string{"userId", "organizationId", "organizationSlug"} {
+			if len(q[key]) > 1 {
+				issues = append(issues, "[query."+key+"] Invalid input: expected string, received array")
+			}
+		}
+		if len(issues) != 0 {
+			return nil, &auth.APIError{Status: 400, Code: "VALIDATION_ERROR", Message: strings.Join(issues, "; ")}
+		}
+		return authenticated(c)
+	}
+	return endpoint
+}
+
 var (
+	ErrRoleReadDenied    = problem(403, "YOU_ARE_NOT_A_MEMBER_OF_THIS_ORGANIZATION", "You are not a member of this organization")
 	ErrMemberRoleDenied  = problem(403, "YOU_ARE_NOT_ALLOWED_TO_UPDATE_THIS_MEMBER", "You are not allowed to update this member")
 	ErrSoleOwnerDemotion = problem(400, "YOU_CANNOT_LEAVE_THE_ORGANIZATION_WITHOUT_AN_OWNER", "You cannot leave the organization without an owner")
 	ErrEmptyRole         = auth.StatusOnlyError(http.StatusBadRequest)
