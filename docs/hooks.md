@@ -160,6 +160,7 @@ opts.DatabaseHooks.User.Create = plainauth.OperationHooks[plainauth.UserRecord]{
 - **Before** runs just before the write. For a create or an update it receives the full row with the change applied, and may change the fields the write stores; changing any other field fails the write with a 500.
   - **Creating a user:** `Name`, `Email`, `Image`, `EmailVerified` and `Fields`, the `UserAdditionalFields` values by name.
   - **Creating a session:** `ExpiresAt`, `IPAddress`, `UserAgent` and `Fields`, the `SessionAdditionalFields` values by name.
+  - **Updating a profile:** `Name`, `Image` and `Fields`. **Changing or verifying an email address:** nothing; a hook can only decline.
   - **Refreshing a session:** `ExpiresAt`. **Updating session fields:** `Fields`, limited to the fields a caller may set.
   - Edited values are checked like caller input; defaults for omitted fields apply after the hooks. A create hook may set server-only fields, and never sees a server-only value the caller tried to send.
   - For a delete, Before receives the row about to be removed; edits are ignored.
@@ -179,6 +180,15 @@ Hooks never run inside a database transaction, so they may read and write throug
 | `Auth.BootstrapAdmin` | Create | | an error | |
 
 On sign-up, any other error from a user before hook answers 422 `FAILED_TO_CREATE_USER`. When sign-up hides existing emails, a 403 `APIError` from a user before hook gets the same response as an existing email.
+
+User updates run these hooks:
+
+| Operation | User hooks | Skipped write |
+| --- | --- | --- |
+| `POST /update-user`, `Auth.UpdateUser` | Update, with the new name, image and fields | Answers success; nothing changes |
+| `POST /change-email` for an unverified address with `UpdateEmailWithoutVerification` | Update, with the new email | Answers success; the address stays |
+| The email change link from `/change-email` | Update, with the new email | Answers success; the address stays |
+| `GET /verify-email`, `Auth.VerifyEmail` for an unverified address | Update, with `EmailVerified` set | Answers success; the address stays unverified |
 
 Session updates and deletes run these hooks:
 
@@ -200,9 +210,10 @@ Database hooks do not cover every flow yet. `New` refuses:
 - user or session create hooks with social sign-in, magic link, email OTP, phone number, One Tap, SSO or the admin plugin;
 - user create hooks with passkey or wallet sign-in;
 - session create hooks with two-factor authentication, device authorization or `AutoSignInAfterVerification`;
+- user update hooks with social sign-in, the magic link, email OTP, phone number, One Tap, SSO, admin, two-factor or last-login-method plugin, `AutoSignInAfterVerification`, `BeforeEmailVerification` or `AfterEmailVerification`;
 - session update hooks with the organization or admin plugin;
 - session delete hooks with the admin, anonymous, magic link, SSO or two-factor plugin, `DeleteUserEnabled` or `RevokeSessionsOnPasswordReset`;
-- user update and delete hooks.
+- user delete hooks.
 
 The SCIM handler refuses a host with any database hook, and `Auth.HasDatabaseHooks` lets your own wrapping handler do the same.
 

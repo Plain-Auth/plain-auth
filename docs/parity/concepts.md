@@ -207,19 +207,23 @@
       - [x] Run plugin and application hooks around the users and sessions that sign-up, password sign-in, anonymous sign-in, plugin sessions and password changes create ([test](../../conformance/goapi/database_hooks_test.go#L21))
       - [x] Run create hooks outside the write transaction so they can use the store on SQLite, PostgreSQL and MySQL ([test](../../adapters/sqlstore/database_hooks_test.go#L19))
       - [x] Run hooks around session refreshes, field updates, sign-out, revocation, expired-session cleanup, password changes and multi-session replacement ([test](../../conformance/goapi/database_session_hooks_test.go#L20))
+      - [x] Run hooks around profile updates, email changes and email verification ([test](../../conformance/goapi/database_user_hooks_test.go#L19))
       - [ ] 1. Before Hook
         - [x] Edit the stored fields of a new user or session, or cancel its creation, before anything is written ([test](../../conformance/goapi/database_hooks_test.go#L124))
         - [ ] Purpose
           - [x] Run before a user or session is created ([test](../../conformance/goapi/database_hooks_test.go#L124))
           - [x] Run before a session is refreshed, updated or deleted ([test](../../conformance/goapi/database_session_hooks_test.go#L120))
+          - [x] Run before a user is updated, with the change applied ([test](../../conformance/goapi/database_user_hooks_test.go#L90))
         - [ ] Behavior
           - [x] Cancel a creation with ErrSkipWrite, edit the stored fields, and reject edits to other fields ([test](../../conformance/goapi/database_hooks_test.go#L167))
           - [x] Cancel a session update or delete with ErrSkipWrite, let one declined row keep every session of a revocation, and reject edits to fields an update does not store ([test](../../conformance/goapi/database_session_hooks_test.go#L193))
+          - [x] Decline a profile update, email change or verification with ErrSkipWrite, and reject edits to fields the update does not store ([test](../../conformance/goapi/database_user_hooks_test.go#L100))
       - [ ] 2. After Hook
         - [x] Observe the stored user and session after creation, and remove an undelivered session when an after hook fails ([test](../../conformance/goapi/database_hooks_test.go#L215))
         - [ ] Purpose
           - [x] Run after a user or session is created, with the stored row visible to the store ([test](../../adapters/sqlstore/database_hooks_test.go#L96))
           - [x] Run after a session is updated or deleted, with the change visible to the store ([test](../../conformance/goapi/database_session_hooks_test.go#L76))
+          - [x] Run after a user is updated, with the stored row visible to the store ([test](../../conformance/goapi/database_user_hooks_test.go#L112))
         - [ ] Behavior
           - [x] Fire one after hook for concurrent sign-ups of one email and none for a sign-up that stores nothing ([test](../../adapters/sqlstore/database_hooks_test.go#L111))
           - [x] Run session update and delete after hooks once the change is stored, on SQLite, PostgreSQL and MySQL ([test](../../adapters/sqlstore/database_hooks_test.go#L126))

@@ -9,9 +9,9 @@ import (
 	"strings"
 )
 
-// DatabaseHooks run your code around the writes that create users and that
-// create, update and delete sessions, for HTTP requests and direct Go calls
-// alike. Plugin hooks run
+// DatabaseHooks run your code around the writes that create and update users
+// and that create, update and delete sessions, for HTTP requests and direct
+// Go calls alike. Plugin hooks run
 // first, in plugin order, then the Options hooks.
 //
 // A before hook runs just before the write and may edit the row or return
@@ -48,7 +48,9 @@ type OperationHooks[T any] struct {
 }
 
 // UserRecord is a user row in a database hook. When creating a user, a hook
-// may change Name, Email, Image, EmailVerified and Fields.
+// may change Name, Email, Image, EmailVerified and Fields; when updating a
+// profile, Name, Image and Fields. Email changes and verification allow no
+// edits.
 type UserRecord struct {
 	User
 	// Fields holds the Options.UserAdditionalFields values this write sets,
@@ -127,8 +129,8 @@ func composeDatabaseHooks(opts Options) databaseHookChains {
 // checkDatabaseHooks refuses a hook that an enabled feature would bypass.
 func (a *Auth) checkDatabaseHooks() error {
 	d := a.dbHooks
-	if d.user.update.set() || d.user.delete.set() {
-		return errors.New("auth: database hooks for updating and deleting users are not supported yet")
+	if d.user.delete.set() {
+		return errors.New("auth: database hooks for deleting users are not supported yet")
 	}
 	var bypass []string
 	need := func(feature string, enabled bool) {
@@ -157,6 +159,14 @@ func (a *Auth) checkDatabaseHooks() error {
 	if len(bypass) > 0 {
 		return fmt.Errorf("auth: user and session create database hooks do not run yet for %s", strings.Join(bypass, ", "))
 	}
+	if d.user.update.set() {
+		need("social sign-in", len(a.opts.SocialProviders) > 0)
+		for _, id := range []string{"magic-link", "email-otp", "phone-number", "one-tap", "sso", "admin", "two-factor", "last-login-method"} {
+			need(id, a.HasPlugin(id))
+		}
+		need("AutoSignInAfterVerification", a.opts.AutoSignInAfterVerification)
+		need("BeforeEmailVerification and AfterEmailVerification", a.hasVerificationObservers())
+	}
 	if d.session.update.set() {
 		need("organization", a.HasPlugin("organization"))
 		need("admin", a.HasPlugin("admin"))
@@ -169,7 +179,7 @@ func (a *Auth) checkDatabaseHooks() error {
 		need("RevokeSessionsOnPasswordReset", a.opts.RevokeSessionsOnPasswordReset)
 	}
 	if len(bypass) > 0 {
-		return fmt.Errorf("auth: session update and delete database hooks do not run yet for %s", strings.Join(bypass, ", "))
+		return fmt.Errorf("auth: update and delete database hooks do not run yet for %s", strings.Join(bypass, ", "))
 	}
 	return nil
 }
@@ -311,6 +321,34 @@ func (a *Auth) afterSessionCreate(ctx context.Context, row StoredSession, fields
 		return a.discardUnpublishedSession(ctx, row.Token, err)
 	}
 	return nil
+}
+
+// beforeUserUpdate runs the user update before hooks on row, the user with the
+// change applied, and fields, the additional field values the update sets. A
+// profile update lets hooks change Name, Image and fields; other updates allow
+// no edits.
+func (a *Auth) beforeUserUpdate(ctx context.Context, row User, fields map[string]any, profile bool) (User, map[string]any, error) {
+	chain := a.dbHooks.user.update
+	if len(chain.before) == 0 {
+		return row, fields, nil
+	}
+	rec := UserRecord{User: row, Fields: cloneFields(fields)}
+	if err := runBefore(ctx, a, chain, &rec); err != nil {
+		return row, fields, err
+	}
+	edited, check := rec.User, row
+	if profile {
+		check.Name, check.Image = edited.Name, edited.Image
+	}
+	if !reflect.DeepEqual(check, edited) || !profile && !reflect.DeepEqual(rec.Fields, cloneFields(fields)) {
+		a.Logger().ErrorContext(ctx, errDatabaseHookEdit.Error(), "model", "user")
+		return row, fields, errDatabaseHookEdit
+	}
+	return edited, rec.Fields, nil
+}
+
+func (a *Auth) afterUserUpdate(ctx context.Context, row User, fields map[string]any) error {
+	return runAfter(ctx, a, a.dbHooks.user.update, UserRecord{User: row, Fields: cloneFields(fields)})
 }
 
 // beforeSessionUpdate runs the session update before hooks on row, the session

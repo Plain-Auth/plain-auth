@@ -129,7 +129,16 @@ func TestDatabaseCreateHooksOnSQL(t *testing.T) {
 			note := func(e string) { mu.Lock(); changes = append(changes, e); mu.Unlock() }
 			sessions, err := auth.New(auth.Options{
 				BaseURL: "https://auth.example", Store: store, Secret: strings.Repeat("s", 32), EmailAndPassword: true, RateLimit: &off, SessionUpdateAge: &every,
-				DatabaseHooks: auth.DatabaseHooks{Session: auth.ModelHooks[auth.SessionRecord]{
+				DatabaseHooks: auth.DatabaseHooks{User: auth.ModelHooks[auth.UserRecord]{Update: auth.OperationHooks[auth.UserRecord]{
+					After: func(ctx context.Context, u auth.UserRecord, _ *auth.HookContext) error {
+						stored, err := store.FindAccountUser(ctx, u.Email)
+						if err != nil {
+							return err
+						}
+						note("renamed:" + stored.Name)
+						return nil
+					},
+				}}, Session: auth.ModelHooks[auth.SessionRecord]{
 					Update: auth.OperationHooks[auth.SessionRecord]{After: func(ctx context.Context, s auth.SessionRecord, _ *auth.HookContext) error {
 						stored, _, err := store.Session(ctx, s.Token)
 						if err != nil {
@@ -175,13 +184,17 @@ func TestDatabaseCreateHooksOnSQL(t *testing.T) {
 			}
 			browser := signIn()
 			signIn()
-			if send(browser, "GET", "/get-session") != 200 || send(browser, "POST", "/revoke-other-sessions") != 200 || send(browser, "POST", "/sign-out") != 200 {
-				t.Fatal("a session request failed")
+			rename := httptest.NewRequest("POST", "https://auth.example/api/auth/update-user", strings.NewReader(`{"name":"Ada Byron"}`))
+			rename.Header = browser.Clone()
+			renamed := httptest.NewRecorder()
+			sessions.ServeHTTP(renamed, rename)
+			if renamed.Code != 200 || send(browser, "GET", "/get-session") != 200 || send(browser, "POST", "/revoke-other-sessions") != 200 || send(browser, "POST", "/sign-out") != 200 {
+				t.Fatal("a session request failed", renamed.Code, renamed.Body)
 			}
 			mu.Lock()
 			got = strings.Join(changes, ",")
 			mu.Unlock()
-			if !strings.HasPrefix(got, "refreshed:true,deleted:true") || !strings.HasSuffix(got, "deleted:true") || strings.Contains(got, "false") {
+			if !strings.HasPrefix(got, "renamed:Ada Byron,refreshed:true,deleted:true") || !strings.HasSuffix(got, "deleted:true") || strings.Contains(got, "false") {
 				t.Fatal("unexpected session hooks", got)
 			}
 

@@ -18412,6 +18412,11 @@
       "label": "Run hooks around session refreshes, field updates, sign-out, revocation, expired-session cleanup, password changes and multi-session replacement",
       "test": "conformance/goapi/database_session_hooks_test.go",
       "marker": "// Run session update hooks around sliding refreshes and field updates, and"
+    },
+    {
+      "label": "Run hooks around profile updates, email changes and email verification",
+      "test": "conformance/goapi/database_user_hooks_test.go",
+      "marker": "// Run user update hooks around profile updates, email changes and email"
     }
   ],
   "docs/content/docs/concepts/database.mdx#L881": [
@@ -18431,6 +18436,11 @@
       "label": "Run before a session is refreshed, updated or deleted",
       "test": "conformance/goapi/database_session_hooks_test.go",
       "marker": "// A sliding refresh runs the update hooks with the new expiry, which a hook may shorten."
+    },
+    {
+      "label": "Run before a user is updated, with the change applied",
+      "test": "conformance/goapi/database_user_hooks_test.go",
+      "marker": "// A profile update runs the hooks with the change applied; a hook may adjust the profile."
     }
   ],
   "docs/content/docs/concepts/database.mdx#L884/Behavior": [
@@ -18443,6 +18453,11 @@
       "label": "Cancel a session update or delete with ErrSkipWrite, let one declined row keep every session of a revocation, and reject edits to fields an update does not store",
       "test": "conformance/goapi/database_session_hooks_test.go",
       "marker": "// Revoking other sessions runs the hooks for each one; one declined row keeps them all."
+    },
+    {
+      "label": "Decline a profile update, email change or verification with ErrSkipWrite, and reject edits to fields the update does not store",
+      "test": "conformance/goapi/database_user_hooks_test.go",
+      "marker": "// A declined update answers like a stored one and stores nothing."
     }
   ],
   "docs/content/docs/concepts/database.mdx#L886": [
@@ -18462,6 +18477,11 @@
       "label": "Run after a session is updated or deleted, with the change visible to the store",
       "test": "conformance/goapi/database_session_hooks_test.go",
       "marker": "// The row is gone once the after hook runs."
+    },
+    {
+      "label": "Run after a user is updated, with the stored row visible to the store",
+      "test": "conformance/goapi/database_user_hooks_test.go",
+      "marker": "// Email verification runs the hooks with the address marked verified; a declined one keeps it unverified."
     }
   ],
   "docs/content/docs/concepts/database.mdx#L889/Behavior": [
@@ -18519,6 +18539,11 @@
       "label": "Configure session update and delete hooks, and refuse configurations an enabled feature would bypass",
       "test": "conformance/goapi/database_session_hooks_test.go",
       "marker": "// New refuses session update and delete hooks that an enabled feature would bypass."
+    },
+    {
+      "label": "Configure user update hooks for profile updates, email changes and verification",
+      "test": "conformance/goapi/database_user_hooks_test.go",
+      "marker": "// A verified address changes through a link; a declined change keeps the old address."
     }
   ]
 }

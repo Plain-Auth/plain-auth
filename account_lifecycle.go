@@ -144,11 +144,21 @@ func (a *Auth) ChangeEmail(ctx context.Context, h http.Header, newEmail, callbac
 		if err != nil {
 			return err
 		}
+		row := session.User
+		row.Email = newEmail
+		if _, _, err := a.beforeUserUpdate(ctx, row, nil, false); errors.Is(err, ErrSkipWrite) {
+			return nil
+		} else if err != nil {
+			return err
+		}
 		u, err := lifecycle.ChangeAccountEmail(ctx, session.User.ID, session.User.Email, newEmail, false, a.now().UTC())
 		if errors.Is(err, ErrEmailTaken) {
 			return nil
 		}
 		if err != nil {
+			return err
+		}
+		if err := a.afterUserUpdate(ctx, u, nil); err != nil {
 			return err
 		}
 		if a.opts.SendVerificationEmail != nil {

@@ -97,9 +97,33 @@ func (a *Auth) verifyAddress(ctx context.Context, claims verificationClaims) err
 	if err != nil {
 		return err
 	}
+	var verified User // set when hooks run for this change
+	if a.dbHooks.user.update.set() {
+		verified, err = s.FindAccountUser(ctx, claims.Email)
+		if errors.Is(err, ErrNotFound) || err == nil && verified.ID != claims.UserID {
+			return &APIError{401, "INVALID_TOKEN", "Invalid token"}
+		}
+		if err != nil {
+			return err
+		}
+		if verified.EmailVerified {
+			verified = User{}
+		} else {
+			verified.EmailVerified = true
+			if _, _, err := a.beforeUserUpdate(ctx, verified, nil, false); errors.Is(err, ErrSkipWrite) {
+				// A declined verification leaves the address unverified.
+				return nil
+			} else if err != nil {
+				return err
+			}
+		}
+	}
 	err = s.VerifyAccountEmail(ctx, claims.UserID, claims.Email, a.now().UTC())
 	if errors.Is(err, ErrNotFound) {
 		return &APIError{401, "INVALID_TOKEN", "Invalid token"}
+	}
+	if err == nil && verified.ID != "" {
+		err = a.afterUserUpdate(ctx, verified, nil)
 	}
 	return err
 }
@@ -148,9 +172,20 @@ func (a *Auth) applyEmailProof(r *http.Request, response http.Header, raw, callb
 		if err != nil {
 			return nil, err
 		}
+		row := user
+		row.Email = claims.UpdateTo
+		if _, _, err := a.beforeUserUpdate(ctx, row, nil, false); errors.Is(err, ErrSkipWrite) {
+			// A declined change keeps the current address and still answers success.
+			return map[string]any{"status": true, "user": user}, nil
+		} else if err != nil {
+			return nil, err
+		}
 		u, err := store.ChangeAccountEmail(ctx, user.ID, user.Email, claims.UpdateTo, user.EmailVerified, a.now().UTC())
 		if errors.Is(err, ErrEmailTaken) || errors.Is(err, ErrNotFound) {
 			return nil, &APIError{401, "INVALID_TOKEN", "Invalid token"}
+		}
+		if err == nil {
+			err = a.afterUserUpdate(ctx, u, nil)
 		}
 		if err == nil && u.EmailVerified {
 			err = runEmailVerificationHook(ctx, a.opts.AfterEmailVerification, u, r)

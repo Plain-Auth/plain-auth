@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"net/url"
+	"reflect"
 	"strings"
 	"time"
 )
@@ -85,6 +86,51 @@ func (a *Auth) UpdateUser(ctx context.Context, h http.Header, update ProfileUpda
 	if session.Session.IsApplicationCredential() && (update.hasUsernameChange() || !session.Session.AllowsCredentialAction("user", "update")) {
 		return &APIError{403, "OWNER_SESSION_REQUIRED", "This profile operation requires a direct login"}
 	}
+	if !a.dbHooks.user.update.set() {
+		return a.writeProfile(ctx, session, update)
+	}
+	row := session.User
+	if update.Name != nil {
+		row.Name = *update.Name
+	}
+	if update.ClearImage {
+		row.Image = nil
+	} else if update.Image != nil {
+		row.Image = update.Image
+	}
+	input := serverInput(a.opts.UserAdditionalFields, update.AdditionalFields)
+	edited, fields, err := a.beforeUserUpdate(ctx, row, input, true)
+	if errors.Is(err, ErrSkipWrite) {
+		// A declined profile update answers like a stored one.
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if edited.Name != row.Name {
+		update.Name = &edited.Name
+	}
+	if !reflect.DeepEqual(edited.Image, row.Image) {
+		update.Image, update.ClearImage = edited.Image, edited.Image == nil
+	}
+	if !reflect.DeepEqual(fields, cloneFields(input)) {
+		if update.validatedFields, err = a.prepareUserFields(fields, false, true); err != nil {
+			return err
+		}
+		update.AdditionalFields = fields
+	}
+	if err := a.writeProfile(ctx, session, update); err != nil {
+		return err
+	}
+	stored, err := a.GetSession(ctx, h)
+	if err != nil || stored == nil {
+		return err
+	}
+	return a.afterUserUpdate(ctx, stored.User, fields)
+}
+
+// writeProfile stores a validated profile update for the signed-in user.
+func (a *Auth) writeProfile(ctx context.Context, session *SessionResult, update ProfileUpdate) error {
 	if a.username != nil && update.hasUsernameChange() {
 		if session.Session.ImpersonatedBy != nil {
 			return &APIError{403, "FORBIDDEN", "Account owner session required"}
@@ -123,7 +169,7 @@ func (a *Auth) UpdateUser(ctx context.Context, h http.Header, update ProfileUpda
 		}
 		return err
 	}
-	if values.Present() {
+	if update.validatedFields.Present() {
 		err := a.opts.Store.(UserFieldStore).UpdateUserFields(ctx, session.User.ID, &session.Session, update, a.now().UTC())
 		if errors.Is(err, ErrNotFound) {
 			return &APIError{401, "UNAUTHORIZED", "Unauthorized"}
