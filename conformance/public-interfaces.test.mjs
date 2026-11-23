@@ -47,7 +47,8 @@ test("release catalog and rendered checklists retain published packages, storage
   assert.equal(packages.flatMap(pkg => pkg.exports).length, 111);
   assert.equal(entries.length, 125);
   assert.equal((page("packages.md").match(/^## /gm) ?? []).length, packages.length);
-  assert.equal((page("packages.md").match(/^  - \[[x ]\] /gm) ?? []).length, entries.length);
+  // Entries that only exist for JavaScript render without a checkbox.
+  assert.equal((page("packages.md").match(/^  - /gm) ?? []).length, entries.length);
   for (const pkg of packages) {
     assert.deepEqual([...new Set(pkg.entries.map(e => e.pattern ?? e.subpath))].sort(), [...pkg.exports].sort());
     for (const entry of pkg.entries) assert.equal(entry.symbols.length, new Set(entry.symbols).size, pkg.name + "/" + entry.subpath);

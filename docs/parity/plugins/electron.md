@@ -5,47 +5,47 @@
 ## Interfaces
 
 - [ ] Electron endpoints, types and options
-  - [ ] `requestAuth`
-  - [ ] `authenticate`
-  - [ ] `kElectron`
-  - [ ] `ElectronRequestAuthOptions`
-  - [ ] `ElectronAuthenticateOptions`
-    - [ ] `fetchOptions`
-    - [ ] `token`
-  - [ ] `handleDeepLink`
-  - [ ] `electronClient`
+  - `requestAuth` — *not applicable: JavaScript only*
+  - `authenticate` — *not applicable: JavaScript only*
+  - `kElectron` — *not applicable: JavaScript only*
+  - `ElectronRequestAuthOptions` — *not applicable: JavaScript only*
+  - `ElectronAuthenticateOptions` — *not applicable: JavaScript only*
+    - `fetchOptions`
+    - `token`
+  - `handleDeepLink` — *not applicable: JavaScript only*
+  - `electronClient` — *not applicable: JavaScript only*
   - [ ] `electron`
-  - [ ] `setupRenderer`
-  - [ ] `ExposedBridges`
-  - [ ] `SetupRendererConfig`
-    - [ ] `channelPrefix`
-  - [ ] `electronProxyClient`
+  - `setupRenderer` — *not applicable: JavaScript only*
+  - `ExposedBridges` — *not applicable: JavaScript only*
+  - `SetupRendererConfig` — *not applicable: JavaScript only*
+    - `channelPrefix`
+  - `electronProxyClient` — *not applicable: JavaScript only*
   - [ ] `POST /electron/token`
   - [ ] `GET /electron/init-oauth-proxy`
   - [ ] `POST /electron/transfer-user`
-  - [ ] `storage`
-  - [ ] `Storage`
-  - [ ] `ElectronSharedClientOptions`
-    - [ ] `protocol`
-    - [ ] `callbackPath`
-    - [ ] `clientID`
-  - [ ] `ElectronClientOptions`
-    - [ ] `signInURL`
-    - [ ] `protocol`
-    - [ ] `storage`
-    - [ ] `storagePrefix`
-    - [ ] `sanitizeUser`
-    - [ ] `userImageProxy`
-    - [ ] `cookiePrefix`
-    - [ ] `channelPrefix`
-    - [ ] `disableCache`
-    - [ ] `callbackPath`
-    - [ ] `clientID`
-  - [ ] `ElectronProxyClientOptions`
-    - [ ] `cookiePrefix`
-    - [ ] `protocol`
-    - [ ] `callbackPath`
-    - [ ] `clientID`
+  - `storage` — *not applicable: JavaScript only*
+  - `Storage` — *not applicable: JavaScript only*
+  - `ElectronSharedClientOptions` — *not applicable: JavaScript only*
+    - `protocol`
+    - `callbackPath`
+    - `clientID`
+  - `ElectronClientOptions` — *not applicable: JavaScript only*
+    - `signInURL`
+    - `protocol`
+    - `storage`
+    - `storagePrefix`
+    - `sanitizeUser`
+    - `userImageProxy`
+    - `cookiePrefix`
+    - `channelPrefix`
+    - `disableCache`
+    - `callbackPath`
+    - `clientID`
+  - `ElectronProxyClientOptions` — *not applicable: JavaScript only*
+    - `cookiePrefix`
+    - `protocol`
+    - `callbackPath`
+    - `clientID`
   - [ ] `ElectronSharedOptions`
     - [ ] `clientID`
   - [ ] `ElectronOptions`
@@ -53,6 +53,6 @@
     - [ ] `redirectCookieExpiresIn`
     - [ ] `cookiePrefix`
     - [ ] `clientID`
-  - [ ] `fetchUserImage`
-  - [ ] `normalizeUserOutput`
-  - [ ] `FetchUserImageResult`
+  - `fetchUserImage` — *not applicable: JavaScript only*
+  - `normalizeUserOutput` — *not applicable: JavaScript only*
+  - `FetchUserImageResult` — *not applicable: JavaScript only*

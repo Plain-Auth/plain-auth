@@ -10,15 +10,15 @@
 
 ## Drizzle ORM Adapter
 
-- [ ] Drizzle ORM Adapter
-  - [ ] Schema generation & migration
-  - [ ] Joins
-  - [ ] Modifying Table Names
-  - [ ] Modifying Field Names
-  - [ ] Date Columns
-  - [ ] Using Plural Table Names
-  - [ ] Custom Schema namespace
-  - [ ] Drizzle Relations v2
+- Drizzle ORM Adapter — *not applicable: JavaScript only*
+  - Schema generation & migration
+  - Joins
+  - Modifying Table Names
+  - Modifying Field Names
+  - Date Columns
+  - Using Plural Table Names
+  - Custom Schema namespace
+  - Drizzle Relations v2
 
 ## MongoDB Adapter
 
@@ -43,8 +43,8 @@
 
 - [ ] Other Relational Databases
   - [ ] Core Dialects
-  - [ ] Kysely Organization Dialects
-  - [ ] Kysely Community dialects
+  - Kysely Organization Dialects — *not applicable: JavaScript only; each database is listed under SQL dialect integrations*
+  - Kysely Community dialects — *not applicable: JavaScript only; each database is listed under SQL dialect integrations*
 
 ## PostgreSQL
 
@@ -57,13 +57,13 @@
 
 ## Prisma
 
-- [ ] Prisma
-  - [ ] Setup
-    - [ ] Configure Prisma
-    - [ ] Create the Prisma client
-    - [ ] Configure authentication
-  - [ ] Schema generation & migration
-  - [ ] Joins
+- Prisma — *not applicable: JavaScript only*
+  - Setup
+    - Configure Prisma
+    - Create the Prisma client
+    - Configure authentication
+  - Schema generation & migration
+  - Joins
 
 ## SQLite
 
@@ -261,29 +261,31 @@ Plain Auth ships SQL adapters for SQLite, PostgreSQL and MySQL. The checklist al
     - [x] Run the account and session lifecycle against PostgreSQL ([test](../../adapters/sqlstore/account_contract_test.go#L15))
   - [ ] MS SQL
 - [ ] Kysely Organization Dialects
-  - [ ] Postgres.js
-  - [ ] SingleStore Data API
-  - [ ] Supabase
+  - Postgres.js — *not applicable: JavaScript only*
+  - [ ] SingleStore Data API (backlog)
+  - Supabase — *uses the PostgreSQL adapter*
 - [ ] Kysely Community dialects
-  - [ ] PlanetScale Serverless Driver
-  - [ ] Cloudflare D1
-  - [ ] AWS RDS Data API
-  - [ ] Prisma Postgres
-  - [ ] SurrealDB
-  - [ ] Neon
-  - [ ] Xata
-  - [ ] AWS S3 Select
-  - [ ] libSQL/sqld
-  - [ ] Fetch driver
-  - [ ] SQLite WASM
-  - [ ] Deno SQLite
-  - [ ] TiDB Cloud Serverless Driver
-  - [ ] Capacitor SQLite Kysely
-  - [ ] BigQuery
-  - [ ] Clickhouse
-  - [ ] PGLite
+  - PlanetScale Serverless Driver — *uses the MySQL adapter*
+  - Cloudflare D1 — *not applicable: JavaScript only*
+  - [ ] AWS RDS Data API (backlog)
+  - Prisma Postgres — *uses the PostgreSQL adapter*
+  - [ ] SurrealDB (backlog)
+  - Neon — *uses the PostgreSQL adapter*
+  - [ ] Xata (backlog)
+  - [ ] AWS S3 Select (backlog)
+  - [ ] libSQL/sqld (backlog)
+  - Fetch driver — *not applicable: JavaScript only*
+  - SQLite WASM — *not applicable: JavaScript only*
+  - Deno SQLite — *not applicable: JavaScript only*
+  - TiDB Cloud Serverless Driver — *uses the MySQL adapter*
+  - Capacitor SQLite Kysely — *not applicable: JavaScript only*
+  - [ ] BigQuery (backlog)
+  - [ ] Clickhouse (backlog)
+  - PGLite — *not applicable: JavaScript only*
 
 ## Community database adapters
+
+This is on the backlog: it stays on the roadmap but is not scheduled.
 
 Each row tracks Go compatibility with a database integration. Maintainer names distinguish projects for the same database. The [source catalog](../../conformance/reference.json) records their repositories.
 
@@ -293,7 +295,7 @@ Each row tracks Go compatibility with a database integration. Maintainer names d
 - [ ] SurrealDB (msanchezdev)
 - [ ] Payload CMS (payload-auth)
 - [ ] Payload CMS (delmaredigital)
-- [ ] TypeORM (Zastinian)
+- TypeORM (Zastinian) — *not applicable: JavaScript only*
 - [ ] InstantDB (daveyplate)
 - [ ] Remult (nerdfolio)
 - [ ] PocketBase (LightInn)

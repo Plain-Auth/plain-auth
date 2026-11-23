@@ -2,6 +2,8 @@
 
 [Feature index](../README.md)
 
+This is on the backlog: it stays on the roadmap but is not scheduled.
+
 ## Creem
 
 - [ ] Creem

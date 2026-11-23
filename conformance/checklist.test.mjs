@@ -11,23 +11,27 @@ test("the feature index counts every checkbox on each linked checklist", () => {
   const index = readFileSync(join(directory, "README.md"), "utf8");
   const expected = readdirSync(directory, {recursive: true}).filter(path => path.endsWith(".md") && path !== "README.md");
   const listed = [];
-  let checkedRows = 0, openRows = 0;
-  for (const row of index.matchAll(/^\| \[[^\]]+\]\(([^)]+)\) \| (\d+) \| (\d+) \|$/gm)) {
-    const [, path, checked, open] = row;
+  let checkedRows = 0, openRows = 0, notApplicableRows = 0;
+  for (const row of index.matchAll(/^\| \[[^\]]+\]\(([^)]+)\) \|(?: (?:Backlog|Planned) \|)? (\d+) \| (\d+) \| (\d+) \|$/gm)) {
+    const [, path, checked, open, notApplicable] = row;
     const lines = readFileSync(join(directory, path), "utf8").split("\n").map(line => line.trimStart());
     assert.equal(Number(checked), lines.filter(line => line.startsWith("- [x] ")).length, path);
     assert.equal(Number(open), lines.filter(line => line.startsWith("- [ ] ")).length, path);
+    // A plain bullet on a checklist page is an entry marked not applicable.
+    assert.equal(Number(notApplicable), lines.filter(line => /^- (?!\[[ x]\] )/.test(line)).length, path);
     checkedRows += Number(checked);
     openRows += Number(open);
+    notApplicableRows += Number(notApplicable);
     listed.push(path);
   }
   assert.deepEqual(listed.sort(), expected.sort());
   const number = value => Number(value.replaceAll(",", ""));
-  const summary = Object.fromEntries([...index.matchAll(/^\| (Fully verified|Partially verified|No linked test evidence) \| ([0-9,]+) \|$/gm)]
+  const summary = Object.fromEntries([...index.matchAll(/^\| (Fully verified|Partially verified|No linked test evidence|Not applicable to a Go server) \| ([0-9,]+) \|$/gm)]
     .map(([, label, count]) => [label, number(count)]));
   const scenarioCount = number(index.match(/contain ([0-9,]+) links from passing scenarios/)[1]);
   assert.equal(summary["Fully verified"] + scenarioCount, checkedRows);
   assert.equal(summary["Partially verified"] + summary["No linked test evidence"], openRows);
+  assert.equal(summary["Not applicable to a Go server"], notApplicableRows);
   const [, verified, total, percent] = index.match(/\*\*([0-9,]+) of ([0-9,]+) inventory entries are fully verified \(([0-9.]+)%\)/);
   assert.equal(number(verified), summary["Fully verified"]);
   assert.equal(number(total), checkedRows + openRows - scenarioCount);

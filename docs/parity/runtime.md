@@ -360,19 +360,19 @@ Each entry groups the configured endpoint’s behaviors. A checked child records
 
 ## Client SDK and host integrations
 
-- [ ] `client` client interface
-- [ ] `client/plugins` client interface
-- [ ] `react` client interface
-- [ ] `solid` client interface
-- [ ] `lynx` client interface
-- [ ] `vue` client interface
-- [ ] `svelte-kit` host binding
-- [ ] `solid-start` host binding
-- [ ] `svelte` client interface
-- [ ] `next-js` host binding
-- [ ] `tanstack-start` host binding
-- [ ] `tanstack-start/solid` host binding
-- [ ] `node` host binding
+- `client` client interface — *not applicable: JavaScript only*
+- `client/plugins` client interface — *not applicable: JavaScript only*
+- `react` client interface — *not applicable: JavaScript only*
+- `solid` client interface — *not applicable: JavaScript only*
+- `lynx` client interface — *not applicable: JavaScript only*
+- `vue` client interface — *not applicable: JavaScript only*
+- `svelte-kit` host binding — *not applicable: JavaScript only*
+- `solid-start` host binding — *not applicable: JavaScript only*
+- `svelte` client interface — *not applicable: JavaScript only*
+- `next-js` host binding — *not applicable: JavaScript only*
+- `tanstack-start` host binding — *not applicable: JavaScript only*
+- `tanstack-start/solid` host binding — *not applicable: JavaScript only*
+- `node` host binding — *not applicable: JavaScript only*
 
 ## CLI
 

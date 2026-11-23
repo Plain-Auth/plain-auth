@@ -1,11 +1,19 @@
 // A reviewer attaches a test covering the whole task. New or incomplete nested
 // requirements keep that task open even when its existing scenarios all pass.
+// Items marked not applicable render as plain bullets and are left out of the
+// totals without detaching later siblings from their parent.
 export function checklistReport(lines) {
-  const counts = { verified: 0, partial: 0, unverified: 0, scenarios: 0 };
+  const counts = { verified: 0, partial: 0, unverified: 0, scenarios: 0, notApplicable: 0 };
   const rendered = [];
   const nodes = [];
   const ancestors = [];
   for (const line of lines) {
+    if (typeof line === "object" && line.notApplicable !== undefined) {
+      const text = line.text.replace(/^( *)- \[ \] /, "$1- ");
+      rendered.push(line.notApplicable ? text + " — *" + line.notApplicable + "*" : text);
+      counts.notApplicable++;
+      continue;
+    }
     const text = typeof line === "string" ? line : line.text;
     const index = rendered.push(text) - 1;
     const task = text.match(/^( *)- \[([ x])\] /);

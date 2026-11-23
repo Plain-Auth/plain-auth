@@ -46,27 +46,27 @@ Each row tracks the behavior exposed by a published entry point. The Go implemen
     - [x] Use typed client methods for all nine team endpoints over HTTP ([test](../../adapters/sqlstore/organization_teams_test.go#L99))
     - [x] Manage and revoke administrative sessions through the typed cookie-backed client ([test](../../adapters/sqlstore/admin_test.go#L21))
     - [x] Use the typed client to register, sign in, rename a public handle and query availability ([test](../../adapters/sqlstore/username_test.go#L23))
-  - [ ] Client-side plugin registration (`./client/plugins`)
+  - Client-side plugin registration (`./client/plugins`) — *not applicable: JavaScript only*
   - [ ] Configuration and result types (`./types`)
   - [ ] Cryptographic functions (`./crypto`)
   - [ ] Session cookie handling (`./cookies`)
   - [ ] Cookie parsing and serialization (`./cookies/utils`)
   - [ ] OAuth protocol operations (`./oauth2`)
-  - [ ] React client hooks (`./react`)
-  - [ ] Solid client bindings (`./solid`)
-  - [ ] Lynx client bindings (`./lynx`)
+  - React client hooks (`./react`) — *not applicable: JavaScript only*
+  - Solid client bindings (`./solid`) — *not applicable: JavaScript only*
+  - Lynx client bindings (`./lynx`) — *not applicable: JavaScript only*
   - [ ] Authentication test fixtures (`./test`)
   - [ ] Programmatic API (`./api`)
   - [ ] Database interfaces (`./db`)
-  - [ ] Vue client bindings (`./vue`)
+  - Vue client bindings (`./vue`) — *not applicable: JavaScript only*
   - [ ] Plugin registration (`./plugins`)
-  - [ ] SvelteKit request handling (`./svelte-kit`)
-  - [ ] SolidStart request handling (`./solid-start`)
-  - [ ] Svelte client bindings (`./svelte`)
-  - [ ] Next.js request handling (`./next-js`)
-  - [ ] TanStack Start request handling (`./tanstack-start`)
-  - [ ] TanStack Start for Solid (`./tanstack-start/solid`)
-  - [ ] Node host integration (`./node`)
+  - SvelteKit request handling (`./svelte-kit`) — *not applicable: JavaScript only*
+  - SolidStart request handling (`./solid-start`) — *not applicable: JavaScript only*
+  - Svelte client bindings (`./svelte`) — *not applicable: JavaScript only*
+  - Next.js request handling (`./next-js`) — *not applicable: JavaScript only*
+  - TanStack Start request handling (`./tanstack-start`) — *not applicable: JavaScript only*
+  - TanStack Start for Solid (`./tanstack-start/solid`) — *not applicable: JavaScript only*
+  - Node host integration (`./node`) — *not applicable: JavaScript only*
   - [ ] Database adapter contract (`./db/adapter`)
   - [ ] Minimal database adapter contract (`./db/adapter/minimal`)
   - [ ] Schema discovery and migration (`./db/migration`)
@@ -78,8 +78,8 @@ Each row tracks the behavior exposed by a published entry point. The Go implemen
     - [x] Generate the selected plugin schema with independent user and session JSON declarations on all three dialects ([test](../../cmd/authctl/user_fields_test.go#L111))
     - [x] Generate the configured wallet model alongside user and session fields from one portable JSON declaration ([test](../../cmd/authctl/wallet_schema_test.go#L124))
     - [x] Generate typed date columns for both models on each SQL dialect and reject invalid static timestamps ([test](../../cmd/authctl/user_fields_test.go#L205))
-  - [ ] Adapter binding for prisma (`./adapters/prisma`)
-  - [ ] Adapter binding for drizzle (`./adapters/drizzle`)
+  - Adapter binding for prisma (`./adapters/prisma`) — *not applicable: JavaScript only*
+  - Adapter binding for drizzle (`./adapters/drizzle`) — *not applicable: JavaScript only*
   - [ ] Adapter binding for mongodb (`./adapters/mongodb`)
   - [ ] Adapter binding for memory (`./adapters/memory`)
   - [ ] Database adapter selection (`./adapters`)
@@ -115,7 +115,7 @@ Each row tracks the behavior exposed by a published entry point. The Go implemen
 
 - [ ] Client ID metadata documents
   - [ ] Default interface (`.`)
-  - [ ] Node host integration (`./node`)
+  - Node host integration (`./node`) — *not applicable: JavaScript only*
 
 ## Command-line tools
 
@@ -128,12 +128,12 @@ Each row tracks the behavior exposed by a published entry point. The Go implemen
   - [ ] Default interface (`.`)
   - [ ] Programmatic API (`./api`)
   - [ ] Request-local execution context (`./async_hooks`)
-    - [ ] Runtime target node
-    - [ ] Runtime target deno
-    - [ ] Runtime target bun
-    - [ ] Runtime target workerd
-    - [ ] Runtime target edge
-    - [ ] Runtime target browser
+    - Runtime target node — *not applicable: JavaScript runtime*
+    - Runtime target deno — *not applicable: JavaScript runtime*
+    - Runtime target bun — *not applicable: JavaScript runtime*
+    - Runtime target workerd — *not applicable: JavaScript runtime*
+    - Runtime target edge — *not applicable: JavaScript runtime*
+    - Runtime target browser — *not applicable: JavaScript runtime*
   - [ ] Authentication context (`./context`)
   - [ ] Environment configuration (`./env`)
     - [x] Ignore unrelated host settings when resolving the signing key, public URL, origins and runtime mode ([test](../../env_test.go#L46))
@@ -170,35 +170,35 @@ Each row tracks the behavior exposed by a published entry point. The Go implemen
   - [ ] OAuth protocol operations (`./oauth2`)
   - [ ] Underlying OAuth operations (`./oauth2/internal`)
   - [ ] Instrumentation and tracing (`./instrumentation`)
-    - [ ] Runtime target workerd
-    - [ ] Runtime target edge
-    - [ ] Runtime target browser
-    - [ ] Runtime target node
-    - [ ] Runtime target deno
-    - [ ] Runtime target bun
-    - [ ] Runtime target import
+    - Runtime target workerd — *not applicable: JavaScript runtime*
+    - Runtime target edge — *not applicable: JavaScript runtime*
+    - Runtime target browser — *not applicable: JavaScript runtime*
+    - Runtime target node — *not applicable: JavaScript runtime*
+    - Runtime target deno — *not applicable: JavaScript runtime*
+    - Runtime target bun — *not applicable: JavaScript runtime*
+    - Runtime target import — *not applicable: JavaScript runtime*
 
 ## Drizzle adapter
 
-- [ ] Drizzle adapter
-  - [ ] Default interface (`.`)
-  - [ ] Relations v2 (`./relations-v2`)
+- Drizzle adapter — *not applicable: JavaScript only*
+  - Default interface (`.`)
+  - Relations v2 (`./relations-v2`)
 
 ## Electron integration
 
 - [ ] Electron integration
   - [ ] Default interface (`.`)
-  - [ ] Client integration (`./client`)
-  - [ ] Browser-to-desktop proxy (`./proxy`)
-  - [ ] Renderer preload bridge (`./preload`)
-  - [ ] Desktop credential storage (`./storage`)
+  - Client integration (`./client`) — *not applicable: JavaScript only*
+  - Browser-to-desktop proxy (`./proxy`) — *not applicable: JavaScript only*
+  - Renderer preload bridge (`./preload`) — *not applicable: JavaScript only*
+  - Desktop credential storage (`./storage`) — *not applicable: JavaScript only*
 
 ## Expo integration
 
 - [ ] Expo integration
   - [ ] Default interface (`.`)
-  - [ ] Client integration (`./client`)
-  - [ ] Plugin registration (`./plugins`)
+  - Client integration (`./client`) — *not applicable: JavaScript only*
+  - Plugin registration (`./plugins`) — *not applicable: JavaScript only*
 
 ## Localization
 
@@ -211,9 +211,9 @@ Each row tracks the behavior exposed by a published entry point. The Go implemen
 
 ## Kysely adapter
 
-- [ ] Kysely adapter
-  - [ ] Default interface (`.`)
-  - [ ] Node SQLite dialect (`./node-sqlite-dialect`)
+- Kysely adapter — *not applicable: JavaScript only*
+  - Default interface (`.`)
+  - Node SQLite dialect (`./node-sqlite-dialect`)
 
 ## Model Context Protocol
 
@@ -247,8 +247,8 @@ Each row tracks the behavior exposed by a published entry point. The Go implemen
 
 ## Prisma adapter
 
-- [ ] Prisma adapter
-  - [ ] Default interface (`.`)
+- Prisma adapter — *not applicable: JavaScript only*
+  - Default interface (`.`)
 
 ## Redis secondary storage
 
@@ -311,7 +311,7 @@ Each row tracks the behavior exposed by a published entry point. The Go implemen
 
 - [ ] Telemetry
   - [ ] Default interface (`.`)
-    - [ ] Runtime target node
+    - Runtime target node — *not applicable: JavaScript runtime*
 
 ## Adapter and provisioning test utilities
 

@@ -66,6 +66,10 @@ defer store.Close()
 
 Import `github.com/Plain-Auth/plain-auth/adapters/sqlstore`. Use `"mysql"` or `"sqlite"` to change engines. Opening the store also applies its pending schema. Keep one store for the application's lifetime. Each request passes its own context for cancellation and deadlines.
 
+### Hosted PostgreSQL and MySQL
+
+Managed services that speak the PostgreSQL protocol, such as Neon, Supabase and Prisma Postgres, use the `"postgres"` engine with the connection string the service provides. MySQL-compatible services such as PlanetScale and TiDB use the `"mysql"` engine. The schema relies on transactions and foreign keys, so enable foreign key constraints on services where they are optional. The integration tests run against PostgreSQL 18 and MySQL 8.4.
+
 ## What is stored
 
 | Table | Purpose |

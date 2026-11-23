@@ -378,9 +378,76 @@ for (const { name } of community) {
   communityPage.push(pending(inline(label || name)));
 }
 communityPage.push("");
-const progressHeader = ["| Checklist | Checked | Open |", "| --- | ---: | ---: |"];
+
+// Documentation headings can contain the reference project's product name.
+// Product-facing pages describe capabilities independently; the verification
+// guide retains exact source names and package coordinates for maintainers.
+const publicText = (text) => text.split(/(\]\([^)]+\))/).map(part =>
+  part.startsWith("](") ? part : part.replace(/@better-auth\//gi, "")
+    .replace(/better[- ]auth(?:’s|'s)?/gi, "authentication").replace(/BetterAuth/g, "Auth")
+    .replace(/better_auth\./g, "auth.").replace(/(?:process\.env\.)?BETTER_AUTH_/g, "AUTH_")
+).join("");
+
+// scope.json marks JavaScript-only items as not applicable and labels backlog
+// integrations. Rules match the published text and must each match something.
+const scope = JSON.parse(readFileSync(new URL("scope.json", import.meta.url)));
+const lineText = (line) => typeof line === "string" ? line : line.text;
+function eachScopedItem(rule, visit) {
+  const lines = pages.get(rule.page);
+  assert.ok(lines, "Unknown scoped page " + rule.page);
+  let section = "", matched = 0;
+  const ancestors = [];
+  for (let i = 0; i < lines.length; i++) {
+    const text = lineText(lines[i]);
+    if (text.startsWith("## ")) { section = publicText(text.slice(3)); ancestors.length = 0; continue; }
+    const task = text.match(/^( *)- \[ \] (.*)$/);
+    if (!task) continue;
+    const depth = task[1].length, label = publicText(task[2]);
+    while (ancestors.length && ancestors.at(-1).depth >= depth) ancestors.pop();
+    ancestors.push({ depth, label });
+    if (rule.section && section !== rule.section) continue;
+    if (rule.within && !ancestors.slice(0, -1).some(a => a.label === rule.within)) continue;
+    if (rule.labels ? !rule.labels.includes(label) : ancestors.length > 1) continue;
+    matched++;
+    i = visit(lines, i, depth, section);
+  }
+  assert.ok(matched, "Scope rule matched nothing: " + JSON.stringify(rule));
+}
+for (const rule of scope.notApplicable) {
+  eachScopedItem(rule, (lines, i, depth) => {
+    assert.equal(typeof lines[i], "string", "Reviewed evidence on a not-applicable item: " + lineText(lines[i]));
+    lines[i] = { text: lines[i], notApplicable: rule.reason };
+    let j = i + 1;
+    for (; j < lines.length && /^ *- \[[ x]\] /.test(lineText(lines[j])) && lineText(lines[j]).search(/\S/) > depth; j++) {
+      assert.ok(typeof lines[j] === "string" && !lines[j].includes("- [x] "), "Test evidence under a not-applicable item: " + lineText(lines[j]));
+      lines[j] = { text: lines[j], notApplicable: "" };
+    }
+    return j - 1;
+  });
+}
+const backlogNote = "This is on the backlog: it stays on the roadmap but is not scheduled.";
+const backlogPages = new Set();
+for (const rule of scope.backlog) {
+  const lines = pages.get(rule.page);
+  assert.ok(lines, "Unknown backlog page " + rule.page);
+  if (!rule.section) {
+    lines.splice(4, 0, backlogNote, "");
+    backlogPages.add(rule.page);
+  } else if (!rule.labels) {
+    const heading = lines.indexOf("## " + rule.section);
+    assert.ok(heading > 0, "Unknown backlog section " + rule.section);
+    lines.splice(heading + 2, 0, backlogNote, "");
+  } else {
+    eachScopedItem(rule, (lines, i) => {
+      lines[i] = lineText(lines[i]) === lines[i] ? lines[i] + " (backlog)" : { ...lines[i], text: lines[i].text + " (backlog)" };
+      return i;
+    });
+  }
+}
+
+const progressHeader = ["| Checklist | Checked | Open | Not applicable |", "| --- | ---: | ---: | ---: |"];
 const reports = new Map();
-const totals = {verified:0, partial:0, unverified:0, scenarios:0};
+const totals = {verified:0, partial:0, unverified:0, scenarios:0, notApplicable:0};
 for (const [path, lines] of pages) {
   const report = checklistReport(lines);
   reports.set(path, report);
@@ -388,9 +455,9 @@ for (const [path, lines] of pages) {
 }
 const inventoryTotal = totals.verified + totals.partial + totals.unverified;
 const count = value => value.toLocaleString("en-US");
-function progressRow(title, path) {
-  const {verified, partial, unverified, scenarios} = reports.get(path).counts;
-  return `| [${title}](${path}) | ${verified + scenarios} | ${partial + unverified} |`;
+function progressRow(title, path, status) {
+  const {verified, partial, unverified, scenarios, notApplicable} = reports.get(path).counts;
+  return `| [${title}](${path}) |${status ? " " + status + " |" : ""} ${verified + scenarios} | ${partial + unverified} | ${notApplicable} |`;
 }
 const index = [
   "# Feature checklist", "",
@@ -399,8 +466,10 @@ const index = [
   "| Inventory status | Entries |", "| --- | ---: |",
   `| Fully verified | ${count(totals.verified)} |`,
   `| Partially verified | ${count(totals.partial)} |`,
-  `| No linked test evidence | ${count(totals.unverified)} |`, "",
+  `| No linked test evidence | ${count(totals.unverified)} |`,
+  `| Not applicable to a Go server | ${count(totals.notApplicable)} |`, "",
   `The inventory covers features, options, integrations and documentation topics. Partial verification means an open entry has a passing case somewhere beneath it. The checklists also contain ${count(totals.scenarios)} links from passing scenarios to tests. Adding a scenario leaves the inventory denominator unchanged.`, "",
+  "Entries that exist only for JavaScript clients, frameworks or runtimes are listed as not applicable, with the reason, and are left out of the totals. Backlog entries stay open on the roadmap but are not scheduled.", "",
   "A checked item links to a local test for that behavior. An open parent means the feature still has unverified cases. Browser, protocol and storage options each have their own checkboxes.", "",
   "Browse [authentication, storage and tools](#authentication-storage-and-tools), [plugins](#plugins-and-integrations) or [third-party integrations](#third-party-integrations). Each table counts the checked and open boxes on its linked pages, including individual options and tested scenarios. A behavior can appear in more than one checklist.", "",
   "## Implementation guides", "",
@@ -460,20 +529,17 @@ const index = [
 for (const group of [...groups.keys()].sort()) index.push(progressRow(groupNames[group] || group, group + ".md"));
 index.push("", "## Plugins and integrations", "", ...progressHeader);
 for (const slug of [...pluginPages.keys()].filter((slug) => !external.has(slug)).sort()) index.push(progressRow(pluginTitle(slug), "plugins/" + slug + ".md"));
-index.push("", "## Third-party integrations", "", "These integrations have independent release cycles.", "", ...progressHeader);
-for (const slug of [...external].sort()) index.push(progressRow(pluginTitle(slug), "plugins/" + slug + ".md"));
+index.push("", "## Third-party integrations", "", "These integrations have independent release cycles.", "",
+  "| Checklist | Status | Checked | Open | Not applicable |", "| --- | --- | ---: | ---: | ---: |");
+for (const slug of [...external].sort()) {
+  const path = "plugins/" + slug + ".md";
+  index.push(progressRow(pluginTitle(slug), path, backlogPages.has(path) ? "Backlog" : "Planned"));
+}
 index.push("");
 pages.set("README.md", index);
 for (const [name, lines] of pages) {
   const path = join(output, name);
-  // Documentation headings can contain the reference project's product name.
-  // Product-facing pages describe capabilities independently; the verification
-  // guide retains exact source names and package coordinates for maintainers.
-  const body = (reports.get(name)?.markdown ?? checklistReport(lines).markdown).split(/(\]\([^)]+\))/).map(part =>
-    part.startsWith("](") ? part : part.replace(/@better-auth\//gi, "")
-      .replace(/better[- ]auth(?:’s|'s)?/gi, "authentication").replace(/BetterAuth/g, "Auth")
-      .replace(/better_auth\./g, "auth.").replace(/(?:process\.env\.)?BETTER_AUTH_/g, "AUTH_")
-  ).join("").trimEnd() + "\n";
+  const body = publicText(reports.get(name)?.markdown ?? checklistReport(lines).markdown).trimEnd() + "\n";
   if (check) assert.equal(readFileSync(path, "utf8") === body, true, "Stale parity file: " + name);
   else { mkdirSync(dirname(path), { recursive: true }); writeFileSync(path, body); }
 }

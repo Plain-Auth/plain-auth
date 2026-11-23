@@ -2,15 +2,18 @@
 
 ## Verification progress
 
-**603 of 7,025 inventory entries are fully verified (8.6%).**
+**603 of 6,683 inventory entries are fully verified (9.0%).**
 
 | Inventory status | Entries |
 | --- | ---: |
 | Fully verified | 603 |
 | Partially verified | 1,063 |
-| No linked test evidence | 5,359 |
+| No linked test evidence | 5,017 |
+| Not applicable to a Go server | 342 |
 
 The inventory covers features, options, integrations and documentation topics. Partial verification means an open entry has a passing case somewhere beneath it. The checklists also contain 2,629 links from passing scenarios to tests. Adding a scenario leaves the inventory denominator unchanged.
+
+Entries that exist only for JavaScript clients, frameworks or runtimes are listed as not applicable, with the reason, and are left out of the totals. Backlog entries stay open on the roadmap but are not scheduled.
 
 A checked item links to a local test for that behavior. An open parent means the feature still has unverified cases. Browser, protocol and storage options each have their own checkboxes.
 
@@ -70,72 +73,72 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 
 ## Authentication, storage and tools
 
-| Checklist | Checked | Open |
-| --- | ---: | ---: |
-| [Published package interfaces](packages.md) | 89 | 160 |
-| [Native Go client, routers and databases](go.md) | 38 | 4 |
-| [Core API, sign-in providers and CLI](runtime.md) | 167 | 276 |
-| [Database adapters](adapters.md) | 32 | 224 |
-| [Authentication](authentication.md) | 26 | 415 |
-| [Core concepts](concepts.md) | 69 | 505 |
-| [Managed infrastructure](infrastructure.md) | 0 | 528 |
-| [Framework integrations](integrations.md) | 0 | 228 |
-| [Reference and configuration](reference.md) | 95 | 390 |
+| Checklist | Checked | Open | Not applicable |
+| --- | ---: | ---: | ---: |
+| [Published package interfaces](packages.md) | 89 | 117 | 43 |
+| [Native Go client, routers and databases](go.md) | 38 | 4 | 0 |
+| [Core API, sign-in providers and CLI](runtime.md) | 167 | 263 | 13 |
+| [Database adapters](adapters.md) | 32 | 193 | 31 |
+| [Authentication](authentication.md) | 26 | 415 | 0 |
+| [Core concepts](concepts.md) | 69 | 505 | 0 |
+| [Managed infrastructure](infrastructure.md) | 0 | 528 | 0 |
+| [Framework integrations](integrations.md) | 0 | 27 | 201 |
+| [Reference and configuration](reference.md) | 95 | 390 | 0 |
 
 ## Plugins and integrations
 
-| Checklist | Checked | Open |
-| --- | ---: | ---: |
-| [Two-factor authentication](plugins/2fa.md) | 40 | 141 |
-| [Access](plugins/access.md) | 7 | 14 |
-| [Additional fields](plugins/additional-fields.md) | 0 | 2 |
-| [Admin](plugins/admin.md) | 74 | 141 |
-| [Anonymous](plugins/anonymous.md) | 27 | 25 |
-| [API keys](plugins/api-key.md) | 114 | 210 |
-| [Bearer](plugins/bearer.md) | 30 | 0 |
-| [Captcha](plugins/captcha.md) | 17 | 65 |
-| [Client ID metadata documents](plugins/cimd.md) | 0 | 48 |
-| [Custom session](plugins/custom-session.md) | 21 | 3 |
-| [Device authorization](plugins/device-authorization.md) | 22 | 99 |
-| [Electron](plugins/electron.md) | 0 | 52 |
-| [Email otp](plugins/email-otp.md) | 43 | 95 |
-| [Expo](plugins/expo.md) | 0 | 19 |
-| [Generic OAuth](plugins/generic-oauth.md) | 28 | 262 |
-| [Have I Been Pwned](plugins/have-i-been-pwned.md) | 46 | 0 |
-| [Internationalization](plugins/i18n.md) | 116 | 36 |
-| [JSON Web Tokens](plugins/jwt.md) | 13 | 75 |
-| [Last login method](plugins/last-login-method.md) | 24 | 48 |
-| [Magic link](plugins/magic-link.md) | 67 | 19 |
-| [Model Context Protocol](plugins/mcp.md) | 0 | 108 |
-| [Multi session](plugins/multi-session.md) | 15 | 22 |
-| [OAuth popup](plugins/oauth-popup.md) | 56 | 5 |
-| [OAuth provider](plugins/oauth-provider.md) | 600 | 373 |
-| [OAuth proxy](plugins/oauth-proxy.md) | 27 | 6 |
-| [One tap](plugins/one-tap.md) | 38 | 18 |
-| [One time token](plugins/one-time-token.md) | 76 | 0 |
-| [OpenAPI](plugins/open-api.md) | 16 | 24 |
-| [Organization](plugins/organization.md) | 561 | 299 |
-| [Passkey](plugins/passkey.md) | 26 | 94 |
-| [Phone number](plugins/phone-number.md) | 36 | 67 |
-| [SCIM provisioning](plugins/scim.md) | 66 | 257 |
-| [Sign in with Ethereum](plugins/siwe.md) | 90 | 11 |
-| [Single sign-on](plugins/sso.md) | 91 | 314 |
-| [Stripe](plugins/stripe.md) | 206 | 175 |
-| [Test utils](plugins/test-utils.md) | 69 | 18 |
-| [Username](plugins/username.md) | 33 | 54 |
+| Checklist | Checked | Open | Not applicable |
+| --- | ---: | ---: | ---: |
+| [Two-factor authentication](plugins/2fa.md) | 40 | 141 | 0 |
+| [Access](plugins/access.md) | 7 | 14 | 0 |
+| [Additional fields](plugins/additional-fields.md) | 0 | 2 | 0 |
+| [Admin](plugins/admin.md) | 74 | 141 | 0 |
+| [Anonymous](plugins/anonymous.md) | 27 | 25 | 0 |
+| [API keys](plugins/api-key.md) | 114 | 210 | 0 |
+| [Bearer](plugins/bearer.md) | 30 | 0 | 0 |
+| [Captcha](plugins/captcha.md) | 17 | 65 | 0 |
+| [Client ID metadata documents](plugins/cimd.md) | 0 | 48 | 0 |
+| [Custom session](plugins/custom-session.md) | 21 | 3 | 0 |
+| [Device authorization](plugins/device-authorization.md) | 22 | 99 | 0 |
+| [Electron](plugins/electron.md) | 0 | 12 | 40 |
+| [Email otp](plugins/email-otp.md) | 43 | 95 | 0 |
+| [Expo](plugins/expo.md) | 0 | 5 | 14 |
+| [Generic OAuth](plugins/generic-oauth.md) | 28 | 262 | 0 |
+| [Have I Been Pwned](plugins/have-i-been-pwned.md) | 46 | 0 | 0 |
+| [Internationalization](plugins/i18n.md) | 116 | 36 | 0 |
+| [JSON Web Tokens](plugins/jwt.md) | 13 | 75 | 0 |
+| [Last login method](plugins/last-login-method.md) | 24 | 48 | 0 |
+| [Magic link](plugins/magic-link.md) | 67 | 19 | 0 |
+| [Model Context Protocol](plugins/mcp.md) | 0 | 108 | 0 |
+| [Multi session](plugins/multi-session.md) | 15 | 22 | 0 |
+| [OAuth popup](plugins/oauth-popup.md) | 56 | 5 | 0 |
+| [OAuth provider](plugins/oauth-provider.md) | 600 | 373 | 0 |
+| [OAuth proxy](plugins/oauth-proxy.md) | 27 | 6 | 0 |
+| [One tap](plugins/one-tap.md) | 38 | 18 | 0 |
+| [One time token](plugins/one-time-token.md) | 76 | 0 | 0 |
+| [OpenAPI](plugins/open-api.md) | 16 | 24 | 0 |
+| [Organization](plugins/organization.md) | 561 | 299 | 0 |
+| [Passkey](plugins/passkey.md) | 26 | 94 | 0 |
+| [Phone number](plugins/phone-number.md) | 36 | 67 | 0 |
+| [SCIM provisioning](plugins/scim.md) | 66 | 257 | 0 |
+| [Sign in with Ethereum](plugins/siwe.md) | 90 | 11 | 0 |
+| [Single sign-on](plugins/sso.md) | 91 | 314 | 0 |
+| [Stripe](plugins/stripe.md) | 206 | 175 | 0 |
+| [Test utils](plugins/test-utils.md) | 69 | 18 | 0 |
+| [Username](plugins/username.md) | 33 | 54 | 0 |
 
 ## Third-party integrations
 
 These integrations have independent release cycles.
 
-| Checklist | Checked | Open |
-| --- | ---: | ---: |
-| [Agent auth](plugins/agent-auth.md) | 0 | 58 |
-| [Autumn](plugins/autumn.md) | 0 | 18 |
-| [Chargebee](plugins/chargebee.md) | 0 | 159 |
-| [Commet](plugins/commet.md) | 0 | 37 |
-| [Community plugins](plugins/community-plugins.md) | 0 | 55 |
-| [Creem](plugins/creem.md) | 0 | 74 |
-| [Dodopayments](plugins/dodopayments.md) | 0 | 20 |
-| [Dub](plugins/dub.md) | 0 | 15 |
-| [Polar](plugins/polar.md) | 21 | 57 |
+| Checklist | Status | Checked | Open | Not applicable |
+| --- | --- | ---: | ---: | ---: |
+| [Agent auth](plugins/agent-auth.md) | Planned | 0 | 58 | 0 |
+| [Autumn](plugins/autumn.md) | Backlog | 0 | 18 | 0 |
+| [Chargebee](plugins/chargebee.md) | Backlog | 0 | 159 | 0 |
+| [Commet](plugins/commet.md) | Backlog | 0 | 37 | 0 |
+| [Community plugins](plugins/community-plugins.md) | Backlog | 0 | 55 | 0 |
+| [Creem](plugins/creem.md) | Backlog | 0 | 74 | 0 |
+| [Dodopayments](plugins/dodopayments.md) | Backlog | 0 | 20 | 0 |
+| [Dub](plugins/dub.md) | Backlog | 0 | 15 | 0 |
+| [Polar](plugins/polar.md) | Planned | 21 | 57 | 0 |
