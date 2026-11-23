@@ -1887,3 +1887,8 @@ test("member role lookups require a shared organization and preserve the session
   const {compareRoleLookup} = await import("./organization-role.mjs");
   await compareRoleLookup(t, {reference, goFixture, instrument});
 });
+
+test("organization member directories paginate, filter and join profiles within the current membership", async t => {
+  const {compareMemberDirectory} = await import("./organization-directory.mjs");
+  await compareMemberDirectory(t, {reference, goFixture, instrument});
+});

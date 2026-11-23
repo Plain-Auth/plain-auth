@@ -13,6 +13,9 @@ type ActiveMember struct {
 	User MemberUser `json:"user"`
 }
 
+// MemberWithUser pairs an organization membership with its public account profile.
+type MemberWithUser = ActiveMember
+
 // ActiveMemberStore resolves the live session selection, its membership and user
 // together. A session without a selection returns ErrNoActiveOrg. A selection
 // without a corresponding membership returns ErrMemberMissing.

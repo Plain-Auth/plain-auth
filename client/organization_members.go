@@ -4,9 +4,36 @@ import (
 	"context"
 	"net/http"
 	"net/url"
+	"strconv"
 
 	org "github.com/Plain-Auth/plain-auth/plugins/organization"
 )
+
+// ListOrganizationMembers returns a filtered page and its full matching count.
+func (c *Client) ListOrganizationMembers(ctx context.Context, q org.MemberListQuery) (*org.MemberPage, error) {
+	params := url.Values{}
+	for k, v := range map[string]string{"organizationId": q.OrganizationID, "organizationSlug": q.OrganizationSlug, "sortBy": q.SortBy, "sortDirection": q.SortDirection, "filterField": q.FilterField, "filterOperator": q.FilterOperator} {
+		if v != "" {
+			params.Set(k, v)
+		}
+	}
+	if q.Limit != 0 {
+		params.Set("limit", strconv.Itoa(q.Limit))
+	}
+	if q.Offset != 0 {
+		params.Set("offset", strconv.Itoa(q.Offset))
+	}
+	params["filterValue"] = q.FilterValues
+	path := "/organization/list-members"
+	if query := params.Encode(); query != "" {
+		path += "?" + query
+	}
+	var out org.MemberPage
+	if err := c.Do(ctx, http.MethodGet, path, nil, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
 
 // OrganizationMemberRole reads the role of a user in a shared organization.
 // An empty query reads the caller's role in the current session selection.

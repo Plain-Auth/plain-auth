@@ -150,6 +150,11 @@ func TestOrganizationAndTeamSelectionHTTP(t *testing.T) {
 			session(two, second, "")
 			sdk, err := client.New(origin, two)
 			must(err)
+			page, err := sdk.ListOrganizationMembers(ctx, org.MemberListQuery{OrganizationSlug: "a-group", Limit: 1, SortBy: "userId", FilterField: "role", FilterOperator: "in", FilterValues: []string{"", "owner"}})
+			must(err)
+			if page.Total != 1 || len(page.Members) != 1 || page.Members[0].OrganizationID != first || page.Members[0].User.Email != login["email"] {
+				t.Fatal("Go directory client lost its filter or tenant selection", page)
+			}
 			active, err := sdk.ActiveOrganizationMember(ctx)
 			must(err)
 			if active.OrganizationID != second || active.ID == "" || active.Role != "owner" || active.UserID != active.User.ID || active.User.Email != login["email"] || active.CreatedAt.IsZero() {

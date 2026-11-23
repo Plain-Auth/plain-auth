@@ -35,6 +35,7 @@ The application provides `sendInvitation`, its configured public `origin` and it
 | --- | --- | --- |
 | POST | `/organization/create` | Create an organization with `name` and `slug` and select it on the creator's session |
 | GET | `/organization/list` | List the current user's organizations |
+| GET | `/organization/list-members` | List public member profiles and a filtered total for an organization you belong to. |
 | GET | `/organization/get-organization` | Read by `organizationId`, `organizationSlug` or active selection |
 | GET | `/organization/get-active-member` | Read your membership, role and public profile in this session's active organization. Requires a signed-in session. |
 | GET | `/organization/get-active-member-role` | Read a user's role in an organization you both belong to. Omit all query parameters for your own role in the active organization. |
@@ -84,6 +85,40 @@ Read `GET /get-session` under the auth mount for the active organization and tea
 Applications acting as an OAuth issuer can also configure a host-owned page for organization or team selection during authorization. A signed OAuth request can then return a protocol redirect or a JSON destination. [Post-login authorization](oauth-authorization-code.md#select-an-organization-or-team-after-login)
 
 If you generate a client from OpenAPI, the ordinary response is a nullable `Organization` or `Team`. A host that enables signed post-login selection also exposes the optional `oauth_query` input, a JSON result with `redirect` and `url`, and an HTTP 302 response for navigation. [OpenAPI reference](openapi.md) · [Configured schema tests](../plugins/openapi/organization_selection_test.go)
+
+## List organization members
+
+Send `GET /organization/list-members` with a session cookie. Any member can read the directory. It uses the active organization by default. Pass `organizationId` or `organizationSlug` to read another organization you belong to. A nonempty slug takes precedence. This request preserves the session's organization and team selections.
+
+```sh
+curl --fail-with-body -b cookies.txt --get \
+  https://app.example.com/api/auth/organization/list-members \
+  --data-urlencode 'organizationSlug=studio' \
+  --data-urlencode 'filterField=role' --data-urlencode 'filterOperator=in' \
+  --data-urlencode 'filterValue=owner' --data-urlencode 'filterValue=admin' \
+  --data-urlencode 'sortBy=createdAt' --data-urlencode 'sortDirection=desc' \
+  --data-urlencode 'limit=20'
+```
+
+The response contains `members` and `total`. Each member has `id`, `organizationId`, `userId`, `role`, `createdAt` and a `user` object with `id`, `name`, `email` and nullable `image`. The total counts all matching memberships before pagination. A page beyond the last result returns an empty array and the same filtered total.
+
+| Query parameter | Behavior |
+| --- | --- |
+| `limit`, `offset` | Use nonnegative integers. The default page contains up to 100 memberships and starts at offset 0. A zero limit uses the default. Larger explicit pages can include every matching member. |
+| `sortBy`, `sortDirection` | Sort by `id`, `organizationId`, `userId`, `role` or `createdAt`. Choose `asc` (default) or `desc`. The SQL adapters use the membership ID to break ties. |
+| `filterField`, `filterValue` | Use one of the same five membership fields. Supply timestamps as RFC 3339 or a date as `YYYY-MM-DD` for date comparisons. |
+| `filterOperator` | Defaults to `eq`. Comparisons also support `ne`, `lt`, `lte`, `gt` and `gte`. Repeat `filterValue` for `in` and `not_in`. The pattern operators `contains`, `starts_with` and `ends_with` support the SQL wildcards `%` and `_`. |
+
+```go
+page, err := authClient.ListOrganizationMembers(ctx, organization.MemberListQuery{
+    OrganizationSlug: "studio",
+    SortBy: "createdAt", SortDirection: "desc",
+    FilterField: "role", FilterOperator: "in", FilterValues: []string{"owner", "admin"},
+    Limit: 20,
+})
+```
+
+An unsigned request receives HTTP 401. A session with no active organization needs an explicit selector. An unknown slug returns HTTP 400 with `ORGANIZATION_NOT_FOUND`. A caller without membership receives HTTP 403, including when a filter would match zero members. [Client comparison](../conformance/organization-directory.mjs) · [Database snapshot tests](../adapters/sqlstore/organization_directory_test.go)
 
 ## Update an organization's profile
 

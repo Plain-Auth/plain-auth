@@ -13,7 +13,7 @@ var _ op.UserInfoStore = (*Store)(nil)
 
 // LookupOAuthUserInfo reads authorization, subject and profile in one snapshot.
 func (s *Store) LookupOAuthUserInfo(ctx context.Context, query op.UserInfoLookup) (*op.UserInfoRecord, error) {
-	tx, err := s.beginIntrospectionSnapshot(ctx)
+	tx, err := s.beginReadSnapshot(ctx)
 	if err != nil {
 		return nil, err
 	}

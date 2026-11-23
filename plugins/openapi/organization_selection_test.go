@@ -78,6 +78,13 @@ func TestOrganizationSelectionSchema(t *testing.T) {
 				t.Fatal("unexpected public member user fields", user)
 			}
 			lookup := node(paths, "/organization/get-active-member-role", "get")
+			directory := node(paths, "/organization/list-members", "get")
+			queries, _ := directory["parameters"].([]any)
+			page := node(directory, "responses", "200", "content", "application/json", "schema", "properties")
+			row, _ := node(page, "members", "items")["allOf"].([]any)
+			if len(queries) != 9 || node(page, "total")["type"] != "integer" || len(row) != 2 || row[0].(obj)["$ref"] != "#/components/schemas/Member" {
+				t.Fatal("missing directory queries or paginated member response")
+			}
 			params, _ := lookup["parameters"].([]any)
 			role := node(lookup, "responses", "200", "content", "application/json", "schema", "properties", "role")
 			if len(params) != 3 || role["type"] != "string" {

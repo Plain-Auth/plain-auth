@@ -45,6 +45,11 @@ func (s *Store) ActiveOrganizationMember(ctx context.Context, sessionID, userID 
 // OrganizationMemberRole resolves the requested tenant and both memberships in
 // one statement so concurrent membership or session changes cannot cross tenants.
 func (s *Store) OrganizationMemberRole(ctx context.Context, sessionID, actorID string, query org.MemberRoleQuery) (string, error) {
+	_, role, err := s.organizationRole(ctx, s.db, sessionID, actorID, query)
+	return role, err
+}
+
+func (s *Store) organizationRole(ctx context.Context, db rowQuerier, sessionID, actorID string, query org.MemberRoleQuery) (string, string, error) {
 	exact := s.exactSQLValue
 	scope := `ss."activeOrganizationId"`
 	var args []any
@@ -67,20 +72,20 @@ func (s *Store) OrganizationMemberRole(ctx context.Context, sessionID, actorID s
 		LEFT JOIN "member" member_role ON member_role."organizationId"=` + exact(`actor."organizationId"`) + ` AND member_role."userId"=` + exact("?")
 	args = append(args, sessionID, actorID, s.date(time.Now()), target)
 	var organization, role sql.NullString
-	err := s.db.QueryRowContext(ctx, s.bind(statement), args...).Scan(&organization, &role)
+	err := db.QueryRowContext(ctx, s.bind(statement), args...).Scan(&organization, &role)
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
-		return "", org.ErrUnauthenticated
+		return "", "", org.ErrUnauthenticated
 	case err != nil:
-		return "", err
+		return "", "", err
 	case organization.String == "" && query.OrganizationSlug != "":
-		return "", org.ErrNotFound
+		return "", "", org.ErrNotFound
 	case organization.String == "":
-		return "", org.ErrNoActiveOrg
+		return "", "", org.ErrNoActiveOrg
 	case !role.Valid:
-		return "", org.ErrRoleReadDenied
+		return "", "", org.ErrRoleReadDenied
 	default:
-		return role.String, nil
+		return organization.String, role.String, nil
 	}
 }
 

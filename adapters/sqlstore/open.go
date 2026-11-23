@@ -179,6 +179,15 @@ func openMySQL(dsn string) (*sql.DB, error) {
 	return sql.OpenDB(connector), nil
 }
 
+// beginReadSnapshot keeps related queries on the same committed database state.
+func (s *Store) beginReadSnapshot(ctx context.Context) (*sql.Tx, error) {
+	var options *sql.TxOptions
+	if s.dialect != "sqlite" {
+		options = &sql.TxOptions{Isolation: sql.LevelRepeatableRead, ReadOnly: true}
+	}
+	return s.db.BeginTx(ctx, options)
+}
+
 // bind translates the positional placeholders in the store's built-in queries.
 func (s *Store) bind(query string) string {
 	if s.dialect == "mysql" {

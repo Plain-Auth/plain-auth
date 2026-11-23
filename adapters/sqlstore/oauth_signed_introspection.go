@@ -13,7 +13,7 @@ import (
 var _ op.SignedAccessIntrospectionStore = (*Store)(nil)
 
 func (s *Store) InspectSignedAccessGrant(ctx context.Context, callerID, userInfoURL string, grant op.SignedAccessGrant) (op.MachineClient, *op.SignedGrantClient, error) {
-	tx, err := s.beginIntrospectionSnapshot(ctx)
+	tx, err := s.beginReadSnapshot(ctx)
 	if err != nil {
 		return op.MachineClient{}, nil, err
 	}

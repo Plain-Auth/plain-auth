@@ -90,33 +90,41 @@ type handler func(authn.EndpointContext, *authn.SessionResult) (any, error)
 
 func (o Options) endpoint(method, action string, fn handler) authn.Endpoint {
 	return authn.Endpoint{Method: method, Path: "/organization/" + action, Handler: func(c authn.EndpointContext) (any, error) {
-		s, err := c.Auth.GetSession(c.Request.Context(), c.Request.Header)
+		s, err := endpointSession(c, method, action)
 		if err != nil {
 			return nil, err
 		}
-		if s == nil {
-			return nil, ErrUnauthenticated
-		}
-		if s.Session.IsApplicationCredential() {
-			allowed := false
-			switch action {
-			case "invite-member":
-				allowed = s.Session.AllowsCredentialAction("invitation", "create")
-			case "list", "get-organization":
-				allowed = s.Session.AllowsCredentialAction("organization", "read")
-			}
-			if !allowed {
-				return nil, &authn.APIError{Status: 403, Code: "INSUFFICIENT_API_KEY_PERMISSIONS", Message: "Credential cannot perform this organization action"}
-			}
-			return fn(c, s)
-		}
-		if method != http.MethodGet && action != "set-active" && action != "set-active-team" {
-			if err := s.Session.RequireOwner(); err != nil {
-				return nil, err
-			}
-		}
 		return fn(c, s)
 	}}
+}
+
+func endpointSession(c authn.EndpointContext, method, action string) (*authn.SessionResult, error) {
+	s, err := c.Auth.GetSession(c.Request.Context(), c.Request.Header)
+	if err != nil {
+		return nil, err
+	}
+	if s == nil {
+		return nil, ErrUnauthenticated
+	}
+	if s.Session.IsApplicationCredential() {
+		allowed := false
+		switch action {
+		case "invite-member":
+			allowed = s.Session.AllowsCredentialAction("invitation", "create")
+		case "list", "get-organization":
+			allowed = s.Session.AllowsCredentialAction("organization", "read")
+		}
+		if !allowed {
+			return nil, &authn.APIError{Status: 403, Code: "INSUFFICIENT_API_KEY_PERMISSIONS", Message: "Credential cannot perform this organization action"}
+		}
+		return s, nil
+	}
+	if method != http.MethodGet && action != "set-active" && action != "set-active-team" {
+		if err := s.Session.RequireOwner(); err != nil {
+			return nil, err
+		}
+	}
+	return s, nil
 }
 
 // New enables the default owner, admin and member role workflows.
@@ -178,6 +186,9 @@ func (service *Service) Plugin() authn.Plugin {
 	}
 	if _, ok := o.Store.(MemberRoleStore); ok {
 		plugin.Endpoints = append(plugin.Endpoints, service.memberRoleEndpoint())
+	}
+	if store, ok := o.Store.(MemberDirectoryStore); ok {
+		plugin.Endpoints = append(plugin.Endpoints, o.memberDirectoryEndpoint(store))
 	}
 	if store, ok := o.Store.(MemberRoleReader); ok {
 		plugin.Endpoints = append(plugin.Endpoints, o.readMemberRoleEndpoint(store))

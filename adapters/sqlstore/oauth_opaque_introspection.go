@@ -15,7 +15,7 @@ import (
 var _ op.OpaqueAccessIntrospectionStore = (*Store)(nil)
 
 func (s *Store) InspectOpaqueAccessToken(ctx context.Context, callerID, digest, userInfoURL string) (op.MachineClient, *op.OpaqueAccessTokenRecord, bool, error) {
-	tx, err := s.beginIntrospectionSnapshot(ctx)
+	tx, err := s.beginReadSnapshot(ctx)
 	if err != nil {
 		return op.MachineClient{}, nil, false, err
 	}
@@ -29,14 +29,6 @@ func (s *Store) InspectOpaqueAccessToken(ctx context.Context, callerID, digest, 
 		return current, nil, known, err
 	}
 	return current, record, known, tx.Commit()
-}
-
-func (s *Store) beginIntrospectionSnapshot(ctx context.Context) (*sql.Tx, error) {
-	var options *sql.TxOptions
-	if s.dialect != "sqlite" {
-		options = &sql.TxOptions{Isolation: sql.LevelRepeatableRead, ReadOnly: true}
-	}
-	return s.db.BeginTx(ctx, options)
 }
 
 func (s *Store) readOpaqueGrant(ctx context.Context, tx *sql.Tx, callerID *string, digest, userInfoURL string) (*op.OpaqueAccessTokenRecord, bool, error) {

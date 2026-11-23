@@ -172,8 +172,12 @@ func publicResponse(route plainauth.HTTPRoute, info plainauth.HTTPDescription, f
 		return object{"anyOf": shapes}
 	case "/organization/update-member-role":
 		return modelRef("Member")
-	case "/organization/get-active-member":
-		return object{"allOf": []object{modelRef("Member"), responseObject(object{"user": modelSchema(reflect.TypeFor[organization.MemberUser]())}, "user")}}
+	case "/organization/get-active-member", "/organization/list-members":
+		member := object{"allOf": []object{modelRef("Member"), responseObject(object{"user": modelSchema(reflect.TypeFor[organization.MemberUser]())}, "user")}}
+		if route.Path == "/organization/list-members" {
+			return responseObject(object{"members": array(member), "total": object{"type": "integer"}}, "members", "total")
+		}
+		return member
 	case "/organization/get-active-member-role":
 		return responseObject(object{"role": object{"type": "string"}}, "role")
 	case "/organization/create-team", "/organization/update-team":

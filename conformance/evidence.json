@@ -14050,5 +14050,117 @@
       "test": "conformance/organization-role.mjs",
       "marker": "deny(unauthenticatedDuplicate, 400, \"VALIDATION_ERROR\")"
     }
+  ],
+  "plugin/organization/GET /organization/list-members": [
+    {
+      "label": "Return public user profiles and membership fields exclusively for a shared organization, including pages larger than 100",
+      "test": "conformance/organization-directory.mjs",
+      "marker": "assert.equal(page.members.length, Math.min(limit || 100, 106))"
+    },
+    {
+      "label": "Use the same committed snapshot for permissions, the filtered count and member rows on three SQL engines",
+      "test": "adapters/sqlstore/organization_directory_test.go",
+      "marker": "directory mixed count and profiles from different snapshots"
+    },
+    {
+      "label": "Reject a removed caller and deny access to totals even on an empty page",
+      "test": "conformance/organization-directory.mjs",
+      "marker": "denied(await list(guest, {organizationId:group.id, offset:500})"
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1078": [
+    {
+      "label": "Return public user profiles and membership fields exclusively for a shared organization, including pages larger than 100",
+      "test": "conformance/organization-directory.mjs",
+      "marker": "assert.equal(page.members.length, Math.min(limit || 100, 106))"
+    },
+    {
+      "label": "Use the same committed snapshot for permissions, the filtered count and member rows on three SQL engines",
+      "test": "adapters/sqlstore/organization_directory_test.go",
+      "marker": "directory mixed count and profiles from different snapshots"
+    },
+    {
+      "label": "Reject a removed caller and deny access to totals even on an empty page",
+      "test": "conformance/organization-directory.mjs",
+      "marker": "denied(await list(guest, {organizationId:group.id, offset:500})"
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1082/`GET /organization/list-members`": [
+    {
+      "label": "Return public user profiles and membership fields exclusively for a shared organization, including pages larger than 100",
+      "test": "conformance/organization-directory.mjs",
+      "marker": "assert.equal(page.members.length, Math.min(limit || 100, 106))"
+    },
+    {
+      "label": "Use the same committed snapshot for permissions, the filtered count and member rows on three SQL engines",
+      "test": "adapters/sqlstore/organization_directory_test.go",
+      "marker": "directory mixed count and profiles from different snapshots"
+    },
+    {
+      "label": "Reject a removed caller and deny access to totals even on an empty page",
+      "test": "conformance/organization-directory.mjs",
+      "marker": "denied(await list(guest, {organizationId:group.id, offset:500})"
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1088/Parameter `organizationId` (optional)": [
+    {
+      "label": "Select a shared tenant by ID or slug ahead of the active session and preserve the selection",
+      "test": "conformance/organization-directory.mjs",
+      "marker": "organizationId: other.id, organizationSlug: group.slug",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1092/Parameter `limit` (optional)": [
+    {
+      "label": "Use the default page for zero and return every joined profile on larger pages",
+      "test": "conformance/organization-directory.mjs",
+      "marker": "assert.equal(page.members.length, Math.min(limit || 100, 106))"
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1096/Parameter `offset` (optional)": [
+    {
+      "label": "Skip rows in sort order and preserve the filtered total beyond the last page",
+      "test": "conformance/organization-directory.mjs",
+      "marker": "assert.deepEqual(ok(await list(member, {offset: 90}))",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1100/Parameter `sortBy` (optional)": [
+    {
+      "label": "Sort returned memberships by their public membership fields",
+      "test": "conformance/organization-directory.mjs",
+      "marker": "organizationId: other.id, organizationSlug: group.slug, sortBy: \"role\""
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1104/Parameter `sortDirection` (optional)": [
+    {
+      "label": "Provide ascending and descending orders and validate the direction before authentication",
+      "test": "conformance/organization-directory.mjs",
+      "marker": "assert.deepEqual(core.members.map(m => m.role)",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1108/Parameter `filterField` (optional)": [
+    {
+      "label": "Filter stored membership fields, join dates and tenant IDs inside the caller's scope",
+      "test": "conformance/organization-directory.mjs",
+      "marker": "filterField:\"organizationId\", filterValue:other.id"
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1112/Parameter `filterOperator` (optional)": [
+    {
+      "label": "Apply all eleven comparison, set and pattern operators to memberships and counts",
+      "test": "conformance/organization-directory.mjs",
+      "marker": "assert.deepEqual(page.members.map(m => m.role), wanted, filterOperator)",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1116/Parameter `filterValue` (optional)": [
+    {
+      "label": "Support repeated filter values and date comparisons through the released client",
+      "test": "conformance/organization-directory.mjs",
+      "marker": "[\"in\",[\"member\",\"owner\"]",
+      "complete": true
+    }
   ]
 }
