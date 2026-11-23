@@ -211,6 +211,11 @@ func TestOrganizationAndTeamSelectionHTTP(t *testing.T) {
 			if detail.ID != issued.ID || detail.OrganizationID != second || detail.InviterEmail != login["email"] || detail.OrganizationSlug != "b-group" {
 				t.Fatal("Go client lost invitation details", detail)
 			}
+			declined, err := guestSDK.RejectOrganizationInvitation(ctx, issued.ID)
+			must(err)
+			if declined.ID != issued.ID || declined.Status != "rejected" || declined.OrganizationID != second {
+				t.Fatal("Go client lost the rejected invitation", declined)
+			}
 			var forbidden struct{ Code string }
 			must(json.Unmarshal(send(outsider, "GET", "organization/get-active-member-role?organizationId="+second+"&userId="+active.UserID, nil, 403), &forbidden))
 			if forbidden.Code != org.ErrRoleReadDenied.Code {

@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	auth "github.com/Plain-Auth/plain-auth"
 	org "github.com/Plain-Auth/plain-auth/plugins/organization"
 )
 
@@ -182,4 +183,85 @@ func (s *Store) OrganizationInvitation(ctx context.Context, sessionID, userID, i
 		return nil, err
 	}
 	return view, nil
+}
+
+// All invitation decisions serialize with grants and membership changes in the same organization.
+func (s *Store) lockInvitation(ctx context.Context, tx *sql.Tx, id string) (org.Invitation, error) {
+	var organizationID string
+	exact := s.exactSQLValue("?")
+	err := tx.QueryRowContext(ctx, s.bind(`SELECT "organizationId" FROM "invitation" WHERE "id"=`+exact), id).Scan(&organizationID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return org.Invitation{}, org.ErrInvitation
+	}
+	if err != nil {
+		return org.Invitation{}, err
+	}
+	if err = s.lockOrganization(ctx, tx, organizationID); err != nil {
+		return org.Invitation{}, err
+	}
+	teamField, err := s.organizationTeamField(ctx, tx, "invitation", "teamId")
+	if err != nil {
+		return org.Invitation{}, err
+	}
+	inv, err := scanInvitation(tx.QueryRowContext(ctx, s.bind(`SELECT `+invitationColumns(teamField)+` FROM "invitation" WHERE "id"=`+exact+` AND "organizationId"=`+exact), id, organizationID), teamField)
+	if errors.Is(err, sql.ErrNoRows) {
+		return org.Invitation{}, org.ErrInvitation
+	}
+	if err != nil {
+		return org.Invitation{}, err
+	}
+	return inv, nil
+}
+
+// RejectOrganizationInvitation changes only a pending invitation's status. Expiry
+// limits admission and does not prevent the recipient from declining it.
+func (s *Store) RejectOrganizationInvitation(ctx context.Context, actor auth.Session, id string, requireVerified bool) (*org.Invitation, error) {
+	if err := actor.RequireOwner(); err != nil {
+		return nil, err
+	}
+	tx, err := s.beginMembershipChange(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+	if err = s.lockActiveAccount(ctx, tx, actor.UserID, actor.Token, time.Now()); err != nil {
+		if errors.Is(err, auth.ErrNotFound) {
+			return nil, org.ErrUnauthenticated
+		}
+		return nil, err
+	}
+	inv, err := s.lockInvitation(ctx, tx, id)
+	if err != nil {
+		return nil, err
+	}
+	account, err := s.organizationSessionAccount(ctx, tx, actor)
+	if err != nil {
+		return nil, err
+	}
+	if inv.Status != "pending" {
+		return nil, org.ErrInvitation
+	}
+	if strings.ToLower(inv.Email) != strings.ToLower(account.user.Email) {
+		return nil, org.ErrRecipient
+	}
+	if requireVerified && !account.user.EmailVerified {
+		return nil, org.ErrUnverified
+	}
+	value := s.exactSQLValue("?")
+	result, err := tx.ExecContext(ctx, s.bind(`UPDATE "invitation" SET "status"='rejected' WHERE "id"=`+value+` AND "organizationId"=`+value+` AND "status"='pending'`), inv.ID, inv.OrganizationID)
+	if err != nil {
+		return nil, err
+	}
+	changed, err := result.RowsAffected()
+	if err != nil {
+		return nil, err
+	}
+	if changed != 1 {
+		return nil, org.ErrInvitation
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+	inv.Status = "rejected"
+	return &inv, nil
 }

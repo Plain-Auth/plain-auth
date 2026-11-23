@@ -134,3 +134,14 @@ func (c *Client) OrganizationInvitation(ctx context.Context, invitationID string
 	}
 	return &view, nil
 }
+
+// RejectOrganizationInvitation declines a pending invitation for the signed-in recipient.
+func (c *Client) RejectOrganizationInvitation(ctx context.Context, invitationID string) (*org.Invitation, error) {
+	var out struct {
+		Invitation org.Invitation `json:"invitation"`
+	}
+	if err := c.Do(ctx, http.MethodPost, "/organization/reject-invitation", map[string]string{"invitationId": invitationID}, &out); err != nil {
+		return nil, err
+	}
+	return &out.Invitation, nil
+}

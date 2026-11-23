@@ -1917,3 +1917,8 @@ test("invitation details resolve the current inviter and enforce recipient verif
   const { compareInvitationDetails } = await import("./organization-invitations.mjs");
   await compareInvitationDetails(t, { reference, goFixture, instrument });
 });
+
+test("invitation recipients decline pending grants and preserve their session selections", async t => {
+  const { compareInvitationRejection } = await import("./organization-invitations.mjs");
+  await compareInvitationRejection(t, { reference, goFixture, instrument });
+});

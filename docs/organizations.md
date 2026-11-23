@@ -45,6 +45,7 @@ The application provides `sendInvitation`, its configured public `origin` and it
 | GET | `/organization/list-user-invitations` | Read pending invitations for the signed-in account’s verified email across organizations |
 | GET | `/organization/list-invitations` | List invitations visible to an owner or admin in the named or active organization |
 | POST | `/organization/invite-member` | Invite by email and role, using an explicit organization ID or the active selection |
+| POST | `/organization/reject-invitation` | Decline a pending invitation as its recipient. |
 | POST | `/organization/accept-invitation` | Accept by invitation ID, create the membership, and select the organization |
 | POST | `/organization/remove-member` | Remove by membership ID or email. Omit `organizationId` to use the active organization. |
 | POST | `/organization/check-slug` | Check whether a slug is available to register. Requires a signed-in user. |
@@ -231,6 +232,21 @@ The JSON response is an array. Each entry includes the invitation ID, organizati
 The database reads up to 100 invitations in creation order, using the ID to break ties. Owners can see the whole page. Admins see only invitations whose roles exclude `owner`. Ordinary members receive HTTP 403 with `YOU_ARE_NOT_ALLOWED_TO_LIST_INVITATIONS`, including when the organization has no invitations. A missing selection returns HTTP 400. An unknown organization or one the caller does not belong to returns HTTP 403.
 
 In Go, call `authClient.ListOrganizationInvitations(ctx, organizationID)`, using an empty string for the active organization. To require recipients to verify their account email before accepting an invitation, set `RequireVerifiedEmail: true` in the organization options. [HTTP client comparison](../conformance/organization-invitations.mjs) · [Go client and session tests](../adapters/sqlstore/organization_selection_http_test.go)
+
+## Decline an invitation
+
+Send `POST /organization/reject-invitation` from the recipient’s signed-in session. Supply the invitation’s exact ID in a JSON body.
+
+```sh
+curl --fail-with-body -b cookies.txt \
+  -H 'Origin: https://app.example.com' -H 'Content-Type: application/json' \
+  --data '{"invitationId":"invite_123"}' \
+  https://app.example.com/api/auth/organization/reject-invitation
+```
+
+The response contains the invitation with `status: "rejected"` and `member: null`. The account keeps its current organization and team. A pending invitation can be declined after its expiry. If it has already been accepted, canceled or rejected, the request returns HTTP 400 with `INVITATION_NOT_FOUND`. A concurrent acceptance and rejection have one winner.
+
+The account’s current email must match the invitation address, ignoring case. Enable `RequireVerifiedEmail` to require verification as well. Go clients call `authClient.RejectOrganizationInvitation(ctx, invitationID)`. [HTTP comparison](../conformance/organization-invitations.mjs) · [Three-database concurrency test](../adapters/sqlstore/organization_decision_test.go)
 
 ## Read one invitation
 

@@ -201,3 +201,73 @@ export async function compareInvitationDetails(t, { reference, goFixture, instru
     }
   }
 }
+
+export async function compareInvitationRejection(t, { reference, goFixture, instrument }) {
+  for (const teams of [false, true]) {
+    const options = { requireEmailVerificationOnInvitation: teams, teams: { enabled: teams } };
+    const ref = await reference(t, [organization(options)]);
+    const go = await goFixture(t, [teams ? "organization-teams" : "organization"], { CONFORMANCE_VERIFY_INVITATION_EMAIL: teams ? "1" : "" });
+    for (const server of [ref, go]) {
+      const connect = () => instrument(server, [organizationClient(options)]).client;
+      const [owner, recipient, signedOut] = [connect(), connect(), connect()];
+      const ok = result => {
+        assert.equal(result.error, null, JSON.stringify(result.error));
+        return result.data;
+      };
+      const error = (result, status, code) => {
+        assert.equal(result.error?.status, status, JSON.stringify(result));
+        assert.equal(result.error.code, code);
+      };
+      const reject = (caller, invitationId) => caller.organization.rejectInvitation({ invitationId });
+      const email = "recipient@example.test";
+      const creds = { password: "invitation-rejection-password" };
+      error(await reject(signedOut, "none"), 401, "UNAUTHORIZED");
+      for (const invalid of [undefined, null, 123, ["id"], {}]) {
+        error(await reject(signedOut, invalid), 400, "VALIDATION_ERROR");
+      }
+      ok(await owner.signUp.email({ ...creds, name: "Owner", email: "owner@example.test" }));
+      ok(await recipient.signUp.email({ ...creds, name: "Recipient", email }));
+      const other = ok(await recipient.organization.create({ name: "Personal", slug: "personal" }));
+      const group = ok(await owner.organization.create({ name: "Studio", slug: "studio" }));
+      const invite = async teamId => ok(await owner.organization.inviteMember({ email, role: "admin", teamId }));
+      const team = teams && ok(await owner.organization.createTeam({ name: "Design", organizationId: group.id }));
+      if (teams) {
+        const personal = ok(await recipient.organization.listTeams({ query: { organizationId: other.id } }))[0];
+        ok(await recipient.organization.setActiveTeam({ teamId: personal.id }));
+      }
+      const selection = async () => {
+        const s = ok(await recipient.getSession()).session;
+        return [s.activeOrganizationId, s.activeTeamId ?? null];
+      };
+      const original = await selection();
+      const first = await invite(undefined);
+      const db = server.database ?? new DatabaseSync(server.databasePath);
+      try {
+        error(await reject(owner, first.id), 403, "YOU_ARE_NOT_THE_RECIPIENT_OF_THE_INVITATION");
+        error(await reject(recipient, ""), 400, "INVITATION_NOT_FOUND");
+        if (teams) {
+          error(await reject(recipient, first.id), 403, "EMAIL_VERIFICATION_REQUIRED_BEFORE_ACCEPTING_OR_REJECTING_INVITATION");
+          db.prepare('UPDATE "user" SET "emailVerified"=1 WHERE email=?').run(email);
+        }
+        db.prepare('UPDATE invitation SET email=?, expiresAt=? WHERE id=?').run(email.toUpperCase(), "2020-01-01T00:00:00Z", first.id);
+        const declined = ok(await reject(recipient, first.id));
+        assert.equal(declined.member, null);
+        assert.equal(declined.invitation.id, first.id);
+        assert.equal(declined.invitation.email, email.toUpperCase());
+        assert.equal(declined.invitation.status, "rejected");
+        assert.equal("teamId" in declined.invitation, teams);
+        if (teams) {
+          assert.equal(declined.invitation.teamId, null);
+          const targeted = await invite(team.id);
+          assert.equal(ok(await reject(recipient, targeted.id)).invitation.teamId, team.id);
+        }
+        error(await reject(recipient, first.id), 400, "INVITATION_NOT_FOUND");
+        error(await recipient.organization.acceptInvitation({ invitationId: first.id }), 400, "INVITATION_NOT_FOUND");
+        assert.deepEqual(await selection(), original);
+        assert.equal(db.prepare("SELECT COUNT(*) AS n FROM member WHERE organizationId=?").get(group.id).n, 1);
+      } finally {
+        if (!server.database) db.close();
+      }
+    }
+  }
+}

@@ -40,9 +40,11 @@ func (s *Store) prepareOrganizationProfile(ctx context.Context, actor auth.Sessi
 		return scope, err
 	}
 	scope = org.ProfileScope{RequestedID: requestedID, OrganizationID: row.ID, OrganizationCreatedAt: row.CreatedAt, Member: member}
-	if err = s.profileScopeAccount(ctx, tx, actor, &scope); err != nil {
+	account, err := s.organizationSessionAccount(ctx, tx, actor)
+	if err != nil {
 		return org.ProfileScope{}, err
 	}
+	scope.SessionID, scope.SessionCreatedAt, scope.User = account.id, account.createdAt, account.user
 	if slug != nil {
 		var occupied bool
 		err := tx.QueryRowContext(ctx, s.bind(`SELECT EXISTS(SELECT 1 FROM "organization" WHERE "slug"=? AND "id"<>`+s.exactSQLValue("?")+`)`), *slug, row.ID).Scan(&occupied)
@@ -56,14 +58,21 @@ func (s *Store) prepareOrganizationProfile(ctx context.Context, actor auth.Sessi
 	return scope, tx.Commit()
 }
 
-// Query the exact canonical account and session after any waits for the tenant lock.
-func (s *Store) profileScopeAccount(ctx context.Context, tx *sql.Tx, actor auth.Session, scope *org.ProfileScope) error {
+// Read the live session again after any wait for the organization lock.
+func (s *Store) organizationSessionAccount(ctx context.Context, tx *sql.Tx, actor auth.Session) (orgSessionAccount, error) {
+	var account orgSessionAccount
 	q := `SELECT ss."id",ss."createdAt",` + userColumns + ` FROM "session" ss JOIN "user" u ON u."id"=ss."userId" WHERE ss."token"=` + s.exactSQLValue("?") + ` AND ss."expiresAt">?`
-	err := tx.QueryRowContext(ctx, s.bind(q), actor.Token, s.date(time.Now())).Scan(append([]any{&scope.SessionID, &scope.SessionCreatedAt}, userFields(&scope.User)...)...)
-	if errors.Is(err, sql.ErrNoRows) || err == nil && (actor.ID != "" && scope.SessionID != actor.ID || scope.User.ID != actor.UserID) {
-		return org.ErrUnauthenticated
+	err := tx.QueryRowContext(ctx, s.bind(q), actor.Token, s.date(time.Now())).Scan(append([]any{&account.id, &account.createdAt}, userFields(&account.user)...)...)
+	if errors.Is(err, sql.ErrNoRows) || err == nil && (actor.ID != "" && account.id != actor.ID || account.user.ID != actor.UserID) {
+		return orgSessionAccount{}, org.ErrUnauthenticated
 	}
-	return err
+	return account, err
+}
+
+type orgSessionAccount struct {
+	id        string
+	createdAt time.Time
+	user      auth.User
 }
 
 func (s *Store) CommitOrganizationProfile(ctx context.Context, actor auth.Session, original org.ProfileScope, update org.ProfileUpdate) (*org.Organization, error) {
@@ -100,11 +109,11 @@ func (s *Store) commitOrganizationProfile(ctx context.Context, actor auth.Sessio
 	if member.ID != original.Member.ID || member.UserID != original.Member.UserID || member.OrganizationID != original.Member.OrganizationID || member.Role != original.Member.Role || !member.CreatedAt.Equal(original.Member.CreatedAt) {
 		return nil, org.ErrUpdateDenied
 	}
-	var current org.ProfileScope
-	if err = s.profileScopeAccount(ctx, tx, actor, &current); err != nil {
+	current, err := s.organizationSessionAccount(ctx, tx, actor)
+	if err != nil {
 		return nil, err
 	}
-	if current.SessionID != original.SessionID || !current.SessionCreatedAt.Equal(original.SessionCreatedAt) || !current.User.CreatedAt.Equal(original.User.CreatedAt) {
+	if current.id != original.SessionID || !current.createdAt.Equal(original.SessionCreatedAt) || !current.user.CreatedAt.Equal(original.User.CreatedAt) {
 		return nil, org.ErrUnauthenticated
 	}
 	if err = s.applyOrganizationProfile(ctx, tx, actor.UserID, actor.Token, row, update); err != nil {

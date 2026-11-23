@@ -194,6 +194,8 @@ func publicResponse(route plainauth.HTTPRoute, info plainauth.HTTPDescription, f
 		return array(modelRef("TeamMember"))
 	case "/token", "/one-time-token/generate":
 		return responseObject(object{"token": object{"type": "string"}}, "token")
+	case "/organization/reject-invitation":
+		return responseObject(object{"invitation": modelRef("Invitation"), "member": object{"type": "null"}}, "invitation", "member")
 	case "/organization/get-invitation":
 		return object{"allOf": []object{modelRef("Invitation"), responseObject(object{"organizationName": object{"type": "string"}, "organizationSlug": object{"type": "string"}, "inviterEmail": object{"type": "string", "format": "email"}}, "organizationName", "organizationSlug", "inviterEmail")}}
 	case "/organization/list-user-invitations":

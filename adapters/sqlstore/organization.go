@@ -358,29 +358,12 @@ func (s *Store) acceptOrganizationInvitation(ctx context.Context, id, sessionID 
 	if err != nil {
 		return org.Invitation{}, org.Member{}, err
 	}
-	var organizationID string
+	inv, err = s.lockInvitation(ctx, tx, id)
+	if err != nil {
+		return org.Invitation{}, org.Member{}, err
+	}
+	organizationID := inv.OrganizationID
 	exact := s.exactSQLValue("?")
-	err = tx.QueryRowContext(ctx, s.bind(`SELECT "organizationId" FROM "invitation" WHERE "id"=`+exact), id).Scan(&organizationID)
-	if errors.Is(err, sql.ErrNoRows) {
-		return org.Invitation{}, org.Member{}, org.ErrInvitation
-	}
-	if err != nil {
-		return org.Invitation{}, org.Member{}, err
-	}
-	if err = s.lockOrganization(ctx, tx, organizationID); err != nil {
-		return org.Invitation{}, org.Member{}, err
-	}
-	teamField, err := s.organizationTeamField(ctx, tx, "invitation", "teamId")
-	if err != nil {
-		return org.Invitation{}, org.Member{}, err
-	}
-	inv, err = scanInvitation(tx.QueryRowContext(ctx, s.bind(`SELECT `+invitationColumns(teamField)+` FROM "invitation" WHERE "id"=`+exact+` AND "organizationId"=`+exact), id, organizationID), teamField)
-	if errors.Is(err, sql.ErrNoRows) {
-		return org.Invitation{}, org.Member{}, org.ErrInvitation
-	}
-	if err != nil {
-		return org.Invitation{}, org.Member{}, err
-	}
 	if inv.Status != "pending" || !now.Before(inv.ExpiresAt) {
 		return org.Invitation{}, org.Member{}, org.ErrInvitation
 	}
