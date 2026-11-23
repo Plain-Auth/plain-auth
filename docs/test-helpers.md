@@ -97,7 +97,7 @@ if member.Role != "admin" {
 }
 ```
 
-`SaveOrganization` inserts the supplied ID, name, slug, logo, metadata and creation time. The new organization starts with zero members and teams. `AddMember` uses the normal trusted grant service. Omitting roles selects `member`; explicitly grant a supported role when testing administrative or owner actions. Supply `TeamID` to enroll the member in an existing team when teams are configured.
+`SaveOrganization` inserts the supplied ID, name, slug, logo, metadata and creation time. The new organization starts with zero members and teams. `AddMember` uses the trusted grant service and preserves application-defined role labels. Omitting the roles or supplying a single empty string selects `member`. A role grants the actions defined for it in the organization's permission policy. Supply `TeamID` to enroll the member in an existing team when teams are configured.
 
 `DeleteOrganization` is idempotent and runs in one database transaction. It removes local memberships, invitations, teams, team memberships and current selections, plus tenant-owned API keys, billing subscriptions and billing receipts. An account with the same reference ID retains its own credentials and subscriptions. The fixture returns an actionable error if a managed SSO provider still names the organization, or if an imported key or billing record has ambiguous ownership. Delete the provider using its management API or resolve the ambiguous local records before retrying. Custom plugin data, external key storage and remote provider resources require their own test teardown. Register cleanup before closing the fixture database. [SQL lifecycle and isolation tests](../adapters/sqlstore/organization_fixtures_test.go)
 

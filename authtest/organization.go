@@ -61,12 +61,12 @@ func (s *Server) SaveOrganization(ctx context.Context, o organization.Organizati
 	return s.organizationFixtures.SaveFixtureOrganization(ctx, o)
 }
 
-// AddMember grants a role to an existing account. An omitted role defaults to member.
+// AddMember grants roles to an existing account. An omitted or empty role defaults to member.
 func (s *Server) AddMember(ctx context.Context, request organization.AddMemberRequest) (*organization.Member, error) {
 	if s.organizations == nil {
 		return nil, errOrganizationSetup
 	}
-	if len(request.Roles) == 0 {
+	if len(request.Roles) == 0 || (len(request.Roles) == 1 && request.Roles[0] == "") {
 		request.Roles = []string{"member"}
 	}
 	return s.organizations.AddMember(ctx, request)

@@ -88,11 +88,11 @@ func TestOrganizationFixtureLifecycle(t *testing.T) {
 			if member.Role != "member" || member.ID == "" || member.UserID != u.ID || member.OrganizationID != saved.ID || member.CreatedAt.IsZero() {
 				t.Fatal("default member fixture", member)
 			}
-			if _, e = plain.AddMember(ctx, org.AddMemberRequest{UserID: second.ID, OrganizationID: saved.ID, Roles: []string{"unknown"}}); e == nil {
-				t.Fatal("fixture granted an unsupported role")
-			}
-			_, e = plain.AddMember(ctx, org.AddMemberRequest{UserID: u.ID, OrganizationID: neighbor.ID, Roles: []string{"owner"}})
+			labeled, e := plain.AddMember(ctx, org.AddMemberRequest{UserID: u.ID, OrganizationID: neighbor.ID, Roles: []string{"newsroom", "owner"}})
 			must(e)
+			if labeled.Role != "newsroom,owner" {
+				t.Fatal("fixture lost application role labels", labeled.Role)
+			}
 			for _, tc := range []struct{ id, team string }{{saved.ID, "team-target"}, {neighbor.ID, "team-keep"}} {
 				exec(`INSERT INTO "team" ("id","name","memberCount","organizationId","createdAt") VALUES (?,?,0,?,?)`, tc.team, tc.team, tc.id, store.date(now))
 				m, e := withTeams.AddMember(ctx, org.AddMemberRequest{UserID: second.ID, OrganizationID: tc.id, Roles: []string{"admin"}, TeamID: tc.team})
@@ -268,8 +268,12 @@ func TestOrganizationFixtureConfiguration(t *testing.T) {
 	if e = orgStore.SaveFixtureUser(ctx, separateUser); e != nil {
 		t.Fatal(e)
 	}
-	if _, e = with.AddMember(ctx, org.AddMemberRequest{UserID: separateUser.ID, OrganizationID: fixture.ID}); e != nil {
+	member, e := with.AddMember(ctx, org.AddMemberRequest{UserID: separateUser.ID, OrganizationID: fixture.ID, Roles: []string{""}})
+	if e != nil {
 		t.Fatal("member grant reached the wrong store", e)
+	}
+	if member.Role != "member" {
+		t.Fatal("empty fixture role did not default to member", member.Role)
 	}
 	if e = with.DeleteOrganization(ctx, fixture.ID); e != nil {
 		t.Fatal(e)
