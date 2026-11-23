@@ -309,7 +309,7 @@
         - [ ] `serverContext`
         - [ ] `[key: string]`
       - [ ] Passing Server-Trusted Data
-        - [x] Keep the signed issuer request in server-owned provider state and ignore client-supplied issuer context ([test](../../conformance/oauth-social-authorization.mjs#L82))
+        - [x] Keep the signed issuer request in server-owned provider state and ignore client-supplied issuer context ([test](../../conformance/oauth-social-authorization.mjs#L32))
   - [ ] Handling Providers Without Email
     - [ ] Apple
     - [ ] Discord

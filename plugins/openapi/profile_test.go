@@ -13,6 +13,7 @@ import (
 	"github.com/Plain-Auth/plain-auth/plugins/oauthprovider"
 	"github.com/Plain-Auth/plain-auth/plugins/openapi"
 	"github.com/Plain-Auth/plain-auth/plugins/organization"
+	"github.com/Plain-Auth/plain-auth/plugins/sso"
 	billing "github.com/Plain-Auth/plain-auth/plugins/stripe"
 	"github.com/Plain-Auth/plain-auth/providers"
 	"github.com/Plain-Auth/plain-auth/schema"
@@ -20,11 +21,15 @@ import (
 )
 
 func TestSocialIssuerCallbackSchema(t *testing.T) {
-	store, err := sqlstore.OpenWithOptions(t.Context(), "sqlite", filepath.Join(t.TempDir(), "issuer.db"), []string{"oauth-provider"}, schema.Options{})
+	store, err := sqlstore.OpenWithOptions(t.Context(), "sqlite", filepath.Join(t.TempDir(), "issuer.db"), []string{"oauth-provider", "sso"}, schema.Options{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { store.Close() })
+	enterprise, err := sso.New(sso.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
 	for _, page := range []string{"", "/login"} {
 		issuer, err := oauthprovider.New(oauthprovider.Options{Authorization: oauthprovider.BrowserAuthorizationOptions{LoginPage: page}})
 		if err != nil {
@@ -32,7 +37,7 @@ func TestSocialIssuerCallbackSchema(t *testing.T) {
 		}
 		host, err := auth.New(auth.Options{BaseURL: "https://issuer.example.test", Store: store, Secret: strings.Repeat("s", 40),
 			SocialProviders: map[string]auth.OAuthProvider{"github": providers.GitHub("fixture", "fixture")},
-			Plugins:         []auth.Plugin{issuer, oauthpopup.New()}})
+			Plugins:         []auth.Plugin{issuer, oauthpopup.New(), enterprise}})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -42,10 +47,19 @@ func TestSocialIssuerCallbackSchema(t *testing.T) {
 		}
 		enabled := page != ""
 		paths := node(spec, "paths")
-		for _, path := range []string{"/sign-in/social", "/link-social"} {
+		for _, path := range []string{"/sign-in/social", "/sign-in/sso", "/link-social"} {
 			fields := node(paths, path, "post", "requestBody", "content", "application/json", "schema", "properties")
-			if (fields["oauth_query"] != nil) != (enabled && path == "/sign-in/social") {
+			if (fields["oauth_query"] != nil) != (enabled && path != "/link-social") {
 				t.Fatalf("incorrect signed query on %s with login page %q", path, page)
+			}
+		}
+		for _, path := range []string{"/sso/callback", "/sso/callback/{providerId}"} {
+			replies := node(paths, path, "get", "responses")
+			if replies["302"] == nil || (replies["200"] != nil) != enabled {
+				t.Fatalf("incorrect OIDC callback responses on %s with login page %q", path, page)
+			}
+			if enabled && node(replies, "200", "content", "application/json", "schema", "properties", "url")["type"] != "string" {
+				t.Fatalf("missing OIDC issuer destination on %s", path)
 			}
 		}
 		reply := node(paths, "/callback/{id}", "get", "responses")

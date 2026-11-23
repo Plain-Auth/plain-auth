@@ -134,6 +134,9 @@ func (a *Auth) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	priorCookies := len(w.Header().Values("Set-Cookie"))
 	var result any
 	if pluginRoute {
+		if route == "/sign-in/sso" && continuation != nil {
+			r = withEnterpriseIssuerLogin(r, a, body["oauth_query"].(string), continuation)
+		}
 		result, err = ep.Handler(EndpointContext{Auth: a, Request: r, Body: body, ResponseHeader: w.Header()})
 	} else {
 		result, err = a.handleCoreRequest(route, w, r, body, ip)
@@ -142,6 +145,11 @@ func (a *Auth) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		a.writeAuthError(w, r, err)
 		return
 	}
+	// A provider callback can restore a login from its consumed server-side flow.
+	restored, fromProvider := result.(enterpriseIssuerLogin)
+	if fromProvider {
+		continuation = restored.resume
+	}
 	if continuation != nil {
 		done, err := a.resumeIssuedOAuthLogin(w, r, continuation, priorCookies)
 		if err != nil {
@@ -149,6 +157,10 @@ func (a *Auth) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if done {
+			return
+		}
+		if fromProvider {
+			a.writeAuthError(w, r, &OAuthError{Status: 401, Code: "unauthorized", Description: "a new browser session is required"})
 			return
 		}
 	}

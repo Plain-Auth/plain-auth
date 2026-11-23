@@ -26,6 +26,7 @@ import (
 
 	auth "github.com/Plain-Auth/plain-auth"
 	"github.com/Plain-Auth/plain-auth/client"
+	"github.com/Plain-Auth/plain-auth/plugins/oauthprovider"
 	"github.com/Plain-Auth/plain-auth/plugins/sso"
 	"github.com/Plain-Auth/plain-auth/schema"
 	"github.com/beevik/etree"
@@ -84,7 +85,7 @@ func runEnterpriseSAMLBrowser(t *testing.T, encrypted, logout bool) {
 				}
 			}
 			dsn := organizationTestDSN(t, dialect)
-			ddl, e := schema.Generate(dialect, []string{"sso-domain-verification", "organization"})
+			ddl, e := schema.Generate(dialect, []string{"sso-domain-verification", "organization", "oauth-provider"})
 			must(e)
 			first, e := OpenWithSchema(ctx, dialect, dsn, ddl)
 			must(e)
@@ -110,10 +111,12 @@ func runEnterpriseSAMLBrowser(t *testing.T, encrypted, logout bool) {
 				expected := reviewed.Load()
 				return expected != nil && *expected == d, nil
 			}
+			issuer, e := oauthprovider.New(oauthprovider.Options{Scopes: []string{"read"}, Authorization: oauthprovider.BrowserAuthorizationOptions{LoginPage: "/login"}})
+			must(e)
 			host := func(s *Store, encryption *sso.SAMLEncryption, policy sso.SAMLDirectoryPolicy, disableSignup bool) *auth.Auth {
 				plug, e := sso.New(sso.Options{DisableImplicitSignUp: disableSignup, SAML: &sso.SAMLOptions{EnableSingleLogout: logout, EnableIDPInitiatedLogout: logout, AllowIDPInitiated: policy, IDPInitiatedCallbackURL: "/global-portal", Encryption: encryption, RequestSigner: spKey, RequestCertificate: spCert, TrustEmailVerified: true}, DomainVerification: &sso.DomainVerificationOptions{Resolver: dns}})
 				must(e)
-				a, e := auth.New(auth.Options{BaseURL: app.URL, BasePath: "/identity", Secret: strings.Repeat("s", 40), Store: s, RateLimit: new(bool), EmailAndPassword: true, Plugins: []auth.Plugin{plug}})
+				a, e := auth.New(auth.Options{BaseURL: app.URL, BasePath: "/identity", Secret: strings.Repeat("s", 40), Store: s, RateLimit: new(bool), EmailAndPassword: true, Plugins: []auth.Plugin{plug, issuer}})
 				must(e)
 				return a
 			}
@@ -230,8 +233,8 @@ func runEnterpriseSAMLBrowser(t *testing.T, encrypted, logout bool) {
 				protection.BlockCipher = xmlenc.AES256GCM
 				idp.AssertionEncrypter = protection
 			}
-			start := func(h *http.Client) (*saml.IdpAuthnRequest, error) {
-				out, e := sdk(h).SignInSSO(ctx, client.SSOSignInRequest{ProviderID: "work", ProviderType: "saml", CallbackURL: "/home", NewUserCallbackURL: "/welcome", ErrorCallbackURL: "/failed"})
+			startWithQuery := func(h *http.Client, signed string) (*saml.IdpAuthnRequest, error) {
+				out, e := sdk(h).SignInSSO(ctx, client.SSOSignInRequest{ProviderID: "work", ProviderType: "saml", CallbackURL: "/home", NewUserCallbackURL: "/welcome", ErrorCallbackURL: "/failed", OAuthQuery: signed})
 				if e != nil {
 					return nil, e
 				}
@@ -248,6 +251,7 @@ func runEnterpriseSAMLBrowser(t *testing.T, encrypted, logout bool) {
 				}
 				return req, e
 			}
+			start := func(h *http.Client) (*saml.IdpAuthnRequest, error) { return startWithQuery(h, "") }
 			if _, e = start(newBrowser()); e == nil {
 				t.Fatal("unverified directory accepted")
 			}
@@ -287,6 +291,33 @@ func runEnterpriseSAMLBrowser(t *testing.T, encrypted, logout bool) {
 			must(e)
 			dns.put("_plain-auth-token-work.staff.example.", token)
 			must(owner.VerifySSODomain(ctx, "work"))
+
+			if !encrypted && !logout {
+				t.Run("SAML keeps the application return during issuer login", func(t *testing.T) {
+					_, err := first.db.ExecContext(ctx, first.bind(`INSERT INTO "oauthClient" ("id","clientId","applicationType","redirectUris","tokenEndpointAuthMethod","scopes") VALUES ('rp-row','rp','native',?,'none',?)`), `["https://rp.example.test/done"]`, `["read"]`)
+					if err != nil {
+						t.Fatal(err)
+					}
+					h := newBrowser()
+					params := url.Values{"response_type": {"code"}, "scope": {"read"}, "client_id": {"rp"}, "redirect_uri": {"https://rp.example.test/done"}, "state": {"rp-state"}, "code_challenge": {"test-challenge"}, "code_challenge_method": {"S256"}}
+					status, head, _ := send(h, "GET", "/oauth2/authorize?"+params.Encode(), "", "", "")
+					page, err := url.Parse(head.Get("Location"))
+					if err != nil || status != 302 || page.Path != "/login" {
+						t.Fatal("missing issuer login page", status, page, err)
+					}
+					if _, err := startWithQuery(h, "invalid"); err == nil {
+						t.Fatal("accepted an invalid issuer query at SSO entry")
+					}
+					request, err := startWithQuery(h, page.RawQuery)
+					if err != nil {
+						t.Fatal(err)
+					}
+					status, head, _ = post(h, form(request, "saml-rp", "saml-rp@staff.example", nil), acs)
+					if status != 302 || head.Get("Location") != app.URL+"/home" {
+						t.Fatal("SAML did not use the configured application return", status, head.Get("Location"))
+					}
+				})
+			}
 
 			if logout {
 				login := func(t *testing.T, h *http.Client, subject string, adjust func(*saml.Assertion)) {

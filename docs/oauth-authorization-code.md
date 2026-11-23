@@ -91,6 +91,23 @@ For a top-level navigation, the callback sends HTTP 302 to the next destination.
 
 The Go SDK exposes the same field as `client.SocialSignInRequest.OAuthQuery`. A provider that supports direct ID-token sign-in also accepts its normal `idToken` object on this request. Successful verification returns the issuer's next destination. Ordinary social sign-in can omit `oauth_query` and use `callbackURL` or `newUserCallbackURL`. [Social provider setup](social.md) · [Two independent code exchanges](../conformance/oauth-social-authorization.mjs) · [Session ownership on three SQL engines](../adapters/sqlstore/oauth_social_authorization_test.go)
 
+### Sign in through an enterprise directory
+
+Your login page can offer an enterprise OpenID Connect directory. Send the verified login query to `POST /api/auth/sign-in/sso` using the same browser session. Select a directory by provider ID, organization slug, domain or email. Include a trusted application callback.
+
+```json
+{
+  "providerId": "company",
+  "callbackURL": "/account",
+  "errorCallbackURL": "/login/retry",
+  "oauth_query": "<verified login page query>"
+}
+```
+
+Open the returned identity provider URL in that browser. Both the directory-specific and shared OIDC callbacks resume the original client request using the newly issued session. If organization selection or consent is required, a navigation receives HTTP 302 to your configured page. A JSON client receives HTTP 200 with `{"redirect":true,"url":"…"}`. Your application chooses what to display and when to follow that URL. An issuer request that expires during sign-in requires a fresh authorization request.
+
+The Go client accepts the same field as `client.SSOSignInRequest.OAuthQuery`. Ordinary OIDC sign-in uses the application's return URLs. A SAML assertion returns to the application's `callbackURL`. [Enterprise SSO setup](sso.md#enterprise-browser-sign-in) · [End-to-end enterprise code exchanges](../conformance/oauth-enterprise-authorization.mjs)
+
 ## Choose a remembered account
 
 Set `Authorization.SelectAccount.Page` to the account chooser served by your application. An application requesting `prompt=select_account` opens this page for a signed-in browser. Combine it with `consent` to ask for approval again after selection. A signed-out browser goes through login first. Without a configured chooser page, an explicit selection prompt returns `unsupported_prompt_select_account` on the issuer's error page.

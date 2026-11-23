@@ -12,13 +12,13 @@
   - [ ] `OpenAPISchema`
   - [ ] `OpenAPIParameter`
   - [ ] `GET /open-api/generate-schema`
-    - [x] Describe the optional signed social login field and the callback’s JSON, navigation and popup responses for the installed configuration ([test](../../../plugins/openapi/profile_test.go#L22))
+    - [x] Describe the optional signed social login field and the callback’s JSON, navigation and popup responses for the installed configuration ([test](../../../plugins/openapi/profile_test.go#L23))
     - [x] Describe enterprise provider management, redacted reads, browser sign-in and both bound callback routes against the configured SQL handler ([test](../../../plugins/openapi/sso_directory_test.go#L24))
     - [x] Describe the enabled enterprise DNS management inputs, outputs and session credentials ([test](../../../plugins/openapi/sso_domain_test.go#L28))
     - [x] Publish declared success codes, empty 204 responses and explicit operation overrides while preserving redirects ([test](../../../plugins/openapi/endpoint_status_test.go#L12))
     - [x] Serve the mounted versioned JSON document and match required fields for core and username operations ([test](../../../conformance/openapi-contract.mjs#L48))
     - [x] Expose the actual response fields, cookie name, optional bearer scheme and custom operation metadata ([test](../../../plugins/openapi/openapi_test.go#L76))
-    - [x] Resolve every local schema reference and suppress unavailable routes for a configured SQL-backed instance ([test](../../../plugins/openapi/profile_test.go#L178))
+    - [x] Resolve every local schema reference and suppress unavailable routes for a configured SQL-backed instance ([test](../../../plugins/openapi/profile_test.go#L192))
     - [x] Describe the public user model and writable registration fields across owner updates, administrative creation and first OTP sign-in ([test](../../../plugins/openapi/user_fields_test.go#L21))
     - [x] Compare both live schema endpoints and verify required signup inputs, partial profile updates and hidden response fields ([test](../../../conformance/openapi-contract.mjs#L64))
     - [x] Describe date-time fields in public models, JSON input and email signup form input ([test](../../../plugins/openapi/user_fields_test.go#L178))

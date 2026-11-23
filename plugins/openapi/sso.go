@@ -109,6 +109,9 @@ func describeSSORequest(op object, route plainauth.HTTPRoute, info plainauth.HTT
 			"callbackURL": callback, "newUserCallbackURL": callback, "errorCallbackURL": callback, "providerType": object{"enum": []string{"oidc", ""}},
 			"loginHint": text, "requestSignUp": object{"type": "boolean"}, "scopes": array(object{"type": "string", "minLength": 1}),
 			"additionalParams": object{"type": "object", "additionalProperties": text, "description": "Additional authorization parameters. Protocol parameters are reserved."}}, "callbackURL")
+		if info.OAuthLoginContinuation {
+			schema["properties"].(object)["oauth_query"] = object{"type": "string", "description": "Verified issuer login query to resume after an OIDC sign-in."}
+		}
 		if info.SAMLStateCookie != "" {
 			schema["properties"].(object)["providerType"] = object{"enum": []string{"oidc", "saml", ""}}
 		}
@@ -160,6 +163,10 @@ func describeSSORequest(op object, route plainauth.HTTPRoute, info plainauth.HTT
 
 	case "/sso/callback", "/sso/callback/:providerId":
 		op["description"] = "Complete the browser-bound OIDC flow. Successful authentication redirects to the trusted application callback. Invalid state or rejected authentication may redirect to an error page. No signed-in session is required."
+		if info.OAuthLoginContinuation {
+			op["description"] = "Complete the browser-bound OIDC flow. A signed issuer login continues authorization with the new session. A navigation receives the next location and a JSON client receives its URL. Ordinary login uses the application's trusted callback."
+			op["responses"].(object)["200"] = response("application/json", responseObject(object{"redirect": object{"const": true}, "url": text}, "redirect", "url"))
+		}
 		params := []object{
 			{"name": "state", "in": "query", "required": true, "schema": object{"type": "string", "minLength": 1, "maxLength": 128}},
 			{"name": "code", "in": "query", "description": "Authorization code on success.", "schema": text},

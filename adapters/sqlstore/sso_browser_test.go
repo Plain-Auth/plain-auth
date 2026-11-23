@@ -19,6 +19,7 @@ import (
 
 	auth "github.com/Plain-Auth/plain-auth"
 	"github.com/Plain-Auth/plain-auth/client"
+	"github.com/Plain-Auth/plain-auth/plugins/oauthprovider"
 	"github.com/Plain-Auth/plain-auth/plugins/sso"
 	"github.com/Plain-Auth/plain-auth/schema"
 	jose "github.com/go-jose/go-jose/v4"
@@ -131,7 +132,7 @@ func TestEnterpriseOIDCBrowser(t *testing.T) {
 				}
 			}
 			dsn := organizationTestDSN(t, dialect)
-			ddl, e := schema.Generate(dialect, []string{"organization", "admin", "sso"})
+			ddl, e := schema.Generate(dialect, []string{"organization", "admin", "sso", "oauth-provider"})
 			must(e)
 			first, e := OpenWithSchema(ctx, dialect, dsn, ddl)
 			must(e)
@@ -140,10 +141,10 @@ func TestEnterpriseOIDCBrowser(t *testing.T) {
 			must(e)
 			defer other.Close()
 			idp := newSSOIssuer(t)
-			host := func(s *Store, shared, disable, implicit bool) *auth.Auth {
+			host := func(s *Store, shared, disable, implicit bool, extras ...auth.Plugin) *auth.Auth {
 				p, e := sso.New(sso.Options{SharedCallback: shared, DisableImplicitSignUp: implicit})
 				must(e)
-				a, e := auth.New(auth.Options{BaseURL: "https://service.test", BasePath: "/identity", RateLimit: new(bool), Store: s, EmailAndPassword: true, DisableSignUp: disable, Secret: strings.Repeat("k", 32), TrustedOrigins: []string{idp.URL}, EncryptOAuthTokens: true, Plugins: []auth.Plugin{p}})
+				a, e := auth.New(auth.Options{BaseURL: "https://service.test", BasePath: "/identity", RateLimit: new(bool), Store: s, EmailAndPassword: true, DisableSignUp: disable, Secret: strings.Repeat("k", 32), TrustedOrigins: []string{idp.URL}, EncryptOAuthTokens: true, Plugins: append([]auth.Plugin{p}, extras...)})
 				must(e)
 				return a
 			}
@@ -427,7 +428,78 @@ func TestEnterpriseOIDCBrowser(t *testing.T) {
 					t.Fatal("invalid authorization accepted")
 				}
 			}
-			t.Log(fmt.Sprintf("completed OIDC login, state and transactional tenant checks on %s", dialect))
+			issuer, e := oauthprovider.New(oauthprovider.Options{Scopes: []string{"read"}, Authorization: oauthprovider.BrowserAuthorizationOptions{LoginPage: "/login", ConsentPage: "/approve"}})
+			must(e)
+			issuing, peer := host(first, false, false, false, issuer), host(other, false, false, false, issuer)
+			const clientCallback = "https://client.example.test/finish"
+			exec(`INSERT INTO "oauthClient" ("id","clientId","applicationType","redirectUris","tokenEndpointAuthMethod","scopes") VALUES ('app-row','rp','native',?,'none',?)`, `["https://client.example.test/finish"]`, `["read"]`)
+			params := url.Values{"response_type": {"code"}, "client_id": {"rp"}, "redirect_uri": {clientCallback}, "state": {"original-state"}, "scope": {"read"}, "prompt": {"login consent"}, "code_challenge_method": {"S256"}, "code_challenge": {oauth2.S256ChallengeFromVerifier(oauth2.GenerateVerifier())}}
+			page, e := url.Parse(call(issuing, "GET", "oauth2/authorize?"+params.Encode(), "", nil).Header().Get("Location"))
+			must(e)
+			if page.Path != "/login" {
+				t.Fatal("missing signed issuer login page", page.Path)
+			}
+			verified, e := issuing.VerifyOAuthPageQuery(page.RawQuery)
+			must(e)
+			rpRequest := verified.Encode()
+			issuerSDK, e := client.New("https://service.test/identity", &http.Client{Transport: guestTransport{issuing}})
+			must(e)
+			reply, e := issuerSDK.SignInSSO(ctx, client.SSOSignInRequest{ProviderID: "staff", CallbackURL: "/home", OAuthQuery: rpRequest})
+			must(e)
+			upstream, e := url.Parse(reply.URL)
+			must(e)
+			var stored string
+			state := upstream.Query().Get("state")
+			must(first.db.QueryRowContext(ctx, first.bind(`SELECT "value" FROM "verification" WHERE "id"=?`), state).Scan(&stored))
+			var flow auth.OAuthFlow
+			must(json.Unmarshal([]byte(stored), &flow))
+			if flow.IssuerLoginQuery != rpRequest || state == "original-state" || upstream.Query().Has("oauth_query") {
+				t.Fatal("the native client did not preserve the verified issuer request in provider state")
+			}
+			begin := func() pending {
+				return start(issuing, "staff", "member@enterprise.test", "issuer-member", "client_secret_post", "", map[string]any{"providerId": "staff", "oauth_query": rpRequest})
+			}
+			priorExchanges := idp.tokens.Load()
+			pendingLogin := begin()
+			noCookie := pendingLogin
+			noCookie.cookie = ""
+			target(finish(peer, noCookie), "/identity/error?error=invalid_state")
+			denial := pendingLogin
+			denial.path += "&error=access_denied"
+			target(finish(peer, denial), "/retry?error=invalid_request")
+			target(finish(peer, pendingLogin), "/identity/error?error=invalid_state")
+			pendingLogin = begin()
+			disabled := finish(two, pendingLogin)
+			if disabled.Code != 400 || !strings.Contains(disabled.Body.String(), "issuer login is unavailable") {
+				t.Fatal("callback resumed with the issuer disabled", disabled.Code, disabled.Body.String())
+			}
+			pendingLogin = begin()
+			callback, e := url.Parse(pendingLogin.path)
+			must(e)
+			state = callback.Query().Get("state")
+			must(first.db.QueryRowContext(ctx, first.bind(`SELECT "value" FROM "verification" WHERE "id"=?`), state).Scan(&stored))
+			must(json.Unmarshal([]byte(stored), &flow))
+			flow.IssuerLoginQuery = issuing.SignOAuthQuery(verified, time.Now().Add(-time.Minute))
+			expiredRecord, e := json.Marshal(flow)
+			must(e)
+			exec(`UPDATE "verification" SET "value"=? WHERE "id"=?`, string(expiredRecord), state)
+			out := finish(peer, pendingLogin)
+			if out.Code != 400 || !strings.Contains(out.Body.String(), "invalid_signature") || idp.tokens.Load() != priorExchanges {
+				t.Fatal("invalid issuer login reached the provider exchange", out.Code, out.Body.String())
+			}
+			pendingLogin = begin()
+			out = finish(peer, pendingLogin)
+			var next struct {
+				URL      string
+				Redirect bool
+			}
+			must(json.Unmarshal(out.Body.Bytes(), &next))
+			destination, e := url.Parse(next.URL)
+			must(e)
+			if out.Code != 200 || !next.Redirect || destination.Path != "/approve" || destination.Query().Get("state") != "original-state" || idp.tokens.Load() != priorExchanges+1 {
+				t.Fatal("cross-instance callback did not resume consent", out.Code, out.Body.String(), destination.Path)
+			}
+			target(finish(peer, pendingLogin), "/identity/error?error=invalid_state")
 		})
 	}
 }

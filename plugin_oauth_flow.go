@@ -15,6 +15,16 @@ import (
 // in one transaction after checking any plugin-owned identity binding.
 type OAuthCompletion func(context.Context, string, string, OAuthTokens, User, StoredSession, OAuthLoginOptions) (User, bool, error)
 
+type enterpriseIssuerLoginKey struct{ auth *Auth }
+type enterpriseIssuerLogin struct {
+	query  string
+	resume OAuthLoginContinuation
+}
+
+func withEnterpriseIssuerLogin(r *http.Request, a *Auth, query string, resume OAuthLoginContinuation) *http.Request {
+	return r.WithContext(context.WithValue(r.Context(), enterpriseIssuerLoginKey{a}, enterpriseIssuerLogin{query, resume}))
+}
+
 // BeginEnterpriseFlow persists the provider reference and browser return destinations.
 // Only the random browser binding is placed in a cookie.
 func (c EndpointContext) BeginEnterpriseFlow(provider, reference, redirectURI string, signup bool) (OAuthFlow, error) {
@@ -44,6 +54,11 @@ func (c EndpointContext) beginEnterpriseFlow(provider, reference, redirectURI st
 	now := a.now().UTC()
 	browser := randomID()
 	f := OAuthFlow{State: randomID(), Provider: provider, ProviderReference: reference, RedirectURI: redirectURI, Verifier: oauth2.GenerateVerifier(), Nonce: randomID(), RequestSignUp: signup, ExpiresAt: now.Add(10 * time.Minute)}
+	// Only the OIDC authorization-code flow carries an issuer request across
+	// the provider redirect. The dispatcher has verified this query at entry.
+	if login, ok := c.Request.Context().Value(enterpriseIssuerLoginKey{a}).(enterpriseIssuerLogin); !form && ok {
+		f.IssuerLoginQuery = login.query
+	}
 	for field, target := range map[string]*string{"callbackURL": &f.CallbackURL, "errorCallbackURL": &f.ErrorCallbackURL, "newUserCallbackURL": &f.NewUserCallbackURL} {
 		raw, present := c.Body[field]
 		if !present && field != "callbackURL" {
@@ -143,6 +158,16 @@ func (c *EndpointContext) consumeEnterpriseFlow(state string, form bool) (OAuthF
 		}
 		c.Request = c.Request.WithContext(context.WithValue(c.Request.Context(), anonymousSourceKey{}, string(guest)))
 	}
+	if !form && f.IssuerLoginQuery != "" {
+		resume, e := a.loginContinuation("/sign-in/sso", c.Request, wireBody{"oauth_query": f.IssuerLoginQuery}, c.ResponseHeader)
+		if e != nil {
+			return OAuthFlow{}, e
+		}
+		if resume == nil {
+			return OAuthFlow{}, &OAuthError{Status: 400, Code: "invalid_request", Description: "issuer login is unavailable"}
+		}
+		c.Request = withEnterpriseIssuerLogin(c.Request, a, f.IssuerLoginQuery, resume)
+	}
 	return f, nil
 }
 
@@ -152,20 +177,27 @@ func (c EndpointContext) CompleteEnterpriseFlow(f OAuthFlow, p OAuthProfile, tok
 	if !validSocialProfile(p) || complete == nil {
 		return nil, validationError("Invalid enterprise identity")
 	}
+	login, _ := c.Request.Context().Value(enterpriseIssuerLoginKey{c.Auth}).(enterpriseIssuerLogin)
+	if f.IssuerLoginQuery != "" && (login.query != f.IssuerLoginQuery || login.resume == nil) {
+		return nil, invalidEnterpriseState()
+	}
 	result, created, err := c.Auth.completeProfileWith(c.Request.Context(), c.Request, f.Provider, p, tokens, OAuthLoginOptions{DisableSignUp: disableSignup}, complete)
 	if err != nil {
 		return nil, err
 	}
-	target := f.CallbackURL
-	if created && f.NewUserCallbackURL != "" {
-		target = f.NewUserCallbackURL
-	}
-	redirect, err := c.Redirect(target)
-	if err != nil {
-		return nil, err
+	var next any = login
+	if f.IssuerLoginQuery == "" {
+		target := f.CallbackURL
+		if created && f.NewUserCallbackURL != "" {
+			target = f.NewUserCallbackURL
+		}
+		next, err = c.Redirect(target)
+		if err != nil {
+			return nil, c.Auth.discardUnpublishedSession(c.Request.Context(), result.Token, err)
+		}
 	}
 	if err = c.Auth.addSessionCookieHeaders(c.ResponseHeader, c.Request, result.Token, true); err != nil {
-		return nil, err
+		return nil, c.Auth.discardUnpublishedSession(c.Request.Context(), result.Token, err)
 	}
-	return redirect, nil
+	return next, nil
 }

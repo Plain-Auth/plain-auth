@@ -58,6 +58,8 @@ func (c *Client) GetSSOProvider(ctx context.Context, id string) (sso.PublicProvi
 // SSOSignInRequest selects a persisted enterprise provider and trusted application
 // return destinations. CallbackURL is required.
 type SSOSignInRequest struct {
+	// OAuthQuery is the verified issuer login query to resume after OIDC sign-in.
+	OAuthQuery         string            `json:"oauth_query,omitempty"`
 	ProviderType       string            `json:"providerType,omitempty"`
 	ProviderID         string            `json:"providerId,omitempty"`
 	OrganizationSlug   string            `json:"organizationSlug,omitempty"`

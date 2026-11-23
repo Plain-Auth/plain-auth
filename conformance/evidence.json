@@ -7404,6 +7404,16 @@
       "label": "Issue first and returning SAML sessions with public signup and metadata disabled; retain the installed ACS and registration in OpenAPI",
       "test": "conformance/core.test.mjs",
       "marker": "test(\"enterprise SAML works with hidden metadata and private signup\""
+    },
+    {
+      "label": "Resume the original client authorization with the enterprise employee’s new session and redeem the code after consent",
+      "test": "conformance/oauth-enterprise-authorization.mjs",
+      "marker": "await exerciseExternalLogin("
+    },
+    {
+      "label": "Validate the signed query at entry and use the application callback after a SAML assertion",
+      "test": "adapters/sqlstore/sso_saml_test.go",
+      "marker": "t.Run(\"SAML keeps the application return"
     }
   ],
   "plugin/sso/ /sso/callback/:providerId": [
@@ -7441,6 +7451,16 @@
       "label": "Reject two distinct mailboxes that compare equal under an accent-insensitive MySQL collation",
       "test": "adapters/sqlstore/sso_domain_test.go",
       "marker": "collation-equivalent different mailbox was linked"
+    },
+    {
+      "label": "Resume the original client authorization with the enterprise employee’s new session and redeem the code after consent",
+      "test": "conformance/oauth-enterprise-authorization.mjs",
+      "marker": "await exerciseExternalLogin("
+    },
+    {
+      "label": "Check the issuer signature and browser binding on a second node before the token exchange",
+      "test": "adapters/sqlstore/sso_browser_test.go",
+      "marker": "invalid issuer login reached the provider exchange"
     }
   ],
   "plugin/sso/ /sso/callback": [
@@ -7448,6 +7468,11 @@
       "label": "Authenticate using the shared callback on both servers and preserve the canonical linked account in SQLite",
       "test": "conformance/sso-browser.mjs",
       "marker": "const registration = ok(await admin.sso.register("
+    },
+    {
+      "label": "Resume the original client authorization with the enterprise employee’s new session and redeem the code after consent",
+      "test": "conformance/oauth-enterprise-authorization.mjs",
+      "marker": "await exerciseExternalLogin("
     }
   ],
   "plugin-symbol/sso/SSOOptions/disableImplicitSignUp": [
@@ -13168,6 +13193,11 @@
       "label": "Return a silent interaction error, ignore a supplied clearance on a new request and sign only a completed session’s consent page",
       "test": "conformance/oauth-post-login.mjs",
       "marker": "const gate = await begin("
+    },
+    {
+      "label": "Resume the original client authorization with the enterprise employee’s new session and redeem the code after consent",
+      "test": "conformance/oauth-enterprise-authorization.mjs",
+      "marker": "await exerciseExternalLogin("
     }
   ],
   "docs/content/docs/plugins/oauth-provider/reference.mdx#L318/`GET / POST /oauth2/authorize`": [
@@ -13406,6 +13436,11 @@
       "label": "Wait for the second factor before resuming, replace the prior browser account and enforce host authorization rules",
       "test": "adapters/sqlstore/oauth_browser_login_test.go",
       "marker": "func TestBrowserLoginContinuation("
+    },
+    {
+      "label": "Resume the original client authorization with the enterprise employee’s new session and redeem the code after consent",
+      "test": "conformance/oauth-enterprise-authorization.mjs",
+      "marker": "await exerciseExternalLogin("
     }
   ],
   "plugin-symbol/oauth-provider/OAuthOptions/loginPage": [
@@ -13648,6 +13683,51 @@
       "label": "Match an explicit organization or a personal grant among more than 100 references, preferring NULL to the legacy empty string",
       "test": "adapters/sqlstore/oauth_post_login_test.go",
       "marker": "for i := 0; i < 105;",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/sso/index.mdx#L241/Parameter `callbackURL`": [
+    {
+      "label": "Require an application callback and return to it on ordinary repeat sign-in",
+      "test": "conformance/oauth-enterprise-authorization.mjs",
+      "marker": "assert.equal(missingReturn.status, 400)",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/sso/index.mdx#L245/Parameter `errorCallbackURL` (optional)": [
+    {
+      "label": "Return to the configured error page when the enterprise provider denies access",
+      "test": "conformance/oauth-enterprise-authorization.mjs",
+      "marker": "assert.equal(retry.origin + retry.pathname, returns.errorCallbackURL)",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/sso/index.mdx#L249/Parameter `newUserCallbackURL` (optional)": [
+    {
+      "label": "Use the welcome callback on first OIDC sign-in and the application callback on the next visit",
+      "test": "conformance/oauth-enterprise-authorization.mjs",
+      "marker": "for (const path of [\"/welcome\", \"/ordinary\"])",
+      "complete": true
+    },
+    {
+      "label": "Use the signed RelayState application callback after a SAML sign-in",
+      "test": "adapters/sqlstore/sso_saml_test.go",
+      "marker": "t.Run(\"SAML keeps the application return"
+    }
+  ],
+  "docs/content/docs/plugins/sso/reference.mdx#L496/`GET /sso/callback/:providerId`": [
+    {
+      "label": "Complete an OIDC exchange on the directory-specific return path and issue the employee’s session",
+      "test": "conformance/oauth-enterprise-authorization.mjs",
+      "marker": "assert.equal(redirect, base + \"/sso/callback\"",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/sso/reference.mdx#L497/`GET /sso/callback`": [
+    {
+      "label": "Complete an OIDC exchange on the shared return path and issue the employee’s session",
+      "test": "conformance/oauth-enterprise-authorization.mjs",
+      "marker": "assert.equal(redirect, base + \"/sso/callback\"",
       "complete": true
     }
   ]

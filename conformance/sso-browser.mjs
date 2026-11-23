@@ -10,7 +10,7 @@ import { betterAuth } from "better-auth";
 import { getMigrations } from "better-auth/db/migration";
 import { exportJWK, generateKeyPair, SignJWT } from "jose";
 
-export async function compareEnterpriseBrowser(t, {goFixture,instrument}) {
+export async function enterpriseIdentityFixture(t) {
   const {publicKey, privateKey} = await generateKeyPair("RS256");
   const jwk = {...await exportJWK(publicKey), kid:"enterprise", use:"sig", alg:"RS256"};
   const grants = new Map();
@@ -37,6 +37,11 @@ export async function compareEnterpriseBrowser(t, {goFixture,instrument}) {
   await once(idp,"listening");
   t.after(() => new Promise(resolve => idp.close(resolve)));
   issuer = "http://127.0.0.1:" + idp.address().port;
+  return {issuer, grants};
+}
+
+export async function compareEnterpriseBrowser(t, {goFixture,instrument}) {
+  const {issuer, grants} = await enterpriseIdentityFixture(t);
   for (const shared of [false,true]) {
     const go = await goFixture(t,["sso"],{CONFORMANCE_SSO_DISCOVERY_ORIGIN:issuer,CONFORMANCE_SSO_SHARED_CALLBACK:shared ? "1":"0"});
     const db = new DatabaseSync(go.databasePath);

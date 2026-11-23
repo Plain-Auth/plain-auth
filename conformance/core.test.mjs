@@ -1785,6 +1785,11 @@ test("external social sign-in resumes the issuer request and redeems the new ses
   await compareSocialAuthorization(t, reference, goFixture);
 });
 
+test("enterprise OIDC sign-in resumes issuer authorization on shared and directory callbacks", async t => {
+  const { compareEnterpriseAuthorization } = await import("./oauth-enterprise-authorization.mjs");
+  await compareEnterpriseAuthorization(t, reference, goFixture);
+});
+
 test("OAuth dynamic client registration handles sessions, initial tokens and open registration", async t => {
   const { compareClientRegistration } = await import("./oauth-registration.mjs");
   await compareClientRegistration(t, reference, goFixture);
