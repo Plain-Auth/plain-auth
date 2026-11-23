@@ -37,6 +37,16 @@ func (s *Store) organizationActor(ctx context.Context, tx *sql.Tx, userID, sessi
 }
 
 func (s *Store) CreateOrganization(ctx context.Context, o org.Organization, owner org.Member, sessionID string, keep bool) error {
+	return s.createOrganization(ctx, o, owner, sessionID, keep, nil)
+}
+
+// CreateOrganizationWithTeam creates the organization like CreateOrganization
+// and names its default team after team.Name, then fills in the saved team.
+func (s *Store) CreateOrganizationWithTeam(ctx context.Context, o org.Organization, owner org.Member, sessionID string, keep bool, team *org.Team) error {
+	return s.createOrganization(ctx, o, owner, sessionID, keep, team)
+}
+
+func (s *Store) createOrganization(ctx context.Context, o org.Organization, owner org.Member, sessionID string, keep bool, defaultTeam *org.Team) error {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
@@ -91,9 +101,16 @@ func (s *Store) CreateOrganization(ctx context.Context, o org.Organization, owne
 	}
 	var initialTeam *string
 	if s.teamOptions != nil && !s.teamOptions.DisableDefaultTeam {
-		team, err := s.insertTeam(ctx, tx, o.ID, o.Name, false)
+		name := o.Name
+		if defaultTeam != nil {
+			name = defaultTeam.Name
+		}
+		team, err := s.insertTeam(ctx, tx, o.ID, name, false)
 		if err != nil {
 			return err
+		}
+		if defaultTeam != nil {
+			*defaultTeam = *team
 		}
 		if _, err = s.insertTeamMember(ctx, tx, team.OrganizationID, team.ID, owner.UserID, false, nil); err != nil {
 			return err

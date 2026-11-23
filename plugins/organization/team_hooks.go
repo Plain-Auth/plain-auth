@@ -60,9 +60,24 @@ func (o Options) teamMemberHooksConfigured() bool {
 	return o.BeforeAddTeamMember != nil || o.AfterAddTeamMember != nil || o.BeforeRemoveTeamMember != nil || o.AfterRemoveTeamMember != nil
 }
 
+// DefaultTeamStore creates an organization and its default team in one
+// transaction, naming the team after team.Name and filling in the saved team.
+type DefaultTeamStore interface {
+	CreateOrganizationWithTeam(ctx context.Context, group Organization, owner Member, sessionID string, keep bool, team *Team) error
+}
+
+// defaultTeamHooks reports whether organization creation runs the team
+// creation hooks for the default team.
+func (o Options) defaultTeamHooks() bool {
+	return o.Teams != nil && !o.Teams.DisableDefaultTeam && (o.BeforeCreateTeam != nil || o.AfterCreateTeam != nil)
+}
+
 func (o Options) validateTeamHooks() error {
 	if !o.teamHooksConfigured() {
 		return nil
+	}
+	if _, ok := o.Store.(DefaultTeamStore); !ok && o.defaultTeamHooks() {
+		return errors.New("organization: team creation hooks with a default team require a DefaultTeamStore")
 	}
 	if o.teamStore == nil {
 		return errors.New("organization: team hooks require Teams")

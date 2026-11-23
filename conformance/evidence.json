@@ -792,6 +792,11 @@
       "label": "Store the submitted name, slug, logo and metadata, select the new organization, and reject invalid parameters without storing anything",
       "test": "adapters/sqlstore/organization_contract_test.go",
       "marker": "// Missing or invalid create parameters are rejected before anything is stored."
+    },
+    {
+      "label": "Run the team creation hooks for the default team between the member and organization hooks and save a returned name",
+      "test": "adapters/sqlstore/organization_default_team_hooks_test.go",
+      "marker": "// The default team runs the team hooks between the member and organization hooks."
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L71": [
@@ -10923,6 +10928,16 @@
       "label": "Cancel a team member removal when the before hook fails and run both hooks for a completed removal",
       "test": "adapters/sqlstore/organization_team_member_hooks_test.go",
       "marker": "// A before-hook error cancels the removal."
+    },
+    {
+      "label": "Run the team creation hooks for the default team between the member and organization hooks and save a returned name",
+      "test": "adapters/sqlstore/organization_default_team_hooks_test.go",
+      "marker": "// The default team runs the team hooks between the member and organization hooks."
+    },
+    {
+      "label": "Run the default team hooks for trusted creation with the named user",
+      "test": "adapters/sqlstore/organization_default_team_hooks_test.go",
+      "marker": "// Trusted creation runs the same hooks for the named user."
     }
   ],
   "plugin-symbol/siwe/SIWEPluginOptions/getNonce": [
@@ -17141,6 +17156,16 @@
       "label": "Cancel a team member removal when the before hook fails and run both hooks for a completed removal",
       "test": "adapters/sqlstore/organization_team_member_hooks_test.go",
       "marker": "// A before-hook error cancels the removal."
+    },
+    {
+      "label": "Run the team creation hooks for the default team between the member and organization hooks and save a returned name",
+      "test": "adapters/sqlstore/organization_default_team_hooks_test.go",
+      "marker": "// The default team runs the team hooks between the member and organization hooks."
+    },
+    {
+      "label": "Store no organization when the default team hook fails",
+      "test": "adapters/sqlstore/organization_default_team_hooks_test.go",
+      "marker": "// A failing default team hook stores no organization."
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L742/`GET /organization/get-organization`": [

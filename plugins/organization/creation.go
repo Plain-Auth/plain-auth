@@ -114,11 +114,30 @@ func (o Options) createOrganization(ctx context.Context, user authn.User, group 
 	if err := o.beforeAddMember(ctx, &member, user, group); err != nil {
 		return nil, err
 	}
-	if err := o.Store.CreateOrganization(ctx, group, member, sessionID, keep); err != nil {
+	var defaultTeam *Team
+	if o.defaultTeamHooks() {
+		team, err := o.beforeDefaultTeam(ctx, user, group)
+		if err != nil {
+			return nil, err
+		}
+		defaultTeam = &team
+		if err = o.Store.(DefaultTeamStore).CreateOrganizationWithTeam(ctx, group, member, sessionID, keep, defaultTeam); err != nil {
+			return nil, err
+		}
+	} else if err := o.Store.CreateOrganization(ctx, group, member, sessionID, keep); err != nil {
 		return nil, err
 	}
 	if err := o.afterAddMember(ctx, member, user, group); err != nil {
 		return nil, err
+	}
+	if after := o.AfterCreateTeam; after != nil && defaultTeam != nil {
+		in, err := detachedTeamChange(TeamChange{Team: *defaultTeam, User: &user, Organization: group})
+		if err != nil {
+			return nil, err
+		}
+		if err = after(ctx, in); err != nil {
+			return nil, err
+		}
 	}
 	if after := o.AfterCreateOrganization; after != nil {
 		committed := group
@@ -157,4 +176,26 @@ func applyCreationOverride(group Organization, override ProfileUpdate) (Organiza
 		}
 	}
 	return group, nil
+}
+
+// beforeDefaultTeam proposes the default team, named after the organization,
+// to BeforeCreateTeam, which may rename it.
+func (o Options) beforeDefaultTeam(ctx context.Context, user authn.User, group Organization) (Team, error) {
+	team := Team{Name: group.Name, OrganizationID: group.ID}
+	before := o.BeforeCreateTeam
+	if before == nil {
+		return team, nil
+	}
+	in, err := detachedTeamChange(TeamChange{Team: team, User: &user, Organization: group})
+	if err != nil {
+		return team, err
+	}
+	override, err := before(ctx, in)
+	if err != nil {
+		return team, err
+	}
+	if override != nil && override.Name != nil {
+		team.Name = *override.Name
+	}
+	return team, nil
 }

@@ -198,6 +198,7 @@
     - [x] Give the creation hook the proposed organization and creator, and save the name, slug and metadata it returns ([test](../../../adapters/sqlstore/organization_creation_hooks_test.go#L90))
     - [x] Create an organization for a named user from server code with hooks and limits, without a session selection ([test](../../../adapters/sqlstore/organization_creation_hooks_test.go#L127))
     - [x] Store the submitted name, slug, logo and metadata, select the new organization, and reject invalid parameters without storing anything ([test](../../../adapters/sqlstore/organization_contract_test.go#L78))
+    - [x] Run the team creation hooks for the default team between the member and organization hooks and save a returned name ([test](../../../adapters/sqlstore/organization_default_team_hooks_test.go#L72))
   - [x] `POST /organization/check-slug` ([test](../../../conformance/organization-profile.mjs#L39))
     - [x] Check available and occupied slugs using a signed-in client, including after a rename ([test](../../../conformance/organization-profile.mjs#L39))
     - [x] Reject anonymous slug lookup and preserve the authenticated callback contract ([test](../../../conformance/organization-profile.mjs#L20))
@@ -380,6 +381,8 @@
       - [x] Give the team removal hooks the team being removed ([test](../../../adapters/sqlstore/organization_team_hooks_test.go#L143))
       - [x] Give the team membership hooks the membership, the member's account, the team and the organization ([test](../../../adapters/sqlstore/organization_team_member_hooks_test.go#L99))
       - [x] Cancel a team member removal when the before hook fails and run both hooks for a completed removal ([test](../../../adapters/sqlstore/organization_team_member_hooks_test.go#L128))
+      - [x] Run the team creation hooks for the default team between the member and organization hooks and save a returned name ([test](../../../adapters/sqlstore/organization_default_team_hooks_test.go#L72))
+      - [x] Run the default team hooks for trusted creation with the named user ([test](../../../adapters/sqlstore/organization_default_team_hooks_test.go#L85))
 
 ## Organization
 
@@ -460,6 +463,8 @@
         - [x] Check the team member limit after the before hook and skip the after hook when the team is full ([test](../../../adapters/sqlstore/organization_team_member_hooks_test.go#L111))
         - [x] Keep outsiders, unpermitted callers and non-members away from the team membership hooks ([test](../../../adapters/sqlstore/organization_team_member_hooks_test.go#L118))
         - [x] Cancel a team member removal when the before hook fails and run both hooks for a completed removal ([test](../../../adapters/sqlstore/organization_team_member_hooks_test.go#L128))
+        - [x] Run the team creation hooks for the default team between the member and organization hooks and save a returned name ([test](../../../adapters/sqlstore/organization_default_team_hooks_test.go#L72))
+        - [x] Store no organization when the default team hook fails ([test](../../../adapters/sqlstore/organization_default_team_hooks_test.go#L92))
       - [x] Hook Error Handling ([test](../../../adapters/sqlstore/organization_contract_test.go#L115))
         - [x] Return a hook's API error to the caller with its status and code for organization and team creation ([test](../../../adapters/sqlstore/organization_contract_test.go#L115))
     - [ ] List User's Organizations
