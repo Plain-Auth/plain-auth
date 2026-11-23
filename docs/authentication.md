@@ -24,7 +24,7 @@ opts.DisabledPaths = []string{"/sign-up/email", "/is-username-available"}
 auth, err := plainauth.New(opts)
 ```
 
-If the mount is `/identity`, a request to `/identity/sign-up/email` returns 404 before the handler reads credentials, charges a rate limit or runs a request hook. Query parameters and trailing slashes do not change the selection. Supply concrete paths for individual OAuth callbacks or SCIM resources. A collection entry such as `/scim/v2/Users` leaves individual resources separately addressable. Fixed disabled routes are omitted from the generated OpenAPI document. Native Go methods remain available to the host. [HTTP routing tests](../disabled_paths_test.go) · [SCIM tests](../plugins/scim/http_test.go)
+If the mount is `/identity`, a request to `/identity/sign-up/email` returns 404 before the handler reads credentials, charges a rate limit or runs a request hook. Query parameters and trailing slashes do not change the selection. Supply concrete paths for individual OAuth callbacks or SCIM resources. A collection entry such as `/scim/v2/Users` leaves individual resources separately addressable. Fixed disabled routes are omitted from the generated OpenAPI document. Native Go methods remain available to the host. [HTTP routing tests](../conformance/goapi/disabled_paths_test.go) · [SCIM tests](../plugins/scim/http_test.go)
 
 
 ## Configure the instance
@@ -107,7 +107,7 @@ Apply the `rate-limit` [schema profile](schema.md) and set `Options.RateLimitSto
 
 ## Browser and server calls
 
-A browser on the same origin automatically sends the cookie to the API. For cross-origin applications, configure an exact trusted origin and credentialed CORS on the host router. A browser's own SameSite cookie policy still applies. For an authenticated curl POST, send your cookie jar and the configured `Origin`, as in the [quickstart](../README.md#run-it-locally).
+A browser on the same origin automatically sends the cookie to the API. For cross-origin applications, configure an exact trusted origin and credentialed CORS on the host router. A browser's own SameSite cookie policy still applies. For an authenticated curl POST, send your cookie jar and the configured `Origin`, as in the [quickstart](../README.md#quickstart).
 
 ### Trust a set of application hosts
 
@@ -120,7 +120,7 @@ Keep `BaseURL` on the public auth server. Add origins for sites you control to `
 | `*.dev.example.com` | HTTP or HTTPS subdomains on each scheme's default port. |
 | `http://192.168.*.*:*` | Valid IPv4 addresses in that range on a nondefault port. |
 
-An asterisk matches zero or more hostname characters, including dots. A question mark matches one character. Apply those characters separately to the ASCII hostname and the optional port. Use the ASCII Punycode spelling for internationalized domains. A literal default port is equivalent to omitting it. Specify a port or a port pattern to admit a nondefault port. A port wildcard matches the port present after default-port normalization. Callback paths, queries and fragments are preserved. A trust rule contains only the scheme and authority, or a hostname wildcard with an optional port. [Native validation](../trusted_origins_test.go) · [HTTP comparison](../conformance/trusted-origins.mjs)
+An asterisk matches zero or more hostname characters, including dots. A question mark matches one character. Apply those characters separately to the ASCII hostname and the optional port. Use the ASCII Punycode spelling for internationalized domains. A literal default port is equivalent to omitting it. Specify a port or a port pattern to admit a nondefault port. A port wildcard matches the port present after default-port normalization. Callback paths, queries and fragments are preserved. A trust rule contains only the scheme and authority, or a hostname wildcard with an optional port. [Native validation](../conformance/goapi/trusted_origins_test.go) · [HTTP comparison](../conformance/trusted-origins.mjs)
 
 ### Share a session across subdomains
 
@@ -136,7 +136,7 @@ An empty `Domain` inside the options uses the exact hostname from `BaseURL`. A d
 
 HTTPS enables `Secure` by default. `UseSecureCookies` accepts a boolean pointer to override that setting. A `__Secure-` prefix requires secure cookies. A `__Host-` prefix also requires host-only scope and a root path. The HTTPS One Tap nonce always uses this host-only scope.
 
-Signing out clears the shared session cookies across eligible hosts and revokes the active session. During a move from host-only cookies, issue a fresh login on the original host to replace its previous browser credential. Each host controls its own older host-only cookies. The login-method preference persists across logout. In the Go client, call `ClearSharedLastLoginMethod(cookieName, domain)` to remove that preference. [Cookie scope tests](../cookie_scope_http_test.go)
+Signing out clears the shared session cookies across eligible hosts and revokes the active session. During a move from host-only cookies, issue a fresh login on the original host to replace its previous browser credential. Each host controls its own older host-only cookies. The login-method preference persists across logout. In the Go client, call `ClearSharedLastLoginMethod(cookieName, domain)` to remove that preference. [Cookie scope tests](../conformance/goapi/cookie_scope_http_test.go)
 
 With the browser cache disabled (the default), `GET /get-session` expires the cache cookie and any numbered chunks in this instance’s namespace. With a shared domain, the response also removes host-only copies that the browser sent. The store supplies the current session. [Session cache cleanup tests](../conformance/session-cache-cleanup.mjs)
 

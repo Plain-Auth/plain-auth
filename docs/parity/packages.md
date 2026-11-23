@@ -20,8 +20,8 @@ Each row tracks the behavior exposed by a published entry point. The Go implemen
 - [ ] Authentication server and framework bindings
   - [ ] Default interface (`.`)
     - [x] Create a password account and return a usable session token on SQLite ([test](../../conformance/core.test.mjs#L193))
-    - [x] Apply configured email-verification gates ([test](../../account_lifecycle_test.go#L15))
-    - [x] Keep callback failures private and honor cancellation while password operations are queued ([test](../../password_codec_test.go#L15))
+    - [x] Apply configured email-verification gates ([test](../../conformance/goapi/account_lifecycle_test.go#L15))
+    - [x] Keep callback failures private and honor cancellation while password operations are queued ([test](../../conformance/goapi/password_codec_test.go#L15))
     - [x] Keep failed version lookup retryable and issue a snapshot only for the stored ordinary profile ([test](../../session_cache_version_test.go#L147))
     - [x] Keep private duplicate observers and password recovery independent of cache version callbacks until a real session is issued ([test](../../client/session_cache_version_test.go#L88))
     - [x] Round-trip configured profile values, private inputs, required fields and server-owned signup defaults on shared SQLite ([test](../../conformance/user-fields.mjs#L32))

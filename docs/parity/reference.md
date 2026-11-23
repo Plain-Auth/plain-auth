@@ -259,7 +259,7 @@
     - [ ] Wildcard Support
       - [x] Compare cookie-authenticated mutations and absolute login callback decisions for HTTP(S) wildcard origins on both servers ([test](../../conformance/trusted-origins.mjs#L76))
       - [ ] Pattern Syntax
-        - [x] Separate hostname and port matching and restrict numeric address patterns to IPv4 ([test](../../trusted_origins_test.go#L11))
+        - [x] Separate hostname and port matching and restrict numeric address patterns to IPv4 ([test](../../conformance/goapi/trusted_origins_test.go#L11))
         - [ ] `?`
         - [ ] `*`
         - [ ] ``
@@ -308,7 +308,7 @@
       - [x] Observe committed resets through the official client on both runtimes, including hook rejection and email-code verification ordering ([test](../../conformance/password-reset-hook.mjs#L8))
       - [x] Reject proof replay while the host callback is running across memory and three SQL engines ([test](../../adapters/sqlstore/password_reset_hook_test.go#L20))
       - [x] Bind post-callback mailbox verification to the same owner and address across a concurrent address change ([test](../../adapters/sqlstore/password_reset_hook_test.go#L194))
-      - [x] Retain custom account adapters, forward native callback errors and contain a host panic after commit ([test](../../password_reset_hook_test.go#L14))
+      - [x] Retain custom account adapters, forward native callback errors and contain a host panic after commit ([test](../../conformance/goapi/password_reset_hook_test.go#L14))
     - [ ] `revokeSessionsOnPasswordReset`
     - [ ] `resetPasswordTokenExpiresIn`
     - [x] `onExistingUserSignUp` ([test](../../conformance/core.test.mjs#L1461))
@@ -392,13 +392,13 @@
     - [ ] `accountLinking`
       - [x] `enabled` ([test](../../conformance/social-link-policy.mjs#L50))
         - [x] Close new links across browser and direct grants while permitting new registration and subsequent sign-in with the same stable subject ([test](../../conformance/social-link-policy.mjs#L50))
-        - [x] Refresh an existing mobile identity only under its live owner session and reject attachment of new and foreign identities ([test](../../oauth_signup_test.go#L228))
+        - [x] Refresh an existing mobile identity only under its live owner session and reject attachment of new and foreign identities ([test](../../conformance/goapi/oauth_signup_test.go#L228))
         - [x] Commit owned credential refresh without issuing another session across all three SQL engines ([test](../../adapters/sqlstore/social_test.go#L132))
       - [x] `disableImplicitLinking` ([test](../../conformance/social-link-policy.mjs#L5))
         - [x] Require an authenticated owner to link a trusted provider, preserve the stable owner, and accept subsequent logins ([test](../../conformance/social-link-policy.mjs#L5))
         - [x] Deny an automatic link even when a registered enterprise IdP has a verified matching domain ([test](../../adapters/sqlstore/sso_domain_test.go#L300))
         - [x] Keep new social registration available and leave no partial session on a same-email collision on all SQL engines ([test](../../adapters/sqlstore/social_test.go#L107))
-        - [x] Use a mobile ID token to sign in only after the authenticated account owner explicitly links the provider ([test](../../oauth_signup_test.go#L145))
+        - [x] Use a mobile ID token to sign in only after the authenticated account owner explicitly links the provider ([test](../../conformance/goapi/oauth_signup_test.go#L145))
       - [ ] `trustedProviders`
       - [ ] `allowDifferentEmails`
       - [ ] `allowUnlinkingAll`
@@ -443,23 +443,23 @@
       - [x] Silence one instance without suppressing error records from another ([test](../../conformance/core.test.mjs#L1323))
     - [ ] `disableColors`
     - [ ] `level`
-      - [x] Use the configured handler severity threshold for events from core and plugin hooks ([test](../../logger_test.go#L46))
+      - [x] Use the configured handler severity threshold for events from core and plugin hooks ([test](../../conformance/goapi/logger_test.go#L46))
     - [ ] `"debug"`
     - [ ] `"info"`
     - [ ] `"warn"`
-    - [x] `"error"` ([test](../../logger_test.go#L46))
-      - [x] Record errors and suppress warnings with the standard error threshold ([test](../../logger_test.go#L46))
-    - [x] `log` ([test](../../logger_test.go#L51))
-      - [x] Route core and plugin diagnostics to a host JSON handler with application attributes ([test](../../logger_test.go#L51))
+    - [x] `"error"` ([test](../../conformance/goapi/logger_test.go#L46))
+      - [x] Record errors and suppress warnings with the standard error threshold ([test](../../conformance/goapi/logger_test.go#L46))
+    - [x] `log` ([test](../../conformance/goapi/logger_test.go#L51))
+      - [x] Route core and plugin diagnostics to a host JSON handler with application attributes ([test](../../conformance/goapi/logger_test.go#L51))
     - [ ] `message`
     - [ ] `...args`
   - [ ] `databaseHooks`
   - [ ] `onAPIError`
-    - [x] Report the original error and already-resolved user before writing the localized HTTP response ([test](../../error_reporting_test.go#L88))
+    - [x] Report the original error and already-resolved user before writing the localized HTTP response ([test](../../conformance/goapi/error_reporting_test.go#L88))
     - [ ] `throw`
     - [x] `onError` ([test](../../conformance/core.test.mjs#L1329))
       - [x] Wait for the host reporter and preserve the endpoint error when the reporter fails ([test](../../conformance/core.test.mjs#L1329))
-      - [x] Contain reporter panics and keep callback errors and credentials out of client responses and logs ([test](../../error_reporting_test.go#L67))
+      - [x] Contain reporter panics and keep callback errors and credentials out of client responses and logs ([test](../../conformance/goapi/error_reporting_test.go#L67))
     - [ ] `errorURL`
     - [ ] `customizeDefaultErrorPage`
     - [ ] `colors`
@@ -490,8 +490,8 @@
     - [ ] `disableCornerDecorations`
     - [ ] `disableBackgroundGrid`
   - [ ] `hooks`
-  - [x] `disabledPaths` ([test](../../disabled_paths_test.go#L14))
-    - [x] Disable exact mount-relative HTTP paths before key extraction and request hooks, omit their fixed routes from OpenAPI and retain native Go calls ([test](../../disabled_paths_test.go#L14))
+  - [x] `disabledPaths` ([test](../../conformance/goapi/disabled_paths_test.go#L14))
+    - [x] Disable exact mount-relative HTTP paths before key extraction and request hooks, omit their fixed routes from OpenAPI and retain native Go calls ([test](../../conformance/goapi/disabled_paths_test.go#L14))
     - [x] Apply the same per-path HTTP setting to the SCIM wrapper and preserve neighboring resource operations ([test](../../plugins/scim/http_test.go#L117))
   - [ ] `telemetry`
 
@@ -527,7 +527,7 @@
     - [ ] Basic Usage
     - [ ] Wildcard Origins
       - [ ] Protocol-specific wildcards
-        - [x] Complete the OAuth provider callback on the static auth host and return the browser to an allowed HTTPS application subdomain ([test](../../oauth_test.go#L198))
+        - [x] Complete the OAuth provider callback on the static auth host and return the browser to an allowed HTTPS application subdomain ([test](../../conformance/goapi/oauth_test.go#L198))
       - [ ] Protocol-agnostic wildcards
         - [x] Admit both HTTP and HTTPS for a scheme-independent hostname wildcard on their default ports ([test](../../conformance/trusted-origins.mjs#L41))
     - [ ] Custom Schemes

@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/Plain-Auth/plain-auth/internal/httporigin"
 	"github.com/Plain-Auth/plain-auth/internal/popupwire"
 )
 
@@ -62,7 +63,7 @@ func oauthPopupPlugin(messageType string) Plugin {
 func startOAuthPopup(c EndpointContext, messageType string) (any, error) {
 	a, r := c.Auth, c.Request
 	q := r.URL.Query()
-	origin, err := parseOrigin(q.Get("popupOrigin"))
+	origin, err := httporigin.Parse(q.Get("popupOrigin"))
 	if err != nil || len(q["popupOrigin"]) != 1 || strings.ContainsAny(origin, "*?") || !a.trustedURL(origin, false) {
 		return nil, &APIError{403, "INVALID_ORIGIN", "Invalid origin"}
 	}

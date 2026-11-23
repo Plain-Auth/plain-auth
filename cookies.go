@@ -4,11 +4,77 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/base64"
+	"errors"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
+
+	"github.com/Plain-Auth/plain-auth/internal/configenv"
 )
+
+// CrossSubDomainCookiesOptions selects the host and descendants that receive
+// shared cookies. Use a parent domain to share cookies with sibling hosts.
+type CrossSubDomainCookiesOptions struct {
+	Domain string
+}
+
+func secureCookies(opts *Options) bool {
+	if opts.UseSecureCookies != nil {
+		return *opts.UseSecureCookies
+	}
+	return strings.HasPrefix(opts.BaseURL, "https://")
+}
+
+func prepareCookieScope(opts *Options) error {
+	secure := secureCookies(opts)
+	opts.UseSecureCookies = &secure
+	prefix := strings.ToLower(opts.CookiePrefix)
+	hostOnly := strings.HasPrefix(prefix, "__host-")
+	if !secure && (hostOnly || strings.HasPrefix(prefix, "__secure-")) {
+		return errors.New("auth: a reserved cookie prefix requires Secure cookies")
+	}
+	if opts.CrossSubDomainCookies == nil {
+		return nil
+	}
+	if hostOnly {
+		return errors.New("auth: a __Host- cookie prefix requires host-only cookies")
+	}
+	base, err := url.Parse(opts.BaseURL)
+	if err != nil {
+		return err
+	}
+	domain, err := configenv.CookieDomain(base.Hostname(), opts.CrossSubDomainCookies.Domain)
+	if err != nil {
+		return err
+	}
+	opts.CrossSubDomainCookies = &CrossSubDomainCookiesOptions{Domain: domain}
+	return nil
+}
+
+func (a *Auth) browserCookie(name, value string, maxAge int) *http.Cookie {
+	c := &http.Cookie{Name: a.prefixedCookieName(name), Value: value, Path: "/", MaxAge: maxAge,
+		Secure: secureCookies(&a.opts), HttpOnly: true, SameSite: http.SameSiteLaxMode}
+	if a.opts.CrossSubDomainCookies != nil {
+		c.Domain = a.opts.CrossSubDomainCookies.Domain
+	}
+	return c
+}
+
+// Expire an issuing host's previous host-only cookie when a deployment begins
+// sharing this credential. A request cookie does not carry its original scope.
+func expireHostCopy(h http.Header, r *http.Request, c *http.Cookie) {
+	if c.Domain == "" {
+		return
+	}
+	if _, err := r.Cookie(c.Name); err != nil {
+		return
+	}
+	host := *c
+	host.Domain, host.Value, host.MaxAge = "", "", -1
+	h.Add("Set-Cookie", host.String())
+}
 
 func (a *Auth) prefixedCookieName(name string) string {
 	namespace := a.opts.CookiePrefix
@@ -156,5 +222,57 @@ func (a *Auth) writeRememberPreference(headers http.Header, r *http.Request, per
 	} else if _, err := r.Cookie(marker.Name); err == nil {
 		marker.Value, marker.MaxAge = "", -1
 		headers.Add("Set-Cookie", marker.String())
+	}
+}
+
+// expireStoredSessionData removes the cache cookies belonging to this auth
+// instance. Credential expiration also clears the base name when the browser omitted it.
+func (a *Auth) expireStoredSessionData(h http.Header, r *http.Request, expireBase bool) {
+	a.reconcileSessionDataCookies(h, r, expireBase, nil)
+}
+
+func (a *Auth) reconcileSessionDataCookies(h http.Header, r *http.Request, expireBase bool, replacements map[string]bool) {
+	expired := a.browserCookie("session_data", "", -1)
+	prefix := expired.Name + "."
+	var names []string
+	var seen map[string]bool
+	hasData := false
+	for _, c := range r.Cookies() {
+		if c.Name != expired.Name {
+			suffix, ok := strings.CutPrefix(c.Name, prefix)
+			if !ok {
+				continue
+			}
+			// Chunk indexes use the canonical decimal spelling of a JavaScript safe integer.
+			index, err := strconv.ParseUint(suffix, 10, 53)
+			if err != nil || strconv.FormatUint(index, 10) != suffix {
+				continue
+			}
+		}
+		hasData = hasData || c.Value != ""
+		if !seen[c.Name] {
+			if seen == nil {
+				seen = make(map[string]bool)
+			}
+			seen[c.Name] = true
+			names = append(names, c.Name)
+		}
+	}
+	if !expireBase && !hasData {
+		return
+	}
+	if expireBase && !seen[expired.Name] {
+		h.Add("Set-Cookie", expired.String())
+	}
+	for _, name := range names {
+		expired.Name = name
+		if expired.Domain != "" {
+			host := *expired
+			host.Domain = ""
+			h.Add("Set-Cookie", host.String())
+		}
+		if !replacements[name] {
+			h.Add("Set-Cookie", expired.String())
+		}
 	}
 }

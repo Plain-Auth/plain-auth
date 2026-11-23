@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Plain-Auth/plain-auth/internal/httporigin"
 	"golang.org/x/oauth2"
 )
 
@@ -209,7 +210,7 @@ func (a *Auth) finishOAuth(w http.ResponseWriter, r *http.Request, id string) er
 	}
 	// The configured origin is the only destination sent in the code exchange.
 	base, _ := url.Parse(a.opts.BaseURL)
-	if canonicalOrigin(&url.URL{Scheme: base.Scheme, Host: r.Host}) != canonicalOrigin(base) {
+	if httporigin.Canonical(&url.URL{Scheme: base.Scheme, Host: r.Host}) != httporigin.Canonical(base) {
 		return &APIError{400, "INVALID_CALLBACK_URL", "Invalid OAuth callback"}
 	}
 	q := r.URL.Query()

@@ -1,4 +1,5 @@
 // HTTP request handling for the core authentication endpoints.
+
 package plainauth
 
 import (
@@ -15,6 +16,7 @@ import (
 	"strings"
 	"unicode"
 
+	"github.com/Plain-Auth/plain-auth/internal/httporigin"
 	"github.com/Plain-Auth/plain-auth/internal/jsjson"
 )
 
@@ -626,32 +628,17 @@ func (a *Auth) trustedURL(raw string, relative bool) bool {
 		path := strings.ToLower(u.EscapedPath())
 		return relative && !strings.HasPrefix(raw, "//") && !strings.Contains(path, "%2f") && !strings.Contains(path, "%5c")
 	}
-	origin := canonicalOrigin(u)
+	origin := httporigin.Canonical(u)
 	if origin == "" {
 		return false
 	}
 	for _, candidate := range a.trustedOrigins {
-		if candidate.matches(u, origin) {
+		if candidate.Matches(u, origin) {
 			return true
 		}
 	}
 	base, err := url.Parse(a.opts.BaseURL)
-	return err == nil && canonicalOrigin(base) == origin
-}
-
-func canonicalOrigin(u *url.URL) string {
-	if (u.Scheme != "http" && u.Scheme != "https") || u.Hostname() == "" || u.User != nil {
-		return ""
-	}
-	host, port := strings.ToLower(u.Hostname()), u.Port()
-	if port == "" || (port == "80" && u.Scheme == "http") || (port == "443" && u.Scheme == "https") {
-		if strings.Contains(host, ":") {
-			host = "[" + host + "]"
-		}
-	} else {
-		host = net.JoinHostPort(host, port)
-	}
-	return u.Scheme + "://" + host
+	return err == nil && httporigin.Canonical(base) == origin
 }
 
 // CallbackURL resolves an application callback using this instance's trusted origins.

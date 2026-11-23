@@ -3,6 +3,8 @@ package plainauth
 import (
 	"net/url"
 	"strings"
+
+	"github.com/Plain-Auth/plain-auth/internal/httporigin"
 )
 
 // HasOAuthProvider reports whether an account provider ID belongs to a
@@ -23,16 +25,16 @@ func (a *Auth) ExplicitlyTrustedOrigin(raw string) bool {
 	if err != nil {
 		return false
 	}
-	origin := canonicalOrigin(u)
+	origin := httporigin.Canonical(u)
 	if origin == "" {
 		return false
 	}
 	base, _ := url.Parse(a.opts.BaseURL)
-	if base != nil && canonicalOrigin(base) == origin {
+	if base != nil && httporigin.Canonical(base) == origin {
 		return true
 	}
 	for _, rule := range a.trustedOrigins {
-		if rule.exact == origin {
+		if rule.Exact(origin) {
 			return true
 		}
 	}

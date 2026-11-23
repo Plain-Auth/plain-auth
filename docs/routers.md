@@ -40,7 +40,7 @@ me := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
 ## Verify your mount
 
-Call `GET /api/auth/ok` to check routing. Then run the signup and sign-out flow in the [quickstart](../README.md#run-it-locally). Sign-out can expire multiple cookies in one response. Proxies and framework adapters must preserve each header independently.
+Call `GET /api/auth/ok` to check routing. Then run the signup and sign-out flow in the [quickstart](../README.md#quickstart). Sign-out can expire multiple cookies in one response. Proxies and framework adapters must preserve each header independently.
 
 The [router tests](../integrations/routers/routers_test.go) exercise real router packages in their own Go module. Run them from the repository root.
 

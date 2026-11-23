@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/Plain-Auth/plain-auth/internal/httporigin"
 )
 
 func TestOAuthProxyConfiguration(t *testing.T) {
@@ -138,11 +140,11 @@ func TestOAuthProxyProductionTrust(t *testing.T) {
 		t.Fatal(err)
 	}
 	a := Auth{opts: Options{BaseURL: production, BasePath: "/auth"}, oauthProxy: plugin.oauthProxy, now: func() time.Time { return now }}
-	origin, err := parseTrustedOrigin(preview)
+	rules, err := httporigin.Compile([]string{preview})
 	if err != nil {
 		t.Fatal(err)
 	}
-	a.trustedOrigins = append(a.trustedOrigins, origin)
+	a.trustedOrigins = append(a.trustedOrigins, rules...)
 	grant := oauthProxyState{State: "browser-state", Provider: "work", ClientID: "client", Preview: preview, Production: production, Callback: "/done", Verifier: "verifier", Nonce: "nonce", BasePath: "/auth", ExpiresAt: now.Add(time.Minute)}
 	var provider OAuthProvider
 	provider.Config.ClientID = "client"

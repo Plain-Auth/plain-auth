@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Plain-Auth/plain-auth/internal/httporigin"
 	"golang.org/x/oauth2"
 )
 
@@ -93,7 +94,7 @@ func proxyOrigin(raw string) string {
 	if err != nil || u.User != nil || u.RawQuery != "" || u.ForceQuery || u.Fragment != "" {
 		return ""
 	}
-	origin := canonicalOrigin(u)
+	origin := httporigin.Canonical(u)
 	if u.Scheme == "http" {
 		host := strings.ToLower(u.Hostname())
 		if host != "localhost" && !strings.HasSuffix(host, ".localhost") && !net.ParseIP(host).IsLoopback() {

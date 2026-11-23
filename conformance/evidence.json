@@ -7,12 +7,12 @@
     },
     {
       "label": "Apply configured email-verification gates",
-      "test": "account_lifecycle_test.go",
+      "test": "conformance/goapi/account_lifecycle_test.go",
       "marker": "func TestVerificationGatedSignUpAndSignIn("
     },
     {
       "label": "Keep callback failures private and honor cancellation while password operations are queued",
-      "test": "password_codec_test.go",
+      "test": "conformance/goapi/password_codec_test.go",
       "marker": "func TestPasswordCallbackFailuresAndCancellation("
     },
     {
@@ -91,7 +91,7 @@
     },
     {
       "label": "Apply configured email-verification gates",
-      "test": "account_lifecycle_test.go",
+      "test": "conformance/goapi/account_lifecycle_test.go",
       "marker": "func TestVerificationGatedSignUpAndSignIn("
     },
     {
@@ -123,14 +123,14 @@
     },
     {
       "label": "Use an encrypted account ID token as a logout hint only for the signed-in owner and reject an untrusted return",
-      "test": "oauth_logout_test.go",
+      "test": "conformance/goapi/oauth_logout_test.go",
       "marker": "func TestProviderLogoutRevokesOwnerSession("
     }
   ],
   "core/ok": [
     {
       "label": "Serve the health endpoint under a custom mount",
-      "test": "http_test.go",
+      "test": "conformance/goapi/http_test.go",
       "marker": "request(\"GET\", \"ok\", \"\", nil, 200)"
     },
     {
@@ -143,21 +143,21 @@
   "core/listSessions": [
     {
       "label": "Return both active logins for the signed-in user",
-      "test": "http_test.go",
+      "test": "conformance/goapi/http_test.go",
       "marker": "list := request(\"GET\", \"list-sessions\""
     }
   ],
   "core/revokeOtherSessions": [
     {
       "label": "Invalidate an older session while retaining the current one",
-      "test": "http_test.go",
+      "test": "conformance/goapi/http_test.go",
       "marker": "request(\"POST\", \"revoke-other-sessions\", \"\", h, 200)"
     }
   ],
   "core/revokeSession": [
     {
       "label": "Revoke the current token and expire session cookies",
-      "test": "http_test.go",
+      "test": "conformance/goapi/http_test.go",
       "marker": "revoked := request(\"POST\", \"revoke-session\""
     },
     {
@@ -307,12 +307,12 @@
   "docs/content/docs/concepts/cookies.mdx#L62": [
     {
       "label": "Resolve shared cookie domains from the static base URL and reject unrelated hosts and public or private suffixes",
-      "test": "cookie_scope_test.go",
+      "test": "cookies_test.go",
       "marker": "func TestCrossDomainCookiePolicy("
     },
     {
       "label": "Share an authenticated browser session with a sibling host and expire it on logout",
-      "test": "cookie_scope_http_test.go",
+      "test": "conformance/goapi/cookie_scope_http_test.go",
       "marker": "func TestSharedCookieLoginAndLogoutAcrossHosts("
     },
     {
@@ -324,14 +324,14 @@
   "docs/content/docs/concepts/cookies.mdx#L180": [
     {
       "label": "Use Chrome on two TLS hosts to sign in, share an HTTP-only session and log out of both hosts",
-      "test": "cookie_scope_browser_test.go",
+      "test": "conformance/goapi/cookie_scope_browser_test.go",
       "marker": "func TestChromeSharedCookieLogout("
     }
   ],
   "docs/content/docs/concepts/cookies.mdx#L94": [
     {
       "label": "Set the secure override and enforce reserved cookie prefix constraints",
-      "test": "cookie_scope_test.go",
+      "test": "cookies_test.go",
       "marker": "func TestCookieSecurityOverridesAndReservedNames("
     },
     {
@@ -343,14 +343,14 @@
   "docs/content/docs/concepts/rate-limit.mdx#L310": [
     {
       "label": "Return a rate-limit error with a retry duration",
-      "test": "http_test.go",
+      "test": "conformance/goapi/http_test.go",
       "marker": "func TestCredentialHTTPRateLimit("
     }
   ],
   "docs/content/docs/concepts/plugins.mdx#L109": [
     {
       "label": "Register a Go plugin endpoint and detect duplicate registrations",
-      "test": "plugins_test.go",
+      "test": "conformance/goapi/plugins_test.go",
       "marker": "func TestPluginRegistrationAndDispatch("
     }
   ],
@@ -414,21 +414,21 @@
   "docs/content/docs/concepts/session-management.mdx#L128": [
     {
       "label": "Return both active logins for the signed-in user",
-      "test": "http_test.go",
+      "test": "conformance/goapi/http_test.go",
       "marker": "list := request(\"GET\", \"list-sessions\""
     }
   ],
   "docs/content/docs/concepts/session-management.mdx#L138": [
     {
       "label": "Revoke the current token and expire session cookies",
-      "test": "http_test.go",
+      "test": "conformance/goapi/http_test.go",
       "marker": "revoked := request(\"POST\", \"revoke-session\""
     }
   ],
   "docs/content/docs/concepts/session-management.mdx#L152": [
     {
       "label": "Invalidate an older session while retaining the current one",
-      "test": "http_test.go",
+      "test": "conformance/goapi/http_test.go",
       "marker": "request(\"POST\", \"revoke-other-sessions\", \"\", h, 200)"
     }
   ],
@@ -591,7 +591,7 @@
   "core/updateUser": [
     {
       "label": "Update a signed-in profile",
-      "test": "account_test.go",
+      "test": "conformance/goapi/account_test.go",
       "marker": "profile update failed:"
     },
     {
@@ -613,35 +613,35 @@
   "core/verifyPassword": [
     {
       "label": "Validate the password of the signed-in user",
-      "test": "account_test.go",
+      "test": "conformance/goapi/account_test.go",
       "marker": "post(\"verify-password\", `{\"password\":\"correct password\"}"
     }
   ],
   "core/changePassword": [
     {
       "label": "Change credentials for a signed-in user",
-      "test": "account_test.go",
+      "test": "conformance/goapi/account_test.go",
       "marker": "change := post(\"change-password\""
     }
   ],
   "core/requestPasswordReset": [
     {
       "label": "Deliver credential-reset instructions for a registered account",
-      "test": "account_test.go",
+      "test": "conformance/goapi/account_test.go",
       "marker": "present := post(\"request-password-reset\""
     }
   ],
   "core/requestPasswordResetCallback": [
     {
       "label": "Redirect the reset callback to the configured application URL",
-      "test": "account_test.go",
+      "test": "conformance/goapi/account_test.go",
       "marker": "dest := serve(t, auth, \"GET\", resetURL.RequestURI()"
     }
   ],
   "core/resetPassword": [
     {
       "label": "Apply an unexpired reset link only once under concurrent use",
-      "test": "account_test.go",
+      "test": "conformance/goapi/account_test.go",
       "marker": "func TestOneWinnerForResetAndExpiredLinks("
     },
     {
@@ -658,14 +658,14 @@
   "core/sendVerificationEmail": [
     {
       "label": "Deliver a verification link to the registered address",
-      "test": "account_test.go",
+      "test": "conformance/goapi/account_test.go",
       "marker": "verification delivery did not reach the account owner"
     }
   ],
   "core/verifyEmail": [
     {
       "label": "Reflect the verified email address in the current session",
-      "test": "account_test.go",
+      "test": "conformance/goapi/account_test.go",
       "marker": "verification not reflected in session:"
     },
     {
@@ -1122,7 +1122,7 @@
   "core/changeEmail": [
     {
       "label": "Confirm an email change through the destination inbox",
-      "test": "account_lifecycle_test.go",
+      "test": "conformance/goapi/account_lifecycle_test.go",
       "marker": "replacement inbox was not sent its own verification"
     }
   ],
@@ -1134,7 +1134,7 @@
     },
     {
       "label": "Delete the account with a fresh authenticated session",
-      "test": "account_lifecycle_test.go",
+      "test": "conformance/goapi/account_lifecycle_test.go",
       "marker": "fresh-session deletion failed"
     },
     {
@@ -1146,7 +1146,7 @@
   "core/deleteUserCallback": [
     {
       "label": "Confirm account deletion and invalidate its session",
-      "test": "account_lifecycle_test.go",
+      "test": "conformance/goapi/account_lifecycle_test.go",
       "marker": "deleted account session still active"
     }
   ],
@@ -1336,7 +1336,7 @@
     },
     {
       "label": "Start an OAuth authorization flow with PKCE and browser state",
-      "test": "oauth_test.go",
+      "test": "conformance/goapi/oauth_test.go",
       "marker": "func TestOAuthBrowserFlow("
     },
     {
@@ -1346,7 +1346,7 @@
     },
     {
       "label": "Enforce explicit registration for both browser and direct ID-token sign-in while honoring closed registrations",
-      "test": "oauth_signup_test.go",
+      "test": "conformance/goapi/oauth_signup_test.go",
       "marker": "func TestOAuthExplicitRegistration("
     },
     {
@@ -1378,7 +1378,7 @@
   "core/callbackOAuth": [
     {
       "label": "Redeem the authorization code and establish a local authenticated session",
-      "test": "oauth_test.go",
+      "test": "conformance/goapi/oauth_test.go",
       "marker": "func TestOAuthBrowserFlow("
     },
     {
@@ -1790,7 +1790,7 @@
   "docs/content/docs/concepts/rate-limit.mdx#L185": [
     {
       "label": "Configure the default rule, override exact or wildcard paths and exempt individual routes",
-      "test": "rate_rules_test.go",
+      "test": "ratelimit_test.go",
       "marker": "func TestHostRateLimitRules("
     }
   ],
@@ -3378,7 +3378,7 @@
     },
     {
       "label": "Publish a custom Secure preference that the browser can read and the sibling receives",
-      "test": "cookie_scope_browser_test.go",
+      "test": "conformance/goapi/cookie_scope_browser_test.go",
       "marker": "const preference = loginPreference({cookieName:",
       "complete": true
     }
@@ -7324,14 +7324,14 @@
   "docs/content/docs/reference/options.mdx#L148": [
     {
       "label": "Separate hostname and port matching and restrict numeric address patterns to IPv4",
-      "test": "trusted_origins_test.go",
+      "test": "conformance/goapi/trusted_origins_test.go",
       "marker": "func TestWildcardOriginCallbacks("
     }
   ],
   "docs/content/docs/reference/security.mdx#L243": [
     {
       "label": "Complete the OAuth provider callback on the static auth host and return the browser to an allowed HTTPS application subdomain",
-      "test": "oauth_test.go",
+      "test": "conformance/goapi/oauth_test.go",
       "marker": "wildcard application callback:"
     }
   ],
@@ -7345,7 +7345,7 @@
   "plugin-symbol/last-login-method/LastLoginMethodClientConfig/cookieName": [
     {
       "label": "Read the named login method on the issuing host and its sibling in Chrome",
-      "test": "cookie_scope_browser_test.go",
+      "test": "conformance/goapi/cookie_scope_browser_test.go",
       "marker": "custom preference was not shared",
       "complete": true
     }
@@ -7353,7 +7353,7 @@
   "plugin-symbol/last-login-method/LastLoginMethodClientConfig/domain": [
     {
       "label": "Clear the shared preference on both HTTPS hosts and preserve unrelated cookies and the browser session",
-      "test": "cookie_scope_browser_test.go",
+      "test": "conformance/goapi/cookie_scope_browser_test.go",
       "marker": "domain preference survived clear",
       "complete": true
     }
@@ -8080,7 +8080,7 @@
     },
     {
       "label": "Clear each received cache chunk on the issuing host and shared domain using the configured cookie namespace",
-      "test": "session_cache_cookies_test.go",
+      "test": "cookies_test.go",
       "marker": "func TestDisabledCacheScopeCleanup("
     },
     {
@@ -8309,7 +8309,7 @@
   "docs/content/docs/concepts/plugins.mdx#L148/`logger`": [
     {
       "label": "Use the instance logger from plugin hooks and keep records from separate hosts isolated",
-      "test": "logger_test.go",
+      "test": "conformance/goapi/logger_test.go",
       "marker": "expected the mail and plugin errors",
       "complete": true
     }
@@ -8332,14 +8332,14 @@
   "docs/content/docs/reference/options.mdx#L785/`level`": [
     {
       "label": "Use the configured handler severity threshold for events from core and plugin hooks",
-      "test": "logger_test.go",
+      "test": "conformance/goapi/logger_test.go",
       "marker": "below the configured level"
     }
   ],
   "docs/content/docs/reference/options.mdx#L789/`\"error\"`": [
     {
       "label": "Record errors and suppress warnings with the standard error threshold",
-      "test": "logger_test.go",
+      "test": "conformance/goapi/logger_test.go",
       "marker": "below the configured level",
       "complete": true
     }
@@ -8347,7 +8347,7 @@
   "docs/content/docs/reference/options.mdx#L790/`log`": [
     {
       "label": "Route core and plugin diagnostics to a host JSON handler with application attributes",
-      "test": "logger_test.go",
+      "test": "conformance/goapi/logger_test.go",
       "marker": "event[\"service\"] != \"customer\"",
       "complete": true
     }
@@ -8355,7 +8355,7 @@
   "docs/content/docs/reference/options.mdx#L856": [
     {
       "label": "Report the original error and already-resolved user before writing the localized HTTP response",
-      "test": "error_reporting_test.go",
+      "test": "conformance/goapi/error_reporting_test.go",
       "marker": "func TestHTTPErrorReporterSeesResolvedIdentityBeforeTranslation"
     }
   ],
@@ -8368,7 +8368,7 @@
     },
     {
       "label": "Contain reporter panics and keep callback errors and credentials out of client responses and logs",
-      "test": "error_reporting_test.go",
+      "test": "conformance/goapi/error_reporting_test.go",
       "marker": "reporter replaced the endpoint response"
     }
   ],
@@ -8615,7 +8615,7 @@
   "docs/content/docs/reference/options.mdx#L962": [
     {
       "label": "Disable exact mount-relative HTTP paths before key extraction and request hooks, omit their fixed routes from OpenAPI and retain native Go calls",
-      "test": "disabled_paths_test.go",
+      "test": "conformance/goapi/disabled_paths_test.go",
       "marker": "func TestDisabledHTTPPaths(",
       "complete": true
     },
@@ -8880,7 +8880,7 @@
     },
     {
       "label": "Retain custom account adapters, forward native callback errors and contain a host panic after commit",
-      "test": "password_reset_hook_test.go",
+      "test": "conformance/goapi/password_reset_hook_test.go",
       "marker": "func TestPasswordResetHookWithExistingAccountAdapter("
     }
   ],
@@ -9312,7 +9312,7 @@
     },
     {
       "label": "Use a mobile ID token to sign in only after the authenticated account owner explicitly links the provider",
-      "test": "oauth_signup_test.go",
+      "test": "conformance/goapi/oauth_signup_test.go",
       "marker": "func TestIDTokenExplicitAccountLinking"
     }
   ],
@@ -9335,7 +9335,7 @@
     },
     {
       "label": "Use a mobile ID token to sign in only after the authenticated account owner explicitly links the provider",
-      "test": "oauth_signup_test.go",
+      "test": "conformance/goapi/oauth_signup_test.go",
       "marker": "func TestIDTokenExplicitAccountLinking"
     }
   ],
@@ -9426,7 +9426,7 @@
     },
     {
       "label": "Refresh an existing mobile identity only under its live owner session and reject attachment of new and foreign identities",
-      "test": "oauth_signup_test.go",
+      "test": "conformance/goapi/oauth_signup_test.go",
       "marker": "could not refresh an already-owned identity"
     },
     {
@@ -11012,7 +11012,7 @@
     },
     {
       "label": "Finish the browser code exchange with direct grants disabled and keep other providers available",
-      "test": "oauth_signup_test.go",
+      "test": "conformance/goapi/oauth_signup_test.go",
       "marker": "browser-only provider failed to complete code exchange"
     },
     {

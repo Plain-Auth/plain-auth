@@ -37,7 +37,7 @@ profile := plainauth.Plugin{
 opts.Plugins = []plainauth.Plugin{profile}
 ```
 
-The handler is then available at `GET /api/auth/profile`. Endpoint handlers run concurrently. Synchronize state they share or persist it in a transactional store. See the [plugin API](../plugins.go) and [registration tests](../plugins_test.go).
+The handler is then available at `GET /api/auth/profile`. Endpoint handlers run concurrently. Synchronize state they share or persist it in a transactional store. See the [plugin API](../plugins.go) and [registration tests](../conformance/goapi/plugins_test.go).
 
 ## Receive Stripe webhooks
 
@@ -134,4 +134,4 @@ if (preference.is("github")) signInWithGitHubButton.focus();
 forgetPreferenceButton.addEventListener("click", () => preference.clear());
 ```
 
-Use the same cookie name and domain on both sides. For example, a Go plugin configured with `CookieName: "__Secure-staff.preference"` and a shared cookie domain of `example.com` uses `loginPreference({ cookieName: "__Secure-staff.preference", domain: "example.com" })` in the browser. Calling `clear()` removes that preference across participating subdomains and preserves the signed-in session. [Two-host Chrome test](../cookie_scope_browser_test.go)
+Use the same cookie name and domain on both sides. For example, a Go plugin configured with `CookieName: "__Secure-staff.preference"` and a shared cookie domain of `example.com` uses `loginPreference({ cookieName: "__Secure-staff.preference", domain: "example.com" })` in the browser. Calling `clear()` removes that preference across participating subdomains and preserves the signed-in session. [Two-host Chrome test](../conformance/goapi/cookie_scope_browser_test.go)

@@ -1,4 +1,4 @@
-package plainauth_test
+package goapi_test
 
 import (
 	"context"
@@ -42,7 +42,7 @@ func TestChromeSharedCookieLogout(t *testing.T) {
 	mux.Handle("/api/auth/", instance)
 	mux.HandleFunc("/login-preference.mjs", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/javascript")
-		http.ServeFile(w, r, "plugins/lastlogin/browser.mjs")
+		http.ServeFile(w, r, "../../plugins/lastlogin/browser.mjs")
 	})
 	mux.HandleFunc("/probe", func(w http.ResponseWriter, r *http.Request) {
 		if r.Host != "app.example.test:"+port {

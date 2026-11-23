@@ -110,18 +110,18 @@
   - [ ] Cookie Prefix
   - [ ] Custom Cookies
   - [ ] Cross Subdomain Cookies
-    - [x] Resolve shared cookie domains from the static base URL and reject unrelated hosts and public or private suffixes ([test](../../cookie_scope_test.go#L10))
-    - [x] Share an authenticated browser session with a sibling host and expire it on logout ([test](../../cookie_scope_http_test.go#L17))
+    - [x] Resolve shared cookie domains from the static base URL and reject unrelated hosts and public or private suffixes ([test](../../cookies_test.go#L48))
+    - [x] Share an authenticated browser session with a sibling host and expire it on logout ([test](../../conformance/goapi/cookie_scope_http_test.go#L17))
     - [x] Isolate native client cookies by registrable domain and clear a shared login preference ([test](../../client/cookie_scope_test.go#L9))
   - [ ] Secure Cookies
-    - [x] Set the secure override and enforce reserved cookie prefix constraints ([test](../../cookie_scope_test.go#L62))
-    - [x] Serialize and authenticate a signed session cookie ([test](../../cookies_test.go#L10))
+    - [x] Set the secure override and enforce reserved cookie prefix constraints ([test](../../cookies_test.go#L100))
+    - [x] Serialize and authenticate a signed session cookie ([test](../../cookies_test.go#L11))
   - [ ] Safari, ITP, and Cross-Domain Setups
     - [ ] Using a Reverse Proxy
       - [ ] Example with Netlify
       - [ ] Example with Vercel
     - [ ] Using a Shared Parent Domain
-      - [x] Use Chrome on two TLS hosts to sign in, share an HTTP-only session and log out of both hosts ([test](../../cookie_scope_browser_test.go#L21))
+      - [x] Use Chrome on two TLS hosts to sign in, share an HTTP-only session and log out of both hosts ([test](../../conformance/goapi/cookie_scope_browser_test.go#L21))
 
 ## Database
 
@@ -360,7 +360,7 @@
   - [ ] Create a Server plugin
     - [ ] Register a plugin type
     - [ ] Endpoints
-      - [x] Register a Go plugin endpoint and detect duplicate registrations ([test](../../plugins_test.go#L14))
+      - [x] Register a Go plugin endpoint and detect duplicate registrations ([test](../../conformance/goapi/plugins_test.go#L14))
       - [ ] Context Object
       - [ ] `appName`
       - [ ] `options`
@@ -369,8 +369,8 @@
       - [ ] `session`
       - [ ] `secret`
       - [ ] `authCookie`
-      - [x] `logger` ([test](../../logger_test.go#L57))
-        - [x] Use the instance logger from plugin hooks and keep records from separate hosts isolated ([test](../../logger_test.go#L57))
+      - [x] `logger` ([test](../../conformance/goapi/logger_test.go#L57))
+        - [x] Use the instance logger from plugin hooks and keep records from separate hosts isolated ([test](../../conformance/goapi/logger_test.go#L57))
       - [ ] `db`
       - [ ] `adapter`
       - [ ] `internalAdapter`
@@ -437,7 +437,7 @@
         - [ ] `48`
         - [ ] `32`
     - [ ] Rate Limit Window
-      - [x] Configure the default rule, override exact or wildcard paths and exempt individual routes ([test](../../rate_rules_test.go#L10))
+      - [x] Configure the default rule, override exact or wildcard paths and exempt individual routes ([test](../../ratelimit_test.go#L10))
     - [ ] Storage
       - [x] Enforce shared SQL counters across two independent auth instances on SQLite, PostgreSQL and MySQL ([test](../../adapters/sqlstore/ratelimit_test.go#L18))
       - [ ] Using Database
@@ -445,7 +445,7 @@
         - [x] Share a fixed HTTP request window and reopen it after Redis expires the counter ([test](../../adapters/redis/storage_test.go#L355))
       - [ ] Custom Storage
   - [ ] Handling Rate Limit Errors
-    - [x] Return a rate-limit error with a retry duration ([test](../../http_test.go#L145))
+    - [x] Return a rate-limit error with a retry duration ([test](../../conformance/goapi/http_test.go#L145))
     - [ ] `X-Retry-After`
     - [ ] Global Handling
     - [ ] Per Request Handling
@@ -474,11 +474,11 @@
       - [x] Return the signed-in user and session with the default seven-day lifetime ([test](../../conformance/core.test.mjs#L195))
     - [ ] Use Session
     - [ ] List Sessions
-      - [x] Return both active logins for the signed-in user ([test](../../http_test.go#L94))
+      - [x] Return both active logins for the signed-in user ([test](../../conformance/goapi/http_test.go#L94))
     - [ ] Revoke Session
-      - [x] Revoke the current token and expire session cookies ([test](../../http_test.go#L102))
+      - [x] Revoke the current token and expire session cookies ([test](../../conformance/goapi/http_test.go#L102))
     - [ ] Revoke Other Sessions
-      - [x] Invalidate an older session while retaining the current one ([test](../../http_test.go#L99))
+      - [x] Invalidate an older session while retaining the current one ([test](../../conformance/goapi/http_test.go#L99))
     - [ ] Revoke All Sessions
       - [x] Revoke every session from the native client ([test](../../client/client_test.go#L94))
     - [ ] Update Session
@@ -486,7 +486,7 @@
   - [ ] Session Caching
     - [ ] Cookie Cache
       - [x] Expire the disabled cache and its canonical chunks on signed-in and anonymous reads ([test](../../conformance/session-cache-cleanup.mjs#L28))
-      - [x] Clear each received cache chunk on the issuing host and shared domain using the configured cookie namespace ([test](../../session_cache_cookies_test.go#L11))
+      - [x] Clear each received cache chunk on the issuing host and shared domain using the configured cookie namespace ([test](../../cookies_test.go#L172))
       - [x] Exchange HMAC-signed snapshots, browser-only lifetimes and chunked cookies in both directions on shared SQLite ([test](../../conformance/session-cache-compact.mjs#L73))
       - [x] Retain live JWT issuance, protected session checks and administrative controls after a physical schema migration on another node ([test](../../adapters/sqlstore/session_cache_test.go#L135))
       - [ ] Notes
@@ -569,7 +569,7 @@
         - [x] Require an authenticated owner to link a trusted provider, preserve the stable owner, and accept subsequent logins ([test](../../conformance/social-link-policy.mjs#L5))
         - [x] Deny an automatic link even when a registered enterprise IdP has a verified matching domain ([test](../../adapters/sqlstore/sso_domain_test.go#L300))
         - [x] Keep new social registration available and leave no partial session on a same-email collision on all SQL engines ([test](../../adapters/sqlstore/social_test.go#L107))
-        - [x] Use a mobile ID token to sign in only after the authenticated account owner explicitly links the provider ([test](../../oauth_signup_test.go#L145))
+        - [x] Use a mobile ID token to sign in only after the authenticated account owner explicitly links the provider ([test](../../conformance/goapi/oauth_signup_test.go#L145))
       - [ ] Manually Linking Accounts
     - [ ] Account Unlinking
       - [x] Keep the last required account and prevent unlinking another user’s account ([test](../../adapters/sqlstore/identity_test.go#L40))

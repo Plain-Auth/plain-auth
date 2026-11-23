@@ -54,7 +54,7 @@ opts.Logger = slog.New(slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{
 auth, err := plainauth.New(opts)
 ```
 
-A plugin can call `c.Auth.Logger().InfoContext(c.Request.Context(), "directory sync completed", "members", count)` to use the same destination and request context. Change the threshold at runtime with `level.Set(slog.LevelError)`. The verification-mail and last-login handlers report delivery or storage failures without putting the email address, token, password or raw callback error in the message. The host controls formatting, including terminal colors, through its handler. [Logger isolation and redaction tests](../logger_test.go)
+A plugin can call `c.Auth.Logger().InfoContext(c.Request.Context(), "directory sync completed", "members", count)` to use the same destination and request context. Change the threshold at runtime with `level.Set(slog.LevelError)`. The verification-mail and last-login handlers report delivery or storage failures without putting the email address, token, password or raw callback error in the message. The host controls formatting, including terminal colors, through its handler. [Logger isolation and redaction tests](../conformance/goapi/logger_test.go)
 
 ### Observe endpoint errors
 
@@ -71,7 +71,7 @@ opts.OnAPIError = func(c plainauth.ErrorContext, err error) error {
 }
 ```
 
-The handler waits for the callback, so bound any external reporting call with the request context and a timeout. Returning an error or panicking in the reporter records a diagnostic through the instance logger. The client receives the original HTTP status and the usual public error body, including any configured translation. Redirects, unmatched routes and ordinary rate-limit responses bypass the callback. Native Go methods return errors directly to their callers. [Error reporting tests](../error_reporting_test.go)
+The handler waits for the callback, so bound any external reporting call with the request context and a timeout. Returning an error or panicking in the reporter records a diagnostic through the instance logger. The client receives the original HTTP status and the usual public error body, including any configured translation. Redirects, unmatched routes and ordinary rate-limit responses bypass the callback. Native Go methods return errors directly to their callers. [Error reporting tests](../conformance/goapi/error_reporting_test.go)
 
 ## Rotate signing keys
 

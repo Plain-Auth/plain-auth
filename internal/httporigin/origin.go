@@ -1,8 +1,10 @@
-package plainauth
+// Package httporigin parses HTTP origins and matches configured trust rules.
+package httporigin
 
 import (
 	"errors"
 	"fmt"
+	"net"
 	"net/netip"
 	"net/url"
 	"path"
@@ -11,9 +13,8 @@ import (
 	"strings"
 )
 
-// An exact origin keeps the existing URL canonicalization. Wildcards are bounded
-// to the hostname or port they were declared in.
-type trustedOrigin struct {
+// Rule matches an exact origin or a configured hostname and port pattern.
+type Rule struct {
 	exact, scheme, host, port string
 	ipv4Only                  bool
 }
@@ -25,10 +26,11 @@ var (
 	errOriginPattern   = errors.New("expected an HTTP(S) origin or hostname wildcard with an optional port")
 )
 
-func configuredTrustedOrigins(origins []string) ([]trustedOrigin, error) {
-	rules := make([]trustedOrigin, 0, len(origins))
+// Compile validates the configured origins and preserves their order.
+func Compile(origins []string) ([]Rule, error) {
+	rules := make([]Rule, 0, len(origins))
 	for i, origin := range origins {
-		rule, err := parseTrustedOrigin(origin)
+		rule, err := parseRule(origin)
 		if err != nil {
 			return nil, fmt.Errorf("authn: TrustedOrigins[%d]: %w", i, err)
 		}
@@ -37,21 +39,21 @@ func configuredTrustedOrigins(origins []string) ([]trustedOrigin, error) {
 	return rules, nil
 }
 
-func parseTrustedOrigin(raw string) (trustedOrigin, error) {
+func parseRule(raw string) (Rule, error) {
 	if !strings.ContainsAny(raw, "*?") {
-		origin, err := parseOrigin(raw)
+		origin, err := Parse(raw)
 		if err != nil {
-			return trustedOrigin{}, err
+			return Rule{}, err
 		}
 		u, _ := url.Parse(origin)
-		return trustedOrigin{exact: canonicalOrigin(u)}, nil
+		return Rule{exact: Canonical(u)}, nil
 	}
 	scheme, authority, hasScheme := strings.Cut(strings.ToLower(raw), "://")
 	if !hasScheme {
 		authority, scheme = scheme, "*"
 	}
 	if scheme != "*" && scheme != "https" && scheme != "http" {
-		return trustedOrigin{}, errOriginPattern
+		return Rule{}, errOriginPattern
 	}
 	authority = strings.TrimSuffix(authority, "/")
 	host, port, hasPort := strings.Cut(authority, ":")
@@ -59,26 +61,26 @@ func parseTrustedOrigin(raw string) (trustedOrigin, error) {
 		value, rest, closed := strings.Cut(authority[1:], "]")
 		address, err := netip.ParseAddr(value)
 		if !closed || err != nil || !address.Is6() || address.Zone() != "" || (rest != "" && rest[0] != ':') {
-			return trustedOrigin{}, errOriginPattern
+			return Rule{}, errOriginPattern
 		}
 		host, port, hasPort = address.String(), strings.TrimPrefix(rest, ":"), rest != ""
 	} else if !validOriginHostname(host) {
-		return trustedOrigin{}, errOriginPattern
+		return Rule{}, errOriginPattern
 	}
 	if hasPort {
 		if !originPortPattern.MatchString(port) || len(port) > 5 {
-			return trustedOrigin{}, errOriginPattern
+			return Rule{}, errOriginPattern
 		}
 		if !strings.ContainsAny(port, "*?") {
 			n, err := strconv.ParseUint(port, 10, 16)
 			if err != nil {
-				return trustedOrigin{}, errOriginPattern
+				return Rule{}, errOriginPattern
 			}
 			port = strconv.FormatUint(n, 10)
 		}
 	}
 	ipv4Only := numericHostPattern.MatchString(host) && strings.ContainsAny(host, "0123456789")
-	return trustedOrigin{scheme: scheme, host: host, port: port, ipv4Only: ipv4Only}, nil
+	return Rule{scheme: scheme, host: host, port: port, ipv4Only: ipv4Only}, nil
 }
 
 func validOriginHostname(host string) bool {
@@ -93,7 +95,8 @@ func validOriginHostname(host string) bool {
 	return true
 }
 
-func (rule trustedOrigin) matches(u *url.URL, origin string) bool {
+// Matches checks a URL and its canonical origin against the rule.
+func (rule Rule) Matches(u *url.URL, origin string) bool {
 	if rule.exact != "" {
 		return rule.exact == origin
 	}
@@ -139,4 +142,32 @@ func (rule trustedOrigin) matches(u *url.URL, origin string) bool {
 	}
 	portMatch, _ := path.Match(rule.port, port)
 	return portMatch
+}
+
+// Exact reports whether this rule explicitly names the canonical origin.
+func (rule Rule) Exact(origin string) bool { return rule.exact != "" && rule.exact == origin }
+
+// Parse validates a standalone origin, allowing an optional trailing slash.
+func Parse(s string) (string, error) {
+	u, err := url.Parse(s)
+	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Hostname() == "" || u.User != nil || (u.EscapedPath() != "" && u.EscapedPath() != "/") || u.RawQuery != "" || u.ForceQuery || strings.Contains(s, "#") {
+		return "", errors.New("expected an absolute HTTP(S) origin")
+	}
+	return u.Scheme + "://" + strings.ToLower(u.Host), nil
+}
+
+// Canonical returns the normalized origin of an HTTP URL, or an empty string for an invalid origin.
+func Canonical(u *url.URL) string {
+	if (u.Scheme != "http" && u.Scheme != "https") || u.Hostname() == "" || u.User != nil {
+		return ""
+	}
+	host, port := strings.ToLower(u.Hostname()), u.Port()
+	if port == "" || (port == "80" && u.Scheme == "http") || (port == "443" && u.Scheme == "https") {
+		if strings.Contains(host, ":") {
+			host = "[" + host + "]"
+		}
+	} else {
+		host = net.JoinHostPort(host, port)
+	}
+	return u.Scheme + "://" + host
 }

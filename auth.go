@@ -1,9 +1,6 @@
 package plainauth
 
 import (
-	"github.com/Plain-Auth/plain-auth/internal/sessionfields"
-	"slices"
-
 	"context"
 	"crypto/rand"
 	"crypto/sha256"
@@ -14,14 +11,16 @@ import (
 	"log/slog"
 	"maps"
 	"net/http"
-	"net/url"
 	"regexp"
 	"runtime"
+	"slices"
 	"strings"
 	"time"
 	"unicode/utf16"
 
 	"github.com/Plain-Auth/plain-auth/internal/configenv"
+	"github.com/Plain-Auth/plain-auth/internal/httporigin"
+	"github.com/Plain-Auth/plain-auth/internal/sessionfields"
 )
 
 // Auth is safe for concurrent use by application handlers.
@@ -30,7 +29,7 @@ type Auth struct {
 	oauthProxy            *OAuthProxyOptions
 	sessionCacheKeys      []sessionCacheKey
 	disabledPaths         map[string]struct{}
-	trustedOrigins        []trustedOrigin
+	trustedOrigins        []httporigin.Rule
 	phoneNumber           *PhoneNumberOptions
 	translateError        func(ErrorContext, APIError) string
 	username              *UsernameOptions
@@ -121,7 +120,7 @@ func New(opts Options) (*Auth, error) {
 	if err := prepareCookieScope(&opts); err != nil {
 		return nil, err
 	}
-	trustedOrigins, err := configuredTrustedOrigins(opts.TrustedOrigins)
+	trustedOrigins, err := httporigin.Compile(opts.TrustedOrigins)
 	if err != nil {
 		return nil, err
 	}
@@ -352,14 +351,6 @@ func New(opts Options) (*Auth, error) {
 		return nil, err
 	}
 	return a, nil
-}
-
-func parseOrigin(s string) (string, error) {
-	u, err := url.Parse(s)
-	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Hostname() == "" || u.User != nil || (u.EscapedPath() != "" && u.EscapedPath() != "/") || u.RawQuery != "" || u.ForceQuery || strings.Contains(s, "#") {
-		return "", errors.New("expected an absolute HTTP(S) origin")
-	}
-	return u.Scheme + "://" + strings.ToLower(u.Host), nil
 }
 
 var cookiePrefixPattern = regexp.MustCompile(`^[A-Za-z0-9_-]+$`)

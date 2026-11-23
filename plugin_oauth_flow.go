@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Plain-Auth/plain-auth/internal/httporigin"
 	"golang.org/x/oauth2"
 )
 
@@ -126,7 +127,7 @@ func (c *EndpointContext) consumeEnterpriseFlow(state string, form bool) (OAuthF
 	bad := invalidEnterpriseState()
 	base, _ := url.Parse(a.opts.BaseURL)
 	cookie, e := c.Request.Cookie(a.enterpriseStateCookie(form, "", 0).Name)
-	if canonicalOrigin(&url.URL{Scheme: base.Scheme, Host: c.Request.Host}) != canonicalOrigin(base) || e != nil || state == "" || len(state) > 128 {
+	if httporigin.Canonical(&url.URL{Scheme: base.Scheme, Host: c.Request.Host}) != httporigin.Canonical(base) || e != nil || state == "" || len(state) > 128 {
 		return OAuthFlow{}, bad
 	}
 	namespace := "sso:" + c.Request.URL.EscapedPath()
@@ -147,7 +148,7 @@ func (c *EndpointContext) consumeEnterpriseFlow(state string, form bool) (OAuthF
 	}
 	c.ResponseHeader.Add("Set-Cookie", a.enterpriseStateCookie(form, "", -1).String())
 	original, e := url.Parse(f.RedirectURI)
-	if e != nil || f.ProviderReference == "" || canonicalOrigin(original) != canonicalOrigin(base) || original.EscapedPath() != c.Request.URL.EscapedPath() {
+	if e != nil || f.ProviderReference == "" || httporigin.Canonical(original) != httporigin.Canonical(base) || original.EscapedPath() != c.Request.URL.EscapedPath() {
 		return OAuthFlow{}, bad
 	}
 	if f.AnonymousSessionProof != "" {

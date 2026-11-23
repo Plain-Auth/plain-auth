@@ -59,7 +59,7 @@ The callback runs after the new credential and requested database session revoca
 
 For an email-code reset, the callback sees the mailbox’s previous verification state. On success the adapter marks that same mailbox verified if needed. A callback failure leaves an unverified mailbox unverified. If the account changes its address during the callback, the library declines to apply the old mailbox proof to the new address. Link and phone resets preserve the email verification state. The phone recovery path supplies the bound phone number and its stored verification flag. [Paired HTTP lifecycle tests](../conformance/password-reset-hook.mjs)
 
-The built-in SQL and memory adapters support all three callbacks. Custom email-code adapters that enable this callback must implement `EmailOTPResetHookStore` to separate the committed reset from subsequent email verification. A custom `PhoneAccountStore` returns the proof owner in `PhoneAccountResult.User` after a successful password reset. [Custom adapter tests](../password_reset_hook_test.go)
+The built-in SQL and memory adapters support all three callbacks. Custom email-code adapters that enable this callback must implement `EmailOTPResetHookStore` to separate the committed reset from subsequent email verification. A custom `PhoneAccountStore` returns the proof owner in `PhoneAccountResult.User` after a successful password reset. [Custom adapter tests](../conformance/goapi/password_reset_hook_test.go)
 
 ## Session lifetime
 

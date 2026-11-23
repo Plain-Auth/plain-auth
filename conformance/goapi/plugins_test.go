@@ -1,4 +1,4 @@
-package plainauth_test
+package goapi_test
 
 import (
 	"errors"

@@ -1,4 +1,5 @@
 // Device authorization lets an input-constrained device obtain a first-party session.
+
 package plainauth
 
 import (
