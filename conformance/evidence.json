@@ -3710,6 +3710,21 @@
       "label": "Admit exactly one of two concurrent adds competing for the last seat of a resolved team on separate connections",
       "test": "adapters/sqlstore/organization_team_seats_test.go",
       "marker": "// Two instances racing for a team's last seat admit exactly one member."
+    },
+    {
+      "label": "Give the team membership hooks the membership, the member's account, the team and the organization",
+      "test": "adapters/sqlstore/organization_team_member_hooks_test.go",
+      "marker": "// Both add hooks see the membership, the member's account, the team and the organization."
+    },
+    {
+      "label": "Return an existing team membership without running the hooks",
+      "test": "adapters/sqlstore/organization_team_member_hooks_test.go",
+      "marker": "// Repeating the add returns the membership without the hooks."
+    },
+    {
+      "label": "Check the team member limit after the before hook and skip the after hook when the team is full",
+      "test": "adapters/sqlstore/organization_team_member_hooks_test.go",
+      "marker": "// The team member limit is checked after the before hook."
     }
   ],
   "plugin/organization/POST /organization/remove-team-member": [
@@ -3717,6 +3732,16 @@
       "label": "Remove membership and clear the affected user’s active team",
       "test": "adapters/sqlstore/organization_teams_test.go",
       "marker": "removing member retained active team"
+    },
+    {
+      "label": "Cancel a team member removal when the before hook fails and run both hooks for a completed removal",
+      "test": "adapters/sqlstore/organization_team_member_hooks_test.go",
+      "marker": "// A before-hook error cancels the removal."
+    },
+    {
+      "label": "Keep outsiders, unpermitted callers and non-members away from the team membership hooks",
+      "test": "adapters/sqlstore/organization_team_member_hooks_test.go",
+      "marker": "// Refused changes never reach the hooks."
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L1810": [
@@ -10694,6 +10719,16 @@
       "label": "Give the team removal hooks the team being removed",
       "test": "adapters/sqlstore/organization_team_hooks_test.go",
       "marker": "// Removal hooks see the team being removed."
+    },
+    {
+      "label": "Give the team membership hooks the membership, the member's account, the team and the organization",
+      "test": "adapters/sqlstore/organization_team_member_hooks_test.go",
+      "marker": "// Both add hooks see the membership, the member's account, the team and the organization."
+    },
+    {
+      "label": "Cancel a team member removal when the before hook fails and run both hooks for a completed removal",
+      "test": "adapters/sqlstore/organization_team_member_hooks_test.go",
+      "marker": "// A before-hook error cancels the removal."
     }
   ],
   "plugin-symbol/siwe/SIWEPluginOptions/getNonce": [
@@ -16646,6 +16681,26 @@
       "label": "Give the team removal hooks the team being removed",
       "test": "adapters/sqlstore/organization_team_hooks_test.go",
       "marker": "// Removal hooks see the team being removed."
+    },
+    {
+      "label": "Give the team membership hooks the membership, the member's account, the team and the organization",
+      "test": "adapters/sqlstore/organization_team_member_hooks_test.go",
+      "marker": "// Both add hooks see the membership, the member's account, the team and the organization."
+    },
+    {
+      "label": "Check the team member limit after the before hook and skip the after hook when the team is full",
+      "test": "adapters/sqlstore/organization_team_member_hooks_test.go",
+      "marker": "// The team member limit is checked after the before hook."
+    },
+    {
+      "label": "Keep outsiders, unpermitted callers and non-members away from the team membership hooks",
+      "test": "adapters/sqlstore/organization_team_member_hooks_test.go",
+      "marker": "// Refused changes never reach the hooks."
+    },
+    {
+      "label": "Cancel a team member removal when the before hook fails and run both hooks for a completed removal",
+      "test": "adapters/sqlstore/organization_team_member_hooks_test.go",
+      "marker": "// A before-hook error cancels the removal."
     }
   ]
 }

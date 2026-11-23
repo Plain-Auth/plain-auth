@@ -849,7 +849,9 @@ groups, err := organization.NewService(organization.Options{
 })
 ```
 
-`chat.CreateChannel` is an application function. A refused change, such as one from a member without `team.create`, an unknown team or the organization's last team, never reaches the hooks. The store checks the caller again when it writes. A team limit decided by `ResolveMaximumTeams` is checked at that point, after the before hook. The default team created with an organization does not run the team hooks. A custom store must implement `organization.ObservedTeamStore`. [Hook tests on three SQL engines](../adapters/sqlstore/organization_team_hooks_test.go)
+`BeforeAddTeamMember`, `AfterAddTeamMember`, `BeforeRemoveTeamMember` and `AfterRemoveTeamMember` receive an `organization.TeamMembershipChange` with the team membership, the member's account, the team and the organization. Adding someone who is already on the team returns the membership without running them. A team member limit is checked after `BeforeAddTeamMember`, when the membership is written.
+
+`chat.CreateChannel` is an application function. A refused change, such as one from a member without `team.create`, an unknown team, the organization's last team or a user outside the organization, never reaches the hooks. The store checks the caller again when it writes. A team limit decided by `ResolveMaximumTeams` is checked at that point, after the before hook. The default team created with an organization does not run the team hooks. A custom store must implement `organization.ObservedTeamStore`. [Team hook tests](../adapters/sqlstore/organization_team_hooks_test.go) · [Team membership hook tests](../adapters/sqlstore/organization_team_member_hooks_test.go)
 
 ### Set a team limit per organization
 

@@ -263,8 +263,11 @@ func (o Options) teamRequest(c authn.EndpointContext, actor TeamActor, session a
 			return nil, err
 		}
 		if action == "add-team-member" {
-			return store.AddTeamMember(ctx, actor, orgID, id, user)
+			return o.addTeamMember(ctx, actor, orgID, id, user)
 		}
-		return map[string]string{"message": "Team member removed successfully."}, store.RemoveTeamMember(ctx, actor, orgID, id, user)
+		if err := o.removeTeamMember(ctx, actor, orgID, id, user); err != nil {
+			return nil, err
+		}
+		return map[string]string{"message": "Team member removed successfully."}, nil
 	}
 }

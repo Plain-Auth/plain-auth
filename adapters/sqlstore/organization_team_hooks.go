@@ -2,6 +2,8 @@ package sqlstore
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"net/http"
 
 	org "github.com/Plain-Auth/plain-auth/plugins/organization"
@@ -110,4 +112,64 @@ func (t teamTransaction) teamScope(group string, team org.Team) (org.TeamChange,
 		scope.User = &session.User
 	}
 	return scope, nil
+}
+
+// PrepareTeamMemberAddition checks the caller's member.update permission and
+// that the user belongs to the organization, without writing. It returns the
+// existing membership when the user is already on the team.
+func (s *Store) PrepareTeamMemberAddition(ctx context.Context, actor org.TeamActor, explicit, id, user string) (org.TeamMembershipChange, error) {
+	var change org.TeamMembershipChange
+	err := s.withTeamActor(ctx, actor, user, func(t teamTransaction) error {
+		group, err := t.authorizeMemberChange(explicit, id, user, "update", org.ErrTeamAdd)
+		if err != nil {
+			return err
+		}
+		member := org.TeamMember{TeamID: id, UserID: user}
+		if existing, err := s.readTeamMember(ctx, t.tx, id, user); err == nil {
+			member = *existing
+		} else if !errors.Is(err, sql.ErrNoRows) {
+			return err
+		}
+		change, err = t.membershipScope(group, id, member)
+		return err
+	})
+	return change, err
+}
+
+// PrepareTeamMemberRemoval checks the caller's member.delete permission and
+// that the user is on the team, without writing.
+func (s *Store) PrepareTeamMemberRemoval(ctx context.Context, actor org.TeamActor, explicit, id, user string) (org.TeamMembershipChange, error) {
+	var change org.TeamMembershipChange
+	err := s.withTeamActor(ctx, actor, user, func(t teamTransaction) error {
+		group, err := t.authorizeMemberChange(explicit, id, user, "delete", org.ErrTeamRemove)
+		if err != nil {
+			return err
+		}
+		existing, err := s.readTeamMember(ctx, t.tx, id, user)
+		if errors.Is(err, sql.ErrNoRows) {
+			return org.ErrTeamMember
+		} else if err != nil {
+			return err
+		}
+		change, err = t.membershipScope(group, id, *existing)
+		return err
+	})
+	return change, err
+}
+
+// membershipScope reads the team, its organization and the member's account.
+func (t teamTransaction) membershipScope(group, id string, member org.TeamMember) (org.TeamMembershipChange, error) {
+	change := org.TeamMembershipChange{Member: member}
+	team, err := t.findTeam(t.ctx, t.tx, group, id)
+	if err != nil {
+		return change, err
+	}
+	scope, err := t.teamScope(group, *team)
+	if err != nil {
+		return change, err
+	}
+	change.Team, change.Organization = scope.Team, scope.Organization
+	q := `SELECT ` + userColumns + ` FROM "user" u WHERE u."id"=` + t.exactSQLValue("?")
+	err = t.tx.QueryRowContext(t.ctx, t.bind(q), member.UserID).Scan(userFields(&change.User)...)
+	return change, err
 }

@@ -126,12 +126,21 @@ type Options struct {
 	// change passes its checks. Create and update may return a new name. An
 	// error cancels the change. The After hooks run once it commits; their
 	// error is returned and the change remains. Team hooks require Teams.
-	BeforeCreateTeam         func(context.Context, TeamChange) (*TeamOverride, error)
-	AfterCreateTeam          func(context.Context, TeamChange) error
-	BeforeUpdateTeam         func(context.Context, BeforeTeamUpdate) (*TeamOverride, error)
-	AfterUpdateTeam          func(context.Context, TeamChange) error
-	BeforeDeleteTeam         func(context.Context, TeamChange) error
-	AfterDeleteTeam          func(context.Context, TeamChange) error
+	BeforeCreateTeam func(context.Context, TeamChange) (*TeamOverride, error)
+	AfterCreateTeam  func(context.Context, TeamChange) error
+	BeforeUpdateTeam func(context.Context, BeforeTeamUpdate) (*TeamOverride, error)
+	AfterUpdateTeam  func(context.Context, TeamChange) error
+	BeforeDeleteTeam func(context.Context, TeamChange) error
+	AfterDeleteTeam  func(context.Context, TeamChange) error
+	// BeforeAddTeamMember and BeforeRemoveTeamMember run after a team
+	// membership change passes its permission checks; an error cancels it. A
+	// team member limit is checked afterwards, when the membership is written.
+	// The After hooks run once the change commits; their error is returned
+	// and the change remains. Adding an existing team member runs no hooks.
+	BeforeAddTeamMember      func(context.Context, TeamMembershipChange) error
+	AfterAddTeamMember       func(context.Context, TeamMembershipChange) error
+	BeforeRemoveTeamMember   func(context.Context, TeamMembershipChange) error
+	AfterRemoveTeamMember    func(context.Context, TeamMembershipChange) error
 	BeforeUpdateOrganization func(context.Context, BeforeProfileUpdate) (*ProfileUpdate, error)
 	AfterUpdateOrganization  func(context.Context, AfterProfileUpdate) error
 	// DisableOrganizationDeletion makes POST /organization/delete answer 404

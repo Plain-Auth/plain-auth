@@ -29,17 +29,35 @@ type BeforeTeamUpdate struct {
 	Updates TeamOverride
 }
 
+// TeamMembershipChange describes a user joining or leaving a team. Member is
+// the proposed or existing team membership and User the account it belongs to.
+type TeamMembershipChange struct {
+	Member       TeamMember
+	Team         Team
+	User         authn.User
+	Organization Organization
+}
+
 // ObservedTeamStore checks a team change without writing so the host's hooks
 // see only changes that can proceed. The write checks everything again.
 type ObservedTeamStore interface {
 	PrepareTeamCreation(ctx context.Context, actor *TeamActor, input CreateTeamRequest, request *http.Request) (TeamChange, error)
 	PrepareTeamUpdate(ctx context.Context, actor TeamActor, organizationID, teamID string, name *string) (TeamChange, error)
 	PrepareTeamRemoval(ctx context.Context, actor TeamActor, organizationID, teamID string) (TeamChange, error)
+	// PrepareTeamMemberAddition returns the existing membership in Member
+	// when the user already belongs to the team.
+	PrepareTeamMemberAddition(ctx context.Context, actor TeamActor, organizationID, teamID, userID string) (TeamMembershipChange, error)
+	PrepareTeamMemberRemoval(ctx context.Context, actor TeamActor, organizationID, teamID, userID string) (TeamMembershipChange, error)
 }
 
 func (o Options) teamHooksConfigured() bool {
 	return o.BeforeCreateTeam != nil || o.AfterCreateTeam != nil || o.BeforeUpdateTeam != nil ||
-		o.AfterUpdateTeam != nil || o.BeforeDeleteTeam != nil || o.AfterDeleteTeam != nil
+		o.AfterUpdateTeam != nil || o.BeforeDeleteTeam != nil || o.AfterDeleteTeam != nil ||
+		o.teamMemberHooksConfigured()
+}
+
+func (o Options) teamMemberHooksConfigured() bool {
+	return o.BeforeAddTeamMember != nil || o.AfterAddTeamMember != nil || o.BeforeRemoveTeamMember != nil || o.AfterRemoveTeamMember != nil
 }
 
 func (o Options) validateTeamHooks() error {
@@ -160,6 +178,74 @@ func (o Options) removeTeam(ctx context.Context, actor TeamActor, organizationID
 	}
 	if after := o.AfterDeleteTeam; after != nil {
 		return after(ctx, scope)
+	}
+	return nil
+}
+
+func detachedMembershipChange(in TeamMembershipChange) (TeamMembershipChange, error) {
+	user, err := detachedUser(in.User)
+	if err != nil {
+		return TeamMembershipChange{}, err
+	}
+	in.User = user
+	in.Organization.Metadata = bytes.Clone(in.Organization.Metadata)
+	return in, nil
+}
+
+func (o Options) addTeamMember(ctx context.Context, actor TeamActor, organizationID, teamID, userID string) (*TeamMember, error) {
+	if o.BeforeAddTeamMember == nil && o.AfterAddTeamMember == nil {
+		return o.teamStore.AddTeamMember(ctx, actor, organizationID, teamID, userID)
+	}
+	change, err := o.teamStore.(ObservedTeamStore).PrepareTeamMemberAddition(ctx, actor, organizationID, teamID, userID)
+	if err != nil {
+		return nil, err
+	}
+	// Repeating an add returns the existing membership without the hooks.
+	if change.Member.ID != "" {
+		return o.teamStore.AddTeamMember(ctx, actor, change.Organization.ID, teamID, userID)
+	}
+	if change, err = detachedMembershipChange(change); err != nil {
+		return nil, err
+	}
+	if before := o.BeforeAddTeamMember; before != nil {
+		if err = before(ctx, change); err != nil {
+			return nil, err
+		}
+	}
+	member, err := o.teamStore.AddTeamMember(ctx, actor, change.Organization.ID, teamID, userID)
+	if err != nil {
+		return nil, err
+	}
+	if after := o.AfterAddTeamMember; after != nil {
+		change.Member = *member
+		if err = after(ctx, change); err != nil {
+			return nil, err
+		}
+	}
+	return member, nil
+}
+
+func (o Options) removeTeamMember(ctx context.Context, actor TeamActor, organizationID, teamID, userID string) error {
+	if o.BeforeRemoveTeamMember == nil && o.AfterRemoveTeamMember == nil {
+		return o.teamStore.RemoveTeamMember(ctx, actor, organizationID, teamID, userID)
+	}
+	change, err := o.teamStore.(ObservedTeamStore).PrepareTeamMemberRemoval(ctx, actor, organizationID, teamID, userID)
+	if err != nil {
+		return err
+	}
+	if change, err = detachedMembershipChange(change); err != nil {
+		return err
+	}
+	if before := o.BeforeRemoveTeamMember; before != nil {
+		if err = before(ctx, change); err != nil {
+			return err
+		}
+	}
+	if err = o.teamStore.RemoveTeamMember(ctx, actor, change.Organization.ID, teamID, userID); err != nil {
+		return err
+	}
+	if after := o.AfterRemoveTeamMember; after != nil {
+		return after(ctx, change)
 	}
 	return nil
 }

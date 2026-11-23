@@ -246,8 +246,13 @@
     - [x] Admit one candidate to the last seat across competing SQL-backed servers and return existing memberships on retry ([test](../../../adapters/sqlstore/organization_teams_test.go#L213))
     - [x] Ask the host for a team's cap with the manager's session, admit members only within it and return existing memberships without asking ([test](../../../adapters/sqlstore/organization_team_seats_test.go#L100))
     - [x] Admit exactly one of two concurrent adds competing for the last seat of a resolved team on separate connections ([test](../../../adapters/sqlstore/organization_team_seats_test.go#L225))
+    - [x] Give the team membership hooks the membership, the member's account, the team and the organization ([test](../../../adapters/sqlstore/organization_team_member_hooks_test.go#L99))
+    - [x] Return an existing team membership without running the hooks ([test](../../../adapters/sqlstore/organization_team_member_hooks_test.go#L105))
+    - [x] Check the team member limit after the before hook and skip the after hook when the team is full ([test](../../../adapters/sqlstore/organization_team_member_hooks_test.go#L111))
   - [ ] `POST /organization/remove-team-member`
     - [x] Remove membership and clear the affected user’s active team ([test](../../../adapters/sqlstore/organization_teams_test.go#L275))
+    - [x] Cancel a team member removal when the before hook fails and run both hooks for a completed removal ([test](../../../adapters/sqlstore/organization_team_member_hooks_test.go#L128))
+    - [x] Keep outsiders, unpermitted callers and non-members away from the team membership hooks ([test](../../../adapters/sqlstore/organization_team_member_hooks_test.go#L118))
   - [ ] `OrganizationSchema`
   - [ ] `roleSchema`
   - [ ] `invitationStatus`
@@ -341,6 +346,8 @@
       - [x] Give the team creation hooks the proposed team, the creator and the organization, and save a returned name ([test](../../../adapters/sqlstore/organization_team_hooks_test.go#L93))
       - [x] Give the team update hooks the current team and the requested name, and save a returned name ([test](../../../adapters/sqlstore/organization_team_hooks_test.go#L108))
       - [x] Give the team removal hooks the team being removed ([test](../../../adapters/sqlstore/organization_team_hooks_test.go#L143))
+      - [x] Give the team membership hooks the membership, the member's account, the team and the organization ([test](../../../adapters/sqlstore/organization_team_member_hooks_test.go#L99))
+      - [x] Cancel a team member removal when the before hook fails and run both hooks for a completed removal ([test](../../../adapters/sqlstore/organization_team_member_hooks_test.go#L128))
 
 ## Organization
 
@@ -408,6 +415,10 @@
         - [x] Keep unpermitted, unknown and final-team changes away from the team hooks ([test](../../../adapters/sqlstore/organization_team_hooks_test.go#L118))
         - [x] Cancel team creation, update and removal when the before hook fails ([test](../../../adapters/sqlstore/organization_team_hooks_test.go#L130))
         - [x] Give the team removal hooks the team being removed ([test](../../../adapters/sqlstore/organization_team_hooks_test.go#L143))
+        - [x] Give the team membership hooks the membership, the member's account, the team and the organization ([test](../../../adapters/sqlstore/organization_team_member_hooks_test.go#L99))
+        - [x] Check the team member limit after the before hook and skip the after hook when the team is full ([test](../../../adapters/sqlstore/organization_team_member_hooks_test.go#L111))
+        - [x] Keep outsiders, unpermitted callers and non-members away from the team membership hooks ([test](../../../adapters/sqlstore/organization_team_member_hooks_test.go#L118))
+        - [x] Cancel a team member removal when the before hook fails and run both hooks for a completed removal ([test](../../../adapters/sqlstore/organization_team_member_hooks_test.go#L128))
       - [ ] Hook Error Handling
     - [ ] List User's Organizations
       - [x] List only organizations the current user belongs to ([test](../../../plugins/organization/organization_test.go#L113))
