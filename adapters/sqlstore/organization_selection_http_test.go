@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	auth "github.com/Plain-Auth/plain-auth"
 	"github.com/Plain-Auth/plain-auth/client"
@@ -31,7 +32,8 @@ func TestOrganizationAndTeamSelectionHTTP(t *testing.T) {
 			store, err := OpenWithOptions(ctx, dialect, organizationTestDSN(t, dialect), []string{"organization-teams"}, schema.Options{})
 			must(err)
 			t.Cleanup(func() { store.Close() })
-			organizations, err := org.New(org.Options{Store: store, Teams: &org.TeamOptions{}})
+			const invitationLifetime = 37 * time.Minute
+			organizations, err := org.New(org.Options{Store: store, Teams: &org.TeamOptions{}, InvitationExpiresIn: invitationLifetime})
 			must(err)
 			server := httptest.NewUnstartedServer(nil)
 			origin := "http://" + server.Listener.Addr().String()
@@ -206,9 +208,20 @@ func TestOrganizationAndTeamSelectionHTTP(t *testing.T) {
 			must(err)
 			var issued org.Invitation
 			must(json.Unmarshal(send(two, "POST", "organization/invite-member", map[string]any{"email": "other@api.example", "role": "member", "organizationId": second}, 200), &issued))
+			if !issued.ExpiresAt.Equal(issued.CreatedAt.Add(invitationLifetime)) {
+				t.Fatal("new invitation did not use the configured lifetime")
+			}
+			_, err = store.db.ExecContext(ctx, store.bind(`UPDATE "invitation" SET "expiresAt"=? WHERE "id"=?`), store.date(issued.ExpiresAt.Add(24*time.Hour)), issued.ID)
+			must(err)
+			beginRenewal := time.Now().UTC().Truncate(time.Millisecond)
+			var renewed org.Invitation
+			must(json.Unmarshal(send(two, "POST", "organization/invite-member", map[string]any{"email": "other@api.example", "role": "admin", "organizationId": second, "resend": true}, 200), &renewed))
+			if renewed.ID != issued.ID || renewed.Role != issued.Role || !renewed.CreatedAt.Equal(issued.CreatedAt) || renewed.ExpiresAt.Before(beginRenewal.Add(invitationLifetime)) || renewed.ExpiresAt.After(time.Now().Add(invitationLifetime)) {
+				t.Fatal("resend did not refresh the existing invitation using the configured lifetime")
+			}
 			detail, err := guestSDK.OrganizationInvitation(ctx, issued.ID)
 			must(err)
-			if detail.ID != issued.ID || detail.OrganizationID != second || detail.InviterEmail != login["email"] || detail.OrganizationSlug != "b-group" {
+			if !detail.ExpiresAt.Equal(renewed.ExpiresAt) || detail.ID != issued.ID || detail.OrganizationID != second || detail.InviterEmail != login["email"] || detail.OrganizationSlug != "b-group" {
 				t.Fatal("Go client lost invitation details", detail)
 			}
 			declined, err := guestSDK.RejectOrganizationInvitation(ctx, issued.ID)

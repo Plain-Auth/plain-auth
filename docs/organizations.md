@@ -29,7 +29,7 @@ auth, err := plainauth.New(plainauth.Options{
 })
 ```
 
-The application provides `sendInvitation`, its configured public `origin` and its `secret`. A failed delivery leaves the pending invitation available for another attempt using `resend: true`. Invitation IDs are opaque and expire after 48 hours. The signed-in recipient must match the invitation email. Set `RequireVerifiedEmail` to also require a verified account.
+The application provides `sendInvitation`, its configured public `origin` and its `secret`. A failed delivery leaves the pending invitation available for another attempt using `resend: true`. Invitation IDs are opaque. New invitations and resends use a 48-hour lifetime by default. Set `InvitationExpiresIn` on `organization.Options` to choose another duration, for example `30 * time.Minute`. Resending a live invitation refreshes its deadline and preserves its ID, creation time, role and teams. Once it expires, inviting the recipient again creates a new ID. The signed-in recipient must match the invitation email. Set `RequireVerifiedEmail` to also require a verified account.
 
 | Method | Path under the auth mount | Behavior |
 | --- | --- | --- |

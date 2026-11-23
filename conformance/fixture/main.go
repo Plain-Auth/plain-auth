@@ -284,6 +284,12 @@ func main() {
 			plugins = append(plugins, p)
 		case "organization", "organization-teams":
 			options := organization.Options{Store: store, MembershipLimit: fixtureMembershipLimit(), RequireVerifiedEmail: os.Getenv("CONFORMANCE_VERIFY_INVITATION_EMAIL") == "1"}
+			if duration := os.Getenv("CONFORMANCE_INVITATION_DURATION"); duration != "" {
+				options.InvitationExpiresIn, err = time.ParseDuration(duration)
+				if err != nil {
+					log.Fatal(err)
+				}
+			}
 			if os.Getenv("CONFORMANCE_INVITATION_HOOKS") == "1" {
 				configureDecisionHooks(&options, os.Args[1]+".invitation-events")
 			}

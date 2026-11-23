@@ -14679,5 +14679,31 @@
       "test": "plugins/organization/invitation_hooks_test.go",
       "marker": "t.Fatal(\"callback changed the invitation or organization sent to another caller\")"
     }
+  ],
+  "plugin-symbol/organization/OrganizationOptions/invitationExpiresIn": [
+    {
+      "label": "Apply the default or configured validity period on creation and renewal, including an elapsed deadline",
+      "test": "conformance/invitation-expiration.mjs",
+      "marker": "assert.ok(time >= start + validFor",
+      "complete": true
+    },
+    {
+      "label": "Persist the renewed deadline on all three engines while retaining the original grant identity and role",
+      "test": "adapters/sqlstore/organization_selection_http_test.go",
+      "marker": "t.Fatal(\"resend did not refresh the existing invitation using the configured lifetime\")"
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L2584/invitationExpiresIn": [
+    {
+      "label": "Apply the default or configured validity period on creation and renewal, including an elapsed deadline",
+      "test": "conformance/invitation-expiration.mjs",
+      "marker": "assert.ok(time >= start + validFor",
+      "complete": true
+    },
+    {
+      "label": "Persist the renewed deadline on all three engines while retaining the original grant identity and role",
+      "test": "adapters/sqlstore/organization_selection_http_test.go",
+      "marker": "t.Fatal(\"resend did not refresh the existing invitation using the configured lifetime\")"
+    }
   ]
 }

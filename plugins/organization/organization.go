@@ -57,6 +57,8 @@ type Store interface {
 }
 
 type Options struct {
+	// InvitationExpiresIn applies to new and resent invitations. Zero uses 48 hours.
+	InvitationExpiresIn      time.Duration
 	BeforeRejectInvitation   InvitationDecisionHook
 	AfterRejectInvitation    InvitationDecisionHook
 	BeforeCancelInvitation   InvitationDecisionHook
@@ -425,7 +427,11 @@ func (o Options) invite(c authn.EndpointContext, s *authn.SessionResult) (any, e
 		return nil, validation("resend")
 	}
 	now := time.Now().UTC().Truncate(time.Millisecond)
-	inv := Invitation{ID: rand.Text(), OrganizationID: id, InviterID: s.User.ID, Email: strings.ToLower(email), Role: role, Status: "pending", CreatedAt: now, ExpiresAt: now.Add(48 * time.Hour)}
+	validFor := o.InvitationExpiresIn
+	if validFor == 0 {
+		validFor = 48 * time.Hour
+	}
+	inv := Invitation{ID: rand.Text(), OrganizationID: id, InviterID: s.User.ID, Email: strings.ToLower(email), Role: role, Status: "pending", CreatedAt: now, ExpiresAt: now.Add(validFor).Truncate(time.Millisecond)}
 	inv.TeamID, err = teamInvitationIDs(c.Body["teamId"])
 	if err != nil {
 		return nil, err

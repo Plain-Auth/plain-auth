@@ -96,7 +96,7 @@
     - [x] Reject revoked and delegated sessions and recheck the acting account ban inside the transaction ([test](../../../adapters/sqlstore/organization_role_test.go#L115))
   - [x] `GET /organization/get-active-member` ([test](../../../conformance/core.test.mjs#L1863))
     - [x] Read the live membership and its public user profile from each signed-in session across organization switches ([test](../../../conformance/core.test.mjs#L1863))
-    - [x] Distinguish a cleared selection from a removed membership and a signed-out client on all three SQL engines ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L247))
+    - [x] Distinguish a cleared selection from a removed membership and a signed-out client on all three SQL engines ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L260))
     - [x] Report role updates immediately and ignore caller-supplied organization and user selectors ([test](../../../conformance/core.test.mjs#L1876))
   - [ ] `POST /organization/leave`
     - [x] Return the signed-in user's membership and profile when leaving an organization ([test](../../../conformance/organization-removal.mjs#L47))
@@ -107,7 +107,7 @@
     - [x] Reject a removed caller and deny access to totals even on an empty page ([test](../../../conformance/organization-directory.mjs#L58))
   - [x] `GET /organization/get-active-member-role` ([test](../../../conformance/organization-role.mjs#L104))
     - [x] Read roles for yourself and fellow members, resolve slug before ID or active session, and preserve the session selection ([test](../../../conformance/organization-role.mjs#L104))
-    - [x] Require current membership from both users and deny an outsider access to an existing member’s role ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L234))
+    - [x] Require current membership from both users and deny an outsider access to an existing member’s role ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L247))
     - [x] Reject duplicate query selectors before authentication and distinguish missing selections and unknown slugs ([test](../../../conformance/organization-role.mjs#L88))
   - [ ] `POST /organization/create`
     - [x] Create an organization and its owner membership atomically ([test](../../../plugins/organization/organization_test.go#L93))
@@ -128,7 +128,7 @@
   - [ ] `POST /organization/set-active`
     - [x] Preserve the same organization’s selected team and clear it across organization switches on a plain node ([test](../../../adapters/sqlstore/organization_topology_test.go#L123))
     - [x] Select by slug or clear the current session selection ([test](../../../plugins/organization/organization_test.go#L175))
-    - [x] Use HTTP JSON with separate cookie jars to switch or clear organizations and teams without affecting another login ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L21))
+    - [x] Use HTTP JSON with separate cookie jars to switch or clear organizations and teams without affecting another login ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L22))
     - [x] Describe nullable selection results across enabled profiles and expose signed destinations when the host supports them ([test](../../../plugins/openapi/organization_selection_test.go#L20))
     - [x] On a signed browser navigation, send the Location of the consent page bound to the selecting session ([test](../../../adapters/sqlstore/oauth_post_login_test.go#L164))
     - [x] Switch the session’s organization and team using plain HTTP and JSON on six Go routers ([test](../../../integrations/routers/routers_test.go#L202))
@@ -144,7 +144,7 @@
     - [x] Read the organization’s teams and deny outsiders using the browser client ([test](../../../conformance/core.test.mjs#L626))
   - [ ] `POST /organization/set-active-team`
     - [x] Select a team belonging to the active organization and preserve session cookie persistence ([test](../../../adapters/sqlstore/organization_teams_test.go#L156))
-    - [x] Use HTTP JSON with separate cookie jars to switch or clear organizations and teams without affecting another login ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L21))
+    - [x] Use HTTP JSON with separate cookie jars to switch or clear organizations and teams without affecting another login ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L22))
     - [x] Validate a signed selector before updating the team and keep an outstanding approval in its original organization ([test](../../../adapters/sqlstore/oauth_post_login_test.go#L129))
     - [x] Describe nullable selection results across enabled profiles and expose signed destinations when the host supports them ([test](../../../plugins/openapi/organization_selection_test.go#L20))
     - [x] On a signed browser navigation, send the Location of the consent page bound to the selecting session ([test](../../../adapters/sqlstore/oauth_post_login_test.go#L164))
@@ -197,7 +197,9 @@
     - [ ] `dynamicAccessControl`
     - [ ] `teams`
       - [x] Create and select a default team for the owner, or disable automatic creation ([test](../../../adapters/sqlstore/organization_teams_test.go#L315))
-    - [ ] `invitationExpiresIn`
+    - [x] `invitationExpiresIn` ([test](../../../conformance/invitation-expiration.mjs#L25))
+      - [x] Apply the default or configured validity period on creation and renewal, including an elapsed deadline ([test](../../../conformance/invitation-expiration.mjs#L25))
+      - [x] Persist the renewed deadline on all three engines while retaining the original grant identity and role ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L220))
     - [ ] `invitationLimit`
     - [ ] `cancelPendingInvitationsOnReInvite`
     - [ ] `requireEmailVerificationOnInvitation`
@@ -251,11 +253,11 @@
     - [ ] Active Organization
       - [ ] Set Active Organization
         - [x] Select by slug or clear the current session selection ([test](../../../plugins/organization/organization_test.go#L175))
-        - [x] Switch and clear the current session’s selection with independent HTTP clients across three SQL engines ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L21))
+        - [x] Switch and clear the current session’s selection with independent HTTP clients across three SQL engines ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L22))
         - [ ] `POST /organization/set-active`
           - [x] Describe nullable selection results across enabled profiles and expose signed destinations when the host supports them ([test](../../../plugins/openapi/organization_selection_test.go#L20))
-          - [x] Parameter `organizationId` (optional) ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L132))
-            - [x] Select by ID, retain the selection when omitted, and clear both selections with a null organization ID ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L132))
+          - [x] Parameter `organizationId` (optional) ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L134))
+            - [x] Select by ID, retain the selection when omitted, and clear both selections with a null organization ID ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L134))
           - [ ] Parameter `organizationSlug` (optional)
             - [x] Accept a string slug and reject a null slug before changing the current session ([test](../../../conformance/core.test.mjs#L1817))
       - [ ] Use Active Organization
@@ -405,19 +407,19 @@
         - [ ] Parameter `organizationId` (optional)
     - [x] Get Active Member ([test](../../../conformance/core.test.mjs#L1863))
       - [x] Read the live membership and its public user profile from each signed-in session across organization switches ([test](../../../conformance/core.test.mjs#L1863))
-      - [x] Distinguish a cleared selection from a removed membership and a signed-out client on all three SQL engines ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L247))
+      - [x] Distinguish a cleared selection from a removed membership and a signed-out client on all three SQL engines ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L260))
       - [x] Report role updates immediately and ignore caller-supplied organization and user selectors ([test](../../../conformance/core.test.mjs#L1876))
       - [x] `GET /organization/get-active-member` ([test](../../../conformance/core.test.mjs#L1863))
         - [x] Read the live membership and its public user profile from each signed-in session across organization switches ([test](../../../conformance/core.test.mjs#L1863))
-        - [x] Distinguish a cleared selection from a removed membership and a signed-out client on all three SQL engines ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L247))
+        - [x] Distinguish a cleared selection from a removed membership and a signed-out client on all three SQL engines ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L260))
         - [x] Report role updates immediately and ignore caller-supplied organization and user selectors ([test](../../../conformance/core.test.mjs#L1876))
     - [x] Get Active Member Role ([test](../../../conformance/organization-role.mjs#L104))
       - [x] Read roles for yourself and fellow members, resolve slug before ID or active session, and preserve the session selection ([test](../../../conformance/organization-role.mjs#L104))
-      - [x] Require current membership from both users and deny an outsider access to an existing member’s role ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L234))
+      - [x] Require current membership from both users and deny an outsider access to an existing member’s role ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L247))
       - [x] Reject duplicate query selectors before authentication and distinguish missing selections and unknown slugs ([test](../../../conformance/organization-role.mjs#L88))
       - [x] `GET /organization/get-active-member-role` ([test](../../../conformance/organization-role.mjs#L104))
         - [x] Read roles for yourself and fellow members, resolve slug before ID or active session, and preserve the session selection ([test](../../../conformance/organization-role.mjs#L104))
-        - [x] Require current membership from both users and deny an outsider access to an existing member’s role ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L234))
+        - [x] Require current membership from both users and deny an outsider access to an existing member’s role ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L247))
         - [x] Reject duplicate query selectors before authentication and distinguish missing selections and unknown slugs ([test](../../../conformance/organization-role.mjs#L88))
     - [ ] Add Member
       - [ ] `POST /organization/add-member` (server API)
@@ -504,7 +506,7 @@
           - [ ] Parameter `organizationId` (optional)
       - [ ] Set Active Team
         - [x] Select a team belonging to the active organization and preserve session cookie persistence ([test](../../../adapters/sqlstore/organization_teams_test.go#L156))
-        - [x] Switch and clear the current session’s selection with independent HTTP clients across three SQL engines ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L21))
+        - [x] Switch and clear the current session’s selection with independent HTTP clients across three SQL engines ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L22))
         - [ ] `POST /organization/set-active-team`
           - [x] Describe nullable selection results across enabled profiles and expose signed destinations when the host supports them ([test](../../../plugins/openapi/organization_selection_test.go#L20))
           - [x] Parameter `teamId` (optional) ([test](../../../conformance/core.test.mjs#L1822))
@@ -611,7 +613,9 @@
       - [x] Enforce fixed or application-resolved seat limits for the candidate and destination organization ([test](../../../conformance/organization-capacity.mjs#L39))
       - [x] Allocate the final seat once when a trusted grant and an invitation compete across connections ([test](../../../adapters/sqlstore/organization_limit_test.go#L194))
     - [ ] sendInvitationEmail
-    - [ ] invitationExpiresIn
+    - [x] invitationExpiresIn ([test](../../../conformance/invitation-expiration.mjs#L25))
+      - [x] Apply the default or configured validity period on creation and renewal, including an elapsed deadline ([test](../../../conformance/invitation-expiration.mjs#L25))
+      - [x] Persist the renewed deadline on all three engines while retaining the original grant identity and role ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L220))
     - [ ] cancelPendingInvitationsOnReInvite
     - [ ] invitationLimit
     - [ ] requireEmailVerificationOnInvitation
