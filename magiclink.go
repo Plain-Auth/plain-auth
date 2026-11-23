@@ -229,7 +229,7 @@ func (o MagicLinkOptions) verify(c EndpointContext) (any, error) {
 	if err := a.addSessionCookieHeaders(issued, r, session.Token, true); err != nil {
 		return nil, err
 	}
-	var output any = authRedirect(callback)
+	var output any = Redirect(callback)
 	if q.Get("callbackURL") == "" {
 		result, err := a.withSessionPlugins(r.Context(), session.Session, user)
 		if err != nil {
@@ -244,7 +244,7 @@ func (o MagicLinkOptions) verify(c EndpointContext) (any, error) {
 		if err != nil {
 			return nil, err
 		}
-		output = authRedirect(callback)
+		output = Redirect(callback)
 	}
 	clear(c.ResponseHeader)
 	maps.Copy(c.ResponseHeader, issued)

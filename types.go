@@ -17,6 +17,8 @@ type Options struct {
 
 	// Logger receives diagnostics for this instance. A nil logger uses slog.Default().
 	Logger *slog.Logger
+	// Hooks run before and after each mounted HTTP endpoint.
+	Hooks EndpointHooks
 	// OnAPIError observes an HTTP endpoint error before its response is written.
 	// It runs synchronously and may use the request's context for cancellation.
 	OnAPIError func(ErrorContext, error) error

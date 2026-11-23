@@ -34,20 +34,33 @@ func (a *Auth) serveOAuth(w http.ResponseWriter, r *http.Request, route string) 
 	if a.rejectRateLimited(w, r, route) {
 		return true
 	}
-	var result any
-	var err error
+	path := route
+	var body wireBody
 	if start {
-		result, err = a.startOAuth(w, r, link)
-	} else if r.Method == http.MethodPost {
-		result, err = a.redirectOAuthForm(w, r, id)
+		err := a.validateRequestOrigin(r, true)
+		if err == nil {
+			body, err = decodeWireBody(w, r, "/sign-in/social")
+		}
+		if err == nil {
+			err = a.validateCallbacks(body, nil)
+		}
+		if err != nil {
+			a.writeAuthError(w, r, err)
+			return true
+		}
 	} else {
-		result, err = a.finishOAuth(w, r, id)
+		path = "/callback/:id"
 	}
-	if err != nil {
-		a.writeAuthError(w, r, err)
-	} else {
-		a.writeResult(w, r, 0, result)
-	}
+	result, err := a.callEndpoint(w, r, path, route, body, func(r *http.Request, body wireBody) (any, error) {
+		if start {
+			return a.startOAuth(w, r, body, link)
+		}
+		if r.Method == http.MethodPost {
+			return a.redirectOAuthForm(w, r, id)
+		}
+		return a.finishOAuth(w, r, id)
+	})
+	a.writeOutcome(w, r, 0, result, err)
 	return true
 }
 
@@ -64,17 +77,7 @@ func (a *Auth) oauthBinding(browser, id string, r *http.Request) string {
 	return digest(browser + "\x00" + id + "\x00" + a.cookieToken(r.Header))
 }
 
-func (a *Auth) startOAuth(w http.ResponseWriter, r *http.Request, link bool) (any, error) {
-	if err := a.validateRequestOrigin(r, true); err != nil {
-		return nil, err
-	}
-	body, err := decodeWireBody(w, r, "/sign-in/social")
-	if err != nil {
-		return nil, err
-	}
-	if err = a.validateCallbacks(body, nil); err != nil {
-		return nil, err
-	}
+func (a *Auth) startOAuth(w http.ResponseWriter, r *http.Request, body wireBody, link bool) (any, error) {
 	id, ok := body["provider"].(string)
 	if !ok {
 		return nil, fieldTypeError("provider", "string", body)
@@ -264,7 +267,7 @@ func (a *Auth) finishBrowserOAuth(w http.ResponseWriter, r *http.Request, id str
 				v.Set("error_description", description)
 			}
 			target.RawQuery = v.Encode()
-			return authRedirect(target.String()), nil
+			return Redirect(target.String()), nil
 		}
 		return nil, &APIError{400, code, "Unable to complete social sign-in"}
 	}
@@ -385,7 +388,7 @@ func (a *Auth) finishBrowserOAuth(w http.ResponseWriter, r *http.Request, id str
 	if popup != nil && flow.LinkUserID == "" {
 		return popup.page(w.Header(), a.sessionCookie(result.Token, true).Value, target, nil), nil
 	}
-	return authRedirect(target), nil
+	return Redirect(target), nil
 }
 
 func (a *Auth) exchangeProviderCode(ctx context.Context, p OAuthProvider, flow OAuthFlow, q url.Values) (OAuthAccountFieldInput, string) {
@@ -473,7 +476,7 @@ func (a *Auth) redirectOAuthForm(w http.ResponseWriter, r *http.Request, id stri
 	if q.Get("state") == "" {
 		return nil, &APIError{400, "INVALID_OAUTH_STATE", "Invalid or expired OAuth state"}
 	}
-	return authRedirect(p.Config.RedirectURL + "?" + q.Encode()), nil
+	return Redirect(p.Config.RedirectURL + "?" + q.Encode()), nil
 }
 
 func (a *Auth) completeProfile(ctx context.Context, r *http.Request, id, callback string, p OAuthProfile, tokens OAuthTokens, options OAuthLoginOptions) (AuthResult, bool, error) {

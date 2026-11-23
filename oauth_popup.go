@@ -131,7 +131,7 @@ func startOAuthPopup(c EndpointContext, messageType string) (any, error) {
 		return failure("popup_sign_in_failed", "Failed to start the OAuth flow.")
 	}
 	c.ResponseHeader.Add("Set-Cookie", a.oauthCookie(popupwire.MarkerCookie, value, 600).String())
-	return authRedirect(target), nil
+	return Redirect(target), nil
 }
 
 func (a *Auth) callbackPopup(h http.Header, r *http.Request, state string) *popupOpener {

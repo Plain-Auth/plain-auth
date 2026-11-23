@@ -18100,5 +18100,125 @@
       "marker": "// Role lists split on commas, trim entries, drop empty ones and keep order and repeats.",
       "complete": true
     }
+  ],
+  "docs/content/docs/concepts/hooks.mdx#L13": [
+    {
+      "label": "Reject, rewrite or answer a request before its endpoint runs, after the rate limit, origin check and body decoding",
+      "test": "conformance/goapi/endpoint_hooks_test.go",
+      "marker": "// Run before and after hooks around HTTP endpoints",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/concepts/hooks.mdx#L17": [
+    {
+      "label": "Reject a sign-up whose email is outside the allowed domain before any account is created",
+      "test": "conformance/goapi/endpoint_hooks_test.go",
+      "marker": "// Enforce an email domain.",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/concepts/hooks.mdx#L41": [
+    {
+      "label": "Rewrite the body and request headers an endpoint reads, on a copy of the host request",
+      "test": "conformance/goapi/endpoint_hooks_test.go",
+      "marker": "// Modify the request the endpoint reads.",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/concepts/hooks.mdx#L68": [
+    {
+      "label": "Read and replace the endpoint result or error after it returns, before the response is written",
+      "test": "conformance/goapi/endpoint_hooks_test.go",
+      "marker": "// An after hook replaces an error with another error or with a result.",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/concepts/hooks.mdx#L96": [
+    {
+      "label": "Branch on the route template to handle several endpoints in one after hook",
+      "test": "conformance/goapi/endpoint_hooks_test.go",
+      "marker": "// One hook can handle several endpoints by branching on Path.",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/concepts/hooks.mdx#L125": [
+    {
+      "label": "Expose the route template, its parameters, the decoded body, the query and the request headers to hooks",
+      "test": "conformance/goapi/endpoint_hooks_test.go",
+      "marker": "// Path is the route template and Params holds its values.",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/concepts/hooks.mdx#L142": [
+    {
+      "label": "Answer a request with JSON from a before hook and skip the endpoint and after hooks",
+      "test": "conformance/goapi/endpoint_hooks_test.go",
+      "marker": "// Before hooks answer with JSON or a redirect, and the endpoint and after hooks are skipped.",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/concepts/hooks.mdx#L156": [
+    {
+      "label": "Answer a request with a redirect from a before hook",
+      "test": "conformance/goapi/endpoint_hooks_test.go",
+      "marker": "c.Respond(authn.Redirect(\"/sign-up/name\"))",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/concepts/hooks.mdx#L189": [
+    {
+      "label": "Reject with a chosen status, code and message, and answer internal hook failures and panics with a generic 500",
+      "test": "conformance/goapi/endpoint_hooks_test.go",
+      "marker": "// Internal hook errors and panics end the request with a generic 500.",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/concepts/hooks.mdx#L219": [
+    {
+      "label": "Pass the replaced result or error on to later after hooks",
+      "test": "conformance/goapi/endpoint_hooks_test.go",
+      "marker": "// An after hook replaces an error with another error or with a result.",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/concepts/hooks.mdx#L231": [
+    {
+      "label": "Read the response headers and session cookie set by the endpoint and earlier hooks",
+      "test": "conformance/goapi/endpoint_hooks_test.go",
+      "marker": "// After hooks see the response headers set so far, including the session cookie.",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/concepts/hooks.mdx#L326": [
+    {
+      "label": "Reuse hooks across applications through a plugin, after the application hooks and in plugin order",
+      "test": "conformance/goapi/endpoint_hooks_test.go",
+      "marker": "{ID: \"audit\", Hooks: authn.EndpointHooks{",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/concepts/plugins.mdx#L292": [
+    {
+      "label": "Run plugin before and after hooks for the endpoints their matcher accepts",
+      "test": "conformance/goapi/endpoint_hooks_test.go",
+      "marker": "{ID: \"audit\", Hooks: authn.EndpointHooks{",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/concepts/plugins.mdx#L473": [
+    {
+      "label": "Read the caller's session from an endpoint or hook context",
+      "test": "conformance/goapi/endpoint_hooks_test.go",
+      "marker": "// A hook reads the caller's session.",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/reference/options.mdx#L938": [
+    {
+      "label": "Configure application before and after hooks for the mounted HTTP endpoints",
+      "test": "conformance/goapi/endpoint_hooks_test.go",
+      "marker": "// Run before and after hooks around HTTP endpoints",
+      "complete": true
+    }
   ]
 }

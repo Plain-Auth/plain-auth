@@ -241,7 +241,7 @@ func (a *Auth) exchangeProxyCallback(w http.ResponseWriter, r *http.Request, id 
 		return nil, invalidProxyCallback()
 	}
 	target.RawQuery = url.Values{"callbackURL": {grant.Callback}, "profile": {profile}}.Encode()
-	return authRedirect(target.String()), nil
+	return Redirect(target.String()), nil
 }
 
 type proxyBrowserError string
@@ -279,16 +279,15 @@ func (a *Auth) serveOAuthProxyCompletion(w http.ResponseWriter, r *http.Request,
 	if a.rejectRateLimited(w, r, path) {
 		return true
 	}
-	result, err := a.completeProxyCallback(w, r, id)
-	var failure proxyBrowserError
-	if errors.As(err, &failure) {
-		result, err = authRedirect(a.opts.BasePath+"/error?"+url.Values{"error": {string(failure)}}.Encode()), nil
-	}
-	if err != nil {
-		a.writeAuthError(w, r, err)
-	} else {
-		a.writeResult(w, r, 0, result)
-	}
+	result, err := a.callEndpoint(w, r, path, route, nil, func(r *http.Request, _ wireBody) (any, error) {
+		result, err := a.completeProxyCallback(w, r, id)
+		var failure proxyBrowserError
+		if errors.As(err, &failure) {
+			return Redirect(a.opts.BasePath + "/error?" + url.Values{"error": {string(failure)}}.Encode()), nil
+		}
+		return result, err
+	})
+	a.writeOutcome(w, r, 0, result, err)
 	return true
 }
 

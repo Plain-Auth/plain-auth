@@ -17,6 +17,7 @@ Plain Auth is an authentication library for Go servers. Mount its `http.Handler`
 - **OAuth 2.0 and OpenID Connect provider**: authorization code with PKCE, refresh tokens, client registration, introspection, revocation and JWKS.
 - **Billing** with Stripe subscriptions and seats, or Polar checkout.
 - **Storage and tools**: SQLite, PostgreSQL and MySQL, the `authctl` schema CLI, an OpenAPI document, error messages in 22 languages and test helpers.
+- **Extend** with Go plugins and endpoint hooks that reject, rewrite or answer requests and change their results.
 
 Every capability has a guide in the [documentation index](docs/README.md).
 

@@ -9,7 +9,8 @@ import (
 
 const resetRequestMessage = "If this email exists in our system, check your email for the reset link"
 
-type authRedirect string
+// Redirect is an endpoint result answered with a 302 and this Location.
+type Redirect string
 
 func requiredString(body wireBody, key string) (string, error) {
 	s, ok := body[key].(string)
@@ -63,7 +64,7 @@ func (a *Auth) handleAccountRequest(route string, w http.ResponseWriter, r *http
 		if deleted {
 			a.expireSessionCookies(w, r)
 			if route == "/delete-user/callback" && params.CallbackURL != "" {
-				return authRedirect(params.CallbackURL), nil
+				return Redirect(params.CallbackURL), nil
 			}
 			return map[string]any{"success": true, "message": "User deleted"}, nil
 		}
@@ -196,7 +197,7 @@ func (a *Auth) handleAccountRequest(route string, w http.ResponseWriter, r *http
 					return redirectQuery(callback, "error", apiErr.Code), nil
 				}
 				if err == nil {
-					return authRedirect(callback), nil
+					return Redirect(callback), nil
 				}
 			}
 			return result, err
@@ -226,12 +227,12 @@ func (a *Auth) handleAccountRequest(route string, w http.ResponseWriter, r *http
 	return nil, &APIError{404, "NOT_FOUND", "Not Found"}
 }
 
-func redirectQuery(target, key, value string) authRedirect {
+func redirectQuery(target, key, value string) Redirect {
 	u, _ := url.Parse(target)
 	q := u.Query()
 	q.Set(key, value)
 	u.RawQuery = q.Encode()
-	return authRedirect(u.String())
+	return Redirect(u.String())
 }
 
 func (a *Auth) dontRemember(r *http.Request) bool {

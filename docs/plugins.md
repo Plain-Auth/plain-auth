@@ -12,6 +12,8 @@ The phone-number plugin supports verified numbers, account linking, sign-in and 
 
 Plugins can write structured records through `c.Auth.Logger()`. [Configure instance logging](environment.md#route-authentication-logs)
 
+A plugin can also run hooks around other endpoints through `Plugin.Hooks`. [Endpoint hooks](hooks.md)
+
 ## Create a session-aware endpoint
 
 ```go
@@ -21,7 +23,7 @@ profile := plainauth.Plugin{
         Method: http.MethodGet,
         Path:   "/profile",
         Handler: func(c plainauth.EndpointContext) (any, error) {
-            session, err := c.Auth.GetSession(c.Request.Context(), c.Request.Header)
+            session, err := c.Session()
             if err != nil {
                 return nil, err
             }
@@ -37,7 +39,7 @@ profile := plainauth.Plugin{
 opts.Plugins = []plainauth.Plugin{profile}
 ```
 
-The handler is then available at `GET /api/auth/profile`. Endpoint handlers run concurrently. Synchronize state they share or persist it in a transactional store. See the [plugin API](../plugins.go) and [registration tests](../conformance/goapi/plugins_test.go).
+The handler is then available at `GET /api/auth/profile`. `c.Session()` returns the caller's session, or nil when the request is not authenticated. Endpoint handlers run concurrently. Synchronize state they share or persist it in a transactional store. See the [plugin API](../plugins.go) and [registration tests](../conformance/goapi/plugins_test.go).
 
 ## Receive Stripe webhooks
 

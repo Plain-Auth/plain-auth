@@ -8,7 +8,7 @@ func (c EndpointContext) Redirect(callback string) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	return authRedirect(target), nil
+	return Redirect(target), nil
 }
 
 // RegisteredOAuthRedirect delivers the result of an authorization request to
@@ -21,5 +21,5 @@ func (c EndpointContext) RegisteredOAuthRedirect(target string) any {
 	if c.Request.Header.Get("Sec-Fetch-Mode") == "cors" || strings.Contains(c.Request.Header.Get("Accept"), "application/json") {
 		return map[string]any{"redirect": true, "url": target}
 	}
-	return authRedirect(target)
+	return Redirect(target)
 }

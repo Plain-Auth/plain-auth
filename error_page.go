@@ -34,7 +34,7 @@ func (a *Auth) errorPage(h http.Header, r *http.Request) any {
 			params.Set("error_description", description)
 		}
 		target.RawQuery = params.Encode()
-		return authRedirect(target.String())
+		return Redirect(target.String())
 	}
 	h.Set("Referrer-Policy", "no-referrer")
 	h.Set("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'")

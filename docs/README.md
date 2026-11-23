@@ -115,5 +115,6 @@ Each guide explains one capability and links to the tests that prove it. New to 
 | Task | Guide |
 | --- | --- |
 | Add a session-aware endpoint, authenticate clients with bearer tokens, or return an application-defined session view | [Plugins](plugins.md) |
+| Reject, rewrite or answer requests before an endpoint runs, or change its result afterwards | [Endpoint hooks](hooks.md) |
 | Generate an OpenAPI document and browse the routes enabled in this application | [OpenAPI reference](openapi.md) |
 | Work on a feature, run checks, and update the checklist | [Contributing](../CONTRIBUTING.md) |

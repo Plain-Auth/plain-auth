@@ -68,6 +68,7 @@ func (a *Auth) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if mounted && a.serveOAuth(w, r, route) {
 		return
 	}
+	actual := route
 	if token, ok := strings.CutPrefix(route, "/reset-password/"); ok && token != "" && !strings.ContainsAny(token, "/%") {
 		route = "/reset-password/:token"
 	}
@@ -96,7 +97,10 @@ func (a *Auth) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if route == "/error" {
-		a.writeResult(w, r, 0, a.errorPage(w.Header(), r))
+		result, err := a.callEndpoint(w, r, route, actual, nil, func(r *http.Request, _ wireBody) (any, error) {
+			return a.errorPage(w.Header(), r), nil
+		})
+		a.writeOutcome(w, r, 0, result, err)
 		return
 	}
 	var body wireBody
@@ -124,25 +128,25 @@ func (a *Auth) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	if isSessionPost && !a.opts.DeferSessionRefresh {
-		a.writeAuthError(w, r, &APIError{Status: 405, Code: "METHOD_NOT_ALLOWED_DEFER_SESSION_REQUIRED", Message: "POST method requires deferSessionRefresh to be enabled in session config"})
-		return
-	}
-	continuation, err := a.loginContinuation(route, r, body, w.Header())
-	if err != nil {
-		a.writeAuthError(w, r, err)
-		return
-	}
-	priorCookies := len(w.Header().Values("Set-Cookie"))
-	var result any
-	if pluginRoute {
-		if route == "/sign-in/sso" && continuation != nil {
-			r = withEnterpriseIssuerLogin(r, a, body["oauth_query"].(string), continuation)
+	var continuation OAuthLoginContinuation
+	priorCookies := 0
+	result, err := a.callEndpoint(w, r, route, actual, body, func(r *http.Request, body wireBody) (any, error) {
+		if isSessionPost && !a.opts.DeferSessionRefresh {
+			return nil, &APIError{Status: 405, Code: "METHOD_NOT_ALLOWED_DEFER_SESSION_REQUIRED", Message: "POST method requires deferSessionRefresh to be enabled in session config"}
 		}
-		result, err = ep.Handler(EndpointContext{Auth: a, Request: r, Body: body, ResponseHeader: w.Header()})
-	} else {
-		result, err = a.handleCoreRequest(route, w, r, body, ip)
-	}
+		var err error
+		if continuation, err = a.loginContinuation(route, r, body, w.Header()); err != nil {
+			return nil, err
+		}
+		priorCookies = len(w.Header().Values("Set-Cookie"))
+		if pluginRoute {
+			if route == "/sign-in/sso" && continuation != nil {
+				r = withEnterpriseIssuerLogin(r, a, body["oauth_query"].(string), continuation)
+			}
+			return ep.Handler(EndpointContext{Auth: a, Request: r, Body: body, ResponseHeader: w.Header()})
+		}
+		return a.handleCoreRequest(route, w, r, body, ip)
+	})
 	if err != nil {
 		a.writeAuthError(w, r, err)
 		return
@@ -168,13 +172,22 @@ func (a *Auth) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	a.writeResult(w, r, ep.SuccessStatus, result)
 }
 
+// writeOutcome writes an endpoint's error, or its result with status.
+func (a *Auth) writeOutcome(w http.ResponseWriter, r *http.Request, status int, result any, err error) {
+	if err != nil {
+		a.writeAuthError(w, r, err)
+		return
+	}
+	a.writeResult(w, r, status, result)
+}
+
 // writeResult writes an endpoint's successful result. A zero status means 200.
 func (a *Auth) writeResult(w http.ResponseWriter, r *http.Request, status int, result any) {
 	if dispatch, ok := result.(oauthAuthorizationDispatch); ok {
 		a.ServeHTTP(w, dispatch.request)
 		return
 	}
-	if redirect, ok := result.(authRedirect); ok {
+	if redirect, ok := result.(Redirect); ok {
 		w.Header().Set("Location", string(redirect))
 		w.WriteHeader(http.StatusFound)
 		return

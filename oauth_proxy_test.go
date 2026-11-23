@@ -157,7 +157,7 @@ func TestOAuthProxyProductionTrust(t *testing.T) {
 		r := httptest.NewRequest("GET", host+"/auth/callback/work?error=access_denied&state="+url.QueryEscape(sealed), nil)
 		w := httptest.NewRecorder()
 		result, err := a.exchangeProxyCallback(w, r, "work", provider)
-		target, _ := result.(authRedirect)
+		target, _ := result.(Redirect)
 		if accepted {
 			if err != nil || !strings.HasPrefix(string(target), preview+"/auth/") {
 				t.Fatal("registered callback rejected a valid preview")

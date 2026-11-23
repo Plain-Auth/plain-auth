@@ -38,6 +38,9 @@ type Plugin struct {
 	admin              *AdminOptions
 	maxDeviceSessions  *int
 	emailOTP           *EmailOTPOptions
+	// Hooks run before and after each mounted HTTP endpoint, after the
+	// Options hooks and the hooks of earlier plugins.
+	Hooks EndpointHooks
 	// OnRequest can reject an HTTP request before endpoint dispatch. Path is
 	// relative to the auth mount. ClientIP follows the host's proxy policy.
 	OnRequest func(RequestContext) error
@@ -119,6 +122,12 @@ type EndpointContext struct {
 	Request        *http.Request
 	Body           map[string]any
 	ResponseHeader http.Header
+}
+
+// Session returns the caller's current session, or nil when the request is
+// not authenticated.
+func (c EndpointContext) Session() (*SessionResult, error) {
+	return c.Auth.GetSession(c.Request.Context(), c.Request.Header)
 }
 
 // RequestMetadata returns a detached copy of the HTTP request headers and URL

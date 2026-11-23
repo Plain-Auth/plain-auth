@@ -254,23 +254,34 @@
 ## Hooks
 
 - [ ] Hooks
-  - [ ] Before Hooks
-    - [ ] Example: Enforce Email Domain Restriction
-    - [ ] Example: Modify Request Context
+  - [x] Before Hooks ([test](../../conformance/goapi/endpoint_hooks_test.go#L22))
+    - [x] Reject, rewrite or answer a request before its endpoint runs, after the rate limit, origin check and body decoding ([test](../../conformance/goapi/endpoint_hooks_test.go#L22))
+    - [x] Example: Enforce Email Domain Restriction ([test](../../conformance/goapi/endpoint_hooks_test.go#L50))
+      - [x] Reject a sign-up whose email is outside the allowed domain before any account is created ([test](../../conformance/goapi/endpoint_hooks_test.go#L50))
+    - [x] Example: Modify Request Context ([test](../../conformance/goapi/endpoint_hooks_test.go#L55))
+      - [x] Rewrite the body and request headers an endpoint reads, on a copy of the host request ([test](../../conformance/goapi/endpoint_hooks_test.go#L55))
   - [ ] After Hooks
+    - [x] Read and replace the endpoint result or error after it returns, before the response is written ([test](../../conformance/goapi/endpoint_hooks_test.go#L218))
     - [ ] Example: Send a notification to your channel when a new user is registered
-    - [ ] Example: Handling Multiple Endpoints in a Single Hook
+    - [x] Example: Handling Multiple Endpoints in a Single Hook ([test](../../conformance/goapi/endpoint_hooks_test.go#L104))
+      - [x] Branch on the route template to handle several endpoints in one after hook ([test](../../conformance/goapi/endpoint_hooks_test.go#L104))
   - [ ] Ctx
+    - [x] Expose the route template, its parameters, the decoded body, the query and the request headers to hooks ([test](../../conformance/goapi/endpoint_hooks_test.go#L259))
     - [ ] Context
     - [ ] Request Response
-      - [ ] JSON Responses
-      - [ ] Redirects
+      - [x] JSON Responses ([test](../../conformance/goapi/endpoint_hooks_test.go#L237))
+        - [x] Answer a request with JSON from a before hook and skip the endpoint and after hooks ([test](../../conformance/goapi/endpoint_hooks_test.go#L237))
+      - [x] Redirects ([test](../../conformance/goapi/endpoint_hooks_test.go#L68))
+        - [x] Answer a request with a redirect from a before hook ([test](../../conformance/goapi/endpoint_hooks_test.go#L68))
       - [ ] Cookies
-      - [ ] Errors
+      - [x] Errors ([test](../../conformance/goapi/endpoint_hooks_test.go#L251))
+        - [x] Reject with a chosen status, code and message, and answer internal hook failures and panics with a generic 500 ([test](../../conformance/goapi/endpoint_hooks_test.go#L251))
     - [ ] Context
       - [ ] New Session
-      - [ ] Returned
-      - [ ] Response Headers
+      - [x] Returned ([test](../../conformance/goapi/endpoint_hooks_test.go#L218))
+        - [x] Pass the replaced result or error on to later after hooks ([test](../../conformance/goapi/endpoint_hooks_test.go#L218))
+      - [x] Response Headers ([test](../../conformance/goapi/endpoint_hooks_test.go#L197))
+        - [x] Read the response headers and session cookie set by the endpoint and earlier hooks ([test](../../conformance/goapi/endpoint_hooks_test.go#L197))
       - [ ] Predefined Auth Cookies
       - [ ] Secret
       - [ ] Password
@@ -281,7 +292,8 @@
       - [ ] generateId
       - [ ] runInBackground
       - [ ] runInBackgroundOrAwait
-  - [ ] Reusable Hooks
+  - [x] Reusable Hooks ([test](../../conformance/goapi/endpoint_hooks_test.go#L138))
+    - [x] Reuse hooks across applications through a plugin, after the application hooks and in plugin order ([test](../../conformance/goapi/endpoint_hooks_test.go#L138))
 
 ## OAuth
 
@@ -389,7 +401,8 @@
       - [ ] `onDelete`
       - [ ] Other Schema Properties
       - [ ] `disableMigration`
-    - [ ] Hooks
+    - [x] Hooks ([test](../../conformance/goapi/endpoint_hooks_test.go#L138))
+      - [x] Run plugin before and after hooks for the endpoints their matcher accepts ([test](../../conformance/goapi/endpoint_hooks_test.go#L138))
     - [ ] Middleware
     - [ ] On Request & On Response
       - [ ] On Request
@@ -402,7 +415,8 @@
     - [ ] Rate Limit
     - [ ] Trusted origins
     - [ ] Server-plugin helper functions
-      - [ ] `getSessionFromCtx`
+      - [x] `getSessionFromCtx` ([test](../../conformance/goapi/endpoint_hooks_test.go#L203))
+        - [x] Read the caller's session from an endpoint or hook context ([test](../../conformance/goapi/endpoint_hooks_test.go#L203))
       - [ ] `sessionMiddleware`
       - [ ] `requireResourceOwnership`
       - [ ] `requireOrgRole`

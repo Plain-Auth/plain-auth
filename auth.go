@@ -49,6 +49,8 @@ type Auth struct {
 	factorStore           TwoFactorStore
 	passwordSlots         chan struct{}
 	plugins               map[endpointKey]Endpoint
+	beforeHooks           []boundHook
+	afterHooks            []boundHook
 	wellKnown             map[string]WellKnownDocument
 	opts                  Options
 	now                   func() time.Time
@@ -191,11 +193,20 @@ func New(opts Options) (*Auth, error) {
 	if err != nil {
 		return nil, err
 	}
+	if err := validEndpointHooks(opts.Hooks, "user"); err != nil {
+		return nil, err
+	}
+	for _, p := range opts.Plugins {
+		if err := validEndpointHooks(p.Hooks, "plugin "+p.ID); err != nil {
+			return nil, err
+		}
+	}
 	disabledPaths, err := prepareDisabledPaths(opts.DisabledPaths)
 	if err != nil {
 		return nil, err
 	}
 	a := &Auth{opts: opts, disabledPaths: disabledPaths, trustedOrigins: trustedOrigins, now: time.Now, passwordSlots: make(chan struct{}, min(runtime.GOMAXPROCS(0), 4)), plugins: plugins}
+	a.beforeHooks, a.afterHooks = endpointHooks(opts)
 	a.trustedProfileFields, err = trustedProfileSchema(opts.UserAdditionalFields, opts.Plugins)
 	if err != nil {
 		return nil, err

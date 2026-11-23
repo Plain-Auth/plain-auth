@@ -39,7 +39,7 @@ func (c EndpointContext) SAMLLogoutStarted(token, target, binding string, ttl ti
 		c.Auth.clearDeviceCookie(c.ResponseHeader, token)
 	}
 	c.ResponseHeader.Add("Set-Cookie", c.samlLogoutCookie(binding, int(ttl/time.Second)).String())
-	return authRedirect(target)
+	return Redirect(target)
 }
 
 // SAMLLogoutCompleted expires the logout binding. A new login that happened
@@ -66,5 +66,5 @@ func (c EndpointContext) SAMLIDPLogoutCompleted(target, token string, revoked bo
 			c.Auth.clearDeviceCookie(c.ResponseHeader, token)
 		}
 	}
-	return authRedirect(target)
+	return Redirect(target)
 }
