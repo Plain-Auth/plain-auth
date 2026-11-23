@@ -18,14 +18,14 @@
     - [x] Evaluate a configured role locally and require one role to cover every requested action ([test](../../../plugins/organization/permissions_test.go#L45))
     - [x] Check configured roles locally without an organization, including the creator shortcut ([test](../../../adapters/sqlstore/organization_role_check_test.go#L60))
   - [ ] `OrganizationClientOptions`
-    - [ ] `ac`
-    - [ ] `roles`
+    - `ac` — *not applicable: JavaScript only*
+    - `roles` — *not applicable: JavaScript only*
     - [ ] `teams`
       - [x] Exercise all nine team operations with the official client, including multi-team invitations and organization boundaries ([test](../../../conformance/core.test.mjs#L600))
-    - [ ] `schema`
-    - [ ] `dynamicAccessControl`
-  - [ ] `organizationClient`
-  - [ ] `inferOrgAdditionalFields`
+    - `schema` — *not applicable: JavaScript only*
+    - `dynamicAccessControl` — *not applicable: JavaScript only*
+  - `organizationClient` — *not applicable: JavaScript only*
+  - `inferOrgAdditionalFields` — *not applicable: JavaScript only*
   - [ ] `ORGANIZATION_ERROR_CODES`
   - [x] `hasPermission` ([test](../../../adapters/sqlstore/organization_role_check_test.go#L15))
     - [x] Evaluate every built-in role and resource action with the signed-in organization member ([test](../../../conformance/organization-permissions.mjs#L47))
@@ -39,12 +39,12 @@
     - [x] Resolve custom actions against live membership even when the caller holds multiple roles ([test](../../../conformance/organization-custom-roles.mjs#L63))
     - [x] Resolve the same role independently per organization and apply changes from another application on the next operation ([test](../../../conformance/organization-stored-roles.mjs#L54))
   - [ ] `organization`
-  - [ ] `DefaultOrganizationPlugin`
-  - [ ] `OrganizationCreator`
-  - [ ] `DynamicAccessControlEndpoints`
-  - [ ] `TeamEndpoints`
-  - [ ] `OrganizationEndpoints`
-  - [ ] `OrganizationPlugin`
+  - `DefaultOrganizationPlugin` — *not applicable: JavaScript only*
+  - `OrganizationCreator` — *not applicable: JavaScript only*
+  - `DynamicAccessControlEndpoints` — *not applicable: JavaScript only*
+  - `TeamEndpoints` — *not applicable: JavaScript only*
+  - `OrganizationEndpoints` — *not applicable: JavaScript only*
+  - `OrganizationPlugin` — *not applicable: JavaScript only*
   - [ ] `parseRoles`
   - [ ] `POST /organization/create-role`
     - [x] Normalize Unicode case on stored role names and reserve predefined and duplicate names ([test](../../../conformance/organization-create-role.mjs#L70))
@@ -284,34 +284,34 @@
     - [x] Cancel a team member removal when the before hook fails and run both hooks for a completed removal ([test](../../../adapters/sqlstore/organization_team_member_hooks_test.go#L128))
     - [x] Keep outsiders, unpermitted callers and non-members away from the team membership hooks ([test](../../../adapters/sqlstore/organization_team_member_hooks_test.go#L118))
     - [x] Removing a team member through the Go client clears that user's active team and ends their access to the team's member list ([test](../../../adapters/sqlstore/organization_teams_test.go#L275))
-  - [ ] `OrganizationSchema`
-  - [ ] `roleSchema`
-  - [ ] `invitationStatus`
-  - [ ] `organizationSchema`
-  - [ ] `memberSchema`
-  - [ ] `invitationSchema`
-  - [ ] `teamSchema`
-  - [ ] `teamMemberSchema`
-  - [ ] `organizationRoleSchema`
-  - [ ] `Organization`
-  - [ ] `Member`
-  - [ ] `TeamMember`
-  - [ ] `Team`
-  - [ ] `Invitation`
-  - [ ] `InvitationInput`
-  - [ ] `MemberInput`
-  - [ ] `TeamMemberInput`
-  - [ ] `OrganizationInput`
-  - [ ] `TeamInput`
-  - [ ] `OrganizationRole`
-  - [ ] `defaultRolesSchema`
-  - [ ] `InferOrganizationZodRolesFromOption`
-  - [ ] `InferOrganizationRolesFromOption`
-  - [ ] `InvitationStatus`
-  - [ ] `InferMember`
-  - [ ] `InferOrganization`
-  - [ ] `InferTeam`
-  - [ ] `InferInvitation`
+  - `OrganizationSchema` — *not applicable: JavaScript only*
+  - `roleSchema` — *not applicable: JavaScript only*
+  - `invitationStatus` — *not applicable: JavaScript only*
+  - `organizationSchema` — *not applicable: JavaScript only*
+  - `memberSchema` — *not applicable: JavaScript only*
+  - `invitationSchema` — *not applicable: JavaScript only*
+  - `teamSchema` — *not applicable: JavaScript only*
+  - `teamMemberSchema` — *not applicable: JavaScript only*
+  - `organizationRoleSchema` — *not applicable: JavaScript only*
+  - `Organization` — *not applicable: JavaScript only*
+  - `Member` — *not applicable: JavaScript only*
+  - `TeamMember` — *not applicable: JavaScript only*
+  - `Team` — *not applicable: JavaScript only*
+  - `Invitation` — *not applicable: JavaScript only*
+  - `InvitationInput` — *not applicable: JavaScript only*
+  - `MemberInput` — *not applicable: JavaScript only*
+  - `TeamMemberInput` — *not applicable: JavaScript only*
+  - `OrganizationInput` — *not applicable: JavaScript only*
+  - `TeamInput` — *not applicable: JavaScript only*
+  - `OrganizationRole` — *not applicable: JavaScript only*
+  - `defaultRolesSchema` — *not applicable: JavaScript only*
+  - `InferOrganizationZodRolesFromOption` — *not applicable: JavaScript only*
+  - `InferOrganizationRolesFromOption` — *not applicable: JavaScript only*
+  - `InvitationStatus` — *not applicable: JavaScript only*
+  - `InferMember` — *not applicable: JavaScript only*
+  - `InferOrganization` — *not applicable: JavaScript only*
+  - `InferTeam` — *not applicable: JavaScript only*
+  - `InferInvitation` — *not applicable: JavaScript only*
   - [ ] `OrganizationOptions`
     - [x] `allowUserToCreateOrganization` ([test](../../../adapters/sqlstore/organization_creation_policy_test.go#L104))
       - [x] Ask the host whether the signed-in user may create an organization and store nothing when it refuses ([test](../../../adapters/sqlstore/organization_creation_policy_test.go#L104))
@@ -489,7 +489,7 @@
           - [x] Parameter `organizationSlug` (optional) ([test](../../../conformance/organization-selection.mjs#L50))
             - [x] Accept a string slug and reject a null slug before changing the current session ([test](../../../conformance/core.test.mjs#L1818))
             - [x] Use the slug when the ID is empty, honor ID precedence and preserve the selection for an unknown slug ([test](../../../conformance/organization-selection.mjs#L50))
-      - [ ] Use Active Organization
+      - Use Active Organization — *not applicable: JavaScript only*
     - [x] Get Organization ([test](../../../adapters/sqlstore/organization_get_test.go#L16))
       - [x] Resolve the active organization and enforce membership ([test](../../../plugins/organization/organization_test.go#L102))
       - [x] Read organizations by selection, ID or slug and clear the selection after a refused lookup on three SQL engines ([test](../../../adapters/sqlstore/organization_get_test.go#L16))
