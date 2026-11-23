@@ -55,6 +55,25 @@ var (
 	ErrGetRoleDenied  = problem(403, "YOU_ARE_NOT_ALLOWED_TO_READ_A_ROLE", "You are not allowed to read a role")
 )
 
+// selectRole parses the two alternatives shared by lookups and changes.
+func (q *RoleQuery) selectRole(nameValue, idValue any, location string) string {
+	name, hasName := nameValue.(string)
+	id, hasID := idValue.(string)
+	switch {
+	case name != "":
+		q.RoleName = name
+	case id != "":
+		q.RoleID = id
+	case hasName && !hasID:
+		return "[" + location + ".roleName] Too small: expected string to have >=1 characters"
+	case hasID && !hasName:
+		return "[" + location + ".roleId] Too small: expected string to have >=1 characters"
+	default:
+		return "[" + location + "] Invalid input"
+	}
+	return ""
+}
+
 func directoryRoleQuery(q url.Values, lookup bool) (RoleQuery, error) {
 	var issues []string
 	query := RoleQuery{OrganizationID: q.Get("organizationId")}
@@ -62,18 +81,15 @@ func directoryRoleQuery(q url.Values, lookup bool) (RoleQuery, error) {
 		issues = append(issues, "[query.organizationId] Invalid input: expected string, received array")
 	}
 	if lookup {
-		names, ids := q["roleName"], q["roleId"]
-		switch {
-		case len(names) == 1 && names[0] != "":
-			query.RoleName = names[0]
-		case len(ids) == 1 && ids[0] != "":
-			query.RoleID = ids[0]
-		case len(names) == 1 && len(ids) != 1:
-			issues = append(issues, "[query.roleName] Too small: expected string to have >=1 characters")
-		case len(ids) == 1 && len(names) != 1:
-			issues = append(issues, "[query.roleId] Too small: expected string to have >=1 characters")
-		default:
-			issues = append(issues, "[query] Invalid input")
+		var name, id any
+		if len(q["roleName"]) == 1 {
+			name = q.Get("roleName")
+		}
+		if len(q["roleId"]) == 1 {
+			id = q.Get("roleId")
+		}
+		if issue := query.selectRole(name, id, "query"); issue != "" {
+			issues = append(issues, issue)
 		}
 	}
 	if len(issues) != 0 {

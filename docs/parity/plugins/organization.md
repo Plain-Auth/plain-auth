@@ -45,15 +45,18 @@
   - [ ] `OrganizationPlugin`
   - [ ] `parseRoles`
   - [ ] `POST /organization/create-role`
-  - [ ] `POST /organization/delete-role`
+  - [x] `POST /organization/delete-role` ([test](../../../adapters/sqlstore/organization_delete_role_test.go#L63))
+    - [x] Require a live member with permission to remove roles and reject predefined names ([test](../../../conformance/organization-delete-role.mjs#L48))
+    - [x] Preserve a stored role while any tenant member holds it, including among multiple role names ([test](../../../conformance/organization-delete-role.mjs#L59))
+    - [x] Serialize role removal with membership changes across SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/organization_delete_role_test.go#L63))
   - [ ] `GET /organization/list-roles`
     - [x] Read up to 100 stored definitions in the selected organization and use a direct lookup beyond the list ([test](../../../conformance/organization-role-directory.mjs#L67))
     - [x] Require the current membership and ac.read before listing stored roles ([test](../../../conformance/organization-role-directory.mjs#L61))
-    - [x] Use the Go client against three SQL engines and honor withdrawal of directory access ([test](../../../adapters/sqlstore/organization_role_directory_test.go#L92))
+    - [x] Use the Go client against three SQL engines and honor withdrawal of directory access ([test](../../../adapters/sqlstore/organization_role_directory_test.go#L79))
   - [ ] `GET /organization/get-role`
     - [x] Read the tenant’s stored permission object and timestamps with a case-sensitive selector ([test](../../../conformance/organization-role-directory.mjs#L41))
     - [x] Require the current membership and ac.read before looking up a role ([test](../../../conformance/organization-role-directory.mjs#L60))
-    - [x] Keep SQL lookup case-sensitive across all three engines and check live session ownership ([test](../../../adapters/sqlstore/organization_role_directory_test.go#L81))
+    - [x] Keep SQL lookup case-sensitive across all three engines and check live session ownership ([test](../../../adapters/sqlstore/organization_role_directory_test.go#L68))
   - [ ] `POST /organization/update-role`
   - [ ] `POST /organization/invite-member`
     - [x] Authorize the inviter, constrain role grants, and resend the same invitation ([test](../../../plugins/organization/organization_test.go#L133))
@@ -578,29 +581,38 @@
         - [ ] Parameter `role`
         - [ ] Parameter `permission` (optional)
         - [ ] Parameter `organizationId` (optional)
-    - [ ] Deleting a role
-      - [ ] `POST /organization/delete-role`
-        - [ ] Parameter `roleName` (optional)
-        - [ ] Parameter `roleId` (optional)
-        - [ ] Parameter `organizationId` (optional)
+    - [x] Deleting a role ([test](../../../adapters/sqlstore/organization_delete_role_test.go#L63))
+      - [x] Require a live member with permission to remove roles and reject predefined names ([test](../../../conformance/organization-delete-role.mjs#L48))
+      - [x] Preserve a stored role while any tenant member holds it, including among multiple role names ([test](../../../conformance/organization-delete-role.mjs#L59))
+      - [x] Serialize role removal with membership changes across SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/organization_delete_role_test.go#L63))
+      - [x] `POST /organization/delete-role` ([test](../../../adapters/sqlstore/organization_delete_role_test.go#L63))
+        - [x] Require a live member with permission to remove roles and reject predefined names ([test](../../../conformance/organization-delete-role.mjs#L48))
+        - [x] Preserve a stored role while any tenant member holds it, including among multiple role names ([test](../../../conformance/organization-delete-role.mjs#L59))
+        - [x] Serialize role removal with membership changes across SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/organization_delete_role_test.go#L63))
+        - [x] Parameter `roleName` (optional) ([test](../../../conformance/organization-delete-role.mjs#L60))
+          - [x] Select the exact role name before a competing ID and ignore partial matches in membership roles ([test](../../../conformance/organization-delete-role.mjs#L60))
+        - [x] Parameter `roleId` (optional) ([test](../../../conformance/organization-delete-role.mjs#L62))
+          - [x] Remove by exact ID within one organization when the supplied alternative name is empty ([test](../../../conformance/organization-delete-role.mjs#L62))
+        - [x] Parameter `organizationId` (optional) ([test](../../../conformance/organization-delete-role.mjs#L69))
+          - [x] Remove roles in an explicit or active organization while preserving the session selection ([test](../../../conformance/organization-delete-role.mjs#L69))
     - [ ] Listing roles
       - [x] Read up to 100 stored definitions in the selected organization and use a direct lookup beyond the list ([test](../../../conformance/organization-role-directory.mjs#L67))
       - [x] Require the current membership and ac.read before listing stored roles ([test](../../../conformance/organization-role-directory.mjs#L61))
-      - [x] Use the Go client against three SQL engines and honor withdrawal of directory access ([test](../../../adapters/sqlstore/organization_role_directory_test.go#L92))
+      - [x] Use the Go client against three SQL engines and honor withdrawal of directory access ([test](../../../adapters/sqlstore/organization_role_directory_test.go#L79))
       - [ ] `GET /organization/list-roles`
         - [x] Read up to 100 stored definitions in the selected organization and use a direct lookup beyond the list ([test](../../../conformance/organization-role-directory.mjs#L67))
         - [x] Require the current membership and ac.read before listing stored roles ([test](../../../conformance/organization-role-directory.mjs#L61))
-        - [x] Use the Go client against three SQL engines and honor withdrawal of directory access ([test](../../../adapters/sqlstore/organization_role_directory_test.go#L92))
+        - [x] Use the Go client against three SQL engines and honor withdrawal of directory access ([test](../../../adapters/sqlstore/organization_role_directory_test.go#L79))
         - [x] Parameter `organizationId` (optional) ([test](../../../conformance/organization-role-directory.mjs#L73))
           - [x] Read stored definitions in an explicit organization while retaining the selected organization and team ([test](../../../conformance/organization-role-directory.mjs#L73))
     - [ ] Getting a specific role
       - [x] Read the tenant’s stored permission object and timestamps with a case-sensitive selector ([test](../../../conformance/organization-role-directory.mjs#L41))
       - [x] Require the current membership and ac.read before looking up a role ([test](../../../conformance/organization-role-directory.mjs#L60))
-      - [x] Keep SQL lookup case-sensitive across all three engines and check live session ownership ([test](../../../adapters/sqlstore/organization_role_directory_test.go#L81))
+      - [x] Keep SQL lookup case-sensitive across all three engines and check live session ownership ([test](../../../adapters/sqlstore/organization_role_directory_test.go#L68))
       - [ ] `GET /organization/get-role`
         - [x] Read the tenant’s stored permission object and timestamps with a case-sensitive selector ([test](../../../conformance/organization-role-directory.mjs#L41))
         - [x] Require the current membership and ac.read before looking up a role ([test](../../../conformance/organization-role-directory.mjs#L60))
-        - [x] Keep SQL lookup case-sensitive across all three engines and check live session ownership ([test](../../../adapters/sqlstore/organization_role_directory_test.go#L81))
+        - [x] Keep SQL lookup case-sensitive across all three engines and check live session ownership ([test](../../../adapters/sqlstore/organization_role_directory_test.go#L68))
         - [x] Parameter `roleName` (optional) ([test](../../../conformance/organization-role-directory.mjs#L45))
           - [x] Prefer a nonempty role name when both name and ID are supplied ([test](../../../conformance/organization-role-directory.mjs#L45))
         - [x] Parameter `roleId` (optional) ([test](../../../conformance/organization-role-directory.mjs#L46))

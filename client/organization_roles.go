@@ -26,3 +26,18 @@ func (c *Client) GetOrganizationRole(ctx context.Context, q organization.RoleQue
 	}
 	return &out, nil
 }
+
+// DeleteOrganizationRole removes a stored role after its last member is reassigned.
+func (c *Client) DeleteOrganizationRole(ctx context.Context, q organization.RoleQuery) error {
+	body := map[string]string{}
+	if q.RoleName != "" {
+		body["roleName"] = q.RoleName
+	}
+	if q.RoleID != "" {
+		body["roleId"] = q.RoleID
+	}
+	if q.OrganizationID != "" {
+		body["organizationId"] = q.OrganizationID
+	}
+	return c.Do(ctx, http.MethodPost, "/organization/delete-role", body, nil)
+}

@@ -209,7 +209,7 @@ func (s *Store) memberForChange(ctx context.Context, tx *sql.Tx, group, filter, 
 
 func membershipHasRole(roles, want string) bool {
 	for role := range strings.SplitSeq(roles, ",") {
-		if strings.TrimSpace(role) == want {
+		if role = strings.TrimSpace(role); role != "" && role == want {
 			return true
 		}
 	}
@@ -217,8 +217,18 @@ func membershipHasRole(roles, want string) bool {
 }
 
 func (s *Store) hasOtherOwner(ctx context.Context, tx *sql.Tx, group, member string) (bool, error) {
+	return s.organizationRoleAssigned(ctx, tx, group, s.organizationRoles.CreatorRole(), member)
+}
+
+func (s *Store) organizationRoleAssigned(ctx context.Context, tx *sql.Tx, group, targetRole, exceptMember string) (bool, error) {
 	arg := s.exactSQLValue("?")
-	rows, err := tx.QueryContext(ctx, s.bind(`SELECT "role" FROM "member" WHERE "organizationId"=`+arg+` AND "id"<>`+arg), group, member)
+	statement := `SELECT "role" FROM "member" WHERE "organizationId"=` + arg
+	args := []any{group}
+	if exceptMember != "" {
+		statement += ` AND "id"<>` + arg
+		args = append(args, exceptMember)
+	}
+	rows, err := tx.QueryContext(ctx, s.bind(statement), args...)
 	if err != nil {
 		return false, err
 	}
@@ -228,7 +238,7 @@ func (s *Store) hasOtherOwner(ctx context.Context, tx *sql.Tx, group, member str
 		if err = rows.Scan(&role); err != nil {
 			return false, err
 		}
-		if membershipHasRole(role, s.organizationRoles.CreatorRole()) {
+		if membershipHasRole(role, targetRole) {
 			return true, nil
 		}
 	}

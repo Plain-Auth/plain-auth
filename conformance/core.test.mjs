@@ -2007,3 +2007,8 @@ test("organization role directory uses live tenant permissions and leaves sessio
   const { compareOrganizationRoleDirectory } = await import("./organization-role-directory.mjs");
   await compareOrganizationRoleDirectory(t, { reference, goFixture, instrument });
 });
+
+test("organization role deletion requires live authority and an unassigned role in the destination", async t => {
+  const { compareOrganizationRoleDeletion } = await import("./organization-delete-role.mjs");
+  await compareOrganizationRoleDeletion(t, { reference, goFixture, instrument });
+});

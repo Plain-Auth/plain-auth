@@ -41,6 +41,9 @@ The application provides `sendInvitation`, its configured public `origin` and it
 | GET | `/organization/get-full-organization` | Read the profile together with members, visible invitations and configured teams |
 | GET | `/organization/get-active-member` | Read your membership, role and public profile in this session's active organization. Requires a signed-in session. |
 | POST | `/organization/has-permission` | Check the signed-in member’s permissions in an explicit or active organization. |
+| GET | `/organization/list-roles` | Read up to 100 stored definitions when dynamic access control is enabled. |
+| GET | `/organization/get-role` | Read a stored definition by exact name or ID. Requires dynamic access control. |
+| POST | `/organization/delete-role` | Retire an unassigned stored role with the organization's `ac.delete` permission. |
 | GET | `/organization/get-active-member-role` | Read a user's role in an organization you both belong to. Omit all query parameters for your own role in the active organization. |
 | POST | `/organization/set-active` | Select by ID or slug. Send `{"organizationId":null}` to clear the current selection |
 | GET | `/organization/get-invitation` | Read one pending, unexpired invitation addressed to the signed-in account |
@@ -181,6 +184,18 @@ For example, a successful lookup returns this JSON.
 Supply a nonempty name or ID for a lookup. A nonempty name takes precedence when both are supplied. Omit `organizationId` to use the current session's selection. An explicit empty organization ID returns HTTP 400 with `NO_ACTIVE_ORGANIZATION`. An unknown role in an authorized organization returns HTTP 400 with `ROLE_NOT_FOUND`. A caller without membership or read permission gets HTTP 403. Reading another organization preserves the session's active organization and team.
 
 Go callers can use `client.ListOrganizationRoles(ctx, organizationID)` and `client.GetOrganizationRole(ctx, organization.RoleQuery{OrganizationID: organizationID, RoleName: "desk"})`. Both methods use the client's session. [Client and database tests](../adapters/sqlstore/organization_role_directory_test.go) · [HTTP behavior tests](../conformance/organization-role-directory.mjs)
+
+### Remove a stored role
+
+Send `POST /organization/delete-role` with a signed-in session that has `ac.delete` in the destination organization. Supply a case-sensitive role name or ID. A nonempty name takes precedence if both are present. Omit `organizationId` to use the active organization.
+
+```json
+{"organizationId":"org_a","roleName":"desk"}
+```
+
+If anyone in that organization still holds `desk`, even alongside another role, the server returns HTTP 400 with `ROLE_IS_ASSIGNED_TO_MEMBERS`. Reassign those members with `POST /organization/update-member-role` before retrying. Looking up a predefined role by name returns HTTP 400 with `CANNOT_DELETE_A_PRE_DEFINED_ROLE`. A successful removal returns `{"success":true}`. Repeating it returns HTTP 400 with `ROLE_NOT_FOUND`.
+
+The operation preserves the caller's active organization and team. A role with the same name in a different organization keeps its grants. In Go, call `client.DeleteOrganizationRole(ctx, organization.RoleQuery{OrganizationID: organizationID, RoleID: roleID})`. [Role removal HTTP tests](../conformance/organization-delete-role.mjs) · [Concurrent assignment and removal tests](../adapters/sqlstore/organization_delete_role_test.go)
 
 ## Read an organization and its directory
 

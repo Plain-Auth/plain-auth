@@ -33,20 +33,7 @@ func TestOrganizationRoleDirectory(t *testing.T) {
 			must(db.migrate(ctx, ddl))
 			service, err := org.NewService(org.Options{Store: db, DynamicAccessControl: true})
 			must(err)
-			host := httptest.NewUnstartedServer(nil)
-			base := "http://" + host.Listener.Addr().String()
-			instance, err := auth.New(auth.Options{Store: db, BaseURL: base, Secret: strings.Repeat("R", 32), Plugins: []auth.Plugin{service.Plugin()}})
-			must(err)
-			host.Config.Handler = instance
-			host.Start()
-			t.Cleanup(host.Close)
-			jar, err := cookiejar.New(nil)
-			must(err)
-			u, err := url.Parse(base)
-			must(err)
-			jar.SetCookies(u, []*http.Cookie{instance.SessionCookie(owner.Token, true)})
-			sdk, err := client.New(base, &http.Client{Jar: jar})
-			must(err)
+			sdk := organizationRoleClient(t, db, service, owner)
 			read := service.Store().(org.RoleDirectoryStore)
 			if _, err := db.ListOrganizationRoles(ctx, owner.ID, owner.UserID, group.ID); err == nil {
 				t.Fatal("disabled store served the role directory")
@@ -104,4 +91,31 @@ func TestOrganizationRoleDirectory(t *testing.T) {
 			}
 		})
 	}
+}
+
+func organizationRoleClient(t *testing.T, db *Store, service *org.Service, session auth.Session) *client.Client {
+	t.Helper()
+	host := httptest.NewUnstartedServer(nil)
+	t.Cleanup(host.Close)
+	base := "http://" + host.Listener.Addr().String()
+	instance, err := auth.New(auth.Options{Store: db, BaseURL: base, Secret: strings.Repeat("R", 32), Plugins: []auth.Plugin{service.Plugin()}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	host.Config.Handler = instance
+	host.Start()
+	jar, err := cookiejar.New(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	u, err := url.Parse(base)
+	if err != nil {
+		t.Fatal(err)
+	}
+	jar.SetCookies(u, []*http.Cookie{instance.SessionCookie(session.Token, true)})
+	sdk, err := client.New(base, &http.Client{Jar: jar, Transport: host.Client().Transport})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return sdk
 }

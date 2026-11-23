@@ -15652,5 +15652,83 @@
       "marker": "assert.equal(session.activeTeamId, team.id)",
       "complete": true
     }
+  ],
+  "plugin/organization/POST /organization/delete-role": [
+    {
+      "label": "Require a live member with permission to remove roles and reject predefined names",
+      "test": "conformance/organization-delete-role.mjs",
+      "marker": "denied(await remove(owner,{...scope,roleName:\"owner\"})"
+    },
+    {
+      "label": "Preserve a stored role while any tenant member holds it, including among multiple role names",
+      "test": "conformance/organization-delete-role.mjs",
+      "marker": "denied(await remove(guest,{roleName:\"desk\"}),400,\"ROLE_IS_ASSIGNED_TO_MEMBERS\")"
+    },
+    {
+      "label": "Serialize role removal with membership changes across SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/organization_delete_role_test.go",
+      "marker": "retired a role during a successful assignment",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1562": [
+    {
+      "label": "Require a live member with permission to remove roles and reject predefined names",
+      "test": "conformance/organization-delete-role.mjs",
+      "marker": "denied(await remove(owner,{...scope,roleName:\"owner\"})"
+    },
+    {
+      "label": "Preserve a stored role while any tenant member holds it, including among multiple role names",
+      "test": "conformance/organization-delete-role.mjs",
+      "marker": "denied(await remove(guest,{roleName:\"desk\"}),400,\"ROLE_IS_ASSIGNED_TO_MEMBERS\")"
+    },
+    {
+      "label": "Serialize role removal with membership changes across SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/organization_delete_role_test.go",
+      "marker": "retired a role during a successful assignment",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1567/`POST /organization/delete-role`": [
+    {
+      "label": "Require a live member with permission to remove roles and reject predefined names",
+      "test": "conformance/organization-delete-role.mjs",
+      "marker": "denied(await remove(owner,{...scope,roleName:\"owner\"})"
+    },
+    {
+      "label": "Preserve a stored role while any tenant member holds it, including among multiple role names",
+      "test": "conformance/organization-delete-role.mjs",
+      "marker": "denied(await remove(guest,{roleName:\"desk\"}),400,\"ROLE_IS_ASSIGNED_TO_MEMBERS\")"
+    },
+    {
+      "label": "Serialize role removal with membership changes across SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/organization_delete_role_test.go",
+      "marker": "retired a role during a successful assignment",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1573/Parameter `roleName` (optional)": [
+    {
+      "label": "Select the exact role name before a competing ID and ignore partial matches in membership roles",
+      "test": "conformance/organization-delete-role.mjs",
+      "marker": "assert.deepEqual(ok(await remove(guest,{roleName:\"editor\",roleId:\"n\"}))",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1577/Parameter `roleId` (optional)": [
+    {
+      "label": "Remove by exact ID within one organization when the supplied alternative name is empty",
+      "test": "conformance/organization-delete-role.mjs",
+      "marker": "assert.deepEqual(ok(await remove(owner,{...scope,roleName:\"\",roleId:\"n\"}))",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1581/Parameter `organizationId` (optional)": [
+    {
+      "label": "Remove roles in an explicit or active organization while preserving the session selection",
+      "test": "conformance/organization-delete-role.mjs",
+      "marker": "assert.equal(session.activeTeamId,team.id)",
+      "complete": true
+    }
   ]
 }

@@ -7,6 +7,19 @@ import (
 	org "github.com/Plain-Auth/plain-auth/plugins/organization"
 )
 
+var errDynamicRoleStoreDisabled = errors.New("sqlstore: stored organization roles require dynamic access control")
+
+// roleLookupFilter returns a fixed SQL column and a separately bound selector.
+func roleLookupFilter(query org.RoleQuery) (string, string, error) {
+	if query.RoleName != "" {
+		return `"role"`, query.RoleName, nil
+	}
+	if query.RoleID != "" {
+		return `"id"`, query.RoleID, nil
+	}
+	return "", "", org.ErrRoleNotFound
+}
+
 // ListOrganizationRoles returns up to 100 stored definitions for the destination organization.
 func (s *Store) ListOrganizationRoles(ctx context.Context, sessionID, actorID, organizationID string) ([]org.RoleDefinition, error) {
 	return s.readOrganizationRoles(ctx, sessionID, actorID, org.RoleQuery{OrganizationID: organizationID}, false)
@@ -26,7 +39,7 @@ func (s *Store) GetOrganizationRole(ctx context.Context, sessionID, actorID stri
 
 func (s *Store) readOrganizationRoles(ctx context.Context, sessionID, actorID string, query org.RoleQuery, lookup bool) ([]org.RoleDefinition, error) {
 	if !s.dynamicOrganizationRoles {
-		return nil, errors.New("sqlstore: the role directory requires dynamic organization roles")
+		return nil, errDynamicRoleStoreDisabled
 	}
 	tx, err := s.beginReadSnapshot(ctx)
 	if err != nil {
@@ -48,17 +61,12 @@ func (s *Store) readOrganizationRoles(ctx context.Context, sessionID, actorID st
 	statement := `SELECT "id","organizationId","role","permission","createdAt","updatedAt" FROM "organizationRole" WHERE "organizationId"=` + s.exactSQLValue("?")
 	args := []any{group}
 	if lookup {
-		switch {
-		case query.RoleName != "":
-			statement += ` AND "role"=` + s.exactSQLValue("?")
-			args = append(args, query.RoleName)
-		case query.RoleID != "":
-			statement += ` AND "id"=` + s.exactSQLValue("?")
-			args = append(args, query.RoleID)
-		default:
-			return nil, org.ErrRoleNotFound
+		field, selector, err := roleLookupFilter(query)
+		if err != nil {
+			return nil, err
 		}
-		statement += " LIMIT 1"
+		statement += " AND " + field + "=" + s.exactSQLValue("?") + " LIMIT 1"
+		args = append(args, selector)
 	} else {
 		statement += " LIMIT 100"
 	}

@@ -290,6 +290,9 @@ func (service *Service) Plugin() authn.Plugin {
 			{Method: http.MethodPost, Path: "/organization/accept-invitation", Handler: o.accept},
 		},
 	}
+	if store, ok := o.Store.(RoleDeletionStore); ok && o.DynamicAccessControl {
+		plugin.Endpoints = append(plugin.Endpoints, deleteRoleEndpoint(store))
+	}
 	if store, ok := o.Store.(RoleDirectoryStore); ok && o.DynamicAccessControl {
 		plugin.Endpoints = append(plugin.Endpoints, roleDirectoryEndpoint("get-role", store), roleDirectoryEndpoint("list-roles", store))
 	}

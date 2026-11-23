@@ -73,6 +73,15 @@ func (p RolePolicy) Recognizes(name string) bool {
 	return configured || builtinRole(name)
 }
 
+// IsPredefined reports whether the host defines the role independently of the database.
+func (p RolePolicy) IsPredefined(name string) bool {
+	if p.roles == nil {
+		return builtinRole(name)
+	}
+	_, exists := p.roles[name]
+	return exists
+}
+
 // HasPermission requires one of the member's roles to grant the whole request.
 func (p RolePolicy) HasPermission(membership string, request access.Statements) bool {
 	grants := p.roles
