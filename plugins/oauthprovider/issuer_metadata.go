@@ -35,8 +35,8 @@ func (o *IssuerMetadataOptions) prepare(scopes []string) error {
 		return errors.New("oauthprovider: advertised token authentication methods cannot be empty")
 	}
 	for i, method := range o.TokenAuthMethods {
-		if method != "client_secret_basic" && method != "client_secret_post" && method != "private_key_jwt" {
-			return fmt.Errorf("oauthprovider: unsupported machine authentication method %q", method)
+		if method != "none" && method != "client_secret_basic" && method != "client_secret_post" && method != "private_key_jwt" {
+			return fmt.Errorf("oauthprovider: unsupported token authentication method %q", method)
 		}
 		if slices.Contains(o.TokenAuthMethods[:i], method) {
 			return fmt.Errorf("oauthprovider: repeated advertised authentication method %q", method)
@@ -51,6 +51,10 @@ func (o *IssuerMetadataOptions) prepare(scopes []string) error {
 // AuthorizationServerMetadata describes the public RFC 8414 issuer document.
 type AuthorizationServerMetadata struct {
 	Issuer                                     string   `json:"issuer"`
+	AuthorizationEndpoint                      string   `json:"authorization_endpoint,omitempty"`
+	ResponseModesSupported                     []string `json:"response_modes_supported,omitempty"`
+	CodeChallengeMethodsSupported              []string `json:"code_challenge_methods_supported,omitempty"`
+	AuthorizationResponseIssuerSupported       bool     `json:"authorization_response_iss_parameter_supported,omitempty"`
 	TokenEndpoint                              string   `json:"token_endpoint"`
 	JWKSURI                                    string   `json:"jwks_uri,omitempty"`
 	RegistrationEndpoint                       string   `json:"registration_endpoint,omitempty"`
@@ -89,7 +93,7 @@ func issuerAliases(u *url.URL) []string {
 	return distinct([]string{issuerMetadataPath + base, base + issuerMetadataPath})
 }
 
-// GetAuthorizationServerConfig returns the same metadata that discovery serves.
+// GetAuthorizationServerConfig reads the OAuth fields from a published discovery document.
 // An issuer without a published document returns auth.ErrNotFound.
 func GetAuthorizationServerConfig(a *auth.Auth) (AuthorizationServerMetadata, error) {
 	var doc AuthorizationServerMetadata
@@ -109,8 +113,21 @@ func GetAuthorizationServerConfig(a *auth.Auth) (AuthorizationServerMetadata, er
 	return doc, auth.ErrNotFound
 }
 
+func (opts Options) discoveryGrants(store auth.Store, authorizeURL string) []string {
+	_, browser := store.(BrowserAuthorizationStore)
+	_, redeem := store.(AuthorizationCodeStore)
+	_, refresh := store.(RefreshGrantStore)
+	_, machine := store.(MachineTokenStore)
+	available := map[string]bool{
+		"authorization_code": browser && redeem && authorizeURL != "",
+		"refresh_token":      refresh,
+		"client_credentials": machine,
+	}
+	return slices.DeleteFunc(slices.Clone(opts.GrantTypes), func(grant string) bool { return !available[grant] })
+}
+
 func (opts Options) issuerDocuments(a *auth.Auth, store auth.Store) (map[string]auth.WellKnownDocument, error) {
-	if _, ok := store.(MachineTokenStore); !ok || opts.Metadata.Disabled || !slices.Contains(opts.GrantTypes, "client_credentials") {
+	if opts.Metadata.Disabled {
 		return nil, nil
 	}
 	base := a.PublicURL()
@@ -122,22 +139,38 @@ func (opts Options) issuerDocuments(a *auth.Auth, store auth.Store) (map[string]
 		return nil, nil
 	}
 	routes := a.DescribeHTTP().Routes
-	endpoint := func(path string) string {
+	endpoint := func(method, path string) string {
 		if slices.ContainsFunc(routes, func(r auth.HTTPRoute) bool {
-			return r.Plugin == "oauth-provider" && r.Method == http.MethodPost && r.Path == path
+			return r.Plugin == "oauth-provider" && r.Method == method && r.Path == path
 		}) {
 			return base + path
 		}
 		return ""
 	}
-	tokenURL := endpoint("/oauth2/token")
+	tokenURL := endpoint(http.MethodPost, "/oauth2/token")
 	if tokenURL == "" {
 		return nil, nil
 	}
+	authorizeURL := endpoint(http.MethodGet, "/oauth2/authorize")
+	grants := opts.discoveryGrants(store, authorizeURL)
+	if len(grants) == 0 {
+		return nil, nil
+	}
+	canAuthorize := slices.Contains(grants, "authorization_code")
+	canRefresh := slices.Contains(grants, "refresh_token")
+	_, offline := store.(OfflineAuthorizationCodeStore)
+	_, identityStore := store.(OpenIDGrantStore)
+	openid := canAuthorize && identityStore && a.PublicJWKSURL() != "" && slices.Contains(opts.Scopes, "openid")
 	scopes := opts.Metadata.Scopes
 	if scopes == nil {
 		scopes = opts.Scopes
 	}
+	scopes = slices.DeleteFunc(distinct(scopes), func(scope string) bool {
+		if !canAuthorize && !canRefresh {
+			return userDelegatedScope(scope)
+		}
+		return scope == "openid" && !openid || scope == "offline_access" && !(canRefresh && offline)
+	})
 	methods := []string{"client_secret_basic", "client_secret_post"}
 	var algorithms []string
 	if _, ok := store.(ClientAssertionStore); ok {
@@ -149,50 +182,70 @@ func (opts Options) issuerDocuments(a *auth.Auth, store auth.Store) (map[string]
 	tokenMethods := opts.Metadata.TokenAuthMethods
 	if tokenMethods == nil {
 		tokenMethods = methods
+		if (canAuthorize || canRefresh) && opts.Registration.Enabled && opts.Registration.AllowUnauthenticated {
+			tokenMethods = append([]string{"none"}, methods...)
+		}
 	}
 	for _, method := range tokenMethods {
-		if !slices.Contains(methods, method) {
+		if !(method == "none" && (canAuthorize || canRefresh)) && !slices.Contains(methods, method) {
 			return nil, fmt.Errorf("oauthprovider: store cannot support advertised authentication method %q", method)
 		}
 	}
 	doc := AuthorizationServerMetadata{
 		Issuer: a.OAuthIssuer(), TokenEndpoint: tokenURL, JWKSURI: a.PublicJWKSURL(),
-		ResponseTypesSupported: []string{}, GrantTypesSupported: []string{"client_credentials"},
-		ScopesSupported: slices.DeleteFunc(distinct(scopes), userDelegatedScope), TokenEndpointAuthMethods: tokenMethods,
+		ResponseTypesSupported: []string{}, GrantTypesSupported: grants,
+		ScopesSupported: scopes, TokenEndpointAuthMethods: tokenMethods,
 		TokenEndpointAuthSigningAlgorithms: algorithms,
 	}
+	if canAuthorize {
+		doc.AuthorizationEndpoint = authorizeURL
+		doc.ResponseTypesSupported = []string{"code"}
+		doc.ResponseModesSupported = []string{"query"}
+		doc.CodeChallengeMethodsSupported = []string{"S256"}
+		doc.AuthorizationResponseIssuerSupported = true
+	}
 	if opts.Registration.Enabled {
-		doc.RegistrationEndpoint = endpoint("/oauth2/register")
+		doc.RegistrationEndpoint = endpoint(http.MethodPost, "/oauth2/register")
 	}
 	_, machine := store.(MachineIntrospectionStore)
 	_, opaque := store.(OpaqueAccessIntrospectionStore)
 	_, signed := store.(SignedAccessIntrospectionStore)
 	if machine || opaque || signed {
-		if doc.IntrospectionEndpoint = endpoint("/oauth2/introspect"); doc.IntrospectionEndpoint != "" {
+		if doc.IntrospectionEndpoint = endpoint(http.MethodPost, "/oauth2/introspect"); doc.IntrospectionEndpoint != "" {
 			doc.IntrospectionEndpointAuthMethods = methods
 			doc.IntrospectionEndpointAuthSigningAlgorithms = algorithms
 		}
 	}
 	if _, ok := store.(RevocationStore); ok {
-		if doc.RevocationEndpoint = endpoint("/oauth2/revoke"); doc.RevocationEndpoint != "" {
+		if doc.RevocationEndpoint = endpoint(http.MethodPost, "/oauth2/revoke"); doc.RevocationEndpoint != "" {
 			doc.RevocationEndpointAuthMethods = methods
 			doc.RevocationEndpointAuthSigningAlgorithms = algorithms
 		}
 	}
 	_, bindsUntargeted := store.(DPoPMachineTokenStore)
 	_, bindsTargeted := store.(ResourceMachineTokenStore)
-	if bindsUntargeted || bindsTargeted {
+	if slices.Contains(grants, "client_credentials") && (bindsUntargeted || bindsTargeted) {
 		doc.DPoPSigningAlgorithms = make([]string, 0, len(opts.proofVerifier.algorithms))
 		for _, alg := range opts.proofVerifier.algorithms {
 			doc.DPoPSigningAlgorithms = append(doc.DPoPSigningAlgorithms, string(alg))
 		}
 	}
-	response, err := NewMetadataResponse(doc, opts.Metadata.Headers)
+	paths := issuerAliases(u)
+	var metadata any = doc
+	if openid {
+		var userInfoURL string
+		if _, ok := store.(UserInfoStore); ok {
+			userInfoURL = endpoint(http.MethodGet, "/oauth2/userinfo")
+		}
+		metadata = opts.openIDMetadata(a, doc, userInfoURL, endpoint(http.MethodPost, "/oauth2/consent") != "")
+		paths = append(paths, openIDConfigPath(u))
+	}
+	response, err := NewMetadataResponse(metadata, opts.Metadata.Headers)
 	if err != nil {
 		return nil, err
 	}
 	docs := make(map[string]auth.WellKnownDocument)
-	for _, path := range issuerAliases(u) {
+	for _, path := range paths {
 		docs[path] = response
 	}
 	return docs, nil

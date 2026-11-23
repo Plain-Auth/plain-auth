@@ -98,17 +98,21 @@ func TestFrameworkMounts(t *testing.T) {
 		}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			s, err := sqlstore.OpenWithOptions(t.Context(), "sqlite", ":memory:", []string{"oauth-provider"}, schema.Options{})
+			s, err := sqlstore.OpenWithOptions(t.Context(), "sqlite", ":memory:", []string{"oauth-provider", "jwt"}, schema.Options{})
 			if err != nil {
 				t.Fatal(err)
 			}
 			defer s.Close()
 			const origin = "http://localhost"
-			provider, err := oauthprovider.New(oauthprovider.Options{Scopes: []string{"reports"}})
+			provider, err := oauthprovider.New(oauthprovider.Options{Scopes: []string{"openid", "reports"}})
 			if err != nil {
 				t.Fatal(err)
 			}
-			auth, err := authn.New(authn.Options{BaseURL: origin, Secret: strings.Repeat("r", 32), Store: s, EmailAndPassword: true, Plugins: []authn.Plugin{provider}})
+			signer, err := authn.NewJWT(authn.JWTOptions{DisableHeader: true})
+			if err != nil {
+				t.Fatal(err)
+			}
+			auth, err := authn.New(authn.Options{BaseURL: origin, Secret: strings.Repeat("r", 32), Store: s, EmailAndPassword: true, Plugins: []authn.Plugin{provider, signer}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -153,11 +157,14 @@ func TestFrameworkMounts(t *testing.T) {
 				return res, strings.TrimSpace(string(b))
 			}
 			send("GET", "/app-owned", "", nil, 404)
-			for _, path := range []string{issuerDiscovery, "/api/auth/.well-known/oauth-authorization-server"} {
+			for _, path := range []string{issuerDiscovery, "/api/auth/.well-known/oauth-authorization-server", "/api/auth/.well-known/openid-configuration"} {
 				_, raw := send("GET", path, "", nil, 200)
-				var issuer oauthprovider.AuthorizationServerMetadata
+				var issuer oauthprovider.OpenIDProviderMetadata
 				if err := json.Unmarshal([]byte(raw), &issuer); err != nil || issuer.TokenEndpoint != origin+"/api/auth/oauth2/token" {
 					t.Fatal("unexpected authorization-server discovery document", raw, err)
+				}
+				if issuer.UserInfoEndpoint != origin+"/api/auth/oauth2/userinfo" || len(issuer.IDTokenSigningAlgorithms) != 1 || issuer.IDTokenSigningAlgorithms[0] != "EdDSA" {
+					t.Fatal("router lost OpenID provider metadata", raw)
 				}
 				res, body := send("HEAD", path, "", nil, 200)
 				if body != "" || res.Header.Get("Cache-Control") == "" {

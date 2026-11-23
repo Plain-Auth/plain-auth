@@ -46,16 +46,7 @@ func (opts Options) authorizedUserInfoClaims(raw json.RawMessage) ([]string, err
 	if kind, err := d.Token(); err != nil || kind != json.Delim('{') {
 		return nil, errors.New("invalid userinfo claim request")
 	}
-	allowed := opts.UserInfo.SupportedClaims
-	if allowed == nil {
-		allowed = []string{"sub", "iss", "aud", "exp", "iat", "sid", "scope", "azp"}
-		if slices.Contains(opts.Scopes, "profile") {
-			allowed = append(allowed, "name", "picture", "given_name", "family_name")
-		}
-		if slices.Contains(opts.Scopes, "email") {
-			allowed = append(allowed, "email", "email_verified")
-		}
-	}
+	allowed := opts.supportedUserInfoClaims()
 	var granted []string
 	for d.More() {
 		key, err := d.Token()
@@ -73,6 +64,20 @@ func (opts Options) authorizedUserInfoClaims(raw json.RawMessage) ([]string, err
 		}
 	}
 	return granted, nil
+}
+
+func (opts Options) supportedUserInfoClaims() []string {
+	allowed := opts.UserInfo.SupportedClaims
+	if allowed == nil {
+		allowed = []string{"sub", "iss", "aud", "exp", "iat", "sid", "scope", "azp"}
+		if slices.Contains(opts.Scopes, "profile") {
+			allowed = append(allowed, "name", "picture", "given_name", "family_name")
+		}
+		if slices.Contains(opts.Scopes, "email") {
+			allowed = append(allowed, "email", "email_verified")
+		}
+	}
+	return allowed
 }
 
 func (opts UserInfoOptions) projectClaims(c auth.EndpointContext, in UserInfoInput, subject string) (map[string]any, error) {

@@ -7,10 +7,10 @@
 | Inventory status | Entries |
 | --- | ---: |
 | Fully verified | 518 |
-| Partially verified | 1,008 |
-| No linked test evidence | 5,499 |
+| Partially verified | 1,014 |
+| No linked test evidence | 5,493 |
 
-The inventory covers features, options, integrations and documentation topics. Partial verification means an open entry has a passing case somewhere beneath it. The checklists also contain 2,237 links from passing scenarios to tests. Adding a scenario leaves the inventory denominator unchanged.
+The inventory covers features, options, integrations and documentation topics. Partial verification means an open entry has a passing case somewhere beneath it. The checklists also contain 2,245 links from passing scenarios to tests. Adding a scenario leaves the inventory denominator unchanged.
 
 A checked item links to a local test for that behavior. An open parent means the feature still has unverified cases. Browser, protocol and storage options each have their own checkboxes.
 
@@ -28,7 +28,7 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 | Google One Tap popup, button and browser challenges | [Google One Tap](../one-tap.md) |
 | Read OpenID Connect profile and email claims for a signed or opaque access token | [UserInfo](../oauth-userinfo.md) |
 | Publish discovery metadata and respond to access-token failures | [Resource discovery and challenges](../oauth-resource-discovery.md) |
-| Discover machine grant endpoints, authentication methods and signing keys from an issuer URL | [Authorization-server discovery](../oauth-issuer-discovery.md) |
+| Discover browser and machine endpoints, signing keys and supported claims from an issuer URL | [OAuth and OpenID Connect discovery](../oauth-issuer-discovery.md) |
 | Sign in, choose an account, collect consent and exchange a PKCE code for access or offline refresh tokens | [Browser authorization and code exchange](../oauth-authorization-code.md) |
 | Manage OAuth resource policies and client grants from server code | [Resource management](../oauth-resource-management.md) |
 | Manage the signed-in user’s OAuth consent grants | [Authorized applications](../oauth-consents.md) |
@@ -109,7 +109,7 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 | [Model Context Protocol](plugins/mcp.md) | 0 | 108 |
 | [Multi session](plugins/multi-session.md) | 15 | 22 |
 | [OAuth popup](plugins/oauth-popup.md) | 56 | 5 |
-| [OAuth provider](plugins/oauth-provider.md) | 584 | 374 |
+| [OAuth provider](plugins/oauth-provider.md) | 592 | 374 |
 | [OAuth proxy](plugins/oauth-proxy.md) | 27 | 6 |
 | [One tap](plugins/one-tap.md) | 38 | 18 |
 | [One time token](plugins/one-time-token.md) | 76 | 0 |

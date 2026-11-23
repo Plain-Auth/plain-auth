@@ -21,6 +21,31 @@ export async function compareIDTokens(t, reference, goFixture) {
       const db = server.database ?? new DatabaseSync(server.databasePath);
       if (!server.database) t.after(() => db.close());
       const {base, post, send, destination, json} = issuerBrowser(runtime, server);
+      const discover = path => server.send(new Request(server.baseURL + path));
+      const discoveryPath = "/api/auth/.well-known/openid-configuration";
+      const metadata = await json(await discover(discoveryPath));
+      assert.equal(metadata.issuer, base);
+      assert.deepEqual(metadata.id_token_signing_alg_values_supported, [alg]);
+      assert.deepEqual(metadata.acr_values_supported, ["0"]);
+      assert.deepEqual(metadata.subject_types_supported, ["public", "pairwise"]);
+      assert.deepEqual(metadata.response_types_supported, ["code"]);
+      assert.deepEqual(metadata.response_modes_supported, ["query"]);
+      assert.deepEqual(metadata.code_challenge_methods_supported, ["S256"]);
+      assert.deepEqual(metadata.grant_types_supported, ["authorization_code", "client_credentials", "refresh_token"]);
+      assert.deepEqual(metadata.scopes_supported, scopes);
+      assert.ok(metadata.claims_supported.includes("email") && metadata.claims_supported.includes("name"));
+      assert.equal(metadata.claims_parameter_supported, true);
+      assert.equal(metadata.request_parameter_supported, false);
+      assert.equal(metadata.request_uri_parameter_supported, false);
+      for (const alias of ["/.well-known/oauth-authorization-server/api/auth", "/api/auth/.well-known/oauth-authorization-server"]) {
+        assert.deepEqual(await json(await discover(alias)), metadata);
+      }
+      const head = await server.send(new Request(base + "/.well-known/openid-configuration", {method: "HEAD"}));
+      assert.equal(head.status, 200);
+      assert.equal(await head.text(), "");
+      const unsupported = await server.send(new Request(base + "/.well-known/openid-configuration", {method: "POST"}));
+      assert.equal(unsupported.status, 405);
+      assert.equal(unsupported.headers.get("allow"), "GET, HEAD");
       const email = "person@oidc.test";
       await json(await post("/sign-up/email", {name:"Test Person", email, password:"local OpenID credential"}));
       const {user, session} = await json(await send(base + "/get-session"));
@@ -31,12 +56,12 @@ export async function compareIDTokens(t, reference, goFixture) {
       const verifier = randomUUID() + randomUUID(), nonce = randomUUID(), state = randomUUID();
       const query = {response_type:"code",client_id:app.client_id,redirect_uri:callback,scope:"openid offline_access",state, nonce,
         code_challenge_method:"S256",code_challenge:createHash("sha256").update(verifier).digest("base64url")};
-      const authorize = async extra => destination(await send(base + "/oauth2/authorize?" + new URLSearchParams({...query, ...extra}), {headers:{accept:"application/json"}}));
-      const oauth = async fields => json(await server.send(new Request(base + "/oauth2/token", {method:"POST", body:new URLSearchParams({client_id:app.client_id, ...fields})})));
-      const info = async access => json(await server.send(new Request(base + "/oauth2/userinfo", {headers:{authorization:"Bearer " + access}})));
+      const authorize = async extra => destination(await send(metadata.authorization_endpoint + "?" + new URLSearchParams({...query, ...extra}), {headers:{accept:"application/json"}}));
+      const oauth = async fields => json(await server.send(new Request(metadata.token_endpoint, {method:"POST", body:new URLSearchParams({client_id:app.client_id, ...fields})})));
+      const info = async access => json(await server.send(new Request(metadata.userinfo_endpoint, {headers:{authorization:"Bearer " + access}})));
       const verify = async (tokens, {fresh, live, explicitEmail = true}) => {
         assert.ok(tokens.access_token.startsWith("at_"));
-        const jwks = await json(await send(base + "/jwks"));
+        const jwks = await json(await send(metadata.jwks_uri));
         const {payload, protectedHeader} = await jwtVerify(tokens.id_token, createLocalJWKSet(jwks), {issuer:base, audience:app.client_id, algorithms:[alg]});
         assert.ok(protectedHeader.kid);
         assert.equal(payload.aud, app.client_id);

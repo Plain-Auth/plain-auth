@@ -13087,6 +13087,11 @@
       "label": "Reject unknown scopes, unsupported machine authentication, duplicate methods and an explicitly empty method list",
       "test": "plugins/oauthprovider/issuer_metadata_test.go",
       "marker": "func TestIssuerDiscoveryConfiguration("
+    },
+    {
+      "label": "Explicitly advertise pre-provisioned public clients, preserve protected introspection and publish only supported delegated grants",
+      "test": "plugins/oauthprovider/openid_metadata_test.go",
+      "marker": "incorrect delegated-only public client metadata"
     }
   ],
   "docs/content/docs/plugins/oauth-provider/tokens.mdx#L8": [
@@ -13851,6 +13856,53 @@
       "test": "conformance/oauth-id-tokens.mjs",
       "marker": "assert.equal(payload.exp - payload.iat, pairwise ? 120 : 36000);",
       "complete": true
+    }
+  ],
+  "plugin/oauth-provider/GET /.well-known/openid-configuration": [
+    {
+      "label": "Start from a custom issuer URL, discover the endpoints, complete PKCE sign-in and verify the ID token, access-token hash and UserInfo subject using an independent Go client",
+      "test": "plugins/oauthprovider/openid_metadata_test.go",
+      "marker": "func TestRelyingPartyDiscoversOpenIDIssuer("
+    },
+    {
+      "label": "Serve the public provider document through ServeMux, chi, Gorilla Mux, Gin, Echo and Fiber and honor HEAD",
+      "test": "integrations/routers/routers_test.go",
+      "marker": "router lost OpenID provider metadata"
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/reference.mdx#L317/`GET /.well-known/openid-configuration`": [
+    {
+      "label": "Start from a custom issuer URL, discover the endpoints, complete PKCE sign-in and verify the ID token, access-token hash and UserInfo subject using an independent Go client",
+      "test": "plugins/oauthprovider/openid_metadata_test.go",
+      "marker": "func TestRelyingPartyDiscoversOpenIDIssuer("
+    }
+  ],
+  "plugin-symbol/oauth-provider/oidcServerMetadata": [
+    {
+      "label": "Start from a custom issuer URL, discover the endpoints, complete PKCE sign-in and verify the ID token, access-token hash and UserInfo subject using an independent Go client",
+      "test": "plugins/oauthprovider/openid_metadata_test.go",
+      "marker": "func TestRelyingPartyDiscoversOpenIDIssuer("
+    }
+  ],
+  "plugin-symbol/oauth-provider/oauthProviderOpenIdConfigMetadata": [
+    {
+      "label": "Read the mounted OpenID provider document from Go, including host page capabilities and the configured claim list",
+      "test": "plugins/oauthprovider/openid_metadata_test.go",
+      "marker": "native, err := op.GetOpenIDConfig(api)"
+    }
+  ],
+  "plugin-symbol/oauth-provider/OIDCMetadata": [
+    {
+      "label": "Read identical OpenID and OAuth aliases, discover signing keys and validate claims and subjects for each supported signing algorithm",
+      "test": "conformance/oauth-id-tokens.mjs",
+      "marker": "assert.deepEqual(metadata.id_token_signing_alg_values_supported, [alg]);"
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/openid-connect.mdx#L20": [
+    {
+      "label": "Read identical OpenID and OAuth aliases, discover signing keys and validate claims and subjects for each supported signing algorithm",
+      "test": "conformance/oauth-id-tokens.mjs",
+      "marker": "assert.deepEqual(metadata.id_token_signing_alg_values_supported, [alg]);"
     }
   ]
 }

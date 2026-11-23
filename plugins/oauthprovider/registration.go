@@ -177,6 +177,9 @@ func New(opts Options) (auth.Plugin, error) {
 		opts.GrantTypes = []string{"authorization_code", "client_credentials", "refresh_token"}
 	}
 	opts.GrantTypes = distinct(opts.GrantTypes)
+	if slices.Contains(opts.Metadata.TokenAuthMethods, "none") && !slices.Contains(opts.GrantTypes, "authorization_code") {
+		return auth.Plugin{}, errors.New("oauthprovider: public client authentication requires a delegated grant")
+	}
 	if slices.Contains(opts.GrantTypes, "refresh_token") && !slices.Contains(opts.GrantTypes, "authorization_code") {
 		return auth.Plugin{}, errors.New("oauthprovider: refresh_token requires authorization_code")
 	}

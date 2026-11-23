@@ -19,11 +19,14 @@ func TestIssuerDiscoveryConfiguration(t *testing.T) {
 		{Scopes: []string{"unconfigured"}},
 		{TokenAuthMethods: []string{}},
 		{TokenAuthMethods: []string{"client_secret_basic", "client_secret_basic"}},
-		{TokenAuthMethods: []string{"none"}},
+		{TokenAuthMethods: []string{"unsupported"}},
 	} {
 		if _, err := op.New(op.Options{Scopes: []string{"read"}, Metadata: opts}); err == nil {
 			t.Error("accepted invalid advertised configuration", opts)
 		}
+	}
+	if _, err := op.New(op.Options{GrantTypes: []string{"client_credentials"}, Metadata: op.IssuerMetadataOptions{TokenAuthMethods: []string{"none"}}}); err == nil {
+		t.Fatal("advertised unauthenticated machine clients")
 	}
 }
 
@@ -70,7 +73,7 @@ func TestIssuerDiscoveryMounts(t *testing.T) {
 	scopes := []string{"read", "openid", "write"}
 	headers := http.Header{"Cache-Control": {"private, max-age=5"}, "X-Discovery": {"auth"}}
 	meta := op.IssuerMetadataOptions{Scopes: scopes, Headers: headers}
-	p, err := op.New(op.Options{Scopes: scopes, Registration: op.RegistrationOptions{Enabled: true}, Metadata: meta})
+	p, err := op.New(op.Options{GrantTypes: []string{"client_credentials"}, Scopes: scopes, Registration: op.RegistrationOptions{Enabled: true}, Metadata: meta})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -200,7 +203,7 @@ func TestIssuerDiscoveryMounts(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	noMachineGrant, err := op.New(op.Options{GrantTypes: []string{"authorization_code"}})
+	noGrants, err := op.New(op.Options{GrantTypes: []string{}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -209,7 +212,7 @@ func TestIssuerDiscoveryMounts(t *testing.T) {
 		issuer   string
 		disabled []string
 	}{
-		{disabled, "", nil}, {noMachineGrant, "", nil}, {p, "http://untrusted.example.test", nil},
+		{disabled, "", nil}, {noGrants, "", nil}, {p, "http://untrusted.example.test", nil},
 		{p, "https://issuer.example.test/tenant?invalid=issuer", nil}, {p, "", []string{"/oauth2/token"}},
 	} {
 		a, err := build(tc.plugin, s, tc.issuer, tc.disabled)

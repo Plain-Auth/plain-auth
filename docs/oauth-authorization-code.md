@@ -309,7 +309,7 @@ The JSON response includes `access_token`, `token_type`, `scope`, `expires_in` a
 
 ## Receive and verify an OpenID Connect ID token
 
-Install the JWT and OAuth provider plugins on the same auth handler and apply both database profiles. Include `openid` in the issuer's and client's allowed scopes. The default signing algorithm is Ed25519 (`EdDSA`). The JWT plugin also supports `RS256`, `ES256`, `ES512` and `PS256`. The public key set defaults to `/api/auth/jwks`. [JWT configuration and key rotation](jwt.md) · [Database setup](schema.md)
+Install the JWT and OAuth provider plugins on the same auth handler and apply both database profiles. Include `openid` in the issuer's and client's allowed scopes. The default signing algorithm is Ed25519 (`EdDSA`). The JWT plugin also supports `RS256`, `ES256`, `ES512` and `PS256`. The public key set defaults to `/api/auth/jwks`. [OpenID issuer discovery](oauth-issuer-discovery.md#connect-a-relying-party-using-the-issuer-url) · [JWT configuration and key rotation](jwt.md) · [Database setup](schema.md)
 
 ```go
 signer, err := auth.NewJWT(auth.JWTOptions{Algorithm: "RS256"})

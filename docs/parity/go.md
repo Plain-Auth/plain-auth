@@ -31,7 +31,7 @@ These checks exercise the Go HTTP client, router mounts and SQL drivers.
   - [x] Gin signup, session lookup and sign-out with multiple cookies ([test](../../integrations/routers/routers_test.go#L72))
   - [x] Fiber signup, session lookup and sign-out with multiple cookies ([test](../../integrations/routers/routers_test.go#L88))
   - [x] Echo v5 signup, session lookup and sign-out with multiple cookies ([test](../../integrations/routers/routers_test.go#L80))
-  - [x] Use the same session on a host-owned route with all six routers and reject its cookie after sign-out ([test](../../integrations/routers/routers_test.go#L179))
+  - [x] Use the same session on a host-owned route with all six routers and reject its cookie after sign-out ([test](../../integrations/routers/routers_test.go#L186))
 - [ ] SQL engine contracts
   - [x] Reopen the SQLite database and read stored credentials and sessions ([test](../../adapters/sqlstore/sqlite_test.go#L85))
   - [x] Roll back registration if creating the initial session fails ([test](../../adapters/sqlstore/sqlite_test.go#L125))
