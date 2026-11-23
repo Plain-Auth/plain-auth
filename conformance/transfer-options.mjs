@@ -131,11 +131,17 @@ export async function transferContract(t, { reference, goFixture, instrument }) 
         assert.ok(Math.abs(lifetime - expected) < 60, "the transfer lifetime follows the configured duration");
         assert.equal(owner.data.token, stored.value);
 
-        // Simulate an elapsed TTL without relying on a wall-clock timer.
         if (mode === "short" || mode === "immediate") {
-          if (mode === "short") db.prepare("UPDATE verification SET expiresAt=? WHERE identifier=?")
-            .run("2001-01-01T00:00:00.000Z", "one-time-token:" + proof);
-          assert.equal((await recipient.client.oneTimeToken.verify({ token: proof })).error.status, 400);
+          if (mode === "short") {
+            db.prepare("UPDATE verification SET expiresAt=? WHERE identifier=?")
+              .run("2001-01-01T00:00:00.000Z", "one-time-token:" + proof);
+          } else {
+            // The reference accepts equality at millisecond precision.
+            const expiry = new Date(stored.expiresAt).getTime();
+            while (Date.now() <= expiry) await new Promise(resolve => setTimeout(resolve, 1));
+          }
+          const expired = await recipient.client.oneTimeToken.verify({ token: proof });
+          assert.equal(expired.error?.status, 400, "reject the proof after its recorded expiry");
           assert.equal(recipient.last().cookies.length, 0);
           continue;
         }
