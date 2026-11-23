@@ -3,7 +3,19 @@ import { once } from "node:events";
 import { createServer } from "node:http";
 import test from "node:test";
 import { setTimeout as sleep } from "node:timers/promises";
-import { chromeBinary, openChromePage } from "./browser-debug.mjs";
+import { chromeBinary, chromeDebugPort, openChromePage } from "./browser-debug.mjs";
+
+test("browser startup waits for the complete port line", () => {
+  const port = "51307";
+  for (let len = 0; len <= port.length; len++) {
+    assert.equal(chromeDebugPort(port.slice(0, len)), null);
+  }
+  assert.equal(chromeDebugPort(port + "\n"), 51307);
+  assert.equal(chromeDebugPort(port + "\r\n/devtools/browser/test"), 51307);
+  for (const value of ["", "0", "65536", "2x"]) {
+    assert.throws(() => chromeDebugPort(value + "\n"), /Invalid local browser port/);
+  }
+});
 
 test("the first browser command runs in the loaded fixture document", async t => {
   const binary = chromeBinary();

@@ -12,6 +12,18 @@ export function chromeBinary() {
     "/usr/bin/google-chrome", "/usr/bin/chromium"].find(path => path && existsSync(path));
 }
 
+// Chrome creates DevToolsActivePort before writing its port and WebSocket path.
+// The first newline distinguishes a complete port from an in-progress write.
+export function chromeDebugPort(contents) {
+  const newline = contents.indexOf("\n");
+  if (newline === -1) return null;
+  const port = contents.slice(0, newline).replace(/\r$/, "");
+  if (!/^\d{1,5}$/.test(port) || Number(port) < 1 || Number(port) > 65535) {
+    throw Error("Invalid local browser port");
+  }
+  return Number(port);
+}
+
 // Start a disposable browser and expose its page-scoped DevTools connection.
 export async function openChromePage(t, url, binary) {
   const dir = await mkdtemp(join(tmpdir(), "plainauth-chrome-"));
@@ -34,10 +46,11 @@ export async function openChromePage(t, url, binary) {
   for (let attempt = 0; attempt < 150 && !target; attempt++) {
     if (browser.exitCode !== null || browser.signalCode) throw Error("Local browser exited during startup");
     try {
-      const [port] = (await readFile(join(dir, "DevToolsActivePort"), "utf8")).split("\n");
-      if (!/^\d+$/.test(port)) throw Error("Invalid local browser port");
-      const pages = await (await fetch("http://127.0.0.1:" + port + "/json/list")).json();
-      target = pages.find(page => page.type === "page" && page.url === url);
+      const port = chromeDebugPort(await readFile(join(dir, "DevToolsActivePort"), "utf8"));
+      if (port !== null) {
+        const pages = await (await fetch("http://127.0.0.1:" + port + "/json/list")).json();
+        target = pages.find(page => page.type === "page" && page.url === url);
+      }
     } catch (err) {
       if (err.code !== "ENOENT" && !(err instanceof TypeError)) throw err;
     }
