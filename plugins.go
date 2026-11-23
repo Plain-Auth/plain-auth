@@ -38,6 +38,9 @@ type Plugin struct {
 	OnRequest func(RequestContext) error
 	// PrepareOAuthLogin verifies a signed oauth_query before credential handling.
 	PrepareOAuthLogin func(EndpointContext, string) (OAuthLoginContinuation, error)
+	// PrepareOAuthSelection verifies a signed post-login query before an
+	// organization or team switch. It resumes only after a session cookie is issued.
+	PrepareOAuthSelection func(EndpointContext, string) (OAuthLoginContinuation, error)
 	// SessionResponse shapes the authenticated GET /get-session JSON response.
 	// One plugin per instance may supply it. An anonymous response stays null.
 	SessionResponse SessionResponseFunc

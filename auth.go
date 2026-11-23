@@ -40,6 +40,7 @@ type Auth struct {
 	maxDeviceSessions     int
 	emailOTP              *EmailOTPOptions
 	sessionResponse       SessionResponseFunc
+	prepareOAuthSelection func(EndpointContext, string) (OAuthLoginContinuation, error)
 	prepareOAuthLogin     func(EndpointContext, string) (OAuthLoginContinuation, error)
 	serviceJWT            *JWTOptions
 	oneTimeToken          *OneTimeTokenOptions
@@ -213,6 +214,12 @@ func New(opts Options) (*Auth, error) {
 				return nil, errors.New("auth: only one plugin may resume OAuth logins")
 			}
 			a.prepareOAuthLogin = p.PrepareOAuthLogin
+		}
+		if p.PrepareOAuthSelection != nil {
+			if a.prepareOAuthSelection != nil {
+				return nil, errors.New("auth: only one plugin may resume OAuth selections")
+			}
+			a.prepareOAuthSelection = p.PrepareOAuthSelection
 		}
 		if p.TranslateError != nil {
 			if a.translateError != nil {

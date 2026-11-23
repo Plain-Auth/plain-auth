@@ -1,6 +1,6 @@
 # Plain Auth
 
-Plain Auth embeds authentication in your Go API. Mount the auth handler on your router and use the same instance to read the signed-in user inside your own handlers. Your application owns its listener, database lifetime, middleware, and routes.
+Plain Auth embeds authentication in your Go API. Mount the auth handler on your router and use the same instance to read the signed-in user inside your own handlers. Your application owns its listener, database lifetime, middleware, and routes. Any HTTP client can use the API. Your application chooses the sign-in screens, organization and team controls, and navigation.
 
 [Run locally](#run-it-locally) · [Install in a Go app](#mount-it-in-an-application) · [Supported workflows](#supported-workflows) · [Roadmap](docs/parity/README.md)
 

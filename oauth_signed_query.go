@@ -43,6 +43,12 @@ func oauthFormString(values url.Values) string {
 // SignOAuthQuery signs the fields for a validated, issuer-controlled interaction.
 // The returned form includes the expiry and the names of all covered fields.
 func (a *Auth) SignOAuthQuery(fields url.Values, expires time.Time) string {
+	return a.SignOAuthConsentQuery(fields, expires, "")
+}
+
+// SignOAuthConsentQuery signs a consent page after the issuer has verified its
+// post-login step for clearedSessionID. An empty ID omits that attestation.
+func (a *Auth) SignOAuthConsentQuery(fields url.Values, expires time.Time, clearedSessionID string) string {
 	q := maps.Clone(fields)
 	if q == nil {
 		q = url.Values{}
@@ -50,6 +56,9 @@ func (a *Auth) SignOAuthQuery(fields url.Values, expires time.Time) string {
 	q.Del("sig")
 	q.Del("ba_param")
 	q.Del("ba_pl")
+	if clearedSessionID != "" {
+		q.Set("ba_pl", clearedSessionID)
+	}
 	q.Set("ba_iat", strconv.FormatInt(a.now().UnixMilli(), 10))
 	q.Set("exp", strconv.FormatInt(expires.Unix(), 10))
 	q["ba_param"] = append(slices.Sorted(maps.Keys(q)), "ba_param")

@@ -64,6 +64,12 @@ func (c *Client) ContinueOAuthAccountSelection(ctx context.Context, signedQuery 
 	return c.continueOAuthAccount(ctx, signedQuery, "selected")
 }
 
+// ContinueOAuthPostLogin asks the issuer to recheck the host's post-login
+// selection using this browser's active session.
+func (c *Client) ContinueOAuthPostLogin(ctx context.Context, signedQuery string) (string, error) {
+	return c.continueOAuthAccount(ctx, signedQuery, "postLogin")
+}
+
 func (c *Client) continueOAuthAccount(ctx context.Context, signedQuery, step string) (string, error) {
 	var result struct {
 		URL string `json:"url"`

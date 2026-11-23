@@ -230,8 +230,8 @@ func New(opts Options) (auth.Plugin, error) {
 		if _, ok := s.(BrowserConsentStore); opts.Authorization.ConsentPage != "" && !ok {
 			return errors.New("oauthprovider: interactive consent requires a BrowserConsentStore")
 		}
-		if _, ok := s.(DeferredConsentStore); opts.Authorization.CheckSignup != nil && opts.Authorization.ConsentPage != "" && !ok {
-			return errors.New("oauthprovider: interactive consent with a signup check requires a DeferredConsentStore")
+		if _, ok := s.(DeferredConsentStore); (opts.Authorization.CheckSignup != nil || opts.Authorization.PostLogin != nil) && opts.Authorization.ConsentPage != "" && !ok {
+			return errors.New("oauthprovider: interactive consent with host account checks requires a DeferredConsentStore")
 		}
 		if err := validateConsent(s); err != nil {
 			return err
@@ -254,7 +254,10 @@ func New(opts Options) (auth.Plugin, error) {
 		if opts.Authorization.LoginPage != "" || opts.Authorization.SignupPage != "" {
 			p.PrepareOAuthLogin = opts.prepareLogin
 		}
-		if p.PrepareOAuthLogin != nil || opts.Authorization.SelectAccount.Page != "" || opts.Authorization.CheckSignup != nil {
+		if opts.Authorization.PostLogin != nil {
+			p.PrepareOAuthSelection = opts.prepareSelection
+		}
+		if p.PrepareOAuthLogin != nil || opts.Authorization.SelectAccount.Page != "" || opts.Authorization.CheckSignup != nil || opts.Authorization.PostLogin != nil {
 			p.Endpoints = append(p.Endpoints, auth.Endpoint{Method: http.MethodPost, Path: "/oauth2/continue", Handler: opts.continueAccount, OpenAPI: json.RawMessage(continueAccountOperation)})
 		}
 		if opts.Authorization.ConsentPage != "" {

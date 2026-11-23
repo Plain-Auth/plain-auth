@@ -261,7 +261,13 @@ func (o Options) selectActive(c authn.EndpointContext, s *authn.SessionResult) (
 	ctx := c.Request.Context()
 	value, exists := c.Body["organizationId"]
 	if exists && value == nil {
-		return nil, o.Store.SetActiveOrganization(ctx, s.Session.ID, s.User.ID, nil)
+		if err := o.Store.SetActiveOrganization(ctx, s.Session.ID, s.User.ID, nil); err != nil {
+			return nil, err
+		}
+		if s.Session.ActiveOrganizationID != nil && c.DirectBrowserSession(s.Session.Token) {
+			return nil, c.TryReissueSessionCookie(s.Session)
+		}
+		return nil, nil
 	}
 	id, ok := value.(string)
 	if exists && !ok {
@@ -284,7 +290,13 @@ func (o Options) selectActive(c authn.EndpointContext, s *authn.SessionResult) (
 	if err != nil {
 		return nil, err
 	}
-	return org, o.Store.SetActiveOrganization(ctx, s.Session.ID, s.User.ID, &org.ID)
+	if err := o.Store.SetActiveOrganization(ctx, s.Session.ID, s.User.ID, &org.ID); err != nil {
+		return nil, err
+	}
+	if c.DirectBrowserSession(s.Session.Token) {
+		return org, c.TryReissueSessionCookie(s.Session)
+	}
+	return org, nil
 }
 
 func parseRoles(value any) (string, error) {

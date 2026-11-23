@@ -14,6 +14,7 @@ import (
 
 	auth "github.com/Plain-Auth/plain-auth"
 	op "github.com/Plain-Auth/plain-auth/plugins/oauthprovider"
+	"github.com/Plain-Auth/plain-auth/plugins/organization"
 )
 
 // Expose the host's server-only method to the local comparison process.
@@ -138,4 +139,26 @@ func registrationFixtureOptions() op.Options {
 		opts.Registration.AllowedResources = []string{"urn:billing", "urn:disabled", "urn:missing"}
 	}
 	return opts
+}
+
+func configurePostLoginFixture(opts *op.Options, store organization.Store) {
+	opts.Authorization.PostLogin = &op.PostLoginOptions{
+		Page: "/select-organization",
+		ShouldRedirect: func(ctx context.Context, a op.PostLoginContext) (bool, error) {
+			orgs, err := store.OrganizationsForUser(ctx, a.User.ID)
+			if err != nil {
+				return false, err
+			}
+			valid := slices.ContainsFunc(orgs, func(o organization.Organization) bool {
+				return a.Session.ActiveOrganizationID != nil && *a.Session.ActiveOrganizationID == o.ID
+			})
+			return !valid || (len(orgs) > 1 && !a.IsContinuation), nil
+		},
+	}
+	opts.Authorization.ConsentReference = func(_ context.Context, a op.RegistrationAccess, _ []string) (string, error) {
+		if a.Session.ActiveOrganizationID == nil {
+			return "", errors.New("select an organization")
+		}
+		return *a.Session.ActiveOrganizationID, nil
+	}
 }

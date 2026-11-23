@@ -809,6 +809,11 @@
       "label": "Select by slug or clear the current session selection",
       "test": "plugins/organization/organization_test.go",
       "marker": "cleared organization still active"
+    },
+    {
+      "label": "Use HTTP JSON with separate cookie jars to switch or clear organizations and teams without affecting another login",
+      "test": "adapters/sqlstore/organization_selection_http_test.go",
+      "marker": "func TestOrganizationAndTeamSelectionHTTP("
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L621": [
@@ -3343,6 +3348,16 @@
       "label": "Select a team belonging to the active organization and preserve session cookie persistence",
       "test": "adapters/sqlstore/organization_teams_test.go",
       "marker": "team selection changed persistence"
+    },
+    {
+      "label": "Use HTTP JSON with separate cookie jars to switch or clear organizations and teams without affecting another login",
+      "test": "adapters/sqlstore/organization_selection_http_test.go",
+      "marker": "func TestOrganizationAndTeamSelectionHTTP("
+    },
+    {
+      "label": "Validate a signed selector before updating the team and keep an outstanding approval in its original organization",
+      "test": "adapters/sqlstore/oauth_post_login_test.go",
+      "marker": "bad := choose.Encode()"
     }
   ],
   "plugin/organization/GET /organization/list-user-teams": [
@@ -13133,6 +13148,11 @@
       "label": "Return an interaction error for silent onboarding and wait for the host’s stored update before exposing consent",
       "test": "conformance/oauth-signup-policy.mjs",
       "marker": "const silent = await begin("
+    },
+    {
+      "label": "Return a silent interaction error, ignore a supplied clearance on a new request and sign only a completed session’s consent page",
+      "test": "conformance/oauth-post-login.mjs",
+      "marker": "const gate = await begin("
     }
   ],
   "docs/content/docs/plugins/oauth-provider/reference.mdx#L318/`GET / POST /oauth2/authorize`": [
@@ -13165,6 +13185,11 @@
       "label": "Return an interaction error for silent onboarding and wait for the host’s stored update before exposing consent",
       "test": "conformance/oauth-signup-policy.mjs",
       "marker": "const silent = await begin("
+    },
+    {
+      "label": "Return a silent interaction error, ignore a supplied clearance on a new request and sign only a completed session’s consent page",
+      "test": "conformance/oauth-post-login.mjs",
+      "marker": "const gate = await begin("
     }
   ],
   "plugin-symbol/oauth-provider/OAuthOptions/validateRedirectUri": [
@@ -13227,6 +13252,11 @@
       "label": "Preserve narrowed approval when onboarding becomes required during consent and defer code issuance",
       "test": "conformance/oauth-signup-policy.mjs",
       "marker": "const deferred = await redirect("
+    },
+    {
+      "label": "Require a consent form to record an approval and send an earlier selector form back through the remaining steps",
+      "test": "conformance/oauth-post-login.mjs",
+      "marker": "const misplaced = await destination("
     }
   ],
   "docs/content/docs/plugins/oauth-provider/reference.mdx#L319/`POST /oauth2/consent`": [
@@ -13256,6 +13286,11 @@
       "label": "Preserve narrowed approval when onboarding becomes required during consent and defer code issuance",
       "test": "conformance/oauth-signup-policy.mjs",
       "marker": "const deferred = await redirect("
+    },
+    {
+      "label": "Require a consent form to record an approval and send an earlier selector form back through the remaining steps",
+      "test": "conformance/oauth-post-login.mjs",
+      "marker": "const misplaced = await destination("
     }
   ],
   "docs/content/docs/plugins/oauth-provider/sign-in-flow.mdx#L44": [
@@ -13306,6 +13341,11 @@
       "label": "Return an interaction error for silent onboarding and wait for the host’s stored update before exposing consent",
       "test": "conformance/oauth-signup-policy.mjs",
       "marker": "const silent = await begin("
+    },
+    {
+      "label": "Return a silent interaction error, ignore a supplied clearance on a new request and sign only a completed session’s consent page",
+      "test": "conformance/oauth-post-login.mjs",
+      "marker": "const gate = await begin("
     }
   ],
   "docs/content/docs/plugins/oauth-provider/sign-in-flow.mdx#L101/Parameter `accept`": [
@@ -13407,6 +13447,11 @@
       "label": "Re-evaluate the account on a signed created continuation and exchange its code only after the host records completion",
       "test": "conformance/oauth-signup-policy.mjs",
       "marker": "const returned = await resume("
+    },
+    {
+      "label": "Resume after the user activates a membership and distinguish an explicit continuation from a cookie reissued by an organization switch",
+      "test": "conformance/oauth-post-login.mjs",
+      "marker": "const picked = await destination("
     }
   ],
   "docs/content/docs/plugins/oauth-provider/reference.mdx#L320/`POST /oauth2/continue`": [
@@ -13424,6 +13469,11 @@
       "label": "Re-evaluate the account on a signed created continuation and exchange its code only after the host records completion",
       "test": "conformance/oauth-signup-policy.mjs",
       "marker": "const returned = await resume("
+    },
+    {
+      "label": "Resume after the user activates a membership and distinguish an explicit continuation from a cookie reissued by an organization switch",
+      "test": "conformance/oauth-post-login.mjs",
+      "marker": "const picked = await destination("
     }
   ],
   "docs/content/docs/plugins/oauth-provider/sign-in-flow.mdx#L205": [
@@ -13441,6 +13491,11 @@
       "label": "Re-evaluate the account on a signed created continuation and exchange its code only after the host records completion",
       "test": "conformance/oauth-signup-policy.mjs",
       "marker": "const returned = await resume("
+    },
+    {
+      "label": "Resume after the user activates a membership and distinguish an explicit continuation from a cookie reissued by an organization switch",
+      "test": "conformance/oauth-post-login.mjs",
+      "marker": "const picked = await destination("
     }
   ],
   "docs/content/docs/plugins/oauth-provider/sign-in-flow.mdx#L211/`POST /oauth2/continue`": [
@@ -13458,6 +13513,11 @@
       "label": "Re-evaluate the account on a signed created continuation and exchange its code only after the host records completion",
       "test": "conformance/oauth-signup-policy.mjs",
       "marker": "const returned = await resume("
+    },
+    {
+      "label": "Resume after the user activates a membership and distinguish an explicit continuation from a cookie reissued by an organization switch",
+      "test": "conformance/oauth-post-login.mjs",
+      "marker": "const picked = await destination("
     }
   ],
   "docs/content/docs/plugins/oauth-provider/sign-in-flow.mdx#L229/Parameter `oauth_query` (optional)": [
@@ -13470,6 +13530,11 @@
       "label": "Resume the signed chooser with the selected browser account and preserve forced consent without repeating selection",
       "test": "conformance/oauth-account-selection.mjs",
       "marker": "const forcedConsent = await destination("
+    },
+    {
+      "label": "Resume after the user activates a membership and distinguish an explicit continuation from a cookie reissued by an organization switch",
+      "test": "conformance/oauth-post-login.mjs",
+      "marker": "const picked = await destination("
     }
   ],
   "docs/content/docs/plugins/oauth-provider/sign-in-flow.mdx#L221/Parameter `created` (optional)": [
@@ -13511,6 +13576,51 @@
       "label": "Continue the account choice with selected=true after an explicit prompt or a host policy, including a required second consent",
       "test": "conformance/oauth-account-selection.mjs",
       "marker": "const reconfirm = await destination(",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/oauth-provider/OAuthOptions/postLogin": [
+    {
+      "label": "Recheck live organization selection on continuation, require consent for each organization and redeem a token carrying its reference",
+      "test": "conformance/oauth-post-login.mjs",
+      "marker": "const stillRequired = await resume(",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/sign-in-flow.mdx#L172": [
+    {
+      "label": "Recheck live organization selection on continuation, require consent for each organization and redeem a token carrying its reference",
+      "test": "conformance/oauth-post-login.mjs",
+      "marker": "const stillRequired = await resume(",
+      "complete": true
+    },
+    {
+      "label": "Validate a signed selector before updating the team and keep an outstanding approval in its original organization",
+      "test": "adapters/sqlstore/oauth_post_login_test.go",
+      "marker": "bad := choose.Encode()"
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/sign-in-flow.mdx#L225/Parameter `postLogin` (optional)": [
+    {
+      "label": "Use the signed post-login query and active session to verify a choice before continuing, and require a new session to pass its own check",
+      "test": "conformance/oauth-post-login.mjs",
+      "marker": "const repeat = await destination(",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/oauth-provider/getConsentReferenceId": [
+    {
+      "label": "Resolve the approval reference for the requested or accepted scopes and support personal approval when the host returns an empty reference",
+      "test": "adapters/sqlstore/oauth_post_login_test.go",
+      "marker": "!slices.Equal(referenceScopes, []string{\"reports\"})",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/oauth-provider/findConsent": [
+    {
+      "label": "Match an explicit organization or a personal grant among more than 100 references, preferring NULL to the legacy empty string",
+      "test": "adapters/sqlstore/oauth_post_login_test.go",
+      "marker": "for i := 0; i < 105;",
       "complete": true
     }
   ]

@@ -40,6 +40,7 @@ type DeferredConsentStore interface {
 
 type browserConsentDecision struct {
 	clientFingerprint string
+	clearedSession    string
 	session           *auth.SessionResult
 	store             BrowserConsentStore
 	request           BrowserConsentPrompt
@@ -65,7 +66,13 @@ func (opts Options) openConsentPage(c auth.EndpointContext, original url.Values,
 	fields.Set("pa_client", fingerprint)
 	request := BrowserConsentPrompt{ID: rand.Text(), Binding: consentBinding(c.Auth.OAuthIssuer(), fingerprint, issue), ExpiresAt: time.Now().UTC().Truncate(time.Second).Add(issue.Lifetime)}
 	fields.Set("pa_consent", request.ID)
-	target, err := interactionURL(c, opts.Authorization.ConsentPage, fields, request.ExpiresAt)
+	var clearedSession string
+	if opts.Authorization.PostLogin != nil {
+		clearedSession = issue.SessionID
+		fields.Set("pa_post_issuer", c.Auth.OAuthIssuer())
+		fields.Set("pa_post_binding", request.Binding)
+	}
+	target, err := interactionURL(c, opts.Authorization.ConsentPage, fields, request.ExpiresAt, clearedSession)
 	if err != nil {
 		return nil, err
 	}
@@ -90,6 +97,17 @@ func (opts Options) browserConsent(c auth.EndpointContext) (any, error) {
 	if !ok {
 		return nil, registrationProblem(400, "invalid_request", "accept must be a boolean")
 	}
+	// A selector page can only restart the remaining steps. It cannot grant
+	// consent until the issuer has actually presented a bound consent form.
+	if accept && opts.Authorization.PostLogin != nil && !q.Has("pa_consent") && q.Get("pa_post") == c.Auth.OAuthIssuer() && len(q["pa_client"]) == 1 && q.Get("pa_client") != "" {
+		if _, err := requireBrowserOwner(c); err != nil {
+			return nil, err
+		}
+		q.Set("prompt", "consent")
+		next := accountAuthorizationRequest(c, q, false)
+		next.Header.Set("Accept", "application/json")
+		return c.ResumeOAuthAuthorization(next)
+	}
 	if len(q["pa_consent"]) != 1 || q.Get("pa_consent") == "" || len(q["pa_client"]) != 1 || q.Get("pa_client") == "" {
 		return nil, consentDecisionError(ErrBrowserConsentExpired)
 	}
@@ -104,14 +122,14 @@ func (opts Options) browserConsent(c auth.EndpointContext) (any, error) {
 	if _, present := c.Body["claims"]; present {
 		return nil, registrationProblem(400, "invalid_request", "claim selection requires OpenID authorization")
 	}
-	session, err := c.Auth.GetSession(c.Request.Context(), c.Request.Header)
+	session, err := requireBrowserOwner(c)
 	if err != nil {
 		return nil, err
 	}
-	if session == nil || session.Session.RequireOwner() != nil || !c.DirectBrowserSession(session.Session.Token) {
-		return nil, registrationProblem(401, "unauthorized", "browser session required")
-	}
 	decision.session = session
+	if q.Get("pa_post_issuer") == c.Auth.OAuthIssuer() {
+		decision.clearedSession = q.Get("ba_pl")
+	}
 	requested := distinct(strings.Split(q.Get("scope"), " "))
 	for _, scope := range decision.scopes {
 		if !slices.Contains(requested, scope) {
@@ -137,7 +155,7 @@ func (opts Options) browserConsent(c auth.EndpointContext) (any, error) {
 			return nil, consentDecisionError(err)
 		}
 	}
-	for _, k := range []string{"sig", "exp", "ba_iat", "ba_param", "pa_consent", "pa_client"} {
+	for _, k := range []string{"sig", "exp", "ba_iat", "ba_param", "pa_consent", "pa_client", "ba_pl", "pa_post_issuer", "pa_post_binding"} {
 		q.Del(k)
 	}
 	c.Request = c.Request.Clone(c.Request.Context())

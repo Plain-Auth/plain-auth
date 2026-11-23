@@ -302,7 +302,11 @@ func main() {
 			}
 			plugins = append(plugins, p)
 		case "oauth-provider":
-			p, err := oauthprovider.New(registrationFixtureOptions())
+			options := registrationFixtureOptions()
+			if os.Getenv("CONFORMANCE_CLIENT_REGISTRATION") == "post-login" {
+				configurePostLoginFixture(&options, store)
+			}
+			p, err := oauthprovider.New(options)
 			if err != nil {
 				log.Fatal(err)
 			}

@@ -130,7 +130,52 @@ Return `nil, nil` to continue. Return `&oauthprovider.SignupStep{}` for the conf
 
 In the onboarding page's GET handler, verify the signed query with `api.VerifyOAuthPageQuery`. On submission, use your application's authenticated handler to persist the user's decision. Then use the same browser session to post `{"created":true,"oauth_query":"<verified page query>"}` to `/api/auth/oauth2/continue`, or call `sdk.ContinueOAuthSignup(ctx, fields.Encode())`. Follow the returned URL. If the saved record still requires onboarding, that URL leads back to the required page.
 
-If the policy changes while a consent screen is open, the issuer can record the user's approval for the selected scopes and return to onboarding. It consumes the consent prompt once. Code issuance waits until the check passes and the issuer revalidates the active session, client and approval. The bundled SQL adapters support this transaction. A custom store that enables both interactive consent and signup checks must implement `oauthprovider.DeferredConsentStore`. [End-to-end code exchange](../conformance/oauth-signup-policy.mjs) · [Three-database tests](../adapters/sqlstore/oauth_signup_step_test.go)
+If the policy changes while a consent screen is open, the issuer can record the user's approval for the selected scopes and return to onboarding. It consumes the consent prompt once. Code issuance waits until the check passes and the issuer revalidates the active session, client and approval. The bundled SQL adapters support this transaction. A custom store that enables interactive consent with signup or post-login checks must implement `oauthprovider.DeferredConsentStore`. [End-to-end code exchange](../conformance/oauth-signup-policy.mjs) · [Three-database tests](../adapters/sqlstore/oauth_signup_step_test.go)
+
+## Select an organization or team after login
+
+`Authorization.PostLogin` is an optional issuer policy for delegated authorization. The host supplies a trusted page and decides when the user needs to choose an organization or team. The page can use any language or framework. For ordinary app switching, call the organization or team JSON API directly. [Organization and team selection](organizations.md#switch-organizations-and-teams-from-any-client)
+
+The example below uses the organization store configured by the host. It checks current memberships, asks users with multiple memberships to choose on a new authorization, and uses the selected organization as the consent reference. Return an error from the reference callback if the required membership has ended. This check also runs when approving the consent form.
+
+```go
+Authorization: oauthprovider.BrowserAuthorizationOptions{
+    LoginPage: "/login", ConsentPage: "/consent",
+    PostLogin: &oauthprovider.PostLoginOptions{
+        Page: "/select-organization",
+        ShouldRedirect: func(ctx context.Context, a oauthprovider.PostLoginContext) (bool, error) {
+            groups, err := store.OrganizationsForUser(ctx, a.User.ID)
+            if err != nil {
+                return false, err
+            }
+            id := a.Session.ActiveOrganizationID
+            selected := slices.ContainsFunc(groups, func(g organization.Organization) bool {
+                return id != nil && g.ID == *id
+            })
+            return !selected || (len(groups) > 1 && !a.IsContinuation), nil
+        },
+    },
+    ConsentReference: func(ctx context.Context, a oauthprovider.RegistrationAccess, scopes []string) (string, error) {
+        id := a.Session.ActiveOrganizationID
+        if id == nil {
+            return "", errors.New("select an organization")
+        }
+        group, err := store.OrganizationForMember(ctx, a.User.ID, *id, "")
+        if err != nil {
+            return "", err
+        }
+        return group.ID, nil
+    },
+},
+```
+
+On the host page, verify the signed query with `api.VerifyOAuthPageQuery` and preserve `fields.Encode()` for continuation. Save the user's choice through `POST /organization/set-active` or `POST /organization/set-active-team` under the auth mount. Once it succeeds, post `{"postLogin":true,"oauth_query":"<verified page query>"}` to `/oauth2/continue` in the same session. The Go SDK equivalent is `sdk.ContinueOAuthPostLogin(ctx, fields.Encode())`. Either returns the next destination. Your client controls how to navigate there.
+
+The explicit continuation reruns `ShouldRedirect` with `IsContinuation` set. Check the stored selection each time. A new authorization runs the policy again. For a one-request switch, a client can include `oauth_query` with the selection write itself. When that write reissues a session cookie, the issuer evaluates the policy with `IsContinuation` false. A policy that asks on every new authorization can return the selector again. A silent authorization that requires this step returns `interaction_required` to the registered callback.
+
+After selection, the signed consent page carries proof for the current login. Submitting that page can finish consent without showing the selector again. Plain Auth checks the consent reference when saving the decision. Switching organizations in another tab cannot move an outstanding approval to the new organization. Returning a selector form to the consent endpoint asks for the remaining steps. Approval requires a signed consent form.
+
+Returning an empty reference uses personal consent. The SQL adapters isolate personal consent from organization grants and prefer a NULL reference when both NULL and empty-string personal records exist. With a nonempty organization reference, the authorization code and its issued token retain that reference. For team-level grants, the host can validate the selected team and return its ID as the reference. [Organization flow and token exchange](../conformance/oauth-post-login.mjs) · [Session and personal-consent tests](../adapters/sqlstore/oauth_post_login_test.go)
 
 ## Ask the user for consent
 
@@ -192,6 +237,7 @@ When onboarding is complete, approval returns a callback URL containing a single
 | --- | --- |
 | `LoginPage` | Trusted host page for signing in or reauthenticating, such as `/login`. |
 | `SignupPage` | Optional account-creation page for `prompt=create`. Defaults to the login page. |
+| `PostLogin` | Optional trusted page and host policy evaluated after signup and before consent. |
 | `CheckSignup` | Recheck the host’s onboarding requirements before issuing a code for the current account and scopes. |
 | `SelectAccount` | Optional account chooser page and policy for initial browser authorization. |
 | `ConsentPage` | Trusted host page for first-time and forced approvals, such as `/consent`. |

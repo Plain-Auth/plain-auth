@@ -23,13 +23,19 @@ func (a *Auth) isOAuthAuthorizationRequest(r *http.Request) bool {
 
 func (a *Auth) loginContinuation(route string, r *http.Request, body wireBody, h http.Header) (OAuthLoginContinuation, error) {
 	raw, present := body["oauth_query"]
-	if !present || a.prepareOAuthLogin == nil {
+	if !present {
 		return nil, nil
 	}
+	prepare := a.prepareOAuthLogin
 	switch route {
 	case "/sign-in/email", "/sign-up/email", "/sign-in/username", "/sign-in/phone-number", "/sign-in/email-otp", "/passkey/verify-authentication",
 		"/two-factor/verify-totp", "/two-factor/verify-otp", "/two-factor/verify-backup-code":
+	case "/organization/set-active", "/organization/set-active-team":
+		prepare = a.prepareOAuthSelection
 	default:
+		return nil, nil
+	}
+	if prepare == nil {
 		return nil, nil
 	}
 	if strings.HasPrefix(route, "/two-factor/") && a.cookieToken(r.Header) != "" {
@@ -42,7 +48,7 @@ func (a *Auth) loginContinuation(route string, r *http.Request, body wireBody, h
 	if !ok || query == "" {
 		return nil, &OAuthError{Status: 400, Code: "invalid_request", Description: "signed oauth_query required"}
 	}
-	return a.prepareOAuthLogin(EndpointContext{Auth: a, Request: r, Body: body, ResponseHeader: h}, query)
+	return prepare(EndpointContext{Auth: a, Request: r, Body: body, ResponseHeader: h}, query)
 }
 
 func (a *Auth) resumeIssuedOAuthLogin(w http.ResponseWriter, r *http.Request, resume OAuthLoginContinuation, priorCookies int) (bool, error) {

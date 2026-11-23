@@ -46,6 +46,7 @@
     - [x] Take a signed-out user through local login, consent and PKCE redemption and require fresh credentials when requested ([test](../../../conformance/oauth-browser-login.mjs#L36))
     - [x] Apply host account-selection policy to an initial request, honor silent errors and preserve consent after selection ([test](../../../conformance/oauth-account-selection.mjs#L36))
     - [x] Return an interaction error for silent onboarding and wait for the host’s stored update before exposing consent ([test](../../../conformance/oauth-signup-policy.mjs#L45))
+    - [x] Return a silent interaction error, ignore a supplied clearance on a new request and sign only a completed session’s consent page ([test](../../../conformance/oauth-post-login.mjs#L87))
   - [ ] `GET /.well-known/oauth-authorization-server` (server API only)
     - [x] Discover endpoints and capabilities for the machine grant, then register a client, verify a signed token and revoke an opaque token ([test](../../../conformance/oauth-issuer-metadata.mjs#L95))
     - [x] Mount both issuer discovery paths through ServeMux, chi, Gorilla Mux, Gin, Echo and Fiber and read them with GET and HEAD ([test](../../../integrations/routers/routers_test.go#L160))
@@ -55,10 +56,12 @@
     - [x] Consume a decision once across two servers, isolate sessions and tenants, and roll back consent when code storage fails ([test](../../../adapters/sqlstore/oauth_browser_consent_test.go#L25))
     - [x] Consume a denial even when the callback has been removed and the operator later restores it ([test](../../../adapters/sqlstore/oauth_browser_consent_test.go#L214))
     - [x] Preserve narrowed approval when onboarding becomes required during consent and defer code issuance ([test](../../../conformance/oauth-signup-policy.mjs#L68))
+    - [x] Require a consent form to record an approval and send an earlier selector form back through the remaining steps ([test](../../../conformance/oauth-post-login.mjs#L133))
   - [ ] `POST /oauth2/continue`
     - [x] Use the signed signup page query and the new browser session to complete the account-creation step ([test](../../../conformance/oauth-browser-login.mjs#L82))
     - [x] Resume the signed chooser with the selected browser account and preserve forced consent without repeating selection ([test](../../../conformance/oauth-account-selection.mjs#L44))
     - [x] Re-evaluate the account on a signed created continuation and exchange its code only after the host records completion ([test](../../../conformance/oauth-signup-policy.mjs#L79))
+    - [x] Resume after the user activates a membership and distinguish an explicit continuation from a cookie reissued by an organization switch ([test](../../../conformance/oauth-post-login.mjs#L99))
   - [ ] `POST /oauth2/token`
     - [x] Issue opaque bearer tokens with Basic or form authentication and verify their scope, expiry, introspection and revocation at an independent server ([test](../../../conformance/oauth-machine-tokens.mjs#L61))
     - [x] Recheck credential rotation, registered scopes, sender constraints and client deletion during issuance on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_machine_token_test.go#L154))
@@ -324,7 +327,8 @@
       - [x] Fall back to the login page or a dynamic URL, deny untrusted pages and host errors, and persist a deferred approval only once ([test](../../../adapters/sqlstore/oauth_signup_step_test.go#L17))
     - [x] `selectAccount` ([test](../../../adapters/sqlstore/oauth_account_selection_test.go#L18))
       - [x] Open the explicit or policy-driven chooser, use the live session and requested scopes, fall back for implicit selection and stop on policy errors ([test](../../../adapters/sqlstore/oauth_account_selection_test.go#L18))
-    - [ ] `postLogin`
+    - [x] `postLogin` ([test](../../../conformance/oauth-post-login.mjs#L90))
+      - [x] Recheck live organization selection on continuation, require consent for each organization and redeem a token carrying its reference ([test](../../../conformance/oauth-post-login.mjs#L90))
     - [ ] `formatRefreshToken`
       - [x] Unwrap custom refresh-token values before hashing and distinguish unknown encodings from decoder errors ([test](../../../adapters/sqlstore/oauth_revocation_test.go#L126))
       - [x] Generate and hash the raw refresh token, encode it for its session, then apply the public prefix ([test](../../../adapters/sqlstore/oauth_offline_code_test.go#L139))
@@ -437,8 +441,10 @@
   - [ ] `extractClientCredentials`
   - [ ] `parsePrompt`
   - [ ] `resolveSubjectIdentifier`
-  - [ ] `getConsentReferenceId`
-  - [ ] `findConsent`
+  - [x] `getConsentReferenceId` ([test](../../../adapters/sqlstore/oauth_post_login_test.go#L164))
+    - [x] Resolve the approval reference for the requested or accepted scopes and support personal approval when the host returns an empty reference ([test](../../../adapters/sqlstore/oauth_post_login_test.go#L164))
+  - [x] `findConsent` ([test](../../../adapters/sqlstore/oauth_post_login_test.go#L182))
+    - [x] Match an explicit organization or a personal grant among more than 100 references, preferring NULL to the legacy empty string ([test](../../../adapters/sqlstore/oauth_post_login_test.go#L182))
   - [ ] `searchParamsToQuery`
   - [ ] `isSessionFreshForSignedQuery`
   - [ ] `removePromptFromQuery`
@@ -621,6 +627,7 @@
       - [x] Take a signed-out user through local login, consent and PKCE redemption and require fresh credentials when requested ([test](../../../conformance/oauth-browser-login.mjs#L36))
       - [x] Apply host account-selection policy to an initial request, honor silent errors and preserve consent after selection ([test](../../../conformance/oauth-account-selection.mjs#L36))
       - [x] Return an interaction error for silent onboarding and wait for the host’s stored update before exposing consent ([test](../../../conformance/oauth-signup-policy.mjs#L45))
+      - [x] Return a silent interaction error, ignore a supplied clearance on a new request and sign only a completed session’s consent page ([test](../../../conformance/oauth-post-login.mjs#L87))
     - [ ] `POST /oauth2/consent`
       - [x] Visit a host consent page, verify the signed query independently, deny a first request or exchange a code approved for fewer scopes ([test](../../../conformance/oauth-browser-authorization.mjs#L57))
       - [x] Consume a decision once across two servers, isolate sessions and tenants, and roll back consent when code storage fails ([test](../../../adapters/sqlstore/oauth_browser_consent_test.go#L25))
@@ -628,6 +635,7 @@
       - [x] Use the signed signup page query and the new browser session to complete the account-creation step ([test](../../../conformance/oauth-browser-login.mjs#L82))
       - [x] Resume the signed chooser with the selected browser account and preserve forced consent without repeating selection ([test](../../../conformance/oauth-account-selection.mjs#L44))
       - [x] Re-evaluate the account on a signed created continuation and exchange its code only after the host records completion ([test](../../../conformance/oauth-signup-policy.mjs#L79))
+      - [x] Resume after the user activates a membership and distinguish an explicit continuation from a cookie reissued by an organization switch ([test](../../../conformance/oauth-post-login.mjs#L99))
     - [ ] `POST /oauth2/token`
       - [x] Issue opaque bearer tokens with Basic or form authentication and verify their scope, expiry, introspection and revocation at an independent server ([test](../../../conformance/oauth-machine-tokens.mjs#L61))
       - [x] Issue signed or opaque machine tokens for several registered APIs and verify them with an independent issuer ([test](../../../conformance/oauth-resource-machine-tokens.mjs#L28))
@@ -789,6 +797,7 @@
     - [x] Take a signed-out user through local login, consent and PKCE redemption and require fresh credentials when requested ([test](../../../conformance/oauth-browser-login.mjs#L36))
     - [x] Apply host account-selection policy to an initial request, honor silent errors and preserve consent after selection ([test](../../../conformance/oauth-account-selection.mjs#L36))
     - [x] Return an interaction error for silent onboarding and wait for the host’s stored update before exposing consent ([test](../../../conformance/oauth-signup-policy.mjs#L45))
+    - [x] Return a silent interaction error, ignore a supplied clearance on a new request and sign only a completed session’s consent page ([test](../../../conformance/oauth-post-login.mjs#L87))
   - [ ] Login page
     - [x] Take a signed-out user through local login, consent and PKCE redemption and require fresh credentials when requested ([test](../../../conformance/oauth-browser-login.mjs#L36))
     - [x] Wait for the second factor before resuming, replace the prior browser account and enforce host authorization rules ([test](../../../adapters/sqlstore/oauth_browser_login_test.go#L22))
@@ -798,6 +807,7 @@
       - [x] Visit a host consent page, verify the signed query independently, deny a first request or exchange a code approved for fewer scopes ([test](../../../conformance/oauth-browser-authorization.mjs#L57))
       - [x] Consume a decision once across two servers, isolate sessions and tenants, and roll back consent when code storage fails ([test](../../../adapters/sqlstore/oauth_browser_consent_test.go#L25))
       - [x] Preserve narrowed approval when onboarding becomes required during consent and defer code issuance ([test](../../../conformance/oauth-signup-policy.mjs#L68))
+      - [x] Require a consent form to record an approval and send an earlier selector form back through the remaining steps ([test](../../../conformance/oauth-post-login.mjs#L133))
       - [x] Parameter `accept` ([test](../../../conformance/oauth-browser-authorization.mjs#L101))
         - [x] Grant access on approval and preserve the prior grant when the user denies a later request ([test](../../../conformance/oauth-browser-authorization.mjs#L101))
       - [x] Parameter `scope` (optional) ([test](../../../conformance/oauth-browser-authorization.mjs#L98))
@@ -813,24 +823,30 @@
   - [x] Select account screen ([test](../../../adapters/sqlstore/oauth_account_selection_test.go#L85))
     - [x] List remembered accounts, switch the active session and record consent for the chosen account on all three databases ([test](../../../adapters/sqlstore/oauth_account_selection_test.go#L85))
     - [x] Complete a PKCE exchange and check that the selected account owns both the access token and its session ([test](../../../conformance/oauth-account-selection.mjs#L71))
-  - [ ] Post-login screen
+  - [x] Post-login screen ([test](../../../conformance/oauth-post-login.mjs#L90))
+    - [x] Recheck live organization selection on continuation, require consent for each organization and redeem a token carrying its reference ([test](../../../conformance/oauth-post-login.mjs#L90))
+    - [x] Validate a signed selector before updating the team and keep an outstanding approval in its original organization ([test](../../../adapters/sqlstore/oauth_post_login_test.go#L123))
   - [ ] Continue endpoint
     - [x] Use the signed signup page query and the new browser session to complete the account-creation step ([test](../../../conformance/oauth-browser-login.mjs#L82))
     - [x] Resume the signed chooser with the selected browser account and preserve forced consent without repeating selection ([test](../../../conformance/oauth-account-selection.mjs#L44))
     - [x] Re-evaluate the account on a signed created continuation and exchange its code only after the host records completion ([test](../../../conformance/oauth-signup-policy.mjs#L79))
+    - [x] Resume after the user activates a membership and distinguish an explicit continuation from a cookie reissued by an organization switch ([test](../../../conformance/oauth-post-login.mjs#L99))
     - [ ] `POST /oauth2/continue`
       - [x] Use the signed signup page query and the new browser session to complete the account-creation step ([test](../../../conformance/oauth-browser-login.mjs#L82))
       - [x] Resume the signed chooser with the selected browser account and preserve forced consent without repeating selection ([test](../../../conformance/oauth-account-selection.mjs#L44))
       - [x] Re-evaluate the account on a signed created continuation and exchange its code only after the host records completion ([test](../../../conformance/oauth-signup-policy.mjs#L79))
+      - [x] Resume after the user activates a membership and distinguish an explicit continuation from a cookie reissued by an organization switch ([test](../../../conformance/oauth-post-login.mjs#L99))
       - [x] Parameter `selected` (optional) ([test](../../../conformance/oauth-account-selection.mjs#L87))
         - [x] Continue the account choice with selected=true after an explicit prompt or a host policy, including a required second consent ([test](../../../conformance/oauth-account-selection.mjs#L87))
       - [x] Parameter `created` (optional) ([test](../../../adapters/sqlstore/oauth_browser_login_test.go#L117))
         - [x] Continue after confirmed account creation, require a browser session and reject an unfinished step ([test](../../../adapters/sqlstore/oauth_browser_login_test.go#L117))
         - [x] Re-evaluate the account on a signed created continuation and exchange its code only after the host records completion ([test](../../../conformance/oauth-signup-policy.mjs#L79))
-      - [ ] Parameter `postLogin` (optional)
+      - [x] Parameter `postLogin` (optional) ([test](../../../conformance/oauth-post-login.mjs#L126))
+        - [x] Use the signed post-login query and active session to verify a choice before continuing, and require a new session to pass its own check ([test](../../../conformance/oauth-post-login.mjs#L126))
       - [ ] Parameter `oauth_query` (optional)
         - [x] Use the signed signup page query and the new browser session to complete the account-creation step ([test](../../../conformance/oauth-browser-login.mjs#L82))
         - [x] Resume the signed chooser with the selected browser account and preserve forced consent without repeating selection ([test](../../../conformance/oauth-account-selection.mjs#L44))
+        - [x] Resume after the user activates a membership and distinguish an explicit continuation from a cookie reissued by an organization switch ([test](../../../conformance/oauth-post-login.mjs#L99))
   - [ ] Manage consents
     - [x] `getOAuthConsent` ([test](../../../conformance/oauth-consent.mjs#L55))
       - [x] Read a single grant through an authenticated session and retain the resource and claim lists ([test](../../../conformance/oauth-consent.mjs#L55))

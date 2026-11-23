@@ -14,6 +14,11 @@ import (
 
 type continuedClientKey struct{}
 
+type browserContinuation struct {
+	client, clearedSession, binding string
+	postLogin                       bool
+}
+
 func interactionFields(original url.Values, issue BrowserCodeIssue) url.Values {
 	fields := url.Values{}
 	for key, value := range issue.Query {
@@ -28,7 +33,7 @@ func interactionFields(original url.Values, issue BrowserCodeIssue) url.Values {
 	return fields
 }
 
-func interactionURL(c auth.EndpointContext, path string, fields url.Values, expires time.Time) (string, error) {
+func interactionURL(c auth.EndpointContext, path string, fields url.Values, expires time.Time, clearedSession string) (string, error) {
 	page, err := c.Auth.CallbackURL(path)
 	if err != nil {
 		return "", err
@@ -37,7 +42,7 @@ func interactionURL(c auth.EndpointContext, path string, fields url.Values, expi
 	if err != nil {
 		return "", err
 	}
-	signed := c.Auth.SignOAuthQuery(fields, expires)
+	signed := c.Auth.SignOAuthConsentQuery(fields, expires, clearedSession)
 	// Preconfigured page fields must never shadow issuer-owned parameters.
 	host := target.Query()
 	for name := range fields {
@@ -64,7 +69,7 @@ func (opts Options) openAccountPage(c auth.EndpointContext, path, marker string,
 	fields := interactionFields(q, issue)
 	fields.Set(marker, c.Auth.OAuthIssuer())
 	fields.Set("pa_client", tokenDigest(issue.Client.RowID))
-	target, err := interactionURL(c, path, fields, time.Now().UTC().Truncate(time.Second).Add(issue.Lifetime))
+	target, err := interactionURL(c, path, fields, time.Now().UTC().Truncate(time.Second).Add(issue.Lifetime), "")
 	if err != nil {
 		return nil, err
 	}
@@ -76,14 +81,33 @@ func signedAccountPage(c auth.EndpointContext, raw string, markers ...string) (u
 	if err != nil {
 		return nil, registrationProblem(400, "invalid_signature", "invalid or expired oauth query")
 	}
-	if len(q["pa_client"]) == 1 && q.Get("pa_client") != "" && !q.Has("pa_consent") {
+	if len(q["pa_client"]) == 1 && q.Get("pa_client") != "" {
 		for _, marker := range markers {
-			if len(q[marker]) == 1 && q.Get(marker) == c.Auth.OAuthIssuer() {
-				return q, nil
+			if len(q[marker]) != 1 || q.Get(marker) != c.Auth.OAuthIssuer() {
+				continue
 			}
+			if marker == "pa_post_issuer" {
+				if q.Get("pa_consent") == "" || q.Get("ba_pl") == "" || q.Get("pa_post_binding") == "" {
+					continue
+				}
+			} else if q.Has("pa_consent") {
+				continue
+			}
+			return q, nil
 		}
 	}
 	return nil, registrationProblem(400, "invalid_request", "signed query does not belong to the requested account step")
+}
+
+func requireBrowserOwner(c auth.EndpointContext) (*auth.SessionResult, error) {
+	session, err := c.Auth.GetSession(c.Request.Context(), c.Request.Header)
+	if err != nil {
+		return nil, err
+	}
+	if session == nil || session.Session.RequireOwner() != nil || !c.DirectBrowserSession(session.Session.Token) {
+		return nil, registrationProblem(401, "unauthorized", "browser session required")
+	}
+	return session, nil
 }
 
 func withoutPrompt(q url.Values, value string) {
@@ -100,9 +124,13 @@ func withoutPrompt(q url.Values, value string) {
 
 // Build a new authorization request from verified fields. Preserve the
 // registration identity across re-entry, including when a public ID is reused.
-func accountAuthorizationRequest(c auth.EndpointContext, q url.Values) *http.Request {
-	ctx := context.WithValue(c.Request.Context(), continuedClientKey{}, q.Get("pa_client"))
-	for _, k := range []string{"sig", "exp", "ba_iat", "ba_param", "pa_login", "pa_signup", "pa_select", "pa_client"} {
+func accountAuthorizationRequest(c auth.EndpointContext, q url.Values, postLogin bool) *http.Request {
+	next := browserContinuation{client: q.Get("pa_client"), postLogin: postLogin}
+	if postLogin && q.Has("pa_consent") {
+		next.clearedSession, next.binding = q.Get("ba_pl"), q.Get("pa_post_binding")
+	}
+	ctx := context.WithValue(c.Request.Context(), continuedClientKey{}, next)
+	for _, k := range []string{"sig", "exp", "ba_iat", "ba_param", "pa_login", "pa_signup", "pa_select", "pa_client", "pa_post", "pa_post_issuer", "pa_post_binding", "pa_consent", "ba_pl"} {
 		q.Del(k)
 	}
 	r := c.Request.Clone(ctx)
@@ -141,16 +169,19 @@ func (opts Options) prepareLogin(c auth.EndpointContext, raw string) (auth.OAuth
 			withoutPrompt(q, "login")
 			q.Del("max_age")
 		}
-		return accountAuthorizationRequest(c, q), nil
+		return accountAuthorizationRequest(c, q, false), nil
 	}, nil
 }
 
 func (opts Options) continueAccount(c auth.EndpointContext) (any, error) {
 	selected, _ := c.Body["selected"].(bool)
 	created, _ := c.Body["created"].(bool)
+	postLogin, _ := c.Body["postLogin"].(bool)
 	markers, prompt := []string{"pa_login", "pa_signup"}, "create"
 	if selected {
 		markers, prompt = []string{"pa_select"}, "select_account"
+	} else if !created && postLogin && opts.Authorization.PostLogin != nil {
+		markers, prompt = []string{"pa_post", "pa_post_issuer"}, ""
 	} else if !created {
 		return nil, registrationProblem(400, "invalid_request", "an account step must be completed")
 	}
@@ -162,20 +193,18 @@ func (opts Options) continueAccount(c auth.EndpointContext) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	if !selected && !q.Has("pa_signup") && !slices.Contains(strings.Fields(q.Get("prompt")), "create") {
+	if prompt == "create" && !q.Has("pa_signup") && !slices.Contains(strings.Fields(q.Get("prompt")), "create") {
 		return nil, registrationProblem(400, "invalid_request", "account creation was not requested")
 	}
-	session, err := c.Auth.GetSession(c.Request.Context(), c.Request.Header)
-	if err != nil {
+	if _, err := requireBrowserOwner(c); err != nil {
 		return nil, err
 	}
-	if session == nil || session.Session.RequireOwner() != nil || !c.DirectBrowserSession(session.Session.Token) {
-		return nil, registrationProblem(401, "unauthorized", "browser session required")
+	if prompt != "" {
+		withoutPrompt(q, prompt)
 	}
-	withoutPrompt(q, prompt)
-	r := accountAuthorizationRequest(c, q)
+	r := accountAuthorizationRequest(c, q, prompt == "")
 	r.Header.Set("Accept", "application/json")
 	return c.ResumeOAuthAuthorization(r)
 }
 
-const continueAccountOperation = `{"summary":"Continue browser authorization after account selection or signup","requestBody":{"required":true,"content":{"application/json":{"schema":{"type":"object","required":["oauth_query"],"anyOf":[{"required":["created"]},{"required":["selected"]}],"properties":{"selected":{"type":"boolean","enum":[true]},"created":{"type":"boolean","enum":[true]},"oauth_query":{"type":"string"}}}}}},"responses":{"200":{"description":"Authorization redirect instructions"},"400":{"description":"Invalid or expired account page query"},"401":{"description":"Browser session required"}}}`
+const continueAccountOperation = `{"summary":"Continue browser authorization after a host account step","requestBody":{"required":true,"content":{"application/json":{"schema":{"type":"object","required":["oauth_query"],"anyOf":[{"required":["created"]},{"required":["selected"]},{"required":["postLogin"]}],"properties":{"postLogin":{"type":"boolean","enum":[true]},"selected":{"type":"boolean","enum":[true]},"created":{"type":"boolean","enum":[true]},"oauth_query":{"type":"string"}}}}}},"responses":{"200":{"description":"Authorization redirect instructions"},"400":{"description":"Invalid or expired account page query"},"401":{"description":"Browser session required"}}}`

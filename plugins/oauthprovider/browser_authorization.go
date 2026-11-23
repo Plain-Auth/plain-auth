@@ -35,6 +35,7 @@ type BrowserAuthorizationOptions struct {
 	// optionally selects a separate host page for prompt=create.
 	LoginPage, SignupPage string
 	SelectAccount         AccountSelectionOptions
+	PostLogin             *PostLoginOptions
 	// CheckSignup runs after login and account selection, including when a
 	// signed page resumes. Return nil when this account may proceed to consent.
 	CheckSignup func(context.Context, RegistrationAccess, []string) (*SignupStep, error)
@@ -59,6 +60,9 @@ func (o *BrowserAuthorizationOptions) defaults() error {
 	}
 	if o.SelectAccount.ShouldRedirect != nil && o.SelectAccount.Page == "" && o.LoginPage == "" {
 		return errors.New("oauthprovider: account selection requires a selection or login page")
+	}
+	if o.PostLogin != nil && (o.PostLogin.Page == "" || o.PostLogin.ShouldRedirect == nil) {
+		return errors.New("oauthprovider: post-login requires both a page and a selection policy")
 	}
 	o.RateLimit = tokenRouteLimit(o.RateLimit, 30)
 	return nil
@@ -161,8 +165,8 @@ func (opts Options) runBrowserAuthorization(c auth.EndpointContext, q url.Values
 	if err != nil {
 		return nil, err
 	}
-	continuedClient, _ := ctx.Value(continuedClientKey{}).(string)
-	if continuedClient != "" && continuedClient != tokenDigest(client.RowID) {
+	continued, _ := ctx.Value(continuedClientKey{}).(browserContinuation)
+	if continued.client != "" && continued.client != tokenDigest(client.RowID) {
 		return serverError("invalid_client", "client registration changed")
 	}
 	if client.Disabled {
@@ -230,7 +234,7 @@ func (opts Options) runBrowserAuthorization(c auth.EndpointContext, q url.Values
 	}
 	// A real login or a choice on the host page has already selected the
 	// current browser account. Only an initial request may open the chooser.
-	if decision == nil && continuedClient == "" {
+	if decision == nil && continued.client == "" {
 		choose := slices.Contains(grant.prompts, "select_account")
 		if !choose && selection.ShouldRedirect != nil {
 			choose, err = selection.ShouldRedirect(ctx, RegistrationAccess{SessionResult: *session, Headers: c.Request.Header.Clone()}, slices.Clone(issue.Scopes))
@@ -261,29 +265,36 @@ func (opts Options) runBrowserAuthorization(c auth.EndpointContext, q url.Values
 			issue.Query["prompt"] = strings.Join(remaining, " ")
 		}
 	}
-	// A policy change while consent is open can require onboarding again.
-	// Preserve the owner's decision for the chosen scopes and defer the code.
-	var signupRedirect any
-	if check := opts.Authorization.CheckSignup; check != nil {
-		step, err := check(ctx, RegistrationAccess{SessionResult: *session, Headers: c.Request.Header.Clone()}, slices.Clone(issue.Scopes))
-		if err != nil {
-			return nil, err
+	// A consent page attests to post-login clearance for its own session.
+	// Signup still runs, including when the browser has already given consent.
+	cleared := continued.clearedSession != "" && continued.clearedSession == session.Session.ID
+	if decision != nil {
+		cleared = decision.clearedSession != "" && decision.clearedSession == session.Session.ID
+	}
+	step, err := opts.Authorization.requiredAccountStep(c, *session, issue.Scopes, continued.postLogin, cleared)
+	if err != nil {
+		return nil, err
+	}
+	var deferredRedirect any
+	if step != nil {
+		if slices.Contains(grant.prompts, "none") {
+			return reject("interaction_required", "End-User interaction is required")
 		}
-		if step != nil {
-			if slices.Contains(grant.prompts, "none") {
-				return reject("interaction_required", "End-User interaction is required")
+		if step.page == "" {
+			return nil, errors.New("oauthprovider: required account step has no page")
+		}
+		// A different login starts a new approval for its selected account.
+		// It cannot consume the original browser's consent or drop its prompt.
+		newSession := decision != nil && step.marker == "pa_post" && decision.clearedSession != "" && !cleared
+		if newSession {
+			if decision.clientFingerprint != tokenDigest(client.RowID) {
+				return serverError("invalid_client", "client registration changed")
 			}
-			page := step.Page
-			if page == "" {
-				page = opts.loginPage([]string{"create"})
-			}
-			if page == "" {
-				return nil, errors.New("oauthprovider: required signup step has no page")
-			}
-			signupRedirect, err = opts.openAccountPage(c, page, "pa_signup", q, issue)
-			if err != nil || decision == nil {
-				return signupRedirect, err
-			}
+			issue.Query["prompt"] = "consent"
+		}
+		deferredRedirect, err = opts.openAccountPage(c, step.page, step.marker, q, issue)
+		if err != nil || decision == nil || newSession {
+			return deferredRedirect, err
 		}
 	}
 	if resolve := opts.Authorization.ConsentReference; resolve != nil {
@@ -291,6 +302,11 @@ func (opts Options) runBrowserAuthorization(c auth.EndpointContext, q url.Values
 		if err != nil {
 			return nil, err
 		}
+	}
+	// A signed clearance used at /continue can only resume in its original
+	// approval namespace. A consent submission checks this binding in storage.
+	if cleared && continued.clearedSession != "" && continued.binding != consentBinding(c.Auth.OAuthIssuer(), continued.client, issue) {
+		return nil, registrationProblem(400, "invalid_request", "post-login approval context changed")
 	}
 	consentPage := func() (any, error) {
 		if opts.Authorization.ConsentPage == "" || slices.Contains(grant.prompts, "none") {
@@ -305,7 +321,7 @@ func (opts Options) runBrowserAuthorization(c auth.EndpointContext, q url.Values
 		decision.request.Binding = consentBinding(c.Auth.OAuthIssuer(), tokenDigest(client.RowID), issue)
 	}
 	var code string
-	if signupRedirect != nil {
+	if deferredRedirect != nil {
 		err = decision.store.(DeferredConsentStore).ApproveBrowserConsent(ctx, issue, decision.request)
 	} else {
 		code, err = randomCredential("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
@@ -334,8 +350,8 @@ func (opts Options) runBrowserAuthorization(c auth.EndpointContext, q url.Values
 	case err != nil:
 		return nil, err
 	}
-	if signupRedirect != nil {
-		return signupRedirect, nil
+	if deferredRedirect != nil {
+		return deferredRedirect, nil
 	}
 	return result(url.Values{"code": {code}}, false)
 }

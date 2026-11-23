@@ -1775,6 +1775,11 @@ test("signed-in accounts read, list and delete OAuth client registrations", asyn
   await compareClientDirectory(t, reference, goFixture);
 });
 
+test("OAuth post-login selection binds consent and tokens to the active organization", async t => {
+  const { comparePostLogin } = await import("./oauth-post-login.mjs");
+  await comparePostLogin(t, reference, goFixture);
+});
+
 test("OAuth dynamic client registration handles sessions, initial tokens and open registration", async t => {
   const { compareClientRegistration } = await import("./oauth-registration.mjs");
   await compareClientRegistration(t, reference, goFixture);

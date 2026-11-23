@@ -92,6 +92,7 @@
   - [ ] `POST /organization/set-active`
     - [x] Preserve the same organization’s selected team and clear it across organization switches on a plain node ([test](../../../adapters/sqlstore/organization_topology_test.go#L123))
     - [x] Select by slug or clear the current session selection ([test](../../../plugins/organization/organization_test.go#L175))
+    - [x] Use HTTP JSON with separate cookie jars to switch or clear organizations and teams without affecting another login ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L20))
   - [ ] `GET /organization/list`
     - [x] List only organizations the current user belongs to ([test](../../../plugins/organization/organization_test.go#L109))
   - [ ] `POST /organization/create-team`
@@ -104,6 +105,8 @@
     - [x] Read the organization’s teams and deny outsiders using the browser client ([test](../../../conformance/core.test.mjs#L626))
   - [ ] `POST /organization/set-active-team`
     - [x] Select a team belonging to the active organization and preserve session cookie persistence ([test](../../../adapters/sqlstore/organization_teams_test.go#L156))
+    - [x] Use HTTP JSON with separate cookie jars to switch or clear organizations and teams without affecting another login ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L20))
+    - [x] Validate a signed selector before updating the team and keep an outstanding approval in its original organization ([test](../../../adapters/sqlstore/oauth_post_login_test.go#L123))
   - [ ] `GET /organization/list-user-teams`
     - [x] Return self memberships across organizations and scope administrative queries to the selected organization ([test](../../../adapters/sqlstore/organization_teams_test.go#L257))
   - [ ] `GET /organization/list-team-members`

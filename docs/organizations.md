@@ -49,6 +49,30 @@ An owner can invite members, admins or other owners. An admin can invite members
 
 Browser membership changes check the acting account and session inside the database transaction. Acceptance reads the current account email and verification status. Account deletion removes invitations that user sent, their organization and team memberships, and updates affected team counts. Other members keep their memberships and invitations.
 
+## Switch organizations and teams from any client
+
+Selection belongs to the current authenticated session. A web app, native app, server-rendered form or command-line client can use the same JSON API. Your application decides how to present the choices and what to display after a switch. The organization and team endpoints work independently of the OAuth provider plugin.
+
+| Request | Successful response and session effect |
+| --- | --- |
+| `POST /organization/set-active` with `{"organizationId":"org_a"}` | Returns the selected organization. Switching organizations clears the previous team's selection. Selecting the same organization preserves its active team. |
+| `POST /organization/set-active-team` with `{"teamId":"team_a"}` | Returns the selected team. The user must belong to the team and the team must belong to the active organization. Enable teams to use this endpoint. |
+| `POST /organization/set-active-team` with `{"teamId":null}` | Returns JSON `null` and clears the active team. The current organization stays selected. |
+| `POST /organization/set-active` with `{"organizationId":null}` | Returns JSON `null` and clears both selections. |
+
+For example, use a cookie jar from a prior sign-in and the origin configured for your application. Browser clients supply their origin on these writes. Update the jar from the response so the client retains any refreshed session cookie.
+
+```sh
+curl --fail-with-body -b cookies.txt -c cookies.txt \
+  -H 'Origin: https://app.example.com' -H 'Content-Type: application/json' \
+  --data '{"organizationId":"org_a"}' \
+  https://app.example.com/api/auth/organization/set-active
+```
+
+Read `GET /get-session` under the auth mount for the active organization and team. A second login for the same user has its own selection. Creating an organization selects it by default. Pass `keepCurrentActiveOrganization: true` to retain the current selection when creating another organization. [Plain HTTP session-isolation tests](../adapters/sqlstore/organization_selection_http_test.go)
+
+Applications acting as an OAuth issuer can also configure a host-owned page for organization or team selection during authorization. A signed OAuth request can then return a protocol redirect or a JSON destination. [Post-login authorization](oauth-authorization-code.md#select-an-organization-or-team-after-login)
+
 ## Update an organization's profile
 
 An owner or admin can change the profile in one request. Use the signed-in Go client or send `POST /organization/update` under your auth mount. Supply `organizationId` to select a specific organization. Omit it to use the organization selected on the current session.
