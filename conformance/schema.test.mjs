@@ -350,8 +350,8 @@ test("custom wallet model, columns and owner indexes match the three released SQ
 
 // Recover the reference spelling of the new MySQL tables for a full column,
 // key and index comparison. Only the declared MySQL differences are accepted.
-function referenceMySQLOAuthSQL(sql) {
-  return sql.replace(/^create table `(oauth\w+)` \((.+)\);$/gm, (_, table, body) => {
+function referenceMySQLConstraints(sql) {
+  return sql.replace(/^create table `(oauth\w+|organizationRole)` \((.+)\);$/gm, (_, table, body) => {
     const columns = new Map();
     for (const part of body.split(", ")) {
       const key = /^constraint `\w+` foreign key \((`\w+`)\)( references .+)$/.exec(part);
@@ -386,8 +386,30 @@ test("OAuth provider schema preserves all seven models and composes with other p
       const additions = statements.filter(s => !existing.has(s));
       assert.deepEqual(additions.flatMap(s => /^create table ["`](\w+)["`]/.exec(s)?.slice(1) ?? []).sort(), expectedTables);
       assert.equal(statements.filter(s => !additions.includes(s)).join("\n\n") + "\n", baseline);
-      const logical = dialect === "mysql" ? referenceMySQLOAuthSQL(generated) : generated;
+      const logical = dialect === "mysql" ? referenceMySQLConstraints(generated) : generated;
       assert.equal(logical, await freshSchema(dialect, profiles), dialect + " " + profiles.join(","));
+    }
+  }
+});
+
+test("organization role migrations preserve the organization schema and add its scoped grants and indexes on three dialects", async t => {
+  const dir = mkdtempSync(join(tmpdir(), "plain-auth-role-schema-"));
+  const batch = batchFixture(dir);
+  t.after(async () => { await batch.close(); rmSync(dir, {recursive:true, force:true}); });
+  for (const dialect of Object.keys(dialects)) {
+    for (const base of [[], ["organization"], ["organization-teams"], ["admin","organization-teams","stripe-organization","oauth-provider"], ["organization","scim-managed","sso-domain-verification","siwe"]]) {
+      const profiles = [...base,"organization-roles"];
+      const before = await batch.call(dialect, base.length ? base : ["organization"]);
+      const generated = await batch.call(dialect, profiles);
+      const statements = generated.trim().split("\n\n");
+      const extra = statements.filter(s => s.includes("organizationRole"));
+      assert.equal(extra.length, 3);
+      assert.match(extra[0], /^create table ["`]organizationRole["`]/);
+      assert.match(extra[1], /organizationRole_organizationId_idx/);
+      assert.match(extra[2], /organizationRole_role_idx/);
+      assert.equal(statements.filter(s => !extra.includes(s)).join("\n\n") + "\n", before);
+      const logical = dialect === "mysql" ? referenceMySQLConstraints(generated) : generated;
+      assert.equal(logical, await freshSchema(dialect, profiles), dialect+" "+profiles.join(","));
     }
   }
 });
@@ -414,4 +436,27 @@ test("authctl installs the OAuth provider schema on an existing database and pre
     assert.deepEqual(sqliteSchema(db), sqliteSchema(ref));
     assert.equal(db.prepare("SELECT clientId FROM oauthClient WHERE id = 'one'").get().clientId, "app");
   } finally { ref.close(); db.close(); }
+});
+
+test("authctl generates, checks and repeatedly migrates organization role storage", async t => {
+  const dir = mkdtempSync(join(tmpdir(), "plain-auth-cli-roles-"));
+  t.after(() => rmSync(dir, {recursive:true,force:true}));
+  const binary = join(dir,"authctl"), file = join(dir,"auth.sqlite");
+  execFileSync("go", ["build","-o",binary,"./cmd/authctl"], {cwd:root});
+  const run = (cmd, profiles, ...args) => execFileSync(binary,
+    [cmd,"--dialect","sqlite","--plugins",profiles,...args],
+    {encoding:"utf8",env:{...process.env,AUTH_DSN:file},stdio:["ignore","pipe","pipe"]});
+  run("migrate","organization-teams");
+  const target = "organization-teams,organization-roles";
+  assert.throws(() => run("check",target,"--json"), err =>
+    err.status === 1 && JSON.parse(err.stdout).some(f => f.kind === "missing-table" && f.table === "organizationRole"));
+  assert.equal(run("generate",target), await freshSchema("sqlite",target.split(",")));
+  run("migrate",target);
+  run("migrate",target);
+  assert.deepEqual(JSON.parse(run("check",target,"--json")), []);
+  const db = new DatabaseSync(file), ref = new DatabaseSync(":memory:");
+  try {
+    await (await getMigrations({database:ref,...schemaOptions(target.split(","))})).runMigrations();
+    assert.deepEqual(sqliteSchema(db),sqliteSchema(ref));
+  } finally { db.close(); ref.close(); }
 });

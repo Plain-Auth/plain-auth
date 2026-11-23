@@ -690,13 +690,21 @@
     - [ ] Session
       - [ ] `sessionActiveOrganizationFields.activeOrganizationId`
       - [ ] `sessionActiveOrganizationFields.activeTeamId`
-    - [ ] Organization Role (optional)
-      - [ ] `organizationRoleTableFields.id`
-      - [ ] `organizationRoleTableFields.organizationId`
-      - [ ] `organizationRoleTableFields.role`
-      - [ ] `organizationRoleTableFields.permission`
-      - [ ] `organizationRoleTableFields.createdAt`
-      - [ ] `organizationRoleTableFields.updatedAt`
+    - [x] Organization Role (optional) ([test](../../../conformance/schema.test.mjs#L460))
+      - [x] Install or upgrade scoped role definitions with their columns, indexes and organization reference ([test](../../../conformance/schema.test.mjs#L460))
+      - [x] Retain role data across repeated migrations and cascade only the deleted organization’s grants on three engines ([test](../../../adapters/sqlstore/organization_role_schema_test.go#L75))
+      - [x] `organizationRoleTableFields.id` ([test](../../../conformance/schema.test.mjs#L412))
+        - [x] Verify the physical column against each dialect’s generated schema ([test](../../../conformance/schema.test.mjs#L412))
+      - [x] `organizationRoleTableFields.organizationId` ([test](../../../conformance/schema.test.mjs#L412))
+        - [x] Verify the physical column against each dialect’s generated schema ([test](../../../conformance/schema.test.mjs#L412))
+      - [x] `organizationRoleTableFields.role` ([test](../../../conformance/schema.test.mjs#L412))
+        - [x] Verify the physical column against each dialect’s generated schema ([test](../../../conformance/schema.test.mjs#L412))
+      - [x] `organizationRoleTableFields.permission` ([test](../../../conformance/schema.test.mjs#L412))
+        - [x] Verify the physical column against each dialect’s generated schema ([test](../../../conformance/schema.test.mjs#L412))
+      - [x] `organizationRoleTableFields.createdAt` ([test](../../../conformance/schema.test.mjs#L412))
+        - [x] Verify the physical column against each dialect’s generated schema ([test](../../../conformance/schema.test.mjs#L412))
+      - [x] `organizationRoleTableFields.updatedAt` ([test](../../../conformance/schema.test.mjs#L412))
+        - [x] Verify the physical column against each dialect’s generated schema ([test](../../../conformance/schema.test.mjs#L412))
     - [ ] Teams (optional)
       - [ ] `optionalTeamTableFields.id`
       - [ ] `optionalTeamTableFields.name`

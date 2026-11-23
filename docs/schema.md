@@ -24,6 +24,7 @@ AUTH_DSN=auth.db go run ./cmd/authctl migrate --dialect sqlite --plugins organiz
 | `jwt` | Public verification keys, encrypted signing keys and rotation times |
 | `organization` | Organizations, memberships, invitations and active organization selection |
 | `organization-teams` | Organization schema with teams, team membership, invitation team selection and active team selection |
+| `organization-roles` | Organization schema plus tenant-scoped role definitions, permission data and lookup indexes |
 | `passkey` | Public credentials, authenticator counters, transport hints and account ownership |
 | `rate-limit` | Shared per-route counters with a unique key, request count and timestamp in milliseconds |
 | `scim` | Directory connection bindings, Users, Groups, memberships, subjects, retained external identities and projection grants |
@@ -38,6 +39,22 @@ AUTH_DSN=auth.db go run ./cmd/authctl migrate --dialect sqlite --plugins organiz
 Select `polar` to create `plainauth_polar_checkout` and `plainauth_polar_delivery`. The first table binds a purchase attempt to a merchant, customer and product. The second records verified webhook deliveries. A core-only installation adds neither table. [Polar hosted checkout](polar.md)
 
 Choose either `organization` or `organization-teams`, and at most one username profile. The `stripe-organization` option also works alongside `organization-teams`. Run `authctl info` for the full profile list in your build, or call `schema.Profiles()` from Go. Profile order produces deterministic output. The profile selector controls database structure. See the [feature checklist](parity/README.md) for runtime support.
+
+## Organization role storage
+
+Use `organization-roles` to install the `organizationRole` table alongside organizations. To upgrade an application with teams, include both profiles. Set `AUTH_DSN` to the target database before running these commands.
+
+```sh
+authctl generate --dialect postgres --plugins organization-teams,organization-roles
+authctl migrate --dialect postgres --plugins organization-teams,organization-roles
+authctl check schema --dialect postgres --plugins organization-teams,organization-roles
+```
+
+Choose `mysql` or `sqlite` for those dialects. In Go, `schema.Generate` and `sqlstore.OpenWithOptions` accept the same profile names. You can rerun the migration after organizations and role definitions exist.
+
+Each row has a primary key `id`, the owning `organizationId`, a `role` name, a `permission` text field containing a JSON resource-to-actions map, a required `createdAt`, and an optional `updatedAt`. The organization reference cascades on deletion. Both the organization reference and role name have indexes. Two organizations can use the same role name with different grants. [Three-dialect comparison and CLI tests](../conformance/schema.test.mjs) · [Live migration and isolation tests](../adapters/sqlstore/organization_role_schema_test.go)
+
+Host-defined roles are available through the [organization plugin](organizations.md#configure-organization-roles). The [organization checklist](parity/plugins/organization.md) tracks the API for managing per-organization roles.
 
 ## Configure user, session and account fields
 

@@ -761,8 +761,8 @@
       - [ ] ID token
       - [x] UserInfo ([test](../../../adapters/sqlstore/oauth_userinfo_test.go#L21))
         - [x] Apply standard, extension and operator claim precedence, preserve the pairwise subject and propagate hook failures on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/oauth_userinfo_test.go#L21))
-  - [x] Schema ([test](../../../conformance/schema.test.mjs#L395))
-    - [x] Migrate the seven authorization-server models onto an existing database and repeat the CLI migration ([test](../../../conformance/schema.test.mjs#L395))
+  - [x] Schema ([test](../../../conformance/schema.test.mjs#L417))
+    - [x] Migrate the seven authorization-server models onto an existing database and repeat the CLI migration ([test](../../../conformance/schema.test.mjs#L417))
     - [x] OAuth Client ([test](../../../conformance/schema.test.mjs#L375))
       - [x] Match every declared column, type, index and relationship across supported dialects ([test](../../../conformance/schema.test.mjs#L375))
       - [x] Public client identifiers, callback lists and optional client owners ([test](../../../adapters/sqlstore/oauth_provider_schema_test.go#L65))

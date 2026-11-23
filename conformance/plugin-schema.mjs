@@ -23,6 +23,12 @@ export function pluginInstances(profiles) {
   if (profiles.includes("siwe")) {
     return [...pluginInstances(profiles.filter(p => p !== "siwe")), siwe({ domain: "wallet.test" })];
   }
+  const dynamicRoles = profiles.includes("organization-roles");
+  if (dynamicRoles) {
+    const selected = new Set(profiles);
+    if (!selected.has("organization-teams")) selected.add("organization");
+    profiles = existingProfiles.filter(name => selected.has(name));
+  }
   const verifiedDomains = profiles.includes("sso-domain-verification");
   if (verifiedDomains) profiles = [...profiles.filter(p => p !== "sso" && p !== "sso-domain-verification"), "sso"];
   const managed = profiles.includes("scim-managed");
@@ -46,8 +52,11 @@ export function pluginInstances(profiles) {
       case "jwt": return jwt();
       case "passkey": return passkey();
       case "phone-number": return phoneNumber({ sendOTP() {} });
-      case "organization": return organization();
-      case "organization-teams": return organization({ teams: { enabled: true } });
+      case "organization":
+      case "organization-teams": return organization({
+        teams: { enabled: id === "organization-teams" },
+        dynamicAccessControl: { enabled: dynamicRoles },
+      });
       case "scim": return scim({
         managedConnections: managed ? { credentialHashSecret: "fixture-only-managed-catalog-credential-secret" } : undefined,
         connections: [{ id: "schema", credentials: [{ type: "bearer", id: "test", token: "fixture" }] }],
@@ -74,7 +83,7 @@ const profileGroups = [
 // SCIM owns separate tables. The existing cross product remains exhaustive;
 // its new combinations are checked with structural isolation and explicit witnesses.
 const existingProfiles = [...profileGroups.flat(), "scim", "stripe-organization", "scim-managed", "sso", "sso-domain-verification", "siwe"];
-const profileNames = [...existingProfiles, "oauth-provider"];
+const profileNames = [...existingProfiles, "oauth-provider", "organization-roles"];
 export function* scimCombinations() {
   yield ["scim"];
   for (const name of profileGroups.flat()) yield [name, "scim"];
@@ -238,8 +247,8 @@ async function catalog() {
           return { sql: column, ...owners(always, (one) => one.get(sql)?.includes(column)) };
         });
       }
-      if (dialect === "mysql" && columns && item.profiles?.includes("oauth-provider")) {
-        mysqlOAuthConstraints(item);
+      if (dialect === "mysql" && columns && (item.profiles?.includes("oauth-provider") || sql === "create table `organizationRole`")) {
+        mysqlConstraints(item);
       }
       return item;
     });
@@ -255,7 +264,7 @@ async function catalog() {
 
 // MySQL 8.4 ignores inline REFERENCES. Emit enforceable table constraints,
 // and give public key references the same length and collation as their target.
-function mysqlOAuthConstraints(item) {
+function mysqlConstraints(item) {
   const table = item.sql.split("`")[1];
   const constraints = [];
   for (const column of item.columns) {

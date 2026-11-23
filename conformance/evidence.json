@@ -15392,5 +15392,66 @@
       "marker": "host edits changed the built-in grants",
       "complete": true
     }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L2314": [
+    {
+      "label": "Install or upgrade scoped role definitions with their columns, indexes and organization reference",
+      "test": "conformance/schema.test.mjs",
+      "marker": "assert.deepEqual(sqliteSchema(db),sqliteSchema(ref));",
+      "complete": true
+    },
+    {
+      "label": "Retain role data across repeated migrations and cascade only the deleted organization’s grants on three engines",
+      "test": "adapters/sqlstore/organization_role_schema_test.go",
+      "marker": "surviving grant changed"
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L2320/`organizationRoleTableFields.id`": [
+    {
+      "label": "Verify the physical column against each dialect’s generated schema",
+      "test": "conformance/schema.test.mjs",
+      "marker": "assert.equal(logical, await freshSchema(dialect, profiles), dialect+\" \"+profiles.join(\",\"))",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L2325/`organizationRoleTableFields.organizationId`": [
+    {
+      "label": "Verify the physical column against each dialect’s generated schema",
+      "test": "conformance/schema.test.mjs",
+      "marker": "assert.equal(logical, await freshSchema(dialect, profiles), dialect+\" \"+profiles.join(\",\"))",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L2332/`organizationRoleTableFields.role`": [
+    {
+      "label": "Verify the physical column against each dialect’s generated schema",
+      "test": "conformance/schema.test.mjs",
+      "marker": "assert.equal(logical, await freshSchema(dialect, profiles), dialect+\" \"+profiles.join(\",\"))",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L2337/`organizationRoleTableFields.permission`": [
+    {
+      "label": "Verify the physical column against each dialect’s generated schema",
+      "test": "conformance/schema.test.mjs",
+      "marker": "assert.equal(logical, await freshSchema(dialect, profiles), dialect+\" \"+profiles.join(\",\"))",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L2342/`organizationRoleTableFields.createdAt`": [
+    {
+      "label": "Verify the physical column against each dialect’s generated schema",
+      "test": "conformance/schema.test.mjs",
+      "marker": "assert.equal(logical, await freshSchema(dialect, profiles), dialect+\" \"+profiles.join(\",\"))",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L2347/`organizationRoleTableFields.updatedAt`": [
+    {
+      "label": "Verify the physical column against each dialect’s generated schema",
+      "test": "conformance/schema.test.mjs",
+      "marker": "assert.equal(logical, await freshSchema(dialect, profiles), dialect+\" \"+profiles.join(\",\"))",
+      "complete": true
+    }
   ]
 }

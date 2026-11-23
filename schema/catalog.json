@@ -21,7 +21,8 @@
     "sso",
     "sso-domain-verification",
     "siwe",
-    "oauth-provider"
+    "oauth-provider",
+    "organization-roles"
   ],
   "dialects": {
     "sqlite": [
@@ -163,7 +164,8 @@
             "profiles": [
               "organization",
               "organization-teams",
-              "stripe-organization"
+              "stripe-organization",
+              "organization-roles"
             ]
           },
           {
@@ -387,7 +389,8 @@
         "profiles": [
           "organization",
           "organization-teams",
-          "stripe-organization"
+          "stripe-organization",
+          "organization-roles"
         ],
         "columns": [
           {
@@ -413,6 +416,32 @@
             "profiles": [
               "stripe-organization"
             ]
+          }
+        ]
+      },
+      {
+        "sql": "create table \"organizationRole\"",
+        "profiles": [
+          "organization-roles"
+        ],
+        "columns": [
+          {
+            "sql": "\"id\" text not null primary key"
+          },
+          {
+            "sql": "\"organizationId\" text not null references \"organization\" (\"id\") on delete cascade"
+          },
+          {
+            "sql": "\"role\" text not null"
+          },
+          {
+            "sql": "\"permission\" text not null"
+          },
+          {
+            "sql": "\"createdAt\" date not null"
+          },
+          {
+            "sql": "\"updatedAt\" date"
           }
         ]
       },
@@ -470,7 +499,8 @@
         "profiles": [
           "organization",
           "organization-teams",
-          "stripe-organization"
+          "stripe-organization",
+          "organization-roles"
         ],
         "columns": [
           {
@@ -495,7 +525,8 @@
         "profiles": [
           "organization",
           "organization-teams",
-          "stripe-organization"
+          "stripe-organization",
+          "organization-roles"
         ],
         "columns": [
           {
@@ -1558,6 +1589,18 @@
         ]
       },
       {
+        "sql": "create index \"organizationRole_organizationId_idx\" on \"organizationRole\" (\"organizationId\");",
+        "profiles": [
+          "organization-roles"
+        ]
+      },
+      {
+        "sql": "create index \"organizationRole_role_idx\" on \"organizationRole\" (\"role\");",
+        "profiles": [
+          "organization-roles"
+        ]
+      },
+      {
         "sql": "create index \"team_organizationId_idx\" on \"team\" (\"organizationId\");",
         "profiles": [
           "organization-teams"
@@ -1580,7 +1623,8 @@
         "profiles": [
           "organization",
           "organization-teams",
-          "stripe-organization"
+          "stripe-organization",
+          "organization-roles"
         ]
       },
       {
@@ -1588,7 +1632,8 @@
         "profiles": [
           "organization",
           "organization-teams",
-          "stripe-organization"
+          "stripe-organization",
+          "organization-roles"
         ]
       },
       {
@@ -1596,7 +1641,8 @@
         "profiles": [
           "organization",
           "organization-teams",
-          "stripe-organization"
+          "stripe-organization",
+          "organization-roles"
         ]
       },
       {
@@ -1604,7 +1650,8 @@
         "profiles": [
           "organization",
           "organization-teams",
-          "stripe-organization"
+          "stripe-organization",
+          "organization-roles"
         ]
       },
       {
@@ -2016,7 +2063,8 @@
             "profiles": [
               "organization",
               "organization-teams",
-              "stripe-organization"
+              "stripe-organization",
+              "organization-roles"
             ]
           },
           {
@@ -2240,7 +2288,8 @@
         "profiles": [
           "organization",
           "organization-teams",
-          "stripe-organization"
+          "stripe-organization",
+          "organization-roles"
         ],
         "columns": [
           {
@@ -2266,6 +2315,32 @@
             "profiles": [
               "stripe-organization"
             ]
+          }
+        ]
+      },
+      {
+        "sql": "create table \"organizationRole\"",
+        "profiles": [
+          "organization-roles"
+        ],
+        "columns": [
+          {
+            "sql": "\"id\" text not null primary key"
+          },
+          {
+            "sql": "\"organizationId\" text not null references \"organization\" (\"id\") on delete cascade"
+          },
+          {
+            "sql": "\"role\" text not null"
+          },
+          {
+            "sql": "\"permission\" text not null"
+          },
+          {
+            "sql": "\"createdAt\" timestamptz default CURRENT_TIMESTAMP not null"
+          },
+          {
+            "sql": "\"updatedAt\" timestamptz"
           }
         ]
       },
@@ -2323,7 +2398,8 @@
         "profiles": [
           "organization",
           "organization-teams",
-          "stripe-organization"
+          "stripe-organization",
+          "organization-roles"
         ],
         "columns": [
           {
@@ -2348,7 +2424,8 @@
         "profiles": [
           "organization",
           "organization-teams",
-          "stripe-organization"
+          "stripe-organization",
+          "organization-roles"
         ],
         "columns": [
           {
@@ -3411,6 +3488,18 @@
         ]
       },
       {
+        "sql": "create index \"organizationRole_organizationId_idx\" on \"organizationRole\" (\"organizationId\");",
+        "profiles": [
+          "organization-roles"
+        ]
+      },
+      {
+        "sql": "create index \"organizationRole_role_idx\" on \"organizationRole\" (\"role\");",
+        "profiles": [
+          "organization-roles"
+        ]
+      },
+      {
         "sql": "create index \"team_organizationId_idx\" on \"team\" (\"organizationId\");",
         "profiles": [
           "organization-teams"
@@ -3433,7 +3522,8 @@
         "profiles": [
           "organization",
           "organization-teams",
-          "stripe-organization"
+          "stripe-organization",
+          "organization-roles"
         ]
       },
       {
@@ -3441,7 +3531,8 @@
         "profiles": [
           "organization",
           "organization-teams",
-          "stripe-organization"
+          "stripe-organization",
+          "organization-roles"
         ]
       },
       {
@@ -3449,7 +3540,8 @@
         "profiles": [
           "organization",
           "organization-teams",
-          "stripe-organization"
+          "stripe-organization",
+          "organization-roles"
         ]
       },
       {
@@ -3457,7 +3549,8 @@
         "profiles": [
           "organization",
           "organization-teams",
-          "stripe-organization"
+          "stripe-organization",
+          "organization-roles"
         ]
       },
       {
@@ -3869,7 +3962,8 @@
             "profiles": [
               "organization",
               "organization-teams",
-              "stripe-organization"
+              "stripe-organization",
+              "organization-roles"
             ]
           },
           {
@@ -4093,7 +4187,8 @@
         "profiles": [
           "organization",
           "organization-teams",
-          "stripe-organization"
+          "stripe-organization",
+          "organization-roles"
         ],
         "columns": [
           {
@@ -4120,6 +4215,35 @@
               "stripe-organization"
             ]
           }
+        ]
+      },
+      {
+        "sql": "create table `organizationRole`",
+        "profiles": [
+          "organization-roles"
+        ],
+        "columns": [
+          {
+            "sql": "`id` varchar(36) not null primary key"
+          },
+          {
+            "sql": "`organizationId` varchar(36) not null"
+          },
+          {
+            "sql": "`role` varchar(255) not null"
+          },
+          {
+            "sql": "`permission` text not null"
+          },
+          {
+            "sql": "`createdAt` timestamp(3) default CURRENT_TIMESTAMP(3) not null"
+          },
+          {
+            "sql": "`updatedAt` timestamp(3)"
+          }
+        ],
+        "constraints": [
+          "constraint `organizationRole_organizationId_fk` foreign key (`organizationId`) references `organization` (`id`) on delete cascade"
         ]
       },
       {
@@ -4176,7 +4300,8 @@
         "profiles": [
           "organization",
           "organization-teams",
-          "stripe-organization"
+          "stripe-organization",
+          "organization-roles"
         ],
         "columns": [
           {
@@ -4201,7 +4326,8 @@
         "profiles": [
           "organization",
           "organization-teams",
-          "stripe-organization"
+          "stripe-organization",
+          "organization-roles"
         ],
         "columns": [
           {
@@ -5286,6 +5412,18 @@
         ]
       },
       {
+        "sql": "create index `organizationRole_organizationId_idx` on `organizationRole` (`organizationId`);",
+        "profiles": [
+          "organization-roles"
+        ]
+      },
+      {
+        "sql": "create index `organizationRole_role_idx` on `organizationRole` (`role`);",
+        "profiles": [
+          "organization-roles"
+        ]
+      },
+      {
         "sql": "create index `team_organizationId_idx` on `team` (`organizationId`);",
         "profiles": [
           "organization-teams"
@@ -5308,7 +5446,8 @@
         "profiles": [
           "organization",
           "organization-teams",
-          "stripe-organization"
+          "stripe-organization",
+          "organization-roles"
         ]
       },
       {
@@ -5316,7 +5455,8 @@
         "profiles": [
           "organization",
           "organization-teams",
-          "stripe-organization"
+          "stripe-organization",
+          "organization-roles"
         ]
       },
       {
@@ -5324,7 +5464,8 @@
         "profiles": [
           "organization",
           "organization-teams",
-          "stripe-organization"
+          "stripe-organization",
+          "organization-roles"
         ]
       },
       {
@@ -5332,7 +5473,8 @@
         "profiles": [
           "organization",
           "organization-teams",
-          "stripe-organization"
+          "stripe-organization",
+          "organization-roles"
         ]
       },
       {
