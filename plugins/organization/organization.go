@@ -59,9 +59,11 @@ type Options struct {
 	// CreatorRole is the membership assigned to an organization's creator.
 	CreatorRole string
 	// Roles replaces the built-in grants when non-nil. Use DefaultRoles to extend them.
-	Roles           map[string]access.Statements
-	rolePolicy      RolePolicy
-	InvitationLimit *InvitationLimit
+	Roles map[string]access.Statements
+	// DynamicAccessControl adds grants from the destination organization's role table.
+	DynamicAccessControl bool
+	rolePolicy           RolePolicy
+	InvitationLimit      *InvitationLimit
 	// CancelPendingInvitationsOnReInvite replaces an existing live grant when
 	// the application invites the same address again without requesting resend.
 	CancelPendingInvitationsOnReInvite bool
@@ -180,6 +182,17 @@ func NewService(o Options) (*Service, error) {
 	} else if supportsRoles {
 		o.rolePolicy = roleStore.OrganizationRolePolicy()
 	}
+	if o.DynamicAccessControl {
+		provider, ok := o.Store.(DynamicRoleStoreProvider)
+		if !ok {
+			return nil, errors.New("organization: dynamic access control requires a DynamicRoleStoreProvider")
+		}
+		store, err := provider.WithOrganizationDynamicRoles()
+		if err != nil {
+			return nil, err
+		}
+		o.Store = store
+	}
 	if err := o.MembershipLimit.Validate(); err != nil {
 		return nil, err
 	}
@@ -210,6 +223,11 @@ func NewService(o Options) (*Service, error) {
 	}
 	if err := o.configureTeams(); err != nil {
 		return nil, err
+	}
+	if o.DynamicAccessControl {
+		if _, ok := o.Store.(DynamicRoleStore); !ok {
+			return nil, errors.New("organization: the configured store must retain dynamic role support")
+		}
 	}
 	if o.BeforeUpdateOrganization != nil || o.AfterUpdateOrganization != nil {
 		if _, ok := o.Store.(ObservedProfileStore); !ok {

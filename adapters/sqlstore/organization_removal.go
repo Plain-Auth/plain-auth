@@ -96,8 +96,10 @@ func (s *Store) removeMembershipOnce(ctx context.Context, userID, token, group, 
 			return nil, org.ErrLastOwner
 		}
 	}
-	if !leave && !s.organizationRoles.HasAction(actor.Role, "member", "delete") {
-		return nil, org.ErrMemberRemove
+	if !leave {
+		if err := s.requireOrganizationAction(ctx, tx, group, actor.Role, "member", "delete", org.ErrMemberRemove); err != nil {
+			return nil, err
+		}
 	}
 	teams, err := s.hasKeyOwnerTable(ctx, tx, "teamMember")
 	if err != nil {

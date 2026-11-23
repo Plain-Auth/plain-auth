@@ -30,10 +30,12 @@
     - [x] Evaluate every built-in role and resource action with the signed-in organization member ([test](../../../conformance/organization-permissions.mjs#L47))
     - [x] Check an active or explicit organization with the Go client on three SQL engines ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L160))
     - [x] Resolve custom actions against live membership even when the caller holds multiple roles ([test](../../../conformance/organization-custom-roles.mjs#L63))
-  - [ ] `POST /organization/has-permission`
+    - [x] Resolve the same role independently per organization and apply changes from another application on the next operation ([test](../../../conformance/organization-stored-roles.mjs#L54))
+  - [x] `POST /organization/has-permission` ([test](../../../conformance/organization-stored-roles.mjs#L54))
     - [x] Evaluate every built-in role and resource action with the signed-in organization member ([test](../../../conformance/organization-permissions.mjs#L47))
     - [x] Check an active or explicit organization with the Go client on three SQL engines ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L160))
     - [x] Resolve custom actions against live membership even when the caller holds multiple roles ([test](../../../conformance/organization-custom-roles.mjs#L63))
+    - [x] Resolve the same role independently per organization and apply changes from another application on the next operation ([test](../../../conformance/organization-stored-roles.mjs#L54))
   - [ ] `organization`
   - [ ] `DefaultOrganizationPlugin`
   - [ ] `OrganizationCreator`
@@ -227,6 +229,8 @@
       - [x] Apply the host’s roles to profile changes, teams, invitations and live permissions ([test](../../../conformance/organization-custom-roles.mjs#L41))
       - [x] Recheck a custom inviter’s current grants after host callbacks on three SQL engines ([test](../../../adapters/sqlstore/organization_custom_roles_test.go#L68))
     - [ ] `dynamicAccessControl`
+      - [x] Resolve the same role independently per organization and apply changes from another application on the next operation ([test](../../../conformance/organization-stored-roles.mjs#L54))
+      - [x] Merge stored and static grants within one role and recheck the grant after a host callback ([test](../../../adapters/sqlstore/organization_stored_roles_test.go#L59))
     - [ ] `teams`
       - [x] Create and select a default team for the owner, or disable automatic creation ([test](../../../adapters/sqlstore/organization_teams_test.go#L324))
     - [x] `invitationExpiresIn` ([test](../../../conformance/invitation-expiration.mjs#L25))
@@ -551,15 +555,18 @@
       - [x] Pass Roles to the Plugin ([test](../../../conformance/organization-custom-roles.mjs#L41))
         - [x] Apply the host’s roles to profile changes, teams, invitations and live permissions ([test](../../../conformance/organization-custom-roles.mjs#L41))
     - [ ] Access Control Usage
-      - [ ] Has Permission
+      - [x] Has Permission ([test](../../../conformance/organization-stored-roles.mjs#L54))
         - [x] Evaluate every built-in role and resource action with the signed-in organization member ([test](../../../conformance/organization-permissions.mjs#L47))
         - [x] Check an active or explicit organization with the Go client on three SQL engines ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L160))
         - [x] Resolve custom actions against live membership even when the caller holds multiple roles ([test](../../../conformance/organization-custom-roles.mjs#L63))
+        - [x] Resolve the same role independently per organization and apply changes from another application on the next operation ([test](../../../conformance/organization-stored-roles.mjs#L54))
       - [x] Check Role Permission ([test](../../../plugins/organization/permissions_test.go#L45))
         - [x] Calculate built-in role permissions locally from a comma-separated role list ([test](../../../plugins/organization/permissions_test.go#L10))
         - [x] Evaluate a configured role locally and require one role to cover every requested action ([test](../../../plugins/organization/permissions_test.go#L45))
   - [ ] Dynamic Access Control
+    - [x] Resolve the same role independently per organization and apply changes from another application on the next operation ([test](../../../conformance/organization-stored-roles.mjs#L54))
     - [ ] Enabling Dynamic Access Control
+      - [x] Resolve the same role independently per organization and apply changes from another application on the next operation ([test](../../../conformance/organization-stored-roles.mjs#L54))
     - [ ] Creating a role
       - [ ] `POST /organization/create-role`
         - [ ] Parameter `role`

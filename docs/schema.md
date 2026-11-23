@@ -54,7 +54,7 @@ Choose `mysql` or `sqlite` for those dialects. In Go, `schema.Generate` and `sql
 
 Each row has a primary key `id`, the owning `organizationId`, a `role` name, a `permission` text field containing a JSON resource-to-actions map, a required `createdAt`, and an optional `updatedAt`. The organization reference cascades on deletion. Both the organization reference and role name have indexes. Two organizations can use the same role name with different grants. [Three-dialect comparison and CLI tests](../conformance/schema.test.mjs) · [Live migration and isolation tests](../adapters/sqlstore/organization_role_schema_test.go)
 
-Host-defined roles are available through the [organization plugin](organizations.md#configure-organization-roles). The [organization checklist](parity/plugins/organization.md) tracks the API for managing per-organization roles.
+Enable `DynamicAccessControl` in the organization plugin to apply stored grants to permission checks, invitations, profile edits and team operations. [Runtime configuration](organizations.md#use-roles-stored-by-an-organization) · [Role management checklist](parity/plugins/organization.md)
 
 ## Configure user, session and account fields
 

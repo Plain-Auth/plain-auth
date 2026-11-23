@@ -1,6 +1,7 @@
 package organization
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"strings"
@@ -81,6 +82,14 @@ func permissionQuery(body map[string]any) (string, access.Statements, error) {
 	return id, modern, nil
 }
 
+func (p RolePolicy) checkMemberPermission(ctx context.Context, store MemberRoleReader, session auth.Session, id string, permissions access.Statements) (bool, error) {
+	if live, ok := store.(OrganizationPermissionStore); ok {
+		return live.CheckOrganizationPermission(ctx, session.ID, session.UserID, id, permissions)
+	}
+	role, err := store.OrganizationMemberRole(ctx, session.ID, session.UserID, MemberRoleQuery{OrganizationID: id})
+	return p.HasPermission(role, permissions), err
+}
+
 func (p RolePolicy) permissionEndpoint(store MemberRoleReader) auth.Endpoint {
 	return auth.Endpoint{Method: http.MethodPost, Path: "/organization/has-permission", Handler: func(c auth.EndpointContext) (any, error) {
 		id, permissions, err := permissionQuery(c.Body)
@@ -91,13 +100,13 @@ func (p RolePolicy) permissionEndpoint(store MemberRoleReader) auth.Endpoint {
 		if err != nil {
 			return nil, err
 		}
-		role, err := store.OrganizationMemberRole(c.Request.Context(), session.Session.ID, session.User.ID, MemberRoleQuery{OrganizationID: id})
+		allowed, err := p.checkMemberPermission(c.Request.Context(), store, session.Session, id, permissions)
 		if errors.Is(err, ErrRoleReadDenied) {
 			return nil, problem(401, "USER_IS_NOT_A_MEMBER_OF_THE_ORGANIZATION", "User is not a member of the organization")
 		}
 		if err != nil {
 			return nil, err
 		}
-		return map[string]any{"success": p.HasPermission(role, permissions), "error": nil}, nil
+		return map[string]any{"success": allowed, "error": nil}, nil
 	}}
 }

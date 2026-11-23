@@ -1997,3 +1997,8 @@ test("trusted member grants retain normalized role labels and team membership", 
   const { compareServerGrantRoles } = await import("./organization-server-grants.mjs");
   await compareServerGrantRoles(t, { reference, goFixture, instrument, fixtureBinary: () => fixtureBuild });
 });
+
+test("stored roles govern live organization operations across independent applications", async t => {
+  const { compareStoredOrganizationRoles } = await import("./organization-stored-roles.mjs");
+  await compareStoredOrganizationRoles(t, { goFixture, instrument });
+});

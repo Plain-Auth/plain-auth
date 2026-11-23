@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -282,8 +283,12 @@ func main() {
 				log.Fatal(err)
 			}
 			plugins = append(plugins, p)
-		case "organization", "organization-teams":
+		case "organization", "organization-teams", "organization-roles":
+			if id == "organization-roles" && (slices.Contains(os.Args[2:], "organization") || slices.Contains(os.Args[2:], "organization-teams")) {
+				continue
+			}
 			options := organization.Options{Store: store, MembershipLimit: fixtureMembershipLimit(), RequireVerifiedEmail: os.Getenv("CONFORMANCE_VERIFY_INVITATION_EMAIL") == "1"}
+			options.DynamicAccessControl = slices.Contains(os.Args[2:], "organization-roles")
 			configureFixtureRoles(&options)
 			options.InvitationLimit = fixtureInvitationLimit()
 			options.CancelPendingInvitationsOnReInvite = os.Getenv("CONFORMANCE_REPLACE_INVITATION") == "1"

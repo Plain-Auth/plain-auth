@@ -131,6 +131,29 @@ Set `CreatorRole: "founder"` to assign that name to new organization creators. I
 
 Team creation, renaming and deletion use `team.create`, `team.update` and `team.delete`. Adding a member to a team or listing another member’s teams requires `member.update`. Removing a team member requires `member.delete`. Sending and listing invitations require `invitation.create`, and cancellation requires `invitation.cancel`. Only holders of the creator role can see invitations that grant that role in organization listings. Permission changes take effect on the next operation using the stored membership. [Storage isolation and callback tests](../adapters/sqlstore/organization_custom_roles_test.go)
 
+## Use roles stored by an organization
+
+Install the `organization-roles` schema profile and set `DynamicAccessControl` on the organization plugin. Add `organization-teams` to the migration and configure `Teams` on the plugin if the host uses teams. [Database setup](schema.md#organization-role-storage)
+
+```go
+groups, err := organization.New(organization.Options{
+    Store: store,
+    DynamicAccessControl: true,
+    Teams: &organization.TeamOptions{},
+})
+```
+
+The host can provision a role definition in the organization's `organizationRole` table. For example, this PostgreSQL statement gives one organization's `desk` role permission to create teams. Supply the role definition ID and organization ID as parameters from trusted server code.
+
+```sql
+INSERT INTO "organizationRole" ("id", "organizationId", "role", "permission", "createdAt")
+VALUES ($1, $2, 'desk', '{"team":["create"]}', CURRENT_TIMESTAMP);
+```
+
+Assign `desk` through the ordinary invitation or member-role endpoints. A different organization can grant different actions to the same name. A database definition can also extend a host-defined role in that organization. One named role must still grant the whole request. The permission endpoint resolves the session, membership and grants in one database snapshot. Organization mutations load the grants in their transaction, including a fresh check when control returns from an invitation callback.
+
+Editing or removing a stored grant takes effect on the next request across replicas. A host using only static roles on the same database continues to use its configured grants. Local `RolePolicy.HasPermission` evaluates the definitions supplied to that policy. Use the HTTP permission check for a current user's database-backed decision. [Cross-application role test](../conformance/organization-stored-roles.mjs) · [SQLite, PostgreSQL and MySQL tests](../adapters/sqlstore/organization_stored_roles_test.go)
+
 ## Read an organization and its directory
 
 Send `GET /organization/get-full-organization` with a session cookie. A nonempty `organizationSlug` selects the destination first, followed by `organizationId`, then the session's active organization. With no selector and no active organization, the response is HTTP 200 with JSON `null`. Looking up another organization you belong to preserves your active organization and team.

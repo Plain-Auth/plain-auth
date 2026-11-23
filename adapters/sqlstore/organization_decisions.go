@@ -142,8 +142,8 @@ func (s *Store) invitationDecisionTx(ctx context.Context, request invitationDeci
 		if err != nil {
 			return nil, err
 		}
-		if !s.organizationRoles.HasAction(m.Role, "invitation", "cancel") {
-			return nil, org.ErrCancelDenied
+		if err := s.requireOrganizationAction(ctx, tx, inv.OrganizationID, m.Role, "invitation", "cancel", org.ErrCancelDenied); err != nil {
+			return nil, err
 		}
 		scope.Membership = &m.Member
 	default:

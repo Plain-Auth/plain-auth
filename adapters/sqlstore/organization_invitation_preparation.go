@@ -66,7 +66,7 @@ func (p *invitationPreparation) checkScope(ctx context.Context, s *Store, tx *sq
 
 // The first pass captures the issuer and proposed values after all admission
 // checks. The second checks the same grant and applies the host's overrides.
-func (p *invitationPreparation) prepareGrant(ctx context.Context, s *Store, tx *sql.Tx, inv org.Invitation, prior *org.Invitation, member org.Member, teamField bool) (org.Invitation, error) {
+func (p *invitationPreparation) prepareGrant(ctx context.Context, s *Store, tx *sql.Tx, inv org.Invitation, prior *org.Invitation, member org.Member, teamField bool, policy org.RolePolicy) (org.Invitation, error) {
 	issuer, err := s.invitationIssuer(ctx, tx, member)
 	if err != nil {
 		return inv, err
@@ -99,7 +99,7 @@ func (p *invitationPreparation) prepareGrant(ctx context.Context, s *Store, tx *
 		wide.TeamIDs = nil
 		changes = &wide
 	}
-	updated, err := s.organizationRoles.ApplyInvitationChanges(inv, changes)
+	updated, err := policy.ApplyInvitationChanges(inv, changes)
 	if err != nil {
 		return inv, err
 	}

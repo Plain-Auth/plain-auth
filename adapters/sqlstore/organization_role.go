@@ -80,11 +80,15 @@ func (s *Store) updateMemberRoleOnce(ctx context.Context, userID, token string, 
 	if m.UserID != targetUser {
 		return nil, org.ErrMemberMissing
 	}
-	creator := s.organizationRoles.CreatorRole()
+	policy, err := s.resolveOrganizationRoles(ctx, tx, group)
+	if err != nil {
+		return nil, err
+	}
+	creator := policy.CreatorRole()
 	owner := membershipHasRole(actor.Role, creator)
 	targetOwner := membershipHasRole(m.Role, creator)
 	setOwner := slices.Contains(roles, creator)
-	if !owner && (targetOwner || setOwner || !s.organizationRoles.HasAction(actor.Role, "member", "update")) {
+	if !owner && (targetOwner || setOwner || !policy.HasAction(actor.Role, "member", "update")) {
 		return nil, org.ErrMemberRoleDenied
 	}
 	if targetOwner && !setOwner {
@@ -98,7 +102,7 @@ func (s *Store) updateMemberRoleOnce(ctx context.Context, userID, token string, 
 	}
 	var unknown []string
 	for _, r := range roles {
-		if !s.organizationRoles.Recognizes(r) {
+		if !policy.Recognizes(r) {
 			unknown = append(unknown, r)
 		}
 	}

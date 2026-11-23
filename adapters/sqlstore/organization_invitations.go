@@ -27,8 +27,8 @@ func (s *Store) ListOrganizationInvitations(ctx context.Context, sessionID, user
 	case err != nil:
 		return nil, err
 	}
-	if !s.organizationRoles.HasAction(role, "invitation", "create") {
-		return nil, org.ErrInvitationListDenied
+	if err := s.requireOrganizationAction(ctx, tx, group, role, "invitation", "create", org.ErrInvitationListDenied); err != nil {
+		return nil, err
 	}
 	items, err := s.visibleOrganizationInvitations(ctx, tx, group, membershipHasRole(role, s.organizationRoles.CreatorRole()), includeTeams)
 	if err != nil {

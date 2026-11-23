@@ -25,22 +25,23 @@ import (
 
 // Store persists users, credentials, and sessions in a SQL database.
 type Store struct {
-	organizationRoles      org.RolePolicy
-	invitationLimit        *org.InvitationLimit
-	accountFields          map[string]auth.AccountField
-	accountFieldRules      map[string]auth.AccountFieldRule
-	walletMapping          walletschema.Mapping
-	walletQueryNames       *strings.Replacer
-	scimPolicies           map[string]scim.Projection
-	adminSchema            *atomic.Bool
-	apiKeyLedgerReady      *atomic.Bool
-	dpopNextSweep          *atomic.Int64
-	adminRole, adminDenial string
-	membershipLimit        org.MembershipLimit
-	teamOptions            *org.TeamOptions
-	factorSchema           bool
-	db                     *sql.DB
-	dialect                string
+	organizationRoles        org.RolePolicy
+	dynamicOrganizationRoles bool
+	invitationLimit          *org.InvitationLimit
+	accountFields            map[string]auth.AccountField
+	accountFieldRules        map[string]auth.AccountFieldRule
+	walletMapping            walletschema.Mapping
+	walletQueryNames         *strings.Replacer
+	scimPolicies             map[string]scim.Projection
+	adminSchema              *atomic.Bool
+	apiKeyLedgerReady        *atomic.Bool
+	dpopNextSweep            *atomic.Int64
+	adminRole, adminDenial   string
+	membershipLimit          org.MembershipLimit
+	teamOptions              *org.TeamOptions
+	factorSchema             bool
+	db                       *sql.DB
+	dialect                  string
 }
 
 func normalizeDialect(name string) (string, error) {

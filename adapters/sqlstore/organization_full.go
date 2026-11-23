@@ -69,7 +69,11 @@ func (s *Store) FullOrganization(ctx context.Context, sessionID, userID string, 
 	if err != nil {
 		return nil, err
 	}
-	if s.organizationRoles.HasAction(role.String, "invitation", "create") {
+	policy, err := s.resolveOrganizationRoles(ctx, tx, group.ID)
+	if err != nil {
+		return nil, err
+	}
+	if policy.HasAction(role.String, "invitation", "create") {
 		owner := membershipHasRole(role.String, s.organizationRoles.CreatorRole())
 		result.Invitations, err = s.visibleOrganizationInvitations(ctx, tx, group.ID, owner, includeTeams)
 		if err != nil {

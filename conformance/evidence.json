@@ -15206,6 +15206,12 @@
       "label": "Resolve custom actions against live membership even when the caller holds multiple roles",
       "test": "conformance/organization-custom-roles.mjs",
       "marker": "assert.equal(await check(editor,{reports:[\"read\",\"publish\"]}), false)"
+    },
+    {
+      "label": "Resolve the same role independently per organization and apply changes from another application on the next operation",
+      "test": "conformance/organization-stored-roles.mjs",
+      "marker": "assert.equal(await query(reporter,north,{team:[\"create\"]}),false)",
+      "complete": true
     }
   ],
   "plugin-symbol/organization/hasPermission": [
@@ -15223,6 +15229,11 @@
       "label": "Resolve custom actions against live membership even when the caller holds multiple roles",
       "test": "conformance/organization-custom-roles.mjs",
       "marker": "assert.equal(await check(editor,{reports:[\"read\",\"publish\"]}), false)"
+    },
+    {
+      "label": "Resolve the same role independently per organization and apply changes from another application on the next operation",
+      "test": "conformance/organization-stored-roles.mjs",
+      "marker": "assert.equal(await query(reporter,north,{team:[\"create\"]}),false)"
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L1395/Has Permission": [
@@ -15240,6 +15251,12 @@
       "label": "Resolve custom actions against live membership even when the caller holds multiple roles",
       "test": "conformance/organization-custom-roles.mjs",
       "marker": "assert.equal(await check(editor,{reports:[\"read\",\"publish\"]}), false)"
+    },
+    {
+      "label": "Resolve the same role independently per organization and apply changes from another application on the next operation",
+      "test": "conformance/organization-stored-roles.mjs",
+      "marker": "assert.equal(await query(reporter,north,{team:[\"create\"]}),false)",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L1246": [
@@ -15474,6 +15491,32 @@
       "label": "Distinguish an unprivileged member from a missing membership on all three SQL engines",
       "test": "adapters/sqlstore/organization_members_test.go",
       "marker": "membership with an empty role lost its team"
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1479": [
+    {
+      "label": "Resolve the same role independently per organization and apply changes from another application on the next operation",
+      "test": "conformance/organization-stored-roles.mjs",
+      "marker": "assert.equal(await query(reporter,north,{team:[\"create\"]}),false)"
+    }
+  ],
+  "plugin-symbol/organization/OrganizationOptions/dynamicAccessControl": [
+    {
+      "label": "Resolve the same role independently per organization and apply changes from another application on the next operation",
+      "test": "conformance/organization-stored-roles.mjs",
+      "marker": "assert.equal(await query(reporter,north,{team:[\"create\"]}),false)"
+    },
+    {
+      "label": "Merge stored and static grants within one role and recheck the grant after a host callback",
+      "test": "adapters/sqlstore/organization_stored_roles_test.go",
+      "marker": "changed organization grants were not rechecked after the callback"
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1474": [
+    {
+      "label": "Resolve the same role independently per organization and apply changes from another application on the next operation",
+      "test": "conformance/organization-stored-roles.mjs",
+      "marker": "assert.equal(await query(reporter,north,{team:[\"create\"]}),false)"
     }
   ]
 }

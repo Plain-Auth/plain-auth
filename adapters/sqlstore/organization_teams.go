@@ -139,8 +139,8 @@ func (t teamTransaction) authorizeOrg(explicit, resource, action string, missing
 	if err != nil {
 		return "", err
 	}
-	if !t.organizationRoles.HasAction(role, resource, action) {
-		return "", denied
+	if err := t.requireOrganizationAction(t.ctx, t.tx, id, role, resource, action, denied); err != nil {
+		return "", err
 	}
 	return id, nil
 }
@@ -323,8 +323,10 @@ func (s *Store) ListUserTeams(ctx context.Context, a org.TeamActor, explicit, us
 			if err != nil {
 				return err
 			}
-			if target != a.UserID && !t.organizationRoles.HasAction(actorRole, "member", "update") {
-				return org.ErrTeamListUser
+			if target != a.UserID {
+				if err := t.requireOrganizationAction(t.ctx, t.tx, id, actorRole, "member", "update", org.ErrTeamListUser); err != nil {
+					return err
+				}
 			}
 			_, err = t.memberRole(id, target)
 			if errors.Is(err, sql.ErrNoRows) {

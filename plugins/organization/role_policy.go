@@ -67,7 +67,7 @@ func (p RolePolicy) CreatorRole() string {
 	return p.creator
 }
 
-// Recognizes reports whether the name can be assigned to a member.
+// Recognizes reports whether an invitation or a member-role update may use the name.
 func (p RolePolicy) Recognizes(name string) bool {
 	_, configured := p.roles[name]
 	return configured || builtinRole(name)

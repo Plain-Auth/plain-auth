@@ -287,13 +287,17 @@ func (s *Store) issueInvitationTx(ctx context.Context, inv org.Invitation, issue
 	if err != nil {
 		return org.Invitation{}, err
 	}
-	creator := s.organizationRoles.CreatorRole()
+	policy, err := s.resolveOrganizationRoles(ctx, tx, inv.OrganizationID)
+	if err != nil {
+		return org.Invitation{}, err
+	}
+	creator := policy.CreatorRole()
 	owner := membershipHasRole(member.Role, creator)
-	if !s.organizationRoles.HasAction(member.Role, "invitation", "create") {
+	if !policy.HasAction(member.Role, "invitation", "create") {
 		return org.Invitation{}, org.ErrInviteDenied
 	}
 	if issue.validateRoles {
-		inv.Role, err = s.organizationRoles.ParseInvitationRoles(inv.Role)
+		inv.Role, err = policy.ParseInvitationRoles(inv.Role)
 		if err != nil {
 			return org.Invitation{}, err
 		}
@@ -353,7 +357,7 @@ func (s *Store) issueInvitationTx(ctx context.Context, inv org.Invitation, issue
 		return org.Invitation{}, err
 	}
 	if prep != nil {
-		inv, err = prep.prepareGrant(ctx, s, tx, inv, pending, member.Member, teamField)
+		inv, err = prep.prepareGrant(ctx, s, tx, inv, pending, member.Member, teamField, policy)
 		if err != nil {
 			return org.Invitation{}, err
 		}
