@@ -45,3 +45,22 @@ func configureOrganizationProfileHooks(o *org.Options, path string) {
 		return nil
 	}
 }
+
+func configureDecisionHooks(o *org.Options, path string) {
+	record := func(phase string) org.InvitationDecisionHook {
+		return func(_ context.Context, event org.InvitationDecisionEvent) error {
+			f, err := os.OpenFile(path, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
+			if err != nil {
+				return err
+			}
+			defer f.Close()
+			err = json.NewEncoder(f).Encode(map[string]any{"phase": phase, "actor": event.Actor, "invitation": event.Invitation, "organization": event.Organization})
+			if err == nil && event.Organization.Slug == phase {
+				return errors.New("private invitation fixture")
+			}
+			return err
+		}
+	}
+	o.BeforeRejectInvitation, o.AfterRejectInvitation = record("before-reject"), record("after-reject")
+	o.BeforeCancelInvitation, o.AfterCancelInvitation = record("before-cancel"), record("after-cancel")
+}

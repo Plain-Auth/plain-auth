@@ -1927,3 +1927,8 @@ test("organization administrators cancel invitations independently of membership
   const { compareInvitationCancellation } = await import("./organization-invitations.mjs");
   await compareInvitationCancellation(t, { reference, goFixture, instrument });
 });
+
+test("host invitation hooks run around authorized rejection and cancellation", async t => {
+  const { compareInvitationHooks } = await import("./invitation-hooks.mjs");
+  await compareInvitationHooks(t, { reference, goFixture, instrument });
+});

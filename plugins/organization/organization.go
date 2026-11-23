@@ -57,6 +57,10 @@ type Store interface {
 }
 
 type Options struct {
+	BeforeRejectInvitation   InvitationDecisionHook
+	AfterRejectInvitation    InvitationDecisionHook
+	BeforeCancelInvitation   InvitationDecisionHook
+	AfterCancelInvitation    InvitationDecisionHook
 	MembershipLimit          MembershipLimit
 	BeforeUpdateOrganization func(context.Context, BeforeProfileUpdate) (*ProfileUpdate, error)
 	AfterUpdateOrganization  func(context.Context, AfterProfileUpdate) error
@@ -158,13 +162,18 @@ func NewService(o Options) (*Service, error) {
 		}
 		o.Store = store
 	}
+	if err := o.configureTeams(); err != nil {
+		return nil, err
+	}
 	if o.BeforeUpdateOrganization != nil || o.AfterUpdateOrganization != nil {
 		if _, ok := o.Store.(ObservedProfileStore); !ok {
 			return nil, errors.New("organization: profile hooks require an ObservedProfileStore")
 		}
 	}
-	if err := o.configureTeams(); err != nil {
-		return nil, err
+	if o.BeforeRejectInvitation != nil || o.AfterRejectInvitation != nil || o.BeforeCancelInvitation != nil || o.AfterCancelInvitation != nil {
+		if _, ok := o.Store.(ObservedInvitationDecisionStore); !ok {
+			return nil, errors.New("organization: invitation decision hooks require an ObservedInvitationDecisionStore")
+		}
 	}
 	return &Service{options: o}, nil
 }

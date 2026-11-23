@@ -35,7 +35,12 @@ func (o Options) rejectInvitationEndpoint(store InvitationRejectionStore) auth.E
 		if err != nil {
 			return nil, err
 		}
-		inv, err := store.RejectOrganizationInvitation(c.Request.Context(), session.Session, id, o.RequireVerifiedEmail)
+		var inv *Invitation
+		if o.BeforeRejectInvitation != nil || o.AfterRejectInvitation != nil {
+			inv, err = o.observedInvitation(c.Request.Context(), session, id, RejectInvitation, o.BeforeRejectInvitation, o.AfterRejectInvitation)
+		} else {
+			inv, err = store.RejectOrganizationInvitation(c.Request.Context(), session.Session, id, o.RequireVerifiedEmail)
+		}
 		switch {
 		case errors.Is(err, ErrInvitation):
 			return nil, problem(400, ErrInvitation.Code, "Invitation not found!")
@@ -70,7 +75,12 @@ func (o Options) cancelInvitationEndpoint(store InvitationCancellationStore) aut
 		if err != nil {
 			return nil, err
 		}
-		inv, err := store.CancelOrganizationInvitation(c.Request.Context(), session.Session, id)
+		var inv *Invitation
+		if o.BeforeCancelInvitation != nil || o.AfterCancelInvitation != nil {
+			inv, err = o.observedInvitation(c.Request.Context(), session, id, CancelInvitation, o.BeforeCancelInvitation, o.AfterCancelInvitation)
+		} else {
+			inv, err = store.CancelOrganizationInvitation(c.Request.Context(), session.Session, id)
+		}
 		if err != nil {
 			return nil, err
 		}

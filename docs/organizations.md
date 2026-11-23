@@ -257,6 +257,26 @@ The response contains the invitation with `status: "rejected"` and `member: null
 
 The account’s current email must match the invitation address, ignoring case. Enable `RequireVerifiedEmail` to require verification as well. Go clients call `authClient.RejectOrganizationInvitation(ctx, invitationID)`. [HTTP comparison](../conformance/organization-invitations.mjs) · [Three-database concurrency test](../adapters/sqlstore/organization_decision_test.go)
 
+## Observe invitation decisions
+
+Set any of `BeforeRejectInvitation`, `AfterRejectInvitation`, `BeforeCancelInvitation`, and `AfterCancelInvitation` on `organization.Options`. Each callback receives the request context and an `organization.InvitationDecisionEvent`. Its `Actor` is the recipient for rejection and the administrator for cancellation. The event also includes the destination organization and the invitation, including its targeted teams.
+
+```go
+groups, err := organization.New(organization.Options{
+    Store: store,
+    BeforeCancelInvitation: func(ctx context.Context, event organization.InvitationDecisionEvent) error {
+        return checkCancellationPolicy(ctx, event.Actor.ID, event.Organization.ID, event.Invitation.ID)
+    },
+    AfterRejectInvitation: func(ctx context.Context, event organization.InvitationDecisionEvent) error {
+        return recordDecline(ctx, event.Invitation.ID, event.Actor.ID)
+    },
+})
+```
+
+The example’s policy and recording functions belong to the host application. The before callback runs once per authorized request, before the write and outside database locks. Returning an error leaves the invitation untouched by that request. The SQL adapter checks the session, account, invitation, organization and cancellation permission again before committing. If inputs changed while the callback ran, the request can return HTTP 409 with `INVITATION_DECISION_CHANGED` or the applicable authorization error.
+
+The after callback receives the committed status. If it returns an error, the HTTP request fails and the database retains the decision. Repeating an authorized cancellation can deliver another callback for the same invitation. Use the invitation ID and status to deduplicate external effects when needed. Custom adapters enabling these hooks implement `organization.ObservedInvitationDecisionStore`. [Hook comparison](../conformance/invitation-hooks.mjs) · [Database revalidation tests](../adapters/sqlstore/organization_decision_hooks_test.go)
+
 ## Read one invitation
 
 Use `GET /organization/get-invitation?id=INVITATION_ID` to display the details of an invitation before the recipient decides whether to accept. Send the recipient’s signed-in session. The opaque ID comes from your invitation delivery callback or the recipient’s inbox.

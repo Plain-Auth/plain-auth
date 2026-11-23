@@ -363,7 +363,6 @@ func (s *Store) acceptOrganizationInvitation(ctx context.Context, id, sessionID 
 		return org.Invitation{}, org.Member{}, err
 	}
 	organizationID := inv.OrganizationID
-	exact := s.exactSQLValue("?")
 	if inv.Status != "pending" || !now.Before(inv.ExpiresAt) {
 		return org.Invitation{}, org.Member{}, org.ErrInvitation
 	}
@@ -379,14 +378,8 @@ func (s *Store) acceptOrganizationInvitation(ctx context.Context, id, sessionID 
 	if err = s.checkNewMember(ctx, tx, inv.OrganizationID, u.ID, admission, &inv); err != nil {
 		return org.Invitation{}, org.Member{}, err
 	}
-	res, err := tx.ExecContext(ctx, s.bind(`UPDATE "invitation" SET "status"='accepted' WHERE "id"=`+exact+` AND "organizationId"=`+exact+` AND "status"='pending'`), id, organizationID)
-	if err != nil {
+	if err := s.updateInvitationStatus(ctx, tx, &inv, "accepted"); err != nil {
 		return org.Invitation{}, org.Member{}, err
-	}
-	if n, err := res.RowsAffected(); err != nil {
-		return org.Invitation{}, org.Member{}, err
-	} else if n != 1 {
-		return org.Invitation{}, org.Member{}, org.ErrInvitation
 	}
 	m = org.Member{ID: rand.Text(), OrganizationID: organizationID, UserID: u.ID, Role: inv.Role, CreatedAt: now}
 	if err = s.addMember(ctx, tx, m); err != nil {
@@ -411,7 +404,6 @@ func (s *Store) acceptOrganizationInvitation(ctx context.Context, id, sessionID 
 	if err != nil {
 		return org.Invitation{}, org.Member{}, err
 	}
-	inv.Status = "accepted"
 	if err := tx.Commit(); err != nil {
 		return org.Invitation{}, org.Member{}, err
 	}

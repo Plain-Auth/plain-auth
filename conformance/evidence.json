@@ -14468,30 +14468,77 @@
       "label": "Allow only one decision when acceptance races rejection across two database connections",
       "test": "adapters/sqlstore/organization_decision_test.go",
       "marker": "t.Fatalf(\"inconsistent rejection: members=%d accept=%v reject=%v\""
+    },
+    {
+      "label": "Deliver the signed-in actor, invitation and destination before and after an authorized decision",
+      "test": "conformance/invitation-hooks.mjs",
+      "marker": "assert.equal(e.actor.id, actor.id)"
+    },
+    {
+      "label": "Abort the write on a before-hook error and keep the committed status on an after-hook error",
+      "test": "conformance/invitation-hooks.mjs",
+      "marker": "assert.equal(saved.status, failure === \"before\" ? \"pending\" : outcome)"
+    },
+    {
+      "label": "Recheck changed invitation inputs, live recipient and administrator permissions after host code runs",
+      "test": "adapters/sqlstore/organization_decision_hooks_test.go",
+      "marker": "t.Fatal(\"stale approval changed the invitation status\", status)"
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L990": [
     {
       "label": "Decline an expired pending invitation through the recipient's session and preserve the current organization and team",
       "test": "conformance/organization-invitations.mjs",
-      "marker": "assert.equal(declined.invitation.status, \"rejected\")"
+      "marker": "assert.equal(declined.invitation.status, \"rejected\")",
+      "complete": true
     },
     {
       "label": "Allow only one decision when acceptance races rejection across two database connections",
       "test": "adapters/sqlstore/organization_decision_test.go",
       "marker": "t.Fatalf(\"inconsistent rejection: members=%d accept=%v reject=%v\""
+    },
+    {
+      "label": "Deliver the signed-in actor, invitation and destination before and after an authorized decision",
+      "test": "conformance/invitation-hooks.mjs",
+      "marker": "assert.equal(e.actor.id, actor.id)"
+    },
+    {
+      "label": "Abort the write on a before-hook error and keep the committed status on an after-hook error",
+      "test": "conformance/invitation-hooks.mjs",
+      "marker": "assert.equal(saved.status, failure === \"before\" ? \"pending\" : outcome)"
+    },
+    {
+      "label": "Recheck changed invitation inputs, live recipient and administrator permissions after host code runs",
+      "test": "adapters/sqlstore/organization_decision_hooks_test.go",
+      "marker": "t.Fatal(\"stale approval changed the invitation status\", status)"
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L994/`POST /organization/reject-invitation`": [
     {
       "label": "Decline an expired pending invitation through the recipient's session and preserve the current organization and team",
       "test": "conformance/organization-invitations.mjs",
-      "marker": "assert.equal(declined.invitation.status, \"rejected\")"
+      "marker": "assert.equal(declined.invitation.status, \"rejected\")",
+      "complete": true
     },
     {
       "label": "Allow only one decision when acceptance races rejection across two database connections",
       "test": "adapters/sqlstore/organization_decision_test.go",
       "marker": "t.Fatalf(\"inconsistent rejection: members=%d accept=%v reject=%v\""
+    },
+    {
+      "label": "Deliver the signed-in actor, invitation and destination before and after an authorized decision",
+      "test": "conformance/invitation-hooks.mjs",
+      "marker": "assert.equal(e.actor.id, actor.id)"
+    },
+    {
+      "label": "Abort the write on a before-hook error and keep the committed status on an after-hook error",
+      "test": "conformance/invitation-hooks.mjs",
+      "marker": "assert.equal(saved.status, failure === \"before\" ? \"pending\" : outcome)"
+    },
+    {
+      "label": "Recheck changed invitation inputs, live recipient and administrator permissions after host code runs",
+      "test": "adapters/sqlstore/organization_decision_hooks_test.go",
+      "marker": "t.Fatal(\"stale approval changed the invitation status\", status)"
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L1000/Parameter `invitationId`": [
@@ -14522,6 +14569,21 @@
       "label": "Serialize cancellation with acceptance and preserve the committed membership outcome on three SQL engines",
       "test": "adapters/sqlstore/organization_decision_test.go",
       "marker": "t.Fatalf(\"cancellation did not preserve the serialized admission:"
+    },
+    {
+      "label": "Deliver the signed-in actor, invitation and destination before and after an authorized decision",
+      "test": "conformance/invitation-hooks.mjs",
+      "marker": "assert.equal(e.actor.id, actor.id)"
+    },
+    {
+      "label": "Abort the write on a before-hook error and keep the committed status on an after-hook error",
+      "test": "conformance/invitation-hooks.mjs",
+      "marker": "assert.equal(saved.status, failure === \"before\" ? \"pending\" : outcome)"
+    },
+    {
+      "label": "Recheck changed invitation inputs, live recipient and administrator permissions after host code runs",
+      "test": "adapters/sqlstore/organization_decision_hooks_test.go",
+      "marker": "t.Fatal(\"stale approval changed the invitation status\", status)"
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L973": [
@@ -14539,6 +14601,21 @@
       "label": "Serialize cancellation with acceptance and preserve the committed membership outcome on three SQL engines",
       "test": "adapters/sqlstore/organization_decision_test.go",
       "marker": "t.Fatalf(\"cancellation did not preserve the serialized admission:"
+    },
+    {
+      "label": "Deliver the signed-in actor, invitation and destination before and after an authorized decision",
+      "test": "conformance/invitation-hooks.mjs",
+      "marker": "assert.equal(e.actor.id, actor.id)"
+    },
+    {
+      "label": "Abort the write on a before-hook error and keep the committed status on an after-hook error",
+      "test": "conformance/invitation-hooks.mjs",
+      "marker": "assert.equal(saved.status, failure === \"before\" ? \"pending\" : outcome)"
+    },
+    {
+      "label": "Recheck changed invitation inputs, live recipient and administrator permissions after host code runs",
+      "test": "adapters/sqlstore/organization_decision_hooks_test.go",
+      "marker": "t.Fatal(\"stale approval changed the invitation status\", status)"
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L979/`POST /organization/cancel-invitation`": [
@@ -14556,6 +14633,21 @@
       "label": "Serialize cancellation with acceptance and preserve the committed membership outcome on three SQL engines",
       "test": "adapters/sqlstore/organization_decision_test.go",
       "marker": "t.Fatalf(\"cancellation did not preserve the serialized admission:"
+    },
+    {
+      "label": "Deliver the signed-in actor, invitation and destination before and after an authorized decision",
+      "test": "conformance/invitation-hooks.mjs",
+      "marker": "assert.equal(e.actor.id, actor.id)"
+    },
+    {
+      "label": "Abort the write on a before-hook error and keep the committed status on an after-hook error",
+      "test": "conformance/invitation-hooks.mjs",
+      "marker": "assert.equal(saved.status, failure === \"before\" ? \"pending\" : outcome)"
+    },
+    {
+      "label": "Recheck changed invitation inputs, live recipient and administrator permissions after host code runs",
+      "test": "adapters/sqlstore/organization_decision_hooks_test.go",
+      "marker": "t.Fatal(\"stale approval changed the invitation status\", status)"
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L985/Parameter `invitationId`": [
@@ -14564,6 +14656,28 @@
       "test": "conformance/organization-invitations.mjs",
       "marker": "for (const invalid of [null, undefined, {}]) error(await cancel",
       "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L298": [
+    {
+      "label": "Deliver the signed-in actor, invitation and destination before and after an authorized decision",
+      "test": "conformance/invitation-hooks.mjs",
+      "marker": "assert.equal(e.actor.id, actor.id)"
+    },
+    {
+      "label": "Abort the write on a before-hook error and keep the committed status on an after-hook error",
+      "test": "conformance/invitation-hooks.mjs",
+      "marker": "assert.equal(saved.status, failure === \"before\" ? \"pending\" : outcome)"
+    },
+    {
+      "label": "Recheck changed invitation inputs, live recipient and administrator permissions after host code runs",
+      "test": "adapters/sqlstore/organization_decision_hooks_test.go",
+      "marker": "t.Fatal(\"stale approval changed the invitation status\", status)"
+    },
+    {
+      "label": "Give host callbacks an independent copy of the invitation, destination and public session fields",
+      "test": "plugins/organization/invitation_hooks_test.go",
+      "marker": "t.Fatal(\"callback changed the invitation or organization sent to another caller\")"
     }
   ]
 }
