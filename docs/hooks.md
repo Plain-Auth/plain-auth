@@ -155,7 +155,7 @@ opts.DatabaseHooks.User.Create = plainauth.OperationHooks[plainauth.UserRecord]{
 }
 ```
 
-`Options.DatabaseHooks` and `Plugin.DatabaseHooks` hold `Create`, `Update` and `Delete` hooks for `User` and `Session`. Plugin hooks run first, in plugin order, then the Options hooks.
+`Options.DatabaseHooks` and `Plugin.DatabaseHooks` hold `Create`, `Update` and `Delete` hooks for `User`, `Session` and `Account`. Plugin hooks run first, in plugin order, then the Options hooks.
 
 - **Before** runs just before the write. For a create or an update it receives the full row with the change applied, and may change the fields the write stores; changing any other field fails the write with a 500.
   - **Creating a user:** `Name`, `Email`, `Image`, `EmailVerified` and `Fields`, the `UserAdditionalFields` values by name.
@@ -195,6 +195,18 @@ User updates run these hooks:
 
 Deleting an account with `POST /delete-user`, `/delete-user/callback` or `Auth.DeleteUser` runs the session delete hooks for every session of the account, then the user delete hooks, then deletes them together and runs the after hooks in the same order. A skip from any before hook keeps the user and every session, and the request answers like a completed deletion.
 
+Account hooks receive the `LinkedAccount` and may only observe or cancel the write; changing the account fails it with a 500.
+
+| Operation | Account hooks | Skipped write |
+| --- | --- | --- |
+| `POST /sign-up/email`, `Auth.SignUpEmail` | Create, for the credential account; the after hook receives its stored ID | 400 `FAILED_TO_CREATE_USER`; nothing is stored |
+| `Auth.SetPassword` | Create, for the credential account | 400 `FAILED_TO_UPDATE_USER` |
+| `POST /change-password`, `Auth.ChangePassword` | Update, for the credential account | 400 `FAILED_TO_UPDATE_USER`; the old password keeps working |
+| `POST /unlink-account`, `Auth.UnlinkAccount` | Delete | Answers success; the account stays |
+| Deleting an account | Delete, for each account, between the session and user hooks | The whole deletion is cancelled |
+
+A declined password change fails rather than answering success, so nobody believes a password changed when it did not.
+
 Session updates and deletes run these hooks:
 
 | Operation | Session hooks | Skipped write |
@@ -219,7 +231,8 @@ Database hooks do not cover every flow yet. `New` refuses:
 - user update hooks with social sign-in, the magic link, email OTP, phone number, One Tap, SSO, admin, two-factor or last-login-method plugin, `AutoSignInAfterVerification`, `BeforeEmailVerification` or `AfterEmailVerification`;
 - session update hooks with the organization or admin plugin;
 - session delete hooks with the admin, anonymous, magic link, SSO or two-factor plugin, or `RevokeSessionsOnPasswordReset`;
-- user delete hooks with the admin or anonymous plugin.
+- user delete hooks with the admin or anonymous plugin;
+- account hooks with social sign-in, One Tap, SSO, or the admin, wallet, magic link or anonymous plugin, and account create and update hooks with `SendResetPassword`, email OTP or phone number, which write accounts inside the store's transaction.
 
 The SCIM handler refuses a host with any database hook, and `Auth.HasDatabaseHooks` lets your own wrapping handler do the same.
 

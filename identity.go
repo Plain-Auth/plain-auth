@@ -50,7 +50,30 @@ func (a *Auth) UnlinkAccount(ctx context.Context, h http.Header, recordID string
 	if !ok {
 		return &APIError{501, "ACCOUNT_STORAGE_UNAVAILABLE", "Account operation is unavailable for this store"}
 	}
+	var unlinked *LinkedAccount
+	if a.dbHooks.account.delete.set() {
+		accounts, err := store.ListUserAccounts(ctx, session.User.ID)
+		if err != nil {
+			return err
+		}
+		for i := range accounts {
+			if accounts[i].ID == recordID {
+				unlinked = &accounts[i]
+			}
+		}
+		if unlinked != nil {
+			if err := a.beforeAccount(ctx, a.dbHooks.account.delete, *unlinked); errors.Is(err, ErrSkipWrite) {
+				// A declined unlink answers like a completed one, as in the reference.
+				return nil
+			} else if err != nil {
+				return err
+			}
+		}
+	}
 	err = store.UnlinkAccount(ctx, session.User.ID, recordID, a.opts.AllowUnlinkingAll)
+	if err == nil && unlinked != nil {
+		err = runAfter(ctx, a, a.dbHooks.account.delete, *unlinked)
+	}
 	switch {
 	case errors.Is(err, ErrLastAccount):
 		return &APIError{400, "FAILED_TO_UNLINK_LAST_ACCOUNT", "You can't unlink your last account"}

@@ -457,6 +457,7 @@
     - [x] Configure user and session create hooks, and refuse hook configurations an enabled feature would bypass ([test](../../conformance/goapi/database_hooks_test.go#L299))
     - [x] Configure session update and delete hooks, and refuse configurations an enabled feature would bypass ([test](../../conformance/goapi/database_session_hooks_test.go#L249))
     - [x] Configure user update hooks for profile updates, email changes and verification ([test](../../conformance/goapi/database_user_hooks_test.go#L126))
+    - [x] Configure account hooks for credential and linked account writes ([test](../../conformance/goapi/database_user_hooks_test.go#L246))
   - [ ] `onAPIError`
     - [x] Report the original error and already-resolved user before writing the localized HTTP response ([test](../../conformance/goapi/error_reporting_test.go#L88))
     - [ ] `throw`

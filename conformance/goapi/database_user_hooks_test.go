@@ -242,3 +242,126 @@ func TestDatabaseUserDeleteHooks(t *testing.T) {
 		t.Fatal("unexpected deletion hooks", got)
 	}
 }
+
+// Run account hooks around the credential a sign-up stores, password
+// changes, setting a first password, unlinking and account deletion.
+func TestDatabaseAccountHooks(t *testing.T) {
+	var mu sync.Mutex
+	var events []string
+	record := func(e string) { mu.Lock(); events = append(events, e); mu.Unlock() }
+	seen := func() string { mu.Lock(); defer mu.Unlock(); s := strings.Join(events, ","); events = nil; return s }
+	var decline, edit bool
+	op := func(name string) authn.OperationHooks[authn.LinkedAccount] {
+		return authn.OperationHooks[authn.LinkedAccount]{
+			Before: func(_ context.Context, account *authn.LinkedAccount, _ *authn.HookContext) error {
+				record(name + "-before:" + account.ProviderID + ":" + boolString(account.ID != ""))
+				if edit {
+					account.ProviderID = "github"
+				}
+				if decline {
+					return authn.ErrSkipWrite
+				}
+				return nil
+			},
+			After: func(_ context.Context, account authn.LinkedAccount, _ *authn.HookContext) error {
+				record(name + "-after:" + account.ProviderID + ":" + boolString(account.ID != ""))
+				return nil
+			},
+		}
+	}
+	store := memory.New()
+	off := false
+	auth, err := authn.New(authn.Options{
+		BaseURL: "https://auth.example", Store: store, Secret: strings.Repeat("s", 32), EmailAndPassword: true, RateLimit: &off,
+		Logger: slog.New(slog.DiscardHandler), AllowUnlinkingAll: true, DeleteUserEnabled: true,
+		DatabaseHooks: authn.DatabaseHooks{Account: authn.ModelHooks[authn.LinkedAccount]{Create: op("create"), Update: op("update"), Delete: op("delete")}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	h := http.Header{"Origin": {"https://auth.example"}, "Content-Type": {"application/json"}}
+	call := func(target, body string, status int) map[string]any {
+		t.Helper()
+		r := httptest.NewRequest("POST", "https://auth.example/api/auth"+target, strings.NewReader(body))
+		r.Header = h.Clone()
+		w := httptest.NewRecorder()
+		auth.ServeHTTP(w, r)
+		if w.Code != status {
+			t.Fatalf("POST %s returned %d, want %d: %s", target, w.Code, status, w.Body)
+		}
+		var out map[string]any
+		_ = json.Unmarshal(w.Body.Bytes(), &out)
+		for _, c := range w.Result().Cookies() {
+			if c.MaxAge >= 0 && c.Value != "" {
+				h.Set("Cookie", c.Name+"="+c.Value)
+			}
+		}
+		return out
+	}
+
+	// A declined credential cancels the sign-up; an accepted one is reported with its stored ID.
+	decline = true
+	if out := call("/sign-up/email", `{"email":"ada@example.com","password":"correct horse battery","name":"Ada"}`, 400); out["code"] != "FAILED_TO_CREATE_USER" {
+		t.Fatal("a declined credential did not cancel the sign-up", out)
+	}
+	decline = false
+	out := call("/sign-up/email", `{"email":"ada@example.com","password":"correct horse battery","name":"Ada"}`, 200)
+	adaID := out["user"].(map[string]any)["id"].(string)
+	if got := seen(); got != "create-before:credential:false,create-before:credential:false,create-after:credential:true" {
+		t.Fatal("unexpected sign-up account hooks", got)
+	}
+
+	// A declined password change fails, and the old password keeps working.
+	decline = true
+	if out = call("/change-password", `{"currentPassword":"correct horse battery","newPassword":"second horse battery"}`, 400); out["code"] != "FAILED_TO_UPDATE_USER" {
+		t.Fatal("a declined password change did not fail", out)
+	}
+	decline = false
+	call("/sign-in/email", `{"email":"ada@example.com","password":"correct horse battery"}`, 200)
+	call("/change-password", `{"currentPassword":"correct horse battery","newPassword":"second horse battery"}`, 200)
+	if got := seen(); got != "update-before:credential:true,update-before:credential:true,update-after:credential:true" {
+		t.Fatal("unexpected password change hooks", got)
+	}
+	// Account hooks may not change the account.
+	edit = true
+	call("/change-password", `{"currentPassword":"second horse battery","newPassword":"third horse battery"}`, 500)
+	edit = false
+	seen()
+
+	// A declined unlink answers success and keeps the account.
+	accounts, _ := store.ListUserAccounts(t.Context(), adaID)
+	credential := accounts[0].ID
+	decline = true
+	call("/unlink-account", `{"accountId":"`+credential+`"}`, 200)
+	decline = false
+	if accounts, _ = store.ListUserAccounts(t.Context(), adaID); len(accounts) != 1 {
+		t.Fatal("a declined unlink removed the account")
+	}
+	call("/unlink-account", `{"accountId":"`+credential+`"}`, 200)
+	if got := seen(); got != "delete-before:credential:true,delete-before:credential:true,delete-after:credential:true" {
+		t.Fatal("unexpected unlink hooks", got)
+	}
+
+	// Setting a first password creates the credential through the hooks.
+	if err := auth.SetPassword(t.Context(), h, "fourth horse battery"); err != nil {
+		t.Fatal(err)
+	}
+	if got := seen(); got != "create-before:credential:false,create-after:credential:true" {
+		t.Fatal("unexpected set-password hooks", got)
+	}
+
+	// Deleting the user runs the account delete hooks for each account.
+	call("/delete-user", `{"password":"fourth horse battery"}`, 200)
+	if got := seen(); got != "delete-before:credential:true,delete-after:credential:true" {
+		t.Fatal("unexpected account deletion hooks", got)
+	}
+
+	// Password reset changes the credential inside the store, so New refuses account hooks with it.
+	if _, err := authn.New(authn.Options{
+		BaseURL: "https://auth.example", Store: memory.New(), Secret: strings.Repeat("s", 32), EmailAndPassword: true,
+		SendResetPassword: func(context.Context, authn.MailLink) error { return nil },
+		DatabaseHooks:     authn.DatabaseHooks{Account: authn.ModelHooks[authn.LinkedAccount]{Update: op("update")}},
+	}); err == nil || !strings.Contains(err.Error(), "SendResetPassword") {
+		t.Fatal("account hooks were accepted with password reset", err)
+	}
+}

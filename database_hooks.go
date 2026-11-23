@@ -6,11 +6,13 @@ import (
 	"fmt"
 	"maps"
 	"reflect"
+	"slices"
 	"strings"
 )
 
 // DatabaseHooks run your code around the writes that create, update and
-// delete users and sessions, for HTTP requests and direct Go calls alike. Plugin hooks run
+// delete users, sessions and accounts, for HTTP requests and direct Go calls
+// alike. Plugin hooks run
 // first, in plugin order, then the Options hooks.
 //
 // A before hook runs just before the write and may edit the row or return
@@ -24,6 +26,9 @@ import (
 type DatabaseHooks struct {
 	User    ModelHooks[UserRecord]
 	Session ModelHooks[SessionRecord]
+	// Account hooks observe and may cancel credential and linked account
+	// writes. They may not change the account.
+	Account ModelHooks[LinkedAccount]
 }
 
 // ModelHooks holds the hooks for one model's create, update and delete writes.
@@ -105,11 +110,13 @@ func (m *modelChain[T]) add(h ModelHooks[T], source string) {
 type databaseHookChains struct {
 	user    modelChain[UserRecord]
 	session modelChain[SessionRecord]
+	account modelChain[LinkedAccount]
 }
 
 func (d databaseHookChains) set() bool {
 	return d.user.create.set() || d.user.update.set() || d.user.delete.set() ||
-		d.session.create.set() || d.session.update.set() || d.session.delete.set()
+		d.session.create.set() || d.session.update.set() || d.session.delete.set() ||
+		d.account.create.set() || d.account.update.set() || d.account.delete.set()
 }
 
 func composeDatabaseHooks(opts Options) databaseHookChains {
@@ -117,6 +124,7 @@ func composeDatabaseHooks(opts Options) databaseHookChains {
 	add := func(h DatabaseHooks, source string) {
 		d.user.add(h.User, source)
 		d.session.add(h.Session, source)
+		d.account.add(h.Account, source)
 	}
 	for _, p := range opts.Plugins {
 		add(p.DatabaseHooks, "plugin:"+p.ID)
@@ -182,8 +190,23 @@ func (a *Auth) checkDatabaseHooks() error {
 		need("admin", a.HasPlugin("admin"))
 		need("anonymous", a.HasPlugin("anonymous"))
 	}
+	if d.account.create.set() || d.account.update.set() || d.account.delete.set() {
+		if _, ok := a.opts.Store.(LinkedAccountStore); !ok {
+			return errors.New("auth: account database hooks require a store implementing ListUserAccounts")
+		}
+		// These flows write linked accounts inside the store's transaction.
+		need("social sign-in", len(a.opts.SocialProviders) > 0)
+		for _, id := range []string{"one-tap", "sso", "admin", "siwe", "magic-link", "anonymous"} {
+			need(id, a.HasPlugin(id))
+		}
+	}
+	if d.account.create.set() || d.account.update.set() {
+		need("SendResetPassword", a.opts.SendResetPassword != nil)
+		need("email-otp", a.HasPlugin("email-otp"))
+		need("phone-number", a.HasPlugin("phone-number"))
+	}
 	if len(bypass) > 0 {
-		return fmt.Errorf("auth: update and delete database hooks do not run yet for %s", strings.Join(bypass, ", "))
+		return fmt.Errorf("auth: these database hooks do not run yet for %s", strings.Join(bypass, ", "))
 	}
 	return nil
 }
@@ -355,33 +378,50 @@ func (a *Auth) beforeUserUpdate(ctx context.Context, row User, fields map[string
 // which removes the user with every session. A skip from any before hook
 // cancels the whole deletion and reports true.
 func (a *Auth) deleteUserWithHooks(ctx context.Context, user User, del func() error) (bool, error) {
-	if !a.dbHooks.user.delete.set() && !a.dbHooks.session.delete.set() {
+	d := a.dbHooks
+	if !d.user.delete.set() && !d.session.delete.set() && !d.account.delete.set() {
 		return false, del()
 	}
 	var sessions []Session
-	if a.dbHooks.session.delete.set() {
-		var err error
+	var accounts []LinkedAccount
+	var err error
+	if d.session.delete.set() {
 		if sessions, err = a.userSessionRows(ctx, user.ID, ""); err != nil {
 			return false, err
 		}
 	}
+	if d.account.delete.set() {
+		if accounts, err = a.opts.Store.(LinkedAccountStore).ListUserAccounts(ctx, user.ID); err != nil {
+			return false, err
+		}
+	}
 	for _, row := range sessions {
-		if err := runBefore(ctx, a, a.dbHooks.session.delete, &SessionRecord{Session: row, Fields: map[string]any{}}); err != nil {
+		if err := runBefore(ctx, a, d.session.delete, &SessionRecord{Session: row, Fields: map[string]any{}}); err != nil {
 			return errors.Is(err, ErrSkipWrite), skipless(err)
 		}
 	}
-	if err := runBefore(ctx, a, a.dbHooks.user.delete, &UserRecord{User: user, Fields: map[string]any{}}); err != nil {
+	for _, row := range accounts {
+		if err := a.beforeAccount(ctx, d.account.delete, row); err != nil {
+			return errors.Is(err, ErrSkipWrite), skipless(err)
+		}
+	}
+	if err := runBefore(ctx, a, d.user.delete, &UserRecord{User: user, Fields: map[string]any{}}); err != nil {
 		return errors.Is(err, ErrSkipWrite), skipless(err)
 	}
 	if err := del(); err != nil {
 		return false, err
 	}
 	for _, row := range sessions {
-		if err := runAfter(ctx, a, a.dbHooks.session.delete, SessionRecord{Session: row, Fields: map[string]any{}}); err != nil {
+		if err := runAfter(ctx, a, d.session.delete, SessionRecord{Session: row, Fields: map[string]any{}}); err != nil {
 			return false, err
 		}
 	}
-	return false, runAfter(ctx, a, a.dbHooks.user.delete, UserRecord{User: user, Fields: map[string]any{}})
+	for _, row := range accounts {
+		if err := runAfter(ctx, a, d.account.delete, row); err != nil {
+			return false, err
+		}
+	}
+	return false, runAfter(ctx, a, d.user.delete, UserRecord{User: user, Fields: map[string]any{}})
 }
 
 // skipless returns err unless it is ErrSkipWrite.
@@ -491,6 +531,56 @@ func (a *Auth) userSessionRows(ctx context.Context, userID, except string) ([]Se
 		}
 	}
 	return rows, nil
+}
+
+// beforeAccount runs one account operation's before hooks on row. Hooks may
+// not change the account.
+func (a *Auth) beforeAccount(ctx context.Context, chain operationChain[LinkedAccount], row LinkedAccount) error {
+	if len(chain.before) == 0 {
+		return nil
+	}
+	rec := row
+	rec.AdditionalFields, rec.Scopes = maps.Clone(row.AdditionalFields), slices.Clone(row.Scopes)
+	if err := runBefore(ctx, a, chain, &rec); err != nil {
+		return err
+	}
+	if !reflect.DeepEqual(rec, row) {
+		a.Logger().ErrorContext(ctx, errDatabaseHookEdit.Error(), "model", "account")
+		return errDatabaseHookEdit
+	}
+	return nil
+}
+
+// credentialAccount returns userID's stored credential account, or a draft
+// with no ID when it has none.
+func (a *Auth) credentialAccount(ctx context.Context, userID string) (LinkedAccount, error) {
+	store, ok := a.opts.Store.(LinkedAccountStore)
+	if !ok {
+		return LinkedAccount{}, errors.New("auth: account database hooks require a store implementing ListUserAccounts")
+	}
+	accounts, err := store.ListUserAccounts(ctx, userID)
+	if err != nil {
+		return LinkedAccount{}, err
+	}
+	for _, account := range accounts {
+		if account.ProviderID == "credential" {
+			return account, nil
+		}
+	}
+	return LinkedAccount{ProviderID: "credential", AccountID: userID, UserID: userID}, nil
+}
+
+// afterCredentialAccount runs the after hooks of one credential account write
+// with the stored row.
+func (a *Auth) afterCredentialAccount(ctx context.Context, chain operationChain[LinkedAccount], userID string) error {
+	if len(chain.after) == 0 {
+		return nil
+	}
+	row, err := a.credentialAccount(ctx, userID)
+	if err != nil {
+		return err
+	}
+	return runAfter(ctx, a, chain, row)
 }
 
 // afterDecidedSignIn runs the create after hooks for a sign-in whose store

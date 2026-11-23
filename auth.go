@@ -516,7 +516,7 @@ func (a *Auth) signUpEmail(ctx context.Context, in SignUpInput, meta RequestMeta
 		return AuthResult{}, duplicateSignupError()
 	}
 	var userFields, sessionFields map[string]any
-	if a.dbHooks.user.create.set() || first != nil && a.dbHooks.session.create.set() {
+	if a.dbHooks.user.create.set() || a.dbHooks.account.create.set() || first != nil && a.dbHooks.session.create.set() {
 		// An existing email takes the duplicate path before any hook runs.
 		if _, err := a.opts.Store.(signUpUserFinder).FindAccountUser(ctx, user.Email); err == nil {
 			return duplicate()
@@ -544,6 +544,13 @@ func (a *Auth) signUpEmail(ctx context.Context, in SignUpInput, meta RequestMeta
 				return AuthResult{}, err
 			}
 		}
+		credential := LinkedAccount{ProviderID: "credential", AccountID: user.ID, UserID: user.ID, CreatedAt: user.CreatedAt, UpdatedAt: user.UpdatedAt}
+		if err := a.beforeAccount(ctx, a.dbHooks.account.create, credential); errors.Is(err, ErrSkipWrite) {
+			// The credential is stored with its user, so declining it cancels the sign-up.
+			return AuthResult{}, &APIError{400, "FAILED_TO_CREATE_USER", "Failed to create user"}
+		} else if err != nil {
+			return AuthResult{}, err
+		}
 		if first != nil {
 			row, fields, err := a.beforeSessionCreate(ctx, *first, nil, &APIError{400, "FAILED_TO_CREATE_SESSION", "Failed to create session"})
 			if err != nil {
@@ -569,7 +576,11 @@ func (a *Auth) signUpEmail(ctx context.Context, in SignUpInput, meta RequestMeta
 	if err != nil {
 		return AuthResult{}, err
 	}
-	if err := a.afterUserCreate(ctx, user, userFields); err != nil {
+	err = a.afterUserCreate(ctx, user, userFields)
+	if err == nil {
+		err = a.afterCredentialAccount(ctx, a.dbHooks.account.create, user.ID)
+	}
+	if err != nil {
 		if first != nil {
 			return AuthResult{}, a.discardUnpublishedSession(ctx, first.Token, err)
 		}

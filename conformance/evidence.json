@@ -18427,6 +18427,11 @@
       "label": "Run the create after hooks for social sign-in, magic links, email codes and phone verification, once per new user",
       "test": "conformance/goapi/database_decided_hooks_test.go",
       "marker": "// Run the user and session create after hooks for sign-ins whose store"
+    },
+    {
+      "label": "Run account hooks around the credential a sign-up stores, password changes, first passwords, unlinking and account deletion",
+      "test": "conformance/goapi/database_user_hooks_test.go",
+      "marker": "// Run account hooks around the credential a sign-up stores, password"
     }
   ],
   "docs/content/docs/concepts/database.mdx#L881": [
@@ -18456,6 +18461,11 @@
       "label": "Run before a user and its sessions are deleted",
       "test": "conformance/goapi/database_user_hooks_test.go",
       "marker": "// A declined deletion answers like a completed one but keeps the user and every session."
+    },
+    {
+      "label": "Run before an account is created, updated or deleted",
+      "test": "conformance/goapi/database_user_hooks_test.go",
+      "marker": "// A declined credential cancels the sign-up; an accepted one is reported with its stored ID."
     }
   ],
   "docs/content/docs/concepts/database.mdx#L884/Behavior": [
@@ -18502,6 +18512,11 @@
       "label": "Run after the store creates a user or session during a social, magic link, email code or phone sign-in, with the owner the store chose",
       "test": "conformance/goapi/database_decided_hooks_test.go",
       "marker": "// The hook sees the stored session with the owner the store chose."
+    },
+    {
+      "label": "Run after an account is created or updated, with its stored ID",
+      "test": "conformance/goapi/database_user_hooks_test.go",
+      "marker": "// Setting a first password creates the credential through the hooks."
     }
   ],
   "docs/content/docs/concepts/database.mdx#L889/Behavior": [
@@ -18570,6 +18585,11 @@
       "label": "Configure user update hooks for profile updates, email changes and verification",
       "test": "conformance/goapi/database_user_hooks_test.go",
       "marker": "// A verified address changes through a link; a declined change keeps the old address."
+    },
+    {
+      "label": "Configure account hooks for credential and linked account writes",
+      "test": "conformance/goapi/database_user_hooks_test.go",
+      "marker": "// Run account hooks around the credential a sign-up stores, password"
     }
   ]
 }

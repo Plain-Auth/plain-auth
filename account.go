@@ -257,6 +257,19 @@ func (a *Auth) ChangePassword(ctx context.Context, h http.Header, in ChangePassw
 	if err != nil {
 		return AuthResult{}, err
 	}
+	if a.dbHooks.account.update.set() {
+		credential, err := a.credentialAccount(ctx, session.User.ID)
+		if err != nil {
+			return AuthResult{}, err
+		}
+		credential.UpdatedAt = a.now().UTC().Truncate(time.Millisecond)
+		if err := a.beforeAccount(ctx, a.dbHooks.account.update, credential); errors.Is(err, ErrSkipWrite) {
+			// A password change that silently did nothing would leave the old password working.
+			return AuthResult{}, &APIError{400, "FAILED_TO_UPDATE_USER", "Failed to update user"}
+		} else if err != nil {
+			return AuthResult{}, err
+		}
+	}
 	result := AuthResult{User: session.User}
 	var replacement *StoredSession
 	var replacementFields map[string]any
@@ -291,6 +304,9 @@ func (a *Auth) ChangePassword(ctx context.Context, h http.Header, in ChangePassw
 	}
 	if errors.Is(err, ErrNotFound) {
 		return AuthResult{}, &APIError{400, "INVALID_PASSWORD", "Invalid password"}
+	}
+	if err == nil {
+		err = a.afterCredentialAccount(ctx, a.dbHooks.account.update, session.User.ID)
 	}
 	if err == nil && replacement != nil {
 		err = a.afterSessionCreate(ctx, *replacement, replacementFields)

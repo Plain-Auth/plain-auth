@@ -46,14 +46,26 @@ func (a *Auth) SetPassword(ctx context.Context, h http.Header, password string) 
 	if err != nil {
 		return err
 	}
-	err = s.SetInitialPassword(ctx, session.User.ID, session.Session.Token, hash, a.now().UTC())
+	now := a.now().UTC()
+	if a.dbHooks.account.create.set() {
+		draft := LinkedAccount{ProviderID: "credential", AccountID: session.User.ID, UserID: session.User.ID, CreatedAt: now, UpdatedAt: now}
+		if err := a.beforeAccount(ctx, a.dbHooks.account.create, draft); errors.Is(err, ErrSkipWrite) {
+			return &APIError{400, "FAILED_TO_UPDATE_USER", "Failed to update user"}
+		} else if err != nil {
+			return err
+		}
+	}
+	err = s.SetInitialPassword(ctx, session.User.ID, session.Session.Token, hash, now)
 	if errors.Is(err, ErrPasswordAlreadySet) {
 		return &APIError{400, "PASSWORD_ALREADY_SET", "User already has a password set"}
 	}
 	if errors.Is(err, ErrNotFound) {
 		return &APIError{401, "UNAUTHORIZED", "Unauthorized"}
 	}
-	return err
+	if err != nil {
+		return err
+	}
+	return a.afterCredentialAccount(ctx, a.dbHooks.account.create, session.User.ID)
 }
 
 type DeleteUserInput struct{ Password, Token, CallbackURL string }

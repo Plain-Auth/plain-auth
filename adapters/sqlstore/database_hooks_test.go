@@ -38,7 +38,7 @@ func TestDatabaseCreateHooksOnSQL(t *testing.T) {
 			must(err)
 			admin, err := auth.NewAdmin(auth.AdminOptions{})
 			must(err)
-			var created atomic.Int32
+			var created, credentials atomic.Int32
 			var mu sync.Mutex
 			var events []string
 			record := func(e string) { mu.Lock(); events = append(events, e); mu.Unlock() }
@@ -138,6 +138,14 @@ func TestDatabaseCreateHooksOnSQL(t *testing.T) {
 						note("renamed:" + stored.Name)
 						return nil
 					},
+				}}, Account: auth.ModelHooks[auth.LinkedAccount]{Create: auth.OperationHooks[auth.LinkedAccount]{
+					After: func(ctx context.Context, a auth.LinkedAccount, _ *auth.HookContext) error {
+						if a.ID == "" || a.ProviderID != "credential" {
+							return errors.New("the credential after hook lacks the stored account")
+						}
+						credentials.Add(1)
+						return nil
+					},
 				}}, Session: auth.ModelHooks[auth.SessionRecord]{
 					Update: auth.OperationHooks[auth.SessionRecord]{After: func(ctx context.Context, s auth.SessionRecord, _ *auth.HookContext) error {
 						stored, _, err := store.Session(ctx, s.Token)
@@ -181,6 +189,13 @@ func TestDatabaseCreateHooksOnSQL(t *testing.T) {
 				w := httptest.NewRecorder()
 				sessions.ServeHTTP(w, r)
 				return w.Code
+			}
+			signUp := httptest.NewRequest("POST", "https://auth.example/api/auth/sign-up/email", strings.NewReader(`{"email":"lin@example.com","password":"correct horse battery","name":"Lin"}`))
+			signUp.Header = http.Header{"Origin": {"https://auth.example"}, "Content-Type": {"application/json"}}
+			signedUp := httptest.NewRecorder()
+			sessions.ServeHTTP(signedUp, signUp)
+			if signedUp.Code != 200 || credentials.Load() != 1 {
+				t.Fatal("the credential account hook did not run", signedUp.Code, signedUp.Body, credentials.Load())
 			}
 			browser := signIn()
 			signIn()

@@ -210,6 +210,7 @@
       - [x] Run hooks around profile updates, email changes and email verification ([test](../../conformance/goapi/database_user_hooks_test.go#L19))
       - [x] Run the session and user delete hooks when a user deletes their account ([test](../../conformance/goapi/database_user_hooks_test.go#L160))
       - [x] Run the create after hooks for social sign-in, magic links, email codes and phone verification, once per new user ([test](../../conformance/goapi/database_decided_hooks_test.go#L21))
+      - [x] Run account hooks around the credential a sign-up stores, password changes, first passwords, unlinking and account deletion ([test](../../conformance/goapi/database_user_hooks_test.go#L246))
       - [ ] 1. Before Hook
         - [x] Edit the stored fields of a new user or session, or cancel its creation, before anything is written ([test](../../conformance/goapi/database_hooks_test.go#L124))
         - [ ] Purpose
@@ -217,6 +218,7 @@
           - [x] Run before a session is refreshed, updated or deleted ([test](../../conformance/goapi/database_session_hooks_test.go#L120))
           - [x] Run before a user is updated, with the change applied ([test](../../conformance/goapi/database_user_hooks_test.go#L90))
           - [x] Run before a user and its sessions are deleted ([test](../../conformance/goapi/database_user_hooks_test.go#L227))
+          - [x] Run before an account is created, updated or deleted ([test](../../conformance/goapi/database_user_hooks_test.go#L302))
         - [ ] Behavior
           - [x] Cancel a creation with ErrSkipWrite, edit the stored fields, and reject edits to other fields ([test](../../conformance/goapi/database_hooks_test.go#L167))
           - [x] Cancel a session update or delete with ErrSkipWrite, let one declined row keep every session of a revocation, and reject edits to fields an update does not store ([test](../../conformance/goapi/database_session_hooks_test.go#L193))
@@ -228,6 +230,7 @@
           - [x] Run after a session is updated or deleted, with the change visible to the store ([test](../../conformance/goapi/database_session_hooks_test.go#L76))
           - [x] Run after a user is updated, with the stored row visible to the store ([test](../../conformance/goapi/database_user_hooks_test.go#L112))
           - [x] Run after the store creates a user or session during a social, magic link, email code or phone sign-in, with the owner the store chose ([test](../../conformance/goapi/database_decided_hooks_test.go#L79))
+          - [x] Run after an account is created or updated, with its stored ID ([test](../../conformance/goapi/database_user_hooks_test.go#L345))
         - [ ] Behavior
           - [x] Fire one after hook for concurrent sign-ups of one email and none for a sign-up that stores nothing ([test](../../adapters/sqlstore/database_hooks_test.go#L111))
           - [x] Run session update and delete after hooks once the change is stored, on SQLite, PostgreSQL and MySQL ([test](../../adapters/sqlstore/database_hooks_test.go#L126))
