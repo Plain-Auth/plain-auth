@@ -322,3 +322,141 @@ func boolString(v bool) string {
 	}
 	return "false"
 }
+
+// Read the session a response issues, delete it, set and read signed cookies,
+// and hash passwords with the instance's hasher from hooks.
+func TestEndpointHookSessionsAndCookies(t *testing.T) {
+	var mu sync.Mutex
+	var events []string
+	record := func(e string) { mu.Lock(); events = append(events, e); mu.Unlock() }
+	seen := func() string { mu.Lock(); defer mu.Unlock(); s := strings.Join(events, ","); events = nil; return s }
+	off := false
+	var hashed string
+	auth := newHTTPAuth(t, authn.Options{
+		BaseURL: "https://auth.example", RateLimit: &off,
+		PasswordHash: func(_ context.Context, password string) (string, error) { return "custom:" + password, nil },
+		PasswordVerify: func(_ context.Context, encoded, password string) (bool, error) {
+			return encoded == "custom:"+password, nil
+		},
+		Hooks: authn.EndpointHooks{
+			Before: []authn.EndpointHook{{Match: func(c *authn.HookContext) bool { return c.Path == "/ok" }, Run: func(c *authn.HookContext) error {
+				switch c.Request.URL.Query().Get("cookie") {
+				case "set":
+					c.SetCookie(c.Auth.SignedCookie("theme", "dark", 3600))
+				case "read":
+					value, ok := c.Auth.SignedCookieValue(c.Request, "theme")
+					record("theme:" + value + ":" + boolString(ok))
+				}
+				// Hash and verify with the instance's configured hasher.
+				if c.Request.URL.Query().Get("hash") != "" {
+					var err error
+					if hashed, err = c.Auth.HashPassword(c.Request.Context(), "correct horse"); err != nil {
+						return err
+					}
+					good, err := c.Auth.VerifyPasswordHash(c.Request.Context(), hashed, "correct horse")
+					if err != nil {
+						return err
+					}
+					bad, _ := c.Auth.VerifyPasswordHash(c.Request.Context(), hashed, "wrong horse")
+					record("hash:" + hashed + ":" + boolString(good) + ":" + boolString(bad))
+				}
+				return nil
+			}}},
+			After: []authn.EndpointHook{
+				{Run: func(c *authn.HookContext) error {
+					if c.Path == "/sign-in/email" && c.Err == nil && c.Request.URL.Query().Get("deny") != "" {
+						// Turn a successful sign-in into an error without issuing the session.
+						c.DeleteSessionCookie()
+						return &authn.APIError{Status: 403, Code: "SIGN_IN_DENIED", Message: "Sign-in is not allowed"}
+					}
+					return nil
+				}},
+				{Run: func(c *authn.HookContext) error {
+					// Notify when a new user signs up.
+					session, err := c.NewSession()
+					if err != nil {
+						return err
+					}
+					if session == nil {
+						record(c.Path + ":none")
+						return nil
+					}
+					record(c.Path + ":" + session.User.Name + ":" + boolString(session.Session.Token != ""))
+					return nil
+				}},
+			},
+		},
+	})
+	h := http.Header{"Origin": {"https://auth.example"}, "Content-Type": {"application/json"}}
+	call := func(method, target, body string, status int) *http.Response {
+		t.Helper()
+		return serve(t, auth, method, "/api/auth"+target, body, h, status)
+	}
+	sessionCookie := auth.Cookie("session_token", "", 0).Name
+	if sessionCookie != "__Secure-authn.session_token" {
+		t.Fatal("unexpected session cookie name", sessionCookie)
+	}
+	issued := func(res *http.Response) *http.Cookie {
+		for _, c := range res.Cookies() {
+			if c.Name == sessionCookie {
+				return c
+			}
+		}
+		return nil
+	}
+
+	// Sign-up and sign-in issue a session that after hooks can read.
+	res := call("POST", "/sign-up/email", `{"email":"ada@example.com","password":"correct horse battery","name":"Ada"}`, 200)
+	if got := seen(); got != "/sign-up/email:Ada:true" || issued(res) == nil {
+		t.Fatal("the new user's session was not visible", got)
+	}
+	call("POST", "/sign-in/email", `{"email":"ada@example.com","password":"wrong password here"}`, 401)
+	res = call("POST", "/sign-in/email", `{"email":"ada@example.com","password":"correct horse battery"}`, 200)
+	if got := seen(); got != "/sign-in/email:none,/sign-in/email:Ada:true" {
+		t.Fatal("unexpected new sessions", got)
+	}
+
+	// Signing out issues no session.
+	session := issued(res)
+	h.Set("Cookie", session.Name+"="+session.Value)
+	call("POST", "/sign-out", "{}", 200)
+	h.Del("Cookie")
+	if got := seen(); got != "/sign-out:none" {
+		t.Fatal("sign-out reported a new session", got)
+	}
+
+	// An after hook that denies a sign-in deletes the session cookie it would issue.
+	res = call("POST", "/sign-in/email?deny=1", `{"email":"ada@example.com","password":"correct horse battery"}`, 403)
+	if c := issued(res); c == nil || c.MaxAge >= 0 || c.Value != "" {
+		t.Fatal("a denied sign-in issued a session cookie", res.Header.Values("Set-Cookie"))
+	}
+	if got := seen(); got != "/sign-in/email:none" {
+		t.Fatal("a deleted session was still reported", got)
+	}
+
+	// A hook sets a signed cookie and reads it back; a tampered value is rejected.
+	res = call("GET", "/ok?cookie=set", "", 200)
+	var theme *http.Cookie
+	for _, c := range res.Cookies() {
+		if c.Name == "__Secure-authn.theme" {
+			theme = c
+		}
+	}
+	if theme == nil || !theme.HttpOnly || !theme.Secure || theme.Path != "/" || theme.MaxAge != 3600 {
+		t.Fatal("the signed cookie lacks the instance attributes", res.Header.Values("Set-Cookie"))
+	}
+	h.Set("Cookie", theme.Name+"="+theme.Value)
+	call("GET", "/ok?cookie=read", "", 200)
+	h.Set("Cookie", theme.Name+"="+strings.Replace(theme.Value, "dark", "lite", 1))
+	call("GET", "/ok?cookie=read", "", 200)
+	h.Del("Cookie")
+	if got := seen(); got != "/ok:none,theme:dark:true,/ok:none,theme::false,/ok:none" {
+		t.Fatal("unexpected signed cookie reads", got)
+	}
+
+	// Hooks hash and verify passwords with the configured hasher.
+	call("GET", "/ok?hash=1", "", 200)
+	if got := seen(); got != "hash:custom:correct horse:true:false,/ok:none" || hashed != "custom:correct horse" {
+		t.Fatal("the instance hasher was not used", got)
+	}
+}

@@ -1,6 +1,6 @@
 # Endpoint hooks
 
-Hooks run your code around the mounted HTTP endpoints, so you can adjust one endpoint without writing your own. A before hook can reject a request, rewrite what the endpoint reads, or answer it directly. An after hook can read and replace the endpoint's outcome and add response headers.
+Hooks run your code around the mounted HTTP endpoints, so you can adjust one endpoint without writing your own. A before hook can reject a request, rewrite what the endpoint reads, or answer it directly. An after hook can read and replace the endpoint's outcome, read the session it issued and set cookies.
 
 Set `Options.Hooks` for the application. A plugin sets `Plugin.Hooks` to reuse hooks across applications. Options hooks run first, then each plugin's hooks in plugin order.
 
@@ -63,6 +63,41 @@ After hooks run once the endpoint returns, before the response is written.
 - **`c.ResponseHeader`** holds the headers set so far by the endpoint and earlier hooks, including its `Set-Cookie` lines. Add headers there.
 
 An endpoint error that is not an `APIError` or `OAuthError` ends the request with a 500 before any after hook runs.
+
+## Read the new session
+
+```go
+opts.Hooks.After = []plainauth.EndpointHook{{
+    Match: func(c *plainauth.HookContext) bool { return strings.HasPrefix(c.Path, "/sign-up") },
+    Run: func(c *plainauth.HookContext) error {
+        session, err := c.NewSession()
+        if err != nil || session == nil {
+            return err
+        }
+        notify("user-register", session.User.Name)
+        return nil
+    },
+}}
+```
+
+`c.NewSession()` returns the session whose cookie this response issues, with its user, or nil when it issues none, for example after a failed sign-in or a sign-out.
+
+An after hook that turns a successful sign-in into an error should call `c.DeleteSessionCookie()`. It drops the session cookies the response would issue and expires the browser's session cookies instead, so the error response signs nobody in.
+
+## Set and read cookies
+
+```go
+c.SetCookie(c.Auth.SignedCookie("theme", "dark", 3600))
+theme, ok := c.Auth.SignedCookieValue(c.Request, "theme")
+```
+
+- `c.Auth.Cookie(name, value, maxAge)` builds a cookie with the instance's prefix and attributes: `Path=/`, `HttpOnly`, `SameSite=Lax`, `Secure` for an HTTPS base URL and the shared domain when cross-subdomain cookies are on. `c.Auth.Cookie("session_token", "", 0).Name` is the session cookie's name.
+- `c.Auth.SignedCookie` signs the value with the instance secret, in the same format as the session cookie. `c.Auth.SignedCookieValue` verifies it against the current and previous secrets and reports false for a missing or tampered cookie. Hooks never read the secret itself.
+- `c.SetCookie` adds the cookie to the response, and `c.Request.Cookie(name)` reads an unsigned one.
+
+## Hash passwords
+
+`c.Auth.HashPassword(ctx, password)` and `c.Auth.VerifyPasswordHash(ctx, hash, password)` use the instance's `Options.PasswordHash` and `Options.PasswordVerify`, or the built-in scrypt format, within the same limit on concurrent hashing as sign-in.
 
 ## Errors and panics
 

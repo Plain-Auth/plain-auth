@@ -260,33 +260,43 @@
       - [x] Reject a sign-up whose email is outside the allowed domain before any account is created ([test](../../conformance/goapi/endpoint_hooks_test.go#L50))
     - [x] Example: Modify Request Context ([test](../../conformance/goapi/endpoint_hooks_test.go#L55))
       - [x] Rewrite the body and request headers an endpoint reads, on a copy of the host request ([test](../../conformance/goapi/endpoint_hooks_test.go#L55))
-  - [ ] After Hooks
+  - [x] After Hooks ([test](../../conformance/goapi/endpoint_hooks_test.go#L218))
     - [x] Read and replace the endpoint result or error after it returns, before the response is written ([test](../../conformance/goapi/endpoint_hooks_test.go#L218))
-    - [ ] Example: Send a notification to your channel when a new user is registered
+    - [x] Example: Send a notification to your channel when a new user is registered ([test](../../conformance/goapi/endpoint_hooks_test.go#L375))
+      - [x] Read the new user from the session a sign-up issues and notify after the response is decided ([test](../../conformance/goapi/endpoint_hooks_test.go#L375))
     - [x] Example: Handling Multiple Endpoints in a Single Hook ([test](../../conformance/goapi/endpoint_hooks_test.go#L104))
       - [x] Branch on the route template to handle several endpoints in one after hook ([test](../../conformance/goapi/endpoint_hooks_test.go#L104))
   - [ ] Ctx
     - [x] Expose the route template, its parameters, the decoded body, the query and the request headers to hooks ([test](../../conformance/goapi/endpoint_hooks_test.go#L259))
-    - [ ] Context
-    - [ ] Request Response
+    - [x] Context ([test](../../conformance/goapi/endpoint_hooks_test.go#L326))
+      - [x] Reach the new session, auth cookies, password hashing and the instance from a hook ([test](../../conformance/goapi/endpoint_hooks_test.go#L326))
+    - [x] Request Response ([test](../../conformance/goapi/endpoint_hooks_test.go#L237))
+      - [x] Answer from a hook with JSON, a redirect, cookies or an error ([test](../../conformance/goapi/endpoint_hooks_test.go#L237))
       - [x] JSON Responses ([test](../../conformance/goapi/endpoint_hooks_test.go#L237))
         - [x] Answer a request with JSON from a before hook and skip the endpoint and after hooks ([test](../../conformance/goapi/endpoint_hooks_test.go#L237))
       - [x] Redirects ([test](../../conformance/goapi/endpoint_hooks_test.go#L68))
         - [x] Answer a request with a redirect from a before hook ([test](../../conformance/goapi/endpoint_hooks_test.go#L68))
-      - [ ] Cookies
+      - [x] Cookies ([test](../../conformance/goapi/endpoint_hooks_test.go#L437))
+        - [x] Set a signed cookie with the instance attributes and reject a tampered value on read ([test](../../conformance/goapi/endpoint_hooks_test.go#L437))
       - [x] Errors ([test](../../conformance/goapi/endpoint_hooks_test.go#L251))
         - [x] Reject with a chosen status, code and message, and answer internal hook failures and panics with a generic 500 ([test](../../conformance/goapi/endpoint_hooks_test.go#L251))
     - [ ] Context
-      - [ ] New Session
+      - [x] New Session ([test](../../conformance/goapi/endpoint_hooks_test.go#L408))
+        - [x] Return the session and user a response issues, and nothing after a failed sign-in, a sign-out or a deleted session cookie ([test](../../conformance/goapi/endpoint_hooks_test.go#L408))
       - [x] Returned ([test](../../conformance/goapi/endpoint_hooks_test.go#L218))
         - [x] Pass the replaced result or error on to later after hooks ([test](../../conformance/goapi/endpoint_hooks_test.go#L218))
       - [x] Response Headers ([test](../../conformance/goapi/endpoint_hooks_test.go#L197))
         - [x] Read the response headers and session cookie set by the endpoint and earlier hooks ([test](../../conformance/goapi/endpoint_hooks_test.go#L197))
-      - [ ] Predefined Auth Cookies
-      - [ ] Secret
-      - [ ] Password
-        - [ ] `ctx.context.password.hash`
-        - [ ] `ctx.context.password.verify`
+      - [x] Predefined Auth Cookies ([test](../../conformance/goapi/endpoint_hooks_test.go#L395))
+        - [x] Name and build cookies with the instance prefix and attributes, including the session cookie ([test](../../conformance/goapi/endpoint_hooks_test.go#L395))
+      - [x] Secret ([test](../../conformance/goapi/endpoint_hooks_test.go#L345))
+        - [x] Sign and verify cookie values with the instance secret without exposing the secret to hooks ([test](../../conformance/goapi/endpoint_hooks_test.go#L345))
+      - [x] Password ([test](../../conformance/goapi/endpoint_hooks_test.go#L350))
+        - [x] Hash and verify passwords with the instance hasher and its concurrency limit ([test](../../conformance/goapi/endpoint_hooks_test.go#L350))
+        - [x] `ctx.context.password.hash` ([test](../../conformance/goapi/endpoint_hooks_test.go#L350))
+          - [x] Hash and verify passwords with the instance hasher and its concurrency limit ([test](../../conformance/goapi/endpoint_hooks_test.go#L350))
+        - [x] `ctx.context.password.verify` ([test](../../conformance/goapi/endpoint_hooks_test.go#L350))
+          - [x] Hash and verify passwords with the instance hasher and its concurrency limit ([test](../../conformance/goapi/endpoint_hooks_test.go#L350))
       - [ ] Adapter
       - [ ] Internal Adapter
       - [ ] generateId
@@ -378,15 +388,18 @@
       - [ ] `options`
       - [ ] `tables`
       - [ ] `baseURL`
-      - [ ] `session`
+      - [x] `session` ([test](../../conformance/goapi/endpoint_hooks_test.go#L91))
+        - [x] Read the caller's session from an endpoint or hook context ([test](../../conformance/goapi/endpoint_hooks_test.go#L91))
       - [ ] `secret`
-      - [ ] `authCookie`
+      - [x] `authCookie` ([test](../../conformance/goapi/endpoint_hooks_test.go#L395))
+        - [x] Name and build cookies with the instance prefix and attributes, including the session cookie ([test](../../conformance/goapi/endpoint_hooks_test.go#L395))
       - [x] `logger` ([test](../../conformance/goapi/logger_test.go#L57))
         - [x] Use the instance logger from plugin hooks and keep records from separate hosts isolated ([test](../../conformance/goapi/logger_test.go#L57))
       - [ ] `db`
       - [ ] `adapter`
       - [ ] `internalAdapter`
-      - [ ] `createAuthCookie`
+      - [x] `createAuthCookie` ([test](../../conformance/goapi/endpoint_hooks_test.go#L445))
+        - [x] Build a cookie with the instance prefix, path, HttpOnly, SameSite, Secure and shared-domain attributes ([test](../../conformance/goapi/endpoint_hooks_test.go#L445))
       - [ ] `trustedOrigins`
       - [ ] `isTrustedOrigin`
       - [ ] Rules for Endpoints

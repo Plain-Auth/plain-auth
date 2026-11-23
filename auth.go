@@ -620,6 +620,16 @@ func (a *Auth) GetSession(ctx context.Context, headers http.Header) (*SessionRes
 	if token == "" {
 		return nil, nil
 	}
+	result, err := a.sessionForToken(ctx, token)
+	if result != nil && a.translateError != nil {
+		a.noteErrorUser(ctx, token, result.User)
+	}
+	return result, err
+}
+
+// sessionForToken returns the live session for token, or nil when it is
+// unknown or expired.
+func (a *Auth) sessionForToken(ctx context.Context, token string) (*SessionResult, error) {
 	row, user, err := a.opts.Store.Session(ctx, token)
 	if errors.Is(err, ErrNotFound) {
 		return nil, nil
@@ -634,9 +644,6 @@ func (a *Auth) GetSession(ctx context.Context, headers http.Header) (*SessionRes
 	result, err := a.withSessionPlugins(ctx, row.Session, user)
 	if errors.Is(err, ErrNotFound) {
 		return nil, nil
-	}
-	if err == nil && a.translateError != nil {
-		a.noteErrorUser(ctx, token, result.User)
 	}
 	return result, err
 }

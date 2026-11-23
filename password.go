@@ -81,6 +81,18 @@ func (a *Auth) ValidateNewPassword(ctx context.Context, path, password string) e
 	return nil
 }
 
+// HashPassword hashes password with this instance's Options.PasswordHash, or
+// the built-in scrypt format, within its limit on concurrent hashing.
+func (a *Auth) HashPassword(ctx context.Context, password string) (string, error) {
+	return a.derivePassword(ctx, password)
+}
+
+// VerifyPasswordHash checks password against hash with this instance's
+// Options.PasswordVerify, or the built-in scrypt format.
+func (a *Auth) VerifyPasswordHash(ctx context.Context, hash, password string) (bool, error) {
+	return a.checkCredential(ctx, hash, password)
+}
+
 func (a *Auth) hashCredential(ctx context.Context, path, password string) (string, error) {
 	if err := a.ValidateNewPassword(ctx, path, password); err != nil {
 		return "", err

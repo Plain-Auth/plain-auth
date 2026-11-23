@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 )
 
@@ -61,6 +62,62 @@ type HookContext struct {
 // EmptyResponse.
 func (c *HookContext) Respond(result any) {
 	c.Result, c.Err, c.responded = result, nil, true
+}
+
+// NewSession returns the session whose cookie this response issues, or nil
+// when it issues none. Use it in after hooks, for example to notify a new
+// user after sign-up. It is nil after a failed sign-in, after a sign-out and
+// after DeleteSessionCookie.
+func (c *HookContext) NewSession() (*SessionResult, error) {
+	token := c.Auth.issuedSessionToken(c.ResponseHeader)
+	if token == "" {
+		return nil, nil
+	}
+	return c.Auth.sessionForToken(c.Request.Context(), token)
+}
+
+// SetCookie adds a Set-Cookie header to the response. Auth.Cookie and
+// Auth.SignedCookie build cookies with the instance's prefix and attributes.
+func (c *HookContext) SetCookie(cookie *http.Cookie) {
+	if line := cookie.String(); line != "" {
+		c.ResponseHeader.Add("Set-Cookie", line)
+	}
+}
+
+// DeleteSessionCookie removes the session cookies this response would issue
+// and expires the browser's session cookies instead. Call it when an after
+// hook turns a successful sign-in into an error.
+func (c *HookContext) DeleteSessionCookie() {
+	expired := make(http.Header)
+	c.Auth.expireSessionCookieHeaders(expired, c.Request)
+	names := map[string]bool{}
+	for _, line := range expired.Values("Set-Cookie") {
+		if cookie, err := http.ParseSetCookie(line); err == nil {
+			names[cookie.Name] = true
+		}
+	}
+	var kept []string
+	for _, line := range c.ResponseHeader.Values("Set-Cookie") {
+		cookie, err := http.ParseSetCookie(line)
+		if err == nil && (names[cookie.Name] || names[chunkedCookieBase(cookie.Name)]) {
+			continue
+		}
+		kept = append(kept, line)
+	}
+	c.ResponseHeader.Del("Set-Cookie")
+	for _, line := range append(kept, expired.Values("Set-Cookie")...) {
+		c.ResponseHeader.Add("Set-Cookie", line)
+	}
+}
+
+// chunkedCookieBase returns the cookie name a "<name>.<index>" chunk belongs to.
+func chunkedCookieBase(name string) string {
+	if i := strings.LastIndexByte(name, '.'); i > 0 {
+		if _, err := strconv.ParseUint(name[i+1:], 10, 53); err == nil {
+			return name[:i]
+		}
+	}
+	return name
 }
 
 type boundHook struct {

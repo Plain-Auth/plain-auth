@@ -154,6 +154,47 @@ func signCookieValue(token, secret string) string {
 	return base64.StdEncoding.EncodeToString(mac.Sum(nil))
 }
 
+// Cookie returns a cookie named with this instance's cookie prefix and its
+// cookie attributes: Path=/, HttpOnly, SameSite=Lax, Secure for an HTTPS base
+// URL and the shared domain when cross-subdomain cookies are enabled. The
+// session cookie is Cookie("session_token", ...).
+func (a *Auth) Cookie(name, value string, maxAge int) *http.Cookie {
+	return a.browserCookie(name, value, maxAge)
+}
+
+// SignedCookie returns Cookie(name, value, maxAge) with value signed by the
+// instance secret, in the same format as the session cookie.
+func (a *Auth) SignedCookie(name, value string, maxAge int) *http.Cookie {
+	return a.browserCookie(name, url.QueryEscape(value+"."+a.cookieSignature(value)), maxAge)
+}
+
+// SignedCookieValue returns the value of the request's SignedCookie of that
+// name. It reports false when the cookie is missing or its signature does not
+// match the current or a previous secret.
+func (a *Auth) SignedCookieValue(r *http.Request, name string) (string, bool) {
+	c, err := r.Cookie(a.prefixedCookieName(name))
+	if err != nil {
+		return "", false
+	}
+	value := a.VerifySignedSessionToken(c.Value)
+	return value, value != ""
+}
+
+// issuedSessionToken returns the session token this response's last session
+// cookie carries, or "" when it issues none or expires the session cookie.
+func (a *Auth) issuedSessionToken(h http.Header) string {
+	var issued *http.Cookie
+	for _, line := range h.Values("Set-Cookie") {
+		if c, err := http.ParseSetCookie(line); err == nil && c.Name == a.cookieName() {
+			issued = c
+		}
+	}
+	if issued == nil || issued.Value == "" || issued.MaxAge < 0 {
+		return ""
+	}
+	return a.VerifySignedSessionToken(issued.Value)
+}
+
 // SessionCookie returns the HTTP-only cookie for a token obtained through
 // SignUpEmail or SignInEmail. The caller owns the response writer.
 func (a *Auth) SessionCookie(token string, persistent bool) *http.Cookie {

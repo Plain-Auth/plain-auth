@@ -18220,5 +18220,109 @@
       "marker": "// Run before and after hooks around HTTP endpoints",
       "complete": true
     }
+  ],
+  "docs/content/docs/concepts/hooks.mdx#L72": [
+    {
+      "label": "Read the new user from the session a sign-up issues and notify after the response is decided",
+      "test": "conformance/goapi/endpoint_hooks_test.go",
+      "marker": "// Notify when a new user signs up.",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/concepts/hooks.mdx#L134/Context": [
+    {
+      "label": "Reach the new session, auth cookies, password hashing and the instance from a hook",
+      "test": "conformance/goapi/endpoint_hooks_test.go",
+      "marker": "// Read the session a response issues, delete it, set and read signed cookies,",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/concepts/hooks.mdx#L168": [
+    {
+      "label": "Set a signed cookie with the instance attributes and reject a tampered value on read",
+      "test": "conformance/goapi/endpoint_hooks_test.go",
+      "marker": "// A hook sets a signed cookie and reads it back; a tampered value is rejected.",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/concepts/hooks.mdx#L207": [
+    {
+      "label": "Return the session and user a response issues, and nothing after a failed sign-in, a sign-out or a deleted session cookie",
+      "test": "conformance/goapi/endpoint_hooks_test.go",
+      "marker": "// Sign-up and sign-in issue a session that after hooks can read.",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/concepts/hooks.mdx#L243": [
+    {
+      "label": "Name and build cookies with the instance prefix and attributes, including the session cookie",
+      "test": "conformance/goapi/endpoint_hooks_test.go",
+      "marker": "sessionCookie := auth.Cookie(\"session_token\", \"\", 0).Name",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/concepts/hooks.mdx#L255": [
+    {
+      "label": "Sign and verify cookie values with the instance secret without exposing the secret to hooks",
+      "test": "conformance/goapi/endpoint_hooks_test.go",
+      "marker": "c.SetCookie(c.Auth.SignedCookie(\"theme\", \"dark\", 3600))",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/concepts/hooks.mdx#L259": [
+    {
+      "label": "Hash and verify passwords with the instance hasher and its concurrency limit",
+      "test": "conformance/goapi/endpoint_hooks_test.go",
+      "marker": "// Hash and verify with the instance's configured hasher.",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/concepts/hooks.mdx#L263/`ctx.context.password.hash`": [
+    {
+      "label": "Hash and verify passwords with the instance hasher and its concurrency limit",
+      "test": "conformance/goapi/endpoint_hooks_test.go",
+      "marker": "// Hash and verify with the instance's configured hasher.",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/concepts/hooks.mdx#L264/`ctx.context.password.verify`": [
+    {
+      "label": "Hash and verify passwords with the instance hasher and its concurrency limit",
+      "test": "conformance/goapi/endpoint_hooks_test.go",
+      "marker": "// Hash and verify with the instance's configured hasher.",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/concepts/plugins.mdx#L145/`session`": [
+    {
+      "label": "Read the caller's session from an endpoint or hook context",
+      "test": "conformance/goapi/endpoint_hooks_test.go",
+      "marker": "record(\"session:\" + session.User.Email)",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/concepts/plugins.mdx#L147/`authCookie`": [
+    {
+      "label": "Name and build cookies with the instance prefix and attributes, including the session cookie",
+      "test": "conformance/goapi/endpoint_hooks_test.go",
+      "marker": "sessionCookie := auth.Cookie(\"session_token\", \"\", 0).Name",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/concepts/plugins.mdx#L152/`createAuthCookie`": [
+    {
+      "label": "Build a cookie with the instance prefix, path, HttpOnly, SameSite, Secure and shared-domain attributes",
+      "test": "conformance/goapi/endpoint_hooks_test.go",
+      "marker": "if theme == nil || !theme.HttpOnly || !theme.Secure || theme.Path != \"/\" || theme.MaxAge != 3600 {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/concepts/hooks.mdx#L138": [
+    {
+      "label": "Answer from a hook with JSON, a redirect, cookies or an error",
+      "test": "conformance/goapi/endpoint_hooks_test.go",
+      "marker": "// Before hooks answer with JSON or a redirect, and the endpoint and after hooks are skipped.",
+      "complete": true
+    }
   ]
 }
