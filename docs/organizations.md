@@ -728,9 +728,31 @@ Owners and admins manage teams and membership. An organization member can list t
 
 To invite a new organization member into teams, include `teamId` in `/organization/invite-member`. Supply one ID or an array of IDs from that organization. Acceptance commits the organization membership and every team membership together. A single invited team becomes active on the accepting session. Removing a team updates outstanding invitations. An invitation whose final team is removed can still grant organization membership.
 
-`MaximumTeams` limits the number of teams per organization. A positive value enables the limit. `MaximumMembersPerTeam` sets a fixed seat limit for added and invited members, and `nil` leaves capacity unrestricted. Removing an organization's last team requires `AllowRemovingAllTeams: true`. Dynamic team quotas and team lifecycle callbacks are tracked separately in the [organization checklist](parity/plugins/organization.md).
+`MaximumTeams` limits the number of teams per organization. A positive value enables the limit. `MaximumMembersPerTeam` sets a fixed seat limit for added and invited members, and `nil` leaves capacity unrestricted. Removing an organization's last team requires `AllowRemovingAllTeams: true`. See the [organization checklist](parity/plugins/organization.md) for team membership policies and lifecycle callbacks.
 
 The native client includes `CreateTeam`, `UpdateTeam`, `RemoveTeam`, `ListOrganizationTeams`, `ListUserTeams`, `SetActiveTeam`, `ListTeamMembers`, `AddTeamMember` and `RemoveTeamMember`. Each client uses its own session when resolving an omitted organization or team. [Multi-engine team tests](../adapters/sqlstore/organization_teams_test.go)
+
+
+### Set a team limit per organization
+
+Set `TeamOptions.ResolveMaximumTeams` to look up the total number of teams an organization may have. For example, a billing policy can use the organization's plan. Return a positive count to set a cap or zero to allow unlimited teams. Choose the resolver or a fixed `MaximumTeams` value.
+
+```go
+groups, err := organization.NewService(organization.Options{
+    Store: store,
+    Teams: &organization.TeamOptions{
+        ResolveMaximumTeams: func(ctx context.Context, in organization.TeamLimitInput) (int, error) {
+            return plans.TeamLimit(ctx, in.OrganizationID)
+        },
+    },
+})
+```
+
+`plans.TeamLimit` is an application function. Signed HTTP calls provide the destination organization ID, the current user's core profile and session in `in.Session`, and the incoming `in.Request`. `POST /organization/create-team` accepts `{"name":"Design","organizationId":"org_a"}`. An omitted or empty organization ID uses the current session's selection. A member needs `team.create` in the destination. In Go, use `authClient.CreateTeam(ctx, "Design", organizationID)`.
+
+Trusted backend code can call `groups.CreateTeam(ctx, organization.CreateTeamRequest{OrganizationID: organizationID, Name: "Design"})`. The application authorizes this call. It requires an explicit destination and gives the resolver a nil session and request. Both entry points count the same teams, including the default team created with an organization. Creating that initial team skips the resolver.
+
+Plain Auth calls the resolver outside the database transaction. Before saving, it checks the actor, destination and available capacity again. A full organization receives HTTP 400 with `YOU_HAVE_REACHED_THE_MAXIMUM_NUMBER_OF_TEAMS`. If the callback's session or profile inputs change while it runs, retry after HTTP 409 with `TEAM_POLICY_INPUT_CHANGED`. A revoked session or membership gets its authentication or permission error. Creating a team preserves the active selection. [HTTP and server API comparisons](../conformance/organization-team-limits.mjs) · [Concurrent creation on three SQL engines](../adapters/sqlstore/organization_team_creation_test.go)
 
 ### Share a database between nodes
 

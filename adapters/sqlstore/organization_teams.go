@@ -18,8 +18,8 @@ import (
 )
 
 func (s *Store) WithOrganizationTeams(opts org.TeamOptions) (org.TeamStore, error) {
-	if opts.MaximumTeams < 0 || (opts.MaximumMembersPerTeam != nil && *opts.MaximumMembersPerTeam < 0) {
-		return nil, errors.New("sqlstore: team limits must be nonnegative")
+	if err := opts.Validate(); err != nil {
+		return nil, err
 	}
 	if opts.MaximumMembersPerTeam != nil {
 		limit := *opts.MaximumMembersPerTeam
@@ -44,24 +44,44 @@ type teamTransaction struct {
 }
 
 func (s *Store) withTeamActor(ctx context.Context, a org.TeamActor, otherUser string, fn func(teamTransaction) error) error {
+	return s.withTeamTransaction(ctx, &a, otherUser, fn)
+}
+
+func (s *Store) withTeamTransaction(ctx context.Context, actor *org.TeamActor, otherUser string, fn func(teamTransaction) error) error {
 	if s.teamOptions == nil {
 		return errors.New("sqlstore: organization teams are disabled")
 	}
 	var err error
 	for range 3 {
-		err = s.runTeamTransaction(ctx, a, otherUser, fn)
+		err = s.runTeamTransaction(ctx, actor, otherUser, fn)
 		if !retryIdentity(err) {
 			break
 		}
 	}
 	return err
 }
-func (s *Store) runTeamTransaction(ctx context.Context, a org.TeamActor, otherUser string, fn func(teamTransaction) error) error {
+func (s *Store) runTeamTransaction(ctx context.Context, a *org.TeamActor, otherUser string, fn func(teamTransaction) error) error {
 	tx, err := s.beginMembershipChange(ctx)
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
+	t := teamTransaction{Store: s, ctx: ctx, tx: tx}
+	if a != nil {
+		t.actor = *a
+		if err := t.lockActor(otherUser); err != nil {
+			return err
+		}
+	}
+	if err = fn(t); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+func (t *teamTransaction) lockActor(otherUser string) error {
+	s, ctx, tx, a := t.Store, t.ctx, t.tx, t.actor
+	var err error
 	// Lock both accounts in stable order before the organization. Account deletion takes the same account locks.
 	if otherUser != "" && otherUser != a.UserID {
 		users := []string{a.UserID, otherUser}
@@ -81,15 +101,8 @@ func (s *Store) runTeamTransaction(ctx context.Context, a org.TeamActor, otherUs
 	if _, err = s.organizationActor(ctx, tx, a.UserID, a.SessionID, time.Now()); err != nil {
 		return err
 	}
-	t := teamTransaction{Store: s, ctx: ctx, tx: tx, actor: a}
 	err = tx.QueryRowContext(ctx, s.bind(`SELECT COALESCE("activeOrganizationId",''),COALESCE("activeTeamId",'') FROM "session" WHERE "id"=? AND "userId"=?`), a.SessionID, a.UserID).Scan(&t.activeOrg, &t.activeTeam)
-	if err != nil {
-		return err
-	}
-	if err = fn(t); err != nil {
-		return err
-	}
-	return tx.Commit()
+	return err
 }
 
 func (s *Store) ActiveTeam(ctx context.Context, a org.TeamActor) (*string, error) {
@@ -168,26 +181,6 @@ func (s *Store) insertTeam(ctx context.Context, tx *sql.Tx, orgID, name string, 
 	}
 	_, err := tx.ExecContext(ctx, s.bind(`INSERT INTO "team" ("id","name","organizationId","memberCount","createdAt","updatedAt") VALUES(?,?,?,0,?,?)`), t.ID, name, orgID, s.date(now), date)
 	return &t, err
-}
-func (s *Store) CreateTeam(ctx context.Context, a org.TeamActor, explicit, name string) (result *org.Team, err error) {
-	err = s.withTeamActor(ctx, a, "", func(t teamTransaction) error {
-		id, err := t.authorizeOrg(explicit, "team", "create", org.ErrInviteDenied, org.ErrTeamCreate)
-		if err != nil {
-			return err
-		}
-		if max := s.teamOptions.MaximumTeams; max > 0 {
-			var count int
-			if err = t.tx.QueryRowContext(ctx, s.bind(`SELECT COUNT(*) FROM "team" WHERE "organizationId"=?`), id).Scan(&count); err != nil {
-				return err
-			}
-			if count >= max {
-				return org.ErrTeamLimit
-			}
-		}
-		result, err = s.insertTeam(ctx, t.tx, id, name, true)
-		return err
-	})
-	return
 }
 func (s *Store) UpdateTeam(ctx context.Context, a org.TeamActor, explicit, id string, name *string) (result *org.Team, err error) {
 	err = s.withTeamActor(ctx, a, "", func(t teamTransaction) error {

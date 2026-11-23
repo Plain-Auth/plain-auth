@@ -13,7 +13,9 @@ import (
 
 // TeamOptions enables team management for an organization store with the teams schema.
 type TeamOptions struct {
-	MaximumTeams          int
+	MaximumTeams int
+	// ResolveMaximumTeams determines the total team limit per creation. Zero means unlimited.
+	ResolveMaximumTeams   func(context.Context, TeamLimitInput) (int, error)
 	MaximumMembersPerTeam *int
 	DisableDefaultTeam    bool
 	AllowRemovingAllTeams bool
@@ -77,13 +79,24 @@ var (
 	ErrTeamListOrg        = ErrRoleReadDenied
 )
 
+// Validate checks the host's team configuration before any store is opened.
+func (opts TeamOptions) Validate() error {
+	if opts.MaximumTeams < 0 || (opts.MaximumMembersPerTeam != nil && *opts.MaximumMembersPerTeam < 0) {
+		return errors.New("organization: team limits cannot be negative")
+	}
+	if opts.ResolveMaximumTeams != nil && opts.MaximumTeams != 0 {
+		return errors.New("organization: choose a fixed team limit or a resolver")
+	}
+	return nil
+}
+
 func (o *Options) configureTeams() error {
 	if o.Teams == nil {
 		return nil
 	}
 	opts := *o.Teams
-	if opts.MaximumTeams < 0 || (opts.MaximumMembersPerTeam != nil && *opts.MaximumMembersPerTeam < 0) {
-		return errors.New("organization: team limits cannot be negative")
+	if err := opts.Validate(); err != nil {
+		return err
 	}
 	if opts.MaximumMembersPerTeam != nil {
 		limit := *opts.MaximumMembersPerTeam
@@ -96,6 +109,11 @@ func (o *Options) configureTeams() error {
 	store, err := provider.WithOrganizationTeams(opts)
 	if err != nil {
 		return err
+	}
+	if opts.ResolveMaximumTeams != nil {
+		if _, ok := store.(TeamCreationStore); !ok {
+			return errors.New("organization: resolved team limits require a TeamCreationStore")
+		}
 	}
 	o.teamStore = store
 	o.Store = store
@@ -135,8 +153,8 @@ func (t InvitationTeamTargets) StoredValue() (*string, error) {
 
 func (o Options) teamEndpoints() []authn.Endpoint {
 	type route struct{ method, path string }
-	routes := []route{{"POST", "create-team"}, {"POST", "update-team"}, {"POST", "remove-team"}, {"GET", "list-teams"}, {"POST", "set-active-team"}, {"GET", "list-user-teams"}, {"GET", "list-team-members"}, {"POST", "add-team-member"}, {"POST", "remove-team-member"}}
-	endpoints := make([]authn.Endpoint, 0, len(routes))
+	routes := []route{{"POST", "update-team"}, {"POST", "remove-team"}, {"GET", "list-teams"}, {"POST", "set-active-team"}, {"GET", "list-user-teams"}, {"GET", "list-team-members"}, {"POST", "add-team-member"}, {"POST", "remove-team-member"}}
+	endpoints := []authn.Endpoint{o.teamCreationEndpoint()}
 	for _, route := range routes {
 		endpoints = append(endpoints, o.endpoint(route.method, route.path, func(c authn.EndpointContext, s *authn.SessionResult) (any, error) {
 			return o.teamRequest(c, TeamActor{UserID: s.User.ID, SessionID: s.Session.ID}, s.Session, route.path)
@@ -196,13 +214,7 @@ func (o Options) teamRequest(c authn.EndpointContext, actor TeamActor, session a
 	if err != nil {
 		return nil, err
 	}
-	if action == "create-team" {
-		name, err := textField(data, "name")
-		if err != nil {
-			return nil, err
-		}
-		return store.CreateTeam(ctx, actor, orgID, name)
-	}
+
 	id, err := textField(body, "teamId")
 	if err != nil {
 		return nil, err

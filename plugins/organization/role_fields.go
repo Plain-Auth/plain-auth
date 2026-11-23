@@ -50,7 +50,7 @@ func ParseRoleFieldInput(defs map[string]RoleField, input map[string]any, patch 
 			var elements sessionfields.ElementErrors
 			if errors.As(err, &elements) {
 				for _, e := range elements {
-					issues = append(issues, roleInputTypeIssue(fieldPath+"."+strconv.Itoa(e.Index), e.Expected, e.Value, true))
+					issues = append(issues, bodyTypeIssue(fieldPath+"."+strconv.Itoa(e.Index), e.Expected, e.Value, true))
 				}
 				continue
 			}
@@ -60,7 +60,7 @@ func ParseRoleFieldInput(defs map[string]RoleField, input map[string]any, patch 
 			if present && (jsjson.TypeName(value) == expected || f.Type == RoleJSON) {
 				issues = append(issues, "[body."+fieldPath+"] "+err.Error())
 			} else {
-				issues = append(issues, roleInputTypeIssue(fieldPath, expected, value, present))
+				issues = append(issues, bodyTypeIssue(fieldPath, expected, value, present))
 			}
 			continue
 		}

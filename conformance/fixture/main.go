@@ -44,6 +44,12 @@ func main() {
 		}
 		return
 	}
+	if len(os.Args) == 3 && os.Args[1] == "create-organization-team" {
+		if err := createFixtureTeam(os.Args[2]); err != nil {
+			log.Fatal(err)
+		}
+		return
+	}
 	if len(os.Args) == 3 && os.Args[1] == "add-organization-member" {
 		if err := grantMember(os.Args[2]); err != nil {
 			log.Fatal(err)
@@ -334,7 +340,7 @@ func main() {
 				configureOrganizationProfileHooks(&options, os.Args[1]+".org-profile-events")
 			}
 			if id == "organization-teams" {
-				options.Teams = &organization.TeamOptions{}
+				options.Teams = fixtureTeamOptions()
 			}
 			p, err := organization.New(options)
 			if err != nil {

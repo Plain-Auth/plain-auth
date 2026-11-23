@@ -344,6 +344,10 @@ func addRoleInputFields(properties object, defs map[string]plainauth.HTTPField) 
 }
 
 func adjustRequest(op object, r plainauth.HTTPRoute, info plainauth.HTTPDescription, a *plainauth.Auth) {
+	if r.Plugin == "organization" && r.Path == "/organization/create-team" {
+		body := responseObject(object{"name": object{"type": "string"}, "organizationId": object{"type": "string"}}, "name")
+		op["requestBody"] = object{"required": true, "content": content("application/json", body)}
+	}
 	if r.Plugin == "organization" && r.Path == "/organization/create-role" {
 		body := responseObject(object{
 			"organizationId": object{"type": "string"},

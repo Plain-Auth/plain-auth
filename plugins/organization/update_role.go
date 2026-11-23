@@ -37,7 +37,7 @@ func roleUpdateInput(body map[string]any, defs map[string]RoleField) (RoleQuery,
 	raw, present := body["data"]
 	data, ok := raw.(map[string]any)
 	if !ok {
-		issues = append(issues, roleInputTypeIssue("data", "object", raw, present))
+		issues = append(issues, bodyTypeIssue("data", "object", raw, present))
 	} else {
 		var err error
 		change.AdditionalFields, err = ParseRoleFieldInput(defs, data, true)
@@ -51,7 +51,7 @@ func roleUpdateInput(body map[string]any, defs map[string]RoleField) (RoleQuery,
 		}
 		if name, has := data["roleName"]; has {
 			if change.RoleName, ok = name.(string); !ok {
-				issues = append(issues, roleInputTypeIssue("data.roleName", "string", name, true))
+				issues = append(issues, bodyTypeIssue("data.roleName", "string", name, true))
 			}
 		}
 	}

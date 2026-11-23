@@ -75,7 +75,7 @@ func (p RolePolicy) CheckDelegation(actorRole string, grants access.Statements, 
 	return nil
 }
 
-func roleInputTypeIssue(path, expected string, value any, present bool) string {
+func bodyTypeIssue(path, expected string, value any, present bool) string {
 	got := "undefined"
 	if present {
 		got = jsjson.TypeName(value)
@@ -86,7 +86,7 @@ func roleInputTypeIssue(path, expected string, value any, present bool) string {
 func rolePermissionInput(path string, raw any, present bool) (access.Statements, []string) {
 	fields, ok := raw.(map[string]any)
 	if !ok {
-		return nil, []string{roleInputTypeIssue(path, "record", raw, present)}
+		return nil, []string{bodyTypeIssue(path, "record", raw, present)}
 	}
 	grants := make(access.Statements, len(fields))
 	var issues []string
@@ -94,13 +94,13 @@ func rolePermissionInput(path string, raw any, present bool) (access.Statements,
 		field := path + "." + key
 		list, ok := fields[key].([]any)
 		if !ok {
-			issues = append(issues, roleInputTypeIssue(field, "array", fields[key], true))
+			issues = append(issues, bodyTypeIssue(field, "array", fields[key], true))
 			continue
 		}
 		actions := make([]string, len(list))
 		for i, value := range list {
 			if actions[i], ok = value.(string); !ok {
-				issues = append(issues, roleInputTypeIssue(fmt.Sprintf("%s.%d", field, i), "string", value, true))
+				issues = append(issues, bodyTypeIssue(fmt.Sprintf("%s.%d", field, i), "string", value, true))
 			}
 		}
 		grants[key] = actions
@@ -113,7 +113,7 @@ func roleOrganizationInput(body map[string]any) (string, []string) {
 		if id, ok := raw.(string); ok {
 			return id, nil
 		}
-		return "", []string{roleInputTypeIssue("organizationId", "string", raw, true)}
+		return "", []string{bodyTypeIssue("organizationId", "string", raw, true)}
 	}
 	return "", nil
 }
@@ -124,7 +124,7 @@ func roleCreationInput(body map[string]any, defs map[string]RoleField) (CreateRo
 	role, present := body["role"]
 	var ok bool
 	if q.Role, ok = role.(string); !ok {
-		issues = append(issues, roleInputTypeIssue("role", "string", role, present))
+		issues = append(issues, bodyTypeIssue("role", "string", role, present))
 	}
 	permission, present := body["permission"]
 	var invalid []string
@@ -133,7 +133,7 @@ func roleCreationInput(body map[string]any, defs map[string]RoleField) (CreateRo
 	raw, supplied := body["additionalFields"]
 	input, isObject := raw.(map[string]any)
 	if supplied && !isObject {
-		issues = append(issues, roleInputTypeIssue("additionalFields", "object", raw, true))
+		issues = append(issues, bodyTypeIssue("additionalFields", "object", raw, true))
 	} else {
 		var err error
 		q.AdditionalFields, err = ParseRoleFieldInput(defs, input, false)

@@ -2032,3 +2032,8 @@ test("organization roles store structured values across runtimes", async t => {
   const { compareStructuredRoleFields } = await import("./organization-role-fields.mjs");
   await compareStructuredRoleFields(t, { goFixture, instrument });
 });
+
+test("organization team creation applies the host limit to authenticated and trusted callers", async t => {
+  const { compareTeamLimits } = await import("./organization-team-limits.mjs");
+  await compareTeamLimits(t, { reference, goFixture, instrument, fixtureBinary: () => fixtureBuild });
+});

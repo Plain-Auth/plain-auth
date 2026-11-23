@@ -189,6 +189,9 @@
     - [x] List only organizations the current user belongs to ([test](../../../plugins/organization/organization_test.go#L113))
   - [ ] `POST /organization/create-team`
     - [x] Create teams within an organization and enforce its configured maximum ([test](../../../adapters/sqlstore/organization_teams_test.go#L106))
+    - [x] Reserve the last team slot across authenticated requests and trusted creation on independent database connections ([test](../../../adapters/sqlstore/organization_team_creation_test.go#L88))
+    - [x] Require live creation authority and recheck the policy inputs after the host resolves capacity ([test](../../../adapters/sqlstore/organization_team_creation_test.go#L145))
+    - [x] Apply the same team cap to trusted creation without a session ([test](../../../conformance/organization-team-limits.mjs#L45))
   - [ ] `POST /organization/remove-team`
     - [x] Protect the active team and final team, and prune pending invitations when a team is removed ([test](../../../adapters/sqlstore/organization_teams_test.go#L136))
   - [ ] `POST /organization/update-team`
@@ -669,8 +672,8 @@
         - [x] Parameter `permission` (optional) ([test](../../../conformance/organization-update-role.mjs#L64))
           - [x] Replace grants, clear them with an empty object and report unavailable actions before writing ([test](../../../conformance/organization-update-role.mjs#L64))
     - [ ] Configuration Options
-      - [x] `enabled` ([test](../../../plugins/openapi/organization_selection_test.go#L100))
-        - [x] Expose the five stored-role routes and their schemas only when dynamic access control is enabled ([test](../../../plugins/openapi/organization_selection_test.go#L100))
+      - [x] `enabled` ([test](../../../plugins/openapi/organization_selection_test.go#L110))
+        - [x] Expose the five stored-role routes and their schemas only when dynamic access control is enabled ([test](../../../plugins/openapi/organization_selection_test.go#L110))
       - [x] `maximumRolesPerOrganization` ([test](../../../adapters/sqlstore/organization_create_role_test.go#L131))
         - [x] Enforce the last available slot across concurrent requests to the same organization ([test](../../../adapters/sqlstore/organization_create_role_test.go#L117))
         - [x] Resolve host limits outside the transaction and reauthorize the caller before saving ([test](../../../adapters/sqlstore/organization_create_role_test.go#L131))
@@ -689,9 +692,17 @@
     - [ ] Managing Teams
       - [ ] Create Team
         - [x] Create teams within an organization and enforce its configured maximum ([test](../../../adapters/sqlstore/organization_teams_test.go#L106))
+        - [x] Reserve the last team slot across authenticated requests and trusted creation on independent database connections ([test](../../../adapters/sqlstore/organization_team_creation_test.go#L88))
+        - [x] Require live creation authority and recheck the policy inputs after the host resolves capacity ([test](../../../adapters/sqlstore/organization_team_creation_test.go#L145))
+        - [x] Apply the same team cap to trusted creation without a session ([test](../../../conformance/organization-team-limits.mjs#L45))
         - [ ] `POST /organization/create-team`
-          - [ ] Parameter `name`
-          - [ ] Parameter `organizationId` (optional)
+          - [x] Reserve the last team slot across authenticated requests and trusted creation on independent database connections ([test](../../../adapters/sqlstore/organization_team_creation_test.go#L88))
+          - [x] Require live creation authority and recheck the policy inputs after the host resolves capacity ([test](../../../adapters/sqlstore/organization_team_creation_test.go#L145))
+          - [x] Apply the same team cap to trusted creation without a session ([test](../../../conformance/organization-team-limits.mjs#L45))
+          - [x] Parameter `name` ([test](../../../conformance/organization-team-limits.mjs#L29))
+            - [x] Accept a string team name, including an empty label, and reject invalid input before writing ([test](../../../conformance/organization-team-limits.mjs#L29))
+          - [x] Parameter `organizationId` (optional) ([test](../../../conformance/organization-team-limits.mjs#L35))
+            - [x] Use the selected organization for an omitted or empty destination and authorize an explicit destination independently ([test](../../../conformance/organization-team-limits.mjs#L35))
       - [ ] List Teams
         - [x] Read the organization’s teams and deny outsiders using the browser client ([test](../../../conformance/core.test.mjs#L626))
         - [ ] `GET /organization/list-teams`
@@ -743,7 +754,10 @@
       - [ ] `team:delete`
     - [ ] Team Configuration Options
       - [x] Honor fixed seat and team limits, and optionally permit removal of the final team ([test](../../../adapters/sqlstore/organization_teams_test.go#L331))
-      - [ ] `maximumTeams`
+      - [x] `maximumTeams` ([test](../../../conformance/organization-team-limits.mjs#L42))
+        - [x] Reserve the last team slot across authenticated requests and trusted creation on independent database connections ([test](../../../adapters/sqlstore/organization_team_creation_test.go#L88))
+        - [x] Require live creation authority and recheck the policy inputs after the host resolves capacity ([test](../../../adapters/sqlstore/organization_team_creation_test.go#L145))
+        - [x] Resolve the total using the caller and organization, and allow unlimited teams when the host returns zero ([test](../../../conformance/organization-team-limits.mjs#L42))
       - [ ] `allowRemovingAllTeams`
     - [ ] Team Members
       - [x] Persist the team membership key and maintain the database member count across mutations ([test](../../../adapters/sqlstore/organization_teams_test.go#L177))

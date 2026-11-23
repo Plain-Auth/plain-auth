@@ -69,6 +69,16 @@ func TestOrganizationSelectionSchema(t *testing.T) {
 				t.Fatal("schema request failed", w.Code, err)
 			}
 			paths := node(doc, "paths")
+			createTeam := node(paths, "/organization/create-team", "post")
+			if tc.teams {
+				body := node(createTeam, "requestBody", "content", "application/json", "schema")
+				if node(body, "properties", "name")["type"] != "string" || node(body, "properties", "organizationId")["type"] != "string" || len(body["required"].([]any)) != 1 || body["required"].([]any)[0] != "name" ||
+					node(createTeam, "responses", "200", "content", "application/json", "schema")["$ref"] != "#/components/schemas/Team" {
+					t.Fatal("incorrect team creation request or response contract")
+				}
+			} else if createTeam != nil {
+				t.Fatal("team creation exposed on an organization without teams")
+			}
 			roleSchema := node(doc, "components", "schemas", "OrganizationRole")
 			getRole := node(paths, "/organization/get-role", "get")
 			listRoles := node(paths, "/organization/list-roles", "get")

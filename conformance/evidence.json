@@ -3511,6 +3511,21 @@
       "label": "Create teams within an organization and enforce its configured maximum",
       "test": "adapters/sqlstore/organization_teams_test.go",
       "marker": "err = owner.CreateTeam(ctx, \"FULL\""
+    },
+    {
+      "label": "Reserve the last team slot across authenticated requests and trusted creation on independent database connections",
+      "test": "adapters/sqlstore/organization_team_creation_test.go",
+      "marker": "a concurrent HTTP and trusted creation did not reserve exactly one slot"
+    },
+    {
+      "label": "Require live creation authority and recheck the policy inputs after the host resolves capacity",
+      "test": "adapters/sqlstore/organization_team_creation_test.go",
+      "marker": "wrote using obsolete team quota inputs"
+    },
+    {
+      "label": "Apply the same team cap to trusted creation without a session",
+      "test": "conformance/organization-team-limits.mjs",
+      "marker": "assert.equal((await ref.api.createTeam({body:trusted})).organizationId,north.id)"
     }
   ],
   "plugin/organization/POST /organization/update-team": [
@@ -3599,6 +3614,21 @@
       "label": "Create teams within an organization and enforce its configured maximum",
       "test": "adapters/sqlstore/organization_teams_test.go",
       "marker": "err = owner.CreateTeam(ctx, \"FULL\""
+    },
+    {
+      "label": "Reserve the last team slot across authenticated requests and trusted creation on independent database connections",
+      "test": "adapters/sqlstore/organization_team_creation_test.go",
+      "marker": "a concurrent HTTP and trusted creation did not reserve exactly one slot"
+    },
+    {
+      "label": "Require live creation authority and recheck the policy inputs after the host resolves capacity",
+      "test": "adapters/sqlstore/organization_team_creation_test.go",
+      "marker": "wrote using obsolete team quota inputs"
+    },
+    {
+      "label": "Apply the same team cap to trusted creation without a session",
+      "test": "conformance/organization-team-limits.mjs",
+      "marker": "assert.equal((await ref.api.createTeam({body:trusted})).organizationId,north.id)"
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L1829": [
@@ -16042,6 +16072,57 @@
       "label": "Round-trip JSON strings, booleans, numbers, objects, arrays and null on every SQL adapter",
       "test": "adapters/sqlstore/organization_role_fields_test.go",
       "marker": "stored JSON or array lost its logical type"
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1814/`POST /organization/create-team`": [
+    {
+      "label": "Reserve the last team slot across authenticated requests and trusted creation on independent database connections",
+      "test": "adapters/sqlstore/organization_team_creation_test.go",
+      "marker": "a concurrent HTTP and trusted creation did not reserve exactly one slot"
+    },
+    {
+      "label": "Require live creation authority and recheck the policy inputs after the host resolves capacity",
+      "test": "adapters/sqlstore/organization_team_creation_test.go",
+      "marker": "wrote using obsolete team quota inputs"
+    },
+    {
+      "label": "Apply the same team cap to trusted creation without a session",
+      "test": "conformance/organization-team-limits.mjs",
+      "marker": "assert.equal((await ref.api.createTeam({body:trusted})).organizationId,north.id)"
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1820/Parameter `name`": [
+    {
+      "label": "Accept a string team name, including an empty label, and reject invalid input before writing",
+      "test": "conformance/organization-team-limits.mjs",
+      "marker": "assert.equal(created.name, \"\")",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1824/Parameter `organizationId` (optional)": [
+    {
+      "label": "Use the selected organization for an omitted or empty destination and authorize an explicit destination independently",
+      "test": "conformance/organization-team-limits.mjs",
+      "marker": "assert.equal(ok(await make(owner,\"Explicit\",north.id)).organizationId,north.id)",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L2007/`maximumTeams`": [
+    {
+      "label": "Reserve the last team slot across authenticated requests and trusted creation on independent database connections",
+      "test": "adapters/sqlstore/organization_team_creation_test.go",
+      "marker": "a concurrent HTTP and trusted creation did not reserve exactly one slot"
+    },
+    {
+      "label": "Require live creation authority and recheck the policy inputs after the host resolves capacity",
+      "test": "adapters/sqlstore/organization_team_creation_test.go",
+      "marker": "wrote using obsolete team quota inputs"
+    },
+    {
+      "label": "Resolve the total using the caller and organization, and allow unlimited teams when the host returns zero",
+      "test": "conformance/organization-team-limits.mjs",
+      "marker": "for (let i=0;i<5;i++) assert.equal(ok(await make(other,\"Team \"+i)).organizationId,free.id)",
+      "complete": true
     }
   ]
 }
