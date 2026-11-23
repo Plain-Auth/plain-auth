@@ -138,8 +138,13 @@ func (a *Auth) checkDatabaseHooks() error {
 		if _, ok := a.opts.Store.(signUpUserFinder); !ok {
 			return errors.New("auth: user and session create database hooks require a store implementing FindAccountUser")
 		}
+		need("admin", a.HasPlugin("admin"))
+	}
+	if len(d.user.create.before) > 0 || len(d.session.create.before) > 0 {
+		// These sign-ins decide inside the store's transaction whether to
+		// create the user, so they run only the after hooks for now.
 		need("social sign-in", len(a.opts.SocialProviders) > 0)
-		for _, id := range []string{"magic-link", "email-otp", "phone-number", "one-tap", "sso", "admin"} {
+		for _, id := range []string{"magic-link", "email-otp", "phone-number", "one-tap", "sso"} {
 			need(id, a.HasPlugin(id))
 		}
 	}
@@ -153,7 +158,7 @@ func (a *Auth) checkDatabaseHooks() error {
 		need("AutoSignInAfterVerification", a.opts.AutoSignInAfterVerification)
 	}
 	if len(bypass) > 0 {
-		return fmt.Errorf("auth: user and session create database hooks do not run yet for %s", strings.Join(bypass, ", "))
+		return fmt.Errorf("auth: user and session create database hooks do not run yet for %s; after hooks alone run for social sign-in, One Tap, SSO, magic link, email OTP and phone number", strings.Join(bypass, ", "))
 	}
 	if d.user.update.set() {
 		need("social sign-in", len(a.opts.SocialProviders) > 0)
@@ -486,6 +491,33 @@ func (a *Auth) userSessionRows(ctx context.Context, userID, except string) ([]Se
 		}
 	}
 	return rows, nil
+}
+
+// afterDecidedSignIn runs the create after hooks for a sign-in whose store
+// decided inside its own transaction whether to create the user. created
+// reports that it did, and token names the session it issued, if any. On
+// failure the undelivered session is removed.
+func (a *Auth) afterDecidedSignIn(ctx context.Context, user User, created bool, token string) error {
+	if created {
+		if err := a.afterUserCreate(ctx, user, nil); err != nil {
+			if token != "" {
+				return a.discardUnpublishedSession(ctx, token, err)
+			}
+			return err
+		}
+	}
+	if token == "" || len(a.dbHooks.session.create.after) == 0 {
+		return nil
+	}
+	row, _, err := a.opts.Store.Session(ctx, token)
+	if errors.Is(err, ErrNotFound) {
+		return nil
+	}
+	if err != nil {
+		return a.discardUnpublishedSession(ctx, token, err)
+	}
+	row.Token = token
+	return a.afterSessionCreate(ctx, row, nil)
 }
 
 // createSessionWithHooks runs the session create hooks around write, which

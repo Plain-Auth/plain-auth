@@ -219,6 +219,9 @@ func (o MagicLinkOptions) verify(c EndpointContext) (any, error) {
 	if errors.Is(err, ErrMagicLinkSignUpDisabled) {
 		return redirectQuery(errorURL, "error", "new_user_signup_disabled"), nil
 	}
+	if err == nil {
+		err = a.afterDecidedSignIn(r.Context(), user, created, session.Token)
+	}
 	if err != nil {
 		return nil, err
 	}

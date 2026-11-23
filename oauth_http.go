@@ -543,6 +543,15 @@ func (a *Auth) completeProfileWith(ctx context.Context, r *http.Request, id stri
 		}
 	}
 	user, created, err := complete(ctx, id, p.Subject, tokens, candidate, session, options)
+	if created && errors.Is(err, ErrOAuthEmailUnverified) {
+		// The user is stored without a session until the address is verified.
+		if hookErr := a.afterUserCreate(ctx, user, nil); hookErr != nil {
+			return AuthResult{}, created, hookErr
+		}
+	}
+	if err == nil && options.LinkUserID == "" {
+		err = a.afterDecidedSignIn(ctx, user, created, session.Token)
+	}
 	if errors.Is(err, ErrOAuthProfileConflict) {
 		return AuthResult{}, false, &APIError{409, "OAUTH_PROFILE_CONFLICT", "Provider profile conflicts with an existing profile"}
 	}

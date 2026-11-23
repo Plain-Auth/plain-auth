@@ -174,6 +174,13 @@ func (a *Auth) verifyPhoneNumber(ctx context.Context, h http.Header, in PhoneVer
 	if errors.Is(err, ErrEmailTaken) {
 		return out, &APIError{400, "USER_ALREADY_EXISTS", "User already exists"}
 	}
+	if err == nil {
+		token := ""
+		if act.Session != nil && !result.NeedsFactor && act.SourceToken == "" {
+			token = act.Session.Token
+		}
+		err = a.afterDecidedSignIn(ctx, result.User, act.Create != nil && result.User.ID == act.Create.ID, token)
+	}
 	if err != nil {
 		return out, err
 	}

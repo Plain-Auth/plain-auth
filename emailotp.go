@@ -280,6 +280,9 @@ func (a *Auth) SignInEmailOTP(ctx context.Context, in EmailOTPSignInInput, meta 
 		}
 	}
 	u, err := a.consumeEmailOTPWithFields(ctx, request, in.OTP, act, registration)
+	if err == nil {
+		err = a.afterDecidedSignIn(ctx, u, u.ID == act.NewUser.ID, session.Token)
+	}
 	if err != nil {
 		return AuthResult{}, err
 	}

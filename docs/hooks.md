@@ -178,6 +178,9 @@ Hooks never run inside a database transaction, so they may read and write throug
 | `POST /change-password` with `revokeOtherSessions` | | Create | | 500 `FAILED_TO_GET_SESSION` |
 | Sessions plugins issue with `EndpointContext.IssueSession`, such as passkey and wallet sign-in | | Create | | 401 `FAILED_TO_CREATE_SESSION` |
 | `Auth.BootstrapAdmin` | Create | | an error | |
+| Social sign-in, ID-token sign-in, One Tap, SSO, magic links, email codes and phone verification | Create, after hooks only | Create, after hooks only | | |
+
+For the sign-ins in the last row, the store decides inside its transaction whether the sign-in creates a user. The user after hook fires only when it did, and the session after hook receives the session with the owner the store chose; a returning user fires only the session hook. A social sign-in that requires a verified email stores the new user without a session, and fires only the user hook.
 
 On sign-up, any other error from a user before hook answers 422 `FAILED_TO_CREATE_USER`. When sign-up hides existing emails, a 403 `APIError` from a user before hook gets the same response as an existing email.
 
@@ -209,7 +212,8 @@ A delete reads its sessions first, so the hooks see only sessions that existed t
 
 Database hooks do not cover every flow yet. `New` refuses:
 
-- user or session create hooks with social sign-in, magic link, email OTP, phone number, One Tap, SSO or the admin plugin;
+- user or session create before hooks with social sign-in, magic link, email OTP, phone number, One Tap or SSO, whose after hooks do run;
+- user or session create hooks with the admin plugin;
 - user create hooks with passkey or wallet sign-in;
 - session create hooks with two-factor authentication, device authorization or `AutoSignInAfterVerification`;
 - user update hooks with social sign-in, the magic link, email OTP, phone number, One Tap, SSO, admin, two-factor or last-login-method plugin, `AutoSignInAfterVerification`, `BeforeEmailVerification` or `AfterEmailVerification`;

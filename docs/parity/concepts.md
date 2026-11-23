@@ -209,6 +209,7 @@
       - [x] Run hooks around session refreshes, field updates, sign-out, revocation, expired-session cleanup, password changes and multi-session replacement ([test](../../conformance/goapi/database_session_hooks_test.go#L20))
       - [x] Run hooks around profile updates, email changes and email verification ([test](../../conformance/goapi/database_user_hooks_test.go#L19))
       - [x] Run the session and user delete hooks when a user deletes their account ([test](../../conformance/goapi/database_user_hooks_test.go#L160))
+      - [x] Run the create after hooks for social sign-in, magic links, email codes and phone verification, once per new user ([test](../../conformance/goapi/database_decided_hooks_test.go#L21))
       - [ ] 1. Before Hook
         - [x] Edit the stored fields of a new user or session, or cancel its creation, before anything is written ([test](../../conformance/goapi/database_hooks_test.go#L124))
         - [ ] Purpose
@@ -226,6 +227,7 @@
           - [x] Run after a user or session is created, with the stored row visible to the store ([test](../../adapters/sqlstore/database_hooks_test.go#L96))
           - [x] Run after a session is updated or deleted, with the change visible to the store ([test](../../conformance/goapi/database_session_hooks_test.go#L76))
           - [x] Run after a user is updated, with the stored row visible to the store ([test](../../conformance/goapi/database_user_hooks_test.go#L112))
+          - [x] Run after the store creates a user or session during a social, magic link, email code or phone sign-in, with the owner the store chose ([test](../../conformance/goapi/database_decided_hooks_test.go#L79))
         - [ ] Behavior
           - [x] Fire one after hook for concurrent sign-ups of one email and none for a sign-up that stores nothing ([test](../../adapters/sqlstore/database_hooks_test.go#L111))
           - [x] Run session update and delete after hooks once the change is stored, on SQLite, PostgreSQL and MySQL ([test](../../adapters/sqlstore/database_hooks_test.go#L126))

@@ -18422,6 +18422,11 @@
       "label": "Run the session and user delete hooks when a user deletes their account",
       "test": "conformance/goapi/database_user_hooks_test.go",
       "marker": "// Run the session and user delete hooks when a user deletes their account; a"
+    },
+    {
+      "label": "Run the create after hooks for social sign-in, magic links, email codes and phone verification, once per new user",
+      "test": "conformance/goapi/database_decided_hooks_test.go",
+      "marker": "// Run the user and session create after hooks for sign-ins whose store"
     }
   ],
   "docs/content/docs/concepts/database.mdx#L881": [
@@ -18492,6 +18497,11 @@
       "label": "Run after a user is updated, with the stored row visible to the store",
       "test": "conformance/goapi/database_user_hooks_test.go",
       "marker": "// Email verification runs the hooks with the address marked verified; a declined one keeps it unverified."
+    },
+    {
+      "label": "Run after the store creates a user or session during a social, magic link, email code or phone sign-in, with the owner the store chose",
+      "test": "conformance/goapi/database_decided_hooks_test.go",
+      "marker": "// The hook sees the stored session with the owner the store chose."
     }
   ],
   "docs/content/docs/concepts/database.mdx#L889/Behavior": [
