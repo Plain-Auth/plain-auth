@@ -279,7 +279,11 @@ func (a *Auth) SignInEmailOTP(ctx context.Context, in EmailOTPSignInInput, meta 
 			return a.prepareUserFields(in.AdditionalFields, true, false)
 		}
 	}
-	u, err := a.consumeEmailOTPWithFields(ctx, request, in.OTP, act, registration)
+	var u User
+	err = a.planSignIn(ctx, func(ctx context.Context) (err error) {
+		u, err = a.consumeEmailOTPWithFields(ctx, request, in.OTP, act, registration)
+		return err
+	})
 	if err == nil {
 		err = a.afterDecidedSignIn(ctx, u, u.ID == act.NewUser.ID, session.Token)
 	}

@@ -161,15 +161,23 @@ func (a *Auth) verifyPhoneNumber(ctx context.Context, h http.Header, in PhoneVer
 	}
 	act.Use.Now = a.now().UTC()
 	var result PhoneAccountResult
-	if ext, ok := a.opts.Store.(PhoneRegistrationStore); ok && (registration.err != nil || act.Create != nil && len(a.opts.UserAdditionalFields) > 0) {
-		result, err = ext.ApplyPhoneRegistration(ctx, act, registration)
-	} else if registration.err != nil {
-		// A legacy adapter can enforce the built-in phone flag without custom columns.
-		if err = a.opts.Store.(PhoneAccountStore).ConsumePhoneOTP(ctx, act.Use); err == nil {
-			err = registration.err
+	store := func(ctx context.Context) (err error) {
+		if ext, ok := a.opts.Store.(PhoneRegistrationStore); ok && (registration.err != nil || act.Create != nil && len(a.opts.UserAdditionalFields) > 0) {
+			result, err = ext.ApplyPhoneRegistration(ctx, act, registration)
+		} else if registration.err != nil {
+			// A legacy adapter can enforce the built-in phone flag without custom columns.
+			if err = a.opts.Store.(PhoneAccountStore).ConsumePhoneOTP(ctx, act.Use); err == nil {
+				err = registration.err
+			}
+		} else {
+			result, err = a.opts.Store.(PhoneAccountStore).ApplyPhoneOTP(ctx, act)
 		}
+		return err
+	}
+	if registration.err != nil {
+		err = store(ctx)
 	} else {
-		result, err = a.opts.Store.(PhoneAccountStore).ApplyPhoneOTP(ctx, act)
+		err = a.planSignIn(ctx, store)
 	}
 	if errors.Is(err, ErrEmailTaken) {
 		return out, &APIError{400, "USER_ALREADY_EXISTS", "User already exists"}

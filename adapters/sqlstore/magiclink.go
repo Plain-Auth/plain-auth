@@ -101,6 +101,7 @@ func (s *Store) completeMagicLink(ctx context.Context, key, newID string, sessio
 		return user, false, err
 	}
 	defer tx.Rollback()
+	auth.LoginPlanFrom(ctx).Attempt()
 	var id, identifier, data string
 	now := s.date(session.CreatedAt)
 	purpose := "magic-link:" + key
@@ -132,6 +133,9 @@ func (s *Store) completeMagicLink(ctx context.Context, key, newID string, sessio
 		return user, false, err
 	}
 	finishDenial := func(reason error) (auth.User, bool, error) {
+		if err := auth.LoginPlanFrom(ctx).Commit(); err != nil {
+			return auth.User{}, false, err
+		}
 		if err := tx.Commit(); err != nil {
 			return auth.User{}, false, err
 		}
@@ -155,6 +159,9 @@ func (s *Store) completeMagicLink(ctx context.Context, key, newID string, sessio
 		if err != nil {
 			return finishDenial(err)
 		}
+		if err := auth.LoginPlanFrom(ctx).PlanUser(&user); err != nil {
+			return user, false, err
+		}
 		insert, args := s.userInsert(user, columns)
 		_, err = tx.ExecContext(ctx, s.bind(insert), args...)
 		if err != nil {
@@ -169,6 +176,9 @@ func (s *Store) completeMagicLink(ctx context.Context, key, newID string, sessio
 	}
 	session.UserID = user.ID
 	if err = s.insertSession(ctx, tx, session); err != nil {
+		return user, false, err
+	}
+	if err := auth.LoginPlanFrom(ctx).Commit(); err != nil {
 		return user, false, err
 	}
 	return user, created, tx.Commit()

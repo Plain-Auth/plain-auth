@@ -160,6 +160,12 @@ func NewOneTap(o OneTapOptions, fallback OAuthProvider) Plugin {
 			if errors.Is(err, ErrOAuthLinkRequired) {
 				return nil, &APIError{401, "ACCOUNT_NOT_LINKED", "Account not linked"}
 			}
+			if errors.Is(err, errPlannedUserSkipped) {
+				return nil, &APIError{401, "UNAUTHORIZED", "unable to create user"}
+			}
+			if errors.Is(err, errPlannedSessionSkipped) {
+				return nil, &APIError{401, "UNAUTHORIZED", "unable to create session"}
+			}
 			if err != nil {
 				return nil, err
 			}

@@ -207,11 +207,27 @@ func (o MagicLinkOptions) verify(c EndpointContext) (any, error) {
 	}
 	var user User
 	var created bool
-	if !o.DisableSignUp && len(a.opts.UserAdditionalFields) > 0 {
-		store := a.opts.Store.(MagicLinkUserFieldStore)
-		user, created, err = store.CompleteMagicLinkWithUserFields(r.Context(), key, randomID(), session, a.registrationUserFields())
-	} else {
-		user, created, err = a.opts.Store.(MagicLinkStore).CompleteMagicLink(r.Context(), key, randomID(), session, !o.DisableSignUp)
+	newUserID := randomID()
+	err = a.planSignIn(r.Context(), func(ctx context.Context) (err error) {
+		if !o.DisableSignUp && len(a.opts.UserAdditionalFields) > 0 {
+			store := a.opts.Store.(MagicLinkUserFieldStore)
+			user, created, err = store.CompleteMagicLinkWithUserFields(ctx, key, newUserID, session, a.registrationUserFields())
+		} else {
+			user, created, err = a.opts.Store.(MagicLinkStore).CompleteMagicLink(ctx, key, newUserID, session, !o.DisableSignUp)
+		}
+		return err
+	})
+	if errors.Is(err, errPlannedUserSkipped) {
+		return redirectQuery(errorURL, "error", "failed_to_create_user"), nil
+	}
+	if errors.Is(err, errPlannedSessionSkipped) {
+		return redirectQuery(errorURL, "error", "failed_to_create_session"), nil
+	}
+	var refused *APIError
+	if errors.As(err, &refused) && refused.Code != "" {
+		// A hook's refusal returns the browser to the error page, as in the reference.
+		target := redirectQuery(errorURL, "error", refused.Code)
+		return redirectQuery(string(target), "error_description", refused.Message), nil
 	}
 	if errors.Is(err, ErrNotFound) {
 		return redirectQuery(errorURL, "error", "INVALID_TOKEN"), nil
@@ -226,6 +242,13 @@ func (o MagicLinkOptions) verify(c EndpointContext) (any, error) {
 		return nil, err
 	}
 	session.UserID = user.ID
+	if len(a.dbHooks.session.create.before) > 0 {
+		// Return the session as the hooks left it.
+		if stored, _, err := a.opts.Store.Session(r.Context(), session.Token); err == nil {
+			stored.Token = session.Token
+			session.Session = stored.Session
+		}
+	}
 	// A profile read or plugin may reject the public session after the database
 	// has consumed the proof. Publish credentials only with a successful response.
 	issued := c.ResponseHeader.Clone()

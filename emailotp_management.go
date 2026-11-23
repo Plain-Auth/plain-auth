@@ -136,7 +136,16 @@ func (a *Auth) completeEmailVerificationOTP(ctx context.Context, email, code str
 	if a.hasVerificationObservers() {
 		return a.observeEmailOTP(ctx, req, code, act.Session, r)
 	}
-	u, err := a.consumeEmailOTP(ctx, req, code, act)
+	var u User
+	consume := func(ctx context.Context) (err error) {
+		u, err = a.consumeEmailOTP(ctx, req, code, act)
+		return err
+	}
+	if act.Session.Token == "" {
+		err = consume(ctx)
+	} else if err = a.planSignIn(ctx, consume); err == nil {
+		err = a.afterDecidedSignIn(ctx, u, false, act.Session.Token)
+	}
 	if err != nil {
 		return AuthResult{}, err
 	}

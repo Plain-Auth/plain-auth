@@ -178,9 +178,21 @@ Hooks never run inside a database transaction, so they may read and write throug
 | `POST /change-password` with `revokeOtherSessions` | | Create | | 500 `FAILED_TO_GET_SESSION` |
 | Sessions plugins issue with `EndpointContext.IssueSession`, such as passkey and wallet sign-in | | Create | | 401 `FAILED_TO_CREATE_SESSION` |
 | `Auth.BootstrapAdmin` | Create | | an error | |
-| Social sign-in, ID-token sign-in, One Tap, SSO, magic links, email codes and phone verification | Create, after hooks only | Create, after hooks only | | |
+| Browser social sign-in | Create | Create | redirect with `error=unable_to_create_user` | redirect with `error=unable_to_create_session` |
+| ID-token social sign-in | Create | Create | 401 `OAUTH_LINK_ERROR` | 401 `OAUTH_LINK_ERROR` |
+| `GET /magic-link/verify` | Create | Create | redirect with `error=failed_to_create_user` | redirect with `error=failed_to_create_session` |
+| One Tap | Create | Create | 401 `UNAUTHORIZED` | 401 `UNAUTHORIZED` |
+| Email codes, including the session after `/email-otp/verify-email` with `AutoSignInAfterVerification`; phone verification; SSO | Create | Create | 500 `FAILED_TO_CREATE_USER` | 500 `FAILED_TO_CREATE_SESSION` |
 
-For the sign-ins in the last row, the store decides inside its transaction whether the sign-in creates a user. The user after hook fires only when it did, and the session after hook receives the session with the owner the store chose; a returning user fires only the session hook. A social sign-in that requires a verified email stores the new user without a session, and fires only the user hook.
+### Sign-ins the store decides
+
+In the last five rows, the store decides inside its transaction whether the sign-in creates a user and who owns the session. The user hooks run only when it creates one; a returning user runs only the session hooks. The session hooks receive the session with the owner the store chose. A social sign-in that requires a verified email stores the new user without a session, and runs only the user hooks.
+
+To run the before hooks outside the transaction, the Auth runs the store's sign-in twice. A dry run records the user and session it would store and rolls back; the before hooks run on those rows; then the approved run stores them with the hooks' edits. If another request changes the data in between, for example by creating a user with the same email, the Auth starts again and signs in that user instead. A skipped sign-in stores nothing, and a magic link, email code or phone code stays usable.
+
+- **Edits:** before hooks may change the user's `Name` and `Image`, and the session as usual. The store chose the email, whether it is verified and the additional fields, which decide how the sign-in continues, so `UserRecord.Fields` is empty and changing any of those fails the sign-in.
+- **Errors:** a magic link answers a hook's `APIError` by redirecting to the error callback with its code and message.
+- **Stores:** the SQL store supports these plans. The memory store does not, so `New` refuses create before hooks for these sign-ins with it; after hooks still run. A custom store supports them by implementing `plainauth.LoginPlanner` and calling the `LoginPlan` methods in its sign-in methods, as the [SQL store](../adapters/sqlstore/magiclink.go) does.
 
 On sign-up, any other error from a user before hook answers 422 `FAILED_TO_CREATE_USER`. When sign-up hides existing emails, a 403 `APIError` from a user before hook gets the same response as an existing email.
 
@@ -224,10 +236,10 @@ A delete reads its sessions first, so the hooks see only sessions that existed t
 
 Database hooks do not cover every flow yet. `New` refuses:
 
-- user or session create before hooks with social sign-in, magic link, email OTP, phone number, One Tap or SSO, whose after hooks do run;
+- user or session create before hooks with social sign-in, magic link, email OTP, phone number, One Tap or SSO, when the store does not implement `LoginPlanner`;
 - user or session create hooks with the admin plugin;
 - user create hooks with passkey or wallet sign-in;
-- session create hooks with two-factor authentication, device authorization or `AutoSignInAfterVerification`;
+- session create hooks with two-factor authentication, device authorization or `AutoSignInAfterVerification`, and with the email OTP plugin's `AutoSignInAfterVerification` when `BeforeEmailVerification` or `AfterEmailVerification` is set;
 - user update hooks with social sign-in, the magic link, email OTP, phone number, One Tap, SSO, admin, two-factor or last-login-method plugin, `AutoSignInAfterVerification`, `BeforeEmailVerification` or `AfterEmailVerification`;
 - session update hooks with the organization or admin plugin;
 - session delete hooks with the admin, anonymous, magic link, SSO or two-factor plugin, or `RevokeSessionsOnPasswordReset`;

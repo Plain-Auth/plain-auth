@@ -141,7 +141,13 @@ type executor interface {
 	ExecContext(context.Context, string, ...any) (sql.Result, error)
 }
 
+// PlansLogins reports that the store's sign-in methods support login plans.
+func (s *Store) PlansLogins() {}
+
 func (s *Store) insertSession(ctx context.Context, tx *sql.Tx, ss authn.StoredSession) error {
+	if err := authn.LoginPlanFrom(ctx).PlanSession(&ss); err != nil {
+		return err
+	}
 	cols := `"id","userId","token","ipAddress","userAgent","createdAt","updatedAt","expiresAt"`
 	params := "?,?,?,?,?,?,?,?"
 	args := []any{ss.ID, ss.UserID, ss.Token, ss.IPAddress, ss.UserAgent, s.date(ss.CreatedAt), s.date(ss.UpdatedAt), s.date(ss.ExpiresAt)}

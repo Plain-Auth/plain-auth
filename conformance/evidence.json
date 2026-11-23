@@ -18439,6 +18439,16 @@
       "label": "Edit the stored fields of a new user or session, or cancel its creation, before anything is written",
       "test": "conformance/goapi/database_hooks_test.go",
       "marker": "// Plugin hooks run first; before hooks edit the user, its fields and its session."
+    },
+    {
+      "label": "Run the create before hooks for social sign-in, magic links, email codes and phone verification outside the store transaction, for new users only",
+      "test": "conformance/goapi/database_decided_hooks_test.go",
+      "marker": "// Run the create before hooks for those sign-ins outside the store's"
+    },
+    {
+      "label": "Plan a store-decided sign-in on SQLite, PostgreSQL and MySQL: the dry run stores nothing and a skipped link stays usable",
+      "test": "adapters/sqlstore/login_plan_test.go",
+      "marker": "// Plan a magic-link sign-in on three engines: the dry run stores nothing,"
     }
   ],
   "docs/content/docs/concepts/database.mdx#L883/Purpose": [
@@ -18483,6 +18493,11 @@
       "label": "Decline a profile update, email change or verification with ErrSkipWrite, and reject edits to fields the update does not store",
       "test": "conformance/goapi/database_user_hooks_test.go",
       "marker": "// A declined update answers like a stored one and stores nothing."
+    },
+    {
+      "label": "Skip a store-decided sign-in with its usual error, store nothing, and sign in a user stored while the hooks ran",
+      "test": "conformance/goapi/database_decided_hooks_test.go",
+      "marker": "// A user stored while the hooks run is signed in instead of being created again."
     }
   ],
   "docs/content/docs/concepts/database.mdx#L886": [

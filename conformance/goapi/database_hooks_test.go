@@ -14,8 +14,6 @@ import (
 
 	authn "github.com/Plain-Org/plain-auth"
 	"github.com/Plain-Org/plain-auth/adapters/memory"
-	"github.com/Plain-Org/plain-auth/adapters/sqlite"
-	"golang.org/x/oauth2"
 )
 
 // Run user and session create hooks around sign-up, sign-in, anonymous
@@ -302,22 +300,21 @@ func TestDatabaseHooksRefuseBypassingFeatures(t *testing.T) {
 	base := func() authn.Options {
 		return authn.Options{BaseURL: "https://auth.example", Store: memory.New(), Secret: strings.Repeat("s", 32), EmailAndPassword: true}
 	}
-	sqliteStore, err := sqlite.Open(":memory:")
+	// Magic links decide inside the store whether to create the user, so their
+	// before hooks need a store that plans logins; the memory store does not.
+	magic, err := authn.NewMagicLink(authn.MagicLinkOptions{Send: func(context.Context, authn.MagicLinkMessage) error { return nil }})
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer sqliteStore.Close()
-	social := base()
-	social.Store = sqliteStore
-	social.SocialProviders = map[string]authn.OAuthProvider{"local": {
-		Config: oauth2.Config{ClientID: "local", Endpoint: oauth2.Endpoint{AuthURL: "https://idp.example/authorize", TokenURL: "https://idp.example/token"}},
-		Resolve: func(context.Context, *oauth2.Token, string) (authn.OAuthProfile, error) {
-			return authn.OAuthProfile{}, nil
-		},
-	}}
-	social.DatabaseHooks.User.Create = create
-	if _, err := authn.New(social); err == nil || !strings.Contains(err.Error(), "social sign-in") {
-		t.Fatal("user create hooks were accepted with social sign-in", err)
+	planless := base()
+	planless.Plugins = []authn.Plugin{magic}
+	planless.DatabaseHooks.User.Create = create
+	if _, err := authn.New(planless); err == nil || !strings.Contains(err.Error(), "LoginPlanner") {
+		t.Fatal("before hooks were accepted for a store without login plans", err)
+	}
+	planless.DatabaseHooks.User.Create = authn.OperationHooks[authn.UserRecord]{After: func(context.Context, authn.UserRecord, *authn.HookContext) error { return nil }}
+	if _, err := authn.New(planless); err != nil {
+		t.Fatal("after hooks were refused for a store without login plans", err)
 	}
 	ok := base()
 	ok.DatabaseHooks.User.Create = create

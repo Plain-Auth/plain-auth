@@ -370,6 +370,12 @@ func (a *Auth) finishBrowserOAuth(w http.ResponseWriter, r *http.Request, id str
 	if errors.Is(err, ErrOAuthLinkRequired) || errors.Is(err, ErrNotFound) {
 		return fail("account_not_linked")
 	}
+	if errors.Is(err, errPlannedUserSkipped) {
+		return fail("unable_to_create_user")
+	}
+	if errors.Is(err, errPlannedSessionSkipped) {
+		return fail("unable_to_create_session")
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -542,7 +548,18 @@ func (a *Auth) completeProfileWith(ctx context.Context, r *http.Request, id stri
 			return AuthResult{}, false, err
 		}
 	}
-	user, created, err := complete(ctx, id, p.Subject, tokens, candidate, session, options)
+	var user User
+	var created bool
+	write := func(ctx context.Context) (err error) {
+		user, created, err = complete(ctx, id, p.Subject, tokens, candidate, session, options)
+		return err
+	}
+	var err error
+	if options.LinkUserID != "" {
+		err = write(ctx)
+	} else {
+		err = a.planSignIn(ctx, write)
+	}
 	if created && errors.Is(err, ErrOAuthEmailUnverified) {
 		// The user is stored without a session until the address is verified.
 		if hookErr := a.afterUserCreate(ctx, user, nil); hookErr != nil {
@@ -630,6 +647,12 @@ func (a *Auth) directOAuth(w http.ResponseWriter, r *http.Request, id string, p 
 	}
 	if errors.Is(err, ErrOAuthLinkRequired) || errors.Is(err, ErrNotFound) {
 		return nil, &APIError{401, "ACCOUNT_NOT_LINKED", "Account not linked"}
+	}
+	if errors.Is(err, errPlannedUserSkipped) {
+		return nil, &APIError{401, "OAUTH_LINK_ERROR", "unable to create user"}
+	}
+	if errors.Is(err, errPlannedSessionSkipped) {
+		return nil, &APIError{401, "OAUTH_LINK_ERROR", "unable to create session"}
 	}
 	if err != nil {
 		return nil, err

@@ -52,9 +52,11 @@ type OperationHooks[T any] struct {
 }
 
 // UserRecord is a user row in a database hook. When creating a user, a hook
-// may change Name, Email, Image, EmailVerified and Fields; when updating a
-// profile, Name, Image and Fields. Email changes and verification allow no
-// edits.
+// may change Name, Email, Image, EmailVerified and Fields, except during a
+// sign-in the store decides, such as social sign-in or a magic link, which
+// allows only Name and Image and leaves Fields empty. When updating a
+// profile, a hook may change Name, Image and Fields. Email changes and
+// verification allow no edits.
 type UserRecord struct {
 	User
 	// Fields holds the Options.UserAdditionalFields values this write sets,
@@ -148,12 +150,20 @@ func (a *Auth) checkDatabaseHooks() error {
 		}
 		need("admin", a.HasPlugin("admin"))
 	}
-	if len(d.user.create.before) > 0 || len(d.session.create.before) > 0 {
+	if _, plans := a.opts.Store.(LoginPlanner); !plans && (len(d.user.create.before) > 0 || len(d.session.create.before) > 0) {
 		// These sign-ins decide inside the store's transaction whether to
-		// create the user, so they run only the after hooks for now.
-		need("social sign-in", len(a.opts.SocialProviders) > 0)
+		// create the user. Their before hooks need a store that plans logins.
+		var decided []string
+		if len(a.opts.SocialProviders) > 0 {
+			decided = append(decided, "social sign-in")
+		}
 		for _, id := range []string{"magic-link", "email-otp", "phone-number", "one-tap", "sso"} {
-			need(id, a.HasPlugin(id))
+			if a.HasPlugin(id) {
+				decided = append(decided, id)
+			}
+		}
+		if len(decided) > 0 {
+			return fmt.Errorf("auth: user and session create before hooks for %s need a store implementing LoginPlanner", strings.Join(decided, ", "))
 		}
 	}
 	if d.user.create.set() {
@@ -161,12 +171,17 @@ func (a *Auth) checkDatabaseHooks() error {
 		need("siwe", a.HasPlugin("siwe"))
 	}
 	if d.session.create.set() {
+		for _, p := range a.opts.Plugins {
+			if p.emailOTP != nil && p.emailOTP.AutoSignInAfterVerification && a.hasVerificationObservers() {
+				need("email-otp AutoSignInAfterVerification with BeforeEmailVerification or AfterEmailVerification", true)
+			}
+		}
 		need("two-factor", a.HasPlugin("two-factor"))
 		need("device-authorization", a.HasPlugin("device-authorization"))
 		need("AutoSignInAfterVerification", a.opts.AutoSignInAfterVerification)
 	}
 	if len(bypass) > 0 {
-		return fmt.Errorf("auth: user and session create database hooks do not run yet for %s; after hooks alone run for social sign-in, One Tap, SSO, magic link, email OTP and phone number", strings.Join(bypass, ", "))
+		return fmt.Errorf("auth: user and session create database hooks do not run yet for %s", strings.Join(bypass, ", "))
 	}
 	if d.user.update.set() {
 		need("social sign-in", len(a.opts.SocialProviders) > 0)
@@ -307,7 +322,7 @@ func cloneFields(fields map[string]any) map[string]any {
 
 // beforeSessionCreate runs the session create before hooks on row, whose
 // explicit additional field values are fields. A skipped write returns skipped.
-func (a *Auth) beforeSessionCreate(ctx context.Context, row StoredSession, fields map[string]any, skipped *APIError) (StoredSession, map[string]any, error) {
+func (a *Auth) beforeSessionCreate(ctx context.Context, row StoredSession, fields map[string]any, skipped error) (StoredSession, map[string]any, error) {
 	chain := a.dbHooks.session.create
 	if len(chain.before) == 0 {
 		return row, fields, nil
@@ -612,7 +627,7 @@ func (a *Auth) afterDecidedSignIn(ctx context.Context, user User, created bool, 
 
 // createSessionWithHooks runs the session create hooks around write, which
 // stores row. A skipped write returns skipped.
-func (a *Auth) createSessionWithHooks(ctx context.Context, row StoredSession, skipped *APIError, write func(StoredSession) error) (StoredSession, error) {
+func (a *Auth) createSessionWithHooks(ctx context.Context, row StoredSession, skipped error, write func(StoredSession) error) (StoredSession, error) {
 	row, fields, err := a.beforeSessionCreate(ctx, row, nil, skipped)
 	if err != nil {
 		return row, err

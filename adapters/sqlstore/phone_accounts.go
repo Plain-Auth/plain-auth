@@ -166,6 +166,9 @@ func (s *Store) ApplyPhoneRegistration(ctx context.Context, act auth.PhoneAccoun
 				return &auth.APIError{Status: 500, Code: "FAILED_TO_UPDATE_USER", Message: "Failed to update user"}, nil
 			}
 			user = *act.Create
+			if err := auth.LoginPlanFrom(ctx).PlanUser(&user); err != nil {
+				return nil, err
+			}
 			query, args := s.userInsert(user, columns)
 			_, err = tx.ExecContext(ctx, s.bind(query), args...)
 			if duplicateConstraint(err) {

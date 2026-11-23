@@ -204,44 +204,47 @@
     - [ ] Mixed ID Types
       - [ ] Use Case
     - [ ] Database Hooks
-      - [x] Run plugin and application hooks around the users and sessions that sign-up, password sign-in, anonymous sign-in, plugin sessions and password changes create ([test](../../conformance/goapi/database_hooks_test.go#L21))
+      - [x] Run plugin and application hooks around the users and sessions that sign-up, password sign-in, anonymous sign-in, plugin sessions and password changes create ([test](../../conformance/goapi/database_hooks_test.go#L19))
       - [x] Run create hooks outside the write transaction so they can use the store on SQLite, PostgreSQL and MySQL ([test](../../adapters/sqlstore/database_hooks_test.go#L19))
       - [x] Run hooks around session refreshes, field updates, sign-out, revocation, expired-session cleanup, password changes and multi-session replacement ([test](../../conformance/goapi/database_session_hooks_test.go#L20))
       - [x] Run hooks around profile updates, email changes and email verification ([test](../../conformance/goapi/database_user_hooks_test.go#L19))
       - [x] Run the session and user delete hooks when a user deletes their account ([test](../../conformance/goapi/database_user_hooks_test.go#L160))
-      - [x] Run the create after hooks for social sign-in, magic links, email codes and phone verification, once per new user ([test](../../conformance/goapi/database_decided_hooks_test.go#L21))
+      - [x] Run the create after hooks for social sign-in, magic links, email codes and phone verification, once per new user ([test](../../conformance/goapi/database_decided_hooks_test.go#L253))
       - [x] Run account hooks around the credential a sign-up stores, password changes, first passwords, unlinking and account deletion ([test](../../conformance/goapi/database_user_hooks_test.go#L246))
       - [ ] 1. Before Hook
-        - [x] Edit the stored fields of a new user or session, or cancel its creation, before anything is written ([test](../../conformance/goapi/database_hooks_test.go#L124))
+        - [x] Edit the stored fields of a new user or session, or cancel its creation, before anything is written ([test](../../conformance/goapi/database_hooks_test.go#L122))
+        - [x] Run the create before hooks for social sign-in, magic links, email codes and phone verification outside the store transaction, for new users only ([test](../../conformance/goapi/database_decided_hooks_test.go#L286))
+        - [x] Plan a store-decided sign-in on SQLite, PostgreSQL and MySQL: the dry run stores nothing and a skipped link stays usable ([test](../../adapters/sqlstore/login_plan_test.go#L16))
         - [ ] Purpose
-          - [x] Run before a user or session is created ([test](../../conformance/goapi/database_hooks_test.go#L124))
+          - [x] Run before a user or session is created ([test](../../conformance/goapi/database_hooks_test.go#L122))
           - [x] Run before a session is refreshed, updated or deleted ([test](../../conformance/goapi/database_session_hooks_test.go#L120))
           - [x] Run before a user is updated, with the change applied ([test](../../conformance/goapi/database_user_hooks_test.go#L90))
           - [x] Run before a user and its sessions are deleted ([test](../../conformance/goapi/database_user_hooks_test.go#L227))
           - [x] Run before an account is created, updated or deleted ([test](../../conformance/goapi/database_user_hooks_test.go#L302))
         - [ ] Behavior
-          - [x] Cancel a creation with ErrSkipWrite, edit the stored fields, and reject edits to other fields ([test](../../conformance/goapi/database_hooks_test.go#L167))
+          - [x] Cancel a creation with ErrSkipWrite, edit the stored fields, and reject edits to other fields ([test](../../conformance/goapi/database_hooks_test.go#L165))
           - [x] Cancel a session update or delete with ErrSkipWrite, let one declined row keep every session of a revocation, and reject edits to fields an update does not store ([test](../../conformance/goapi/database_session_hooks_test.go#L193))
           - [x] Decline a profile update, email change or verification with ErrSkipWrite, and reject edits to fields the update does not store ([test](../../conformance/goapi/database_user_hooks_test.go#L100))
+          - [x] Skip a store-decided sign-in with its usual error, store nothing, and sign in a user stored while the hooks ran ([test](../../conformance/goapi/database_decided_hooks_test.go#L370))
       - [ ] 2. After Hook
-        - [x] Observe the stored user and session after creation, and remove an undelivered session when an after hook fails ([test](../../conformance/goapi/database_hooks_test.go#L215))
+        - [x] Observe the stored user and session after creation, and remove an undelivered session when an after hook fails ([test](../../conformance/goapi/database_hooks_test.go#L213))
         - [ ] Purpose
           - [x] Run after a user or session is created, with the stored row visible to the store ([test](../../adapters/sqlstore/database_hooks_test.go#L96))
           - [x] Run after a session is updated or deleted, with the change visible to the store ([test](../../conformance/goapi/database_session_hooks_test.go#L76))
           - [x] Run after a user is updated, with the stored row visible to the store ([test](../../conformance/goapi/database_user_hooks_test.go#L112))
-          - [x] Run after the store creates a user or session during a social, magic link, email code or phone sign-in, with the owner the store chose ([test](../../conformance/goapi/database_decided_hooks_test.go#L79))
+          - [x] Run after the store creates a user or session during a social, magic link, email code or phone sign-in, with the owner the store chose ([test](../../conformance/goapi/database_decided_hooks_test.go#L90))
           - [x] Run after an account is created or updated, with its stored ID ([test](../../conformance/goapi/database_user_hooks_test.go#L345))
         - [ ] Behavior
           - [x] Fire one after hook for concurrent sign-ups of one email and none for a sign-up that stores nothing ([test](../../adapters/sqlstore/database_hooks_test.go#L111))
           - [x] Run session update and delete after hooks once the change is stored, on SQLite, PostgreSQL and MySQL ([test](../../adapters/sqlstore/database_hooks_test.go#L126))
         - [x] Example Usage ([test](../../conformance/goapi/database_user_hooks_test.go#L227))
-          - [x] Derive user fields in a before hook and call another service from an after hook ([test](../../conformance/goapi/database_hooks_test.go#L130))
+          - [x] Derive user fields in a before hook and call another service from an after hook ([test](../../conformance/goapi/database_hooks_test.go#L128))
           - [x] Log a session as sign-out deletes it, or keep it by declining the delete ([test](../../conformance/goapi/database_session_hooks_test.go#L166))
           - [x] Derive fields when a user is created, veto a user deletion, and log the sessions an account deletion removes ([test](../../conformance/goapi/database_user_hooks_test.go#L227))
-      - [x] Throwing Errors ([test](../../conformance/goapi/database_hooks_test.go#L174))
-        - [x] Answer with a before hook's APIError, its status and code, and store nothing ([test](../../conformance/goapi/database_hooks_test.go#L174))
+      - [x] Throwing Errors ([test](../../conformance/goapi/database_hooks_test.go#L172))
+        - [x] Answer with a before hook's APIError, its status and code, and store nothing ([test](../../conformance/goapi/database_hooks_test.go#L172))
       - [x] Using the Context Object ([test](../../conformance/goapi/database_session_hooks_test.go#L47))
-        - [x] Pass the endpoint call to hooks during HTTP requests and nil for direct Go calls ([test](../../conformance/goapi/database_hooks_test.go#L290))
+        - [x] Pass the endpoint call to hooks during HTTP requests and nil for direct Go calls ([test](../../conformance/goapi/database_hooks_test.go#L288))
         - [x] Read the signed-in caller from the endpoint context in an update hook ([test](../../conformance/goapi/database_session_hooks_test.go#L47))
   - [ ] Plugins Schema
     - [ ] `twoFactorEnabled`

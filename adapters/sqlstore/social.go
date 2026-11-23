@@ -151,6 +151,7 @@ func (s *Store) completeOAuth(ctx context.Context, provider, subject string, tok
 		return u, false, err
 	}
 	defer tx.Rollback()
+	authn.LoginPlanFrom(ctx).Attempt()
 	if options.LinkUserID != "" {
 		if !candidate.EmailVerified {
 			return u, false, authn.ErrOAuthLinkRequired
@@ -224,6 +225,9 @@ func (s *Store) completeOAuth(ctx context.Context, provider, subject string, tok
 				if err != nil {
 					return u, false, err
 				}
+			}
+			if err := authn.LoginPlanFrom(ctx).PlanUser(&u); err != nil {
+				return u, false, err
 			}
 			query, args := s.userInsert(u, values.Columns())
 			_, err = tx.ExecContext(ctx, s.bind(query), args...)
@@ -308,6 +312,9 @@ func (s *Store) completeOAuth(ctx context.Context, provider, subject string, tok
 	}
 	if options.RequireEmailVerification && options.LinkUserID == "" && !u.EmailVerified {
 		if !candidate.EmailVerified || strings.ToLower(u.Email) != candidate.Email {
+			if err := authn.LoginPlanFrom(ctx).Commit(); err != nil {
+				return authn.User{}, false, err
+			}
 			if err := tx.Commit(); err != nil {
 				return authn.User{}, false, err
 			}
@@ -331,6 +338,9 @@ func (s *Store) completeOAuth(ctx context.Context, provider, subject string, tok
 		if err := s.insertSession(ctx, tx, session); err != nil {
 			return u, false, err
 		}
+	}
+	if err := authn.LoginPlanFrom(ctx).Commit(); err != nil {
+		return u, false, err
 	}
 	return u, created, tx.Commit()
 }

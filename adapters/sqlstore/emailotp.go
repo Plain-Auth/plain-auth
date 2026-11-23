@@ -53,6 +53,7 @@ func (s *Store) emailOTPTransactionOnce(ctx context.Context, key emailOTPKey, ru
 		return err
 	}
 	defer end.rollback()
+	auth.LoginPlanFrom(ctx).Attempt()
 	if s.dialect == "postgres" {
 		if _, err = tx.ExecContext(ctx, "SELECT pg_advisory_xact_lock(hashtextextended($1,0))", key.owner); err != nil {
 			return err
@@ -60,6 +61,9 @@ func (s *Store) emailOTPTransactionOnce(ctx context.Context, key emailOTPKey, ru
 	}
 	denial, err := run(tx)
 	if err != nil {
+		return err
+	}
+	if err = auth.LoginPlanFrom(ctx).Commit(); err != nil {
 		return err
 	}
 	if err = end.commit(); err != nil {
@@ -316,6 +320,9 @@ func (s *Store) useEmailOTP(ctx context.Context, act auth.EmailOTPAction, matche
 					if err != nil {
 						return err, nil
 					}
+				}
+				if err := auth.LoginPlanFrom(ctx).PlanUser(&user); err != nil {
+					return nil, err
 				}
 				query, args := s.userInsert(user, values.Columns())
 				_, err = tx.ExecContext(ctx, s.bind(query), args...)
