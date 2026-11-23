@@ -88,3 +88,14 @@ func (s *Store) CheckOrganizationPermission(ctx context.Context, sessionID, acto
 	}
 	return policy.HasPermission(role, requested), nil
 }
+
+// OrganizationRolePolicyFor returns the role policy in effect for one
+// organization, including its stored roles when dynamic roles are enabled.
+func (s *Store) OrganizationRolePolicyFor(ctx context.Context, organizationID string) (org.RolePolicy, error) {
+	tx, err := s.beginReadSnapshot(ctx)
+	if err != nil {
+		return org.RolePolicy{}, err
+	}
+	defer tx.Rollback()
+	return s.resolveOrganizationRoles(ctx, tx, organizationID)
+}

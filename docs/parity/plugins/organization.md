@@ -13,9 +13,10 @@
   - [x] `defaultRoles` ([test](../../../plugins/organization/permissions_test.go#L48))
     - [x] Extend the built-in grants with an independent copy of the role definitions ([test](../../../plugins/organization/permissions_test.go#L48))
   - [ ] `getOrgAdapter`
-  - [ ] `clientSideHasPermission`
+  - [x] `clientSideHasPermission` ([test](../../../adapters/sqlstore/organization_role_check_test.go#L60))
     - [x] Calculate built-in role permissions locally from a comma-separated role list ([test](../../../plugins/organization/permissions_test.go#L10))
     - [x] Evaluate a configured role locally and require one role to cover every requested action ([test](../../../plugins/organization/permissions_test.go#L45))
+    - [x] Check configured roles locally without an organization, including the creator shortcut ([test](../../../adapters/sqlstore/organization_role_check_test.go#L60))
   - [ ] `OrganizationClientOptions`
     - [ ] `ac`
     - [ ] `roles`
@@ -26,11 +27,12 @@
   - [ ] `organizationClient`
   - [ ] `inferOrgAdditionalFields`
   - [ ] `ORGANIZATION_ERROR_CODES`
-  - [ ] `hasPermission`
+  - [x] `hasPermission` ([test](../../../adapters/sqlstore/organization_role_check_test.go#L15))
     - [x] Evaluate every built-in role and resource action with the signed-in organization member ([test](../../../conformance/organization-permissions.mjs#L47))
     - [x] Check an active or explicit organization with the Go client on three SQL engines ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L167))
     - [x] Resolve custom actions against live membership even when the caller holds multiple roles ([test](../../../conformance/organization-custom-roles.mjs#L63))
     - [x] Resolve the same role independently per organization and apply changes from another application on the next operation ([test](../../../conformance/organization-stored-roles.mjs#L54))
+    - [x] Check a role string against built-in and stored organization roles from server code, with an optional creator shortcut ([test](../../../adapters/sqlstore/organization_role_check_test.go#L15))
   - [x] `POST /organization/has-permission` ([test](../../../conformance/organization-stored-roles.mjs#L54))
     - [x] Evaluate every built-in role and resource action with the signed-in organization member ([test](../../../conformance/organization-permissions.mjs#L47))
     - [x] Check an active or explicit organization with the Go client on three SQL engines ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L167))

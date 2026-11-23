@@ -179,6 +179,8 @@ A signed-in caller with no active organization needs an explicit ID. A caller ou
 
 In Go, call `authClient.HasOrganizationPermission(ctx, orgID, access.Statements{"invitation": {"create"}})` using `plugins/access`. For a local calculation with known built-in role names, use `organization.DefaultRoleHasPermission("admin,member", requested)`. The HTTP method also reads the current membership, including role changes and removals. The supported HTTP field is `permissions`. The legacy singular `permission` form yields a negative decision. [Role and request comparisons](../conformance/organization-permissions.mjs) · [Go client and database tests](../adapters/sqlstore/organization_selection_http_test.go)
 
+
+To check a role you already hold, without looking up a member, call `groups.HasRolePermission(ctx, organization.RolePermissionCheck{OrganizationID: orgID, Role: "member,reviewer", Permissions: access.Statements{"organization": {"update"}}})`. Any listed role that grants the whole request passes. With `DynamicAccessControl`, the organization's stored roles count alongside the configured ones; without an `OrganizationID` the check uses the configured roles alone. Set `AllowCreatorAllPermissions` to let the creator role pass every check. [Role check tests](../adapters/sqlstore/organization_role_check_test.go)
 ## Configure organization roles
 
 Set `organization.Options.Roles` in the Go host. The same policy governs live permission checks and writes. For example, a newsroom can let editors invite members and publish reports while reserving team management for other roles.

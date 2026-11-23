@@ -15898,6 +15898,12 @@
       "label": "Resolve the same role independently per organization and apply changes from another application on the next operation",
       "test": "conformance/organization-stored-roles.mjs",
       "marker": "assert.equal(await query(reporter,north,{team:[\"create\"]}),false)"
+    },
+    {
+      "label": "Check a role string against built-in and stored organization roles from server code, with an optional creator shortcut",
+      "test": "adapters/sqlstore/organization_role_check_test.go",
+      "marker": "func TestOrganizationRolePermissionCheck(",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L1395/Has Permission": [
@@ -15999,6 +16005,12 @@
       "label": "Evaluate a configured role locally and require one role to cover every requested action",
       "test": "plugins/organization/permissions_test.go",
       "marker": "combined partial grants authorized a request"
+    },
+    {
+      "label": "Check configured roles locally without an organization, including the creator shortcut",
+      "test": "adapters/sqlstore/organization_role_check_test.go",
+      "marker": "{\"local check without an organization\", plain,",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L1442/Check Role Permission": [
