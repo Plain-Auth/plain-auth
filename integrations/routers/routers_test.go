@@ -13,6 +13,7 @@ import (
 	authn "github.com/Plain-Auth/plain-auth"
 	"github.com/Plain-Auth/plain-auth/adapters/sqlstore"
 	"github.com/Plain-Auth/plain-auth/plugins/oauthprovider"
+	"github.com/Plain-Auth/plain-auth/plugins/organization"
 	"github.com/Plain-Auth/plain-auth/schema"
 	"github.com/gin-gonic/gin"
 	"github.com/go-chi/chi/v5"
@@ -98,7 +99,7 @@ func TestFrameworkMounts(t *testing.T) {
 		}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			s, err := sqlstore.OpenWithOptions(t.Context(), "sqlite", ":memory:", []string{"oauth-provider", "jwt"}, schema.Options{})
+			s, err := sqlstore.OpenWithOptions(t.Context(), "sqlite", ":memory:", []string{"oauth-provider", "jwt", "organization-teams"}, schema.Options{})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -112,7 +113,11 @@ func TestFrameworkMounts(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			auth, err := authn.New(authn.Options{BaseURL: origin, Secret: strings.Repeat("r", 32), Store: s, EmailAndPassword: true, Plugins: []authn.Plugin{provider, signer}})
+			groups, err := organization.New(organization.Options{Store: s, Teams: &organization.TeamOptions{}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			auth, err := authn.New(authn.Options{BaseURL: origin, Secret: strings.Repeat("r", 32), Store: s, EmailAndPassword: true, Plugins: []authn.Plugin{provider, signer, groups}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -189,6 +194,43 @@ func TestFrameworkMounts(t *testing.T) {
 			var result authn.SessionResult
 			if json.Unmarshal([]byte(session), &result) != nil || result.User.Email != "ada@example.com" {
 				t.Fatalf("unexpected session: %s", session)
+			}
+			checkSelection := func(method, path, body string, out any) {
+				t.Helper()
+				resp, raw := send(method, "/api/auth/organization/"+path, body, cookies, 200)
+				if resp.Header.Get("Location") != "" || !strings.HasPrefix(resp.Header.Get("Content-Type"), "application/json") {
+					t.Fatal("ordinary selection did not return JSON to the calling application", tc.name)
+				}
+				if err := json.Unmarshal([]byte(raw), out); err != nil {
+					t.Fatal(err)
+				}
+			}
+			var studio, shop, selected organization.Organization
+			checkSelection("POST", "create", `{"name":"Studio","slug":"studio"}`, &studio)
+			checkSelection("POST", "create", `{"name":"Shop","slug":"shop"}`, &shop)
+			checkSelection("POST", "set-active", `{"organizationSlug":"studio"}`, &selected)
+			var view organization.FullOrganization
+			checkSelection("GET", "get-full-organization?membersLimit=1", "", &view)
+			if selected.ID != studio.ID || view.ID != studio.ID || len(view.Teams) != 1 || len(view.Members) != 1 || view.Members[0].User.Email != result.User.Email {
+				t.Fatal("router lost the selected organization's members or teams", tc.name)
+			}
+			teamRequest, err := json.Marshal(map[string]string{"teamId": view.Teams[0].ID})
+			if err != nil {
+				t.Fatal(err)
+			}
+			var team organization.Team
+			checkSelection("POST", "set-active-team", string(teamRequest), &team)
+			if team.ID != view.Teams[0].ID || team.OrganizationID != studio.ID {
+				t.Fatal("router returned an unrelated team", tc.name)
+			}
+			checkSelection("POST", "set-active", `{"organizationSlug":"shop"}`, &selected)
+			_, session = send("GET", "/api/auth/get-session", "", cookies, 200)
+			var switched authn.SessionResult
+			if err := json.Unmarshal([]byte(session), &switched); err != nil {
+				t.Fatal(err)
+			}
+			if selected.ID != shop.ID || switched.Session.ActiveOrganizationID == nil || *switched.Session.ActiveOrganizationID != shop.ID || switched.Session.ActiveTeamID != nil {
+				t.Fatal("organization switch did not clear the previous team", tc.name)
 			}
 			res, _ = send("POST", "/api/auth/sign-out", "{}", cookies, 200)
 			if len(res.Cookies()) < 2 {

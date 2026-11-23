@@ -28,7 +28,7 @@
   - [ ] `oauthAuthorizationServerMetadata`
     - [x] Discover endpoints and capabilities for the machine grant, then register a client, verify a signed token and revoke an opaque token ([test](../../../conformance/oauth-issuer-metadata.mjs#L95))
   - [ ] `oauthProviderAuthServerMetadata`
-    - [x] Mount both issuer discovery paths through ServeMux, chi, Gorilla Mux, Gin, Echo and Fiber and read them with GET and HEAD ([test](../../../integrations/routers/routers_test.go#L164))
+    - [x] Mount both issuer discovery paths through ServeMux, chi, Gorilla Mux, Gin, Echo and Fiber and read them with GET and HEAD ([test](../../../integrations/routers/routers_test.go#L169))
     - [x] Retrieve the native issuer document, preserve escaped issuer paths and omit disabled endpoints and unavailable store capabilities ([test](../../../plugins/oauthprovider/issuer_metadata_test.go#L64))
   - [ ] `oauthProviderOpenIdConfigMetadata`
     - [x] Read the mounted OpenID provider document from Go, including host page capabilities and the configured claim list ([test](../../../plugins/oauthprovider/openid_metadata_test.go#L75))
@@ -54,10 +54,10 @@
     - [x] Reject malformed OpenID claims and unsatisfiable essential authentication context before authorizing a code ([test](../../../conformance/oauth-id-tokens.mjs#L104))
   - [ ] `GET /.well-known/oauth-authorization-server` (server API only)
     - [x] Discover endpoints and capabilities for the machine grant, then register a client, verify a signed token and revoke an opaque token ([test](../../../conformance/oauth-issuer-metadata.mjs#L95))
-    - [x] Mount both issuer discovery paths through ServeMux, chi, Gorilla Mux, Gin, Echo and Fiber and read them with GET and HEAD ([test](../../../integrations/routers/routers_test.go#L164))
+    - [x] Mount both issuer discovery paths through ServeMux, chi, Gorilla Mux, Gin, Echo and Fiber and read them with GET and HEAD ([test](../../../integrations/routers/routers_test.go#L169))
   - [ ] `GET /.well-known/openid-configuration` (server API only)
     - [x] Start from a custom issuer URL, discover the endpoints, complete PKCE sign-in and verify the ID token, access-token hash and UserInfo subject using an independent Go client ([test](../../../plugins/oauthprovider/openid_metadata_test.go#L23))
-    - [x] Serve the public provider document through ServeMux, chi, Gorilla Mux, Gin, Echo and Fiber and honor HEAD ([test](../../../integrations/routers/routers_test.go#L167))
+    - [x] Serve the public provider document through ServeMux, chi, Gorilla Mux, Gin, Echo and Fiber and honor HEAD ([test](../../../integrations/routers/routers_test.go#L172))
   - [ ] `POST /oauth2/consent`
     - [x] Visit a host consent page, verify the signed query independently, deny a first request or exchange a code approved for fewer scopes ([test](../../../conformance/oauth-browser-authorization.mjs#L57))
     - [x] Consume a decision once across two servers, isolate sessions and tenants, and roll back consent when code storage fails ([test](../../../adapters/sqlstore/oauth_browser_consent_test.go#L25))
@@ -811,7 +811,7 @@
   - [x] Protected resource metadata ([test](../../../conformance/resource-discovery.mjs#L7))
     - [x] Publish a path-specific HTTPS document with local issuer defaults, explicit issuers, filtered scopes and empty capabilities ([test](../../../conformance/resource-discovery.mjs#L7))
     - [x] Preserve escaped paths and query identity and serve public GET, HEAD and preflight over TLS ([test](../../../plugins/oauthprovider/discovery_test.go#L15))
-    - [x] Mount the same discovery document on ServeMux, chi, Gorilla Mux, Gin, Echo and Fiber ([test](../../../integrations/routers/routers_test.go#L177))
+    - [x] Mount the same discovery document on ServeMux, chi, Gorilla Mux, Gin, Echo and Fiber ([test](../../../integrations/routers/routers_test.go#L182))
 
 ## Sign-in and consent screens
 

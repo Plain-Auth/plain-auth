@@ -120,6 +120,7 @@
     - [x] Use HTTP JSON with separate cookie jars to switch or clear organizations and teams without affecting another login ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L21))
     - [x] Describe nullable selection results across enabled profiles and expose signed destinations when the host supports them ([test](../../../plugins/openapi/organization_selection_test.go#L20))
     - [x] On a signed browser navigation, send the Location of the consent page bound to the selecting session ([test](../../../adapters/sqlstore/oauth_post_login_test.go#L164))
+    - [x] Switch the session’s organization and team using plain HTTP and JSON on six Go routers ([test](../../../integrations/routers/routers_test.go#L202))
   - [ ] `GET /organization/list`
     - [x] List only organizations the current user belongs to ([test](../../../plugins/organization/organization_test.go#L109))
   - [ ] `POST /organization/create-team`
@@ -136,6 +137,7 @@
     - [x] Validate a signed selector before updating the team and keep an outstanding approval in its original organization ([test](../../../adapters/sqlstore/oauth_post_login_test.go#L129))
     - [x] Describe nullable selection results across enabled profiles and expose signed destinations when the host supports them ([test](../../../plugins/openapi/organization_selection_test.go#L20))
     - [x] On a signed browser navigation, send the Location of the consent page bound to the selecting session ([test](../../../adapters/sqlstore/oauth_post_login_test.go#L164))
+    - [x] Switch the session’s organization and team using plain HTTP and JSON on six Go routers ([test](../../../integrations/routers/routers_test.go#L202))
   - [ ] `GET /organization/list-user-teams`
     - [x] Return self memberships across organizations and scope administrative queries to the selected organization ([test](../../../adapters/sqlstore/organization_teams_test.go#L257))
   - [ ] `GET /organization/list-team-members`

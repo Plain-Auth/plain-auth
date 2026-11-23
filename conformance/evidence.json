@@ -824,6 +824,11 @@
       "label": "On a signed browser navigation, send the Location of the consent page bound to the selecting session",
       "test": "adapters/sqlstore/oauth_post_login_test.go",
       "marker": "signed selection navigation failed"
+    },
+    {
+      "label": "Switch the session’s organization and team using plain HTTP and JSON on six Go routers",
+      "test": "integrations/routers/routers_test.go",
+      "marker": "ordinary selection did not return JSON to the calling application"
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L621": [
@@ -3393,6 +3398,11 @@
       "label": "On a signed browser navigation, send the Location of the consent page bound to the selecting session",
       "test": "adapters/sqlstore/oauth_post_login_test.go",
       "marker": "signed selection navigation failed"
+    },
+    {
+      "label": "Switch the session’s organization and team using plain HTTP and JSON on six Go routers",
+      "test": "integrations/routers/routers_test.go",
+      "marker": "ordinary selection did not return JSON to the calling application"
     }
   ],
   "plugin/organization/GET /organization/list-user-teams": [
