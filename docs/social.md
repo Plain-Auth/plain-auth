@@ -49,6 +49,8 @@ if err != nil {
 social["work"] = work
 ```
 
+If your application also acts as an OAuth issuer, the host login page can pass its verified `oauth_query` through social sign-in. The external identity provider authenticates the user. Plain Auth then resumes the requesting client's authorization using the new session. [Social sign-in during authorization](oauth-authorization-code.md#sign-in-with-an-external-provider)
+
 To link a provider explicitly, a signed-in user can submit the same request body to `POST /api/auth/link-social`. The provider's verified email must match the current user's email. The callback checks that the initiating session is still active and keeps that session when linking succeeds.
 
 Apple, Google, Microsoft and discovered OpenID Connect providers also accept `{ "provider": "work", "idToken": { "token": "...", "nonce": "..." } }` on the sign-in and link routes. Supply the same nonce used to request the provider's ID token. The server verifies the signature and claims, limits token age to one hour and records successful use until expiry. Direct sign-in returns `user`, `token` and `redirect: false` and sets the session cookie.

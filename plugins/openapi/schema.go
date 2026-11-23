@@ -96,6 +96,11 @@ func publicResponse(route plainauth.HTTPRoute, info plainauth.HTTPDescription, f
 		return responseObject(object{"keys": array(object{"type": "object"})}, "keys")
 	}
 	switch route.Path {
+	case "/sign-in/social":
+		return object{"anyOf": []object{
+			responseObject(object{"url": object{"type": "string"}, "redirect": object{"type": "boolean"}}, "url", "redirect"),
+			responseObject(object{"user": modelRef("User"), "token": object{"type": "string"}, "redirect": object{"const": false}}, "user", "token", "redirect"),
+		}}
 	case "/update-session":
 		return responseObject(object{"session": modelRef("Session")}, "session")
 	case "/get-session":
@@ -426,6 +431,9 @@ func adjustRequest(op object, r plainauth.HTTPRoute, info plainauth.HTTPDescript
 	case "/sign-in/social", "/link-social":
 		keepFields(schema, "provider", "callbackURL", "errorCallbackURL", "newUserCallbackURL", "disableRedirect", "idToken")
 		fields["provider"] = object{"type": "string", "enum": info.Providers}
+		if r.Path == "/sign-in/social" && info.OAuthLoginContinuation {
+			fields["oauth_query"] = object{"type": "string", "description": "Verified query from the issuer login page."}
+		}
 	case "/subscription/upgrade":
 		keepFields(schema, "plan", "annual", "referenceId", "customerType", "subscriptionId", "successUrl", "cancelUrl", "returnUrl", "disableRedirect")
 	case "/organization/create":
@@ -518,8 +526,21 @@ func standardOperation(r plainauth.HTTPRoute, info plainauth.HTTPDescription, a 
 		case "/reset-password/:token", "/callback/:id", "/callback/:id/oauth-proxy", "/oauth-proxy-callback", "/subscription/success", "/sso/callback", "/sso/callback/:providerId", "/sso/saml2/sp/acs/:providerId", "/sso/saml2/logout/:providerId", "/sso/saml2/sp/slo/:providerId":
 			delete(responses, success)
 			responses["302"] = object{"description": "Redirect to the configured destination", "headers": object{"Location": object{"schema": object{"type": "string"}}}}
-			if (r.Path == "/callback/:id" || r.Plugin == "oauth-proxy") && r.Method == "GET" && a.HasPlugin("oauth-popup") {
-				responses["200"] = response("text/html", object{"type": "string"})
+			if (r.Path == "/callback/:id" || r.Plugin == "oauth-proxy") && r.Method == "GET" {
+				media := object{}
+				if a.HasPlugin("oauth-popup") {
+					media["text/html"] = object{"schema": object{"type": "string"}}
+				}
+				if info.OAuthLoginContinuation {
+					media["application/json"] = object{"schema": responseObject(object{"redirect": object{"const": true}, "url": object{"type": "string"}}, "redirect", "url")}
+				}
+				if len(media) > 0 {
+					responses["200"] = object{"description": "Success", "content": media}
+				}
+			}
+		case "/sign-in/social":
+			if info.OAuthLoginContinuation {
+				responses["302"] = object{"description": "Continue a signed issuer login after direct ID-token verification", "headers": object{"Location": object{"schema": object{"type": "string"}}}}
 			}
 		case "/verify-email", "/magic-link/verify", "/delete-user/callback":
 			responses["302"] = object{"description": "Redirect to the trusted callback"}

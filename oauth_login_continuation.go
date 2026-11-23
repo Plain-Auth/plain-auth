@@ -28,7 +28,7 @@ func (a *Auth) loginContinuation(route string, r *http.Request, body wireBody, h
 	}
 	prepare := a.prepareOAuthLogin
 	switch route {
-	case "/sign-in/email", "/sign-up/email", "/sign-in/username", "/sign-in/phone-number", "/sign-in/email-otp", "/passkey/verify-authentication",
+	case "/sign-in/email", "/sign-up/email", "/sign-in/social", "/sign-in/username", "/sign-in/phone-number", "/sign-in/email-otp", "/passkey/verify-authentication",
 		"/two-factor/verify-totp", "/two-factor/verify-otp", "/two-factor/verify-backup-code":
 	case "/organization/set-active", "/organization/set-active-team":
 		prepare = a.prepareOAuthSelection

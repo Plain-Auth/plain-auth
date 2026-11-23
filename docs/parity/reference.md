@@ -330,10 +330,10 @@
       - [x] Map browser grants on first links and verified email linking, keep identity bindings and reject invalid updates atomically ([test](../../conformance/account-fields.mjs#L25))
     - [ ] `disableSignUp`
     - [ ] `disableImplicitSignUp`
-    - [x] `overrideUserInfoOnSignIn` ([test](../../conformance/social-user-fields.mjs#L143))
-      - [x] Refresh a returning profile with either server, preserve protected fields and use the new mailbox verification status ([test](../../conformance/social-user-fields.mjs#L143))
-    - [x] `requireEmailVerification` ([test](../../conformance/social-user-fields.mjs#L198))
-      - [x] Withhold sessions for unverified social accounts, honor mail delivery settings and accept confirmation by either server ([test](../../conformance/social-user-fields.mjs#L198))
+    - [x] `overrideUserInfoOnSignIn` ([test](../../conformance/social-user-fields.mjs#L145))
+      - [x] Refresh a returning profile with either server, preserve protected fields and use the new mailbox verification status ([test](../../conformance/social-user-fields.mjs#L145))
+    - [x] `requireEmailVerification` ([test](../../conformance/social-user-fields.mjs#L200))
+      - [x] Withhold sessions for unverified social accounts, honor mail delivery settings and accept confirmation by either server ([test](../../conformance/social-user-fields.mjs#L200))
     - [ ] `prompt`
     - [ ] `responseMode`
     - [ ] `getUserInfo`
@@ -351,7 +351,7 @@
       - [x] Declare portable user columns, inspect compatibility and migrate preexisting profiles alongside independent session declarations ([test](../../adapters/sqlstore/user_fields_test.go#L192))
       - [x] Apply public and host-owned fields on memory, SQLite, PostgreSQL and MySQL ([test](../../adapters/sqlstore/user_fields_test.go#L47))
       - [x] Apply declared user fields only on first-time email OTP registration and retain the original values during sign-in ([test](../../conformance/user-fields.mjs#L111))
-      - [x] Keep browser state and raw provider claims separate from declared public, hidden and server-owned fields on social signup ([test](../../conformance/social-user-fields.mjs#L138))
+      - [x] Keep browser state and raw provider claims separate from declared public, hidden and server-owned fields on social signup ([test](../../conformance/social-user-fields.mjs#L140))
       - [x] Write phone registration profiles once across competing nodes, preserve owner values, and keep verification credentials and flags out of stored profile columns ([test](../../adapters/sqlstore/phone_registration_fields_test.go#L148))
       - [x] Accept date input with an explicit time zone, persist trusted updates and clear optional timestamps on four stores ([test](../../adapters/sqlstore/date_fields_test.go#L17))
       - [x] Compute server-owned profile defaults on creation and roll back invalid generated values across four stores ([test](../../adapters/sqlstore/computed_fields_test.go#L17))
@@ -381,8 +381,8 @@
     - [ ] `fields`
     - [x] `encryptOAuthTokens` ([test](../../adapters/sqlstore/oauth_encryption_test.go#L92))
       - [x] Encrypt provider access, refresh and ID tokens across key rotation and credential refresh ([test](../../adapters/sqlstore/oauth_encryption_test.go#L92))
-    - [x] `updateAccountOnSignIn` ([test](../../conformance/social-user-fields.mjs#L265))
-      - [x] Preserve or renew provider credentials on returning sign-ins while applying profile changes and issuing sessions ([test](../../conformance/social-user-fields.mjs#L265))
+    - [x] `updateAccountOnSignIn` ([test](../../conformance/social-user-fields.mjs#L267))
+      - [x] Preserve or renew provider credentials on returning sign-ins while applying profile changes and issuing sessions ([test](../../conformance/social-user-fields.mjs#L267))
       - [x] Preserve the account timestamp, claim single-use grants and retain omitted expiry values on three SQL engines ([test](../../adapters/sqlstore/oauth_account_update_test.go#L11))
       - [x] Keep the original encryption key version on sign-in and rotate credentials through explicit refresh ([test](../../adapters/sqlstore/oauth_encryption_test.go#L113))
     - [ ] `storeStateStrategy`

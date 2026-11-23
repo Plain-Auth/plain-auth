@@ -40,6 +40,7 @@
   - [ ] `OAuthFieldErrorCodeMap`
   - [ ] `OAuthRedirectOnError`
   - [ ] `GET / POST /oauth2/authorize`
+    - [x] Complete separate provider and client PKCE exchanges and bind the issued token to the social login session ([test](../../../conformance/oauth-social-authorization.mjs#L130))
     - [x] Sign in and register a public client, then obtain a code by GET or form POST and redeem it at either issuer with S256 PKCE ([test](../../../conformance/oauth-browser-authorization.mjs#L5))
     - [x] Recheck the registered callback, owner session and scoped consent in the issuing transaction on all three databases ([test](../../../adapters/sqlstore/oauth_browser_authorization_test.go#L20))
     - [x] Visit a host consent page, verify the signed query independently, deny a first request or exchange a code approved for fewer scopes ([test](../../../conformance/oauth-browser-authorization.mjs#L57))
@@ -799,6 +800,7 @@
     - [x] Return an interaction error for silent onboarding and wait for the host’s stored update before exposing consent ([test](../../../conformance/oauth-signup-policy.mjs#L45))
     - [x] Return a silent interaction error, ignore a supplied clearance on a new request and sign only a completed session’s consent page ([test](../../../conformance/oauth-post-login.mjs#L87))
   - [ ] Login page
+    - [x] Continue from the external provider by browser redirect or JSON and enforce consent for the original request ([test](../../../conformance/oauth-social-authorization.mjs#L88))
     - [x] Take a signed-out user through local login, consent and PKCE redemption and require fresh credentials when requested ([test](../../../conformance/oauth-browser-login.mjs#L36))
     - [x] Wait for the second factor before resuming, replace the prior browser account and enforce host authorization rules ([test](../../../adapters/sqlstore/oauth_browser_login_test.go#L22))
   - [ ] Consent page

@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { createServer } from "node:http";
 import { once } from "node:events";
 import { readFile } from "node:fs/promises";
@@ -23,7 +24,7 @@ export async function issuerFixture(t) {
     if (url.pathname === "/authorize") {
       const callback = new URL(url.searchParams.get("redirect_uri"));
       const code = "approved-" + (++sequence);
-      codes.set(code, { profile, grantFields, callback: callback.href });
+      codes.set(code, { profile, grantFields, callback: callback.href, challenge: url.searchParams.get("code_challenge") });
       callback.searchParams.set("code", code);
       callback.searchParams.set("state", url.searchParams.get("state"));
       res.writeHead(302, { location: callback.href }).end();
@@ -34,7 +35,8 @@ export async function issuerFixture(t) {
       for await (const chunk of req) body += chunk;
       const form = new URLSearchParams(body);
       const approval = codes.get(form.get("code"));
-      if (req.method !== "POST" || !approval || form.get("redirect_uri") !== approval.callback) {
+      if (req.method !== "POST" || !approval || form.get("redirect_uri") !== approval.callback ||
+          (approval.challenge && createHash("sha256").update(form.get("code_verifier") ?? "").digest("base64url") !== approval.challenge)) {
         res.writeHead(400).end();
         return;
       }

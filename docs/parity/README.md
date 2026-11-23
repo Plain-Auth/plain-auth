@@ -7,10 +7,10 @@
 | Inventory status | Entries |
 | --- | ---: |
 | Fully verified | 509 |
-| Partially verified | 996 |
-| No linked test evidence | 5,520 |
+| Partially verified | 998 |
+| No linked test evidence | 5,518 |
 
-The inventory covers features, options, integrations and documentation topics. Partial verification means an open entry has a passing case somewhere beneath it. The checklists also contain 2,199 links from passing scenarios to tests. Adding a scenario leaves the inventory denominator unchanged.
+The inventory covers features, options, integrations and documentation topics. Partial verification means an open entry has a passing case somewhere beneath it. The checklists also contain 2,204 links from passing scenarios to tests. Adding a scenario leaves the inventory denominator unchanged.
 
 A checked item links to a local test for that behavior. An open parent means the feature still has unverified cases. Browser, protocol and storage options each have their own checkboxes.
 
@@ -74,10 +74,10 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 | --- | ---: | ---: |
 | [Published package interfaces](packages.md) | 89 | 160 |
 | [Native Go client, routers and databases](go.md) | 38 | 4 |
-| [Core API, sign-in providers and CLI](runtime.md) | 166 | 276 |
+| [Core API, sign-in providers and CLI](runtime.md) | 167 | 276 |
 | [Database adapters](adapters.md) | 32 | 224 |
 | [Authentication](authentication.md) | 26 | 415 |
-| [Core concepts](concepts.md) | 68 | 505 |
+| [Core concepts](concepts.md) | 69 | 505 |
 | [Managed infrastructure](infrastructure.md) | 0 | 528 |
 | [Framework integrations](integrations.md) | 0 | 228 |
 | [Reference and configuration](reference.md) | 95 | 390 |
@@ -109,11 +109,11 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 | [Model Context Protocol](plugins/mcp.md) | 0 | 108 |
 | [Multi session](plugins/multi-session.md) | 15 | 22 |
 | [OAuth popup](plugins/oauth-popup.md) | 56 | 5 |
-| [OAuth provider](plugins/oauth-provider.md) | 569 | 376 |
+| [OAuth provider](plugins/oauth-provider.md) | 571 | 376 |
 | [OAuth proxy](plugins/oauth-proxy.md) | 27 | 6 |
 | [One tap](plugins/one-tap.md) | 38 | 18 |
 | [One time token](plugins/one-time-token.md) | 76 | 0 |
-| [OpenAPI](plugins/open-api.md) | 15 | 24 |
+| [OpenAPI](plugins/open-api.md) | 16 | 24 |
 | [Organization](plugins/organization.md) | 87 | 385 |
 | [Passkey](plugins/passkey.md) | 26 | 94 |
 | [Phone number](plugins/phone-number.md) | 36 | 67 |

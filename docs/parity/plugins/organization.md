@@ -280,7 +280,7 @@
     - [ ] Update Member Role
       - [x] Use the Go HTTP client and authenticated native service to update an existing membership ([test](../../../adapters/sqlstore/organization_role_test.go#L86))
       - [ ] `POST /organization/update-member-role`
-        - [x] Publish the string-or-array request and direct member response in the configured OpenAPI document ([test](../../../plugins/openapi/profile_test.go#L84))
+        - [x] Publish the string-or-array request and direct member response in the configured OpenAPI document ([test](../../../plugins/openapi/profile_test.go#L126))
         - [ ] Parameter `role`
         - [ ] Parameter `memberId`
         - [ ] Parameter `organizationId` (optional)

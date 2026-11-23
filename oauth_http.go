@@ -95,18 +95,27 @@ func (a *Auth) startOAuth(w http.ResponseWriter, r *http.Request, link bool) err
 		return fieldTypeError("requestSignUp", "boolean", body)
 	}
 	linkUserID := ""
+	var resume OAuthLoginContinuation
 	if link {
 		current, err := a.requireOwnerSession(r.Context(), r.Header)
 		if err != nil {
 			return err
 		}
 		linkUserID = current.User.ID
+	} else {
+		resume, err = a.loginContinuation("/sign-in/social", r, body, w.Header())
+		if err != nil {
+			return err
+		}
 	}
 	if value, found := body["idToken"]; found {
 		callback, _ := body["callbackURL"].(string)
-		return a.directOAuth(w, r, id, p, value, linkUserID, requestSignUp, callback)
+		return a.directOAuth(w, r, id, p, value, linkUserID, requestSignUp, callback, resume)
 	}
 	flow := OAuthFlow{Provider: id, LinkUserID: linkUserID, RequestSignUp: requestSignUp}
+	if resume != nil {
+		flow.IssuerLoginQuery, _ = body["oauth_query"].(string)
+	}
 	target, _, err := a.beginBrowserOAuth(w.Header(), r, p, body, flow, requestedParams)
 	if err != nil {
 		return err
@@ -279,6 +288,16 @@ func (a *Auth) finishBrowserOAuth(w http.ResponseWriter, r *http.Request, id str
 	if flow.Provider != id || (returned == nil && (q.Get("error") != "" || q.Get("code") == "")) {
 		return fail("OAUTH_CALLBACK_ERROR")
 	}
+	var resume OAuthLoginContinuation
+	if flow.IssuerLoginQuery != "" {
+		resume, err = a.loginContinuation("/sign-in/social", r, wireBody{"oauth_query": flow.IssuerLoginQuery}, w.Header())
+		if err != nil {
+			return err
+		}
+		if resume == nil || flow.LinkUserID != "" || popup != nil {
+			return &OAuthError{Status: 400, Code: "invalid_request", Description: "issuer login is unavailable"}
+		}
+	}
 	ctx, cancel := context.WithTimeout(context.WithValue(r.Context(), oauth2.HTTPClient, p.HTTPClient), 30*time.Second)
 	defer cancel()
 	if flow.PopupAdditionalData != nil {
@@ -354,8 +373,8 @@ func (a *Auth) finishBrowserOAuth(w http.ResponseWriter, r *http.Request, id str
 		return err
 	}
 	if flow.LinkUserID == "" {
-		if err := a.setSessionCookie(w, r, result.Token, true); err != nil {
-			return a.discardUnpublishedSession(ctx, result.Token, err)
+		if done, err := a.publishSocialLogin(w, r, result.Token, resume); done || err != nil {
+			return err
 		}
 	}
 	target := flow.CallbackURL
@@ -539,7 +558,22 @@ func (a *Auth) completeProfileWith(ctx context.Context, r *http.Request, id stri
 	return AuthResult{User: user, Token: session.Token}, created, err
 }
 
-func (a *Auth) directOAuth(w http.ResponseWriter, r *http.Request, id string, p OAuthProvider, value any, linkUserID string, requestSignUp bool, callback string) error {
+func (a *Auth) publishSocialLogin(w http.ResponseWriter, r *http.Request, token string, resume OAuthLoginContinuation) (bool, error) {
+	prior := len(w.Header().Values("Set-Cookie"))
+	if err := a.setSessionCookie(w, r, token, true); err != nil {
+		return false, a.discardUnpublishedSession(r.Context(), token, err)
+	}
+	if resume == nil {
+		return false, nil
+	}
+	done, err := a.resumeIssuedOAuthLogin(w, r, resume, prior)
+	if !done && err == nil {
+		return false, &OAuthError{Status: 401, Code: "unauthorized", Description: "a new browser session is required"}
+	}
+	return done, err
+}
+
+func (a *Auth) directOAuth(w http.ResponseWriter, r *http.Request, id string, p OAuthProvider, value any, linkUserID string, requestSignUp bool, callback string, resume OAuthLoginContinuation) error {
 	if p.DisableIDTokenSignIn || p.VerifyIDToken == nil {
 		return &APIError{404, "ID_TOKEN_NOT_SUPPORTED", "Provider does not support ID token sign-in"}
 	}
@@ -592,7 +626,7 @@ func (a *Auth) directOAuth(w http.ResponseWriter, r *http.Request, id string, p 
 		writeAuthJSON(w, 200, map[string]any{"url": "", "status": true, "redirect": false})
 		return nil
 	}
-	if err := a.setSessionCookie(w, r, account.Token, true); err != nil {
+	if done, err := a.publishSocialLogin(w, r, account.Token, resume); done || err != nil {
 		return err
 	}
 	writeAuthJSON(w, 200, map[string]any{"redirect": false, "token": account.Token, "user": account.User})

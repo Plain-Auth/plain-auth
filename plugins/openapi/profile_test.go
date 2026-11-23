@@ -9,6 +9,8 @@ import (
 
 	auth "github.com/Plain-Auth/plain-auth"
 	"github.com/Plain-Auth/plain-auth/adapters/sqlstore"
+	"github.com/Plain-Auth/plain-auth/plugins/oauthpopup"
+	"github.com/Plain-Auth/plain-auth/plugins/oauthprovider"
 	"github.com/Plain-Auth/plain-auth/plugins/openapi"
 	"github.com/Plain-Auth/plain-auth/plugins/organization"
 	billing "github.com/Plain-Auth/plain-auth/plugins/stripe"
@@ -16,6 +18,46 @@ import (
 	"github.com/Plain-Auth/plain-auth/schema"
 	sdk "github.com/stripe/stripe-go/v87"
 )
+
+func TestSocialIssuerCallbackSchema(t *testing.T) {
+	store, err := sqlstore.OpenWithOptions(t.Context(), "sqlite", filepath.Join(t.TempDir(), "issuer.db"), []string{"oauth-provider"}, schema.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { store.Close() })
+	for _, page := range []string{"", "/login"} {
+		issuer, err := oauthprovider.New(oauthprovider.Options{Authorization: oauthprovider.BrowserAuthorizationOptions{LoginPage: page}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		host, err := auth.New(auth.Options{BaseURL: "https://issuer.example.test", Store: store, Secret: strings.Repeat("s", 40),
+			SocialProviders: map[string]auth.OAuthProvider{"github": providers.GitHub("fixture", "fixture")},
+			Plugins:         []auth.Plugin{issuer, oauthpopup.New()}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		spec, err := openapi.Generate(host)
+		if err != nil {
+			t.Fatal(err)
+		}
+		enabled := page != ""
+		paths := node(spec, "paths")
+		for _, path := range []string{"/sign-in/social", "/link-social"} {
+			fields := node(paths, path, "post", "requestBody", "content", "application/json", "schema", "properties")
+			if (fields["oauth_query"] != nil) != (enabled && path == "/sign-in/social") {
+				t.Fatalf("incorrect signed query on %s with login page %q", path, page)
+			}
+		}
+		reply := node(paths, "/callback/{id}", "get", "responses")
+		media := node(reply, "200", "content")
+		if reply["302"] == nil || media["text/html"] == nil || (media["application/json"] != nil) != enabled {
+			t.Fatalf("callback response formats do not match login page %q", page)
+		}
+		if enabled && node(media, "application/json", "schema", "properties", "redirect")["const"] != true {
+			t.Fatal("missing issuer destination in the JSON callback")
+		}
+	}
+}
 
 func TestConfiguredOrganizationAndBillingSchema(t *testing.T) {
 	ddl, err := schema.Generate("sqlite", []string{"organization-teams", "stripe-subscriptions"})

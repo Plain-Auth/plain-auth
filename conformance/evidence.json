@@ -1119,6 +1119,11 @@
   ],
   "core/signInSocial": [
     {
+      "label": "Resume a signed issuer request across a provider callback and bind a direct ID-token login to its newly issued session on three SQL engines",
+      "test": "adapters/sqlstore/oauth_social_authorization_test.go",
+      "marker": "func TestSocialAuthorizationSession("
+    },
+    {
       "label": "Start an OAuth authorization flow with PKCE and browser state",
       "test": "oauth_test.go",
       "marker": "func TestOAuthBrowserFlow("
@@ -5814,6 +5819,11 @@
     }
   ],
   "plugin/open-api/GET /open-api/generate-schema": [
+    {
+      "label": "Describe the optional signed social login field and the callback’s JSON, navigation and popup responses for the installed configuration",
+      "test": "plugins/openapi/profile_test.go",
+      "marker": "func TestSocialIssuerCallbackSchema("
+    },
     {
       "label": "Describe enterprise provider management, redacted reads, browser sign-in and both bound callback routes against the configured SQL handler",
       "test": "plugins/openapi/sso_directory_test.go",
@@ -13120,6 +13130,11 @@
   ],
   "plugin/oauth-provider/GET / POST /oauth2/authorize": [
     {
+      "label": "Complete separate provider and client PKCE exchanges and bind the issued token to the social login session",
+      "test": "conformance/oauth-social-authorization.mjs",
+      "marker": "assert.equal(row.sessionId, session.session.id)"
+    },
+    {
       "label": "Sign in and register a public client, then obtain a code by GET or form POST and redeem it at either issuer with S256 PKCE",
       "test": "conformance/oauth-browser-authorization.mjs",
       "marker": "export async function exerciseBrowserAuthorization("
@@ -13378,6 +13393,11 @@
   ],
   "docs/content/docs/plugins/oauth-provider/sign-in-flow.mdx#L34": [
     {
+      "label": "Continue from the external provider by browser redirect or JSON and enforce consent for the original request",
+      "test": "conformance/oauth-social-authorization.mjs",
+      "marker": "for (const navigation of"
+    },
+    {
       "label": "Take a signed-out user through local login, consent and PKCE redemption and require fresh credentials when requested",
       "test": "conformance/oauth-browser-login.mjs",
       "marker": "const page = await start("
@@ -13394,6 +13414,13 @@
       "test": "conformance/oauth-browser-login.mjs",
       "marker": "const forced = await start(",
       "complete": true
+    }
+  ],
+  "docs/content/docs/concepts/oauth.mdx#L380": [
+    {
+      "label": "Keep the signed issuer request in server-owned provider state and ignore client-supplied issuer context",
+      "test": "conformance/oauth-social-authorization.mjs",
+      "marker": "additionalData: {query:"
     }
   ],
   "docs/content/docs/plugins/oauth-provider/sign-in-flow.mdx#L122": [

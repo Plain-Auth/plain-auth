@@ -73,6 +73,9 @@ type OAuthProvider struct {
 // OAuthFlow is the temporary state of a browser authorization. Binding ties a
 // request to the initiating browser, provider and existing session.
 type OAuthFlow struct {
+	// IssuerLoginQuery is the host's verified login request, retained only in
+	// the local flow store while the browser visits the identity provider.
+	IssuerLoginQuery string `json:",omitempty"`
 	// ProxyOrigin is the preview that owns the browser state and final session.
 	ProxyOrigin                                       string         `json:",omitempty"`
 	PopupAdditionalData                               map[string]any `json:",omitempty"`

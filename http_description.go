@@ -51,6 +51,8 @@ type HTTPDescription struct {
 	// RequiredUserInputs lists writable fields that have no registration default.
 	RequiredUserInputs                      []string
 	EmailOTPRegistration, PhoneRegistration bool
+	// OAuthLoginContinuation indicates that a host can resume a signed issuer login.
+	OAuthLoginContinuation bool
 
 	ServerURL, SessionCookie string
 	// OAuthProxyStateCookie binds a preview return to the initiating browser.
@@ -83,6 +85,7 @@ func (a *Auth) DescribeHTTP() HTTPDescription {
 	}
 	slices.Sort(d.RequiredUserInputs)
 	d.EmailOTPRegistration = a.emailOTP != nil && !a.emailOTP.DisableSignUp
+	d.OAuthLoginContinuation = a.prepareOAuthLogin != nil
 	d.PhoneRegistration = a.phoneNumber != nil && a.phoneNumber.SignUpOnVerification != nil && !o.DisableSignUp
 	if a.HasPlugin("sso") {
 		d.SSOStateCookie = a.prefixedCookieName("sso_state")

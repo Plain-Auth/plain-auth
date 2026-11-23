@@ -294,8 +294,8 @@
     - [ ] Get Access Token
     - [ ] Refresh Access Token
     - [ ] Get Account Info Provided by the provider
-    - [x] Requesting Additional Scopes ([test](../../conformance/social-user-fields.mjs#L305))
-      - [x] Request additional scopes as the signed-in owner and merge the approved grant once across both servers ([test](../../conformance/social-user-fields.mjs#L305))
+    - [x] Requesting Additional Scopes ([test](../../conformance/social-user-fields.mjs#L307))
+      - [x] Request additional scopes as the signed-in owner and merge the approved grant once across both servers ([test](../../conformance/social-user-fields.mjs#L307))
     - [ ] Customizing the Authorization URL
     - [ ] Passing Additional Data Through OAuth Flow
       - [ ] Accessing Additional Data in Hooks
@@ -309,6 +309,7 @@
         - [ ] `serverContext`
         - [ ] `[key: string]`
       - [ ] Passing Server-Trusted Data
+        - [x] Keep the signed issuer request in server-owned provider state and ignore client-supplied issuer context ([test](../../conformance/oauth-social-authorization.mjs#L82))
   - [ ] Handling Providers Without Email
     - [ ] Apple
     - [ ] Discord
@@ -332,10 +333,10 @@
     - [x] disableIdTokenSignIn ([test](../../conformance/apple-native.mjs#L51))
       - [x] Decline signed client ID tokens for sign-in and account linking while preserving browser authorization ([test](../../conformance/apple-native.mjs#L51))
     - [ ] verifyIdToken
-    - [x] overrideUserInfoOnSignIn ([test](../../conformance/social-user-fields.mjs#L143))
-      - [x] Refresh a returning profile with either server, preserve protected fields and use the new mailbox verification status ([test](../../conformance/social-user-fields.mjs#L143))
-    - [x] requireEmailVerification ([test](../../conformance/social-user-fields.mjs#L198))
-      - [x] Withhold sessions for unverified social accounts, honor mail delivery settings and accept confirmation by either server ([test](../../conformance/social-user-fields.mjs#L198))
+    - [x] overrideUserInfoOnSignIn ([test](../../conformance/social-user-fields.mjs#L145))
+      - [x] Refresh a returning profile with either server, preserve protected fields and use the new mailbox verification status ([test](../../conformance/social-user-fields.mjs#L145))
+    - [x] requireEmailVerification ([test](../../conformance/social-user-fields.mjs#L200))
+      - [x] Withhold sessions for unverified social accounts, honor mail delivery settings and accept confirmation by either server ([test](../../conformance/social-user-fields.mjs#L200))
     - [ ] mapProfileToUser
       - [ ] Server-Owned Fields and Authorization Claims
     - [x] getAccountFields ([test](../../conformance/apple-native.mjs#L87))

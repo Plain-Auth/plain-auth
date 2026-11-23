@@ -4,7 +4,7 @@ An application can send its user to `/oauth2/authorize` and exchange the resulti
 
 ## Obtain a code in the browser
 
-Register the application's callback URL and enable the `authorization_code` grant on both the issuer and the client. The issuer enables this grant by default. This flow supports untargeted scopes such as `reports` and `reports offline_access`. It requires the account owner's active browser session and approval covering each requested scope. Your application can host the login, signup and consent pages. An operator-managed client can use `skipConsent` to bypass a prior grant. Dynamic registration rejects `skip_consent`. Social sign-in continuation, ID tokens, sender binding and resource audiences for this grant remain on the roadmap. [Client registration](oauth-client-registration.md) · [Manage recorded approvals](oauth-consents.md) · [Feature checklist](parity/plugins/oauth-provider.md)
+Register the application's callback URL and enable the `authorization_code` grant on both the issuer and the client. The issuer enables this grant by default. This flow supports untargeted scopes such as `reports` and `reports offline_access`. It requires the account owner's active browser session and approval covering each requested scope. Your application can host the login, signup and consent pages. An operator-managed client can use `skipConsent` to bypass a prior grant. Dynamic registration rejects `skip_consent`. Issuing ID tokens, sender binding and resource audiences for this grant remain on the roadmap. [Client registration](oauth-client-registration.md) · [Manage recorded approvals](oauth-consents.md) · [Feature checklist](parity/plugins/oauth-provider.md)
 
 For a public client using `golang.org/x/oauth2`, configure both issuer endpoints. Generate new random state and a PKCE verifier for each visit. Save them with the expected issuer and callback in the application's session before redirecting the user's browser.
 
@@ -71,6 +71,25 @@ async function signIn(form) {
 When a second factor is required, submit the same signed field with the verification code. Follow the returned authorization URL after the server issues the login session. In a Go client with a cookie jar scoped to that user, set `client.SignInRequest.OAuthQuery` or `client.SignUpRequest.OAuthQuery`. Check `TwoFactorRedirect` before following `URL`. If signup requires email verification or automatic sign-in is disabled, show your normal completion screen and return to login when the user can authenticate.
 
 For an explicit `prompt=create`, call `POST /api/auth/sign-up/email` with the signed field and the new account credentials. After a session is issued, the browser returns to the signup page. Verify the query on that visit, then post `{"created":true,"oauth_query":"<signed query>"}` to `/api/auth/oauth2/continue` using the same browser session. Follow its returned URL to the next step. The Go equivalent is `sdk.ContinueOAuthSignup(ctx, fields.Encode())`. Expired or altered queries require a fresh authorization request. [Login through code exchange](../conformance/oauth-browser-login.mjs) · [Session replacement and two-factor verification](../adapters/sqlstore/oauth_browser_login_test.go)
+
+## Sign in with an external provider
+
+An application can offer a configured social provider on its issuer login page. Verify the page query with `api.VerifyOAuthPageQuery` and pass its encoded fields to the normal social sign-in endpoint. An HTTP client sends the following JSON to `POST /api/auth/sign-in/social` using the login browser's cookie jar.
+
+```json
+{
+  "provider": "github",
+  "disableRedirect": true,
+  "errorCallbackURL": "/login/retry",
+  "oauth_query": "<verified login page query>"
+}
+```
+
+The response contains the identity provider's authorization URL. Open it in the browser that started the request. Plain Auth keeps the signed issuer request in the shared flow store while the browser visits the provider. A successful callback issues a fresh session and rechecks the original client's request, including any required organization selection or consent. The provider's state and PKCE exchange are independent of the client application's state and PKCE exchange.
+
+For a top-level navigation, the callback sends HTTP 302 to the next destination. An HTTP client requesting JSON receives HTTP 200 and `{"redirect":true,"url":"…"}`. Your application owns the pages and decides how to handle the destination. If the provider denies access or the token exchange fails, your trusted `errorCallbackURL` can handle the error. An expired issuer login request requires a new authorization request.
+
+The Go SDK exposes the same field as `client.SocialSignInRequest.OAuthQuery`. A provider that supports direct ID-token sign-in also accepts its normal `idToken` object on this request. Successful verification returns the issuer's next destination. Ordinary social sign-in can omit `oauth_query` and use `callbackURL` or `newUserCallbackURL`. [Social provider setup](social.md) · [Two independent code exchanges](../conformance/oauth-social-authorization.mjs) · [Session ownership on three SQL engines](../adapters/sqlstore/oauth_social_authorization_test.go)
 
 ## Choose a remembered account
 

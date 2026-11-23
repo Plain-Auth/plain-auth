@@ -10,6 +10,8 @@ import (
 // SocialSignInRequest starts a browser flow or exchanges a provider's ID token.
 // RequestSignUp opts in to creating a new account for this sign-in.
 type SocialSignInRequest struct {
+	// OAuthQuery resumes a host-issued authorization request after sign-in.
+	OAuthQuery         string            `json:"oauth_query,omitempty"`
 	Provider           string            `json:"provider"`
 	CallbackURL        string            `json:"callbackURL,omitempty"`
 	NewUserCallbackURL string            `json:"newUserCallbackURL,omitempty"`

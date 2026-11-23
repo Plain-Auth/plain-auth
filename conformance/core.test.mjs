@@ -1780,6 +1780,11 @@ test("OAuth post-login selection binds consent and tokens to the active organiza
   await comparePostLogin(t, reference, goFixture);
 });
 
+test("external social sign-in resumes the issuer request and redeems the new session's authorization code", async t => {
+  const { compareSocialAuthorization } = await import("./oauth-social-authorization.mjs");
+  await compareSocialAuthorization(t, reference, goFixture);
+});
+
 test("OAuth dynamic client registration handles sessions, initial tokens and open registration", async t => {
   const { compareClientRegistration } = await import("./oauth-registration.mjs");
   await compareClientRegistration(t, reference, goFixture);
