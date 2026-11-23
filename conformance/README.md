@@ -35,7 +35,7 @@ git clone --depth 1 --branch v1.7.27 https://github.com/better-auth/better-auth.
 npm run inventory -- /tmp/better-auth-v1.7.27 --check
 ```
 
-Omit `--check` to regenerate the [product feature checklist](../docs/parity/README.md) and the machine-readable [reference index](reference.json). The index contains exact package and export coordinates, provider and plugin names, source anchors, and externally maintained documentation entries. Product pages use behavior names and link checked items to local tests. Keep reviewed local test markers and narrowly scoped claims in [evidence.json](evidence.json).
+Pass `--keys <file>` instead to also write the evidence ID behind every checklist line, which tells you the key to use in `evidence.json`. Omit `--check` to regenerate the [product feature checklist](../docs/parity/README.md) and the machine-readable [reference index](reference.json). The index contains exact package and export coordinates, provider and plugin names, source anchors, and externally maintained documentation entries. Product pages use behavior names and link checked items to local tests. Keep reviewed local test markers and narrowly scoped claims in [evidence.json](evidence.json).
 
 Each evidence entry records a passing subcase. Set `"complete": true` on one reviewed scenario when its test establishes the full capability. The generator attaches that test to the parent checkbox and keeps the parent open whenever any nested requirement is open. A new open descendant reopens the parent automatically.
 

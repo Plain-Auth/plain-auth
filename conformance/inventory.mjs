@@ -13,8 +13,10 @@ import { renderPublicPackages, renderDatabaseContracts } from "./package-checkli
 const commit = "9faf6f6a1155a6cdaf8ba2d25ce53e4f5a3fda72";
 const source = process.argv[2];
 const check = process.argv[3] === "--check";
-if (!source || source.startsWith("-") || (process.argv[3] && !check)) {
-  throw Error("Usage: npm run inventory -- <Better Auth Git checkout at v1.7.27> [--check]");
+// --keys writes the evidence ID behind each checklist line for maintainers.
+const keysFile = process.argv[3] === "--keys" ? process.argv[4] : undefined;
+if (!source || source.startsWith("-") || (process.argv[3] && !check && !keysFile)) {
+  throw Error("Usage: npm run inventory -- <Better Auth Git checkout at v1.7.27> [--check | --keys <file>]");
 }
 const git = (...args) => execFileSync("git", ["-C", source, ...args], { encoding: "utf8" }).trim();
 assert.equal(git("rev-parse", "HEAD"), commit, "Upstream revision mismatch");
@@ -41,8 +43,12 @@ const page = (name, title) => {
   pages.set(name, lines);
   return lines;
 };
+// Each page keeps the evidence ID of every checklist line, aligned with its lines.
+const lineIds = new Map();
+const idsFor = (lines) => lineIds.get(lines) ?? lineIds.set(lines, []).get(lines);
 function addEvidence(lines, id, filename, depth, wholeFeature = true) {
   const parentIndex = lines.length - 1;
+  idsFor(lines)[parentIndex] = id;
   for (const scenario of evidence[id] ?? []) {
     used.add(id);
     const path = relative(join(output, dirname(filename)), join(root, scenario.test));
@@ -432,11 +438,13 @@ for (const rule of scope.backlog) {
   assert.ok(lines, "Unknown backlog page " + rule.page);
   if (!rule.section) {
     lines.splice(4, 0, backlogNote, "");
+    idsFor(lines).splice(4, 0, undefined, undefined);
     backlogPages.add(rule.page);
   } else if (!rule.labels) {
     const heading = lines.indexOf("## " + rule.section);
     assert.ok(heading > 0, "Unknown backlog section " + rule.section);
     lines.splice(heading + 2, 0, backlogNote, "");
+    idsFor(lines).splice(heading + 2, 0, undefined, undefined);
   } else {
     eachScopedItem(rule, (lines, i) => {
       lines[i] = lineText(lines[i]) === lines[i] ? lines[i] + " (backlog)" : { ...lines[i], text: lines[i].text + " (backlog)" };
@@ -542,6 +550,14 @@ for (const [name, lines] of pages) {
   const body = publicText(reports.get(name)?.markdown ?? checklistReport(lines).markdown).trimEnd() + "\n";
   if (check) assert.equal(readFileSync(path, "utf8") === body, true, "Stale parity file: " + name);
   else { mkdirSync(dirname(path), { recursive: true }); writeFileSync(path, body); }
+}
+if (keysFile) {
+  const keys = {};
+  for (const [name, lines] of pages) {
+    const ids = lineIds.get(lines) ?? [];
+    keys[name] = Object.fromEntries(ids.flatMap((id, i) => id ? [[i + 1, id]] : []));
+  }
+  writeFileSync(keysFile, JSON.stringify(keys, null, 2) + "\n");
 }
 const referenceIndex = {
   upstream: "https://github.com/better-auth/better-auth",
