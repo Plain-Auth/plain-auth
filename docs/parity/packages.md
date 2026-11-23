@@ -32,7 +32,7 @@ Each row tracks the behavior exposed by a published entry point. The Go implemen
     - [x] Compare ordinary GET and deferred POST without the projection on both runtimes ([test](../../conformance/custom-session-contract.mjs#L113))
     - [x] Force live reads on request and preserve the exact signed cache deadline while a browser view remains cacheable ([test](../../session_cache_compact_test.go#L135))
     - [x] Retain live JWT issuance, protected session checks and administrative controls after a physical schema migration on another node ([test](../../adapters/sqlstore/session_cache_test.go#L135))
-    - [x] Compare deferred GET and POST cache hits, forced store reads and independent renewal flags on both runtimes ([test](../../conformance/session-cache-compact.mjs#L149))
+    - [x] Compare deferred GET and POST cache hits, forced store reads and independent renewal flags on both runtimes ([test](../../conformance/session-cache-compact.mjs#L138))
     - [x] Use live authorization on independently opened JWT and administration nodes for signed or encrypted session views ([test](../../adapters/sqlstore/session_cache_test.go#L20))
     - [x] Read configured user fields under their logical names and keep hidden storage values out of session views ([test](../../adapters/sqlstore/user_fields_test.go#L47))
   - [ ] Minimal server initialization (`./minimal`)

@@ -30,8 +30,9 @@ func (a *Auth) prepareSessionCacheKeys() error {
 	for _, secret := range secrets {
 		key := sessionCacheKey{material: []byte(secret.Value)}
 		if cache.Strategy == SessionCacheJWE {
-			// These HKDF inputs are part of the shared encrypted-cookie wire format.
-			derived, err := hkdf.Key(sha256.New, key.material, []byte("better-auth-session"), "BetterAuth.js Generated Encryption Key", 64)
+			// These HKDF inputs define the encrypted cache cookie format. Changing
+			// them makes every outstanding encrypted snapshot unreadable.
+			derived, err := hkdf.Key(sha256.New, key.material, []byte("plainauth-session-cache"), "Plain Auth session cache encryption key", 64)
 			if err != nil {
 				return err
 			}

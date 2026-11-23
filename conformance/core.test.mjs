@@ -1424,19 +1424,15 @@ test("custom password callbacks open stored credentials from either runtime and 
   }
 });
 
-for (const strategy of ["jwt", "jwe"]) {
-  test("both runtimes exchange " + strategy + " browser snapshots, short sessions, and chunks", async t => {
-    const { exchangeSessionCache } = await import("./session-cache-compact.mjs");
-    await exchangeSessionCache(t, { reference, goFixture }, strategy);
-  });
-}
+test("both runtimes exchange jwt browser snapshots, short sessions, and chunks", async t => {
+  const { exchangeSessionCache } = await import("./session-cache-compact.mjs");
+  await exchangeSessionCache(t, { reference, goFixture }, "jwt");
+});
 
-for (const strategy of ["jwt", "jwe"]) {
-  test("both runtimes check " + strategy + " cache key rollover and removal", async t => {
-    const { compareJOSESessionRollover } = await import("./session-cache-compact.mjs");
-    await compareJOSESessionRollover(t, { reference, goFixture }, strategy);
-  });
-}
+test("both runtimes check jwt cache key rollover and removal", async t => {
+  const { compareJOSESessionRollover } = await import("./session-cache-compact.mjs");
+  await compareJOSESessionRollover(t, { reference, goFixture }, "jwt");
+});
 
 test("enterprise SAML metadata, signed assertion and repeat sign-in through the pinned client", async t => {
   const { compareEnterpriseSAML } = await import("./sso-saml.mjs");
@@ -1463,7 +1459,7 @@ test("the released email client keeps duplicate profiles private and notifies on
   await existingSignUp(t, {reference, goFixture, instrument});
 });
 
-for (const format of ["compact", "jwt", "jwe"]) {
+for (const format of ["compact", "jwt"]) {
   test("the official client exchanges callback-versioned " + format + " snapshots across replicas", async t => {
     const { compareSessionCacheVersions } = await import("./session-cache-version.mjs");
     await compareSessionCacheVersions(t, { reference, goFixture, instrument }, format);

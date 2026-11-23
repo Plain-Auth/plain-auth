@@ -16,7 +16,7 @@ func (f environmentTransport) RoundTrip(r *http.Request) (*http.Response, error)
 
 func TestClientEnvironmentURL(t *testing.T) {
 	t.Setenv("AUTH_URL", "")
-	for _, name := range []string{"BETTER_AUTH_URL", "NEXT_PUBLIC_BETTER_AUTH_URL", "PUBLIC_BETTER_AUTH_URL", "NUXT_PUBLIC_BETTER_AUTH_URL", "NUXT_PUBLIC_AUTH_URL", "BASE_URL", "NEXT_PUBLIC_AUTH_URL", "NEXTAUTH_URL", "VERCEL_URL"} {
+	for _, name := range []string{"APP_URL", "PUBLIC_URL", "NUXT_PUBLIC_AUTH_URL", "BASE_URL", "NEXT_PUBLIC_AUTH_URL", "NEXTAUTH_URL", "VERCEL_URL"} {
 		t.Setenv(name, "https://external.example.org/unrelated")
 	}
 	checkEnvironmentClient(t, "", "")

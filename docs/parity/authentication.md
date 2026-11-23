@@ -112,7 +112,7 @@
       - [ ] `url`
       - [ ] `token`
       - [ ] Require Email Verification
-        - [x] Deliver the stored owner to the host while preserving private responses across both modes and ordinary 422 behavior in the released client ([test](../../conformance/core.test.mjs#L1461))
+        - [x] Deliver the stored owner to the host while preserving private responses across both modes and ordinary 422 behavior in the released client ([test](../../conformance/core.test.mjs#L1457))
         - [x] Return the same default guest and phone fields on fresh and duplicate private registrations ([test](../../adapters/sqlstore/existing_signup_test.go#L271))
       - [ ] Email Enumeration Protection
         - [ ] Plugins that add user fields
@@ -152,8 +152,8 @@
         - [x] Verify inclusive UTF-16 limits on registration, password changes and link recovery, and sign in with an existing shorter password ([test](../../conformance/email-password-options.mjs#L18))
       - [ ] `emailPasswordOptionsType.sendResetPassword`
       - [ ] `emailPasswordOptionsType.onPasswordReset`
-      - [x] `emailPasswordOptionsType.onExistingUserSignUp` ([test](../../conformance/core.test.mjs#L1461))
-        - [x] Deliver the stored owner to the host while preserving private responses across both modes and ordinary 422 behavior in the released client ([test](../../conformance/core.test.mjs#L1461))
+      - [x] `emailPasswordOptionsType.onExistingUserSignUp` ([test](../../conformance/core.test.mjs#L1457))
+        - [x] Deliver the stored owner to the host while preserving private responses across both modes and ordinary 422 behavior in the released client ([test](../../conformance/core.test.mjs#L1457))
         - [x] Run the callback after storage releases the account, isolate errors and panics, and preserve owned request metadata ([test](../../adapters/sqlstore/existing_signup_test.go#L83))
         - [x] Use one committed owner for concurrent registrations across separate instances and storage connections ([test](../../adapters/sqlstore/existing_signup_test.go#L197))
       - [ ] `emailPasswordOptionsType.customSyntheticUser`

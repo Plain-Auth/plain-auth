@@ -147,10 +147,10 @@
     - [x] Distinguish an unknown membership from a membership belonging to another tenant ([test](../../../conformance/organization-role.mjs#L42))
     - [x] Preserve a final owner under simultaneous self-demotions, opposing demotions and departures on all three SQL engines ([test](../../../adapters/sqlstore/organization_role_test.go#L168))
     - [x] Reject revoked and delegated sessions and recheck the acting account ban inside the transaction ([test](../../../adapters/sqlstore/organization_role_test.go#L115))
-  - [x] `GET /organization/get-active-member` ([test](../../../conformance/core.test.mjs#L1868))
-    - [x] Read the live membership and its public user profile from each signed-in session across organization switches ([test](../../../conformance/core.test.mjs#L1868))
+  - [x] `GET /organization/get-active-member` ([test](../../../conformance/core.test.mjs#L1864))
+    - [x] Read the live membership and its public user profile from each signed-in session across organization switches ([test](../../../conformance/core.test.mjs#L1864))
     - [x] Distinguish a cleared selection from a removed membership and a signed-out client on all three SQL engines ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L284))
-    - [x] Report role updates immediately and ignore caller-supplied organization and user selectors ([test](../../../conformance/core.test.mjs#L1881))
+    - [x] Report role updates immediately and ignore caller-supplied organization and user selectors ([test](../../../conformance/core.test.mjs#L1877))
   - [ ] `POST /organization/leave`
     - [x] Return the signed-in user's membership and profile when leaving an organization ([test](../../../conformance/organization-removal.mjs#L47))
     - [x] Keep one owner when two separate database connections attempt to leave simultaneously ([test](../../../adapters/sqlstore/organization_removal_test.go#L200))
@@ -352,7 +352,7 @@
           - [x] Parameter `organizationId` (optional) ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L135))
             - [x] Select by ID, retain the selection when omitted, and clear both selections with a null organization ID ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L135))
           - [x] Parameter `organizationSlug` (optional) ([test](../../../conformance/organization-selection.mjs#L50))
-            - [x] Accept a string slug and reject a null slug before changing the current session ([test](../../../conformance/core.test.mjs#L1822))
+            - [x] Accept a string slug and reject a null slug before changing the current session ([test](../../../conformance/core.test.mjs#L1818))
             - [x] Use the slug when the ID is empty, honor ID precedence and preserve the selection for an unknown slug ([test](../../../conformance/organization-selection.mjs#L50))
       - [ ] Use Active Organization
     - [ ] Get Organization
@@ -536,14 +536,14 @@
         - [ ] Parameter `role`
         - [ ] Parameter `memberId`
         - [ ] Parameter `organizationId` (optional)
-    - [x] Get Active Member ([test](../../../conformance/core.test.mjs#L1868))
-      - [x] Read the live membership and its public user profile from each signed-in session across organization switches ([test](../../../conformance/core.test.mjs#L1868))
+    - [x] Get Active Member ([test](../../../conformance/core.test.mjs#L1864))
+      - [x] Read the live membership and its public user profile from each signed-in session across organization switches ([test](../../../conformance/core.test.mjs#L1864))
       - [x] Distinguish a cleared selection from a removed membership and a signed-out client on all three SQL engines ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L284))
-      - [x] Report role updates immediately and ignore caller-supplied organization and user selectors ([test](../../../conformance/core.test.mjs#L1881))
-      - [x] `GET /organization/get-active-member` ([test](../../../conformance/core.test.mjs#L1868))
-        - [x] Read the live membership and its public user profile from each signed-in session across organization switches ([test](../../../conformance/core.test.mjs#L1868))
+      - [x] Report role updates immediately and ignore caller-supplied organization and user selectors ([test](../../../conformance/core.test.mjs#L1877))
+      - [x] `GET /organization/get-active-member` ([test](../../../conformance/core.test.mjs#L1864))
+        - [x] Read the live membership and its public user profile from each signed-in session across organization switches ([test](../../../conformance/core.test.mjs#L1864))
         - [x] Distinguish a cleared selection from a removed membership and a signed-out client on all three SQL engines ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L284))
-        - [x] Report role updates immediately and ignore caller-supplied organization and user selectors ([test](../../../conformance/core.test.mjs#L1881))
+        - [x] Report role updates immediately and ignore caller-supplied organization and user selectors ([test](../../../conformance/core.test.mjs#L1877))
     - [x] Get Active Member Role ([test](../../../conformance/organization-role.mjs#L104))
       - [x] Read roles for yourself and fellow members, resolve slug before ID or active session, and preserve the session selection ([test](../../../conformance/organization-role.mjs#L104))
       - [x] Require current membership from both users and deny an outsider access to an existing member’s role ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L271))
@@ -735,8 +735,8 @@
         - [x] Switch and clear the current session’s selection with independent HTTP clients across three SQL engines ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L23))
         - [ ] `POST /organization/set-active-team`
           - [x] Describe nullable selection results across enabled profiles and expose signed destinations when the host supports them ([test](../../../plugins/openapi/organization_selection_test.go#L20))
-          - [x] Parameter `teamId` (optional) ([test](../../../conformance/core.test.mjs#L1827))
-            - [x] Use the current team for an omitted or empty ID, select a member team by ID, and clear it with JSON null ([test](../../../conformance/core.test.mjs#L1827))
+          - [x] Parameter `teamId` (optional) ([test](../../../conformance/core.test.mjs#L1823))
+            - [x] Use the current team for an omitted or empty ID, select a member team by ID, and clear it with JSON null ([test](../../../conformance/core.test.mjs#L1823))
       - [ ] List User Teams
         - [x] Return self memberships across organizations and scope administrative queries to the selected organization ([test](../../../adapters/sqlstore/organization_teams_test.go#L266))
         - [ ] `GET /organization/list-user-teams`

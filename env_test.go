@@ -46,12 +46,12 @@ func TestEnvironmentPrecedence(t *testing.T) {
 func TestEnvironmentIsolation(t *testing.T) {
 	cleanConfigEnv(t)
 	external := "https://external.example.org"
-	for _, key := range []string{"BETTER_AUTH_URL", "NEXT_PUBLIC_BETTER_AUTH_URL", "PUBLIC_BETTER_AUTH_URL", "NUXT_PUBLIC_BETTER_AUTH_URL", "NUXT_PUBLIC_AUTH_URL", "BASE_URL", "NEXT_PUBLIC_AUTH_URL", "NEXTAUTH_URL", "VERCEL_URL"} {
+	for _, key := range []string{"APP_URL", "PUBLIC_URL", "NUXT_PUBLIC_AUTH_URL", "BASE_URL", "NEXT_PUBLIC_AUTH_URL", "NEXTAUTH_URL", "VERCEL_URL"} {
 		t.Setenv(key, external)
 	}
-	t.Setenv("BETTER_AUTH_SECRET", strings.Repeat("x", 32))
-	t.Setenv("BETTER_AUTH_SECRETS", "9:"+strings.Repeat("y", 32))
-	t.Setenv("BETTER_AUTH_TRUSTED_ORIGINS", external)
+	t.Setenv("NEXTAUTH_SECRET", strings.Repeat("x", 32))
+	t.Setenv("APP_SECRETS", "9:"+strings.Repeat("y", 32))
+	t.Setenv("TRUSTED_ORIGINS", external)
 	t.Setenv("NODE_ENV", "production")
 	t.Setenv("TEST", "true")
 	opts := Options{Store: &refreshFixture{}}

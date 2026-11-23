@@ -311,8 +311,8 @@
       - [x] Retain custom account adapters, forward native callback errors and contain a host panic after commit ([test](../../conformance/goapi/password_reset_hook_test.go#L14))
     - [ ] `revokeSessionsOnPasswordReset`
     - [ ] `resetPasswordTokenExpiresIn`
-    - [x] `onExistingUserSignUp` ([test](../../conformance/core.test.mjs#L1461))
-      - [x] Deliver the stored owner to the host while preserving private responses across both modes and ordinary 422 behavior in the released client ([test](../../conformance/core.test.mjs#L1461))
+    - [x] `onExistingUserSignUp` ([test](../../conformance/core.test.mjs#L1457))
+      - [x] Deliver the stored owner to the host while preserving private responses across both modes and ordinary 422 behavior in the released client ([test](../../conformance/core.test.mjs#L1457))
       - [x] Run the callback after storage releases the account, isolate errors and panics, and preserve owned request metadata ([test](../../adapters/sqlstore/existing_signup_test.go#L83))
       - [x] Use one committed owner for concurrent registrations across separate instances and storage connections ([test](../../adapters/sqlstore/existing_signup_test.go#L197))
     - [ ] `customSyntheticUser`

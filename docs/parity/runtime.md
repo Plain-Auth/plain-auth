@@ -36,7 +36,7 @@ Each entry groups the configured endpoint’s behaviors. A checked child records
     - [x] Compare ordinary GET and deferred POST without the projection on both runtimes ([test](../../conformance/custom-session-contract.mjs#L113))
     - [x] Force live reads on request and preserve the exact signed cache deadline while a browser view remains cacheable ([test](../../session_cache_compact_test.go#L135))
     - [x] Retain live JWT issuance, protected session checks and administrative controls after a physical schema migration on another node ([test](../../adapters/sqlstore/session_cache_test.go#L135))
-    - [x] Compare deferred GET and POST cache hits, forced store reads and independent renewal flags on both runtimes ([test](../../conformance/session-cache-compact.mjs#L149))
+    - [x] Compare deferred GET and POST cache hits, forced store reads and independent renewal flags on both runtimes ([test](../../conformance/session-cache-compact.mjs#L138))
     - [x] Use live authorization on independently opened JWT and administration nodes for signed or encrypted session views ([test](../../adapters/sqlstore/session_cache_test.go#L20))
     - [x] Read configured user fields under their logical names and keep hidden storage values out of session views ([test](../../adapters/sqlstore/user_fields_test.go#L47))
   - [ ] `linkSocialAccount` (`POST /link-social`)
@@ -216,7 +216,7 @@ Each entry groups the configured endpoint’s behaviors. A checked child records
     - [x] Map signed provider account fields across both servers, preserve credentials and explicitly reauthorize an existing link ([test](../../conformance/apple-native.mjs#L87))
     - [x] Map browser grants on first links and verified email linking, keep identity bindings and reject invalid updates atomically ([test](../../conformance/account-fields.mjs#L25))
     - [x] Keep provider credentials separate from native input, transform fields once and expose only owned public account fields on three SQL engines ([test](../../adapters/sqlstore/account_fields_test.go#L17))
-    - [x] Use creation defaults while completing the separately verified One Tap challenge ([test](../../conformance/core.test.mjs#L1730))
+    - [x] Use creation defaults while completing the separately verified One Tap challenge ([test](../../conformance/core.test.mjs#L1726))
     - [x] Complete proxy sign-in across two deployments without invoking provider account mapping on either host ([test](../../adapters/sqlstore/oauth_proxy_test.go#L61))
   - [ ] `disableImplicitSignUp`
   - [ ] `disableSignUp`

@@ -245,8 +245,8 @@
       - [x] Deliver the committed profile on each explicit verification path and preserve verified state when the host callback fails ([test](../../conformance/email-verification-observers.mjs#L8))
       - [x] Run a single after callback for competing ordinary links without holding the owner lock during host code ([test](../../adapters/sqlstore/email_verification_observers_test.go#L217))
       - [x] Bind delayed session issuance to the exact proposed credential and redeem it only once across stores ([test](../../adapters/sqlstore/email_verification_observers_test.go#L287))
-    - [x] Callback on duplicate sign-up attempt ([test](../../conformance/core.test.mjs#L1461))
-      - [x] Deliver the stored owner to the host while preserving private responses across both modes and ordinary 422 behavior in the released client ([test](../../conformance/core.test.mjs#L1461))
+    - [x] Callback on duplicate sign-up attempt ([test](../../conformance/core.test.mjs#L1457))
+      - [x] Deliver the stored owner to the host while preserving private responses across both modes and ordinary 422 behavior in the released client ([test](../../conformance/core.test.mjs#L1457))
       - [x] Run the callback after storage releases the account, isolate errors and panics, and preserve owned request metadata ([test](../../adapters/sqlstore/existing_signup_test.go#L83))
       - [x] Use one committed owner for concurrent registrations across separate instances and storage connections ([test](../../adapters/sqlstore/existing_signup_test.go#L197))
   - [ ] Password Reset Email
@@ -487,14 +487,14 @@
     - [ ] Cookie Cache
       - [x] Expire the disabled cache and its canonical chunks on signed-in and anonymous reads ([test](../../conformance/session-cache-cleanup.mjs#L28))
       - [x] Clear each received cache chunk on the issuing host and shared domain using the configured cookie namespace ([test](../../cookies_test.go#L172))
-      - [x] Exchange HMAC-signed snapshots, browser-only lifetimes and chunked cookies in both directions on shared SQLite ([test](../../conformance/session-cache-compact.mjs#L73))
+      - [x] Exchange HMAC-signed snapshots, browser-only lifetimes and chunked cookies in both directions on shared SQLite ([test](../../conformance/session-cache-compact.mjs#L62))
       - [x] Retain live JWT issuance, protected session checks and administrative controls after a physical schema migration on another node ([test](../../adapters/sqlstore/session_cache_test.go#L135))
       - [ ] Notes
       - [ ] If immediate session revocation is critical:
       - [ ] Cookie Cache Strategies
-        - [x] Exchange HMAC-signed snapshots, browser-only lifetimes and chunked cookies in both directions on shared SQLite ([test](../../conformance/session-cache-compact.mjs#L73))
+        - [x] Exchange HMAC-signed snapshots, browser-only lifetimes and chunked cookies in both directions on shared SQLite ([test](../../conformance/session-cache-compact.mjs#L62))
         - [x] Reject incomplete, oversized, wrong-key or ambiguous cached credentials and retain per-cookie scope ([test](../../session_cache_compact_test.go#L293))
-        - [x] Exchange HS256 JWT and direct A256CBC-HS512 JWE snapshots bidirectionally on shared SQLite and verify their headers, session binding, expiry, chunks and logout ([test](../../conformance/session-cache-compact.mjs#L34))
+        - [x] Exchange HS256 JWT snapshots bidirectionally on shared SQLite and verify their headers, session binding, expiry, chunks and logout ([test](../../conformance/session-cache-compact.mjs#L33))
         - [x] Reject modified, incomplete, cross-strategy, expired, future and wrong-key envelopes ([test](../../session_cache_jose_test.go#L15))
         - [ ] `compact`
         - [ ] `jwt`
@@ -513,8 +513,8 @@
       - [ ] `object`
     - [ ] Versioning Stateless Sessions
       - [x] Invalidate prior compact snapshots across a fixed cache-version change or signing key removal ([test](../../session_cache_compact_test.go#L120))
-      - [x] Verify newly issued snapshots, retained keys and retired keys during a signed or encrypted cookie rollout ([test](../../conformance/session-cache-compact.mjs#L198))
-      - [x] Recalculate compact, signed and encrypted snapshot versions across replicas through the official client, including async lookup, failure and stale replacement ([test](../../conformance/session-cache-version.mjs#L7))
+      - [x] Verify newly issued snapshots, retained keys and retired keys during a signed cookie rollout ([test](../../conformance/session-cache-compact.mjs#L187))
+      - [x] Recalculate compact and signed snapshot versions across replicas through the official client, including async lookup, failure and stale replacement ([test](../../conformance/session-cache-version.mjs#L7))
       - [x] Reject a removed session after its revision changes and propagate cancellation with isolated concurrent requests ([test](../../session_cache_version_test.go#L13))
       - [x] Exercise all three versioned cache strategies, revocation and typed errors using the native client across two auth hosts ([test](../../client/session_cache_version_test.go#L17))
     - [ ] Stateless with Secondary Storage

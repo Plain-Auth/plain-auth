@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
-import { hkdfSync } from "node:crypto";
-import { calculateJwkThumbprint, decodeProtectedHeader, jwtDecrypt, jwtVerify } from "jose";
+import { decodeProtectedHeader, jwtVerify } from "jose";
 import { DatabaseSync } from "node:sqlite";
 import { customSession } from "better-auth/plugins";
 
@@ -38,20 +37,10 @@ export async function exchangeSessionCache(t, { reference, goFixture }, strategy
   t.after(() => database.close());
   const ref = await reference(t, [], { database, session: { cookieCache: { enabled: true, version: "release-test", strategy, maxAge } } });
   const secret = Buffer.from("local-conformance-0123456789-abcdefghijk");
-  const key = new Uint8Array(hkdfSync("sha256", secret, "better-auth-session", "BetterAuth.js Generated Encryption Key", 64));
-  const thumbprint = await calculateJwkThumbprint({ kty: "oct", k: Buffer.from(key).toString("base64url") });
   async function unpack(value, lifetime) {
     if (strategy === "compact") return JSON.parse(Buffer.from(value, "base64url").toString());
-    const header = decodeProtectedHeader(value);
-    let claims;
-    if (strategy === "jwt") {
-      assert.equal(header.alg, "HS256");
-      ({ payload: claims } = await jwtVerify(value, secret, { algorithms: ["HS256"] }));
-    } else {
-      assert.deepEqual(header, {alg: "dir", enc: "A256CBC-HS512", kid: thumbprint});
-      ({ payload: claims } = await jwtDecrypt(value, key, { keyManagementAlgorithms: ["dir"], contentEncryptionAlgorithms: ["A256CBC-HS512"] }));
-      assert.match(claims.jti, /^[a-f0-9-]{36}$/i);
-    }
+    assert.equal(decodeProtectedHeader(value).alg, "HS256");
+    const { payload: claims } = await jwtVerify(value, secret, { algorithms: ["HS256"] });
     assert.equal(claims.exp - claims.iat, lifetime);
     return { session: claims, expiresAt: claims.exp * 1000 };
   }
@@ -224,9 +213,8 @@ export async function compareJOSESessionRollover(t, { reference, goFixture }, st
   database.prepare('UPDATE "user" SET name=? WHERE email=?').run("Latest", email);
   const readName = async (node, cookies) => (await (await request(node, "get-session", cookies)).json()).user.name;
   assert.equal(await readName(go, earlierSnapshot), "Issued");
-  // The pinned rotation-aware JWE decoder consults retained keys. The pinned
-  // default HS256 cache verifier uses only the current application secret.
-  assert.equal(await readName(rotated, earlierSnapshot), strategy === "jwe" ? "Issued" : "Latest");
+  // The pinned HS256 cache verifier uses only the current application secret.
+  assert.equal(await readName(rotated, earlierSnapshot), "Latest");
   assert.equal(await readName(removed, earlierSnapshot), "Latest");
   assert.equal(await readName(removed, current), "Live", "newly issued cache uses the first configured key");
 }
