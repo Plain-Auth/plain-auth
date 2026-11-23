@@ -67,11 +67,12 @@ func TestChromeSharedCookieLogout(t *testing.T) {
 	})
 	mux.HandleFunc("/start", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		io.WriteString(w, `<!doctype html><body><output>pending</output><script type="module">
-import {loginPreference} from "/login-preference.mjs";
+		io.WriteString(w, `<!doctype html><body><script type="module">
 const post = (route, body) => fetch("/api/auth/" + route, {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body)});
 const probe = async (query = "") => (await fetch("`+sibling+`/probe"+query,{credentials:"include",cache:"no-store"})).text();
+let result;
 try {
+  const {loginPreference} = await import("/login-preference.mjs");
   const login = await post("sign-up/email",{name:"Local",email:"user@example.test",password:"fixture-password"});
   const preference = loginPreference({cookieName:"__Secure-staff.preference",domain:"example.test"});
   document.cookie = "another_preference=email-only; Path=/; Secure";
@@ -83,22 +84,45 @@ try {
   const hidden = !document.cookie.includes("session_token");
   const logout = await post("sign-out",{});
   const cleared = await probe();
-  document.querySelector("output").textContent = [login.status,shared,hidden,logout.status,cleared].join(",");
-} catch (error) {document.querySelector("output").textContent = error.message;}
+  result = [login.status,shared,hidden,logout.status,cleared].join(",");
+} catch (error) {result = String(error);}
+await fetch("/result", {method:"POST", body:result});
 </script></body>`)
+	})
+	ctx, cancel := context.WithTimeout(t.Context(), 90*time.Second)
+	defer cancel()
+	result := make(chan string, 1)
+	mux.HandleFunc("POST /result", func(w http.ResponseWriter, r *http.Request) {
+		body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, 4096))
+		if err != nil {
+			http.Error(w, "invalid browser result", http.StatusBadRequest)
+			return
+		}
+		select {
+		case result <- string(body):
+		default:
+		}
+		w.WriteHeader(http.StatusNoContent)
+		cancel()
 	})
 	server.Config.Handler = mux
 	server.StartTLS()
 	defer server.Close()
-	ctx, cancel := context.WithTimeout(t.Context(), 35*time.Second)
-	defer cancel()
-	profile := t.TempDir()
-	cmd := exec.CommandContext(ctx, chrome, "--headless", "--disable-gpu", "--disable-background-networking", "--no-first-run", "--no-proxy-server", "--ignore-certificate-errors", "--user-data-dir="+profile, "--host-resolver-rules=MAP auth.example.test 127.0.0.1, MAP app.example.test 127.0.0.1", "--virtual-time-budget=10000", "--dump-dom", origin+"/start")
-	dom, err := cmd.Output()
-	if err != nil {
-		t.Fatal("Chrome did not finish the loopback fixture", err)
+	cmd := exec.CommandContext(ctx, chrome, "--headless", "--disable-gpu", "--disable-background-networking", "--no-first-run", "--no-proxy-server", "--ignore-certificate-errors", "--user-data-dir="+t.TempDir(), "--host-resolver-rules=MAP auth.example.test 127.0.0.1, MAP app.example.test 127.0.0.1", origin+"/start")
+	cmd.Cancel = func() error {
+		if err := cmd.Process.Signal(os.Interrupt); err != nil {
+			return cmd.Process.Kill()
+		}
+		return nil
 	}
-	if !strings.Contains(string(dom), "<output>200,true,true,200,false</output>") {
-		t.Fatalf("unexpected browser result: %s", dom)
+	cmd.WaitDelay = 3 * time.Second
+	diagnostic, browserErr := cmd.CombinedOutput()
+	select {
+	case got := <-result:
+		if got != "200,true,true,200,false" {
+			t.Fatalf("unexpected browser result: %q", got)
+		}
+	default:
+		t.Fatalf("Chrome exited before reporting the cookie checks (context %v): %v\n%s", ctx.Err(), browserErr, diagnostic)
 	}
 }
