@@ -64,7 +64,7 @@ func TestOAuthProxyProfileLifetimeAndKeys(t *testing.T) {
 		t.Helper()
 		q := url.Values{"callbackURL": {"/done"}, "profile": {record}}
 		r := httptest.NewRequest("GET", preview+"/auth/callback/work/oauth-proxy?"+q.Encode(), nil)
-		err := a.completeProxyCallback(httptest.NewRecorder(), r, "work")
+		_, err := a.completeProxyCallback(httptest.NewRecorder(), r, "work")
 		var failure proxyBrowserError
 		if errors.As(err, &failure) && string(failure) == want {
 			return
@@ -156,12 +156,13 @@ func TestOAuthProxyProductionTrust(t *testing.T) {
 		}
 		r := httptest.NewRequest("GET", host+"/auth/callback/work?error=access_denied&state="+url.QueryEscape(sealed), nil)
 		w := httptest.NewRecorder()
-		err = a.exchangeProxyCallback(w, r, "work", provider)
+		result, err := a.exchangeProxyCallback(w, r, "work", provider)
+		target, _ := result.(authRedirect)
 		if accepted {
-			if err != nil || w.Code != 302 || !strings.HasPrefix(w.Header().Get("Location"), preview+"/auth/") {
+			if err != nil || !strings.HasPrefix(string(target), preview+"/auth/") {
 				t.Fatal("registered callback rejected a valid preview")
 			}
-		} else if err == nil || w.Header().Get("Location") != "" {
+		} else if err == nil || target != "" {
 			t.Fatal("invalid grant or request host was allowed to redirect")
 		}
 	}

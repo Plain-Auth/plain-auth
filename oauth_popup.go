@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"io"
 	"net/http"
 	"regexp"
 	"strings"
@@ -167,11 +166,4 @@ func (opener popupOpener) page(h http.Header, token, redirect string, failure *p
 	h.Set("Referrer-Policy", "no-referrer")
 	h.Set("Content-Security-Policy", "default-src 'none'; script-src '"+popupwire.ScriptCSPHash+"'; base-uri 'none'; frame-ancestors 'none'")
 	return HTMLPage(`<!doctype html><html><head><meta charset="utf-8"><title>Completing sign-in</title></head><body><script type="application/json" id="` + popupwire.DataElementID + `">` + string(data) + `</script><script>` + popupwire.CompletionScript + `</script></body></html>`)
-}
-
-func (opener popupOpener) write(w http.ResponseWriter, token, redirect string, failure *popupError) {
-	page := opener.page(w.Header(), token, redirect, failure)
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.Header().Set("X-Content-Type-Options", "nosniff")
-	_, _ = io.WriteString(w, string(page))
 }

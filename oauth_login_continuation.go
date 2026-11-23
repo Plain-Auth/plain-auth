@@ -51,11 +51,13 @@ func (a *Auth) loginContinuation(route string, r *http.Request, body wireBody, h
 	return prepare(EndpointContext{Auth: a, Request: r, Body: body, ResponseHeader: h}, query)
 }
 
-func (a *Auth) resumeIssuedOAuthLogin(w http.ResponseWriter, r *http.Request, resume OAuthLoginContinuation, priorCookies int) (bool, error) {
+// resumeIssuedOAuthLogin returns the authorization request to dispatch once
+// this response issued a live session cookie, or nil when it did not.
+func (a *Auth) resumeIssuedOAuthLogin(w http.ResponseWriter, r *http.Request, resume OAuthLoginContinuation, priorCookies int) (*http.Request, error) {
 	var issued *http.Cookie
 	headers := w.Header().Values("Set-Cookie")
 	if len(headers) <= priorCookies {
-		return false, nil
+		return nil, nil
 	}
 	for _, line := range headers[priorCookies:] {
 		cookie, err := http.ParseSetCookie(line)
@@ -64,35 +66,35 @@ func (a *Auth) resumeIssuedOAuthLogin(w http.ResponseWriter, r *http.Request, re
 		}
 	}
 	if issued == nil || issued.Value == "" || issued.MaxAge < 0 {
-		return false, nil
+		return nil, nil
 	}
 	token := a.VerifySignedSessionToken(issued.Value)
 	if token == "" {
-		return false, nil
+		return nil, nil
 	}
 	stored, _, err := a.opts.Store.Session(r.Context(), token)
 	if errors.Is(err, ErrNotFound) {
-		return false, nil
+		return nil, nil
 	}
 	if err != nil {
-		return false, err
+		return nil, err
 	}
 	if !stored.ExpiresAt.After(a.now()) {
-		return false, nil
+		return nil, nil
 	}
 	// A credential endpoint's own callback no longer applies once this login
 	// takes over, including when the signed authorization has just expired.
 	w.Header().Del("Location")
 	if err = stored.RequireOwner(); err != nil {
-		return false, err
+		return nil, err
 	}
 	stored.Token = token
 	next, err := resume(stored.Session)
 	if err != nil {
-		return false, err
+		return nil, err
 	}
 	if !a.isOAuthAuthorizationRequest(next) {
-		return false, errors.New("auth: invalid OAuth login continuation")
+		return nil, errors.New("auth: invalid OAuth login continuation")
 	}
 	// Keep host cookies such as a tenant selection. Only the newly issued
 	// credential may identify the browser on the resumed authorization request.
@@ -104,6 +106,5 @@ func (a *Auth) resumeIssuedOAuthLogin(w http.ResponseWriter, r *http.Request, re
 		}
 	}
 	next.AddCookie(&http.Cookie{Name: issued.Name, Value: issued.Value})
-	a.ServeHTTP(w, next)
-	return true, nil
+	return next, nil
 }

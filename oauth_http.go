@@ -34,16 +34,19 @@ func (a *Auth) serveOAuth(w http.ResponseWriter, r *http.Request, route string) 
 	if a.rejectRateLimited(w, r, route) {
 		return true
 	}
+	var result any
 	var err error
 	if start {
-		err = a.startOAuth(w, r, link)
+		result, err = a.startOAuth(w, r, link)
 	} else if r.Method == http.MethodPost {
-		err = a.redirectOAuthForm(w, r, id)
+		result, err = a.redirectOAuthForm(w, r, id)
 	} else {
-		err = a.finishOAuth(w, r, id)
+		result, err = a.finishOAuth(w, r, id)
 	}
 	if err != nil {
 		a.writeAuthError(w, r, err)
+	} else {
+		a.writeResult(w, r, 0, result)
 	}
 	return true
 }
@@ -61,52 +64,52 @@ func (a *Auth) oauthBinding(browser, id string, r *http.Request) string {
 	return digest(browser + "\x00" + id + "\x00" + a.cookieToken(r.Header))
 }
 
-func (a *Auth) startOAuth(w http.ResponseWriter, r *http.Request, link bool) error {
+func (a *Auth) startOAuth(w http.ResponseWriter, r *http.Request, link bool) (any, error) {
 	if err := a.validateRequestOrigin(r, true); err != nil {
-		return err
+		return nil, err
 	}
 	body, err := decodeWireBody(w, r, "/sign-in/social")
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if err = a.validateCallbacks(body, nil); err != nil {
-		return err
+		return nil, err
 	}
 	id, ok := body["provider"].(string)
 	if !ok {
-		return fieldTypeError("provider", "string", body)
+		return nil, fieldTypeError("provider", "string", body)
 	}
 	p, err := a.providerConfig(id)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	disable := false
 	if value, found := body["disableRedirect"]; found {
 		disable, ok = value.(bool)
 		if !ok {
-			return fieldTypeError("disableRedirect", "boolean", body)
+			return nil, fieldTypeError("disableRedirect", "boolean", body)
 		}
 	}
 	requestedParams, err := authorizationOptions(body, p.Config.Scopes)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	requestSignUp, ok := body["requestSignUp"].(bool)
 	if _, present := body["requestSignUp"]; present && !ok {
-		return fieldTypeError("requestSignUp", "boolean", body)
+		return nil, fieldTypeError("requestSignUp", "boolean", body)
 	}
 	linkUserID := ""
 	var resume OAuthLoginContinuation
 	if link {
 		current, err := a.requireOwnerSession(r.Context(), r.Header)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		linkUserID = current.User.ID
 	} else {
 		resume, err = a.loginContinuation("/sign-in/social", r, body, w.Header())
 		if err != nil {
-			return err
+			return nil, err
 		}
 	}
 	if value, found := body["idToken"]; found {
@@ -119,13 +122,12 @@ func (a *Auth) startOAuth(w http.ResponseWriter, r *http.Request, link bool) err
 	}
 	target, _, err := a.beginBrowserOAuth(w.Header(), r, p, body, flow, requestedParams)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if !disable {
 		w.Header().Set("Location", target)
 	}
-	writeAuthJSON(w, 200, map[string]any{"url": target, "redirect": !disable})
-	return nil
+	return map[string]any{"url": target, "redirect": !disable}, nil
 }
 
 // beginBrowserOAuth creates the same provider-bound, single-use grant for redirect and popup sign-in.
@@ -200,10 +202,10 @@ func (a *Auth) beginBrowserOAuth(h http.Header, r *http.Request, p OAuthProvider
 	return target, flow.State, nil
 }
 
-func (a *Auth) finishOAuth(w http.ResponseWriter, r *http.Request, id string) error {
+func (a *Auth) finishOAuth(w http.ResponseWriter, r *http.Request, id string) (any, error) {
 	p, err := a.providerConfig(id)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if a.oauthProxy != nil && strings.HasPrefix(r.URL.Query().Get("state"), recordPrefix) {
 		return a.exchangeProxyCallback(w, r, id, p)
@@ -211,14 +213,14 @@ func (a *Auth) finishOAuth(w http.ResponseWriter, r *http.Request, id string) er
 	// The configured origin is the only destination sent in the code exchange.
 	base, _ := url.Parse(a.opts.BaseURL)
 	if httporigin.Canonical(&url.URL{Scheme: base.Scheme, Host: r.Host}) != httporigin.Canonical(base) {
-		return &APIError{400, "INVALID_CALLBACK_URL", "Invalid OAuth callback"}
+		return nil, &APIError{400, "INVALID_CALLBACK_URL", "Invalid OAuth callback"}
 	}
 	q := r.URL.Query()
 	state := q.Get("state")
 	return a.finishBrowserOAuth(w, r, id, p, state, q, nil)
 }
 
-func (a *Auth) finishBrowserOAuth(w http.ResponseWriter, r *http.Request, id string, p OAuthProvider, state string, q url.Values, returned *oauthProxyResult) (resultErr error) {
+func (a *Auth) finishBrowserOAuth(w http.ResponseWriter, r *http.Request, id string, p OAuthProvider, state string, q url.Values, returned *oauthProxyResult) (out any, resultErr error) {
 	var popup *popupOpener
 	if (returned != nil || len(q["state"]) == 1) && state != "" && len(state) <= 128 {
 		popup = a.callbackPopup(w.Header(), r, state)
@@ -226,14 +228,13 @@ func (a *Auth) finishBrowserOAuth(w http.ResponseWriter, r *http.Request, id str
 	if popup != nil {
 		defer func() {
 			if resultErr != nil {
-				popup.write(w, "", "", &popupError{Code: "popup_sign_in_failed", Description: "Unable to complete social sign-in"})
-				resultErr = nil
+				out, resultErr = popup.page(w.Header(), "", "", &popupError{Code: "popup_sign_in_failed", Description: "Unable to complete social sign-in"}), nil
 			}
 		}()
 	}
 	cookie, err := r.Cookie(a.oauthCookie("oauth_state", "", 0).Name)
 	if err != nil || state == "" || len(state) > 128 || (returned == nil && (len(q["state"]) != 1 || len(q["code"]) > 1 || len(q["error"]) > 1)) {
-		return &APIError{400, "INVALID_OAUTH_STATE", "Invalid or expired OAuth state"}
+		return nil, &APIError{400, "INVALID_OAUTH_STATE", "Invalid or expired OAuth state"}
 	}
 	store := a.opts.Store.(OAuthStore)
 	binding := a.oauthBinding(cookie.Value, id, r)
@@ -243,19 +244,17 @@ func (a *Auth) finishBrowserOAuth(w http.ResponseWriter, r *http.Request, id str
 	flow, err := store.ConsumeOAuthFlow(r.Context(), state, binding, a.now().UTC())
 	if errors.Is(err, ErrNotFound) {
 		if popup != nil {
-			popup.write(w, "", "", &popupError{Code: "INVALID_OAUTH_STATE", Description: "Invalid or expired OAuth state"})
-			return nil
+			return popup.page(w.Header(), "", "", &popupError{Code: "INVALID_OAUTH_STATE", Description: "Invalid or expired OAuth state"}), nil
 		}
-		return &APIError{400, "INVALID_OAUTH_STATE", "Invalid or expired OAuth state"}
+		return nil, &APIError{400, "INVALID_OAUTH_STATE", "Invalid or expired OAuth state"}
 	}
 	if err != nil {
-		return err
+		return nil, err
 	}
 	http.SetCookie(w, a.oauthCookie("oauth_state", "", -1))
-	failWithDescription := func(code, description string) error {
+	failWithDescription := func(code, description string) (any, error) {
 		if popup != nil {
-			popup.write(w, "", "", &popupError{Code: code, Description: description})
-			return nil
+			return popup.page(w.Header(), "", "", &popupError{Code: code, Description: description}), nil
 		}
 		if flow.ErrorCallbackURL != "" && a.trustedURL(flow.ErrorCallbackURL, true) {
 			target, _ := url.Parse(flow.ErrorCallbackURL)
@@ -265,12 +264,11 @@ func (a *Auth) finishBrowserOAuth(w http.ResponseWriter, r *http.Request, id str
 				v.Set("error_description", description)
 			}
 			target.RawQuery = v.Encode()
-			http.Redirect(w, r, target.String(), http.StatusFound)
-			return nil
+			return authRedirect(target.String()), nil
 		}
-		return &APIError{400, code, "Unable to complete social sign-in"}
+		return nil, &APIError{400, code, "Unable to complete social sign-in"}
 	}
-	fail := func(code string) error { return failWithDescription(code, "") }
+	fail := func(code string) (any, error) { return failWithDescription(code, "") }
 	if (returned == nil && flow.ProxyOrigin != "") || (returned != nil && (flow.ProxyOrigin != returned.Preview || flow.CallbackURL != returned.Callback)) {
 		return fail("INVALID_OAUTH_STATE")
 	}
@@ -283,8 +281,7 @@ func (a *Auth) finishBrowserOAuth(w http.ResponseWriter, r *http.Request, id str
 		r = r.WithContext(context.WithValue(r.Context(), anonymousSourceKey{}, string(guest)))
 	}
 	if popup != nil && flow.Provider == id && q.Get("error") != "" {
-		popup.write(w, "", "", &popupError{Code: q.Get("error"), Description: q.Get("error_description")})
-		return nil
+		return popup.page(w.Header(), "", "", &popupError{Code: q.Get("error"), Description: q.Get("error_description")}), nil
 	}
 	if flow.Provider != id || (returned == nil && (q.Get("error") != "" || q.Get("code") == "")) {
 		return fail("OAUTH_CALLBACK_ERROR")
@@ -293,10 +290,10 @@ func (a *Auth) finishBrowserOAuth(w http.ResponseWriter, r *http.Request, id str
 	if flow.IssuerLoginQuery != "" {
 		resume, err = a.loginContinuation("/sign-in/social", r, wireBody{"oauth_query": flow.IssuerLoginQuery}, w.Header())
 		if err != nil {
-			return err
+			return nil, err
 		}
 		if resume == nil || flow.LinkUserID != "" || popup != nil {
-			return &OAuthError{Status: 400, Code: "invalid_request", Description: "issuer login is unavailable"}
+			return nil, &OAuthError{Status: 400, Code: "invalid_request", Description: "issuer login is unavailable"}
 		}
 	}
 	ctx, cancel := context.WithTimeout(context.WithValue(r.Context(), oauth2.HTTPClient, p.HTTPClient), 30*time.Second)
@@ -371,11 +368,11 @@ func (a *Auth) finishBrowserOAuth(w http.ResponseWriter, r *http.Request, id str
 		return fail("account_not_linked")
 	}
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if flow.LinkUserID == "" {
-		if done, err := a.publishSocialLogin(w, r, result.Token, resume); done || err != nil {
-			return err
+		if out, err := a.publishSocialLogin(w, r, result.Token, resume); out != nil || err != nil {
+			return out, err
 		}
 	}
 	target := flow.CallbackURL
@@ -386,11 +383,9 @@ func (a *Auth) finishBrowserOAuth(w http.ResponseWriter, r *http.Request, id str
 		target = a.opts.BaseURL
 	}
 	if popup != nil && flow.LinkUserID == "" {
-		popup.write(w, a.sessionCookie(result.Token, true).Value, target, nil)
-		return nil
+		return popup.page(w.Header(), a.sessionCookie(result.Token, true).Value, target, nil), nil
 	}
-	http.Redirect(w, r, target, http.StatusFound)
-	return nil
+	return authRedirect(target), nil
 }
 
 func (a *Auth) exchangeProviderCode(ctx context.Context, p OAuthProvider, flow OAuthFlow, q url.Values) (OAuthAccountFieldInput, string) {
@@ -448,38 +443,37 @@ func validSocialProfile(p OAuthProfile) bool {
 
 // A cross-site form POST does not carry SameSite=Lax cookies. Redirect to the
 // fixed callback origin for a top-level GET, then consume the bound state.
-func (a *Auth) redirectOAuthForm(w http.ResponseWriter, r *http.Request, id string) error {
+func (a *Auth) redirectOAuthForm(w http.ResponseWriter, r *http.Request, id string) (any, error) {
 	p, err := a.providerConfig(id)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	media, _, _ := mime.ParseMediaType(r.Header.Get("Content-Type"))
 	if media != "application/x-www-form-urlencoded" {
-		return &APIError{415, "UNSUPPORTED_MEDIA_TYPE", "Expected a form-encoded callback"}
+		return nil, &APIError{415, "UNSUPPORTED_MEDIA_TYPE", "Expected a form-encoded callback"}
 	}
 	data, err := io.ReadAll(http.MaxBytesReader(w, r.Body, 64<<10))
 	if err != nil {
-		return validationError("Invalid OAuth callback form")
+		return nil, validationError("Invalid OAuth callback form")
 	}
 	fields, err := url.ParseQuery(string(data))
 	if err != nil {
-		return validationError("Invalid OAuth callback form")
+		return nil, validationError("Invalid OAuth callback form")
 	}
 	q := url.Values{}
 	for _, key := range []string{"state", "code", "error", "error_description", "user", "iss", "device_id"} {
 		values := fields[key]
 		if len(values) > 1 {
-			return validationError("Duplicate OAuth callback field")
+			return nil, validationError("Duplicate OAuth callback field")
 		}
 		if len(values) == 1 {
 			q.Set(key, values[0])
 		}
 	}
 	if q.Get("state") == "" {
-		return &APIError{400, "INVALID_OAUTH_STATE", "Invalid or expired OAuth state"}
+		return nil, &APIError{400, "INVALID_OAUTH_STATE", "Invalid or expired OAuth state"}
 	}
-	http.Redirect(w, r, p.Config.RedirectURL+"?"+q.Encode(), http.StatusFound)
-	return nil
+	return authRedirect(p.Config.RedirectURL + "?" + q.Encode()), nil
 }
 
 func (a *Auth) completeProfile(ctx context.Context, r *http.Request, id, callback string, p OAuthProfile, tokens OAuthTokens, options OAuthLoginOptions) (AuthResult, bool, error) {
@@ -559,39 +553,44 @@ func (a *Auth) completeProfileWith(ctx context.Context, r *http.Request, id stri
 	return AuthResult{User: user, Token: session.Token}, created, err
 }
 
-func (a *Auth) publishSocialLogin(w http.ResponseWriter, r *http.Request, token string, resume OAuthLoginContinuation) (bool, error) {
+// publishSocialLogin issues the session cookie. With a login continuation it
+// returns the authorization request to dispatch in place of the usual result.
+func (a *Auth) publishSocialLogin(w http.ResponseWriter, r *http.Request, token string, resume OAuthLoginContinuation) (any, error) {
 	prior := len(w.Header().Values("Set-Cookie"))
 	if err := a.setSessionCookie(w, r, token, true); err != nil {
-		return false, a.discardUnpublishedSession(r.Context(), token, err)
+		return nil, a.discardUnpublishedSession(r.Context(), token, err)
 	}
 	if resume == nil {
-		return false, nil
+		return nil, nil
 	}
-	done, err := a.resumeIssuedOAuthLogin(w, r, resume, prior)
-	if !done && err == nil {
-		return false, &OAuthError{Status: 401, Code: "unauthorized", Description: "a new browser session is required"}
+	next, err := a.resumeIssuedOAuthLogin(w, r, resume, prior)
+	if err != nil {
+		return nil, err
 	}
-	return done, err
+	if next == nil {
+		return nil, &OAuthError{Status: 401, Code: "unauthorized", Description: "a new browser session is required"}
+	}
+	return oauthAuthorizationDispatch{next}, nil
 }
 
-func (a *Auth) directOAuth(w http.ResponseWriter, r *http.Request, id string, p OAuthProvider, value any, linkUserID string, requestSignUp bool, callback string, resume OAuthLoginContinuation) error {
+func (a *Auth) directOAuth(w http.ResponseWriter, r *http.Request, id string, p OAuthProvider, value any, linkUserID string, requestSignUp bool, callback string, resume OAuthLoginContinuation) (any, error) {
 	if p.DisableIDTokenSignIn || p.VerifyIDToken == nil {
-		return &APIError{404, "ID_TOKEN_NOT_SUPPORTED", "Provider does not support ID token sign-in"}
+		return nil, &APIError{404, "ID_TOKEN_NOT_SUPPORTED", "Provider does not support ID token sign-in"}
 	}
 	data, ok := value.(map[string]any)
 	if !ok {
-		return validationError("Expected an ID token object")
+		return nil, validationError("Expected an ID token object")
 	}
 	raw, _ := data["token"].(string)
 	nonce, _ := data["nonce"].(string)
 	if raw == "" || nonce == "" {
-		return &APIError{401, "INVALID_TOKEN", "Invalid token"}
+		return nil, &APIError{401, "INVALID_TOKEN", "Invalid token"}
 	}
 	ctx, cancel := context.WithTimeout(context.WithValue(r.Context(), oauth2.HTTPClient, p.HTTPClient), 30*time.Second)
 	defer cancel()
 	profile, expires, err := p.VerifyIDToken(ctx, raw, nonce)
 	if err != nil || !validSocialProfile(profile) || !expires.After(a.now()) {
-		return &APIError{401, "INVALID_TOKEN", "Invalid token"}
+		return nil, &APIError{401, "INVALID_TOKEN", "Invalid token"}
 	}
 	// Direct grants authenticate the signed ID token. A client-supplied access
 	// or refresh token has no independently verified binding to its subject.
@@ -601,35 +600,33 @@ func (a *Auth) directOAuth(w http.ResponseWriter, r *http.Request, id string, p 
 	input.ClientRefreshToken, _ = data["refreshToken"].(string)
 	fields, fieldErr := a.mapAccountFields(ctx, p, input)
 	if fieldErr != nil {
-		return fieldErr
+		return nil, fieldErr
 	}
 	account, _, err := a.completeProfile(ctx, r, id, callback, profile, tokens, OAuthLoginOptions{AccountFields: fields, DisableSignUp: p.DisableImplicitSignUp && !requestSignUp, AllowVerifiedEmailLink: p.AllowVerifiedEmailLink, LinkUserID: linkUserID, LinkSessionToken: a.cookieToken(r.Header), IDTokenValidUntil: expires})
 	var signupError *APIError
 	if errors.As(err, &signupError) && signupError.Code == "SIGN_UP_DISABLED" {
-		return &APIError{401, "OAUTH_LINK_ERROR", "signup disabled"}
+		return nil, &APIError{401, "OAUTH_LINK_ERROR", "signup disabled"}
 	}
 	if errors.Is(err, ErrIDTokenUsed) {
-		return &APIError{401, "INVALID_TOKEN", "Invalid token"}
+		return nil, &APIError{401, "INVALID_TOKEN", "Invalid token"}
 	}
 	if errors.Is(err, ErrOAuthLinkingDisabled) {
-		return &APIError{401, "LINKING_NOT_ALLOWED", "Account not linked - linking not allowed"}
+		return nil, &APIError{401, "LINKING_NOT_ALLOWED", "Account not linked - linking not allowed"}
 	}
 	if errors.Is(err, ErrOAuthAccountAlreadyLinked) {
-		return &APIError{409, "SOCIAL_ACCOUNT_ALREADY_LINKED", "Social account already linked"}
+		return nil, &APIError{409, "SOCIAL_ACCOUNT_ALREADY_LINKED", "Social account already linked"}
 	}
 	if errors.Is(err, ErrOAuthLinkRequired) || errors.Is(err, ErrNotFound) {
-		return &APIError{401, "ACCOUNT_NOT_LINKED", "Account not linked"}
+		return nil, &APIError{401, "ACCOUNT_NOT_LINKED", "Account not linked"}
 	}
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if linkUserID != "" {
-		writeAuthJSON(w, 200, map[string]any{"url": "", "status": true, "redirect": false})
-		return nil
+		return map[string]any{"url": "", "status": true, "redirect": false}, nil
 	}
-	if done, err := a.publishSocialLogin(w, r, account.Token, resume); done || err != nil {
-		return err
+	if out, err := a.publishSocialLogin(w, r, account.Token, resume); out != nil || err != nil {
+		return out, err
 	}
-	writeAuthJSON(w, 200, map[string]any{"redirect": false, "token": account.Token, "user": account.User})
-	return nil
+	return map[string]any{"redirect": false, "token": account.Token, "user": account.User}, nil
 }

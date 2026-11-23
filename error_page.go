@@ -1,7 +1,6 @@
 package plainauth
 
 import (
-	"fmt"
 	"html"
 	"net/http"
 	"net/url"
@@ -19,7 +18,8 @@ func (a *Auth) ErrorPageURL() string {
 	return a.PublicURL() + "/error"
 }
 
-func (a *Auth) serveErrorPage(w http.ResponseWriter, r *http.Request) {
+// errorPage returns the browser error page, or a redirect to ErrorRedirectURL.
+func (a *Auth) errorPage(h http.Header, r *http.Request) any {
 	q := r.URL.Query()
 	code := q.Get("error")
 	if !errorCodeFormat.MatchString(code) {
@@ -34,16 +34,13 @@ func (a *Auth) serveErrorPage(w http.ResponseWriter, r *http.Request) {
 			params.Set("error_description", description)
 		}
 		target.RawQuery = params.Encode()
-		http.Redirect(w, r, target.String(), http.StatusFound)
-		return
+		return authRedirect(target.String())
 	}
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.Header().Set("Referrer-Policy", "no-referrer")
-	w.Header().Set("X-Content-Type-Options", "nosniff")
-	w.Header().Set("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'")
-	fmt.Fprintf(w, `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Authentication error</title><main><h1>Authentication error</h1><p>%s</p>`, html.EscapeString(code))
+	h.Set("Referrer-Policy", "no-referrer")
+	h.Set("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'")
+	page := `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Authentication error</title><main><h1>Authentication error</h1><p>` + html.EscapeString(code) + `</p>`
 	if description != "" {
-		fmt.Fprintf(w, "<p>%s</p>", html.EscapeString(description))
+		page += "<p>" + html.EscapeString(description) + "</p>"
 	}
-	fmt.Fprint(w, "</main></html>")
+	return HTMLPage(page + "</main></html>")
 }

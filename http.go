@@ -96,7 +96,7 @@ func (a *Auth) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if route == "/error" {
-		a.serveErrorPage(w, r)
+		a.writeResult(w, r, 0, a.errorPage(w.Header(), r))
 		return
 	}
 	var body wireBody
@@ -153,19 +153,23 @@ func (a *Auth) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		continuation = restored.resume
 	}
 	if continuation != nil {
-		done, err := a.resumeIssuedOAuthLogin(w, r, continuation, priorCookies)
+		next, err := a.resumeIssuedOAuthLogin(w, r, continuation, priorCookies)
 		if err != nil {
 			a.writeAuthError(w, r, err)
 			return
 		}
-		if done {
-			return
-		}
-		if fromProvider {
+		if next != nil {
+			result = oauthAuthorizationDispatch{next}
+		} else if fromProvider {
 			a.writeAuthError(w, r, &OAuthError{Status: 401, Code: "unauthorized", Description: "a new browser session is required"})
 			return
 		}
 	}
+	a.writeResult(w, r, ep.SuccessStatus, result)
+}
+
+// writeResult writes an endpoint's successful result. A zero status means 200.
+func (a *Auth) writeResult(w http.ResponseWriter, r *http.Request, status int, result any) {
 	if dispatch, ok := result.(oauthAuthorizationDispatch); ok {
 		a.ServeHTTP(w, dispatch.request)
 		return
@@ -175,7 +179,6 @@ func (a *Auth) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusFound)
 		return
 	}
-	status := ep.SuccessStatus
 	if status == 0 {
 		status = http.StatusOK
 	}

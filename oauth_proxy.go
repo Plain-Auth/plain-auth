@@ -188,7 +188,7 @@ func invalidProxyCallback() error {
 	return &APIError{400, "INVALID_OAUTH_PROXY_CALLBACK", "Invalid or expired OAuth proxy callback"}
 }
 
-func (a *Auth) exchangeProxyCallback(w http.ResponseWriter, r *http.Request, id string, provider OAuthProvider) error {
+func (a *Auth) exchangeProxyCallback(w http.ResponseWriter, r *http.Request, id string, provider OAuthProvider) (any, error) {
 	w.Header().Set("Referrer-Policy", "no-referrer")
 	q := r.URL.Query()
 	var grant oauthProxyState
@@ -200,7 +200,7 @@ func (a *Auth) exchangeProxyCallback(w http.ResponseWriter, r *http.Request, id 
 		grant.Production != a.oauthProxy.ProductionURL || a.proxyRequestOrigin(r) != grant.Production || a.proxyCurrentOrigin(r) != grant.Production ||
 		proxyOrigin(grant.Preview) != grant.Preview || grant.Preview == grant.Production || !a.trustedURL(grant.Preview, false) ||
 		!grant.ExpiresAt.After(now) || grant.ExpiresAt.After(now.Add(10*time.Minute+10*time.Second)) {
-		return invalidProxyCallback()
+		return nil, invalidProxyCallback()
 	}
 	result := oauthProxyResult{State: grant.State, Provider: id, Preview: grant.Preview, Production: grant.Production, Callback: grant.Callback, BasePath: grant.BasePath,
 		DisableSignUp: provider.DisableSignUp || provider.DisableImplicitSignUp && !grant.RequestSignUp, RequireEmailVerification: provider.RequireEmailVerification}
@@ -234,15 +234,14 @@ func (a *Auth) exchangeProxyCallback(w http.ResponseWriter, r *http.Request, id 
 	result.IssuedAt = a.now().UTC()
 	profile, err := a.sealProxy(proxyProfilePurpose, result)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	target, err := url.Parse(grant.Preview + grant.BasePath + "/callback/" + id + "/oauth-proxy")
 	if err != nil {
-		return invalidProxyCallback()
+		return nil, invalidProxyCallback()
 	}
 	target.RawQuery = url.Values{"callbackURL": {grant.Callback}, "profile": {profile}}.Encode()
-	http.Redirect(w, r, target.String(), http.StatusFound)
-	return nil
+	return authRedirect(target.String()), nil
 }
 
 type proxyBrowserError string
@@ -280,49 +279,50 @@ func (a *Auth) serveOAuthProxyCompletion(w http.ResponseWriter, r *http.Request,
 	if a.rejectRateLimited(w, r, path) {
 		return true
 	}
-	if err := a.completeProxyCallback(w, r, id); err != nil {
-		var failure proxyBrowserError
-		if errors.As(err, &failure) {
-			target := a.opts.BasePath + "/error?" + url.Values{"error": {string(failure)}}.Encode()
-			http.Redirect(w, r, target, http.StatusFound)
-		} else {
-			a.writeAuthError(w, r, err)
-		}
+	result, err := a.completeProxyCallback(w, r, id)
+	var failure proxyBrowserError
+	if errors.As(err, &failure) {
+		result, err = authRedirect(a.opts.BasePath+"/error?"+url.Values{"error": {string(failure)}}.Encode()), nil
+	}
+	if err != nil {
+		a.writeAuthError(w, r, err)
+	} else {
+		a.writeResult(w, r, 0, result)
 	}
 	return true
 }
 
-func (a *Auth) completeProxyCallback(w http.ResponseWriter, r *http.Request, id string) error {
+func (a *Auth) completeProxyCallback(w http.ResponseWriter, r *http.Request, id string) (any, error) {
 	q := r.URL.Query()
 	var result oauthProxyResult
 	if len(q["callbackURL"]) != 1 || !a.trustedURL(q.Get("callbackURL"), true) || len(q["profile"]) > 1 {
-		return invalidProxyCallback()
+		return nil, invalidProxyCallback()
 	}
 	if q.Get("profile") == "" {
-		return proxyBrowserError("missing_profile")
+		return nil, proxyBrowserError("missing_profile")
 	}
 	if !a.openProxy(proxyProfilePurpose, q.Get("profile"), &result) {
-		return proxyBrowserError("invalid_profile")
+		return nil, proxyBrowserError("invalid_profile")
 	}
 	if id != "" && id != result.Provider {
-		return proxyBrowserError("provider_mismatch")
+		return nil, proxyBrowserError("provider_mismatch")
 	}
 	if result.Callback != q.Get("callbackURL") || result.Production != a.oauthProxy.ProductionURL ||
 		result.BasePath != a.opts.BasePath || result.Preview != a.proxyRequestOrigin(r) || result.Preview != a.proxyCurrentOrigin(r) {
-		return invalidProxyCallback()
+		return nil, invalidProxyCallback()
 	}
 	age := a.now().UTC().Sub(result.IssuedAt)
 	if age < -10*time.Second || age > a.oauthProxy.MaxAge {
-		return proxyBrowserError("payload_expired")
+		return nil, proxyBrowserError("payload_expired")
 	}
 	provider, err := a.providerConfig(result.Provider)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	err = a.finishBrowserOAuth(w, r, result.Provider, provider, result.State, nil, &result)
+	out, err := a.finishBrowserOAuth(w, r, result.Provider, provider, result.State, nil, &result)
 	var api *APIError
 	if errors.As(err, &api) && api.Code == "INVALID_OAUTH_STATE" {
-		return proxyBrowserError("state_mismatch")
+		return nil, proxyBrowserError("state_mismatch")
 	}
-	return err
+	return out, err
 }
