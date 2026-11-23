@@ -9,9 +9,8 @@ import (
 	"strings"
 )
 
-// DatabaseHooks run your code around the writes that create and update users
-// and that create, update and delete sessions, for HTTP requests and direct
-// Go calls alike. Plugin hooks run
+// DatabaseHooks run your code around the writes that create, update and
+// delete users and sessions, for HTTP requests and direct Go calls alike. Plugin hooks run
 // first, in plugin order, then the Options hooks.
 //
 // A before hook runs just before the write and may edit the row or return
@@ -129,9 +128,6 @@ func composeDatabaseHooks(opts Options) databaseHookChains {
 // checkDatabaseHooks refuses a hook that an enabled feature would bypass.
 func (a *Auth) checkDatabaseHooks() error {
 	d := a.dbHooks
-	if d.user.delete.set() {
-		return errors.New("auth: database hooks for deleting users are not supported yet")
-	}
 	var bypass []string
 	need := func(feature string, enabled bool) {
 		if enabled {
@@ -175,8 +171,11 @@ func (a *Auth) checkDatabaseHooks() error {
 		for _, id := range []string{"admin", "anonymous", "magic-link", "sso", "two-factor"} {
 			need(id, a.HasPlugin(id))
 		}
-		need("DeleteUserEnabled", a.opts.DeleteUserEnabled)
 		need("RevokeSessionsOnPasswordReset", a.opts.RevokeSessionsOnPasswordReset)
+	}
+	if d.user.delete.set() {
+		need("admin", a.HasPlugin("admin"))
+		need("anonymous", a.HasPlugin("anonymous"))
 	}
 	if len(bypass) > 0 {
 		return fmt.Errorf("auth: update and delete database hooks do not run yet for %s", strings.Join(bypass, ", "))
@@ -345,6 +344,47 @@ func (a *Auth) beforeUserUpdate(ctx context.Context, row User, fields map[string
 		return row, fields, errDatabaseHookEdit
 	}
 	return edited, rec.Fields, nil
+}
+
+// deleteUserWithHooks runs the session and user delete hooks around del,
+// which removes the user with every session. A skip from any before hook
+// cancels the whole deletion and reports true.
+func (a *Auth) deleteUserWithHooks(ctx context.Context, user User, del func() error) (bool, error) {
+	if !a.dbHooks.user.delete.set() && !a.dbHooks.session.delete.set() {
+		return false, del()
+	}
+	var sessions []Session
+	if a.dbHooks.session.delete.set() {
+		var err error
+		if sessions, err = a.userSessionRows(ctx, user.ID, ""); err != nil {
+			return false, err
+		}
+	}
+	for _, row := range sessions {
+		if err := runBefore(ctx, a, a.dbHooks.session.delete, &SessionRecord{Session: row, Fields: map[string]any{}}); err != nil {
+			return errors.Is(err, ErrSkipWrite), skipless(err)
+		}
+	}
+	if err := runBefore(ctx, a, a.dbHooks.user.delete, &UserRecord{User: user, Fields: map[string]any{}}); err != nil {
+		return errors.Is(err, ErrSkipWrite), skipless(err)
+	}
+	if err := del(); err != nil {
+		return false, err
+	}
+	for _, row := range sessions {
+		if err := runAfter(ctx, a, a.dbHooks.session.delete, SessionRecord{Session: row, Fields: map[string]any{}}); err != nil {
+			return false, err
+		}
+	}
+	return false, runAfter(ctx, a, a.dbHooks.user.delete, UserRecord{User: user, Fields: map[string]any{}})
+}
+
+// skipless returns err unless it is ErrSkipWrite.
+func skipless(err error) error {
+	if errors.Is(err, ErrSkipWrite) {
+		return nil
+	}
+	return err
 }
 
 func (a *Auth) afterUserUpdate(ctx context.Context, row User, fields map[string]any) error {

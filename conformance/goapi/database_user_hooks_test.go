@@ -156,3 +156,89 @@ func TestDatabaseUserUpdateHooks(t *testing.T) {
 		t.Fatal("the old address still resolves", err)
 	}
 }
+
+// Run the session and user delete hooks when a user deletes their account; a
+// declined deletion keeps everything and answers like a completed one.
+func TestDatabaseUserDeleteHooks(t *testing.T) {
+	var mu sync.Mutex
+	var events []string
+	record := func(e string) { mu.Lock(); events = append(events, e); mu.Unlock() }
+	seen := func() string { mu.Lock(); defer mu.Unlock(); s := strings.Join(events, ","); events = nil; return s }
+	var decline bool
+	store := memory.New()
+	off := false
+	auth, err := authn.New(authn.Options{
+		BaseURL: "https://auth.example", Store: store, Secret: strings.Repeat("s", 32), EmailAndPassword: true, RateLimit: &off, DeleteUserEnabled: true,
+		DatabaseHooks: authn.DatabaseHooks{
+			User: authn.ModelHooks[authn.UserRecord]{Delete: authn.OperationHooks[authn.UserRecord]{
+				Before: func(_ context.Context, u *authn.UserRecord, c *authn.HookContext) error {
+					record("user-before:" + c.Path + ":" + u.Email)
+					if decline {
+						return authn.ErrSkipWrite
+					}
+					return nil
+				},
+				After: func(ctx context.Context, u authn.UserRecord, _ *authn.HookContext) error {
+					_, err := store.FindAccountUser(ctx, u.Email)
+					record("user-after:" + boolString(errors.Is(err, authn.ErrNotFound)))
+					return nil
+				},
+			}},
+			Session: authn.ModelHooks[authn.SessionRecord]{Delete: authn.OperationHooks[authn.SessionRecord]{
+				Before: func(context.Context, *authn.SessionRecord, *authn.HookContext) error {
+					record("session-before")
+					return nil
+				},
+				After: func(context.Context, authn.SessionRecord, *authn.HookContext) error {
+					record("session-after")
+					return nil
+				},
+			}},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	h := http.Header{"Origin": {"https://auth.example"}, "Content-Type": {"application/json"}}
+	call := func(target, body string, status int) map[string]any {
+		t.Helper()
+		r := httptest.NewRequest("POST", "https://auth.example/api/auth"+target, strings.NewReader(body))
+		r.Header = h.Clone()
+		w := httptest.NewRecorder()
+		auth.ServeHTTP(w, r)
+		if w.Code != status {
+			t.Fatalf("POST %s returned %d, want %d: %s", target, w.Code, status, w.Body)
+		}
+		var out map[string]any
+		_ = json.Unmarshal(w.Body.Bytes(), &out)
+		for _, c := range w.Result().Cookies() {
+			if c.MaxAge >= 0 && c.Value != "" {
+				h.Set("Cookie", c.Name+"="+c.Value)
+			}
+		}
+		return out
+	}
+	out := call("/sign-up/email", `{"email":"ada@example.com","password":"correct horse battery","name":"Ada"}`, 200)
+	adaID := out["user"].(map[string]any)["id"].(string)
+	signedIn := h.Get("Cookie")
+	call("/sign-in/email", `{"email":"ada@example.com","password":"correct horse battery"}`, 200)
+	h.Set("Cookie", signedIn)
+
+	// A declined deletion answers like a completed one but keeps the user and every session.
+	decline = true
+	if out = call("/delete-user", `{"password":"correct horse battery"}`, 200); out["message"] != "User deleted" {
+		t.Fatal("unexpected declined deletion response", out)
+	}
+	if sessions, _ := store.ListSessions(t.Context(), adaID); len(sessions) != 2 {
+		t.Fatal("a declined deletion removed sessions", len(sessions))
+	}
+	if got := seen(); got != "session-before,session-before,user-before:/delete-user:ada@example.com" {
+		t.Fatal("unexpected declined deletion hooks", got)
+	}
+	decline = false
+	h.Set("Cookie", signedIn)
+	call("/delete-user", `{"password":"correct horse battery"}`, 200)
+	if got := seen(); got != "session-before,session-before,user-before:/delete-user:ada@example.com,session-after,session-after,user-after:true" {
+		t.Fatal("unexpected deletion hooks", got)
+	}
+}

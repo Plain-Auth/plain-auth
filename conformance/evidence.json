@@ -18417,6 +18417,11 @@
       "label": "Run hooks around profile updates, email changes and email verification",
       "test": "conformance/goapi/database_user_hooks_test.go",
       "marker": "// Run user update hooks around profile updates, email changes and email"
+    },
+    {
+      "label": "Run the session and user delete hooks when a user deletes their account",
+      "test": "conformance/goapi/database_user_hooks_test.go",
+      "marker": "// Run the session and user delete hooks when a user deletes their account; a"
     }
   ],
   "docs/content/docs/concepts/database.mdx#L881": [
@@ -18441,6 +18446,11 @@
       "label": "Run before a user is updated, with the change applied",
       "test": "conformance/goapi/database_user_hooks_test.go",
       "marker": "// A profile update runs the hooks with the change applied; a hook may adjust the profile."
+    },
+    {
+      "label": "Run before a user and its sessions are deleted",
+      "test": "conformance/goapi/database_user_hooks_test.go",
+      "marker": "// A declined deletion answers like a completed one but keeps the user and every session."
     }
   ],
   "docs/content/docs/concepts/database.mdx#L884/Behavior": [
@@ -18506,6 +18516,12 @@
       "label": "Log a session as sign-out deletes it, or keep it by declining the delete",
       "test": "conformance/goapi/database_session_hooks_test.go",
       "marker": "// Sign-out runs the delete hooks; a declined delete still signs the browser out but keeps the row."
+    },
+    {
+      "label": "Derive fields when a user is created, veto a user deletion, and log the sessions an account deletion removes",
+      "test": "conformance/goapi/database_user_hooks_test.go",
+      "marker": "// A declined deletion answers like a completed one but keeps the user and every session.",
+      "complete": true
     }
   ],
   "docs/content/docs/concepts/database.mdx#L947": [

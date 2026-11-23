@@ -208,12 +208,14 @@
       - [x] Run create hooks outside the write transaction so they can use the store on SQLite, PostgreSQL and MySQL ([test](../../adapters/sqlstore/database_hooks_test.go#L19))
       - [x] Run hooks around session refreshes, field updates, sign-out, revocation, expired-session cleanup, password changes and multi-session replacement ([test](../../conformance/goapi/database_session_hooks_test.go#L20))
       - [x] Run hooks around profile updates, email changes and email verification ([test](../../conformance/goapi/database_user_hooks_test.go#L19))
+      - [x] Run the session and user delete hooks when a user deletes their account ([test](../../conformance/goapi/database_user_hooks_test.go#L160))
       - [ ] 1. Before Hook
         - [x] Edit the stored fields of a new user or session, or cancel its creation, before anything is written ([test](../../conformance/goapi/database_hooks_test.go#L124))
         - [ ] Purpose
           - [x] Run before a user or session is created ([test](../../conformance/goapi/database_hooks_test.go#L124))
           - [x] Run before a session is refreshed, updated or deleted ([test](../../conformance/goapi/database_session_hooks_test.go#L120))
           - [x] Run before a user is updated, with the change applied ([test](../../conformance/goapi/database_user_hooks_test.go#L90))
+          - [x] Run before a user and its sessions are deleted ([test](../../conformance/goapi/database_user_hooks_test.go#L227))
         - [ ] Behavior
           - [x] Cancel a creation with ErrSkipWrite, edit the stored fields, and reject edits to other fields ([test](../../conformance/goapi/database_hooks_test.go#L167))
           - [x] Cancel a session update or delete with ErrSkipWrite, let one declined row keep every session of a revocation, and reject edits to fields an update does not store ([test](../../conformance/goapi/database_session_hooks_test.go#L193))
@@ -227,9 +229,10 @@
         - [ ] Behavior
           - [x] Fire one after hook for concurrent sign-ups of one email and none for a sign-up that stores nothing ([test](../../adapters/sqlstore/database_hooks_test.go#L111))
           - [x] Run session update and delete after hooks once the change is stored, on SQLite, PostgreSQL and MySQL ([test](../../adapters/sqlstore/database_hooks_test.go#L126))
-        - [ ] Example Usage
+        - [x] Example Usage ([test](../../conformance/goapi/database_user_hooks_test.go#L227))
           - [x] Derive user fields in a before hook and call another service from an after hook ([test](../../conformance/goapi/database_hooks_test.go#L130))
           - [x] Log a session as sign-out deletes it, or keep it by declining the delete ([test](../../conformance/goapi/database_session_hooks_test.go#L166))
+          - [x] Derive fields when a user is created, veto a user deletion, and log the sessions an account deletion removes ([test](../../conformance/goapi/database_user_hooks_test.go#L227))
       - [x] Throwing Errors ([test](../../conformance/goapi/database_hooks_test.go#L174))
         - [x] Answer with a before hook's APIError, its status and code, and store nothing ([test](../../conformance/goapi/database_hooks_test.go#L174))
       - [x] Using the Context Object ([test](../../conformance/goapi/database_session_hooks_test.go#L47))

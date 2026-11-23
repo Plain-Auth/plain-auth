@@ -99,11 +99,14 @@ func (a *Auth) DeleteUser(ctx context.Context, h http.Header, in DeleteUserInput
 	if in.Token == "" && hash == "" && now.Sub(session.Session.CreatedAt) >= a.opts.FreshAge {
 		return false, &APIError{400, "SESSION_EXPIRED", "Session expired. Re-authenticate to perform this action."}
 	}
-	err = s.DeleteAccount(ctx, session.User.ID, session.Session.Token, hash, in.Token, now)
+	declined, err := a.deleteUserWithHooks(ctx, session.User, func() error {
+		return s.DeleteAccount(ctx, session.User.ID, session.Session.Token, hash, in.Token, now)
+	})
 	if errors.Is(err, ErrNotFound) {
 		return false, &APIError{404, "INVALID_TOKEN", "Invalid token"}
 	}
-	return err == nil, err
+	// A declined deletion answers like a completed one, as in the reference.
+	return err == nil || declined, err
 }
 
 // ChangeEmail requests confirmation for a new address. The token is bound to

@@ -190,6 +190,8 @@ User updates run these hooks:
 | The email change link from `/change-email` | Update, with the new email | Answers success; the address stays |
 | `GET /verify-email`, `Auth.VerifyEmail` for an unverified address | Update, with `EmailVerified` set | Answers success; the address stays unverified |
 
+Deleting an account with `POST /delete-user`, `/delete-user/callback` or `Auth.DeleteUser` runs the session delete hooks for every session of the account, then the user delete hooks, then deletes them together and runs the after hooks in the same order. A skip from any before hook keeps the user and every session, and the request answers like a completed deletion.
+
 Session updates and deletes run these hooks:
 
 | Operation | Session hooks | Skipped write |
@@ -212,8 +214,8 @@ Database hooks do not cover every flow yet. `New` refuses:
 - session create hooks with two-factor authentication, device authorization or `AutoSignInAfterVerification`;
 - user update hooks with social sign-in, the magic link, email OTP, phone number, One Tap, SSO, admin, two-factor or last-login-method plugin, `AutoSignInAfterVerification`, `BeforeEmailVerification` or `AfterEmailVerification`;
 - session update hooks with the organization or admin plugin;
-- session delete hooks with the admin, anonymous, magic link, SSO or two-factor plugin, `DeleteUserEnabled` or `RevokeSessionsOnPasswordReset`;
-- user delete hooks.
+- session delete hooks with the admin, anonymous, magic link, SSO or two-factor plugin, or `RevokeSessionsOnPasswordReset`;
+- user delete hooks with the admin or anonymous plugin.
 
 The SCIM handler refuses a host with any database hook, and `Auth.HasDatabaseHooks` lets your own wrapping handler do the same.
 

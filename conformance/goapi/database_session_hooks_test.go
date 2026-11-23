@@ -259,16 +259,17 @@ func TestDatabaseSessionHooksRefuseBypassingFeatures(t *testing.T) {
 		t.Fatal("session update hooks were accepted with organizations", err)
 	}
 	deleting := base()
-	deleting.DeleteUserEnabled = true
+	deleting.RevokeSessionsOnPasswordReset = true
 	deleting.DatabaseHooks.Session.Delete = update
-	if _, err := authn.New(deleting); err == nil || !strings.Contains(err.Error(), "DeleteUserEnabled") {
-		t.Fatal("session delete hooks were accepted with account deletion", err)
+	if _, err := authn.New(deleting); err == nil || !strings.Contains(err.Error(), "RevokeSessionsOnPasswordReset") {
+		t.Fatal("session delete hooks were accepted with password-reset revocation", err)
 	}
 	userHook := authn.OperationHooks[authn.UserRecord]{After: func(context.Context, authn.UserRecord, *authn.HookContext) error { return nil }}
 	users := base()
+	users.Plugins = []authn.Plugin{{ID: "anonymous"}}
 	users.DatabaseHooks.User.Delete = userHook
-	if _, err := authn.New(users); err == nil || !strings.Contains(err.Error(), "not supported yet") {
-		t.Fatal("user delete hooks were accepted", err)
+	if _, err := authn.New(users); err == nil || !strings.Contains(err.Error(), "anonymous") {
+		t.Fatal("user delete hooks were accepted with anonymous accounts", err)
 	}
 	profiles := base()
 	profiles.Plugins = []authn.Plugin{{ID: "last-login-method"}}
