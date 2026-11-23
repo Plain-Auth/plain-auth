@@ -6,8 +6,8 @@ Enable email and password authentication and register the plugin. SQLite, Postgr
 
 ```go
 import (
-    "github.com/Plain-Auth/plain-auth"
-    "github.com/Plain-Auth/plain-auth/plugins/username"
+    "github.com/Plain-Org/plain-auth"
+    "github.com/Plain-Org/plain-auth/plugins/username"
 )
 
 p, err := username.New(username.Options{})

@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Plain-Auth/plain-auth/schema"
+	"github.com/Plain-Org/plain-auth/schema"
 )
 
 func TestOpaqueIntrospectionResourceSnapshot(t *testing.T) {

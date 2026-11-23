@@ -11,9 +11,9 @@ import (
 	"testing"
 	"time"
 
-	auth "github.com/Plain-Auth/plain-auth"
-	org "github.com/Plain-Auth/plain-auth/plugins/organization"
-	"github.com/Plain-Auth/plain-auth/schema"
+	auth "github.com/Plain-Org/plain-auth"
+	org "github.com/Plain-Org/plain-auth/plugins/organization"
+	"github.com/Plain-Org/plain-auth/schema"
 	"github.com/go-sql-driver/mysql"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/stdlib"

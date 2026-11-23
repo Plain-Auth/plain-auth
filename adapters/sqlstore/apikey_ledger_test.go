@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Plain-Auth/plain-auth"
-	ak "github.com/Plain-Auth/plain-auth/plugins/apikey"
-	"github.com/Plain-Auth/plain-auth/schema"
+	"github.com/Plain-Org/plain-auth"
+	ak "github.com/Plain-Org/plain-auth/plugins/apikey"
+	"github.com/Plain-Org/plain-auth/schema"
 )
 
 func TestAPIKeyLedgerMigration(t *testing.T) {

@@ -3,7 +3,7 @@ package oauthprovider
 import (
 	"context"
 
-	auth "github.com/Plain-Auth/plain-auth"
+	auth "github.com/Plain-Org/plain-auth"
 )
 
 // SignedAccessGrant contains the authorization context of a verified JWT.

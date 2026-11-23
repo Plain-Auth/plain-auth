@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	auth "github.com/Plain-Auth/plain-auth"
-	"github.com/Plain-Auth/plain-auth/internal/sessionfields"
+	auth "github.com/Plain-Org/plain-auth"
+	"github.com/Plain-Org/plain-auth/internal/sessionfields"
 )
 
 func (s *Store) ValidateSessionFields(fields map[string]auth.SessionField) error {

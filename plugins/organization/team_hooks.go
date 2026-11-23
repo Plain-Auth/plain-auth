@@ -6,7 +6,7 @@ import (
 	"errors"
 	"net/http"
 
-	authn "github.com/Plain-Auth/plain-auth"
+	authn "github.com/Plain-Org/plain-auth"
 )
 
 // TeamChange describes a team being created, updated or removed, its

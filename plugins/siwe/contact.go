@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	auth "github.com/Plain-Auth/plain-auth"
+	auth "github.com/Plain-Org/plain-auth"
 )
 
 // ContactClaim identifies a temporary, unverified mailbox reservation for one wallet registration.

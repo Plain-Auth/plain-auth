@@ -9,8 +9,8 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/Plain-Auth/plain-auth/internal/sessionfields"
-	"github.com/Plain-Auth/plain-auth/schema"
+	"github.com/Plain-Org/plain-auth/internal/sessionfields"
+	"github.com/Plain-Org/plain-auth/schema"
 )
 
 // SchemaFinding identifies a mismatch between selected columns and a live table.

@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	auth "github.com/Plain-Auth/plain-auth"
+	auth "github.com/Plain-Org/plain-auth"
 )
 
 // RegistrationMetadata is the client-supplied portion of an RFC 7591 registration.

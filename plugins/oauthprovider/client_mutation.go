@@ -5,7 +5,7 @@ import (
 	"errors"
 	"slices"
 
-	auth "github.com/Plain-Auth/plain-auth"
+	auth "github.com/Plain-Org/plain-auth"
 )
 
 func (opts Options) clientMutationAccess(c auth.EndpointContext, action string) (string, RegistrationAccess, error) {

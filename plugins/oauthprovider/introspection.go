@@ -5,8 +5,8 @@ import (
 	"strings"
 	"unicode"
 
-	auth "github.com/Plain-Auth/plain-auth"
-	"github.com/Plain-Auth/plain-auth/internal/jsjson"
+	auth "github.com/Plain-Org/plain-auth"
+	"github.com/Plain-Org/plain-auth/internal/jsjson"
 )
 
 // MachineIntrospectionStore reads the current caller registration and its

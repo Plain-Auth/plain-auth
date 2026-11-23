@@ -5,7 +5,7 @@ import (
 	"net/url"
 	"strings"
 
-	auth "github.com/Plain-Auth/plain-auth"
+	auth "github.com/Plain-Org/plain-auth"
 )
 
 // OpenIDProviderMetadata describes the issuer document available to relying parties.

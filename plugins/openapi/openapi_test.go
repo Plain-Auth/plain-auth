@@ -15,10 +15,10 @@ import (
 	"testing"
 	"time"
 
-	auth "github.com/Plain-Auth/plain-auth"
-	"github.com/Plain-Auth/plain-auth/adapters/memory"
-	"github.com/Plain-Auth/plain-auth/plugins/bearer"
-	"github.com/Plain-Auth/plain-auth/plugins/openapi"
+	auth "github.com/Plain-Org/plain-auth"
+	"github.com/Plain-Org/plain-auth/adapters/memory"
+	"github.com/Plain-Org/plain-auth/plugins/bearer"
+	"github.com/Plain-Org/plain-auth/plugins/openapi"
 )
 
 type obj = map[string]any

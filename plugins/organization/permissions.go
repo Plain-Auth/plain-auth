@@ -6,9 +6,9 @@ import (
 	"net/http"
 	"strings"
 
-	auth "github.com/Plain-Auth/plain-auth"
-	"github.com/Plain-Auth/plain-auth/internal/jsjson"
-	"github.com/Plain-Auth/plain-auth/plugins/access"
+	auth "github.com/Plain-Org/plain-auth"
+	"github.com/Plain-Org/plain-auth/internal/jsjson"
+	"github.com/Plain-Org/plain-auth/plugins/access"
 )
 
 // The built-in permission vocabulary is shared by server and local role checks.

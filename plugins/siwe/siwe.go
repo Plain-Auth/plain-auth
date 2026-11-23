@@ -11,9 +11,9 @@ import (
 	"strings"
 	"time"
 
-	auth "github.com/Plain-Auth/plain-auth"
-	"github.com/Plain-Auth/plain-auth/internal/emailaddress"
-	"github.com/Plain-Auth/plain-auth/schema"
+	auth "github.com/Plain-Org/plain-auth"
+	"github.com/Plain-Org/plain-auth/internal/emailaddress"
+	"github.com/Plain-Org/plain-auth/schema"
 )
 
 // Schema selects the physical wallet association table and columns.

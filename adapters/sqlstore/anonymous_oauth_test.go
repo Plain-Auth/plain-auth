@@ -10,9 +10,9 @@ import (
 	"strings"
 	"testing"
 
-	authn "github.com/Plain-Auth/plain-auth"
-	"github.com/Plain-Auth/plain-auth/plugins/anonymous"
-	"github.com/Plain-Auth/plain-auth/schema"
+	authn "github.com/Plain-Org/plain-auth"
+	"github.com/Plain-Org/plain-auth/plugins/anonymous"
+	"github.com/Plain-Org/plain-auth/schema"
 	"golang.org/x/oauth2"
 )
 

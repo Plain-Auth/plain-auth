@@ -5,7 +5,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/Plain-Auth/plain-auth/plugins/access"
+	"github.com/Plain-Org/plain-auth/plugins/access"
 )
 
 // RolePolicy is the host's immutable organization role configuration. Its zero

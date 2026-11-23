@@ -6,8 +6,8 @@ Register an OAuth application at the identity provider. Set its callback to your
 import (
     "os"
 
-    auth "github.com/Plain-Auth/plain-auth"
-    "github.com/Plain-Auth/plain-auth/providers"
+    auth "github.com/Plain-Org/plain-auth"
+    "github.com/Plain-Org/plain-auth/providers"
 )
 
 // Set SocialProviders on the same Options that configures your database,

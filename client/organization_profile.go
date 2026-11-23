@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"net/url"
 
-	org "github.com/Plain-Auth/plain-auth/plugins/organization"
+	org "github.com/Plain-Org/plain-auth/plugins/organization"
 )
 
 // UpdateOrganization changes an explicit or currently active organization's public profile.

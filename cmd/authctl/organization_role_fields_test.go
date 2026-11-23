@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Plain-Auth/plain-auth/schema"
+	"github.com/Plain-Org/plain-auth/schema"
 )
 
 func TestOrganizationRoleFieldCommands(t *testing.T) {

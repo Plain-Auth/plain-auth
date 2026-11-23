@@ -15,7 +15,7 @@ import (
 	"time"
 	"unicode/utf16"
 
-	plainauth "github.com/Plain-Auth/plain-auth"
+	plainauth "github.com/Plain-Org/plain-auth"
 )
 
 type Permissions map[string][]string

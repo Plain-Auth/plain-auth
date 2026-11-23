@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Plain-Auth/plain-auth/adapters/sqlstore"
-	"github.com/Plain-Auth/plain-auth/schema"
+	"github.com/Plain-Org/plain-auth/adapters/sqlstore"
+	"github.com/Plain-Org/plain-auth/schema"
 )
 
 func TestCheckoutLedgerSchemaMigration(t *testing.T) {

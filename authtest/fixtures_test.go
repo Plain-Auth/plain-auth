@@ -11,13 +11,13 @@ import (
 	"sync"
 	"testing"
 
-	auth "github.com/Plain-Auth/plain-auth"
-	"github.com/Plain-Auth/plain-auth/adapters/sqlstore"
-	"github.com/Plain-Auth/plain-auth/authtest"
-	"github.com/Plain-Auth/plain-auth/client"
-	"github.com/Plain-Auth/plain-auth/plugins/emailotp"
-	"github.com/Plain-Auth/plain-auth/plugins/phonenumber"
-	"github.com/Plain-Auth/plain-auth/schema"
+	auth "github.com/Plain-Org/plain-auth"
+	"github.com/Plain-Org/plain-auth/adapters/sqlstore"
+	"github.com/Plain-Org/plain-auth/authtest"
+	"github.com/Plain-Org/plain-auth/client"
+	"github.com/Plain-Org/plain-auth/plugins/emailotp"
+	"github.com/Plain-Org/plain-auth/plugins/phonenumber"
+	"github.com/Plain-Org/plain-auth/schema"
 )
 
 func TestFactories(t *testing.T) {

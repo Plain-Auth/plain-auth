@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
-	auth "github.com/Plain-Auth/plain-auth"
-	org "github.com/Plain-Auth/plain-auth/plugins/organization"
+	auth "github.com/Plain-Org/plain-auth"
+	org "github.com/Plain-Org/plain-auth/plugins/organization"
 )
 
 var errPrepareInvitation = errors.New("prepare invitation outside transaction")

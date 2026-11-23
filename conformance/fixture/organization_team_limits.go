@@ -6,8 +6,8 @@ import (
 	"errors"
 	"os"
 
-	"github.com/Plain-Auth/plain-auth/adapters/sqlstore"
-	"github.com/Plain-Auth/plain-auth/plugins/organization"
+	"github.com/Plain-Org/plain-auth/adapters/sqlstore"
+	"github.com/Plain-Org/plain-auth/plugins/organization"
 )
 
 func fixtureTeamOptions() *organization.TeamOptions {

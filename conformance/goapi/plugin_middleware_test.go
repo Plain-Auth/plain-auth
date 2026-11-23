@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	authn "github.com/Plain-Auth/plain-auth"
-	"github.com/Plain-Auth/plain-auth/adapters/sqlite"
+	authn "github.com/Plain-Org/plain-auth"
+	"github.com/Plain-Org/plain-auth/adapters/sqlite"
 )
 
 // Run plugin middleware by path pattern, let OnRequest continue, interrupt or

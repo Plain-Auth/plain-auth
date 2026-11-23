@@ -7,8 +7,8 @@ import (
 	"net/http"
 	"strings"
 
-	auth "github.com/Plain-Auth/plain-auth"
-	"github.com/Plain-Auth/plain-auth/plugins/oauthprovider"
+	auth "github.com/Plain-Org/plain-auth"
+	"github.com/Plain-Org/plain-auth/plugins/oauthprovider"
 )
 
 func dpopFixture(origin, boundKey string, store oauthprovider.DPoPReplayStore, next http.Handler) http.Handler {

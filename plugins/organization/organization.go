@@ -11,9 +11,9 @@ import (
 	"strings"
 	"time"
 
-	authn "github.com/Plain-Auth/plain-auth"
-	"github.com/Plain-Auth/plain-auth/internal/sessionfields"
-	"github.com/Plain-Auth/plain-auth/plugins/access"
+	authn "github.com/Plain-Org/plain-auth"
+	"github.com/Plain-Org/plain-auth/internal/sessionfields"
+	"github.com/Plain-Org/plain-auth/plugins/access"
 )
 
 type Organization struct {

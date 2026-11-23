@@ -1,8 +1,8 @@
 package main
 
 import (
-	auth "github.com/Plain-Auth/plain-auth"
-	"github.com/Plain-Auth/plain-auth/plugins/i18n"
+	auth "github.com/Plain-Org/plain-auth"
+	"github.com/Plain-Org/plain-auth/plugins/i18n"
 )
 
 func fixtureI18n() (auth.Plugin, error) {

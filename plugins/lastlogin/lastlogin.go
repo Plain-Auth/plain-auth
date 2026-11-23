@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	auth "github.com/Plain-Auth/plain-auth"
+	auth "github.com/Plain-Org/plain-auth"
 )
 
 // Store persists a login method only for the owner of a live session.

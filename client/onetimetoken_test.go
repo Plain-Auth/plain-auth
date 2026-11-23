@@ -8,10 +8,10 @@ import (
 	"testing"
 	"time"
 
-	auth "github.com/Plain-Auth/plain-auth"
-	"github.com/Plain-Auth/plain-auth/adapters/sqlite"
-	"github.com/Plain-Auth/plain-auth/client"
-	"github.com/Plain-Auth/plain-auth/plugins/onetimetoken"
+	auth "github.com/Plain-Org/plain-auth"
+	"github.com/Plain-Org/plain-auth/adapters/sqlite"
+	"github.com/Plain-Org/plain-auth/client"
+	"github.com/Plain-Org/plain-auth/plugins/onetimetoken"
 )
 
 func TestNativeOneTimeTokenClient(t *testing.T) {

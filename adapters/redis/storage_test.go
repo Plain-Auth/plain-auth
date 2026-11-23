@@ -17,9 +17,9 @@ import (
 	"testing"
 	"time"
 
-	auth "github.com/Plain-Auth/plain-auth"
-	"github.com/Plain-Auth/plain-auth/adapters/memory"
-	redisstore "github.com/Plain-Auth/plain-auth/adapters/redis"
+	auth "github.com/Plain-Org/plain-auth"
+	"github.com/Plain-Org/plain-auth/adapters/memory"
+	redisstore "github.com/Plain-Org/plain-auth/adapters/redis"
 	"github.com/redis/go-redis/v9"
 )
 

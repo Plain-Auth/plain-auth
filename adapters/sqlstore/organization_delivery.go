@@ -5,8 +5,8 @@ import (
 	"database/sql"
 	"strings"
 
-	auth "github.com/Plain-Auth/plain-auth"
-	org "github.com/Plain-Auth/plain-auth/plugins/organization"
+	auth "github.com/Plain-Org/plain-auth"
+	org "github.com/Plain-Org/plain-auth/plugins/organization"
 )
 
 type invitationDelivery struct {

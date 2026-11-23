@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"errors"
 
-	auth "github.com/Plain-Auth/plain-auth"
+	auth "github.com/Plain-Org/plain-auth"
 )
 
 // errUserNotFound answers trusted calls that name an account that does not exist.

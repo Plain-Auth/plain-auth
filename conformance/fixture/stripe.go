@@ -10,9 +10,9 @@ import (
 	"os"
 	"time"
 
-	"github.com/Plain-Auth/plain-auth"
-	"github.com/Plain-Auth/plain-auth/adapters/sqlstore"
-	billing "github.com/Plain-Auth/plain-auth/plugins/stripe"
+	"github.com/Plain-Org/plain-auth"
+	"github.com/Plain-Org/plain-auth/adapters/sqlstore"
+	billing "github.com/Plain-Org/plain-auth/plugins/stripe"
 	sdk "github.com/stripe/stripe-go/v87"
 )
 

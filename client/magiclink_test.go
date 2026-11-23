@@ -9,10 +9,10 @@ import (
 	"strings"
 	"testing"
 
-	auth "github.com/Plain-Auth/plain-auth"
-	"github.com/Plain-Auth/plain-auth/adapters/sqlite"
-	"github.com/Plain-Auth/plain-auth/client"
-	"github.com/Plain-Auth/plain-auth/plugins/magiclink"
+	auth "github.com/Plain-Org/plain-auth"
+	"github.com/Plain-Org/plain-auth/adapters/sqlite"
+	"github.com/Plain-Org/plain-auth/client"
+	"github.com/Plain-Org/plain-auth/plugins/magiclink"
 )
 
 func TestNativeMagicLinkClient(t *testing.T) {

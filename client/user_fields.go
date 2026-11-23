@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/Plain-Auth/plain-auth/internal/sessionfields"
+	"github.com/Plain-Org/plain-auth/internal/sessionfields"
 )
 
 func profileInput(fields map[string]any) (map[string]any, error) {

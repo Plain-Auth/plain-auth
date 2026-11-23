@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	auth "github.com/Plain-Auth/plain-auth"
-	"github.com/Plain-Auth/plain-auth/plugins/organization"
+	auth "github.com/Plain-Org/plain-auth"
+	"github.com/Plain-Org/plain-auth/plugins/organization"
 )
 
 // NewUser returns an unsaved, verified user. Set any fields before saving it.

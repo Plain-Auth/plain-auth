@@ -9,7 +9,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	auth "github.com/Plain-Auth/plain-auth"
+	auth "github.com/Plain-Org/plain-auth"
 )
 
 // VerifyMessageArgs contains the original request's signed bytes and the identity

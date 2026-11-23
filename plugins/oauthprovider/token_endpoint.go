@@ -10,8 +10,8 @@ import (
 	"slices"
 	"strings"
 
-	auth "github.com/Plain-Auth/plain-auth"
-	"github.com/Plain-Auth/plain-auth/internal/jsjson"
+	auth "github.com/Plain-Org/plain-auth"
+	"github.com/Plain-Org/plain-auth/internal/jsjson"
 )
 
 type tokenRequest struct {

@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Plain-Auth/plain-auth/plugins/onetap"
+	"github.com/Plain-Org/plain-auth/plugins/onetap"
 )
 
 func TestRedirectFormRequiresGoogleProof(t *testing.T) {

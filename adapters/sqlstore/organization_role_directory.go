@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 
-	org "github.com/Plain-Auth/plain-auth/plugins/organization"
+	org "github.com/Plain-Org/plain-auth/plugins/organization"
 )
 
 var errDynamicRoleStoreDisabled = errors.New("sqlstore: stored organization roles require dynamic access control")

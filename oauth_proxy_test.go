@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Plain-Auth/plain-auth/internal/httporigin"
+	"github.com/Plain-Org/plain-auth/internal/httporigin"
 )
 
 func TestOAuthProxyConfiguration(t *testing.T) {

@@ -1,8 +1,8 @@
 package main
 
 import (
-	auth "github.com/Plain-Auth/plain-auth"
-	pk "github.com/Plain-Auth/plain-auth/plugins/passkey"
+	auth "github.com/Plain-Org/plain-auth"
+	pk "github.com/Plain-Org/plain-auth/plugins/passkey"
 )
 
 func fixturePasskeyFirst(base string) pk.Options {

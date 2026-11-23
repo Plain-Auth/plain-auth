@@ -13,9 +13,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Plain-Auth/plain-auth"
-	"github.com/Plain-Auth/plain-auth/adapters/memory"
-	"github.com/Plain-Auth/plain-auth/plugins/lastlogin"
+	"github.com/Plain-Org/plain-auth"
+	"github.com/Plain-Org/plain-auth/adapters/memory"
+	"github.com/Plain-Org/plain-auth/plugins/lastlogin"
 )
 
 func TestChromeSharedCookieLogout(t *testing.T) {

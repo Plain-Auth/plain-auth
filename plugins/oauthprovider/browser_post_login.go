@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"slices"
 
-	auth "github.com/Plain-Auth/plain-auth"
+	auth "github.com/Plain-Org/plain-auth"
 )
 
 // PostLoginContext describes the live account, headers and requested scopes.

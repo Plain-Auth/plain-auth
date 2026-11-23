@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	auth "github.com/Plain-Auth/plain-auth"
+	auth "github.com/Plain-Org/plain-auth"
 )
 
 func TestHTTPErrorReporterPreservesEndpointResponse(t *testing.T) {

@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"errors"
 
-	org "github.com/Plain-Auth/plain-auth/plugins/organization"
+	org "github.com/Plain-Org/plain-auth/plugins/organization"
 )
 
 // PrepareMemberAddition checks a trusted grant without writing: the account and

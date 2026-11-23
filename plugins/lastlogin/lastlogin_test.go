@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
-	auth "github.com/Plain-Auth/plain-auth"
-	"github.com/Plain-Auth/plain-auth/adapters/memory"
-	"github.com/Plain-Auth/plain-auth/plugins/lastlogin"
+	auth "github.com/Plain-Org/plain-auth"
+	"github.com/Plain-Org/plain-auth/adapters/memory"
+	"github.com/Plain-Org/plain-auth/plugins/lastlogin"
 )
 
 func TestLastLoginCookieAndConsent(t *testing.T) {

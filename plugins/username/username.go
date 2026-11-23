@@ -1,7 +1,7 @@
 // Package username adds optional public usernames and credential sign-in.
 package username
 
-import "github.com/Plain-Auth/plain-auth"
+import "github.com/Plain-Org/plain-auth"
 
 type Options = plainauth.UsernameOptions
 

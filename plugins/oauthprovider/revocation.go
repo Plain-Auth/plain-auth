@@ -5,7 +5,7 @@ import (
 	"errors"
 	"strings"
 
-	auth "github.com/Plain-Auth/plain-auth"
+	auth "github.com/Plain-Org/plain-auth"
 )
 
 // ErrInvalidRefreshToken means a configured decoder did not recognize the value.

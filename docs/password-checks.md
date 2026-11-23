@@ -4,8 +4,8 @@ Register the password-checking plugin to reject newly chosen credentials that ap
 
 ```go
 import (
-    "github.com/Plain-Auth/plain-auth"
-    "github.com/Plain-Auth/plain-auth/plugins/pwnedpassword"
+    "github.com/Plain-Org/plain-auth"
+    "github.com/Plain-Org/plain-auth/plugins/pwnedpassword"
 )
 
 policy := pwnedpassword.New(pwnedpassword.Options{

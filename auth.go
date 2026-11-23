@@ -18,9 +18,9 @@ import (
 	"time"
 	"unicode/utf16"
 
-	"github.com/Plain-Auth/plain-auth/internal/configenv"
-	"github.com/Plain-Auth/plain-auth/internal/httporigin"
-	"github.com/Plain-Auth/plain-auth/internal/sessionfields"
+	"github.com/Plain-Org/plain-auth/internal/configenv"
+	"github.com/Plain-Org/plain-auth/internal/httporigin"
+	"github.com/Plain-Org/plain-auth/internal/sessionfields"
 )
 
 // Auth is safe for concurrent use by application handlers.

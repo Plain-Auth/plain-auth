@@ -22,7 +22,7 @@ import (
     "os"
     "time"
 
-    "github.com/Plain-Auth/plain-auth/integrations/polar"
+    "github.com/Plain-Org/plain-auth/integrations/polar"
     polargo "github.com/polarsource/polar-go"
 )
 

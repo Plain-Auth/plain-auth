@@ -15,12 +15,12 @@ import (
 	"testing"
 	"time"
 
-	auth "github.com/Plain-Auth/plain-auth"
-	"github.com/Plain-Auth/plain-auth/client"
-	stripeclient "github.com/Plain-Auth/plain-auth/client/stripe"
-	org "github.com/Plain-Auth/plain-auth/plugins/organization"
-	billing "github.com/Plain-Auth/plain-auth/plugins/stripe"
-	"github.com/Plain-Auth/plain-auth/schema"
+	auth "github.com/Plain-Org/plain-auth"
+	"github.com/Plain-Org/plain-auth/client"
+	stripeclient "github.com/Plain-Org/plain-auth/client/stripe"
+	org "github.com/Plain-Org/plain-auth/plugins/organization"
+	billing "github.com/Plain-Org/plain-auth/plugins/stripe"
+	"github.com/Plain-Org/plain-auth/schema"
 	sdk "github.com/stripe/stripe-go/v87"
 	"github.com/stripe/stripe-go/v87/webhook"
 )

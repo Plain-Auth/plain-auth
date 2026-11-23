@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	auth "github.com/Plain-Auth/plain-auth"
+	auth "github.com/Plain-Org/plain-auth"
 )
 
 // MachineResource is the current policy and issuing client's link to one audience.

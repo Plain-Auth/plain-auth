@@ -10,10 +10,10 @@ import (
 	"testing"
 	"time"
 
-	plainauth "github.com/Plain-Auth/plain-auth"
-	"github.com/Plain-Auth/plain-auth/client"
-	ak "github.com/Plain-Auth/plain-auth/plugins/apikey"
-	"github.com/Plain-Auth/plain-auth/schema"
+	plainauth "github.com/Plain-Org/plain-auth"
+	"github.com/Plain-Org/plain-auth/client"
+	ak "github.com/Plain-Org/plain-auth/plugins/apikey"
+	"github.com/Plain-Org/plain-auth/schema"
 )
 
 func TestAPIKeyLifecycleAndPolicy(t *testing.T) {

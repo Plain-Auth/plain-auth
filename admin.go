@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Plain-Auth/plain-auth/plugins/access"
+	"github.com/Plain-Org/plain-auth/plugins/access"
 )
 
 // AdminUserFields is present on profiles managed by the administration plugin.

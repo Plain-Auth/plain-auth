@@ -9,9 +9,9 @@ import (
 	"strings"
 	"time"
 
-	auth "github.com/Plain-Auth/plain-auth"
-	"github.com/Plain-Auth/plain-auth/internal/sessionfields"
-	"github.com/Plain-Auth/plain-auth/schema"
+	auth "github.com/Plain-Org/plain-auth"
+	"github.com/Plain-Org/plain-auth/internal/sessionfields"
+	"github.com/Plain-Org/plain-auth/schema"
 )
 
 // OpenWithSessionFields creates a fresh configured schema or applies additive

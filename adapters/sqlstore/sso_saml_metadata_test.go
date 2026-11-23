@@ -7,13 +7,13 @@ import (
 	"encoding/base64"
 	"encoding/xml"
 	"errors"
-	org "github.com/Plain-Auth/plain-auth/plugins/organization"
+	org "github.com/Plain-Org/plain-auth/plugins/organization"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/Plain-Auth/plain-auth/client"
-	"github.com/Plain-Auth/plain-auth/plugins/sso"
+	"github.com/Plain-Org/plain-auth/client"
+	"github.com/Plain-Org/plain-auth/plugins/sso"
 	"github.com/crewjam/saml"
 )
 

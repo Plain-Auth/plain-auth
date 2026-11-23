@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	auth "github.com/Plain-Auth/plain-auth"
+	auth "github.com/Plain-Org/plain-auth"
 	wa "github.com/go-webauthn/webauthn/webauthn"
 )
 

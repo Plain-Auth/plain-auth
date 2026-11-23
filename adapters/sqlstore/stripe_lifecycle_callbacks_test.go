@@ -10,8 +10,8 @@ import (
 	"sync"
 	"testing"
 
-	auth "github.com/Plain-Auth/plain-auth"
-	billing "github.com/Plain-Auth/plain-auth/plugins/stripe"
+	auth "github.com/Plain-Org/plain-auth"
+	billing "github.com/Plain-Org/plain-auth/plugins/stripe"
 	sdk "github.com/stripe/stripe-go/v87"
 	"github.com/stripe/stripe-go/v87/webhook"
 )

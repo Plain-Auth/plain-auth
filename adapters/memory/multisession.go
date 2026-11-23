@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	authn "github.com/Plain-Auth/plain-auth"
+	authn "github.com/Plain-Org/plain-auth"
 )
 
 var _ authn.DeviceSessionStore = (*Store)(nil)

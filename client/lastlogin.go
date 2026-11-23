@@ -5,7 +5,7 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/Plain-Auth/plain-auth/internal/configenv"
+	"github.com/Plain-Org/plain-auth/internal/configenv"
 )
 
 func (c *Client) loginMethodCookie(name string) (*url.URL, string) {

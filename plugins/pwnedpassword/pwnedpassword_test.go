@@ -12,9 +12,9 @@ import (
 	"strings"
 	"testing"
 
-	authn "github.com/Plain-Auth/plain-auth"
-	"github.com/Plain-Auth/plain-auth/adapters/memory"
-	"github.com/Plain-Auth/plain-auth/plugins/pwnedpassword"
+	authn "github.com/Plain-Org/plain-auth"
+	"github.com/Plain-Org/plain-auth/adapters/memory"
+	"github.com/Plain-Org/plain-auth/plugins/pwnedpassword"
 )
 
 type transport func(*http.Request) (*http.Response, error)

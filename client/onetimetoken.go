@@ -2,7 +2,7 @@ package client
 
 import (
 	"context"
-	auth "github.com/Plain-Auth/plain-auth"
+	auth "github.com/Plain-Org/plain-auth"
 	"net/http"
 )
 

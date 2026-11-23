@@ -3,8 +3,8 @@ package organization_test
 import (
 	"testing"
 
-	"github.com/Plain-Auth/plain-auth/plugins/access"
-	"github.com/Plain-Auth/plain-auth/plugins/organization"
+	"github.com/Plain-Org/plain-auth/plugins/access"
+	"github.com/Plain-Org/plain-auth/plugins/organization"
 )
 
 func TestDefaultOrganizationRolePermissions(t *testing.T) {

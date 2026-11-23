@@ -11,9 +11,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Plain-Auth/plain-auth"
-	"github.com/Plain-Auth/plain-auth/adapters/sqlstore"
-	"github.com/Plain-Auth/plain-auth/schema"
+	"github.com/Plain-Org/plain-auth"
+	"github.com/Plain-Org/plain-auth/adapters/sqlstore"
+	"github.com/Plain-Org/plain-auth/schema"
 )
 
 const userConfig = `{"locale":{"type":"string","required":true,"column":"preferred_locale","default":""},"accountClass":{"type":"string","default":"standard","serverOnly":true}}`

@@ -14,9 +14,9 @@ import (
 	"testing"
 	"time"
 
-	authn "github.com/Plain-Auth/plain-auth"
-	"github.com/Plain-Auth/plain-auth/plugins/onetap"
-	"github.com/Plain-Auth/plain-auth/providers"
+	authn "github.com/Plain-Org/plain-auth"
+	"github.com/Plain-Org/plain-auth/plugins/onetap"
+	"github.com/Plain-Org/plain-auth/providers"
 	"github.com/golang-jwt/jwt/v5"
 )
 

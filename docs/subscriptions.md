@@ -29,7 +29,7 @@ auth, err := plainauth.New(plainauth.Options{
 })
 ```
 
-Import `github.com/Plain-Auth/plain-auth/plugins/stripe` as `stripeplugin` and `github.com/stripe/stripe-go/v87` as `stripesdk`. Create the recurring prices in the same Stripe account and mode as the server’s API key. Configure a snapshot webhook destination for your own Stripe account at `/api/auth/stripe/webhook`. Enable `checkout.session.completed`, `checkout.session.expired`, `customer.subscription.created`, `customer.subscription.updated` and `customer.subscription.deleted`. [Stripe Checkout Sessions](https://docs.stripe.com/api/checkout/sessions/create)
+Import `github.com/Plain-Org/plain-auth/plugins/stripe` as `stripeplugin` and `github.com/stripe/stripe-go/v87` as `stripesdk`. Create the recurring prices in the same Stripe account and mode as the server’s API key. Configure a snapshot webhook destination for your own Stripe account at `/api/auth/stripe/webhook`. Enable `checkout.session.completed`, `checkout.session.expired`, `customer.subscription.created`, `customer.subscription.updated` and `customer.subscription.deleted`. [Stripe Checkout Sessions](https://docs.stripe.com/api/checkout/sessions/create)
 
 ## Create a checkout
 
@@ -276,7 +276,7 @@ Open the `url` returned by the endpoint. The customer confirms the cancellation 
 
 To restore a subscription while it is active or trialing, send an authenticated POST to `/api/auth/subscription/restore` with `{"subscriptionId":"sub_example"}`. For a pending cancellation, the handler clears the date or period-end flag at Stripe. For a scheduled plan change, it verifies that the schedule belongs to the same customer and subscription before releasing it. The response contains the current Stripe subscription. A subscription with no pending change returns HTTP 400 with `SUBSCRIPTION_NOT_PENDING_CHANGE`. [Subscription management tests](../adapters/sqlstore/stripe_management_test.go)
 
-The native Go billing client reuses the session of your existing `client.Client`. Import `github.com/Plain-Auth/plain-auth/client/stripe` as `stripeclient`. Your application chooses when to open a hosted page.
+The native Go billing client reuses the session of your existing `client.Client`. Import `github.com/Plain-Org/plain-auth/client/stripe` as `stripeclient`. Your application chooses when to open a hosted page.
 
 ```go
 billingClient := stripeclient.Client{Auth: signedInClient}

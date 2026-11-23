@@ -7,8 +7,8 @@ import (
     "context"
     "regexp"
 
-    "github.com/Plain-Auth/plain-auth"
-    "github.com/Plain-Auth/plain-auth/plugins/phonenumber"
+    "github.com/Plain-Org/plain-auth"
+    "github.com/Plain-Org/plain-auth/plugins/phonenumber"
 )
 
 var international = regexp.MustCompile(`^\+[1-9][0-9]{6,14}$`)

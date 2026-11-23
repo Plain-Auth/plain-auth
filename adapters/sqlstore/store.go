@@ -1,7 +1,7 @@
 package sqlstore
 
 import (
-	"github.com/Plain-Auth/plain-auth/internal/sessionfields"
+	"github.com/Plain-Org/plain-auth/internal/sessionfields"
 	"maps"
 	"slices"
 
@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	authn "github.com/Plain-Auth/plain-auth"
+	authn "github.com/Plain-Org/plain-auth"
 	"github.com/go-sql-driver/mysql"
 )
 

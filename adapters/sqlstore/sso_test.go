@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/Plain-Auth/plain-auth/client"
+	"github.com/Plain-Org/plain-auth/client"
 	"net/http"
 	"net/http/cookiejar"
 	"net/http/httptest"
@@ -13,11 +13,11 @@ import (
 	"testing"
 	"time"
 
-	auth "github.com/Plain-Auth/plain-auth"
-	"github.com/Plain-Auth/plain-auth/plugins/admin"
-	org "github.com/Plain-Auth/plain-auth/plugins/organization"
-	"github.com/Plain-Auth/plain-auth/plugins/sso"
-	"github.com/Plain-Auth/plain-auth/schema"
+	auth "github.com/Plain-Org/plain-auth"
+	"github.com/Plain-Org/plain-auth/plugins/admin"
+	org "github.com/Plain-Org/plain-auth/plugins/organization"
+	"github.com/Plain-Org/plain-auth/plugins/sso"
+	"github.com/Plain-Org/plain-auth/schema"
 )
 
 func TestEnterpriseProviderManagement(t *testing.T) {

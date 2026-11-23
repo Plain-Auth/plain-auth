@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	auth "github.com/Plain-Auth/plain-auth"
+	auth "github.com/Plain-Org/plain-auth"
 )
 
 // ResourceStore persists OAuth audiences and their links to registered clients.

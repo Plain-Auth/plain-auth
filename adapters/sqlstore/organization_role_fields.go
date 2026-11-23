@@ -3,8 +3,8 @@ package sqlstore
 import (
 	"fmt"
 
-	"github.com/Plain-Auth/plain-auth/internal/sessionfields"
-	org "github.com/Plain-Auth/plain-auth/plugins/organization"
+	"github.com/Plain-Org/plain-auth/internal/sessionfields"
+	org "github.com/Plain-Org/plain-auth/plugins/organization"
 )
 
 // WithOrganizationRoleFields validates physical columns without modifying the shared pool.

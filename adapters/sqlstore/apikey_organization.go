@@ -8,8 +8,8 @@ import (
 	"errors"
 	"time"
 
-	ak "github.com/Plain-Auth/plain-auth/plugins/apikey"
-	org "github.com/Plain-Auth/plain-auth/plugins/organization"
+	ak "github.com/Plain-Org/plain-auth/plugins/apikey"
+	org "github.com/Plain-Org/plain-auth/plugins/organization"
 )
 
 // The canonical apikey table uses one referenceId column for either owner

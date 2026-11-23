@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	org "github.com/Plain-Auth/plain-auth/plugins/organization"
+	org "github.com/Plain-Org/plain-auth/plugins/organization"
 )
 
 // ListOrganizationInvitations resolves the live session and current role in

@@ -12,9 +12,9 @@ import (
 	"strings"
 	"time"
 
-	auth "github.com/Plain-Auth/plain-auth"
-	op "github.com/Plain-Auth/plain-auth/plugins/oauthprovider"
-	"github.com/Plain-Auth/plain-auth/plugins/organization"
+	auth "github.com/Plain-Org/plain-auth"
+	op "github.com/Plain-Org/plain-auth/plugins/oauthprovider"
+	"github.com/Plain-Org/plain-auth/plugins/organization"
 )
 
 // Expose the host's server-only method to the local comparison process.

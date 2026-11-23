@@ -11,8 +11,8 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/Plain-Auth/plain-auth/adapters/sqlstore"
-	"github.com/Plain-Auth/plain-auth/schema"
+	"github.com/Plain-Org/plain-auth/adapters/sqlstore"
+	"github.com/Plain-Org/plain-auth/schema"
 )
 
 var errSchemaMismatch = errors.New("the database does not match the selected schema")

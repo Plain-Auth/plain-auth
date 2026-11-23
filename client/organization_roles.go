@@ -2,12 +2,12 @@ package client
 
 import (
 	"context"
-	"github.com/Plain-Auth/plain-auth/internal/sessionfields"
+	"github.com/Plain-Org/plain-auth/internal/sessionfields"
 	"net/http"
 	"net/url"
 
-	"github.com/Plain-Auth/plain-auth/plugins/access"
-	"github.com/Plain-Auth/plain-auth/plugins/organization"
+	"github.com/Plain-Org/plain-auth/plugins/access"
+	"github.com/Plain-Org/plain-auth/plugins/organization"
 )
 
 // ListOrganizationRoles returns stored roles visible to this session. An empty

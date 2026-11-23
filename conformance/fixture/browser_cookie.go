@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"os"
 
-	auth "github.com/Plain-Auth/plain-auth"
-	"github.com/Plain-Auth/plain-auth/authtest"
+	auth "github.com/Plain-Org/plain-auth"
+	"github.com/Plain-Org/plain-auth/authtest"
 )
 
 func authWithBrowserFixture(opts auth.Options, path string) (*auth.Auth, error) {

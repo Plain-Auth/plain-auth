@@ -24,7 +24,7 @@ import (
     "net/url"
     "time"
 
-    "github.com/Plain-Auth/plain-auth/plugins/oauthprovider"
+    "github.com/Plain-Org/plain-auth/plugins/oauthprovider"
     jose "github.com/go-jose/go-jose/v4"
 )
 

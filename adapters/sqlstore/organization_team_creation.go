@@ -7,7 +7,7 @@ import (
 	"errors"
 	"net/http"
 
-	org "github.com/Plain-Auth/plain-auth/plugins/organization"
+	org "github.com/Plain-Org/plain-auth/plugins/organization"
 )
 
 // CreateTeam uses the session and account recorded by the existing TeamStore API.

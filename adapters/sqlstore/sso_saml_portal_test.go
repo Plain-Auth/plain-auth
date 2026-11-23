@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Plain-Auth/plain-auth/plugins/sso"
+	"github.com/Plain-Org/plain-auth/plugins/sso"
 	"github.com/crewjam/saml"
 )
 

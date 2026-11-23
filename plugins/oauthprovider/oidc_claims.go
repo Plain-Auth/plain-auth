@@ -5,7 +5,7 @@ import (
 	"errors"
 	"slices"
 
-	auth "github.com/Plain-Auth/plain-auth"
+	auth "github.com/Plain-Org/plain-auth"
 )
 
 // parseOIDCClaims validates the two OIDC claim sets and checks the requested

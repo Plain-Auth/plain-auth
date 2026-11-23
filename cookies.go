@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Plain-Auth/plain-auth/internal/configenv"
+	"github.com/Plain-Org/plain-auth/internal/configenv"
 )
 
 // CrossSubDomainCookiesOptions selects the host and descendants that receive

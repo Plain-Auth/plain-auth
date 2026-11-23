@@ -12,11 +12,11 @@ import (
 	"testing"
 	"time"
 
-	authn "github.com/Plain-Auth/plain-auth"
-	"github.com/Plain-Auth/plain-auth/adapters/sqlstore"
-	"github.com/Plain-Auth/plain-auth/client"
-	"github.com/Plain-Auth/plain-auth/plugins/organization"
-	"github.com/Plain-Auth/plain-auth/schema"
+	authn "github.com/Plain-Org/plain-auth"
+	"github.com/Plain-Org/plain-auth/adapters/sqlstore"
+	"github.com/Plain-Org/plain-auth/client"
+	"github.com/Plain-Org/plain-auth/plugins/organization"
+	"github.com/Plain-Org/plain-auth/schema"
 )
 
 type handlerTransport struct{ http.Handler }

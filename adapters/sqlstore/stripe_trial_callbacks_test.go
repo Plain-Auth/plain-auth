@@ -11,9 +11,9 @@ import (
 	"sync"
 	"testing"
 
-	auth "github.com/Plain-Auth/plain-auth"
-	stripeclient "github.com/Plain-Auth/plain-auth/client/stripe"
-	billing "github.com/Plain-Auth/plain-auth/plugins/stripe"
+	auth "github.com/Plain-Org/plain-auth"
+	stripeclient "github.com/Plain-Org/plain-auth/client/stripe"
+	billing "github.com/Plain-Org/plain-auth/plugins/stripe"
 	sdk "github.com/stripe/stripe-go/v87"
 	"github.com/stripe/stripe-go/v87/webhook"
 )

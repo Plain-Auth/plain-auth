@@ -6,7 +6,7 @@ import (
 	"errors"
 	"net/http"
 
-	auth "github.com/Plain-Auth/plain-auth"
+	auth "github.com/Plain-Org/plain-auth"
 )
 
 // ProfileUpdate contains the organization fields to replace. Set ClearLogo to

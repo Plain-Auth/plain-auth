@@ -9,7 +9,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	auth "github.com/Plain-Auth/plain-auth"
+	auth "github.com/Plain-Org/plain-auth"
 )
 
 func TestPasswordCallbackFailuresAndCancellation(t *testing.T) {

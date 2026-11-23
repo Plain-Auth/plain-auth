@@ -3,7 +3,7 @@
 Use the `plugins/access` package to define permissions for your own handlers. Define the available actions once when the application starts. Create roles from that vocabulary, then select the role from the signed-in account or its current organization membership when authorizing a request.
 
 ```go
-import "github.com/Plain-Auth/plain-auth/plugins/access"
+import "github.com/Plain-Org/plain-auth/plugins/access"
 
 catalog := access.New(access.Statements{
     "project": {"read", "edit", "archive"},

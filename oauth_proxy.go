@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Plain-Auth/plain-auth/internal/httporigin"
+	"github.com/Plain-Org/plain-auth/internal/httporigin"
 	"golang.org/x/oauth2"
 )
 

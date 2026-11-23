@@ -4,7 +4,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/Plain-Auth/plain-auth/internal/jsjson"
+	"github.com/Plain-Org/plain-auth/internal/jsjson"
 )
 
 var invitationEmailPattern = regexp.MustCompile(`(?i)^([a-z0-9_'+-]+\.)*[a-z0-9_'+-]*[a-z0-9_+-]@([a-z0-9][a-z0-9-]*\.)+[a-z]{2,}$`)

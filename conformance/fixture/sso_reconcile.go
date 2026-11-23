@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"os"
 
-	"github.com/Plain-Auth/plain-auth/adapters/sqlstore"
+	"github.com/Plain-Org/plain-auth/adapters/sqlstore"
 )
 
 // A trusted fixture process classifies legacy links without exposing a route.

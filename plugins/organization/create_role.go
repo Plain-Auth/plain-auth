@@ -8,9 +8,9 @@ import (
 	"slices"
 	"strings"
 
-	auth "github.com/Plain-Auth/plain-auth"
-	"github.com/Plain-Auth/plain-auth/internal/jsjson"
-	"github.com/Plain-Auth/plain-auth/plugins/access"
+	auth "github.com/Plain-Org/plain-auth"
+	"github.com/Plain-Org/plain-auth/internal/jsjson"
+	"github.com/Plain-Org/plain-auth/plugins/access"
 )
 
 // DefaultRoleControl defines the built-in organization, member, invitation, team and ac resources.

@@ -6,12 +6,12 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
-	"github.com/Plain-Auth/plain-auth/internal/sessionfields"
+	"github.com/Plain-Org/plain-auth/internal/sessionfields"
 	"time"
 
-	auth "github.com/Plain-Auth/plain-auth"
-	"github.com/Plain-Auth/plain-auth/plugins/access"
-	org "github.com/Plain-Auth/plain-auth/plugins/organization"
+	auth "github.com/Plain-Org/plain-auth"
+	"github.com/Plain-Org/plain-auth/plugins/access"
+	org "github.com/Plain-Org/plain-auth/plugins/organization"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 )

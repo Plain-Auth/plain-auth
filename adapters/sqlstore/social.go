@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	authn "github.com/Plain-Auth/plain-auth"
+	authn "github.com/Plain-Org/plain-auth"
 	"github.com/go-sql-driver/mysql"
 	"github.com/jackc/pgx/v5/pgconn"
 )

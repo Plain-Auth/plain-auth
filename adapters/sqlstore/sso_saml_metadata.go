@@ -7,7 +7,7 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/Plain-Auth/plain-auth/plugins/sso"
+	"github.com/Plain-Org/plain-auth/plugins/sso"
 )
 
 // Use a compact JSON string to retain the metadata document verbatim. The

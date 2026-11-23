@@ -6,7 +6,7 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/Plain-Auth/plain-auth"
+	"github.com/Plain-Org/plain-auth"
 )
 
 // Auth0 discovers the tenant's OIDC endpoints from its domain or HTTPS origin.

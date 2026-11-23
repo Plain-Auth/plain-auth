@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 
-	op "github.com/Plain-Auth/plain-auth/plugins/oauthprovider"
+	op "github.com/Plain-Org/plain-auth/plugins/oauthprovider"
 )
 
 var _ op.ClientCredentialsScopeStore = (*Store)(nil)

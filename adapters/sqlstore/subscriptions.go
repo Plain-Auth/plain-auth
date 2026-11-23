@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
-	auth "github.com/Plain-Auth/plain-auth"
-	billing "github.com/Plain-Auth/plain-auth/plugins/stripe"
+	auth "github.com/Plain-Org/plain-auth"
+	billing "github.com/Plain-Org/plain-auth/plugins/stripe"
 )
 
 var _ billing.SubscriptionStore = (*Store)(nil)

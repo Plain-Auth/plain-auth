@@ -14,8 +14,8 @@ import (
 	"testing"
 	"time"
 
-	auth "github.com/Plain-Auth/plain-auth"
-	op "github.com/Plain-Auth/plain-auth/plugins/oauthprovider"
+	auth "github.com/Plain-Org/plain-auth"
+	op "github.com/Plain-Org/plain-auth/plugins/oauthprovider"
 )
 
 func testOfflineCodeTransactions(t *testing.T, store, peer *Store, verifier string, now time.Time) {

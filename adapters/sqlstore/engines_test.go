@@ -16,7 +16,7 @@ import (
 	"testing"
 	"time"
 
-	authn "github.com/Plain-Auth/plain-auth"
+	authn "github.com/Plain-Org/plain-auth"
 )
 
 // Network database tests need a database dedicated to testing. They delete

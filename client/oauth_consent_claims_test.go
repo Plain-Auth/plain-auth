@@ -7,7 +7,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/Plain-Auth/plain-auth/client"
+	"github.com/Plain-Org/plain-auth/client"
 )
 
 func TestDecideOAuthConsentWithClaims(t *testing.T) {

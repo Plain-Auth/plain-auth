@@ -12,7 +12,7 @@ import (
 	"sync"
 	"sync/atomic"
 
-	auth "github.com/Plain-Auth/plain-auth"
+	auth "github.com/Plain-Org/plain-auth"
 )
 
 // ResourceDefinition configures one audience. In JSON it can be an identifier

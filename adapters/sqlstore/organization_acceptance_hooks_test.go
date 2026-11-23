@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
-	auth "github.com/Plain-Auth/plain-auth"
-	"github.com/Plain-Auth/plain-auth/authtest"
-	org "github.com/Plain-Auth/plain-auth/plugins/organization"
+	auth "github.com/Plain-Org/plain-auth"
+	"github.com/Plain-Org/plain-auth/authtest"
+	org "github.com/Plain-Org/plain-auth/plugins/organization"
 )
 
 func TestInvitationAcceptanceHookAdmission(t *testing.T) {

@@ -15,7 +15,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/Plain-Auth/plain-auth"
+	"github.com/Plain-Org/plain-auth"
 )
 
 // Options configures the HTML reference page, independently of the JSON endpoint.

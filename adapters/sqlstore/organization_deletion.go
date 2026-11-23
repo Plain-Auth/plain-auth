@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 
-	auth "github.com/Plain-Auth/plain-auth"
-	org "github.com/Plain-Auth/plain-auth/plugins/organization"
+	auth "github.com/Plain-Org/plain-auth"
+	org "github.com/Plain-Org/plain-auth/plugins/organization"
 )
 
 // PrepareOrganizationDeletion checks the caller's permission for a deletion

@@ -16,9 +16,9 @@ import (
 	"testing"
 	"time"
 
-	auth "github.com/Plain-Auth/plain-auth"
-	"github.com/Plain-Auth/plain-auth/plugins/bearer"
-	"github.com/Plain-Auth/plain-auth/plugins/emailotp"
+	auth "github.com/Plain-Org/plain-auth"
+	"github.com/Plain-Org/plain-auth/plugins/bearer"
+	"github.com/Plain-Org/plain-auth/plugins/emailotp"
 )
 
 func TestEmailOTPAddressChangeAndTrustedOperations(t *testing.T) {

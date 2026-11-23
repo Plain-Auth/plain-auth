@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/Plain-Auth/plain-auth/internal/sessionfields"
+	"github.com/Plain-Org/plain-auth/internal/sessionfields"
 )
 
 // SessionField describes one custom session column and its application policy.

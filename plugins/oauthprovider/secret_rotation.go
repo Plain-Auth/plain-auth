@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"time"
 
-	auth "github.com/Plain-Auth/plain-auth"
+	auth "github.com/Plain-Org/plain-auth"
 )
 
 // RotatedClient returns the one-time issued secret and the client's owner-visible metadata.

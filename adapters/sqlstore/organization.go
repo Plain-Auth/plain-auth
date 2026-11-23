@@ -8,9 +8,9 @@ import (
 	"strings"
 	"time"
 
-	authn "github.com/Plain-Auth/plain-auth"
-	ak "github.com/Plain-Auth/plain-auth/plugins/apikey"
-	org "github.com/Plain-Auth/plain-auth/plugins/organization"
+	authn "github.com/Plain-Org/plain-auth"
+	ak "github.com/Plain-Org/plain-auth/plugins/apikey"
+	org "github.com/Plain-Org/plain-auth/plugins/organization"
 	"github.com/go-sql-driver/mysql"
 )
 

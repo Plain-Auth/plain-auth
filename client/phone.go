@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/Plain-Auth/plain-auth"
+	"github.com/Plain-Org/plain-auth"
 )
 
 // SendPhoneNumberOTP requests a verification code for the supplied number.

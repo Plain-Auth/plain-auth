@@ -8,9 +8,9 @@ import (
 	"slices"
 	"strings"
 
-	auth "github.com/Plain-Auth/plain-auth"
-	"github.com/Plain-Auth/plain-auth/internal/sessionfields"
-	op "github.com/Plain-Auth/plain-auth/plugins/oauthprovider"
+	auth "github.com/Plain-Org/plain-auth"
+	"github.com/Plain-Org/plain-auth/internal/sessionfields"
+	op "github.com/Plain-Org/plain-auth/plugins/oauthprovider"
 )
 
 var idTokenCoreFields = map[string]auth.SessionFieldType{

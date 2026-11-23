@@ -8,9 +8,9 @@ import (
 	"strings"
 	"testing"
 
-	auth "github.com/Plain-Auth/plain-auth"
-	jwtplugin "github.com/Plain-Auth/plain-auth/plugins/jwt"
-	"github.com/Plain-Auth/plain-auth/schema"
+	auth "github.com/Plain-Org/plain-auth"
+	jwtplugin "github.com/Plain-Org/plain-auth/plugins/jwt"
+	"github.com/Plain-Org/plain-auth/schema"
 )
 
 func TestCompactSessionSQLPrivilegeBoundaries(t *testing.T) {

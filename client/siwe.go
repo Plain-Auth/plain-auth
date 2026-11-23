@@ -4,7 +4,7 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/Plain-Auth/plain-auth/plugins/siwe"
+	"github.com/Plain-Org/plain-auth/plugins/siwe"
 )
 
 // SIWENonce issues a 15-minute EIP-4361 challenge before the wallet is known.

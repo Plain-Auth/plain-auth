@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Plain-Auth/plain-auth/plugins/oauthprovider"
+	"github.com/Plain-Org/plain-auth/plugins/oauthprovider"
 )
 
 func TestResourceChallengeThroughHTTP(t *testing.T) {

@@ -5,7 +5,7 @@ import (
 	"errors"
 	"slices"
 
-	"github.com/Plain-Auth/plain-auth/plugins/access"
+	"github.com/Plain-Org/plain-auth/plugins/access"
 )
 
 // RolePermissionCheck asks whether a membership role grants permissions in an

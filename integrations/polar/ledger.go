@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/Plain-Auth/plain-auth/internal/polarledger"
+	"github.com/Plain-Org/plain-auth/internal/polarledger"
 	"github.com/google/uuid"
 )
 

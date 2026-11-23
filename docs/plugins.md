@@ -43,7 +43,7 @@ The handler is then available at `GET /api/auth/profile`. `c.Session()` returns 
 
 ## Receive Stripe webhooks
 
-Import `github.com/Plain-Auth/plain-auth/plugins/stripe` as `authstripe` and the official `github.com/stripe/stripe-go/v87` as `stripesdk`.
+Import `github.com/Plain-Org/plain-auth/plugins/stripe` as `authstripe` and the official `github.com/stripe/stripe-go/v87` as `stripesdk`.
 
 ```go
 opts.Plugins = append(opts.Plugins, authstripe.New(authstripe.Options{

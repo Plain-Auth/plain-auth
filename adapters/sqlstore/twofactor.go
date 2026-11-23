@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	auth "github.com/Plain-Auth/plain-auth"
-	ak "github.com/Plain-Auth/plain-auth/plugins/apikey"
+	auth "github.com/Plain-Org/plain-auth"
+	ak "github.com/Plain-Org/plain-auth/plugins/apikey"
 )
 
 var _ auth.TwoFactorStore = (*Store)(nil)

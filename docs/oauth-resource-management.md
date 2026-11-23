@@ -10,10 +10,10 @@ Enable the `oauth-provider` SQL profile on SQLite, PostgreSQL, or MySQL. The app
 import (
     "context"
 
-    auth "github.com/Plain-Auth/plain-auth"
-    "github.com/Plain-Auth/plain-auth/adapters/sqlstore"
-    "github.com/Plain-Auth/plain-auth/plugins/oauthprovider"
-    "github.com/Plain-Auth/plain-auth/schema"
+    auth "github.com/Plain-Org/plain-auth"
+    "github.com/Plain-Org/plain-auth/adapters/sqlstore"
+    "github.com/Plain-Org/plain-auth/plugins/oauthprovider"
+    "github.com/Plain-Org/plain-auth/schema"
 )
 
 func openRegistry(ctx context.Context, dialect, dsn, operatorID string) (*sqlstore.Store, *auth.Auth, *oauthprovider.ResourceManager, error) {

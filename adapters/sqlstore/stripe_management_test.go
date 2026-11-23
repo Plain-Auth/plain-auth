@@ -10,11 +10,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Plain-Auth/plain-auth"
-	"github.com/Plain-Auth/plain-auth/client"
-	stripeclient "github.com/Plain-Auth/plain-auth/client/stripe"
-	billing "github.com/Plain-Auth/plain-auth/plugins/stripe"
-	"github.com/Plain-Auth/plain-auth/schema"
+	"github.com/Plain-Org/plain-auth"
+	"github.com/Plain-Org/plain-auth/client"
+	stripeclient "github.com/Plain-Org/plain-auth/client/stripe"
+	billing "github.com/Plain-Org/plain-auth/plugins/stripe"
+	"github.com/Plain-Org/plain-auth/schema"
 	sdk "github.com/stripe/stripe-go/v87"
 )
 

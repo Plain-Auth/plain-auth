@@ -6,7 +6,7 @@ import (
 	"errors"
 	"net/http"
 
-	org "github.com/Plain-Auth/plain-auth/plugins/organization"
+	org "github.com/Plain-Org/plain-auth/plugins/organization"
 )
 
 // PrepareTeamCreation runs the creation checks without writing: the caller's

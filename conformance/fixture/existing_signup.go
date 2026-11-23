@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"os"
 
-	auth "github.com/Plain-Auth/plain-auth"
+	auth "github.com/Plain-Org/plain-auth"
 )
 
 func configureSignUpObserver(opts *auth.Options, mode, path string) {

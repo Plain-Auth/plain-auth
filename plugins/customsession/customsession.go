@@ -4,7 +4,7 @@ package customsession
 import (
 	"errors"
 
-	authn "github.com/Plain-Auth/plain-auth"
+	authn "github.com/Plain-Org/plain-auth"
 )
 
 // Options controls which authenticated HTTP responses use the projection.

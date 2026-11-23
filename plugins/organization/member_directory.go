@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 
-	auth "github.com/Plain-Auth/plain-auth"
+	auth "github.com/Plain-Org/plain-auth"
 )
 
 // MemberListQuery pages through memberships in a shared organization. A slug

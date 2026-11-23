@@ -12,9 +12,9 @@ import (
 	"testing"
 	"time"
 
-	authn "github.com/Plain-Auth/plain-auth"
-	"github.com/Plain-Auth/plain-auth/adapters/memory"
-	"github.com/Plain-Auth/plain-auth/adapters/sqlite"
+	authn "github.com/Plain-Org/plain-auth"
+	"github.com/Plain-Org/plain-auth/adapters/memory"
+	"github.com/Plain-Org/plain-auth/adapters/sqlite"
 	"golang.org/x/oauth2"
 )
 

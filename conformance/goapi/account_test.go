@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	authn "github.com/Plain-Auth/plain-auth"
+	authn "github.com/Plain-Org/plain-auth"
 )
 
 func TestAccountRecoveryAndProfile(t *testing.T) {

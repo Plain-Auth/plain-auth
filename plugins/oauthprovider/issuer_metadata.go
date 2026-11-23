@@ -9,7 +9,7 @@ import (
 	"slices"
 	"strings"
 
-	auth "github.com/Plain-Auth/plain-auth"
+	auth "github.com/Plain-Org/plain-auth"
 )
 
 const issuerMetadataPath = "/.well-known/oauth-authorization-server"

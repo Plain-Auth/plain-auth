@@ -2,12 +2,12 @@ package organization
 
 import (
 	"errors"
-	"github.com/Plain-Auth/plain-auth/internal/jsjson"
+	"github.com/Plain-Org/plain-auth/internal/jsjson"
 	"strconv"
 	"strings"
 
-	auth "github.com/Plain-Auth/plain-auth"
-	"github.com/Plain-Auth/plain-auth/internal/sessionfields"
+	auth "github.com/Plain-Org/plain-auth"
+	"github.com/Plain-Org/plain-auth/internal/sessionfields"
 )
 
 // RoleField declares a host-defined column on a stored organization role.

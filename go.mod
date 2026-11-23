@@ -1,4 +1,4 @@
-module github.com/Plain-Auth/plain-auth
+module github.com/Plain-Org/plain-auth
 
 go 1.26.0
 

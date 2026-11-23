@@ -6,7 +6,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/Plain-Auth/plain-auth/plugins/access"
+	"github.com/Plain-Org/plain-auth/plugins/access"
 )
 
 func TestRoleDecisions(t *testing.T) {

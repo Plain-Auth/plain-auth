@@ -8,9 +8,9 @@ import (
 	"strings"
 	"testing"
 
-	auth "github.com/Plain-Auth/plain-auth"
-	"github.com/Plain-Auth/plain-auth/adapters/memory"
-	"github.com/Plain-Auth/plain-auth/plugins/bearer"
+	auth "github.com/Plain-Org/plain-auth"
+	"github.com/Plain-Org/plain-auth/adapters/memory"
+	"github.com/Plain-Org/plain-auth/plugins/bearer"
 )
 
 func TestBearerSessions(t *testing.T) {

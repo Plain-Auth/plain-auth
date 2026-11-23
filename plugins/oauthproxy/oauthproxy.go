@@ -2,7 +2,7 @@
 // callback and completes the browser session on its originating preview.
 package oauthproxy
 
-import auth "github.com/Plain-Auth/plain-auth"
+import auth "github.com/Plain-Org/plain-auth"
 
 type Options = auth.OAuthProxyOptions
 

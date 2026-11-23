@@ -15,8 +15,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Plain-Auth/plain-auth"
-	"github.com/Plain-Auth/plain-auth/adapters/sqlite"
+	"github.com/Plain-Org/plain-auth"
+	"github.com/Plain-Org/plain-auth/adapters/sqlite"
 	"golang.org/x/oauth2"
 )
 

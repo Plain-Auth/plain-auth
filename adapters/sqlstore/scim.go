@@ -14,8 +14,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Plain-Auth/plain-auth/internal/jsjson"
-	"github.com/Plain-Auth/plain-auth/plugins/scim"
+	"github.com/Plain-Org/plain-auth/internal/jsjson"
+	"github.com/Plain-Org/plain-auth/plugins/scim"
 )
 
 var _ scim.Store = (*Store)(nil)

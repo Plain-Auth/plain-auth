@@ -5,7 +5,7 @@ import (
 	"errors"
 	"net/http"
 
-	auth "github.com/Plain-Auth/plain-auth"
+	auth "github.com/Plain-Org/plain-auth"
 )
 
 // ReceivedInvitation includes the destination's display name for the recipient.

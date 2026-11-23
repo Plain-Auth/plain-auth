@@ -13,12 +13,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Plain-Auth/plain-auth"
-	"github.com/Plain-Auth/plain-auth/adapters/sqlstore"
-	"github.com/Plain-Auth/plain-auth/plugins/bearer"
-	"github.com/Plain-Auth/plain-auth/plugins/openapi"
-	"github.com/Plain-Auth/plain-auth/plugins/sso"
-	"github.com/Plain-Auth/plain-auth/schema"
+	"github.com/Plain-Org/plain-auth"
+	"github.com/Plain-Org/plain-auth/adapters/sqlstore"
+	"github.com/Plain-Org/plain-auth/plugins/bearer"
+	"github.com/Plain-Org/plain-auth/plugins/openapi"
+	"github.com/Plain-Org/plain-auth/plugins/sso"
+	"github.com/Plain-Org/plain-auth/schema"
 )
 
 func TestEnterpriseDirectoryOpenAPI(t *testing.T) {

@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 
-	auth "github.com/Plain-Auth/plain-auth"
-	op "github.com/Plain-Auth/plain-auth/plugins/oauthprovider"
+	auth "github.com/Plain-Org/plain-auth"
+	op "github.com/Plain-Org/plain-auth/plugins/oauthprovider"
 )
 
 func mountResourceSeedFixture(mux *http.ServeMux, a *auth.Auth, store op.ResourceStore) {

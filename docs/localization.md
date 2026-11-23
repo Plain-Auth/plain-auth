@@ -3,7 +3,7 @@
 Add the `plugins/i18n` plugin to send translated error messages to browser and Go clients. Each error retains its HTTP status and stable code. A translated response also includes `originalMessage`, the message the endpoint produced.
 
 ```go
-import "github.com/Plain-Auth/plain-auth/plugins/i18n"
+import "github.com/Plain-Org/plain-auth/plugins/i18n"
 
 dicts := i18n.Builtins()
 dicts["fr"]["INVALID_EMAIL_OR_PASSWORD"] = "Adresse e-mail ou mot de passe incorrect"

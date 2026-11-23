@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	auth "github.com/Plain-Auth/plain-auth"
+	auth "github.com/Plain-Org/plain-auth"
 )
 
 // InvitationDraft contains the normalized values proposed by the issuing member.

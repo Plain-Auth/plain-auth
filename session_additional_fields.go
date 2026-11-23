@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Plain-Auth/plain-auth/internal/sessionfields"
+	"github.com/Plain-Org/plain-auth/internal/sessionfields"
 )
 
 // SessionField declares a scalar session attribute. Column defaults to the

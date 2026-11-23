@@ -11,8 +11,8 @@ import (
 	"slices"
 	"time"
 
-	plainauth "github.com/Plain-Auth/plain-auth"
-	ak "github.com/Plain-Auth/plain-auth/plugins/apikey"
+	plainauth "github.com/Plain-Org/plain-auth"
+	ak "github.com/Plain-Org/plain-auth/plugins/apikey"
 )
 
 // UniqueSessionKeyConfiguration resolves a shared header only when exactly one

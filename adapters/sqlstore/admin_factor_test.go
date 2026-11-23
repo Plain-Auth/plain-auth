@@ -11,15 +11,15 @@ import (
 	"testing"
 	"time"
 
-	plainauth "github.com/Plain-Auth/plain-auth"
-	"github.com/Plain-Auth/plain-auth/client"
-	"github.com/Plain-Auth/plain-auth/plugins/admin"
-	"github.com/Plain-Auth/plain-auth/plugins/anonymous"
-	"github.com/Plain-Auth/plain-auth/plugins/organization"
-	"github.com/Plain-Auth/plain-auth/plugins/passkey"
-	"github.com/Plain-Auth/plain-auth/plugins/stripe"
-	"github.com/Plain-Auth/plain-auth/plugins/twofactor"
-	"github.com/Plain-Auth/plain-auth/schema"
+	plainauth "github.com/Plain-Org/plain-auth"
+	"github.com/Plain-Org/plain-auth/client"
+	"github.com/Plain-Org/plain-auth/plugins/admin"
+	"github.com/Plain-Org/plain-auth/plugins/anonymous"
+	"github.com/Plain-Org/plain-auth/plugins/organization"
+	"github.com/Plain-Org/plain-auth/plugins/passkey"
+	"github.com/Plain-Org/plain-auth/plugins/stripe"
+	"github.com/Plain-Org/plain-auth/plugins/twofactor"
+	"github.com/Plain-Org/plain-auth/schema"
 )
 
 func TestAdminGuestAndFactorSessionBoundaries(t *testing.T) {

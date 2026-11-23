@@ -11,9 +11,9 @@ import (
 	"testing"
 	"time"
 
-	authn "github.com/Plain-Auth/plain-auth"
-	"github.com/Plain-Auth/plain-auth/plugins/deviceauthorization"
-	"github.com/Plain-Auth/plain-auth/schema"
+	authn "github.com/Plain-Org/plain-auth"
+	"github.com/Plain-Org/plain-auth/plugins/deviceauthorization"
+	"github.com/Plain-Org/plain-auth/schema"
 )
 
 func TestDeviceAuthorizationFlow(t *testing.T) {

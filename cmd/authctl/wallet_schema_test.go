@@ -12,10 +12,10 @@ import (
 	"testing"
 	"time"
 
-	auth "github.com/Plain-Auth/plain-auth"
-	"github.com/Plain-Auth/plain-auth/adapters/sqlstore"
-	"github.com/Plain-Auth/plain-auth/plugins/siwe"
-	"github.com/Plain-Auth/plain-auth/schema"
+	auth "github.com/Plain-Org/plain-auth"
+	"github.com/Plain-Org/plain-auth/adapters/sqlstore"
+	"github.com/Plain-Org/plain-auth/plugins/siwe"
+	"github.com/Plain-Org/plain-auth/schema"
 )
 
 const walletSchemaFile = `{"table":"wallet_address","userId":"user_id","address":"wallet_address","chainId":"chain_id","isPrimary":"is_primary","createdAt":"created_at"}`

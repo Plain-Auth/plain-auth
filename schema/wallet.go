@@ -5,7 +5,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/Plain-Auth/plain-auth/internal/walletschema"
+	"github.com/Plain-Org/plain-auth/internal/walletschema"
 )
 
 // WalletSchema maps physical names in the SIWE wallet table. ID remains "id".

@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 
-	org "github.com/Plain-Auth/plain-auth/plugins/organization"
+	org "github.com/Plain-Org/plain-auth/plugins/organization"
 )
 
 // DeleteOrganizationRole serializes with membership changes for the same tenant.

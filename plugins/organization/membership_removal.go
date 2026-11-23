@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strings"
 
-	auth "github.com/Plain-Auth/plain-auth"
+	auth "github.com/Plain-Org/plain-auth"
 )
 
 // MemberUser is the public user returned by email lookup and self-leave.

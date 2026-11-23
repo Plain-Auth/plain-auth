@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 
-	auth "github.com/Plain-Auth/plain-auth"
+	auth "github.com/Plain-Org/plain-auth"
 )
 
 // MembershipLimit controls admission to an organization. Set Maximum for a

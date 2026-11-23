@@ -8,12 +8,12 @@ import (
 	"testing"
 	"time"
 
-	auth "github.com/Plain-Auth/plain-auth"
-	"github.com/Plain-Auth/plain-auth/client"
-	"github.com/Plain-Auth/plain-auth/plugins/customsession"
-	jwtplugin "github.com/Plain-Auth/plain-auth/plugins/jwt"
-	"github.com/Plain-Auth/plain-auth/plugins/multisession"
-	"github.com/Plain-Auth/plain-auth/schema"
+	auth "github.com/Plain-Org/plain-auth"
+	"github.com/Plain-Org/plain-auth/client"
+	"github.com/Plain-Org/plain-auth/plugins/customsession"
+	jwtplugin "github.com/Plain-Org/plain-auth/plugins/jwt"
+	"github.com/Plain-Org/plain-auth/plugins/multisession"
+	"github.com/Plain-Org/plain-auth/schema"
 )
 
 func TestCustomSessionLiveSQLVisibility(t *testing.T) {

@@ -4,8 +4,8 @@ Install `plugins/openapi` to publish an OpenAPI 3.1.1 document for your configur
 
 ```go
 import (
-    "github.com/Plain-Auth/plain-auth"
-    "github.com/Plain-Auth/plain-auth/plugins/openapi"
+    "github.com/Plain-Org/plain-auth"
+    "github.com/Plain-Org/plain-auth/plugins/openapi"
 )
 
 // Start with the application's configured store, secret, public URL and plugins.

@@ -5,8 +5,8 @@ import (
 	"database/sql"
 	"fmt"
 
-	"github.com/Plain-Auth/plain-auth/plugins/access"
-	org "github.com/Plain-Auth/plain-auth/plugins/organization"
+	"github.com/Plain-Org/plain-auth/plugins/access"
+	org "github.com/Plain-Org/plain-auth/plugins/organization"
 )
 
 // WithOrganizationDynamicRoles enables role resolution on this adapter only.

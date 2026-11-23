@@ -6,8 +6,8 @@ import (
 	"net/url"
 	"strconv"
 
-	"github.com/Plain-Auth/plain-auth/plugins/access"
-	org "github.com/Plain-Auth/plain-auth/plugins/organization"
+	"github.com/Plain-Org/plain-auth/plugins/access"
+	org "github.com/Plain-Org/plain-auth/plugins/organization"
 )
 
 // ListOrganizationMembers returns a filtered page and its full matching count.

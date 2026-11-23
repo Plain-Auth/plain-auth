@@ -12,10 +12,10 @@ package example
 import (
     "context"
 
-    auth "github.com/Plain-Auth/plain-auth"
-    "github.com/Plain-Auth/plain-auth/adapters/sqlstore"
-    "github.com/Plain-Auth/plain-auth/plugins/oauthprovider"
-    "github.com/Plain-Auth/plain-auth/schema"
+    auth "github.com/Plain-Org/plain-auth"
+    "github.com/Plain-Org/plain-auth/adapters/sqlstore"
+    "github.com/Plain-Org/plain-auth/plugins/oauthprovider"
+    "github.com/Plain-Org/plain-auth/schema"
 )
 
 func Open(ctx context.Context, dialect, dsn string) (*auth.Auth, *sqlstore.Store, error) {
@@ -97,7 +97,7 @@ func registerIntegration(ctx context.Context, api *client.Client, initialToken s
 }
 ```
 
-Import `github.com/Plain-Auth/plain-auth/client` for the SDK. A successful response has HTTP 201, a generated `client_id`, the issue time in Unix seconds, and the accepted metadata. Responses carrying credentials use `Cache-Control: no-store`. Capture an issued secret at registration and keep it on the confidential application's server.
+Import `github.com/Plain-Org/plain-auth/client` for the SDK. A successful response has HTTP 201, a generated `client_id`, the issue time in Unix seconds, and the accepted metadata. Responses carrying credentials use `Cache-Control: no-store`. Capture an issued secret at registration and keep it on the confidential application's server.
 
 ## Configure client metadata and storage
 

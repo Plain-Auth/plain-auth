@@ -11,11 +11,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Plain-Auth/plain-auth"
-	"github.com/Plain-Auth/plain-auth/client"
-	ak "github.com/Plain-Auth/plain-auth/plugins/apikey"
-	org "github.com/Plain-Auth/plain-auth/plugins/organization"
-	"github.com/Plain-Auth/plain-auth/schema"
+	"github.com/Plain-Org/plain-auth"
+	"github.com/Plain-Org/plain-auth/client"
+	ak "github.com/Plain-Org/plain-auth/plugins/apikey"
+	org "github.com/Plain-Org/plain-auth/plugins/organization"
+	"github.com/Plain-Org/plain-auth/schema"
 )
 
 func TestAPIKeyGenerationAndExtraction(t *testing.T) {

@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	stripeclient "github.com/Plain-Auth/plain-auth/client/stripe"
-	billing "github.com/Plain-Auth/plain-auth/plugins/stripe"
+	stripeclient "github.com/Plain-Org/plain-auth/client/stripe"
+	billing "github.com/Plain-Org/plain-auth/plugins/stripe"
 )
 
 func TestStripeTrialCheckoutEligibility(t *testing.T) {

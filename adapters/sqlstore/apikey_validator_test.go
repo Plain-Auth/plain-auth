@@ -8,9 +8,9 @@ import (
 	"strings"
 	"testing"
 
-	plainauth "github.com/Plain-Auth/plain-auth"
-	ak "github.com/Plain-Auth/plain-auth/plugins/apikey"
-	"github.com/Plain-Auth/plain-auth/schema"
+	plainauth "github.com/Plain-Org/plain-auth"
+	ak "github.com/Plain-Org/plain-auth/plugins/apikey"
+	"github.com/Plain-Org/plain-auth/schema"
 )
 
 func TestApplicationKeyValidator(t *testing.T) {

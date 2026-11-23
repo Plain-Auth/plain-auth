@@ -16,8 +16,8 @@ import (
 	"testing"
 	"time"
 
-	auth "github.com/Plain-Auth/plain-auth"
-	"github.com/Plain-Auth/plain-auth/plugins/magiclink"
+	auth "github.com/Plain-Org/plain-auth"
+	"github.com/Plain-Org/plain-auth/plugins/magiclink"
 )
 
 func TestMagicLinkMailboxOwnership(t *testing.T) {

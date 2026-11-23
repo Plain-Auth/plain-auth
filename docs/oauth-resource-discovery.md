@@ -10,7 +10,7 @@ Use the public HTTPS URL of the API as the resource identifier. For `https://api
 import (
     "net/http"
 
-    "github.com/Plain-Auth/plain-auth/plugins/oauthprovider"
+    "github.com/Plain-Org/plain-auth/plugins/oauthprovider"
 )
 
 func mountReportsMetadata(mux *http.ServeMux) error {

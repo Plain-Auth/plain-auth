@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Plain-Auth/plain-auth/client"
+	"github.com/Plain-Org/plain-auth/client"
 )
 
 type environmentTransport func(*http.Request) (*http.Response, error)

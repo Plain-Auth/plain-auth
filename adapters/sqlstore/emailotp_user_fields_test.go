@@ -10,11 +10,11 @@ import (
 	"sync"
 	"testing"
 
-	auth "github.com/Plain-Auth/plain-auth"
-	"github.com/Plain-Auth/plain-auth/adapters/memory"
-	"github.com/Plain-Auth/plain-auth/client"
-	"github.com/Plain-Auth/plain-auth/plugins/emailotp"
-	"github.com/Plain-Auth/plain-auth/schema"
+	auth "github.com/Plain-Org/plain-auth"
+	"github.com/Plain-Org/plain-auth/adapters/memory"
+	"github.com/Plain-Org/plain-auth/client"
+	"github.com/Plain-Org/plain-auth/plugins/emailotp"
+	"github.com/Plain-Org/plain-auth/schema"
 )
 
 func emailOTPFieldPlugin(t *testing.T, closed bool) auth.Plugin {

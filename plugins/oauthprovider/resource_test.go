@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"testing"
 
-	op "github.com/Plain-Auth/plain-auth/plugins/oauthprovider"
+	op "github.com/Plain-Org/plain-auth/plugins/oauthprovider"
 )
 
 func TestResourceIdentifiers(t *testing.T) {

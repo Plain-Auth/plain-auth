@@ -8,7 +8,7 @@ import (
 	"errors"
 	"time"
 
-	billing "github.com/Plain-Auth/plain-auth/plugins/stripe"
+	billing "github.com/Plain-Org/plain-auth/plugins/stripe"
 )
 
 func (s *Store) scheduleRecord(ctx context.Context, tx *sql.Tx, owner, remote string) (billing.ScheduleChange, error) {

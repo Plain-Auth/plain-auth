@@ -6,8 +6,8 @@ Create one client per user session. An origin uses the default `/api/auth` mount
 import (
     "context"
 
-    "github.com/Plain-Auth/plain-auth"
-    "github.com/Plain-Auth/plain-auth/client"
+    "github.com/Plain-Org/plain-auth"
+    "github.com/Plain-Org/plain-auth/client"
 )
 
 func login(ctx context.Context, endpoint, email, password string) (*plainauth.SessionResult, error) {

@@ -4,9 +4,9 @@ import (
 	"strings"
 	"testing"
 
-	auth "github.com/Plain-Auth/plain-auth"
-	"github.com/Plain-Auth/plain-auth/adapters/sqlstore"
-	"github.com/Plain-Auth/plain-auth/plugins/passkey"
+	auth "github.com/Plain-Org/plain-auth"
+	"github.com/Plain-Org/plain-auth/adapters/sqlstore"
+	"github.com/Plain-Org/plain-auth/plugins/passkey"
 )
 
 func TestRelyingPartyConfiguration(t *testing.T) {

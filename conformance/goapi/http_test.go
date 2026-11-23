@@ -9,8 +9,8 @@ import (
 	"strings"
 	"testing"
 
-	authn "github.com/Plain-Auth/plain-auth"
-	"github.com/Plain-Auth/plain-auth/adapters/sqlite"
+	authn "github.com/Plain-Org/plain-auth"
+	"github.com/Plain-Org/plain-auth/adapters/sqlite"
 )
 
 func newHTTPAuth(t *testing.T, opts authn.Options) *authn.Auth {

@@ -9,9 +9,9 @@ import (
 	"strings"
 	"time"
 
-	auth "github.com/Plain-Auth/plain-auth"
-	"github.com/Plain-Auth/plain-auth/internal/sessionfields"
-	"github.com/Plain-Auth/plain-auth/plugins/access"
+	auth "github.com/Plain-Org/plain-auth"
+	"github.com/Plain-Org/plain-auth/internal/sessionfields"
+	"github.com/Plain-Org/plain-auth/plugins/access"
 )
 
 // RoleDefinition is a stored permission definition in a single organization.

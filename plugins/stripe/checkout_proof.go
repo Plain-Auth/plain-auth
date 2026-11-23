@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 
-	auth "github.com/Plain-Auth/plain-auth"
+	auth "github.com/Plain-Org/plain-auth"
 	sdk "github.com/stripe/stripe-go/v87"
 )
 

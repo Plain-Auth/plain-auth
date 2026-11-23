@@ -6,8 +6,8 @@ import (
 	"errors"
 	"time"
 
-	auth "github.com/Plain-Auth/plain-auth"
-	"github.com/Plain-Auth/plain-auth/plugins/sso"
+	auth "github.com/Plain-Org/plain-auth"
+	"github.com/Plain-Org/plain-auth/plugins/sso"
 )
 
 var _ sso.DeletionStore = (*Store)(nil)

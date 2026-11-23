@@ -8,7 +8,7 @@ import (
 	"errors"
 	"time"
 
-	org "github.com/Plain-Auth/plain-auth/plugins/organization"
+	org "github.com/Plain-Org/plain-auth/plugins/organization"
 )
 
 // WithOrganizationInvitationLimit scopes the issuance policy to this service.

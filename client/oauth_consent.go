@@ -6,7 +6,7 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/Plain-Auth/plain-auth/plugins/oauthprovider"
+	"github.com/Plain-Org/plain-auth/plugins/oauthprovider"
 )
 
 // OAuthConsent reads one consent belonging to the signed-in user.

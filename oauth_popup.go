@@ -8,8 +8,8 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/Plain-Auth/plain-auth/internal/httporigin"
-	"github.com/Plain-Auth/plain-auth/internal/popupwire"
+	"github.com/Plain-Org/plain-auth/internal/httporigin"
+	"github.com/Plain-Org/plain-auth/internal/popupwire"
 )
 
 type popupOpener struct {

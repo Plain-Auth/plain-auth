@@ -7,7 +7,7 @@ import (
 	"slices"
 	"time"
 
-	auth "github.com/Plain-Auth/plain-auth"
+	auth "github.com/Plain-Org/plain-auth"
 )
 
 const keyRotationPath = "/oauth2/client/rotate-keys"

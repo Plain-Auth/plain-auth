@@ -10,7 +10,7 @@ Install the API-key tables and prepare the permanent digest ledger before starti
 AUTH_DSN=auth.db go run ./cmd/authctl migrate --dialect sqlite --api-key-ledger
 ```
 
-Import `github.com/Plain-Auth/plain-auth` and `github.com/Plain-Auth/plain-auth/plugins/apikey`. Pass the same SQL store to the host and key service.
+Import `github.com/Plain-Org/plain-auth` and `github.com/Plain-Org/plain-auth/plugins/apikey`. Pass the same SQL store to the host and key service.
 
 ```go
 keys, err := apikey.New(apikey.Options{

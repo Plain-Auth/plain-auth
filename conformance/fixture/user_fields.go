@@ -1,6 +1,6 @@
 package main
 
-import auth "github.com/Plain-Auth/plain-auth"
+import auth "github.com/Plain-Org/plain-auth"
 
 func configuredUserFields() map[string]auth.UserField {
 	return map[string]auth.UserField{

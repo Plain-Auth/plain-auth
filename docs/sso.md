@@ -21,7 +21,7 @@ if err != nil { return err }
 mux.Handle("/api/auth/", host)
 ```
 
-The host imports the root `github.com/Plain-Auth/plain-auth` module and its `plugins/sso`, `schema` and `adapters/sqlstore` packages. Serve these routes from an existing auth deployment that lets administrators sign in.
+The host imports the root `github.com/Plain-Org/plain-auth` module and its `plugins/sso`, `schema` and `adapters/sqlstore` packages. Serve these routes from an existing auth deployment that lets administrators sign in.
 
 | Route under the auth mount | Access and behavior |
 | --- | --- |

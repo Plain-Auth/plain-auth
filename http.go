@@ -16,8 +16,8 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/Plain-Auth/plain-auth/internal/httporigin"
-	"github.com/Plain-Auth/plain-auth/internal/jsjson"
+	"github.com/Plain-Org/plain-auth/internal/httporigin"
+	"github.com/Plain-Org/plain-auth/internal/jsjson"
 )
 
 const maxBodyBytes = 1 << 20

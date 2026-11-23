@@ -8,9 +8,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Plain-Auth/plain-auth"
-	"github.com/Plain-Auth/plain-auth/adapters/memory"
-	"github.com/Plain-Auth/plain-auth/plugins/lastlogin"
+	"github.com/Plain-Org/plain-auth"
+	"github.com/Plain-Org/plain-auth/adapters/memory"
+	"github.com/Plain-Org/plain-auth/plugins/lastlogin"
 	"golang.org/x/net/publicsuffix"
 )
 

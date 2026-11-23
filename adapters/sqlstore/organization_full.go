@@ -6,7 +6,7 @@ import (
 	"errors"
 	"time"
 
-	org "github.com/Plain-Auth/plain-auth/plugins/organization"
+	org "github.com/Plain-Org/plain-auth/plugins/organization"
 )
 
 // FullOrganization authorizes the session before loading any child records.

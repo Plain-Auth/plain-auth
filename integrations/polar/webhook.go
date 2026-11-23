@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	auth "github.com/Plain-Auth/plain-auth"
+	auth "github.com/Plain-Org/plain-auth"
 	"github.com/polarsource/polar-go/models/components"
 )
 

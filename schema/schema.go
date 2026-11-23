@@ -8,8 +8,8 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/Plain-Auth/plain-auth/internal/polarledger"
-	"github.com/Plain-Auth/plain-auth/internal/sessionfields"
+	"github.com/Plain-Org/plain-auth/internal/polarledger"
+	"github.com/Plain-Org/plain-auth/internal/sessionfields"
 )
 
 //go:embed catalog.json

@@ -5,8 +5,8 @@ import (
 	_ "embed"
 	"net/http"
 
-	"github.com/Plain-Auth/plain-auth"
-	"github.com/Plain-Auth/plain-auth/internal/popupwire"
+	"github.com/Plain-Org/plain-auth"
+	"github.com/Plain-Org/plain-auth/internal/popupwire"
 )
 
 // Browser protocol constants for custom host integrations.

@@ -8,11 +8,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Plain-Auth/plain-auth"
-	"github.com/Plain-Auth/plain-auth/plugins/apikey"
-	"github.com/Plain-Auth/plain-auth/plugins/organization"
-	"github.com/Plain-Auth/plain-auth/plugins/passkey"
-	billing "github.com/Plain-Auth/plain-auth/plugins/stripe"
+	"github.com/Plain-Org/plain-auth"
+	"github.com/Plain-Org/plain-auth/plugins/apikey"
+	"github.com/Plain-Org/plain-auth/plugins/organization"
+	"github.com/Plain-Org/plain-auth/plugins/passkey"
+	billing "github.com/Plain-Org/plain-auth/plugins/stripe"
 )
 
 type object = map[string]any

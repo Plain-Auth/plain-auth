@@ -4,7 +4,7 @@ package postgres
 import (
 	"context"
 
-	"github.com/Plain-Auth/plain-auth/adapters/sqlstore"
+	"github.com/Plain-Org/plain-auth/adapters/sqlstore"
 )
 
 // Store persists users, credentials, and sessions.

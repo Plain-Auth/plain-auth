@@ -8,7 +8,7 @@ import (
 	"strings"
 	"unicode"
 
-	auth "github.com/Plain-Auth/plain-auth"
+	auth "github.com/Plain-Org/plain-auth"
 )
 
 // UserInfoOptions configures OpenID Connect profile claims and the endpoint limit.

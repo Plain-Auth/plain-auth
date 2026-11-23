@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/Plain-Auth/plain-auth"
-	"github.com/Plain-Auth/plain-auth/plugins/openapi"
+	"github.com/Plain-Org/plain-auth"
+	"github.com/Plain-Org/plain-auth/plugins/openapi"
 )
 
 func TestDeclaredSuccessStatusAndResponseOverrides(t *testing.T) {

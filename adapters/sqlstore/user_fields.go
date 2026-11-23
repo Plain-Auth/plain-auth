@@ -8,8 +8,8 @@ import (
 	"slices"
 	"time"
 
-	auth "github.com/Plain-Auth/plain-auth"
-	"github.com/Plain-Auth/plain-auth/internal/sessionfields"
+	auth "github.com/Plain-Org/plain-auth"
+	"github.com/Plain-Org/plain-auth/internal/sessionfields"
 )
 
 var _ auth.UserFieldStore = (*Store)(nil)

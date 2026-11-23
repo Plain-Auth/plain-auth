@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strings"
 
-	auth "github.com/Plain-Auth/plain-auth"
+	auth "github.com/Plain-Org/plain-auth"
 )
 
 // InvitationSender is the member who issued or resent this delivery.

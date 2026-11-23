@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/Plain-Auth/plain-auth/plugins/oauthprovider"
+	"github.com/Plain-Org/plain-auth/plugins/oauthprovider"
 )
 
 // OAuthClient returns the registration details visible to its owner.

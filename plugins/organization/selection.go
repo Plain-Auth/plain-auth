@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strings"
 
-	auth "github.com/Plain-Auth/plain-auth"
+	auth "github.com/Plain-Org/plain-auth"
 )
 
 // OrganizationSelection selects a tenant by ID or slug. A nonempty ID takes

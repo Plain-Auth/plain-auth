@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
-	authn "github.com/Plain-Auth/plain-auth"
-	"github.com/Plain-Auth/plain-auth/adapters/sqlite"
-	stripeplugin "github.com/Plain-Auth/plain-auth/plugins/stripe"
+	authn "github.com/Plain-Org/plain-auth"
+	"github.com/Plain-Org/plain-auth/adapters/sqlite"
+	stripeplugin "github.com/Plain-Org/plain-auth/plugins/stripe"
 	stripesdk "github.com/stripe/stripe-go/v87"
 	"github.com/stripe/stripe-go/v87/webhook"
 )

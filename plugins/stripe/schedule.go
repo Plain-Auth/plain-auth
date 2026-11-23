@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/Plain-Auth/plain-auth"
+	"github.com/Plain-Org/plain-auth"
 	sdk "github.com/stripe/stripe-go/v87"
 )
 

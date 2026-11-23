@@ -5,9 +5,9 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/Plain-Auth/plain-auth/internal/walletschema"
-	"github.com/Plain-Auth/plain-auth/plugins/siwe"
-	"github.com/Plain-Auth/plain-auth/schema"
+	"github.com/Plain-Org/plain-auth/internal/walletschema"
+	"github.com/Plain-Org/plain-auth/plugins/siwe"
+	"github.com/Plain-Org/plain-auth/schema"
 )
 
 var errWalletLayout = errors.New("siwe: wallet associations disagree with the configured schema; check the wallet mapping on every node")

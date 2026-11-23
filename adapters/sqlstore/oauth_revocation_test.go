@@ -10,9 +10,9 @@ import (
 	"testing"
 	"time"
 
-	auth "github.com/Plain-Auth/plain-auth"
-	op "github.com/Plain-Auth/plain-auth/plugins/oauthprovider"
-	"github.com/Plain-Auth/plain-auth/schema"
+	auth "github.com/Plain-Org/plain-auth"
+	op "github.com/Plain-Org/plain-auth/plugins/oauthprovider"
+	"github.com/Plain-Org/plain-auth/schema"
 )
 
 func TestOAuthTokenRevocation(t *testing.T) {

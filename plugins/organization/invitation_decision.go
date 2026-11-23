@@ -5,8 +5,8 @@ import (
 	"errors"
 	"net/http"
 
-	auth "github.com/Plain-Auth/plain-auth"
-	"github.com/Plain-Auth/plain-auth/internal/jsjson"
+	auth "github.com/Plain-Org/plain-auth"
+	"github.com/Plain-Org/plain-auth/internal/jsjson"
 )
 
 // InvitationReplacementStore issues a fresh grant and cancels the previous

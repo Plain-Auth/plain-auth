@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	auth "github.com/Plain-Auth/plain-auth"
+	auth "github.com/Plain-Org/plain-auth"
 )
 
 // FullOrganization is the visible portion of one organization's directory.

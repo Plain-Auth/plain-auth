@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/Plain-Auth/plain-auth"
-	"github.com/Plain-Auth/plain-auth/plugins/passkey"
+	"github.com/Plain-Org/plain-auth"
+	"github.com/Plain-Org/plain-auth/plugins/passkey"
 	"github.com/go-webauthn/webauthn/protocol"
 )
 

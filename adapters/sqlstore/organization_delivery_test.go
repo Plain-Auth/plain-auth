@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	org "github.com/Plain-Auth/plain-auth/plugins/organization"
+	org "github.com/Plain-Org/plain-auth/plugins/organization"
 )
 
 func TestInvitationDeliverySnapshot(t *testing.T) {

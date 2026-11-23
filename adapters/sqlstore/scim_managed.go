@@ -12,7 +12,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/Plain-Auth/plain-auth/plugins/scim"
+	"github.com/Plain-Org/plain-auth/plugins/scim"
 )
 
 var _ scim.ManagedStore = (*Store)(nil)

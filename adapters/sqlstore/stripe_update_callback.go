@@ -7,7 +7,7 @@ import (
 	"errors"
 	"time"
 
-	billing "github.com/Plain-Auth/plain-auth/plugins/stripe"
+	billing "github.com/Plain-Org/plain-auth/plugins/stripe"
 	sdk "github.com/stripe/stripe-go/v87"
 )
 

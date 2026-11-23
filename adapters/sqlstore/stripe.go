@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"errors"
 
-	auth "github.com/Plain-Auth/plain-auth"
+	auth "github.com/Plain-Org/plain-auth"
 )
 
 // StripeCustomer looks up the customer's own stored Stripe ID. Requires the

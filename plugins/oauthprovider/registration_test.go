@@ -7,8 +7,8 @@ import (
 	"slices"
 	"testing"
 
-	auth "github.com/Plain-Auth/plain-auth"
-	"github.com/Plain-Auth/plain-auth/adapters/memory"
+	auth "github.com/Plain-Org/plain-auth"
+	"github.com/Plain-Org/plain-auth/adapters/memory"
 )
 
 func TestRegistrationRedirectPolicy(t *testing.T) {

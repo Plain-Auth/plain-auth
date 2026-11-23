@@ -6,7 +6,7 @@ import (
 	"errors"
 	"time"
 
-	auth "github.com/Plain-Auth/plain-auth"
+	auth "github.com/Plain-Org/plain-auth"
 )
 
 type providerAccessor interface {

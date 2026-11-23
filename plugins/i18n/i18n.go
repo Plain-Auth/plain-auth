@@ -15,7 +15,7 @@ import (
 	"strings"
 	"sync"
 
-	auth "github.com/Plain-Auth/plain-auth"
+	auth "github.com/Plain-Org/plain-auth"
 )
 
 // Dictionary maps stable error codes to messages in one locale.

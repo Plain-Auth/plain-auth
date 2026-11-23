@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Plain-Auth/plain-auth/internal/sessionfields"
+	"github.com/Plain-Org/plain-auth/internal/sessionfields"
 )
 
 // UserField configures a scalar profile attribute. Column names its storage column.

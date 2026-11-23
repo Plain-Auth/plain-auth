@@ -10,11 +10,11 @@ import (
 	"strings"
 	"testing"
 
-	auth "github.com/Plain-Auth/plain-auth"
-	"github.com/Plain-Auth/plain-auth/client"
-	"github.com/Plain-Auth/plain-auth/plugins/apikey"
-	op "github.com/Plain-Auth/plain-auth/plugins/oauthprovider"
-	"github.com/Plain-Auth/plain-auth/schema"
+	auth "github.com/Plain-Org/plain-auth"
+	"github.com/Plain-Org/plain-auth/client"
+	"github.com/Plain-Org/plain-auth/plugins/apikey"
+	op "github.com/Plain-Org/plain-auth/plugins/oauthprovider"
+	"github.com/Plain-Org/plain-auth/schema"
 )
 
 func TestOAuthClientDirectory(t *testing.T) {

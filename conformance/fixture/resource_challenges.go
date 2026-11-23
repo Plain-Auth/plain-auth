@@ -5,7 +5,7 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/Plain-Auth/plain-auth/plugins/oauthprovider"
+	"github.com/Plain-Org/plain-auth/plugins/oauthprovider"
 )
 
 func resourceChallengeFixture(config string, fallback http.Handler) http.Handler {

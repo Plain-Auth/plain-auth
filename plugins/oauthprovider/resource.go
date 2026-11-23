@@ -7,7 +7,7 @@ import (
 	"slices"
 	"time"
 
-	auth "github.com/Plain-Auth/plain-auth"
+	auth "github.com/Plain-Org/plain-auth"
 )
 
 // Resource is the stored policy for one OAuth audience. Token lifetimes are in seconds.

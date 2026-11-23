@@ -12,10 +12,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Plain-Auth/plain-auth"
-	"github.com/Plain-Auth/plain-auth/adapters/sqlite"
-	"github.com/Plain-Auth/plain-auth/plugins/oauthpopup"
-	"github.com/Plain-Auth/plain-auth/plugins/openapi"
+	"github.com/Plain-Org/plain-auth"
+	"github.com/Plain-Org/plain-auth/adapters/sqlite"
+	"github.com/Plain-Org/plain-auth/plugins/oauthpopup"
+	"github.com/Plain-Org/plain-auth/plugins/openapi"
 	"golang.org/x/oauth2"
 )
 

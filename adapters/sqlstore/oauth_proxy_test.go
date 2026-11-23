@@ -11,9 +11,9 @@ import (
 	"strings"
 	"testing"
 
-	auth "github.com/Plain-Auth/plain-auth"
-	"github.com/Plain-Auth/plain-auth/plugins/oauthproxy"
-	"github.com/Plain-Auth/plain-auth/schema"
+	auth "github.com/Plain-Org/plain-auth"
+	"github.com/Plain-Org/plain-auth/plugins/oauthproxy"
+	"github.com/Plain-Org/plain-auth/schema"
 	"golang.org/x/oauth2"
 )
 

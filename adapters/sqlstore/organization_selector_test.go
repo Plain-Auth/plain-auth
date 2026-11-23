@@ -6,9 +6,9 @@ import (
 	"net/http"
 	"testing"
 
-	auth "github.com/Plain-Auth/plain-auth"
-	"github.com/Plain-Auth/plain-auth/client"
-	org "github.com/Plain-Auth/plain-auth/plugins/organization"
+	auth "github.com/Plain-Org/plain-auth"
+	"github.com/Plain-Org/plain-auth/client"
+	org "github.com/Plain-Org/plain-auth/plugins/organization"
 )
 
 func checkConcurrentOrganizationSelection(t *testing.T, store *Store, caller, sibling *client.Client, first, second, team string) {

@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	auth "github.com/Plain-Auth/plain-auth"
-	"github.com/Plain-Auth/plain-auth/plugins/twofactor"
+	auth "github.com/Plain-Org/plain-auth"
+	"github.com/Plain-Org/plain-auth/plugins/twofactor"
 	"github.com/pquerna/otp"
 	"github.com/pquerna/otp/totp"
 )

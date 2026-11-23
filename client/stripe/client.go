@@ -7,8 +7,8 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/Plain-Auth/plain-auth/client"
-	billing "github.com/Plain-Auth/plain-auth/plugins/stripe"
+	"github.com/Plain-Org/plain-auth/client"
+	billing "github.com/Plain-Org/plain-auth/plugins/stripe"
 	sdk "github.com/stripe/stripe-go/v87"
 )
 

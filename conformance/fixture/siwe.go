@@ -6,7 +6,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/Plain-Auth/plain-auth/plugins/siwe"
+	"github.com/Plain-Org/plain-auth/plugins/siwe"
 )
 
 func walletFixtureOptions() siwe.Options {

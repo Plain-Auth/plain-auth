@@ -6,8 +6,8 @@ import (
 	"errors"
 	"time"
 
-	auth "github.com/Plain-Auth/plain-auth"
-	org "github.com/Plain-Auth/plain-auth/plugins/organization"
+	auth "github.com/Plain-Org/plain-auth"
+	org "github.com/Plain-Org/plain-auth/plugins/organization"
 )
 
 var _ org.ObservedProfileStore = (*Store)(nil)

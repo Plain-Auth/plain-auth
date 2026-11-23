@@ -8,9 +8,9 @@ import (
 	"strings"
 	"time"
 
-	auth "github.com/Plain-Auth/plain-auth"
-	"github.com/Plain-Auth/plain-auth/internal/emailaddress"
-	"github.com/Plain-Auth/plain-auth/plugins/siwe"
+	auth "github.com/Plain-Org/plain-auth"
+	"github.com/Plain-Org/plain-auth/internal/emailaddress"
+	"github.com/Plain-Org/plain-auth/plugins/siwe"
 )
 
 var _ siwe.ContactStore = (*Store)(nil)

@@ -1,13 +1,13 @@
 # Redis secondary storage
 
-Use the optional `github.com/Plain-Auth/plain-auth/adapters/redis` Go module to share rate limits across auth servers or store short-lived application values. It accepts a single-node `*redis.Client` from go-redis v9. The primary store continues to manage users, sessions and account data.
+Use the optional `github.com/Plain-Org/plain-auth/adapters/redis` Go module to share rate limits across auth servers or store short-lived application values. It accepts a single-node `*redis.Client` from go-redis v9. The primary store continues to manage users, sessions and account data.
 
 Install the adapter and core from the same preview revision in your application's Go module.
 
 ```sh
 go get \
-  github.com/Plain-Auth/plain-auth@main \
-  github.com/Plain-Auth/plain-auth/adapters/redis@main
+  github.com/Plain-Org/plain-auth@main \
+  github.com/Plain-Org/plain-auth/adapters/redis@main
 ```
 
 ## Share rate limits
@@ -19,8 +19,8 @@ import (
     "context"
     "time"
 
-    plainauth "github.com/Plain-Auth/plain-auth"
-    redisstore "github.com/Plain-Auth/plain-auth/adapters/redis"
+    plainauth "github.com/Plain-Org/plain-auth"
+    redisstore "github.com/Plain-Org/plain-auth/adapters/redis"
     "github.com/redis/go-redis/v9"
 )
 

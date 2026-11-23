@@ -8,10 +8,10 @@ import (
 	"net/http"
 	"net/url"
 
-	auth "github.com/Plain-Auth/plain-auth"
-	"github.com/Plain-Auth/plain-auth/adapters/sqlite"
-	"github.com/Plain-Auth/plain-auth/plugins/oauthpopup"
-	"github.com/Plain-Auth/plain-auth/plugins/oauthproxy"
+	auth "github.com/Plain-Org/plain-auth"
+	"github.com/Plain-Org/plain-auth/adapters/sqlite"
+	"github.com/Plain-Org/plain-auth/plugins/oauthpopup"
+	"github.com/Plain-Org/plain-auth/plugins/oauthproxy"
 	"golang.org/x/oauth2"
 )
 

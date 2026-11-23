@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Plain-Auth/plain-auth/schema"
+	"github.com/Plain-Org/plain-auth/schema"
 )
 
 // Hold the schema lock until the other connection is waiting for it. A server

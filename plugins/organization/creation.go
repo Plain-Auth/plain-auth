@@ -8,7 +8,7 @@ import (
 	"errors"
 	"time"
 
-	authn "github.com/Plain-Auth/plain-auth"
+	authn "github.com/Plain-Org/plain-auth"
 )
 
 // CreateOrganizationRequest creates an organization from trusted server code.

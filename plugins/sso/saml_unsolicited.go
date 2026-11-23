@@ -8,7 +8,7 @@ import (
 	"strings"
 	"unicode"
 
-	auth "github.com/Plain-Auth/plain-auth"
+	auth "github.com/Plain-Org/plain-auth"
 )
 
 // SAMLDirectory identifies the current registration for a host's IdP-initiated

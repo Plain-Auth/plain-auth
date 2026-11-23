@@ -5,8 +5,8 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/Plain-Auth/plain-auth/plugins/access"
-	org "github.com/Plain-Auth/plain-auth/plugins/organization"
+	"github.com/Plain-Org/plain-auth/plugins/access"
+	org "github.com/Plain-Org/plain-auth/plugins/organization"
 )
 
 // Compose custom roles from the exported default statements and roles, and

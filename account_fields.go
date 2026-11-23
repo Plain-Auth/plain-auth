@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"maps"
 
-	"github.com/Plain-Auth/plain-auth/internal/sessionfields"
+	"github.com/Plain-Org/plain-auth/internal/sessionfields"
 	"golang.org/x/oauth2"
 )
 

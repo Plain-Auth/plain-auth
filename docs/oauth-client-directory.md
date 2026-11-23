@@ -25,8 +25,8 @@ package example
 import (
     "context"
 
-    "github.com/Plain-Auth/plain-auth/client"
-    "github.com/Plain-Auth/plain-auth/plugins/oauthprovider"
+    "github.com/Plain-Org/plain-auth/client"
+    "github.com/Plain-Org/plain-auth/plugins/oauthprovider"
 )
 
 func dashboard(ctx context.Context, signedIn *client.Client) ([]oauthprovider.ClientDetails, error) {

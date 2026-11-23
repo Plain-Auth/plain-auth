@@ -1,6 +1,6 @@
 # Test helpers
 
-Import `github.com/Plain-Auth/plain-auth/authtest` from a Go test to build user and organization fixtures or read codes issued by your test server. The package runs in the test process and registers no HTTP routes.
+Import `github.com/Plain-Org/plain-auth/authtest` from a Go test to build user and organization fixtures or read codes issued by your test server. The package runs in the test process and registers no HTTP routes.
 
 ## Build fixture data
 

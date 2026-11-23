@@ -13,7 +13,7 @@ import (
 	"strconv"
 	"strings"
 
-	auth "github.com/Plain-Auth/plain-auth"
+	auth "github.com/Plain-Org/plain-auth"
 )
 
 // ResourceMetadata describes a protected API under RFC 9728. A nil slice omits

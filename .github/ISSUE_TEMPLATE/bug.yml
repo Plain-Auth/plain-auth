@@ -3,12 +3,12 @@ description: Report unexpected behavior in Plain Auth.
 body:
   - type: markdown
     attributes:
-      value: "For suspected vulnerabilities, use the [private security reporting guide](https://github.com/Plain-Auth/plain-auth/blob/main/SECURITY.md). Remove credentials, tokens, and personal data from examples."
+      value: "For suspected vulnerabilities, use the [private security reporting guide](https://github.com/Plain-Org/plain-auth/blob/main/SECURITY.md). Remove credentials, tokens, and personal data from examples."
   - type: input
     id: version
     attributes:
       label: Plain Auth version or commit
-      description: Run `go list -m github.com/Plain-Auth/plain-auth` in the application or `git rev-parse --short HEAD` in a checkout.
+      description: Run `go list -m github.com/Plain-Org/plain-auth` in the application or `git rev-parse --short HEAD` in a checkout.
     validations:
       required: true
   - type: textarea

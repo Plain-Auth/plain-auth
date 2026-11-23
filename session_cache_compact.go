@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Plain-Auth/plain-auth/internal/jsjson"
+	"github.com/Plain-Org/plain-auth/internal/jsjson"
 )
 
 // SessionCookieCacheStrategy selects the wire format of a browser session snapshot.

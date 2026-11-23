@@ -14,7 +14,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/Plain-Auth/plain-auth/plugins/sso"
+	"github.com/Plain-Org/plain-auth/plugins/sso"
 )
 
 func serveSAMLFixture(listener net.Listener, handler http.Handler, baseURL, dbPath string) error {

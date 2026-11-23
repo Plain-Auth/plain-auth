@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"os"
 
-	"github.com/Plain-Auth/plain-auth/plugins/magiclink"
+	"github.com/Plain-Org/plain-auth/plugins/magiclink"
 )
 
 func fixtureMagicLink(path string) magiclink.Options {

@@ -11,11 +11,11 @@ import (
 	"testing"
 	"time"
 
-	authn "github.com/Plain-Auth/plain-auth"
-	"github.com/Plain-Auth/plain-auth/client"
-	"github.com/Plain-Auth/plain-auth/plugins/admin"
-	"github.com/Plain-Auth/plain-auth/plugins/bearer"
-	"github.com/Plain-Auth/plain-auth/schema"
+	authn "github.com/Plain-Org/plain-auth"
+	"github.com/Plain-Org/plain-auth/client"
+	"github.com/Plain-Org/plain-auth/plugins/admin"
+	"github.com/Plain-Org/plain-auth/plugins/bearer"
+	"github.com/Plain-Org/plain-auth/schema"
 )
 
 func TestAdminLifecycleAcrossEngines(t *testing.T) {

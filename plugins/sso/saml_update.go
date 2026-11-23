@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 
-	auth "github.com/Plain-Auth/plain-auth"
+	auth "github.com/Plain-Org/plain-auth"
 )
 
 // SAMLMetadataStore replaces one registered IdP metadata document under a live

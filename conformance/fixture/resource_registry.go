@@ -7,8 +7,8 @@ import (
 	"log"
 	"net/http"
 
-	auth "github.com/Plain-Auth/plain-auth"
-	op "github.com/Plain-Auth/plain-auth/plugins/oauthprovider"
+	auth "github.com/Plain-Org/plain-auth"
+	op "github.com/Plain-Org/plain-auth/plugins/oauthprovider"
 )
 
 // The comparison harness invokes host-side methods here. Production auth handlers

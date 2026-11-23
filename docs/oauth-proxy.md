@@ -12,9 +12,9 @@ Register one redirect URI with the identity provider, such as `https://login.exa
 import (
     "os"
 
-    "github.com/Plain-Auth/plain-auth"
-    "github.com/Plain-Auth/plain-auth/plugins/oauthproxy"
-    "github.com/Plain-Auth/plain-auth/providers"
+    "github.com/Plain-Org/plain-auth"
+    "github.com/Plain-Org/plain-auth/plugins/oauthproxy"
+    "github.com/Plain-Org/plain-auth/providers"
 )
 
 func newAuth(store plainauth.Store, publicURL, sharedProxySecret string) (*plainauth.Auth, error) {

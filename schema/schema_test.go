@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Plain-Auth/plain-auth/schema"
+	"github.com/Plain-Org/plain-auth/schema"
 )
 
 func TestGeneratePluginSelection(t *testing.T) {

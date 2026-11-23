@@ -10,9 +10,9 @@ Register the popup plugin alongside your OAuth provider. For embedded apps, inst
 import (
     "net/http"
 
-    "github.com/Plain-Auth/plain-auth"
-    "github.com/Plain-Auth/plain-auth/plugins/bearer"
-    "github.com/Plain-Auth/plain-auth/plugins/oauthpopup"
+    "github.com/Plain-Org/plain-auth"
+    "github.com/Plain-Org/plain-auth/plugins/bearer"
+    "github.com/Plain-Org/plain-auth/plugins/oauthpopup"
 )
 
 // opts already contains the store, secret, public BaseURL and SocialProviders.

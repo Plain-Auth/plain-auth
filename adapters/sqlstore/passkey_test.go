@@ -15,9 +15,9 @@ import (
 	"testing"
 	"time"
 
-	auth "github.com/Plain-Auth/plain-auth"
-	pk "github.com/Plain-Auth/plain-auth/plugins/passkey"
-	"github.com/Plain-Auth/plain-auth/schema"
+	auth "github.com/Plain-Org/plain-auth"
+	pk "github.com/Plain-Org/plain-auth/plugins/passkey"
+	"github.com/Plain-Org/plain-auth/schema"
 	"github.com/fxamacker/cbor/v2"
 )
 

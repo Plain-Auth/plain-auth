@@ -6,7 +6,7 @@ import (
 	"errors"
 	"slices"
 
-	"github.com/Plain-Auth/plain-auth/plugins/access"
+	"github.com/Plain-Org/plain-auth/plugins/access"
 )
 
 // StoredRoleGrants are the resource actions attached to a role in one organization.

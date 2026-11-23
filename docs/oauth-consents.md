@@ -10,10 +10,10 @@ Enable the `oauth-provider` database profile and install the consent plugin when
 import (
     "context"
 
-    auth "github.com/Plain-Auth/plain-auth"
-    "github.com/Plain-Auth/plain-auth/adapters/sqlstore"
-    "github.com/Plain-Auth/plain-auth/plugins/oauthprovider"
-    "github.com/Plain-Auth/plain-auth/schema"
+    auth "github.com/Plain-Org/plain-auth"
+    "github.com/Plain-Org/plain-auth/adapters/sqlstore"
+    "github.com/Plain-Org/plain-auth/plugins/oauthprovider"
+    "github.com/Plain-Org/plain-auth/schema"
 )
 
 func openAuth(ctx context.Context, dialect, dsn string) (*auth.Auth, *sqlstore.Store, error) {
@@ -65,8 +65,8 @@ The Go client maintains a separate cookie jar for each user. Use the signed-in c
 import (
     "context"
 
-    "github.com/Plain-Auth/plain-auth/client"
-    "github.com/Plain-Auth/plain-auth/plugins/oauthprovider"
+    "github.com/Plain-Org/plain-auth/client"
+    "github.com/Plain-Org/plain-auth/plugins/oauthprovider"
 )
 
 func updateGrant(ctx context.Context, signedIn *client.Client, grantID string) (oauthprovider.Consent, error) {

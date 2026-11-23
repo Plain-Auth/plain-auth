@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"strings"
 
-	auth "github.com/Plain-Auth/plain-auth"
+	auth "github.com/Plain-Org/plain-auth"
 )
 
 // UpdateMemberRoleRequest replaces all roles on one membership. An empty

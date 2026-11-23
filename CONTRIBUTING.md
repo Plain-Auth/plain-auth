@@ -4,7 +4,7 @@ Use the [feature checklist](docs/parity/README.md) to find an open capability. A
 
 ## Local setup
 
-1. Fork the [repository](https://github.com/Plain-Auth/plain-auth) and clone your fork.
+1. Fork the [repository](https://github.com/Plain-Org/plain-auth) and clone your fork.
 2. Install a patched Go 1.26 or newer toolchain and a C compiler. Install Node 24 and npm if you will run the JavaScript client conformance tests.
 3. Run `go mod download` and start the [example application](README.md#quickstart).
 4. For PostgreSQL and MySQL changes, set up dedicated test databases using the [database guide](docs/databases.md#run-database-integration-tests).
@@ -64,12 +64,12 @@ npm --prefix conformance test
 
 ## Working in GitHub
 
-Anyone with a GitHub account can [report a bug or request a feature](https://github.com/Plain-Auth/plain-auth/issues/new/choose). For a new integration, schema change, or public API, open a feature request first so maintainers and contributors can agree on the behavior. Use the [security reporting guide](SECURITY.md) for suspected vulnerabilities.
+Anyone with a GitHub account can [report a bug or request a feature](https://github.com/Plain-Org/plain-auth/issues/new/choose). For a new integration, schema change, or public API, open a feature request first so maintainers and contributors can agree on the behavior. Use the [security reporting guide](SECURITY.md) for suspected vulnerabilities.
 
 1. Create a branch in your fork for one change. A documentation fix or a small bug fix can go straight to a pull request.
 2. Implement the change, add or update the relevant tests and docs, and link the evidence in the checklist. Review `git diff` and use a descriptive commit such as `feat: add PostgreSQL session storage`.
 3. Run the checks above. Use `make verify-commit` to run the full suite from an archive of your commit. In the pull request, say what you ran and which services you used.
-4. Push your branch to your fork. On GitHub, select **Compare & pull request**, set the base to **Plain-Auth/plain-auth** and **main**, and describe the user-visible change. A maintainer reviews the change and merges it when the checks pass. [GitHub's fork pull-request guide](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks/creating-a-pull-request-from-a-fork)
+4. Push your branch to your fork. On GitHub, select **Compare & pull request**, set the base to **Plain-Org/plain-auth** and **main**, and describe the user-visible change. A maintainer reviews the change and merges it when the checks pass. [GitHub's fork pull-request guide](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks/creating-a-pull-request-from-a-fork)
 
 During the preview, the maintainer also develops directly on `main`, one feature at a time:
 
@@ -80,4 +80,4 @@ During the preview, the maintainer also develops directly on `main`, one feature
 
 On GitHub, open the [feature checklist](docs/parity/README.md), follow the test link on a completed behavior, and use the file's **History** to find the implementing commit. Changes to checkboxes are reviewed alongside the feature implementation and test evidence. Keep credentials, local database files, and session cookie jars out of commits.
 
-Open **Actions → Verify** in GitHub and select the run for your commit. Expand **Test routers, databases, clients and schema profiles** to see the Go race tests, each module’s vet results, browser conformance tests and schema checks. If verification fails, the first failing test or compile error identifies what to reproduce locally. Each job starts PostgreSQL, MySQL and Valkey services. SQLite uses temporary files, and the browser tests use headless Chrome with local fixtures. [Workflow runs](https://github.com/Plain-Auth/plain-auth/actions/workflows/verify.yml)
+Open **Actions → Verify** in GitHub and select the run for your commit. Expand **Test routers, databases, clients and schema profiles** to see the Go race tests, each module’s vet results, browser conformance tests and schema checks. If verification fails, the first failing test or compile error identifies what to reproduce locally. Each job starts PostgreSQL, MySQL and Valkey services. SQLite uses temporary files, and the browser tests use headless Chrome with local fixtures. [Workflow runs](https://github.com/Plain-Org/plain-auth/actions/workflows/verify.yml)

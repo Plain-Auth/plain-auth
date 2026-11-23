@@ -1,6 +1,6 @@
 package sqlstore
 
-import auth "github.com/Plain-Auth/plain-auth"
+import auth "github.com/Plain-Org/plain-auth"
 
 func (t *adminTX) SelectPhoneFields() { t.phone = true }
 

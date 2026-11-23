@@ -9,7 +9,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/Plain-Auth/plain-auth/internal/polarledger"
+	"github.com/Plain-Org/plain-auth/internal/polarledger"
 )
 
 //go:embed schema/*.sql

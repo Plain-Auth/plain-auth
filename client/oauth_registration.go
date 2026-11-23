@@ -4,7 +4,7 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/Plain-Auth/plain-auth/plugins/oauthprovider"
+	"github.com/Plain-Org/plain-auth/plugins/oauthprovider"
 )
 
 // RegisterOAuthClient registers an application on the configured auth mount.

@@ -4,7 +4,7 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/Plain-Auth/plain-auth/internal/httporigin"
+	"github.com/Plain-Org/plain-auth/internal/httporigin"
 )
 
 // HasOAuthProvider reports whether an account provider ID belongs to a

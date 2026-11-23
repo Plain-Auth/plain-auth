@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"time"
 
-	plainauth "github.com/Plain-Auth/plain-auth"
+	plainauth "github.com/Plain-Org/plain-auth"
 )
 
 // NewPlugin shares management routes among independently configured key types.

@@ -1,7 +1,7 @@
 # Plain Auth
 
-[![Verify](https://github.com/Plain-Auth/plain-auth/actions/workflows/verify.yml/badge.svg?branch=main)](https://github.com/Plain-Auth/plain-auth/actions/workflows/verify.yml)
-[![Go Reference](https://pkg.go.dev/badge/github.com/Plain-Auth/plain-auth.svg)](https://pkg.go.dev/github.com/Plain-Auth/plain-auth)
+[![Verify](https://github.com/Plain-Org/plain-auth/actions/workflows/verify.yml/badge.svg?branch=main)](https://github.com/Plain-Org/plain-auth/actions/workflows/verify.yml)
+[![Go Reference](https://pkg.go.dev/badge/github.com/Plain-Org/plain-auth.svg)](https://pkg.go.dev/github.com/Plain-Org/plain-auth)
 
 Plain Auth is an authentication library for Go servers. Mount its `http.Handler` on your router, then use the same instance in your own handlers to read the signed-in user. Your application keeps its listener, middleware, routes, database and screens, and any frontend or HTTP client can call the JSON API.
 
@@ -26,7 +26,7 @@ Every capability has a guide in the [documentation index](docs/README.md).
 Use a patched Go 1.26 or newer toolchain and a C compiler (for SQLite). Clone the repository, generate a signing secret and start the example app.
 
 ```sh
-git clone https://github.com/Plain-Auth/plain-auth.git
+git clone https://github.com/Plain-Org/plain-auth.git
 cd plain-auth
 export "$(go run ./cmd/authctl secret)"
 export AUTH_URL=http://127.0.0.1:3000
@@ -51,7 +51,7 @@ curl -sS -b cookies.txt -c cookies.txt http://127.0.0.1:3000/api/auth/sign-out \
 Install the SQLite adapter, which also brings in the core library, from `main`:
 
 ```sh
-go get github.com/Plain-Auth/plain-auth/adapters/sqlite@main
+go get github.com/Plain-Org/plain-auth/adapters/sqlite@main
 ```
 
 Create one instance and mount it under its base path (`/api/auth` by default):
@@ -60,8 +60,8 @@ Create one instance and mount it under its base path (`/api/auth` by default):
 import (
     "strings"
 
-    "github.com/Plain-Auth/plain-auth"
-    "github.com/Plain-Auth/plain-auth/adapters/sqlite"
+    "github.com/Plain-Org/plain-auth"
+    "github.com/Plain-Org/plain-auth/adapters/sqlite"
 )
 
 store, err := sqlite.Open("auth.db")
@@ -80,7 +80,7 @@ if err != nil {
 mux.Handle(strings.TrimSuffix(auth.BasePath(), "/")+"/", auth)
 ```
 
-Inside your own handlers, `auth.GetSession(r.Context(), r.Header)` returns the signed-in user, or `nil` when the request is anonymous. `New` reads `AUTH_SECRET` and `AUTH_URL` from the environment; see [environment configuration](docs/environment.md) for every setting. The module path is `github.com/Plain-Auth/plain-auth` and the package name is `plainauth`.
+Inside your own handlers, `auth.GetSession(r.Context(), r.Header)` returns the signed-in user, or `nil` when the request is anonymous. `New` reads `AUTH_SECRET` and `AUTH_URL` from the environment; see [environment configuration](docs/environment.md) for every setting. The module path is `github.com/Plain-Org/plain-auth` and the package name is `plainauth`.
 
 - [examples/basic](examples/basic/main.go): a complete host app with a protected route and graceful shutdown
 - [Router integrations](docs/routers.md): ServeMux, chi, Gorilla Mux, Gin, Echo and Fiber

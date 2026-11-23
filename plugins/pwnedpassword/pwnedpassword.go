@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	authn "github.com/Plain-Auth/plain-auth"
+	authn "github.com/Plain-Org/plain-auth"
 )
 
 // Options configures a server-side password check. A nil Paths slice selects

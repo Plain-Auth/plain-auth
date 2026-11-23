@@ -13,8 +13,8 @@ import (
 	"runtime/debug"
 	"strings"
 
-	"github.com/Plain-Auth/plain-auth/internal/configenv"
-	"github.com/Plain-Auth/plain-auth/schema"
+	"github.com/Plain-Org/plain-auth/internal/configenv"
+	"github.com/Plain-Org/plain-auth/schema"
 )
 
 func generateSecret() string { var b [32]byte; rand.Read(b[:]); return hex.EncodeToString(b[:]) }

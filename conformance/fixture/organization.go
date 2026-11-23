@@ -5,10 +5,10 @@ import (
 	"encoding/json"
 	"os"
 
-	auth "github.com/Plain-Auth/plain-auth"
-	"github.com/Plain-Auth/plain-auth/adapters/sqlstore"
-	"github.com/Plain-Auth/plain-auth/plugins/access"
-	"github.com/Plain-Auth/plain-auth/plugins/organization"
+	auth "github.com/Plain-Org/plain-auth"
+	"github.com/Plain-Org/plain-auth/adapters/sqlstore"
+	"github.com/Plain-Org/plain-auth/plugins/access"
+	"github.com/Plain-Org/plain-auth/plugins/organization"
 )
 
 // The differential test invokes the server-only operation in a separate process.

@@ -7,7 +7,7 @@ import (
 	"slices"
 	"strings"
 
-	auth "github.com/Plain-Auth/plain-auth"
+	auth "github.com/Plain-Org/plain-auth"
 )
 
 // A stored code can carry the claims object directly or as an encoded query parameter.

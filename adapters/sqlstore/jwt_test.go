@@ -13,9 +13,9 @@ import (
 	"testing"
 	"time"
 
-	auth "github.com/Plain-Auth/plain-auth"
-	jwtplugin "github.com/Plain-Auth/plain-auth/plugins/jwt"
-	"github.com/Plain-Auth/plain-auth/schema"
+	auth "github.com/Plain-Org/plain-auth"
+	jwtplugin "github.com/Plain-Org/plain-auth/plugins/jwt"
+	"github.com/Plain-Org/plain-auth/schema"
 	libjwt "github.com/golang-jwt/jwt/v5"
 )
 

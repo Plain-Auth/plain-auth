@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	authn "github.com/Plain-Auth/plain-auth"
+	authn "github.com/Plain-Org/plain-auth"
 )
 
 func TestVerificationGatedSignUpAndSignIn(t *testing.T) {

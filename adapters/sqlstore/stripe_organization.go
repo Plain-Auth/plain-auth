@@ -6,8 +6,8 @@ import (
 	"errors"
 	"time"
 
-	org "github.com/Plain-Auth/plain-auth/plugins/organization"
-	billing "github.com/Plain-Auth/plain-auth/plugins/stripe"
+	org "github.com/Plain-Org/plain-auth/plugins/organization"
+	billing "github.com/Plain-Org/plain-auth/plugins/stripe"
 )
 
 func billingTable(ctx context.Context) string {

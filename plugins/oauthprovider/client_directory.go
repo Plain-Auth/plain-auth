@@ -9,7 +9,7 @@ import (
 	"reflect"
 	"strings"
 
-	auth "github.com/Plain-Auth/plain-auth"
+	auth "github.com/Plain-Org/plain-auth"
 )
 
 // PublicClient holds the display metadata a signed-in user can see on a login or consent screen.

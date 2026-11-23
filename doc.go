@@ -25,5 +25,5 @@
 // [New] reads AUTH_SECRET and AUTH_URL from the environment when the matching
 // options are empty. Storage adapters live in the adapters directory, optional
 // features in plugins, and sign-in providers in providers. The guides at
-// https://github.com/Plain-Auth/plain-auth/tree/main/docs cover each feature.
+// https://github.com/Plain-Org/plain-auth/tree/main/docs cover each feature.
 package plainauth

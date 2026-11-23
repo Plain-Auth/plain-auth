@@ -7,7 +7,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/Plain-Auth/plain-auth/internal/jsjson"
+	"github.com/Plain-Org/plain-auth/internal/jsjson"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 )

@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	auth "github.com/Plain-Auth/plain-auth"
-	"github.com/Plain-Auth/plain-auth/plugins/emailotp"
+	auth "github.com/Plain-Org/plain-auth"
+	"github.com/Plain-Org/plain-auth/plugins/emailotp"
 )
 
 func TestEmailOTPConcurrentMemory(t *testing.T) {
