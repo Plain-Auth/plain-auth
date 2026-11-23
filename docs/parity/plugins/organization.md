@@ -54,24 +54,27 @@
     - [x] Preserve a stored role while any tenant member holds it, including among multiple role names ([test](../../../conformance/organization-delete-role.mjs#L59))
     - [x] Serialize role removal with membership changes across SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/organization_delete_role_test.go#L63))
     - [x] Create, read, list and remove a stored role through six different Go HTTP routers ([test](../../../integrations/routers/routers_test.go#L244))
-  - [ ] `GET /organization/list-roles`
+  - [x] `GET /organization/list-roles` ([test](../../../conformance/organization-role-directory.mjs#L22))
     - [x] Read up to 100 stored definitions in the selected organization and use a direct lookup beyond the list ([test](../../../conformance/organization-role-directory.mjs#L67))
     - [x] Require the current membership and ac.read before listing stored roles ([test](../../../conformance/organization-role-directory.mjs#L61))
     - [x] Use the Go client against three SQL engines and honor withdrawal of directory access ([test](../../../adapters/sqlstore/organization_role_directory_test.go#L79))
     - [x] Create, read, list and remove a stored role through six different Go HTTP routers ([test](../../../integrations/routers/routers_test.go#L244))
     - [x] List the values written through another application with the original logical keys ([test](../../../conformance/organization-role-fields.mjs#L66))
-  - [ ] `GET /organization/get-role`
+    - [x] Stored roles of the active or an explicit organization are listed after authentication, membership and ac.read checks, capped at 100 rows, on both runtimes ([test](../../../conformance/organization-role-directory.mjs#L22))
+  - [x] `GET /organization/get-role` ([test](../../../conformance/organization-role-directory.mjs#L23))
     - [x] Read the tenant’s stored permission object and timestamps with a case-sensitive selector ([test](../../../conformance/organization-role-directory.mjs#L41))
     - [x] Require the current membership and ac.read before looking up a role ([test](../../../conformance/organization-role-directory.mjs#L60))
     - [x] Keep SQL lookup case-sensitive across all three engines and check live session ownership ([test](../../../adapters/sqlstore/organization_role_directory_test.go#L68))
     - [x] Create, read, list and remove a stored role through six different Go HTTP routers ([test](../../../integrations/routers/routers_test.go#L244))
     - [x] Read mapped role fields across applications and preserve defaults, explicit nulls, false and zero ([test](../../../conformance/organization-role-fields.mjs#L53))
-  - [ ] `POST /organization/update-role`
+    - [x] A stored role is looked up by name or exact ID with name precedence, case-sensitive matching, query validation, membership and ac.read checks, on both runtimes ([test](../../../conformance/organization-role-directory.mjs#L23))
+  - [x] `POST /organization/update-role` ([test](../../../conformance/organization-update-role.mjs#L6))
     - [x] Apply new grants on the next permission check and preserve assigned member and invitation labels after a rename ([test](../../../conformance/organization-update-role.mjs#L72))
     - [x] Preserve concurrent changes to the same role and roll back a conflicting rename on each database ([test](../../../adapters/sqlstore/organization_update_role_test.go#L116))
     - [x] Require delegation of retained grants when moving a role to a new name ([test](../../../adapters/sqlstore/organization_update_role_test.go#L54))
     - [x] Update declared fields and retain omitted values and host-owned defaults ([test](../../../conformance/organization-role-fields.mjs#L63))
     - [x] Exchange JSON objects and typed arrays between clients while preserving empty arrays, explicit nulls and fractional weights ([test](../../../conformance/organization-role-fields.mjs#L88))
+    - [x] Updates a stored role's grants and name with input validation, organization scoping, permission and delegation checks and reserved-name rejection, and the change applies to the next permission check ([test](../../../conformance/organization-update-role.mjs#L6))
   - [ ] `POST /organization/invite-member`
     - [x] Authorize the inviter, constrain role grants, and resend the same invitation ([test](../../../plugins/organization/organization_test.go#L133))
     - [x] Require a live inviter session for invitation creation and resends ([test](../../../adapters/sqlstore/organization_cleanup_test.go#L169))
@@ -107,27 +110,31 @@
     - [x] Allow the exact expiry millisecond and reject a later acceptance on all three SQL engines ([test](../../../adapters/sqlstore/organization_decision_test.go#L120))
     - [x] Join the organization and every invited team or none under resolved caps checked with the recipient's session ([test](../../../adapters/sqlstore/organization_team_seats_test.go#L147))
     - [x] Settle every invited team's resolved cap before running the acceptance hook once ([test](../../../adapters/sqlstore/organization_team_seats_test.go#L164))
-  - [ ] `POST /organization/reject-invitation`
+  - [x] `POST /organization/reject-invitation` ([test](../../../conformance/organization-invitations.mjs#L205))
     - [x] Decline an expired pending invitation through the recipient's session and preserve the current organization and team ([test](../../../conformance/organization-invitations.mjs#L257))
     - [x] Allow only one decision when acceptance races rejection across two database connections ([test](../../../adapters/sqlstore/organization_decision_test.go#L79))
     - [x] Deliver the signed-in actor, invitation and destination before and after an authorized decision ([test](../../../conformance/invitation-hooks.mjs#L61))
     - [x] Abort the write on a before-hook error and keep the committed status on an after-hook error ([test](../../../conformance/invitation-hooks.mjs#L66))
     - [x] Recheck changed invitation inputs, live recipient and administrator permissions after host code runs ([test](../../../adapters/sqlstore/organization_decision_hooks_test.go#L120))
-  - [ ] `POST /organization/cancel-invitation`
+    - [x] The recipient rejects a pending invitation, including an expired one, after validation, recipient and optional email-verification checks; the response has member null and a team-aware invitation, and the session selection is unchanged ([test](../../../conformance/organization-invitations.mjs#L205))
+  - [x] `POST /organization/cancel-invitation` ([test](../../../conformance/organization-invitations.mjs#L275))
     - [x] Cancel expired, rejected and accepted invitations and retain previously granted team and organization access ([test](../../../conformance/organization-invitations.mjs#L326))
     - [x] Recheck destination permissions for repeated cancellation after a role change ([test](../../../conformance/organization-invitations.mjs#L336))
     - [x] Serialize cancellation with acceptance and preserve the committed membership outcome on three SQL engines ([test](../../../adapters/sqlstore/organization_decision_test.go#L106))
     - [x] Deliver the signed-in actor, invitation and destination before and after an authorized decision ([test](../../../conformance/invitation-hooks.mjs#L61))
     - [x] Abort the write on a before-hook error and keep the committed status on an after-hook error ([test](../../../conformance/invitation-hooks.mjs#L66))
     - [x] Recheck changed invitation inputs, live recipient and administrator permissions after host code runs ([test](../../../adapters/sqlstore/organization_decision_hooks_test.go#L120))
-  - [ ] `GET /organization/get-invitation`
+    - [x] Cancels pending, expired, rejected and accepted invitations after validation, membership and invitation.cancel checks, keeps existing access and rechecks permission after a role change ([test](../../../conformance/organization-invitations.mjs#L275))
+  - [x] `GET /organization/get-invitation` ([test](../../../conformance/organization-invitations.mjs#L143))
     - [x] Read the current inviter email and organization details for the pending invitation ([test](../../../conformance/organization-invitations.mjs#L180))
     - [x] Apply the configured verification rule after matching the current recipient ([test](../../../adapters/sqlstore/organization_received_test.go#L56))
     - [x] Refuse details after the original inviter leaves the organization ([test](../../../conformance/organization-invitations.mjs#L196))
-  - [ ] `GET /organization/list-invitations`
+    - [x] Returns a pending, unexpired invitation with current organization and inviter details, enforcing the recipient, optional email verification and the inviter's continued membership ([test](../../../conformance/organization-invitations.mjs#L143))
+  - [x] `GET /organization/list-invitations` ([test](../../../conformance/organization-invitations.mjs#L6))
     - [x] List every invitation status and preserve expired pending invitations ([test](../../../conformance/organization-invitations.mjs#L53))
     - [x] Restrict owner invitations to owners, including compound target roles ([test](../../../conformance/organization-invitations.mjs#L65))
     - [x] Expose a nullable team ID only on a team-enabled installation ([test](../../../conformance/organization-invitations.mjs#L59))
+    - [x] Lists invitations of every status for the active or explicit organization, requiring membership and invitation.create, hiding creator-role invitations from non-owners, with a team field only when teams are enabled ([test](../../../conformance/organization-invitations.mjs#L6))
   - [ ] `GET /organization/list-user-invitations`
     - [x] List pending invitations for a verified mailbox across organizations and return each destination name ([test](../../../conformance/organization-invitations.mjs#L119))
     - [x] Reject a mailbox selector on HTTP and require a verified recipient session ([test](../../../conformance/organization-invitations.mjs#L103))
@@ -144,7 +151,7 @@
     - [x] Run the member addition hooks for a trusted grant with the member's profile and organization and save the returned roles ([test](../../../adapters/sqlstore/organization_member_hooks_test.go#L96))
     - [x] Keep duplicate, unknown, wrong-team and full-organization grants away from the member addition hooks ([test](../../../adapters/sqlstore/organization_member_hooks_test.go#L108))
     - [x] Cancel a trusted grant when the member addition hook fails ([test](../../../adapters/sqlstore/organization_member_hooks_test.go#L122))
-  - [ ] `POST /organization/remove-member`
+  - [x] `POST /organization/remove-member` ([test](../../../conformance/organization-removal.mjs#L5))
     - [x] Resolve simultaneous opposing owner removals in a single transaction attempt while both PostgreSQL connections wait on database locks ([test](../../../adapters/sqlstore/organization_locking_test.go#L106))
     - [x] Remove by case-insensitive email or exact membership ID and return the matching public member shape through the released client ([test](../../../conformance/organization-removal.mjs#L54))
     - [x] Clear the removed tenant from affected sessions and preserve another tenant's selection ([test](../../../adapters/sqlstore/organization_removal_test.go#L158))
@@ -152,7 +159,8 @@
     - [x] Give the member removal hooks the membership, its account and the organization ([test](../../../adapters/sqlstore/organization_member_removal_hooks_test.go#L88))
     - [x] Keep unpermitted, final-owner and unknown-member removals away from the removal hooks ([test](../../../adapters/sqlstore/organization_member_removal_hooks_test.go#L108))
     - [x] Recheck the caller's permission after the before hook and keep the member when it was revoked ([test](../../../adapters/sqlstore/organization_member_removal_hooks_test.go#L119))
-  - [ ] `POST /organization/update-member-role`
+    - [x] A member is removed by case-insensitive email or exact ID from the active or explicit organization, with permission, owner-protection and tenant checks, and the member shape is returned on both runtimes ([test](../../../conformance/organization-removal.mjs#L5))
+  - [x] `POST /organization/update-member-role` ([test](../../../conformance/organization-role.mjs#L5))
     - [x] Apply default role grants, direct ownership transfer and effective demotion through the released organization client ([test](../../../conformance/organization-role.mjs#L67))
     - [x] Preserve role order and return the updated membership directly ([test](../../../conformance/organization-role.mjs#L57))
     - [x] Distinguish an unknown membership from a membership belonging to another tenant ([test](../../../conformance/organization-role.mjs#L42))
@@ -161,17 +169,20 @@
     - [x] Give the member role hooks the member, the requested and previous roles, the account and the organization ([test](../../../adapters/sqlstore/organization_member_role_hooks_test.go#L82))
     - [x] Save the roles returned by the before hook in place of the requested roles ([test](../../../adapters/sqlstore/organization_member_role_hooks_test.go#L89))
     - [x] Keep unpermitted, unknown-role and sole-owner changes away from the role hooks ([test](../../../adapters/sqlstore/organization_member_role_hooks_test.go#L116))
+    - [x] Member roles are changed with active-org, member, tenant, permission, owner-assignment, sole-owner, unknown-role and empty-role checks, plus role normalization and ownership transfer, on both runtimes ([test](../../../conformance/organization-role.mjs#L5))
   - [x] `GET /organization/get-active-member` ([test](../../../conformance/core.test.mjs#L1864))
     - [x] Read the live membership and its public user profile from each signed-in session across organization switches ([test](../../../conformance/core.test.mjs#L1864))
     - [x] Distinguish a cleared selection from a removed membership and a signed-out client on all three SQL engines ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L284))
     - [x] Report role updates immediately and ignore caller-supplied organization and user selectors ([test](../../../conformance/core.test.mjs#L1877))
-  - [ ] `POST /organization/leave`
+  - [x] `POST /organization/leave` ([test](../../../conformance/organization-removal.mjs#L45))
     - [x] Return the signed-in user's membership and profile when leaving an organization ([test](../../../conformance/organization-removal.mjs#L47))
     - [x] Keep one owner when two separate database connections attempt to leave simultaneously ([test](../../../adapters/sqlstore/organization_removal_test.go#L200))
-  - [ ] `GET /organization/list-members`
+    - [x] Leaving the named organization returns the departed membership with the user's email; a repeat departure and the sole owner are rejected on both runtimes ([test](../../../conformance/organization-removal.mjs#L45))
+  - [x] `GET /organization/list-members` ([test](../../../conformance/organization-directory.mjs#L6))
     - [x] Return public user profiles and membership fields exclusively for a shared organization, including pages larger than 100 ([test](../../../conformance/organization-directory.mjs#L74))
     - [x] Use the same committed snapshot for permissions, the filtered count and member rows on three SQL engines ([test](../../../adapters/sqlstore/organization_directory_test.go#L105))
     - [x] Reject a removed caller and deny access to totals even on an empty page ([test](../../../conformance/organization-directory.mjs#L58))
+    - [x] Pages, sorts and filters members with every operator, slug-over-ID precedence, membership checks, public profiles and the 100-row default ([test](../../../conformance/organization-directory.mjs#L6))
   - [x] `GET /organization/get-active-member-role` ([test](../../../conformance/organization-role.mjs#L104))
     - [x] Read roles for yourself and fellow members, resolve slug before ID or active session, and preserve the session selection ([test](../../../conformance/organization-role.mjs#L104))
     - [x] Require current membership from both users and deny an outsider access to an existing member’s role ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L271))
@@ -205,7 +216,7 @@
     - [x] Return the shared roster and enabled teams with invitations filtered to the caller’s role ([test](../../../conformance/organization-full.mjs#L51))
     - [x] Read the member’s current role and the visible invitations from the same snapshot on three SQL engines ([test](../../../adapters/sqlstore/organization_full_test.go#L116))
     - [x] Clear the calling session’s selection after a denied lookup and preserve other sessions ([test](../../../conformance/organization-full.mjs#L71))
-  - [ ] `POST /organization/set-active`
+  - [x] `POST /organization/set-active` ([test](../../../conformance/organization-selection.mjs#L5))
     - [x] Preserve the same organization’s selected team and clear it across organization switches on a plain node ([test](../../../adapters/sqlstore/organization_topology_test.go#L123))
     - [x] Select by slug or clear the current session selection ([test](../../../plugins/organization/organization_test.go#L190))
     - [x] Use HTTP JSON with separate cookie jars to switch or clear organizations and teams without affecting another login ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L23))
@@ -215,8 +226,10 @@
     - [x] Clear a denied selection for the calling login and preserve the other login on both organization profiles ([test](../../../conformance/organization-selection.mjs#L58))
     - [x] Persist a consistent organization and team when a successful switch races a denied switch ([test](../../../adapters/sqlstore/organization_selector_test.go#L90))
     - [x] Reject a denied signed selector before resuming the authorization request ([test](../../../adapters/sqlstore/oauth_post_login_test.go#L151))
-  - [ ] `GET /organization/list`
+    - [x] Validates selector types before authentication, selects by ID or slug with ID precedence, returns the current selection when both are omitted, clears on a null ID, and on a denied selection returns 403 and clears only the calling login ([test](../../../conformance/organization-selection.mjs#L5))
+  - [x] `GET /organization/list` ([test](../../../conformance/core.test.mjs#L280))
     - [x] List only organizations the current user belongs to ([test](../../../plugins/organization/organization_test.go#L113))
+    - [x] List no organizations before the user joins one and exactly the joined organization after accepting an invitation, on both runtimes ([test](../../../conformance/core.test.mjs#L280))
   - [ ] `POST /organization/create-team`
     - [x] Create teams within an organization and enforce its configured maximum ([test](../../../adapters/sqlstore/organization_teams_test.go#L106))
     - [x] Reserve the last team slot across authenticated requests and trusted creation on independent database connections ([test](../../../adapters/sqlstore/organization_team_creation_test.go#L88))
@@ -232,8 +245,9 @@
     - [x] Update the team name and reject another organization’s team ID ([test](../../../adapters/sqlstore/organization_teams_test.go#L114))
     - [x] Give the team update hooks the current team and the requested name, and save a returned name ([test](../../../adapters/sqlstore/organization_team_hooks_test.go#L108))
     - [x] Keep unpermitted, unknown and final-team changes away from the team hooks ([test](../../../adapters/sqlstore/organization_team_hooks_test.go#L118))
-  - [ ] `GET /organization/list-teams`
+  - [x] `GET /organization/list-teams` ([test](../../../conformance/core.test.mjs#L612))
     - [x] Read the organization’s teams and deny outsiders using the browser client ([test](../../../conformance/core.test.mjs#L626))
+    - [x] List the active organization's teams, including its default team, and deny an outsider who names the organization ([test](../../../conformance/core.test.mjs#L612))
   - [ ] `POST /organization/set-active-team`
     - [x] Select a team belonging to the active organization and preserve session cookie persistence ([test](../../../adapters/sqlstore/organization_teams_test.go#L156))
     - [x] Use HTTP JSON with separate cookie jars to switch or clear organizations and teams without affecting another login ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L23))
@@ -241,10 +255,12 @@
     - [x] Describe nullable selection results across enabled profiles and expose signed destinations when the host supports them ([test](../../../plugins/openapi/organization_selection_test.go#L20))
     - [x] On a signed browser navigation, send the Location of the consent page bound to the selecting session ([test](../../../adapters/sqlstore/oauth_post_login_test.go#L181))
     - [x] Switch the session’s organization and team using plain HTTP and JSON on six Go routers ([test](../../../integrations/routers/routers_test.go#L202))
-  - [ ] `GET /organization/list-user-teams`
+  - [x] `GET /organization/list-user-teams` ([test](../../../adapters/sqlstore/organization_teams_test.go#L250))
     - [x] Return self memberships across organizations and scope administrative queries to the selected organization ([test](../../../adapters/sqlstore/organization_teams_test.go#L266))
-  - [ ] `GET /organization/list-team-members`
+    - [x] Lists the caller's teams across organizations or within a named one, and lets an admin but not a plain member list another member's teams ([test](../../../adapters/sqlstore/organization_teams_test.go#L250))
+  - [x] `GET /organization/list-team-members` ([test](../../../conformance/core.test.mjs#L632))
     - [x] List members of the selected team and reject a caller whose membership was removed ([test](../../../adapters/sqlstore/organization_teams_test.go#L277))
+    - [x] List the active team's members and reject a removed caller who names that team ([test](../../../conformance/core.test.mjs#L632))
   - [ ] `POST /organization/add-team-member`
     - [x] Admit one candidate to the last seat across competing SQL-backed servers and return existing memberships on retry ([test](../../../adapters/sqlstore/organization_teams_test.go#L213))
     - [x] Ask the host for a team's cap with the manager's session, admit members only within it and return existing memberships without asking ([test](../../../adapters/sqlstore/organization_team_seats_test.go#L100))
@@ -252,10 +268,11 @@
     - [x] Give the team membership hooks the membership, the member's account, the team and the organization ([test](../../../adapters/sqlstore/organization_team_member_hooks_test.go#L99))
     - [x] Return an existing team membership without running the hooks ([test](../../../adapters/sqlstore/organization_team_member_hooks_test.go#L105))
     - [x] Check the team member limit after the before hook and skip the after hook when the team is full ([test](../../../adapters/sqlstore/organization_team_member_hooks_test.go#L111))
-  - [ ] `POST /organization/remove-team-member`
+  - [x] `POST /organization/remove-team-member` ([test](../../../adapters/sqlstore/organization_teams_test.go#L275))
     - [x] Remove membership and clear the affected user’s active team ([test](../../../adapters/sqlstore/organization_teams_test.go#L275))
     - [x] Cancel a team member removal when the before hook fails and run both hooks for a completed removal ([test](../../../adapters/sqlstore/organization_team_member_hooks_test.go#L128))
     - [x] Keep outsiders, unpermitted callers and non-members away from the team membership hooks ([test](../../../adapters/sqlstore/organization_team_member_hooks_test.go#L118))
+    - [x] Removing a team member through the Go client clears that user's active team and ends their access to the team's member list ([test](../../../adapters/sqlstore/organization_teams_test.go#L275))
   - [ ] `OrganizationSchema`
   - [ ] `roleSchema`
   - [ ] `invitationStatus`
@@ -301,9 +318,10 @@
     - [x] `roles` ([test](../../../conformance/organization-custom-roles.mjs#L41))
       - [x] Apply the host’s roles to profile changes, teams, invitations and live permissions ([test](../../../conformance/organization-custom-roles.mjs#L41))
       - [x] Recheck a custom inviter’s current grants after host callbacks on three SQL engines ([test](../../../adapters/sqlstore/organization_custom_roles_test.go#L68))
-    - [ ] `dynamicAccessControl`
+    - [x] `dynamicAccessControl` ([test](../../../conformance/organization-stored-roles.mjs#L9))
       - [x] Resolve the same role independently per organization and apply changes from another application on the next operation ([test](../../../conformance/organization-stored-roles.mjs#L54))
       - [x] Merge stored and static grants within one role and recheck the grant after a host callback ([test](../../../adapters/sqlstore/organization_stored_roles_test.go#L59))
+      - [x] With dynamic access control enabled, roles stored per organization govern invitations, team creation, profile updates and permission checks, and grant changes apply on the next operation ([test](../../../conformance/organization-stored-roles.mjs#L9))
     - [ ] `teams`
       - [x] Create and select a default team for the owner, or disable automatic creation ([test](../../../adapters/sqlstore/organization_teams_test.go#L324))
     - [x] `invitationExpiresIn` ([test](../../../conformance/invitation-expiration.mjs#L25))
@@ -316,7 +334,8 @@
     - [x] `cancelPendingInvitationsOnReInvite` ([test](../../../conformance/invitation-expiration.mjs#L81))
       - [x] Replace a live grant with the newly requested roles and teams while an explicit resend preserves the existing grant ([test](../../../conformance/invitation-expiration.mjs#L81))
       - [x] Roll back invalid replacements and serialize competing administrators on all three engines ([test](../../../adapters/sqlstore/organization_replacement_test.go#L63))
-    - [ ] `requireEmailVerificationOnInvitation`
+    - [x] `requireEmailVerificationOnInvitation` ([test](../../../conformance/organization-invitations.mjs#L172))
+      - [x] When enabled, getting, accepting or rejecting an invitation as an unverified recipient answers 403 until the email is verified; when disabled, an unverified recipient succeeds ([test](../../../conformance/organization-invitations.mjs#L172))
     - [x] `sendInvitationEmail` ([test](../../../conformance/invitation-delivery.mjs#L51))
       - [x] Deliver the committed grant with the sending membership, public user profile, destination organization and request metadata ([test](../../../conformance/invitation-delivery.mjs#L51))
       - [x] Return the saved grant after mail failure and permit a different administrator to resend it with its original identity ([test](../../../conformance/invitation-delivery.mjs#L47))
@@ -361,7 +380,8 @@
       - [x] Create an organization and its owner membership atomically ([test](../../../plugins/organization/organization_test.go#L97))
       - [ ] `POST /organization/create`
         - [ ] Parameter `name`
-        - [ ] Parameter `slug`
+        - [x] Parameter `slug` ([test](../../../adapters/sqlstore/organization_creation_policy_test.go#L69))
+          - [x] An HTTP creation returns the organization with the submitted slug and the creator as its owner on three SQL engines ([test](../../../adapters/sqlstore/organization_creation_policy_test.go#L69))
         - [ ] Parameter `logo` (optional)
         - [ ] Parameter `metadata` (optional)
         - [x] Parameter `userId` (optional) ([test](../../../adapters/sqlstore/organization_creation_hooks_test.go#L127))
@@ -370,11 +390,14 @@
       - [ ] Mutually Exclusive Parameters
       - [x] Restrict who can create an organization ([test](../../../adapters/sqlstore/organization_creation_policy_test.go#L104))
         - [x] Ask the host whether the signed-in user may create an organization and store nothing when it refuses ([test](../../../adapters/sqlstore/organization_creation_policy_test.go#L104))
-      - [ ] Check if organization slug is taken
-        - [ ] `POST /organization/check-slug`
+      - [x] Check if organization slug is taken ([test](../../../conformance/organization-profile.mjs#L18))
+        - [x] A signed-in caller learns that a free slug is available and an occupied slug is taken, including after a rename ([test](../../../conformance/organization-profile.mjs#L18))
+        - [x] `POST /organization/check-slug` ([test](../../../conformance/organization-profile.mjs#L39))
           - [x] Check available and occupied slugs using a signed-in client, including after a rename ([test](../../../conformance/organization-profile.mjs#L39))
           - [x] Reject anonymous slug lookup and preserve the authenticated callback contract ([test](../../../conformance/organization-profile.mjs#L20))
-          - [ ] Parameter `slug`
+          - [x] Checking a slug requires a session and reports free and occupied slugs, following renames ([test](../../../conformance/organization-profile.mjs#L20))
+          - [x] Parameter `slug` ([test](../../../conformance/organization-profile.mjs#L19))
+            - [x] The sent slug decides the answer: an occupied slug gets 400 ORGANIZATION_SLUG_ALREADY_TAKEN and a free one gets {status:true} ([test](../../../conformance/organization-profile.mjs#L19))
     - [ ] Organization Hooks
       - [ ] Legacy organizationCreation hooks
       - [ ] Modern organizationHooks
@@ -425,18 +448,21 @@
       - [ ] Hook Error Handling
     - [ ] List User's Organizations
       - [x] List only organizations the current user belongs to ([test](../../../plugins/organization/organization_test.go#L113))
-      - [ ] `GET /organization/list`
+      - [x] `GET /organization/list` ([test](../../../conformance/core.test.mjs#L280))
+        - [x] List no organizations before the user joins one and exactly the joined organization after accepting an invitation, on both runtimes ([test](../../../conformance/core.test.mjs#L280))
     - [ ] Active Organization
-      - [ ] Set Active Organization
+      - [x] Set Active Organization ([test](../../../conformance/organization-selection.mjs#L67))
         - [x] Select by slug or clear the current session selection ([test](../../../plugins/organization/organization_test.go#L190))
         - [x] Switch and clear the current session’s selection with independent HTTP clients across three SQL engines ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L23))
         - [x] Clear a denied selection for the calling login and preserve the other login on both organization profiles ([test](../../../conformance/organization-selection.mjs#L58))
         - [x] Persist a consistent organization and team when a successful switch races a denied switch ([test](../../../adapters/sqlstore/organization_selector_test.go#L90))
-        - [ ] `POST /organization/set-active`
+        - [x] Sets the calling session's active organization by ID or slug and clears it when the ID is null, even when a slug is also given, without affecting another login ([test](../../../conformance/organization-selection.mjs#L67))
+        - [x] `POST /organization/set-active` ([test](../../../conformance/organization-selection.mjs#L5))
           - [x] Describe nullable selection results across enabled profiles and expose signed destinations when the host supports them ([test](../../../plugins/openapi/organization_selection_test.go#L20))
           - [x] Clear a denied selection for the calling login and preserve the other login on both organization profiles ([test](../../../conformance/organization-selection.mjs#L58))
           - [x] Persist a consistent organization and team when a successful switch races a denied switch ([test](../../../adapters/sqlstore/organization_selector_test.go#L90))
           - [x] Reject all invalid selector fields before authentication ([test](../../../conformance/organization-selection.mjs#L29))
+          - [x] Validates selector types before authentication, selects by ID or slug with ID precedence, clears on a null ID, and on a denied selection returns 403 and clears only the calling login ([test](../../../conformance/organization-selection.mjs#L5))
           - [x] Parameter `organizationId` (optional) ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L135))
             - [x] Select by ID, retain the selection when omitted, and clear both selections with a null organization ID ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L135))
           - [x] Parameter `organizationSlug` (optional) ([test](../../../conformance/organization-selection.mjs#L50))
@@ -470,16 +496,23 @@
         - [x] Parameter `membersLimit` (optional) ([test](../../../adapters/sqlstore/organization_full_test.go#L88))
           - [x] Choose the member page size, hydrate pages exceeding 100, and use the configured default when omitted ([test](../../../adapters/sqlstore/organization_full_test.go#L88))
     - [ ] Update Organization
+      - [x] Owners and admins update an explicit or active organization's name, slug, logo and metadata, other callers are refused, and a slug collision changes nothing ([test](../../../conformance/organization-profile.mjs#L5))
       - [ ] `POST /organization/update`
         - [x] Update an explicit or active organization, clear its logo and replace metadata using the released client ([test](../../../conformance/organization-profile.mjs#L30))
         - [x] Require active owner or admin membership and roll back other changes on a slug collision ([test](../../../conformance/organization-profile.mjs#L38))
         - [x] Serialize competing slug claims across two connections and reject revoked sessions on three SQL engines ([test](../../../adapters/sqlstore/organization_profile_test.go#L112))
-        - [ ] Parameter `data`
-        - [ ] Parameter `name` (optional)
-        - [ ] Parameter `slug` (optional)
+        - [x] Update the active organization's name, slug and metadata and clear its logo in one request ([test](../../../conformance/organization-profile.mjs#L30))
+        - [x] Parameter `data` ([test](../../../conformance/organization-profile.mjs#L34))
+          - [x] A partial data object changes only the fields it names and keeps the stored name, slug and metadata it leaves out ([test](../../../conformance/organization-profile.mjs#L34))
+        - [x] Parameter `name` (optional) ([test](../../../conformance/organization-profile.mjs#L32))
+          - [x] Renaming returns the new name, which survives later updates that omit the name or fail on a slug conflict ([test](../../../conformance/organization-profile.mjs#L32))
+        - [x] Parameter `slug` (optional) ([test](../../../conformance/organization-profile.mjs#L36))
+          - [x] Changing the slug frees the old one and allows resubmitting the current slug; another organization's slug is rejected and the rest of the update is not applied ([test](../../../conformance/organization-profile.mjs#L36))
         - [ ] Parameter `logo` (optional)
-        - [ ] Parameter `metadata` (optional)
-        - [ ] Parameter `organizationId` (optional)
+        - [x] Parameter `metadata` (optional) ([test](../../../conformance/organization-profile.mjs#L33))
+          - [x] Metadata is replaced (old keys dropped) by a nested object that later updates omitting metadata keep ([test](../../../conformance/organization-profile.mjs#L33))
+        - [x] Parameter `organizationId` (optional) ([test](../../../conformance/organization-profile.mjs#L23))
+          - [x] An explicit organization ID is used even when another is active, the active organization is used when the ID is omitted, and ORGANIZATION_NOT_FOUND is reported when neither exists ([test](../../../conformance/organization-profile.mjs#L23))
     - [x] Delete Organization ([test](../../../adapters/sqlstore/organization_deletion_test.go#L18))
       - [x] Delete an organization over HTTP with permission, hook, cleanup and session-selection checks on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/organization_deletion_test.go#L18))
       - [x] `POST /organization/delete` ([test](../../../adapters/sqlstore/organization_deletion_test.go#L18))
@@ -506,16 +539,18 @@
       - [x] Preserve team target shapes on issue and renewal, grant unique memberships, and leave multi-entry grants unselected ([test](../../../conformance/invitation-team-targets.mjs#L56))
       - [x] Keep organization-only grants unscoped and targeted grants intact across mixed team configurations ([test](../../../adapters/sqlstore/organization_topology_test.go#L183))
       - [x] Check issuing membership and permission before reporting unknown or empty role names ([test](../../../adapters/sqlstore/organization_invitation_preparation_test.go#L172))
-      - [ ] `POST /organization/invite-member`
+      - [x] `POST /organization/invite-member` ([test](../../../conformance/invitation-input.mjs#L42))
         - [x] Accept comma-separated roles within strings or arrays, preserve their order and check owner grants ([test](../../../conformance/invitation-input.mjs#L41))
         - [x] Report invalid field types before sign-in and validate recipient addresses after resolving the destination ([test](../../../conformance/invitation-input.mjs#L22))
         - [x] Issue and renew an invitation through the native Go client against three databases ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L233))
         - [x] Check the resolved cap of every invited team with the inviter's session before storing the invitation ([test](../../../adapters/sqlstore/organization_team_seats_test.go#L120))
+        - [x] Issue an invitation to the active organization when organizationId is empty and return the lowercased address and normalized roles ([test](../../../conformance/invitation-input.mjs#L42))
         - [x] Parameter `email` ([test](../../../conformance/invitation-input.mjs#L42))
           - [x] Require a mailbox string, reject malformed addresses and lowercase the saved delivery address ([test](../../../conformance/invitation-input.mjs#L42))
-        - [ ] Parameter `role`
+        - [x] Parameter `role` ([test](../../../conformance/invitation-input.mjs#L41))
           - [x] Accept comma-separated roles within strings or arrays, preserve their order and check owner grants ([test](../../../conformance/invitation-input.mjs#L41))
           - [x] Check issuing membership and permission before reporting unknown or empty role names ([test](../../../adapters/sqlstore/organization_invitation_preparation_test.go#L172))
+          - [x] Store string or array roles as a trimmed, ordered comma-separated list and reject empty or unknown roles ([test](../../../conformance/invitation-input.mjs#L41))
         - [x] Parameter `organizationId` (optional) ([test](../../../conformance/invitation-input.mjs#L43))
           - [x] Use the active destination when unset or empty and require membership in an explicitly selected organization ([test](../../../conformance/invitation-input.mjs#L43))
         - [x] Parameter `resend` (optional) ([test](../../../conformance/invitation-input.mjs#L52))
@@ -544,20 +579,22 @@
           - [x] Validate the required string before session lookup and treat its contents as an opaque ID ([test](../../../conformance/organization-invitations.mjs#L370))
       - [ ] Email Verification Requirement
         - [x] Require verified email before acceptance when configured ([test](../../../plugins/organization/organization_test.go#L199))
-    - [ ] Cancel Invitation
+    - [x] Cancel Invitation ([test](../../../conformance/organization-invitations.mjs#L275))
       - [x] Cancel expired, rejected and accepted invitations and retain previously granted team and organization access ([test](../../../conformance/organization-invitations.mjs#L326))
       - [x] Recheck destination permissions for repeated cancellation after a role change ([test](../../../conformance/organization-invitations.mjs#L336))
       - [x] Serialize cancellation with acceptance and preserve the committed membership outcome on three SQL engines ([test](../../../adapters/sqlstore/organization_decision_test.go#L106))
       - [x] Deliver the signed-in actor, invitation and destination before and after an authorized decision ([test](../../../conformance/invitation-hooks.mjs#L61))
       - [x] Abort the write on a before-hook error and keep the committed status on an after-hook error ([test](../../../conformance/invitation-hooks.mjs#L66))
       - [x] Recheck changed invitation inputs, live recipient and administrator permissions after host code runs ([test](../../../adapters/sqlstore/organization_decision_hooks_test.go#L120))
-      - [ ] `POST /organization/cancel-invitation`
+      - [x] Owners and admins cancel pending, expired, rejected and accepted invitations, members and outsiders are refused, and existing membership and team access remain ([test](../../../conformance/organization-invitations.mjs#L275))
+      - [x] `POST /organization/cancel-invitation` ([test](../../../conformance/organization-invitations.mjs#L312))
         - [x] Cancel expired, rejected and accepted invitations and retain previously granted team and organization access ([test](../../../conformance/organization-invitations.mjs#L326))
         - [x] Recheck destination permissions for repeated cancellation after a role change ([test](../../../conformance/organization-invitations.mjs#L336))
         - [x] Serialize cancellation with acceptance and preserve the committed membership outcome on three SQL engines ([test](../../../adapters/sqlstore/organization_decision_test.go#L106))
         - [x] Deliver the signed-in actor, invitation and destination before and after an authorized decision ([test](../../../conformance/invitation-hooks.mjs#L61))
         - [x] Abort the write on a before-hook error and keep the committed status on an after-hook error ([test](../../../conformance/invitation-hooks.mjs#L66))
         - [x] Recheck changed invitation inputs, live recipient and administrator permissions after host code runs ([test](../../../adapters/sqlstore/organization_decision_hooks_test.go#L120))
+        - [x] An admin cancels an expired pending invitation and receives the canceled invitation with its role and, when teams are enabled, its team ([test](../../../conformance/organization-invitations.mjs#L312))
         - [x] Parameter `invitationId` ([test](../../../conformance/organization-invitations.mjs#L293))
           - [x] Validate a string invitation ID before checking the session and report an unknown ID ([test](../../../conformance/organization-invitations.mjs#L293))
     - [x] Reject Invitation ([test](../../../conformance/organization-invitations.mjs#L257))
@@ -575,24 +612,28 @@
         - [x] Parameter `invitationId` ([test](../../../adapters/sqlstore/organization_decision_test.go#L52))
           - [x] Validate the request type and match the opaque invitation ID exactly on all three engines ([test](../../../adapters/sqlstore/organization_decision_test.go#L52))
           - [x] Validate a missing, null or non-string invitation ID before requiring a session ([test](../../../conformance/organization-invitations.mjs#L225))
-    - [ ] Get Invitation
+    - [x] Get Invitation ([test](../../../conformance/organization-invitations.mjs#L143))
       - [x] Read the current inviter email and organization details for the pending invitation ([test](../../../conformance/organization-invitations.mjs#L180))
       - [x] Apply the configured verification rule after matching the current recipient ([test](../../../adapters/sqlstore/organization_received_test.go#L56))
       - [x] Refuse details after the original inviter leaves the organization ([test](../../../conformance/organization-invitations.mjs#L196))
-      - [ ] `GET /organization/get-invitation`
+      - [x] A signed-in recipient reads a live pending invitation with current organization and inviter details, subject to recipient matching, configured verification, status, expiry and inviter membership ([test](../../../conformance/organization-invitations.mjs#L143))
+      - [x] `GET /organization/get-invitation` ([test](../../../conformance/organization-invitations.mjs#L177))
         - [x] Read the current inviter email and organization details for the pending invitation ([test](../../../conformance/organization-invitations.mjs#L180))
         - [x] Apply the configured verification rule after matching the current recipient ([test](../../../adapters/sqlstore/organization_received_test.go#L56))
         - [x] Refuse details after the original inviter leaves the organization ([test](../../../conformance/organization-invitations.mjs#L196))
+        - [x] The recipient reads the pending invitation with the organization's current name and slug and the inviter's current email ([test](../../../conformance/organization-invitations.mjs#L177))
         - [x] Parameter `id` ([test](../../../adapters/sqlstore/organization_received_test.go#L62))
           - [x] Resolve an exact invitation ID subject to current status, expiry and recipient ownership ([test](../../../adapters/sqlstore/organization_received_test.go#L62))
-    - [ ] List Invitations
+    - [x] List Invitations ([test](../../../conformance/organization-invitations.mjs#L6))
       - [x] List every invitation status and preserve expired pending invitations ([test](../../../conformance/organization-invitations.mjs#L53))
       - [x] Restrict owner invitations to owners, including compound target roles ([test](../../../conformance/organization-invitations.mjs#L65))
       - [x] Expose a nullable team ID only on a team-enabled installation ([test](../../../conformance/organization-invitations.mjs#L59))
-      - [ ] `GET /organization/list-invitations`
+      - [x] Members who may invite list every invitation of an explicit or active organization, owner invitations are shown only to owners, and other callers are refused ([test](../../../conformance/organization-invitations.mjs#L6))
+      - [x] `GET /organization/list-invitations` ([test](../../../conformance/organization-invitations.mjs#L52))
         - [x] List every invitation status and preserve expired pending invitations ([test](../../../conformance/organization-invitations.mjs#L53))
         - [x] Restrict owner invitations to owners, including compound target roles ([test](../../../conformance/organization-invitations.mjs#L65))
         - [x] Expose a nullable team ID only on a team-enabled installation ([test](../../../conformance/organization-invitations.mjs#L59))
+        - [x] An owner lists invitations in every status for an explicitly named organization ([test](../../../conformance/organization-invitations.mjs#L52))
         - [x] Parameter `organizationId` (optional) ([test](../../../conformance/organization-invitations.mjs#L71))
           - [x] Use the explicit organization ID or the active selection without switching organizations ([test](../../../conformance/organization-invitations.mjs#L71))
     - [x] List user invitations ([test](../../../conformance/organization-invitations.mjs#L119))
@@ -601,14 +642,16 @@
       - [x] Use the same database snapshot for current email verification and invitation rows ([test](../../../adapters/sqlstore/organization_received_test.go#L121))
       - [x] Allow a trusted Go service to list pending invitations by normalized email without a session ([test](../../../adapters/sqlstore/organization_received_test.go#L67))
   - [ ] Members
-    - [ ] List Members
+    - [x] List Members ([test](../../../conformance/organization-directory.mjs#L6))
       - [x] Return public user profiles and membership fields exclusively for a shared organization, including pages larger than 100 ([test](../../../conformance/organization-directory.mjs#L74))
       - [x] Use the same committed snapshot for permissions, the filtered count and member rows on three SQL engines ([test](../../../adapters/sqlstore/organization_directory_test.go#L105))
       - [x] Reject a removed caller and deny access to totals even on an empty page ([test](../../../conformance/organization-directory.mjs#L58))
-      - [ ] `GET /organization/list-members`
+      - [x] Member listing pages, sorts and filters memberships with public profiles within the caller's current membership ([test](../../../conformance/organization-directory.mjs#L6))
+      - [x] `GET /organization/list-members` ([test](../../../conformance/organization-directory.mjs#L41))
         - [x] Return public user profiles and membership fields exclusively for a shared organization, including pages larger than 100 ([test](../../../conformance/organization-directory.mjs#L74))
         - [x] Use the same committed snapshot for permissions, the filtered count and member rows on three SQL engines ([test](../../../adapters/sqlstore/organization_directory_test.go#L105))
         - [x] Reject a removed caller and deny access to totals even on an empty page ([test](../../../conformance/organization-directory.mjs#L58))
+        - [x] Lists members of the active, explicit or slug-selected organization with limit, offset, sorting, every filter operator, public profiles, the 100-row default and membership checks ([test](../../../conformance/organization-directory.mjs#L41))
         - [x] Parameter `organizationId` (optional) ([test](../../../conformance/organization-directory.mjs#L40))
           - [x] Select a shared tenant by ID or slug ahead of the active session and preserve the selection ([test](../../../conformance/organization-directory.mjs#L40))
         - [x] Parameter `limit` (optional) ([test](../../../conformance/organization-capacity.mjs#L86))
@@ -616,28 +659,39 @@
           - [x] Use a fixed limit for the default directory page and allow an explicit larger page ([test](../../../conformance/organization-capacity.mjs#L86))
         - [x] Parameter `offset` (optional) ([test](../../../conformance/organization-directory.mjs#L42))
           - [x] Skip rows in sort order and preserve the filtered total beyond the last page ([test](../../../conformance/organization-directory.mjs#L42))
-        - [ ] Parameter `sortBy` (optional)
+        - [x] Parameter `sortBy` (optional) ([test](../../../conformance/organization-directory.mjs#L31))
           - [x] Sort returned memberships by their public membership fields ([test](../../../conformance/organization-directory.mjs#L40))
+          - [x] Sorting by role puts owner before member in descending order and after member in ascending order ([test](../../../conformance/organization-directory.mjs#L31))
         - [x] Parameter `sortDirection` (optional) ([test](../../../conformance/organization-directory.mjs#L32))
           - [x] Provide ascending and descending orders and validate the direction before authentication ([test](../../../conformance/organization-directory.mjs#L32))
-        - [ ] Parameter `filterField` (optional)
+        - [x] Parameter `filterField` (optional) ([test](../../../conformance/organization-directory.mjs#L51))
           - [x] Filter stored membership fields, join dates and tenant IDs inside the caller's scope ([test](../../../conformance/organization-directory.mjs#L56))
+          - [x] Filtering by role with every operator and by organization ID returns only matching memberships with a matching total ([test](../../../conformance/organization-directory.mjs#L51))
         - [x] Parameter `filterOperator` (optional) ([test](../../../conformance/organization-directory.mjs#L52))
           - [x] Apply all eleven comparison, set and pattern operators to memberships and counts ([test](../../../conformance/organization-directory.mjs#L52))
         - [x] Parameter `filterValue` (optional) ([test](../../../conformance/organization-directory.mjs#L49))
           - [x] Support repeated filter values and date comparisons through the released client ([test](../../../conformance/organization-directory.mjs#L49))
-    - [ ] Remove Member
+    - [x] Remove Member ([test](../../../conformance/organization-removal.mjs#L5))
       - [x] Release team seats when a process using the plain organization plugin removes a member from a team-enabled database ([test](../../../adapters/sqlstore/organization_removal_test.go#L165))
-      - [ ] `POST /organization/remove-member`
-        - [ ] Parameter `memberIdOrEmail`
-        - [ ] Parameter `organizationId` (optional)
-    - [ ] Update Member Role
+      - [x] Members are removed by email or ID, with permission, owner-protection and tenant checks, on both runtimes ([test](../../../conformance/organization-removal.mjs#L5))
+      - [x] `POST /organization/remove-member` ([test](../../../conformance/organization-removal.mjs#L5))
+        - [x] remove-member removes a member by email or ID and returns it, and refuses unpermitted callers, an admin removing the sole owner, and members of other organizations ([test](../../../conformance/organization-removal.mjs#L5))
+        - [x] Parameter `memberIdOrEmail` ([test](../../../conformance/organization-removal.mjs#L36))
+          - [x] An email is matched case-insensitively and returns the member with its user; an exact member ID returns the member without the user; an ID from another organization is not found ([test](../../../conformance/organization-removal.mjs#L36))
+        - [x] Parameter `organizationId` (optional) ([test](../../../adapters/sqlstore/organization_removal_test.go#L129))
+          - [x] An explicit organization ID scopes a removal when no organization is selected, and an omitted ID uses the active organization or reports NO_ACTIVE_ORGANIZATION ([test](../../../adapters/sqlstore/organization_removal_test.go#L129))
+    - [x] Update Member Role ([test](../../../conformance/organization-role.mjs#L5))
       - [x] Use the Go HTTP client and authenticated native service to update an existing membership ([test](../../../adapters/sqlstore/organization_role_test.go#L86))
-      - [ ] `POST /organization/update-member-role`
+      - [x] Member roles are updated with permission, owner-protection and role validation checks, and the updated membership is returned on both runtimes ([test](../../../conformance/organization-role.mjs#L5))
+      - [x] `POST /organization/update-member-role` ([test](../../../conformance/organization-role.mjs#L56))
         - [x] Publish the string-or-array request and direct member response in the configured OpenAPI document ([test](../../../plugins/openapi/profile_test.go#L140))
-        - [ ] Parameter `role`
-        - [ ] Parameter `memberId`
-        - [ ] Parameter `organizationId` (optional)
+        - [x] update-member-role updates a member's roles in the active organization by default and returns the updated membership with normalized roles ([test](../../../conformance/organization-role.mjs#L56))
+        - [x] Parameter `role` ([test](../../../conformance/organization-role.mjs#L57))
+          - [x] String or array roles are split on commas, trimmed and stored in order without dropping duplicates, and unknown or blank roles are rejected ([test](../../../conformance/organization-role.mjs#L57))
+        - [x] Parameter `memberId` ([test](../../../conformance/organization-role.mjs#L41))
+          - [x] The member ID selects the membership to update, an unknown ID reports MEMBER_NOT_FOUND, and a member of another organization is refused with 403 ([test](../../../conformance/organization-role.mjs#L41))
+        - [x] Parameter `organizationId` (optional) ([test](../../../conformance/organization-role.mjs#L39))
+          - [x] An explicit organization ID scopes the update, the active organization is used when it is omitted, and with neither the update reports NO_ACTIVE_ORGANIZATION ([test](../../../conformance/organization-role.mjs#L39))
     - [x] Get Active Member ([test](../../../conformance/core.test.mjs#L1864))
       - [x] Read the live membership and its public user profile from each signed-in session across organization switches ([test](../../../conformance/core.test.mjs#L1864))
       - [x] Distinguish a cleared selection from a removed membership and a signed-out client on all three SQL engines ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L284))
@@ -658,19 +712,26 @@
       - [x] Persist ordered role labels and empty roles when trusted application code grants membership ([test](../../../conformance/organization-server-grants.mjs#L41))
       - [x] Distinguish an unprivileged member from a missing membership on all three SQL engines ([test](../../../adapters/sqlstore/organization_members_test.go#L181))
       - [ ] `POST /organization/add-member` (server API)
-        - [ ] Parameter `userId`
-        - [ ] Parameter `role`
+        - [x] Parameter `userId` ([test](../../../adapters/sqlstore/organization_members_test.go#L73))
+          - [x] A trusted grant adds the named user, and a user ID that matches no account is rejected with USER_NOT_FOUND on three SQL engines ([test](../../../adapters/sqlstore/organization_members_test.go#L73))
+        - [x] Parameter `role` ([test](../../../adapters/sqlstore/organization_members_test.go#L99))
+          - [x] A trusted grant assigns the requested roles as one trimmed, comma-separated role in request order, and a missing role list is rejected ([test](../../../adapters/sqlstore/organization_members_test.go#L99))
         - [ ] Parameter `organizationId` (optional)
-        - [ ] Parameter `teamId` (optional)
-    - [ ] Leave Organization
+        - [x] Parameter `teamId` (optional) ([test](../../../adapters/sqlstore/organization_members_test.go#L76))
+          - [x] A grant with a team ID takes a seat on that team, an unknown team is rejected, and a full team rolls back the organization grant ([test](../../../adapters/sqlstore/organization_members_test.go#L76))
+    - [x] Leave Organization ([test](../../../conformance/organization-removal.mjs#L45))
       - [x] Report a missing membership when the released client repeats a departure ([test](../../../conformance/organization-removal.mjs#L49))
-      - [ ] `POST /organization/leave`
-        - [ ] Parameter `organizationId`
+      - [x] Leaving an organization returns the departed membership; a repeat departure and a sole-owner departure are refused ([test](../../../conformance/organization-removal.mjs#L45))
+      - [x] `POST /organization/leave` ([test](../../../conformance/organization-removal.mjs#L46))
+        - [x] leave removes the caller's membership in the named organization and returns it with the user's email ([test](../../../conformance/organization-removal.mjs#L46))
+        - [x] Parameter `organizationId` ([test](../../../conformance/organization-removal.mjs#L45))
+          - [x] The organization named by organizationId is left even when the session selects a different organization (reference) or none (Go) ([test](../../../conformance/organization-removal.mjs#L45))
   - [ ] Access Control
     - [ ] Roles
       - [x] Evaluate every built-in role and resource action with the signed-in organization member ([test](../../../conformance/organization-permissions.mjs#L47))
-      - [ ] `owner`
+      - [x] `owner` ([test](../../../conformance/organization-permissions.mjs#L47))
         - [x] Evaluate every built-in role and resource action with the signed-in organization member ([test](../../../conformance/organization-permissions.mjs#L47))
+        - [x] The organization's creator holds every built-in organization, member, invitation, team and ac action through has-permission ([test](../../../conformance/organization-permissions.mjs#L47))
       - [ ] `admin`
         - [x] Evaluate every built-in role and resource action with the signed-in organization member ([test](../../../conformance/organization-permissions.mjs#L47))
       - [ ] `member`
@@ -683,10 +744,11 @@
         - [x] Evaluate every built-in role and resource action with the signed-in organization member ([test](../../../conformance/organization-permissions.mjs#L47))
       - [x] invitation ([test](../../../conformance/organization-permissions.mjs#L47))
         - [x] Evaluate every built-in role and resource action with the signed-in organization member ([test](../../../conformance/organization-permissions.mjs#L47))
-    - [ ] Custom Permissions
+    - [x] Custom Permissions ([test](../../../conformance/organization-custom-roles.mjs#L41))
       - [x] Apply the host’s roles to profile changes, teams, invitations and live permissions ([test](../../../conformance/organization-custom-roles.mjs#L41))
       - [x] Recheck a custom inviter’s current grants after host callbacks on three SQL engines ([test](../../../adapters/sqlstore/organization_custom_roles_test.go#L68))
-      - [ ] Create Access Control
+      - [x] Create Access Control ([test](../../../plugins/access/access_test.go#L42))
+        - [x] Creating an access controller from a resource-to-actions statement keeps a private copy, and roles may only grant the resources and actions it declares ([test](../../../plugins/access/access_test.go#L42))
       - [x] Create Roles ([test](../../../conformance/organization-custom-roles.mjs#L41))
         - [x] Apply the host’s roles to profile changes, teams, invitations and live permissions ([test](../../../conformance/organization-custom-roles.mjs#L41))
       - [x] Pass Roles to the Plugin ([test](../../../conformance/organization-custom-roles.mjs#L41))
@@ -702,6 +764,7 @@
         - [x] Evaluate a configured role locally and require one role to cover every requested action ([test](../../../plugins/organization/permissions_test.go#L45))
   - [ ] Dynamic Access Control
     - [x] Resolve the same role independently per organization and apply changes from another application on the next operation ([test](../../../conformance/organization-stored-roles.mjs#L54))
+    - [x] Roles stored at runtime for each organization are resolved independently by the service, and later grant changes apply on the next operation ([test](../../../conformance/organization-stored-roles.mjs#L9))
     - [ ] Enabling Dynamic Access Control
       - [x] Resolve the same role independently per organization and apply changes from another application on the next operation ([test](../../../conformance/organization-stored-roles.mjs#L54))
     - [ ] Creating a role
@@ -714,8 +777,9 @@
         - [x] Combine individually held grants for delegation and reject unavailable actions ([test](../../../conformance/organization-create-role.mjs#L81))
         - [x] Create, read, list and remove a stored role through six different Go HTTP routers ([test](../../../integrations/routers/routers_test.go#L244))
         - [x] Read mapped role fields across applications and preserve defaults, explicit nulls, false and zero ([test](../../../conformance/organization-role-fields.mjs#L53))
-        - [ ] Parameter `role`
+        - [x] Parameter `role` ([test](../../../conformance/organization-create-role.mjs#L64))
           - [x] Normalize Unicode case on stored role names and reserve predefined and duplicate names ([test](../../../conformance/organization-create-role.mjs#L70))
+          - [x] The role name must be a string, is lower-cased including Unicode, and must be unique per organization against stored and predefined names while being reusable in another organization ([test](../../../conformance/organization-create-role.mjs#L64))
         - [x] Parameter `permission` (optional) ([test](../../../conformance/organization-create-role.mjs#L68))
           - [x] Require the caller to hold each requested action and return the missing grants on denial ([test](../../../conformance/organization-create-role.mjs#L68))
         - [x] Parameter `organizationId` (optional) ([test](../../../conformance/organization-create-role.mjs#L57))
@@ -734,43 +798,49 @@
           - [x] Remove by exact ID within one organization when the supplied alternative name is empty ([test](../../../conformance/organization-delete-role.mjs#L62))
         - [x] Parameter `organizationId` (optional) ([test](../../../conformance/organization-delete-role.mjs#L69))
           - [x] Remove roles in an explicit or active organization while preserving the session selection ([test](../../../conformance/organization-delete-role.mjs#L69))
-    - [ ] Listing roles
+    - [x] Listing roles ([test](../../../conformance/organization-role-directory.mjs#L67))
       - [x] Read up to 100 stored definitions in the selected organization and use a direct lookup beyond the list ([test](../../../conformance/organization-role-directory.mjs#L67))
       - [x] Require the current membership and ac.read before listing stored roles ([test](../../../conformance/organization-role-directory.mjs#L61))
       - [x] Use the Go client against three SQL engines and honor withdrawal of directory access ([test](../../../adapters/sqlstore/organization_role_directory_test.go#L79))
-      - [ ] `GET /organization/list-roles`
+      - [x] The selected organization's stored roles are listed, capped at 100 rows, after membership and ac.read checks ([test](../../../conformance/organization-role-directory.mjs#L67))
+      - [x] `GET /organization/list-roles` ([test](../../../conformance/organization-role-directory.mjs#L47))
         - [x] Read up to 100 stored definitions in the selected organization and use a direct lookup beyond the list ([test](../../../conformance/organization-role-directory.mjs#L67))
         - [x] Require the current membership and ac.read before listing stored roles ([test](../../../conformance/organization-role-directory.mjs#L61))
         - [x] Use the Go client against three SQL engines and honor withdrawal of directory access ([test](../../../adapters/sqlstore/organization_role_directory_test.go#L79))
         - [x] List the values written through another application with the original logical keys ([test](../../../conformance/organization-role-fields.mjs#L66))
+        - [x] list-roles returns the stored roles of the active or an explicit organization and enforces membership and ac.read ([test](../../../conformance/organization-role-directory.mjs#L47))
         - [x] Parameter `organizationId` (optional) ([test](../../../conformance/organization-role-directory.mjs#L73))
           - [x] Read stored definitions in an explicit organization while retaining the selected organization and team ([test](../../../conformance/organization-role-directory.mjs#L73))
-    - [ ] Getting a specific role
+    - [x] Getting a specific role ([test](../../../conformance/organization-role-directory.mjs#L41))
       - [x] Read the tenant’s stored permission object and timestamps with a case-sensitive selector ([test](../../../conformance/organization-role-directory.mjs#L41))
       - [x] Require the current membership and ac.read before looking up a role ([test](../../../conformance/organization-role-directory.mjs#L60))
       - [x] Keep SQL lookup case-sensitive across all three engines and check live session ownership ([test](../../../adapters/sqlstore/organization_role_directory_test.go#L68))
-      - [ ] `GET /organization/get-role`
+      - [x] A stored role in the active organization is read by name with its permission object and timestamps ([test](../../../conformance/organization-role-directory.mjs#L41))
+      - [x] `GET /organization/get-role` ([test](../../../conformance/organization-role-directory.mjs#L46))
         - [x] Read the tenant’s stored permission object and timestamps with a case-sensitive selector ([test](../../../conformance/organization-role-directory.mjs#L41))
         - [x] Require the current membership and ac.read before looking up a role ([test](../../../conformance/organization-role-directory.mjs#L60))
         - [x] Keep SQL lookup case-sensitive across all three engines and check live session ownership ([test](../../../adapters/sqlstore/organization_role_directory_test.go#L68))
         - [x] Read mapped role fields across applications and preserve defaults, explicit nulls, false and zero ([test](../../../conformance/organization-role-fields.mjs#L53))
+        - [x] get-role reads a stored role by name or exact ID in the active or an explicit organization, with validation, membership and ac.read checks ([test](../../../conformance/organization-role-directory.mjs#L46))
         - [x] Parameter `roleName` (optional) ([test](../../../conformance/organization-role-directory.mjs#L45))
           - [x] Prefer a nonempty role name when both name and ID are supplied ([test](../../../conformance/organization-role-directory.mjs#L45))
         - [x] Parameter `roleId` (optional) ([test](../../../conformance/organization-role-directory.mjs#L46))
           - [x] Read by exact ID when the alternative name is empty ([test](../../../conformance/organization-role-directory.mjs#L46))
         - [x] Parameter `organizationId` (optional) ([test](../../../conformance/organization-role-directory.mjs#L73))
           - [x] Read stored definitions in an explicit organization while retaining the selected organization and team ([test](../../../conformance/organization-role-directory.mjs#L73))
-    - [ ] Updating a role
+    - [x] Updating a role ([test](../../../conformance/organization-update-role.mjs#L6))
       - [x] Apply new grants on the next permission check and preserve assigned member and invitation labels after a rename ([test](../../../conformance/organization-update-role.mjs#L72))
       - [x] Preserve concurrent changes to the same role and roll back a conflicting rename on each database ([test](../../../adapters/sqlstore/organization_update_role_test.go#L116))
       - [x] Require delegation of retained grants when moving a role to a new name ([test](../../../adapters/sqlstore/organization_update_role_test.go#L54))
       - [x] Update declared fields and retain omitted values and host-owned defaults ([test](../../../conformance/organization-role-fields.mjs#L63))
-      - [ ] `POST /organization/update-role`
+      - [x] Updates a stored role by name or ID and applies the new grants on the next permission check ([test](../../../conformance/organization-update-role.mjs#L6))
+      - [x] `POST /organization/update-role` ([test](../../../conformance/organization-update-role.mjs#L55))
         - [x] Apply new grants on the next permission check and preserve assigned member and invitation labels after a rename ([test](../../../conformance/organization-update-role.mjs#L72))
         - [x] Preserve concurrent changes to the same role and roll back a conflicting rename on each database ([test](../../../adapters/sqlstore/organization_update_role_test.go#L116))
         - [x] Require delegation of retained grants when moving a role to a new name ([test](../../../adapters/sqlstore/organization_update_role_test.go#L54))
         - [x] Update declared fields and retain omitted values and host-owned defaults ([test](../../../conformance/organization-role-fields.mjs#L63))
         - [x] Exchange JSON objects and typed arrays between clients while preserving empty arrays, explicit nulls and fractional weights ([test](../../../conformance/organization-role-fields.mjs#L88))
+        - [x] Replaces a role's grants and returns the role with its new permissions, behind validation, organization scoping and permission checks ([test](../../../conformance/organization-update-role.mjs#L55))
         - [x] Parameter `roleName` (optional) ([test](../../../conformance/organization-update-role.mjs#L46))
           - [x] Use a nonempty name ahead of the alternate role ID ([test](../../../conformance/organization-update-role.mjs#L46))
         - [x] Parameter `roleId` (optional) ([test](../../../conformance/organization-update-role.mjs#L66))
@@ -788,7 +858,7 @@
       - [x] `maximumRolesPerOrganization` ([test](../../../adapters/sqlstore/organization_create_role_test.go#L131))
         - [x] Enforce the last available slot across concurrent requests to the same organization ([test](../../../adapters/sqlstore/organization_create_role_test.go#L117))
         - [x] Resolve host limits outside the transaction and reauthorize the caller before saving ([test](../../../adapters/sqlstore/organization_create_role_test.go#L131))
-    - [ ] Additional Fields
+    - [x] Additional Fields ([test](../../../conformance/organization-role-fields.mjs#L36))
       - [x] Read mapped role fields across applications and preserve defaults, explicit nulls, false and zero ([test](../../../conformance/organization-role-fields.mjs#L53))
       - [x] Update declared fields and retain omitted values and host-owned defaults ([test](../../../conformance/organization-role-fields.mjs#L63))
       - [x] List the values written through another application with the original logical keys ([test](../../../conformance/organization-role-fields.mjs#L66))
@@ -798,18 +868,21 @@
       - [x] Exchange JSON objects and typed arrays between clients while preserving empty arrays, explicit nulls and fractional weights ([test](../../../conformance/organization-role-fields.mjs#L88))
       - [x] Backfill existing roles with a structured default on SQLite, PostgreSQL and MySQL ([test](../../../cmd/authctl/organization_role_fields_test.go#L84))
       - [x] Round-trip JSON strings, booleans, numbers, objects, arrays and null on every SQL adapter ([test](../../../adapters/sqlstore/organization_role_fields_test.go#L192))
+      - [x] Declared role fields are created, read, listed and edited between two applications sharing one database, with defaults, a mapped column name, server-owned input and type validation ([test](../../../conformance/organization-role-fields.mjs#L36))
   - [ ] Teams
     - [ ] Enabling Teams
     - [ ] Managing Teams
-      - [ ] Create Team
+      - [x] Create Team ([test](../../../conformance/organization-team-limits.mjs#L35))
         - [x] Create teams within an organization and enforce its configured maximum ([test](../../../adapters/sqlstore/organization_teams_test.go#L106))
         - [x] Reserve the last team slot across authenticated requests and trusted creation on independent database connections ([test](../../../adapters/sqlstore/organization_team_creation_test.go#L88))
         - [x] Require live creation authority and recheck the policy inputs after the host resolves capacity ([test](../../../adapters/sqlstore/organization_team_creation_test.go#L145))
         - [x] Apply the same team cap to trusted creation without a session ([test](../../../conformance/organization-team-limits.mjs#L45))
-        - [ ] `POST /organization/create-team`
+        - [x] Creates a team in the selected organization or an explicitly named one, enforces the team limit and membership, and leaves the session's selection unchanged ([test](../../../conformance/organization-team-limits.mjs#L35))
+        - [x] `POST /organization/create-team` ([test](../../../conformance/core.test.mjs#L615))
           - [x] Reserve the last team slot across authenticated requests and trusted creation on independent database connections ([test](../../../adapters/sqlstore/organization_team_creation_test.go#L88))
           - [x] Require live creation authority and recheck the policy inputs after the host resolves capacity ([test](../../../adapters/sqlstore/organization_team_creation_test.go#L145))
           - [x] Apply the same team cap to trusted creation without a session ([test](../../../conformance/organization-team-limits.mjs#L45))
+          - [x] Create a team in the active organization with the official client on both runtimes ([test](../../../conformance/core.test.mjs#L615))
           - [x] Parameter `name` ([test](../../../conformance/organization-team-limits.mjs#L29))
             - [x] Accept a string team name, including an empty label, and reject invalid input before writing ([test](../../../conformance/organization-team-limits.mjs#L29))
           - [x] Parameter `organizationId` (optional) ([test](../../../conformance/organization-team-limits.mjs#L35))
@@ -817,20 +890,25 @@
       - [ ] List Teams
         - [x] Read the organization’s teams and deny outsiders using the browser client ([test](../../../conformance/core.test.mjs#L626))
         - [ ] `GET /organization/list-teams`
-          - [ ] Parameter `organizationId` (optional)
+          - [x] Parameter `organizationId` (optional) ([test](../../../conformance/organization-team-limits.mjs#L56))
+            - [x] Lists the teams of an explicitly named organization rather than the active one ([test](../../../conformance/organization-team-limits.mjs#L56))
       - [ ] Update Team
         - [x] Update the team name and reject another organization’s team ID ([test](../../../adapters/sqlstore/organization_teams_test.go#L114))
         - [ ] `POST /organization/update-team`
-          - [ ] Parameter `teamId`
-          - [ ] Parameter `data`
-          - [ ] Parameter `name` (optional)
+          - [x] Parameter `teamId` ([test](../../../adapters/sqlstore/organization_teams_test.go#L114))
+            - [x] Updating by a team ID in the caller's organization returns the renamed team, and another organization's team ID is rejected with TEAM_NOT_FOUND ([test](../../../adapters/sqlstore/organization_teams_test.go#L114))
+          - [x] Parameter `data` ([test](../../../conformance/core.test.mjs#L617))
+            - [x] Rename a team from the data object and return and persist the new name ([test](../../../conformance/core.test.mjs#L617))
+          - [x] Parameter `name` (optional) ([test](../../../adapters/sqlstore/organization_teams_test.go#L101))
+            - [x] Renaming a team through the Go client returns the new name and an update timestamp on three SQL engines ([test](../../../adapters/sqlstore/organization_teams_test.go#L101))
           - [ ] Parameter `organizationId` (optional)
           - [ ] Parameter `createdAt` (optional)
           - [ ] Parameter `updatedAt` (optional)
       - [ ] Remove Team
         - [x] Protect the active team and final team, and prune pending invitations when a team is removed ([test](../../../adapters/sqlstore/organization_teams_test.go#L136))
         - [ ] `POST /organization/remove-team`
-          - [ ] Parameter `teamId`
+          - [x] Parameter `teamId` ([test](../../../conformance/core.test.mjs#L637))
+            - [x] Remove the identified team and keep the organization's remaining team ([test](../../../conformance/core.test.mjs#L637))
           - [ ] Parameter `organizationId` (optional)
       - [ ] Set Active Team
         - [x] Select a team belonging to the active organization and preserve session cookie persistence ([test](../../../adapters/sqlstore/organization_teams_test.go#L156))
@@ -842,7 +920,8 @@
       - [ ] List User Teams
         - [x] Return self memberships across organizations and scope administrative queries to the selected organization ([test](../../../adapters/sqlstore/organization_teams_test.go#L266))
         - [ ] `GET /organization/list-user-teams`
-          - [ ] Parameter `userId` (optional)
+          - [x] Parameter `userId` (optional) ([test](../../../adapters/sqlstore/organization_teams_test.go#L263))
+            - [x] An admin lists another member's teams by user ID, a plain member is refused another user's list, and an omitted ID lists the caller's own teams ([test](../../../adapters/sqlstore/organization_teams_test.go#L263))
           - [ ] Parameter `organizationId` (optional)
       - [ ] List Team Members
         - [x] List members of the selected team and reject a caller whose membership was removed ([test](../../../adapters/sqlstore/organization_teams_test.go#L277))
@@ -852,13 +931,16 @@
         - [x] Admit one candidate to the last seat across competing SQL-backed servers and return existing memberships on retry ([test](../../../adapters/sqlstore/organization_teams_test.go#L213))
         - [x] Ask the host for a team's cap with the manager's session, admit members only within it and return existing memberships without asking ([test](../../../adapters/sqlstore/organization_team_seats_test.go#L100))
         - [ ] `POST /organization/add-team-member`
-          - [ ] Parameter `teamId`
+          - [x] Parameter `teamId` ([test](../../../conformance/core.test.mjs#L619))
+            - [x] Add the user to the identified team so they can then select it as their active team ([test](../../../conformance/core.test.mjs#L619))
           - [ ] Parameter `userId`
       - [ ] Remove Team Member
         - [x] Remove membership and clear the affected user’s active team ([test](../../../adapters/sqlstore/organization_teams_test.go#L275))
         - [ ] `POST /organization/remove-team-member`
-          - [ ] Parameter `teamId`
-          - [ ] Parameter `userId`
+          - [x] Parameter `teamId` ([test](../../../conformance/core.test.mjs#L635))
+            - [x] Remove the user from the identified team so they can no longer list its members ([test](../../../conformance/core.test.mjs#L635))
+          - [x] Parameter `userId` ([test](../../../adapters/sqlstore/organization_teams_test.go#L275))
+            - [x] Remove the named user from the team and clear that user's active team selection ([test](../../../adapters/sqlstore/organization_teams_test.go#L275))
     - [ ] Team Permissions
       - [x] Apply owner, admin and member team-management permissions through public HTTP routes ([test](../../../conformance/core.test.mjs#L633))
       - [ ] `team:create`
@@ -872,51 +954,91 @@
         - [x] Require live creation authority and recheck the policy inputs after the host resolves capacity ([test](../../../adapters/sqlstore/organization_team_creation_test.go#L145))
         - [x] Resolve the total using the caller and organization, and allow unlimited teams when the host returns zero ([test](../../../conformance/organization-team-limits.mjs#L42))
         - [x] Resolve each team's member cap from the acting session when adding, inviting and accepting, with zero admitting no new members ([test](../../../adapters/sqlstore/organization_team_seats_test.go#L18))
-      - [ ] `allowRemovingAllTeams`
-    - [ ] Team Members
+      - [x] `allowRemovingAllTeams` ([test](../../../adapters/sqlstore/organization_teams_test.go#L331))
+        - [x] Remove an organization's only team when AllowRemovingAllTeams is enabled ([test](../../../adapters/sqlstore/organization_teams_test.go#L331))
+    - [x] Team Members ([test](../../../conformance/core.test.mjs#L675))
       - [x] Persist the team membership key and maintain the database member count across mutations ([test](../../../adapters/sqlstore/organization_teams_test.go#L177))
       - [x] Read and update the same stored invitations, membership keys and seat counts in both runtime directions ([test](../../../conformance/core.test.mjs#L675))
-    - [ ] Database Schema
-      - [ ] `teamsFeatureTeamTableFields.id`
-      - [ ] `teamsFeatureTeamTableFields.name`
-      - [ ] `teamsFeatureTeamTableFields.memberCount`
-      - [ ] `teamsFeatureTeamTableFields.organizationId`
-      - [ ] `teamsFeatureTeamTableFields.createdAt`
-      - [ ] `teamsFeatureTeamTableFields.updatedAt`
-      - [ ] `teamsFeatureTeamMemberTableFields.id`
-      - [ ] `teamsFeatureTeamMemberTableFields.teamId`
-      - [ ] `teamsFeatureTeamMemberTableFields.userId`
-      - [ ] `teamsFeatureTeamMemberTableFields.membershipKey`
-      - [ ] `teamsFeatureTeamMemberTableFields.createdAt`
+      - [x] Add the invited member to the specified team when a team-scoped invitation is accepted, in both runtime directions ([test](../../../conformance/core.test.mjs#L675))
+    - [x] Database Schema ([test](../../../conformance/schema.test.mjs#L116))
+      - [x] With teams enabled the generated schema, including the team and teamMember tables, equals the reference DDL on three dialects ([test](../../../conformance/schema.test.mjs#L116))
+      - [x] `teamsFeatureTeamTableFields.id` ([test](../../../conformance/schema.test.mjs#L116))
+        - [x] The generated team.id primary key column equals the reference DDL on three dialects ([test](../../../conformance/schema.test.mjs#L116))
+      - [x] `teamsFeatureTeamTableFields.name` ([test](../../../conformance/schema.test.mjs#L116))
+        - [x] The generated team.name column equals the reference DDL on three dialects ([test](../../../conformance/schema.test.mjs#L116))
+      - [x] `teamsFeatureTeamTableFields.memberCount` ([test](../../../conformance/schema.test.mjs#L116))
+        - [x] The generated team.memberCount column equals the reference DDL on three dialects ([test](../../../conformance/schema.test.mjs#L116))
+      - [x] `teamsFeatureTeamTableFields.organizationId` ([test](../../../conformance/schema.test.mjs#L116))
+        - [x] The generated team.organizationId foreign key column equals the reference DDL on three dialects ([test](../../../conformance/schema.test.mjs#L116))
+      - [x] `teamsFeatureTeamTableFields.createdAt` ([test](../../../conformance/schema.test.mjs#L116))
+        - [x] The generated team.createdAt column equals the reference DDL on three dialects ([test](../../../conformance/schema.test.mjs#L116))
+      - [x] `teamsFeatureTeamTableFields.updatedAt` ([test](../../../conformance/schema.test.mjs#L116))
+        - [x] The generated nullable team.updatedAt column equals the reference DDL on three dialects ([test](../../../conformance/schema.test.mjs#L116))
+      - [x] `teamsFeatureTeamMemberTableFields.id` ([test](../../../conformance/schema.test.mjs#L116))
+        - [x] The generated teamMember.id primary key column equals the reference DDL on three dialects ([test](../../../conformance/schema.test.mjs#L116))
+      - [x] `teamsFeatureTeamMemberTableFields.teamId` ([test](../../../conformance/schema.test.mjs#L116))
+        - [x] The generated teamMember.teamId foreign key column equals the reference DDL on three dialects ([test](../../../conformance/schema.test.mjs#L116))
+      - [x] `teamsFeatureTeamMemberTableFields.userId` ([test](../../../conformance/schema.test.mjs#L116))
+        - [x] The generated teamMember.userId foreign key column equals the reference DDL on three dialects ([test](../../../conformance/schema.test.mjs#L116))
+      - [x] `teamsFeatureTeamMemberTableFields.membershipKey` ([test](../../../conformance/schema.test.mjs#L116))
+        - [x] The generated nullable unique teamMember.membershipKey column equals the reference DDL on three dialects ([test](../../../conformance/schema.test.mjs#L116))
+      - [x] `teamsFeatureTeamMemberTableFields.createdAt` ([test](../../../conformance/schema.test.mjs#L116))
+        - [x] With teams enabled, the generated teamMember.createdAt column (nullable date) is identical to the reference DDL on SQLite, PostgreSQL and MySQL ([test](../../../conformance/schema.test.mjs#L116))
   - [ ] Schema
     - [x] Generate and incrementally apply the organization schema with and without teams ([test](../../../conformance/schema.test.mjs#L129))
     - [x] Upgrade existing PostgreSQL and MySQL schemas with combined team, billing and factor profiles ([test](../../../adapters/sqlstore/profiles_test.go#L14))
-    - [ ] Organization
-      - [ ] `organizationTableFields.id`
-      - [ ] `organizationTableFields.name`
-      - [ ] `organizationTableFields.slug`
-      - [ ] `organizationTableFields.logo`
-      - [ ] `organizationTableFields.metadata`
-      - [ ] `organizationTableFields.createdAt`
-    - [ ] Member
-      - [ ] `memberTableFields.id`
-      - [ ] `memberTableFields.userId`
-      - [ ] `memberTableFields.organizationId`
-      - [ ] `memberTableFields.role`
-      - [ ] `memberTableFields.createdAt`
-    - [ ] Invitation
-      - [ ] `invitationTableFields.id`
-      - [ ] `invitationTableFields.email`
-      - [ ] `invitationTableFields.inviterId`
-      - [ ] `invitationTableFields.organizationId`
-      - [ ] `invitationTableFields.role`
-      - [ ] `invitationTableFields.status`
-      - [ ] `invitationTableFields.createdAt`
-      - [ ] `invitationTableFields.expiresAt`
-      - [ ] `invitationTeamIdFields.teamId`
-    - [ ] Session
-      - [ ] `sessionActiveOrganizationFields.activeOrganizationId`
-      - [ ] `sessionActiveOrganizationFields.activeTeamId`
+    - [x] Organization ([test](../../../conformance/schema.test.mjs#L116))
+      - [x] The generated organization table DDL is identical to the reference on SQLite, PostgreSQL and MySQL, with and without teams ([test](../../../conformance/schema.test.mjs#L116))
+      - [x] `organizationTableFields.id` ([test](../../../conformance/schema.test.mjs#L116))
+        - [x] The generated organization.id column is a not-null primary key identical to the reference DDL on three dialects ([test](../../../conformance/schema.test.mjs#L116))
+      - [x] `organizationTableFields.name` ([test](../../../conformance/schema.test.mjs#L116))
+        - [x] The generated organization.name column is not-null and identical to the reference DDL on three dialects ([test](../../../conformance/schema.test.mjs#L116))
+      - [x] `organizationTableFields.slug` ([test](../../../conformance/schema.test.mjs#L116))
+        - [x] The generated organization.slug column is not-null and unique, identical to the reference DDL on three dialects ([test](../../../conformance/schema.test.mjs#L116))
+      - [x] `organizationTableFields.logo` ([test](../../../conformance/schema.test.mjs#L116))
+        - [x] The generated organization.logo column is nullable and identical to the reference DDL on three dialects ([test](../../../conformance/schema.test.mjs#L116))
+      - [x] `organizationTableFields.metadata` ([test](../../../conformance/schema.test.mjs#L116))
+        - [x] The generated organization.metadata column is nullable and identical to the reference DDL on three dialects ([test](../../../conformance/schema.test.mjs#L116))
+      - [x] `organizationTableFields.createdAt` ([test](../../../conformance/schema.test.mjs#L116))
+        - [x] The generated organization.createdAt column is a not-null date identical to the reference DDL on three dialects ([test](../../../conformance/schema.test.mjs#L116))
+    - [x] Member ([test](../../../conformance/schema.test.mjs#L116))
+      - [x] The generated member table DDL is identical to the reference on SQLite, PostgreSQL and MySQL, with and without teams ([test](../../../conformance/schema.test.mjs#L116))
+      - [x] `memberTableFields.id` ([test](../../../conformance/schema.test.mjs#L116))
+        - [x] The generated member.id column is a not-null primary key identical to the reference DDL on three dialects ([test](../../../conformance/schema.test.mjs#L116))
+      - [x] `memberTableFields.userId` ([test](../../../conformance/schema.test.mjs#L116))
+        - [x] The generated member.userId column is a not-null reference to user.id with cascading delete, identical to the reference DDL on three dialects ([test](../../../conformance/schema.test.mjs#L116))
+      - [x] `memberTableFields.organizationId` ([test](../../../conformance/schema.test.mjs#L116))
+        - [x] The generated member.organizationId column is a not-null reference to organization.id with cascading delete, identical to the reference DDL on three dialects ([test](../../../conformance/schema.test.mjs#L116))
+      - [x] `memberTableFields.role` ([test](../../../conformance/schema.test.mjs#L116))
+        - [x] The generated member.role column is not-null and identical to the reference DDL on three dialects ([test](../../../conformance/schema.test.mjs#L116))
+      - [x] `memberTableFields.createdAt` ([test](../../../conformance/schema.test.mjs#L116))
+        - [x] The generated member.createdAt column is a not-null date identical to the reference DDL on three dialects ([test](../../../conformance/schema.test.mjs#L116))
+    - [x] Invitation ([test](../../../conformance/schema.test.mjs#L116))
+      - [x] The generated invitation table DDL is identical to the reference on SQLite, PostgreSQL and MySQL, with and without teams ([test](../../../conformance/schema.test.mjs#L116))
+      - [x] `invitationTableFields.id` ([test](../../../conformance/schema.test.mjs#L116))
+        - [x] The generated invitation.id column is a not-null primary key identical to the reference DDL on three dialects ([test](../../../conformance/schema.test.mjs#L116))
+      - [x] `invitationTableFields.email` ([test](../../../conformance/schema.test.mjs#L116))
+        - [x] The generated invitation.email column is not-null and identical to the reference DDL on three dialects ([test](../../../conformance/schema.test.mjs#L116))
+      - [x] `invitationTableFields.inviterId` ([test](../../../conformance/schema.test.mjs#L116))
+        - [x] The generated invitation.inviterId column is a not-null reference to user.id with cascading delete, identical to the reference DDL on three dialects ([test](../../../conformance/schema.test.mjs#L116))
+      - [x] `invitationTableFields.organizationId` ([test](../../../conformance/schema.test.mjs#L116))
+        - [x] The generated invitation.organizationId column is a not-null reference to organization.id with cascading delete, identical to the reference DDL on three dialects ([test](../../../conformance/schema.test.mjs#L116))
+      - [x] `invitationTableFields.role` ([test](../../../conformance/schema.test.mjs#L116))
+        - [x] The generated invitation.role column is nullable and identical to the reference DDL on three dialects ([test](../../../conformance/schema.test.mjs#L116))
+      - [x] `invitationTableFields.status` ([test](../../../conformance/schema.test.mjs#L116))
+        - [x] The generated invitation.status column is not-null and identical to the reference DDL on three dialects ([test](../../../conformance/schema.test.mjs#L116))
+      - [x] `invitationTableFields.createdAt` ([test](../../../conformance/schema.test.mjs#L116))
+        - [x] The generated invitation.createdAt column is a not-null date identical to the reference DDL on three dialects ([test](../../../conformance/schema.test.mjs#L116))
+      - [x] `invitationTableFields.expiresAt` ([test](../../../conformance/schema.test.mjs#L116))
+        - [x] The generated invitation.expiresAt column is a not-null date identical to the reference DDL on three dialects ([test](../../../conformance/schema.test.mjs#L116))
+      - [x] `invitationTeamIdFields.teamId` ([test](../../../conformance/schema.test.mjs#L116))
+        - [x] The nullable invitation.teamId column is generated only with teams enabled, and the DDL is identical to the reference on three dialects ([test](../../../conformance/schema.test.mjs#L116))
+    - [x] Session ([test](../../../conformance/schema.test.mjs#L116))
+      - [x] The generated session table adds a nullable activeOrganizationId and, with teams enabled, a nullable activeTeamId, both identical to the reference DDL on three dialects ([test](../../../conformance/schema.test.mjs#L116))
+      - [x] `sessionActiveOrganizationFields.activeOrganizationId` ([test](../../../conformance/schema.test.mjs#L116))
+        - [x] The generated organization schema adds a nullable session.activeOrganizationId text column that matches the reference DDL on SQLite, PostgreSQL and MySQL ([test](../../../conformance/schema.test.mjs#L116))
+      - [x] `sessionActiveOrganizationFields.activeTeamId` ([test](../../../conformance/schema.test.mjs#L116))
+        - [x] The generated schema adds a nullable session.activeTeamId column only when teams are enabled, matching the reference DDL on three dialects ([test](../../../conformance/schema.test.mjs#L116))
     - [x] Organization Role (optional) ([test](../../../conformance/schema.test.mjs#L460))
       - [x] Install or upgrade scoped role definitions with their columns, indexes and organization reference ([test](../../../conformance/schema.test.mjs#L460))
       - [x] Retain role data across repeated migrations and cascade only the deleted organization’s grants on three engines ([test](../../../adapters/sqlstore/organization_role_schema_test.go#L75))
@@ -932,19 +1054,32 @@
         - [x] Verify the physical column against each dialect’s generated schema ([test](../../../conformance/schema.test.mjs#L412))
       - [x] `organizationRoleTableFields.updatedAt` ([test](../../../conformance/schema.test.mjs#L412))
         - [x] Verify the physical column against each dialect’s generated schema ([test](../../../conformance/schema.test.mjs#L412))
-    - [ ] Teams (optional)
-      - [ ] `optionalTeamTableFields.id`
-      - [ ] `optionalTeamTableFields.name`
-      - [ ] `optionalTeamTableFields.memberCount`
-      - [ ] `optionalTeamTableFields.organizationId`
-      - [ ] `optionalTeamTableFields.createdAt`
-      - [ ] `optionalTeamTableFields.updatedAt`
-      - [ ] `teamsFeatureTeamTableFields0.id`
-      - [ ] `teamsFeatureTeamTableFields0.teamId`
-      - [ ] `teamsFeatureTeamTableFields0.userId`
-      - [ ] `teamsFeatureTeamTableFields0.membershipKey`
-      - [ ] `teamsFeatureTeamTableFields0.createdAt`
-      - [ ] `teamsFeatureTeamTableFields1.teamId`
+    - [x] Teams (optional) ([test](../../../conformance/schema.test.mjs#L116))
+      - [x] With teams enabled, the generated team and teamMember tables and their indexes exactly match the reference DDL on three dialects ([test](../../../conformance/schema.test.mjs#L116))
+      - [x] `optionalTeamTableFields.id` ([test](../../../conformance/schema.test.mjs#L116))
+        - [x] The team.id primary-key column matches the reference DDL on three dialects ([test](../../../conformance/schema.test.mjs#L116))
+      - [x] `optionalTeamTableFields.name` ([test](../../../conformance/schema.test.mjs#L116))
+        - [x] The required team.name text column matches the reference DDL on three dialects ([test](../../../conformance/schema.test.mjs#L116))
+      - [x] `optionalTeamTableFields.memberCount` ([test](../../../conformance/schema.test.mjs#L116))
+        - [x] The required team.memberCount integer column matches the reference DDL on three dialects ([test](../../../conformance/schema.test.mjs#L116))
+      - [x] `optionalTeamTableFields.organizationId` ([test](../../../conformance/schema.test.mjs#L116))
+        - [x] The required team.organizationId column, its organization foreign key and its index match the reference DDL on three dialects ([test](../../../conformance/schema.test.mjs#L116))
+      - [x] `optionalTeamTableFields.createdAt` ([test](../../../conformance/schema.test.mjs#L116))
+        - [x] The required team.createdAt date column matches the reference DDL on three dialects ([test](../../../conformance/schema.test.mjs#L116))
+      - [x] `optionalTeamTableFields.updatedAt` ([test](../../../conformance/schema.test.mjs#L116))
+        - [x] The nullable team.updatedAt date column matches the reference DDL on three dialects ([test](../../../conformance/schema.test.mjs#L116))
+      - [x] `teamsFeatureTeamTableFields0.id` ([test](../../../conformance/schema.test.mjs#L116))
+        - [x] The teamMember.id primary-key column matches the reference DDL on three dialects ([test](../../../conformance/schema.test.mjs#L116))
+      - [x] `teamsFeatureTeamTableFields0.teamId` ([test](../../../conformance/schema.test.mjs#L116))
+        - [x] The required teamMember.teamId column, its team foreign key and its index match the reference DDL on three dialects ([test](../../../conformance/schema.test.mjs#L116))
+      - [x] `teamsFeatureTeamTableFields0.userId` ([test](../../../conformance/schema.test.mjs#L116))
+        - [x] The required teamMember.userId column, its user foreign key and its index match the reference DDL on three dialects ([test](../../../conformance/schema.test.mjs#L116))
+      - [x] `teamsFeatureTeamTableFields0.membershipKey` ([test](../../../conformance/schema.test.mjs#L116))
+        - [x] The nullable unique teamMember.membershipKey column matches the reference DDL on three dialects ([test](../../../conformance/schema.test.mjs#L116))
+      - [x] `teamsFeatureTeamTableFields0.createdAt` ([test](../../../conformance/schema.test.mjs#L116))
+        - [x] The nullable teamMember.createdAt date column matches the reference DDL on three dialects ([test](../../../conformance/schema.test.mjs#L116))
+      - [x] `teamsFeatureTeamTableFields1.teamId` ([test](../../../conformance/schema.test.mjs#L116))
+        - [x] The generated schema adds a nullable invitation.teamId column only when teams are enabled, matching the reference DDL on three dialects ([test](../../../conformance/schema.test.mjs#L116))
     - [ ] Customizing the Schema
       - [ ] Additional Fields
   - [ ] Options

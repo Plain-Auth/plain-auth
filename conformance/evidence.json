@@ -801,6 +801,12 @@
       "label": "List only organizations the current user belongs to",
       "test": "plugins/organization/organization_test.go",
       "marker": "unrelated organization was listed"
+    },
+    {
+      "label": "List no organizations before the user joins one and exactly the joined organization after accepting an invitation, on both runtimes",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.deepEqual(ok(await invitee.organization.list()).map((item) => item.id), [org.id]);",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L530": [
@@ -890,6 +896,12 @@
       "label": "Reject a denied signed selector before resuming the authorization request",
       "test": "adapters/sqlstore/oauth_post_login_test.go",
       "marker": "denied organization switch resumed authorization"
+    },
+    {
+      "label": "Validates selector types before authentication, selects by ID or slug with ID precedence, returns the current selection when both are omitted, clears on a null ID, and on a denied selection returns 403 and clears only the calling login",
+      "test": "conformance/organization-selection.mjs",
+      "marker": "export async function compareOrganizationSelection(",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L621": [
@@ -912,6 +924,12 @@
       "label": "Persist a consistent organization and team when a successful switch races a denied switch",
       "test": "adapters/sqlstore/organization_selector_test.go",
       "marker": "competing selectors left a mismatched"
+    },
+    {
+      "label": "Sets the calling session's active organization by ID or slug and clears it when the ID is null, even when a slug is also given, without affecting another login",
+      "test": "conformance/organization-selection.mjs",
+      "marker": "assert.equal(ok(await select(first, {organizationId: null, organizationSlug: home.slug})), null);",
+      "complete": true
     }
   ],
   "plugin/organization/POST /organization/invite-member": [
@@ -3668,6 +3686,12 @@
       "label": "Read the organization’s teams and deny outsiders using the browser client",
       "test": "conformance/core.test.mjs",
       "marker": "assert.equal((await outsider.organization.listTeams("
+    },
+    {
+      "label": "List the active organization's teams, including its default team, and deny an outsider who names the organization",
+      "test": "conformance/core.test.mjs",
+      "marker": "const initial = ok(await org.listTeams())[0];",
+      "complete": true
     }
   ],
   "plugin/organization/POST /organization/set-active-team": [
@@ -3707,6 +3731,12 @@
       "label": "Return self memberships across organizations and scope administrative queries to the selected organization",
       "test": "adapters/sqlstore/organization_teams_test.go",
       "marker": "admin failed to list organization member teams"
+    },
+    {
+      "label": "Lists the caller's teams across organizations or within a named one, and lets an admin but not a plain member list another member's teams",
+      "test": "adapters/sqlstore/organization_teams_test.go",
+      "marker": "// The viewer can query their own teams across multiple organizations, but a different user's list requires management permission.",
+      "complete": true
     }
   ],
   "plugin/organization/GET /organization/list-team-members": [
@@ -3714,6 +3744,12 @@
       "label": "List members of the selected team and reject a caller whose membership was removed",
       "test": "adapters/sqlstore/organization_teams_test.go",
       "marker": "err = peer.ListTeamMembers(ctx, team.ID)"
+    },
+    {
+      "label": "List the active team's members and reject a removed caller who names that team",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.deepEqual(ok(await alice.organization.listTeamMembers()).map((m) => m.userId).sort(), [boss.id, peer.id].sort());",
+      "complete": true
     }
   ],
   "plugin/organization/POST /organization/add-team-member": [
@@ -3763,6 +3799,12 @@
       "label": "Keep outsiders, unpermitted callers and non-members away from the team membership hooks",
       "test": "adapters/sqlstore/organization_team_member_hooks_test.go",
       "marker": "// Refused changes never reach the hooks."
+    },
+    {
+      "label": "Removing a team member through the Go client clears that user's active team and ends their access to the team's member list",
+      "test": "adapters/sqlstore/organization_teams_test.go",
+      "marker": "removing member retained active team",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L1810": [
@@ -3785,6 +3827,12 @@
       "label": "Apply the same team cap to trusted creation without a session",
       "test": "conformance/organization-team-limits.mjs",
       "marker": "assert.equal((await ref.api.createTeam({body:trusted})).organizationId,north.id)"
+    },
+    {
+      "label": "Creates a team in the selected organization or an explicitly named one, enforces the team limit and membership, and leaves the session's selection unchanged",
+      "test": "conformance/organization-team-limits.mjs",
+      "marker": "ok(await make(owner,\"Explicit\",north.id)).organizationId,north.id",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L1829": [
@@ -3896,6 +3944,12 @@
       "label": "Read and update the same stored invitations, membership keys and seat counts in both runtime directions",
       "test": "conformance/core.test.mjs",
       "marker": "test(\"independent organization servers share team invitations"
+    },
+    {
+      "label": "Add the invited member to the specified team when a team-scoped invitation is accepted, in both runtime directions",
+      "test": "conformance/core.test.mjs",
+      "marker": "test(\"independent organization servers share team invitations, memberships and seat counts\"",
+      "complete": true
     }
   ],
   "plugin-symbol/2fa/TwoFactorOptions/trustDeviceMaxAge": [
@@ -7559,6 +7613,12 @@
       "label": "Keep unpermitted, unknown-role and sole-owner changes away from the role hooks",
       "test": "adapters/sqlstore/organization_member_role_hooks_test.go",
       "marker": "// Refused changes never reach the hooks."
+    },
+    {
+      "label": "Member roles are changed with active-org, member, tenant, permission, owner-assignment, sole-owner, unknown-role and empty-role checks, plus role normalization and ownership transfer, on both runtimes",
+      "test": "conformance/organization-role.mjs",
+      "marker": "export async function compareMemberRoles(",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L1140": [
@@ -7566,6 +7626,12 @@
       "label": "Use the Go HTTP client and authenticated native service to update an existing membership",
       "test": "adapters/sqlstore/organization_role_test.go",
       "marker": "HTTP client member shape"
+    },
+    {
+      "label": "Member roles are updated with permission, owner-protection and role validation checks, and the updated membership is returned on both runtimes",
+      "test": "conformance/organization-role.mjs",
+      "marker": "export async function compareMemberRoles(",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L1144/`POST /organization/update-member-role`": [
@@ -7573,6 +7639,12 @@
       "label": "Publish the string-or-array request and direct member response in the configured OpenAPI document",
       "test": "plugins/openapi/profile_test.go",
       "marker": "role update must return the public member directly"
+    },
+    {
+      "label": "update-member-role updates a member's roles in the active organization by default and returns the updated membership with normalized roles",
+      "test": "conformance/organization-role.mjs",
+      "marker": "const updated = ok(await role(admin, member.id, [\" admin,member \", \"\", \"admin\"], null));",
+      "complete": true
     }
   ],
   "plugin/organization/POST /organization/remove-member": [
@@ -7610,6 +7682,12 @@
       "label": "Recheck the caller's permission after the before hook and keep the member when it was revoked",
       "test": "adapters/sqlstore/organization_member_removal_hooks_test.go",
       "marker": "// The removal rechecks the caller's permission after the before hook."
+    },
+    {
+      "label": "A member is removed by case-insensitive email or exact ID from the active or explicit organization, with permission, owner-protection and tenant checks, and the member shape is returned on both runtimes",
+      "test": "conformance/organization-removal.mjs",
+      "marker": "export async function compareOrganizationRemoval(",
+      "complete": true
     }
   ],
   "plugin/organization/POST /organization/leave": [
@@ -7622,6 +7700,12 @@
       "label": "Keep one owner when two separate database connections attempt to leave simultaneously",
       "test": "adapters/sqlstore/organization_removal_test.go",
       "marker": "concurrent departures left"
+    },
+    {
+      "label": "Leaving the named organization returns the departed membership with the user's email; a repeat departure and the sole owner are rejected on both runtimes",
+      "test": "conformance/organization-removal.mjs",
+      "marker": "const left=ok(await member.organization.leave({organizationId:second.id}));",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L1121": [
@@ -7629,6 +7713,12 @@
       "label": "Release team seats when a process using the plain organization plugin removes a member from a team-enabled database",
       "test": "adapters/sqlstore/organization_removal_test.go",
       "marker": "physical team cleanup lost seat counts"
+    },
+    {
+      "label": "Members are removed by email or ID, with permission, owner-protection and tenant checks, on both runtimes",
+      "test": "conformance/organization-removal.mjs",
+      "marker": "export async function compareOrganizationRemoval(",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L1212": [
@@ -7636,6 +7726,12 @@
       "label": "Report a missing membership when the released client repeats a departure",
       "test": "conformance/organization-removal.mjs",
       "marker": "denial(await member.organization.leave({organizationId:second.id})"
+    },
+    {
+      "label": "Leaving an organization returns the departed membership; a repeat departure and a sole-owner departure are refused",
+      "test": "conformance/organization-removal.mjs",
+      "marker": "const left=ok(",
+      "complete": true
     }
   ],
   "plugin/sso/POST /sso/register": [
@@ -10064,6 +10160,12 @@
       "label": "Serialize competing slug claims across two connections and reject revoked sessions on three SQL engines",
       "test": "adapters/sqlstore/organization_profile_test.go",
       "marker": "slug did not have exactly one owner"
+    },
+    {
+      "label": "Update the active organization's name, slug and metadata and clear its logo in one request",
+      "test": "conformance/organization-profile.mjs",
+      "marker": "const updated=ok(await patch(owner,{name:\"After\",slug:\"org-late\",logo:null,metadata:{nested:{seats:4}}}));",
+      "complete": true
     }
   ],
   "plugin/organization/POST /organization/check-slug": [
@@ -10090,6 +10192,11 @@
       "label": "Reject anonymous slug lookup and preserve the authenticated callback contract",
       "test": "conformance/organization-profile.mjs",
       "marker": "check(anonymous,\"org-late\")"
+    },
+    {
+      "label": "Checking a slug requires a session and reports free and occupied slugs, following renames",
+      "test": "conformance/organization-profile.mjs",
+      "marker": "problem(await check(anonymous,\"org-late\"),401);"
     }
   ],
   "docs/content/docs/plugins/test-utils.mdx#L126": [
@@ -14383,6 +14490,12 @@
       "label": "Reject all invalid selector fields before authentication",
       "test": "conformance/organization-selection.mjs",
       "marker": "assert.equal(validation.error.message, invalidMessage)"
+    },
+    {
+      "label": "Validates selector types before authentication, selects by ID or slug with ID precedence, clears on a null ID, and on a denied selection returns 403 and clears only the calling login",
+      "test": "conformance/organization-selection.mjs",
+      "marker": "export async function compareOrganizationSelection(",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L1903/`POST /organization/set-active-team`": [
@@ -14649,6 +14762,12 @@
       "label": "Reject a removed caller and deny access to totals even on an empty page",
       "test": "conformance/organization-directory.mjs",
       "marker": "denied(await list(guest, {organizationId:group.id, offset:500})"
+    },
+    {
+      "label": "Pages, sorts and filters members with every operator, slug-over-ID precedence, membership checks, public profiles and the 100-row default",
+      "test": "conformance/organization-directory.mjs",
+      "marker": "export async function compareMemberDirectory(",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L1078": [
@@ -14666,6 +14785,12 @@
       "label": "Reject a removed caller and deny access to totals even on an empty page",
       "test": "conformance/organization-directory.mjs",
       "marker": "denied(await list(guest, {organizationId:group.id, offset:500})"
+    },
+    {
+      "label": "Member listing pages, sorts and filters memberships with public profiles within the caller's current membership",
+      "test": "conformance/organization-directory.mjs",
+      "marker": "export async function compareMemberDirectory(",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L1082/`GET /organization/list-members`": [
@@ -14683,6 +14808,12 @@
       "label": "Reject a removed caller and deny access to totals even on an empty page",
       "test": "conformance/organization-directory.mjs",
       "marker": "denied(await list(guest, {organizationId:group.id, offset:500})"
+    },
+    {
+      "label": "Lists members of the active, explicit or slug-selected organization with limit, offset, sorting, every filter operator, public profiles, the 100-row default and membership checks",
+      "test": "conformance/organization-directory.mjs",
+      "marker": "assert.deepEqual(scoped, {members: [core.members[0]], total: 2});",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L1088/Parameter `organizationId` (optional)": [
@@ -14719,6 +14850,12 @@
       "label": "Sort returned memberships by their public membership fields",
       "test": "conformance/organization-directory.mjs",
       "marker": "organizationId: other.id, organizationSlug: group.slug, sortBy: \"role\""
+    },
+    {
+      "label": "Sorting by role puts owner before member in descending order and after member in ascending order",
+      "test": "conformance/organization-directory.mjs",
+      "marker": "const core = ok(await list(member, {sortBy: \"role\", sortDirection: \"desc\"}));",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L1104/Parameter `sortDirection` (optional)": [
@@ -14734,6 +14871,12 @@
       "label": "Filter stored membership fields, join dates and tenant IDs inside the caller's scope",
       "test": "conformance/organization-directory.mjs",
       "marker": "filterField:\"organizationId\", filterValue:other.id"
+    },
+    {
+      "label": "Filtering by role with every operator and by organization ID returns only matching memberships with a matching total",
+      "test": "conformance/organization-directory.mjs",
+      "marker": "const page = ok(await list(member, {filterField:\"role\", filterOperator, filterValue, sortBy:\"role\"}));",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L1112/Parameter `filterOperator` (optional)": [
@@ -14868,6 +15011,12 @@
       "label": "Expose a nullable team ID only on a team-enabled installation",
       "test": "conformance/organization-invitations.mjs",
       "marker": "assert.equal(\"teamId\" in orgWide, teams)"
+    },
+    {
+      "label": "Lists invitations of every status for the active or explicit organization, requiring membership and invitation.create, hiding creator-role invitations from non-owners, with a team field only when teams are enabled",
+      "test": "conformance/organization-invitations.mjs",
+      "marker": "export async function compareOrganizationInvitations(",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L1030": [
@@ -14885,6 +15034,12 @@
       "label": "Expose a nullable team ID only on a team-enabled installation",
       "test": "conformance/organization-invitations.mjs",
       "marker": "assert.equal(\"teamId\" in orgWide, teams)"
+    },
+    {
+      "label": "Members who may invite list every invitation of an explicit or active organization, owner invitations are shown only to owners, and other callers are refused",
+      "test": "conformance/organization-invitations.mjs",
+      "marker": "export async function compareOrganizationInvitations(",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L1034/`GET /organization/list-invitations`": [
@@ -14902,6 +15057,12 @@
       "label": "Expose a nullable team ID only on a team-enabled installation",
       "test": "conformance/organization-invitations.mjs",
       "marker": "assert.equal(\"teamId\" in orgWide, teams)"
+    },
+    {
+      "label": "An owner lists invitations in every status for an explicitly named organization",
+      "test": "conformance/organization-invitations.mjs",
+      "marker": "const all = ok(await list(owner, studio.id));",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L1040/Parameter `organizationId` (optional)": [
@@ -14972,6 +15133,12 @@
       "label": "Refuse details after the original inviter leaves the organization",
       "test": "conformance/organization-invitations.mjs",
       "marker": "code(await get(recipient, inv.id), 400, \"INVITER_IS_NO_LONGER_A_MEMBER_OF_THE_ORGANIZATION\")"
+    },
+    {
+      "label": "Returns a pending, unexpired invitation with current organization and inviter details, enforcing the recipient, optional email verification and the inviter's continued membership",
+      "test": "conformance/organization-invitations.mjs",
+      "marker": "export async function compareInvitationDetails(",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L1010": [
@@ -14989,6 +15156,12 @@
       "label": "Refuse details after the original inviter leaves the organization",
       "test": "conformance/organization-invitations.mjs",
       "marker": "code(await get(recipient, inv.id), 400, \"INVITER_IS_NO_LONGER_A_MEMBER_OF_THE_ORGANIZATION\")"
+    },
+    {
+      "label": "A signed-in recipient reads a live pending invitation with current organization and inviter details, subject to recipient matching, configured verification, status, expiry and inviter membership",
+      "test": "conformance/organization-invitations.mjs",
+      "marker": "export async function compareInvitationDetails(",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L1014/`GET /organization/get-invitation`": [
@@ -15006,6 +15179,12 @@
       "label": "Refuse details after the original inviter leaves the organization",
       "test": "conformance/organization-invitations.mjs",
       "marker": "code(await get(recipient, inv.id), 400, \"INVITER_IS_NO_LONGER_A_MEMBER_OF_THE_ORGANIZATION\")"
+    },
+    {
+      "label": "The recipient reads the pending invitation with the organization's current name and slug and the inviter's current email",
+      "test": "conformance/organization-invitations.mjs",
+      "marker": "const view = ok(await get(recipient, inv.id));",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L1020/Parameter `id`": [
@@ -15041,6 +15220,12 @@
       "label": "Recheck changed invitation inputs, live recipient and administrator permissions after host code runs",
       "test": "adapters/sqlstore/organization_decision_hooks_test.go",
       "marker": "t.Fatal(\"stale approval changed the invitation status\", status)"
+    },
+    {
+      "label": "The recipient rejects a pending invitation, including an expired one, after validation, recipient and optional email-verification checks; the response has member null and a team-aware invitation, and the session selection is unchanged",
+      "test": "conformance/organization-invitations.mjs",
+      "marker": "export async function compareInvitationRejection(",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L990": [
@@ -15142,6 +15327,12 @@
       "label": "Recheck changed invitation inputs, live recipient and administrator permissions after host code runs",
       "test": "adapters/sqlstore/organization_decision_hooks_test.go",
       "marker": "t.Fatal(\"stale approval changed the invitation status\", status)"
+    },
+    {
+      "label": "Cancels pending, expired, rejected and accepted invitations after validation, membership and invitation.cancel checks, keeps existing access and rechecks permission after a role change",
+      "test": "conformance/organization-invitations.mjs",
+      "marker": "export async function compareInvitationCancellation(",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L973": [
@@ -15174,6 +15365,12 @@
       "label": "Recheck changed invitation inputs, live recipient and administrator permissions after host code runs",
       "test": "adapters/sqlstore/organization_decision_hooks_test.go",
       "marker": "t.Fatal(\"stale approval changed the invitation status\", status)"
+    },
+    {
+      "label": "Owners and admins cancel pending, expired, rejected and accepted invitations, members and outsiders are refused, and existing membership and team access remain",
+      "test": "conformance/organization-invitations.mjs",
+      "marker": "export async function compareInvitationCancellation(",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L979/`POST /organization/cancel-invitation`": [
@@ -15206,6 +15403,12 @@
       "label": "Recheck changed invitation inputs, live recipient and administrator permissions after host code runs",
       "test": "adapters/sqlstore/organization_decision_hooks_test.go",
       "marker": "t.Fatal(\"stale approval changed the invitation status\", status)"
+    },
+    {
+      "label": "An admin cancels an expired pending invitation and receives the canceled invitation with its role and, when teams are enabled, its team",
+      "test": "conformance/organization-invitations.mjs",
+      "marker": "const canceled = ok(await cancel(admin, pending.id));",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L985/Parameter `invitationId`": [
@@ -15487,6 +15690,12 @@
       "label": "Check the resolved cap of every invited team with the inviter's session before storing the invitation",
       "test": "adapters/sqlstore/organization_team_seats_test.go",
       "marker": "// A fresh invitation checks every requested team with the inviter's session."
+    },
+    {
+      "label": "Issue an invitation to the active organization when organizationId is empty and return the lowercased address and normalized roles",
+      "test": "conformance/invitation-input.mjs",
+      "marker": "assert.equal(wide.email, \"guest+list@example.test\");",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L903/Parameter `email`": [
@@ -15507,6 +15716,12 @@
       "label": "Check issuing membership and permission before reporting unknown or empty role names",
       "test": "adapters/sqlstore/organization_invitation_preparation_test.go",
       "marker": "check(\"YOU_ARE_NOT_ALLOWED_TO_INVITE_USERS_TO_THIS_ORGANIZATION\")"
+    },
+    {
+      "label": "Store string or array roles as a trimmed, ordered comma-separated list and reject empty or unknown roles",
+      "test": "conformance/invitation-input.mjs",
+      "marker": "assert.equal(wide.role, \"admin,member,admin\");",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L911/Parameter `organizationId` (optional)": [
@@ -15665,6 +15880,12 @@
       "label": "Evaluate every built-in role and resource action with the signed-in organization member",
       "test": "conformance/organization-permissions.mjs",
       "marker": "assert.deepEqual(decision,{error:null,success:grants[i]}"
+    },
+    {
+      "label": "The organization's creator holds every built-in organization, member, invitation, team and ac action through has-permission",
+      "test": "conformance/organization-permissions.mjs",
+      "marker": "success:grants[i]}",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L1237/`admin`": [
@@ -15872,6 +16093,12 @@
       "label": "Merge stored and static grants within one role and recheck the grant after a host callback",
       "test": "adapters/sqlstore/organization_stored_roles_test.go",
       "marker": "changed organization grants were not rechecked after the callback"
+    },
+    {
+      "label": "With dynamic access control enabled, roles stored per organization govern invitations, team creation, profile updates and permission checks, and grant changes apply on the next operation",
+      "test": "conformance/organization-stored-roles.mjs",
+      "marker": "export async function compareStoredOrganizationRoles(",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L1474": [
@@ -15879,6 +16106,12 @@
       "label": "Resolve the same role independently per organization and apply changes from another application on the next operation",
       "test": "conformance/organization-stored-roles.mjs",
       "marker": "assert.equal(await query(reporter,north,{team:[\"create\"]}),false)"
+    },
+    {
+      "label": "Roles stored at runtime for each organization are resolved independently by the service, and later grant changes apply on the next operation",
+      "test": "conformance/organization-stored-roles.mjs",
+      "marker": "export async function compareStoredOrganizationRoles(",
+      "complete": true
     }
   ],
   "plugin/organization/GET /organization/list-roles": [
@@ -15906,6 +16139,12 @@
       "label": "List the values written through another application with the original logical keys",
       "test": "conformance/organization-role-fields.mjs",
       "marker": "assert.deepEqual([row.color, row.priority, row.enabled, row.source]"
+    },
+    {
+      "label": "Stored roles of the active or an explicit organization are listed after authentication, membership and ac.read checks, capped at 100 rows, on both runtimes",
+      "test": "conformance/organization-role-directory.mjs",
+      "marker": "const list = (actor, query = {}) => actor.organization.listRoles({query});",
+      "complete": true
     }
   ],
   "plugin/organization/GET /organization/get-role": [
@@ -15933,6 +16172,12 @@
       "label": "Read mapped role fields across applications and preserve defaults, explicit nulls, false and zero",
       "test": "conformance/organization-role-fields.mjs",
       "marker": "assert.deepEqual([created.color, created.priority, created.enabled, created.source]"
+    },
+    {
+      "label": "A stored role is looked up by name or exact ID with name precedence, case-sensitive matching, query validation, membership and ac.read checks, on both runtimes",
+      "test": "conformance/organization-role-directory.mjs",
+      "marker": "const get = (actor, query) => actor.organization.getRole({query});",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L1586": [
@@ -15950,6 +16195,12 @@
       "label": "Use the Go client against three SQL engines and honor withdrawal of directory access",
       "test": "adapters/sqlstore/organization_role_directory_test.go",
       "marker": "read directory after losing ac.read"
+    },
+    {
+      "label": "The selected organization's stored roles are listed, capped at 100 rows, after membership and ac.read checks",
+      "test": "conformance/organization-role-directory.mjs",
+      "marker": "assert.equal(page.length, 100);",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L1591/`GET /organization/list-roles`": [
@@ -15972,6 +16223,12 @@
       "label": "List the values written through another application with the original logical keys",
       "test": "conformance/organization-role-fields.mjs",
       "marker": "assert.deepEqual([row.color, row.priority, row.enabled, row.source]"
+    },
+    {
+      "label": "list-roles returns the stored roles of the active or an explicit organization and enforces membership and ac.read",
+      "test": "conformance/organization-role-directory.mjs",
+      "marker": "assert.deepEqual(ok(await list(owner, explicit)), [northern]);",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L1602": [
@@ -15989,6 +16246,12 @@
       "label": "Keep SQL lookup case-sensitive across all three engines and check live session ownership",
       "test": "adapters/sqlstore/organization_role_directory_test.go",
       "marker": "expected strict stored-role lookup"
+    },
+    {
+      "label": "A stored role in the active organization is read by name with its permission object and timestamps",
+      "test": "conformance/organization-role-directory.mjs",
+      "marker": "assert.deepEqual(ok(await get(owner, {roleName:\"desk\"})), expected);",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L1607/`GET /organization/get-role`": [
@@ -16011,6 +16274,12 @@
       "label": "Read mapped role fields across applications and preserve defaults, explicit nulls, false and zero",
       "test": "conformance/organization-role-fields.mjs",
       "marker": "assert.deepEqual([created.color, created.priority, created.enabled, created.source]"
+    },
+    {
+      "label": "get-role reads a stored role by name or exact ID in the active or an explicit organization, with validation, membership and ac.read checks",
+      "test": "conformance/organization-role-directory.mjs",
+      "marker": "roleName:\"\", roleId:\"north-desk\"",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L1597/Parameter `organizationId` (optional)": [
@@ -16199,6 +16468,12 @@
       "label": "Normalize Unicode case on stored role names and reserve predefined and duplicate names",
       "test": "conformance/organization-create-role.mjs",
       "marker": "assert.equal(vacant.roleData.role,\"i\\u0307dea\")"
+    },
+    {
+      "label": "The role name must be a string, is lower-cased including Unicode, and must be unique per organization against stored and predefined names while being reusable in another organization",
+      "test": "conformance/organization-create-role.mjs",
+      "marker": "make(owner,\"DeSk\"",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L1551/Parameter `permission` (optional)": [
@@ -16255,6 +16530,12 @@
       "label": "Exchange JSON objects and typed arrays between clients while preserving empty arrays, explicit nulls and fractional weights",
       "test": "conformance/organization-role-fields.mjs",
       "marker": "assert.deepEqual([fetched.metadata, fetched.tags, fetched.weights]"
+    },
+    {
+      "label": "Updates a stored role's grants and name with input validation, organization scoping, permission and delegation checks and reserved-name rejection, and the change applies to the next permission check",
+      "test": "conformance/organization-update-role.mjs",
+      "marker": "export async function compareOrganizationRoleUpdates(",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L1626": [
@@ -16277,6 +16558,12 @@
       "label": "Update declared fields and retain omitted values and host-owned defaults",
       "test": "conformance/organization-role-fields.mjs",
       "marker": "assert.deepEqual([changed.color, changed.priority, changed.enabled, changed.source]"
+    },
+    {
+      "label": "Updates a stored role by name or ID and applies the new grants on the next permission check",
+      "test": "conformance/organization-update-role.mjs",
+      "marker": "export async function compareOrganizationRoleUpdates(",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L1630/`POST /organization/update-role`": [
@@ -16304,6 +16591,12 @@
       "label": "Exchange JSON objects and typed arrays between clients while preserving empty arrays, explicit nulls and fractional weights",
       "test": "conformance/organization-role-fields.mjs",
       "marker": "assert.deepEqual([fetched.metadata, fetched.tags, fetched.weights]"
+    },
+    {
+      "label": "Replaces a role's grants and returns the role with its new permissions, behind validation, organization scoping and permission checks",
+      "test": "conformance/organization-update-role.mjs",
+      "marker": "assert.deepEqual(applied.roleData.permission,{organization:[\"update\"]});",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L1636/Parameter `roleName` (optional)": [
@@ -16404,6 +16697,12 @@
       "label": "Round-trip JSON strings, booleans, numbers, objects, arrays and null on every SQL adapter",
       "test": "adapters/sqlstore/organization_role_fields_test.go",
       "marker": "stored JSON or array lost its logical type"
+    },
+    {
+      "label": "Declared role fields are created, read, listed and edited between two applications sharing one database, with defaults, a mapped column name, server-owned input and type validation",
+      "test": "conformance/organization-role-fields.mjs",
+      "marker": "export async function compareOrganizationRoleFields(",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L1814/`POST /organization/create-team`": [
@@ -16421,6 +16720,12 @@
       "label": "Apply the same team cap to trusted creation without a session",
       "test": "conformance/organization-team-limits.mjs",
       "marker": "assert.equal((await ref.api.createTeam({body:trusted})).organizationId,north.id)"
+    },
+    {
+      "label": "Create a team in the active organization with the official client on both runtimes",
+      "test": "conformance/core.test.mjs",
+      "marker": "const made = ok(await org.createTeam({ name: \"Editing\" }));",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L1820/Parameter `name`": [
@@ -16760,6 +17065,678 @@
       "label": "Read an organization by slug, and clear the selection after a refused slug lookup",
       "test": "adapters/sqlstore/organization_get_test.go",
       "marker": "// A member reads the selected organization, or one named by ID or slug.",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/organization/OrganizationOptions/requireEmailVerificationOnInvitation": [
+    {
+      "label": "When enabled, getting, accepting or rejecting an invitation as an unverified recipient answers 403 until the email is verified; when disabled, an unverified recipient succeeds",
+      "test": "conformance/organization-invitations.mjs",
+      "marker": "code(await get(recipient, inv.id), 403, \"EMAIL_VERIFICATION_REQUIRED_FOR_INVITATION\");",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L85/Parameter `slug`": [
+    {
+      "label": "An HTTP creation returns the organization with the submitted slug and the creator as its owner on three SQL engines",
+      "test": "adapters/sqlstore/organization_creation_policy_test.go",
+      "marker": "if created.Slug != \"first\" || len(created.Members) != 1",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L139": [
+    {
+      "label": "A signed-in caller learns that a free slug is available and an occupied slug is taken, including after a rename",
+      "test": "conformance/organization-profile.mjs",
+      "marker": "assert.deepEqual(ok(await check(outsider,\"org-late\")),{status:true});",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L149/Parameter `slug`": [
+    {
+      "label": "The sent slug decides the answer: an occupied slug gets 400 ORGANIZATION_SLUG_ALREADY_TAKEN and a free one gets {status:true}",
+      "test": "conformance/organization-profile.mjs",
+      "marker": "problem(await check(owner,\"org-early\"),400,\"ORGANIZATION_SLUG_ALREADY_TAKEN\");",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L604/`GET /organization/list`": [
+    {
+      "label": "List no organizations before the user joins one and exactly the joined organization after accepting an invitation, on both runtimes",
+      "test": "conformance/core.test.mjs",
+      "marker": "assert.deepEqual(ok(await invitee.organization.list()).map((item) => item.id), [org.id]);",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L783": [
+    {
+      "label": "Owners and admins update an explicit or active organization's name, slug, logo and metadata, other callers are refused, and a slug collision changes nothing",
+      "test": "conformance/organization-profile.mjs",
+      "marker": "export async function compareOrganizationProfiles(",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L793/Parameter `data`": [
+    {
+      "label": "A partial data object changes only the fields it names and keeps the stored name, slug and metadata it leaves out",
+      "test": "conformance/organization-profile.mjs",
+      "marker": "const kept=ok(await patch(peer,{name:\"Second\"},group.id));",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L797/Parameter `name` (optional)": [
+    {
+      "label": "Renaming returns the new name, which survives later updates that omit the name or fail on a slug conflict",
+      "test": "conformance/organization-profile.mjs",
+      "marker": "assert.equal(updated.name,\"After\");",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L801/Parameter `slug` (optional)": [
+    {
+      "label": "Changing the slug frees the old one and allows resubmitting the current slug; another organization's slug is rejected and the rest of the update is not applied",
+      "test": "conformance/organization-profile.mjs",
+      "marker": "problem(await patch(owner,{name:\"Rolled back\",slug:other.slug}),400,\"ORGANIZATION_SLUG_ALREADY_TAKEN\");",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L809/Parameter `metadata` (optional)": [
+    {
+      "label": "Metadata is replaced (old keys dropped) by a nested object that later updates omitting metadata keep",
+      "test": "conformance/organization-profile.mjs",
+      "marker": "assert.deepEqual(updated.metadata,{nested:{seats:4}});",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L814/Parameter `organizationId` (optional)": [
+    {
+      "label": "An explicit organization ID is used even when another is active, the active organization is used when the ID is omitted, and ORGANIZATION_NOT_FOUND is reported when neither exists",
+      "test": "conformance/organization-profile.mjs",
+      "marker": "problem(await patch(peer,{name:\"x\"}),400,\"ORGANIZATION_NOT_FOUND\");",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1125/`POST /organization/remove-member`": [
+    {
+      "label": "remove-member removes a member by email or ID and returns it, and refuses unpermitted callers, an admin removing the sole owner, and members of other organizations",
+      "test": "conformance/organization-removal.mjs",
+      "marker": "export async function compareOrganizationRemoval(",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1131/Parameter `memberIdOrEmail`": [
+    {
+      "label": "An email is matched case-insensitively and returns the member with its user; an exact member ID returns the member without the user; an ID from another organization is not found",
+      "test": "conformance/organization-removal.mjs",
+      "marker": "const removed = ok(await admin.organization.removeMember({memberIdOrEmail:user.email.toUpperCase()})).member;",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1135/Parameter `organizationId` (optional)": [
+    {
+      "label": "An explicit organization ID scopes a removal when no organization is selected, and an omitted ID uses the active organization or reports NO_ACTIVE_ORGANIZATION",
+      "test": "adapters/sqlstore/organization_removal_test.go",
+      "marker": "wantCode(err, \"NO_ACTIVE_ORGANIZATION\")",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1150/Parameter `role`": [
+    {
+      "label": "String or array roles are split on commas, trimmed and stored in order without dropping duplicates, and unknown or blank roles are rejected",
+      "test": "conformance/organization-role.mjs",
+      "marker": "assert.equal(updated.role, \"admin,member,admin\");",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1154/Parameter `memberId`": [
+    {
+      "label": "The member ID selects the membership to update, an unknown ID reports MEMBER_NOT_FOUND, and a member of another organization is refused with 403",
+      "test": "conformance/organization-role.mjs",
+      "marker": "denied(await role(admin, \"absent\", \"member\"), 400, \"MEMBER_NOT_FOUND\");",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1158/Parameter `organizationId` (optional)": [
+    {
+      "label": "An explicit organization ID scopes the update, the active organization is used when it is omitted, and with neither the update reports NO_ACTIVE_ORGANIZATION",
+      "test": "conformance/organization-role.mjs",
+      "marker": "denied(await role(outsider, member.id, \"admin\", null), 400, \"NO_ACTIVE_ORGANIZATION\");",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1195/Parameter `userId`": [
+    {
+      "label": "A trusted grant adds the named user, and a user ID that matches no account is rejected with USER_NOT_FOUND on three SQL engines",
+      "test": "adapters/sqlstore/organization_members_test.go",
+      "marker": "check(bad, \"USER_NOT_FOUND\")",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1199/Parameter `role`": [
+    {
+      "label": "A trusted grant assigns the requested roles as one trimmed, comma-separated role in request order, and a missing role list is rejected",
+      "test": "adapters/sqlstore/organization_members_test.go",
+      "marker": "a.member.Role != \"admin,editor,editor,member\"",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1207/Parameter `teamId` (optional)": [
+    {
+      "label": "A grant with a team ID takes a seat on that team, an unknown team is rejected, and a full team rolls back the organization grant",
+      "test": "adapters/sqlstore/organization_members_test.go",
+      "marker": "check(bad, \"TEAM_NOT_FOUND\")",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1216/`POST /organization/leave`": [
+    {
+      "label": "leave removes the caller's membership in the named organization and returns it with the user's email",
+      "test": "conformance/organization-removal.mjs",
+      "marker": "assert.equal(left.id,elsewhere.id);",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1222/Parameter `organizationId`": [
+    {
+      "label": "The organization named by organizationId is left even when the session selects a different organization (reference) or none (Go)",
+      "test": "conformance/organization-removal.mjs",
+      "marker": "const left=ok(",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1270": [
+    {
+      "label": "Creating an access controller from a resource-to-actions statement keeps a private copy, and roles may only grant the resources and actions it declares",
+      "test": "plugins/access/access_test.go",
+      "marker": "func TestRoleDefinition(",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1839/Parameter `organizationId` (optional)": [
+    {
+      "label": "Lists the teams of an explicitly named organization rather than the active one",
+      "test": "conformance/organization-team-limits.mjs",
+      "marker": "listTeams({query:{organizationId:north.id}})",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1854/Parameter `teamId`": [
+    {
+      "label": "Updating by a team ID in the caller's organization returns the renamed team, and another organization's team ID is rejected with TEAM_NOT_FOUND",
+      "test": "adapters/sqlstore/organization_teams_test.go",
+      "marker": "_, err = owner.UpdateTeam(ctx, foreign[0].ID, \"invalid\", group)",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1858/Parameter `data`": [
+    {
+      "label": "Rename a team from the data object and return and persist the new name",
+      "test": "conformance/core.test.mjs",
+      "marker": "ok(await org.updateTeam({ teamId: made.id, data: { name: \"Editorial\" } })).name, \"Editorial\"",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1862/Parameter `name` (optional)": [
+    {
+      "label": "Renaming a team through the Go client returns the new name and an update timestamp on three SQL engines",
+      "test": "adapters/sqlstore/organization_teams_test.go",
+      "marker": "if updated.Name != \"Research\" || updated.UpdatedAt == nil {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1890/Parameter `teamId`": [
+    {
+      "label": "Remove the identified team and keep the organization's remaining team",
+      "test": "conformance/core.test.mjs",
+      "marker": "ok(await org.removeTeam({ teamId: made.id }))",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1928/Parameter `userId` (optional)": [
+    {
+      "label": "An admin lists another member's teams by user ID, a plain member is refused another user's list, and an omitted ID lists the caller's own teams",
+      "test": "adapters/sqlstore/organization_teams_test.go",
+      "marker": "others, err := admin.ListUserTeams(ctx, group, peerUser.ID)",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1962/Parameter `teamId`": [
+    {
+      "label": "Add the user to the identified team so they can then select it as their active team",
+      "test": "conformance/core.test.mjs",
+      "marker": "const member = ok(await org.addTeamMember({ teamId: made.id, userId: boss.id }));",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1981/Parameter `teamId`": [
+    {
+      "label": "Remove the user from the identified team so they can no longer list its members",
+      "test": "conformance/core.test.mjs",
+      "marker": "alice.organization.listTeamMembers({ query: { teamId: made.id } })",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1985/Parameter `userId`": [
+    {
+      "label": "Remove the named user from the team and clear that user's active team selection",
+      "test": "adapters/sqlstore/organization_teams_test.go",
+      "marker": "t.Fatal(\"removing member retained active team\")",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L2031/`allowRemovingAllTeams`": [
+    {
+      "label": "Remove an organization's only team when AllowRemovingAllTeams is enabled",
+      "test": "adapters/sqlstore/organization_teams_test.go",
+      "marker": "t.Fatal(\"last team removal enabled\", err)",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L2053": [
+    {
+      "label": "With teams enabled the generated schema, including the team and teamMember tables, equals the reference DDL on three dialects",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L2061/`teamsFeatureTeamTableFields.id`": [
+    {
+      "label": "The generated team.id primary key column equals the reference DDL on three dialects",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L2067/`teamsFeatureTeamTableFields.name`": [
+    {
+      "label": "The generated team.name column equals the reference DDL on three dialects",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L2072/`teamsFeatureTeamTableFields.memberCount`": [
+    {
+      "label": "The generated team.memberCount column equals the reference DDL on three dialects",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L2077/`teamsFeatureTeamTableFields.organizationId`": [
+    {
+      "label": "The generated team.organizationId foreign key column equals the reference DDL on three dialects",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L2084/`teamsFeatureTeamTableFields.createdAt`": [
+    {
+      "label": "The generated team.createdAt column equals the reference DDL on three dialects",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L2089/`teamsFeatureTeamTableFields.updatedAt`": [
+    {
+      "label": "The generated nullable team.updatedAt column equals the reference DDL on three dialects",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L2102/`teamsFeatureTeamMemberTableFields.id`": [
+    {
+      "label": "The generated teamMember.id primary key column equals the reference DDL on three dialects",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L2108/`teamsFeatureTeamMemberTableFields.teamId`": [
+    {
+      "label": "The generated teamMember.teamId foreign key column equals the reference DDL on three dialects",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L2115/`teamsFeatureTeamMemberTableFields.userId`": [
+    {
+      "label": "The generated teamMember.userId foreign key column equals the reference DDL on three dialects",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L2122/`teamsFeatureTeamMemberTableFields.membershipKey`": [
+    {
+      "label": "The generated nullable unique teamMember.membershipKey column equals the reference DDL on three dialects",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L2128/`teamsFeatureTeamMemberTableFields.createdAt`": [
+    {
+      "label": "With teams enabled, the generated teamMember.createdAt column (nullable date) is identical to the reference DDL on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L2141": [
+    {
+      "label": "The generated organization table DDL is identical to the reference on SQLite, PostgreSQL and MySQL, with and without teams",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L2147/`organizationTableFields.id`": [
+    {
+      "label": "The generated organization.id column is a not-null primary key identical to the reference DDL on three dialects",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L2153/`organizationTableFields.name`": [
+    {
+      "label": "The generated organization.name column is not-null and identical to the reference DDL on three dialects",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L2158/`organizationTableFields.slug`": [
+    {
+      "label": "The generated organization.slug column is not-null and unique, identical to the reference DDL on three dialects",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L2164/`organizationTableFields.logo`": [
+    {
+      "label": "The generated organization.logo column is nullable and identical to the reference DDL on three dialects",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L2170/`organizationTableFields.metadata`": [
+    {
+      "label": "The generated organization.metadata column is nullable and identical to the reference DDL on three dialects",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L2176/`organizationTableFields.createdAt`": [
+    {
+      "label": "The generated organization.createdAt column is a not-null date identical to the reference DDL on three dialects",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L2184": [
+    {
+      "label": "The generated member table DDL is identical to the reference on SQLite, PostgreSQL and MySQL, with and without teams",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L2190/`memberTableFields.id`": [
+    {
+      "label": "The generated member.id column is a not-null primary key identical to the reference DDL on three dialects",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L2196/`memberTableFields.userId`": [
+    {
+      "label": "The generated member.userId column is a not-null reference to user.id with cascading delete, identical to the reference DDL on three dialects",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L2203/`memberTableFields.organizationId`": [
+    {
+      "label": "The generated member.organizationId column is a not-null reference to organization.id with cascading delete, identical to the reference DDL on three dialects",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L2210/`memberTableFields.role`": [
+    {
+      "label": "The generated member.role column is not-null and identical to the reference DDL on three dialects",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L2215/`memberTableFields.createdAt`": [
+    {
+      "label": "The generated member.createdAt column is a not-null date identical to the reference DDL on three dialects",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L2223": [
+    {
+      "label": "The generated invitation table DDL is identical to the reference on SQLite, PostgreSQL and MySQL, with and without teams",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L2229/`invitationTableFields.id`": [
+    {
+      "label": "The generated invitation.id column is a not-null primary key identical to the reference DDL on three dialects",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L2235/`invitationTableFields.email`": [
+    {
+      "label": "The generated invitation.email column is not-null and identical to the reference DDL on three dialects",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L2240/`invitationTableFields.inviterId`": [
+    {
+      "label": "The generated invitation.inviterId column is a not-null reference to user.id with cascading delete, identical to the reference DDL on three dialects",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L2247/`invitationTableFields.organizationId`": [
+    {
+      "label": "The generated invitation.organizationId column is a not-null reference to organization.id with cascading delete, identical to the reference DDL on three dialects",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L2254/`invitationTableFields.role`": [
+    {
+      "label": "The generated invitation.role column is nullable and identical to the reference DDL on three dialects",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L2260/`invitationTableFields.status`": [
+    {
+      "label": "The generated invitation.status column is not-null and identical to the reference DDL on three dialects",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L2265/`invitationTableFields.createdAt`": [
+    {
+      "label": "The generated invitation.createdAt column is a not-null date identical to the reference DDL on three dialects",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L2270/`invitationTableFields.expiresAt`": [
+    {
+      "label": "The generated invitation.expiresAt column is a not-null date identical to the reference DDL on three dialects",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L2282/`invitationTeamIdFields.teamId`": [
+    {
+      "label": "The nullable invitation.teamId column is generated only with teams enabled, and the DDL is identical to the reference on three dialects",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L2291": [
+    {
+      "label": "The generated session table adds a nullable activeOrganizationId and, with teams enabled, a nullable activeTeamId, both identical to the reference DDL on three dialects",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L2299/`sessionActiveOrganizationFields.activeOrganizationId`": [
+    {
+      "label": "The generated organization schema adds a nullable session.activeOrganizationId text column that matches the reference DDL on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L2305/`sessionActiveOrganizationFields.activeTeamId`": [
+    {
+      "label": "The generated schema adds a nullable session.activeTeamId column only when teams are enabled, matching the reference DDL on three dialects",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L2356": [
+    {
+      "label": "With teams enabled, the generated team and teamMember tables and their indexes exactly match the reference DDL on three dialects",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L2362/`optionalTeamTableFields.id`": [
+    {
+      "label": "The team.id primary-key column matches the reference DDL on three dialects",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L2368/`optionalTeamTableFields.name`": [
+    {
+      "label": "The required team.name text column matches the reference DDL on three dialects",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L2373/`optionalTeamTableFields.memberCount`": [
+    {
+      "label": "The required team.memberCount integer column matches the reference DDL on three dialects",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L2378/`optionalTeamTableFields.organizationId`": [
+    {
+      "label": "The required team.organizationId column, its organization foreign key and its index match the reference DDL on three dialects",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L2385/`optionalTeamTableFields.createdAt`": [
+    {
+      "label": "The required team.createdAt date column matches the reference DDL on three dialects",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L2390/`optionalTeamTableFields.updatedAt`": [
+    {
+      "label": "The nullable team.updatedAt date column matches the reference DDL on three dialects",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L2403/`teamsFeatureTeamTableFields0.id`": [
+    {
+      "label": "The teamMember.id primary-key column matches the reference DDL on three dialects",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L2409/`teamsFeatureTeamTableFields0.teamId`": [
+    {
+      "label": "The required teamMember.teamId column, its team foreign key and its index match the reference DDL on three dialects",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L2416/`teamsFeatureTeamTableFields0.userId`": [
+    {
+      "label": "The required teamMember.userId column, its user foreign key and its index match the reference DDL on three dialects",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L2423/`teamsFeatureTeamTableFields0.membershipKey`": [
+    {
+      "label": "The nullable unique teamMember.membershipKey column matches the reference DDL on three dialects",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L2429/`teamsFeatureTeamTableFields0.createdAt`": [
+    {
+      "label": "The nullable teamMember.createdAt date column matches the reference DDL on three dialects",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L2442/`teamsFeatureTeamTableFields1.teamId`": [
+    {
+      "label": "The generated schema adds a nullable invitation.teamId column only when teams are enabled, matching the reference DDL on three dialects",
+      "test": "conformance/schema.test.mjs",
+      "marker": "(await freshSchema(type, profiles)).trim()",
       "complete": true
     }
   ]
