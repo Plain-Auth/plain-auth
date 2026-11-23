@@ -45,6 +45,7 @@ The application provides `sendInvitation`, its configured public `origin` and it
 | GET | `/organization/list-user-invitations` | Read pending invitations for the signed-in account’s verified email across organizations |
 | GET | `/organization/list-invitations` | List invitations visible to an owner or admin in the named or active organization |
 | POST | `/organization/invite-member` | Invite by email and role, using an explicit organization ID or the active selection |
+| POST | `/organization/cancel-invitation` | Withdraw an invitation as an owner or admin of the destination organization. |
 | POST | `/organization/reject-invitation` | Decline a pending invitation as its recipient. |
 | POST | `/organization/accept-invitation` | Accept by invitation ID, create the membership, and select the organization |
 | POST | `/organization/remove-member` | Remove by membership ID or email. Omit `organizationId` to use the active organization. |
@@ -232,6 +233,14 @@ The JSON response is an array. Each entry includes the invitation ID, organizati
 The database reads up to 100 invitations in creation order, using the ID to break ties. Owners can see the whole page. Admins see only invitations whose roles exclude `owner`. Ordinary members receive HTTP 403 with `YOU_ARE_NOT_ALLOWED_TO_LIST_INVITATIONS`, including when the organization has no invitations. A missing selection returns HTTP 400. An unknown organization or one the caller does not belong to returns HTTP 403.
 
 In Go, call `authClient.ListOrganizationInvitations(ctx, organizationID)`, using an empty string for the active organization. To require recipients to verify their account email before accepting an invitation, set `RequireVerifiedEmail: true` in the organization options. [HTTP client comparison](../conformance/organization-invitations.mjs) · [Go client and session tests](../adapters/sqlstore/organization_selection_http_test.go)
+
+## Cancel an invitation
+
+An owner or admin can send `POST /organization/cancel-invitation` with `{"invitationId":"invite_123"}` to withdraw an invitation sent by any member of that organization. The server checks the caller’s current membership in the invitation’s destination. The caller can have a different organization selected.
+
+On success the response is the invitation itself with `status: "canceled"`. Cancellation works for pending, expired, rejected and accepted invitations. Repeating it returns the canceled invitation. If the recipient has already joined, their organization membership, team memberships and session selections stay in effect. To end that access, use the membership removal endpoint.
+
+An unknown ID returns HTTP 400 with `INVITATION_NOT_FOUND`. An account outside the destination organization receives HTTP 400 with `MEMBER_NOT_FOUND`. A member without cancellation permission receives HTTP 403 with `YOU_ARE_NOT_ALLOWED_TO_CANCEL_THIS_INVITATION`. Go clients call `authClient.CancelOrganizationInvitation(ctx, invitationID)`. [Client comparison](../conformance/organization-invitations.mjs) · [Database tests](../adapters/sqlstore/organization_decision_test.go)
 
 ## Decline an invitation
 

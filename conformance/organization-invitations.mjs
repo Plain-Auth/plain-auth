@@ -271,3 +271,72 @@ export async function compareInvitationRejection(t, { reference, goFixture, inst
     }
   }
 }
+
+export async function compareInvitationCancellation(t, { reference, goFixture, instrument }) {
+  for (const teams of [false, true]) {
+    const options = { teams: { enabled: teams } };
+    const ref = await reference(t, [organization(options)]);
+    const go = await goFixture(t, [teams ? "organization-teams" : "organization"]);
+    for (const server of [ref, go]) {
+      const connect = () => instrument(server, [organizationClient(options)]).client;
+      const [owner, admin, member, guest] = [connect(), connect(), connect(), connect()];
+      const ok = result => {
+        assert.equal(result.error, null, JSON.stringify(result.error));
+        return result.data;
+      };
+      const error = (result, status, code) => {
+        assert.equal(result.error?.status, status, JSON.stringify(result));
+        assert.equal(result.error.code, code);
+      };
+      const cancel = (caller, invitationId) => caller.organization.cancelInvitation({ invitationId });
+      error(await cancel(guest, "absent"), 401, "UNAUTHORIZED");
+      for (const invalid of [null, undefined, {}]) error(await cancel(guest, invalid), 400, "VALIDATION_ERROR");
+      for (const [client, name] of [[owner, "Owner"], [admin, "Admin"], [member, "Member"], [guest, "Guest"]]) {
+        ok(await client.signUp.email({ name, email: name.toLowerCase()+"@example.test", password: "invitation-cancel-password" }));
+      }
+      const org = ok(await owner.organization.create({ name: "Studio", slug: "studio" }));
+      const team = teams && ok(await owner.organization.createTeam({ name: "Workshop", organizationId: org.id }));
+      const invite = async (name, role) => ok(await owner.organization.inviteMember({ email: name+"@example.test", role, organizationId: org.id, teamId: teams ? team.id : undefined }));
+      const adminInvite = await invite("admin", "admin");
+      const memberInvite = await invite("member", "member");
+      ok(await admin.organization.acceptInvitation({ invitationId: adminInvite.id }));
+      const joined = ok(await member.organization.acceptInvitation({ invitationId: memberInvite.id }));
+      const other = ok(await admin.organization.create({ name: "Elsewhere", slug: "elsewhere" }));
+      const pending = await invite("guest", "owner");
+      error(await cancel(member, pending.id), 403, "YOU_ARE_NOT_ALLOWED_TO_CANCEL_THIS_INVITATION");
+      error(await cancel(guest, pending.id), 400, "MEMBER_NOT_FOUND");
+      error(await cancel(owner, ""), 400, "INVITATION_NOT_FOUND");
+      const db = server.database ?? new DatabaseSync(server.databasePath);
+      try {
+        db.prepare("UPDATE invitation SET expiresAt=? WHERE id=?").run("2020-01-01T00:00:00Z", pending.id);
+        const canceled = ok(await cancel(admin, pending.id));
+        assert.equal(canceled.id, pending.id);
+        assert.equal(canceled.status, "canceled");
+        assert.equal(canceled.role, "owner");
+        assert.equal("invitation" in canceled, false);
+        assert.equal("teamId" in canceled, teams);
+        if (teams) assert.equal(canceled.teamId, team.id);
+        assert.deepEqual(ok(await cancel(owner, pending.id)), canceled);
+        error(await guest.organization.acceptInvitation({ invitationId: pending.id }), 400, "INVITATION_NOT_FOUND");
+        const declined = await invite("guest", "member");
+        ok(await guest.organization.rejectInvitation({ invitationId: declined.id }));
+        assert.equal(ok(await cancel(owner, declined.id)).status, "canceled");
+        assert.equal(ok(await cancel(admin, memberInvite.id)).status, "canceled");
+        const membership = ok(await member.organization.getActiveMember());
+        assert.equal(membership.id, joined.member.id);
+        assert.equal(membership.role, "member");
+        const recipientSession = ok(await member.getSession()).session;
+        assert.equal(recipientSession.activeOrganizationId, org.id);
+        if (teams) {
+          assert.equal(recipientSession.activeTeamId, team.id);
+          assert.equal(db.prepare('SELECT COUNT(*) AS n FROM teamMember WHERE teamId=? AND userId=?').get(team.id, membership.userId).n, 1);
+        }
+        assert.equal(ok(await admin.getSession()).session.activeOrganizationId, other.id);
+        db.prepare("UPDATE member SET role='member' WHERE userId=? AND organizationId=?").run(adminInvite.inviterId, org.id);
+        error(await cancel(owner, pending.id), 403, "YOU_ARE_NOT_ALLOWED_TO_CANCEL_THIS_INVITATION");
+      } finally {
+        if (!server.database) db.close();
+      }
+    }
+  }
+}

@@ -145,3 +145,12 @@ func (c *Client) RejectOrganizationInvitation(ctx context.Context, invitationID 
 	}
 	return &out.Invitation, nil
 }
+
+// CancelOrganizationInvitation withdraws an invitation as an authorized organization member.
+func (c *Client) CancelOrganizationInvitation(ctx context.Context, invitationID string) (*org.Invitation, error) {
+	var out org.Invitation
+	if err := c.Do(ctx, http.MethodPost, "/organization/cancel-invitation", map[string]string{"invitationId": invitationID}, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}

@@ -85,6 +85,10 @@ func TestOrganizationSelectionSchema(t *testing.T) {
 				lists["members"] == nil || lists["invitations"] == nil || (lists["teams"] != nil) != tc.teams {
 				t.Fatal("full organization description does not match the configured collections", lists)
 			}
+			cancel := node(paths, "/organization/cancel-invitation", "post")
+			if node(cancel, "responses", "200", "content", "application/json", "schema")["$ref"] != "#/components/schemas/Invitation" || node(cancel, "requestBody", "content", "application/json", "schema", "properties", "invitationId")["type"] != "string" {
+				t.Fatal("invitation cancellation schema lost its ID or flat invitation response")
+			}
 			decline := node(paths, "/organization/reject-invitation", "post")
 			response := node(decline, "responses", "200", "content", "application/json", "schema", "properties")
 			id := node(decline, "requestBody", "content", "application/json", "schema", "properties", "invitationId")

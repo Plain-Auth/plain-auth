@@ -1922,3 +1922,8 @@ test("invitation recipients decline pending grants and preserve their session se
   const { compareInvitationRejection } = await import("./organization-invitations.mjs");
   await compareInvitationRejection(t, { reference, goFixture, instrument });
 });
+
+test("organization administrators cancel invitations independently of membership and team access", async t => {
+  const { compareInvitationCancellation } = await import("./organization-invitations.mjs");
+  await compareInvitationCancellation(t, { reference, goFixture, instrument });
+});

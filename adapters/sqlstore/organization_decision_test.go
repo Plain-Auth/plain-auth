@@ -11,7 +11,7 @@ import (
 	"github.com/Plain-Auth/plain-auth/schema"
 )
 
-func TestInvitationRejectionSerializesWithAcceptance(t *testing.T) {
+func TestInvitationDecisionsSerializeWithAcceptance(t *testing.T) {
 	for _, dialect := range []string{"sqlite", "postgres", "mysql"} {
 		t.Run(dialect, func(t *testing.T) {
 			ctx := t.Context()
@@ -69,11 +69,41 @@ func TestInvitationRejectionSerializesWithAcceptance(t *testing.T) {
 			var status string
 			var members int
 			must(store.db.QueryRowContext(ctx, store.bind(`SELECT "status",(SELECT COUNT(*) FROM "member" WHERE "organizationId"=? AND "userId"=?) FROM "invitation" WHERE "id"=?`), group.ID, guest.UserID, invite.ID).Scan(&status, &members))
-			if status == "accepted" && acceptErr == nil && errors.Is(rejectErr, org.ErrInvitation) && members == 1 {
-				return
+			switch status {
+			case "accepted":
+				if acceptErr != nil || !errors.Is(rejectErr, org.ErrInvitation) || members != 1 {
+					t.Fatalf("inconsistent acceptance: members=%d accept=%v reject=%v", members, acceptErr, rejectErr)
+				}
+			case "rejected":
+				if rejectErr != nil || !errors.Is(acceptErr, org.ErrInvitation) || members != 0 {
+					t.Fatalf("inconsistent rejection: members=%d accept=%v reject=%v", members, acceptErr, rejectErr)
+				}
+			default:
+				t.Fatalf("invitation decision was lost: status=%s accept=%v reject=%v", status, acceptErr, rejectErr)
 			}
-			if status != "rejected" || rejectErr != nil || !errors.Is(acceptErr, org.ErrInvitation) || members != 0 {
-				t.Fatalf("inconsistent invitation decision: status=%s members=%d accept=%v reject=%v", status, members, acceptErr, rejectErr)
+
+			second := newAccount("Second")
+			invite.ID, invite.Email, invite.Status = "OtherGrant", "second@example.test", "pending"
+			_, err = store.InviteOrganizationMember(ctx, invite, host.ID, false)
+			must(err)
+			start = make(chan struct{})
+			canceled := make(chan error, 1)
+			go func() {
+				<-start
+				_, _, err := store.AcceptOrganizationInvitation(ctx, invite.ID, second.ID, auth.User{ID: second.UserID}, now, false)
+				accepted <- err
+			}()
+			go func() {
+				<-start
+				_, err := peer.CancelOrganizationInvitation(ctx, host, invite.ID)
+				canceled <- err
+			}()
+			close(start)
+			acceptErr = <-accepted
+			must(<-canceled)
+			must(store.db.QueryRowContext(ctx, store.bind(`SELECT "status",(SELECT COUNT(*) FROM "member" WHERE "organizationId"=? AND "userId"=?) FROM "invitation" WHERE "id"=?`), group.ID, second.UserID, invite.ID).Scan(&status, &members))
+			if status != "canceled" || (acceptErr == nil && members != 1) || (acceptErr != nil && (!errors.Is(acceptErr, org.ErrInvitation) || members != 0)) {
+				t.Fatalf("cancellation did not preserve the serialized admission: status=%s members=%d accept=%v", status, members, acceptErr)
 			}
 		})
 	}

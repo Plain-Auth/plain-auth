@@ -14467,7 +14467,7 @@
     {
       "label": "Allow only one decision when acceptance races rejection across two database connections",
       "test": "adapters/sqlstore/organization_decision_test.go",
-      "marker": "if status != \"rejected\" || rejectErr != nil"
+      "marker": "t.Fatalf(\"inconsistent rejection: members=%d accept=%v reject=%v\""
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L990": [
@@ -14479,7 +14479,7 @@
     {
       "label": "Allow only one decision when acceptance races rejection across two database connections",
       "test": "adapters/sqlstore/organization_decision_test.go",
-      "marker": "if status != \"rejected\" || rejectErr != nil"
+      "marker": "t.Fatalf(\"inconsistent rejection: members=%d accept=%v reject=%v\""
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L994/`POST /organization/reject-invitation`": [
@@ -14491,7 +14491,7 @@
     {
       "label": "Allow only one decision when acceptance races rejection across two database connections",
       "test": "adapters/sqlstore/organization_decision_test.go",
-      "marker": "if status != \"rejected\" || rejectErr != nil"
+      "marker": "t.Fatalf(\"inconsistent rejection: members=%d accept=%v reject=%v\""
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L1000/Parameter `invitationId`": [
@@ -14505,6 +14505,65 @@
       "label": "Validate a missing, null or non-string invitation ID before requiring a session",
       "test": "conformance/organization-invitations.mjs",
       "marker": "for (const invalid of [undefined, null, 123, [\"id\"], {}])"
+    }
+  ],
+  "plugin/organization/POST /organization/cancel-invitation": [
+    {
+      "label": "Cancel expired, rejected and accepted invitations and retain previously granted team and organization access",
+      "test": "conformance/organization-invitations.mjs",
+      "marker": "assert.equal(membership.id, joined.member.id)"
+    },
+    {
+      "label": "Recheck destination permissions for repeated cancellation after a role change",
+      "test": "conformance/organization-invitations.mjs",
+      "marker": "error(await cancel(owner, pending.id), 403"
+    },
+    {
+      "label": "Serialize cancellation with acceptance and preserve the committed membership outcome on three SQL engines",
+      "test": "adapters/sqlstore/organization_decision_test.go",
+      "marker": "t.Fatalf(\"cancellation did not preserve the serialized admission:"
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L973": [
+    {
+      "label": "Cancel expired, rejected and accepted invitations and retain previously granted team and organization access",
+      "test": "conformance/organization-invitations.mjs",
+      "marker": "assert.equal(membership.id, joined.member.id)"
+    },
+    {
+      "label": "Recheck destination permissions for repeated cancellation after a role change",
+      "test": "conformance/organization-invitations.mjs",
+      "marker": "error(await cancel(owner, pending.id), 403"
+    },
+    {
+      "label": "Serialize cancellation with acceptance and preserve the committed membership outcome on three SQL engines",
+      "test": "adapters/sqlstore/organization_decision_test.go",
+      "marker": "t.Fatalf(\"cancellation did not preserve the serialized admission:"
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L979/`POST /organization/cancel-invitation`": [
+    {
+      "label": "Cancel expired, rejected and accepted invitations and retain previously granted team and organization access",
+      "test": "conformance/organization-invitations.mjs",
+      "marker": "assert.equal(membership.id, joined.member.id)"
+    },
+    {
+      "label": "Recheck destination permissions for repeated cancellation after a role change",
+      "test": "conformance/organization-invitations.mjs",
+      "marker": "error(await cancel(owner, pending.id), 403"
+    },
+    {
+      "label": "Serialize cancellation with acceptance and preserve the committed membership outcome on three SQL engines",
+      "test": "adapters/sqlstore/organization_decision_test.go",
+      "marker": "t.Fatalf(\"cancellation did not preserve the serialized admission:"
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L985/Parameter `invitationId`": [
+    {
+      "label": "Validate a string invitation ID before checking the session and report an unknown ID",
+      "test": "conformance/organization-invitations.mjs",
+      "marker": "for (const invalid of [null, undefined, {}]) error(await cancel",
+      "complete": true
     }
   ]
 }

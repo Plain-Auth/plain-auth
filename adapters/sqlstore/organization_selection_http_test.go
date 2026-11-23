@@ -216,6 +216,18 @@ func TestOrganizationAndTeamSelectionHTTP(t *testing.T) {
 			if declined.ID != issued.ID || declined.Status != "rejected" || declined.OrganizationID != second {
 				t.Fatal("Go client lost the rejected invitation", declined)
 			}
+			canceled, err := sdk.CancelOrganizationInvitation(ctx, issued.ID)
+			must(err)
+			if canceled.ID != issued.ID || canceled.Status != "canceled" || canceled.OrganizationID != second {
+				t.Fatal("Go client lost the canceled invitation", canceled)
+			}
+			for range 2 {
+				canceled, err = sdk.CancelOrganizationInvitation(ctx, issued.ID)
+				must(err)
+				if canceled.Status != "canceled" {
+					t.Fatal("repeated cancellation changed an already canceled invitation")
+				}
+			}
 			var forbidden struct{ Code string }
 			must(json.Unmarshal(send(outsider, "GET", "organization/get-active-member-role?organizationId="+second+"&userId="+active.UserID, nil, 403), &forbidden))
 			if forbidden.Code != org.ErrRoleReadDenied.Code {
@@ -233,6 +245,7 @@ func TestOrganizationAndTeamSelectionHTTP(t *testing.T) {
 			_, err = store.db.ExecContext(ctx, store.bind(`DELETE FROM "member" WHERE "id"=?`), active.ID)
 			must(err)
 			code(two, 400, "MEMBER_NOT_FOUND")
+			send(two, "POST", "organization/cancel-invitation", map[string]string{"invitationId": issued.ID}, 400)
 			send(two, "POST", "sign-out", nil, 200)
 			code(two, 401, "UNAUTHORIZED")
 		})

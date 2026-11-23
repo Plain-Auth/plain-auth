@@ -216,6 +216,16 @@ func (s *Store) lockInvitation(ctx context.Context, tx *sql.Tx, id string) (org.
 // RejectOrganizationInvitation changes only a pending invitation's status. Expiry
 // limits admission and does not prevent the recipient from declining it.
 func (s *Store) RejectOrganizationInvitation(ctx context.Context, actor auth.Session, id string, requireVerified bool) (*org.Invitation, error) {
+	return s.decideOrganizationInvitation(ctx, actor, id, "rejected", requireVerified)
+}
+
+// CancelOrganizationInvitation withdraws an invitation of any status. Access
+// already granted by an earlier acceptance is managed through the member API.
+func (s *Store) CancelOrganizationInvitation(ctx context.Context, actor auth.Session, id string) (*org.Invitation, error) {
+	return s.decideOrganizationInvitation(ctx, actor, id, "canceled", false)
+}
+
+func (s *Store) decideOrganizationInvitation(ctx context.Context, actor auth.Session, id, status string, requireVerified bool) (*org.Invitation, error) {
 	if err := actor.RequireOwner(); err != nil {
 		return nil, err
 	}
@@ -238,30 +248,45 @@ func (s *Store) RejectOrganizationInvitation(ctx context.Context, actor auth.Ses
 	if err != nil {
 		return nil, err
 	}
-	if inv.Status != "pending" {
-		return nil, org.ErrInvitation
+	switch status {
+	case "rejected":
+		if inv.Status != "pending" {
+			return nil, org.ErrInvitation
+		}
+		if strings.ToLower(inv.Email) != strings.ToLower(account.user.Email) {
+			return nil, org.ErrRecipient
+		}
+		if requireVerified && !account.user.EmailVerified {
+			return nil, org.ErrUnverified
+		}
+	case "canceled":
+		m, err := s.memberForChange(ctx, tx, inv.OrganizationID, `m."userId"=`+s.exactSQLValue("?"), actor.UserID)
+		if err != nil {
+			return nil, err
+		}
+		if !membershipHasRole(m.Role, "owner") && !membershipHasRole(m.Role, "admin") {
+			return nil, org.ErrCancelDenied
+		}
+	default:
+		return nil, errors.New("unknown invitation decision")
 	}
-	if strings.ToLower(inv.Email) != strings.ToLower(account.user.Email) {
-		return nil, org.ErrRecipient
-	}
-	if requireVerified && !account.user.EmailVerified {
-		return nil, org.ErrUnverified
-	}
-	value := s.exactSQLValue("?")
-	result, err := tx.ExecContext(ctx, s.bind(`UPDATE "invitation" SET "status"='rejected' WHERE "id"=`+value+` AND "organizationId"=`+value+` AND "status"='pending'`), inv.ID, inv.OrganizationID)
-	if err != nil {
-		return nil, err
-	}
-	changed, err := result.RowsAffected()
-	if err != nil {
-		return nil, err
-	}
-	if changed != 1 {
-		return nil, org.ErrInvitation
+	if inv.Status != status {
+		value := s.exactSQLValue("?")
+		result, err := tx.ExecContext(ctx, s.bind(`UPDATE "invitation" SET "status"=? WHERE "id"=`+value+` AND "organizationId"=`+value+` AND "status"=?`), status, inv.ID, inv.OrganizationID, inv.Status)
+		if err != nil {
+			return nil, err
+		}
+		changed, err := result.RowsAffected()
+		if err != nil {
+			return nil, err
+		}
+		if changed != 1 {
+			return nil, org.ErrInvitation
+		}
+		inv.Status = status
 	}
 	if err := tx.Commit(); err != nil {
 		return nil, err
 	}
-	inv.Status = "rejected"
 	return &inv, nil
 }
