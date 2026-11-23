@@ -135,7 +135,7 @@ For integration tests, create fixture users and organizations, capture email or 
 | Read current OIDC profile and email claims using a signed or opaque access token | [OpenID Connect UserInfo](docs/oauth-userinfo.md) |
 | Publish OAuth issuers and scopes, verify DPoP proofs and return authentication challenges from a protected API | [Resource discovery and challenges](docs/oauth-resource-discovery.md) |
 | Discover machine grant endpoints, authentication methods and signing keys from an issuer URL | [Authorization-server discovery](docs/oauth-issuer-discovery.md) |
-| Exchange a PKCE code for an access token and request offline access | [Authorization-code exchange](docs/oauth-authorization-code.md) |
+| Issue a PKCE code for an approved browser client and exchange it for access or offline refresh tokens | [Browser authorization and code exchange](docs/oauth-authorization-code.md) |
 | Register OAuth resources, change their policies, and link registered clients | [Resource management](docs/oauth-resource-management.md) |
 | List, inspect, update and remove a user’s OAuth consent grants | [Authorized applications](docs/oauth-consents.md) |
 | Register OAuth clients and rotate confidential client secrets | [OAuth client registration](docs/oauth-client-registration.md) |

@@ -12249,6 +12249,11 @@
       "label": "Exchange refresh tokens through the Go OAuth client and verify atomic replacement, callback failures and concurrent reuse on all three engines",
       "test": "adapters/sqlstore/oauth_refresh_grant_test.go",
       "marker": "func TestRefreshGrantExchange("
+    },
+    {
+      "label": "Apply a custom lifetime and code digest and redeem the stored browser grant on a second server",
+      "test": "adapters/sqlstore/oauth_browser_authorization_test.go",
+      "marker": "stored code lost lifetime, scope, or bound browser context"
     }
   ],
   "docs/content/docs/plugins/oauth-provider/tokens.mdx#L125/`m2mAccessTokenExpiresIn`": [
@@ -13021,6 +13026,11 @@
       "label": "Resolve public and confidential client PKCE requirements, including offline scopes, OIDC nonces and explicit registration policy",
       "test": "plugins/oauthprovider/authorization_code_test.go",
       "marker": "func TestAuthorizationCodePKCERequirement("
+    },
+    {
+      "label": "Sign in and register a public client, then obtain a code by GET or form POST and redeem it at either issuer with S256 PKCE",
+      "test": "conformance/oauth-browser-authorization.mjs",
+      "marker": "export async function exerciseBrowserAuthorization("
     }
   ],
   "docs/content/docs/plugins/oauth-provider/tokens.mdx#L181": [
@@ -13033,6 +13043,11 @@
       "label": "Resolve public and confidential client PKCE requirements, including offline scopes, OIDC nonces and explicit registration policy",
       "test": "plugins/oauthprovider/authorization_code_test.go",
       "marker": "func TestAuthorizationCodePKCERequirement("
+    },
+    {
+      "label": "Sign in and register a public client, then obtain a code by GET or form POST and redeem it at either issuer with S256 PKCE",
+      "test": "conformance/oauth-browser-authorization.mjs",
+      "marker": "export async function exerciseBrowserAuthorization("
     }
   ],
   "plugin-symbol/oauth-provider/isPKCERequired": [
@@ -13086,6 +13101,65 @@
       "label": "Reject client scopes withdrawn during token generation and leave the existing grant available for retry",
       "test": "adapters/sqlstore/oauth_refresh_grant_test.go",
       "marker": "expect(\"app\", original, 400, \"invalid_scope\")"
+    }
+  ],
+  "plugin/oauth-provider/GET / POST /oauth2/authorize": [
+    {
+      "label": "Sign in and register a public client, then obtain a code by GET or form POST and redeem it at either issuer with S256 PKCE",
+      "test": "conformance/oauth-browser-authorization.mjs",
+      "marker": "export async function exerciseBrowserAuthorization("
+    },
+    {
+      "label": "Recheck the registered callback, owner session and scoped consent in the issuing transaction on all three databases",
+      "test": "adapters/sqlstore/oauth_browser_authorization_test.go",
+      "marker": "func TestBrowserAuthorization("
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/reference.mdx#L318/`GET / POST /oauth2/authorize`": [
+    {
+      "label": "Sign in and register a public client, then obtain a code by GET or form POST and redeem it at either issuer with S256 PKCE",
+      "test": "conformance/oauth-browser-authorization.mjs",
+      "marker": "export async function exerciseBrowserAuthorization("
+    },
+    {
+      "label": "Recheck the registered callback, owner session and scoped consent in the issuing transaction on all three databases",
+      "test": "adapters/sqlstore/oauth_browser_authorization_test.go",
+      "marker": "func TestBrowserAuthorization("
+    }
+  ],
+  "plugin-symbol/oauth-provider/OAuthOptions/validateRedirectUri": [
+    {
+      "label": "Apply host callback policy after validating transport and reject policy errors before redirecting",
+      "test": "adapters/sqlstore/oauth_browser_authorization_test.go",
+      "marker": "host-approved redirect did not receive the code"
+    }
+  ],
+  "plugin-symbol/oauth-provider/OAuthOptions/codeExpiresIn": [
+    {
+      "label": "Apply a custom lifetime and code digest and redeem the stored browser grant on a second server",
+      "test": "adapters/sqlstore/oauth_browser_authorization_test.go",
+      "marker": "stored code lost lifetime, scope, or bound browser context"
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/tokens.mdx#L128/`codeExpiresIn`": [
+    {
+      "label": "Expire authorization codes after the configured whole-second lifetime on all three SQL engines",
+      "test": "adapters/sqlstore/oauth_browser_authorization_test.go",
+      "marker": "stored code lost lifetime, scope, or bound browser context",
+      "complete": true
+    },
+    {
+      "label": "Check the default ten-minute lifetime on a code issued to a registered browser client",
+      "test": "conformance/oauth-browser-authorization.mjs",
+      "marker": "Date.parse(record.expiresAt) - Date.parse(record.updatedAt)"
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/reference.mdx#L399/`authorize`": [
+    {
+      "label": "Share the default 30-request allowance across GET and POST, apply a custom rule or inherit the host limit",
+      "test": "adapters/sqlstore/oauth_browser_authorization_test.go",
+      "marker": "func TestBrowserAuthorizationRateLimit(",
+      "complete": true
     }
   ]
 }

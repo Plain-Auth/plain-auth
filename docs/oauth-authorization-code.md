@@ -1,8 +1,46 @@
-# Exchange an authorization code
+# Authorize a browser client and exchange its code
 
-An OAuth client can exchange an authorization code and an S256 PKCE verifier at `POST /oauth2/token`. Plain Auth returns an opaque bearer token bound to the user, browser session, client and scopes approved for that code. The exchange supports SQLite, PostgreSQL and MySQL through the `oauth-provider` database profile. [Database setup](schema.md#oauth-authorization-server-tables)
+An application can send a signed-in user to `/oauth2/authorize` and exchange the resulting code at `/oauth2/token`. Plain Auth returns an opaque bearer token bound to the user, browser session, client and approved scopes. Both endpoints mount in your existing Go server and use the `oauth-provider` database profile on SQLite, PostgreSQL or MySQL. [Register a client](oauth-client-registration.md) · [Router setup](routers.md) · [Database setup](schema.md#oauth-authorization-server-tables)
 
-The exchange supports grants such as `reports` and `reports offline_access` with no resource audience. Browser authorization and interactive consent in Go are still in development. The interoperability test obtains codes through an independent issuer’s browser authorization endpoint and submits them to the Go handler using shared storage. ID tokens, sender-bound tokens and resource-targeted tokens for this grant remain on the roadmap. Those exchanges return an error and leave the code available. [Feature checklist](parity/plugins/oauth-provider.md)
+## Obtain a code in the browser
+
+Register the application's callback URL and enable the `authorization_code` grant on both the issuer and the client. The issuer enables this grant by default. This flow supports untargeted scopes such as `reports` and `reports offline_access`. It requires the account owner's active browser session and either a recorded approval covering every requested scope or an operator-managed client with `skipConsent` enabled. Dynamic registration rejects `skip_consent`. First-time interactive consent, ID tokens, sender binding and resource audiences for this grant remain on the roadmap. [Client registration](oauth-client-registration.md) · [Manage recorded approvals](oauth-consents.md) · [Feature checklist](parity/plugins/oauth-provider.md)
+
+For a public client using `golang.org/x/oauth2`, configure both issuer endpoints. Generate new random state and a PKCE verifier for each visit. Save them with the expected issuer and callback in the application's session before redirecting the user's browser.
+
+```go
+cfg := oauth2.Config{
+    ClientID:    clientID,
+    RedirectURL: "https://app.example.com/oauth/callback",
+    Scopes:      []string{"reports"},
+    Endpoint: oauth2.Endpoint{
+        AuthURL:   "https://accounts.example.com/api/auth/oauth2/authorize",
+        TokenURL:  "https://accounts.example.com/api/auth/oauth2/token",
+        AuthStyle: oauth2.AuthStyleInParams,
+    },
+}
+state, verifier := oauth2.GenerateVerifier(), oauth2.GenerateVerifier()
+// Save state and verifier in the user's application session here.
+target := cfg.AuthCodeURL(state, oauth2.S256ChallengeOption(verifier))
+http.Redirect(w, r, target, http.StatusFound)
+```
+
+The endpoint accepts GET query parameters or an `application/x-www-form-urlencoded` POST body. Supply `response_type=code`, `client_id`, `redirect_uri` and the S256 challenge. Omitting `scope` requests the client's registered scopes, falling back to the issuer's scopes when the client has no explicit list. Web callbacks must match a registered URL exactly. A native app using an HTTP loopback callback may vary its port while preserving its host, path and query.
+
+A successful navigation returns HTTP 302 to the callback with `code`, `iss` and the supplied `state`. A CORS fetch or a request accepting `application/json` receives HTTP 200 with `{"redirect":true,"url":"…"}`. On the callback, check `state` against the saved request, verify `iss` against the expected issuer, and check for `error` before exchanging the code. Unrecognized clients and unapproved callback URLs go to the issuer's error page. With `prompt=none`, `login_required` means the user needs to sign in and `consent_required` means the recorded approval does not cover this request. `max_age` limits the age of the login in seconds. Zero requests fresh authentication. [End-to-end browser and exchange tests](../conformance/oauth-browser-authorization.mjs)
+
+### Configure issuance
+
+`oauthprovider.Options.Authorization` accepts these settings. Host callbacks receive the request context and run outside database transactions.
+
+| Setting | Behavior |
+| --- | --- |
+| `CodeLifetime` | A code expires after ten minutes by default. Set a positive duration in whole seconds to change it. |
+| `ConsentReference` | Choose an approval namespace, such as the active organization's ID, from the verified session. An empty value selects personal consent. Approval for another namespace cannot authorize a code. |
+| `ValidateRedirectURI` | Receives the requested URL, a copy of the client's registered URLs and the default match result. Return the decision from your host policy. Syntax and transport checks run first. An error rejects the redirect. |
+| `RateLimit` | GET and POST share a default allowance of 30 requests per minute per client IP when rate limiting is enabled. Set a route rule to change it, or supply an empty rule to inherit the host default. |
+
+Plain Auth checks the registration, session and current consent again before storing the code. `Tokens.HashAuthorizationCode` controls its stored identifier during both issuance and redemption. [Three-database issuance tests](../adapters/sqlstore/oauth_browser_authorization_test.go)
 
 ## Send the exchange
 
@@ -19,17 +57,9 @@ curl --fail-with-body https://accounts.example.com/api/auth/oauth2/token \
 
 Confidential applications use their registered Basic, form secret or signed assertion authentication method. PKCE is required by default for confidential clients. An explicitly relaxed registration may omit the verifier for a grant issued without a challenge. Public clients always require PKCE. [Client authentication](oauth-client-registration.md) · [Signed assertions](oauth-client-assertions.md)
 
-With `golang.org/x/oauth2`, pass the verifier saved for this callback to `Exchange`.
+With the `oauth2.Config` above, pass the verifier saved for this callback to `Exchange`.
 
 ```go
-cfg := oauth2.Config{
-    ClientID:    clientID,
-    RedirectURL: "https://app.example.com/oauth/callback",
-    Endpoint: oauth2.Endpoint{
-        TokenURL:  "https://accounts.example.com/api/auth/oauth2/token",
-        AuthStyle: oauth2.AuthStyleInParams,
-    },
-}
 token, err := cfg.Exchange(ctx, code, oauth2.VerifierOption(verifier))
 ```
 

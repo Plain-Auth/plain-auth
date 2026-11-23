@@ -10,6 +10,15 @@ import (
 
 var errorCodeFormat = regexp.MustCompile("^[A-Za-z0-9_'-]+$")
 
+// ErrorPageURL is the host-controlled destination for browser protocol errors.
+func (a *Auth) ErrorPageURL() string {
+	if a.opts.ErrorRedirectURL != "" {
+		target, _ := a.CallbackURL(a.opts.ErrorRedirectURL) // validated during New
+		return target
+	}
+	return a.PublicURL() + "/error"
+}
+
 func (a *Auth) serveErrorPage(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	code := q.Get("error")

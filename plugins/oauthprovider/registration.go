@@ -123,6 +123,7 @@ type Options struct {
 	PairwiseSecret     string
 	Registration       RegistrationOptions
 	Tokens             TokenOptions
+	Authorization      BrowserAuthorizationOptions
 	Assertions         AssertionOptions
 	UserInfo           UserInfoOptions
 	Metadata           IssuerMetadataOptions
@@ -149,6 +150,9 @@ func (opts Options) clientManagementOptions() Options {
 // Dynamic registration is disabled until the host explicitly enables it.
 func New(opts Options) (auth.Plugin, error) {
 	opts = opts.clientManagementOptions()
+	if err := opts.Authorization.defaults(); err != nil {
+		return auth.Plugin{}, err
+	}
 	if err := opts.Metadata.prepare(opts.Scopes); err != nil {
 		return auth.Plugin{}, err
 	}
@@ -240,6 +244,11 @@ func New(opts Options) (auth.Plugin, error) {
 		RateLimit: tokenRouteLimit(opts.Assertions.KeyRotationRateLimit, 5), OpenAPI: json.RawMessage(keyRotationOperation)})
 	p.Endpoints = append(p.Endpoints, auth.Endpoint{Method: http.MethodPost, Path: "/oauth2/delete-client", Handler: opts.deleteClient})
 	p.Endpoints = append(p.Endpoints, auth.Endpoint{Method: http.MethodPost, Path: "/oauth2/token", RawBody: true, OpenAPI: json.RawMessage(machineTokenOperation), RateLimit: opts.Tokens.RateLimit, Handler: opts.token})
+	if slices.Contains(opts.GrantTypes, "authorization_code") {
+		for _, method := range []string{http.MethodGet, http.MethodPost} {
+			p.Endpoints = append(p.Endpoints, auth.Endpoint{Method: method, Path: "/oauth2/authorize", RawBody: method == http.MethodPost, RateLimit: opts.Authorization.RateLimit, Handler: opts.browserAuthorize, OpenAPI: browserAuthorizationOperation(method)})
+		}
+	}
 
 	for _, method := range []string{http.MethodGet, http.MethodPost} {
 		p.Endpoints = append(p.Endpoints, auth.Endpoint{Method: method, Path: "/oauth2/userinfo", RawBody: method == http.MethodPost, RateLimit: tokenRouteLimit(opts.UserInfo.RateLimit, 60), Handler: opts.userInfo, OpenAPI: userInfoOperation(method)})
@@ -262,7 +271,10 @@ func distinct(xs []string) []string {
 }
 
 func randomClientCredential() (string, error) {
-	const alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	return randomCredential("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+}
+
+func randomCredential(alphabet string) (string, error) {
 	var b [32]byte
 	n := big.NewInt(int64(len(alphabet)))
 	for i := range b {

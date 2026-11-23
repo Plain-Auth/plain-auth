@@ -144,15 +144,9 @@ func (opts Options) redeemAuthorizationCode(c auth.EndpointContext, in tokenRequ
 		return result, proofError("DPoP proof header must not be repeated")
 	}
 	ctx := c.Request.Context()
-	identifier := tokenDigest(raw)
-	if hash := opts.Tokens.HashAuthorizationCode; hash != nil {
-		identifier, err = hash(ctx, raw)
-		if err != nil {
-			return result, err
-		}
-		if identifier == "" {
-			return result, errors.New("oauthprovider: empty stored authorization code identifier")
-		}
+	identifier, err := opts.Tokens.storedAuthorizationCode(ctx, raw)
+	if err != nil {
+		return result, err
 	}
 	issued, stored, err := opts.Tokens.newOpaqueToken(ctx)
 	if err != nil {
@@ -230,7 +224,7 @@ func (code storedAuthorizationCode) scopesForExchange(client AuthorizationCodeCl
 	if q.Scope == nil {
 		return nil, registrationProblem(500, "invalid_scope", "verification scope unset")
 	}
-	scopes := strings.Split(*q.Scope, " ")
+	scopes := distinct(strings.Split(*q.Scope, " "))
 	for _, scope := range scopes {
 		if client.Scopes != nil && !slices.Contains(client.Scopes, scope) {
 			return nil, registrationProblem(400, "invalid_scope", "client does not allow scope "+scope)
@@ -290,4 +284,15 @@ func (opts TokenOptions) issueRefreshToken(ctx context.Context, sessionID string
 		}
 	}
 	return opts.RefreshPrefix + wire, digest, nil
+}
+
+func (opts TokenOptions) storedAuthorizationCode(ctx context.Context, raw string) (string, error) {
+	if opts.HashAuthorizationCode == nil {
+		return tokenDigest(raw), nil
+	}
+	id, err := opts.HashAuthorizationCode(ctx, raw)
+	if err == nil && id == "" {
+		return "", errors.New("oauthprovider: empty stored authorization code identifier")
+	}
+	return id, err
 }
