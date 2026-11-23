@@ -110,3 +110,35 @@ func TestSAMLLogoutConfiguration(t *testing.T) {
 		}
 	}
 }
+
+func TestSAMLProvisioningDeadline(t *testing.T) {
+	now := time.Now().UTC()
+	const acs = "https://app.example/acs"
+	confirmation := func(recipient, requestID string, expires time.Time) saml.SubjectConfirmation {
+		return saml.SubjectConfirmation{
+			Method: "urn:oasis:names:tc:SAML:2.0:cm:bearer",
+			SubjectConfirmationData: &saml.SubjectConfirmationData{
+				Recipient: recipient, InResponseTo: requestID, NotOnOrAfter: expires.Add(-saml.MaxClockSkew),
+			},
+		}
+	}
+	early, late := now.Add(time.Second), now.Add(2*time.Second)
+	a := &saml.Assertion{
+		IssueInstant: now, Conditions: &saml.Conditions{NotOnOrAfter: now.Add(time.Hour)},
+		Subject: &saml.Subject{SubjectConfirmations: []saml.SubjectConfirmation{
+			confirmation(acs, "_id", early), confirmation(acs, "_id", late),
+			confirmation(acs, "_other", now.Add(time.Hour)), confirmation("elsewhere", "_id", now.Add(time.Hour)),
+		}},
+	}
+	if got := samlProvisioningDeadline(a, acs, "_id", now); !got.Equal(late) {
+		t.Fatal("did not use the last matching confirmation", got)
+	}
+	a.Conditions.NotOnOrAfter = early.Add(-saml.MaxClockSkew)
+	if got := samlProvisioningDeadline(a, acs, "_id", now); !got.Equal(early) {
+		t.Fatal("provisioning exceeded assertion conditions", got)
+	}
+	a.IssueInstant = now.Add(-saml.MaxIssueDelay)
+	if got := samlProvisioningDeadline(a, acs, "_id", now); !got.Equal(now) {
+		t.Fatal("provisioning exceeded assertion age", got)
+	}
+}

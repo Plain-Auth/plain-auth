@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 
+	auth "github.com/Plain-Auth/plain-auth"
 	"github.com/Plain-Auth/plain-auth/adapters/sqlstore"
 	"github.com/Plain-Auth/plain-auth/plugins/organization"
 )
@@ -17,12 +18,16 @@ func grantMember(database string) error {
 		return err
 	}
 	defer store.Close()
-	service, err := organization.NewService(organization.Options{Store: store, Teams: &organization.TeamOptions{}})
-	if err != nil {
-		return err
-	}
 	var request organization.AddMemberRequest
 	if err := json.NewDecoder(os.Stdin).Decode(&request); err != nil {
+		return err
+	}
+	options := organization.Options{Store: store, MembershipLimit: fixtureMembershipLimit()}
+	if request.TeamID != "" {
+		options.Teams = &organization.TeamOptions{}
+	}
+	service, err := organization.NewService(options)
+	if err != nil {
 		return err
 	}
 	member, err := service.AddMember(ctx, request)
@@ -30,4 +35,20 @@ func grantMember(database string) error {
 		return err
 	}
 	return json.NewEncoder(os.Stdout).Encode(member)
+}
+
+func fixtureMembershipLimit() organization.MembershipLimit {
+	switch os.Getenv("CONFORMANCE_ORG_CAPACITY") {
+	case "fixed":
+		return organization.MembershipLimit{Maximum: 2}
+	case "dynamic":
+		return organization.MembershipLimit{Resolve: func(_ context.Context, u auth.User, g organization.Organization) (int, error) {
+			if g.Slug == "studio" && u.Name == "Guest" {
+				return 0, nil
+			}
+			return 2, nil
+		}}
+	default:
+		return organization.MembershipLimit{}
+	}
 }

@@ -51,6 +51,7 @@
     - [x] Return only the public error code and message to a different recipient ([test](../../../plugins/organization/organization_test.go#L142))
     - [x] Roll back every membership and keep the invitation pending when a team fills ([test](../../../adapters/sqlstore/organization_teams_test.go#L237))
     - [x] Read and update the same stored invitations, membership keys and seat counts in both runtime directions ([test](../../../conformance/core.test.mjs#L675))
+    - [x] Retry a pending invitation after another member frees a seat ([test](../../../conformance/organization-capacity.mjs#L46))
   - [ ] `POST /organization/reject-invitation`
   - [ ] `POST /organization/cancel-invitation`
   - [ ] `GET /organization/get-invitation`
@@ -59,6 +60,8 @@
   - [ ] `addMember (server API only)`
     - [x] Grant built-in roles and an optional team atomically, enforcing capacity alongside concurrent grants and invitation acceptance ([test](../../../adapters/sqlstore/organization_members_test.go#L15))
     - [x] Read grants stored by either server through the other runtime’s browser client without changing the recipient’s active organization ([test](../../../conformance/core.test.mjs#L1042))
+    - [x] Apply the configured capacity to trusted grants on both runtimes ([test](../../../conformance/organization-capacity.mjs#L70))
+    - [x] Allocate the final seat once when a trusted grant and an invitation compete across connections ([test](../../../adapters/sqlstore/organization_limit_test.go#L194))
   - [ ] `POST /organization/remove-member`
     - [x] Resolve simultaneous opposing owner removals in a single transaction attempt while both PostgreSQL connections wait on database locks ([test](../../../adapters/sqlstore/organization_locking_test.go#L106))
     - [x] Remove by case-insensitive email or exact membership ID and return the matching public member shape through the released client ([test](../../../conformance/organization-removal.mjs#L54))
@@ -160,7 +163,9 @@
     - [ ] `allowUserToCreateOrganization`
     - [ ] `organizationLimit`
     - [ ] `creatorRole`
-    - [ ] `membershipLimit`
+    - [x] `membershipLimit` ([test](../../../conformance/organization-capacity.mjs#L39))
+      - [x] Enforce fixed or application-resolved seat limits for the candidate and destination organization ([test](../../../conformance/organization-capacity.mjs#L39))
+      - [x] Allocate the final seat once when a trusted grant and an invitation compete across connections ([test](../../../adapters/sqlstore/organization_limit_test.go#L194))
     - [ ] `ac`
     - [ ] `roles`
     - [ ] `dynamicAccessControl`
@@ -289,8 +294,9 @@
         - [x] Reject a removed caller and deny access to totals even on an empty page ([test](../../../conformance/organization-directory.mjs#L58))
         - [x] Parameter `organizationId` (optional) ([test](../../../conformance/organization-directory.mjs#L40))
           - [x] Select a shared tenant by ID or slug ahead of the active session and preserve the selection ([test](../../../conformance/organization-directory.mjs#L40))
-        - [ ] Parameter `limit` (optional)
+        - [x] Parameter `limit` (optional) ([test](../../../conformance/organization-capacity.mjs#L86))
           - [x] Use the default page for zero and return every joined profile on larger pages ([test](../../../conformance/organization-directory.mjs#L74))
+          - [x] Use a fixed limit for the default directory page and allow an explicit larger page ([test](../../../conformance/organization-capacity.mjs#L86))
         - [x] Parameter `offset` (optional) ([test](../../../conformance/organization-directory.mjs#L42))
           - [x] Skip rows in sort order and preserve the filtered total beyond the last page ([test](../../../conformance/organization-directory.mjs#L42))
         - [ ] Parameter `sortBy` (optional)
@@ -519,7 +525,9 @@
     - [ ] allowUserToCreateOrganization
     - [ ] organizationLimit
     - [ ] creatorRole
-    - [ ] membershipLimit
+    - [x] membershipLimit ([test](../../../conformance/organization-capacity.mjs#L39))
+      - [x] Enforce fixed or application-resolved seat limits for the candidate and destination organization ([test](../../../conformance/organization-capacity.mjs#L39))
+      - [x] Allocate the final seat once when a trusted grant and an invitation compete across connections ([test](../../../adapters/sqlstore/organization_limit_test.go#L194))
     - [ ] sendInvitationEmail
     - [ ] invitationExpiresIn
     - [ ] cancelPendingInvitationsOnReInvite

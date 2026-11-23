@@ -91,6 +91,12 @@ func (s *Store) organizationRole(ctx context.Context, db rowQuerier, sessionID, 
 
 // AddOrganizationMember adds an existing account from trusted application code.
 func (s *Store) AddOrganizationMember(ctx context.Context, m org.Member, teamID string) error {
+	return s.withMemberAdmission(ctx, func(admission *memberAdmission) error {
+		return s.addOrganizationMember(ctx, m, teamID, admission)
+	})
+}
+
+func (s *Store) addOrganizationMember(ctx context.Context, m org.Member, teamID string, admission *memberAdmission) error {
 	tx, err := s.beginMembershipChange(ctx)
 	if err != nil {
 		return err
@@ -107,8 +113,9 @@ func (s *Store) AddOrganizationMember(ctx context.Context, m org.Member, teamID 
 	if err = s.lockOrganization(ctx, tx, m.OrganizationID); err != nil {
 		return err
 	}
-	if err = s.checkNewMember(ctx, tx, m.OrganizationID, m.UserID); err != nil {
-		return err
+	admissionErr := s.checkNewMember(ctx, tx, m.OrganizationID, m.UserID, admission, nil)
+	if admissionErr != nil && admissionErr != errResolveMemberAdmission {
+		return admissionErr
 	}
 	if teamID != "" {
 		if s.teamOptions == nil {
@@ -121,7 +128,12 @@ func (s *Store) AddOrganizationMember(ctx context.Context, m org.Member, teamID 
 		if team.ID != teamID || team.OrganizationID != m.OrganizationID {
 			return org.ErrTeamNotFound
 		}
-		if _, err = s.insertTeamMember(ctx, tx, team.ID, m.UserID, true); err != nil {
+	}
+	if admissionErr != nil {
+		return admissionErr
+	}
+	if teamID != "" {
+		if _, err = s.insertTeamMember(ctx, tx, teamID, m.UserID, true); err != nil {
 			return err
 		}
 	}
@@ -141,7 +153,7 @@ func (s *Store) beginMembershipChange(ctx context.Context) (*sql.Tx, error) {
 }
 
 // The caller holds the organization lock through insertion.
-func (s *Store) checkNewMember(ctx context.Context, tx *sql.Tx, organizationID, userID string) error {
+func (s *Store) checkNewMember(ctx context.Context, tx *sql.Tx, organizationID, userID string, admission *memberAdmission, invitation *org.Invitation) error {
 	var count, existing int
 	err := tx.QueryRowContext(ctx, s.bind(`SELECT COUNT(*),COALESCE(SUM(CASE WHEN "userId"=? THEN 1 ELSE 0 END),0) FROM "member" WHERE "organizationId"=?`), userID, organizationID).Scan(&count, &existing)
 	if err != nil {
@@ -150,7 +162,11 @@ func (s *Store) checkNewMember(ctx context.Context, tx *sql.Tx, organizationID, 
 	if existing != 0 {
 		return org.ErrAlreadyMember
 	}
-	if count >= 100 {
+	limit, err := s.admissionCapacity(ctx, tx, userID, organizationID, admission, invitation)
+	if err != nil {
+		return err
+	}
+	if count >= limit {
 		return org.ErrMemberLimit
 	}
 	return nil

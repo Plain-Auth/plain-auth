@@ -28,6 +28,31 @@ type SAMLStore interface {
 var ErrAssertionUsed = apiError(400, "SAML assertion has already been consumed")
 var errSAMLResponse = apiError(400, "Invalid SAML response")
 
+// Bound provisioning work to the lifetime of the assertion the SP already
+// verified. Only bearer confirmations for this callback can extend that window.
+func samlProvisioningDeadline(a *saml.Assertion, acs, requestID string, now time.Time) time.Time {
+	skew := min(3*time.Minute, saml.MaxClockSkew)
+	deadline := a.IssueInstant.Add(min(5*time.Minute, saml.MaxIssueDelay))
+	if t := a.Conditions.NotOnOrAfter.Add(skew); t.Before(deadline) {
+		deadline = t
+	}
+	var bearer time.Time
+	for _, confirmation := range a.Subject.SubjectConfirmations {
+		data := confirmation.SubjectConfirmationData
+		if confirmation.Method != "urn:oasis:names:tc:SAML:2.0:cm:bearer" || data == nil ||
+			data.Recipient != acs || data.InResponseTo != requestID || data.NotBefore.After(now.Add(skew)) {
+			continue
+		}
+		if expiry := data.NotOnOrAfter.Add(skew); expiry.After(bearer) {
+			bearer = expiry
+		}
+	}
+	if bearer.Before(deadline) {
+		return bearer
+	}
+	return deadline
+}
+
 // The cleartext HTTP-POST profile has one directly signed assertion.
 // This pass bounds the XML and checks the envelope;
 // all identity data below comes from the library's authenticated assertion.
@@ -304,6 +329,8 @@ func (o Options) samlFinish(c auth.EndpointContext) (any, error) {
 		return fail("invalid_saml_response")
 	}
 	complete := func(ctx context.Context, provider, subject string, _ auth.OAuthTokens, u auth.User, session auth.StoredSession, opts auth.OAuthLoginOptions) (auth.User, bool, error) {
+		ctx, cancel := context.WithDeadline(ctx, samlProvisioningDeadline(a, flow.RedirectURI, requestID, now))
+		defer cancel()
 		receipt := AssertionReceipt{Issuer: a.Issuer.Value, ID: id}
 		if o.SAML.EnableSingleLogout && availableSAMLLogout(c, p.Provider) == nil {
 			receipt.Logout = logoutIdentity(a)
@@ -314,6 +341,8 @@ func (o Options) samlFinish(c auth.EndpointContext) (any, error) {
 	flow.NewUserCallbackURL = ""
 	result, err := c.CompleteEnterpriseFlow(flow, profile, auth.OAuthTokens{}, o.DisableImplicitSignUp && !flow.RequestSignUp, complete)
 	switch {
+	case errors.Is(err, context.DeadlineExceeded):
+		return fail("invalid_saml_response")
 	case errors.Is(err, ErrDomainUnverified):
 		return nil, err
 	case errors.Is(err, auth.ErrOAuthLinkRequired):

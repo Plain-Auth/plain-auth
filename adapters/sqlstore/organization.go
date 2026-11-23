@@ -28,7 +28,8 @@ func (s *Store) organizationActor(ctx context.Context, tx *sql.Tx, userID, sessi
 	if err != nil {
 		return user, err
 	}
-	query := `SELECT u."id",u."email",u."emailVerified" FROM "user" u JOIN "session" ss ON ss."userId"=u."id" WHERE u."id"=? AND ss."id"=? AND ss."expiresAt">?`
+	exact := s.exactSQLValue
+	query := `SELECT u."id",u."email",u."emailVerified" FROM "user" u JOIN "session" ss ON ss."userId"=` + exact(`u."id"`) + ` WHERE u."id"=` + exact("?") + ` AND ss."id"=` + exact("?") + ` AND ss."expiresAt">?`
 	err = tx.QueryRowContext(ctx, s.readForUpdate(query), userID, sessionID, s.date(now)).Scan(&user.ID, &user.Email, &user.EmailVerified)
 	if errors.Is(err, sql.ErrNoRows) {
 		return user, org.ErrUnauthenticated
@@ -335,6 +336,17 @@ func (s *Store) InviteOrganizationMember(ctx context.Context, inv org.Invitation
 }
 
 func (s *Store) AcceptOrganizationInvitation(ctx context.Context, id, sessionID string, u authn.User, now time.Time, requireVerified bool) (org.Invitation, org.Member, error) {
+	var invitation org.Invitation
+	var member org.Member
+	err := s.withMemberAdmission(ctx, func(admission *memberAdmission) error {
+		var err error
+		invitation, member, err = s.acceptOrganizationInvitation(ctx, id, sessionID, u, admission.checkedAt(now), requireVerified, admission)
+		return err
+	})
+	return invitation, member, err
+}
+
+func (s *Store) acceptOrganizationInvitation(ctx context.Context, id, sessionID string, u authn.User, now time.Time, requireVerified bool, admission *memberAdmission) (org.Invitation, org.Member, error) {
 	var inv org.Invitation
 	var m org.Member
 	tx, err := s.beginMembershipChange(ctx)
@@ -381,7 +393,7 @@ func (s *Store) AcceptOrganizationInvitation(ctx context.Context, id, sessionID 
 	if inv.TeamID != nil && s.teamOptions == nil {
 		return org.Invitation{}, org.Member{}, org.ErrTeamPolicyRequired
 	}
-	if err = s.checkNewMember(ctx, tx, inv.OrganizationID, u.ID); err != nil {
+	if err = s.checkNewMember(ctx, tx, inv.OrganizationID, u.ID, admission, &inv); err != nil {
 		return org.Invitation{}, org.Member{}, err
 	}
 	res, err := tx.ExecContext(ctx, s.bind(`UPDATE "invitation" SET "status"='accepted' WHERE "id"=`+exact+` AND "organizationId"=`+exact+` AND "status"='pending'`), id, organizationID)

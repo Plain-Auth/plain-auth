@@ -190,9 +190,20 @@ func (s *Store) CompleteVerifiedEnterpriseLogin(ctx context.Context, ref string,
 }
 func (s *Store) completeEnterpriseLogin(ctx context.Context, ref string, provision bool, id, subject string, tokens auth.OAuthTokens, user auth.User, session auth.StoredSession, opts auth.OAuthLoginOptions, requireProof bool, assertion *sso.AssertionReceipt) (auth.User, bool, error) {
 	var orgID *string
+	var admission *memberAdmission
+	checkedAt := session.CreatedAt
 	var hooks oauthTransactionHooks
 	hooks = oauthTransactionHooks{
 		guard: func(tx *sql.Tx) error {
+			if admission.snapshot != "" {
+				checkedAt = admission.checkedAt(session.CreatedAt)
+				if !session.ExpiresAt.After(checkedAt) {
+					return sso.ErrUnauthenticated
+				}
+				if !opts.IDTokenValidUntil.IsZero() && !opts.IDTokenValidUntil.After(checkedAt) {
+					return auth.ErrIDTokenUsed
+				}
+			}
 			q := `SELECT ` + browserProviderCols + ` FROM "ssoProvider" p WHERE ` + browserProviderWhere + ` AND ` + s.scimExact(`p."providerId"`) + `=?`
 			p, err := scanBrowserProvider(tx.QueryRowContext(ctx, s.readForUpdate(q), id))
 			if errors.Is(err, sql.ErrNoRows) || err == nil && (ref == "" || p.Reference != ref) {
@@ -205,7 +216,7 @@ func (s *Store) completeEnterpriseLogin(ctx context.Context, ref string, provisi
 				return sso.ErrChanged
 			}
 			if assertion != nil {
-				if err = s.consumeSAMLAssertion(ctx, tx, p, *assertion, session.CreatedAt); err != nil {
+				if err = s.consumeSAMLAssertion(ctx, tx, p, *assertion, checkedAt); err != nil {
 					return err
 				}
 			}
@@ -252,11 +263,11 @@ func (s *Store) completeEnterpriseLogin(ctx context.Context, ref string, provisi
 				return nil
 			}
 			var pending bool
-			e := tx.QueryRowContext(ctx, s.bind(`SELECT EXISTS(SELECT 1 FROM "invitation" WHERE "organizationId"=? AND "email"=? AND "status"='pending' AND "expiresAt">?)`), *orgID, strings.ToLower(u.Email), s.date(session.CreatedAt)).Scan(&pending)
+			e := tx.QueryRowContext(ctx, s.bind(`SELECT EXISTS(SELECT 1 FROM "invitation" WHERE "organizationId"=? AND "email"=? AND "status"='pending' AND "expiresAt">?)`), *orgID, strings.ToLower(u.Email), s.date(checkedAt)).Scan(&pending)
 			if e != nil || pending {
 				return e
 			}
-			e = s.checkNewMember(ctx, tx, *orgID, u.ID)
+			e = s.checkNewMember(ctx, tx, *orgID, u.ID, admission, nil)
 			if errors.Is(e, org.ErrAlreadyMember) {
 				return nil
 			}
@@ -268,7 +279,14 @@ func (s *Store) completeEnterpriseLogin(ctx context.Context, ref string, provisi
 	}
 	// Matching an unverified directory domain never grants linking to an existing email.
 	opts.AllowVerifiedEmailLink = false
-	u, created, err := s.completeOAuthWith(ctx, id, subject, tokens, user, session, opts, &hooks, false, nil)
+	var u auth.User
+	var created bool
+	err := s.withMemberAdmission(ctx, func(decision *memberAdmission) error {
+		admission = decision
+		var err error
+		u, created, err = s.completeOAuthWith(ctx, id, subject, tokens, user, session, opts, &hooks, false, nil)
+		return err
+	})
 	// A concurrent deletion can remove the original link while the account
 	// lookup is blocked. Report that stale provider even when identity matching
 	// rejected the now-unlinked email before the transaction guard could run.

@@ -1892,3 +1892,8 @@ test("organization member directories paginate, filter and join profiles within 
   const {compareMemberDirectory} = await import("./organization-directory.mjs");
   await compareMemberDirectory(t, {reference, goFixture, instrument});
 });
+
+test("fixed and application-resolved membership limits govern admissions and directory defaults", async t => {
+  const { compareMembershipLimits } = await import("./organization-capacity.mjs");
+  await compareMembershipLimits(t, { reference, goFixture, instrument, fixtureBinary: () => fixtureBuild });
+});

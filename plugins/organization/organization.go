@@ -57,6 +57,7 @@ type Store interface {
 }
 
 type Options struct {
+	MembershipLimit          MembershipLimit
 	BeforeUpdateOrganization func(context.Context, BeforeProfileUpdate) (*ProfileUpdate, error)
 	AfterUpdateOrganization  func(context.Context, AfterProfileUpdate) error
 	Teams                    *TeamOptions
@@ -142,6 +143,20 @@ type Service struct{ options Options }
 func NewService(o Options) (*Service, error) {
 	if o.Store == nil {
 		return nil, errors.New("organization: Store is required")
+	}
+	if err := o.MembershipLimit.Validate(); err != nil {
+		return nil, err
+	}
+	if o.MembershipLimit.Maximum != 0 || o.MembershipLimit.Resolve != nil {
+		provider, ok := o.Store.(MembershipLimitStoreProvider)
+		if !ok {
+			return nil, errors.New("organization: configured membership limits require a MembershipLimitStoreProvider")
+		}
+		store, err := provider.WithOrganizationMembershipLimit(o.MembershipLimit)
+		if err != nil {
+			return nil, err
+		}
+		o.Store = store
 	}
 	if o.BeforeUpdateOrganization != nil || o.AfterUpdateOrganization != nil {
 		if _, ok := o.Store.(ObservedProfileStore); !ok {

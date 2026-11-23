@@ -93,7 +93,7 @@ Go records the resolved commit in the consuming project’s `go.mod`. The module
 - [x] Remember multiple accounts in one browser and switch or revoke them. [Account switching](docs/multi-session.md)
 - [x] Create a guest account and transfer its application records on sign-up. [Guest sessions](docs/anonymous.md)
 - [x] Verify an authenticator, delivered code or single-use backup code and remember a trusted browser. [Two-factor authentication](docs/2fa.md)
-- [x] Create organizations and teams, enforce seat limits and accept scoped invitations. [Organization tests](plugins/organization/organization_test.go)
+- [x] Create organizations and teams, accept scoped invitations and enforce fixed or application-defined membership limits. [Organization membership](docs/organizations.md#limit-organization-membership)
 - [x] Open a Polar checkout or customer portal, read the customer’s billing state, and reconcile signed checkout updates. [Polar setup and recovery](docs/polar.md)
 - [x] Verify Stripe webhook signatures and open an authenticated customer’s billing portal. [Webhook tests](plugins/stripe/stripe_test.go) · [Billing portal tests](plugins/stripe/portal_test.go)
 - [x] Start recurring Checkout, confirm a personal plan change, schedule a price for the next billing period, cancel or restore the subscription. [Subscription billing](docs/subscriptions.md)

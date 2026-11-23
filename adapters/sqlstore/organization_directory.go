@@ -119,7 +119,7 @@ func (s *Store) ListOrganizationMembers(ctx context.Context, sessionID, actorID 
 	}
 	limit := q.Limit
 	if limit == 0 {
-		limit = 100
+		limit = s.membershipLimit.DefaultPageSize()
 	}
 	where := ` WHERE m."organizationId"=` + s.exactSQLValue("?") + filter
 	args = append([]any{group}, args...)

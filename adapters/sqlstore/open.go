@@ -34,6 +34,7 @@ type Store struct {
 	apiKeyLedgerReady      *atomic.Bool
 	dpopNextSweep          *atomic.Int64
 	adminRole, adminDenial string
+	membershipLimit        org.MembershipLimit
 	teamOptions            *org.TeamOptions
 	factorSchema           bool
 	db                     *sql.DB

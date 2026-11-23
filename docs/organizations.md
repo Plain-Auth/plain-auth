@@ -104,7 +104,7 @@ The response contains `members` and `total`. Each member has `id`, `organization
 
 | Query parameter | Behavior |
 | --- | --- |
-| `limit`, `offset` | Use nonnegative integers. The default page contains up to 100 memberships and starts at offset 0. A zero limit uses the default. Larger explicit pages can include every matching member. |
+| `limit`, `offset` | Use nonnegative integers. The first page starts at offset 0. Its default size is the fixed membership limit, or 100 when the application uses a resolver or leaves the limit unset. A zero limit uses the default. Larger explicit pages can include every matching member. |
 | `sortBy`, `sortDirection` | Sort by `id`, `organizationId`, `userId`, `role` or `createdAt`. Choose `asc` (default) or `desc`. The SQL adapters use the membership ID to break ties. |
 | `filterField`, `filterValue` | Use one of the same five membership fields. Supply timestamps as RFC 3339 or a date as `YYYY-MM-DD` for date comparisons. |
 | `filterOperator` | Defaults to `eq`. Comparisons also support `ne`, `lt`, `lte`, `gt` and `gte`. Repeat `filterValue` for `in` and `not_in`. The pattern operators `contains`, `starts_with` and `ends_with` support the SQL wildcards `%` and `_`. |
@@ -201,7 +201,39 @@ member, err := organizations.AddMember(ctx, organization.AddMemberRequest{
 })
 ```
 
-Supply the exact organization and user IDs. Built-in roles are `owner`, `admin`, and `member`. A duplicate grant returns `USER_IS_ALREADY_A_MEMBER_OF_THIS_ORGANIZATION`. To add the user to a team in the same transaction, enable `Teams` on the service and set `TeamID` to a team in that organization. A full team rolls back the entire grant. Direct grants and invitation acceptance share the default 100-member limit. Granting membership preserves the user's current browser selection. [Three-database membership tests](../adapters/sqlstore/organization_members_test.go)
+Supply the exact organization and user IDs. Built-in roles are `owner`, `admin`, and `member`. A duplicate grant returns `USER_IS_ALREADY_A_MEMBER_OF_THIS_ORGANIZATION`. To add the user to a team in the same transaction, enable `Teams` on the service and set `TeamID` to a team in that organization. A full team rolls back the entire grant. Granting membership preserves the user's current browser selection. [Three-database membership tests](../adapters/sqlstore/organization_members_test.go)
+
+## Limit organization membership
+
+An organization starts with one owner, who counts toward its seat limit. The default limit is 100. A direct grant or invitation acceptance that would exceed the limit returns `ORGANIZATION_MEMBERSHIP_LIMIT_REACHED` (HTTP 403). A denied invitation stays pending and the session keeps its current organization and team. Sending an invitation takes no seat. Lowering a limit preserves existing memberships.
+
+For a fixed limit, set `MembershipLimit: organization.MembershipLimit{Maximum: 25}` in `organization.Options`. A fixed limit also determines the default member directory page size. Readers can always request a larger page explicitly.
+
+To vary capacity by account or organization, supply a resolver. This example looks up the organization's purchased seats and allows the application to check whether this particular account qualifies.
+
+```go
+policy := organization.MembershipLimit{
+    Resolve: func(ctx context.Context, candidate plainauth.User, org organization.Organization) (int, error) {
+        return plans.AvailableMembershipLimit(ctx, org.ID, candidate.ID)
+    },
+}
+scoped, err := store.WithMembershipLimit(policy)
+if err != nil {
+    return err
+}
+orgPlugin, err := organization.New(organization.Options{Store: scoped})
+if err != nil {
+    return err
+}
+auth, err := plainauth.New(plainauth.Options{
+    Store: scoped, BaseURL: origin, Secret: secret,
+    Plugins: []plainauth.Plugin{orgPlugin, enterpriseSSO},
+})
+```
+
+`plans.AvailableMembershipLimit` is your application function. Return the **total seats allowed**, including occupied seats. A resolver returning zero denies this admission. Return an error when the policy cannot be evaluated. The SQL adapter calls the resolver outside the transaction with the candidate's core account fields and the destination organization's profile. It then rechecks the inputs, permissions and seat count before committing. If the candidate, invitation or organization changes during the lookup, the write can return HTTP 409 with `MEMBERSHIP_POLICY_INPUT_CHANGED`. Retrying the request evaluates the current data. Directory reads use a default page size of 100 with a resolver.
+
+When enterprise SSO provisions memberships, supply the same scoped SQL store to the auth handler and organization plugin on every server. In the example, `enterpriseSSO` is the configured SSO plugin. The scoped store shares the original database connection pool. Concurrent admissions compete for seats in the database. A denied enterprise admission commits neither a new identity nor its session. [Three-database admission tests](../adapters/sqlstore/organization_limit_test.go) · [Client comparison](../conformance/organization-capacity.mjs)
 
 ## Teams
 
@@ -236,7 +268,7 @@ Owners and admins manage teams and membership. An organization member can list t
 
 To invite a new organization member into teams, include `teamId` in `/organization/invite-member`. Supply one ID or an array of IDs from that organization. Acceptance commits the organization membership and every team membership together. A single invited team becomes active on the accepting session. Removing a team updates outstanding invitations. An invitation whose final team is removed can still grant organization membership.
 
-`MaximumTeams` limits the number of teams per organization. A positive value enables the limit. `MaximumMembersPerTeam` sets a fixed seat limit for added and invited members, and `nil` leaves capacity unrestricted. Removing an organization's last team requires `AllowRemovingAllTeams: true`. Custom role permissions, dynamic quota functions and team lifecycle callbacks are tracked separately in the [organization checklist](parity/plugins/organization.md).
+`MaximumTeams` limits the number of teams per organization. A positive value enables the limit. `MaximumMembersPerTeam` sets a fixed seat limit for added and invited members, and `nil` leaves capacity unrestricted. Removing an organization's last team requires `AllowRemovingAllTeams: true`. Custom role permissions, dynamic team quotas and team lifecycle callbacks are tracked separately in the [organization checklist](parity/plugins/organization.md).
 
 The native client includes `CreateTeam`, `UpdateTeam`, `RemoveTeam`, `ListOrganizationTeams`, `ListUserTeams`, `SetActiveTeam`, `ListTeamMembers`, `AddTeamMember` and `RemoveTeamMember`. Each client uses its own session when resolving an omitted organization or team. [Multi-engine team tests](../adapters/sqlstore/organization_teams_test.go)
 
