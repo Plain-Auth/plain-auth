@@ -15191,6 +15191,11 @@
       "label": "Check an active or explicit organization with the Go client on three SQL engines",
       "test": "adapters/sqlstore/organization_selection_http_test.go",
       "marker": "t.Fatal(\"owner could not check permissions for the active or explicit organization\")"
+    },
+    {
+      "label": "Resolve custom actions against live membership even when the caller holds multiple roles",
+      "test": "conformance/organization-custom-roles.mjs",
+      "marker": "assert.equal(await check(editor,{reports:[\"read\",\"publish\"]}), false)"
     }
   ],
   "plugin-symbol/organization/hasPermission": [
@@ -15203,6 +15208,11 @@
       "label": "Check an active or explicit organization with the Go client on three SQL engines",
       "test": "adapters/sqlstore/organization_selection_http_test.go",
       "marker": "t.Fatal(\"owner could not check permissions for the active or explicit organization\")"
+    },
+    {
+      "label": "Resolve custom actions against live membership even when the caller holds multiple roles",
+      "test": "conformance/organization-custom-roles.mjs",
+      "marker": "assert.equal(await check(editor,{reports:[\"read\",\"publish\"]}), false)"
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L1395/Has Permission": [
@@ -15215,6 +15225,11 @@
       "label": "Check an active or explicit organization with the Go client on three SQL engines",
       "test": "adapters/sqlstore/organization_selection_http_test.go",
       "marker": "t.Fatal(\"owner could not check permissions for the active or explicit organization\")"
+    },
+    {
+      "label": "Resolve custom actions against live membership even when the caller holds multiple roles",
+      "test": "conformance/organization-custom-roles.mjs",
+      "marker": "assert.equal(await check(editor,{reports:[\"read\",\"publish\"]}), false)"
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L1246": [
@@ -15282,6 +15297,11 @@
       "label": "Calculate built-in role permissions locally from a comma-separated role list",
       "test": "plugins/organization/permissions_test.go",
       "marker": "func TestDefaultOrganizationRolePermissions"
+    },
+    {
+      "label": "Evaluate a configured role locally and require one role to cover every requested action",
+      "test": "plugins/organization/permissions_test.go",
+      "marker": "combined partial grants authorized a request"
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L1442/Check Role Permission": [
@@ -15289,6 +15309,88 @@
       "label": "Calculate built-in role permissions locally from a comma-separated role list",
       "test": "plugins/organization/permissions_test.go",
       "marker": "func TestDefaultOrganizationRolePermissions"
+    },
+    {
+      "label": "Evaluate a configured role locally and require one role to cover every requested action",
+      "test": "plugins/organization/permissions_test.go",
+      "marker": "combined partial grants authorized a request",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/organization/OrganizationOptions/creatorRole": [
+    {
+      "label": "Assign a custom creator membership, protect the final holder and transfer it to a successor",
+      "test": "conformance/organization-custom-roles.mjs",
+      "marker": "assert.equal(group.members[0].role, \"founder\")",
+      "complete": true
+    },
+    {
+      "label": "Enforce creator-only grants and filter creator invitations in organization listings",
+      "test": "conformance/organization-custom-roles.mjs",
+      "marker": "assert.ok(!visible.some(inv => inv.id === protectedGrant.id))"
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L2578/creatorRole": [
+    {
+      "label": "Assign a custom creator membership, protect the final holder and transfer it to a successor",
+      "test": "conformance/organization-custom-roles.mjs",
+      "marker": "assert.equal(group.members[0].role, \"founder\")",
+      "complete": true
+    },
+    {
+      "label": "Enforce creator-only grants and filter creator invitations in organization listings",
+      "test": "conformance/organization-custom-roles.mjs",
+      "marker": "assert.ok(!visible.some(inv => inv.id === protectedGrant.id))"
+    }
+  ],
+  "plugin-symbol/organization/OrganizationOptions/roles": [
+    {
+      "label": "Apply the host’s roles to profile changes, teams, invitations and live permissions",
+      "test": "conformance/organization-custom-roles.mjs",
+      "marker": "ok(await editor.api.update({organizationId,data:{name:\"Newsroom\"}}))",
+      "complete": true
+    },
+    {
+      "label": "Recheck a custom inviter’s current grants after host callbacks on three SQL engines",
+      "test": "adapters/sqlstore/organization_custom_roles_test.go",
+      "marker": "revoked custom role issued a grant"
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1264": [
+    {
+      "label": "Apply the host’s roles to profile changes, teams, invitations and live permissions",
+      "test": "conformance/organization-custom-roles.mjs",
+      "marker": "ok(await editor.api.update({organizationId,data:{name:\"Newsroom\"}}))",
+      "complete": true
+    },
+    {
+      "label": "Recheck a custom inviter’s current grants after host callbacks on three SQL engines",
+      "test": "adapters/sqlstore/organization_custom_roles_test.go",
+      "marker": "revoked custom role issued a grant"
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1293": [
+    {
+      "label": "Apply the host’s roles to profile changes, teams, invitations and live permissions",
+      "test": "conformance/organization-custom-roles.mjs",
+      "marker": "ok(await editor.api.update({organizationId,data:{name:\"Newsroom\"}}))",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1345": [
+    {
+      "label": "Apply the host’s roles to profile changes, teams, invitations and live permissions",
+      "test": "conformance/organization-custom-roles.mjs",
+      "marker": "ok(await editor.api.update({organizationId,data:{name:\"Newsroom\"}}))",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/organization/defaultRoles": [
+    {
+      "label": "Extend the built-in grants with an independent copy of the role definitions",
+      "test": "plugins/organization/permissions_test.go",
+      "marker": "host edits changed the built-in grants",
+      "complete": true
     }
   ]
 }

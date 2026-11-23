@@ -32,12 +32,7 @@ var defaultPermissions = map[string]access.Statements{
 // DefaultRoleHasPermission reports whether one of the supplied built-in roles
 // grants every requested action. An empty request or action list returns false.
 func DefaultRoleHasPermission(roles string, permissions access.Statements) bool {
-	for _, role := range NormalizeRoles(roles) {
-		if defaultPermissions[role].AllowsAll(permissions) {
-			return true
-		}
-	}
-	return false
+	return (RolePolicy{}).HasPermission(roles, permissions)
 }
 
 func permissionStatements(value any) (access.Statements, bool) {
@@ -86,7 +81,7 @@ func permissionQuery(body map[string]any) (string, access.Statements, error) {
 	return id, modern, nil
 }
 
-func permissionEndpoint(store MemberRoleReader) auth.Endpoint {
+func (p RolePolicy) permissionEndpoint(store MemberRoleReader) auth.Endpoint {
 	return auth.Endpoint{Method: http.MethodPost, Path: "/organization/has-permission", Handler: func(c auth.EndpointContext) (any, error) {
 		id, permissions, err := permissionQuery(c.Body)
 		if err != nil {
@@ -103,6 +98,6 @@ func permissionEndpoint(store MemberRoleReader) auth.Endpoint {
 		if err != nil {
 			return nil, err
 		}
-		return map[string]any{"success": DefaultRoleHasPermission(role, permissions), "error": nil}, nil
+		return map[string]any{"success": p.HasPermission(role, permissions), "error": nil}, nil
 	}}
 }

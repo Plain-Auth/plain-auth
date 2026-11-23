@@ -11,6 +11,7 @@ import (
 	"time"
 
 	authn "github.com/Plain-Auth/plain-auth"
+	"github.com/Plain-Auth/plain-auth/plugins/access"
 )
 
 type Organization struct {
@@ -55,6 +56,11 @@ type Store interface {
 }
 
 type Options struct {
+	// CreatorRole is the membership assigned to an organization's creator.
+	CreatorRole string
+	// Roles replaces the built-in grants when non-nil. Use DefaultRoles to extend them.
+	Roles           map[string]access.Statements
+	rolePolicy      RolePolicy
 	InvitationLimit *InvitationLimit
 	// CancelPendingInvitationsOnReInvite replaces an existing live grant when
 	// the application invites the same address again without requesting resend.
@@ -141,7 +147,7 @@ func endpointSession(c authn.EndpointContext, method, action string) (*authn.Ses
 	return s, nil
 }
 
-// New enables the default owner, admin and member role workflows.
+// New registers the organization's membership, team and invitation endpoints.
 func New(o Options) (authn.Plugin, error) {
 	service, err := NewService(o)
 	if err != nil {
@@ -156,6 +162,23 @@ type Service struct{ options Options }
 func NewService(o Options) (*Service, error) {
 	if o.Store == nil {
 		return nil, errors.New("organization: Store is required")
+	}
+	roleStore, supportsRoles := o.Store.(RolePolicyStoreProvider)
+	if o.CreatorRole != "" || o.Roles != nil {
+		policy, err := NewRolePolicy(o.CreatorRole, o.Roles)
+		if err != nil {
+			return nil, err
+		}
+		if !supportsRoles {
+			return nil, errors.New("organization: custom roles require a RolePolicyStoreProvider")
+		}
+		o.Store, err = roleStore.WithOrganizationRolePolicy(policy)
+		if err != nil {
+			return nil, err
+		}
+		o.rolePolicy = policy
+	} else if supportsRoles {
+		o.rolePolicy = roleStore.OrganizationRolePolicy()
 	}
 	if err := o.MembershipLimit.Validate(); err != nil {
 		return nil, err
@@ -277,7 +300,7 @@ func (service *Service) Plugin() authn.Plugin {
 		plugin.Endpoints = append(plugin.Endpoints, o.memberDirectoryEndpoint(store))
 	}
 	if store, ok := o.Store.(MemberRoleReader); ok {
-		plugin.Endpoints = append(plugin.Endpoints, o.readMemberRoleEndpoint(store), permissionEndpoint(store))
+		plugin.Endpoints = append(plugin.Endpoints, o.readMemberRoleEndpoint(store), o.rolePolicy.permissionEndpoint(store))
 	}
 	if store, ok := o.Store.(ActiveMemberStore); ok {
 		plugin.Endpoints = append(plugin.Endpoints, o.endpoint(http.MethodGet, "get-active-member", func(c authn.EndpointContext, s *authn.SessionResult) (any, error) {
@@ -342,7 +365,7 @@ func (o Options) create(c authn.EndpointContext, s *authn.SessionResult) (any, e
 	if c.Body["keepCurrentActiveOrganization"] != nil && !ok {
 		return nil, validation("keepCurrentActiveOrganization")
 	}
-	member := Member{ID: rand.Text(), OrganizationID: org.ID, UserID: s.User.ID, Role: "owner", CreatedAt: now}
+	member := Member{ID: rand.Text(), OrganizationID: org.ID, UserID: s.User.ID, Role: o.rolePolicy.CreatorRole(), CreatedAt: now}
 	err = o.Store.CreateOrganization(c.Request.Context(), org, member, s.Session.ID, keep)
 	return struct {
 		Organization
@@ -427,7 +450,7 @@ func (o Options) invite(c authn.EndpointContext) (any, error) {
 	_, supportsPreparation := o.Store.(PreparedInvitationStore)
 	role := strings.Join(input.roles, ",")
 	if !supportsPreparation {
-		role, err = ParseInvitationRoles(input.roles...)
+		role, err = o.rolePolicy.ParseInvitationRoles(input.roles...)
 		if err != nil {
 			return nil, err
 		}

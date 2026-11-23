@@ -82,13 +82,18 @@ func builtinRole(role string) bool {
 
 // ParseInvitationRoles validates the built-in invitation roles and preserves their order.
 func ParseInvitationRoles(input ...string) (string, error) {
+	return (RolePolicy{}).ParseInvitationRoles(input...)
+}
+
+// ParseInvitationRoles validates all submitted role names under the host policy.
+func (p RolePolicy) ParseInvitationRoles(input ...string) (string, error) {
 	roles := NormalizeRoles(input...)
 	if len(roles) == 0 {
 		return "", problem(400, "ROLE_NOT_FOUND", "Role not found")
 	}
 	var unknown []string
 	for _, role := range roles {
-		if !builtinRole(role) {
+		if !p.Recognizes(role) {
 			unknown = append(unknown, role)
 		}
 	}

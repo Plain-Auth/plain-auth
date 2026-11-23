@@ -68,7 +68,7 @@ func (s *Store) lockProfile(ctx context.Context, tx *sql.Tx, userID, token, grou
 	if err != nil {
 		return nil, org.Member{}, err
 	}
-	if !membershipHasRole(actor.Role, "owner") && !membershipHasRole(actor.Role, "admin") {
+	if !s.organizationRoles.HasAction(actor.Role, "organization", "update") {
 		return nil, org.Member{}, org.ErrUpdateDenied
 	}
 	row, err := readOrg(tx.QueryRowContext(ctx, s.bind(`SELECT `+orgFields+` FROM "organization" o WHERE o."id"=?`), group))

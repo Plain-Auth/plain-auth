@@ -1987,3 +1987,8 @@ test("organization permission queries evaluate live built-in memberships without
   const { compareOrganizationPermissions } = await import("./organization-permissions.mjs");
   await compareOrganizationPermissions(t, { reference, goFixture, instrument });
 });
+
+test("custom organization roles govern grants, teams, invitations and creator succession", async t => {
+  const { compareCustomOrganizationRoles } = await import("./organization-custom-roles.mjs");
+  await compareCustomOrganizationRoles(t, { reference, goFixture, instrument });
+});

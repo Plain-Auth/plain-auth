@@ -83,9 +83,9 @@ func (s *Store) removeMembershipOnce(ctx context.Context, userID, token, group, 
 			member.User = nil
 		}
 	}
-	actorIsOwner := membershipHasRole(actor.Role, "owner")
-	if membershipHasRole(member.Role, "owner") {
-		if !actorIsOwner {
+	creator := s.organizationRoles.CreatorRole()
+	if membershipHasRole(member.Role, creator) {
+		if !membershipHasRole(actor.Role, creator) {
 			return nil, org.ErrLastOwner
 		}
 		another, err := s.hasOtherOwner(ctx, tx, group, member.ID)
@@ -96,7 +96,7 @@ func (s *Store) removeMembershipOnce(ctx context.Context, userID, token, group, 
 			return nil, org.ErrLastOwner
 		}
 	}
-	if !leave && !actorIsOwner && !membershipHasRole(actor.Role, "admin") {
+	if !leave && !s.organizationRoles.HasAction(actor.Role, "member", "delete") {
 		return nil, org.ErrMemberRemove
 	}
 	teams, err := s.hasKeyOwnerTable(ctx, tx, "teamMember")
@@ -226,7 +226,7 @@ func (s *Store) hasOtherOwner(ctx context.Context, tx *sql.Tx, group, member str
 		if err = rows.Scan(&role); err != nil {
 			return false, err
 		}
-		if membershipHasRole(role, "owner") {
+		if membershipHasRole(role, s.organizationRoles.CreatorRole()) {
 			return true, nil
 		}
 	}

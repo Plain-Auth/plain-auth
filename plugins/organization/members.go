@@ -54,7 +54,7 @@ func (service *Service) AddMember(ctx context.Context, request AddMemberRequest)
 	if request.UserID == "" {
 		return nil, validation("userId")
 	}
-	role, err := directMemberRoles(request.Roles)
+	role, err := service.options.rolePolicy.directMemberRoles(request.Roles)
 	if err != nil {
 		return nil, err
 	}
@@ -68,14 +68,14 @@ func (service *Service) AddMember(ctx context.Context, request AddMemberRequest)
 	return member, nil
 }
 
-func directMemberRoles(entries []string) (string, error) {
+func (p RolePolicy) directMemberRoles(entries []string) (string, error) {
 	if len(entries) == 0 {
 		return "", validation("role")
 	}
 	var roles []string
 	for _, entry := range entries {
 		role := strings.TrimSpace(entry)
-		if !builtinRole(role) {
+		if !p.Recognizes(role) {
 			return "", problem(400, "ROLE_NOT_FOUND", "Role not found")
 		}
 		if !slices.Contains(roles, role) {

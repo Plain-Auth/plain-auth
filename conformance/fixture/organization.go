@@ -7,6 +7,7 @@ import (
 
 	auth "github.com/Plain-Auth/plain-auth"
 	"github.com/Plain-Auth/plain-auth/adapters/sqlstore"
+	"github.com/Plain-Auth/plain-auth/plugins/access"
 	"github.com/Plain-Auth/plain-auth/plugins/organization"
 )
 
@@ -23,6 +24,7 @@ func grantMember(database string) error {
 		return err
 	}
 	options := organization.Options{Store: store, MembershipLimit: fixtureMembershipLimit()}
+	configureFixtureRoles(&options)
 	if request.TeamID != "" {
 		options.Teams = &organization.TeamOptions{}
 	}
@@ -35,6 +37,18 @@ func grantMember(database string) error {
 		return err
 	}
 	return json.NewEncoder(os.Stdout).Encode(member)
+}
+
+func configureFixtureRoles(options *organization.Options) {
+	if os.Getenv("CONFORMANCE_ORG_ROLE_POLICY") != "editorial" {
+		return
+	}
+	options.CreatorRole = "founder"
+	options.Roles = map[string]access.Statements{
+		"founder":    {"invitation": {"create"}},
+		"editor":     {"organization": {"update"}, "invitation": {"create"}, "reports": {"read"}},
+		"supervisor": {"team": {"create", "update", "delete"}, "member": {"update", "delete"}, "invitation": {"cancel"}, "reports": {"publish"}},
+	}
 }
 
 func fixtureMembershipLimit() organization.MembershipLimit {

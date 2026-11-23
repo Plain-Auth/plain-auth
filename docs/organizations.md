@@ -1,6 +1,6 @@
 # Organizations
 
-Enable the organization schema in the same store used by the auth handler. The plugin creates organizations with an owner membership, lists the organizations a user belongs to, and stores the active organization on each individual session.
+Enable the organization schema in the same store used by the auth handler. The plugin creates organizations with the configured creator role (owner by default), lists the organizations a user belongs to, and stores the active organization on each individual session.
 
 ```go
 ddl, err := schema.Generate("sqlite", []string{"organization"})
@@ -56,7 +56,7 @@ The application provides `sendInvitation`, its configured public `origin` and it
 | POST | `/organization/update-member-role` | Replace roles by membership ID in the supplied or active organization. |
 | POST | `/organization/leave` | End the signed-in user's own membership in the supplied `organizationId`. |
 
-An owner can invite members, admins or other owners. An admin can invite members or admins. The member role grants no invitation permission. The SQL store commits invitation acceptance and the resulting membership together. The [organization feature checklist](parity/plugins/organization.md) tracks additional role policies and operations.
+The role names in the workflow descriptions below describe the default policy. Hosts can [configure organization roles](#configure-organization-roles). An owner can invite members, admins or other owners. An admin can invite members or admins. The member role grants no invitation permission. The SQL store commits invitation acceptance and the resulting membership together. The [organization feature checklist](parity/plugins/organization.md) tracks additional role policies and operations.
 
 Browser membership changes check the acting account and session inside the database transaction. Acceptance reads the current account email and verification status. Account deletion removes invitations that user sent, their organization and team memberships, and updates affected team counts. Other members keep their memberships and invitations.
 
@@ -109,6 +109,27 @@ Send `POST /organization/has-permission` with the session cookie and a JSON obje
 A signed-in caller with no active organization needs an explicit ID. A caller outside the selected organization receives HTTP 401 with `USER_IS_NOT_A_MEMBER_OF_THE_ORGANIZATION`. A lookup preserves the session’s current organization and team. Applications can use the result to decide which actions to display. Each protected mutation checks authority and its own conditions when it runs.
 
 In Go, call `authClient.HasOrganizationPermission(ctx, orgID, access.Statements{"invitation": {"create"}})` using `plugins/access`. For a local calculation with known built-in role names, use `organization.DefaultRoleHasPermission("admin,member", requested)`. The HTTP method also reads the current membership, including role changes and removals. The supported HTTP field is `permissions`. The legacy singular `permission` form yields a negative decision. [Role and request comparisons](../conformance/organization-permissions.mjs) · [Go client and database tests](../adapters/sqlstore/organization_selection_http_test.go)
+
+## Configure organization roles
+
+Set `organization.Options.Roles` in the Go host. The same policy governs live permission checks and writes. For example, a newsroom can let editors invite members and publish reports while reserving team management for other roles.
+
+```go
+roles := organization.DefaultRoles()
+roles["editor"] = access.Statements{
+    "invitation": {"create"},
+    "reports":    {"read", "publish"},
+}
+groups, err := organization.New(organization.Options{Store: store, Roles: roles})
+```
+
+Import `plugins/organization` and `plugins/access` from the Plain Auth module. Register `groups` in the auth instance’s `Plugins`. A client can submit `{"permissions":{"reports":["publish"]}}` to the permission endpoint. A host route that publishes reports must enforce the same decision for the signed-in user. To evaluate grants locally when you already have a trusted membership, build a policy with `organization.NewRolePolicy("", roles)` and call `policy.HasPermission(membership.Role, requested)`.
+
+`DefaultRoles()` gives you a fresh copy of the owner, admin and member grants. To define all grants yourself, supply a fresh `map[string]access.Statements`. Built-in names remain assignable, and any name you omit has no grants. A non-nil empty map removes all grants. One role must cover the entire requested set of actions, even when the membership has several roles. Running services keep their own copy of the policy. Configure each replica that serves the same application with the same roles.
+
+Set `CreatorRole: "founder"` to assign that name to new organization creators. Include `"founder"` in the role map with the actions founders should have. Only someone holding the creator role can grant it, change a creator's membership, or invite another creator. A creator can update member roles even without an explicit `member.update` grant. Other operations, including sending that invitation, require their configured actions. To transfer the role, grant it to another member before removing it from the original creator. [Role and succession tests](../conformance/organization-custom-roles.mjs)
+
+Team creation, renaming and deletion use `team.create`, `team.update` and `team.delete`. Adding a member to a team or listing another member’s teams requires `member.update`. Removing a team member requires `member.delete`. Sending and listing invitations require `invitation.create`, and cancellation requires `invitation.cancel`. Only holders of the creator role can see invitations that grant that role in organization listings. Permission changes take effect on the next operation using the stored membership. [Storage isolation and callback tests](../adapters/sqlstore/organization_custom_roles_test.go)
 
 ## Read an organization and its directory
 
@@ -222,7 +243,7 @@ change := organization.UpdateMemberRoleRequest{
 updated, err := authClient.UpdateOrganizationMemberRole(ctx, change)
 ```
 
-A Go server can call `organizations.UpdateMemberRole(ctx, session.Session, change)` with a signed-in session returned by `auth.GetSession`. Both entry points recheck the session and current membership before committing. The built-in policy covers `owner`, `admin` and `member`. Custom role definitions and role-change hooks remain open on the [organization checklist](parity/plugins/organization.md). [Released client comparison](../conformance/organization-role.mjs) · [Database concurrency tests](../adapters/sqlstore/organization_role_test.go)
+A Go server can call `organizations.UpdateMemberRole(ctx, session.Session, change)` with a signed-in session returned by `auth.GetSession`. Both entry points recheck the session and current membership before committing. The built-in policy covers `owner`, `admin` and `member`. Hosts can [configure custom roles](#configure-organization-roles). Role-change hooks remain open on the [organization checklist](parity/plugins/organization.md). [Released client comparison](../conformance/organization-role.mjs) · [Database concurrency tests](../adapters/sqlstore/organization_role_test.go)
 
 ## Remove a member or leave
 
@@ -254,9 +275,9 @@ In Go, call `authClient.ListOrganizationInvitations(ctx, organizationID)`, using
 
 ## Issue an invitation
 
-Call `POST /organization/invite-member` as an owner or administrator. The request must include `email` and `role`. Supply an `organizationId` to choose the destination, or omit it to use the current session’s active organization. An explicit destination leaves the sender’s selection in place.
+Call `POST /organization/invite-member` with a membership that grants `invitation.create`. The request must include `email` and `role`. Supply an `organizationId` to choose the destination, or omit it to use the current session’s active organization. An explicit destination leaves the sender’s selection in place.
 
-The handler lowercases the recipient address. Send a single role, a comma-separated string, or an array of strings. It trims role names, drops empty entries and keeps their submitted order. The built-in roles are `owner`, `admin` and `member`. Granting `owner` requires an owner. The SQL adapter checks membership and permission to invite before validating the requested role names. A nonmember receives `MEMBER_NOT_FOUND`, and an ordinary member receives HTTP 403. A sender with permission to invite receives an error identifying any unknown roles.
+The handler lowercases the recipient address. Send a single role, a comma-separated string, or an array of strings. It trims role names, drops empty entries and keeps their submitted order. The built-in roles are `owner`, `admin` and `member`. Granting the configured creator role requires a caller who holds it. The SQL adapter checks membership and permission to invite before validating the requested role names. A nonmember receives `MEMBER_NOT_FOUND`, and an ordinary member receives HTTP 403. A sender with permission to invite receives an error identifying any unknown roles.
 
 Omit `teamId` to invite someone to the organization alone. An explicit JSON `null` in the request returns HTTP 400 with `VALIDATION_ERROR`. With teams enabled, send a team ID or an array of IDs from the destination organization. Accepting a single-team invitation selects that team for the accepting session. Accepting an invitation to several teams grants membership in each and leaves the active team empty. The client can then select one with `POST /organization/set-active-team`.
 
@@ -541,7 +562,7 @@ Owners and admins manage teams and membership. An organization member can list t
 
 To invite a new organization member into teams, include `teamId` in `/organization/invite-member`. Supply one ID or an array of IDs from that organization. Acceptance commits the organization membership and every team membership together. A single invited team becomes active on the accepting session. Removing a team updates outstanding invitations. An invitation whose final team is removed can still grant organization membership.
 
-`MaximumTeams` limits the number of teams per organization. A positive value enables the limit. `MaximumMembersPerTeam` sets a fixed seat limit for added and invited members, and `nil` leaves capacity unrestricted. Removing an organization's last team requires `AllowRemovingAllTeams: true`. Custom role permissions, dynamic team quotas and team lifecycle callbacks are tracked separately in the [organization checklist](parity/plugins/organization.md).
+`MaximumTeams` limits the number of teams per organization. A positive value enables the limit. `MaximumMembersPerTeam` sets a fixed seat limit for added and invited members, and `nil` leaves capacity unrestricted. Removing an organization's last team requires `AllowRemovingAllTeams: true`. Dynamic team quotas and team lifecycle callbacks are tracked separately in the [organization checklist](parity/plugins/organization.md).
 
 The native client includes `CreateTeam`, `UpdateTeam`, `RemoveTeam`, `ListOrganizationTeams`, `ListUserTeams`, `SetActiveTeam`, `ListTeamMembers`, `AddTeamMember` and `RemoveTeamMember`. Each client uses its own session when resolving an omitted organization or team. [Multi-engine team tests](../adapters/sqlstore/organization_teams_test.go)
 

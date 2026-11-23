@@ -12,6 +12,16 @@ import (
 
 var _ org.MemberRoleStore = (*Store)(nil)
 
+// OrganizationRolePolicy returns the immutable policy in effect for this adapter.
+func (s *Store) OrganizationRolePolicy() org.RolePolicy { return s.organizationRoles }
+
+// WithOrganizationRolePolicy scopes grants to this service while sharing the pool.
+func (s *Store) WithOrganizationRolePolicy(policy org.RolePolicy) (org.Store, error) {
+	scoped := *s
+	scoped.organizationRoles = policy
+	return &scoped, nil
+}
+
 // UpdateOrganizationMemberRole uses the same account and tenant locks as
 // membership removal. Each retry authorizes the actor against current data.
 func (s *Store) UpdateOrganizationMemberRole(ctx context.Context, userID, token string, request org.UpdateMemberRoleRequest) (*org.Member, error) {
@@ -70,10 +80,11 @@ func (s *Store) updateMemberRoleOnce(ctx context.Context, userID, token string, 
 	if m.UserID != targetUser {
 		return nil, org.ErrMemberMissing
 	}
-	owner := membershipHasRole(actor.Role, "owner")
-	targetOwner := membershipHasRole(m.Role, "owner")
-	setOwner := slices.Contains(roles, "owner")
-	if !owner && (targetOwner || setOwner || !membershipHasRole(actor.Role, "admin")) {
+	creator := s.organizationRoles.CreatorRole()
+	owner := membershipHasRole(actor.Role, creator)
+	targetOwner := membershipHasRole(m.Role, creator)
+	setOwner := slices.Contains(roles, creator)
+	if !owner && (targetOwner || setOwner || !s.organizationRoles.HasAction(actor.Role, "member", "update")) {
 		return nil, org.ErrMemberRoleDenied
 	}
 	if targetOwner && !setOwner {
@@ -87,7 +98,7 @@ func (s *Store) updateMemberRoleOnce(ctx context.Context, userID, token string, 
 	}
 	var unknown []string
 	for _, r := range roles {
-		if r != "owner" && r != "admin" && r != "member" {
+		if !s.organizationRoles.Recognizes(r) {
 			unknown = append(unknown, r)
 		}
 	}

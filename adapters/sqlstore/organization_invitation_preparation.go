@@ -99,11 +99,12 @@ func (p *invitationPreparation) prepareGrant(ctx context.Context, s *Store, tx *
 		wide.TeamIDs = nil
 		changes = &wide
 	}
-	updated, err := changes.Apply(inv)
+	updated, err := s.organizationRoles.ApplyInvitationChanges(inv, changes)
 	if err != nil {
 		return inv, err
 	}
-	if membershipHasRole(updated.Role, "owner") && !membershipHasRole(member.Role, "owner") {
+	creator := s.organizationRoles.CreatorRole()
+	if membershipHasRole(updated.Role, creator) && !membershipHasRole(member.Role, creator) {
 		return inv, org.ErrRoleDenied
 	}
 	if updated.Email != inv.Email {

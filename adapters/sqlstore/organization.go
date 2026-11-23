@@ -287,17 +287,18 @@ func (s *Store) issueInvitationTx(ctx context.Context, inv org.Invitation, issue
 	if err != nil {
 		return org.Invitation{}, err
 	}
-	owner := membershipHasRole(member.Role, "owner")
-	if !owner && !membershipHasRole(member.Role, "admin") {
+	creator := s.organizationRoles.CreatorRole()
+	owner := membershipHasRole(member.Role, creator)
+	if !s.organizationRoles.HasAction(member.Role, "invitation", "create") {
 		return org.Invitation{}, org.ErrInviteDenied
 	}
 	if issue.validateRoles {
-		inv.Role, err = org.ParseInvitationRoles(inv.Role)
+		inv.Role, err = s.organizationRoles.ParseInvitationRoles(inv.Role)
 		if err != nil {
 			return org.Invitation{}, err
 		}
 	}
-	if !owner && membershipHasRole(inv.Role, "owner") {
+	if !owner && membershipHasRole(inv.Role, creator) {
 		return org.Invitation{}, org.ErrRoleDenied
 	}
 	teamField, err := s.organizationTeamField(ctx, tx, "invitation", "teamId")
@@ -319,7 +320,7 @@ func (s *Store) issueInvitationTx(ctx context.Context, inv org.Invitation, issue
 	case pending == nil:
 		// Issue a fresh invitation.
 	case issue.resend:
-		if !owner && membershipHasRole(pending.Role, "owner") {
+		if !owner && membershipHasRole(pending.Role, creator) {
 			return org.Invitation{}, org.ErrRoleDenied
 		}
 		pending.ExpiresAt = inv.ExpiresAt

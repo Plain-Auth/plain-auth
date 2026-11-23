@@ -37,6 +37,11 @@ type InvitationCreationHook func(context.Context, InvitationCreationEvent) (*Inv
 
 // Apply validates host changes and returns the resulting grant.
 func (changes *InvitationChanges) Apply(inv Invitation) (Invitation, error) {
+	return (RolePolicy{}).ApplyInvitationChanges(inv, changes)
+}
+
+// ApplyInvitationChanges validates the host's final roles against its policy.
+func (p RolePolicy) ApplyInvitationChanges(inv Invitation, changes *InvitationChanges) (Invitation, error) {
 	if changes == nil {
 		return inv, nil
 	}
@@ -48,7 +53,7 @@ func (changes *InvitationChanges) Apply(inv Invitation) (Invitation, error) {
 	}
 	var err error
 	if changes.Roles != nil {
-		inv.Role, err = ParseInvitationRoles(changes.Roles...)
+		inv.Role, err = p.ParseInvitationRoles(changes.Roles...)
 		if err != nil {
 			return Invitation{}, err
 		}

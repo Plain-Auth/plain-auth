@@ -142,7 +142,7 @@ func (s *Store) invitationDecisionTx(ctx context.Context, request invitationDeci
 		if err != nil {
 			return nil, err
 		}
-		if !membershipHasRole(m.Role, "owner") && !membershipHasRole(m.Role, "admin") {
+		if !s.organizationRoles.HasAction(m.Role, "invitation", "cancel") {
 			return nil, org.ErrCancelDenied
 		}
 		scope.Membership = &m.Member

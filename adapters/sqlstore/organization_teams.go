@@ -113,29 +113,36 @@ func (t teamTransaction) memberRole(orgID, userID string) (string, error) {
 	}
 	return role, err
 }
-func (t teamTransaction) authorizeOrg(explicit string, missing, denied *authn.APIError) (string, error) {
+func (t teamTransaction) organizationMember(explicit string, missing *authn.APIError) (string, string, error) {
 	id := explicit
 	if id == "" {
 		id = t.activeOrg
 	}
 	if id == "" {
-		return "", org.ErrNoActiveOrg
+		return "", "", org.ErrNoActiveOrg
 	}
 	if err := t.lockOrganization(t.ctx, t.tx, id); err != nil {
 		if errors.Is(err, org.ErrNotFound) {
-			return "", missing
+			return "", "", missing
 		}
-		return "", err
+		return "", "", err
 	}
 	role, err := t.memberRole(id, t.actor.UserID)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	if role == "" {
-		return "", missing
+		return "", "", missing
 	}
-	roles := strings.Split(role, ",")
-	if denied != nil && !slices.Contains(roles, "owner") && !slices.Contains(roles, "admin") {
+	return id, role, nil
+}
+
+func (t teamTransaction) authorizeOrg(explicit, resource, action string, missing, denied *authn.APIError) (string, error) {
+	id, role, err := t.organizationMember(explicit, missing)
+	if err != nil {
+		return "", err
+	}
+	if !t.organizationRoles.HasAction(role, resource, action) {
 		return "", denied
 	}
 	return id, nil
@@ -167,7 +174,7 @@ func (s *Store) insertTeam(ctx context.Context, tx *sql.Tx, orgID, name string, 
 }
 func (s *Store) CreateTeam(ctx context.Context, a org.TeamActor, explicit, name string) (result *org.Team, err error) {
 	err = s.withTeamActor(ctx, a, "", func(t teamTransaction) error {
-		id, err := t.authorizeOrg(explicit, org.ErrInviteDenied, org.ErrTeamCreate)
+		id, err := t.authorizeOrg(explicit, "team", "create", org.ErrInviteDenied, org.ErrTeamCreate)
 		if err != nil {
 			return err
 		}
@@ -187,7 +194,7 @@ func (s *Store) CreateTeam(ctx context.Context, a org.TeamActor, explicit, name 
 }
 func (s *Store) UpdateTeam(ctx context.Context, a org.TeamActor, explicit, id string, name *string) (result *org.Team, err error) {
 	err = s.withTeamActor(ctx, a, "", func(t teamTransaction) error {
-		group, err := t.authorizeOrg(explicit, org.ErrTeamUpdate, org.ErrTeamUpdate)
+		group, err := t.authorizeOrg(explicit, "team", "update", org.ErrTeamUpdate, org.ErrTeamUpdate)
 		if err != nil {
 			return err
 		}
@@ -207,7 +214,7 @@ func (s *Store) UpdateTeam(ctx context.Context, a org.TeamActor, explicit, id st
 }
 func (s *Store) RemoveTeam(ctx context.Context, a org.TeamActor, explicit, id string) error {
 	return s.withTeamActor(ctx, a, "", func(t teamTransaction) error {
-		group, err := t.authorizeOrg(explicit, org.ErrTeamDeleteActive, org.ErrTeamDelete)
+		group, err := t.authorizeOrg(explicit, "team", "delete", org.ErrTeamDeleteActive, org.ErrTeamDelete)
 		if err != nil {
 			return err
 		}
@@ -296,7 +303,7 @@ func (s *Store) listTeamsQuery(ctx context.Context, tx *sql.Tx, query string, li
 }
 func (s *Store) ListTeams(ctx context.Context, a org.TeamActor, explicit string) (out []org.Team, err error) {
 	err = s.withTeamActor(ctx, a, "", func(t teamTransaction) error {
-		id, err := t.authorizeOrg(explicit, org.ErrTeamList, nil)
+		id, _, err := t.organizationMember(explicit, org.ErrTeamList)
 		if err != nil {
 			return err
 		}
@@ -315,13 +322,12 @@ func (s *Store) ListUserTeams(ctx context.Context, a org.TeamActor, explicit, us
 			AND EXISTS(SELECT 1 FROM "teamMember" tm WHERE tm."teamId"=t."id" AND tm."userId"=?)`
 		args := []any{target, target}
 		if target != a.UserID || explicit != "" {
-			var denied *authn.APIError
-			if target != a.UserID {
-				denied = org.ErrTeamListUser
-			}
-			id, err := t.authorizeOrg(explicit, org.ErrTeamListOrg, denied)
+			id, actorRole, err := t.organizationMember(explicit, org.ErrTeamListOrg)
 			if err != nil {
 				return err
+			}
+			if target != a.UserID && !t.organizationRoles.HasAction(actorRole, "member", "update") {
+				return org.ErrTeamListUser
 			}
 			role, err := t.memberRole(id, target)
 			if err != nil {
@@ -342,7 +348,7 @@ func (s *Store) ListUserTeams(ctx context.Context, a org.TeamActor, explicit, us
 func (s *Store) SetActiveTeam(ctx context.Context, a org.TeamActor, id *string) (out *org.Team, err error) {
 	err = s.withTeamActor(ctx, a, "", func(t teamTransaction) error {
 		if id != nil {
-			group, err := t.authorizeOrg("", org.ErrTeamSelect, nil)
+			group, _, err := t.organizationMember("", org.ErrTeamSelect)
 			if err != nil {
 				return err
 			}
@@ -391,7 +397,7 @@ func (s *Store) ListTeamMembers(ctx context.Context, a org.TeamActor, teamID str
 		if err != nil {
 			return err
 		}
-		if _, err = t.authorizeOrg(group, org.ErrTeamMember, nil); err != nil {
+		if _, _, err = t.organizationMember(group, org.ErrTeamMember); err != nil {
 			return err
 		}
 		if _, err = s.readTeamMember(ctx, t.tx, id, a.UserID); errors.Is(err, sql.ErrNoRows) {
@@ -460,8 +466,8 @@ func (s *Store) updateTeamCount(ctx context.Context, tx *sql.Tx, id string) erro
 	return err
 }
 
-func (t teamTransaction) authorizeMemberChange(explicit, id, user string, denied *authn.APIError) error {
-	group, err := t.authorizeOrg(explicit, org.ErrTeamOrgMember, denied)
+func (t teamTransaction) authorizeMemberChange(explicit, id, user, action string, denied *authn.APIError) error {
+	group, err := t.authorizeOrg(explicit, "member", action, org.ErrTeamOrgMember, denied)
 	if err != nil {
 		return err
 	}
@@ -477,7 +483,7 @@ func (t teamTransaction) authorizeMemberChange(explicit, id, user string, denied
 }
 func (s *Store) AddTeamMember(ctx context.Context, a org.TeamActor, explicit, id, user string) (out *org.TeamMember, err error) {
 	err = s.withTeamActor(ctx, a, user, func(t teamTransaction) error {
-		if err := t.authorizeMemberChange(explicit, id, user, org.ErrTeamAdd); err != nil {
+		if err := t.authorizeMemberChange(explicit, id, user, "update", org.ErrTeamAdd); err != nil {
 			return err
 		}
 		var err error
@@ -488,7 +494,7 @@ func (s *Store) AddTeamMember(ctx context.Context, a org.TeamActor, explicit, id
 }
 func (s *Store) RemoveTeamMember(ctx context.Context, a org.TeamActor, explicit, id, user string) error {
 	return s.withTeamActor(ctx, a, user, func(t teamTransaction) error {
-		if err := t.authorizeMemberChange(explicit, id, user, org.ErrTeamRemove); err != nil {
+		if err := t.authorizeMemberChange(explicit, id, user, "delete", org.ErrTeamRemove); err != nil {
 			return err
 		}
 		res, err := t.tx.ExecContext(ctx, s.bind(`DELETE FROM "teamMember" WHERE "teamId"=? AND "userId"=?`), id, user)

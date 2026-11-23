@@ -27,11 +27,10 @@ func (s *Store) ListOrganizationInvitations(ctx context.Context, sessionID, user
 	case err != nil:
 		return nil, err
 	}
-	owner := membershipHasRole(role, "owner")
-	if !owner && !membershipHasRole(role, "admin") {
+	if !s.organizationRoles.HasAction(role, "invitation", "create") {
 		return nil, org.ErrInvitationListDenied
 	}
-	items, err := s.visibleOrganizationInvitations(ctx, tx, group, owner, includeTeams)
+	items, err := s.visibleOrganizationInvitations(ctx, tx, group, membershipHasRole(role, s.organizationRoles.CreatorRole()), includeTeams)
 	if err != nil {
 		return nil, err
 	}
@@ -54,7 +53,7 @@ func (s *Store) visibleOrganizationInvitations(ctx context.Context, tx *sql.Tx, 
 		if err != nil {
 			return nil, err
 		}
-		if owner || !membershipHasRole(invite.Role, "owner") {
+		if owner || !membershipHasRole(invite.Role, s.organizationRoles.CreatorRole()) {
 			out = append(out, invite)
 		}
 	}
