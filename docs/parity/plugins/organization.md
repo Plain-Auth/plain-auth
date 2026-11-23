@@ -198,6 +198,9 @@
     - [x] Clear only the organization selection on a store without teams ([test](../../../adapters/sqlstore/organization_deletion_test.go#L194))
   - [ ] `GET /organization/get-organization`
     - [x] Resolve the active organization and enforce membership ([test](../../../plugins/organization/organization_test.go#L102))
+    - [x] Read the selected organization, or one named by ID or slug, and keep the selection ([test](../../../adapters/sqlstore/organization_get_test.go#L67))
+    - [x] Answer 403 and clear the session's selection after a refused lookup by ID or slug, keeping it for an unknown organization ([test](../../../adapters/sqlstore/organization_get_test.go#L81))
+    - [x] Clear a former member's stale selection when they look the organization up ([test](../../../adapters/sqlstore/organization_get_test.go#L98))
   - [ ] `GET /organization/get-full-organization`
     - [x] Return the shared roster and enabled teams with invitations filtered to the caller’s role ([test](../../../conformance/organization-full.mjs#L51))
     - [x] Read the member’s current role and the visible invitations from the same snapshot on three SQL engines ([test](../../../adapters/sqlstore/organization_full_test.go#L116))
@@ -440,11 +443,18 @@
             - [x] Accept a string slug and reject a null slug before changing the current session ([test](../../../conformance/core.test.mjs#L1818))
             - [x] Use the slug when the ID is empty, honor ID precedence and preserve the selection for an unknown slug ([test](../../../conformance/organization-selection.mjs#L50))
       - [ ] Use Active Organization
-    - [ ] Get Organization
+    - [x] Get Organization ([test](../../../adapters/sqlstore/organization_get_test.go#L16))
       - [x] Resolve the active organization and enforce membership ([test](../../../plugins/organization/organization_test.go#L102))
-      - [ ] `GET /organization/get-organization`
-        - [ ] Parameter `organizationId` (optional)
-        - [ ] Parameter `organizationSlug` (optional)
+      - [x] Read organizations by selection, ID or slug and clear the selection after a refused lookup on three SQL engines ([test](../../../adapters/sqlstore/organization_get_test.go#L16))
+      - [x] `GET /organization/get-organization` ([test](../../../adapters/sqlstore/organization_get_test.go#L16))
+        - [x] Read organizations by selection, ID or slug and clear the selection after a refused lookup on three SQL engines ([test](../../../adapters/sqlstore/organization_get_test.go#L16))
+        - [x] Read the selected organization, or one named by ID or slug, and keep the selection ([test](../../../adapters/sqlstore/organization_get_test.go#L67))
+        - [x] Answer 403 and clear the session's selection after a refused lookup by ID or slug, keeping it for an unknown organization ([test](../../../adapters/sqlstore/organization_get_test.go#L81))
+        - [x] Clear a former member's stale selection when they look the organization up ([test](../../../adapters/sqlstore/organization_get_test.go#L98))
+        - [x] Parameter `organizationId` (optional) ([test](../../../adapters/sqlstore/organization_get_test.go#L67))
+          - [x] Read an organization by ID, and answer an unknown ID with ORGANIZATION_NOT_FOUND ([test](../../../adapters/sqlstore/organization_get_test.go#L67))
+        - [x] Parameter `organizationSlug` (optional) ([test](../../../adapters/sqlstore/organization_get_test.go#L67))
+          - [x] Read an organization by slug, and clear the selection after a refused slug lookup ([test](../../../adapters/sqlstore/organization_get_test.go#L67))
     - [ ] Get Full Organization
       - [x] Return the shared roster and enabled teams with invitations filtered to the caller’s role ([test](../../../conformance/organization-full.mjs#L51))
       - [x] Read the member’s current role and the visible invitations from the same snapshot on three SQL engines ([test](../../../adapters/sqlstore/organization_full_test.go#L116))

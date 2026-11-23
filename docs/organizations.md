@@ -388,6 +388,8 @@ view, err := authClient.FullOrganization(ctx, organization.FullOrganizationQuery
 
 With an empty query, a nil result and nil error indicate a signed-in session without a selection. [Client comparison](../conformance/organization-full.mjs) · [Three-database visibility tests](../adapters/sqlstore/organization_full_test.go)
 
+For the profile alone, send `GET /organization/get-organization` with an optional `organizationId` or `organizationSlug`, or call `c.Organization(ctx, organizationID, slug)`. With neither, it reads the session's selection and returns `null` when there is none. An unknown organization returns `400 ORGANIZATION_NOT_FOUND`. Looking up an organization you do not belong to returns `403 USER_IS_NOT_A_MEMBER_OF_THE_ORGANIZATION` and clears this session's organization and team selection, as the full-organization route does. This also clears a stale selection left after your membership ended. Other sessions keep theirs. [Three-database tests](../adapters/sqlstore/organization_get_test.go)
+
 ## List organization members
 
 Send `GET /organization/list-members` with a session cookie. Any member can read the directory. It uses the active organization by default. Pass `organizationId` or `organizationSlug` to read another organization you belong to. A nonempty slug takes precedence. This request preserves the session's organization and team selections.

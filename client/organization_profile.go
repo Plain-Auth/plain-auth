@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 	"net/http"
+	"net/url"
 
 	org "github.com/Plain-Auth/plain-auth/plugins/organization"
 )
@@ -84,4 +85,26 @@ func (c *Client) SetActiveOrganization(ctx context.Context, selection *org.Organ
 		return nil, err
 	}
 	return selected, nil
+}
+
+// Organization reads an organization the caller belongs to, by ID or slug. With
+// neither, it reads the session's selection and returns nil when there is none.
+// A lookup the caller is refused clears the session's selection.
+func (c *Client) Organization(ctx context.Context, organizationID, organizationSlug string) (*org.Organization, error) {
+	query := url.Values{}
+	if organizationID != "" {
+		query.Set("organizationId", organizationID)
+	}
+	if organizationSlug != "" {
+		query.Set("organizationSlug", organizationSlug)
+	}
+	route := "/organization/get-organization"
+	if len(query) > 0 {
+		route += "?" + query.Encode()
+	}
+	var result *org.Organization
+	if err := c.Do(ctx, http.MethodGet, route, nil, &result); err != nil {
+		return nil, err
+	}
+	return result, nil
 }

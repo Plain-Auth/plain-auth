@@ -92,6 +92,30 @@ func (s *Store) FullOrganization(ctx context.Context, sessionID, userID string, 
 	return result, nil
 }
 
+// ClearDeniedOrganizationSelection clears the session's selection after the
+// caller was refused an organization they do not belong to, named by ID or slug.
+func (s *Store) ClearDeniedOrganizationSelection(ctx context.Context, sessionID, userID, id, slug string) error {
+	var observed sql.NullString
+	err := s.db.QueryRowContext(ctx, s.bind(`SELECT "activeOrganizationId" FROM "session" WHERE "id"=? AND "userId"=?`), sessionID, userID).Scan(&observed)
+	if errors.Is(err, sql.ErrNoRows) || err == nil && !observed.Valid {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	target := id
+	if slug != "" {
+		err = s.db.QueryRowContext(ctx, s.bind(`SELECT "id" FROM "organization" WHERE "slug"=?`), slug).Scan(&target)
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+	}
+	return s.clearDeniedSelection(ctx, sessionID, userID, observed.String, target)
+}
+
 // A denied lookup clears this session's observed selection. The conditional
 // write preserves a subsequent switch or newly granted target membership.
 func (s *Store) clearDeniedSelection(ctx context.Context, session, user, observed, target string) error {

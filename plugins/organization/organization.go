@@ -538,7 +538,22 @@ func (o Options) get(c authn.EndpointContext, s *authn.SessionResult) (any, erro
 	if id == "" && slug == "" {
 		return nil, nil
 	}
-	return o.Store.OrganizationForMember(c.Request.Context(), s.User.ID, id, slug)
+	ctx := c.Request.Context()
+	group, err := o.Store.OrganizationForMember(ctx, s.User.ID, id, slug)
+	if errors.Is(err, ErrNotMember) {
+		if store, ok := o.Store.(DeniedSelectionStore); ok {
+			if clearErr := store.ClearDeniedOrganizationSelection(ctx, s.Session.ID, s.User.ID, id, slug); clearErr != nil {
+				return nil, clearErr
+			}
+		}
+	}
+	return group, err
+}
+
+// DeniedSelectionStore clears a session's organization selection after the
+// caller is refused an organization they do not belong to.
+type DeniedSelectionStore interface {
+	ClearDeniedOrganizationSelection(ctx context.Context, sessionID, userID, organizationID, organizationSlug string) error
 }
 
 func (o Options) invite(c authn.EndpointContext) (any, error) {

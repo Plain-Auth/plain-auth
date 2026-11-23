@@ -815,6 +815,21 @@
       "label": "Resolve the active organization and enforce membership",
       "test": "plugins/organization/organization_test.go",
       "marker": "created organization missing as active"
+    },
+    {
+      "label": "Read the selected organization, or one named by ID or slug, and keep the selection",
+      "test": "adapters/sqlstore/organization_get_test.go",
+      "marker": "// A member reads the selected organization, or one named by ID or slug."
+    },
+    {
+      "label": "Answer 403 and clear the session's selection after a refused lookup by ID or slug, keeping it for an unknown organization",
+      "test": "adapters/sqlstore/organization_get_test.go",
+      "marker": "// A refused lookup by ID or slug clears the caller's selection."
+    },
+    {
+      "label": "Clear a former member's stale selection when they look the organization up",
+      "test": "adapters/sqlstore/organization_get_test.go",
+      "marker": "// A former member's stale selection is cleared when they look it up."
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L735": [
@@ -822,6 +837,12 @@
       "label": "Resolve the active organization and enforce membership",
       "test": "plugins/organization/organization_test.go",
       "marker": "created organization missing as active"
+    },
+    {
+      "label": "Read organizations by selection, ID or slug and clear the selection after a refused lookup on three SQL engines",
+      "test": "adapters/sqlstore/organization_get_test.go",
+      "marker": "func TestGetOrganizationClearsDeniedSelection(",
+      "complete": true
     }
   ],
   "plugin/organization/POST /organization/set-active": [
@@ -16701,6 +16722,45 @@
       "label": "Cancel a team member removal when the before hook fails and run both hooks for a completed removal",
       "test": "adapters/sqlstore/organization_team_member_hooks_test.go",
       "marker": "// A before-hook error cancels the removal."
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L742/`GET /organization/get-organization`": [
+    {
+      "label": "Read organizations by selection, ID or slug and clear the selection after a refused lookup on three SQL engines",
+      "test": "adapters/sqlstore/organization_get_test.go",
+      "marker": "func TestGetOrganizationClearsDeniedSelection(",
+      "complete": true
+    },
+    {
+      "label": "Read the selected organization, or one named by ID or slug, and keep the selection",
+      "test": "adapters/sqlstore/organization_get_test.go",
+      "marker": "// A member reads the selected organization, or one named by ID or slug."
+    },
+    {
+      "label": "Answer 403 and clear the session's selection after a refused lookup by ID or slug, keeping it for an unknown organization",
+      "test": "adapters/sqlstore/organization_get_test.go",
+      "marker": "// A refused lookup by ID or slug clears the caller's selection."
+    },
+    {
+      "label": "Clear a former member's stale selection when they look the organization up",
+      "test": "adapters/sqlstore/organization_get_test.go",
+      "marker": "// A former member's stale selection is cleared when they look it up."
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L748/Parameter `organizationId` (optional)": [
+    {
+      "label": "Read an organization by ID, and answer an unknown ID with ORGANIZATION_NOT_FOUND",
+      "test": "adapters/sqlstore/organization_get_test.go",
+      "marker": "// A member reads the selected organization, or one named by ID or slug.",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L752/Parameter `organizationSlug` (optional)": [
+    {
+      "label": "Read an organization by slug, and clear the selection after a refused slug lookup",
+      "test": "adapters/sqlstore/organization_get_test.go",
+      "marker": "// A member reads the selected organization, or one named by ID or slug.",
+      "complete": true
     }
   ]
 }
