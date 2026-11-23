@@ -53,7 +53,8 @@ type HookContext struct {
 	Result any
 	Err    error
 
-	responded bool
+	requestPath string
+	responded   bool
 }
 
 // Respond answers the request with result from a before hook. The remaining
@@ -134,6 +135,7 @@ func endpointHooks(opts Options) (before, after []boundHook) {
 			after = append(after, boundHook{h, source})
 		}
 	}
+	before = middlewareHooks(opts.Plugins)
 	add(opts.Hooks, "user")
 	for _, p := range opts.Plugins {
 		add(p.Hooks, "plugin:"+p.ID)
@@ -189,6 +191,7 @@ func (a *Auth) callEndpoint(w http.ResponseWriter, r *http.Request, path, actual
 		EndpointContext: EndpointContext{Auth: a, Request: r.Clone(r.Context()), Body: body, ResponseHeader: w.Header()},
 		Path:            path,
 		Params:          routeParams(path, actual),
+		requestPath:     actual,
 	}
 	ran := false
 	for _, h := range a.beforeHooks {

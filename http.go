@@ -59,10 +59,18 @@ func (a *Auth) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if identity != nil || ctx.Value(credentialProbedKey{a}) != nil {
 			r = r.WithContext(ctx)
 		}
-		if err := a.runRequestHooks(r, route); err != nil {
+		var err error
+		if r, err = a.runRequestHooks(r, route); err != nil {
 			w.Header().Set("Cache-Control", "no-store")
 			a.writeAuthError(w, r, err)
 			return
+		}
+		if a.onResponse {
+			if _, buffered := w.(*bufferedResponse); !buffered {
+				b := &bufferedResponse{header: w.Header()}
+				defer a.finishResponse(w, b, r, route)
+				w = b
+			}
 		}
 	}
 	if mounted && a.serveOAuth(w, r, route) {

@@ -41,9 +41,18 @@ type Plugin struct {
 	// Hooks run before and after each mounted HTTP endpoint, after the
 	// Options hooks and the hooks of earlier plugins.
 	Hooks EndpointHooks
-	// OnRequest can reject an HTTP request before endpoint dispatch. Path is
-	// relative to the auth mount. ClientIP follows the host's proxy policy.
+	// OnRequest runs for each mounted HTTP request before routing, after the
+	// disabled-path check. An error interrupts the request and is written as
+	// the response. Request is a copy the hook may edit: header and query
+	// changes reach the endpoint. Path is relative to the auth mount and is
+	// not re-resolved. ClientIP follows the host's proxy policy.
 	OnRequest func(RequestContext) error
+	// OnResponse runs once for each response to a request that passed
+	// OnRequest, before anything is written to the client, and may change its
+	// status, headers and body. Each plugin's OnResponse runs, in plugin order.
+	OnResponse func(*ResponseContext)
+	// Middleware runs before the endpoint hooks for the routes its path matches.
+	Middleware []Middleware
 	// PrepareOAuthLogin verifies a signed oauth_query before credential handling.
 	PrepareOAuthLogin func(EndpointContext, string) (OAuthLoginContinuation, error)
 	// PrepareOAuthSelection verifies a signed post-login query before an
@@ -78,20 +87,25 @@ type RequestContext struct {
 	Path, ClientIP string
 }
 
-func (a *Auth) runRequestHooks(r *http.Request, route string) error {
+// runRequestHooks returns the request the remaining dispatch uses: a copy
+// the OnRequest hooks may have edited, or r when no plugin sets OnRequest.
+func (a *Auth) runRequestHooks(r *http.Request, route string) (*http.Request, error) {
 	var c RequestContext
 	for _, plugin := range a.opts.Plugins {
 		if plugin.OnRequest == nil {
 			continue
 		}
 		if c.Request == nil {
-			c = RequestContext{Request: r, Path: route, ClientIP: a.clientIP(r)}
+			c = RequestContext{Request: r.Clone(r.Context()), Path: route, ClientIP: a.clientIP(r)}
 		}
 		if err := plugin.OnRequest(c); err != nil {
-			return err
+			return r, err
 		}
 	}
-	return nil
+	if c.Request == nil {
+		return r, nil
+	}
+	return c.Request, nil
 }
 
 // RateLimitRule configures the maximum number of requests per peer and route during Window.

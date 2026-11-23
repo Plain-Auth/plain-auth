@@ -51,6 +51,7 @@ type Auth struct {
 	plugins               map[endpointKey]Endpoint
 	beforeHooks           []boundHook
 	afterHooks            []boundHook
+	onResponse            bool
 	wellKnown             map[string]WellKnownDocument
 	opts                  Options
 	now                   func() time.Time
@@ -200,6 +201,11 @@ func New(opts Options) (*Auth, error) {
 		if err := validEndpointHooks(p.Hooks, "plugin "+p.ID); err != nil {
 			return nil, err
 		}
+		for _, m := range p.Middleware {
+			if err := validMiddleware(m, p.ID); err != nil {
+				return nil, err
+			}
+		}
 	}
 	disabledPaths, err := prepareDisabledPaths(opts.DisabledPaths)
 	if err != nil {
@@ -207,6 +213,7 @@ func New(opts Options) (*Auth, error) {
 	}
 	a := &Auth{opts: opts, disabledPaths: disabledPaths, trustedOrigins: trustedOrigins, now: time.Now, passwordSlots: make(chan struct{}, min(runtime.GOMAXPROCS(0), 4)), plugins: plugins}
 	a.beforeHooks, a.afterHooks = endpointHooks(opts)
+	a.onResponse = slices.ContainsFunc(opts.Plugins, func(p Plugin) bool { return p.OnResponse != nil })
 	a.trustedProfileFields, err = trustedProfileSchema(opts.UserAdditionalFields, opts.Plugins)
 	if err != nil {
 		return nil, err

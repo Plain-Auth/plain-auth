@@ -12,7 +12,7 @@ The phone-number plugin supports verified numbers, account linking, sign-in and 
 
 Plugins can write structured records through `c.Auth.Logger()`. [Configure instance logging](environment.md#route-authentication-logs)
 
-A plugin can also run hooks around other endpoints through `Plugin.Hooks`. [Endpoint hooks](hooks.md)
+A plugin can also run hooks around other endpoints through `Plugin.Hooks`, path-matched `Middleware`, and `OnRequest` and `OnResponse` around every request. [Endpoint hooks](hooks.md)
 
 ## Create a session-aware endpoint
 

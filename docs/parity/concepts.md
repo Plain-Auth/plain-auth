@@ -416,15 +416,24 @@
       - [ ] `disableMigration`
     - [x] Hooks ([test](../../conformance/goapi/endpoint_hooks_test.go#L138))
       - [x] Run plugin before and after hooks for the endpoints their matcher accepts ([test](../../conformance/goapi/endpoint_hooks_test.go#L138))
-    - [ ] Middleware
-    - [ ] On Request & On Response
-      - [ ] On Request
-        - [ ] Continue as Normal
-        - [ ] Interrupt the Request
-        - [ ] Modify the Request
-      - [ ] On Response
-        - [ ] Modify the Response
-        - [ ] Continue Normally
+    - [x] Middleware ([test](../../conformance/goapi/plugin_middleware_test.go#L95))
+      - [x] Run plugin middleware for exact, one-segment and catch-all path patterns, broadest first, before the endpoint hooks, and let it reject or answer a request ([test](../../conformance/goapi/plugin_middleware_test.go#L95))
+    - [x] On Request & On Response ([test](../../conformance/goapi/plugin_middleware_test.go#L16))
+      - [x] Run plugin request and response hooks around every mounted HTTP request ([test](../../conformance/goapi/plugin_middleware_test.go#L16))
+      - [x] On Request ([test](../../conformance/goapi/plugin_middleware_test.go#L115))
+        - [x] Continue, edit or interrupt a request before routing, without changing the host request ([test](../../conformance/goapi/plugin_middleware_test.go#L115))
+        - [x] Continue as Normal ([test](../../conformance/goapi/plugin_middleware_test.go#L95))
+          - [x] Continue a request when OnRequest returns no error ([test](../../conformance/goapi/plugin_middleware_test.go#L95))
+        - [x] Interrupt the Request ([test](../../conformance/goapi/plugin_middleware_test.go#L53))
+          - [x] Interrupt a request with an error response before routing, skipping the response hooks ([test](../../conformance/goapi/plugin_middleware_test.go#L53))
+        - [x] Modify the Request ([test](../../conformance/goapi/plugin_middleware_test.go#L56))
+          - [x] Edit the headers and query of a request copy that the endpoint then reads ([test](../../conformance/goapi/plugin_middleware_test.go#L56))
+      - [x] On Response ([test](../../conformance/goapi/plugin_middleware_test.go#L124))
+        - [x] Run each plugin response hook once before a response is written, including errors, unknown routes and rate limits ([test](../../conformance/goapi/plugin_middleware_test.go#L124))
+        - [x] Modify the Response ([test](../../conformance/goapi/plugin_middleware_test.go#L65))
+          - [x] Replace the status, headers and body of a response before it is written ([test](../../conformance/goapi/plugin_middleware_test.go#L65))
+        - [x] Continue Normally ([test](../../conformance/goapi/plugin_middleware_test.go#L73))
+          - [x] Leave a response unchanged when a response hook edits nothing ([test](../../conformance/goapi/plugin_middleware_test.go#L73))
     - [ ] Rate Limit
     - [ ] Trusted origins
     - [ ] Server-plugin helper functions

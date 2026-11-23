@@ -99,6 +99,42 @@ theme, ok := c.Auth.SignedCookieValue(c.Request, "theme")
 
 `c.Auth.HashPassword(ctx, password)` and `c.Auth.VerifyPasswordHash(ctx, hash, password)` use the instance's `Options.PasswordHash` and `Options.PasswordVerify`, or the built-in scrypt format, within the same limit on concurrent hashing as sign-in.
 
+## Plugin middleware, requests and responses
+
+A plugin has three more extension points, which run only for HTTP requests:
+
+```go
+plainauth.Plugin{
+    ID: "maintenance",
+    Middleware: []plainauth.Middleware{{
+        Path: "/organization/**",
+        Run: func(c *plainauth.HookContext) error {
+            c.Respond(plainauth.HTMLPage("<p>Back soon</p>"))
+            return nil
+        },
+    }},
+    OnRequest: func(c plainauth.RequestContext) error {
+        c.Request.Header.Set("X-Tenant", tenantFor(c.Request.Host))
+        return nil
+    },
+    OnResponse: func(c *plainauth.ResponseContext) {
+        c.Header.Set("X-Request-ID", requestID(c.Request))
+    },
+}
+```
+
+- **`Middleware`** runs before the endpoint hooks for routes whose mount-relative path matches `Path`.
+  - In a pattern, `*` or `:name` matches one segment and a final `**` matches the rest, so `/**` matches every route.
+  - Broader patterns run first: `/**`, then `/x/**`, then `/x/*`, then exact paths. Within a level they run in plugin order.
+  - It can reject, rewrite or answer a request like a before hook.
+- **`OnRequest`** runs for every mounted request before routing, after the disabled-path check.
+  - Return an error to interrupt the request with that error's response.
+  - `c.Request` is a copy the hook may edit; header and query changes reach the endpoint. The route is not resolved again.
+  - Use `Middleware` with `/**` to answer with something other than an error.
+- **`OnResponse`** runs once for every response to a request that passed `OnRequest`, including errors, unknown routes and rate limits, before anything is written. It may change `c.Status`, `c.Header` and `c.Body`.
+  - When any plugin sets `OnResponse`, responses are buffered until the hooks finish.
+  - Every plugin's `OnResponse` runs, in plugin order, and each sees the changes of the ones before.
+
 ## Errors and panics
 
 Return a `*plainauth.APIError` to choose the status, code and message. Any other error from a hook, and any panic, ends the request with a generic `500 INTERNAL_SERVER_ERROR`. A panic is logged with its source (`user` or `plugin:<id>`) and the route.
@@ -114,4 +150,4 @@ Return a `*plainauth.APIError` to choose the status, code and message. Any other
 
 Hooks run only for HTTP requests. Direct Go calls such as `Auth.SignUpEmail` run no endpoint hooks; wrap those call sites in your own code.
 
-See the [hook API](../hooks.go) and the [tests](../conformance/goapi/endpoint_hooks_test.go).
+See the [hook API](../hooks.go), the [middleware API](../middleware.go), the [hook tests](../conformance/goapi/endpoint_hooks_test.go) and the [middleware tests](../conformance/goapi/plugin_middleware_test.go).

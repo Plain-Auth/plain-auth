@@ -18324,5 +18324,77 @@
       "marker": "// Before hooks answer with JSON or a redirect, and the endpoint and after hooks are skipped.",
       "complete": true
     }
+  ],
+  "docs/content/docs/concepts/plugins.mdx#L329": [
+    {
+      "label": "Run plugin middleware for exact, one-segment and catch-all path patterns, broadest first, before the endpoint hooks, and let it reject or answer a request",
+      "test": "conformance/goapi/plugin_middleware_test.go",
+      "marker": "// Middleware runs broadest pattern first, then the endpoint hooks.",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/concepts/plugins.mdx#L356": [
+    {
+      "label": "Run plugin request and response hooks around every mounted HTTP request",
+      "test": "conformance/goapi/plugin_middleware_test.go",
+      "marker": "// Run plugin middleware by path pattern, let OnRequest continue, interrupt or",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/concepts/plugins.mdx#L360": [
+    {
+      "label": "Continue, edit or interrupt a request before routing, without changing the host request",
+      "test": "conformance/goapi/plugin_middleware_test.go",
+      "marker": "// OnRequest continues, edits a copy of the request, or interrupts it without OnResponse.",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/concepts/plugins.mdx#L366/Continue as Normal": [
+    {
+      "label": "Continue a request when OnRequest returns no error",
+      "test": "conformance/goapi/plugin_middleware_test.go",
+      "marker": "// Middleware runs broadest pattern first, then the endpoint hooks.",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/concepts/plugins.mdx#L367/Interrupt the Request": [
+    {
+      "label": "Interrupt a request with an error response before routing, skipping the response hooks",
+      "test": "conformance/goapi/plugin_middleware_test.go",
+      "marker": "// Interrupt the request with an error response.",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/concepts/plugins.mdx#L368/Modify the Request": [
+    {
+      "label": "Edit the headers and query of a request copy that the endpoint then reads",
+      "test": "conformance/goapi/plugin_middleware_test.go",
+      "marker": "// Modify the request the endpoint reads.",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/concepts/plugins.mdx#L383": [
+    {
+      "label": "Run each plugin response hook once before a response is written, including errors, unknown routes and rate limits",
+      "test": "conformance/goapi/plugin_middleware_test.go",
+      "marker": "// OnResponse sees and changes every response, including errors, unknown routes and rate limits.",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/concepts/plugins.mdx#L389/Modify the Response": [
+    {
+      "label": "Replace the status, headers and body of a response before it is written",
+      "test": "conformance/goapi/plugin_middleware_test.go",
+      "marker": "c.Status, c.Body = http.StatusAccepted, []byte(`{\"replaced\":true}`)",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/concepts/plugins.mdx#L390/Continue Normally": [
+    {
+      "label": "Leave a response unchanged when a response hook edits nothing",
+      "test": "conformance/goapi/plugin_middleware_test.go",
+      "marker": "record(\"response-second:\" + c.Header.Get(\"X-Served-By\"))",
+      "complete": true
+    }
   ]
 }
