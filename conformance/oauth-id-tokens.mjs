@@ -6,16 +6,21 @@ import {jwt} from "better-auth/plugins";
 import {oauthProvider} from "@better-auth/oauth-provider";
 import {issuerBrowser} from "./oauth-social-authorization.mjs";
 
-export async function compareIDTokens(t, reference, goFixture) {
+export async function compareIDTokens(t, reference, goFixture, customClaims = false) {
   const scopes = ["openid", "email", "profile", "offline_access"];
-  for (const alg of ["EdDSA", "RS256", "ES256", "ES512", "PS256"]) {
+  for (const alg of customClaims ? ["RS256"] : ["EdDSA", "RS256", "ES256", "ES512", "PS256"]) {
     for (const runtime of ["reference", "Go"]) await t.test(runtime + " " + alg, async t => {
       const pairwise = alg === "RS256";
       const server = runtime === "Go"
-        ? await goFixture(t, ["oauth-provider", "jwt"], {CONFORMANCE_CLIENT_REGISTRATION: "oidc", CONFORMANCE_JWT_ALGORITHM: alg})
+        ? await goFixture(t, ["oauth-provider", "jwt"], {CONFORMANCE_CLIENT_REGISTRATION: "oidc", CONFORMANCE_JWT_ALGORITHM: alg, CONFORMANCE_CUSTOM_ID_CLAIMS: customClaims ? "1" : "0"})
         : await reference(t, [jwt({jwks: {keyPairConfig: {alg}}}), oauthProvider({
           loginPage: "/login", consentPage: "/consent", scopes, pairwiseSecret: "p".repeat(32),
           allowDynamicClientRegistration: true, clientRegistrationAllowedScopes: scopes,
+          ...(customClaims && {customIdTokenClaims: ({user, scopes, metadata}) => ({
+            ...Object.fromEntries("iss sub aud exp nbf iat jti auth_time nonce acr amr azp sid at_hash c_hash s_hash".split(" ").map(key => [key, "private-test-override"])),
+            email: user.email,
+            "https://reader.example.test/context": {ownerMatches: user.id === metadata.owner, scopes, name: user.name, policy: metadata.policy},
+          })}),
           prefix: {opaqueAccessToken: "at_"}, ...(pairwise && {idTokenExpiresIn: 120}),
         })], {rateLimit: {enabled: false}});
       const db = server.database ?? new DatabaseSync(server.databasePath);
@@ -53,6 +58,10 @@ export async function compareIDTokens(t, reference, goFixture) {
       const app = await json(await post("/oauth2/register", {redirect_uris: [callback], grant_types: ["authorization_code", "refresh_token"],
         token_endpoint_auth_method: "none", scope: scopes.join(" "), application_type: "native", subject_type: pairwise ? "pairwise" : "public"}), 201);
       db.prepare("UPDATE oauthClient SET enableEndSession=? WHERE clientId=?").run(Number(pairwise), app.client_id);
+      let policy = {level: 1, flags: ["reader"]}, profileName = "Test Person";
+      const savePolicy = () => db.prepare("UPDATE oauthClient SET metadata=? WHERE clientId=?")
+        .run(JSON.stringify({owner: user.id, policy}), app.client_id);
+      if (customClaims) savePolicy();
       const verifier = randomUUID() + randomUUID(), nonce = randomUUID(), state = randomUUID();
       const query = {response_type:"code",client_id:app.client_id,redirect_uri:callback,scope:"openid offline_access",state, nonce,
         code_challenge_method:"S256",code_challenge:createHash("sha256").update(verifier).digest("base64url")};
@@ -72,7 +81,15 @@ export async function compareIDTokens(t, reference, goFixture) {
         assert.equal(payload.sid, pairwise && live ? session.id : undefined);
         const digest = createHash(["EdDSA", "ES512"].includes(alg) ? "sha512" : "sha256").update(tokens.access_token).digest();
         assert.equal(payload.at_hash, digest.subarray(0, digest.length / 2).toString("base64url"));
-        for (const name of ["name", "email", "email_verified", "picture", "scope", "azp"]) assert.equal(payload[name], undefined);
+        for (const name of ["name", "email_verified", "picture", "scope", "azp", "nbf", "jti", "amr", "c_hash", "s_hash"]) assert.equal(payload[name], undefined);
+        assert.equal(payload.email, customClaims ? email : undefined);
+        const contextClaim = payload["https://reader.example.test/context"];
+        if (customClaims) {
+          assert.deepEqual(contextClaim, {ownerMatches: true, scopes: tokens.scope.split(" "), name: profileName, policy});
+          assert.equal(Object.values(payload).includes("private-test-override"), false);
+        } else {
+          assert.equal(contextClaim, undefined);
+        }
         assert.equal(payload.sub === user.id, !pairwise);
         const profile = await info(tokens.access_token);
         assert.deepEqual(profile, explicitEmail ? {sub:payload.sub, email} : {sub:payload.sub});
@@ -105,6 +122,19 @@ export async function compareIDTokens(t, reference, goFixture) {
       assert.equal(bareTokens.refresh_token,undefined);
       await verify(bareTokens,{fresh:true,live:true,explicitEmail:false});
       const refresh = (token, scope) => oauth({grant_type:"refresh_token",refresh_token:token,...(scope && {scope})});
+      if (customClaims) {
+        profileName = "Updated Reader";
+        db.prepare("UPDATE user SET name=? WHERE id=?").run(profileName, user.id);
+        policy = {level: 2, flags: ["editor"]};
+        savePolicy();
+      }
+      if (customClaims) {
+        const extraCode = await authorize({scope: "openid offline_access", prompt: "none"});
+        const extraPair = await redeem(extraCode);
+        const narrowed = await refresh(extraPair.refresh_token, "openid");
+        const narrowedID = await verify(narrowed, {fresh: false, live: true, explicitEmail: false});
+        assert.deepEqual(narrowedID["https://reader.example.test/context"].scopes, ["openid"]);
+      }
       const renewed = await refresh(issued.refresh_token);
       assert.notEqual(renewed.refresh_token, issued.refresh_token);
       const rotated = await verify(renewed,{fresh:false,live:true});
@@ -114,6 +144,8 @@ export async function compareIDTokens(t, reference, goFixture) {
       db.prepare("UPDATE session SET expiresAt=? WHERE id=?").run(new Date(Date.now()-60000).toISOString(),session.id);
       const offline = await refresh(renewed.refresh_token);
       await verify(offline,{fresh:false,live:false});
+      // An OpenID-less exchange must succeed even when the hook's required input is gone.
+      if (customClaims) db.prepare("UPDATE oauthClient SET metadata=NULL WHERE clientId=?").run(app.client_id);
       const reduced = await refresh(offline.refresh_token,"offline_access");
       assert.equal(reduced.id_token,undefined);
       assert.equal(reduced.scope,"offline_access");

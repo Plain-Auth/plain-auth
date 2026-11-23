@@ -114,6 +114,12 @@ func (s *Store) redeemCode(ctx context.Context, clientID, identifier string, che
 	if record.IDToken.Subject != "" && record.IDToken.AuthTime.IsZero() {
 		record.IDToken.AuthTime = sessionStart.UTC()
 	}
+	if record.IDTokenUserFields != nil {
+		record.IDToken.ClaimsInput, err = s.idTokenClaimsSnapshot(ctx, tx, userID, client, record)
+		if err != nil {
+			return err
+		}
+	}
 	issue := op.DelegatedTokenIssue{SessionID: record.SessionID, Refresh: record.Refresh != nil, IDToken: record.IDToken}
 	if pending != nil && pending.prepared {
 		if pending.issue != issue {

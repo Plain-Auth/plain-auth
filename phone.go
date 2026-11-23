@@ -107,7 +107,7 @@ func NewPhoneNumber(o PhoneNumberOptions) (Plugin, error) {
 	if o.OTPLength < 1 || o.OTPLength > 128 || attempts < 0 || o.ExpiresIn <= 0 {
 		return Plugin{}, errors.New("phone-number: invalid OTP length, lifetime or attempts")
 	}
-	p := Plugin{ID: "phone-number", phoneNumber: &o, ValidateStore: func(store Store) error {
+	p := Plugin{ID: "phone-number", StoredUserFields: map[string]UserField{"phoneNumber": {Type: FieldString}, "phoneNumberVerified": {Type: FieldBoolean}}, phoneNumber: &o, ValidateStore: func(store Store) error {
 		s, ok := store.(PhoneAccountStore)
 		if !ok {
 			return errors.New("phone-number requires a PhoneAccountStore")

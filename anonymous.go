@@ -39,7 +39,7 @@ func NewAnonymous(o AnonymousOptions) (Plugin, error) {
 	if o.EmailDomainName != "" && (!emailPattern.MatchString("temp@"+o.EmailDomainName) || strings.ContainsAny(o.EmailDomainName, "@ /\\") || strings.Contains(o.EmailDomainName, "..")) {
 		return Plugin{}, errors.New("authn: invalid anonymous email domain")
 	}
-	return Plugin{ID: "anonymous", anonymous: &o, ValidateStore: func(s Store) error {
+	return Plugin{ID: "anonymous", StoredUserFields: map[string]UserField{"isAnonymous": {Type: FieldBoolean}}, anonymous: &o, ValidateStore: func(s Store) error {
 		db, ok := s.(AnonymousStore)
 		if !ok {
 			return errors.New("authn: anonymous sign-in requires an AnonymousStore")

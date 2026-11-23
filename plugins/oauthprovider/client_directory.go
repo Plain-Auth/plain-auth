@@ -1,6 +1,7 @@
 package oauthprovider
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -80,11 +81,30 @@ func clientExtension(k string) bool {
 	return !clientWireFields[k]
 }
 
+// DecodeClientMetadata reads a stored metadata object. Some SQL adapters also
+// represent it as a JSON string containing the original object.
+func DecodeClientMetadata(raw json.RawMessage) (map[string]json.RawMessage, error) {
+	raw = bytes.TrimSpace(raw)
+	if len(raw) == 0 {
+		return nil, nil
+	}
+	if raw[0] == '"' {
+		var value string
+		if err := json.Unmarshal(raw, &value); err != nil {
+			return nil, err
+		}
+		raw = []byte(value)
+	}
+	var metadata map[string]json.RawMessage
+	err := json.Unmarshal(raw, &metadata)
+	return metadata, err
+}
+
 // SetMetadataExtensions loads the database metadata envelope. Reserved fields
 // are discarded before a caller can observe the application-specific values.
 func (c *ClientDetails) SetMetadataExtensions(raw []byte) error {
-	var extra map[string]json.RawMessage
-	if err := json.Unmarshal(raw, &extra); err != nil {
+	extra, err := DecodeClientMetadata(raw)
+	if err != nil {
 		return err
 	}
 	for k := range extra {

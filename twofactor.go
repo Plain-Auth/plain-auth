@@ -88,7 +88,7 @@ func NewTwoFactor(opts TwoFactorOptions) Plugin {
 		opts.TrustDeviceMaxAge = 30 * 24 * time.Hour
 	}
 	settingsErr := opts.setDefaults()
-	p := Plugin{ID: "two-factor", factor: &opts, ValidateStore: func(Store) error {
+	p := Plugin{ID: "two-factor", StoredUserFields: map[string]UserField{"twoFactorEnabled": {Type: FieldBoolean}}, factor: &opts, ValidateStore: func(Store) error {
 		if settingsErr != nil {
 			return settingsErr
 		}

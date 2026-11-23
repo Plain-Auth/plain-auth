@@ -25,6 +25,7 @@ import (
 
 // Auth is safe for concurrent use by application handlers.
 type Auth struct {
+	trustedProfileFields  map[string]UserField
 	oauthProxy            *OAuthProxyOptions
 	sessionCacheKeys      []sessionCacheKey
 	disabledPaths         map[string]struct{}
@@ -192,6 +193,10 @@ func New(opts Options) (*Auth, error) {
 		return nil, err
 	}
 	a := &Auth{opts: opts, disabledPaths: disabledPaths, trustedOrigins: trustedOrigins, now: time.Now, passwordSlots: make(chan struct{}, min(runtime.GOMAXPROCS(0), 4)), plugins: plugins}
+	a.trustedProfileFields, err = trustedProfileSchema(opts.UserAdditionalFields, opts.Plugins)
+	if err != nil {
+		return nil, err
+	}
 	if err := a.prepareSessionCacheKeys(); err != nil {
 		return nil, err
 	}

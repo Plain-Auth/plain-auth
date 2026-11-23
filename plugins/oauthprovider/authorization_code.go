@@ -27,6 +27,9 @@ type DelegatedAccessRecord struct {
 	Refresh                 *InitialRefreshGrant
 	RequestedUserInfoClaims []string
 	IDToken                 IDTokenGrant
+	// Non-nil requests a trusted claims snapshot from the store, even for an
+	// application with no additional user columns.
+	IDTokenUserFields map[string]auth.UserField
 }
 
 // InitialRefreshGrant holds the expiry and original authentication time of a
@@ -188,6 +191,9 @@ func (opts Options) redeemAuthorizationCode(c auth.EndpointContext, in tokenRequ
 		if slices.Contains(scopes, "openid") {
 			if !canIssueIDToken(c) {
 				return DelegatedAccessRecord{}, registrationProblem(501, "server_error", "ID token issuance is unavailable")
+			}
+			if opts.Tokens.CustomIDTokenClaims != nil {
+				record.IDTokenUserFields = c.TrustedUserFields()
 			}
 			record.IDToken, err = opts.idTokenGrant(client, code.UserID, code.SessionID, code.Query.Nonce, authTime)
 			if err != nil {

@@ -143,6 +143,24 @@ func registrationFixtureOptions() op.Options {
 			opts.Tokens.IDTokenLifetime = 2 * time.Minute
 		}
 	}
+	if os.Getenv("CONFORMANCE_CUSTOM_ID_CLAIMS") == "1" {
+		opts.Tokens.CustomIDTokenClaims = func(_ context.Context, in op.IDTokenClaimsInput) (map[string]any, error) {
+			var owner string
+			if err := json.Unmarshal(in.Metadata["owner"], &owner); err != nil {
+				return nil, err
+			}
+			claims := map[string]any{
+				"email": in.User.Email,
+				"https://reader.example.test/context": map[string]any{
+					"ownerMatches": owner == in.User.ID, "scopes": in.Scopes, "name": in.User.Name, "policy": in.Metadata["policy"],
+				},
+			}
+			for _, name := range strings.Fields("iss sub aud exp nbf iat jti auth_time nonce acr amr azp sid at_hash c_hash s_hash") {
+				claims[name] = "private-test-override"
+			}
+			return claims, nil
+		}
+	}
 	if mode == "resources" {
 		opts.Registration.DefaultResources = []string{"urn:reports"}
 		opts.Registration.AllowedResources = []string{"urn:billing", "urn:disabled", "urn:missing"}

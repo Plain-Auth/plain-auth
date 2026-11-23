@@ -12233,6 +12233,16 @@
       "label": "Retry a code or refresh token after a signing failure and recheck live session and client logout policy on three SQL databases",
       "test": "adapters/sqlstore/oauth_id_token_test.go",
       "marker": "func TestOpenIDGrantRetry("
+    },
+    {
+      "label": "Use the current user, registered client metadata and narrowed scopes without invoking the hook for an exchange that drops OpenID",
+      "test": "conformance/oauth-id-tokens.mjs",
+      "marker": "assert.deepEqual(narrowedID[\"https://reader.example.test/context\"].scopes, [\"openid\"]);"
+    },
+    {
+      "label": "Retry after callback failure and recheck the profile and metadata on three databases, including hidden fields and active-plugin isolation",
+      "test": "adapters/sqlstore/oauth_id_token_test.go",
+      "marker": "received admin data outside the installed schema"
     }
   ],
   "docs/content/docs/plugins/oauth-provider/reference.mdx#L321/`POST /oauth2/token`": [
@@ -13833,6 +13843,16 @@
       "label": "Issue protocol claims with authentication context 0 and place individually consented email and profile fields at UserInfo",
       "test": "conformance/oauth-id-tokens.mjs",
       "marker": "assert.equal(payload.acr, \"0\");"
+    },
+    {
+      "label": "Verify host-provided profile and application claims while protecting all sixteen issuer-owned names on code and refresh exchanges",
+      "test": "conformance/oauth-id-tokens.mjs",
+      "marker": "assert.equal(Object.values(payload).includes(\"private-test-override\"), false);"
+    },
+    {
+      "label": "Retry after callback failure and recheck the profile and metadata on three databases, including hidden fields and active-plugin isolation",
+      "test": "adapters/sqlstore/oauth_id_token_test.go",
+      "marker": "received admin data outside the installed schema"
     }
   ],
   "docs/content/docs/plugins/oauth-provider/tokens.mdx#L29/`openid`": [
@@ -13903,6 +13923,24 @@
       "label": "Read identical OpenID and OAuth aliases, discover signing keys and validate claims and subjects for each supported signing algorithm",
       "test": "conformance/oauth-id-tokens.mjs",
       "marker": "assert.deepEqual(metadata.id_token_signing_alg_values_supported, [alg]);"
+    }
+  ],
+  "plugin-symbol/oauth-provider/OAuthOptions/customIdTokenClaims": [
+    {
+      "label": "Verify host-provided profile and application claims while protecting all sixteen issuer-owned names on code and refresh exchanges",
+      "test": "conformance/oauth-id-tokens.mjs",
+      "marker": "assert.equal(Object.values(payload).includes(\"private-test-override\"), false);",
+      "complete": true
+    },
+    {
+      "label": "Use the current user, registered client metadata and narrowed scopes without invoking the hook for an exchange that drops OpenID",
+      "test": "conformance/oauth-id-tokens.mjs",
+      "marker": "assert.deepEqual(narrowedID[\"https://reader.example.test/context\"].scopes, [\"openid\"]);"
+    },
+    {
+      "label": "Retry after callback failure and recheck the profile and metadata on three databases, including hidden fields and active-plugin isolation",
+      "test": "adapters/sqlstore/oauth_id_token_test.go",
+      "marker": "received admin data outside the installed schema"
     }
   ]
 }

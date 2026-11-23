@@ -52,13 +52,16 @@ func NewUsername(options UsernameOptions) (Plugin, error) {
 	if options.MinLength < 1 || options.MaxLength < options.MinLength || options.DisableNormalization && options.Normalize != nil {
 		return Plugin{}, errors.New("plainauth: invalid username configuration")
 	}
-	p := Plugin{ID: "username", username: &options, ValidateStore: func(s Store) error {
+	p := Plugin{ID: "username", StoredUserFields: map[string]UserField{"username": {Type: FieldString}}, username: &options, ValidateStore: func(s Store) error {
 		db, ok := s.(UsernameStore)
 		if !ok {
 			return errors.New("plainauth: username requires a UsernameStore")
 		}
 		return db.CheckUsernameSchema(context.Background(), !options.DisableDisplay)
 	}}
+	if !options.DisableDisplay {
+		p.StoredUserFields["displayUsername"] = UserField{Type: FieldString}
+	}
 	p.Endpoints = []Endpoint{
 		{Method: http.MethodPost, Path: "/sign-in/username", Handler: func(c EndpointContext) (any, error) { return c.Auth.usernameLoginHTTP(c) }},
 	}

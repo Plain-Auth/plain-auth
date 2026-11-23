@@ -336,6 +336,35 @@ Profile and email fields are available from UserInfo. To request individual fiel
 
 Signing and persistence must both succeed before the issuer responds with credentials. If a signing key is temporarily unavailable, the client can retry using the same code or refresh token. A custom database adapter must implement `oauthprovider.OpenIDGrantStore` for these exchanges. [Credential retry tests on all three databases](../adapters/sqlstore/oauth_id_token_test.go)
 
+### Add application claims to an ID token
+
+Configure `Tokens.CustomIDTokenClaims` on the issuer. The callback runs once during each code or refresh exchange that issues an ID token. It receives the current account, the scopes approved for this exchange and the issuing client's stored metadata. A pairwise client still receives its sector-specific `sub`. The hook sees the internal account ID so your backend can look up entitlements.
+
+For example, an issuer can expose a billing tier to clients granted `plan:read`. Declare the `tier` user attribute with `ServerOnly: true` if it controls access, enable the scope on the issuer and client, and use a claim name under a domain you control.
+
+```go
+Tokens: oauthprovider.TokenOptions{
+    CustomIDTokenClaims: func(ctx context.Context, in oauthprovider.IDTokenClaimsInput) (map[string]any, error) {
+        if !slices.Contains(in.Scopes, "plan:read") {
+            return nil, nil
+        }
+        tier := in.UserFields["tier"]
+        if len(tier) == 0 {
+            return nil, nil
+        }
+        return map[string]any{"https://app.example.com/claims/plan": tier}, nil
+    },
+},
+```
+
+`UserFields` contains registered scalar values as `json.RawMessage`, keyed by logical field name even when the SQL name differs. It includes hidden fields for trusted server code and the stored fields contributed by this issuer's enabled plugins. `User` presents the ordinary account profile. `Metadata` contains the stored client metadata object, with raw JSON values that preserve nested data and large integers. A registration with no metadata supplies a nil map. Public client registration cannot set these operator values.
+
+Your application chooses which claims to disclose and can consult its own membership policy using the request context. The hook receives no active organization or team selection. The library copies only the returned application claims into the ID token. The hook does not add claims to UserInfo or access tokens. Returning `nil, nil` leaves the default ID-token contents intact.
+
+Plain Auth owns the issuer, subject, audience, time, authentication context, nonce, session and token-hash claims. The protected names are `iss`, `sub`, `aud`, `exp`, `nbf`, `iat`, `jti`, `auth_time`, `acr`, `amr`, `azp`, `nonce`, `sid`, `at_hash`, `c_hash` and `s_hash`. Returning any of these logs the names and discards the attempted values. An operator can explicitly add profile claims such as `email` when its disclosure policy permits.
+
+A callback error stops issuance. Ordinary errors produce a generic HTTP 500 and reach the host's `OnAPIError` reporter. The SQL adapter runs the callback outside locks and checks the same account fields, grant and client metadata again before commit. A change during evaluation leaves the original credential usable. A subsequent refresh rereads the user's profile and uses the effective scopes, including any reduction. [Cross-runtime claim and scope checks](../conformance/oauth-id-tokens.mjs) · [Three-database failure and retry tests](../adapters/sqlstore/oauth_id_token_test.go)
+
 ## Request offline access
 
 Include `offline_access` in the scopes approved at authorization and use S256 PKCE. Send the same code exchange shown above. A successful response also includes `refresh_token`. With the Go client, read it from `token.RefreshToken`. The initial access token remains tied to the browser session. The offline refresh token can remain active after that session expires. [Refresh token introspection](machine-tokens.md#inspect-a-refresh-token) · [Revocation](oauth-token-revocation.md)

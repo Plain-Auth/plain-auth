@@ -109,7 +109,7 @@ func NewAdmin(options AdminOptions) (Plugin, error) {
 			return Plugin{}, errors.New("authn: administrative and default roles must be defined")
 		}
 	}
-	p := Plugin{ID: "admin", admin: &options}
+	p := Plugin{ID: "admin", StoredUserFields: map[string]UserField{"role": {Type: FieldString}, "banned": {Type: FieldBoolean}, "banReason": {Type: FieldString}, "banExpires": {Type: FieldDate}}, admin: &options}
 	for _, name := range []string{"set-role", "get-user", "create-user", "update-user", "list-users", "list-user-sessions", "unban-user", "ban-user", "impersonate-user", "stop-impersonating", "revoke-user-session", "revoke-user-sessions", "remove-user", "set-user-password", "has-permission"} {
 		method := http.MethodPost
 		if name == "get-user" || name == "list-users" {

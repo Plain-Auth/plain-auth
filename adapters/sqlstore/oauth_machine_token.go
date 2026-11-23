@@ -43,11 +43,11 @@ func scanMachineClient(row rowScanner, id string, extra ...any) (op.MachineClien
 		}
 	}
 	if len(metadata) > 0 {
-		var fields map[string]json.RawMessage
-		if err := json.Unmarshal(metadata, &fields); err != nil {
+		client.Metadata, err = op.DecodeClientMetadata(metadata)
+		if err != nil {
 			return op.MachineClient{}, err
 		}
-		client.RequireDPoP = client.RequireDPoP || string(fields["dpop_bound_access_tokens"]) == "true"
+		client.RequireDPoP = client.RequireDPoP || string(client.Metadata["dpop_bound_access_tokens"]) == "true"
 	}
 	return client, nil
 }

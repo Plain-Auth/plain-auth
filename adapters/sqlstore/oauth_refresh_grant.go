@@ -80,6 +80,12 @@ func (s *Store) exchangeRefresh(ctx context.Context, clientID, digest string, ch
 		}
 		return op.ErrInvalidRefreshToken
 	}
+	if record.IDTokenUserFields != nil {
+		record.IDToken.ClaimsInput, err = s.idTokenClaimsSnapshot(ctx, tx, parent.UserID, client, record)
+		if err != nil {
+			return err
+		}
+	}
 	grant := op.DelegatedTokenIssue{SessionID: parent.SessionID, Refresh: record.Refresh != nil, IDToken: record.IDToken}
 	if pending.keys.Access == "" {
 		pending.id, pending.user, pending.issue = parent.id, parent.UserID, grant

@@ -1832,3 +1832,8 @@ test("OpenID code and refresh exchanges issue independently verifiable ID tokens
   const {compareIDTokens} = await import("./oauth-id-tokens.mjs");
   await compareIDTokens(t, reference, goFixture);
 });
+
+test("operator ID-token claims use current identity, scopes and metadata across refresh", async t => {
+  const {compareIDTokens} = await import("./oauth-id-tokens.mjs");
+  await compareIDTokens(t, reference, goFixture, true);
+});

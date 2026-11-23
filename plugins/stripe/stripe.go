@@ -148,6 +148,7 @@ func New(opts Options) authn.Plugin {
 			return nil
 		}
 		if subs != nil {
+			plugin.StoredUserFields = map[string]authn.UserField{"stripeCustomerId": {Type: authn.FieldString}}
 			plugin.Endpoints = append(plugin.Endpoints, subs.successEndpoint(),
 				authn.Endpoint{Method: http.MethodPost, Path: "/subscription/upgrade", Handler: subs.checkout},
 				authn.Endpoint{Method: http.MethodGet, Path: "/subscription/list", Handler: subs.list},

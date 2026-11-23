@@ -68,6 +68,7 @@ func New(opts Options) auth.Plugin {
 		}
 	}}
 	if opts.Database != nil {
+		p.StoredUserFields = map[string]auth.UserField{"lastLoginMethod": {Type: auth.FieldString}}
 		p.ValidateStore = func(auth.Store) error {
 			if check, ok := opts.Database.(interface{ CheckLastLogin() error }); ok {
 				return check.CheckLastLogin()

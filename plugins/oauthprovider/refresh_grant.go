@@ -89,6 +89,9 @@ func (opts Options) exchangeRefreshGrant(c auth.EndpointContext, in tokenRequest
 			if grant.SessionLive {
 				sid = grant.SessionID
 			}
+			if opts.Tokens.CustomIDTokenClaims != nil {
+				record.IDTokenUserFields = c.TrustedUserFields()
+			}
 			record.IDToken, err = opts.idTokenGrant(client, grant.UserID, sid, "", grant.AuthTime)
 			if err != nil {
 				return DelegatedAccessRecord{}, err

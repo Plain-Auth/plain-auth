@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"maps"
+
 	"net/http"
 )
 
@@ -132,6 +134,14 @@ func (c EndpointContext) ReissueSessionCookie(session Session) {
 // errors to plugins that need to fail the response when publication fails.
 func (c EndpointContext) TryReissueSessionCookie(session Session) error {
 	return c.Auth.writeSessionCookieHeaders(c.ResponseHeader, c.Request, session.Token, !c.Auth.dontRemember(c.Request))
+}
+
+// TrustedUserFields returns the installed profile schema for in-process readers.
+// It includes configured private attributes and the active plugins' stored columns.
+func (c EndpointContext) TrustedUserFields() map[string]UserField {
+	fields := make(map[string]UserField, len(c.Auth.trustedProfileFields))
+	maps.Copy(fields, c.Auth.trustedProfileFields)
+	return fields
 }
 
 // PopulateUserProfile loads the user's public fields from enabled plugins and

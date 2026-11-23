@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"maps"
 	"reflect"
+	"strings"
 	"time"
 
 	"github.com/Plain-Auth/plain-auth/internal/sessionfields"
@@ -15,6 +16,30 @@ import (
 // UserField configures a scalar profile attribute. Column names its storage column.
 // ServerOnly reserves writes for the host. Hidden excludes the field from responses.
 type UserField = sessionfields.Field
+
+func trustedProfileSchema(additional map[string]UserField, plugins []Plugin) (map[string]UserField, error) {
+	fields := make(map[string]UserField, len(additional))
+	for name, f := range additional {
+		fields[name] = UserField{Column: f.Column, Type: f.Type, Hidden: f.Hidden}
+	}
+	for _, p := range plugins {
+		for name, f := range p.StoredUserFields {
+			if _, ok := fields[name]; ok {
+				return nil, fmt.Errorf("auth: duplicate stored user field %q", name)
+			}
+			fields[name] = UserField{Column: f.Column, Type: f.Type, Hidden: f.Hidden}
+		}
+	}
+	for name, f := range fields {
+		for _, key := range []string{name, f.Column} {
+			switch strings.ToLower(key) {
+			case "id", "name", "email", "image", "emailverified", "createdat", "updatedat", "password":
+				return nil, fmt.Errorf("auth: reserved stored user field %q", key)
+			}
+		}
+	}
+	return sessionfields.Normalize(fields)
+}
 
 // UserFieldValues carries validated physical values into the account creation transaction.
 type UserFieldValues struct{ columns map[string]any }

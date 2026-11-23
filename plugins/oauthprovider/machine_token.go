@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"maps"
 	"slices"
@@ -25,6 +26,8 @@ type TokenOptions struct {
 	AccessLifetime time.Duration
 	// IDTokenLifetime defaults to ten hours for an OpenID Connect ID token.
 	IDTokenLifetime time.Duration
+	// CustomIDTokenClaims runs outside store locks once per OpenID issuance.
+	CustomIDTokenClaims IDTokenClaimsFunc
 	// HashAuthorizationCode derives the verification identifier from a presented code.
 	// The default is unpadded base64url of its SHA-256 digest.
 	HashAuthorizationCode func(context.Context, string) (string, error)
@@ -112,6 +115,7 @@ type MachineClient struct {
 	RowID, ClientID, StoredSecret, AuthMethod string
 	// JWKS and JWKSURI identify the key material registered for private_key_jwt.
 	JWKS, JWKSURI             string
+	Metadata                  map[string]json.RawMessage
 	GrantTypes, MachineScopes []string
 	Disabled, RequireDPoP     bool
 }

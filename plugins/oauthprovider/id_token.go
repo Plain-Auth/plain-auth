@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"slices"
 	"time"
 
 	auth "github.com/Plain-Auth/plain-auth"
@@ -17,7 +18,24 @@ import (
 type IDTokenGrant struct {
 	Subject, Nonce, SessionID string
 	AuthTime                  time.Time
+	// ClaimsInput is an immutable JSON encoding of IDTokenClaimsInput when the
+	// store was asked for IDTokenUserFields. Compare it again before commit.
+	ClaimsInput string `json:"-"`
 }
+
+// IDTokenClaimsInput describes the current account and approved scopes. User
+// has its internal ID even for pairwise clients. UserFields contains configured
+// attributes, including hidden ones, keyed by logical name. Metadata is only
+// the registered client's metadata object. Each invocation owns its input.
+type IDTokenClaimsInput struct {
+	User       auth.User
+	UserFields map[string]json.RawMessage
+	Scopes     []string
+	Metadata   map[string]json.RawMessage
+}
+
+// IDTokenClaimsFunc contributes application claims to one signed ID token.
+type IDTokenClaimsFunc func(context.Context, IDTokenClaimsInput) (map[string]any, error)
 
 // DelegatedTokenIssue is the validated grant supplied outside database locks.
 // SessionID identifies the original session for refresh-token encoding. The
@@ -83,6 +101,29 @@ func (opts TokenOptions) signIDToken(c auth.EndpointContext, clientID, access st
 	}
 	if grant.SessionID != "" {
 		claims["sid"] = grant.SessionID
+	}
+	if opts.CustomIDTokenClaims != nil {
+		var input IDTokenClaimsInput
+		if err := json.Unmarshal([]byte(grant.ClaimsInput), &input); err != nil || input.User.ID == "" || !slices.Contains(input.Scopes, "openid") {
+			return "", errors.New("oauthprovider: missing ID token claims input")
+		}
+		extra, err := opts.CustomIDTokenClaims(c.Request.Context(), input)
+		if err != nil {
+			return "", err
+		}
+		var reserved []string
+		for name, value := range extra {
+			switch name {
+			case "iss", "sub", "aud", "exp", "nbf", "iat", "jti", "auth_time", "nonce", "acr", "amr", "azp", "sid", "at_hash", "c_hash", "s_hash":
+				reserved = append(reserved, name)
+			default:
+				claims[name] = value
+			}
+		}
+		if len(reserved) != 0 {
+			slices.Sort(reserved)
+			c.Auth.Logger().WarnContext(c.Request.Context(), "OAuth ID token ignored reserved claim names", "claims", reserved)
+		}
 	}
 	return c.Auth.SignJWT(c.Request.Context(), grant.Subject, auth.JWTSignOptions{
 		Algorithm: alg, Issuer: c.Auth.OAuthIssuer(), Audience: []string{clientID}, Claims: claims,

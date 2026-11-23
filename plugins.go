@@ -21,6 +21,9 @@ type OAuthLoginContinuation func(Session) (*http.Request, error)
 
 // Plugin contributes HTTP endpoints to an Auth instance.
 type Plugin struct {
+	// StoredUserFields declares this plugin's scalar user columns for trusted
+	// profile readers. The keys are logical names and may map to different columns.
+	StoredUserFields      map[string]UserField
 	oauthProxy            *OAuthProxyOptions
 	magicLinkRegistration bool
 	phoneNumber           *PhoneNumberOptions
