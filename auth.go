@@ -40,6 +40,7 @@ type Auth struct {
 	maxDeviceSessions     int
 	emailOTP              *EmailOTPOptions
 	sessionResponse       SessionResponseFunc
+	prepareOAuthLogin     func(EndpointContext, string) (OAuthLoginContinuation, error)
 	serviceJWT            *JWTOptions
 	oneTimeToken          *OneTimeTokenOptions
 	factorOptions         *TwoFactorOptions
@@ -206,6 +207,12 @@ func New(opts Options) (*Auth, error) {
 				proxy.Secrets = a.encryptionSecrets()
 			}
 			a.oauthProxy = &proxy
+		}
+		if p.PrepareOAuthLogin != nil {
+			if a.prepareOAuthLogin != nil {
+				return nil, errors.New("auth: only one plugin may resume OAuth logins")
+			}
+			a.prepareOAuthLogin = p.PrepareOAuthLogin
 		}
 		if p.TranslateError != nil {
 			if a.translateError != nil {

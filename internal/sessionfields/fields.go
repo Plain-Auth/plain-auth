@@ -51,7 +51,7 @@ func UserNameOK(name string) bool {
 		return false
 	}
 	switch strings.ToLower(name) {
-	case "name", "email", "emailverified", "image", "password", "callbackurl", "rememberme", "username", "displayusername", "phonenumber", "phonenumberverified", "lastloginmethod", "isanonymous", "twofactorenabled", "role", "banned", "banreason", "banexpires", "stripecustomerid", "newpassword", "currentpassword", "redirect", "url":
+	case "name", "email", "emailverified", "image", "password", "callbackurl", "oauth_query", "rememberme", "username", "displayusername", "phonenumber", "phonenumberverified", "lastloginmethod", "isanonymous", "twofactorenabled", "role", "banned", "banreason", "banexpires", "stripecustomerid", "newpassword", "currentpassword", "redirect", "url":
 		return false
 	}
 	return true

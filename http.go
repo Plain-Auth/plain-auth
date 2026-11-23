@@ -126,8 +126,13 @@ func (a *Auth) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		a.writeAuthError(w, r, &APIError{Status: 405, Code: "METHOD_NOT_ALLOWED_DEFER_SESSION_REQUIRED", Message: "POST method requires deferSessionRefresh to be enabled in session config"})
 		return
 	}
+	continuation, err := a.loginContinuation(route, r, body, w.Header())
+	if err != nil {
+		a.writeAuthError(w, r, err)
+		return
+	}
+	priorCookies := len(w.Header().Values("Set-Cookie"))
 	var result any
-	var err error
 	if pluginRoute {
 		result, err = ep.Handler(EndpointContext{Auth: a, Request: r, Body: body, ResponseHeader: w.Header()})
 	} else {
@@ -135,6 +140,20 @@ func (a *Auth) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	if err != nil {
 		a.writeAuthError(w, r, err)
+		return
+	}
+	if continuation != nil {
+		done, err := a.resumeIssuedOAuthLogin(w, r, continuation, priorCookies)
+		if err != nil {
+			a.writeAuthError(w, r, err)
+			return
+		}
+		if done {
+			return
+		}
+	}
+	if dispatch, ok := result.(oauthAuthorizationDispatch); ok {
+		a.ServeHTTP(w, dispatch.request)
 		return
 	}
 	if redirect, ok := result.(authRedirect); ok {

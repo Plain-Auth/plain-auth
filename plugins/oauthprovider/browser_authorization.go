@@ -16,6 +16,9 @@ import (
 )
 
 type BrowserAuthorizationOptions struct {
+	// LoginPage receives signed requests that need a browser login. SignupPage
+	// optionally selects a separate host page for prompt=create.
+	LoginPage, SignupPage string
 	// ConsentPage is the host's trusted page for first-time or forced approval.
 	ConsentPage string
 	// CodeLifetime defaults to ten minutes and uses whole seconds.
@@ -132,6 +135,9 @@ func (opts Options) runBrowserAuthorization(c auth.EndpointContext, q url.Values
 	if err != nil {
 		return nil, err
 	}
+	if fingerprint, _ := ctx.Value(loginClientKey{}).(string); fingerprint != "" && fingerprint != tokenDigest(client.RowID) {
+		return serverError("invalid_client", "client registration changed")
+	}
 	if client.Disabled {
 		return serverError("client_disabled", "client is disabled")
 	}
@@ -188,6 +194,11 @@ func (opts Options) runBrowserAuthorization(c auth.EndpointContext, q url.Values
 		}
 	}
 	if session == nil || session.Session.RequireOwner() != nil || !c.DirectBrowserSession(session.Session.Token) || !issue.SessionFresh(session.Session.CreatedAt, time.Now()) || slices.Contains(grant.prompts, "login") || slices.Contains(grant.prompts, "create") {
+		if decision == nil && !slices.Contains(grant.prompts, "none") {
+			if page := opts.loginPage(grant.prompts); page != "" {
+				return opts.openLoginPage(c, page, q, issue)
+			}
+		}
 		return reject("login_required", "authentication required")
 	}
 	if slices.Contains(grant.prompts, "select_account") {

@@ -1,10 +1,10 @@
 # Authorize a browser client and exchange its code
 
-An application can send a signed-in user to `/oauth2/authorize` and exchange the resulting code at `/oauth2/token`. Plain Auth returns an opaque bearer token bound to the user, browser session, client and approved scopes. Both endpoints mount in your existing Go server and use the `oauth-provider` database profile on SQLite, PostgreSQL or MySQL. [Register a client](oauth-client-registration.md) · [Router setup](routers.md) · [Database setup](schema.md#oauth-authorization-server-tables)
+An application can send its user to `/oauth2/authorize` and exchange the resulting code at `/oauth2/token`. Plain Auth returns an opaque bearer token bound to the user, browser session, client and approved scopes. Both endpoints mount in your existing Go server and use the `oauth-provider` database profile on SQLite, PostgreSQL or MySQL. [Register a client](oauth-client-registration.md) · [Router setup](routers.md) · [Database setup](schema.md#oauth-authorization-server-tables)
 
 ## Obtain a code in the browser
 
-Register the application's callback URL and enable the `authorization_code` grant on both the issuer and the client. The issuer enables this grant by default. This flow supports untargeted scopes such as `reports` and `reports offline_access`. It requires the account owner's active browser session and approval covering each requested scope. The user can approve the request on a host consent page. An operator-managed client can use `skipConsent` to bypass a prior grant. Dynamic registration rejects `skip_consent`. Interactive login continuation, ID tokens, sender binding and resource audiences for this grant remain on the roadmap. [Client registration](oauth-client-registration.md) · [Manage recorded approvals](oauth-consents.md) · [Feature checklist](parity/plugins/oauth-provider.md)
+Register the application's callback URL and enable the `authorization_code` grant on both the issuer and the client. The issuer enables this grant by default. This flow supports untargeted scopes such as `reports` and `reports offline_access`. It requires the account owner's active browser session and approval covering each requested scope. Your application can host the login, signup and consent pages. An operator-managed client can use `skipConsent` to bypass a prior grant. Dynamic registration rejects `skip_consent`. Social sign-in continuation, account selection, ID tokens, sender binding and resource audiences for this grant remain on the roadmap. [Client registration](oauth-client-registration.md) · [Manage recorded approvals](oauth-consents.md) · [Feature checklist](parity/plugins/oauth-provider.md)
 
 For a public client using `golang.org/x/oauth2`, configure both issuer endpoints. Generate new random state and a PKCE verifier for each visit. Save them with the expected issuer and callback in the application's session before redirecting the user's browser.
 
@@ -28,6 +28,49 @@ http.Redirect(w, r, target, http.StatusFound)
 The endpoint accepts GET query parameters or an `application/x-www-form-urlencoded` POST body. Supply `response_type=code`, `client_id`, `redirect_uri` and the S256 challenge. Omitting `scope` requests the client's registered scopes, falling back to the issuer's scopes when the client has no explicit list. Web callbacks must match a registered URL exactly. A native app using an HTTP loopback callback may vary its port while preserving its host, path and query.
 
 A successful navigation returns HTTP 302 to the callback with `code`, `iss` and the supplied `state`. A CORS fetch or a request accepting `application/json` receives HTTP 200 with `{"redirect":true,"url":"…"}`. On the callback, check `state` against the saved request, verify `iss` against the expected issuer, and check for `error` before exchanging the code. Unrecognized clients and unapproved callback URLs go to the issuer's error page. With `prompt=none`, `login_required` means the user needs to sign in and `consent_required` means the recorded approval does not cover this request. `max_age` limits the age of the login in seconds. Zero requests fresh authentication. [End-to-end browser and exchange tests](../conformance/oauth-browser-authorization.mjs)
+
+## Sign in from the authorization request
+
+Mount the issuer in your Go server and configure the pages your application serves. Plain Auth sends a signed-out browser to `LoginPage`. A client can request fresh authentication with `prompt=login` or `max_age=0`. With `prompt=create`, the issuer uses `SignupPage` when configured and falls back to `LoginPage`. With `prompt=none`, the issuer returns an interaction error to the registered callback without opening a page.
+
+```go
+plugin, err := oauthprovider.New(oauthprovider.Options{
+    Scopes: []string{"reports", "export"},
+    Authorization: oauthprovider.BrowserAuthorizationOptions{
+        LoginPage:   "/login",
+        SignupPage:  "/signup",
+        ConsentPage: "/consent",
+    },
+})
+```
+
+In the GET handler for each page, pass `r.URL.RawQuery` to `api.VerifyOAuthPageQuery` and return HTTP 400 on error. Pass `fields.Encode()` from the verifier to your `html/template` as the value of a hidden form field named `oauth_query`. Send `Cache-Control: no-store` and `Referrer-Policy: no-referrer` on these pages. The consent handler below uses the same verifier. The signed request preserves the client, callback, scopes, state and PKCE challenge across login.
+
+For a password form, submit the email, password and signed field to `POST /api/auth/sign-in/email` in the same browser. This example assumes the form has named inputs for those three fields and that the host provides the error and second-factor screens.
+
+```js
+async function signIn(form) {
+    const input = new FormData(form)
+    const res = await fetch("/api/auth/sign-in/email", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({
+            email: input.get("email"),
+            password: input.get("password"),
+            oauth_query: input.get("oauth_query"),
+        }),
+    })
+    const result = await res.json()
+    if (!res.ok) return showLoginError(result)
+    if (result.twoFactorRedirect) return showSecondFactor(input.get("oauth_query"))
+    if (result.redirect && result.url) window.location.assign(result.url)
+}
+```
+
+When a second factor is required, submit the same signed field with the verification code. Follow the returned authorization URL after the server issues the login session. In a Go client with a cookie jar scoped to that user, set `client.SignInRequest.OAuthQuery` or `client.SignUpRequest.OAuthQuery`. Check `TwoFactorRedirect` before following `URL`. If signup requires email verification or automatic sign-in is disabled, show your normal completion screen and return to login when the user can authenticate.
+
+For an explicit `prompt=create`, call `POST /api/auth/sign-up/email` with the signed field and the new account credentials. After a session is issued, the browser returns to the signup page. Verify the query on that visit, then post `{"created":true,"oauth_query":"<signed query>"}` to `/api/auth/oauth2/continue` using the same browser session. Follow its returned URL to the next step. The Go equivalent is `sdk.ContinueOAuthSignup(ctx, fields.Encode())`. Expired or altered queries require a fresh authorization request. [Login through code exchange](../conformance/oauth-browser-login.mjs) · [Session replacement and two-factor verification](../adapters/sqlstore/oauth_browser_login_test.go)
 
 ## Ask the user for consent
 
@@ -87,8 +130,10 @@ Approval returns a callback URL containing a single-use code. The issuer stores 
 
 | Setting | Behavior |
 | --- | --- |
+| `LoginPage` | Trusted host page for signing in or reauthenticating, such as `/login`. |
+| `SignupPage` | Optional account-creation page for `prompt=create`. Defaults to the login page. |
 | `ConsentPage` | Trusted host page for first-time and forced approvals, such as `/consent`. |
-| `CodeLifetime` | Codes and signed consent prompts expire after ten minutes by default. Set a positive duration in whole seconds to change it. |
+| `CodeLifetime` | Codes and signed interaction prompts expire after ten minutes by default. Set a positive duration in whole seconds to change it. |
 | `ConsentReference` | Choose an approval namespace, such as the active organization's ID, from the verified session. An empty value selects personal consent. Approval for another namespace cannot authorize a code. |
 | `ValidateRedirectURI` | Receives the requested URL, a copy of the client's registered URLs and the default match result. Return the decision from your host policy. Syntax and transport checks run first. An error rejects the redirect. |
 | `RateLimit` | GET and POST share a default allowance of 30 requests per minute per client IP when rate limiting is enabled. Set a route rule to change it, or supply an empty rule to inherit the host default. |

@@ -51,3 +51,13 @@ func (c *Client) DecideOAuthConsent(ctx context.Context, signedQuery string, acc
 	err := c.Do(ctx, http.MethodPost, "/oauth2/consent", body, &result)
 	return result.URL, err
 }
+
+// ContinueOAuthSignup tells the issuer that the host's account-creation step is
+// complete. The signed-in user's cookie jar carries the session on this request.
+func (c *Client) ContinueOAuthSignup(ctx context.Context, signedQuery string) (string, error) {
+	var result struct {
+		URL string `json:"url"`
+	}
+	err := c.Do(ctx, http.MethodPost, "/oauth2/continue", map[string]any{"created": true, "oauth_query": signedQuery}, &result)
+	return result.URL, err
+}

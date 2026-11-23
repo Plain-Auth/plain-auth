@@ -52,46 +52,19 @@ func consentDecisionError(err error) error {
 }
 
 func (opts Options) openConsentPage(c auth.EndpointContext, original url.Values, issue BrowserCodeIssue) (any, error) {
-	page, err := c.Auth.CallbackURL(opts.Authorization.ConsentPage)
-	if err != nil {
-		return nil, err
-	}
-	target, err := url.Parse(page)
-	if err != nil {
-		return nil, err
-	}
-	// Sign only normalized authorization parameters. The host may have its own page query.
-	fields := url.Values{}
-	for key, value := range issue.Query {
-		fields.Set(key, value)
-	}
-	fields.Set("client_id", issue.Client.ClientID)
-	fields.Set("response_type", "code")
-	fields.Set("scope", strings.Join(issue.Scopes, " "))
-	if original.Has("max_age") {
-		fields.Set("max_age", original.Get("max_age"))
-	}
+	fields := interactionFields(original, issue)
 	fingerprint := tokenDigest(issue.Client.RowID)
 	fields.Set("pa_client", fingerprint)
 	request := BrowserConsentPrompt{ID: rand.Text(), Binding: consentBinding(c.Auth.OAuthIssuer(), fingerprint, issue), ExpiresAt: time.Now().UTC().Truncate(time.Second).Add(issue.Lifetime)}
 	fields.Set("pa_consent", request.ID)
-	signed := c.Auth.SignOAuthQuery(fields, request.ExpiresAt)
-	// Preconfigured page fields must never shadow issuer-owned parameters.
-	host := target.Query()
-	for name := range fields {
-		host.Del(name)
-	}
-	for _, name := range []string{"sig", "exp", "ba_iat", "ba_param", "ba_pl"} {
-		host.Del(name)
-	}
-	target.RawQuery = signed
-	if len(host) != 0 {
-		target.RawQuery += "&" + host.Encode()
+	target, err := interactionURL(c, opts.Authorization.ConsentPage, fields, request.ExpiresAt)
+	if err != nil {
+		return nil, err
 	}
 	if err := c.Store().(BrowserConsentStore).SaveBrowserConsent(c.Request.Context(), request); err != nil {
 		return nil, err
 	}
-	return c.RegisteredOAuthRedirect(target.String()), nil
+	return c.RegisteredOAuthRedirect(target), nil
 }
 
 func (opts Options) browserConsent(c auth.EndpointContext) (any, error) {

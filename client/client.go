@@ -152,6 +152,7 @@ func (c *Client) doWithHeaders(ctx context.Context, method, route string, input,
 
 // SignUpRequest configures email/password registration.
 type SignUpRequest struct {
+	OAuthQuery       string         `json:"oauth_query,omitempty"`
 	AdditionalFields map[string]any `json:"-"`
 	Username         *string        `json:"username,omitempty"`
 	DisplayUsername  *string        `json:"displayUsername,omitempty"`
@@ -165,6 +166,7 @@ type SignUpRequest struct {
 
 // SignInRequest configures email/password login.
 type SignInRequest struct {
+	OAuthQuery  string `json:"oauth_query,omitempty"`
 	Email       string `json:"email"`
 	Password    string `json:"password"`
 	RememberMe  *bool  `json:"rememberMe,omitempty"`

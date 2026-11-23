@@ -58,7 +58,7 @@ func clientScopeFixture(a *auth.Auth, store op.ClientCredentialsScopeStore, fall
 
 func registrationFixtureOptions() op.Options {
 	mode := os.Getenv("CONFORMANCE_CLIENT_REGISTRATION")
-	opts := op.Options{Authorization: op.BrowserAuthorizationOptions{ConsentPage: "/consent"}}
+	opts := op.Options{Authorization: op.BrowserAuthorizationOptions{LoginPage: "/login", SignupPage: "/signup", ConsentPage: "/consent"}}
 	if os.Getenv("CONFORMANCE_ISSUER_METADATA") == "1" {
 		opts.Metadata.Scopes = []string{"reports"}
 		opts.Metadata.TokenAuthMethods = []string{"private_key_jwt", "client_secret_post"}

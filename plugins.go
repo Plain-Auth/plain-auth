@@ -14,6 +14,11 @@ import (
 // SessionResponseFunc projects a validated HTTP session into a JSON response.
 type SessionResponseFunc func(EndpointContext, SessionResult) (any, error)
 
+// OAuthLoginContinuation builds the issuer authorization request after a login
+// endpoint actually issues a new browser session. The host installs its signed
+// cookie and dispatches the request through the normal authorization route.
+type OAuthLoginContinuation func(Session) (*http.Request, error)
+
 // Plugin contributes HTTP endpoints to an Auth instance.
 type Plugin struct {
 	oauthProxy            *OAuthProxyOptions
@@ -31,6 +36,8 @@ type Plugin struct {
 	// OnRequest can reject an HTTP request before endpoint dispatch. Path is
 	// relative to the auth mount. ClientIP follows the host's proxy policy.
 	OnRequest func(RequestContext) error
+	// PrepareOAuthLogin verifies a signed oauth_query before credential handling.
+	PrepareOAuthLogin func(EndpointContext, string) (OAuthLoginContinuation, error)
 	// SessionResponse shapes the authenticated GET /get-session JSON response.
 	// One plugin per instance may supply it. An anonymous response stays null.
 	SessionResponse SessionResponseFunc

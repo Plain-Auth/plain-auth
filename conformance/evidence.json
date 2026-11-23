@@ -13118,6 +13118,11 @@
       "label": "Visit a host consent page, verify the signed query independently, deny a first request or exchange a code approved for fewer scopes",
       "test": "conformance/oauth-browser-authorization.mjs",
       "marker": "async function consentPage(prompt)"
+    },
+    {
+      "label": "Take a signed-out user through local login, consent and PKCE redemption and require fresh credentials when requested",
+      "test": "conformance/oauth-browser-login.mjs",
+      "marker": "const page = await start("
     }
   ],
   "docs/content/docs/plugins/oauth-provider/reference.mdx#L318/`GET / POST /oauth2/authorize`": [
@@ -13135,6 +13140,11 @@
       "label": "Visit a host consent page, verify the signed query independently, deny a first request or exchange a code approved for fewer scopes",
       "test": "conformance/oauth-browser-authorization.mjs",
       "marker": "async function consentPage(prompt)"
+    },
+    {
+      "label": "Take a signed-out user through local login, consent and PKCE redemption and require fresh credentials when requested",
+      "test": "conformance/oauth-browser-login.mjs",
+      "marker": "const page = await start("
     }
   ],
   "plugin-symbol/oauth-provider/OAuthOptions/validateRedirectUri": [
@@ -13251,6 +13261,11 @@
       "label": "Validate the form in an independently implemented OAuth provider before presenting the user’s choice",
       "test": "conformance/oauth-browser-authorization.mjs",
       "marker": "await verifyOAuthQueryParams(raw,"
+    },
+    {
+      "label": "Take a signed-out user through local login, consent and PKCE redemption and require fresh credentials when requested",
+      "test": "conformance/oauth-browser-login.mjs",
+      "marker": "const page = await start("
     }
   ],
   "docs/content/docs/plugins/oauth-provider/sign-in-flow.mdx#L101/Parameter `accept`": [
@@ -13279,6 +13294,83 @@
       "label": "Verify a signed page query before applying a decision and reject altered authorization parameters",
       "test": "conformance/oauth-browser-authorization.mjs",
       "marker": "altered.set(\"state\", \"changed\")"
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/sign-in-flow.mdx#L34": [
+    {
+      "label": "Take a signed-out user through local login, consent and PKCE redemption and require fresh credentials when requested",
+      "test": "conformance/oauth-browser-login.mjs",
+      "marker": "const page = await start("
+    },
+    {
+      "label": "Wait for the second factor before resuming, replace the prior browser account and enforce host authorization rules",
+      "test": "adapters/sqlstore/oauth_browser_login_test.go",
+      "marker": "func TestBrowserLoginContinuation("
+    }
+  ],
+  "plugin-symbol/oauth-provider/OAuthOptions/loginPage": [
+    {
+      "label": "Open the configured host page for signed-out and forced login and return an error for silent requests",
+      "test": "conformance/oauth-browser-login.mjs",
+      "marker": "const forced = await start(",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/sign-in-flow.mdx#L122": [
+    {
+      "label": "Create an account on the configured signup page and continue the signed request into consent",
+      "test": "conformance/oauth-browser-login.mjs",
+      "marker": "const create = await start("
+    }
+  ],
+  "plugin-symbol/oauth-provider/OAuthOptions/signup": [
+    {
+      "label": "Create an account on the configured signup page and continue the signed request into consent",
+      "test": "conformance/oauth-browser-login.mjs",
+      "marker": "const create = await start("
+    }
+  ],
+  "plugin/oauth-provider/POST /oauth2/continue": [
+    {
+      "label": "Use the signed signup page query and the new browser session to complete the account-creation step",
+      "test": "conformance/oauth-browser-login.mjs",
+      "marker": "const next = await request("
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/reference.mdx#L320/`POST /oauth2/continue`": [
+    {
+      "label": "Use the signed signup page query and the new browser session to complete the account-creation step",
+      "test": "conformance/oauth-browser-login.mjs",
+      "marker": "const next = await request("
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/sign-in-flow.mdx#L205": [
+    {
+      "label": "Use the signed signup page query and the new browser session to complete the account-creation step",
+      "test": "conformance/oauth-browser-login.mjs",
+      "marker": "const next = await request("
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/sign-in-flow.mdx#L211/`POST /oauth2/continue`": [
+    {
+      "label": "Use the signed signup page query and the new browser session to complete the account-creation step",
+      "test": "conformance/oauth-browser-login.mjs",
+      "marker": "const next = await request("
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/sign-in-flow.mdx#L229/Parameter `oauth_query` (optional)": [
+    {
+      "label": "Use the signed signup page query and the new browser session to complete the account-creation step",
+      "test": "conformance/oauth-browser-login.mjs",
+      "marker": "const next = await request("
+    }
+  ],
+  "docs/content/docs/plugins/oauth-provider/sign-in-flow.mdx#L221/Parameter `created` (optional)": [
+    {
+      "label": "Continue after confirmed account creation, require a browser session and reject an unfinished step",
+      "test": "adapters/sqlstore/oauth_browser_login_test.go",
+      "marker": "signupQuery := start()",
+      "complete": true
     }
   ]
 }
