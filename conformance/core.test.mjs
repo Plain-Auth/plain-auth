@@ -1933,6 +1933,11 @@ test("host invitation hooks run around authorized rejection and cancellation", a
   await compareInvitationHooks(t, { reference, goFixture, instrument });
 });
 
+test("invitation acceptance hooks observe committed organization and team membership", async t => {
+  const { compareInvitationHooks } = await import("./invitation-hooks.mjs");
+  await compareInvitationHooks(t, { reference, goFixture, instrument }, true);
+});
+
 test("host invitation lifetimes apply to new grants and resends", async t => {
   const { compareInvitationExpiration } = await import("./invitation-expiration.mjs");
   await compareInvitationExpiration(t, { reference, goFixture, instrument });

@@ -52,18 +52,21 @@
     - [x] Roll back every membership and keep the invitation pending when a team fills ([test](../../../adapters/sqlstore/organization_teams_test.go#L237))
     - [x] Read and update the same stored invitations, membership keys and seat counts in both runtime directions ([test](../../../conformance/core.test.mjs#L675))
     - [x] Retry a pending invitation after another member frees a seat ([test](../../../conformance/organization-capacity.mjs#L46))
+    - [x] Deliver the recipient and pending invitation before acceptance and the committed membership afterward ([test](../../../conformance/invitation-hooks.mjs#L76))
+    - [x] Keep the original selection on a before-hook failure and retain membership and team selection on an after-hook failure ([test](../../../conformance/invitation-hooks.mjs#L83))
+    - [x] Recheck the live recipient, grant and remaining seats after the host callback on all three SQL engines ([test](../../../adapters/sqlstore/organization_acceptance_hooks_test.go#L109))
   - [ ] `POST /organization/reject-invitation`
     - [x] Decline an expired pending invitation through the recipient's session and preserve the current organization and team ([test](../../../conformance/organization-invitations.mjs#L257))
     - [x] Allow only one decision when acceptance races rejection across two database connections ([test](../../../adapters/sqlstore/organization_decision_test.go#L79))
-    - [x] Deliver the signed-in actor, invitation and destination before and after an authorized decision ([test](../../../conformance/invitation-hooks.mjs#L58))
-    - [x] Abort the write on a before-hook error and keep the committed status on an after-hook error ([test](../../../conformance/invitation-hooks.mjs#L63))
+    - [x] Deliver the signed-in actor, invitation and destination before and after an authorized decision ([test](../../../conformance/invitation-hooks.mjs#L61))
+    - [x] Abort the write on a before-hook error and keep the committed status on an after-hook error ([test](../../../conformance/invitation-hooks.mjs#L66))
     - [x] Recheck changed invitation inputs, live recipient and administrator permissions after host code runs ([test](../../../adapters/sqlstore/organization_decision_hooks_test.go#L120))
   - [ ] `POST /organization/cancel-invitation`
     - [x] Cancel expired, rejected and accepted invitations and retain previously granted team and organization access ([test](../../../conformance/organization-invitations.mjs#L326))
     - [x] Recheck destination permissions for repeated cancellation after a role change ([test](../../../conformance/organization-invitations.mjs#L336))
     - [x] Serialize cancellation with acceptance and preserve the committed membership outcome on three SQL engines ([test](../../../adapters/sqlstore/organization_decision_test.go#L106))
-    - [x] Deliver the signed-in actor, invitation and destination before and after an authorized decision ([test](../../../conformance/invitation-hooks.mjs#L58))
-    - [x] Abort the write on a before-hook error and keep the committed status on an after-hook error ([test](../../../conformance/invitation-hooks.mjs#L63))
+    - [x] Deliver the signed-in actor, invitation and destination before and after an authorized decision ([test](../../../conformance/invitation-hooks.mjs#L61))
+    - [x] Abort the write on a before-hook error and keep the committed status on an after-hook error ([test](../../../conformance/invitation-hooks.mjs#L66))
     - [x] Recheck changed invitation inputs, live recipient and administrator permissions after host code runs ([test](../../../adapters/sqlstore/organization_decision_hooks_test.go#L120))
   - [ ] `GET /organization/get-invitation`
     - [x] Read the current inviter email and organization details for the pending invitation ([test](../../../conformance/organization-invitations.mjs#L180))
@@ -215,6 +218,9 @@
       - [x] Run profile callbacks in released-client order with supplied fields, selective overrides, committed data and distinct failure outcomes ([test](../../../conformance/organization-profile-hooks.mjs#L7))
       - [x] Recheck the original tenant, member, active selection and session across unlocked host callbacks on three database engines ([test](../../../adapters/sqlstore/organization_profile_hooks_test.go#L16))
       - [x] Require transactional reauthorization from custom stores only when profile hooks are enabled ([test](../../../adapters/sqlstore/organization_profile_hooks_test.go#L176))
+      - [x] Deliver the recipient and pending invitation before acceptance and the committed membership afterward ([test](../../../conformance/invitation-hooks.mjs#L76))
+      - [x] Keep the original selection on a before-hook failure and retain membership and team selection on an after-hook failure ([test](../../../conformance/invitation-hooks.mjs#L83))
+      - [x] Recheck the live recipient, grant and remaining seats after the host callback on all three SQL engines ([test](../../../adapters/sqlstore/organization_acceptance_hooks_test.go#L109))
 
 ## Organization
 
@@ -246,10 +252,13 @@
         - [x] Require transactional reauthorization from custom stores only when profile hooks are enabled ([test](../../../adapters/sqlstore/organization_profile_hooks_test.go#L176))
       - [ ] Member Hooks
       - [ ] Invitation Hooks
-        - [x] Deliver the signed-in actor, invitation and destination before and after an authorized decision ([test](../../../conformance/invitation-hooks.mjs#L58))
-        - [x] Abort the write on a before-hook error and keep the committed status on an after-hook error ([test](../../../conformance/invitation-hooks.mjs#L63))
+        - [x] Deliver the signed-in actor, invitation and destination before and after an authorized decision ([test](../../../conformance/invitation-hooks.mjs#L61))
+        - [x] Abort the write on a before-hook error and keep the committed status on an after-hook error ([test](../../../conformance/invitation-hooks.mjs#L66))
         - [x] Recheck changed invitation inputs, live recipient and administrator permissions after host code runs ([test](../../../adapters/sqlstore/organization_decision_hooks_test.go#L120))
         - [x] Give host callbacks an independent copy of the invitation, destination and public session fields ([test](../../../plugins/organization/invitation_hooks_test.go#L33))
+        - [x] Deliver the recipient and pending invitation before acceptance and the committed membership afterward ([test](../../../conformance/invitation-hooks.mjs#L76))
+        - [x] Keep the original selection on a before-hook failure and retain membership and team selection on an after-hook failure ([test](../../../conformance/invitation-hooks.mjs#L83))
+        - [x] Recheck the live recipient, grant and remaining seats after the host callback on all three SQL engines ([test](../../../adapters/sqlstore/organization_acceptance_hooks_test.go#L109))
       - [ ] Team Hooks
       - [ ] Hook Error Handling
     - [ ] List User's Organizations
@@ -312,6 +321,9 @@
     - [ ] Accept Invitation
       - [x] Accept a matching invitation once, even during concurrent requests ([test](../../../plugins/organization/organization_test.go#L153))
       - [x] Accept an invitation through the JavaScript client and read the new membership ([test](../../../conformance/core.test.mjs#L260))
+      - [x] Deliver the recipient and pending invitation before acceptance and the committed membership afterward ([test](../../../conformance/invitation-hooks.mjs#L76))
+      - [x] Keep the original selection on a before-hook failure and retain membership and team selection on an after-hook failure ([test](../../../conformance/invitation-hooks.mjs#L83))
+      - [x] Recheck the live recipient, grant and remaining seats after the host callback on all three SQL engines ([test](../../../adapters/sqlstore/organization_acceptance_hooks_test.go#L109))
       - [ ] `POST /organization/accept-invitation`
         - [ ] Parameter `invitationId`
       - [ ] Email Verification Requirement
@@ -320,29 +332,29 @@
       - [x] Cancel expired, rejected and accepted invitations and retain previously granted team and organization access ([test](../../../conformance/organization-invitations.mjs#L326))
       - [x] Recheck destination permissions for repeated cancellation after a role change ([test](../../../conformance/organization-invitations.mjs#L336))
       - [x] Serialize cancellation with acceptance and preserve the committed membership outcome on three SQL engines ([test](../../../adapters/sqlstore/organization_decision_test.go#L106))
-      - [x] Deliver the signed-in actor, invitation and destination before and after an authorized decision ([test](../../../conformance/invitation-hooks.mjs#L58))
-      - [x] Abort the write on a before-hook error and keep the committed status on an after-hook error ([test](../../../conformance/invitation-hooks.mjs#L63))
+      - [x] Deliver the signed-in actor, invitation and destination before and after an authorized decision ([test](../../../conformance/invitation-hooks.mjs#L61))
+      - [x] Abort the write on a before-hook error and keep the committed status on an after-hook error ([test](../../../conformance/invitation-hooks.mjs#L66))
       - [x] Recheck changed invitation inputs, live recipient and administrator permissions after host code runs ([test](../../../adapters/sqlstore/organization_decision_hooks_test.go#L120))
       - [ ] `POST /organization/cancel-invitation`
         - [x] Cancel expired, rejected and accepted invitations and retain previously granted team and organization access ([test](../../../conformance/organization-invitations.mjs#L326))
         - [x] Recheck destination permissions for repeated cancellation after a role change ([test](../../../conformance/organization-invitations.mjs#L336))
         - [x] Serialize cancellation with acceptance and preserve the committed membership outcome on three SQL engines ([test](../../../adapters/sqlstore/organization_decision_test.go#L106))
-        - [x] Deliver the signed-in actor, invitation and destination before and after an authorized decision ([test](../../../conformance/invitation-hooks.mjs#L58))
-        - [x] Abort the write on a before-hook error and keep the committed status on an after-hook error ([test](../../../conformance/invitation-hooks.mjs#L63))
+        - [x] Deliver the signed-in actor, invitation and destination before and after an authorized decision ([test](../../../conformance/invitation-hooks.mjs#L61))
+        - [x] Abort the write on a before-hook error and keep the committed status on an after-hook error ([test](../../../conformance/invitation-hooks.mjs#L66))
         - [x] Recheck changed invitation inputs, live recipient and administrator permissions after host code runs ([test](../../../adapters/sqlstore/organization_decision_hooks_test.go#L120))
         - [x] Parameter `invitationId` ([test](../../../conformance/organization-invitations.mjs#L293))
           - [x] Validate a string invitation ID before checking the session and report an unknown ID ([test](../../../conformance/organization-invitations.mjs#L293))
     - [x] Reject Invitation ([test](../../../conformance/organization-invitations.mjs#L257))
       - [x] Decline an expired pending invitation through the recipient's session and preserve the current organization and team ([test](../../../conformance/organization-invitations.mjs#L257))
       - [x] Allow only one decision when acceptance races rejection across two database connections ([test](../../../adapters/sqlstore/organization_decision_test.go#L79))
-      - [x] Deliver the signed-in actor, invitation and destination before and after an authorized decision ([test](../../../conformance/invitation-hooks.mjs#L58))
-      - [x] Abort the write on a before-hook error and keep the committed status on an after-hook error ([test](../../../conformance/invitation-hooks.mjs#L63))
+      - [x] Deliver the signed-in actor, invitation and destination before and after an authorized decision ([test](../../../conformance/invitation-hooks.mjs#L61))
+      - [x] Abort the write on a before-hook error and keep the committed status on an after-hook error ([test](../../../conformance/invitation-hooks.mjs#L66))
       - [x] Recheck changed invitation inputs, live recipient and administrator permissions after host code runs ([test](../../../adapters/sqlstore/organization_decision_hooks_test.go#L120))
       - [x] `POST /organization/reject-invitation` ([test](../../../conformance/organization-invitations.mjs#L257))
         - [x] Decline an expired pending invitation through the recipient's session and preserve the current organization and team ([test](../../../conformance/organization-invitations.mjs#L257))
         - [x] Allow only one decision when acceptance races rejection across two database connections ([test](../../../adapters/sqlstore/organization_decision_test.go#L79))
-        - [x] Deliver the signed-in actor, invitation and destination before and after an authorized decision ([test](../../../conformance/invitation-hooks.mjs#L58))
-        - [x] Abort the write on a before-hook error and keep the committed status on an after-hook error ([test](../../../conformance/invitation-hooks.mjs#L63))
+        - [x] Deliver the signed-in actor, invitation and destination before and after an authorized decision ([test](../../../conformance/invitation-hooks.mjs#L61))
+        - [x] Abort the write on a before-hook error and keep the committed status on an after-hook error ([test](../../../conformance/invitation-hooks.mjs#L66))
         - [x] Recheck changed invitation inputs, live recipient and administrator permissions after host code runs ([test](../../../adapters/sqlstore/organization_decision_hooks_test.go#L120))
         - [x] Parameter `invitationId` ([test](../../../adapters/sqlstore/organization_decision_test.go#L52))
           - [x] Validate the request type and match the opaque invitation ID exactly on all three engines ([test](../../../adapters/sqlstore/organization_decision_test.go#L52))

@@ -912,6 +912,21 @@
       "label": "Retry a pending invitation after another member frees a seat",
       "test": "conformance/organization-capacity.mjs",
       "marker": "ok(await accept(peer, third))"
+    },
+    {
+      "label": "Deliver the recipient and pending invitation before acceptance and the committed membership afterward",
+      "test": "conformance/invitation-hooks.mjs",
+      "marker": "assert.equal(member.id, ok(await guest.organization.getActiveMember()).id)"
+    },
+    {
+      "label": "Keep the original selection on a before-hook failure and retain membership and team selection on an after-hook failure",
+      "test": "conformance/invitation-hooks.mjs",
+      "marker": "assert.equal(session.activeTeamId, team.id)"
+    },
+    {
+      "label": "Recheck the live recipient, grant and remaining seats after the host callback on all three SQL engines",
+      "test": "adapters/sqlstore/organization_acceptance_hooks_test.go",
+      "marker": "t.Fatal(\"unsuccessful acceptance changed the grant or membership\""
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L934": [
@@ -924,6 +939,21 @@
       "label": "Accept an invitation through the JavaScript client and read the new membership",
       "test": "conformance/core.test.mjs",
       "marker": "test(\"the official organization client can create, select"
+    },
+    {
+      "label": "Deliver the recipient and pending invitation before acceptance and the committed membership afterward",
+      "test": "conformance/invitation-hooks.mjs",
+      "marker": "assert.equal(member.id, ok(await guest.organization.getActiveMember()).id)"
+    },
+    {
+      "label": "Keep the original selection on a before-hook failure and retain membership and team selection on an after-hook failure",
+      "test": "conformance/invitation-hooks.mjs",
+      "marker": "assert.equal(session.activeTeamId, team.id)"
+    },
+    {
+      "label": "Recheck the live recipient, grant and remaining seats after the host callback on all three SQL engines",
+      "test": "adapters/sqlstore/organization_acceptance_hooks_test.go",
+      "marker": "t.Fatal(\"unsuccessful acceptance changed the grant or membership\""
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L951": [
@@ -10213,6 +10243,21 @@
       "label": "Require transactional reauthorization from custom stores only when profile hooks are enabled",
       "test": "adapters/sqlstore/organization_profile_hooks_test.go",
       "marker": "func TestOrganizationProfileHooksRequireGuardedStore("
+    },
+    {
+      "label": "Deliver the recipient and pending invitation before acceptance and the committed membership afterward",
+      "test": "conformance/invitation-hooks.mjs",
+      "marker": "assert.equal(member.id, ok(await guest.organization.getActiveMember()).id)"
+    },
+    {
+      "label": "Keep the original selection on a before-hook failure and retain membership and team selection on an after-hook failure",
+      "test": "conformance/invitation-hooks.mjs",
+      "marker": "assert.equal(session.activeTeamId, team.id)"
+    },
+    {
+      "label": "Recheck the live recipient, grant and remaining seats after the host callback on all three SQL engines",
+      "test": "adapters/sqlstore/organization_acceptance_hooks_test.go",
+      "marker": "t.Fatal(\"unsuccessful acceptance changed the grant or membership\""
     }
   ],
   "plugin-symbol/siwe/SIWEPluginOptions/getNonce": [
@@ -14678,6 +14723,21 @@
       "label": "Give host callbacks an independent copy of the invitation, destination and public session fields",
       "test": "plugins/organization/invitation_hooks_test.go",
       "marker": "t.Fatal(\"callback changed the invitation or organization sent to another caller\")"
+    },
+    {
+      "label": "Deliver the recipient and pending invitation before acceptance and the committed membership afterward",
+      "test": "conformance/invitation-hooks.mjs",
+      "marker": "assert.equal(member.id, ok(await guest.organization.getActiveMember()).id)"
+    },
+    {
+      "label": "Keep the original selection on a before-hook failure and retain membership and team selection on an after-hook failure",
+      "test": "conformance/invitation-hooks.mjs",
+      "marker": "assert.equal(session.activeTeamId, team.id)"
+    },
+    {
+      "label": "Recheck the live recipient, grant and remaining seats after the host callback on all three SQL engines",
+      "test": "adapters/sqlstore/organization_acceptance_hooks_test.go",
+      "marker": "t.Fatal(\"unsuccessful acceptance changed the grant or membership\""
     }
   ],
   "plugin-symbol/organization/OrganizationOptions/invitationExpiresIn": [

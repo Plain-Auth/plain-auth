@@ -46,4 +46,7 @@ func TestInvitationHooksRequireGuardedStore(t *testing.T) {
 	if _, err := New(Options{Store: basic{}, AfterRejectInvitation: func(context.Context, InvitationDecisionEvent) error { return nil }}); err == nil {
 		t.Fatal("unsupported hook accepted on the host store")
 	}
+	if _, err := New(Options{Store: basic{}, AfterAcceptInvitation: func(context.Context, InvitationDecisionEvent) error { return nil }}); err == nil {
+		t.Fatal("acceptance hook accepted on a store without guarded admission")
+	}
 }

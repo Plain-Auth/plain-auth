@@ -286,11 +286,14 @@ The account’s current email must match the invitation address, ignoring case. 
 
 ## Observe invitation decisions
 
-Set any of `BeforeRejectInvitation`, `AfterRejectInvitation`, `BeforeCancelInvitation`, and `AfterCancelInvitation` on `organization.Options`. Each callback receives the request context and an `organization.InvitationDecisionEvent`. Its `Actor` is the recipient for rejection and the administrator for cancellation. The event also includes the destination organization and the invitation, including its targeted teams.
+Set `BeforeAcceptInvitation` or `AfterAcceptInvitation` to run host code when a recipient joins. The corresponding rejection and cancellation options are `BeforeRejectInvitation`, `AfterRejectInvitation`, `BeforeCancelInvitation`, and `AfterCancelInvitation`. Each callback receives the request context and an `organization.InvitationDecisionEvent`. Its `Actor` is the recipient for acceptance or rejection and the administrator for cancellation. The event includes the destination organization and the invitation, including its targeted teams.
 
 ```go
 groups, err := organization.New(organization.Options{
     Store: store,
+    AfterAcceptInvitation: func(ctx context.Context, event organization.InvitationDecisionEvent) error {
+        return recordMembership(ctx, event.Member.ID, event.Actor.ID, event.Organization.ID)
+    },
     BeforeCancelInvitation: func(ctx context.Context, event organization.InvitationDecisionEvent) error {
         return checkCancellationPolicy(ctx, event.Actor.ID, event.Organization.ID, event.Invitation.ID)
     },
@@ -302,7 +305,9 @@ groups, err := organization.New(organization.Options{
 
 The example’s policy and recording functions belong to the host application. The before callback runs once per authorized request, before the write and outside database locks. Returning an error leaves the invitation untouched by that request. The SQL adapter checks the session, account, invitation, organization and cancellation permission again before committing. If inputs changed while the callback ran, the request can return HTTP 409 with `INVITATION_DECISION_CHANGED` or the applicable authorization error.
 
-The after callback receives the committed status. If it returns an error, the HTTP request fails and the database retains the decision. Repeating an authorized cancellation can deliver another callback for the same invitation. Use the invitation ID and status to deduplicate external effects when needed. Custom adapters enabling these hooks implement `organization.ObservedInvitationDecisionStore`. [Hook comparison](../conformance/invitation-hooks.mjs) · [Database revalidation tests](../adapters/sqlstore/organization_decision_hooks_test.go)
+Acceptance checks the live recipient, email verification policy and available organization seats before calling the before hook. Its `Member` is nil. The after hook receives the newly committed `Member`, including its ID and role. At that point the recipient belongs to the invited teams and their accepting session has selected the organization. A single invited team is also selected. Other sessions keep their own selections.
+
+If an after hook returns an error, the HTTP request fails and the database retains the decision. A client recovering from an acceptance error can read its session and membership. Retrying an already accepted invitation returns `INVITATION_NOT_FOUND`. Repeating an authorized cancellation can deliver another callback for the same invitation. Custom adapters implement `organization.ObservedInvitationAcceptanceStore` for acceptance hooks and `organization.ObservedInvitationDecisionStore` for rejection and cancellation hooks. [Hook comparison](../conformance/invitation-hooks.mjs) · [Acceptance and capacity tests](../adapters/sqlstore/organization_acceptance_hooks_test.go) · [Rejection and cancellation tests](../adapters/sqlstore/organization_decision_hooks_test.go)
 
 ## Read one invitation
 

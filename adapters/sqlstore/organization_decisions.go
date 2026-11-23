@@ -32,6 +32,18 @@ type invitationDecisionScope struct {
 	Membership       *org.Member
 }
 
+// Acceptance also reserves a membership seat. The same admission decision is
+// retained across preparation and commit so the host resolver runs once.
+const acceptInvitation org.InvitationDecision = "accepted"
+
+type invitationDecisionRequest struct {
+	actor           auth.Session
+	id              string
+	decision        org.InvitationDecision
+	requireVerified bool
+	admission       *memberAdmission
+}
+
 type invitationDecisionPhase int
 
 const (
@@ -41,7 +53,8 @@ const (
 )
 
 func (s *Store) unobservedInvitationDecision(ctx context.Context, actor auth.Session, id string, decision org.InvitationDecision, requireVerified bool) (*org.Invitation, error) {
-	scope, err := s.invitationDecisionTx(ctx, actor, id, decision, requireVerified, directDecision, nil)
+	request := invitationDecisionRequest{actor: actor, id: id, decision: decision, requireVerified: requireVerified}
+	scope, err := s.invitationDecisionTx(ctx, request, directDecision, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -49,9 +62,25 @@ func (s *Store) unobservedInvitationDecision(ctx context.Context, actor auth.Ses
 }
 
 func (s *Store) ObserveInvitationDecision(ctx context.Context, actor auth.Session, id string, decision org.InvitationDecision, requireVerified bool, before org.InvitationDecisionHook) (*org.InvitationDecisionEvent, error) {
+	request := invitationDecisionRequest{actor: actor, id: id, decision: decision, requireVerified: requireVerified}
+	return s.observeDecision(ctx, request, before)
+}
+
+func (s *Store) ObserveInvitationAcceptance(ctx context.Context, actor auth.Session, id string, requireVerified bool, before org.InvitationDecisionHook) (*org.InvitationDecisionEvent, error) {
+	var event *org.InvitationDecisionEvent
+	err := s.withMemberAdmission(ctx, func(admission *memberAdmission) error {
+		request := invitationDecisionRequest{actor: actor, id: id, decision: acceptInvitation, requireVerified: requireVerified, admission: admission}
+		var err error
+		event, err = s.observeDecision(ctx, request, before)
+		return err
+	})
+	return event, err
+}
+
+func (s *Store) observeDecision(ctx context.Context, request invitationDecisionRequest, before org.InvitationDecisionHook) (*org.InvitationDecisionEvent, error) {
 	var expected []byte
 	if before != nil {
-		scope, err := s.invitationDecisionTx(ctx, actor, id, decision, requireVerified, prepareObservedDecision, nil)
+		scope, err := s.invitationDecisionTx(ctx, request, prepareObservedDecision, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -63,14 +92,15 @@ func (s *Store) ObserveInvitationDecision(ctx context.Context, actor auth.Sessio
 			return nil, err
 		}
 	}
-	scope, err := s.invitationDecisionTx(ctx, actor, id, decision, requireVerified, commitObservedDecision, expected)
+	scope, err := s.invitationDecisionTx(ctx, request, commitObservedDecision, expected)
 	if err != nil {
 		return nil, err
 	}
 	return &scope.InvitationDecisionEvent, nil
 }
 
-func (s *Store) invitationDecisionTx(ctx context.Context, actor auth.Session, id string, decision org.InvitationDecision, requireVerified bool, phase invitationDecisionPhase, expected []byte) (*invitationDecisionScope, error) {
+func (s *Store) invitationDecisionTx(ctx context.Context, request invitationDecisionRequest, phase invitationDecisionPhase, expected []byte) (*invitationDecisionScope, error) {
+	actor := request.actor
 	if err := actor.RequireOwner(); err != nil {
 		return nil, err
 	}
@@ -85,7 +115,7 @@ func (s *Store) invitationDecisionTx(ctx context.Context, actor auth.Session, id
 		}
 		return nil, err
 	}
-	inv, err := s.lockInvitation(ctx, tx, id)
+	inv, err := s.lockInvitation(ctx, tx, request.id)
 	if err != nil {
 		return nil, err
 	}
@@ -94,7 +124,15 @@ func (s *Store) invitationDecisionTx(ctx context.Context, actor auth.Session, id
 		return nil, err
 	}
 	scope := &invitationDecisionScope{InvitationDecisionEvent: org.InvitationDecisionEvent{Invitation: inv, Actor: account.user}, SessionID: account.id, SessionCreatedAt: account.createdAt}
-	switch decision {
+	now := time.Now().UTC().Truncate(time.Millisecond)
+	switch request.decision {
+	case acceptInvitation:
+		if request.admission == nil {
+			return nil, errors.New("acceptance requires a membership admission decision")
+		}
+		if err := s.checkInvitationAcceptance(ctx, tx, inv, account.user, now, request.requireVerified, request.admission); err != nil {
+			return nil, err
+		}
 	case org.RejectInvitation:
 		if inv.Status != "pending" {
 			return nil, org.ErrInvitation
@@ -102,7 +140,7 @@ func (s *Store) invitationDecisionTx(ctx context.Context, actor auth.Session, id
 		if strings.ToLower(inv.Email) != strings.ToLower(account.user.Email) {
 			return nil, org.ErrRecipient
 		}
-		if requireVerified && !account.user.EmailVerified {
+		if request.requireVerified && !account.user.EmailVerified {
 			return nil, org.ErrUnverified
 		}
 	case org.CancelInvitation:
@@ -134,7 +172,13 @@ func (s *Store) invitationDecisionTx(ctx context.Context, actor auth.Session, id
 		}
 	}
 	if phase != prepareObservedDecision {
-		if err := s.updateInvitationStatus(ctx, tx, &scope.Invitation, string(decision)); err != nil {
+		if request.decision == acceptInvitation {
+			member, err := s.grantInvitedMembership(ctx, tx, &scope.Invitation, account.id, account.user.ID, now)
+			if err != nil {
+				return nil, err
+			}
+			scope.Member = &member
+		} else if err := s.updateInvitationStatus(ctx, tx, &scope.Invitation, string(request.decision)); err != nil {
 			return nil, err
 		}
 	}

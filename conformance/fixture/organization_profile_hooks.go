@@ -54,7 +54,7 @@ func configureDecisionHooks(o *org.Options, path string) {
 				return err
 			}
 			defer f.Close()
-			err = json.NewEncoder(f).Encode(map[string]any{"phase": phase, "actor": event.Actor, "invitation": event.Invitation, "organization": event.Organization})
+			err = json.NewEncoder(f).Encode(map[string]any{"phase": phase, "actor": event.Actor, "invitation": event.Invitation, "organization": event.Organization, "member": event.Member})
 			if err == nil && event.Organization.Slug == phase {
 				return errors.New("private invitation fixture")
 			}
@@ -62,5 +62,6 @@ func configureDecisionHooks(o *org.Options, path string) {
 		}
 	}
 	o.BeforeRejectInvitation, o.AfterRejectInvitation = record("before-reject"), record("after-reject")
+	o.BeforeAcceptInvitation, o.AfterAcceptInvitation = record("before-accept"), record("after-accept")
 	o.BeforeCancelInvitation, o.AfterCancelInvitation = record("before-cancel"), record("after-cancel")
 }

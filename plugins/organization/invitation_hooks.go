@@ -3,6 +3,7 @@ package organization
 import (
 	"context"
 	"encoding/json"
+	"errors"
 
 	auth "github.com/Plain-Auth/plain-auth"
 )
@@ -21,6 +22,8 @@ type InvitationDecisionEvent struct {
 	Invitation   Invitation
 	Organization Organization
 	Actor        auth.User
+	// Member is populated after acceptance commits.
+	Member *Member
 }
 
 type InvitationDecisionHook func(context.Context, InvitationDecisionEvent) error
@@ -32,6 +35,12 @@ type ObservedInvitationDecisionStore interface {
 	InvitationRejectionStore
 	InvitationCancellationStore
 	ObserveInvitationDecision(ctx context.Context, session auth.Session, id string, decision InvitationDecision, requireVerified bool, before InvitationDecisionHook) (*InvitationDecisionEvent, error)
+}
+
+// ObservedInvitationAcceptanceStore checks eligibility before the hook, releases
+// database locks while it runs, then commits membership, teams and selection together.
+type ObservedInvitationAcceptanceStore interface {
+	ObserveInvitationAcceptance(ctx context.Context, session auth.Session, id string, requireVerified bool, before InvitationDecisionHook) (*InvitationDecisionEvent, error)
 }
 
 var ErrInvitationDecisionChanged = problem(409, "INVITATION_DECISION_CHANGED", "The invitation decision inputs changed. Retry the request.")
@@ -75,4 +84,21 @@ func (o Options) observedInvitation(ctx context.Context, session *auth.SessionRe
 		}
 	}
 	return &event.Invitation, nil
+}
+
+func (o Options) acceptWithHooks(ctx context.Context, session *auth.SessionResult, id string) (Invitation, Member, error) {
+	store := o.Store.(ObservedInvitationAcceptanceStore)
+	event, err := store.ObserveInvitationAcceptance(ctx, session.Session, id, o.RequireVerifiedEmail, decisionHook(o.BeforeAcceptInvitation, session.User))
+	if err != nil {
+		return Invitation{}, Member{}, err
+	}
+	if event == nil || event.Member == nil {
+		return Invitation{}, Member{}, errors.New("organization: acceptance store returned no committed member")
+	}
+	if after := decisionHook(o.AfterAcceptInvitation, session.User); after != nil {
+		if err := after(ctx, *event); err != nil {
+			return Invitation{}, Member{}, err
+		}
+	}
+	return event.Invitation, *event.Member, nil
 }

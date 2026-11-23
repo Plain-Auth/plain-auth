@@ -363,8 +363,6 @@ func (s *Store) AcceptOrganizationInvitation(ctx context.Context, id, sessionID 
 }
 
 func (s *Store) acceptOrganizationInvitation(ctx context.Context, id, sessionID string, u authn.User, now time.Time, requireVerified bool, admission *memberAdmission) (org.Invitation, org.Member, error) {
-	var inv org.Invitation
-	var m org.Member
 	tx, err := s.beginMembershipChange(ctx)
 	if err != nil {
 		return org.Invitation{}, org.Member{}, err
@@ -374,49 +372,14 @@ func (s *Store) acceptOrganizationInvitation(ctx context.Context, id, sessionID 
 	if err != nil {
 		return org.Invitation{}, org.Member{}, err
 	}
-	inv, err = s.lockInvitation(ctx, tx, id)
+	inv, err := s.lockInvitation(ctx, tx, id)
 	if err != nil {
 		return org.Invitation{}, org.Member{}, err
 	}
-	organizationID := inv.OrganizationID
-	if inv.Status != "pending" || !now.Before(inv.ExpiresAt) {
-		return org.Invitation{}, org.Member{}, org.ErrInvitation
-	}
-	if strings.ToLower(inv.Email) != strings.ToLower(u.Email) {
-		return org.Invitation{}, org.Member{}, org.ErrRecipient
-	}
-	if requireVerified && !u.EmailVerified {
-		return org.Invitation{}, org.Member{}, org.ErrUnverified
-	}
-	if inv.TeamID != nil && s.teamOptions == nil {
-		return org.Invitation{}, org.Member{}, org.ErrTeamPolicyRequired
-	}
-	if err = s.checkNewMember(ctx, tx, inv.OrganizationID, u.ID, admission, &inv); err != nil {
+	if err := s.checkInvitationAcceptance(ctx, tx, inv, u, now, requireVerified, admission); err != nil {
 		return org.Invitation{}, org.Member{}, err
 	}
-	if err := s.updateInvitationStatus(ctx, tx, &inv, "accepted"); err != nil {
-		return org.Invitation{}, org.Member{}, err
-	}
-	m = org.Member{ID: rand.Text(), OrganizationID: organizationID, UserID: u.ID, Role: inv.Role, CreatedAt: now}
-	if err = s.addMember(ctx, tx, m); err != nil {
-		return org.Invitation{}, org.Member{}, err
-	}
-	var activeTeam *string
-	if inv.TeamID != nil {
-		ids := strings.Split(*inv.TeamID, ",")
-		for _, id := range ids {
-			if _, err = s.findTeam(ctx, tx, organizationID, id); err != nil {
-				return org.Invitation{}, org.Member{}, err
-			}
-			if _, err = s.insertTeamMember(ctx, tx, id, u.ID, true); err != nil {
-				return org.Invitation{}, org.Member{}, err
-			}
-		}
-		if len(ids) == 1 {
-			activeTeam = &ids[0]
-		}
-	}
-	err = s.selectOrganizationAndTeam(ctx, tx, sessionID, u.ID, &organizationID, activeTeam)
+	m, err := s.grantInvitedMembership(ctx, tx, &inv, sessionID, u.ID, now)
 	if err != nil {
 		return org.Invitation{}, org.Member{}, err
 	}
@@ -424,6 +387,51 @@ func (s *Store) acceptOrganizationInvitation(ctx context.Context, id, sessionID 
 		return org.Invitation{}, org.Member{}, err
 	}
 	return inv, m, nil
+}
+
+func (s *Store) checkInvitationAcceptance(ctx context.Context, tx *sql.Tx, inv org.Invitation, u authn.User, now time.Time, requireVerified bool, admission *memberAdmission) error {
+	if inv.Status != "pending" || !now.Before(inv.ExpiresAt) {
+		return org.ErrInvitation
+	}
+	if strings.ToLower(inv.Email) != strings.ToLower(u.Email) {
+		return org.ErrRecipient
+	}
+	if requireVerified && !u.EmailVerified {
+		return org.ErrUnverified
+	}
+	if inv.TeamID != nil && s.teamOptions == nil {
+		return org.ErrTeamPolicyRequired
+	}
+	return s.checkNewMember(ctx, tx, inv.OrganizationID, u.ID, admission, &inv)
+}
+
+func (s *Store) grantInvitedMembership(ctx context.Context, tx *sql.Tx, inv *org.Invitation, sessionID, userID string, now time.Time) (org.Member, error) {
+	if err := s.updateInvitationStatus(ctx, tx, inv, "accepted"); err != nil {
+		return org.Member{}, err
+	}
+	m := org.Member{ID: rand.Text(), OrganizationID: inv.OrganizationID, UserID: userID, Role: inv.Role, CreatedAt: now}
+	if err := s.addMember(ctx, tx, m); err != nil {
+		return org.Member{}, err
+	}
+	var activeTeam *string
+	if inv.TeamID != nil {
+		ids := strings.Split(*inv.TeamID, ",")
+		for _, id := range ids {
+			if _, err := s.findTeam(ctx, tx, inv.OrganizationID, id); err != nil {
+				return org.Member{}, err
+			}
+			if _, err := s.insertTeamMember(ctx, tx, id, userID, true); err != nil {
+				return org.Member{}, err
+			}
+		}
+		if len(ids) == 1 {
+			activeTeam = &ids[0]
+		}
+	}
+	if err := s.selectOrganizationAndTeam(ctx, tx, sessionID, userID, &inv.OrganizationID, activeTeam); err != nil {
+		return org.Member{}, err
+	}
+	return m, nil
 }
 
 // Check the physical session schema inside the deletion transaction. A process

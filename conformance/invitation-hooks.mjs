@@ -3,13 +3,14 @@ import { readFile } from "node:fs/promises";
 import { organization } from "better-auth/plugins";
 import { organizationClient } from "better-auth/client/plugins";
 
-export async function compareInvitationHooks(t, { reference, goFixture, instrument }) {
+export async function compareInvitationHooks(t, { reference, goFixture, instrument }, acceptance = false) {
   const events = [];
-  const record = phase => async ({ invitation, organization: group, user, cancelledBy }) => {
-    events.push(structuredClone({ phase, invitation, organization: group, actor: user ?? cancelledBy }));
+  const record = phase => async ({ invitation, organization: group, user, cancelledBy, member }) => {
+    events.push(structuredClone({ phase, invitation, organization: group, actor: user ?? cancelledBy, member }));
     if (group.slug === phase) throw Error("private invitation fixture");
   };
   const hooks = {
+    beforeAcceptInvitation: record("before-accept"), afterAcceptInvitation: record("after-accept"),
     beforeRejectInvitation: record("before-reject"), afterRejectInvitation: record("after-reject"),
     beforeCancelInvitation: record("before-cancel"), afterCancelInvitation: record("after-cancel"),
   };
@@ -30,9 +31,10 @@ export async function compareInvitationHooks(t, { reference, goFixture, instrume
     const ok = res => { assert.equal(res.error, null, JSON.stringify(res.error)); return res.data; };
     const signUp = async (client, name) => ok(await client.signUp.email({ name, email: name.toLowerCase()+"@example.test", password: "organization-observer" })).user;
     const host = await signUp(owner, "Host"), recipient = await signUp(guest, "Guest");
-    for (const [action, method, caller, actor, outcome] of [
+    const actions = acceptance ? [["accept", "acceptInvitation", guest, recipient, "accepted"]] : [
       ["reject", "rejectInvitation", guest, recipient, "rejected"], ["cancel", "cancelInvitation", owner, host, "canceled"],
-    ]) {
+    ];
+    for (const [action, method, caller, actor, outcome] of actions) {
       for (const failure of ["", "before", "after"]) {
         const start = (await read(server)).length;
         const slug = (failure || "success") + "-" + action;
@@ -40,6 +42,7 @@ export async function compareInvitationHooks(t, { reference, goFixture, instrume
         const team = ok(await owner.organization.createTeam({ name: "Researchers", organizationId: group.id }));
         const invite = ok(await owner.organization.inviteMember({ email: recipient.email, role: "member", teamId: team.id }));
         const body = { invitationId: invite.id };
+        const previousSession = ok(await guest.getSession()).session;
         const foreign = await (caller === owner ? guest : owner).organization[method](body);
         assert.ok(foreign.error);
         assert.equal((await read(server)).length, start);
@@ -61,6 +64,27 @@ export async function compareInvitationHooks(t, { reference, goFixture, instrume
         }
         const saved = ok(await owner.organization.listInvitations({ query: { organizationId: group.id } })).find(v => v.id === invite.id);
         assert.equal(saved.status, failure === "before" ? "pending" : outcome);
+        if (acceptance) {
+          assert.equal(steps[0].member ?? null, null);
+          const session = ok(await guest.getSession()).session;
+          if (failure === "before") {
+            assert.equal(session.activeOrganizationId, previousSession.activeOrganizationId);
+            assert.equal(session.activeTeamId, previousSession.activeTeamId);
+            assert.ok(!ok(await guest.organization.list()).some(g => g.id === group.id));
+          } else {
+            const { member } = steps[1];
+            assert.equal(member.id, ok(await guest.organization.getActiveMember()).id);
+            assert.equal(member.organizationId, group.id);
+            assert.equal(member.userId, recipient.id);
+            assert.equal(member.role, invite.role);
+            assert.ok(Number.isFinite(Date.parse(member.createdAt)));
+            if (!failure) assert.equal(member.id, result.data.member.id);
+            assert.equal(session.activeOrganizationId, group.id);
+            assert.equal(session.activeTeamId, team.id);
+            assert.equal((await guest.organization.acceptInvitation(body)).error.code, "INVITATION_NOT_FOUND");
+            assert.equal((await read(server)).length, start + 2);
+          }
+        }
       }
     }
   }

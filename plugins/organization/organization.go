@@ -63,6 +63,8 @@ type Options struct {
 	CancelPendingInvitationsOnReInvite bool
 	// InvitationExpiresIn applies to new and resent invitations. Zero uses 48 hours.
 	InvitationExpiresIn      time.Duration
+	BeforeAcceptInvitation   InvitationDecisionHook
+	AfterAcceptInvitation    InvitationDecisionHook
 	BeforeRejectInvitation   InvitationDecisionHook
 	AfterRejectInvitation    InvitationDecisionHook
 	BeforeCancelInvitation   InvitationDecisionHook
@@ -198,6 +200,11 @@ func NewService(o Options) (*Service, error) {
 	if o.BeforeRejectInvitation != nil || o.AfterRejectInvitation != nil || o.BeforeCancelInvitation != nil || o.AfterCancelInvitation != nil {
 		if _, ok := o.Store.(ObservedInvitationDecisionStore); !ok {
 			return nil, errors.New("organization: invitation decision hooks require an ObservedInvitationDecisionStore")
+		}
+	}
+	if o.BeforeAcceptInvitation != nil || o.AfterAcceptInvitation != nil {
+		if _, ok := o.Store.(ObservedInvitationAcceptanceStore); !ok {
+			return nil, errors.New("organization: acceptance hooks require an ObservedInvitationAcceptanceStore")
 		}
 	}
 	return &Service{options: o}, nil
@@ -482,7 +489,13 @@ func (o Options) accept(c authn.EndpointContext, s *authn.SessionResult) (any, e
 	if err != nil {
 		return nil, err
 	}
-	inv, member, err := o.Store.AcceptOrganizationInvitation(c.Request.Context(), id, s.Session.ID, s.User, time.Now().UTC().Truncate(time.Millisecond), o.RequireVerifiedEmail)
+	var inv Invitation
+	var member Member
+	if o.BeforeAcceptInvitation != nil || o.AfterAcceptInvitation != nil {
+		inv, member, err = o.acceptWithHooks(c.Request.Context(), s, id)
+	} else {
+		inv, member, err = o.Store.AcceptOrganizationInvitation(c.Request.Context(), id, s.Session.ID, s.User, time.Now().UTC().Truncate(time.Millisecond), o.RequireVerifiedEmail)
+	}
 	if err != nil {
 		return nil, err
 	}
