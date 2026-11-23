@@ -258,6 +258,7 @@
     - [x] Describe nullable selection results across enabled profiles and expose signed destinations when the host supports them ([test](../../../plugins/openapi/organization_selection_test.go#L20))
     - [x] On a signed browser navigation, send the Location of the consent page bound to the selecting session ([test](../../../adapters/sqlstore/oauth_post_login_test.go#L181))
     - [x] Switch the session’s organization and team using plain HTTP and JSON on six Go routers ([test](../../../integrations/routers/routers_test.go#L202))
+    - [x] Select a team by ID and record it as the session's active team ([test](../../../adapters/sqlstore/organization_team_contract_test.go#L124))
   - [x] `GET /organization/list-user-teams` ([test](../../../adapters/sqlstore/organization_teams_test.go#L250))
     - [x] Return self memberships across organizations and scope administrative queries to the selected organization ([test](../../../adapters/sqlstore/organization_teams_test.go#L266))
     - [x] Lists the caller's teams across organizations or within a named one, and lets an admin but not a plain member list another member's teams ([test](../../../adapters/sqlstore/organization_teams_test.go#L250))
@@ -271,6 +272,7 @@
     - [x] Give the team membership hooks the membership, the member's account, the team and the organization ([test](../../../adapters/sqlstore/organization_team_member_hooks_test.go#L99))
     - [x] Return an existing team membership without running the hooks ([test](../../../adapters/sqlstore/organization_team_member_hooks_test.go#L105))
     - [x] Check the team member limit after the before hook and skip the after hook when the team is full ([test](../../../adapters/sqlstore/organization_team_member_hooks_test.go#L111))
+    - [x] Add the named user to the named team and return the membership ([test](../../../adapters/sqlstore/organization_team_contract_test.go#L113))
   - [x] `POST /organization/remove-team-member` ([test](../../../adapters/sqlstore/organization_teams_test.go#L275))
     - [x] Remove membership and clear the affected user’s active team ([test](../../../adapters/sqlstore/organization_teams_test.go#L275))
     - [x] Cancel a team member removal when the before hook fails and run both hooks for a completed removal ([test](../../../adapters/sqlstore/organization_team_member_hooks_test.go#L128))
@@ -890,9 +892,11 @@
             - [x] Accept a string team name, including an empty label, and reject invalid input before writing ([test](../../../conformance/organization-team-limits.mjs#L29))
           - [x] Parameter `organizationId` (optional) ([test](../../../conformance/organization-team-limits.mjs#L35))
             - [x] Use the selected organization for an omitted or empty destination and authorize an explicit destination independently ([test](../../../conformance/organization-team-limits.mjs#L35))
-      - [ ] List Teams
+      - [x] List Teams ([test](../../../adapters/sqlstore/organization_team_contract_test.go#L99))
         - [x] Read the organization’s teams and deny outsiders using the browser client ([test](../../../conformance/core.test.mjs#L626))
-        - [ ] `GET /organization/list-teams`
+        - [x] List the teams of an explicitly named organization ([test](../../../adapters/sqlstore/organization_team_contract_test.go#L99))
+        - [x] `GET /organization/list-teams` ([test](../../../adapters/sqlstore/organization_team_contract_test.go#L99))
+          - [x] List the teams of an explicitly named organization ([test](../../../adapters/sqlstore/organization_team_contract_test.go#L99))
           - [x] Parameter `organizationId` (optional) ([test](../../../conformance/organization-team-limits.mjs#L56))
             - [x] Lists the teams of an explicitly named organization rather than the active one ([test](../../../conformance/organization-team-limits.mjs#L56))
       - [ ] Update Team
@@ -918,11 +922,13 @@
             - [x] Remove the identified team and keep the organization's remaining team ([test](../../../conformance/core.test.mjs#L637))
           - [x] Parameter `organizationId` (optional) ([test](../../../adapters/sqlstore/organization_team_scope_test.go#L83))
             - [x] Use the active organization when remove-team receives an empty organizationId ([test](../../../adapters/sqlstore/organization_team_scope_test.go#L83))
-      - [ ] Set Active Team
+      - [x] Set Active Team ([test](../../../adapters/sqlstore/organization_team_contract_test.go#L124))
         - [x] Select a team belonging to the active organization and preserve session cookie persistence ([test](../../../adapters/sqlstore/organization_teams_test.go#L156))
         - [x] Switch and clear the current session’s selection with independent HTTP clients across three SQL engines ([test](../../../adapters/sqlstore/organization_selection_http_test.go#L23))
-        - [ ] `POST /organization/set-active-team`
+        - [x] Select a team by ID and record it as the session's active team ([test](../../../adapters/sqlstore/organization_team_contract_test.go#L124))
+        - [x] `POST /organization/set-active-team` ([test](../../../adapters/sqlstore/organization_team_contract_test.go#L124))
           - [x] Describe nullable selection results across enabled profiles and expose signed destinations when the host supports them ([test](../../../plugins/openapi/organization_selection_test.go#L20))
+          - [x] Select a team by ID and record it as the session's active team ([test](../../../adapters/sqlstore/organization_team_contract_test.go#L124))
           - [x] Parameter `teamId` (optional) ([test](../../../conformance/core.test.mjs#L1823))
             - [x] Use the current team for an omitted or empty ID, select a member team by ID, and clear it with JSON null ([test](../../../conformance/core.test.mjs#L1823))
       - [ ] List User Teams
@@ -932,29 +938,41 @@
             - [x] An admin lists another member's teams by user ID, a plain member is refused another user's list, and an omitted ID lists the caller's own teams ([test](../../../adapters/sqlstore/organization_teams_test.go#L263))
           - [x] Parameter `organizationId` (optional) ([test](../../../adapters/sqlstore/organization_team_scope_test.go#L97))
             - [x] Use the active organization when listing another member's teams without organizationId ([test](../../../adapters/sqlstore/organization_team_scope_test.go#L97))
-      - [ ] List Team Members
+      - [x] List Team Members ([test](../../../adapters/sqlstore/organization_team_contract_test.go#L124))
         - [x] List members of the selected team and reject a caller whose membership was removed ([test](../../../adapters/sqlstore/organization_teams_test.go#L277))
-        - [ ] `POST /organization/list-team-members`
-          - [ ] Parameter `teamId` (optional)
-      - [ ] Add Team Member
+        - [x] List the active team's members by default and an explicitly named team's members, refusing a team the caller is not on ([test](../../../adapters/sqlstore/organization_team_contract_test.go#L124))
+        - [x] `POST /organization/list-team-members` ([test](../../../adapters/sqlstore/organization_team_contract_test.go#L124))
+          - [x] List the active team's members by default and an explicitly named team's members, refusing a team the caller is not on ([test](../../../adapters/sqlstore/organization_team_contract_test.go#L124))
+          - [x] Parameter `teamId` (optional) ([test](../../../adapters/sqlstore/organization_team_contract_test.go#L124))
+            - [x] List the active team's members by default and an explicitly named team's members, refusing a team the caller is not on ([test](../../../adapters/sqlstore/organization_team_contract_test.go#L124))
+      - [x] Add Team Member ([test](../../../adapters/sqlstore/organization_team_contract_test.go#L113))
         - [x] Admit one candidate to the last seat across competing SQL-backed servers and return existing memberships on retry ([test](../../../adapters/sqlstore/organization_teams_test.go#L213))
         - [x] Ask the host for a team's cap with the manager's session, admit members only within it and return existing memberships without asking ([test](../../../adapters/sqlstore/organization_team_seats_test.go#L100))
-        - [ ] `POST /organization/add-team-member`
+        - [x] Add the named user to the named team and return the membership ([test](../../../adapters/sqlstore/organization_team_contract_test.go#L113))
+        - [x] `POST /organization/add-team-member` ([test](../../../adapters/sqlstore/organization_team_contract_test.go#L113))
+          - [x] Add the named user to the named team and return the membership ([test](../../../adapters/sqlstore/organization_team_contract_test.go#L113))
           - [x] Parameter `teamId` ([test](../../../conformance/core.test.mjs#L619))
             - [x] Add the user to the identified team so they can then select it as their active team ([test](../../../conformance/core.test.mjs#L619))
-          - [ ] Parameter `userId`
-      - [ ] Remove Team Member
+          - [x] Parameter `userId` ([test](../../../adapters/sqlstore/organization_team_contract_test.go#L113))
+            - [x] Add the named user to the named team and return the membership ([test](../../../adapters/sqlstore/organization_team_contract_test.go#L113))
+      - [x] Remove Team Member ([test](../../../adapters/sqlstore/organization_team_contract_test.go#L150))
         - [x] Remove membership and clear the affected user’s active team ([test](../../../adapters/sqlstore/organization_teams_test.go#L275))
-        - [ ] `POST /organization/remove-team-member`
+        - [x] Remove only the named user from the named team ([test](../../../adapters/sqlstore/organization_team_contract_test.go#L150))
+        - [x] `POST /organization/remove-team-member` ([test](../../../adapters/sqlstore/organization_team_contract_test.go#L150))
+          - [x] Remove only the named user from the named team ([test](../../../adapters/sqlstore/organization_team_contract_test.go#L150))
           - [x] Parameter `teamId` ([test](../../../conformance/core.test.mjs#L635))
             - [x] Remove the user from the identified team so they can no longer list its members ([test](../../../conformance/core.test.mjs#L635))
           - [x] Parameter `userId` ([test](../../../adapters/sqlstore/organization_teams_test.go#L275))
             - [x] Remove the named user from the team and clear that user's active team selection ([test](../../../adapters/sqlstore/organization_teams_test.go#L275))
-    - [ ] Team Permissions
+    - [x] Team Permissions ([test](../../../adapters/sqlstore/organization_team_contract_test.go#L19))
       - [x] Apply owner, admin and member team-management permissions through public HTTP routes ([test](../../../conformance/core.test.mjs#L633))
-      - [ ] `team:create`
-      - [ ] `team:update`
-      - [ ] `team:delete`
+      - [x] Check team:create, team:update and team:delete separately with custom roles over HTTP on three SQL engines ([test](../../../adapters/sqlstore/organization_team_contract_test.go#L19))
+      - [x] `team:create` ([test](../../../adapters/sqlstore/organization_team_contract_test.go#L80))
+        - [x] Permit team creation with team:create alone and refuse it to roles without it ([test](../../../adapters/sqlstore/organization_team_contract_test.go#L80))
+      - [x] `team:update` ([test](../../../adapters/sqlstore/organization_team_contract_test.go#L86))
+        - [x] Permit team renames with team:update alone and refuse them to roles without it ([test](../../../adapters/sqlstore/organization_team_contract_test.go#L86))
+      - [x] `team:delete` ([test](../../../adapters/sqlstore/organization_team_contract_test.go#L92))
+        - [x] Permit team removal with team:delete alone and refuse it to roles without it ([test](../../../adapters/sqlstore/organization_team_contract_test.go#L92))
     - [ ] Team Configuration Options
       - [x] Honor fixed seat and team limits, and optionally permit removal of the final team ([test](../../../adapters/sqlstore/organization_teams_test.go#L331))
       - [x] Write nothing when the caller's session changes during resolution, the host fails or returns a negative cap, or a fixed cap is combined with a resolver ([test](../../../adapters/sqlstore/organization_team_seats_test.go#L190))

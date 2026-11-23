@@ -3739,6 +3739,11 @@
       "label": "Switch the session’s organization and team using plain HTTP and JSON on six Go routers",
       "test": "integrations/routers/routers_test.go",
       "marker": "organization operation did not return JSON to the calling application"
+    },
+    {
+      "label": "Select a team by ID and record it as the session's active team",
+      "test": "adapters/sqlstore/organization_team_contract_test.go",
+      "marker": "// set-active-team selects a team by ID, and list-team-members reads an explicit team."
     }
   ],
   "plugin/organization/GET /organization/list-user-teams": [
@@ -3797,6 +3802,11 @@
       "label": "Check the team member limit after the before hook and skip the after hook when the team is full",
       "test": "adapters/sqlstore/organization_team_member_hooks_test.go",
       "marker": "// The team member limit is checked after the before hook."
+    },
+    {
+      "label": "Add the named user to the named team and return the membership",
+      "test": "adapters/sqlstore/organization_team_contract_test.go",
+      "marker": "// add-team-member adds the named user to the named team."
     }
   ],
   "plugin/organization/POST /organization/remove-team-member": [
@@ -3855,6 +3865,12 @@
       "label": "Read the organization’s teams and deny outsiders using the browser client",
       "test": "conformance/core.test.mjs",
       "marker": "assert.equal((await outsider.organization.listTeams("
+    },
+    {
+      "label": "List the teams of an explicitly named organization",
+      "test": "adapters/sqlstore/organization_team_contract_test.go",
+      "marker": "// An explicit organizationId lists that organization's teams.",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L1844": [
@@ -3881,6 +3897,12 @@
       "label": "Switch and clear the current session’s selection with independent HTTP clients across three SQL engines",
       "test": "adapters/sqlstore/organization_selection_http_test.go",
       "marker": "func TestOrganizationAndTeamSelectionHTTP("
+    },
+    {
+      "label": "Select a team by ID and record it as the session's active team",
+      "test": "adapters/sqlstore/organization_team_contract_test.go",
+      "marker": "// set-active-team selects a team by ID, and list-team-members reads an explicit team.",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L1915": [
@@ -3895,6 +3917,12 @@
       "label": "List members of the selected team and reject a caller whose membership was removed",
       "test": "adapters/sqlstore/organization_teams_test.go",
       "marker": "err = peer.ListTeamMembers(ctx, team.ID)"
+    },
+    {
+      "label": "List the active team's members by default and an explicitly named team's members, refusing a team the caller is not on",
+      "test": "adapters/sqlstore/organization_team_contract_test.go",
+      "marker": "// set-active-team selects a team by ID, and list-team-members reads an explicit team.",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L1952": [
@@ -3907,6 +3935,12 @@
       "label": "Ask the host for a team's cap with the manager's session, admit members only within it and return existing memberships without asking",
       "test": "adapters/sqlstore/organization_team_seats_test.go",
       "marker": "// Direct adds ask the host with the manager's session and enforce the answer."
+    },
+    {
+      "label": "Add the named user to the named team and return the membership",
+      "test": "adapters/sqlstore/organization_team_contract_test.go",
+      "marker": "// add-team-member adds the named user to the named team.",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L1971": [
@@ -3914,6 +3948,12 @@
       "label": "Remove membership and clear the affected user’s active team",
       "test": "adapters/sqlstore/organization_teams_test.go",
       "marker": "removing member retained active team"
+    },
+    {
+      "label": "Remove only the named user from the named team",
+      "test": "adapters/sqlstore/organization_team_contract_test.go",
+      "marker": "// remove-team-member removes only the named user from the named team.",
+      "complete": true
     }
   ],
   "plugin-symbol/organization/OrganizationClientOptions/teams": [
@@ -3935,6 +3975,12 @@
       "label": "Apply owner, admin and member team-management permissions through public HTTP routes",
       "test": "conformance/core.test.mjs",
       "marker": "await alice.organization.createTeam({ name: \"Denied\""
+    },
+    {
+      "label": "Check team:create, team:update and team:delete separately with custom roles over HTTP on three SQL engines",
+      "test": "adapters/sqlstore/organization_team_contract_test.go",
+      "marker": "func TestOrganizationTeamContract(",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L2003": [
@@ -14518,6 +14564,12 @@
       "label": "Describe nullable selection results across enabled profiles and expose signed destinations when the host supports them",
       "test": "plugins/openapi/organization_selection_test.go",
       "marker": "func TestOrganizationSelectionSchema("
+    },
+    {
+      "label": "Select a team by ID and record it as the session's active team",
+      "test": "adapters/sqlstore/organization_team_contract_test.go",
+      "marker": "// set-active-team selects a team by ID, and list-team-members reads an explicit team.",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/organization.mdx#L637/Parameter `organizationId` (optional)": [
@@ -17800,6 +17852,78 @@
       "label": "Remove a team from trusted server code without a session while keeping the final-team rule",
       "test": "adapters/sqlstore/organization_team_scope_test.go",
       "marker": "// Trusted removal needs no session but keeps the final-team rule."
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1994/`team:create`": [
+    {
+      "label": "Permit team creation with team:create alone and refuse it to roles without it",
+      "test": "adapters/sqlstore/organization_team_contract_test.go",
+      "marker": "// team:create alone permits creation and nothing else.",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1995/`team:update`": [
+    {
+      "label": "Permit team renames with team:update alone and refuse them to roles without it",
+      "test": "adapters/sqlstore/organization_team_contract_test.go",
+      "marker": "// team:update alone permits renaming and nothing else.",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1996/`team:delete`": [
+    {
+      "label": "Permit team removal with team:delete alone and refuse it to roles without it",
+      "test": "adapters/sqlstore/organization_team_contract_test.go",
+      "marker": "// team:delete alone permits removal and nothing else.",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1833/`GET /organization/list-teams`": [
+    {
+      "label": "List the teams of an explicitly named organization",
+      "test": "adapters/sqlstore/organization_team_contract_test.go",
+      "marker": "// An explicit organizationId lists that organization's teams.",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1941/`POST /organization/list-team-members`": [
+    {
+      "label": "List the active team's members by default and an explicitly named team's members, refusing a team the caller is not on",
+      "test": "adapters/sqlstore/organization_team_contract_test.go",
+      "marker": "// set-active-team selects a team by ID, and list-team-members reads an explicit team.",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1947/Parameter `teamId` (optional)": [
+    {
+      "label": "List the active team's members by default and an explicitly named team's members, refusing a team the caller is not on",
+      "test": "adapters/sqlstore/organization_team_contract_test.go",
+      "marker": "// set-active-team selects a team by ID, and list-team-members reads an explicit team.",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1956/`POST /organization/add-team-member`": [
+    {
+      "label": "Add the named user to the named team and return the membership",
+      "test": "adapters/sqlstore/organization_team_contract_test.go",
+      "marker": "// add-team-member adds the named user to the named team.",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1966/Parameter `userId`": [
+    {
+      "label": "Add the named user to the named team and return the membership",
+      "test": "adapters/sqlstore/organization_team_contract_test.go",
+      "marker": "// add-team-member adds the named user to the named team.",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/organization.mdx#L1975/`POST /organization/remove-team-member`": [
+    {
+      "label": "Remove only the named user from the named team",
+      "test": "adapters/sqlstore/organization_team_contract_test.go",
+      "marker": "// remove-team-member removes only the named user from the named team.",
+      "complete": true
     }
   ]
 }
