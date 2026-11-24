@@ -136,6 +136,8 @@ IPv6 clients are counted by their /64 network, whatever the spelling of the addr
 
 For shared counters on Redis or Valkey, configure the optional Redis storage adapter. [Redis secondary storage](redis.md)
 
+Any type with `ConsumeRateLimit(ctx, key, maximum, window, now) (time.Duration, error)` can be `Options.RateLimitStorage`. It must admit one request atomically and return how long the client must wait, or zero; the key is the client address and the route joined by `|`. [Custom storage test](../conformance/goapi/rate_limit_storage_test.go)
+
 Apply the `rate-limit` [schema profile](schema.md) and set `Options.RateLimitStorage` to the resulting SQL store on each replica. Enable limiting using `Options.RateLimit` or the [production environment setting](environment.md). Each allowed request updates the counter in a transaction. A rejected request receives HTTP 429 and an `X-Retry-After` value in seconds. Storage errors stop the request. From a maintenance job, call `store.PruneRateLimits(ctx, time.Now().Add(-24*time.Hour))` to clear inactive counters. The longest built-in window is one minute. Adjust the retention period if your application configures a longer window. See the [two-instance storage test](../adapters/sqlstore/ratelimit_test.go).
 
 ## Browser and server calls

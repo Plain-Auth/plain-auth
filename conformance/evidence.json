@@ -20449,5 +20449,13 @@
       "complete": true,
       "label": "IPv6Subnet 32 keys the /32 network"
     }
+  ],
+  "docs/content/docs/concepts/rate-limit.mdx#L284/Custom Storage": [
+    {
+      "label": "A host RateLimitStorage decides each limited request with the client|route key and the rule, its delay becomes a 429 with X-Retry-After, and its error stops the request",
+      "test": "conformance/goapi/rate_limit_storage_test.go",
+      "marker": "func TestCustomRateLimitStorage(t *testing.T) {",
+      "complete": true
+    }
   ]
 }

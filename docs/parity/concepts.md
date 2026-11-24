@@ -552,7 +552,8 @@
       - [ ] Using Database
       - [x] Using Secondary Storage ([test](../../adapters/redis/storage_test.go#L355))
         - [x] Share a fixed HTTP request window and reopen it after Redis expires the counter ([test](../../adapters/redis/storage_test.go#L355))
-      - [ ] Custom Storage
+      - [x] Custom Storage ([test](../../conformance/goapi/rate_limit_storage_test.go#L43))
+        - [x] A host RateLimitStorage decides each limited request with the client|route key and the rule, its delay becomes a 429 with X-Retry-After, and its error stops the request ([test](../../conformance/goapi/rate_limit_storage_test.go#L43))
   - [ ] Handling Rate Limit Errors
     - [x] Return a rate-limit error with a retry duration ([test](../../conformance/goapi/http_test.go#L145))
     - [x] `X-Retry-After` ([test](../../ratelimit_test.go#L29))
