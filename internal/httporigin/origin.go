@@ -11,20 +11,35 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"unicode"
 )
 
-// Rule matches an exact origin or a configured hostname and port pattern.
+// Rule matches an exact origin, a configured hostname and port pattern, or
+// a custom-scheme URL such as an app deep link.
 type Rule struct {
 	exact, scheme, host, port string
 	ipv4Only                  bool
+	// custom rules match a non-HTTP scheme by authority and path.
+	custom, wildcard bool
+	authority, path  string
 }
 
 var (
 	originLabel        = regexp.MustCompile(`^[a-z0-9*?]([a-z0-9*?-]{0,61}[a-z0-9*?])?$`)
 	originPortPattern  = regexp.MustCompile(`^[0-9*?]+$`)
 	numericHostPattern = regexp.MustCompile(`^[0-9.*?]+$`)
-	errOriginPattern   = errors.New("expected an HTTP(S) origin or hostname wildcard with an optional port")
+	errOriginPattern   = errors.New("expected an HTTP(S) origin, a hostname wildcard with an optional port, or a custom-scheme URL such as myapp://")
+	customSchemeRule   = regexp.MustCompile(`^([a-z][a-z0-9+.-]*):(/.*)?$`)
+	customAuthority    = regexp.MustCompile(`^[a-z0-9._~*?:-]*$`)
+	errDeniedScheme    = errors.New("this URL scheme can run code or read local data and cannot be trusted")
 )
+
+// deniedSchemes can run script, read local data or reach other protocols.
+var deniedSchemes = map[string]bool{"javascript": true, "vbscript": true, "data": true, "blob": true, "file": true, "filesystem": true,
+	"about": true, "view-source": true, "intent": true, "ftp": true, "ws": true, "wss": true}
+
+// DeniedScheme reports whether a URL scheme may never be trusted.
+func DeniedScheme(scheme string) bool { return deniedSchemes[strings.ToLower(scheme)] }
 
 // Compile validates the configured origins and preserves their order.
 func Compile(origins []string) ([]Rule, error) {
@@ -40,6 +55,11 @@ func Compile(origins []string) ([]Rule, error) {
 }
 
 func parseRule(raw string) (Rule, error) {
+	if scheme, rest, ok := strings.Cut(raw, ":"); ok {
+		if lower := strings.ToLower(scheme); lower != "http" && lower != "https" && customSchemeRule.MatchString(lower+":"+rest) {
+			return parseCustomRule(lower, rest)
+		}
+	}
 	if !strings.ContainsAny(raw, "*?") {
 		origin, err := Parse(raw)
 		if err != nil {
@@ -83,6 +103,105 @@ func parseRule(raw string) (Rule, error) {
 	return Rule{scheme: scheme, host: host, port: port, ipv4Only: ipv4Only}, nil
 }
 
+// parseCustomRule reads scheme:[//authority][/path], where the authority
+// and the path may hold * and ? wildcards and a path segment may be **.
+func parseCustomRule(scheme, rest string) (Rule, error) {
+	if DeniedScheme(scheme) {
+		return Rule{}, errDeniedScheme
+	}
+	authority, rulePath := "", rest
+	if after, ok := strings.CutPrefix(rest, "//"); ok {
+		authority, rulePath, _ = strings.Cut(after, "/")
+		rulePath = "/" + rulePath
+	}
+	authority = strings.ToLower(authority)
+	if !customAuthority.MatchString(authority) || strings.ContainsAny(rulePath, "%#[]\\") || strings.IndexFunc(rulePath, unicode.IsSpace) >= 0 || strings.IndexFunc(rulePath, unicode.IsControl) >= 0 {
+		return Rule{}, errOriginPattern
+	}
+	host, _, _ := strings.Cut(authority, ":")
+	ipv4Only := numericHostPattern.MatchString(host) && strings.ContainsAny(host, "0123456789")
+	rulePath = cleanCustomPath(rulePath)
+	if strings.Contains(authority, "**") && rulePath == "" {
+		// As in exp://**, a ** authority also spans every path.
+		rulePath = "/**"
+	}
+	return Rule{custom: true, scheme: scheme, authority: authority, path: rulePath, wildcard: strings.ContainsAny(authority+rulePath, "*?"), ipv4Only: ipv4Only}, nil
+}
+
+// cleanCustomPath drops "." and empty segments and resolves "..", so "" is the root.
+func cleanCustomPath(p string) string {
+	var segments []string
+	for segment := range strings.SplitSeq(p, "/") {
+		switch segment {
+		case "", ".":
+		case "..":
+			if len(segments) > 0 {
+				segments = segments[:len(segments)-1]
+			}
+		default:
+			segments = append(segments, segment)
+		}
+	}
+	if len(segments) == 0 {
+		return ""
+	}
+	return "/" + strings.Join(segments, "/")
+}
+
+// matchSegments matches path segments, where a ** segment spans any number.
+func matchSegments(pattern, segments []string) bool {
+	if len(pattern) == 0 {
+		return len(segments) == 0
+	}
+	if pattern[0] == "**" {
+		for i := 0; i <= len(segments); i++ {
+			if matchSegments(pattern[1:], segments[i:]) {
+				return true
+			}
+		}
+		return false
+	}
+	if len(segments) == 0 {
+		return false
+	}
+	ok, _ := path.Match(pattern[0], segments[0])
+	return ok && matchSegments(pattern[1:], segments[1:])
+}
+
+func splitPath(p string) []string {
+	if p == "" {
+		return nil
+	}
+	return strings.Split(strings.TrimPrefix(p, "/"), "/")
+}
+
+// matchCustom checks a custom-scheme URL. The authority is one string, so
+// a wildcard crosses "." and ":"; query and fragment are ignored.
+func (rule Rule) matchCustom(u *url.URL) bool {
+	if u.Scheme != rule.scheme || u.Opaque != "" || u.User != nil {
+		return false
+	}
+	host, urlPath := strings.ToLower(u.Host), cleanCustomPath(u.Path)
+	if !rule.wildcard {
+		if rule.authority != "" && host != rule.authority {
+			return false
+		}
+		return rule.path == "" || urlPath == rule.path || strings.HasPrefix(urlPath, rule.path+"/")
+	}
+	if ok, _ := path.Match(rule.authority, host); !ok {
+		return false
+	}
+	if rule.ipv4Only {
+		if addr, err := netip.ParseAddr(u.Hostname()); err != nil || !addr.Is4() {
+			return false
+		}
+	}
+	return matchSegments(splitPath(rule.path), splitPath(urlPath))
+}
+
+// Custom reports whether the rule matches a custom-scheme URL.
+func (rule Rule) Custom() bool { return rule.custom }
+
 func validOriginHostname(host string) bool {
 	if host == "" || len(host) > 253 {
 		return false
@@ -97,6 +216,12 @@ func validOriginHostname(host string) bool {
 
 // Matches checks a URL and its canonical origin against the rule.
 func (rule Rule) Matches(u *url.URL, origin string) bool {
+	if rule.custom {
+		return rule.matchCustom(u)
+	}
+	if u.Scheme != "http" && u.Scheme != "https" {
+		return false
+	}
 	if rule.exact != "" {
 		return rule.exact == origin
 	}

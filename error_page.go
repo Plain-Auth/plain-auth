@@ -27,14 +27,11 @@ func (a *Auth) errorPage(h http.Header, r *http.Request) any {
 	}
 	description := q.Get("error_description")
 	if a.opts.ErrorRedirectURL != "" {
-		target, _ := url.Parse(a.opts.ErrorRedirectURL)
-		params := target.Query()
-		params.Set("error", code)
+		set := url.Values{"error": {code}}
 		if description != "" {
-			params.Set("error_description", description)
+			set.Set("error_description", description)
 		}
-		target.RawQuery = params.Encode()
-		return Redirect(target.String())
+		return Redirect(setQuery(a.opts.ErrorRedirectURL, set))
 	}
 	h.Set("Referrer-Policy", "no-referrer")
 	h.Set("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'")

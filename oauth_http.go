@@ -267,14 +267,11 @@ func (a *Auth) finishBrowserOAuth(w http.ResponseWriter, r *http.Request, id str
 			return popup.page(w.Header(), "", "", &popupError{Code: code, Description: description}), nil
 		}
 		if flow.ErrorCallbackURL != "" && a.trustedURL(flow.ErrorCallbackURL, true) {
-			target, _ := url.Parse(flow.ErrorCallbackURL)
-			v := target.Query()
-			v.Set("error", code)
+			set := url.Values{"error": {code}}
 			if description != "" {
-				v.Set("error_description", description)
+				set.Set("error_description", description)
 			}
-			target.RawQuery = v.Encode()
-			return Redirect(target.String()), nil
+			return Redirect(setQuery(flow.ErrorCallbackURL, set)), nil
 		}
 		return nil, &APIError{400, code, "Unable to complete social sign-in"}
 	}

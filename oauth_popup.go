@@ -63,7 +63,7 @@ func startOAuthPopup(c EndpointContext, messageType string) (any, error) {
 	a, r := c.Auth, c.Request
 	q := r.URL.Query()
 	origin, err := httporigin.Parse(q.Get("popupOrigin"))
-	if err != nil || len(q["popupOrigin"]) != 1 || strings.ContainsAny(origin, "*?") || !a.trustedURL(origin, false) {
+	if err != nil || len(q["popupOrigin"]) != 1 || strings.ContainsAny(origin, "*?") || !a.trustedWebOrigin(origin) {
 		return nil, &APIError{403, "INVALID_ORIGIN", "Invalid origin"}
 	}
 	opener := popupOpener{Origin: origin, Nonce: q.Get("popupNonce"), MessageType: messageType}
@@ -149,7 +149,7 @@ func (a *Auth) callbackPopup(h http.Header, r *http.Request, state string) *popu
 	}
 	h.Add("Set-Cookie", marker.String())
 	var opener popupOpener
-	if json.Unmarshal(raw, &opener) != nil || !popupMessageFormat.MatchString(opener.MessageType) || !a.trustedURL(opener.Origin, false) {
+	if json.Unmarshal(raw, &opener) != nil || !popupMessageFormat.MatchString(opener.MessageType) || !a.trustedWebOrigin(opener.Origin) {
 		return nil
 	}
 	return &opener

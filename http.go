@@ -664,8 +664,9 @@ func (a *Auth) trustedURL(raw string, relative bool) bool {
 		return false
 	}
 	if relative && a.opts.DisableOriginCheck {
-		// Redirect targets are accepted as given; origins are still checked.
-		return true
+		// Redirect targets are accepted as given, except schemes that can run
+		// code or read local data; origins are still checked.
+		return !httporigin.DeniedScheme(u.Scheme)
 	}
 	if strings.HasPrefix(raw, "/") {
 		path := strings.ToLower(u.EscapedPath())
@@ -673,6 +674,15 @@ func (a *Auth) trustedURL(raw string, relative bool) bool {
 	}
 	origin := httporigin.Canonical(u)
 	if origin == "" {
+		// A custom-scheme URL, such as an app deep link, needs a custom rule.
+		if u.Scheme == "" || httporigin.DeniedScheme(u.Scheme) {
+			return false
+		}
+		for _, candidate := range a.trustedOrigins {
+			if candidate.Custom() && candidate.Matches(u, "") {
+				return true
+			}
+		}
 		return false
 	}
 	for _, candidate := range a.trustedOrigins {
@@ -682,6 +692,13 @@ func (a *Auth) trustedURL(raw string, relative bool) bool {
 	}
 	base, err := url.Parse(a.opts.BaseURL)
 	return err == nil && httporigin.Canonical(base) == origin
+}
+
+// trustedWebOrigin is trustedURL for a browser page origin, which must be
+// HTTP(S) even when custom-scheme origins are trusted.
+func (a *Auth) trustedWebOrigin(raw string) bool {
+	u, err := url.Parse(raw)
+	return err == nil && (u.Scheme == "http" || u.Scheme == "https") && a.trustedURL(raw, false)
 }
 
 // CallbackURL resolves an application callback using this instance's trusted origins.

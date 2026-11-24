@@ -61,7 +61,7 @@ func (a *Auth) BindOneTapNonce(w http.ResponseWriter, origin, audience, nonce st
 }
 func (a *Auth) bindOneTapNonce(headers http.Header, origin, audience, nonce string) error {
 	u, err := url.Parse(origin)
-	if err != nil || u.User != nil || u.Path != "" || u.RawQuery != "" || u.ForceQuery || u.Fragment != "" || !a.trustedURL(origin, false) || audience == "" || len(nonce) < 16 || len(nonce) > 256 || strings.ContainsAny(nonce, " \r\n\t") {
+	if err != nil || u.User != nil || u.Path != "" || u.RawQuery != "" || u.ForceQuery || u.Fragment != "" || !a.trustedWebOrigin(origin) || audience == "" || len(nonce) < 16 || len(nonce) > 256 || strings.ContainsAny(nonce, " \r\n\t") {
 		return errors.New("authn: invalid One Tap origin, audience or host nonce")
 	}
 	proof := oneTapProof{Nonce: nonce, Audience: audience, Origin: origin, Expires: a.now().Add(5 * time.Minute).Unix()}
@@ -92,7 +92,7 @@ func NewOneTap(o OneTapOptions, fallback OAuthProvider) Plugin {
 	}
 	origin := func(c EndpointContext) (string, error) {
 		v := c.Request.Header.Get("Origin")
-		if v == "" || !c.Auth.trustedURL(v, false) {
+		if v == "" || !c.Auth.trustedWebOrigin(v) {
 			return "", &APIError{403, "INVALID_ORIGIN", "A trusted browser origin is required"}
 		}
 		return v, nil

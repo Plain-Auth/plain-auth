@@ -57,7 +57,9 @@ type Options struct {
 	BasePath string
 	// DisabledPaths hides exact HTTP paths relative to this instance’s mount.
 	DisabledPaths []string
-	// TrustedOrigins allows exact HTTP(S) origins and hostname or port wildcard patterns for browser requests and callbacks.
+	// TrustedOrigins allows exact HTTP(S) origins, hostname or port wildcard
+	// patterns, and custom-scheme URLs such as myapp:// or
+	// chrome-extension://ID, for browser requests and callbacks.
 	TrustedOrigins []string
 	CookiePrefix   string
 	// CrossSubDomainCookies selects the Domain attribute for shared browser cookies.

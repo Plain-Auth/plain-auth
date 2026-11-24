@@ -2,6 +2,7 @@ package plainauth
 
 import (
 	"errors"
+	"maps"
 	"net/http"
 	"net/url"
 	"strings"
@@ -214,7 +215,10 @@ func (a *Auth) handleAccountRequest(route string, w http.ResponseWriter, r *http
 			return redirectQuery(a.opts.BaseURL+strings.TrimRight(a.opts.BasePath, "/")+"/error", "error", "INVALID_TOKEN"), nil
 		}
 		cb, _ := url.Parse(callback)
-		dest := base.ResolveReference(cb).String()
+		dest := callback
+		if !cb.IsAbs() {
+			dest = base.ResolveReference(cb).String()
+		}
 		_, err = s.FindPasswordResetToken(ctx, token, a.now().UTC())
 		if errors.Is(err, ErrNotFound) {
 			return redirectQuery(dest, "error", "INVALID_TOKEN"), nil
@@ -228,11 +232,24 @@ func (a *Auth) handleAccountRequest(route string, w http.ResponseWriter, r *http
 }
 
 func redirectQuery(target, key, value string) Redirect {
-	u, _ := url.Parse(target)
+	return Redirect(setQuery(target, url.Values{key: {value}}))
+}
+
+// setQuery sets query parameters on target. A custom-scheme deep link such
+// as myapp://?x keeps its "//", which url.URL.String drops for an empty host.
+func setQuery(target string, set url.Values) string {
+	u, err := url.Parse(target)
+	if err != nil {
+		return target
+	}
 	q := u.Query()
-	q.Set(key, value)
+	maps.Copy(q, set)
 	u.RawQuery = q.Encode()
-	return Redirect(u.String())
+	out := u.String()
+	if n := len(u.Scheme) + 1; u.Scheme != "" && u.Host == "" && len(target) > n && strings.HasPrefix(target[n:], "//") && !strings.HasPrefix(out[n:], "//") {
+		out = u.Scheme + "://" + out[n:]
+	}
+	return out
 }
 
 func (a *Auth) dontRemember(r *http.Request) bool {

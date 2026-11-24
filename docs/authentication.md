@@ -37,7 +37,7 @@ If the mount is `/identity`, a request to `/identity/sign-up/email` returns 404 
 | `BaseURL` | Public HTTP(S) origin of the application. HTTPS enables secure cookies |
 | `CookiePrefix` | Defaults to `authn`. Choose a namespace such as `myapp` for session cookies and OAuth state. Give separate auth instances distinct prefixes on a shared host. |
 | `BasePath` | Mount path, normally `/api/auth` |
-| `TrustedOrigins` | Additional exact or wildcard HTTP(S) origins allowed for browser requests and absolute callbacks |
+| `TrustedOrigins` | Additional exact or wildcard HTTP(S) origins, and custom-scheme URLs for apps and extensions, allowed for browser requests and absolute callbacks |
 | `EmailAndPassword` | Enables email sign-up and sign-in. Defaults to false |
 | `AppName` | Name users see, such as the issuer in authenticator apps. Defaults to `Auth` |
 | `SessionTTL`, `FreshAge` | Default session lifetime is seven days, freshness window is one day. Deleting the user, unlinking an account and plugin actions that need a fresh session refuse an older session; a negative `FreshAge` turns the check off |
@@ -46,7 +46,7 @@ If the mount is `/identity`, a request to `/identity/sign-up/email` returns 404 
 | `Plugins` | Optional extensions registered at startup |
 | `SkipTrailingSlashes` | Serves `/sign-in/email/` as `/sign-in/email` |
 | `DisableCSRFCheck` | Turns off the Origin, Referer and Fetch Metadata checks on state-changing requests. Leaves cookie-authenticated endpoints open to cross-site request forgery |
-| `DisableOriginCheck` | Accepts any `callbackURL`, `redirectTo` and other redirect target instead of trusted origins and relative paths, which allows open redirects. Request origins are still checked, and URLs with control characters or backslashes are still refused |
+| `DisableOriginCheck` | Accepts any `callbackURL`, `redirectTo` and other redirect target instead of trusted origins and relative paths, which allows open redirects. Request origins are still checked, and URLs with control characters or backslashes, or with a scheme that can run code or read local data such as `javascript:`, `data:` or `file:`, are still refused |
 
 Create one auth instance per configuration and share it among handlers. Use the same secret on application replicas.
 
@@ -155,7 +155,22 @@ Keep `BaseURL` on the public auth server. Add origins for sites you control to `
 | `*.dev.example.com` | HTTP or HTTPS subdomains on each scheme's default port. |
 | `http://192.168.*.*:*` | Valid IPv4 addresses in that range on a nondefault port. |
 
-An asterisk matches zero or more hostname characters, including dots. A question mark matches one character. Apply those characters separately to the ASCII hostname and the optional port. Use the ASCII Punycode spelling for internationalized domains. A literal default port is equivalent to omitting it. Specify a port or a port pattern to admit a nondefault port. A port wildcard matches the port present after default-port normalization. Callback paths, queries and fragments are preserved. A trust rule contains only the scheme and authority, or a hostname wildcard with an optional port. [Native validation](../conformance/goapi/trusted_origins_test.go) · [HTTP comparison](../conformance/trusted-origins.mjs)
+An asterisk matches zero or more hostname characters, including dots. A question mark matches one character. Apply those characters separately to the ASCII hostname and the optional port. Use the ASCII Punycode spelling for internationalized domains. A literal default port is equivalent to omitting it. Specify a port or a port pattern to admit a nondefault port. A port wildcard matches the port present after default-port normalization. Callback paths, queries and fragments are preserved. An HTTP(S) trust rule contains only the scheme and authority, or a hostname wildcard with an optional port. [Native validation](../conformance/goapi/trusted_origins_test.go) · [HTTP comparison](../conformance/trusted-origins.mjs)
+
+### Trust app deep links and extensions
+
+A native app or browser extension receives its callbacks on a custom scheme. List it with that scheme:
+
+| Rule | Admitted URLs |
+| --- | --- |
+| `myapp://` | Any `myapp://` URL. |
+| `acme://app/auth` | `acme://app/auth` and paths below it, such as `acme://app/auth/done`. |
+| `chrome-extension://abcdefghijklmnop` | Pages of that one extension. |
+| `exp://192.168.*.*:*/**` | Expo development URLs on any local IPv4 address, port and path. |
+
+In a custom-scheme rule, `*` and `?` match within the authority, including dots and colons, and within a path segment, and a `**` segment matches any number of segments. A numeric wildcard host matches IPv4 addresses only. Paths are compared after `.` and `..` are resolved; the query and fragment are ignored. A wildcard without a scheme, such as `*.example.com`, still admits HTTP(S) only, so every custom scheme must be named. Schemes that can run code or read local data, such as `javascript:`, `data:`, `file:` and `blob:`, are refused at startup. A trusted extension origin passes the origin check of a cookie-authenticated request, while One Tap, popups and the OAuth proxy accept only web origins.
+
+Any app on a device can register a custom scheme, so a deep link can reach an app other than yours, together with any token in it, such as a password reset link. Prefer a claimed HTTPS link (an Android App Link or an iOS Universal Link) where the platform offers one.
 
 ### Share a session across subdomains
 

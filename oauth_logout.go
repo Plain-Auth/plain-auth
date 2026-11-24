@@ -81,7 +81,12 @@ func (a *Auth) prepareProviderLogout(ctx context.Context, h http.Header, body wi
 			if err != nil {
 				continue
 			}
-			query.Set("post_logout_redirect_uri", resolved.String())
+			// An absolute return URL, such as an app deep link, is sent as given.
+			target := resolved.String()
+			if u, _ := url.Parse(callback); u.IsAbs() {
+				target = callback
+			}
+			query.Set("post_logout_redirect_uri", target)
 			query.Set("client_id", p.Config.ClientID)
 			if state != "" {
 				query.Set("state", state)

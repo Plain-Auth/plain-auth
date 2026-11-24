@@ -119,7 +119,7 @@ func (a *Auth) proxyCurrentOrigin(r *http.Request) string {
 	if configured := a.oauthProxy.CurrentURL; configured != "" {
 		return configured
 	}
-	if origin := a.proxyRequestOrigin(r); origin != "" && a.trustedURL(origin, false) {
+	if origin := a.proxyRequestOrigin(r); origin != "" && a.trustedWebOrigin(origin) {
 		return origin
 	}
 	if origin := a.oauthProxy.vendorOrigin; origin != "" {

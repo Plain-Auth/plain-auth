@@ -7716,6 +7716,11 @@
       "label": "Admit both HTTP and HTTPS for a scheme-independent hostname wildcard on their default ports",
       "test": "conformance/trusted-origins.mjs",
       "marker": "[\"https://one.regional.example.test\", true]"
+    },
+    {
+      "test": "conformance/goapi/trusted_origins_test.go",
+      "marker": "func TestCustomSchemeOrigins(t *testing.T) {",
+      "label": "Unlike the reference, a wildcard without a scheme admits HTTP(S) only, so javascript://x.example.com and other custom schemes must be named"
     }
   ],
   "plugin-symbol/last-login-method/LastLoginMethodClientConfig/cookieName": [
@@ -20455,6 +20460,54 @@
       "label": "A host RateLimitStorage decides each limited request with the client|route key and the rule, its delay becomes a 429 with X-Retry-After, and its error stops the request",
       "test": "conformance/goapi/rate_limit_storage_test.go",
       "marker": "func TestCustomRateLimitStorage(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/reference/options.mdx#L163/`exp://192.168.*.*:*/`": [
+    {
+      "test": "conformance/goapi/trusted_origins_test.go",
+      "marker": "func TestCustomSchemeOrigins(t *testing.T) {",
+      "label": "exp://192.168.*.*:*/** admits Expo URLs on local IPv4 addresses with any port and path, and refuses a hostname",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/reference/options.mdx#L164/`myapp://`": [
+    {
+      "test": "conformance/goapi/trusted_origins_test.go",
+      "marker": "func TestCustomSchemeOrigins(t *testing.T) {",
+      "label": "myapp:// admits every myapp:// URL and no other scheme",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/reference/security.mdx#L258": [
+    {
+      "test": "conformance/goapi/trusted_origins_test.go",
+      "marker": "func TestCustomSchemeOrigins(t *testing.T) {",
+      "label": "Custom-scheme rules trust app schemes, extension IDs and Expo wildcards such as exp://** and exp://10.0.0.*:*/**, and refuse schemes that can run code",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/guides/browser-extension-guide.mdx#L158": [
+    {
+      "label": "A trusted chrome-extension:// origin passes the origin check of a cookie-authenticated request, and an untrusted extension is refused",
+      "test": "conformance/goapi/trusted_origins_test.go",
+      "marker": "func TestCustomSchemeRequestOrigin(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/integrations/expo.mdx#L130": [
+    {
+      "test": "conformance/goapi/trusted_origins_test.go",
+      "marker": "func TestCustomSchemeOrigins(t *testing.T) {",
+      "label": "An app scheme listed in TrustedOrigins admits its deep-link callbacks",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/integrations/expo.mdx#L170": [
+    {
+      "test": "conformance/goapi/trusted_origins_test.go",
+      "marker": "func TestCustomSchemeOrigins(t *testing.T) {",
+      "label": "Expo development wildcards admit exp:// URLs on local IPv4 addresses",
       "complete": true
     }
   ]

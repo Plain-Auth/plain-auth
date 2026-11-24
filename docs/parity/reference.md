@@ -259,7 +259,7 @@
     - [x] With BasePath /identity, the default /api/auth/ok returns 404 and /identity/ok serves ([test](../../conformance/goapi/http_test.go#L58))
   - [ ] `trustedOrigins`
     - [x] Combine configured origins and environment origins for callback validation ([test](../../env_test.go#L34))
-    - [x] Asserts the BaseURL origin is trusted by default, alongside the configured and AUTH_TRUSTED_ORIGINS entries, through CallbackURL ([test](../../conformance/goapi/trusted_origins_test.go#L26))
+    - [x] Asserts the BaseURL origin is trusted by default, alongside the configured and AUTH_TRUSTED_ORIGINS entries, through CallbackURL ([test](../../conformance/goapi/trusted_origins_test.go#L28))
     - [x] Static Origins ([test](../../conformance/goapi/http_test.go#L71))
       - [x] A sign-up with an Origin taken from the static TrustedOrigins list succeeds over HTTP ([test](../../conformance/goapi/http_test.go#L71))
     - [ ] Dynamic Origins
@@ -267,18 +267,20 @@
     - [ ] Wildcard Support
       - [x] Compare cookie-authenticated mutations and absolute login callback decisions for HTTP(S) wildcard origins on both servers ([test](../../conformance/trusted-origins.mjs#L76))
       - [ ] Pattern Syntax
-        - [x] Separate hostname and port matching and restrict numeric address patterns to IPv4 ([test](../../conformance/goapi/trusted_origins_test.go#L11))
+        - [x] Separate hostname and port matching and restrict numeric address patterns to IPv4 ([test](../../conformance/goapi/trusted_origins_test.go#L13))
         - [x] `?` ([test](../../conformance/trusted-origins.mjs#L43))
           - [x] On both servers, the pattern preview-?.example.test:84?? accepts one character in the host and port, and rejects two characters for one `?` ([test](../../conformance/trusted-origins.mjs#L43))
-        - [x] `*` ([test](../../conformance/goapi/trusted_origins_test.go#L27))
-          - [x] The pattern https://*.apps.example matches subdomains at any depth and ignores the path ([test](../../conformance/goapi/trusted_origins_test.go#L27))
+        - [x] `*` ([test](../../conformance/goapi/trusted_origins_test.go#L29))
+          - [x] The pattern https://*.apps.example matches subdomains at any depth and ignores the path ([test](../../conformance/goapi/trusted_origins_test.go#L29))
         - [ ] ``
       - [ ] Pattern Examples
         - [ ] `http://*.example.com`
         - [ ] `https://.example.com`
         - [ ] `https://example.com`
-        - [ ] `exp://192.168.*.*:*/`
-        - [ ] `myapp://`
+        - [x] `exp://192.168.*.*:*/` ([test](../../conformance/goapi/trusted_origins_test.go#L74))
+          - [x] exp://192.168.*.*:*/** admits Expo URLs on local IPv4 addresses with any port and path, and refuses a hostname ([test](../../conformance/goapi/trusted_origins_test.go#L74))
+        - [x] `myapp://` ([test](../../conformance/goapi/trusted_origins_test.go#L74))
+          - [x] myapp:// admits every myapp:// URL and no other scheme ([test](../../conformance/goapi/trusted_origins_test.go#L74))
         - [ ] Notes
   - [ ] `secret`
     - [x] Use Options.Secret ahead of AUTH_SECRET when no key list is configured ([test](../../env_test.go#L42))
@@ -613,7 +615,9 @@
         - [x] Under https://*.shop.example.test, HTTPS subdomains at any depth are accepted ([test](../../conformance/trusted-origins.mjs#L38))
       - [ ] Protocol-agnostic wildcards
         - [x] Admit both HTTP and HTTPS for a scheme-independent hostname wildcard on their default ports ([test](../../conformance/trusted-origins.mjs#L41))
-    - [ ] Custom Schemes
+        - [x] Unlike the reference, a wildcard without a scheme admits HTTP(S) only, so javascript://x.example.com and other custom schemes must be named ([test](../../conformance/goapi/trusted_origins_test.go#L74))
+    - [x] Custom Schemes ([test](../../conformance/goapi/trusted_origins_test.go#L74))
+      - [x] Custom-scheme rules trust app schemes, extension IDs and Expo wildcards such as exp://** and exp://10.0.0.*:*/**, and refuse schemes that can run code ([test](../../conformance/goapi/trusted_origins_test.go#L74))
     - [ ] Dynamic origin list
       - [ ] Important
   - [ ] Outbound OAuth Requests
