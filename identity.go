@@ -43,7 +43,7 @@ func (a *Auth) UnlinkAccount(ctx context.Context, h http.Header, recordID string
 	if err != nil {
 		return err
 	}
-	if a.now().Sub(session.Session.CreatedAt) >= a.opts.FreshAge {
+	if !a.freshSession(session.Session) {
 		return &APIError{403, "SESSION_NOT_FRESH", "Session is not fresh"}
 	}
 	store, ok := a.opts.Store.(LinkedAccountStore)

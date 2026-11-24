@@ -19934,5 +19934,29 @@
       "marker": "if !first.Secure || !first.HttpOnly",
       "complete": true
     }
+  ],
+  "docs/content/docs/concepts/session-management.mdx#L72": [
+    {
+      "label": "Refuse sensitive account changes from a session older than the freshness window, and turn the check off with a negative FreshAge",
+      "test": "conformance/goapi/freshness_test.go",
+      "marker": "func TestSessionFreshness(",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/reference/options.mdx#L9": [
+    {
+      "label": "Name the application as the default authenticator issuer",
+      "test": "conformance/goapi/freshness_test.go",
+      "marker": "func TestAppNameIsTheAuthenticatorIssuer(",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/concepts/plugins.mdx#L141/`appName`": [
+    {
+      "label": "Read the configured application name from the instance in a plugin",
+      "test": "conformance/goapi/freshness_test.go",
+      "marker": "// Plugins read the application name from the instance.",
+      "complete": true
+    }
   ]
 }

@@ -22,7 +22,7 @@ func (c EndpointContext) RequireFreshSession() (*SessionResult, error) {
 	if err != nil {
 		return nil, err
 	}
-	if c.Auth.now().Sub(user.Session.CreatedAt) >= c.Auth.opts.FreshAge {
+	if !c.Auth.freshSession(user.Session) {
 		return nil, &APIError{403, "SESSION_NOT_FRESH", "Session is not fresh"}
 	}
 	return user, nil

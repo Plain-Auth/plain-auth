@@ -242,7 +242,8 @@
 ## Options
 
 - [ ] Options
-  - [ ] `appName`
+  - [x] `appName` ([test](../../conformance/goapi/freshness_test.go#L68))
+    - [x] Name the application as the default authenticator issuer ([test](../../conformance/goapi/freshness_test.go#L68))
   - [ ] `baseURL`
     - [x] Resolve public URL and mount path from explicit options and process settings ([test](../../env_test.go#L20))
     - [ ] Dynamic Base URL

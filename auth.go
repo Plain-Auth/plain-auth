@@ -142,13 +142,16 @@ func New(opts Options) (*Auth, error) {
 	if opts.FreshAge == 0 {
 		opts.FreshAge = 24 * time.Hour
 	}
+	if opts.AppName == "" {
+		opts.AppName = "Auth"
+	}
 	if opts.MinPasswordLength == 0 {
 		opts.MinPasswordLength = 8
 	}
 	if opts.MaxPasswordLength == 0 {
 		opts.MaxPasswordLength = 128
 	}
-	if opts.SessionTTL < time.Second || opts.FreshAge < 0 || opts.MinPasswordLength < 1 || opts.MaxPasswordLength < opts.MinPasswordLength {
+	if opts.SessionTTL < time.Second || opts.MinPasswordLength < 1 || opts.MaxPasswordLength < opts.MinPasswordLength {
 		return nil, errors.New("authn: invalid session duration or password length")
 	}
 	if err := prepareRateLimits(&opts); err != nil {
@@ -350,7 +353,11 @@ func New(opts Options) (*Auth, error) {
 			if v, ok := s.(interface{ TwoFactorReady() bool }); ok && !v.TwoFactorReady() {
 				return nil, errors.New("auth: install the two-factor database schema before enabling the plugin")
 			}
-			a.factorOptions = p.factor
+			factor := *p.factor
+			if factor.Issuer == "" {
+				factor.Issuer = a.opts.AppName
+			}
+			a.factorOptions = &factor
 			a.factorStore = s
 		}
 	}
@@ -780,7 +787,7 @@ func (a *Auth) ListSessions(ctx context.Context, headers http.Header) ([]Session
 		return nil, err
 	}
 	now := a.now()
-	if now.Sub(current.Session.CreatedAt) >= a.opts.FreshAge {
+	if !a.freshSession(current.Session) {
 		return nil, &APIError{403, "SESSION_NOT_FRESH", "Session is not fresh"}
 	}
 	rows, err := a.opts.Store.ListSessions(ctx, current.User.ID)
@@ -838,6 +845,15 @@ func (a *Auth) RevokeSessions(ctx context.Context, h http.Header) error {
 	})
 	return err
 }
+
+// freshSession reports whether s was created within FreshAge. A negative
+// FreshAge turns the check off.
+func (a *Auth) freshSession(s Session) bool {
+	return a.opts.FreshAge < 0 || a.now().Sub(s.CreatedAt) < a.opts.FreshAge
+}
+
+// AppName returns the application name shown in authenticator apps.
+func (a *Auth) AppName() string { return a.opts.AppName }
 
 // BasePath reports the effective mount path after configuration resolution.
 func (a *Auth) BasePath() string { return a.opts.BasePath }

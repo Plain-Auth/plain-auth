@@ -433,7 +433,8 @@
     - [ ] Endpoints
       - [x] Register a Go plugin endpoint and detect duplicate registrations ([test](../../conformance/goapi/plugins_test.go#L14))
       - [ ] Context Object
-      - [ ] `appName`
+      - [x] `appName` ([test](../../conformance/goapi/freshness_test.go#L80))
+        - [x] Read the configured application name from the instance in a plugin ([test](../../conformance/goapi/freshness_test.go#L80))
       - [ ] `options`
       - [ ] `tables`
       - [ ] `baseURL`
@@ -575,7 +576,8 @@
       - [x] With DisableSessionRefresh, a GET past the update age leaves the row unrefreshed and sets no cookie ([test](../../session_refresh_test.go#L94))
     - [x] Defer Session Refresh ([test](../../session_refresh_test.go#L88))
       - [x] With DeferSessionRefresh, GET returns needsRefresh true without writing, and the following POST performs the sliding refresh ([test](../../session_refresh_test.go#L88))
-  - [ ] Session Freshness
+  - [x] Session Freshness ([test](../../conformance/goapi/freshness_test.go#L21))
+    - [x] Refuse sensitive account changes from a session older than the freshness window, and turn the check off with a negative FreshAge ([test](../../conformance/goapi/freshness_test.go#L21))
   - [ ] Session Management
     - [ ] Get Session
       - [x] Return the signed-in user and session with the default seven-day lifetime ([test](../../conformance/core.test.mjs#L195))

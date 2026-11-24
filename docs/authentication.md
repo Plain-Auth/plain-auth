@@ -39,7 +39,8 @@ If the mount is `/identity`, a request to `/identity/sign-up/email` returns 404 
 | `BasePath` | Mount path, normally `/api/auth` |
 | `TrustedOrigins` | Additional exact or wildcard HTTP(S) origins allowed for browser requests and absolute callbacks |
 | `EmailAndPassword` | Enables email sign-up and sign-in. Defaults to false |
-| `SessionTTL`, `FreshAge` | Default session lifetime is seven days, freshness window is one day |
+| `AppName` | Name users see, such as the issuer in authenticator apps. Defaults to `Auth` |
+| `SessionTTL`, `FreshAge` | Default session lifetime is seven days, freshness window is one day. Deleting the user, unlinking an account and plugin actions that need a fresh session refuse an older session; a negative `FreshAge` turns the check off |
 | `MinPasswordLength`, `MaxPasswordLength` | Default range is 8–128 UTF-16 code units, matching the JavaScript length convention |
 | `RateLimit` | Optional boolean override. See [environment precedence](environment.md) for production and HTTPS defaults |
 | `Plugins` | Optional extensions registered at startup |

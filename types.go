@@ -15,6 +15,9 @@ type Options struct {
 	AccountAdditionalFields map[string]AccountField
 	AccountFieldRules       map[string]AccountFieldRule
 
+	// AppName names the application where users see it, such as the issuer
+	// in authenticator apps. It defaults to "Auth".
+	AppName string
 	// Logger receives diagnostics for this instance. A nil logger uses slog.Default().
 	Logger *slog.Logger
 	// Hooks run before and after each mounted HTTP endpoint.
@@ -97,7 +100,10 @@ type Options struct {
 	AllowUnlinkingAll            bool
 
 	SessionTTL time.Duration
-	FreshAge   time.Duration
+	// FreshAge is how recent a session must be for sensitive account changes,
+	// such as deleting the user or unlinking an account. It defaults to one
+	// day; a negative value turns the check off.
+	FreshAge time.Duration
 	// SessionUpdateAge controls sliding expiration. A pointer to zero refreshes on every eligible read.
 	SessionUpdateAge      *time.Duration
 	DisableSessionRefresh bool

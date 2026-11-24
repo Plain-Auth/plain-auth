@@ -78,9 +78,6 @@ const challengeLifetime = 10 * time.Minute
 
 // NewTwoFactor implements credential login with authenticator codes or backup codes.
 func NewTwoFactor(opts TwoFactorOptions) Plugin {
-	if opts.Issuer == "" {
-		opts.Issuer = "Auth"
-	}
 	if opts.ChallengeLifetime == 0 {
 		opts.ChallengeLifetime = challengeLifetime
 	}
