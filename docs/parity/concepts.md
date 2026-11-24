@@ -6,11 +6,13 @@
 
 - [ ] API
   - [ ] Calling API Endpoints on the Server
+    - [x] Calls SignUpEmail, GetSession with request headers carrying the session cookie, and SignOut directly on an Auth instance from server code ([test](../../adapters/memory/memory_test.go#L47))
     - [ ] Body, Headers, Query
     - [ ] Getting `headers` and `Response` Object
       - [ ] Getting `headers`
       - [ ] Getting `Response` Object
-    - [ ] Error Handling
+    - [x] Error Handling ([test](../../plugins/pwnedpassword/pwnedpassword_test.go#L116))
+      - [x] A direct server-side SignUpEmail call returns a *APIError ([test](../../plugins/pwnedpassword/pwnedpassword_test.go#L116))
 
 ## CLI
 
@@ -104,10 +106,13 @@
 ## Cookies
 
 - [ ] Cookies
-  - [ ] `compact`
+  - [x] `compact` ([test](../../conformance/session-cache-compact.mjs#L29))
+    - [x] The Go and reference servers each issue and consume the other's base64url+HMAC session_data cookies on shared SQLite ([test](../../conformance/session-cache-compact.mjs#L29))
   - [ ] `jwt`
-  - [ ] `jwe`
-  - [ ] Cookie Prefix
+  - [x] `jwe` ([test](../../session_cache_jose_test.go#L189))
+    - [x] The JWE subtest of TestJOSESessionCookieValidityAndRotation encrypts snapshots with a key derived from the configured secrets ([test](../../session_cache_jose_test.go#L189))
+  - [x] Cookie Prefix ([test](../../cookies_test.go#L25))
+    - [x] Builds two instances with different CookiePrefix values and asserts the session cookie is named __Secure-company.session_token ([test](../../cookies_test.go#L25))
   - [ ] Custom Cookies
   - [ ] Cross Subdomain Cookies
     - [x] Resolve shared cookie domains from the static base URL and reject unrelated hosts and public or private suffixes ([test](../../cookies_test.go#L48))
@@ -259,19 +264,28 @@
 ## Email
 
 - [ ] Email
-  - [ ] Bring Your Own Email Provider
+  - [x] Bring Your Own Email Provider ([test](../../conformance/goapi/account_test.go#L18))
+    - [x] Delivery is host-supplied MailSender callbacks (SendVerificationEmail, SendResetPassword), so any provider works ([test](../../conformance/goapi/account_test.go#L18))
   - [ ] Email Verification
     - [ ] Adding Email Verification to Your App
       - [ ] sendVerificationEmail
-      - [ ] `user`
-      - [ ] `url`
-      - [ ] `token`
+      - [x] `user` ([test](../../conformance/goapi/account_test.go#L47))
+        - [x] After a send-verification-email request, asserts that MailLink.User carries the account owner's email address ([test](../../conformance/goapi/account_test.go#L47))
+      - [x] `url` ([test](../../conformance/goapi/account_test.go#L54))
+        - [x] Serves the delivered MailLink.URL and asserts a 302 to the requested callbackURL ([test](../../conformance/goapi/account_test.go#L54))
+      - [x] `token` ([test](../../client/account_test.go#L63))
+        - [x] Captures MailLink.Token from the sender, completes verification with client VerifyEmail(token) (the custom-URL path), and asserts the session user is now verified ([test](../../client/account_test.go#L63))
     - [ ] Triggering Email Verification
-      - [ ] 1. During Sign-up
-      - [ ] 2. Require Email Verification
-      - [ ] 3. Manually
-    - [ ] Verifying the Email
-    - [ ] Auto Sign In After Verification
+      - [x] 1. During Sign-up ([test](../../conformance/social-user-fields.mjs#L246))
+        - [x] Across modes on both runtimes, asserts mail goes out at sign-up when sendOnSignUp is on and not when it is off ([test](../../conformance/social-user-fields.mjs#L246))
+      - [x] 2. Require Email Verification ([test](../../conformance/goapi/account_lifecycle_test.go#L34))
+        - [x] With RequireEmailVerification and SendVerificationOnSignIn, an unverified SignInEmail fails with EMAIL_NOT_VERIFIED (status 403 in code) and sends a new verification email ([test](../../conformance/goapi/account_lifecycle_test.go#L34))
+      - [x] 3. Manually ([test](../../conformance/goapi/account_test.go#L45))
+        - [x] POSTs send-verification-email with an email and callbackURL, asserts delivery to the owner and the redirect to /welcome ([test](../../conformance/goapi/account_test.go#L45))
+    - [x] Verifying the Email ([test](../../conformance/goapi/account_test.go#L59))
+      - [x] Following the link redirects to callbackURL and marks the address verified in the live session ([test](../../conformance/goapi/account_test.go#L59))
+    - [x] Auto Sign In After Verification ([test](../../conformance/email-verification-session.mjs#L7))
+      - [x] With autoSignInAfterVerification, each runtime verifies the other's signed links and issues or reuses a browser session on first use ([test](../../conformance/email-verification-session.mjs#L7))
     - [x] Callback before email verification ([test](../../conformance/email-verification-observers.mjs#L8))
       - [x] Observe the persisted profile before link and code verification, including the original mailbox for a code-based address change ([test](../../conformance/email-verification-observers.mjs#L8))
       - [x] Retry a rejected ordinary link, burn a rejected email code and recheck the owner and source session after the host returns ([test](../../adapters/sqlstore/email_verification_observers_test.go#L17))
@@ -493,18 +507,25 @@
   - [ ] Configuring Rate Limit
     - [ ] Connecting IP Address
       - [x] Resolve the first untrusted address from configured proxy ranges while ignoring direct peers’ headers ([test](../../ip_test.go#L10))
-      - [ ] A proxy puts the client address in its own header
-      - [ ] Proxies add addresses to `X-Forwarded-For`
-      - [ ] Clients connect directly
-      - [ ] A proxy sets the client address
-      - [ ] Proxies add to `X-Forwarded-For`
-      - [ ] Clients connect directly
+      - [x] A proxy puts the client address in its own header ([test](../../ip_test.go#L14))
+        - [x] Sets a custom ForwardedHeader and checks that the client address comes from that header when the peer is a trusted proxy, and that the header is ignored from other peers ([test](../../ip_test.go#L14))
+      - [x] Proxies add addresses to `X-Forwarded-For` ([test](../../plugins/captcha/captcha_test.go#L121))
+        - [x] With a trusted 127.0.0.0/8 proxy and the default X-Forwarded-For header, the resolved client address 203.0.113.4 goes to the provider and matches the pinned reference fixtures ([test](../../plugins/captcha/captcha_test.go#L121))
+      - [x] Clients connect directly ([test](../../conformance/goapi/http_test.go#L145))
+        - [x] With no trusted proxies, Go counts by the connection address ([test](../../conformance/goapi/http_test.go#L145))
+      - [x] A proxy sets the client address ([test](../../ip_test.go#L22))
+        - [x] The configured single address header is used only when a trusted proxy sends it ([test](../../ip_test.go#L22))
+      - [x] Proxies add to `X-Forwarded-For` ([test](../../ip_test.go#L23))
+        - [x] Skips trusted proxy hops from the right of the forwarded chain and returns the first untrusted client address, ignoring the earlier spoofed entry ([test](../../ip_test.go#L23))
+      - [x] Clients connect directly ([test](../../adapters/sqlstore/ratelimit_test.go#L93))
+        - [x] With no proxy configured, the shared SQL counter is keyed by the connection address (192.0.2.1|route) ([test](../../adapters/sqlstore/ratelimit_test.go#L93))
       - [ ] When no address is found
       - [ ] IPv6 Address Support
       - [ ] IPv6 Subnet Rate Limiting
         - [ ] `128`
         - [ ] `64`
-        - [ ] `56`
+        - [x] `56` ([test](../../ip_test.go#L35))
+          - [x] With IPv6Subnet 56 (copied when New runs), the rate-limit key for an IPv6 address is its masked /56 subnet ([test](../../ip_test.go#L35))
         - [ ] `48`
         - [ ] `32`
     - [ ] Rate Limit Window
@@ -517,28 +538,43 @@
       - [ ] Custom Storage
   - [ ] Handling Rate Limit Errors
     - [x] Return a rate-limit error with a retry duration ([test](../../conformance/goapi/http_test.go#L145))
-    - [ ] `X-Retry-After`
+    - [x] `X-Retry-After` ([test](../../ratelimit_test.go#L26))
+      - [x] A rejected request gets 429 and X-Retry-After set to the seconds left in the window, rounded up (2 for a 1.5s window) ([test](../../ratelimit_test.go#L26))
     - [ ] Global Handling
     - [ ] Per Request Handling
-    - [ ] Schema
-      - [ ] `rateLimitTableFields.id`
-      - [ ] `rateLimitTableFields.key`
-      - [ ] `rateLimitTableFields.count`
-      - [ ] `rateLimitTableFields.lastRequest`
+    - [x] Schema ([test](../../conformance/schema.test.mjs#L106))
+      - [x] Checks that authctl's DDL equals the pinned reference migrations (with rateLimit storage set to database) for every base profile combination, including rate-limit, on SQLite, PostgreSQL and MySQL ([test](../../conformance/schema.test.mjs#L106))
+      - [x] `rateLimitTableFields.id` ([test](../../conformance/schema.test.mjs#L106))
+        - [x] The rateLimit id primary-key column is compared exactly with the reference DDL on all three dialects ([test](../../conformance/schema.test.mjs#L106))
+      - [x] `rateLimitTableFields.key` ([test](../../conformance/schema.test.mjs#L106))
+        - [x] The unique rateLimit key column is compared exactly with the reference DDL on all three dialects ([test](../../conformance/schema.test.mjs#L106))
+      - [x] `rateLimitTableFields.count` ([test](../../conformance/schema.test.mjs#L106))
+        - [x] The integer rateLimit count column is compared exactly with the reference DDL on all three dialects ([test](../../conformance/schema.test.mjs#L106))
+      - [x] `rateLimitTableFields.lastRequest` ([test](../../conformance/schema.test.mjs#L106))
+        - [x] The bigint epoch-millisecond lastRequest column is compared exactly with the reference DDL on all three dialects ([test](../../conformance/schema.test.mjs#L106))
 
 ## Session Management
 
 - [ ] Session Management
   - [ ] Session table
-    - [ ] `id`
-    - [ ] `token`
-    - [ ] `userId`
-    - [ ] `expiresAt`
-    - [ ] `ipAddress`
-    - [ ] `userAgent`
-  - [ ] Session Expiration
-    - [ ] Disable Session Refresh
-    - [ ] Defer Session Refresh
+    - [x] `id` ([test](../../conformance/schema.test.mjs#L37))
+      - [x] authctl migrate produces a session table identical to the reference schema, including the id primary key column ([test](../../conformance/schema.test.mjs#L37))
+    - [x] `token` ([test](../../conformance/core.test.mjs#L197))
+      - [x] The official client reads the session back through the cookie set at sign-up, and the returned session.token equals the issued token on both runtimes ([test](../../conformance/core.test.mjs#L197))
+    - [x] `userId` ([test](../../conformance/core.test.mjs#L196))
+      - [x] getSession returns a session whose userId is the registered user's id ([test](../../conformance/core.test.mjs#L196))
+    - [x] `expiresAt` ([test](../../conformance/core.test.mjs#L198))
+      - [x] The returned session's expiresAt is seven days after its createdAt ([test](../../conformance/core.test.mjs#L198))
+    - [x] `ipAddress` ([test](../../conformance/core.test.mjs#L211))
+      - [x] Deep-compares the full getSession bodies, including the recorded client address, between the Go fixture and the reference for the same instrumented client ([test](../../conformance/core.test.mjs#L211))
+    - [x] `userAgent` ([test](../../conformance/core.test.mjs#L211))
+      - [x] The client sends user-agent authn-conformance, and the stored session's userAgent is deep-compared against the reference session body ([test](../../conformance/core.test.mjs#L211))
+  - [x] Session Expiration ([test](../../session_refresh_test.go#L46))
+    - [x] Over HTTP: no refresh before the one-day update age, then expiresAt slides to now plus seven days exactly once, and a session past expiry reads as null and is deleted ([test](../../session_refresh_test.go#L46))
+    - [x] Disable Session Refresh ([test](../../session_refresh_test.go#L94))
+      - [x] With DisableSessionRefresh, a GET past the update age leaves the row unrefreshed and sets no cookie ([test](../../session_refresh_test.go#L94))
+    - [x] Defer Session Refresh ([test](../../session_refresh_test.go#L88))
+      - [x] With DeferSessionRefresh, GET returns needsRefresh true without writing, and the following POST performs the sliding refresh ([test](../../session_refresh_test.go#L88))
   - [ ] Session Freshness
   - [ ] Session Management
     - [ ] Get Session
@@ -552,24 +588,32 @@
       - [x] Invalidate an older session while retaining the current one ([test](../../conformance/goapi/http_test.go#L99))
     - [ ] Revoke All Sessions
       - [x] Revoke every session from the native client ([test](../../client/client_test.go#L94))
-    - [ ] Update Session
-    - [ ] Revoking Sessions on Password Change
+    - [x] Update Session ([test](../../conformance/session-fields.mjs#L22))
+      - [x] Through the released client on both runtimes: updateSession persists additional fields, ignores a core userId, rejects id/userId-only and non-input fields, and returns 401 for guests or revoked sessions ([test](../../conformance/session-fields.mjs#L22))
+    - [x] Revoking Sessions on Password Change ([test](../../conformance/goapi/account_test.go#L63))
+      - [x] change-password with revokeOtherSessions true issues a replacement cookie, and the previous session cookie then gets 401 ([test](../../conformance/goapi/account_test.go#L63))
   - [ ] Session Caching
     - [ ] Cookie Cache
       - [x] Expire the disabled cache and its canonical chunks on signed-in and anonymous reads ([test](../../conformance/session-cache-cleanup.mjs#L28))
       - [x] Clear each received cache chunk on the issuing host and shared domain using the configured cookie namespace ([test](../../cookies_test.go#L172))
       - [x] Exchange HMAC-signed snapshots, browser-only lifetimes and chunked cookies in both directions on shared SQLite ([test](../../conformance/session-cache-compact.mjs#L62))
       - [x] Retain live JWT issuance, protected session checks and administrative controls after a physical schema migration on another node ([test](../../adapters/sqlstore/session_cache_test.go#L135))
-      - [ ] Notes
-      - [ ] If immediate session revocation is critical:
+      - [x] Notes ([test](../../conformance/session-cache-compact.mjs#L98))
+        - [x] After sign-out, another browser holding the snapshot chunks still gets the cached session until maxAge, matching the documented revocation caveat ([test](../../conformance/session-cache-compact.mjs#L98))
+      - [x] If immediate session revocation is critical: ([test](../../conformance/session-cache-compact.mjs#L99))
+        - [x] For a revoked session whose snapshot is still valid, disableCookieCache=true forces a live read and returns null ([test](../../conformance/session-cache-compact.mjs#L99))
       - [ ] Cookie Cache Strategies
         - [x] Exchange HMAC-signed snapshots, browser-only lifetimes and chunked cookies in both directions on shared SQLite ([test](../../conformance/session-cache-compact.mjs#L62))
         - [x] Reject incomplete, oversized, wrong-key or ambiguous cached credentials and retain per-cookie scope ([test](../../session_cache_compact_test.go#L293))
         - [x] Exchange HS256 JWT snapshots bidirectionally on shared SQLite and verify their headers, session binding, expiry, chunks and logout ([test](../../conformance/session-cache-compact.mjs#L33))
         - [x] Reject modified, incomplete, cross-strategy, expired, future and wrong-key envelopes ([test](../../session_cache_jose_test.go#L15))
-        - [ ] `compact`
-        - [ ] `jwt`
-        - [ ] `jwe`
+        - [x] Runs the compact, jwt and jwe strategies through HTTP and the native client across two auth hosts: cache hits, version invalidation and a forced store read after revocation ([test](../../client/session_cache_version_test.go#L17))
+        - [x] `compact` ([test](../../conformance/core.test.mjs#L1292))
+          - [x] Both runtimes exchange base64url HMAC-signed compact snapshots in both directions on shared SQLite ([test](../../conformance/core.test.mjs#L1292))
+        - [x] `jwt` ([test](../../conformance/core.test.mjs#L1427))
+          - [x] Go-issued snapshots verify with jose as HS256 against the shared secret and are exchanged with the reference in both directions ([test](../../conformance/core.test.mjs#L1427))
+        - [x] `jwe` ([test](../../session_cache_jose_test.go#L15))
+          - [x] The JWE subtest accepts only dir/A256CBC-HS512 with an HKDF-derived key and rejects tampered, compressed, A256GCM and foreign-kid envelopes ([test](../../session_cache_jose_test.go#L15))
         - [ ] Comparison:
         - [ ] When to use each:
     - [ ] JWKS-backed cookie-cache JWTs
@@ -582,17 +626,21 @@
       - [ ] `false`
       - [ ] `true`
       - [ ] `object`
-    - [ ] Versioning Stateless Sessions
+    - [x] Versioning Stateless Sessions ([test](../../session_cache_compact_test.go#L120))
       - [x] Invalidate prior compact snapshots across a fixed cache-version change or signing key removal ([test](../../session_cache_compact_test.go#L120))
       - [x] Verify newly issued snapshots, retained keys and retired keys during a signed cookie rollout ([test](../../conformance/session-cache-compact.mjs#L187))
       - [x] Recalculate compact and signed snapshot versions across replicas through the official client, including async lookup, failure and stale replacement ([test](../../conformance/session-cache-version.mjs#L7))
       - [x] Reject a removed session after its revision changes and propagate cancellation with isolated concurrent requests ([test](../../session_cache_version_test.go#L13))
       - [x] Exercise all three versioned cache strategies, revocation and typed errors using the native client across two auth hosts ([test](../../client/session_cache_version_test.go#L17))
+      - [x] A host with a different SessionCookieCache.Version ignores snapshots issued under the prior version and returns live data ([test](../../session_cache_compact_test.go#L120))
     - [ ] Stateless with Secondary Storage
   - [ ] Customizing Session Response
+    - [x] With the Go custom-session projection, the official client getSession returns the same application-defined payload as the reference customSession plugin ([test](../../conformance/core.test.mjs#L422))
     - [ ] Infer on the Client
-    - [ ] Caveats on Customizing Session Response
-      - [ ] Mutating the list-device-sessions endpoint
+    - [x] Caveats on Customizing Session Response ([test](../../conformance/session-cache-compact.mjs#L103))
+      - [x] Caveat 3: the cookie cache holds only the base session, and the projection runs on each fetch, so a cached read returns the projected view of the snapshot ([test](../../conformance/session-cache-compact.mjs#L103))
+      - [x] Mutating the list-device-sessions endpoint ([test](../../conformance/core.test.mjs#L574))
+        - [x] With the option on, listDeviceSessions returns only the projected viewer rows on both runtimes ([test](../../conformance/core.test.mjs#L574))
 
 ## TypeScript
 
@@ -608,22 +656,35 @@
 
 - [ ] User & Accounts
   - [ ] Update User
-    - [ ] Update User Information
-    - [ ] Change Email
-      - [ ] Confirming with Current Email
-      - [ ] Updating Without Verification
-      - [ ] Client Usage
+    - [x] Update User Information ([test](../../conformance/goapi/account_test.go#L40))
+      - [x] TestAccountRecoveryAndProfile posts update-user with name and image, then reads the session to confirm both were stored ([test](../../conformance/goapi/account_test.go#L40))
+    - [x] Change Email ([test](../../conformance/goapi/account_lifecycle_test.go#L107))
+      - [x] TestConfirmedEmailChangeAndDeletion (ChangeEmailEnabled) checks four things: the new inbox gets its own verification link, another user's session is refused with 401, the email changes only after that link is used and stays verified, and the link cannot be used twice ([test](../../conformance/goapi/account_lifecycle_test.go#L107))
+      - [x] Confirming with Current Email ([test](../../conformance/goapi/account_lifecycle_test.go#L94))
+        - [x] With SendChangeEmailConfirmation set and the current email verified, change-email sends the confirmation to the current address and names the new one ([test](../../conformance/goapi/account_lifecycle_test.go#L94))
+      - [x] Updating Without Verification ([test](../../conformance/goapi/account_lifecycle_test.go#L144))
+        - [x] TestFreshDeletionAndUnverifiedAddressChange sets UpdateEmailWithoutVerification on an unverified user ([test](../../conformance/goapi/account_lifecycle_test.go#L144))
+      - [x] Client Usage ([test](../../client/account_test.go#L134))
+        - [x] The Go client's ChangeEmail(newEmail, callbackURL) starts the change over HTTP ([test](../../client/account_test.go#L134))
     - [ ] Change Password
-      - [ ] `POST /change-password`
-        - [ ] Parameter `newPassword`
-        - [ ] Parameter `currentPassword`
-        - [ ] Parameter `revokeOtherSessions` (optional)
-    - [ ] Set Password
-    - [ ] Verify Password
+      - [x] `POST /change-password` ([test](../../conformance/goapi/account_test.go#L63))
+        - [x] A signed-in user posts change-password and gets 200 with a replacement session cookie ([test](../../conformance/goapi/account_test.go#L63))
+        - [x] Parameter `newPassword` ([test](../../conformance/goapi/account_test.go#L70))
+          - [x] After change-password, verify-password accepts the newPassword value on the replacement session ([test](../../conformance/goapi/account_test.go#L70))
+        - [x] Parameter `currentPassword` ([test](../../conformance/goapi/account_test.go#L62))
+          - [x] A wrong currentPassword is rejected with 400 and the password is left unchanged ([test](../../conformance/goapi/account_test.go#L62))
+        - [x] Parameter `revokeOtherSessions` (optional) ([test](../../conformance/goapi/account_test.go#L67))
+          - [x] With revokeOtherSessions:true, the earlier session is invalidated (401) and a replacement session cookie is issued ([test](../../conformance/goapi/account_test.go#L67))
+    - [x] Set Password ([test](../../conformance/goapi/database_user_hooks_test.go#L346))
+      - [x] In TestDatabaseAccountHooks, after every account is unlinked, the server-only auth.SetPassword creates a first credential and delete-user then accepts that password ([test](../../conformance/goapi/database_user_hooks_test.go#L346))
+    - [x] Verify Password ([test](../../conformance/goapi/account_test.go#L36))
+      - [x] verify-password returns 200 for the signed-in user's correct password and 400 for a wrong one ([test](../../conformance/goapi/account_test.go#L36))
   - [ ] Delete User
     - [ ] Adding Verification Before Deletion
+      - [x] With SendDeleteAccountVerification set, delete-user sends a deletion link and token to the account owner instead of deleting at once ([test](../../conformance/goapi/account_lifecycle_test.go#L116))
       - [ ] How callback verification works:
-      - [ ] Callback URL
+      - [x] Callback URL ([test](../../conformance/goapi/account_lifecycle_test.go#L125))
+        - [x] Opening the emailed /delete-user/callback link while signed in as the owner returns a 302 redirect (callbackURL /goodbye) and deletes the account ([test](../../conformance/goapi/account_lifecycle_test.go#L125))
       - [ ] Authentication Check
     - [ ] Authentication Requirements
     - [ ] Callbacks
@@ -631,8 +692,9 @@
       - [ ] beforeDelete
       - [ ] afterDelete
   - [ ] Accounts
-    - [ ] List User Accounts
+    - [x] List User Accounts ([test](../../client/account_test.go#L74))
       - [x] List only the current user’s linked accounts and decode provider scopes ([test](../../adapters/sqlstore/identity_test.go#L30))
+      - [x] The Go client's ListAccounts returns the signed-in user's single credential account with its record id ([test](../../client/account_test.go#L74))
     - [ ] Token Encryption
     - [ ] Account Linking
       - [ ] Forced Linking
@@ -662,21 +724,31 @@
 
 - [ ] Optimizing for Performance
   - [ ] Caching
-    - [ ] Cookie Cache
+    - [x] Cookie Cache ([test](../../session_cache_compact_test.go#L92))
+      - [x] With SessionCookieCache MaxAge 90s, get-session emits a 90-second HttpOnly Secure snapshot cookie, later reads are served from it without a store query or renewal, and the snapshot stops being honored at its expiry ([test](../../session_cache_compact_test.go#L92))
     - [ ] Framework Caching
   - [ ] Background Tasks
   - [ ] SSR Optimizations
   - [ ] Database optimizations
     - [ ] Recommended fields to index
-      - [ ] users
-      - [ ] accounts
-      - [ ] sessions
-      - [ ] verifications
-      - [ ] invitations
-      - [ ] members
-      - [ ] organizations
-      - [ ] passkey
-      - [ ] twoFactor
+      - [x] users ([test](../../conformance/schema.test.mjs#L37))
+        - [x] Fresh and repeated authctl migrate on SQLite deep-equals the reference default schema including index lists, which contains the unique index on user.email ([test](../../conformance/schema.test.mjs#L37))
+      - [x] accounts ([test](../../conformance/schema.test.mjs#L37))
+        - [x] Fresh and repeated authctl migrate on SQLite deep-equals the reference default schema including the account_userId_idx index ([test](../../conformance/schema.test.mjs#L37))
+      - [x] sessions ([test](../../conformance/schema.test.mjs#L37))
+        - [x] Fresh and repeated authctl migrate on SQLite deep-equals the reference default schema including session_userId_idx and the unique session token index ([test](../../conformance/schema.test.mjs#L37))
+      - [x] verifications ([test](../../conformance/schema.test.mjs#L37))
+        - [x] Fresh and repeated authctl migrate on SQLite deep-equals the reference default schema including verification_identifier_idx ([test](../../conformance/schema.test.mjs#L37))
+      - [x] invitations ([test](../../conformance/schema.test.mjs#L129))
+        - [x] authctl migrate --plugins organization on a populated SQLite database deep-equals the reference live migration, including invitation email and organizationId indexes, and preserves the existing user ([test](../../conformance/schema.test.mjs#L129))
+      - [x] members ([test](../../conformance/schema.test.mjs#L129))
+        - [x] authctl migrate --plugins organization on a populated SQLite database deep-equals the reference live migration, including member userId and organizationId indexes ([test](../../conformance/schema.test.mjs#L129))
+      - [x] organizations ([test](../../conformance/schema.test.mjs#L129))
+        - [x] authctl migrate --plugins organization on a populated SQLite database deep-equals the reference live migration, including the unique organization slug index ([test](../../conformance/schema.test.mjs#L129))
+      - [x] passkey ([test](../../conformance/schema.test.mjs#L129))
+        - [x] authctl migrate --plugins passkey on a populated SQLite database deep-equals the reference live migration, including passkey_userId_idx ([test](../../conformance/schema.test.mjs#L129))
+      - [x] twoFactor ([test](../../conformance/schema.test.mjs#L129))
+        - [x] authctl migrate --plugins two-factor on a populated SQLite database deep-equals the reference live migration, including twoFactor_secret_idx ([test](../../conformance/schema.test.mjs#L129))
   - [ ] Bundle Size Optimization
     - [ ] Usage
       - [ ] Limitations:
