@@ -573,6 +573,14 @@ func main() {
 	}
 	opts.AllowDifferentEmails = os.Getenv("CONFORMANCE_LINK_DIFFERENT") == "1"
 	opts.UpdateUserInfoOnLink = os.Getenv("CONFORMANCE_LINK_UPDATE") == "1"
+	if os.Getenv("CONFORMANCE_VALIDATE_USER") == "1" {
+		opts.ValidateUserInfo = func(_ context.Context, v authn.UserInfoValidation) error {
+			if !strings.HasSuffix(v.User.Email, "@company.example") {
+				return &authn.APIError{Code: "email_not_allowed", Message: "Only company emails are allowed"}
+			}
+			return nil
+		}
+	}
 	if os.Getenv("CONFORMANCE_SYNTHETIC_USER") == "1" {
 		opts.DisableAutoSignIn = true
 		opts.CustomSyntheticUser = func(u authn.SyntheticUser) map[string]any {

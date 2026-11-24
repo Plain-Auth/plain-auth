@@ -233,6 +233,9 @@ func New(opts Options) (*Auth, error) {
 	if err := a.checkDatabaseHooks(); err != nil {
 		return nil, err
 	}
+	if err := a.checkUserInfoValidation(); err != nil {
+		return nil, err
+	}
 	a.trustedProfileFields, err = trustedProfileSchema(opts.UserAdditionalFields, opts.Plugins)
 	if err != nil {
 		return nil, err
@@ -534,11 +537,20 @@ func (a *Auth) signUpEmail(ctx context.Context, in SignUpInput, meta RequestMeta
 		return AuthResult{}, duplicateSignupError()
 	}
 	var userFields, sessionFields map[string]any
-	if a.dbHooks.user.create.set() || a.dbHooks.account.create.set() || first != nil && a.dbHooks.session.create.set() {
+	if a.dbHooks.user.create.set() || a.dbHooks.account.create.set() || first != nil && a.dbHooks.session.create.set() || a.opts.ValidateUserInfo != nil {
 		// An existing email takes the duplicate path before any hook runs.
 		if _, err := a.opts.Store.(signUpUserFinder).FindAccountUser(ctx, user.Email); err == nil {
 			return duplicate()
 		} else if !errors.Is(err, ErrNotFound) {
+			return AuthResult{}, err
+		}
+		check := UserInfoValidation{Action: UserInfoCreateUser, Method: "email-password", Request: request,
+			User: UserRecord{User: user, Fields: serverInput(a.opts.UserAdditionalFields, in.AdditionalFields)}}
+		if err := a.ValidateUserInfo(ctx, check); err != nil {
+			// A protected sign-up answers a refusal like an existing email.
+			if first == nil {
+				return duplicate()
+			}
 			return AuthResult{}, err
 		}
 		if user, userFields, err = a.beforeUserCreate(ctx, user, serverInput(a.opts.UserAdditionalFields, in.AdditionalFields)); err != nil {

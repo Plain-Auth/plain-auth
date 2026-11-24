@@ -549,6 +549,11 @@ func (a *Auth) completeProfile(ctx context.Context, r *http.Request, id, callbac
 }
 
 func (a *Auth) completeProfileWith(ctx context.Context, r *http.Request, id string, p OAuthProfile, tokens OAuthTokens, options OAuthLoginOptions, complete OAuthCompletion) (AuthResult, bool, error) {
+	if a.opts.ValidateUserInfo != nil {
+		// Provider sign-ins do not run ValidateUserInfo yet. New refuses the
+		// built-in ones, and a plugin's CompleteEnterpriseFlow fails closed.
+		return AuthResult{}, false, &userInfoRejection{&APIError{403, "validation_failed", "User validation failed"}}
+	}
 	options.DisableAccountUpdateOnSignIn = a.opts.DisableAccountUpdateOnSignIn && options.LinkUserID == ""
 	if a.opts.DisableImplicitAccountLinking || a.opts.DisableAccountLinking {
 		options.DisableImplicitLinking = true

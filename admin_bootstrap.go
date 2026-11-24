@@ -40,6 +40,9 @@ func (a *Auth) BootstrapAdmin(ctx context.Context, name, email, password string)
 		return a.hashCredential(ctx, "/admin/create-user", raw)
 	}
 	return bootstrapAdmin(ctx, name, email, password, derive, func(ctx context.Context, u User, hash string) (User, error) {
+		if err := a.ValidateUserInfo(ctx, UserInfoValidation{Action: UserInfoCreateUser, Method: "admin", User: UserRecord{User: u}}); err != nil {
+			return User{}, err
+		}
 		u, fields, err := a.beforeUserCreate(ctx, u, nil)
 		if errors.Is(err, ErrSkipWrite) {
 			return User{}, errors.New("authn: a database hook skipped creating the administrator")

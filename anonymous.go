@@ -103,6 +103,9 @@ func (o AnonymousOptions) signIn(c EndpointContext) (any, error) {
 		u.TwoFactorEnabled = &enabled
 	}
 	ss, _ := a.newSession(u.ID, RequestMeta{IPAddress: a.clientIP(c.Request), UserAgent: c.Request.UserAgent()})
+	if err := a.ValidateUserInfo(ctx, UserInfoValidation{Action: UserInfoCreateUser, Method: "anonymous", User: UserRecord{User: u}, Request: c.Request}); err != nil {
+		return nil, err
+	}
 	u, userFields, err := a.beforeUserCreate(ctx, u, nil)
 	if errors.Is(err, ErrSkipWrite) {
 		return nil, &APIError{500, "FAILED_TO_CREATE_USER", "Failed to create user"}

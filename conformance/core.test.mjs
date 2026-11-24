@@ -1459,6 +1459,11 @@ test("the released email client keeps duplicate profiles private and notifies on
   await existingSignUp(t, {reference, goFixture, instrument});
 });
 
+test("validateUserInfo refuses an email sign-up the same way on both runtimes", async (t) => {
+  const { compareSignUpValidation } = await import("./user-validation.mjs");
+  await compareSignUpValidation(t, {reference, goFixture, instrument});
+});
+
 test("customSyntheticUser shapes the duplicate sign-up profile the same way on both runtimes", async (t) => {
   const { compareSyntheticUser } = await import("./synthetic-user.mjs");
   await compareSyntheticUser(t, {reference, goFixture, instrument});

@@ -252,6 +252,23 @@ Database hooks do not cover every flow yet. `New` refuses:
 
 The SCIM handler refuses a host with any database hook, and `Auth.HasDatabaseHooks` lets your own wrapping handler do the same.
 
+## Decide which users to admit
+
+`Options.ValidateUserInfo` is one gate for every way a user arrives. It runs before a user is created, outside any store transaction and before the user create database hooks:
+
+```go
+opts.ValidateUserInfo = func(ctx context.Context, v plainauth.UserInfoValidation) error {
+    if !strings.HasSuffix(v.User.Email, "@company.example") {
+        return &plainauth.APIError{Code: "email_not_allowed", Message: "Only company emails are allowed"}
+    }
+    return nil
+}
+```
+
+`v.Action` is `create-user` and `v.Method` names the way in, such as `email-password`, `anonymous`, `phone-number` or `admin` for `Auth.BootstrapAdmin`. `v.User` holds the user about to be stored and its additional-field input, and `v.Request` is a copy of the request without its body, or nil for a direct Go call. Return nil to admit the user. A returned `*plainauth.APIError` refuses it with a 403 carrying its code and message; the message is sent to the client, so keep details out of it. Any other error, an `APIError` without a code, or a panic refuses with `403 validation_failed`. When `RequireEmailVerification` or `DisableAutoSignIn` keeps sign-ups private, a refused email sign-up answers like an existing email.
+
+Plugins and wrapping handlers that create users themselves can run the same gate with `Auth.ValidateUserInfo`. For now the gate covers email sign-up, anonymous sign-in, phone sign-up and `Auth.BootstrapAdmin`. `New` refuses it next to social sign-in, One Tap, magic links, email OTP, SSO and the admin, passkey and wallet plugins, and the SCIM handler refuses a host with it, until they run it too. A refused phone sign-up spends its code. [Gate tests](../conformance/goapi/user_validation_test.go)
+
 ## Errors and panics
 
 Return a `*plainauth.APIError` to choose the status, code and message. Any other error from an endpoint hook, and any panic, ends the request with a generic `500 INTERNAL_SERVER_ERROR`. A panic is logged with its source (`user` or `plugin:<id>`).

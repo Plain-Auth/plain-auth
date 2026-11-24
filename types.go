@@ -79,6 +79,15 @@ type Options struct {
 	// OnExistingUserSignUp receives the persisted mailbox owner on a protected duplicate
 	// sign-up. An HTTP call supplies request metadata; direct calls supply nil.
 	OnExistingUserSignUp func(context.Context, User, *http.Request) error
+	// ValidateUserInfo decides which identities the instance admits. It runs
+	// before a user is created, before a provider identity is linked to an
+	// existing user, and before an existing user signs in again through a
+	// provider, outside any store transaction and before the user create
+	// database hooks. Return nil to admit, or an *APIError to refuse with its
+	// Code and Message. Every refusal answers 403; browser flows redirect to
+	// their error URL with error and error_description. Any other error, an
+	// APIError without a Code, or a panic refuses with validation_failed.
+	ValidateUserInfo func(context.Context, UserInfoValidation) error
 	// CustomSyntheticUser shapes the user an HTTP sign-up returns for an email
 	// that already exists, when RequireEmailVerification or DisableAutoSignIn
 	// hides that the email is taken. The returned values replace the

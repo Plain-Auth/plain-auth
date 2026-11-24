@@ -34,6 +34,11 @@
       "label": "Keep another account’s profile and hidden inputs out of protected duplicate signup and verification output",
       "test": "adapters/sqlstore/user_fields_test.go",
       "marker": "func TestUserFieldProtectedSignupAndVerification("
+    },
+    {
+      "label": "ValidateUserInfo refuses an email sign-up with a 403, or with the private duplicate answer in protected mode",
+      "test": "conformance/goapi/user_validation_test.go",
+      "marker": "func TestValidateUserInfoSignUp(t *testing.T) {"
     }
   ],
   "core/getSession": [
@@ -4301,6 +4306,11 @@
       "test": "conformance/core.test.mjs",
       "marker": "the pinned anonymous client signs in, upgrades and deletes guests on either server",
       "complete": true
+    },
+    {
+      "label": "ValidateUserInfo refuses an anonymous user with a 403 carrying the app's code",
+      "test": "conformance/goapi/user_validation_test.go",
+      "marker": "func TestValidateUserInfoOtherCreators(t *testing.T) {"
     }
   ],
   "plugin/anonymous/POST /delete-anonymous-user": [
@@ -7028,6 +7038,11 @@
       "label": "Exchange phone proofs between both runtimes, accept declared new-user inputs, then preserve the profile on returning verification and phone replacement",
       "test": "conformance/phone-user-fields.mjs",
       "marker": "assert.equal(linked.data.token, returning.data.token)"
+    },
+    {
+      "label": "ValidateUserInfo sees the new phone user with the verified number and can refuse it with a 403",
+      "test": "conformance/goapi/user_validation_test.go",
+      "marker": "func TestValidateUserInfoOtherCreators(t *testing.T) {"
     }
   ],
   "plugin/phone-number/POST /phone-number/request-password-reset": [
@@ -20245,6 +20260,28 @@
       "test": "conformance/synthetic-user.mjs",
       "marker": "export async function compareSyntheticUser(t, {reference, goFixture, instrument}) {",
       "complete": true
+    }
+  ],
+  "docs/content/docs/concepts/users-accounts.mdx#L308/validateUserInfo": [
+    {
+      "label": "ValidateUserInfo admits or refuses email sign-ups before the user create hooks with a 403 carrying the app's code, sees a body-free request, and keeps protected sign-ups private",
+      "test": "conformance/goapi/user_validation_test.go",
+      "marker": "func TestValidateUserInfoSignUp(t *testing.T) {"
+    },
+    {
+      "label": "Every refusal answers 403; any other error, an APIError without a code or a panic fails closed as validation_failed, and a check without a source is refused",
+      "test": "conformance/goapi/user_validation_test.go",
+      "marker": "func TestValidateUserInfoResults(t *testing.T) {"
+    },
+    {
+      "label": "Anonymous sign-in, phone sign-up and administrator bootstrap users go through the gate",
+      "test": "conformance/goapi/user_validation_test.go",
+      "marker": "func TestValidateUserInfoOtherCreators(t *testing.T) {"
+    },
+    {
+      "label": "On both runtimes a refused email sign-up answers the same 403 with the policy's code and message, and no user is stored",
+      "test": "conformance/user-validation.mjs",
+      "marker": "export async function compareSignUpValidation(t, {reference, goFixture, instrument}) {"
     }
   ]
 }

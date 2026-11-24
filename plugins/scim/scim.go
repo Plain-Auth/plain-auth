@@ -112,6 +112,9 @@ func New(host *auth.Auth, opts Options) (*Handler, error) {
 	if host.HasDatabaseHooks() {
 		return nil, errors.New("scim: database hooks do not run for SCIM provisioning yet")
 	}
+	if host.HasUserInfoValidation() {
+		return nil, errors.New("scim: ValidateUserInfo does not run for SCIM provisioning yet")
+	}
 	path := strings.TrimRight(host.BasePath(), "/") + "/scim/v2"
 	base, err := host.CallbackURL(path)
 	if err != nil {

@@ -696,6 +696,10 @@
     - [ ] Authentication Requirements
     - [ ] Callbacks
       - [ ] validateUserInfo
+        - [x] ValidateUserInfo admits or refuses email sign-ups before the user create hooks with a 403 carrying the app's code, sees a body-free request, and keeps protected sign-ups private ([test](../../conformance/goapi/user_validation_test.go#L58))
+        - [x] Every refusal answers 403; any other error, an APIError without a code or a panic fails closed as validation_failed, and a check without a source is refused ([test](../../conformance/goapi/user_validation_test.go#L117))
+        - [x] Anonymous sign-in, phone sign-up and administrator bootstrap users go through the gate ([test](../../conformance/goapi/user_validation_test.go#L158))
+        - [x] On both runtimes a refused email sign-up answers the same 403 with the policy's code and message, and no user is stored ([test](../../conformance/user-validation.mjs#L4))
       - [x] beforeDelete ([test](../../conformance/goapi/mail_request_test.go#L106))
         - [x] Run a callback with the user and request before deletion, and cancel it with an error ([test](../../conformance/goapi/mail_request_test.go#L106))
       - [x] afterDelete ([test](../../conformance/goapi/mail_request_test.go#L71))

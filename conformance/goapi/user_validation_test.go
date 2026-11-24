@@ -1,0 +1,276 @@
+package goapi_test
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"log/slog"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"sync"
+	"testing"
+
+	authn "github.com/Plain-Org/plain-auth"
+	"github.com/Plain-Org/plain-auth/adapters/memory"
+	"github.com/Plain-Org/plain-auth/adapters/sqlite"
+	"github.com/Plain-Org/plain-auth/plugins/scim"
+)
+
+// validationRecorder keeps the checks a ValidateUserInfo callback receives.
+type validationRecorder struct {
+	mu     sync.Mutex
+	checks []authn.UserInfoValidation
+	order  []string
+}
+
+func (v *validationRecorder) add(check authn.UserInfoValidation) {
+	v.mu.Lock()
+	defer v.mu.Unlock()
+	v.checks = append(v.checks, check)
+	v.order = append(v.order, "validate:"+check.Method)
+}
+
+func (v *validationRecorder) last(t *testing.T) authn.UserInfoValidation {
+	t.Helper()
+	v.mu.Lock()
+	defer v.mu.Unlock()
+	if len(v.checks) == 0 {
+		t.Fatal("ValidateUserInfo did not run")
+	}
+	return v.checks[len(v.checks)-1]
+}
+
+func postJSON(t *testing.T, h http.Handler, path, body string) (int, map[string]any) {
+	t.Helper()
+	r := httptest.NewRequest("POST", "https://auth.example/api/auth"+path, strings.NewReader(body))
+	r.Header = http.Header{"Origin": {"https://auth.example"}, "Content-Type": {"application/json"}}
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, r)
+	var out map[string]any
+	_ = json.Unmarshal(w.Body.Bytes(), &out)
+	return w.Code, out
+}
+
+// ValidateUserInfo admits or refuses email sign-ups before the user create
+// hooks, sees the request without its body, and keeps protected sign-ups
+// private.
+func TestValidateUserInfoSignUp(t *testing.T) {
+	for _, protected := range []bool{false, true} {
+		rec := &validationRecorder{}
+		off := false
+		store := memory.New()
+		auth, err := authn.New(authn.Options{
+			BaseURL: "https://auth.example", Store: store, Secret: strings.Repeat("s", 32), EmailAndPassword: true, RateLimit: &off,
+			DisableAutoSignIn:    protected,
+			UserAdditionalFields: map[string]authn.UserField{"plan": {Type: authn.FieldString}},
+			ValidateUserInfo: func(_ context.Context, v authn.UserInfoValidation) error {
+				rec.add(v)
+				if !strings.HasSuffix(v.User.Email, "@company.example") {
+					return &authn.APIError{Status: 400, Code: "email_not_allowed", Message: "Only company emails are allowed"}
+				}
+				return nil
+			},
+			DatabaseHooks: authn.DatabaseHooks{User: authn.ModelHooks[authn.UserRecord]{Create: authn.OperationHooks[authn.UserRecord]{
+				Before: func(_ context.Context, _ *authn.UserRecord, _ *authn.HookContext) error {
+					rec.mu.Lock()
+					rec.order = append(rec.order, "before-create")
+					rec.mu.Unlock()
+					return nil
+				},
+			}}},
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		status, _ := postJSON(t, auth, "/sign-up/email", `{"email":"Ada@Company.example","password":"correct horse battery","name":"Ada","plan":"pro"}`)
+		if status != 200 {
+			t.Fatal("an admitted sign-up failed", status)
+		}
+		check := rec.last(t)
+		if check.Action != authn.UserInfoCreateUser || check.Method != "email-password" || check.User.Email != "ada@company.example" || check.User.Name != "Ada" || check.User.Fields["plan"] != "pro" {
+			t.Fatalf("the check was %+v", check)
+		}
+		if check.Request == nil || check.Request.Header.Get("Origin") != "https://auth.example" || check.Request.ContentLength != 0 || check.Request.Body != http.NoBody {
+			t.Fatal("the check did not get a body-free copy of the request")
+		}
+		if strings.Join(rec.order, ",") != "validate:email-password,before-create" {
+			t.Fatal("the gate did not run before the user create hooks", rec.order)
+		}
+		status, body := postJSON(t, auth, "/sign-up/email", `{"email":"eve@else.example","password":"correct horse battery","name":"Eve"}`)
+		if protected {
+			// A protected sign-up answers a refusal like an existing email.
+			if user, _ := body["user"].(map[string]any); status != 200 || body["token"] != nil || user["email"] != "eve@else.example" {
+				t.Fatal("a protected refusal was not private", status, body)
+			}
+		} else if status != 403 || body["code"] != "email_not_allowed" || body["message"] != "Only company emails are allowed" {
+			t.Fatal("the refusal was not a 403 with the app's code", status, body)
+		}
+		if _, err := store.FindAccountUser(t.Context(), "eve@else.example"); !errors.Is(err, authn.ErrNotFound) {
+			t.Fatal("a refused sign-up stored a user", err)
+		}
+	}
+}
+
+// Refusals always answer 403; anything but an APIError with a code fails
+// closed as validation_failed, and a check without a source is refused.
+func TestValidateUserInfoResults(t *testing.T) {
+	var result func() error
+	off := false
+	auth, err := authn.New(authn.Options{
+		BaseURL: "https://auth.example", Store: memory.New(), Secret: strings.Repeat("s", 32), EmailAndPassword: true, RateLimit: &off,
+		Logger:           slog.New(slog.DiscardHandler),
+		ValidateUserInfo: func(context.Context, authn.UserInfoValidation) error { return result() },
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i, tc := range []struct {
+		result        func() error
+		code, message string
+	}{
+		{func() error { return &authn.APIError{Status: 400, Code: "blocked", Message: "Blocked"} }, "blocked", "Blocked"},
+		{func() error { return &authn.APIError{Code: "blocked"} }, "blocked", "blocked"},
+		{func() error { return &authn.APIError{Status: 403, Message: "no code"} }, "validation_failed", "User validation failed"},
+		{func() error { return errors.New("database down") }, "validation_failed", "User validation failed"},
+		{func() error { panic("boom") }, "validation_failed", "User validation failed"},
+	} {
+		result = tc.result
+		status, body := postJSON(t, auth, "/sign-up/email", `{"email":"user`+string(rune('a'+i))+`@example.com","password":"correct horse battery","name":"User"}`)
+		if status != 403 || body["code"] != tc.code || body["message"] != tc.message {
+			t.Errorf("case %d: got %d %v", i, status, body)
+		}
+	}
+	result = func() error { return nil }
+	for _, tc := range []struct{ method, provider string }{{"", ""}, {"oauth", ""}, {"sso-saml", ""}} {
+		err := auth.ValidateUserInfo(t.Context(), authn.UserInfoValidation{Action: authn.UserInfoCreateUser, Method: tc.method, Provider: tc.provider})
+		var api *authn.APIError
+		if !errors.As(err, &api) || api.Status != 403 || api.Code != "validation_source_missing" {
+			t.Errorf("method %q without a provider: %v", tc.method, err)
+		}
+	}
+	if err := auth.ValidateUserInfo(t.Context(), authn.UserInfoValidation{Action: authn.UserInfoCreateUser, Method: "plugin"}); err != nil {
+		t.Fatal("an admitted direct check failed", err)
+	}
+}
+
+// Anonymous, phone and administrator bootstrap users go through the gate.
+func TestValidateUserInfoOtherCreators(t *testing.T) {
+	rec := &validationRecorder{}
+	refuse := map[string]bool{}
+	var sms string
+	anonymous, err := authn.NewAnonymous(authn.AnonymousOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	phone, err := authn.NewPhoneNumber(authn.PhoneNumberOptions{
+		SendOTP:              func(_ context.Context, m authn.PhoneOTPMessage) error { sms = m.Code; return nil },
+		SignUpOnVerification: &authn.PhoneSignUpOptions{GetTempEmail: func(n string) string { return strings.TrimPrefix(n, "+") + "@phone.example" }},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	off := false
+	auth, err := authn.New(authn.Options{
+		BaseURL: "https://auth.example", Store: memory.New(), Secret: strings.Repeat("s", 32), EmailAndPassword: true, RateLimit: &off,
+		Plugins: []authn.Plugin{anonymous, phone},
+		ValidateUserInfo: func(_ context.Context, v authn.UserInfoValidation) error {
+			rec.add(v)
+			if refuse[v.Method] {
+				return &authn.APIError{Code: v.Method + "_blocked", Message: "Not allowed"}
+			}
+			return nil
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	refuse["anonymous"] = true
+	if status, body := postJSON(t, auth, "/sign-in/anonymous", `{}`); status != 403 || body["code"] != "anonymous_blocked" {
+		t.Fatal("an anonymous refusal was not a 403", status, body)
+	}
+	refuse["anonymous"] = false
+	if status, _ := postJSON(t, auth, "/sign-in/anonymous", `{}`); status != 200 {
+		t.Fatal("an admitted anonymous sign-in failed", status)
+	}
+	if check := rec.last(t); check.Action != authn.UserInfoCreateUser || check.Method != "anonymous" || check.User.IsAnonymous == nil || !*check.User.IsAnonymous {
+		t.Fatalf("the anonymous check was %+v", check)
+	}
+	verify := func() (int, map[string]any) {
+		if status, _ := postJSON(t, auth, "/phone-number/send-otp", `{"phoneNumber":"+15550100"}`); status != 200 {
+			t.Fatal("phone code request failed", status)
+		}
+		return postJSON(t, auth, "/phone-number/verify", `{"phoneNumber":"+15550100","code":"`+sms+`"}`)
+	}
+	refuse["phone-number"] = true
+	if status, body := verify(); status != 403 || body["code"] != "phone-number_blocked" {
+		t.Fatal("a phone refusal was not a 403", status, body)
+	}
+	check := rec.last(t)
+	if check.Method != "phone-number" || check.User.Email != "15550100@phone.example" || check.User.PhoneNumberFields == nil ||
+		*check.User.PhoneNumber != "+15550100" || !*check.User.PhoneNumberVerified {
+		t.Fatalf("the phone check was %+v", check)
+	}
+	refuse["phone-number"] = false
+	// The refusal spent the code, so it cannot be replayed once admitted.
+	if status, _ := postJSON(t, auth, "/phone-number/verify", `{"phoneNumber":"+15550100","code":"`+sms+`"}`); status == 200 {
+		t.Fatal("a refused phone code was accepted again")
+	}
+	if status, _ := verify(); status != 200 {
+		t.Fatal("an admitted phone sign-up failed", status)
+	}
+	// Bootstrapping an administrator needs a SQL store.
+	store, err := sqlite.Open(":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	admins, err := authn.New(authn.Options{BaseURL: "https://auth.example", Store: store, Secret: strings.Repeat("s", 32),
+		ValidateUserInfo: func(_ context.Context, v authn.UserInfoValidation) error {
+			rec.add(v)
+			return &authn.APIError{Code: "admin_blocked", Message: "Not allowed"}
+		}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := admins.BootstrapAdmin(t.Context(), "Root", "root@example.com", "correct horse battery"); err == nil {
+		t.Fatal("a refused administrator was created")
+	}
+	if check := rec.last(t); check.Method != "admin" || check.User.Email != "root@example.com" || check.Request != nil {
+		t.Fatalf("the bootstrap check was %+v", check)
+	}
+}
+
+// New refuses ValidateUserInfo next to flows that do not run it yet.
+func TestValidateUserInfoRefusedForUncoveredFlows(t *testing.T) {
+	magicLink, err := authn.NewMagicLink(authn.MagicLinkOptions{Send: func(context.Context, authn.MagicLinkMessage) error { return nil }})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = authn.New(authn.Options{
+		BaseURL: "https://auth.example", Store: memory.New(), Secret: strings.Repeat("s", 32), Plugins: []authn.Plugin{magicLink},
+		ValidateUserInfo: func(context.Context, authn.UserInfoValidation) error { return nil },
+	})
+	if err == nil || !strings.Contains(err.Error(), "magic-link") {
+		t.Fatal("ValidateUserInfo was accepted next to magic links", err)
+	}
+}
+
+// The SCIM handler refuses a host with ValidateUserInfo, which it does not
+// run yet.
+func TestValidateUserInfoRefusedBySCIM(t *testing.T) {
+	store, err := sqlite.Open(":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	host, err := authn.New(authn.Options{BaseURL: "https://auth.example", Store: store, Secret: strings.Repeat("s", 32),
+		ValidateUserInfo: func(context.Context, authn.UserInfoValidation) error { return nil }})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = scim.New(host, scim.Options{Store: store, VerifyBearerToken: func(context.Context, scim.BearerInput) (*scim.BearerVerification, error) { return nil, nil }})
+	if err == nil || !strings.Contains(err.Error(), "ValidateUserInfo") {
+		t.Fatal("the SCIM handler accepted a host with ValidateUserInfo", err)
+	}
+}

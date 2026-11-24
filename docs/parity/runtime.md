@@ -100,6 +100,7 @@ Each entry groups the configured endpoint’s behaviors. A checked child records
     - [x] Keep private duplicate observers and password recovery independent of cache version callbacks until a real session is issued ([test](../../client/session_cache_version_test.go#L88))
     - [x] Round-trip configured profile values, private inputs, required fields and server-owned signup defaults on shared SQLite ([test](../../conformance/user-fields.mjs#L32))
     - [x] Keep another account’s profile and hidden inputs out of protected duplicate signup and verification output ([test](../../adapters/sqlstore/user_fields_test.go#L264))
+    - [x] ValidateUserInfo refuses an email sign-up with a 403, or with the private duplicate answer in protected mode ([test](../../conformance/goapi/user_validation_test.go#L58))
   - [ ] `unlinkAccount` (`POST /unlink-account`)
     - [x] Keep the last required account and prevent unlinking another user’s account ([test](../../adapters/sqlstore/identity_test.go#L40))
   - [ ] `updateSession` (`POST /update-session`)
@@ -216,7 +217,7 @@ Each entry groups the configured endpoint’s behaviors. A checked child records
     - [x] Map signed provider account fields across both servers, preserve credentials and explicitly reauthorize an existing link ([test](../../conformance/apple-native.mjs#L87))
     - [x] Map browser grants on first links and verified email linking, keep identity bindings and reject invalid updates atomically ([test](../../conformance/account-fields.mjs#L25))
     - [x] Keep provider credentials separate from native input, transform fields once and expose only owned public account fields on three SQL engines ([test](../../adapters/sqlstore/account_fields_test.go#L17))
-    - [x] Use creation defaults while completing the separately verified One Tap challenge ([test](../../conformance/core.test.mjs#L1746))
+    - [x] Use creation defaults while completing the separately verified One Tap challenge ([test](../../conformance/core.test.mjs#L1751))
     - [x] Complete proxy sign-in across two deployments without invoking provider account mapping on either host ([test](../../adapters/sqlstore/oauth_proxy_test.go#L61))
   - [ ] `disableImplicitSignUp`
   - [ ] `disableSignUp`

@@ -153,6 +153,20 @@ func (a *Auth) verifyPhoneNumber(ctx context.Context, h http.Header, in PhoneVer
 			if err != nil {
 				return out, err
 			}
+			if act.Create != nil && registration.err == nil {
+				candidate := *act.Create
+				number, verified := in.PhoneNumber, true
+				candidate.PhoneNumberFields = &PhoneNumberFields{PhoneNumber: &number, PhoneNumberVerified: &verified}
+				check := UserInfoValidation{Action: UserInfoCreateUser, Method: "phone-number", User: UserRecord{User: candidate, Fields: serverInput(a.opts.UserAdditionalFields, in.AdditionalFields)}}
+				if err := a.ValidateUserInfo(ctx, check); err != nil {
+					// A refusal spends the correct code, as a wrong one would be counted.
+					act.Use.Now = a.now().UTC()
+					if proofErr := a.opts.Store.(PhoneAccountStore).ConsumePhoneOTP(ctx, act.Use); proofErr != nil {
+						return out, proofErr
+					}
+					return out, err
+				}
+			}
 		}
 		if !in.DisableSession {
 			ss, _ := a.newSession("", meta)

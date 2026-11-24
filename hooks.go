@@ -191,7 +191,7 @@ func publicError(err error) bool {
 // outcome. path is the route template and actual the request's mount-relative
 // path, which supplies the template's parameters.
 func (a *Auth) callEndpoint(w http.ResponseWriter, r *http.Request, path, actual string, body wireBody, endpoint func(*http.Request, wireBody) (any, error)) (any, error) {
-	if len(a.beforeHooks) == 0 && len(a.afterHooks) == 0 && !a.dbHooks.set() {
+	if len(a.beforeHooks) == 0 && len(a.afterHooks) == 0 && !a.dbHooks.set() && a.opts.ValidateUserInfo == nil {
 		return endpoint(r, body)
 	}
 	c := &HookContext{
