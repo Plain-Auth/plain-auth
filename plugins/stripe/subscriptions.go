@@ -247,17 +247,17 @@ func (s *subscriptions) checkout(c auth.EndpointContext) (any, error) {
 		}
 	}
 	success, _ := c.Body["successUrl"].(string)
-	success, err = c.Auth.CallbackURL(success)
+	success, err = c.CallbackURL(success)
 	if err != nil {
 		return nil, err
 	}
 	cancel, _ := c.Body["cancelUrl"].(string)
-	cancel, err = c.Auth.CallbackURL(cancel)
+	cancel, err = c.CallbackURL(cancel)
 	if err != nil {
 		return nil, err
 	}
 	rawReturn, _ := c.Body["returnUrl"].(string)
-	returnURL, err := c.Auth.CallbackURL(rawReturn)
+	returnURL, err := c.CallbackURL(rawReturn)
 	if err != nil {
 		return nil, err
 	}

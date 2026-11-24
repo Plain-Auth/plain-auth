@@ -76,7 +76,7 @@ func portalRequestAllowed(c auth.EndpointContext) bool {
 	if err != nil || !u.IsAbs() || u.Hostname() == "" || u.User != nil {
 		return false
 	}
-	_, err = c.Auth.CallbackURL(origin)
+	_, err = c.CallbackURL(origin)
 	return err == nil
 }
 
@@ -112,7 +112,7 @@ func (s *Service) portal(c auth.EndpointContext) (any, error) {
 	cfg := s.opts.Portal
 	req := components.CustomerSessionCustomerExternalIDCreate{ExternalCustomerID: session.User.ID}
 	if cfg.ReturnURL != "" {
-		back, err := c.Auth.CallbackURL(cfg.ReturnURL)
+		back, err := c.CallbackURL(cfg.ReturnURL)
 		if err != nil {
 			return nil, err
 		}

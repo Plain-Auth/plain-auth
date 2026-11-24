@@ -156,7 +156,7 @@ func DecodeSAMLConfig(raw []byte) (*SAMLConfig, error) {
 	return &c, nil
 }
 func samlACS(c auth.EndpointContext, id string) (string, error) {
-	return c.Auth.CallbackURL(strings.TrimRight(c.Auth.BasePath(), "/") + "/sso/saml2/sp/acs/" + id)
+	return c.CallbackURL(strings.TrimRight(c.Auth.BasePath(), "/") + "/sso/saml2/sp/acs/" + id)
 }
 func (o Options) samlSP(c auth.EndpointContext, p Provider) (*saml.ServiceProvider, error) {
 	cfg := p.SAML
@@ -193,7 +193,7 @@ func (o Options) samlSP(c auth.EndpointContext, p Provider) (*saml.ServiceProvid
 	if err != nil || acsURL.Scheme != "https" {
 		return nil, apiError(400, "SAML requires an HTTPS public callback URL")
 	}
-	meta, err := c.Auth.CallbackURL(strings.TrimRight(c.Auth.BasePath(), "/") + "/sso/saml2/sp/metadata?providerId=" + url.QueryEscape(p.ProviderID))
+	meta, err := c.CallbackURL(strings.TrimRight(c.Auth.BasePath(), "/") + "/sso/saml2/sp/metadata?providerId=" + url.QueryEscape(p.ProviderID))
 	if err != nil {
 		return nil, err
 	}

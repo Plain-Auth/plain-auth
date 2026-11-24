@@ -30,7 +30,7 @@ func TestEnvironmentPrecedence(t *testing.T) {
 	if a.opts.Secret != strings.Repeat("a", 32) || a.opts.BaseURL != "https://auth.test" || a.BasePath() != "/v1/login" || len(a.opts.TrustedOrigins) != 3 {
 		t.Fatal("environment configuration not resolved")
 	}
-	if !a.trustedURL("https://two.test/done", true) || !a.sessionCookie("credential", true).Secure {
+	if !a.trustedURL(context.Background(), "https://two.test/done", true) || !a.sessionCookie("credential", true).Secure {
 		t.Fatal("settings did not reach auth handler")
 	}
 	explicit := Options{Store: &refreshFixture{}, Secret: strings.Repeat("c", 32), BaseURL: "https://app.test", BasePath: "/login"}
@@ -72,7 +72,7 @@ func TestEnvironmentIsolation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if a.opts.Secret != strings.Repeat("z", 32) || len(a.opts.Secrets) != 0 || a.opts.BaseURL != "http://auth.example.org" || a.trustedURL(external, false) || a.opts.RateLimit != nil || a.opts.ErrorRedirectURL != "" {
+	if a.opts.Secret != strings.Repeat("z", 32) || len(a.opts.Secrets) != 0 || a.opts.BaseURL != "http://auth.example.org" || a.trustedURL(context.Background(), external, false) || a.opts.RateLimit != nil || a.opts.ErrorRedirectURL != "" {
 		t.Fatal("external settings changed server configuration")
 	}
 }

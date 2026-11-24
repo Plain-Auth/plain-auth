@@ -1,4 +1,4 @@
-package plainauth
+package httporigin
 
 import (
 	"net/url"
@@ -15,8 +15,8 @@ func TestSetQueryKeepsDeepLinks(t *testing.T) {
 		"https://app.example/reset?a=b#f": "https://app.example/reset?a=b&token=x#f",
 		"/reset":                          "/reset?token=x",
 	} {
-		if got := setQuery(target, url.Values{"token": {"x"}}); got != want {
-			t.Errorf("setQuery(%q) = %q, want %q", target, got, want)
+		if got := SetQuery(target, url.Values{"token": {"x"}}); got != want {
+			t.Errorf("SetQuery(%q) = %q, want %q", target, got, want)
 		}
 	}
 }

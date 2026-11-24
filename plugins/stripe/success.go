@@ -59,7 +59,7 @@ func (s *subscriptions) checkoutSuccess(c auth.EndpointContext) (any, error) {
 	if err != nil || len(q["callbackURL"]) > 1 || len(q["checkoutSessionId"]) > 1 || len(q["organizationId"]) > 1 {
 		return nil, billingError(400, "VALIDATION_ERROR", "Invalid checkout return query")
 	}
-	callback, err := c.Auth.CallbackURL(q.Get("callbackURL"))
+	callback, err := c.CallbackURL(q.Get("callbackURL"))
 	if err != nil {
 		return nil, err
 	}
@@ -70,7 +70,7 @@ func (s *subscriptions) checkoutSuccess(c auth.EndpointContext) (any, error) {
 	if !validCheckoutID(id) {
 		return nil, billingError(400, "VALIDATION_ERROR", "Invalid checkout session ID")
 	}
-	filled, err := c.Auth.CallbackURL(strings.ReplaceAll(callback, sessionIDTemplate, id))
+	filled, err := c.CallbackURL(strings.ReplaceAll(callback, sessionIDTemplate, id))
 	if err != nil {
 		return nil, err
 	}

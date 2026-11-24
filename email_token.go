@@ -30,7 +30,7 @@ func (a *Auth) sendEmailProof(ctx context.Context, u User, newEmail, requestType
 	if callback == "" {
 		callback = "/"
 	}
-	if !a.trustedURL(callback, true) {
+	if !a.trustedURL(ctx, callback, true) {
 		return &APIError{403, "INVALID_CALLBACK_URL", "Invalid callbackURL"}
 	}
 	now := a.now()

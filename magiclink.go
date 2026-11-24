@@ -182,16 +182,16 @@ func (o MagicLinkOptions) verify(c EndpointContext) (any, error) {
 			callbacks[field] = values[0]
 		}
 	}
-	if err := a.validateCallbacks(callbacks, nil); err != nil {
+	if err := a.validateCallbacks(r.Context(), callbacks, nil); err != nil {
 		return nil, err
 	}
-	callback, err := a.CallbackURL(q.Get("callbackURL"))
+	callback, err := a.callbackURL(r.Context(), q.Get("callbackURL"))
 	if err != nil {
 		return nil, err
 	}
 	errorURL := callback
 	if raw := q.Get("errorCallbackURL"); raw != "" {
-		errorURL, err = a.CallbackURL(raw)
+		errorURL, err = a.callbackURL(r.Context(), raw)
 		if err != nil {
 			return nil, err
 		}
@@ -270,7 +270,7 @@ func (o MagicLinkOptions) verify(c EndpointContext) (any, error) {
 			Token string `json:"token"`
 		}{result, session.Token}
 	} else if created && q.Get("newUserCallbackURL") != "" {
-		callback, err = a.CallbackURL(q.Get("newUserCallbackURL"))
+		callback, err = a.callbackURL(r.Context(), q.Get("newUserCallbackURL"))
 		if err != nil {
 			return nil, err
 		}

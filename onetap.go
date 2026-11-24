@@ -57,11 +57,11 @@ func (a *Auth) oneTapCookie(value string, age int) *http.Cookie {
 // browser, the configured Google audience and the trusted page origin.
 // Expose the nonce through the page or a host session, never as user input.
 func (a *Auth) BindOneTapNonce(w http.ResponseWriter, origin, audience, nonce string) error {
-	return a.bindOneTapNonce(w.Header(), origin, audience, nonce)
+	return a.bindOneTapNonce(context.Background(), w.Header(), origin, audience, nonce)
 }
-func (a *Auth) bindOneTapNonce(headers http.Header, origin, audience, nonce string) error {
+func (a *Auth) bindOneTapNonce(ctx context.Context, headers http.Header, origin, audience, nonce string) error {
 	u, err := url.Parse(origin)
-	if err != nil || u.User != nil || u.Path != "" || u.RawQuery != "" || u.ForceQuery || u.Fragment != "" || !a.trustedWebOrigin(origin) || audience == "" || len(nonce) < 16 || len(nonce) > 256 || strings.ContainsAny(nonce, " \r\n\t") {
+	if err != nil || u.User != nil || u.Path != "" || u.RawQuery != "" || u.ForceQuery || u.Fragment != "" || !a.trustedWebOrigin(ctx, origin) || audience == "" || len(nonce) < 16 || len(nonce) > 256 || strings.ContainsAny(nonce, " \r\n\t") {
 		return errors.New("authn: invalid One Tap origin, audience or host nonce")
 	}
 	proof := oneTapProof{Nonce: nonce, Audience: audience, Origin: origin, Expires: a.now().Add(5 * time.Minute).Unix()}
@@ -92,7 +92,7 @@ func NewOneTap(o OneTapOptions, fallback OAuthProvider) Plugin {
 	}
 	origin := func(c EndpointContext) (string, error) {
 		v := c.Request.Header.Get("Origin")
-		if v == "" || !c.Auth.trustedWebOrigin(v) {
+		if v == "" || !c.Auth.trustedWebOrigin(c.Request.Context(), v) {
 			return "", &APIError{403, "INVALID_ORIGIN", "A trusted browser origin is required"}
 		}
 		return v, nil
@@ -116,7 +116,7 @@ func NewOneTap(o OneTapOptions, fallback OAuthProvider) Plugin {
 				return nil, err
 			}
 			nonce := randomID()
-			if err := c.Auth.bindOneTapNonce(c.ResponseHeader, from, p.Config.ClientID, nonce); err != nil {
+			if err := c.Auth.bindOneTapNonce(c.Request.Context(), c.ResponseHeader, from, p.Config.ClientID, nonce); err != nil {
 				return nil, err
 			}
 			return map[string]string{"nonce": nonce, "clientId": p.Config.ClientID}, nil

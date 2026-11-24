@@ -322,7 +322,7 @@ func (a *Auth) RequestPasswordReset(ctx context.Context, email, redirectTo strin
 	if a.opts.SendResetPassword == nil {
 		return &APIError{400, "RESET_PASSWORD_DISABLED", "Reset password isn't enabled"}
 	}
-	if redirectTo != "" && !a.trustedURL(redirectTo, true) {
+	if redirectTo != "" && !a.trustedURL(ctx, redirectTo, true) {
 		return &APIError{403, "INVALID_REDIRECT_URL", "Invalid redirectURL"}
 	}
 	s, err := a.accountStore()
@@ -453,7 +453,7 @@ func (a *Auth) SendVerificationEmail(ctx context.Context, h http.Header, email, 
 	if callback == "" {
 		callback = "/"
 	}
-	if !a.trustedURL(callback, true) {
+	if !a.trustedURL(ctx, callback, true) {
 		return &APIError{403, "INVALID_CALLBACK_URL", "Invalid callbackURL"}
 	}
 	s, err := a.accountStore()

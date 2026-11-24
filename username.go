@@ -198,7 +198,7 @@ func (a *Auth) SignInUsername(ctx context.Context, in UsernameSignInInput, meta 
 	if in.Username == "" || in.Password == "" {
 		return AuthResult{}, denied
 	}
-	if meta.CallbackURL != "" && !a.trustedURL(meta.CallbackURL, true) {
+	if meta.CallbackURL != "" && !a.trustedURL(ctx, meta.CallbackURL, true) {
 		return AuthResult{}, &APIError{403, "INVALID_CALLBACK_URL", "Invalid callbackURL"}
 	}
 	name, err := a.username.validated(ctx, in.Username, 422)

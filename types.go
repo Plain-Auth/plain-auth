@@ -61,7 +61,16 @@ type Options struct {
 	// patterns, and custom-scheme URLs such as myapp:// or
 	// chrome-extension://ID, for browser requests and callbacks.
 	TrustedOrigins []string
-	CookiePrefix   string
+	// TrustedOriginsForRequest adds origins for one HTTP request, such as
+	// tenant domains loaded from a database, to TrustedOrigins,
+	// AUTH_TRUSTED_ORIGINS and the BaseURL origin. It takes the same patterns
+	// as TrustedOrigins and receives a copy of the request without its body,
+	// once per request to the handler. A returned *APIError with a 4xx or
+	// 5xx status is sent as the response; another error or an invalid
+	// pattern fails the request with a 500. Calls made outside the handler, BindOneTapNonce, the public
+	// CallbackURL and server-side discovery use the static origins only.
+	TrustedOriginsForRequest func(*http.Request) ([]string, error)
+	CookiePrefix             string
 	// CrossSubDomainCookies selects the Domain attribute for shared browser cookies.
 	// A nil value keeps cookies host-only. An empty Domain uses the BaseURL hostname.
 	CrossSubDomainCookies *CrossSubDomainCookiesOptions

@@ -60,6 +60,13 @@ func (a *Auth) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if a.translateError != nil || a.opts.OnAPIError != nil {
 			r = a.withErrorContext(r)
 		}
+		scoped, err := a.withRequestOrigins(r)
+		if err != nil {
+			w.Header().Set("Cache-Control", "no-store")
+			a.writeAuthError(w, r, err)
+			return
+		}
+		r = scoped
 		ctx, identity, authErr := a.resolveCredentialSession(r.Context(), r.Header, RequestMeta{IPAddress: a.clientIP(r), UserAgent: r.UserAgent()}, r)
 		if authErr != nil {
 			w.Header().Set("Cache-Control", "no-store")
@@ -69,7 +76,6 @@ func (a *Auth) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if identity != nil || ctx.Value(credentialProbedKey{a}) != nil {
 			r = r.WithContext(ctx)
 		}
-		var err error
 		if r, err = a.runRequestHooks(r, route); err != nil {
 			w.Header().Set("Cache-Control", "no-store")
 			a.writeAuthError(w, r, err)
@@ -143,7 +149,7 @@ func (a *Auth) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		}
-		if err := a.validateCallbacks(body, r.URL.Query()); err != nil {
+		if err := a.validateCallbacks(r.Context(), body, r.URL.Query()); err != nil {
 			a.writeAuthError(w, r, err)
 			return
 		}
@@ -489,7 +495,8 @@ func (a *Auth) writeAuthError(w http.ResponseWriter, r *http.Request, err error)
 	}
 	var apiErr *APIError
 	var originalMessage *string
-	if !errors.As(err, &apiErr) {
+	if !errors.As(err, &apiErr) || apiErr == nil || apiErr.Status < 400 || apiErr.Status > 599 {
+		// Only an error status is written; a host error without one is a 500.
 		apiErr = &APIError{Status: 500, Code: "INTERNAL_SERVER_ERROR", Message: "Internal Server Error"}
 	} else if a.translateError != nil && apiErr.Code != "" {
 		if message := a.translateError(a.errorContext(r), *apiErr); message != "" {
@@ -615,13 +622,13 @@ func (a *Auth) validateRequestOrigin(r *http.Request, emailRoute bool) error {
 	if origin == "" || origin == "null" {
 		return &APIError{Status: 403, Code: "MISSING_OR_NULL_ORIGIN", Message: "Missing or null Origin"}
 	}
-	if !a.trustedURL(origin, false) {
+	if !a.trustedURL(r.Context(), origin, false) {
 		return &APIError{Status: 403, Code: "INVALID_ORIGIN", Message: "Invalid origin"}
 	}
 	return nil
 }
 
-func (a *Auth) validateCallbacks(body wireBody, query url.Values) error {
+func (a *Auth) validateCallbacks(ctx context.Context, body wireBody, query url.Values) error {
 	if _, found := body["callbackURL"]; !found {
 		if values := query["callbackURL"]; len(values) > 0 {
 			if len(values) != 1 {
@@ -629,7 +636,7 @@ func (a *Auth) validateCallbacks(body wireBody, query url.Values) error {
 			}
 			// A callback supplied only through the query is checked for trust
 			// but does not request a redirect on a credential sign-in.
-			if values[0] != "" && !a.trustedURL(values[0], true) {
+			if values[0] != "" && !a.trustedURL(ctx, values[0], true) {
 				return &APIError{Status: 403, Code: "INVALID_CALLBACK_URL", Message: "Invalid callbackURL"}
 			}
 		}
@@ -648,14 +655,16 @@ func (a *Auth) validateCallbacks(body wireBody, query url.Values) error {
 		if !ok {
 			return validationError("Invalid " + field.label + ": expected a string")
 		}
-		if s != "" && !a.trustedURL(s, true) {
+		if s != "" && !a.trustedURL(ctx, s, true) {
 			return &APIError{Status: 403, Code: field.code, Message: "Invalid " + field.label}
 		}
 	}
 	return nil
 }
 
-func (a *Auth) trustedURL(raw string, relative bool) bool {
+// trustedURL reports whether raw is a trusted origin or, when relative is
+// set, a trusted callback. The request ctx belongs to may add origins.
+func (a *Auth) trustedURL(ctx context.Context, raw string, relative bool) bool {
 	if strings.ContainsRune(raw, '\\') || strings.IndexFunc(raw, unicode.IsControl) >= 0 {
 		return false
 	}
@@ -678,14 +687,14 @@ func (a *Auth) trustedURL(raw string, relative bool) bool {
 		if u.Scheme == "" || httporigin.DeniedScheme(u.Scheme) {
 			return false
 		}
-		for _, candidate := range a.trustedOrigins {
+		for _, candidate := range a.originRules(ctx) {
 			if candidate.Custom() && candidate.Matches(u, "") {
 				return true
 			}
 		}
 		return false
 	}
-	for _, candidate := range a.trustedOrigins {
+	for _, candidate := range a.originRules(ctx) {
 		if candidate.Matches(u, origin) {
 			return true
 		}
@@ -696,17 +705,23 @@ func (a *Auth) trustedURL(raw string, relative bool) bool {
 
 // trustedWebOrigin is trustedURL for a browser page origin, which must be
 // HTTP(S) even when custom-scheme origins are trusted.
-func (a *Auth) trustedWebOrigin(raw string) bool {
+func (a *Auth) trustedWebOrigin(ctx context.Context, raw string) bool {
 	u, err := url.Parse(raw)
-	return err == nil && (u.Scheme == "http" || u.Scheme == "https") && a.trustedURL(raw, false)
+	return err == nil && (u.Scheme == "http" || u.Scheme == "https") && a.trustedURL(ctx, raw, false)
 }
 
-// CallbackURL resolves an application callback using this instance's trusted origins.
+// CallbackURL resolves an application callback using this instance's static
+// trusted origins. Endpoint code uses EndpointContext.CallbackURL, which also
+// trusts the origins TrustedOriginsForRequest adds.
 func (a *Auth) CallbackURL(raw string) (string, error) {
+	return a.callbackURL(context.Background(), raw)
+}
+
+func (a *Auth) callbackURL(ctx context.Context, raw string) (string, error) {
 	if raw == "" {
 		raw = "/"
 	}
-	if !a.trustedURL(raw, true) {
+	if !a.trustedURL(ctx, raw, true) {
 		return "", &APIError{403, "INVALID_CALLBACK_URL", "Invalid callbackURL"}
 	}
 	if strings.HasPrefix(raw, "/") {

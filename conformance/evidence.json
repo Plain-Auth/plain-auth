@@ -20510,5 +20510,37 @@
       "label": "Expo development wildcards admit exp:// URLs on local IPv4 addresses",
       "complete": true
     }
+  ],
+  "docs/content/docs/reference/options.mdx#L104": [
+    {
+      "label": "TrustedOriginsForRequest adds origins per request: a tenant's callback, request Origin and plugin redirect are trusted on that tenant's requests only, alongside the static origins",
+      "test": "conformance/goapi/request_origins_test.go",
+      "marker": "res, body := send(\"POST\", \"/sign-up/email\", \"one\", \"\", signUp(\"one@example.org\", \"https://one.example/welcome\"))",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/reference/options.mdx#L125/On a direct `auth.api` call with a static `baseURL`": [
+    {
+      "label": "A direct Go call has no request, so Auth.CallbackURL and SignUpEmail trust the static origins only",
+      "test": "conformance/goapi/request_origins_test.go",
+      "marker": "t.Fatal(\"Auth.CallbackURL trusted a per-request origin\")",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/reference/security.mdx#L273": [
+    {
+      "label": "Options.TrustedOriginsForRequest returns the trusted origins for each request; a returned APIError with an error status is the response, and any other error or an invalid pattern fails the request with a generic 500",
+      "test": "conformance/goapi/request_origins_test.go",
+      "marker": "TrustedOriginsForRequest: func(r *http.Request) ([]string, error) {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/reference/security.mdx#L287/Important": [
+    {
+      "label": "The host function runs once per request, for both the origin check and the callbacks",
+      "test": "conformance/goapi/request_origins_test.go",
+      "marker": "t.Fatalf(\"the host function ran %d times for one request\", got)",
+      "complete": true
+    }
   ]
 }

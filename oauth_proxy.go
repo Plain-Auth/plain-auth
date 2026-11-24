@@ -119,7 +119,7 @@ func (a *Auth) proxyCurrentOrigin(r *http.Request) string {
 	if configured := a.oauthProxy.CurrentURL; configured != "" {
 		return configured
 	}
-	if origin := a.proxyRequestOrigin(r); origin != "" && a.trustedWebOrigin(origin) {
+	if origin := a.proxyRequestOrigin(r); origin != "" && a.trustedWebOrigin(r.Context(), origin) {
 		return origin
 	}
 	if origin := a.oauthProxy.vendorOrigin; origin != "" {
@@ -201,7 +201,7 @@ func (a *Auth) exchangeProxyCallback(w http.ResponseWriter, r *http.Request, id 
 		grant.Provider != id || grant.State == "" || grant.Verifier == "" || grant.Nonce == "" ||
 		grant.ClientID != provider.Config.ClientID || grant.BasePath != a.opts.BasePath ||
 		grant.Production != a.oauthProxy.ProductionURL || a.proxyRequestOrigin(r) != grant.Production || a.proxyCurrentOrigin(r) != grant.Production ||
-		proxyOrigin(grant.Preview) != grant.Preview || grant.Preview == grant.Production || !a.trustedURL(grant.Preview, false) ||
+		proxyOrigin(grant.Preview) != grant.Preview || grant.Preview == grant.Production || !a.trustedURL(r.Context(), grant.Preview, false) ||
 		!grant.ExpiresAt.After(now) || grant.ExpiresAt.After(now.Add(10*time.Minute+10*time.Second)) {
 		return nil, invalidProxyCallback()
 	}
@@ -300,7 +300,7 @@ func (a *Auth) serveOAuthProxyCompletion(w http.ResponseWriter, r *http.Request,
 func (a *Auth) completeProxyCallback(w http.ResponseWriter, r *http.Request, id string) (any, error) {
 	q := r.URL.Query()
 	var result oauthProxyResult
-	if len(q["callbackURL"]) != 1 || !a.trustedURL(q.Get("callbackURL"), true) || len(q["profile"]) > 1 {
+	if len(q["callbackURL"]) != 1 || !a.trustedURL(r.Context(), q.Get("callbackURL"), true) || len(q["profile"]) > 1 {
 		return nil, invalidProxyCallback()
 	}
 	if q.Get("profile") == "" {

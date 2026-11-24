@@ -28,7 +28,7 @@ func portalEndpoint(opts PortalOptions, organization *OrganizationOptions) auth.
 			return nil, err
 		}
 		raw, _ := c.Body["returnUrl"].(string)
-		callback, err := c.Auth.CallbackURL(raw)
+		callback, err := c.CallbackURL(raw)
 		if err != nil {
 			return nil, err
 		}

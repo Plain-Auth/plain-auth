@@ -34,7 +34,7 @@ func interactionFields(original url.Values, issue BrowserCodeIssue) url.Values {
 }
 
 func interactionURL(c auth.EndpointContext, path string, fields url.Values, expires time.Time, clearedSession string) (string, error) {
-	page, err := c.Auth.CallbackURL(path)
+	page, err := c.CallbackURL(path)
 	if err != nil {
 		return "", err
 	}

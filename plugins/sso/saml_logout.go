@@ -96,7 +96,7 @@ func (o Options) enableLogoutSP(c auth.EndpointContext, p Provider, sp *saml.Ser
 	if err := availableSAMLLogout(c, p); err != nil {
 		return err
 	}
-	target, err := c.Auth.CallbackURL(strings.TrimRight(c.Auth.BasePath(), "/") + "/sso/saml2/sp/slo/" + p.ProviderID)
+	target, err := c.CallbackURL(strings.TrimRight(c.Auth.BasePath(), "/") + "/sso/saml2/sp/slo/" + p.ProviderID)
 	if err != nil {
 		return err
 	}
@@ -164,7 +164,7 @@ func (o Options) startLogout(c auth.EndpointContext, _ Store, actor Actor) (any,
 			return nil, apiError(400, "Invalid callbackURL")
 		}
 	}
-	callback, err = c.Auth.CallbackURL(callback)
+	callback, err = c.CallbackURL(callback)
 	if err != nil {
 		return nil, err
 	}
@@ -236,6 +236,10 @@ func (o Options) finishLogout(c auth.EndpointContext) (any, error) {
 	target, err := store.ConsumeSAMLLogout(c.Request.Context(), SAMLLogoutRequest{ID: requestID, State: state, BrowserHash: logoutBrowserHash(cookie), ProviderID: p.ProviderID, Reference: p.Reference}, time.Now().UTC())
 	if err != nil {
 		return nil, err
+	}
+	if _, err := c.CallbackURL(target); err != nil {
+		// The logout response no longer trusts the stored target.
+		target = "/"
 	}
 	redirect, err := c.Redirect(target)
 	if err != nil {

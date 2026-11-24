@@ -152,6 +152,16 @@ func (c EndpointContext) Session() (*SessionResult, error) {
 	return c.Auth.GetSession(c.Request.Context(), c.Request.Header)
 }
 
+// CallbackURL resolves an application callback like Auth.CallbackURL, also
+// trusting the origins TrustedOriginsForRequest added for this request.
+func (c EndpointContext) CallbackURL(raw string) (string, error) {
+	ctx := context.Background()
+	if c.Request != nil {
+		ctx = c.Request.Context()
+	}
+	return c.Auth.callbackURL(ctx, raw)
+}
+
 // RequestMetadata returns a detached copy of the HTTP request headers and URL
 // for a host callback. The body and parsed form data are excluded.
 func (c EndpointContext) RequestMetadata() *http.Request {

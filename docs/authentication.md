@@ -38,6 +38,7 @@ If the mount is `/identity`, a request to `/identity/sign-up/email` returns 404 
 | `CookiePrefix` | Defaults to `authn`. Choose a namespace such as `myapp` for session cookies and OAuth state. Give separate auth instances distinct prefixes on a shared host. |
 | `BasePath` | Mount path, normally `/api/auth` |
 | `TrustedOrigins` | Additional exact or wildcard HTTP(S) origins, and custom-scheme URLs for apps and extensions, allowed for browser requests and absolute callbacks |
+| `TrustedOriginsForRequest` | Function that adds origins for one HTTP request, such as a tenant's own domain. See [trust origins per request](#trust-origins-per-request) |
 | `EmailAndPassword` | Enables email sign-up and sign-in. Defaults to false |
 | `AppName` | Name users see, such as the issuer in authenticator apps. Defaults to `Auth` |
 | `SessionTTL`, `FreshAge` | Default session lifetime is seven days, freshness window is one day. Deleting the user, unlinking an account and plugin actions that need a fresh session refuse an older session; a negative `FreshAge` turns the check off |
@@ -171,6 +172,23 @@ A native app or browser extension receives its callbacks on a custom scheme. Lis
 In a custom-scheme rule, `*` and `?` match within the authority, including dots and colons, and within a path segment, and a `**` segment matches any number of segments. A numeric wildcard host matches IPv4 addresses only. A URL whose path holds an encoded slash or backslash, or a `.` or `..` segment, is refused, since an app may resolve it to another route; the query and fragment are ignored. A wildcard without a scheme, such as `*.example.com`, still admits HTTP(S) only, so every custom scheme must be named. Schemes that can run code or read local data, such as `javascript:`, `data:`, `file:` and `blob:`, are refused at startup. A trusted extension origin passes the origin check of a cookie-authenticated request, while One Tap, popups and the OAuth proxy accept only web origins.
 
 Any app on a device can register a custom scheme, so a deep link can reach an app other than yours, together with any token in it, such as a password reset link. Prefer a claimed HTTPS link (an Android App Link or an iOS Universal Link) where the platform offers one.
+
+### Trust origins per request
+
+When the trusted sites change while the server runs, such as tenant domains kept in a database, set `Options.TrustedOriginsForRequest`. Its origins are added to `TrustedOrigins`, `AUTH_TRUSTED_ORIGINS` and the `BaseURL` origin, and take the same patterns:
+
+```go
+opts.TrustedOriginsForRequest = func(r *http.Request) ([]string, error) {
+	// For example "https://shop.tenant.example" for every active tenant.
+	return tenants.Origins(r.Context())
+}
+```
+
+The function receives a copy of the request without its body and runs once for each request to the auth handler, so cache a list it loads. Every origin check and callback of that request uses its result, including those of plugins and hooks. Empty strings are skipped. A returned `*APIError` with a 4xx or 5xx status, such as a 404 for an unknown tenant, is sent as the response. Another error, including an `*APIError` without such a status, or an invalid pattern fails the request with a generic 500 and logs that the lookup failed; nothing extra is trusted on a failure.
+
+Each request is checked against its own result. A flow that comes back in a later request, from a provider, an identity provider, an emailed link or a checkout page, checks its callback again in that request. That request arrives on `BaseURL` from elsewhere, without your page's `Origin` or headers, so return the same origins for it. A list chosen from the caller's `Origin` or a custom header covers only flows that finish in one request. When a social or SSO sign-in succeeds but its callback is no longer trusted, the browser goes to `BaseURL`. A failed SSO sign-in then goes to the error page, a failed social sign-in answers with its error, and an SSO logout goes to the application root. A popup whose opener is no longer trusted finishes in the popup window without messaging the opener. Emailed links and the checkout return refuse the callback with a 403.
+
+Calls made outside the auth handler trust the static origins only, because they have no request: direct Go calls such as `SignUpEmail` from your own handler, `Auth.CallbackURL`, `BindOneTapNonce`, and the server-side discovery that `ExplicitlyTrustedOrigin` gates. Plugin endpoints resolve callbacks with `EndpointContext.CallbackURL` or `EndpointContext.Redirect` to include the request's origins.
 
 ### Share a session across subdomains
 

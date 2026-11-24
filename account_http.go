@@ -2,10 +2,11 @@ package plainauth
 
 import (
 	"errors"
-	"maps"
 	"net/http"
 	"net/url"
 	"strings"
+
+	"github.com/Plain-Org/plain-auth/internal/httporigin"
 )
 
 const resetRequestMessage = "If this email exists in our system, check your email for the reset link"
@@ -36,7 +37,7 @@ func (a *Auth) handleAccountRequest(route string, w http.ResponseWriter, r *http
 	case "/delete-user", "/delete-user/callback":
 		params := DeleteUserInput{}
 		if route == "/delete-user/callback" {
-			if err := a.validateCallbacks(nil, query); err != nil {
+			if err := a.validateCallbacks(ctx, nil, query); err != nil {
 				return nil, err
 			}
 			params.Token = query.Get("token")
@@ -182,7 +183,7 @@ func (a *Auth) handleAccountRequest(route string, w http.ResponseWriter, r *http
 		}
 		return ok, a.resetPassword(ctx, token, password, r)
 	case "/reset-password/:token", "/verify-email":
-		if err := a.validateCallbacks(nil, query); err != nil {
+		if err := a.validateCallbacks(ctx, nil, query); err != nil {
 			return nil, err
 		}
 		callback := query.Get("callbackURL")
@@ -232,24 +233,7 @@ func (a *Auth) handleAccountRequest(route string, w http.ResponseWriter, r *http
 }
 
 func redirectQuery(target, key, value string) Redirect {
-	return Redirect(setQuery(target, url.Values{key: {value}}))
-}
-
-// setQuery sets query parameters on target. A custom-scheme deep link such
-// as myapp://?x keeps its "//", which url.URL.String drops for an empty host.
-func setQuery(target string, set url.Values) string {
-	u, err := url.Parse(target)
-	if err != nil {
-		return target
-	}
-	q := u.Query()
-	maps.Copy(q, set)
-	u.RawQuery = q.Encode()
-	out := u.String()
-	if n := len(u.Scheme) + 1; u.Scheme != "" && u.Host == "" && len(target) > n && strings.HasPrefix(target[n:], "//") && !strings.HasPrefix(out[n:], "//") {
-		out = u.Scheme + "://" + out[n:]
-	}
-	return out
+	return Redirect(httporigin.SetQuery(target, url.Values{key: {value}}))
 }
 
 func (a *Auth) dontRemember(r *http.Request) bool {

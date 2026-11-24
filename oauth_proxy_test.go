@@ -140,7 +140,7 @@ func TestOAuthProxyProductionTrust(t *testing.T) {
 		t.Fatal(err)
 	}
 	a := Auth{opts: Options{BaseURL: production, BasePath: "/auth"}, oauthProxy: plugin.oauthProxy, now: func() time.Time { return now }}
-	rules, err := httporigin.Compile([]string{preview})
+	rules, err := httporigin.Compile("TrustedOrigins", []string{preview})
 	if err != nil {
 		t.Fatal(err)
 	}

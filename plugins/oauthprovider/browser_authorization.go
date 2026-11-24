@@ -13,6 +13,7 @@ import (
 	"time"
 
 	auth "github.com/Plain-Org/plain-auth"
+	"github.com/Plain-Org/plain-auth/internal/httporigin"
 )
 
 // AccountSelectionOptions configures an account chooser hosted by the application.
@@ -365,15 +366,16 @@ func (opts Options) runBrowserAuthorization(c auth.EndpointContext, q url.Values
 }
 
 func browserRedirect(c auth.EndpointContext, target string, values url.Values, fragment bool) any {
-	u, _ := url.Parse(target) // validated registered URI or the host's configured public URL
+	// target is a validated registered URI or the host's configured public
+	// URL. Building on its own spelling keeps the "//" of a deep link such
+	// as myapp://, which url.URL.String drops for an empty host.
 	if fragment {
-		u.RawFragment = ""
-		return c.RegisteredOAuthRedirect(u.String() + "#" + values.Encode())
+		base, _, _ := strings.Cut(target, "#")
+		return c.RegisteredOAuthRedirect(base + "#" + values.Encode())
 	}
-	q := u.Query()
+	set := url.Values{}
 	for k := range values {
-		q.Set(k, values.Get(k))
+		set.Set(k, values.Get(k))
 	}
-	u.RawQuery = q.Encode()
-	return c.RegisteredOAuthRedirect(u.String())
+	return c.RegisteredOAuthRedirect(httporigin.SetQuery(target, set))
 }

@@ -2,10 +2,14 @@ package oauthprovider
 
 import (
 	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"slices"
 	"testing"
 	"time"
+
+	auth "github.com/Plain-Org/plain-auth"
 )
 
 func TestBrowserAuthorizationRules(t *testing.T) {
@@ -80,5 +84,25 @@ func TestBrowserAuthorizationRules(t *testing.T) {
 		if err := json.Unmarshal(browserAuthorizationOperation(method), &doc); err != nil || (doc["requestBody"] != nil) != (method == "POST") || (doc["parameters"] != nil) != (method == "GET") {
 			t.Fatal("incorrect OpenAPI request transport", method)
 		}
+	}
+}
+
+// An authorization response keeps the spelling of a registered deep link,
+// whose "//" url.URL.String would drop for an empty host.
+func TestBrowserRedirectKeepsDeepLinks(t *testing.T) {
+	c := auth.EndpointContext{Request: httptest.NewRequest("GET", "https://issuer.example/authorize", nil), ResponseHeader: http.Header{}}
+	values := url.Values{"code": {"x"}, "state": {"s"}}
+	for target, want := range map[string]string{
+		"myapp://":            "myapp://?code=x&state=s",
+		"myapp://?app=1":      "myapp://?app=1&code=x&state=s",
+		"myapp:/callback":     "myapp:/callback?code=x&state=s",
+		"https://app.example": "https://app.example?code=x&state=s",
+	} {
+		if got := browserRedirect(c, target, values, false); got != auth.Redirect(want) {
+			t.Errorf("query response to %q = %v, want %q", target, got, want)
+		}
+	}
+	if got := browserRedirect(c, "myapp://", values, true); got != auth.Redirect("myapp://#code=x&state=s") {
+		t.Errorf("fragment response = %v", got)
 	}
 }

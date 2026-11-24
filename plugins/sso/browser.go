@@ -9,6 +9,7 @@ import (
 	"time"
 
 	auth "github.com/Plain-Org/plain-auth"
+	"github.com/Plain-Org/plain-auth/internal/httporigin"
 	"golang.org/x/oauth2"
 )
 
@@ -30,7 +31,7 @@ func callbackURI(c auth.EndpointContext, id string, shared bool) (string, error)
 	if !shared {
 		path += "/" + id
 	}
-	return c.Auth.CallbackURL(path)
+	return c.CallbackURL(path)
 }
 
 // DomainMatch returns the length of the most specific DNS suffix, or -1 for no match.
@@ -302,15 +303,16 @@ func enterpriseFailure(c auth.EndpointContext, flow auth.OAuthFlow, code, descri
 	if target == "" {
 		target = flow.CallbackURL
 	}
-	u, e := url.Parse(target)
-	if e != nil {
+	if _, err := c.CallbackURL(target); err != nil {
+		// The provider's callback request no longer trusts the stored target.
+		target = c.Auth.ErrorPageURL()
+	}
+	if _, e := url.Parse(target); e != nil {
 		return nil, e
 	}
-	v := u.Query()
-	v.Set("error", code)
+	set := url.Values{"error": {code}}
 	if description != "" {
-		v.Set("error_description", description)
+		set.Set("error_description", description)
 	}
-	u.RawQuery = v.Encode()
-	return c.Redirect(u.String())
+	return c.Redirect(httporigin.SetQuery(target, set))
 }

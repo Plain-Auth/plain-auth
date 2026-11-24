@@ -44,7 +44,7 @@ func (a *Auth) serveOAuth(w http.ResponseWriter, r *http.Request, route string) 
 			body, err = decodeWireBody(w, r, "/sign-in/social")
 		}
 		if err == nil {
-			err = a.validateCallbacks(body, nil)
+			err = a.validateCallbacks(r.Context(), body, nil)
 		}
 		if err != nil {
 			a.writeAuthError(w, r, err)
@@ -266,12 +266,12 @@ func (a *Auth) finishBrowserOAuth(w http.ResponseWriter, r *http.Request, id str
 		if popup != nil {
 			return popup.page(w.Header(), "", "", &popupError{Code: code, Description: description}), nil
 		}
-		if flow.ErrorCallbackURL != "" && a.trustedURL(flow.ErrorCallbackURL, true) {
+		if flow.ErrorCallbackURL != "" && a.trustedURL(r.Context(), flow.ErrorCallbackURL, true) {
 			set := url.Values{"error": {code}}
 			if description != "" {
 				set.Set("error_description", description)
 			}
-			return Redirect(setQuery(flow.ErrorCallbackURL, set)), nil
+			return Redirect(httporigin.SetQuery(flow.ErrorCallbackURL, set)), nil
 		}
 		return nil, &APIError{400, code, "Unable to complete social sign-in"}
 	}
@@ -413,7 +413,7 @@ func (a *Auth) finishBrowserOAuth(w http.ResponseWriter, r *http.Request, id str
 	if created && flow.NewUserCallbackURL != "" {
 		target = flow.NewUserCallbackURL
 	}
-	if !a.trustedURL(target, true) {
+	if !a.trustedURL(r.Context(), target, true) {
 		target = a.opts.BaseURL
 	}
 	if popup != nil && flow.LinkUserID == "" {

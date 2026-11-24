@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
+
+	"github.com/Plain-Org/plain-auth/internal/httporigin"
 )
 
 var errorCodeFormat = regexp.MustCompile("^[A-Za-z0-9_'-]+$")
@@ -31,7 +33,7 @@ func (a *Auth) errorPage(h http.Header, r *http.Request) any {
 		if description != "" {
 			set.Set("error_description", description)
 		}
-		return Redirect(setQuery(a.opts.ErrorRedirectURL, set))
+		return Redirect(httporigin.SetQuery(a.opts.ErrorRedirectURL, set))
 	}
 	h.Set("Referrer-Policy", "no-referrer")
 	h.Set("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'")

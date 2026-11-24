@@ -97,7 +97,7 @@ func (a *Auth) DeleteUser(ctx context.Context, h http.Header, in DeleteUserInput
 		if callback == "" {
 			callback = "/"
 		}
-		if !a.trustedURL(callback, true) {
+		if !a.trustedURL(ctx, callback, true) {
 			return false, &APIError{403, "INVALID_CALLBACK_URL", "Invalid callbackURL"}
 		}
 		t := PasswordResetToken{ID: randomID(), Token: randomID(), UserID: session.User.ID, CreatedAt: now, ExpiresAt: now.Add(a.opts.DeleteTokenTTL)}
@@ -146,7 +146,7 @@ func (a *Auth) ChangeEmail(ctx context.Context, h http.Header, newEmail, callbac
 	if newEmail == session.User.Email {
 		return &APIError{400, "BAD_REQUEST", "Email is the same"}
 	}
-	if callback != "" && !a.trustedURL(callback, true) {
+	if callback != "" && !a.trustedURL(ctx, callback, true) {
 		return &APIError{403, "INVALID_CALLBACK_URL", "Invalid callbackURL"}
 	}
 	immediate := !session.User.EmailVerified && a.opts.UpdateEmailWithoutVerification

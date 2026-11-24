@@ -64,13 +64,13 @@ func ASCIIOnly(s string) bool {
 // DeniedScheme reports whether a URL scheme may never be trusted.
 func DeniedScheme(scheme string) bool { return deniedSchemes[ASCIILower(scheme)] }
 
-// Compile validates the configured origins and preserves their order.
-func Compile(origins []string) ([]Rule, error) {
+// Compile validates the origins of the named option and preserves their order.
+func Compile(field string, origins []string) ([]Rule, error) {
 	rules := make([]Rule, 0, len(origins))
 	for i, origin := range origins {
 		rule, err := parseRule(origin)
 		if err != nil {
-			return nil, fmt.Errorf("authn: TrustedOrigins[%d]: %w", i, err)
+			return nil, fmt.Errorf("authn: %s[%d]: %w", field, i, err)
 		}
 		rules = append(rules, rule)
 	}

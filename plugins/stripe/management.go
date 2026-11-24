@@ -83,7 +83,7 @@ func (s *subscriptions) cancel(c auth.EndpointContext) (any, error) {
 		return nil, err
 	}
 	raw, _ := c.Body["returnUrl"].(string)
-	returnURL, err := c.Auth.CallbackURL(raw)
+	returnURL, err := c.CallbackURL(raw)
 	if err != nil {
 		return nil, err
 	}

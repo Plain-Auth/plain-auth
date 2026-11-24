@@ -128,7 +128,7 @@ func New(opts Options) (*Auth, error) {
 	if err := prepareCookieScope(&opts); err != nil {
 		return nil, err
 	}
-	trustedOrigins, err := httporigin.Compile(opts.TrustedOrigins)
+	trustedOrigins, err := httporigin.Compile("TrustedOrigins", opts.TrustedOrigins)
 	if err != nil {
 		return nil, err
 	}
@@ -375,7 +375,7 @@ func New(opts Options) (*Auth, error) {
 			a.factorStore = s
 		}
 	}
-	if opts.ErrorRedirectURL != "" && !a.trustedURL(opts.ErrorRedirectURL, true) {
+	if opts.ErrorRedirectURL != "" && !a.trustedURL(context.Background(), opts.ErrorRedirectURL, true) {
 		return nil, errors.New("auth: ErrorRedirectURL must be a trusted callback")
 	}
 	if opts.AutoSignInAfterVerification {
@@ -471,7 +471,7 @@ func (a *Auth) signUpEmail(ctx context.Context, in SignUpInput, meta RequestMeta
 	if a.opts.DisableSignUp {
 		return AuthResult{}, &APIError{400, "EMAIL_PASSWORD_SIGN_UP_DISABLED", "Email and password sign up is not enabled"}
 	}
-	if meta.CallbackURL != "" && !a.trustedURL(meta.CallbackURL, true) {
+	if meta.CallbackURL != "" && !a.trustedURL(ctx, meta.CallbackURL, true) {
 		return AuthResult{}, &APIError{403, "INVALID_CALLBACK_URL", "Invalid callbackURL"}
 	}
 	if err := a.validateCredential(in.Email, in.Password, true); err != nil {

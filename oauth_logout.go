@@ -70,7 +70,7 @@ func (a *Auth) prepareProviderLogout(ctx context.Context, h http.Header, body wi
 			callback = p.PostLogoutRedirectURI
 		}
 		if callback != "" {
-			if !a.trustedURL(callback, true) {
+			if !a.trustedURL(ctx, callback, true) {
 				continue
 			}
 			base, err := url.Parse(a.opts.BaseURL + a.opts.BasePath)

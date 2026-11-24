@@ -69,7 +69,7 @@ func (c EndpointContext) beginEnterpriseFlow(provider, reference, redirectURI st
 		if !ok || value == "" {
 			return OAuthFlow{}, validationError("Invalid " + field)
 		}
-		resolved, err := a.CallbackURL(value)
+		resolved, err := c.CallbackURL(value)
 		if err != nil {
 			return OAuthFlow{}, err
 		}
@@ -199,6 +199,11 @@ func (c EndpointContext) CompleteEnterpriseFlow(f OAuthFlow, method string, p OA
 		target := f.CallbackURL
 		if created && f.NewUserCallbackURL != "" {
 			target = f.NewUserCallbackURL
+		}
+		if target != "" && !c.Auth.trustedURL(c.Request.Context(), target, true) {
+			// The provider's callback request no longer trusts the stored
+			// target, as with a social sign-in.
+			target = c.Auth.opts.BaseURL
 		}
 		next, err = c.Redirect(target)
 		if err != nil {

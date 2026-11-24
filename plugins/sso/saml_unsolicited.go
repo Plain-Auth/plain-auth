@@ -66,7 +66,7 @@ func samlLanding(c auth.EndpointContext, acs string, candidates ...string) strin
 		if candidate == "" || !validSAMLLanding(candidate) {
 			continue
 		}
-		target, err := c.Auth.CallbackURL(candidate)
+		target, err := c.CallbackURL(candidate)
 		if err != nil {
 			continue
 		}
@@ -79,7 +79,7 @@ func samlLanding(c auth.EndpointContext, acs string, candidates ...string) strin
 		}
 		return target
 	}
-	root, _ := c.Auth.CallbackURL("/")
+	root, _ := c.CallbackURL("/")
 	return root
 }
 
@@ -113,6 +113,6 @@ func incomingSAMLFlow(c *auth.EndpointContext, form url.Values) (auth.OAuthFlow,
 	if !sameSAMLOrigin("https://"+c.Request.Host, endpoint) {
 		return auth.OAuthFlow{}, true, errSAMLResponse
 	}
-	root, err := c.Auth.CallbackURL("/")
+	root, err := c.CallbackURL("/")
 	return auth.OAuthFlow{Provider: id, RedirectURI: endpoint, CallbackURL: root}, true, err
 }

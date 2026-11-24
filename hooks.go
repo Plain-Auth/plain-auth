@@ -215,7 +215,7 @@ func (a *Auth) callEndpoint(w http.ResponseWriter, r *http.Request, path, actual
 	}
 	if ran && c.Request.Method != http.MethodGet {
 		// A hook may have written a callback from another source into the input.
-		if err := a.validateCallbacks(wireBody(c.Body), c.Request.URL.Query()); err != nil {
+		if err := a.validateCallbacks(c.Request.Context(), wireBody(c.Body), c.Request.URL.Query()); err != nil {
 			return nil, err
 		}
 	}

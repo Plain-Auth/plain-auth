@@ -201,13 +201,13 @@ func (s *Service) checkout(c auth.EndpointContext) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	success, err := c.Auth.CallbackURL(s.opts.SuccessURL)
+	success, err := c.CallbackURL(s.opts.SuccessURL)
 	if err != nil {
 		return nil, err
 	}
 	back := s.opts.ReturnURL
 	if back != "" {
-		back, err = c.Auth.CallbackURL(back)
+		back, err = c.CallbackURL(back)
 		if err != nil {
 			return nil, err
 		}

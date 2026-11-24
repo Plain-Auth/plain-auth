@@ -415,7 +415,7 @@ func New(o Options) (auth.Plugin, error) {
 }
 
 func sanitized(c auth.EndpointContext, p Provider) PublicProvider {
-	metadata, _ := c.Auth.CallbackURL(strings.TrimRight(c.Auth.BasePath(), "/") + "/sso/saml2/sp/metadata?providerId=" + url.QueryEscape(p.ProviderID))
+	metadata, _ := c.CallbackURL(strings.TrimRight(c.Auth.BasePath(), "/") + "/sso/saml2/sp/metadata?providerId=" + url.QueryEscape(p.ProviderID))
 	out := PublicProvider{ProviderID: p.ProviderID, Issuer: p.Issuer, Domain: p.Domain, OrganizationID: p.OrganizationID, Type: "oidc", SPMetadataURL: metadata}
 	if p.SAML != nil {
 		out.Type = "saml"

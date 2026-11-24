@@ -262,8 +262,10 @@
     - [x] Asserts the BaseURL origin is trusted by default, alongside the configured and AUTH_TRUSTED_ORIGINS entries, through CallbackURL ([test](../../conformance/goapi/trusted_origins_test.go#L28))
     - [x] Static Origins ([test](../../conformance/goapi/http_test.go#L71))
       - [x] A sign-up with an Origin taken from the static TrustedOrigins list succeeds over HTTP ([test](../../conformance/goapi/http_test.go#L71))
-    - [ ] Dynamic Origins
-      - [ ] On a direct `auth.api` call with a static `baseURL`
+    - [x] Dynamic Origins ([test](../../conformance/goapi/request_origins_test.go#L124))
+      - [x] TrustedOriginsForRequest adds origins per request: a tenant's callback, request Origin and plugin redirect are trusted on that tenant's requests only, alongside the static origins ([test](../../conformance/goapi/request_origins_test.go#L124))
+      - [x] On a direct `auth.api` call with a static `baseURL` ([test](../../conformance/goapi/request_origins_test.go#L171))
+        - [x] A direct Go call has no request, so Auth.CallbackURL and SignUpEmail trust the static origins only ([test](../../conformance/goapi/request_origins_test.go#L171))
     - [ ] Wildcard Support
       - [x] Compare cookie-authenticated mutations and absolute login callback decisions for HTTP(S) wildcard origins on both servers ([test](../../conformance/trusted-origins.mjs#L76))
       - [ ] Pattern Syntax
@@ -618,8 +620,10 @@
         - [x] Unlike the reference, a wildcard without a scheme admits HTTP(S) only, so javascript://x.example.com and other custom schemes must be named ([test](../../conformance/goapi/trusted_origins_test.go#L74))
     - [x] Custom Schemes ([test](../../conformance/goapi/trusted_origins_test.go#L74))
       - [x] Custom-scheme rules trust app schemes, extension IDs and Expo wildcards such as exp://** and exp://10.0.0.*:*/**, and refuse schemes that can run code ([test](../../conformance/goapi/trusted_origins_test.go#L74))
-    - [ ] Dynamic origin list
-      - [ ] Important
+    - [x] Dynamic origin list ([test](../../conformance/goapi/request_origins_test.go#L56))
+      - [x] Options.TrustedOriginsForRequest returns the trusted origins for each request; a returned APIError with an error status is the response, and any other error or an invalid pattern fails the request with a generic 500 ([test](../../conformance/goapi/request_origins_test.go#L56))
+      - [x] Important ([test](../../conformance/goapi/request_origins_test.go#L142))
+        - [x] The host function runs once per request, for both the origin check and the callbacks ([test](../../conformance/goapi/request_origins_test.go#L142))
   - [ ] Outbound OAuth Requests
   - [ ] Email Enumeration Protection
   - [ ] Reporting Vulnerabilities
