@@ -53,6 +53,7 @@ func (a *Auth) phoneHTTP(c EndpointContext, path string) (any, error) {
 				return a.writeCredentialResult(c.ResponseHeader, r, b, *result.Factor, nil, false)
 			}
 			if ck := result.Factor.TrustedDeviceCookie; ck != nil {
+				expireOtherScopes(c.ResponseHeader, r, ck)
 				c.ResponseHeader.Add("Set-Cookie", ck.String())
 			}
 		}

@@ -68,4 +68,16 @@ func TestBrowserCookieFixture(t *testing.T) {
 			t.Fatal("wrong browser cookie JSON keys")
 		}
 	}
+	// A partitioned cookie carries the top-level site it is keyed to.
+	partitioned := *login.Cookies[0]
+	partitioned.Partitioned = true
+	copy := *login
+	copy.Cookies = []*http.Cookie{&partitioned}
+	if view, err := copy.BrowserCookies(".example.test"); err != nil || view[0].PartitionKey != "https://example.test" {
+		t.Fatal("wrong partition key", view, err)
+	}
+	partitioned.Domain = ""
+	if _, err := copy.BrowserCookies(""); err == nil {
+		t.Fatal("exported a host-only partitioned cookie without a site")
+	}
 }

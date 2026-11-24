@@ -3,23 +3,28 @@ package authtest
 import (
 	"errors"
 	"net/http"
+	"strings"
 )
 
 // BrowserCookie is a session cookie in the JSON format accepted by browser
 // automation tools. Expires is a Unix timestamp in seconds when present.
+// PartitionKey is the top-level site of a partitioned cookie.
 type BrowserCookie struct {
-	Name     string `json:"name"`
-	Value    string `json:"value"`
-	Domain   string `json:"domain"`
-	Path     string `json:"path"`
-	HTTPOnly bool   `json:"httpOnly"`
-	Secure   bool   `json:"secure"`
-	SameSite string `json:"sameSite"`
-	Expires  *int64 `json:"expires,omitempty"`
+	Name         string `json:"name"`
+	Value        string `json:"value"`
+	Domain       string `json:"domain"`
+	Path         string `json:"path"`
+	HTTPOnly     bool   `json:"httpOnly"`
+	Secure       bool   `json:"secure"`
+	SameSite     string `json:"sameSite"`
+	Expires      *int64 `json:"expires,omitempty"`
+	PartitionKey string `json:"partitionKey,omitempty"`
 }
 
 // BrowserCookies exports the cookies from this login for an existing browser
 // context. An empty domain preserves the scope selected by the auth instance.
+// A partitioned cookie is keyed to the HTTPS site of its domain, so pass the
+// top-level site's domain when the auth instance issues host-only cookies.
 func (r LoginResult) BrowserCookies(domain string) ([]BrowserCookie, error) {
 	if err := validateCookieDomain(domain); err != nil {
 		return nil, err
@@ -38,6 +43,12 @@ func (r LoginResult) BrowserCookies(domain string) ([]BrowserCookie, error) {
 		}
 		if domain != "" {
 			wire.Domain = domain
+		}
+		if cookie.Partitioned {
+			if wire.Domain == "" {
+				return nil, errors.New("authtest: pass the top-level site's domain to export a partitioned cookie")
+			}
+			wire.PartitionKey = "https://" + strings.TrimPrefix(wire.Domain, ".")
 		}
 		switch cookie.SameSite {
 		case http.SameSiteNoneMode:

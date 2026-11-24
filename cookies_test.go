@@ -246,3 +246,44 @@ func TestCookieOverridesKeepWritesAndExpiriesTogether(t *testing.T) {
 		t.Fatal("the One Tap nonce is not a valid __Host- cookie", nonce)
 	}
 }
+
+// Moving a cookie to another Domain, Path or partition expires the copies
+// the browser still holds under the default scope.
+func TestCookieScopeChangesExpireOldCopies(t *testing.T) {
+	cleanConfigEnv(t)
+	a, err := New(Options{Store: &refreshFixture{}, Secret: strings.Repeat("s", 32), BaseURL: "https://auth.example.com",
+		DefaultCookieAttributes: CookieAttributes{SameSite: http.SameSiteNoneMode, Partitioned: true},
+		Cookies:                 map[string]CookieOptions{"session_token": {Attributes: CookieAttributes{Path: "/api", Domain: "example.com"}}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	scopes := func(r *http.Request) map[string]bool {
+		h := http.Header{}
+		a.expireSessionCookieHeaders(h, r)
+		got := map[string]bool{}
+		for _, line := range h.Values("Set-Cookie") {
+			if c, err := http.ParseSetCookie(line); err == nil && c.Name == a.cookieName() {
+				if c.MaxAge >= 0 {
+					t.Fatal("an expiry is live", line)
+				}
+				got[fmt.Sprint(c.Domain, "|", c.Path, "|", c.Partitioned)] = true
+			}
+		}
+		return got
+	}
+	r := httptest.NewRequest("POST", "https://auth.example.com/api/auth/sign-out", nil)
+	if got := scopes(r); len(got) != 1 || !got["example.com|/api|true"] {
+		t.Fatal("a browser without the cookie got extra expiries", got)
+	}
+	r.AddCookie(&http.Cookie{Name: a.cookieName(), Value: "old"})
+	got := scopes(r)
+	for _, domain := range []string{"example.com", ""} {
+		for _, path := range []string{"/api", "/"} {
+			for _, partitioned := range []bool{true, false} {
+				if !got[fmt.Sprint(domain, "|", path, "|", partitioned)] {
+					t.Fatal("missing expiry for", domain, path, partitioned, got)
+				}
+			}
+		}
+	}
+}

@@ -36,7 +36,7 @@ func (c EndpointContext) SAMLLogoutCookie() string {
 func (c EndpointContext) SAMLLogoutStarted(token, target, binding string, ttl time.Duration) any {
 	c.Auth.expireSessionCookieHeaders(c.ResponseHeader, c.Request)
 	if c.Auth.deviceSessions != nil {
-		c.Auth.clearDeviceCookie(c.ResponseHeader, token)
+		c.Auth.clearDeviceCookie(c.ResponseHeader, c.Request, token)
 	}
 	c.ResponseHeader.Add("Set-Cookie", c.samlLogoutCookie(binding, int(ttl/time.Second)).String())
 	return Redirect(target)
@@ -63,7 +63,7 @@ func (c EndpointContext) SAMLIDPLogoutCompleted(target, token string, revoked bo
 	if revoked && token != "" && c.DirectBrowserSession(token) {
 		c.Auth.expireSessionCookieHeaders(c.ResponseHeader, c.Request)
 		if c.Auth.deviceSessions != nil {
-			c.Auth.clearDeviceCookie(c.ResponseHeader, token)
+			c.Auth.clearDeviceCookie(c.ResponseHeader, c.Request, token)
 		}
 	}
 	return Redirect(target)

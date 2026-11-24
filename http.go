@@ -281,7 +281,7 @@ func (a *Auth) handleCoreRequest(route string, w http.ResponseWriter, r *http.Re
 		a.expireSessionCookies(w, r)
 		if a.deviceSessions != nil {
 			for _, token := range a.readDeviceCookies(r.Header).tokens {
-				a.clearDeviceCookie(w.Header(), token)
+				a.clearDeviceCookie(w.Header(), r, token)
 			}
 		}
 		if logout.URL != "" {
@@ -390,6 +390,7 @@ func (a *Auth) handleEmail(route string, w http.ResponseWriter, r *http.Request,
 }
 func (a *Auth) writeCredentialResult(h http.Header, r *http.Request, body wireBody, result AuthResult, remember *bool, signup bool) (any, error) {
 	if result.TrustedDeviceCookie != nil {
+		expireOtherScopes(h, r, result.TrustedDeviceCookie)
 		h.Add("Set-Cookie", result.TrustedDeviceCookie.String())
 	}
 	if result.Challenge != nil {
@@ -439,7 +440,7 @@ func (a *Auth) expireSessionCookies(w http.ResponseWriter, r *http.Request) {
 
 func (a *Auth) expireSessionCookieHeaders(h http.Header, r *http.Request) {
 	cookie := a.clearSessionCookie()
-	expireHostCopy(h, r, cookie)
+	expireOtherScopes(h, r, cookie)
 	h.Add("Set-Cookie", cookie.String())
 	a.expireStoredSessionData(h, r, true)
 	expired := []*http.Cookie{a.browserCookie("dont_remember", "", -1)}
@@ -447,7 +448,7 @@ func (a *Auth) expireSessionCookieHeaders(h http.Header, r *http.Request) {
 		expired = append(expired, a.adminSessionCookie("", -1))
 	}
 	for _, c := range expired {
-		expireHostCopy(h, r, c)
+		expireOtherScopes(h, r, c)
 		h.Add("Set-Cookie", c.String())
 	}
 

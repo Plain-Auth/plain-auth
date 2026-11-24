@@ -180,18 +180,50 @@ func pathCovers(cookiePath, path string) bool {
 	return len(path) == len(cookiePath) || strings.HasSuffix(cookiePath, "/") || path[len(cookiePath)] == '/'
 }
 
-// Expire an issuing host's previous host-only cookie when a deployment begins
-// sharing this credential. A request cookie does not carry its original scope.
-func expireHostCopy(h http.Header, r *http.Request, c *http.Cookie) {
-	if c.Domain == "" {
+// expireOtherScopes expires the browser's older copies of c, such as the
+// host-only cookie left when a deployment begins sharing this credential or
+// the Path=/ cookie left by a new Path. It acts only when the request carries
+// a cookie of that name, since a request cookie does not carry its scope.
+func expireOtherScopes(h http.Header, r *http.Request, c *http.Cookie) {
+	if r == nil {
 		return
 	}
 	if _, err := r.Cookie(c.Name); err != nil {
 		return
 	}
-	host := *c
-	host.Domain, host.Value, host.MaxAge = "", "", -1
-	h.Add("Set-Cookie", host.String())
+	for _, old := range otherScopes(c) {
+		h.Add("Set-Cookie", old.String())
+	}
+}
+
+// otherScopes returns expiries for the copies of c that the default scope
+// could have left behind: host-only, at Path=/ or unpartitioned. Browsers
+// keep those apart from c, so expiring c alone would not remove them.
+func otherScopes(c *http.Cookie) []*http.Cookie {
+	domains, paths, partitions := []string{c.Domain}, []string{c.Path}, []bool{c.Partitioned}
+	if c.Domain != "" {
+		domains = append(domains, "")
+	}
+	if c.Path != "/" {
+		paths = append(paths, "/")
+	}
+	if c.Partitioned {
+		partitions = append(partitions, false)
+	}
+	var out []*http.Cookie
+	for _, domain := range domains {
+		for _, path := range paths {
+			for _, partitioned := range partitions {
+				if domain == c.Domain && path == c.Path && partitioned == c.Partitioned {
+					continue
+				}
+				old := *c
+				old.Domain, old.Path, old.Partitioned, old.Value, old.MaxAge = domain, path, partitioned, "", -1
+				out = append(out, &old)
+			}
+		}
+	}
+	return out
 }
 
 func (a *Auth) prefixedCookieName(name string) string {
@@ -373,7 +405,7 @@ func (a *Auth) publishSessionCookie(headers http.Header, r *http.Request, cookie
 }
 
 func (a *Auth) emitSessionCookieHeaders(headers http.Header, r *http.Request, c *http.Cookie) {
-	expireHostCopy(headers, r, c)
+	expireOtherScopes(headers, r, c)
 	headers.Add("Set-Cookie", c.String())
 	event := SessionCookieEvent{Auth: a, Cookie: *c, Route: strings.TrimPrefix(r.URL.Path, strings.TrimSuffix(a.opts.BasePath, "/")), Request: r, Header: headers}
 	for _, p := range a.opts.Plugins {
@@ -392,7 +424,7 @@ func (a *Auth) emitSessionCookieHeaders(headers http.Header, r *http.Request, c 
 
 func (a *Auth) writeRememberPreference(headers http.Header, r *http.Request, persistent bool) {
 	marker := a.SignedCookie("dont_remember", "true", 0)
-	expireHostCopy(headers, r, marker)
+	expireOtherScopes(headers, r, marker)
 	if !persistent {
 		headers.Add("Set-Cookie", marker.String())
 	} else if _, err := r.Cookie(marker.Name); err == nil {
@@ -442,10 +474,8 @@ func (a *Auth) reconcileSessionDataCookies(h http.Header, r *http.Request, expir
 	}
 	for _, name := range names {
 		expired.Name = name
-		if expired.Domain != "" {
-			host := *expired
-			host.Domain = ""
-			h.Add("Set-Cookie", host.String())
+		for _, old := range otherScopes(expired) {
+			h.Add("Set-Cookie", old.String())
 		}
 		if !replacements[name] {
 			h.Add("Set-Cookie", expired.String())

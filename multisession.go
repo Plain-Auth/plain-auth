@@ -86,9 +86,10 @@ func (a *Auth) readDeviceCookies(headers http.Header) deviceCookies {
 	return result
 }
 
-func (a *Auth) clearDeviceCookie(headers http.Header, token string) {
+func (a *Auth) clearDeviceCookie(headers http.Header, r *http.Request, token string) {
 	c := a.clearSessionCookie()
 	c.Name = a.deviceCookieName(token)
+	expireOtherScopes(headers, r, c)
 	headers.Add("Set-Cookie", c.String())
 }
 
@@ -146,7 +147,7 @@ func (a *Auth) rememberDeviceSession(h http.Header, r *http.Request, token strin
 		}
 	}
 	for _, old := range append(stale, replaced...) {
-		a.clearDeviceCookie(h, old)
+		a.clearDeviceCookie(h, r, old)
 	}
 	if len(otherUsers) < a.maxDeviceSessions {
 		h.Add("Set-Cookie", a.deviceCookie(token, persistent).String())
@@ -169,12 +170,12 @@ func listDeviceSessions(c EndpointContext) (any, error) {
 	for _, token := range held.tokens {
 		item, ok := live[token]
 		if !ok || seen[item.User.ID] || len(out) >= a.maxDeviceSessions {
-			a.clearDeviceCookie(c.ResponseHeader, token)
+			a.clearDeviceCookie(c.ResponseHeader, c.Request, token)
 			continue
 		}
 		result, err := a.withSessionPlugins(r.Context(), item.Session, item.User)
 		if errors.Is(err, ErrNotFound) {
-			a.clearDeviceCookie(c.ResponseHeader, token)
+			a.clearDeviceCookie(c.ResponseHeader, c.Request, token)
 			continue
 		}
 		if err != nil {
@@ -243,7 +244,7 @@ func setActiveDeviceSession(c EndpointContext) (any, error) {
 	}
 	item, ok := live[token]
 	if !ok {
-		a.clearDeviceCookie(c.ResponseHeader, token)
+		a.clearDeviceCookie(c.ResponseHeader, c.Request, token)
 		return nil, invalidDeviceToken()
 	}
 	result, err := a.withSessionPlugins(c.Request.Context(), item.Session, item.User)
@@ -274,7 +275,7 @@ func revokeDeviceSession(c EndpointContext) (any, error) {
 		}
 		return nil, err
 	}
-	a.clearDeviceCookie(c.ResponseHeader, token)
+	a.clearDeviceCookie(c.ResponseHeader, c.Request, token)
 	if active == token {
 		live, err := a.deviceSessions.DeviceSessions(r.Context(), held.tokens, a.now())
 		if err != nil {

@@ -172,7 +172,9 @@ Startup refuses a configuration a browser would reject or that would hide a cook
 - a `Path` that does not cover the base path, such as `/app` when the endpoints live under `/api/auth`;
 - a `Domain` outside the base host or on a public suffix, using the same checks as `CrossSubDomainCookies`.
 
-[Cookie option tests](../conformance/goapi/cookie_options_test.go) · [Write and expiry scope tests](../cookies_test.go)
+When you move a cookie to a new `Domain`, `Path` or partition, the browser keeps its old copy as a separate cookie. When a request still carries one, the response that replaces or expires the cookie also expires the old host-only, `Path=/` or unpartitioned copy.
+
+[Cookie option tests](../conformance/goapi/cookie_options_test.go) · [Write, expiry and old-scope tests](../cookies_test.go)
 
 Signing out clears the shared session cookies across eligible hosts and revokes the active session. During a move from host-only cookies, issue a fresh login on the original host to replace its previous browser credential. Each host controls its own older host-only cookies. The login-method preference persists across logout. In the Go client, call `ClearSharedLastLoginMethod(cookieName, domain)` to remove that preference. [Cookie scope tests](../conformance/goapi/cookie_scope_http_test.go)
 

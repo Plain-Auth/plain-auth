@@ -287,6 +287,7 @@ func (a *Auth) factorEndpoint(route string, c EndpointContext) (any, error) {
 		}
 	}
 	if op.trustedCookie != nil {
+		expireOtherScopes(c.ResponseHeader, c.Request, op.trustedCookie)
 		c.ResponseHeader.Add("Set-Cookie", op.trustedCookie.String())
 	}
 	return op.out, nil

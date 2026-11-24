@@ -49,7 +49,7 @@ router.ServeHTTP(res, req) // router mounts server.Auth and your protected /prof
 
 ## Import a fixture login into a browser
 
-Call `login.BrowserCookies("")` to export the current fixture login as browser automation cookie objects. An empty domain uses the cookie's issued scope. Pass a test domain such as `.example.test` when testing across subdomains. The export reuses the signed cookie and the session's original deadline. Each object contains `name`, `value`, `domain`, `path`, `httpOnly`, `secure`, and `sameSite`. Persistent cookies also contain `expires` in Unix seconds.
+Call `login.BrowserCookies("")` to export the current fixture login as browser automation cookie objects. An empty domain uses the cookie's issued scope. Pass a test domain such as `.example.test` when testing across subdomains. The export reuses the signed cookie and the session's original deadline. Each object contains `name`, `value`, `domain`, `path`, `httpOnly`, `secure`, and `sameSite`. Persistent cookies also contain `expires` in Unix seconds. A partitioned cookie also contains `partitionKey`, the HTTPS site of its domain. Pass the top-level site's domain to export one that the instance issues host-only.
 
 ```go
 cookies, err := login.BrowserCookies("")
