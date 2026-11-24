@@ -459,7 +459,8 @@
     - [ ] `ipAddress`
     - [x] `disableIpTracking` ([test](../../ip_test.go#L49))
       - [x] With ClientIP.DisableTracking and rate limiting on, no client IP is resolved and the per-IP limiter never rejects repeated sign-in requests ([test](../../ip_test.go#L49))
-    - [ ] `ipAddressHeaders`
+    - [x] `ipAddressHeaders` ([test](../../conformance/goapi/client_address_test.go#L18))
+      - [x] ClientIP.Headers is read in order: the first header with a valid address wins, a missing or malformed header falls through to the next, and headers from untrusted peers are ignored ([test](../../conformance/goapi/client_address_test.go#L18))
     - [x] `trustedProxies` ([test](../../ip_test.go#L10))
       - [x] ClientIP.TrustedProxies CIDR ranges: forwarded hops are read right to left skipping trusted proxies, headers from untrusted peers are ignored, malformed chains give no IP, and invalid prefixes are rejected ([test](../../ip_test.go#L10))
     - [x] `useSecureCookies` ([test](../../cookies_test.go#L101))
@@ -589,7 +590,8 @@
     - [x] With an HTTPS base URL, the sign-up session cookie is Secure, HttpOnly, SameSite=Lax, Path=/ and persistent ([test](../../conformance/goapi/http_test.go#L73))
     - [ ] Customizing Cookies
   - [ ] Rate Limiting
-  - [ ] IP Address Headers
+  - [x] IP Address Headers ([test](../../conformance/goapi/client_address_test.go#L76))
+    - [x] Address headers count only when a trusted proxy sends them, either as a single-address header or an appended X-Forwarded-For chain ([test](../../conformance/goapi/client_address_test.go#L76))
   - [ ] Trusted Proxy Headers
   - [ ] Trusted Origins
     - [ ] Basic Usage

@@ -48,7 +48,19 @@ If the mount is `/identity`, a request to `/identity/sign-up/email` returns 404 
 | `DisableCSRFCheck` | Turns off the Origin, Referer and Fetch Metadata checks on state-changing requests. Leaves cookie-authenticated endpoints open to cross-site request forgery |
 | `DisableOriginCheck` | Accepts any `callbackURL`, `redirectTo` and other redirect target instead of trusted origins and relative paths, which allows open redirects. Request origins are still checked, and URLs with control characters or backslashes are still refused |
 
-Create one auth instance per configuration and share it among handlers. Use the same secret on application replicas. The default in-process rate limiter keys requests by connection peer and route. Behind a reverse proxy, set `Options.ClientIP.TrustedProxies` to its CIDR ranges as `[]netip.Prefix`. Each proxy should append the actual peer to `X-Forwarded-For` or overwrite the configured `ForwardedHeader`. The library follows trusted hops from right to left and uses the first untrusted address. Direct connections use the socket address. Set `ClientIP.IPv6Subnet` to a prefix length to override the default /64 rate-limit scope. Set `ClientIP.DisableTracking` to omit the address from new sessions and disable per-IP limits. See the [proxy and privacy tests](../ip_test.go).
+Create one auth instance per configuration and share it among handlers. Use the same secret on application replicas.
+
+The default in-process rate limiter keys requests by client address and route. Direct connections use the socket address, and address headers are ignored. Behind a reverse proxy, set `Options.ClientIP.TrustedProxies` to its CIDR ranges as `[]netip.Prefix`. Only those peers may supply an address header.
+
+| How requests reach your server | What to set |
+| --- | --- |
+| A proxy puts the client address in its own header | `TrustedProxies` and `Headers: []string{"CF-Connecting-IP"}` |
+| Proxies append addresses to `X-Forwarded-For` | `TrustedProxies` with your proxies' addresses |
+| Clients connect directly | Nothing |
+
+`ClientIP.Headers` lists the headers to read, in order, and defaults to `X-Forwarded-For`. The first header that yields an address wins. A proxy must overwrite a single-address header. In a list, trusted hops are skipped from right to left and the first untrusted address is the client. A header that is sent but holds no valid address gives no address, unless a later header has one. Requests without an address share one rate-limit counter per route, and the first one logs a warning.
+
+Set `ClientIP.IPv6Subnet` to a prefix length to override the default /64 rate-limit scope. Set `ClientIP.DisableTracking` to omit the address from new sessions and disable per-IP limits. [Proxy and privacy tests](../ip_test.go) · [Address header tests](../conformance/goapi/client_address_test.go)
 
 ### Set email registration and password length
 

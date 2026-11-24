@@ -11,7 +11,7 @@ func TestTrustedProxyAddresses(t *testing.T) {
 	trusted := []netip.Prefix{netip.MustParsePrefix("10.0.0.0/8"), netip.MustParsePrefix("2001:db8::/64")}
 	bits := 56
 	opts := Options{BaseURL: "http://app.test", Secret: strings.Repeat("x", 32), Store: &refreshFixture{},
-		ClientIP: ClientIPOptions{TrustedProxies: trusted, ForwardedHeader: "X-For", IPv6Subnet: &bits}}
+		ClientIP: ClientIPOptions{TrustedProxies: trusted, Headers: []string{"X-For"}, IPv6Subnet: &bits}}
 	a, err := New(opts)
 	if err != nil {
 		t.Fatal(err)
@@ -40,7 +40,7 @@ func TestTrustedProxyAddresses(t *testing.T) {
 	if _, err := New(opts); err == nil {
 		t.Fatal("invalid proxy accepted")
 	}
-	opts.ClientIP = ClientIPOptions{ForwardedHeader: "invalid header"}
+	opts.ClientIP = ClientIPOptions{Headers: []string{"X-For", "invalid header"}}
 	if _, err := New(opts); err == nil {
 		t.Fatal("invalid header accepted")
 	}

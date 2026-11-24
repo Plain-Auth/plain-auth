@@ -4,17 +4,21 @@ import (
 	"errors"
 	"net/http"
 	"net/netip"
+	"slices"
 	"strings"
 )
 
 // ClientIPOptions controls how the application identifies the connection peer.
 type ClientIPOptions struct {
-	// TrustedProxies contains the CIDR ranges of reverse proxies which
-	// overwrite or append the actual connection address to ForwardedHeader.
+	// TrustedProxies contains the CIDR ranges of the reverse proxies in front
+	// of the application. Address headers are read only from these peers.
 	TrustedProxies []netip.Prefix
-	// ForwardedHeader defaults to X-Forwarded-For. Comma-separated hops are
-	// processed from the application toward the client.
-	ForwardedHeader string
+	// Headers lists the headers that carry the client address, in order, and
+	// the first one that yields an address wins. A proxy must overwrite a
+	// single-address header such as CF-Connecting-IP, or append the peer to a
+	// list such as X-Forwarded-For, whose hops are read from the application
+	// toward the client. The default is X-Forwarded-For.
+	Headers []string
 	// IPv6Subnet is the per-rate-limit prefix length (0–128, default 64).
 	IPv6Subnet *int
 	// DisableTracking omits the IP address from sessions and disables IP-based limits.
@@ -28,10 +32,14 @@ func (o *ClientIPOptions) prepare() error {
 			return errors.New("auth: invalid trusted proxy prefix")
 		}
 	}
-	if o.ForwardedHeader == "" {
-		o.ForwardedHeader = "X-Forwarded-For"
-	} else if !validHeaderField(o.ForwardedHeader) {
-		return errors.New("auth: invalid forwarded address header name")
+	if len(o.Headers) == 0 {
+		o.Headers = []string{"X-Forwarded-For"}
+	}
+	o.Headers = slices.Clone(o.Headers)
+	for _, name := range o.Headers {
+		if !validHeaderField(name) {
+			return errors.New("auth: invalid client address header name")
+		}
 	}
 	if o.IPv6Subnet != nil {
 		bits := *o.IPv6Subnet
@@ -67,26 +75,46 @@ func (a *Auth) clientIP(r *http.Request) string {
 		return ""
 	}
 	// Headers from untrusted immediate peers never supply an identity.
-	trusted := func(addr netip.Addr) bool {
-		for _, prefix := range opts.TrustedProxies {
-			if prefix.Contains(addr) {
-				return true
-			}
+	if !opts.trusted(peer) {
+		return direct
+	}
+	// A header that is sent but yields no address fails closed unless a
+	// later header supplies one.
+	sent := false
+	for _, name := range opts.Headers {
+		chain := strings.Join(r.Header.Values(name), ",")
+		if chain == "" {
+			continue
 		}
-		return false
+		sent = true
+		if ip := opts.forwardedIP(peer, chain); ip != "" {
+			return ip
+		}
 	}
-	if !trusted(peer) {
-		return direct
+	if sent {
+		return ""
 	}
-	chain := strings.Join(r.Header.Values(opts.ForwardedHeader), ",")
-	if chain == "" {
-		return direct
+	return direct
+}
+
+func (o ClientIPOptions) trusted(addr netip.Addr) bool {
+	for _, prefix := range o.TrustedProxies {
+		if prefix.Contains(addr) {
+			return true
+		}
 	}
+	return false
+}
+
+// forwardedIP walks a chain from the trusted peer toward the client and
+// returns the first untrusted hop, or "" when a hop is malformed.
+func (o ClientIPOptions) forwardedIP(peer netip.Addr, chain string) string {
 	if len(chain) > 4096 {
 		return ""
 	}
 	hops := strings.Split(chain, ",")
-	for i := len(hops) - 1; i >= 0 && trusted(peer); i-- {
+	for i := len(hops) - 1; i >= 0 && o.trusted(peer); i-- {
+		var err error
 		peer, err = netip.ParseAddr(strings.TrimSpace(hops[i]))
 		if err != nil || peer.Zone() != "" {
 			return ""

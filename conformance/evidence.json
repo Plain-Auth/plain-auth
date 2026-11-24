@@ -19113,9 +19113,9 @@
   ],
   "docs/content/docs/concepts/rate-limit.mdx#L62/A proxy puts the client address in its own header": [
     {
-      "label": "Sets a custom ForwardedHeader and checks that the client address comes from that header when the peer is a trusted proxy, and that the header is ignored from other peers",
-      "test": "ip_test.go",
-      "marker": "ClientIP: ClientIPOptions{TrustedProxies: trusted, ForwardedHeader: \"X-For\", IPv6Subnet: &bits}}",
+      "label": "With CF-Connecting-IP listed before X-Forwarded-For, a trusted proxy's single-address header supplies the client address and wins over the forwarded chain",
+      "test": "conformance/goapi/client_address_test.go",
+      "marker": "{\"the first listed header wins\", \"10.0.0.2:443\"",
       "complete": true
     }
   ],
@@ -20085,6 +20085,30 @@
       "label": "Apply default attributes to every cookie before the per-cookie overrides",
       "test": "conformance/goapi/cookie_options_test.go",
       "marker": "DefaultCookieAttributes: authn.CookieAttributes{SameSite: http.SameSiteNoneMode, Partitioned: true},",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/reference/options.mdx#L683/`ipAddressHeaders`": [
+    {
+      "label": "ClientIP.Headers is read in order: the first header with a valid address wins, a missing or malformed header falls through to the next, and headers from untrusted peers are ignored",
+      "test": "conformance/goapi/client_address_test.go",
+      "marker": "// Read the client address from an ordered list of proxy headers, and warn",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/concepts/rate-limit.mdx#L131": [
+    {
+      "label": "A request whose trusted proxy sends no valid address gets no address, shares one rate-limit counter per route and logs a single warning. The connection address is always known, so Go has no development fallback",
+      "test": "conformance/goapi/client_address_test.go",
+      "marker": "// Requests without an address share one counter per route.",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/reference/security.mdx#L165": [
+    {
+      "label": "Address headers count only when a trusted proxy sends them, either as a single-address header or an appended X-Forwarded-For chain",
+      "test": "conformance/goapi/client_address_test.go",
+      "marker": "{\"an untrusted peer's headers are ignored\", \"192.0.2.50:443\"",
       "complete": true
     }
   ]

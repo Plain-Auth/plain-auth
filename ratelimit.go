@@ -103,7 +103,14 @@ func (a *Auth) rejectRateLimited(w http.ResponseWriter, r *http.Request, route s
 	if !enabled || a.opts.ClientIP.DisableTracking {
 		return false
 	}
-	ip := a.rateLimitIP(a.clientIP(r))
+	client := a.clientIP(r)
+	if client == "" {
+		a.missingClientIP.Do(func() {
+			a.Logger().WarnContext(r.Context(), "Rate limiting could not determine a client IP and is using one shared counter per route. "+
+				"Check that ClientIP.TrustedProxies lists your proxies and that they send a valid address in one of ClientIP.Headers.")
+		})
+	}
+	ip := a.rateLimitIP(client)
 	rule := a.ruleForRoute(r.Method, route)
 	if rule == nil {
 		return false

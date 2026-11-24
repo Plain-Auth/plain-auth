@@ -15,6 +15,7 @@ import (
 	"runtime"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 	"unicode/utf16"
 
@@ -36,6 +37,7 @@ type Auth struct {
 	anonymous             *AnonymousOptions
 	admin                 *AdminOptions
 	adminStore            AdminStore
+	missingClientIP       sync.Once
 	deviceSessionResponse SessionResponseFunc
 	deviceSessions        DeviceSessionStore
 	maxDeviceSessions     int

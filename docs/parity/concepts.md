@@ -511,8 +511,8 @@
   - [ ] Configuring Rate Limit
     - [ ] Connecting IP Address
       - [x] Resolve the first untrusted address from configured proxy ranges while ignoring direct peers’ headers ([test](../../ip_test.go#L10))
-      - [x] A proxy puts the client address in its own header ([test](../../ip_test.go#L14))
-        - [x] Sets a custom ForwardedHeader and checks that the client address comes from that header when the peer is a trusted proxy, and that the header is ignored from other peers ([test](../../ip_test.go#L14))
+      - [x] A proxy puts the client address in its own header ([test](../../conformance/goapi/client_address_test.go#L73))
+        - [x] With CF-Connecting-IP listed before X-Forwarded-For, a trusted proxy's single-address header supplies the client address and wins over the forwarded chain ([test](../../conformance/goapi/client_address_test.go#L73))
       - [x] Proxies add addresses to `X-Forwarded-For` ([test](../../plugins/captcha/captcha_test.go#L121))
         - [x] With a trusted 127.0.0.0/8 proxy and the default X-Forwarded-For header, the resolved client address 203.0.113.4 goes to the provider and matches the pinned reference fixtures ([test](../../plugins/captcha/captcha_test.go#L121))
       - [x] Clients connect directly ([test](../../conformance/goapi/http_test.go#L145))
@@ -523,7 +523,8 @@
         - [x] Skips trusted proxy hops from the right of the forwarded chain and returns the first untrusted client address, ignoring the earlier spoofed entry ([test](../../ip_test.go#L23))
       - [x] Clients connect directly ([test](../../adapters/sqlstore/ratelimit_test.go#L93))
         - [x] With no proxy configured, the shared SQL counter is keyed by the connection address (192.0.2.1|route) ([test](../../adapters/sqlstore/ratelimit_test.go#L93))
-      - [ ] When no address is found
+      - [x] When no address is found ([test](../../conformance/goapi/client_address_test.go#L85))
+        - [x] A request whose trusted proxy sends no valid address gets no address, shares one rate-limit counter per route and logs a single warning. The connection address is always known, so Go has no development fallback ([test](../../conformance/goapi/client_address_test.go#L85))
       - [ ] IPv6 Address Support
       - [ ] IPv6 Subnet Rate Limiting
         - [ ] `128`
