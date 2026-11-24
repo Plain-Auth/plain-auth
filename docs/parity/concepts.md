@@ -704,6 +704,7 @@
         - [x] On both runtimes a refused email sign-up answers the same 403 with the policy's code and message, and no user is stored ([test](../../conformance/user-validation.mjs#L4))
         - [x] Social, magic-link and email-code sign-ins run the gate between a dry run and the real one, check creation, provider sign-ins and email links with the fresh profile, and render refusals on each path ([test](../../conformance/goapi/user_validation_test.go#L285))
         - [x] ID-token sign-ups and explicit links run the gate, and a refused link leaves the identity unlinked ([test](../../conformance/goapi/user_validation_test.go#L356))
+        - [x] Enterprise OIDC sign-ins run the gate with method sso-oidc on SQLite, PostgreSQL and MySQL ([test](../../adapters/sqlstore/sso_user_validation_test.go#L22))
       - [x] beforeDelete ([test](../../conformance/goapi/mail_request_test.go#L106))
         - [x] Run a callback with the user and request before deletion, and cancel it with an error ([test](../../conformance/goapi/mail_request_test.go#L106))
       - [x] afterDelete ([test](../../conformance/goapi/mail_request_test.go#L71))

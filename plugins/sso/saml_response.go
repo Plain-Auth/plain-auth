@@ -187,7 +187,16 @@ func samlProfile(a *saml.Assertion, m SAMLMapping, trust bool) (auth.OAuthProfil
 	if name == "" {
 		name = id
 	}
-	result := auth.OAuthProfile{Subject: id, Email: strings.ToLower(email), Name: name}
+	// The raw attributes, one value as a string and several as a list.
+	raw := make(map[string]any, len(attrs))
+	for name, values := range attrs {
+		if len(values) == 1 {
+			raw[name] = values[0]
+		} else {
+			raw[name] = values
+		}
+	}
+	result := auth.OAuthProfile{Subject: id, Email: strings.ToLower(email), Name: name, Data: raw}
 	if trust && m.EmailVerified != "" {
 		verified, e := get(m.EmailVerified, "")
 		if e != nil {
@@ -243,7 +252,7 @@ func (o Options) samlFinish(c auth.EndpointContext) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	fail := func(code string) (any, error) { return enterpriseFailure(c, flow, code) }
+	fail := func(code string) (any, error) { return enterpriseFailure(c, flow, code, "") }
 	p, err := store.FindBrowserProvider(c.Request.Context(), Selector{ProviderID: flow.Provider, Protocol: "saml"})
 	if err != nil {
 		if errors.Is(err, ErrMissing) {
@@ -339,7 +348,10 @@ func (o Options) samlFinish(c auth.EndpointContext) (any, error) {
 	}
 	// SAML relays the trusted callback URL for both new and returning users.
 	flow.NewUserCallbackURL = ""
-	result, err := c.CompleteEnterpriseFlow(flow, profile, auth.OAuthTokens{}, o.DisableImplicitSignUp && !flow.RequestSignUp, complete)
+	result, err := c.CompleteEnterpriseFlow(flow, "sso-saml", profile, auth.OAuthTokens{}, o.DisableImplicitSignUp && !flow.RequestSignUp, complete)
+	if refused := auth.UserInfoRefusal(err); refused != nil {
+		return enterpriseFailure(c, flow, refused.Code, refused.Message)
+	}
 	switch {
 	case errors.Is(err, context.DeadlineExceeded):
 		return fail("invalid_saml_response")

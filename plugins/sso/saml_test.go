@@ -142,3 +142,23 @@ func TestSAMLProvisioningDeadline(t *testing.T) {
 		t.Fatal("provisioning exceeded assertion age", got)
 	}
 }
+
+// A SAML profile carries the raw attributes for ValidateUserInfo: one value
+// as a string and several as a list.
+func TestSAMLProfileRawAttributes(t *testing.T) {
+	assertion := &saml.Assertion{
+		Subject: &saml.Subject{NameID: &saml.NameID{Value: "employee"}},
+		AttributeStatements: []saml.AttributeStatement{{Attributes: []saml.Attribute{
+			{Name: "email", Values: []saml.AttributeValue{{Value: "Employee@Example.test"}}},
+			{Name: "groups", Values: []saml.AttributeValue{{Value: "staff"}, {Value: "admins"}}},
+		}}},
+	}
+	profile, err := samlProfile(assertion, SAMLMapping{}, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, ok := profile.Data.(map[string]any)
+	if !ok || raw["email"] != "Employee@Example.test" || len(raw["groups"].([]string)) != 2 || profile.Email != "employee@example.test" {
+		t.Fatalf("the profile data was %#v", profile.Data)
+	}
+}

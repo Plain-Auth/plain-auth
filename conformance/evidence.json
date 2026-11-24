@@ -8170,6 +8170,11 @@
       "label": "Check the issuer signature and browser binding on a second node before the token exchange",
       "test": "adapters/sqlstore/sso_browser_test.go",
       "marker": "invalid issuer login reached the provider exchange"
+    },
+    {
+      "test": "adapters/sqlstore/sso_user_validation_test.go",
+      "marker": "func TestEnterpriseOIDCUserValidation(t *testing.T) {",
+      "label": "ValidateUserInfo checks an enterprise OIDC sign-up and a returning sign-in with the SSO provider ID and raw claims, and a refusal returns to the error callback with error and error_description"
     }
   ],
   "plugin/sso/ /sso/callback": [
@@ -9182,6 +9187,11 @@
       "label": "Reject a signed portal assertion when the provider catalog changes after host approval and before the final SQL transaction",
       "test": "adapters/sqlstore/sso_saml_test.go",
       "marker": "t.Fatal(\"stale reviewed directory created a portal session\""
+    },
+    {
+      "label": "A SAML profile carries the raw attributes ValidateUserInfo sees, one value as a string and several as a list",
+      "test": "plugins/sso/saml_test.go",
+      "marker": "func TestSAMLProfileRawAttributes(t *testing.T) {"
     }
   ],
   "docs/content/docs/plugins/polar.mdx#L17/Checkout Integration": [
@@ -20317,6 +20327,11 @@
       "test": "conformance/goapi/user_validation_test.go",
       "marker": "func TestValidateUserInfoIDTokenLinks(t *testing.T) {",
       "label": "ID-token sign-ups and explicit links run the gate, and a refused link leaves the identity unlinked"
+    },
+    {
+      "test": "adapters/sqlstore/sso_user_validation_test.go",
+      "marker": "func TestEnterpriseOIDCUserValidation(t *testing.T) {",
+      "label": "Enterprise OIDC sign-ins run the gate with method sso-oidc on SQLite, PostgreSQL and MySQL"
     }
   ],
   "docs/content/docs/concepts/oauth.mdx#L78": [

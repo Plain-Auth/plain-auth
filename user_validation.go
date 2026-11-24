@@ -121,6 +121,16 @@ func profileMap(data any) map[string]any {
 	return m
 }
 
+// UserInfoRefusal returns the 403 error of a ValidateUserInfo refusal, or nil
+// when err is not one, so a plugin can render it before its own mappings.
+func UserInfoRefusal(err error) *APIError {
+	var refused *userInfoRejection
+	if errors.As(err, &refused) {
+		return refused.APIError
+	}
+	return nil
+}
+
 // HasUserInfoValidation reports whether Options.ValidateUserInfo is set, so a
 // wrapping handler that creates users can refuse a host it does not gate.
 func (a *Auth) HasUserInfoValidation() bool { return a.opts.ValidateUserInfo != nil }
@@ -141,7 +151,7 @@ func (a *Auth) checkUserInfoValidation() error {
 		if len(a.opts.SocialProviders) > 0 {
 			decided = append(decided, "social sign-in")
 		}
-		for _, id := range []string{"magic-link", "email-otp", "one-tap"} {
+		for _, id := range []string{"magic-link", "email-otp", "one-tap", "sso"} {
 			if a.HasPlugin(id) {
 				decided = append(decided, id)
 			}
@@ -152,7 +162,7 @@ func (a *Auth) checkUserInfoValidation() error {
 	}
 	var bypass []string
 	// The SCIM handler refuses the option itself through HasUserInfoValidation.
-	for _, id := range []string{"sso", "admin", "passkey", "siwe"} {
+	for _, id := range []string{"admin", "passkey", "siwe"} {
 		if a.HasPlugin(id) {
 			bypass = append(bypass, id)
 		}

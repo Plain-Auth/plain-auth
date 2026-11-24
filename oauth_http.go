@@ -540,7 +540,7 @@ func (a *Auth) completeProfile(ctx context.Context, r *http.Request, id, callbac
 	}
 	options.TrustedProvider = slices.Contains(trusted, id)
 	options.AllowDifferentEmails = options.LinkUserID != "" && a.opts.AllowDifferentEmails
-	result, created, err := a.completeProfileWith(ctx, r, id, p, tokens, options, complete)
+	result, created, err := a.completeProfileWith(ctx, r, "oauth", id, p, tokens, options, complete)
 	blocked := errors.Is(err, ErrOAuthEmailUnverified)
 	if (err == nil || blocked) && options.LinkUserID == "" && !result.User.EmailVerified && a.opts.SendVerificationEmail != nil {
 		send := blocked && a.opts.SendVerificationOnSignIn
@@ -559,7 +559,9 @@ func (a *Auth) completeProfile(ctx context.Context, r *http.Request, id, callbac
 	return result, created, err
 }
 
-func (a *Auth) completeProfileWith(ctx context.Context, r *http.Request, id string, p OAuthProfile, tokens OAuthTokens, options OAuthLoginOptions, complete OAuthCompletion) (AuthResult, bool, error) {
+// completeProfileWith signs in with a provider identity. method names the
+// provider kind for ValidateUserInfo: "oauth", "sso-oidc" or "sso-saml".
+func (a *Auth) completeProfileWith(ctx context.Context, r *http.Request, method, id string, p OAuthProfile, tokens OAuthTokens, options OAuthLoginOptions, complete OAuthCompletion) (AuthResult, bool, error) {
 	options.DisableAccountUpdateOnSignIn = a.opts.DisableAccountUpdateOnSignIn && options.LinkUserID == ""
 	if a.opts.DisableImplicitAccountLinking || a.opts.DisableAccountLinking {
 		options.DisableImplicitLinking = true
@@ -601,7 +603,7 @@ func (a *Auth) completeProfileWith(ctx context.Context, r *http.Request, id stri
 		user, created, err = complete(ctx, id, p.Subject, tokens, candidate, session, options)
 		return err
 	}
-	gate := &signInGate{method: "oauth", provider: id, profile: profileMap(p.Data), candidate: candidate, fields: profileMap(a.writableProfileFields(p))}
+	gate := &signInGate{method: method, provider: id, profile: profileMap(p.Data), candidate: candidate, fields: profileMap(a.writableProfileFields(p))}
 	var err error
 	if options.LinkUserID != "" {
 		// The gate runs only for a live linking session, as in the
@@ -622,6 +624,10 @@ func (a *Auth) completeProfileWith(ctx context.Context, r *http.Request, id stri
 		}
 	} else {
 		err = a.planSignIn(ctx, gate, write)
+		if errors.Is(err, errLoginNotPlanned) {
+			// Issue no session for a sign-in the gate did not see.
+			return AuthResult{}, false, a.discardUnpublishedSession(ctx, session.Token, err)
+		}
 	}
 	if created && errors.Is(err, ErrOAuthEmailUnverified) {
 		// The user is stored without a session until the address is verified.

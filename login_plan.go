@@ -146,6 +146,8 @@ func (p *LoginPlan) Commit() error {
 	return nil
 }
 
+var errLoginNotPlanned = errors.New("auth: the sign-in committed in its dry run, so ValidateUserInfo could not run")
+
 var (
 	errPlannedUserSkipped    = &APIError{500, "FAILED_TO_CREATE_USER", "Failed to create user"}
 	errPlannedSessionSkipped = &APIError{500, "FAILED_TO_CREATE_SESSION", "Failed to create session"}
@@ -173,6 +175,11 @@ func (a *Auth) planSignIn(ctx context.Context, gate *signInGate, store func(cont
 	for range 3 {
 		plan := &LoginPlan{}
 		err := store(context.WithValue(ctx, loginPlanKey{}, plan))
+		if err == nil && gate != nil && a.opts.ValidateUserInfo != nil {
+			// The sign-in committed in its dry run, so the gate could not run.
+			a.Logger().ErrorContext(ctx, errLoginNotPlanned.Error())
+			return errors.Join(errLoginNotPlanned, &userInfoRejection{&APIError{403, "validation_failed", "User validation failed"}})
+		}
 		if !errors.Is(err, ErrLoginPlanned) {
 			return err
 		}

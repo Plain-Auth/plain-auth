@@ -220,7 +220,7 @@ func (o Options) finish(c auth.EndpointContext) (any, error) {
 		}
 		return nil, err
 	}
-	fail := func(code string) (any, error) { return enterpriseFailure(c, flow, code) }
+	fail := func(code string) (any, error) { return enterpriseFailure(c, flow, code, "") }
 	q := c.Request.URL.Query()
 	if q.Get("error") != "" || q.Get("code") == "" {
 		return fail("invalid_request")
@@ -274,7 +274,10 @@ func (o Options) finish(c auth.EndpointContext) (any, error) {
 		}
 		return store.CompleteEnterpriseLogin(ctx, p.Reference, !o.DisableOrganizationProvisioning, id, sub, t, u, s, opts)
 	}
-	result, err := c.CompleteEnterpriseFlow(flow, profile, tokens, o.DisableImplicitSignUp && !flow.RequestSignUp, complete)
+	result, err := c.CompleteEnterpriseFlow(flow, "sso-oidc", profile, tokens, o.DisableImplicitSignUp && !flow.RequestSignUp, complete)
+	if refused := auth.UserInfoRefusal(err); refused != nil {
+		return enterpriseFailure(c, flow, refused.Code, refused.Message)
+	}
 	if errors.Is(err, ErrDomainUnverified) {
 		return nil, err
 	}
@@ -294,7 +297,7 @@ func (o Options) finish(c auth.EndpointContext) (any, error) {
 	return result, err
 }
 
-func enterpriseFailure(c auth.EndpointContext, flow auth.OAuthFlow, code string) (any, error) {
+func enterpriseFailure(c auth.EndpointContext, flow auth.OAuthFlow, code, description string) (any, error) {
 	target := flow.ErrorCallbackURL
 	if target == "" {
 		target = flow.CallbackURL
@@ -305,6 +308,9 @@ func enterpriseFailure(c auth.EndpointContext, flow auth.OAuthFlow, code string)
 	}
 	v := u.Query()
 	v.Set("error", code)
+	if description != "" {
+		v.Set("error_description", description)
+	}
 	u.RawQuery = v.Encode()
 	return c.Redirect(u.String())
 }

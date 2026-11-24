@@ -174,20 +174,23 @@ func (c *EndpointContext) consumeEnterpriseFlow(state string, form bool) (OAuthF
 
 // CompleteEnterpriseFlow applies the host's account and token policy and emits
 // the usual session cookies only after the store's transaction has committed.
-func (c EndpointContext) CompleteEnterpriseFlow(f OAuthFlow, p OAuthProfile, tokens OAuthTokens, disableSignup bool, complete OAuthCompletion) (any, error) {
+// method is "sso-oidc" or "sso-saml", as ValidateUserInfo sees it. With
+// ValidateUserInfo set, complete must follow the LoginPlan protocol, as the
+// SQL store's sign-in methods do; a completion that commits in the dry run
+// is refused, though a user it already stored stays.
+func (c EndpointContext) CompleteEnterpriseFlow(f OAuthFlow, method string, p OAuthProfile, tokens OAuthTokens, disableSignup bool, complete OAuthCompletion) (any, error) {
 	if !validSocialProfile(p) || complete == nil {
 		return nil, validationError("Invalid enterprise identity")
 	}
-	if c.Auth.opts.ValidateUserInfo != nil {
-		// Enterprise sign-ins do not run ValidateUserInfo yet. New refuses
-		// the SSO plugin, and another plugin's enterprise flow fails closed.
+	if _, plans := c.Auth.opts.Store.(LoginPlanner); !plans && c.Auth.opts.ValidateUserInfo != nil {
+		// The gate runs between a dry run and the real sign-in.
 		return nil, &userInfoRejection{&APIError{403, "validation_failed", "User validation failed"}}
 	}
 	login, _ := c.Request.Context().Value(enterpriseIssuerLoginKey{c.Auth}).(enterpriseIssuerLogin)
 	if f.IssuerLoginQuery != "" && (login.query != f.IssuerLoginQuery || login.resume == nil) {
 		return nil, invalidEnterpriseState()
 	}
-	result, created, err := c.Auth.completeProfileWith(c.Request.Context(), c.Request, f.Provider, p, tokens, OAuthLoginOptions{DisableSignUp: disableSignup}, complete)
+	result, created, err := c.Auth.completeProfileWith(c.Request.Context(), c.Request, method, f.Provider, p, tokens, OAuthLoginOptions{DisableSignUp: disableSignup}, complete)
 	if err != nil {
 		return nil, err
 	}

@@ -431,3 +431,33 @@ func TestValidateUserInfoIDTokenLinks(t *testing.T) {
 		t.Fatal("a refused link left an account", accounts, err)
 	}
 }
+
+// A plugin's enterprise flow whose completion commits without the login
+// plan is refused rather than signed in past the gate.
+func TestValidateUserInfoUnplannedEnterpriseFlow(t *testing.T) {
+	store, err := sqlite.Open(":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	calls := 0
+	plugin := authn.Plugin{ID: "acme", Endpoints: []authn.Endpoint{{Method: "GET", Path: "/acme/callback", Handler: func(c authn.EndpointContext) (any, error) {
+		profile := authn.OAuthProfile{Subject: "employee", Email: "employee@acme.example", Name: "Employee", EmailVerified: true}
+		return c.CompleteEnterpriseFlow(authn.OAuthFlow{Provider: "acme", CallbackURL: "/home"}, "sso-oidc", profile, authn.OAuthTokens{}, false,
+			func(ctx context.Context, _, _ string, _ authn.OAuthTokens, u authn.User, s authn.StoredSession, _ authn.OAuthLoginOptions) (authn.User, bool, error) {
+				// This completion stores the user itself and never commits a plan.
+				s.UserID = u.ID
+				return u, true, store.CreateUser(ctx, u, "", &s)
+			})
+	}}}}
+	auth, err := authn.New(authn.Options{BaseURL: "https://auth.example", Store: store, Secret: strings.Repeat("s", 32), RateLimit: new(bool), Plugins: []authn.Plugin{plugin},
+		ValidateUserInfo: func(context.Context, authn.UserInfoValidation) error { calls++; return nil }})
+	if err != nil {
+		t.Fatal(err)
+	}
+	w := httptest.NewRecorder()
+	auth.ServeHTTP(w, httptest.NewRequest("GET", "https://auth.example/api/auth/acme/callback", nil))
+	if w.Code != 403 || strings.Contains(strings.Join(w.Header().Values("Set-Cookie"), ";"), "session_token=") || calls != 0 {
+		t.Fatal("an unplanned enterprise sign-in got past the gate", w.Code, w.Header().Values("Set-Cookie"), calls)
+	}
+}
