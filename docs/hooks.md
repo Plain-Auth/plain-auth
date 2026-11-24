@@ -85,7 +85,7 @@ opts.Hooks.After = []plainauth.EndpointHook{{
 
 `c.NewSession()` returns the session whose cookie this response issues, with its user, or nil when it issues none, for example after a failed sign-in or a sign-out.
 
-An after hook that turns a successful sign-in into an error should call `c.DeleteSessionCookie()`. It drops the session cookies the response would issue and expires the browser's session cookies instead, so the error response signs nobody in.
+An after hook that turns a successful sign-in into an error should call `c.DeleteSessionCookie()`. It drops the session cookies, the new session's multi-session cookie and the `Set-Auth-Token` header the response would issue, and expires the browser's session cookies instead, so the error response signs nobody in. [Rejected sign-in tests](../conformance/goapi/delete_session_cookie_test.go)
 
 ## Set and read cookies
 

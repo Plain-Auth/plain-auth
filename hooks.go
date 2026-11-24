@@ -86,12 +86,17 @@ func (c *HookContext) SetCookie(cookie *http.Cookie) {
 	}
 }
 
-// DeleteSessionCookie removes the session cookies this response would issue
-// and expires the browser's session cookies instead. Call it when an after
-// hook turns a successful sign-in into an error.
+// DeleteSessionCookie removes the session cookies and the Set-Auth-Token
+// header this response would issue, including the multi-session cookie for
+// the new session, and expires the browser's session cookies instead. Call it
+// when an after hook turns a successful sign-in into an error.
 func (c *HookContext) DeleteSessionCookie() {
+	issued := c.Auth.issuedSessionToken(c.ResponseHeader)
 	expired := make(http.Header)
 	c.Auth.expireSessionCookieHeaders(expired, c.Request)
+	if issued != "" && c.Auth.deviceSessions != nil {
+		c.Auth.clearDeviceCookie(expired, c.Request, issued)
+	}
 	names := map[string]bool{}
 	for _, line := range expired.Values("Set-Cookie") {
 		if cookie, err := http.ParseSetCookie(line); err == nil {
@@ -107,6 +112,7 @@ func (c *HookContext) DeleteSessionCookie() {
 		kept = append(kept, line)
 	}
 	c.ResponseHeader.Del("Set-Cookie")
+	c.ResponseHeader.Del("Set-Auth-Token")
 	for _, line := range append(kept, expired.Values("Set-Cookie")...) {
 		c.ResponseHeader.Add("Set-Cookie", line)
 	}
