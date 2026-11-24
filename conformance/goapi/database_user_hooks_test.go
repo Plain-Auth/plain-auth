@@ -356,12 +356,114 @@ func TestDatabaseAccountHooks(t *testing.T) {
 		t.Fatal("unexpected account deletion hooks", got)
 	}
 
-	// Password reset changes the credential inside the store, so New refuses account hooks with it.
+	// A code reset changes the credential inside the store, so New refuses account hooks with email codes.
+	codes, err := authn.NewEmailOTP(authn.EmailOTPOptions{Send: func(context.Context, authn.EmailOTPMessage) error { return nil }})
+	if err != nil {
+		t.Fatal(err)
+	}
 	if _, err := authn.New(authn.Options{
 		BaseURL: "https://auth.example", Store: memory.New(), Secret: strings.Repeat("s", 32), EmailAndPassword: true,
-		SendResetPassword: func(context.Context, authn.MailLink) error { return nil },
-		DatabaseHooks:     authn.DatabaseHooks{Account: authn.ModelHooks[authn.LinkedAccount]{Update: op("update")}},
-	}); err == nil || !strings.Contains(err.Error(), "SendResetPassword") {
-		t.Fatal("account hooks were accepted with password reset", err)
+		Plugins:       []authn.Plugin{codes},
+		DatabaseHooks: authn.DatabaseHooks{Account: authn.ModelHooks[authn.LinkedAccount]{Update: op("update")}},
+	}); err == nil || !strings.Contains(err.Error(), "email-otp") {
+		t.Fatal("account hooks were accepted with email codes", err)
+	}
+}
+
+// Run the credential account hooks and the revoked sessions' delete hooks
+// around a password reset link.
+func TestDatabaseHooksAroundPasswordReset(t *testing.T) {
+	var mu sync.Mutex
+	var events []string
+	record := func(e string) { mu.Lock(); events = append(events, e); mu.Unlock() }
+	seen := func() string { mu.Lock(); defer mu.Unlock(); s := strings.Join(events, ","); events = nil; return s }
+	var declineAccount, declineSessions bool
+	var link authn.MailLink
+	store := memory.New()
+	off := false
+	auth, err := authn.New(authn.Options{
+		BaseURL: "https://auth.example", Store: store, Secret: strings.Repeat("s", 32), EmailAndPassword: true, RateLimit: &off,
+		RevokeSessionsOnPasswordReset: true,
+		SendResetPassword:             func(_ context.Context, m authn.MailLink) error { link = m; return nil },
+		DatabaseHooks: authn.DatabaseHooks{
+			Account: authn.ModelHooks[authn.LinkedAccount]{Update: authn.OperationHooks[authn.LinkedAccount]{
+				Before: func(context.Context, *authn.LinkedAccount, *authn.HookContext) error {
+					record("account-before")
+					if declineAccount {
+						return authn.ErrSkipWrite
+					}
+					return nil
+				},
+				After: func(context.Context, authn.LinkedAccount, *authn.HookContext) error {
+					record("account-after")
+					return nil
+				},
+			}},
+			Session: authn.ModelHooks[authn.SessionRecord]{Delete: authn.OperationHooks[authn.SessionRecord]{
+				Before: func(context.Context, *authn.SessionRecord, *authn.HookContext) error {
+					record("session-before")
+					if declineSessions {
+						return authn.ErrSkipWrite
+					}
+					return nil
+				},
+				After: func(context.Context, authn.SessionRecord, *authn.HookContext) error {
+					record("session-after")
+					return nil
+				},
+			}},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := t.Context()
+	password := "correct horse battery"
+	account, err := auth.SignUpEmail(ctx, authn.SignUpInput{Email: "ada@example.com", Password: password, Name: "Ada"}, authn.RequestMeta{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := auth.SignInEmail(ctx, authn.SignInInput{Email: "ada@example.com", Password: password}, authn.RequestMeta{}); err != nil {
+		t.Fatal(err)
+	}
+	reset := func(next string) error {
+		t.Helper()
+		if err := auth.RequestPasswordReset(ctx, "ada@example.com", "/reset"); err != nil {
+			t.Fatal(err)
+		}
+		return auth.ResetPassword(ctx, link.Token, next)
+	}
+	sessions := func() int { s, _ := store.ListSessions(ctx, account.User.ID); return len(s) }
+
+	// A declined credential update fails the reset and keeps the old password.
+	declineAccount = true
+	var problem *authn.APIError
+	if err := reset("second horse battery"); !errors.As(err, &problem) || problem.Code != "FAILED_TO_UPDATE_USER" {
+		t.Fatal("a declined credential update did not fail the reset", err)
+	}
+	declineAccount = false
+	if _, err := auth.SignInEmail(ctx, authn.SignInInput{Email: "ada@example.com", Password: password}, authn.RequestMeta{}); err != nil {
+		t.Fatal("the declined reset changed the password", err)
+	}
+	seen()
+
+	// A declined revocation still resets the password and keeps every session.
+	declineSessions = true
+	before := sessions()
+	if err := reset("second horse battery"); err != nil {
+		t.Fatal(err)
+	}
+	declineSessions = false
+	if sessions() != before || seen() != "account-before,session-before,account-after" {
+		t.Fatal("a declined revocation removed sessions", sessions(), before)
+	}
+
+	// The reset runs the credential hooks and the delete hooks of every revoked session.
+	if err := reset("third horse battery"); err != nil {
+		t.Fatal(err)
+	}
+	want := "account-before," + strings.Repeat("session-before,", before) + "account-after" + strings.Repeat(",session-after", before)
+	if got := seen(); sessions() != 0 || got != want {
+		t.Fatal("unexpected reset hooks", got, want)
 	}
 }

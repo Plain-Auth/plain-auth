@@ -201,7 +201,9 @@ func (a *Auth) checkDatabaseHooks() error {
 		for _, id := range []string{"admin", "anonymous", "magic-link", "sso", "two-factor"} {
 			need(id, a.HasPlugin(id))
 		}
-		need("RevokeSessionsOnPasswordReset", a.opts.RevokeSessionsOnPasswordReset)
+		// Code resets find their account inside the store's transaction.
+		need("RevokeSessionsOnPasswordReset with email-otp", a.opts.RevokeSessionsOnPasswordReset && a.HasPlugin("email-otp"))
+		need("RevokeSessionsOnPasswordReset with phone-number", a.opts.RevokeSessionsOnPasswordReset && a.HasPlugin("phone-number"))
 	}
 	if d.user.delete.set() {
 		need("admin", a.HasPlugin("admin"))
@@ -218,7 +220,6 @@ func (a *Auth) checkDatabaseHooks() error {
 		}
 	}
 	if d.account.create.set() || d.account.update.set() {
-		need("SendResetPassword", a.opts.SendResetPassword != nil)
 		need("email-otp", a.HasPlugin("email-otp"))
 		need("phone-number", a.HasPlugin("phone-number"))
 	}

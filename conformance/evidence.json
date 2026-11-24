@@ -18437,6 +18437,11 @@
       "label": "Run the session create hooks for two-factor sign-in, verification and enrollment, device grants and the sign-in after an email link on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/session_hooks_planned_test.go",
       "marker": "// Run the session create hooks for sessions a store issues inside its own"
+    },
+    {
+      "label": "Run the credential account hooks and the revoked sessions' delete hooks around a password reset link",
+      "test": "conformance/goapi/database_user_hooks_test.go",
+      "marker": "// Run the credential account hooks and the revoked sessions' delete hooks"
     }
   ],
   "docs/content/docs/concepts/database.mdx#L881": [

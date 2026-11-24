@@ -216,6 +216,7 @@ Account hooks receive the `LinkedAccount` and may only observe or cancel the wri
 | `POST /sign-up/email`, `Auth.SignUpEmail` | Create, for the credential account; the after hook receives its stored ID | 400 `FAILED_TO_CREATE_USER`; nothing is stored |
 | `Auth.SetPassword` | Create, for the credential account | 400 `FAILED_TO_UPDATE_USER` |
 | `POST /change-password`, `Auth.ChangePassword` | Update, for the credential account | 400 `FAILED_TO_UPDATE_USER`; the old password keeps working |
+| `POST /reset-password`, `Auth.ResetPassword` | Update for the credential account, or create when the account has none | 400 `FAILED_TO_UPDATE_USER`; the old password keeps working |
 | `POST /unlink-account`, `Auth.UnlinkAccount` | Delete | Answers success; the account stays |
 | Deleting an account | Delete, for each account, between the session and user hooks | The whole deletion is cancelled |
 
@@ -231,6 +232,7 @@ Session updates and deletes run these hooks:
 | `POST /revoke-session`, `/revoke-sessions`, `/revoke-other-sessions` | Delete, once per session | Every session stays |
 | Removing an expired session the browser presents | Delete | The session stays stored |
 | `POST /change-password` with `revokeOtherSessions` | Delete, for every session of the account | The password changes, every session stays and no new session is issued |
+| A password reset link with `RevokeSessionsOnPasswordReset` | Delete, for every session of the account | The password resets and every session stays |
 | A new multi-session login of an account already signed in on the browser | Delete, for the older login | The older login stays remembered |
 | `POST /multi-session/revoke` | Delete | The login is forgotten by the browser but stays stored |
 
@@ -244,9 +246,9 @@ Database hooks do not cover every flow yet. `New` refuses:
 - session create hooks with `AutoSignInAfterVerification`, or the email OTP plugin's, when `BeforeEmailVerification` or `AfterEmailVerification` is set;
 - user update hooks with social sign-in, the magic link, email OTP, phone number, One Tap, SSO, admin, two-factor or last-login-method plugin, `AutoSignInAfterVerification`, `BeforeEmailVerification` or `AfterEmailVerification`;
 - session update hooks with the organization or admin plugin;
-- session delete hooks with the admin, anonymous, magic link, SSO or two-factor plugin, or `RevokeSessionsOnPasswordReset`;
+- session delete hooks with the admin, anonymous, magic link, SSO or two-factor plugin, or with `RevokeSessionsOnPasswordReset` and the email OTP or phone number plugin, whose code resets find the account inside the store;
 - user delete hooks with the admin or anonymous plugin;
-- account hooks with social sign-in, One Tap, SSO, or the admin, wallet, magic link or anonymous plugin, and account create and update hooks with `SendResetPassword`, email OTP or phone number, which write accounts inside the store's transaction.
+- account hooks with social sign-in, One Tap, SSO, or the admin, wallet, magic link or anonymous plugin, and account create and update hooks with email OTP or phone number, which write accounts inside the store's transaction.
 
 The SCIM handler refuses a host with any database hook, and `Auth.HasDatabaseHooks` lets your own wrapping handler do the same.
 

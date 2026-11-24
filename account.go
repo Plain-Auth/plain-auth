@@ -371,13 +371,48 @@ func (a *Auth) resetPassword(ctx context.Context, token, newPassword string, req
 		return err
 	}
 	now := a.now().UTC()
+	// The token names its owner, so the hooks run before the reset commits.
+	credentialHooks := a.dbHooks.account.update
+	if a.dbHooks.account.create.set() || a.dbHooks.account.update.set() {
+		credential, err := a.credentialAccount(ctx, row.UserID)
+		if err != nil {
+			return err
+		}
+		if credential.ID == "" {
+			// A reset adds the credential when the account has none.
+			credentialHooks = a.dbHooks.account.create
+			credential.CreatedAt = now
+		}
+		credential.UpdatedAt = now
+		if err := a.beforeAccount(ctx, credentialHooks, credential); errors.Is(err, ErrSkipWrite) {
+			return &APIError{400, "FAILED_TO_UPDATE_USER", "Failed to update user"}
+		} else if err != nil {
+			return err
+		}
+	}
+	revoke := a.opts.RevokeSessionsOnPasswordReset
+	var revoked []Session
+	if revoke && a.dbHooks.session.delete.set() {
+		if revoked, err = a.userSessionRows(ctx, row.UserID, ""); err != nil {
+			return err
+		}
+		for _, session := range revoked {
+			if err := runBefore(ctx, a, a.dbHooks.session.delete, &SessionRecord{Session: session, Fields: map[string]any{}}); errors.Is(err, ErrSkipWrite) {
+				// A declined revocation still resets the password and keeps every session.
+				revoke, revoked = false, nil
+				break
+			} else if err != nil {
+				return err
+			}
+		}
+	}
 	var owner User
 	if a.opts.OnPasswordReset == nil {
-		err = s.FinishPasswordReset(ctx, row.Token, hash, now, a.opts.RevokeSessionsOnPasswordReset)
+		err = s.FinishPasswordReset(ctx, row.Token, hash, now, revoke)
 	} else if store, ok := s.(interface {
 		FinishPasswordResetWithUser(context.Context, string, string, time.Time, bool) (User, error)
 	}); ok {
-		owner, err = store.FinishPasswordResetWithUser(ctx, row.Token, hash, now, a.opts.RevokeSessionsOnPasswordReset)
+		owner, err = store.FinishPasswordResetWithUser(ctx, row.Token, hash, now, revoke)
 	} else {
 		// Older custom account stores bind each token to its original owner.
 		// Read the projection before consumption and confirm its immutable ID.
@@ -386,11 +421,20 @@ func (a *Auth) resetPassword(ctx context.Context, token, newPassword string, req
 			err = ErrNotFound
 		}
 		if err == nil {
-			err = s.FinishPasswordReset(ctx, row.Token, hash, now, a.opts.RevokeSessionsOnPasswordReset)
+			err = s.FinishPasswordReset(ctx, row.Token, hash, now, revoke)
 		}
 	}
 	if errors.Is(err, ErrNotFound) {
 		return &APIError{400, "INVALID_TOKEN", "Invalid token"}
+	}
+	if err == nil {
+		err = a.afterCredentialAccount(ctx, credentialHooks, row.UserID)
+	}
+	for _, session := range revoked {
+		if err != nil {
+			break
+		}
+		err = runAfter(ctx, a, a.dbHooks.session.delete, SessionRecord{Session: session, Fields: map[string]any{}})
 	}
 	if err != nil || a.opts.OnPasswordReset == nil {
 		return err
