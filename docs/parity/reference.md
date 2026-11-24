@@ -464,8 +464,10 @@
       - [x] ClientIP.TrustedProxies CIDR ranges: forwarded hops are read right to left skipping trusted proxies, headers from untrusted peers are ignored, malformed chains give no IP, and invalid prefixes are rejected ([test](../../ip_test.go#L10))
     - [x] `useSecureCookies` ([test](../../cookies_test.go#L100))
       - [x] UseSecureCookies forces or removes Secure (and the __Secure- name) regardless of BaseURL scheme, and reserved prefixes that need Secure are rejected ([test](../../cookies_test.go#L100))
-    - [ ] `disableCSRFCheck`
-    - [ ] `disableOriginCheck`
+    - [x] `disableCSRFCheck` ([test](../../conformance/goapi/request_switches_test.go#L43))
+      - [x] Turn off the origin and Fetch Metadata checks on state-changing requests ([test](../../conformance/goapi/request_switches_test.go#L43))
+    - [x] `disableOriginCheck` ([test](../../conformance/goapi/request_switches_test.go#L51))
+      - [x] Accept untrusted redirect targets while still checking request origins and refusing control characters ([test](../../conformance/goapi/request_switches_test.go#L51))
     - [x] `crossSubDomainCookies` ([test](../../conformance/goapi/cookie_scope_http_test.go#L17))
       - [x] With CrossSubDomainCookies Domain .example.com, a sibling host shares the authenticated browser session and logout expires it on both hosts ([test](../../conformance/goapi/cookie_scope_http_test.go#L17))
     - [ ] `cookies`
@@ -474,7 +476,8 @@
       - [x] CookiePrefix names the session and OAuth state cookies (__Secure-company.*), and an instance with another prefix cannot read them ([test](../../cookies_test.go#L25))
     - [ ] `database`
     - [ ] `backgroundTasks`
-    - [ ] `skipTrailingSlashes`
+    - [x] `skipTrailingSlashes` ([test](../../conformance/goapi/request_switches_test.go#L36))
+      - [x] Serve paths with trailing slashes as the paths without them ([test](../../conformance/goapi/request_switches_test.go#L36))
     - [ ] `generateId`
     - [ ] `defaultFindManyLimit`
     - [ ] `joins`
@@ -568,11 +571,15 @@
       - [x] The GET OAuth callback that creates a session sends a nonce and PKCE to the provider ([test](../../conformance/goapi/oauth_test.go#L151))
     - [ ] Your own routes that call `auth.api`
     - [ ] Disabling Security Checks
-      - [ ] `disableCSRFCheck`
-      - [ ] `disableOriginCheck`
+      - [x] `disableCSRFCheck` ([test](../../conformance/goapi/request_switches_test.go#L43))
+        - [x] Turn off the origin, Fetch Metadata and cross-site navigation checks together ([test](../../conformance/goapi/request_switches_test.go#L43))
+      - [x] `disableOriginCheck` ([test](../../conformance/goapi/request_switches_test.go#L51))
+        - [x] Accept untrusted callback and redirect URLs; unlike the reference, request origins are still checked ([test](../../conformance/goapi/request_switches_test.go#L51))
       - [ ] Summary
-        - [ ] `disableCSRFCheck`
+        - [x] `disableCSRFCheck` ([test](../../conformance/goapi/request_switches_test.go#L43))
+          - [x] Turn off only the CSRF protections ([test](../../conformance/goapi/request_switches_test.go#L43))
         - [ ] `disableOriginCheck`
+          - [x] Turn off redirect URL validation; CSRF protection stays on until DisableCSRFCheck is also set, by design ([test](../../conformance/goapi/request_switches_test.go#L57))
   - [ ] OAuth State and PKCE
   - [ ] Cookies
     - [x] With an HTTPS base URL, the sign-up session cookie is Secure, HttpOnly, SameSite=Lax, Path=/ and persistent ([test](../../conformance/goapi/http_test.go#L73))

@@ -20,6 +20,18 @@ type Options struct {
 	AppName string
 	// Logger receives diagnostics for this instance. A nil logger uses slog.Default().
 	Logger *slog.Logger
+	// SkipTrailingSlashes serves a path with trailing slashes, such as
+	// /sign-in/email/, as the path without them.
+	SkipTrailingSlashes bool
+	// DisableCSRFCheck turns off the Origin, Referer and Fetch Metadata checks
+	// on requests that change state. This exposes cookie-authenticated
+	// endpoints to cross-site request forgery.
+	DisableCSRFCheck bool
+	// DisableOriginCheck accepts any callbackURL, redirectTo and other redirect
+	// target instead of only trusted origins and relative paths, which allows
+	// open redirects. Request origins are still checked unless DisableCSRFCheck
+	// is also set.
+	DisableOriginCheck bool
 	// Hooks run before and after each mounted HTTP endpoint.
 	Hooks EndpointHooks
 	// DatabaseHooks run before and after user and session writes, after the

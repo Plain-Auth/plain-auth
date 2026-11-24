@@ -19998,5 +19998,60 @@
       "marker": "func TestDeleteUserCallbacks(",
       "complete": true
     }
+  ],
+  "docs/content/docs/reference/options.mdx#L686/`disableCSRFCheck`": [
+    {
+      "label": "Turn off the origin and Fetch Metadata checks on state-changing requests",
+      "test": "conformance/goapi/request_switches_test.go",
+      "marker": "// A cookie-bearing request from an untrusted origin is refused unless CSRF checks are off.",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/reference/options.mdx#L687/`disableOriginCheck`": [
+    {
+      "label": "Accept untrusted redirect targets while still checking request origins and refusing control characters",
+      "test": "conformance/goapi/request_switches_test.go",
+      "marker": "// An untrusted callback is refused unless the origin check is off; request origins are still checked.",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/reference/options.mdx#L694/`skipTrailingSlashes`": [
+    {
+      "label": "Serve paths with trailing slashes as the paths without them",
+      "test": "conformance/goapi/request_switches_test.go",
+      "marker": "// Trailing slashes are ignored only with SkipTrailingSlashes.",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/reference/security.mdx#L91": [
+    {
+      "label": "Turn off the origin, Fetch Metadata and cross-site navigation checks together",
+      "test": "conformance/goapi/request_switches_test.go",
+      "marker": "// A cookie-bearing request from an untrusted origin is refused unless CSRF checks are off.",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/reference/security.mdx#L140/`disableCSRFCheck`": [
+    {
+      "label": "Turn off only the CSRF protections",
+      "test": "conformance/goapi/request_switches_test.go",
+      "marker": "// A cookie-bearing request from an untrusted origin is refused unless CSRF checks are off.",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/reference/security.mdx#L111": [
+    {
+      "label": "Accept untrusted callback and redirect URLs; unlike the reference, request origins are still checked",
+      "test": "conformance/goapi/request_switches_test.go",
+      "marker": "// An untrusted callback is refused unless the origin check is off; request origins are still checked.",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/reference/security.mdx#L141/`disableOriginCheck`": [
+    {
+      "label": "Turn off redirect URL validation; CSRF protection stays on until DisableCSRFCheck is also set, by design",
+      "test": "conformance/goapi/request_switches_test.go",
+      "marker": "if status(open, \"POST\", \"/sign-in/email\", signIn, forged) != 403 {"
+    }
   ]
 }

@@ -44,6 +44,9 @@ If the mount is `/identity`, a request to `/identity/sign-up/email` returns 404 
 | `MinPasswordLength`, `MaxPasswordLength` | Default range is 8–128 UTF-16 code units, matching the JavaScript length convention |
 | `RateLimit` | Optional boolean override. See [environment precedence](environment.md) for production and HTTPS defaults |
 | `Plugins` | Optional extensions registered at startup |
+| `SkipTrailingSlashes` | Serves `/sign-in/email/` as `/sign-in/email` |
+| `DisableCSRFCheck` | Turns off the Origin, Referer and Fetch Metadata checks on state-changing requests. Leaves cookie-authenticated endpoints open to cross-site request forgery |
+| `DisableOriginCheck` | Accepts any `callbackURL`, `redirectTo` and other redirect target instead of trusted origins and relative paths, which allows open redirects. Request origins are still checked, and URLs with control characters or backslashes are still refused |
 
 Create one auth instance per configuration and share it among handlers. Use the same secret on application replicas. The default in-process rate limiter keys requests by connection peer and route. Behind a reverse proxy, set `Options.ClientIP.TrustedProxies` to its CIDR ranges as `[]netip.Prefix`. Each proxy should append the actual peer to `X-Forwarded-For` or overwrite the configured `ForwardedHeader`. The library follows trusted hops from right to left and uses the first untrusted address. Direct connections use the socket address. Set `ClientIP.IPv6Subnet` to a prefix length to override the default /64 rate-limit scope. Set `ClientIP.DisableTracking` to omit the address from new sessions and disable per-IP limits. See the [proxy and privacy tests](../ip_test.go).
 

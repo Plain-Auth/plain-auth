@@ -38,6 +38,15 @@ var coreMethods = map[string]string{
 
 // ServeHTTP serves the auth endpoints beneath the configured base path.
 func (a *Auth) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if a.opts.SkipTrailingSlashes {
+		if p := r.URL.Path; len(p) > 1 && strings.HasSuffix(p, "/") {
+			u := *r.URL
+			u.Path = strings.TrimRight(p, "/")
+			u.RawPath = strings.TrimRight(u.RawPath, "/")
+			r = r.WithContext(r.Context())
+			r.URL = &u
+		}
+	}
 	if doc, ok := a.wellKnown[r.URL.EscapedPath()]; ok {
 		doc.ServeHTTP(w, r)
 		return
@@ -578,6 +587,9 @@ func decodeWireBody(w http.ResponseWriter, r *http.Request, route string) (wireB
 // Browser credential writes must originate from the configured site or an
 // explicitly trusted origin. Host and forwarding headers are not trust anchors.
 func (a *Auth) validateRequestOrigin(r *http.Request, emailRoute bool) error {
+	if a.opts.DisableCSRFCheck {
+		return nil
+	}
 	origin, referer := r.Header.Get("Origin"), r.Header.Get("Referer")
 	site, mode := r.Header.Get("Sec-Fetch-Site"), r.Header.Get("Sec-Fetch-Mode")
 	hasCookie := len(r.Header.Values("Cookie")) > 0
@@ -650,6 +662,10 @@ func (a *Auth) trustedURL(raw string, relative bool) bool {
 	u, err := url.Parse(raw)
 	if err != nil || u.User != nil {
 		return false
+	}
+	if relative && a.opts.DisableOriginCheck {
+		// Redirect targets are accepted as given; origins are still checked.
+		return true
 	}
 	if strings.HasPrefix(raw, "/") {
 		path := strings.ToLower(u.EscapedPath())
