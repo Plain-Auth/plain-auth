@@ -1459,6 +1459,11 @@ test("the released email client keeps duplicate profiles private and notifies on
   await existingSignUp(t, {reference, goFixture, instrument});
 });
 
+test("customSyntheticUser shapes the duplicate sign-up profile the same way on both runtimes", async (t) => {
+  const { compareSyntheticUser } = await import("./synthetic-user.mjs");
+  await compareSyntheticUser(t, {reference, goFixture, instrument});
+});
+
 for (const format of ["compact", "jwt"]) {
   test("the official client exchanges callback-versioned " + format + " snapshots across replicas", async t => {
     const { compareSessionCacheVersions } = await import("./session-cache-version.mjs");

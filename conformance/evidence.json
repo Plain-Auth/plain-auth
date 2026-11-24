@@ -20206,5 +20206,45 @@
       "test": "adapters/sqlstore/oauth_link_profile_test.go",
       "marker": "func TestOAuthLinkProfileUserFields(t *testing.T) {"
     }
+  ],
+  "docs/content/docs/authentication/email-password.mdx#L271/`coreFields`": [
+    {
+      "label": "The hook receives the requested name, the lowercased email, emailVerified false, the image and the timestamps, and the response follows it on both runtimes",
+      "test": "conformance/synthetic-user.mjs",
+      "marker": "export async function compareSyntheticUser(t, {reference, goFixture, instrument}) {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/authentication/email-password.mdx#L272/`additionalFields`": [
+    {
+      "label": "The hook receives the public user fields after defaults, and a hidden field never reaches the response",
+      "test": "conformance/goapi/synthetic_user_test.go",
+      "marker": "func TestCustomSyntheticUser(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/authentication/email-password.mdx#L273/`id`": [
+    {
+      "label": "The hook receives a fresh ID that differs from the owner's and becomes the response's ID",
+      "test": "conformance/goapi/synthetic_user_test.go",
+      "marker": "func TestCustomSyntheticUser(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/authentication/email-password.mdx#L518/`emailPasswordOptionsType.customSyntheticUser`": [
+    {
+      "label": "On both runtimes the hook sets the values of a duplicate sign-up's user fields but cannot add fields a real sign-up lacks",
+      "test": "conformance/synthetic-user.mjs",
+      "marker": "export async function compareSyntheticUser(t, {reference, goFixture, instrument}) {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/reference/options.mdx#L328/`customSyntheticUser`": [
+    {
+      "label": "On both runtimes the hook sets the values of a duplicate sign-up's user fields but cannot add fields a real sign-up lacks",
+      "test": "conformance/synthetic-user.mjs",
+      "marker": "export async function compareSyntheticUser(t, {reference, goFixture, instrument}) {",
+      "complete": true
+    }
   ]
 }

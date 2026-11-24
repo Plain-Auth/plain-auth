@@ -83,6 +83,8 @@ Plain Auth waits for the observer after the insert attempt has released its tran
 
 The callback receives the call’s context and the stored public account fields, including ID, name, email, verification status, image and timestamps. A mounted request supplies a copy of its URL and headers with an empty body. Direct calls to `SignUpEmail` pass a nil request. Third-party stores using this option in protected mode must implement `FindAccountUser(context.Context, string) (plainauth.User, error)` to read the mailbox owner independently of its sign-in methods.
 
+The generated profile already carries the fields that built-in plugins add to a real sign-up, such as the admin role or the two-factor flag. To change its values over HTTP, set `Options.CustomSyntheticUser`. It receives the core fields, the public user fields after defaults and the fresh ID, and returns the values to send. As with a real sign-up, the response has exactly the public user fields: keys it does not know are dropped and fields the hook leaves out keep their generated value. [Synthetic user tests](../conformance/goapi/synthetic_user_test.go) · [Browser comparison](../conformance/synthetic-user.mjs)
+
 ## Use an existing password database
 
 Plain Auth stores a salted scrypt hash on the credential account. The built-in format uses NFKC normalization, a 16-byte random salt encoded as hex, and scrypt with N=16384, r=16, p=1 and a 64-byte key. To use a host-managed format, set `Options.PasswordHash` and `Options.PasswordVerify` before calling `plainauth.New`. Each callback receives the request context. A nil callback uses the built-in implementation for that operation.

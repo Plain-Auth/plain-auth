@@ -78,6 +78,12 @@ type Options struct {
 	// OnExistingUserSignUp receives the persisted mailbox owner on a protected duplicate
 	// sign-up. An HTTP call supplies request metadata; direct calls supply nil.
 	OnExistingUserSignUp func(context.Context, User, *http.Request) error
+	// CustomSyntheticUser shapes the user an HTTP sign-up returns for an email
+	// that already exists, when RequireEmailVerification or DisableAutoSignIn
+	// hides that the email is taken. The returned values replace the
+	// generated ones for the fields a real sign-up returns; other keys are
+	// dropped. Built-in plugin fields are already filled in.
+	CustomSyntheticUser func(SyntheticUser) map[string]any
 
 	EmailAndPassword         bool
 	MinPasswordLength        int
@@ -235,6 +241,19 @@ type AuthResult struct {
 	TwoFactorMethods    []string        `json:"twoFactorMethods,omitempty"`
 	Token               string          `json:"token"`
 	User                User            `json:"user"`
+	// syntheticUser replaces User in the HTTP response of a protected
+	// duplicate sign-up.
+	syntheticUser map[string]any
+}
+
+// SyntheticUser is the generated user for a sign-up with an existing email.
+type SyntheticUser struct {
+	ID, Name, Email      string
+	EmailVerified        bool
+	Image                *string
+	CreatedAt, UpdatedAt time.Time
+	// AdditionalFields holds the public UserAdditionalFields after defaults.
+	AdditionalFields map[string]any
 }
 
 // SignUpInput describes a new email credential and public profile.

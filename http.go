@@ -413,6 +413,9 @@ func (a *Auth) writeCredentialResult(h http.Header, r *http.Request, body wireBo
 		return map[string]any{"twoFactorRedirect": true, "twoFactorMethods": result.TwoFactorMethods}, nil
 	}
 	response := map[string]any{"user": result.User, "token": nil}
+	if result.syntheticUser != nil {
+		response["user"] = result.syntheticUser
+	}
 	if result.Token != "" {
 		response["token"] = result.Token
 		persistent := remember == nil || *remember

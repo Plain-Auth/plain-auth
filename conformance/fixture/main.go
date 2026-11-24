@@ -573,6 +573,17 @@ func main() {
 	}
 	opts.AllowDifferentEmails = os.Getenv("CONFORMANCE_LINK_DIFFERENT") == "1"
 	opts.UpdateUserInfoOnLink = os.Getenv("CONFORMANCE_LINK_UPDATE") == "1"
+	if os.Getenv("CONFORMANCE_SYNTHETIC_USER") == "1" {
+		opts.DisableAutoSignIn = true
+		opts.CustomSyntheticUser = func(u authn.SyntheticUser) map[string]any {
+			user := map[string]any{"name": "Shaped", "email": u.Email, "emailVerified": u.EmailVerified, "image": u.Image,
+				"createdAt": u.CreatedAt, "updatedAt": u.UpdatedAt, "plan": "free", "id": u.ID}
+			for name, value := range u.AdditionalFields {
+				user[name] = value
+			}
+			return user
+		}
+	}
 	opts.DisableAccountUpdateOnSignIn = os.Getenv("CONFORMANCE_PRESERVE_PROVIDER_CREDENTIALS") == "1"
 	switch os.Getenv("CONFORMANCE_EMAIL_POLICY") {
 	case "disabled":

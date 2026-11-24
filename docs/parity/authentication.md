@@ -133,11 +133,14 @@
         - [x] Return the same default guest and phone fields on fresh and duplicate private registrations ([test](../../adapters/sqlstore/existing_signup_test.go#L271))
         - [x] With RequireEmailVerification, sign-up returns no token and an unverified sign-in fails with EMAIL_NOT_VERIFIED, resending mail ([test](../../conformance/goapi/account_lifecycle_test.go#L15))
       - [ ] Email Enumeration Protection
-        - [ ] Plugins that add user fields
+        - [x] Plugins that add user fields ([test](../../adapters/sqlstore/existing_signup_test.go#L222))
           - [x] Go adds built-in plugin fields to the synthetic duplicate response automatically ([test](../../adapters/sqlstore/existing_signup_test.go#L222))
-          - [ ] `coreFields`
-          - [ ] `additionalFields`
-          - [ ] `id`
+          - [x] `coreFields` ([test](../../conformance/synthetic-user.mjs#L5))
+            - [x] The hook receives the requested name, the lowercased email, emailVerified false, the image and the timestamps, and the response follows it on both runtimes ([test](../../conformance/synthetic-user.mjs#L5))
+          - [x] `additionalFields` ([test](../../conformance/goapi/synthetic_user_test.go#L16))
+            - [x] The hook receives the public user fields after defaults, and a hidden field never reaches the response ([test](../../conformance/goapi/synthetic_user_test.go#L16))
+          - [x] `id` ([test](../../conformance/goapi/synthetic_user_test.go#L16))
+            - [x] The hook receives a fresh ID that differs from the owner's and becomes the response's ID ([test](../../conformance/goapi/synthetic_user_test.go#L16))
       - [x] Triggering manually Email Verification ([test](../../conformance/goapi/account_test.go#L45))
         - [x] A manual POST to send-verification-email with email and callbackURL returns 200 and delivers one link ([test](../../conformance/goapi/account_test.go#L45))
     - [x] Request Password Reset ([test](../../conformance/goapi/mail_request_test.go#L55))
@@ -196,7 +199,8 @@
         - [x] Deliver the stored owner to the host while preserving private responses across both modes and ordinary 422 behavior in the released client ([test](../../conformance/core.test.mjs#L1457))
         - [x] Run the callback after storage releases the account, isolate errors and panics, and preserve owned request metadata ([test](../../adapters/sqlstore/existing_signup_test.go#L83))
         - [x] Use one committed owner for concurrent registrations across separate instances and storage connections ([test](../../adapters/sqlstore/existing_signup_test.go#L197))
-      - [ ] `emailPasswordOptionsType.customSyntheticUser`
+      - [x] `emailPasswordOptionsType.customSyntheticUser` ([test](../../conformance/synthetic-user.mjs#L5))
+        - [x] On both runtimes the hook sets the values of a duplicate sign-up's user fields but cannot add fields a real sign-up lacks ([test](../../conformance/synthetic-user.mjs#L5))
       - [x] `emailPasswordOptionsType.autoSignIn` ([test](../../conformance/goapi/account_lifecycle_test.go#L54))
         - [x] With DisableAutoSignIn, sign-up returns no session token, while a later manual sign-in succeeds ([test](../../conformance/goapi/account_lifecycle_test.go#L54))
       - [x] `emailPasswordOptionsType.requireEmailVerification` ([test](../../conformance/goapi/account_lifecycle_test.go#L34))

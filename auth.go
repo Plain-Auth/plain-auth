@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -527,7 +528,7 @@ func (a *Auth) signUpEmail(ctx context.Context, in SignUpInput, meta RequestMeta
 			if a.opts.OnExistingUserSignUp != nil {
 				a.notifyExistingSignUp(ctx, user.Email, request)
 			}
-			return AuthResult{User: user}, nil
+			return AuthResult{User: user, syntheticUser: a.customSyntheticUser(user)}, nil
 		}
 		return AuthResult{}, duplicateSignupError()
 	}
@@ -621,6 +622,38 @@ func (a *Auth) signUpEmail(ctx context.Context, in SignUpInput, meta RequestMeta
 		return AuthResult{}, err
 	}
 	return AuthResult{User: user, Token: token}, nil
+}
+
+// customSyntheticUser applies Options.CustomSyntheticUser to the generated
+// duplicate sign-up profile.
+func (a *Auth) customSyntheticUser(user User) map[string]any {
+	if a.opts.CustomSyntheticUser == nil {
+		return nil
+	}
+	fields := map[string]any{}
+	for name, f := range a.opts.UserAdditionalFields {
+		if value, ok := user.AdditionalField(name); ok && !f.Hidden {
+			fields[name] = value
+		}
+	}
+	shaped := a.opts.CustomSyntheticUser(SyntheticUser{ID: user.ID, Name: user.Name, Email: user.Email, Image: user.Image,
+		CreatedAt: user.CreatedAt, UpdatedAt: user.UpdatedAt, AdditionalFields: fields})
+	// Like a real sign-up, the response carries exactly the public user
+	// fields: the hook may change their values, not add others.
+	raw, err := json.Marshal(user)
+	if err != nil {
+		return nil
+	}
+	var out map[string]any
+	if err := json.Unmarshal(raw, &out); err != nil {
+		return nil
+	}
+	for name, value := range shaped {
+		if _, known := out[name]; known {
+			out[name] = value
+		}
+	}
+	return out
 }
 
 func duplicateSignupError() *APIError {
