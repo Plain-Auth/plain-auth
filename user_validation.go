@@ -160,6 +160,5 @@ func (a *Auth) checkUserInfoValidation() error {
 			return fmt.Errorf("auth: ValidateUserInfo for %s needs a store implementing LoginPlanner", strings.Join(decided, ", "))
 		}
 	}
-	// The SCIM handler refuses the option itself through HasUserInfoValidation.
 	return nil
 }

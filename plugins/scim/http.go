@@ -12,6 +12,8 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+
+	auth "github.com/Plain-Org/plain-auth"
 )
 
 //go:embed discovery.json
@@ -147,6 +149,13 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				break
 			}
 			if r.Method == http.MethodPost {
+				// The gate sees every provisioned user, also one the directory
+				// reactivates or links again, outside the store's transaction.
+				check := auth.UserInfoValidation{Action: auth.UserInfoCreateUser, Method: "scim", Request: r,
+					User: auth.UserRecord{User: auth.User{Name: profile.DisplayName, Email: profile.PrimaryEmail}}}
+				if err = h.host.ValidateUserInfo(ctx, check); err != nil {
+					break
+				}
 				rec, err = h.store.SCIMCreate(ctx, d, profile)
 			} else {
 				rec, err = h.store.SCIMUpdate(ctx, d, id, func(Record) (Profile, error) { return profile, nil })
@@ -233,7 +242,10 @@ func write(w http.ResponseWriter, status int, v any) {
 }
 func writeError(w http.ResponseWriter, err error) {
 	var e *Error
-	if !errors.As(err, &e) {
+	if refused := auth.UserInfoRefusal(err); refused != nil {
+		// A SCIM error carries the refusal's message, not its code.
+		e = &Error{403, "", refused.Message}
+	} else if !errors.As(err, &e) {
 		e = &Error{500, "", "Directory operation failed"}
 	}
 	if e.Status == 401 {

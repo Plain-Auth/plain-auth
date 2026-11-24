@@ -365,8 +365,8 @@
     - [ ] Sign In
     - [ ] Link account
     - [ ] Validate OAuth User Info
-      - [x] A browser social sign-up, a returning sign-in and an email link are checked with the provider ID and raw profile, and a refusal returns to the error callback with error and error_description ([test](../../conformance/goapi/user_validation_test.go#L287))
-      - [x] ID-token sign-ups and links are checked with the provider ID and raw claims, and a refusal answers 403 with the app's code ([test](../../conformance/goapi/user_validation_test.go#L358))
+      - [x] A browser social sign-up, a returning sign-in and an email link are checked with the provider ID and raw profile, and a refusal returns to the error callback with error and error_description ([test](../../conformance/goapi/user_validation_test.go#L267))
+      - [x] ID-token sign-ups and links are checked with the provider ID and raw claims, and a refusal answers 403 with the app's code ([test](../../conformance/goapi/user_validation_test.go#L338))
     - [ ] Get Access Token
     - [ ] Refresh Access Token
     - [ ] Get Account Info Provided by the provider
@@ -698,15 +698,16 @@
     - [ ] Authentication Requirements
     - [ ] Callbacks
       - [ ] validateUserInfo
-        - [x] ValidateUserInfo admits or refuses email sign-ups before the user create hooks with a 403 carrying the app's code, sees a body-free request, and keeps protected sign-ups private ([test](../../conformance/goapi/user_validation_test.go#L63))
-        - [x] Every refusal answers 403; any other error, an APIError without a code or a panic fails closed as validation_failed, and a check without a source is refused ([test](../../conformance/goapi/user_validation_test.go#L122))
-        - [x] Anonymous sign-in, phone sign-up and administrator bootstrap users go through the gate ([test](../../conformance/goapi/user_validation_test.go#L163))
+        - [x] ValidateUserInfo admits or refuses email sign-ups before the user create hooks with a 403 carrying the app's code, sees a body-free request, and keeps protected sign-ups private ([test](../../conformance/goapi/user_validation_test.go#L62))
+        - [x] Every refusal answers 403; any other error, an APIError without a code or a panic fails closed as validation_failed, and a check without a source is refused ([test](../../conformance/goapi/user_validation_test.go#L121))
+        - [x] Anonymous sign-in, phone sign-up and administrator bootstrap users go through the gate ([test](../../conformance/goapi/user_validation_test.go#L162))
         - [x] On both runtimes a refused email sign-up answers the same 403 with the policy's code and message, and no user is stored ([test](../../conformance/user-validation.mjs#L4))
-        - [x] Social, magic-link and email-code sign-ins run the gate between a dry run and the real one, check creation, provider sign-ins and email links with the fresh profile, and render refusals on each path ([test](../../conformance/goapi/user_validation_test.go#L287))
-        - [x] ID-token sign-ups and explicit links run the gate, and a refused link leaves the identity unlinked ([test](../../conformance/goapi/user_validation_test.go#L358))
+        - [x] Social, magic-link and email-code sign-ins run the gate between a dry run and the real one, check creation, provider sign-ins and email links with the fresh profile, and render refusals on each path ([test](../../conformance/goapi/user_validation_test.go#L267))
+        - [x] ID-token sign-ups and explicit links run the gate, and a refused link leaves the identity unlinked ([test](../../conformance/goapi/user_validation_test.go#L338))
         - [x] Enterprise OIDC sign-ins run the gate with method sso-oidc on SQLite, PostgreSQL and MySQL ([test](../../adapters/sqlstore/sso_user_validation_test.go#L22))
-        - [x] Administrator-created users run the gate after the actor's permission and the email check ([test](../../conformance/goapi/user_validation_test.go#L469))
+        - [x] Administrator-created users run the gate after the actor's permission and the email check ([test](../../conformance/goapi/user_validation_test.go#L449))
         - [x] New wallet users run the gate with method siwe ([test](../../adapters/sqlstore/siwe_user_validation_test.go#L19))
+        - [x] SCIM-provisioned users run the gate with method scim ([test](../../adapters/sqlstore/scim_user_validation_test.go#L17))
       - [x] beforeDelete ([test](../../conformance/goapi/mail_request_test.go#L106))
         - [x] Run a callback with the user and request before deletion, and cancel it with an error ([test](../../conformance/goapi/mail_request_test.go#L106))
       - [x] afterDelete ([test](../../conformance/goapi/mail_request_test.go#L71))

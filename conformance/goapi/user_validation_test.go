@@ -17,7 +17,6 @@ import (
 	"github.com/Plain-Org/plain-auth/adapters/sqlite"
 	"github.com/Plain-Org/plain-auth/adapters/sqlstore"
 	"github.com/Plain-Org/plain-auth/client"
-	"github.com/Plain-Org/plain-auth/plugins/scim"
 	"github.com/Plain-Org/plain-auth/schema"
 	"golang.org/x/oauth2"
 )
@@ -258,25 +257,6 @@ func TestValidateUserInfoRefusedForUncoveredFlows(t *testing.T) {
 	})
 	if err == nil || !strings.Contains(err.Error(), "magic-link") {
 		t.Fatal("ValidateUserInfo was accepted next to magic links", err)
-	}
-}
-
-// The SCIM handler refuses a host with ValidateUserInfo, which it does not
-// run yet.
-func TestValidateUserInfoRefusedBySCIM(t *testing.T) {
-	store, err := sqlite.Open(":memory:")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer store.Close()
-	host, err := authn.New(authn.Options{BaseURL: "https://auth.example", Store: store, Secret: strings.Repeat("s", 32),
-		ValidateUserInfo: func(context.Context, authn.UserInfoValidation) error { return nil }})
-	if err != nil {
-		t.Fatal(err)
-	}
-	_, err = scim.New(host, scim.Options{Store: store, VerifyBearerToken: func(context.Context, scim.BearerInput) (*scim.BearerVerification, error) { return nil, nil }})
-	if err == nil || !strings.Contains(err.Error(), "ValidateUserInfo") {
-		t.Fatal("the SCIM handler accepted a host with ValidateUserInfo", err)
 	}
 }
 

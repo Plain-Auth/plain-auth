@@ -6930,6 +6930,11 @@
       "label": "Normalize directory role values, type and primary flags and replace the role profile when reprovisioning the same inactive external identity",
       "test": "conformance/scim-roles.mjs",
       "marker": "assert.deepEqual(reprovisioned.roles,"
+    },
+    {
+      "label": "ValidateUserInfo checks a provisioned user with method scim on SQLite, PostgreSQL and MySQL, and a refusal answers a SCIM 403 with the message and stores nothing",
+      "test": "adapters/sqlstore/scim_user_validation_test.go",
+      "marker": "func TestSCIMUserValidation(t *testing.T) {"
     }
   ],
   "plugin/scim/GET /scim/v2/Users/:userId": [
@@ -20357,6 +20362,11 @@
       "label": "New wallet users run the gate with method siwe",
       "test": "adapters/sqlstore/siwe_user_validation_test.go",
       "marker": "func TestSIWEUserValidation(t *testing.T) {"
+    },
+    {
+      "label": "SCIM-provisioned users run the gate with method scim",
+      "test": "adapters/sqlstore/scim_user_validation_test.go",
+      "marker": "func TestSCIMUserValidation(t *testing.T) {"
     }
   ],
   "docs/content/docs/concepts/oauth.mdx#L78": [
