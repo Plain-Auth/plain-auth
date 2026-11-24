@@ -137,6 +137,12 @@ type Options struct {
 	// whose email differs from their own. The user's email does not change,
 	// and whoever controls that provider account can then sign in as them.
 	AllowDifferentEmails bool
+	// UpdateUserInfoOnLink copies the provider's name, image and writable
+	// UserAdditionalFields onto the user whenever an identity is linked,
+	// through /link-social or by a sign-in that links by email. An empty name
+	// or missing image keeps the stored value, and the email and its
+	// verification never change.
+	UpdateUserInfoOnLink bool
 	// DisableAccountUpdateOnSignIn preserves credentials on existing provider
 	// accounts during sign-in. New links and explicit reauthorization still store grants.
 	DisableAccountUpdateOnSignIn bool

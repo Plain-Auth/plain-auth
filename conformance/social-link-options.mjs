@@ -6,18 +6,18 @@ const owner = "jo@example.org";
 
 // Run one provider round trip on both runtimes with the same linking options
 // and provider profile, and compare where the browser lands.
-async function scenario(t, {reference, goFixture, instrument}, {trusted = false, different = false, profile, verifiedOwner = true, foreign = false, errorPage = false, asOwner, expect}) {
+async function scenario(t, {reference, goFixture, instrument}, {trusted = false, different = false, update = false, profile, verifiedOwner = true, foreign = false, errorPage = false, asOwner, expect}) {
   const provider = genericOAuth({config:[{
     providerId:"work", scopes:["profile"], clientId:"fixture-client", clientSecret:"fixture-secret",
     authorizationUrl:"https://id.example/authorize", tokenUrl:"https://id.example/token",
     getToken:async () => ({accessToken:"local-test", tokenType:"Bearer"}),
-    getUserInfo:async () => ({id:"sample-user", email:profile.email, name:profile.name, emailVerified:profile.verified}),
+    getUserInfo:async () => ({id:"sample-user", email:profile.email, name:profile.name, emailVerified:profile.verified, ...(profile.image && {image:profile.image})}),
     accountSubject:({profile})=>profile.id,
   }]});
-  const ref = await reference(t, [provider], {account:{accountLinking:{trustedProviders:trusted ? ["work"] : [], allowDifferentEmails:different}}});
+  const ref = await reference(t, [provider], {account:{accountLinking:{trustedProviders:trusted ? ["work"] : [], allowDifferentEmails:different, updateUserInfoOnLink:update}}});
   const go = await goFixture(t, [], {CONFORMANCE_PROVIDER:"1", CONFORMANCE_LINK_POLICY:"default",
-    CONFORMANCE_LINK_TRUSTED:trusted ? "1" : "", CONFORMANCE_LINK_DIFFERENT:different ? "1" : "",
-    CONFORMANCE_LINK_PROFILE:[profile.email, profile.verified ? "1" : "0", profile.name].join("|")});
+    CONFORMANCE_LINK_TRUSTED:trusted ? "1" : "", CONFORMANCE_LINK_DIFFERENT:different ? "1" : "", CONFORMANCE_LINK_UPDATE:update ? "1" : "",
+    CONFORMANCE_LINK_PROFILE:[profile.email, profile.verified ? "1" : "0", profile.name, profile.image ?? ""].join("|")});
   const outcomes = [];
   for (const target of [ref, go]) {
     const database = target.database ?? new DatabaseSync(target.databasePath);
@@ -56,12 +56,12 @@ async function scenario(t, {reference, goFixture, instrument}, {trusted = false,
     const res = await transport.send(new Request(callback, {redirect:"manual", headers:{"user-agent":"authn-conformance"}}));
     assert.equal(res.status, 302);
     const landing = new URL(res.headers.get("Location"), target.baseURL);
-    const user = database.prepare('SELECT email, emailVerified FROM "user" WHERE id=?').get(id);
+    const user = database.prepare('SELECT email, emailVerified, name, image FROM "user" WHERE id=?').get(id);
     outcomes.push({
       landing: landing.pathname + (landing.searchParams.get("error") ? "?error=" + landing.searchParams.get("error") : ""),
       linked: database.prepare("SELECT userId FROM account WHERE providerId='work' AND accountId='sample-user'").get()?.userId === id,
       session: res.headers.getSetCookie().some(c => /session_token=[^;]/.test(c)),
-      ownerEmail: user.email, ownerVerified: Boolean(user.emailVerified),
+      ownerEmail: user.email, ownerVerified: Boolean(user.emailVerified), ownerName: user.name, ownerImage: user.image ?? null,
       users: database.prepare('SELECT count(*) AS n FROM "user"').get().n,
     });
   }
@@ -101,4 +101,18 @@ export async function compareDifferentEmailLinks(t, harness) {
   await scenario(t, harness, {profile:{email:owner, verified:false, name:"Jo"}, foreign:true, asOwner:true, expect:"/retry?error=unable_to_link_account"});
   // Without an error callback the browser lands on the error page.
   await scenario(t, harness, {profile:other, asOwner:true, errorPage:true, expect:"/api/auth/error?error=email_does_not_match"});
+}
+
+// updateUserInfoOnLink copies the provider's name and image onto the user
+// when an identity is linked, and never the email.
+export async function compareLinkProfileCopy(t, harness) {
+  const profile = {email:owner, verified:true, name:"Jo Provider", image:"https://img.example/jo.png"};
+  let got = await scenario(t, harness, {update:true, profile, asOwner:true, expect:"/complete"});
+  assert.ok(got.linked && got.ownerName === "Jo Provider" && got.ownerImage === profile.image && got.ownerEmail === owner);
+  got = await scenario(t, harness, {profile, asOwner:true, expect:"/complete"});
+  assert.ok(got.linked && got.ownerName === "Owner" && got.ownerImage === null);
+  got = await scenario(t, harness, {update:true, profile, asOwner:false, expect:"/complete"});
+  assert.ok(got.linked && got.session && got.ownerName === "Jo Provider");
+  got = await scenario(t, harness, {update:true, different:true, profile:{...profile, email:"someone@example.net"}, asOwner:true, expect:"/complete"});
+  assert.ok(got.linked && got.ownerEmail === owner && got.ownerName === "Jo Provider");
 }

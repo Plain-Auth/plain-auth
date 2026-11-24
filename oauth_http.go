@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/Plain-Org/plain-auth/internal/httporigin"
@@ -552,6 +553,19 @@ func (a *Auth) completeProfileWith(ctx context.Context, r *http.Request, id stri
 	if a.opts.DisableImplicitAccountLinking || a.opts.DisableAccountLinking {
 		options.DisableImplicitLinking = true
 		options.AllowVerifiedEmailLink = false
+	}
+	// The store prepares the fields only when it links. A profile that fails
+	// validation skips the copy and still links.
+	if a.opts.UpdateUserInfoOnLink && (options.LinkUserID != "" || !options.DisableImplicitLinking) {
+		options.UpdateUserInfoOnLink = true
+		options.LinkUserFields = sync.OnceValues(func() (UserFieldValues, bool) {
+			values, err := a.prepareUserFields(a.writableProfileFields(p), false, false)
+			if err != nil {
+				a.Logger().WarnContext(ctx, "Could not update user info on account link", "provider", id)
+				return UserFieldValues{}, false
+			}
+			return values, true
+		})
 	}
 	options.DisableSignUp = options.DisableSignUp || a.opts.DisableSignUp || a.opts.SocialProviders[id].DisableSignUp
 	if id == "google" && !googleDomainAllowed(a.opts.SocialProviders[id].GoogleHostedDomain, p) {

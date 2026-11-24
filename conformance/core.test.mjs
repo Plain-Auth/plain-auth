@@ -1530,6 +1530,11 @@ test("explicit links refuse a different provider email unless allowDifferentEmai
   await compareDifferentEmailLinks(t,{reference,goFixture,instrument});
 });
 
+test("updateUserInfoOnLink copies the provider's name and image when an identity is linked, on both runtimes", async t => {
+  const {compareLinkProfileCopy}=await import("./social-link-options.mjs");
+  await compareLinkProfileCopy(t,{reference,goFixture,instrument});
+});
+
 test("signed Stripe lifecycle deliveries distinguish dashboard creation, pending cancellation, updates, and deletion on both runtimes", async t => {
   const { subscriptionLifecycleCallbacks } = await import("./stripe-lifecycle-fixture.mjs");
   await subscriptionLifecycleCallbacks(t, { reference, goFixture, instrument });

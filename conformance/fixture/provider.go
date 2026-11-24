@@ -35,9 +35,12 @@ func fixtureSocialProvider() map[string]auth.OAuthProvider {
 			},
 			Resolve: func(context.Context, *oauth2.Token, string) (auth.OAuthProfile, error) {
 				profile := auth.OAuthProfile{Subject: "sample-user", Email: "jo@example.org", Name: "Jo", EmailVerified: true}
-				// CONFORMANCE_LINK_PROFILE is "email|verified|name".
-				if fields := strings.Split(os.Getenv("CONFORMANCE_LINK_PROFILE"), "|"); len(fields) == 3 {
+				// CONFORMANCE_LINK_PROFILE is "email|verified|name|image".
+				if fields := strings.Split(os.Getenv("CONFORMANCE_LINK_PROFILE"), "|"); len(fields) == 4 {
 					profile.Email, profile.EmailVerified, profile.Name = fields[0], fields[1] == "1", fields[2]
+					if fields[3] != "" {
+						profile.Image = &fields[3]
+					}
 				}
 				return profile, nil
 			},

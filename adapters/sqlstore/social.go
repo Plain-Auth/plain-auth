@@ -323,6 +323,18 @@ func (s *Store) completeOAuth(ctx context.Context, provider, subject string, tok
 			return u, false, err
 		}
 	}
+	// A profile sync on sign-in already writes everything the link copy would.
+	if options.UpdateUserInfoOnLink && (options.LinkUserID != "" || emailLink) && (fields == nil || fields.Update == nil) {
+		values, valid := authn.UserFieldValues{}, true
+		if options.LinkUserFields != nil {
+			values, valid = options.LinkUserFields()
+		}
+		if valid {
+			if u, err = s.applyLinkProfile(ctx, tx, u, candidate, values, session.CreatedAt); err != nil {
+				return u, false, err
+			}
+		}
+	}
 	if !created && fields != nil && fields.Update != nil {
 		values, err := fields.Update()
 		if err != nil {
@@ -398,6 +410,29 @@ func (s *Store) syncOAuthProfile(ctx context.Context, tx *sql.Tx, owner, candida
 	fields, args = s.appendUserFieldUpdates(fields, args, values.Columns())
 	args = append(args, owner.ID)
 	_, err := tx.ExecContext(ctx, s.bind(`UPDATE "user" SET `+strings.Join(fields, ",")+` WHERE "id"=?`), args...)
+	if duplicateConstraint(err) {
+		return authn.User{}, authn.ErrOAuthProfileConflict
+	}
+	return owner, err
+}
+
+// applyLinkProfile copies a linked provider's name, image and mapped fields
+// onto the locked owner. The email and its verification never change.
+func (s *Store) applyLinkProfile(ctx context.Context, tx *sql.Tx, owner, candidate authn.User, values authn.UserFieldValues, now time.Time) (authn.User, error) {
+	var fields []string
+	var args []any
+	if candidate.Name != "" {
+		fields, args, owner.Name = append(fields, `"name"=?`), append(args, candidate.Name), candidate.Name
+	}
+	if candidate.Image != nil {
+		fields, args, owner.Image = append(fields, `"image"=?`), append(args, candidate.Image), candidate.Image
+	}
+	fields, args = s.appendUserFieldUpdates(fields, args, values.Columns())
+	if len(fields) == 0 {
+		return owner, nil
+	}
+	fields, args, owner.UpdatedAt = append(fields, `"updatedAt"=?`), append(args, s.date(now)), now
+	_, err := tx.ExecContext(ctx, s.bind(`UPDATE "user" SET `+strings.Join(fields, ",")+` WHERE "id"=?`), append(args, owner.ID)...)
 	if duplicateConstraint(err) {
 		return authn.User{}, authn.ErrOAuthProfileConflict
 	}

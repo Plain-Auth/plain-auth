@@ -445,7 +445,9 @@
         - [x] On both runtimes linkSocial with a different provider email gets email_does_not_match, and with allowDifferentEmails links to the signed-in user without changing their email ([test](../../conformance/social-link-options.mjs#L91))
       - [x] `allowUnlinkingAll` ([test](../../conformance/goapi/database_user_hooks_test.go#L342))
         - [x] With AllowUnlinkingAll true, POST /unlink-account removes the user's only credential account and its delete hooks run ([test](../../conformance/goapi/database_user_hooks_test.go#L342))
-      - [ ] `updateUserInfoOnLink`
+      - [x] `updateUserInfoOnLink` ([test](../../conformance/social-link-options.mjs#L108))
+        - [x] On both runtimes linking an identity, explicitly or by a sign-in, copies the provider's name and image when updateUserInfoOnLink is on and never the email; with it off nothing changes ([test](../../conformance/social-link-options.mjs#L108))
+        - [x] On SQLite, PostgreSQL and MySQL a linking identity copies its writable mapped fields, skips server-only ones and a profile that fails validation, and a returning sign-in copies nothing ([test](../../adapters/sqlstore/oauth_link_profile_test.go#L37))
   - [ ] `verification`
     - [ ] `modelName`
     - [ ] `fields`

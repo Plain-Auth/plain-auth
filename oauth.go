@@ -119,7 +119,16 @@ type OAuthLoginOptions struct {
 	TrustedProvider bool
 	// AllowDifferentEmails lets an explicit link attach to LinkUserID
 	// whatever the provider email.
-	AllowDifferentEmails         bool
+	AllowDifferentEmails bool
+	// UpdateUserInfoOnLink writes the candidate's non-empty Name, non-nil
+	// Image and the LinkUserFields values to the owner when this call links
+	// the identity to an existing user or refreshes it through an explicit
+	// link. The email and its verification never change.
+	UpdateUserInfoOnLink bool
+	// LinkUserFields prepares the user fields to copy. Call it only when the
+	// copy applies. It reports false when the profile fails validation, and
+	// then nothing is copied.
+	LinkUserFields               func() (UserFieldValues, bool)
 	LinkUserID, LinkSessionToken string
 	IDTokenValidUntil            time.Time
 	// IDTokenHash binds single-use grants independently of randomized storage encryption.

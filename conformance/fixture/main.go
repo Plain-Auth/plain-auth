@@ -572,6 +572,7 @@ func main() {
 		opts.TrustedProviders = []string{"work"}
 	}
 	opts.AllowDifferentEmails = os.Getenv("CONFORMANCE_LINK_DIFFERENT") == "1"
+	opts.UpdateUserInfoOnLink = os.Getenv("CONFORMANCE_LINK_UPDATE") == "1"
 	opts.DisableAccountUpdateOnSignIn = os.Getenv("CONFORMANCE_PRESERVE_PROVIDER_CREDENTIALS") == "1"
 	switch os.Getenv("CONFORMANCE_EMAIL_POLICY") {
 	case "disabled":

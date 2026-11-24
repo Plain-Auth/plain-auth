@@ -20193,5 +20193,18 @@
       "marker": "{profile:unverified, asOwner:false, expect:\"/retry?error=account_not_linked\"}",
       "complete": true
     }
+  ],
+  "docs/content/docs/reference/options.mdx#L559/`updateUserInfoOnLink`": [
+    {
+      "label": "On both runtimes linking an identity, explicitly or by a sign-in, copies the provider's name and image when updateUserInfoOnLink is on and never the email; with it off nothing changes",
+      "test": "conformance/social-link-options.mjs",
+      "marker": "export async function compareLinkProfileCopy(t, harness) {",
+      "complete": true
+    },
+    {
+      "label": "On SQLite, PostgreSQL and MySQL a linking identity copies its writable mapped fields, skips server-only ones and a profile that fails validation, and a returning sign-in copies nothing",
+      "test": "adapters/sqlstore/oauth_link_profile_test.go",
+      "marker": "func TestOAuthLinkProfileUserFields(t *testing.T) {"
+    }
   ]
 }

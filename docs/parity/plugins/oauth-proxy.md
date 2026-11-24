@@ -8,10 +8,10 @@
   - [x] Use one registered callback with independent deployments and session stores ([test](../../../adapters/sqlstore/oauth_proxy_test.go#L42))
   - [ ] `GET /callback/:id/oauth-proxy`
     - [x] Consume the originating browser state once and verify the provider before creating the preview session ([test](../../../adapters/sqlstore/oauth_proxy_test.go#L176))
-    - [x] Complete a popup across sites and return its session to the trusted opener ([test](../../../conformance/core.test.mjs#L1682))
+    - [x] Complete a popup across sites and return its session to the trusted opener ([test](../../../conformance/core.test.mjs#L1687))
     - [x] Enforce verification required by the production provider when completing sign-in on a separately configured preview ([test](../../../adapters/sqlstore/oauth_proxy_test.go#L262))
   - [ ] `GET /oauth-proxy-callback`
-    - [x] Accept the unqualified return path for a returning account through the released browser client ([test](../../../conformance/core.test.mjs#L1672))
+    - [x] Accept the unqualified return path for a returning account through the released browser client ([test](../../../conformance/core.test.mjs#L1677))
   - [x] `OAuthProxyOptions` ([test](../../../oauth_proxy_test.go#L14))
     - [x] Configure the registered origin, current origin, lifetime and shared key ([test](../../../oauth_proxy_test.go#L14))
     - [x] `currentURL` ([test](../../../oauth_proxy_test.go#L103))
@@ -29,8 +29,8 @@
 
 - [ ] OAuth Proxy
   - [ ] Upgrading existing deployments
-  - [x] How it works ([test](../../../conformance/core.test.mjs#L1677))
-    - [x] Follow the complete production-to-preview return with host-scoped cookies in Chrome ([test](../../../conformance/core.test.mjs#L1677))
+  - [x] How it works ([test](../../../conformance/core.test.mjs#L1682))
+    - [x] Follow the complete production-to-preview return with host-scoped cookies in Chrome ([test](../../../conformance/core.test.mjs#L1682))
   - [ ] Options
     - [x] productionURL ([test](../../../adapters/sqlstore/oauth_proxy_test.go#L162))
       - [x] Send the production redirect URI and bypass the proxy on production itself ([test](../../../adapters/sqlstore/oauth_proxy_test.go#L162))

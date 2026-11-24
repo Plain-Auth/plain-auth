@@ -5,15 +5,21 @@ import (
 	"errors"
 )
 
-// The resolver supplies the mapped profile. Browser state, raw provider data and
-// provider tokens are never inputs to the declared user fields.
-func (a *Auth) socialProfileCompletion(profile OAuthProfile, syncProfile, requireVerifiedEmail bool) (OAuthCompletion, error) {
+// writableProfileFields keeps the declared user fields a provider may set.
+func (a *Auth) writableProfileFields(profile OAuthProfile) map[string]any {
 	writable := make(map[string]any)
 	for name, value := range profile.AdditionalFields {
 		if field, declared := a.opts.UserAdditionalFields[name]; declared && !field.ServerOnly {
 			writable[name] = value
 		}
 	}
+	return writable
+}
+
+// The resolver supplies the mapped profile. Browser state, raw provider data and
+// provider tokens are never inputs to the declared user fields.
+func (a *Auth) socialProfileCompletion(profile OAuthProfile, syncProfile, requireVerifiedEmail bool) (OAuthCompletion, error) {
+	writable := a.writableProfileFields(profile)
 	prepare := func(create bool) (UserFieldValues, error) {
 		values, err := a.prepareUserFields(writable, create, false)
 		if err != nil {
