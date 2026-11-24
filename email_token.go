@@ -27,11 +27,21 @@ func (a *Auth) sendVerificationOnSignup(required bool) bool {
 }
 
 func (a *Auth) sendEmailProof(ctx context.Context, u User, newEmail, requestType, callback string, send MailSender) error {
+	link, err := a.emailProofLink(ctx, u, newEmail, requestType, callback)
+	if err != nil {
+		return err
+	}
+	return send(ctx, link)
+}
+
+// emailProofLink builds the verification mail for u: its signed token, the
+// link on the public URL and a copy of the request.
+func (a *Auth) emailProofLink(ctx context.Context, u User, newEmail, requestType, callback string) (MailLink, error) {
 	if callback == "" {
 		callback = "/"
 	}
 	if !a.trustedURL(ctx, callback, true) {
-		return &APIError{403, "INVALID_CALLBACK_URL", "Invalid callbackURL"}
+		return MailLink{}, &APIError{403, "INVALID_CALLBACK_URL", "Invalid callbackURL"}
 	}
 	now := a.now()
 	claims := verificationClaims{Email: strings.ToLower(u.Email), UserID: u.ID, UpdateTo: newEmail, RequestType: requestType, RegisteredClaims: jwt.RegisteredClaims{
@@ -45,17 +55,17 @@ func (a *Auth) sendEmailProof(ctx context.Context, u User, newEmail, requestType
 	delete(token.Header, "typ")
 	raw, err := token.SignedString([]byte(a.opts.Secret))
 	if err != nil {
-		return err
+		return MailLink{}, err
 	}
 	base, err := a.publicURL(ctx)
 	if err != nil {
-		return err
+		return MailLink{}, err
 	}
 	link := base + "/verify-email?" + url.Values{"callbackURL": {callback}, "token": {raw}}.Encode()
 	if requestType == "change-email-verification" {
 		u.Email = newEmail
 	}
-	return send(ctx, MailLink{User: u, Token: raw, URL: link, NewEmail: newEmail, Request: a.requestCopy(ctx)})
+	return MailLink{User: u, Token: raw, URL: link, NewEmail: newEmail, Request: a.requestCopy(ctx)}, nil
 }
 
 func (a *Auth) parseEmailProof(raw string) (verificationClaims, error) {

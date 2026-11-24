@@ -37,7 +37,8 @@ type ModelHooks[T any] struct {
 }
 
 // OperationHooks run before and after one kind of write. c describes the HTTP
-// endpoint call that caused the write, or is nil for a direct Go call.
+// endpoint call that caused the write, or is nil for a direct Go call and for
+// work handed to Options.BackgroundTasks.
 //
 // Before may change the fields the write stores; changing any other field
 // fails the write with a 500. It returns ErrSkipWrite to cancel the write,

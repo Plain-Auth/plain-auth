@@ -20656,5 +20656,59 @@
       "test": "conformance/goapi/dynamic_base_url_test.go",
       "marker": "// Forwarded headers count only from a trusted proxy, and only with"
     }
+  ],
+  "docs/content/docs/reference/options.mdx#L693/`backgroundTasks`": [
+    {
+      "label": "Options.BackgroundTasks runs sign-up verification email and the existing-user observer after the response with a detached context",
+      "test": "conformance/goapi/background_tasks_test.go",
+      "marker": "func TestBackgroundTasksRunAfterTheResponse(t *testing.T) {"
+    },
+    {
+      "label": "With BackgroundTasks, organization invitation email is handed to the runner and sent with a live request copy",
+      "test": "adapters/sqlstore/organization_background_test.go",
+      "marker": "func TestOrganizationInvitationInBackground(t *testing.T) {"
+    }
+  ],
+  "docs/content/docs/reference/options.mdx#L720": [
+    {
+      "label": "BackgroundTasks takes a runner such as a sync.WaitGroup's Go method; without one the work finishes before the response",
+      "test": "conformance/goapi/background_tasks_test.go",
+      "marker": "func TestBackgroundTasksRunAfterTheResponse(t *testing.T) {"
+    }
+  ],
+  "docs/content/docs/concepts/hooks.mdx#L280": [
+    {
+      "label": "Auth.RunInBackground hands a task to the runner, or a new goroutine without one, with a context the finished request no longer cancels",
+      "test": "conformance/goapi/background_tasks_test.go",
+      "marker": "detached <- \"background:\" + live(ctx, meta.WithContext(ctx))",
+      "complete": true
+    },
+    {
+      "label": "RunInBackground called from inside a task still goes to the runner, and a task's writes reach database hooks as direct calls",
+      "test": "conformance/goapi/background_tasks_test.go",
+      "marker": "func TestBackgroundTasksNestedWorkAndHooks(t *testing.T) {"
+    }
+  ],
+  "docs/content/docs/concepts/hooks.mdx#L302": [
+    {
+      "label": "Auth.RunInBackgroundOrAwait defers a task to the runner or awaits it without one, and logs its errors, and a handed-off task's panics, without their details",
+      "test": "conformance/goapi/background_tasks_test.go",
+      "marker": "if strings.Count(out, \"Background task failed\") != failures || strings.Contains(out, \"private\") {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/guides/optimizing-for-performance.mdx#L122": [
+    {
+      "label": "Mail that need not finish before the response runs after it through BackgroundTasks",
+      "test": "conformance/goapi/background_tasks_test.go",
+      "marker": "func TestBackgroundTasksRunAfterTheResponse(t *testing.T) {"
+    }
+  ],
+  "docs/content/docs/guides/cloudflare.mdx#L54": [
+    {
+      "label": "A host runner receives deferred work; Go servers pass a WaitGroup's Go method instead of waitUntil",
+      "test": "conformance/goapi/background_tasks_test.go",
+      "marker": "func TestBackgroundTasksRunAfterTheResponse(t *testing.T) {"
+    }
   ]
 }

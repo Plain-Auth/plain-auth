@@ -562,8 +562,10 @@ func (a *Auth) completeProfile(ctx context.Context, r *http.Request, id, callbac
 			send = a.sendVerificationOnSignup(options.RequireEmailVerification)
 		}
 		if send {
-			if err := a.sendEmailProof(ctx, result.User, "", "", callback, a.opts.SendVerificationEmail); err != nil {
+			if link, err := a.emailProofLink(ctx, result.User, "", "", callback); err != nil {
 				a.Logger().ErrorContext(ctx, "Could not deliver social sign-in verification email")
+			} else {
+				a.sendMailLink(ctx, "Could not deliver social sign-in verification email", link, a.opts.SendVerificationEmail)
 			}
 		}
 	}

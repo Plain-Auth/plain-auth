@@ -13,8 +13,20 @@ type signUpUserFinder interface {
 }
 
 // CreateUser has already released its transaction. An observer may safely query
-// the winner from another connection. Its outcome cannot change the caller's response.
+// the winner from another connection. Its outcome cannot change the caller's
+// response, and with BackgroundTasks it runs after the response.
 func (a *Auth) notifyExistingSignUp(ctx context.Context, email string, request *http.Request) {
+	request = accountObserverRequest(ctx, request)
+	a.runInBackgroundOrAwait(ctx, "Existing-user sign-up observer failed", func(ctx context.Context) error {
+		if request != nil {
+			request = request.WithContext(ctx)
+		}
+		a.observeExistingSignUp(ctx, email, request)
+		return nil
+	})
+}
+
+func (a *Auth) observeExistingSignUp(ctx context.Context, email string, request *http.Request) {
 	defer func() {
 		if recover() != nil {
 			a.Logger().ErrorContext(ctx, "Existing-user sign-up observer failed")
@@ -32,7 +44,7 @@ func (a *Auth) notifyExistingSignUp(ctx context.Context, email string, request *
 	if strings.ToLower(user.Email) != email {
 		return
 	}
-	if err := a.opts.OnExistingUserSignUp(ctx, user, accountObserverRequest(ctx, request)); err != nil {
+	if err := a.opts.OnExistingUserSignUp(ctx, user, request); err != nil {
 		// Callback errors may contain a credential or data from a mail transport.
 		a.Logger().ErrorContext(ctx, "Existing-user sign-up observer failed")
 	}

@@ -47,6 +47,7 @@ If the mount is `/identity`, a request to `/identity/sign-up/email` returns 404 
 | `RateLimit` | Optional boolean override. See [environment precedence](environment.md) for production and HTTPS defaults |
 | `Plugins` | Optional extensions registered at startup |
 | `SkipTrailingSlashes` | Serves `/sign-in/email/` as `/sign-in/email` |
+| `BackgroundTasks` | Runs mail that need not finish before the response after it. See [run work after the response](#run-work-after-the-response) |
 | `DisableCSRFCheck` | Turns off the Origin, Referer and Fetch Metadata checks on state-changing requests. Leaves cookie-authenticated endpoints open to cross-site request forgery |
 | `DisableOriginCheck` | Accepts any `callbackURL`, `redirectTo` and other redirect target instead of trusted origins and relative paths, which allows open redirects. Request origins are still checked, and URLs with control characters or backslashes, or with a scheme that can run code or read local data such as `javascript:`, `data:` or `file:`, are still refused |
 
@@ -81,7 +82,7 @@ opts.OnExistingUserSignUp = func(ctx context.Context, owner plainauth.User, requ
 }
 ```
 
-Plain Auth waits for the observer after the insert attempt has released its transaction. Enqueuing a short notification job keeps delivery latency out of the sign-up request. Each duplicate attempt can emit a notification, including concurrent retries. Observer errors and panics produce a fixed diagnostic and preserve the private response. If the mailbox disappears before it can be read, the observer is skipped.
+Plain Auth runs the observer after the insert attempt has released its transaction, and waits for it unless `BackgroundTasks` is set. Enqueuing a short notification job, or setting `BackgroundTasks`, keeps delivery latency out of the sign-up request. Each duplicate attempt can emit a notification, including concurrent retries. Observer errors and panics produce a fixed diagnostic and preserve the private response. If the mailbox disappears before it can be read, the observer is skipped.
 
 The callback receives the call’s context and the stored public account fields, including ID, name, email, verification status, image and timestamps. A mounted request supplies a copy of its URL and headers with an empty body. Direct calls to `SignUpEmail` pass a nil request. Third-party stores using this option in protected mode must implement `FindAccountUser(context.Context, string) (plainauth.User, error)` to read the mailbox owner independently of its sign-in methods.
 
@@ -141,6 +142,22 @@ For shared counters on Redis or Valkey, configure the optional Redis storage ada
 Any type with `ConsumeRateLimit(ctx, key, maximum, window, now) (time.Duration, error)` can be `Options.RateLimitStorage`. It must admit one request atomically and return how long the client must wait, or zero; the key is the client address and the route joined by `|`. [Custom storage test](../conformance/goapi/rate_limit_storage_test.go)
 
 Apply the `rate-limit` [schema profile](schema.md) and set `Options.RateLimitStorage` to the resulting SQL store on each replica. Enable limiting using `Options.RateLimit` or the [production environment setting](environment.md). Each allowed request updates the counter in a transaction. A rejected request receives HTTP 429 and an `X-Retry-After` value in seconds. Storage errors stop the request. From a maintenance job, call `store.PruneRateLimits(ctx, time.Now().Add(-24*time.Hour))` to clear inactive counters. The longest built-in window is one minute. Adjust the retention period if your application configures a longer window. See the [two-instance storage test](../adapters/sqlstore/ratelimit_test.go).
+
+## Run work after the response
+
+Set `Options.BackgroundTasks` to send mail without holding the response. Pass a function that runs the task once, usually on another goroutine, such as a `sync.WaitGroup`'s `Go` method, and wait for it when the server stops:
+
+```go
+var tasks sync.WaitGroup
+opts.BackgroundTasks = tasks.Go
+// ...
+_ = server.Shutdown(ctx)
+tasks.Wait()
+```
+
+It covers the verification email or code sent on sign-up and on a social sign-in, the `OnExistingUserSignUp` observer and organization invitation email. Their failures were already logged without failing the request; now the response no longer waits for them. A task's context keeps the request's values but not its cancellation or deadline, and the `Request` in a mail message is bound to it. Writes a task makes reach database hooks as direct Go calls, with a nil `HookContext`. A failure or panic in a task is logged with a fixed message and without the error's text. A runner that panics is logged and its task is dropped. Without `BackgroundTasks`, the work finishes before the response and a panic propagates as before.
+
+Hooks and plugins can hand off their own work. `Auth.RunInBackgroundOrAwait(ctx, task)` uses the runner, or runs the task before returning without one, and logs an error it returns. `Auth.RunInBackground(ctx, task)` uses the runner, also from inside another task, or a new goroutine without one. Copy what the task needs before handing it off, and bind a request copy to the task's context: `meta := c.RequestMetadata()` outside, then `meta.WithContext(ctx)` inside. [Background task tests](../conformance/goapi/background_tasks_test.go) · [Invitation test](../adapters/sqlstore/organization_background_test.go)
 
 ## Browser and server calls
 

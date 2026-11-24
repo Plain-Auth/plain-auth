@@ -213,18 +213,28 @@ func randomDecimalCode(length int) (string, error) {
 
 // SendEmailOTP requests delivery to Email under the supplied purpose.
 func (a *Auth) SendEmailOTP(ctx context.Context, email string, purpose EmailOTPPurpose) error {
-	req, err := a.emailOTPRequest(email, purpose)
-	if err != nil {
+	message, err := a.prepareEmailOTP(ctx, email, purpose)
+	if err != nil || message == nil {
 		return err
 	}
+	return a.emailOTP.Send(ctx, *message)
+}
+
+// prepareEmailOTP stores a new code for email and returns its message, or
+// nil when no code is sent.
+func (a *Auth) prepareEmailOTP(ctx context.Context, email string, purpose EmailOTPPurpose) (*EmailOTPMessage, error) {
+	req, err := a.emailOTPRequest(email, purpose)
+	if err != nil {
+		return nil, err
+	}
 	if purpose == OTPChangeEmail {
-		return validationError("Use the email change request endpoint")
+		return nil, validationError("Use the email change request endpoint")
 	}
 	raw, err := a.saveEmailOTP(ctx, req, purpose == OTPSignIn && !a.emailOTP.DisableSignUp, true)
 	if err != nil || raw == "" {
-		return err
+		return nil, err
 	}
-	return a.emailOTP.Send(ctx, EmailOTPMessage{Email: req.Email, Type: purpose, OTP: raw})
+	return &EmailOTPMessage{Email: req.Email, Type: purpose, OTP: raw}, nil
 }
 
 func (a *Auth) useEmailOTP(ctx context.Context, email, code string, purpose EmailOTPPurpose, action EmailOTPAction) (User, error) {

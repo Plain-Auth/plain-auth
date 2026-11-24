@@ -505,6 +505,8 @@
       - [x] CookiePrefix names the session and OAuth state cookies (__Secure-company.*), and an instance with another prefix cannot read them ([test](../../cookies_test.go#L26))
     - [ ] `database`
     - [ ] `backgroundTasks`
+      - [x] Options.BackgroundTasks runs sign-up verification email and the existing-user observer after the response with a detached context ([test](../../conformance/goapi/background_tasks_test.go#L53))
+      - [x] With BackgroundTasks, organization invitation email is handed to the runner and sent with a live request copy ([test](../../adapters/sqlstore/organization_background_test.go#L19))
     - [x] `skipTrailingSlashes` ([test](../../conformance/goapi/request_switches_test.go#L36))
       - [x] Serve paths with trailing slashes as the paths without them ([test](../../conformance/goapi/request_switches_test.go#L36))
     - [ ] `generateId`
@@ -512,6 +514,7 @@
     - [ ] `joins`
     - [ ] `validateSchema`
     - [ ] `backgroundTasks`
+      - [x] BackgroundTasks takes a runner such as a sync.WaitGroup's Go method; without one the work finishes before the response ([test](../../conformance/goapi/background_tasks_test.go#L53))
   - [ ] `logger`
     - [x] Report a verification-mail delivery failure to the selected logger while preserving the new account and session ([test](../../conformance/core.test.mjs#L1307))
     - [x] `disabled` ([test](../../conformance/core.test.mjs#L1323))

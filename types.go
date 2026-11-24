@@ -41,6 +41,14 @@ type Options struct {
 	AppName string
 	// Logger receives diagnostics for this instance. A nil logger uses slog.Default().
 	Logger *slog.Logger
+	// BackgroundTasks runs work that need not finish before the response,
+	// such as mail after sign-up, a social sign-in or an organization
+	// invitation. It is called with a ready task and must run it once,
+	// usually on another goroutine: pass a sync.WaitGroup's Go method and
+	// Wait after http.Server.Shutdown. The task keeps the request's context
+	// values but not its cancellation or deadline, and logs its own failures.
+	// When nil, that work finishes before the response.
+	BackgroundTasks func(task func())
 	// SkipTrailingSlashes serves a path with trailing slashes, such as
 	// /sign-in/email/, as the path without them.
 	SkipTrailingSlashes bool

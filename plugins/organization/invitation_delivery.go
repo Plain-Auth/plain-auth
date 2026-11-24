@@ -78,10 +78,17 @@ func (o Options) deliverInvitationEmail(c auth.EndpointContext, user auth.User, 
 		return err
 	}
 	message.Request = c.RequestMetadata()
-	ctx := c.Request.Context()
-	if err := o.SendInvitationEmail(ctx, message); err != nil {
-		c.Auth.Logger().ErrorContext(ctx, "Could not deliver organization invitation email")
-	}
+	// Delivery is logged, not returned, and with BackgroundTasks it runs
+	// after the response.
+	c.Auth.RunInBackgroundOrAwait(c.Request.Context(), func(ctx context.Context) error {
+		if message.Request != nil {
+			message.Request = message.Request.WithContext(ctx)
+		}
+		if err := o.SendInvitationEmail(ctx, message); err != nil {
+			c.Auth.Logger().ErrorContext(ctx, "Could not deliver organization invitation email")
+		}
+		return nil
+	})
 	return nil
 }
 

@@ -630,13 +630,19 @@ func (a *Auth) signUpEmail(ctx context.Context, in SignUpInput, meta RequestMeta
 		}
 	}
 	if a.emailOTP != nil && a.emailOTP.SendVerificationOnSignUp && !a.emailOTP.OverrideDefaultEmailVerification {
-		if err := a.SendEmailOTP(ctx, user.Email, OTPVerifyEmail); err != nil {
+		if message, err := a.prepareEmailOTP(ctx, user.Email, OTPVerifyEmail); err != nil {
 			a.Logger().ErrorContext(ctx, "Could not deliver sign-up verification code")
+		} else if message != nil {
+			a.runInBackgroundOrAwait(ctx, "Could not deliver sign-up verification code", func(ctx context.Context) error {
+				return a.emailOTP.Send(ctx, *message)
+			})
 		}
 	}
 	if a.sendVerificationOnSignup(a.opts.RequireEmailVerification) && a.opts.SendVerificationEmail != nil {
-		if err := a.sendEmailProof(ctx, user, "", "", meta.CallbackURL, a.opts.SendVerificationEmail); err != nil {
+		if link, err := a.emailProofLink(ctx, user, "", "", meta.CallbackURL); err != nil {
 			a.Logger().ErrorContext(ctx, "Could not deliver sign-up verification email")
+		} else {
+			a.sendMailLink(ctx, "Could not deliver sign-up verification email", link, a.opts.SendVerificationEmail)
 		}
 	}
 	if err := a.readPublicUserFields(ctx, &user); err != nil {
