@@ -268,7 +268,8 @@
     - [x] Delivery is host-supplied MailSender callbacks (SendVerificationEmail, SendResetPassword), so any provider works ([test](../../conformance/goapi/account_test.go#L18))
   - [ ] Email Verification
     - [ ] Adding Email Verification to Your App
-      - [ ] sendVerificationEmail
+      - [x] sendVerificationEmail ([test](../../conformance/goapi/mail_request_test.go#L58))
+        - [x] Deliver verification links with the user, URL, token and a body-free copy of the request ([test](../../conformance/goapi/mail_request_test.go#L58))
       - [x] `user` ([test](../../conformance/goapi/account_test.go#L47))
         - [x] After a send-verification-email request, asserts that MailLink.User carries the account owner's email address ([test](../../conformance/goapi/account_test.go#L47))
       - [x] `url` ([test](../../conformance/goapi/account_test.go#L54))
@@ -298,7 +299,8 @@
       - [x] Deliver the stored owner to the host while preserving private responses across both modes and ordinary 422 behavior in the released client ([test](../../conformance/core.test.mjs#L1457))
       - [x] Run the callback after storage releases the account, isolate errors and panics, and preserve owned request metadata ([test](../../adapters/sqlstore/existing_signup_test.go#L83))
       - [x] Use one committed owner for concurrent registrations across separate instances and storage connections ([test](../../adapters/sqlstore/existing_signup_test.go#L197))
-  - [ ] Password Reset Email
+  - [x] Password Reset Email ([test](../../conformance/goapi/mail_request_test.go#L56))
+    - [x] Deliver password reset links with the user, URL, token and a body-free copy of the request, or no request for a Go call ([test](../../conformance/goapi/mail_request_test.go#L56))
 
 ## Hooks
 

@@ -47,6 +47,9 @@ type AccountStore interface {
 type MailLink struct {
 	User                 User
 	URL, Token, NewEmail string
+	// Request is a copy of the HTTP request that caused the mail, without its
+	// body, or nil for a direct Go call.
+	Request *http.Request `json:"-"`
 }
 
 type MailSender func(context.Context, MailLink) error
@@ -340,7 +343,7 @@ func (a *Auth) RequestPasswordReset(ctx context.Context, email, redirectTo strin
 	}
 	base := a.opts.BaseURL + strings.TrimRight(a.opts.BasePath, "/")
 	link := base + "/reset-password/" + t.Token + "?" + url.Values{"callbackURL": {redirectTo}}.Encode()
-	return a.opts.SendResetPassword(ctx, MailLink{User: user, URL: link, Token: t.Token})
+	return a.opts.SendResetPassword(ctx, MailLink{User: user, URL: link, Token: t.Token, Request: a.mailRequest(ctx)})
 }
 
 // ResetPassword consumes an unexpired recovery token atomically with the credential update.
@@ -509,6 +512,14 @@ func (a *Auth) notifyPasswordReset(ctx context.Context, user User, request *http
 
 // accountObserverRequest retains HTTP metadata after the credential-setting
 // operation without sharing its headers or exposing a replayable password body.
+type mailRequestKey struct{ a *Auth }
+
+// mailRequest returns a body-free copy of the HTTP request ctx belongs to, or nil.
+func (a *Auth) mailRequest(ctx context.Context) *http.Request {
+	r, _ := ctx.Value(mailRequestKey{a}).(*http.Request)
+	return accountObserverRequest(ctx, r)
+}
+
 func accountObserverRequest(ctx context.Context, request *http.Request) *http.Request {
 	if request == nil {
 		return nil

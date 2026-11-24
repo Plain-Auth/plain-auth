@@ -4,6 +4,7 @@ package plainauth
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"io"
@@ -65,6 +66,8 @@ func (a *Auth) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			a.writeAuthError(w, r, err)
 			return
 		}
+		// Mail senders receive a copy of the request that caused the mail.
+		r = r.WithContext(context.WithValue(r.Context(), mailRequestKey{a}, r))
 		if a.onResponse {
 			if _, buffered := w.(*bufferedResponse); !buffered {
 				b := &bufferedResponse{header: w.Header()}

@@ -19958,5 +19958,29 @@
       "marker": "// Plugins read the application name from the instance.",
       "complete": true
     }
+  ],
+  "docs/content/docs/concepts/email.mdx#L30/sendVerificationEmail": [
+    {
+      "label": "Deliver verification links with the user, URL, token and a body-free copy of the request",
+      "test": "conformance/goapi/mail_request_test.go",
+      "marker": "check(\"verification\", verify)",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/concepts/email.mdx#L234": [
+    {
+      "label": "Deliver password reset links with the user, URL, token and a body-free copy of the request, or no request for a Go call",
+      "test": "conformance/goapi/mail_request_test.go",
+      "marker": "check(\"reset\", reset)",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/authentication/email-password.mdx#L290": [
+    {
+      "label": "Request a password reset over HTTP and deliver the link with a copy of the request",
+      "test": "conformance/goapi/mail_request_test.go",
+      "marker": "post(\"/request-password-reset\", `{\"email\":\"ada@example.com\",\"redirectTo\":\"/reset\"}`, nil)",
+      "complete": true
+    }
   ]
 }

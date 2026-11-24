@@ -6,7 +6,7 @@ The email/password profile accepts configured application fields at signup and o
 
 ## Mail delivery
 
-Set either sender on `Options`. Each callback receives the request context and a `MailLink` containing the destination user, a complete URL, and the token. Deliver the URL only to the address on `link.User.Email`. For example, an application with an existing `mailer` can set the following options.
+Set either sender on `Options`. Each callback receives the request context and a `MailLink` containing the destination user, a complete URL, and the token. `link.Request` is a copy of the HTTP request that caused the mail, without its body, for reading headers such as the client's locale; it is nil for a direct Go call. Deliver the URL only to the address on `link.User.Email`. For example, an application with an existing `mailer` can set the following options.
 
 ```go
 opts.SendResetPassword = func(ctx context.Context, link plainauth.MailLink) error {

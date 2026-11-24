@@ -140,7 +140,8 @@
           - [ ] `id`
       - [x] Triggering manually Email Verification ([test](../../conformance/goapi/account_test.go#L45))
         - [x] A manual POST to send-verification-email with email and callbackURL returns 200 and delivers one link ([test](../../conformance/goapi/account_test.go#L45))
-    - [ ] Request Password Reset
+    - [x] Request Password Reset ([test](../../conformance/goapi/mail_request_test.go#L55))
+      - [x] Request a password reset over HTTP and deliver the link with a copy of the request ([test](../../conformance/goapi/mail_request_test.go#L55))
       - [x] `user` ([test](../../conformance/goapi/password_reset_hook_test.go#L29))
         - [x] The reset MailLink.User ID and email must equal the account whose password OnPasswordReset reports as reset ([test](../../conformance/goapi/password_reset_hook_test.go#L29))
       - [x] `url` ([test](../../conformance/goapi/account_test.go#L82))

@@ -51,7 +51,7 @@ func (a *Auth) sendEmailProof(ctx context.Context, u User, newEmail, requestType
 	if requestType == "change-email-verification" {
 		u.Email = newEmail
 	}
-	return send(ctx, MailLink{User: u, Token: raw, URL: link, NewEmail: newEmail})
+	return send(ctx, MailLink{User: u, Token: raw, URL: link, NewEmail: newEmail, Request: a.mailRequest(ctx)})
 }
 
 func (a *Auth) parseEmailProof(raw string) (verificationClaims, error) {

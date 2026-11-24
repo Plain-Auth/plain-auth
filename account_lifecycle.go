@@ -106,7 +106,7 @@ func (a *Auth) DeleteUser(ctx context.Context, h http.Header, in DeleteUserInput
 		}
 		query := url.Values{"callbackURL": {callback}, "token": {t.Token}}
 		link := a.opts.BaseURL + strings.TrimSuffix(a.opts.BasePath, "/") + "/delete-user/callback?" + query.Encode()
-		return false, a.opts.SendDeleteAccountVerification(ctx, MailLink{User: session.User, URL: link, Token: t.Token})
+		return false, a.opts.SendDeleteAccountVerification(ctx, MailLink{User: session.User, URL: link, Token: t.Token, Request: a.mailRequest(ctx)})
 	}
 	if in.Token == "" && hash == "" && !a.freshSession(session.Session) {
 		return false, &APIError{400, "SESSION_EXPIRED", "Session expired. Re-authenticate to perform this action."}
