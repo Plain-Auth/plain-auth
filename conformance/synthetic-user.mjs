@@ -21,6 +21,8 @@ export async function compareSyntheticUser(t, {reference, goFixture, instrument}
     assert.equal(replay.error, null);
     assert.equal(replay.data.token, null);
     assert.notEqual(replay.data.user.id, owner.data.user.id);
+    // The shaped user has a real sign-up's keys in the same order.
+    assert.deepEqual(Object.keys(replay.data.user), Object.keys(owner.data.user));
     const {id, createdAt, updatedAt, ...rest} = replay.data.user;
     assert.ok(id && createdAt && updatedAt);
     shaped.push({keys: Object.keys(replay.data.user).sort(), rest});

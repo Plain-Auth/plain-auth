@@ -1,6 +1,7 @@
 package plainauth
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"crypto/sha256"
@@ -528,7 +529,7 @@ func (a *Auth) signUpEmail(ctx context.Context, in SignUpInput, meta RequestMeta
 			if a.opts.OnExistingUserSignUp != nil {
 				a.notifyExistingSignUp(ctx, user.Email, request)
 			}
-			return AuthResult{User: user, syntheticUser: a.customSyntheticUser(user)}, nil
+			return AuthResult{User: user, syntheticUser: a.customSyntheticUser(ctx, user)}, nil
 		}
 		return AuthResult{}, duplicateSignupError()
 	}
@@ -625,8 +626,9 @@ func (a *Auth) signUpEmail(ctx context.Context, in SignUpInput, meta RequestMeta
 }
 
 // customSyntheticUser applies Options.CustomSyntheticUser to the generated
-// duplicate sign-up profile.
-func (a *Auth) customSyntheticUser(user User) map[string]any {
+// duplicate sign-up profile. The result keeps the encoded user's keys, their
+// order and the value formats of a real sign-up, so the two read the same.
+func (a *Auth) customSyntheticUser(ctx context.Context, user User) json.RawMessage {
 	if a.opts.CustomSyntheticUser == nil {
 		return nil
 	}
@@ -636,24 +638,81 @@ func (a *Auth) customSyntheticUser(user User) map[string]any {
 			fields[name] = value
 		}
 	}
-	shaped := a.opts.CustomSyntheticUser(SyntheticUser{ID: user.ID, Name: user.Name, Email: user.Email, Image: user.Image,
-		CreatedAt: user.CreatedAt, UpdatedAt: user.UpdatedAt, AdditionalFields: fields})
-	// Like a real sign-up, the response carries exactly the public user
-	// fields: the hook may change their values, not add others.
+	shaped := a.opts.CustomSyntheticUser(SyntheticUser{ID: user.ID, Name: user.Name, Email: user.Email, EmailVerified: user.EmailVerified,
+		Image: user.Image, CreatedAt: user.CreatedAt, UpdatedAt: user.UpdatedAt, AdditionalFields: fields})
 	raw, err := json.Marshal(user)
 	if err != nil {
 		return nil
 	}
-	var out map[string]any
-	if err := json.Unmarshal(raw, &out); err != nil {
+	dec := json.NewDecoder(bytes.NewReader(raw))
+	if _, err := dec.Token(); err != nil {
 		return nil
 	}
-	for name, value := range shaped {
-		if _, known := out[name]; known {
-			out[name] = value
+	var out bytes.Buffer
+	out.WriteByte('{')
+	for dec.More() {
+		token, err := dec.Token()
+		if err != nil {
+			return nil
+		}
+		name, _ := token.(string)
+		var value json.RawMessage
+		if err := dec.Decode(&value); err != nil {
+			return nil
+		}
+		if replacement, ok := shaped[name]; ok {
+			if encoded, ok := a.syntheticValue(name, value, replacement); ok {
+				value = encoded
+			} else {
+				a.Logger().WarnContext(ctx, "CustomSyntheticUser returned a value that does not fit the field; keeping the generated one", "field", name)
+			}
+		}
+		if out.Len() > 1 {
+			out.WriteByte(',')
+		}
+		key, _ := json.Marshal(name)
+		out.Write(key)
+		out.WriteByte(':')
+		out.Write(value)
+	}
+	out.WriteByte('}')
+	return out.Bytes()
+}
+
+// syntheticValue encodes a hook value the way a real sign-up encodes that
+// field, or reports false when the value does not fit it.
+func (a *Auth) syntheticValue(name string, generated json.RawMessage, value any) (json.RawMessage, bool) {
+	if f, ok := a.opts.UserAdditionalFields[name]; ok {
+		public, err := f.PublicValue(value)
+		if err != nil {
+			return nil, false
+		}
+		value = public
+	} else if name == "createdAt" || name == "updatedAt" {
+		instant, ok := value.(time.Time)
+		if !ok {
+			return nil, false
+		}
+		value = instant.UTC().Truncate(time.Millisecond)
+	}
+	encoded, err := json.Marshal(value)
+	if err != nil {
+		return nil, false
+	}
+	kind := func(v json.RawMessage) byte {
+		switch c := v[0]; {
+		case c == 't' || c == 'f':
+			return 'b'
+		case c == '-' || c >= '0' && c <= '9':
+			return '0'
+		default:
+			return c
 		}
 	}
-	return out
+	if got, want := kind(encoded), kind(generated); got != want && got != 'n' && want != 'n' {
+		return nil, false
+	}
+	return encoded, true
 }
 
 func duplicateSignupError() *APIError {

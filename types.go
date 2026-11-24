@@ -2,6 +2,7 @@ package plainauth
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"log/slog"
 	"net/http"
@@ -81,8 +82,9 @@ type Options struct {
 	// CustomSyntheticUser shapes the user an HTTP sign-up returns for an email
 	// that already exists, when RequireEmailVerification or DisableAutoSignIn
 	// hides that the email is taken. The returned values replace the
-	// generated ones for the fields a real sign-up returns; other keys are
-	// dropped. Built-in plugin fields are already filled in.
+	// generated ones for the fields a real sign-up returns, in that field's
+	// format; other keys are dropped and a value that does not fit keeps the
+	// generated one. Built-in plugin fields are already filled in.
 	CustomSyntheticUser func(SyntheticUser) map[string]any
 
 	EmailAndPassword         bool
@@ -243,7 +245,7 @@ type AuthResult struct {
 	User                User            `json:"user"`
 	// syntheticUser replaces User in the HTTP response of a protected
 	// duplicate sign-up.
-	syntheticUser map[string]any
+	syntheticUser json.RawMessage
 }
 
 // SyntheticUser is the generated user for a sign-up with an existing email.
