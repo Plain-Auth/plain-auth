@@ -20111,5 +20111,21 @@
       "marker": "{\"an untrusted peer's headers are ignored\", \"192.0.2.50:443\"",
       "complete": true
     }
+  ],
+  "docs/content/docs/concepts/oauth.mdx#L522": [
+    {
+      "label": "A provider's Config.RedirectURL replaces the callback route in the authorization request and the code exchange, an application route forwards it to the callback, and a relative or non-HTTP URL is refused",
+      "test": "conformance/goapi/oauth_redirect_uri_test.go",
+      "marker": "func TestOAuthCustomRedirectURL(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/reference/options.mdx#L356/`redirectURI`": [
+    {
+      "label": "A provider's Config.RedirectURL replaces the callback route in the authorization request and the code exchange, an application route forwards it to the callback, and a relative or non-HTTP URL is refused",
+      "test": "conformance/goapi/oauth_redirect_uri_test.go",
+      "marker": "func TestOAuthCustomRedirectURL(t *testing.T) {",
+      "complete": true
+    }
   ]
 }

@@ -69,7 +69,10 @@ func (a *Auth) providerConfig(id string) (OAuthProvider, error) {
 	if !ok {
 		return p, &APIError{404, "PROVIDER_NOT_FOUND", "Provider not found"}
 	}
-	p.Config.RedirectURL = a.opts.BaseURL + strings.TrimRight(a.opts.BasePath, "/") + "/callback/" + id
+	// The provider's own redirect URL wins over the callback route.
+	if p.Config.RedirectURL == "" {
+		p.Config.RedirectURL = a.opts.BaseURL + strings.TrimRight(a.opts.BasePath, "/") + "/callback/" + id
+	}
 	return p, nil
 }
 
@@ -181,7 +184,9 @@ func (a *Auth) beginBrowserOAuth(h http.Header, r *http.Request, p OAuthProvider
 				return "", "", validationError("OAuth proxy requires a secure preview origin")
 			}
 			flow.ProxyOrigin = current
-			p.Config.RedirectURL = a.oauthProxy.ProductionURL + a.opts.BasePath + "/callback/" + id
+			if a.opts.SocialProviders[id].Config.RedirectURL == "" {
+				p.Config.RedirectURL = a.oauthProxy.ProductionURL + a.opts.BasePath + "/callback/" + id
+			}
 			var err error
 			providerState, err = a.packProxyState(flow)
 			if err != nil {

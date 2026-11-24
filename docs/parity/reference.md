@@ -341,7 +341,8 @@
       - [x] For every catalog provider, the configured client secret is sent in the token exchange, by basic auth or form fields as the provider requires ([test](../../providers/catalog_test.go#L80))
     - [x] `clientKey` ([test](../../providers/catalog_test.go#L174))
       - [x] For TikTok, the configured key is sent as client_key, not client_id, in both the authorization URL and the token form ([test](../../providers/catalog_test.go#L174))
-    - [ ] `redirectURI`
+    - [x] `redirectURI` ([test](../../conformance/goapi/oauth_redirect_uri_test.go#L22))
+      - [x] A provider's Config.RedirectURL replaces the callback route in the authorization request and the code exchange, an application route forwards it to the callback, and a relative or non-HTTP URL is refused ([test](../../conformance/goapi/oauth_redirect_uri_test.go#L22))
     - [x] `scope` ([test](../../conformance/social-signup.mjs#L60))
       - [x] On both servers, the configured provider scopes appear in the authorization URL ([test](../../conformance/social-signup.mjs#L60))
     - [x] `mapProfileToUser` ([test](../../conformance/social-user-fields.mjs#L110))

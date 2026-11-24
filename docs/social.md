@@ -38,6 +38,8 @@ Google sign-in verifies the ID token's signing key, issuer, audience, expiry and
 
 For another provider, populate `auth.OAuthProvider.Config` with the provider's OAuth endpoints and scopes. Implement `Resolve` to obtain an `auth.OAuthProfile` from an authenticated provider API or a validated ID token. Supply a stable provider subject and the email verification status reported by the identity provider. Validate the supplied nonce when using an ID token. New social accounts preserve the reported verification status. Set `AllowVerifiedEmailLink` only for providers trusted to verify email ownership.
 
+The provider returns the browser to `{BaseURL}{BasePath}/callback/{id}`. To register another address, set `Config.RedirectURL` to an absolute HTTP or HTTPS URL. The authorization request and the code exchange both send it, and your application must forward that route to the callback, keeping the query. [Redirect URL tests](../conformance/goapi/oauth_redirect_uri_test.go)
+
 For an OpenID Connect provider, use discovery at startup. Supply the issuer from trusted application configuration.
 
 ```go

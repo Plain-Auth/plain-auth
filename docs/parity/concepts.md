@@ -402,7 +402,8 @@
   - [ ] Provider Options
     - [ ] clientId
     - [ ] scope
-    - [ ] redirectURI
+    - [x] redirectURI ([test](../../conformance/goapi/oauth_redirect_uri_test.go#L22))
+      - [x] A provider's Config.RedirectURL replaces the callback route in the authorization request and the code exchange, an application route forwards it to the callback, and a relative or non-HTTP URL is refused ([test](../../conformance/goapi/oauth_redirect_uri_test.go#L22))
     - [ ] disableSignUp
     - [x] disableIdTokenSignIn ([test](../../conformance/apple-native.mjs#L51))
       - [x] Decline signed client ID tokens for sign-in and account linking while preserving browser authorization ([test](../../conformance/apple-native.mjs#L51))

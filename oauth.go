@@ -33,7 +33,10 @@ type OAuthProfile struct {
 type OAuthProvider struct {
 	// GetAccountFields maps a verified social grant to declared writable account attributes.
 	GetAccountFields func(context.Context, OAuthAccountFieldInput) (map[string]any, error)
-	Config           oauth2.Config
+	// Config holds the client credentials, endpoints and scopes. RedirectURL
+	// defaults to the callback route, BaseURL+BasePath+"/callback/"+id. Set it
+	// to an absolute URL that forwards to that route to use another address.
+	Config oauth2.Config
 	// EndSessionEndpoint is the provider's registered OIDC logout endpoint.
 	EndSessionEndpoint string
 	// PostLogoutRedirectURI is the default application return URI after provider logout.
@@ -214,6 +217,13 @@ func prepareOAuthProviders(in map[string]OAuthProvider, store Store, userFieldsO
 			ip := net.ParseIP(u.Hostname())
 			if u.Scheme != "https" && !(u.Scheme == "http" && (u.Hostname() == "localhost" || ip.IsLoopback())) {
 				return nil, fmt.Errorf("OAuth endpoint for %q requires HTTPS", id)
+			}
+		}
+		// A custom redirect URI must reach this provider's callback route.
+		if p.Config.RedirectURL != "" {
+			u, err := url.Parse(p.Config.RedirectURL)
+			if err != nil || (u.Scheme != "https" && u.Scheme != "http") || u.Hostname() == "" || u.User != nil || u.Fragment != "" {
+				return nil, fmt.Errorf("invalid redirect URL for OAuth provider %q", id)
 			}
 		}
 		p.Config.Scopes = slices.Clone(p.Config.Scopes)
