@@ -191,7 +191,7 @@ func (a *Auth) verifyPhoneNumber(ctx context.Context, h http.Header, in PhoneVer
 	if registration.err != nil {
 		err = store(ctx)
 	} else {
-		err = a.planSignIn(ctx, store)
+		err = a.planSignIn(ctx, nil, store)
 	}
 	if errors.Is(err, ErrEmailTaken) {
 		return out, &APIError{400, "USER_ALREADY_EXISTS", "User already exists"}

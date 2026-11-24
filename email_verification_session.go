@@ -81,7 +81,7 @@ func (a *Auth) consumeVerification(ctx context.Context, claims verificationClaim
 		if v.NewSession == nil {
 			err = complete(ctx)
 		} else {
-			err = a.planSignIn(ctx, complete)
+			err = a.planSignIn(ctx, nil, complete)
 		}
 	}
 	if errors.Is(err, ErrNotFound) {

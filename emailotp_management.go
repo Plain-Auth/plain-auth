@@ -143,7 +143,7 @@ func (a *Auth) completeEmailVerificationOTP(ctx context.Context, email, code str
 	}
 	if act.Session.Token == "" {
 		err = consume(ctx)
-	} else if err = a.planSignIn(ctx, consume); err == nil {
+	} else if err = a.planSignIn(ctx, nil, consume); err == nil {
 		err = a.afterDecidedSignIn(ctx, u, false, act.Session.Token)
 	}
 	if err != nil {

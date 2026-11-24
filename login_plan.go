@@ -3,6 +3,7 @@ package plainauth
 import (
 	"context"
 	"errors"
+	"time"
 )
 
 // LoginPlan lets the create before hooks run, outside any transaction, for a
@@ -20,15 +21,24 @@ import (
 //
 // A store supports plans by implementing LoginPlanner and, in those sign-in
 // methods, calling Attempt when it begins each transaction attempt,
-// including retries, PlanUser just before inserting a new user, PlanSession
-// just before inserting the session and Commit just before committing,
-// returning their errors. The methods do nothing on a nil plan, so a store
+// including retries, PlanUser just before inserting a new user,
+// PlanIdentity in a provider sign-in just before signing in or linking an
+// existing user, PlanSession just before inserting the session and Commit
+// just before committing, returning their errors. The methods do nothing on a nil plan, so a store
 // can call them with LoginPlanFrom(ctx) unconditionally.
 type LoginPlan struct {
-	approved                bool
-	user                    *User
-	session                 *StoredSession
-	wroteUser, wroteSession bool
+	approved                               bool
+	user                                   *User
+	identity                               *plannedIdentity
+	session                                *StoredSession
+	wroteUser, wroteIdentity, wroteSession bool
+}
+
+// plannedIdentity is the existing user a provider sign-in reaches, and
+// whether the identity was already linked to it.
+type plannedIdentity struct {
+	userID string
+	linked bool
 }
 
 // LoginPlanner is implemented by a store whose sign-in methods support plans.
@@ -56,9 +66,9 @@ func (p *LoginPlan) Attempt() {
 		return
 	}
 	if p.approved {
-		p.wroteUser, p.wroteSession = false, false
+		p.wroteUser, p.wroteIdentity, p.wroteSession = false, false, false
 	} else {
-		p.user, p.session = nil, nil
+		p.user, p.identity, p.session = nil, nil, nil
 	}
 }
 
@@ -78,6 +88,26 @@ func (p *LoginPlan) PlanUser(u *User) error {
 	}
 	p.wroteUser = true
 	u.Name, u.Image = p.user.Name, p.user.Image
+	return nil
+}
+
+// PlanIdentity is called in a provider sign-in just before a store signs in
+// the user who already owns the identity (linked) or links the identity to
+// an existing user (not linked). A dry run records it; an approved run
+// checks that it did not change.
+func (p *LoginPlan) PlanIdentity(userID string, linked bool) error {
+	if p == nil {
+		return nil
+	}
+	planned := plannedIdentity{userID, linked}
+	if !p.approved {
+		p.identity = &planned
+		return nil
+	}
+	if p.identity == nil || *p.identity != planned || p.wroteIdentity {
+		return ErrLoginPlanChanged
+	}
+	p.wroteIdentity = true
 	return nil
 }
 
@@ -110,7 +140,7 @@ func (p *LoginPlan) Commit() error {
 	if !p.approved {
 		return ErrLoginPlanned
 	}
-	if (p.user != nil) != p.wroteUser || (p.session != nil) != p.wroteSession {
+	if (p.user != nil) != p.wroteUser || (p.identity != nil) != p.wroteIdentity || (p.session != nil) != p.wroteSession {
 		return ErrLoginPlanChanged
 	}
 	return nil
@@ -121,12 +151,23 @@ var (
 	errPlannedSessionSkipped = &APIError{500, "FAILED_TO_CREATE_SESSION", "Failed to create session"}
 )
 
-// planSignIn runs a store-decided sign-in. With create before hooks it runs
-// store twice, with the hooks between a dry run and the approved run, and
-// starts again when the data changed in between. A skipped user or session
-// returns errPlannedUserSkipped or errPlannedSessionSkipped.
-func (a *Auth) planSignIn(ctx context.Context, store func(context.Context) error) error {
-	if len(a.dbHooks.user.create.before) == 0 && len(a.dbHooks.session.create.before) == 0 {
+// signInGate is what ValidateUserInfo sees of a store-decided sign-in that
+// can create a user or reach one through a provider identity.
+type signInGate struct {
+	method, provider string
+	profile          map[string]any
+	// candidate is the provider's fresh profile, for a provider sign-in.
+	candidate User
+	fields    map[string]any
+}
+
+// planSignIn runs a store-decided sign-in. With create before hooks, or with
+// ValidateUserInfo and a gate, it runs store twice, with the gate and the
+// hooks between a dry run and the approved run, and starts again when the
+// data changed in between. A skipped user or session returns
+// errPlannedUserSkipped or errPlannedSessionSkipped.
+func (a *Auth) planSignIn(ctx context.Context, gate *signInGate, store func(context.Context) error) error {
+	if len(a.dbHooks.user.create.before) == 0 && len(a.dbHooks.session.create.before) == 0 && (gate == nil || a.opts.ValidateUserInfo == nil) {
 		return store(ctx)
 	}
 	for range 3 {
@@ -135,7 +176,7 @@ func (a *Auth) planSignIn(ctx context.Context, store func(context.Context) error
 		if !errors.Is(err, ErrLoginPlanned) {
 			return err
 		}
-		if err := a.approveLoginPlan(ctx, plan); err != nil {
+		if err := a.approveLoginPlan(ctx, plan, gate); err != nil {
 			return err
 		}
 		err = store(context.WithValue(ctx, loginPlanKey{}, plan))
@@ -146,10 +187,35 @@ func (a *Auth) planSignIn(ctx context.Context, store func(context.Context) error
 	return errors.New("auth: the sign-in kept changing while its hooks ran")
 }
 
-// approveLoginPlan runs the create before hooks on a dry run's rows. The
-// store chose these users' email, its verification and their fields, which
-// decide how the sign-in continues, so hooks may change only Name and Image.
-func (a *Auth) approveLoginPlan(ctx context.Context, plan *LoginPlan) error {
+// approveLoginPlan runs ValidateUserInfo and then the create before hooks on
+// a dry run's rows. The store chose these users' email, its verification and
+// their fields, which decide how the sign-in continues, so hooks may change
+// only Name and Image.
+func (a *Auth) approveLoginPlan(ctx context.Context, plan *LoginPlan, gate *signInGate) error {
+	if gate != nil && a.opts.ValidateUserInfo != nil {
+		check := UserInfoValidation{Method: gate.method, Provider: gate.provider, Profile: gate.profile}
+		switch {
+		case plan.user != nil:
+			check.Action, check.User = UserInfoCreateUser, UserRecord{User: *plan.user, Fields: gate.fields}
+		case plan.identity != nil && gate.provider != "":
+			// A provider sign-in is checked with the provider's fresh profile.
+			check.Action = UserInfoLinkAccount
+			if plan.identity.linked {
+				check.Action = UserInfoSignIn
+			}
+			u := gate.candidate
+			u.ID, u.CreatedAt, u.UpdatedAt = plan.identity.userID, time.Time{}, time.Time{}
+			check.User = UserRecord{User: u, Fields: gate.fields}
+		case gate.provider != "":
+			return errors.New("auth: the store did not plan the provider sign-in for ValidateUserInfo")
+		}
+		// A returning user of a sign-in without a provider is not checked again.
+		if check.Action != "" {
+			if err := a.ValidateUserInfo(ctx, check); err != nil {
+				return err
+			}
+		}
+	}
 	if plan.user != nil {
 		edited, fields, err := a.beforeUserCreate(ctx, *plan.user, nil)
 		if errors.Is(err, ErrSkipWrite) {

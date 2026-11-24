@@ -20,6 +20,7 @@
     - [x] Reject a link following a reassigned or expired mailbox claim ([test](../../../adapters/memory/magiclink_test.go#L86))
     - [x] Write static profile defaults for a newly proved mailbox and return only the configured public user and session fields ([test](../../../conformance/magic-link-fields.mjs#L72))
     - [x] Preserve the winning profile and its saved fields across concurrent links and nodes with different registration defaults ([test](../../../adapters/sqlstore/magiclink_fields_test.go#L129))
+    - [x] ValidateUserInfo checks only new magic-link users and refuses them back to the error callback ([test](../../../conformance/goapi/user_validation_test.go#L285))
   - [ ] `MagicLinkOptions`
     - [ ] `expiresIn`
       - [x] Persist the configured link lifetime ([test](../../../adapters/sqlstore/magiclink_test.go#L238))

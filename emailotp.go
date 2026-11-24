@@ -280,7 +280,11 @@ func (a *Auth) SignInEmailOTP(ctx context.Context, in EmailOTPSignInInput, meta 
 		}
 	}
 	var u User
-	err = a.planSignIn(ctx, func(ctx context.Context) (err error) {
+	var gate *signInGate
+	if act.AllowSignUp {
+		gate = &signInGate{method: "email-otp", fields: serverInput(a.opts.UserAdditionalFields, in.AdditionalFields)}
+	}
+	err = a.planSignIn(ctx, gate, func(ctx context.Context) (err error) {
 		u, err = a.consumeEmailOTPWithFields(ctx, request, in.OTP, act, registration)
 		return err
 	})

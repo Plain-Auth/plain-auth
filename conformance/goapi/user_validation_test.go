@@ -10,11 +10,14 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	authn "github.com/Plain-Org/plain-auth"
 	"github.com/Plain-Org/plain-auth/adapters/memory"
 	"github.com/Plain-Org/plain-auth/adapters/sqlite"
+	"github.com/Plain-Org/plain-auth/client"
 	"github.com/Plain-Org/plain-auth/plugins/scim"
+	"golang.org/x/oauth2"
 )
 
 // validationRecorder keeps the checks a ValidateUserInfo callback receives.
@@ -272,5 +275,159 @@ func TestValidateUserInfoRefusedBySCIM(t *testing.T) {
 	_, err = scim.New(host, scim.Options{Store: store, VerifyBearerToken: func(context.Context, scim.BearerInput) (*scim.BearerVerification, error) { return nil, nil }})
 	if err == nil || !strings.Contains(err.Error(), "ValidateUserInfo") {
 		t.Fatal("the SCIM handler accepted a host with ValidateUserInfo", err)
+	}
+}
+
+// Sign-ins the store decides run the gate between a dry run and the real
+// one: social sign-in checks creation, a later sign-in and an email link
+// with the provider's fresh profile, and magic links and email codes check
+// only new users. Refusals leave nothing behind and render on each path.
+func TestValidateUserInfoDecidedSignIns(t *testing.T) {
+	d := newDecidedSignIns(t, false)
+	var checks []authn.UserInfoValidation
+	refuse := ""
+	d.validate = func(v authn.UserInfoValidation) error {
+		checks = append(checks, v)
+		if refuse != "" && v.Method == refuse {
+			return &authn.APIError{Code: refuse + "_blocked", Message: "Only company users are allowed"}
+		}
+		return nil
+	}
+	refuse = "oauth"
+	if got := d.social(); got != "/failed?error=oauth_blocked&error_description=Only+company+users+are+allowed" {
+		t.Fatal("a refused social sign-up did not return to the error callback", got)
+	}
+	if _, err := d.store.FindAccountUser(t.Context(), "social@example.com"); !errors.Is(err, authn.ErrNotFound) {
+		t.Fatal("a refused social sign-up stored a user", err)
+	}
+	check := checks[len(checks)-1]
+	if check.Action != authn.UserInfoCreateUser || check.Provider != "local" || check.Profile["hd"] != "example.com" || check.User.Name != "Social" || check.Request == nil {
+		t.Fatalf("the social check was %+v", check)
+	}
+	refuse = ""
+	if got := d.social(); got != "/done" {
+		t.Fatal("an admitted social sign-up failed", got)
+	}
+	// A returning provider user is checked again with the fresh profile.
+	refuse = "oauth"
+	if got := d.social(); !strings.HasPrefix(got, "/failed?error=oauth_blocked") {
+		t.Fatal("a refused returning social sign-in signed in", got)
+	}
+	if check := checks[len(checks)-1]; check.Action != authn.UserInfoSignIn || check.User.ID == "" || check.User.Email != "social@example.com" {
+		t.Fatalf("the returning check was %+v", check)
+	}
+	// A new identity reaching an existing user by email is a link.
+	refuse = ""
+	d.providerEmail = "magic@example.com"
+	if got := d.magicLink("magic@example.com"); got != d.base+"/done" {
+		t.Fatal("an admitted magic link failed", got)
+	}
+	if check := checks[len(checks)-1]; check.Action != authn.UserInfoCreateUser || check.Method != "magic-link" {
+		t.Fatalf("the magic link check was %+v", check)
+	}
+	// The magic link verified the address, so the provider may link to it.
+	before := len(checks)
+	if got := d.social(); got != "/done" {
+		t.Fatal("an email link failed", got)
+	}
+	if len(checks) != before+1 || checks[before].Action != authn.UserInfoLinkAccount {
+		t.Fatalf("the email link was not checked as a link: %+v", checks[before:])
+	}
+	// A returning magic-link user is not checked again.
+	before = len(checks)
+	if got := d.magicLink("magic@example.com"); got != d.base+"/done" || len(checks) != before {
+		t.Fatal("a returning magic link was checked", got, len(checks)-before)
+	}
+	refuse = "magic-link"
+	if got := d.magicLink("new@example.com"); got != d.base+"/failed?error=magic-link_blocked&error_description=Only+company+users+are+allowed" {
+		t.Fatal("a refused magic link signed in", got)
+	}
+	refuse = "email-otp"
+	if status, body := d.emailCode("code@example.com"); status != 403 || body["code"] != "email-otp_blocked" {
+		t.Fatal("a refused email code signed in", status, body)
+	}
+	if _, err := d.store.FindAccountUser(t.Context(), "code@example.com"); !errors.Is(err, authn.ErrNotFound) {
+		t.Fatal("a refused email code stored a user", err)
+	}
+}
+
+// ID-token sign-ups and explicit links run the gate; a refused link leaves
+// the identity unlinked.
+func TestValidateUserInfoIDTokenLinks(t *testing.T) {
+	store, err := sqlite.Open(":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	var checks []authn.UserInfoValidation
+	refuse := map[authn.UserInfoAction]bool{}
+	p := authn.OAuthProvider{
+		Config: oauth2.Config{ClientID: "mobile", Endpoint: oauth2.Endpoint{AuthURL: "https://issuer.example/authorize", TokenURL: "https://issuer.example/token"}},
+		Resolve: func(context.Context, *oauth2.Token, string) (authn.OAuthProfile, error) {
+			return authn.OAuthProfile{}, errors.New("unused")
+		},
+		VerifyIDToken: func(_ context.Context, raw, _ string) (authn.OAuthProfile, time.Time, error) {
+			claims := strings.Split(raw, "|")
+			return authn.OAuthProfile{Subject: claims[0], Email: claims[1], EmailVerified: true, Name: "Owner", Data: map[string]any{"sub": claims[0], "level": 7}}, time.Now().Add(time.Hour), nil
+		},
+	}
+	host := httptest.NewUnstartedServer(nil)
+	base := "http://" + host.Listener.Addr().String()
+	node, err := authn.New(authn.Options{Store: store, Secret: strings.Repeat("s", 40), BaseURL: base, EmailAndPassword: true, RateLimit: new(bool),
+		SocialProviders: map[string]authn.OAuthProvider{"mobile": p},
+		ValidateUserInfo: func(_ context.Context, v authn.UserInfoValidation) error {
+			checks = append(checks, v)
+			if refuse[v.Action] {
+				return &authn.APIError{Code: string(v.Action) + "_blocked", Message: "Not allowed"}
+			}
+			return nil
+		}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	host.Config.Handler = node
+	host.Start()
+	defer host.Close()
+	newClient := func() *client.Client {
+		c, err := client.New(base, &http.Client{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return c
+	}
+	token := func(raw string) client.SocialSignInRequest {
+		return client.SocialSignInRequest{Provider: "mobile", IDToken: &client.SocialIDToken{Token: raw, Nonce: "nonce"}}
+	}
+	code := func(err error) string {
+		var api *authn.APIError
+		if errors.As(err, &api) && api.Status == 403 {
+			return api.Code
+		}
+		return ""
+	}
+	refuse[authn.UserInfoCreateUser] = true
+	if _, err := newClient().SignInSocial(t.Context(), token("one|owner@example.test")); code(err) != "create-user_blocked" {
+		t.Fatal("a refused ID-token sign-up signed in", err)
+	}
+	// Profile numbers are json.Number on every path.
+	if check := checks[len(checks)-1]; check.Method != "oauth" || check.Provider != "mobile" || check.Profile["sub"] != "one" || check.Profile["level"] != json.Number("7") {
+		t.Fatalf("the ID-token check was %+v", check)
+	}
+	refuse[authn.UserInfoCreateUser] = false
+	owner := newClient()
+	created, err := owner.SignInSocial(t.Context(), token("one|owner@example.test"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	refuse[authn.UserInfoLinkAccount] = true
+	if _, err := owner.LinkSocial(t.Context(), token("two|owner@example.test")); code(err) != "link-account_blocked" {
+		t.Fatal("a refused link succeeded", err)
+	}
+	if check := checks[len(checks)-1]; check.Action != authn.UserInfoLinkAccount || check.User.ID != created.User.ID || check.Profile["sub"] != "two" {
+		t.Fatalf("the link check was %+v", check)
+	}
+	accounts, err := owner.ListAccounts(t.Context())
+	if err != nil || len(accounts) != 1 {
+		t.Fatal("a refused link left an account", accounts, err)
 	}
 }

@@ -290,6 +290,11 @@ func (s *Store) completeOAuth(ctx context.Context, provider, subject string, tok
 			return u, false, err
 		}
 	}
+	if !created {
+		if err := authn.LoginPlanFrom(ctx).PlanIdentity(u.ID, existing); err != nil {
+			return u, false, err
+		}
+	}
 	var expires, refreshExpires any
 	if !tokens.RefreshExpiresAt.IsZero() {
 		refreshExpires = s.date(tokens.RefreshExpiresAt)

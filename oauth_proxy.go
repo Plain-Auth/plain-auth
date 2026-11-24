@@ -139,12 +139,15 @@ type oauthProxyResult struct {
 	State, Provider, Preview, Production, Callback, BasePath string
 	IssuedAt                                                 time.Time
 	Profile                                                  OAuthProfile
-	GoogleHostedDomain                                       string         `json:",omitempty"`
-	Fields                                                   map[string]any `json:",omitempty"`
-	Tokens                                                   OAuthTokens
-	DisableSignUp                                            bool
-	RequireEmailVerification                                 bool   `json:",omitempty"`
-	Error                                                    string `json:",omitempty"`
+	GoogleHostedDomain                                       string `json:",omitempty"`
+	// ProfileData is the raw provider profile, carried for the preview's
+	// ValidateUserInfo.
+	ProfileData              map[string]any `json:",omitempty"`
+	Fields                   map[string]any `json:",omitempty"`
+	Tokens                   OAuthTokens
+	DisableSignUp            bool
+	RequireEmailVerification bool   `json:",omitempty"`
+	Error                    string `json:",omitempty"`
 }
 
 const proxyStatePurpose = "oauth-proxy-state"
@@ -228,6 +231,7 @@ func (a *Auth) exchangeProxyCallback(w http.ResponseWriter, r *http.Request, id 
 		result.Error = failure
 		if failure == "" {
 			result.Profile, result.Tokens, result.Fields = profile, tokens, profile.AdditionalFields
+			result.ProfileData = profileMap(profile.Data)
 			if claims, ok := profile.Data.(map[string]any); ok && id == "google" {
 				result.GoogleHostedDomain, _ = claims["hd"].(string)
 			}

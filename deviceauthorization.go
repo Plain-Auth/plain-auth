@@ -274,7 +274,7 @@ func (o DeviceAuthorizationOptions) token(c EndpointContext) (any, error) {
 	}
 	ss, _ := c.Auth.newSession("", RequestMeta{IPAddress: c.Auth.clientIP(c.Request), UserAgent: c.Request.UserAgent()})
 	var scope, outcome string
-	err = c.Auth.planSignIn(ctx, func(ctx context.Context) (err error) {
+	err = c.Auth.planSignIn(ctx, nil, func(ctx context.Context) (err error) {
 		scope, outcome, err = c.Store().(DeviceAuthorizationStore).PollDeviceGrant(ctx, fields["device_code"], fields["client_id"], ss)
 		return err
 	})

@@ -215,13 +215,13 @@
       - [x] Run hooks around session refreshes, field updates, sign-out, revocation, expired-session cleanup, password changes and multi-session replacement ([test](../../conformance/goapi/database_session_hooks_test.go#L20))
       - [x] Run hooks around profile updates, email changes and email verification ([test](../../conformance/goapi/database_user_hooks_test.go#L19))
       - [x] Run the session and user delete hooks when a user deletes their account ([test](../../conformance/goapi/database_user_hooks_test.go#L160))
-      - [x] Run the create after hooks for social sign-in, magic links, email codes and phone verification, once per new user ([test](../../conformance/goapi/database_decided_hooks_test.go#L253))
+      - [x] Run the create after hooks for social sign-in, magic links, email codes and phone verification, once per new user ([test](../../conformance/goapi/database_decided_hooks_test.go#L264))
       - [x] Run account hooks around the credential a sign-up stores, password changes, first passwords, unlinking and account deletion ([test](../../conformance/goapi/database_user_hooks_test.go#L246))
       - [x] Run the session create hooks for two-factor sign-in, verification and enrollment, device grants and the sign-in after an email link on SQLite, PostgreSQL and MySQL ([test](../../adapters/sqlstore/session_hooks_planned_test.go#L20))
       - [x] Run the credential account hooks and the revoked sessions' delete hooks around a password reset link ([test](../../conformance/goapi/database_user_hooks_test.go#L373))
       - [ ] 1. Before Hook
         - [x] Edit the stored fields of a new user or session, or cancel its creation, before anything is written ([test](../../conformance/goapi/database_hooks_test.go#L122))
-        - [x] Run the create before hooks for social sign-in, magic links, email codes and phone verification outside the store transaction, for new users only ([test](../../conformance/goapi/database_decided_hooks_test.go#L286))
+        - [x] Run the create before hooks for social sign-in, magic links, email codes and phone verification outside the store transaction, for new users only ([test](../../conformance/goapi/database_decided_hooks_test.go#L297))
         - [x] Plan a store-decided sign-in on SQLite, PostgreSQL and MySQL: the dry run stores nothing and a skipped link stays usable ([test](../../adapters/sqlstore/login_plan_test.go#L16))
         - [ ] Purpose
           - [x] Run before a user or session is created ([test](../../conformance/goapi/database_hooks_test.go#L122))
@@ -233,14 +233,14 @@
           - [x] Cancel a creation with ErrSkipWrite, edit the stored fields, and reject edits to other fields ([test](../../conformance/goapi/database_hooks_test.go#L165))
           - [x] Cancel a session update or delete with ErrSkipWrite, let one declined row keep every session of a revocation, and reject edits to fields an update does not store ([test](../../conformance/goapi/database_session_hooks_test.go#L193))
           - [x] Decline a profile update, email change or verification with ErrSkipWrite, and reject edits to fields the update does not store ([test](../../conformance/goapi/database_user_hooks_test.go#L100))
-          - [x] Skip a store-decided sign-in with its usual error, store nothing, and sign in a user stored while the hooks ran ([test](../../conformance/goapi/database_decided_hooks_test.go#L370))
+          - [x] Skip a store-decided sign-in with its usual error, store nothing, and sign in a user stored while the hooks ran ([test](../../conformance/goapi/database_decided_hooks_test.go#L381))
       - [ ] 2. After Hook
         - [x] Observe the stored user and session after creation, and remove an undelivered session when an after hook fails ([test](../../conformance/goapi/database_hooks_test.go#L213))
         - [ ] Purpose
           - [x] Run after a user or session is created, with the stored row visible to the store ([test](../../adapters/sqlstore/database_hooks_test.go#L96))
           - [x] Run after a session is updated or deleted, with the change visible to the store ([test](../../conformance/goapi/database_session_hooks_test.go#L76))
           - [x] Run after a user is updated, with the stored row visible to the store ([test](../../conformance/goapi/database_user_hooks_test.go#L112))
-          - [x] Run after the store creates a user or session during a social, magic link, email code or phone sign-in, with the owner the store chose ([test](../../conformance/goapi/database_decided_hooks_test.go#L90))
+          - [x] Run after the store creates a user or session during a social, magic link, email code or phone sign-in, with the owner the store chose ([test](../../conformance/goapi/database_decided_hooks_test.go#L92))
           - [x] Run after an account is created or updated, with its stored ID ([test](../../conformance/goapi/database_user_hooks_test.go#L345))
         - [ ] Behavior
           - [x] Fire one after hook for concurrent sign-ups of one email and none for a sign-up that stores nothing ([test](../../adapters/sqlstore/database_hooks_test.go#L111))
@@ -365,6 +365,8 @@
     - [ ] Sign In
     - [ ] Link account
     - [ ] Validate OAuth User Info
+      - [x] A browser social sign-up, a returning sign-in and an email link are checked with the provider ID and raw profile, and a refusal returns to the error callback with error and error_description ([test](../../conformance/goapi/user_validation_test.go#L285))
+      - [x] ID-token sign-ups and links are checked with the provider ID and raw claims, and a refusal answers 403 with the app's code ([test](../../conformance/goapi/user_validation_test.go#L356))
     - [ ] Get Access Token
     - [ ] Refresh Access Token
     - [ ] Get Account Info Provided by the provider
@@ -696,10 +698,12 @@
     - [ ] Authentication Requirements
     - [ ] Callbacks
       - [ ] validateUserInfo
-        - [x] ValidateUserInfo admits or refuses email sign-ups before the user create hooks with a 403 carrying the app's code, sees a body-free request, and keeps protected sign-ups private ([test](../../conformance/goapi/user_validation_test.go#L58))
-        - [x] Every refusal answers 403; any other error, an APIError without a code or a panic fails closed as validation_failed, and a check without a source is refused ([test](../../conformance/goapi/user_validation_test.go#L117))
-        - [x] Anonymous sign-in, phone sign-up and administrator bootstrap users go through the gate ([test](../../conformance/goapi/user_validation_test.go#L158))
+        - [x] ValidateUserInfo admits or refuses email sign-ups before the user create hooks with a 403 carrying the app's code, sees a body-free request, and keeps protected sign-ups private ([test](../../conformance/goapi/user_validation_test.go#L61))
+        - [x] Every refusal answers 403; any other error, an APIError without a code or a panic fails closed as validation_failed, and a check without a source is refused ([test](../../conformance/goapi/user_validation_test.go#L120))
+        - [x] Anonymous sign-in, phone sign-up and administrator bootstrap users go through the gate ([test](../../conformance/goapi/user_validation_test.go#L161))
         - [x] On both runtimes a refused email sign-up answers the same 403 with the policy's code and message, and no user is stored ([test](../../conformance/user-validation.mjs#L4))
+        - [x] Social, magic-link and email-code sign-ins run the gate between a dry run and the real one, check creation, provider sign-ins and email links with the fresh profile, and render refusals on each path ([test](../../conformance/goapi/user_validation_test.go#L285))
+        - [x] ID-token sign-ups and explicit links run the gate, and a refused link leaves the identity unlinked ([test](../../conformance/goapi/user_validation_test.go#L356))
       - [x] beforeDelete ([test](../../conformance/goapi/mail_request_test.go#L106))
         - [x] Run a callback with the user and request before deletion, and cancel it with an error ([test](../../conformance/goapi/mail_request_test.go#L106))
       - [x] afterDelete ([test](../../conformance/goapi/mail_request_test.go#L71))

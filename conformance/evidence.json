@@ -1496,6 +1496,11 @@
       "label": "Check the exact local mailbox before issuing a session on direct ID-token and One Tap sign-in across all SQL engines",
       "test": "adapters/sqlstore/oauth_verified_email_test.go",
       "marker": "func TestOAuthVerifiedEmailBeforeSession("
+    },
+    {
+      "test": "conformance/goapi/user_validation_test.go",
+      "marker": "func TestValidateUserInfoIDTokenLinks(t *testing.T) {",
+      "label": "ValidateUserInfo refuses an ID-token sign-up with a 403 carrying the app's code"
     }
   ],
   "core/callbackOAuth": [
@@ -1513,6 +1518,11 @@
       "label": "Withhold sessions for unverified social accounts, honor mail delivery settings and accept confirmation by either server",
       "test": "conformance/social-user-fields.mjs",
       "marker": "export async function compareProviderEmailVerification("
+    },
+    {
+      "test": "conformance/goapi/user_validation_test.go",
+      "marker": "func TestValidateUserInfoDecidedSignIns(t *testing.T) {",
+      "label": "ValidateUserInfo refuses a callback's sign-up or returning sign-in with error and error_description on the error callback"
     }
   ],
   "provider/google": [
@@ -1539,6 +1549,11 @@
       "label": "Apply extra scopes, login hints and consent parameters per request, and reject reserved OAuth fields",
       "test": "conformance/social-signup.mjs",
       "marker": "export async function authorizationParameters("
+    },
+    {
+      "test": "conformance/goapi/user_validation_test.go",
+      "marker": "func TestValidateUserInfoIDTokenLinks(t *testing.T) {",
+      "label": "ValidateUserInfo refuses an explicit link with a 403 and leaves the identity unlinked"
     }
   ],
   "cli/init": [
@@ -1976,6 +1991,11 @@
       "label": "Preserve the winning profile and its saved fields across concurrent links and nodes with different registration defaults",
       "test": "adapters/sqlstore/magiclink_fields_test.go",
       "marker": "concurrent links did not resolve the same profile"
+    },
+    {
+      "test": "conformance/goapi/user_validation_test.go",
+      "marker": "func TestValidateUserInfoDecidedSignIns(t *testing.T) {",
+      "label": "ValidateUserInfo checks only new magic-link users and refuses them back to the error callback"
     }
   ],
   "plugin/one-time-token/GET /one-time-token/generate": [
@@ -3281,6 +3301,11 @@
       "label": "Roll back a new profile when required session storage fails, then redeem the original proof once after correcting the configuration",
       "test": "adapters/sqlstore/emailotp_user_fields_test.go",
       "marker": "func TestEmailOTPProfileSignupRollsBackSessionFailure("
+    },
+    {
+      "test": "conformance/goapi/user_validation_test.go",
+      "marker": "func TestValidateUserInfoDecidedSignIns(t *testing.T) {",
+      "label": "ValidateUserInfo refuses a new email-code user with a 403 and stores nothing"
     }
   ],
   "plugin/email-otp/POST /email-otp/request-password-reset": [
@@ -20282,6 +20307,28 @@
       "label": "On both runtimes a refused email sign-up answers the same 403 with the policy's code and message, and no user is stored",
       "test": "conformance/user-validation.mjs",
       "marker": "export async function compareSignUpValidation(t, {reference, goFixture, instrument}) {"
+    },
+    {
+      "test": "conformance/goapi/user_validation_test.go",
+      "marker": "func TestValidateUserInfoDecidedSignIns(t *testing.T) {",
+      "label": "Social, magic-link and email-code sign-ins run the gate between a dry run and the real one, check creation, provider sign-ins and email links with the fresh profile, and render refusals on each path"
+    },
+    {
+      "test": "conformance/goapi/user_validation_test.go",
+      "marker": "func TestValidateUserInfoIDTokenLinks(t *testing.T) {",
+      "label": "ID-token sign-ups and explicit links run the gate, and a refused link leaves the identity unlinked"
+    }
+  ],
+  "docs/content/docs/concepts/oauth.mdx#L78": [
+    {
+      "test": "conformance/goapi/user_validation_test.go",
+      "marker": "func TestValidateUserInfoDecidedSignIns(t *testing.T) {",
+      "label": "A browser social sign-up, a returning sign-in and an email link are checked with the provider ID and raw profile, and a refusal returns to the error callback with error and error_description"
+    },
+    {
+      "test": "conformance/goapi/user_validation_test.go",
+      "marker": "func TestValidateUserInfoIDTokenLinks(t *testing.T) {",
+      "label": "ID-token sign-ups and links are checked with the provider ID and raw claims, and a refusal answers 403 with the app's code"
     }
   ]
 }

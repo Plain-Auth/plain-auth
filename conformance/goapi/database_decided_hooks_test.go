@@ -33,6 +33,8 @@ type decidedSignIns struct {
 	options           authn.Options
 	providerEmail     string
 	errorCallbackSeen string
+	// validate, when set, is the ValidateUserInfo policy.
+	validate func(authn.UserInfoValidation) error
 }
 
 func newDecidedSignIns(t *testing.T, before bool) *decidedSignIns {
@@ -118,12 +120,21 @@ func newDecidedSignIns(t *testing.T, before bool) *decidedSignIns {
 		BaseURL: d.base, Store: store, Secret: strings.Repeat("s", 32), EmailAndPassword: true, RateLimit: &off,
 		Plugins: []authn.Plugin{magicLink, emailOTP, phone},
 		SocialProviders: map[string]authn.OAuthProvider{"local": {
-			Config: oauth2.Config{ClientID: "local-client", ClientSecret: "secret", Endpoint: oauth2.Endpoint{AuthURL: provider.URL + "/authorize", TokenURL: provider.URL + "/token"}},
+			AllowVerifiedEmailLink: true,
+			Config:                 oauth2.Config{ClientID: "local-client", ClientSecret: "secret", Endpoint: oauth2.Endpoint{AuthURL: provider.URL + "/authorize", TokenURL: provider.URL + "/token"}},
 			Resolve: func(context.Context, *oauth2.Token, string) (authn.OAuthProfile, error) {
-				return authn.OAuthProfile{Subject: "subject-" + d.providerEmail, Email: d.providerEmail, EmailVerified: true, Name: "Social"}, nil
+				return authn.OAuthProfile{Subject: "subject-" + d.providerEmail, Email: d.providerEmail, EmailVerified: true, Name: "Social",
+					Data: map[string]any{"email": d.providerEmail, "hd": "example.com"}}, nil
 			},
 		}},
 		DatabaseHooks: hooks,
+		ValidateUserInfo: func(_ context.Context, v authn.UserInfoValidation) error {
+			if d.validate == nil {
+				return nil
+			}
+			d.record("validate:" + string(v.Action) + ":" + v.Method + ":" + v.User.Email)
+			return d.validate(v)
+		},
 	}
 	auth, err := authn.New(d.options)
 	if err != nil {

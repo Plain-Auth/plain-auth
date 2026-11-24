@@ -178,6 +178,11 @@ func (c EndpointContext) CompleteEnterpriseFlow(f OAuthFlow, p OAuthProfile, tok
 	if !validSocialProfile(p) || complete == nil {
 		return nil, validationError("Invalid enterprise identity")
 	}
+	if c.Auth.opts.ValidateUserInfo != nil {
+		// Enterprise sign-ins do not run ValidateUserInfo yet. New refuses
+		// the SSO plugin, and another plugin's enterprise flow fails closed.
+		return nil, &userInfoRejection{&APIError{403, "validation_failed", "User validation failed"}}
+	}
 	login, _ := c.Request.Context().Value(enterpriseIssuerLoginKey{c.Auth}).(enterpriseIssuerLogin)
 	if f.IssuerLoginQuery != "" && (login.query != f.IssuerLoginQuery || login.resume == nil) {
 		return nil, invalidEnterpriseState()

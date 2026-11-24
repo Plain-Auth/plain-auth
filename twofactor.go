@@ -105,7 +105,7 @@ func NewTwoFactor(opts TwoFactorOptions) Plugin {
 func (a *Auth) factorLogin(ctx context.Context, user User, expectedHash string, session StoredSession, signedDevice string) (AuthResult, error) {
 	result := AuthResult{}
 	subject := FactorSubject{UserID: user.ID, Now: a.now().UTC(), TrustedGrant: a.readTrustedGrant(signedDevice, user.ID)}
-	err := a.planSignIn(ctx, func(ctx context.Context) error {
+	err := a.planSignIn(ctx, nil, func(ctx context.Context) error {
 		return a.factorStore.WithTwoFactor(ctx, subject, a.factorLoginDecision(&result, subject, session, signedDevice, expectedHash))
 	})
 	if errors.Is(err, errPlannedSessionSkipped) {
@@ -247,7 +247,7 @@ func (a *Auth) factorEndpoint(route string, c EndpointContext) (any, error) {
 		err = write(ctx)
 	} else {
 		// Proofs and factor changes may issue a session, which runs the session create hooks.
-		err = a.planSignIn(ctx, write)
+		err = a.planSignIn(ctx, nil, write)
 	}
 	if errors.Is(err, ErrNotFound) {
 		if subject.Challenge != "" {

@@ -26,7 +26,7 @@ Each row tracks the behavior exposed by a published entry point. The Go implemen
     - [x] Keep private duplicate observers and password recovery independent of cache version callbacks until a real session is issued ([test](../../client/session_cache_version_test.go#L88))
     - [x] Round-trip configured profile values, private inputs, required fields and server-owned signup defaults on shared SQLite ([test](../../conformance/user-fields.mjs#L32))
     - [x] Keep another account’s profile and hidden inputs out of protected duplicate signup and verification output ([test](../../adapters/sqlstore/user_fields_test.go#L264))
-    - [x] ValidateUserInfo refuses an email sign-up with a 403, or with the private duplicate answer in protected mode ([test](../../conformance/goapi/user_validation_test.go#L58))
+    - [x] ValidateUserInfo refuses an email sign-up with a 403, or with the private duplicate answer in protected mode ([test](../../conformance/goapi/user_validation_test.go#L61))
     - [x] Return the signed-in user and session with the default seven-day lifetime ([test](../../conformance/core.test.mjs#L195))
     - [x] Support the sliding session window, deferred writes and expiration ([test](../../session_refresh_test.go#L46))
     - [x] Expose the application credential type and keep the presented key out of browser session lookup ([test](../../adapters/sqlstore/apikey_session_test.go#L215))

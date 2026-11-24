@@ -328,7 +328,7 @@ func (a *Auth) finishBrowserOAuth(w http.ResponseWriter, r *http.Request, id str
 		accountFields, fieldErr = a.mapAccountFields(ctx, p, grant)
 		if fieldErr != nil {
 			if flow.ErrorCallbackURL == "" {
-				flow.ErrorCallbackURL = a.opts.BaseURL + a.opts.BasePath + "/error"
+				flow.ErrorCallbackURL = a.ErrorPageURL()
 			}
 			return failWithDescription(fieldErr.Code, fieldErr.Message)
 		}
@@ -338,7 +338,9 @@ func (a *Auth) finishBrowserOAuth(w http.ResponseWriter, r *http.Request, id str
 		}
 		profile, tokens = returned.Profile, returned.Tokens
 		profile.AdditionalFields = returned.Fields
-		if returned.GoogleHostedDomain != "" {
+		if returned.ProfileData != nil {
+			profile.Data = returned.ProfileData
+		} else if returned.GoogleHostedDomain != "" {
 			profile.Data = map[string]any{"hd": returned.GoogleHostedDomain}
 		}
 		if !validSocialProfile(profile) {
@@ -348,29 +350,38 @@ func (a *Auth) finishBrowserOAuth(w http.ResponseWriter, r *http.Request, id str
 		p.RequireEmailVerification = p.RequireEmailVerification || returned.RequireEmailVerification
 	}
 	result, created, err := a.completeProfile(ctx, r, id, flow.CallbackURL, profile, tokens, OAuthLoginOptions{AccountFields: accountFields, DisableSignUp: disableSignUp, RequireEmailVerification: p.RequireEmailVerification, AllowVerifiedEmailLink: p.AllowVerifiedEmailLink, LinkUserID: flow.LinkUserID, LinkSessionToken: a.cookieToken(r.Header)})
+	// A refusal by ValidateUserInfo comes first, so no other mapping can
+	// rewrite the application's code.
+	var refused *userInfoRejection
+	if errors.As(err, &refused) {
+		if flow.ErrorCallbackURL == "" {
+			flow.ErrorCallbackURL = a.ErrorPageURL()
+		}
+		return failWithDescription(refused.Code, refused.Message)
+	}
 	var apiError *APIError
 	if errors.As(err, &apiError) && apiError.Code == "EMAIL_NOT_VERIFIED" {
 		if flow.ErrorCallbackURL == "" {
-			flow.ErrorCallbackURL = a.opts.BaseURL + a.opts.BasePath + "/error"
+			flow.ErrorCallbackURL = a.ErrorPageURL()
 		}
 		return fail("email_not_verified")
 	}
 	if errors.As(err, &apiError) && apiError.Code == "SIGN_UP_DISABLED" {
 		if flow.ErrorCallbackURL == "" {
-			flow.ErrorCallbackURL = a.opts.BaseURL + a.opts.BasePath + "/error"
+			flow.ErrorCallbackURL = a.ErrorPageURL()
 		}
 		return fail("signup_disabled")
 	}
 	var fieldError oauthProfileFieldError
 	if errors.As(err, &apiError) && (errors.As(err, &fieldError) || apiError.Code == "MISSING_FIELD" || apiError.Code == "VALIDATION_ERROR") {
 		if flow.ErrorCallbackURL == "" {
-			flow.ErrorCallbackURL = a.opts.BaseURL + a.opts.BasePath + "/error"
+			flow.ErrorCallbackURL = a.ErrorPageURL()
 		}
 		return failWithDescription(apiError.Code, apiError.Message)
 	}
 	linkFailed := errors.Is(err, ErrOAuthLinkingDisabled) || errors.Is(err, ErrOAuthLinkNotAllowed) || (flow.LinkUserID != "" && errors.Is(err, ErrNotFound))
 	if (linkFailed || errors.Is(err, ErrOAuthLinkEmailMismatch) || errors.Is(err, ErrOAuthAccountAlreadyLinked)) && flow.ErrorCallbackURL == "" {
-		flow.ErrorCallbackURL = a.opts.BaseURL + a.opts.BasePath + "/error"
+		flow.ErrorCallbackURL = a.ErrorPageURL()
 	}
 	if linkFailed {
 		return fail("unable_to_link_account")
@@ -549,11 +560,6 @@ func (a *Auth) completeProfile(ctx context.Context, r *http.Request, id, callbac
 }
 
 func (a *Auth) completeProfileWith(ctx context.Context, r *http.Request, id string, p OAuthProfile, tokens OAuthTokens, options OAuthLoginOptions, complete OAuthCompletion) (AuthResult, bool, error) {
-	if a.opts.ValidateUserInfo != nil {
-		// Provider sign-ins do not run ValidateUserInfo yet. New refuses the
-		// built-in ones, and a plugin's CompleteEnterpriseFlow fails closed.
-		return AuthResult{}, false, &userInfoRejection{&APIError{403, "validation_failed", "User validation failed"}}
-	}
 	options.DisableAccountUpdateOnSignIn = a.opts.DisableAccountUpdateOnSignIn && options.LinkUserID == ""
 	if a.opts.DisableImplicitAccountLinking || a.opts.DisableAccountLinking {
 		options.DisableImplicitLinking = true
@@ -595,11 +601,27 @@ func (a *Auth) completeProfileWith(ctx context.Context, r *http.Request, id stri
 		user, created, err = complete(ctx, id, p.Subject, tokens, candidate, session, options)
 		return err
 	}
+	gate := &signInGate{method: "oauth", provider: id, profile: profileMap(p.Data), candidate: candidate, fields: profileMap(a.writableProfileFields(p))}
 	var err error
 	if options.LinkUserID != "" {
-		err = write(ctx)
+		// The gate runs only for a live linking session, as in the
+		// reference. The store checks the session again under lock.
+		if a.opts.ValidateUserInfo != nil {
+			if stored, owner, serr := a.opts.Store.Session(ctx, options.LinkSessionToken); serr != nil || owner.ID != options.LinkUserID || !stored.ExpiresAt.After(a.now()) {
+				if serr != nil && !errors.Is(serr, ErrNotFound) {
+					return AuthResult{}, false, serr
+				}
+				return AuthResult{}, false, ErrNotFound
+			}
+		}
+		linked := candidate
+		linked.ID, linked.CreatedAt, linked.UpdatedAt = options.LinkUserID, time.Time{}, time.Time{}
+		check := UserInfoValidation{Action: UserInfoLinkAccount, Method: gate.method, Provider: id, Profile: gate.profile, User: UserRecord{User: linked, Fields: gate.fields}, Request: r}
+		if err = a.ValidateUserInfo(ctx, check); err == nil {
+			err = write(ctx)
+		}
 	} else {
-		err = a.planSignIn(ctx, write)
+		err = a.planSignIn(ctx, gate, write)
 	}
 	if created && errors.Is(err, ErrOAuthEmailUnverified) {
 		// The user is stored without a session until the address is verified.
@@ -673,6 +695,10 @@ func (a *Auth) directOAuth(w http.ResponseWriter, r *http.Request, id string, p 
 		return nil, fieldErr
 	}
 	account, _, err := a.completeProfile(ctx, r, id, callback, profile, tokens, OAuthLoginOptions{AccountFields: fields, DisableSignUp: p.DisableImplicitSignUp && !requestSignUp, AllowVerifiedEmailLink: p.AllowVerifiedEmailLink, LinkUserID: linkUserID, LinkSessionToken: a.cookieToken(r.Header), IDTokenValidUntil: expires})
+	var refused *userInfoRejection
+	if errors.As(err, &refused) {
+		return nil, refused.APIError
+	}
 	var signupError *APIError
 	if errors.As(err, &signupError) && signupError.Code == "SIGN_UP_DISABLED" {
 		return nil, &APIError{401, "OAUTH_LINK_ERROR", "signup disabled"}

@@ -1,8 +1,10 @@
 package plainauth
 
 import (
+	"bytes"
 	"cmp"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"maps"
@@ -35,7 +37,8 @@ type UserInfoValidation struct {
 	// Provider is the social, generic OAuth or SSO provider ID for the
 	// "oauth", "sso-oidc" and "sso-saml" methods.
 	Provider string
-	// Profile is the provider's raw profile, when there is one.
+	// Profile is the provider's raw profile, when there is one, with JSON
+	// numbers as json.Number.
 	Profile map[string]any
 	// User is the user about to be created or, for a link or a provider
 	// sign-in, the provider's fresh profile with the existing user's ID.
@@ -98,6 +101,26 @@ func (a *Auth) ValidateUserInfo(ctx context.Context, v UserInfoValidation) error
 	return &userInfoRejection{&APIError{403, "validation_failed", "User validation failed"}}
 }
 
+// profileMap returns a deep copy of a provider's raw profile as a JSON
+// object, with numbers as json.Number so a direct and a proxied sign-in give
+// the same values, or nil when it is not a JSON object.
+func profileMap(data any) map[string]any {
+	if data == nil {
+		return nil
+	}
+	raw, err := json.Marshal(data)
+	if err != nil {
+		return nil
+	}
+	d := json.NewDecoder(bytes.NewReader(raw))
+	d.UseNumber()
+	var m map[string]any
+	if d.Decode(&m) != nil {
+		return nil
+	}
+	return m
+}
+
 // HasUserInfoValidation reports whether Options.ValidateUserInfo is set, so a
 // wrapping handler that creates users can refuse a host it does not gate.
 func (a *Auth) HasUserInfoValidation() bool { return a.opts.ValidateUserInfo != nil }
@@ -111,12 +134,25 @@ func (a *Auth) checkUserInfoValidation() error {
 	if _, ok := a.opts.Store.(signUpUserFinder); !ok && a.opts.EmailAndPassword && !a.opts.DisableSignUp {
 		return errors.New("auth: ValidateUserInfo for email sign-up requires a store implementing FindAccountUser")
 	}
-	var bypass []string
-	if len(a.opts.SocialProviders) > 0 {
-		bypass = append(bypass, "social sign-in")
+	// These sign-ins decide inside the store's transaction whether to create
+	// or reach a user, so the gate runs between a dry run and the real one.
+	if _, plans := a.opts.Store.(LoginPlanner); !plans {
+		var decided []string
+		if len(a.opts.SocialProviders) > 0 {
+			decided = append(decided, "social sign-in")
+		}
+		for _, id := range []string{"magic-link", "email-otp", "one-tap"} {
+			if a.HasPlugin(id) {
+				decided = append(decided, id)
+			}
+		}
+		if len(decided) > 0 {
+			return fmt.Errorf("auth: ValidateUserInfo for %s needs a store implementing LoginPlanner", strings.Join(decided, ", "))
+		}
 	}
+	var bypass []string
 	// The SCIM handler refuses the option itself through HasUserInfoValidation.
-	for _, id := range []string{"magic-link", "email-otp", "one-tap", "sso", "admin", "passkey", "siwe"} {
+	for _, id := range []string{"sso", "admin", "passkey", "siwe"} {
 		if a.HasPlugin(id) {
 			bypass = append(bypass, id)
 		}

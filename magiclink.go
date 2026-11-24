@@ -208,7 +208,11 @@ func (o MagicLinkOptions) verify(c EndpointContext) (any, error) {
 	var user User
 	var created bool
 	newUserID := randomID()
-	err = a.planSignIn(r.Context(), func(ctx context.Context) (err error) {
+	var gate *signInGate
+	if !o.DisableSignUp {
+		gate = &signInGate{method: "magic-link"}
+	}
+	err = a.planSignIn(r.Context(), gate, func(ctx context.Context) (err error) {
 		if !o.DisableSignUp && len(a.opts.UserAdditionalFields) > 0 {
 			store := a.opts.Store.(MagicLinkUserFieldStore)
 			user, created, err = store.CompleteMagicLinkWithUserFields(ctx, key, newUserID, session, a.registrationUserFields())
