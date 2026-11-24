@@ -211,9 +211,13 @@ func (a *Auth) handleAccountRequest(route string, w http.ResponseWriter, r *http
 			return nil, err
 		}
 		token := r.URL.Path[strings.LastIndexByte(r.URL.Path, '/')+1:]
-		base, _ := url.Parse(a.opts.BaseURL)
+		origin, err := a.origin(ctx)
+		if err != nil {
+			return nil, err
+		}
+		base, _ := url.Parse(origin)
 		if callback == "" {
-			return redirectQuery(a.opts.BaseURL+strings.TrimRight(a.opts.BasePath, "/")+"/error", "error", "INVALID_TOKEN"), nil
+			return redirectQuery(origin+strings.TrimRight(a.opts.BasePath, "/")+"/error", "error", "INVALID_TOKEN"), nil
 		}
 		cb, _ := url.Parse(callback)
 		dest := callback

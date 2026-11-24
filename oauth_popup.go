@@ -90,7 +90,7 @@ func startOAuthPopup(c EndpointContext, messageType string) (any, error) {
 		return nil, validationError("A provider is required")
 	}
 	id := q.Get("provider")
-	p, err := a.providerConfig(id)
+	p, err := a.providerConfig(r.Context(), id)
 	if err != nil {
 		return failure("provider_not_found", "Unknown provider: "+id)
 	}
@@ -107,7 +107,11 @@ func startOAuthPopup(c EndpointContext, messageType string) (any, error) {
 	}
 	flow := OAuthFlow{Provider: id, RequestSignUp: q.Get("requestSignUp") == "true"}
 	if body["callbackURL"] == nil {
-		body["callbackURL"] = a.opts.BaseURL + strings.TrimRight(a.opts.BasePath, "/")
+		base, err := a.publicURL(r.Context())
+		if err != nil {
+			return nil, err
+		}
+		body["callbackURL"] = base
 	}
 	if raw := q.Get("additionalData"); raw != "" {
 		if len(raw) > 8192 {

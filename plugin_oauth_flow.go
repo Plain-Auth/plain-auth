@@ -125,9 +125,15 @@ func invalidEnterpriseState() *APIError {
 func (c *EndpointContext) consumeEnterpriseFlow(state string, form bool) (OAuthFlow, error) {
 	a := c.Auth
 	bad := invalidEnterpriseState()
-	base, _ := url.Parse(a.opts.BaseURL)
+	// The flow returns to the host it started on: BaseURL, or with
+	// DynamicBaseURL the host this request resolved to.
+	own, err := a.origin(c.Request.Context())
+	if err != nil {
+		return OAuthFlow{}, err
+	}
+	base, _ := url.Parse(own)
 	cookie, e := c.Request.Cookie(a.enterpriseStateCookie(form, "", 0).Name)
-	if httporigin.Canonical(&url.URL{Scheme: base.Scheme, Host: c.Request.Host}) != httporigin.Canonical(base) || e != nil || state == "" || len(state) > 128 {
+	if (a.dynamic == nil && httporigin.Canonical(&url.URL{Scheme: base.Scheme, Host: c.Request.Host}) != httporigin.Canonical(base)) || e != nil || state == "" || len(state) > 128 {
 		return OAuthFlow{}, bad
 	}
 	namespace := "sso:" + c.Request.URL.EscapedPath()
@@ -203,7 +209,7 @@ func (c EndpointContext) CompleteEnterpriseFlow(f OAuthFlow, method string, p OA
 		if target != "" && !c.Auth.trustedURL(c.Request.Context(), target, true) {
 			// The provider's callback request no longer trusts the stored
 			// target, as with a social sign-in.
-			target = c.Auth.opts.BaseURL
+			target, _ = c.Auth.origin(c.Request.Context())
 		}
 		next, err = c.Redirect(target)
 		if err != nil {

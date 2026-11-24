@@ -143,7 +143,11 @@ func (opts Options) runBrowserAuthorization(c auth.EndpointContext, q url.Values
 		if decision != nil && !decision.accept {
 			code, description = "access_denied", "User denied access"
 		}
-		return browserRedirect(c, c.Auth.ErrorPageURL(), url.Values{"error": {code}, "error_description": {description}}, false), nil
+		page, err := c.ErrorPageURL()
+		if err != nil {
+			return nil, err
+		}
+		return browserRedirect(c, page, url.Values{"error": {code}, "error_description": {description}}, false), nil
 	}
 	selection := opts.Authorization.SelectAccount
 	if selection.Page == "" && slices.Contains(strings.Fields(q.Get("prompt")), "select_account") {

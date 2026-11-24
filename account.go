@@ -338,10 +338,13 @@ func (a *Auth) RequestPasswordReset(ctx context.Context, email, redirectTo strin
 	}
 	now := a.now().UTC()
 	t := PasswordResetToken{ID: randomID(), Token: randomID(), UserID: user.ID, Email: user.Email, CreatedAt: now, ExpiresAt: now.Add(a.opts.PasswordResetTokenTTL)}
+	base, err := a.publicURL(ctx)
+	if err != nil {
+		return err
+	}
 	if err := s.SavePasswordResetToken(ctx, t); err != nil {
 		return err
 	}
-	base := a.opts.BaseURL + strings.TrimRight(a.opts.BasePath, "/")
 	link := base + "/reset-password/" + t.Token + "?" + url.Values{"callbackURL": {redirectTo}}.Encode()
 	return a.opts.SendResetPassword(ctx, MailLink{User: user, URL: link, Token: t.Token, Request: a.requestCopy(ctx)})
 }

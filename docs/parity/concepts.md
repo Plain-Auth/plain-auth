@@ -742,14 +742,21 @@
 ## Dynamic Base URL
 
 - [ ] Dynamic Base URL
-  - [ ] Basic Setup
+  - [x] Basic Setup ([test](../../conformance/goapi/dynamic_base_url_test.go#L73))
+    - [x] DynamicBaseURL with an AllowedHosts allowlist replaces a fixed BaseURL ([test](../../conformance/goapi/dynamic_base_url_test.go#L73))
   - [ ] Common Deployment Patterns
-    - [ ] Vercel Deployment
-    - [ ] Development + Production
-    - [ ] Multiple Production Domains
-  - [ ] Choosing a Fallback
+    - [x] Vercel Deployment ([test](../../conformance/goapi/dynamic_base_url_test.go#L121))
+      - [x] Preview deployments under one wildcard host such as *.preview.example get links on their own host ([test](../../conformance/goapi/dynamic_base_url_test.go#L121))
+    - [x] Development + Production ([test](../../conformance/goapi/dynamic_base_url_test.go#L121))
+      - [x] Development and production hosts together: localhost:3000 gets http links and a public host https links ([test](../../conformance/goapi/dynamic_base_url_test.go#L121))
+    - [x] Multiple Production Domains ([test](../../conformance/goapi/dynamic_base_url_test.go#L309))
+      - [x] Several production domains: a social sign-in uses the redirect URI of its own host and cannot return to another allowed host ([test](../../conformance/goapi/dynamic_base_url_test.go#L309))
+  - [x] Choosing a Fallback ([test](../../conformance/goapi/dynamic_base_url_test.go#L136))
+    - [x] Without a fallback, a request for an unlisted host fails with a generic 500 that does not reveal the allowlist ([test](../../conformance/goapi/dynamic_base_url_test.go#L136))
   - [ ] Cookies Across Subdomains
-  - [ ] Security Model
+    - [x] Shared cookies with DynamicBaseURL; unlike the reference, the domain must be set explicitly and cover every allowed host instead of following the resolved host ([test](../../conformance/goapi/dynamic_base_url_test.go#L50))
+  - [x] Security Model ([test](../../conformance/goapi/dynamic_base_url_test.go#L138))
+    - [x] The allowlist model: only listed hosts choose the origin, and other hosts never do ([test](../../conformance/goapi/dynamic_base_url_test.go#L138))
   - [ ] Reference
 
 ## Optimizing for Performance

@@ -60,7 +60,7 @@ func (a *Auth) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if a.translateError != nil || a.opts.OnAPIError != nil {
 			r = a.withErrorContext(r)
 		}
-		scoped, err := a.withRequestOrigins(r)
+		scoped, err := a.withRequestScope(r)
 		if err != nil {
 			w.Header().Set("Cache-Control", "no-store")
 			a.writeAuthError(w, r, err)
@@ -616,6 +616,11 @@ func (a *Auth) validateRequestOrigin(r *http.Request, emailRoute bool) error {
 			scheme = "https"
 		}
 		origin = scheme + "://" + r.Host
+		// With DynamicBaseURL the request reached the host a trusted proxy
+		// forwarded, which is checked as is: an unlisted host is refused.
+		if reached, ok := a.reachedOrigin(r.Context()); ok {
+			origin = reached
+		}
 	} else if origin == "" {
 		origin = referer
 	}
@@ -699,8 +704,13 @@ func (a *Auth) trustedURL(ctx context.Context, raw string, relative bool) bool {
 			return true
 		}
 	}
-	base, err := url.Parse(a.opts.BaseURL)
-	return err == nil && httporigin.Canonical(base) == origin
+	// The instance's own origin: BaseURL, the DynamicBaseURL fallback, or
+	// the host this request resolved to.
+	if base, err := url.Parse(a.opts.BaseURL); err == nil && a.opts.BaseURL != "" && httporigin.Canonical(base) == origin {
+		return true
+	}
+	s, _ := ctx.Value(requestScopeKey{a}).(*requestScope)
+	return s != nil && s.origin != "" && s.origin == origin
 }
 
 // trustedWebOrigin is trustedURL for a browser page origin, which must be
@@ -725,7 +735,11 @@ func (a *Auth) callbackURL(ctx context.Context, raw string) (string, error) {
 		return "", &APIError{403, "INVALID_CALLBACK_URL", "Invalid callbackURL"}
 	}
 	if strings.HasPrefix(raw, "/") {
-		return a.opts.BaseURL + raw, nil
+		origin, err := a.origin(ctx)
+		if err != nil {
+			return "", err
+		}
+		return origin + raw, nil
 	}
 	return raw, nil
 }

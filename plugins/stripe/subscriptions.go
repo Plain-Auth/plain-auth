@@ -317,7 +317,7 @@ func (s *subscriptions) checkout(c auth.EndpointContext) (any, error) {
 		want.OrganizationName = selection.account.Name
 	}
 	if _, ok := store.(CheckoutReturnStore); ok {
-		want.ReturnURL, err = hostedReturnURL(c.Auth, success)
+		want.ReturnURL, err = hostedReturnURL(c, success)
 		if selection.organization && err == nil {
 			want.ReturnURL += "&organizationId=" + url.QueryEscape(selection.reference)
 		}

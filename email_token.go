@@ -47,7 +47,11 @@ func (a *Auth) sendEmailProof(ctx context.Context, u User, newEmail, requestType
 	if err != nil {
 		return err
 	}
-	link := a.opts.BaseURL + strings.TrimSuffix(a.opts.BasePath, "/") + "/verify-email?" + url.Values{"callbackURL": {callback}, "token": {raw}}.Encode()
+	base, err := a.publicURL(ctx)
+	if err != nil {
+		return err
+	}
+	link := base + "/verify-email?" + url.Values{"callbackURL": {callback}, "token": {raw}}.Encode()
 	if requestType == "change-email-verification" {
 		u.Email = newEmail
 	}

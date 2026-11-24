@@ -155,11 +155,33 @@ func (c EndpointContext) Session() (*SessionResult, error) {
 // CallbackURL resolves an application callback like Auth.CallbackURL, also
 // trusting the origins TrustedOriginsForRequest added for this request.
 func (c EndpointContext) CallbackURL(raw string) (string, error) {
-	ctx := context.Background()
-	if c.Request != nil {
-		ctx = c.Request.Context()
+	return c.Auth.callbackURL(c.context(), raw)
+}
+
+// PublicURL returns the auth handler's public URL for this request: BaseURL
+// and BasePath, or with DynamicBaseURL the request's own allowed host.
+func (c EndpointContext) PublicURL() (string, error) {
+	return c.Auth.publicURL(c.context())
+}
+
+// RequestOrigin returns the origin this request reached with DynamicBaseURL:
+// its host, or the host a trusted proxy forwarded, whether or not it is
+// allowed, so compare it with a URL built for the request. It is "" for an
+// invalid host and reports false without DynamicBaseURL.
+func (c EndpointContext) RequestOrigin() (string, bool) {
+	return c.Auth.reachedOrigin(c.context())
+}
+
+// ErrorPageURL returns the browser error destination for this request.
+func (c EndpointContext) ErrorPageURL() (string, error) {
+	return c.Auth.errorPageURL(c.context())
+}
+
+func (c EndpointContext) context() context.Context {
+	if c.Request == nil {
+		return context.Background()
 	}
-	return c.Auth.callbackURL(ctx, raw)
+	return c.Request.Context()
 }
 
 // RequestMetadata returns a detached copy of the HTTP request headers and URL

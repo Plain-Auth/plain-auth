@@ -35,6 +35,7 @@ If the mount is `/identity`, a request to `/identity/sign-up/email` returns 404 
 | `Secrets` | Versioned keys for signing and verification. See [key rotation](environment.md#rotate-signing-keys) |
 | `Secret` | Stable secret of at least 32 bytes. Generate one with `go run ./cmd/authctl secret` |
 | `BaseURL` | Public HTTP(S) origin of the application. HTTPS enables secure cookies |
+| `DynamicBaseURL` | Serves several public hosts from one instance in place of `BaseURL`. See [serve several hosts](#serve-several-hosts) |
 | `CookiePrefix` | Defaults to `authn`. Choose a namespace such as `myapp` for session cookies and OAuth state. Give separate auth instances distinct prefixes on a shared host. |
 | `BasePath` | Mount path, normally `/api/auth` |
 | `TrustedOrigins` | Additional exact or wildcard HTTP(S) origins, and custom-scheme URLs for apps and extensions, allowed for browser requests and absolute callbacks |
@@ -188,7 +189,31 @@ The function receives a copy of the request without its body and runs once for e
 
 Each request is checked against its own result. A flow that comes back in a later request, from a provider, an identity provider, an emailed link or a checkout page, checks its callback again in that request. That request arrives on `BaseURL` from elsewhere, without your page's `Origin` or headers, so return the same origins for it. A list chosen from the caller's `Origin` or a custom header covers only flows that finish in one request. When a social or SSO sign-in succeeds but its callback is no longer trusted, the browser goes to `BaseURL`. A failed SSO sign-in then goes to the error page, a failed social sign-in answers with its error, and an SSO logout goes to the application root. A popup whose opener is no longer trusted finishes in the popup window without messaging the opener. Emailed links and the checkout return refuse the callback with a 403.
 
-Calls made outside the auth handler trust the static origins only, because they have no request: direct Go calls such as `SignUpEmail` from your own handler, `Auth.CallbackURL`, `BindOneTapNonce`, and the server-side discovery that `ExplicitlyTrustedOrigin` gates. Plugin endpoints resolve callbacks with `EndpointContext.CallbackURL` or `EndpointContext.Redirect` to include the request's origins.
+Calls made outside the auth handler trust the static origins only, because they have no request: direct Go calls such as `SignUpEmail` from your own handler, `Auth.CallbackURL`, `BindOneTapNonce`, and the server-side discovery that `ExplicitlyTrustedOrigin` gates. Give a direct call a context from `Auth.RequestContext(r)` to apply the origins of the request it acts for. Plugin endpoints resolve callbacks with `EndpointContext.CallbackURL` or `EndpointContext.Redirect` to include the request's origins.
+
+### Serve several hosts
+
+To answer on more than one public host, such as a production domain and every preview deployment, set `Options.DynamicBaseURL` instead of `BaseURL`:
+
+```go
+opts.DynamicBaseURL = &plainauth.DynamicBaseURLOptions{
+	AllowedHosts: []string{"app.example.com", "*.preview.example.com", "localhost:3000"},
+	Fallback:     "https://app.example.com",
+}
+```
+
+Each request's host chooses the origin of the links and callbacks it produces: emailed verification, reset, deletion and magic links, the OAuth redirect URI, relative callbacks and the error page. A link therefore brings the user back to the host they started on. The allowed hosts take the hostname, wildcard and port rules of trusted origins, may start with `http://` or `https://`, and are trusted origins themselves. A pattern that matches every host, such as `*`, is refused. Every request uses the one mount from `BasePath`, or from the fallback URL's path, with `/api/auth` as the default. `AUTH_URL` is ignored in this mode.
+
+| Field | Behavior |
+| --- | --- |
+| `AllowedHosts` | Required. A request for another host uses `Fallback`, or fails with a generic 500 without one. |
+| `Protocol` | `"http"` or `"https"` fixes the scheme. By default (`""` or `"auto"`) a trusted `X-Forwarded-Proto` decides, then the connection's TLS; otherwise loopback hosts use `http` and other hosts `https`, so a public host never gets plain HTTP links behind TLS termination. Allowed hosts are trusted origins over `https`, and also over `http` for loopback hosts and with `"auto"`; `"http"` trusts only `http`. |
+| `Fallback` | Public URL for unlisted hosts and for URLs without a request: issuers, discovery documents, `Auth.PublicURL` and direct Go calls. |
+| `TrustedProxyHeaders` | Reads a single `X-Forwarded-Host` and `X-Forwarded-Proto` value from the peers in `ClientIP.TrustedProxies`, which it requires. Other peers' headers are ignored. |
+
+Cookies are Secure unless `Protocol` is `"http"` or every allowed host and the fallback are loopback; `UseSecureCookies` overrides this. A shared cookie domain must be set explicitly, and every allowed host must be within it, because one cookie domain serves every host.
+
+Without a `Fallback`, `New` refuses features that publish one fixed URL: the JWT plugin unless it sets `Issuer` and `Audience`, plugins with discovery documents such as the OAuth provider, and the OAuth proxy without a `ProductionURL`. A direct Go call that builds a link, such as `RequestPasswordReset`, then needs a context from `Auth.RequestContext(r)`, which resolves the origin of the request it acts for; without one it returns an error. A social sign-in must return to the host it started on, so register each host's callback URL with the provider.
 
 ### Share a session across subdomains
 

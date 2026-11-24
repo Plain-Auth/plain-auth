@@ -9,6 +9,26 @@ import (
 	"time"
 )
 
+// DynamicBaseURLOptions lists the hosts one instance answers for.
+type DynamicBaseURLOptions struct {
+	// AllowedHosts lists hosts such as "app.example.com", "*.example.com" or
+	// "localhost:3000". A request for another host uses Fallback, or fails
+	// with a 500 without one.
+	AllowedHosts []string
+	// Protocol is "http" or "https" to fix the scheme of every link. The
+	// default ("" or "auto") takes a trusted X-Forwarded-Proto, then the
+	// connection's TLS, and otherwise uses http for loopback hosts and https
+	// for others. Allowed hosts are trusted origins over https, and over
+	// http too for loopback hosts, with "auto", or with "http" alone.
+	Protocol string
+	// Fallback is the public URL for requests to unlisted hosts and for
+	// values without a request, such as issuers and direct Go calls.
+	Fallback string
+	// TrustedProxyHeaders reads X-Forwarded-Host and X-Forwarded-Proto from
+	// the peers in ClientIP.TrustedProxies.
+	TrustedProxyHeaders bool
+}
+
 // Options configures one isolated authentication instance.
 type Options struct {
 	UserAdditionalFields    map[string]UserField
@@ -55,6 +75,10 @@ type Options struct {
 	// BaseURL is the public HTTP(S) address. BasePath defaults to /api/auth.
 	BaseURL  string
 	BasePath string
+	// DynamicBaseURL serves several public hosts from one instance in place
+	// of a fixed BaseURL. Each request's host chooses the origin of its links
+	// and callbacks.
+	DynamicBaseURL *DynamicBaseURLOptions
 	// DisabledPaths hides exact HTTP paths relative to this instance’s mount.
 	DisabledPaths []string
 	// TrustedOrigins allows exact HTTP(S) origins, hostname or port wildcard

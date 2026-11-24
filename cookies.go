@@ -32,7 +32,7 @@ func secureCookies(opts *Options) bool {
 	return strings.HasPrefix(opts.BaseURL, "https://")
 }
 
-func prepareCookieScope(opts *Options) error {
+func prepareCookieScope(opts *Options, dynamic *dynamicBase) error {
 	secure := secureCookies(opts)
 	opts.UseSecureCookies = &secure
 	prefix := strings.ToLower(opts.CookiePrefix)
@@ -45,9 +45,26 @@ func prepareCookieScope(opts *Options) error {
 		return err
 	}
 	// Domain overrides get the same base-host and public-suffix checks as
-	// shared cookies. The caller's map stays untouched.
+	// shared cookies. The caller's map stays untouched. With DynamicBaseURL a
+	// domain must be explicit and cover every allowed host.
+	hosts := []string{base.Hostname()}
+	if dynamic != nil {
+		hosts = dynamic.cookieHosts
+	}
+	cookieDomain := func(requested string) (string, error) {
+		if dynamic != nil && requested == "" {
+			return "", errors.New("auth: a shared cookie domain must be set explicitly with DynamicBaseURL")
+		}
+		domain := requested
+		for _, host := range hosts {
+			if domain, err = configenv.CookieDomain(host, requested); err != nil {
+				return "", err
+			}
+		}
+		return domain, nil
+	}
 	if d := opts.DefaultCookieAttributes.Domain; d != "" {
-		if opts.DefaultCookieAttributes.Domain, err = configenv.CookieDomain(base.Hostname(), d); err != nil {
+		if opts.DefaultCookieAttributes.Domain, err = cookieDomain(d); err != nil {
 			return err
 		}
 	}
@@ -55,7 +72,7 @@ func prepareCookieScope(opts *Options) error {
 		cookies := make(map[string]CookieOptions, len(opts.Cookies))
 		for name, c := range opts.Cookies {
 			if c.Attributes.Domain != "" {
-				if c.Attributes.Domain, err = configenv.CookieDomain(base.Hostname(), c.Attributes.Domain); err != nil {
+				if c.Attributes.Domain, err = cookieDomain(c.Attributes.Domain); err != nil {
 					return fmt.Errorf("auth: cookie %q: %w", name, err)
 				}
 			}
@@ -69,7 +86,7 @@ func prepareCookieScope(opts *Options) error {
 	if hostOnly {
 		return errors.New("auth: a __Host- cookie prefix requires host-only cookies")
 	}
-	domain, err := configenv.CookieDomain(base.Hostname(), opts.CrossSubDomainCookies.Domain)
+	domain, err := cookieDomain(opts.CrossSubDomainCookies.Domain)
 	if err != nil {
 		return err
 	}

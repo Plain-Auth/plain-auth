@@ -1,6 +1,7 @@
 package plainauth
 
 import (
+	"context"
 	"html"
 	"net/http"
 	"net/url"
@@ -11,13 +12,23 @@ import (
 
 var errorCodeFormat = regexp.MustCompile("^[A-Za-z0-9_'-]+$")
 
-// ErrorPageURL is the host-controlled destination for browser protocol errors.
+// ErrorPageURL is the host-controlled destination for browser protocol
+// errors. With DynamicBaseURL it uses the fallback, and plugin endpoints use
+// EndpointContext.ErrorPageURL for the request's own host.
 func (a *Auth) ErrorPageURL() string {
+	target, _ := a.errorPageURL(context.Background())
+	return target
+}
+
+func (a *Auth) errorPageURL(ctx context.Context) (string, error) {
 	if a.opts.ErrorRedirectURL != "" {
-		target, _ := a.CallbackURL(a.opts.ErrorRedirectURL) // validated during New
-		return target
+		return a.callbackURL(ctx, a.opts.ErrorRedirectURL) // validated during New
 	}
-	return a.PublicURL() + "/error"
+	base, err := a.publicURL(ctx)
+	if err != nil {
+		return "", err
+	}
+	return base + "/error", nil
 }
 
 // errorPage returns the browser error page, or a redirect to ErrorRedirectURL.

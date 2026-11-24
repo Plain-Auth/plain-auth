@@ -250,10 +250,18 @@
     - [x] Name the application as the default authenticator issuer ([test](../../conformance/goapi/freshness_test.go#L68))
   - [ ] `baseURL`
     - [x] Resolve public URL and mount path from explicit options and process settings ([test](../../env_test.go#L20))
-    - [ ] Dynamic Base URL
-      - [ ] `allowedHosts`
-      - [ ] `protocol`
-      - [ ] `fallback`
+    - [x] Dynamic Base URL ([test](../../conformance/goapi/dynamic_base_url_test.go#L73))
+      - [x] Options.DynamicBaseURL resolves each request's public origin from its allowed host for emailed links, callbacks, origin checks and direct calls through Auth.RequestContext ([test](../../conformance/goapi/dynamic_base_url_test.go#L73))
+      - [x] `allowedHosts` ([test](../../conformance/goapi/dynamic_base_url_test.go#L121))
+        - [x] AllowedHosts takes exact hosts, wildcards and ports, and every allowed host is a trusted origin ([test](../../conformance/goapi/dynamic_base_url_test.go#L121))
+        - [x] AllowedHosts refuses an empty list, paths and patterns that match every host or port ([test](../../conformance/goapi/dynamic_base_url_test.go#L25))
+        - [x] A port wildcard such as localhost:* admits any port ([test](../../conformance/goapi/dynamic_base_url_test.go#L211))
+      - [x] `protocol` ([test](../../conformance/goapi/dynamic_base_url_test.go#L126))
+        - [x] Protocol fixes the scheme or, by default, takes a trusted X-Forwarded-Proto, then TLS, then http for loopback and https otherwise; unlike the reference, a public host behind TLS termination never gets http links ([test](../../conformance/goapi/dynamic_base_url_test.go#L126))
+        - [x] Protocol "http" or "https" fixes the scheme of every link and the Secure cookie default ([test](../../conformance/goapi/dynamic_base_url_test.go#L210))
+      - [x] `fallback` ([test](../../conformance/goapi/dynamic_base_url_test.go#L169))
+        - [x] Fallback serves unlisted hosts and direct calls without a request, and is the canonical public URL ([test](../../conformance/goapi/dynamic_base_url_test.go#L169))
+        - [x] The fallback origin is trusted, and a null Origin on an unlisted host never inherits that trust ([test](../../conformance/goapi/dynamic_base_url_test.go#L194))
   - [x] `basePath` ([test](../../conformance/goapi/http_test.go#L58))
     - [x] Resolve public URL and mount path from explicit options and process settings ([test](../../env_test.go#L20))
     - [x] With BasePath /identity, the default /api/auth/ok returns 404 and /identity/ok serves ([test](../../conformance/goapi/http_test.go#L58))
@@ -609,6 +617,7 @@
   - [x] IP Address Headers ([test](../../conformance/goapi/client_address_test.go#L76))
     - [x] Address headers count only when a trusted proxy sends them, either as a single-address header or an appended X-Forwarded-For chain ([test](../../conformance/goapi/client_address_test.go#L76))
   - [ ] Trusted Proxy Headers
+    - [x] TrustedProxyHeaders reads X-Forwarded-Host and X-Forwarded-Proto only from ClientIP.TrustedProxies peers, and only with DynamicBaseURL ([test](../../conformance/goapi/dynamic_base_url_test.go#L225))
   - [ ] Trusted Origins
     - [ ] Basic Usage
     - [ ] Wildcard Origins

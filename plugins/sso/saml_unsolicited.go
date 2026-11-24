@@ -110,7 +110,7 @@ func incomingSAMLFlow(c *auth.EndpointContext, form url.Values) (auth.OAuthFlow,
 	if err != nil {
 		return auth.OAuthFlow{}, true, err
 	}
-	if !sameSAMLOrigin("https://"+c.Request.Host, endpoint) {
+	if !sameSAMLOrigin(samlRequestOrigin(*c), endpoint) {
 		return auth.OAuthFlow{}, true, errSAMLResponse
 	}
 	root, err := c.CallbackURL("/")

@@ -34,8 +34,8 @@ type CheckoutReturnStore interface {
 	ApplyStripeCheckoutReturn(ctx context.Context, a CheckoutAttempt, sessionToken, checkoutID string, receipt CheckoutReceipt, now time.Time) error
 }
 
-func hostedReturnURL(a *auth.Auth, callback string) (string, error) {
-	target, err := a.CallbackURL(strings.TrimRight(a.BasePath(), "/") + "/subscription/success")
+func hostedReturnURL(c auth.EndpointContext, callback string) (string, error) {
+	target, err := c.CallbackURL(strings.TrimRight(c.Auth.BasePath(), "/") + "/subscription/success")
 	if err != nil {
 		return "", err
 	}

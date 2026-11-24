@@ -158,7 +158,11 @@ func (o MagicLinkOptions) request(c EndpointContext) (any, error) {
 			q.Set(key, v)
 		}
 	}
-	link := a.opts.BaseURL + strings.TrimRight(a.opts.BasePath, "/") + "/magic-link/verify?" + q.Encode()
+	base, err := a.publicURL(ctx)
+	if err != nil {
+		return nil, err
+	}
+	link := base + "/magic-link/verify?" + q.Encode()
 	if err := o.Send(ctx, MagicLinkMessage{Email: ch.Email, Token: token, URL: link, Metadata: metadata, Request: accountObserverRequest(ctx, c.Request)}); err != nil {
 		return nil, err
 	}

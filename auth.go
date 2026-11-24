@@ -33,6 +33,7 @@ type Auth struct {
 	sessionCacheKeys      []sessionCacheKey
 	disabledPaths         map[string]struct{}
 	trustedOrigins        []httporigin.Rule
+	dynamic               *dynamicBase
 	phoneNumber           *PhoneNumberOptions
 	translateError        func(ErrorContext, APIError) string
 	username              *UsernameOptions
@@ -121,11 +122,15 @@ func New(opts Options) (*Auth, error) {
 	if err := configureAccountFields(&opts); err != nil {
 		return nil, err
 	}
-	opts.BaseURL, opts.BasePath, err = configenv.ServerEndpoint(opts.BaseURL, opts.BasePath)
-	if err != nil {
+	var dynamic *dynamicBase
+	if opts.DynamicBaseURL != nil {
+		if dynamic, err = prepareDynamicBaseURL(&opts); err != nil {
+			return nil, err
+		}
+	} else if opts.BaseURL, opts.BasePath, err = configenv.ServerEndpoint(opts.BaseURL, opts.BasePath); err != nil {
 		return nil, fmt.Errorf("authn: BaseURL: %w", err)
 	}
-	if err := prepareCookieScope(&opts); err != nil {
+	if err := prepareCookieScope(&opts, dynamic); err != nil {
 		return nil, err
 	}
 	trustedOrigins, err := httporigin.Compile("TrustedOrigins", opts.TrustedOrigins)
@@ -223,7 +228,7 @@ func New(opts Options) (*Auth, error) {
 	if err != nil {
 		return nil, err
 	}
-	a := &Auth{opts: opts, disabledPaths: disabledPaths, trustedOrigins: trustedOrigins, now: time.Now, passwordSlots: make(chan struct{}, min(runtime.GOMAXPROCS(0), 4)), plugins: plugins}
+	a := &Auth{opts: opts, dynamic: dynamic, disabledPaths: disabledPaths, trustedOrigins: trustedOrigins, now: time.Now, passwordSlots: make(chan struct{}, min(runtime.GOMAXPROCS(0), 4)), plugins: plugins}
 	a.beforeHooks, a.afterHooks = endpointHooks(opts)
 	if err := a.checkCookieOptions(); err != nil {
 		return nil, err
@@ -390,6 +395,9 @@ func New(opts Options) (*Auth, error) {
 		if _, ok := a.opts.Store.(EmailOTPVerificationObserverStore); a.emailOTP != nil && !ok {
 			return nil, errors.New("auth: email OTP verification callbacks require an EmailOTPVerificationObserverStore")
 		}
+	}
+	if err := a.checkDynamicWithoutFallback(); err != nil {
+		return nil, err
 	}
 	if err := a.prepareWellKnown(); err != nil {
 		return nil, err

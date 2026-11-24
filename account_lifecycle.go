@@ -101,11 +101,15 @@ func (a *Auth) DeleteUser(ctx context.Context, h http.Header, in DeleteUserInput
 			return false, &APIError{403, "INVALID_CALLBACK_URL", "Invalid callbackURL"}
 		}
 		t := PasswordResetToken{ID: randomID(), Token: randomID(), UserID: session.User.ID, CreatedAt: now, ExpiresAt: now.Add(a.opts.DeleteTokenTTL)}
+		base, err := a.publicURL(ctx)
+		if err != nil {
+			return false, err
+		}
 		if err := s.SaveDeletionToken(ctx, t); err != nil {
 			return false, err
 		}
 		query := url.Values{"callbackURL": {callback}, "token": {t.Token}}
-		link := a.opts.BaseURL + strings.TrimSuffix(a.opts.BasePath, "/") + "/delete-user/callback?" + query.Encode()
+		link := base + "/delete-user/callback?" + query.Encode()
 		return false, a.opts.SendDeleteAccountVerification(ctx, MailLink{User: session.User, URL: link, Token: t.Token, Request: a.requestCopy(ctx)})
 	}
 	if in.Token == "" && hash == "" && !a.freshSession(session.Session) {

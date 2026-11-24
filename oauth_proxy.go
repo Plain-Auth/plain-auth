@@ -107,6 +107,11 @@ func proxyOrigin(raw string) string {
 // Use the host's public scheme behind TLS termination. An incoming authority
 // may select only an origin explicitly trusted by the auth instance.
 func (a *Auth) proxyRequestOrigin(r *http.Request) string {
+	if reached, ok := a.reachedOrigin(r.Context()); ok {
+		// The host a trusted proxy forwarded, allowed or not; an unlisted
+		// one is then not trusted below.
+		return proxyOrigin(reached)
+	}
 	base, _ := url.Parse(a.opts.BaseURL)
 	scheme := base.Scheme
 	if r.TLS != nil {
@@ -320,7 +325,7 @@ func (a *Auth) completeProxyCallback(w http.ResponseWriter, r *http.Request, id 
 	if age < -10*time.Second || age > a.oauthProxy.MaxAge {
 		return nil, proxyBrowserError("payload_expired")
 	}
-	provider, err := a.providerConfig(result.Provider)
+	provider, err := a.providerConfig(r.Context(), result.Provider)
 	if err != nil {
 		return nil, err
 	}

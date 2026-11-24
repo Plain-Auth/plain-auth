@@ -305,7 +305,7 @@ func enterpriseFailure(c auth.EndpointContext, flow auth.OAuthFlow, code, descri
 	}
 	if _, err := c.CallbackURL(target); err != nil {
 		// The provider's callback request no longer trusts the stored target.
-		target = c.Auth.ErrorPageURL()
+		target, _ = c.ErrorPageURL()
 	}
 	if _, e := url.Parse(target); e != nil {
 		return nil, e

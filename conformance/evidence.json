@@ -20542,5 +20542,119 @@
       "marker": "t.Fatalf(\"the host function ran %d times for one request\", got)",
       "complete": true
     }
+  ],
+  "docs/content/docs/reference/options.mdx#L44": [
+    {
+      "label": "Options.DynamicBaseURL resolves each request's public origin from its allowed host for emailed links, callbacks, origin checks and direct calls through Auth.RequestContext",
+      "test": "conformance/goapi/dynamic_base_url_test.go",
+      "marker": "func TestDynamicBaseURL(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/guides/dynamic-base-url.mdx#L15": [
+    {
+      "label": "DynamicBaseURL with an AllowedHosts allowlist replaces a fixed BaseURL",
+      "test": "conformance/goapi/dynamic_base_url_test.go",
+      "marker": "func TestDynamicBaseURL(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/reference/options.mdx#L64/`allowedHosts`": [
+    {
+      "label": "AllowedHosts takes exact hosts, wildcards and ports, and every allowed host is a trusted origin",
+      "test": "conformance/goapi/dynamic_base_url_test.go",
+      "marker": "node := newNode(&auth.DynamicBaseURLOptions{AllowedHosts: []string{\"app.example\", \"*.preview.example\", \"localhost:3000\"}})",
+      "complete": true
+    },
+    {
+      "label": "AllowedHosts refuses an empty list, paths and patterns that match every host or port",
+      "test": "conformance/goapi/dynamic_base_url_test.go",
+      "marker": "func TestDynamicBaseURLConfiguration(t *testing.T) {"
+    },
+    {
+      "label": "A port wildcard such as localhost:* admits any port",
+      "test": "conformance/goapi/dynamic_base_url_test.go",
+      "marker": "{&auth.DynamicBaseURLOptions{AllowedHosts: []string{\"localhost:*\"}}, \"localhost:4321\", \"http://localhost:4321/api/auth/\", false},"
+    }
+  ],
+  "docs/content/docs/reference/options.mdx#L65/`protocol`": [
+    {
+      "label": "Protocol fixes the scheme or, by default, takes a trusted X-Forwarded-Proto, then TLS, then http for loopback and https otherwise; unlike the reference, a public host behind TLS termination never gets http links",
+      "test": "conformance/goapi/dynamic_base_url_test.go",
+      "marker": "// A public host gets https links even over plain HTTP; loopback keeps http.",
+      "complete": true
+    },
+    {
+      "label": "Protocol \"http\" or \"https\" fixes the scheme of every link and the Secure cookie default",
+      "test": "conformance/goapi/dynamic_base_url_test.go",
+      "marker": "{&auth.DynamicBaseURLOptions{AllowedHosts: []string{\"app.example\"}, Protocol: \"http\"}, \"app.example\", \"http://app.example/api/auth/\", false},"
+    }
+  ],
+  "docs/content/docs/reference/options.mdx#L66/`fallback`": [
+    {
+      "label": "Fallback serves unlisted hosts and direct calls without a request, and is the canonical public URL",
+      "test": "conformance/goapi/dynamic_base_url_test.go",
+      "marker": "fallback := newNode(&auth.DynamicBaseURLOptions{AllowedHosts: []string{\"app.example\"}, Fallback: \"https://auth.example/identity\"})",
+      "complete": true
+    },
+    {
+      "label": "The fallback origin is trusted, and a null Origin on an unlisted host never inherits that trust",
+      "test": "conformance/goapi/dynamic_base_url_test.go",
+      "marker": "if res, body := call(fallback, \"https://tenant.example/identity/update-user\", `{\"name\":\"Renamed\"}`, sameOrigin); res.StatusCode != 403 || !strings.Contains(body, \"INVALID_ORIGIN\") {"
+    }
+  ],
+  "docs/content/docs/guides/dynamic-base-url.mdx#L37": [
+    {
+      "label": "Preview deployments under one wildcard host such as *.preview.example get links on their own host",
+      "test": "conformance/goapi/dynamic_base_url_test.go",
+      "marker": "node := newNode(&auth.DynamicBaseURLOptions{AllowedHosts: []string{\"app.example\", \"*.preview.example\", \"localhost:3000\"}})",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/guides/dynamic-base-url.mdx#L51": [
+    {
+      "label": "Development and production hosts together: localhost:3000 gets http links and a public host https links",
+      "test": "conformance/goapi/dynamic_base_url_test.go",
+      "marker": "node := newNode(&auth.DynamicBaseURLOptions{AllowedHosts: []string{\"app.example\", \"*.preview.example\", \"localhost:3000\"}})",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/guides/dynamic-base-url.mdx#L67": [
+    {
+      "label": "Several production domains: a social sign-in uses the redirect URI of its own host and cannot return to another allowed host",
+      "test": "conformance/goapi/dynamic_base_url_test.go",
+      "marker": "DynamicBaseURL: &auth.DynamicBaseURLOptions{AllowedHosts: []string{\"a.example\", \"b.example\"}},",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/guides/dynamic-base-url.mdx#L82": [
+    {
+      "label": "Without a fallback, a request for an unlisted host fails with a generic 500 that does not reveal the allowlist",
+      "test": "conformance/goapi/dynamic_base_url_test.go",
+      "marker": "// A request on an unlisted host fails without a fallback, and says nothing about the list.",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/guides/dynamic-base-url.mdx#L143": [
+    {
+      "label": "The allowlist model: only listed hosts choose the origin, and other hosts never do",
+      "test": "conformance/goapi/dynamic_base_url_test.go",
+      "marker": "if res.StatusCode != 500 || strings.Contains(body, \"app.example\") || strings.Contains(body, \"evil\") {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/guides/dynamic-base-url.mdx#L99": [
+    {
+      "label": "Shared cookies with DynamicBaseURL; unlike the reference, the domain must be set explicitly and cover every allowed host instead of following the resolved host",
+      "test": "conformance/goapi/dynamic_base_url_test.go",
+      "marker": "\"implicit domain\": {auth.Options{DynamicBaseURL: hosts(\"app.example\"), CrossSubDomainCookies: &auth.CrossSubDomainCookiesOptions{}}, \"set explicitly\"},"
+    }
+  ],
+  "docs/content/docs/reference/security.mdx#L174": [
+    {
+      "label": "TrustedProxyHeaders reads X-Forwarded-Host and X-Forwarded-Proto only from ClientIP.TrustedProxies peers, and only with DynamicBaseURL",
+      "test": "conformance/goapi/dynamic_base_url_test.go",
+      "marker": "// Forwarded headers count only from a trusted proxy, and only with"
+    }
   ]
 }

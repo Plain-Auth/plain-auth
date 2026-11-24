@@ -3,6 +3,7 @@ package plainauth
 import (
 	"errors"
 	"net/http/httptest"
+	"net/netip"
 	"net/url"
 	"strings"
 	"testing"
@@ -179,5 +180,35 @@ func TestOAuthProxyProductionTrust(t *testing.T) {
 		bad := grant
 		change(&bad)
 		check(production, bad, false)
+	}
+}
+
+// With DynamicBaseURL the proxy's current origin is the allowed host a
+// request reached through a trusted proxy, and a request that fell back is
+// never taken for the fallback's own origin.
+func TestOAuthProxyOriginWithDynamicBaseURL(t *testing.T) {
+	a, err := New(Options{Store: &refreshFixture{}, Secret: strings.Repeat("s", 32), ClientIP: ClientIPOptions{TrustedProxies: []netip.Prefix{netip.MustParsePrefix("192.0.2.0/24")}},
+		DynamicBaseURL: &DynamicBaseURLOptions{AllowedHosts: []string{"*.preview.example"}, Fallback: "https://auth.example", TrustedProxyHeaders: true}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	origin := func(host, forwarded string) string {
+		t.Helper()
+		r := httptest.NewRequest("GET", "http://"+host+"/api/auth/ok", nil)
+		r.RemoteAddr = "192.0.2.10:4000"
+		if forwarded != "" {
+			r.Header.Set("X-Forwarded-Host", forwarded)
+		}
+		scoped, err := a.withRequestScope(r)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return a.proxyRequestOrigin(scoped)
+	}
+	if got := origin("internal.cluster", "pr-1.preview.example"); got != "https://pr-1.preview.example" {
+		t.Fatal("a forwarded preview host gave", got)
+	}
+	if got := origin("auth.example", "www.example"); got == "https://auth.example" {
+		t.Fatal("a request that fell back took the fallback's origin")
 	}
 }

@@ -18,11 +18,19 @@ func ServerEndpoint(raw, mount string) (string, string, error) {
 	if mount == "" {
 		mount = strings.TrimRight(u.EscapedPath(), "/")
 	}
+	if mount, err = Mount(mount); err != nil {
+		return "", "", err
+	}
+	return u.Scheme + "://" + strings.ToLower(u.Host), mount, nil
+}
+
+// Mount validates the server's mount path. An empty path is /api/auth.
+func Mount(mount string) (string, error) {
 	if mount == "" {
 		mount = "/api/auth"
 	}
 	if !strings.HasPrefix(mount, "/") || path.Clean(mount) != mount || strings.ContainsAny(mount, "?#%\\ \t\r\n") {
-		return "", "", errors.New("auth mount must be a clean absolute URL path")
+		return "", errors.New("auth mount must be a clean absolute URL path")
 	}
-	return u.Scheme + "://" + strings.ToLower(u.Host), mount, nil
+	return mount, nil
 }

@@ -224,7 +224,11 @@ func (o DeviceAuthorizationOptions) createCode(c EndpointContext) (any, error) {
 			return nil, err
 		}
 	}
-	verification, err := url.Parse(c.Auth.opts.BaseURL)
+	origin, err := c.Auth.origin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	verification, err := url.Parse(origin)
 	if err != nil {
 		return nil, err
 	}

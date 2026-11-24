@@ -133,7 +133,7 @@ func (o Options) logoutProvider(c auth.EndpointContext, store SAMLLogoutStore, p
 	if err = o.enableLogoutSP(c, p.Provider, sp); err != nil {
 		return p, nil, err
 	}
-	if !sameSAMLOrigin("https://"+c.Request.Host, sp.SloURL.String()) {
+	if !sameSAMLOrigin(samlRequestOrigin(c), sp.SloURL.String()) {
 		return p, nil, ErrSAMLLogoutResponse
 	}
 	return p, sp, nil

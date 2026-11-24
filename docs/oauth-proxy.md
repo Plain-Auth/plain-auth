@@ -69,7 +69,7 @@ Production sign-in uses its ordinary direct callback. An initiating request with
 
 | Option | Behavior |
 | --- | --- |
-| `ProductionURL` | Registered production origin. Defaults to `AUTH_URL`, then the auth instance’s public URL. The auth mount comes from `BasePath`. |
+| `ProductionURL` | Registered production origin. Defaults to `AUTH_URL`, then the auth instance’s public URL, which is the fallback with `DynamicBaseURL`. The auth mount comes from `BasePath`. |
 | `CurrentURL` | Explicit public origin of this deployment. If omitted, the plugin checks the trusted request host, then a hosting-platform origin, then the configured public URL. Keep the public host intact when forwarding requests through a reverse proxy. |
 | `MaxAge` | Maximum age of the encrypted return profile as a Go duration. Defaults to one minute. The initiating browser has ten minutes to complete authorization. |
 | `Secret` | Dedicated shared proxy key. Without a dedicated key, the plugin uses the auth instance's configured encryption keys, which must then agree across the participating deployments. |

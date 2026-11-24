@@ -158,7 +158,7 @@ type rateLimiter struct {
 }
 
 func (a *Auth) rejectRateLimited(w http.ResponseWriter, r *http.Request, route string) bool {
-	enabled := strings.HasPrefix(a.opts.BaseURL, "https://")
+	enabled := a.httpsDeployment()
 	if a.opts.RateLimit != nil {
 		enabled = *a.opts.RateLimit
 	}

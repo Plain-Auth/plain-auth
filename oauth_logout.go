@@ -73,7 +73,11 @@ func (a *Auth) prepareProviderLogout(ctx context.Context, h http.Header, body wi
 			if !a.trustedURL(ctx, callback, true) {
 				continue
 			}
-			base, err := url.Parse(a.opts.BaseURL + a.opts.BasePath)
+			public, err := a.publicURL(ctx)
+			if err != nil {
+				continue
+			}
+			base, err := url.Parse(public)
 			if err != nil {
 				continue
 			}

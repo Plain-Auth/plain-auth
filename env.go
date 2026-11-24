@@ -53,7 +53,7 @@ func resolveEnvironment(opts *Options) error {
 			seen[key.Version] = true
 		}
 	}
-	if opts.BaseURL == "" {
+	if opts.BaseURL == "" && opts.DynamicBaseURL == nil {
 		opts.BaseURL = os.Getenv("AUTH_URL")
 	}
 	opts.TrustedOrigins = append([]string(nil), opts.TrustedOrigins...)

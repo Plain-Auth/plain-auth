@@ -66,14 +66,19 @@ func (a *Auth) serveOAuth(w http.ResponseWriter, r *http.Request, route string) 
 	return true
 }
 
-func (a *Auth) providerConfig(id string) (OAuthProvider, error) {
+func (a *Auth) providerConfig(ctx context.Context, id string) (OAuthProvider, error) {
 	p, ok := a.opts.SocialProviders[id]
 	if !ok {
 		return p, &APIError{404, "PROVIDER_NOT_FOUND", "Provider not found"}
 	}
-	// The provider's own redirect URL wins over the callback route.
+	// The provider's own redirect URL wins over the callback route, which is
+	// on the request's own host with DynamicBaseURL.
 	if p.Config.RedirectURL == "" {
-		p.Config.RedirectURL = a.opts.BaseURL + strings.TrimRight(a.opts.BasePath, "/") + "/callback/" + id
+		base, err := a.publicURL(ctx)
+		if err != nil {
+			return p, err
+		}
+		p.Config.RedirectURL = base + "/callback/" + id
 	}
 	return p, nil
 }
@@ -87,7 +92,7 @@ func (a *Auth) startOAuth(w http.ResponseWriter, r *http.Request, body wireBody,
 	if !ok {
 		return nil, fieldTypeError("provider", "string", body)
 	}
-	p, err := a.providerConfig(id)
+	p, err := a.providerConfig(r.Context(), id)
 	if err != nil {
 		return nil, err
 	}
@@ -163,7 +168,11 @@ func (a *Auth) beginBrowserOAuth(h http.Header, r *http.Request, p OAuthProvider
 	flow.ErrorCallbackURL, _ = body["errorCallbackURL"].(string)
 	flow.NewUserCallbackURL, _ = body["newUserCallbackURL"].(string)
 	if flow.CallbackURL == "" {
-		flow.CallbackURL = a.opts.BaseURL
+		origin, err := a.origin(r.Context())
+		if err != nil {
+			return "", "", err
+		}
+		flow.CallbackURL = origin
 	}
 	var opts []oauth2.AuthCodeOption
 	if !p.OmitNonce {
@@ -196,6 +205,10 @@ func (a *Auth) beginBrowserOAuth(h http.Header, r *http.Request, p OAuthProvider
 			}
 		}
 	}
+	if a.dynamic != nil && flow.ProxyOrigin == "" {
+		// The callback must return to the host the sign-in started on.
+		flow.RedirectURI = p.Config.RedirectURL
+	}
 	target := p.Config.AuthCodeURL(providerState, opts...)
 	if p.CustomizeAuthorization != nil {
 		u, err := url.Parse(target)
@@ -213,16 +226,17 @@ func (a *Auth) beginBrowserOAuth(h http.Header, r *http.Request, p OAuthProvider
 }
 
 func (a *Auth) finishOAuth(w http.ResponseWriter, r *http.Request, id string) (any, error) {
-	p, err := a.providerConfig(id)
+	p, err := a.providerConfig(r.Context(), id)
 	if err != nil {
 		return nil, err
 	}
 	if a.oauthProxy != nil && strings.HasPrefix(r.URL.Query().Get("state"), recordPrefix) {
 		return a.exchangeProxyCallback(w, r, id, p)
 	}
-	// The configured origin is the only destination sent in the code exchange.
-	base, _ := url.Parse(a.opts.BaseURL)
-	if httporigin.Canonical(&url.URL{Scheme: base.Scheme, Host: r.Host}) != httporigin.Canonical(base) {
+	// The configured origin is the only destination sent in the code
+	// exchange. With DynamicBaseURL the flow's stored redirect URL is checked
+	// instead, since the Host header is not the public host behind a proxy.
+	if base, _ := url.Parse(a.opts.BaseURL); a.dynamic == nil && httporigin.Canonical(&url.URL{Scheme: base.Scheme, Host: r.Host}) != httporigin.Canonical(base) {
 		return nil, &APIError{400, "INVALID_CALLBACK_URL", "Invalid OAuth callback"}
 	}
 	q := r.URL.Query()
@@ -262,6 +276,9 @@ func (a *Auth) finishBrowserOAuth(w http.ResponseWriter, r *http.Request, id str
 		return nil, err
 	}
 	http.SetCookie(w, a.oauthCookie("oauth_state", "", -1))
+	if flow.RedirectURI != "" && flow.RedirectURI != p.Config.RedirectURL {
+		return nil, &APIError{400, "INVALID_CALLBACK_URL", "Invalid OAuth callback"}
+	}
 	failWithDescription := func(code, description string) (any, error) {
 		if popup != nil {
 			return popup.page(w.Header(), "", "", &popupError{Code: code, Description: description}), nil
@@ -325,7 +342,7 @@ func (a *Auth) finishBrowserOAuth(w http.ResponseWriter, r *http.Request, id str
 		accountFields, fieldErr = a.mapAccountFields(ctx, p, grant)
 		if fieldErr != nil {
 			if flow.ErrorCallbackURL == "" {
-				flow.ErrorCallbackURL = a.ErrorPageURL()
+				flow.ErrorCallbackURL, _ = a.errorPageURL(ctx)
 			}
 			return failWithDescription(fieldErr.Code, fieldErr.Message)
 		}
@@ -352,33 +369,33 @@ func (a *Auth) finishBrowserOAuth(w http.ResponseWriter, r *http.Request, id str
 	var refused *userInfoRejection
 	if errors.As(err, &refused) {
 		if flow.ErrorCallbackURL == "" {
-			flow.ErrorCallbackURL = a.ErrorPageURL()
+			flow.ErrorCallbackURL, _ = a.errorPageURL(ctx)
 		}
 		return failWithDescription(refused.Code, refused.Message)
 	}
 	var apiError *APIError
 	if errors.As(err, &apiError) && apiError.Code == "EMAIL_NOT_VERIFIED" {
 		if flow.ErrorCallbackURL == "" {
-			flow.ErrorCallbackURL = a.ErrorPageURL()
+			flow.ErrorCallbackURL, _ = a.errorPageURL(ctx)
 		}
 		return fail("email_not_verified")
 	}
 	if errors.As(err, &apiError) && apiError.Code == "SIGN_UP_DISABLED" {
 		if flow.ErrorCallbackURL == "" {
-			flow.ErrorCallbackURL = a.ErrorPageURL()
+			flow.ErrorCallbackURL, _ = a.errorPageURL(ctx)
 		}
 		return fail("signup_disabled")
 	}
 	var fieldError oauthProfileFieldError
 	if errors.As(err, &apiError) && (errors.As(err, &fieldError) || apiError.Code == "MISSING_FIELD" || apiError.Code == "VALIDATION_ERROR") {
 		if flow.ErrorCallbackURL == "" {
-			flow.ErrorCallbackURL = a.ErrorPageURL()
+			flow.ErrorCallbackURL, _ = a.errorPageURL(ctx)
 		}
 		return failWithDescription(apiError.Code, apiError.Message)
 	}
 	linkFailed := errors.Is(err, ErrOAuthLinkingDisabled) || errors.Is(err, ErrOAuthLinkNotAllowed) || (flow.LinkUserID != "" && errors.Is(err, ErrNotFound))
 	if (linkFailed || errors.Is(err, ErrOAuthLinkEmailMismatch) || errors.Is(err, ErrOAuthAccountAlreadyLinked)) && flow.ErrorCallbackURL == "" {
-		flow.ErrorCallbackURL = a.ErrorPageURL()
+		flow.ErrorCallbackURL, _ = a.errorPageURL(ctx)
 	}
 	if linkFailed {
 		return fail("unable_to_link_account")
@@ -414,7 +431,7 @@ func (a *Auth) finishBrowserOAuth(w http.ResponseWriter, r *http.Request, id str
 		target = flow.NewUserCallbackURL
 	}
 	if !a.trustedURL(r.Context(), target, true) {
-		target = a.opts.BaseURL
+		target, _ = a.origin(r.Context())
 	}
 	if popup != nil && flow.LinkUserID == "" {
 		return popup.page(w.Header(), a.sessionCookie(result.Token, true).Value, target, nil), nil
@@ -478,7 +495,7 @@ func validSocialProfile(p OAuthProfile) bool {
 // A cross-site form POST does not carry SameSite=Lax cookies. Redirect to the
 // fixed callback origin for a top-level GET, then consume the bound state.
 func (a *Auth) redirectOAuthForm(w http.ResponseWriter, r *http.Request, id string) (any, error) {
-	p, err := a.providerConfig(id)
+	p, err := a.providerConfig(r.Context(), id)
 	if err != nil {
 		return nil, err
 	}

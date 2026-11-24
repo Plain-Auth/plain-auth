@@ -98,7 +98,12 @@ func parseRule(raw string) (Rule, error) {
 	if scheme != "*" && scheme != "https" && scheme != "http" {
 		return Rule{}, errOriginPattern
 	}
-	authority = strings.TrimSuffix(authority, "/")
+	return parseAuthority(scheme, strings.TrimSuffix(authority, "/"))
+}
+
+// parseAuthority reads a hostname or hostname pattern with an optional port
+// or port pattern.
+func parseAuthority(scheme, authority string) (Rule, error) {
 	host, port, hasPort := strings.Cut(authority, ":")
 	if strings.HasPrefix(authority, "[") {
 		value, rest, closed := strings.Cut(authority[1:], "]")
@@ -312,6 +317,35 @@ func (rule Rule) Matches(u *url.URL, origin string) bool {
 	}
 	portMatch, _ := path.Match(rule.port, port)
 	return portMatch
+}
+
+// CompileHosts validates host patterns such as example.com, *.example.com
+// or localhost:3000, optionally written with an http:// or https:// prefix.
+// A pattern that matches every host is refused.
+func CompileHosts(field string, hosts []string) ([]Rule, error) {
+	rules := make([]Rule, 0, len(hosts))
+	for i, raw := range hosts {
+		host := ASCIILower(raw)
+		for _, prefix := range []string{"http://", "https://"} {
+			host = strings.TrimPrefix(host, prefix)
+		}
+		rule, err := parseAuthority("*", host)
+		if err == nil && strings.Trim(rule.host, "*?.") == "" {
+			err = errors.New("a host pattern must name a domain")
+		}
+		if err != nil {
+			return nil, fmt.Errorf("authn: %s[%d]: %w", field, i, err)
+		}
+		rules = append(rules, rule)
+	}
+	return rules, nil
+}
+
+// MatchesHost reports whether a host rule from CompileHosts admits host,
+// with its optional port, when the request uses scheme.
+func (rule Rule) MatchesHost(scheme, host string) bool {
+	u := &url.URL{Scheme: scheme, Host: host}
+	return rule.Matches(u, Canonical(u))
 }
 
 // Exact reports whether this rule explicitly names the canonical origin.

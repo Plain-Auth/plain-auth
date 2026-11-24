@@ -208,6 +208,16 @@ func samlProfile(a *saml.Assertion, m SAMLMapping, trust bool) (auth.OAuthProfil
 }
 
 // A browser serializes an Origin with a lowercase host and no default port.
+// samlRequestOrigin is the origin a SAML request reached: with
+// DynamicBaseURL its host or the host a trusted proxy forwarded, otherwise
+// the Host header.
+func samlRequestOrigin(c auth.EndpointContext) string {
+	if origin, ok := c.RequestOrigin(); ok {
+		return origin
+	}
+	return "https://" + c.Request.Host
+}
+
 func sameSAMLOrigin(raw, entryPoint string) bool {
 	origin, err := endpointURL(raw)
 	if err != nil || origin.Path != "" || strings.ContainsAny(raw, "?#") {

@@ -10,16 +10,48 @@ import (
 	"github.com/Plain-Org/plain-auth/internal/httporigin"
 )
 
-// requestOriginsKey holds the rules TrustedOriginsForRequest added for the
-// HTTP request a context belongs to.
-type requestOriginsKey struct{ a *Auth }
+// requestScopeKey holds the requestScope of the HTTP request a context
+// belongs to.
+type requestScopeKey struct{ a *Auth }
 
-// withRequestOrigins resolves TrustedOriginsForRequest once for r. A nested
-// dispatch of the same request keeps the rules it already has.
-func (a *Auth) withRequestOrigins(r *http.Request) (*http.Request, error) {
-	if a.opts.TrustedOriginsForRequest == nil || r.Context().Value(requestOriginsKey{a}) != nil {
+// requestScope is what DynamicBaseURL and TrustedOriginsForRequest resolve
+// once for a request.
+type requestScope struct {
+	// origin is the request's public origin in DynamicBaseURL mode, and
+	// matched reports that it came from an allowed host, not the fallback.
+	origin  string
+	matched bool
+	// reached is the origin of the host the request reached, from its Host
+	// or a trusted X-Forwarded-Host, whether allowed or not.
+	reached string
+	// origins are the rules TrustedOriginsForRequest added.
+	origins []httporigin.Rule
+}
+
+// withRequestScope resolves the request's origin and its added trusted
+// origins once. A nested dispatch of the same request keeps its scope.
+func (a *Auth) withRequestScope(r *http.Request) (*http.Request, error) {
+	if (a.dynamic == nil && a.opts.TrustedOriginsForRequest == nil) || r.Context().Value(requestScopeKey{a}) != nil {
 		return r, nil
 	}
+	scope := &requestScope{}
+	if a.dynamic != nil {
+		if err := a.resolveOrigin(r, scope); err != nil {
+			return nil, err
+		}
+	}
+	if a.opts.TrustedOriginsForRequest != nil {
+		rules, err := a.requestTrustedOrigins(r)
+		if err != nil {
+			return nil, err
+		}
+		scope.origins = rules
+	}
+	return r.WithContext(context.WithValue(r.Context(), requestScopeKey{a}, scope)), nil
+}
+
+// requestTrustedOrigins runs TrustedOriginsForRequest for r.
+func (a *Auth) requestTrustedOrigins(r *http.Request) ([]httporigin.Rule, error) {
 	list, err := a.opts.TrustedOriginsForRequest(accountObserverRequest(r.Context(), r))
 	var problem *APIError
 	if errors.As(err, &problem) && problem != nil && problem.Status >= 400 && problem.Status <= 599 {
@@ -37,15 +69,15 @@ func (a *Auth) withRequestOrigins(r *http.Request) (*http.Request, error) {
 		a.Logger().ErrorContext(r.Context(), "auth: TrustedOriginsForRequest returned an invalid origin")
 		return nil, err
 	}
-	return r.WithContext(context.WithValue(r.Context(), requestOriginsKey{a}, rules)), nil
+	return rules, nil
 }
 
 // originRules returns the static trusted origins, followed by any that
 // TrustedOriginsForRequest added for the request ctx belongs to.
 func (a *Auth) originRules(ctx context.Context) []httporigin.Rule {
-	extra, _ := ctx.Value(requestOriginsKey{a}).([]httporigin.Rule)
-	if len(extra) == 0 {
+	s, _ := ctx.Value(requestScopeKey{a}).(*requestScope)
+	if s == nil || len(s.origins) == 0 {
 		return a.trustedOrigins
 	}
-	return slices.Concat(a.trustedOrigins, extra)
+	return slices.Concat(a.trustedOrigins, s.origins)
 }
