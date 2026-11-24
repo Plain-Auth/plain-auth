@@ -1,6 +1,7 @@
 package sqlstore
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -63,7 +64,13 @@ func TestPasskeyFirstRegistrationAcrossEngines(t *testing.T) {
 			}})
 			must(err)
 			off := false
-			a, err := auth.New(auth.Options{BaseURL: origin, Secret: strings.Repeat("k", 48), Store: store, Plugins: []auth.Plugin{plugin}, EmailAndPassword: true, RateLimit: &off})
+			a, err := auth.New(auth.Options{BaseURL: origin, Secret: strings.Repeat("k", 48), Store: store, Plugins: []auth.Plugin{plugin}, EmailAndPassword: true, RateLimit: &off,
+				ValidateUserInfo: func(_ context.Context, v auth.UserInfoValidation) error {
+					if v.Method == "passkey" && v.User.Email == "blocked@passkey.test" {
+						return &auth.APIError{Code: "passkey_blocked", Message: "Not allowed"}
+					}
+					return nil
+				}})
 			must(err)
 			srv.Config.Handler = a
 			srv.Start()
@@ -115,6 +122,13 @@ func TestPasskeyFirstRegistrationAcrossEngines(t *testing.T) {
 			must(err)
 			if current != nil || quiet.Session != nil || quiet.User != nil || quiet.Name == nil || *quiet.Name != "Client label" {
 				t.Fatal("credential-only registration issued a session or replaced a client label")
+			}
+			// ValidateUserInfo refuses a new passkey account with the app's code.
+			gated := browser()
+			_, err = gated.FinishPasskeyRegistration(ctx, begin(gated, newSoftwareKey(t), "blocked"), "", true)
+			phoneError(t, err, 403, "passkey_blocked")
+			if _, err := store.FindAccountUser(ctx, "blocked@passkey.test"); err == nil {
+				t.Fatal("a refused passkey account was stored")
 			}
 			// Knowing a public account identifier or providing it in a form cannot enroll an existing account.
 			stranger := browser()

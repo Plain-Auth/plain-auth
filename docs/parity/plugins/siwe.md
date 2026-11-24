@@ -23,6 +23,7 @@
     - [x] Require and normalize an unverified contact, preserve returning owners, and honor a live cross-runtime reservation ([test](../../../conformance/siwe-contact.mjs#L89))
     - [x] Fence concurrent, expired and foreign contact reservations and retire prior wallet access on passwordless mailbox promotion ([test](../../../adapters/sqlstore/siwe_contact_test.go#L288))
     - [x] Preserve the profile and old wallet on a rolled-back mailbox promotion, then issue a fresh session with its configured defaults ([test](../../../adapters/sqlstore/siwe_contact_fields_test.go#L127))
+    - [x] ValidateUserInfo checks a new wallet user with method siwe on SQLite, PostgreSQL and MySQL and refuses it with a 403 ([test](../../../adapters/sqlstore/siwe_user_validation_test.go#L19))
   - [ ] `SIWEPluginOptions`
     - [x] `domain` ([test](../../../plugins/siwe/message_test.go#L9))
       - [x] Match the signed authority, scheme and URI including the relying-party port ([test](../../../plugins/siwe/message_test.go#L9))

@@ -2265,6 +2265,11 @@
       "label": "Roll back account provisioning when another enrollment already owns the same credential",
       "test": "adapters/sqlstore/passkey_first_test.go",
       "marker": "duplicate credential committed an orphan account"
+    },
+    {
+      "label": "ValidateUserInfo refuses a new passkey account with the app's code and stores nothing",
+      "test": "adapters/sqlstore/passkey_first_test.go",
+      "marker": "// ValidateUserInfo refuses a new passkey account with the app's code."
     }
   ],
   "plugin/passkey/POST /passkey/verify-authentication": [
@@ -4500,6 +4505,11 @@
       "label": "Keep one profile and its matching credential when trusted and authenticated creates compete for the same address",
       "test": "adapters/sqlstore/admin_user_fields_test.go",
       "marker": "winning credential could not sign in"
+    },
+    {
+      "label": "ValidateUserInfo checks an administrator's new user outside the transaction, after the permission and email checks, and a refusal stores nothing",
+      "test": "conformance/goapi/user_validation_test.go",
+      "marker": "func TestValidateUserInfoAdminCreate(t *testing.T) {"
     }
   ],
   "docs/content/docs/plugins/admin.mdx#L82": [
@@ -10608,6 +10618,11 @@
       "label": "Preserve the profile and old wallet on a rolled-back mailbox promotion, then issue a fresh session with its configured defaults",
       "test": "adapters/sqlstore/siwe_contact_fields_test.go",
       "marker": "mailbox session inherited a wallet device field"
+    },
+    {
+      "label": "ValidateUserInfo checks a new wallet user with method siwe on SQLite, PostgreSQL and MySQL and refuses it with a 403",
+      "test": "adapters/sqlstore/siwe_user_validation_test.go",
+      "marker": "func TestSIWEUserValidation(t *testing.T) {"
     }
   ],
   "docs/content/docs/plugins/siwe.mdx#L104": [
@@ -20332,6 +20347,16 @@
       "test": "adapters/sqlstore/sso_user_validation_test.go",
       "marker": "func TestEnterpriseOIDCUserValidation(t *testing.T) {",
       "label": "Enterprise OIDC sign-ins run the gate with method sso-oidc on SQLite, PostgreSQL and MySQL"
+    },
+    {
+      "label": "Administrator-created users run the gate after the actor's permission and the email check",
+      "test": "conformance/goapi/user_validation_test.go",
+      "marker": "func TestValidateUserInfoAdminCreate(t *testing.T) {"
+    },
+    {
+      "label": "New wallet users run the gate with method siwe",
+      "test": "adapters/sqlstore/siwe_user_validation_test.go",
+      "marker": "func TestSIWEUserValidation(t *testing.T) {"
     }
   ],
   "docs/content/docs/concepts/oauth.mdx#L78": [

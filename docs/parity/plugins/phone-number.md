@@ -20,7 +20,7 @@
     - [x] Verify a first-use number, suppress session creation, link to an owner and reject reuse ([test](../../../conformance/phone-contract.mjs#L68))
     - [x] Count an incorrect anonymous link attempt, spend a correct proof and keep the caller signed out on both servers ([test](../../../conformance/phone-contract.mjs#L31))
     - [x] Exchange phone proofs between both runtimes, accept declared new-user inputs, then preserve the profile on returning verification and phone replacement ([test](../../../conformance/phone-user-fields.mjs#L87))
-    - [x] ValidateUserInfo sees the new phone user with the verified number and can refuse it with a 403 ([test](../../../conformance/goapi/user_validation_test.go#L161))
+    - [x] ValidateUserInfo sees the new phone user with the verified number and can refuse it with a 403 ([test](../../../conformance/goapi/user_validation_test.go#L163))
   - [ ] `POST /phone-number/request-password-reset`
     - [x] Hide unknown and unverified users from reset callers and suppress ineligible SMS ([test](../../../adapters/sqlstore/phone_accounts_test.go#L280))
   - [ ] `POST /phone-number/reset-password`

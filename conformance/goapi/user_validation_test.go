@@ -15,8 +15,10 @@ import (
 	authn "github.com/Plain-Org/plain-auth"
 	"github.com/Plain-Org/plain-auth/adapters/memory"
 	"github.com/Plain-Org/plain-auth/adapters/sqlite"
+	"github.com/Plain-Org/plain-auth/adapters/sqlstore"
 	"github.com/Plain-Org/plain-auth/client"
 	"github.com/Plain-Org/plain-auth/plugins/scim"
+	"github.com/Plain-Org/plain-auth/schema"
 	"golang.org/x/oauth2"
 )
 
@@ -459,5 +461,83 @@ func TestValidateUserInfoUnplannedEnterpriseFlow(t *testing.T) {
 	auth.ServeHTTP(w, httptest.NewRequest("GET", "https://auth.example/api/auth/acme/callback", nil))
 	if w.Code != 403 || strings.Contains(strings.Join(w.Header().Values("Set-Cookie"), ";"), "session_token=") || calls != 0 {
 		t.Fatal("an unplanned enterprise sign-in got past the gate", w.Code, w.Header().Values("Set-Cookie"), calls)
+	}
+}
+
+// POST /admin/create-user runs the gate outside the transaction, after the
+// actor's permission and the email check, and stores nothing on a refusal.
+func TestValidateUserInfoAdminCreate(t *testing.T) {
+	store, err := sqlstore.OpenWithOptions(t.Context(), "sqlite", ":memory:", []string{"admin"}, schema.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	admin, err := authn.NewAdmin(authn.AdminOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var checks []authn.UserInfoValidation
+	off := false
+	auth, err := authn.New(authn.Options{BaseURL: "https://auth.example", Store: store, Secret: strings.Repeat("s", 32), EmailAndPassword: true, RateLimit: &off,
+		Plugins: []authn.Plugin{admin},
+		ValidateUserInfo: func(_ context.Context, v authn.UserInfoValidation) error {
+			checks = append(checks, v)
+			if v.Method == "admin" && strings.HasSuffix(v.User.Email, "@else.example") {
+				return &authn.APIError{Code: "admin_create_blocked", Message: "Not allowed"}
+			}
+			return nil
+		}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := auth.BootstrapAdmin(t.Context(), "Root", "root@example.com", "correct horse battery"); err != nil {
+		t.Fatal(err)
+	}
+	signIn := func(email string) string {
+		r := httptest.NewRequest("POST", "https://auth.example/api/auth/sign-in/email", strings.NewReader(`{"email":"`+email+`","password":"correct horse battery"}`))
+		r.Header = http.Header{"Origin": {"https://auth.example"}, "Content-Type": {"application/json"}}
+		w := httptest.NewRecorder()
+		auth.ServeHTTP(w, r)
+		for _, c := range w.Result().Cookies() {
+			if strings.Contains(c.Name, "session_token") {
+				return c.Name + "=" + c.Value
+			}
+		}
+		t.Fatal("sign-in failed", w.Code, w.Body)
+		return ""
+	}
+	create := func(cookie, email string) (int, map[string]any) {
+		r := httptest.NewRequest("POST", "https://auth.example/api/auth/admin/create-user", strings.NewReader(`{"email":"`+email+`","password":"correct horse battery","name":"New"}`))
+		r.Header = http.Header{"Origin": {"https://auth.example"}, "Content-Type": {"application/json"}, "Cookie": {cookie}}
+		w := httptest.NewRecorder()
+		auth.ServeHTTP(w, r)
+		var out map[string]any
+		_ = json.Unmarshal(w.Body.Bytes(), &out)
+		return w.Code, out
+	}
+	root := signIn("root@example.com")
+	before := len(checks)
+	if status, body := create(root, "eve@else.example"); status != 403 || body["code"] != "admin_create_blocked" {
+		t.Fatal("a refused administrative user was not a 403", status, body)
+	}
+	if check := checks[len(checks)-1]; check.Method != "admin" || check.Action != authn.UserInfoCreateUser || check.User.Email != "eve@else.example" || check.Request == nil {
+		t.Fatalf("the admin check was %+v", check)
+	}
+	if _, err := store.FindAccountUser(t.Context(), "eve@else.example"); !errors.Is(err, authn.ErrNotFound) {
+		t.Fatal("a refused administrative user was stored", err)
+	}
+	if status, _ := create(root, "ada@example.com"); status != 200 {
+		t.Fatal("an admitted administrative user failed", status)
+	}
+	// An existing email and a caller without permission never reach the gate.
+	calls := len(checks)
+	if status, _ := create(root, "ada@example.com"); status != 400 || len(checks) != calls {
+		t.Fatal("an existing email reached the gate", status, len(checks)-calls)
+	}
+	if status, _ := create(signIn("ada@example.com"), "bob@example.com"); status != 403 || len(checks) != calls {
+		t.Fatal("a caller without permission reached the gate", status, len(checks)-calls)
+	}
+	if len(checks) <= before {
+		t.Fatal("the gate never ran for administrative users")
 	}
 }

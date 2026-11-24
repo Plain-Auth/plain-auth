@@ -93,6 +93,9 @@ func (s *Store) FinishWalletContactLogin(ctx context.Context, in siwe.Login, ses
 	if !occupied {
 		return auth.User{}, walletRegistrationConflict()
 	}
+	if in.RequireContact {
+		return auth.User{}, siwe.ErrContactUnavailable
+	}
 	return s.finishWalletLogin(ctx, in, session, nil)
 }
 
@@ -102,6 +105,9 @@ func walletRegistrationConflict() error {
 
 func (s *Store) createWalletUser(ctx context.Context, tx *sql.Tx, in siwe.Login, now any, claim *siwe.ContactClaim) error {
 	email := in.Email
+	if claim != nil && in.RequireContact && claim.Address != in.Address {
+		return siwe.ErrContactUnavailable
+	}
 	if claim != nil && claim.Address == in.Address {
 		live, err := s.deleteWalletClaim(ctx, tx, *claim, true)
 		if err != nil {
@@ -116,6 +122,9 @@ func (s *Store) createWalletUser(ctx context.Context, tx *sql.Tx, in siwe.Login,
 			if !occupied {
 				email = claim.Email
 			}
+		}
+		if in.RequireContact && email != claim.Email {
+			return siwe.ErrContactUnavailable
 		}
 	}
 	_, err := tx.ExecContext(ctx, s.bind(`INSERT INTO "user" ("id","name","email","emailVerified","image","createdAt","updatedAt") VALUES(?,?,?,?,?,?,?)`), in.CandidateID, in.Profile.Name, email, false, in.Profile.Avatar, now, now)

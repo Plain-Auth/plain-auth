@@ -28,7 +28,7 @@
     - [x] Register a new mailbox with public, hidden and host-owned user fields through both released-client runtimes on shared SQLite ([test](../../../conformance/user-fields.mjs#L73))
     - [x] Spend invalid registration claims and authenticate returning owners without changing stored fields across four adapters ([test](../../../adapters/sqlstore/emailotp_user_fields_test.go#L29))
     - [x] Roll back a new profile when required session storage fails, then redeem the original proof once after correcting the configuration ([test](../../../adapters/sqlstore/emailotp_user_fields_test.go#L191))
-    - [x] ValidateUserInfo refuses a new email-code user with a 403 and stores nothing ([test](../../../conformance/goapi/user_validation_test.go#L285))
+    - [x] ValidateUserInfo refuses a new email-code user with a 403 and stores nothing ([test](../../../conformance/goapi/user_validation_test.go#L287))
   - [ ] `POST /email-otp/request-password-reset`
     - [x] Deliver recovery mail to an existing owner and accept the stored proof in a second runtime ([test](../../../conformance/core.test.mjs#L521))
   - [x] `POST /forget-password/email-otp` ([test](../../../adapters/sqlstore/emailotp_test.go#L173))

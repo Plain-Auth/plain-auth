@@ -15,16 +15,17 @@
   - [ ] `GET /passkey/generate-register-options`
     - [x] Bind registration to a fresh account session and a secure one-use challenge ([test](../../../adapters/sqlstore/passkey_test.go#L173))
     - [x] Use the public client to request options with the configured relying-party name, ID and public-key algorithms ([test](../../../conformance/core.test.mjs#L403))
-    - [x] Resolve a provisional enrollment identity and bind its display name and context to the ceremony ([test](../../../adapters/sqlstore/passkey_first_test.go#L78))
+    - [x] Resolve a provisional enrollment identity and bind its display name and context to the ceremony ([test](../../../adapters/sqlstore/passkey_first_test.go#L85))
   - [ ] `GET /passkey/generate-authenticate-options`
     - [x] Generate discoverable options and allow the current account’s enrolled credentials ([test](../../../adapters/sqlstore/passkey_test.go#L278))
   - [ ] `POST /passkey/verify-registration`
     - [x] Verify the attested key and preserve distinct credential and record IDs ([test](../../../adapters/sqlstore/passkey_test.go#L193))
-    - [x] Commit the passwordless user, unique credential and optional browser session together on three SQL backends ([test](../../../adapters/sqlstore/passkey_first_test.go#L91))
-    - [x] Roll back account provisioning when another enrollment already owns the same credential ([test](../../../adapters/sqlstore/passkey_first_test.go#L161))
+    - [x] Commit the passwordless user, unique credential and optional browser session together on three SQL backends ([test](../../../adapters/sqlstore/passkey_first_test.go#L98))
+    - [x] Roll back account provisioning when another enrollment already owns the same credential ([test](../../../adapters/sqlstore/passkey_first_test.go#L175))
+    - [x] ValidateUserInfo refuses a new passkey account with the app's code and stores nothing ([test](../../../adapters/sqlstore/passkey_first_test.go#L126))
   - [ ] `POST /passkey/verify-authentication`
     - [x] Verify a signed assertion and atomically persist its counter and session ([test](../../../adapters/sqlstore/passkey_test.go#L237))
-    - [x] Authenticate a real assertion after the trusted callback chooses a different final account ID ([test](../../../adapters/sqlstore/passkey_first_test.go#L108))
+    - [x] Authenticate a real assertion after the trusted callback chooses a different final account ID ([test](../../../adapters/sqlstore/passkey_first_test.go#L115))
   - [ ] `GET /passkey/list-user-passkeys`
     - [x] List only credentials owned by the authenticated account ([test](../../../adapters/sqlstore/passkey_test.go#L256))
   - [ ] `POST /passkey/delete-passkey`
@@ -47,11 +48,11 @@
   - [ ] `PasskeyExtensionsResolver`
   - [ ] `PasskeyRegistrationOptions`
     - [ ] `requireSession`
-      - [x] Opt into first-use registration and keep existing-session enrollment bound to the original live session ([test](../../../adapters/sqlstore/passkey_first_test.go#L148))
+      - [x] Opt into first-use registration and keep existing-session enrollment bound to the original live session ([test](../../../adapters/sqlstore/passkey_first_test.go#L162))
     - [ ] `resolveUser`
-      - [x] Accept a validated application enrollment context and a provisional user identity ([test](../../../adapters/sqlstore/passkey_first_test.go#L44))
+      - [x] Accept a validated application enrollment context and a provisional user identity ([test](../../../adapters/sqlstore/passkey_first_test.go#L45))
     - [ ] `afterVerification`
-      - [x] Run the application decision only after verified WebAuthn attestation ([test](../../../adapters/sqlstore/passkey_first_test.go#L154))
+      - [x] Run the application decision only after verified WebAuthn attestation ([test](../../../adapters/sqlstore/passkey_first_test.go#L168))
     - [ ] `extensions`
   - [ ] `PasskeyAuthenticationOptions`
     - [ ] `extensions`

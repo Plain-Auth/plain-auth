@@ -261,7 +261,8 @@ func (a *Auth) executeAdmin(ctx context.Context, h http.Header, req AdminRequest
 		return out, adminError(401, "UNAUTHORIZED", "Unauthorized")
 	}
 	now := a.now().UTC().Truncate(time.Millisecond)
-	err := a.adminStore.AdminTransaction(ctx, token, req.UserID, now, func(tx AdminTransaction, actor SessionResult) error {
+	plan := &adminCreatePlan{}
+	body := func(tx AdminTransaction, actor SessionResult) error {
 		out = AdminResult{}
 		if err := a.configureAdminProjection(tx, op); err != nil {
 			return err
@@ -307,7 +308,7 @@ func (a *Auth) executeAdmin(ctx context.Context, h http.Header, req AdminRequest
 			return a.revokeAdminSession(tx, actor.User.ID, req.SessionToken, now)
 		case "create-user":
 			var err error
-			out.User, err = a.createAdministrativeUser(ctx, tx, &actor.User, req, now)
+			out.User, err = a.createAdministrativeUser(ctx, tx, &actor.User, req, now, plan)
 			return err
 		}
 		if req.UserID == "" {
@@ -399,7 +400,14 @@ func (a *Auth) executeAdmin(ctx context.Context, h http.Header, req AdminRequest
 		}
 		out.User = &u
 		return nil
-	})
+	}
+	err := a.adminStore.AdminTransaction(ctx, token, req.UserID, now, body)
+	if errors.Is(err, errAdminPlanned) {
+		// The gate sees the user the actor may create, outside the transaction.
+		if err = a.validateAdminUser(ctx, plan, req); err == nil {
+			err = a.adminStore.AdminTransaction(ctx, token, req.UserID, now, body)
+		}
+	}
 	err = usernameWriteError(err)
 	if errors.Is(err, ErrEmailTaken) {
 		err = adminError(400, "USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL", "User already exists. Use another email.")

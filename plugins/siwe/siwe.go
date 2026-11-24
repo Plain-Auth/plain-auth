@@ -46,7 +46,15 @@ type Login struct {
 	Contract                    bool
 	Profile                     ENSLookupResult
 	ValidUntil                  time.Time
+	// RequireContact asks FinishWalletContactLogin to create the user with
+	// the reserved contact or fail with ErrContactUnavailable, rather than
+	// fall back to Email. ValidateUserInfo admitted only the contact.
+	RequireContact bool
 }
+
+// ErrContactUnavailable reports that a required contact email can no longer
+// be used for a new wallet user.
+var ErrContactUnavailable = errors.New("siwe: the reserved contact email is no longer available")
 
 // MappingStore confirms that the plugin and adapter agree on the physical wallet model.
 type MappingStore interface {
@@ -208,7 +216,7 @@ func New(o Options) (auth.Plugin, error) {
 		var profile ENSLookupResult
 		var claim *ContactClaim
 		triedContact := false
-		for range 2 {
+		for range 3 {
 			var id string
 			if contract {
 				id, err = store.(ContractStore).ContractWalletOwner(ctx, m.address, m.chain)
@@ -249,6 +257,28 @@ func New(o Options) (auth.Plugin, error) {
 			if !m.expiration.IsZero() && (input.ValidUntil.IsZero() || m.expiration.Before(input.ValidUntil)) {
 				input.ValidUntil = m.expiration
 			}
+			if !existing && input.AllowSignUp && c.Auth.HasUserInfoValidation() {
+				// The gate sees the email the new user gets. A held contact is
+				// required, and a store that cannot use it reports so, after
+				// which the wallet email is checked on the next attempt.
+				email := input.Email
+				if claim != nil {
+					email, input.RequireContact = claim.Email, true
+				}
+				name := profile.Name
+				if name == "" {
+					name = m.address
+				}
+				user := auth.User{ID: id, Name: name, Email: email}
+				if profile.Avatar != "" {
+					avatar := profile.Avatar
+					user.Image = &avatar
+				}
+				check := auth.UserInfoValidation{Action: auth.UserInfoCreateUser, Method: "siwe", User: auth.UserRecord{User: user}, Request: c.Request}
+				if err := c.Auth.ValidateUserInfo(ctx, check); err != nil {
+					return nil, err
+				}
+			}
 			result, err := c.IssueSession(id, func(ctx context.Context, s auth.StoredSession) (auth.User, error) {
 				if err := ctx.Err(); err != nil {
 					return auth.User{}, err
@@ -266,6 +296,10 @@ func New(o Options) (auth.Plugin, error) {
 				return store.FinishWalletLogin(ctx, input, s)
 			})
 			if errors.Is(err, ErrOwnerChanged) {
+				continue
+			}
+			if errors.Is(err, ErrContactUnavailable) {
+				claim = nil
 				continue
 			}
 			if err != nil {

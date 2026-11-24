@@ -51,14 +51,21 @@ func (a *Auth) AdminCreateUser(ctx context.Context, in AdminCreateUserRequest) (
 		Name:      in.Name, Email: in.Email, Password: in.Password,
 		Role: in.Role, Data: in.Data,
 	}
-	err := store.AdminCreateTransaction(ctx, now, func(tx AdminUserCreator) error {
+	plan := &adminCreatePlan{}
+	body := func(tx AdminUserCreator) error {
 		if err := a.configureAdminProjection(tx, req.Operation); err != nil {
 			return err
 		}
 		var err error
-		result, err = a.createAdministrativeUser(ctx, tx, nil, req, now)
+		result, err = a.createAdministrativeUser(ctx, tx, nil, req, now, plan)
 		return err
-	})
+	}
+	err := store.AdminCreateTransaction(ctx, now, body)
+	if errors.Is(err, errAdminPlanned) {
+		if err = a.validateAdminUser(ctx, plan, req); err == nil {
+			err = store.AdminCreateTransaction(ctx, now, body)
+		}
+	}
 	if errors.Is(err, ErrEmailTaken) {
 		return nil, adminError(400, "USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL", "User already exists. Use another email.")
 	}
@@ -76,11 +83,38 @@ func (a *Auth) requireAdminFieldGrant(actor *User, operation string) error {
 	return a.requireAdminGrant(*actor, operation)
 }
 
-func (a *Auth) createAdministrativeUser(ctx context.Context, tx AdminUserCreator, actor *User, req AdminRequest, now time.Time) (*User, error) {
+// adminCreatePlan carries an administrative user between the run that
+// builds it and the run that stores it after ValidateUserInfo admitted it.
+type adminCreatePlan struct {
+	user     *User
+	hash     string
+	values   UserFieldValues
+	fields   map[string]any
+	approved bool
+}
+
+var errAdminPlanned = errors.New("admin: user planned for ValidateUserInfo")
+
+// validateAdminUser runs ValidateUserInfo on a planned administrative user.
+func (a *Auth) validateAdminUser(ctx context.Context, plan *adminCreatePlan, req AdminRequest) error {
+	if err := a.ValidateUserInfo(ctx, UserInfoValidation{Action: UserInfoCreateUser, Method: "admin", User: UserRecord{User: *plan.user, Fields: plan.fields}}); err != nil {
+		return err
+	}
+	plan.approved = true
+	return nil
+}
+
+// createAdministrativeUser builds and inserts a user. With ValidateUserInfo
+// set, a first run inserts and rolls back with errAdminPlanned, so the gate
+// runs outside the transaction; the approved run stores the same user.
+func (a *Auth) createAdministrativeUser(ctx context.Context, tx AdminUserCreator, actor *User, req AdminRequest, now time.Time, plan *adminCreatePlan) (*User, error) {
 	u := User{
 		ID: randomID(), Name: req.Name, Email: strings.ToLower(req.Email),
 		CreatedAt: now, UpdatedAt: now,
 		AdminUserFields: &AdminUserFields{Role: a.admin.DefaultRole},
+	}
+	if plan.approved {
+		u.ID = plan.user.ID
 	}
 	if len(u.Email) > 254 || strings.Contains(u.Email, "..") || !emailPattern.MatchString(u.Email) || req.Name == "" {
 		return nil, validationError("A valid email and name are required")
@@ -88,12 +122,23 @@ func (a *Auth) createAdministrativeUser(ctx context.Context, tx AdminUserCreator
 	if err := a.adminUpdateFields(ctx, actor, &u, req, true); err != nil {
 		return nil, err
 	}
-	values, err := a.prepareUserFields(a.userFieldInput(req.Data), true, actor == nil)
-	if err != nil {
-		return nil, err
+	// The approved run stores the values the gate saw, computed defaults
+	// included. A session actor cannot set server-only fields.
+	input := a.userFieldInput(req.Data)
+	values := plan.values
+	var err error
+	if !plan.approved {
+		if values, err = a.prepareUserFields(input, true, actor == nil); err != nil {
+			return nil, err
+		}
+	}
+	if actor != nil {
+		input = serverInput(a.opts.UserAdditionalFields, input)
 	}
 	var hash string
-	if req.Password != "" {
+	if plan.approved {
+		hash = plan.hash
+	} else if req.Password != "" {
 		if err := a.validatePasswordLength(req.Password, false); err != nil {
 			return nil, err
 		}
@@ -102,11 +147,19 @@ func (a *Auth) createAdministrativeUser(ctx context.Context, tx AdminUserCreator
 			return nil, err
 		}
 	}
+	// planned ends the first run once the insert shows the email is free.
+	planned := func(stored *User) (*User, error) {
+		if a.opts.ValidateUserInfo == nil || plan.approved {
+			return stored, nil
+		}
+		plan.user, plan.hash, plan.values, plan.fields = stored, hash, values, input
+		return nil, errAdminPlanned
+	}
 	if !values.Present() {
 		if err := tx.CreateUser(u, hash); err != nil {
 			return nil, err
 		}
-		return &u, nil
+		return planned(&u)
 	}
 	fields, ok := tx.(AdminUserFieldTransaction)
 	if !ok {
@@ -119,7 +172,7 @@ func (a *Auth) createAdministrativeUser(ctx context.Context, tx AdminUserCreator
 	if err != nil {
 		return nil, err
 	}
-	return &stored, nil
+	return planned(&stored)
 }
 
 func (a *Auth) configureAdminProjection(tx AdminUserCreator, op string) error {

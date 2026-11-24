@@ -11,7 +11,7 @@
   - [x] `POST /sign-in/anonymous` ([test](../../../conformance/core.test.mjs#L787))
     - [x] Create a guest without a password, with a usable session and the guest flag ([test](../../../adapters/sqlstore/anonymous_test.go#L141))
     - [x] The public browser client creates, upgrades, reads and removes guest identities on both servers ([test](../../../conformance/core.test.mjs#L787))
-    - [x] ValidateUserInfo refuses an anonymous user with a 403 carrying the app's code ([test](../../../conformance/goapi/user_validation_test.go#L161))
+    - [x] ValidateUserInfo refuses an anonymous user with a 403 carrying the app's code ([test](../../../conformance/goapi/user_validation_test.go#L163))
   - [x] `POST /delete-anonymous-user` ([test](../../../adapters/sqlstore/anonymous_test.go#L170))
     - [x] Remove the authenticated guest and revoke its sessions ([test](../../../adapters/sqlstore/anonymous_test.go#L170))
     - [x] Protect permanent accounts from the guest deletion route ([test](../../../adapters/sqlstore/anonymous_test.go#L163))

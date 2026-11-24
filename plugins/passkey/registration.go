@@ -154,6 +154,10 @@ func (s service) persistRegistration(c auth.EndpointContext, state ceremony, ss 
 			return nil, errIdentity
 		}
 		fresh = &auth.User{ID: r.UserID, Name: d.NewAccount.Name, Email: email, CreatedAt: now, UpdatedAt: now}
+		check := auth.UserInfoValidation{Action: auth.UserInfoCreateUser, Method: "passkey", User: auth.UserRecord{User: *fresh}, Request: c.Request}
+		if err := c.Auth.ValidateUserInfo(c.Request.Context(), check); err != nil {
+			return nil, err
+		}
 	}
 	source := ""
 	if ss != nil {

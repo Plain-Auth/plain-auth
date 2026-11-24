@@ -160,15 +160,6 @@ func (a *Auth) checkUserInfoValidation() error {
 			return fmt.Errorf("auth: ValidateUserInfo for %s needs a store implementing LoginPlanner", strings.Join(decided, ", "))
 		}
 	}
-	var bypass []string
 	// The SCIM handler refuses the option itself through HasUserInfoValidation.
-	for _, id := range []string{"admin", "passkey", "siwe"} {
-		if a.HasPlugin(id) {
-			bypass = append(bypass, id)
-		}
-	}
-	if len(bypass) > 0 {
-		return fmt.Errorf("auth: ValidateUserInfo does not run yet for %s", strings.Join(bypass, ", "))
-	}
 	return nil
 }

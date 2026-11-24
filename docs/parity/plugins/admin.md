@@ -29,6 +29,7 @@
     - [x] Create profiles with trusted server-owned values and omit protected fields from the native response ([test](../../../adapters/sqlstore/admin_user_fields_test.go#L77))
     - [x] Roll back the new account and credential when the stored public profile cannot be read ([test](../../../adapters/sqlstore/admin_user_fields_test.go#L223))
     - [x] Keep one profile and its matching credential when trusted and authenticated creates compete for the same address ([test](../../../adapters/sqlstore/admin_user_fields_test.go#L191))
+    - [x] ValidateUserInfo checks an administrator's new user outside the transaction, after the permission and email checks, and a refusal stores nothing ([test](../../../conformance/goapi/user_validation_test.go#L469))
   - [ ] `POST /admin/update-user`
     - [x] Update a user’s profile and gate changes to protected fields ([test](../../../adapters/sqlstore/admin_test.go#L159))
     - [x] Persist independent nullable username fields on authorized profile edits ([test](../../../adapters/sqlstore/username_test.go#L448))
