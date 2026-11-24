@@ -20754,5 +20754,33 @@
       "marker": "refused(withState(captured.Value), otherCallback, \"another flow's state cookie\")",
       "complete": true
     }
+  ],
+  "docs/content/docs/reference/options.mdx#L526": [
+    {
+      "label": "StoreAccountCookie sets a sealed account_data cookie on sign-in that selects the signed-in provider account for its own user only; unlike the reference, the tokens stay in the store",
+      "test": "conformance/goapi/account_cookie_test.go",
+      "marker": "func TestStoreAccountCookie(t *testing.T) {"
+    }
+  ],
+  "docs/content/docs/concepts/oauth.mdx#L109": [
+    {
+      "label": "get-access-token with useAccountCookie returns the signed-in account's token, and refuses two selectors, another user's or an altered cookie, and no session",
+      "test": "conformance/goapi/account_cookie_test.go",
+      "marker": "if status != 200 || out[\"accessToken\"] != \"access-ada\" {"
+    }
+  ],
+  "docs/content/docs/concepts/oauth.mdx#L152": [
+    {
+      "label": "refresh-token with useAccountCookie refreshes the signed-in account's tokens",
+      "test": "conformance/goapi/account_cookie_test.go",
+      "marker": "status, out = call(ada, \"POST\", \"/refresh-token\", `{\"useAccountCookie\":true}`)"
+    }
+  ],
+  "docs/content/docs/concepts/oauth.mdx#L173": [
+    {
+      "label": "account-info with useAccountCookie returns the signed-in account's provider identity",
+      "test": "conformance/goapi/account_cookie_test.go",
+      "marker": "status, out = call(ada, \"GET\", \"/account-info?useAccountCookie=true\", \"\")"
+    }
   ]
 }

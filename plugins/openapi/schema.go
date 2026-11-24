@@ -448,10 +448,13 @@ func adjustRequest(op object, r plainauth.HTTPRoute, info plainauth.HTTPDescript
 		op["parameters"] = parameters
 		return
 	case "/account-info":
-		op["parameters"] = []object{{"name": "accountId", "in": "query", "required": true, "schema": object{"type": "string"}}}
+		// Exactly one selector: the account record ID, or the account cookie.
+		op["parameters"] = []object{{"name": "accountId", "in": "query", "schema": object{"type": "string"}}, {"name": "useAccountCookie", "in": "query", "schema": object{"type": "boolean"}}}
 		return
 	case "/get-access-token", "/refresh-token":
-		op["requestBody"] = object{"required": true, "content": content("application/json", responseObject(object{"accountId": object{"type": "string"}}, "accountId"))}
+		body := responseObject(object{"accountId": object{"type": "string"}, "useAccountCookie": object{"type": "boolean"}})
+		body["description"] = "Select exactly one account: accountId or useAccountCookie."
+		op["requestBody"] = object{"required": true, "content": content("application/json", body)}
 		return
 	case "/error":
 		op["parameters"] = []object{{"name": "error", "in": "query", "schema": object{"type": "string"}}, {"name": "error_description", "in": "query", "schema": object{"type": "string"}}}

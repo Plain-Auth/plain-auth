@@ -228,5 +228,6 @@ func (c EndpointContext) CompleteEnterpriseFlow(f OAuthFlow, method string, p OA
 	if err = c.Auth.addSessionCookieHeaders(c.ResponseHeader, c.Request, result.Token, true); err != nil {
 		return nil, c.Auth.discardUnpublishedSession(c.Request.Context(), result.Token, err)
 	}
+	c.Auth.setAccountCookie(c.ResponseHeader, c.Request, result.User.ID, f.Provider, p.Subject)
 	return next, nil
 }

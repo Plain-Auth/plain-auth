@@ -173,6 +173,7 @@ func NewOneTap(o OneTapOptions, fallback OAuthProvider) Plugin {
 			if err := c.Auth.addSessionCookieHeaders(c.ResponseHeader, c.Request, account.Token, true); err != nil {
 				return nil, err
 			}
+			c.Auth.setAccountCookie(c.ResponseHeader, c.Request, account.User.ID, "google", profile.Subject)
 			return map[string]any{"token": account.Token, "user": account.User}, nil
 		}},
 	}}

@@ -158,7 +158,7 @@ func (a *Auth) checkCookieOptions() error {
 	preference.Name, preference.Path, preference.HttpOnly = a.prefixedCookieName("last_used_login_method"), "/", false
 	issued := map[string]*http.Cookie{"admin_session": a.adminSessionCookie("value", 0), "last_used_login_method": preference, "one_tap": a.oneTapCookie("value", 0)}
 	names := []string{"session_token", "session_data", "dont_remember", "two_factor", "trust_device", "passkey_challenge",
-		"oauth_state", popupwire.MarkerCookie, "guest_continuation", "sso_state", "saml_state", "saml_logout"}
+		"oauth_state", popupwire.MarkerCookie, "guest_continuation", "sso_state", "saml_state", "saml_logout", "account_data"}
 	for _, name := range append(names, slices.Collect(maps.Keys(a.opts.Cookies))...) {
 		if issued[name] == nil {
 			issued[name] = a.browserCookie(name, "value", 0)

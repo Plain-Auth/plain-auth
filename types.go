@@ -237,6 +237,11 @@ type Options struct {
 	// (OAuthStateDatabase, the default) or sealed in the state cookie
 	// (OAuthStateCookie), which needs no OAuthFlowStore.
 	OAuthStateStrategy OAuthStateStrategy
+	// StoreAccountCookie records in an account_data cookie which linked
+	// provider account a browser signed in with, so get-access-token,
+	// refresh-token and account-info accept useAccountCookie. The cookie
+	// names the account; its tokens stay in the store.
+	StoreAccountCookie bool
 	// EncryptOAuthTokens encrypts linked provider credentials at rest using the configured key ring.
 	EncryptOAuthTokens bool
 	Plugins            []Plugin

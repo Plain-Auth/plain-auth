@@ -206,6 +206,13 @@ func New(opts Options) (*Auth, error) {
 	default:
 		return nil, errors.New("auth: OAuthStateStrategy must be OAuthStateDatabase or OAuthStateCookie")
 	}
+	if opts.StoreAccountCookie {
+		_, linked := opts.Store.(LinkedAccountStore)
+		_, credentials := opts.Store.(ProviderCredentialStore)
+		if !linked || !credentials {
+			return nil, errors.New("auth: StoreAccountCookie requires a store implementing LinkedAccountStore and ProviderCredentialStore")
+		}
+	}
 	opts.SocialProviders, err = prepareOAuthProviders(opts.SocialProviders, opts.Store, len(opts.UserAdditionalFields) > 0 && !opts.DisableSignUp, opts.OAuthStateStrategy)
 	if err != nil {
 		return nil, err

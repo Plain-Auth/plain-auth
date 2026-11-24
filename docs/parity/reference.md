@@ -443,6 +443,7 @@
       - [x] `"database"` ([test](../../conformance/goapi/oauth_test.go#L151))
         - [x] Social sign-in sets an oauth_state binding cookie and stores the flow ([test](../../conformance/goapi/oauth_test.go#L151))
     - [ ] `storeAccountCookie`
+      - [x] StoreAccountCookie sets a sealed account_data cookie on sign-in that selects the signed-in provider account for its own user only; unlike the reference, the tokens stay in the store ([test](../../conformance/goapi/account_cookie_test.go#L24))
     - [ ] `accountLinking`
       - [x] `enabled` ([test](../../conformance/social-link-policy.mjs#L50))
         - [x] Close new links across browser and direct grants while permitting new registration and subsequent sign-in with the same stable subject ([test](../../conformance/social-link-policy.mjs#L50))

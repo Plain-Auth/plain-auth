@@ -133,8 +133,12 @@ func (a *Auth) selectedCredential(ctx context.Context, h http.Header, s AccountS
 	if userID == "" {
 		return nil, row, p, &APIError{400, "USER_ID_OR_SESSION_REQUIRED", "Either userId or session is required"}
 	}
+	var selected accountCookie
 	if s.UseAccountCookie {
-		return nil, row, p, &APIError{400, "ACCOUNT_NOT_FOUND", "Account not found"}
+		var err error
+		if selected, s.AccountID, err = a.cookieAccount(ctx, h, userID); err != nil {
+			return nil, row, p, err
+		}
 	}
 	store, ok := a.opts.Store.(ProviderCredentialStore)
 	if !ok {
@@ -144,7 +148,7 @@ func (a *Auth) selectedCredential(ctx context.Context, h http.Header, s AccountS
 		store = encryptedProviderStore{ProviderCredentialStore: store, auth: a}
 	}
 	row, err := store.ProviderCredential(ctx, userID, s.AccountID)
-	if errors.Is(err, ErrNotFound) {
+	if errors.Is(err, ErrNotFound) || (err == nil && s.UseAccountCookie && (row.ProviderID != selected.ProviderID || row.Subject != selected.Subject)) {
 		return nil, row, p, &APIError{400, "ACCOUNT_NOT_FOUND", "Account not found"}
 	}
 	if err != nil {

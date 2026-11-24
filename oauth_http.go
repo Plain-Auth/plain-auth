@@ -423,7 +423,11 @@ func (a *Auth) finishBrowserOAuth(w http.ResponseWriter, r *http.Request, id str
 		return nil, err
 	}
 	if flow.LinkUserID == "" {
-		if out, err := a.publishSocialLogin(w, r, result.Token, resume); out != nil || err != nil {
+		out, err := a.publishSocialLogin(w, r, result.Token, resume)
+		if err == nil {
+			a.setAccountCookie(w.Header(), r, result.User.ID, id, profile.Subject)
+		}
+		if out != nil || err != nil {
 			return out, err
 		}
 	}
@@ -756,7 +760,11 @@ func (a *Auth) directOAuth(w http.ResponseWriter, r *http.Request, id string, p 
 	if linkUserID != "" {
 		return map[string]any{"url": "", "status": true, "redirect": false}, nil
 	}
-	if out, err := a.publishSocialLogin(w, r, account.Token, resume); out != nil || err != nil {
+	out, err := a.publishSocialLogin(w, r, account.Token, resume)
+	if err == nil {
+		a.setAccountCookie(w.Header(), r, account.User.ID, id, profile.Subject)
+	}
+	if out != nil || err != nil {
 		return out, err
 	}
 	return map[string]any{"redirect": false, "token": account.Token, "user": account.User}, nil
