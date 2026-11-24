@@ -114,10 +114,10 @@
     - [x] A SAML profile carries the raw attributes ValidateUserInfo sees, one value as a string and several as a list ([test](../../../plugins/sso/saml_test.go#L148))
   - [ ] `GET / POST /sso/saml2/sp/slo/:providerId`
     - [x] Accept a signed HTTP-Redirect acknowledgement once across replicas and preserve a newer login during the round trip ([test](../../../adapters/sqlstore/sso_saml_logout_test.go#L224))
-    - [x] Complete the strict Go Redirect return with an independent IdP and capture the pinned reference’s signed-response rejection ([test](../../../conformance/core.test.mjs#L1553))
+    - [x] Complete the strict Go Redirect return with an independent IdP and capture the pinned reference’s signed-response rejection ([test](../../../conformance/core.test.mjs#L1558))
     - [x] Accept a signed directory LogoutRequest once across replicas, revoke sessions for the exact qualified NameID and SessionIndex, and preserve another immutable registration on three SQL engines ([test](../../../adapters/sqlstore/sso_saml_idp_logout_test.go#L231))
     - [x] Expire a request waiting on a directory lock and keep a renewed SAML session bound past its original TTL ([test](../../../adapters/sqlstore/sso_saml_idp_logout_test.go#L170))
-    - [x] Return an independently verified signed Redirect acknowledgement to the IdP; the strict pinned runtime rejects the same signed request ([test](../../../conformance/core.test.mjs#L1571))
+    - [x] Return an independently verified signed Redirect acknowledgement to the IdP; the strict pinned runtime rejects the same signed request ([test](../../../conformance/core.test.mjs#L1576))
   - [ ] `POST /sso/saml2/logout/:providerId`
     - [x] Use the native SDK to revoke exactly the recorded local SAML login and sign the original IdP NameID and SessionIndex on three SQL engines ([test](../../../adapters/sqlstore/sso_saml_logout_test.go#L30))
     - [x] Revoke the current local login through the released client on both runtimes and verify the Go request’s RSA-SHA256 Redirect signature ([test](../../../conformance/sso-saml.mjs#L342))

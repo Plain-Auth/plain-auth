@@ -201,14 +201,22 @@ func (a *Auth) exchangeProxyCallback(w http.ResponseWriter, r *http.Request, id 
 	q := r.URL.Query()
 	var grant oauthProxyState
 	now := a.now().UTC()
-	if len(q["state"]) != 1 || len(q["code"]) > 1 || len(q["error"]) > 1 ||
-		!a.openProxy(proxyStatePurpose, q.Get("state"), &grant) ||
+	if len(q["state"]) > 1 || len(q["code"]) > 1 || len(q["error"]) > 1 {
+		return nil, validationError("Duplicate OAuth callback field")
+	}
+	if !a.openProxy(proxyStatePurpose, q.Get("state"), &grant) ||
 		grant.Provider != id || grant.State == "" || grant.Verifier == "" || grant.Nonce == "" ||
 		grant.ClientID != provider.Config.ClientID || grant.BasePath != a.opts.BasePath ||
 		grant.Production != a.oauthProxy.ProductionURL || a.proxyRequestOrigin(r) != grant.Production || a.proxyCurrentOrigin(r) != grant.Production ||
 		proxyOrigin(grant.Preview) != grant.Preview || grant.Preview == grant.Production || !a.trustedURL(r.Context(), grant.Preview, false) ||
 		!grant.ExpiresAt.After(now) || grant.ExpiresAt.After(now.Add(10*time.Minute+10*time.Second)) {
-		return nil, invalidProxyCallback()
+		// A state production cannot verify, such as one sealed with another
+		// proxy key, goes to this instance's error page, never the preview.
+		target, err := a.errorPageURL(r.Context())
+		if err != nil {
+			return nil, err
+		}
+		return Redirect(httporigin.SetQuery(target, url.Values{"error": {"state_mismatch"}})), nil
 	}
 	result := oauthProxyResult{State: grant.State, Provider: id, Preview: grant.Preview, Production: grant.Production, Callback: grant.Callback, BasePath: grant.BasePath,
 		DisableSignUp: provider.DisableSignUp || provider.DisableImplicitSignUp && !grant.RequestSignUp, RequireEmailVerification: provider.RequireEmailVerification}
@@ -329,10 +337,5 @@ func (a *Auth) completeProxyCallback(w http.ResponseWriter, r *http.Request, id 
 	if err != nil {
 		return nil, err
 	}
-	out, err := a.finishBrowserOAuth(w, r, result.Provider, provider, result.State, nil, &result)
-	var api *APIError
-	if errors.As(err, &api) && api.Code == "INVALID_OAUTH_STATE" {
-		return nil, proxyBrowserError("state_mismatch")
-	}
-	return out, err
+	return a.finishBrowserOAuth(w, r, result.Provider, provider, result.State, nil, &result)
 }

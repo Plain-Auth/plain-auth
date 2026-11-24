@@ -239,10 +239,10 @@ func TestEnterpriseOIDCBrowser(t *testing.T) {
 			f := start(one, "acme", "employee@example.test", "employee", "client_secret_basic", "", map[string]any{"email": "hello@sub.acme.example"})
 			bad := f
 			bad.path = strings.Replace(bad.path, "/acme?", "/staff?", 1)
-			target(finish(two, bad), "/identity/error?error=invalid_state")
+			target(finish(two, bad), "/identity/error?error=state_mismatch")
 			bad = f
 			bad.cookie = ""
-			target(finish(two, bad), "/identity/error?error=invalid_state")
+			target(finish(two, bad), "/identity/error?error=state_mismatch")
 			w := finish(two, f)
 			target(w, "/welcome")
 			cookie := ""
@@ -256,7 +256,7 @@ func TestEnterpriseOIDCBrowser(t *testing.T) {
 			if session.User.Email != "employee@example.test" || session.User.EmailVerified || session.Session.Token == "" {
 				t.Fatalf("invalid issued session %+v", session)
 			}
-			target(finish(two, f), "/identity/error?error=invalid_state")
+			target(finish(two, f), "/identity/error?error=state_mismatch")
 			count := func(q string, args ...any) int {
 				var n int
 				must(first.db.QueryRowContext(ctx, first.bind(q), args...).Scan(&n))
@@ -329,7 +329,7 @@ func TestEnterpriseOIDCBrowser(t *testing.T) {
 				resp := <-done
 				locations[resp.Header().Get("Location")]++
 			}
-			if locations["https://service.test/welcome"] != 1 || locations["https://service.test/identity/error?error=invalid_state"] != 1 {
+			if locations["https://service.test/welcome"] != 1 || locations["https://service.test/identity/error?error=state_mismatch"] != 1 {
 				t.Fatal(locations)
 			}
 			// An ordinary OAuth node shares the database but verifies a different
@@ -420,7 +420,7 @@ func TestEnterpriseOIDCBrowser(t *testing.T) {
 			expired := start(one, "acme", "expiredstate@example.test", "expiredstate", "client_secret_basic", "", withID)
 			u, _ := url.Parse(expired.path)
 			exec(`UPDATE "verification" SET "expiresAt"=? WHERE "id"=?`, first.date(now.Add(-time.Hour)), u.Query().Get("state"))
-			target(finish(two, expired), "/identity/error?error=invalid_state")
+			target(finish(two, expired), "/identity/error?error=state_mismatch")
 			var h *httptest.ResponseRecorder
 			for _, body := range []map[string]any{{"providerId": "acme", "callbackURL": "https://outside.example"}, {"providerId": "acme", "callbackURL": "/home", "additionalParams": map[string]any{"state": "x"}}} {
 				h = call(one, "POST", "sign-in/sso", "", body)
@@ -463,11 +463,11 @@ func TestEnterpriseOIDCBrowser(t *testing.T) {
 			pendingLogin := begin()
 			noCookie := pendingLogin
 			noCookie.cookie = ""
-			target(finish(peer, noCookie), "/identity/error?error=invalid_state")
+			target(finish(peer, noCookie), "/identity/error?error=state_mismatch")
 			denial := pendingLogin
 			denial.path += "&error=access_denied"
 			target(finish(peer, denial), "/retry?error=invalid_request")
-			target(finish(peer, pendingLogin), "/identity/error?error=invalid_state")
+			target(finish(peer, pendingLogin), "/identity/error?error=state_mismatch")
 			pendingLogin = begin()
 			disabled := finish(two, pendingLogin)
 			if disabled.Code != 400 || !strings.Contains(disabled.Body.String(), "issuer login is unavailable") {
@@ -499,7 +499,7 @@ func TestEnterpriseOIDCBrowser(t *testing.T) {
 			if out.Code != 200 || !next.Redirect || destination.Path != "/approve" || destination.Query().Get("state") != "original-state" || idp.tokens.Load() != priorExchanges+1 {
 				t.Fatal("cross-instance callback did not resume consent", out.Code, out.Body.String(), destination.Path)
 			}
-			target(finish(peer, pendingLogin), "/identity/error?error=invalid_state")
+			target(finish(peer, pendingLogin), "/identity/error?error=state_mismatch")
 		})
 	}
 }

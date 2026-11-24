@@ -95,8 +95,13 @@ func TestEnterpriseOIDCStateCookie(t *testing.T) {
 		return started{c.Name + "=" + c.Value, strings.TrimPrefix(cb.Path, "/identity/") + "?" + url.Values{"code": {code}, "state": {q.Get("state")}}.Encode()}
 	}
 	first, second := start(), start()
-	if w := call("GET", second.callback, first.cookie, nil); w.Code != 302 || !strings.HasSuffix(w.Header().Get("Location"), "/identity/error?error=invalid_state") {
+	if w := call("GET", second.callback, first.cookie, nil); w.Code != 302 || w.Header().Get("Location") != "https://service.test/identity/error?error=state_mismatch" {
 		t.Fatal("another flow's state cookie answered", w.Code, w.Header().Get("Location"))
+	}
+	altered := []byte(first.cookie)
+	altered[len(altered)-3] ^= 1
+	if w := call("GET", first.callback, string(altered), nil); w.Code != 302 || w.Header().Get("Location") != "https://service.test/identity/error?error=state_invalid" {
+		t.Fatal("an altered state cookie answered", w.Code, w.Header().Get("Location"))
 	}
 	if w := call("GET", first.callback, first.cookie, nil); w.Code != 302 || w.Header().Get("Location") != "https://service.test/home" {
 		t.Fatal("the enterprise sign-in answered", w.Code, w.Header().Get("Location"), w.Body.String())

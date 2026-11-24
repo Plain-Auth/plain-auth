@@ -572,6 +572,9 @@ func main() {
 		opts.TrustedProviders = []string{"work"}
 	}
 	opts.AllowDifferentEmails = os.Getenv("CONFORMANCE_LINK_DIFFERENT") == "1"
+	if os.Getenv("CONFORMANCE_OAUTH_STATE") == "cookie" {
+		opts.OAuthStateStrategy = authn.OAuthStateCookie
+	}
 	opts.UpdateUserInfoOnLink = os.Getenv("CONFORMANCE_LINK_UPDATE") == "1"
 	if os.Getenv("CONFORMANCE_VALIDATE_USER") == "1" {
 		opts.ValidateUserInfo = func(_ context.Context, v authn.UserInfoValidation) error {

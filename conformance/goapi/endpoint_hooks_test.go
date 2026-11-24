@@ -126,9 +126,8 @@ func TestEndpointHooks(t *testing.T) {
 						url, _ := result["url"].(string)
 						record("user-after:social:" + boolString(strings.HasPrefix(url, "https://idp.example/authorize")))
 					case c.Path == "/callback/:id":
-						var problem *authn.APIError
-						errors.As(c.Err, &problem)
-						record("user-after:callback:" + problem.Code)
+						target, _ := c.Result.(authn.Redirect)
+						record("user-after:callback:" + strings.TrimPrefix(string(target), "https://auth.example"))
 					}
 					return nil
 				}},
@@ -267,8 +266,8 @@ func TestEndpointHooks(t *testing.T) {
 	if got := seen(); got != "user-before:/sign-in/social,social:/sign-in/social::local,user-after:social:true" {
 		t.Fatal("unexpected social start hooks", got)
 	}
-	call("GET", "/callback/local?state=missing&code=x", "", 400)
-	if got := seen(); got != "user-before:/callback/:id,social:/callback/:id:local:,user-after:callback:INVALID_OAUTH_STATE" {
+	call("GET", "/callback/local?state=missing&code=x", "", 302)
+	if got := seen(); got != "user-before:/callback/:id,social:/callback/:id:local:,user-after:callback:/api/auth/error?error=state_mismatch" {
 		t.Fatal("unexpected social callback hooks", got)
 	}
 

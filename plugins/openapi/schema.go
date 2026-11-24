@@ -602,7 +602,7 @@ func adjustRequest(op object, r plainauth.HTTPRoute, info plainauth.HTTPDescript
 		media["application/x-www-form-urlencoded"] = jsonMedia
 	case "/callback/:id":
 		delete(media, "application/json")
-		media["application/x-www-form-urlencoded"] = object{"schema": responseObject(object{"code": object{"type": "string"}, "state": object{"type": "string"}, "error": object{"type": "string"}, "user": object{"type": "string"}, "error_description": object{"type": "string"}, "iss": object{"type": "string"}, "device_id": object{"type": "string"}}, "state")}
+		media["application/x-www-form-urlencoded"] = object{"schema": responseObject(object{"code": object{"type": "string"}, "state": object{"type": "string"}, "error": object{"type": "string"}, "user": object{"type": "string"}, "error_description": object{"type": "string"}, "iss": object{"type": "string"}, "device_id": object{"type": "string"}})}
 		op["parameters"] = []object{{"in": "path", "name": "id", "required": true, "schema": object{"type": "string", "enum": info.Providers}}}
 	}
 }

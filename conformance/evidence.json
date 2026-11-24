@@ -20003,7 +20003,7 @@
     {
       "label": "The GET OAuth callback that creates a session sends a nonce and PKCE to the provider",
       "test": "conformance/goapi/oauth_test.go",
-      "marker": "t.Fatalf(\"unbound callback status %d\"",
+      "marker": "t.Fatalf(\"unbound callback status %d %q\"",
       "complete": true
     }
   ],
@@ -20781,6 +20781,89 @@
       "label": "account-info with useAccountCookie returns the signed-in account's provider identity",
       "test": "conformance/goapi/account_cookie_test.go",
       "marker": "status, out = call(ada, \"GET\", \"/account-info?useAccountCookie=true\", \"\")"
+    }
+  ],
+  "docs/content/docs/reference/errors/state_not_found.mdx#L6": [
+    {
+      "label": "A provider callback without a state lands on the error page with state_not_found and no session on both runtimes, for both strategies",
+      "test": "conformance/oauth-callback-state.mjs",
+      "marker": "[\"database\", \"no-state\", \"state_not_found\"],",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/reference/errors/state_mismatch.mdx#L6": [
+    {
+      "label": "A callback whose state matches no flow in this browser lands on the error page with state_mismatch and no session on both runtimes",
+      "test": "conformance/oauth-callback-state.mjs",
+      "marker": "[\"database\", \"unknown-state\", \"state_mismatch\"],",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/reference/errors/state_mismatch.mdx#L21/`state_mismatch`": [
+    {
+      "label": "With the database strategy an unknown state answers state_mismatch on both runtimes",
+      "test": "conformance/oauth-callback-state.mjs",
+      "marker": "[\"database\", \"unknown-state\", \"state_mismatch\"],",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/reference/errors/state_mismatch.mdx#L24/`state_invalid`": [
+    {
+      "label": "With the cookie strategy an altered state cookie answers state_invalid on both runtimes",
+      "test": "conformance/oauth-callback-state.mjs",
+      "marker": "[\"cookie\", \"altered-cookie\", \"state_invalid\"],",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/reference/errors/state_mismatch.mdx#L25/`state_security_mismatch`": [
+    {
+      "label": "A missing or altered state cookie with the database strategy reaches the browser as state_mismatch on both runtimes, at the default error page",
+      "test": "conformance/oauth-callback-state.mjs",
+      "marker": "[\"database\", \"altered-cookie\", \"state_mismatch\"],"
+    }
+  ],
+  "docs/content/docs/reference/errors/state_mismatch.mdx#L30": [
+    {
+      "label": "Database strategy: a state without its stored flow lands on the error page with state_mismatch on both runtimes",
+      "test": "conformance/oauth-callback-state.mjs",
+      "marker": "[\"database\", \"unknown-state\", \"state_mismatch\"],",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/reference/errors/state_mismatch.mdx#L76": [
+    {
+      "label": "Cookie strategy: a callback without the state cookie, or with another flow's, lands on the error page with state_mismatch on both runtimes",
+      "test": "conformance/oauth-callback-state.mjs",
+      "marker": "[\"cookie\", \"no-cookie\", \"state_mismatch\"],",
+      "complete": true
+    },
+    {
+      "label": "Cookie strategy: another flow's state cookie answers state_mismatch, not state_invalid, on both runtimes",
+      "test": "conformance/oauth-callback-state.mjs",
+      "marker": "[\"cookie\", \"other-flow\", \"state_mismatch\"],"
+    }
+  ],
+  "docs/content/docs/reference/errors/state_mismatch.mdx#L115": [
+    {
+      "label": "Cookie strategy: a state cookie that cannot be opened lands on the error page with state_invalid on both runtimes",
+      "test": "conformance/oauth-callback-state.mjs",
+      "marker": "[\"cookie\", \"altered-cookie\", \"state_invalid\"],",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/reference/errors/state_invalid.mdx#L6": [
+    {
+      "label": "An altered sealed state cookie lands on the error page with state_invalid and no session on both runtimes",
+      "test": "conformance/oauth-callback-state.mjs",
+      "marker": "[\"cookie\", \"altered-cookie\", \"state_invalid\"],",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/reference/errors/state_invalid.mdx#L41": [
+    {
+      "label": "The database strategy never answers state_invalid: an altered state cookie is state_mismatch on both runtimes",
+      "test": "conformance/oauth-callback-state.mjs",
+      "marker": "[\"database\", \"altered-cookie\", \"state_mismatch\"],"
     }
   ]
 }

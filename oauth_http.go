@@ -245,8 +245,11 @@ func (a *Auth) finishOAuth(w http.ResponseWriter, r *http.Request, id string) (a
 }
 
 func (a *Auth) finishBrowserOAuth(w http.ResponseWriter, r *http.Request, id string, p OAuthProvider, state string, q url.Values, returned *oauthProxyResult) (out any, resultErr error) {
+	if returned == nil && (len(q["state"]) > 1 || len(q["code"]) > 1 || len(q["error"]) > 1) {
+		return nil, validationError("Duplicate OAuth callback field")
+	}
 	var popup *popupOpener
-	if (returned != nil || len(q["state"]) == 1) && state != "" && len(state) <= 128 {
+	if state != "" && len(state) <= 128 {
 		popup = a.callbackPopup(w.Header(), r, state)
 	}
 	if popup != nil {
@@ -256,9 +259,31 @@ func (a *Auth) finishBrowserOAuth(w http.ResponseWriter, r *http.Request, id str
 			}
 		}()
 	}
+	// A state the callback cannot use goes to the configured error page with
+	// its code. Nothing from the request or an unverified flow chooses the
+	// destination.
+	rejectState := func(code string) (any, error) {
+		if returned != nil {
+			code = "state_mismatch"
+		}
+		if popup != nil {
+			return popup.page(w.Header(), "", "", &popupError{Code: code}), nil
+		}
+		if returned != nil {
+			return nil, proxyBrowserError(code)
+		}
+		target, err := a.errorPageURL(r.Context())
+		if err != nil {
+			return nil, err
+		}
+		return Redirect(httporigin.SetQuery(target, url.Values{"error": {code}})), nil
+	}
+	if state == "" {
+		return rejectState("state_not_found")
+	}
 	cookie, err := r.Cookie(a.oauthCookie("oauth_state", "", 0).Name)
-	if err != nil || state == "" || len(state) > 128 || (returned == nil && (len(q["state"]) != 1 || len(q["code"]) > 1 || len(q["error"]) > 1)) {
-		return nil, &APIError{400, "INVALID_OAUTH_STATE", "Invalid or expired OAuth state"}
+	if err != nil || len(state) > 128 {
+		return rejectState("state_mismatch")
 	}
 	binding := func(browser string) string {
 		if strings.HasPrefix(browser, "guest-") {
@@ -267,11 +292,9 @@ func (a *Auth) finishBrowserOAuth(w http.ResponseWriter, r *http.Request, id str
 		return a.oauthBinding(browser, id, r)
 	}
 	flow, err := a.takeOAuthFlow(r.Context(), "oauth_state", cookie.Value, state, binding, a.now().UTC())
-	if errors.Is(err, ErrNotFound) {
-		if popup != nil {
-			return popup.page(w.Header(), "", "", &popupError{Code: "INVALID_OAUTH_STATE", Description: "Invalid or expired OAuth state"}), nil
-		}
-		return nil, &APIError{400, "INVALID_OAUTH_STATE", "Invalid or expired OAuth state"}
+	var failure *stateFailure
+	if errors.As(err, &failure) {
+		return rejectState(failure.code)
 	}
 	if err != nil {
 		return nil, err
@@ -294,14 +317,26 @@ func (a *Auth) finishBrowserOAuth(w http.ResponseWriter, r *http.Request, id str
 		return nil, &APIError{400, code, "Unable to complete social sign-in"}
 	}
 	fail := func(code string) (any, error) { return failWithDescription(code, "") }
+	// A verified flow whose browser state no longer fits it is a mismatch,
+	// sent to its error callback or the error page.
+	mismatch := func() (any, error) {
+		if flow.ErrorCallbackURL == "" {
+			if returned != nil {
+				flow.ErrorCallbackURL = strings.TrimRight(a.opts.BasePath, "/") + "/error"
+			} else {
+				flow.ErrorCallbackURL, _ = a.errorPageURL(r.Context())
+			}
+		}
+		return fail("state_mismatch")
+	}
 	if (returned == nil && flow.ProxyOrigin != "") || (returned != nil && (flow.ProxyOrigin != returned.Preview || flow.CallbackURL != returned.Callback)) {
-		return fail("INVALID_OAUTH_STATE")
+		return mismatch()
 	}
 	if flow.AnonymousSessionProof != "" {
 		guest, err := a.openRecord("guest-oauth:"+flow.State, flow.AnonymousSessionProof)
 		current := a.cookieToken(r.Header)
 		if err != nil || a.anonymous == nil || current != "" && current != string(guest) {
-			return fail("INVALID_OAUTH_STATE")
+			return mismatch()
 		}
 		r = r.WithContext(context.WithValue(r.Context(), anonymousSourceKey{}, string(guest)))
 	}
@@ -526,9 +561,7 @@ func (a *Auth) redirectOAuthForm(w http.ResponseWriter, r *http.Request, id stri
 			q.Set(key, values[0])
 		}
 	}
-	if q.Get("state") == "" {
-		return nil, &APIError{400, "INVALID_OAUTH_STATE", "Invalid or expired OAuth state"}
-	}
+	// The GET callback answers a missing state with state_not_found.
 	return Redirect(p.Config.RedirectURL + "?" + q.Encode()), nil
 }
 

@@ -81,6 +81,6 @@ To rotate a shared key, first distribute a ring that can read both versions to a
 
 ## Verify a deployment
 
-Start a fresh sign-in from a trusted preview and inspect its auth requests. The provider's `redirect_uri` should identify production. Once the browser returns, call `/identity/get-session` on the preview and confirm the expected email. The production database should have no new user, account or session for this flow. If a browser returns with `state_mismatch`, start sign-in again from the preview and check its public host and cookie settings. An expired return profile produces `payload_expired`.
+Start a fresh sign-in from a trusted preview and inspect its auth requests. The provider's `redirect_uri` should identify production. Production sends a state it cannot verify, such as one sealed with another proxy key, to its own error page with `state_mismatch`, never to a preview. Once the browser returns, call `/identity/get-session` on the preview and confirm the expected email. The production database should have no new user, account or session for this flow. If a browser returns with `state_mismatch`, start sign-in again from the preview and check its public host and cookie settings. An expired return profile produces `payload_expired`.
 
 The repository exercises independent production and preview databases on SQLite, PostgreSQL, and MySQL. Its Chrome tests exercise the cross-site navigation and the popup return to the opener. [Database tests](../adapters/sqlstore/oauth_proxy_test.go) · [Browser tests](../conformance/oauth-proxy.mjs)

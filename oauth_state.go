@@ -31,9 +31,33 @@ type sealedOAuthFlow struct {
 	Flow    OAuthFlow
 }
 
-// oauthStatePurpose binds a sealed flow to its cookie and its URL state, so
-// it opens in no other cookie and for no other state.
-func oauthStatePurpose(cookie, state string) string { return "oauth-state:" + cookie + ":" + state }
+// oauthStatePurpose binds a sealed flow to its cookie, so it opens in no
+// other cookie. The sealed flow carries its URL state, which the callback
+// compares, so another flow's cookie is told apart from an altered one.
+func oauthStatePurpose(cookie string) string { return "oauth-state:" + cookie }
+
+// stateFailure is a callback state that cannot be used. code is its browser
+// error code. It unwraps to a 400 INVALID_OAUTH_STATE, so a handler that
+// returns it unchanged still answers JSON.
+type stateFailure struct{ code, message string }
+
+func (e *stateFailure) Error() string { return e.message }
+func (e *stateFailure) Unwrap() error {
+	return &APIError{Status: 400, Code: "INVALID_OAUTH_STATE", Message: e.message}
+}
+
+// OAuthStateFailure returns the browser error code of a state failure from
+// ConsumeEnterpriseFlow or ConsumeEnterprisePostFlow: state_not_found,
+// state_mismatch or state_invalid. It returns "" for any other error.
+func OAuthStateFailure(err error) string {
+	var failure *stateFailure
+	if errors.As(err, &failure) {
+		return failure.code
+	}
+	return ""
+}
+
+const oauthStateMessage = "Invalid or expired OAuth state"
 
 // keepOAuthFlow saves flow for its callback, and adds the state cookie c,
 // whose base name is name, to h. browser is the value the binding was made
@@ -44,7 +68,7 @@ func (a *Auth) keepOAuthFlow(ctx context.Context, h http.Header, name string, c 
 		if err != nil {
 			return err
 		}
-		if c.Value, err = a.sealRecord(oauthStatePurpose(name, flow.State), raw); err != nil {
+		if c.Value, err = a.sealRecord(oauthStatePurpose(name), raw); err != nil {
 			return err
 		}
 		if len(c.String()) > maxSessionChunkSize {
@@ -66,23 +90,28 @@ func (a *Auth) keepOAuthFlow(ctx context.Context, h http.Header, name string, c 
 
 // takeOAuthFlow returns the flow for state from the state cookie's value,
 // once. binding recomputes the flow's binding from the browser value. A
-// missing, altered, expired or foreign flow is ErrNotFound.
+// missing, expired or foreign flow is a state_mismatch failure, and a sealed
+// cookie this instance cannot open is state_invalid.
 func (a *Auth) takeOAuthFlow(ctx context.Context, name, value, state string, binding func(browser string) string, now time.Time) (OAuthFlow, error) {
+	mismatch := &stateFailure{"state_mismatch", oauthStateMessage}
 	if a.opts.OAuthStateStrategy != OAuthStateCookie {
 		store, ok := a.opts.Store.(OAuthFlowStore)
 		if !ok {
-			return OAuthFlow{}, ErrNotFound
+			return OAuthFlow{}, mismatch
 		}
-		return store.ConsumeOAuthFlow(ctx, state, binding(value), now)
+		flow, err := store.ConsumeOAuthFlow(ctx, state, binding(value), now)
+		if errors.Is(err, ErrNotFound) {
+			return OAuthFlow{}, mismatch
+		}
+		return flow, err
 	}
-	raw, err := a.openRecord(oauthStatePurpose(name, state), value)
-	if err != nil {
-		return OAuthFlow{}, ErrNotFound
-	}
+	raw, err := a.openRecord(oauthStatePurpose(name), value)
 	var sealed sealedOAuthFlow
-	if json.Unmarshal(raw, &sealed) != nil || sealed.Flow.State != state || !sealed.Flow.ExpiresAt.After(now) ||
-		!hmac.Equal([]byte(binding(sealed.Browser)), []byte(sealed.Flow.Binding)) {
-		return OAuthFlow{}, ErrNotFound
+	if err != nil || json.Unmarshal(raw, &sealed) != nil {
+		return OAuthFlow{}, &stateFailure{"state_invalid", oauthStateMessage}
+	}
+	if sealed.Flow.State != state || !sealed.Flow.ExpiresAt.After(now) || !hmac.Equal([]byte(binding(sealed.Browser)), []byte(sealed.Flow.Binding)) {
+		return OAuthFlow{}, mismatch
 	}
 	return sealed.Flow, nil
 }

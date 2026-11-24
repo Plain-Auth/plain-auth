@@ -110,14 +110,14 @@ func TestSocialAuthorizationSession(t *testing.T) {
 				return w
 			}
 			state := start()
-			if w := finish(state, "code=approved", false); w.Code != 400 || exchanges != 0 {
-				t.Fatal("callback accepted a different browser")
+			if w := finish(state, "code=approved", false); w.Code != 302 || !strings.HasSuffix(w.Header().Get("Location"), "/error?error=state_mismatch") || exchanges != 0 {
+				t.Fatal("callback accepted a different browser", w.Code, w.Header().Get("Location"))
 			}
 			if w := finish(state, "error=access_denied", true); w.Code != 302 || !strings.HasPrefix(w.Header().Get("Location"), "/retry?") || exchanges != 0 {
 				t.Fatal("provider denial resumed the signed request")
 			}
-			if w := finish(state, "code=approved", true); w.Code != 400 || exchanges != 0 {
-				t.Fatal("provider state was reusable after denial")
+			if w := finish(state, "code=approved", true); w.Code != 302 || !strings.HasSuffix(w.Header().Get("Location"), "/error?error=state_mismatch") || exchanges != 0 {
+				t.Fatal("provider state was reusable after denial", w.Code, w.Header().Get("Location"))
 			}
 			state = start()
 			if w := finish(state, "code=bad", true); w.Code != 302 || !strings.Contains(w.Header().Get("Location"), "OAUTH_TOKEN_EXCHANGE_FAILED") || exchanges != 1 {
@@ -148,8 +148,8 @@ func TestSocialAuthorizationSession(t *testing.T) {
 			if completed.Code != 302 || callbackURL.Host != "client.example.test" || callbackURL.Query().Get("state") != "rp-state" || callbackURL.Query().Get("code") == "" {
 				t.Fatal("callback on another issuer instance failed to resume")
 			}
-			if w := finish(state, "code=approved", true); w.Code != 400 || exchanges != 2 {
-				t.Fatal("callback state could be reused on success")
+			if w := finish(state, "code=approved", true); w.Code != 302 || !strings.HasSuffix(w.Header().Get("Location"), "/error?error=state_mismatch") || exchanges != 2 {
+				t.Fatal("callback state could be reused on success", w.Code, w.Header().Get("Location"))
 			}
 			// The SDK still holds the earlier user's cookie. A direct provider
 			// grant must issue its authorization for the newly authenticated user.

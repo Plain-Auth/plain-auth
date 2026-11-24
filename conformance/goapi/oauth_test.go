@@ -147,8 +147,8 @@ func TestOAuthBrowserFlow(t *testing.T) {
 		t.Fatal(err)
 	}
 	res.Body.Close()
-	if res.StatusCode != 400 {
-		t.Fatalf("unbound callback status %d", res.StatusCode)
+	if res.StatusCode != 302 || res.Header.Get("Location") != base+"/api/auth/error?error=state_mismatch" {
+		t.Fatalf("unbound callback status %d %q", res.StatusCode, res.Header.Get("Location"))
 	}
 	res, err = browser.Get(callback)
 	if err != nil {
@@ -165,8 +165,8 @@ func TestOAuthBrowserFlow(t *testing.T) {
 		t.Fatal(err)
 	}
 	res.Body.Close()
-	if res.StatusCode != 400 {
-		t.Fatalf("used flow status %d", res.StatusCode)
+	if res.StatusCode != 302 || res.Header.Get("Location") != base+"/api/auth/error?error=state_mismatch" {
+		t.Fatalf("used flow status %d %q", res.StatusCode, res.Header.Get("Location"))
 	}
 	res, err = browser.Get(base + "/api/auth/get-session")
 	if err != nil {

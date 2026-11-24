@@ -113,11 +113,13 @@ func (c EndpointContext) beginEnterpriseFlow(provider, reference, redirectURI st
 // callback path originally selected during sign-in. The database strategy
 // consumes it once. OAuthStateCookie only expires the cookie, so a captured
 // copy stays valid until it expires: a plugin that needs replay protection
-// relies on the provider's single-use code or keeps its own receipt.
+// relies on the provider's single-use code or keeps its own receipt. A state
+// it cannot use is a 400 INVALID_OAUTH_STATE whose browser error code
+// OAuthStateFailure returns.
 func (c *EndpointContext) ConsumeEnterpriseFlow() (OAuthFlow, error) {
 	q := c.Request.URL.Query()
-	if len(q["state"]) != 1 || len(q["code"]) > 1 || len(q["error"]) > 1 || len(q["iss"]) > 1 {
-		return OAuthFlow{}, invalidEnterpriseState()
+	if len(q["state"]) > 1 || len(q["code"]) > 1 || len(q["error"]) > 1 || len(q["iss"]) > 1 {
+		return OAuthFlow{}, validationError("Duplicate OAuth callback field")
 	}
 	return c.consumeEnterpriseFlow(q.Get("state"), false)
 }
@@ -131,7 +133,10 @@ func invalidEnterpriseState() *APIError {
 }
 func (c *EndpointContext) consumeEnterpriseFlow(state string, form bool) (OAuthFlow, error) {
 	a := c.Auth
-	bad := invalidEnterpriseState()
+	bad := func(code string) error { return &stateFailure{code, "Invalid or expired enterprise sign-in state"} }
+	if state == "" {
+		return OAuthFlow{}, bad("state_not_found")
+	}
 	// The flow returns to the host it started on: BaseURL, or with
 	// DynamicBaseURL the host this request resolved to.
 	own, err := a.origin(c.Request.Context())
@@ -140,8 +145,8 @@ func (c *EndpointContext) consumeEnterpriseFlow(state string, form bool) (OAuthF
 	}
 	base, _ := url.Parse(own)
 	cookie, e := c.Request.Cookie(a.enterpriseStateCookie(form, "", 0).Name)
-	if (a.dynamic == nil && httporigin.Canonical(&url.URL{Scheme: base.Scheme, Host: c.Request.Host}) != httporigin.Canonical(base)) || e != nil || state == "" || len(state) > 128 {
-		return OAuthFlow{}, bad
+	if (a.dynamic == nil && httporigin.Canonical(&url.URL{Scheme: base.Scheme, Host: c.Request.Host}) != httporigin.Canonical(base)) || e != nil || len(state) > 128 {
+		return OAuthFlow{}, bad("state_mismatch")
 	}
 	namespace := "sso:" + c.Request.URL.EscapedPath()
 	binding := func(browser string) string {
@@ -155,8 +160,9 @@ func (c *EndpointContext) consumeEnterpriseFlow(state string, form bool) (OAuthF
 		name = "saml_state"
 	}
 	f, e := a.takeOAuthFlow(c.Request.Context(), name, cookie.Value, state, binding, a.now().UTC())
-	if errors.Is(e, ErrNotFound) {
-		return OAuthFlow{}, bad
+	var failure *stateFailure
+	if errors.As(e, &failure) {
+		return OAuthFlow{}, bad(failure.code)
 	}
 	if e != nil {
 		return OAuthFlow{}, e
@@ -164,13 +170,13 @@ func (c *EndpointContext) consumeEnterpriseFlow(state string, form bool) (OAuthF
 	c.ResponseHeader.Add("Set-Cookie", a.enterpriseStateCookie(form, "", -1).String())
 	original, e := url.Parse(f.RedirectURI)
 	if e != nil || f.ProviderReference == "" || httporigin.Canonical(original) != httporigin.Canonical(base) || original.EscapedPath() != c.Request.URL.EscapedPath() {
-		return OAuthFlow{}, bad
+		return OAuthFlow{}, bad("state_mismatch")
 	}
 	if f.AnonymousSessionProof != "" {
 		guest, err := a.openRecord("guest-oauth:"+f.State, f.AnonymousSessionProof)
 		current := a.cookieToken(c.Request.Header)
 		if err != nil || a.anonymous == nil || current != "" && current != string(guest) {
-			return OAuthFlow{}, bad
+			return OAuthFlow{}, bad("state_mismatch")
 		}
 		c.Request = c.Request.WithContext(context.WithValue(c.Request.Context(), anonymousSourceKey{}, string(guest)))
 	}

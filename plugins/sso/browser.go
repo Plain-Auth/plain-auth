@@ -217,11 +217,16 @@ func (o Options) finish(c auth.EndpointContext) (any, error) {
 		return nil, apiError(501, "The configured store does not support enterprise sign-in")
 	}
 	flow, err := c.ConsumeEnterpriseFlow()
-	if err != nil {
-		var ae *auth.APIError
-		if errors.As(err, &ae) {
-			return c.Redirect(strings.TrimSuffix(c.Auth.BasePath(), "/") + "/error?error=invalid_state")
+	if code := auth.OAuthStateFailure(err); code != "" {
+		// As with a social sign-in, a state the callback cannot use goes
+		// to the configured error page with its code.
+		target, err := c.ErrorPageURL()
+		if err != nil {
+			return nil, err
 		}
+		return c.Redirect(httporigin.SetQuery(target, url.Values{"error": {code}}))
+	}
+	if err != nil {
 		return nil, err
 	}
 	fail := func(code string) (any, error) { return enterpriseFailure(c, flow, code, "") }

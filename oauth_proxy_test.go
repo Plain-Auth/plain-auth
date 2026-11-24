@@ -163,8 +163,9 @@ func TestOAuthProxyProductionTrust(t *testing.T) {
 			if err != nil || !strings.HasPrefix(string(target), preview+"/auth/") {
 				t.Fatal("registered callback rejected a valid preview")
 			}
-		} else if err == nil || target != "" {
-			t.Fatal("invalid grant or request host was allowed to redirect")
+		} else if want := a.ErrorPageURL() + "?error=state_mismatch"; err != nil || string(target) != want {
+			// A state production cannot verify goes to its own error page.
+			t.Fatalf("invalid grant or request host went to %q, %v", target, err)
 		}
 	}
 	check(production, grant, true)

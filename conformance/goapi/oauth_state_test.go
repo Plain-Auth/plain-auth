@@ -149,11 +149,17 @@ func TestOAuthStateStrategies(t *testing.T) {
 				_ = json.NewDecoder(res.Body).Decode(&problem)
 				return res.StatusCode, res.Header.Get("Location"), problem.Code
 			}
+			// A state the callback cannot use goes to the error page with
+			// its code.
+			refusedWith := func(c *http.Client, callback, why, code string) {
+				t.Helper()
+				if status, location, _ := finish(c, callback); status != http.StatusFound || location != base+"/api/auth/error?error="+code {
+					t.Fatalf("%s answered %d %q, want %s", why, status, location, code)
+				}
+			}
 			refused := func(c *http.Client, callback, why string) {
 				t.Helper()
-				if status, _, code := finish(c, callback); status != 400 || code != "INVALID_OAUTH_STATE" {
-					t.Fatalf("%s answered %d %s", why, status, code)
-				}
+				refusedWith(c, callback, why, "state_mismatch")
 			}
 			withState := func(value string) *http.Client {
 				c := newBrowser()
@@ -173,7 +179,22 @@ func TestOAuthStateStrategies(t *testing.T) {
 			refused(newBrowser(), callback, "a callback without the state cookie")
 			tampered := []byte(captured.Value)
 			tampered[len(tampered)-3] ^= 1
-			refused(withState(string(tampered)), callback, "an altered state cookie")
+			altered := "state_mismatch"
+			if strategy == auth.OAuthStateCookie {
+				altered = "state_invalid"
+			}
+			refusedWith(withState(string(tampered)), callback, "an altered state cookie", altered)
+			withoutState, _ := url.Parse(callback)
+			q := withoutState.Query()
+			q.Del("state")
+			withoutState.RawQuery = q.Encode()
+			refusedWith(withState(captured.Value), withoutState.String(), "a callback without a state", "state_not_found")
+			q.Set("state", strings.Repeat("s", 129))
+			withoutState.RawQuery = q.Encode()
+			refused(withState(captured.Value), withoutState.String(), "an oversized state")
+			if status, _, code := finish(withState(captured.Value), callback+"&state=again"); status != 400 || code != "VALIDATION_ERROR" {
+				t.Fatalf("a duplicate state answered %d %s", status, code)
+			}
 			other := newBrowser()
 			otherCallback := start(other, "/home")
 			refused(withState(captured.Value), otherCallback, "another flow's state cookie")
@@ -188,7 +209,9 @@ func TestOAuthStateStrategies(t *testing.T) {
 			// but the provider refuses the spent code.
 			browser.Jar.SetCookies(appURL, []*http.Cookie{{Name: stateName, Value: captured.Value, Path: "/"}})
 			refused(browser, callback, "a replay in the signed-in browser")
-			if status, location, code := finish(withState(captured.Value), callback); status == http.StatusFound || (strategy == auth.OAuthStateDatabase && code != "INVALID_OAUTH_STATE") {
+			if strategy == auth.OAuthStateDatabase {
+				refused(withState(captured.Value), callback, "a replay of a consumed flow")
+			} else if status, location, code := finish(withState(captured.Value), callback); status == http.StatusFound {
 				t.Fatalf("a replay from a fresh client answered %d %q %s", status, location, code)
 			}
 			if saves := store.saves.Load(); (saves == 0) != (strategy == auth.OAuthStateCookie) {
@@ -246,5 +269,46 @@ func TestOAuthStateStrategyConfiguration(t *testing.T) {
 		if (err == nil) != tc.ok {
 			t.Errorf("%s: %v", name, err)
 		}
+	}
+}
+
+// A state failure keeps the query of a configured ErrorRedirectURL, and a
+// provider's form post without a state is forwarded to the callback, which
+// reports state_not_found.
+func TestOAuthStateFailureDestination(t *testing.T) {
+	store, err := sqlite.Open(":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	node, err := auth.New(auth.Options{Store: store, Secret: strings.Repeat("s", 32), BaseURL: "https://auth.example", RateLimit: new(bool),
+		ErrorRedirectURL: "/auth-problem?source=signin",
+		SocialProviders: map[string]auth.OAuthProvider{"local": {
+			Config: oauth2.Config{ClientID: "client", Endpoint: oauth2.Endpoint{AuthURL: "https://issuer.example/authorize", TokenURL: "https://issuer.example/token"}},
+			Resolve: func(context.Context, *oauth2.Token, string) (auth.OAuthProfile, error) {
+				return auth.OAuthProfile{}, nil
+			},
+		}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	serve := func(r *http.Request) *httptest.ResponseRecorder {
+		w := httptest.NewRecorder()
+		node.ServeHTTP(w, r)
+		return w
+	}
+	w := serve(httptest.NewRequest("GET", "https://auth.example/api/auth/callback/local?code=x", nil))
+	if w.Code != http.StatusFound || w.Header().Get("Location") != "https://auth.example/auth-problem?error=state_not_found&source=signin" {
+		t.Fatal("a callback without a state answered", w.Code, w.Header().Get("Location"))
+	}
+	form := httptest.NewRequest("POST", "https://auth.example/api/auth/callback/local", strings.NewReader("code=x"))
+	form.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	w = serve(form)
+	forwarded := w.Header().Get("Location")
+	if w.Code != http.StatusFound || !strings.HasPrefix(forwarded, "https://auth.example/api/auth/callback/local?") {
+		t.Fatal("a form post without a state answered", w.Code, forwarded)
+	}
+	if w = serve(httptest.NewRequest("GET", forwarded, nil)); w.Header().Get("Location") != "https://auth.example/auth-problem?error=state_not_found&source=signin" {
+		t.Fatal("the forwarded callback answered", w.Code, w.Header().Get("Location"))
 	}
 }

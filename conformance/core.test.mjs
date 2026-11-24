@@ -1535,6 +1535,11 @@ test("trusted providers link an unverified provider email to a verified owner on
   await compareTrustedProviders(t,{reference,goFixture,instrument});
 });
 
+test("an OAuth callback whose state cannot be used reaches the error page with the same code on both runtimes", async t => {
+  const {compareCallbackState}=await import("./oauth-callback-state.mjs");
+  await compareCallbackState(t,{reference,goFixture,instrument});
+});
+
 test("explicit links refuse a different provider email unless allowDifferentEmails is on, on both runtimes", async t => {
   const {compareDifferentEmailLinks}=await import("./social-link-options.mjs");
   await compareDifferentEmailLinks(t,{reference,goFixture,instrument});

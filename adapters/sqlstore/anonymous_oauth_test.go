@@ -109,8 +109,8 @@ func TestGuestOAuthStateRecovery(t *testing.T) {
 	}
 	g, _, callback, oauthCookie = begin()
 	another, _, _, _ := begin()
-	if w := request("GET", callback, "", oauthCookie, a.SessionCookie(another.Token, true)); w.Code != 400 {
-		t.Fatalf("switched guest: got %d", w.Code)
+	if w := request("GET", callback, "", oauthCookie, a.SessionCookie(another.Token, true)); w.Code != 302 || !strings.HasSuffix(w.Header().Get("Location"), "/error?error=state_mismatch") {
+		t.Fatalf("switched guest: got %d %s", w.Code, w.Header().Get("Location"))
 	}
 	if active(g.User.ID) != 1 || count != 1 {
 		t.Fatal("OAuth switched the wrong guest")

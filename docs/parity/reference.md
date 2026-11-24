@@ -110,33 +110,43 @@
 ## state_invalid
 
 - [ ] state_invalid
-  - [ ] What is it?
+  - [x] What is it? ([test](../../conformance/oauth-callback-state.mjs#L74))
+    - [x] An altered sealed state cookie lands on the error page with state_invalid and no session on both runtimes ([test](../../conformance/oauth-callback-state.mjs#L74))
   - [ ] Common Causes
   - [ ] How to resolve
     - [ ] Avoid rotating secrets during active flows
     - [ ] Check proxies and middleware
     - [ ] Verify cookie names and values
     - [ ] Switch to the database strategy
+      - [x] The database strategy never answers state_invalid: an altered state cookie is state_mismatch on both runtimes ([test](../../conformance/oauth-callback-state.mjs#L71))
 
 ## state_mismatch
 
 - [ ] state_mismatch
-  - [ ] What is it?
+  - [x] What is it? ([test](../../conformance/oauth-callback-state.mjs#L69))
+    - [x] A callback whose state matches no flow in this browser lands on the error page with state_mismatch and no session on both runtimes ([test](../../conformance/oauth-callback-state.mjs#L69))
   - [ ] Error codes at a glance
-    - [ ] `state_mismatch`
-    - [ ] `state_invalid`
+    - [x] `state_mismatch` ([test](../../conformance/oauth-callback-state.mjs#L69))
+      - [x] With the database strategy an unknown state answers state_mismatch on both runtimes ([test](../../conformance/oauth-callback-state.mjs#L69))
+    - [x] `state_invalid` ([test](../../conformance/oauth-callback-state.mjs#L74))
+      - [x] With the cookie strategy an altered state cookie answers state_invalid on both runtimes ([test](../../conformance/oauth-callback-state.mjs#L74))
     - [ ] `state_security_mismatch`
+      - [x] A missing or altered state cookie with the database strategy reaches the browser as state_mismatch on both runtimes, at the default error page ([test](../../conformance/oauth-callback-state.mjs#L71))
     - [ ] `state_generation_error`
   - [ ] `state_mismatch` - verification not found (database strategy)
+    - [x] Database strategy: a state without its stored flow lands on the error page with state_mismatch on both runtimes ([test](../../conformance/oauth-callback-state.mjs#L69))
     - [ ] Common causes
     - [ ] How to fix
   - [ ] `state_mismatch` - auth state cookie not found (cookie strategy)
+    - [x] Cookie strategy: a callback without the state cookie, or with another flow's, lands on the error page with state_mismatch on both runtimes ([test](../../conformance/oauth-callback-state.mjs#L73))
+    - [x] Cookie strategy: another flow's state cookie answers state_mismatch, not state_invalid, on both runtimes ([test](../../conformance/oauth-callback-state.mjs#L75))
     - [ ] Common causes
     - [ ] How to fix
   - [ ] `state_mismatch` - request expired
     - [ ] Common causes
     - [ ] How to fix
   - [ ] `state_invalid` - failed to decrypt or parse (cookie strategy)
+    - [x] Cookie strategy: a state cookie that cannot be opened lands on the error page with state_invalid on both runtimes ([test](../../conformance/oauth-callback-state.mjs#L74))
     - [ ] Common causes
     - [ ] How to fix
   - [ ] `state_security_mismatch` - state not persisted correctly (database strategy)
@@ -156,7 +166,8 @@
 ## state_not_found
 
 - [ ] state_not_found
-  - [ ] What is it?
+  - [x] What is it? ([test](../../conformance/oauth-callback-state.mjs#L68))
+    - [x] A provider callback without a state lands on the error page with state_not_found and no session on both runtimes, for both strategies ([test](../../conformance/oauth-callback-state.mjs#L68))
   - [ ] Common Causes
   - [ ] How to resolve
     - [ ] Start the flow via authentication APIs
@@ -435,8 +446,8 @@
       - [x] Preserve or renew provider credentials on returning sign-ins while applying profile changes and issuing sessions ([test](../../conformance/social-user-fields.mjs#L267))
       - [x] Preserve the account timestamp, claim single-use grants and retain omitted expiry values on three SQL engines ([test](../../adapters/sqlstore/oauth_account_update_test.go#L11))
       - [x] Keep the original encryption key version on sign-in and rotate credentials through explicit refresh ([test](../../adapters/sqlstore/oauth_encryption_test.go#L113))
-    - [x] `storeStateStrategy` ([test](../../conformance/goapi/oauth_state_test.go#L219))
-      - [x] OAuthStateStrategy chooses the database or the cookie strategy, refuses an unknown strategy, and needs OAuthFlowStore only for the database ([test](../../conformance/goapi/oauth_state_test.go#L219))
+    - [x] `storeStateStrategy` ([test](../../conformance/goapi/oauth_state_test.go#L242))
+      - [x] OAuthStateStrategy chooses the database or the cookie strategy, refuses an unknown strategy, and needs OAuthFlowStore only for the database ([test](../../conformance/goapi/oauth_state_test.go#L242))
       - [x] `"cookie"` ([test](../../conformance/goapi/oauth_state_test.go#L74))
         - [x] OAuthStateCookie seals the whole flow into oauth_state, writes no flow, refuses a missing, altered or foreign cookie, and stops a replay at the provider's single-use code ([test](../../conformance/goapi/oauth_state_test.go#L74))
         - [x] An enterprise OIDC sign-in in cookie mode keeps its flow sealed in sso_state, writes none and refuses another flow's cookie ([test](../../adapters/sqlstore/sso_state_cookie_test.go#L33))
@@ -619,8 +630,8 @@
           - [x] Turn off only the CSRF protections ([test](../../conformance/goapi/request_switches_test.go#L43))
         - [ ] `disableOriginCheck`
           - [x] Turn off redirect URL validation; CSRF protection stays on until DisableCSRFCheck is also set, by design ([test](../../conformance/goapi/request_switches_test.go#L57))
-  - [x] OAuth State and PKCE ([test](../../conformance/goapi/oauth_state_test.go#L179))
-    - [x] Both strategies bind the state to the browser, send a PKCE S256 challenge the provider checks, and expire the state cookie on use; the database strategy also consumes the stored flow ([test](../../conformance/goapi/oauth_state_test.go#L179))
+  - [x] OAuth State and PKCE ([test](../../conformance/goapi/oauth_state_test.go#L200))
+    - [x] Both strategies bind the state to the browser, send a PKCE S256 challenge the provider checks, and expire the state cookie on use; the database strategy also consumes the stored flow ([test](../../conformance/goapi/oauth_state_test.go#L200))
   - [ ] Cookies
     - [x] With an HTTPS base URL, the sign-up session cookie is Secure, HttpOnly, SameSite=Lax, Path=/ and persistent ([test](../../conformance/goapi/http_test.go#L73))
     - [ ] Customizing Cookies
