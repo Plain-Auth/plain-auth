@@ -693,8 +693,10 @@
     - [ ] Authentication Requirements
     - [ ] Callbacks
       - [ ] validateUserInfo
-      - [ ] beforeDelete
-      - [ ] afterDelete
+      - [x] beforeDelete ([test](../../conformance/goapi/mail_request_test.go#L106))
+        - [x] Run a callback with the user and request before deletion, and cancel it with an error ([test](../../conformance/goapi/mail_request_test.go#L106))
+      - [x] afterDelete ([test](../../conformance/goapi/mail_request_test.go#L71))
+        - [x] Run a callback with the user and request after deletion ([test](../../conformance/goapi/mail_request_test.go#L71))
   - [ ] Accounts
     - [x] List User Accounts ([test](../../client/account_test.go#L74))
       - [x] List only the current user’s linked accounts and decode provider scopes ([test](../../adapters/sqlstore/identity_test.go#L30))

@@ -19982,5 +19982,21 @@
       "marker": "post(\"/request-password-reset\", `{\"email\":\"ada@example.com\",\"redirectTo\":\"/reset\"}`, nil)",
       "complete": true
     }
+  ],
+  "docs/content/docs/concepts/users-accounts.mdx#L347/beforeDelete": [
+    {
+      "label": "Run a callback with the user and request before deletion, and cancel it with an error",
+      "test": "conformance/goapi/mail_request_test.go",
+      "marker": "refuse = &authn.APIError{Status: 403, Code: \"ACCOUNT_LOCKED\", Message: \"This account cannot be deleted\"}",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/concepts/users-accounts.mdx#L386/afterDelete": [
+    {
+      "label": "Run a callback with the user and request after deletion",
+      "test": "conformance/goapi/mail_request_test.go",
+      "marker": "func TestDeleteUserCallbacks(",
+      "complete": true
+    }
   ]
 }

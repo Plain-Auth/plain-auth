@@ -65,3 +65,52 @@ func TestMailSendersReceiveTheRequest(t *testing.T) {
 		t.Fatal("a Go call passed a request to the mail sender")
 	}
 }
+
+// Run the delete-user callbacks with the user and the request; an error from
+// the first keeps the user.
+func TestDeleteUserCallbacks(t *testing.T) {
+	var events []string
+	var refuse error
+	store := memory.New()
+	off := false
+	auth, err := authn.New(authn.Options{
+		BaseURL: "https://auth.example", Store: store, Secret: strings.Repeat("s", 32), EmailAndPassword: true, RateLimit: &off, DeleteUserEnabled: true,
+		BeforeDeleteUser: func(_ context.Context, u authn.User, r *http.Request) error {
+			events = append(events, "before:"+u.Email+":"+r.Header.Get("X-Request-Id"))
+			return refuse
+		},
+		AfterDeleteUser: func(ctx context.Context, u authn.User, r *http.Request) error {
+			_, err := store.FindAccountUser(ctx, u.Email)
+			events = append(events, "after:"+boolString(err != nil)+":"+r.URL.Path)
+			return nil
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	account, err := auth.SignUpEmail(t.Context(), authn.SignUpInput{Email: "ada@example.com", Password: "correct horse battery", Name: "Ada"}, authn.RequestMeta{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	remove := func(status int) {
+		t.Helper()
+		r := httptest.NewRequest("POST", "https://auth.example/api/auth/delete-user", strings.NewReader(`{"password":"correct horse battery"}`))
+		r.Header = http.Header{"Origin": {"https://auth.example"}, "Content-Type": {"application/json"}, "X-Request-Id": {"req-7"}}
+		r.AddCookie(auth.SessionCookie(account.Token, false))
+		w := httptest.NewRecorder()
+		auth.ServeHTTP(w, r)
+		if w.Code != status {
+			t.Fatal("unexpected deletion status", w.Code, w.Body)
+		}
+	}
+	refuse = &authn.APIError{Status: 403, Code: "ACCOUNT_LOCKED", Message: "This account cannot be deleted"}
+	remove(403)
+	if _, err := store.FindAccountUser(t.Context(), "ada@example.com"); err != nil {
+		t.Fatal("a refused deletion removed the user", err)
+	}
+	refuse = nil
+	remove(200)
+	if got := strings.Join(events, ","); got != "before:ada@example.com:req-7,before:ada@example.com:req-7,after:true:/api/auth/delete-user" {
+		t.Fatal("unexpected deletion callbacks", got)
+	}
+}

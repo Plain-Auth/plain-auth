@@ -66,8 +66,8 @@ func (a *Auth) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			a.writeAuthError(w, r, err)
 			return
 		}
-		// Mail senders receive a copy of the request that caused the mail.
-		r = r.WithContext(context.WithValue(r.Context(), mailRequestKey{a}, r))
+		// Mail senders and account callbacks receive a copy of the request.
+		r = r.WithContext(context.WithValue(r.Context(), requestCopyKey{a}, r))
 		if a.onResponse {
 			if _, buffered := w.(*bufferedResponse); !buffered {
 				b := &bufferedResponse{header: w.Header()}

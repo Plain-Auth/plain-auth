@@ -83,6 +83,8 @@ With `ChangeEmailEnabled`, a signed-in client can post `{"newEmail":"new@example
 
 Enable `DeleteUserEnabled` to expose `POST /delete-user`. The default flow accepts a fresh session, or the correct current password in the `password` field. With `SendDeleteAccountVerification` configured, the service mails a confirmation link. The link expires after 24 hours by default, configurable through `DeleteTokenTTL`. The `GET /delete-user/callback` request must carry both the token and an active session belonging to that user. Deletion removes the user, accounts, sessions and outstanding core mail-link records.
 
+`BeforeDeleteUser` runs before the deletion with the user and a copy of the request, and an error, such as an `APIError`, cancels it and is returned to the caller. `AfterDeleteUser` runs once the user is gone. Both receive a nil request for a direct Go call. To observe every session and account the deletion removes, use [database hooks](hooks.md#run-code-around-database-writes).
+
 A trusted Go caller can use `SetPassword(ctx, headers, newPassword)` to attach the first password to an account signed in through another provider. The HTTP API does not expose this operation.
 
 ## Verify an address with application callbacks

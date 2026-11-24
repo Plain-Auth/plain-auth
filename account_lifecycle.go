@@ -106,16 +106,24 @@ func (a *Auth) DeleteUser(ctx context.Context, h http.Header, in DeleteUserInput
 		}
 		query := url.Values{"callbackURL": {callback}, "token": {t.Token}}
 		link := a.opts.BaseURL + strings.TrimSuffix(a.opts.BasePath, "/") + "/delete-user/callback?" + query.Encode()
-		return false, a.opts.SendDeleteAccountVerification(ctx, MailLink{User: session.User, URL: link, Token: t.Token, Request: a.mailRequest(ctx)})
+		return false, a.opts.SendDeleteAccountVerification(ctx, MailLink{User: session.User, URL: link, Token: t.Token, Request: a.requestCopy(ctx)})
 	}
 	if in.Token == "" && hash == "" && !a.freshSession(session.Session) {
 		return false, &APIError{400, "SESSION_EXPIRED", "Session expired. Re-authenticate to perform this action."}
+	}
+	if a.opts.BeforeDeleteUser != nil {
+		if err := a.opts.BeforeDeleteUser(ctx, session.User, a.requestCopy(ctx)); err != nil {
+			return false, err
+		}
 	}
 	declined, err := a.deleteUserWithHooks(ctx, session.User, func() error {
 		return s.DeleteAccount(ctx, session.User.ID, session.Session.Token, hash, in.Token, now)
 	})
 	if errors.Is(err, ErrNotFound) {
 		return false, &APIError{404, "INVALID_TOKEN", "Invalid token"}
+	}
+	if err == nil && !declined && a.opts.AfterDeleteUser != nil {
+		err = a.opts.AfterDeleteUser(ctx, session.User, a.requestCopy(ctx))
 	}
 	// A declined deletion answers like a completed one, as in the reference.
 	return err == nil || declined, err

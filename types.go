@@ -84,7 +84,14 @@ type Options struct {
 	OnPasswordReset func(context.Context, User, *http.Request) error
 
 	// Account lifecycle operations with destructive or identity-changing effects are opt-in.
-	DeleteUserEnabled              bool
+	DeleteUserEnabled bool
+	// BeforeDeleteUser runs before a user is deleted, with a body-free copy of
+	// the request or nil for a Go call. An error cancels the deletion and is
+	// returned to the caller.
+	BeforeDeleteUser func(context.Context, User, *http.Request) error
+	// AfterDeleteUser runs once a user is deleted. Its error is returned to
+	// the caller; the user stays deleted.
+	AfterDeleteUser                func(context.Context, User, *http.Request) error
 	SendDeleteAccountVerification  MailSender
 	DeleteTokenTTL                 time.Duration
 	ChangeEmailEnabled             bool
