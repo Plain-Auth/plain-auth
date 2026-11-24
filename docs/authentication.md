@@ -117,6 +117,21 @@ opts.RateLimitRules = map[string]*plainauth.RateLimitRule{
 }
 ```
 
+Sign-in, sign-up, password and email change and two-factor routes have a built-in rule of 3 requests per 10 seconds, and password reset and verification email requests 3 per minute. To choose a limit per request, put a function in `RateLimitRuleFuncs` under the same kind of pattern. It receives the request and the route's plugin, built-in or default rule, and returns the rule to use, or nil to not limit the request. The closest entry in either map wins, so a function for `/sign-in/email` replaces a `/sign-in/*` rule entirely, and returning `current` then applies the built-in rule. A route can appear in only one of the two maps. A function that panics or returns a rule without a positive maximum and window keeps the rule it received.
+
+```go
+opts.RateLimitRuleFuncs = map[string]plainauth.RateLimitRuleFunc{
+    "/sign-in/*": func(r *http.Request, current plainauth.RateLimitRule) *plainauth.RateLimitRule {
+        if isTrustedNetwork(r) {
+            return nil
+        }
+        return &current
+    },
+}
+```
+
+IPv6 clients are counted by their /64 network, whatever the spelling of the address. Set `ClientIP.IPv6Subnet` to another prefix length from 0 to 128. [Rate limit tests](../ratelimit_test.go)
+
 ## Share rate limits across replicas
 
 For shared counters on Redis or Valkey, configure the optional Redis storage adapter. [Redis secondary storage](redis.md)

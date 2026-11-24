@@ -182,10 +182,14 @@ type Options struct {
 	// RateLimitDefault applies to routes without their own rule. RateLimitRules
 	// overrides built-in and plugin rules by exact route or trailing /* prefix.
 	// A nil map value exempts the matching route from the limiter.
-	RateLimitDefault *RateLimitRule
-	RateLimitRules   map[string]*RateLimitRule
-	ClientIP         ClientIPOptions
-	SocialProviders  map[string]OAuthProvider
+	// RateLimitRuleFuncs does the same with a function that chooses the limit
+	// for each request. The closest entry in either map wins, and a route may
+	// appear in only one of them.
+	RateLimitDefault   *RateLimitRule
+	RateLimitRules     map[string]*RateLimitRule
+	RateLimitRuleFuncs map[string]RateLimitRuleFunc
+	ClientIP           ClientIPOptions
+	SocialProviders    map[string]OAuthProvider
 	// EncryptOAuthTokens encrypts linked provider credentials at rest using the configured key ring.
 	EncryptOAuthTokens bool
 	Plugins            []Plugin

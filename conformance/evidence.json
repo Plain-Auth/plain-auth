@@ -1930,6 +1930,11 @@
       "label": "Configure the default rule, override exact or wildcard paths and exempt individual routes",
       "test": "ratelimit_test.go",
       "marker": "func TestHostRateLimitRules("
+    },
+    {
+      "test": "ratelimit_test.go",
+      "marker": "func TestRateLimitRuleFuncs(t *testing.T) {",
+      "label": "RateLimitRuleFuncs chooses the limit per request from the route's built-in rule, can exempt a request, keeps that rule when the function panics or returns an invalid rule, and as the closest entry replaces a broader host rule"
     }
   ],
   "plugin/magic-link/POST /sign-in/magic-link": [
@@ -20379,6 +20384,70 @@
       "test": "conformance/goapi/user_validation_test.go",
       "marker": "func TestValidateUserInfoIDTokenLinks(t *testing.T) {",
       "label": "ID-token sign-ups and links are checked with the provider ID and raw claims, and a refusal answers 403 with the app's code"
+    }
+  ],
+  "docs/content/docs/concepts/rate-limit.mdx#L44/`/sign-in/email`": [
+    {
+      "test": "ratelimit_test.go",
+      "marker": "func TestBuiltInRateLimitRules(t *testing.T) {",
+      "complete": true,
+      "label": "The fourth sign-in request within 10 seconds is refused by the built-in 3-per-10-second rule"
+    }
+  ],
+  "docs/content/docs/concepts/rate-limit.mdx#L48/`/two-factor/*`": [
+    {
+      "test": "ratelimit_test.go",
+      "marker": "func TestBuiltInRateLimitRules(t *testing.T) {",
+      "complete": true,
+      "label": "Two-factor routes share the built-in 3-per-10-second rule, and the fourth request is refused"
+    }
+  ],
+  "docs/content/docs/concepts/rate-limit.mdx#L143": [
+    {
+      "test": "ratelimit_test.go",
+      "marker": "func TestRateLimitIPv6Subnets(t *testing.T) {",
+      "complete": true,
+      "label": "Compressed and zero-padded spellings of one IPv6 address get the same rate-limit key, and IPv4 addresses are keyed as they are"
+    }
+  ],
+  "docs/content/docs/concepts/rate-limit.mdx#L149": [
+    {
+      "test": "ratelimit_test.go",
+      "marker": "func TestRateLimitIPv6Subnets(t *testing.T) {",
+      "complete": true,
+      "label": "IPv6 keys are masked to /64 by default or the configured prefix, and prefixes outside 0-128 are refused"
+    }
+  ],
+  "docs/content/docs/concepts/rate-limit.mdx#L173/`128`": [
+    {
+      "test": "ratelimit_test.go",
+      "marker": "func TestRateLimitIPv6Subnets(t *testing.T) {",
+      "complete": true,
+      "label": "IPv6Subnet 128 keys each address on its own"
+    }
+  ],
+  "docs/content/docs/concepts/rate-limit.mdx#L174/`64`": [
+    {
+      "test": "ratelimit_test.go",
+      "marker": "func TestRateLimitIPv6Subnets(t *testing.T) {",
+      "complete": true,
+      "label": "Without IPv6Subnet, keys use the /64 network"
+    }
+  ],
+  "docs/content/docs/concepts/rate-limit.mdx#L176/`48`": [
+    {
+      "test": "ratelimit_test.go",
+      "marker": "func TestRateLimitIPv6Subnets(t *testing.T) {",
+      "complete": true,
+      "label": "IPv6Subnet 48 keys the /48 network"
+    }
+  ],
+  "docs/content/docs/concepts/rate-limit.mdx#L177/`32`": [
+    {
+      "test": "ratelimit_test.go",
+      "marker": "func TestRateLimitIPv6Subnets(t *testing.T) {",
+      "complete": true,
+      "label": "IPv6Subnet 32 keys the /32 network"
     }
   ]
 }

@@ -462,8 +462,8 @@
     - [ ] `window`
     - [x] `max` ([test](../../adapters/sqlstore/oauth_browser_authorization_test.go#L206))
       - [x] In the "host" case, an empty plugin rule falls back to RateLimitDefault{Max: 3}, and the fourth HTTP request returns 429 with X-Retry-After ([test](../../adapters/sqlstore/oauth_browser_authorization_test.go#L206))
-    - [x] `customRules` ([test](../../ratelimit_test.go#L10))
-      - [x] RateLimitRules: an exact route rule is enforced (429 on the third request, retry after 2s), a trailing /* wildcard with a nil rule exempts routes, and invalid patterns are rejected ([test](../../ratelimit_test.go#L10))
+    - [x] `customRules` ([test](../../ratelimit_test.go#L13))
+      - [x] RateLimitRules: an exact route rule is enforced (429 on the third request, retry after 2s), a trailing /* wildcard with a nil rule exempts routes, and invalid patterns are rejected ([test](../../ratelimit_test.go#L13))
     - [x] `storage` ([test](../../adapters/sqlstore/ratelimit_test.go#L18))
       - [x] RateLimitStorage backed by the SQL store shares counters across two auth instances on SQLite, PostgreSQL and MySQL, and the HTTP handler returns 429 from the shared counter ([test](../../adapters/sqlstore/ratelimit_test.go#L18))
     - [ ] `modelName`

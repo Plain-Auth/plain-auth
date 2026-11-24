@@ -117,6 +117,11 @@ type RateLimitRule struct {
 	Window time.Duration
 }
 
+// RateLimitRuleFunc chooses the limit for one request. It receives the
+// plugin, built-in or default rule for the route, never a RateLimitRules
+// entry, and returns the rule to use, or nil to not limit the request.
+type RateLimitRuleFunc func(r *http.Request, current RateLimitRule) *RateLimitRule
+
 // Endpoint declares the HTTP operation and its optional IP-based limit.
 type Endpoint struct {
 	// OpenAPI is optional JSON operation metadata for this endpoint. It is copied at registration.

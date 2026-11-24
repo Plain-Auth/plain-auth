@@ -509,8 +509,10 @@
 ## Rate Limit
 
 - [ ] Rate Limit
-  - [ ] `/sign-in/email`
-  - [ ] `/two-factor/*`
+  - [x] `/sign-in/email` ([test](../../ratelimit_test.go#L121))
+    - [x] The fourth sign-in request within 10 seconds is refused by the built-in 3-per-10-second rule ([test](../../ratelimit_test.go#L121))
+  - [x] `/two-factor/*` ([test](../../ratelimit_test.go#L121))
+    - [x] Two-factor routes share the built-in 3-per-10-second rule, and the fourth request is refused ([test](../../ratelimit_test.go#L121))
   - [ ] Configuring Rate Limit
     - [ ] Connecting IP Address
       - [x] Resolve the first untrusted address from configured proxy ranges while ignoring direct peers’ headers ([test](../../ip_test.go#L10))
@@ -528,16 +530,23 @@
         - [x] With no proxy configured, the shared SQL counter is keyed by the connection address (192.0.2.1|route) ([test](../../adapters/sqlstore/ratelimit_test.go#L93))
       - [x] When no address is found ([test](../../conformance/goapi/client_address_test.go#L85))
         - [x] A request whose trusted proxy sends no valid address gets no address, shares one rate-limit counter per route and logs a single warning. The connection address is always known, so Go has no development fallback ([test](../../conformance/goapi/client_address_test.go#L85))
-      - [ ] IPv6 Address Support
-      - [ ] IPv6 Subnet Rate Limiting
-        - [ ] `128`
-        - [ ] `64`
+      - [x] IPv6 Address Support ([test](../../ratelimit_test.go#L145))
+        - [x] Compressed and zero-padded spellings of one IPv6 address get the same rate-limit key, and IPv4 addresses are keyed as they are ([test](../../ratelimit_test.go#L145))
+      - [x] IPv6 Subnet Rate Limiting ([test](../../ratelimit_test.go#L145))
+        - [x] IPv6 keys are masked to /64 by default or the configured prefix, and prefixes outside 0-128 are refused ([test](../../ratelimit_test.go#L145))
+        - [x] `128` ([test](../../ratelimit_test.go#L145))
+          - [x] IPv6Subnet 128 keys each address on its own ([test](../../ratelimit_test.go#L145))
+        - [x] `64` ([test](../../ratelimit_test.go#L145))
+          - [x] Without IPv6Subnet, keys use the /64 network ([test](../../ratelimit_test.go#L145))
         - [x] `56` ([test](../../ip_test.go#L35))
           - [x] With IPv6Subnet 56 (copied when New runs), the rate-limit key for an IPv6 address is its masked /56 subnet ([test](../../ip_test.go#L35))
-        - [ ] `48`
-        - [ ] `32`
+        - [x] `48` ([test](../../ratelimit_test.go#L145))
+          - [x] IPv6Subnet 48 keys the /48 network ([test](../../ratelimit_test.go#L145))
+        - [x] `32` ([test](../../ratelimit_test.go#L145))
+          - [x] IPv6Subnet 32 keys the /32 network ([test](../../ratelimit_test.go#L145))
     - [ ] Rate Limit Window
-      - [x] Configure the default rule, override exact or wildcard paths and exempt individual routes ([test](../../ratelimit_test.go#L10))
+      - [x] Configure the default rule, override exact or wildcard paths and exempt individual routes ([test](../../ratelimit_test.go#L13))
+      - [x] RateLimitRuleFuncs chooses the limit per request from the route's built-in rule, can exempt a request, keeps that rule when the function panics or returns an invalid rule, and as the closest entry replaces a broader host rule ([test](../../ratelimit_test.go#L49))
     - [ ] Storage
       - [x] Enforce shared SQL counters across two independent auth instances on SQLite, PostgreSQL and MySQL ([test](../../adapters/sqlstore/ratelimit_test.go#L18))
       - [ ] Using Database
@@ -546,8 +555,8 @@
       - [ ] Custom Storage
   - [ ] Handling Rate Limit Errors
     - [x] Return a rate-limit error with a retry duration ([test](../../conformance/goapi/http_test.go#L145))
-    - [x] `X-Retry-After` ([test](../../ratelimit_test.go#L26))
-      - [x] A rejected request gets 429 and X-Retry-After set to the seconds left in the window, rounded up (2 for a 1.5s window) ([test](../../ratelimit_test.go#L26))
+    - [x] `X-Retry-After` ([test](../../ratelimit_test.go#L29))
+      - [x] A rejected request gets 429 and X-Retry-After set to the seconds left in the window, rounded up (2 for a 1.5s window) ([test](../../ratelimit_test.go#L29))
     - [ ] Global Handling
     - [ ] Per Request Handling
     - [x] Schema ([test](../../conformance/schema.test.mjs#L106))

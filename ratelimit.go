@@ -27,9 +27,7 @@ func prepareRateLimits(opts *Options) error {
 	opts.RateLimitDefault = &base
 	cloned := make(map[string]*RateLimitRule, len(opts.RateLimitRules))
 	for pattern, v := range opts.RateLimitRules {
-		// Only accept a wildcard covering descendants of a path segment.
-		clean := strings.TrimSuffix(pattern, "/*")
-		if pattern != "/*" && (!strings.HasPrefix(clean, "/") || path.Clean(clean) != clean || strings.ContainsAny(clean, "*?%#\\ \t\r\n")) {
+		if !validRateLimitRoute(pattern) {
 			return fmt.Errorf("auth: invalid rate-limit route %q", pattern)
 		}
 		if v == nil {
@@ -43,24 +41,88 @@ func prepareRateLimits(opts *Options) error {
 		cloned[pattern] = &rule
 	}
 	opts.RateLimitRules = cloned
+	funcs := make(map[string]RateLimitRuleFunc, len(opts.RateLimitRuleFuncs))
+	for pattern, f := range opts.RateLimitRuleFuncs {
+		if !validRateLimitRoute(pattern) {
+			return fmt.Errorf("auth: invalid rate-limit route %q", pattern)
+		}
+		if _, both := cloned[pattern]; both || f == nil {
+			return fmt.Errorf("auth: rate-limit route %q needs either a rule or a function", pattern)
+		}
+		funcs[pattern] = f
+	}
+	opts.RateLimitRuleFuncs = funcs
 	return nil
 }
 
+// validRateLimitRoute accepts an exact route or a wildcard covering the
+// descendants of a path segment.
+func validRateLimitRoute(pattern string) bool {
+	clean := strings.TrimSuffix(pattern, "/*")
+	return pattern == "/*" || strings.HasPrefix(clean, "/") && path.Clean(clean) == clean && !strings.ContainsAny(clean, "*?%#\\ \t\r\n")
+}
+
 func (a *Auth) ruleForRoute(method, route string) *RateLimitRule {
-	rules := a.opts.RateLimitRules
-	if rule, ok := rules[route]; ok {
+	if rule, _, ok := a.hostRateLimitRule(route); ok {
 		return rule
 	}
-	for p := route; len(rules) != 0; {
+	return a.builtInRateLimitRule(method, route)
+}
+
+// hostRateLimitRule finds the host's entry for route, a rule or a function,
+// by exact path or the closest trailing /* prefix.
+func (a *Auth) hostRateLimitRule(route string) (*RateLimitRule, RateLimitRuleFunc, bool) {
+	rules, funcs := a.opts.RateLimitRules, a.opts.RateLimitRuleFuncs
+	lookup := func(pattern string) (*RateLimitRule, RateLimitRuleFunc, bool) {
+		if f, ok := funcs[pattern]; ok {
+			return nil, f, true
+		}
+		rule, ok := rules[pattern]
+		return rule, nil, ok
+	}
+	if rule, f, ok := lookup(route); ok {
+		return rule, f, true
+	}
+	for p := route; len(rules)+len(funcs) != 0; {
 		i := strings.LastIndexByte(p, '/')
 		if i < 0 {
 			break
 		}
 		p = p[:i]
-		if rule, ok := rules[p+"/*"]; ok {
-			return rule
+		if rule, f, ok := lookup(p + "/*"); ok {
+			return rule, f, true
 		}
 	}
+	return nil, nil, false
+}
+
+// requestRateLimitRule is the rule for one request. A host function that
+// panics or returns an invalid rule keeps the rule that would apply without it.
+func (a *Auth) requestRateLimitRule(r *http.Request, route string) (rule *RateLimitRule) {
+	rule, f, ok := a.hostRateLimitRule(route)
+	if !ok {
+		return a.builtInRateLimitRule(r.Method, route)
+	}
+	if f == nil {
+		return rule
+	}
+	current := *a.builtInRateLimitRule(r.Method, route)
+	defer func() {
+		if recover() != nil {
+			a.Logger().ErrorContext(r.Context(), "auth: a rate-limit rule function panicked", "route", route)
+			rule = &current
+		}
+	}()
+	rule = f(r, current)
+	if rule != nil && (rule.Max < 1 || rule.Window < time.Millisecond) {
+		a.Logger().ErrorContext(r.Context(), "auth: a rate-limit rule function returned an invalid rule", "route", route)
+		return &current
+	}
+	return rule
+}
+
+// builtInRateLimitRule is the plugin, built-in or default rule for route.
+func (a *Auth) builtInRateLimitRule(method, route string) *RateLimitRule {
 	if ep := a.plugins[endpointKey{method, route}]; ep.RateLimit != nil {
 		return ep.RateLimit
 	}
@@ -111,7 +173,7 @@ func (a *Auth) rejectRateLimited(w http.ResponseWriter, r *http.Request, route s
 		})
 	}
 	ip := a.rateLimitIP(client)
-	rule := a.ruleForRoute(r.Method, route)
+	rule := a.requestRateLimitRule(r, route)
 	if rule == nil {
 		return false
 	}

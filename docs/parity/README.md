@@ -2,16 +2,16 @@
 
 ## Verification progress
 
-**1,021 of 6,642 inventory entries are fully verified (15.4%).**
+**1,029 of 6,642 inventory entries are fully verified (15.5%).**
 
 | Inventory status | Entries |
 | --- | ---: |
-| Fully verified | 1,021 |
-| Partially verified | 1,045 |
-| No linked test evidence | 4,576 |
+| Fully verified | 1,029 |
+| Partially verified | 1,044 |
+| No linked test evidence | 4,569 |
 | Not applicable to a Go server | 383 |
 
-The inventory covers features, options, integrations and documentation topics. Partial verification means an open entry has a passing case somewhere beneath it. The checklists also contain 3,238 links from passing scenarios to tests. Adding a scenario leaves the inventory denominator unchanged.
+The inventory covers features, options, integrations and documentation topics. Partial verification means an open entry has a passing case somewhere beneath it. The checklists also contain 3,247 links from passing scenarios to tests. Adding a scenario leaves the inventory denominator unchanged.
 
 Entries that exist only for JavaScript clients, frameworks or runtimes are listed as not applicable, with the reason, and are left out of the totals. Backlog entries stay open on the roadmap but are not scheduled.
 
@@ -80,7 +80,7 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 | [Core API, sign-in providers and CLI](runtime.md) | 171 | 263 | 13 |
 | [Database adapters](adapters.md) | 32 | 193 | 31 |
 | [Authentication](authentication.md) | 120 | 369 | 0 |
-| [Core concepts](concepts.md) | 350 | 389 | 0 |
+| [Core concepts](concepts.md) | 367 | 381 | 0 |
 | [Managed infrastructure](infrastructure.md) | 0 | 528 | 0 |
 | [Framework integrations](integrations.md) | 0 | 27 | 201 |
 | [Reference and configuration](reference.md) | 249 | 319 | 0 |
