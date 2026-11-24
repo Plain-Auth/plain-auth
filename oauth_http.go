@@ -143,7 +143,8 @@ func (a *Auth) startOAuth(w http.ResponseWriter, r *http.Request, body wireBody,
 	return map[string]any{"url": target, "redirect": !disable}, nil
 }
 
-// beginBrowserOAuth creates the same provider-bound, single-use grant for redirect and popup sign-in.
+// beginBrowserOAuth creates the same provider-bound grant for redirect and
+// popup sign-in. The database strategy makes it single-use.
 func (a *Auth) beginBrowserOAuth(h http.Header, r *http.Request, p OAuthProvider, body wireBody, flow OAuthFlow, requestedParams []oauth2.AuthCodeOption) (string, string, error) {
 	browser := randomID()
 	now := a.now().UTC()
@@ -218,10 +219,9 @@ func (a *Auth) beginBrowserOAuth(h http.Header, r *http.Request, p OAuthProvider
 		p.CustomizeAuthorization(u)
 		target = u.String()
 	}
-	if err := a.opts.Store.(OAuthStore).SaveOAuthFlow(r.Context(), flow, now); err != nil {
+	if err := a.keepOAuthFlow(r.Context(), h, "oauth_state", a.oauthCookie("oauth_state", "", 600), browser, flow, now); err != nil {
 		return "", "", err
 	}
-	h.Add("Set-Cookie", a.oauthCookie("oauth_state", browser, 600).String())
 	return target, flow.State, nil
 }
 
@@ -260,12 +260,13 @@ func (a *Auth) finishBrowserOAuth(w http.ResponseWriter, r *http.Request, id str
 	if err != nil || state == "" || len(state) > 128 || (returned == nil && (len(q["state"]) != 1 || len(q["code"]) > 1 || len(q["error"]) > 1)) {
 		return nil, &APIError{400, "INVALID_OAUTH_STATE", "Invalid or expired OAuth state"}
 	}
-	store := a.opts.Store.(OAuthStore)
-	binding := a.oauthBinding(cookie.Value, id, r)
-	if strings.HasPrefix(cookie.Value, "guest-") {
-		binding = digest(cookie.Value + "\x00" + id + "\x00")
+	binding := func(browser string) string {
+		if strings.HasPrefix(browser, "guest-") {
+			return digest(browser + "\x00" + id + "\x00")
+		}
+		return a.oauthBinding(browser, id, r)
 	}
-	flow, err := store.ConsumeOAuthFlow(r.Context(), state, binding, a.now().UTC())
+	flow, err := a.takeOAuthFlow(r.Context(), "oauth_state", cookie.Value, state, binding, a.now().UTC())
 	if errors.Is(err, ErrNotFound) {
 		if popup != nil {
 			return popup.page(w.Header(), "", "", &popupError{Code: "INVALID_OAUTH_STATE", Description: "Invalid or expired OAuth state"}), nil
@@ -528,7 +529,7 @@ func (a *Auth) redirectOAuthForm(w http.ResponseWriter, r *http.Request, id stri
 }
 
 func (a *Auth) completeProfile(ctx context.Context, r *http.Request, id, callback string, p OAuthProfile, tokens OAuthTokens, options OAuthLoginOptions) (AuthResult, bool, error) {
-	complete := a.opts.Store.(OAuthStore).CompleteOAuth
+	complete := a.opts.Store.(OAuthIdentityStore).CompleteOAuth
 	provider, registered := a.opts.SocialProviders[id]
 	if options.LinkUserID == "" {
 		options.RequireEmailVerification = options.RequireEmailVerification || provider.RequireEmailVerification

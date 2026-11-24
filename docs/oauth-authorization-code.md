@@ -85,7 +85,7 @@ An application can offer a configured social provider on its issuer login page. 
 }
 ```
 
-The response contains the identity provider's authorization URL. Open it in the browser that started the request. Plain Auth keeps the signed issuer request in the shared flow store while the browser visits the provider. A successful callback issues a fresh session and rechecks the original client's request, including any required organization selection or consent. The provider's state and PKCE exchange are independent of the client application's state and PKCE exchange.
+The response contains the identity provider's authorization URL. Open it in the browser that started the request. Plain Auth keeps the signed issuer request in the shared flow store, or sealed in the state cookie with `OAuthStateCookie`, while the browser visits the provider. A successful callback issues a fresh session and rechecks the original client's request, including any required organization selection or consent. The provider's state and PKCE exchange are independent of the client application's state and PKCE exchange.
 
 For a top-level navigation, the callback sends HTTP 302 to the next destination. An HTTP client requesting JSON receives HTTP 200 and `{"redirect":true,"url":"…"}`. Your application owns the pages and decides how to handle the destination. If the provider denies access or the token exchange fails, your trusted `errorCallbackURL` can handle the error. An expired issuer login request requires a new authorization request.
 

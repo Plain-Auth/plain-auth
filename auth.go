@@ -199,7 +199,14 @@ func New(opts Options) (*Auth, error) {
 	for i := range opts.Plugins {
 		opts.Plugins[i].OrganizationRoleFields = maps.Clone(opts.Plugins[i].OrganizationRoleFields)
 	}
-	opts.SocialProviders, err = prepareOAuthProviders(opts.SocialProviders, opts.Store, len(opts.UserAdditionalFields) > 0 && !opts.DisableSignUp)
+	switch opts.OAuthStateStrategy {
+	case "":
+		opts.OAuthStateStrategy = OAuthStateDatabase
+	case OAuthStateDatabase, OAuthStateCookie:
+	default:
+		return nil, errors.New("auth: OAuthStateStrategy must be OAuthStateDatabase or OAuthStateCookie")
+	}
+	opts.SocialProviders, err = prepareOAuthProviders(opts.SocialProviders, opts.Store, len(opts.UserAdditionalFields) > 0 && !opts.DisableSignUp, opts.OAuthStateStrategy)
 	if err != nil {
 		return nil, err
 	}

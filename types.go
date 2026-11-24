@@ -233,6 +233,10 @@ type Options struct {
 	RateLimitRuleFuncs map[string]RateLimitRuleFunc
 	ClientIP           ClientIPOptions
 	SocialProviders    map[string]OAuthProvider
+	// OAuthStateStrategy keeps a browser OAuth flow in the store
+	// (OAuthStateDatabase, the default) or sealed in the state cookie
+	// (OAuthStateCookie), which needs no OAuthFlowStore.
+	OAuthStateStrategy OAuthStateStrategy
 	// EncryptOAuthTokens encrypts linked provider credentials at rest using the configured key ring.
 	EncryptOAuthTokens bool
 	Plugins            []Plugin

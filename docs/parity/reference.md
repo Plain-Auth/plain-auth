@@ -435,8 +435,11 @@
       - [x] Preserve or renew provider credentials on returning sign-ins while applying profile changes and issuing sessions ([test](../../conformance/social-user-fields.mjs#L267))
       - [x] Preserve the account timestamp, claim single-use grants and retain omitted expiry values on three SQL engines ([test](../../adapters/sqlstore/oauth_account_update_test.go#L11))
       - [x] Keep the original encryption key version on sign-in and rotate credentials through explicit refresh ([test](../../adapters/sqlstore/oauth_encryption_test.go#L113))
-    - [ ] `storeStateStrategy`
-      - [ ] `"cookie"`
+    - [x] `storeStateStrategy` ([test](../../conformance/goapi/oauth_state_test.go#L219))
+      - [x] OAuthStateStrategy chooses the database or the cookie strategy, refuses an unknown strategy, and needs OAuthFlowStore only for the database ([test](../../conformance/goapi/oauth_state_test.go#L219))
+      - [x] `"cookie"` ([test](../../conformance/goapi/oauth_state_test.go#L74))
+        - [x] OAuthStateCookie seals the whole flow into oauth_state, writes no flow, refuses a missing, altered or foreign cookie, and stops a replay at the provider's single-use code ([test](../../conformance/goapi/oauth_state_test.go#L74))
+        - [x] An enterprise OIDC sign-in in cookie mode keeps its flow sealed in sso_state, writes none and refuses another flow's cookie ([test](../../adapters/sqlstore/sso_state_cookie_test.go#L33))
       - [x] `"database"` ([test](../../conformance/goapi/oauth_test.go#L151))
         - [x] Social sign-in sets an oauth_state binding cookie and stores the flow ([test](../../conformance/goapi/oauth_test.go#L151))
     - [ ] `storeAccountCookie`
@@ -615,7 +618,8 @@
           - [x] Turn off only the CSRF protections ([test](../../conformance/goapi/request_switches_test.go#L43))
         - [ ] `disableOriginCheck`
           - [x] Turn off redirect URL validation; CSRF protection stays on until DisableCSRFCheck is also set, by design ([test](../../conformance/goapi/request_switches_test.go#L57))
-  - [ ] OAuth State and PKCE
+  - [x] OAuth State and PKCE ([test](../../conformance/goapi/oauth_state_test.go#L179))
+    - [x] Both strategies bind the state to the browser, send a PKCE S256 challenge the provider checks, and expire the state cookie on use; the database strategy also consumes the stored flow ([test](../../conformance/goapi/oauth_state_test.go#L179))
   - [ ] Cookies
     - [x] With an HTTPS base URL, the sign-up session cookie is Secure, HttpOnly, SameSite=Lax, Path=/ and persistent ([test](../../conformance/goapi/http_test.go#L73))
     - [ ] Customizing Cookies

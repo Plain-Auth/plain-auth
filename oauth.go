@@ -76,8 +76,9 @@ type OAuthProvider struct {
 // OAuthFlow is the temporary state of a browser authorization. Binding ties a
 // request to the initiating browser, provider and existing session.
 type OAuthFlow struct {
-	// IssuerLoginQuery is the host's verified login request, retained only in
-	// the local flow store while the browser visits the identity provider.
+	// IssuerLoginQuery is the host's verified login request, retained in the
+	// flow store, or sealed in the state cookie, while the browser visits the
+	// identity provider.
 	IssuerLoginQuery string `json:",omitempty"`
 	// ProxyOrigin is the preview that owns the browser state and final session.
 	ProxyOrigin                                       string         `json:",omitempty"`
@@ -135,12 +136,23 @@ type OAuthLoginOptions struct {
 	IDTokenHash [32]byte
 }
 
-// OAuthStore supports shared, single-use flow state and atomic identity login.
-// CompleteOAuth returns the actual account owner and whether it created a user.
-type OAuthStore interface {
+// OAuthFlowStore keeps shared, single-use browser flow state. It is needed
+// unless OAuthStateStrategy is OAuthStateCookie.
+type OAuthFlowStore interface {
 	SaveOAuthFlow(context.Context, OAuthFlow, time.Time) error
 	ConsumeOAuthFlow(ctx context.Context, state, binding string, now time.Time) (OAuthFlow, error)
+}
+
+// OAuthIdentityStore completes a provider sign-in atomically. CompleteOAuth
+// returns the actual account owner and whether it created a user.
+type OAuthIdentityStore interface {
 	CompleteOAuth(ctx context.Context, provider, subject string, tokens OAuthTokens, candidate User, session StoredSession, options OAuthLoginOptions) (User, bool, error)
+}
+
+// OAuthStore supports shared, single-use flow state and atomic identity login.
+type OAuthStore interface {
+	OAuthFlowStore
+	OAuthIdentityStore
 }
 
 // OAuthRegistrationFields resolves configured columns for a new account.
@@ -203,12 +215,15 @@ var ErrOAuthLinkEmailMismatch = errors.New("provider email does not match the ac
 var ErrIDTokenUsed = errors.New("ID token has already been used")
 var providerName = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$`)
 
-func prepareOAuthProviders(in map[string]OAuthProvider, store Store, userFieldsOnSignup bool) (map[string]OAuthProvider, error) {
+func prepareOAuthProviders(in map[string]OAuthProvider, store Store, userFieldsOnSignup bool, strategy OAuthStateStrategy) (map[string]OAuthProvider, error) {
 	if len(in) == 0 {
 		return nil, nil
 	}
-	if _, ok := store.(OAuthStore); !ok {
-		return nil, errors.New("social providers require OAuthStore")
+	if _, ok := store.(OAuthIdentityStore); !ok {
+		return nil, errors.New("social providers require an OAuthIdentityStore")
+	}
+	if _, ok := store.(OAuthFlowStore); !ok && strategy != OAuthStateCookie {
+		return nil, errors.New("social providers require an OAuthFlowStore, or OAuthStateStrategy OAuthStateCookie")
 	}
 	out := make(map[string]OAuthProvider, len(in))
 	for id, p := range in {

@@ -101,7 +101,7 @@ func NewOneTap(o OneTapOptions, fallback OAuthProvider) Plugin {
 		return &APIError{400, "INVALID_TOKEN", "Invalid Google credential or expired browser challenge"}
 	}
 	return Plugin{ID: "one-tap", ValidateStore: func(s Store) error {
-		if _, ok := s.(OAuthStore); !ok {
+		if _, ok := s.(OAuthIdentityStore); !ok {
 			return errors.New("authn: One Tap requires an OAuth identity store")
 		}
 		return nil

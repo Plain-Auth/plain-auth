@@ -1,6 +1,6 @@
 # Use one OAuth callback for preview deployments
 
-Register one redirect URI with the identity provider, such as `https://login.example.com/identity/callback/github`. A sign-in started at `https://review-42.example.com` uses that URI. The production application exchanges the authorization code and returns the encrypted result to the browser. The preview verifies the result, reads its own single-use sign-in state, and issues its own session. You can keep a separate database and signing keys for each environment.
+Register one redirect URI with the identity provider, such as `https://login.example.com/identity/callback/github`. A sign-in started at `https://review-42.example.com` uses that URI. The production application exchanges the authorization code and returns the encrypted result to the browser. The preview verifies the result, reads its own sign-in state, which the default database strategy makes single-use, and issues its own session. You can keep a separate database and signing keys for each environment.
 
 ## Configure the two applications
 
@@ -59,7 +59,7 @@ const { url } = await response.json();
 window.location.assign(url);
 ```
 
-Production receives the provider's GET or form POST callback at `/identity/callback/github`. On a proxied flow it redirects the browser to `/identity/callback/github/oauth-proxy` on the preview. The preview requires the browser's original state cookie and consumes the pending sign-in once. The alternative return path `/identity/oauth-proxy-callback` accepts the same authenticated result. Both paths are for the browser's return trip.
+Production receives the provider's GET or form POST callback at `/identity/callback/github`. On a proxied flow it redirects the browser to `/identity/callback/github/oauth-proxy` on the preview. The preview requires the browser's original state cookie and consumes the pending sign-in once. With `OAuthStateStrategy` set to `OAuthStateCookie` the preview keeps the flow sealed in that cookie, and a captured copy can be replayed within `MaxAge`; keep the database strategy for previews. The alternative return path `/identity/oauth-proxy-callback` accepts the same authenticated result. Both paths are for the browser's return trip.
 
 A first-time user reaches `/welcome`. A returning user reaches `/dashboard`. A provider refusal reaches `/sign-in?error=access_denied`. The same flow supports an existing user's `/identity/link-social` request and applies the preview's account linking policy. When the popup plugin is installed, the completion page posts the result to the initiating application's trusted opener. [Social account policies](social.md) · [Popup setup](oauth-popup.md)
 

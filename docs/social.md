@@ -87,6 +87,18 @@ The default PayPal registration uses the sandbox. Notion requests the workspace 
 
 To complete sign-in while keeping the opener on its current page, use [OAuth popup sign-in](oauth-popup.md).
 
+## Keep OAuth state in a cookie
+
+A browser sign-in waits for the provider's callback in a flow: its PKCE verifier, nonce, callbacks and the binding to the browser and session that started it. By default the flow is stored through `OAuthFlowStore`, and the callback consumes it once. Set `Options.OAuthStateStrategy` to `plainauth.OAuthStateCookie` to seal the whole flow into the `oauth_state` cookie instead, so no flow is written:
+
+```go
+opts.OAuthStateStrategy = plainauth.OAuthStateCookie
+```
+
+The cookie is encrypted with the key ring, bound to its URL state and to the browser and session that started the flow, and expires after ten minutes. Enterprise SSO flows keep theirs in `sso_state`, or in the SameSite=None `saml_state` for a SAML form post. The store must still implement `OAuthIdentityStore`; `OAuthFlowStore` is needed only for the database strategy. A flow too large for one cookie, such as one with a very long callback, is refused with a 400.
+
+The callback expires the cookie, but unlike a stored flow a copy captured before then stays valid for the rest of its ten minutes. In the browser that signed in the replay fails, because the session changed. Elsewhere it reaches the provider, whose single-use authorization code refuses it, so rely on providers that enforce single-use codes. The OAuth proxy's preview completion has no provider round trip: within its `MaxAge` window, a captured preview cookie and completion URL can be replayed, so keep the database strategy for proxied previews. Sign-out ends a sealed social or enterprise flow that is in progress. Changing the strategy, or the key ring without the old key, drops flows that are in progress, so switch every instance together. [Strategy tests](../conformance/goapi/oauth_state_test.go) · [Enterprise test](../adapters/sqlstore/sso_state_cookie_test.go)
+
 ## User fields on social registration
 
 On first registration, a static social provider can supply configured user attributes through `OAuthProfile.AdditionalFields`. Set this map inside the application's provider resolver after it authenticates the profile. For example, a resolver that already fetched and validated a provider identity can return its preferred locale.
@@ -289,7 +301,7 @@ To close account linking entirely, set `Options.DisableAccountLinking = true` on
 
 ## Require explicit registration
 
-Set `DisableImplicitSignUp` on a provider when an existing user can sign in directly but a first-time user must choose to register. Persist that choice with the initiating sign-in. The callback reads it from single-use server state. Setting `DisableSignUp` on the server or provider still closes new registrations.
+Set `DisableImplicitSignUp` on a provider when an existing user can sign in directly but a first-time user must choose to register. Persist that choice with the initiating sign-in. The callback reads it from the sign-in's flow state. Setting `DisableSignUp` on the server or provider still closes new registrations.
 
 ```go
 work := providers.GitHub(clientID, secret)

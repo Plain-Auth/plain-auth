@@ -456,11 +456,18 @@ func (a *Auth) expireSessionCookieHeaders(h http.Header, r *http.Request) {
 	if a.admin != nil {
 		expired = append(expired, a.adminSessionCookie("", -1))
 	}
+	// A sealed OAuth flow is the only copy of its state, so sign-out ends it.
+	if a.opts.OAuthStateStrategy == OAuthStateCookie && r != nil {
+		for _, state := range []*http.Cookie{a.oauthCookie("oauth_state", "", -1), a.enterpriseStateCookie(false, "", -1), a.enterpriseStateCookie(true, "", -1)} {
+			if len(r.CookiesNamed(state.Name)) > 0 {
+				expired = append(expired, state)
+			}
+		}
+	}
 	for _, c := range expired {
 		expireOtherScopes(h, r, c)
 		h.Add("Set-Cookie", c.String())
 	}
-
 }
 
 func remoteIP(addr string) string {

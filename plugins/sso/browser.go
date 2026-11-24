@@ -18,8 +18,11 @@ type BrowserProvider struct {
 	Provider
 	Reference string
 }
+
+// BrowserStore resolves and completes enterprise sign-ins. Their flows are
+// kept by the auth instance's OAuthStateStrategy.
 type BrowserStore interface {
-	auth.OAuthStore
+	auth.OAuthIdentityStore
 	FindBrowserProvider(context.Context, Selector) (BrowserProvider, error)
 	CompleteEnterpriseLogin(ctx context.Context, reference string, provision bool, provider, subject string, tokens auth.OAuthTokens, user auth.User, session auth.StoredSession, opts auth.OAuthLoginOptions) (auth.User, bool, error)
 }

@@ -26,8 +26,10 @@ func withEnterpriseIssuerLogin(r *http.Request, a *Auth, query string, resume OA
 	return r.WithContext(context.WithValue(r.Context(), enterpriseIssuerLoginKey{a}, enterpriseIssuerLogin{query, resume}))
 }
 
-// BeginEnterpriseFlow persists the provider reference and browser return destinations.
-// Only the random browser binding is placed in a cookie.
+// BeginEnterpriseFlow keeps the provider reference and browser return
+// destinations for the callback. The database strategy stores them and puts
+// only a random browser binding in the cookie; OAuthStateCookie seals the
+// whole flow into the cookie instead.
 func (c EndpointContext) BeginEnterpriseFlow(provider, reference, redirectURI string, signup bool) (OAuthFlow, error) {
 	return c.beginEnterpriseFlow(provider, reference, redirectURI, signup, false)
 }
@@ -48,8 +50,7 @@ func (a *Auth) enterpriseStateCookie(form bool, value string, age int) *http.Coo
 }
 func (c EndpointContext) beginEnterpriseFlow(provider, reference, redirectURI string, signup, form bool) (OAuthFlow, error) {
 	a := c.Auth
-	store, ok := c.Store().(OAuthStore)
-	if !ok {
+	if _, ok := c.Store().(OAuthFlowStore); !ok && a.opts.OAuthStateStrategy != OAuthStateCookie {
 		return OAuthFlow{}, errors.New("enterprise sign-in requires an OAuth flow store")
 	}
 	now := a.now().UTC()
@@ -98,15 +99,21 @@ func (c EndpointContext) beginEnterpriseFlow(provider, reference, redirectURI st
 			}
 		}
 	}
-	if err := store.SaveOAuthFlow(c.Request.Context(), f, now); err != nil {
+	name := "sso_state"
+	if form {
+		name = "saml_state"
+	}
+	if err := a.keepOAuthFlow(c.Request.Context(), c.ResponseHeader, name, a.enterpriseStateCookie(form, "", 600), browser, f, now); err != nil {
 		return OAuthFlow{}, err
 	}
-	c.ResponseHeader.Add("Set-Cookie", a.enterpriseStateCookie(form, browser, 600).String())
 	return f, nil
 }
 
-// ConsumeEnterpriseFlow accepts only a single use of the browser-bound state at
-// the auth host and callback path originally selected during sign-in.
+// ConsumeEnterpriseFlow accepts the browser-bound state at the auth host and
+// callback path originally selected during sign-in. The database strategy
+// consumes it once. OAuthStateCookie only expires the cookie, so a captured
+// copy stays valid until it expires: a plugin that needs replay protection
+// relies on the provider's single-use code or keeps its own receipt.
 func (c *EndpointContext) ConsumeEnterpriseFlow() (OAuthFlow, error) {
 	q := c.Request.URL.Query()
 	if len(q["state"]) != 1 || len(q["code"]) > 1 || len(q["error"]) > 1 || len(q["iss"]) > 1 {
@@ -137,15 +144,17 @@ func (c *EndpointContext) consumeEnterpriseFlow(state string, form bool) (OAuthF
 		return OAuthFlow{}, bad
 	}
 	namespace := "sso:" + c.Request.URL.EscapedPath()
-	binding := a.oauthBinding(cookie.Value, namespace, c.Request)
-	if form || strings.HasPrefix(cookie.Value, "guest-") {
-		binding = digest(cookie.Value + "\x00" + namespace + "\x00")
+	binding := func(browser string) string {
+		if form || strings.HasPrefix(browser, "guest-") {
+			return digest(browser + "\x00" + namespace + "\x00")
+		}
+		return a.oauthBinding(browser, namespace, c.Request)
 	}
-	store, ok := c.Store().(OAuthStore)
-	if !ok {
-		return OAuthFlow{}, bad
+	name := "sso_state"
+	if form {
+		name = "saml_state"
 	}
-	f, e := store.ConsumeOAuthFlow(c.Request.Context(), state, binding, a.now().UTC())
+	f, e := a.takeOAuthFlow(c.Request.Context(), name, cookie.Value, state, binding, a.now().UTC())
 	if errors.Is(e, ErrNotFound) {
 		return OAuthFlow{}, bad
 	}

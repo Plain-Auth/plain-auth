@@ -20725,5 +20725,34 @@
       "test": "conformance/goapi/background_tasks_test.go",
       "marker": "func TestBackgroundTasksRunAfterTheResponse(t *testing.T) {"
     }
+  ],
+  "docs/content/docs/reference/options.mdx#L515": [
+    {
+      "label": "OAuthStateStrategy chooses the database or the cookie strategy, refuses an unknown strategy, and needs OAuthFlowStore only for the database",
+      "test": "conformance/goapi/oauth_state_test.go",
+      "marker": "func TestOAuthStateStrategyConfiguration(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/reference/options.mdx#L519/`\"cookie\"`": [
+    {
+      "label": "OAuthStateCookie seals the whole flow into oauth_state, writes no flow, refuses a missing, altered or foreign cookie, and stops a replay at the provider's single-use code",
+      "test": "conformance/goapi/oauth_state_test.go",
+      "marker": "func TestOAuthStateStrategies(t *testing.T) {",
+      "complete": true
+    },
+    {
+      "label": "An enterprise OIDC sign-in in cookie mode keeps its flow sealed in sso_state, writes none and refuses another flow's cookie",
+      "test": "adapters/sqlstore/sso_state_cookie_test.go",
+      "marker": "func TestEnterpriseOIDCStateCookie(t *testing.T) {"
+    }
+  ],
+  "docs/content/docs/reference/security.mdx#L143": [
+    {
+      "label": "Both strategies bind the state to the browser, send a PKCE S256 challenge the provider checks, and expire the state cookie on use; the database strategy also consumes the stored flow",
+      "test": "conformance/goapi/oauth_state_test.go",
+      "marker": "refused(withState(captured.Value), otherCallback, \"another flow's state cookie\")",
+      "complete": true
+    }
   ]
 }
