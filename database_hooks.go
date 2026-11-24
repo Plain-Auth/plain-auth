@@ -157,10 +157,13 @@ func (a *Auth) checkDatabaseHooks() error {
 		if len(a.opts.SocialProviders) > 0 {
 			decided = append(decided, "social sign-in")
 		}
-		for _, id := range []string{"magic-link", "email-otp", "phone-number", "one-tap", "sso"} {
+		for _, id := range []string{"magic-link", "email-otp", "phone-number", "one-tap", "sso", "two-factor", "device-authorization"} {
 			if a.HasPlugin(id) {
 				decided = append(decided, id)
 			}
+		}
+		if a.opts.AutoSignInAfterVerification {
+			decided = append(decided, "AutoSignInAfterVerification")
 		}
 		if len(decided) > 0 {
 			return fmt.Errorf("auth: user and session create before hooks for %s need a store implementing LoginPlanner", strings.Join(decided, ", "))
@@ -170,15 +173,14 @@ func (a *Auth) checkDatabaseHooks() error {
 		need("passkey", a.HasPlugin("passkey"))
 		need("siwe", a.HasPlugin("siwe"))
 	}
-	if d.session.create.set() {
+	if d.session.create.set() && a.hasVerificationObservers() {
+		// Observed verifications issue their session in a separate store call.
 		for _, p := range a.opts.Plugins {
-			if p.emailOTP != nil && p.emailOTP.AutoSignInAfterVerification && a.hasVerificationObservers() {
+			if p.emailOTP != nil && p.emailOTP.AutoSignInAfterVerification {
 				need("email-otp AutoSignInAfterVerification with BeforeEmailVerification or AfterEmailVerification", true)
 			}
 		}
-		need("two-factor", a.HasPlugin("two-factor"))
-		need("device-authorization", a.HasPlugin("device-authorization"))
-		need("AutoSignInAfterVerification", a.opts.AutoSignInAfterVerification)
+		need("AutoSignInAfterVerification with BeforeEmailVerification or AfterEmailVerification", a.opts.AutoSignInAfterVerification)
 	}
 	if len(bypass) > 0 {
 		return fmt.Errorf("auth: user and session create database hooks do not run yet for %s", strings.Join(bypass, ", "))

@@ -108,7 +108,30 @@ func NewTwoFactor(opts TwoFactorOptions) Plugin {
 func (a *Auth) factorLogin(ctx context.Context, user User, expectedHash string, session StoredSession, signedDevice string) (AuthResult, error) {
 	result := AuthResult{}
 	subject := FactorSubject{UserID: user.ID, Now: a.now().UTC(), TrustedGrant: a.readTrustedGrant(signedDevice, user.ID)}
-	err := a.factorStore.WithTwoFactor(ctx, subject, func(state FactorState) (FactorChange, error) {
+	err := a.planSignIn(ctx, func(ctx context.Context) error {
+		return a.factorStore.WithTwoFactor(ctx, subject, a.factorLoginDecision(&result, subject, session, signedDevice, expectedHash))
+	})
+	if errors.Is(err, errPlannedSessionSkipped) {
+		return AuthResult{}, &APIError{401, "FAILED_TO_CREATE_SESSION", "Failed to create session"}
+	}
+	if err == nil && result.Token != "" {
+		err = a.afterDecidedSignIn(ctx, result.User, false, result.Token)
+	}
+	if err != nil {
+		return AuthResult{}, err
+	}
+	if err := a.readPublicUserFields(ctx, &result.User); err != nil {
+		return AuthResult{}, err
+	}
+	return result, nil
+}
+
+// factorLoginDecision issues the session for an account without a second
+// factor or with a trusted device, and a challenge otherwise.
+func (a *Auth) factorLoginDecision(out *AuthResult, subject FactorSubject, session StoredSession, signedDevice, expectedHash string) func(FactorState) (FactorChange, error) {
+	return func(state FactorState) (FactorChange, error) {
+		result := AuthResult{}
+		defer func() { *out = result }()
 		if state.PasswordHash != expectedHash {
 			return FactorChange{}, &APIError{401, "INVALID_EMAIL_OR_PASSWORD", "Invalid email or password"}
 		}
@@ -135,14 +158,7 @@ func (a *Auth) factorLogin(ctx context.Context, user User, expectedHash string, 
 		result.TwoFactorRedirect = true
 		result.TwoFactorMethods = methods
 		return FactorChange{CreateChallenge: id, ChallengeExpires: subject.Now.Add(a.factorOptions.ChallengeLifetime)}, nil
-	})
-	if err != nil {
-		return AuthResult{}, err
 	}
-	if err := a.readPublicUserFields(ctx, &result.User); err != nil {
-		return AuthResult{}, err
-	}
-	return result, nil
 }
 
 // TwoFactorChallengeCookie serializes a pending native sign-in result for the
@@ -230,13 +246,22 @@ func (a *Auth) factorEndpoint(route string, c EndpointContext) (any, error) {
 			return ch, e
 		}
 	}
-	err := a.factorStore.WithTwoFactor(ctx, subject, decide)
-
+	write := func(ctx context.Context) error { return a.factorStore.WithTwoFactor(ctx, subject, decide) }
+	var err error
+	if isSend {
+		err = write(ctx)
+	} else {
+		// Proofs and factor changes may issue a session, which runs the session create hooks.
+		err = a.planSignIn(ctx, write)
+	}
 	if errors.Is(err, ErrNotFound) {
 		if subject.Challenge != "" {
 			return nil, factorCookieError()
 		}
 		return nil, &APIError{401, "UNAUTHORIZED", "Unauthorized"}
+	}
+	if err == nil && op.issued != "" {
+		err = a.afterDecidedSignIn(ctx, User{}, false, op.issued)
 	}
 	if err != nil {
 		return nil, err
@@ -285,7 +310,18 @@ type factorRequest struct {
 	out            any
 	denied         error
 	issued         string
+	draft          *StoredSession
 	clearChallenge bool
+}
+
+// sessionDraft returns the session this request issues to userID. The draft
+// stays the same when a login plan runs the decision again.
+func (p *factorRequest) sessionDraft(userID string) (StoredSession, string) {
+	if p.draft == nil || p.draft.UserID != userID {
+		ss, _ := p.auth.newSession(userID, p.meta)
+		p.draft = &ss
+	}
+	return *p.draft, p.draft.Token
 }
 
 func (p *factorRequest) verify(state FactorState) (FactorChange, error) {
@@ -423,7 +459,7 @@ func (p *factorRequest) verify(state FactorState) (FactorChange, error) {
 		p.clearChallenge = true
 		p.out = map[string]any{"user": state.User}
 	} else if activating || p.subject.Challenge != "" {
-		ss, raw := p.auth.newSession(state.User.ID, p.meta)
+		ss, raw := p.sessionDraft(state.User.ID)
 		ch.Session = &ss
 		p.issued = raw
 		if trustDevice && p.subject.Challenge != "" {
@@ -503,7 +539,7 @@ func (p *factorRequest) manage(state FactorState) (FactorChange, error) {
 			ch.Enabled = &enabled
 			ch.SaveRecord.Verified = true
 			ch.RevokeSessions = true
-			ss, token := p.auth.newSession(state.User.ID, p.meta)
+			ss, token := p.sessionDraft(state.User.ID)
 			ch.Session = &ss
 			p.issued = token
 		}
@@ -523,7 +559,7 @@ func (p *factorRequest) manage(state FactorState) (FactorChange, error) {
 		ch.Enabled = &enabled
 		ch.DeleteRecord = true
 		ch.RevokeSessions = true
-		ss, raw := p.auth.newSession(state.User.ID, p.meta)
+		ss, raw := p.sessionDraft(state.User.ID)
 		ch.Session = &ss
 		p.issued = raw
 		p.out = map[string]bool{"status": true}

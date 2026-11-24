@@ -41,7 +41,7 @@ func (p *factorRequest) enableOTP(state FactorState) (FactorChange, error) {
 	if state.Record == nil || !state.Record.Verified {
 		ch.SaveRecord = &FactorRecord{ID: randomID(), Verified: true}
 	}
-	ss, token := p.auth.newSession(state.User.ID, p.meta)
+	ss, token := p.sessionDraft(state.User.ID)
 	ch.Session = &ss
 	p.issued = token
 	p.out = map[string]string{"method": "otp"}

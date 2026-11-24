@@ -18432,6 +18432,11 @@
       "label": "Run account hooks around the credential a sign-up stores, password changes, first passwords, unlinking and account deletion",
       "test": "conformance/goapi/database_user_hooks_test.go",
       "marker": "// Run account hooks around the credential a sign-up stores, password"
+    },
+    {
+      "label": "Run the session create hooks for two-factor sign-in, verification and enrollment, device grants and the sign-in after an email link on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/session_hooks_planned_test.go",
+      "marker": "// Run the session create hooks for sessions a store issues inside its own"
     }
   ],
   "docs/content/docs/concepts/database.mdx#L881": [

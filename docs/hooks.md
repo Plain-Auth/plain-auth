@@ -183,10 +183,12 @@ Hooks never run inside a database transaction, so they may read and write throug
 | `GET /magic-link/verify` | Create | Create | redirect with `error=failed_to_create_user` | redirect with `error=failed_to_create_session` |
 | One Tap | Create | Create | 401 `UNAUTHORIZED` | 401 `UNAUTHORIZED` |
 | Email codes, including the session after `/email-otp/verify-email` with `AutoSignInAfterVerification`; phone verification; SSO | Create | Create | 500 `FAILED_TO_CREATE_USER` | 500 `FAILED_TO_CREATE_SESSION` |
+| Password sign-in with the two-factor plugin, for an account without a second factor or with a trusted device | | Create | | 401 `FAILED_TO_CREATE_SESSION` |
+| `/two-factor/verify-totp`, `/verify-otp` and `/verify-backup-code`; `POST /device/token`; the sign-in after an email link with `AutoSignInAfterVerification` | | Create | | 500 `FAILED_TO_CREATE_SESSION` |
 
 ### Sign-ins the store decides
 
-In the last five rows, the store decides inside its transaction whether the sign-in creates a user and who owns the session. The user hooks run only when it creates one; a returning user runs only the session hooks. The session hooks receive the session with the owner the store chose. A social sign-in that requires a verified email stores the new user without a session, and runs only the user hooks.
+From the browser social sign-in row on, the store decides inside its transaction whether the sign-in creates a user and who owns the session. The user hooks run only when it creates one; a returning user runs only the session hooks. The session hooks receive the session with the owner the store chose. A social sign-in that requires a verified email stores the new user without a session, and runs only the user hooks.
 
 To run the before hooks outside the transaction, the Auth runs the store's sign-in twice. A dry run records the user and session it would store and rolls back; the before hooks run on those rows; then the approved run stores them with the hooks' edits. If another request changes the data in between, for example by creating a user with the same email, the Auth starts again and signs in that user instead. A skipped sign-in stores nothing, and a magic link, email code or phone code stays usable.
 
@@ -236,10 +238,10 @@ A delete reads its sessions first, so the hooks see only sessions that existed t
 
 Database hooks do not cover every flow yet. `New` refuses:
 
-- user or session create before hooks with social sign-in, magic link, email OTP, phone number, One Tap or SSO, when the store does not implement `LoginPlanner`;
+- user or session create before hooks with social sign-in, magic link, email OTP, phone number, One Tap, SSO, two-factor, device authorization or `AutoSignInAfterVerification`, when the store does not implement `LoginPlanner`;
 - user or session create hooks with the admin plugin;
 - user create hooks with passkey or wallet sign-in;
-- session create hooks with two-factor authentication, device authorization or `AutoSignInAfterVerification`, and with the email OTP plugin's `AutoSignInAfterVerification` when `BeforeEmailVerification` or `AfterEmailVerification` is set;
+- session create hooks with `AutoSignInAfterVerification`, or the email OTP plugin's, when `BeforeEmailVerification` or `AfterEmailVerification` is set;
 - user update hooks with social sign-in, the magic link, email OTP, phone number, One Tap, SSO, admin, two-factor or last-login-method plugin, `AutoSignInAfterVerification`, `BeforeEmailVerification` or `AfterEmailVerification`;
 - session update hooks with the organization or admin plugin;
 - session delete hooks with the admin, anonymous, magic link, SSO or two-factor plugin, or `RevokeSessionsOnPasswordReset`;

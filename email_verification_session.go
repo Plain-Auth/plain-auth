@@ -74,12 +74,23 @@ func (a *Auth) consumeVerification(ctx context.Context, claims verificationClaim
 	if a.hasVerificationObservers() {
 		token, err = a.observeAddressVerification(ctx, v, browser)
 	} else {
-		token, err = a.opts.Store.(EmailVerificationSessionStore).CompleteEmailVerification(ctx, v)
+		complete := func(ctx context.Context) (err error) {
+			token, err = a.opts.Store.(EmailVerificationSessionStore).CompleteEmailVerification(ctx, v)
+			return err
+		}
+		if v.NewSession == nil {
+			err = complete(ctx)
+		} else {
+			err = a.planSignIn(ctx, complete)
+		}
 	}
 	if errors.Is(err, ErrNotFound) {
 		err = &APIError{401, "INVALID_TOKEN", "Invalid token"}
 	}
 	created := v.NewSession != nil && token != "" && token == v.NewSession.Token
+	if err == nil && created && !a.hasVerificationObservers() {
+		err = a.afterDecidedSignIn(ctx, User{}, false, token)
+	}
 	return token, created, err
 }
 

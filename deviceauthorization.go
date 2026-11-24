@@ -273,12 +273,25 @@ func (o DeviceAuthorizationOptions) token(c EndpointContext) (any, error) {
 		return nil, err
 	}
 	ss, _ := c.Auth.newSession("", RequestMeta{IPAddress: c.Auth.clientIP(c.Request), UserAgent: c.Request.UserAgent()})
-	scope, outcome, err := c.Store().(DeviceAuthorizationStore).PollDeviceGrant(ctx, fields["device_code"], fields["client_id"], ss)
+	var scope, outcome string
+	err = c.Auth.planSignIn(ctx, func(ctx context.Context) (err error) {
+		scope, outcome, err = c.Store().(DeviceAuthorizationStore).PollDeviceGrant(ctx, fields["device_code"], fields["client_id"], ss)
+		return err
+	})
 	if err != nil {
 		return nil, err
 	}
 	if err = deviceOutcome(outcome); err != nil {
 		return nil, err
+	}
+	if err = c.Auth.afterDecidedSignIn(ctx, User{}, false, ss.Token); err != nil {
+		return nil, err
+	}
+	if len(c.Auth.dbHooks.session.create.before) > 0 {
+		// Report the lifetime the hooks left on the stored session.
+		if stored, _, err := c.Store().Session(ctx, ss.Token); err == nil {
+			ss.ExpiresAt = stored.ExpiresAt
+		}
 	}
 	return map[string]any{"access_token": ss.Token, "token_type": "Bearer", "expires_in": int64(ss.ExpiresAt.Sub(ss.CreatedAt) / time.Second), "scope": scope}, nil
 }

@@ -211,6 +211,7 @@
       - [x] Run the session and user delete hooks when a user deletes their account ([test](../../conformance/goapi/database_user_hooks_test.go#L160))
       - [x] Run the create after hooks for social sign-in, magic links, email codes and phone verification, once per new user ([test](../../conformance/goapi/database_decided_hooks_test.go#L253))
       - [x] Run account hooks around the credential a sign-up stores, password changes, first passwords, unlinking and account deletion ([test](../../conformance/goapi/database_user_hooks_test.go#L246))
+      - [x] Run the session create hooks for two-factor sign-in, verification and enrollment, device grants and the sign-in after an email link on SQLite, PostgreSQL and MySQL ([test](../../adapters/sqlstore/session_hooks_planned_test.go#L20))
       - [ ] 1. Before Hook
         - [x] Edit the stored fields of a new user or session, or cancel its creation, before anything is written ([test](../../conformance/goapi/database_hooks_test.go#L122))
         - [x] Run the create before hooks for social sign-in, magic links, email codes and phone verification outside the store transaction, for new users only ([test](../../conformance/goapi/database_decided_hooks_test.go#L286))

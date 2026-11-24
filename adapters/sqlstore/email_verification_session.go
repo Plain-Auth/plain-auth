@@ -78,6 +78,7 @@ func (s *Store) completeEmailVerification(ctx context.Context, v auth.EmailVerif
 		return "", err
 	}
 	defer tx.Rollback()
+	auth.LoginPlanFrom(ctx).Attempt()
 	owner, err := s.verificationOwner(ctx, tx, v)
 	if err != nil {
 		return "", err
@@ -86,6 +87,9 @@ func (s *Store) completeEmailVerification(ctx context.Context, v auth.EmailVerif
 		return "", auth.ErrNotFound
 	}
 	if owner.EmailVerified {
+		if err := auth.LoginPlanFrom(ctx).Commit(); err != nil {
+			return "", err
+		}
 		return "", tx.Commit()
 	}
 	group := "verified-email-proof:" + v.OwnerID
@@ -130,6 +134,9 @@ func (s *Store) completeEmailVerification(ctx context.Context, v auth.EmailVerif
 	}
 	if !v.ExpiresAt.After(v.Now.Add(time.Since(started))) {
 		return "", auth.ErrNotFound
+	}
+	if err := auth.LoginPlanFrom(ctx).Commit(); err != nil {
+		return token, err
 	}
 	return token, tx.Commit()
 }

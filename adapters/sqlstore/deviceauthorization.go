@@ -157,6 +157,7 @@ func (s *Store) PollDeviceGrant(ctx context.Context, code, clientID string, sess
 		return "", "", err
 	}
 	defer tx.Rollback()
+	authn.LoginPlanFrom(ctx).Attempt()
 	row, err := getDeviceGrant(ctx, s, tx, false, code)
 	if errors.Is(err, sql.ErrNoRows) {
 		return "", "invalid_grant", nil
@@ -182,6 +183,9 @@ func (s *Store) PollDeviceGrant(ctx context.Context, code, clientID string, sess
 		if err != nil {
 			return "", "", err
 		}
+		if err := authn.LoginPlanFrom(ctx).Commit(); err != nil {
+			return "", "authorization_pending", err
+		}
 		return "", "authorization_pending", tx.Commit()
 	case row.Status == "denied":
 		outcome = "access_denied"
@@ -202,6 +206,9 @@ func (s *Store) PollDeviceGrant(ctx context.Context, code, clientID string, sess
 	_, err = tx.ExecContext(ctx, s.bind(`DELETE FROM "deviceCode" WHERE "id"=?`), row.ID)
 	if err != nil {
 		return "", "", err
+	}
+	if err := authn.LoginPlanFrom(ctx).Commit(); err != nil {
+		return row.Scope, outcome, err
 	}
 	return row.Scope, outcome, tx.Commit()
 }

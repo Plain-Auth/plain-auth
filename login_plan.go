@@ -7,8 +7,9 @@ import (
 
 // LoginPlan lets the create before hooks run, outside any transaction, for a
 // sign-in whose store decides inside its transaction whether to create the
-// user: social sign-in, One Tap, SSO, magic links, email codes and phone
-// verification.
+// user or which session to issue: social sign-in, One Tap, SSO, magic links,
+// email codes, phone verification, two-factor sign-in and verification,
+// device grants and the sign-in after an email link.
 //
 // The Auth runs the store method twice with a plan in its context. The dry
 // run records the user and session the sign-in would insert and rolls back.
