@@ -217,7 +217,9 @@ func (a *Auth) SendEmailOTP(ctx context.Context, email string, purpose EmailOTPP
 	if err != nil || message == nil {
 		return err
 	}
-	return a.emailOTP.Send(ctx, *message)
+	return a.deliver(ctx, "Could not deliver email OTP", func(ctx context.Context) error {
+		return a.emailOTP.Send(ctx, *message)
+	})
 }
 
 // prepareEmailOTP stores a new code for email and returns its message, or

@@ -187,7 +187,9 @@ func (a *Auth) RequestEmailChangeOTP(ctx context.Context, h http.Header, newEmai
 	if err != nil || raw == "" {
 		return err
 	}
-	return a.emailOTP.Send(ctx, EmailOTPMessage{Email: req.Email, Type: OTPChangeEmail, OTP: raw})
+	return a.deliver(ctx, "Could not deliver email OTP", func(ctx context.Context) error {
+		return a.emailOTP.Send(ctx, EmailOTPMessage{Email: req.Email, Type: OTPChangeEmail, OTP: raw})
+	})
 }
 
 // ChangeEmailOTP consumes the new mailbox's proof for the authenticated account.

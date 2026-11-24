@@ -83,6 +83,38 @@ func (a *Auth) sendMailLink(ctx context.Context, failure string, link MailLink, 
 	})
 }
 
+// deliver runs a send. For a request to the handler it behaves like
+// runInBackgroundOrAwait, so a delivery failure is logged and never changes
+// the response, as in the reference. A direct Go call sends before returning
+// and gets the sender's error.
+func (a *Auth) deliver(ctx context.Context, failure string, task func(context.Context) error) error {
+	if ctx.Value(requestCopyKey{a}) == nil {
+		return task(ctx)
+	}
+	a.runInBackgroundOrAwait(ctx, failure, task)
+	return nil
+}
+
+// deliverMail delivers a prepared link through deliver.
+func (a *Auth) deliverMail(ctx context.Context, failure string, link MailLink, send MailSender) error {
+	return a.deliver(ctx, failure, func(ctx context.Context) error {
+		if link.Request != nil {
+			link.Request = link.Request.WithContext(ctx)
+		}
+		return send(ctx, link)
+	})
+}
+
+// deliverEmailProof builds a verification link, whose errors are returned,
+// and delivers it through deliverMail.
+func (a *Auth) deliverEmailProof(ctx context.Context, failure string, u User, newEmail, requestType, callback string, send MailSender) error {
+	link, err := a.emailProofLink(ctx, u, newEmail, requestType, callback)
+	if err != nil {
+		return err
+	}
+	return a.deliverMail(ctx, failure, link, send)
+}
+
 // RunInBackground runs task after the current work: through
 // Options.BackgroundTasks, also from inside another task, or on a new
 // goroutine without a runner. The task's context keeps ctx's values but not

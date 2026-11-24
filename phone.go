@@ -120,8 +120,18 @@ func NewPhoneNumber(o PhoneNumberOptions) (Plugin, error) {
 		if err != nil {
 			return nil, err
 		}
-		if err = c.Auth.SendPhoneNumberOTP(c.Request.Context(), n); err != nil {
+		ctx := c.Request.Context()
+		message, err := c.Auth.preparePhoneOTP(ctx, n)
+		if err != nil {
 			return nil, err
+		}
+		send := func(ctx context.Context) error { return c.Auth.phoneNumber.SendOTP(ctx, message) }
+		// With BackgroundTasks the code is sent after the response; without
+		// a runner a delivery failure fails the request, as before.
+		if !c.Auth.handOff(ctx, "Could not deliver phone verification code", send) {
+			if err := send(ctx); err != nil {
+				return nil, err
+			}
 		}
 		return map[string]string{"message": "code sent"}, nil
 	}}}
@@ -156,26 +166,36 @@ func (a *Auth) checkPhone(ctx context.Context, number string) error {
 
 // SendPhoneNumberOTP stores a fresh verification code and passes the raw value only to SendOTP.
 func (a *Auth) SendPhoneNumberOTP(ctx context.Context, number string) error {
-	store, err := a.phoneStore()
+	message, err := a.preparePhoneOTP(ctx, number)
 	if err != nil {
 		return err
 	}
+	return a.phoneNumber.SendOTP(ctx, message)
+}
+
+// preparePhoneOTP stores a fresh verification code for number and returns
+// its message.
+func (a *Auth) preparePhoneOTP(ctx context.Context, number string) (PhoneOTPMessage, error) {
+	store, err := a.phoneStore()
+	if err != nil {
+		return PhoneOTPMessage{}, err
+	}
 	if a.phoneNumber.SendOTP == nil {
-		return &APIError{501, "SEND_OTP_NOT_IMPLEMENTED", "sendOTP not implemented"}
+		return PhoneOTPMessage{}, &APIError{501, "SEND_OTP_NOT_IMPLEMENTED", "sendOTP not implemented"}
 	}
 	if err = a.checkPhone(ctx, number); err != nil {
-		return err
+		return PhoneOTPMessage{}, err
 	}
 	code, err := randomDecimalCode(a.phoneNumber.OTPLength)
 	if err != nil {
-		return err
+		return PhoneOTPMessage{}, err
 	}
 	now := a.now().UTC()
 	r := PhoneOTPRecord{ID: randomID(), PhoneNumber: number, Code: code, Purpose: PhoneVerify, CreatedAt: now, ExpiresAt: now.Add(a.phoneNumber.ExpiresIn)}
 	if err = store.SavePhoneOTP(ctx, r); err != nil {
-		return err
+		return PhoneOTPMessage{}, err
 	}
-	return a.phoneNumber.SendOTP(ctx, PhoneOTPMessage{PhoneNumber: number, Code: code, Purpose: PhoneVerify})
+	return PhoneOTPMessage{PhoneNumber: number, Code: code, Purpose: PhoneVerify}, nil
 }
 
 // ConsumePhoneNumberOTP spends a verification code without changing the user or creating a session.

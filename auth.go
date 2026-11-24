@@ -340,7 +340,11 @@ func New(opts Options) (*Auth, error) {
 						}
 						return original(ctx, message)
 					}
-					return a.SendEmailOTP(ctx, message.User.Email, OTPVerifyEmail)
+					// Preparing and sending the code are one delivery, as in the
+					// reference: over HTTP either failure is logged.
+					return a.deliver(ctx, "Could not deliver email OTP", func(ctx context.Context) error {
+						return a.SendEmailOTP(ctx, message.User.Email, OTPVerifyEmail)
+					})
 				}
 			}
 		}
@@ -786,7 +790,7 @@ func (a *Auth) completeCredentialSignIn(ctx context.Context, user User, hash str
 	}
 	if a.opts.RequireEmailVerification && !user.EmailVerified {
 		if a.opts.SendVerificationOnSignIn && a.opts.SendVerificationEmail != nil {
-			if err := a.sendEmailProof(ctx, user, "", "", meta.CallbackURL, a.opts.SendVerificationEmail); err != nil {
+			if err := a.deliverEmailProof(ctx, "Could not deliver sign-in verification email", user, "", "", meta.CallbackURL, a.opts.SendVerificationEmail); err != nil {
 				return AuthResult{}, err
 			}
 		}

@@ -20,7 +20,7 @@
   - Environment Variables — *not applicable: Cloudflare Workers runtime*
   - [ ] Client IP
   - [ ] Background Tasks
-    - [x] A host runner receives deferred work; Go servers pass a WaitGroup's Go method instead of waitUntil ([test](../../conformance/goapi/background_tasks_test.go#L53))
+    - [x] A host runner receives deferred work; Go servers pass a WaitGroup's Go method instead of waitUntil ([test](../../conformance/goapi/background_tasks_test.go#L55))
   - Database Connections — *not applicable: Cloudflare Workers runtime*
   - Cloudflare Workers KV — *not applicable: Cloudflare Workers runtime*
 

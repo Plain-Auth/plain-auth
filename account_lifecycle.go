@@ -110,7 +110,7 @@ func (a *Auth) DeleteUser(ctx context.Context, h http.Header, in DeleteUserInput
 		}
 		query := url.Values{"callbackURL": {callback}, "token": {t.Token}}
 		link := base + "/delete-user/callback?" + query.Encode()
-		return false, a.opts.SendDeleteAccountVerification(ctx, MailLink{User: session.User, URL: link, Token: t.Token, Request: a.requestCopy(ctx)})
+		return false, a.deliverMail(ctx, "Could not deliver account deletion email", MailLink{User: session.User, URL: link, Token: t.Token, Request: a.requestCopy(ctx)}, a.opts.SendDeleteAccountVerification)
 	}
 	if in.Token == "" && hash == "" && !a.freshSession(session.Session) {
 		return false, &APIError{400, "SESSION_EXPIRED", "Session expired. Re-authenticate to perform this action."}
@@ -189,12 +189,12 @@ func (a *Auth) ChangeEmail(ctx context.Context, h http.Header, newEmail, callbac
 			return err
 		}
 		if a.opts.SendVerificationEmail != nil {
-			return a.sendEmailProof(ctx, u, "", "", callback, a.opts.SendVerificationEmail)
+			return a.deliverEmailProof(ctx, "Could not deliver verification email for a changed address", u, "", "", callback, a.opts.SendVerificationEmail)
 		}
 		return nil
 	}
 	if session.User.EmailVerified && a.opts.SendChangeEmailConfirmation != nil {
-		return a.sendEmailProof(ctx, session.User, newEmail, "change-email-confirmation", callback, a.opts.SendChangeEmailConfirmation)
+		return a.deliverEmailProof(ctx, "Could not deliver email change confirmation", session.User, newEmail, "change-email-confirmation", callback, a.opts.SendChangeEmailConfirmation)
 	}
-	return a.sendEmailProof(ctx, session.User, newEmail, "change-email-verification", callback, a.opts.SendVerificationEmail)
+	return a.deliverEmailProof(ctx, "Could not deliver email change verification", session.User, newEmail, "change-email-verification", callback, a.opts.SendVerificationEmail)
 }

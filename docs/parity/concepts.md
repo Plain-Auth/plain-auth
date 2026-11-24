@@ -352,11 +352,11 @@
       - [ ] Adapter
       - [ ] Internal Adapter
       - [ ] generateId
-      - [x] runInBackground ([test](../../conformance/goapi/background_tasks_test.go#L95))
-        - [x] Auth.RunInBackground hands a task to the runner, or a new goroutine without one, with a context the finished request no longer cancels ([test](../../conformance/goapi/background_tasks_test.go#L95))
-        - [x] RunInBackground called from inside a task still goes to the runner, and a task's writes reach database hooks as direct calls ([test](../../conformance/goapi/background_tasks_test.go#L208))
-      - [x] runInBackgroundOrAwait ([test](../../conformance/goapi/background_tasks_test.go#L172))
-        - [x] Auth.RunInBackgroundOrAwait defers a task to the runner or awaits it without one, and logs its errors, and a handed-off task's panics, without their details ([test](../../conformance/goapi/background_tasks_test.go#L172))
+      - [x] runInBackground ([test](../../conformance/goapi/background_tasks_test.go#L97))
+        - [x] Auth.RunInBackground hands a task to the runner, or a new goroutine without one, with a context the finished request no longer cancels ([test](../../conformance/goapi/background_tasks_test.go#L97))
+        - [x] RunInBackground called from inside a task still goes to the runner, and a task's writes reach database hooks as direct calls ([test](../../conformance/goapi/background_tasks_test.go#L210))
+      - [x] runInBackgroundOrAwait ([test](../../conformance/goapi/background_tasks_test.go#L174))
+        - [x] Auth.RunInBackgroundOrAwait defers a task to the runner or awaits it without one, and logs its errors, and a handed-off task's panics, without their details ([test](../../conformance/goapi/background_tasks_test.go#L174))
   - [x] Reusable Hooks ([test](../../conformance/goapi/endpoint_hooks_test.go#L138))
     - [x] Reuse hooks across applications through a plugin, after the application hooks and in plugin order ([test](../../conformance/goapi/endpoint_hooks_test.go#L138))
 
@@ -770,7 +770,7 @@
       - [x] With SessionCookieCache MaxAge 90s, get-session emits a 90-second HttpOnly Secure snapshot cookie, later reads are served from it without a store query or renewal, and the snapshot stops being honored at its expiry ([test](../../session_cache_compact_test.go#L92))
     - [ ] Framework Caching
   - [ ] Background Tasks
-    - [x] Mail that need not finish before the response runs after it through BackgroundTasks ([test](../../conformance/goapi/background_tasks_test.go#L53))
+    - [x] Mail that need not finish before the response runs after it through BackgroundTasks ([test](../../conformance/goapi/background_tasks_test.go#L55))
   - [ ] SSR Optimizations
   - [ ] Database optimizations
     - [ ] Recommended fields to index

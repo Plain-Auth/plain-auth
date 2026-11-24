@@ -256,7 +256,13 @@ func (a *Auth) SignInPhoneNumber(ctx context.Context, number, password string, m
 	u, hash, err := a.opts.Store.(PhoneAccountStore).PhoneCredential(ctx, number)
 	if (err == nil || errors.Is(err, ErrNotFound)) && u.ID != "" && a.phoneNumber.RequireVerification && (u.PhoneNumberVerified == nil || !*u.PhoneNumberVerified) {
 		if a.phoneNumber.SendOTP != nil {
-			if e := a.SendPhoneNumberOTP(ctx, number); e != nil {
+			message, e := a.preparePhoneOTP(ctx, number)
+			if e == nil {
+				e = a.deliver(ctx, "Could not deliver phone verification code", func(ctx context.Context) error {
+					return a.phoneNumber.SendOTP(ctx, message)
+				})
+			}
+			if e != nil {
 				return AuthResult{}, e
 			}
 		}
@@ -284,7 +290,9 @@ func (a *Auth) RequestPhonePasswordReset(ctx context.Context, number string) err
 		return err
 	}
 	if deliver && a.phoneNumber.SendPasswordResetOTP != nil {
-		return a.phoneNumber.SendPasswordResetOTP(ctx, PhoneOTPMessage{PhoneNumber: number, Code: code, Purpose: PhonePasswordReset})
+		return a.deliver(ctx, "Could not deliver phone password reset code", func(ctx context.Context) error {
+			return a.phoneNumber.SendPasswordResetOTP(ctx, PhoneOTPMessage{PhoneNumber: number, Code: code, Purpose: PhonePasswordReset})
+		})
 	}
 	return nil
 }

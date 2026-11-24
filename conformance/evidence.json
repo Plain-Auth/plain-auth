@@ -20667,6 +20667,21 @@
       "label": "With BackgroundTasks, organization invitation email is handed to the runner and sent with a live request copy",
       "test": "adapters/sqlstore/organization_background_test.go",
       "marker": "func TestOrganizationInvitationInBackground(t *testing.T) {"
+    },
+    {
+      "label": "Over HTTP a failed password reset, sign-in, deletion, email change or email OTP delivery is logged and the response matches a successful send; direct Go calls return the sender's error",
+      "test": "conformance/goapi/background_tasks_test.go",
+      "marker": "func TestDeliveryFailuresAreLoggedOverHTTP(t *testing.T) {"
+    },
+    {
+      "label": "A phone sign-in resend and reset request log a failed delivery without its text and answer as if the code was sent",
+      "test": "adapters/sqlstore/phone_delivery_test.go",
+      "marker": "func TestPhoneDeliveryFailuresAreLogged(t *testing.T) {"
+    },
+    {
+      "label": "Each email-change delivery, the verify-email confirmation step, the email-change code and a code sent in place of the verification email log a failed send and answer as if it went out",
+      "test": "conformance/goapi/background_tasks_test.go",
+      "marker": "func TestEmailChangeDeliveryFailuresAreLogged(t *testing.T) {"
     }
   ],
   "docs/content/docs/reference/options.mdx#L720": [

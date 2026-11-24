@@ -330,13 +330,16 @@ func (a *Auth) RequestPasswordReset(ctx context.Context, email, redirectTo strin
 		return err
 	}
 	user, err := s.FindAccountUser(ctx, email)
+	now := a.now().UTC()
 	if errors.Is(err, ErrNotFound) {
+		// The same token lookup a reset link would make, so an unknown
+		// address does not answer faster than a registered one.
+		_, _ = s.FindPasswordResetToken(ctx, randomID(), now)
 		return nil
 	}
 	if err != nil {
 		return err
 	}
-	now := a.now().UTC()
 	t := PasswordResetToken{ID: randomID(), Token: randomID(), UserID: user.ID, Email: user.Email, CreatedAt: now, ExpiresAt: now.Add(a.opts.PasswordResetTokenTTL)}
 	base, err := a.publicURL(ctx)
 	if err != nil {
@@ -346,7 +349,7 @@ func (a *Auth) RequestPasswordReset(ctx context.Context, email, redirectTo strin
 		return err
 	}
 	link := base + "/reset-password/" + t.Token + "?" + url.Values{"callbackURL": {redirectTo}}.Encode()
-	return a.opts.SendResetPassword(ctx, MailLink{User: user, URL: link, Token: t.Token, Request: a.requestCopy(ctx)})
+	return a.deliverMail(ctx, "Could not deliver password reset email", MailLink{User: user, URL: link, Token: t.Token, Request: a.requestCopy(ctx)}, a.opts.SendResetPassword)
 }
 
 // ResetPassword consumes an unexpired recovery token atomically with the credential update.

@@ -25,7 +25,7 @@ func configurePhone(send func(context.Context, phonenumber.Message) error) (plai
 }
 ```
 
-Add the returned plugin to `plainauth.Options.Plugins`. Supply a sender that accepts a context, delivers the code over SMS and returns delivery failures. `Message.Purpose` distinguishes telephone verification from password recovery. Applications choose their canonical number format. The plugin uses the submitted number as its identifier and accepts up to 255 UTF-8 characters. The example accepts a restricted international format.
+Add the returned plugin to `plainauth.Options.Plugins`. Supply a sender that accepts a context, delivers the code over SMS and returns delivery failures. `/phone-number/send-otp` reports a failure, or with [`BackgroundTasks`](authentication.md#run-work-after-the-response) sends after the response and only logs it. A sign-in that resends a code and a reset request log a failure and answer as if the code was sent. Direct Go calls return it. `Message.Purpose` distinguishes telephone verification from password recovery. Applications choose their canonical number format. The plugin uses the submitted number as its identifier and accepts up to 255 UTF-8 characters. The example accepts a restricted international format.
 
 ## Verification and account access
 

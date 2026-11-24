@@ -6,7 +6,9 @@ The email/password profile accepts configured application fields at signup and o
 
 ## Mail delivery
 
-Set either sender on `Options`. Each callback receives the request context and a `MailLink` containing the destination user, a complete URL, and the token. `link.Request` is a copy of the HTTP request that caused the mail, without its body, for reading headers such as the client's locale; it is nil for a direct Go call. Deliver the URL only to the address on `link.User.Email`. For example, an application with an existing `mailer` can set the following options.
+Set either sender on `Options`. Each callback receives the request context and a `MailLink` containing the destination user, a complete URL, and the token. `link.Request` is a copy of the HTTP request that caused the mail, without its body, for reading headers such as the client's locale; it is nil for a direct Go call. Deliver the URL only to the address on `link.User.Email`.
+
+Over HTTP a sender's error is logged with a fixed message, without its text, and the endpoint answers as if the mail went out: a reset request still returns its generic message, an unverified sign-in still returns `EMAIL_NOT_VERIFIED`, and account deletion and email change still succeed. A failure therefore reveals nothing about the address. `/send-verification-email` is the exception: it waits for the sender and reports its error, unless the email OTP plugin's `OverrideDefaultEmailVerification` sends a code instead, which follows the email OTP rule. A direct Go call, such as `RequestPasswordReset`, returns the sender's error. With [`BackgroundTasks`](authentication.md#run-work-after-the-response) these sends run after the response. [Delivery tests](../conformance/goapi/background_tasks_test.go) For example, an application with an existing `mailer` can set the following options.
 
 ```go
 opts.SendResetPassword = func(ctx context.Context, link plainauth.MailLink) error {

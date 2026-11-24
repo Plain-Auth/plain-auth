@@ -180,7 +180,7 @@ func (a *Auth) applyEmailProof(r *http.Request, response http.Header, raw, callb
 		if a.opts.SendVerificationEmail == nil {
 			return nil, &APIError{400, "VERIFICATION_EMAIL_NOT_ENABLED", "Verification email isn't enabled"}
 		}
-		return map[string]any{"status": true}, a.sendEmailProof(ctx, user, claims.UpdateTo, "change-email-verification", callback, a.opts.SendVerificationEmail)
+		return map[string]any{"status": true}, a.deliverEmailProof(ctx, "Could not deliver email change verification", user, claims.UpdateTo, "change-email-verification", callback, a.opts.SendVerificationEmail)
 	case "change-email-verification":
 		store, err := a.lifecycleStore()
 		if err != nil {

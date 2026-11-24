@@ -121,7 +121,7 @@ station, ok := login.Session.AdditionalField("station") // "warehouse-2", true
 
 ## Test email and phone codes
 
-Create one recorder per test and wrap the sender when configuring the plugin. The wrapper captures the issued code under its delivery address and calls the sender you supply. Pass `nil` for a test that uses only the recorder. A sender error still reaches the caller. Captured proofs stay in the test process even if the database stores a hash.
+Create one recorder per test and wrap the sender when configuring the plugin. The wrapper captures the issued code under its delivery address and calls the sender you supply. Pass `nil` for a test that uses only the recorder. A sender error reaches a direct Go caller; over HTTP it is logged and the endpoint answers as if the code was sent, except `/phone-number/send-otp` without `BackgroundTasks`, which reports it. Captured proofs stay in the test process even if the database stores a hash.
 
 ```go
 var inbox authtest.OTPRecorder
