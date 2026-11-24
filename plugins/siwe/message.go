@@ -11,6 +11,8 @@ import (
 
 	"github.com/decred/dcrd/dcrec/secp256k1/v4/ecdsa"
 	"golang.org/x/crypto/sha3"
+
+	"github.com/Plain-Org/plain-auth/internal/httporigin"
 )
 
 type message struct {
@@ -52,10 +54,12 @@ func canonicalOrigin(raw string) (scheme, authority string, ok bool) {
 		raw = "https://" + raw
 	}
 	u, err := url.Parse(raw)
-	if err != nil || (u.Scheme != "https" && u.Scheme != "http") || u.User != nil || u.Hostname() == "" || strings.ContainsAny(u.Host, "*%\\") || u.Path != "" || u.RawQuery != "" || u.ForceQuery || u.Fragment != "" {
+	// A non-ASCII host could fold into the configured ASCII domain while a
+	// wallet shows its different Punycode domain, so it is refused.
+	if err != nil || (u.Scheme != "https" && u.Scheme != "http") || u.User != nil || u.Hostname() == "" || !httporigin.ASCIIOnly(u.Host) || strings.ContainsAny(u.Host, "*%\\") || u.Path != "" || u.RawQuery != "" || u.ForceQuery || u.Fragment != "" {
 		return "", "", false
 	}
-	return u.Scheme, strings.ToLower(u.Host), true
+	return u.Scheme, httporigin.ASCIILower(u.Host), true
 }
 
 func checksumAddress(s string) (string, bool) {
@@ -133,7 +137,7 @@ func parseMessage(lines []string, scheme, domain string, now time.Time) (message
 	}
 	uri, ok := next("URI")
 	u, err := url.ParseRequestURI(uri)
-	if !ok || err != nil || u.Scheme != scheme || u.User != nil || !strings.EqualFold(u.Host, domain) {
+	if !ok || err != nil || u.Scheme != scheme || u.User != nil || !httporigin.ASCIIOnly(u.Host) || httporigin.ASCIILower(u.Host) != domain {
 		return out, errMismatch
 	}
 	if v, ok := next("Version"); !ok || v != "1" {

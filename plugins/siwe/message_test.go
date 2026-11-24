@@ -58,3 +58,25 @@ func TestWalletOptions(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+// A message whose domain folds into the configured ASCII domain only under
+// Unicode case mapping names a different, Punycode domain to a wallet, so it
+// never signs in.
+func TestSignedMessageRefusesNonASCIIDomains(t *testing.T) {
+	const address = "0x52908400098527886E0F7030069857D2E4169EE7"
+	now := time.Date(2026, 1, 5, 12, 0, 0, 0, time.UTC)
+	_, domain, ok := canonicalOrigin("wallet.bitbucket.example")
+	if !ok {
+		t.Fatal("the ASCII domain was refused")
+	}
+	for _, header := range []string{"wallet.b\u0130tbucket.example", "https://wallet.b%C4%B0tbucket.example"} {
+		text := header + " wants you to sign in with your Ethereum account:\n" + address +
+			"\n\nURI: https://wallet.bitbucket.example/login\nVersion: 1\nChain ID: 1\nNonce: A0b1C2d3\nIssued At: 2026-01-05T12:00:00Z"
+		if _, err := parseMessage(strings.Split(text, "\n"), "https", domain, now); err == nil {
+			t.Errorf("accepted the message domain %q", header)
+		}
+	}
+	if _, _, ok := canonicalOrigin("wallet.b\u0130tbucket.example"); ok {
+		t.Fatal("accepted a non-ASCII configured domain")
+	}
+}
