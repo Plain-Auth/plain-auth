@@ -10,8 +10,8 @@
   - Create the client auth instance — *not applicable: JavaScript only*
   - Configure the manifest — *not applicable: JavaScript only*
   - Bundle your extension — *not applicable: JavaScript only*
-  - [x] Configure the server auth instance ([test](../../conformance/goapi/trusted_origins_test.go#L125))
-    - [x] A trusted chrome-extension:// origin passes the origin check of a cookie-authenticated request, and an untrusted extension is refused ([test](../../conformance/goapi/trusted_origins_test.go#L125))
+  - [x] Configure the server auth instance ([test](../../conformance/goapi/trusted_origins_test.go#L129))
+    - [x] A trusted chrome-extension:// origin passes the origin check of a cookie-authenticated request, and an untrusted extension is refused ([test](../../conformance/goapi/trusted_origins_test.go#L129))
 
 ## Cloudflare Guide
 

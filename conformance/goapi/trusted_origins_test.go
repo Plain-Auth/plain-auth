@@ -92,6 +92,10 @@ func TestCustomSchemeOrigins(t *testing.T) {
 		{"https://x.example.com", true},
 		{"dev://192.168.1.2:8081/--/auth/callback", true}, {"dev://any.host", true},
 		{"expo://10.0.0.29:8081/path", true}, {"expo://10.0.1.29:8081/path", false},
+		// An encoded separator or a dot segment never reaches a pinned path.
+		{"acme://app/auth%2F..%2Fother", false}, {"acme://app/other/%2E%2E/auth", false}, {"acme://app/x/../auth", false},
+		// A non-ASCII host never folds into a trusted ASCII one.
+		{"https://x.ex%C4%B0mple.com", false}, {"myapp://%E2%84%AAiosk", false},
 	} {
 		t.Run(tc.callback, func(t *testing.T) {
 			got, err := a.CallbackURL(tc.callback)
@@ -145,5 +149,28 @@ func TestCustomSchemeRequestOrigin(t *testing.T) {
 	}
 	if err := a.BindOneTapNonce(httptest.NewRecorder(), "chrome-extension://abcdefghijklmnop", "client", strings.Repeat("n", 24)); err == nil {
 		t.Fatal("One Tap bound an extension origin")
+	}
+}
+
+// A host whose Unicode case folds into a trusted ASCII host is a different
+// host to a browser, so it is never trusted, whether it is the base origin,
+// a trusted origin or a wildcard.
+func TestNonASCIIHostsAreNotTrusted(t *testing.T) {
+	t.Setenv("AUTH_TRUSTED_ORIGINS", "")
+	a, err := plainauth.New(plainauth.Options{Store: memory.New(), BaseURL: "https://github.example", Secret: strings.Repeat("x", 32),
+		TrustedOrigins: []string{"https://bitbucket.example", "*.digital.example"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, callback := range []string{"https://g%C4%B0thub.example/x", "https://b%C4%B0tbucket.example/x", "https://bİtbucket.example/", "https://x.d%C4%B0gital.example/"} {
+		if _, err := a.CallbackURL(callback); err == nil {
+			t.Errorf("trusted %q", callback)
+		}
+	}
+	if a.ExplicitlyTrustedOrigin("https://b%C4%B0tbucket.example") {
+		t.Fatal("explicitly trusted a non-ASCII host")
+	}
+	if _, err := plainauth.New(plainauth.Options{Store: memory.New(), BaseURL: "https://auth.example", Secret: strings.Repeat("x", 32), TrustedOrigins: []string{"https://bİtbucket.example"}}); err == nil {
+		t.Fatal("accepted a non-ASCII trusted origin")
 	}
 }

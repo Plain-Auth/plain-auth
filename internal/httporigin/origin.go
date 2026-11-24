@@ -38,8 +38,31 @@ var (
 var deniedSchemes = map[string]bool{"javascript": true, "vbscript": true, "data": true, "blob": true, "file": true, "filesystem": true,
 	"about": true, "view-source": true, "intent": true, "ftp": true, "ws": true, "wss": true}
 
+// asciiLower lowercases A-Z only, so a non-ASCII letter such as U+0130 can
+// never fold into an ASCII one and match a trusted host.
+func asciiLower(s string) string {
+	b := []byte(s)
+	for i, c := range b {
+		if 'A' <= c && c <= 'Z' {
+			b[i] = c + 'a' - 'A'
+		}
+	}
+	return string(b)
+}
+
+// asciiOnly reports whether s holds no byte outside ASCII. Browsers map a
+// non-ASCII host to its punycode form, which no ASCII rule can name.
+func asciiOnly(s string) bool {
+	for i := 0; i < len(s); i++ {
+		if s[i] >= 0x80 {
+			return false
+		}
+	}
+	return true
+}
+
 // DeniedScheme reports whether a URL scheme may never be trusted.
-func DeniedScheme(scheme string) bool { return deniedSchemes[strings.ToLower(scheme)] }
+func DeniedScheme(scheme string) bool { return deniedSchemes[asciiLower(scheme)] }
 
 // Compile validates the configured origins and preserves their order.
 func Compile(origins []string) ([]Rule, error) {
@@ -56,7 +79,7 @@ func Compile(origins []string) ([]Rule, error) {
 
 func parseRule(raw string) (Rule, error) {
 	if scheme, rest, ok := strings.Cut(raw, ":"); ok {
-		if lower := strings.ToLower(scheme); lower != "http" && lower != "https" && customSchemeRule.MatchString(lower+":"+rest) {
+		if lower := asciiLower(scheme); lower != "http" && lower != "https" && customSchemeRule.MatchString(lower+":"+rest) {
 			return parseCustomRule(lower, rest)
 		}
 	}
@@ -68,7 +91,7 @@ func parseRule(raw string) (Rule, error) {
 		u, _ := url.Parse(origin)
 		return Rule{exact: Canonical(u)}, nil
 	}
-	scheme, authority, hasScheme := strings.Cut(strings.ToLower(raw), "://")
+	scheme, authority, hasScheme := strings.Cut(asciiLower(raw), "://")
 	if !hasScheme {
 		authority, scheme = scheme, "*"
 	}
@@ -114,7 +137,7 @@ func parseCustomRule(scheme, rest string) (Rule, error) {
 		authority, rulePath, _ = strings.Cut(after, "/")
 		rulePath = "/" + rulePath
 	}
-	authority = strings.ToLower(authority)
+	authority = asciiLower(authority)
 	if !customAuthority.MatchString(authority) || strings.ContainsAny(rulePath, "%#[]\\") || strings.IndexFunc(rulePath, unicode.IsSpace) >= 0 || strings.IndexFunc(rulePath, unicode.IsControl) >= 0 {
 		return Rule{}, errOriginPattern
 	}
@@ -149,23 +172,32 @@ func cleanCustomPath(p string) string {
 }
 
 // matchSegments matches path segments, where a ** segment spans any number.
+// Like a glob on characters, it backtracks only to the latest **, so its cost
+// stays linear in the URL's segments.
 func matchSegments(pattern, segments []string) bool {
-	if len(pattern) == 0 {
-		return len(segments) == 0
-	}
-	if pattern[0] == "**" {
-		for i := 0; i <= len(segments); i++ {
-			if matchSegments(pattern[1:], segments[i:]) {
-				return true
+	p, s, star, mark := 0, 0, -1, 0
+	for s < len(segments) {
+		if p < len(pattern) && pattern[p] == "**" {
+			star, mark = p, s
+			p++
+			continue
+		}
+		if p < len(pattern) {
+			if ok, _ := path.Match(pattern[p], segments[s]); ok {
+				p, s = p+1, s+1
+				continue
 			}
 		}
-		return false
+		if star < 0 {
+			return false
+		}
+		mark++
+		p, s = star+1, mark
 	}
-	if len(segments) == 0 {
-		return false
+	for p < len(pattern) && pattern[p] == "**" {
+		p++
 	}
-	ok, _ := path.Match(pattern[0], segments[0])
-	return ok && matchSegments(pattern[1:], segments[1:])
+	return p == len(pattern)
 }
 
 func splitPath(p string) []string {
@@ -178,10 +210,20 @@ func splitPath(p string) []string {
 // matchCustom checks a custom-scheme URL. The authority is one string, so
 // a wildcard crosses "." and ":"; query and fragment are ignored.
 func (rule Rule) matchCustom(u *url.URL) bool {
-	if u.Scheme != rule.scheme || u.Opaque != "" || u.User != nil {
+	if u.Scheme != rule.scheme || u.Opaque != "" || u.User != nil || !asciiOnly(u.Host) {
 		return false
 	}
-	host, urlPath := strings.ToLower(u.Host), cleanCustomPath(u.Path)
+	// An encoded separator or a dot segment could reach another app route
+	// than the one matched, since apps and browsers resolve them differently.
+	if escaped := strings.ToLower(u.EscapedPath()); strings.Contains(escaped, "%2f") || strings.Contains(escaped, "%5c") {
+		return false
+	}
+	for segment := range strings.SplitSeq(u.Path, "/") {
+		if segment == "." || segment == ".." {
+			return false
+		}
+	}
+	host, urlPath := asciiLower(u.Host), cleanCustomPath(u.Path)
 	if !rule.wildcard {
 		if rule.authority != "" && host != rule.authority {
 			return false
@@ -228,7 +270,10 @@ func (rule Rule) Matches(u *url.URL, origin string) bool {
 	if rule.scheme != "*" && rule.scheme != u.Scheme {
 		return false
 	}
-	host := strings.ToLower(u.Hostname())
+	if !asciiOnly(u.Host) {
+		return false
+	}
+	host := asciiLower(u.Hostname())
 	addr, err := netip.ParseAddr(host)
 	if strings.HasPrefix(u.Host, "[") != (err == nil && addr.Is6()) {
 		return false
@@ -275,18 +320,18 @@ func (rule Rule) Exact(origin string) bool { return rule.exact != "" && rule.exa
 // Parse validates a standalone origin, allowing an optional trailing slash.
 func Parse(s string) (string, error) {
 	u, err := url.Parse(s)
-	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Hostname() == "" || u.User != nil || (u.EscapedPath() != "" && u.EscapedPath() != "/") || u.RawQuery != "" || u.ForceQuery || strings.Contains(s, "#") {
-		return "", errors.New("expected an absolute HTTP(S) origin")
+	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Hostname() == "" || !asciiOnly(u.Host) || u.User != nil || (u.EscapedPath() != "" && u.EscapedPath() != "/") || u.RawQuery != "" || u.ForceQuery || strings.Contains(s, "#") {
+		return "", errors.New("expected an absolute HTTP(S) origin with an ASCII host")
 	}
-	return u.Scheme + "://" + strings.ToLower(u.Host), nil
+	return u.Scheme + "://" + asciiLower(u.Host), nil
 }
 
 // Canonical returns the normalized origin of an HTTP URL, or an empty string for an invalid origin.
 func Canonical(u *url.URL) string {
-	if (u.Scheme != "http" && u.Scheme != "https") || u.Hostname() == "" || u.User != nil {
+	if (u.Scheme != "http" && u.Scheme != "https") || u.Hostname() == "" || u.User != nil || !asciiOnly(u.Host) {
 		return ""
 	}
-	host, port := strings.ToLower(u.Hostname()), u.Port()
+	host, port := asciiLower(u.Hostname()), u.Port()
 	if port == "" || (port == "80" && u.Scheme == "http") || (port == "443" && u.Scheme == "https") {
 		if strings.Contains(host, ":") {
 			host = "[" + host + "]"
