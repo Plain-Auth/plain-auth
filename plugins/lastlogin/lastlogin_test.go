@@ -45,11 +45,14 @@ func TestLastLoginCookieAndConsent(t *testing.T) {
 }
 
 func TestDefaultCookieUsesHostNamespace(t *testing.T) {
-	for _, tc := range []struct{ origin, prefix, name string }{
-		{"http://app.example", "", "authn.last_used_login_method"},
-		{"https://app.example", "staff", "__Secure-staff.last_used_login_method"},
+	for _, tc := range []struct{ origin, prefix, session, name string }{
+		{"http://app.example", "", "", "authn.last_used_login_method"},
+		{"https://app.example", "staff", "", "__Secure-staff.last_used_login_method"},
+		// A renamed session cookie leaves the preference in the namespace.
+		{"https://app.example", "", "sid", "__Secure-authn.last_used_login_method"},
 	} {
-		a, err := auth.New(auth.Options{BaseURL: tc.origin, Secret: strings.Repeat("s", 32), Store: memory.New(), EmailAndPassword: true, CookiePrefix: tc.prefix, Plugins: []auth.Plugin{lastlogin.New(lastlogin.Options{})}})
+		a, err := auth.New(auth.Options{BaseURL: tc.origin, Secret: strings.Repeat("s", 32), Store: memory.New(), EmailAndPassword: true, CookiePrefix: tc.prefix, Plugins: []auth.Plugin{lastlogin.New(lastlogin.Options{})},
+			Cookies: map[string]auth.CookieOptions{"session_token": {Name: tc.session}}})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -87,7 +90,7 @@ func TestReservedLoginPreferenceName(t *testing.T) {
 	} {
 		w := httptest.NewRecorder()
 		p := lastlogin.New(lastlogin.Options{CookieName: tc.name})
-		p.OnSessionCookie(auth.SessionCookieEvent{Request: httptest.NewRequest("POST", "/", nil), Route: "/sign-in/email", Header: w.Header(), Cookie: http.Cookie{Name: "session_token", Domain: "example.com", Path: "/", HttpOnly: true, Secure: tc.secure}})
+		p.OnSessionCookie(auth.SessionCookieEvent{Request: httptest.NewRequest("POST", "/", nil), Route: "/sign-in/email", Header: w.Header(), Cookie: http.Cookie{Name: "session_token", Domain: "example.com", Path: "/api", HttpOnly: true, Secure: tc.secure}})
 		list := w.Result().Cookies()
 		if !tc.want {
 			if len(list) != 0 {
@@ -96,6 +99,7 @@ func TestReservedLoginPreferenceName(t *testing.T) {
 			continue
 		}
 		if len(list) != 1 || list[0].Name != tc.name || list[0].HttpOnly || !list[0].Secure || list[0].Domain != tc.wantDomain || list[0].Path != "/" {
+			// The preference keeps Path=/ so every page can read and clear it.
 			t.Fatal("invalid preference security attributes", list)
 		}
 	}

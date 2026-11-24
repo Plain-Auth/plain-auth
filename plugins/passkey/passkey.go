@@ -181,10 +181,7 @@ func session(c authn.EndpointContext) (*authn.SessionResult, error) {
 	return u, u.Session.RequireOwner()
 }
 func challengeCookie(c authn.EndpointContext, token string, age int) *http.Cookie {
-	cookie := c.Auth.SessionCookie(token, false)
-	cookie.Name = strings.TrimSuffix(cookie.Name, "session_token") + "passkey_challenge"
-	cookie.MaxAge = age
-	return cookie
+	return c.Auth.SignedCookie("passkey_challenge", token, age)
 }
 func (s service) remember(c authn.EndpointContext, state ceremony) error {
 	now := time.Now().UTC()

@@ -318,8 +318,7 @@ func (a *Auth) adminHTTP(c EndpointContext, name string) (any, error) {
 		if a.dontRemember(r) {
 			mode = "browser"
 		}
-		marker := a.sessionCookie("admin-return|"+out.Session.Session.Token+"|"+mode+"|"+out.original, false)
-		marker.Name = a.prefixedCookieName("admin_session")
+		marker := a.adminSessionCookie("admin-return|"+out.Session.Session.Token+"|"+mode+"|"+out.original, 0)
 		c.ResponseHeader.Add("Set-Cookie", marker.String())
 		if err := a.writeSessionCookieHeaders(c.ResponseHeader, r, out.Session.Session.Token, false); err != nil {
 			return nil, err
@@ -327,9 +326,7 @@ func (a *Auth) adminHTTP(c EndpointContext, name string) (any, error) {
 		a.writeRememberPreference(c.ResponseHeader, r, false)
 		return out.Session, nil
 	case "stop-impersonating":
-		marker := a.clearSessionCookie()
-		marker.Name = a.prefixedCookieName("admin_session")
-		c.ResponseHeader.Add("Set-Cookie", marker.String())
+		c.ResponseHeader.Add("Set-Cookie", a.adminSessionCookie("", -1).String())
 		persistent := out.persistence == "persistent"
 		if err := a.writeSessionCookieHeaders(c.ResponseHeader, r, out.Session.Session.Token, persistent); err != nil {
 			return nil, err

@@ -462,18 +462,22 @@
     - [ ] `ipAddressHeaders`
     - [x] `trustedProxies` ([test](../../ip_test.go#L10))
       - [x] ClientIP.TrustedProxies CIDR ranges: forwarded hops are read right to left skipping trusted proxies, headers from untrusted peers are ignored, malformed chains give no IP, and invalid prefixes are rejected ([test](../../ip_test.go#L10))
-    - [x] `useSecureCookies` ([test](../../cookies_test.go#L100))
-      - [x] UseSecureCookies forces or removes Secure (and the __Secure- name) regardless of BaseURL scheme, and reserved prefixes that need Secure are rejected ([test](../../cookies_test.go#L100))
+    - [x] `useSecureCookies` ([test](../../cookies_test.go#L101))
+      - [x] UseSecureCookies forces or removes Secure (and the __Secure- name) regardless of BaseURL scheme, and reserved prefixes that need Secure are rejected ([test](../../cookies_test.go#L101))
     - [x] `disableCSRFCheck` ([test](../../conformance/goapi/request_switches_test.go#L43))
       - [x] Turn off the origin and Fetch Metadata checks on state-changing requests ([test](../../conformance/goapi/request_switches_test.go#L43))
     - [x] `disableOriginCheck` ([test](../../conformance/goapi/request_switches_test.go#L51))
       - [x] Accept untrusted redirect targets while still checking request origins and refusing control characters ([test](../../conformance/goapi/request_switches_test.go#L51))
     - [x] `crossSubDomainCookies` ([test](../../conformance/goapi/cookie_scope_http_test.go#L17))
       - [x] With CrossSubDomainCookies Domain .example.com, a sibling host shares the authenticated browser session and logout expires it on both hosts ([test](../../conformance/goapi/cookie_scope_http_test.go#L17))
-    - [ ] `cookies`
-    - [ ] `defaultCookieAttributes`
-    - [x] `cookiePrefix` ([test](../../cookies_test.go#L25))
-      - [x] CookiePrefix names the session and OAuth state cookies (__Secure-company.*), and an instance with another prefix cannot read them ([test](../../cookies_test.go#L25))
+    - [x] `cookies` ([test](../../conformance/goapi/cookie_options_test.go#L52))
+      - [x] Override one cookie's name and attributes by its base name ([test](../../conformance/goapi/cookie_options_test.go#L52))
+      - [x] Refuse overrides a browser would reject or that hide a cookie from the auth endpoints, each with its reason ([test](../../conformance/goapi/cookie_options_test.go#L74))
+      - [x] Expire admin_session with the scope it was set with, give trust_device its own attributes and keep the One Tap nonce host-only at Path=/ ([test](../../cookies_test.go#L204))
+    - [x] `defaultCookieAttributes` ([test](../../conformance/goapi/cookie_options_test.go#L19))
+      - [x] Apply default attributes to every cookie before the per-cookie overrides ([test](../../conformance/goapi/cookie_options_test.go#L19))
+    - [x] `cookiePrefix` ([test](../../cookies_test.go#L26))
+      - [x] CookiePrefix names the session and OAuth state cookies (__Secure-company.*), and an instance with another prefix cannot read them ([test](../../cookies_test.go#L26))
     - [ ] `database`
     - [ ] `backgroundTasks`
     - [x] `skipTrailingSlashes` ([test](../../conformance/goapi/request_switches_test.go#L36))

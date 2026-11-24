@@ -1,6 +1,7 @@
 package plainauth
 
 import (
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -195,5 +196,53 @@ func TestDisabledCacheScopeCleanup(t *testing.T) {
 	}
 	if !reflect.DeepEqual(scopes, []string{"", "example.com"}) {
 		t.Fatal("cache was not cleared once on each cookie scope", scopes)
+	}
+}
+
+// An overridden cookie is expired with the scope it was set with, and cookies
+// forced to be host-only keep a root path.
+func TestCookieOverridesKeepWritesAndExpiriesTogether(t *testing.T) {
+	cleanConfigEnv(t)
+	a, err := New(Options{Store: &refreshFixture{}, Secret: strings.Repeat("s", 32), BaseURL: "https://auth.example.com",
+		DefaultCookieAttributes: CookieAttributes{Path: "/api/auth", Partitioned: true},
+		Cookies: map[string]CookieOptions{
+			"session_token": {Attributes: CookieAttributes{Path: "/api", Domain: "Example.COM"}},
+			"trust_device":  {Name: "trusted", Attributes: CookieAttributes{SameSite: http.SameSiteStrictMode}},
+		}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	scope := func(c *http.Cookie) string { return fmt.Sprint(c.Path, "|", c.Domain, "|", c.Partitioned) }
+	session := a.sessionCookie("token", false)
+	if scope(session) != "/api|example.com|true" {
+		t.Fatal("the session cookie lacks its normalized overrides", session)
+	}
+	// admin_session follows session_token when set, when stopped and on sign-out.
+	a.admin = &AdminOptions{}
+	h := http.Header{}
+	a.expireSessionCookieHeaders(h, httptest.NewRequest("POST", "https://auth.example.com/api/auth/sign-out", nil))
+	var signOut *http.Cookie
+	for _, line := range h.Values("Set-Cookie") {
+		if c, err := http.ParseSetCookie(line); err == nil && c.Name == a.prefixedCookieName("admin_session") {
+			signOut = c
+		}
+	}
+	for _, c := range []*http.Cookie{a.adminSessionCookie("admin-return|x", 0), a.adminSessionCookie("", -1), signOut} {
+		if c == nil || scope(c) != scope(session) {
+			t.Fatal("admin_session scope differs from session_token", c)
+		}
+	}
+	// trust_device takes its own override, not the session_token one.
+	trust := a.trustedDeviceCookie("user", "trust-device-x", 60)
+	if trust.Name != "__Secure-trusted" || scope(trust) != "/api/auth||true" || trust.SameSite != http.SameSiteStrictMode {
+		t.Fatal("trust_device ignores its own attributes", trust)
+	}
+	if a.readTrustedGrant(trust.Value, "user") != "trust-device-x" {
+		t.Fatal("the trusted device cookie no longer verifies")
+	}
+	// The One Tap nonce stays a host-only __Host- cookie with a root path.
+	nonce := a.oneTapCookie("nonce", 300)
+	if !strings.HasPrefix(nonce.Name, "__Host-") || nonce.Path != "/" || nonce.Domain != "" || !nonce.Secure {
+		t.Fatal("the One Tap nonce is not a valid __Host- cookie", nonce)
 	}
 }

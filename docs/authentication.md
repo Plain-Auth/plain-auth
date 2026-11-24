@@ -140,6 +140,28 @@ An empty `Domain` inside the options uses the exact hostname from `BaseURL`. A d
 
 HTTPS enables `Secure` by default. `UseSecureCookies` accepts a boolean pointer to override that setting. A `__Secure-` prefix requires secure cookies. A `__Host-` prefix also requires host-only scope and a root path. The HTTPS One Tap nonce always uses this host-only scope.
 
+### Rename cookies and change their attributes
+
+```go
+opts.DefaultCookieAttributes = plainauth.CookieAttributes{SameSite: http.SameSiteNoneMode, Partitioned: true}
+opts.Cookies = map[string]plainauth.CookieOptions{
+    "session_token": {Name: "app_session", Attributes: plainauth.CookieAttributes{Path: "/api"}},
+}
+```
+
+Every cookie starts as `Path=/`, `HttpOnly`, `SameSite=Lax`, `Secure` for an HTTPS base URL and the shared domain with cross-subdomain cookies. `DefaultCookieAttributes` changes all of them, then `Cookies` overrides one cookie by its base name, such as `session_token`, `session_data`, `dont_remember`, `two_factor` or `trust_device`. A custom `Name` replaces the prefixed name, and Secure cookies still get the `__Secure-` prefix. Zero fields keep the default.
+
+A few cookies keep fixed rules. `admin_session`, the multi-session cookies and the last-login preference take the `session_token` attributes, so set those instead. The preference always uses `Path=/` so every page can read and clear it. On HTTPS the One Tap nonce stays a host-only `__Host-` cookie with `Path=/`.
+
+Startup refuses a configuration a browser would reject or that would hide a cookie from the auth endpoints:
+- an invalid name, or two cookies sharing one name;
+- `SameSite=None` or `Partitioned` without `Secure`;
+- a `__Host-` cookie with a domain or another path;
+- a `Path` that does not cover the base path, such as `/app` when the endpoints live under `/api/auth`;
+- a `Domain` outside the base host or on a public suffix, using the same checks as `CrossSubDomainCookies`.
+
+[Cookie option tests](../conformance/goapi/cookie_options_test.go) · [Write and expiry scope tests](../cookies_test.go)
+
 Signing out clears the shared session cookies across eligible hosts and revokes the active session. During a move from host-only cookies, issue a fresh login on the original host to replace its previous browser credential. Each host controls its own older host-only cookies. The login-method preference persists across logout. In the Go client, call `ClearSharedLastLoginMethod(cookieName, domain)` to remove that preference. [Cookie scope tests](../conformance/goapi/cookie_scope_http_test.go)
 
 With the browser cache disabled (the default), `GET /get-session` expires the cache cookie and any numbered chunks in this instance’s namespace. With a shared domain, the response also removes host-only copies that the browser sent. The store supplies the current session. [Session cache cleanup tests](../conformance/session-cache-cleanup.mjs)

@@ -39,7 +39,7 @@ func (a *Auth) oneTapCookie(value string, age int) *http.Cookie {
 	c := a.browserCookie("one_tap", value, age)
 	c.Domain, c.SameSite = "", http.SameSiteStrictMode
 	if c.Secure || strings.HasPrefix(a.opts.BaseURL, "https://") {
-		c.Secure = true
+		c.Secure, c.Path = true, "/"
 		name := c.Name
 		switch lower := strings.ToLower(name); {
 		case strings.HasPrefix(lower, "__secure-"):

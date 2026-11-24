@@ -1,17 +1,22 @@
 package plainauth
 
 import (
+	"cmp"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/base64"
 	"errors"
+	"fmt"
+	"maps"
 	"net/http"
 	"net/url"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/Plain-Org/plain-auth/internal/configenv"
+	"github.com/Plain-Org/plain-auth/internal/popupwire"
 )
 
 // CrossSubDomainCookiesOptions selects the host and descendants that receive
@@ -35,15 +40,34 @@ func prepareCookieScope(opts *Options) error {
 	if !secure && (hostOnly || strings.HasPrefix(prefix, "__secure-")) {
 		return errors.New("auth: a reserved cookie prefix requires Secure cookies")
 	}
+	base, err := url.Parse(opts.BaseURL)
+	if err != nil {
+		return err
+	}
+	// Domain overrides get the same base-host and public-suffix checks as
+	// shared cookies. The caller's map stays untouched.
+	if d := opts.DefaultCookieAttributes.Domain; d != "" {
+		if opts.DefaultCookieAttributes.Domain, err = configenv.CookieDomain(base.Hostname(), d); err != nil {
+			return err
+		}
+	}
+	if len(opts.Cookies) > 0 {
+		cookies := make(map[string]CookieOptions, len(opts.Cookies))
+		for name, c := range opts.Cookies {
+			if c.Attributes.Domain != "" {
+				if c.Attributes.Domain, err = configenv.CookieDomain(base.Hostname(), c.Attributes.Domain); err != nil {
+					return fmt.Errorf("auth: cookie %q: %w", name, err)
+				}
+			}
+			cookies[name] = c
+		}
+		opts.Cookies = cookies
+	}
 	if opts.CrossSubDomainCookies == nil {
 		return nil
 	}
 	if hostOnly {
 		return errors.New("auth: a __Host- cookie prefix requires host-only cookies")
-	}
-	base, err := url.Parse(opts.BaseURL)
-	if err != nil {
-		return err
 	}
 	domain, err := configenv.CookieDomain(base.Hostname(), opts.CrossSubDomainCookies.Domain)
 	if err != nil {
@@ -53,13 +77,107 @@ func prepareCookieScope(opts *Options) error {
 	return nil
 }
 
+// CookieOptions overrides one cookie's name and attributes.
+type CookieOptions struct {
+	// Name replaces the prefixed name, such as "authn.session_token". With
+	// Secure cookies the name still gets the __Secure- prefix.
+	Name       string
+	Attributes CookieAttributes
+}
+
+// CookieAttributes overrides cookie attributes. Zero fields keep the default:
+// Path=/, HttpOnly, SameSite=Lax, Secure for an HTTPS base URL and the shared
+// domain with cross-subdomain cookies. A Path must cover the auth base path,
+// and a Domain gets the same checks as CrossSubDomainCookies.
+type CookieAttributes struct {
+	Domain, Path     string
+	SameSite         http.SameSite
+	Secure, HttpOnly *bool
+	Partitioned      bool
+}
+
+func (attrs CookieAttributes) apply(c *http.Cookie) {
+	if attrs.Domain != "" {
+		c.Domain = attrs.Domain
+	}
+	if attrs.Path != "" {
+		c.Path = attrs.Path
+	}
+	if attrs.SameSite != 0 {
+		c.SameSite = attrs.SameSite
+	}
+	if attrs.Secure != nil {
+		c.Secure = *attrs.Secure
+	}
+	if attrs.HttpOnly != nil {
+		c.HttpOnly = *attrs.HttpOnly
+	}
+	if attrs.Partitioned {
+		c.Partitioned = true
+	}
+}
+
 func (a *Auth) browserCookie(name, value string, maxAge int) *http.Cookie {
 	c := &http.Cookie{Name: a.prefixedCookieName(name), Value: value, Path: "/", MaxAge: maxAge,
 		Secure: secureCookies(&a.opts), HttpOnly: true, SameSite: http.SameSiteLaxMode}
 	if a.opts.CrossSubDomainCookies != nil {
 		c.Domain = a.opts.CrossSubDomainCookies.Domain
 	}
+	a.opts.DefaultCookieAttributes.apply(c)
+	a.opts.Cookies[name].Attributes.apply(c)
 	return c
+}
+
+// checkCookieOptions refuses cookie overrides that a browser would reject or
+// that would hide a cookie from the auth endpoints. It checks each cookie as
+// it is issued.
+func (a *Auth) checkCookieOptions() error {
+	for _, name := range []string{"admin_session", "last_used_login_method"} {
+		if a.opts.Cookies[name].Attributes != (CookieAttributes{}) {
+			return fmt.Errorf("auth: cookie %q takes the session_token attributes; override those instead", name)
+		}
+	}
+	preference := a.sessionCookie("value", false)
+	preference.Name, preference.Path, preference.HttpOnly = a.prefixedCookieName("last_used_login_method"), "/", false
+	issued := map[string]*http.Cookie{"admin_session": a.adminSessionCookie("value", 0), "last_used_login_method": preference, "one_tap": a.oneTapCookie("value", 0)}
+	names := []string{"session_token", "session_data", "dont_remember", "two_factor", "trust_device", "passkey_challenge",
+		"oauth_state", popupwire.MarkerCookie, "guest_continuation", "sso_state", "saml_state", "saml_logout"}
+	for _, name := range append(names, slices.Collect(maps.Keys(a.opts.Cookies))...) {
+		if issued[name] == nil {
+			issued[name] = a.browserCookie(name, "value", 0)
+		}
+	}
+	mount := cmp.Or(a.opts.BasePath, "/")
+	owners := map[string]string{}
+	for _, name := range slices.Sorted(maps.Keys(issued)) {
+		c := issued[name]
+		lower := strings.ToLower(c.Name)
+		switch {
+		case c.Valid() != nil:
+			return fmt.Errorf("auth: cookie %q is invalid: %w", name, c.Valid())
+		case c.SameSite == http.SameSiteNoneMode && !c.Secure:
+			return fmt.Errorf("auth: cookie %q needs Secure with SameSite=None", name)
+		case strings.HasPrefix(lower, "__host-") && (c.Domain != "" || c.Path != "/" || !c.Secure):
+			return fmt.Errorf("auth: cookie %q with the __Host- prefix needs Secure, Path=/ and no Domain", name)
+		case strings.HasPrefix(lower, "__secure-") && !c.Secure:
+			return fmt.Errorf("auth: cookie %q with the __Secure- prefix needs Secure", name)
+		case !pathCovers(c.Path, mount):
+			return fmt.Errorf("auth: cookie %q needs a Path that covers %s", name, mount)
+		case owners[c.Name] != "":
+			return fmt.Errorf("auth: cookies %q and %q share the name %q", owners[c.Name], name, c.Name)
+		}
+		owners[c.Name] = name
+	}
+	return nil
+}
+
+// pathCovers reports whether a browser sends a cookie with this Path to
+// requests for path (RFC 6265 path matching).
+func pathCovers(cookiePath, path string) bool {
+	if !strings.HasPrefix(path, cookiePath) {
+		return false
+	}
+	return len(path) == len(cookiePath) || strings.HasSuffix(cookiePath, "/") || path[len(cookiePath)] == '/'
 }
 
 // Expire an issuing host's previous host-only cookie when a deployment begins
@@ -77,6 +195,13 @@ func expireHostCopy(h http.Header, r *http.Request, c *http.Cookie) {
 }
 
 func (a *Auth) prefixedCookieName(name string) string {
+	if custom := a.opts.Cookies[name].Name; custom != "" {
+		lower := strings.ToLower(custom)
+		if secureCookies(&a.opts) && !strings.HasPrefix(lower, "__secure-") && !strings.HasPrefix(lower, "__host-") {
+			return "__Secure-" + custom
+		}
+		return custom
+	}
 	namespace := a.opts.CookiePrefix
 	if namespace == "" {
 		namespace = "authn"
@@ -94,6 +219,17 @@ func (a *Auth) sessionCookie(token string, persistent bool) *http.Cookie {
 	c := a.browserCookie("session_token", url.QueryEscape(token+"."+a.cookieSignature(token)), 0)
 	if persistent {
 		c.MaxAge = int(a.opts.SessionTTL / time.Second)
+	}
+	return c
+}
+
+// adminSessionCookie carries an impersonating admin's return session. Like
+// the multi-session cookies, it takes the session_token attributes.
+func (a *Auth) adminSessionCookie(payload string, maxAge int) *http.Cookie {
+	c := a.sessionCookie(payload, false)
+	c.Name, c.MaxAge = a.prefixedCookieName("admin_session"), maxAge
+	if maxAge < 0 {
+		c.Value = ""
 	}
 	return c
 }
@@ -255,8 +391,7 @@ func (a *Auth) emitSessionCookieHeaders(headers http.Header, r *http.Request, c 
 }
 
 func (a *Auth) writeRememberPreference(headers http.Header, r *http.Request, persistent bool) {
-	marker := a.sessionCookie("true", false)
-	marker.Name = strings.TrimSuffix(marker.Name, "session_token") + "dont_remember"
+	marker := a.SignedCookie("dont_remember", "true", 0)
 	expireHostCopy(headers, r, marker)
 	if !persistent {
 		headers.Add("Set-Cookie", marker.String())

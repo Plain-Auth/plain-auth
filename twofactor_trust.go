@@ -10,10 +10,7 @@ import (
 // Native callers can pass its opaque value through RequestMeta.TrustedDeviceCookie.
 func (a *Auth) TrustedDeviceCookieName() string { return a.prefixedCookieName("trust_device") }
 func (a *Auth) trustedDeviceCookie(owner, grant string, maxAge int) *http.Cookie {
-	name := a.TrustedDeviceCookieName()
-	c := a.sessionCookie(name+"|"+owner+"|"+grant, false)
-	c.Name = name
-	c.MaxAge = maxAge
+	c := a.SignedCookie("trust_device", a.TrustedDeviceCookieName()+"|"+owner+"|"+grant, maxAge)
 	if maxAge < 0 {
 		c.Value = ""
 	}

@@ -23,9 +23,13 @@ export function loginPreference({ cookieName, domain } = {}) {
       if (!globalThis.document) return;
       const secure = globalThis.location?.protocol === "https:" || /^__(?:host|secure)-/i.test(name) ? "; Secure" : "";
       const expired = name + "=; Path=/; Max-Age=0";
-      document.cookie = expired + secure;
-      if (domain && !name.toLowerCase().startsWith("__host-")) {
-        document.cookie = expired + "; Domain=" + domain + secure;
+      // A partitioned copy is only removed by a partitioned expiry.
+      const variants = secure ? [secure, secure + "; Partitioned"] : [""];
+      for (const attrs of variants) {
+        document.cookie = expired + attrs;
+        if (domain && !name.toLowerCase().startsWith("__host-")) {
+          document.cookie = expired + "; Domain=" + domain + attrs;
+        }
       }
     },
   };

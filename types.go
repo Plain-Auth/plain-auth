@@ -32,6 +32,13 @@ type Options struct {
 	// open redirects. Request origins are still checked unless DisableCSRFCheck
 	// is also set.
 	DisableOriginCheck bool
+	// Cookies overrides the name and attributes of individual cookies, by
+	// their base name such as "session_token", "session_data" or
+	// "dont_remember".
+	Cookies map[string]CookieOptions
+	// DefaultCookieAttributes applies to every cookie before the per-cookie
+	// overrides.
+	DefaultCookieAttributes CookieAttributes
 	// Hooks run before and after each mounted HTTP endpoint.
 	Hooks EndpointHooks
 	// DatabaseHooks run before and after user and session writes, after the

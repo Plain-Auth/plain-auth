@@ -168,9 +168,7 @@ func (a *Auth) TwoFactorChallengeCookie(challenge LoginChallenge) *http.Cookie {
 	return a.factorCookie(challenge.Identifier, int(life.Seconds()))
 }
 func (a *Auth) factorCookie(id string, expires int) *http.Cookie {
-	c := a.sessionCookie(id, false)
-	c.Name = strings.TrimSuffix(c.Name, "session_token") + "two_factor"
-	c.MaxAge = expires
+	c := a.SignedCookie("two_factor", id, expires)
 	if expires < 0 {
 		c.Value = ""
 	}

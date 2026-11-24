@@ -111,16 +111,17 @@
   - [ ] `jwt`
   - [x] `jwe` ([test](../../session_cache_jose_test.go#L189))
     - [x] The JWE subtest of TestJOSESessionCookieValidityAndRotation encrypts snapshots with a key derived from the configured secrets ([test](../../session_cache_jose_test.go#L189))
-  - [x] Cookie Prefix ([test](../../cookies_test.go#L25))
-    - [x] Builds two instances with different CookiePrefix values and asserts the session cookie is named __Secure-company.session_token ([test](../../cookies_test.go#L25))
-  - [ ] Custom Cookies
+  - [x] Cookie Prefix ([test](../../cookies_test.go#L26))
+    - [x] Builds two instances with different CookiePrefix values and asserts the session cookie is named __Secure-company.session_token ([test](../../cookies_test.go#L26))
+  - [x] Custom Cookies ([test](../../conformance/goapi/cookie_options_test.go#L52))
+    - [x] Rename a cookie and change its attributes; the renamed session cookie authenticates and expires on sign-out ([test](../../conformance/goapi/cookie_options_test.go#L52))
   - [ ] Cross Subdomain Cookies
-    - [x] Resolve shared cookie domains from the static base URL and reject unrelated hosts and public or private suffixes ([test](../../cookies_test.go#L48))
+    - [x] Resolve shared cookie domains from the static base URL and reject unrelated hosts and public or private suffixes ([test](../../cookies_test.go#L49))
     - [x] Share an authenticated browser session with a sibling host and expire it on logout ([test](../../conformance/goapi/cookie_scope_http_test.go#L17))
     - [x] Isolate native client cookies by registrable domain and clear a shared login preference ([test](../../client/cookie_scope_test.go#L9))
   - [ ] Secure Cookies
-    - [x] Set the secure override and enforce reserved cookie prefix constraints ([test](../../cookies_test.go#L100))
-    - [x] Serialize and authenticate a signed session cookie ([test](../../cookies_test.go#L11))
+    - [x] Set the secure override and enforce reserved cookie prefix constraints ([test](../../cookies_test.go#L101))
+    - [x] Serialize and authenticate a signed session cookie ([test](../../cookies_test.go#L12))
   - [ ] Safari, ITP, and Cross-Domain Setups
     - [ ] Using a Reverse Proxy
       - [ ] Example with Netlify
@@ -599,7 +600,7 @@
   - [ ] Session Caching
     - [ ] Cookie Cache
       - [x] Expire the disabled cache and its canonical chunks on signed-in and anonymous reads ([test](../../conformance/session-cache-cleanup.mjs#L28))
-      - [x] Clear each received cache chunk on the issuing host and shared domain using the configured cookie namespace ([test](../../cookies_test.go#L172))
+      - [x] Clear each received cache chunk on the issuing host and shared domain using the configured cookie namespace ([test](../../cookies_test.go#L173))
       - [x] Exchange HMAC-signed snapshots, browser-only lifetimes and chunked cookies in both directions on shared SQLite ([test](../../conformance/session-cache-compact.mjs#L62))
       - [x] Retain live JWT issuance, protected session checks and administrative controls after a physical schema migration on another node ([test](../../adapters/sqlstore/session_cache_test.go#L135))
       - [x] Notes ([test](../../conformance/session-cache-compact.mjs#L98))

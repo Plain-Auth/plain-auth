@@ -217,6 +217,9 @@ func New(opts Options) (*Auth, error) {
 	}
 	a := &Auth{opts: opts, disabledPaths: disabledPaths, trustedOrigins: trustedOrigins, now: time.Now, passwordSlots: make(chan struct{}, min(runtime.GOMAXPROCS(0), 4)), plugins: plugins}
 	a.beforeHooks, a.afterHooks = endpointHooks(opts)
+	if err := a.checkCookieOptions(); err != nil {
+		return nil, err
+	}
 	a.onResponse = slices.ContainsFunc(opts.Plugins, func(p Plugin) bool { return p.OnResponse != nil })
 	a.dbHooks = composeDatabaseHooks(opts)
 	if err := a.checkDatabaseHooks(); err != nil {

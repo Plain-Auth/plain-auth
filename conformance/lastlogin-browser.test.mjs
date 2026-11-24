@@ -52,7 +52,8 @@ test("a reserved host preference expires only at the issuing host", (t) => {
     else delete globalThis.document;
   });
   loginPreference({ cookieName: "__Host-preference", domain: ".example.test" }).clear();
-  assert.deepEqual(writes, ["__Host-preference=; Path=/; Max-Age=0; Secure"]);
+  // Secure preferences are also expired as partitioned copies.
+  assert.deepEqual(writes, ["__Host-preference=; Path=/; Max-Age=0; Secure", "__Host-preference=; Path=/; Max-Age=0; Secure; Partitioned"]);
   writes.length = 0;
   loginPreference({ cookieName: "preference", domain: "example.test" }).clear();
   assert.deepEqual(writes, ["preference=; Path=/; Max-Age=0", "preference=; Path=/; Max-Age=0; Domain=example.test"]);

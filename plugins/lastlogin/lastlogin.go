@@ -50,10 +50,12 @@ func New(opts Options) auth.Plugin {
 		if opts.Allow != nil && !opts.Allow(e.Request, method) {
 			return
 		}
+		// The preference takes the session cookie's attributes, except that
+		// pages anywhere on the site must be able to read and clear it.
 		cookie := e.Cookie
-		cookie.Name = opts.CookieName
+		cookie.Name, cookie.Path = opts.CookieName, "/"
 		if cookie.Name == "" {
-			cookie.Name = strings.TrimSuffix(e.Cookie.Name, ".session_token") + ".last_used_login_method"
+			cookie.Name = e.Auth.Cookie("last_used_login_method", "", 0).Name
 		}
 		lowerName := strings.ToLower(cookie.Name)
 		if strings.HasPrefix(lowerName, "__host-") {

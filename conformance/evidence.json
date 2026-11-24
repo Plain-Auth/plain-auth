@@ -20053,5 +20053,39 @@
       "test": "conformance/goapi/request_switches_test.go",
       "marker": "if status(open, \"POST\", \"/sign-in/email\", signIn, forged) != 403 {"
     }
+  ],
+  "docs/content/docs/concepts/cookies.mdx#L31": [
+    {
+      "label": "Rename a cookie and change its attributes; the renamed session cookie authenticates and expires on sign-out",
+      "test": "conformance/goapi/cookie_options_test.go",
+      "marker": "// The session cookie takes its custom name, keeps the __Secure- prefix and merges the attributes.",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/reference/options.mdx#L689/`cookies`": [
+    {
+      "label": "Override one cookie's name and attributes by its base name",
+      "test": "conformance/goapi/cookie_options_test.go",
+      "marker": "// The session cookie takes its custom name, keeps the __Secure- prefix and merges the attributes.",
+      "complete": true
+    },
+    {
+      "label": "Refuse overrides a browser would reject or that hide a cookie from the auth endpoints, each with its reason",
+      "test": "conformance/goapi/cookie_options_test.go",
+      "marker": "// Configurations a browser would reject, or that would hide a cookie from"
+    },
+    {
+      "label": "Expire admin_session with the scope it was set with, give trust_device its own attributes and keep the One Tap nonce host-only at Path=/",
+      "test": "cookies_test.go",
+      "marker": "func TestCookieOverridesKeepWritesAndExpiriesTogether(t *testing.T) {"
+    }
+  ],
+  "docs/content/docs/reference/options.mdx#L690/`defaultCookieAttributes`": [
+    {
+      "label": "Apply default attributes to every cookie before the per-cookie overrides",
+      "test": "conformance/goapi/cookie_options_test.go",
+      "marker": "DefaultCookieAttributes: authn.CookieAttributes{SameSite: http.SameSiteNoneMode, Partitioned: true},",
+      "complete": true
+    }
   ]
 }

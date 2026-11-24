@@ -407,9 +407,7 @@ func (a *Auth) writeCredentialResult(h http.Header, r *http.Request, body wireBo
 		a.expireSessionCookieHeaders(h, r)
 		h.Add("Set-Cookie", a.TwoFactorChallengeCookie(*result.Challenge).String())
 		if remember != nil && !*remember {
-			m := a.sessionCookie("true", false)
-			m.Name = strings.TrimSuffix(m.Name, "session_token") + "dont_remember"
-			h.Add("Set-Cookie", m.String())
+			h.Add("Set-Cookie", a.SignedCookie("dont_remember", "true", 0).String())
 		}
 		return map[string]any{"twoFactorRedirect": true, "twoFactorMethods": result.TwoFactorMethods}, nil
 	}
@@ -443,16 +441,14 @@ func (a *Auth) expireSessionCookieHeaders(h http.Header, r *http.Request) {
 	cookie := a.clearSessionCookie()
 	expireHostCopy(h, r, cookie)
 	h.Add("Set-Cookie", cookie.String())
-	prefix := strings.TrimSuffix(cookie.Name, "session_token")
 	a.expireStoredSessionData(h, r, true)
-	names := []string{"dont_remember"}
+	expired := []*http.Cookie{a.browserCookie("dont_remember", "", -1)}
 	if a.admin != nil {
-		names = append(names, "admin_session")
+		expired = append(expired, a.adminSessionCookie("", -1))
 	}
-	for _, name := range names {
-		cookie.Name = prefix + name
-		expireHostCopy(h, r, cookie)
-		h.Add("Set-Cookie", cookie.String())
+	for _, c := range expired {
+		expireHostCopy(h, r, c)
+		h.Add("Set-Cookie", c.String())
 	}
 
 }

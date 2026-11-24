@@ -236,7 +236,6 @@ func redirectQuery(target, key, value string) Redirect {
 }
 
 func (a *Auth) dontRemember(r *http.Request) bool {
-	name := strings.TrimSuffix(a.cookieName(), "session_token") + "dont_remember"
-	c, err := r.Cookie(name)
+	c, err := r.Cookie(a.prefixedCookieName("dont_remember"))
 	return err == nil && a.VerifySignedSessionToken(c.Value) == "true"
 }
