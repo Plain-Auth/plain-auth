@@ -194,7 +194,7 @@ func (s *Store) ChangeAccountEmail(ctx context.Context, userID, oldEmail, newEma
 	}
 	oldEmail, newEmail = strings.ToLower(oldEmail), strings.ToLower(newEmail)
 	update := s.bind(`UPDATE "user" SET "email"=?,"updatedAt"=? WHERE "id"=? AND ` + s.exactSQLValue(`LOWER("email")`) + `=? AND "emailVerified"=?`)
-	res, err := tx.ExecContext(ctx, update, newEmail, s.date(now), userID, oldEmail, verified)
+	res, err := s.execUserUpdate(ctx, tx, userID, update, newEmail, s.date(now), userID, oldEmail, verified)
 	if err != nil {
 		// PostgreSQL rejects subsequent queries in a failed transaction. Roll
 		// it back before determining whether another user claimed the address.

@@ -76,7 +76,7 @@ Managed services that speak the PostgreSQL protocol, such as Neon, Supabase and 
 | --- | --- |
 | `user` | Profile, unique email, verification state, creation and update timestamps |
 | `account` | Account and provider identities, owner reference, optional password hash, OAuth tokens, scopes and expiry |
-| `session` | Unique opaque token, owner reference, creation, update and expiry times, and optional network metadata |
+| `session` | Unique opaque token, owner reference, creation, update and expiry times, and optional network metadata. With [`SecondaryStorage`](redis.md#keep-sessions-in-redis), a copy of each live session is also kept there |
 | `verification` | Identifier, value and expiry for temporary verification records |
 
 The default layout uses per-dialect SQL types. A password account has provider ID `credential` and its account ID matches the owning user. Sessions reference that user and expire at their stored timestamp. Account registration writes the user, credential and initial session in one transaction. See the [dialect schemas](../adapters/sqlstore/schema) and [database contract tests](../adapters/sqlstore/engines_test.go).

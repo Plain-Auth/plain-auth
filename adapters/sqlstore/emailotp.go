@@ -274,7 +274,7 @@ func (s *Store) useEmailOTP(ctx context.Context, act auth.EmailOTPAction, matche
 				}
 				return nil, err
 			}
-			_, err = tx.ExecContext(ctx, s.bind(`UPDATE "user" SET "email"=?,"emailVerified"=?,"updatedAt"=? WHERE "id"=? AND "email"=?`), act.Email, true, s.date(act.Now), act.Source.UserID, act.Source.Email)
+			_, err = s.execUserUpdate(ctx, tx, act.Source.UserID, s.bind(`UPDATE "user" SET "email"=?,"emailVerified"=?,"updatedAt"=? WHERE "id"=? AND "email"=?`), act.Email, true, s.date(act.Now), act.Source.UserID, act.Source.Email)
 			return nil, err
 		}
 		user, err = s.emailOTPUser(ctx, tx, act.Email)
@@ -354,7 +354,7 @@ func (s *Store) useEmailOTP(ctx context.Context, act auth.EmailOTPAction, matche
 			return nil, errors.New("unsupported email OTP action")
 		}
 		if !deferVerification && !user.EmailVerified {
-			_, err = tx.ExecContext(ctx, s.bind(`UPDATE "user" SET "emailVerified"=?,"updatedAt"=? WHERE "id"=?`), true, s.date(act.Now), user.ID)
+			_, err = s.execUserUpdate(ctx, tx, user.ID, s.bind(`UPDATE "user" SET "emailVerified"=?,"updatedAt"=? WHERE "id"=?`), true, s.date(act.Now), user.ID)
 			user.EmailVerified = true
 			user.UpdatedAt = act.Now
 		}
@@ -492,7 +492,7 @@ func (s *Store) FinishObservedEmailOTP(ctx context.Context, req auth.EmailOTPReq
 	if !valid {
 		return auth.User{}, invalid
 	}
-	_, err = tx.ExecContext(ctx, s.bind(`UPDATE "user" SET "email"=?,"emailVerified"=?,"updatedAt"=? WHERE "id"=?`), req.Email, true, s.date(req.Now), owner.ID)
+	_, err = s.execUserUpdate(ctx, tx, owner.ID, s.bind(`UPDATE "user" SET "email"=?,"emailVerified"=?,"updatedAt"=? WHERE "id"=?`), req.Email, true, s.date(req.Now), owner.ID)
 	if err != nil {
 		if req.Source != nil {
 			if rollbackErr := tx.Rollback(); rollbackErr == nil {

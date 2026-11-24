@@ -103,7 +103,7 @@ func (s *Store) completeEmailVerification(ctx context.Context, v auth.EmailVerif
 	if err != nil {
 		return "", err
 	}
-	_, err = tx.ExecContext(ctx, s.bind(`UPDATE "user" SET "emailVerified"=?,"updatedAt"=? WHERE "id"=?`), true, s.date(v.Now), v.OwnerID)
+	_, err = s.execUserUpdate(ctx, tx, v.OwnerID, s.bind(`UPDATE "user" SET "emailVerified"=?,"updatedAt"=? WHERE "id"=?`), true, s.date(v.Now), v.OwnerID)
 	if err != nil {
 		return "", err
 	}

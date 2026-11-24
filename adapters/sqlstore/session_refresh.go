@@ -35,6 +35,10 @@ func (s *Store) RefreshSession(ctx context.Context, token string, previousExpiry
 	if err != nil || n == 0 {
 		return false, err
 	}
+	// The next read copies the renewed session back.
+	if err := s.sessionMirror().forget(ctx, []string{token}); err != nil {
+		return false, err
+	}
 	// Carry the original external SAML identity through a sliding renewal on any replica.
 	q = `UPDATE "verification" SET "expiresAt"=? WHERE "id"=? AND "identifier"=? AND ` + s.samlReceiptField("SessionID") + `=? AND ` + s.samlReceiptField("UserID") + `=? AND ` + s.samlReceiptField("TokenDigest") + `=?`
 	if _, err = tx.ExecContext(ctx, s.bind(q), s.date(nextExpiry), originDigest("sls-", sessionID), samlSessionKind, sessionID, userID, originDigest("slt-", token)); err != nil {

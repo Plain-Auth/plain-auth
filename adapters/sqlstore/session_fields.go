@@ -292,5 +292,9 @@ func (s *Store) UpdateSessionFields(ctx context.Context, actor auth.Session, fie
 	if _, err := tx.ExecContext(ctx, s.bind(q), append(params, actor.ID, actor.UserID, actor.Token)...); err != nil {
 		return err
 	}
+	// The copy holds updatedAt, which this changed.
+	if err := s.sessionMirror().forget(ctx, []string{actor.Token}); err != nil {
+		return err
+	}
 	return tx.Commit()
 }

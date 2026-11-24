@@ -6630,6 +6630,12 @@
       "label": "Store expiring values and enforce distributed rate limits using the optional Redis module",
       "test": "adapters/redis/storage_test.go",
       "marker": "func TestDistributedHTTPRateLimit("
+    },
+    {
+      "label": "The Redis module is a SecondaryStorage that keeps sessions for every replica, alongside its distributed rate limits and expiring values",
+      "test": "adapters/redis/sessions_test.go",
+      "marker": "func TestSessionsInRedis(t *testing.T) {",
+      "complete": true
     }
   ],
   "docs/content/docs/concepts/database.mdx#L146": [
@@ -6637,6 +6643,11 @@
       "label": "Store expiring values and enforce distributed rate limits using the optional Redis module",
       "test": "adapters/redis/storage_test.go",
       "marker": "func TestDistributedHTTPRateLimit("
+    },
+    {
+      "label": "Sessions are copied into SecondaryStorage; verification records stay in the database",
+      "test": "adapters/sqlstore/secondary_sessions_test.go",
+      "marker": "func TestSecondaryStorageSessions(t *testing.T) {"
     }
   ],
   "docs/content/docs/concepts/database.mdx#L177": [
@@ -6644,6 +6655,12 @@
       "label": "Store expiring values and enforce distributed rate limits using the optional Redis module",
       "test": "adapters/redis/storage_test.go",
       "marker": "func TestDistributedHTTPRateLimit("
+    },
+    {
+      "label": "The Redis module keeps each session under a prefixed key with the session's lifetime, shared by replicas with their own clients",
+      "test": "adapters/redis/sessions_test.go",
+      "marker": "func TestSessionsInRedis(t *testing.T) {",
+      "complete": true
     }
   ],
   "docs/content/docs/concepts/database.mdx#L182": [
@@ -6651,6 +6668,12 @@
       "label": "Store expiring values and enforce distributed rate limits using the optional Redis module",
       "test": "adapters/redis/storage_test.go",
       "marker": "func TestDistributedHTTPRateLimit("
+    },
+    {
+      "label": "The Redis store implements SecondaryStorage, serves sessions to another replica, falls back after a flush and ends them on sign-out",
+      "test": "adapters/redis/sessions_test.go",
+      "marker": "var _ auth.SecondaryStorage = (*redisstore.Store)(nil)",
+      "complete": true
     }
   ],
   "docs/content/docs/concepts/rate-limit.mdx#L269/Using Secondary Storage": [
@@ -20864,6 +20887,45 @@
       "label": "The database strategy never answers state_invalid: an altered state cookie is state_mismatch on both runtimes",
       "test": "conformance/oauth-callback-state.mjs",
       "marker": "[\"database\", \"altered-cookie\", \"state_mismatch\"],"
+    }
+  ],
+  "docs/content/docs/concepts/database.mdx#L150": [
+    {
+      "label": "Options.SecondaryStorage takes a five-method Get, Set, Delete, GetAndDelete and Increment store; a custom in-memory one serves sessions across replicas on three SQL engines",
+      "test": "adapters/sqlstore/secondary_sessions_test.go",
+      "marker": "func TestSecondaryStorageSessions(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/concepts/database.mdx#L204": [
+    {
+      "label": "A custom SecondaryStorage implementation receives each session copy and its deletions under concurrent reads, renames and revocation",
+      "test": "adapters/sqlstore/secondary_sessions_test.go",
+      "marker": "func TestSecondaryStorageConcurrency(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/concepts/session-management.mdx#L350": [
+    {
+      "label": "With StoreSessionInDatabase, sessions stay in the database and SecondaryStorage holds a copy that every revocation and user change deletes before it commits",
+      "test": "adapters/sqlstore/secondary_sessions_test.go",
+      "marker": "func TestSecondaryStorageSessions(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/concepts/session-management.mdx#L335": [
+    {
+      "label": "SecondaryStorage holds a copy of each session; unlike the reference's default, the session also stays in the database, which StoreSessionInDatabase must confirm",
+      "test": "adapters/sqlstore/secondary_sessions_test.go",
+      "marker": "func TestSecondaryStorageConfiguration(t *testing.T) {"
+    }
+  ],
+  "docs/content/docs/reference/options.mdx#L475/`storeSessionInDatabase`": [
+    {
+      "label": "StoreSessionInDatabase keeps sessions in the database alongside their SecondaryStorage copies, and is required with SecondaryStorage",
+      "test": "adapters/sqlstore/secondary_sessions_test.go",
+      "marker": "func TestSecondaryStorageConfiguration(t *testing.T) {",
+      "complete": true
     }
   ]
 }

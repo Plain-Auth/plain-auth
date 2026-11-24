@@ -526,7 +526,7 @@ const index = [
   "| Verify a phone number, sign in or recover a password by SMS | [Phone accounts](../phone-number.md) |",
   "| Provision directory users with scoped bearer credentials | [SCIM provisioning](../scim.md) |",
   "| Translate authentication errors and select a locale | [Localization](../localization.md) |",
-  "| Share rate limits and store short-lived application values in Redis | [Redis secondary storage](../redis.md) |",
+  "| Keep sessions, share rate limits and store short-lived application values in Redis | [Redis secondary storage](../redis.md) |",
   "| Describe installed HTTP endpoints and render their reference | [OpenAPI](../openapi.md) |",
   "| Extension hooks, bearer sessions and login method | [Plugins](../plugins.md) |", "",
   "## Authentication, storage and tools", "", ...progressHeader,

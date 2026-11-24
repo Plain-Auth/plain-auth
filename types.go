@@ -209,6 +209,12 @@ type Options struct {
 	AllowUnlinkingAll            bool
 
 	SessionTTL time.Duration
+	// SecondaryStorage keeps a copy of each live session in a shared store,
+	// such as Redis, so session reads can skip the database. Sessions also
+	// stay in the database, which StoreSessionInDatabase must confirm, and
+	// the store must implement SessionMirrorStore.
+	SecondaryStorage       SecondaryStorage
+	StoreSessionInDatabase bool
 	// FreshAge is how recent a session must be for sensitive account changes,
 	// such as deleting the user or unlinking an account. It defaults to one
 	// day; a negative value turns the check off.

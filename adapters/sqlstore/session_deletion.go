@@ -24,12 +24,27 @@ func (s *Store) deleteSessions(ctx context.Context, where string, args ...any) e
 // a session foreign key must commit before this snapshot or lose its parent.
 // Only delete the locked IDs, even if a new session now matches the predicate.
 func (s *Store) deleteSessionsTx(ctx context.Context, tx *sql.Tx, where string, args ...any) (int64, error) {
-	rows, err := tx.QueryContext(ctx, s.readForUpdate(`SELECT "id" FROM "session" WHERE `+where+` ORDER BY "id"`), args...)
+	rows, err := tx.QueryContext(ctx, s.readForUpdate(`SELECT "id","token" FROM "session" WHERE `+where+` ORDER BY "id"`), args...)
 	if err != nil {
 		return 0, err
 	}
-	ids, err := scanStrings(rows)
-	if err != nil || len(ids) == 0 {
+	var ids, tokens []string
+	for rows.Next() {
+		var id, token string
+		if err := rows.Scan(&id, &token); err != nil {
+			rows.Close()
+			return 0, err
+		}
+		ids, tokens = append(ids, id), append(tokens, token)
+	}
+	if err := rows.Close(); err != nil {
+		return 0, err
+	}
+	if err := rows.Err(); err != nil || len(ids) == 0 {
+		return 0, err
+	}
+	// The locked sessions' copies go first: a failed delete keeps them all.
+	if err := s.sessionMirror().forget(ctx, tokens); err != nil {
 		return 0, err
 	}
 	// Another process may have installed the provider since this store opened.

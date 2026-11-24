@@ -430,7 +430,8 @@
       - [x] Document public inputs and responses separately from physical names and private defaults ([test](../../plugins/openapi/session_fields_test.go#L16))
       - [x] Read date-valued session and profile attributes written by either runtime through the same session ([test](../../conformance/date-fields.mjs#L5))
       - [x] Issue separate session defaults and honor trusted fixture overrides without a second callback ([test](../../adapters/sqlstore/computed_fields_test.go#L89))
-    - [ ] `storeSessionInDatabase`
+    - [x] `storeSessionInDatabase` ([test](../../adapters/sqlstore/secondary_sessions_test.go#L266))
+      - [x] StoreSessionInDatabase keeps sessions in the database alongside their SecondaryStorage copies, and is required with SecondaryStorage ([test](../../adapters/sqlstore/secondary_sessions_test.go#L266))
     - [ ] `preserveSessionInDatabase`
     - [x] `cookieCache` ([test](../../conformance/session-cache-compact.mjs#L33))
       - [x] Enable compact browser snapshots with a fixed version and whole-second lifetime ([test](../../session_cache_compact_test.go#L367))

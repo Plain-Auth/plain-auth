@@ -81,7 +81,7 @@ func (s *Store) createUser(ctx context.Context, user authn.User, passwordHash *s
 		return err
 	}
 	if admin {
-		if _, err = tx.ExecContext(ctx, s.bind(`UPDATE "user" SET "role"=? WHERE "id"=?`), s.defaultAdminRole(), user.ID); err != nil {
+		if _, err = s.execUserUpdate(ctx, tx, user.ID, s.bind(`UPDATE "user" SET "role"=? WHERE "id"=?`), s.defaultAdminRole(), user.ID); err != nil {
 			return err
 		}
 	}
@@ -175,8 +175,10 @@ func (s *Store) insertSession(ctx context.Context, tx *sql.Tx, ss authn.StoredSe
 		params += ",?"
 		args = append(args, ss.ImpersonatedBy)
 	}
-	_, err = tx.ExecContext(ctx, s.bind(`INSERT INTO "session" (`+cols+`) VALUES (`+params+`)`), args...)
-	return err
+	if _, err = tx.ExecContext(ctx, s.bind(`INSERT INTO "session" (`+cols+`) VALUES (`+params+`)`), args...); err != nil {
+		return err
+	}
+	return s.mirrorNewSession(ctx, tx, ss, admin)
 }
 
 // CreateSession saves a session using its token.
@@ -205,6 +207,13 @@ func sessionFields(ss *authn.StoredSession) []any {
 
 // Session retrieves session state and its owner. The auth service checks expiry.
 func (s *Store) Session(ctx context.Context, token string) (authn.StoredSession, authn.User, error) {
+	if m := s.sessionMirror(); m != nil {
+		ss, u, hit, err := s.readMirroredSession(ctx, m, token)
+		if hit || err != nil {
+			return ss, u, err
+		}
+		return s.repopulateSession(ctx, m, token)
+	}
 	if s.adminSchema.Load() {
 		return s.adminSession(ctx, s.db, token)
 	}
@@ -263,7 +272,12 @@ func (s *Store) ListSessions(ctx context.Context, userID string) ([]authn.Stored
 
 // DeleteSession revokes a session by its token.
 func (s *Store) DeleteSession(ctx context.Context, token string) error {
-	return s.deleteSessions(ctx, `"token" = ?`, token)
+	if err := s.deleteSessions(ctx, `"token" = ?`, token); err != nil {
+		return err
+	}
+	// A copy whose row is already gone, such as one a late write restored,
+	// is removed too.
+	return s.sessionMirror().forget(ctx, []string{token})
 }
 
 // DeleteOtherSessions revokes every session of a user except the one specified.

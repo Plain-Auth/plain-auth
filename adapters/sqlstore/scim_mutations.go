@@ -26,7 +26,7 @@ func (s *Store) scimTomb(ctx context.Context, tx *sql.Tx, d scim.Directory, exte
 }
 func (s *Store) scimUpdateCore(ctx context.Context, tx *sql.Tx, id string, p scim.Profile, now time.Time) error {
 	// Compare email before assigning it. MySQL evaluates assignments left to right.
-	_, err := tx.ExecContext(ctx, s.bind(`UPDATE "user" SET "emailVerified"=CASE WHEN "email"=? THEN "emailVerified" ELSE ? END,"email"=?,"name"=?,"updatedAt"=? WHERE "id"=?`), p.PrimaryEmail, false, p.PrimaryEmail, p.DisplayName, s.date(now), id)
+	_, err := s.execUserUpdate(ctx, tx, id, s.bind(`UPDATE "user" SET "emailVerified"=CASE WHEN "email"=? THEN "emailVerified" ELSE ? END,"email"=?,"name"=?,"updatedAt"=? WHERE "id"=?`), p.PrimaryEmail, false, p.PrimaryEmail, p.DisplayName, s.date(now), id)
 	return err
 }
 func (s *Store) scimRevokeIfInactive(ctx context.Context, tx *sql.Tx, id string) error {

@@ -1,6 +1,6 @@
 # Redis secondary storage
 
-Use the optional `github.com/Plain-Org/plain-auth/adapters/redis` Go module to share rate limits across auth servers or store short-lived application values. It accepts a single-node `*redis.Client` from go-redis v9. The primary store continues to manage users, sessions and account data.
+Use the optional `github.com/Plain-Org/plain-auth/adapters/redis` Go module to keep sessions in Redis, share rate limits across auth servers or store short-lived application values. It accepts a single-node `*redis.Client` from go-redis v9. The primary store continues to own users, sessions and account data.
 
 Install the adapter and core from the same preview revision in your application's Go module.
 
@@ -9,6 +9,31 @@ go get \
   github.com/Plain-Org/plain-auth@main \
   github.com/Plain-Org/plain-auth/adapters/redis@main
 ```
+
+## Keep sessions in Redis
+
+Set `Options.SecondaryStorage` to a Redis store so session reads skip the database. Sessions also stay in the database, which `Options.StoreSessionInDatabase` must confirm; Redis holds a copy of each live session:
+
+```go
+sessions, err := redisstore.New(client, "shop:production:sessions:")
+if err != nil {
+    return err
+}
+opts.SecondaryStorage = sessions
+opts.StoreSessionInDatabase = true
+```
+
+The SQL store writes a session's copy when it creates the session, under the session token, with the session's remaining lifetime as its TTL. A read that finds no copy, for example after a flush, reads the database and copies the session back. Every revocation, sign-out, refresh and change to the user's profile deletes the affected copies before it commits, and a copy that cannot be deleted fails the change, so Redis never serves a session the database has ended. This covers every path through Plain Auth, plugins such as SCIM included. A change made outside Plain Auth, such as SQL run by hand, shows only after the copy expires or Redis is flushed. Impersonated sessions are never copied, because they depend on the admin's own session.
+
+A Redis failure on a read or when a session is created fails that request. A copy that fails to write after a database read is deleted instead, and every deletion runs again two seconds later, so a write whose reply was lost cannot leave a copy behind. If Redis stalls for longer than that while a copy is being written, the late copy can outlive its session until the session would have expired, or until someone signs out with its token; keep Redis client timeouts short and watch Redis for stalls.
+
+The copies stay correct only while every change goes through a Store that has the storage attached:
+
+- Attach the same storage, with the same prefix, to every Store handle in every process that writes users or sessions through Plain Auth. A process or handle without it changes the database without deleting the copies.
+- Turn mirroring on in every process before any of them serves sessions from Redis.
+- Flush the prefix whenever you turn mirroring on or back on. Copies left from an earlier run may describe sessions that changed while mirroring was off.
+
+The copies hold live session tokens and the user's email, name, image and admin state: run Redis on a private network with TLS and authentication, give each environment its own prefix, and remember that Redis persistence writes the copies to disk. Evicting a copy is harmless. One store attaches one storage; a second, different storage is refused. The memory store does not mirror sessions. Sessions cannot live in Redis alone, and the copies use their own key layout, so share a Redis keyspace only with other Plain Auth instances. [Redis session test](../adapters/redis/sessions_test.go) · [Three-engine tests](../adapters/sqlstore/secondary_sessions_test.go)
 
 ## Share rate limits
 

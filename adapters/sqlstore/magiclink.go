@@ -221,6 +221,6 @@ func (s *Store) promoteMagicLinkOwner(ctx context.Context, tx *sql.Tx, id string
 			return err
 		}
 	}
-	_, err = tx.ExecContext(ctx, s.bind(`UPDATE "user" SET "emailVerified"=true,"updatedAt"=? WHERE "id"=?`), s.date(session.CreatedAt), id)
+	_, err = s.execUserUpdate(ctx, tx, id, s.bind(`UPDATE "user" SET "emailVerified"=true,"updatedAt"=? WHERE "id"=?`), s.date(session.CreatedAt), id)
 	return err
 }

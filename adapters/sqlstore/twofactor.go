@@ -283,7 +283,7 @@ func (s *Store) writeFactorChange(ctx context.Context, tx *sql.Tx, sub auth.Fact
 		}
 	}
 	if ch.Enabled != nil {
-		if err := exec(`UPDATE "user" SET "twoFactorEnabled"=?,"updatedAt"=? WHERE "id"=?`, *ch.Enabled, s.date(sub.Now), uid); err != nil {
+		if _, err := s.execUserUpdate(ctx, tx, uid, s.bind(`UPDATE "user" SET "twoFactorEnabled"=?,"updatedAt"=? WHERE "id"=?`), *ch.Enabled, s.date(sub.Now), uid); err != nil {
 			return err
 		}
 	}

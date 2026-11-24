@@ -362,7 +362,7 @@ func (s *Store) completeOAuth(ctx context.Context, provider, subject string, tok
 		}
 		// A verified claim for this owner's current mailbox also satisfies the
 		// gate when the host keeps name and other profile fields locally.
-		_, err := tx.ExecContext(ctx, s.bind(`UPDATE "user" SET "emailVerified"=?,"updatedAt"=? WHERE "id"=?`), true, s.date(session.CreatedAt), u.ID)
+		_, err := s.execUserUpdate(ctx, tx, u.ID, s.bind(`UPDATE "user" SET "emailVerified"=?,"updatedAt"=? WHERE "id"=?`), true, s.date(session.CreatedAt), u.ID)
 		if err != nil {
 			return authn.User{}, false, err
 		}
@@ -414,7 +414,7 @@ func (s *Store) syncOAuthProfile(ctx context.Context, tx *sql.Tx, owner, candida
 	args := []any{owner.Name, owner.Image, owner.Email, owner.EmailVerified, s.date(now)}
 	fields, args = s.appendUserFieldUpdates(fields, args, values.Columns())
 	args = append(args, owner.ID)
-	_, err := tx.ExecContext(ctx, s.bind(`UPDATE "user" SET `+strings.Join(fields, ",")+` WHERE "id"=?`), args...)
+	_, err := s.execUserUpdate(ctx, tx, owner.ID, s.bind(`UPDATE "user" SET `+strings.Join(fields, ",")+` WHERE "id"=?`), args...)
 	if duplicateConstraint(err) {
 		return authn.User{}, authn.ErrOAuthProfileConflict
 	}
@@ -437,7 +437,7 @@ func (s *Store) applyLinkProfile(ctx context.Context, tx *sql.Tx, owner, candida
 		return owner, nil
 	}
 	fields, args, owner.UpdatedAt = append(fields, `"updatedAt"=?`), append(args, s.date(now)), now
-	_, err := tx.ExecContext(ctx, s.bind(`UPDATE "user" SET `+strings.Join(fields, ",")+` WHERE "id"=?`), append(args, owner.ID)...)
+	_, err := s.execUserUpdate(ctx, tx, owner.ID, s.bind(`UPDATE "user" SET `+strings.Join(fields, ",")+` WHERE "id"=?`), append(args, owner.ID)...)
 	if duplicateConstraint(err) {
 		return authn.User{}, authn.ErrOAuthProfileConflict
 	}

@@ -117,12 +117,12 @@ func (s *Store) adminSessionGate(ctx context.Context, tx *sql.Tx, user string, n
 		if expires == nil || expires.After(now) {
 			return s.banError()
 		}
-		if _, err = tx.ExecContext(ctx, s.bind(`UPDATE "user" SET "banned"=?,"banReason"=NULL,"banExpires"=NULL WHERE "id"=?`), false, user); err != nil {
+		if _, err = s.execUserUpdate(ctx, tx, user, s.bind(`UPDATE "user" SET "banned"=?,"banReason"=NULL,"banExpires"=NULL WHERE "id"=?`), false, user); err != nil {
 			return err
 		}
 	}
 	if !role.Valid {
-		_, err = tx.ExecContext(ctx, s.bind(`UPDATE "user" SET "role"=? WHERE "id"=?`), s.defaultAdminRole(), user)
+		_, err = s.execUserUpdate(ctx, tx, user, s.bind(`UPDATE "user" SET "role"=? WHERE "id"=?`), s.defaultAdminRole(), user)
 	}
 	return err
 }
@@ -314,7 +314,7 @@ func (t *adminTX) UpdateUser(u authn.User) error {
 	if u.BanExpires != nil {
 		expires = s.date(*u.BanExpires)
 	}
-	_, err := t.tx.ExecContext(t.ctx, s.bind(`UPDATE "user" SET "email"=?,"name"=?,"image"=?,"emailVerified"=?,"updatedAt"=?,"role"=?,"banned"=?,"banReason"=?,"banExpires"=? WHERE "id"=?`), u.Email, u.Name, u.Image, u.EmailVerified, s.date(u.UpdatedAt), u.Role, u.Banned, u.BanReason, expires, u.ID)
+	_, err := s.execUserUpdate(t.ctx, t.tx, u.ID, s.bind(`UPDATE "user" SET "email"=?,"name"=?,"image"=?,"emailVerified"=?,"updatedAt"=?,"role"=?,"banned"=?,"banReason"=?,"banExpires"=? WHERE "id"=?`), u.Email, u.Name, u.Image, u.EmailVerified, s.date(u.UpdatedAt), u.Role, u.Banned, u.BanReason, expires, u.ID)
 	if duplicateConstraint(err) {
 		return authn.ErrEmailTaken
 	}

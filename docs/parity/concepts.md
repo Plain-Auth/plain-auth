@@ -140,12 +140,17 @@
   - [ ] Schema Validation
   - [ ] Secondary Storage
     - [x] Store expiring values and enforce distributed rate limits using the optional Redis module ([test](../../adapters/redis/storage_test.go#L299))
-    - [ ] Implementation
-    - [ ] Redis Storage
+    - [x] Sessions are copied into SecondaryStorage; verification records stay in the database ([test](../../adapters/sqlstore/secondary_sessions_test.go#L102))
+    - [x] Implementation ([test](../../adapters/sqlstore/secondary_sessions_test.go#L102))
+      - [x] Options.SecondaryStorage takes a five-method Get, Set, Delete, GetAndDelete and Increment store; a custom in-memory one serves sessions across replicas on three SQL engines ([test](../../adapters/sqlstore/secondary_sessions_test.go#L102))
+    - [x] Redis Storage ([test](../../adapters/redis/sessions_test.go#L20))
       - [x] Store expiring values and enforce distributed rate limits using the optional Redis module ([test](../../adapters/redis/storage_test.go#L299))
-      - [ ] Official Redis Storage
+      - [x] The Redis module keeps each session under a prefixed key with the session's lifetime, shared by replicas with their own clients ([test](../../adapters/redis/sessions_test.go#L20))
+      - [x] Official Redis Storage ([test](../../adapters/redis/sessions_test.go#L15))
         - [x] Store expiring values and enforce distributed rate limits using the optional Redis module ([test](../../adapters/redis/storage_test.go#L299))
-      - [ ] Custom Implementations
+        - [x] The Redis store implements SecondaryStorage, serves sessions to another replica, falls back after a flush and ends them on sign-out ([test](../../adapters/redis/sessions_test.go#L15))
+      - [x] Custom Implementations ([test](../../adapters/sqlstore/secondary_sessions_test.go#L295))
+        - [x] A custom SecondaryStorage implementation receives each session copy and its deletions under concurrent reads, renames and revocation ([test](../../adapters/sqlstore/secondary_sessions_test.go#L295))
   - [ ] Core Schema
     - [ ] User
       - [ ] `userTableFields.id`
@@ -643,7 +648,9 @@
         - [ ] When to use each:
     - [ ] JWKS-backed cookie-cache JWTs
   - [ ] Sessions in Secondary Storage
-    - [ ] Storing Sessions in the Database
+    - [x] SecondaryStorage holds a copy of each session; unlike the reference's default, the session also stays in the database, which StoreSessionInDatabase must confirm ([test](../../adapters/sqlstore/secondary_sessions_test.go#L266))
+    - [x] Storing Sessions in the Database ([test](../../adapters/sqlstore/secondary_sessions_test.go#L102))
+      - [x] With StoreSessionInDatabase, sessions stay in the database and SecondaryStorage holds a copy that every revocation and user change deletes before it commits ([test](../../adapters/sqlstore/secondary_sessions_test.go#L102))
     - [ ] Preserving Sessions
   - [ ] Stateless Session Management
     - [ ] Basic Stateless Setup

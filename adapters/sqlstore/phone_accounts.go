@@ -178,7 +178,7 @@ func (s *Store) ApplyPhoneRegistration(ctx context.Context, act auth.PhoneAccoun
 				return nil, err
 			}
 		}
-		_, err = tx.ExecContext(ctx, s.bind(`UPDATE "user" SET "phoneNumber"=?,"phoneNumberVerified"=?,"updatedAt"=? WHERE "id"=?`), act.Use.PhoneNumber, true, s.date(act.Use.Now), user.ID)
+		_, err = s.execUserUpdate(ctx, tx, user.ID, s.bind(`UPDATE "user" SET "phoneNumber"=?,"phoneNumberVerified"=?,"updatedAt"=? WHERE "id"=?`), act.Use.PhoneNumber, true, s.date(act.Use.Now), user.ID)
 		if duplicateConstraint(err) {
 			return nil, auth.ErrPhoneNumberExists
 		}

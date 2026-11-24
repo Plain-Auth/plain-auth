@@ -22,10 +22,19 @@ func (s *Store) FindAccountUser(ctx context.Context, email string) (authn.User, 
 }
 
 func (s *Store) UpdateProfile(ctx context.Context, userID string, patch authn.ProfileUpdate, now time.Time) error {
-	return s.updateProfile(ctx, s.db, userID, patch, now)
+	// A session copy that cannot be deleted rolls the change back.
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	if err := s.updateProfile(ctx, tx, userID, patch, now); err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 
-func (s *Store) updateProfile(ctx context.Context, db executor, userID string, patch authn.ProfileUpdate, now time.Time) error {
+func (s *Store) updateProfile(ctx context.Context, db *sql.Tx, userID string, patch authn.ProfileUpdate, now time.Time) error {
 	fields := []string{`"updatedAt" = ?`}
 	args := []any{s.date(now)}
 	if patch.Name != nil {
@@ -56,7 +65,7 @@ func (s *Store) updateProfile(ctx context.Context, db executor, userID string, p
 	}
 	fields, args = s.appendUserFieldUpdates(fields, args, patch.PhysicalUserFields())
 	args = append(args, userID)
-	_, err := db.ExecContext(ctx, s.bind(`UPDATE "user" SET `+strings.Join(fields, ", ")+` WHERE "id" = ?`), args...)
+	_, err := s.execUserUpdate(ctx, db, userID, s.bind(`UPDATE "user" SET `+strings.Join(fields, ", ")+` WHERE "id" = ?`), args...)
 	if patch.Username != nil && duplicateConstraint(err) {
 		return authn.ErrUsernameTaken
 	}
@@ -287,12 +296,21 @@ func (s *Store) replaceResetCredential(ctx context.Context, tx *sql.Tx, id, newH
 }
 
 func (s *Store) VerifyAccountEmail(ctx context.Context, userID, email string, now time.Time) error {
-	res, err := s.db.ExecContext(ctx, s.bind(`UPDATE "user" SET "emailVerified"=?,"updatedAt"=? WHERE `+s.exactSQLValue(`"id"`)+`=? AND `+s.exactSQLValue(`LOWER("email")`)+`=? AND "emailVerified"=?`), true, s.date(now), userID, strings.ToLower(email), false)
+	// A session copy that cannot be deleted rolls the verification back.
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	res, err := s.execUserUpdate(ctx, tx, userID, s.bind(`UPDATE "user" SET "emailVerified"=?,"updatedAt"=? WHERE `+s.exactSQLValue(`"id"`)+`=? AND `+s.exactSQLValue(`LOWER("email")`)+`=? AND "emailVerified"=?`), true, s.date(now), userID, strings.ToLower(email), false)
 	if err != nil {
 		return err
 	}
 	n, err := res.RowsAffected()
-	if err != nil || n > 0 {
+	if err != nil {
+		return err
+	}
+	if err := tx.Commit(); err != nil || n > 0 {
 		return err
 	}
 	// Replay of a previously successful verification is idempotent. Only the
