@@ -196,6 +196,10 @@ func New(opts Options) (*Auth, error) {
 	if err != nil {
 		return nil, err
 	}
+	if len(opts.TrustedProviders) > 0 && opts.TrustedProvidersForRequest != nil {
+		return nil, errors.New("auth: set TrustedProviders or TrustedProvidersForRequest, not both")
+	}
+	opts.TrustedProviders = slices.Clone(opts.TrustedProviders)
 	plugins, err := registerPlugins(opts.Plugins)
 	if err != nil {
 		return nil, err

@@ -1520,6 +1520,16 @@ test("social sign-in can require explicit account linking even for a trusted ver
   await compareImplicitLinking(t,{reference,goFixture,instrument});
 });
 
+test("trusted providers link an unverified provider email to a verified owner on both runtimes", async t => {
+  const {compareTrustedProviders}=await import("./social-link-options.mjs");
+  await compareTrustedProviders(t,{reference,goFixture,instrument});
+});
+
+test("explicit links refuse a different provider email unless allowDifferentEmails is on, on both runtimes", async t => {
+  const {compareDifferentEmailLinks}=await import("./social-link-options.mjs");
+  await compareDifferentEmailLinks(t,{reference,goFixture,instrument});
+});
+
 test("signed Stripe lifecycle deliveries distinguish dashboard creation, pending cancellation, updates, and deletion on both runtimes", async t => {
   const { subscriptionLifecycleCallbacks } = await import("./stripe-lifecycle-fixture.mjs");
   await subscriptionLifecycleCallbacks(t, { reference, goFixture, instrument });

@@ -20127,5 +20127,71 @@
       "marker": "func TestOAuthCustomRedirectURL(t *testing.T) {",
       "complete": true
     }
+  ],
+  "docs/content/docs/reference/options.mdx#L556/`trustedProviders`": [
+    {
+      "label": "On both runtimes a trusted provider links an unverified provider email to a verified owner on sign-in and through linkSocial, but never to an unverified owner; an untrusted one gets account_not_linked or unable_to_link_account",
+      "test": "conformance/social-link-options.mjs",
+      "marker": "export async function compareTrustedProviders(t, harness) {",
+      "complete": true
+    },
+    {
+      "label": "TrustedProvidersForRequest chooses the list per request from a body-free copy, and its error fails the sign-in",
+      "test": "conformance/goapi/oauth_link_options_test.go",
+      "marker": "func TestTrustedProvidersForRequest(t *testing.T) {"
+    },
+    {
+      "label": "On SQLite, PostgreSQL and MySQL trust stands in for the provider's verified email, never the local one, and DisableImplicitLinking still wins",
+      "test": "adapters/sqlstore/oauth_link_options_test.go",
+      "marker": "func TestOAuthLinkOptionsStore(t *testing.T) {"
+    }
+  ],
+  "docs/content/docs/reference/options.mdx#L557/`allowDifferentEmails`": [
+    {
+      "label": "On both runtimes linkSocial with a different provider email gets email_does_not_match, and with allowDifferentEmails links to the signed-in user without changing their email",
+      "test": "conformance/social-link-options.mjs",
+      "marker": "export async function compareDifferentEmailLinks(t, harness) {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/concepts/users-accounts.mdx#L476": [
+    {
+      "label": "Forced linking through trusted providers matches the reference on sign-in and explicit links",
+      "test": "conformance/social-link-options.mjs",
+      "marker": "export async function compareTrustedProviders(t, harness) {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/reference/errors/email_doesn't_match.mdx#L6": [
+    {
+      "label": "An explicit link whose provider email differs returns to the error callback with email_does_not_match on both runtimes",
+      "test": "conformance/social-link-options.mjs",
+      "marker": "{profile:other, asOwner:true, expect:\"/retry?error=email_does_not_match\"}",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/reference/errors/account_already_linked_to_different_user.mdx#L6": [
+    {
+      "label": "Linking an identity another user owns returns account_already_linked_to_different_user on both runtimes",
+      "test": "conformance/social-link-options.mjs",
+      "marker": "expect:\"/retry?error=account_already_linked_to_different_user\"",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/reference/errors/unable_to_link_account.mdx#L6": [
+    {
+      "label": "An explicit link from an untrusted provider with an unverified email returns unable_to_link_account on both runtimes",
+      "test": "conformance/social-link-options.mjs",
+      "marker": "{profile:unverified, asOwner:true, expect:\"/retry?error=unable_to_link_account\"}",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/reference/errors/account_not_linked.mdx#L6": [
+    {
+      "label": "A sign-in that cannot link to the existing same-email user returns account_not_linked with no session on both runtimes",
+      "test": "conformance/social-link-options.mjs",
+      "marker": "{profile:unverified, asOwner:false, expect:\"/retry?error=account_not_linked\"}",
+      "complete": true
+    }
   ]
 }

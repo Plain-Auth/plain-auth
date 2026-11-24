@@ -706,7 +706,8 @@
       - [x] The Go client's ListAccounts returns the signed-in user's single credential account with its record id ([test](../../client/account_test.go#L74))
     - [ ] Token Encryption
     - [ ] Account Linking
-      - [ ] Forced Linking
+      - [x] Forced Linking ([test](../../conformance/social-link-options.mjs#L75))
+        - [x] Forced linking through trusted providers matches the reference on sign-in and explicit links ([test](../../conformance/social-link-options.mjs#L75))
       - [x] Disable Implicit Linking ([test](../../conformance/social-link-policy.mjs#L5))
         - [x] Require an authenticated owner to link a trusted provider, preserve the stable owner, and accept subsequent logins ([test](../../conformance/social-link-policy.mjs#L5))
         - [x] Deny an automatic link even when a registered enterprise IdP has a verified matching domain ([test](../../adapters/sqlstore/sso_domain_test.go#L300))

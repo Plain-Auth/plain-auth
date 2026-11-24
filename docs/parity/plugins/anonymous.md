@@ -41,7 +41,7 @@
     - [ ] Link Account
       - [x] Wait for MFA completion before transferring guest data ([test](../../../adapters/sqlstore/anonymous_test.go#L215))
       - [x] Carry a guest through a provider redirect without the primary cookie ([test](../../../adapters/sqlstore/anonymous_oauth_test.go#L98))
-      - [x] Complete guest handoff with the official Google One Tap client ([test](../../../conformance/core.test.mjs#L1724))
+      - [x] Complete guest handoff with the official Google One Tap client ([test](../../../conformance/core.test.mjs#L1734))
       - [x] Transfer only after a verified WebAuthn assertion ([test](../../../adapters/sqlstore/passkey_test.go#L222))
       - [x] Link after local verification of the email OTP ([test](../../../adapters/sqlstore/anonymous_test.go#L184))
       - [x] Link a guest after the email sign-in link is verified ([test](../../../adapters/sqlstore/anonymous_test.go#L192))

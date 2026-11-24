@@ -53,7 +53,7 @@ social["work"] = work
 
 If your application also acts as an OAuth issuer, the host login page can pass its verified `oauth_query` through social sign-in. The external identity provider authenticates the user. Plain Auth then resumes the requesting client's authorization using the new session. [Social sign-in during authorization](oauth-authorization-code.md#sign-in-with-an-external-provider)
 
-To link a provider explicitly, a signed-in user can submit the same request body to `POST /api/auth/link-social`. The provider's verified email must match the current user's email. The callback checks that the initiating session is still active and keeps that session when linking succeeds.
+To link a provider explicitly, a signed-in user can submit the same request body to `POST /api/auth/link-social`. The provider's email must match the current user's email and be verified by the provider, unless the provider is trusted. The callback checks that the initiating session is still active and keeps that session when linking succeeds. A failed browser link returns to the error callback, or to the error page when none was given, with `unable_to_link_account`, `email_does_not_match` or `account_already_linked_to_different_user`, checked in that order. Re-linking an identity the user already owns goes through the same checks and then refreshes its credential. An ID-token link first refreshes an identity the user owns or refuses one another user owns with `409 SOCIAL_ACCOUNT_ALREADY_LINKED`, then returns `401 LINKING_NOT_ALLOWED` or `401 LINKING_DIFFERENT_EMAILS_NOT_ALLOWED`.
 
 Apple, Google, Microsoft and discovered OpenID Connect providers also accept `{ "provider": "work", "idToken": { "token": "...", "nonce": "..." } }` on the sign-in and link routes. Supply the same nonce used to request the provider's ID token. The server verifies the signature and claims, limits token age to one hour and records successful use until expiry. Direct sign-in returns `user`, `token` and `redirect: false` and sets the session cookie.
 
@@ -270,6 +270,18 @@ The preset discovers the tenant’s signing keys, requests `openid profile email
 ## Control account linking
 
 To require users to link an additional provider from an authenticated session, set `Options.DisableImplicitAccountLinking = true` on every instance performing callbacks. An existing matching mailbox then receives `account_not_linked` on a browser sign-in, including when the provider verified the email or the enterprise directory proved its domain. Have the owner sign in with their current method and call `client.LinkSocial` to add a static provider. A new mailbox can register under the normal signup policy, and an existing provider identity can still sign in. [Browser and client comparison](../conformance/social-link-policy.mjs) · [Verified enterprise domain](../adapters/sqlstore/sso_domain_test.go)
+
+### Trusted providers and different emails
+
+By default, a sign-in links to an existing user only when the provider verified the email and the provider sets `AllowVerifiedEmailLink`. To link a provider whose emails you trust even when it does not mark them verified, list it in `Options.TrustedProviders`:
+
+```go
+opts.TrustedProviders = []string{"google", "work"}
+```
+
+A sign-in from a trusted provider then links to an existing user with the same email, and a signed-in user can link it through `/link-social`. The local user's email must still be verified, and trust never marks an email as verified. To choose the list per request, for example per tenant, set `Options.TrustedProvidersForRequest` instead. It receives a copy of the request without its body, and an error, such as an `*auth.APIError`, fails the sign-in. SSO providers are never trusted by name, and registering an SSO provider ID that is on the list fails. Trusting a provider that does not own its users' addresses lets anyone who registers that email there take over the account.
+
+Set `Options.AllowDifferentEmails` to let a signed-in user link an identity whose email differs from their own. The user's email does not change. Whoever controls that provider account can then sign in as this user, so enable it only when users understand that. [Browser comparison](../conformance/social-link-options.mjs) · [Storage tests](../adapters/sqlstore/oauth_link_options_test.go) · [Per-request trust tests](../conformance/goapi/oauth_link_options_test.go)
 
 To close account linking entirely, set `Options.DisableAccountLinking = true` on each instance. Users can register with a provider or sign in with one they already linked. A browser request to attach a provider returns to the configured error callback with `unable_to_link_account`. A mobile ID-token request to attach a new identity returns `401 LINKING_NOT_ALLOWED`. The SQL adapters also allow an authenticated owner to refresh an identity they already own using a fresh ID token. An identity owned by another user returns `409 SOCIAL_ACCOUNT_ALREADY_LINKED`. Custom stores can support that refresh by implementing `auth.OAuthLinkRefreshStore` and checking the session and identity ownership together. [Mobile client tests](../conformance/goapi/oauth_signup_test.go) · [Storage tests](../adapters/sqlstore/social_test.go)
 

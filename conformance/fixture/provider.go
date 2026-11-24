@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/url"
 	"os"
+	"strings"
 
 	auth "github.com/Plain-Org/plain-auth"
 	"golang.org/x/oauth2"
@@ -33,7 +34,12 @@ func fixtureSocialProvider() map[string]auth.OAuthProvider {
 				return &oauth2.Token{AccessToken: "local-test"}, nil
 			},
 			Resolve: func(context.Context, *oauth2.Token, string) (auth.OAuthProfile, error) {
-				return auth.OAuthProfile{Subject: "sample-user", Email: "jo@example.org", Name: "Jo", EmailVerified: true}, nil
+				profile := auth.OAuthProfile{Subject: "sample-user", Email: "jo@example.org", Name: "Jo", EmailVerified: true}
+				// CONFORMANCE_LINK_PROFILE is "email|verified|name".
+				if fields := strings.Split(os.Getenv("CONFORMANCE_LINK_PROFILE"), "|"); len(fields) == 3 {
+					profile.Email, profile.EmailVerified, profile.Name = fields[0], fields[1] == "1", fields[2]
+				}
+				return profile, nil
 			},
 		}}
 	}

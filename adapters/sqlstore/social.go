@@ -153,9 +153,6 @@ func (s *Store) completeOAuth(ctx context.Context, provider, subject string, tok
 	defer tx.Rollback()
 	authn.LoginPlanFrom(ctx).Attempt()
 	if options.LinkUserID != "" {
-		if !candidate.EmailVerified {
-			return u, false, authn.ErrOAuthLinkRequired
-		}
 		if err := s.lockActiveAccount(ctx, tx, options.LinkUserID, options.LinkSessionToken, session.CreatedAt); err != nil {
 			return u, false, err
 		}
@@ -202,18 +199,41 @@ func (s *Store) completeOAuth(ctx context.Context, provider, subject string, tok
 			return u, false, authn.ErrOAuthAccountAlreadyLinked
 		}
 	}
-	if existing && options.LinkUserID != "" && (u.ID != options.LinkUserID || !strings.EqualFold(u.Email, candidate.Email)) {
-		return u, false, authn.ErrOAuthLinkRequired
+	// An ID-token link refreshes an identity the user already owns and refuses
+	// one that belongs to someone else first. Every other explicit link, as on
+	// the reference's browser path, first needs a verified email or a trusted
+	// provider, then a matching email, and only then an identity it may take.
+	if options.LinkUserID != "" {
+		if !existing || options.IDTokenValidUntil.IsZero() {
+			if !candidate.EmailVerified && !options.TrustedProvider {
+				return u, false, authn.ErrOAuthLinkNotAllowed
+			}
+			// The owner row is already locked by lockActiveAccount.
+			var owner authn.User
+			err = tx.QueryRowContext(ctx, s.bind(`SELECT `+userColumns+` FROM "user" u WHERE u."id"=?`+suffix), options.LinkUserID).Scan(userFields(&owner)...)
+			if errors.Is(err, sql.ErrNoRows) {
+				return u, false, authn.ErrNotFound
+			}
+			if err != nil {
+				return u, false, err
+			}
+			if !options.AllowDifferentEmails && !strings.EqualFold(owner.Email, candidate.Email) {
+				return u, false, authn.ErrOAuthLinkEmailMismatch
+			}
+			if !existing {
+				u = owner
+			}
+		}
+		if existing && u.ID != options.LinkUserID {
+			return u, false, authn.ErrOAuthAccountAlreadyLinked
+		}
 	}
 	created := false
 	emailLink := false
-	if !existing {
+	if !existing && options.LinkUserID == "" {
 		err = tx.QueryRowContext(ctx, s.bind(`SELECT `+userColumns+` FROM "user" u WHERE u."email"=?`+suffix), candidate.Email).Scan(userFields(&u)...)
 		switch {
 		case errors.Is(err, sql.ErrNoRows):
-			if options.LinkUserID != "" {
-				return u, false, authn.ErrOAuthLinkRequired
-			}
 			if options.DisableSignUp {
 				return u, false, authn.ErrOAuthSignupDisabled
 			}
@@ -236,11 +256,11 @@ func (s *Store) completeOAuth(ctx context.Context, provider, subject string, tok
 			}
 		case err != nil:
 			return u, false, err
-		case options.LinkUserID != "" && u.ID != options.LinkUserID:
-			return u, false, authn.ErrOAuthLinkRequired
-		case options.LinkUserID == "":
+		default:
 			emailLink = true
 		}
+	}
+	if !existing {
 		key := sha256.Sum256([]byte(provider + "\x00" + subject))
 		account = hex.EncodeToString(key[:16])
 	}
@@ -251,7 +271,10 @@ func (s *Store) completeOAuth(ctx context.Context, provider, subject string, tok
 			return u, false, err
 		}
 	}
-	if emailLink && (options.DisableImplicitLinking || strings.ToLower(u.Email) != candidate.Email || !u.EmailVerified || (!(options.AllowVerifiedEmailLink && candidate.EmailVerified) && !(hooks != nil && hooks.trustEmailDomain))) {
+	// A trusted provider stands in for the provider's verified email. The
+	// local email must still be verified.
+	if emailLink && (options.DisableImplicitLinking || strings.ToLower(u.Email) != candidate.Email || !u.EmailVerified ||
+		(!options.TrustedProvider && !(options.AllowVerifiedEmailLink && candidate.EmailVerified) && !(hooks != nil && hooks.trustEmailDomain))) {
 		return u, false, authn.ErrOAuthLinkRequired
 	}
 	authority := socialAuthority

@@ -110,10 +110,16 @@ type OAuthLoginOptions struct {
 	// login. Adapters still claim single-use grants and apply the session policy.
 	DisableAccountUpdateOnSignIn bool
 	// DisableImplicitLinking also takes precedence over directory-based trust in custom stores.
-	DisableImplicitLinking       bool
-	OneTapNonce                  string
-	OneTapExpires                time.Time
-	AllowVerifiedEmailLink       bool
+	DisableImplicitLinking bool
+	OneTapNonce            string
+	OneTapExpires          time.Time
+	AllowVerifiedEmailLink bool
+	// TrustedProvider accepts a provider email that is not verified for a
+	// link. An implicit link still needs a verified local email.
+	TrustedProvider bool
+	// AllowDifferentEmails lets an explicit link attach to LinkUserID
+	// whatever the provider email.
+	AllowDifferentEmails         bool
 	LinkUserID, LinkSessionToken string
 	IDTokenValidUntil            time.Time
 	// IDTokenHash binds single-use grants independently of randomized storage encryption.
@@ -177,6 +183,14 @@ var ErrOAuthEmailUnverified = errors.New("OAuth account requires email verificat
 
 var ErrOAuthSignupDisabled = errors.New("OAuth account creation disabled")
 var ErrOAuthLinkRequired = errors.New("account must be linked by its existing owner")
+
+// ErrOAuthLinkNotAllowed refuses an explicit link from a provider that is not
+// trusted and did not verify the email.
+var ErrOAuthLinkNotAllowed = errors.New("provider email is not verified and the provider is not trusted")
+
+// ErrOAuthLinkEmailMismatch refuses an explicit link whose provider email
+// differs from the account's email.
+var ErrOAuthLinkEmailMismatch = errors.New("provider email does not match the account email")
 var ErrIDTokenUsed = errors.New("ID token has already been used")
 var providerName = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$`)
 

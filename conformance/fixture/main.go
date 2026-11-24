@@ -568,6 +568,10 @@ func main() {
 	}
 	opts.DisableAccountLinking = os.Getenv("CONFORMANCE_LINK_POLICY") == "disabled"
 	opts.DisableImplicitAccountLinking = os.Getenv("CONFORMANCE_LINK_POLICY") == "explicit"
+	if os.Getenv("CONFORMANCE_LINK_TRUSTED") == "1" {
+		opts.TrustedProviders = []string{"work"}
+	}
+	opts.AllowDifferentEmails = os.Getenv("CONFORMANCE_LINK_DIFFERENT") == "1"
 	opts.DisableAccountUpdateOnSignIn = os.Getenv("CONFORMANCE_PRESERVE_PROVIDER_CREDENTIALS") == "1"
 	switch os.Getenv("CONFORMANCE_EMAIL_POLICY") {
 	case "disabled":

@@ -76,7 +76,8 @@ func TestEnterpriseProviderManagement(t *testing.T) {
 				must(e)
 				management, e := admin.New(admin.Options{})
 				must(e)
-				host, e := auth.New(auth.Options{BaseURL: "https://enterprise.test", BasePath: "/identity", TrustedOrigins: []string{idp.URL}, Store: s, Secret: strings.Repeat("x", 32), EmailAndPassword: true, Plugins: []auth.Plugin{organization, plugin, management}})
+				host, e := auth.New(auth.Options{BaseURL: "https://enterprise.test", BasePath: "/identity", TrustedOrigins: []string{idp.URL}, Store: s, Secret: strings.Repeat("x", 32), EmailAndPassword: true, Plugins: []auth.Plugin{organization, plugin, management},
+					TrustedProviders: []string{"Partner"}})
 				must(e)
 				return host
 			}
@@ -169,6 +170,8 @@ func TestEnterpriseProviderManagement(t *testing.T) {
 			check(call(catalogOnly, path, member, makeBody("member-reg", orgID, "/discovery")), 403)
 			check(call(one, path, owner, makeBody("bad-case", strings.ToLower(orgID), "/discovery")), 400)
 			check(call(one, path, other, makeBody("credential", "", "/discovery")), 422)
+			// A trusted provider ID is reserved whatever its case.
+			check(call(one, path, other, makeBody("partner", "", "/discovery")), 422)
 			check(call(build(b, 0), path, other, makeBody("disabled", "", "/discovery")), 403)
 			if fetched.Load() != 0 {
 				t.Fatal("discovery ran before authorization")

@@ -5,7 +5,8 @@
 ## account_already_linked_to_different_user
 
 - [ ] account_already_linked_to_different_user
-  - [ ] What is it?
+  - [x] What is it? ([test](../../conformance/social-link-options.mjs#L97))
+    - [x] Linking an identity another user owns returns account_already_linked_to_different_user on both runtimes ([test](../../conformance/social-link-options.mjs#L97))
   - [ ] How to resolve
     - [ ] Typical resolutions
     - [ ] Common Causes
@@ -16,7 +17,8 @@
 ## account_not_linked
 
 - [ ] account_not_linked
-  - [ ] What is it?
+  - [x] What is it? ([test](../../conformance/social-link-options.mjs#L79))
+    - [x] A sign-in that cannot link to the existing same-email user returns account_not_linked with no session on both runtimes ([test](../../conformance/social-link-options.mjs#L79))
   - [ ] Common Causes
   - [ ] How to resolve
     - [ ] Enable or configure account linking
@@ -27,7 +29,8 @@
 ## email_doesn't_match
 
 - [ ] email_doesn't_match
-  - [ ] What is it?
+  - [x] What is it? ([test](../../conformance/social-link-options.mjs#L93))
+    - [x] An explicit link whose provider email differs returns to the error callback with email_does_not_match on both runtimes ([test](../../conformance/social-link-options.mjs#L93))
   - [ ] Common Causes
   - [ ] How to resolve
     - [ ] Ask the user to align identities
@@ -197,7 +200,8 @@
 ## unable_to_link_account
 
 - [ ] unable_to_link_account
-  - [ ] What is it?
+  - [x] What is it? ([test](../../conformance/social-link-options.mjs#L83))
+    - [x] An explicit link from an untrusted provider with an unverified email returns unable_to_link_account on both runtimes ([test](../../conformance/social-link-options.mjs#L83))
   - [ ] Common Causes
   - [ ] How to resolve
     - [ ] Allow linking for the intended provider
@@ -433,8 +437,12 @@
         - [x] Deny an automatic link even when a registered enterprise IdP has a verified matching domain ([test](../../adapters/sqlstore/sso_domain_test.go#L300))
         - [x] Keep new social registration available and leave no partial session on a same-email collision on all SQL engines ([test](../../adapters/sqlstore/social_test.go#L107))
         - [x] Use a mobile ID token to sign in only after the authenticated account owner explicitly links the provider ([test](../../conformance/goapi/oauth_signup_test.go#L145))
-      - [ ] `trustedProviders`
-      - [ ] `allowDifferentEmails`
+      - [x] `trustedProviders` ([test](../../conformance/social-link-options.mjs#L75))
+        - [x] On both runtimes a trusted provider links an unverified provider email to a verified owner on sign-in and through linkSocial, but never to an unverified owner; an untrusted one gets account_not_linked or unable_to_link_account ([test](../../conformance/social-link-options.mjs#L75))
+        - [x] TrustedProvidersForRequest chooses the list per request from a body-free copy, and its error fails the sign-in ([test](../../conformance/goapi/oauth_link_options_test.go#L38))
+        - [x] On SQLite, PostgreSQL and MySQL trust stands in for the provider's verified email, never the local one, and DisableImplicitLinking still wins ([test](../../adapters/sqlstore/oauth_link_options_test.go#L17))
+      - [x] `allowDifferentEmails` ([test](../../conformance/social-link-options.mjs#L91))
+        - [x] On both runtimes linkSocial with a different provider email gets email_does_not_match, and with allowDifferentEmails links to the signed-in user without changing their email ([test](../../conformance/social-link-options.mjs#L91))
       - [x] `allowUnlinkingAll` ([test](../../conformance/goapi/database_user_hooks_test.go#L342))
         - [x] With AllowUnlinkingAll true, POST /unlink-account removes the user's only credential account and its delete hooks run ([test](../../conformance/goapi/database_user_hooks_test.go#L342))
       - [ ] `updateUserInfoOnLink`

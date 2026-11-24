@@ -14,7 +14,7 @@ import (
 
 func (s *Store) CompleteSAMLLogin(ctx context.Context, reference string, provision, verified bool, provider, subject string, receipt sso.AssertionReceipt, u auth.User, session auth.StoredSession, opts auth.OAuthLoginOptions) (auth.User, bool, error) {
 	// Existing users may link by email only under the provider's live DNS proof.
-	opts.AllowVerifiedEmailLink = false
+	opts.AllowVerifiedEmailLink, opts.TrustedProvider, opts.AllowDifferentEmails = false, false, false
 	return s.completeEnterpriseLogin(ctx, reference, provision, provider, subject, auth.OAuthTokens{}, u, session, opts, verified, &receipt)
 }
 func (s *Store) consumeSAMLAssertion(ctx context.Context, tx *sql.Tx, p sso.BrowserProvider, r sso.AssertionReceipt, now time.Time) error {

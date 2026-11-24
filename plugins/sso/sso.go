@@ -221,7 +221,12 @@ func New(o Options) (auth.Plugin, error) {
 		if !slug.MatchString(id) || strings.Contains(id, "..") {
 			return nil, apiError(400, "Invalid providerId")
 		}
-		if slices.Contains(reserved, strings.ToLower(id)) || c.Auth.HasOAuthProvider(id) {
+		// A trusted provider ID would let this tenant's identities link by name.
+		trusted, trustErr := c.Auth.TrustedProviderIDs(c.Request)
+		if trustErr != nil {
+			return nil, trustErr
+		}
+		if slices.Contains(reserved, strings.ToLower(id)) || c.Auth.HasOAuthProvider(id) || slices.ContainsFunc(trusted, func(t string) bool { return strings.EqualFold(t, id) }) {
 			return nil, apiError(422, "This providerId is reserved and cannot be used for an SSO provider")
 		}
 		domain, _ := c.Body["domain"].(string)

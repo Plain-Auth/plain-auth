@@ -220,8 +220,8 @@ func TestOAuthProxyAcrossDeployments(t *testing.T) {
 			callback, browser = begin("/link-social", session)
 			target = relay(callback)
 			w = proxyRequest(t, origin, "GET", target.String(), nil, browser, 302)
-			if w.Header().Get("Location") != "/error?error=account_not_linked" {
-				t.Fatal("link did not enforce the existing owner's email policy")
+			if w.Header().Get("Location") != "/error?error=email_does_not_match" {
+				t.Fatal("link did not enforce the existing owner's email policy", w.Header().Get("Location"))
 			}
 			issuer.mu.Lock()
 			issuer.identity.Email = "member@social.test"

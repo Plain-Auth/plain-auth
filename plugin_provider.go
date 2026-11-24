@@ -1,7 +1,10 @@
 package plainauth
 
 import (
+	"fmt"
+	"net/http"
 	"net/url"
+	"slices"
 	"strings"
 
 	"github.com/Plain-Org/plain-auth/internal/httporigin"
@@ -16,6 +19,22 @@ func (a *Auth) HasOAuthProvider(id string) bool {
 		}
 	}
 	return false
+}
+
+// TrustedProviderIDs returns the provider IDs trusted for account linking on
+// this request, from TrustedProviders or TrustedProvidersForRequest.
+func (a *Auth) TrustedProviderIDs(r *http.Request) ([]string, error) {
+	if a.opts.TrustedProvidersForRequest == nil {
+		return slices.Clone(a.opts.TrustedProviders), nil
+	}
+	if r == nil {
+		return nil, nil
+	}
+	ids, err := a.opts.TrustedProvidersForRequest(accountObserverRequest(r.Context(), r))
+	if err != nil {
+		return nil, fmt.Errorf("auth: trusted providers: %w", err)
+	}
+	return ids, nil
 }
 
 // ExplicitlyTrustedOrigin permits server-side discovery only at an exact

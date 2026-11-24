@@ -278,7 +278,7 @@ func (s *Store) completeEnterpriseLogin(ctx context.Context, ref string, provisi
 		},
 	}
 	// Matching an unverified directory domain never grants linking to an existing email.
-	opts.AllowVerifiedEmailLink = false
+	opts.AllowVerifiedEmailLink, opts.TrustedProvider, opts.AllowDifferentEmails = false, false, false
 	var u auth.User
 	var created bool
 	err := s.withMemberAdmission(ctx, func(decision *memberAdmission) error {

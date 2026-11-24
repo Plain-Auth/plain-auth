@@ -9,6 +9,7 @@ import (
 	"mime"
 	"net/http"
 	"net/url"
+	"slices"
 	"strings"
 	"time"
 
@@ -366,8 +367,18 @@ func (a *Auth) finishBrowserOAuth(w http.ResponseWriter, r *http.Request, id str
 		}
 		return failWithDescription(apiError.Code, apiError.Message)
 	}
-	if errors.Is(err, ErrOAuthLinkingDisabled) {
+	linkFailed := errors.Is(err, ErrOAuthLinkingDisabled) || errors.Is(err, ErrOAuthLinkNotAllowed) || (flow.LinkUserID != "" && errors.Is(err, ErrNotFound))
+	if (linkFailed || errors.Is(err, ErrOAuthLinkEmailMismatch) || errors.Is(err, ErrOAuthAccountAlreadyLinked)) && flow.ErrorCallbackURL == "" {
+		flow.ErrorCallbackURL = a.opts.BaseURL + a.opts.BasePath + "/error"
+	}
+	if linkFailed {
 		return fail("unable_to_link_account")
+	}
+	if errors.Is(err, ErrOAuthLinkEmailMismatch) {
+		return fail("email_does_not_match")
+	}
+	if errors.Is(err, ErrOAuthAccountAlreadyLinked) {
+		return fail("account_already_linked_to_different_user")
 	}
 	if errors.As(err, &apiError) && apiError.Code == "OAUTH_PROFILE_CONFLICT" {
 		return fail("profile_conflict")
@@ -511,6 +522,12 @@ func (a *Auth) completeProfile(ctx context.Context, r *http.Request, id, callbac
 		}
 		complete = store.RefreshOwnedOAuthLink
 	}
+	trusted, err := a.TrustedProviderIDs(r)
+	if err != nil {
+		return AuthResult{}, false, err
+	}
+	options.TrustedProvider = slices.Contains(trusted, id)
+	options.AllowDifferentEmails = options.LinkUserID != "" && a.opts.AllowDifferentEmails
 	result, created, err := a.completeProfileWith(ctx, r, id, p, tokens, options, complete)
 	blocked := errors.Is(err, ErrOAuthEmailUnverified)
 	if (err == nil || blocked) && options.LinkUserID == "" && !result.User.EmailVerified && a.opts.SendVerificationEmail != nil {
@@ -644,11 +661,17 @@ func (a *Auth) directOAuth(w http.ResponseWriter, r *http.Request, id string, p 
 	if errors.Is(err, ErrIDTokenUsed) {
 		return nil, &APIError{401, "INVALID_TOKEN", "Invalid token"}
 	}
-	if errors.Is(err, ErrOAuthLinkingDisabled) {
+	if errors.Is(err, ErrOAuthLinkingDisabled) || errors.Is(err, ErrOAuthLinkNotAllowed) {
 		return nil, &APIError{401, "LINKING_NOT_ALLOWED", "Account not linked - linking not allowed"}
+	}
+	if errors.Is(err, ErrOAuthLinkEmailMismatch) {
+		return nil, &APIError{401, "LINKING_DIFFERENT_EMAILS_NOT_ALLOWED", "Account not linked - different emails not allowed"}
 	}
 	if errors.Is(err, ErrOAuthAccountAlreadyLinked) {
 		return nil, &APIError{409, "SOCIAL_ACCOUNT_ALREADY_LINKED", "Social account already linked"}
+	}
+	if linkUserID != "" && errors.Is(err, ErrNotFound) {
+		return nil, &APIError{401, "UNAUTHORIZED", "Unauthorized"}
 	}
 	if errors.Is(err, ErrOAuthLinkRequired) || errors.Is(err, ErrNotFound) {
 		return nil, &APIError{401, "ACCOUNT_NOT_LINKED", "Account not linked"}

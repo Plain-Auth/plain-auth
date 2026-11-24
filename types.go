@@ -120,6 +120,23 @@ type Options struct {
 	DisableAccountLinking bool
 	// DisableImplicitAccountLinking requires an authenticated owner to link an additional provider.
 	DisableImplicitAccountLinking bool
+	// TrustedProviders lists social provider IDs whose identities may link
+	// without a verified email from the provider, such as "google", which also
+	// covers One Tap. A sign-in can then attach to an existing user with the
+	// same verified email, and a signed-in user can link the identity. Trust
+	// never marks an email as verified, and it raises the risk of account
+	// takeover: list only providers that own their users' email addresses.
+	TrustedProviders []string
+	// TrustedProvidersForRequest chooses the trusted providers per request,
+	// for example per tenant, instead of TrustedProviders. It receives a copy
+	// of the request without its body whenever a social sign-in or link
+	// reaches the store and when an SSO provider is registered. An error
+	// fails that request.
+	TrustedProvidersForRequest func(*http.Request) ([]string, error)
+	// AllowDifferentEmails lets a signed-in user link a provider identity
+	// whose email differs from their own. The user's email does not change,
+	// and whoever controls that provider account can then sign in as them.
+	AllowDifferentEmails bool
 	// DisableAccountUpdateOnSignIn preserves credentials on existing provider
 	// accounts during sign-in. New links and explicit reauthorization still store grants.
 	DisableAccountUpdateOnSignIn bool
