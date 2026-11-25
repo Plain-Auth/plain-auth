@@ -228,11 +228,12 @@ func (a *Auth) checkDatabaseHooks() error {
 		need("admin", a.HasPlugin("admin"))
 	}
 	if d.session.delete.set() {
-		for _, id := range []string{"admin", "anonymous", "magic-link", "sso", "two-factor"} {
+		// A magic link or email code that proves an unverified account's
+		// address removes its sessions inside the store.
+		for _, id := range []string{"admin", "anonymous", "magic-link", "email-otp", "sso", "two-factor"} {
 			need(id, a.HasPlugin(id))
 		}
-		// Code resets find their account inside the store's transaction.
-		need("RevokeSessionsOnPasswordReset with email-otp", a.opts.RevokeSessionsOnPasswordReset && a.HasPlugin("email-otp"))
+		// Phone code resets find their account inside the store's transaction.
 		need("RevokeSessionsOnPasswordReset with phone-number", a.opts.RevokeSessionsOnPasswordReset && a.HasPlugin("phone-number"))
 	}
 	if d.user.delete.set() {
@@ -245,12 +246,11 @@ func (a *Auth) checkDatabaseHooks() error {
 		}
 		// These flows write linked accounts inside the store's transaction.
 		need("social sign-in", len(a.opts.SocialProviders) > 0)
-		for _, id := range []string{"one-tap", "sso", "admin", "siwe", "magic-link", "anonymous"} {
+		for _, id := range []string{"one-tap", "sso", "admin", "siwe", "magic-link", "email-otp", "anonymous"} {
 			need(id, a.HasPlugin(id))
 		}
 	}
 	if d.account.create.set() || d.account.update.set() {
-		need("email-otp", a.HasPlugin("email-otp"))
 		need("phone-number", a.HasPlugin("phone-number"))
 	}
 	if d.verification.create.set() || d.verification.update.set() || d.verification.delete.set() {

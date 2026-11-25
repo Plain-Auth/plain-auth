@@ -262,12 +262,15 @@ func TestDatabaseSessionHooksRefuseBypassingFeatures(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	deleting := base()
-	deleting.RevokeSessionsOnPasswordReset = true
-	deleting.Plugins = []authn.Plugin{codes}
-	deleting.DatabaseHooks.Session.Delete = update
-	if _, err := authn.New(deleting); err == nil || !strings.Contains(err.Error(), "RevokeSessionsOnPasswordReset with email-otp") {
-		t.Fatal("session delete hooks were accepted with code-reset revocation", err)
+	// An email code that proves an unverified account's address removes its sessions inside the store.
+	for _, revoke := range []bool{false, true} {
+		deleting := base()
+		deleting.RevokeSessionsOnPasswordReset = revoke
+		deleting.Plugins = []authn.Plugin{codes}
+		deleting.DatabaseHooks.Session.Delete = update
+		if _, err := authn.New(deleting); err == nil || !strings.Contains(err.Error(), "email-otp") {
+			t.Fatal("session delete hooks were accepted with email codes", revoke, err)
+		}
 	}
 	userHook := authn.OperationHooks[authn.UserRecord]{After: func(context.Context, authn.UserRecord, *authn.HookContext) error { return nil }}
 	users := base()

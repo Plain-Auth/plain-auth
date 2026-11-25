@@ -266,9 +266,9 @@ Database hooks do not cover every flow yet. `New` refuses:
 - session create hooks with `AutoSignInAfterVerification`, or the email OTP plugin's, when `BeforeEmailVerification` or `AfterEmailVerification` is set;
 - user update hooks with social sign-in, the magic link, email OTP, phone number, One Tap, SSO, admin, two-factor or last-login-method plugin, `AutoSignInAfterVerification`, `BeforeEmailVerification` or `AfterEmailVerification`;
 - session update hooks with the organization or admin plugin;
-- session delete hooks with the admin, anonymous, magic link, SSO or two-factor plugin, or with `RevokeSessionsOnPasswordReset` and the email OTP or phone number plugin, whose code resets find the account inside the store;
+- session delete hooks with the admin, anonymous, magic link, email OTP, SSO or two-factor plugin, or with `RevokeSessionsOnPasswordReset` and the phone number plugin, whose code resets find the account inside the store. A magic link or email sign-in code that proves an unverified account's address removes its sessions inside the store;
 - user delete hooks with the admin or anonymous plugin;
-- account hooks with social sign-in, One Tap, SSO, or the admin, wallet, magic link or anonymous plugin, and account create and update hooks with email OTP or phone number, which write accounts inside the store's transaction;
+- account hooks with social sign-in, One Tap, SSO, or the admin, wallet, magic link, email OTP or anonymous plugin, and account create and update hooks with phone number, which write accounts inside the store's transaction;
 - verification hooks with the email OTP, phone number, two-factor, passkey, wallet, SSO or OAuth provider plugin, which keep their codes and challenges inside their stores;
 - verification delete hooks with `DeleteUserEnabled` on a store without `DeletionTokenFinder`, with the database OAuth state on a store without `OAuthFlowFinder`, with the magic link plugin on a store without `MagicLinkFinder`, or with the one-time token plugin on a store without `OneTimeTokenFinder`. The SQL stores implement all four; the memory store keeps no OAuth flows and implements the other three.
 

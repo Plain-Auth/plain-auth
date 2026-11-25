@@ -361,12 +361,15 @@ func TestDatabaseAccountHooks(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := authn.New(authn.Options{
-		BaseURL: "https://auth.example", Store: memory.New(), Secret: strings.Repeat("s", 32), EmailAndPassword: true,
-		Plugins:       []authn.Plugin{codes},
-		DatabaseHooks: authn.DatabaseHooks{Account: authn.ModelHooks[authn.LinkedAccount]{Update: op("update")}},
-	}); err == nil || !strings.Contains(err.Error(), "email-otp") {
-		t.Fatal("account hooks were accepted with email codes", err)
+	// An email sign-in code that proves an unverified account's address removes its accounts inside the store.
+	for _, hooks := range []authn.ModelHooks[authn.LinkedAccount]{{Update: op("update")}, {Delete: op("delete")}} {
+		if _, err := authn.New(authn.Options{
+			BaseURL: "https://auth.example", Store: memory.New(), Secret: strings.Repeat("s", 32), EmailAndPassword: true,
+			Plugins:       []authn.Plugin{codes},
+			DatabaseHooks: authn.DatabaseHooks{Account: hooks},
+		}); err == nil || !strings.Contains(err.Error(), "email-otp") {
+			t.Fatal("account hooks were accepted with email codes", err)
+		}
 	}
 }
 
