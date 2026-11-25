@@ -260,7 +260,9 @@ type Options struct {
 	// StoreAccountCookie records in an account_data cookie which linked
 	// provider account a browser signed in with, so get-access-token,
 	// refresh-token and account-info accept useAccountCookie. The cookie
-	// names the account; its tokens stay in the store.
+	// names the account; its tokens stay in the store. It lasts as long as
+	// SessionCookieCache.MaxAge, or five minutes, and an HTTP token refresh
+	// it selected, or a session cache re-issued for its user, renews it.
 	StoreAccountCookie bool
 	// EncryptOAuthTokens encrypts linked provider credentials at rest using the configured key ring.
 	EncryptOAuthTokens bool

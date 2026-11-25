@@ -383,11 +383,11 @@
       - [x] A browser social sign-up, a returning sign-in and an email link are checked with the provider ID and raw profile, and a refusal returns to the error callback with error and error_description ([test](../../conformance/goapi/user_validation_test.go#L267))
       - [x] ID-token sign-ups and links are checked with the provider ID and raw claims, and a refusal answers 403 with the app's code ([test](../../conformance/goapi/user_validation_test.go#L338))
     - [ ] Get Access Token
-      - [x] get-access-token with useAccountCookie returns the signed-in account's token, and refuses two selectors, another user's or an altered cookie, and no session ([test](../../conformance/goapi/account_cookie_test.go#L154))
+      - [x] get-access-token with useAccountCookie returns the signed-in account's token, and refuses two selectors, another user's or an altered cookie, and no session ([test](../../conformance/goapi/account_cookie_test.go#L175))
     - [ ] Refresh Access Token
-      - [x] refresh-token with useAccountCookie refreshes the signed-in account's tokens ([test](../../conformance/goapi/account_cookie_test.go#L162))
+      - [x] refresh-token with useAccountCookie refreshes the signed-in account's tokens ([test](../../conformance/goapi/account_cookie_test.go#L186))
     - [ ] Get Account Info Provided by the provider
-      - [x] account-info with useAccountCookie returns the signed-in account's provider identity ([test](../../conformance/goapi/account_cookie_test.go#L157))
+      - [x] account-info with useAccountCookie returns the signed-in account's provider identity ([test](../../conformance/goapi/account_cookie_test.go#L181))
     - [x] Requesting Additional Scopes ([test](../../conformance/social-user-fields.mjs#L307))
       - [x] Request additional scopes as the signed-in owner and merge the approved grant once across both servers ([test](../../conformance/social-user-fields.mjs#L307))
     - [ ] Customizing the Authorization URL

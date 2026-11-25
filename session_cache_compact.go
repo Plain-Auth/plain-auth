@@ -314,6 +314,7 @@ func (a *Auth) writeCachedSessionView(h http.Header, r *http.Request, data Sessi
 		return err
 	}
 	a.setSessionCacheCookies(h, r, cookies)
+	a.renewAccountCookie(h, r, data.User.ID)
 	return nil
 }
 

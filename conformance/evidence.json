@@ -21142,9 +21142,20 @@
   ],
   "docs/content/docs/reference/options.mdx#L526": [
     {
-      "label": "StoreAccountCookie sets a sealed account_data cookie on sign-in that selects the signed-in provider account for its own user only; unlike the reference, the tokens stay in the store",
+      "label": "StoreAccountCookie sets a sealed account_data cookie on sign-in that selects the signed-in provider account for its own user only, for the session cache's lifetime or five minutes; unlike the reference, the tokens stay in the store",
       "test": "conformance/goapi/account_cookie_test.go",
-      "marker": "func TestStoreAccountCookie(t *testing.T) {"
+      "marker": "func TestStoreAccountCookie(t *testing.T) {",
+      "complete": true
+    },
+    {
+      "label": "A token refresh of the account the cookie selected re-issues it with a fresh lifetime; a read that refreshes nothing, or a refresh selected by account ID, leaves it alone",
+      "test": "conformance/goapi/account_cookie_test.go",
+      "marker": "t.Fatal(\"a token refresh kept the old account cookie\")"
+    },
+    {
+      "label": "A re-issued session cache renews the account cookie for its own user and expires another user's",
+      "test": "conformance/goapi/account_cookie_test.go",
+      "marker": "t.Fatal(\"the session cache was re-issued without the account cookie\")"
     }
   ],
   "docs/content/docs/concepts/oauth.mdx#L109": [

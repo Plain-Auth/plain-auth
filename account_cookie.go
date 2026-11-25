@@ -45,21 +45,65 @@ func (a *Auth) setAccountCookie(h http.Header, r *http.Request, userID, provider
 	h.Add("Set-Cookie", cookie.String())
 }
 
+// readAccountCookie opens the one unexpired account_data cookie in h.
+func (a *Auth) readAccountCookie(h http.Header) (accountCookie, bool) {
+	var c accountCookie
+	if !a.opts.StoreAccountCookie || h == nil {
+		return c, false
+	}
+	cookies := (&http.Request{Header: h}).CookiesNamed(a.browserCookie("account_data", "", 0).Name)
+	if len(cookies) != 1 {
+		return c, false
+	}
+	raw, err := a.openRecord(accountCookiePurpose, cookies[0].Value)
+	if err != nil || json.Unmarshal(raw, &c) != nil || !c.ExpiresAt.After(a.now()) {
+		return accountCookie{}, false
+	}
+	return c, true
+}
+
+// renewAccountCookie follows a re-issued session cache for userID: it
+// re-issues the browser's account_data with a fresh lifetime when the cookie
+// belongs to userID, and expires it when it belongs to another user. A
+// missing, altered or expired cookie is left alone.
+func (a *Auth) renewAccountCookie(h http.Header, r *http.Request, userID string) {
+	c, ok := a.readAccountCookie(r.Header)
+	if !ok {
+		return
+	}
+	if c.UserID == userID {
+		a.setAccountCookie(h, r, c.UserID, c.ProviderID, c.Subject)
+		return
+	}
+	expired := a.browserCookie("account_data", "", -1)
+	expireOtherScopes(h, r, expired)
+	h.Add("Set-Cookie", expired.String())
+}
+
+// accountCookieRefresh is the HTTP response in which a token refresh of the
+// account that account_data selected renews that cookie.
+type accountCookieRefresh struct {
+	h http.Header
+	r *http.Request
+}
+
+type accountCookieRefreshKey struct{ a *Auth }
+
+// renewRefreshedAccountCookie re-issues account_data after a committed token
+// refresh of row, when an HTTP request selected row through the cookie.
+func (a *Auth) renewRefreshedAccountCookie(ctx context.Context, row ProviderAccountCredential) {
+	if out, ok := ctx.Value(accountCookieRefreshKey{a}).(accountCookieRefresh); ok {
+		a.setAccountCookie(out.h, out.r, row.UserID, row.ProviderID, row.Subject)
+	}
+}
+
 // cookieAccount returns the local account record, provider and subject the
 // account_data cookie in h names for userID. A missing, altered, expired or
 // foreign cookie, or an account since unlinked, is ACCOUNT_NOT_FOUND.
 func (a *Auth) cookieAccount(ctx context.Context, h http.Header, userID string) (accountCookie, string, error) {
 	notFound := &APIError{400, "ACCOUNT_NOT_FOUND", "Account not found"}
-	if !a.opts.StoreAccountCookie || h == nil {
-		return accountCookie{}, "", notFound
-	}
-	cookies := (&http.Request{Header: h}).CookiesNamed(a.browserCookie("account_data", "", 0).Name)
-	if len(cookies) != 1 {
-		return accountCookie{}, "", notFound
-	}
-	raw, err := a.openRecord(accountCookiePurpose, cookies[0].Value)
-	var c accountCookie
-	if err != nil || json.Unmarshal(raw, &c) != nil || c.UserID != userID || !c.ExpiresAt.After(a.now()) {
+	c, ok := a.readAccountCookie(h)
+	if !ok || c.UserID != userID {
 		return accountCookie{}, "", notFound
 	}
 	accounts, err := a.opts.Store.(LinkedAccountStore).ListUserAccounts(ctx, userID)

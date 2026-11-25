@@ -20,7 +20,9 @@ import (
 
 // StoreAccountCookie records which provider account a browser signed in
 // with, so the provider credential routes accept useAccountCookie for that
-// user only, while the tokens stay in the store.
+// user only, while the tokens stay in the store. A token refresh of the
+// account the cookie selected renews it, and so does a session cache
+// re-issued for its user; a cache re-issued for another user expires it.
 func TestStoreAccountCookie(t *testing.T) {
 	provider := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
@@ -35,18 +37,26 @@ func TestStoreAccountCookie(t *testing.T) {
 				_, _ = w.Write([]byte(`{"access_token":"access-2","refresh_token":"refresh-2","token_type":"Bearer","expires_in":3600}`))
 				return
 			}
-			_, _ = w.Write([]byte(`{"access_token":"access-` + strings.TrimPrefix(r.Form.Get("code"), "code-") + `","refresh_token":"refresh","token_type":"Bearer","expires_in":3600}`))
+			// lin's first token is about to expire, so the next read refreshes it.
+			expires := "3600"
+			if r.Form.Get("code") == "code-lin" {
+				expires = "1"
+			}
+			_, _ = w.Write([]byte(`{"access_token":"access-` + strings.TrimPrefix(r.Form.Get("code"), "code-") + `","refresh_token":"refresh","token_type":"Bearer","expires_in":` + expires + `}`))
 		default:
 			w.WriteHeader(http.StatusNotFound)
 		}
 	}))
 	defer provider.Close()
-	for _, name := range []string{"on", "off", "short"} {
+	for _, name := range []string{"on", "off", "short", "cached"} {
 		enabled := name != "off"
 		t.Run(name, func(t *testing.T) {
 			var cache *auth.SessionCookieCacheOptions
-			if name == "short" {
+			switch name {
+			case "short":
 				cache = &auth.SessionCookieCacheOptions{MaxAge: time.Second}
+			case "cached":
+				cache = &auth.SessionCookieCacheOptions{}
 			}
 			store, err := sqlite.Open(":memory:")
 			if err != nil {
@@ -71,6 +81,7 @@ func TestStoreAccountCookie(t *testing.T) {
 			defer app.Close()
 			appURL, _ := url.Parse(base)
 			cookieName := "authn.account_data"
+			var issued []string
 			call := func(c *http.Client, method, path, body string) (int, map[string]any) {
 				t.Helper()
 				r, _ := http.NewRequest(method, base+"/api/auth"+path, bytes.NewReader([]byte(body)))
@@ -81,12 +92,22 @@ func TestStoreAccountCookie(t *testing.T) {
 					t.Fatal(err)
 				}
 				defer res.Body.Close()
+				issued = res.Header.Values("Set-Cookie")
 				data, _ := io.ReadAll(res.Body)
 				var out map[string]any
 				_ = json.Unmarshal(data, &out)
 				return res.StatusCode, out
 			}
-			var issued []string
+			// renewed reports whether the last response issued a fresh
+			// account cookie.
+			renewed := func() bool {
+				for _, line := range issued {
+					if c, err := http.ParseSetCookie(line); err == nil && c.Name == cookieName && c.Value != "" && c.MaxAge == 300 {
+						return true
+					}
+				}
+				return false
+			}
 			signIn := func(who string) *http.Client {
 				t.Helper()
 				jar, _ := cookiejar.New(nil)
@@ -154,14 +175,35 @@ func TestStoreAccountCookie(t *testing.T) {
 			if status != 200 || out["accessToken"] != "access-ada" {
 				t.Fatal("get-access-token answered", status, out)
 			}
+			if renewed() {
+				t.Fatal("a read that refreshed nothing renewed the account cookie")
+			}
 			status, out = call(ada, "GET", "/account-info?useAccountCookie=true", "")
 			account, _ := out["account"].(map[string]any)
-			if status != 200 || account["accountId"] != "subject-ada" {
-				t.Fatal("account-info answered", status, out)
+			if status != 200 || account["accountId"] != "subject-ada" || renewed() {
+				t.Fatal("account-info answered", status, out, renewed())
 			}
 			status, out = call(ada, "POST", "/refresh-token", `{"useAccountCookie":true}`)
 			if status != 200 || out["accessToken"] != "access-2" || out["providerId"] != "local" {
 				t.Fatal("refresh-token answered", status, out)
+			}
+			if !renewed() {
+				t.Fatal("a token refresh kept the old account cookie")
+			}
+			// A refresh selected by account ID leaves the cookie alone.
+			if status, out = call(ada, "POST", "/refresh-token", `{"accountId":"`+account["id"].(string)+`"}`); status != 200 || renewed() {
+				t.Fatal("a refresh by account ID answered", status, out, renewed())
+			}
+			// A read that refreshes a due token renews the cookie.
+			lin := signIn("lin")
+			if status, out = call(lin, "POST", "/get-access-token", `{"useAccountCookie":true}`); status != 200 || out["accessToken"] != "access-2" || !renewed() {
+				t.Fatal("a refreshing read answered", status, out, renewed())
+			}
+			if name == "cached" {
+				call(ada, "GET", "/get-session?disableCookieCache=true", "")
+				if !renewed() {
+					t.Fatal("the session cache was re-issued without the account cookie")
+				}
 			}
 			if status, out = call(ada, "POST", "/get-access-token", `{"useAccountCookie":true,"accountId":"x"}`); status != 400 {
 				t.Fatal("two selectors answered", status, out)
@@ -173,6 +215,13 @@ func TestStoreAccountCookie(t *testing.T) {
 			if status, out = call(grace, "POST", "/get-access-token", `{"useAccountCookie":true}`); status != 400 || code(out) != "ACCOUNT_NOT_FOUND" {
 				t.Fatal("another user's account cookie answered", status, out)
 			}
+			// A session cache re-issued for grace expires ada's cookie; with
+			// no cache the cookie is only refused.
+			call(grace, "GET", "/get-session?disableCookieCache=true", "")
+			if (accountCookie(grace) == nil) != (name == "cached") {
+				t.Fatal("after grace's session was re-read, her jar holds", accountCookie(grace))
+			}
+			grace.Jar.SetCookies(appURL, []*http.Cookie{{Name: cookieName, Value: stolen.Value, Path: "/"}})
 			altered := []byte(stolen.Value)
 			altered[len(altered)-3] ^= 1
 			ada.Jar.SetCookies(appURL, []*http.Cookie{{Name: cookieName, Value: string(altered), Path: "/"}})

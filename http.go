@@ -254,7 +254,7 @@ func (a *Auth) handleCoreRequest(route string, w http.ResponseWriter, r *http.Re
 	case "/get-session":
 		return a.presentSession(w, r)
 	case "/get-access-token", "/refresh-token", "/account-info":
-		return a.providerCredentialsHTTP(ctx, route, r, body)
+		return a.providerCredentialsHTTP(ctx, route, w.Header(), r, body)
 	case "/list-accounts":
 		return a.ListUserAccounts(ctx, r.Header)
 	case "/unlink-account":

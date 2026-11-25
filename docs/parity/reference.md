@@ -479,8 +479,10 @@
         - [x] An enterprise OIDC sign-in in cookie mode keeps its flow sealed in sso_state, writes none and refuses another flow's cookie ([test](../../adapters/sqlstore/sso_state_cookie_test.go#L33))
       - [x] `"database"` ([test](../../conformance/goapi/oauth_test.go#L151))
         - [x] Social sign-in sets an oauth_state binding cookie and stores the flow ([test](../../conformance/goapi/oauth_test.go#L151))
-    - [ ] `storeAccountCookie`
-      - [x] StoreAccountCookie sets a sealed account_data cookie on sign-in that selects the signed-in provider account for its own user only; unlike the reference, the tokens stay in the store ([test](../../conformance/goapi/account_cookie_test.go#L24))
+    - [x] `storeAccountCookie` ([test](../../conformance/goapi/account_cookie_test.go#L26))
+      - [x] StoreAccountCookie sets a sealed account_data cookie on sign-in that selects the signed-in provider account for its own user only, for the session cache's lifetime or five minutes; unlike the reference, the tokens stay in the store ([test](../../conformance/goapi/account_cookie_test.go#L26))
+      - [x] A token refresh of the account the cookie selected re-issues it with a fresh lifetime; a read that refreshes nothing, or a refresh selected by account ID, leaves it alone ([test](../../conformance/goapi/account_cookie_test.go#L191))
+      - [x] A re-issued session cache renews the account cookie for its own user and expires another user's ([test](../../conformance/goapi/account_cookie_test.go#L205))
     - [x] `accountLinking` ([test](../../conformance/social-link-policy.mjs#L7))
       - [x] On both runtimes the default, explicit-only and disabled linking policies decide whether a same-email trusted provider sign-in links to the owner, needs the signed-in owner to link it, or is refused without a session, while an identity registered with linking closed keeps signing in ([test](../../conformance/social-link-policy.mjs#L7))
       - [x] `enabled` ([test](../../conformance/social-link-policy.mjs#L50))

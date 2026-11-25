@@ -64,7 +64,7 @@ type AccountInfoResult struct {
 	Data any `json:"data"`
 }
 
-func (a *Auth) providerCredentialsHTTP(ctx context.Context, route string, r *http.Request, body wireBody) (any, error) {
+func (a *Auth) providerCredentialsHTTP(ctx context.Context, route string, w http.Header, r *http.Request, body wireBody) (any, error) {
 	if r.Method == "GET" {
 		body = wireBody{}
 		for k, v := range r.URL.Query() {
@@ -99,6 +99,10 @@ func (a *Auth) providerCredentialsHTTP(ctx context.Context, route string, r *htt
 		default:
 			return nil, validationError("Unknown account selector")
 		}
+	}
+	// A refresh of the account the cookie selected renews the cookie.
+	if s.UseAccountCookie {
+		ctx = context.WithValue(ctx, accountCookieRefreshKey{a}, accountCookieRefresh{w, r})
 	}
 	// An HTTP request is never a trusted server call, including when tests or
 	// proxies construct a request with a nil Header map.
@@ -176,7 +180,9 @@ func (a *Auth) validCredential(ctx context.Context, store ProviderCredentialStor
 	}
 	ctx, cancel := context.WithTimeout(context.WithValue(ctx, oauth2.HTTPClient, p.HTTPClient), 15*time.Second)
 	defer cancel()
-	return store.UpdateProviderCredential(ctx, row.UserID, row.ID, func(current ProviderAccountCredential) (ProviderAccountCredential, bool, error) {
+	refreshed := false
+	updated, err := store.UpdateProviderCredential(ctx, row.UserID, row.ID, func(current ProviderAccountCredential) (ProviderAccountCredential, bool, error) {
+		refreshed = false
 		if current.ProviderID != row.ProviderID || current.Subject != row.Subject {
 			return current, false, &APIError{400, "ACCOUNT_NOT_FOUND", "Account not found"}
 		}
@@ -214,8 +220,13 @@ func (a *Auth) validCredential(ctx context.Context, store ProviderCredentialStor
 		if lifetime := refreshLifetime(t); lifetime > 0 {
 			current.RefreshExpiresAt = a.now().Add(lifetime)
 		}
+		refreshed = true
 		return current, true, nil
 	})
+	if err == nil && refreshed {
+		a.renewRefreshedAccountCookie(ctx, updated)
+	}
+	return updated, err
 }
 
 func refreshLifetime(t *oauth2.Token) time.Duration {
