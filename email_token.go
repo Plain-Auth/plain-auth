@@ -106,6 +106,24 @@ func (a *Auth) VerifyEmail(ctx context.Context, raw string) error {
 	return a.verifyAddress(ctx, claims)
 }
 
+var errProofUserMissing = &APIError{401, "USER_NOT_FOUND", "User not found"}
+
+// proofOwnerMissing answers a verification link its account no longer
+// matches: USER_NOT_FOUND when no account holds the address any more, as
+// in the reference, and INVALID_TOKEN when another account holds it.
+func (a *Auth) proofOwnerMissing(ctx context.Context, email string) error {
+	s, err := a.accountStore()
+	if err != nil {
+		return err
+	}
+	if _, err := s.FindAccountUser(ctx, email); errors.Is(err, ErrNotFound) {
+		return errProofUserMissing
+	} else if err != nil {
+		return err
+	}
+	return &APIError{401, "INVALID_TOKEN", "Invalid token"}
+}
+
 func (a *Auth) verifyAddress(ctx context.Context, claims verificationClaims) error {
 	s, err := a.accountStore()
 	if err != nil {
@@ -114,7 +132,10 @@ func (a *Auth) verifyAddress(ctx context.Context, claims verificationClaims) err
 	var verified User // set when hooks run for this change
 	if a.dbHooks.user.update.set() {
 		verified, err = s.FindAccountUser(ctx, claims.Email)
-		if errors.Is(err, ErrNotFound) || err == nil && verified.ID != claims.UserID {
+		if errors.Is(err, ErrNotFound) {
+			return errProofUserMissing
+		}
+		if err == nil && verified.ID != claims.UserID {
 			return &APIError{401, "INVALID_TOKEN", "Invalid token"}
 		}
 		if err != nil {
@@ -134,7 +155,7 @@ func (a *Auth) verifyAddress(ctx context.Context, claims verificationClaims) err
 	}
 	err = s.VerifyAccountEmail(ctx, claims.UserID, claims.Email, a.now().UTC())
 	if errors.Is(err, ErrNotFound) {
-		return &APIError{401, "INVALID_TOKEN", "Invalid token"}
+		return a.proofOwnerMissing(ctx, claims.Email)
 	}
 	if err == nil && verified.ID != "" {
 		err = a.afterUserUpdate(ctx, verified, nil)

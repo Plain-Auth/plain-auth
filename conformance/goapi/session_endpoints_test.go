@@ -37,6 +37,16 @@ func (c sessionClient) post(path, body, cookie string, status int) *http.Respons
 	return serve(c.t, c.auth, "POST", "/api/auth"+path, body, c.headers(cookie), status)
 }
 
+// get sends a GET to an auth path, which may already carry a query; a path
+// that starts with the base path is sent as it is.
+func (c sessionClient) get(path, cookie string, status int) *http.Response {
+	c.t.Helper()
+	if !strings.HasPrefix(path, "/api/auth/") {
+		path = "/api/auth" + path
+	}
+	return serve(c.t, c.auth, "GET", path, "", c.headers(cookie), status)
+}
+
 // signIn returns the session cookie and token of a new sign-in.
 func (c sessionClient) signIn(email string) (string, string) {
 	c.t.Helper()

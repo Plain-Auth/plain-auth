@@ -278,7 +278,8 @@
   - [x] Bring Your Own Email Provider ([test](../../conformance/goapi/account_test.go#L18))
     - [x] Delivery is host-supplied MailSender callbacks (SendVerificationEmail, SendResetPassword), so any provider works ([test](../../conformance/goapi/account_test.go#L18))
   - [ ] Email Verification
-    - [ ] Adding Email Verification to Your App
+    - [x] Adding Email Verification to Your App ([test](../../conformance/goapi/verification_endpoints_test.go#L245))
+      - [x] A sign-up whose user hook fails sends no verification mail, while one that stored the account sends its mail before the session's after hooks run ([test](../../conformance/goapi/verification_endpoints_test.go#L245))
       - [x] sendVerificationEmail ([test](../../conformance/goapi/mail_request_test.go#L58))
         - [x] Deliver verification links with the user, URL, token and a body-free copy of the request ([test](../../conformance/goapi/mail_request_test.go#L58))
       - [x] `user` ([test](../../conformance/goapi/account_test.go#L47))
@@ -631,9 +632,9 @@
     - [x] Revoke Other Sessions ([test](../../conformance/goapi/http_test.go#L101))
       - [x] Invalidate an older session while retaining the current one ([test](../../conformance/goapi/http_test.go#L99))
       - [x] After revoke-other-sessions the older session cookie gets 401 on list-sessions, while the current session still authenticates the following revoke-session ([test](../../conformance/goapi/http_test.go#L101))
-    - [x] Revoke All Sessions ([test](../../conformance/goapi/session_endpoints_test.go#L154))
+    - [x] Revoke All Sessions ([test](../../conformance/goapi/session_endpoints_test.go#L164))
       - [x] Revoke every session from the native client ([test](../../client/client_test.go#L94))
-      - [x] revoke-sessions ends every session of the caller, expires the session cookie, answers {"status":true} and leaves other users signed in ([test](../../conformance/goapi/session_endpoints_test.go#L154))
+      - [x] revoke-sessions ends every session of the caller, expires the session cookie, answers {"status":true} and leaves other users signed in ([test](../../conformance/goapi/session_endpoints_test.go#L164))
     - [x] Update Session ([test](../../conformance/session-fields.mjs#L22))
       - [x] Through the released client on both runtimes: updateSession persists additional fields, ignores a core userId, rejects id/userId-only and non-input fields, and returns 401 for guests or revoked sessions ([test](../../conformance/session-fields.mjs#L22))
     - [x] Revoking Sessions on Password Change ([test](../../conformance/goapi/account_test.go#L63))

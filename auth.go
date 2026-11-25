@@ -645,6 +645,15 @@ func (a *Auth) signUpEmail(ctx context.Context, in SignUpInput, meta RequestMeta
 		}
 		return AuthResult{}, err
 	}
+	// The verification link goes out once the user and its account are
+	// stored, before the session's after hooks, as in the reference.
+	if a.sendVerificationOnSignup(a.opts.RequireEmailVerification) && a.opts.SendVerificationEmail != nil {
+		if link, err := a.emailProofLink(ctx, user, "", "", meta.CallbackURL); err != nil {
+			a.Logger().ErrorContext(ctx, "Could not deliver sign-up verification email")
+		} else {
+			a.sendMailLink(ctx, "Could not deliver sign-up verification email", link, a.opts.SendVerificationEmail)
+		}
+	}
 	if first != nil {
 		if err := a.afterSessionCreate(ctx, *first, sessionFields); err != nil {
 			return AuthResult{}, err
@@ -657,13 +666,6 @@ func (a *Auth) signUpEmail(ctx context.Context, in SignUpInput, meta RequestMeta
 			a.runInBackgroundOrAwait(ctx, "Could not deliver sign-up verification code", func(ctx context.Context) error {
 				return a.emailOTP.Send(ctx, *message)
 			})
-		}
-	}
-	if a.sendVerificationOnSignup(a.opts.RequireEmailVerification) && a.opts.SendVerificationEmail != nil {
-		if link, err := a.emailProofLink(ctx, user, "", "", meta.CallbackURL); err != nil {
-			a.Logger().ErrorContext(ctx, "Could not deliver sign-up verification email")
-		} else {
-			a.sendMailLink(ctx, "Could not deliver sign-up verification email", link, a.opts.SendVerificationEmail)
 		}
 	}
 	if err := a.readPublicUserFields(ctx, &user); err != nil {

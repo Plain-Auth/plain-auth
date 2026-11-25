@@ -35,7 +35,7 @@ Paths below are relative to the configured auth base path. Authenticated browser
 | `GET /reset-password/{token}` | Trusted `callbackURL` query parameter | Redirects the browser to the application with `token` or `error` in the query. |
 | `POST /reset-password` | `newPassword` and the token in the body or query | Replaces the password and consumes the token. |
 | `POST /send-verification-email` | `email`, optional trusted `callbackURL` | Sends a verification link. A signed-in request must name its own address. |
-| `GET /verify-email` | `token`, optional trusted `callbackURL` | Marks the original account's current address verified. Redirects when a callback is supplied. |
+| `GET /verify-email` | `token`, optional trusted `callbackURL` | Marks the original account's current address verified. Redirects when a callback is supplied, with `error` set on failure: `TOKEN_EXPIRED`, `INVALID_TOKEN`, or `USER_NOT_FOUND` once no account holds the address. A link must name its owner and an expiry; Plain Auth never issues one without, and refuses one as `INVALID_TOKEN`. An email-change link whose account was deleted also answers `INVALID_TOKEN`. |
 
 For a browser reset form, pass its URL as `redirectTo` when requesting the email. Read the delivered token from the callback query and submit it with the new password. A successful reset preserves existing sessions by default. Set `RevokeSessionsOnPasswordReset` to revoke them during the reset transaction.
 

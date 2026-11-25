@@ -85,7 +85,7 @@ func (a *Auth) consumeVerification(ctx context.Context, claims verificationClaim
 		}
 	}
 	if errors.Is(err, ErrNotFound) {
-		err = &APIError{401, "INVALID_TOKEN", "Invalid token"}
+		err = a.proofOwnerMissing(ctx, claims.Email)
 	}
 	created := v.NewSession != nil && token != "" && token == v.NewSession.Token
 	if err == nil && created && !a.hasVerificationObservers() {

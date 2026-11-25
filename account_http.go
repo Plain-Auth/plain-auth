@@ -214,6 +214,18 @@ func (a *Auth) handleAccountRequest(route string, w http.ResponseWriter, r *http
 		}
 		return ok, a.resetPassword(ctx, token, password, r)
 	case "/reset-password/:token", "/verify-email":
+		// The query is validated before the callback's trust, as in the
+		// reference; an empty token is an invalid one, not a missing one.
+		if route == "/verify-email" {
+			switch {
+			case len(query["token"]) == 0:
+				return nil, validationError("[query.token] Invalid input: expected string, received undefined")
+			case len(query["token"]) > 1:
+				return nil, validationError("[query.token] Invalid input: expected string, received array")
+			case len(query["callbackURL"]) > 1:
+				return nil, validationError("[query.callbackURL] Invalid input: expected string, received array")
+			}
+		}
 		if route == "/reset-password/:token" {
 			switch len(query["callbackURL"]) {
 			case 0:
@@ -228,11 +240,7 @@ func (a *Auth) handleAccountRequest(route string, w http.ResponseWriter, r *http
 		}
 		callback := query.Get("callbackURL")
 		if route == "/verify-email" {
-			token := query.Get("token")
-			if token == "" {
-				return nil, validationError("[query.token] Invalid input: expected string, received undefined")
-			}
-			result, err := a.applyEmailProof(r, w.Header(), token, callback)
+			result, err := a.applyEmailProof(r, w.Header(), query.Get("token"), callback)
 			if callback != "" {
 				var apiErr *APIError
 				if errors.As(err, &apiErr) {

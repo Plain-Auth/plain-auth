@@ -88,11 +88,6 @@ func (h *passwordHost) signUp(email string) string {
 	return cookie
 }
 
-func (h *passwordHost) get(path, cookie string, status int) *http.Response {
-	h.t.Helper()
-	return serve(h.t, h.auth, "GET", "/api/auth"+path, "", h.headers(cookie), status)
-}
-
 // Requesting a reset answers the same for any address, mails a link that
 // carries the redirect, refuses an untrusted or malformed redirect, and the
 // callback redirects without spending the token.

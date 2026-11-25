@@ -795,6 +795,12 @@
       "label": "Deliver a verification link to the registered address",
       "test": "conformance/goapi/account_test.go",
       "marker": "verification delivery did not reach the account owner"
+    },
+    {
+      "label": "An anonymous request answers {\"status\":true} after at least 500ms for an unknown, a verified or an unverified address and mails only the unverified one; a signed-in caller gets EMAIL_MISMATCH or EMAIL_ALREADY_VERIFIED",
+      "test": "conformance/goapi/verification_endpoints_test.go",
+      "marker": "func TestSendVerificationEmailContract(t *testing.T) {",
+      "complete": true
     }
   ],
   "core/verifyEmail": [
@@ -817,6 +823,12 @@
       "label": "Compare original, earlier and ambiguous millisecond profile revisions against an actual signed link’s whole-second issue time",
       "test": "conformance/email-verification-session.mjs",
       "marker": "[\"timestamps differ within the issue second\", 0, 1, false]"
+    },
+    {
+      "label": "verify-email validates the query before the callback, answers INVALID_TOKEN for an empty or forged token, TOKEN_EXPIRED for an expired one and USER_NOT_FOUND for a deleted account, redirecting with the code when there is a callback",
+      "test": "conformance/goapi/verification_endpoints_test.go",
+      "marker": "func TestVerifyEmailContract(t *testing.T) {",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/bearer.mdx#L85": [
@@ -9968,6 +9980,12 @@
       "label": "Compare original, earlier and ambiguous millisecond profile revisions against an actual signed link’s whole-second issue time",
       "test": "conformance/email-verification-session.mjs",
       "marker": "[\"timestamps differ within the issue second\", 0, 1, false]"
+    },
+    {
+      "label": "With AutoSignInAfterVerification unset, a verification link verifies the address and answers {\"status\":true,\"user\":null}, or redirects, without setting a session cookie",
+      "test": "conformance/goapi/verification_endpoints_test.go",
+      "marker": "t.Fatal(\"verifying without automatic sign-in answered\", out, r.Header.Values(\"Set-Cookie\"), err)",
+      "complete": true
     }
   ],
   "plugin-symbol/stripe/SubscriptionOptions/onSubscriptionUpdate": [
@@ -21389,6 +21407,22 @@
       "label": "change-email does not reveal whether the target address is registered: the same 200 {\"status\":true}, no mail and no change",
       "test": "conformance/goapi/change_email_test.go",
       "marker": "t.Fatal(\"a taken address set cookies or sent mail\")"
+    }
+  ],
+  "docs/content/docs/concepts/email.mdx#L26": [
+    {
+      "label": "A sign-up whose user hook fails sends no verification mail, while one that stored the account sends its mail before the session's after hooks run",
+      "test": "conformance/goapi/verification_endpoints_test.go",
+      "marker": "t.Fatalf(\"a failed sign-up mailed %+v\", mails)",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/reference/options.mdx#L283/`expiresIn`": [
+    {
+      "label": "A verification link lasts 3600 seconds by default and EmailVerificationTokenTTL otherwise, and answers TOKEN_EXPIRED once it has expired",
+      "test": "conformance/goapi/verification_endpoints_test.go",
+      "marker": "t.Fatal(\"a one-second link lasts\", lifetime, \"seconds\")",
+      "complete": true
     }
   ]
 }
