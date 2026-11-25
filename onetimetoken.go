@@ -35,8 +35,8 @@ type OneTimeTokenStore interface {
 
 // OneTimeTokenFinder reads a one-time token without spending it, for
 // verification delete hooks. For the newest token stored under key that is
-// live at now, it returns the user its owner binding names, empty without
-// one, and the token's expiry. It judges only the stored token: one whose
+// live at now, it returns the user whose session it transfers, empty when
+// that is unknown, and the token's expiry. It judges only the stored token: one whose
 // session has ended, or whose key another live token shares, is still found,
 // and ConsumeOneTimeToken refuses it. A token unknown or expired at now is
 // ErrNotFound.

@@ -233,7 +233,7 @@
       - [x] Run verification hooks around browser OAuth flows on SQLite, PostgreSQL and MySQL: a declined spend refuses the callback and keeps the flow ([test](../../adapters/sqlstore/verification_hooks_test.go#L28))
       - [x] Run verification hooks around magic links: a declined request stores and mails nothing, a declined spend keeps the link, an after hook's error is never read as an invalid link, and the link's hooks run before the user and session hooks of its sign-in ([test](../../conformance/goapi/database_verification_plugin_hooks_test.go#L235))
       - [x] Run verification hooks around one-time tokens: a declined generate returns a token that redeems nothing, a declined redeem keeps the token, and a token whose session ended runs its after hooks before the refusal ([test](../../conformance/goapi/database_verification_plugin_hooks_test.go#L401))
-      - [x] Run magic link and one-time token verification hooks on SQLite, PostgreSQL and MySQL, once around a planned sign-in's dry run, outside the store's transaction and with the stored row's ID ([test](../../adapters/sqlstore/verification_hooks_test.go#L312))
+      - [x] Run magic link and one-time token verification hooks on SQLite, PostgreSQL and MySQL, once around a planned sign-in's dry run, outside the store's transaction and with the stored row's ID ([test](../../adapters/sqlstore/verification_hooks_test.go#L326))
       - [ ] 1. Before Hook
         - [x] Edit the stored fields of a new user or session, or cancel its creation, before anything is written ([test](../../conformance/goapi/database_hooks_test.go#L122))
         - [x] Run the create before hooks for social sign-in, magic links, email codes and phone verification outside the store transaction, for new users only ([test](../../conformance/goapi/database_decided_hooks_test.go#L297))
@@ -260,7 +260,7 @@
         - [ ] Behavior
           - [x] Fire one after hook for concurrent sign-ups of one email and none for a sign-up that stores nothing ([test](../../adapters/sqlstore/database_hooks_test.go#L111))
           - [x] Run session update and delete after hooks once the change is stored, on SQLite, PostgreSQL and MySQL ([test](../../adapters/sqlstore/database_hooks_test.go#L126))
-          - [x] Run one verification delete after hook among concurrent redemptions of a magic link or one-time token, on SQLite, PostgreSQL and MySQL ([test](../../adapters/sqlstore/verification_hooks_test.go#L507))
+          - [x] Run one verification delete after hook among concurrent redemptions of a magic link or one-time token, on SQLite, PostgreSQL and MySQL ([test](../../adapters/sqlstore/verification_hooks_test.go#L521))
         - [x] Example Usage ([test](../../conformance/goapi/database_user_hooks_test.go#L227))
           - [x] Derive user fields in a before hook and call another service from an after hook ([test](../../conformance/goapi/database_hooks_test.go#L128))
           - [x] Log a session as sign-out deletes it, or keep it by declining the delete ([test](../../conformance/goapi/database_session_hooks_test.go#L166))

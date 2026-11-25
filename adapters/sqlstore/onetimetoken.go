@@ -116,16 +116,20 @@ func (s *Store) readOneTimeToken(ctx context.Context, db rowQuerier, key string,
 var _ auth.OneTimeTokenFinder = (*Store)(nil)
 
 // FindOneTimeToken reads a live one-time token without spending it, and the
-// user its owner binding names. A token whose session has ended, or whose
-// key another live token shares, is still found; ConsumeOneTimeToken
-// refuses it.
+// user its owner binding names. A token another runtime stored without that
+// binding names its session's user, or none once the session is gone. A
+// token whose session has ended, or whose key another live token shares, is
+// still found; ConsumeOneTimeToken refuses it.
 func (s *Store) FindOneTimeToken(ctx context.Context, key string, now time.Time) (string, time.Time, error) {
-	id, _, expires, err := s.readOneTimeToken(ctx, s.db, key, now, false)
+	id, bound, expires, err := s.readOneTimeToken(ctx, s.db, key, now, false)
 	if err != nil {
 		return "", time.Time{}, err
 	}
 	var owner string
 	err = s.db.QueryRowContext(ctx, s.bind(`SELECT "value" FROM "verification" WHERE `+s.scimExact(`"identifier"`)+`=?`), "one-time-token-owner:"+id).Scan(&owner)
+	if errors.Is(err, sql.ErrNoRows) {
+		err = s.db.QueryRowContext(ctx, s.bind(`SELECT "userId" FROM "session" WHERE "token"=?`), bound).Scan(&owner)
+	}
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return "", time.Time{}, err
 	}

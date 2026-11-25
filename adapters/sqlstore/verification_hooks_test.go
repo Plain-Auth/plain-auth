@@ -298,6 +298,20 @@ func TestVerificationFinders(t *testing.T) {
 			if _, err := store.ConsumeOneTimeToken(ctx, "transfer", now); err != nil {
 				t.Fatal("finding the token spent it:", err)
 			}
+			// A token another runtime stored without an owner binding names
+			// its session's user, or none once the session is gone.
+			for key, bound := range map[string]string{"foreign": session.Token, "orphan": "no-such-session"} {
+				if _, err := store.db.ExecContext(ctx, store.bind(`INSERT INTO "verification" ("id","identifier","value","expiresAt","createdAt","updatedAt") VALUES (?,?,?,?,?,?)`),
+					"row-"+key, "one-time-token:"+key, bound, store.date(now.Add(time.Minute)), store.date(now), store.date(now)); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if userID, _, err := store.FindOneTimeToken(ctx, "foreign", now); err != nil || userID != owner.ID {
+				t.Fatal("a token without an owner binding named", userID, err)
+			}
+			if userID, _, err := store.FindOneTimeToken(ctx, "orphan", now); err != nil || userID != "" {
+				t.Fatal("a token of a missing session named", userID, err)
+			}
 		})
 	}
 }
@@ -564,6 +578,33 @@ func TestVerificationHooksAroundMagicLinksAndTokens(t *testing.T) {
 				t.Fatal("the token answered", w.Code, w.Body.String())
 			}
 			same(drain(), "v-delete-before:one-time-token", "v-delete-after:one-time-token")
+			// Concurrent redemptions of one token run one delete after hook too.
+			transfer = generate()
+			drain()
+			var redeems sync.WaitGroup
+			statuses := make(chan int, 6)
+			for range 6 {
+				redeems.Go(func() {
+					statuses <- serve(open, "POST", "/one-time-token/verify", `{"token":"`+transfer+`"}`, "").Code
+				})
+			}
+			redeems.Wait()
+			close(statuses)
+			redeemed := 0
+			for status := range statuses {
+				if status == 200 {
+					redeemed++
+				}
+			}
+			tokenAfters := 0
+			for _, e := range drain() {
+				if e == "v-delete-after:one-time-token" {
+					tokenAfters++
+				}
+			}
+			if redeemed != 1 || tokenAfters != 1 {
+				t.Fatal("concurrent tokens redeemed", redeemed, "times and ran", tokenAfters, "after hooks")
+			}
 			// A token whose session expired is spent: its after hooks run first.
 			transfer = generate()
 			drain()
