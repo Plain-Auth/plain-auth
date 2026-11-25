@@ -151,6 +151,18 @@ func TestChangeEmailRequestContract(t *testing.T) {
 	if _, message, coded := errorBody(t, h.client.post("/change-email", `{"newEmail":"OLD@Example.test"}`, cookie, 400)); message != "Email is the same" || coded {
 		t.Fatal("the current address answered", message, coded)
 	}
+	for body, message := range map[string]string{
+		`{"newEmail":"new@example.test","callbackURL":null}`: "[body.callbackURL] Invalid input: expected string, received null",
+		`{"newEmail":"nope","callbackURL":false}`:            "[body.newEmail] Invalid email address; [body.callbackURL] Invalid input: expected string, received boolean",
+		`{"newEmail":"\u212Aate@example.test"}`:              "[body.newEmail] Invalid email address",
+	} {
+		if code, got, _ := errorBody(t, h.client.post("/change-email", body, cookie, 400)); code != "VALIDATION_ERROR" || got != message {
+			t.Fatal(body, "answered", code, got)
+		}
+	}
+	if len(h.mails()) != 0 {
+		t.Fatal("a refused change-email sent mail")
+	}
 
 	// An address another account holds answers like a free one, sends no
 	// mail and changes nothing, whether the caller is verified or not.
@@ -227,6 +239,23 @@ func TestChangeEmailImmediately(t *testing.T) {
 	h.client.post("/sign-in/email", `{"email":"new@example.test","password":"`+sessionEndpointPassword+`"}`, "", 200)
 	h.client.post("/sign-in/email", `{"email":"old@example.test","password":"`+sessionEndpointPassword+`"}`, "", 401)
 
+	// A browser that signed in without "remember me" keeps its marker.
+	browser := newChangeEmailHost(t, authn.Options{ChangeEmailEnabled: true, UpdateEmailWithoutVerification: true}, false, false)
+	browser.client.post("/sign-up/email", `{"name":"Person","email":"old@example.test","password":"`+sessionEndpointPassword+`"}`, "", 200)
+	r = browser.client.post("/sign-in/email", `{"email":"old@example.test","password":"`+sessionEndpointPassword+`","rememberMe":false}`, "", 200)
+	var jar []string
+	for _, c := range r.Cookies() {
+		jar = append(jar, c.Name+"="+c.Value)
+	}
+	r = browser.client.post("/change-email", `{"newEmail":"new@example.test"}`, strings.Join(jar, "; "), 200)
+	marker := false
+	for _, c := range r.Cookies() {
+		marker = marker || strings.HasSuffix(c.Name, "dont_remember") && c.Value != "" && c.MaxAge >= 0
+	}
+	if !marker {
+		t.Fatal("an immediate change did not re-issue the dont_remember marker:", r.Cookies())
+	}
+
 	declined := newChangeEmailHost(t, authn.Options{ChangeEmailEnabled: true, UpdateEmailWithoutVerification: true, DatabaseHooks: authn.DatabaseHooks{User: authn.ModelHooks[authn.UserRecord]{Update: authn.OperationHooks[authn.UserRecord]{
 		Before: func(context.Context, *authn.UserRecord, *authn.HookContext) error { return authn.ErrSkipWrite },
 	}}}}, false, true)
@@ -281,9 +310,38 @@ func TestChangeEmailVerificationLinkCookies(t *testing.T) {
 					data = c.Name + "=" + c.Value
 				}
 			}
+			if data == "" {
+				t.Fatal("the verification link did not re-issue the cached session view")
+			}
 			if got := h.client.user(token + "; " + data); got != "new@example.test" {
 				t.Fatal("after the link the browser's session showed", got)
 			}
 		}
+	}
+}
+
+// A confirmation link opened after the verification sender was removed
+// redirects to its callback with the error rather than reporting progress.
+func TestChangeEmailConfirmationWithoutVerificationSender(t *testing.T) {
+	first := newChangeEmailHost(t, authn.Options{ChangeEmailEnabled: true}, true, true)
+	cookie := first.signUp("old@example.test", true)
+	statusBody(t, first.client.post("/change-email", `{"newEmail":"new@example.test"}`, cookie, 200))
+	mails := first.mails()
+	if len(mails) != 1 {
+		t.Fatalf("change-email mailed %+v", mails)
+	}
+	link, err := url.Parse(mails[0].URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	off := false
+	without, err := authn.New(authn.Options{Store: first.store, Secret: strings.Repeat("s", 32), BaseURL: "https://auth.example", EmailAndPassword: true, RateLimit: &off,
+		ChangeEmailEnabled: true, SendChangeEmailConfirmation: func(context.Context, authn.MailLink) error { return nil }})
+	if err != nil {
+		t.Fatal(err)
+	}
+	r := serve(t, without, "GET", link.Path+"?"+link.RawQuery, "", http.Header{"Cookie": {cookie}}, 302)
+	if to, _ := url.Parse(r.Header.Get("Location")); to.Path != "/" || to.Query().Get("error") != "VERIFICATION_EMAIL_NOT_ENABLED" {
+		t.Fatal("the confirmation link redirected to", r.Header.Get("Location"))
 	}
 }

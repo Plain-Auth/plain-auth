@@ -31,22 +31,31 @@ func (a *Auth) handleAccountRequest(route string, w http.ResponseWriter, r *http
 		if b == nil {
 			return nil, validationError("[body] Invalid input: expected object, received undefined")
 		}
-		email, err := requiredString(b, "newEmail")
-		if err != nil {
-			return nil, err
+		// Every problem is reported in the reference schema's order; the
+		// address is checked as sent, before it is lowercased.
+		var issues []string
+		email, isString := b["newEmail"].(string)
+		switch {
+		case !isString:
+			issues = append(issues, fieldTypeError("newEmail", "string", b).Message)
+		case !emailPattern.MatchString(email):
+			issues = append(issues, "[body.newEmail] Invalid email address")
 		}
-		if !emailPattern.MatchString(strings.ToLower(email)) || strings.Contains(email, "..") {
-			return nil, validationError("[body.newEmail] Invalid email address")
+		if value, exists := b["callbackURL"]; exists {
+			if _, ok := value.(string); !ok {
+				issues = append(issues, fieldTypeError("callbackURL", "string", b).Message)
+			}
+		}
+		if len(issues) > 0 {
+			return nil, validationError(strings.Join(issues, "; "))
 		}
 		callback, _ := b["callbackURL"].(string)
 		changed, err := a.changeEmail(ctx, r.Header, email, callback)
 		// An address changed at once is published in fresh session cookies,
 		// so a cached session view shows it straight away.
 		if changed {
-			if token := a.cookieToken(r.Header); token != "" {
-				if cookieErr := a.writeSessionCookieHeaders(w.Header(), r, token, !a.dontRemember(r)); err == nil {
-					err = cookieErr
-				}
+			if cookieErr := a.reissueSessionCookies(w.Header(), r); err == nil {
+				err = cookieErr
 			}
 		}
 		return ok, err
@@ -163,14 +172,8 @@ func (a *Auth) handleAccountRequest(route string, w http.ResponseWriter, r *http
 		if err := a.UpdateUser(ctx, r.Header, update); err != nil {
 			return nil, err
 		}
-		if token := a.cookieToken(r.Header); token != "" {
-			persistent := !a.dontRemember(r)
-			if err := a.writeSessionCookieHeaders(w.Header(), r, token, persistent); err != nil {
-				return nil, err
-			}
-			if !persistent {
-				a.writeRememberPreference(w.Header(), r, false)
-			}
+		if err := a.reissueSessionCookies(w.Header(), r); err != nil {
+			return nil, err
 		}
 		return ok, nil
 	case "/change-password":

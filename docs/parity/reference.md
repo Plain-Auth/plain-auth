@@ -685,7 +685,7 @@
         - [x] The host function runs once per request, for both the origin check and the callbacks ([test](../../conformance/goapi/request_origins_test.go#L142))
   - [ ] Outbound OAuth Requests
   - [ ] Email Enumeration Protection
-    - [x] change-email does not reveal whether the target address is registered: the same 200 {"status":true}, no mail and no change ([test](../../conformance/goapi/change_email_test.go#L169))
+    - [x] change-email does not reveal whether the target address is registered: the same 200 {"status":true}, no mail and no change ([test](../../conformance/goapi/change_email_test.go#L181))
   - [ ] Reporting Vulnerabilities
 
 ## Telemetry

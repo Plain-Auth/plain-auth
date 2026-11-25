@@ -21440,8 +21440,7 @@
     {
       "label": "change-email answers an address another account holds exactly like a free one, sends no mail and changes neither account",
       "test": "conformance/goapi/change_email_test.go",
-      "marker": "t.Fatal(\"asking for a taken address changed an account\")",
-      "complete": true
+      "marker": "t.Fatal(\"asking for a taken address changed an account\")"
     }
   ],
   "docs/content/docs/reference/security.mdx#L294": [

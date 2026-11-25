@@ -402,6 +402,24 @@ func (a *Auth) addSessionCookieHeaders(headers http.Header, r *http.Request, tok
 	return nil
 }
 
+// reissueSessionCookies re-signs the request's session cookie, with a fresh
+// cached view, after a change to the user. A browser session keeps its
+// dont_remember marker.
+func (a *Auth) reissueSessionCookies(headers http.Header, r *http.Request) error {
+	token := a.cookieToken(r.Header)
+	if token == "" {
+		return nil
+	}
+	persistent := !a.dontRemember(r)
+	if err := a.writeSessionCookieHeaders(headers, r, token, persistent); err != nil {
+		return err
+	}
+	if !persistent {
+		a.writeRememberPreference(headers, r, false)
+	}
+	return nil
+}
+
 func (a *Auth) writeSessionCookieHeaders(headers http.Header, r *http.Request, token string, persistent bool) error {
 	return a.publishSessionCookie(headers, r, a.sessionCookie(token, persistent))
 }

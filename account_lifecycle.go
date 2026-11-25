@@ -169,10 +169,10 @@ func (a *Auth) changeEmail(ctx context.Context, h http.Header, newEmail, callbac
 	if !a.opts.ChangeEmailEnabled {
 		return false, &APIError{400, "CHANGE_EMAIL_DISABLED", "Change email is disabled"}
 	}
-	newEmail = strings.ToLower(newEmail)
-	if !emailPattern.MatchString(newEmail) || strings.Contains(newEmail, "..") {
+	if !emailPattern.MatchString(newEmail) {
 		return false, &APIError{400, "INVALID_EMAIL", "Invalid email"}
 	}
+	newEmail = strings.ToLower(newEmail)
 	if newEmail == session.User.Email {
 		return false, &APIError{Status: 400, Message: "Email is the same"}
 	}

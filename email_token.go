@@ -228,9 +228,7 @@ func (a *Auth) applyEmailProof(r *http.Request, response http.Header, raw, callb
 		// A signed-in browser gets cookies that carry the new address; a
 		// link opened without a session starts none.
 		if err == nil && session != nil {
-			if token := a.cookieToken(h); token != "" {
-				err = a.writeSessionCookieHeaders(response, r, token, !a.dontRemember(r))
-			}
+			err = a.reissueSessionCookies(response, r)
 		}
 		return map[string]any{"status": true, "user": u}, err
 	default:

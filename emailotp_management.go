@@ -156,12 +156,12 @@ func (a *Auth) emailChangeOTPRequest(ctx context.Context, h http.Header, address
 	if err != nil {
 		return EmailOTPRequest{}, err
 	}
+	if !a.emailOTP.ChangeEmail.Enabled {
+		return EmailOTPRequest{}, &APIError{Status: 400, Message: "Change email with OTP is disabled"}
+	}
 	req, err := a.emailOTPRequest(address, OTPChangeEmail)
 	if err != nil {
 		return req, err
-	}
-	if !a.emailOTP.ChangeEmail.Enabled {
-		return req, &APIError{400, "BAD_REQUEST", "Change email with OTP is disabled"}
 	}
 	if req.Email == s.User.Email {
 		return req, &APIError{Status: 400, Message: "Email is the same"}
