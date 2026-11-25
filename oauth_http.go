@@ -741,7 +741,15 @@ func (a *Auth) directOAuth(w http.ResponseWriter, r *http.Request, id string, p 
 	ctx, cancel := context.WithTimeout(context.WithValue(r.Context(), oauth2.HTTPClient, p.HTTPClient), 30*time.Second)
 	defer cancel()
 	profile, expires, err := p.VerifyIDToken(ctx, raw, nonce)
-	if err != nil || !validSocialProfile(profile) || !expires.After(a.now()) {
+	if err != nil || !expires.After(a.now()) {
+		return nil, &APIError{401, "INVALID_TOKEN", "Invalid token"}
+	}
+	// A verified token whose profile has no email cannot name an account.
+	if profile.Email == "" {
+		a.Logger().ErrorContext(ctx, "The provider's ID token has no email", "provider", id)
+		return nil, &APIError{401, "USER_EMAIL_NOT_FOUND", "User email not found"}
+	}
+	if !validSocialProfile(profile) {
 		return nil, &APIError{401, "INVALID_TOKEN", "Invalid token"}
 	}
 	// Direct grants authenticate the signed ID token. A client-supplied access

@@ -398,17 +398,20 @@
       - [x] Refresh a returning profile with either server, preserve protected fields and use the new mailbox verification status ([test](../../conformance/social-user-fields.mjs#L145))
     - [x] `requireEmailVerification` ([test](../../conformance/social-user-fields.mjs#L200))
       - [x] Withhold sessions for unverified social accounts, honor mail delivery settings and accept confirmation by either server ([test](../../conformance/social-user-fields.mjs#L200))
-    - [ ] `prompt`
+    - [x] `prompt` ([test](../../conformance/goapi/provider_contract_test.go#L96))
+      - [x] AuthorizationParams adds a configured prompt to every sign-in and link authorization URL ([test](../../conformance/goapi/provider_contract_test.go#L96))
     - [x] `responseMode` ([test](../../providers/apple_microsoft_test.go#L102))
       - [x] A provider whose AuthorizationParams request response_mode=form_post, as the Apple preset does, sends it in the authorization URL, and its cross-site form callback is redirected to a GET callback that signs the user in ([test](../../providers/apple_microsoft_test.go#L102))
     - [x] `getUserInfo` ([test](../../conformance/goapi/oauth_test.go#L177))
       - [x] A custom Resolve function fetches user info from the provider with the issued access token ([test](../../conformance/goapi/oauth_test.go#L177))
     - [x] `refreshAccessToken` ([test](../../adapters/sqlstore/oauth_encryption_test.go#L117))
       - [x] A custom Refresh function receives the stored refresh token, and its returned tokens replace the stored credentials on three SQL engines ([test](../../adapters/sqlstore/oauth_encryption_test.go#L117))
-    - [ ] `verifyIdToken`
+    - [x] `verifyIdToken` ([test](../../conformance/goapi/provider_contract_test.go#L93))
+      - [x] A custom VerifyIDToken on a preset receives the raw token and nonce and decides the sign-in; its error answers INVALID_TOKEN without a session ([test](../../conformance/goapi/provider_contract_test.go#L93))
     - [x] `disableIdTokenSignIn` ([test](../../conformance/apple-native.mjs#L51))
       - [x] Decline signed client ID tokens for sign-in and account linking while preserving browser authorization ([test](../../conformance/apple-native.mjs#L51))
-    - [ ] `disableDefaultScope`
+    - [x] `disableDefaultScope` ([test](../../conformance/goapi/provider_contract_test.go#L68))
+      - [x] Replacing a preset's Config.Scopes drops its default scopes from the authorization URL ([test](../../conformance/goapi/provider_contract_test.go#L68))
     - [x] `authorizationEndpoint` ([test](../../conformance/goapi/oauth_test.go#L21))
       - [x] A provider whose Config.Endpoint.AuthURL points at a local server sends the browser to that endpoint, and the code flow completes with PKCE and nonce ([test](../../conformance/goapi/oauth_test.go#L21))
   - [x] `plugins` ([test](../../conformance/goapi/plugins_test.go#L14))

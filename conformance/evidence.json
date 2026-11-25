@@ -1719,6 +1719,12 @@
       "test": "conformance/goapi/user_validation_test.go",
       "marker": "func TestValidateUserInfoIDTokenLinks(t *testing.T) {",
       "label": "ValidateUserInfo refuses an ID-token sign-up with a 403 carrying the app's code"
+    },
+    {
+      "label": "A direct ID token the verifier refuses, or one without a nonce, answers INVALID_TOKEN with no session or account, and a verified one without an email answers USER_EMAIL_NOT_FOUND",
+      "test": "conformance/goapi/provider_contract_test.go",
+      "marker": "func TestProviderPresetOptions(t *testing.T) {",
+      "complete": true
     }
   ],
   "core/callbackOAuth": [
@@ -2700,6 +2706,11 @@
       "label": "Scope credentials to the current account and handle revocation or provider errors on SQLite, MySQL and PostgreSQL",
       "test": "adapters/sqlstore/provider_credentials_test.go",
       "marker": "func TestProviderCredentialRoutes("
+    },
+    {
+      "label": "get-access-token answers PROVIDER_NOT_SUPPORTED for a credential account, and a server call without a session or user answers USER_ID_OR_SESSION_REQUIRED",
+      "test": "conformance/goapi/provider_contract_test.go",
+      "marker": "t.Fatal(\"a server call without a session or user answered\", err)"
     }
   ],
   "core/refreshToken": [
@@ -2712,6 +2723,11 @@
       "label": "Scope credentials to the current account and handle revocation or provider errors on SQLite, MySQL and PostgreSQL",
       "test": "adapters/sqlstore/provider_credentials_test.go",
       "marker": "func TestProviderCredentialRoutes("
+    },
+    {
+      "label": "refresh-token answers PROVIDER_NOT_SUPPORTED for a credential account and REFRESH_TOKEN_NOT_FOUND for an account without a refresh token",
+      "test": "conformance/goapi/provider_contract_test.go",
+      "marker": "func TestProviderCredentialErrors(t *testing.T) {"
     }
   ],
   "core/accountInfo": [
@@ -2724,6 +2740,12 @@
       "label": "Scope credentials to the current account and handle revocation or provider errors on SQLite, MySQL and PostgreSQL",
       "test": "adapters/sqlstore/provider_credentials_test.go",
       "marker": "func TestProviderCredentialRoutes("
+    },
+    {
+      "label": "account-info validates the selector first, needs a session, and answers PROVIDER_NOT_CONFIGURED for a credential account and ACCESS_TOKEN_NOT_FOUND for an account without an access token",
+      "test": "conformance/goapi/provider_contract_test.go",
+      "marker": "t.Fatal(\"an anonymous account-info answered\", code)",
+      "complete": true
     }
   ],
   "plugin/custom-session/GET /get-session": [
@@ -21551,6 +21573,30 @@
       "label": "A null Origin is accepted only with Sec-Fetch-Site same-origin, against the host the request reached; otherwise MISSING_OR_NULL_ORIGIN or INVALID_ORIGIN",
       "test": "conformance/goapi/http_test.go",
       "marker": "t.Fatal(\"a null Origin on an untrusted host answered\", code)",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/reference/options.mdx#L364/`prompt`": [
+    {
+      "label": "AuthorizationParams adds a configured prompt to every sign-in and link authorization URL",
+      "test": "conformance/goapi/provider_contract_test.go",
+      "marker": "t.Fatal(\"the link authorization asked for\", q.Get(\"scope\"), q.Get(\"prompt\"))",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/reference/options.mdx#L368/`verifyIdToken`": [
+    {
+      "label": "A custom VerifyIDToken on a preset receives the raw token and nonce and decides the sign-in; its error answers INVALID_TOKEN without a session",
+      "test": "conformance/goapi/provider_contract_test.go",
+      "marker": "t.Fatal(\"the custom verifier saw\", seen)",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/reference/options.mdx#L370/`disableDefaultScope`": [
+    {
+      "label": "Replacing a preset's Config.Scopes drops its default scopes from the authorization URL",
+      "test": "conformance/goapi/provider_contract_test.go",
+      "marker": "t.Fatal(\"the sign-in authorization asked for\", q.Get(\"scope\"), q.Get(\"prompt\"))",
       "complete": true
     }
   ]
