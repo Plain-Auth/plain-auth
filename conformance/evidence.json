@@ -2717,6 +2717,12 @@
       "label": "get-access-token answers PROVIDER_NOT_SUPPORTED for a credential account, and a server call without a session or user answers USER_ID_OR_SESSION_REQUIRED",
       "test": "conformance/goapi/provider_contract_test.go",
       "marker": "t.Fatal(\"a server call without a session or user answered\", err)"
+    },
+    {
+      "label": "An access token about to expire whose refresh fails answers FAILED_TO_GET_ACCESS_TOKEN without the provider's detail or the stale token, and leaves the row unchanged",
+      "test": "adapters/sqlstore/provider_credentials_test.go",
+      "marker": "t.Fatalf(\"expiring token, failed refresh: %d %s\", res.Code, res.Body)",
+      "complete": true
     }
   ],
   "core/refreshToken": [
@@ -2734,6 +2740,12 @@
       "label": "refresh-token answers PROVIDER_NOT_SUPPORTED for a credential account and REFRESH_TOKEN_NOT_FOUND for an account without a refresh token",
       "test": "conformance/goapi/provider_contract_test.go",
       "marker": "func TestProviderCredentialErrors(t *testing.T) {"
+    },
+    {
+      "label": "A refresh answered without a refresh token keeps the stored one and its expiry, also through a custom Refresh",
+      "test": "adapters/sqlstore/provider_credentials_test.go",
+      "marker": "t.Fatalf(\"a refresh without rotation answered %d %s\", res.Code, res.Body)",
+      "complete": true
     }
   ],
   "core/accountInfo": [
@@ -20712,6 +20724,11 @@
       "label": "SCIM-provisioned users run the gate with method scim",
       "test": "adapters/sqlstore/scim_user_validation_test.go",
       "marker": "func TestSCIMUserValidation(t *testing.T) {"
+    },
+    {
+      "label": "A SAML sign-in runs ValidateUserInfo with method sso-saml, the provider ID and the raw assertion attributes, checks a returning user again, and sends a refusal to the error callback without storing a user or session",
+      "test": "adapters/sqlstore/sso_user_validation_test.go",
+      "marker": "func TestEnterpriseSAMLUserValidation(t *testing.T) {"
     }
   ],
   "docs/content/docs/concepts/oauth.mdx#L78": [
@@ -21646,6 +21663,14 @@
       "label": "A custom-scheme wildcard without a path trusts every host and path but never user info, a scheme wildcard covers HTTP(S) only, and a host-bearing rule pins its host",
       "test": "conformance/goapi/trusted_origins_test.go",
       "marker": "{\"pinned://callback/done\", true}, {\"pinned://callback.attacker.tld\", false}, {\"pinned://callback.attacker.tld/path\", false},",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/concepts/users-accounts.mdx#L515": [
+    {
+      "label": "A link whose session was revoked before the provider redirects back fails with unable_to_link_account after the code exchange, one whose browser signed out fails with state_mismatch before it, and a live session links without a new session, on three engines",
+      "test": "adapters/sqlstore/oauth_link_session_test.go",
+      "marker": "func TestOAuthLinkRequiresLiveSession(t *testing.T) {",
       "complete": true
     }
   ]

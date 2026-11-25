@@ -35,15 +35,15 @@ func TestProviderCredentialRoutes(t *testing.T) {
 				t.Fatal(err)
 			}
 			defer store.Close()
-			var count atomic.Int32
-			var fail atomic.Bool
+			var count, issued atomic.Int32
+			var fail, omitRefresh atomic.Bool
 			provider := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if err := r.ParseForm(); err != nil {
 					t.Error(err)
 					return
 				}
 				n := count.Add(1)
-				if r.Form.Get("grant_type") != "refresh_token" || r.Form.Get("refresh_token") != fmt.Sprintf("rotate-%d", n-1) || r.Form.Get("client_secret") != "test-secret" {
+				if r.Form.Get("grant_type") != "refresh_token" || r.Form.Get("refresh_token") != fmt.Sprintf("rotate-%d", issued.Load()) || r.Form.Get("client_secret") != "test-secret" {
 					t.Error("incorrect refresh credential")
 				}
 				w.Header().Set("Content-Type", "application/json")
@@ -52,6 +52,11 @@ func TestProviderCredentialRoutes(t *testing.T) {
 					fmt.Fprint(w, `{"error":"invalid_grant","error_description":"private-provider-detail"}`)
 					return
 				}
+				if omitRefresh.Swap(false) {
+					fmt.Fprintf(w, `{"access_token":"access-%d","expires_in":120,"token_type":"Bearer"}`, n)
+					return
+				}
+				issued.Store(n)
 				fmt.Fprintf(w, `{"access_token":"access-%d","refresh_token":"rotate-%d","expires_in":120,"scope":"read","refresh_token_expires_in":600,"token_type":"Bearer"}`, n, n)
 			}))
 			defer provider.Close()
@@ -169,6 +174,53 @@ func TestProviderCredentialRoutes(t *testing.T) {
 			if err != nil || after.RefreshToken != "rotate-2" || after.AccessToken != "access-2" {
 				t.Fatalf("rollback %v", err)
 			}
+			// An access token about to expire whose refresh fails answers
+			// FAILED_TO_GET_ACCESS_TOKEN, without the provider's detail or the
+			// stale token, and leaves the row as it was.
+			nearExpiry := time.Now().UTC().Truncate(time.Millisecond).Add(2 * time.Second)
+			if _, err := store.UpdateProviderCredential(ctx, user.ID, id, func(c auth.ProviderAccountCredential) (auth.ProviderAccountCredential, bool, error) {
+				c.ExpiresAt = nearExpiry
+				return c, true, nil
+			}); err != nil {
+				t.Fatal(err)
+			}
+			calls := count.Load()
+			if res := httpCall("get-access-token", body, cookie); res.Code != 400 || !strings.Contains(res.Body.String(), `"code":"FAILED_TO_GET_ACCESS_TOKEN"`) || strings.Contains(res.Body.String(), "private-provider-detail") || strings.Contains(res.Body.String(), "access-2") {
+				t.Fatalf("expiring token, failed refresh: %d %s", res.Code, res.Body)
+			}
+			if count.Load() != calls+1 {
+				t.Fatal("the provider was not asked to refresh")
+			}
+			if kept, err := store.ProviderCredential(ctx, user.ID, id); err != nil || kept.AccessToken != "access-2" || kept.RefreshToken != "rotate-2" || !kept.ExpiresAt.Equal(nearExpiry) {
+				t.Fatalf("a failed automatic refresh changed the row %v", err)
+			}
+			// A refresh answered without a refresh token keeps the stored one,
+			// also through a custom Refresh that returns none.
+			fail.Store(false)
+			omitRefresh.Store(true)
+			p.Refresh = func(ctx context.Context, c oauth2.Config, rt string) (*oauth2.Token, error) {
+				tok, err := c.TokenSource(ctx, &oauth2.Token{RefreshToken: rt}).Token()
+				if tok != nil {
+					tok.RefreshToken = ""
+				}
+				return tok, err
+			}
+			opts.SocialProviders = map[string]auth.OAuthProvider{"demo": p}
+			if h, err = auth.New(opts); err != nil {
+				t.Fatal(err)
+			}
+			res = httpCall("refresh-token", body, cookie)
+			var keptRefresh auth.RefreshTokenResult
+			if err = json.Unmarshal(res.Body.Bytes(), &keptRefresh); err != nil || res.Code != 200 || keptRefresh.AccessToken != fmt.Sprintf("access-%d", count.Load()) || keptRefresh.RefreshToken != "rotate-2" || keptRefresh.RefreshTokenExpiresAt == nil || !keptRefresh.RefreshTokenExpiresAt.Equal(after.RefreshExpiresAt) {
+				t.Fatalf("a refresh without rotation answered %d %s", res.Code, res.Body)
+			}
+			if omitRefresh.Load() {
+				t.Fatal("the provider did not answer without a refresh token")
+			}
+			if stored, err := store.ProviderCredential(ctx, user.ID, id); err != nil || stored.RefreshToken != "rotate-2" || time.Until(stored.ExpiresAt) < time.Minute {
+				t.Fatalf("the stored refresh token was not kept %v", err)
+			}
+			p.Refresh = nil
 			p.DisableRefresh = true
 			opts.SocialProviders = map[string]auth.OAuthProvider{"demo": p}
 			h, err = auth.New(opts)
