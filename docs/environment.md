@@ -71,6 +71,8 @@ opts.OnAPIError = func(c plainauth.ErrorContext, err error) error {
 }
 ```
 
+The handler always writes the error response itself; it does not hand the error back to a caller as a thrown error would. To handle errors in your own code instead, call the native Go methods, such as `SignInEmail` or `GetSession`, which return them.
+
 The handler waits for the callback, so bound any external reporting call with the request context and a timeout. Returning an error or panicking in the reporter records a diagnostic through the instance logger. The client receives the original HTTP status and the usual public error body, including any configured translation. Redirects, unmatched routes and ordinary rate-limit responses bypass the callback. Native Go methods return errors directly to their callers. [Error reporting tests](../conformance/goapi/error_reporting_test.go)
 
 ## Rotate signing keys

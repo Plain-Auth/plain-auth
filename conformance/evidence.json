@@ -1792,6 +1792,12 @@
       "label": "Escape the public error page and forward error codes to the configured redirect",
       "test": "error_page_test.go",
       "marker": "func TestAuthErrorPresentation("
+    },
+    {
+      "label": "The error page shows a malformed code as UNKNOWN and escapes the description, a configured ErrorRedirectURL receives the code and description, and production redirects to the site root",
+      "test": "error_page_test.go",
+      "marker": "func TestAuthErrorPageInput(t *testing.T) {",
+      "complete": true
     }
   ],
   "provider/apple": [

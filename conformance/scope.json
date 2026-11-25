@@ -381,6 +381,24 @@
         "Use Active Organization"
       ],
       "reason": "not applicable: JavaScript only"
+    },
+    {
+      "page": "reference.md",
+      "section": "Options",
+      "labels": [
+        "`defaultFindManyLimit`",
+        "`joins`",
+        "`validateSchema`"
+      ],
+      "reason": "not applicable: JavaScript database adapter option"
+    },
+    {
+      "page": "reference.md",
+      "section": "Options",
+      "labels": [
+        "`throw`"
+      ],
+      "reason": "not applicable: JavaScript handler option; Go methods return errors"
     }
   ],
   "backlog": [

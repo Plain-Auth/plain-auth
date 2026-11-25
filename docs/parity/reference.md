@@ -553,9 +553,9 @@
     - [x] `skipTrailingSlashes` ([test](../../conformance/goapi/request_switches_test.go#L36))
       - [x] Serve paths with trailing slashes as the paths without them ([test](../../conformance/goapi/request_switches_test.go#L36))
     - [ ] `generateId`
-    - [ ] `defaultFindManyLimit`
-    - [ ] `joins`
-    - [ ] `validateSchema`
+    - `defaultFindManyLimit` — *not applicable: JavaScript database adapter option*
+    - `joins` — *not applicable: JavaScript database adapter option*
+    - `validateSchema` — *not applicable: JavaScript database adapter option*
     - [x] `backgroundTasks` ([test](../../conformance/goapi/background_tasks_test.go#L55))
       - [x] BackgroundTasks takes a runner such as a sync.WaitGroup's Go method; without one the work finishes before the response ([test](../../conformance/goapi/background_tasks_test.go#L55))
       - [x] BackgroundTasks takes a runner such as a sync.WaitGroup's Go method and runs handed-off work after the response with a detached context; without one the work finishes before the response ([test](../../conformance/goapi/background_tasks_test.go#L55))
@@ -589,7 +589,7 @@
     - [x] Configure account hooks for credential and linked account writes ([test](../../conformance/goapi/database_user_hooks_test.go#L246))
   - [ ] `onAPIError`
     - [x] Report the original error and already-resolved user before writing the localized HTTP response ([test](../../conformance/goapi/error_reporting_test.go#L88))
-    - [ ] `throw`
+    - `throw` — *not applicable: JavaScript handler option; Go methods return errors*
     - [x] `onError` ([test](../../conformance/core.test.mjs#L1329))
       - [x] Wait for the host reporter and preserve the endpoint error when the reporter fails ([test](../../conformance/core.test.mjs#L1329))
       - [x] Contain reporter panics and keep callback errors and credentials out of client responses and logs ([test](../../conformance/goapi/error_reporting_test.go#L67))
