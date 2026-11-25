@@ -120,7 +120,7 @@ func TestSocialAuthorizationSession(t *testing.T) {
 				t.Fatal("provider state was reusable after denial", w.Code, w.Header().Get("Location"))
 			}
 			state = start()
-			if w := finish(state, "code=bad", true); w.Code != 302 || !strings.Contains(w.Header().Get("Location"), "OAUTH_TOKEN_EXCHANGE_FAILED") || exchanges != 1 {
+			if w := finish(state, "code=bad", true); w.Code != 302 || !strings.Contains(w.Header().Get("Location"), "error=invalid_code") || exchanges != 1 {
 				t.Fatal("unsuccessful token exchange authorized an existing session")
 			}
 			state = start()

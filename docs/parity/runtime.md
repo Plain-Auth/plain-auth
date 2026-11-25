@@ -16,6 +16,7 @@ Each entry groups the configured endpoint’s behaviors. A checked child records
     - [x] Refresh a returning profile with either server, preserve protected fields and use the new mailbox verification status ([test](../../conformance/social-user-fields.mjs#L145))
     - [x] Withhold sessions for unverified social accounts, honor mail delivery settings and accept confirmation by either server ([test](../../conformance/social-user-fields.mjs#L200))
     - [x] ValidateUserInfo refuses a callback's sign-up or returning sign-in with error and error_description on the error callback ([test](../../conformance/goapi/user_validation_test.go#L267))
+    - [x] Once the state is verified, a provider error with its description, a missing or refused code, an unreadable or malformed profile and a profile without an email reach the error callback, or the error page, with the reference's codes and no session ([test](../../conformance/goapi/oauth_callback_errors_test.go#L23))
   - [x] `changeEmail` (`POST /change-email`) ([test](../../conformance/goapi/change_email_test.go#L116))
     - [x] Confirm an email change through the destination inbox ([test](../../conformance/goapi/account_lifecycle_test.go#L100))
     - [x] change-email validates the body first, needs a session before reporting CHANGE_EMAIL_DISABLED, gives the reference's code-less errors, hides registered addresses, and re-issues session cookies when the address changes at once or through a signed-in link ([test](../../conformance/goapi/change_email_test.go#L116))

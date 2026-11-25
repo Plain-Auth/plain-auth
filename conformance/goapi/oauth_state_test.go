@@ -211,7 +211,7 @@ func TestOAuthStateStrategies(t *testing.T) {
 			refused(browser, callback, "a replay in the signed-in browser")
 			if strategy == auth.OAuthStateDatabase {
 				refused(withState(captured.Value), callback, "a replay of a consumed flow")
-			} else if status, location, code := finish(withState(captured.Value), callback); status == http.StatusFound {
+			} else if status, location, code := finish(withState(captured.Value), callback); status != http.StatusFound || !strings.HasSuffix(location, "/api/auth/error?error=invalid_code") {
 				t.Fatalf("a replay from a fresh client answered %d %q %s", status, location, code)
 			}
 			if saves := store.saves.Load(); (saves == 0) != (strategy == auth.OAuthStateCookie) {

@@ -303,6 +303,15 @@ func (a *Auth) finishBrowserOAuth(w http.ResponseWriter, r *http.Request, id str
 	if flow.RedirectURI != "" && flow.RedirectURI != p.Config.RedirectURL {
 		return nil, &APIError{400, "INVALID_CALLBACK_URL", "Invalid OAuth callback"}
 	}
+	// Every failure after the state is verified returns to the flow's error
+	// callback, or to the error page when the sign-in gave none.
+	if flow.ErrorCallbackURL == "" {
+		if returned != nil {
+			flow.ErrorCallbackURL = strings.TrimRight(a.opts.BasePath, "/") + "/error"
+		} else {
+			flow.ErrorCallbackURL, _ = a.errorPageURL(r.Context())
+		}
+	}
 	failWithDescription := func(code, description string) (any, error) {
 		if popup != nil {
 			return popup.page(w.Header(), "", "", &popupError{Code: code, Description: description}), nil
@@ -317,34 +326,29 @@ func (a *Auth) finishBrowserOAuth(w http.ResponseWriter, r *http.Request, id str
 		return nil, &APIError{400, code, "Unable to complete social sign-in"}
 	}
 	fail := func(code string) (any, error) { return failWithDescription(code, "") }
-	// A verified flow whose browser state no longer fits it is a mismatch,
-	// sent to its error callback or the error page.
-	mismatch := func() (any, error) {
-		if flow.ErrorCallbackURL == "" {
-			if returned != nil {
-				flow.ErrorCallbackURL = strings.TrimRight(a.opts.BasePath, "/") + "/error"
-			} else {
-				flow.ErrorCallbackURL, _ = a.errorPageURL(r.Context())
-			}
-		}
-		return fail("state_mismatch")
-	}
+	// A verified flow whose browser state no longer fits it is a mismatch.
 	if (returned == nil && flow.ProxyOrigin != "") || (returned != nil && (flow.ProxyOrigin != returned.Preview || flow.CallbackURL != returned.Callback)) {
-		return mismatch()
+		return fail("state_mismatch")
 	}
 	if flow.AnonymousSessionProof != "" {
 		guest, err := a.openRecord("guest-oauth:"+flow.State, flow.AnonymousSessionProof)
 		current := a.cookieToken(r.Header)
 		if err != nil || a.anonymous == nil || current != "" && current != string(guest) {
-			return mismatch()
+			return fail("state_mismatch")
 		}
 		r = r.WithContext(context.WithValue(r.Context(), anonymousSourceKey{}, string(guest)))
 	}
-	if popup != nil && flow.Provider == id && q.Get("error") != "" {
-		return popup.page(w.Header(), "", "", &popupError{Code: q.Get("error"), Description: q.Get("error_description")}), nil
+	if flow.Provider != id {
+		return fail("state_mismatch")
 	}
-	if flow.Provider != id || (returned == nil && (q.Get("error") != "" || q.Get("code") == "")) {
-		return fail("OAUTH_CALLBACK_ERROR")
+	if returned == nil {
+		// The provider's own error and description pass through unchanged.
+		if code := q.Get("error"); code != "" {
+			return failWithDescription(code, q.Get("error_description"))
+		}
+		if q.Get("code") == "" {
+			return fail("no_code")
+		}
 	}
 	var resume OAuthLoginContinuation
 	if flow.IssuerLoginQuery != "" {
@@ -365,9 +369,6 @@ func (a *Auth) finishBrowserOAuth(w http.ResponseWriter, r *http.Request, id str
 	var tokens OAuthTokens
 	var accountFields *MappedAccountFields
 	disableSignUp := p.DisableImplicitSignUp && !flow.RequestSignUp
-	if returned != nil && flow.ErrorCallbackURL == "" {
-		flow.ErrorCallbackURL = a.opts.BasePath + "/error"
-	}
 	if returned == nil {
 		grant, failure := a.exchangeProviderCode(ctx, p, flow, q)
 		if failure != "" {
@@ -377,9 +378,6 @@ func (a *Auth) finishBrowserOAuth(w http.ResponseWriter, r *http.Request, id str
 		var fieldErr *APIError
 		accountFields, fieldErr = a.mapAccountFields(ctx, p, grant)
 		if fieldErr != nil {
-			if flow.ErrorCallbackURL == "" {
-				flow.ErrorCallbackURL, _ = a.errorPageURL(ctx)
-			}
 			return failWithDescription(fieldErr.Code, fieldErr.Message)
 		}
 	} else {
@@ -394,7 +392,7 @@ func (a *Auth) finishBrowserOAuth(w http.ResponseWriter, r *http.Request, id str
 			profile.Data = map[string]any{"hd": returned.GoogleHostedDomain}
 		}
 		if !validSocialProfile(profile) {
-			return fail("OAUTH_PROFILE_INVALID")
+			return fail("unable_to_get_user_info")
 		}
 		disableSignUp = disableSignUp || returned.DisableSignUp
 		p.RequireEmailVerification = p.RequireEmailVerification || returned.RequireEmailVerification
@@ -404,35 +402,20 @@ func (a *Auth) finishBrowserOAuth(w http.ResponseWriter, r *http.Request, id str
 	// rewrite the application's code.
 	var refused *userInfoRejection
 	if errors.As(err, &refused) {
-		if flow.ErrorCallbackURL == "" {
-			flow.ErrorCallbackURL, _ = a.errorPageURL(ctx)
-		}
 		return failWithDescription(refused.Code, refused.Message)
 	}
 	var apiError *APIError
 	if errors.As(err, &apiError) && apiError.Code == "EMAIL_NOT_VERIFIED" {
-		if flow.ErrorCallbackURL == "" {
-			flow.ErrorCallbackURL, _ = a.errorPageURL(ctx)
-		}
 		return fail("email_not_verified")
 	}
 	if errors.As(err, &apiError) && apiError.Code == "SIGN_UP_DISABLED" {
-		if flow.ErrorCallbackURL == "" {
-			flow.ErrorCallbackURL, _ = a.errorPageURL(ctx)
-		}
 		return fail("signup_disabled")
 	}
 	var fieldError oauthProfileFieldError
 	if errors.As(err, &apiError) && (errors.As(err, &fieldError) || apiError.Code == "MISSING_FIELD" || apiError.Code == "VALIDATION_ERROR") {
-		if flow.ErrorCallbackURL == "" {
-			flow.ErrorCallbackURL, _ = a.errorPageURL(ctx)
-		}
 		return failWithDescription(apiError.Code, apiError.Message)
 	}
 	linkFailed := errors.Is(err, ErrOAuthLinkingDisabled) || errors.Is(err, ErrOAuthLinkNotAllowed) || (flow.LinkUserID != "" && errors.Is(err, ErrNotFound))
-	if (linkFailed || errors.Is(err, ErrOAuthLinkEmailMismatch) || errors.Is(err, ErrOAuthAccountAlreadyLinked)) && flow.ErrorCallbackURL == "" {
-		flow.ErrorCallbackURL, _ = a.errorPageURL(ctx)
-	}
 	if linkFailed {
 		return fail("unable_to_link_account")
 	}
@@ -491,12 +474,21 @@ func (a *Auth) exchangeProviderCode(ctx context.Context, p OAuthProvider, flow O
 	} else {
 		token, err = p.ExchangeCode(ctx, p.Config, q.Get("code"), flow.Verifier, q)
 	}
+	// The codes follow the reference: a refused code, then an unreadable
+	// profile, then one without an email.
 	if err != nil || token == nil {
-		return OAuthAccountFieldInput{}, "OAUTH_TOKEN_EXCHANGE_FAILED"
+		return OAuthAccountFieldInput{}, "invalid_code"
 	}
 	profile, err := p.Resolve(ctx, token, flow.Nonce)
-	if err != nil || !validSocialProfile(profile) {
-		return OAuthAccountFieldInput{}, "OAUTH_PROFILE_INVALID"
+	if err != nil || profile.Subject == "" {
+		return OAuthAccountFieldInput{}, "unable_to_get_user_info"
+	}
+	if profile.Email == "" {
+		a.Logger().ErrorContext(ctx, "The provider's profile has no email", "provider", flow.Provider)
+		return OAuthAccountFieldInput{}, "email_not_found"
+	}
+	if !validSocialProfile(profile) {
+		return OAuthAccountFieldInput{}, "unable_to_get_user_info"
 	}
 	if p.FormPostName && q.Get("user") != "" {
 		var newUser struct {

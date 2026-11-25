@@ -236,7 +236,7 @@ func (a *Auth) exchangeProxyCallback(w http.ResponseWriter, r *http.Request, id 
 		if a.opts.SocialProviders[id].Config.RedirectURL == "" {
 			provider.Config.RedirectURL = grant.Production + grant.BasePath + "/callback/" + id
 		}
-		exchange, failure := a.exchangeProviderCode(ctx, provider, OAuthFlow{Verifier: grant.Verifier, Nonce: grant.Nonce}, q)
+		exchange, failure := a.exchangeProviderCode(ctx, provider, OAuthFlow{Provider: id, Verifier: grant.Verifier, Nonce: grant.Nonce}, q)
 		profile, tokens := exchange.Profile, exchange.Tokens
 		if failure == "" && id == "google" && !googleDomainAllowed(provider.GoogleHostedDomain, profile) {
 			failure = "INVALID_TOKEN"

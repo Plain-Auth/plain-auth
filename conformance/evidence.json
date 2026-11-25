@@ -1747,6 +1747,11 @@
       "test": "conformance/goapi/user_validation_test.go",
       "marker": "func TestValidateUserInfoDecidedSignIns(t *testing.T) {",
       "label": "ValidateUserInfo refuses a callback's sign-up or returning sign-in with error and error_description on the error callback"
+    },
+    {
+      "label": "Once the state is verified, a provider error with its description, a missing or refused code, an unreadable or malformed profile and a profile without an email reach the error callback, or the error page, with the reference's codes and no session",
+      "test": "conformance/goapi/oauth_callback_errors_test.go",
+      "marker": "func TestOAuthCallbackErrors(t *testing.T) {"
     }
   ],
   "provider/google": [
@@ -21671,6 +21676,37 @@
       "label": "A link whose session was revoked before the provider redirects back fails with unable_to_link_account after the code exchange, one whose browser signed out fails with state_mismatch before it, and a live session links without a new session, on three engines",
       "test": "adapters/sqlstore/oauth_link_session_test.go",
       "marker": "func TestOAuthLinkRequiresLiveSession(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/reference/errors/no_code.mdx#L6": [
+    {
+      "label": "A callback without a code redirects to the error page or callback with error=no_code",
+      "test": "conformance/goapi/oauth_callback_errors_test.go",
+      "marker": "{\"\", url.Values{}, page + \"?error=no_code\"},",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/reference/errors/invalid_code.mdx": [
+    {
+      "label": "A code the provider refuses redirects with error=invalid_code",
+      "test": "conformance/goapi/oauth_callback_errors_test.go",
+      "marker": "{\"\", url.Values{\"code\": {\"rejected\"}}, page + \"?error=invalid_code\"},"
+    }
+  ],
+  "docs/content/docs/reference/errors/unable_to_get_user_info.mdx#L6": [
+    {
+      "label": "A profile the provider cannot return, or a malformed one, redirects with error=unable_to_get_user_info",
+      "test": "conformance/goapi/oauth_callback_errors_test.go",
+      "marker": "{\"/retry\", url.Values{\"code\": {\"unreadable\"}}, \"/retry?error=unable_to_get_user_info\"},",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/reference/errors/email_not_found.mdx#L6": [
+    {
+      "label": "A profile without an email redirects with error=email_not_found",
+      "test": "conformance/goapi/oauth_callback_errors_test.go",
+      "marker": "{\"/retry\", url.Values{\"code\": {\"no-email\"}}, \"/retry?error=email_not_found\"},",
       "complete": true
     }
   ]
