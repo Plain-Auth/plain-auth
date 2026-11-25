@@ -116,6 +116,12 @@ func TestPasswordResetContract(t *testing.T) {
 	if _, message, coded := errorBody(t, h.post("/request-password-reset", `{"email":"ada@example.test","redirectTo":123}`, "", 400)); message != "Invalid redirectURL: expected a string" || coded {
 		t.Fatal("a numeric redirect answered", message, coded)
 	}
+	if code, message, _ := errorBody(t, h.post("/request-password-reset", `{"email":"ada@example.test","redirectTo":null}`, "", 400)); code != "VALIDATION_ERROR" || message != "[body.redirectTo] Invalid input: expected string, received null" {
+		t.Fatal("a null redirect answered", code, message)
+	}
+	if code, _, _ := errorBody(t, h.post("/request-password-reset?callbackURL=https://evil.example", `{"email":"ada@example.test","callbackURL":""}`, "", 403)); code != "INVALID_CALLBACK_URL" {
+		t.Fatal("an empty body callback skipped the query callback's check:", code)
+	}
 	if len(h.resetLinks()) != 0 {
 		t.Fatal("a refused reset request sent mail")
 	}

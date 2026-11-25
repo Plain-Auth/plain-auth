@@ -156,9 +156,10 @@ func TestVerifyEmailContract(t *testing.T) {
 		t.Fatal("a verification link lasts", lifetime, "seconds by default")
 	}
 	for query, message := range map[string]string{
-		"?callbackURL=https://evil.example":      "[query.token] Invalid input: expected string, received undefined",
-		"?token=a&token=b":                       "[query.token] Invalid input: expected string, received array",
-		"?token=a&callbackURL=/a&callbackURL=/b": "[query.callbackURL] Invalid input: expected string, received array",
+		"?callbackURL=https://evil.example":              "[query.token] Invalid input: expected string, received undefined",
+		"?token=a&token=b":                               "[query.token] Invalid input: expected string, received array",
+		"?token=a&callbackURL=/a&callbackURL=/b":         "[query.callbackURL] Invalid input: expected string, received array",
+		"?token=a&token=b&callbackURL=/a&callbackURL=/b": "[query.token] Invalid input: expected string, received array; [query.callbackURL] Invalid input: expected string, received array",
 	} {
 		if code, got, _ := errorBody(t, h.get("/verify-email"+query, "", 400)); code != "VALIDATION_ERROR" || got != message {
 			t.Fatalf("query %q answered %s %s", query, code, got)

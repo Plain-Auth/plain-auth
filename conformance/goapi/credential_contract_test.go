@@ -108,6 +108,25 @@ func TestPluginUserFieldsRefused(t *testing.T) {
 	if c.user(cookie) != "ada@example.test" {
 		t.Fatal("a sign-up that asked to be banned was banned")
 	}
+	// A field with a default takes it on sign-up rather than being refused.
+	anonymous, err := authn.NewAnonymous(authn.AnonymousOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	store, err := sqlstore.OpenWithOptions(t.Context(), "sqlite", ":memory:", []string{"anonymous"}, schema.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { store.Close() })
+	off := false
+	withAnonymous, err := authn.New(authn.Options{BaseURL: "https://auth.example", Store: store, Secret: strings.Repeat("s", 32), EmailAndPassword: true, RateLimit: &off, Plugins: []authn.Plugin{anonymous}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	serve(t, withAnonymous, "POST", "/api/auth/sign-up/email", `{"name":"P","email":"anon@example.test","password":"`+sessionEndpointPassword+`","isAnonymous":true}`, sessionClient{t, withAnonymous}.headers(""), 200)
+	if u, err := store.FindAccountUser(t.Context(), "anon@example.test"); err != nil || u.IsAnonymous != nil && *u.IsAnonymous {
+		t.Fatal("a sign-up that asked to be anonymous was anonymous", err)
+	}
 	for body, field := range map[string]string{`{"name":"Renamed","role":"admin"}`: "role", `{"banned":true}`: "banned", `{"name":"Renamed","banReason":"x"}`: "banReason"} {
 		if code, message, _ := errorBody(t, c.post("/update-user", body, cookie, 400)); code != "FIELD_NOT_ALLOWED" || message != field+" is not allowed to be set" {
 			t.Fatal(body, "answered", code, message)

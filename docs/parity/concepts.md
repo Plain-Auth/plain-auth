@@ -278,8 +278,8 @@
   - [x] Bring Your Own Email Provider ([test](../../conformance/goapi/account_test.go#L18))
     - [x] Delivery is host-supplied MailSender callbacks (SendVerificationEmail, SendResetPassword), so any provider works ([test](../../conformance/goapi/account_test.go#L18))
   - [ ] Email Verification
-    - [x] Adding Email Verification to Your App ([test](../../conformance/goapi/verification_endpoints_test.go#L245))
-      - [x] A sign-up whose user hook fails sends no verification mail, while one that stored the account sends its mail before the session's after hooks run ([test](../../conformance/goapi/verification_endpoints_test.go#L245))
+    - [x] Adding Email Verification to Your App ([test](../../conformance/goapi/verification_endpoints_test.go#L246))
+      - [x] A sign-up whose user hook fails sends no verification mail, while one that stored the account sends its mail before the session's after hooks run ([test](../../conformance/goapi/verification_endpoints_test.go#L246))
       - [x] sendVerificationEmail ([test](../../conformance/goapi/mail_request_test.go#L58))
         - [x] Deliver verification links with the user, URL, token and a body-free copy of the request ([test](../../conformance/goapi/mail_request_test.go#L58))
       - [x] `user` ([test](../../conformance/goapi/account_test.go#L47))
@@ -737,8 +737,8 @@
       - [ ] How callback verification works:
       - [x] Callback URL ([test](../../conformance/goapi/account_lifecycle_test.go#L135))
         - [x] Opening the emailed /delete-user/callback link while signed in as the owner returns a 302 redirect (callbackURL /goodbye) and deletes the account ([test](../../conformance/goapi/account_lifecycle_test.go#L135))
-      - [x] Authentication Check ([test](../../conformance/goapi/delete_user_test.go#L125))
-        - [x] Opening a deletion link without a session answers 404 FAILED_TO_GET_USER_INFO and keeps the account and the link ([test](../../conformance/goapi/delete_user_test.go#L125))
+      - [x] Authentication Check ([test](../../conformance/goapi/delete_user_test.go#L126))
+        - [x] Opening a deletion link without a session answers 404 FAILED_TO_GET_USER_INFO and keeps the account and the link ([test](../../conformance/goapi/delete_user_test.go#L126))
     - [ ] Authentication Requirements
     - [ ] Callbacks
       - [ ] validateUserInfo
@@ -771,9 +771,9 @@
         - [x] Keep new social registration available and leave no partial session on a same-email collision on all SQL engines ([test](../../adapters/sqlstore/social_test.go#L107))
         - [x] Use a mobile ID token to sign in only after the authenticated account owner explicitly links the provider ([test](../../conformance/goapi/oauth_signup_test.go#L145))
       - [ ] Manually Linking Accounts
-    - [x] Account Unlinking ([test](../../conformance/goapi/delete_user_test.go#L187))
+    - [x] Account Unlinking ([test](../../conformance/goapi/delete_user_test.go#L199))
       - [x] Keep the last required account and prevent unlinking another user’s account ([test](../../adapters/sqlstore/identity_test.go#L40))
-      - [x] unlink-account answers ACCOUNT_NOT_FOUND for another user's or an unknown account, removes the caller's provider account with {"status":true} and refuses the last one, before any account hook ([test](../../conformance/goapi/delete_user_test.go#L187))
+      - [x] unlink-account answers ACCOUNT_NOT_FOUND for another user's or an unknown account, removes the caller's provider account with {"status":true} and refuses the last one, before any account hook ([test](../../conformance/goapi/delete_user_test.go#L199))
 
 ## Dynamic Base URL
 

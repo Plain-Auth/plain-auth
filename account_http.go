@@ -22,6 +22,26 @@ func requiredString(body wireBody, key string) (string, error) {
 	return s, nil
 }
 
+// tokenQueryIssues validates a link's query as the reference schema does,
+// before the callback's trust: a required single token and at most one
+// callbackURL, with every problem reported.
+func tokenQueryIssues(query url.Values, tokenRequired bool) error {
+	var issues []string
+	switch n := len(query["token"]); {
+	case n == 0 && tokenRequired:
+		issues = append(issues, "[query.token] Invalid input: expected string, received undefined")
+	case n > 1:
+		issues = append(issues, "[query.token] Invalid input: expected string, received array")
+	}
+	if len(query["callbackURL"]) > 1 {
+		issues = append(issues, "[query.callbackURL] Invalid input: expected string, received array")
+	}
+	if len(issues) > 0 {
+		return validationError(strings.Join(issues, "; "))
+	}
+	return nil
+}
+
 func (a *Auth) handleAccountRequest(route string, w http.ResponseWriter, r *http.Request, b wireBody, ip string) (any, error) {
 	ctx := r.Context()
 	ok := map[string]bool{"status": true}
@@ -62,14 +82,14 @@ func (a *Auth) handleAccountRequest(route string, w http.ResponseWriter, r *http
 	case "/delete-user", "/delete-user/callback":
 		params := DeleteUserInput{}
 		if route == "/delete-user/callback" {
+			if err := tokenQueryIssues(query, true); err != nil {
+				return nil, err
+			}
 			if err := a.validateCallbacks(ctx, nil, query); err != nil {
 				return nil, err
 			}
 			params.Token = query.Get("token")
 			params.CallbackURL = query.Get("callbackURL")
-			if len(query["token"]) == 0 {
-				return nil, validationError("[query.token] Invalid input: expected string, received undefined")
-			}
 			// An empty token would select deletion without a token, so it is
 			// answered here as the reference answers a token that is not found.
 			if params.Token == "" {
@@ -241,6 +261,9 @@ func (a *Auth) handleAccountRequest(route string, w http.ResponseWriter, r *http
 		if _, supplied := b["token"]; supplied && !okType {
 			issues = append(issues, fieldTypeError("token", "string", b).Message)
 		}
+		if len(query["token"]) > 1 {
+			issues = append(issues, "[query.token] Invalid input: expected string, received array")
+		}
 		if len(issues) > 0 {
 			return nil, validationError(strings.Join(issues, "; "))
 		}
@@ -252,13 +275,8 @@ func (a *Auth) handleAccountRequest(route string, w http.ResponseWriter, r *http
 		// The query is validated before the callback's trust, as in the
 		// reference; an empty token is an invalid one, not a missing one.
 		if route == "/verify-email" {
-			switch {
-			case len(query["token"]) == 0:
-				return nil, validationError("[query.token] Invalid input: expected string, received undefined")
-			case len(query["token"]) > 1:
-				return nil, validationError("[query.token] Invalid input: expected string, received array")
-			case len(query["callbackURL"]) > 1:
-				return nil, validationError("[query.callbackURL] Invalid input: expected string, received array")
+			if err := tokenQueryIssues(query, true); err != nil {
+				return nil, err
 			}
 		}
 		if route == "/reset-password/:token" {

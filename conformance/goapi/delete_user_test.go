@@ -120,27 +120,39 @@ func TestDeletionTokenSpentFirst(t *testing.T) {
 
 	long := newDeletionHost(t, authn.Options{DeleteUserEnabled: true}, false)
 	ada, bob = long.signUp("ada@example.test"), long.signUp("bob@example.test")
+	// Without a session the link is refused and stays usable for its owner.
 	link := long.deletionLink(ada)
 	if code, message, _ := errorBody(t, long.get(link, "", 404)); code != "FAILED_TO_GET_USER_INFO" || message != "Failed to get user info" {
 		t.Fatal("an anonymous deletion callback answered", code, message)
 	}
+	if to := long.get(link, ada, 302).Header.Get("Location"); to != "/goodbye" || long.before.Load() != 1 || long.exists("ada@example.test") {
+		t.Fatal("after an anonymous attempt the owner's link redirected to", to)
+	}
+	// Another account opening the link spends it without running a hook.
+	dan := long.signUp("dan@example.test")
+	link = long.deletionLink(dan)
 	if code, _, _ := errorBody(t, long.get(link, bob, 404)); code != "INVALID_TOKEN" {
 		t.Fatal("another account's deletion callback answered", code)
 	}
-	if long.before.Load() != 0 || !long.exists("ada@example.test") || !long.exists("bob@example.test") {
+	if long.before.Load() != 1 || !long.exists("dan@example.test") || !long.exists("bob@example.test") {
 		t.Fatal("a refused deletion ran BeforeDeleteUser or deleted an account")
 	}
-	if code, _, _ := errorBody(t, long.get(link, ada, 404)); code != "INVALID_TOKEN" {
+	if code, _, _ := errorBody(t, long.get(link, dan, 404)); code != "INVALID_TOKEN" {
 		t.Fatal("a spent deletion link answered", code)
 	}
-	if to := long.get(long.deletionLink(ada), ada, 302).Header.Get("Location"); to != "/goodbye" || long.before.Load() != 1 || long.exists("ada@example.test") {
-		t.Fatal("a fresh deletion link redirected to", to, "and deleted", !long.exists("ada@example.test"))
+	if to := long.get(long.deletionLink(dan), dan, 302).Header.Get("Location"); to != "/goodbye" || long.before.Load() != 2 || long.exists("dan@example.test") {
+		t.Fatal("a fresh deletion link redirected to", to, "and deleted", !long.exists("dan@example.test"))
 	}
 
 	// The callback needs a token; an empty one is refused, never treated as
 	// a deletion without a token.
-	if code, message, _ := errorBody(t, long.get("/delete-user/callback?callbackURL=/goodbye", bob, 400)); code != "VALIDATION_ERROR" || message != "[query.token] Invalid input: expected string, received undefined" {
-		t.Fatal("a callback without a token answered", code, message)
+	for query, message := range map[string]string{
+		"?callbackURL=https://evil.example":              "[query.token] Invalid input: expected string, received undefined",
+		"?token=a&token=b&callbackURL=/a&callbackURL=/b": "[query.token] Invalid input: expected string, received array; [query.callbackURL] Invalid input: expected string, received array",
+	} {
+		if code, got, _ := errorBody(t, long.get("/delete-user/callback"+query, bob, 400)); code != "VALIDATION_ERROR" || got != message {
+			t.Fatal("callback query", query, "answered", code, got)
+		}
 	}
 	if code, _, _ := errorBody(t, long.get("/delete-user/callback?token=", bob, 404)); code != "INVALID_TOKEN" {
 		t.Fatal("an empty token answered", code)

@@ -149,7 +149,7 @@ func (a *Auth) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		}
-		if err := a.validateCallbacks(r.Context(), body, r.URL.Query()); err != nil {
+		if err := a.validateRouteCallbacks(r.Context(), route, body, r.URL.Query()); err != nil {
 			a.writeAuthError(w, r, err)
 			return
 		}
@@ -653,8 +653,23 @@ func (a *Auth) validateRequestOrigin(r *http.Request, emailRoute bool) error {
 	return nil
 }
 
+// callbackTypesChecked lists the routes that report a callback of the wrong
+// type themselves, joined with their other body problems as the reference
+// schema does.
+var callbackTypesChecked = map[string]bool{"/sign-in/email": true, "/sign-up/email": true, "/change-email": true}
+
 func (a *Auth) validateCallbacks(ctx context.Context, body wireBody, query url.Values) error {
-	if _, found := body["callbackURL"]; !found {
+	return a.validateRouteCallbacks(ctx, "", body, query)
+}
+
+// validateRouteCallbacks checks the callback fields of a request to route.
+// A truthy value that is not a string answers the reference origin check's
+// code-less 400; a falsy one fails the route schema, unless the route
+// reports it itself.
+func (a *Auth) validateRouteCallbacks(ctx context.Context, route string, body wireBody, query url.Values) error {
+	// The query callback is checked when the body names none, as the
+	// reference reads body.callbackURL || query.callbackURL.
+	if value, found := body["callbackURL"]; !found || emptyUserInput(value) {
 		if values := query["callbackURL"]; len(values) > 0 {
 			if len(values) != 1 {
 				return &APIError{Status: 400, Message: "Invalid callbackURL: expected a string"}
@@ -678,12 +693,13 @@ func (a *Auth) validateCallbacks(ctx context.Context, body wireBody, query url.V
 		}
 		s, ok := value.(string)
 		if !ok {
-			// A falsy value is left to the route's own validation, as the
-			// reference's origin check skips it.
-			if emptyUserInput(value) {
-				continue
+			if !emptyUserInput(value) {
+				return &APIError{Status: 400, Message: "Invalid " + field.label + ": expected a string"}
 			}
-			return &APIError{Status: 400, Message: "Invalid " + field.label + ": expected a string"}
+			if !callbackTypesChecked[route] {
+				return fieldTypeError(field.key, "string", body)
+			}
+			continue
 		}
 		if s != "" && !a.trustedURL(ctx, s, true) {
 			return &APIError{Status: 403, Code: field.code, Message: "Invalid " + field.label}

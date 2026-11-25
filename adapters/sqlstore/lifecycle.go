@@ -73,7 +73,9 @@ func (s *Store) ConsumeDeletionToken(ctx context.Context, userID, token string, 
 	}
 	defer tx.Rollback()
 	identifier := "delete-account-" + token
-	rows, err := tx.QueryContext(ctx, s.readForUpdate(`SELECT "value","expiresAt" FROM "verification" WHERE `+s.scimExact(`"identifier"`)+`=?`), identifier)
+	// The exact match is on the value, so MySQL can still use the index and
+	// lock only this token's row.
+	rows, err := tx.QueryContext(ctx, s.readForUpdate(`SELECT "value","expiresAt" FROM "verification" WHERE "identifier"=`+s.exactSQLValue("?")), identifier)
 	if err != nil {
 		return err
 	}
@@ -93,7 +95,7 @@ func (s *Store) ConsumeDeletionToken(ctx context.Context, userID, token string, 
 	if err := rows.Err(); err != nil {
 		return err
 	}
-	if _, err := tx.ExecContext(ctx, s.bind(`DELETE FROM "verification" WHERE `+s.scimExact(`"identifier"`)+`=?`), identifier); err != nil {
+	if _, err := tx.ExecContext(ctx, s.bind(`DELETE FROM "verification" WHERE "identifier"=`+s.exactSQLValue("?")), identifier); err != nil {
 		return err
 	}
 	if err := tx.Commit(); err != nil {
