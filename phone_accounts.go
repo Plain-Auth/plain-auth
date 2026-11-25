@@ -127,12 +127,11 @@ func (a *Auth) phoneUse(ctx context.Context, number, code string, purpose PhoneO
 
 // refusePhoneGuess applies a guess at a phone code that cannot succeed: the
 // store counts it, or removes a code that expired or ran out, and the guess
-// is refused. It runs without the request's cancellation, so a client that
-// goes away once its guess was judged cannot keep it from being counted.
+// is refused. It runs without the request's cancellation or deadline, so a
+// client that goes away once its guess was judged cannot keep it from being
+// counted, and the count waits at least as long as a correct guess's spend.
 func (a *Auth) refusePhoneGuess(ctx context.Context, store PhoneAccountStore, u PhoneOTPUse, g *codeGuess, denied error) error {
-	commit, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
-	defer cancel()
-	err := store.ConsumePhoneOTP(commit, u)
+	err := store.ConsumePhoneOTP(context.WithoutCancel(ctx), u)
 	if hookErr := a.afterCodeGuess(ctx, g); hookErr != nil {
 		return hookErr
 	}

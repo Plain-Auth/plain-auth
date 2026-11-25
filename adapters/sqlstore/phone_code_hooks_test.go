@@ -27,6 +27,7 @@ func TestVerificationHooksAroundPhoneCodes(t *testing.T) {
 			var events []string
 			var sms []string
 			var created auth.VerificationRecord
+			var guessed []auth.VerificationRecord
 			// probe is the number a guess locks; its hooks read it through the
 			// store, which takes the same lock, so they must run outside the
 			// store's transaction. Concurrent guesses clear it.
@@ -36,6 +37,8 @@ func TestVerificationHooksAroundPhoneCodes(t *testing.T) {
 				events = append(events, event)
 				if rec != nil && strings.HasPrefix(event, "v-create") {
 					created = *rec
+				} else if rec != nil {
+					guessed = append(guessed, *rec)
 				}
 				number := probe
 				mu.Unlock()
@@ -56,8 +59,22 @@ func TestVerificationHooksAroundPhoneCodes(t *testing.T) {
 				mu.Lock()
 				defer mu.Unlock()
 				out := events
-				events = nil
+				events, guessed = nil, nil
 				return out
+			}
+			// sawOnly checks that every guess hook since the last drain saw rec.
+			sawOnly := func(rec auth.VerificationRecord, n int) {
+				t.Helper()
+				mu.Lock()
+				defer mu.Unlock()
+				if len(guessed) != n {
+					t.Fatal("the guesses ran", len(guessed), "record hooks, want", n)
+				}
+				for _, r := range guessed {
+					if r != rec {
+						t.Fatal("a guess saw", r, "for the created", rec)
+					}
+				}
 			}
 			same := func(got []string, want ...string) {
 				t.Helper()
@@ -176,16 +193,15 @@ func TestVerificationHooksAroundPhoneCodes(t *testing.T) {
 			}
 			sent := created
 			verify("+15552000001", "nope", "", "", 400, "INVALID_OTP")
+			sawOnly(sent, 2)
 			same(drain(), "v-delete-before:phone-number-otp", "v-update-after:phone-number-otp")
 			if _, value := rowValue("phone-number-otp-+15552000001"); !strings.HasSuffix(value, ":1") {
 				t.Fatal("the wrong guess was counted as", value)
 			}
 			// A planned sign-up: the code's hooks wrap the user's and session's.
 			verify("+15552000001", code, "", "", 200, `"status":true`)
+			sawOnly(sent, 2)
 			same(drain(), "v-delete-before:phone-number-otp", "user-before", "session-before", "v-delete-after:phone-number-otp", "user-after", "session-after")
-			if created != sent {
-				t.Fatal("the guess saw a record that was created", created, sent)
-			}
 
 			// Concurrent verifications of one phone code run one delete after hook.
 			code = send("+15552000002")

@@ -93,6 +93,9 @@ func (a *Auth) saveEmailOTP(ctx context.Context, req EmailOTPRequest, allowNew, 
 		} else if err != nil {
 			return "", false, err
 		}
+		// Slow hooks cannot stretch the life of the session, or of the
+		// current address's code, that the same store call judges.
+		req.Now = a.now().UTC().Truncate(time.Millisecond)
 	}
 	raw, err = a.opts.Store.(EmailOTPStore).SaveEmailOTP(ctx, req, allowNew, expires, prepare)
 	// The current address's code, judged by the same call, runs its after hooks first.

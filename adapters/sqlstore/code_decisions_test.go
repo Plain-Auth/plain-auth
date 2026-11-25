@@ -121,7 +121,8 @@ func TestEmailCodeDecisions(t *testing.T) {
 			}
 			// A matcher's error and a rolled-back session insert keep the code.
 			broken := act
-			broken.Decided, broken.MaxAttempts = new(auth.PhoneOTPDecision), 3
+			unreported := auth.PhoneOTPDecision(99)
+			broken.Decided, broken.MaxAttempts = &unreported, 3
 			if _, err := s.UseEmailOTP(ctx, broken, func(string) (bool, error) { return false, errors.New("transform") }); err == nil || *broken.Decided != auth.PhoneKeepProof {
 				t.Fatal("a matcher's error reported", *broken.Decided, err)
 			}

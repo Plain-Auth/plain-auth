@@ -623,6 +623,21 @@ func TestDatabaseVerificationHooksForEmailChanges(t *testing.T) {
 	}
 	sameEvents(t, events.drain(), "delete-before:email-verification-otp", "create-before:change-email-otp", "delete-after:email-verification-otp", "create-after:change-email-otp")
 
+	// Slow create hooks cannot stretch the current code's life: it is judged
+	// with the time taken after them.
+	planted := time.Now().UTC().Truncate(time.Millisecond)
+	if _, err := store.SaveEmailOTP(ctx, authn.EmailOTPRequest{Email: "cy@example.test", Purpose: authn.OTPVerifyEmail, Now: planted}, true, planted.Add(500*time.Millisecond), func(*authn.EmailOTPRecord) (string, string, int, error) {
+		return "short-lived", "short-lived", 0, nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	events.during("create-before:change-email-otp", func(context.Context) { time.Sleep(800 * time.Millisecond) })
+	if mailed := request(current, cy, "later@example.test", "short-lived", 400, "OTP_EXPIRED"); mailed != "" {
+		t.Fatal("a change judged with an expired current code was mailed")
+	}
+	events.during("create-before:change-email-otp", nil)
+	sameEvents(t, events.drain(), "delete-before:email-verification-otp", "create-before:change-email-otp", "delete-after:email-verification-otp")
+
 	// Observed verifications run the code's hooks before BeforeEmailVerification;
 	// an after hook's error discards the spend and leaves the address unverified.
 	observed := newCodeHost(t, memory.New(), events, authn.EmailOTPOptions{}, func(o *authn.Options) {
