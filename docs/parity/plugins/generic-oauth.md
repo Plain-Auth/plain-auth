@@ -68,7 +68,7 @@
   - [ ] `hubspot`
     - [x] Complete authorization-code sign-in, bind the provider subject and read the linked account profile ([test](../../../providers/profile_presets_test.go#L22))
     - [x] Compare default scopes, authenticated profile fields and subject with the published provider preset ([test](../../../conformance/profile-presets.test.mjs#L6))
-    - [x] Validate the introspected token’s registered client, active status and access-token use ([test](../../../providers/profile_presets_test.go#L164))
+    - [x] Validate the introspected token’s registered client, active status and access-token use ([test](../../../providers/profile_presets_test.go#L178))
   - [ ] `KeycloakOptions`
     - [ ] `issuer`
     - [ ] `clientId`

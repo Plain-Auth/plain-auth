@@ -285,6 +285,7 @@ Return a `*plainauth.APIError` to choose the status, code and message. Any other
 - `c.CallbackURL`, `c.PublicURL`, `c.ErrorPageURL` and `c.Redirect` resolve URLs for this request, with the origins `TrustedOriginsForRequest` adds and the host `DynamicBaseURL` resolves. `c.RequestOrigin` returns the origin of the host the request reached, which may not be allowed.
 - `c.Auth` is the instance, with `Logger`, `RunInBackground`, `RunInBackgroundOrAwait` and the typed account and session methods. Its `PublicURL` and `CallbackURL` use the static configuration, which is the fallback with `DynamicBaseURL`.
 - `c.Store()` is the configured store.
+- On `"/callback/:id"`, `plainauth.OAuthAdditionalData(c.Request.Context())` returns the [`additionalData`](social.md#pass-application-data-through-the-flow) the browser sent when it started the flow.
 - `c.RequestMetadata()` is a body-free copy of the request for background work. Bind it to the task's context with `WithContext`, since the request's own context ends with the response.
 
 Hooks run only for HTTP requests. Direct Go calls such as `Auth.SignUpEmail` run no endpoint hooks; wrap those call sites in your own code.

@@ -49,7 +49,7 @@ func serveProxyPair(preview net.Listener, filename string) error {
 				return auth.OAuthProfile{}, errors.New("unexpected fixture identity")
 			}
 			name := "Employee"
-			if metadata := auth.OAuthPopupAdditionalData(ctx); metadata["source"] == "popup" {
+			if metadata := auth.OAuthAdditionalData(ctx); metadata["source"] == "popup" {
 				name = "Popup Employee"
 			}
 			return auth.OAuthProfile{Subject: "employee", Email: "employee@example.test", Name: name, EmailVerified: true}, nil

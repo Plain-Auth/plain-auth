@@ -337,6 +337,30 @@ Add `scopes`, `loginHint` and `additionalParams` to a sign-in or account-linking
 
 The configured scopes remain in effect. Provider support determines which hints have an effect on the consent screen. The handler owns the OAuth state, client identity, callback, response type, PKCE parameters, nonce and scope field. It rejects those names in `additionalParams`, along with client-secret fields, vendor client-ID aliases and parameters that replace the authorization request. Native applications can supply the same fields to `SignInSocial` and `LinkSocial` on the Go client.
 
+## Pass application data through the flow
+
+Send `additionalData` with `/sign-in/social` or `/link-social` to carry your own values, such as an invitation or the page the user came from, to the callback. On the Go client it is `SocialSignInRequest.AdditionalData`. It must be a JSON object of up to 8 KiB; anything else answers 400 `VALIDATION_ERROR`. With `OAuthStateCookie` the whole flow must also fit in the state cookie. The data is kept only for that browser flow; an ID-token request carries none.
+
+The names the flow's own state uses are dropped: `callbackURL`, `codeVerifier`, `errorURL`, `newUserURL`, `expiresAt`, `oauthState`, `link`, `requestSignUp`, `idTokenNonce` and `serverContext`. A browser cannot change the destinations, the PKCE verifier, the link target or the expiry this way.
+
+During the callback, read the data with `plainauth.OAuthAdditionalData(ctx)` in the provider's exchange and profile callbacks, in `ValidateUserInfo` and in database hooks. In an after hook on the callback, read it from the hook's request:
+
+```go
+plainauth.EndpointHook{
+	Match: func(c *plainauth.HookContext) bool { return c.Path == "/callback/:id" },
+	Run: func(c *plainauth.HookContext) error {
+		if invitedBy, ok := plainauth.OAuthAdditionalData(c.Request.Context())["invitedBy"].(string); ok {
+			c.Auth.Logger().Info("invited sign-in", "invitedBy", invitedBy)
+		}
+		return nil
+	},
+}
+```
+
+The values are browser input: check them before you act on them, and do not change the map. Numbers come back as `float64`. Keep values the server derives itself in your own storage rather than in `additionalData`. [Additional data tests](../conformance/goapi/oauth_additional_data_test.go)
+
+`/link-social` checks its body first, then the caller's session, then the provider, so an anonymous request for an unknown provider answers 401 `UNAUTHORIZED`. An ID-token link whose subject is empty answers 401 `FAILED_TO_GET_USER_INFO`. [Link contract test](../conformance/goapi/provider_contract_test.go)
+
 ## Sign out from an identity provider
 
 OIDC discovery can supply an `end_session_endpoint`. For a manually registered provider, set `OAuthProvider.EndSessionEndpoint` to its HTTPS logout URL. Set `PostLogoutRedirectURI` to a trusted application return URL registered at the provider. Use `DisableProviderLogout` to keep sign-out local for an individual provider.

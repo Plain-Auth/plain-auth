@@ -1,7 +1,6 @@
 package plainauth
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -19,14 +18,6 @@ type popupOpener struct {
 }
 
 type popupError = popupwire.Error
-type popupDataKey struct{}
-
-// OAuthPopupAdditionalData returns application data from the initiating browser
-// to the provider's exchange and profile callbacks. Values are untrusted input.
-func OAuthPopupAdditionalData(ctx context.Context) map[string]any {
-	data, _ := ctx.Value(popupDataKey{}).(map[string]any)
-	return data
-}
 
 // OAuthPopupOptions configures the fixed browser message protocol for a deployment.
 type OAuthPopupOptions struct {
@@ -114,15 +105,14 @@ func startOAuthPopup(c EndpointContext, messageType string) (any, error) {
 		body["callbackURL"] = base
 	}
 	if raw := q.Get("additionalData"); raw != "" {
-		if len(raw) > 8192 {
+		if len(raw) > maxOAuthAdditionalData {
 			return failure("popup_sign_in_failed", "Additional data is too large")
 		}
-		if json.Unmarshal([]byte(raw), &flow.PopupAdditionalData) == nil {
-			for _, key := range []string{"callbackURL", "codeVerifier", "errorURL", "newUserURL", "expiresAt", "oauthState", "link", "requestSignUp", "idTokenNonce", "serverContext"} {
-				delete(flow.PopupAdditionalData, key)
-			}
-		} else {
-			flow.PopupAdditionalData = nil
+		if json.Unmarshal([]byte(raw), &flow.AdditionalData) != nil {
+			flow.AdditionalData = nil
+		}
+		for _, key := range oauthStateKeys {
+			delete(flow.AdditionalData, key)
 		}
 	}
 	target, state, err := a.beginBrowserOAuth(c.ResponseHeader, r, p, body, flow, params)

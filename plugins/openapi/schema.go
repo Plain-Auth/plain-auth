@@ -569,7 +569,7 @@ func adjustRequest(op object, r plainauth.HTTPRoute, info plainauth.HTTPDescript
 		fields["email"] = object{"type": "string", "format": "email"}
 		fields["password"] = object{"type": "string", "format": "password"}
 	case "/sign-in/social", "/link-social":
-		keepFields(schema, "provider", "callbackURL", "errorCallbackURL", "newUserCallbackURL", "disableRedirect", "idToken")
+		keepFields(schema, "provider", "callbackURL", "errorCallbackURL", "newUserCallbackURL", "disableRedirect", "idToken", "additionalData")
 		fields["provider"] = object{"type": "string", "enum": info.Providers}
 		if r.Path == "/sign-in/social" && info.OAuthLoginContinuation {
 			fields["oauth_query"] = object{"type": "string", "description": "Verified query from the issuer login page."}

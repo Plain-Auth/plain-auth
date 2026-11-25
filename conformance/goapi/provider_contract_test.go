@@ -155,3 +155,70 @@ func TestProviderCredentialErrors(t *testing.T) {
 		t.Fatal("a server call without a session or user answered", err)
 	}
 }
+
+// /link-social checks its body, then the session, then the provider. A
+// browser link answers the authorization URL, redirecting unless
+// disableRedirect is set. An ID-token link that the provider refuses, whose
+// profile has no email, or whose subject names no account answers 401 and
+// links nothing.
+func TestLinkSocialContract(t *testing.T) {
+	google := providers.Google("client", "secret")
+	google.VerifyIDToken = func(_ context.Context, raw, _ string) (authn.OAuthProfile, time.Time, error) {
+		switch raw {
+		case "refused":
+			return authn.OAuthProfile{}, time.Time{}, errors.New("not ours")
+		case "no-email":
+			return authn.OAuthProfile{Subject: "no-email"}, time.Now().Add(time.Hour), nil
+		case "no-subject":
+			return authn.OAuthProfile{Subject: " ", Email: "dana@example.test", EmailVerified: true}, time.Now().Add(time.Hour), nil
+		}
+		return authn.OAuthProfile{Subject: raw, Email: "dana@example.test", EmailVerified: true, Name: "Dana"}, time.Now().Add(time.Hour), nil
+	}
+	store, err := sqlite.Open(":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	off := false
+	auth, err := authn.New(authn.Options{BaseURL: "https://auth.example", Store: store, Secret: strings.Repeat("s", 32), RateLimit: &off, EmailAndPassword: true,
+		SocialProviders: map[string]authn.OAuthProvider{"google": google}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	c := sessionClient{t, auth}
+	c.post("/sign-up/email", `{"name":"Dana","email":"dana@example.test","password":"`+sessionEndpointPassword+`"}`, "", 200)
+	cookie, _ := c.signIn("dana@example.test")
+	if _, message, _ := errorBody(t, c.post("/link-social", `{"provider":"nope","disableRedirect":"yes"}`, "", 400)); message != "[body.disableRedirect] Invalid input: expected boolean, received string" {
+		t.Fatal("a bad body answered", message)
+	}
+	if _, message, _ := errorBody(t, c.post("/link-social", `{"provider":"nope","idToken":"raw"}`, "", 400)); message != "[body.idToken] Invalid input: expected object, received string" {
+		t.Fatal("an ID token that is not an object answered", message)
+	}
+	if code, _, _ := errorBody(t, c.post("/link-social", `{"provider":"nope"}`, "", 401)); code != "UNAUTHORIZED" {
+		t.Fatal("an anonymous link answered", code)
+	}
+	if code, _, _ := errorBody(t, c.post("/link-social", `{"provider":"nope"}`, cookie, 404)); code != "PROVIDER_NOT_FOUND" {
+		t.Fatal("a link to an unknown provider answered", code)
+	}
+	var started struct {
+		URL      string
+		Redirect bool
+	}
+	r := c.post("/link-social", `{"provider":"google","callbackURL":"/"}`, cookie, 200)
+	if err := json.NewDecoder(r.Body).Decode(&started); err != nil || !started.Redirect || started.URL == "" || r.Header.Get("Location") != started.URL {
+		t.Fatal("a browser link answered", started, r.Header.Get("Location"), err)
+	}
+	r = c.post("/link-social", `{"provider":"google","callbackURL":"/","disableRedirect":true}`, cookie, 200)
+	if err := json.NewDecoder(r.Body).Decode(&started); err != nil || started.Redirect || started.URL == "" || r.Header.Get("Location") != "" {
+		t.Fatal("a link with disableRedirect answered", started, r.Header.Get("Location"), err)
+	}
+	for token, want := range map[string]string{"refused": "INVALID_TOKEN", "no-email": "USER_EMAIL_NOT_FOUND", "no-subject": "FAILED_TO_GET_USER_INFO"} {
+		r := c.post("/link-social", `{"provider":"google","idToken":{"token":"`+token+`","nonce":"n"}}`, cookie, 401)
+		if code, _, _ := errorBody(t, r); code != want {
+			t.Fatal("an ID-token link with", token, "answered", code, "want", want)
+		}
+	}
+	if accounts := accountsOf(t, c, cookie); len(accounts) != 1 || accounts["credential"] == "" {
+		t.Fatal("a refused link left accounts", accounts)
+	}
+}

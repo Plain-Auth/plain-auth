@@ -137,7 +137,7 @@ type oauthProxyState struct {
 	State, Provider, ClientID, Preview, Production, Callback, Verifier, Nonce, BasePath string
 	ExpiresAt                                                                           time.Time
 	RequestSignUp                                                                       bool
-	PopupAdditionalData                                                                 map[string]any `json:",omitempty"`
+	AdditionalData                                                                      map[string]any `json:",omitempty"`
 }
 
 type oauthProxyResult struct {
@@ -188,7 +188,7 @@ func (a *Auth) packProxyState(flow OAuthFlow) (string, error) {
 	return a.sealProxy(proxyStatePurpose, oauthProxyState{
 		State: flow.State, Provider: flow.Provider, ClientID: a.opts.SocialProviders[flow.Provider].Config.ClientID,
 		Preview: flow.ProxyOrigin, Production: a.oauthProxy.ProductionURL, Callback: flow.CallbackURL, BasePath: a.opts.BasePath,
-		Verifier: flow.Verifier, Nonce: flow.Nonce, ExpiresAt: flow.ExpiresAt, RequestSignUp: flow.RequestSignUp, PopupAdditionalData: flow.PopupAdditionalData,
+		Verifier: flow.Verifier, Nonce: flow.Nonce, ExpiresAt: flow.ExpiresAt, RequestSignUp: flow.RequestSignUp, AdditionalData: flow.AdditionalData,
 	})
 }
 
@@ -218,6 +218,7 @@ func (a *Auth) exchangeProxyCallback(w http.ResponseWriter, r *http.Request, id 
 		}
 		return Redirect(httporigin.SetQuery(target, url.Values{"error": {"state_mismatch"}})), nil
 	}
+	r = a.withOAuthAdditionalData(r, grant.AdditionalData)
 	result := oauthProxyResult{State: grant.State, Provider: id, Preview: grant.Preview, Production: grant.Production, Callback: grant.Callback, BasePath: grant.BasePath,
 		DisableSignUp: provider.DisableSignUp || provider.DisableImplicitSignUp && !grant.RequestSignUp, RequireEmailVerification: provider.RequireEmailVerification}
 	if code := q.Get("error"); code != "" {
@@ -227,9 +228,6 @@ func (a *Auth) exchangeProxyCallback(w http.ResponseWriter, r *http.Request, id 
 	} else {
 		ctx, cancel := context.WithTimeout(context.WithValue(r.Context(), oauth2.HTTPClient, provider.HTTPClient), 30*time.Second)
 		defer cancel()
-		if grant.PopupAdditionalData != nil {
-			ctx = context.WithValue(ctx, popupDataKey{}, grant.PopupAdditionalData)
-		}
 		if a.opts.SocialProviders[id].Config.RedirectURL == "" {
 			provider.Config.RedirectURL = grant.Production + grant.BasePath + "/callback/" + id
 		}

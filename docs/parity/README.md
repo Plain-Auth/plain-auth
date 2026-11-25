@@ -2,16 +2,16 @@
 
 ## Verification progress
 
-**1,160 of 6,638 inventory entries are fully verified (17.5%).**
+**1,161 of 6,638 inventory entries are fully verified (17.5%).**
 
 | Inventory status | Entries |
 | --- | ---: |
-| Fully verified | 1,160 |
-| Partially verified | 1,021 |
-| No linked test evidence | 4,457 |
+| Fully verified | 1,161 |
+| Partially verified | 1,030 |
+| No linked test evidence | 4,447 |
 | Not applicable to a Go server | 387 |
 
-The inventory covers features, options, integrations and documentation topics. Partial verification means an open entry has a passing case somewhere beneath it. The checklists also contain 3,435 links from passing scenarios to tests. Adding a scenario leaves the inventory denominator unchanged.
+The inventory covers features, options, integrations and documentation topics. Partial verification means an open entry has a passing case somewhere beneath it. The checklists also contain 3,447 links from passing scenarios to tests. Adding a scenario leaves the inventory denominator unchanged.
 
 Entries that exist only for JavaScript clients, frameworks or runtimes are listed as not applicable, with the reason, and are left out of the totals. Backlog entries stay open on the roadmap but are not scheduled.
 
@@ -77,10 +77,10 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 | --- | ---: | ---: | ---: |
 | [Published package interfaces](packages.md) | 94 | 116 | 43 |
 | [Native Go client, routers and databases](go.md) | 38 | 4 | 0 |
-| [Core API, sign-in providers and CLI](runtime.md) | 228 | 238 | 13 |
+| [Core API, sign-in providers and CLI](runtime.md) | 229 | 238 | 13 |
 | [Database adapters](adapters.md) | 32 | 193 | 31 |
 | [Authentication](authentication.md) | 128 | 366 | 0 |
-| [Core concepts](concepts.md) | 459 | 341 | 0 |
+| [Core concepts](concepts.md) | 471 | 340 | 0 |
 | [Managed infrastructure](infrastructure.md) | 0 | 528 | 0 |
 | [Framework integrations](integrations.md) | 7 | 24 | 201 |
 | [Reference and configuration](reference.md) | 399 | 256 | 4 |

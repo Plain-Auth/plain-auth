@@ -56,7 +56,7 @@ Call `signIn.popup` directly from the click handler so the browser can open the 
 
 Use `provider` or `providerId` for a configured social or custom OAuth provider. `scopes` adds to the provider’s defaults, and `requestSignUp` requests enrollment when the provider requires explicit consent to create a user. `callbackURL`, `newUserCallbackURL`, and `errorCallbackURL` must satisfy the server’s redirect policy. The completion message includes the selected successful destination. The browser helper keeps the opener on its current page and calls `onSession` after confirming the session. A rejected provider login returns its error code.
 
-Pass small, non-secret application metadata in `additionalData`. It travels in the popup's navigation URL. The server accepts a JSON object of up to 8 KiB and makes it available to the configured provider’s exchange and profile callbacks through `plainauth.OAuthPopupAdditionalData(ctx)`. Treat these fields as browser input. The server discards reserved fields for account linking, PKCE, signup policy, destinations, and its own state.
+Pass small, non-secret application metadata in `additionalData`. It travels in the popup's navigation URL. The server accepts a JSON object of up to 8 KiB and makes it available during the callback through `plainauth.OAuthAdditionalData(ctx)`, as [for a redirect sign-in](social.md#pass-application-data-through-the-flow). Treat these fields as browser input. The server discards reserved fields for account linking, PKCE, signup policy, destinations, and its own state.
 
 ## Custom host clients
 

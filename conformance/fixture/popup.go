@@ -24,7 +24,7 @@ func popupProvider(origin string) (auth.OAuthProvider, error) {
 			}
 			return &oauth2.Token{AccessToken: "local-access"}, nil
 		}, Resolve: func(ctx context.Context, _ *oauth2.Token, nonce string) (auth.OAuthProfile, error) {
-			d := auth.OAuthPopupAdditionalData(ctx)
+			d := auth.OAuthAdditionalData(ctx)
 			if nonce == "" || d["campaign"] != "local" || d["link"] != nil || d["serverContext"] != nil {
 				return auth.OAuthProfile{}, errors.New("unexpected popup state")
 			}

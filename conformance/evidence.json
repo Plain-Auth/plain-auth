@@ -1783,6 +1783,11 @@
       "test": "conformance/goapi/user_validation_test.go",
       "marker": "func TestValidateUserInfoIDTokenLinks(t *testing.T) {",
       "label": "ValidateUserInfo refuses an explicit link with a 403 and leaves the identity unlinked"
+    },
+    {
+      "label": "/link-social checks the body, then the session (401 UNAUTHORIZED), then the provider (404 PROVIDER_NOT_FOUND); a browser link answers {url, redirect} with a Location unless disableRedirect is set; an ID-token link the provider refuses, without an email or with an empty subject answers INVALID_TOKEN, USER_EMAIL_NOT_FOUND or FAILED_TO_GET_USER_INFO and links nothing. Unlike the reference, the ID token's nonce is required",
+      "test": "conformance/goapi/provider_contract_test.go",
+      "marker": "func TestLinkSocialContract(t *testing.T) {"
     }
   ],
   "cli/init": [
@@ -21721,6 +21726,86 @@
       "label": "The memory store keeps expired reset tokens, magic links and transfers with the option, and a store without VerificationCleanupStore refuses it",
       "test": "adapters/memory/verification_cleanup_test.go",
       "marker": "a store without VerificationCleanupStore accepted the option"
+    }
+  ],
+  "docs/content/docs/concepts/oauth.mdx#L250": [
+    {
+      "label": "additionalData on /sign-in/social and /link-social is kept with the browser flow, under the database and the cookie state strategy, and reaches the callback without being stored elsewhere; a value that is not an object or exceeds 8 KiB answers 400 VALIDATION_ERROR before a flow is stored",
+      "test": "conformance/goapi/oauth_additional_data_test.go",
+      "marker": "func TestOAuthAdditionalData(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/concepts/oauth.mdx#L286": [
+    {
+      "label": "During the callback, OAuthAdditionalData returns the data to the provider's callbacks, ValidateUserInfo, database hooks and after hooks on /callback/:id. Unlike getOAuthState, it returns only the browser's keys, not the flow's own state",
+      "test": "conformance/goapi/oauth_additional_data_test.go",
+      "marker": "record(\"after hook\", auth.OAuthAdditionalData(c.Request.Context()))",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/concepts/oauth.mdx#L377/`[key: string]`": [
+    {
+      "label": "The browser's additionalData keys reach the callback as sent, numbers as float64",
+      "test": "conformance/goapi/oauth_additional_data_test.go",
+      "marker": "want := map[string]any{\"invitedBy\": \"user-123\", \"count\": float64(2)}",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/concepts/oauth.mdx#L369/`callbackURL`": [
+    {
+      "label": "additionalData cannot replace the flow's callbackURL: the name is dropped from the browser's data. OAuthAdditionalData does not return the flow's own state",
+      "test": "conformance/goapi/oauth_additional_data_test.go",
+      "marker": "spoofed := `\"callbackURL\":\"https://evil.example\",\"errorURL\":\"https://evil.example\",\"newUserURL\":\"https://evil.example\",\"codeVerifier\":\"guess\",` +"
+    }
+  ],
+  "docs/content/docs/concepts/oauth.mdx#L370/`codeVerifier`": [
+    {
+      "label": "additionalData cannot replace the flow's codeVerifier: the name is dropped from the browser's data. OAuthAdditionalData does not return the flow's own state",
+      "test": "conformance/goapi/oauth_additional_data_test.go",
+      "marker": "spoofed := `\"callbackURL\":\"https://evil.example\",\"errorURL\":\"https://evil.example\",\"newUserURL\":\"https://evil.example\",\"codeVerifier\":\"guess\",` +"
+    }
+  ],
+  "docs/content/docs/concepts/oauth.mdx#L371/`errorURL`": [
+    {
+      "label": "additionalData cannot replace the flow's errorURL: the name is dropped from the browser's data. OAuthAdditionalData does not return the flow's own state",
+      "test": "conformance/goapi/oauth_additional_data_test.go",
+      "marker": "spoofed := `\"callbackURL\":\"https://evil.example\",\"errorURL\":\"https://evil.example\",\"newUserURL\":\"https://evil.example\",\"codeVerifier\":\"guess\",` +"
+    }
+  ],
+  "docs/content/docs/concepts/oauth.mdx#L372/`newUserURL`": [
+    {
+      "label": "additionalData cannot replace the flow's newUserURL: the name is dropped from the browser's data. OAuthAdditionalData does not return the flow's own state",
+      "test": "conformance/goapi/oauth_additional_data_test.go",
+      "marker": "spoofed := `\"callbackURL\":\"https://evil.example\",\"errorURL\":\"https://evil.example\",\"newUserURL\":\"https://evil.example\",\"codeVerifier\":\"guess\",` +"
+    }
+  ],
+  "docs/content/docs/concepts/oauth.mdx#L373/`link`": [
+    {
+      "label": "additionalData cannot replace the flow's link: the name is dropped from the browser's data. OAuthAdditionalData does not return the flow's own state",
+      "test": "conformance/goapi/oauth_additional_data_test.go",
+      "marker": "spoofed := `\"callbackURL\":\"https://evil.example\",\"errorURL\":\"https://evil.example\",\"newUserURL\":\"https://evil.example\",\"codeVerifier\":\"guess\",` +"
+    }
+  ],
+  "docs/content/docs/concepts/oauth.mdx#L374/`requestSignUp`": [
+    {
+      "label": "additionalData cannot replace the flow's requestSignUp: the name is dropped from the browser's data. OAuthAdditionalData does not return the flow's own state",
+      "test": "conformance/goapi/oauth_additional_data_test.go",
+      "marker": "spoofed := `\"callbackURL\":\"https://evil.example\",\"errorURL\":\"https://evil.example\",\"newUserURL\":\"https://evil.example\",\"codeVerifier\":\"guess\",` +"
+    }
+  ],
+  "docs/content/docs/concepts/oauth.mdx#L375/`expiresAt`": [
+    {
+      "label": "additionalData cannot replace the flow's expiresAt: the name is dropped from the browser's data. OAuthAdditionalData does not return the flow's own state",
+      "test": "conformance/goapi/oauth_additional_data_test.go",
+      "marker": "spoofed := `\"callbackURL\":\"https://evil.example\",\"errorURL\":\"https://evil.example\",\"newUserURL\":\"https://evil.example\",\"codeVerifier\":\"guess\",` +"
+    }
+  ],
+  "docs/content/docs/concepts/oauth.mdx#L376/`serverContext`": [
+    {
+      "label": "additionalData cannot replace the flow's serverContext: the name is dropped from the browser's data. OAuthAdditionalData does not return the flow's own state",
+      "test": "conformance/goapi/oauth_additional_data_test.go",
+      "marker": "spoofed := `\"callbackURL\":\"https://evil.example\",\"errorURL\":\"https://evil.example\",\"newUserURL\":\"https://evil.example\",\"codeVerifier\":\"guess\",` +"
     }
   ]
 }

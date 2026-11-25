@@ -81,8 +81,10 @@ type OAuthFlow struct {
 	// identity provider.
 	IssuerLoginQuery string `json:",omitempty"`
 	// ProxyOrigin is the preview that owns the browser state and final session.
-	ProxyOrigin                                       string         `json:",omitempty"`
-	PopupAdditionalData                               map[string]any `json:",omitempty"`
+	ProxyOrigin string `json:",omitempty"`
+	// AdditionalData is the additionalData object the browser sent when it
+	// started the flow, without the reserved names.
+	AdditionalData                                    map[string]any `json:",omitempty"`
 	ProviderReference                                 string         `json:",omitempty"`
 	RedirectURI                                       string         `json:",omitempty"`
 	RequestSignUp                                     bool           `json:",omitempty"`

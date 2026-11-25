@@ -55,6 +55,7 @@ Each entry groups the configured endpoint’s behaviors. A checked child records
     - [x] Explicitly link a verified OIDC identity to the signed-in user ([test](../../providers/oidc_test.go#L22))
     - [x] Apply extra scopes, login hints and consent parameters per request, and reject reserved OAuth fields ([test](../../conformance/social-signup.mjs#L39))
     - [x] ValidateUserInfo refuses an explicit link with a 403 and leaves the identity unlinked ([test](../../conformance/goapi/user_validation_test.go#L338))
+    - [x] /link-social checks the body, then the session (401 UNAUTHORIZED), then the provider (404 PROVIDER_NOT_FOUND); a browser link answers {url, redirect} with a Location unless disableRedirect is set; an ID-token link the provider refuses, without an email or with an empty subject answers INVALID_TOKEN, USER_EMAIL_NOT_FOUND or FAILED_TO_GET_USER_INFO and links nothing. Unlike the reference, the ID token's nonce is required ([test](../../conformance/goapi/provider_contract_test.go#L164))
   - [x] `listSessions` (`GET /list-sessions`) ([test](../../conformance/goapi/session_endpoints_test.go#L173))
     - [x] Return both active logins for the signed-in user ([test](../../conformance/goapi/http_test.go#L94))
     - [x] list-sessions refuses a session older than the freshness age with 403 SESSION_NOT_FRESH and leaves expired sessions out ([test](../../conformance/goapi/session_endpoints_test.go#L173))
@@ -266,7 +267,7 @@ Each entry groups the configured endpoint’s behaviors. A checked child records
   - [x] `requireEmailVerification` ([test](../../conformance/social-user-fields.mjs#L200))
     - [x] Withhold sessions for unverified social accounts, honor mail delivery settings and accept confirmation by either server ([test](../../conformance/social-user-fields.mjs#L200))
     - [x] Check the exact local mailbox before issuing a session on direct ID-token and One Tap sign-in across all SQL engines ([test](../../adapters/sqlstore/oauth_verified_email_test.go#L18))
-    - [x] Enforce verification required by the production provider when completing sign-in on a separately configured preview ([test](../../adapters/sqlstore/oauth_proxy_test.go#L262))
+    - [x] Enforce verification required by the production provider when completing sign-in on a separately configured preview ([test](../../adapters/sqlstore/oauth_proxy_test.go#L272))
 - [ ] Provider-specific settings and overrides
   - [ ] `apple`
     - [ ] `clientId`

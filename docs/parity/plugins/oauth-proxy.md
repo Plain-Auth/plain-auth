@@ -9,7 +9,7 @@
   - [ ] `GET /callback/:id/oauth-proxy`
     - [x] Consume the originating browser state once and verify the provider before creating the preview session ([test](../../../adapters/sqlstore/oauth_proxy_test.go#L176))
     - [x] Complete a popup across sites and return its session to the trusted opener ([test](../../../conformance/core.test.mjs#L1702))
-    - [x] Enforce verification required by the production provider when completing sign-in on a separately configured preview ([test](../../../adapters/sqlstore/oauth_proxy_test.go#L262))
+    - [x] Enforce verification required by the production provider when completing sign-in on a separately configured preview ([test](../../../adapters/sqlstore/oauth_proxy_test.go#L272))
   - [ ] `GET /oauth-proxy-callback`
     - [x] Accept the unqualified return path for a returning account through the released browser client ([test](../../../conformance/core.test.mjs#L1692))
   - [x] `OAuthProxyOptions` ([test](../../../oauth_proxy_test.go#L15))

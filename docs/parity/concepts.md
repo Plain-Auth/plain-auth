@@ -392,16 +392,27 @@
       - [x] Request additional scopes as the signed-in owner and merge the approved grant once across both servers ([test](../../conformance/social-user-fields.mjs#L307))
     - [ ] Customizing the Authorization URL
     - [ ] Passing Additional Data Through OAuth Flow
+      - [x] additionalData on /sign-in/social and /link-social is kept with the browser flow, under the database and the cookie state strategy, and reaches the callback without being stored elsewhere; a value that is not an object or exceeds 8 KiB answers 400 VALIDATION_ERROR before a flow is stored ([test](../../conformance/goapi/oauth_additional_data_test.go#L27))
       - [ ] Accessing Additional Data in Hooks
+        - [x] During the callback, OAuthAdditionalData returns the data to the provider's callbacks, ValidateUserInfo, database hooks and after hooks on /callback/:id. Unlike getOAuthState, it returns only the browser's keys, not the flow's own state ([test](../../conformance/goapi/oauth_additional_data_test.go#L77))
         - [ ] `callbackURL`
+          - [x] additionalData cannot replace the flow's callbackURL: the name is dropped from the browser's data. OAuthAdditionalData does not return the flow's own state ([test](../../conformance/goapi/oauth_additional_data_test.go#L126))
         - [ ] `codeVerifier`
+          - [x] additionalData cannot replace the flow's codeVerifier: the name is dropped from the browser's data. OAuthAdditionalData does not return the flow's own state ([test](../../conformance/goapi/oauth_additional_data_test.go#L126))
         - [ ] `errorURL`
+          - [x] additionalData cannot replace the flow's errorURL: the name is dropped from the browser's data. OAuthAdditionalData does not return the flow's own state ([test](../../conformance/goapi/oauth_additional_data_test.go#L126))
         - [ ] `newUserURL`
+          - [x] additionalData cannot replace the flow's newUserURL: the name is dropped from the browser's data. OAuthAdditionalData does not return the flow's own state ([test](../../conformance/goapi/oauth_additional_data_test.go#L126))
         - [ ] `link`
+          - [x] additionalData cannot replace the flow's link: the name is dropped from the browser's data. OAuthAdditionalData does not return the flow's own state ([test](../../conformance/goapi/oauth_additional_data_test.go#L126))
         - [ ] `requestSignUp`
+          - [x] additionalData cannot replace the flow's requestSignUp: the name is dropped from the browser's data. OAuthAdditionalData does not return the flow's own state ([test](../../conformance/goapi/oauth_additional_data_test.go#L126))
         - [ ] `expiresAt`
+          - [x] additionalData cannot replace the flow's expiresAt: the name is dropped from the browser's data. OAuthAdditionalData does not return the flow's own state ([test](../../conformance/goapi/oauth_additional_data_test.go#L126))
         - [ ] `serverContext`
-        - [ ] `[key: string]`
+          - [x] additionalData cannot replace the flow's serverContext: the name is dropped from the browser's data. OAuthAdditionalData does not return the flow's own state ([test](../../conformance/goapi/oauth_additional_data_test.go#L126))
+        - [x] `[key: string]` ([test](../../conformance/goapi/oauth_additional_data_test.go#L133))
+          - [x] The browser's additionalData keys reach the callback as sent, numbers as float64 ([test](../../conformance/goapi/oauth_additional_data_test.go#L133))
       - [ ] Passing Server-Trusted Data
         - [x] Keep the signed issuer request in server-owned provider state and ignore client-supplied issuer context ([test](../../conformance/oauth-social-authorization.mjs#L32))
   - [ ] Handling Providers Without Email

@@ -21,7 +21,10 @@ type SocialSignInRequest struct {
 	Scopes             []string          `json:"scopes,omitempty"`
 	LoginHint          string            `json:"loginHint,omitempty"`
 	AdditionalParams   map[string]string `json:"additionalParams,omitempty"`
-	IDToken            *SocialIDToken    `json:"idToken,omitempty"`
+	// AdditionalData is application data the server keeps with a browser
+	// flow and hands to its callback. An ID-token request ignores it.
+	AdditionalData map[string]any `json:"additionalData,omitempty"`
+	IDToken        *SocialIDToken `json:"idToken,omitempty"`
 }
 
 type SocialIDToken struct {

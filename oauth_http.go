@@ -88,13 +88,10 @@ func (a *Auth) oauthBinding(browser, id string, r *http.Request) string {
 }
 
 func (a *Auth) startOAuth(w http.ResponseWriter, r *http.Request, body wireBody, link bool) (any, error) {
+	// The body is checked first, then a link's session, then the provider.
 	id, ok := body["provider"].(string)
 	if !ok {
 		return nil, fieldTypeError("provider", "string", body)
-	}
-	p, err := a.providerConfig(r.Context(), id)
-	if err != nil {
-		return nil, err
 	}
 	disable := false
 	if value, found := body["disableRedirect"]; found {
@@ -103,23 +100,40 @@ func (a *Auth) startOAuth(w http.ResponseWriter, r *http.Request, body wireBody,
 			return nil, fieldTypeError("disableRedirect", "boolean", body)
 		}
 	}
-	requestedParams, err := authorizationOptions(body, p.Config.Scopes)
-	if err != nil {
+	if _, err := authorizationOptions(body, nil); err != nil {
 		return nil, err
 	}
 	requestSignUp, ok := body["requestSignUp"].(bool)
 	if _, present := body["requestSignUp"]; present && !ok {
 		return nil, fieldTypeError("requestSignUp", "boolean", body)
 	}
+	additionalData, err := oauthAdditionalData(body)
+	if err != nil {
+		return nil, err
+	}
+	if value, found := body["idToken"]; found {
+		if _, ok := value.(map[string]any); !ok {
+			return nil, fieldTypeError("idToken", "object", body)
+		}
+	}
 	linkUserID := ""
-	var resume OAuthLoginContinuation
 	if link {
 		current, err := a.requireOwnerSession(r.Context(), r.Header)
 		if err != nil {
 			return nil, err
 		}
 		linkUserID = current.User.ID
-	} else {
+	}
+	p, err := a.providerConfig(r.Context(), id)
+	if err != nil {
+		return nil, err
+	}
+	requestedParams, err := authorizationOptions(body, p.Config.Scopes)
+	if err != nil {
+		return nil, err
+	}
+	var resume OAuthLoginContinuation
+	if !link {
 		resume, err = a.loginContinuation("/sign-in/social", r, body, w.Header())
 		if err != nil {
 			return nil, err
@@ -129,7 +143,7 @@ func (a *Auth) startOAuth(w http.ResponseWriter, r *http.Request, body wireBody,
 		callback, _ := body["callbackURL"].(string)
 		return a.directOAuth(w, r, id, p, value, linkUserID, requestSignUp, callback, resume)
 	}
-	flow := OAuthFlow{Provider: id, LinkUserID: linkUserID, RequestSignUp: requestSignUp}
+	flow := OAuthFlow{Provider: id, LinkUserID: linkUserID, RequestSignUp: requestSignUp, AdditionalData: additionalData}
 	if resume != nil {
 		flow.IssuerLoginQuery, _ = body["oauth_query"].(string)
 	}
@@ -300,6 +314,7 @@ func (a *Auth) finishBrowserOAuth(w http.ResponseWriter, r *http.Request, id str
 		return nil, err
 	}
 	http.SetCookie(w, a.oauthCookie("oauth_state", "", -1))
+	r = a.withOAuthAdditionalData(r, flow.AdditionalData)
 	if flow.RedirectURI != "" && flow.RedirectURI != p.Config.RedirectURL {
 		return nil, &APIError{400, "INVALID_CALLBACK_URL", "Invalid OAuth callback"}
 	}
@@ -362,9 +377,6 @@ func (a *Auth) finishBrowserOAuth(w http.ResponseWriter, r *http.Request, id str
 	}
 	ctx, cancel := context.WithTimeout(context.WithValue(r.Context(), oauth2.HTTPClient, p.HTTPClient), 30*time.Second)
 	defer cancel()
-	if flow.PopupAdditionalData != nil {
-		ctx = context.WithValue(ctx, popupDataKey{}, flow.PopupAdditionalData)
-	}
 	var profile OAuthProfile
 	var tokens OAuthTokens
 	var accountFields *MappedAccountFields
@@ -740,6 +752,10 @@ func (a *Auth) directOAuth(w http.ResponseWriter, r *http.Request, id string, p 
 	if profile.Email == "" {
 		a.Logger().ErrorContext(ctx, "The provider's ID token has no email", "provider", id)
 		return nil, &APIError{401, "USER_EMAIL_NOT_FOUND", "User email not found"}
+	}
+	// A subject that names no account answers like a missing profile.
+	if subject := profile.Subject; strings.TrimSpace(subject) == "" || subject == "undefined" || subject == "null" || len(subject) > 1024 {
+		return nil, &APIError{401, "FAILED_TO_GET_USER_INFO", "Failed to get user info"}
 	}
 	if !validSocialProfile(profile) {
 		return nil, &APIError{401, "INVALID_TOKEN", "Invalid token"}

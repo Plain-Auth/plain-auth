@@ -5,9 +5,61 @@ import (
 	"crypto/hmac"
 	"encoding/json"
 	"errors"
+	"maps"
 	"net/http"
 	"time"
 )
+
+type oauthDataKey struct{}
+
+// OAuthAdditionalData returns the additionalData object the browser sent to
+// /sign-in/social, /link-social or /oauth-popup/start, during that flow's
+// callback. The values are browser input: treat them as untrusted and do not
+// modify the map. Numbers decode as float64.
+func OAuthAdditionalData(ctx context.Context) map[string]any {
+	data, _ := ctx.Value(oauthDataKey{}).(map[string]any)
+	return data
+}
+
+// maxOAuthAdditionalData bounds the additional data an anonymous start can
+// store or seal.
+const maxOAuthAdditionalData = 8 << 10
+
+// oauthStateKeys are names the flow's own state uses. Additional data under
+// these names is dropped.
+var oauthStateKeys = []string{"callbackURL", "codeVerifier", "errorURL", "newUserURL", "expiresAt", "oauthState", "link", "requestSignUp", "idTokenNonce", "serverContext"}
+
+// oauthAdditionalData reads a start request's additionalData object.
+func oauthAdditionalData(body wireBody) (map[string]any, error) {
+	value, present := body["additionalData"]
+	if !present {
+		return nil, nil
+	}
+	data, ok := value.(map[string]any)
+	if !ok {
+		return nil, fieldTypeError("additionalData", "record", body)
+	}
+	data = maps.Clone(data)
+	for _, key := range oauthStateKeys {
+		delete(data, key)
+	}
+	if raw, err := json.Marshal(data); err != nil || len(raw) > maxOAuthAdditionalData {
+		return nil, validationError("Additional data is too large")
+	}
+	return data, nil
+}
+
+// withOAuthAdditionalData puts a flow's additional data in the request
+// context, and in the endpoint's hook request so after hooks read it too.
+func (a *Auth) withOAuthAdditionalData(r *http.Request, data map[string]any) *http.Request {
+	if data == nil {
+		return r
+	}
+	if c := a.hookContext(r.Context()); c != nil {
+		c.Request = c.Request.WithContext(context.WithValue(c.Request.Context(), oauthDataKey{}, data))
+	}
+	return r.WithContext(context.WithValue(r.Context(), oauthDataKey{}, data))
+}
 
 // OAuthStateStrategy chooses where a browser OAuth flow waits for the
 // provider's callback.
