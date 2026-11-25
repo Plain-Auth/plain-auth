@@ -82,7 +82,8 @@ func TestInvalidWildcardOriginConfiguration(t *testing.T) {
 func TestCustomSchemeOrigins(t *testing.T) {
 	t.Setenv("AUTH_TRUSTED_ORIGINS", "")
 	a, err := plainauth.New(plainauth.Options{Store: memory.New(), BaseURL: "https://auth.example", Secret: strings.Repeat("x", 32),
-		TrustedOrigins: []string{"myapp://", "chrome-extension://abcdefghijklmnop", "exp://192.168.*.*:*/**", "acme://app/auth", "*.example.com", "dev://**", "expo://10.0.0.*:*/**"}})
+		TrustedOrigins: []string{"myapp://", "chrome-extension://abcdefghijklmnop", "exp://192.168.*.*:*/**", "acme://app/auth", "*.example.com", "dev://**", "expo://10.0.0.*:*/**",
+			"wild://*", "*://scheme.example", "pinned://callback"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -102,6 +103,13 @@ func TestCustomSchemeOrigins(t *testing.T) {
 		{"expo://10.0.0.29:8081/path", true}, {"expo://10.0.1.29:8081/path", false},
 		// An encoded separator or a dot segment never reaches a pinned path.
 		{"acme://app/auth%2F..%2Fother", false}, {"acme://app/other/%2E%2E/auth", false}, {"acme://app/x/../auth", false},
+		// A wildcard rule without a path trusts every host and path of its
+		// scheme, but never user info.
+		{"wild://host", true}, {"wild://host/a/b", true}, {"wild://user@host/a", false},
+		// A scheme wildcard covers HTTP(S) only, and a host-bearing rule
+		// pins its host.
+		{"https://scheme.example", true}, {"myapp2://scheme.example", false},
+		{"pinned://callback/done", true}, {"pinned://callback.attacker.tld", false}, {"pinned://callback.attacker.tld/path", false},
 		// A non-ASCII host never folds into a trusted ASCII one.
 		{"https://x.ex%C4%B0mple.com", false}, {"myapp://%E2%84%AAiosk", false},
 	} {

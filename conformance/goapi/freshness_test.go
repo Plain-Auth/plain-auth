@@ -2,6 +2,7 @@ package goapi_test
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -61,6 +62,31 @@ func TestSessionFreshness(t *testing.T) {
 	// A negative FreshAge skips the check, so the request reaches its own validation.
 	if status, code := call(relaxed, "/unlink-account", `{"accountId":"missing"}`); status != 400 || code != "FAILED_TO_UNLINK_LAST_ACCOUNT" {
 		t.Fatal("the freshness check was not turned off", status, code)
+	}
+
+	// The correct password deletes the account even from a stale session,
+	// and with the check off a stale session deletes it without one.
+	for i, tc := range []struct {
+		a    *authn.Auth
+		body string
+	}{{strict, `{"password":"correct horse battery"}`}, {relaxed, `{}`}} {
+		email := fmt.Sprintf("old-%d@example.com", i)
+		owner, err := strict.SignUpEmail(t.Context(), authn.SignUpInput{Email: email, Password: "correct horse battery", Name: "Old"}, authn.RequestMeta{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		token := fmt.Sprintf("stale-%d", i)
+		if err := store.CreateSession(t.Context(), authn.StoredSession{Session: authn.Session{ID: token, Token: token, UserID: owner.User.ID, CreatedAt: created, UpdatedAt: created, ExpiresAt: time.Now().Add(time.Hour)}}); err != nil {
+			t.Fatal(err)
+		}
+		r := httptest.NewRequest("POST", "https://auth.example/api/auth/delete-user", strings.NewReader(tc.body))
+		r.Header = http.Header{"Origin": {"https://auth.example"}, "Content-Type": {"application/json"}}
+		r.AddCookie(tc.a.SessionCookie(token, false))
+		w := httptest.NewRecorder()
+		tc.a.ServeHTTP(w, r)
+		if _, err := store.FindAccountUser(t.Context(), email); w.Code != 200 || err == nil {
+			t.Fatalf("deleting from a stale session with %s answered %d %s", tc.body, w.Code, w.Body.String())
+		}
 	}
 }
 

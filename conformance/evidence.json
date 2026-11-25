@@ -20983,6 +20983,12 @@
       "label": "Shared cookies with DynamicBaseURL; unlike the reference, the domain must be set explicitly and cover every allowed host instead of following the resolved host",
       "test": "conformance/goapi/dynamic_base_url_test.go",
       "marker": "\"implicit domain\": {auth.Options{DynamicBaseURL: hosts(\"app.example\"), CrossSubDomainCookies: &auth.CrossSubDomainCookiesOptions{}}, \"set explicitly\"},"
+    },
+    {
+      "label": "With a shared cookie domain covering every allowed host, a session started on any allowed host is set for that domain",
+      "test": "conformance/goapi/dynamic_base_url_test.go",
+      "marker": "func TestDynamicBaseURLSharedCookieDomain(t *testing.T) {",
+      "complete": true
     }
   ],
   "docs/content/docs/reference/security.mdx#L174": [
@@ -21022,6 +21028,12 @@
       "label": "Each email-change delivery, the verify-email confirmation step, the email-change code and a code sent in place of the verification email log a failed send and answer as if it went out",
       "test": "conformance/goapi/background_tasks_test.go",
       "marker": "func TestEmailChangeDeliveryFailuresAreLogged(t *testing.T) {"
+    },
+    {
+      "label": "With a runner, the sign-in verification mail, an email code, the deletion mail and the email change mail are each handed off once with the usual answer",
+      "test": "conformance/goapi/background_tasks_test.go",
+      "marker": "t.Fatalf(\"%s with a runner answered %d %s\", path, status, response)",
+      "complete": true
     }
   ],
   "docs/content/docs/reference/options.mdx#L720": [
@@ -21611,6 +21623,30 @@
       "label": "Provider discovery and signing-key requests do not follow redirects, so a redirected key set fails the sign-in and the redirect target is never contacted",
       "test": "providers/redirects_test.go",
       "marker": "t.Fatal(\"the key request followed a redirect\")"
+    }
+  ],
+  "docs/content/docs/concepts/users-accounts.mdx#L255": [
+    {
+      "label": "delete-user deletes from a stale session with the correct password, refuses one without it, and with the freshness check off deletes without proof",
+      "test": "conformance/goapi/freshness_test.go",
+      "marker": "t.Fatalf(\"deleting from a stale session with %s answered %d %s\", tc.body, w.Code, w.Body.String())",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/reference/security.mdx#L74/Your own routes that call `auth.api`": [
+    {
+      "label": "A host route calls CheckRequestOrigin to apply the handler's origin rule: a cookie request needs a trusted Origin, including a per-request one, a request without cookies passes, and DisableCSRFCheck turns it off",
+      "test": "conformance/goapi/request_origins_test.go",
+      "marker": "func TestCheckRequestOrigin(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/reference/options.mdx#L167/Notes": [
+    {
+      "label": "A custom-scheme wildcard without a path trusts every host and path but never user info, a scheme wildcard covers HTTP(S) only, and a host-bearing rule pins its host",
+      "test": "conformance/goapi/trusted_origins_test.go",
+      "marker": "{\"pinned://callback/done\", true}, {\"pinned://callback.attacker.tld\", false}, {\"pinned://callback.attacker.tld/path\", false},",
+      "complete": true
     }
   ]
 }

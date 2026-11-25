@@ -257,8 +257,8 @@
 ## Options
 
 - [ ] Options
-  - [x] `appName` ([test](../../conformance/goapi/freshness_test.go#L68))
-    - [x] Name the application as the default authenticator issuer ([test](../../conformance/goapi/freshness_test.go#L68))
+  - [x] `appName` ([test](../../conformance/goapi/freshness_test.go#L94))
+    - [x] Name the application as the default authenticator issuer ([test](../../conformance/goapi/freshness_test.go#L94))
   - [x] `baseURL` ([test](../../env_test.go#L63))
     - [x] Resolve public URL and mount path from explicit options and process settings ([test](../../env_test.go#L20))
     - [x] Without Options.BaseURL or AUTH_URL, startup fails instead of inferring the public URL from requests. Other frameworks' URL variables are ignored, and AUTH_URL alone then configures the instance ([test](../../env_test.go#L63))
@@ -282,10 +282,10 @@
     - [x] Asserts the BaseURL origin is trusted by default, alongside the configured and AUTH_TRUSTED_ORIGINS entries, through CallbackURL ([test](../../conformance/goapi/trusted_origins_test.go#L29))
     - [x] Static Origins ([test](../../conformance/goapi/http_test.go#L71))
       - [x] A sign-up with an Origin taken from the static TrustedOrigins list succeeds over HTTP ([test](../../conformance/goapi/http_test.go#L71))
-    - [x] Dynamic Origins ([test](../../conformance/goapi/request_origins_test.go#L124))
-      - [x] TrustedOriginsForRequest adds origins per request: a tenant's callback, request Origin and plugin redirect are trusted on that tenant's requests only, alongside the static origins ([test](../../conformance/goapi/request_origins_test.go#L124))
-      - [x] On a direct `auth.api` call with a static `baseURL` ([test](../../conformance/goapi/request_origins_test.go#L171))
-        - [x] A direct Go call has no request, so Auth.CallbackURL and SignUpEmail trust the static origins only ([test](../../conformance/goapi/request_origins_test.go#L171))
+    - [x] Dynamic Origins ([test](../../conformance/goapi/request_origins_test.go#L125))
+      - [x] TrustedOriginsForRequest adds origins per request: a tenant's callback, request Origin and plugin redirect are trusted on that tenant's requests only, alongside the static origins ([test](../../conformance/goapi/request_origins_test.go#L125))
+      - [x] On a direct `auth.api` call with a static `baseURL` ([test](../../conformance/goapi/request_origins_test.go#L172))
+        - [x] A direct Go call has no request, so Auth.CallbackURL and SignUpEmail trust the static origins only ([test](../../conformance/goapi/request_origins_test.go#L172))
     - [ ] Wildcard Support
       - [x] Compare cookie-authenticated mutations and absolute login callback decisions for HTTP(S) wildcard origins on both servers ([test](../../conformance/trusted-origins.mjs#L76))
       - [ ] Pattern Syntax
@@ -295,7 +295,7 @@
         - [x] `*` ([test](../../conformance/goapi/trusted_origins_test.go#L30))
           - [x] The pattern https://*.apps.example matches subdomains at any depth and ignores the path ([test](../../conformance/goapi/trusted_origins_test.go#L30))
         - [ ] ``
-          - [x] In custom-scheme rules ** crosses /: dev://** admits a multi-segment path and a bare host, and a /** segment admits any number of path segments ([test](../../conformance/goapi/trusted_origins_test.go#L101))
+          - [x] In custom-scheme rules ** crosses /: dev://** admits a multi-segment path and a bare host, and a /** segment admits any number of path segments ([test](../../conformance/goapi/trusted_origins_test.go#L102))
       - [ ] Pattern Examples
         - [x] `http://*.example.com` ([test](../../conformance/goapi/trusted_origins_test.go#L47))
           - [x] A scheme-pinned http wildcard trusts any depth of subdomains on http only, and not the bare domain ([test](../../conformance/goapi/trusted_origins_test.go#L47))
@@ -307,7 +307,8 @@
           - [x] exp://192.168.*.*:*/** admits Expo URLs on local IPv4 addresses with any port and path, and refuses a hostname ([test](../../conformance/goapi/trusted_origins_test.go#L82))
         - [x] `myapp://` ([test](../../conformance/goapi/trusted_origins_test.go#L82))
           - [x] myapp:// admits every myapp:// URL and no other scheme ([test](../../conformance/goapi/trusted_origins_test.go#L82))
-        - [ ] Notes
+        - [x] Notes ([test](../../conformance/goapi/trusted_origins_test.go#L112))
+          - [x] A custom-scheme wildcard without a path trusts every host and path but never user info, a scheme wildcard covers HTTP(S) only, and a host-bearing rule pins its host ([test](../../conformance/goapi/trusted_origins_test.go#L112))
   - [x] `secret` ([test](../../env_test.go#L68))
     - [x] Use Options.Secret ahead of AUTH_SECRET when no key list is configured ([test](../../env_test.go#L42))
     - [x] Sign with the configured key list ahead of single secrets and prefer the explicit list ([test](../../env_test.go#L194))
@@ -544,12 +545,13 @@
     - [x] `cookiePrefix` ([test](../../cookies_test.go#L26))
       - [x] CookiePrefix names the session and OAuth state cookies (__Secure-company.*), and an instance with another prefix cannot read them ([test](../../cookies_test.go#L26))
     - [ ] `database`
-    - [ ] `backgroundTasks`
+    - [x] `backgroundTasks` ([test](../../conformance/goapi/background_tasks_test.go#L421))
       - [x] Options.BackgroundTasks runs sign-up verification email and the existing-user observer after the response with a detached context ([test](../../conformance/goapi/background_tasks_test.go#L55))
       - [x] With BackgroundTasks, organization invitation email is handed to the runner and sent with a live request copy ([test](../../adapters/sqlstore/organization_background_test.go#L19))
       - [x] Over HTTP a failed password reset, sign-in, deletion, email change or email OTP delivery is logged and the response matches a successful send; direct Go calls return the sender's error ([test](../../conformance/goapi/background_tasks_test.go#L278))
       - [x] A phone sign-in resend and reset request log a failed delivery without its text and answer as if the code was sent ([test](../../adapters/sqlstore/phone_delivery_test.go#L20))
-      - [x] Each email-change delivery, the verify-email confirmation step, the email-change code and a code sent in place of the verification email log a failed send and answer as if it went out ([test](../../conformance/goapi/background_tasks_test.go#L406))
+      - [x] Each email-change delivery, the verify-email confirmation step, the email-change code and a code sent in place of the verification email log a failed send and answer as if it went out ([test](../../conformance/goapi/background_tasks_test.go#L429))
+      - [x] With a runner, the sign-in verification mail, an email code, the deletion mail and the email change mail are each handed off once with the usual answer ([test](../../conformance/goapi/background_tasks_test.go#L421))
     - [x] `skipTrailingSlashes` ([test](../../conformance/goapi/request_switches_test.go#L36))
       - [x] Serve paths with trailing slashes as the paths without them ([test](../../conformance/goapi/request_switches_test.go#L36))
     - [ ] `generateId`
@@ -654,7 +656,8 @@
       - [x] Without cookies: a cross-site navigation sign-up gets 403 CROSS_SITE_NAVIGATION_LOGIN_BLOCKED, and a sign-in with an untrusted Origin gets 403 INVALID_ORIGIN ([test](../../conformance/goapi/http_test.go#L109))
     - [x] No Mutations on GET Requests (with additional safeguards) ([test](../../conformance/goapi/oauth_test.go#L151))
       - [x] The GET OAuth callback that creates a session sends a nonce and PKCE to the provider ([test](../../conformance/goapi/oauth_test.go#L151))
-    - [ ] Your own routes that call `auth.api`
+    - [x] Your own routes that call `auth.api` ([test](../../conformance/goapi/request_origins_test.go#L228))
+      - [x] A host route calls CheckRequestOrigin to apply the handler's origin rule: a cookie request needs a trusted Origin, including a per-request one, a request without cookies passes, and DisableCSRFCheck turns it off ([test](../../conformance/goapi/request_origins_test.go#L228))
     - [ ] Disabling Security Checks
       - [x] `disableCSRFCheck` ([test](../../conformance/goapi/request_switches_test.go#L43))
         - [x] Turn off the origin, Fetch Metadata and cross-site navigation checks together ([test](../../conformance/goapi/request_switches_test.go#L43))
@@ -680,8 +683,8 @@
     - [x] TrustedProxyHeaders reads X-Forwarded-Host and X-Forwarded-Proto only from ClientIP.TrustedProxies peers, and only with DynamicBaseURL ([test](../../conformance/goapi/dynamic_base_url_test.go#L225))
     - [x] With DynamicBaseURL, links follow the request host or a trusted proxy's X-Forwarded-Host and X-Forwarded-Proto, while other peers' headers, header lists and unlisted hosts are refused ([test](../../conformance/goapi/dynamic_base_url_test.go#L73))
   - [ ] Trusted Origins
-    - [x] Basic Usage ([test](../../conformance/goapi/request_origins_test.go#L146))
-      - [x] An exact static TrustedOrigins entry is admitted as a callback and as the request Origin, while an unlisted origin is refused with INVALID_CALLBACK_URL or INVALID_ORIGIN ([test](../../conformance/goapi/request_origins_test.go#L146))
+    - [x] Basic Usage ([test](../../conformance/goapi/request_origins_test.go#L147))
+      - [x] An exact static TrustedOrigins entry is admitted as a callback and as the request Origin, while an unlisted origin is refused with INVALID_CALLBACK_URL or INVALID_ORIGIN ([test](../../conformance/goapi/request_origins_test.go#L147))
     - [ ] Wildcard Origins
       - [x] Protocol-specific wildcards ([test](../../conformance/trusted-origins.mjs#L38))
         - [x] Complete the OAuth provider callback on the static auth host and return the browser to an allowed HTTPS application subdomain ([test](../../conformance/goapi/oauth_test.go#L198))
@@ -692,10 +695,10 @@
         - [x] A scheme-less *.store.example rule admits HTTP and HTTPS subdomains and, by design, refuses other schemes such as ftp ([test](../../conformance/goapi/trusted_origins_test.go#L34))
     - [x] Custom Schemes ([test](../../conformance/goapi/trusted_origins_test.go#L82))
       - [x] Custom-scheme rules trust app schemes, extension IDs and Expo wildcards such as exp://** and exp://10.0.0.*:*/**, and refuse schemes that can run code ([test](../../conformance/goapi/trusted_origins_test.go#L82))
-    - [x] Dynamic origin list ([test](../../conformance/goapi/request_origins_test.go#L56))
-      - [x] Options.TrustedOriginsForRequest returns the trusted origins for each request; a returned APIError with an error status is the response, and any other error or an invalid pattern fails the request with a generic 500 ([test](../../conformance/goapi/request_origins_test.go#L56))
-      - [x] Important ([test](../../conformance/goapi/request_origins_test.go#L142))
-        - [x] The host function runs once per request, for both the origin check and the callbacks ([test](../../conformance/goapi/request_origins_test.go#L142))
+    - [x] Dynamic origin list ([test](../../conformance/goapi/request_origins_test.go#L57))
+      - [x] Options.TrustedOriginsForRequest returns the trusted origins for each request; a returned APIError with an error status is the response, and any other error or an invalid pattern fails the request with a generic 500 ([test](../../conformance/goapi/request_origins_test.go#L57))
+      - [x] Important ([test](../../conformance/goapi/request_origins_test.go#L143))
+        - [x] The host function runs once per request, for both the origin check and the callbacks ([test](../../conformance/goapi/request_origins_test.go#L143))
   - [ ] Outbound OAuth Requests
     - [x] Provider discovery and signing-key requests do not follow redirects, so a redirected key set fails the sign-in and the redirect target is never contacted ([test](../../providers/redirects_test.go#L55))
   - [ ] Email Enumeration Protection

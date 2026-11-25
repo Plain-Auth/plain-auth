@@ -243,6 +243,10 @@ func (rule Rule) matchCustom(u *url.URL) bool {
 			return false
 		}
 	}
+	// A wildcard rule without a path, such as myapp://*, trusts every path.
+	if rule.path == "" {
+		return true
+	}
 	return matchSegments(splitPath(rule.path), splitPath(urlPath))
 }
 

@@ -354,3 +354,39 @@ func TestDynamicBaseURLSocialSignIn(t *testing.T) {
 		t.Fatal("a relative callback resolved without a request")
 	}
 }
+
+// With one shared cookie domain covering every allowed host, a session
+// started on any of those hosts is set for the shared domain.
+func TestDynamicBaseURLSharedCookieDomain(t *testing.T) {
+	store, err := sqlite.Open(":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	node, err := auth.New(auth.Options{Store: store, Secret: strings.Repeat("s", 32), EmailAndPassword: true, RateLimit: new(bool),
+		DynamicBaseURL:        &auth.DynamicBaseURLOptions{AllowedHosts: []string{"app.example.com", "*.preview.example.com"}},
+		CrossSubDomainCookies: &auth.CrossSubDomainCookiesOptions{Domain: "example.com"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i, host := range []string{"app.example.com", "pr-1.preview.example.com"} {
+		path, body := "/sign-in/email", `{"email":"person@example.org","password":"a dynamic test password"}`
+		if i == 0 {
+			path, body = "/sign-up/email", `{"name":"Person","email":"person@example.org","password":"a dynamic test password"}`
+		}
+		r := httptest.NewRequest("POST", "https://"+host+"/api/auth"+path, strings.NewReader(body))
+		r.Header.Set("Content-Type", "application/json")
+		r.Header.Set("Origin", "https://"+host)
+		w := httptest.NewRecorder()
+		node.ServeHTTP(w, r)
+		var domain string
+		for _, c := range w.Result().Cookies() {
+			if strings.HasSuffix(c.Name, "session_token") {
+				domain = c.Domain
+			}
+		}
+		if w.Code != 200 || domain != "example.com" {
+			t.Fatalf("a session on %s answered %d with cookie domain %q: %s", host, w.Code, domain, w.Body.String())
+		}
+	}
+}

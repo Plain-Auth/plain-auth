@@ -15,6 +15,7 @@ import (
 	"testing"
 
 	auth "github.com/Plain-Org/plain-auth"
+	"github.com/Plain-Org/plain-auth/adapters/memory"
 	"github.com/Plain-Org/plain-auth/adapters/sqlite"
 	"golang.org/x/oauth2"
 )
@@ -217,5 +218,64 @@ func TestTrustedOriginsForRequest(t *testing.T) {
 	}
 	if got := social(""); got != base {
 		t.Fatalf("an OAuth return the callback request no longer trusts went to %q", got)
+	}
+}
+
+// A host's own route checks a browser request with CheckRequestOrigin, as
+// the handler checks its routes: a request with cookies needs a trusted
+// Origin, including one TrustedOriginsForRequest adds, and one without
+// cookies passes.
+func TestCheckRequestOrigin(t *testing.T) {
+	tenant := func(r *http.Request) ([]string, error) {
+		if r.Header.Get("X-Tenant") == "acme" {
+			return []string{"https://acme.example"}, nil
+		}
+		return nil, nil
+	}
+	a, err := auth.New(auth.Options{Store: memory.New(), BaseURL: "https://auth.example", Secret: strings.Repeat("s", 32),
+		TrustedOrigins: []string{"https://app.example"}, TrustedOriginsForRequest: tenant})
+	if err != nil {
+		t.Fatal(err)
+	}
+	check := func(headers map[string]string) string {
+		t.Helper()
+		r := httptest.NewRequest("POST", "https://app.example/profile", nil)
+		for k, v := range headers {
+			r.Header.Set(k, v)
+		}
+		var api *auth.APIError
+		if err := a.CheckRequestOrigin(r); err == nil {
+			return ""
+		} else if !errors.As(err, &api) || api.Status != 403 {
+			t.Fatal("unexpected error", err)
+		}
+		return api.Code
+	}
+	for _, tc := range []struct {
+		headers map[string]string
+		want    string
+	}{
+		{map[string]string{"Cookie": "s=1", "Origin": "https://app.example"}, ""},
+		{map[string]string{"Cookie": "s=1", "Origin": "https://auth.example"}, ""},
+		{map[string]string{"Cookie": "s=1", "Origin": "https://evil.example"}, "INVALID_ORIGIN"},
+		{map[string]string{"Cookie": "s=1"}, "MISSING_OR_NULL_ORIGIN"},
+		{map[string]string{"Cookie": "s=1", "Origin": "null"}, "MISSING_OR_NULL_ORIGIN"},
+		{map[string]string{"Cookie": "s=1", "Origin": "https://acme.example", "X-Tenant": "acme"}, ""},
+		{map[string]string{"Cookie": "s=1", "Origin": "https://acme.example"}, "INVALID_ORIGIN"},
+		{map[string]string{"Origin": "https://evil.example"}, ""},
+	} {
+		if got := check(tc.headers); got != tc.want {
+			t.Fatalf("CheckRequestOrigin with %v returned %q, want %q", tc.headers, got, tc.want)
+		}
+	}
+	off, err := auth.New(auth.Options{Store: memory.New(), BaseURL: "https://auth.example", Secret: strings.Repeat("s", 32), DisableCSRFCheck: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	r := httptest.NewRequest("POST", "https://app.example/profile", nil)
+	r.Header.Set("Cookie", "s=1")
+	r.Header.Set("Origin", "https://evil.example")
+	if err := off.CheckRequestOrigin(r); err != nil {
+		t.Fatal("DisableCSRFCheck still refused the request", err)
 	}
 }

@@ -28,6 +28,24 @@ type requestScope struct {
 	origins []httporigin.Rule
 }
 
+// CheckRequestOrigin applies the handler's cross-site request check to a
+// request the application serves itself, such as its own route that
+// changes state for a cookie-authenticated browser. Direct Go calls skip
+// the check the handler applies, so a host route should call this first. A
+// request without cookies passes. One with cookies needs an Origin, or a
+// Referer, that is trusted: the base URL, TrustedOrigins,
+// TrustedOriginsForRequest or, with DynamicBaseURL, an allowed host it
+// reached. A null Origin passes only as a same-origin request. Otherwise it
+// returns a 403 *APIError with code INVALID_ORIGIN or MISSING_OR_NULL_ORIGIN.
+// With DisableCSRFCheck it returns nil.
+func (a *Auth) CheckRequestOrigin(r *http.Request) error {
+	scoped, err := a.withRequestScope(r)
+	if err != nil {
+		return err
+	}
+	return a.validateRequestOrigin(scoped, false)
+}
+
 // withRequestScope resolves the request's origin and its added trusted
 // origins once. A nested dispatch of the same request keeps its scope.
 func (a *Auth) withRequestScope(r *http.Request) (*http.Request, error) {

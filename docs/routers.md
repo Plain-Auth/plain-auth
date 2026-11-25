@@ -38,6 +38,22 @@ me := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 })
 ```
 
+### Protect a state-changing route
+
+The handler checks the `Origin` of every request it serves, but your own routes and direct Go calls such as `auth.SignOut` skip that check, even when they pass the browser's headers. A route that changes state for a cookie-authenticated browser should call `auth.CheckRequestOrigin(r)` first: it applies the same rule, so a request with cookies needs a trusted `Origin`, and answers a 403 `*plainauth.APIError` otherwise. Direct calls still check `callbackURL`, `errorCallbackURL`, `newUserCallbackURL` and `redirectTo` against the trusted origins, so pass the values your route takes from the request.
+
+```go
+save := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+    if err := auth.CheckRequestOrigin(r); err != nil {
+        http.Error(w, "Request refused", http.StatusForbidden)
+        return
+    }
+    // Read the session and change state.
+})
+```
+
+[Origin check tests](../conformance/goapi/request_origins_test.go)
+
 ## Verify your mount
 
 Call `GET /api/auth/ok` to check routing. Then run the signup and sign-out flow in the [quickstart](../README.md#quickstart). Sign-out can expire multiple cookies in one response. Proxies and framework adapters must preserve each header independently.

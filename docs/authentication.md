@@ -190,6 +190,7 @@ A native app or browser extension receives its callbacks on a custom scheme. Lis
 | `acme://app/auth` | `acme://app/auth` and paths below it, such as `acme://app/auth/done`. |
 | `chrome-extension://abcdefghijklmnop` | Pages of that one extension. |
 | `exp://192.168.*.*:*/**` | Expo development URLs on any local IPv4 address, port and path. |
+| `myapp://*` | Any host and path of `myapp://`. |
 
 In a custom-scheme rule, `*` and `?` match within the authority, including dots and colons, and within a path segment, and a `**` segment matches any number of segments. A numeric wildcard host matches IPv4 addresses only. A URL whose path holds an encoded slash or backslash, or a `.` or `..` segment, is refused, since an app may resolve it to another route; the query and fragment are ignored. A wildcard without a scheme, such as `*.example.com`, still admits HTTP(S) only, so every custom scheme must be named. Schemes that can run code or read local data, such as `javascript:`, `data:`, `file:` and `blob:`, are refused at startup. A trusted extension origin passes the origin check of a cookie-authenticated request, while One Tap, popups and the OAuth proxy accept only web origins.
 

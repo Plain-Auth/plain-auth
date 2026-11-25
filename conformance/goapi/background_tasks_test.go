@@ -398,6 +398,29 @@ func TestDeliveryFailuresAreLoggedOverHTTP(t *testing.T) {
 	if status, _ := call(deferred, "/request-password-reset", `{"email":"nobody@example.org"}`, ""); status != 200 || queue.drain() != 0 {
 		t.Fatal("an unknown address was handled differently")
 	}
+	// The sign-in verification mail, an email code, the deletion mail and
+	// the email change mail are each handed off once, with the usual answer.
+	for _, tc := range []struct {
+		path, body string
+		status     int
+	}{
+		{"/sign-in/email", `{"email":"` + email + `","password":"` + password + `"}`, 403},
+		{"/email-otp/send-verification-otp", `{"email":"` + email + `","type":"email-verification"}`, 200},
+	} {
+		if status, body := call(deferred, tc.path, tc.body, ""); status != tc.status || queue.drain() != 1 {
+			t.Fatalf("%s with a runner answered %d %s", tc.path, status, body)
+		}
+	}
+	sessionOpts.BackgroundTasks = queue.Go
+	deferredSessions, err := auth.New(sessionOpts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for path, body := range map[string]string{"/delete-user": `{}`, "/change-email": `{"newEmail":"moved@example.org"}`} {
+		if status, response := call(deferredSessions, path, body, cookie); status != 200 || queue.drain() != 1 {
+			t.Fatalf("%s with a runner answered %d %s", path, status, response)
+		}
+	}
 }
 
 // Every email-change delivery, the verify-email confirmation step, the

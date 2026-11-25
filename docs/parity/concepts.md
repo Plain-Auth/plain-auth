@@ -457,8 +457,8 @@
     - [ ] Endpoints
       - [x] Register a Go plugin endpoint and detect duplicate registrations ([test](../../conformance/goapi/plugins_test.go#L14))
       - [ ] Context Object
-      - [x] `appName` ([test](../../conformance/goapi/freshness_test.go#L80))
-        - [x] Read the configured application name from the instance in a plugin ([test](../../conformance/goapi/freshness_test.go#L80))
+      - [x] `appName` ([test](../../conformance/goapi/freshness_test.go#L106))
+        - [x] Read the configured application name from the instance in a plugin ([test](../../conformance/goapi/freshness_test.go#L106))
       - [ ] `options`
       - [ ] `tables`
       - [ ] `baseURL`
@@ -616,8 +616,8 @@
       - [x] With DisableSessionRefresh, a GET past the update age leaves the row unrefreshed and sets no cookie ([test](../../session_refresh_test.go#L94))
     - [x] Defer Session Refresh ([test](../../session_refresh_test.go#L88))
       - [x] With DeferSessionRefresh, GET returns needsRefresh true without writing, and the following POST performs the sliding refresh ([test](../../session_refresh_test.go#L88))
-  - [x] Session Freshness ([test](../../conformance/goapi/freshness_test.go#L21))
-    - [x] Refuse sensitive account changes from a session older than the freshness window, and turn the check off with a negative FreshAge ([test](../../conformance/goapi/freshness_test.go#L21))
+  - [x] Session Freshness ([test](../../conformance/goapi/freshness_test.go#L22))
+    - [x] Refuse sensitive account changes from a session older than the freshness window, and turn the check off with a negative FreshAge ([test](../../conformance/goapi/freshness_test.go#L22))
   - [ ] Session Management
     - [x] Get Session ([test](../../conformance/core.test.mjs#L211))
       - [x] Return the signed-in user and session with the default seven-day lifetime ([test](../../conformance/core.test.mjs#L195))
@@ -739,7 +739,8 @@
         - [x] Opening the emailed /delete-user/callback link while signed in as the owner returns a 302 redirect (callbackURL /goodbye) and deletes the account ([test](../../conformance/goapi/account_lifecycle_test.go#L135))
       - [x] Authentication Check ([test](../../conformance/goapi/delete_user_test.go#L126))
         - [x] Opening a deletion link without a session answers 404 FAILED_TO_GET_USER_INFO and keeps the account and the link ([test](../../conformance/goapi/delete_user_test.go#L126))
-    - [ ] Authentication Requirements
+    - [x] Authentication Requirements ([test](../../conformance/goapi/freshness_test.go#L88))
+      - [x] delete-user deletes from a stale session with the correct password, refuses one without it, and with the freshness check off deletes without proof ([test](../../conformance/goapi/freshness_test.go#L88))
     - [ ] Callbacks
       - [ ] validateUserInfo
         - [x] ValidateUserInfo admits or refuses email sign-ups before the user create hooks with a 403 carrying the app's code, sees a body-free request, and keeps protected sign-ups private ([test](../../conformance/goapi/user_validation_test.go#L62))
@@ -790,8 +791,9 @@
       - [x] Several production domains: a social sign-in uses the redirect URI of its own host and cannot return to another allowed host ([test](../../conformance/goapi/dynamic_base_url_test.go#L309))
   - [x] Choosing a Fallback ([test](../../conformance/goapi/dynamic_base_url_test.go#L136))
     - [x] Without a fallback, a request for an unlisted host fails with a generic 500 that does not reveal the allowlist ([test](../../conformance/goapi/dynamic_base_url_test.go#L136))
-  - [ ] Cookies Across Subdomains
+  - [x] Cookies Across Subdomains ([test](../../conformance/goapi/dynamic_base_url_test.go#L360))
     - [x] Shared cookies with DynamicBaseURL; unlike the reference, the domain must be set explicitly and cover every allowed host instead of following the resolved host ([test](../../conformance/goapi/dynamic_base_url_test.go#L50))
+    - [x] With a shared cookie domain covering every allowed host, a session started on any allowed host is set for that domain ([test](../../conformance/goapi/dynamic_base_url_test.go#L360))
   - [x] Security Model ([test](../../conformance/goapi/dynamic_base_url_test.go#L138))
     - [x] The allowlist model: only listed hosts choose the origin, and other hosts never do ([test](../../conformance/goapi/dynamic_base_url_test.go#L138))
   - [ ] Reference
