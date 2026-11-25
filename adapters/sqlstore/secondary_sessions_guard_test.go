@@ -10,7 +10,8 @@ import (
 // The session mirror relies on single write paths: one session insert, one
 // session delete and one user delete, every change to a user column a
 // session copy holds going through execUserUpdate, and every other session
-// update either touching only organization selection or deleting the copy.
+// update either touching only organization selection, ending sessions whose
+// copies endSessionsTx deleted first, or deleting the copy.
 // A new statement that bypasses them would leave stale copies, so this
 // test fails until it is routed or listed here.
 func TestSessionMirrorWritePaths(t *testing.T) {
@@ -37,7 +38,8 @@ func TestSessionMirrorWritePaths(t *testing.T) {
 				}
 			}
 			if strings.Contains(line, `UPDATE "session"`) {
-				selection := strings.Contains(line, `"activeOrganizationId"`) || strings.Contains(line, `"activeTeamId"`)
+				selection := strings.Contains(line, `"activeOrganizationId"`) || strings.Contains(line, `"activeTeamId"`) ||
+					file == "session_deletion.go" && strings.Contains(line, `UPDATE "session" SET "expiresAt"=?,"updatedAt"=? WHERE "id" IN (`)
 				later := strings.Join(lines[i:min(i+25, len(lines))], "\n")
 				if !selection && !strings.Contains(later, "sessionMirror().forget(") {
 					t.Errorf("%s:%d updates a session without deleting its copy", file, i+1)

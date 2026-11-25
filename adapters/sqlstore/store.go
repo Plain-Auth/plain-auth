@@ -205,8 +205,17 @@ func sessionFields(ss *authn.StoredSession) []any {
 	return []any{&ss.ID, &ss.UserID, &ss.Token, &ss.IPAddress, &ss.UserAgent, &ss.CreatedAt, &ss.UpdatedAt, &ss.ExpiresAt}
 }
 
-// Session retrieves session state and its owner. The auth service checks expiry.
+// Session retrieves session state and its owner. The auth service checks
+// expiry. A row kept after its session ended is not found.
 func (s *Store) Session(ctx context.Context, token string) (authn.StoredSession, authn.User, error) {
+	ss, u, err := s.session(ctx, token)
+	if err == nil && sessionEnded(ss.ExpiresAt) {
+		return authn.StoredSession{}, authn.User{}, authn.ErrNotFound
+	}
+	return ss, u, err
+}
+
+func (s *Store) session(ctx context.Context, token string) (authn.StoredSession, authn.User, error) {
 	if m := s.sessionMirror(); m != nil {
 		ss, u, hit, err := s.readMirroredSession(ctx, m, token)
 		if hit || err != nil {
@@ -239,7 +248,8 @@ func (s *Store) Session(ctx context.Context, token string) (authn.StoredSession,
 	return ss, u, err
 }
 
-// ListSessions retrieves the user's stored sessions in creation order, newest first.
+// ListSessions retrieves the user's stored sessions in creation order,
+// newest first. Rows kept after their sessions ended are left out.
 func (s *Store) ListSessions(ctx context.Context, userID string) ([]authn.StoredSession, error) {
 	admin, err := s.detectAdminSchema(ctx, s.db)
 	if err != nil {
@@ -250,7 +260,7 @@ func (s *Store) ListSessions(ctx context.Context, userID string) ([]authn.Stored
 		columns += `,s."impersonatedBy"`
 	}
 	rows, err := s.db.QueryContext(ctx, s.bind(`SELECT `+columns+` FROM "session" s
-		WHERE s."userId" = ? ORDER BY s."createdAt" DESC, s."id"`), userID)
+		WHERE s."userId" = ? AND s."expiresAt" > ? ORDER BY s."createdAt" DESC, s."id"`), userID, s.date(endedSessionExpiry))
 	if err != nil {
 		return nil, err
 	}

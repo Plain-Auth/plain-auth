@@ -17,28 +17,37 @@ var _ authn.SessionMirrorStore = (*Store)(nil)
 
 // sessionMirror is the SecondaryStorage this store keeps session copies in.
 // Every copy of a Store shares it, so plugins holding the original store,
-// such as SCIM, revoke mirrored sessions too.
-type sessionMirror struct{ storage authn.SecondaryStorage }
+// such as SCIM, revoke mirrored sessions too. With preserve set, ended
+// sessions keep their rows.
+type sessionMirror struct {
+	storage  authn.SecondaryStorage
+	preserve bool
+}
 
 // MirrorSessions keeps a copy of each live session in storage. The copy is
 // written only while the session's rows are locked, and deleted before a
 // revocation, a refresh or a change to its user commits, so a session read
 // served from storage never outlives what the database allows. Attaching
-// the same storage again does nothing; a different one is an error.
-func (s *Store) MirrorSessions(storage authn.SecondaryStorage, _ authn.SessionMirrorOptions) error {
+// the same storage with the same options again does nothing; a different
+// storage or option is an error.
+func (s *Store) MirrorSessions(storage authn.SecondaryStorage, opts authn.SessionMirrorOptions) error {
 	if storage == nil {
 		return errors.New("sqlstore: SecondaryStorage is nil")
 	}
 	if s.mirror == nil {
 		return errors.New("sqlstore: this store cannot mirror sessions")
 	}
-	if s.mirror.CompareAndSwap(nil, &sessionMirror{storage}) {
+	if s.mirror.CompareAndSwap(nil, &sessionMirror{storage: storage, preserve: opts.PreserveEndedSessions}) {
 		return nil
 	}
-	if current := s.mirror.Load(); sameStorage(current.storage, storage) {
-		return nil
+	current := s.mirror.Load()
+	if !sameStorage(current.storage, storage) {
+		return errors.New("sqlstore: this store already mirrors sessions into another SecondaryStorage")
 	}
-	return errors.New("sqlstore: this store already mirrors sessions into another SecondaryStorage")
+	if current.preserve != opts.PreserveEndedSessions {
+		return errors.New("sqlstore: this store already mirrors sessions with a different PreserveSessionInDatabase setting")
+	}
+	return nil
 }
 
 func sameStorage(a, b authn.SecondaryStorage) (same bool) {
@@ -55,6 +64,11 @@ func (s *Store) sessionMirror() *sessionMirror {
 		return nil
 	}
 	return s.mirror.Load()
+}
+
+// preserving reports whether ended sessions keep their rows.
+func (m *sessionMirror) preserving() bool {
+	return m != nil && m.preserve
 }
 
 // mirroredSession is a session copy: the base session columns and the
@@ -188,8 +202,10 @@ func (s *Store) repopulateSessionOnce(ctx context.Context, m *sessionMirror, tok
 	}
 	defer tx.Rollback()
 	var userID string
-	err = tx.QueryRowContext(ctx, s.bind(`SELECT "userId" FROM "session" WHERE "token"=?`), token).Scan(&userID)
-	if errors.Is(err, sql.ErrNoRows) {
+	var expires time.Time
+	err = tx.QueryRowContext(ctx, s.bind(`SELECT "userId","expiresAt" FROM "session" WHERE "token"=?`), token).Scan(&userID, &expires)
+	// A row kept after its session ended is never served, so it needs no locks.
+	if errors.Is(err, sql.ErrNoRows) || err == nil && sessionEnded(expires) {
 		return authn.StoredSession{}, authn.User{}, authn.ErrNotFound
 	}
 	if err != nil {
@@ -301,7 +317,8 @@ func (s *Store) forgetUserSessions(ctx context.Context, db sessionQuerier, userI
 	if m == nil {
 		return nil
 	}
-	rows, err := db.QueryContext(ctx, s.bind(`SELECT "token" FROM "session" WHERE "userId"=?`), userID)
+	// Rows kept after their sessions ended have no copies.
+	rows, err := db.QueryContext(ctx, s.bind(`SELECT "token" FROM "session" WHERE "userId"=? AND "expiresAt">?`), userID, s.date(endedSessionExpiry))
 	if err != nil {
 		return err
 	}

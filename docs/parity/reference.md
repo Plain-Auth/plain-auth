@@ -433,7 +433,9 @@
       - [x] Issue separate session defaults and honor trusted fixture overrides without a second callback ([test](../../adapters/sqlstore/computed_fields_test.go#L89))
     - [x] `storeSessionInDatabase` ([test](../../adapters/sqlstore/secondary_sessions_test.go#L266))
       - [x] StoreSessionInDatabase keeps sessions in the database alongside their SecondaryStorage copies, and is required with SecondaryStorage ([test](../../adapters/sqlstore/secondary_sessions_test.go#L266))
-    - [ ] `preserveSessionInDatabase`
+    - [x] `preserveSessionInDatabase` ([test](../../adapters/sqlstore/preserve_sessions_test.go#L206))
+      - [x] Sign-out, revoke-other-sessions and natural expiry keep the session rows on SQLite, PostgreSQL and MySQL, a creator clock running ahead does not keep a session live, and only deleting the user removes the rows ([test](../../adapters/sqlstore/preserve_sessions_test.go#L206))
+      - [x] PreserveSessionInDatabase requires SecondaryStorage, and one store keeps one setting ([test](../../adapters/sqlstore/preserve_sessions_test.go#L256))
     - [x] `cookieCache` ([test](../../conformance/session-cache-compact.mjs#L33))
       - [x] Enable compact browser snapshots with a fixed version and whole-second lifetime ([test](../../session_cache_compact_test.go#L367))
       - [x] Select a signed JWT or encrypted JWE and enforce the configured format and lifetime ([test](../../session_cache_jose_test.go#L75))

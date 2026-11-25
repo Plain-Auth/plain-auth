@@ -127,7 +127,8 @@ func (s *Store) consumeOneTimeToken(ctx context.Context, key string, now time.Ti
 		return result, err
 	}
 	var session auth.StoredSession
-	err = tx.QueryRowContext(ctx, s.readForUpdate(`SELECT `+sessionColumns+`,`+userColumns+` FROM "session" s JOIN "user" u ON u."id"=s."userId" WHERE s."token"=?`), bound).Scan(append(sessionFields(&session), userFields(&result.User)...)...)
+	// A row kept after its session ended is a missing session.
+	err = tx.QueryRowContext(ctx, s.readForUpdate(`SELECT `+sessionColumns+`,`+userColumns+` FROM "session" s JOIN "user" u ON u."id"=s."userId" WHERE s."token"=? AND s."expiresAt">?`), bound, s.date(endedSessionExpiry)).Scan(append(sessionFields(&session), userFields(&result.User)...)...)
 	var denial error
 	switch {
 	case errors.Is(err, sql.ErrNoRows):

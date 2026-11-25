@@ -22,13 +22,17 @@ type SecondaryStorage interface {
 
 // SessionMirrorOptions configures how a store mirrors sessions into
 // SecondaryStorage.
-type SessionMirrorOptions struct{}
+type SessionMirrorOptions struct {
+	// PreserveEndedSessions keeps the row of an ended session, marked ended,
+	// instead of deleting it. Deleting the user still removes its rows.
+	PreserveEndedSessions bool
+}
 
 // SessionMirrorStore keeps a copy of each live session in SecondaryStorage,
 // so a session read can skip the database. It writes the copy only while it
 // holds the session's row locks, and deletes it before any revocation, user
 // change or refresh of that session commits. Attaching the same storage
-// again does nothing; a different storage is an error.
+// with the same options again does nothing; anything else is an error.
 type SessionMirrorStore interface {
 	MirrorSessions(SecondaryStorage, SessionMirrorOptions) error
 }
@@ -38,6 +42,9 @@ func prepareSecondaryStorage(opts *Options) error {
 	if opts.SecondaryStorage == nil {
 		if opts.StoreSessionInDatabase {
 			return errors.New("auth: StoreSessionInDatabase requires SecondaryStorage")
+		}
+		if opts.PreserveSessionInDatabase {
+			return errors.New("auth: PreserveSessionInDatabase requires SecondaryStorage")
 		}
 		return nil
 	}
@@ -49,7 +56,7 @@ func prepareSecondaryStorage(opts *Options) error {
 	if !ok {
 		return errors.New("auth: SecondaryStorage requires a store implementing SessionMirrorStore")
 	}
-	if err := mirror.MirrorSessions(opts.SecondaryStorage, SessionMirrorOptions{}); err != nil {
+	if err := mirror.MirrorSessions(opts.SecondaryStorage, SessionMirrorOptions{PreserveEndedSessions: opts.PreserveSessionInDatabase}); err != nil {
 		return err
 	}
 	// Rate limits share the storage unless the host chose where they live.

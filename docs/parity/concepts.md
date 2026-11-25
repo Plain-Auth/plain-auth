@@ -652,7 +652,8 @@
     - [x] SecondaryStorage holds a copy of each session; unlike the reference's default, the session also stays in the database, which StoreSessionInDatabase must confirm ([test](../../adapters/sqlstore/secondary_sessions_test.go#L266))
     - [x] Storing Sessions in the Database ([test](../../adapters/sqlstore/secondary_sessions_test.go#L102))
       - [x] With StoreSessionInDatabase, sessions stay in the database and SecondaryStorage holds a copy that every revocation and user change deletes before it commits ([test](../../adapters/sqlstore/secondary_sessions_test.go#L102))
-    - [ ] Preserving Sessions
+    - [x] Preserving Sessions ([test](../../adapters/sqlstore/preserve_sessions_test.go#L40))
+      - [x] PreserveSessionInDatabase keeps an ended session's row, marked ended with a fixed past expiresAt and updatedAt at the end; no replica serves it, its copy and bound OAuth grants end, its delete hooks run once, and deleting the user removes the rows ([test](../../adapters/sqlstore/preserve_sessions_test.go#L40))
   - [ ] Stateless Session Management
     - [ ] Basic Stateless Setup
     - [ ] Understanding `refreshCache`

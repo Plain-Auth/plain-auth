@@ -215,6 +215,11 @@ type Options struct {
 	// the store must implement SessionMirrorStore.
 	SecondaryStorage       SecondaryStorage
 	StoreSessionInDatabase bool
+	// PreserveSessionInDatabase keeps the row of an ended session, for
+	// example after a sign-out or revocation, instead of deleting it. The row
+	// is marked ended and is never served again. Deleting the user still
+	// removes its rows. It requires SecondaryStorage.
+	PreserveSessionInDatabase bool
 	// FreshAge is how recent a session must be for sensitive account changes,
 	// such as deleting the user or unlinking an account. It defaults to one
 	// day; a negative value turns the check off.

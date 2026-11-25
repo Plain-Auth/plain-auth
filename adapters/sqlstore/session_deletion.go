@@ -20,22 +20,60 @@ func (s *Store) deleteSessions(ctx context.Context, where string, args ...any) e
 	return tx.Commit()
 }
 
+// deleteSessionsTx ends the sessions matching where: it deletes their rows,
+// or with PreserveSessionInDatabase marks the live ones ended and keeps them.
+func (s *Store) deleteSessionsTx(ctx context.Context, tx *sql.Tx, where string, args ...any) (int64, error) {
+	return s.endSessionsTx(ctx, tx, s.sessionMirror().preserving(), where, args...)
+}
+
+// removeSessionsTx deletes the rows of the sessions matching where, ended
+// ones included, even when ended sessions are preserved. Deleting a user
+// uses it.
+func (s *Store) removeSessionsTx(ctx context.Context, tx *sql.Tx, where string, args ...any) (int64, error) {
+	return s.endSessionsTx(ctx, tx, false, where, args...)
+}
+
+// endedSessionExpiry is the expiresAt of a row kept after its session
+// ended, with PreserveSessionInDatabase: a fixed time long past, so no
+// clock, however far behind, compares the row as live. The row's updatedAt
+// records the end. Writing the end time instead would let a request that
+// read its clock before the end, and then waited for these row locks, or a
+// replica whose clock lags, still see the row as live.
+var endedSessionExpiry = time.Unix(86400, 0).UTC()
+
+// sessionEnded reports a row kept after its session ended.
+func sessionEnded(expiresAt time.Time) bool {
+	return !expiresAt.After(endedSessionExpiry)
+}
+
 // Lock the selected sessions before inspecting grants. A concurrent insert with
 // a session foreign key must commit before this snapshot or lose its parent.
-// Only delete the locked IDs, even if a new session now matches the predicate.
-func (s *Store) deleteSessionsTx(ctx context.Context, tx *sql.Tx, where string, args ...any) (int64, error) {
-	rows, err := tx.QueryContext(ctx, s.readForUpdate(`SELECT "id","token" FROM "session" WHERE `+where+` ORDER BY "id"`), args...)
+// Only end the locked IDs, even if a new session now matches the predicate.
+// With preserve, rows that already ended are left as they are; the choice
+// reads no clock, so a session close to its natural expiry still ends.
+func (s *Store) endSessionsTx(ctx context.Context, tx *sql.Tx, preserve bool, where string, args ...any) (int64, error) {
+	query := `SELECT "id","token","expiresAt" FROM "session" WHERE ` + where
+	if preserve {
+		query = `SELECT "id","token","expiresAt" FROM "session" WHERE (` + where + `) AND "expiresAt">?`
+		args = append(slices.Clip(args), s.date(endedSessionExpiry))
+	}
+	rows, err := tx.QueryContext(ctx, s.readForUpdate(query+` ORDER BY "id"`), args...)
 	if err != nil {
 		return 0, err
 	}
 	var ids, tokens []string
 	for rows.Next() {
 		var id, token string
-		if err := rows.Scan(&id, &token); err != nil {
+		var expires time.Time
+		if err := rows.Scan(&id, &token, &expires); err != nil {
 			rows.Close()
 			return 0, err
 		}
-		ids, tokens = append(ids, id), append(tokens, token)
+		ids = append(ids, id)
+		// An ended session's copy went when it ended.
+		if !sessionEnded(expires) {
+			tokens = append(tokens, token)
+		}
 	}
 	if err := rows.Close(); err != nil {
 		return 0, err
@@ -53,7 +91,7 @@ func (s *Store) deleteSessionsTx(ctx context.Context, tx *sql.Tx, where string, 
 		return 0, err
 	}
 	now := time.Now().UTC()
-	var deleted int64
+	var ended int64
 	for batch := range slices.Chunk(ids, 400) {
 		params, values := s.deviceTokenParameters(batch)
 		if installed {
@@ -61,7 +99,12 @@ func (s *Store) deleteSessionsTx(ctx context.Context, tx *sql.Tx, where string, 
 				return 0, err
 			}
 		}
-		result, err := tx.ExecContext(ctx, s.bind(`DELETE FROM "session" WHERE "id" IN (`+params+`)`), values...)
+		var result sql.Result
+		if preserve {
+			result, err = tx.ExecContext(ctx, s.bind(`UPDATE "session" SET "expiresAt"=?,"updatedAt"=? WHERE "id" IN (`+params+`)`), append([]any{s.date(endedSessionExpiry), s.date(now)}, values...)...)
+		} else {
+			result, err = tx.ExecContext(ctx, s.bind(`DELETE FROM "session" WHERE "id" IN (`+params+`)`), values...)
+		}
 		if err != nil {
 			return 0, err
 		}
@@ -69,9 +112,9 @@ func (s *Store) deleteSessionsTx(ctx context.Context, tx *sql.Tx, where string, 
 		if err != nil {
 			return 0, err
 		}
-		deleted += n
+		ended += n
 	}
-	return deleted, nil
+	return ended, nil
 }
 
 func (s *Store) revokeSessionGrants(ctx context.Context, tx *sql.Tx, params string, sessions []any, now time.Time) error {
