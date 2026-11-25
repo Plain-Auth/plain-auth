@@ -21756,7 +21756,7 @@
   ],
   "docs/content/docs/concepts/oauth.mdx#L250": [
     {
-      "label": "additionalData on /sign-in/social and /link-social is kept with the browser flow, under the database and the cookie state strategy, and reaches the callback without being stored elsewhere; a value that is not an object or exceeds 8 KiB answers 400 VALIDATION_ERROR before a flow is stored",
+      "label": "additionalData on /sign-in/social and /link-social is kept with the browser flow, under the database and the cookie state strategy, and reaches the callback; a value that is not an object, exceeds 8 KiB or holds a number no float64 holds answers 400 VALIDATION_ERROR before a flow is stored",
       "test": "conformance/goapi/oauth_additional_data_test.go",
       "marker": "func TestOAuthAdditionalData(t *testing.T) {",
       "complete": true

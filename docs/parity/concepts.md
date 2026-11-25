@@ -394,7 +394,7 @@
       - [x] Request additional scopes as the signed-in owner and merge the approved grant once across both servers ([test](../../conformance/social-user-fields.mjs#L307))
     - [ ] Customizing the Authorization URL
     - [ ] Passing Additional Data Through OAuth Flow
-      - [x] additionalData on /sign-in/social and /link-social is kept with the browser flow, under the database and the cookie state strategy, and reaches the callback without being stored elsewhere; a value that is not an object or exceeds 8 KiB answers 400 VALIDATION_ERROR before a flow is stored ([test](../../conformance/goapi/oauth_additional_data_test.go#L27))
+      - [x] additionalData on /sign-in/social and /link-social is kept with the browser flow, under the database and the cookie state strategy, and reaches the callback; a value that is not an object, exceeds 8 KiB or holds a number no float64 holds answers 400 VALIDATION_ERROR before a flow is stored ([test](../../conformance/goapi/oauth_additional_data_test.go#L27))
       - [ ] Accessing Additional Data in Hooks
         - [x] During the callback, OAuthAdditionalData returns the data to the provider's callbacks, ValidateUserInfo, database hooks and after hooks on /callback/:id. Unlike getOAuthState, it returns only the browser's keys, not the flow's own state ([test](../../conformance/goapi/oauth_additional_data_test.go#L77))
         - [ ] `callbackURL`

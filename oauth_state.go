@@ -43,10 +43,25 @@ func oauthAdditionalData(body wireBody) (map[string]any, error) {
 	for _, key := range oauthStateKeys {
 		delete(data, key)
 	}
-	if raw, err := json.Marshal(data); err != nil || len(raw) > maxOAuthAdditionalData {
+	return plainOAuthData(data)
+}
+
+// plainOAuthData copies additional data through JSON, so numbers are
+// float64 on every path and nothing is shared with the request body. Data
+// over maxOAuthAdditionalData, or with a number no float64 holds, is refused.
+func plainOAuthData(data map[string]any) (map[string]any, error) {
+	raw, err := json.Marshal(data)
+	if err != nil {
+		return nil, validationError("Invalid additional data")
+	}
+	if len(raw) > maxOAuthAdditionalData {
 		return nil, validationError("Additional data is too large")
 	}
-	return data, nil
+	var out map[string]any
+	if err := json.Unmarshal(raw, &out); err != nil {
+		return nil, validationError("Invalid additional data")
+	}
+	return out, nil
 }
 
 // withOAuthAdditionalData puts a flow's additional data in the request

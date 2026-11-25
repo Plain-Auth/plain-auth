@@ -168,7 +168,13 @@ func TestOAuthAdditionalData(t *testing.T) {
 						t.Fatal(path, "with additionalData", value, "answered", res.StatusCode, problem)
 					}
 				}
-				res := send("POST", path, `{"provider":"local","additionalData":{"note":"`+strings.Repeat("x", 9000)+`"}}`)
+				res := send("POST", path, `{"provider":"local","additionalData":{"n":1e400}}`)
+				var invalid struct{ Code, Message string }
+				_ = json.NewDecoder(res.Body).Decode(&invalid)
+				if res.StatusCode != 400 || invalid.Code != "VALIDATION_ERROR" || invalid.Message != "Invalid additional data" {
+					t.Fatal(path, "with an out-of-range number answered", res.StatusCode, invalid)
+				}
+				res = send("POST", path, `{"provider":"local","additionalData":{"note":"`+strings.Repeat("x", 9000)+`"}}`)
 				var problem struct{ Code, Message string }
 				_ = json.NewDecoder(res.Body).Decode(&problem)
 				if res.StatusCode != 400 || problem.Code != "VALIDATION_ERROR" || problem.Message != "Additional data is too large" {

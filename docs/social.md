@@ -36,7 +36,7 @@ The callback issues a session cookie and redirects to `callbackURL`. You can als
 
 A callback whose state cannot be used redirects to the error page, `ErrorRedirectURL` or `<mount>/error`, with an `error` code: `state_not_found` when the callback has no state, `state_mismatch` when no flow matches it in this browser (a missing, expired or already used state, another tab's sign-in, or a changed session), and `state_invalid` when a sealed state cookie cannot be opened. `errorCallbackURL` is not used until the state is verified, so nothing in the request chooses where the browser goes. A repeated `state`, `code` or `error` parameter answers 400 `VALIDATION_ERROR`, and a store failure still answers 500 and reaches `OnAPIError`. A provider's form-post callback is forwarded to this check unchanged. [State failure tests](../conformance/oauth-callback-state.mjs)
 
-Once the state is verified, every failure returns the browser to `errorCallbackURL`, or to the error page when the sign-in gave none. A provider that answers with an `error` has its `error` and `error_description` passed through unchanged. A callback without a code receives `no_code`, and a code the provider refuses receives `invalid_code`. A profile that cannot be read, or has no subject or a malformed email, receives `unable_to_get_user_info`, and a profile without an email receives `email_not_found`, on a link as well. No failure issues a session. [Callback error tests](../conformance/goapi/oauth_callback_errors_test.go)
+Once the state is verified, every failure returns the browser to `errorCallbackURL`, or to the error page when the sign-in gave none. A provider that answers with an `error` has its `error` and `error_description` passed through unchanged. A callback without a code receives `no_code`, and a code the provider refuses receives `invalid_code`. A profile that cannot be read, or has no usable subject or a malformed email, receives `unable_to_get_user_info`, and a profile without an email receives `email_not_found`, on a link as well. No failure issues a session. [Callback error tests](../conformance/goapi/oauth_callback_errors_test.go)
 
 Server-side requests to a provider, the token exchange, refresh, profile, discovery and signing-key requests, do not follow redirects, so a provider endpoint cannot steer them to another address. [Redirect test](../providers/redirects_test.go)
 
@@ -359,7 +359,7 @@ plainauth.EndpointHook{
 
 The values are browser input: check them before you act on them, and do not change the map. Numbers come back as `float64`. Keep values the server derives itself in your own storage rather than in `additionalData`. [Additional data tests](../conformance/goapi/oauth_additional_data_test.go)
 
-`/link-social` checks its body first, then the caller's session, then the provider, so an anonymous request for an unknown provider answers 401 `UNAUTHORIZED`. An ID-token link whose subject is empty answers 401 `FAILED_TO_GET_USER_INFO`. [Link contract test](../conformance/goapi/provider_contract_test.go)
+`/link-social` checks its body first, then the caller's session, then the provider, so an anonymous request for an unknown provider answers 401 `UNAUTHORIZED`. A provider subject that is blank, or the placeholder `null` or `undefined`, cannot name an account: an ID-token sign-in or link answers 401 `FAILED_TO_GET_USER_INFO`, and a browser callback receives `unable_to_get_user_info`. [Link contract test](../conformance/goapi/provider_contract_test.go)
 
 ## Sign out from an identity provider
 

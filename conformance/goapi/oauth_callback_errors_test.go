@@ -41,6 +41,8 @@ func TestOAuthCallbackErrors(t *testing.T) {
 				return authn.OAuthProfile{Subject: "subject", Email: "not-an-address"}, nil
 			case "no-email":
 				return authn.OAuthProfile{Subject: "subject"}, nil
+			case "placeholder":
+				return authn.OAuthProfile{Subject: "null", Email: "person@example.org"}, nil
 			}
 			return authn.OAuthProfile{Subject: "subject", Email: "person@example.org", EmailVerified: true}, nil
 		}}
@@ -104,6 +106,7 @@ func TestOAuthCallbackErrors(t *testing.T) {
 		{"/retry", url.Values{"code": {"unreadable"}}, "/retry?error=unable_to_get_user_info"},
 		{"/retry", url.Values{"code": {"malformed"}}, "/retry?error=unable_to_get_user_info"},
 		{"/retry", url.Values{"code": {"no-email"}}, "/retry?error=email_not_found"},
+		{"/retry", url.Values{"code": {"placeholder"}}, "/retry?error=unable_to_get_user_info"},
 		{"/retry", url.Values{"error": {"access_denied"}}, "/retry?error=access_denied"},
 	} {
 		state, cookies := start(tc.errorCallbackURL)

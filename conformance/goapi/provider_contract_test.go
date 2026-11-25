@@ -191,8 +191,15 @@ func TestLinkSocialContract(t *testing.T) {
 	if _, message, _ := errorBody(t, c.post("/link-social", `{"provider":"nope","disableRedirect":"yes"}`, "", 400)); message != "[body.disableRedirect] Invalid input: expected boolean, received string" {
 		t.Fatal("a bad body answered", message)
 	}
-	if _, message, _ := errorBody(t, c.post("/link-social", `{"provider":"nope","idToken":"raw"}`, "", 400)); message != "[body.idToken] Invalid input: expected object, received string" {
-		t.Fatal("an ID token that is not an object answered", message)
+	for body, want := range map[string]string{
+		`{"provider":"nope","idToken":"raw"}`:                        "[body.idToken] Invalid input: expected object, received string",
+		`{"provider":"google","idToken":{}}`:                         "[body.idToken.token] Invalid input: expected string, received undefined",
+		`{"provider":"nope","idToken":{"token":1}}`:                  "[body.idToken.token] Invalid input: expected string, received number",
+		`{"provider":"google","idToken":{"token":"t","nonce":true}}`: "[body.idToken.nonce] Invalid input: expected string, received boolean",
+	} {
+		if _, message, _ := errorBody(t, c.post("/link-social", body, "", 400)); message != want {
+			t.Fatal("a link with", body, "answered", message)
+		}
 	}
 	if code, _, _ := errorBody(t, c.post("/link-social", `{"provider":"nope"}`, "", 401)); code != "UNAUTHORIZED" {
 		t.Fatal("an anonymous link answered", code)
@@ -211,6 +218,9 @@ func TestLinkSocialContract(t *testing.T) {
 	r = c.post("/link-social", `{"provider":"google","callbackURL":"/","disableRedirect":true}`, cookie, 200)
 	if err := json.NewDecoder(r.Body).Decode(&started); err != nil || started.Redirect || started.URL == "" || r.Header.Get("Location") != "" {
 		t.Fatal("a link with disableRedirect answered", started, r.Header.Get("Location"), err)
+	}
+	if code, _, _ := errorBody(t, c.post("/link-social", `{"provider":"google","idToken":{"token":"dana"}}`, cookie, 401)); code != "INVALID_TOKEN" {
+		t.Fatal("an ID-token link without a nonce answered", code)
 	}
 	for token, want := range map[string]string{"refused": "INVALID_TOKEN", "no-email": "USER_EMAIL_NOT_FOUND", "no-subject": "FAILED_TO_GET_USER_INFO"} {
 		r := c.post("/link-social", `{"provider":"google","idToken":{"token":"`+token+`","nonce":"n"}}`, cookie, 401)

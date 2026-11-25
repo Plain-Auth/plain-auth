@@ -39,8 +39,8 @@
 ## email_not_found
 
 - [ ] email_not_found
-  - [x] What is it? ([test](../../conformance/goapi/oauth_callback_errors_test.go#L106))
-    - [x] A profile without an email redirects with error=email_not_found ([test](../../conformance/goapi/oauth_callback_errors_test.go#L106))
+  - [x] What is it? ([test](../../conformance/goapi/oauth_callback_errors_test.go#L108))
+    - [x] A profile without an email redirects with error=email_not_found ([test](../../conformance/goapi/oauth_callback_errors_test.go#L108))
   - [ ] Common Causes
   - [ ] How to resolve
     - [ ] Request the correct scopes
@@ -71,7 +71,7 @@
 ## invalid_code
 
 - [ ] invalid_code
-  - [x] A code the provider refuses redirects with error=invalid_code ([test](../../conformance/goapi/oauth_callback_errors_test.go#L103))
+  - [x] A code the provider refuses redirects with error=invalid_code ([test](../../conformance/goapi/oauth_callback_errors_test.go#L105))
   - [ ] How to fix
 
 ## no_callback_url
@@ -85,8 +85,8 @@
 ## no_code
 
 - [ ] no_code
-  - [x] What is it? ([test](../../conformance/goapi/oauth_callback_errors_test.go#L102))
-    - [x] A callback without a code redirects to the error page or callback with error=no_code ([test](../../conformance/goapi/oauth_callback_errors_test.go#L102))
+  - [x] What is it? ([test](../../conformance/goapi/oauth_callback_errors_test.go#L104))
+    - [x] A callback without a code redirects to the error page or callback with error=no_code ([test](../../conformance/goapi/oauth_callback_errors_test.go#L104))
   - [ ] Common Causes
   - [ ] How to resolve
     - [ ] Use the standard Authorization Code flow
@@ -207,8 +207,8 @@
 ## unable_to_get_user_info
 
 - [ ] unable_to_get_user_info
-  - [x] What is it? ([test](../../conformance/goapi/oauth_callback_errors_test.go#L104))
-    - [x] A profile the provider cannot return, or a malformed one, redirects with error=unable_to_get_user_info ([test](../../conformance/goapi/oauth_callback_errors_test.go#L104))
+  - [x] What is it? ([test](../../conformance/goapi/oauth_callback_errors_test.go#L106))
+    - [x] A profile the provider cannot return, or a malformed one, redirects with error=unable_to_get_user_info ([test](../../conformance/goapi/oauth_callback_errors_test.go#L106))
   - [ ] Common Causes
   - [ ] How to resolve
     - [ ] Request the right data

@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/Plain-Org/plain-auth/internal/httporigin"
+	"github.com/Plain-Org/plain-auth/internal/jsjson"
 	"golang.org/x/oauth2"
 )
 
@@ -111,10 +112,8 @@ func (a *Auth) startOAuth(w http.ResponseWriter, r *http.Request, body wireBody,
 	if err != nil {
 		return nil, err
 	}
-	if value, found := body["idToken"]; found {
-		if _, ok := value.(map[string]any); !ok {
-			return nil, fieldTypeError("idToken", "object", body)
-		}
+	if err := idTokenShape(body, !link); err != nil {
+		return nil, err
 	}
 	linkUserID := ""
 	if link {
@@ -211,7 +210,7 @@ func (a *Auth) beginBrowserOAuth(h http.Header, r *http.Request, p OAuthProvider
 			}
 			flow.ProxyOrigin = current
 			if a.opts.SocialProviders[id].Config.RedirectURL == "" {
-				p.Config.RedirectURL = a.oauthProxy.ProductionURL + a.opts.BasePath + "/callback/" + id
+				p.Config.RedirectURL = a.oauthProxy.ProductionURL + strings.TrimRight(a.opts.BasePath, "/") + "/callback/" + id
 			}
 			var err error
 			providerState, err = a.packProxyState(flow)
@@ -321,7 +320,8 @@ func (a *Auth) finishBrowserOAuth(w http.ResponseWriter, r *http.Request, id str
 	// Every failure after the state is verified returns to the flow's error
 	// callback, or to the error page when the sign-in gave none.
 	if flow.ErrorCallbackURL == "" {
-		if returned != nil {
+		// A preview behind the OAuth proxy keeps the browser on its own host.
+		if returned != nil && a.opts.ErrorRedirectURL == "" {
 			flow.ErrorCallbackURL = strings.TrimRight(a.opts.BasePath, "/") + "/error"
 		} else {
 			flow.ErrorCallbackURL, _ = a.errorPageURL(r.Context())
@@ -492,7 +492,7 @@ func (a *Auth) exchangeProviderCode(ctx context.Context, p OAuthProvider, flow O
 		return OAuthAccountFieldInput{}, "invalid_code"
 	}
 	profile, err := p.Resolve(ctx, token, flow.Nonce)
-	if err != nil || profile.Subject == "" {
+	if err != nil || !accountSubject(profile.Subject) {
 		return OAuthAccountFieldInput{}, "unable_to_get_user_info"
 	}
 	if profile.Email == "" {
@@ -532,8 +532,83 @@ func (a *Auth) exchangeProviderCode(ctx context.Context, p OAuthProvider, flow O
 	return OAuthAccountFieldInput{Profile: profile, Tokens: tokens, ExchangedToken: token}, ""
 }
 
+// idTokenShape checks a start request's idToken object as the reference's
+// schema does: token is a string, nonce, accessToken and refreshToken are
+// strings when present, and a sign-in's expiresAt is a number and its user
+// an object holding a name object and an email string.
+func idTokenShape(body wireBody, signIn bool) error {
+	value, found := body["idToken"]
+	if !found {
+		return nil
+	}
+	data, ok := value.(map[string]any)
+	if !ok {
+		return fieldTypeError("idToken", "object", body)
+	}
+	check := func(object map[string]any, path, name, want string, required bool) error {
+		v, present := object[name]
+		if !present && !required {
+			return nil
+		}
+		valid := false
+		switch want {
+		case "string":
+			_, valid = v.(string)
+		case "number":
+			_, valid = v.(json.Number)
+		case "object":
+			_, valid = v.(map[string]any)
+		}
+		if valid {
+			return nil
+		}
+		got := "undefined"
+		if present {
+			got = jsjson.TypeName(v)
+		}
+		return validationError("[body." + path + name + "] Invalid input: expected " + want + ", received " + got)
+	}
+	for _, field := range []struct {
+		name, want string
+		required   bool
+	}{{"token", "string", true}, {"nonce", "string", false}, {"accessToken", "string", false}, {"refreshToken", "string", false}} {
+		if err := check(data, "idToken.", field.name, field.want, field.required); err != nil {
+			return err
+		}
+	}
+	if !signIn {
+		return nil
+	}
+	if err := check(data, "idToken.", "expiresAt", "number", false); err != nil {
+		return err
+	}
+	if err := check(data, "idToken.", "user", "object", false); err != nil {
+		return err
+	}
+	user, _ := data["user"].(map[string]any)
+	if err := check(user, "idToken.user.", "name", "object", false); err != nil {
+		return err
+	}
+	if err := check(user, "idToken.user.", "email", "string", false); err != nil {
+		return err
+	}
+	name, _ := user["name"].(map[string]any)
+	for _, part := range []string{"firstName", "lastName"} {
+		if err := check(name, "idToken.user.name.", part, "string", false); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// accountSubject reports whether a provider subject can name an account:
+// not blank, not a placeholder such as "null", and at most 1024 bytes.
+func accountSubject(s string) bool {
+	return strings.TrimSpace(s) != "" && s != "undefined" && s != "null" && len(s) <= 1024
+}
+
 func validSocialProfile(p OAuthProfile) bool {
-	return p.Subject != "" && len(p.Subject) <= 1024 && len(p.Email) <= 254 && emailPattern.MatchString(p.Email) && !strings.Contains(p.Email, "..")
+	return accountSubject(p.Subject) && len(p.Email) <= 254 && emailPattern.MatchString(p.Email) && !strings.Contains(p.Email, "..")
 }
 
 // A cross-site form POST does not carry SameSite=Lax cookies. Redirect to the
@@ -733,10 +808,7 @@ func (a *Auth) directOAuth(w http.ResponseWriter, r *http.Request, id string, p 
 	if p.DisableIDTokenSignIn || p.VerifyIDToken == nil {
 		return nil, &APIError{404, "ID_TOKEN_NOT_SUPPORTED", "Provider does not support ID token sign-in"}
 	}
-	data, ok := value.(map[string]any)
-	if !ok {
-		return nil, validationError("Expected an ID token object")
-	}
+	data, _ := value.(map[string]any) // checked with the body
 	raw, _ := data["token"].(string)
 	nonce, _ := data["nonce"].(string)
 	if raw == "" || nonce == "" {
@@ -754,7 +826,7 @@ func (a *Auth) directOAuth(w http.ResponseWriter, r *http.Request, id string, p 
 		return nil, &APIError{401, "USER_EMAIL_NOT_FOUND", "User email not found"}
 	}
 	// A subject that names no account answers like a missing profile.
-	if subject := profile.Subject; strings.TrimSpace(subject) == "" || subject == "undefined" || subject == "null" || len(subject) > 1024 {
+	if !accountSubject(profile.Subject) {
 		return nil, &APIError{401, "FAILED_TO_GET_USER_INFO", "Failed to get user info"}
 	}
 	if !validSocialProfile(profile) {

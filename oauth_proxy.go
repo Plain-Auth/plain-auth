@@ -218,7 +218,9 @@ func (a *Auth) exchangeProxyCallback(w http.ResponseWriter, r *http.Request, id 
 		}
 		return Redirect(httporigin.SetQuery(target, url.Values{"error": {"state_mismatch"}})), nil
 	}
-	r = a.withOAuthAdditionalData(r, grant.AdditionalData)
+	// The sealed state decodes numbers as json.Number.
+	data, _ := plainOAuthData(grant.AdditionalData)
+	r = a.withOAuthAdditionalData(r, data)
 	result := oauthProxyResult{State: grant.State, Provider: id, Preview: grant.Preview, Production: grant.Production, Callback: grant.Callback, BasePath: grant.BasePath,
 		DisableSignUp: provider.DisableSignUp || provider.DisableImplicitSignUp && !grant.RequestSignUp, RequireEmailVerification: provider.RequireEmailVerification}
 	if code := q.Get("error"); code != "" {
@@ -229,7 +231,7 @@ func (a *Auth) exchangeProxyCallback(w http.ResponseWriter, r *http.Request, id 
 		ctx, cancel := context.WithTimeout(context.WithValue(r.Context(), oauth2.HTTPClient, provider.HTTPClient), 30*time.Second)
 		defer cancel()
 		if a.opts.SocialProviders[id].Config.RedirectURL == "" {
-			provider.Config.RedirectURL = grant.Production + grant.BasePath + "/callback/" + id
+			provider.Config.RedirectURL = grant.Production + strings.TrimRight(grant.BasePath, "/") + "/callback/" + id
 		}
 		exchange, failure := a.exchangeProviderCode(ctx, provider, OAuthFlow{Provider: id, Verifier: grant.Verifier, Nonce: grant.Nonce}, q)
 		profile, tokens := exchange.Profile, exchange.Tokens
@@ -250,7 +252,7 @@ func (a *Auth) exchangeProxyCallback(w http.ResponseWriter, r *http.Request, id 
 	if err != nil {
 		return nil, err
 	}
-	target, err := url.Parse(grant.Preview + grant.BasePath + "/callback/" + id + "/oauth-proxy")
+	target, err := url.Parse(grant.Preview + strings.TrimRight(grant.BasePath, "/") + "/callback/" + id + "/oauth-proxy")
 	if err != nil {
 		return nil, invalidProxyCallback()
 	}
