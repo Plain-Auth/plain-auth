@@ -13,6 +13,7 @@
     - [x] Enroll through the public client, reject a spent backup code and accept a fresh code ([test](../../../conformance/core.test.mjs#L287))
     - [x] Remember a browser, rotate its account-bound grant once and invalidate it during password recovery ([test](../../../adapters/sqlstore/twofactor_trust_test.go#L210))
     - [x] Answer a proof from the run that commits it alone, when a login plan's dry run accepted a code another sign-in spent before the approved run ([test](../../../adapters/sqlstore/twofactor_records_test.go#L158))
+    - [x] Spend the challenge with its verification delete after hooks when a backup code completes the sign-in, including with disableSession, which asks about no remembered browser ([test](../../../adapters/sqlstore/twofactor_hooks_test.go#L437))
   - [ ] `POST /two-factor/generate-backup-codes`
     - [x] Replace the complete backup-code set and invalidate the previous set ([test](../../../adapters/sqlstore/twofactor_test.go#L212))
   - [ ] `encodeBackupCodes`
@@ -41,9 +42,11 @@
   - [ ] `twoFactor`
   - [ ] `POST /two-factor/send-otp`
     - [x] Publish delivered codes only after the sender succeeds, preserving the newest proof on a late failure ([test](../../../adapters/sqlstore/twofactor_delivery_test.go#L337))
+    - [x] Run the delivered code's verification create hooks before it is sent; a declined code is neither stored nor sent ([test](../../../adapters/sqlstore/twofactor_hooks_test.go#L462))
   - [ ] `POST /two-factor/verify-otp`
     - [x] Bind codes to the requesting login or session and issue one session for competing proofs ([test](../../../adapters/sqlstore/twofactor_delivery_test.go#L125))
     - [x] Honor the pending challenge and reject a signed-in proof after its session is revoked ([test](../../../adapters/sqlstore/twofactor_delivery_test.go#L364))
+    - [x] Run the delivered code's and then the challenge's verification delete before hooks before the code is compared, and refuse uncounted a code sent again while they run ([test](../../../adapters/sqlstore/twofactor_hooks_test.go#L492))
   - [ ] `OTPOptions`
     - [ ] `period`
       - [x] Persist the configured two-minute lifetime and reject an expired delivered proof ([test](../../../adapters/sqlstore/twofactor_delivery_test.go#L78))
@@ -53,6 +56,7 @@
       - [x] Deliver outside the database lock and handle a failing sender without activating the proof ([test](../../../adapters/sqlstore/twofactor_delivery_test.go#L331))
     - [ ] `allowedAttempts`
       - [x] Reject an exhausted code and accept a replacement on the same pending login ([test](../../../adapters/sqlstore/twofactor_delivery_test.go#L87))
+      - [x] Run the verification update after hooks for each counted wrong delivered code, and remove a code that ran out with its delete hooks ([test](../../../adapters/sqlstore/twofactor_hooks_test.go#L471))
     - [ ] `storeOTP`
       - [x] Encode and verify plain, encrypted, hashed, and custom transformed codes ([test](../../../twofactor_settings_test.go#L13))
   - [ ] `otp2fa`
@@ -62,6 +66,7 @@
     - [x] Reread the same provisioning URI after validating the password ([test](../../../adapters/sqlstore/twofactor_test.go#L127))
   - [ ] `POST /two-factor/verify-totp`
     - [x] Confirm enrollment from another instance and issue a session after TOTP verification ([test](../../../adapters/sqlstore/twofactor_test.go#L138))
+    - [x] Run the challenge's verification delete before hooks before a code is compared, refuse a declined proof uncounted, and count a wrong code with the update after hooks ([test](../../../adapters/sqlstore/twofactor_hooks_test.go#L384))
   - [ ] `TOTPOptions`
     - [ ] `issuer`
     - [ ] `digits`
@@ -91,6 +96,7 @@
       - [x] Use the configured pending challenge duration for the browser cookie ([test](../../../adapters/sqlstore/twofactor_trust_test.go#L168))
     - [ ] `trustDeviceMaxAge`
       - [x] Set the configured browser cookie lifetime and require a fresh challenge when its grant expires ([test](../../../adapters/sqlstore/twofactor_trust_test.go#L228))
+      - [x] Spend and replace a remembered browser through its verification hooks; a declined spend or replacement keeps the grant and asks for the second factor ([test](../../../adapters/sqlstore/twofactor_hooks_test.go#L278))
     - [ ] `accountLockout`
       - [x] Honor configured thresholds and duration and recover on successful proof after expiration ([test](../../../adapters/sqlstore/twofactor_delivery_test.go#L232))
   - [ ] `UserWithTwoFactor`

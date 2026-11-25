@@ -102,7 +102,7 @@ func (a *Auth) phoneUse(ctx context.Context, number, code string, purpose PhoneO
 		u.Decided = &g.decision
 		// A code that has expired is removed without hooks.
 		if r.ExpiresAt.After(u.Now) {
-			if err := a.beforeCodeGuess(ctx, g, phoneOTPRecord(purpose, r.ID, r.ExpiresAt)); err != nil {
+			if err := a.beforeCodeGuess(ctx, g, phoneOTPRecord(purpose, r.ID, r.ExpiresAt), invalidOTP()); err != nil {
 				return u, nil, err
 			}
 			u.Now = a.now().UTC()

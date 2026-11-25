@@ -1991,6 +1991,11 @@
       "label": "Confirm enrollment from another instance and issue a session after TOTP verification",
       "test": "adapters/sqlstore/twofactor_test.go",
       "marker": "activated := request(second, \"two-factor/verify-totp\""
+    },
+    {
+      "label": "Run the challenge's verification delete before hooks before a code is compared, refuse a declined proof uncounted, and count a wrong code with the update after hooks",
+      "test": "adapters/sqlstore/twofactor_hooks_test.go",
+      "marker": "// A declined authenticator code is refused before it is compared or counted."
     }
   ],
   "plugin/2fa/POST /two-factor/verify-backup-code": [
@@ -2018,6 +2023,11 @@
       "label": "Answer a proof from the run that commits it alone, when a login plan's dry run accepted a code another sign-in spent before the approved run",
       "test": "adapters/sqlstore/twofactor_records_test.go",
       "marker": "// A dry run's verdict never reaches the response."
+    },
+    {
+      "label": "Spend the challenge with its verification delete after hooks when a backup code completes the sign-in, including with disableSession, which asks about no remembered browser",
+      "test": "adapters/sqlstore/twofactor_hooks_test.go",
+      "marker": "// A backup code with disableSession spends the challenge without a session or a remembered browser."
     }
   ],
   "plugin/2fa/POST /two-factor/generate-backup-codes": [
@@ -4412,6 +4422,11 @@
       "label": "Set the configured browser cookie lifetime and require a fresh challenge when its grant expires",
       "test": "adapters/sqlstore/twofactor_trust_test.go",
       "marker": "expired remembered cookie authenticated"
+    },
+    {
+      "label": "Spend and replace a remembered browser through its verification hooks; a declined spend or replacement keeps the grant and asks for the second factor",
+      "test": "adapters/sqlstore/twofactor_hooks_test.go",
+      "marker": "// A remembered browser rotates its grant through the verification hooks."
     }
   ],
   "plugin-symbol/2fa/TwoFactorOptions/twoFactorCookieMaxAge": [
@@ -4481,6 +4496,11 @@
       "label": "Publish delivered codes only after the sender succeeds, preserving the newest proof on a late failure",
       "test": "adapters/sqlstore/twofactor_delivery_test.go",
       "marker": "synthetic sender unavailable"
+    },
+    {
+      "label": "Run the delivered code's verification create hooks before it is sent; a declined code is neither stored nor sent",
+      "test": "adapters/sqlstore/twofactor_hooks_test.go",
+      "marker": "// A declined delivered code answers as sent; nothing is stored or sent."
     }
   ],
   "plugin/2fa/POST /two-factor/verify-otp": [
@@ -4493,6 +4513,11 @@
       "label": "Honor the pending challenge and reject a signed-in proof after its session is revoked",
       "test": "adapters/sqlstore/twofactor_delivery_test.go",
       "marker": "pendingSession.code}, 401, u.session"
+    },
+    {
+      "label": "Run the delivered code's and then the challenge's verification delete before hooks before the code is compared, and refuse uncounted a code sent again while they run",
+      "test": "adapters/sqlstore/twofactor_hooks_test.go",
+      "marker": "// A code sent again while its hooks run is left alone."
     }
   ],
   "plugin/2fa/ generateTOTP (server API only)": [
@@ -4542,6 +4567,11 @@
       "label": "Reject an exhausted code and accept a replacement on the same pending login",
       "test": "adapters/sqlstore/twofactor_delivery_test.go",
       "marker": "delivery-specific attempt limit failed"
+    },
+    {
+      "label": "Run the verification update after hooks for each counted wrong delivered code, and remove a code that ran out with its delete hooks",
+      "test": "adapters/sqlstore/twofactor_hooks_test.go",
+      "marker": "// Each counted wrong delivered code runs the update after hooks."
     }
   ],
   "plugin-symbol/2fa/OTPOptions/storeOTP": [
@@ -19087,6 +19117,16 @@
       "label": "Report the two-factor challenge and remembered browser rows a call locked, and store new ones under the IDs the Auth chooses, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/twofactor_records_test.go",
       "marker": "func TestTwoFactorRowsCarryTheirIDs(t *testing.T) {"
+    },
+    {
+      "label": "Run verification hooks around two-factor challenges, delivered codes and remembered browsers on SQLite, PostgreSQL and MySQL, outside the store's transaction and with the stored row's ID: a declined challenge is answered but redeems nothing, a declined proof is refused before it is compared, a counted wrong guess runs the update after hooks, and a declined remembered browser asks for the second factor",
+      "test": "adapters/sqlstore/twofactor_hooks_test.go",
+      "marker": "func TestVerificationHooksAroundTwoFactor(t *testing.T) {"
+    },
+    {
+      "label": "Map each committed two-factor change to the after hooks of the records it wrote, reporting a code removed with its challenge as removed",
+      "test": "twofactor_hooks_test.go",
+      "marker": "func TestFactorHooksFollowCommittedChanges(t *testing.T) {"
     }
   ],
   "docs/content/docs/concepts/database.mdx#L881": [
@@ -19163,6 +19203,11 @@
       "label": "Decline a guess at a phone code with ErrSkipWrite before the provider is asked: no attempt is counted",
       "test": "conformance/goapi/database_verification_code_hooks_test.go",
       "marker": "// A declined phone guess never reaches the provider or the attempt count."
+    },
+    {
+      "label": "Decline a guess at a two-factor challenge or delivered code with ErrSkipWrite before it is compared: nothing is counted and the challenge stays usable",
+      "test": "adapters/sqlstore/twofactor_hooks_test.go",
+      "marker": "// A declined proof is refused before the code is compared or counted."
     }
   ],
   "docs/content/docs/concepts/database.mdx#L886": [
@@ -19239,6 +19284,16 @@
       "label": "Run one verification delete after hook among concurrent verifications of a wallet nonce, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/siwe_hooks_test.go",
       "marker": "// Concurrent verifications of one wallet nonce run one delete after hook."
+    },
+    {
+      "label": "Count each concurrent wrong proof at one two-factor challenge once with its update after hook, and run one delete after hook among concurrent proofs, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/twofactor_hooks_test.go",
+      "marker": "// Concurrent proofs at one challenge count each wrong guess once and spend it once."
+    },
+    {
+      "label": "Run one delete and one create after hook among concurrent sign-ins sharing a remembered browser, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/twofactor_hooks_test.go",
+      "marker": "// Sign-ins sharing a remembered browser spend it once."
     }
   ],
   "docs/content/docs/concepts/database.mdx#L891/Example Usage": [
@@ -19302,7 +19357,7 @@
       "marker": "// Run account hooks around the credential a sign-up stores, password"
     },
     {
-      "label": "Configure verification hooks for password reset and account deletion links, browser OAuth flows, magic links, one-time tokens, email and phone codes, passkey challenges and wallet nonces, and refuse the plugins, hooks and stores that would bypass them",
+      "label": "Configure verification hooks for password reset and account deletion links, browser OAuth flows, magic links, one-time tokens, email and phone codes, two-factor challenges, delivered codes and remembered browsers, passkey challenges and wallet nonces, and refuse the plugins, hooks and stores that would bypass them",
       "test": "conformance/goapi/database_verification_hooks_test.go",
       "marker": "func TestDatabaseVerificationHooksRefuseBypassingFeatures(t *testing.T) {"
     }

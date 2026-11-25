@@ -59,6 +59,13 @@ func (p *factorRequest) sendOTP(st FactorState) (FactorChange, error) {
 	if st.Record != nil && !p.auth.factorOptions.Lockout.Disabled && st.Record.LockedUntil != nil && st.Record.LockedUntil.After(p.subject.Now) {
 		return ch, &APIError{429, "ACCOUNT_TEMPORARILY_LOCKED", "Too many failed verification attempts. Your account is temporarily locked. Please try again later."}
 	}
+	// The code's create before hooks run before it is drawn or transformed.
+	switch p.hooks.approval(roleSend, factorRecord("2fa-otp", p.pins.deliveryID, st.User.ID, p.subject.Now.Add(o.Period))) {
+	case factorPending:
+		return ch, errFactorUnapproved
+	case factorDeclined:
+		return ch, errFactorSendDeclined
+	}
 	// Existing databases can represent delivered-code-only enrollment with
 	// the user flag alone. Materialize the lockout counter under the owner lock.
 	if st.Record == nil {

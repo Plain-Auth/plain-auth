@@ -247,6 +247,8 @@
       - [x] Run verification hooks around passkey challenges on SQLite, PostgreSQL and MySQL: a declined challenge returns options that redeem nothing, a declined spend keeps the challenge, and the challenge is spent with its hooks before the credential is verified and before the session hooks ([test](../../adapters/sqlstore/passkey_hooks_test.go#L31))
       - [x] Run verification hooks around wallet sign-in nonces on SQLite, PostgreSQL and MySQL: a declined nonce is returned but redeems nothing and still enters a custom generator's history, a declined spend keeps the nonce, and the nonce is spent with its hooks before the signature is checked and before the session hooks ([test](../../adapters/sqlstore/siwe_hooks_test.go#L27))
       - [x] Report the two-factor challenge and remembered browser rows a call locked, and store new ones under the IDs the Auth chooses, on SQLite, PostgreSQL and MySQL ([test](../../adapters/sqlstore/twofactor_records_test.go#L20))
+      - [x] Run verification hooks around two-factor challenges, delivered codes and remembered browsers on SQLite, PostgreSQL and MySQL, outside the store's transaction and with the stored row's ID: a declined challenge is answered but redeems nothing, a declined proof is refused before it is compared, a counted wrong guess runs the update after hooks, and a declined remembered browser asks for the second factor ([test](../../adapters/sqlstore/twofactor_hooks_test.go#L41))
+      - [x] Map each committed two-factor change to the after hooks of the records it wrote, reporting a code removed with its challenge as removed ([test](../../twofactor_hooks_test.go#L41))
       - [ ] 1. Before Hook
         - [x] Edit the stored fields of a new user or session, or cancel its creation, before anything is written ([test](../../conformance/goapi/database_hooks_test.go#L122))
         - [x] Run the create before hooks for social sign-in, magic links, email codes and phone verification outside the store transaction, for new users only ([test](../../conformance/goapi/database_decided_hooks_test.go#L297))
@@ -264,6 +266,7 @@
           - [x] Skip a store-decided sign-in with its usual error, store nothing, and sign in a user stored while the hooks ran ([test](../../conformance/goapi/database_decided_hooks_test.go#L381))
           - [x] Decline a guess at an email code with ErrSkipWrite before the code is compared: the code stays usable and no attempt is counted ([test](../../conformance/goapi/database_verification_code_hooks_test.go#L197))
           - [x] Decline a guess at a phone code with ErrSkipWrite before the provider is asked: no attempt is counted ([test](../../conformance/goapi/database_verification_code_hooks_test.go#L954))
+          - [x] Decline a guess at a two-factor challenge or delivered code with ErrSkipWrite before it is compared: nothing is counted and the challenge stays usable ([test](../../adapters/sqlstore/twofactor_hooks_test.go#L365))
       - [ ] 2. After Hook
         - [x] Observe the stored user and session after creation, and remove an undelivered session when an after hook fails ([test](../../conformance/goapi/database_hooks_test.go#L213))
         - [ ] Purpose
@@ -281,6 +284,8 @@
           - [x] Run one verification delete after hook among concurrent verifications of a phone code, on SQLite, PostgreSQL and MySQL ([test](../../adapters/sqlstore/phone_code_hooks_test.go#L206))
           - [x] Run one verification delete after hook among concurrent verifications of a passkey challenge, on SQLite, PostgreSQL and MySQL ([test](../../adapters/sqlstore/passkey_hooks_test.go#L358))
           - [x] Run one verification delete after hook among concurrent verifications of a wallet nonce, on SQLite, PostgreSQL and MySQL ([test](../../adapters/sqlstore/siwe_hooks_test.go#L347))
+          - [x] Count each concurrent wrong proof at one two-factor challenge once with its update after hook, and run one delete after hook among concurrent proofs, on SQLite, PostgreSQL and MySQL ([test](../../adapters/sqlstore/twofactor_hooks_test.go#L567))
+          - [x] Run one delete and one create after hook among concurrent sign-ins sharing a remembered browser, on SQLite, PostgreSQL and MySQL ([test](../../adapters/sqlstore/twofactor_hooks_test.go#L313))
         - [x] Example Usage ([test](../../conformance/goapi/database_user_hooks_test.go#L227))
           - [x] Derive user fields in a before hook and call another service from an after hook ([test](../../conformance/goapi/database_hooks_test.go#L128))
           - [x] Log a session as sign-out deletes it, or keep it by declining the delete ([test](../../conformance/goapi/database_session_hooks_test.go#L166))

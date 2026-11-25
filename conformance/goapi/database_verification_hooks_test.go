@@ -245,8 +245,9 @@ func TestDatabaseVerificationHooks(t *testing.T) {
 }
 
 // New refuses verification hooks that an enabled feature would bypass: the
-// plugins that keep codes in their own stores, update before hooks with
-// email and phone codes, which count a wrong guess as they judge it, and
+// plugins that keep codes in their own stores, two-factor on a store that
+// cannot report the rows its calls lock, update before hooks with email and
+// phone codes and two-factor, which count a wrong guess as they judge it, and
 // delete hooks on a store that cannot read a deletion link, an OAuth flow, a
 // magic link, a one-time token, an email code, a passkey challenge or a
 // wallet nonce before spending it, or cannot report what it did to a phone
@@ -324,11 +325,45 @@ func TestDatabaseVerificationHooksRefuseBypassingFeatures(t *testing.T) {
 	if _, err := authn.New(withPhone); err != nil {
 		t.Fatal("verification create hooks were refused on a store without ReportsPhoneOTPDecisions:", err)
 	}
-	// Two-factor challenges stay in their store.
-	refused := base()
-	refused.Plugins = []authn.Plugin{authn.NewTwoFactor(authn.TwoFactorOptions{})}
-	if _, err := authn.New(refused); err == nil || !strings.Contains(err.Error(), "two-factor") {
-		t.Fatal("verification hooks were accepted with two-factor:", err)
+	// Two-factor records run them on a store that reports the rows its calls
+	// lock and stores new ones under the IDs the Auth gives, which creates
+	// need too. A count has no before hook.
+	factors := base()
+	factors.Plugins = []authn.Plugin{authn.NewTwoFactor(authn.TwoFactorOptions{})}
+	if _, err := authn.New(factors); err == nil || !strings.Contains(err.Error(), "ReportsFactorRecords") {
+		t.Fatal("verification hooks were accepted with two-factor on the memory store:", err)
+	}
+	accounts, err := sqlstore.OpenWithOptions(t.Context(), "sqlite", ":memory:", []string{"two-factor"}, schema.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer accounts.Close()
+	factors.Store = accounts
+	factors.DatabaseHooks.Verification.Update.After = observe.After
+	factors.DatabaseHooks.Verification.Delete = observe
+	if _, err := authn.New(factors); err != nil {
+		t.Fatal("verification hooks were refused with two-factor on SQLite:", err)
+	}
+	factors.DatabaseHooks.Verification.Update.Before = func(context.Context, *authn.VerificationRecord, *authn.HookContext) error { return nil }
+	if _, err := authn.New(factors); err == nil || !strings.Contains(err.Error(), "update before hooks") || !strings.Contains(err.Error(), "two-factor") {
+		t.Fatal("verification update before hooks were accepted with two-factor:", err)
+	}
+	type factorStore = authn.TwoFactorStore
+	factors.Store = struct {
+		authn.Store
+		factorStore
+	}{accounts, accounts}
+	factors.DatabaseHooks.Verification = authn.ModelHooks[authn.VerificationRecord]{Create: observe}
+	if _, err := authn.New(factors); err == nil || !strings.Contains(err.Error(), "ReportsFactorRecords") {
+		t.Fatal("verification create hooks were accepted with two-factor without ReportsFactorRecords:", err)
+	}
+	// SSO and OAuth provider codes stay in their stores.
+	for _, id := range []string{"sso", "oauth-provider"} {
+		refused := base()
+		refused.Plugins = []authn.Plugin{{ID: id}}
+		if _, err := authn.New(refused); err == nil || !strings.Contains(err.Error(), id) {
+			t.Fatal("verification hooks were accepted with", id, err)
+		}
 	}
 	// Passkey challenges run them, and delete hooks need a store that reads a
 	// challenge before spending it.

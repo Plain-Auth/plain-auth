@@ -70,6 +70,10 @@ plugin := twofactor.New(twofactor.Options{
 
 An account enrolled with delivered codes can set up an authenticator while continuing to use its existing channel. Confirming the new authenticator adds it to the available methods. The Go HTTP client provides `EnableDeliveredFactor`, `SendFactorOTP`, `VerifyFactorOTP`, `VerifyTOTPWithTrust` and `VerifyBackupCodeWithTrust`.
 
+## Observe or cancel second-factor records with hooks
+
+[Verification database hooks](hooks.md#verification-hooks) see a sign-in challenge as `2fa`, a delivered code as `2fa-otp` and a remembered browser as `trust-device`, each naming the account and never a key, code or count. Every proof during sign-in runs the challenge's delete before hooks before it is compared, and `/two-factor/verify-otp` runs the code's first. A declined proof is refused before it counts. A counted wrong guess runs the update after hooks, and a spent or removed record runs the delete after hooks. A declined challenge is answered with a cookie that redeems nothing, a declined remembered browser asks for the second factor and keeps its grant, a declined new grant signs in without remembering the browser, and a declined code answers as sent with nothing stored or sent. Enabling, disabling or importing a factor, password changes and resets and the other account-wide revocations remove these records without hooks. Verification hooks need a store implementing `plainauth.FactorRecordReporter`, as the SQL store does, and `New` refuses verification update before hooks with this plugin. [Two-factor hooks on SQL engines](../adapters/sqlstore/twofactor_hooks_test.go)
+
 ## Configure the factors
 
 | Setting on `twofactor.Options` | Behavior |

@@ -145,12 +145,23 @@ func (a *Auth) newFactorPins(now time.Time) factorPins {
 func (a *Auth) factorLogin(ctx context.Context, user User, expectedHash string, session StoredSession, signedDevice string) (AuthResult, error) {
 	result := AuthResult{}
 	subject := FactorSubject{UserID: user.ID, Now: a.now().UTC(), TrustedGrant: a.readTrustedGrant(signedDevice, user.ID)}
-	pins := a.newFactorPins(subject.Now)
-	err := a.planSignIn(ctx, nil, func(ctx context.Context) error {
-		return a.factorStore.WithTwoFactor(ctx, subject, a.factorLoginDecision(&result, pins, session, signedDevice, expectedHash))
+	pins, h := a.newFactorPins(subject.Now), a.newFactorHooks()
+	err := a.runFactor(ctx, h, &subject, true, func(ctx context.Context) error {
+		return a.planSignIn(ctx, nil, func(ctx context.Context) error {
+			return a.factorStore.WithTwoFactor(ctx, subject, h.follow(a.factorLoginDecision(&result, h, pins, session, signedDevice, expectedHash)))
+		})
 	})
 	if errors.Is(err, errPlannedSessionSkipped) {
 		return AuthResult{}, &APIError{401, "FAILED_TO_CREATE_SESSION", "Failed to create session"}
+	}
+	if err == nil {
+		// The records' after hooks run before the session's.
+		if hookErr := h.after(ctx); hookErr != nil {
+			err = hookErr
+			if result.Token != "" {
+				err = a.discardUnpublishedSession(ctx, result.Token, hookErr)
+			}
+		}
 	}
 	if err == nil && result.Token != "" {
 		err = a.afterDecidedSignIn(ctx, result.User, false, result.Token)
@@ -165,8 +176,11 @@ func (a *Auth) factorLogin(ctx context.Context, user User, expectedHash string, 
 }
 
 // factorLoginDecision issues the session for an account without a second
-// factor or with a trusted device, and a challenge otherwise.
-func (a *Auth) factorLoginDecision(out *AuthResult, pins factorPins, session StoredSession, signedDevice, expectedHash string) func(FactorState) (FactorChange, error) {
+// factor or with a trusted device, and a challenge otherwise. With
+// verification hooks, a remembered browser whose spend or replacement they
+// declined asks for the second factor, and a declined challenge is answered
+// but never stored.
+func (a *Auth) factorLoginDecision(out *AuthResult, h *factorHooks, pins factorPins, session StoredSession, signedDevice, expectedHash string) func(FactorState) (FactorChange, error) {
 	return func(state FactorState) (FactorChange, error) {
 		result := AuthResult{}
 		defer func() { *out = result }()
@@ -183,17 +197,40 @@ func (a *Auth) factorLoginDecision(out *AuthResult, pins factorPins, session Sto
 		if len(methods) == 0 && (state.Record == nil || !state.Record.Verified || state.Record.BackupCodes == "") {
 			return FactorChange{}, &APIError{403, "TOTP_NOT_CONFIGURED", "Two-factor verification is unavailable"}
 		}
+		uid, declined := state.User.ID, false
 		if state.TrustedGrant != "" {
-			change := FactorChange{Session: &session}
-			result = AuthResult{User: state.User, Token: session.Token, TrustedDeviceCookie: a.rotateTrustedGrant(&change, state.User.ID, pins)}
-			return change, nil
+			spend := h.approval(roleSpend, factorRecord("trust-device", state.TrustedGrantID, uid, state.TrustedGrantExpires))
+			grant := factorDeclined
+			if spend != factorDeclined {
+				grant = h.approval(roleGrant, factorRecord("trust-device", pins.grantID, uid, pins.grantUntil))
+			}
+			if spend == factorPending || grant == factorPending {
+				return FactorChange{}, errFactorUnapproved
+			}
+			if spend == factorApproved && grant == factorApproved {
+				change := FactorChange{Session: &session}
+				result = AuthResult{User: state.User, Token: session.Token, TrustedDeviceCookie: a.rotateTrustedGrant(&change, uid, pins)}
+				return change, nil
+			}
+			// A grant whose spend or replacement was declined never
+			// authorizes a sign-in; it stays, with its cookie, for the next.
+			declined = true
 		}
-		if signedDevice != "" {
+		if signedDevice != "" && !declined {
 			result.TrustedDeviceCookie = a.trustedDeviceCookie("", "", -1)
+		}
+		issue := h.approval(roleIssue, factorRecord("2fa", pins.challengeID, uid, pins.challengeExpires))
+		if issue == factorPending {
+			return FactorChange{}, errFactorUnapproved
 		}
 		result.Challenge = &LoginChallenge{Identifier: pins.challenge}
 		result.TwoFactorRedirect = true
 		result.TwoFactorMethods = methods
+		if issue == factorDeclined {
+			// A declined challenge is answered, but never stored, so its
+			// cookie redeems nothing.
+			return FactorChange{}, nil
+		}
 		return FactorChange{CreateChallenge: pins.challenge, ChallengeID: pins.challengeID, ChallengeExpires: pins.challengeExpires}, nil
 	}
 }
@@ -251,7 +288,7 @@ func (a *Auth) factorEndpoint(route string, c EndpointContext) (any, error) {
 	}
 	remember := !a.dontRemember(r)
 	op := factorRequest{
-		auth: a, ctx: ctx, route: route, body: c.Body, subject: subject, pins: a.newFactorPins(subject.Now),
+		auth: a, ctx: ctx, route: route, body: c.Body, subject: subject, pins: a.newFactorPins(subject.Now), hooks: a.newFactorHooks(),
 		meta: RequestMeta{IPAddress: a.clientIP(r), UserAgent: r.UserAgent(), RememberMe: &remember},
 	}
 	decide := op.manage
@@ -284,23 +321,36 @@ func (a *Auth) factorEndpoint(route string, c EndpointContext) (any, error) {
 	// Each run reports afresh, so a run the store rolled back, such as a
 	// login plan's dry run, never reaches the response.
 	run := decide
-	decide = func(st FactorState) (FactorChange, error) {
+	decide = op.hooks.follow(func(st FactorState) (FactorChange, error) {
 		op.reset()
 		return run(st)
-	}
+	})
 	write := func(ctx context.Context) error { return a.factorStore.WithTwoFactor(ctx, op.subject, decide) }
-	var err error
-	if isSend {
-		err = write(ctx)
-	} else {
+	call := write
+	if !isSend {
 		// Proofs and factor changes may issue a session, which runs the session create hooks.
-		err = a.planSignIn(ctx, nil, write)
+		call = func(ctx context.Context) error { return a.planSignIn(ctx, nil, write) }
+	}
+	err := a.runFactor(ctx, op.hooks, &op.subject, !isSend, call)
+	if errors.Is(err, errFactorSendDeclined) {
+		// A declined code answers as sent, with nothing stored or sent.
+		return map[string]bool{"status": true}, nil
 	}
 	if errors.Is(err, ErrNotFound) {
 		if subject.Challenge != "" {
 			return nil, factorCookieError()
 		}
 		return nil, &APIError{401, "UNAUTHORIZED", "Unauthorized"}
+	}
+	if err == nil {
+		// The records' after hooks run before the session's and before the
+		// code is sent.
+		if hookErr := op.hooks.after(ctx); hookErr != nil {
+			err = hookErr
+			if op.issued != "" {
+				err = a.discardUnpublishedSession(ctx, op.issued, hookErr)
+			}
+		}
 	}
 	if err == nil && op.issued != "" {
 		err = a.afterDecidedSignIn(ctx, User{}, false, op.issued)
@@ -342,6 +392,7 @@ func (a *Auth) factorEndpoint(route string, c EndpointContext) (any, error) {
 
 type factorRequest struct {
 	pins           factorPins
+	hooks          *factorHooks
 	mail           *FactorOTPMessage
 	trustedCookie  *http.Cookie
 	auth           *Auth
@@ -434,6 +485,11 @@ func (p *factorRequest) verify(state FactorState) (FactorChange, error) {
 			return ch, &APIError{400, "BACKUP_CODES_NOT_ENABLED", "Backup codes are not enabled"}
 		}
 	}
+	// A grant is stored only by a correct proof that signs in.
+	wantsGrant := trustDevice && !disableSession
+	if err := p.gate(state, wantsGrant); err != nil {
+		return FactorChange{}, err
+	}
 	valid := false
 	if p.route == "/two-factor/verify-totp" {
 		raw, err := p.auth.openAuthenticator(record.Secret)
@@ -520,7 +576,7 @@ func (p *factorRequest) verify(state FactorState) (FactorChange, error) {
 		ss, raw := p.sessionDraft(state.User.ID)
 		ch.Session = &ss
 		p.issued = raw
-		if trustDevice && p.subject.Challenge != "" {
+		if wantsGrant && p.subject.Challenge != "" && p.hooks.allows(roleGrant) {
 			p.trustedCookie = p.auth.rotateTrustedGrant(&ch, state.User.ID, p.pins)
 		}
 		ch.ConsumeChallenge = p.subject.Challenge != ""
@@ -530,6 +586,41 @@ func (p *factorRequest) verify(state FactorState) (FactorChange, error) {
 		p.out = map[string]any{"token": state.Session.Token, "user": state.User}
 	}
 	return ch, nil
+}
+
+// gate holds a guess until the delete before hooks of what it is judged
+// against approved it, before anything compares it: the delivered code on
+// /two-factor/verify-otp, then the challenge during sign-in. A remembered
+// browser a correct proof would add waits for its create before hooks too.
+// It returns errFactorUnapproved while hooks have yet to run, and refuses,
+// uncompared and uncounted, a guess whose record changed since its hooks ran.
+func (p *factorRequest) gate(st FactorState, wantsGrant bool) error {
+	h := p.hooks
+	if h == nil {
+		return nil
+	}
+	uid, pending := st.User.ID, false
+	if d := st.Delivery; p.route == "/two-factor/verify-otp" { // deliveryReady let only a live, active code through
+		wait, changed := h.guess(&h.delivery, roleDelivery, factorRecord("2fa-otp", d.ID, uid, d.ExpiresAt))
+		if changed {
+			return otpUnavailable() // a code sent again since its hooks ran is left alone
+		}
+		pending = pending || wait
+	}
+	if p.subject.Challenge != "" {
+		wait, changed := h.guess(&h.challenge, roleChallenge, factorRecord("2fa", st.ChallengeID, uid, st.ChallengeExpires))
+		if changed {
+			return factorCookieError()
+		}
+		pending = pending || wait
+		if wantsGrant && h.approval(roleGrant, factorRecord("trust-device", p.pins.grantID, uid, p.pins.grantUntil)) == factorPending {
+			pending = true
+		}
+	}
+	if pending {
+		return errFactorUnapproved
+	}
+	return nil
 }
 
 func (p *factorRequest) manage(state FactorState) (FactorChange, error) {

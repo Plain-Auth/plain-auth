@@ -137,7 +137,7 @@ func (a *Auth) beforeEmailGuess(ctx context.Context, req *EmailOTPRequest, code 
 	}
 	req.ProofID, req.Decided = id, &g.decision
 	if expiresAt.After(req.Now) {
-		if err := a.beforeCodeGuess(ctx, g, emailOTPRecord(*req, id, expiresAt)); err != nil {
+		if err := a.beforeCodeGuess(ctx, g, emailOTPRecord(*req, id, expiresAt), invalidOTP()); err != nil {
 			return nil, err
 		}
 		req.Now = a.now().UTC().Truncate(time.Millisecond)

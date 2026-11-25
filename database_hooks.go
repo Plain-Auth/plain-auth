@@ -32,11 +32,12 @@ type DatabaseHooks struct {
 	Account ModelHooks[LinkedAccount]
 	// Verification hooks observe and may cancel the creation and spending of
 	// password reset links, account deletion links, browser OAuth flows,
-	// magic links, one-time tokens, email and phone codes, passkey challenges
-	// and wallet nonces. Spending or
-	// removing a record is its delete. A wrong guess counted against a code
-	// is its update, which has no before hook: the delete before hooks run
-	// before every guess. They may not change the record.
+	// magic links, one-time tokens, email and phone codes, two-factor sign-in
+	// challenges, delivered codes and remembered browsers, passkey challenges
+	// and wallet nonces. Spending or removing a record is its delete. A wrong
+	// guess counted against a code or a two-factor challenge is its update,
+	// which has no before hook: the delete before hooks run before every
+	// guess. They may not change the record.
 	Verification ModelHooks[VerificationRecord]
 }
 
@@ -46,15 +47,18 @@ type DatabaseHooks struct {
 type VerificationRecord struct {
 	// ID identifies the record. A magic link's, one-time token's or passkey
 	// challenge's ID is derived from its stored key, and a wallet nonce's from
-	// the nonce; each is the row ID the SQL store gives it.
-	// An email or phone code's ID is its stored row's; each send stores a new
-	// one. It cannot redeem the record, but keep it private.
+	// the nonce; each is the row ID the SQL store gives it. An email or phone
+	// code's ID is its stored row's; each send stores a new one. A two-factor
+	// record's ID is its stored row's too. It cannot redeem the record, but
+	// keep it private.
 	ID string
 	// Identifier is the kind of record: "reset-password", "delete-account",
 	// "oauth-state", "magic-link", "one-time-token", an email code's
 	// "sign-in-otp", "email-verification-otp", "forget-password-otp" or
 	// "change-email-otp", a phone code's "phone-number-otp" or
-	// "phone-number-reset", a passkey challenge's "passkey-registration" or
+	// "phone-number-reset", a two-factor sign-in challenge's "2fa", a
+	// delivered second-factor code's "2fa-otp", a remembered browser's
+	// "trust-device", a passkey challenge's "passkey-registration" or
 	// "passkey-authentication", or a wallet nonce's "siwe".
 	Identifier string
 	// UserID is the record's owner. An OAuth flow has one only when it
@@ -62,10 +66,11 @@ type VerificationRecord struct {
 	// whose session it transfers. An email change code names the signed-in
 	// user who asked for it. A magic link and other email and phone codes,
 	// which prove an address or number rather than an account, have none.
-	// A passkey challenge names the signed-in user it is for; a first-use
-	// registration's, whose account may not exist yet, and a signed-out
-	// sign-in's name none. A wallet nonce, bound to no wallet until a signed
-	// message redeems it, names none.
+	// A two-factor record names the account it proves. A passkey challenge
+	// names the signed-in user it is for; a first-use registration's, whose
+	// account may not exist yet, and a signed-out sign-in's name none. A
+	// wallet nonce, bound to no wallet until a signed message redeems it,
+	// names none.
 	UserID    string
 	ExpiresAt time.Time
 }
@@ -268,8 +273,13 @@ func (a *Auth) checkDatabaseHooks() error {
 	}
 	if d.verification.set() {
 		// These plugins keep their codes and challenges inside their stores.
-		for _, id := range []string{"two-factor", "sso", "oauth-provider"} {
+		for _, id := range []string{"sso", "oauth-provider"} {
 			need(id, a.HasPlugin(id))
+		}
+		// Two-factor records are decided inside the store's transaction; the
+		// hooks follow the rows the store reports and the IDs the Auth gives.
+		if _, ok := a.opts.Store.(FactorRecordReporter); a.HasPlugin("two-factor") && !ok {
+			return errors.New("auth: verification hooks with the two-factor plugin require a store implementing ReportsFactorRecords")
 		}
 		// A plugin that runs the hooks around its own records says what its
 		// store needs for them.
@@ -283,7 +293,7 @@ func (a *Auth) checkDatabaseHooks() error {
 		}
 	}
 	if len(d.verification.update.before) > 0 {
-		for _, id := range []string{"email-otp", "phone-number"} {
+		for _, id := range []string{"email-otp", "phone-number", "two-factor"} {
 			if a.HasPlugin(id) {
 				return fmt.Errorf("auth: verification update before hooks cannot run with the %s plugin, which counts a wrong guess as it judges it; use the delete before hooks, which run before every guess", id)
 			}
@@ -822,12 +832,12 @@ func (a *Auth) watchesCodes() bool {
 
 // beforeCodeGuess runs the verification delete before hooks on rec, the live
 // code g is about to be judged against, before anything compares the guess.
-// A declined guess is refused with INVALID_OTP: nothing compares or counts
-// it, and the code stays as it was.
-func (a *Auth) beforeCodeGuess(ctx context.Context, g *codeGuess, rec VerificationRecord) error {
+// A declined guess is refused with declined, such as INVALID_OTP: nothing
+// compares or counts it, and the code stays as it was.
+func (a *Auth) beforeCodeGuess(ctx context.Context, g *codeGuess, rec VerificationRecord, declined error) error {
 	err := a.beforeVerification(ctx, a.dbHooks.verification.delete, rec)
 	if errors.Is(err, ErrSkipWrite) {
-		return invalidOTP()
+		return declined
 	}
 	if err != nil {
 		return err
