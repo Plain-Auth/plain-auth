@@ -34,6 +34,7 @@
       - [x] Deliver verification SMS via an injected callback ([test](../../../adapters/sqlstore/phone_test.go#L85))
     - [ ] `verifyOTP`
       - [x] Bind a custom verifier’s decision to its original issuance ([test](../../../adapters/sqlstore/phone_accounts_test.go#L207))
+      - [x] Ask the provider only after a guess's verification before hooks, and count a rejected guess even when the client has gone ([test](../../../conformance/goapi/database_verification_code_hooks_test.go#L950))
     - [ ] `sendPasswordResetOTP`
       - [x] Deliver reset messages only for eligible accounts ([test](../../../adapters/sqlstore/phone_accounts_test.go#L95))
     - [ ] `expiresIn`
@@ -50,6 +51,7 @@
     - [ ] `schema`
     - [ ] `allowedAttempts`
       - [x] Honor a configured zero-attempt budget and default wrong-code limits ([test](../../../adapters/sqlstore/phone_accounts_test.go#L219))
+      - [x] Run verification update after hooks for each counted wrong phone guess, and remove an exhausted code with its delete hooks ([test](../../../conformance/goapi/database_verification_code_hooks_test.go#L775))
 
 ## Phone Number
 

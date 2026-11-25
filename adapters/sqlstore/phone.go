@@ -42,19 +42,34 @@ func (s *Store) SavePhoneOTP(ctx context.Context, r auth.PhoneOTPRecord) error {
 	_, err := s.savePhone(ctx, r, false)
 	return err
 }
+
+var _ auth.PhoneOTPReporter = (*Store)(nil)
+
+// ReportsPhoneOTPDecisions marks the store as reporting, through
+// PhoneOTPUse.Decided, what it commits to a phone code.
+func (*Store) ReportsPhoneOTPDecisions() {}
+
 func (s *Store) ConsumePhoneOTP(ctx context.Context, u auth.PhoneOTPUse) error {
 	key := phoneProofKey(u.PhoneNumber, u.Purpose)
-	return s.emailOTPTransaction(ctx, key, func(tx *sql.Tx) (error, error) {
-		_, denied, err := s.consumePhoneProof(ctx, tx, key, u)
+	var decision auth.PhoneOTPDecision
+	committed, err := s.codeTransaction(ctx, key, func(tx *sql.Tx) (error, error) {
+		decision = auth.PhoneKeepProof
+		_, denied, err := s.consumePhoneProof(ctx, tx, key, u, &decision)
 		return denied, err
 	})
+	reportCode(u.Decided, committed, decision)
+	return err
 }
-func (s *Store) consumePhoneProof(ctx context.Context, tx *sql.Tx, key emailOTPKey, u auth.PhoneOTPUse) (*auth.PhoneOTPRecord, error, error) {
+
+// consumePhoneProof judges u against the code stored under key and writes
+// the decision, which it also records in decided.
+func (s *Store) consumePhoneProof(ctx context.Context, tx *sql.Tx, key emailOTPKey, u auth.PhoneOTPUse, decided *auth.PhoneOTPDecision) (*auth.PhoneOTPRecord, error, error) {
 	rec, err := s.readPhoneProof(ctx, tx, key)
 	if err != nil {
 		return nil, nil, err
 	}
 	decision, denied := u.Check(rec)
+	*decided = decision
 	switch decision {
 	case auth.PhoneCountAttempt:
 		_, err = tx.ExecContext(ctx, s.bind(`UPDATE "verification" SET "value"=?,"updatedAt"=? WHERE "id"=?`), rec.Code+":"+strconv.Itoa(rec.Attempts+1), s.date(u.Now), rec.ID)

@@ -35,16 +35,26 @@ func (s *Store) savePhoneLocked(r auth.PhoneOTPRecord) {
 	}
 	s.phoneOTPs[phoneKey{r.PhoneNumber, r.Purpose}] = r
 }
+
+var _ auth.PhoneOTPReporter = (*Store)(nil)
+
+// ReportsPhoneOTPDecisions marks the store as reporting, through
+// PhoneOTPUse.Decided, what it commits to a phone code.
+func (*Store) ReportsPhoneOTPDecisions() {}
+
 func (s *Store) ConsumePhoneOTP(ctx context.Context, u auth.PhoneOTPUse) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	_, err := s.consumePhoneLocked(u)
+	_, decision, err := s.consumePhoneLocked(u)
+	reportCode(u.Decided, decision)
 	return err
 }
-func (s *Store) consumePhoneLocked(u auth.PhoneOTPUse) (auth.PhoneOTPRecord, error) {
+
+// consumePhoneLocked judges u against the stored code and applies the decision.
+func (s *Store) consumePhoneLocked(u auth.PhoneOTPUse) (auth.PhoneOTPRecord, auth.PhoneOTPDecision, error) {
 	key := phoneKey{u.PhoneNumber, u.Purpose}
 	r, ok := s.phoneOTPs[key]
 	var record *auth.PhoneOTPRecord
@@ -59,5 +69,5 @@ func (s *Store) consumePhoneLocked(u auth.PhoneOTPUse) (auth.PhoneOTPRecord, err
 	case auth.PhoneRemoveProof:
 		delete(s.phoneOTPs, key)
 	}
-	return r, err
+	return r, decision, err
 }

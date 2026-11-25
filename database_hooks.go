@@ -32,10 +32,10 @@ type DatabaseHooks struct {
 	Account ModelHooks[LinkedAccount]
 	// Verification hooks observe and may cancel the creation and spending of
 	// password reset links, account deletion links, browser OAuth flows,
-	// magic links, one-time tokens and email codes. Spending or removing a
-	// record is its delete. A wrong guess counted against a code is its
-	// update, which has no before hook: the delete before hooks run before
-	// every guess. They may not change the record.
+	// magic links, one-time tokens and email and phone codes. Spending or
+	// removing a record is its delete. A wrong guess counted against a code
+	// is its update, which has no before hook: the delete before hooks run
+	// before every guess. They may not change the record.
 	Verification ModelHooks[VerificationRecord]
 }
 
@@ -45,19 +45,20 @@ type DatabaseHooks struct {
 type VerificationRecord struct {
 	// ID identifies the record. A magic link's or one-time token's ID is
 	// derived from its stored key and is the row ID the SQL store gives it.
-	// An email code's ID is its stored row's; each send stores a new one. It
-	// cannot redeem the record, but keep it private.
+	// An email or phone code's ID is its stored row's; each send stores a new
+	// one. It cannot redeem the record, but keep it private.
 	ID string
 	// Identifier is the kind of record: "reset-password", "delete-account",
-	// "oauth-state", "magic-link", "one-time-token", or an email code's
+	// "oauth-state", "magic-link", "one-time-token", an email code's
 	// "sign-in-otp", "email-verification-otp", "forget-password-otp" or
-	// "change-email-otp".
+	// "change-email-otp", or a phone code's "phone-number-otp" or
+	// "phone-number-reset".
 	Identifier string
 	// UserID is the record's owner. An OAuth flow has one only when it
 	// links an account to a signed-in user. A one-time token names the user
 	// whose session it transfers. An email change code names the signed-in
-	// user who asked for it. A magic link and other email codes, which prove
-	// an address rather than an account, have none.
+	// user who asked for it. A magic link and other email and phone codes,
+	// which prove an address or number rather than an account, have none.
 	UserID    string
 	ExpiresAt time.Time
 }
@@ -260,15 +261,24 @@ func (a *Auth) checkDatabaseHooks() error {
 	}
 	if d.verification.set() {
 		// These plugins keep their codes and challenges inside their stores.
-		for _, id := range []string{"phone-number", "two-factor", "passkey", "siwe", "sso", "oauth-provider"} {
+		for _, id := range []string{"two-factor", "passkey", "siwe", "sso", "oauth-provider"} {
 			need(id, a.HasPlugin(id))
 		}
 	}
-	if len(d.verification.update.before) > 0 && a.HasPlugin("email-otp") {
-		return errors.New("auth: verification update before hooks cannot run with the email-otp plugin, which counts a wrong guess as it judges it; use the delete before hooks, which run before every guess")
+	if len(d.verification.update.before) > 0 {
+		for _, id := range []string{"email-otp", "phone-number"} {
+			if a.HasPlugin(id) {
+				return fmt.Errorf("auth: verification update before hooks cannot run with the %s plugin, which counts a wrong guess as it judges it; use the delete before hooks, which run before every guess", id)
+			}
+		}
 	}
-	if _, ok := a.opts.Store.(EmailOTPFinder); (d.verification.update.set() || d.verification.delete.set()) && a.HasPlugin("email-otp") && !ok {
-		return errors.New("auth: verification update and delete hooks with the email-otp plugin require a store implementing FindEmailOTP")
+	if d.verification.update.set() || d.verification.delete.set() {
+		if _, ok := a.opts.Store.(EmailOTPFinder); a.HasPlugin("email-otp") && !ok {
+			return errors.New("auth: verification update and delete hooks with the email-otp plugin require a store implementing FindEmailOTP")
+		}
+		if _, ok := a.opts.Store.(PhoneOTPReporter); a.HasPlugin("phone-number") && !ok {
+			return errors.New("auth: verification update and delete hooks with the phone-number plugin require a store implementing ReportsPhoneOTPDecisions")
+		}
 	}
 	if d.verification.delete.set() {
 		_, finds := a.opts.Store.(DeletionTokenFinder)
@@ -767,9 +777,20 @@ func emailOTPRecord(req EmailOTPRequest, id string, expiresAt time.Time) Verific
 	return rec
 }
 
-// codeGuess follows one guess at an email code for the verification hooks:
-// the record whose delete before hooks approved judging the guess, nil when
-// none ran, and what the store reported doing to that code.
+// phoneOTPRecord is a phone code as a verification record: "phone-number-otp"
+// verifies a number and "phone-number-reset" resets a password. A code
+// proves a number rather than an account, so it names no owner.
+func phoneOTPRecord(purpose PhoneOTPPurpose, id string, expiresAt time.Time) VerificationRecord {
+	kind := "phone-number-otp"
+	if purpose == PhonePasswordReset {
+		kind = "phone-number-reset"
+	}
+	return VerificationRecord{ID: id, Identifier: kind, ExpiresAt: expiresAt.UTC().Truncate(time.Millisecond)}
+}
+
+// codeGuess follows one guess at an email or phone code for the
+// verification hooks: the record whose delete before hooks approved judging
+// the guess, nil when none ran, and what the store reported doing to it.
 type codeGuess struct {
 	rec      *VerificationRecord
 	decision PhoneOTPDecision

@@ -642,3 +642,331 @@ func TestDatabaseVerificationHooksForEmailChanges(t *testing.T) {
 	observed.call("/email-otp/verify-email", signInBody("dee@example.test", code), "", 200, `"emailVerified":true`)
 	sameEvents(t, events.drain(), "delete-before:email-verification-otp", "delete-after:email-verification-otp", "before-email-verification")
 }
+
+// phoneHost serves phone codes with recorded verification hooks.
+type phoneHost struct {
+	t      *testing.T
+	auth   *authn.Auth
+	mu     sync.Mutex
+	sms    []authn.PhoneOTPMessage
+	hashed atomic.Int32
+}
+
+func newPhoneHost(t *testing.T, store authn.Store, events *verificationEvents, edit func(*authn.PhoneNumberOptions, *authn.Options)) *phoneHost {
+	t.Helper()
+	h := &phoneHost{t: t}
+	capture := func(_ context.Context, m authn.PhoneOTPMessage) error {
+		h.mu.Lock()
+		defer h.mu.Unlock()
+		h.sms = append(h.sms, m)
+		return nil
+	}
+	o := authn.PhoneNumberOptions{SendOTP: capture, SendPasswordResetOTP: capture,
+		SignUpOnVerification: &authn.PhoneSignUpOptions{GetTempEmail: func(n string) string { return strings.TrimPrefix(n, "+") + "@phone.test" }}}
+	off := false
+	opts := authn.Options{BaseURL: "https://auth.example", Store: store, Secret: strings.Repeat("s", 32), EmailAndPassword: true, RateLimit: &off, DatabaseHooks: events.hooks(),
+		PasswordHash: func(ctx context.Context, password string) (string, error) {
+			h.hashed.Add(1)
+			return authn.HashPassword(ctx, password)
+		},
+		PasswordVerify: authn.VerifyPasswordHash,
+		OnPasswordReset: func(context.Context, authn.User, *http.Request) error {
+			return events.note("on-password-reset", nil, nil)
+		},
+	}
+	if edit != nil {
+		edit(&o, &opts)
+	}
+	phone, err := authn.NewPhoneNumber(o)
+	if err != nil {
+		t.Fatal(err)
+	}
+	opts.Plugins = []authn.Plugin{phone}
+	if h.auth, err = authn.New(opts); err != nil {
+		t.Fatal(err)
+	}
+	return h
+}
+
+func (h *phoneHost) call(path, body, cookie string, status int, want string) *httptest.ResponseRecorder {
+	h.t.Helper()
+	r := httptest.NewRequest("POST", "https://auth.example/api/auth"+path, strings.NewReader(body))
+	r.Header.Set("Origin", "https://auth.example")
+	r.Header.Set("Content-Type", "application/json")
+	if cookie != "" {
+		r.Header.Set("Cookie", cookie)
+	}
+	w := httptest.NewRecorder()
+	h.auth.ServeHTTP(w, r)
+	if w.Code != status || !strings.Contains(w.Body.String(), want) {
+		h.t.Fatalf("%s answered %d %s, want %d with %q", path, w.Code, w.Body.String(), status, want)
+	}
+	return w
+}
+
+func (h *phoneHost) texted() int {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return len(h.sms)
+}
+
+// lastCode returns the code texted last, or "" when the count is still before.
+func (h *phoneHost) lastCode(before int) string {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if len(h.sms) == before {
+		return ""
+	}
+	return h.sms[len(h.sms)-1].Code
+}
+
+func (h *phoneHost) send(number string) string {
+	h.t.Helper()
+	before := h.texted()
+	h.call("/phone-number/send-otp", `{"phoneNumber":"`+number+`"}`, "", 200, "code sent")
+	return h.lastCode(before)
+}
+
+func phoneBody(number, code string) string {
+	return `{"phoneNumber":"` + number + `","code":"` + code + `"}`
+}
+
+// Verification hooks run around phone codes: create when a code is stored,
+// delete before every guess, before a custom VerifyOTP is asked, delete
+// after when the code is spent or removed, and update after when a wrong
+// guess is counted. A declined send stores and texts nothing, and a code a
+// refused sign-up or link spends runs its after hooks before the refusal.
+func TestDatabaseVerificationHooksForPhoneCodes(t *testing.T) {
+	ctx := t.Context()
+	events := newVerificationEvents()
+	store := memory.New()
+	h := newPhoneHost(t, store, events, nil)
+	read := func(number string, purpose authn.PhoneOTPPurpose) *authn.PhoneOTPRecord {
+		t.Helper()
+		r, err := store.ReadPhoneOTP(ctx, number, purpose)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return r
+	}
+
+	// A stored code's record names its kind and row, and holds neither the code nor the number.
+	code := h.send("+15550000001")
+	sameEvents(t, events.drain(), "create-before:phone-number-otp", "create-after:phone-number-otp")
+	created, _ := events.last()
+	stored := read("+15550000001", authn.PhoneVerify)
+	if created.ID != stored.ID || created.Identifier != "phone-number-otp" || created.UserID != "" || !created.ExpiresAt.Equal(stored.ExpiresAt.UTC().Truncate(time.Millisecond)) {
+		t.Fatal("the phone code's record was", created, stored.ID)
+	}
+	if s := fmt.Sprintf("%+v", created); strings.Contains(s, "5550000001") {
+		t.Fatal("a verification record holds the number:", s)
+	}
+	// A declined send answers as a sent one, texts nothing and keeps the earlier code.
+	events.set(events.decline, "create-before:phone-number-otp", true)
+	if again := h.send("+15550000001"); again != "" {
+		t.Fatal("a declined phone code was texted")
+	}
+	events.set(events.decline, "create-before:phone-number-otp", false)
+	sameEvents(t, events.drain(), "create-before:phone-number-otp")
+	if kept := read("+15550000001", authn.PhoneVerify); kept == nil || kept.ID != stored.ID {
+		t.Fatal("a declined send replaced the earlier code")
+	}
+
+	// Each counted wrong phone guess runs the update after hooks.
+	for range 3 {
+		h.call("/phone-number/verify", phoneBody("+15550000001", "nope"), "", 400, "INVALID_OTP")
+		sameEvents(t, events.drain(), "delete-before:phone-number-otp", "update-after:phone-number-otp")
+		if updated, _ := events.last(); updated != created {
+			t.Fatal("the counted guess's record was", updated, created)
+		}
+	}
+	h.call("/phone-number/verify", phoneBody("+15550000001", code), "", 403, "TOO_MANY_ATTEMPTS")
+	sameEvents(t, events.drain(), "delete-before:phone-number-otp", "delete-after:phone-number-otp")
+	h.call("/phone-number/verify", phoneBody("+15550000001", code), "", 400, "OTP_NOT_FOUND")
+	sameEvents(t, events.drain())
+
+	// A code that has expired runs no hook.
+	past := time.Now().UTC().Add(-time.Minute)
+	if err := store.SavePhoneOTP(ctx, authn.PhoneOTPRecord{ID: "stale", PhoneNumber: "+15550000002", Code: "123456", Purpose: authn.PhoneVerify, CreatedAt: past.Add(-time.Minute), ExpiresAt: past}); err != nil {
+		t.Fatal(err)
+	}
+	h.call("/phone-number/verify", phoneBody("+15550000002", "123456"), "", 400, "OTP_EXPIRED")
+	sameEvents(t, events.drain())
+
+	// A sign-up on verification: the code's hooks run before the user's and session's.
+	code = h.send("+15550000003")
+	events.drain()
+	h.call("/phone-number/verify", phoneBody("+15550000003", code), "", 200, `"status":true`)
+	sameEvents(t, events.drain(), "delete-before:phone-number-otp", "delete-after:phone-number-otp", "user-create-after", "session-create-after")
+
+	// An after hook's error fails the sign-up and removes its session.
+	code = h.send("+15550000004")
+	events.drain()
+	events.failWith("delete-after:phone-number-otp", errors.New("late"))
+	if w := h.call("/phone-number/verify", phoneBody("+15550000004", code), "", 500, ""); w.Header().Get("Set-Cookie") != "" {
+		t.Fatal("a failed sign-up set a cookie")
+	}
+	events.failWith("delete-after:phone-number-otp", nil)
+	sameEvents(t, events.drain(), "delete-before:phone-number-otp", "delete-after:phone-number-otp")
+	late, err := store.FindAccountUser(ctx, "15550000004@phone.test")
+	if err != nil {
+		t.Fatal("the user the failed sign-up created is gone", err)
+	}
+	if sessions, err := store.ListSessions(ctx, late.ID); err != nil || len(sessions) != 0 {
+		t.Fatal("the failed sign-up kept its session", sessions, err)
+	}
+
+	// A link without a session, and a link to a number someone holds, spend the code.
+	code = h.send("+15550000005")
+	events.drain()
+	h.call("/phone-number/verify", `{"phoneNumber":"+15550000005","code":"`+code+`","updatePhoneNumber":true}`, "", 401, "USER_NOT_FOUND")
+	sameEvents(t, events.drain(), "delete-before:phone-number-otp", "delete-after:phone-number-otp")
+	w := h.call("/sign-up/email", `{"email":"ada@phone.test","password":"correct horse battery","name":"Ada"}`, "", 200, "")
+	var cookie string
+	for _, c := range w.Result().Cookies() {
+		if strings.HasSuffix(c.Name, "session_token") {
+			cookie = c.Name + "=" + c.Value
+		}
+	}
+	code = h.send("+15550000003")
+	events.drain()
+	h.call("/phone-number/verify", `{"phoneNumber":"+15550000003","code":"`+code+`","updatePhoneNumber":true}`, cookie, 400, "PHONE_NUMBER_EXIST")
+	sameEvents(t, events.drain(), "delete-before:phone-number-otp", "delete-after:phone-number-otp")
+	// A link to a free number gives Ada a number for the resets below.
+	code = h.send("+15550000006")
+	events.drain()
+	h.call("/phone-number/verify", `{"phoneNumber":"+15550000006","code":"`+code+`","updatePhoneNumber":true}`, cookie, 200, `"status":true`)
+	sameEvents(t, events.drain(), "delete-before:phone-number-otp", "delete-after:phone-number-otp")
+
+	// A field a caller may not set spends the code.
+	code = h.send("+15550000007")
+	events.drain()
+	h.call("/phone-number/verify", `{"phoneNumber":"+15550000007","code":"`+code+`","phoneNumberVerified":true}`, "", 400, "FIELD_NOT_ALLOWED")
+	sameEvents(t, events.drain(), "delete-before:phone-number-otp", "delete-after:phone-number-otp")
+
+	// A reset request stores a code for any number, so its hooks reveal nothing.
+	before := h.texted()
+	h.call("/phone-number/request-password-reset", `{"phoneNumber":"+15550000099"}`, "", 200, `"status":true`)
+	if h.lastCode(before) != "" {
+		t.Fatal("a reset code was texted to an unknown number")
+	}
+	sameEvents(t, events.drain(), "create-before:phone-number-reset", "create-after:phone-number-reset")
+	events.set(events.decline, "create-before:phone-number-reset", true)
+	h.call("/phone-number/request-password-reset", `{"phoneNumber":"+15550000098"}`, "", 200, `"status":true`)
+	events.set(events.decline, "create-before:phone-number-reset", false)
+	sameEvents(t, events.drain(), "create-before:phone-number-reset")
+	if r := read("+15550000098", authn.PhonePasswordReset); r != nil {
+		t.Fatal("a declined reset code was stored")
+	}
+
+	// A reset runs one guess: a declined one is refused before the password
+	// is hashed, a wrong one is counted, and the reset's hooks run before the
+	// reset callback.
+	before = h.texted()
+	h.call("/phone-number/request-password-reset", `{"phoneNumber":"+15550000006"}`, "", 200, "")
+	code = h.lastCode(before)
+	events.drain()
+	reset := func(code string, status int, want string) {
+		t.Helper()
+		h.call("/phone-number/reset-password", `{"phoneNumber":"+15550000006","otp":"`+code+`","newPassword":"second horse battery"}`, "", status, want)
+	}
+	hashed := h.hashed.Load()
+	events.set(events.decline, "delete-before:phone-number-reset", true)
+	reset(code, 400, "INVALID_OTP")
+	events.set(events.decline, "delete-before:phone-number-reset", false)
+	sameEvents(t, events.drain(), "delete-before:phone-number-reset")
+	reset("nope", 400, "INVALID_OTP")
+	sameEvents(t, events.drain(), "delete-before:phone-number-reset", "update-after:phone-number-reset")
+	if h.hashed.Load() != hashed {
+		t.Fatal("a refused reset hashed the password")
+	}
+	reset(code, 200, "")
+	sameEvents(t, events.drain(), "delete-before:phone-number-reset", "delete-after:phone-number-reset", "on-password-reset")
+	h.call("/sign-in/phone-number", `{"phoneNumber":"+15550000006","password":"second horse battery"}`, "", 200, "")
+	events.drain()
+	// An after hook's error fails the reset after the password changed, without the callback.
+	before = h.texted()
+	h.call("/phone-number/request-password-reset", `{"phoneNumber":"+15550000006"}`, "", 200, "")
+	code = h.lastCode(before)
+	events.drain()
+	events.failWith("delete-after:phone-number-reset", errors.New("late"))
+	h.call("/phone-number/reset-password", `{"phoneNumber":"+15550000006","otp":"`+code+`","newPassword":"third horse battery"}`, "", 500, "")
+	events.failWith("delete-after:phone-number-reset", nil)
+	sameEvents(t, events.drain(), "delete-before:phone-number-reset", "delete-after:phone-number-reset")
+	h.call("/sign-in/phone-number", `{"phoneNumber":"+15550000006","password":"third horse battery"}`, "", 200, "")
+	events.drain()
+
+	// A direct Go call's hooks see no endpoint.
+	code = h.send("+15550000008")
+	events.drain()
+	if err := h.auth.ConsumePhoneNumberOTP(ctx, "+15550000008", code); err != nil {
+		t.Fatal(err)
+	}
+	sameEvents(t, events.drain(), "delete-before:phone-number-otp", "delete-after:phone-number-otp")
+	if _, c := events.last(); c != nil {
+		t.Fatal("a direct Go call's hook saw an endpoint", c)
+	}
+}
+
+// A custom VerifyOTP is asked only after a guess's delete before hooks, so
+// a declined guess never reaches it, and a guess it rejects is counted even
+// when the client has gone. ValidateUserInfo's refusal spends the code and
+// runs its after hooks first.
+func TestDatabaseVerificationHooksForPhoneProviders(t *testing.T) {
+	ctx := t.Context()
+	events := newVerificationEvents()
+	store := memory.New()
+	var asked atomic.Int32
+	var cancelGuess atomic.Pointer[context.CancelFunc]
+	h := newPhoneHost(t, store, events, func(o *authn.PhoneNumberOptions, opts *authn.Options) {
+		o.VerifyOTP = func(_ context.Context, m authn.PhoneOTPMessage) (bool, error) {
+			asked.Add(1)
+			if cancel := cancelGuess.Load(); cancel != nil {
+				(*cancel)()
+			}
+			return m.Code == "right", nil
+		}
+		opts.ValidateUserInfo = func(_ context.Context, v authn.UserInfoValidation) error {
+			if strings.HasPrefix(v.User.Email, "15550000019") {
+				return errors.New("refused")
+			}
+			return nil
+		}
+	})
+	h.send("+15550000011")
+	events.drain()
+
+	// A declined phone guess never reaches the provider or the attempt count.
+	events.set(events.decline, "delete-before:phone-number-otp", true)
+	for range 3 {
+		h.call("/phone-number/verify", phoneBody("+15550000011", "nope"), "", 400, "INVALID_OTP")
+		sameEvents(t, events.drain(), "delete-before:phone-number-otp")
+	}
+	events.set(events.decline, "delete-before:phone-number-otp", false)
+	if r, _ := store.ReadPhoneOTP(ctx, "+15550000011", authn.PhoneVerify); asked.Load() != 0 || r == nil || r.Attempts != 0 {
+		t.Fatal("declined guesses reached the provider", asked.Load(), "times or were counted", r)
+	}
+
+	// A wrong guess the Auth judged is counted even when the client has gone.
+	guess, cancel := context.WithCancel(ctx)
+	cancelGuess.Store(&cancel)
+	if _, err := h.auth.VerifyPhoneNumber(guess, http.Header{}, authn.PhoneVerificationInput{PhoneNumber: "+15550000011", Code: "nope"}, authn.RequestMeta{}); err == nil || !strings.Contains(err.Error(), "Invalid OTP") {
+		t.Fatal("a rejected guess answered", err)
+	}
+	cancelGuess.Store(nil)
+	sameEvents(t, events.drain(), "delete-before:phone-number-otp", "update-after:phone-number-otp")
+	if r, _ := store.ReadPhoneOTP(ctx, "+15550000011", authn.PhoneVerify); asked.Load() != 1 || r == nil || r.Attempts != 1 {
+		t.Fatal("the rejected guess was asked", asked.Load(), "times and counted as", r)
+	}
+	// The provider's acceptance signs up.
+	h.call("/phone-number/verify", phoneBody("+15550000011", "right"), "", 200, `"status":true`)
+	sameEvents(t, events.drain(), "delete-before:phone-number-otp", "delete-after:phone-number-otp", "user-create-after", "session-create-after")
+
+	// ValidateUserInfo's refusal spends the code and runs its after hooks first.
+	h.send("+15550000019")
+	events.drain()
+	h.call("/phone-number/verify", phoneBody("+15550000019", "right"), "", 403, "")
+	sameEvents(t, events.drain(), "delete-before:phone-number-otp", "delete-after:phone-number-otp")
+	h.call("/phone-number/verify", phoneBody("+15550000019", "right"), "", 400, "OTP_NOT_FOUND")
+	sameEvents(t, events.drain())
+}

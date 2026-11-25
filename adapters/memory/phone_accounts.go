@@ -106,7 +106,9 @@ func (s *Store) ApplyPhoneRegistration(ctx context.Context, act auth.PhoneAccoun
 	if err := ctx.Err(); err != nil {
 		return out, err
 	}
-	proof, err := s.consumePhoneLocked(act.Use)
+	proof, decision, err := s.consumePhoneLocked(act.Use)
+	// Deferred calls run in reverse order, so this reports before the unlock.
+	defer func() { reportCode(act.Use.Decided, decision) }()
 	if err != nil {
 		return out, err
 	}
@@ -154,10 +156,12 @@ func (s *Store) ApplyPhoneRegistration(ctx context.Context, act auth.PhoneAccoun
 		r.fields = columns
 		if _, ok := s.emailToID[strings.ToLower(act.Create.Email)]; ok {
 			s.phoneOTPs[phoneKey{number, act.Use.Purpose}] = proof
+			decision = auth.PhoneKeepProof
 			return out, auth.ErrEmailTaken
 		}
 		if _, ok := s.users[act.Create.ID]; ok {
 			s.phoneOTPs[phoneKey{number, act.Use.Purpose}] = proof
+			decision = auth.PhoneKeepProof
 			return out, errors.New("memory: duplicate user ID")
 		}
 		r.user = copyUser(*act.Create)
@@ -168,6 +172,7 @@ func (s *Store) ApplyPhoneRegistration(ctx context.Context, act auth.PhoneAccoun
 		row.UserID = id
 		if err = s.insertSession(row); err != nil {
 			s.phoneOTPs[phoneKey{number, act.Use.Purpose}] = proof
+			decision = auth.PhoneKeepProof
 			return out, err
 		}
 	}

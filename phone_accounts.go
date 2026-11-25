@@ -2,6 +2,7 @@ package plainauth
 
 import (
 	"context"
+	"crypto/subtle"
 	"errors"
 	"net/http"
 	"time"
@@ -74,29 +75,71 @@ type PhoneAccountStore interface {
 	ClearPhoneProfile(ctx context.Context, userID, token string, p ProfileUpdate, now time.Time) error
 }
 
-func (a *Auth) phoneUse(ctx context.Context, number, code string, purpose PhoneOTPPurpose) (PhoneOTPUse, error) {
+// phoneUse prepares a guess at number's code. Without a VerifyOTP provider
+// or verification update or delete hooks, the store compares the code.
+// Otherwise the Auth reads the code first and binds the guess to it, so the
+// store judges that code and no newer one: a live code runs the guess's
+// delete before hooks, then the provider or a constant-time comparison
+// judges it. A guess that cannot succeed is applied here and refused; what
+// returns is a correct guess, with the record its hooks saw.
+func (a *Auth) phoneUse(ctx context.Context, number, code string, purpose PhoneOTPPurpose) (PhoneOTPUse, *codeGuess, error) {
 	u := PhoneOTPUse{PhoneNumber: number, Code: code, Purpose: purpose, AllowedAttempts: *a.phoneNumber.AllowedAttempts, Now: a.now().UTC()}
-	if verify := a.phoneNumber.VerifyOTP; verify != nil {
-		r, err := a.opts.Store.(PhoneAccountStore).ReadPhoneOTP(ctx, number, purpose)
-		if err != nil {
-			return u, err
-		}
-		// Expired/exhausted proofs are cleaned by the consuming transaction.
-		if r == nil || !r.ExpiresAt.After(u.Now) || r.Attempts >= u.AllowedAttempts {
-			if r == nil {
-				return u, &APIError{400, "OTP_NOT_FOUND", "OTP not found"}
-			}
-			u.ProviderProof = r.ID
-			return u, nil
-		}
-		u.ProviderProof = r.ID
-		u.ProviderAccepted, err = verify(ctx, PhoneOTPMessage{PhoneNumber: number, Code: code, Purpose: purpose})
-		if err != nil {
-			return u, err
-		}
-		u.Now = a.now().UTC()
+	g := &codeGuess{}
+	verify, watched := a.phoneNumber.VerifyOTP, a.watchesCodes()
+	if verify == nil && !watched {
+		return u, g, nil
 	}
-	return u, nil
+	store := a.opts.Store.(PhoneAccountStore)
+	r, err := store.ReadPhoneOTP(ctx, number, purpose)
+	if err != nil {
+		return u, nil, err
+	}
+	if r == nil {
+		return u, nil, &APIError{400, "OTP_NOT_FOUND", "OTP not found"}
+	}
+	u.ProviderProof = r.ID
+	if watched {
+		u.Decided = &g.decision
+		// A code that has expired is removed without hooks.
+		if r.ExpiresAt.After(u.Now) {
+			if err := a.beforeCodeGuess(ctx, g, phoneOTPRecord(purpose, r.ID, r.ExpiresAt)); err != nil {
+				return u, nil, err
+			}
+			u.Now = a.now().UTC()
+		}
+	}
+	// An expired or exhausted code needs no verdict: the store removes it.
+	if r.ExpiresAt.After(u.Now) && r.Attempts < u.AllowedAttempts {
+		if verify != nil {
+			if u.ProviderAccepted, err = verify(ctx, PhoneOTPMessage{PhoneNumber: number, Code: code, Purpose: purpose}); err != nil {
+				return u, nil, err
+			}
+			u.Now = a.now().UTC()
+		} else {
+			u.ProviderAccepted = subtle.ConstantTimeCompare([]byte(r.Code), []byte(code)) == 1
+		}
+	}
+	if _, denied := u.Check(r); denied != nil {
+		return u, nil, a.refusePhoneGuess(ctx, store, u, g, denied)
+	}
+	return u, g, nil
+}
+
+// refusePhoneGuess applies a guess at a phone code that cannot succeed: the
+// store counts it, or removes a code that expired or ran out, and the guess
+// is refused. It runs without the request's cancellation, so a client that
+// goes away once its guess was judged cannot keep it from being counted.
+func (a *Auth) refusePhoneGuess(ctx context.Context, store PhoneAccountStore, u PhoneOTPUse, g *codeGuess, denied error) error {
+	commit, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+	defer cancel()
+	err := store.ConsumePhoneOTP(commit, u)
+	if hookErr := a.afterCodeGuess(ctx, g); hookErr != nil {
+		return hookErr
+	}
+	if err == nil {
+		err = denied
+	}
+	return err
 }
 func (a *Auth) readPhone(ctx context.Context, u *User) error {
 	if a.phoneNumber == nil || u.ID == "" {
@@ -123,9 +166,17 @@ func (a *Auth) verifyPhoneNumber(ctx context.Context, h http.Header, in PhoneVer
 	if err := a.checkPhone(ctx, in.PhoneNumber); err != nil {
 		return out, err
 	}
-	use, err := a.phoneUse(ctx, in.PhoneNumber, in.Code, PhoneVerify)
+	use, g, err := a.phoneUse(ctx, in.PhoneNumber, in.Code, PhoneVerify)
 	if err != nil {
 		return out, err
+	}
+	// spentEarly runs the code's after hooks once a store call ahead of the
+	// sign-in committed to the code, before the refusal it answers.
+	spentEarly := func(storeErr error) error {
+		if hookErr := a.afterCodeGuess(ctx, g); hookErr != nil {
+			return hookErr
+		}
+		return storeErr
 	}
 	var registration RegistrationUserFields
 	act := PhoneAccountAction{Use: use}
@@ -138,7 +189,7 @@ func (a *Auth) verifyPhoneNumber(ctx context.Context, h http.Header, in PhoneVer
 			}
 			// A link attempt shares verification's guess budget and spends a correct proof,
 			// even when there is no eligible session. Account mutation stays in ApplyPhoneOTP.
-			if proofErr := a.opts.Store.(PhoneAccountStore).ConsumePhoneOTP(ctx, use); proofErr != nil {
+			if proofErr := spentEarly(a.opts.Store.(PhoneAccountStore).ConsumePhoneOTP(ctx, use)); proofErr != nil {
 				return out, proofErr
 			}
 			if denial.Status == 401 {
@@ -151,7 +202,7 @@ func (a *Auth) verifyPhoneNumber(ctx context.Context, h http.Header, in PhoneVer
 		if !a.opts.DisableSignUp && a.phoneNumber.SignUpOnVerification != nil {
 			registration, err = a.preparePhoneRegistration(ctx, &act, in, requestedVerified)
 			if err != nil {
-				return out, err
+				return out, spentEarly(err)
 			}
 			if act.Create != nil && registration.err == nil {
 				candidate := *act.Create
@@ -161,7 +212,7 @@ func (a *Auth) verifyPhoneNumber(ctx context.Context, h http.Header, in PhoneVer
 				if err := a.ValidateUserInfo(ctx, check); err != nil {
 					// A refusal spends the correct code, as a wrong one would be counted.
 					act.Use.Now = a.now().UTC()
-					if proofErr := a.opts.Store.(PhoneAccountStore).ConsumePhoneOTP(ctx, act.Use); proofErr != nil {
+					if proofErr := spentEarly(a.opts.Store.(PhoneAccountStore).ConsumePhoneOTP(ctx, act.Use)); proofErr != nil {
 						return out, proofErr
 					}
 					return out, err
@@ -176,6 +227,7 @@ func (a *Auth) verifyPhoneNumber(ctx context.Context, h http.Header, in PhoneVer
 	act.Use.Now = a.now().UTC()
 	var result PhoneAccountResult
 	store := func(ctx context.Context) (err error) {
+		g.decision = PhoneKeepProof
 		if ext, ok := a.opts.Store.(PhoneRegistrationStore); ok && (registration.err != nil || act.Create != nil && len(a.opts.UserAdditionalFields) > 0) {
 			result, err = ext.ApplyPhoneRegistration(ctx, act, registration)
 		} else if registration.err != nil {
@@ -193,14 +245,21 @@ func (a *Auth) verifyPhoneNumber(ctx context.Context, h http.Header, in PhoneVer
 	} else {
 		err = a.planSignIn(ctx, nil, store)
 	}
+	token := ""
+	if err == nil && act.Session != nil && !result.NeedsFactor && act.SourceToken == "" {
+		token = act.Session.Token
+	}
+	// The code's after hooks run before the user's and session's.
+	if hookErr := a.afterCodeGuess(ctx, g); hookErr != nil {
+		if token != "" {
+			hookErr = a.discardUnpublishedSession(ctx, token, hookErr)
+		}
+		return out, hookErr
+	}
 	if errors.Is(err, ErrEmailTaken) {
 		return out, &APIError{400, "USER_ALREADY_EXISTS", "User already exists"}
 	}
 	if err == nil {
-		token := ""
-		if act.Session != nil && !result.NeedsFactor && act.SourceToken == "" {
-			token = act.Session.Token
-		}
 		err = a.afterDecidedSignIn(ctx, result.User, act.Create != nil && result.User.ID == act.Create.ID, token)
 	}
 	if err != nil {
@@ -257,9 +316,9 @@ func (a *Auth) SignInPhoneNumber(ctx context.Context, number, password string, m
 	if (err == nil || errors.Is(err, ErrNotFound)) && u.ID != "" && a.phoneNumber.RequireVerification && (u.PhoneNumberVerified == nil || !*u.PhoneNumberVerified) {
 		if a.phoneNumber.SendOTP != nil {
 			message, e := a.preparePhoneOTP(ctx, number)
-			if e == nil {
+			if e == nil && message != nil {
 				e = a.deliver(ctx, "Could not deliver phone verification code", func(ctx context.Context) error {
-					return a.phoneNumber.SendOTP(ctx, message)
+					return a.phoneNumber.SendOTP(ctx, *message)
 				})
 			}
 			if e != nil {
@@ -285,16 +344,20 @@ func (a *Auth) RequestPhonePasswordReset(ctx context.Context, number string) err
 	}
 	now := a.now().UTC()
 	r := PhoneOTPRecord{ID: randomID(), PhoneNumber: number, Code: code, Purpose: PhonePasswordReset, CreatedAt: now, ExpiresAt: now.Add(a.phoneNumber.ExpiresIn)}
-	deliver, err := a.opts.Store.(PhoneAccountStore).SavePhoneReset(ctx, r, a.phoneNumber.RequireVerification)
-	if err != nil {
+	// The store keeps a code for every number, so the hooks reveal nothing
+	// about which numbers have accounts. A declined code is stored and sent
+	// nowhere.
+	var deliver bool
+	declined, err := a.createVerification(ctx, phoneOTPRecord(PhonePasswordReset, r.ID, r.ExpiresAt), func() (err error) {
+		deliver, err = a.opts.Store.(PhoneAccountStore).SavePhoneReset(ctx, r, a.phoneNumber.RequireVerification)
+		return err
+	})
+	if err != nil || declined || !deliver || a.phoneNumber.SendPasswordResetOTP == nil {
 		return err
 	}
-	if deliver && a.phoneNumber.SendPasswordResetOTP != nil {
-		return a.deliver(ctx, "Could not deliver phone password reset code", func(ctx context.Context) error {
-			return a.phoneNumber.SendPasswordResetOTP(ctx, PhoneOTPMessage{PhoneNumber: number, Code: code, Purpose: PhonePasswordReset})
-		})
-	}
-	return nil
+	return a.deliver(ctx, "Could not deliver phone password reset code", func(ctx context.Context) error {
+		return a.phoneNumber.SendPasswordResetOTP(ctx, PhoneOTPMessage{PhoneNumber: number, Code: code, Purpose: PhonePasswordReset})
+	})
 }
 
 // ResetPhonePassword changes the bound account's credential atomically with proof consumption.
@@ -312,31 +375,39 @@ func (a *Auth) resetPhonePassword(ctx context.Context, number, code, password st
 	if err := a.validatePasswordLength(password, true); err != nil {
 		return err
 	}
-	use, err := a.phoneUse(ctx, number, code, PhonePasswordReset)
+	// A guess phoneUse bound was judged there, and a failing one applied.
+	use, g, err := a.phoneUse(ctx, number, code, PhonePasswordReset)
 	if err != nil {
 		return err
 	}
-	// Preflight avoids password hashing on an invalid guess; the transaction checks the proof again.
 	store := a.opts.Store.(PhoneAccountStore)
-	r, err := store.ReadPhoneOTP(ctx, number, PhonePasswordReset)
-	if err != nil {
-		return err
-	}
-	if _, err = use.Check(r); err != nil {
-		// Recheck the exact generation inside the store before counting the attempt.
-		if r == nil || use.ProviderProof != "" && use.ProviderProof != r.ID {
+	if use.ProviderProof == "" {
+		// Preflight avoids password hashing on an invalid guess; the transaction checks the proof again.
+		r, err := store.ReadPhoneOTP(ctx, number, PhonePasswordReset)
+		if err != nil {
 			return err
 		}
-		use.ProviderProof, use.ProviderAccepted = r.ID, false
-		return store.ConsumePhoneOTP(ctx, use)
+		if _, err = use.Check(r); err != nil {
+			if r == nil {
+				return err
+			}
+			// Recheck the exact generation inside the store before counting the attempt.
+			use.ProviderProof, use.ProviderAccepted = r.ID, false
+			return store.ConsumePhoneOTP(ctx, use)
+		}
+		use.ProviderProof, use.ProviderAccepted = r.ID, true
 	}
 	hash, err := a.hashCredential(ctx, "/phone-number/reset-password", password)
 	if err != nil {
 		return err
 	}
-	use.ProviderProof, use.ProviderAccepted = r.ID, true
 	use.Now = a.now().UTC()
 	out, err := store.ApplyPhoneOTP(ctx, PhoneAccountAction{Use: use, PasswordHash: hash, RevokeSessions: a.opts.RevokeSessionsOnPasswordReset, RequireVerification: a.phoneNumber.RequireVerification})
+	// The code's after hooks run before the reset callback; their error
+	// fails the request after the password changed.
+	if hookErr := a.afterCodeGuess(ctx, g); hookErr != nil {
+		return hookErr
+	}
 	if err != nil || a.opts.OnPasswordReset == nil {
 		return err
 	}

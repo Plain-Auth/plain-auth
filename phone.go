@@ -44,9 +44,14 @@ type PhoneOTPRecord struct {
 	CreatedAt, ExpiresAt  time.Time
 }
 type PhoneOTPUse struct {
-	// ProviderProof binds an external verifier's answer to the exact local issuance.
-	ProviderProof     string
-	ProviderAccepted  bool
+	// ProviderProof binds the use to one stored code: the one an external
+	// verifier answered for, or the one verification hooks saw.
+	ProviderProof    string
+	ProviderAccepted bool
+	// Decided, when set, receives what the call did to the code
+	// ProviderProof names: Check's decision once its write committed, and
+	// PhoneKeepProof otherwise.
+	Decided           *PhoneOTPDecision
 	PhoneNumber, Code string
 	Purpose           PhoneOTPPurpose
 	AllowedAttempts   int
@@ -86,6 +91,16 @@ type PhoneNumberStore interface {
 	SavePhoneOTP(context.Context, PhoneOTPRecord) error
 	ConsumePhoneOTP(context.Context, PhoneOTPUse) error
 }
+
+// PhoneOTPReporter is a PhoneAccountStore whose ConsumePhoneOTP,
+// ApplyPhoneOTP and ApplyPhoneRegistration report through PhoneOTPUse.Decided
+// what they committed to the code. They report PhoneRemoveProof when they
+// spend or remove it, including by a refusal after a spend, such as an
+// owner mismatch, a held number or a missing session, and PhoneKeepProof
+// for a code another use bound, a missing code, and every rolled-back
+// write. New requires it for verification update and delete hooks with the
+// phone number plugin.
+type PhoneOTPReporter interface{ ReportsPhoneOTPDecisions() }
 
 // NewPhoneNumber enables phone-number proofs with an application-provided SMS sender.
 func NewPhoneNumber(o PhoneNumberOptions) (Plugin, error) {
@@ -128,12 +143,15 @@ func NewPhoneNumber(o PhoneNumberOptions) (Plugin, error) {
 		if err != nil {
 			return nil, err
 		}
-		send := func(ctx context.Context) error { return c.Auth.phoneNumber.SendOTP(ctx, message) }
-		// With BackgroundTasks the code is sent after the response; without
-		// a runner a delivery failure fails the request, as before.
-		if !c.Auth.handOff(ctx, "Could not deliver phone verification code", send) {
-			if err := send(ctx); err != nil {
-				return nil, err
+		// A declined code answers as a sent one.
+		if message != nil {
+			send := func(ctx context.Context) error { return c.Auth.phoneNumber.SendOTP(ctx, *message) }
+			// With BackgroundTasks the code is sent after the response; without
+			// a runner a delivery failure fails the request, as before.
+			if !c.Auth.handOff(ctx, "Could not deliver phone verification code", send) {
+				if err := send(ctx); err != nil {
+					return nil, err
+				}
 			}
 		}
 		return map[string]string{"message": "code sent"}, nil
@@ -170,35 +188,39 @@ func (a *Auth) checkPhone(ctx context.Context, number string) error {
 // SendPhoneNumberOTP stores a fresh verification code and passes the raw value only to SendOTP.
 func (a *Auth) SendPhoneNumberOTP(ctx context.Context, number string) error {
 	message, err := a.preparePhoneOTP(ctx, number)
-	if err != nil {
+	if err != nil || message == nil {
 		return err
 	}
-	return a.phoneNumber.SendOTP(ctx, message)
+	return a.phoneNumber.SendOTP(ctx, *message)
 }
 
 // preparePhoneOTP stores a fresh verification code for number and returns
-// its message.
-func (a *Auth) preparePhoneOTP(ctx context.Context, number string) (PhoneOTPMessage, error) {
+// its message, or nil when a verification create hook declined the code,
+// which stores and sends nothing.
+func (a *Auth) preparePhoneOTP(ctx context.Context, number string) (*PhoneOTPMessage, error) {
 	store, err := a.phoneStore()
 	if err != nil {
-		return PhoneOTPMessage{}, err
+		return nil, err
 	}
 	if a.phoneNumber.SendOTP == nil {
-		return PhoneOTPMessage{}, &APIError{501, "SEND_OTP_NOT_IMPLEMENTED", "sendOTP not implemented"}
+		return nil, &APIError{501, "SEND_OTP_NOT_IMPLEMENTED", "sendOTP not implemented"}
 	}
 	if err = a.checkPhone(ctx, number); err != nil {
-		return PhoneOTPMessage{}, err
+		return nil, err
 	}
 	code, err := randomDecimalCode(a.phoneNumber.OTPLength)
 	if err != nil {
-		return PhoneOTPMessage{}, err
+		return nil, err
 	}
 	now := a.now().UTC()
 	r := PhoneOTPRecord{ID: randomID(), PhoneNumber: number, Code: code, Purpose: PhoneVerify, CreatedAt: now, ExpiresAt: now.Add(a.phoneNumber.ExpiresIn)}
-	if err = store.SavePhoneOTP(ctx, r); err != nil {
-		return PhoneOTPMessage{}, err
+	declined, err := a.createVerification(ctx, phoneOTPRecord(PhoneVerify, r.ID, r.ExpiresAt), func() error {
+		return store.SavePhoneOTP(ctx, r)
+	})
+	if err != nil || declined {
+		return nil, err
 	}
-	return PhoneOTPMessage{PhoneNumber: number, Code: code, Purpose: PhoneVerify}, nil
+	return &PhoneOTPMessage{PhoneNumber: number, Code: code, Purpose: PhoneVerify}, nil
 }
 
 // ConsumePhoneNumberOTP spends a verification code without changing the user or creating a session.
@@ -211,9 +233,13 @@ func (a *Auth) ConsumePhoneNumberOTP(ctx context.Context, number, code string) e
 	if err = a.checkPhone(ctx, number); err != nil {
 		return err
 	}
-	use, err := a.phoneUse(ctx, number, code, PhoneVerify)
+	use, g, err := a.phoneUse(ctx, number, code, PhoneVerify)
 	if err != nil {
 		return err
 	}
-	return store.ConsumePhoneOTP(ctx, use)
+	err = store.ConsumePhoneOTP(ctx, use)
+	if hookErr := a.afterCodeGuess(ctx, g); hookErr != nil {
+		return hookErr
+	}
+	return err
 }

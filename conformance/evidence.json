@@ -7465,6 +7465,11 @@
       "label": "Bind a custom verifier’s decision to its original issuance",
       "test": "adapters/sqlstore/phone_accounts_test.go",
       "marker": "stale provider verdict spent the new issuance"
+    },
+    {
+      "label": "Ask the provider only after a guess's verification before hooks, and count a rejected guess even when the client has gone",
+      "test": "conformance/goapi/database_verification_code_hooks_test.go",
+      "marker": "// A wrong guess the Auth judged is counted even when the client has gone."
     }
   ],
   "plugin-symbol/phone-number/PhoneNumberOptions/sendPasswordResetOTP": [
@@ -7519,6 +7524,11 @@
       "label": "Honor a configured zero-attempt budget and default wrong-code limits",
       "test": "adapters/sqlstore/phone_accounts_test.go",
       "marker": "disabled.ConsumePhoneNumberOTP(ctx, n, \"any\")"
+    },
+    {
+      "label": "Run verification update after hooks for each counted wrong phone guess, and remove an exhausted code with its delete hooks",
+      "test": "conformance/goapi/database_verification_code_hooks_test.go",
+      "marker": "// Each counted wrong phone guess runs the update after hooks."
     }
   ],
   "docs/content/docs/plugins/phone-number.mdx#L71": [
@@ -18982,6 +18992,26 @@
       "label": "Bind the email code stores to the code the hooks saw and report what each call committed, on the memory store, SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/code_decisions_test.go",
       "marker": "func TestEmailCodeDecisions(t *testing.T) {"
+    },
+    {
+      "label": "Run verification hooks around phone codes: a declined send stores and texts nothing, a counted wrong guess runs the update after hooks, and a code a refused sign-up or link spends runs its after hooks before the refusal",
+      "test": "conformance/goapi/database_verification_code_hooks_test.go",
+      "marker": "func TestDatabaseVerificationHooksForPhoneCodes(t *testing.T) {"
+    },
+    {
+      "label": "Ask a custom phone verifier only after a guess's delete before hooks, and spend the code a ValidateUserInfo refusal refuses, with its after hooks first",
+      "test": "conformance/goapi/database_verification_code_hooks_test.go",
+      "marker": "func TestDatabaseVerificationHooksForPhoneProviders(t *testing.T) {"
+    },
+    {
+      "label": "Run phone code verification hooks on SQLite, PostgreSQL and MySQL, outside the store's transaction, around a planned sign-up and with the stored row's ID",
+      "test": "adapters/sqlstore/phone_code_hooks_test.go",
+      "marker": "func TestVerificationHooksAroundPhoneCodes(t *testing.T) {"
+    },
+    {
+      "label": "Report what the phone code stores commit to a code, on the memory store, SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/code_decisions_test.go",
+      "marker": "func TestPhoneCodeDecisions(t *testing.T) {"
     }
   ],
   "docs/content/docs/concepts/database.mdx#L881": [
@@ -19053,6 +19083,11 @@
       "label": "Decline a guess at an email code with ErrSkipWrite before the code is compared: the code stays usable and no attempt is counted",
       "test": "conformance/goapi/database_verification_code_hooks_test.go",
       "marker": "// A declined guess is refused before the code is compared."
+    },
+    {
+      "label": "Decline a guess at a phone code with ErrSkipWrite before the provider is asked: no attempt is counted",
+      "test": "conformance/goapi/database_verification_code_hooks_test.go",
+      "marker": "// A declined phone guess never reaches the provider or the attempt count."
     }
   ],
   "docs/content/docs/concepts/database.mdx#L886": [
@@ -19114,6 +19149,11 @@
       "label": "Refuse, uncounted, a guess at an email code another runtime stores again while its hooks run",
       "test": "adapters/sqlstore/email_code_hooks_test.go",
       "marker": "// A code another runtime stores again while its hooks run is refused uncounted."
+    },
+    {
+      "label": "Run one verification delete after hook among concurrent verifications of a phone code, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/phone_code_hooks_test.go",
+      "marker": "// Concurrent verifications of one phone code run one delete after hook."
     }
   ],
   "docs/content/docs/concepts/database.mdx#L891/Example Usage": [
@@ -19177,7 +19217,7 @@
       "marker": "// Run account hooks around the credential a sign-up stores, password"
     },
     {
-      "label": "Configure verification hooks for password reset and account deletion links, browser OAuth flows, magic links, one-time tokens and email codes, and refuse the plugins, hooks and stores that would bypass them",
+      "label": "Configure verification hooks for password reset and account deletion links, browser OAuth flows, magic links, one-time tokens and email and phone codes, and refuse the plugins, hooks and stores that would bypass them",
       "test": "conformance/goapi/database_verification_hooks_test.go",
       "marker": "func TestDatabaseVerificationHooksRefuseBypassingFeatures(t *testing.T) {"
     }

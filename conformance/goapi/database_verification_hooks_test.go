@@ -242,9 +242,10 @@ func TestDatabaseVerificationHooks(t *testing.T) {
 
 // New refuses verification hooks that an enabled feature would bypass: the
 // plugins that keep codes in their own stores, update before hooks with
-// email codes, which count a wrong guess as they judge it, and delete hooks
-// on a store that cannot read a deletion link, an OAuth flow, a magic link,
-// a one-time token or an email code before spending it.
+// email and phone codes, which count a wrong guess as they judge it, and
+// delete hooks on a store that cannot read a deletion link, an OAuth flow, a
+// magic link, a one-time token or an email code before spending it, or
+// cannot report what it did to a phone code.
 func TestDatabaseVerificationHooksRefuseBypassingFeatures(t *testing.T) {
 	observe := authn.OperationHooks[authn.VerificationRecord]{After: func(context.Context, authn.VerificationRecord, *authn.HookContext) error { return nil }}
 	base := func() authn.Options {
@@ -286,17 +287,42 @@ func TestDatabaseVerificationHooksRefuseBypassingFeatures(t *testing.T) {
 	if _, err := authn.New(withCodes); err != nil {
 		t.Fatal("verification create hooks were refused on a store without FindEmailOTP:", err)
 	}
-	// Phone codes and two-factor challenges stay in their stores.
+	// Phone codes run them too, on a store that reports what it did to a code.
 	phone, err := authn.NewPhoneNumber(authn.PhoneNumberOptions{SendOTP: func(context.Context, authn.PhoneOTPMessage) error { return nil }})
 	if err != nil {
 		t.Fatal(err)
 	}
-	for id, plugin := range map[string]authn.Plugin{"phone-number": phone, "two-factor": authn.NewTwoFactor(authn.TwoFactorOptions{})} {
-		refused := base()
-		refused.Plugins = []authn.Plugin{plugin}
-		if _, err := authn.New(refused); err == nil || !strings.Contains(err.Error(), id) {
-			t.Fatal("verification hooks were accepted with", id, err)
+	withPhone := base()
+	withPhone.Plugins = []authn.Plugin{phone}
+	withPhone.DatabaseHooks.Verification.Update = observe
+	withPhone.DatabaseHooks.Verification.Delete = observe
+	if _, err := authn.New(withPhone); err != nil {
+		t.Fatal("verification hooks were refused with phone codes:", err)
+	}
+	withPhone.DatabaseHooks.Verification.Update.Before = func(context.Context, *authn.VerificationRecord, *authn.HookContext) error { return nil }
+	if _, err := authn.New(withPhone); err == nil || !strings.Contains(err.Error(), "update before hooks") || !strings.Contains(err.Error(), "phone-number") {
+		t.Fatal("verification update before hooks were accepted with phone codes:", err)
+	}
+	numbers := memory.New()
+	withPhone.Store = struct {
+		authn.Store
+		authn.PhoneAccountStore
+	}{numbers, numbers}
+	for _, hooks := range []authn.ModelHooks[authn.VerificationRecord]{{Delete: observe}, {Update: observe}} {
+		withPhone.DatabaseHooks.Verification = hooks
+		if _, err := authn.New(withPhone); err == nil || !strings.Contains(err.Error(), "ReportsPhoneOTPDecisions") {
+			t.Fatal("verification hooks for phone guesses were accepted without ReportsPhoneOTPDecisions:", err)
 		}
+	}
+	withPhone.DatabaseHooks.Verification = authn.ModelHooks[authn.VerificationRecord]{Create: observe}
+	if _, err := authn.New(withPhone); err != nil {
+		t.Fatal("verification create hooks were refused on a store without ReportsPhoneOTPDecisions:", err)
+	}
+	// Two-factor challenges stay in their store.
+	refused := base()
+	refused.Plugins = []authn.Plugin{authn.NewTwoFactor(authn.TwoFactorOptions{})}
+	if _, err := authn.New(refused); err == nil || !strings.Contains(err.Error(), "two-factor") {
+		t.Fatal("verification hooks were accepted with two-factor:", err)
 	}
 	// Magic links and one-time tokens run them, and delete hooks need a store
 	// that reads a link or token before spending it.

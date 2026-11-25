@@ -281,3 +281,124 @@ func TestCodeTransactionCommits(t *testing.T) {
 		t.Fatal("a rolled-back write stayed:", err)
 	}
 }
+
+// The phone code stores report through PhoneOTPUse.Decided what they
+// committed: Count for a counted wrong guess, Remove for a spent, expired or
+// exhausted code and for a refusal after a spend, and Keep for a code
+// another use bound, a missing code and every rolled-back write.
+func TestPhoneCodeDecisions(t *testing.T) {
+	for _, dialect := range []string{"memory", "sqlite", "postgres", "mysql"} {
+		t.Run(dialect, func(t *testing.T) {
+			ctx := t.Context()
+			opened, _ := phoneStores(t, dialect)
+			if _, ok := opened.(auth.PhoneOTPReporter); !ok {
+				t.Fatal("the store does not report phone code decisions")
+			}
+			s := opened.(interface {
+				auth.Store
+				auth.PhoneAccountStore
+			})
+			now := time.Now().UTC().Truncate(time.Millisecond)
+			save := func(number, id, code string, purpose auth.PhoneOTPPurpose, expires time.Time) {
+				t.Helper()
+				r := auth.PhoneOTPRecord{ID: id, PhoneNumber: number, Code: code, Purpose: purpose, CreatedAt: now, ExpiresAt: expires}
+				var err error
+				if purpose == auth.PhonePasswordReset {
+					_, err = s.SavePhoneReset(ctx, r, false)
+				} else {
+					err = s.SavePhoneOTP(ctx, r)
+				}
+				if err != nil {
+					t.Fatal(err)
+				}
+			}
+			use := func(number, code, proof string) auth.PhoneOTPUse {
+				return auth.PhoneOTPUse{PhoneNumber: number, Code: code, Purpose: auth.PhoneVerify, AllowedAttempts: 3, Now: now, ProviderProof: proof, ProviderAccepted: proof != "" && code == "right"}
+			}
+			consume := func(u auth.PhoneOTPUse) (auth.PhoneOTPDecision, error) {
+				d := auth.PhoneOTPDecision(99)
+				u.Decided = &d
+				err := s.ConsumePhoneOTP(ctx, u)
+				return d, err
+			}
+			apply := func(act auth.PhoneAccountAction) (auth.PhoneOTPDecision, error) {
+				d := auth.PhoneOTPDecision(99)
+				act.Use.Decided = &d
+				_, err := s.ApplyPhoneOTP(ctx, act)
+				return d, err
+			}
+			decided := func(got, want auth.PhoneOTPDecision, err error, code string) {
+				t.Helper()
+				var api *auth.APIError
+				if got != want || code == "" && err != nil || code != "" && (!errors.As(err, &api) || api.Code != code) {
+					t.Fatalf("the store reported %d with %v, want %d with %q", got, err, want, code)
+				}
+			}
+			session := func(id string) *auth.StoredSession {
+				return &auth.StoredSession{Session: auth.Session{ID: id, Token: "token-" + id, CreatedAt: now, UpdatedAt: now, ExpiresAt: now.Add(time.Hour)}}
+			}
+
+			// Guesses: a code another use bound and a missing code are kept,
+			// a wrong guess counted, a spend removes the code.
+			save("+15551000001", "p1", "right", auth.PhoneVerify, now.Add(time.Minute))
+			got, err := consume(use("+15551000001", "right", "p0"))
+			decided(got, auth.PhoneKeepProof, err, "INVALID_OTP")
+			got, err = consume(use("+15551000001", "wrong", ""))
+			decided(got, auth.PhoneCountAttempt, err, "INVALID_OTP")
+			got, err = consume(use("+15551000001", "right", "p1"))
+			decided(got, auth.PhoneRemoveProof, err, "")
+			got, err = consume(use("+15551000001", "right", "p1"))
+			decided(got, auth.PhoneKeepProof, err, "OTP_NOT_FOUND")
+			// Expired and exhausted codes are removed.
+			save("+15551000001", "p2", "right", auth.PhoneVerify, now.Add(-time.Second))
+			got, err = consume(use("+15551000001", "right", "p2"))
+			decided(got, auth.PhoneRemoveProof, err, "OTP_EXPIRED")
+			save("+15551000001", "p3", "right", auth.PhoneVerify, now.Add(time.Minute))
+			for range 3 {
+				got, err = consume(use("+15551000001", "wrong", "p3"))
+				decided(got, auth.PhoneCountAttempt, err, "INVALID_OTP")
+			}
+			got, err = consume(use("+15551000001", "right", "p3"))
+			decided(got, auth.PhoneRemoveProof, err, "TOO_MANY_ATTEMPTS")
+
+			// A sign-up spends the code.
+			save("+15551000002", "p4", "right", auth.PhoneVerify, now.Add(time.Minute))
+			first := session("first")
+			got, err = apply(auth.PhoneAccountAction{Use: use("+15551000002", "right", "p4"), Create: &auth.User{ID: "u2", Email: "two@phone.example", CreatedAt: now, UpdatedAt: now}, Session: first})
+			decided(got, auth.PhoneRemoveProof, err, "")
+			// A taken email and a duplicate session token roll back and keep the code.
+			save("+15551000003", "p5", "right", auth.PhoneVerify, now.Add(time.Minute))
+			got, err = apply(auth.PhoneAccountAction{Use: use("+15551000003", "right", "p5"), Create: &auth.User{ID: "u3", Email: "two@phone.example", CreatedAt: now, UpdatedAt: now}, Session: session("third")})
+			if got != auth.PhoneKeepProof || !errors.Is(err, auth.ErrEmailTaken) {
+				t.Fatal("a taken email reported", got, err)
+			}
+			got, err = apply(auth.PhoneAccountAction{Use: use("+15551000003", "right", "p5"), Create: &auth.User{ID: "u4", Email: "four@phone.example", CreatedAt: now, UpdatedAt: now}, Session: first})
+			if got != auth.PhoneKeepProof || err == nil {
+				t.Fatal("a duplicate session token reported", got, err)
+			}
+			if r, err := s.ReadPhoneOTP(ctx, "+15551000003", auth.PhoneVerify); err != nil || r == nil || r.ID != "p5" {
+				t.Fatal("a rolled-back sign-up spent the code", r, err)
+			}
+
+			// Refusals after the spend: a held number, a link without a session,
+			// and a reset of a number no one holds.
+			linker := auth.User{ID: "u5", Email: "five@phone.example", CreatedAt: now, UpdatedAt: now}
+			linked := session("linker")
+			linked.UserID = linker.ID
+			if err := s.CreateUser(ctx, linker, "", linked); err != nil {
+				t.Fatal(err)
+			}
+			save("+15551000002", "p6", "right", auth.PhoneVerify, now.Add(time.Minute))
+			got, err = apply(auth.PhoneAccountAction{Use: use("+15551000002", "right", "p6"), SourceID: linker.ID, SourceToken: linked.Token})
+			decided(got, auth.PhoneRemoveProof, err, "PHONE_NUMBER_EXIST")
+			save("+15551000006", "p7", "right", auth.PhoneVerify, now.Add(time.Minute))
+			got, err = apply(auth.PhoneAccountAction{Use: use("+15551000006", "right", "p7"), SourceID: linker.ID, SourceToken: "token-gone"})
+			decided(got, auth.PhoneRemoveProof, err, "USER_NOT_FOUND")
+			save("+15551000007", "p8", "right", auth.PhonePasswordReset, now.Add(time.Minute))
+			reset := use("+15551000007", "right", "p8")
+			reset.Purpose = auth.PhonePasswordReset
+			got, err = apply(auth.PhoneAccountAction{Use: reset, PasswordHash: "hash"})
+			decided(got, auth.PhoneRemoveProof, err, "UNEXPECTED_ERROR")
+		})
+	}
+}

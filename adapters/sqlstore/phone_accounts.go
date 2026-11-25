@@ -121,9 +121,10 @@ func (s *Store) ApplyPhoneOTP(ctx context.Context, act auth.PhoneAccountAction) 
 func (s *Store) ApplyPhoneRegistration(ctx context.Context, act auth.PhoneAccountAction, registration auth.RegistrationUserFields) (auth.PhoneAccountResult, error) {
 	key := phoneProofKey(act.Use.PhoneNumber, act.Use.Purpose)
 	var out auth.PhoneAccountResult
-	err := s.emailOTPTransaction(ctx, key, func(tx *sql.Tx) (error, error) {
-		out = auth.PhoneAccountResult{}
-		rec, denied, err := s.consumePhoneProof(ctx, tx, key, act.Use)
+	var decision auth.PhoneOTPDecision
+	committed, err := s.codeTransaction(ctx, key, func(tx *sql.Tx) (error, error) {
+		out, decision = auth.PhoneAccountResult{}, auth.PhoneKeepProof
+		rec, denied, err := s.consumePhoneProof(ctx, tx, key, act.Use, &decision)
 		if denied != nil || err != nil {
 			return denied, err
 		}
@@ -216,6 +217,7 @@ func (s *Store) ApplyPhoneRegistration(ctx context.Context, act auth.PhoneAccoun
 		}
 		return nil, nil
 	})
+	reportCode(act.Use.Decided, committed, decision)
 	return out, err
 }
 func (s *Store) bindPhoneProof(ctx context.Context, tx *sql.Tx, r *auth.PhoneOTPRecord, key emailOTPKey) error {
