@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -24,6 +25,7 @@ import (
 // account the cookie selected renews it, and so does a session cache
 // re-issued for its user; a cache re-issued for another user expires it.
 func TestStoreAccountCookie(t *testing.T) {
+	var slowRefresh atomic.Bool
 	provider := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/authorize":
@@ -34,6 +36,9 @@ func TestStoreAccountCookie(t *testing.T) {
 			_ = r.ParseForm()
 			w.Header().Set("Content-Type", "application/json")
 			if r.Form.Get("grant_type") == "refresh_token" {
+				if slowRefresh.Load() {
+					time.Sleep(500 * time.Millisecond)
+				}
 				_, _ = w.Write([]byte(`{"access_token":"access-2","refresh_token":"refresh-2","token_type":"Bearer","expires_in":3600}`))
 				return
 			}
@@ -161,14 +166,16 @@ func TestStoreAccountCookie(t *testing.T) {
 				}
 			}
 			if name == "short" {
-				// A refresh renews the cookie's own expiry: the renewed cookie
-				// outlives the one issued at sign-in.
+				// A refresh renews the cookie's own expiry, even when the
+				// provider answers after the cookie expired: the renewed
+				// cookie outlives the one issued at sign-in.
 				kept := accountCookie(ada)
 				time.Sleep(700 * time.Millisecond)
+				slowRefresh.Store(true)
 				if status, out := call(ada, "POST", "/refresh-token", `{"useAccountCookie":true}`); status != 200 || !renewed() {
 					t.Fatal("a refresh in the cookie's last moments answered", status, out, renewed())
 				}
-				time.Sleep(700 * time.Millisecond)
+				slowRefresh.Store(false)
 				if status, out := call(ada, "POST", "/get-access-token", `{"useAccountCookie":true}`); status != 200 || out["accessToken"] != "access-2" {
 					t.Fatal("the renewed account cookie answered", status, out)
 				}

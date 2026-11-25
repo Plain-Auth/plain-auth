@@ -36,13 +36,13 @@ func (s *Store) ReserveDPoPProof(ctx context.Context, key string, now, expires t
 	identifier := "dpop-proof:" + key
 	id := s.verificationReservationID(identifier)
 	cutoff := s.date(now)
+	// Once a minute, expired proofs are swept, best effort. An expired
+	// reservation of this proof is replaced either way.
 	next := s.dpopNextSweep.Load()
 	if s.sweeping() && now.Unix() >= next && s.dpopNextSweep.CompareAndSwap(next, now.Add(time.Minute).Unix()) {
-		_, err = s.db.ExecContext(ctx, s.bind(`DELETE FROM "verification" WHERE "identifier" LIKE 'dpop-proof:%' AND "expiresAt"<=?`), cutoff)
-	} else {
-		_, err = s.db.ExecContext(ctx, s.bind(`DELETE FROM "verification" WHERE "id"=? AND "identifier"=? AND "expiresAt"<=?`), id, identifier, cutoff)
+		_ = s.sweepWithoutWaiting(ctx, s.bind(`DELETE FROM "verification" WHERE "identifier" LIKE 'dpop-proof:%' AND "expiresAt"<=?`), cutoff)
 	}
-	if err != nil {
+	if _, err = s.db.ExecContext(ctx, s.bind(`DELETE FROM "verification" WHERE "id"=? AND "identifier"=? AND "expiresAt"<=?`), id, identifier, cutoff); err != nil {
 		return false, err
 	}
 	const insert = `INSERT INTO "verification" ("id","identifier","value","expiresAt","createdAt","updatedAt") VALUES(?,?,?,?,?,?)`

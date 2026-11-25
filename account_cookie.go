@@ -45,8 +45,8 @@ func (a *Auth) setAccountCookie(h http.Header, r *http.Request, userID, provider
 	h.Add("Set-Cookie", cookie.String())
 }
 
-// readAccountCookie opens the one unexpired account_data cookie in h.
-func (a *Auth) readAccountCookie(h http.Header) (accountCookie, bool) {
+// openAccountCookie opens the one account_data cookie in h, expired or not.
+func (a *Auth) openAccountCookie(h http.Header) (accountCookie, bool) {
 	var c accountCookie
 	if !a.opts.StoreAccountCookie || h == nil {
 		return c, false
@@ -56,7 +56,16 @@ func (a *Auth) readAccountCookie(h http.Header) (accountCookie, bool) {
 		return c, false
 	}
 	raw, err := a.openRecord(accountCookiePurpose, cookies[0].Value)
-	if err != nil || json.Unmarshal(raw, &c) != nil || !c.ExpiresAt.After(a.now()) {
+	if err != nil || json.Unmarshal(raw, &c) != nil {
+		return accountCookie{}, false
+	}
+	return c, true
+}
+
+// readAccountCookie opens the one unexpired account_data cookie in h.
+func (a *Auth) readAccountCookie(h http.Header) (accountCookie, bool) {
+	c, ok := a.openAccountCookie(h)
+	if !ok || !c.ExpiresAt.After(a.now()) {
 		return accountCookie{}, false
 	}
 	return c, true
@@ -98,7 +107,9 @@ func (a *Auth) renewRefreshedAccountCookie(ctx context.Context, row ProviderAcco
 	if !ok {
 		return
 	}
-	if c, ok := a.readAccountCookie(out.r.Header); ok && c.UserID == row.UserID && c.ProviderID == row.ProviderID && c.Subject == row.Subject {
+	// The cookie was live when it selected the account; a slow refresh may
+	// finish after it expires, and still renews it.
+	if c, ok := a.openAccountCookie(out.r.Header); ok && c.UserID == row.UserID && c.ProviderID == row.ProviderID && c.Subject == row.Subject {
 		a.setAccountCookie(out.h, out.r, row.UserID, row.ProviderID, row.Subject)
 	}
 }

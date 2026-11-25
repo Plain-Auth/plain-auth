@@ -184,3 +184,64 @@ func TestDisableVerificationCleanup(t *testing.T) {
 		})
 	}
 }
+
+// A code sweep blocked behind another transaction's lock gives up after a
+// second on the server, so the password reset write that started it still
+// succeeds promptly, and the connection returns to the pool with the
+// server's own lock wait.
+func TestCodeSweepDoesNotWait(t *testing.T) {
+	for _, dialect := range []string{"postgres", "mysql"} {
+		t.Run(dialect, func(t *testing.T) {
+			ctx := t.Context()
+			store, err := Open(ctx, dialect, organizationTestDSN(t, dialect))
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer store.Close()
+			store.db.SetMaxOpenConns(2)
+			now := time.Now().UTC().Truncate(time.Millisecond)
+			owner := auth.User{ID: "owner", Email: "owner@sweep.example", CreatedAt: now, UpdatedAt: now}
+			if err := store.CreateUser(ctx, owner, "", nil); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := store.db.ExecContext(ctx, store.bind(`INSERT INTO "verification" ("id","identifier","value","expiresAt","createdAt","updatedAt") VALUES (?,?,?,?,?,?)`),
+				"stale", "sign-in-otp-locked@sweep.example", "code:0", store.date(now.Add(-time.Hour)), store.date(now.Add(-2*time.Hour)), store.date(now.Add(-2*time.Hour))); err != nil {
+				t.Fatal(err)
+			}
+			holder, err := store.db.BeginTx(ctx, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var id string
+			if err := holder.QueryRowContext(ctx, store.bind(`SELECT "id" FROM "verification" WHERE "id"=? FOR UPDATE`), "stale").Scan(&id); err != nil {
+				t.Fatal(err)
+			}
+			started := time.Now()
+			err = store.SavePasswordResetToken(ctx, auth.PasswordResetToken{ID: "reset", Token: "reset-token", UserID: owner.ID, Email: owner.Email, CreatedAt: now, ExpiresAt: now.Add(time.Hour)})
+			if took := time.Since(started); err != nil || took > 1900*time.Millisecond {
+				t.Fatal("a reset behind a locked sweep took", took, err)
+			}
+			if err := holder.Rollback(); err != nil {
+				t.Fatal(err)
+			}
+			if dialect != "mysql" {
+				return
+			}
+			var global int
+			if err := store.db.QueryRowContext(ctx, "SELECT @@GLOBAL.innodb_lock_wait_timeout").Scan(&global); err != nil {
+				t.Fatal(err)
+			}
+			for range 2 {
+				conn, err := store.db.Conn(ctx)
+				if err != nil {
+					t.Fatal(err)
+				}
+				defer conn.Close()
+				var session int
+				if err := conn.QueryRowContext(ctx, "SELECT @@SESSION.innodb_lock_wait_timeout").Scan(&session); err != nil || session != global {
+					t.Fatal("a pooled connection kept the sweep's lock wait:", session, global, err)
+				}
+			}
+		})
+	}
+}

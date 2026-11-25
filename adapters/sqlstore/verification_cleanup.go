@@ -2,6 +2,8 @@ package sqlstore
 
 import (
 	"context"
+	"database/sql"
+	"database/sql/driver"
 	"errors"
 	"strings"
 	"time"
@@ -63,9 +65,60 @@ func (s *Store) sweepCodes(ctx context.Context, now time.Time) {
 	if now.Unix() < next || !s.codesNextSweep.CompareAndSwap(next, now.Add(time.Minute).Unix()) {
 		return
 	}
+	_ = s.sweepWithoutWaiting(ctx, s.bind(sweepCodesQuery), s.date(now))
+}
+
+// sweepWithoutWaiting runs a cleanup delete in its own transaction, which
+// gives up on the server after waiting a second for another transaction's
+// lock, and on the client after two seconds. The SQL stores' code and
+// sign-in transactions lock verification rows, and a sweep must not hold
+// their writes behind it.
+func (s *Store) sweepWithoutWaiting(ctx context.Context, query string, args ...any) error {
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
-	_, _ = s.db.ExecContext(ctx, s.bind(sweepCodesQuery), s.date(now))
+	switch s.dialect {
+	case "mysql":
+		conn, err := s.db.Conn(ctx)
+		if err != nil {
+			return err
+		}
+		defer func() {
+			// The connection goes back to the pool with the server's lock
+			// wait, or not at all.
+			if _, err := conn.ExecContext(context.WithoutCancel(ctx), "SET SESSION innodb_lock_wait_timeout = DEFAULT"); err != nil {
+				_ = conn.Raw(func(any) error { return driver.ErrBadConn })
+			}
+			conn.Close()
+		}()
+		if _, err := conn.ExecContext(ctx, "SET SESSION innodb_lock_wait_timeout = 1"); err != nil {
+			return err
+		}
+		// Read committed skips live rows another transaction has locked.
+		tx, err := conn.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelReadCommitted})
+		if err != nil {
+			return err
+		}
+		defer tx.Rollback()
+		if _, err := tx.ExecContext(ctx, query, args...); err != nil {
+			return err
+		}
+		return tx.Commit()
+	case "postgres":
+		tx, err := s.db.BeginTx(ctx, nil)
+		if err != nil {
+			return err
+		}
+		defer tx.Rollback()
+		if _, err := tx.ExecContext(ctx, "SET LOCAL lock_timeout = '1s'"); err != nil {
+			return err
+		}
+		if _, err := tx.ExecContext(ctx, query, args...); err != nil {
+			return err
+		}
+		return tx.Commit()
+	}
+	_, err := s.db.ExecContext(ctx, query, args...)
+	return err
 }
 
 // sweeping reports whether writes delete expired verification rows of their
