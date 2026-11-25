@@ -90,9 +90,15 @@ type accountCookieRefresh struct {
 type accountCookieRefreshKey struct{ a *Auth }
 
 // renewRefreshedAccountCookie re-issues account_data after a committed token
-// refresh of row, when an HTTP request selected row through the cookie.
+// refresh of row, when an HTTP request selected row through the cookie. A
+// refresh of another account under the same request, such as a nested
+// direct call, leaves the cookie alone.
 func (a *Auth) renewRefreshedAccountCookie(ctx context.Context, row ProviderAccountCredential) {
-	if out, ok := ctx.Value(accountCookieRefreshKey{a}).(accountCookieRefresh); ok {
+	out, ok := ctx.Value(accountCookieRefreshKey{a}).(accountCookieRefresh)
+	if !ok {
+		return
+	}
+	if c, ok := a.readAccountCookie(out.r.Header); ok && c.UserID == row.UserID && c.ProviderID == row.ProviderID && c.Subject == row.Subject {
 		a.setAccountCookie(out.h, out.r, row.UserID, row.ProviderID, row.Subject)
 	}
 }

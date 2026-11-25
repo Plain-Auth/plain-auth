@@ -51,17 +51,21 @@ var sweepCodesQuery = func() string {
 }()
 
 // sweepCodes deletes the expired rows of codeKinds, at most once a minute
-// per store, unless expired verification rows are kept.
-func (s *Store) sweepCodes(ctx context.Context, now time.Time) error {
+// per store, unless expired verification rows are kept. It is best effort:
+// it gives up after two seconds, for example behind a code transaction's
+// locks, and a failure leaves the rows to the next sweep rather than failing
+// the write that started it.
+func (s *Store) sweepCodes(ctx context.Context, now time.Time) {
 	if !s.sweeping() || s.codesNextSweep == nil {
-		return nil
+		return
 	}
 	next := s.codesNextSweep.Load()
 	if now.Unix() < next || !s.codesNextSweep.CompareAndSwap(next, now.Add(time.Minute).Unix()) {
-		return nil
+		return
 	}
-	_, err := s.db.ExecContext(ctx, s.bind(sweepCodesQuery), s.date(now))
-	return err
+	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+	_, _ = s.db.ExecContext(ctx, s.bind(sweepCodesQuery), s.date(now))
 }
 
 // sweeping reports whether writes delete expired verification rows of their

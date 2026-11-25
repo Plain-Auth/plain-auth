@@ -85,7 +85,7 @@ The default layout uses per-dialect SQL types. A password account has provider I
 
 ### Expired verification records
 
-Writes of verification records delete expired ones in passing, so abandoned records do not pile up. A write of an OAuth state, magic link, one-time transfer, passkey or SIWE challenge, or DPoP proof deletes the expired records of its kind. A write of a password reset or deletion link, or of an email or phone code, deletes the expired records of those kinds, at most once a minute per store. Records of other kinds are replaced only when their key is written again. To keep expired records, for an audit or your own retention job, set `DisableVerificationCleanup`:
+Writes of verification records delete expired ones in passing, so abandoned records do not pile up. In the SQL stores, a write of an OAuth state, magic link, one-time transfer, passkey or SIWE challenge, used ID token, OAuth consent, SAML logout record, trusted device, email proof or Stripe record deletes the expired records of its kind. DPoP proofs, and password reset and deletion links together with email and phone codes, are swept at most once a minute per store; that sweep is best effort and never fails the write that starts it. The memory store sweeps a kind's expired entries whenever it writes that kind. Other records, such as two-factor sign-in challenges, stay until their key is written again or you prune them. To keep expired records, for an audit or your own retention job, set `DisableVerificationCleanup`:
 
 ```go
 auth, err := plainauth.New(plainauth.Options{

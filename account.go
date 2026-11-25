@@ -354,11 +354,8 @@ func (a *Auth) RequestPasswordReset(ctx context.Context, email, redirectTo strin
 		return err
 	}
 	// A declined link answers as a sent one, with nothing stored or mailed.
-	err = a.createVerification(ctx, tokenRecord("reset-password", t), func() error { return s.SavePasswordResetToken(ctx, t) })
-	if errors.Is(err, ErrSkipWrite) {
-		return nil
-	}
-	if err != nil {
+	declined, err := a.createVerification(ctx, tokenRecord("reset-password", t), func() error { return s.SavePasswordResetToken(ctx, t) })
+	if err != nil || declined {
 		return err
 	}
 	link := base + "/reset-password/" + t.Token + "?" + url.Values{"callbackURL": {redirectTo}}.Encode()

@@ -87,9 +87,7 @@ func (s *Store) ClearPhoneProfile(ctx context.Context, id, token string, p auth.
 }
 func (s *Store) savePhone(ctx context.Context, r auth.PhoneOTPRecord, verified bool) (bool, error) {
 	key := phoneProofKey(r.PhoneNumber, r.Purpose)
-	if err := s.sweepCodes(ctx, r.CreatedAt); err != nil {
-		return false, err
-	}
+	s.sweepCodes(ctx, r.CreatedAt)
 	var deliver bool
 	err := s.emailOTPTransaction(ctx, key, func(tx *sql.Tx) (error, error) {
 		u, err := s.phoneOwner(ctx, tx, r.PhoneNumber)

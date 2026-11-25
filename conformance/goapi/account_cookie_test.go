@@ -100,9 +100,13 @@ func TestStoreAccountCookie(t *testing.T) {
 			}
 			// renewed reports whether the last response issued a fresh
 			// account cookie.
+			age := 300
+			if name == "short" {
+				age = 1
+			}
 			renewed := func() bool {
 				for _, line := range issued {
-					if c, err := http.ParseSetCookie(line); err == nil && c.Name == cookieName && c.Value != "" && c.MaxAge == 300 {
+					if c, err := http.ParseSetCookie(line); err == nil && c.Name == cookieName && c.Value != "" && c.MaxAge == age {
 						return true
 					}
 				}
@@ -157,8 +161,17 @@ func TestStoreAccountCookie(t *testing.T) {
 				}
 			}
 			if name == "short" {
+				// A refresh renews the cookie's own expiry: the renewed cookie
+				// outlives the one issued at sign-in.
 				kept := accountCookie(ada)
-				time.Sleep(1100 * time.Millisecond)
+				time.Sleep(700 * time.Millisecond)
+				if status, out := call(ada, "POST", "/refresh-token", `{"useAccountCookie":true}`); status != 200 || !renewed() {
+					t.Fatal("a refresh in the cookie's last moments answered", status, out, renewed())
+				}
+				time.Sleep(700 * time.Millisecond)
+				if status, out := call(ada, "POST", "/get-access-token", `{"useAccountCookie":true}`); status != 200 || out["accessToken"] != "access-2" {
+					t.Fatal("the renewed account cookie answered", status, out)
+				}
 				ada.Jar.SetCookies(appURL, []*http.Cookie{{Name: cookieName, Value: kept.Value, Path: "/"}})
 				if status, out := call(ada, "POST", "/get-access-token", `{"useAccountCookie":true}`); status != 400 || code(out) != "ACCOUNT_NOT_FOUND" {
 					t.Fatal("an expired account cookie answered", status, out)
@@ -189,6 +202,10 @@ func TestStoreAccountCookie(t *testing.T) {
 			}
 			if !renewed() {
 				t.Fatal("a token refresh kept the old account cookie")
+			}
+			// The renewed cookie still selects ada's account.
+			if status, out = call(ada, "POST", "/get-access-token", `{"useAccountCookie":true}`); status != 200 || out["accessToken"] != "access-2" {
+				t.Fatal("the renewed account cookie answered", status, out)
 			}
 			// A refresh selected by account ID leaves the cookie alone.
 			if status, out = call(ada, "POST", "/refresh-token", `{"accountId":"`+account["id"].(string)+`"}`); status != 200 || renewed() {

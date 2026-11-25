@@ -2,6 +2,7 @@ package goapi_test
 
 import (
 	"context"
+	"fmt"
 	"net/url"
 	"reflect"
 	"strings"
@@ -25,6 +26,7 @@ func TestDatabaseVerificationHooks(t *testing.T) {
 	var records []authn.VerificationRecord
 	var contexts []*authn.HookContext
 	decline := map[string]bool{}
+	fail := map[string]error{}
 	edit := false
 	note := func(event string, rec authn.VerificationRecord, c *authn.HookContext) error {
 		mu.Lock()
@@ -34,7 +36,7 @@ func TestDatabaseVerificationHooks(t *testing.T) {
 		if decline[event] {
 			return authn.ErrSkipWrite
 		}
-		return nil
+		return fail[event]
 	}
 	plain := func(event string) {
 		mu.Lock()
@@ -170,6 +172,11 @@ func TestDatabaseVerificationHooks(t *testing.T) {
 		t.Fatal("a spent reset link answered", code)
 	}
 	same(drain())
+	// An after hook's error fails the request; it is not read as a decline.
+	fail["create-after:reset-password"] = authn.ErrSkipWrite
+	c.post("/request-password-reset", `{"email":"ada@example.test","redirectTo":"/"}`, "", 500)
+	delete(fail, "create-after:reset-password")
+	drain()
 	// A hook may not change the record.
 	edit = true
 	c.post("/request-password-reset", `{"email":"ada@example.test","redirectTo":"/"}`, "", 500)
@@ -219,6 +226,15 @@ func TestDatabaseVerificationHooks(t *testing.T) {
 		t.Fatal("a link spent by another account answered", code)
 	}
 	same(drain())
+	// An after hook's error, even one wrapping ErrNotFound, fails the
+	// request rather than reading as an invalid link.
+	c.post("/delete-user", `{"callbackURL":"/"}`, adaCookie, 200)
+	failing, _ := lastLink()
+	drain()
+	fail["delete-after:delete-account"] = fmt.Errorf("lookup: %w", authn.ErrNotFound)
+	c.get("/delete-user/callback?"+url.Values{"token": {failing.Token}, "callbackURL": {"/"}}.Encode(), adaCookie, 500)
+	delete(fail, "delete-after:delete-account")
+	same(drain(), "delete-before:delete-account", "delete-after:delete-account")
 	// The declined link still deletes the account.
 	c.get(callback, adaCookie, 302)
 	same(drain(), "delete-before:delete-account", "delete-after:delete-account", "session-delete-before", "user-delete-before", "session-delete-after")

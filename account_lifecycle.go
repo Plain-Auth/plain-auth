@@ -119,11 +119,12 @@ func (a *Auth) DeleteUser(ctx context.Context, h http.Header, in DeleteUserInput
 			t, err := finder.FindDeletionToken(ctx, session.User.ID, in.Token, now)
 			return tokenRecord("delete-account", t), err
 		}
-		err := a.spendVerification(ctx, find, func() error { return consumer.ConsumeDeletionToken(ctx, session.User.ID, in.Token, now) })
-		if errors.Is(err, ErrNotFound) {
-			return false, &APIError{404, "INVALID_TOKEN", "Invalid token"}
-		} else if err != nil {
+		refused, err := a.spendVerification(ctx, find, func() error { return consumer.ConsumeDeletionToken(ctx, session.User.ID, in.Token, now) })
+		if err != nil {
 			return false, err
+		}
+		if refused {
+			return false, &APIError{404, "INVALID_TOKEN", "Invalid token"}
 		}
 		deleteToken = ""
 	}
@@ -141,11 +142,8 @@ func (a *Auth) DeleteUser(ctx context.Context, h http.Header, in DeleteUserInput
 			return false, err
 		}
 		// A declined link answers as a sent one, with nothing stored or mailed.
-		err = a.createVerification(ctx, tokenRecord("delete-account", t), func() error { return s.SaveDeletionToken(ctx, t) })
-		if errors.Is(err, ErrSkipWrite) {
-			return false, nil
-		}
-		if err != nil {
+		declined, err := a.createVerification(ctx, tokenRecord("delete-account", t), func() error { return s.SaveDeletionToken(ctx, t) })
+		if err != nil || declined {
 			return false, err
 		}
 		query := url.Values{"callbackURL": {callback}, "token": {t.Token}}

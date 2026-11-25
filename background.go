@@ -9,13 +9,14 @@ type backgroundTaskKey struct{ a *Auth }
 
 // taskContext is the context of handed-off work. It keeps the request's
 // values but not its cancellation or deadline, and hides the values that
-// belong to the finished request: the endpoint's HookContext and the request
-// copy. Database hooks then see a task's writes as a direct Go call.
+// belong to the finished request: the endpoint's HookContext, the request
+// copy and the response an account cookie renewal writes to. Database hooks
+// then see a task's writes as a direct Go call.
 type taskContext struct{ context.Context }
 
 func (c taskContext) Value(key any) any {
 	switch key.(type) {
-	case hookContextKey, requestCopyKey:
+	case hookContextKey, requestCopyKey, accountCookieRefreshKey:
 		return nil
 	}
 	return c.Context.Value(key)

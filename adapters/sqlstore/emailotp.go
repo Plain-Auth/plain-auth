@@ -138,9 +138,7 @@ func (s *Store) clearEmailOTP(ctx context.Context, tx *sql.Tx, key emailOTPKey) 
 
 func (s *Store) SaveEmailOTP(ctx context.Context, req auth.EmailOTPRequest, allowNew bool, expires time.Time, prepare func(*auth.EmailOTPRecord) (string, string, int, error)) (string, error) {
 	key := newEmailOTPKey(req)
-	if err := s.sweepCodes(ctx, req.Now); err != nil {
-		return "", err
-	}
+	s.sweepCodes(ctx, req.Now)
 	var delivery string
 	err := s.emailOTPTransaction(ctx, key, func(tx *sql.Tx) (error, error) {
 		delivery = ""

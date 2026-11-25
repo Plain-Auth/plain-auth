@@ -60,9 +60,7 @@ func (s *Store) SetInitialPassword(ctx context.Context, userID, sessionToken, ne
 }
 
 func (s *Store) SaveDeletionToken(ctx context.Context, t authn.PasswordResetToken) error {
-	if err := s.sweepCodes(ctx, t.CreatedAt); err != nil {
-		return err
-	}
+	s.sweepCodes(ctx, t.CreatedAt)
 	_, err := s.db.ExecContext(ctx, s.bind(`INSERT INTO "verification" ("id","identifier","value","expiresAt","createdAt","updatedAt") VALUES (?,?,?,?,?,?)`), t.ID, "delete-account-"+t.Token, t.UserID, s.date(t.ExpiresAt), s.date(t.CreatedAt), s.date(t.CreatedAt))
 	return err
 }

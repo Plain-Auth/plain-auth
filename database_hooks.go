@@ -627,45 +627,57 @@ func (a *Auth) beforeVerification(ctx context.Context, chain operationChain[Veri
 	return nil
 }
 
-// createVerification runs the verification create hooks around save. A
-// declined create returns ErrSkipWrite and stores nothing.
-func (a *Auth) createVerification(ctx context.Context, rec VerificationRecord, save func() error) error {
+// createVerification runs the verification create hooks around save. It
+// reports declined when a before hook cancels the create, which stores
+// nothing. An error from save or an after hook is returned as it is.
+func (a *Auth) createVerification(ctx context.Context, rec VerificationRecord, save func() error) (declined bool, err error) {
 	chain := a.dbHooks.verification.create
-	if err := a.beforeVerification(ctx, chain, rec); err != nil {
-		return err
+	if err := a.beforeVerification(ctx, chain, rec); errors.Is(err, ErrSkipWrite) {
+		return true, nil
+	} else if err != nil {
+		return false, err
 	}
 	if err := save(); err != nil {
-		return err
+		return false, err
 	}
-	return runAfter(ctx, a, chain, rec)
+	return false, runAfter(ctx, a, chain, rec)
 }
 
 // spendVerification runs the verification delete hooks around spend. find
-// reads the record without spending it. A record find cannot see, because
-// it is unknown, expired or another owner's, is spent or refused without
-// hooks. A declined spend returns ErrNotFound and keeps the record. The
-// after hooks run only for the spend that succeeded.
-func (a *Auth) spendVerification(ctx context.Context, find func() (VerificationRecord, error), spend func() error) error {
+// reads the record without spending it. It reports refused when spend finds
+// no live record, or a before hook cancels the spend, which keeps the
+// record. A record find cannot see, because it is unknown, expired or
+// another owner's, is spent or refused without hooks. The after hooks run
+// only for the spend that succeeded, and their error is returned as it is.
+func (a *Auth) spendVerification(ctx context.Context, find func() (VerificationRecord, error), spend func() error) (refused bool, err error) {
+	spendOnce := func() (bool, error) {
+		if err := spend(); errors.Is(err, ErrNotFound) {
+			return true, nil
+		} else if err != nil {
+			return false, err
+		}
+		return false, nil
+	}
 	chain := a.dbHooks.verification.delete
 	if !chain.set() {
-		return spend()
+		return spendOnce()
 	}
 	rec, err := find()
 	if errors.Is(err, ErrNotFound) {
-		return spend()
+		return spendOnce()
 	}
 	if err != nil {
-		return err
+		return false, err
 	}
 	if err := a.beforeVerification(ctx, chain, rec); errors.Is(err, ErrSkipWrite) {
-		return ErrNotFound
+		return true, nil
 	} else if err != nil {
-		return err
+		return false, err
 	}
-	if err := spend(); err != nil {
-		return err
+	if refused, err := spendOnce(); refused || err != nil {
+		return refused, err
 	}
-	return runAfter(ctx, a, chain, rec)
+	return false, runAfter(ctx, a, chain, rec)
 }
 
 // tokenRecord is a reset or deletion link as a verification record.

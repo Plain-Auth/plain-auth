@@ -229,7 +229,7 @@
       - [x] Run account hooks around the credential a sign-up stores, password changes, first passwords, unlinking and account deletion ([test](../../conformance/goapi/database_user_hooks_test.go#L246))
       - [x] Run the session create hooks for two-factor sign-in, verification and enrollment, device grants and the sign-in after an email link on SQLite, PostgreSQL and MySQL ([test](../../adapters/sqlstore/session_hooks_planned_test.go#L20))
       - [x] Run the credential account hooks and the revoked sessions' delete hooks around a password reset link ([test](../../conformance/goapi/database_user_hooks_test.go#L373))
-      - [x] Run verification hooks around password reset and account deletion links, outside the store and without their tokens, before the account, session and user hooks of the change they allow ([test](../../conformance/goapi/database_verification_hooks_test.go#L22))
+      - [x] Run verification hooks around password reset and account deletion links, outside the store and without their tokens, before the account, session and user hooks of the change they allow ([test](../../conformance/goapi/database_verification_hooks_test.go#L23))
       - [x] Run verification hooks around browser OAuth flows on SQLite, PostgreSQL and MySQL: a declined spend refuses the callback and keeps the flow ([test](../../adapters/sqlstore/verification_hooks_test.go#L26))
       - [ ] 1. Before Hook
         - [x] Edit the stored fields of a new user or session, or cancel its creation, before anything is written ([test](../../conformance/goapi/database_hooks_test.go#L122))
@@ -385,11 +385,11 @@
       - [x] A browser social sign-up, a returning sign-in and an email link are checked with the provider ID and raw profile, and a refusal returns to the error callback with error and error_description ([test](../../conformance/goapi/user_validation_test.go#L267))
       - [x] ID-token sign-ups and links are checked with the provider ID and raw claims, and a refusal answers 403 with the app's code ([test](../../conformance/goapi/user_validation_test.go#L338))
     - [ ] Get Access Token
-      - [x] get-access-token with useAccountCookie returns the signed-in account's token, and refuses two selectors, another user's or an altered cookie, and no session ([test](../../conformance/goapi/account_cookie_test.go#L175))
+      - [x] get-access-token with useAccountCookie returns the signed-in account's token, and refuses two selectors, another user's or an altered cookie, and no session ([test](../../conformance/goapi/account_cookie_test.go#L188))
     - [ ] Refresh Access Token
-      - [x] refresh-token with useAccountCookie refreshes the signed-in account's tokens ([test](../../conformance/goapi/account_cookie_test.go#L186))
+      - [x] refresh-token with useAccountCookie refreshes the signed-in account's tokens ([test](../../conformance/goapi/account_cookie_test.go#L199))
     - [ ] Get Account Info Provided by the provider
-      - [x] account-info with useAccountCookie returns the signed-in account's provider identity ([test](../../conformance/goapi/account_cookie_test.go#L181))
+      - [x] account-info with useAccountCookie returns the signed-in account's provider identity ([test](../../conformance/goapi/account_cookie_test.go#L194))
     - [x] Requesting Additional Scopes ([test](../../conformance/social-user-fields.mjs#L307))
       - [x] Request additional scopes as the signed-in owner and merge the approved grant once across both servers ([test](../../conformance/social-user-fields.mjs#L307))
     - [ ] Customizing the Authorization URL

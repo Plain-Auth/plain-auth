@@ -21171,6 +21171,11 @@
       "label": "A re-issued session cache renews the account cookie for its own user and expires another user's",
       "test": "conformance/goapi/account_cookie_test.go",
       "marker": "t.Fatal(\"the session cache was re-issued without the account cookie\")"
+    },
+    {
+      "label": "A refresh in the cookie's last moments renews its sealed expiry, so the renewed cookie outlives the one issued at sign-in and still selects the same account",
+      "test": "conformance/goapi/account_cookie_test.go",
+      "marker": "t.Fatal(\"a refresh in the cookie's last moments answered\", status, out, renewed())"
     }
   ],
   "docs/content/docs/concepts/oauth.mdx#L109": [
