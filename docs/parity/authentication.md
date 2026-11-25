@@ -90,8 +90,9 @@
   - [x] Enable Email and Password ([test](../../conformance/email-password-options.mjs#L77))
     - [x] With EmailAndPassword off, both runtimes refuse registration and existing-credential sign-in ([test](../../conformance/email-password-options.mjs#L77))
   - [ ] Usage
-    - [ ] Sign Up
+    - [x] Sign Up ([test](../../conformance/core.test.mjs#L211))
       - [x] Create a password account and return a usable session token on SQLite ([test](../../conformance/core.test.mjs#L193))
+      - [x] The released client's signUp.email response and the session it creates match the reference when deep-compared across runtimes ([test](../../conformance/core.test.mjs#L211))
       - [x] `POST /sign-up/email` ([test](../../conformance/goapi/http_test.go#L71))
         - [x] An HTTP POST to sign-up/email with name, email and password returns 200 ([test](../../conformance/goapi/http_test.go#L71))
         - [x] Parameter `name` ([test](../../conformance/existing-signup.mjs#L67))
@@ -104,8 +105,9 @@
           - [x] On both runtimes, the image submitted at sign-up is persisted on the stored owner ([test](../../conformance/existing-signup.mjs#L68))
         - [x] Parameter `callbackURL` (optional) ([test](../../conformance/goapi/account_lifecycle_test.go#L41))
           - [x] A sign-up CallbackURL (via the native SignUpEmail RequestMeta) becomes the verification link's redirect target ([test](../../conformance/goapi/account_lifecycle_test.go#L41))
-    - [ ] Sign In
+    - [x] Sign In ([test](../../conformance/goapi/http_test.go#L91))
       - [x] Reject the wrong password and issue a fresh session for valid credentials ([test](../../conformance/core.test.mjs#L202))
+      - [x] An HTTP sign-in/email with email, password, rememberMe:false and callbackURL returns the token, redirect:true with the url, a Location header and a browser-session cookie with a dont_remember marker ([test](../../conformance/goapi/http_test.go#L91))
       - [x] `POST /sign-in/email` ([test](../../conformance/goapi/http_test.go#L77))
         - [x] An HTTP POST to sign-in/email returns 200 with a token, session cookies and redirect fields ([test](../../conformance/goapi/http_test.go#L77))
         - [x] Parameter `email` ([test](../../conformance/core.test.mjs#L203))
@@ -176,7 +178,9 @@
         - [x] Parameter `currentPassword` ([test](../../conformance/goapi/account_test.go#L62))
           - [x] change-password with a wrong currentPassword is rejected with 400 ([test](../../conformance/goapi/account_test.go#L62))
         - [ ] Parameter `revokeOtherSessions` (optional)
-    - [ ] Configuration
+          - [x] With revokeOtherSessions:true, change-password deletes the caller's and another browser's sessions and returns a replacement token ([test](../../conformance/goapi/database_session_hooks_test.go#L245))
+    - [x] Configuration ([test](../../conformance/email-password-options.mjs#L18))
+      - [x] On both runtimes the credential is stored in the account table under providerId 'credential', reference scrypt hashes verify, and the length bounds apply to sign-up, password change and reset ([test](../../conformance/email-password-options.mjs#L18))
       - [x] Password ([test](../../conformance/email-password-options.mjs#L54))
         - [x] On both runtimes, the sign-up password is stored in the account table under providerId 'credential' (exactly one row is updated) ([test](../../conformance/email-password-options.mjs#L54))
       - [x] Password Hashing ([test](../../conformance/core.test.mjs#L1391))

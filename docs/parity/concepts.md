@@ -7,7 +7,8 @@
 - [ ] API
   - [ ] Calling API Endpoints on the Server
     - [x] Calls SignUpEmail, GetSession with request headers carrying the session cookie, and SignOut directly on an Auth instance from server code ([test](../../adapters/memory/memory_test.go#L47))
-    - [ ] Body, Headers, Query
+    - [x] Body, Headers, Query ([test](../../conformance/goapi/account_lifecycle_test.go#L89))
+      - [x] Direct Go calls take the body as a typed input (SignUpEmail), the query token as an argument (VerifyEmail) and the request headers carrying the session (GetSession, SetPassword) ([test](../../conformance/goapi/account_lifecycle_test.go#L89))
     - [ ] Getting `headers` and `Response` Object
       - [ ] Getting `headers`
       - [ ] Getting `Response` Object
@@ -109,25 +110,29 @@
   - [x] `compact` ([test](../../conformance/session-cache-compact.mjs#L29))
     - [x] The Go and reference servers each issue and consume the other's base64url+HMAC session_data cookies on shared SQLite ([test](../../conformance/session-cache-compact.mjs#L29))
   - [ ] `jwt`
+    - [x] Both runtimes issue and consume each other's HS256 session_data JWTs signed with the shared secret ([test](../../conformance/session-cache-compact.mjs#L42))
   - [x] `jwe` ([test](../../session_cache_jose_test.go#L189))
     - [x] The JWE subtest of TestJOSESessionCookieValidityAndRotation encrypts snapshots with a key derived from the configured secrets ([test](../../session_cache_jose_test.go#L189))
   - [x] Cookie Prefix ([test](../../cookies_test.go#L26))
     - [x] Builds two instances with different CookiePrefix values and asserts the session cookie is named __Secure-company.session_token ([test](../../cookies_test.go#L26))
   - [x] Custom Cookies ([test](../../conformance/goapi/cookie_options_test.go#L52))
     - [x] Rename a cookie and change its attributes; the renamed session cookie authenticates and expires on sign-out ([test](../../conformance/goapi/cookie_options_test.go#L52))
-  - [ ] Cross Subdomain Cookies
+  - [x] Cross Subdomain Cookies ([test](../../conformance/goapi/cookie_scope_http_test.go#L89))
     - [x] Resolve shared cookie domains from the static base URL and reject unrelated hosts and public or private suffixes ([test](../../cookies_test.go#L49))
     - [x] Share an authenticated browser session with a sibling host and expire it on logout ([test](../../conformance/goapi/cookie_scope_http_test.go#L17))
     - [x] Isolate native client cookies by registrable domain and clear a shared login preference ([test](../../client/cookie_scope_test.go#L9))
-  - [ ] Secure Cookies
+    - [x] With CrossSubDomainCookies on .example.com, a sign-in on auth.example.com authenticates app.example.com, stays off foreign hosts, and sign-out clears it on both hosts ([test](../../conformance/goapi/cookie_scope_http_test.go#L89))
+  - [x] Secure Cookies ([test](../../cookies_test.go#L136))
     - [x] Set the secure override and enforce reserved cookie prefix constraints ([test](../../cookies_test.go#L101))
     - [x] Serialize and authenticate a signed session cookie ([test](../../cookies_test.go#L12))
+    - [x] Session cookies are Secure by default on an HTTPS base URL and not on HTTP, UseSecureCookies forces either setting, and reserved prefixes are checked ([test](../../cookies_test.go#L136))
   - [ ] Safari, ITP, and Cross-Domain Setups
     - [ ] Using a Reverse Proxy
       - [ ] Example with Netlify
       - [ ] Example with Vercel
-    - [ ] Using a Shared Parent Domain
+    - [x] Using a Shared Parent Domain ([test](../../conformance/goapi/cookie_scope_browser_test.go#L122))
       - [x] Use Chrome on two TLS hosts to sign in, share an HTTP-only session and log out of both hosts ([test](../../conformance/goapi/cookie_scope_browser_test.go#L21))
+      - [x] Real Chrome signs up on auth.example.test, app.example.test sees the shared HTTP-only session, and sign-out clears it for both hosts ([test](../../conformance/goapi/cookie_scope_browser_test.go#L122))
 
 ## Database
 
@@ -282,7 +287,8 @@
         - [x] Serves the delivered MailLink.URL and asserts a 302 to the requested callbackURL ([test](../../conformance/goapi/account_test.go#L54))
       - [x] `token` ([test](../../client/account_test.go#L63))
         - [x] Captures MailLink.Token from the sender, completes verification with client VerifyEmail(token) (the custom-URL path), and asserts the session user is now verified ([test](../../client/account_test.go#L63))
-    - [ ] Triggering Email Verification
+    - [x] Triggering Email Verification ([test](../../conformance/goapi/account_lifecycle_test.go#L34))
+      - [x] With RequireEmailVerification, sign-up sends one link, an unverified sign-in fails with EMAIL_NOT_VERIFIED and sends another, and the followed link then allows sign-in ([test](../../conformance/goapi/account_lifecycle_test.go#L34))
       - [x] 1. During Sign-up ([test](../../conformance/social-user-fields.mjs#L246))
         - [x] Across modes on both runtimes, asserts mail goes out at sign-up when sendOnSignUp is on and not when it is off ([test](../../conformance/social-user-fields.mjs#L246))
       - [x] 2. Require Email Verification ([test](../../conformance/goapi/account_lifecycle_test.go#L34))
@@ -525,8 +531,9 @@
   - [x] `/two-factor/*` ([test](../../ratelimit_test.go#L121))
     - [x] Two-factor routes share the built-in 3-per-10-second rule, and the fourth request is refused ([test](../../ratelimit_test.go#L121))
   - [ ] Configuring Rate Limit
-    - [ ] Connecting IP Address
+    - [x] Connecting IP Address ([test](../../conformance/goapi/client_address_test.go#L20))
       - [x] Resolve the first untrusted address from configured proxy ranges while ignoring direct peers’ headers ([test](../../ip_test.go#L10))
+      - [x] Over HTTP, ordered proxy headers from trusted peers set the session IP, untrusted peers' headers are ignored, and requests without an address share one counter and log one warning ([test](../../conformance/goapi/client_address_test.go#L20))
       - [x] A proxy puts the client address in its own header ([test](../../conformance/goapi/client_address_test.go#L73))
         - [x] With CF-Connecting-IP listed before X-Forwarded-For, a trusted proxy's single-address header supplies the client address and wins over the forwarded chain ([test](../../conformance/goapi/client_address_test.go#L73))
       - [x] Proxies add addresses to `X-Forwarded-For` ([test](../../plugins/captcha/captcha_test.go#L121))
@@ -555,12 +562,14 @@
           - [x] IPv6Subnet 48 keys the /48 network ([test](../../ratelimit_test.go#L145))
         - [x] `32` ([test](../../ratelimit_test.go#L145))
           - [x] IPv6Subnet 32 keys the /32 network ([test](../../ratelimit_test.go#L145))
-    - [ ] Rate Limit Window
+    - [x] Rate Limit Window ([test](../../ratelimit_test.go#L34))
       - [x] Configure the default rule, override exact or wildcard paths and exempt individual routes ([test](../../ratelimit_test.go#L13))
       - [x] RateLimitRuleFuncs chooses the limit per request from the route's built-in rule, can exempt a request, keeps that rule when the function panics or returns an invalid rule, and as the closest entry replaces a broader host rule ([test](../../ratelimit_test.go#L49))
+      - [x] RateLimitDefault sets the window and maximum, an exact-path rule overrides it with X-Retry-After on the 429, and a nil wildcard rule exempts its routes ([test](../../ratelimit_test.go#L34))
     - [ ] Storage
       - [x] Enforce shared SQL counters across two independent auth instances on SQLite, PostgreSQL and MySQL ([test](../../adapters/sqlstore/ratelimit_test.go#L18))
-      - [ ] Using Database
+      - [x] Using Database ([test](../../adapters/sqlstore/ratelimit_test.go#L18))
+        - [x] RateLimitStorage set to the SQL store keeps counters in the rateLimit table, shared by two auth instances on SQLite, PostgreSQL and MySQL, and the HTTP handler answers 429 with X-Retry-After from the stored counter ([test](../../adapters/sqlstore/ratelimit_test.go#L18))
       - [x] Using Secondary Storage ([test](../../adapters/redis/storage_test.go#L355))
         - [x] Share a fixed HTTP request window and reopen it after Redis expires the counter ([test](../../adapters/redis/storage_test.go#L355))
         - [x] A Redis store set only as SecondaryStorage shares the sign-in limit between replicas on separate databases ([test](../../adapters/redis/sessions_test.go#L116))
@@ -586,7 +595,8 @@
 ## Session Management
 
 - [ ] Session Management
-  - [ ] Session table
+  - [x] Session table ([test](../../conformance/core.test.mjs#L211))
+    - [x] Through the official client on both runtimes, getSession bodies carrying the session's id, token, userId, expiresAt, ipAddress and userAgent are deep-compared between the Go fixture and the reference ([test](../../conformance/core.test.mjs#L211))
     - [x] `id` ([test](../../conformance/schema.test.mjs#L37))
       - [x] authctl migrate produces a session table identical to the reference schema, including the id primary key column ([test](../../conformance/schema.test.mjs#L37))
     - [x] `token` ([test](../../conformance/core.test.mjs#L197))
@@ -608,15 +618,19 @@
   - [x] Session Freshness ([test](../../conformance/goapi/freshness_test.go#L21))
     - [x] Refuse sensitive account changes from a session older than the freshness window, and turn the check off with a negative FreshAge ([test](../../conformance/goapi/freshness_test.go#L21))
   - [ ] Session Management
-    - [ ] Get Session
+    - [x] Get Session ([test](../../conformance/core.test.mjs#L211))
       - [x] Return the signed-in user and session with the default seven-day lifetime ([test](../../conformance/core.test.mjs#L195))
+      - [x] The official client's getSession returns null before sign-up, the user and session after it, the new session after sign-in and null after sign-out, with bodies deep-compared against the reference ([test](../../conformance/core.test.mjs#L211))
     - [ ] Use Session
     - [ ] List Sessions
       - [x] Return both active logins for the signed-in user ([test](../../conformance/goapi/http_test.go#L94))
-    - [ ] Revoke Session
+      - [x] GET list-sessions answers 401 without a session and returns both active sessions of the signed-in user after sign-up and sign-in ([test](../../conformance/goapi/http_test.go#L97))
+    - [x] Revoke Session ([test](../../conformance/oauth-refresh-introspection.mjs#L66))
       - [x] Revoke the current token and expire session cookies ([test](../../conformance/goapi/http_test.go#L102))
-    - [ ] Revoke Other Sessions
+      - [x] From a second browser session of the same user, revoke-session with the first session's token returns 200 and deletes that session's row, on both runtimes ([test](../../conformance/oauth-refresh-introspection.mjs#L66))
+    - [x] Revoke Other Sessions ([test](../../conformance/goapi/http_test.go#L101))
       - [x] Invalidate an older session while retaining the current one ([test](../../conformance/goapi/http_test.go#L99))
+      - [x] After revoke-other-sessions the older session cookie gets 401 on list-sessions, while the current session still authenticates the following revoke-session ([test](../../conformance/goapi/http_test.go#L101))
     - [ ] Revoke All Sessions
       - [x] Revoke every session from the native client ([test](../../client/client_test.go#L94))
     - [x] Update Session ([test](../../conformance/session-fields.mjs#L22))
@@ -648,8 +662,9 @@
         - [ ] Comparison:
         - [ ] When to use each:
     - [ ] JWKS-backed cookie-cache JWTs
-  - [ ] Sessions in Secondary Storage
+  - [x] Sessions in Secondary Storage ([test](../../adapters/sqlstore/secondary_sessions_test.go#L102))
     - [x] SecondaryStorage holds a copy of each session; unlike the reference's default, the session also stays in the database, which StoreSessionInDatabase must confirm ([test](../../adapters/sqlstore/secondary_sessions_test.go#L266))
+    - [x] On SQLite, PostgreSQL and MySQL each issued session is copied into SecondaryStorage with its remaining lifetime and served from there by another replica, the database answers after a flush, and every revocation and user change deletes the copy ([test](../../adapters/sqlstore/secondary_sessions_test.go#L102))
     - [x] Storing Sessions in the Database ([test](../../adapters/sqlstore/secondary_sessions_test.go#L102))
       - [x] With StoreSessionInDatabase, sessions stay in the database and SecondaryStorage holds a copy that every revocation and user change deletes before it commits ([test](../../adapters/sqlstore/secondary_sessions_test.go#L102))
     - [x] Preserving Sessions ([test](../../adapters/sqlstore/preserve_sessions_test.go#L40))
@@ -700,7 +715,8 @@
         - [x] TestFreshDeletionAndUnverifiedAddressChange sets UpdateEmailWithoutVerification on an unverified user ([test](../../conformance/goapi/account_lifecycle_test.go#L144))
       - [x] Client Usage ([test](../../client/account_test.go#L134))
         - [x] The Go client's ChangeEmail(newEmail, callbackURL) starts the change over HTTP ([test](../../client/account_test.go#L134))
-    - [ ] Change Password
+    - [x] Change Password ([test](../../conformance/goapi/account_test.go#L18))
+      - [x] TestAccountRecoveryAndProfile changes the signed-in user's password: a wrong currentPassword gets 400, the right one with revokeOtherSessions:true answers 200 with a replacement session, the old session gets 401 and the newPassword verifies ([test](../../conformance/goapi/account_test.go#L18))
       - [x] `POST /change-password` ([test](../../conformance/goapi/account_test.go#L63))
         - [x] A signed-in user posts change-password and gets 200 with a replacement session cookie ([test](../../conformance/goapi/account_test.go#L63))
         - [x] Parameter `newPassword` ([test](../../conformance/goapi/account_test.go#L70))
@@ -741,7 +757,8 @@
     - [x] List User Accounts ([test](../../client/account_test.go#L74))
       - [x] List only the current user’s linked accounts and decode provider scopes ([test](../../adapters/sqlstore/identity_test.go#L30))
       - [x] The Go client's ListAccounts returns the signed-in user's single credential account with its record id ([test](../../client/account_test.go#L74))
-    - [ ] Token Encryption
+    - [x] Token Encryption ([test](../../adapters/sqlstore/oauth_encryption_test.go#L18))
+      - [x] Unlike the reference, account hooks cannot rewrite tokens; EncryptOAuthTokens seals access, refresh and ID tokens at rest and GetAccessToken and RefreshToken return them decrypted on SQLite, PostgreSQL and MySQL ([test](../../adapters/sqlstore/oauth_encryption_test.go#L18))
     - [ ] Account Linking
       - [x] Forced Linking ([test](../../conformance/social-link-options.mjs#L75))
         - [x] Forced linking through trusted providers matches the reference on sign-in and explicit links ([test](../../conformance/social-link-options.mjs#L75))
@@ -759,7 +776,8 @@
 - [ ] Dynamic Base URL
   - [x] Basic Setup ([test](../../conformance/goapi/dynamic_base_url_test.go#L73))
     - [x] DynamicBaseURL with an AllowedHosts allowlist replaces a fixed BaseURL ([test](../../conformance/goapi/dynamic_base_url_test.go#L73))
-  - [ ] Common Deployment Patterns
+  - [x] Common Deployment Patterns ([test](../../conformance/goapi/dynamic_base_url_test.go#L73))
+    - [x] One DynamicBaseURL instance serves a wildcard preview host, localhost:3000 over http and public hosts over https with links on each request's own host, and a fixed Protocol sets every link's scheme ([test](../../conformance/goapi/dynamic_base_url_test.go#L73))
     - [x] Vercel Deployment ([test](../../conformance/goapi/dynamic_base_url_test.go#L121))
       - [x] Preview deployments under one wildcard host such as *.preview.example get links on their own host ([test](../../conformance/goapi/dynamic_base_url_test.go#L121))
     - [x] Development + Production ([test](../../conformance/goapi/dynamic_base_url_test.go#L121))
@@ -783,9 +801,11 @@
     - [ ] Framework Caching
   - [ ] Background Tasks
     - [x] Mail that need not finish before the response runs after it through BackgroundTasks ([test](../../conformance/goapi/background_tasks_test.go#L55))
-  - [ ] SSR Optimizations
+  - [x] SSR Optimizations ([test](../../integrations/routers/routers_test.go#L125))
+    - [x] An application route under each router mount reads the session on the server with GetSession(r.Context(), r.Header): 401 before sign-in and the signed-in user's email after; handing it to a client is the application's concern ([test](../../integrations/routers/routers_test.go#L125))
   - [ ] Database optimizations
-    - [ ] Recommended fields to index
+    - [x] Recommended fields to index ([test](../../conformance/schema.test.mjs#L106))
+      - [x] authctl emits the pinned reference schema, with the recommended indexes on user, account, session, verification, invitation, member, organization, passkey and twoFactor, for exhaustive plugin combinations on SQLite, PostgreSQL and MySQL ([test](../../conformance/schema.test.mjs#L106))
       - [x] users ([test](../../conformance/schema.test.mjs#L37))
         - [x] Fresh and repeated authctl migrate on SQLite deep-equals the reference default schema including index lists, which contains the unique index on user.email ([test](../../conformance/schema.test.mjs#L37))
       - [x] accounts ([test](../../conformance/schema.test.mjs#L37))

@@ -259,8 +259,9 @@
 - [ ] Options
   - [x] `appName` ([test](../../conformance/goapi/freshness_test.go#L68))
     - [x] Name the application as the default authenticator issuer ([test](../../conformance/goapi/freshness_test.go#L68))
-  - [ ] `baseURL`
+  - [x] `baseURL` ([test](../../env_test.go#L63))
     - [x] Resolve public URL and mount path from explicit options and process settings ([test](../../env_test.go#L20))
+    - [x] Without Options.BaseURL or AUTH_URL, startup fails instead of inferring the public URL from requests. Other frameworks' URL variables are ignored, and AUTH_URL alone then configures the instance ([test](../../env_test.go#L63))
     - [x] Dynamic Base URL ([test](../../conformance/goapi/dynamic_base_url_test.go#L73))
       - [x] Options.DynamicBaseURL resolves each request's public origin from its allowed host for emailed links, callbacks, origin checks and direct calls through Auth.RequestContext ([test](../../conformance/goapi/dynamic_base_url_test.go#L73))
       - [x] `allowedHosts` ([test](../../conformance/goapi/dynamic_base_url_test.go#L121))
@@ -294,6 +295,7 @@
         - [x] `*` ([test](../../conformance/goapi/trusted_origins_test.go#L29))
           - [x] The pattern https://*.apps.example matches subdomains at any depth and ignores the path ([test](../../conformance/goapi/trusted_origins_test.go#L29))
         - [ ] ``
+          - [x] In custom-scheme rules ** crosses /: dev://** admits a multi-segment path and a bare host, and a /** segment admits any number of path segments ([test](../../conformance/goapi/trusted_origins_test.go#L93))
       - [ ] Pattern Examples
         - [ ] `http://*.example.com`
         - [ ] `https://.example.com`
@@ -303,17 +305,20 @@
         - [x] `myapp://` ([test](../../conformance/goapi/trusted_origins_test.go#L74))
           - [x] myapp:// admits every myapp:// URL and no other scheme ([test](../../conformance/goapi/trusted_origins_test.go#L74))
         - [ ] Notes
-  - [ ] `secret`
+  - [x] `secret` ([test](../../env_test.go#L68))
     - [x] Use Options.Secret ahead of AUTH_SECRET when no key list is configured ([test](../../env_test.go#L42))
     - [x] Sign with the configured key list ahead of single secrets and prefer the explicit list ([test](../../env_test.go#L194))
+    - [x] Without Options.Secret, AUTH_SECRET or a key list, startup fails instead of falling back to a built-in secret, and other frameworks' secret variables are ignored ([test](../../env_test.go#L68))
     - [x] `AUTH_SECRET` ([test](../../env_test.go#L30))
       - [x] Asserts that AUTH_SECRET is read into Options.Secret when no explicit secret is set ([test](../../env_test.go#L30))
     - [x] `process.env.AUTH_SECRET` ([test](../../env_test.go#L84))
       - [x] An instance configured only by the AUTH_SECRET environment variable signs session cookies ([test](../../env_test.go#L84))
-  - [ ] `secrets`
+  - [x] `secrets` ([test](../../twofactor_test.go#L22))
     - [x] Sign with the active key and accept cookies from a retained key ([test](../../env_test.go#L80))
     - [x] Accept an email proof signed by a retained key and reject it after retirement ([test](../../env_test.go#L141))
-  - [ ] `database`
+    - [x] AUTH_SECRETS 2:new,0:old opens records sealed under the single secret as version zero, seals new records with the first key, enforces the record purpose and refuses a retired version ([test](../../twofactor_test.go#L22))
+  - [x] `database` ([test](../../adapters/sqlstore/engines_test.go#L89))
+    - [x] Options.Store backed by SQLite, PostgreSQL or MySQL serves sign-up, sign-in, sessions and revocation over the HTTP API after reopening a populated schema ([test](../../adapters/sqlstore/engines_test.go#L89))
   - [ ] `secondaryStorage`
     - [x] SecondaryStorage, which holds the session copies, also holds the rate-limit counters when RateLimitStorage is unset; verification records stay in the database ([test](../../conformance/goapi/secondary_rate_limits_test.go#L66))
   - [ ] `emailVerification`
@@ -331,7 +336,8 @@
       - [x] Reject a proof that expires while waiting for the account lock on SQLite, PostgreSQL and MySQL ([test](../../adapters/sqlstore/email_verification_session_test.go#L291))
       - [x] Compare original, earlier and ambiguous millisecond profile revisions against an actual signed link’s whole-second issue time ([test](../../conformance/email-verification-session.mjs#L95))
     - [ ] `expiresIn`
-  - [ ] `emailAndPassword`
+  - [x] `emailAndPassword` ([test](../../conformance/goapi/account_lifecycle_test.go#L15))
+    - [x] Gate sign-up and sign-in on email verification, resend mail on an unverified sign-in, close registration with DisableSignUp and withhold the registration session with DisableAutoSignIn ([test](../../conformance/goapi/account_lifecycle_test.go#L15))
     - [x] `enabled` ([test](../../conformance/email-password-options.mjs#L77))
       - [x] Compare disabled email sign-in and closed registration with a pre-existing credential and a fresh browser ([test](../../conformance/email-password-options.mjs#L77))
     - [x] `disableSignUp` ([test](../../conformance/email-password-options.mjs#L77))
@@ -388,7 +394,8 @@
     - [x] `requireEmailVerification` ([test](../../conformance/social-user-fields.mjs#L200))
       - [x] Withhold sessions for unverified social accounts, honor mail delivery settings and accept confirmation by either server ([test](../../conformance/social-user-fields.mjs#L200))
     - [ ] `prompt`
-    - [ ] `responseMode`
+    - [x] `responseMode` ([test](../../providers/apple_microsoft_test.go#L102))
+      - [x] A provider whose AuthorizationParams request response_mode=form_post, as the Apple preset does, sends it in the authorization URL, and its cross-site form callback is redirected to a GET callback that signs the user in ([test](../../providers/apple_microsoft_test.go#L102))
     - [x] `getUserInfo` ([test](../../conformance/goapi/oauth_test.go#L177))
       - [x] A custom Resolve function fetches user info from the provider with the issued access token ([test](../../conformance/goapi/oauth_test.go#L177))
     - [x] `refreshAccessToken` ([test](../../adapters/sqlstore/oauth_encryption_test.go#L117))
@@ -412,6 +419,7 @@
       - [x] Write phone registration profiles once across competing nodes, preserve owner values, and keep verification credentials and flags out of stored profile columns ([test](../../adapters/sqlstore/phone_registration_fields_test.go#L148))
       - [x] Accept date input with an explicit time zone, persist trusted updates and clear optional timestamps on four stores ([test](../../adapters/sqlstore/date_fields_test.go#L17))
       - [x] Compute server-owned profile defaults on creation and roll back invalid generated values across four stores ([test](../../adapters/sqlstore/computed_fields_test.go#L17))
+      - [x] On both runtimes declared user fields share one table shape and round-trip through sign-up, sign-in, update-user and get-session: required fields are enforced, defaults apply, hidden fields stay out of responses, the renamed column persists and client writes to server-owned fields are refused ([test](../../conformance/user-fields.mjs#L32))
     - [x] `changeEmail` ([test](../../conformance/goapi/account_lifecycle_test.go#L94))
       - [x] With ChangeEmailEnabled and SendChangeEmailConfirmation, POST /change-email sends the confirmation to the current inbox, the new inbox is then verified, and the change persists ([test](../../conformance/goapi/account_lifecycle_test.go#L94))
     - [x] `deleteUser` ([test](../../conformance/goapi/account_lifecycle_test.go#L116))
@@ -431,6 +439,7 @@
       - [x] Document public inputs and responses separately from physical names and private defaults ([test](../../plugins/openapi/session_fields_test.go#L16))
       - [x] Read date-valued session and profile attributes written by either runtime through the same session ([test](../../conformance/date-fields.mjs#L5))
       - [x] Issue separate session defaults and honor trusted fixture overrides without a second callback ([test](../../adapters/sqlstore/computed_fields_test.go#L89))
+      - [x] Exchange scalar session defaults and updates across runtimes through the released client, including private input and renamed columns ([test](../../conformance/session-fields.mjs#L22))
     - [x] `storeSessionInDatabase` ([test](../../adapters/sqlstore/secondary_sessions_test.go#L266))
       - [x] StoreSessionInDatabase keeps sessions in the database alongside their SecondaryStorage copies, and is required with SecondaryStorage ([test](../../adapters/sqlstore/secondary_sessions_test.go#L266))
     - [x] `preserveSessionInDatabase` ([test](../../adapters/sqlstore/preserve_sessions_test.go#L206))
@@ -459,7 +468,8 @@
         - [x] Social sign-in sets an oauth_state binding cookie and stores the flow ([test](../../conformance/goapi/oauth_test.go#L151))
     - [ ] `storeAccountCookie`
       - [x] StoreAccountCookie sets a sealed account_data cookie on sign-in that selects the signed-in provider account for its own user only; unlike the reference, the tokens stay in the store ([test](../../conformance/goapi/account_cookie_test.go#L24))
-    - [ ] `accountLinking`
+    - [x] `accountLinking` ([test](../../conformance/social-link-policy.mjs#L7))
+      - [x] On both runtimes the default, explicit-only and disabled linking policies decide whether a same-email trusted provider sign-in links to the owner, needs the signed-in owner to link it, or is refused without a session, while an identity registered with linking closed keeps signing in ([test](../../conformance/social-link-policy.mjs#L7))
       - [x] `enabled` ([test](../../conformance/social-link-policy.mjs#L50))
         - [x] Close new links across browser and direct grants while permitting new registration and subsequent sign-in with the same stable subject ([test](../../conformance/social-link-policy.mjs#L50))
         - [x] Refresh an existing mobile identity only under its live owner session and reject attachment of new and foreign identities ([test](../../conformance/goapi/oauth_signup_test.go#L228))
@@ -500,7 +510,8 @@
       - [x] With SecondaryStorage and no RateLimitStorage, two replicas share each limit in the storage under the client|route key with the window as its TTL, a sign-out naming the counter as its token leaves it, a storage error stops the request, and NewMemoryRateLimitStorage keeps counters in the process ([test](../../conformance/goapi/secondary_rate_limits_test.go#L24))
     - [ ] `modelName`
   - [ ] `advanced`
-    - [ ] `ipAddress`
+    - [x] `ipAddress` ([test](../../conformance/goapi/client_address_test.go#L20))
+      - [x] ClientIP resolves one address per request: each new session records it as ipAddress, distinct addresses get their own per-route sign-in limit, and requests with no usable address share one counter with a single warning ([test](../../conformance/goapi/client_address_test.go#L20))
     - [x] `disableIpTracking` ([test](../../ip_test.go#L49))
       - [x] With ClientIP.DisableTracking and rate limiting on, no client IP is resolved and the per-IP limiter never rejects repeated sign-in requests ([test](../../ip_test.go#L49))
     - [x] `ipAddressHeaders` ([test](../../conformance/goapi/client_address_test.go#L18))
@@ -536,15 +547,18 @@
     - [ ] `defaultFindManyLimit`
     - [ ] `joins`
     - [ ] `validateSchema`
-    - [ ] `backgroundTasks`
+    - [x] `backgroundTasks` ([test](../../conformance/goapi/background_tasks_test.go#L55))
       - [x] BackgroundTasks takes a runner such as a sync.WaitGroup's Go method; without one the work finishes before the response ([test](../../conformance/goapi/background_tasks_test.go#L55))
+      - [x] BackgroundTasks takes a runner such as a sync.WaitGroup's Go method and runs handed-off work after the response with a detached context; without one the work finishes before the response ([test](../../conformance/goapi/background_tasks_test.go#L55))
   - [ ] `logger`
     - [x] Report a verification-mail delivery failure to the selected logger while preserving the new account and session ([test](../../conformance/core.test.mjs#L1307))
     - [x] `disabled` ([test](../../conformance/core.test.mjs#L1323))
       - [x] Silence one instance without suppressing error records from another ([test](../../conformance/core.test.mjs#L1323))
-    - [ ] `disableColors`
-    - [ ] `level`
+    - [x] `disableColors` ([test](../../conformance/goapi/logger_test.go#L56))
+      - [x] Plain Auth adds no terminal colors: the host's slog handler, or slog.Default without Options.Logger, formats each record and receives the exact message text ([test](../../conformance/goapi/logger_test.go#L56))
+    - [x] `level` ([test](../../conformance/goapi/logger_test.go#L27))
       - [x] Use the configured handler severity threshold for events from core and plugin hooks ([test](../../conformance/goapi/logger_test.go#L46))
+      - [x] Use the configured handler severity threshold for core and plugin events, and the host's slog.Default and its level without Options.Logger ([test](../../conformance/goapi/logger_test.go#L27))
     - [ ] `"debug"`
     - [ ] `"info"`
     - [ ] `"warn"`
@@ -612,6 +626,7 @@
   - [x] Secret Rotation ([test](../../adapters/sqlstore/oauth_encryption_test.go#L18))
     - [x] Stores provider credentials under key version 0 and still reads them after Secrets puts a new version first ([test](../../adapters/sqlstore/oauth_encryption_test.go#L18))
   - [ ] Session Management
+    - [x] With default options a session lasts seven days, a read at one day extends it by seven days, an expired session reads null and a revocation racing the refresh returns 401 ([test](../../session_refresh_test.go#L118))
     - [x] Session Expiration ([test](../../session_refresh_test.go#L46))
       - [x] With default options, a read does not refresh the session before one day ([test](../../session_refresh_test.go#L46))
     - [x] Session Revocation ([test](../../conformance/goapi/http_test.go#L48))
@@ -620,6 +635,7 @@
     - [ ] Avoid simple requests
     - [ ] Origin Validation
     - [ ] Secure Cookie Settings
+      - [x] DefaultCookieAttributes replaces the Lax default with SameSite=None on the issued session cookie, which stays HttpOnly and Secure ([test](../../conformance/goapi/cookie_options_test.go#L54))
     - [x] Fetch Metadata Protection for First-Login CSRF ([test](../../conformance/goapi/http_test.go#L109))
       - [x] Without cookies: a cross-site navigation sign-up gets 403 CROSS_SITE_NAVIGATION_LOGIN_BLOCKED, and a sign-in with an untrusted Origin gets 403 INVALID_ORIGIN ([test](../../conformance/goapi/http_test.go#L109))
     - [x] No Mutations on GET Requests (with additional safeguards) ([test](../../conformance/goapi/oauth_test.go#L151))
@@ -633,27 +649,32 @@
       - [ ] Summary
         - [x] `disableCSRFCheck` ([test](../../conformance/goapi/request_switches_test.go#L43))
           - [x] Turn off only the CSRF protections ([test](../../conformance/goapi/request_switches_test.go#L43))
-        - [ ] `disableOriginCheck`
+        - [x] `disableOriginCheck` ([test](../../conformance/goapi/request_switches_test.go#L54))
           - [x] Turn off redirect URL validation; CSRF protection stays on until DisableCSRFCheck is also set, by design ([test](../../conformance/goapi/request_switches_test.go#L57))
+          - [x] DisableOriginCheck accepts an untrusted callbackURL while a forged cookie request is still refused, a documented deviation from the combined reference switch ([test](../../conformance/goapi/request_switches_test.go#L54))
   - [x] OAuth State and PKCE ([test](../../conformance/goapi/oauth_state_test.go#L200))
     - [x] Both strategies bind the state to the browser, send a PKCE S256 challenge the provider checks, and expire the state cookie on use; the database strategy also consumes the stored flow ([test](../../conformance/goapi/oauth_state_test.go#L200))
-  - [ ] Cookies
+  - [x] Cookies ([test](../../conformance/goapi/http_test.go#L73))
     - [x] With an HTTPS base URL, the sign-up session cookie is Secure, HttpOnly, SameSite=Lax, Path=/ and persistent ([test](../../conformance/goapi/http_test.go#L73))
-    - [ ] Customizing Cookies
+    - [x] Customizing Cookies ([test](../../conformance/goapi/cookie_options_test.go#L52))
+      - [x] Rename cookies and change their attributes; the renamed session cookie authenticates and expires on sign-out ([test](../../conformance/goapi/cookie_options_test.go#L52))
   - [ ] Rate Limiting
   - [x] IP Address Headers ([test](../../conformance/goapi/client_address_test.go#L76))
     - [x] Address headers count only when a trusted proxy sends them, either as a single-address header or an appended X-Forwarded-For chain ([test](../../conformance/goapi/client_address_test.go#L76))
   - [ ] Trusted Proxy Headers
     - [x] TrustedProxyHeaders reads X-Forwarded-Host and X-Forwarded-Proto only from ClientIP.TrustedProxies peers, and only with DynamicBaseURL ([test](../../conformance/goapi/dynamic_base_url_test.go#L225))
+    - [x] With DynamicBaseURL, links follow the request host or a trusted proxy's X-Forwarded-Host and X-Forwarded-Proto, while other peers' headers, header lists and unlisted hosts are refused ([test](../../conformance/goapi/dynamic_base_url_test.go#L73))
   - [ ] Trusted Origins
-    - [ ] Basic Usage
+    - [x] Basic Usage ([test](../../conformance/goapi/request_origins_test.go#L146))
+      - [x] An exact static TrustedOrigins entry is admitted as a callback and as the request Origin, while an unlisted origin is refused with INVALID_CALLBACK_URL or INVALID_ORIGIN ([test](../../conformance/goapi/request_origins_test.go#L146))
     - [ ] Wildcard Origins
       - [x] Protocol-specific wildcards ([test](../../conformance/trusted-origins.mjs#L38))
         - [x] Complete the OAuth provider callback on the static auth host and return the browser to an allowed HTTPS application subdomain ([test](../../conformance/goapi/oauth_test.go#L198))
         - [x] Under https://*.shop.example.test, HTTPS subdomains at any depth are accepted ([test](../../conformance/trusted-origins.mjs#L38))
-      - [ ] Protocol-agnostic wildcards
+      - [x] Protocol-agnostic wildcards ([test](../../conformance/goapi/trusted_origins_test.go#L33))
         - [x] Admit both HTTP and HTTPS for a scheme-independent hostname wildcard on their default ports ([test](../../conformance/trusted-origins.mjs#L41))
         - [x] Unlike the reference, a wildcard without a scheme admits HTTP(S) only, so javascript://x.example.com and other custom schemes must be named ([test](../../conformance/goapi/trusted_origins_test.go#L74))
+        - [x] A scheme-less *.store.example rule admits HTTP and HTTPS subdomains and, by design, refuses other schemes such as ftp ([test](../../conformance/goapi/trusted_origins_test.go#L33))
     - [x] Custom Schemes ([test](../../conformance/goapi/trusted_origins_test.go#L74))
       - [x] Custom-scheme rules trust app schemes, extension IDs and Expo wildcards such as exp://** and exp://10.0.0.*:*/**, and refuse schemes that can run code ([test](../../conformance/goapi/trusted_origins_test.go#L74))
     - [x] Dynamic origin list ([test](../../conformance/goapi/request_origins_test.go#L56))

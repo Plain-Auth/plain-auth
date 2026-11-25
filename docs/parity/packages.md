@@ -36,6 +36,7 @@ Each row tracks the behavior exposed by a published entry point. The Go implemen
     - [x] Compare deferred GET and POST cache hits, forced store reads and independent renewal flags on both runtimes ([test](../../conformance/session-cache-compact.mjs#L138))
     - [x] Use live authorization on independently opened JWT and administration nodes for signed or encrypted session views ([test](../../adapters/sqlstore/session_cache_test.go#L20))
     - [x] Read configured user fields under their logical names and keep hidden storage values out of session views ([test](../../adapters/sqlstore/user_fields_test.go#L47))
+    - [x] Renew the session in its sliding window, defer or disable renewal by option, query or browser-only login, and clear revoked or expired sessions ([test](../../session_refresh_test.go#L48))
   - [ ] Minimal server initialization (`./minimal`)
   - [ ] Social provider registration and profiles (`./social-providers`)
     - [x] Verify the signature and claims of a Google ID token against a test issuer ([test](../../providers/providers_test.go#L19))

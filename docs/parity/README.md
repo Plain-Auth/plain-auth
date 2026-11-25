@@ -2,16 +2,16 @@
 
 ## Verification progress
 
-**1,069 of 6,642 inventory entries are fully verified (16.1%).**
+**1,106 of 6,642 inventory entries are fully verified (16.7%).**
 
 | Inventory status | Entries |
 | --- | ---: |
-| Fully verified | 1,069 |
-| Partially verified | 1,068 |
-| No linked test evidence | 4,505 |
+| Fully verified | 1,106 |
+| Partially verified | 1,045 |
+| No linked test evidence | 4,491 |
 | Not applicable to a Go server | 383 |
 
-The inventory covers features, options, integrations and documentation topics. Partial verification means an open entry has a passing case somewhere beneath it. The checklists also contain 3,321 links from passing scenarios to tests. Adding a scenario leaves the inventory denominator unchanged.
+The inventory covers features, options, integrations and documentation topics. Partial verification means an open entry has a passing case somewhere beneath it. The checklists also contain 3,370 links from passing scenarios to tests. Adding a scenario leaves the inventory denominator unchanged.
 
 Entries that exist only for JavaScript clients, frameworks or runtimes are listed as not applicable, with the reason, and are left out of the totals. Backlog entries stay open on the roadmap but are not scheduled.
 
@@ -75,15 +75,15 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 
 | Checklist | Checked | Open | Not applicable |
 | --- | ---: | ---: | ---: |
-| [Published package interfaces](packages.md) | 92 | 116 | 43 |
+| [Published package interfaces](packages.md) | 93 | 116 | 43 |
 | [Native Go client, routers and databases](go.md) | 38 | 4 | 0 |
-| [Core API, sign-in providers and CLI](runtime.md) | 171 | 263 | 13 |
+| [Core API, sign-in providers and CLI](runtime.md) | 174 | 263 | 13 |
 | [Database adapters](adapters.md) | 32 | 193 | 31 |
-| [Authentication](authentication.md) | 120 | 369 | 0 |
-| [Core concepts](concepts.md) | 406 | 366 | 0 |
+| [Authentication](authentication.md) | 127 | 366 | 0 |
+| [Core concepts](concepts.md) | 444 | 348 | 0 |
 | [Managed infrastructure](infrastructure.md) | 0 | 528 | 0 |
 | [Framework integrations](integrations.md) | 7 | 24 | 201 |
-| [Reference and configuration](reference.md) | 314 | 298 | 0 |
+| [Reference and configuration](reference.md) | 351 | 282 | 0 |
 
 ## Plugins and integrations
 

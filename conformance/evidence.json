@@ -86,6 +86,11 @@
       "label": "Read configured user fields under their logical names and keep hidden storage values out of session views",
       "test": "adapters/sqlstore/user_fields_test.go",
       "marker": "func TestConfiguredUserFieldsAcrossStores("
+    },
+    {
+      "label": "Renew the session in its sliding window, defer or disable renewal by option, query or browser-only login, and clear revoked or expired sessions",
+      "test": "session_refresh_test.go",
+      "marker": "for _, name := range []string{\"sliding\", \"deferred\", \"disabled\", \"dont-remember\", \"concurrent-revoke\", \"expiry\"} {"
     }
   ],
   "core/signInEmail": [
@@ -324,6 +329,12 @@
       "label": "Isolate native client cookies by registrable domain and clear a shared login preference",
       "test": "client/cookie_scope_test.go",
       "marker": "func TestClientCookiePublicSuffixAndPreferenceScope("
+    },
+    {
+      "label": "With CrossSubDomainCookies on .example.com, a sign-in on auth.example.com authenticates app.example.com, stays off foreign hosts, and sign-out clears it on both hosts",
+      "test": "conformance/goapi/cookie_scope_http_test.go",
+      "marker": "t.Fatal(\"sibling session unavailable\")",
+      "complete": true
     }
   ],
   "docs/content/docs/concepts/cookies.mdx#L180": [
@@ -331,6 +342,12 @@
       "label": "Use Chrome on two TLS hosts to sign in, share an HTTP-only session and log out of both hosts",
       "test": "conformance/goapi/cookie_scope_browser_test.go",
       "marker": "func TestChromeSharedCookieLogout("
+    },
+    {
+      "label": "Real Chrome signs up on auth.example.test, app.example.test sees the shared HTTP-only session, and sign-out clears it for both hosts",
+      "test": "conformance/goapi/cookie_scope_browser_test.go",
+      "marker": "if got != \"200,true,true,200,false\" {",
+      "complete": true
     }
   ],
   "docs/content/docs/concepts/cookies.mdx#L94": [
@@ -343,6 +360,12 @@
       "label": "Serialize and authenticate a signed session cookie",
       "test": "cookies_test.go",
       "marker": "func TestBetterCallCookieFixture("
+    },
+    {
+      "label": "Session cookies are Secure by default on an HTTPS base URL and not on HTTP, UseSecureCookies forces either setting, and reserved prefixes are checked",
+      "test": "cookies_test.go",
+      "marker": "t.Fatal(\"unexpected cookie security options\", c)",
+      "complete": true
     }
   ],
   "docs/content/docs/concepts/rate-limit.mdx#L310": [
@@ -393,6 +416,12 @@
       "label": "Create a password account and return a usable session token on SQLite",
       "test": "conformance/core.test.mjs",
       "marker": "const registered = record(await client.signUp.email"
+    },
+    {
+      "label": "The released client's signUp.email response and the session it creates match the reference when deep-compared across runtimes",
+      "test": "conformance/core.test.mjs",
+      "marker": "the official client sees the same email account and session lifecycle",
+      "complete": true
     }
   ],
   "docs/content/docs/authentication/email-password.mdx#L73": [
@@ -400,6 +429,12 @@
       "label": "Reject the wrong password and issue a fresh session for valid credentials",
       "test": "conformance/core.test.mjs",
       "marker": "const signedIn = record(await client.signIn.email"
+    },
+    {
+      "label": "An HTTP sign-in/email with email, password, rememberMe:false and callbackURL returns the token, redirect:true with the url, a Location header and a browser-session cookie with a dont_remember marker",
+      "test": "conformance/goapi/http_test.go",
+      "marker": "t.Fatalf(\"unexpected sign-in result: %+v, %v\", result, err)",
+      "complete": true
     }
   ],
   "docs/content/docs/authentication/email-password.mdx#L104": [
@@ -420,6 +455,12 @@
       "label": "Return the signed-in user and session with the default seven-day lifetime",
       "test": "conformance/core.test.mjs",
       "marker": "const active = record(await client.getSession"
+    },
+    {
+      "label": "The official client's getSession returns null before sign-up, the user and session after it, the new session after sign-in and null after sign-out, with bodies deep-compared against the reference",
+      "test": "conformance/core.test.mjs",
+      "marker": "test(\"the official client sees the same email account and session lifecycle\"",
+      "complete": true
     }
   ],
   "docs/content/docs/concepts/session-management.mdx#L128": [
@@ -427,6 +468,11 @@
       "label": "Return both active logins for the signed-in user",
       "test": "conformance/goapi/http_test.go",
       "marker": "list := request(\"GET\", \"list-sessions\""
+    },
+    {
+      "label": "GET list-sessions answers 401 without a session and returns both active sessions of the signed-in user after sign-up and sign-in",
+      "test": "conformance/goapi/http_test.go",
+      "marker": "t.Fatalf(\"expected two active sessions: %+v, %v\", sessions, err)"
     }
   ],
   "docs/content/docs/concepts/session-management.mdx#L138": [
@@ -434,6 +480,12 @@
       "label": "Revoke the current token and expire session cookies",
       "test": "conformance/goapi/http_test.go",
       "marker": "revoked := request(\"POST\", \"revoke-session\""
+    },
+    {
+      "label": "From a second browser session of the same user, revoke-session with the first session's token returns 200 and deletes that session's row, on both runtimes",
+      "test": "conformance/oauth-refresh-introspection.mjs",
+      "marker": "assert.equal(db.prepare(\"SELECT id FROM session WHERE id=?\").get(row.sessionId), undefined);",
+      "complete": true
     }
   ],
   "docs/content/docs/concepts/session-management.mdx#L152": [
@@ -441,6 +493,12 @@
       "label": "Invalidate an older session while retaining the current one",
       "test": "conformance/goapi/http_test.go",
       "marker": "request(\"POST\", \"revoke-other-sessions\", \"\", h, 200)"
+    },
+    {
+      "label": "After revoke-other-sessions the older session cookie gets 401 on list-sessions, while the current session still authenticates the following revoke-session",
+      "test": "conformance/goapi/http_test.go",
+      "marker": "request(\"GET\", \"list-sessions\", \"\", old, 401)",
+      "complete": true
     }
   ],
   "docs/content/docs/concepts/session-management.mdx#L162": [
@@ -1324,6 +1382,12 @@
       "label": "Resolve public URL and mount path from explicit options and process settings",
       "test": "env_test.go",
       "marker": "func TestEnvironmentPrecedence("
+    },
+    {
+      "label": "Without Options.BaseURL or AUTH_URL, startup fails instead of inferring the public URL from requests. Other frameworks' URL variables are ignored, and AUTH_URL alone then configures the instance",
+      "test": "env_test.go",
+      "marker": "external settings supplied the public origin",
+      "complete": true
     }
   ],
   "docs/content/docs/reference/options.mdx#L76": [
@@ -1349,6 +1413,12 @@
       "label": "Sign with the configured key list ahead of single secrets and prefer the explicit list",
       "test": "env_test.go",
       "marker": "session cookie used a lower-priority signing key"
+    },
+    {
+      "label": "Without Options.Secret, AUTH_SECRET or a key list, startup fails instead of falling back to a built-in secret, and other frameworks' secret variables are ignored",
+      "test": "env_test.go",
+      "marker": "external settings supplied the signing key",
+      "complete": true
     }
   ],
   "docs/content/docs/reference/options.mdx#L89": [
@@ -1374,6 +1444,12 @@
       "label": "Accept an email proof signed by a retained key and reject it after retirement",
       "test": "env_test.go",
       "marker": "func TestRetainedKeyVerifiesEmailProof("
+    },
+    {
+      "label": "AUTH_SECRETS 2:new,0:old opens records sealed under the single secret as version zero, seals new records with the first key, enforces the record purpose and refuses a retired version",
+      "test": "twofactor_test.go",
+      "marker": "func TestEncryptedRecordsRequirePurposeAndExplicitKeyVersion(",
+      "complete": true
     }
   ],
   "docs/content/docs/reference/options.mdx#L593": [
@@ -1393,6 +1469,11 @@
       "label": "Keep provider credentials separate from native input, transform fields once and expose only owned public account fields on three SQL engines",
       "test": "adapters/sqlstore/account_fields_test.go",
       "marker": "func TestMappedAccountFields("
+    },
+    {
+      "label": "List the signed-in owner's credential and provider accounts with only public fields, and refuse an anonymous request, on SQLite, MySQL and PostgreSQL",
+      "test": "adapters/sqlstore/account_fields_test.go",
+      "marker": "accounts, err := passwordOwner.ListAccounts(ctx)"
     }
   ],
   "docs/content/docs/concepts/users-accounts.mdx#L409": [
@@ -1923,6 +2004,12 @@
       "label": "Resolve the first untrusted address from configured proxy ranges while ignoring direct peers’ headers",
       "test": "ip_test.go",
       "marker": "func TestTrustedProxyAddresses("
+    },
+    {
+      "label": "Over HTTP, ordered proxy headers from trusted peers set the session IP, untrusted peers' headers are ignored, and requests without an address share one counter and log one warning",
+      "test": "conformance/goapi/client_address_test.go",
+      "marker": "func TestClientAddressHeaders(",
+      "complete": true
     }
   ],
   "docs/content/docs/concepts/rate-limit.mdx#L185": [
@@ -1935,6 +2022,12 @@
       "test": "ratelimit_test.go",
       "marker": "func TestRateLimitRuleFuncs(t *testing.T) {",
       "label": "RateLimitRuleFuncs chooses the limit per request from the route's built-in rule, can exempt a request, keeps that rule when the function panics or returns an invalid rule, and as the closest entry replaces a broader host rule"
+    },
+    {
+      "label": "RateLimitDefault sets the window and maximum, an exact-path rule overrides it with X-Retry-After on the 429, and a nil wildcard rule exempts its routes",
+      "test": "ratelimit_test.go",
+      "marker": "t.Fatal(\"wildcard exemption ignored\")",
+      "complete": true
     }
   ],
   "plugin/magic-link/POST /sign-in/magic-link": [
@@ -7749,6 +7842,12 @@
       "test": "conformance/goapi/trusted_origins_test.go",
       "marker": "func TestCustomSchemeOrigins(t *testing.T) {",
       "label": "Unlike the reference, a wildcard without a scheme admits HTTP(S) only, so javascript://x.example.com and other custom schemes must be named"
+    },
+    {
+      "label": "A scheme-less *.store.example rule admits HTTP and HTTPS subdomains and, by design, refuses other schemes such as ftp",
+      "test": "conformance/goapi/trusted_origins_test.go",
+      "marker": "{\"http://web.store.example\", true}, {\"https://web.store.example\", true},",
+      "complete": true
     }
   ],
   "plugin-symbol/last-login-method/LastLoginMethodClientConfig/cookieName": [
@@ -8838,6 +8937,12 @@
       "label": "Use the configured handler severity threshold for events from core and plugin hooks",
       "test": "conformance/goapi/logger_test.go",
       "marker": "below the configured level"
+    },
+    {
+      "label": "Use the configured handler severity threshold for core and plugin events, and the host's slog.Default and its level without Options.Logger",
+      "test": "conformance/goapi/logger_test.go",
+      "marker": "func TestPerInstanceLogger(t *testing.T) {",
+      "complete": true
     }
   ],
   "docs/content/docs/reference/options.mdx#L789/`\"error\"`": [
@@ -10481,6 +10586,11 @@
       "label": "Recheck the session owner, delegation and live bans after a separate node migrates the physical schema",
       "test": "adapters/sqlstore/session_fields_test.go",
       "marker": "func TestConfiguredSessionFieldAuthorizationAfterMigration("
+    },
+    {
+      "label": "Update writable session fields, ignore core fields, refuse server-only, core-only and foreign-callback updates, and reject anonymous and revoked callers on both runtimes through the released client",
+      "test": "conformance/session-fields.mjs",
+      "marker": "const update = await consumer.updateSession({"
     }
   ],
   "docs/content/docs/reference/options.mdx#L474/`additionalFields`": [
@@ -10518,6 +10628,11 @@
       "label": "Issue separate session defaults and honor trusted fixture overrides without a second callback",
       "test": "adapters/sqlstore/computed_fields_test.go",
       "marker": "callbacks after fixture issuance:"
+    },
+    {
+      "label": "Exchange scalar session defaults and updates across runtimes through the released client, including private input and renamed columns",
+      "test": "conformance/session-fields.mjs",
+      "marker": "export async function compareSessionFields("
     }
   ],
   "plugin-symbol/test-utils/TestAuthOptions": [
@@ -10888,6 +11003,11 @@
       "label": "Compute server-owned profile defaults on creation and roll back invalid generated values across four stores",
       "test": "adapters/sqlstore/computed_fields_test.go",
       "marker": "func TestComputedFieldDefaultsAcrossStores("
+    },
+    {
+      "label": "On both runtimes declared user fields share one table shape and round-trip through sign-up, sign-in, update-user and get-session: required fields are enforced, defaults apply, hidden fields stay out of responses, the renamed column persists and client writes to server-owned fields are refused",
+      "test": "conformance/user-fields.mjs",
+      "marker": "export async function compareUserFields("
     }
   ],
   "plugin-symbol/one-time-token/oneTimeTokenClient": [
@@ -20170,6 +20290,12 @@
       "label": "Turn off redirect URL validation; CSRF protection stays on until DisableCSRFCheck is also set, by design",
       "test": "conformance/goapi/request_switches_test.go",
       "marker": "if status(open, \"POST\", \"/sign-in/email\", signIn, forged) != 403 {"
+    },
+    {
+      "label": "DisableOriginCheck accepts an untrusted callbackURL while a forged cookie request is still refused, a documented deviation from the combined reference switch",
+      "test": "conformance/goapi/request_switches_test.go",
+      "marker": "if status(plain, \"POST\", \"/sign-up/email\", signUp, json) != 403 || status(open, \"POST\", \"/sign-up/email\", signUp, json) != 200 {",
+      "complete": true
     }
   ],
   "docs/content/docs/concepts/cookies.mdx#L31": [
@@ -20693,6 +20819,11 @@
       "label": "TrustedProxyHeaders reads X-Forwarded-Host and X-Forwarded-Proto only from ClientIP.TrustedProxies peers, and only with DynamicBaseURL",
       "test": "conformance/goapi/dynamic_base_url_test.go",
       "marker": "// Forwarded headers count only from a trusted proxy, and only with"
+    },
+    {
+      "label": "With DynamicBaseURL, links follow the request host or a trusted proxy's X-Forwarded-Host and X-Forwarded-Proto, while other peers' headers, header lists and unlisted hosts are refused",
+      "test": "conformance/goapi/dynamic_base_url_test.go",
+      "marker": "func TestDynamicBaseURL("
     }
   ],
   "docs/content/docs/reference/options.mdx#L693/`backgroundTasks`": [
@@ -20727,6 +20858,12 @@
       "label": "BackgroundTasks takes a runner such as a sync.WaitGroup's Go method; without one the work finishes before the response",
       "test": "conformance/goapi/background_tasks_test.go",
       "marker": "func TestBackgroundTasksRunAfterTheResponse(t *testing.T) {"
+    },
+    {
+      "label": "BackgroundTasks takes a runner such as a sync.WaitGroup's Go method and runs handed-off work after the response with a detached context; without one the work finishes before the response",
+      "test": "conformance/goapi/background_tasks_test.go",
+      "marker": "func TestBackgroundTasksRunAfterTheResponse(t *testing.T) {",
+      "complete": true
     }
   ],
   "docs/content/docs/concepts/hooks.mdx#L280": [
@@ -20933,6 +21070,12 @@
       "label": "SecondaryStorage holds a copy of each session; unlike the reference's default, the session also stays in the database, which StoreSessionInDatabase must confirm",
       "test": "adapters/sqlstore/secondary_sessions_test.go",
       "marker": "func TestSecondaryStorageConfiguration(t *testing.T) {"
+    },
+    {
+      "label": "On SQLite, PostgreSQL and MySQL each issued session is copied into SecondaryStorage with its remaining lifetime and served from there by another replica, the database answers after a flush, and every revocation and user change deletes the copy",
+      "test": "adapters/sqlstore/secondary_sessions_test.go",
+      "marker": "func TestSecondaryStorageSessions(t *testing.T) {",
+      "complete": true
     }
   ],
   "docs/content/docs/reference/options.mdx#L475/`storeSessionInDatabase`": [
@@ -20969,6 +21112,185 @@
       "label": "PreserveSessionInDatabase requires SecondaryStorage, and one store keeps one setting",
       "test": "adapters/sqlstore/preserve_sessions_test.go",
       "marker": "func TestPreservedSessionsConfiguration(t *testing.T) {"
+    }
+  ],
+  "docs/content/docs/authentication/email-password.mdx#L423/Parameter `revokeOtherSessions` (optional)": [
+    {
+      "label": "With revokeOtherSessions:true, change-password deletes the caller's and another browser's sessions and returns a replacement token",
+      "test": "conformance/goapi/database_session_hooks_test.go",
+      "marker": "t.Fatal(\"unexpected change-password hooks\", out, got)"
+    }
+  ],
+  "docs/content/docs/authentication/email-password.mdx#L428": [
+    {
+      "label": "On both runtimes the credential is stored in the account table under providerId 'credential', reference scrypt hashes verify, and the length bounds apply to sign-up, password change and reset",
+      "test": "conformance/email-password-options.mjs",
+      "marker": "export async function comparePasswordBounds(",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/concepts/api.mdx#L29": [
+    {
+      "label": "Direct Go calls take the body as a typed input (SignUpEmail), the query token as an argument (VerifyEmail) and the request headers carrying the session (GetSession, SetPassword)",
+      "test": "conformance/goapi/account_lifecycle_test.go",
+      "marker": "if err := auth.VerifyEmail(t.Context(), verifications[0].Token); err != nil {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/concepts/cookies.mdx#L12/`jwt`": [
+    {
+      "label": "Both runtimes issue and consume each other's HS256 session_data JWTs signed with the shared secret",
+      "test": "conformance/session-cache-compact.mjs",
+      "marker": "assert.equal(decodeProtectedHeader(value).alg, \"HS256\");"
+    }
+  ],
+  "docs/content/docs/concepts/email.mdx#L61": [
+    {
+      "label": "With RequireEmailVerification, sign-up sends one link, an unverified sign-in fails with EMAIL_NOT_VERIFIED and sends another, and the followed link then allows sign-in",
+      "test": "conformance/goapi/account_lifecycle_test.go",
+      "marker": "t.Fatalf(\"unverified login: %v\", err)",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/concepts/rate-limit.mdx#L245/Using Database": [
+    {
+      "label": "RateLimitStorage set to the SQL store keeps counters in the rateLimit table, shared by two auth instances on SQLite, PostgreSQL and MySQL, and the HTTP handler answers 429 with X-Retry-After from the stored counter",
+      "test": "adapters/sqlstore/ratelimit_test.go",
+      "marker": "func TestSharedRateLimit(",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/concepts/session-management.mdx#L12": [
+    {
+      "label": "Through the official client on both runtimes, getSession bodies carrying the session's id, token, userId, expiresAt, ipAddress and userAgent are deep-compared between the Go fixture and the reference",
+      "test": "conformance/core.test.mjs",
+      "marker": "test(\"the official client sees the same email account and session lifecycle\"",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/concepts/users-accounts.mdx#L124": [
+    {
+      "label": "TestAccountRecoveryAndProfile changes the signed-in user's password: a wrong currentPassword gets 400, the right one with revokeOtherSessions:true answers 200 with a replacement session, the old session gets 401 and the newPassword verifies",
+      "test": "conformance/goapi/account_test.go",
+      "marker": "func TestAccountRecoveryAndProfile(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/concepts/users-accounts.mdx#L425": [
+    {
+      "label": "Unlike the reference, account hooks cannot rewrite tokens; EncryptOAuthTokens seals access, refresh and ID tokens at rest and GetAccessToken and RefreshToken return them decrypted on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/oauth_encryption_test.go",
+      "marker": "func TestEncryptedProviderCredentialLifecycle(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/guides/dynamic-base-url.mdx#L35": [
+    {
+      "label": "One DynamicBaseURL instance serves a wildcard preview host, localhost:3000 over http and public hosts over https with links on each request's own host, and a fixed Protocol sets every link's scheme",
+      "test": "conformance/goapi/dynamic_base_url_test.go",
+      "marker": "func TestDynamicBaseURL(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/guides/optimizing-for-performance.mdx#L147": [
+    {
+      "label": "An application route under each router mount reads the session on the server with GetSession(r.Context(), r.Header): 401 before sign-in and the signed-in user's email after; handing it to a client is the application's concern",
+      "test": "integrations/routers/routers_test.go",
+      "marker": "session, err := auth.GetSession(r.Context(), r.Header)",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/guides/optimizing-for-performance.mdx#L162": [
+    {
+      "label": "authctl emits the pinned reference schema, with the recommended indexes on user, account, session, verification, invitation, member, organization, passkey and twoFactor, for exhaustive plugin combinations on SQLite, PostgreSQL and MySQL",
+      "test": "conformance/schema.test.mjs",
+      "marker": "test(\"the CLI emits the pinned plugin schema across exhaustive base combinations and SCIM and organization billing witnesses on three dialects\", async () => {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/reference/options.mdx#L154/``": [
+    {
+      "label": "In custom-scheme rules ** crosses /: dev://** admits a multi-segment path and a bare host, and a /** segment admits any number of path segments",
+      "test": "conformance/goapi/trusted_origins_test.go",
+      "marker": "{\"dev://192.168.1.2:8081/--/auth/callback\", true}, {\"dev://any.host\", true},"
+    }
+  ],
+  "docs/content/docs/reference/options.mdx#L225": [
+    {
+      "label": "Options.Store backed by SQLite, PostgreSQL or MySQL serves sign-up, sign-in, sessions and revocation over the HTTP API after reopening a populated schema",
+      "test": "adapters/sqlstore/engines_test.go",
+      "marker": "// Exercise the public HTTP API with this engine's connection pool.",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/reference/options.mdx#L285": [
+    {
+      "label": "Gate sign-up and sign-in on email verification, resend mail on an unverified sign-in, close registration with DisableSignUp and withhold the registration session with DisableAutoSignIn",
+      "test": "conformance/goapi/account_lifecycle_test.go",
+      "marker": "func TestVerificationGatedSignUpAndSignIn(",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/reference/options.mdx#L365/`responseMode`": [
+    {
+      "label": "A provider whose AuthorizationParams request response_mode=form_post, as the Apple preset does, sends it in the authorization URL, and its cross-site form callback is redirected to a GET callback that signs the user in",
+      "test": "providers/apple_microsoft_test.go",
+      "marker": "q.Get(\"response_mode\") != \"form_post\"",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/reference/options.mdx#L550": [
+    {
+      "label": "On both runtimes the default, explicit-only and disabled linking policies decide whether a same-email trusted provider sign-in links to the owner, needs the signed-in owner to link it, or is refused without a session, while an identity registered with linking closed keeps signing in",
+      "test": "conformance/social-link-policy.mjs",
+      "marker": "for (const mode of [\"default\", \"explicit\", \"disabled\", \"disabled-existing\"])",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/reference/options.mdx#L681/`ipAddress`": [
+    {
+      "label": "ClientIP resolves one address per request: each new session records it as ipAddress, distinct addresses get their own per-route sign-in limit, and requests with no usable address share one counter with a single warning",
+      "test": "conformance/goapi/client_address_test.go",
+      "marker": "func TestClientAddressHeaders(",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/reference/options.mdx#L784/`disableColors`": [
+    {
+      "label": "Plain Auth adds no terminal colors: the host's slog handler, or slog.Default without Options.Logger, formats each record and receives the exact message text",
+      "test": "conformance/goapi/logger_test.go",
+      "marker": "events[0][\"msg\"] != \"Could not deliver sign-up verification email\"",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/reference/security.mdx#L23": [
+    {
+      "label": "With default options a session lasts seven days, a read at one day extends it by seven days, an expired session reads null and a revocation racing the refresh returns 401",
+      "test": "session_refresh_test.go",
+      "marker": "!store.row.ExpiresAt.Equal(now.Add(ttl))"
+    }
+  ],
+  "docs/content/docs/reference/security.mdx#L49/Secure Cookie Settings": [
+    {
+      "label": "DefaultCookieAttributes replaces the Lax default with SameSite=None on the issued session cookie, which stays HttpOnly and Secure",
+      "test": "conformance/goapi/cookie_options_test.go",
+      "marker": "if session.Path != \"/api\" || session.SameSite != http.SameSiteNoneMode"
+    }
+  ],
+  "docs/content/docs/reference/security.mdx#L155": [
+    {
+      "label": "Rename cookies and change their attributes; the renamed session cookie authenticates and expires on sign-out",
+      "test": "conformance/goapi/cookie_options_test.go",
+      "marker": "// The session cookie takes its custom name, keeps the __Secure- prefix and merges the attributes.",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/reference/security.mdx#L211": [
+    {
+      "label": "An exact static TrustedOrigins entry is admitted as a callback and as the request Origin, while an unlisted origin is refused with INVALID_CALLBACK_URL or INVALID_ORIGIN",
+      "test": "conformance/goapi/request_origins_test.go",
+      "marker": "res, body = send(\"POST\", \"/sign-in/email\", \"\", \"https://static.example\", credentials)",
+      "complete": true
     }
   ]
 }
