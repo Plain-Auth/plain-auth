@@ -21473,5 +21473,85 @@
       "marker": "t.Fatal(\"an anonymous deletion callback answered\", code, message)",
       "complete": true
     }
+  ],
+  "docs/content/docs/reference/options.mdx#L160/`http://*.example.com`": [
+    {
+      "label": "A scheme-pinned http wildcard trusts any depth of subdomains on http only, and not the bare domain",
+      "test": "conformance/goapi/trusted_origins_test.go",
+      "marker": "{\"http://api.plain.example\", true}, {\"http://api.app.plain.example\", true},",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/reference/options.mdx#L161/`https://.example.com`": [
+    {
+      "label": "An https ** wildcard trusts one or several subdomain levels on https only",
+      "test": "conformance/goapi/trusted_origins_test.go",
+      "marker": "{\"https://api.deep.example\", true}, {\"https://api.app.deep.example\", true}, {\"http://api.deep.example\", false},",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/reference/options.mdx#L162/`https://example.com`": [
+    {
+      "label": "An exact origin trusts its own paths, and neither its subdomains nor the other scheme",
+      "test": "conformance/goapi/trusted_origins_test.go",
+      "marker": "{\"https://api.exact.example\", false}, {\"http://exact.example\", false},",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/reference/options.mdx#L617/`window`": [
+    {
+      "label": "The default window is 10 seconds for 100 requests, or RateLimitDefault's; it is the X-Retry-After value and requests are admitted again after it",
+      "test": "ratelimit_test.go",
+      "marker": "func TestDefaultRateLimitWindow(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/reference/security.mdx#L161": [
+    {
+      "label": "Every route without its own rule is limited to 100 requests per 10 seconds per client by default",
+      "test": "ratelimit_test.go",
+      "marker": "t.Fatal(\"the 101st request answered\", w.Code, w.Header())",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/reference/options.mdx#L786/`\"debug\"`": [
+    {
+      "label": "A logger at debug level keeps debug and info records from plugins and Plain Auth's warnings and errors",
+      "test": "conformance/goapi/logger_test.go",
+      "marker": "func TestLoggerLevels(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/reference/options.mdx#L787/`\"info\"`": [
+    {
+      "label": "A logger at info level keeps info records, warnings and errors and drops debug records",
+      "test": "conformance/goapi/logger_test.go",
+      "marker": "{slog.LevelInfo, []string{\"INFO\", \"WARN\", \"ERROR\"}},",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/reference/options.mdx#L788/`\"warn\"`": [
+    {
+      "label": "A logger at warn level keeps Plain Auth's warnings and errors and drops info and debug records",
+      "test": "conformance/goapi/logger_test.go",
+      "marker": "{slog.LevelWarn, []string{\"WARN\", \"ERROR\"}},",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/reference/security.mdx#L39/Avoid simple requests": [
+    {
+      "label": "A cookie-authenticated route refuses a form, multipart or text body with 415, allowing only JSON, while the email routes also accept a form",
+      "test": "conformance/goapi/http_test.go",
+      "marker": "func TestSimpleRequestsAndNullOrigin(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/reference/security.mdx#L44/Origin Validation": [
+    {
+      "label": "A null Origin is accepted only with Sec-Fetch-Site same-origin, against the host the request reached; otherwise MISSING_OR_NULL_ORIGIN or INVALID_ORIGIN",
+      "test": "conformance/goapi/http_test.go",
+      "marker": "t.Fatal(\"a null Origin on an untrusted host answered\", code)",
+      "complete": true
+    }
   ]
 }

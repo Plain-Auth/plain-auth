@@ -7,6 +7,8 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"net/http/httptest"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -64,5 +66,48 @@ func TestPerInstanceLogger(t *testing.T) {
 	opts.Logger = nil
 	if newHTTPAuth(t, opts).Logger() != slog.Default() {
 		t.Fatal("default logger did not follow the host")
+	}
+}
+
+// The host logger's level decides which records are kept: Plain Auth logs
+// warnings and errors itself, and a plugin's debug and info records go
+// through the same logger.
+func TestLoggerLevels(t *testing.T) {
+	for _, tc := range []struct {
+		level slog.Level
+		want  []string
+	}{
+		{slog.LevelDebug, []string{"DEBUG", "INFO", "WARN", "ERROR"}},
+		{slog.LevelInfo, []string{"INFO", "WARN", "ERROR"}},
+		{slog.LevelWarn, []string{"WARN", "ERROR"}},
+	} {
+		t.Run(tc.level.String(), func(t *testing.T) {
+			var captured bytes.Buffer
+			send, on := true, true
+			a := newHTTPAuth(t, auth.Options{BaseURL: "https://auth.example", RateLimit: &on, SendVerificationOnSignUp: &send,
+				Logger:                slog.New(slog.NewJSONHandler(&captured, &slog.HandlerOptions{Level: tc.level})),
+				SendVerificationEmail: func(context.Context, auth.MailLink) error { return errors.New("mail is down") }})
+			a.Logger().DebugContext(t.Context(), "plugin debug")
+			a.Logger().InfoContext(t.Context(), "plugin info")
+			// A request whose client address is unknown logs a warning, and a
+			// failed sign-up mail logs an error.
+			r := httptest.NewRequest("POST", "https://auth.example/api/auth/sign-up/email", strings.NewReader(`{"email":"ada@example.test","name":"Ada","password":"a password for logging"}`))
+			r.Header = http.Header{"Content-Type": {"application/json"}, "Origin": {"https://auth.example"}}
+			r.RemoteAddr = ""
+			a.ServeHTTP(httptest.NewRecorder(), r)
+			var levels []string
+			for _, line := range strings.Split(strings.TrimSpace(captured.String()), "\n") {
+				var event map[string]any
+				if err := json.Unmarshal([]byte(line), &event); err != nil {
+					t.Fatal(err)
+				}
+				if level, _ := event["level"].(string); !slices.Contains(levels, level) {
+					levels = append(levels, level)
+				}
+			}
+			if !slices.Equal(levels, tc.want) {
+				t.Fatalf("a %s logger kept %v, want %v: %s", tc.level, levels, tc.want, captured.String())
+			}
+		})
 	}
 }

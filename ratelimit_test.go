@@ -140,6 +140,51 @@ func TestBuiltInRateLimitRules(t *testing.T) {
 	}
 }
 
+// Every route without its own rule gets the default: 100 requests per 10
+// seconds unless RateLimitDefault sets another, and its window is the wait
+// the client is told and the time after which requests are admitted again.
+func TestDefaultRateLimitWindow(t *testing.T) {
+	on := true
+	a, err := New(Options{BaseURL: "http://example.test", Store: &refreshFixture{}, Secret: strings.Repeat("x", 32), RateLimit: &on})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rule := a.ruleForRoute("GET", "/ok"); rule == nil || *rule != (RateLimitRule{Max: 100, Window: 10 * time.Second}) {
+		t.Fatal("unexpected default rule", rule)
+	}
+	get := func(a *Auth) *httptest.ResponseRecorder {
+		w := httptest.NewRecorder()
+		a.rejectRateLimited(w, httptest.NewRequest("GET", "/api/auth/ok", nil), "/ok")
+		return w
+	}
+	for i := range 100 {
+		if w := get(a); w.Code == 429 {
+			t.Fatal("request", i+1, "of 100 was limited")
+		}
+	}
+	if w := get(a); w.Code != 429 || w.Header().Get("X-Retry-After") != "10" {
+		t.Fatal("the 101st request answered", w.Code, w.Header())
+	}
+
+	now := time.Now()
+	short, err := New(Options{BaseURL: "http://example.test", Store: &refreshFixture{}, Secret: strings.Repeat("x", 32), RateLimit: &on,
+		RateLimitDefault: &RateLimitRule{Max: 1, Window: 3 * time.Second}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	short.now = func() time.Time { return now }
+	if w := get(short); w.Code == 429 {
+		t.Fatal("the first request was limited")
+	}
+	if w := get(short); w.Code != 429 || w.Header().Get("X-Retry-After") != "3" {
+		t.Fatal("the second request answered", w.Code, w.Header())
+	}
+	now = now.Add(3 * time.Second)
+	if w := get(short); w.Code == 429 {
+		t.Fatal("a request after the window was limited")
+	}
+}
+
 // IPv6 addresses are keyed by their /64 by default or the configured prefix,
 // whatever their spelling; IPv4 addresses are keyed as they are.
 func TestRateLimitIPv6Subnets(t *testing.T) {

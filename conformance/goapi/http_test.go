@@ -155,3 +155,45 @@ func TestCredentialHTTPRateLimit(t *testing.T) {
 	}
 	serve(t, auth, "POST", "/api/auth/sign-up/email", "{}", h, 400)
 }
+
+// Cookie-authenticated routes accept only JSON, so a cross-site form or
+// multipart post, which a browser sends without a preflight, is refused; the
+// email routes also accept a form. A null Origin is accepted only for a
+// same-origin request, checked against the host the request reached.
+func TestSimpleRequestsAndNullOrigin(t *testing.T) {
+	off := false
+	auth := newHTTPAuth(t, authn.Options{BaseURL: "https://auth.example", RateLimit: &off})
+	c := sessionClient{t, auth}
+	c.post("/sign-up/email", `{"name":"Ada","email":"ada@example.test","password":"`+sessionEndpointPassword+`"}`, "", 200)
+	cookie, _ := c.signIn("ada@example.test")
+	for _, contentType := range []string{"application/x-www-form-urlencoded", "multipart/form-data; boundary=x", "text/plain"} {
+		h := http.Header{"Origin": {"https://auth.example"}, "Content-Type": {contentType}, "Cookie": {cookie}}
+		r := serve(t, auth, "POST", "/api/auth/update-user", "name=Mallory", h, 415)
+		if code, message, _ := errorBody(t, r); code != "UNSUPPORTED_MEDIA_TYPE" || !strings.HasSuffix(message, "Allowed types: application/json") {
+			t.Fatal(contentType, "answered", code, message)
+		}
+	}
+	form := http.Header{"Origin": {"https://auth.example"}, "Content-Type": {"application/x-www-form-urlencoded"}}
+	serve(t, auth, "POST", "/api/auth/sign-in/email", url.Values{"email": {"ada@example.test"}, "password": {sessionEndpointPassword}}.Encode(), form, 200)
+
+	update := func(host string, headers http.Header, status int) *http.Response {
+		t.Helper()
+		r := httptest.NewRequest("POST", "https://"+host+"/api/auth/update-user", strings.NewReader(`{"name":"Renamed"}`))
+		r.Header = headers
+		r.Header.Set("Content-Type", "application/json")
+		r.Header.Set("Cookie", cookie)
+		w := httptest.NewRecorder()
+		auth.ServeHTTP(w, r)
+		if w.Code != status {
+			t.Fatalf("update-user on %s with %v answered %d: %s", host, headers, w.Code, w.Body.String())
+		}
+		return w.Result()
+	}
+	update("auth.example", http.Header{"Origin": {"null"}, "Sec-Fetch-Site": {"same-origin"}}, 200)
+	if code, _, _ := errorBody(t, update("auth.example", http.Header{"Origin": {"null"}}, 403)); code != "MISSING_OR_NULL_ORIGIN" {
+		t.Fatal("a null Origin without Sec-Fetch-Site answered", code)
+	}
+	if code, _, _ := errorBody(t, update("evil.example", http.Header{"Origin": {"null"}, "Sec-Fetch-Site": {"same-origin"}}, 403)); code != "INVALID_ORIGIN" {
+		t.Fatal("a null Origin on an untrusted host answered", code)
+	}
+}

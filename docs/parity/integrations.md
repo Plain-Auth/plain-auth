@@ -10,8 +10,8 @@
   - Create the client auth instance — *not applicable: JavaScript only*
   - Configure the manifest — *not applicable: JavaScript only*
   - Bundle your extension — *not applicable: JavaScript only*
-  - [x] Configure the server auth instance ([test](../../conformance/goapi/trusted_origins_test.go#L129))
-    - [x] A trusted chrome-extension:// origin passes the origin check of a cookie-authenticated request, and an untrusted extension is refused ([test](../../conformance/goapi/trusted_origins_test.go#L129))
+  - [x] Configure the server auth instance ([test](../../conformance/goapi/trusted_origins_test.go#L137))
+    - [x] A trusted chrome-extension:// origin passes the origin check of a cookie-authenticated request, and an untrusted extension is refused ([test](../../conformance/goapi/trusted_origins_test.go#L137))
 
 ## Cloudflare Guide
 
@@ -128,10 +128,10 @@
   - [ ] Configure A authentication Backend
   - [ ] Add the Expo Plugin on Your Server
   - Initialize authentication Client — *not applicable: JavaScript only*
-  - [x] Scheme and Trusted Origins ([test](../../conformance/goapi/trusted_origins_test.go#L74))
-    - [x] An app scheme listed in TrustedOrigins admits its deep-link callbacks ([test](../../conformance/goapi/trusted_origins_test.go#L74))
-    - [x] Development Mode ([test](../../conformance/goapi/trusted_origins_test.go#L74))
-      - [x] Expo development wildcards admit exp:// URLs on local IPv4 addresses ([test](../../conformance/goapi/trusted_origins_test.go#L74))
+  - [x] Scheme and Trusted Origins ([test](../../conformance/goapi/trusted_origins_test.go#L82))
+    - [x] An app scheme listed in TrustedOrigins admits its deep-link callbacks ([test](../../conformance/goapi/trusted_origins_test.go#L82))
+    - [x] Development Mode ([test](../../conformance/goapi/trusted_origins_test.go#L82))
+      - [x] Expo development wildcards admit exp:// URLs on local IPv4 addresses ([test](../../conformance/goapi/trusted_origins_test.go#L82))
   - Configure Metro Bundler — *not applicable: JavaScript only*
   - [ ] Usage
     - [ ] Authenticating Users

@@ -16,6 +16,7 @@ func TestWildcardOriginCallbacks(t *testing.T) {
 		Secret: strings.Repeat("x", 32), TrustedOrigins: []string{
 			"https://*.apps.example", "http://192.168.*.*:*", "https://[::1]:8???",
 			"https://branch.**.example", "https://portal*", "*://common.example:443", "https://media.example:*",
+			"http://*.plain.example", "https://**.deep.example", "https://exact.example",
 		}})
 	if err != nil {
 		t.Fatal(err)
@@ -42,6 +43,13 @@ func TestWildcardOriginCallbacks(t *testing.T) {
 		{"https://media.example:65536", false}, {"https://bad_label.apps.example", false},
 		{"https://*.apps.example", false}, {"https://[web.apps.example]", false}, {"https://person@web.apps.example", false},
 		{"ftp://web.store.example", false},
+		// A scheme-pinned wildcard spans any depth of subdomains, only on its scheme.
+		{"http://api.plain.example", true}, {"http://api.app.plain.example", true},
+		{"https://api.plain.example", false}, {"http://plain.example", false},
+		{"https://api.deep.example", true}, {"https://api.app.deep.example", true}, {"http://api.deep.example", false},
+		// An exact origin trusts its own paths only.
+		{"https://exact.example", true}, {"https://exact.example/path?x=1", true},
+		{"https://api.exact.example", false}, {"http://exact.example", false},
 	} {
 		t.Run(tc.callback, func(t *testing.T) {
 			got, err := a.CallbackURL(tc.callback)
