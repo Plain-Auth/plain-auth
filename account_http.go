@@ -28,12 +28,28 @@ func (a *Auth) handleAccountRequest(route string, w http.ResponseWriter, r *http
 	query := r.URL.Query()
 	switch route {
 	case "/change-email":
+		if b == nil {
+			return nil, validationError("[body] Invalid input: expected object, received undefined")
+		}
 		email, err := requiredString(b, "newEmail")
 		if err != nil {
 			return nil, err
 		}
+		if !emailPattern.MatchString(strings.ToLower(email)) || strings.Contains(email, "..") {
+			return nil, validationError("[body.newEmail] Invalid email address")
+		}
 		callback, _ := b["callbackURL"].(string)
-		return ok, a.ChangeEmail(ctx, r.Header, email, callback)
+		changed, err := a.changeEmail(ctx, r.Header, email, callback)
+		// An address changed at once is published in fresh session cookies,
+		// so a cached session view shows it straight away.
+		if changed {
+			if token := a.cookieToken(r.Header); token != "" {
+				if cookieErr := a.writeSessionCookieHeaders(w.Header(), r, token, !a.dontRemember(r)); err == nil {
+					err = cookieErr
+				}
+			}
+		}
+		return ok, err
 	case "/delete-user", "/delete-user/callback":
 		params := DeleteUserInput{}
 		if route == "/delete-user/callback" {

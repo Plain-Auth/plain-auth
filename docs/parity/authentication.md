@@ -134,7 +134,8 @@
         - [x] Deliver the stored owner to the host while preserving private responses across both modes and ordinary 422 behavior in the released client ([test](../../conformance/core.test.mjs#L1457))
         - [x] Return the same default guest and phone fields on fresh and duplicate private registrations ([test](../../adapters/sqlstore/existing_signup_test.go#L271))
         - [x] With RequireEmailVerification, sign-up returns no token and an unverified sign-in fails with EMAIL_NOT_VERIFIED, resending mail ([test](../../conformance/goapi/account_lifecycle_test.go#L15))
-      - [ ] Email Enumeration Protection
+      - [x] Email Enumeration Protection ([test](../../conformance/goapi/change_email_test.go#L177))
+        - [x] change-email answers an address another account holds exactly like a free one, sends no mail and changes neither account ([test](../../conformance/goapi/change_email_test.go#L177))
         - [x] Plugins that add user fields ([test](../../adapters/sqlstore/existing_signup_test.go#L222))
           - [x] Go adds built-in plugin fields to the synthetic duplicate response automatically ([test](../../adapters/sqlstore/existing_signup_test.go#L222))
           - [x] `coreFields` ([test](../../conformance/synthetic-user.mjs#L5))

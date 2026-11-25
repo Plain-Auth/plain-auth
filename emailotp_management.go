@@ -164,7 +164,7 @@ func (a *Auth) emailChangeOTPRequest(ctx context.Context, h http.Header, address
 		return req, &APIError{400, "BAD_REQUEST", "Change email with OTP is disabled"}
 	}
 	if req.Email == s.User.Email {
-		return req, &APIError{400, "BAD_REQUEST", "Email is the same"}
+		return req, &APIError{Status: 400, Message: "Email is the same"}
 	}
 	req.Source = &EmailOTPSource{UserID: s.User.ID, Email: s.User.Email, SessionToken: s.Session.Token}
 	return req, nil

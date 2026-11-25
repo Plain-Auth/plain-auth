@@ -1323,6 +1323,12 @@
       "label": "Confirm an email change through the destination inbox",
       "test": "conformance/goapi/account_lifecycle_test.go",
       "marker": "replacement inbox was not sent its own verification"
+    },
+    {
+      "label": "change-email validates the body first, needs a session before reporting CHANGE_EMAIL_DISABLED, gives the reference's code-less errors, hides registered addresses, and re-issues session cookies when the address changes at once or through a signed-in link",
+      "test": "conformance/goapi/change_email_test.go",
+      "marker": "func TestChangeEmailRequestContract(t *testing.T) {",
+      "complete": true
     }
   ],
   "core/deleteUser": [
@@ -21327,6 +21333,21 @@
       "test": "conformance/goapi/request_origins_test.go",
       "marker": "res, body = send(\"POST\", \"/sign-in/email\", \"\", \"https://static.example\", credentials)",
       "complete": true
+    }
+  ],
+  "docs/content/docs/authentication/email-password.mdx#L230": [
+    {
+      "label": "change-email answers an address another account holds exactly like a free one, sends no mail and changes neither account",
+      "test": "conformance/goapi/change_email_test.go",
+      "marker": "t.Fatal(\"asking for a taken address changed an account\")",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/reference/security.mdx#L294": [
+    {
+      "label": "change-email does not reveal whether the target address is registered: the same 200 {\"status\":true}, no mail and no change",
+      "test": "conformance/goapi/change_email_test.go",
+      "marker": "t.Fatal(\"a taken address set cookies or sent mail\")"
     }
   ]
 }

@@ -136,65 +136,74 @@ func (a *Auth) DeleteUser(ctx context.Context, h http.Header, in DeleteUserInput
 // ChangeEmail requests confirmation for a new address. The token is bound to
 // both the current owner and their current address.
 func (a *Auth) ChangeEmail(ctx context.Context, h http.Header, newEmail, callback string) error {
-	if !a.opts.ChangeEmailEnabled {
-		return &APIError{400, "CHANGE_EMAIL_DISABLED", "Change email is disabled"}
-	}
+	_, err := a.changeEmail(ctx, h, newEmail, callback)
+	return err
+}
+
+// changeEmail also reports whether the address changed at once, so the
+// HTTP handler can re-issue the session cookies with the new address.
+func (a *Auth) changeEmail(ctx context.Context, h http.Header, newEmail, callback string) (bool, error) {
 	session, err := a.requireOwnerSession(ctx, h)
 	if err != nil {
-		return err
+		return false, err
+	}
+	if !a.opts.ChangeEmailEnabled {
+		return false, &APIError{400, "CHANGE_EMAIL_DISABLED", "Change email is disabled"}
 	}
 	newEmail = strings.ToLower(newEmail)
 	if !emailPattern.MatchString(newEmail) || strings.Contains(newEmail, "..") {
-		return &APIError{400, "INVALID_EMAIL", "Invalid email"}
+		return false, &APIError{400, "INVALID_EMAIL", "Invalid email"}
 	}
 	if newEmail == session.User.Email {
-		return &APIError{400, "BAD_REQUEST", "Email is the same"}
+		return false, &APIError{Status: 400, Message: "Email is the same"}
 	}
 	if callback != "" && !a.trustedURL(ctx, callback, true) {
-		return &APIError{403, "INVALID_CALLBACK_URL", "Invalid callbackURL"}
+		return false, &APIError{403, "INVALID_CALLBACK_URL", "Invalid callbackURL"}
 	}
 	immediate := !session.User.EmailVerified && a.opts.UpdateEmailWithoutVerification
 	if !immediate && a.opts.SendVerificationEmail == nil {
-		return &APIError{400, "VERIFICATION_EMAIL_NOT_ENABLED", "Verification email isn't enabled"}
+		return false, &APIError{Status: 400, Message: "Verification email isn't enabled"}
 	}
 	s, err := a.accountStore()
 	if err != nil {
-		return err
+		return false, err
 	}
+	// An address another account holds answers like a free one, without
+	// mail or change, so the route does not reveal who is registered.
 	if _, err = s.FindAccountUser(ctx, newEmail); err == nil {
-		return nil
+		return false, nil
 	} else if !errors.Is(err, ErrNotFound) {
-		return err
+		return false, err
 	}
 	if immediate {
 		lifecycle, err := a.lifecycleStore()
 		if err != nil {
-			return err
+			return false, err
 		}
 		row := session.User
 		row.Email = newEmail
 		if _, _, err := a.beforeUserUpdate(ctx, row, nil, false); errors.Is(err, ErrSkipWrite) {
-			return nil
+			return false, nil
 		} else if err != nil {
-			return err
+			return false, err
 		}
 		u, err := lifecycle.ChangeAccountEmail(ctx, session.User.ID, session.User.Email, newEmail, false, a.now().UTC())
 		if errors.Is(err, ErrEmailTaken) {
-			return nil
+			return false, nil
 		}
 		if err != nil {
-			return err
+			return false, err
 		}
 		if err := a.afterUserUpdate(ctx, u, nil); err != nil {
-			return err
+			return true, err
 		}
 		if a.opts.SendVerificationEmail != nil {
-			return a.deliverEmailProof(ctx, "Could not deliver verification email for a changed address", u, "", "", callback, a.opts.SendVerificationEmail)
+			return true, a.deliverEmailProof(ctx, "Could not deliver verification email for a changed address", u, "", "", callback, a.opts.SendVerificationEmail)
 		}
-		return nil
+		return true, nil
 	}
 	if session.User.EmailVerified && a.opts.SendChangeEmailConfirmation != nil {
-		return a.deliverEmailProof(ctx, "Could not deliver email change confirmation", session.User, newEmail, "change-email-confirmation", callback, a.opts.SendChangeEmailConfirmation)
+		return false, a.deliverEmailProof(ctx, "Could not deliver email change confirmation", session.User, newEmail, "change-email-confirmation", callback, a.opts.SendChangeEmailConfirmation)
 	}
-	return a.deliverEmailProof(ctx, "Could not deliver email change verification", session.User, newEmail, "change-email-verification", callback, a.opts.SendVerificationEmail)
+	return false, a.deliverEmailProof(ctx, "Could not deliver email change verification", session.User, newEmail, "change-email-verification", callback, a.opts.SendVerificationEmail)
 }

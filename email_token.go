@@ -204,6 +204,13 @@ func (a *Auth) applyEmailProof(r *http.Request, response http.Header, raw, callb
 		if err == nil && u.EmailVerified {
 			err = runEmailVerificationHook(ctx, a.opts.AfterEmailVerification, u, r)
 		}
+		// A signed-in browser gets cookies that carry the new address; a
+		// link opened without a session starts none.
+		if err == nil && session != nil {
+			if token := a.cookieToken(h); token != "" {
+				err = a.writeSessionCookieHeaders(response, r, token, !a.dontRemember(r))
+			}
+		}
 		return map[string]any{"status": true, "user": u}, err
 	default:
 		return nil, &APIError{401, "INVALID_TOKEN", "Invalid token"}
