@@ -93,8 +93,10 @@ func (s *Store) completeEmailVerification(ctx context.Context, v auth.EmailVerif
 		return "", tx.Commit()
 	}
 	group := "verified-email-proof:" + v.OwnerID
-	if _, err := tx.ExecContext(ctx, s.bind(`DELETE FROM "verification" WHERE "identifier"=? AND "expiresAt"<=?`), group, s.date(v.Now)); err != nil {
-		return "", err
+	if s.sweeping() {
+		if _, err := tx.ExecContext(ctx, s.bind(`DELETE FROM "verification" WHERE "identifier"=? AND "expiresAt"<=?`), group, s.date(v.Now)); err != nil {
+			return "", err
+		}
 	}
 	if err := s.unspentEmailVerification(ctx, tx, v); err != nil {
 		return "", err
@@ -234,8 +236,10 @@ func (s *Store) FinishObservedEmailSession(ctx context.Context, v auth.EmailVeri
 }
 
 func (s *Store) saveVerificationReceipt(ctx context.Context, tx *sql.Tx, r auth.EmailVerificationReceipt, now time.Time) error {
-	if _, err := tx.ExecContext(ctx, s.bind(`DELETE FROM "verification" WHERE "identifier"=? AND "expiresAt"<=?`), r.Identifier, s.date(now)); err != nil {
-		return err
+	if s.sweeping() {
+		if _, err := tx.ExecContext(ctx, s.bind(`DELETE FROM "verification" WHERE "identifier"=? AND "expiresAt"<=?`), r.Identifier, s.date(now)); err != nil {
+			return err
+		}
 	}
 	_, err := tx.ExecContext(ctx, s.bind(`INSERT INTO "verification" ("id","identifier","value","expiresAt","createdAt","updatedAt") VALUES (?,?,?,?,?,?)`), rand.Text(), r.Identifier, r.Value, s.date(r.ExpiresAt), s.date(now), s.date(now))
 	return err

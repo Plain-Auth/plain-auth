@@ -31,7 +31,12 @@ func (s *Store) SaveOneTimeToken(ctx context.Context, key string, source auth.Se
 	if row.RequireOwner() != nil || transferOwnerBanned(owner.user, now) {
 		return auth.ErrNotFound
 	}
-	if !s.nextTransferExpiry.IsZero() && !s.nextTransferExpiry.After(now) {
+	// An expired transfer with this key is replaced; others are swept unless
+	// expired entries are kept.
+	if p, ok := s.transfers[key]; ok && s.keepExpired && !p.expires.After(now) {
+		delete(s.transfers, key)
+	}
+	if !s.keepExpired && !s.nextTransferExpiry.IsZero() && !s.nextTransferExpiry.After(now) {
 		s.nextTransferExpiry = time.Time{}
 		for k, p := range s.transfers {
 			if !p.expires.After(now) {

@@ -172,7 +172,7 @@ func (s *Store) SaveEmailOTP(ctx context.Context, req auth.EmailOTPRequest, allo
 			return "", nil
 		}
 		for old, p := range s.emailOTPs {
-			if !p.ExpiresAt.After(req.Now) {
+			if !s.keepExpired && !p.ExpiresAt.After(req.Now) {
 				delete(s.emailOTPs, old)
 			}
 		}

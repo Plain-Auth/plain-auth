@@ -208,7 +208,13 @@ func (s *Store) applyStripeSubscriptionChange(ctx context.Context, key billing.S
 				}
 			}
 			identifier := stripeOwnerKey(ctx, "event", r.Owner)
-			if _, err = tx.ExecContext(ctx, s.bind(`DELETE FROM "verification" WHERE "identifier"=? AND "expiresAt"<=?`), identifier, now); err != nil {
+			// An expired receipt for this event is replaced; the owner's
+			// others are swept unless expired verification rows are kept.
+			sweep, args := `DELETE FROM "verification" WHERE "identifier"=? AND "expiresAt"<=?`, []any{identifier, now}
+			if !s.sweeping() {
+				sweep, args = `DELETE FROM "verification" WHERE "id"=? AND "expiresAt"<=?`, []any{stripeRecordID("event", key.EventID), now}
+			}
+			if _, err = tx.ExecContext(ctx, s.bind(sweep), args...); err != nil {
 				return err
 			}
 			if _, err = tx.ExecContext(ctx, s.bind(`INSERT INTO "verification" ("id","identifier","value","expiresAt","createdAt","updatedAt") VALUES (?,?,?,?,?,?)`), stripeRecordID("event", key.EventID), identifier, key.RemoteID, s.date(currentTime.Add(45*24*time.Hour)), now, now); err != nil {

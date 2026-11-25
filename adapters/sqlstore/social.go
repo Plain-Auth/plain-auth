@@ -30,8 +30,10 @@ func (s *Store) SaveOAuthFlow(ctx context.Context, flow authn.OAuthFlow, now tim
 		return err
 	}
 	defer tx.Rollback()
-	if _, err = tx.ExecContext(ctx, s.bind(`DELETE FROM "verification" WHERE "identifier" LIKE 'oauth-state:%' AND "expiresAt"<=?`), s.date(now)); err != nil {
-		return err
+	if s.sweeping() {
+		if _, err = tx.ExecContext(ctx, s.bind(`DELETE FROM "verification" WHERE "identifier" LIKE 'oauth-state:%' AND "expiresAt"<=?`), s.date(now)); err != nil {
+			return err
+		}
 	}
 	_, err = tx.ExecContext(ctx, s.bind(`INSERT INTO "verification" ("id","identifier","value","expiresAt","createdAt","updatedAt") VALUES (?,?,?,?,?,?)`),
 		flow.State, "oauth-state:"+flow.Binding, string(payload), s.date(flow.ExpiresAt), s.date(now), s.date(now))
@@ -445,10 +447,16 @@ func (s *Store) applyLinkProfile(ctx context.Context, tx *sql.Tx, owner, candida
 }
 
 func (s *Store) claimIDToken(ctx context.Context, tx *sql.Tx, provider string, hash [32]byte, now, expires time.Time) error {
-	if _, err := tx.ExecContext(ctx, s.bind(`DELETE FROM "verification" WHERE "identifier"='consumed-id-token' AND "expiresAt"<=?`), s.date(now)); err != nil {
+	id := "oid-" + hex.EncodeToString(hash[:16])
+	// An expired claim with this id is replaced; others are swept unless
+	// expired verification rows are kept.
+	sweep, args := `DELETE FROM "verification" WHERE "identifier"='consumed-id-token' AND "expiresAt"<=?`, []any{s.date(now)}
+	if !s.sweeping() {
+		sweep, args = `DELETE FROM "verification" WHERE "id"=? AND "expiresAt"<=?`, []any{id, s.date(now)}
+	}
+	if _, err := tx.ExecContext(ctx, s.bind(sweep), args...); err != nil {
 		return err
 	}
-	id := "oid-" + hex.EncodeToString(hash[:16])
 	q := `INSERT INTO "verification" ("id","identifier","value","expiresAt","createdAt","updatedAt") VALUES (?,'consumed-id-token',?,?,?,?)`
 	if s.dialect != "mysql" {
 		q += ` ON CONFLICT("id") DO NOTHING`

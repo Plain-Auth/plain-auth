@@ -40,7 +40,15 @@ func (s *Store) saveMagicLink(ctx context.Context, ch auth.MagicLinkChallenge) e
 		return err
 	}
 	defer tx.Rollback()
-	if _, err = tx.ExecContext(ctx, s.bind(`DELETE FROM "verification" WHERE "expiresAt"<=? AND ("identifier" LIKE 'magic-link:%' OR "identifier" LIKE 'magic-link-owner:%')`), s.date(ch.CreatedAt)); err != nil {
+	tokenHash := sha256.Sum256([]byte(ch.Key))
+	id := "ml-" + hex.EncodeToString(tokenHash[:16])
+	// An expired link with this key, and its owner binding, are replaced;
+	// others are swept unless expired verification rows are kept.
+	sweep, args := `DELETE FROM "verification" WHERE "expiresAt"<=? AND ("identifier" LIKE 'magic-link:%' OR "identifier" LIKE 'magic-link-owner:%')`, []any{s.date(ch.CreatedAt)}
+	if !s.sweeping() {
+		sweep, args = `DELETE FROM "verification" WHERE "expiresAt"<=? AND ("id"=? OR "identifier"=?)`, []any{s.date(ch.CreatedAt), id, "magic-link-owner:" + id}
+	}
+	if _, err = tx.ExecContext(ctx, s.bind(sweep), args...); err != nil {
 		return err
 	}
 	email := strings.ToLower(ch.Email)
@@ -48,8 +56,6 @@ func (s *Store) saveMagicLink(ctx context.Context, ch auth.MagicLinkChallenge) e
 	if err != nil {
 		return err
 	}
-	tokenHash := sha256.Sum256([]byte(ch.Key))
-	id := "ml-" + hex.EncodeToString(tokenHash[:16])
 	insert := s.bind(`INSERT INTO "verification" ("id","identifier","value","expiresAt","createdAt","updatedAt") VALUES (?,?,?,?,?,?)`)
 	save := func(id, key, value string) error {
 		_, err := tx.ExecContext(ctx, insert, id, key, value, s.date(ch.ExpiresAt), s.date(ch.CreatedAt), s.date(ch.CreatedAt))

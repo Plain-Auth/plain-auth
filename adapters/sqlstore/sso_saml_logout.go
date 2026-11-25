@@ -26,8 +26,10 @@ func (s *Store) putSAMLRecord(ctx context.Context, tx *sql.Tx, id, kind string, 
 		return err
 	}
 	// Restrict expiration to this feature's short-lived records in the shared table.
-	if _, err = tx.ExecContext(ctx, s.bind(`DELETE FROM "verification" WHERE "identifier"=? AND "expiresAt"<=?`), kind, s.date(now)); err != nil {
-		return err
+	if s.sweeping() {
+		if _, err = tx.ExecContext(ctx, s.bind(`DELETE FROM "verification" WHERE "identifier"=? AND "expiresAt"<=?`), kind, s.date(now)); err != nil {
+			return err
+		}
 	}
 	_, err = tx.ExecContext(ctx, s.bind(`INSERT INTO "verification" ("id","identifier","value","expiresAt","createdAt","updatedAt") VALUES (?,?,?,?,?,?)`), id, kind, string(raw), s.date(expires), s.date(now), s.date(now))
 	return err

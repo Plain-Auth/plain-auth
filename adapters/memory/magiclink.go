@@ -22,8 +22,10 @@ func (s *Store) SaveMagicLink(ctx context.Context, link auth.MagicLinkChallenge)
 	if err := ctx.Err(); err != nil {
 		return err
 	}
+	// An expired link with this key is replaced; others are swept unless
+	// expired entries are kept.
 	for key, old := range s.magicLinks {
-		if !old.ExpiresAt.After(link.CreatedAt) {
+		if !old.ExpiresAt.After(link.CreatedAt) && (!s.keepExpired || key == link.Key) {
 			delete(s.magicLinks, key)
 		}
 	}

@@ -40,13 +40,16 @@ type Store struct {
 	mirror                   *atomic.Pointer[sessionMirror]
 	apiKeyLedgerReady        *atomic.Bool
 	dpopNextSweep            *atomic.Int64
-	adminRole, adminDenial   string
-	membershipLimit          org.MembershipLimit
-	organizationLimit        int
-	teamOptions              *org.TeamOptions
-	factorSchema             bool
-	db                       *sql.DB
-	dialect                  string
+	// cleanup is whether writes delete expired verification rows in passing,
+	// shared by every copy of the store.
+	cleanup                *atomic.Int32
+	adminRole, adminDenial string
+	membershipLimit        org.MembershipLimit
+	organizationLimit      int
+	teamOptions            *org.TeamOptions
+	factorSchema           bool
+	db                     *sql.DB
+	dialect                string
 }
 
 func normalizeDialect(name string) (string, error) {
@@ -127,7 +130,7 @@ func connectDB(ctx context.Context, dialect, dsn string, create bool) (*Store, e
 	if err != nil {
 		return nil, err
 	}
-	return &Store{db: db, dialect: name, adminSchema: new(atomic.Bool), mirror: new(atomic.Pointer[sessionMirror]), apiKeyLedgerReady: new(atomic.Bool), dpopNextSweep: new(atomic.Int64)}, nil
+	return &Store{db: db, dialect: name, adminSchema: new(atomic.Bool), mirror: new(atomic.Pointer[sessionMirror]), apiKeyLedgerReady: new(atomic.Bool), dpopNextSweep: new(atomic.Int64), cleanup: new(atomic.Int32)}, nil
 }
 
 func openSQLite(path string, create bool) (*sql.DB, error) {

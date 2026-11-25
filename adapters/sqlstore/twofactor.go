@@ -329,8 +329,10 @@ func (s *Store) writeFactorChange(ctx context.Context, tx *sql.Tx, sub auth.Fact
 				return auth.ErrNotFound
 			}
 		}
-		if err := exec(`DELETE FROM "verification" WHERE "value"=? AND "identifier" LIKE 'trust-device-%' AND "expiresAt"<=?`, uid, s.date(sub.Now)); err != nil {
-			return err
+		if s.sweeping() {
+			if err := exec(`DELETE FROM "verification" WHERE "value"=? AND "identifier" LIKE 'trust-device-%' AND "expiresAt"<=?`, uid, s.date(sub.Now)); err != nil {
+				return err
+			}
 		}
 		if err := exec(`INSERT INTO "verification" ("id","identifier","value","expiresAt","createdAt","updatedAt") VALUES (?,?,?,?,?,?)`, rand.Text(), ch.CreateTrustedGrant, uid, s.date(ch.TrustedUntil), s.date(sub.Now), s.date(sub.Now)); err != nil {
 			return err

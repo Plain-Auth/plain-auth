@@ -37,7 +37,7 @@ func (s *Store) ReserveDPoPProof(ctx context.Context, key string, now, expires t
 	id := s.verificationReservationID(identifier)
 	cutoff := s.date(now)
 	next := s.dpopNextSweep.Load()
-	if now.Unix() >= next && s.dpopNextSweep.CompareAndSwap(next, now.Add(time.Minute).Unix()) {
+	if s.sweeping() && now.Unix() >= next && s.dpopNextSweep.CompareAndSwap(next, now.Add(time.Minute).Unix()) {
 		_, err = s.db.ExecContext(ctx, s.bind(`DELETE FROM "verification" WHERE "identifier" LIKE 'dpop-proof:%' AND "expiresAt"<=?`), cutoff)
 	} else {
 		_, err = s.db.ExecContext(ctx, s.bind(`DELETE FROM "verification" WHERE "id"=? AND "identifier"=? AND "expiresAt"<=?`), id, identifier, cutoff)

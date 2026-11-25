@@ -42,8 +42,10 @@ func (s *Store) SavePasskeyChallenge(ctx context.Context, key string, body []byt
 		return err
 	}
 	defer tx.Rollback()
-	if _, err := tx.ExecContext(ctx, s.bind(`DELETE FROM "verification" WHERE "identifier" LIKE 'passkey:%' AND "expiresAt"<=?`), s.date(now)); err != nil {
-		return err
+	if s.sweeping() {
+		if _, err := tx.ExecContext(ctx, s.bind(`DELETE FROM "verification" WHERE "identifier" LIKE 'passkey:%' AND "expiresAt"<=?`), s.date(now)); err != nil {
+			return err
+		}
 	}
 	_, err = tx.ExecContext(ctx, s.bind(`INSERT INTO "verification" ("id","identifier","value","expiresAt","createdAt","updatedAt") VALUES(?,?,?,?,?,?)`), rand.Text(), "passkey:"+key, string(body), s.date(expiry), s.date(now), s.date(now))
 	if err != nil {

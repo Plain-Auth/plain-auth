@@ -19,8 +19,10 @@ func (s *Store) finishCheckout(ctx context.Context, tx *sql.Tx, a billing.Checko
 			return billing.ErrCheckoutReconcile
 		}
 		ownerKey := stripeOwnerKey(ctx, "return", a.Owner)
-		if _, err := tx.ExecContext(ctx, s.bind(`DELETE FROM "verification" WHERE "identifier"=? AND "expiresAt"<=?`), ownerKey, s.date(now)); err != nil {
-			return err
+		if s.sweeping() {
+			if _, err := tx.ExecContext(ctx, s.bind(`DELETE FROM "verification" WHERE "identifier"=? AND "expiresAt"<=?`), ownerKey, s.date(now)); err != nil {
+				return err
+			}
 		}
 		// Keep the owner and final callback for replay. The hosted payment URL
 		// and the original idempotency parameters are no longer needed.

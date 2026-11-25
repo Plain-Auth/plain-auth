@@ -38,6 +38,9 @@ type Store struct {
 	users                map[string]credential
 	emailToID            map[string]string
 	sessions             map[string]auth.StoredSession
+	// keepExpired stops writes from deleting expired verification entries;
+	// cleanupSet records that the setting was fixed.
+	keepExpired, cleanupSet bool
 }
 
 func New() *Store {

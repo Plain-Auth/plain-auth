@@ -21,8 +21,10 @@ func (s *Store) SaveBrowserConsent(ctx context.Context, p op.BrowserConsentPromp
 	}
 	defer tx.Rollback()
 	now := s.date(time.Now().UTC())
-	if _, err := tx.ExecContext(ctx, s.bind(`DELETE FROM "verification" WHERE "identifier"=? AND "expiresAt"<=?`), browserConsentKey, now); err != nil {
-		return err
+	if s.sweeping() {
+		if _, err := tx.ExecContext(ctx, s.bind(`DELETE FROM "verification" WHERE "identifier"=? AND "expiresAt"<=?`), browserConsentKey, now); err != nil {
+			return err
+		}
 	}
 	id := s.verificationReservationID(browserConsentKey + ":" + p.ID)
 	const insert = `INSERT INTO "verification" ("id","identifier","value","expiresAt","createdAt","updatedAt") VALUES (?,?,?,?,?,?)`

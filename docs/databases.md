@@ -83,6 +83,20 @@ Managed services that speak the PostgreSQL protocol, such as Neon, Supabase and 
 
 The default layout uses per-dialect SQL types. A password account has provider ID `credential` and its account ID matches the owning user. Sessions reference that user and expire at their stored timestamp. Account registration writes the user, credential and initial session in one transaction. See the [dialect schemas](../adapters/sqlstore/schema) and [database contract tests](../adapters/sqlstore/engines_test.go).
 
+### Expired verification records
+
+Each write of a verification record deletes the expired records of its kind, so abandoned OAuth states, reset tokens and challenges do not pile up. To keep them, for an audit or your own retention job, set `DisableVerificationCleanup`:
+
+```go
+auth, err := plainauth.New(plainauth.Options{
+	Store:                      store,
+	DisableVerificationCleanup: true,
+	// ...
+})
+```
+
+Expired records are still refused, and a record that is used is still removed. A write whose key matches an expired record replaces that one record. Nothing else deletes them, so prune the `verification` table on your own schedule, for example by deleting rows whose `expiresAt` is in the past. Every server sharing a store value must use the same setting; a store already used with the other value makes `New` return an error. The SQL stores and `memory.New()` support the option. A custom store supports it by implementing `VerificationCleanupStore`. Without that, `New` refuses the option. The [cleanup tests](../adapters/sqlstore/verification_cleanup_test.go) cover SQLite, PostgreSQL and MySQL.
+
 For isolated development without a database, pass `memory.New()` from `github.com/Plain-Org/plain-auth/adapters/memory` as the store. Its users and sessions live in a single process and are discarded when the process exits. The [in-memory tests](../adapters/memory/memory_test.go) exercise registration and session revocation.
 
 ## Run database integration tests

@@ -23,7 +23,7 @@ func (s *Store) SavePhoneOTP(ctx context.Context, r auth.PhoneOTPRecord) error {
 }
 func (s *Store) savePhoneLocked(r auth.PhoneOTPRecord) {
 	for key, old := range s.phoneOTPs {
-		if !old.ExpiresAt.After(r.CreatedAt) {
+		if !s.keepExpired && !old.ExpiresAt.After(r.CreatedAt) {
 			delete(s.phoneOTPs, key)
 		}
 	}

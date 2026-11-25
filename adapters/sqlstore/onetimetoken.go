@@ -39,7 +39,15 @@ func (s *Store) saveOneTimeToken(ctx context.Context, key string, source auth.Se
 	if err = s.lockActiveAccount(ctx, tx, source.UserID, source.Token, now); err != nil {
 		return err
 	}
-	if _, err = tx.ExecContext(ctx, s.bind(`DELETE FROM "verification" WHERE "expiresAt"<=? AND ("identifier" LIKE 'one-time-token:%' OR "identifier" LIKE 'one-time-token-owner:%')`), s.date(now)); err != nil {
+	hash := sha256.Sum256([]byte(key))
+	vid := "ot-" + hex.EncodeToString(hash[:16])
+	// An expired transfer with this key, and its owner binding, are
+	// replaced; others are swept unless expired verification rows are kept.
+	sweep, args := `DELETE FROM "verification" WHERE "expiresAt"<=? AND ("identifier" LIKE 'one-time-token:%' OR "identifier" LIKE 'one-time-token-owner:%')`, []any{s.date(now)}
+	if !s.sweeping() {
+		sweep, args = `DELETE FROM "verification" WHERE "expiresAt"<=? AND "identifier" IN (?,?)`, []any{s.date(now), "one-time-token:" + key, "one-time-token-owner:" + vid}
+	}
+	if _, err = tx.ExecContext(ctx, s.bind(sweep), args...); err != nil {
 		return err
 	}
 	var id, owner, token string
@@ -61,8 +69,6 @@ func (s *Store) saveOneTimeToken(ctx context.Context, key string, source auth.Se
 	if !errors.Is(err, sql.ErrNoRows) {
 		return err
 	}
-	hash := sha256.Sum256([]byte(key))
-	vid := "ot-" + hex.EncodeToString(hash[:16])
 	insert := s.bind(`INSERT INTO "verification" ("id","identifier","value","expiresAt","createdAt","updatedAt") VALUES (?,?,?,?,?,?)`)
 	for _, row := range []struct{ id, identifier, value string }{{vid, "one-time-token:" + key, source.Token}, {rand.Text(), "one-time-token-owner:" + vid, owner + "\x1f" + id}} {
 		if _, err = tx.ExecContext(ctx, insert, row.id, row.identifier, row.value, s.date(expires), s.date(now), s.date(now)); err != nil {

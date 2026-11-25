@@ -87,6 +87,9 @@ func New(opts Options) (*Auth, error) {
 	if err := prepareSecondaryStorage(&opts); err != nil {
 		return nil, err
 	}
+	if err := prepareVerificationCleanup(&opts); err != nil {
+		return nil, err
+	}
 	if opts.EmailAndPassword && !opts.DisableSignUp && opts.OnExistingUserSignUp != nil && (opts.RequireEmailVerification || opts.DisableAutoSignIn) {
 		if _, ok := opts.Store.(signUpUserFinder); !ok {
 			return nil, errors.New("auth: protected sign-up observer requires a store implementing FindAccountUser")

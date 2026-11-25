@@ -40,7 +40,7 @@ func (s *Store) SaveDeletionToken(ctx context.Context, t auth.PasswordResetToken
 		return auth.ErrNotFound
 	}
 	for key, row := range s.deletions {
-		if !row.ExpiresAt.After(t.CreatedAt) {
+		if !s.keepExpired && !row.ExpiresAt.After(t.CreatedAt) {
 			delete(s.deletions, key)
 		}
 	}

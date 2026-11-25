@@ -70,8 +70,10 @@ func (s *Store) saveWalletNonce(ctx context.Context, nonce string, now, expires 
 			return &auth.APIError{Status: 500, Code: "SIWE_INVALID_NONCE", Message: "The nonce generator repeated a previous challenge"}
 		}
 	}
-	if _, err := tx.ExecContext(ctx, s.bind(`DELETE FROM "verification" WHERE "identifier" LIKE 'siwe:%' AND "expiresAt"<=?`), s.date(now)); err != nil {
-		return err
+	if s.sweeping() {
+		if _, err := tx.ExecContext(ctx, s.bind(`DELETE FROM "verification" WHERE "identifier" LIKE 'siwe:%' AND "expiresAt"<=?`), s.date(now)); err != nil {
+			return err
+		}
 	}
 	_, err = tx.ExecContext(ctx, s.bind(`INSERT INTO "verification" ("id","identifier","value","expiresAt","createdAt","updatedAt") VALUES(?,?,?,?,?,?)`), id, "siwe:"+nonce, nonce, s.date(expires), s.date(now), s.date(now))
 	if err != nil {

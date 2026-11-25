@@ -112,7 +112,7 @@ func (s *Store) SavePasswordResetToken(ctx context.Context, row auth.PasswordRes
 	}
 	// Lazy expiry keeps abandoned reset requests from accumulating indefinitely.
 	for key, existing := range s.resets {
-		if !existing.ExpiresAt.After(row.CreatedAt) {
+		if !s.keepExpired && !existing.ExpiresAt.After(row.CreatedAt) {
 			delete(s.resets, key)
 		}
 	}

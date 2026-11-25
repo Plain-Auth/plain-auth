@@ -220,6 +220,13 @@ type Options struct {
 	// is marked ended and is never served again. Deleting the user still
 	// removes its rows. It requires SecondaryStorage.
 	PreserveSessionInDatabase bool
+	// DisableVerificationCleanup stops the store from deleting expired
+	// verification records, such as OAuth states, passkey challenges and
+	// reset tokens, as it writes new ones. Expired records are still refused.
+	// A write that reuses an expired record's key still replaces that one
+	// record. Prune the table yourself. Every Auth sharing a store must use
+	// the same setting.
+	DisableVerificationCleanup bool
 	// FreshAge is how recent a session must be for sensitive account changes,
 	// such as deleting the user or unlinking an account. It defaults to one
 	// day; a negative value turns the check off.

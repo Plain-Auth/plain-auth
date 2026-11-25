@@ -65,7 +65,7 @@ func (s *Store) completeEmailVerification(ctx context.Context, v auth.EmailVerif
 		return "", nil
 	}
 	for id, previous := range s.spentEmailProofs {
-		if !previous.expires.After(v.Now) {
+		if !s.keepExpired && !previous.expires.After(v.Now) {
 			delete(s.spentEmailProofs, id)
 		}
 	}
@@ -152,7 +152,7 @@ func (s *Store) saveVerificationReceipt(receipt auth.EmailVerificationReceipt, n
 		s.verificationReceipts = make(map[string]auth.EmailVerificationReceipt)
 	}
 	for key, r := range s.verificationReceipts {
-		if !r.ExpiresAt.After(now) {
+		if !s.keepExpired && !r.ExpiresAt.After(now) {
 			delete(s.verificationReceipts, key)
 		}
 	}
