@@ -252,11 +252,20 @@ func TestPluginVerificationHooks(t *testing.T) {
 	edit = false
 	mu.Unlock()
 
-	// A spend runs find, its before hook, the spend and its after hook.
+	// A spend runs find, its before hook, the spend and its after hook, on the
+	// record find read, with its expiry in UTC to the millisecond.
+	mu.Lock()
+	seen, paths = nil, nil
+	mu.Unlock()
 	if out := call(a, "/vault/redeem", "a", 200); out["refused"] || stored("a") {
 		t.Fatal("an approved spend was refused")
 	}
 	same(v.drain(), "find", "delete-before", "spend", "delete-after")
+	mu.Lock()
+	if len(seen) != 2 || seen[0] != want || seen[1] != want || !reflect.DeepEqual(paths, []string{"/vault/redeem", "/vault/redeem"}) {
+		t.Fatal("the delete hooks saw", seen, paths)
+	}
+	mu.Unlock()
 	// A declined spend keeps the record and never calls spend.
 	set(skip, "delete-before", true)
 	if out := call(a, "/vault/redeem", "c", 200); !out["refused"] || !stored("c") {

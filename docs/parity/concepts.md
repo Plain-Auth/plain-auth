@@ -279,7 +279,7 @@
           - [x] Count each concurrent wrong guess at one email code once with its update after hook, and run one delete after hook among concurrent spends, on SQLite, PostgreSQL and MySQL ([test](../../adapters/sqlstore/email_code_hooks_test.go#L276))
           - [x] Refuse, uncounted, a guess at an email code another runtime stores again while its hooks run ([test](../../adapters/sqlstore/email_code_hooks_test.go#L254))
           - [x] Run one verification delete after hook among concurrent verifications of a phone code, on SQLite, PostgreSQL and MySQL ([test](../../adapters/sqlstore/phone_code_hooks_test.go#L206))
-          - [x] Run one verification delete after hook among concurrent verifications of a passkey challenge, on SQLite, PostgreSQL and MySQL ([test](../../adapters/sqlstore/passkey_hooks_test.go#L330))
+          - [x] Run one verification delete after hook among concurrent verifications of a passkey challenge, on SQLite, PostgreSQL and MySQL ([test](../../adapters/sqlstore/passkey_hooks_test.go#L358))
           - [x] Run one verification delete after hook among concurrent verifications of a wallet nonce, on SQLite, PostgreSQL and MySQL ([test](../../adapters/sqlstore/siwe_hooks_test.go#L347))
         - [x] Example Usage ([test](../../conformance/goapi/database_user_hooks_test.go#L227))
           - [x] Derive user fields in a before hook and call another service from an after hook ([test](../../conformance/goapi/database_hooks_test.go#L128))

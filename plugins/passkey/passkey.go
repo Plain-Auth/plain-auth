@@ -278,10 +278,12 @@ func (s service) take(c authn.EndpointContext, kind string) (ceremony, error) {
 		_ = json.Unmarshal(body, &saved) // a malformed ceremony names no owner; it is refused once spent
 		return challengeRecord(id, kind, saved, expires), nil
 	}, func(ctx context.Context) error {
-		var err error
-		data, err = store.TakePasskeyChallenge(ctx, key, time.Now().UTC())
+		body, err := store.TakePasskeyChallenge(ctx, key, time.Now().UTC())
 		if errors.Is(err, ErrChallenge) {
 			return authn.ErrNotFound
+		}
+		if err == nil {
+			data = body // only a committed spend clears the cookie
 		}
 		return err
 	})

@@ -203,9 +203,28 @@ func TestVerificationHooksAroundPasskeyChallenges(t *testing.T) {
 				}
 				return n
 			}
+			// like checks that every record hook since the last drain saw want,
+			// and none carried a secret of the challenge cookie names.
+			like := func(got []auth.VerificationRecord, want auth.VerificationRecord, cookie *http.Cookie, secrets ...string) {
+				t.Helper()
+				if len(got) == 0 {
+					t.Fatal("no record hook ran")
+				}
+				sum := sha256.Sum256([]byte(a.VerifySignedSessionToken(cookie.Value)))
+				for _, r := range got {
+					if r.ID != want.ID || r.Identifier != want.Identifier || r.UserID != want.UserID || !r.ExpiresAt.Equal(want.ExpiresAt) || r.ExpiresAt.Location() != time.UTC {
+						t.Fatalf("a hook saw %+v, want %+v", r, want)
+					}
+					for _, secret := range append(secrets, cookie.Value, a.VerifySignedSessionToken(cookie.Value), hex.EncodeToString(sum[:])) {
+						if secret != "" && strings.Contains(fmt.Sprint(r), secret) {
+							t.Fatal("a record carried a secret:", r)
+						}
+					}
+				}
+			}
 			// saw checks that every record hook since the last drain saw the
-			// challenge cookie names, and none carried a secret.
-			saw := func(got []auth.VerificationRecord, cookie *http.Cookie, kind, owner string, secrets ...string) {
+			// challenge cookie names, and returns that record.
+			saw := func(got []auth.VerificationRecord, cookie *http.Cookie, kind, owner string, secrets ...string) auth.VerificationRecord {
 				t.Helper()
 				key, id, expires := stored(cookie)
 				if id == "" {
@@ -214,19 +233,9 @@ func TestVerificationHooksAroundPasskeyChallenges(t *testing.T) {
 				if id != pk.ChallengeRecordID(key) {
 					t.Fatal("the row ID", id, "is not derived from the key")
 				}
-				if len(got) == 0 {
-					t.Fatal("no record hook ran")
-				}
-				for _, r := range got {
-					if r.ID != id || r.Identifier != kind || r.UserID != owner || !r.ExpiresAt.Equal(expires) || r.ExpiresAt.Location() != time.UTC {
-						t.Fatalf("a hook saw %+v for the row %s expiring %v, want kind %s and owner %q", r, id, expires, kind, owner)
-					}
-					for _, secret := range append(secrets, cookie.Value, a.VerifySignedSessionToken(cookie.Value), key) {
-						if secret != "" && strings.Contains(fmt.Sprint(r), secret) {
-							t.Fatal("a record carried a secret:", r)
-						}
-					}
-				}
+				want := auth.VerificationRecord{ID: id, Identifier: kind, UserID: owner, ExpiresAt: expires}
+				like(got, want, cookie, secrets...)
+				return want
 			}
 
 			res, err := a.SignUpEmail(ctx, auth.SignUpInput{Email: "owner@example.test", Name: "owner", Password: "local sample passphrase"}, auth.RequestMeta{})
@@ -241,14 +250,15 @@ func TestVerificationHooksAroundPasskeyChallenges(t *testing.T) {
 			options, cookie := request(a, "generate-register-options", nil, 200, session)
 			got, recs := drain()
 			same(got, "v-create-before:passkey-registration", "v-create-after:passkey-registration")
-			saw(recs, cookie, "passkey-registration", owner.ID, options["challenge"].(string))
+			created := saw(recs, cookie, "passkey-registration", owner.ID, options["challenge"].(string))
 			key.handle = options["user"].(map[string]any)["id"].(string)
 			// The challenge's hooks run before the session's.
 			request(b, "verify-registration", map[string]any{"response": key.response(t, options["challenge"].(string), origin, rp, 0, true), "name": "Primary", "createSession": true}, 200, cookie, session)
 			got, recs = drain()
 			same(got, "v-delete-before:passkey-registration", "v-delete-after:passkey-registration", "session-before", "session-after")
-			if len(recs) != 2 || recs[0] != recs[1] || rows["v-delete-before:passkey-registration"] != 1 || rows["v-delete-after:passkey-registration"] != 0 {
-				t.Fatal("the delete hooks saw", recs, rows)
+			like(recs, created, cookie, options["challenge"].(string))
+			if rows["v-delete-before:passkey-registration"] != 1 || rows["v-delete-after:passkey-registration"] != 0 {
+				t.Fatal("the delete hooks saw", rows, "rows")
 			}
 
 			// A declined challenge returns options that redeem nothing.
@@ -287,6 +297,19 @@ func TestVerificationHooksAroundPasskeyChallenges(t *testing.T) {
 			}
 			got, _ = drain()
 			same(got, "v-delete-before:passkey-registration", "v-delete-after:passkey-registration")
+			// The challenge is spent before the attestation is verified.
+			options, cookie = request(a, "generate-register-options", nil, 200, session)
+			drain()
+			third := newSoftwareKey(t)
+			third.handle = options["user"].(map[string]any)["id"].(string)
+			if body, _ := request(b, "verify-registration", map[string]any{"response": third.response(t, options["challenge"].(string), "https://untrusted.example.test", rp, 0, true)}, 400, cookie, session); body["code"] != "FAILED_TO_VERIFY_REGISTRATION" {
+				t.Fatal("a bad attestation answered", body)
+			}
+			got, _ = drain()
+			same(got, "v-delete-before:passkey-registration", "v-delete-after:passkey-registration")
+			if _, id, _ := stored(cookie); id != "" {
+				t.Fatal("a bad attestation kept its challenge")
+			}
 
 			// A signed-out sign-in's challenge names no owner.
 			counter := uint32(0)
@@ -301,8 +324,13 @@ func TestVerificationHooksAroundPasskeyChallenges(t *testing.T) {
 			}
 			// A sign-in spends its challenge before the session hooks run.
 			login(b, origin, 200)
-			got, _ = drain()
+			got, recs = drain()
 			same(got, "v-delete-before:passkey-authentication", "v-delete-after:passkey-authentication", "session-before", "session-after")
+			for _, r := range recs {
+				if r.Identifier != "passkey-authentication" || r.UserID != "" {
+					t.Fatal("a signed-out sign-in's spend saw", r)
+				}
+			}
 			// A failed assertion still spends the challenge.
 			login(b, "https://untrusted.example.test", 401)
 			got, _ = drain()
