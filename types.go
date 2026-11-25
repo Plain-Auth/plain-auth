@@ -221,8 +221,8 @@ type Options struct {
 	// removes its rows. It requires SecondaryStorage.
 	PreserveSessionInDatabase bool
 	// DisableVerificationCleanup stops the store from deleting expired
-	// verification records, such as OAuth states, passkey challenges and
-	// reset tokens, as it writes new ones. Expired records are still refused.
+	// verification records, such as OAuth states, passkey challenges, reset
+	// links and email codes, as it writes new ones. Expired records are still refused.
 	// A write that reuses an expired record's key still replaces that one
 	// record. Prune the table yourself. Every Auth sharing a store must use
 	// the same setting.

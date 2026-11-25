@@ -35,6 +35,13 @@ func TestDisableVerificationCleanup(t *testing.T) {
 	if err := start(struct{ auth.Store }{New()}, true); err == nil {
 		t.Fatal("a store without VerificationCleanupStore accepted the option")
 	}
+	free := New()
+	if _, err := auth.New(auth.Options{Store: free, BaseURL: "https://cleanup.example", Secret: "short", DisableVerificationCleanup: true}); err == nil {
+		t.Fatal("a short secret was accepted")
+	}
+	if err := start(free, false); err != nil {
+		t.Fatal("a failed New fixed the store's setting:", err)
+	}
 
 	now := time.Now().UTC().Truncate(time.Millisecond)
 	past, earlier := now.Add(-time.Hour), now.Add(-2*time.Hour)

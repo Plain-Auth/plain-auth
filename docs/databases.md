@@ -85,7 +85,7 @@ The default layout uses per-dialect SQL types. A password account has provider I
 
 ### Expired verification records
 
-Each write of a verification record deletes the expired records of its kind, so abandoned OAuth states, reset tokens and challenges do not pile up. To keep them, for an audit or your own retention job, set `DisableVerificationCleanup`:
+Writes of verification records delete expired ones in passing, so abandoned records do not pile up. A write of an OAuth state, magic link, one-time transfer, passkey or SIWE challenge, or DPoP proof deletes the expired records of its kind. A write of a password reset or deletion link, or of an email or phone code, deletes the expired records of those kinds, at most once a minute per store. Records of other kinds are replaced only when their key is written again. To keep expired records, for an audit or your own retention job, set `DisableVerificationCleanup`:
 
 ```go
 auth, err := plainauth.New(plainauth.Options{
@@ -95,7 +95,7 @@ auth, err := plainauth.New(plainauth.Options{
 })
 ```
 
-Expired records are still refused, and a record that is used is still removed. A write whose key matches an expired record replaces that one record. Nothing else deletes them, so prune the `verification` table on your own schedule, for example by deleting rows whose `expiresAt` is in the past. Every server sharing a store value must use the same setting; a store already used with the other value makes `New` return an error. The SQL stores and `memory.New()` support the option. A custom store supports it by implementing `VerificationCleanupStore`. Without that, `New` refuses the option. The [cleanup tests](../adapters/sqlstore/verification_cleanup_test.go) cover SQLite, PostgreSQL and MySQL.
+Expired records are still refused, and a record that is used is still removed. A write whose key matches an expired record replaces that one record. Nothing else deletes them, so prune the `verification` table on your own schedule, for example by deleting rows whose `expiresAt` is in the past. Every server sharing a store value must use the same setting; a store that an `Auth` already uses with the other value makes `New` return an error. The SQL stores and `memory.New()` support the option. A custom store supports it by implementing `VerificationCleanupStore`. Without that, `New` refuses the option. The [cleanup tests](../adapters/sqlstore/verification_cleanup_test.go) cover SQLite, PostgreSQL and MySQL.
 
 For isolated development without a database, pass `memory.New()` from `github.com/Plain-Org/plain-auth/adapters/memory` as the store. Its users and sessions live in a single process and are discarded when the process exits. The [in-memory tests](../adapters/memory/memory_test.go) exercise registration and session revocation.
 

@@ -112,6 +112,26 @@ func TestDisableVerificationCleanup(t *testing.T) {
 				t.Fatal("a sweeping store kept an expired magic link")
 			}
 
+			// Password reset links, swept with the other codes.
+			reset := func(store *Store, token string, at, expires time.Time) {
+				t.Helper()
+				if err := store.SavePasswordResetToken(ctx, auth.PasswordResetToken{ID: token, Token: token, UserID: owner.ID, Email: owner.Email, CreatedAt: at, ExpiresAt: expires}); err != nil {
+					t.Fatal(err)
+				}
+			}
+			reset(kept, "reset-a", earlier, past)
+			reset(kept, "reset-b", now, now.Add(time.Hour))
+			if rows("reset-password:") != 2 {
+				t.Fatal("a write deleted an expired reset link")
+			}
+			if _, err := kept.FindPasswordResetToken(ctx, "reset-a", now); !errors.Is(err, auth.ErrNotFound) {
+				t.Fatal("a kept expired reset link answered", err)
+			}
+			reset(swept, "reset-c", now, now.Add(time.Hour))
+			if rows("reset-password:") != 2 {
+				t.Fatal("a sweeping store kept an expired reset link")
+			}
+
 			// One-time session transfers.
 			transfer := func(store *Store, key string, at, expires time.Time) error {
 				return store.SaveOneTimeToken(ctx, key, session.Session, at, expires)

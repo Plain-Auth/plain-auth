@@ -87,9 +87,7 @@ func New(opts Options) (*Auth, error) {
 	if err := prepareSecondaryStorage(&opts); err != nil {
 		return nil, err
 	}
-	if err := prepareVerificationCleanup(&opts); err != nil {
-		return nil, err
-	}
+	cleanupStore := opts.Store
 	if opts.EmailAndPassword && !opts.DisableSignUp && opts.OnExistingUserSignUp != nil && (opts.RequireEmailVerification || opts.DisableAutoSignIn) {
 		if _, ok := opts.Store.(signUpUserFinder); !ok {
 			return nil, errors.New("auth: protected sign-up observer requires a store implementing FindAccountUser")
@@ -424,6 +422,11 @@ func New(opts Options) (*Auth, error) {
 		return nil, err
 	}
 	if err := a.prepareWellKnown(); err != nil {
+		return nil, err
+	}
+	// The store's cleanup setting is fixed last, so a New that fails leaves
+	// the store free for a corrected one.
+	if err := prepareVerificationCleanup(cleanupStore, opts.DisableVerificationCleanup); err != nil {
 		return nil, err
 	}
 	return a, nil

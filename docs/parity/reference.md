@@ -507,8 +507,8 @@
     - [ ] `modelName`
     - [ ] `fields`
     - [x] `disableCleanup` ([test](../../adapters/sqlstore/verification_cleanup_test.go#L18))
-      - [x] With DisableVerificationCleanup, writes on SQLite, PostgreSQL and MySQL keep the expired OAuth states, magic links, one-time transfers and DPoP proofs of other keys, still refuse them, and replace an expired row whose key is reused; a store fixed to one setting refuses the other. Expired rows are swept by writes of their kind rather than by lookups ([test](../../adapters/sqlstore/verification_cleanup_test.go#L18))
-      - [x] The memory store keeps expired reset tokens, magic links and transfers with the option, and a store without VerificationCleanupStore refuses it ([test](../../adapters/memory/verification_cleanup_test.go#L36))
+      - [x] With DisableVerificationCleanup, writes on SQLite, PostgreSQL and MySQL keep the expired OAuth states, magic links, reset links, one-time transfers and DPoP proofs of other keys, still refuse them, and replace an expired row whose key is reused; a store fixed to one setting refuses the other. Expired rows are swept by writes rather than by lookups: of their kind, or for reset and deletion links and email and phone codes, at most once a minute ([test](../../adapters/sqlstore/verification_cleanup_test.go#L18))
+      - [x] The memory store keeps expired reset tokens, magic links and transfers with the option, a store without VerificationCleanupStore refuses it, and a New that fails leaves the store's setting unfixed ([test](../../adapters/memory/verification_cleanup_test.go#L36))
     - [ ] `storeIdentifier`
     - [ ] `storeInDatabase`
   - [ ] `rateLimit`

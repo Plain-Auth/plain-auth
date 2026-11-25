@@ -199,6 +199,9 @@ func (s *Store) ChangeCredentialForSession(ctx context.Context, userID, oldHash,
 }
 
 func (s *Store) SavePasswordResetToken(ctx context.Context, t authn.PasswordResetToken) error {
+	if err := s.sweepCodes(ctx, t.CreatedAt); err != nil {
+		return err
+	}
 	_, err := s.db.ExecContext(ctx, s.bind(`INSERT INTO "verification" ("id","identifier","value","expiresAt","createdAt","updatedAt") VALUES (?,?,?,?,?,?)`), t.ID, "reset-password:"+t.Token, t.UserID, s.date(t.ExpiresAt), s.date(t.CreatedAt), s.date(t.CreatedAt))
 	return err
 }

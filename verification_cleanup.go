@@ -13,11 +13,11 @@ type VerificationCleanupStore interface {
 
 // prepareVerificationCleanup passes Options.DisableVerificationCleanup to
 // the store. Both values are passed, so instances sharing a store must agree.
-func prepareVerificationCleanup(opts *Options) error {
-	if store, ok := opts.Store.(VerificationCleanupStore); ok {
-		return store.KeepExpiredVerifications(opts.DisableVerificationCleanup)
+func prepareVerificationCleanup(store Store, keep bool) error {
+	if store, ok := store.(VerificationCleanupStore); ok {
+		return store.KeepExpiredVerifications(keep)
 	}
-	if opts.DisableVerificationCleanup {
+	if keep {
 		return errors.New("auth: DisableVerificationCleanup requires a store implementing VerificationCleanupStore")
 	}
 	return nil
