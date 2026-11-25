@@ -631,8 +631,9 @@
     - [x] Revoke Other Sessions ([test](../../conformance/goapi/http_test.go#L101))
       - [x] Invalidate an older session while retaining the current one ([test](../../conformance/goapi/http_test.go#L99))
       - [x] After revoke-other-sessions the older session cookie gets 401 on list-sessions, while the current session still authenticates the following revoke-session ([test](../../conformance/goapi/http_test.go#L101))
-    - [ ] Revoke All Sessions
+    - [x] Revoke All Sessions ([test](../../conformance/goapi/session_endpoints_test.go#L154))
       - [x] Revoke every session from the native client ([test](../../client/client_test.go#L94))
+      - [x] revoke-sessions ends every session of the caller, expires the session cookie, answers {"status":true} and leaves other users signed in ([test](../../conformance/goapi/session_endpoints_test.go#L154))
     - [x] Update Session ([test](../../conformance/session-fields.mjs#L22))
       - [x] Through the released client on both runtimes: updateSession persists additional fields, ignores a core userId, rejects id/userId-only and non-input fields, and returns 401 for guests or revoked sessions ([test](../../conformance/session-fields.mjs#L22))
     - [x] Revoking Sessions on Password Change ([test](../../conformance/goapi/account_test.go#L63))
