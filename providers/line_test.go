@@ -27,7 +27,7 @@ func TestLINEChannelTokenVerification(t *testing.T) {
 		{"unrecognized issuer", "iss", "https://other.example", false},
 		{"expired ID token", "exp", now - 1, false},
 		{"unissued ID token", "iat", now + 300, false},
-		{"missing email permission", "email", "", false},
+		{"missing email permission", "email", "", true},
 		{"empty user ID", "sub", "", false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -58,6 +58,11 @@ func TestLINEChannelTokenVerification(t *testing.T) {
 			if tc.allowed {
 				if err != nil || profile.Subject != "line-user" || profile.EmailVerified || profile.Name != "Jo" {
 					t.Fatal(profile, err)
+				}
+				// Without the email permission the profile has no email,
+				// which the sign-in answers with email_not_found.
+				if tc.field == "email" && profile.Email != "" {
+					t.Fatal("a profile without an email permission has", profile.Email)
 				}
 			} else if err == nil {
 				t.Fatal("accepted invalid channel identity")

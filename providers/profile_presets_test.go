@@ -157,6 +157,20 @@ func TestProfilePresetMissingIdentity(t *testing.T) {
 			if _, err = presetProfile(name, profileData{}); err == nil {
 				t.Fatal("accepted incomplete profile")
 			}
+			// A profile without an email comes back without one, and the
+			// sign-in answers email_not_found; Yandex gives no profile.
+			noEmail := map[string]profileData{
+				"gumroad": {"success": true, "user": map[string]any{"user_id": "u"}}, "hubspot": {"user_id": "u"},
+				"patreon": {"data": map[string]any{"id": "u"}}, "slack-oidc": {"sub": "u"}, "yandex": {"id": "u"},
+			}
+			profile, err := presetProfile(name, noEmail[name])
+			if name == "yandex" {
+				if err == nil {
+					t.Fatal("a Yandex profile without an email was accepted")
+				}
+			} else if err != nil || profile.Subject != "u" || profile.Email != "" {
+				t.Fatal("a profile without an email answered", profile, err)
+			}
 		})
 	}
 }

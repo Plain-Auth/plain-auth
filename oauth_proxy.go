@@ -221,10 +221,7 @@ func (a *Auth) exchangeProxyCallback(w http.ResponseWriter, r *http.Request, id 
 	result := oauthProxyResult{State: grant.State, Provider: id, Preview: grant.Preview, Production: grant.Production, Callback: grant.Callback, BasePath: grant.BasePath,
 		DisableSignUp: provider.DisableSignUp || provider.DisableImplicitSignUp && !grant.RequestSignUp, RequireEmailVerification: provider.RequireEmailVerification}
 	if code := q.Get("error"); code != "" {
-		result.Error = "OAUTH_CALLBACK_ERROR"
-		if len(code) <= 128 && errorCodeFormat.MatchString(code) {
-			result.Error = code
-		}
+		result.Error = code
 	} else if q.Get("code") == "" {
 		result.Error = "no_code"
 	} else {
@@ -302,7 +299,7 @@ func (a *Auth) serveOAuthProxyCompletion(w http.ResponseWriter, r *http.Request,
 		result, err := a.completeProxyCallback(w, r, id)
 		var failure proxyBrowserError
 		if errors.As(err, &failure) {
-			return Redirect(a.opts.BasePath + "/error?" + url.Values{"error": {string(failure)}}.Encode()), nil
+			return Redirect(strings.TrimRight(a.opts.BasePath, "/") + "/error?" + url.Values{"error": {string(failure)}}.Encode()), nil
 		}
 		return result, err
 	})

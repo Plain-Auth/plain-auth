@@ -118,3 +118,31 @@ func TestOAuthCallbackErrors(t *testing.T) {
 		t.Fatal("a spent state answered", got)
 	}
 }
+
+// Mounted at the root, the OAuth proxy's own failures still go to /error on
+// this host, not to the host-relative //error.
+func TestOAuthProxyErrorAtRootMount(t *testing.T) {
+	store, err := sqlite.Open(":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	proxy, err := authn.NewOAuthProxy(authn.OAuthProxyOptions{ProductionURL: "https://login.example.test", Secret: strings.Repeat("p", 32)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	off := false
+	auth, err := authn.New(authn.Options{BaseURL: "https://preview.example.test", BasePath: "/", Store: store, Secret: strings.Repeat("s", 32), RateLimit: &off, Plugins: []authn.Plugin{proxy},
+		SocialProviders: map[string]authn.OAuthProvider{"local": {Config: oauth2.Config{ClientID: "client", Endpoint: oauth2.Endpoint{AuthURL: "https://id.example/authorize", TokenURL: "https://id.example/token"}},
+			Resolve: func(context.Context, *oauth2.Token, string) (authn.OAuthProfile, error) {
+				return authn.OAuthProfile{}, errors.New("unused")
+			}}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	w := httptest.NewRecorder()
+	auth.ServeHTTP(w, httptest.NewRequest("GET", "https://preview.example.test/callback/local/oauth-proxy?callbackURL=/", nil))
+	if got := w.Header().Get("Location"); w.Code != http.StatusFound || got != "/error?error=missing_profile" {
+		t.Fatal("a proxy completion without a profile answered", w.Code, got)
+	}
+}

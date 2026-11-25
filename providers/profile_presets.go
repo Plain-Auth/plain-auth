@@ -133,7 +133,9 @@ func presetProfile(name string, p profileData) (auth.OAuthProfile, error) {
 			photo = "https://avatars.yandex.net/get-yapic/" + url.PathEscape(avatar) + "/islands-200"
 		}
 	}
-	if strings.TrimSpace(out.Subject) == "" || strings.TrimSpace(out.Email) == "" {
+	// A profile without an email is returned without one, and the sign-in
+	// answers email_not_found. Yandex gives no profile at all without one.
+	if strings.TrimSpace(out.Subject) == "" || name == "yandex" && strings.TrimSpace(out.Email) == "" {
 		return auth.OAuthProfile{}, errors.New("provider profile is missing a subject or email")
 	}
 	fields := map[string]any{subjectKey: out.Subject, "name": out.Name, "email": out.Email, "emailVerified": out.EmailVerified}

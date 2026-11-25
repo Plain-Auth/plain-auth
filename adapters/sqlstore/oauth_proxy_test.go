@@ -249,6 +249,16 @@ func TestOAuthProxyAcrossDeployments(t *testing.T) {
 			if w.Header().Get("Location") != "/error?error=access_denied" {
 				t.Fatal("authorization refusal lost the configured error URL")
 			}
+			// A provider's own error code reaches the preview unchanged.
+			callback, browser = begin("/sign-in/social", nil)
+			q = callback.Query()
+			q.Del("code")
+			q.Set("error", "invalid_request.scope")
+			callback.RawQuery = q.Encode()
+			w = proxyRequest(t, origin, "GET", relay(callback).String(), nil, browser, 302)
+			if w.Header().Get("Location") != "/error?error=invalid_request.scope" {
+				t.Fatal("the provider's error code was replaced:", w.Header().Get("Location"))
+			}
 			issuer.set("outsider", map[string]any{"locale": "en"})
 			callback, browser = begin("/sign-in/social", nil)
 			w = proxyRequest(t, origin, "GET", relay(callback).String(), nil, browser, 401)

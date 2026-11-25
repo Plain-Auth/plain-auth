@@ -74,8 +74,10 @@ func LINE(channelID, secret string) auth.OAuthProvider {
 				}
 			}
 			result := auth.OAuthProfile{Subject: claims.text("sub"), Name: claims.text("name"), Email: claims.text("email")}
-			if result.Subject == "" || result.Email == "" {
-				return empty, errors.New("LINE profile is missing a subject or email")
+			// A profile without an email is returned without one, and the
+			// sign-in answers email_not_found.
+			if result.Subject == "" {
+				return empty, errors.New("LINE profile is missing a subject")
 			}
 			data := map[string]any{"sub": result.Subject, "email": result.Email, "name": result.Name, "emailVerified": false}
 			if image := claims.text("picture"); image != "" {
