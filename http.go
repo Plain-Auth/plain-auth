@@ -355,6 +355,13 @@ func (a *Auth) handleEmail(route string, w http.ResponseWriter, r *http.Request,
 			issues = append(issues, fieldTypeError("image", "string", body).Message)
 		}
 	}
+	// A truthy callback that is not a string was refused before; a falsy
+	// one fails the schema here.
+	if value, exists := body["callbackURL"]; exists {
+		if _, ok := value.(string); !ok {
+			issues = append(issues, fieldTypeError("callbackURL", "string", body).Message)
+		}
+	}
 	var remember *bool
 	if value, exists := body["rememberMe"]; exists {
 		if b, ok := value.(bool); ok {
@@ -375,7 +382,7 @@ func (a *Auth) handleEmail(route string, w http.ResponseWriter, r *http.Request,
 		if value, present := body["phoneNumber"]; a.phoneNumber != nil && present && value != nil && value != "" {
 			return nil, &APIError{400, "PHONE_NUMBER_CANNOT_BE_SET", "Phone number can only be set by verifying it"}
 		}
-		in := SignUpInput{AdditionalFields: a.userFieldInput(body), Name: body["name"].(string), Email: email, Password: password, Image: image}
+		in := SignUpInput{AdditionalFields: a.userFieldInput(body), Name: body["name"].(string), Email: email, Password: password, Image: image, refused: a.refusedUserField(body, true)}
 		if a.username != nil {
 			in.Username, in.DisplayUsername, err = usernameInput(body)
 			if err != nil {
@@ -593,8 +600,11 @@ func decodeWireBody(w http.ResponseWriter, r *http.Request, route string) (wireB
 	body, ok := decoded.(map[string]any)
 	if !ok {
 		message := "[body] Invalid input: expected object, received " + jsjson.TypeName(decoded)
-		if route == "/sign-up/email" {
+		switch route {
+		case "/sign-up/email":
 			message += "; [body] Invalid input: expected record, received " + jsjson.TypeName(decoded)
+		case "/update-user":
+			message = "[body] Invalid input: expected record, received " + jsjson.TypeName(decoded)
 		}
 		return nil, validationError(message)
 	}

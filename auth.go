@@ -428,7 +428,11 @@ func New(opts Options) (*Auth, error) {
 
 var cookiePrefixPattern = regexp.MustCompile(`^[A-Za-z0-9_-]+$`)
 
-var emailPattern = regexp.MustCompile("(?i)^[a-z0-9_'+-](?:[a-z0-9_'+.-]*[a-z0-9_'+-])?@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\\.)+[a-z]{2,}$")
+// emailPattern is the address format the reference accepts: ASCII letters,
+// digits and _'+- in dot-separated local parts that do not end in an
+// apostrophe, and a domain of dot-separated labels with a final label of at
+// least two letters.
+var emailPattern = regexp.MustCompile(`^(?:[A-Za-z0-9_'+\-]+\.)*[A-Za-z0-9_'+\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\-]*\.)+[A-Za-z]{2,}$`)
 
 func (a *Auth) validateCredential(email, password string, signup bool) error {
 	if !a.opts.EmailAndPassword {
@@ -505,6 +509,9 @@ func (a *Auth) signUpEmail(ctx context.Context, in SignUpInput, meta RequestMeta
 	}
 	if err := a.validateCredential(in.Email, in.Password, true); err != nil {
 		return AuthResult{}, err
+	}
+	if in.refused != nil {
+		return AuthResult{}, in.refused
 	}
 	extras, err := a.prepareUserFields(in.AdditionalFields, true, false)
 	if err != nil {

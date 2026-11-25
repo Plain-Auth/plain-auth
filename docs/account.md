@@ -28,7 +28,7 @@ Paths below are relative to the configured auth base path. Authenticated browser
 
 | Method and path | Request | Result |
 | --- | --- | --- |
-| `POST /update-user` | Optional `name` and `image` fields. Set `image` to JSON null to clear it. | Changes the signed-in user's profile. |
+| `POST /update-user` | Optional `name` and `image` fields. Set `image` to JSON null to clear it. | Changes the signed-in user's profile. Without a session it answers 401 before judging the fields. `name` and `image` must be strings, and an update with no field to change answers 400 `No fields to update`. |
 | `POST /verify-password` | `password` | Returns `{"status":true}` when it matches the current user's credential. |
 | `POST /change-password` | `currentPassword`, `newPassword`, optional `revokeOtherSessions` | Returns the user and a nullable token. Revoking sessions also replaces the caller's session cookie. |
 | `POST /request-password-reset` | `email`, optional trusted `redirectTo` | Sends mail for a registered address and returns a generic acknowledgment. |

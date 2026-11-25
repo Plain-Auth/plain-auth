@@ -39,6 +39,12 @@
       "label": "ValidateUserInfo refuses an email sign-up with a 403, or with the private duplicate answer in protected mode",
       "test": "conformance/goapi/user_validation_test.go",
       "marker": "func TestValidateUserInfoSignUp(t *testing.T) {"
+    },
+    {
+      "label": "Sign-up answers VALIDATION_ERROR for an address outside the reference format, refuses a value for a plugin's own user field with FIELD_NOT_ALLOWED and gives a defaulted one its default",
+      "test": "conformance/goapi/credential_contract_test.go",
+      "marker": "func TestPluginUserFieldsRefused(t *testing.T) {",
+      "complete": true
     }
   ],
   "core/getSession": [
@@ -118,6 +124,12 @@
       "label": "Read the issuing runtime’s public scalar user fields on credential signin with the released client",
       "test": "conformance/user-fields.mjs",
       "marker": "const signin = await consumer.signIn.email("
+    },
+    {
+      "label": "Sign-in answers INVALID_EMAIL for an address outside the reference format, refuses a callback of the wrong type with the reference's answers, and answers an account without a password like an unknown address after one hash",
+      "test": "conformance/goapi/credential_contract_test.go",
+      "marker": "func TestEmailCredentialContract(t *testing.T) {",
+      "complete": true
     }
   ],
   "core/signOut": [
@@ -713,6 +725,12 @@
       "label": "Revalidate live direct-owner authority before committing configured profile changes on three SQL engines",
       "test": "adapters/sqlstore/user_fields_test.go",
       "marker": "func TestUserFieldWritesRecheckLiveAuthority("
+    },
+    {
+      "label": "update-user needs a session before judging the fields, answers an empty or unknown-only update and a missing or non-object body as the reference does, refuses an email or a plugin field, ignores a falsy email and keeps a browser-session marker",
+      "test": "conformance/goapi/credential_contract_test.go",
+      "marker": "func TestUpdateUserContract(t *testing.T) {",
+      "complete": true
     }
   ],
   "core/verifyPassword": [

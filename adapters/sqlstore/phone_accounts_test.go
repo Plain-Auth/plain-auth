@@ -129,7 +129,11 @@ func TestPhoneAccounts(t *testing.T) {
 				pending <- err
 			}()
 			<-barrier.read
-			must(browser.Do(ctx, http.MethodPost, "/update-user", map[string]any{"phoneNumber": nil, "phoneNumberVerified": true}, nil))
+			// phoneNumberVerified is not the client's to set.
+			if err := browser.Do(ctx, http.MethodPost, "/update-user", map[string]any{"phoneNumber": nil, "phoneNumberVerified": true}, nil); err == nil {
+				t.Fatal("update-user accepted phoneNumberVerified")
+			}
+			must(browser.Do(ctx, http.MethodPost, "/update-user", map[string]any{"phoneNumber": nil}, nil))
 			close(barrier.resume)
 			phoneError(t, <-pending, 401, "INVALID_PHONE_NUMBER_OR_PASSWORD")
 			s, err := browser.GetSession(ctx)

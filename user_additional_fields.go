@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"maps"
 	"reflect"
+	"slices"
 	"strings"
 	"time"
 
@@ -247,4 +248,31 @@ func (u *User) UnmarshalJSON(data []byte) error {
 		u.extraJSON = string(raw)
 	}
 	return nil
+}
+
+// refusedUserField reports a plugin user field the request body sets that
+// clients may not write, as the reference refuses a field declared without
+// input when its value is truthy. A sign-up replaces a field that has a
+// default with it instead. The first such field by name is reported.
+func (a *Auth) refusedUserField(body map[string]any, create bool) error {
+	var names []string
+	for _, p := range a.opts.Plugins {
+		for name := range p.StoredUserFields {
+			switch name {
+			case "username", "displayUsername", "phoneNumber":
+				continue
+			case "banned", "twoFactorEnabled":
+				if create {
+					continue
+				}
+			}
+			if value, set := body[name]; set && !emptyUserInput(value) {
+				names = append(names, name)
+			}
+		}
+	}
+	if len(names) == 0 {
+		return nil
+	}
+	return &APIError{400, "FIELD_NOT_ALLOWED", slices.Min(names) + " is not allowed to be set"}
 }

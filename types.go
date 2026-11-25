@@ -342,6 +342,8 @@ type SignUpInput struct {
 	Username, DisplayUsername *string
 	Name, Email, Password     string
 	Image                     *string
+	// refused is a plugin field the HTTP body set that clients may not.
+	refused error
 }
 
 // SignInInput authenticates an existing email credential.

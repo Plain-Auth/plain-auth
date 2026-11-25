@@ -94,8 +94,8 @@ func (a *Auth) handleAccountRequest(route string, w http.ResponseWriter, r *http
 		}
 		return ok, a.VerifyPassword(ctx, r.Header, password)
 	case "/update-user":
-		if email, exists := b["email"]; exists && email != "" {
-			return nil, &APIError{400, "EMAIL_CAN_NOT_BE_UPDATED", "Email can not be updated"}
+		if b == nil {
+			return nil, validationError("[body] Invalid input: expected record, received undefined")
 		}
 		var update ProfileUpdate
 		if a.username != nil {
@@ -112,6 +112,17 @@ func (a *Auth) handleAccountRequest(route string, w http.ResponseWriter, r *http
 				}
 				update.ClearPhoneNumber = true
 			}
+		}
+		// As in the reference, a caller needs a session before the fields
+		// are judged; a falsy email is ignored like any unknown key.
+		if _, err := a.requireSession(ctx, r.Header); err != nil {
+			return nil, err
+		}
+		if email, exists := b["email"]; exists && !emptyUserInput(email) {
+			return nil, &APIError{400, "EMAIL_CAN_NOT_BE_UPDATED", "Email can not be updated"}
+		}
+		if err := a.refusedUserField(b, false); err != nil {
+			return nil, err
 		}
 		if _, exists := b["name"]; exists {
 			name, err := requiredString(b, "name")
@@ -136,8 +147,12 @@ func (a *Auth) handleAccountRequest(route string, w http.ResponseWriter, r *http
 			return nil, err
 		}
 		if token := a.cookieToken(r.Header); token != "" {
-			if err := a.writeSessionCookieHeaders(w.Header(), r, token, !a.dontRemember(r)); err != nil {
+			persistent := !a.dontRemember(r)
+			if err := a.writeSessionCookieHeaders(w.Header(), r, token, persistent); err != nil {
 				return nil, err
+			}
+			if !persistent {
+				a.writeRememberPreference(w.Header(), r, false)
 			}
 		}
 		return ok, nil

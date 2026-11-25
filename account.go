@@ -180,7 +180,7 @@ func (a *Auth) writeProfile(ctx context.Context, session *SessionResult, update 
 		return err
 	}
 	if update.Name == nil && update.Image == nil && !update.ClearImage {
-		return &APIError{400, "BAD_REQUEST", "No fields to update"}
+		return &APIError{Status: 400, Message: "No fields to update"}
 	}
 	if session.Session.IsApplicationCredential() {
 		store, ok := a.opts.Store.(interface {
