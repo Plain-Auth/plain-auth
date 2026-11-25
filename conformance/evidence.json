@@ -3740,6 +3740,11 @@
       "test": "adapters/sqlstore/emailotp_test.go",
       "marker": "retry budget exhausted %d times",
       "complete": true
+    },
+    {
+      "label": "Run verification update after hooks for each counted wrong guess, and remove a code that ran out with its delete hooks",
+      "test": "conformance/goapi/database_verification_code_hooks_test.go",
+      "marker": "// Each counted wrong guess runs the update after hooks; the code that runs out is removed with its delete hooks."
     }
   ],
   "plugin-symbol/email-otp/EmailOTPOptions/storeOTP": [
@@ -3754,6 +3759,11 @@
       "label": "Reuse recoverable proofs without resetting attempts, and rotate hashed proofs",
       "test": "adapters/sqlstore/emailotp_test.go",
       "marker": "encrypted resend lost proof or retry count"
+    },
+    {
+      "label": "With verification hooks, a reuse resend stores the code again under a new ID with its attempts, running the create hooks",
+      "test": "conformance/goapi/database_verification_code_hooks_test.go",
+      "marker": "// A reuse resend stores the code again under a new ID, keeping its attempts."
     }
   ],
   "plugin-symbol/email-otp/EmailOTPOptions/changeEmail": [
@@ -18947,6 +18957,31 @@
       "label": "Run magic link and one-time token verification hooks on SQLite, PostgreSQL and MySQL, once around a planned sign-in's dry run, outside the store's transaction and with the stored row's ID",
       "test": "adapters/sqlstore/verification_hooks_test.go",
       "marker": "func TestVerificationHooksAroundMagicLinksAndTokens(t *testing.T) {"
+    },
+    {
+      "label": "Run verification hooks around email codes: a declined send stores and mails nothing, a declined guess is refused before the code is compared, a counted wrong guess runs the update after hooks, and a spent code's hooks run before the user and session hooks of its sign-in",
+      "test": "conformance/goapi/database_verification_code_hooks_test.go",
+      "marker": "func TestDatabaseVerificationHooksForEmailCodes(t *testing.T) {"
+    },
+    {
+      "label": "Run an email code's delete after hooks before a refusal that spends it, such as closed sign-up or invalid registration fields, and run no hooks for a code a store hides",
+      "test": "conformance/goapi/database_verification_code_hooks_test.go",
+      "marker": "func TestDatabaseVerificationHooksForEmailCodeRefusals(t *testing.T) {"
+    },
+    {
+      "label": "Run verification hooks around email address changes: the current address's code is judged in the call that stores the new code, and a declined new code spends nothing",
+      "test": "conformance/goapi/database_verification_code_hooks_test.go",
+      "marker": "func TestDatabaseVerificationHooksForEmailChanges(t *testing.T) {"
+    },
+    {
+      "label": "Run email code verification hooks on SQLite, PostgreSQL and MySQL, outside the store's transaction, once around a planned sign-in's dry run and with the stored row's ID",
+      "test": "adapters/sqlstore/email_code_hooks_test.go",
+      "marker": "func TestVerificationHooksAroundEmailCodes(t *testing.T) {"
+    },
+    {
+      "label": "Bind the email code stores to the code the hooks saw and report what each call committed, on the memory store, SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/code_decisions_test.go",
+      "marker": "func TestEmailCodeDecisions(t *testing.T) {"
     }
   ],
   "docs/content/docs/concepts/database.mdx#L881": [
@@ -19013,6 +19048,11 @@
       "label": "Skip a store-decided sign-in with its usual error, store nothing, and sign in a user stored while the hooks ran",
       "test": "conformance/goapi/database_decided_hooks_test.go",
       "marker": "// A user stored while the hooks run is signed in instead of being created again."
+    },
+    {
+      "label": "Decline a guess at an email code with ErrSkipWrite before the code is compared: the code stays usable and no attempt is counted",
+      "test": "conformance/goapi/database_verification_code_hooks_test.go",
+      "marker": "// A declined guess is refused before the code is compared."
     }
   ],
   "docs/content/docs/concepts/database.mdx#L886": [
@@ -19064,6 +19104,16 @@
       "label": "Run one verification delete after hook among concurrent redemptions of a magic link or one-time token, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/verification_hooks_test.go",
       "marker": "// Concurrent redemptions of one link or token run one delete after hook."
+    },
+    {
+      "label": "Count each concurrent wrong guess at one email code once with its update after hook, and run one delete after hook among concurrent spends, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/email_code_hooks_test.go",
+      "marker": "// Concurrent guesses at one email code count each wrong guess once and spend it once."
+    },
+    {
+      "label": "Refuse, uncounted, a guess at an email code another runtime stores again while its hooks run",
+      "test": "adapters/sqlstore/email_code_hooks_test.go",
+      "marker": "// A code another runtime stores again while its hooks run is refused uncounted."
     }
   ],
   "docs/content/docs/concepts/database.mdx#L891/Example Usage": [
@@ -19127,7 +19177,7 @@
       "marker": "// Run account hooks around the credential a sign-up stores, password"
     },
     {
-      "label": "Configure verification hooks for password reset and account deletion links, browser OAuth flows, magic links and one-time tokens, and refuse the plugins and stores that would bypass them",
+      "label": "Configure verification hooks for password reset and account deletion links, browser OAuth flows, magic links, one-time tokens and email codes, and refuse the plugins, hooks and stores that would bypass them",
       "test": "conformance/goapi/database_verification_hooks_test.go",
       "marker": "func TestDatabaseVerificationHooksRefuseBypassingFeatures(t *testing.T) {"
     }

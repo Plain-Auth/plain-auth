@@ -9,7 +9,10 @@ import (
 	auth "github.com/Plain-Org/plain-auth"
 )
 
-var _ auth.EmailOTPStore = (*Store)(nil)
+var (
+	_ auth.EmailOTPStore  = (*Store)(nil)
+	_ auth.EmailOTPFinder = (*Store)(nil)
+)
 
 type mailKey struct {
 	purpose      auth.EmailOTPPurpose
@@ -17,7 +20,7 @@ type mailKey struct {
 }
 type mailProof struct {
 	auth.EmailOTPRecord
-	owner      string
+	id, owner  string
 	generation uint64
 }
 
@@ -43,6 +46,20 @@ func (s *Store) ReadEmailOTP(ctx context.Context, req auth.EmailOTPRequest) (*au
 		return nil, nil
 	}
 	return &p.EmailOTPRecord, nil
+}
+
+// FindEmailOTP reads the code stored for req, live or not, without spending it.
+func (s *Store) FindEmailOTP(ctx context.Context, req auth.EmailOTPRequest) (string, time.Time, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	if err := ctx.Err(); err != nil {
+		return "", time.Time{}, err
+	}
+	p := s.emailOTPs[keyForMail(req)]
+	if p.generation == 0 {
+		return "", time.Time{}, auth.ErrNotFound
+	}
+	return p.id, p.ExpiresAt, nil
 }
 
 type mailSnapshot struct {
@@ -74,9 +91,14 @@ func (s *Store) snapshotMail(req auth.EmailOTPRequest, allowNew bool) (mailSnaps
 }
 
 // Return the new attempt count on a mismatch or -1 to discard a spent proof.
-func evaluateMailProof(p mailProof, now time.Time, max int, matches func(string) (bool, error)) (int, error) {
+// With want set, only the proof with that ID is judged; any other is refused
+// untouched.
+func evaluateMailProof(p mailProof, want string, now time.Time, max int, matches func(string) (bool, error)) (int, error) {
 	if p.generation == 0 {
 		return -1, invalidMailOTP()
+	}
+	if want != "" && p.id != want {
+		return p.Attempts, invalidMailOTP()
 	}
 	if !p.ExpiresAt.After(now) {
 		return -1, &auth.APIError{Status: 400, Code: "OTP_EXPIRED", Message: "OTP expired"}
@@ -104,11 +126,35 @@ func (s *Store) applyMailAttempts(key mailKey, p mailProof, attempts int) {
 	}
 }
 
+// mailDecision is what applyMailAttempts(key, p, attempts) does to p.
+func mailDecision(p mailProof, attempts int) auth.PhoneOTPDecision {
+	switch {
+	case p.generation == 0 || attempts == p.Attempts:
+		return auth.PhoneKeepProof
+	case attempts < 0:
+		return auth.PhoneRemoveProof
+	}
+	return auth.PhoneCountAttempt
+}
+
+// reportCode records in p, when set, what a call did to a code a
+// verification hook saw.
+func reportCode(p *auth.PhoneOTPDecision, d auth.PhoneOTPDecision) {
+	if p != nil {
+		*p = d
+	}
+}
+
 func (s *Store) SaveEmailOTP(ctx context.Context, req auth.EmailOTPRequest, allowNew bool, expires time.Time, prepare func(*auth.EmailOTPRecord) (string, string, int, error)) (string, error) {
 	if req.CurrentMatches != nil && req.Source == nil {
 		return "", errors.New("memory: current mailbox proof needs a source account")
 	}
 	key := keyForMail(req)
+	// Verification hooks name the code by the ID the Auth chose.
+	id := req.ProofID
+	if id == "" {
+		id = rand.Text()
+	}
 	// Application-provided transforms run outside the mutex. Revalidate the
 	// observed generation, owner and current-mailbox proof before committing.
 	for {
@@ -126,7 +172,7 @@ func (s *Store) SaveEmailOTP(ctx context.Context, req auth.EmailOTPRequest, allo
 		var denied error
 		if req.CurrentMatches != nil {
 			currentKey = mailKey{purpose: auth.OTPVerifyEmail, email: req.Source.Email}
-			remaining, denied = evaluateMailProof(before.current, req.Now, req.MaxAttempts, req.CurrentMatches)
+			remaining, denied = evaluateMailProof(before.current, req.CurrentProofID, req.Now, req.MaxAttempts, req.CurrentMatches)
 			if denied == nil && before.current.owner != "" && before.current.owner != req.Source.UserID {
 				remaining, denied = -1, invalidMailOTP()
 			}
@@ -160,11 +206,13 @@ func (s *Store) SaveEmailOTP(ctx context.Context, req auth.EmailOTPRequest, allo
 		}
 		if denied != nil {
 			s.applyMailAttempts(currentKey, before.current, remaining)
+			reportCode(req.CurrentDecided, mailDecision(before.current, remaining))
 			s.mu.Unlock()
 			return "", denied
 		}
 		if req.CurrentMatches != nil {
 			delete(s.emailOTPs, currentKey)
+			reportCode(req.CurrentDecided, auth.PhoneRemoveProof)
 		}
 		if before.suppress {
 			delete(s.emailOTPs, key)
@@ -177,7 +225,7 @@ func (s *Store) SaveEmailOTP(ctx context.Context, req auth.EmailOTPRequest, allo
 			}
 		}
 		s.nextProof++
-		s.emailOTPs[key] = mailProof{EmailOTPRecord: auth.EmailOTPRecord{Stored: stored, Attempts: attempts, ExpiresAt: expires}, owner: before.owner, generation: s.nextProof}
+		s.emailOTPs[key] = mailProof{EmailOTPRecord: auth.EmailOTPRecord{Stored: stored, Attempts: attempts, ExpiresAt: expires}, id: id, owner: before.owner, generation: s.nextProof}
 		s.mu.Unlock()
 		return raw, nil
 	}
@@ -220,7 +268,7 @@ func (s *Store) useEmailOTP(ctx context.Context, act auth.EmailOTPAction, matche
 		s.mu.RLock()
 		p := s.emailOTPs[key]
 		s.mu.RUnlock()
-		attempts, denied := evaluateMailProof(p, act.Now, act.MaxAttempts, matches)
+		attempts, denied := evaluateMailProof(p, act.ProofID, act.Now, act.MaxAttempts, matches)
 		s.mu.Lock()
 		if s.emailOTPs[key] != p {
 			s.mu.Unlock()
@@ -232,10 +280,16 @@ func (s *Store) useEmailOTP(ctx context.Context, act auth.EmailOTPAction, matche
 		}
 		if denied != nil {
 			s.applyMailAttempts(key, p, attempts)
+			reportCode(act.Decided, mailDecision(p, attempts))
 			s.mu.Unlock()
 			return auth.User{}, denied
 		}
 		u, err := s.finishMailProof(key, p, act, deferVerification, fields)
+		d := auth.PhoneKeepProof
+		if s.emailOTPs[key].generation != p.generation {
+			d = auth.PhoneRemoveProof
+		}
+		reportCode(act.Decided, d)
 		s.mu.Unlock()
 		return u, err
 	}

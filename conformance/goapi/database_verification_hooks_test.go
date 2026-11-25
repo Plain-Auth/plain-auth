@@ -241,9 +241,10 @@ func TestDatabaseVerificationHooks(t *testing.T) {
 }
 
 // New refuses verification hooks that an enabled feature would bypass: the
-// plugins that keep codes in their own stores, and delete hooks on a store
-// that cannot read a deletion link, an OAuth flow, a magic link or a
-// one-time token before spending it.
+// plugins that keep codes in their own stores, update before hooks with
+// email codes, which count a wrong guess as they judge it, and delete hooks
+// on a store that cannot read a deletion link, an OAuth flow, a magic link,
+// a one-time token or an email code before spending it.
 func TestDatabaseVerificationHooksRefuseBypassingFeatures(t *testing.T) {
 	observe := authn.OperationHooks[authn.VerificationRecord]{After: func(context.Context, authn.VerificationRecord, *authn.HookContext) error { return nil }}
 	base := func() authn.Options {
@@ -260,8 +261,42 @@ func TestDatabaseVerificationHooksRefuseBypassingFeatures(t *testing.T) {
 	}
 	withCodes := base()
 	withCodes.Plugins = []authn.Plugin{codes}
-	if _, err := authn.New(withCodes); err == nil || !strings.Contains(err.Error(), "email-otp") {
-		t.Fatal("verification hooks were accepted with email codes:", err)
+	withCodes.DatabaseHooks.Verification.Update = observe
+	withCodes.DatabaseHooks.Verification.Delete = observe
+	if _, err := authn.New(withCodes); err != nil {
+		t.Fatal("verification hooks were refused with email codes:", err)
+	}
+	withCodes.DatabaseHooks.Verification.Update.Before = func(context.Context, *authn.VerificationRecord, *authn.HookContext) error { return nil }
+	if _, err := authn.New(withCodes); err == nil || !strings.Contains(err.Error(), "update before hooks") || !strings.Contains(err.Error(), "email-otp") {
+		t.Fatal("verification update before hooks were accepted with email codes:", err)
+	}
+	// Guesses need a store that reads a code before judging it; sends do not.
+	mailboxes := memory.New()
+	withCodes.Store = struct {
+		authn.Store
+		authn.EmailOTPStore
+	}{mailboxes, mailboxes}
+	for _, hooks := range []authn.ModelHooks[authn.VerificationRecord]{{Delete: observe}, {Update: observe}} {
+		withCodes.DatabaseHooks.Verification = hooks
+		if _, err := authn.New(withCodes); err == nil || !strings.Contains(err.Error(), "FindEmailOTP") {
+			t.Fatal("verification hooks for guesses were accepted without FindEmailOTP:", err)
+		}
+	}
+	withCodes.DatabaseHooks.Verification = authn.ModelHooks[authn.VerificationRecord]{Create: observe}
+	if _, err := authn.New(withCodes); err != nil {
+		t.Fatal("verification create hooks were refused on a store without FindEmailOTP:", err)
+	}
+	// Phone codes and two-factor challenges stay in their stores.
+	phone, err := authn.NewPhoneNumber(authn.PhoneNumberOptions{SendOTP: func(context.Context, authn.PhoneOTPMessage) error { return nil }})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for id, plugin := range map[string]authn.Plugin{"phone-number": phone, "two-factor": authn.NewTwoFactor(authn.TwoFactorOptions{})} {
+		refused := base()
+		refused.Plugins = []authn.Plugin{plugin}
+		if _, err := authn.New(refused); err == nil || !strings.Contains(err.Error(), id) {
+			t.Fatal("verification hooks were accepted with", id, err)
+		}
 	}
 	// Magic links and one-time tokens run them, and delete hooks need a store
 	// that reads a link or token before spending it.

@@ -32,8 +32,10 @@ type DatabaseHooks struct {
 	Account ModelHooks[LinkedAccount]
 	// Verification hooks observe and may cancel the creation and spending of
 	// password reset links, account deletion links, browser OAuth flows,
-	// magic links and one-time tokens. Spending a record is its delete. They
-	// may not change the record.
+	// magic links, one-time tokens and email codes. Spending or removing a
+	// record is its delete. A wrong guess counted against a code is its
+	// update, which has no before hook: the delete before hooks run before
+	// every guess. They may not change the record.
 	Verification ModelHooks[VerificationRecord]
 }
 
@@ -43,15 +45,19 @@ type DatabaseHooks struct {
 type VerificationRecord struct {
 	// ID identifies the record. A magic link's or one-time token's ID is
 	// derived from its stored key and is the row ID the SQL store gives it.
-	// It cannot redeem the record, but keep it private.
+	// An email code's ID is its stored row's; each send stores a new one. It
+	// cannot redeem the record, but keep it private.
 	ID string
 	// Identifier is the kind of record: "reset-password", "delete-account",
-	// "oauth-state", "magic-link" or "one-time-token".
+	// "oauth-state", "magic-link", "one-time-token", or an email code's
+	// "sign-in-otp", "email-verification-otp", "forget-password-otp" or
+	// "change-email-otp".
 	Identifier string
 	// UserID is the record's owner. An OAuth flow has one only when it
 	// links an account to a signed-in user. A one-time token names the user
-	// whose session it transfers. A magic link, which proves an address
-	// rather than an account, has none.
+	// whose session it transfers. An email change code names the signed-in
+	// user who asked for it. A magic link and other email codes, which prove
+	// an address rather than an account, have none.
 	UserID    string
 	ExpiresAt time.Time
 }
@@ -135,6 +141,8 @@ func (m *modelChain[T]) add(h ModelHooks[T], source string) {
 	m.delete.add(h.Delete, source)
 }
 
+func (m modelChain[T]) set() bool { return m.create.set() || m.update.set() || m.delete.set() }
+
 type databaseHookChains struct {
 	user    modelChain[UserRecord]
 	session modelChain[SessionRecord]
@@ -144,10 +152,7 @@ type databaseHookChains struct {
 }
 
 func (d databaseHookChains) set() bool {
-	return d.user.create.set() || d.user.update.set() || d.user.delete.set() ||
-		d.session.create.set() || d.session.update.set() || d.session.delete.set() ||
-		d.account.create.set() || d.account.update.set() || d.account.delete.set() ||
-		d.verification.create.set() || d.verification.update.set() || d.verification.delete.set()
+	return d.user.set() || d.session.set() || d.account.set() || d.verification.set()
 }
 
 func composeDatabaseHooks(opts Options) databaseHookChains {
@@ -253,11 +258,17 @@ func (a *Auth) checkDatabaseHooks() error {
 	if d.account.create.set() || d.account.update.set() {
 		need("phone-number", a.HasPlugin("phone-number"))
 	}
-	if d.verification.create.set() || d.verification.update.set() || d.verification.delete.set() {
+	if d.verification.set() {
 		// These plugins keep their codes and challenges inside their stores.
-		for _, id := range []string{"email-otp", "phone-number", "two-factor", "passkey", "siwe", "sso", "oauth-provider"} {
+		for _, id := range []string{"phone-number", "two-factor", "passkey", "siwe", "sso", "oauth-provider"} {
 			need(id, a.HasPlugin(id))
 		}
+	}
+	if len(d.verification.update.before) > 0 && a.HasPlugin("email-otp") {
+		return errors.New("auth: verification update before hooks cannot run with the email-otp plugin, which counts a wrong guess as it judges it; use the delete before hooks, which run before every guess")
+	}
+	if _, ok := a.opts.Store.(EmailOTPFinder); (d.verification.update.set() || d.verification.delete.set()) && a.HasPlugin("email-otp") && !ok {
+		return errors.New("auth: verification update and delete hooks with the email-otp plugin require a store implementing FindEmailOTP")
 	}
 	if d.verification.delete.set() {
 		_, finds := a.opts.Store.(DeletionTokenFinder)
@@ -742,6 +753,66 @@ func magicLinkRecord(key string, expiresAt time.Time) VerificationRecord {
 // the user whose session it transfers.
 func oneTimeTokenRecord(key, userID string, expiresAt time.Time) VerificationRecord {
 	return VerificationRecord{ID: keyedRecordID("ot-", key), Identifier: "one-time-token", UserID: userID, ExpiresAt: expiresAt.UTC()}
+}
+
+// emailOTPRecord is an email code as a verification record. Its kind is the
+// code's purpose, as in "sign-in-otp". A code proves an address rather than
+// an account, so only an email change code names an owner: the signed-in
+// user who asked for it.
+func emailOTPRecord(req EmailOTPRequest, id string, expiresAt time.Time) VerificationRecord {
+	rec := VerificationRecord{ID: id, Identifier: string(req.Purpose) + "-otp", ExpiresAt: expiresAt.UTC().Truncate(time.Millisecond)}
+	if req.Source != nil {
+		rec.UserID = req.Source.UserID
+	}
+	return rec
+}
+
+// codeGuess follows one guess at an email code for the verification hooks:
+// the record whose delete before hooks approved judging the guess, nil when
+// none ran, and what the store reported doing to that code.
+type codeGuess struct {
+	rec      *VerificationRecord
+	decision PhoneOTPDecision
+}
+
+// watchesCodes reports whether guesses at codes run verification hooks,
+// which update or delete hooks make them do.
+func (a *Auth) watchesCodes() bool {
+	v := a.dbHooks.verification
+	return v.update.set() || v.delete.set()
+}
+
+// beforeCodeGuess runs the verification delete before hooks on rec, the live
+// code g is about to be judged against, before anything compares the guess.
+// A declined guess is refused with INVALID_OTP: nothing compares or counts
+// it, and the code stays as it was.
+func (a *Auth) beforeCodeGuess(ctx context.Context, g *codeGuess, rec VerificationRecord) error {
+	err := a.beforeVerification(ctx, a.dbHooks.verification.delete, rec)
+	if errors.Is(err, ErrSkipWrite) {
+		return invalidOTP()
+	}
+	if err != nil {
+		return err
+	}
+	g.rec = &rec
+	return nil
+}
+
+// afterCodeGuess runs the after hooks of what the store did to the code g's
+// before hooks saw: the delete hooks when it spent or removed the code, the
+// update hooks when it counted a wrong guess. A kept code, and a code no
+// before hook saw, run none.
+func (a *Auth) afterCodeGuess(ctx context.Context, g *codeGuess) error {
+	if g == nil || g.rec == nil {
+		return nil
+	}
+	switch g.decision {
+	case PhoneRemoveProof:
+		return runAfter(ctx, a, a.dbHooks.verification.delete, *g.rec)
+	case PhoneCountAttempt:
+		return runAfter(ctx, a, a.dbHooks.verification.update, *g.rec)
+	}
+	return nil
 }
 
 // credentialAccount returns userID's stored credential account, or a draft

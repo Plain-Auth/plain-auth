@@ -23,7 +23,8 @@ import (
 )
 
 // verificationEvents records verification hooks and the user and session
-// create after hooks, and can decline, fail or edit any of them.
+// create after hooks, and can decline, fail or edit any of them, or run code
+// in them.
 type verificationEvents struct {
 	mu       sync.Mutex
 	events   []string
@@ -32,10 +33,18 @@ type verificationEvents struct {
 	decline  map[string]bool
 	fail     map[string]error
 	edit     map[string]bool
+	run      map[string]func(context.Context)
 }
 
 func newVerificationEvents() *verificationEvents {
-	return &verificationEvents{decline: map[string]bool{}, fail: map[string]error{}, edit: map[string]bool{}}
+	return &verificationEvents{decline: map[string]bool{}, fail: map[string]error{}, edit: map[string]bool{}, run: map[string]func(context.Context){}}
+}
+
+// during runs fn, outside the recorder's lock, whenever event's hook runs; nil stops it.
+func (v *verificationEvents) during(event string, fn func(context.Context)) {
+	v.mu.Lock()
+	defer v.mu.Unlock()
+	v.run[event] = fn
 }
 
 func (v *verificationEvents) set(table map[string]bool, event string, on bool) {
@@ -51,8 +60,11 @@ func (v *verificationEvents) failWith(event string, err error) {
 }
 
 func (v *verificationEvents) note(event string, rec *authn.VerificationRecord, c *authn.HookContext) error {
+	return v.noteIn(context.Background(), event, rec, c)
+}
+
+func (v *verificationEvents) noteIn(ctx context.Context, event string, rec *authn.VerificationRecord, c *authn.HookContext) error {
 	v.mu.Lock()
-	defer v.mu.Unlock()
 	v.events = append(v.events, event)
 	if rec != nil {
 		v.records, v.contexts = append(v.records, *rec), append(v.contexts, c)
@@ -60,10 +72,15 @@ func (v *verificationEvents) note(event string, rec *authn.VerificationRecord, c
 			rec.UserID = "someone-else"
 		}
 	}
-	if v.decline[event] {
+	fn, declined, err := v.run[event], v.decline[event], v.fail[event]
+	v.mu.Unlock()
+	if fn != nil {
+		fn(ctx)
+	}
+	if declined {
 		return authn.ErrSkipWrite
 	}
-	return v.fail[event]
+	return err
 }
 
 func (v *verificationEvents) drain() []string {
@@ -84,19 +101,25 @@ func (v *verificationEvents) hooks() authn.DatabaseHooks {
 	return authn.DatabaseHooks{
 		Verification: authn.ModelHooks[authn.VerificationRecord]{
 			Create: authn.OperationHooks[authn.VerificationRecord]{
-				Before: func(_ context.Context, r *authn.VerificationRecord, c *authn.HookContext) error {
-					return v.note("create-before:"+r.Identifier, r, c)
+				Before: func(ctx context.Context, r *authn.VerificationRecord, c *authn.HookContext) error {
+					return v.noteIn(ctx, "create-before:"+r.Identifier, r, c)
 				},
-				After: func(_ context.Context, r authn.VerificationRecord, c *authn.HookContext) error {
-					return v.note("create-after:"+r.Identifier, &r, c)
+				After: func(ctx context.Context, r authn.VerificationRecord, c *authn.HookContext) error {
+					return v.noteIn(ctx, "create-after:"+r.Identifier, &r, c)
+				},
+			},
+			// Email codes refuse update before hooks: a count has none.
+			Update: authn.OperationHooks[authn.VerificationRecord]{
+				After: func(ctx context.Context, r authn.VerificationRecord, c *authn.HookContext) error {
+					return v.noteIn(ctx, "update-after:"+r.Identifier, &r, c)
 				},
 			},
 			Delete: authn.OperationHooks[authn.VerificationRecord]{
-				Before: func(_ context.Context, r *authn.VerificationRecord, c *authn.HookContext) error {
-					return v.note("delete-before:"+r.Identifier, r, c)
+				Before: func(ctx context.Context, r *authn.VerificationRecord, c *authn.HookContext) error {
+					return v.noteIn(ctx, "delete-before:"+r.Identifier, r, c)
 				},
-				After: func(_ context.Context, r authn.VerificationRecord, c *authn.HookContext) error {
-					return v.note("delete-after:"+r.Identifier, &r, c)
+				After: func(ctx context.Context, r authn.VerificationRecord, c *authn.HookContext) error {
+					return v.noteIn(ctx, "delete-after:"+r.Identifier, &r, c)
 				},
 			},
 		},

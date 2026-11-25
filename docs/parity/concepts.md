@@ -231,9 +231,14 @@
       - [x] Run the credential account hooks and the revoked sessions' delete hooks around a password reset link ([test](../../conformance/goapi/database_user_hooks_test.go#L376))
       - [x] Run verification hooks around password reset and account deletion links, outside the store and without their tokens, before the account, session and user hooks of the change they allow ([test](../../conformance/goapi/database_verification_hooks_test.go#L23))
       - [x] Run verification hooks around browser OAuth flows on SQLite, PostgreSQL and MySQL: a declined spend refuses the callback and keeps the flow ([test](../../adapters/sqlstore/verification_hooks_test.go#L28))
-      - [x] Run verification hooks around magic links: a declined request stores and mails nothing, a declined spend keeps the link, an after hook's error is never read as an invalid link, and the link's hooks run before the user and session hooks of its sign-in ([test](../../conformance/goapi/database_verification_plugin_hooks_test.go#L235))
-      - [x] Run verification hooks around one-time tokens: a declined generate returns a token that redeems nothing, a declined redeem keeps the token, and a token whose session ended runs its after hooks before the refusal ([test](../../conformance/goapi/database_verification_plugin_hooks_test.go#L401))
+      - [x] Run verification hooks around magic links: a declined request stores and mails nothing, a declined spend keeps the link, an after hook's error is never read as an invalid link, and the link's hooks run before the user and session hooks of its sign-in ([test](../../conformance/goapi/database_verification_plugin_hooks_test.go#L258))
+      - [x] Run verification hooks around one-time tokens: a declined generate returns a token that redeems nothing, a declined redeem keeps the token, and a token whose session ended runs its after hooks before the refusal ([test](../../conformance/goapi/database_verification_plugin_hooks_test.go#L424))
       - [x] Run magic link and one-time token verification hooks on SQLite, PostgreSQL and MySQL, once around a planned sign-in's dry run, outside the store's transaction and with the stored row's ID ([test](../../adapters/sqlstore/verification_hooks_test.go#L326))
+      - [x] Run verification hooks around email codes: a declined send stores and mails nothing, a declined guess is refused before the code is compared, a counted wrong guess runs the update after hooks, and a spent code's hooks run before the user and session hooks of its sign-in ([test](../../conformance/goapi/database_verification_code_hooks_test.go#L153))
+      - [x] Run an email code's delete after hooks before a refusal that spends it, such as closed sign-up or invalid registration fields, and run no hooks for a code a store hides ([test](../../conformance/goapi/database_verification_code_hooks_test.go#L442))
+      - [x] Run verification hooks around email address changes: the current address's code is judged in the call that stores the new code, and a declined new code spends nothing ([test](../../conformance/goapi/database_verification_code_hooks_test.go#L526))
+      - [x] Run email code verification hooks on SQLite, PostgreSQL and MySQL, outside the store's transaction, once around a planned sign-in's dry run and with the stored row's ID ([test](../../adapters/sqlstore/email_code_hooks_test.go#L25))
+      - [x] Bind the email code stores to the code the hooks saw and report what each call committed, on the memory store, SQLite, PostgreSQL and MySQL ([test](../../adapters/sqlstore/code_decisions_test.go#L28))
       - [ ] 1. Before Hook
         - [x] Edit the stored fields of a new user or session, or cancel its creation, before anything is written ([test](../../conformance/goapi/database_hooks_test.go#L122))
         - [x] Run the create before hooks for social sign-in, magic links, email codes and phone verification outside the store transaction, for new users only ([test](../../conformance/goapi/database_decided_hooks_test.go#L297))
@@ -249,6 +254,7 @@
           - [x] Cancel a session update or delete with ErrSkipWrite, let one declined row keep every session of a revocation, and reject edits to fields an update does not store ([test](../../conformance/goapi/database_session_hooks_test.go#L193))
           - [x] Decline a profile update, email change or verification with ErrSkipWrite, and reject edits to fields the update does not store ([test](../../conformance/goapi/database_user_hooks_test.go#L100))
           - [x] Skip a store-decided sign-in with its usual error, store nothing, and sign in a user stored while the hooks ran ([test](../../conformance/goapi/database_decided_hooks_test.go#L381))
+          - [x] Decline a guess at an email code with ErrSkipWrite before the code is compared: the code stays usable and no attempt is counted ([test](../../conformance/goapi/database_verification_code_hooks_test.go#L197))
       - [ ] 2. After Hook
         - [x] Observe the stored user and session after creation, and remove an undelivered session when an after hook fails ([test](../../conformance/goapi/database_hooks_test.go#L213))
         - [ ] Purpose
@@ -261,6 +267,8 @@
           - [x] Fire one after hook for concurrent sign-ups of one email and none for a sign-up that stores nothing ([test](../../adapters/sqlstore/database_hooks_test.go#L111))
           - [x] Run session update and delete after hooks once the change is stored, on SQLite, PostgreSQL and MySQL ([test](../../adapters/sqlstore/database_hooks_test.go#L126))
           - [x] Run one verification delete after hook among concurrent redemptions of a magic link or one-time token, on SQLite, PostgreSQL and MySQL ([test](../../adapters/sqlstore/verification_hooks_test.go#L521))
+          - [x] Count each concurrent wrong guess at one email code once with its update after hook, and run one delete after hook among concurrent spends, on SQLite, PostgreSQL and MySQL ([test](../../adapters/sqlstore/email_code_hooks_test.go#L276))
+          - [x] Refuse, uncounted, a guess at an email code another runtime stores again while its hooks run ([test](../../adapters/sqlstore/email_code_hooks_test.go#L254))
         - [x] Example Usage ([test](../../conformance/goapi/database_user_hooks_test.go#L227))
           - [x] Derive user fields in a before hook and call another service from an after hook ([test](../../conformance/goapi/database_hooks_test.go#L128))
           - [x] Log a session as sign-out deletes it, or keep it by declining the delete ([test](../../conformance/goapi/database_session_hooks_test.go#L166))

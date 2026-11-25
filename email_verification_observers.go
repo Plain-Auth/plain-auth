@@ -99,8 +99,10 @@ type EmailOTPVerificationObserverStore interface {
 }
 
 func (a *Auth) observeEmailOTP(ctx context.Context, req EmailOTPRequest, code string, session StoredSession, r *http.Request) (AuthResult, error) {
-	if code == "" || len(code) > 256 {
-		return AuthResult{}, &APIError{400, "INVALID_OTP", "Invalid OTP"}
+	// The guess's before hooks run first, so the observation uses the fresh Now.
+	g, err := a.beforeEmailGuess(ctx, &req, code)
+	if err != nil {
+		return AuthResult{}, err
 	}
 	s := a.opts.Store.(EmailOTPVerificationObserverStore)
 	req.MaxAttempts = a.emailOTP.AllowedAttempts
@@ -114,6 +116,14 @@ func (a *Auth) observeEmailOTP(ctx context.Context, req EmailOTPRequest, code st
 	}
 	req.Observation = observation
 	before, err := s.ConsumeObservedEmailOTP(ctx, req, a.matchEmailOTP(ctx, code))
+	// The code's after hooks run before BeforeEmailVerification; their error
+	// discards the receipt the spend saved.
+	if hookErr := a.afterCodeGuess(ctx, g); hookErr != nil {
+		if err == nil {
+			return AuthResult{}, a.discardVerificationReceipt(ctx, req.ObservationReceipt(before), hookErr)
+		}
+		return AuthResult{}, hookErr
+	}
 	if err != nil {
 		return AuthResult{}, err
 	}

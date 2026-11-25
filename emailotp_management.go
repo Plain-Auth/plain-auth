@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 	"strings"
+	"time"
 )
 
 func (a *Auth) encodeEmailOTP(ctx context.Context, code string) (string, error) {
@@ -55,7 +56,14 @@ func (a *Auth) matchEmailOTP(ctx context.Context, code string) func(string) (boo
 		return subtle.ConstantTimeCompare([]byte(stored), []byte(want)) == 1, nil
 	}
 }
-func (a *Auth) saveEmailOTP(ctx context.Context, req EmailOTPRequest, allowNew, reuse bool) (string, error) {
+
+// saveEmailOTP stores a code for req and returns it, or "" when the store
+// withholds it. With verification create hooks the code gets its ID first
+// and the hooks run around the store call; declined reports a code a hook
+// declined, which stores and spends nothing. current is the guess at the
+// current address's code that an email change request makes in the same
+// store call.
+func (a *Auth) saveEmailOTP(ctx context.Context, req EmailOTPRequest, allowNew, reuse bool, current *codeGuess) (raw string, declined bool, err error) {
 	o := a.emailOTP
 	prepare := func(prev *EmailOTPRecord) (string, string, int, error) {
 		if reuse && prev != nil && o.ResendStrategy == "reuse" && o.StoreOTP != "hashed" && prev.Attempts < o.AllowedAttempts && prev.ExpiresAt.After(req.Now) {
@@ -72,15 +80,75 @@ func (a *Auth) saveEmailOTP(ctx context.Context, req EmailOTPRequest, allowNew, 
 		}
 		return raw, stored, 0, err
 	}
-	return a.opts.Store.(EmailOTPStore).SaveEmailOTP(ctx, req, allowNew, req.Now.Add(o.ExpiresIn), prepare)
+	expires := req.Now.Add(o.ExpiresIn)
+	chain := a.dbHooks.verification.create
+	var rec VerificationRecord
+	if chain.set() {
+		req.ProofID = randomID()
+		rec = emailOTPRecord(req, req.ProofID, expires)
+		// A declined code answers as a sent one: nothing is stored or mailed,
+		// an earlier code stays, and the current address's code is not judged.
+		if err := a.beforeVerification(ctx, chain, rec); errors.Is(err, ErrSkipWrite) {
+			return "", true, nil
+		} else if err != nil {
+			return "", false, err
+		}
+	}
+	raw, err = a.opts.Store.(EmailOTPStore).SaveEmailOTP(ctx, req, allowNew, expires, prepare)
+	// The current address's code, judged by the same call, runs its after hooks first.
+	if hookErr := a.afterCodeGuess(ctx, current); hookErr != nil {
+		return "", false, hookErr
+	}
+	if err != nil || raw == "" || !chain.set() {
+		return raw, false, err
+	}
+	// The code is stored; an after hook's error fails the send before any mail.
+	if err := runAfter(ctx, a, chain, rec); err != nil {
+		return "", false, err
+	}
+	return raw, false, nil
 }
+
+// beforeEmailGuess prepares a guess at the code req names. With verification
+// update or delete hooks it reads the code without spending it and binds req
+// to it, so the store judges that code and no newer one and reports what it
+// did. A live code runs the delete before hooks, then req.Now is taken
+// again, so slow hooks cannot stretch its life; an expired one runs none and
+// the store removes it. With no code the guess is refused, as the store
+// would refuse it.
+func (a *Auth) beforeEmailGuess(ctx context.Context, req *EmailOTPRequest, code string) (*codeGuess, error) {
+	if err := checkEmailOTPFormat(code); err != nil {
+		return nil, err
+	}
+	g := &codeGuess{}
+	if !a.watchesCodes() {
+		return g, nil
+	}
+	// New requires the finder with these hooks.
+	id, expiresAt, err := a.opts.Store.(EmailOTPFinder).FindEmailOTP(ctx, *req)
+	if errors.Is(err, ErrNotFound) {
+		return nil, invalidOTP()
+	}
+	if err != nil {
+		return nil, err
+	}
+	req.ProofID, req.Decided = id, &g.decision
+	if expiresAt.After(req.Now) {
+		if err := a.beforeCodeGuess(ctx, g, emailOTPRecord(*req, id, expiresAt)); err != nil {
+			return nil, err
+		}
+		req.Now = a.now().UTC().Truncate(time.Millisecond)
+	}
+	return g, nil
+}
+
 func (a *Auth) consumeEmailOTP(ctx context.Context, req EmailOTPRequest, code string, act EmailOTPAction) (User, error) {
 	return a.consumeEmailOTPWithFields(ctx, req, code, act, nil)
 }
 
 func (a *Auth) consumeEmailOTPWithFields(ctx context.Context, req EmailOTPRequest, code string, act EmailOTPAction, fields EmailOTPRegistrationFields) (User, error) {
-	if code == "" || len(code) > 256 {
-		return User{}, &APIError{400, "INVALID_OTP", "Invalid OTP"}
+	if err := checkEmailOTPFormat(code); err != nil {
+		return User{}, err
 	}
 	act.EmailOTPRequest = req
 	act.MaxAttempts = a.emailOTP.AllowedAttempts
@@ -92,13 +160,21 @@ func (a *Auth) consumeEmailOTPWithFields(ctx context.Context, req EmailOTPReques
 }
 
 // CreateEmailOTP creates a fresh code without sending mail. Only trusted Go
-// application code can call this method, including for an unregistered address.
+// application code can call this method, including for an unregistered
+// address. A verification create hook that declines the code makes it
+// return a code that was never stored.
 func (a *Auth) CreateEmailOTP(ctx context.Context, email string, purpose EmailOTPPurpose) (string, error) {
 	req, err := a.emailOTPRequest(email, purpose)
 	if err != nil {
 		return "", err
 	}
-	return a.saveEmailOTP(ctx, req, true, false)
+	raw, declined, err := a.saveEmailOTP(ctx, req, true, false, nil)
+	if declined {
+		// A declined code is returned unstored, as a declined one-time token
+		// is: it proves nothing.
+		return a.newEmailOTP(ctx, req)
+	}
+	return raw, err
 }
 
 // ReadEmailOTP returns a recoverable stored proof, or nil when absent or expired.
@@ -136,14 +212,29 @@ func (a *Auth) completeEmailVerificationOTP(ctx context.Context, email, code str
 	if a.hasVerificationObservers() {
 		return a.observeEmailOTP(ctx, req, code, act.Session, r)
 	}
+	g, err := a.beforeEmailGuess(ctx, &req, code)
+	if err != nil {
+		return AuthResult{}, err
+	}
 	var u User
 	consume := func(ctx context.Context) (err error) {
+		g.decision = PhoneKeepProof
 		u, err = a.consumeEmailOTP(ctx, req, code, act)
 		return err
 	}
 	if act.Session.Token == "" {
 		err = consume(ctx)
-	} else if err = a.planSignIn(ctx, nil, consume); err == nil {
+	} else {
+		err = a.planSignIn(ctx, nil, consume)
+	}
+	// The code's after hooks run before the session's.
+	if hookErr := a.afterCodeGuess(ctx, g); hookErr != nil {
+		if err == nil && act.Session.Token != "" {
+			hookErr = a.discardUnpublishedSession(ctx, act.Session.Token, hookErr)
+		}
+		return AuthResult{}, hookErr
+	}
+	if err == nil && act.Session.Token != "" {
 		err = a.afterDecidedSignIn(ctx, u, false, act.Session.Token)
 	}
 	if err != nil {
@@ -176,14 +267,22 @@ func (a *Auth) RequestEmailChangeOTP(ctx context.Context, h http.Header, newEmai
 	if err != nil {
 		return err
 	}
+	var current *codeGuess
 	if a.emailOTP.ChangeEmail.VerifyCurrentEmail {
 		if currentOTP == "" || len(currentOTP) > 256 {
 			return &APIError{400, "BAD_REQUEST", "OTP is required to verify current email"}
 		}
+		// The store call that stores the new code judges the current
+		// address's code, so that guess's before hooks run first.
+		cur := EmailOTPRequest{Email: req.Source.Email, Purpose: OTPVerifyEmail, Now: req.Now}
+		if current, err = a.beforeEmailGuess(ctx, &cur, currentOTP); err != nil {
+			return err
+		}
+		req.CurrentProofID, req.CurrentDecided, req.Now = cur.ProofID, cur.Decided, cur.Now
 		req.CurrentMatches = a.matchEmailOTP(ctx, currentOTP)
 		req.MaxAttempts = a.emailOTP.AllowedAttempts
 	}
-	raw, err := a.saveEmailOTP(ctx, req, true, false)
+	raw, _, err := a.saveEmailOTP(ctx, req, true, false, current)
 	if err != nil || raw == "" {
 		return err
 	}
@@ -206,7 +305,14 @@ func (a *Auth) changeEmailOTP(ctx context.Context, h http.Header, newEmail, code
 		_, err = a.observeEmailOTP(ctx, req, code, StoredSession{}, r)
 		return err
 	}
+	g, err := a.beforeEmailGuess(ctx, &req, code)
+	if err != nil {
+		return err
+	}
 	_, err = a.consumeEmailOTP(ctx, req, code, EmailOTPAction{})
+	if hookErr := a.afterCodeGuess(ctx, g); hookErr != nil {
+		return hookErr
+	}
 	return err
 }
 func (a *Auth) serveEmailOTPChange(c EndpointContext, path string) (any, error) {

@@ -66,10 +66,22 @@ type EmailOTPRequest struct {
 	// Source binds email changes to the authenticated original account.
 	Source         *EmailOTPSource
 	CurrentMatches func(string) (bool, error)
-	MaxAttempts    int
-	Email          string
-	Purpose        EmailOTPPurpose
-	Now            time.Time
+	// Decided and CurrentDecided, when set, receive what the call did to the
+	// codes ProofID and CurrentProofID name: PhoneCountAttempt for a counted
+	// wrong guess, PhoneRemoveProof for a code it spent or removed, and
+	// PhoneKeepProof otherwise, including whenever its write did not commit.
+	Decided, CurrentDecided *PhoneOTPDecision
+	MaxAttempts             int
+	// ProofID and CurrentProofID bind the call to stored codes, for
+	// verification database hooks. SaveEmailOTP stores its new code under
+	// ProofID. A call that judges a code judges only the one ProofID names,
+	// and CurrentMatches only the current address's code CurrentProofID
+	// names; it refuses any other with INVALID_OTP without writing to it.
+	// Empty lets the store choose the ID and judge the newest code.
+	ProofID, CurrentProofID string
+	Email                   string
+	Purpose                 EmailOTPPurpose
+	Now                     time.Time
 }
 type EmailOTPRecord struct {
 	Stored    string
@@ -110,6 +122,27 @@ type EmailOTPRegistrationStore interface {
 type EmailOTPResetHookStore interface {
 	UseEmailOTPBeforeVerification(context.Context, EmailOTPAction, func(string) (bool, error)) (User, error)
 	VerifyAccountEmail(ctx context.Context, userID, email string, now time.Time) error
+}
+
+// EmailOTPFinder reads an email code without spending it, for verification
+// update and delete hooks. FindEmailOTP returns the ID and expiry of the
+// newest code stored for req's purpose and address, and for an email change
+// req.Source's account, live or expired, without counting an attempt,
+// taking a lock or joining a LoginPlan. With none it returns ErrNotFound.
+//
+// A store that implements it honours EmailOTPRequest's ProofID,
+// CurrentProofID, Decided and CurrentDecided in its email code methods. A
+// call that judges a code first refuses, untouched, any code but the bound
+// one. It reports PhoneRemoveProof when it removes the code: a spend, an
+// expired or exhausted code, or a refusal that spends it, such as an
+// unknown account, closed sign-up, invalid registration fields, an address
+// already in use or a changed owner. It reports PhoneCountAttempt when it
+// counts a wrong guess, and PhoneKeepProof for a successful check, a
+// refusal that writes nothing, and every call whose write rolls back. New
+// requires it for verification update and delete hooks with the email OTP
+// plugin.
+type EmailOTPFinder interface {
+	FindEmailOTP(ctx context.Context, req EmailOTPRequest) (id string, expiresAt time.Time, err error)
 }
 
 // NewEmailOTP enables single-use mailbox codes for registration, sign-in, verification and password recovery.
@@ -201,6 +234,18 @@ func (a *Auth) newEmailOTP(ctx context.Context, req EmailOTPRequest) (string, er
 	}
 	return randomDecimalCode(o.Length)
 }
+
+// invalidOTP refuses a guess at an email or phone code.
+func invalidOTP() error { return &APIError{400, "INVALID_OTP", "Invalid OTP"} }
+
+// checkEmailOTPFormat refuses a code no store holds, before any hook runs.
+func checkEmailOTPFormat(code string) error {
+	if code == "" || len(code) > 256 {
+		return invalidOTP()
+	}
+	return nil
+}
+
 func randomDecimalCode(length int) (string, error) {
 	maximum := new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(length)), nil)
 	n, err := rand.Int(rand.Reader, maximum)
@@ -232,7 +277,7 @@ func (a *Auth) prepareEmailOTP(ctx context.Context, email string, purpose EmailO
 	if purpose == OTPChangeEmail {
 		return nil, validationError("Use the email change request endpoint")
 	}
-	raw, err := a.saveEmailOTP(ctx, req, purpose == OTPSignIn && !a.emailOTP.DisableSignUp, true)
+	raw, _, err := a.saveEmailOTP(ctx, req, purpose == OTPSignIn && !a.emailOTP.DisableSignUp, true, nil)
 	if err != nil || raw == "" {
 		return nil, err
 	}
@@ -244,8 +289,15 @@ func (a *Auth) useEmailOTP(ctx context.Context, email, code string, purpose Emai
 	if err != nil {
 		return User{}, err
 	}
-	return a.consumeEmailOTP(ctx, req, code, action)
-
+	g, err := a.beforeEmailGuess(ctx, &req, code)
+	if err != nil {
+		return User{}, err
+	}
+	u, err := a.consumeEmailOTP(ctx, req, code, action)
+	if hookErr := a.afterCodeGuess(ctx, g); hookErr != nil {
+		return User{}, hookErr
+	}
+	return u, err
 }
 
 // CheckEmailOTP preserves a successful proof for a subsequent action.
@@ -281,6 +333,10 @@ func (a *Auth) SignInEmailOTP(ctx context.Context, in EmailOTPSignInInput, meta 
 	if err != nil {
 		return AuthResult{}, err
 	}
+	g, err := a.beforeEmailGuess(ctx, &request, in.OTP)
+	if err != nil {
+		return AuthResult{}, err
+	}
 	act := EmailOTPAction{AllowSignUp: !a.emailOTP.DisableSignUp, Session: session, NewUser: User{ID: randomID(), Name: in.Name, Image: in.Image}}
 	var registration EmailOTPRegistrationFields
 	if act.AllowSignUp && len(a.opts.UserAdditionalFields) > 0 {
@@ -297,9 +353,17 @@ func (a *Auth) SignInEmailOTP(ctx context.Context, in EmailOTPSignInInput, meta 
 		gate = &signInGate{method: "email-otp", fields: serverInput(a.opts.UserAdditionalFields, in.AdditionalFields)}
 	}
 	err = a.planSignIn(ctx, gate, func(ctx context.Context) (err error) {
+		g.decision = PhoneKeepProof
 		u, err = a.consumeEmailOTPWithFields(ctx, request, in.OTP, act, registration)
 		return err
 	})
+	// The code's after hooks run before the user's and session's.
+	if hookErr := a.afterCodeGuess(ctx, g); hookErr != nil {
+		if err == nil {
+			hookErr = a.discardUnpublishedSession(ctx, session.Token, hookErr)
+		}
+		return AuthResult{}, hookErr
+	}
 	if err == nil {
 		err = a.afterDecidedSignIn(ctx, u, u.ID == act.NewUser.ID, session.Token)
 	}
@@ -321,28 +385,44 @@ func (a *Auth) resetPasswordEmailOTP(ctx context.Context, email, code, password 
 	if err := a.validatePasswordLength(password, true); err != nil {
 		return err
 	}
-	if err := a.CheckEmailOTP(ctx, email, code, OTPResetPassword); err != nil {
+	req, err := a.emailOTPRequest(email, OTPResetPassword)
+	if err != nil {
+		return err
+	}
+	// A reset is one guess: its before hooks run once, ahead of the check
+	// that spares a wrong guess the password hashing, and cover the spend.
+	g, err := a.beforeEmailGuess(ctx, &req, code)
+	if err != nil {
+		return err
+	}
+	if _, err := a.consumeEmailOTP(ctx, req, code, EmailOTPAction{CheckOnly: true}); err != nil {
+		if hookErr := a.afterCodeGuess(ctx, g); hookErr != nil {
+			return hookErr
+		}
 		return err
 	}
 	hash, err := a.hashCredential(ctx, "/email-otp/reset-password", password)
 	if err != nil {
 		return err
 	}
+	req.Now = a.now().UTC().Truncate(time.Millisecond)
 	act := EmailOTPAction{PasswordHash: hash, RevokeSessions: a.opts.RevokeSessionsOnPasswordReset}
+	var owner User
 	if a.opts.OnPasswordReset == nil {
-		_, err = a.useEmailOTP(ctx, email, code, OTPResetPassword, act)
+		_, err = a.consumeEmailOTP(ctx, req, code, act)
+	} else {
+		act.EmailOTPRequest, act.MaxAttempts = req, a.emailOTP.AllowedAttempts
+		owner, err = a.opts.Store.(EmailOTPResetHookStore).UseEmailOTPBeforeVerification(ctx, act, a.matchEmailOTP(ctx, code))
+	}
+	// The code's after hooks run before the reset callback; their error
+	// fails the request after the password changed.
+	if hookErr := a.afterCodeGuess(ctx, g); hookErr != nil {
+		return hookErr
+	}
+	if err != nil || a.opts.OnPasswordReset == nil {
 		return err
 	}
 	store := a.opts.Store.(EmailOTPResetHookStore)
-	act.EmailOTPRequest, err = a.emailOTPRequest(email, OTPResetPassword)
-	if err != nil {
-		return err
-	}
-	act.MaxAttempts = a.emailOTP.AllowedAttempts
-	owner, err := store.UseEmailOTPBeforeVerification(ctx, act, a.matchEmailOTP(ctx, code))
-	if err != nil {
-		return err
-	}
 	if err := a.notifyPasswordReset(ctx, owner, request); err != nil {
 		return err
 	}

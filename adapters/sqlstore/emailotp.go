@@ -14,7 +14,10 @@ import (
 	auth "github.com/Plain-Org/plain-auth"
 )
 
-var _ auth.EmailOTPStore = (*Store)(nil)
+var (
+	_ auth.EmailOTPStore  = (*Store)(nil)
+	_ auth.EmailOTPFinder = (*Store)(nil)
+)
 
 type emailOTPKey struct{ identifier, owner, digest string }
 
@@ -37,39 +40,58 @@ func newEmailOTPKey(req auth.EmailOTPRequest) emailOTPKey {
 // concurrent first issuance, across separate processes and connection pools.
 // Business denials commit attempt counts and expiry/replay cleanup.
 func (s *Store) emailOTPTransaction(ctx context.Context, key emailOTPKey, run func(*sql.Tx) (denial, errorDB error)) error {
-	var err error
+	_, err := s.codeTransaction(ctx, key, run)
+	return err
+}
+
+// codeTransaction is emailOTPTransaction that also reports whether its last
+// attempt committed: after a denial it did, after an error it did not.
+func (s *Store) codeTransaction(ctx context.Context, key emailOTPKey, run func(*sql.Tx) (denial, errorDB error)) (committed bool, err error) {
 	for range 3 {
-		err = s.emailOTPTransactionOnce(ctx, key, run)
+		committed, err = s.emailOTPTransactionOnce(ctx, key, run)
 		if !retryIdentity(err) {
 			break
 		}
 	}
-	return err
+	return committed, err
 }
-func (s *Store) emailOTPTransactionOnce(ctx context.Context, key emailOTPKey, run func(*sql.Tx) (error, error)) error {
+
+func (s *Store) emailOTPTransactionOnce(ctx context.Context, key emailOTPKey, run func(*sql.Tx) (error, error)) (bool, error) {
 	const lockName = "SHA2(CONCAT(DATABASE(), '/auth/email-otp/', ?), 256)"
 	tx, end, err := s.beginTransactionWithMySQLLock(ctx, nil, lockName, 15, errors.New("email OTP mailbox lock unavailable"), key.digest)
 	if err != nil {
-		return err
+		return false, err
 	}
 	defer end.rollback()
 	auth.LoginPlanFrom(ctx).Attempt()
 	if s.dialect == "postgres" {
 		if _, err = tx.ExecContext(ctx, "SELECT pg_advisory_xact_lock(hashtextextended($1,0))", key.owner); err != nil {
-			return err
+			return false, err
 		}
 	}
 	denial, err := run(tx)
 	if err != nil {
-		return err
+		return false, err
 	}
 	if err = auth.LoginPlanFrom(ctx).Commit(); err != nil {
-		return err
+		return false, err
 	}
 	if err = end.commit(); err != nil {
-		return err
+		return false, err
 	}
-	return denial
+	return true, denial
+}
+
+// reportCode records in p, when set, what a call did to a code a
+// verification hook saw: d once its write committed, PhoneKeepProof otherwise.
+func reportCode(p *auth.PhoneOTPDecision, committed bool, d auth.PhoneOTPDecision) {
+	if p == nil {
+		return
+	}
+	if !committed {
+		d = auth.PhoneKeepProof
+	}
+	*p = d
 }
 
 type storedEmailOTP struct {
@@ -77,10 +99,15 @@ type storedEmailOTP struct {
 	id string
 }
 
-func (s *Store) readEmailOTP(ctx context.Context, tx *sql.Tx, key emailOTPKey) (*storedEmailOTP, error) {
+// readEmailOTP reads the newest code stored under key, locking it when lock is set.
+func (s *Store) readEmailOTP(ctx context.Context, db rowQuerier, key emailOTPKey, lock bool) (*storedEmailOTP, error) {
+	query := s.bind
+	if lock {
+		query = s.readForUpdate
+	}
 	var rec storedEmailOTP
 	var value, actual string
-	err := tx.QueryRowContext(ctx, s.readForUpdate(`SELECT "id","identifier","value","expiresAt" FROM "verification" WHERE "identifier"=? ORDER BY "createdAt" DESC,"id" DESC LIMIT 1`), key.identifier).Scan(&rec.id, &actual, &value, &rec.ExpiresAt)
+	err := db.QueryRowContext(ctx, query(`SELECT "id","identifier","value","expiresAt" FROM "verification" WHERE "identifier"=? ORDER BY "createdAt" DESC,"id" DESC LIMIT 1`), key.identifier).Scan(&rec.id, &actual, &value, &rec.ExpiresAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
@@ -100,6 +127,20 @@ func (s *Store) readEmailOTP(ctx context.Context, tx *sql.Tx, key emailOTPKey) (
 	}
 	return &rec, nil
 }
+
+// FindEmailOTP reads the newest code stored for req, live or not, without
+// spending, counting or locking it, and outside any login plan.
+func (s *Store) FindEmailOTP(ctx context.Context, req auth.EmailOTPRequest) (string, time.Time, error) {
+	rec, err := s.readEmailOTP(ctx, s.db, newEmailOTPKey(req), false)
+	if err != nil {
+		return "", time.Time{}, err
+	}
+	if rec == nil {
+		return "", time.Time{}, auth.ErrNotFound
+	}
+	return rec.id, rec.ExpiresAt, nil
+}
+
 func (s *Store) emailOTPUser(ctx context.Context, tx *sql.Tx, email string) (auth.User, error) {
 	var u auth.User
 	err := tx.QueryRowContext(ctx, s.readForUpdate(`SELECT `+userColumns+` FROM "user" u WHERE u."email"=?`), email).Scan(userFields(&u)...)
@@ -140,11 +181,12 @@ func (s *Store) SaveEmailOTP(ctx context.Context, req auth.EmailOTPRequest, allo
 	key := newEmailOTPKey(req)
 	s.sweepCodes(ctx, req.Now)
 	var delivery string
-	err := s.emailOTPTransaction(ctx, key, func(tx *sql.Tx) (error, error) {
-		delivery = ""
+	var current auth.PhoneOTPDecision
+	committed, err := s.codeTransaction(ctx, key, func(tx *sql.Tx) (error, error) {
+		delivery, current = "", auth.PhoneKeepProof
 		var owner string
 		if req.Source != nil {
-			denial, err := s.authorizeEmailOTPChange(ctx, tx, req)
+			denial, err := s.authorizeEmailOTPChange(ctx, tx, req, &current)
 			if denial != nil || err != nil {
 				return denial, err
 			}
@@ -166,7 +208,7 @@ func (s *Store) SaveEmailOTP(ctx context.Context, req auth.EmailOTPRequest, allo
 				return nil, s.clearEmailOTP(ctx, tx, key)
 			}
 		}
-		prior, err := s.readEmailOTP(ctx, tx, key)
+		prior, err := s.readEmailOTP(ctx, tx, key, true)
 		if err != nil {
 			return nil, err
 		}
@@ -188,7 +230,11 @@ func (s *Store) SaveEmailOTP(ctx context.Context, req auth.EmailOTPRequest, allo
 			return nil, err
 		}
 		insert := s.bind(`INSERT INTO "verification" ("id","identifier","value","expiresAt","createdAt","updatedAt") VALUES (?,?,?,?,?,?)`)
-		id := rand.Text()
+		// Verification hooks name the code by the ID the Auth chose.
+		id := req.ProofID
+		if id == "" {
+			id = rand.Text()
+		}
 		now := s.date(req.Now)
 		if _, err = tx.ExecContext(ctx, insert, id, key.identifier, stored+":"+strconv.Itoa(attempts), s.date(expires), now, now); err != nil {
 			return nil, err
@@ -201,6 +247,7 @@ func (s *Store) SaveEmailOTP(ctx context.Context, req auth.EmailOTPRequest, allo
 		delivery = raw
 		return nil, nil
 	})
+	reportCode(req.CurrentDecided, committed, current)
 	return delivery, err
 }
 
@@ -237,14 +284,20 @@ func (s *Store) useEmailOTP(ctx context.Context, act auth.EmailOTPAction, matche
 	invalid := &auth.APIError{Status: 400, Code: "INVALID_OTP", Message: "Invalid OTP"}
 	missing := &auth.APIError{Status: 400, Code: "USER_NOT_FOUND", Message: "User not found"}
 	var user auth.User
-	err := s.emailOTPTransaction(ctx, key, func(tx *sql.Tx) (error, error) {
-		user = auth.User{}
-		rec, denial, err := s.checkEmailOTP(ctx, tx, key, act.Now, act.MaxAttempts, matches)
+	var decision auth.PhoneOTPDecision
+	committed, err := s.codeTransaction(ctx, key, func(tx *sql.Tx) (error, error) {
+		user, decision = auth.User{}, auth.PhoneKeepProof
+		// spend removes the code this call judged.
+		spend := func() error {
+			decision = auth.PhoneRemoveProof
+			return s.clearEmailOTP(ctx, tx, key)
+		}
+		rec, denial, err := s.checkEmailOTP(ctx, tx, key, act.ProofID, act.Now, act.MaxAttempts, matches, &decision)
 		if denial != nil || err != nil {
 			return denial, err
 		}
 		if act.Source != nil {
-			denial, err = s.authorizeEmailOTPChange(ctx, tx, act.EmailOTPRequest)
+			denial, err = s.authorizeEmailOTPChange(ctx, tx, act.EmailOTPRequest, nil)
 			if denial != nil || err != nil {
 				return denial, err
 			}
@@ -253,9 +306,9 @@ func (s *Store) useEmailOTP(ctx context.Context, act auth.EmailOTPAction, matche
 				return nil, err
 			}
 			if !bound {
-				return invalid, s.clearEmailOTP(ctx, tx, key)
+				return invalid, spend()
 			}
-			if err = s.clearEmailOTP(ctx, tx, key); err != nil {
+			if err = spend(); err != nil {
 				return nil, err
 			}
 			target, err := s.emailOTPUser(ctx, tx, act.Email)
@@ -287,7 +340,7 @@ func (s *Store) useEmailOTP(ctx context.Context, act auth.EmailOTPAction, matche
 			return nil, err
 		}
 		if !bound {
-			return invalid, s.clearEmailOTP(ctx, tx, key)
+			return invalid, spend()
 		}
 		if act.CheckOnly {
 			if user.ID == "" {
@@ -295,7 +348,7 @@ func (s *Store) useEmailOTP(ctx context.Context, act auth.EmailOTPAction, matche
 			}
 			return nil, nil
 		}
-		if err = s.clearEmailOTP(ctx, tx, key); err != nil {
+		if err = spend(); err != nil {
 			return nil, err
 		}
 		if user.ID == "" && act.Purpose != auth.OTPSignIn {
@@ -366,22 +419,32 @@ func (s *Store) useEmailOTP(ctx context.Context, act auth.EmailOTPAction, matche
 		}
 		return nil, err
 	})
+	reportCode(act.Decided, committed, decision)
 	return user, err
 }
 
-func (s *Store) checkEmailOTP(ctx context.Context, tx *sql.Tx, key emailOTPKey, now time.Time, maxAttempts int, matches func(string) (bool, error)) (*storedEmailOTP, error, error) {
+// checkEmailOTP judges a guess at the code stored under key. With want set
+// it judges only the code with that ID and refuses any other untouched.
+// decided, when set, receives what it wrote to the code.
+func (s *Store) checkEmailOTP(ctx context.Context, tx *sql.Tx, key emailOTPKey, want string, now time.Time, maxAttempts int, matches func(string) (bool, error), decided *auth.PhoneOTPDecision) (*storedEmailOTP, error, error) {
+	if decided == nil {
+		decided = new(auth.PhoneOTPDecision)
+	}
 	invalid := &auth.APIError{Status: 400, Code: "INVALID_OTP", Message: "Invalid OTP"}
-	rec, err := s.readEmailOTP(ctx, tx, key)
+	rec, err := s.readEmailOTP(ctx, tx, key, true)
 	if err != nil {
 		return nil, nil, err
 	}
-	if rec == nil {
+	// A code a newer send replaced is refused untouched.
+	if rec == nil || want != "" && rec.id != want {
 		return nil, invalid, nil
 	}
 	if !rec.ExpiresAt.After(now) {
+		*decided = auth.PhoneRemoveProof
 		return nil, &auth.APIError{Status: 400, Code: "OTP_EXPIRED", Message: "OTP expired"}, s.clearEmailOTP(ctx, tx, key)
 	}
 	if rec.Attempts >= maxAttempts {
+		*decided = auth.PhoneRemoveProof
 		return nil, &auth.APIError{Status: 403, Code: "TOO_MANY_ATTEMPTS", Message: "Too many attempts"}, s.clearEmailOTP(ctx, tx, key)
 	}
 	valid, err := matches(rec.Stored)
@@ -389,6 +452,7 @@ func (s *Store) checkEmailOTP(ctx context.Context, tx *sql.Tx, key emailOTPKey, 
 		return nil, nil, err
 	}
 	if !valid {
+		*decided = auth.PhoneCountAttempt
 		_, err = tx.ExecContext(ctx, s.bind(`UPDATE "verification" SET "value"=?,"updatedAt"=? WHERE "id"=?`), rec.Stored+":"+strconv.Itoa(rec.Attempts+1), s.date(now), rec.id)
 		return nil, invalid, err
 	}
@@ -399,7 +463,7 @@ func (s *Store) ReadEmailOTP(ctx context.Context, req auth.EmailOTPRequest) (*au
 	key := newEmailOTPKey(req)
 	var found *auth.EmailOTPRecord
 	err := s.emailOTPTransaction(ctx, key, func(tx *sql.Tx) (error, error) {
-		rec, err := s.readEmailOTP(ctx, tx, key)
+		rec, err := s.readEmailOTP(ctx, tx, key, true)
 		if err != nil {
 			return nil, err
 		}
@@ -411,7 +475,13 @@ func (s *Store) ReadEmailOTP(ctx context.Context, req auth.EmailOTPRequest) (*au
 	return found, err
 }
 
-func (s *Store) authorizeEmailOTPChange(ctx context.Context, tx *sql.Tx, req auth.EmailOTPRequest) (error, error) {
+// authorizeEmailOTPChange checks that req's source session still owns the
+// current address and, with CurrentMatches, judges the current address's
+// code. current, when set, receives what it wrote to that code.
+func (s *Store) authorizeEmailOTPChange(ctx context.Context, tx *sql.Tx, req auth.EmailOTPRequest, current *auth.PhoneOTPDecision) (error, error) {
+	if current == nil {
+		current = new(auth.PhoneOTPDecision)
+	}
 	src := req.Source
 	if req.Purpose != auth.OTPChangeEmail || src.UserID == "" || src.SessionToken == "" {
 		return nil, errors.New("invalid email OTP source")
@@ -433,7 +503,7 @@ func (s *Store) authorizeEmailOTPChange(ctx context.Context, tx *sql.Tx, req aut
 		return nil, nil
 	}
 	key := newEmailOTPKey(auth.EmailOTPRequest{Email: src.Email, Purpose: auth.OTPVerifyEmail})
-	rec, denial, err := s.checkEmailOTP(ctx, tx, key, req.Now, req.MaxAttempts, req.CurrentMatches)
+	rec, denial, err := s.checkEmailOTP(ctx, tx, key, req.CurrentProofID, req.Now, req.MaxAttempts, req.CurrentMatches, current)
 	if denial != nil || err != nil {
 		return denial, err
 	}
@@ -441,6 +511,7 @@ func (s *Store) authorizeEmailOTPChange(ctx context.Context, tx *sql.Tx, req aut
 	if err != nil {
 		return nil, err
 	}
+	*current = auth.PhoneRemoveProof
 	if !bound {
 		return &auth.APIError{Status: 400, Code: "INVALID_OTP", Message: "Invalid OTP"}, s.clearEmailOTP(ctx, tx, key)
 	}
@@ -462,7 +533,7 @@ func (s *Store) FinishObservedEmailOTP(ctx context.Context, req auth.EmailOTPReq
 	}
 	defer tx.Rollback()
 	if req.Source != nil {
-		denial, err := s.authorizeEmailOTPChange(ctx, tx, req)
+		denial, err := s.authorizeEmailOTPChange(ctx, tx, req, nil)
 		if err != nil {
 			return auth.User{}, err
 		}

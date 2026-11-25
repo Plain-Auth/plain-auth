@@ -52,6 +52,9 @@ type PhoneOTPUse struct {
 	AllowedAttempts   int
 	Now               time.Time
 }
+
+// PhoneOTPDecision is what a store commits to a phone or email code it
+// judges: it keeps the code, counts a wrong guess, or removes the code.
 type PhoneOTPDecision uint8
 
 const (

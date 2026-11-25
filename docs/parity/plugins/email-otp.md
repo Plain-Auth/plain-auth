@@ -58,10 +58,12 @@
       - [x] Allow an existing owner to sign in and reject a previously issued registration proof after policy changes ([test](../../../adapters/sqlstore/emailotp_test.go#L164))
     - [x] `allowedAttempts` ([test](../../../adapters/sqlstore/emailotp_test.go#L218))
       - [x] Serialize competing guesses so the configured budget is exhausted once ([test](../../../adapters/sqlstore/emailotp_test.go#L218))
+      - [x] Run verification update after hooks for each counted wrong guess, and remove a code that ran out with its delete hooks ([test](../../../conformance/goapi/database_verification_code_hooks_test.go#L218))
     - [ ] `storeOTP`
       - [x] Verify plain, hashed and encrypted proofs and honor application-provided transformations ([test](../../../adapters/sqlstore/emailotp_management_test.go#L232))
     - [ ] `resendStrategy`
       - [x] Reuse recoverable proofs without resetting attempts, and rotate hashed proofs ([test](../../../adapters/sqlstore/emailotp_test.go#L241))
+      - [x] With verification hooks, a reuse resend stores the code again under a new ID with its attempts, running the create hooks ([test](../../../conformance/goapi/database_verification_code_hooks_test.go#L479))
     - [ ] `changeEmail`
       - [x] Verify both mailboxes and keep the existing user and session after the change ([test](../../../client/emailotp_test.go#L93))
     - [ ] `overrideDefaultEmailVerification`
