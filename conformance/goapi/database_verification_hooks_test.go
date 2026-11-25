@@ -242,7 +242,8 @@ func TestDatabaseVerificationHooks(t *testing.T) {
 
 // New refuses verification hooks that an enabled feature would bypass: the
 // plugins that keep codes in their own stores, and delete hooks on a store
-// that cannot read a deletion link or an OAuth flow before spending it.
+// that cannot read a deletion link, an OAuth flow, a magic link or a
+// one-time token before spending it.
 func TestDatabaseVerificationHooksRefuseBypassingFeatures(t *testing.T) {
 	observe := authn.OperationHooks[authn.VerificationRecord]{After: func(context.Context, authn.VerificationRecord, *authn.HookContext) error { return nil }}
 	base := func() authn.Options {
@@ -253,14 +254,56 @@ func TestDatabaseVerificationHooksRefuseBypassingFeatures(t *testing.T) {
 	if _, err := authn.New(base()); err != nil {
 		t.Fatal("verification hooks were refused for the core flows:", err)
 	}
+	codes, err := authn.NewEmailOTP(authn.EmailOTPOptions{Send: func(context.Context, authn.EmailOTPMessage) error { return nil }})
+	if err != nil {
+		t.Fatal(err)
+	}
+	withCodes := base()
+	withCodes.Plugins = []authn.Plugin{codes}
+	if _, err := authn.New(withCodes); err == nil || !strings.Contains(err.Error(), "email-otp") {
+		t.Fatal("verification hooks were accepted with email codes:", err)
+	}
+	// Magic links and one-time tokens run them, and delete hooks need a store
+	// that reads a link or token before spending it.
 	magic, err := authn.NewMagicLink(authn.MagicLinkOptions{Send: func(context.Context, authn.MagicLinkMessage) error { return nil }})
 	if err != nil {
 		t.Fatal(err)
 	}
-	withMagic := base()
-	withMagic.Plugins = []authn.Plugin{magic}
-	if _, err := authn.New(withMagic); err == nil || !strings.Contains(err.Error(), "magic-link") {
-		t.Fatal("verification hooks were accepted with magic links:", err)
+	transfers, err := authn.NewOneTimeToken(authn.OneTimeTokenOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	links := base()
+	links.Plugins = []authn.Plugin{magic, transfers}
+	links.DatabaseHooks.Verification.Delete = observe
+	if _, err := authn.New(links); err != nil {
+		t.Fatal("verification hooks were refused with magic links and one-time tokens:", err)
+	}
+	links.EmailAndPassword = false
+	shared := memory.New()
+	for _, tc := range []struct {
+		plugin authn.Plugin
+		store  authn.Store
+		finder string
+	}{
+		{magic, struct {
+			authn.Store
+			authn.MagicLinkStore
+		}{shared, shared}, "FindMagicLink"},
+		{transfers, struct {
+			authn.Store
+			authn.OneTimeTokenStore
+		}{shared, shared}, "FindOneTimeToken"},
+	} {
+		links.Plugins, links.Store = []authn.Plugin{tc.plugin}, tc.store
+		links.DatabaseHooks.Verification.Delete = observe
+		if _, err := authn.New(links); err == nil || !strings.Contains(err.Error(), tc.finder) {
+			t.Fatal("verification delete hooks were accepted without", tc.finder, err)
+		}
+		links.DatabaseHooks.Verification.Delete = authn.OperationHooks[authn.VerificationRecord]{}
+		if _, err := authn.New(links); err != nil {
+			t.Fatal("create hooks were refused on a store without", tc.finder, err)
+		}
 	}
 	// A store that cannot read a deletion link before spending it.
 	deletions := base()

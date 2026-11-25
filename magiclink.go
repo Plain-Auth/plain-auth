@@ -40,6 +40,10 @@ type MagicLinkChallenge struct {
 }
 
 // MagicLinkStore consumes a mailbox proof atomically with user promotion and session creation.
+// CompleteMagicLink and CompleteMagicLinkWithUserFields spend the link when
+// they sign in, and when they refuse a new address with
+// ErrMagicLinkSignUpDisabled or with the error of defaults.Columns.
+// Verification delete hooks rely on this.
 type MagicLinkStore interface {
 	SaveMagicLink(context.Context, MagicLinkChallenge) error
 	CompleteMagicLink(ctx context.Context, key, newUserID string, session StoredSession, allowSignUp bool) (User, bool, error)
@@ -50,6 +54,15 @@ type MagicLinkStore interface {
 // keep their stored values, including when a required field has no default.
 type MagicLinkUserFieldStore interface {
 	CompleteMagicLinkWithUserFields(ctx context.Context, key, newUserID string, session StoredSession, defaults RegistrationUserFields) (User, bool, error)
+}
+
+// MagicLinkFinder reads a magic link without spending it, for verification
+// delete hooks. It returns the Key, Email, Name and ExpiresAt of the newest
+// well-formed link stored under key that is live at now. It judges only the
+// stored row: a link whose address another account now owns is still found,
+// and CompleteMagicLink refuses it. Anything else is ErrNotFound.
+type MagicLinkFinder interface {
+	FindMagicLink(ctx context.Context, key string, now time.Time) (MagicLinkChallenge, error)
 }
 
 var ErrMagicLinkSignUpDisabled = errors.New("magic link registration disabled")
@@ -147,24 +160,30 @@ func (o MagicLinkOptions) request(c EndpointContext) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	now := a.now().UTC().Truncate(time.Millisecond)
-	ch := MagicLinkChallenge{Key: key, Email: strings.ToLower(email), Name: name, CreatedAt: now, ExpiresAt: now.Add(o.ExpiresIn)}
-	if err := a.opts.Store.(MagicLinkStore).SaveMagicLink(ctx, ch); err != nil {
-		return nil, err
-	}
 	q := url.Values{"token": {token}, "callbackURL": {"/"}}
-	for _, key := range []string{"callbackURL", "newUserCallbackURL", "errorCallbackURL"} {
-		if v, ok := c.Body[key].(string); ok && v != "" {
-			q.Set(key, v)
+	for _, field := range []string{"callbackURL", "newUserCallbackURL", "errorCallbackURL"} {
+		if v, ok := c.Body[field].(string); ok && v != "" {
+			q.Set(field, v)
 		}
 	}
 	base, err := a.publicURL(ctx)
 	if err != nil {
 		return nil, err
 	}
-	link := base + "/magic-link/verify?" + q.Encode()
-	if err := o.Send(ctx, MagicLinkMessage{Email: ch.Email, Token: token, URL: link, Metadata: metadata, Request: accountObserverRequest(ctx, c.Request)}); err != nil {
+	now := a.now().UTC().Truncate(time.Millisecond)
+	ch := MagicLinkChallenge{Key: key, Email: strings.ToLower(email), Name: name, CreatedAt: now, ExpiresAt: now.Add(o.ExpiresIn)}
+	// A declined link answers as a sent one, with nothing stored or mailed.
+	declined, err := a.createVerification(ctx, magicLinkRecord(key, ch.ExpiresAt), func() error {
+		return a.opts.Store.(MagicLinkStore).SaveMagicLink(ctx, ch)
+	})
+	if err != nil {
 		return nil, err
+	}
+	if !declined {
+		link := base + "/magic-link/verify?" + q.Encode()
+		if err := o.Send(ctx, MagicLinkMessage{Email: ch.Email, Token: token, URL: link, Metadata: metadata, Request: accountObserverRequest(ctx, c.Request)}); err != nil {
+			return nil, err
+		}
 	}
 	return map[string]bool{"status": true}, nil
 }
@@ -209,6 +228,23 @@ func (o MagicLinkOptions) verify(c EndpointContext) (any, error) {
 	if err != nil {
 		return nil, err
 	}
+	// The link's delete before hooks run first, on a read that does not
+	// spend it, at the time the sign-in judges its expiry.
+	spent, refusedSpend, err := a.beforeSpendVerification(r.Context(), func() (VerificationRecord, error) {
+		finder, ok := a.opts.Store.(MagicLinkFinder)
+		if !ok {
+			return VerificationRecord{}, ErrNotFound
+		}
+		link, err := finder.FindMagicLink(r.Context(), key, session.CreatedAt)
+		return magicLinkRecord(key, link.ExpiresAt), err
+	})
+	if err != nil {
+		return nil, err
+	}
+	if refusedSpend {
+		// A declined spend keeps the link usable.
+		return redirectQuery(errorURL, "error", "INVALID_TOKEN"), nil
+	}
 	var user User
 	var created bool
 	newUserID := randomID()
@@ -216,15 +252,39 @@ func (o MagicLinkOptions) verify(c EndpointContext) (any, error) {
 	if !o.DisableSignUp {
 		gate = &signInGate{method: "magic-link"}
 	}
+	withFields := !o.DisableSignUp && len(a.opts.UserAdditionalFields) > 0
+	var defaults RegistrationUserFields
+	if withFields {
+		defaults = a.registrationUserFields()
+	}
+	// spentLink reports that the store's last run spent the link: it signed
+	// in, or refused a new address because sign-up is closed or a
+	// registration default is missing. A hook's error never sets it.
+	var spentLink bool
 	err = a.planSignIn(r.Context(), gate, func(ctx context.Context) (err error) {
-		if !o.DisableSignUp && len(a.opts.UserAdditionalFields) > 0 {
-			store := a.opts.Store.(MagicLinkUserFieldStore)
-			user, created, err = store.CompleteMagicLinkWithUserFields(ctx, key, newUserID, session, a.registrationUserFields())
+		if withFields {
+			user, created, err = a.opts.Store.(MagicLinkUserFieldStore).CompleteMagicLinkWithUserFields(ctx, key, newUserID, session, defaults)
 		} else {
 			user, created, err = a.opts.Store.(MagicLinkStore).CompleteMagicLink(ctx, key, newUserID, session, !o.DisableSignUp)
 		}
+		spentLink = err == nil || errors.Is(err, ErrMagicLinkSignUpDisabled) || defaults.err != nil && errors.Is(err, defaults.err)
 		return err
 	})
+	// The link's after hooks run before the user's and session's. Their
+	// error, or a spend the before hooks never saw, is never read as a
+	// refusal.
+	if spentLink {
+		unseen, hookErr := a.afterSpendVerification(r.Context(), spent)
+		if (unseen || hookErr != nil) && err == nil {
+			hookErr = a.discardUnpublishedSession(r.Context(), session.Token, hookErr)
+		}
+		switch {
+		case hookErr != nil:
+			return nil, hookErr
+		case unseen:
+			return redirectQuery(errorURL, "error", "INVALID_TOKEN"), nil
+		}
+	}
 	if errors.Is(err, errPlannedUserSkipped) {
 		return redirectQuery(errorURL, "error", "failed_to_create_user"), nil
 	}
@@ -233,7 +293,8 @@ func (o MagicLinkOptions) verify(c EndpointContext) (any, error) {
 	}
 	var refused *APIError
 	if errors.As(err, &refused) && refused.Code != "" {
-		// A hook's refusal returns the browser to the error page, as in the reference.
+		// A user or session hook's refusal, or ValidateUserInfo's, returns
+		// the browser to the error page, as in the reference.
 		target := redirectQuery(errorURL, "error", refused.Code)
 		return redirectQuery(string(target), "error_description", refused.Message), nil
 	}
@@ -257,12 +318,6 @@ func (o MagicLinkOptions) verify(c EndpointContext) (any, error) {
 			session.Session = stored.Session
 		}
 	}
-	// A profile read or plugin may reject the public session after the database
-	// has consumed the proof. Publish credentials only with a successful response.
-	issued := c.ResponseHeader.Clone()
-	if err := a.addSessionCookieHeaders(issued, r, session.Token, true); err != nil {
-		return nil, err
-	}
 	var output any = Redirect(callback)
 	if q.Get("callbackURL") == "" {
 		result, err := a.withSessionPlugins(r.Context(), session.Session, user)
@@ -279,6 +334,13 @@ func (o MagicLinkOptions) verify(c EndpointContext) (any, error) {
 			return nil, err
 		}
 		output = Redirect(callback)
+	}
+	// A profile read or plugin may reject the public session after the
+	// database has consumed the proof. Publish credentials, and mint any
+	// Set-Ott token, only once the response is built.
+	issued := c.ResponseHeader.Clone()
+	if err := a.addSessionCookieHeaders(issued, r, session.Token, true); err != nil {
+		return nil, err
 	}
 	clear(c.ResponseHeader)
 	maps.Copy(c.ResponseHeader, issued)

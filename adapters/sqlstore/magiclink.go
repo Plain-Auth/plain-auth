@@ -11,6 +11,7 @@ import (
 	"io"
 	"net/mail"
 	"strings"
+	"time"
 
 	auth "github.com/Plain-Org/plain-auth"
 )
@@ -40,6 +41,8 @@ func (s *Store) saveMagicLink(ctx context.Context, ch auth.MagicLinkChallenge) e
 		return err
 	}
 	defer tx.Rollback()
+	// The core's verification hooks derive the same ID (keyedRecordID);
+	// keep the two in step.
 	tokenHash := sha256.Sum256([]byte(ch.Key))
 	id := "ml-" + hex.EncodeToString(tokenHash[:16])
 	// An expired link with this key, and its owner binding, are replaced;
@@ -100,6 +103,49 @@ func (s *Store) redeemMagicLink(ctx context.Context, key, newID string, session 
 	return user, created, err
 }
 
+// readMagicLink reads the newest link stored under key that is live at now,
+// through db, locking it when lock is set. A link whose identifier differs
+// in case, or whose value is not a magic link record, is ErrNotFound.
+func (s *Store) readMagicLink(ctx context.Context, db rowQuerier, key string, now time.Time, lock bool) (id string, rec magicLinkRecord, expires time.Time, err error) {
+	query := s.bind
+	if lock {
+		query = s.readForUpdate
+	}
+	var identifier, data string
+	purpose := "magic-link:" + key
+	err = db.QueryRowContext(ctx, query(`SELECT "id","identifier","value","expiresAt" FROM "verification" WHERE "identifier"=? AND "expiresAt">? ORDER BY "createdAt" DESC LIMIT 1`), purpose, s.date(now)).Scan(&id, &identifier, &data, &expires)
+	if err != nil {
+		return "", rec, expires, factorRowError(err)
+	}
+	// Some database collations fold case. Bearer credentials are byte-exact.
+	if identifier != purpose {
+		return "", rec, expires, auth.ErrNotFound
+	}
+	decoder := json.NewDecoder(strings.NewReader(data))
+	decoder.DisallowUnknownFields()
+	if decoder.Decode(&rec) != nil || decoder.Decode(new(any)) != io.EOF || rec.Type != "magic-link" {
+		return "", magicLinkRecord{}, expires, auth.ErrNotFound
+	}
+	addr, err := mail.ParseAddress(rec.Email)
+	if err != nil || addr.Address != rec.Email || !strings.Contains(rec.Email, "@") {
+		return "", magicLinkRecord{}, expires, auth.ErrNotFound
+	}
+	return id, rec, expires, nil
+}
+
+var _ auth.MagicLinkFinder = (*Store)(nil)
+
+// FindMagicLink reads a live magic link without spending it. A link whose
+// address moved to another account is still found; CompleteMagicLink
+// refuses it.
+func (s *Store) FindMagicLink(ctx context.Context, key string, now time.Time) (auth.MagicLinkChallenge, error) {
+	_, rec, expires, err := s.readMagicLink(ctx, s.db, key, now, false)
+	if err != nil {
+		return auth.MagicLinkChallenge{}, err
+	}
+	return auth.MagicLinkChallenge{Key: key, Email: rec.Email, Name: rec.Name, ExpiresAt: expires}, nil
+}
+
 func (s *Store) completeMagicLink(ctx context.Context, key, newID string, session auth.StoredSession, allowSignup bool, defaults auth.RegistrationUserFields) (auth.User, bool, error) {
 	var user auth.User
 	tx, err := s.db.BeginTx(ctx, nil)
@@ -108,26 +154,9 @@ func (s *Store) completeMagicLink(ctx context.Context, key, newID string, sessio
 	}
 	defer tx.Rollback()
 	auth.LoginPlanFrom(ctx).Attempt()
-	var id, identifier, data string
-	now := s.date(session.CreatedAt)
-	purpose := "magic-link:" + key
-	err = tx.QueryRowContext(ctx, s.readForUpdate(`SELECT "id","identifier","value" FROM "verification" WHERE "identifier"=? AND "expiresAt">? ORDER BY "createdAt" DESC LIMIT 1`), purpose, now).Scan(&id, &identifier, &data)
+	id, rec, _, err := s.readMagicLink(ctx, tx, key, session.CreatedAt, true)
 	if err != nil {
-		return user, false, factorRowError(err)
-	}
-	// Some database collations fold case. Bearer credentials are byte-exact.
-	if identifier != purpose {
-		return user, false, auth.ErrNotFound
-	}
-	var rec magicLinkRecord
-	decoder := json.NewDecoder(strings.NewReader(data))
-	decoder.DisallowUnknownFields()
-	if decoder.Decode(&rec) != nil || decoder.Decode(new(any)) != io.EOF || rec.Type != "magic-link" {
-		return user, false, auth.ErrNotFound
-	}
-	addr, err := mail.ParseAddress(rec.Email)
-	if err != nil || addr.Address != rec.Email || !strings.Contains(rec.Email, "@") {
-		return user, false, auth.ErrNotFound
+		return user, false, err
 	}
 	var bound string
 	ownerKey := "magic-link-owner:" + id

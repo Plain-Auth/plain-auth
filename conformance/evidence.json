@@ -18932,6 +18932,21 @@
       "label": "Run verification hooks around browser OAuth flows on SQLite, PostgreSQL and MySQL: a declined spend refuses the callback and keeps the flow",
       "test": "adapters/sqlstore/verification_hooks_test.go",
       "marker": "func TestVerificationHooksAroundOAuthFlows(t *testing.T) {"
+    },
+    {
+      "label": "Run verification hooks around magic links: a declined request stores and mails nothing, a declined spend keeps the link, an after hook's error is never read as an invalid link, and the link's hooks run before the user and session hooks of its sign-in",
+      "test": "conformance/goapi/database_verification_plugin_hooks_test.go",
+      "marker": "func TestDatabaseVerificationHooksForMagicLinks(t *testing.T) {"
+    },
+    {
+      "label": "Run verification hooks around one-time tokens: a declined generate returns a token that redeems nothing, a declined redeem keeps the token, and a token whose session ended runs its after hooks before the refusal",
+      "test": "conformance/goapi/database_verification_plugin_hooks_test.go",
+      "marker": "func TestDatabaseVerificationHooksForOneTimeTokens(t *testing.T) {"
+    },
+    {
+      "label": "Run magic link and one-time token verification hooks on SQLite, PostgreSQL and MySQL, once around a planned sign-in's dry run, outside the store's transaction and with the stored row's ID",
+      "test": "adapters/sqlstore/verification_hooks_test.go",
+      "marker": "func TestVerificationHooksAroundMagicLinksAndTokens(t *testing.T) {"
     }
   ],
   "docs/content/docs/concepts/database.mdx#L881": [
@@ -19044,6 +19059,11 @@
       "label": "Run session update and delete after hooks once the change is stored, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/database_hooks_test.go",
       "marker": "// Session update and delete hooks may also read through the store on every engine."
+    },
+    {
+      "label": "Run one verification delete after hook among concurrent redemptions of a magic link or one-time token, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/verification_hooks_test.go",
+      "marker": "// Concurrent redemptions of one link or token run one delete after hook."
     }
   ],
   "docs/content/docs/concepts/database.mdx#L891/Example Usage": [
@@ -19107,7 +19127,7 @@
       "marker": "// Run account hooks around the credential a sign-up stores, password"
     },
     {
-      "label": "Configure verification hooks for password reset and account deletion links and browser OAuth flows, and refuse the plugins that keep their codes without them",
+      "label": "Configure verification hooks for password reset and account deletion links, browser OAuth flows, magic links and one-time tokens, and refuse the plugins and stores that would bypass them",
       "test": "conformance/goapi/database_verification_hooks_test.go",
       "marker": "func TestDatabaseVerificationHooksRefuseBypassingFeatures(t *testing.T) {"
     }

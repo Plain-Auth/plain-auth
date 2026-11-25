@@ -25,9 +25,23 @@ type OneTimeTokenOptions struct {
 	GenerateTokenWithRequest func(context.Context, SessionResult, *http.Request) (string, error)
 }
 
+// OneTimeTokenStore keeps single-use session transfers. ConsumeOneTimeToken
+// spends the token also when it returns ErrTransferSessionMissing or
+// ErrTransferSessionExpired. Verification delete hooks rely on this.
 type OneTimeTokenStore interface {
 	SaveOneTimeToken(ctx context.Context, key string, source Session, now, expires time.Time) error
 	ConsumeOneTimeToken(ctx context.Context, key string, now time.Time) (SessionResult, error)
+}
+
+// OneTimeTokenFinder reads a one-time token without spending it, for
+// verification delete hooks. For the newest token stored under key that is
+// live at now, it returns the user its owner binding names, empty without
+// one, and the token's expiry. It judges only the stored token: one whose
+// session has ended, or whose key another live token shares, is still found,
+// and ConsumeOneTimeToken refuses it. A token unknown or expired at now is
+// ErrNotFound.
+type OneTimeTokenFinder interface {
+	FindOneTimeToken(ctx context.Context, key string, now time.Time) (userID string, expiresAt time.Time, err error)
 }
 
 var (
@@ -129,7 +143,10 @@ func validTransferKey(key string) bool {
 	return key != "" && len("one-time-token:")+len(key) <= 255 && utf8.ValidString(key) && !strings.ContainsRune(key, 0)
 }
 
-// GenerateOneTimeToken creates a short-lived transfer credential for the caller's active session.
+// GenerateOneTimeToken creates a short-lived transfer credential for the
+// caller's active session. A token a verification create hook declines is
+// still returned, but was never stored, so it cannot be redeemed; a hook that
+// should fail the call returns an APIError.
 func (a *Auth) GenerateOneTimeToken(ctx context.Context, h http.Header) (string, error) {
 	return a.generateOneTimeToken(ctx, h, nil)
 }
@@ -175,7 +192,12 @@ func (a *Auth) newOneTimeToken(ctx context.Context, opts *OneTimeTokenOptions, s
 		return "", err
 	}
 	now := a.now().UTC().Truncate(time.Millisecond)
-	if err = a.opts.Store.(OneTimeTokenStore).SaveOneTimeToken(ctx, key, session.Session, now, now.Add(opts.ExpiresIn)); err != nil {
+	expires := now.Add(opts.ExpiresIn)
+	// A token a create hook declines is still returned, as an unusable one:
+	// it was never stored, so it redeems nothing.
+	if _, err := a.createVerification(ctx, oneTimeTokenRecord(key, session.Session.UserID, expires), func() error {
+		return a.opts.Store.(OneTimeTokenStore).SaveOneTimeToken(ctx, key, session.Session, now, expires)
+	}); err != nil {
 		return "", err
 	}
 	return token, nil
@@ -194,16 +216,36 @@ func (a *Auth) VerifyOneTimeToken(ctx context.Context, token string) (*SessionRe
 	if err != nil {
 		return nil, err
 	}
-	s, err := a.opts.Store.(OneTimeTokenStore).ConsumeOneTimeToken(ctx, key, a.now().UTC())
+	store := a.opts.Store.(OneTimeTokenStore)
+	find := func() (VerificationRecord, error) {
+		finder, ok := store.(OneTimeTokenFinder)
+		if !ok {
+			return VerificationRecord{}, ErrNotFound
+		}
+		userID, expires, err := finder.FindOneTimeToken(ctx, key, a.now().UTC())
+		return oneTimeTokenRecord(key, userID, expires), err
+	}
+	var s SessionResult
+	// A token whose session has ended or expired is spent all the same, so
+	// its after hooks run before the refusal.
+	var denied error
+	refused, err := a.spendVerification(ctx, find, func() (err error) {
+		// A fresh time, so slow before hooks cannot extend the token's life.
+		s, err = store.ConsumeOneTimeToken(ctx, key, a.now().UTC())
+		if errors.Is(err, ErrTransferSessionExpired) || errors.Is(err, ErrTransferSessionMissing) {
+			denied, err = err, nil
+		}
+		return err
+	})
 	switch {
-	case errors.Is(err, ErrNotFound):
-		return nil, &APIError{400, "BAD_REQUEST", "Invalid token"}
-	case errors.Is(err, ErrTransferSessionExpired):
-		return nil, &APIError{400, "BAD_REQUEST", "Session expired"}
-	case errors.Is(err, ErrTransferSessionMissing):
-		return nil, &APIError{400, "BAD_REQUEST", "Session not found"}
 	case err != nil:
 		return nil, err
+	case refused:
+		return nil, &APIError{400, "BAD_REQUEST", "Invalid token"}
+	case errors.Is(denied, ErrTransferSessionExpired):
+		return nil, &APIError{400, "BAD_REQUEST", "Session expired"}
+	case denied != nil:
+		return nil, &APIError{400, "BAD_REQUEST", "Session not found"}
 	}
 	return a.withSessionPlugins(ctx, s.Session, s.User)
 }

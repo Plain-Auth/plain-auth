@@ -136,7 +136,7 @@
     - [ ] `state_security_mismatch`
       - [x] A missing or altered state cookie with the database strategy reaches the browser as state_mismatch on both runtimes, at the default error page ([test](../../conformance/oauth-callback-state.mjs#L71))
     - [ ] `state_generation_error`
-      - [x] A verification create hook that declines a browser OAuth flow fails the sign-in start with 500 STATE_GENERATION_ERROR and sets no state cookie ([test](../../adapters/sqlstore/verification_hooks_test.go#L144))
+      - [x] A verification create hook that declines a browser OAuth flow fails the sign-in start with 500 STATE_GENERATION_ERROR and sets no state cookie ([test](../../adapters/sqlstore/verification_hooks_test.go#L146))
   - [ ] `state_mismatch` - verification not found (database strategy)
     - [x] Database strategy: a state without its stored flow lands on the error page with state_mismatch on both runtimes ([test](../../conformance/oauth-callback-state.mjs#L69))
     - [ ] Common causes
@@ -157,7 +157,7 @@
     - [ ] Common causes
     - [ ] How to fix
   - [ ] `state_generation_error` - unable to create verification
-    - [x] A verification create hook that declines a browser OAuth flow fails the sign-in start with 500 STATE_GENERATION_ERROR and sets no state cookie ([test](../../adapters/sqlstore/verification_hooks_test.go#L144))
+    - [x] A verification create hook that declines a browser OAuth flow fails the sign-in start with 500 STATE_GENERATION_ERROR and sets no state cookie ([test](../../adapters/sqlstore/verification_hooks_test.go#L146))
     - [ ] Common causes
     - [ ] How to fix
   - [ ] Common causes and fixes
@@ -600,7 +600,7 @@
     - [x] Configure session update and delete hooks, and refuse configurations an enabled feature would bypass ([test](../../conformance/goapi/database_session_hooks_test.go#L249))
     - [x] Configure user update hooks for profile updates, email changes and verification ([test](../../conformance/goapi/database_user_hooks_test.go#L126))
     - [x] Configure account hooks for credential and linked account writes ([test](../../conformance/goapi/database_user_hooks_test.go#L246))
-    - [x] Configure verification hooks for password reset and account deletion links and browser OAuth flows, and refuse the plugins that keep their codes without them ([test](../../conformance/goapi/database_verification_hooks_test.go#L246))
+    - [x] Configure verification hooks for password reset and account deletion links, browser OAuth flows, magic links and one-time tokens, and refuse the plugins and stores that would bypass them ([test](../../conformance/goapi/database_verification_hooks_test.go#L247))
   - [ ] `onAPIError`
     - [x] Report the original error and already-resolved user before writing the localized HTTP response ([test](../../conformance/goapi/error_reporting_test.go#L88))
     - `throw` — *not applicable: JavaScript handler option; Go methods return errors*

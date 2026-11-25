@@ -3,11 +3,13 @@ package sqlstore
 import (
 	"bytes"
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/cookiejar"
 	"net/http/httptest"
+	"net/url"
 	"reflect"
 	"strings"
 	"sync"
@@ -197,9 +199,9 @@ func TestVerificationHooksAroundOAuthFlows(t *testing.T) {
 	}
 }
 
-// FindDeletionToken and FindOAuthFlow read a live record of its owner or
-// browser without spending it, and report ErrNotFound for an expired,
-// foreign or unknown one.
+// FindDeletionToken, FindOAuthFlow, FindMagicLink and FindOneTimeToken read
+// a live record of its owner or browser without spending it, and report
+// ErrNotFound for an expired, foreign, unknown or malformed one.
 func TestVerificationFinders(t *testing.T) {
 	for _, dialect := range []string{"sqlite", "postgres", "mysql"} {
 		t.Run(dialect, func(t *testing.T) {
@@ -210,7 +212,7 @@ func TestVerificationFinders(t *testing.T) {
 			}
 			defer store.Close()
 			now := time.Now().UTC().Truncate(time.Millisecond)
-			owner := auth.User{ID: "owner", Email: "owner@finder.example", CreatedAt: now, UpdatedAt: now}
+			owner := auth.User{ID: "owner", Email: "owner@finder.example", EmailVerified: true, CreatedAt: now, UpdatedAt: now}
 			session := auth.StoredSession{Session: auth.Session{ID: "s", UserID: owner.ID, Token: "t", CreatedAt: now, UpdatedAt: now, ExpiresAt: now.Add(time.Hour)}}
 			if err := store.CreateUser(ctx, owner, "", &session); err != nil {
 				t.Fatal(err)
@@ -252,6 +254,327 @@ func TestVerificationFinders(t *testing.T) {
 			if _, err := store.ConsumeOAuthFlow(ctx, "state", "browser", now); err != nil {
 				t.Fatal("finding the flow spent it:", err)
 			}
+
+			// Magic links.
+			for key, expires := range map[string]time.Time{"live-link": now.Add(time.Minute), "stale-link": now.Add(-time.Minute)} {
+				if err := store.SaveMagicLink(ctx, auth.MagicLinkChallenge{Key: key, Email: owner.Email, Name: "Owner", CreatedAt: now.Add(-time.Hour), ExpiresAt: expires}); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if _, err := store.db.ExecContext(ctx, store.bind(`INSERT INTO "verification" ("id","identifier","value","expiresAt","createdAt","updatedAt") VALUES (?,?,?,?,?,?)`),
+				"malformed", "magic-link:malformed", `{"type":"other"}`, store.date(now.Add(time.Hour)), store.date(now), store.date(now)); err != nil {
+				t.Fatal(err)
+			}
+			link, err := store.FindMagicLink(ctx, "live-link", now)
+			if err != nil || link.Key != "live-link" || link.Email != owner.Email || link.Name != "Owner" || !link.ExpiresAt.After(now) {
+				t.Fatal("a live magic link was found as", link, err)
+			}
+			for _, key := range []string{"stale-link", "unknown", "LIVE-LINK", "malformed"} {
+				if _, err := store.FindMagicLink(ctx, key, now); !errors.Is(err, auth.ErrNotFound) {
+					t.Fatal("FindMagicLink for", key, "answered", err)
+				}
+			}
+			returning := auth.StoredSession{Session: auth.Session{ID: "link-session", Token: "link-token", CreatedAt: now, UpdatedAt: now, ExpiresAt: now.Add(time.Hour)}}
+			if _, _, err := store.CompleteMagicLink(ctx, "live-link", "unused", returning, true); err != nil {
+				t.Fatal("finding the link spent it:", err)
+			}
+
+			// One-time tokens.
+			if err := store.SaveOneTimeToken(ctx, "transfer", session.Session, now, now.Add(time.Minute)); err != nil {
+				t.Fatal(err)
+			}
+			userID, expires, err := store.FindOneTimeToken(ctx, "transfer", now)
+			if err != nil || userID != owner.ID || !expires.After(now) {
+				t.Fatal("a live one-time token was found as", userID, expires, err)
+			}
+			for _, tc := range []struct {
+				key string
+				at  time.Time
+			}{{"transfer", now.Add(2 * time.Minute)}, {"unknown", now}} {
+				if _, _, err := store.FindOneTimeToken(ctx, tc.key, tc.at); !errors.Is(err, auth.ErrNotFound) {
+					t.Fatal("FindOneTimeToken for", tc.key, "answered", err)
+				}
+			}
+			if _, err := store.ConsumeOneTimeToken(ctx, "transfer", now); err != nil {
+				t.Fatal("finding the token spent it:", err)
+			}
+		})
+	}
+}
+
+// Magic link and one-time token verification hooks run on SQLite,
+// PostgreSQL and MySQL. Around a planned sign-in the link's delete before
+// hook runs once, before the dry run and the user and session before hooks,
+// and its after hook before theirs; the hooks run outside the store's
+// transaction and see the stored row's ID. A skipped user or a forged denial
+// keeps the link, closed sign-up spends it, and a token whose session
+// expired runs its after hooks before the refusal.
+func TestVerificationHooksAroundMagicLinksAndTokens(t *testing.T) {
+	for _, dialect := range []string{"sqlite", "postgres", "mysql"} {
+		t.Run(dialect, func(t *testing.T) {
+			ctx := t.Context()
+			store, err := Open(ctx, dialect, organizationTestDSN(t, dialect))
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer store.Close()
+			var mu sync.Mutex
+			var events, tokens []string
+			var created auth.VerificationRecord
+			current := ""
+			// racing turns off the checks that assume one redemption at a time.
+			racing := false
+			fail := map[string]error{}
+			note := func(event string) error {
+				mu.Lock()
+				defer mu.Unlock()
+				events = append(events, event)
+				return fail[event]
+			}
+			setFail := func(event string, err error) {
+				mu.Lock()
+				defer mu.Unlock()
+				fail[event] = err
+			}
+			drain := func() []string {
+				mu.Lock()
+				defer mu.Unlock()
+				out := events
+				events = nil
+				return out
+			}
+			same := func(got []string, want ...string) {
+				t.Helper()
+				if len(got)+len(want) > 0 && !reflect.DeepEqual(got, want) {
+					t.Fatalf("hooks ran as %q, want %q", got, want)
+				}
+			}
+			hooks := auth.DatabaseHooks{
+				Verification: auth.ModelHooks[auth.VerificationRecord]{
+					Create: auth.OperationHooks[auth.VerificationRecord]{After: func(_ context.Context, r auth.VerificationRecord, _ *auth.HookContext) error {
+						mu.Lock()
+						created = r
+						mu.Unlock()
+						return note("v-create-after:" + r.Identifier)
+					}},
+					Delete: auth.OperationHooks[auth.VerificationRecord]{
+						Before: func(ctx context.Context, r *auth.VerificationRecord, _ *auth.HookContext) error {
+							// Outside the store's transaction: the link is still there.
+							if r.Identifier == "magic-link" && !racing {
+								if _, err := store.FindMagicLink(ctx, current, time.Now()); err != nil {
+									t.Error("the link was not readable from its before hook:", err)
+								}
+							}
+							return note("v-delete-before:" + r.Identifier)
+						},
+						After: func(ctx context.Context, r auth.VerificationRecord, _ *auth.HookContext) error {
+							if r.Identifier == "magic-link" && !racing {
+								if _, err := store.FindMagicLink(ctx, current, time.Now()); !errors.Is(err, auth.ErrNotFound) {
+									t.Error("the link was still readable from its after hook:", err)
+								}
+							}
+							return note("v-delete-after:" + r.Identifier)
+						},
+					},
+				},
+				User: auth.ModelHooks[auth.UserRecord]{Create: auth.OperationHooks[auth.UserRecord]{
+					Before: func(context.Context, *auth.UserRecord, *auth.HookContext) error { return note("user-before") },
+					After:  func(context.Context, auth.UserRecord, *auth.HookContext) error { return note("user-after") },
+				}},
+				Session: auth.ModelHooks[auth.SessionRecord]{Create: auth.OperationHooks[auth.SessionRecord]{
+					Before: func(context.Context, *auth.SessionRecord, *auth.HookContext) error { return note("session-before") },
+					After:  func(context.Context, auth.SessionRecord, *auth.HookContext) error { return note("session-after") },
+				}},
+			}
+			instance := func(disableSignUp bool) *auth.Auth {
+				t.Helper()
+				magic, err := auth.NewMagicLink(auth.MagicLinkOptions{DisableSignUp: disableSignUp, Send: func(_ context.Context, m auth.MagicLinkMessage) error {
+					mu.Lock()
+					defer mu.Unlock()
+					tokens = append(tokens, m.Token)
+					return nil
+				}})
+				if err != nil {
+					t.Fatal(err)
+				}
+				transfers, err := auth.NewOneTimeToken(auth.OneTimeTokenOptions{})
+				if err != nil {
+					t.Fatal(err)
+				}
+				off := false
+				a, err := auth.New(auth.Options{Store: store, BaseURL: "https://auth.example", Secret: strings.Repeat("s", 40), RateLimit: &off, EmailAndPassword: true,
+					Plugins: []auth.Plugin{magic, transfers}, DatabaseHooks: hooks})
+				if err != nil {
+					t.Fatal(err)
+				}
+				return a
+			}
+			open, closed := instance(false), instance(true)
+			serve := func(a *auth.Auth, method, path, body, cookie string) *httptest.ResponseRecorder {
+				r := httptest.NewRequest(method, "https://auth.example/api/auth"+path, strings.NewReader(body))
+				r.Header.Set("Origin", "https://auth.example")
+				if body != "" {
+					r.Header.Set("Content-Type", "application/json")
+				}
+				if cookie != "" {
+					r.Header.Set("Cookie", cookie)
+				}
+				w := httptest.NewRecorder()
+				a.ServeHTTP(w, r)
+				return w
+			}
+			request := func(email string) string {
+				t.Helper()
+				if w := serve(open, "POST", "/sign-in/magic-link", `{"email":"`+email+`"}`, ""); w.Code != 200 {
+					t.Fatal("the magic link request answered", w.Code, w.Body.String())
+				}
+				mu.Lock()
+				defer mu.Unlock()
+				current = tokens[len(tokens)-1]
+				return current
+			}
+			verify := func(a *auth.Auth, token string) string {
+				return serve(a, "GET", "/magic-link/verify?"+url.Values{"token": {token}, "callbackURL": {"/done"}, "errorCallbackURL": {"/failed"}}.Encode(), "", "").Header().Get("Location")
+			}
+			rowID := func(identifier string) string {
+				t.Helper()
+				var id string
+				err := store.db.QueryRowContext(ctx, store.bind(`SELECT "id" FROM "verification" WHERE "identifier"=?`), identifier).Scan(&id)
+				if err != nil && !errors.Is(err, sql.ErrNoRows) {
+					t.Fatal(err)
+				}
+				return id
+			}
+			const done, failed = "https://auth.example/done", "https://auth.example/failed?error="
+
+			// A new user: the link's hooks wrap the planned sign-in's.
+			token := request("new@hooks.example")
+			same(drain(), "v-create-after:magic-link")
+			if id := rowID("magic-link:" + token); id == "" || created.ID != id {
+				t.Fatal("the hook saw ID", created.ID, "for the row", id)
+			}
+			if got := verify(open, token); got != done {
+				t.Fatal("a new user's link answered", got)
+			}
+			same(drain(), "v-delete-before:magic-link", "user-before", "session-before", "v-delete-after:magic-link", "user-after", "session-after")
+			// A returning user.
+			token = request("new@hooks.example")
+			drain()
+			if got := verify(open, token); got != done {
+				t.Fatal("a returning user's link answered", got)
+			}
+			same(drain(), "v-delete-before:magic-link", "session-before", "v-delete-after:magic-link", "session-after")
+
+			// A skipped user keeps the link, and the retry signs in.
+			token = request("skipped@hooks.example")
+			drain()
+			setFail("user-before", auth.ErrSkipWrite)
+			if got := verify(open, token); got != failed+"failed_to_create_user" {
+				t.Fatal("a skipped user answered", got)
+			}
+			same(drain(), "v-delete-before:magic-link", "user-before")
+			setFail("user-before", nil)
+			if rowID("magic-link:"+token) == "" {
+				t.Fatal("a skipped user spent the link")
+			}
+			if got := verify(open, token); got != done {
+				t.Fatal("the retried link answered", got)
+			}
+			drain()
+
+			// A hook that forges the closed sign-up error keeps the link.
+			token = request("forged@hooks.example")
+			drain()
+			setFail("user-before", auth.ErrMagicLinkSignUpDisabled)
+			if got := verify(open, token); got != failed+"new_user_signup_disabled" {
+				t.Fatal("a forged denial answered", got)
+			}
+			same(drain(), "v-delete-before:magic-link", "user-before")
+			setFail("user-before", nil)
+			if rowID("magic-link:"+token) == "" {
+				t.Fatal("a forged denial spent the link")
+			}
+
+			// Closed sign-up spends the link and runs its after hooks.
+			if got := verify(closed, token); got != failed+"new_user_signup_disabled" {
+				t.Fatal("closed sign-up answered", got)
+			}
+			same(drain(), "v-delete-before:magic-link", "v-delete-after:magic-link")
+			if rowID("magic-link:"+token) != "" {
+				t.Fatal("closed sign-up kept the link")
+			}
+
+			// Concurrent redemptions of one link or token run one delete after hook.
+			token = request("new@hooks.example")
+			drain()
+			racing = true
+			var wg sync.WaitGroup
+			locations := make(chan string, 6)
+			for range 6 {
+				wg.Go(func() { locations <- verify(open, token) })
+			}
+			wg.Wait()
+			racing = false
+			close(locations)
+			signedIn := 0
+			for location := range locations {
+				if location == done {
+					signedIn++
+				}
+			}
+			afters := 0
+			for _, e := range drain() {
+				if e == "v-delete-after:magic-link" {
+					afters++
+				}
+			}
+			if signedIn != 1 || afters != 1 {
+				t.Fatal("concurrent links signed in", signedIn, "times and ran", afters, "after hooks")
+			}
+
+			// One-time tokens carry their owner and the stored row's ID.
+			serve(open, "POST", "/sign-up/email", `{"name":"Ada","email":"ada@hooks.example","password":"correct horse battery"}`, "")
+			signIn := serve(open, "POST", "/sign-in/email", `{"email":"ada@hooks.example","password":"correct horse battery"}`, "")
+			var cookie string
+			for _, c := range signIn.Result().Cookies() {
+				if strings.HasSuffix(c.Name, "session_token") {
+					cookie = c.Name + "=" + c.Value
+				}
+			}
+			ada, err := store.FindAccountUser(ctx, "ada@hooks.example")
+			if err != nil || cookie == "" {
+				t.Fatal("ada could not sign in", err)
+			}
+			generate := func() string {
+				t.Helper()
+				w := serve(open, "GET", "/one-time-token/generate", "", cookie)
+				var out struct{ Token string }
+				if err := json.Unmarshal(w.Body.Bytes(), &out); err != nil || out.Token == "" {
+					t.Fatal("generate answered", w.Code, w.Body.String())
+				}
+				return out.Token
+			}
+			drain()
+			transfer := generate()
+			same(drain(), "v-create-after:one-time-token")
+			if id := rowID("one-time-token:" + transfer); id == "" || created.ID != id || created.UserID != ada.ID {
+				t.Fatal("the token's record was", created, "for the row", id)
+			}
+			if w := serve(open, "POST", "/one-time-token/verify", `{"token":"`+transfer+`"}`, ""); w.Code != 200 {
+				t.Fatal("the token answered", w.Code, w.Body.String())
+			}
+			same(drain(), "v-delete-before:one-time-token", "v-delete-after:one-time-token")
+			// A token whose session expired is spent: its after hooks run first.
+			transfer = generate()
+			drain()
+			if _, err := store.db.ExecContext(ctx, store.bind(`UPDATE "session" SET "expiresAt"=? WHERE "userId"=?`), store.date(time.Now().Add(-time.Minute)), ada.ID); err != nil {
+				t.Fatal(err)
+			}
+			w := serve(open, "POST", "/one-time-token/verify", `{"token":"`+transfer+`"}`, "")
+			if w.Code != 400 || !strings.Contains(w.Body.String(), "Session expired") {
+				t.Fatal("a token of an expired session answered", w.Code, w.Body.String())
+			}
+			same(drain(), "v-delete-before:one-time-token", "v-delete-after:one-time-token")
 		})
 	}
 }

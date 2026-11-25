@@ -39,6 +39,8 @@ func (s *Store) saveOneTimeToken(ctx context.Context, key string, source auth.Se
 	if err = s.lockActiveAccount(ctx, tx, source.UserID, source.Token, now); err != nil {
 		return err
 	}
+	// The core's verification hooks derive the same ID (keyedRecordID);
+	// keep the two in step.
 	hash := sha256.Sum256([]byte(key))
 	vid := "ot-" + hex.EncodeToString(hash[:16])
 	// An expired transfer with this key, and its owner binding, are
@@ -89,6 +91,48 @@ func (s *Store) ConsumeOneTimeToken(ctx context.Context, key string, now time.Ti
 	}
 	return result, err
 }
+
+// readOneTimeToken reads the newest token stored under key that is live at
+// now, through db, locking it when lock is set. It returns the row's ID, the
+// session token it transfers and its expiry. A token whose identifier
+// differs in case is ErrNotFound.
+func (s *Store) readOneTimeToken(ctx context.Context, db rowQuerier, key string, now time.Time, lock bool) (id, bound string, expires time.Time, err error) {
+	query := s.bind
+	if lock {
+		query = s.readForUpdate
+	}
+	var identifier string
+	want := "one-time-token:" + key
+	err = db.QueryRowContext(ctx, query(`SELECT "id","identifier","value","expiresAt" FROM "verification" WHERE `+s.scimExact(`"identifier"`)+`=? AND "expiresAt">? ORDER BY "createdAt" DESC LIMIT 1`), want, s.date(now)).Scan(&id, &identifier, &bound, &expires)
+	if err != nil {
+		return "", "", expires, factorRowError(err)
+	}
+	if identifier != want {
+		return "", "", expires, auth.ErrNotFound
+	}
+	return id, bound, expires, nil
+}
+
+var _ auth.OneTimeTokenFinder = (*Store)(nil)
+
+// FindOneTimeToken reads a live one-time token without spending it, and the
+// user its owner binding names. A token whose session has ended, or whose
+// key another live token shares, is still found; ConsumeOneTimeToken
+// refuses it.
+func (s *Store) FindOneTimeToken(ctx context.Context, key string, now time.Time) (string, time.Time, error) {
+	id, _, expires, err := s.readOneTimeToken(ctx, s.db, key, now, false)
+	if err != nil {
+		return "", time.Time{}, err
+	}
+	var owner string
+	err = s.db.QueryRowContext(ctx, s.bind(`SELECT "value" FROM "verification" WHERE `+s.scimExact(`"identifier"`)+`=?`), "one-time-token-owner:"+id).Scan(&owner)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return "", time.Time{}, err
+	}
+	userID, _, _ := strings.Cut(owner, "\x1f")
+	return userID, expires, nil
+}
+
 func (s *Store) consumeOneTimeToken(ctx context.Context, key string, now time.Time) (auth.SessionResult, error) {
 	started := time.Now()
 	var result auth.SessionResult
@@ -97,15 +141,10 @@ func (s *Store) consumeOneTimeToken(ctx context.Context, key string, now time.Ti
 		return result, err
 	}
 	defer tx.Rollback()
-	var id, identifier, bound string
-	var transferExpires time.Time
 	want := "one-time-token:" + key
-	err = tx.QueryRowContext(ctx, s.readForUpdate(`SELECT "id","identifier","value","expiresAt" FROM "verification" WHERE `+s.scimExact(`"identifier"`)+`=? AND "expiresAt">? ORDER BY "createdAt" DESC LIMIT 1`), want, s.date(now)).Scan(&id, &identifier, &bound, &transferExpires)
+	id, bound, transferExpires, err := s.readOneTimeToken(ctx, tx, key, now, true)
 	if err != nil {
-		return result, factorRowError(err)
-	}
-	if identifier != want {
-		return result, auth.ErrNotFound
+		return result, err
 	}
 	// Imported records can share a key because the canonical identifier is not
 	// unique. Refuse an ambiguous transfer and burn every matching primary row.

@@ -4,11 +4,31 @@ import (
 	"context"
 	"errors"
 	"strings"
+	"time"
 
 	auth "github.com/Plain-Org/plain-auth"
 )
 
-var _ auth.MagicLinkStore = (*Store)(nil)
+var (
+	_ auth.MagicLinkStore  = (*Store)(nil)
+	_ auth.MagicLinkFinder = (*Store)(nil)
+)
+
+// FindMagicLink reads a live magic link without spending it. A link whose
+// address moved to another account is still found; CompleteMagicLink
+// refuses it.
+func (s *Store) FindMagicLink(ctx context.Context, key string, now time.Time) (auth.MagicLinkChallenge, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	if err := ctx.Err(); err != nil {
+		return auth.MagicLinkChallenge{}, err
+	}
+	link, ok := s.magicLinks[key]
+	if !ok || !link.ExpiresAt.After(now) {
+		return auth.MagicLinkChallenge{}, auth.ErrNotFound
+	}
+	return link.MagicLinkChallenge, nil
+}
 
 type mailLink struct {
 	auth.MagicLinkChallenge

@@ -31,20 +31,27 @@ type DatabaseHooks struct {
 	// writes. They may not change the account.
 	Account ModelHooks[LinkedAccount]
 	// Verification hooks observe and may cancel the creation and spending of
-	// password reset links, account deletion links and browser OAuth flows.
-	// Spending a record is its delete. They may not change the record.
+	// password reset links, account deletion links, browser OAuth flows,
+	// magic links and one-time tokens. Spending a record is its delete. They
+	// may not change the record.
 	Verification ModelHooks[VerificationRecord]
 }
 
 // VerificationRecord is a verification record in a database hook. It
-// leaves out the token and the data that redeem it.
+// leaves out the token and the data that redeem it; the request in the
+// hook's HookContext may still carry the token it presents.
 type VerificationRecord struct {
+	// ID identifies the record. A magic link's or one-time token's ID is
+	// derived from its stored key and is the row ID the SQL store gives it.
+	// It cannot redeem the record, but keep it private.
 	ID string
-	// Identifier is the kind of record: "reset-password", "delete-account"
-	// or "oauth-state".
+	// Identifier is the kind of record: "reset-password", "delete-account",
+	// "oauth-state", "magic-link" or "one-time-token".
 	Identifier string
 	// UserID is the record's owner. An OAuth flow has one only when it
-	// links an account to a signed-in user.
+	// links an account to a signed-in user. A one-time token names the user
+	// whose session it transfers. A magic link, which proves an address
+	// rather than an account, has none.
 	UserID    string
 	ExpiresAt time.Time
 }
@@ -248,7 +255,7 @@ func (a *Auth) checkDatabaseHooks() error {
 	}
 	if d.verification.create.set() || d.verification.update.set() || d.verification.delete.set() {
 		// These plugins keep their codes and challenges inside their stores.
-		for _, id := range []string{"magic-link", "email-otp", "phone-number", "two-factor", "one-time-token", "passkey", "siwe", "sso", "oauth-provider"} {
+		for _, id := range []string{"email-otp", "phone-number", "two-factor", "passkey", "siwe", "sso", "oauth-provider"} {
 			need(id, a.HasPlugin(id))
 		}
 	}
@@ -262,6 +269,12 @@ func (a *Auth) checkDatabaseHooks() error {
 			if _, ok := a.opts.Store.(OAuthFlowFinder); !ok {
 				return errors.New("auth: verification delete hooks require a store implementing FindOAuthFlow, or OAuthStateCookie")
 			}
+		}
+		if _, ok := a.opts.Store.(MagicLinkFinder); a.HasPlugin("magic-link") && !ok {
+			return errors.New("auth: verification delete hooks with the magic-link plugin require a store implementing FindMagicLink")
+		}
+		if _, ok := a.opts.Store.(OneTimeTokenFinder); a.HasPlugin("one-time-token") && !ok {
+			return errors.New("auth: verification delete hooks with the one-time-token plugin require a store implementing FindOneTimeToken")
 		}
 	}
 	if len(bypass) > 0 {
@@ -643,41 +656,65 @@ func (a *Auth) createVerification(ctx context.Context, rec VerificationRecord, s
 	return false, runAfter(ctx, a, chain, rec)
 }
 
-// spendVerification runs the verification delete hooks around spend. find
-// reads the record without spending it. It reports refused when spend finds
-// no live record, or a before hook cancels the spend, which keeps the
-// record. A record find cannot see, because it is unknown, expired or
-// another owner's, is spent or refused without hooks. The after hooks run
-// only for the spend that succeeded, and their error is returned as it is.
-func (a *Auth) spendVerification(ctx context.Context, find func() (VerificationRecord, error), spend func() error) (refused bool, err error) {
-	spendOnce := func() (bool, error) {
-		if err := spend(); errors.Is(err, ErrNotFound) {
-			return true, nil
-		} else if err != nil {
-			return false, err
-		}
-		return false, nil
-	}
+// beforeSpendVerification runs the verification delete before hooks on the
+// record a spend is about to delete, as find reads it without spending it.
+// It returns the record for afterSpendVerification, nil when no delete hook
+// is set or find sees no record, and refused when a before hook cancels the
+// spend, which keeps the record.
+func (a *Auth) beforeSpendVerification(ctx context.Context, find func() (VerificationRecord, error)) (rec *VerificationRecord, refused bool, err error) {
 	chain := a.dbHooks.verification.delete
 	if !chain.set() {
-		return spendOnce()
+		return nil, false, nil
 	}
-	rec, err := find()
+	found, err := find()
 	if errors.Is(err, ErrNotFound) {
-		return spendOnce()
+		return nil, false, nil
 	}
 	if err != nil {
-		return false, err
+		return nil, false, err
 	}
-	if err := a.beforeVerification(ctx, chain, rec); errors.Is(err, ErrSkipWrite) {
+	if err := a.beforeVerification(ctx, chain, found); errors.Is(err, ErrSkipWrite) {
+		return nil, true, nil
+	} else if err != nil {
+		return nil, false, err
+	}
+	return &found, false, nil
+}
+
+// afterSpendVerification runs the delete after hooks once a spend succeeded,
+// on the record beforeSpendVerification returned. unseen reports a spend of
+// a record find did not see, which only a record stored under the same key
+// in between can be: its hooks never ran, so the caller refuses the request.
+func (a *Auth) afterSpendVerification(ctx context.Context, rec *VerificationRecord) (unseen bool, err error) {
+	chain := a.dbHooks.verification.delete
+	switch {
+	case !chain.set():
+		return false, nil
+	case rec == nil:
+		a.Logger().ErrorContext(ctx, "auth: a verification record was spent that its delete hooks did not see")
+		return true, nil
+	}
+	return false, runAfter(ctx, a, chain, *rec)
+}
+
+// spendVerification runs the verification delete hooks around spend. It
+// reports refused when a before hook cancels the spend, which keeps the
+// record; when spend reports ErrNotFound; or when spend spent a record find
+// did not see. A record find cannot see, because it is unknown, expired or
+// another owner's, is spent or refused without hooks. The after hooks run
+// only for the spend that succeeded, and an error from find, a hook or spend
+// is returned as it is.
+func (a *Auth) spendVerification(ctx context.Context, find func() (VerificationRecord, error), spend func() error) (refused bool, err error) {
+	rec, refused, err := a.beforeSpendVerification(ctx, find)
+	if refused || err != nil {
+		return refused, err
+	}
+	if err := spend(); errors.Is(err, ErrNotFound) {
 		return true, nil
 	} else if err != nil {
 		return false, err
 	}
-	if refused, err := spendOnce(); refused || err != nil {
-		return refused, err
-	}
-	return false, runAfter(ctx, a, chain, rec)
+	return a.afterSpendVerification(ctx, rec)
 }
 
 // tokenRecord is a reset or deletion link as a verification record.
@@ -688,6 +725,23 @@ func tokenRecord(kind string, t PasswordResetToken) VerificationRecord {
 // oauthFlowRecord is a browser OAuth flow as a verification record.
 func oauthFlowRecord(f OAuthFlow) VerificationRecord {
 	return VerificationRecord{ID: f.State, Identifier: "oauth-state", UserID: f.LinkUserID, ExpiresAt: f.ExpiresAt}
+}
+
+// keyedRecordID is the ID of a magic link ("ml-") or one-time token ("ot-")
+// stored under key: the hex of the first 16 bytes of the key's SHA-256, the
+// ID the SQL store gives the row.
+func keyedRecordID(prefix, key string) string { return prefix + digest(key)[:32] }
+
+// magicLinkRecord is a magic link as a verification record. It proves an
+// address rather than an account, so it names no owner.
+func magicLinkRecord(key string, expiresAt time.Time) VerificationRecord {
+	return VerificationRecord{ID: keyedRecordID("ml-", key), Identifier: "magic-link", ExpiresAt: expiresAt.UTC()}
+}
+
+// oneTimeTokenRecord is a one-time token as a verification record, owned by
+// the user whose session it transfers.
+func oneTimeTokenRecord(key, userID string, expiresAt time.Time) VerificationRecord {
+	return VerificationRecord{ID: keyedRecordID("ot-", key), Identifier: "one-time-token", UserID: userID, ExpiresAt: expiresAt.UTC()}
 }
 
 // credentialAccount returns userID's stored credential account, or a draft

@@ -54,3 +54,7 @@ Use `memory.New()` from `adapters/memory` for development with a single process.
 Links expire after five minutes by default. Set `ExpiresIn` to change their lifetime. With `HashTokens: true`, the database stores a SHA-256 digest of the token using unpadded URL-safe Base64. The default stores the raw token under a purpose-specific key. Applications with their own token services can supply `GenerateToken` and `HashToken` callbacks. Configure one hashing mode and use the same configuration on all instances.
 
 When rate limiting is enabled on the auth server, each endpoint accepts five requests per peer per minute. Set `RateLimit` to a `plainauth.RateLimitRule` to change the maximum and window. The rule uses the server's configured rate-limit storage.
+
+## Observe or cancel links with hooks
+
+`DatabaseHooks.Verification` runs create hooks when a link is mailed and delete hooks when it is spent, before the sign-in's user and session hooks. A declined link answers as a sent one, with nothing stored or mailed, and a declined spend keeps the link usable. Delete hooks need a store implementing `MagicLinkFinder`, as the SQL and memory stores do. See [verification hooks](hooks.md#verification-hooks).

@@ -8,7 +8,25 @@ import (
 	auth "github.com/Plain-Org/plain-auth"
 )
 
-var _ auth.OneTimeTokenStore = (*Store)(nil)
+var (
+	_ auth.OneTimeTokenStore  = (*Store)(nil)
+	_ auth.OneTimeTokenFinder = (*Store)(nil)
+)
+
+// FindOneTimeToken reads a live one-time token without spending it. A token
+// whose session has ended is still found; ConsumeOneTimeToken refuses it.
+func (s *Store) FindOneTimeToken(ctx context.Context, key string, now time.Time) (string, time.Time, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	if err := ctx.Err(); err != nil {
+		return "", time.Time{}, err
+	}
+	p, ok := s.transfers[key]
+	if !ok || !p.expires.After(now) {
+		return "", time.Time{}, auth.ErrNotFound
+	}
+	return p.userID, p.expires, nil
+}
 
 type sessionTransfer struct {
 	token, sessionID, userID string
