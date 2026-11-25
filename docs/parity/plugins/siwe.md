@@ -10,9 +10,12 @@
   - [x] `/siwe/nonce` ([test](../../../conformance/siwe-wallet.mjs#L35))
     - [x] Issue a random 15-minute challenge using either public client method ([test](../../../conformance/siwe-wallet.mjs#L35))
     - [x] Reject an expired stored nonce and clean it up at the next issuance ([test](../../../adapters/sqlstore/siwe_test.go#L145))
+    - [x] Run the nonce's verification create hooks; a declined nonce is returned but redeems nothing ([test](../../../adapters/sqlstore/siwe_hooks_test.go#L230))
+    - [x] Keep a declined custom nonce in the nonce history, so the generator cannot issue it again ([test](../../../adapters/sqlstore/siwe_hooks_test.go#L275))
   - [x] `/siwe/get-nonce` ([test](../../../conformance/siwe-wallet.mjs#L35))
     - [x] Issue a random 15-minute challenge using either public client method ([test](../../../conformance/siwe-wallet.mjs#L35))
     - [x] Reject an expired stored nonce and clean it up at the next issuance ([test](../../../adapters/sqlstore/siwe_test.go#L145))
+    - [x] Run the nonce's verification create hooks; a declined nonce is returned but redeems nothing ([test](../../../adapters/sqlstore/siwe_hooks_test.go#L230))
   - [ ] `POST /siwe/verify`
     - [x] Verify an Ethereum wallet signature, return the account and issue a session cookie ([test](../../../conformance/siwe-wallet.mjs#L53))
     - [x] Two simultaneous presentations of the same signed challenge issue one session ([test](../../../adapters/sqlstore/siwe_test.go#L174))
@@ -24,6 +27,8 @@
     - [x] Fence concurrent, expired and foreign contact reservations and retire prior wallet access on passwordless mailbox promotion ([test](../../../adapters/sqlstore/siwe_contact_test.go#L288))
     - [x] Preserve the profile and old wallet on a rolled-back mailbox promotion, then issue a fresh session with its configured defaults ([test](../../../adapters/sqlstore/siwe_contact_fields_test.go#L127))
     - [x] ValidateUserInfo checks a new wallet user with method siwe on SQLite, PostgreSQL and MySQL and refuses it with a 403 ([test](../../../adapters/sqlstore/siwe_user_validation_test.go#L19))
+    - [x] Spend the nonce with its verification delete hooks before the signature is checked; a declined spend answers UNAUTHORIZED_INVALID_OR_EXPIRED_NONCE and keeps it ([test](../../../adapters/sqlstore/siwe_hooks_test.go#L245))
+    - [x] Run the nonce's verification delete hooks before the session hooks ([test](../../../adapters/sqlstore/siwe_hooks_test.go#L213))
   - [ ] `SIWEPluginOptions`
     - [x] `domain` ([test](../../../plugins/siwe/message_test.go#L9))
       - [x] Match the signed authority, scheme and URI including the relying-party port ([test](../../../plugins/siwe/message_test.go#L9))

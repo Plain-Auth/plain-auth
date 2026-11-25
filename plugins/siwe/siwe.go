@@ -141,9 +141,18 @@ func New(o Options) (auth.Plugin, error) {
 			}
 			save = c.Store().(CustomNonceStore).SaveCustomWalletNonce
 		}
-		now := time.Now().UTC()
-		if err := save(ctx, n, now, now.Add(15*time.Minute)); err != nil {
+		now := time.Now().UTC().Truncate(time.Millisecond)
+		expires := now.Add(15 * time.Minute)
+		declined, err := c.CreateVerification(nonceRecord(NonceRecordID(n), expires), func(ctx context.Context) error { return save(ctx, n, now, expires) })
+		if err != nil {
 			return nil, err
+		}
+		if declined && o.GetNonce != nil {
+			// A declined nonce is never stored, but a generator's value enters
+			// the history all the same, so it is never issued again.
+			if err := c.Store().(NonceHistoryStore).RecordWalletNonce(ctx, n); err != nil {
+				return nil, err
+			}
 		}
 		c.ResponseHeader.Set("Cache-Control", "no-store")
 		return map[string]string{"nonce": n}, nil
@@ -176,29 +185,44 @@ func New(o Options) (auth.Plugin, error) {
 		if n == "" {
 			return nil, errMismatch
 		}
-		now := time.Now().UTC()
 		ctx := c.Request.Context()
 		store := c.Store().(Store)
+		timed := o.VerifyMessage != nil || o.ENSLookup != nil
 		var deadline time.Time
-		if o.VerifyMessage != nil || o.ENSLookup != nil {
-			var err error
-			deadline, err = store.(CallbackStore).TakeTimedWalletNonce(ctx, n, now)
-			if err != nil {
-				return nil, err
+		// The nonce is spent first, with its delete hooks, before the message's
+		// domain, chain, time bounds and signature are checked.
+		refused, err := c.SpendVerification(func(ctx context.Context) (auth.VerificationRecord, error) {
+			finder, ok := store.(NonceFinder)
+			if !ok {
+				return auth.VerificationRecord{}, auth.ErrNotFound
 			}
-			if deadline.IsZero() {
-				return nil, errNoNonce
+			id, expires, err := finder.FindWalletNonce(ctx, n, time.Now().UTC())
+			return nonceRecord(id, expires), err
+		}, func(ctx context.Context) error {
+			now := time.Now().UTC()
+			if timed {
+				var err error
+				if deadline, err = store.(CallbackStore).TakeTimedWalletNonce(ctx, n, now); err != nil {
+					return err
+				}
+				if deadline.IsZero() {
+					return auth.ErrNotFound
+				}
+				return nil
 			}
-		} else {
 			taken, err := store.TakeWalletNonce(ctx, n, now)
-			if err != nil {
-				return nil, err
+			if err == nil && !taken {
+				return auth.ErrNotFound
 			}
-			if !taken {
-				return nil, errNoNonce
-			}
+			return err
+		})
+		if err != nil {
+			return nil, err
 		}
-		m, err := parseMessage(lines, scheme, domain, now)
+		if refused {
+			return nil, errNoNonce
+		}
+		m, err := parseMessage(lines, scheme, domain, time.Now().UTC())
 		if err != nil {
 			return nil, err
 		}
@@ -309,7 +333,16 @@ func New(o Options) (auth.Plugin, error) {
 		}
 		return nil, errMismatch
 	}
-	return auth.Plugin{ID: "siwe", ValidateStore: o.checkStore, Endpoints: []auth.Endpoint{
+	validateHooks := func(s auth.Store, hooks auth.VerificationHookSet) error {
+		if _, ok := s.(NonceFinder); hooks.Delete && !ok {
+			return errors.New("auth: verification delete hooks with the siwe plugin require a store implementing FindWalletNonce")
+		}
+		if _, ok := s.(NonceHistoryStore); hooks.CreateBefore && o.GetNonce != nil && !ok {
+			return errors.New("auth: verification create before hooks with the siwe plugin's GetNonce require a store implementing RecordWalletNonce")
+		}
+		return nil
+	}
+	return auth.Plugin{ID: "siwe", ValidateStore: o.checkStore, ValidateVerificationStore: validateHooks, Endpoints: []auth.Endpoint{
 		{Method: http.MethodPost, Path: "/siwe/nonce", Handler: nonce},
 		{Method: http.MethodPost, Path: "/siwe/get-nonce", Handler: nonce},
 		{Method: http.MethodPost, Path: "/siwe/verify", Handler: verify},

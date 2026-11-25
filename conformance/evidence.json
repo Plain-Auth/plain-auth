@@ -10941,6 +10941,16 @@
       "label": "Reject an expired stored nonce and clean it up at the next issuance",
       "test": "adapters/sqlstore/siwe_test.go",
       "marker": "expired wallet challenges were not removed"
+    },
+    {
+      "label": "Run the nonce's verification create hooks; a declined nonce is returned but redeems nothing",
+      "test": "adapters/sqlstore/siwe_hooks_test.go",
+      "marker": "// A declined nonce is returned but redeems nothing."
+    },
+    {
+      "label": "Keep a declined custom nonce in the nonce history, so the generator cannot issue it again",
+      "test": "adapters/sqlstore/siwe_hooks_test.go",
+      "marker": "// A declined custom nonce still enters the history."
     }
   ],
   "plugin/siwe/ /siwe/get-nonce": [
@@ -10954,6 +10964,11 @@
       "label": "Reject an expired stored nonce and clean it up at the next issuance",
       "test": "adapters/sqlstore/siwe_test.go",
       "marker": "expired wallet challenges were not removed"
+    },
+    {
+      "label": "Run the nonce's verification create hooks; a declined nonce is returned but redeems nothing",
+      "test": "adapters/sqlstore/siwe_hooks_test.go",
+      "marker": "// A declined nonce is returned but redeems nothing."
     }
   ],
   "docs/content/docs/plugins/siwe.mdx#L90": [
@@ -11019,6 +11034,16 @@
       "label": "ValidateUserInfo checks a new wallet user with method siwe on SQLite, PostgreSQL and MySQL and refuses it with a 403",
       "test": "adapters/sqlstore/siwe_user_validation_test.go",
       "marker": "func TestSIWEUserValidation(t *testing.T) {"
+    },
+    {
+      "label": "Spend the nonce with its verification delete hooks before the signature is checked; a declined spend answers UNAUTHORIZED_INVALID_OR_EXPIRED_NONCE and keeps it",
+      "test": "adapters/sqlstore/siwe_hooks_test.go",
+      "marker": "// A declined spend keeps the nonce for a retry."
+    },
+    {
+      "label": "Run the nonce's verification delete hooks before the session hooks",
+      "test": "adapters/sqlstore/siwe_hooks_test.go",
+      "marker": "// The nonce's hooks run before the session's."
     }
   ],
   "docs/content/docs/plugins/siwe.mdx#L104": [
@@ -19047,6 +19072,11 @@
       "label": "Run verification hooks around passkey challenges on SQLite, PostgreSQL and MySQL: a declined challenge returns options that redeem nothing, a declined spend keeps the challenge, and the challenge is spent with its hooks before the credential is verified and before the session hooks",
       "test": "adapters/sqlstore/passkey_hooks_test.go",
       "marker": "func TestVerificationHooksAroundPasskeyChallenges(t *testing.T) {"
+    },
+    {
+      "label": "Run verification hooks around wallet sign-in nonces on SQLite, PostgreSQL and MySQL: a declined nonce is returned but redeems nothing and still enters a custom generator's history, a declined spend keeps the nonce, and the nonce is spent with its hooks before the signature is checked and before the session hooks",
+      "test": "adapters/sqlstore/siwe_hooks_test.go",
+      "marker": "func TestVerificationHooksAroundWalletNonces(t *testing.T) {"
     }
   ],
   "docs/content/docs/concepts/database.mdx#L881": [
@@ -19194,6 +19224,11 @@
       "label": "Run one verification delete after hook among concurrent verifications of a passkey challenge, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/passkey_hooks_test.go",
       "marker": "// Concurrent verifications of one passkey challenge run one delete after hook."
+    },
+    {
+      "label": "Run one verification delete after hook among concurrent verifications of a wallet nonce, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/siwe_hooks_test.go",
+      "marker": "// Concurrent verifications of one wallet nonce run one delete after hook."
     }
   ],
   "docs/content/docs/concepts/database.mdx#L891/Example Usage": [
@@ -19257,7 +19292,7 @@
       "marker": "// Run account hooks around the credential a sign-up stores, password"
     },
     {
-      "label": "Configure verification hooks for password reset and account deletion links, browser OAuth flows, magic links, one-time tokens, email and phone codes and passkey challenges, and refuse the plugins, hooks and stores that would bypass them",
+      "label": "Configure verification hooks for password reset and account deletion links, browser OAuth flows, magic links, one-time tokens, email and phone codes, passkey challenges and wallet nonces, and refuse the plugins, hooks and stores that would bypass them",
       "test": "conformance/goapi/database_verification_hooks_test.go",
       "marker": "func TestDatabaseVerificationHooksRefuseBypassingFeatures(t *testing.T) {"
     }

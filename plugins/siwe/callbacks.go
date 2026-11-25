@@ -2,6 +2,8 @@ package siwe
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"net/url"
 	"strings"
@@ -51,6 +53,38 @@ type ENSLookupResult struct {
 type CustomNonceStore interface {
 	PrepareWalletNonceHistory(context.Context) error
 	SaveCustomWalletNonce(context.Context, string, time.Time, time.Time) error
+}
+
+// NonceFinder reads a wallet nonce without spending it, for verification
+// delete hooks. FindWalletNonce returns the row ID and expiry of the one live
+// record stored for nonce at now, compared byte for byte; none, or more than
+// one, is plainauth.ErrNotFound. New requires it for verification delete hooks.
+type NonceFinder interface {
+	FindWalletNonce(ctx context.Context, nonce string, now time.Time) (id string, expiresAt time.Time, err error)
+}
+
+// NonceHistoryStore records a GetNonce value in the nonce history without
+// issuing it, for a nonce whose verification create hooks declined it, so the
+// generator cannot issue it again. A value the history holds already fails as
+// SaveCustomWalletNonce fails. New requires it for verification create before
+// hooks with GetNonce.
+type NonceHistoryStore interface {
+	RecordWalletNonce(ctx context.Context, nonce string) error
+}
+
+// NonceRecordID is the ID of the record that stores nonce: the first 36 hex
+// digits of the SHA-256 of "siwe:nonce:" and the nonce. A store gives the
+// nonce's row this ID, so its verification hooks name the row.
+func NonceRecordID(nonce string) string {
+	sum := sha256.Sum256([]byte("siwe:nonce:" + nonce))
+	return hex.EncodeToString(sum[:])[:36]
+}
+
+// nonceRecord is a wallet nonce as a verification record. A nonce is bound to
+// no wallet or account until a signed message redeems it, so it names no
+// owner, and the record never carries the nonce.
+func nonceRecord(id string, expiresAt time.Time) auth.VerificationRecord {
+	return auth.VerificationRecord{ID: id, Identifier: "siwe", ExpiresAt: expiresAt}
 }
 
 // CallbackStore returns the consumed challenge's deadline so a slow verifier or

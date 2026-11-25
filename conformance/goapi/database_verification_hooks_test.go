@@ -14,6 +14,7 @@ import (
 	"github.com/Plain-Org/plain-auth/adapters/memory"
 	"github.com/Plain-Org/plain-auth/adapters/sqlstore"
 	"github.com/Plain-Org/plain-auth/plugins/passkey"
+	"github.com/Plain-Org/plain-auth/plugins/siwe"
 	"github.com/Plain-Org/plain-auth/schema"
 )
 
@@ -247,8 +248,10 @@ func TestDatabaseVerificationHooks(t *testing.T) {
 // plugins that keep codes in their own stores, update before hooks with
 // email and phone codes, which count a wrong guess as they judge it, and
 // delete hooks on a store that cannot read a deletion link, an OAuth flow, a
-// magic link, a one-time token, an email code or a passkey challenge before
-// spending it, or cannot report what it did to a phone code.
+// magic link, a one-time token, an email code, a passkey challenge or a
+// wallet nonce before spending it, or cannot report what it did to a phone
+// code, and create before hooks with custom wallet nonces on a store that
+// cannot keep a declined one in the nonce history.
 func TestDatabaseVerificationHooksRefuseBypassingFeatures(t *testing.T) {
 	observe := authn.OperationHooks[authn.VerificationRecord]{After: func(context.Context, authn.VerificationRecord, *authn.HookContext) error { return nil }}
 	base := func() authn.Options {
@@ -361,6 +364,63 @@ func TestDatabaseVerificationHooksRefuseBypassingFeatures(t *testing.T) {
 	withKeys.DatabaseHooks.Verification = authn.ModelHooks[authn.VerificationRecord]{Create: observe}
 	if _, err := authn.New(withKeys); err != nil {
 		t.Fatal("verification create hooks were refused with passkeys without FindPasskeyChallenge:", err)
+	}
+	// Wallet nonces run them too. Delete hooks need a store that reads a nonce
+	// before spending it, and create before hooks with a custom generator one
+	// that keeps a declined nonce in the history.
+	wallets, err := siwe.New(siwe.Options{Domain: "auth.example"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	withWallets := base()
+	withWallets.EmailAndPassword = false
+	withWallets.Plugins = []authn.Plugin{wallets}
+	withWallets.DatabaseHooks.Verification.Delete = observe
+	if _, err := authn.New(withWallets); err == nil || !strings.Contains(err.Error(), "FindWalletNonce") {
+		t.Fatal("verification delete hooks were accepted with wallets on the memory store:", err)
+	}
+	nonces, err := sqlstore.OpenWithOptions(t.Context(), "sqlite", ":memory:", []string{"siwe"}, schema.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer nonces.Close()
+	screening := authn.OperationHooks[authn.VerificationRecord]{Before: func(context.Context, *authn.VerificationRecord, *authn.HookContext) error { return nil }}
+	withWallets.Store = nonces
+	withWallets.DatabaseHooks.Verification = authn.ModelHooks[authn.VerificationRecord]{Create: screening, Update: observe, Delete: observe}
+	if _, err := authn.New(withWallets); err != nil {
+		t.Fatal("verification hooks were refused with wallets on SQLite:", err)
+	}
+	type walletStore = siwe.Store
+	type nonceHistory = siwe.CustomNonceStore
+	withWallets.Store = struct {
+		authn.Store
+		walletStore
+	}{nonces, nonces}
+	if _, err := authn.New(withWallets); err == nil || !strings.Contains(err.Error(), "FindWalletNonce") {
+		t.Fatal("verification delete hooks were accepted with wallets without FindWalletNonce:", err)
+	}
+	custom, err := siwe.New(siwe.Options{Domain: "auth.example", GetNonce: func(context.Context) (string, error) { return "Nonce" + strings.Repeat("x", 8), nil }})
+	if err != nil {
+		t.Fatal(err)
+	}
+	withWallets.Plugins = []authn.Plugin{custom}
+	withWallets.Store = struct {
+		authn.Store
+		walletStore
+		nonceHistory
+	}{nonces, nonces, nonces}
+	withWallets.DatabaseHooks.Verification = authn.ModelHooks[authn.VerificationRecord]{Create: screening}
+	if _, err := authn.New(withWallets); err == nil || !strings.Contains(err.Error(), "RecordWalletNonce") {
+		t.Fatal("verification create before hooks were accepted with custom wallet nonces without RecordWalletNonce:", err)
+	}
+	withWallets.DatabaseHooks.Verification = authn.ModelHooks[authn.VerificationRecord]{Create: observe}
+	if _, err := authn.New(withWallets); err != nil {
+		t.Fatal("verification create after hooks were refused with custom wallet nonces without RecordWalletNonce:", err)
+	}
+	withWallets.Store = nonces
+	withWallets.DatabaseHooks.Verification = authn.ModelHooks[authn.VerificationRecord]{Create: screening, Delete: observe}
+	if _, err := authn.New(withWallets); err != nil {
+		t.Fatal("verification hooks were refused with custom wallet nonces on SQLite:", err)
 	}
 	// Magic links and one-time tokens run them, and delete hooks need a store
 	// that reads a link or token before spending it.

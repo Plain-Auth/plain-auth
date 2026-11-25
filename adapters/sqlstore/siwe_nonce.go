@@ -57,5 +57,5 @@ func (s *Store) PrepareWalletNonceHistory(ctx context.Context) error {
 // SaveCustomWalletNonce reserves the digest and issues its single-use challenge
 // in one transaction.
 func (s *Store) SaveCustomWalletNonce(ctx context.Context, nonce string, now, expires time.Time) error {
-	return s.saveWalletNonce(ctx, nonce, now, expires, true)
+	return s.saveWalletNonce(ctx, nonce, now, expires, true, true)
 }

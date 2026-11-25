@@ -32,8 +32,8 @@ type DatabaseHooks struct {
 	Account ModelHooks[LinkedAccount]
 	// Verification hooks observe and may cancel the creation and spending of
 	// password reset links, account deletion links, browser OAuth flows,
-	// magic links, one-time tokens, email and phone codes and passkey
-	// challenges. Spending or
+	// magic links, one-time tokens, email and phone codes, passkey challenges
+	// and wallet nonces. Spending or
 	// removing a record is its delete. A wrong guess counted against a code
 	// is its update, which has no before hook: the delete before hooks run
 	// before every guess. They may not change the record.
@@ -45,8 +45,8 @@ type DatabaseHooks struct {
 // hook's HookContext may still carry the token it presents.
 type VerificationRecord struct {
 	// ID identifies the record. A magic link's, one-time token's or passkey
-	// challenge's ID is derived from its stored key and is the row ID the SQL
-	// store gives it.
+	// challenge's ID is derived from its stored key, and a wallet nonce's from
+	// the nonce; each is the row ID the SQL store gives it.
 	// An email or phone code's ID is its stored row's; each send stores a new
 	// one. It cannot redeem the record, but keep it private.
 	ID string
@@ -54,8 +54,8 @@ type VerificationRecord struct {
 	// "oauth-state", "magic-link", "one-time-token", an email code's
 	// "sign-in-otp", "email-verification-otp", "forget-password-otp" or
 	// "change-email-otp", a phone code's "phone-number-otp" or
-	// "phone-number-reset", or a passkey challenge's "passkey-registration"
-	// or "passkey-authentication".
+	// "phone-number-reset", a passkey challenge's "passkey-registration" or
+	// "passkey-authentication", or a wallet nonce's "siwe".
 	Identifier string
 	// UserID is the record's owner. An OAuth flow has one only when it
 	// links an account to a signed-in user. A one-time token names the user
@@ -64,7 +64,8 @@ type VerificationRecord struct {
 	// which prove an address or number rather than an account, have none.
 	// A passkey challenge names the signed-in user it is for; a first-use
 	// registration's, whose account may not exist yet, and a signed-out
-	// sign-in's name none.
+	// sign-in's name none. A wallet nonce, bound to no wallet until a signed
+	// message redeems it, names none.
 	UserID    string
 	ExpiresAt time.Time
 }
@@ -267,7 +268,7 @@ func (a *Auth) checkDatabaseHooks() error {
 	}
 	if d.verification.set() {
 		// These plugins keep their codes and challenges inside their stores.
-		for _, id := range []string{"two-factor", "siwe", "sso", "oauth-provider"} {
+		for _, id := range []string{"two-factor", "sso", "oauth-provider"} {
 			need(id, a.HasPlugin(id))
 		}
 		// A plugin that runs the hooks around its own records says what its

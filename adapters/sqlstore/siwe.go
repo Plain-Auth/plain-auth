@@ -16,7 +16,11 @@ import (
 	"github.com/Plain-Org/plain-auth/plugins/siwe"
 )
 
-var _ siwe.Store = (*Store)(nil)
+var (
+	_ siwe.Store             = (*Store)(nil)
+	_ siwe.NonceFinder       = (*Store)(nil)
+	_ siwe.NonceHistoryStore = (*Store)(nil)
+)
 
 func (s *Store) CheckWalletSchema(ctx context.Context) error {
 	rows, err := s.db.QueryContext(ctx, s.walletSQL(`SELECT w."id",w."userId",w."address",w."chainId",w."isPrimary",w."createdAt" FROM "walletAddress" w WHERE 1=0`))
@@ -33,11 +37,20 @@ func walletLock(purpose, id string) emailOTPKey {
 }
 
 func (s *Store) SaveWalletNonce(ctx context.Context, nonce string, now, expires time.Time) error {
-	return s.saveWalletNonce(ctx, nonce, now, expires, false)
+	return s.saveWalletNonce(ctx, nonce, now, expires, false, true)
 }
 
-func (s *Store) saveWalletNonce(ctx context.Context, nonce string, now, expires time.Time, custom bool) error {
-	id := walletLock("nonce", nonce).digest[:36]
+// RecordWalletNonce enters a custom nonce in the history without issuing it,
+// for a nonce whose verification create hooks declined it.
+func (s *Store) RecordWalletNonce(ctx context.Context, nonce string) error {
+	return s.saveWalletNonce(ctx, nonce, time.Time{}, time.Time{}, true, false)
+}
+
+// saveWalletNonce enters a custom nonce, or any nonce once the history table
+// exists, in the history, and with issue stores its challenge.
+func (s *Store) saveWalletNonce(ctx context.Context, nonce string, now, expires time.Time, custom, issue bool) error {
+	// The plugin's verification hooks name the row by this ID.
+	id := siwe.NonceRecordID(nonce)
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
@@ -70,6 +83,9 @@ func (s *Store) saveWalletNonce(ctx context.Context, nonce string, now, expires 
 			return &auth.APIError{Status: 500, Code: "SIWE_INVALID_NONCE", Message: "The nonce generator repeated a previous challenge"}
 		}
 	}
+	if !issue {
+		return tx.Commit()
+	}
 	if s.sweeping() {
 		if _, err := tx.ExecContext(ctx, s.bind(`DELETE FROM "verification" WHERE "identifier" LIKE 'siwe:%' AND "expiresAt"<=?`), s.date(now)); err != nil {
 			return err
@@ -80,6 +96,38 @@ func (s *Store) saveWalletNonce(ctx context.Context, nonce string, now, expires 
 		return err
 	}
 	return tx.Commit()
+}
+
+// FindWalletNonce reads a live wallet nonce without spending or locking it.
+// Like TakeTimedWalletNonce it compares byte for byte, and it finds nothing
+// when several records match, which the take removes without spending.
+func (s *Store) FindWalletNonce(ctx context.Context, nonce string, now time.Time) (string, time.Time, error) {
+	rows, err := s.db.QueryContext(ctx, s.bind(`SELECT "id","identifier","value","expiresAt" FROM "verification" WHERE "identifier"=? AND "expiresAt">?`), "siwe:"+nonce, s.date(now))
+	if err != nil {
+		return "", time.Time{}, err
+	}
+	defer rows.Close()
+	var id string
+	var expires time.Time
+	found := 0
+	for rows.Next() {
+		var rowID, identifier, value string
+		var end time.Time
+		if err := rows.Scan(&rowID, &identifier, &value, &end); err != nil {
+			return "", time.Time{}, err
+		}
+		if identifier == "siwe:"+nonce && value == nonce {
+			found++
+			id, expires = rowID, end.UTC()
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return "", time.Time{}, err
+	}
+	if found != 1 {
+		return "", time.Time{}, auth.ErrNotFound
+	}
+	return id, expires, nil
 }
 
 func (s *Store) TakeWalletNonce(ctx context.Context, nonce string, now time.Time) (bool, error) {
