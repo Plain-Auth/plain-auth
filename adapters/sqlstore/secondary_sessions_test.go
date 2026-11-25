@@ -115,7 +115,7 @@ func TestSecondaryStorageSessions(t *testing.T) {
 				t.Fatal("sessions", tokens)
 			}
 			token := tokens[0]
-			raw, ttl, ok := storage.Lookup(token)
+			raw, ttl, ok := storage.Lookup("session:" + token)
 			if !ok || ttl < 6*24*time.Hour || ttl > 7*24*time.Hour {
 				t.Fatalf("the session copy was %v with %v", ok, ttl)
 			}
@@ -138,7 +138,7 @@ func TestSecondaryStorageSessions(t *testing.T) {
 			if got := b.sessionUser(cookie); got != "Behind" {
 				t.Fatal("the replica did not fall back to the database:", got)
 			}
-			if _, _, ok := storage.Lookup(token); !ok {
+			if _, _, ok := storage.Lookup(sessionKey(token)); !ok {
 				t.Fatal("the read did not copy the session back")
 			}
 			// A user change deletes the copy before it commits.
@@ -167,7 +167,7 @@ func TestSecondaryStorageSessions(t *testing.T) {
 			}
 			storage.Fail("set", nil)
 			ops := storage.Ops()
-			if len(ops) < 2 || ops[len(ops)-2] != "set "+token || ops[len(ops)-1] != "delete "+token {
+			if len(ops) < 2 || ops[len(ops)-2] != "set "+sessionKey(token) || ops[len(ops)-1] != "delete "+sessionKey(token) {
 				t.Fatal("a failed copy write was not deleted:", ops[max(0, len(ops)-3):])
 			}
 			// A revocation whose copy cannot be deleted fails and keeps the session.
@@ -199,11 +199,11 @@ func TestSecondaryStorageSessions(t *testing.T) {
 			}
 			// A copy whose row is already gone, as a late write could leave,
 			// is removed by signing out again.
-			if err := storage.Set(t.Context(), token, raw, time.Hour); err != nil {
+			if err := storage.Set(t.Context(), sessionKey(token), raw, time.Hour); err != nil {
 				t.Fatal(err)
 			}
 			a.call("POST", "/sign-out", `{}`, cookie)
-			if _, _, ok := storage.Lookup(token); ok {
+			if _, _, ok := storage.Lookup(sessionKey(token)); ok {
 				t.Fatal("sign-out kept a copy whose session was gone")
 			}
 			_, _, last := a.call("POST", "/sign-in/email", `{"email":"`+email+`","password":"`+mirrorPassword+`"}`, "")
@@ -254,7 +254,7 @@ func TestSecondaryStorageAdminSessions(t *testing.T) {
 				t.Fatal("a banned user's session was still served:", got)
 			}
 			for _, token := range store.sessionTokens(t, "member@example.org") {
-				if _, _, ok := storage.Lookup(token); ok {
+				if _, _, ok := storage.Lookup(sessionKey(token)); ok {
 					t.Fatal("a banned user's session copy survived")
 				}
 			}

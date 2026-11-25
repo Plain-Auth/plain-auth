@@ -254,9 +254,9 @@ Each row tracks the behavior exposed by a published entry point. The Go implemen
 ## Redis secondary storage
 
 - [ ] Redis secondary storage
-  - [x] Default interface (`.`) ([test](../../adapters/redis/sessions_test.go#L20))
+  - [x] Default interface (`.`) ([test](../../adapters/redis/sessions_test.go#L22))
     - [x] Store expiring values and enforce distributed rate limits using the optional Redis module ([test](../../adapters/redis/storage_test.go#L299))
-    - [x] The Redis module is a SecondaryStorage that keeps sessions for every replica, alongside its distributed rate limits and expiring values ([test](../../adapters/redis/sessions_test.go#L20))
+    - [x] The Redis module is a SecondaryStorage that keeps sessions for every replica, alongside its distributed rate limits and expiring values ([test](../../adapters/redis/sessions_test.go#L22))
 
 ## SCIM provisioning
 

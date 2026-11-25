@@ -4,6 +4,7 @@ package kvtest
 
 import (
 	"context"
+	"errors"
 	"maps"
 	"slices"
 	"sync"
@@ -107,6 +108,9 @@ func (s *Storage) Set(_ context.Context, key, value string, ttl time.Duration) e
 	if err := s.begin("set", key); err != nil {
 		return err
 	}
+	if ttl%time.Second != 0 {
+		return errors.New("kvtest: the TTL is not whole seconds")
+	}
 	e := entry{value: value}
 	if ttl > 0 {
 		e.expires = time.Now().Add(ttl)
@@ -141,6 +145,9 @@ func (s *Storage) Increment(_ context.Context, key string, ttl time.Duration) (i
 	defer s.mu.Unlock()
 	if err := s.begin("incr", key); err != nil {
 		return 0, err
+	}
+	if ttl <= 0 || ttl%time.Second != 0 {
+		return 0, errors.New("kvtest: the TTL is not a positive number of whole seconds")
 	}
 	e, ok := s.values[key]
 	var n int64

@@ -6682,6 +6682,11 @@
       "test": "adapters/redis/storage_test.go",
       "marker": "Redis did not reopen the expired HTTP window",
       "complete": true
+    },
+    {
+      "label": "A Redis store set only as SecondaryStorage shares the sign-in limit between replicas on separate databases",
+      "test": "adapters/redis/sessions_test.go",
+      "marker": "func TestRateLimitsThroughSecondaryStorage("
     }
   ],
   "plugin/api-key/ verifyApiKey (server API only)": [
@@ -13808,6 +13813,11 @@
       "label": "Enforce issuer proof algorithms and shared replay storage during machine issuance on all three SQL engines",
       "test": "adapters/sqlstore/oauth_dpop_issuance_test.go",
       "marker": "func TestDPoPMachineTokenIssuance("
+    },
+    {
+      "label": "Keep replay records with the verification records in the shared database when SecondaryStorage holds sessions, so a second issuer refuses a replay and the storage receives no reservation",
+      "test": "adapters/sqlstore/dpop_secondary_storage_test.go",
+      "marker": "func TestDPoPProofsStayInDatabaseWithSecondaryStorage("
     }
   ],
   "plugin/oauth-provider/GET / POST /oauth2/userinfo": [
@@ -19924,6 +19934,11 @@
       "test": "adapters/sqlstore/ratelimit_test.go",
       "marker": "func TestSharedRateLimit(",
       "complete": true
+    },
+    {
+      "label": "With SecondaryStorage and no RateLimitStorage, two replicas share each limit in the storage under the client|route key with the window as its TTL, a sign-out naming the counter as its token leaves it, a storage error stops the request, and NewMemoryRateLimitStorage keeps counters in the process",
+      "test": "conformance/goapi/secondary_rate_limits_test.go",
+      "marker": "func TestRateLimitsInSecondaryStorage("
     }
   ],
   "docs/content/docs/reference/options.mdx#L682/`disableIpTracking`": [
@@ -20926,6 +20941,13 @@
       "test": "adapters/sqlstore/secondary_sessions_test.go",
       "marker": "func TestSecondaryStorageConfiguration(t *testing.T) {",
       "complete": true
+    }
+  ],
+  "docs/content/docs/reference/options.mdx#L244": [
+    {
+      "label": "SecondaryStorage, which holds the session copies, also holds the rate-limit counters when RateLimitStorage is unset; verification records stay in the database",
+      "test": "conformance/goapi/secondary_rate_limits_test.go",
+      "marker": "the shared counter held %q with TTL %v (present %v)"
     }
   ]
 }

@@ -23,7 +23,7 @@ opts.SecondaryStorage = sessions
 opts.StoreSessionInDatabase = true
 ```
 
-The SQL store writes a session's copy when it creates the session, under the session token, with the session's remaining lifetime as its TTL. A read that finds no copy, for example after a flush, reads the database and copies the session back. Every revocation, sign-out, refresh and change to the user's profile deletes the affected copies before it commits, and a copy that cannot be deleted fails the change, so Redis never serves a session the database has ended. This covers every path through Plain Auth, plugins such as SCIM included. A change made outside Plain Auth, such as SQL run by hand, shows only after the copy expires or Redis is flushed. Impersonated sessions are never copied, because they depend on the admin's own session.
+The SQL store writes a session's copy when it creates the session, under `session:` followed by the session token, with the session's remaining lifetime as its TTL. A read that finds no copy, for example after a flush, reads the database and copies the session back. Every revocation, sign-out, refresh and change to the user's profile deletes the affected copies before it commits, and a copy that cannot be deleted fails the change, so Redis never serves a session the database has ended. This covers every path through Plain Auth, plugins such as SCIM included. A change made outside Plain Auth, such as SQL run by hand, shows only after the copy expires or Redis is flushed. Impersonated sessions are never copied, because they depend on the admin's own session.
 
 A Redis failure on a read or when a session is created fails that request. A copy that fails to write after a database read is deleted instead, and every deletion runs again two seconds later, so a write whose reply was lost cannot leave a copy behind. If Redis stalls for longer than that while a copy is being written, the late copy can outlive its session until the session would have expired, or until someone signs out with its token; keep Redis client timeouts short and watch Redis for stalls.
 
@@ -32,6 +32,7 @@ The copies stay correct only while every change goes through a Store that has th
 - Attach the same storage, with the same prefix, to every Store handle in every process that writes users or sessions through Plain Auth. A process or handle without it changes the database without deleting the copies.
 - Turn mirroring on in every process before any of them serves sessions from Redis.
 - Flush the prefix whenever you turn mirroring on or back on. Copies left from an earlier run may describe sessions that changed while mirroring was off.
+- When you upgrade from a version that stored copies under the bare session token, stop every replica on the old version before one on the new version serves, then flush the prefix or move to a new one. Each version deletes only its own keys, so mixing them could keep a session live after it ended.
 
 The copies hold live session tokens and the user's email, name, image and admin state: run Redis on a private network with TLS and authentication, give each environment its own prefix, and remember that Redis persistence writes the copies to disk. Evicting a copy is harmless. One store attaches one storage; a second, different storage is refused. The memory store does not mirror sessions. Sessions cannot live in Redis alone, and the copies use their own key layout, so share a Redis keyspace only with other Plain Auth instances. [Redis session test](../adapters/redis/sessions_test.go) · [Three-engine tests](../adapters/sqlstore/secondary_sessions_test.go)
 
@@ -80,6 +81,8 @@ func configure(ctx context.Context, opts plainauth.Options, redisURL string) (*p
 ```
 
 Redis opens a fixed window on the first request from a peer to a route. Every matching request across the replicas increments the same counter. Requests above the maximum receive HTTP 429 and `X-Retry-After` with the configured window in seconds. The counter expires on its original schedule. A Redis failure prevents the request from reaching its handler. The example disables automatic client retries because a lost reply can leave the outcome of an increment or consumption unknown. [Handler integration test](../adapters/redis/storage_test.go)
+
+A Redis store set as `Options.SecondaryStorage` also holds the rate limits when `Options.RateLimitStorage` is unset, in the same counters under its prefix, so one store can serve both. Session copies and counters keep to separate namespaces under the prefix, so a sign-out that names an arbitrary token can only ever delete a session copy. Set `RateLimitStorage` to a separate store or prefix to keep counters apart from session copies, or to `plainauth.NewMemoryRateLimitStorage()` to keep them in each process. [Shared limits test](../adapters/redis/sessions_test.go)
 
 ## Store and consume values
 

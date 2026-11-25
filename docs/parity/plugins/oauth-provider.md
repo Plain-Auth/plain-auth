@@ -389,6 +389,7 @@
     - [ ] `requestUriResolver`
     - [ ] `dpop`
       - [x] Enforce issuer proof algorithms and shared replay storage during machine issuance on all three SQL engines ([test](../../../adapters/sqlstore/oauth_dpop_issuance_test.go#L39))
+      - [x] Keep replay records with the verification records in the shared database when SecondaryStorage holds sessions, so a second issuer refuses a replay and the storage receives no reservation ([test](../../../adapters/sqlstore/dpop_secondary_storage_test.go#L26))
   - [ ] `OAuthAuthorizationQuery`
   - [x] `OAuthResource` ([test](../../../conformance/resource-registry.mjs#L72))
     - [x] Round-trip the full persisted resource, including IDs, timestamps and nullable policy fields ([test](../../../conformance/resource-registry.mjs#L72))

@@ -7,11 +7,11 @@
 | Inventory status | Entries |
 | --- | ---: |
 | Fully verified | 1,067 |
-| Partially verified | 1,067 |
-| No linked test evidence | 4,508 |
+| Partially verified | 1,068 |
+| No linked test evidence | 4,507 |
 | Not applicable to a Go server | 383 |
 
-The inventory covers features, options, integrations and documentation topics. Partial verification means an open entry has a passing case somewhere beneath it. The checklists also contain 3,314 links from passing scenarios to tests. Adding a scenario leaves the inventory denominator unchanged.
+The inventory covers features, options, integrations and documentation topics. Partial verification means an open entry has a passing case somewhere beneath it. The checklists also contain 3,318 links from passing scenarios to tests. Adding a scenario leaves the inventory denominator unchanged.
 
 Entries that exist only for JavaScript clients, frameworks or runtimes are listed as not applicable, with the reason, and are left out of the totals. Backlog entries stay open on the roadmap but are not scheduled.
 
@@ -80,10 +80,10 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 | [Core API, sign-in providers and CLI](runtime.md) | 171 | 263 | 13 |
 | [Database adapters](adapters.md) | 32 | 193 | 31 |
 | [Authentication](authentication.md) | 120 | 369 | 0 |
-| [Core concepts](concepts.md) | 403 | 367 | 0 |
+| [Core concepts](concepts.md) | 404 | 367 | 0 |
 | [Managed infrastructure](infrastructure.md) | 0 | 528 | 0 |
 | [Framework integrations](integrations.md) | 7 | 24 | 201 |
-| [Reference and configuration](reference.md) | 309 | 299 | 0 |
+| [Reference and configuration](reference.md) | 311 | 299 | 0 |
 
 ## Plugins and integrations
 
@@ -112,7 +112,7 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 | [Model Context Protocol](plugins/mcp.md) | 0 | 108 | 0 |
 | [Multi session](plugins/multi-session.md) | 15 | 22 | 0 |
 | [OAuth popup](plugins/oauth-popup.md) | 56 | 5 | 0 |
-| [OAuth provider](plugins/oauth-provider.md) | 600 | 373 | 0 |
+| [OAuth provider](plugins/oauth-provider.md) | 601 | 373 | 0 |
 | [OAuth proxy](plugins/oauth-proxy.md) | 27 | 6 | 0 |
 | [One tap](plugins/one-tap.md) | 38 | 18 | 0 |
 | [One time token](plugins/one-time-token.md) | 76 | 0 | 0 |

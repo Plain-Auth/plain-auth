@@ -315,6 +315,7 @@
     - [x] Accept an email proof signed by a retained key and reject it after retirement ([test](../../env_test.go#L141))
   - [ ] `database`
   - [ ] `secondaryStorage`
+    - [x] SecondaryStorage, which holds the session copies, also holds the rate-limit counters when RateLimitStorage is unset; verification records stay in the database ([test](../../conformance/goapi/secondary_rate_limits_test.go#L66))
   - [ ] `emailVerification`
     - [x] `sendVerificationEmail` ([test](../../conformance/goapi/account_test.go#L47))
       - [x] The configured SendVerificationEmail sender receives exactly one link for the account owner from /send-verification-email ([test](../../conformance/goapi/account_test.go#L47))
@@ -494,6 +495,7 @@
       - [x] RateLimitRules: an exact route rule is enforced (429 on the third request, retry after 2s), a trailing /* wildcard with a nil rule exempts routes, and invalid patterns are rejected ([test](../../ratelimit_test.go#L13))
     - [x] `storage` ([test](../../adapters/sqlstore/ratelimit_test.go#L18))
       - [x] RateLimitStorage backed by the SQL store shares counters across two auth instances on SQLite, PostgreSQL and MySQL, and the HTTP handler returns 429 from the shared counter ([test](../../adapters/sqlstore/ratelimit_test.go#L18))
+      - [x] With SecondaryStorage and no RateLimitStorage, two replicas share each limit in the storage under the client|route key with the window as its TTL, a sign-out naming the counter as its token leaves it, a storage error stops the request, and NewMemoryRateLimitStorage keeps counters in the process ([test](../../conformance/goapi/secondary_rate_limits_test.go#L24))
     - [ ] `modelName`
   - [ ] `advanced`
     - [ ] `ipAddress`

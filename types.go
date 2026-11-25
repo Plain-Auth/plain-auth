@@ -225,7 +225,9 @@ type Options struct {
 	DeferSessionRefresh   bool
 
 	// RateLimit overrides the environment's enablement policy. By default
-	// counters live on the auth instance. Supply RateLimitStorage to share them.
+	// counters live on the auth instance, or in SecondaryStorage when one is
+	// set. RateLimitStorage chooses where they live instead;
+	// NewMemoryRateLimitStorage keeps them on the instance.
 	RateLimit        *bool
 	RateLimitStorage RateLimitStorage
 	// RateLimitDefault applies to routes without their own rule. RateLimitRules

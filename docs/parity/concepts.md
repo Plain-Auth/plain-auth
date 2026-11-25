@@ -143,12 +143,12 @@
     - [x] Sessions are copied into SecondaryStorage; verification records stay in the database ([test](../../adapters/sqlstore/secondary_sessions_test.go#L102))
     - [x] Implementation ([test](../../adapters/sqlstore/secondary_sessions_test.go#L102))
       - [x] Options.SecondaryStorage takes a five-method Get, Set, Delete, GetAndDelete and Increment store; a custom in-memory one serves sessions across replicas on three SQL engines ([test](../../adapters/sqlstore/secondary_sessions_test.go#L102))
-    - [x] Redis Storage ([test](../../adapters/redis/sessions_test.go#L20))
+    - [x] Redis Storage ([test](../../adapters/redis/sessions_test.go#L22))
       - [x] Store expiring values and enforce distributed rate limits using the optional Redis module ([test](../../adapters/redis/storage_test.go#L299))
-      - [x] The Redis module keeps each session under a prefixed key with the session's lifetime, shared by replicas with their own clients ([test](../../adapters/redis/sessions_test.go#L20))
-      - [x] Official Redis Storage ([test](../../adapters/redis/sessions_test.go#L15))
+      - [x] The Redis module keeps each session under a prefixed key with the session's lifetime, shared by replicas with their own clients ([test](../../adapters/redis/sessions_test.go#L22))
+      - [x] Official Redis Storage ([test](../../adapters/redis/sessions_test.go#L17))
         - [x] Store expiring values and enforce distributed rate limits using the optional Redis module ([test](../../adapters/redis/storage_test.go#L299))
-        - [x] The Redis store implements SecondaryStorage, serves sessions to another replica, falls back after a flush and ends them on sign-out ([test](../../adapters/redis/sessions_test.go#L15))
+        - [x] The Redis store implements SecondaryStorage, serves sessions to another replica, falls back after a flush and ends them on sign-out ([test](../../adapters/redis/sessions_test.go#L17))
       - [x] Custom Implementations ([test](../../adapters/sqlstore/secondary_sessions_test.go#L295))
         - [x] A custom SecondaryStorage implementation receives each session copy and its deletions under concurrent reads, renames and revocation ([test](../../adapters/sqlstore/secondary_sessions_test.go#L295))
   - [ ] Core Schema
@@ -563,6 +563,7 @@
       - [ ] Using Database
       - [x] Using Secondary Storage ([test](../../adapters/redis/storage_test.go#L355))
         - [x] Share a fixed HTTP request window and reopen it after Redis expires the counter ([test](../../adapters/redis/storage_test.go#L355))
+        - [x] A Redis store set only as SecondaryStorage shares the sign-in limit between replicas on separate databases ([test](../../adapters/redis/sessions_test.go#L116))
       - [x] Custom Storage ([test](../../conformance/goapi/rate_limit_storage_test.go#L43))
         - [x] A host RateLimitStorage decides each limited request with the client|route key and the rule, its delay becomes a 429 with X-Retry-After, and its error stops the request ([test](../../conformance/goapi/rate_limit_storage_test.go#L43))
   - [ ] Handling Rate Limit Errors

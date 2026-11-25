@@ -142,10 +142,6 @@ type RateLimitStorage interface {
 	ConsumeRateLimit(ctx context.Context, key string, maximum int, window time.Duration, now time.Time) (time.Duration, error)
 }
 
-type rateLimitKey struct {
-	ip, route string
-}
-
 type rateLimitEntry struct {
 	count   int
 	expires time.Time
@@ -153,7 +149,7 @@ type rateLimitEntry struct {
 
 type rateLimiter struct {
 	mu        sync.Mutex
-	entries   map[rateLimitKey]rateLimitEntry
+	entries   map[string]rateLimitEntry
 	nextSweep time.Time
 }
 
@@ -179,18 +175,16 @@ func (a *Auth) rejectRateLimited(w http.ResponseWriter, r *http.Request, route s
 	}
 	maximum, window := rule.Max, rule.Window
 	now := a.now()
-	var retry int
-	if store := a.opts.RateLimitStorage; store != nil {
-		delay, err := store.ConsumeRateLimit(r.Context(), ip+"|"+route, maximum, window, now)
-		if err != nil {
-			a.writeAuthError(w, r, err)
-			return true
-		}
-		retry = retrySeconds(delay)
-	} else {
-		retry = a.limiter.consume(rateLimitKey{ip: ip, route: route}, maximum, window, now)
+	store := a.opts.RateLimitStorage
+	if store == nil {
+		store = &a.limiter
 	}
-	if retry > 0 {
+	delay, err := store.ConsumeRateLimit(r.Context(), ip+"|"+route, maximum, window, now)
+	if err != nil {
+		a.writeAuthError(w, r, err)
+		return true
+	}
+	if retry := retrySeconds(delay); retry > 0 {
 		w.Header().Set("X-Retry-After", strconv.Itoa(retry))
 		writeAuthJSON(w, http.StatusTooManyRequests, map[string]string{"message": "Too many requests. Please try again later."})
 		return true
@@ -198,13 +192,25 @@ func (a *Auth) rejectRateLimited(w http.ResponseWriter, r *http.Request, route s
 	return false
 }
 
-// consume counts accepted requests within the rolling window. Denied requests
-// do not extend it. The entry limit bounds memory consumed by distinct peers.
-func (l *rateLimiter) consume(key rateLimitKey, maximum int, window time.Duration, now time.Time) int {
+// NewMemoryRateLimitStorage returns counters kept in this process, which is
+// where rate limits live by default. Set it as Options.RateLimitStorage to
+// keep them local while SecondaryStorage holds sessions.
+func NewMemoryRateLimitStorage() RateLimitStorage {
+	return &rateLimiter{}
+}
+
+// ConsumeRateLimit counts accepted requests within the rolling window.
+// Denied requests do not extend it. The entry limit bounds memory consumed
+// by distinct peers.
+func (l *rateLimiter) ConsumeRateLimit(_ context.Context, key string, maximum int, window time.Duration, now time.Time) (time.Duration, error) {
+	return time.Duration(l.consume(key, maximum, window, now)) * time.Second, nil
+}
+
+func (l *rateLimiter) consume(key string, maximum int, window time.Duration, now time.Time) int {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	if l.entries == nil {
-		l.entries = make(map[rateLimitKey]rateLimitEntry)
+		l.entries = make(map[string]rateLimitEntry)
 	}
 	if !now.Before(l.nextSweep) {
 		for k, v := range l.entries {

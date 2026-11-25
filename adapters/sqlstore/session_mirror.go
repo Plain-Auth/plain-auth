@@ -100,6 +100,14 @@ func encodeMirroredSession(ss authn.StoredSession, u authn.User) (string, error)
 	return string(raw), err
 }
 
+// sessionKey is the storage key of a session's copy. Copies live under their
+// own namespace because a client chooses the token it signs out with: a
+// sign-out deletes the copy even when no session row matches, and must not
+// reach rate-limit counters or other values in the same storage.
+func sessionKey(token string) string {
+	return "session:" + token
+}
+
 // mirrorTTL is the time left until expires in whole seconds, or 0 when less
 // than a second is left and no copy should be written.
 func mirrorTTL(expires time.Time) time.Duration {
@@ -109,7 +117,7 @@ func mirrorTTL(expires time.Time) time.Duration {
 // readMirroredSession serves a session from storage. It reports false for a
 // missing or unusable copy, which the caller then reads from the database.
 func (s *Store) readMirroredSession(ctx context.Context, m *sessionMirror, token string) (authn.StoredSession, authn.User, bool, error) {
-	raw, found, err := m.storage.Get(ctx, token)
+	raw, found, err := m.storage.Get(ctx, sessionKey(token))
 	if err != nil || !found {
 		return authn.StoredSession{}, authn.User{}, false, err
 	}
@@ -203,8 +211,8 @@ func (s *Store) repopulateSessionOnce(ctx context.Context, m *sessionMirror, tok
 			// The database answered, so a failed copy only costs the next
 			// read. A failed write may still run later, so delete it while
 			// the rows are locked.
-			if m.storage.Set(ctx, token, raw, ttl) != nil {
-				_ = m.storage.Delete(ctx, token)
+			if m.storage.Set(ctx, sessionKey(token), raw, ttl) != nil {
+				_ = m.storage.Delete(ctx, sessionKey(token))
 			}
 		}
 	}
@@ -279,7 +287,7 @@ func (s *Store) mirrorNewSession(ctx context.Context, tx *sql.Tx, ss authn.Store
 	if err != nil {
 		return err
 	}
-	return m.storage.Set(ctx, ss.Token, raw, ttl)
+	return m.storage.Set(ctx, sessionKey(ss.Token), raw, ttl)
 }
 
 type sessionQuerier interface {
@@ -315,7 +323,7 @@ func (m *sessionMirror) forget(ctx context.Context, tokens []string) error {
 		return nil
 	}
 	for _, token := range tokens {
-		if err := m.storage.Delete(ctx, token); err != nil {
+		if err := m.storage.Delete(ctx, sessionKey(token)); err != nil {
 			return err
 		}
 	}
@@ -324,7 +332,7 @@ func (m *sessionMirror) forget(ctx context.Context, tokens []string) error {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 		for _, token := range tokens {
-			_ = m.storage.Delete(ctx, token)
+			_ = m.storage.Delete(ctx, sessionKey(token))
 		}
 	})
 	return nil

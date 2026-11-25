@@ -49,5 +49,36 @@ func prepareSecondaryStorage(opts *Options) error {
 	if !ok {
 		return errors.New("auth: SecondaryStorage requires a store implementing SessionMirrorStore")
 	}
-	return mirror.MirrorSessions(opts.SecondaryStorage, SessionMirrorOptions{})
+	if err := mirror.MirrorSessions(opts.SecondaryStorage, SessionMirrorOptions{}); err != nil {
+		return err
+	}
+	// Rate limits share the storage unless the host chose where they live.
+	if opts.RateLimitStorage == nil {
+		if limits, ok := opts.SecondaryStorage.(RateLimitStorage); ok {
+			opts.RateLimitStorage = limits
+		} else {
+			opts.RateLimitStorage = secondaryRateLimits{opts.SecondaryStorage}
+		}
+	}
+	return nil
+}
+
+// secondaryRateLimits counts requests with Increment, which opens a fixed
+// window of whole seconds on a key's first request. A refused request is
+// told to wait the whole window, since the storage does not report how much
+// of it is left.
+type secondaryRateLimits struct {
+	storage SecondaryStorage
+}
+
+func (l secondaryRateLimits) ConsumeRateLimit(ctx context.Context, key string, maximum int, window time.Duration, _ time.Time) (time.Duration, error) {
+	ttl := max(time.Second, (window+time.Second-1)/time.Second*time.Second)
+	count, err := l.storage.Increment(ctx, key, ttl)
+	if err != nil {
+		return 0, err
+	}
+	if count > int64(maximum) {
+		return window, nil
+	}
+	return 0, nil
 }
