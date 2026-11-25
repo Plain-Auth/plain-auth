@@ -56,6 +56,11 @@ func (a *Auth) UnlinkAccount(ctx context.Context, h http.Header, recordID string
 		if err != nil {
 			return err
 		}
+		// The last account is refused before any hook runs, as in the
+		// reference; the store keeps its own check for the path without hooks.
+		if !a.opts.AllowUnlinkingAll && len(accounts) == 1 {
+			return &APIError{400, "FAILED_TO_UNLINK_LAST_ACCOUNT", "You can't unlink your last account"}
+		}
 		for i := range accounts {
 			if accounts[i].ID == recordID {
 				unlinked = &accounts[i]

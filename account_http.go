@@ -58,8 +58,21 @@ func (a *Auth) handleAccountRequest(route string, w http.ResponseWriter, r *http
 			}
 			params.Token = query.Get("token")
 			params.CallbackURL = query.Get("callbackURL")
+			if len(query["token"]) == 0 {
+				return nil, validationError("[query.token] Invalid input: expected string, received undefined")
+			}
+			// An empty token would select deletion without a token, so it is
+			// answered here as the reference answers a token that is not found.
 			if params.Token == "" {
-				return nil, validationError("Missing token")
+				if !a.opts.DeleteUserEnabled {
+					return nil, &APIError{404, "NOT_FOUND", "Not found"}
+				}
+				if session, err := a.GetSession(ctx, r.Header); err != nil {
+					return nil, err
+				} else if session == nil {
+					return nil, &APIError{404, "FAILED_TO_GET_USER_INFO", "Failed to get user info"}
+				}
+				return nil, &APIError{404, "INVALID_TOKEN", "Invalid token"}
 			}
 		} else {
 			for _, f := range []struct {
@@ -76,6 +89,10 @@ func (a *Auth) handleAccountRequest(route string, w http.ResponseWriter, r *http
 			}
 		}
 		deleted, err := a.DeleteUser(ctx, r.Header, params)
+		var unauthorized *APIError
+		if route == "/delete-user/callback" && errors.As(err, &unauthorized) && unauthorized.Code == "UNAUTHORIZED" {
+			return nil, &APIError{404, "FAILED_TO_GET_USER_INFO", "Failed to get user info"}
+		}
 		if err != nil {
 			return nil, err
 		}

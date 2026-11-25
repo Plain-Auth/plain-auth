@@ -20,6 +20,14 @@ type AccountLifecycleStore interface {
 	ChangeAccountEmail(ctx context.Context, userID, currentEmail, newEmail string, verified bool, now time.Time) (User, error)
 }
 
+// DeletionTokenStore spends an account deletion token before any deletion
+// hook runs. The token is spent whoever presents it, as in the reference,
+// and ErrNotFound reports one that is unknown, expired or issued to
+// another user. A store without it checks the token while deleting.
+type DeletionTokenStore interface {
+	ConsumeDeletionToken(ctx context.Context, userID, token string, now time.Time) error
+}
+
 func (a *Auth) lifecycleStore() (AccountLifecycleStore, error) {
 	s, ok := a.opts.Store.(AccountLifecycleStore)
 	if !ok {
@@ -92,6 +100,17 @@ func (a *Auth) DeleteUser(ctx context.Context, h http.Header, in DeleteUserInput
 			return false, err
 		}
 	}
+	// A mailed token is spent first, so an expired one, or one opened by
+	// another account, runs no deletion hook.
+	deleteToken := in.Token
+	if consumer, ok := s.(DeletionTokenStore); ok && in.Token != "" {
+		if err := consumer.ConsumeDeletionToken(ctx, session.User.ID, in.Token, now); errors.Is(err, ErrNotFound) {
+			return false, &APIError{404, "INVALID_TOKEN", "Invalid token"}
+		} else if err != nil {
+			return false, err
+		}
+		deleteToken = ""
+	}
 	if in.Token == "" && a.opts.SendDeleteAccountVerification != nil {
 		callback := in.CallbackURL
 		if callback == "" {
@@ -121,7 +140,7 @@ func (a *Auth) DeleteUser(ctx context.Context, h http.Header, in DeleteUserInput
 		}
 	}
 	declined, err := a.deleteUserWithHooks(ctx, session.User, func() error {
-		return s.DeleteAccount(ctx, session.User.ID, session.Session.Token, hash, in.Token, now)
+		return s.DeleteAccount(ctx, session.User.ID, session.Session.Token, hash, deleteToken, now)
 	})
 	if errors.Is(err, ErrNotFound) {
 		return false, &APIError{404, "INVALID_TOKEN", "Invalid token"}

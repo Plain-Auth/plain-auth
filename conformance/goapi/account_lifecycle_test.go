@@ -119,7 +119,17 @@ func TestConfirmedEmailChangeAndDeletion(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// Another account opening the link spends it, as in the reference, so
+	// the owner needs a new one.
 	serve(t, auth, "GET", d.RequestURI(), "", other, 404)
+	serve(t, auth, "GET", d.RequestURI(), "", h, 404)
+	serve(t, auth, "POST", "/api/auth/delete-user", `{"callbackURL":"/goodbye"}`, h, 200)
+	if len(deletions) != 2 {
+		t.Fatal("a second deletion link was not sent")
+	}
+	if d, err = url.Parse(deletions[1].URL); err != nil {
+		t.Fatal(err)
+	}
 	serve(t, auth, "GET", d.RequestURI(), "", h, 302)
 	if sess, err := auth.GetSession(t.Context(), h); err != nil || sess != nil {
 		t.Fatal("deleted account session still active")

@@ -64,6 +64,47 @@ func (s *Store) SaveDeletionToken(ctx context.Context, t authn.PasswordResetToke
 	return err
 }
 
+// ConsumeDeletionToken spends an account deletion token, whoever presents
+// it, and reports ErrNotFound unless it was issued to userID and is live.
+func (s *Store) ConsumeDeletionToken(ctx context.Context, userID, token string, now time.Time) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	identifier := "delete-account-" + token
+	rows, err := tx.QueryContext(ctx, s.readForUpdate(`SELECT "value","expiresAt" FROM "verification" WHERE `+s.scimExact(`"identifier"`)+`=?`), identifier)
+	if err != nil {
+		return err
+	}
+	live := false
+	for rows.Next() {
+		var value string
+		var expires time.Time
+		if err := rows.Scan(&value, &expires); err != nil {
+			rows.Close()
+			return err
+		}
+		live = live || value == userID && expires.After(now)
+	}
+	if err := rows.Close(); err != nil {
+		return err
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, s.bind(`DELETE FROM "verification" WHERE `+s.scimExact(`"identifier"`)+`=?`), identifier); err != nil {
+		return err
+	}
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+	if !live {
+		return authn.ErrNotFound
+	}
+	return nil
+}
+
 func (s *Store) DeleteAccount(ctx context.Context, userID, sessionToken, expectedHash, deleteToken string, now time.Time) error {
 	tx, err := s.beginMembershipChange(ctx)
 	if err != nil {

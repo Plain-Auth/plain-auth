@@ -713,8 +713,8 @@
       - [x] TestConfirmedEmailChangeAndDeletion (ChangeEmailEnabled) checks four things: the new inbox gets its own verification link, another user's session is refused with 401, the email changes only after that link is used and stays verified, and the link cannot be used twice ([test](../../conformance/goapi/account_lifecycle_test.go#L107))
       - [x] Confirming with Current Email ([test](../../conformance/goapi/account_lifecycle_test.go#L94))
         - [x] With SendChangeEmailConfirmation set and the current email verified, change-email sends the confirmation to the current address and names the new one ([test](../../conformance/goapi/account_lifecycle_test.go#L94))
-      - [x] Updating Without Verification ([test](../../conformance/goapi/account_lifecycle_test.go#L144))
-        - [x] TestFreshDeletionAndUnverifiedAddressChange sets UpdateEmailWithoutVerification on an unverified user ([test](../../conformance/goapi/account_lifecycle_test.go#L144))
+      - [x] Updating Without Verification ([test](../../conformance/goapi/account_lifecycle_test.go#L154))
+        - [x] TestFreshDeletionAndUnverifiedAddressChange sets UpdateEmailWithoutVerification on an unverified user ([test](../../conformance/goapi/account_lifecycle_test.go#L154))
       - [x] Client Usage ([test](../../client/account_test.go#L134))
         - [x] The Go client's ChangeEmail(newEmail, callbackURL) starts the change over HTTP ([test](../../client/account_test.go#L134))
     - [x] Change Password ([test](../../conformance/goapi/account_test.go#L18))
@@ -735,9 +735,10 @@
     - [ ] Adding Verification Before Deletion
       - [x] With SendDeleteAccountVerification set, delete-user sends a deletion link and token to the account owner instead of deleting at once ([test](../../conformance/goapi/account_lifecycle_test.go#L116))
       - [ ] How callback verification works:
-      - [x] Callback URL ([test](../../conformance/goapi/account_lifecycle_test.go#L125))
-        - [x] Opening the emailed /delete-user/callback link while signed in as the owner returns a 302 redirect (callbackURL /goodbye) and deletes the account ([test](../../conformance/goapi/account_lifecycle_test.go#L125))
-      - [ ] Authentication Check
+      - [x] Callback URL ([test](../../conformance/goapi/account_lifecycle_test.go#L135))
+        - [x] Opening the emailed /delete-user/callback link while signed in as the owner returns a 302 redirect (callbackURL /goodbye) and deletes the account ([test](../../conformance/goapi/account_lifecycle_test.go#L135))
+      - [x] Authentication Check ([test](../../conformance/goapi/delete_user_test.go#L125))
+        - [x] Opening a deletion link without a session answers 404 FAILED_TO_GET_USER_INFO and keeps the account and the link ([test](../../conformance/goapi/delete_user_test.go#L125))
     - [ ] Authentication Requirements
     - [ ] Callbacks
       - [ ] validateUserInfo
@@ -770,8 +771,9 @@
         - [x] Keep new social registration available and leave no partial session on a same-email collision on all SQL engines ([test](../../adapters/sqlstore/social_test.go#L107))
         - [x] Use a mobile ID token to sign in only after the authenticated account owner explicitly links the provider ([test](../../conformance/goapi/oauth_signup_test.go#L145))
       - [ ] Manually Linking Accounts
-    - [ ] Account Unlinking
+    - [x] Account Unlinking ([test](../../conformance/goapi/delete_user_test.go#L187))
       - [x] Keep the last required account and prevent unlinking another user’s account ([test](../../adapters/sqlstore/identity_test.go#L40))
+      - [x] unlink-account answers ACCOUNT_NOT_FOUND for another user's or an unknown account, removes the caller's provider account with {"status":true} and refuses the last one, before any account hook ([test](../../conformance/goapi/delete_user_test.go#L187))
 
 ## Dynamic Base URL
 

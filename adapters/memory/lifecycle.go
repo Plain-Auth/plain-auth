@@ -48,6 +48,22 @@ func (s *Store) SaveDeletionToken(ctx context.Context, t auth.PasswordResetToken
 	return nil
 }
 
+// ConsumeDeletionToken spends an account deletion token, whoever presents
+// it, and reports ErrNotFound unless it was issued to userID and is live.
+func (s *Store) ConsumeDeletionToken(ctx context.Context, userID, token string, now time.Time) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	t, ok := s.deletions[token]
+	delete(s.deletions, token)
+	if !ok || t.UserID != userID || !t.ExpiresAt.After(now) {
+		return auth.ErrNotFound
+	}
+	return nil
+}
+
 func (s *Store) DeleteAccount(ctx context.Context, id, token, expectedHash, deleteToken string, now time.Time) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
