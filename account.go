@@ -205,30 +205,36 @@ func (a *Auth) VerifyPassword(ctx context.Context, h http.Header, password strin
 	if err != nil {
 		return err
 	}
-	_, err = a.checkedAccountHash(ctx, session.User, password)
+	_, err = a.checkedAccountHash(ctx, session.User, password, errInvalidPassword)
 	return err
 }
 
-func (a *Auth) checkedAccountHash(ctx context.Context, user User, password string) (string, error) {
+var (
+	errInvalidPassword          = &APIError{400, "INVALID_PASSWORD", "Invalid password"}
+	errCredentialAccountMissing = &APIError{400, "CREDENTIAL_ACCOUNT_NOT_FOUND", "Credential account not found"}
+)
+
+// checkedAccountHash verifies the user's current password and returns its
+// hash. A user without a password answers missing, as the routes differ:
+// changing the password or deleting the user names the missing credential,
+// while verifying a password answers as for a wrong one.
+func (a *Auth) checkedAccountHash(ctx context.Context, user User, password string, missing *APIError) (string, error) {
 	if err := a.validatePasswordLength(password, false); err != nil {
 		return "", err
 	}
 	u, hash, err := a.opts.Store.Credential(ctx, user.Email)
-	if errors.Is(err, ErrNotFound) {
-		return "", &APIError{400, "INVALID_PASSWORD", "Invalid password"}
+	if errors.Is(err, ErrNotFound) || err == nil && (u.ID != user.ID || hash == "") {
+		return "", missing
 	}
 	if err != nil {
 		return "", err
-	}
-	if u.ID != user.ID {
-		return "", &APIError{400, "INVALID_PASSWORD", "Invalid password"}
 	}
 	ok, err := a.checkCredential(ctx, hash, password)
 	if err != nil {
 		return "", err
 	}
 	if !ok {
-		return "", &APIError{400, "INVALID_PASSWORD", "Invalid password"}
+		return "", errInvalidPassword
 	}
 	return hash, nil
 }
@@ -252,7 +258,9 @@ func (a *Auth) ChangePassword(ctx context.Context, h http.Header, in ChangePassw
 	if err != nil {
 		return AuthResult{}, err
 	}
-	old, err := a.checkedAccountHash(ctx, session.User, in.CurrentPassword)
+	// The current password is checked before the new one is hashed, so a
+	// wrong one costs no hash; the answer already says it was wrong.
+	old, err := a.checkedAccountHash(ctx, session.User, in.CurrentPassword, errCredentialAccountMissing)
 	if err != nil {
 		return AuthResult{}, err
 	}

@@ -647,7 +647,7 @@ func (a *Auth) validateCallbacks(ctx context.Context, body wireBody, query url.V
 	if _, found := body["callbackURL"]; !found {
 		if values := query["callbackURL"]; len(values) > 0 {
 			if len(values) != 1 {
-				return validationError("Invalid callbackURL: expected a string")
+				return &APIError{Status: 400, Message: "Invalid callbackURL: expected a string"}
 			}
 			// A callback supplied only through the query is checked for trust
 			// but does not request a redirect on a credential sign-in.
@@ -668,7 +668,12 @@ func (a *Auth) validateCallbacks(ctx context.Context, body wireBody, query url.V
 		}
 		s, ok := value.(string)
 		if !ok {
-			return validationError("Invalid " + field.label + ": expected a string")
+			// A falsy value is left to the route's own validation, as the
+			// reference's origin check skips it.
+			if emptyUserInput(value) {
+				continue
+			}
+			return &APIError{Status: 400, Message: "Invalid " + field.label + ": expected a string"}
 		}
 		if s != "" && !a.trustedURL(ctx, s, true) {
 			return &APIError{Status: 403, Code: field.code, Message: "Invalid " + field.label}

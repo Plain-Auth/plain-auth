@@ -720,6 +720,12 @@
       "label": "Validate the password of the signed-in user",
       "test": "conformance/goapi/account_test.go",
       "marker": "post(\"verify-password\", `{\"password\":\"correct password\"}"
+    },
+    {
+      "label": "verify-password answers INVALID_PASSWORD for a wrong password or an account without one, {\"status\":true} for the right one, and 401 without a session",
+      "test": "conformance/goapi/password_endpoints_test.go",
+      "marker": "t.Fatal(\"a wrong password answered\", code)",
+      "complete": true
     }
   ],
   "core/changePassword": [
@@ -727,6 +733,12 @@
       "label": "Change credentials for a signed-in user",
       "test": "conformance/goapi/account_test.go",
       "marker": "change := post(\"change-password\""
+    },
+    {
+      "label": "change-password reports every body problem in schema order, keeps other sessions without revokeOtherSessions and returns a null token, and answers CREDENTIAL_ACCOUNT_NOT_FOUND for an account without a password",
+      "test": "conformance/goapi/password_endpoints_test.go",
+      "marker": "func TestPasswordCheckContract(t *testing.T) {",
+      "complete": true
     }
   ],
   "core/requestPasswordReset": [
@@ -734,6 +746,12 @@
       "label": "Deliver credential-reset instructions for a registered account",
       "test": "conformance/goapi/account_test.go",
       "marker": "present := post(\"request-password-reset\""
+    },
+    {
+      "label": "request-password-reset answers the same body for a known and an unknown address, mails one link carrying the redirect, and refuses an untrusted redirect (403 INVALID_REDIRECT_URL) or a non-string one",
+      "test": "conformance/goapi/password_endpoints_test.go",
+      "marker": "func TestPasswordResetContract(t *testing.T) {",
+      "complete": true
     }
   ],
   "core/requestPasswordResetCallback": [
@@ -741,6 +759,12 @@
       "label": "Redirect the reset callback to the configured application URL",
       "test": "conformance/goapi/account_test.go",
       "marker": "dest := serve(t, auth, \"GET\", resetURL.RequestURI()"
+    },
+    {
+      "label": "The reset callback redirects with the token or INVALID_TOKEN without spending it, sends an empty callback to the error page, needs callbackURL exactly once and refuses an untrusted one",
+      "test": "conformance/goapi/password_endpoints_test.go",
+      "marker": "t.Fatal(\"an unknown reset token redirected to\", to)",
+      "complete": true
     }
   ],
   "core/resetPassword": [
@@ -758,6 +782,12 @@
       "label": "Notify the winning owner after committing the new credential and configured database-session revocation",
       "test": "adapters/sqlstore/password_reset_hook_test.go",
       "marker": "callback preceded credential commit"
+    },
+    {
+      "label": "reset-password reports every body problem, checks for a token first, keeps the token after a short password, accepts the query token, spends it once and gives an account without a password its first one",
+      "test": "conformance/goapi/password_endpoints_test.go",
+      "marker": "t.Fatal(\"an account without a password got no reset mail\")",
+      "complete": true
     }
   ],
   "core/sendVerificationEmail": [
@@ -1346,6 +1376,11 @@
       "label": "Remove account-owned invitations and membership rows and update team member totals on SQLite, MySQL and PostgreSQL",
       "test": "adapters/sqlstore/organization_cleanup_test.go",
       "marker": "func TestOrganizationAccountDeletion("
+    },
+    {
+      "label": "delete-user with a password answers CREDENTIAL_ACCOUNT_NOT_FOUND for an account without one and keeps the session",
+      "test": "conformance/goapi/password_endpoints_test.go",
+      "marker": "t.Fatal(\"a refused delete-user ended the session\")"
     }
   ],
   "core/deleteUserCallback": [
@@ -1360,6 +1395,12 @@
       "label": "Set a first credential on a social account through the server API",
       "test": "adapters/sqlstore/account_contract_test.go",
       "marker": "first credential on a social account:"
+    },
+    {
+      "label": "SetPassword needs a session, checks the length bounds, sets the first password of an account without one once, answers PASSWORD_ALREADY_SET after, and has no HTTP route",
+      "test": "conformance/goapi/password_endpoints_test.go",
+      "marker": "func TestSetPasswordContract(t *testing.T) {",
+      "complete": true
     }
   ],
   "go/environment": [

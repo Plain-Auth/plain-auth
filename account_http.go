@@ -142,21 +142,29 @@ func (a *Auth) handleAccountRequest(route string, w http.ResponseWriter, r *http
 		}
 		return ok, nil
 	case "/change-password":
-		current, err := requiredString(b, "currentPassword")
-		if err != nil {
-			return nil, err
+		if b == nil {
+			return nil, validationError("[body] Invalid input: expected object, received undefined")
 		}
-		password, err := requiredString(b, "newPassword")
-		if err != nil {
-			return nil, err
+		// Every problem is reported, in the order of the reference schema.
+		var issues []string
+		password, okNew := b["newPassword"].(string)
+		if !okNew {
+			issues = append(issues, fieldTypeError("newPassword", "string", b).Message)
+		}
+		current, okCurrent := b["currentPassword"].(string)
+		if !okCurrent {
+			issues = append(issues, fieldTypeError("currentPassword", "string", b).Message)
 		}
 		revoke := false
 		if v, exists := b["revokeOtherSessions"]; exists {
 			if flag, isBool := v.(bool); isBool {
 				revoke = flag
 			} else {
-				return nil, fieldTypeError("revokeOtherSessions", "boolean", b)
+				issues = append(issues, fieldTypeError("revokeOtherSessions", "boolean", b).Message)
 			}
+		}
+		if len(issues) > 0 {
+			return nil, validationError(strings.Join(issues, "; "))
 		}
 		remember := !a.dontRemember(r)
 		result, err := a.ChangePassword(ctx, r.Header, ChangePasswordInput{CurrentPassword: current, NewPassword: password, RevokeOtherSessions: revoke}, RequestMeta{IPAddress: ip, UserAgent: r.UserAgent(), RememberMe: &remember})
@@ -186,19 +194,35 @@ func (a *Auth) handleAccountRequest(route string, w http.ResponseWriter, r *http
 		callback, _ := b["callbackURL"].(string)
 		return ok, a.SendVerificationEmail(ctx, r.Header, email, callback)
 	case "/reset-password":
-		password, err := requiredString(b, "newPassword")
-		if err != nil {
-			return nil, err
+		if b == nil {
+			return nil, validationError("[body] Invalid input: expected object, received undefined")
+		}
+		var issues []string
+		password, okPassword := b["newPassword"].(string)
+		if !okPassword {
+			issues = append(issues, fieldTypeError("newPassword", "string", b).Message)
 		}
 		token, okType := b["token"].(string)
 		if _, supplied := b["token"]; supplied && !okType {
-			return nil, fieldTypeError("token", "string", b)
+			issues = append(issues, fieldTypeError("token", "string", b).Message)
+		}
+		if len(issues) > 0 {
+			return nil, validationError(strings.Join(issues, "; "))
 		}
 		if token == "" {
 			token = query.Get("token")
 		}
 		return ok, a.resetPassword(ctx, token, password, r)
 	case "/reset-password/:token", "/verify-email":
+		if route == "/reset-password/:token" {
+			switch len(query["callbackURL"]) {
+			case 0:
+				return nil, validationError("[query.callbackURL] Invalid input: expected string, received undefined")
+			case 1:
+			default:
+				return nil, validationError("[query.callbackURL] Invalid input: expected string, received array")
+			}
+		}
 		if err := a.validateCallbacks(ctx, nil, query); err != nil {
 			return nil, err
 		}

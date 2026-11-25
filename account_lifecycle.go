@@ -87,7 +87,7 @@ func (a *Auth) DeleteUser(ctx context.Context, h http.Header, in DeleteUserInput
 	now := a.now().UTC()
 	var hash string
 	if in.Password != "" {
-		hash, err = a.checkedAccountHash(ctx, session.User, in.Password)
+		hash, err = a.checkedAccountHash(ctx, session.User, in.Password, errCredentialAccountMissing)
 		if err != nil {
 			return false, err
 		}
