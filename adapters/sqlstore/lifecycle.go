@@ -67,6 +67,34 @@ func (s *Store) SaveDeletionToken(ctx context.Context, t authn.PasswordResetToke
 	return err
 }
 
+var _ authn.DeletionTokenFinder = (*Store)(nil)
+
+// FindDeletionToken reads a live account deletion token issued to userID
+// without spending it.
+func (s *Store) FindDeletionToken(ctx context.Context, userID, token string, now time.Time) (authn.PasswordResetToken, error) {
+	t := authn.PasswordResetToken{Token: token}
+	rows, err := s.db.QueryContext(ctx, s.bind(`SELECT "id","value","expiresAt","createdAt" FROM "verification" WHERE "identifier"=`+s.exactSQLValue("?")), "delete-account-"+token)
+	if err != nil {
+		return t, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id, value string
+		var expires, created time.Time
+		if err := rows.Scan(&id, &value, &expires, &created); err != nil {
+			return t, err
+		}
+		if value == userID && expires.After(now) {
+			t.ID, t.UserID, t.ExpiresAt, t.CreatedAt = id, value, expires, created
+			return t, rows.Close()
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return t, err
+	}
+	return t, authn.ErrNotFound
+}
+
 // ConsumeDeletionToken spends an account deletion token, whoever presents
 // it, and reports ErrNotFound unless it was issued to userID and is live.
 func (s *Store) ConsumeDeletionToken(ctx context.Context, userID, token string, now time.Time) error {

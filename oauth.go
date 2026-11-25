@@ -145,6 +145,13 @@ type OAuthFlowStore interface {
 	ConsumeOAuthFlow(ctx context.Context, state, binding string, now time.Time) (OAuthFlow, error)
 }
 
+// OAuthFlowFinder reads a browser OAuth flow without spending it, for
+// verification delete hooks. A flow that is unknown, expired or bound to
+// another browser is ErrNotFound.
+type OAuthFlowFinder interface {
+	FindOAuthFlow(ctx context.Context, state, binding string, now time.Time) (OAuthFlow, error)
+}
+
 // OAuthIdentityStore completes a provider sign-in atomically. CompleteOAuth
 // returns the actual account owner and whether it created a user.
 type OAuthIdentityStore interface {

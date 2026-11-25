@@ -28,6 +28,13 @@ type DeletionTokenStore interface {
 	ConsumeDeletionToken(ctx context.Context, userID, token string, now time.Time) error
 }
 
+// DeletionTokenFinder reads an account deletion token without spending it,
+// for verification delete hooks. A token that is unknown, expired or issued
+// to another user is ErrNotFound.
+type DeletionTokenFinder interface {
+	FindDeletionToken(ctx context.Context, userID, token string, now time.Time) (PasswordResetToken, error)
+}
+
 func (a *Auth) lifecycleStore() (AccountLifecycleStore, error) {
 	s, ok := a.opts.Store.(AccountLifecycleStore)
 	if !ok {
@@ -104,7 +111,16 @@ func (a *Auth) DeleteUser(ctx context.Context, h http.Header, in DeleteUserInput
 	// another account, runs no deletion hook.
 	deleteToken := in.Token
 	if consumer, ok := s.(DeletionTokenStore); ok && in.Token != "" {
-		if err := consumer.ConsumeDeletionToken(ctx, session.User.ID, in.Token, now); errors.Is(err, ErrNotFound) {
+		find := func() (VerificationRecord, error) {
+			finder, ok := s.(DeletionTokenFinder)
+			if !ok {
+				return VerificationRecord{}, ErrNotFound
+			}
+			t, err := finder.FindDeletionToken(ctx, session.User.ID, in.Token, now)
+			return tokenRecord("delete-account", t), err
+		}
+		err := a.spendVerification(ctx, find, func() error { return consumer.ConsumeDeletionToken(ctx, session.User.ID, in.Token, now) })
+		if errors.Is(err, ErrNotFound) {
 			return false, &APIError{404, "INVALID_TOKEN", "Invalid token"}
 		} else if err != nil {
 			return false, err
@@ -124,7 +140,12 @@ func (a *Auth) DeleteUser(ctx context.Context, h http.Header, in DeleteUserInput
 		if err != nil {
 			return false, err
 		}
-		if err := s.SaveDeletionToken(ctx, t); err != nil {
+		// A declined link answers as a sent one, with nothing stored or mailed.
+		err = a.createVerification(ctx, tokenRecord("delete-account", t), func() error { return s.SaveDeletionToken(ctx, t) })
+		if errors.Is(err, ErrSkipWrite) {
+			return false, nil
+		}
+		if err != nil {
 			return false, err
 		}
 		query := url.Values{"callbackURL": {callback}, "token": {t.Token}}

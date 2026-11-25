@@ -8,11 +8,12 @@ import (
 	"reflect"
 	"slices"
 	"strings"
+	"time"
 )
 
 // DatabaseHooks run your code around the writes that create, update and
-// delete users, sessions and accounts, for HTTP requests and direct Go calls
-// alike. Plugin hooks run
+// delete users, sessions, accounts and verification records, for HTTP
+// requests and direct Go calls alike. Plugin hooks run
 // first, in plugin order, then the Options hooks.
 //
 // A before hook runs just before the write and may edit the row or return
@@ -29,6 +30,23 @@ type DatabaseHooks struct {
 	// Account hooks observe and may cancel credential and linked account
 	// writes. They may not change the account.
 	Account ModelHooks[LinkedAccount]
+	// Verification hooks observe and may cancel the creation and spending of
+	// password reset links, account deletion links and browser OAuth flows.
+	// Spending a record is its delete. They may not change the record.
+	Verification ModelHooks[VerificationRecord]
+}
+
+// VerificationRecord is a verification record in a database hook. It
+// leaves out the token and the data that redeem it.
+type VerificationRecord struct {
+	ID string
+	// Identifier is the kind of record: "reset-password", "delete-account"
+	// or "oauth-state".
+	Identifier string
+	// UserID is the record's owner. An OAuth flow has one only when it
+	// links an account to a signed-in user.
+	UserID    string
+	ExpiresAt time.Time
 }
 
 // ModelHooks holds the hooks for one model's create, update and delete writes.
@@ -114,12 +132,15 @@ type databaseHookChains struct {
 	user    modelChain[UserRecord]
 	session modelChain[SessionRecord]
 	account modelChain[LinkedAccount]
+
+	verification modelChain[VerificationRecord]
 }
 
 func (d databaseHookChains) set() bool {
 	return d.user.create.set() || d.user.update.set() || d.user.delete.set() ||
 		d.session.create.set() || d.session.update.set() || d.session.delete.set() ||
-		d.account.create.set() || d.account.update.set() || d.account.delete.set()
+		d.account.create.set() || d.account.update.set() || d.account.delete.set() ||
+		d.verification.create.set() || d.verification.update.set() || d.verification.delete.set()
 }
 
 func composeDatabaseHooks(opts Options) databaseHookChains {
@@ -128,6 +149,7 @@ func composeDatabaseHooks(opts Options) databaseHookChains {
 		d.user.add(h.User, source)
 		d.session.add(h.Session, source)
 		d.account.add(h.Account, source)
+		d.verification.add(h.Verification, source)
 	}
 	for _, p := range opts.Plugins {
 		add(p.DatabaseHooks, "plugin:"+p.ID)
@@ -223,6 +245,24 @@ func (a *Auth) checkDatabaseHooks() error {
 	if d.account.create.set() || d.account.update.set() {
 		need("email-otp", a.HasPlugin("email-otp"))
 		need("phone-number", a.HasPlugin("phone-number"))
+	}
+	if d.verification.create.set() || d.verification.update.set() || d.verification.delete.set() {
+		// These plugins keep their codes and challenges inside their stores.
+		for _, id := range []string{"magic-link", "email-otp", "phone-number", "two-factor", "one-time-token", "passkey", "siwe", "sso", "oauth-provider"} {
+			need(id, a.HasPlugin(id))
+		}
+	}
+	if d.verification.delete.set() {
+		_, finds := a.opts.Store.(DeletionTokenFinder)
+		_, consumes := a.opts.Store.(DeletionTokenStore)
+		if a.opts.DeleteUserEnabled && (!finds || !consumes) {
+			return errors.New("auth: verification delete hooks with DeleteUserEnabled require a store implementing ConsumeDeletionToken and FindDeletionToken")
+		}
+		if _, flows := a.opts.Store.(OAuthFlowStore); flows && a.opts.OAuthStateStrategy != OAuthStateCookie {
+			if _, ok := a.opts.Store.(OAuthFlowFinder); !ok {
+				return errors.New("auth: verification delete hooks require a store implementing FindOAuthFlow, or OAuthStateCookie")
+			}
+		}
 	}
 	if len(bypass) > 0 {
 		return fmt.Errorf("auth: these database hooks do not run yet for %s", strings.Join(bypass, ", "))
@@ -568,6 +608,74 @@ func (a *Auth) beforeAccount(ctx context.Context, chain operationChain[LinkedAcc
 		return errDatabaseHookEdit
 	}
 	return nil
+}
+
+// beforeVerification runs chain's before hooks on rec, which they may not
+// change.
+func (a *Auth) beforeVerification(ctx context.Context, chain operationChain[VerificationRecord], rec VerificationRecord) error {
+	if len(chain.before) == 0 {
+		return nil
+	}
+	seen := rec
+	if err := runBefore(ctx, a, chain, &seen); err != nil {
+		return err
+	}
+	if seen != rec {
+		a.Logger().ErrorContext(ctx, errDatabaseHookEdit.Error(), "model", "verification")
+		return errDatabaseHookEdit
+	}
+	return nil
+}
+
+// createVerification runs the verification create hooks around save. A
+// declined create returns ErrSkipWrite and stores nothing.
+func (a *Auth) createVerification(ctx context.Context, rec VerificationRecord, save func() error) error {
+	chain := a.dbHooks.verification.create
+	if err := a.beforeVerification(ctx, chain, rec); err != nil {
+		return err
+	}
+	if err := save(); err != nil {
+		return err
+	}
+	return runAfter(ctx, a, chain, rec)
+}
+
+// spendVerification runs the verification delete hooks around spend. find
+// reads the record without spending it. A record find cannot see, because
+// it is unknown, expired or another owner's, is spent or refused without
+// hooks. A declined spend returns ErrNotFound and keeps the record. The
+// after hooks run only for the spend that succeeded.
+func (a *Auth) spendVerification(ctx context.Context, find func() (VerificationRecord, error), spend func() error) error {
+	chain := a.dbHooks.verification.delete
+	if !chain.set() {
+		return spend()
+	}
+	rec, err := find()
+	if errors.Is(err, ErrNotFound) {
+		return spend()
+	}
+	if err != nil {
+		return err
+	}
+	if err := a.beforeVerification(ctx, chain, rec); errors.Is(err, ErrSkipWrite) {
+		return ErrNotFound
+	} else if err != nil {
+		return err
+	}
+	if err := spend(); err != nil {
+		return err
+	}
+	return runAfter(ctx, a, chain, rec)
+}
+
+// tokenRecord is a reset or deletion link as a verification record.
+func tokenRecord(kind string, t PasswordResetToken) VerificationRecord {
+	return VerificationRecord{ID: t.ID, Identifier: kind, UserID: t.UserID, ExpiresAt: t.ExpiresAt}
+}
+
+// oauthFlowRecord is a browser OAuth flow as a verification record.
+func oauthFlowRecord(f OAuthFlow) VerificationRecord {
+	return VerificationRecord{ID: f.State, Identifier: "oauth-state", UserID: f.LinkUserID, ExpiresAt: f.ExpiresAt}
 }
 
 // credentialAccount returns userID's stored credential account, or a draft

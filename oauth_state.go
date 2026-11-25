@@ -131,7 +131,11 @@ func (a *Auth) keepOAuthFlow(ctx context.Context, h http.Header, name string, c 
 		if !ok {
 			return errors.New("auth: OAuth sign-in requires an OAuthFlowStore, or OAuthStateCookie")
 		}
-		if err := store.SaveOAuthFlow(ctx, flow, now); err != nil {
+		err := a.createVerification(ctx, oauthFlowRecord(flow), func() error { return store.SaveOAuthFlow(ctx, flow, now) })
+		if errors.Is(err, ErrSkipWrite) {
+			return &APIError{500, "STATE_GENERATION_ERROR", "Unable to create verification"}
+		}
+		if err != nil {
 			return err
 		}
 		c.Value = browser
@@ -151,7 +155,21 @@ func (a *Auth) takeOAuthFlow(ctx context.Context, name, value, state string, bin
 		if !ok {
 			return OAuthFlow{}, mismatch
 		}
-		flow, err := store.ConsumeOAuthFlow(ctx, state, binding(value), now)
+		bound := binding(value)
+		find := func() (VerificationRecord, error) {
+			finder, ok := store.(OAuthFlowFinder)
+			if !ok {
+				return VerificationRecord{}, ErrNotFound
+			}
+			f, err := finder.FindOAuthFlow(ctx, state, bound, now)
+			return oauthFlowRecord(f), err
+		}
+		var flow OAuthFlow
+		err := a.spendVerification(ctx, find, func() (err error) {
+			flow, err = store.ConsumeOAuthFlow(ctx, state, bound, now)
+			return err
+		})
+		// A declined spend keeps the flow, and the callback is refused.
 		if errors.Is(err, ErrNotFound) {
 			return OAuthFlow{}, mismatch
 		}

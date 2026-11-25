@@ -43,6 +43,22 @@ func (s *Store) SaveOAuthFlow(ctx context.Context, flow authn.OAuthFlow, now tim
 	return tx.Commit()
 }
 
+var _ authn.OAuthFlowFinder = (*Store)(nil)
+
+// FindOAuthFlow reads a live browser OAuth flow without spending it.
+func (s *Store) FindOAuthFlow(ctx context.Context, state, binding string, now time.Time) (authn.OAuthFlow, error) {
+	var flow authn.OAuthFlow
+	var payload string
+	err := s.db.QueryRowContext(ctx, s.bind(`SELECT "value" FROM "verification" WHERE "id"=? AND "identifier"=? AND "expiresAt">?`), state, "oauth-state:"+binding, s.date(now)).Scan(&payload)
+	if errors.Is(err, sql.ErrNoRows) {
+		return flow, authn.ErrNotFound
+	}
+	if err != nil {
+		return flow, err
+	}
+	return flow, json.Unmarshal([]byte(payload), &flow)
+}
+
 func (s *Store) ConsumeOAuthFlow(ctx context.Context, state, binding string, now time.Time) (authn.OAuthFlow, error) {
 	var flow authn.OAuthFlow
 	tx, err := s.db.BeginTx(ctx, nil)

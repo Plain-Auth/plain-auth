@@ -41,8 +41,9 @@ type Plugin struct {
 	// Hooks run before and after each mounted HTTP endpoint, after the
 	// Options hooks and the hooks of earlier plugins.
 	Hooks EndpointHooks
-	// DatabaseHooks run before and after user and session writes, before the
-	// Options database hooks and after those of earlier plugins.
+	// DatabaseHooks run before and after user, session, account and
+	// verification writes, before the Options database hooks and after those
+	// of earlier plugins.
 	DatabaseHooks DatabaseHooks
 	// OnRequest runs for each mounted HTTP request before routing, after the
 	// disabled-path check. An error interrupts the request and is written as

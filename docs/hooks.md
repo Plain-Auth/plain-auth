@@ -155,7 +155,7 @@ opts.DatabaseHooks.User.Create = plainauth.OperationHooks[plainauth.UserRecord]{
 }
 ```
 
-`Options.DatabaseHooks` and `Plugin.DatabaseHooks` hold `Create`, `Update` and `Delete` hooks for `User`, `Session` and `Account`. Plugin hooks run first, in plugin order, then the Options hooks.
+`Options.DatabaseHooks` and `Plugin.DatabaseHooks` hold `Create`, `Update` and `Delete` hooks for `User`, `Session`, `Account` and `Verification`. Plugin hooks run first, in plugin order, then the Options hooks.
 
 - **Before** runs just before the write. For a create or an update it receives the full row with the change applied, and may change the fields the write stores; changing any other field fails the write with a 500.
   - **Creating a user:** `Name`, `Email`, `Image`, `EmailVerified` and `Fields`, the `UserAdditionalFields` values by name.
@@ -238,6 +238,21 @@ Session updates and deletes run these hooks:
 
 A delete reads its sessions first, so the hooks see only sessions that existed then. A session created between that read and the delete is removed without hooks. A skip from any before hook cancels the whole delete.
 
+### Verification hooks
+
+Verification hooks run when a password reset link, an account deletion link or a browser OAuth flow is created, and when it is spent, which counts as its delete:
+
+| Operation | Verification hooks | Skipped write |
+| --- | --- | --- |
+| `POST /request-password-reset`, `Auth.RequestPasswordReset` | Create, `reset-password` | Answers success; nothing is stored or mailed |
+| `POST /reset-password`, `Auth.ResetPassword` | Delete, before the account and session hooks | 400 `INVALID_TOKEN`; the link stays usable |
+| `POST /delete-user` that mails a link | Create, `delete-account` | Answers "Verification email sent"; nothing is stored or mailed |
+| `/delete-user/callback`, or `POST /delete-user` with a token | Delete, before the deletion hooks | 404 `INVALID_TOKEN`; the link stays usable |
+| Social sign-in, `/link-social` and SSO starts with the database state strategy | Create, `oauth-state` | 500 `STATE_GENERATION_ERROR` |
+| The provider's callback | Delete | `state_mismatch`; the flow stays stored until it expires |
+
+A hook receives a `VerificationRecord` with the record's `ID`, its kind in `Identifier`, the owner in `UserID` (a link-social flow's signed-in user, empty for a sign-in) and `ExpiresAt`. The token and the flow's data, such as its PKCE verifier, are never passed. Hooks may observe or cancel the write; changing the record fails it with a 500. They run outside the store's transaction, on a read made just before the record is spent, so two requests racing for one link may both run their before hooks, but only the one that spends it runs the after hooks. A link that is expired or belongs to another account is refused or spent without hooks. Sweeps of expired records, the links removed with a deleted account and the store's own bookkeeping rows run none. Email verification and email change links are signed and never stored, so they run none, and no built-in flow updates a verification record. `OAuthStateCookie` stores no flow and runs none. [Verification hook tests](../conformance/goapi/database_verification_hooks_test.go), [OAuth flow hooks on SQL engines](../adapters/sqlstore/verification_hooks_test.go)
+
 Database hooks do not cover every flow yet. `New` refuses:
 
 - user or session create before hooks with social sign-in, magic link, email OTP, phone number, One Tap, SSO, two-factor, device authorization or `AutoSignInAfterVerification`, when the store does not implement `LoginPlanner`;
@@ -248,7 +263,9 @@ Database hooks do not cover every flow yet. `New` refuses:
 - session update hooks with the organization or admin plugin;
 - session delete hooks with the admin, anonymous, magic link, SSO or two-factor plugin, or with `RevokeSessionsOnPasswordReset` and the email OTP or phone number plugin, whose code resets find the account inside the store;
 - user delete hooks with the admin or anonymous plugin;
-- account hooks with social sign-in, One Tap, SSO, or the admin, wallet, magic link or anonymous plugin, and account create and update hooks with email OTP or phone number, which write accounts inside the store's transaction.
+- account hooks with social sign-in, One Tap, SSO, or the admin, wallet, magic link or anonymous plugin, and account create and update hooks with email OTP or phone number, which write accounts inside the store's transaction;
+- verification hooks with the magic link, email OTP, phone number, two-factor, one-time token, passkey, wallet, SSO or OAuth provider plugin, which keep their codes and challenges inside their stores;
+- verification delete hooks with `DeleteUserEnabled` on a store without `DeletionTokenFinder`, or with the database OAuth state on a store without `OAuthFlowFinder`. The SQL and memory stores implement both.
 
 The SCIM handler refuses a host with any database hook, and `Auth.HasDatabaseHooks` lets your own wrapping handler do the same.
 

@@ -18922,6 +18922,16 @@
       "label": "Run the credential account hooks and the revoked sessions' delete hooks around a password reset link",
       "test": "conformance/goapi/database_user_hooks_test.go",
       "marker": "// Run the credential account hooks and the revoked sessions' delete hooks"
+    },
+    {
+      "label": "Run verification hooks around password reset and account deletion links, outside the store and without their tokens, before the account, session and user hooks of the change they allow",
+      "test": "conformance/goapi/database_verification_hooks_test.go",
+      "marker": "func TestDatabaseVerificationHooks(t *testing.T) {"
+    },
+    {
+      "label": "Run verification hooks around browser OAuth flows on SQLite, PostgreSQL and MySQL: a declined spend refuses the callback and keeps the flow",
+      "test": "adapters/sqlstore/verification_hooks_test.go",
+      "marker": "func TestVerificationHooksAroundOAuthFlows(t *testing.T) {"
     }
   ],
   "docs/content/docs/concepts/database.mdx#L881": [
@@ -19095,6 +19105,11 @@
       "label": "Configure account hooks for credential and linked account writes",
       "test": "conformance/goapi/database_user_hooks_test.go",
       "marker": "// Run account hooks around the credential a sign-up stores, password"
+    },
+    {
+      "label": "Configure verification hooks for password reset and account deletion links and browser OAuth flows, and refuse the plugins that keep their codes without them",
+      "test": "conformance/goapi/database_verification_hooks_test.go",
+      "marker": "func TestDatabaseVerificationHooksRefuseBypassingFeatures(t *testing.T) {"
     }
   ],
   "docs/content/docs/authentication/email-password.mdx#L15": [
@@ -21817,6 +21832,20 @@
       "label": "additionalData cannot replace the flow's serverContext: the name is dropped from the browser's data. OAuthAdditionalData does not return the flow's own state",
       "test": "conformance/goapi/oauth_additional_data_test.go",
       "marker": "spoofed := `\"callbackURL\":\"https://evil.example\",\"errorURL\":\"https://evil.example\",\"newUserURL\":\"https://evil.example\",\"codeVerifier\":\"guess\",` +"
+    }
+  ],
+  "docs/content/docs/reference/errors/state_mismatch.mdx#L26/`state_generation_error`": [
+    {
+      "label": "A verification create hook that declines a browser OAuth flow fails the sign-in start with 500 STATE_GENERATION_ERROR and sets no state cookie",
+      "test": "adapters/sqlstore/verification_hooks_test.go",
+      "marker": "t.Fatal(\"a declined OAuth state answered\", res.StatusCode, problem.Code)"
+    }
+  ],
+  "docs/content/docs/reference/errors/state_mismatch.mdx#L169": [
+    {
+      "label": "A verification create hook that declines a browser OAuth flow fails the sign-in start with 500 STATE_GENERATION_ERROR and sets no state cookie",
+      "test": "adapters/sqlstore/verification_hooks_test.go",
+      "marker": "t.Fatal(\"a declined OAuth state answered\", res.StatusCode, problem.Code)"
     }
   ]
 }

@@ -353,7 +353,12 @@ func (a *Auth) RequestPasswordReset(ctx context.Context, email, redirectTo strin
 	if err != nil {
 		return err
 	}
-	if err := s.SavePasswordResetToken(ctx, t); err != nil {
+	// A declined link answers as a sent one, with nothing stored or mailed.
+	err = a.createVerification(ctx, tokenRecord("reset-password", t), func() error { return s.SavePasswordResetToken(ctx, t) })
+	if errors.Is(err, ErrSkipWrite) {
+		return nil
+	}
+	if err != nil {
 		return err
 	}
 	link := base + "/reset-password/" + t.Token + "?" + url.Values{"callbackURL": {redirectTo}}.Encode()
@@ -388,7 +393,14 @@ func (a *Auth) resetPassword(ctx context.Context, token, newPassword string, req
 		return err
 	}
 	now := a.now().UTC()
-	// The token names its owner, so the hooks run before the reset commits.
+	// The token names its owner, so the hooks run before the reset commits,
+	// starting with the link's own, which the reset spends first.
+	spent := tokenRecord("reset-password", row)
+	if err := a.beforeVerification(ctx, a.dbHooks.verification.delete, spent); errors.Is(err, ErrSkipWrite) {
+		return &APIError{400, "INVALID_TOKEN", "Invalid token"}
+	} else if err != nil {
+		return err
+	}
 	credentialHooks := a.dbHooks.account.update
 	if a.dbHooks.account.create.set() || a.dbHooks.account.update.set() {
 		credential, err := a.credentialAccount(ctx, row.UserID)
@@ -443,6 +455,9 @@ func (a *Auth) resetPassword(ctx context.Context, token, newPassword string, req
 	}
 	if errors.Is(err, ErrNotFound) {
 		return &APIError{400, "INVALID_TOKEN", "Invalid token"}
+	}
+	if err == nil {
+		err = runAfter(ctx, a, a.dbHooks.verification.delete, spent)
 	}
 	if err == nil {
 		err = a.afterCredentialAccount(ctx, credentialHooks, row.UserID)
