@@ -2013,6 +2013,11 @@
       "label": "Remember a browser, rotate its account-bound grant once and invalidate it during password recovery",
       "test": "adapters/sqlstore/twofactor_trust_test.go",
       "marker": "one grant did not rotate into exactly one session"
+    },
+    {
+      "label": "Answer a proof from the run that commits it alone, when a login plan's dry run accepted a code another sign-in spent before the approved run",
+      "test": "adapters/sqlstore/twofactor_records_test.go",
+      "marker": "// A dry run's verdict never reaches the response."
     }
   ],
   "plugin/2fa/POST /two-factor/generate-backup-codes": [
@@ -19077,6 +19082,11 @@
       "label": "Run verification hooks around wallet sign-in nonces on SQLite, PostgreSQL and MySQL: a declined nonce is returned but redeems nothing and still enters a custom generator's history, a declined spend keeps the nonce, and the nonce is spent with its hooks before the signature is checked and before the session hooks",
       "test": "adapters/sqlstore/siwe_hooks_test.go",
       "marker": "func TestVerificationHooksAroundWalletNonces(t *testing.T) {"
+    },
+    {
+      "label": "Report the two-factor challenge and remembered browser rows a call locked, and store new ones under the IDs the Auth chooses, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/twofactor_records_test.go",
+      "marker": "func TestTwoFactorRowsCarryTheirIDs(t *testing.T) {"
     }
   ],
   "docs/content/docs/concepts/database.mdx#L881": [

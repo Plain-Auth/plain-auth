@@ -29,6 +29,12 @@ type factorHarness struct {
 }
 
 func withFactorDatabases(t *testing.T, opts twofactor.Options, test func(*factorHarness)) {
+	withConfiguredFactorDatabases(t, opts, nil, test)
+}
+
+// withConfiguredFactorDatabases runs test on each engine with two instances
+// sharing one database, whose options configure may change.
+func withConfiguredFactorDatabases(t *testing.T, opts twofactor.Options, configure func(*auth.Options), test func(*factorHarness)) {
 	for _, dialect := range []string{"sqlite", "postgres", "mysql"} {
 		t.Run(dialect, func(t *testing.T) {
 			dsn := filepath.Join(t.TempDir(), "factor.db")
@@ -55,6 +61,9 @@ func withFactorDatabases(t *testing.T, opts twofactor.Options, test func(*factor
 			off := false
 			var reset auth.MailLink
 			cfg := auth.Options{EmailAndPassword: true, Secret: "synthetic-factor-secret-0001-0123456789", BaseURL: "https://factor.example", Store: s, Plugins: []auth.Plugin{twofactor.New(opts)}, RateLimit: &off, SendResetPassword: func(_ context.Context, m auth.MailLink) error { reset = m; return nil }}
+			if configure != nil {
+				configure(&cfg)
+			}
 			a, err := auth.New(cfg)
 			if err != nil {
 				t.Fatal(err)

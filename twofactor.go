@@ -36,6 +36,12 @@ type FactorState struct {
 	LastTOTPStep   int64
 	LastTOTPPeriod time.Duration
 	Session        *Session
+	// ChallengeID and ChallengeExpires are the stored row ID and expiry of
+	// the challenge the subject names, and TrustedGrantID and
+	// TrustedGrantExpires those of TrustedGrant. A FactorRecordReporter fills
+	// them for the verification hooks.
+	ChallengeID, TrustedGrantID           string
+	ChallengeExpires, TrustedGrantExpires time.Time
 }
 
 // FactorChange is committed under the same owner lock used to load FactorState.
@@ -56,11 +62,32 @@ type FactorChange struct {
 	UsedTOTPPeriod                      time.Duration
 	RevokeSessions                      bool
 	Session                             *StoredSession
+	// ChallengeID and TrustedGrantID are the row IDs to store CreateChallenge
+	// and CreateTrustedGrant under, which the verification hooks name them
+	// by. A store that is not a FactorRecordReporter may choose its own.
+	ChallengeID, TrustedGrantID string
 }
 type TwoFactorStore interface {
 	FactorEnabled(context.Context, string) (bool, error)
 	WithTwoFactor(ctx context.Context, subject FactorSubject, decide func(FactorState) (FactorChange, error)) error
 }
+
+// FactorRecordReporter is a TwoFactorStore whose WithTwoFactor the
+// verification hooks can follow. New requires it for any verification
+// database hook with the two-factor plugin. Its WithTwoFactor:
+//   - fills FactorState's ChallengeID and ChallengeExpires from the
+//     challenge row it locked, and TrustedGrantID and TrustedGrantExpires
+//     from the remembered browser's row it locked;
+//   - stores CreateChallenge under FactorChange.ChallengeID,
+//     CreateTrustedGrant under FactorChange.TrustedGrantID and a delivered
+//     code under its ID;
+//   - calls decide once per transaction attempt, again only after rolling
+//     an attempt back, and commits exactly the change the last call
+//     returned, or nothing;
+//   - writes nothing and returns decide's error when decide fails;
+//   - for an empty change writes nothing but the normalizations any call
+//     makes, such as lifting an expired ban.
+type FactorRecordReporter interface{ ReportsFactorRecords() }
 type TwoFactorOptions struct {
 	TOTP                                        FactorTOTPOptions
 	Backup                                      FactorBackupOptions
@@ -102,11 +129,25 @@ func NewTwoFactor(opts TwoFactorOptions) Plugin {
 	return p
 }
 
+// factorPins are the keys and row IDs one two-factor request may store,
+// drawn once so that every run of its store call names the same records.
+type factorPins struct {
+	challenge, challengeID, grant, grantID, deliveryID string
+	challengeExpires, grantUntil                       time.Time
+}
+
+func (a *Auth) newFactorPins(now time.Time) factorPins {
+	o := a.factorOptions
+	return factorPins{challenge: "2fa-" + randomID(), challengeID: randomID(), grant: "trust-device-" + randomID(), grantID: randomID(), deliveryID: randomID(),
+		challengeExpires: now.Add(o.ChallengeLifetime), grantUntil: now.Add(o.TrustDeviceMaxAge)}
+}
+
 func (a *Auth) factorLogin(ctx context.Context, user User, expectedHash string, session StoredSession, signedDevice string) (AuthResult, error) {
 	result := AuthResult{}
 	subject := FactorSubject{UserID: user.ID, Now: a.now().UTC(), TrustedGrant: a.readTrustedGrant(signedDevice, user.ID)}
+	pins := a.newFactorPins(subject.Now)
 	err := a.planSignIn(ctx, nil, func(ctx context.Context) error {
-		return a.factorStore.WithTwoFactor(ctx, subject, a.factorLoginDecision(&result, subject, session, signedDevice, expectedHash))
+		return a.factorStore.WithTwoFactor(ctx, subject, a.factorLoginDecision(&result, pins, session, signedDevice, expectedHash))
 	})
 	if errors.Is(err, errPlannedSessionSkipped) {
 		return AuthResult{}, &APIError{401, "FAILED_TO_CREATE_SESSION", "Failed to create session"}
@@ -125,7 +166,7 @@ func (a *Auth) factorLogin(ctx context.Context, user User, expectedHash string, 
 
 // factorLoginDecision issues the session for an account without a second
 // factor or with a trusted device, and a challenge otherwise.
-func (a *Auth) factorLoginDecision(out *AuthResult, subject FactorSubject, session StoredSession, signedDevice, expectedHash string) func(FactorState) (FactorChange, error) {
+func (a *Auth) factorLoginDecision(out *AuthResult, pins factorPins, session StoredSession, signedDevice, expectedHash string) func(FactorState) (FactorChange, error) {
 	return func(state FactorState) (FactorChange, error) {
 		result := AuthResult{}
 		defer func() { *out = result }()
@@ -144,17 +185,16 @@ func (a *Auth) factorLoginDecision(out *AuthResult, subject FactorSubject, sessi
 		}
 		if state.TrustedGrant != "" {
 			change := FactorChange{Session: &session}
-			result = AuthResult{User: state.User, Token: session.Token, TrustedDeviceCookie: a.rotateTrustedGrant(&change, state.User.ID, subject.Now)}
+			result = AuthResult{User: state.User, Token: session.Token, TrustedDeviceCookie: a.rotateTrustedGrant(&change, state.User.ID, pins)}
 			return change, nil
 		}
 		if signedDevice != "" {
 			result.TrustedDeviceCookie = a.trustedDeviceCookie("", "", -1)
 		}
-		id := "2fa-" + randomID()
-		result.Challenge = &LoginChallenge{Identifier: id}
+		result.Challenge = &LoginChallenge{Identifier: pins.challenge}
 		result.TwoFactorRedirect = true
 		result.TwoFactorMethods = methods
-		return FactorChange{CreateChallenge: id, ChallengeExpires: subject.Now.Add(a.factorOptions.ChallengeLifetime)}, nil
+		return FactorChange{CreateChallenge: pins.challenge, ChallengeID: pins.challengeID, ChallengeExpires: pins.challengeExpires}, nil
 	}
 }
 
@@ -211,7 +251,7 @@ func (a *Auth) factorEndpoint(route string, c EndpointContext) (any, error) {
 	}
 	remember := !a.dontRemember(r)
 	op := factorRequest{
-		auth: a, ctx: ctx, route: route, body: c.Body, subject: subject,
+		auth: a, ctx: ctx, route: route, body: c.Body, subject: subject, pins: a.newFactorPins(subject.Now),
 		meta: RequestMeta{IPAddress: a.clientIP(r), UserAgent: r.UserAgent(), RememberMe: &remember},
 	}
 	decide := op.manage
@@ -241,7 +281,14 @@ func (a *Auth) factorEndpoint(route string, c EndpointContext) (any, error) {
 			return ch, e
 		}
 	}
-	write := func(ctx context.Context) error { return a.factorStore.WithTwoFactor(ctx, subject, decide) }
+	// Each run reports afresh, so a run the store rolled back, such as a
+	// login plan's dry run, never reaches the response.
+	run := decide
+	decide = func(st FactorState) (FactorChange, error) {
+		op.reset()
+		return run(st)
+	}
+	write := func(ctx context.Context) error { return a.factorStore.WithTwoFactor(ctx, op.subject, decide) }
 	var err error
 	if isSend {
 		err = write(ctx)
@@ -294,7 +341,7 @@ func (a *Auth) factorEndpoint(route string, c EndpointContext) (any, error) {
 }
 
 type factorRequest struct {
-	deliveryID     string
+	pins           factorPins
 	mail           *FactorOTPMessage
 	trustedCookie  *http.Cookie
 	auth           *Auth
@@ -308,6 +355,11 @@ type factorRequest struct {
 	issued         string
 	draft          *StoredSession
 	clearChallenge bool
+}
+
+// reset clears what a run of the store call reports.
+func (p *factorRequest) reset() {
+	p.mail, p.trustedCookie, p.out, p.denied, p.issued, p.clearChallenge = nil, nil, nil, nil, "", false
 }
 
 // sessionDraft returns the session this request issues to userID. The draft
@@ -360,11 +412,30 @@ func (p *factorRequest) verify(state FactorState) (FactorChange, error) {
 		record.Failures = 0
 		record.LockedUntil = nil
 	}
-	valid := false
-	if p.route == "/two-factor/verify-totp" {
+	// The refusals that compare nothing come before any comparison.
+	switch p.route {
+	case "/two-factor/verify-totp":
 		if p.auth.factorOptions.TOTP.Disabled || record.Secret == "" {
 			return ch, &APIError{400, "TOTP_NOT_CONFIGURED", "TOTP is not available"}
 		}
+	case "/two-factor/verify-otp":
+		if !state.Enabled || (!record.Verified && !record.hasPendingAuthenticator()) {
+			return ch, &APIError{400, "OTP_NOT_ENABLED", "OTP not enabled"}
+		}
+		if early := p.deliveryReady(state, &ch); early != nil {
+			p.denied = early
+			return ch, nil
+		}
+	default:
+		if !state.Enabled || !record.Verified {
+			return ch, &APIError{400, "TWO_FACTOR_NOT_ENABLED", "Two factor isn't enabled"}
+		}
+		if record.BackupCodes == "" {
+			return ch, &APIError{400, "BACKUP_CODES_NOT_ENABLED", "Backup codes are not enabled"}
+		}
+	}
+	valid := false
+	if p.route == "/two-factor/verify-totp" {
 		raw, err := p.auth.openAuthenticator(record.Secret)
 		if err != nil {
 			return ch, err
@@ -386,9 +457,6 @@ func (p *factorRequest) verify(state FactorState) (FactorChange, error) {
 			return ch, err
 		}
 	} else if p.route == "/two-factor/verify-otp" {
-		if !state.Enabled || (!record.Verified && !record.hasPendingAuthenticator()) {
-			return ch, &APIError{400, "OTP_NOT_ENABLED", "OTP not enabled"}
-		}
 		var early error
 		valid, early = p.checkDelivery(state, code, &ch)
 		if early != nil {
@@ -396,12 +464,6 @@ func (p *factorRequest) verify(state FactorState) (FactorChange, error) {
 			return ch, nil
 		}
 	} else {
-		if !state.Enabled || !record.Verified {
-			return ch, &APIError{400, "TWO_FACTOR_NOT_ENABLED", "Two factor isn't enabled"}
-		}
-		if record.BackupCodes == "" {
-			return ch, &APIError{400, "BACKUP_CODES_NOT_ENABLED", "Backup codes are not enabled"}
-		}
 		items, err := p.auth.readBackupCodes(p.ctx, record.BackupCodes)
 		if err != nil {
 			return ch, err
@@ -459,7 +521,7 @@ func (p *factorRequest) verify(state FactorState) (FactorChange, error) {
 		ch.Session = &ss
 		p.issued = raw
 		if trustDevice && p.subject.Challenge != "" {
-			p.trustedCookie = p.auth.rotateTrustedGrant(&ch, state.User.ID, p.subject.Now)
+			p.trustedCookie = p.auth.rotateTrustedGrant(&ch, state.User.ID, p.pins)
 		}
 		ch.ConsumeChallenge = p.subject.Challenge != ""
 		p.clearChallenge = ch.ConsumeChallenge

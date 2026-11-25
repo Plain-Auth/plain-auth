@@ -89,21 +89,31 @@ func (p *factorRequest) sendOTP(st FactorState) (FactorChange, error) {
 	if stored == "" {
 		return ch, errors.New("empty stored factor code")
 	}
-	p.deliveryID = randomID()
-	ch.SaveDelivery = &FactorDelivery{ID: p.deliveryID, Pending: true, Stored: stored, CreatedAt: p.subject.Now, ExpiresAt: p.subject.Now.Add(o.Period)}
+	ch.SaveDelivery = &FactorDelivery{ID: p.pins.deliveryID, Pending: true, Stored: stored, CreatedAt: p.subject.Now, ExpiresAt: p.subject.Now.Add(o.Period)}
 	p.mail = &FactorOTPMessage{User: st.User, Code: code}
 	p.out = map[string]bool{"status": true}
 	return ch, nil
 }
-func (p *factorRequest) checkDelivery(st FactorState, code string, ch *FactorChange) (bool, error) {
-	o := p.auth.factorOptions.OTP
+func otpExpired() *APIError     { return &APIError{400, "OTP_HAS_EXPIRED", "OTP has expired"} }
+func otpUnavailable() *APIError { return &APIError{400, "OTP_HAS_EXPIRED", "OTP is unavailable"} }
+
+// deliveryReady refuses a guess at a delivered code still being sent, and
+// removes one that is missing or expired, before anything compares it.
+func (p *factorRequest) deliveryReady(st FactorState, ch *FactorChange) error {
 	if st.Delivery != nil && st.Delivery.Pending {
-		return false, &APIError{400, "OTP_HAS_EXPIRED", "OTP is unavailable"}
+		return otpUnavailable()
 	}
 	if st.Delivery == nil || !st.Delivery.ExpiresAt.After(p.subject.Now) {
 		ch.RemoveDelivery = true
-		return false, &APIError{400, "OTP_HAS_EXPIRED", "OTP has expired"}
+		return otpExpired()
 	}
+	return nil
+}
+
+// checkDelivery removes a code that ran out of attempts and otherwise
+// compares the guess with the live code deliveryReady let through.
+func (p *factorRequest) checkDelivery(st FactorState, code string, ch *FactorChange) (bool, error) {
+	o := p.auth.factorOptions.OTP
 	if st.Delivery.Attempts >= o.AllowedAttempts {
 		ch.RemoveDelivery = true
 		return false, &APIError{400, "TOO_MANY_ATTEMPTS_REQUEST_NEW_CODE", "Too many attempts. Please request a new code."}
@@ -165,7 +175,7 @@ func (p *factorRequest) deliver() error {
 	subject.Now = p.auth.now().UTC()
 	err := p.auth.factorStore.WithTwoFactor(ctx, subject, func(state FactorState) (FactorChange, error) {
 		saved := state.Delivery
-		if saved == nil || saved.ID != p.deliveryID || !saved.Pending {
+		if saved == nil || saved.ID != p.pins.deliveryID || !saved.Pending {
 			return FactorChange{}, nil
 		}
 		if sendErr != nil || !saved.ExpiresAt.After(subject.Now) {

@@ -3,7 +3,6 @@ package plainauth
 import (
 	"net/http"
 	"strings"
-	"time"
 )
 
 // TrustedDeviceCookieName returns the incoming cookie name for this instance.
@@ -27,8 +26,10 @@ func (a *Auth) readTrustedGrant(signed, owner string) string {
 	}
 	return grant
 }
-func (a *Auth) rotateTrustedGrant(ch *FactorChange, owner string, now time.Time) *http.Cookie {
-	ch.CreateTrustedGrant = "trust-device-" + randomID()
-	ch.TrustedUntil = now.Add(a.factorOptions.TrustDeviceMaxAge)
-	return a.trustedDeviceCookie(owner, ch.CreateTrustedGrant, int(a.factorOptions.TrustDeviceMaxAge.Seconds()))
+
+// rotateTrustedGrant replaces the presented grant, if any, with the pinned
+// one and returns its cookie.
+func (a *Auth) rotateTrustedGrant(ch *FactorChange, owner string, pins factorPins) *http.Cookie {
+	ch.CreateTrustedGrant, ch.TrustedGrantID, ch.TrustedUntil = pins.grant, pins.grantID, pins.grantUntil
+	return a.trustedDeviceCookie(owner, pins.grant, int(a.factorOptions.TrustDeviceMaxAge.Seconds()))
 }

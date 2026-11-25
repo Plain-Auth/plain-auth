@@ -176,12 +176,15 @@ func (s *Store) WithTwoFactor(ctx context.Context, sub auth.FactorSubject, decid
 	}
 	if sub.Challenge != "" {
 		var bound string
-		if err = tx.QueryRowContext(ctx, s.readForUpdate(q), key, s.date(sub.Now)).Scan(&bound); err != nil {
+		var expires time.Time
+		err = tx.QueryRowContext(ctx, s.readForUpdate(`SELECT "value","id","expiresAt" FROM "verification" WHERE "identifier"=? AND "expiresAt">?`), key, s.date(sub.Now)).Scan(&bound, &state.ChallengeID, &expires)
+		if err != nil {
 			return factorRowError(err)
 		}
 		if bound != owner {
 			return auth.ErrNotFound
 		}
+		state.ChallengeExpires = expires.UTC()
 		var attempts string
 		err = tx.QueryRowContext(ctx, s.readForUpdate(q), "2fa-attempts-"+key, s.date(sub.Now)).Scan(&attempts)
 		if err != nil {
@@ -199,13 +202,14 @@ func (s *Store) WithTwoFactor(ctx context.Context, sub auth.FactorSubject, decid
 		}
 	}
 	if sub.TrustedGrant != "" {
-		var actual string
-		err := tx.QueryRowContext(ctx, s.readForUpdate(`SELECT "identifier" FROM "verification" WHERE "identifier"=? AND "value"=? AND "expiresAt">?`), sub.TrustedGrant, owner, s.date(sub.Now)).Scan(&actual)
+		var id, actual string
+		var expires time.Time
+		err := tx.QueryRowContext(ctx, s.readForUpdate(`SELECT "id","identifier","expiresAt" FROM "verification" WHERE "identifier"=? AND "value"=? AND "expiresAt">?`), sub.TrustedGrant, owner, s.date(sub.Now)).Scan(&id, &actual, &expires)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			return err
 		}
 		if actual == sub.TrustedGrant {
-			state.TrustedGrant = actual
+			state.TrustedGrant, state.TrustedGrantID, state.TrustedGrantExpires = actual, id, expires.UTC()
 		}
 	}
 	if sub.ApplicationOperation == "/two-factor/verify-totp" {
@@ -229,6 +233,22 @@ func (s *Store) WithTwoFactor(ctx context.Context, sub auth.FactorSubject, decid
 		return err
 	}
 	return tx.Commit()
+}
+
+var _ auth.FactorRecordReporter = (*Store)(nil)
+
+// ReportsFactorRecords marks the store as one whose two-factor calls the
+// verification hooks can follow: WithTwoFactor reports the challenge and
+// remembered browser rows it locked and stores new ones under the IDs the
+// Auth chose.
+func (*Store) ReportsFactorRecords() {}
+
+// orRandom returns id, or a random row ID when the Auth chose none.
+func orRandom(id string) string {
+	if id == "" {
+		return rand.Text()
+	}
+	return id
 }
 
 func factorRowError(err error) error {
@@ -288,8 +308,8 @@ func (s *Store) writeFactorChange(ctx context.Context, tx *sql.Tx, sub auth.Fact
 		}
 	}
 	if ch.CreateChallenge != "" {
-		for _, item := range []struct{ id, value string }{{ch.CreateChallenge, uid}, {"2fa-attempts-" + ch.CreateChallenge, "0"}} {
-			err := exec(`INSERT INTO "verification" ("id","identifier","value","expiresAt","createdAt","updatedAt") VALUES (?,?,?,?,?,?)`, rand.Text(), item.id, item.value, s.date(ch.ChallengeExpires), s.date(sub.Now), s.date(sub.Now))
+		for _, item := range []struct{ id, key, value string }{{orRandom(ch.ChallengeID), ch.CreateChallenge, uid}, {rand.Text(), "2fa-attempts-" + ch.CreateChallenge, "0"}} {
+			err := exec(`INSERT INTO "verification" ("id","identifier","value","expiresAt","createdAt","updatedAt") VALUES (?,?,?,?,?,?)`, item.id, item.key, item.value, s.date(ch.ChallengeExpires), s.date(sub.Now), s.date(sub.Now))
 			if err != nil {
 				return err
 			}
@@ -334,7 +354,7 @@ func (s *Store) writeFactorChange(ctx context.Context, tx *sql.Tx, sub auth.Fact
 				return err
 			}
 		}
-		if err := exec(`INSERT INTO "verification" ("id","identifier","value","expiresAt","createdAt","updatedAt") VALUES (?,?,?,?,?,?)`, rand.Text(), ch.CreateTrustedGrant, uid, s.date(ch.TrustedUntil), s.date(sub.Now), s.date(sub.Now)); err != nil {
+		if err := exec(`INSERT INTO "verification" ("id","identifier","value","expiresAt","createdAt","updatedAt") VALUES (?,?,?,?,?,?)`, orRandom(ch.TrustedGrantID), ch.CreateTrustedGrant, uid, s.date(ch.TrustedUntil), s.date(sub.Now), s.date(sub.Now)); err != nil {
 			return err
 		}
 	}

@@ -36,7 +36,7 @@ func TestDeliveredFactorStorageModes(t *testing.T) {
 			}
 			a := &Auth{opts: Options{Secret: strings.Repeat("x", 32)}, factorOptions: &o}
 			at := time.Now()
-			op := factorRequest{auth: a, ctx: t.Context(), subject: FactorSubject{Now: at}}
+			op := factorRequest{auth: a, ctx: t.Context(), subject: FactorSubject{Now: at}, pins: a.newFactorPins(at)}
 			state := FactorState{Enabled: true, User: User{ID: "owner"}, Record: &FactorRecord{Verified: true}}
 			ch, err := op.sendOTP(state)
 			if err != nil {
