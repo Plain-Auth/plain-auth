@@ -25,7 +25,7 @@ func OpenIDConnect(ctx context.Context, issuer, clientID, clientSecret string) (
 	if client == nil {
 		client = &http.Client{Timeout: 15 * time.Second}
 	}
-	discoveryCtx := oidc.ClientContext(ctx, client)
+	discoveryCtx := oidc.ClientContext(ctx, noRedirects(client))
 	discovered, err := oidc.NewProvider(discoveryCtx, issuer)
 	if err != nil {
 		return zero, err
@@ -41,12 +41,25 @@ func OpenIDConnect(ctx context.Context, issuer, clientID, clientSecret string) (
 	if !secureEndpoint(meta.Keys) || !secureEndpoint(endpoint.AuthURL) || !secureEndpoint(endpoint.TokenURL) {
 		return zero, errors.New("invalid endpoints in OpenID Connect discovery")
 	}
-	verifier := discovered.VerifierContext(oidc.ClientContext(context.Background(), client), &oidc.Config{ClientID: clientID})
+	verifier := discovered.VerifierContext(oidc.ClientContext(context.Background(), noRedirects(client)), &oidc.Config{ClientID: clientID})
 	provider := oidcProvider(clientID, clientSecret, endpoint, verifier, client)
 	if secureEndpoint(meta.Logout) {
 		provider.EndSessionEndpoint = meta.Logout
 	}
 	return provider, nil
+}
+
+// noRedirects returns a copy of c, or of a default client, that does not
+// follow redirects. Discovery documents and signing keys must be served at
+// their configured URL, so a provider cannot steer these server-side
+// requests to another address.
+func noRedirects(c *http.Client) *http.Client {
+	if c == nil {
+		c = &http.Client{Timeout: 15 * time.Second}
+	}
+	copied := *c
+	copied.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
+	return &copied
 }
 
 func secureEndpoint(raw string) bool {

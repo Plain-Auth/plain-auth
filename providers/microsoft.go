@@ -40,7 +40,7 @@ func Microsoft(id, secret string, options MicrosoftOptions) (authn.OAuthProvider
 		return authn.OAuthProvider{}, errors.New("invalid Microsoft tenant ID")
 	}
 	client := &http.Client{Timeout: 15 * time.Second}
-	keys := oidc.NewRemoteKeySet(oidc.ClientContext(context.Background(), client), microsoftAuthority+"/"+tenant+"/discovery/v2.0/keys")
+	keys := oidc.NewRemoteKeySet(oidc.ClientContext(context.Background(), noRedirects(client)), microsoftAuthority+"/"+tenant+"/discovery/v2.0/keys")
 	return microsoftProvider(id, secret, tenant, options.DisableProfilePhoto, keys, client), nil
 }
 

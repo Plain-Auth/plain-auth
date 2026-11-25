@@ -39,7 +39,7 @@ func GoogleWithOptions(o GoogleOptions) authn.OAuthProvider {
 	if client == nil {
 		client = &http.Client{Timeout: 15 * time.Second}
 	}
-	keys := oidc.NewRemoteKeySet(oidc.ClientContext(context.Background(), client), "https://www.googleapis.com/oauth2/v3/certs")
+	keys := oidc.NewRemoteKeySet(oidc.ClientContext(context.Background(), noRedirects(client)), "https://www.googleapis.com/oauth2/v3/certs")
 	p := google(o.ClientID, o.ClientSecret, keys, client)
 	p.GoogleHostedDomain = o.HostedDomain
 	p.DisableSignUp = o.DisableSignUp

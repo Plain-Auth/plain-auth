@@ -108,6 +108,11 @@ type issuerKeys struct {
 }
 
 func (k *issuerKeys) VerifySignature(ctx context.Context, raw string) ([]byte, error) {
+	// A sign-in passes the provider's client, which follows no redirects;
+	// without one, a client that also follows none is used.
+	if client, _ := ctx.Value(oauth2.HTTPClient).(*http.Client); client == nil {
+		ctx = oidc.ClientContext(ctx, noRedirects(nil))
+	}
 	k.mu.Lock()
 	keys := k.keys
 	if keys == nil {

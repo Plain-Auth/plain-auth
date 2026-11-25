@@ -52,7 +52,7 @@ func appleWithAudiences(clientID, clientSecret string, client *http.Client, audi
 	if client == nil {
 		client = &http.Client{Timeout: 15 * time.Second}
 	}
-	keys := oidc.NewRemoteKeySet(oidc.ClientContext(context.Background(), client), "https://appleid.apple.com/auth/keys")
+	keys := oidc.NewRemoteKeySet(oidc.ClientContext(context.Background(), noRedirects(client)), "https://appleid.apple.com/auth/keys")
 	return appleProvider(clientID, clientSecret, keys, client, audiences...)
 }
 

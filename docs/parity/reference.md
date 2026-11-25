@@ -697,6 +697,7 @@
       - [x] Important ([test](../../conformance/goapi/request_origins_test.go#L142))
         - [x] The host function runs once per request, for both the origin check and the callbacks ([test](../../conformance/goapi/request_origins_test.go#L142))
   - [ ] Outbound OAuth Requests
+    - [x] Provider discovery and signing-key requests do not follow redirects, so a redirected key set fails the sign-in and the redirect target is never contacted ([test](../../providers/redirects_test.go#L55))
   - [ ] Email Enumeration Protection
     - [x] change-email does not reveal whether the target address is registered: the same 200 {"status":true}, no mail and no change ([test](../../conformance/goapi/change_email_test.go#L181))
   - [ ] Reporting Vulnerabilities
