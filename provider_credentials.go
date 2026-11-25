@@ -102,7 +102,7 @@ func (a *Auth) providerCredentialsHTTP(ctx context.Context, route string, w http
 	}
 	// A refresh of the account the cookie selected renews the cookie.
 	if s.UseAccountCookie {
-		ctx = context.WithValue(ctx, accountCookieRefreshKey{a}, accountCookieRefresh{w, r})
+		ctx = context.WithValue(ctx, accountCookieRefreshKey{a}, &accountCookieRefresh{h: w, r: r})
 	}
 	// An HTTP request is never a trusted server call, including when tests or
 	// proxies construct a request with a nil Header map.
@@ -143,6 +143,7 @@ func (a *Auth) selectedCredential(ctx context.Context, h http.Header, s AccountS
 		if selected, s.AccountID, err = a.cookieAccount(ctx, h, userID); err != nil {
 			return nil, row, p, err
 		}
+		a.markAccountCookieSelection(ctx, selected)
 	}
 	store, ok := a.opts.Store.(ProviderCredentialStore)
 	if !ok {

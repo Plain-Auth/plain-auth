@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"sync/atomic"
 	"time"
 )
 
@@ -90,26 +91,35 @@ func (a *Auth) renewAccountCookie(h http.Header, r *http.Request, userID string)
 }
 
 // accountCookieRefresh is the HTTP response in which a token refresh of the
-// account that account_data selected renews that cookie.
+// account that account_data selected renews that cookie. selected is the
+// cookie, live at that moment, once it has selected an account.
 type accountCookieRefresh struct {
-	h http.Header
-	r *http.Request
+	h        http.Header
+	r        *http.Request
+	selected atomic.Pointer[accountCookie]
 }
 
 type accountCookieRefreshKey struct{ a *Auth }
 
+// markAccountCookieSelection records that the request's account_data cookie
+// selected c's account.
+func (a *Auth) markAccountCookieSelection(ctx context.Context, c accountCookie) {
+	if out, ok := ctx.Value(accountCookieRefreshKey{a}).(*accountCookieRefresh); ok {
+		out.selected.Store(&c)
+	}
+}
+
 // renewRefreshedAccountCookie re-issues account_data after a committed token
-// refresh of row, when an HTTP request selected row through the cookie. A
-// refresh of another account under the same request, such as a nested
-// direct call, leaves the cookie alone.
+// refresh of row, when the request's cookie selected row. A refresh before
+// the cookie selected anything, or of another account, such as a nested
+// direct call, leaves the cookie alone. A slow refresh that finishes after
+// the cookie expired still renews it, since it was live when it selected.
 func (a *Auth) renewRefreshedAccountCookie(ctx context.Context, row ProviderAccountCredential) {
-	out, ok := ctx.Value(accountCookieRefreshKey{a}).(accountCookieRefresh)
+	out, ok := ctx.Value(accountCookieRefreshKey{a}).(*accountCookieRefresh)
 	if !ok {
 		return
 	}
-	// The cookie was live when it selected the account; a slow refresh may
-	// finish after it expires, and still renews it.
-	if c, ok := a.openAccountCookie(out.r.Header); ok && c.UserID == row.UserID && c.ProviderID == row.ProviderID && c.Subject == row.Subject {
+	if c := out.selected.Load(); c != nil && c.UserID == row.UserID && c.ProviderID == row.ProviderID && c.Subject == row.Subject {
 		a.setAccountCookie(out.h, out.r, row.UserID, row.ProviderID, row.Subject)
 	}
 }

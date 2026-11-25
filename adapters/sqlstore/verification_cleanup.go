@@ -82,18 +82,17 @@ func (s *Store) sweepWithoutWaiting(ctx context.Context, query string, args ...a
 		if err != nil {
 			return err
 		}
+		// The connection is discarded afterwards rather than returned to the
+		// pool with the sweep's lock wait, so the session settings the
+		// application gave it are never changed.
 		defer func() {
-			// The connection goes back to the pool with the server's lock
-			// wait, or not at all.
-			if _, err := conn.ExecContext(context.WithoutCancel(ctx), "SET SESSION innodb_lock_wait_timeout = DEFAULT"); err != nil {
-				_ = conn.Raw(func(any) error { return driver.ErrBadConn })
-			}
+			_ = conn.Raw(func(any) error { return driver.ErrBadConn })
 			conn.Close()
 		}()
 		if _, err := conn.ExecContext(ctx, "SET SESSION innodb_lock_wait_timeout = 1"); err != nil {
 			return err
 		}
-		// Read committed skips live rows another transaction has locked.
+		// Read committed keeps locks only on the rows the sweep deletes.
 		tx, err := conn.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelReadCommitted})
 		if err != nil {
 			return err
