@@ -12,6 +12,9 @@ import (
 
 	authn "github.com/Plain-Org/plain-auth"
 	"github.com/Plain-Org/plain-auth/adapters/memory"
+	"github.com/Plain-Org/plain-auth/adapters/sqlstore"
+	"github.com/Plain-Org/plain-auth/plugins/passkey"
+	"github.com/Plain-Org/plain-auth/schema"
 )
 
 // Verification hooks run around password reset and account deletion links:
@@ -244,8 +247,8 @@ func TestDatabaseVerificationHooks(t *testing.T) {
 // plugins that keep codes in their own stores, update before hooks with
 // email and phone codes, which count a wrong guess as they judge it, and
 // delete hooks on a store that cannot read a deletion link, an OAuth flow, a
-// magic link, a one-time token or an email code before spending it, or
-// cannot report what it did to a phone code.
+// magic link, a one-time token, an email code or a passkey challenge before
+// spending it, or cannot report what it did to a phone code.
 func TestDatabaseVerificationHooksRefuseBypassingFeatures(t *testing.T) {
 	observe := authn.OperationHooks[authn.VerificationRecord]{After: func(context.Context, authn.VerificationRecord, *authn.HookContext) error { return nil }}
 	base := func() authn.Options {
@@ -323,6 +326,41 @@ func TestDatabaseVerificationHooksRefuseBypassingFeatures(t *testing.T) {
 	refused.Plugins = []authn.Plugin{authn.NewTwoFactor(authn.TwoFactorOptions{})}
 	if _, err := authn.New(refused); err == nil || !strings.Contains(err.Error(), "two-factor") {
 		t.Fatal("verification hooks were accepted with two-factor:", err)
+	}
+	// Passkey challenges run them, and delete hooks need a store that reads a
+	// challenge before spending it.
+	keys, err := passkey.New(passkey.Options{RPID: "auth.example", RPName: "Example", Origins: []string{"https://auth.example"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	withKeys := base()
+	withKeys.EmailAndPassword = false
+	withKeys.Plugins = []authn.Plugin{keys}
+	withKeys.DatabaseHooks.Verification.Delete = observe
+	if _, err := authn.New(withKeys); err == nil || !strings.Contains(err.Error(), "FindPasskeyChallenge") {
+		t.Fatal("verification delete hooks were accepted with passkeys on the memory store:", err)
+	}
+	passkeys, err := sqlstore.OpenWithOptions(t.Context(), "sqlite", ":memory:", []string{"passkey"}, schema.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer passkeys.Close()
+	withKeys.Store = passkeys
+	withKeys.DatabaseHooks.Verification.Update = observe
+	if _, err := authn.New(withKeys); err != nil {
+		t.Fatal("verification hooks were refused with passkeys on SQLite:", err)
+	}
+	type challenges = passkey.Store
+	withKeys.Store = struct {
+		authn.Store
+		challenges
+	}{passkeys, passkeys}
+	if _, err := authn.New(withKeys); err == nil || !strings.Contains(err.Error(), "FindPasskeyChallenge") {
+		t.Fatal("verification delete hooks were accepted with passkeys without FindPasskeyChallenge:", err)
+	}
+	withKeys.DatabaseHooks.Verification = authn.ModelHooks[authn.VerificationRecord]{Create: observe}
+	if _, err := authn.New(withKeys); err != nil {
+		t.Fatal("verification create hooks were refused with passkeys without FindPasskeyChallenge:", err)
 	}
 	// Magic links and one-time tokens run them, and delete hooks need a store
 	// that reads a link or token before spending it.

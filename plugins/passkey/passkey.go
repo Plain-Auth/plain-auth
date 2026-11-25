@@ -41,6 +41,9 @@ type Record struct {
 
 type Store interface {
 	CheckPasskeySchema(context.Context) error
+	// SavePasskeyChallenge stores a ceremony under key, the hex of the
+	// challenge cookie's SHA-256, until its expiry. It gives the row the ID
+	// ChallengeRecordID(key), which the challenge's verification hooks name.
 	SavePasskeyChallenge(context.Context, string, []byte, time.Time, time.Time) error
 	TakePasskeyChallenge(context.Context, string, time.Time) ([]byte, error)
 	ListPasskeys(context.Context, string) ([]Record, error)
@@ -48,6 +51,35 @@ type Store interface {
 	CreatePasskey(context.Context, Record, string, time.Time) error
 	FinishPasskeyLogin(context.Context, Record, uint32, bool, authn.StoredSession) (authn.User, error)
 	ManagePasskey(ctx context.Context, userID, sessionToken, id string, newName *string, now time.Time) (Record, error)
+}
+
+// ChallengeFinder reads a passkey challenge without spending it, for
+// verification delete hooks. FindPasskeyChallenge returns the row ID, the
+// stored ceremony and the expiry of the challenge TakePasskeyChallenge would
+// take under key at now, without locking it, and plainauth.ErrNotFound when
+// none is live. New requires it for verification delete hooks with this plugin.
+type ChallengeFinder interface {
+	FindPasskeyChallenge(ctx context.Context, key string, now time.Time) (id string, ceremony []byte, expiresAt time.Time, err error)
+}
+
+// ChallengeRecordID is the ID of the challenge stored under key: "pk-" and
+// the hex of the first 16 bytes of the key's SHA-256. A store gives the
+// challenge's row this ID, so its verification hooks name the row.
+func ChallengeRecordID(key string) string {
+	sum := sha256.Sum256([]byte(key))
+	return "pk-" + hex.EncodeToString(sum[:16])
+}
+
+// challengeRecord is a challenge as a verification record. It names the
+// signed-in user the ceremony is for, and none for a first-use registration,
+// whose account may not exist yet, or a signed-out sign-in. It never carries
+// the challenge or the ceremony.
+func challengeRecord(id, kind string, state ceremony, expiresAt time.Time) authn.VerificationRecord {
+	rec := authn.VerificationRecord{ID: id, Identifier: "passkey-" + kind, ExpiresAt: expiresAt}
+	if !state.PreAuth {
+		rec.UserID = state.UserID
+	}
+	return rec
 }
 
 type Options struct {
@@ -160,6 +192,12 @@ func New(o Options) (authn.Plugin, error) {
 		}
 		return backend.CheckPasskeySchema(context.Background())
 	},
+		ValidateVerificationStore: func(store authn.Store, hooks authn.VerificationHookSet) error {
+			if _, ok := store.(ChallengeFinder); hooks.Delete && !ok {
+				return errors.New("auth: verification delete hooks with the passkey plugin require a store implementing FindPasskeyChallenge")
+			}
+			return nil
+		},
 		Endpoints: []authn.Endpoint{
 			{Method: "GET", Path: "/passkey/generate-register-options", OpenAPI: enrollmentMetadata, Handler: s.beginRegistration},
 			{Method: "POST", Path: "/passkey/verify-registration", OpenAPI: enrollmentMetadata, Handler: s.finishRegistration},
@@ -184,15 +222,28 @@ func challengeCookie(c authn.EndpointContext, token string, age int) *http.Cooki
 	return c.Auth.SignedCookie("passkey_challenge", token, age)
 }
 func (s service) remember(c authn.EndpointContext, state ceremony) error {
-	now := time.Now().UTC()
+	now := time.Now().UTC().Truncate(time.Millisecond)
 	nonce := "passkey:" + state.Kind + ":" + rand.Text()
-	key := sha256.Sum256([]byte(nonce))
+	sum := sha256.Sum256([]byte(nonce))
+	key := hex.EncodeToString(sum[:])
 	data, err := json.Marshal(state)
 	if err != nil {
 		return err
 	}
-	if err := c.Store().(Store).SavePasskeyChallenge(c.Request.Context(), hex.EncodeToString(key[:]), data, now, now.Add(s.ttl)); err != nil {
+	expires := now.Add(s.ttl)
+	declined, err := c.CreateVerification(challengeRecord(ChallengeRecordID(key), state.Kind, state, expires), func(ctx context.Context) error {
+		return c.Store().(Store).SavePasskeyChallenge(ctx, key, data, now, expires)
+	})
+	if err != nil {
 		return err
+	}
+	if declined {
+		// A declined challenge is never stored: its options redeem nothing,
+		// and no earlier ceremony's cookie answers them.
+		expired := challengeCookie(c, "", -1)
+		expired.Value = ""
+		c.ResponseHeader.Add("Set-Cookie", expired.String())
+		return nil
 	}
 	c.ResponseHeader.Add("Set-Cookie", challengeCookie(c, nonce, int(s.ttl/time.Second)).String())
 	return nil
@@ -208,13 +259,43 @@ func (s service) take(c authn.EndpointContext, kind string) (ceremony, error) {
 	if !strings.HasPrefix(nonce, "passkey:"+kind+":") {
 		return state, ErrChallenge
 	}
-	key := sha256.Sum256([]byte(nonce))
-	data, err := c.Store().(Store).TakePasskeyChallenge(c.Request.Context(), hex.EncodeToString(key[:]), time.Now().UTC())
+	sum := sha256.Sum256([]byte(nonce))
+	key := hex.EncodeToString(sum[:])
+	store := c.Store().(Store)
+	var data []byte
+	// The challenge is spent, with its delete hooks, before the credential
+	// is checked.
+	refused, err := c.SpendVerification(func(ctx context.Context) (authn.VerificationRecord, error) {
+		finder, ok := store.(ChallengeFinder)
+		if !ok {
+			return authn.VerificationRecord{}, authn.ErrNotFound
+		}
+		id, body, expires, err := finder.FindPasskeyChallenge(ctx, key, time.Now().UTC())
+		if err != nil {
+			return authn.VerificationRecord{}, err
+		}
+		var saved ceremony
+		_ = json.Unmarshal(body, &saved) // a malformed ceremony names no owner; it is refused once spent
+		return challengeRecord(id, kind, saved, expires), nil
+	}, func(ctx context.Context) error {
+		var err error
+		data, err = store.TakePasskeyChallenge(ctx, key, time.Now().UTC())
+		if errors.Is(err, ErrChallenge) {
+			return authn.ErrNotFound
+		}
+		return err
+	})
+	if data != nil {
+		// A spent challenge's cookie is cleared, even when an after hook failed.
+		template.Value = ""
+		c.ResponseHeader.Add("Set-Cookie", template.String())
+	}
 	if err != nil {
 		return state, err
 	}
-	template.Value = ""
-	c.ResponseHeader.Add("Set-Cookie", template.String())
+	if refused {
+		return state, ErrChallenge
+	}
 	if json.Unmarshal(data, &state) != nil || state.Kind != kind || state.Data.RelyingPartyID != s.web.Config.RPID {
 		return state, ErrChallenge
 	}

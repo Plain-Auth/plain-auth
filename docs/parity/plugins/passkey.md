@@ -16,16 +16,21 @@
     - [x] Bind registration to a fresh account session and a secure one-use challenge ([test](../../../adapters/sqlstore/passkey_test.go#L173))
     - [x] Use the public client to request options with the configured relying-party name, ID and public-key algorithms ([test](../../../conformance/core.test.mjs#L403))
     - [x] Resolve a provisional enrollment identity and bind its display name and context to the ceremony ([test](../../../adapters/sqlstore/passkey_first_test.go#L85))
+    - [x] Run the challenge's verification create hooks; a declined challenge is never stored and its options redeem nothing ([test](../../../adapters/sqlstore/passkey_hooks_test.go#L254))
   - [ ] `GET /passkey/generate-authenticate-options`
     - [x] Generate discoverable options and allow the current account’s enrolled credentials ([test](../../../adapters/sqlstore/passkey_test.go#L278))
+    - [x] Run the challenge's verification create hooks for a signed-out caller, naming no owner ([test](../../../adapters/sqlstore/passkey_hooks_test.go#L291))
   - [ ] `POST /passkey/verify-registration`
     - [x] Verify the attested key and preserve distinct credential and record IDs ([test](../../../adapters/sqlstore/passkey_test.go#L193))
     - [x] Commit the passwordless user, unique credential and optional browser session together on three SQL backends ([test](../../../adapters/sqlstore/passkey_first_test.go#L98))
     - [x] Roll back account provisioning when another enrollment already owns the same credential ([test](../../../adapters/sqlstore/passkey_first_test.go#L175))
     - [x] ValidateUserInfo refuses a new passkey account with the app's code and stores nothing ([test](../../../adapters/sqlstore/passkey_first_test.go#L126))
+    - [x] Spend the challenge with its verification delete hooks before the attestation is verified; a declined spend answers CHALLENGE_NOT_FOUND and keeps it ([test](../../../adapters/sqlstore/passkey_hooks_test.go#L270))
+    - [x] Run the challenge's verification delete hooks before the session hooks of a registration that signs in ([test](../../../adapters/sqlstore/passkey_hooks_test.go#L246))
   - [ ] `POST /passkey/verify-authentication`
     - [x] Verify a signed assertion and atomically persist its counter and session ([test](../../../adapters/sqlstore/passkey_test.go#L237))
     - [x] Authenticate a real assertion after the trusted callback chooses a different final account ID ([test](../../../adapters/sqlstore/passkey_first_test.go#L115))
+    - [x] Spend the challenge with its verification delete hooks before the assertion is verified and before the session hooks ([test](../../../adapters/sqlstore/passkey_hooks_test.go#L302))
   - [ ] `GET /passkey/list-user-passkeys`
     - [x] List only credentials owned by the authenticated account ([test](../../../adapters/sqlstore/passkey_test.go#L256))
   - [ ] `POST /passkey/delete-passkey`

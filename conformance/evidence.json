@@ -2498,6 +2498,11 @@
       "label": "Resolve a provisional enrollment identity and bind its display name and context to the ceremony",
       "test": "adapters/sqlstore/passkey_first_test.go",
       "marker": "WebAuthn registration user labels were lost"
+    },
+    {
+      "label": "Run the challenge's verification create hooks; a declined challenge is never stored and its options redeem nothing",
+      "test": "adapters/sqlstore/passkey_hooks_test.go",
+      "marker": "// A declined challenge returns options that redeem nothing."
     }
   ],
   "plugin/passkey/GET /passkey/generate-authenticate-options": [
@@ -2505,6 +2510,11 @@
       "label": "Generate discoverable options and allow the current account’s enrolled credentials",
       "test": "adapters/sqlstore/passkey_test.go",
       "marker": "account challenge omitted an enrolled credential"
+    },
+    {
+      "label": "Run the challenge's verification create hooks for a signed-out caller, naming no owner",
+      "test": "adapters/sqlstore/passkey_hooks_test.go",
+      "marker": "// A signed-out sign-in's challenge names no owner."
     }
   ],
   "plugin/passkey/POST /passkey/verify-registration": [
@@ -2527,6 +2537,16 @@
       "label": "ValidateUserInfo refuses a new passkey account with the app's code and stores nothing",
       "test": "adapters/sqlstore/passkey_first_test.go",
       "marker": "// ValidateUserInfo refuses a new passkey account with the app's code."
+    },
+    {
+      "label": "Spend the challenge with its verification delete hooks before the attestation is verified; a declined spend answers CHALLENGE_NOT_FOUND and keeps it",
+      "test": "adapters/sqlstore/passkey_hooks_test.go",
+      "marker": "// A declined spend keeps the challenge for a retry."
+    },
+    {
+      "label": "Run the challenge's verification delete hooks before the session hooks of a registration that signs in",
+      "test": "adapters/sqlstore/passkey_hooks_test.go",
+      "marker": "// The challenge's hooks run before the session's."
     }
   ],
   "plugin/passkey/POST /passkey/verify-authentication": [
@@ -2539,6 +2559,11 @@
       "label": "Authenticate a real assertion after the trusted callback chooses a different final account ID",
       "test": "adapters/sqlstore/passkey_first_test.go",
       "marker": "credential lost its opaque handle"
+    },
+    {
+      "label": "Spend the challenge with its verification delete hooks before the assertion is verified and before the session hooks",
+      "test": "adapters/sqlstore/passkey_hooks_test.go",
+      "marker": "// A sign-in spends its challenge before the session hooks run."
     }
   ],
   "plugin/passkey/GET /passkey/list-user-passkeys": [
@@ -19012,6 +19037,16 @@
       "label": "Report what the phone code stores commit to a code, on the memory store, SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/code_decisions_test.go",
       "marker": "func TestPhoneCodeDecisions(t *testing.T) {"
+    },
+    {
+      "label": "Let plugin packages run verification hooks around records they keep in their own stores: a declined create stores nothing, a declined spend keeps the record, a spend its hooks did not see is refused, and New asks the plugin whether its store can follow the hooks",
+      "test": "conformance/goapi/database_verification_plugin_api_test.go",
+      "marker": "func TestPluginVerificationHooks(t *testing.T) {"
+    },
+    {
+      "label": "Run verification hooks around passkey challenges on SQLite, PostgreSQL and MySQL: a declined challenge returns options that redeem nothing, a declined spend keeps the challenge, and the challenge is spent with its hooks before the credential is verified and before the session hooks",
+      "test": "adapters/sqlstore/passkey_hooks_test.go",
+      "marker": "func TestVerificationHooksAroundPasskeyChallenges(t *testing.T) {"
     }
   ],
   "docs/content/docs/concepts/database.mdx#L881": [
@@ -19154,6 +19189,11 @@
       "label": "Run one verification delete after hook among concurrent verifications of a phone code, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/phone_code_hooks_test.go",
       "marker": "// Concurrent verifications of one phone code run one delete after hook."
+    },
+    {
+      "label": "Run one verification delete after hook among concurrent verifications of a passkey challenge, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/passkey_hooks_test.go",
+      "marker": "// Concurrent verifications of one passkey challenge run one delete after hook."
     }
   ],
   "docs/content/docs/concepts/database.mdx#L891/Example Usage": [
@@ -19217,7 +19257,7 @@
       "marker": "// Run account hooks around the credential a sign-up stores, password"
     },
     {
-      "label": "Configure verification hooks for password reset and account deletion links, browser OAuth flows, magic links, one-time tokens and email and phone codes, and refuse the plugins, hooks and stores that would bypass them",
+      "label": "Configure verification hooks for password reset and account deletion links, browser OAuth flows, magic links, one-time tokens, email and phone codes and passkey challenges, and refuse the plugins, hooks and stores that would bypass them",
       "test": "conformance/goapi/database_verification_hooks_test.go",
       "marker": "func TestDatabaseVerificationHooksRefuseBypassingFeatures(t *testing.T) {"
     }

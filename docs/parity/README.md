@@ -11,7 +11,7 @@
 | No linked test evidence | 4,445 |
 | Not applicable to a Go server | 387 |
 
-The inventory covers features, options, integrations and documentation topics. Partial verification means an open entry has a passing case somewhere beneath it. The checklists also contain 3,477 links from passing scenarios to tests. Adding a scenario leaves the inventory denominator unchanged.
+The inventory covers features, options, integrations and documentation topics. Partial verification means an open entry has a passing case somewhere beneath it. The checklists also contain 3,485 links from passing scenarios to tests. Adding a scenario leaves the inventory denominator unchanged.
 
 Entries that exist only for JavaScript clients, frameworks or runtimes are listed as not applicable, with the reason, and are left out of the totals. Backlog entries stay open on the roadmap but are not scheduled.
 
@@ -80,7 +80,7 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 | [Core API, sign-in providers and CLI](runtime.md) | 229 | 238 | 13 |
 | [Database adapters](adapters.md) | 32 | 193 | 31 |
 | [Authentication](authentication.md) | 128 | 366 | 0 |
-| [Core concepts](concepts.md) | 491 | 340 | 0 |
+| [Core concepts](concepts.md) | 494 | 340 | 0 |
 | [Managed infrastructure](infrastructure.md) | 0 | 528 | 0 |
 | [Framework integrations](integrations.md) | 7 | 24 | 201 |
 | [Reference and configuration](reference.md) | 406 | 255 | 4 |
@@ -118,7 +118,7 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 | [One time token](plugins/one-time-token.md) | 76 | 0 | 0 |
 | [OpenAPI](plugins/open-api.md) | 16 | 24 | 0 |
 | [Organization](plugins/organization.md) | 1044 | 73 | 41 |
-| [Passkey](plugins/passkey.md) | 27 | 94 | 0 |
+| [Passkey](plugins/passkey.md) | 32 | 94 | 0 |
 | [Phone number](plugins/phone-number.md) | 39 | 67 | 0 |
 | [SCIM provisioning](plugins/scim.md) | 67 | 257 | 0 |
 | [Sign in with Ethereum](plugins/siwe.md) | 91 | 11 | 0 |

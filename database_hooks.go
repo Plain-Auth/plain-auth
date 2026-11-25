@@ -32,7 +32,8 @@ type DatabaseHooks struct {
 	Account ModelHooks[LinkedAccount]
 	// Verification hooks observe and may cancel the creation and spending of
 	// password reset links, account deletion links, browser OAuth flows,
-	// magic links, one-time tokens and email and phone codes. Spending or
+	// magic links, one-time tokens, email and phone codes and passkey
+	// challenges. Spending or
 	// removing a record is its delete. A wrong guess counted against a code
 	// is its update, which has no before hook: the delete before hooks run
 	// before every guess. They may not change the record.
@@ -43,22 +44,27 @@ type DatabaseHooks struct {
 // leaves out the token and the data that redeem it; the request in the
 // hook's HookContext may still carry the token it presents.
 type VerificationRecord struct {
-	// ID identifies the record. A magic link's or one-time token's ID is
-	// derived from its stored key and is the row ID the SQL store gives it.
+	// ID identifies the record. A magic link's, one-time token's or passkey
+	// challenge's ID is derived from its stored key and is the row ID the SQL
+	// store gives it.
 	// An email or phone code's ID is its stored row's; each send stores a new
 	// one. It cannot redeem the record, but keep it private.
 	ID string
 	// Identifier is the kind of record: "reset-password", "delete-account",
 	// "oauth-state", "magic-link", "one-time-token", an email code's
 	// "sign-in-otp", "email-verification-otp", "forget-password-otp" or
-	// "change-email-otp", or a phone code's "phone-number-otp" or
-	// "phone-number-reset".
+	// "change-email-otp", a phone code's "phone-number-otp" or
+	// "phone-number-reset", or a passkey challenge's "passkey-registration"
+	// or "passkey-authentication".
 	Identifier string
 	// UserID is the record's owner. An OAuth flow has one only when it
 	// links an account to a signed-in user. A one-time token names the user
 	// whose session it transfers. An email change code names the signed-in
 	// user who asked for it. A magic link and other email and phone codes,
 	// which prove an address or number rather than an account, have none.
+	// A passkey challenge names the signed-in user it is for; a first-use
+	// registration's, whose account may not exist yet, and a signed-out
+	// sign-in's name none.
 	UserID    string
 	ExpiresAt time.Time
 }
@@ -261,8 +267,18 @@ func (a *Auth) checkDatabaseHooks() error {
 	}
 	if d.verification.set() {
 		// These plugins keep their codes and challenges inside their stores.
-		for _, id := range []string{"two-factor", "passkey", "siwe", "sso", "oauth-provider"} {
+		for _, id := range []string{"two-factor", "siwe", "sso", "oauth-provider"} {
 			need(id, a.HasPlugin(id))
+		}
+		// A plugin that runs the hooks around its own records says what its
+		// store needs for them.
+		hooks := VerificationHookSet{CreateBefore: len(d.verification.create.before) > 0, Delete: d.verification.delete.set()}
+		for _, p := range a.opts.Plugins {
+			if p.ValidateVerificationStore != nil {
+				if err := p.ValidateVerificationStore(a.opts.Store, hooks); err != nil {
+					return err
+				}
+			}
 		}
 	}
 	if len(d.verification.update.before) > 0 {

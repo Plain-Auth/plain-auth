@@ -69,7 +69,14 @@ type Plugin struct {
 	ProjectDeviceSessions bool
 	serviceJWT            *JWTOptions
 	ValidateStore         func(Store) error
-	oneTime               *OneTimeTokenOptions
+	// ValidateVerificationStore is set by a plugin that keeps verification
+	// records in its own store and runs their hooks with
+	// EndpointContext.CreateVerification and SpendVerification. When
+	// verification hooks are set, New calls it with the store and the hooks
+	// that are set, and fails with its error, which names what the store
+	// lacks, rather than let the plugin spend a record its hooks never saw.
+	ValidateVerificationStore func(Store, VerificationHookSet) error
+	oneTime                   *OneTimeTokenOptions
 	// OnValidateNewPassword checks a proposed credential before it is stored.
 	OnValidateNewPassword func(ctx context.Context, path, password string) error
 	factor                *TwoFactorOptions

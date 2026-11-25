@@ -2,7 +2,6 @@ package sqlstore
 
 import (
 	"context"
-	"crypto/rand"
 	"crypto/sha256"
 	"database/sql"
 	"encoding/hex"
@@ -16,7 +15,10 @@ import (
 	"github.com/mattn/go-sqlite3"
 )
 
-var _ pk.Store = (*Store)(nil)
+var (
+	_ pk.Store           = (*Store)(nil)
+	_ pk.ChallengeFinder = (*Store)(nil)
+)
 
 const passkeyFields = `"id","name","publicKey","userId","credentialID","counter","deviceType","backedUp","transports","createdAt","aaguid"`
 
@@ -47,11 +49,28 @@ func (s *Store) SavePasskeyChallenge(ctx context.Context, key string, body []byt
 			return err
 		}
 	}
-	_, err = tx.ExecContext(ctx, s.bind(`INSERT INTO "verification" ("id","identifier","value","expiresAt","createdAt","updatedAt") VALUES(?,?,?,?,?,?)`), rand.Text(), "passkey:"+key, string(body), s.date(expiry), s.date(now), s.date(now))
+	// The passkey plugin's verification hooks name the challenge by this ID.
+	_, err = tx.ExecContext(ctx, s.bind(`INSERT INTO "verification" ("id","identifier","value","expiresAt","createdAt","updatedAt") VALUES(?,?,?,?,?,?)`), pk.ChallengeRecordID(key), "passkey:"+key, string(body), s.date(expiry), s.date(now), s.date(now))
 	if err != nil {
 		return err
 	}
 	return tx.Commit()
+}
+
+// FindPasskeyChallenge reads a live passkey challenge without spending or
+// locking it.
+func (s *Store) FindPasskeyChallenge(ctx context.Context, key string, now time.Time) (string, []byte, time.Time, error) {
+	var id string
+	var body []byte
+	var expires time.Time
+	err := s.db.QueryRowContext(ctx, s.bind(`SELECT "id","value","expiresAt" FROM "verification" WHERE "identifier"=? AND "expiresAt">?`), "passkey:"+key, s.date(now)).Scan(&id, &body, &expires)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", nil, time.Time{}, auth.ErrNotFound
+	}
+	if err != nil {
+		return "", nil, time.Time{}, err
+	}
+	return id, body, expires.UTC(), nil
 }
 func (s *Store) TakePasskeyChallenge(ctx context.Context, key string, now time.Time) ([]byte, error) {
 	tx, err := s.db.BeginTx(ctx, nil)

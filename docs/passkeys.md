@@ -52,6 +52,8 @@ The signed HTTP-only challenge cookie and server-side verification record expire
 
 The optional `ChallengeLifetime` accepts a Go duration. Key management operates on the signed-in user's rows. Deleting the account removes its keys. SQLite, PostgreSQL and MySQL have local software-authenticator tests for this lifecycle.
 
+[Verification database hooks](hooks.md#verification-hooks) run create hooks when options are generated and delete hooks when a verification spends the challenge, before the credential is checked and before `ValidateUserInfo` and the session hooks, so a refused or failed verification still spends it. A declined challenge returns its options with the challenge cookie expired, so the ceremony answers `CHALLENGE_NOT_FOUND`; a declined spend answers the same and keeps the challenge usable. Records name the ceremony as `passkey-registration` or `passkey-authentication` and the signed-in user, and never the challenge. A custom store implements `passkey.ChallengeFinder` for delete hooks and stores each challenge under `passkey.ChallengeRecordID(key)`, as the SQL store does. `New` still refuses user create hooks with this plugin. [Passkey hooks on SQL engines](../adapters/sqlstore/passkey_hooks_test.go)
+
 ## Passkey-first registration
 
 Use passkey-first registration for an application that can identify an enrollment request before the user has a session. The resolver runs when the browser requests WebAuthn options. The supplied query `context` is client input. Validate an enrollment grant or invitation with your application and derive the provisional ID and display label from that result.
