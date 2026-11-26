@@ -42,6 +42,10 @@ type MicrosoftOptions struct {
 	// 120, 240, 360, 432, 504 or 648 pixels.
 	ProfilePhotoSize    int
 	DisableProfilePhoto bool
+	// ClientAssertion authenticates the code exchange and refresh with a
+	// signed assertion, such as providers.PrivateKeyJWT or a federated
+	// workload token, instead of a client secret; pass an empty secret.
+	ClientAssertion authn.ClientAssertionFunc
 	// HTTPClient fetches the signing keys, the token endpoint and the photo.
 	HTTPClient *http.Client
 }
@@ -65,6 +69,9 @@ func Microsoft(id, secret string, options MicrosoftOptions) (authn.OAuthProvider
 	options.Authority = authority
 	if options.ProfilePhotoSize != 0 && !slices.Contains(microsoftPhotoSizes, options.ProfilePhotoSize) {
 		return authn.OAuthProvider{}, errors.New("invalid Microsoft profile photo size")
+	}
+	if options.ClientAssertion != nil && secret != "" {
+		return authn.OAuthProvider{}, errors.New("Microsoft: use a client assertion or a client secret, not both")
 	}
 	if options.HTTPClient == nil {
 		options.HTTPClient = &http.Client{Timeout: 15 * time.Second}
@@ -109,6 +116,9 @@ func microsoftProvider(id, secret, tenant string, o MicrosoftOptions, keys oidc.
 	p := signedProvider(id, secret, oauth2.Endpoint{AuthURL: base + "/oauth2/v2.0/authorize", TokenURL: base + "/oauth2/v2.0/token", AuthStyle: oauth2.AuthStyleInParams}, verifier, o.HTTPClient, idTokenRules{profile: mapProfile})
 	p.Config.Scopes = []string{"openid", "profile", "email", "User.Read", "offline_access"}
 	p.AllowVerifiedEmailLink = true
+	if o.ClientAssertion != nil {
+		p.TokenEndpointAuth = authn.TokenEndpointAuth{Method: authn.TokenAuthPrivateKeyJWT, ClientAssertion: o.ClientAssertion}
+	}
 	if ids := clientIDs(id, o.AdditionalClientIDs); len(ids) > 1 {
 		// A directly submitted token may be issued to any of the app's client
 		// IDs; the code exchange still checks the client ID only.

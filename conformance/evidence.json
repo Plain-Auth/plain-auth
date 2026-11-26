@@ -29995,6 +29995,12 @@
       "label": "A registered Microsoft app signs in through the browser with its client ID and secret",
       "test": "providers/microsoft_test.go",
       "marker": "func TestMicrosoftBrowserSignIn(t *testing.T) {"
+    },
+    {
+      "label": "A Microsoft app signs in with a client assertion instead of a secret",
+      "test": "providers/microsoft_test.go",
+      "marker": "func TestMicrosoftClientAssertion(t *testing.T) {",
+      "complete": true
     }
   ],
   "provider-option/microsoft/profilePhotoSize": [
@@ -30402,6 +30408,30 @@
       "label": "A client assertion callback authenticates the Vercel code exchange without a secret, and the same with a secret is refused",
       "test": "providers/token_auth_test.go",
       "marker": "func TestVercelClientAuthentication(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/authentication/vercel.mdx#L114": [
+    {
+      "label": "providers.PrivateKeyJWT signs the Vercel client assertion with the configured key ID, the client ID as issuer and subject, the token endpoint as audience and a one-minute lifetime, and the token endpoint verifies it",
+      "test": "providers/token_auth_test.go",
+      "marker": "func TestVercelClientAuthentication(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "provider-option/microsoft/clientAssertion": [
+    {
+      "label": "With ClientAssertion, the Microsoft code exchange and refresh send the client ID and a jwt-bearer assertion and no secret, and combining it with a secret is refused",
+      "test": "providers/microsoft_test.go",
+      "marker": "func TestMicrosoftClientAssertion(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/authentication/microsoft.mdx#L44/Client assertions": [
+    {
+      "label": "A client assertion callback authenticates Microsoft's code exchange and refresh instead of a client secret",
+      "test": "providers/microsoft_test.go",
+      "marker": "func TestMicrosoftClientAssertion(t *testing.T) {",
       "complete": true
     }
   ]

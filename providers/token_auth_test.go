@@ -2,13 +2,18 @@ package providers
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/rsa"
+	"encoding/json"
 	"net/http"
 	"net/url"
 	"strings"
 	"testing"
+	"time"
 
 	auth "github.com/Plain-Org/plain-auth"
 	"github.com/Plain-Org/plain-auth/adapters/sqlite"
+	"github.com/go-jose/go-jose/v4"
 	"golang.org/x/oauth2"
 )
 
@@ -149,11 +154,25 @@ func TestVercelClientAuthentication(t *testing.T) {
 	if f := runBrowserFlowAt(t, "/identity", "vercel", p); f.callback.Header().Get("Location") != "/done" || calls != 1 || f.authorize.Query().Get("redirect_uri") != "https://app.example.org/identity/callback/vercel" {
 		t.Fatalf("the custom Vercel sign-in failed: %s (%d hook calls)", f.callback.Header().Get("Location"), calls)
 	}
+	key, _ := rsa.GenerateKey(rand.Reader, 2048)
+	signer, err := PrivateKeyJWT(PrivateKeyJWTOptions{PrivateKeyPEM: pkcs8PEM(t, key), KeyID: "vercel-key", ValidFor: time.Minute})
+	if err != nil {
+		t.Fatal(err)
+	}
 	jwt, _ := New("vercel", "client", "")
-	jwt.TokenEndpointAuth = auth.TokenEndpointAuth{Method: auth.TokenAuthPrivateKeyJWT, ClientAssertion: func(context.Context, auth.TokenRequest) (string, error) { return "signed", nil }}
+	jwt.TokenEndpointAuth = auth.TokenEndpointAuth{Method: auth.TokenAuthPrivateKeyJWT, ClientAssertion: signer}
 	jwt.HTTPClient = serve(t, func(f url.Values, _ http.Header) {
-		if f.Get("client_assertion") != "signed" || f.Get("client_assertion_type") != "urn:ietf:params:oauth:client-assertion-type:jwt-bearer" || f.Has("client_secret") {
-			t.Fatal("the Vercel client assertion is wrong:", f)
+		parsed, err := jose.ParseSigned(f.Get("client_assertion"), []jose.SignatureAlgorithm{jose.RS256})
+		if err != nil || f.Get("client_assertion_type") != "urn:ietf:params:oauth:client-assertion-type:jwt-bearer" || f.Has("client_secret") {
+			t.Fatal("the Vercel client assertion is wrong:", f, err)
+		}
+		payload, err := parsed.Verify(&key.PublicKey)
+		var claims struct {
+			Iss, Sub, Aud string
+			Iat, Exp      int64
+		}
+		if err != nil || json.Unmarshal(payload, &claims) != nil || claims.Iss != "client" || claims.Sub != "client" || claims.Aud != "https://api.vercel.com/login/oauth/token" || claims.Exp-claims.Iat != 60 || parsed.Signatures[0].Header.KeyID != "vercel-key" {
+			t.Fatal("the Vercel client assertion claims are wrong:", claims, err)
 		}
 	})
 	if f := runBrowserFlow(t, "vercel", jwt); f.callback.Header().Get("Location") != "/done" {

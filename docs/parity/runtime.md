@@ -345,10 +345,10 @@ Each entry groups the configured endpoint’s behaviors. A checked child records
   - [ ] `cloudflare`
     - [x] `clientId` ([test](../../providers/catalog_test.go#L79))
       - [x] The client ID given to providers.New reaches the token exchange through real /sign-in/social and callback requests ([test](../../providers/catalog_test.go#L79))
-    - [x] `tokenEndpointAuth` ([test](../../providers/token_auth_test.go#L38))
-      - [x] Cloudflare uses HTTP Basic by default and the form secret with TokenAuthClientSecretPost on the code exchange and refresh; a public client or TokenAuthNone sends no secret; none with a secret and basic without one are refused ([test](../../providers/token_auth_test.go#L38))
-    - [x] `tokenEndpointAuthMethod` ([test](../../providers/token_auth_test.go#L38))
-      - [x] The single TokenEndpointAuth.Method also covers the deprecated method alias: Basic, form secret or none on both grants ([test](../../providers/token_auth_test.go#L38))
+    - [x] `tokenEndpointAuth` ([test](../../providers/token_auth_test.go#L43))
+      - [x] Cloudflare uses HTTP Basic by default and the form secret with TokenAuthClientSecretPost on the code exchange and refresh; a public client or TokenAuthNone sends no secret; none with a secret and basic without one are refused ([test](../../providers/token_auth_test.go#L43))
+    - [x] `tokenEndpointAuthMethod` ([test](../../providers/token_auth_test.go#L43))
+      - [x] The single TokenEndpointAuth.Method also covers the deprecated method alias: Basic, form secret or none on both grants ([test](../../providers/token_auth_test.go#L43))
   - [ ] `cognito`
     - [ ] `clientId`
       - [x] Cognito's code exchange sends the configured client ID and secret in the token form ([test](../../providers/issuer_test.go#L61))
@@ -435,7 +435,8 @@ Each entry groups the configured endpoint’s behaviors. A checked child records
       - [x] Without options Microsoft uses the common tenant endpoint, and a configured authority keeps the tenant segment in its endpoints ([test](../../providers/microsoft_test.go#L186))
     - [x] `authority` ([test](../../providers/microsoft_test.go#L37))
       - [x] Authority moves the authorize, token and key endpoints and the issuer check to an External ID origin; tokens from the default authority or another tenant are refused ([test](../../providers/microsoft_test.go#L37))
-    - [ ] `clientAssertion`
+    - [x] `clientAssertion` ([test](../../providers/microsoft_test.go#L205))
+      - [x] With ClientAssertion, the Microsoft code exchange and refresh send the client ID and a jwt-bearer assertion and no secret, and combining it with a secret is refused ([test](../../providers/microsoft_test.go#L205))
     - [x] `profilePhotoSize` ([test](../../providers/microsoft_test.go#L145))
       - [x] ProfilePhotoSize picks the Graph photo size, 48 by default, and an unsupported size is refused when the provider is built ([test](../../providers/microsoft_test.go#L145))
     - [x] `disableProfilePhoto` ([test](../../providers/microsoft_test.go#L145))
@@ -508,9 +509,9 @@ Each entry groups the configured endpoint’s behaviors. A checked child records
   - [ ] `vercel`
     - [x] `clientId` ([test](../../providers/catalog_test.go#L79))
       - [x] Authenticate each catalog provider's browser code exchange with the configured client ID and secret ([test](../../providers/catalog_test.go#L79))
-    - [x] `tokenEndpointAuth` ([test](../../providers/token_auth_test.go#L114))
+    - [x] `tokenEndpointAuth` ([test](../../providers/token_auth_test.go#L119))
       - [x] Send client_id and client_secret in the form body, without HTTP Basic, for catalog providers that use body authentication such as Vercel ([test](../../providers/catalog_test.go#L62))
-      - [x] Vercel's secretless client authenticates its code exchange through a custom hook or a client assertion, and a secret method without a secret is refused ([test](../../providers/token_auth_test.go#L114))
+      - [x] Vercel's secretless client authenticates its code exchange through a custom hook or a client assertion, and a secret method without a secret is refused ([test](../../providers/token_auth_test.go#L119))
   - [ ] `vk`
     - [x] `clientId` ([test](../../providers/catalog_test.go#L79))
       - [x] Authenticate each catalog provider's browser code exchange with the configured client ID and secret ([test](../../providers/catalog_test.go#L79))

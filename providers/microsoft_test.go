@@ -198,3 +198,49 @@ func TestMicrosoftOptionValidation(t *testing.T) {
 		t.Fatal("the default endpoint is wrong:", p.Config.Endpoint.AuthURL, err)
 	}
 }
+
+// With ClientAssertion, a Microsoft sign-in and refresh send the client ID
+// and a jwt-bearer assertion and no secret; combining it with a secret is
+// refused.
+func TestMicrosoftClientAssertion(t *testing.T) {
+	const tid = "40000000-aaaa-0000-bbbb-000000000000"
+	key, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var grants []string
+	assertion := func(_ context.Context, r auth.TokenRequest) (string, error) {
+		grants = append(grants, r.GrantType)
+		return "signed-" + r.GrantType, nil
+	}
+	p := microsoftProvider("client", "", tid, MicrosoftOptions{DisableProfilePhoto: true, ClientAssertion: assertion}, &oidc.StaticKeySet{PublicKeys: []crypto.PublicKey{&key.PublicKey}})
+	var nonce string
+	p.CustomizeAuthorization = func(u *url.URL) { nonce = u.Query().Get("nonce") }
+	p.HTTPClient = &http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
+		if r.URL.String() != microsoftAuthority+"/"+tid+"/oauth2/v2.0/token" {
+			t.Fatalf("unexpected request %s", r.URL)
+		}
+		_ = r.ParseForm()
+		grant := r.PostForm.Get("grant_type")
+		if r.PostForm.Get("client_id") != "client" || r.PostForm.Has("client_secret") || r.PostForm.Get("client_assertion_type") != "urn:ietf:params:oauth:client-assertion-type:jwt-bearer" || r.PostForm.Get("client_assertion") != "signed-"+grant {
+			t.Fatal("the Microsoft token request is not assertion-authenticated:", r.PostForm)
+		}
+		raw := signedClaims(t, key, microsoftAuthority+"/"+tid+"/v2.0", "sub", nonce, map[string]any{"oid": "oid", "tid": tid, "email": "person@example.org", "verified_primary_email": []string{"person@example.org"}})
+		return jsonResponse(t, map[string]any{"access_token": "access", "refresh_token": "refresh", "token_type": "bearer", "expires_in": 3600, "id_token": raw}), nil
+	})}
+	f := runBrowserFlow(t, "microsoft", p)
+	if f.callback.Header().Get("Location") != "/done" {
+		t.Fatal("the sign-in failed:", f.callback.Header().Get("Location"))
+	}
+	var accounts []struct{ ID string }
+	f.call(t, "GET", "/list-accounts", "", &accounts)
+	if len(accounts) != 1 || f.call(t, "POST", "/refresh-token", `{"accountId":"`+accounts[0].ID+`"}`, nil) != 200 {
+		t.Fatal("the refresh failed")
+	}
+	if strings.Join(grants, ",") != "authorization_code,refresh_token" {
+		t.Fatal("the assertion callback saw", grants)
+	}
+	if _, err := Microsoft("client", "secret", MicrosoftOptions{ClientAssertion: assertion}); err == nil {
+		t.Fatal("Microsoft accepted a client assertion with a secret")
+	}
+}

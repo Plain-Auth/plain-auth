@@ -68,17 +68,17 @@
     - [ ] Scopes
       - [x] In the cloudflare subtest, sign-in requests exactly the default user-details.read scope ([test](../../providers/catalog_test.go#L162))
       - [x] Setting the Google preset's Config.Scopes to [openid] replaces its default scopes, and the sign-in and link authorization URLs send scope openid ([test](../../conformance/goapi/provider_contract_test.go#L67))
-    - [x] Token authentication method ([test](../../providers/token_auth_test.go#L38))
+    - [x] Token authentication method ([test](../../providers/token_auth_test.go#L43))
       - [x] In the cloudflare subtest, with a client secret the code exchange uses HTTP Basic client authentication ([test](../../providers/catalog_test.go#L58))
       - [x] Each catalog provider's refresh, cloudflare's included, uses its listed client authentication style, which is HTTP Basic with the client ID and secret for cloudflare ([test](../../providers/catalog_test.go#L309))
-      - [x] The token authentication method selects HTTP Basic or the form secret for Cloudflare's code exchange and refresh ([test](../../providers/token_auth_test.go#L38))
+      - [x] The token authentication method selects HTTP Basic or the form secret for Cloudflare's code exchange and refresh ([test](../../providers/token_auth_test.go#L43))
     - [x] Clients without a secret ([test](../../providers/provider_flows_test.go#L195))
       - [x] A Cloudflare client without a secret keeps PKCE, sends neither a client secret nor a Basic header, and refreshes with only client_id, grant_type and refresh_token ([test](../../providers/provider_flows_test.go#L195))
     - [ ] Client visibility
-    - [x] Refresh tokens ([test](../../providers/token_auth_test.go#L38))
+    - [x] Refresh tokens ([test](../../providers/token_auth_test.go#L43))
       - [x] In the cloudflare subtest, sign-in requests only user-details.read, so offline_access is not requested by default ([test](../../providers/catalog_test.go#L162))
       - [x] Each catalog provider with a refresh contract, cloudflare included, refreshes at its token URL with grant_type refresh_token and exactly its listed fields, and returns the new access and refresh tokens ([test](../../providers/catalog_test.go#L283))
-      - [x] With offline_access requested, the refresh token from the code exchange refreshes through /refresh-token with the chosen authentication ([test](../../providers/token_auth_test.go#L38))
+      - [x] With offline_access requested, the refresh token from the code exchange refreshes through /refresh-token with the chosen authentication ([test](../../providers/token_auth_test.go#L43))
     - [ ] Profile and email verification
       - [x] In the cloudflare subtest, the /user result maps to a session user named "A Person" from first_name and last_name, with the email, no image and emailVerified false ([test](../../providers/catalog_test.go#L203))
       - [x] In the cloudflare subtest, account-info returns the /user result object as the account data ([test](../../providers/catalog_test.go#L230))
@@ -529,13 +529,15 @@
 ## Microsoft
 
 - [ ] Microsoft
-  - [ ] Get your Microsoft credentials
+  - [x] Get your Microsoft credentials ([test](../../providers/microsoft_test.go#L205))
     - [x] A registered Microsoft app signs in through the browser with its client ID and secret ([test](../../providers/microsoft_test.go#L37))
+    - [x] A Microsoft app signs in with a client assertion instead of a secret ([test](../../providers/microsoft_test.go#L205))
   - [ ] Configure the provider
     - [x] The Microsoft provider's ID-token check refuses consumer-tenant tokens in organizations mode and organization-tenant tokens in consumers mode, refuses a token whose issuer names a different tenant than its tid, and accepts matching tokens in organizations, consumers, common and tenant-GUID modes ([test](../../providers/apple_microsoft_test.go#L166))
     - [x] Authority URL ([test](../../providers/microsoft_test.go#L37))
       - [x] An External ID authority with a tenant GUID completes a browser sign-in against that authority's endpoints and keys ([test](../../providers/microsoft_test.go#L37))
-    - [ ] Client assertions
+    - [x] Client assertions ([test](../../providers/microsoft_test.go#L205))
+      - [x] A client assertion callback authenticates Microsoft's code exchange and refresh instead of a client secret ([test](../../providers/microsoft_test.go#L205))
   - [ ] Account identifiers
     - [x] A verified Microsoft ID token maps to the oid claim as the account subject, not the pairwise sub ([test](../../providers/apple_microsoft_test.go#L170))
     - [x] A single-tenant Entra provider uses the oid claim as the subject for both the code-flow and the native ID token ([test](../../providers/entra_test.go#L84))
@@ -969,7 +971,7 @@
   - [ ] Get your Vercel credentials
     - [x] With a 127.0.0.1 BaseURL, the provider's redirect lands on BaseURL/api/auth/callback/<id> and that callback completes the sign-in ([test](../../conformance/goapi/oauth_test.go#L142))
     - [x] The Vercel code exchange sends a code_verifier matching the S256 code_challenge of its authorization URL ([test](../../providers/catalog_test.go#L85))
-    - [x] A Vercel app signs in through the browser under a custom base path whose callback reaches the token request ([test](../../providers/token_auth_test.go#L114))
+    - [x] A Vercel app signs in through the browser under a custom base path whose callback reaches the token request ([test](../../providers/token_auth_test.go#L119))
   - [x] Configure the provider ([test](../../providers/catalog_test.go#L79))
     - [x] The Vercel code exchange carries the client ID and secret passed to New, with grant_type authorization_code and the callback code ([test](../../providers/catalog_test.go#L79))
     - [x] The other runtime's Vercel provider, run on local fixtures, reproduces the checked-in catalog entry (endpoints, scopes, PKCE, client auth) and expected profile ([test](../../conformance/social-profiles.mjs#L37))
@@ -981,11 +983,12 @@
   - [ ] Options
     - [x] The Vercel code exchange carries the client ID and secret passed to New, with grant_type authorization_code and the callback code ([test](../../providers/catalog_test.go#L79))
     - [x] The Vercel token request uses form-body (not HTTP Basic) client authentication, as the catalog records ([test](../../providers/catalog_test.go#L59))
-    - [ ] Token endpoint authentication
-      - [x] A custom hook adds an OIDC workload token as the client assertion while the code, redirect URI and PKCE verifier stay unchanged ([test](../../providers/token_auth_test.go#L114))
-      - [x] OIDC client authentication ([test](../../providers/token_auth_test.go#L114))
-        - [x] A client assertion callback authenticates the Vercel code exchange without a secret, and the same with a secret is refused ([test](../../providers/token_auth_test.go#L114))
-      - [ ] Private key JWT client authentication
+    - [x] Token endpoint authentication ([test](../../providers/token_auth_test.go#L119))
+      - [x] A custom hook adds an OIDC workload token as the client assertion while the code, redirect URI and PKCE verifier stay unchanged ([test](../../providers/token_auth_test.go#L119))
+      - [x] OIDC client authentication ([test](../../providers/token_auth_test.go#L119))
+        - [x] A client assertion callback authenticates the Vercel code exchange without a secret, and the same with a secret is refused ([test](../../providers/token_auth_test.go#L119))
+      - [x] Private key JWT client authentication ([test](../../providers/token_auth_test.go#L119))
+        - [x] providers.PrivateKeyJWT signs the Vercel client assertion with the configured key ID, the client ID as issuer and subject, the token endpoint as audience and a one-minute lifetime, and the token endpoint verifies it ([test](../../providers/token_auth_test.go#L119))
     - [ ] Available Scopes
       - [x] sign-in/social for Vercel redirects to the catalog authorization endpoint with an empty scope value, since the catalog records no default scopes for Vercel ([test](../../providers/catalog_test.go#L162))
       - [x] Replacing a provider's Config.Scopes and setting AuthorizationParams changes the scope and adds the parameter in the sign-in/social and link-social authorization URLs ([test](../../conformance/goapi/provider_contract_test.go#L67))
