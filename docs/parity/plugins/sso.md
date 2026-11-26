@@ -46,8 +46,10 @@
     - [x] Resolve relative discovered authorization, token and JWKS URLs against the issuer path ([test](../../../plugins/sso/discovery_test.go#L61))
     - [x] Reject a discovered JWKS URL on a loopback address outside the trusted origins with discovery_untrusted_origin ([test](../../../plugins/sso/discovery_test.go#L67))
     - [x] Check every discovered URL, including the revocation, end-session and introspection endpoints, against the trusted origins and name the field and URL in the refusal ([test](../../../plugins/sso/discovery_test.go#L201))
+    - [x] Resolve and normalize discovered endpoints as another runtime does ([test](../../../plugins/sso/discovery_test.go#L424))
   - [ ] `normalizeUrl`
     - [x] Resolve '/authorize', 'token' and '/keys' against an issuer with a path, keeping that path ([test](../../../plugins/sso/discovery_test.go#L61))
+    - [x] Resolve relative endpoints with extra leading slashes against an issuer path ending in a slash, and write absolute ones as another runtime's URL parser does ([test](../../../plugins/sso/discovery_test.go#L424))
   - [x] `selectTokenEndpointAuthMethod` ([test](../../../plugins/sso/discovery_test.go#L340))
     - [x] Select client_secret_basic when the discovery document advertises both secret methods ([test](../../../plugins/sso/discovery_test.go#L61))
     - [x] Select client_secret_post when the discovery document advertises only that method, on both runtimes ([test](../../../conformance/sso-providers.mjs#L67))
@@ -97,9 +99,9 @@
       - [x] Hydrate client_secret_post when only that method is advertised, on both runtimes ([test](../../../conformance/sso-providers.mjs#L67))
       - [x] Fill the token endpoint authentication from the advertised methods and keep a configured one ([test](../../../plugins/sso/discovery_test.go#L340))
     - `scopesSupported` — *not applicable: scopesSupported is a field of the result of the other runtime's exported discovery helper, which its plugin neither stores nor reads; this library exposes no discovery helper and registration stores the same configuration either way*
-  - [x] `OIDCDiscoveryDocument` ([test](../../../plugins/sso/discovery_test.go#L427))
+  - [x] `OIDCDiscoveryDocument` ([test](../../../plugins/sso/discovery_test.go#L444))
     - [x] Read issuer, authorization_endpoint, token_endpoint, jwks_uri and token_endpoint_auth_methods_supported from a discovery document ([test](../../../plugins/sso/discovery_test.go#L26))
-    - [x] Choose the client authentication method from token_endpoint_auth_methods_supported in another runtime's order, default to client_secret_basic for none or unknown ones, and tolerate unknown document fields ([test](../../../plugins/sso/discovery_test.go#L427))
+    - [x] Choose the client authentication method from token_endpoint_auth_methods_supported in another runtime's order, default to client_secret_basic for none or unknown ones, and tolerate unknown document fields ([test](../../../plugins/sso/discovery_test.go#L444))
   - [x] `REQUIRED_DISCOVERY_FIELDS` ([test](../../../plugins/sso/discovery_test.go#L214))
     - [x] Reject a discovery document without jwks_uri with 400 discovery_incomplete ([test](../../../plugins/sso/discovery_test.go#L171))
     - [x] Require issuer, authorization_endpoint and token_endpoint in the discovery document ([test](../../../plugins/sso/discovery_test.go#L214))
@@ -738,7 +740,7 @@
         - [x] Return 502 discovery_unexpected_error when the discovery request fails in transport ([test](../../../plugins/sso/discovery_test.go#L162))
         - [x] Answer a registration whose discovery endpoint fails with HTTP 502 discovery_unexpected_error on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_test.go#L253))
   - [x] Token endpoint authentication ([test](../../../adapters/sqlstore/sso_private_key_test.go#L169))
-    - [x] Pick client_secret_basic for a document without methods and client_secret_post from [private_key_jwt, client_secret_post] ([test](../../../plugins/sso/discovery_test.go#L427))
+    - [x] Pick client_secret_basic for a document without methods and client_secret_post from [private_key_jwt, client_secret_post] ([test](../../../plugins/sso/discovery_test.go#L444))
     - [x] Refuse a client_secret_basic or client_secret_post registration without clientSecret, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_private_key_test.go#L169))
   - [ ] Shared redirect URI
     - [x] Send the shared or provider-specific callback as redirect_uri and complete sign-in through it on both runtimes ([test](../../../conformance/sso-browser.mjs#L90))

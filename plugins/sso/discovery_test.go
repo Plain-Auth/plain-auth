@@ -412,6 +412,23 @@ func TestDiscoveryHydrationKeepsConfiguredValues(t *testing.T) {
 	if cfg = hydrated(Config{Issuer: issuer, TokenEndpointAuthentication: "client_secret_basic"}); cfg.TokenEndpointAuthentication != "client_secret_basic" {
 		t.Fatal("discovery replaced a configured client authentication method", cfg.TokenEndpointAuthentication)
 	}
+	// Discovered endpoints are resolved against the issuer's path and
+	// written as another runtime's URL parser writes them.
+	saved := docIssuer
+	docIssuer = issuer + "/"
+	client.Transport = transportFunc(func(r *http.Request) (*http.Response, error) {
+		doc := `{"issuer":"` + docIssuer + `","authorization_endpoint":"//authorize","token_endpoint":"https://LOGIN.example.test:443/token","jwks_uri":"keys/"}`
+		return &http.Response{Request: r, StatusCode: 200, Body: io.NopCloser(strings.NewReader(doc)), Header: http.Header{}}, nil
+	})
+	if cfg = hydrated(Config{Issuer: issuer + "/"}); cfg.AuthorizationEndpoint != issuer+"/authorize" || cfg.TokenEndpoint != "https://login.example.test/token" || cfg.JWKSEndpoint != issuer+"/keys/" {
+		t.Fatal("discovered endpoints were not resolved and normalized as another runtime does", cfg.AuthorizationEndpoint, cfg.TokenEndpoint, cfg.JWKSEndpoint)
+	}
+	docIssuer = saved
+	client.Transport = transportFunc(func(r *http.Request) (*http.Response, error) {
+		fetched = r.URL.String()
+		doc := `{"issuer":"` + docIssuer + `","authorization_endpoint":"/authorize","token_endpoint":"/token","jwks_uri":"/keys",` + methods + `"x-vendor":{"anything":[1,2]}}`
+		return &http.Response{Request: r, StatusCode: 200, Body: io.NopCloser(strings.NewReader(doc)), Header: http.Header{}}, nil
+	})
 	// An unset method takes the first advertised one in the order
 	// client_secret_basic, client_secret_post, private_key_jwt; none or only
 	// unknown ones mean client_secret_basic.

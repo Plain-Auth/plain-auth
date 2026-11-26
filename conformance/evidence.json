@@ -41635,6 +41635,11 @@
       "label": "Check every discovered URL, including the revocation, end-session and introspection endpoints, against the trusted origins and name the field and URL in the refusal",
       "test": "plugins/sso/discovery_test.go",
       "marker": "t.Fatal(\"a discovered URL on an untrusted origin was not refused with discovery_untrusted_origin\", field, err)"
+    },
+    {
+      "label": "Resolve and normalize discovered endpoints as another runtime does",
+      "test": "plugins/sso/discovery_test.go",
+      "marker": "t.Fatal(\"discovered endpoints were not resolved and normalized as another runtime does\", cfg.AuthorizationEndpoint, cfg.TokenEndpoint, cfg.JWKSEndpoint)"
     }
   ],
   "plugin-symbol/sso/normalizeUrl": [
@@ -41642,6 +41647,11 @@
       "label": "Resolve '/authorize', 'token' and '/keys' against an issuer with a path, keeping that path",
       "test": "plugins/sso/discovery_test.go",
       "marker": "if cfg.TokenEndpoint != issuer+\"/token\" || cfg.JWKSEndpoint != issuer+\"/keys\""
+    },
+    {
+      "label": "Resolve relative endpoints with extra leading slashes against an issuer path ending in a slash, and write absolute ones as another runtime's URL parser does",
+      "test": "plugins/sso/discovery_test.go",
+      "marker": "t.Fatal(\"discovered endpoints were not resolved and normalized as another runtime does\", cfg.AuthorizationEndpoint, cfg.TokenEndpoint, cfg.JWKSEndpoint)"
     }
   ],
   "plugin-symbol/sso/selectTokenEndpointAuthMethod": [

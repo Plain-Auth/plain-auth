@@ -135,7 +135,8 @@ func hydrate(ctx context.Context, trusted func(string) bool, client *http.Client
 			if err != nil {
 				return discoveryError(400, "discovery_invalid_url", "Invalid URL in the discovery document")
 			}
-			raw := parsed.String()
+			// Stored as another runtime's URL parser writes it.
+			raw := whatwgURL(parsed.String())
 			if _, err = endpointURL(raw); err != nil {
 				return err
 			}
