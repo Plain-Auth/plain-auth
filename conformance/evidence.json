@@ -30570,5 +30570,21 @@
       "marker": "func TestOAuthRefreshParams(t *testing.T) {",
       "complete": true
     }
+  ],
+  "plugin-symbol/generic-oauth/GenericOAuthConfig/userInfoUrl": [
+    {
+      "label": "UserInfoURL reads a hand-configured provider's profile from that endpoint with the access token, or from a token-endpoint ID token naming a subject and an email; a numeric id becomes the subject, the whole profile is the account data, a profile without an id, an error status or no email fails the sign-in, and New refuses an insecure endpoint or one alongside Resolve",
+      "test": "conformance/goapi/oauth_userinfo_url_test.go",
+      "marker": "func TestOAuthUserInfoURL(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/generic-oauth.mdx#L262/userInfoUrl": [
+    {
+      "label": "UserInfoURL reads a hand-configured provider's profile from that endpoint with the access token, or from a token-endpoint ID token naming a subject and an email; a numeric id becomes the subject, the whole profile is the account data, a profile without an id, an error status or no email fails the sign-in, and New refuses an insecure endpoint or one alongside Resolve",
+      "test": "conformance/goapi/oauth_userinfo_url_test.go",
+      "marker": "func TestOAuthUserInfoURL(t *testing.T) {",
+      "complete": true
+    }
   ]
 }

@@ -2,7 +2,6 @@ package plainauth
 
 import (
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -348,17 +347,11 @@ func (a *Auth) AccountInfo(ctx context.Context, h http.Header, s AccountSelectio
 	}
 	// This is a read of the user's already-linked credential. A stored nonce
 	// permits the OIDC resolver to revalidate a previously issued signed token.
-	var stored struct{ Nonce string }
-	parts := strings.Split(row.IDToken, ".")
-	if len(parts) == 3 {
-		if b, e := base64.RawURLEncoding.DecodeString(parts[1]); e == nil {
-			_ = json.Unmarshal(b, &stored)
-		}
-	}
+	nonce := jsonText(unverifiedClaims(row.IDToken)["nonce"])
 	token := (&oauth2.Token{AccessToken: row.AccessToken, Expiry: row.ExpiresAt}).WithExtra(map[string]any{"id_token": row.IDToken})
 	ctx, cancel := context.WithTimeout(context.WithValue(ctx, oauth2.HTTPClient, p.HTTPClient), 15*time.Second)
 	defer cancel()
-	profile, err := p.Resolve(ctx, token, stored.Nonce)
+	profile, err := p.Resolve(ctx, token, nonce)
 	if err != nil || profile.Subject != row.Subject {
 		return out, &APIError{401, "FAILED_TO_GET_USER_INFO", "Failed to get user info"}
 	}

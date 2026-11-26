@@ -2,16 +2,16 @@
 
 ## Verification progress
 
-**1,664 of 6,478 inventory entries are fully verified (25.7%).**
+**1,666 of 6,478 inventory entries are fully verified (25.7%).**
 
 | Inventory status | Entries |
 | --- | ---: |
-| Fully verified | 1,664 |
+| Fully verified | 1,666 |
 | Partially verified | 1,388 |
-| No linked test evidence | 3,426 |
+| No linked test evidence | 3,424 |
 | Not applicable to a Go server | 547 |
 
-The inventory covers features, options, integrations and documentation topics. Partial verification means an open entry has a passing case somewhere beneath it. The checklists also contain 4,812 links from passing scenarios to tests. Adding a scenario leaves the inventory denominator unchanged.
+The inventory covers features, options, integrations and documentation topics. Partial verification means an open entry has a passing case somewhere beneath it. The checklists also contain 4,814 links from passing scenarios to tests. Adding a scenario leaves the inventory denominator unchanged.
 
 Entries that exist only for JavaScript clients, frameworks or runtimes are listed as not applicable, with the reason, and are left out of the totals. Backlog entries stay open on the roadmap but are not scheduled.
 
@@ -103,7 +103,7 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 | [Electron](plugins/electron.md) | 0 | 12 | 40 |
 | [Email otp](plugins/email-otp.md) | 46 | 95 | 0 |
 | [Expo](plugins/expo.md) | 0 | 5 | 14 |
-| [Generic OAuth](plugins/generic-oauth.md) | 431 | 161 | 0 |
+| [Generic OAuth](plugins/generic-oauth.md) | 435 | 159 | 0 |
 | [Have I Been Pwned](plugins/have-i-been-pwned.md) | 46 | 0 | 0 |
 | [Internationalization](plugins/i18n.md) | 116 | 36 | 0 |
 | [JSON Web Tokens](plugins/jwt.md) | 13 | 75 | 0 |

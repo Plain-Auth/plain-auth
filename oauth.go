@@ -46,8 +46,15 @@ type OAuthProvider struct {
 	// CustomizeAuthorization adapts fixed provider-specific parameter names.
 	CustomizeAuthorization func(*url.URL)
 	// ExchangeCode handles providers with a nonstandard token endpoint protocol.
-	ExchangeCode  func(context.Context, oauth2.Config, string, string, url.Values) (*oauth2.Token, error)
-	Resolve       func(context.Context, *oauth2.Token, string) (OAuthProfile, error)
+	ExchangeCode func(context.Context, oauth2.Config, string, string, url.Values) (*oauth2.Token, error)
+	Resolve      func(context.Context, *oauth2.Token, string) (OAuthProfile, error)
+	// UserInfoURL is the profile endpoint of a provider without Resolve. An ID
+	// token in the token response that names a subject and an email is used
+	// instead, without checking its signature; use providers.OpenIDConnect
+	// for verified ID tokens. Otherwise the endpoint is called with the
+	// access token, and the profile's id, email, email_verified, name and
+	// picture are read.
+	UserInfoURL   string
 	VerifyIDToken func(ctx context.Context, raw, nonce string) (OAuthProfile, time.Time, error)
 	// DisableIDTokenSignIn closes the direct token grant on social sign-in and
 	// linking. Browser code exchanges and the One Tap plugin verify independently.
@@ -295,6 +302,12 @@ func prepareOAuthProviders(in map[string]OAuthProvider, store Store, userFieldsO
 				return nil, errors.New("auth: social signup with configured user fields requires an OAuthRegistrationStore")
 			}
 		}
+		if p.UserInfoURL != "" {
+			if p.Resolve != nil {
+				return nil, fmt.Errorf("auth: OAuth provider %q: UserInfoURL is used only without Resolve", id)
+			}
+			p.Resolve = userInfoResolver(p.UserInfoURL)
+		}
 		if !providerName.MatchString(id) || id == "credential" || p.Config.ClientID == "" || p.Resolve == nil {
 			return nil, fmt.Errorf("incomplete OAuth provider %q", id)
 		}
@@ -311,8 +324,10 @@ func prepareOAuthProviders(in map[string]OAuthProvider, store Store, userFieldsO
 			return nil, err
 		}
 		endpoints := []string{p.Config.Endpoint.AuthURL, p.Config.Endpoint.TokenURL}
-		if p.EndSessionEndpoint != "" {
-			endpoints = append(endpoints, p.EndSessionEndpoint)
+		for _, optional := range []string{p.EndSessionEndpoint, p.UserInfoURL} {
+			if optional != "" {
+				endpoints = append(endpoints, optional)
+			}
 		}
 		for _, endpoint := range endpoints {
 			u, err := url.Parse(endpoint)

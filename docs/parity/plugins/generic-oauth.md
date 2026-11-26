@@ -398,7 +398,8 @@
     - [x] `tokenUrl` ([test](../../../conformance/goapi/oauth_test.go#L54))
       - [x] Exchange the code at the configured token endpoint with the authorized redirect URI and the matching PKCE verifier ([test](../../../conformance/goapi/oauth_test.go#L54))
       - [x] Exchange the code at the token endpoint read from discovery with the configured client credentials ([test](../../../providers/enterprise_oidc_test.go#L48))
-    - [ ] `userInfoUrl`
+    - [x] `userInfoUrl` ([test](../../../conformance/goapi/oauth_userinfo_url_test.go#L80))
+      - [x] UserInfoURL reads a hand-configured provider's profile from that endpoint with the access token, or from a token-endpoint ID token naming a subject and an email; a numeric id becomes the subject, the whole profile is the account data, a profile without an id, an error status or no email fails the sign-in, and New refuses an insecure endpoint or one alongside Resolve ([test](../../../conformance/goapi/oauth_userinfo_url_test.go#L80))
     - [x] `endSessionEndpoint` ([test](../../../conformance/goapi/oauth_logout_test.go#L17))
       - [x] Send the signed-out user to the configured end-session endpoint, keeping its query and adding the ID token hint, state and client ID ([test](../../../conformance/goapi/oauth_logout_test.go#L17))
       - [x] Take the provider logout URL from an enterprise preset's discovery document ([test](../../../providers/enterprise_oidc_test.go#L70))
@@ -527,7 +528,8 @@
         - [x] Send a hand-configured provider's sign-in to its configured authorization endpoint with state, nonce and an S256 challenge ([test](../../../conformance/goapi/oauth_test.go#L30))
       - [ ] tokenUrl
         - [x] Exchange the code at a hand-configured provider's token endpoint with the matching redirect URI and PKCE verifier ([test](../../../conformance/goapi/oauth_test.go#L54))
-      - [ ] userInfoUrl
+      - [x] userInfoUrl ([test](../../../conformance/goapi/oauth_userinfo_url_test.go#L80))
+        - [x] UserInfoURL reads a hand-configured provider's profile from that endpoint with the access token, or from a token-endpoint ID token naming a subject and an email; a numeric id becomes the subject, the whole profile is the account data, a profile without an id, an error status or no email fails the sign-in, and New refuses an insecure endpoint or one alongside Resolve ([test](../../../conformance/goapi/oauth_userinfo_url_test.go#L80))
       - [ ] endSessionEndpoint
         - [x] Send provider sign-out to a configured end-session endpoint, keeping its own query parameters ([test](../../../conformance/goapi/oauth_logout_test.go#L70))
         - [x] Read the end-session endpoint from the issuer's discovery document ([test](../../../providers/enterprise_oidc_test.go#L71))
