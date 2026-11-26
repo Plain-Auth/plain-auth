@@ -319,8 +319,14 @@ func TestSAMLAlgorithmURIs(t *testing.T) {
 	if string(DataEncryptionAES256GCM) != xmlenc.AES256GCM.Algorithm() {
 		t.Fatal("AES-256-GCM URI differs from the decrypter's")
 	}
-	if string(DataEncryptionAES128GCM) != xmlenc.AES128GCM.Algorithm() || string(DataEncryptionAES256CBC) != xmlenc.AES256CBC.Algorithm() || string(DataEncryptionTripleDESCBC) != xmlenc.TripleDES.Algorithm() {
-		t.Fatal("block cipher URIs differ from the decrypter's")
+	for got, want := range map[DataEncryptionAlgorithm]xmlenc.BlockCipher{
+		DataEncryptionTripleDESCBC: xmlenc.TripleDES,
+		DataEncryptionAES128CBC:    xmlenc.AES128CBC, DataEncryptionAES192CBC: xmlenc.AES192CBC, DataEncryptionAES256CBC: xmlenc.AES256CBC,
+		DataEncryptionAES128GCM: xmlenc.AES128GCM, DataEncryptionAES192GCM: xmlenc.AES192GCM, DataEncryptionAES256GCM: xmlenc.AES256GCM,
+	} {
+		if string(got) != want.Algorithm() {
+			t.Fatal("block cipher URIs differ from the decrypter's", got, want.Algorithm())
+		}
 	}
 }
 
@@ -384,10 +390,52 @@ func TestSAMLResponseAlgorithmPolicy(t *testing.T) {
 	if code, _ := failure((SAMLAlgorithms{}).checkSignatures(response, assertion)); code != "SAML_DEPRECATED_ALGORITHM" {
 		t.Fatal("an assertion signature behind a valid response signature escaped the policy", code)
 	}
-	foreign := signed("Assertion", string(SignatureRSASHA512), sha256)
+	if code, _ := failure(onlyRSA256.checkSignatures(signed("Response", string(SignatureRSASHA512), sha256), signed("Assertion", rsa256, sha256))); code != "SAML_ALGORITHM_NOT_ALLOWED" {
+		t.Fatal("a response signature outside the allow-list escaped the policy", code)
+	}
+	// A second or foreign Signature sibling fails closed even beside a
+	// signature the policy accepts.
+	if err := onlyRSA256.checkSignatures(signed("Assertion", rsa256, sha256)); err != nil {
+		t.Fatal("an allowed signature was refused", err)
+	}
+	foreign := signed("Assertion", rsa256, sha256)
 	foreign.CreateElement("x:Signature").CreateAttr("xmlns:x", "urn:other")
-	if err := onlyRSA256.checkSignatures(foreign); err == nil {
-		t.Fatal("a foreign Signature sibling hid the signature from the policy")
+	if err := onlyRSA256.checkSignatures(foreign); !errors.Is(err, errSAMLResponse) {
+		t.Fatal("a foreign Signature sibling hid the signature from the policy", err)
+	}
+	second := signed("Assertion", rsa256, sha256)
+	second.AddChild(signed("Assertion", string(SignatureRSASHA512), sha256).SelectElement("ds:Signature"))
+	if err := onlyRSA256.checkSignatures(second); !errors.Is(err, errSAMLResponse) {
+		t.Fatal("a second Signature hid a method from the policy", err)
+	}
+	// A method the policy cannot read unambiguously fails closed.
+	for name, edit := range map[string]func(info *etree.Element){
+		"missing SignatureMethod": func(info *etree.Element) { info.RemoveChild(info.SelectElement("ds:SignatureMethod")) },
+		"two SignatureMethods":    func(info *etree.Element) { info.CreateElement("ds:SignatureMethod").CreateAttr("Algorithm", rsa256) },
+		"foreign SignatureMethod": func(info *etree.Element) { info.CreateElement("x:SignatureMethod").CreateAttr("xmlns:x", "urn:other") },
+		"prefixed Algorithm too":  func(info *etree.Element) { info.SelectElement("ds:SignatureMethod").CreateAttr("x:Algorithm", rsa256) },
+		"only a prefixed Algorithm": func(info *etree.Element) {
+			m := info.SelectElement("ds:SignatureMethod")
+			m.RemoveAttr("Algorithm")
+			m.CreateAttr("x:Algorithm", rsa256)
+		},
+		"empty Algorithm": func(info *etree.Element) { info.SelectElement("ds:SignatureMethod").CreateAttr("Algorithm", "") },
+		"missing DigestMethod": func(info *etree.Element) {
+			r := info.SelectElement("ds:Reference")
+			r.RemoveChild(r.SelectElement("ds:DigestMethod"))
+		},
+		"two DigestMethods": func(info *etree.Element) {
+			info.SelectElement("ds:Reference").CreateElement("ds:DigestMethod").CreateAttr("Algorithm", sha256)
+		},
+		"prefixed digest Algorithm": func(info *etree.Element) {
+			info.SelectElement("ds:Reference").SelectElement("ds:DigestMethod").CreateAttr("x:Algorithm", sha256)
+		},
+	} {
+		el := signed("Assertion", rsa256, sha256)
+		edit(el.SelectElement("ds:Signature").SelectElement("ds:SignedInfo"))
+		if err := onlyRSA256.checkSignatures(el); !errors.Is(err, errSAMLResponse) {
+			t.Fatal("an unreadable signature method passed the policy", name, err)
+		}
 	}
 }
 

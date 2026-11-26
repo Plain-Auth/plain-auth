@@ -19,7 +19,9 @@ func samlConfigSchema() object {
 	sp := responseObject(object{"entityID": text, "isAssertionEncrypted": encryption})
 	sp["additionalProperties"] = false
 	idp["anyOf"] = []object{{"required": []string{"entityID"}}, {"required": []string{"metadata"}}}
-	config := responseObject(object{"callbackUrl": text, "idpInitiatedCallbackUrl": text, "entryPoint": object{"type": "string", "format": "uri"}, "cert": cert, "audience": text, "idpMetadata": idp, "spMetadata": sp, "wantAssertionsSigned": object{"const": true}, "authnRequestsSigned": object{"type": "boolean"}, "identifierFormat": text, "mapping": modelSchema(reflect.TypeFor[sso.SAMLMapping]())}, "entryPoint", "idpMetadata")
+	config := responseObject(object{"callbackUrl": text, "idpInitiatedCallbackUrl": text, "entryPoint": object{"type": "string", "format": "uri"}, "cert": cert, "audience": text, "idpMetadata": idp, "spMetadata": sp, "wantAssertionsSigned": object{"const": true}, "authnRequestsSigned": object{"type": "boolean"}, "identifierFormat": text, "mapping": modelSchema(reflect.TypeFor[sso.SAMLMapping]()),
+		"signatureAlgorithm": object{"type": "string", "minLength": 1, "description": "XML signature algorithm URI or a short form such as rsa-sha256, checked against SAMLOptions.Algorithms at registration."},
+		"digestAlgorithm":    object{"type": "string", "minLength": 1, "description": "XML digest algorithm URI or a short form such as sha256, checked against SAMLOptions.Algorithms at registration."}}, "entryPoint", "idpMetadata")
 	config["anyOf"] = []object{{"properties": object{"idpMetadata": object{"required": []string{"metadata"}}}}, {"required": []string{"cert"}}, {"properties": object{"idpMetadata": object{"required": []string{"cert"}}}}}
 	return config
 }

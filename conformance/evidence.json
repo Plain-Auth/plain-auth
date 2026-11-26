@@ -42207,13 +42207,18 @@
     {
       "label": "Reject private, reserved and cloud metadata endpoint hosts in oidcConfig that are not explicitly trusted with 400 discovery_private_host",
       "test": "plugins/sso/discovery_test.go",
-      "marker": "for _, endpoint := range []string{\"https://100.64.0.1/keys\", \"https://[2001:db8::1]/keys\", \"https://metadata.goog/keys\"} {",
-      "complete": true
+      "marker": "for _, endpoint := range []string{\"https://100.64.0.1/keys\", \"https://[2001:db8::1]/keys\", \"https://metadata.goog/keys\"} {"
     },
     {
       "label": "Register a provider through discovery from a loopback IdP origin listed in trusted origins on both runtimes",
       "test": "conformance/sso-providers.mjs",
       "marker": "trustedOrigins: [origin],"
+    },
+    {
+      "label": "Refuse configured token, UserInfo and JWKS endpoints on private hosts with 400 discovery_private_host",
+      "test": "plugins/sso/discovery_test.go",
+      "marker": "a private oidcConfig endpoint did not answer 400 discovery_private_host",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/sso/oidc.mdx#L121/`discovery_invalid_json`": [
@@ -44185,7 +44190,7 @@
   ],
   "plugin-symbol/sso/AlgorithmValidationOptions": [
     {
-      "label": "Apply the signature and digest allow-lists and the deprecated and unknown algorithm checks to response and assertion signatures at the ACS, on SQLite, PostgreSQL and MySQL",
+      "label": "Apply the signature allow-list to the assertion signature inside an allowed response, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/sso_saml_policy_test.go",
       "marker": "an RSA-SHA512 assertion inside an RSA-SHA256 response escaped the allow-list"
     },
@@ -44198,6 +44203,16 @@
       "label": "Apply the signature allow-list to a decrypted assertion",
       "test": "adapters/sqlstore/sso_saml_policy_test.go",
       "marker": "a decrypted RSA-SHA512 assertion escaped the allow-list"
+    },
+    {
+      "label": "Apply the signature allow-list to the response signature around an allowed plain or encrypted assertion, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_saml_policy_test.go",
+      "marker": "an RSA-SHA512 response around an RSA-SHA256 assertion escaped the allow-list"
+    },
+    {
+      "label": "Refuse a signature whose method is missing, repeated, foreign, prefixed or empty",
+      "test": "plugins/sso/saml_test.go",
+      "marker": "an unreadable signature method passed the policy"
     }
   ],
   "plugin-symbol/sso/AlgorithmValidationOptions/allowedSignatureAlgorithms": [
@@ -44214,8 +44229,7 @@
     {
       "label": "Apply the signature allow-list to a directory's signatureAlgorithm at registration",
       "test": "adapters/sqlstore/sso_saml_policy_test.go",
-      "marker": "registration accepted a signatureAlgorithm outside the allow-list",
-      "complete": true
+      "marker": "registration accepted a signatureAlgorithm outside the allow-list"
     }
   ],
   "plugin-symbol/sso/AlgorithmValidationOptions/allowedDigestAlgorithms": [
@@ -44232,8 +44246,7 @@
     {
       "label": "Apply the digest allow-list to a directory's digestAlgorithm",
       "test": "plugins/sso/saml_test.go",
-      "marker": "a digestAlgorithm outside the allow-list was accepted",
-      "complete": true
+      "marker": "a digestAlgorithm outside the allow-list was accepted"
     }
   ],
   "docs/content/docs/plugins/sso/saml-security.mdx#L93/Signature": [
@@ -44326,7 +44339,7 @@
       "complete": true
     },
     {
-      "label": "Redirect an RSA 1.5 key transport with saml_deprecated_algorithm",
+      "label": "Redirect an RSA 1.5 key transport with saml_deprecated_algorithm whatever the content cipher, before naming Triple DES",
       "test": "adapters/sqlstore/sso_saml_policy_test.go",
       "marker": "an RSA 1.5 key transport did not fail with saml_deprecated_algorithm"
     }
@@ -44389,16 +44402,14 @@
     {
       "label": "Check a directory's recorded algorithms against the policy at registration and store nothing when refused, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/sso_saml_policy_test.go",
-      "marker": "a refused algorithm registration stored a provider",
-      "complete": true
+      "marker": "a refused algorithm registration stored a provider"
     }
   ],
   "docs/content/docs/plugins/sso/saml-security.mdx#L130/`SAML_DEPRECATED_CONFIG_ALGORITHM`": [
     {
       "label": "Refuse registration with a deprecated signatureAlgorithm with 400 SAML_DEPRECATED_CONFIG_ALGORITHM and its message, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/sso_saml_policy_test.go",
-      "marker": "registration accepted a deprecated signatureAlgorithm",
-      "complete": true
+      "marker": "registration accepted a deprecated signatureAlgorithm"
     },
     {
       "label": "Name a deprecated digestAlgorithm in SAML_DEPRECATED_CONFIG_ALGORITHM",

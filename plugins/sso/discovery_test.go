@@ -177,7 +177,7 @@ func TestDiscoveryErrorCodes(t *testing.T) {
 	}
 	// Every discovered URL, stored or not, must sit on a trusted origin, and
 	// the refusal names the field and the URL.
-	for _, field := range []string{"authorization_endpoint", "jwks_uri", "userinfo_endpoint", "revocation_endpoint", "end_session_endpoint", "introspection_endpoint"} {
+	for _, field := range []string{"token_endpoint", "authorization_endpoint", "jwks_uri", "userinfo_endpoint", "revocation_endpoint", "end_session_endpoint", "introspection_endpoint"} {
 		served = strings.Replace(doc, "}", `,"`+field+`":"https://elsewhere.example.test/`+field+`"}`, 1)
 		var e *auth.APIError
 		if err := fetch("/served"); !errors.As(err, &e) || e.Status != 400 || e.Code != "discovery_untrusted_origin" || e.Message != `The `+field+` "https://elsewhere.example.test/`+field+`" is not trusted by your trusted origins configuration` {
@@ -190,9 +190,9 @@ func TestDiscoveryErrorCodes(t *testing.T) {
 	}
 	// A document missing a required field is refused even when oidcConfig
 	// supplies that endpoint.
-	for _, field := range []string{`"issuer":"https://login.example.test/tenant",`, `"authorization_endpoint":"/authorize",`, `,"token_endpoint":"/token"`} {
+	for _, field := range []string{`"issuer":"https://login.example.test/tenant",`, `"authorization_endpoint":"/authorize",`, `,"token_endpoint":"/token"`, `,"jwks_uri":"/keys"`} {
 		served = strings.Replace(doc, field, "", 1)
-		cfg := Config{Issuer: issuer, DiscoveryEndpoint: issuer + "/served", AuthorizationEndpoint: issuer + "/authorize", TokenEndpoint: issuer + "/token"}
+		cfg := Config{Issuer: issuer, DiscoveryEndpoint: issuer + "/served", AuthorizationEndpoint: issuer + "/authorize", TokenEndpoint: issuer + "/token", JWKSEndpoint: issuer + "/keys"}
 		if status, code := reply(hydrate(t.Context(), host, client, &cfg, false)); served == doc || status != 400 || code != "discovery_incomplete" {
 			t.Fatal("a discovery document missing a required field did not answer 400 discovery_incomplete", field, status, code)
 		}
@@ -207,6 +207,16 @@ func TestDiscoveryErrorCodes(t *testing.T) {
 	} {
 		if status, code := reply(hydrate(t.Context(), host, client, &cfg, false)); status != 400 || code != "discovery_invalid_url" {
 			t.Fatal("a malformed issuer or discovery URL did not answer 400 discovery_invalid_url", cfg.Issuer, cfg.DiscoveryEndpoint, status, code)
+		}
+	}
+	// A configured endpoint on a private host is refused before any request.
+	for _, cfg := range []Config{
+		{Issuer: issuer, AuthorizationEndpoint: issuer + "/authorize", TokenEndpoint: "http://169.254.169.254/latest/meta-data/", JWKSEndpoint: issuer + "/keys"},
+		{Issuer: issuer, AuthorizationEndpoint: issuer + "/authorize", TokenEndpoint: issuer + "/token", JWKSEndpoint: issuer + "/keys", UserInfoEndpoint: "https://10.0.0.5/userinfo"},
+		{Issuer: issuer, AuthorizationEndpoint: issuer + "/authorize", TokenEndpoint: issuer + "/token", JWKSEndpoint: "http://localhost:6379/"},
+	} {
+		if status, code := reply(hydrate(t.Context(), host, client, &cfg, true)); status != 400 || code != "discovery_private_host" {
+			t.Fatal("a private oidcConfig endpoint did not answer 400 discovery_private_host", cfg, status, code)
 		}
 	}
 	manual := Config{Issuer: issuer, AuthorizationEndpoint: "not-a-url", TokenEndpoint: issuer + "/token", JWKSEndpoint: issuer + "/keys"}

@@ -249,6 +249,11 @@ func TestEnterpriseSAMLDocumentation(t *testing.T) {
 		if node(schema, "properties", "samlConfig", "properties", "idpMetadata", "properties")["metadata"] == nil {
 			t.Fatal("registration lacks inline metadata")
 		}
+		for _, field := range []string{"signatureAlgorithm", "digestAlgorithm"} {
+			if node(schema, "properties", "samlConfig", "properties", field)["type"] != "string" {
+				t.Fatal("registration does not describe the SAML algorithm", field)
+			}
+		}
 		for _, field := range []string{"idpMetadata", "spMetadata"} {
 			properties := node(schema, "properties", "samlConfig", "properties", field)
 			fields := node(properties, "properties")

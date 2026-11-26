@@ -146,6 +146,25 @@ func exportedURI[T ~string](uri T, known ...T) string {
 // checkSignatures applies the policy to the enveloped ds:Signature of each
 // element before the library verifies it. It can only refuse: the library
 // still verifies everything accepted, and RejectSHA1Signatures stays on.
+// strictAlgorithm reads an element's one unprefixed Algorithm attribute. A
+// missing, empty, prefixed or second Algorithm attribute makes it
+// unreadable, so the policy never passes a method it cannot see.
+func strictAlgorithm(e *etree.Element) (string, bool) {
+	if e == nil {
+		return "", false
+	}
+	value, n := "", 0
+	for _, attr := range e.Attr {
+		if attr.Key == "Algorithm" {
+			if attr.Space != "" {
+				return "", false
+			}
+			value, n = attr.Value, n+1
+		}
+	}
+	return value, n == 1 && value != ""
+}
+
 func (a SAMLAlgorithms) checkSignatures(elements ...*etree.Element) error {
 	for _, el := range elements {
 		if el == nil {
@@ -164,7 +183,11 @@ func (a SAMLAlgorithms) checkSignatures(elements ...*etree.Element) error {
 		if info == nil {
 			return errSAMLResponse
 		}
-		method := SignatureAlgorithm(uniqueAttribute(uniqueChild(info, signatureNS, "SignatureMethod"), "Algorithm"))
+		raw, ok := strictAlgorithm(uniqueChild(info, signatureNS, "SignatureMethod"))
+		if !ok {
+			return errSAMLResponse
+		}
+		method := SignatureAlgorithm(raw)
 		knownSignatures := append(slices.Clone(secureSignatureAlgorithms), SignatureRSASHA1)
 		if err := checkSAMLAlgorithm("signature", method, a.AllowedSignatureAlgorithms, secureSignatureAlgorithms, SignatureRSASHA1, exportedURI(method, knownSignatures...), "SHA-256 or stronger"); err != nil {
 			return err
@@ -173,7 +196,11 @@ func (a SAMLAlgorithms) checkSignatures(elements ...*etree.Element) error {
 			if ref.Tag != "Reference" {
 				continue
 			}
-			digest := DigestAlgorithm(uniqueAttribute(uniqueChild(ref, signatureNS, "DigestMethod"), "Algorithm"))
+			raw, ok := strictAlgorithm(uniqueChild(ref, signatureNS, "DigestMethod"))
+			if !ok {
+				return errSAMLResponse
+			}
+			digest := DigestAlgorithm(raw)
 			knownDigests := append(slices.Clone(secureDigestAlgorithms), DigestSHA1)
 			if err := checkSAMLAlgorithm("digest", digest, a.AllowedDigestAlgorithms, secureDigestAlgorithms, DigestSHA1, exportedURI(digest, knownDigests...), "SHA-256 or stronger"); err != nil {
 				return err

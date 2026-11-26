@@ -253,6 +253,12 @@ func TestEnterpriseSAMLResponsePolicy(t *testing.T) {
 				if !refused(location, session, "saml_algorithm_not_allowed", "SAML signature algorithm not in allow-list: http://www.w3.org/2001/04/xmldsig-more#rsa-sha512") {
 					t.Fatal("an RSA-SHA512 assertion inside an RSA-SHA256 response escaped the allow-list", location)
 				}
+				p.respond = func(req *saml.IdpAuthnRequest) { req.IDP.SignatureMethod = string(sso.SignatureRSASHA512) }
+				location, session = signedWith(sigOnly, sso.SignatureRSASHA256)
+				p.respond = nil
+				if !refused(location, session, "saml_algorithm_not_allowed", "SAML signature algorithm not in allow-list: http://www.w3.org/2001/04/xmldsig-more#rsa-sha512") {
+					t.Fatal("an RSA-SHA512 response around an RSA-SHA256 assertion escaped the allow-list", location)
+				}
 			})
 			t.Run("deprecated encryption", func(t *testing.T) {
 				p := newSAMLPolicy(t, dialect)
@@ -277,8 +283,11 @@ func TestEnterpriseSAMLResponsePolicy(t *testing.T) {
 				if location, session := sealed(def, cipher(xmlenc.OAEP_SHA256(), xmlenc.TripleDES), sso.SignatureRSASHA256); !refused(location, session, "saml_deprecated_algorithm", "SAML response uses deprecated data encryption algorithm: http://www.w3.org/2001/04/xmlenc#tripledes-cbc. Please configure your IdP to use AES-GCM.") {
 					t.Fatal("a 3DES assertion did not fail with saml_deprecated_algorithm", location)
 				}
-				if location, session := sealed(def, cipher(xmlenc.PKCS1v15(), xmlenc.AES256GCM), sso.SignatureRSASHA256); !refused(location, session, "saml_deprecated_algorithm", "SAML response uses deprecated key encryption algorithm: http://www.w3.org/2001/04/xmlenc#rsa-1_5. Please configure your IdP to use RSA-OAEP.") {
-					t.Fatal("an RSA 1.5 key transport did not fail with saml_deprecated_algorithm", location)
+				// The key transport is named first, whatever the content cipher.
+				for _, block := range []xmlenc.BlockCipher{xmlenc.AES256GCM, xmlenc.AES256CBC, xmlenc.TripleDES} {
+					if location, session := sealed(def, cipher(xmlenc.PKCS1v15(), block), sso.SignatureRSASHA256); !refused(location, session, "saml_deprecated_algorithm", "SAML response uses deprecated key encryption algorithm: http://www.w3.org/2001/04/xmlenc#rsa-1_5. Please configure your IdP to use RSA-OAEP.") {
+						t.Fatal("an RSA 1.5 key transport did not fail with saml_deprecated_algorithm", block.Algorithm(), location)
+					}
 				}
 				if location, _ := sealed(def, cipher(xmlenc.OAEP_SHA256(), xmlenc.AES128GCM), sso.SignatureRSASHA256); location.Query().Get("error") != "invalid_saml_response" {
 					t.Fatal("an unsupported AES-128-GCM assertion changed its error", location)
@@ -291,6 +300,12 @@ func TestEnterpriseSAMLResponsePolicy(t *testing.T) {
 				p.respond = nil
 				if !refused(location, session, "saml_algorithm_not_allowed", "SAML signature algorithm not in allow-list: http://www.w3.org/2001/04/xmldsig-more#rsa-sha512") {
 					t.Fatal("a decrypted RSA-SHA512 assertion escaped the allow-list", location)
+				}
+				p.respond = func(req *saml.IdpAuthnRequest) { req.IDP.SignatureMethod = string(sso.SignatureRSASHA512) }
+				location, session = sealed(sigOnly, cipher(xmlenc.OAEP_SHA256(), xmlenc.AES256GCM), sso.SignatureRSASHA256)
+				p.respond = nil
+				if !refused(location, session, "saml_algorithm_not_allowed", "SAML signature algorithm not in allow-list: http://www.w3.org/2001/04/xmldsig-more#rsa-sha512") {
+					t.Fatal("an RSA-SHA512 response around an encrypted assertion escaped the allow-list", location)
 				}
 			})
 			t.Run("registration algorithms", func(t *testing.T) {
@@ -410,15 +425,20 @@ func TestEnterpriseSAMLResponsePolicy(t *testing.T) {
 					t.Fatal("a future assertion did not fail with saml_error", location)
 				}
 				// The bearer confirmation's deadline is narrowed before the
-				// user is provisioned, even when Conditions are valid.
+				// user is provisioned, even when Conditions are valid. A fresh
+				// directory shows that no user is stored.
+				p.directory("bearer", nil)
 				bearer := func(a *saml.Assertion) {
 					a.Subject.SubjectConfirmations[0].SubjectConfirmationData.NotOnOrAfter = time.Now().Add(-2 * time.Minute)
 				}
+				req, state := p.start(strict, "bearer")
+				location, session := samlOutcome(t, p.finish(strict, "bearer", req, state, nil, bearer, nil))
+				var users int
+				if err := p.store.db.QueryRowContext(t.Context(), p.store.bind(`SELECT COUNT(*) FROM "user" WHERE "email"=?`), "employee-bearer@bearer.example").Scan(&users); err != nil || !refused(location, session, "SAML assertion has expired") || users != 0 {
+					t.Fatal("a one-minute clock skew accepted a bearer confirmation expired two minutes ago", location, users, err)
+				}
 				if location, session := run(def, bearer); location.String() != "https://service.test/home" || !session {
 					t.Fatal("a bearer confirmation expired within the default clock skew was refused", location)
-				}
-				if location, session := run(strict, bearer); !refused(location, session, "SAML assertion has expired") {
-					t.Fatal("a one-minute clock skew accepted a bearer confirmation expired two minutes ago", location)
 				}
 				untimed := func(a *saml.Assertion) { a.Conditions.NotBefore, a.Conditions.NotOnOrAfter = time.Time{}, time.Time{} }
 				if location, session := run(logged, untimed); location.String() != "https://service.test/home" || !session || buf.count("SAML assertion accepted without timestamp conditions") != 1 || buf.count("providerId=clock") != 1 {

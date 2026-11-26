@@ -169,22 +169,23 @@ func encryptedAssertionID(raw []byte, acs, requestID string, key *rsa.PrivateKey
 		return "", errSAMLResponse
 	}
 	dataMethod := uniqueChild(ciphertext, encryptionNS, "EncryptionMethod")
-	// A deprecated cipher is named; any other one outside the profile stays
-	// an invalid response.
+	info := uniqueChild(ciphertext, signatureNS, "KeyInfo")
+	envelope := uniqueChild(info, encryptionNS, "EncryptedKey")
+	wrapMethod := uniqueChild(envelope, encryptionNS, "EncryptionMethod")
+	// A deprecated key transport, then a deprecated cipher, is named, in the
+	// order another runtime checks them; any other algorithm outside the
+	// profile stays an invalid response.
+	if alg := uniqueAttribute(wrapMethod, "Algorithm"); alg == string(KeyEncryptionRSA15) {
+		return "", deprecatedSAMLResponseAlgorithm("key encryption", alg, "RSA-OAEP")
+	}
 	if alg := uniqueAttribute(dataMethod, "Algorithm"); alg == string(DataEncryptionTripleDESCBC) {
 		return "", deprecatedSAMLResponseAlgorithm("data encryption", alg, "AES-GCM")
 	}
 	if uniqueAttribute(dataMethod, "Algorithm") != aesGCM256 || len(dataMethod.ChildElements()) != 0 || !inlineCipherValue(ciphertext) {
 		return "", errSAMLResponse
 	}
-	info := uniqueChild(ciphertext, signatureNS, "KeyInfo")
-	envelope := uniqueChild(info, encryptionNS, "EncryptedKey")
 	if info == nil || len(info.ChildElements()) != 1 || envelope == nil || !inlineCipherValue(envelope) {
 		return "", errSAMLResponse
-	}
-	wrapMethod := uniqueChild(envelope, encryptionNS, "EncryptionMethod")
-	if alg := uniqueAttribute(wrapMethod, "Algorithm"); alg == string(KeyEncryptionRSA15) {
-		return "", deprecatedSAMLResponseAlgorithm("key encryption", alg, "RSA-OAEP")
 	}
 	digest := uniqueChild(wrapMethod, signatureNS, "DigestMethod")
 	mgf := uniqueChild(wrapMethod, encryption11NS, "MGF")
