@@ -98,7 +98,7 @@ func (s *Store) SCIMReuse(ctx context.Context, d scim.Directory, p scim.Profile)
 // SCIMCreateResolved creates a SCIM User and its account, or attaches it to
 // the account a resolver linked.
 func (s *Store) SCIMCreateResolved(ctx context.Context, d scim.Directory, p scim.Profile, r scim.IdentityResolution) (out scim.Record, err error) {
-	link := r.Action == "link"
+	link, reclaim := r.Action == "link", r.Action == scim.ActionReclaim
 	err = s.scimWriteTx(ctx, d, func(tx *sql.Tx) error {
 		now := time.Now().UTC().Truncate(time.Millisecond)
 		if p.ExternalID != "" {
@@ -122,6 +122,11 @@ func (s *Store) SCIMCreateResolved(ctx context.Context, d scim.Directory, p scim
 		}
 		if t.id != "" && link {
 			return scim.ErrConflict
+		}
+		// A predicted reclaim that vanished never creates an account; the
+		// handler resolves the User again.
+		if t.id == "" && reclaim {
+			return scim.ErrReclaimChanged
 		}
 		u := directoryUser{Record: scim.Record{ID: rand.Text(), Profile: p, CreatedAt: now, UpdatedAt: now}, owner: t.owner}
 		switch {

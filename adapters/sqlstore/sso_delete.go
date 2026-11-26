@@ -2,8 +2,11 @@ package sqlstore
 
 import (
 	"context"
+	"crypto/sha256"
 	"database/sql"
+	"encoding/hex"
 	"errors"
+	"fmt"
 	"time"
 
 	auth "github.com/Plain-Org/plain-auth"
@@ -22,22 +25,53 @@ var (
 type providerGuard struct {
 	approved bool
 	planned  *sso.ProviderMutation
+	links    string
 }
 
 // check is called at the guard point inside the transaction: a dry run
-// records m and stops, an approved run continues only for the same snapshot.
-func (g *providerGuard) check(m sso.ProviderMutation) error {
+// records m and the digest of the exact linked accounts and stops; an
+// approved run continues only for the same snapshot and the same links.
+func (g *providerGuard) check(m sso.ProviderMutation, links string) error {
 	if g == nil {
 		return nil
 	}
 	if !g.approved {
-		g.planned = &m
+		g.planned, g.links = &m, links
 		return errGuardPlanned
 	}
-	if !sameMutation(*g.planned, m) {
+	if !sameMutation(*g.planned, m) || links != g.links {
 		return errGuardChanged
 	}
 	return nil
+}
+
+// linkDigest names an exact set of linked accounts, so a guard approval is
+// never applied to a different set of the same size.
+func linkDigest(links []oauthIdentity) string {
+	h := sha256.New()
+	for _, link := range links {
+		fmt.Fprintf(h, "%s\x00%s\x00%s\x00", link.ID, link.UserID, link.Subject)
+	}
+	return hex.EncodeToString(h.Sum(nil))
+}
+
+// linkedAccounts reads the accounts linked to a provider, ordered by ID, for
+// a guarded update.
+func (s *Store) linkedAccounts(ctx context.Context, tx *sql.Tx, providerID string) ([]oauthIdentity, error) {
+	rows, err := tx.QueryContext(ctx, s.bind(`SELECT "id","userId","accountId" FROM "account" WHERE `+s.scimExact(`"providerId"`)+`=? ORDER BY "id"`), providerID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var links []oauthIdentity
+	for rows.Next() {
+		var link oauthIdentity
+		if err = rows.Scan(&link.ID, &link.UserID, &link.Subject); err != nil {
+			return nil, err
+		}
+		links = append(links, link)
+	}
+	return links, rows.Err()
 }
 
 func sameMutation(a, b sso.ProviderMutation) bool {
@@ -143,7 +177,7 @@ func (s *Store) deleteSSOProvider(ctx context.Context, actor sso.Actor, id, reco
 		return err
 	}
 	mutation := sso.ProviderMutation{Action: "delete", AuthenticationBoundaryChanged: true, ID: recordID, ProviderID: id, OrganizationID: p.OrganizationID, Reference: p.Reference, LinkedAccounts: len(owned)}
-	if err = guard.check(mutation); err != nil {
+	if err = guard.check(mutation, linkDigest(owned)); err != nil {
 		return err
 	}
 	for _, link := range owned {

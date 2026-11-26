@@ -400,8 +400,10 @@
   - [ ] `SSOProvider`
     - [x] Return the registered provider's record with its provider ID, OIDC configuration and redirect URI to the released client on both runtimes ([test](../../../conformance/sso-providers.mjs#L65))
   - [x] `SSOProviderMutationGuardContext` ([test](../../../adapters/sqlstore/sso_delete_test.go#L228))
-    - [x] Run the mutation guard outside the store's transaction on a snapshot, review a provider changed meanwhile again, and give up with SSO_PROVIDER_CHANGED when it keeps changing, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_delete_test.go#L228))
+    - [x] Run the deletion, metadata and update guards outside the store's transaction on a snapshot of the provider and its linked accounts, review a provider changed meanwhile again, and give up with SSO_PROVIDER_CHANGED when it keeps changing, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_delete_test.go#L228))
     - [x] Let a sign-in on another node complete while the deletion guard decides ([test](../../../adapters/sqlstore/sso_delete_test.go#L160))
+    - [x] Review a deletion again when the provider's linked accounts were swapped while the guard decided ([test](../../../adapters/sqlstore/sso_delete_test.go#L309))
+    - [x] Run the update guard outside the transaction and review a provider changed meanwhile again ([test](../../../adapters/sqlstore/sso_delete_test.go#L330))
   - [ ] `SSOProviderMutationGuardInput`
     - [x] Pass the delete action, record ID, provider ID, organization, linked-account count and configuration reference of the locked provider to the guard ([test](../../../adapters/sqlstore/sso_delete_test.go#L137))
     - [x] Pass the update action, locked record, configuration reference and an authentication boundary change to the guard when IdP metadata is replaced ([test](../../../adapters/sqlstore/sso_saml_metadata_test.go#L160))
@@ -733,7 +735,7 @@
     - [x] `POST /sso/delete-provider` ([test](../../../plugins/openapi/sso_directory_test.go#L110))
       - [x] Answer 401 to a provider deletion without a session ([test](../../../plugins/openapi/sso_directory_test.go#L110))
       - [x] Delete a provider through the route with the owner's bearer session, answer success and drop it from the list ([test](../../../plugins/openapi/sso_directory_test.go#L161))
-      - [x] Remove a provider's linked accounts when the SQL store deletes it, and issue no session to a sign-in racing the deletion ([test](../../../adapters/sqlstore/sso_delete_test.go#L167))
+      - [x] Remove a provider's linked accounts when the SQL store deletes it, and refuse with no session a sign-in that started before the deletion ([test](../../../adapters/sqlstore/sso_delete_test.go#L167))
     - [x] `POST /sso/request-domain-verification` ([test](../../../plugins/openapi/sso_domain_test.go#L83))
       - [x] Answer 404 on both DNS routes when domain verification is off ([test](../../../plugins/openapi/sso_domain_test.go#L83))
       - [x] Answer 401 on both DNS routes without a session ([test](../../../plugins/openapi/sso_domain_test.go#L111))

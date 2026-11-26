@@ -31,9 +31,20 @@ type IdentityResolutionInput struct {
 // attaches the source to the existing account UserID; Profile "manage" lets
 // this source own the account's email and name and "preserve" leaves them
 // unchanged. Only one source manages an account.
+//
+// The handler itself passes Action "reclaim" to SCIMCreateResolved when
+// SCIMReuse predicted a reclaim; a resolver cannot return it.
 type IdentityResolution struct {
 	Action, UserID, Profile string
 }
+
+// ActionReclaim asks SCIMCreateResolved to reclaim the inactive or deleted
+// User SCIMReuse found, and nothing else.
+const ActionReclaim = "reclaim"
+
+// ErrReclaimChanged answers a reclaim that is no longer there when the
+// transaction runs; the handler retries the POST from SCIMReuse.
+var ErrReclaimChanged = &Error{409, "", "The SCIM identity changed concurrently; retry the request"}
 
 func (r IdentityResolution) valid() bool {
 	switch r.Action {
@@ -55,6 +66,8 @@ type IdentityStore interface {
 	// SCIMCreateResolved is SCIMCreate with a resolver's decision; a link to
 	// a missing account returns ErrResolvedUserMissing and a link the data no
 	// longer allows, such as an externalId reclaimed meanwhile, ErrConflict.
+	// With ActionReclaim it returns ErrReclaimChanged when it finds neither
+	// the inactive User nor the tombstone, rather than creating an account.
 	SCIMCreateResolved(ctx context.Context, d Directory, p Profile, r IdentityResolution) (Record, error)
 }
 

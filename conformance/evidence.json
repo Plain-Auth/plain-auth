@@ -42509,7 +42509,7 @@
       "marker": "del := wire.decode(wire.call(\"POST\", \"/sso/delete-provider\", obj{\"providerId\": \"tenant\"}, authorized, 200))"
     },
     {
-      "label": "Remove a provider's linked accounts when the SQL store deletes it, and issue no session to a sign-in racing the deletion",
+      "label": "Remove a provider's linked accounts when the SQL store deletes it, and refuse with no session a sign-in that started before the deletion",
       "test": "adapters/sqlstore/sso_delete_test.go",
       "marker": "t.Fatal(\"removed provider left a link or issued a session\")"
     }
@@ -45012,6 +45012,16 @@
       "test": "adapters/sqlstore/scim_identity_test.go",
       "marker": "t.Fatal(\"a link to a missing account stored identity state\", w.Code, w.Body.String())",
       "complete": true
+    },
+    {
+      "label": "Run a reclaim whose inactive User vanished before the write through the resolver again, and create an account when the resolver says create",
+      "test": "adapters/sqlstore/scim_identity_test.go",
+      "marker": "t.Fatal(\"a reclaim that vanished before the write skipped the resolver\", w.Code, raceCalls, w.Body.String())"
+    },
+    {
+      "label": "Create an account for the source on an explicit create decision",
+      "test": "adapters/sqlstore/scim_identity_test.go",
+      "marker": "t.Fatal(\"an explicit create decision did not create an account for the source\", w.Code, err)"
     }
   ],
   "plugin-symbol/scim/SCIMIdentityResolutionContext": [
@@ -45106,6 +45116,21 @@
       "test": "adapters/sqlstore/sso_scim_link_test.go",
       "marker": "t.Fatal(\"an active SCIM User could not sign in through the paired provider\", got)",
       "complete": true
+    },
+    {
+      "label": "Find no active link for a User of a retired connection and refuse its sign-in",
+      "test": "adapters/sqlstore/sso_scim_link_test.go",
+      "marker": "t.Fatal(\"a User of a retired connection signed in\", got)"
+    },
+    {
+      "label": "Refuse a sign-in whose connection was retired while the resolver ran",
+      "test": "adapters/sqlstore/sso_scim_link_test.go",
+      "marker": "t.Fatal(\"a sign-in whose connection was retired during resolution was not refused\", got)"
+    },
+    {
+      "label": "Find no active link for a tombstoned externalId or an orphaned SCIM User",
+      "test": "adapters/sqlstore/sso_scim_link_test.go",
+      "marker": "t.Fatal(\"an orphaned SCIM User still had an active link\", err)"
     }
   ],
   "docs/content/docs/plugins/scim/index.mdx#L220": [
@@ -45118,7 +45143,7 @@
   ],
   "plugin-symbol/sso/SSOProviderMutationGuardContext": [
     {
-      "label": "Run the mutation guard outside the store's transaction on a snapshot, review a provider changed meanwhile again, and give up with SSO_PROVIDER_CHANGED when it keeps changing, on SQLite, PostgreSQL and MySQL",
+      "label": "Run the deletion, metadata and update guards outside the store's transaction on a snapshot of the provider and its linked accounts, review a provider changed meanwhile again, and give up with SSO_PROVIDER_CHANGED when it keeps changing, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/sso_delete_test.go",
       "marker": "func TestEnterpriseProviderGuardOutsideTransaction(",
       "complete": true
@@ -45127,14 +45152,23 @@
       "label": "Let a sign-in on another node complete while the deletion guard decides",
       "test": "adapters/sqlstore/sso_delete_test.go",
       "marker": "t.Fatal(\"a sign-in waited on or failed during a guard that should run outside the transaction\", during)"
+    },
+    {
+      "label": "Review a deletion again when the provider's linked accounts were swapped while the guard decided",
+      "test": "adapters/sqlstore/sso_delete_test.go",
+      "marker": "t.Fatal(\"a deletion committed over a different set of linked accounts than the guard approved\", err, len(swaps))"
+    },
+    {
+      "label": "Run the update guard outside the transaction and review a provider changed meanwhile again",
+      "test": "adapters/sqlstore/sso_delete_test.go",
+      "marker": "t.Fatal(\"an update guard did not run outside the transaction and review the changed provider again\", err, len(updates), updateRead)"
     }
   ],
   "docs/content/docs/plugins/scim/reference.mdx#L523/Bulk requests, POST-based search, `/Me`, ETags, cursors, or sorting": [
     {
       "label": "Refuse Bulk and /Me with 404 and POST search with 405, and advertise no sorting or ETags",
       "test": "plugins/scim/http_test.go",
-      "marker": "t.Fatal(\"a Bulk request was not refused with 404\", w.Code, w.Body.String())",
-      "complete": true
+      "marker": "t.Fatal(\"a Bulk request was not refused with 404\", w.Code, w.Body.String())"
     }
   ],
   "docs/content/docs/plugins/scim/reference.mdx#L525/A built-in OAuth token endpoint, Basic authentication, or mutual TLS": [

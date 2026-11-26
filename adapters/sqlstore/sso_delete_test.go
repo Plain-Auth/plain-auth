@@ -244,7 +244,7 @@ func TestEnterpriseProviderGuardOutsideTransaction(t *testing.T) {
 			h := newSSOHost(t, store, idp, sso.Options{})
 			owner := h.signUp("alice@enterprise.test")
 			ids := map[string]string{}
-			for _, id := range []string{"rotating", "flappy"} {
+			for _, id := range []string{"rotating", "flappy", "swapping", "updating"} {
 				w := h.register(owner, map[string]any{"providerId": id, "issuer": idp.URL, "domain": id + ".example", "oidcConfig": map[string]any{"clientId": "application", "clientSecret": "private", "skipDiscovery": true,
 					"authorizationEndpoint": idp.URL + "/authorize", "tokenEndpoint": idp.URL + "/token", "jwksEndpoint": idp.URL + "/keys"}})
 				var reg struct{ ID string }
@@ -285,6 +285,49 @@ func TestEnterpriseProviderGuardOutsideTransaction(t *testing.T) {
 			must(store.db.QueryRowContext(ctx, store.bind(`SELECT COUNT(*) FROM "ssoProvider" WHERE "providerId"=?`), "rotating").Scan(&n))
 			if n != 0 {
 				t.Fatal("a guarded deletion did not commit after the guard approved the current snapshot", n)
+			}
+			// A different set of linked accounts of the same size is reviewed
+			// again too.
+			now := store.date(time.Now())
+			link := func(account, subject string) {
+				t.Helper()
+				_, err := store.db.ExecContext(ctx, store.bind(`INSERT INTO "account" ("id","providerId","accountId","userId","createdAt","updatedAt") VALUES (?,?,?,?,?,?)`), account, "swapping", subject, alice.ID, now, now)
+				must(err)
+				must(store.ReconcileOAuthAccount(ctx, OAuthAccountAttribution{AccountID: account, UserID: alice.ID, Subject: subject, ProviderID: "swapping", EnterpriseRecordID: ids["swapping"], EnterpriseIssuer: idp.URL}))
+			}
+			link("swap-a", "subject-a")
+			var swaps []sso.ProviderMutation
+			swap := func(_ context.Context, m sso.ProviderMutation) error {
+				if swaps = append(swaps, m); len(swaps) == 1 {
+					_, err := store.db.ExecContext(ctx, store.bind(`DELETE FROM "account" WHERE "id"=?`), "swap-a")
+					must(err)
+					link("swap-b", "subject-b")
+				}
+				return nil
+			}
+			if err := store.DeleteSSOProvider(ctx, actor, "swapping", ids["swapping"], swap); err != nil || len(swaps) != 2 || swaps[0].LinkedAccounts != 1 || swaps[1].LinkedAccounts != 1 {
+				t.Fatal("a deletion committed over a different set of linked accounts than the guard approved", err, len(swaps))
+			}
+			// The general update asks the guard outside the transaction too.
+			var updates []sso.ProviderMutation
+			var updateRead error
+			updateGuard := func(gc context.Context, m sso.ProviderMutation) error {
+				read, cancel := context.WithTimeout(gc, 2*time.Second)
+				defer cancel()
+				_, updateRead = store.FindAccountUser(read, "alice@enterprise.test")
+				if updates = append(updates, m); len(updates) == 1 {
+					change(m.ID)
+				}
+				return nil
+			}
+			scopes := func(current sso.Provider) (sso.Provider, bool, error) {
+				cfg := *current.OIDC
+				cfg.Scopes = []string{"openid", "email"}
+				current.OIDC = &cfg
+				return current, false, nil
+			}
+			if _, err := store.UpdateSSOProvider(ctx, actor, "updating", ids["updating"], scopes, updateGuard); err != nil || len(updates) != 2 || updates[0].Reference == updates[1].Reference || updateRead != nil {
+				t.Fatal("an update guard did not run outside the transaction and review the changed provider again", err, len(updates), updateRead)
 			}
 			flapping := func(_ context.Context, m sso.ProviderMutation) error { change(m.ID); return nil }
 			err = store.DeleteSSOProvider(ctx, actor, "flappy", ids["flappy"], flapping)

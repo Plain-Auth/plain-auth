@@ -176,6 +176,13 @@ func TestSCIMIdentityResolution(t *testing.T) {
 			if _, err := store.FindAccountUser(ctx, "fresh@example.test"); err != nil {
 				t.Fatal("an empty SCIM resolution did not create an account", err)
 			}
+			set(func(scim.IdentityResolutionInput) (scim.IdentityResolution, error) {
+				return scim.IdentityResolution{Action: "create"}, nil
+			})
+			w, explicit := post("writer", "explicit", "explicit-1", "Explicit", "explicit@example.test")
+			if account, err := store.FindAccountUser(ctx, "explicit@example.test"); w.Code != 201 || err != nil || owner(explicit["id"]) != account.ID {
+				t.Fatal("an explicit create decision did not create an account for the source", w.Code, err)
+			}
 
 			w, stable := post("writer", "stable", "stable-1", "Stable", "stable@example.test")
 			first := owner(stable["id"])
@@ -189,6 +196,31 @@ func TestSCIMIdentityResolution(t *testing.T) {
 			if w.Code != 201 || owner(again["id"]) != first || stableCalls != 1 {
 				t.Fatal("the SCIM resolver ran for a deleted User's externalId", w.Code, stableCalls)
 			}
+			// A reclaim that vanishes between SCIMReuse and the write starts
+			// over and runs the resolver instead of creating an account.
+			w, racing := post("writer", "race", "race-1", "Race", "race@example.test")
+			if p := patch(racing["id"], map[string]any{"op": "replace", "path": "active", "value": false}); w.Code != 201 || p.Code != 200 {
+				t.Fatal("setup failed", w.Code, p.Code)
+			}
+			directory := scim.Directory{ID: "ACME", ProvisioningDomainID: "Org"}
+			race := &reclaimRace{Store: store, hook: func() {
+				_, err := store.SCIMUpdate(ctx, directory, racing["id"].(string), func(r scim.Record) (scim.Profile, error) {
+					p := r.Profile
+					p.ExternalID = "race-moved"
+					return p, nil
+				})
+				must(err)
+			}}
+			racer, err := scim.New(host, scim.Options{Store: race, Connections: []scim.Connection{connection("ACME", "writer")}, Identity: &scim.Identity{ResolveUser: resolve}})
+			must(err)
+			w = scimRequest(racer, "POST", "Users", "writer", map[string]any{"schemas": []string{scim.UserSchema}, "userName": "race-again", "externalId": "race-1", "displayName": "Race", "emails": []any{map[string]any{"value": "race-again@example.test", "primary": true}}})
+			mu.Lock()
+			raceCalls := calls["race-1"]
+			mu.Unlock()
+			if w.Code != 201 || raceCalls != 2 {
+				t.Fatal("a reclaim that vanished before the write skipped the resolver", w.Code, raceCalls, w.Body.String())
+			}
+
 			w, soft := post("writer", "soft", "soft-1", "Soft", "soft@example.test")
 			if p := patch(soft["id"], map[string]any{"op": "replace", "path": "active", "value": false}); w.Code != 201 || p.Code != 200 {
 				t.Fatal("setup failed", w.Code, p.Code, p.Body.String())
@@ -202,4 +234,19 @@ func TestSCIMIdentityResolution(t *testing.T) {
 			}
 		})
 	}
+}
+
+// reclaimRace runs hook once, right after SCIMReuse answers.
+type reclaimRace struct {
+	*Store
+	hook func()
+}
+
+func (r *reclaimRace) SCIMReuse(ctx context.Context, d scim.Directory, p scim.Profile) (bool, error) {
+	reuse, err := r.Store.SCIMReuse(ctx, d, p)
+	if hook := r.hook; hook != nil {
+		r.hook = nil
+		hook()
+	}
+	return reuse, err
 }

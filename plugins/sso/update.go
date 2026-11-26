@@ -9,15 +9,17 @@ import (
 
 // ProviderChange derives a managed provider's next issuer, domain and OIDC
 // configuration from the row the store has locked, and reports whether the
-// issuer, client ID or an endpoint changed.
+// issuer, client ID or an endpoint changed. That flag does not cover the
+// claim mapping, which the store compares itself.
 type ProviderChange func(current Provider) (next Provider, identityChanged bool, err error)
 
 // ProviderUpdateStore applies a general provider update under a live
 // direct-session and tenant check. It locks the exact record, applies change
 // to it, counts its linked accounts, asks guard as MutationGuard describes,
 // and refuses an identity change while accounts are linked. A change to the
-// domain or the identity resets a DNS proof; other changes carry it
-// forward.
+// domain, the identity or the OIDC claim mapping resets a DNS proof,
+// because the mapping chooses the email the proof vouches for; other changes
+// carry it forward.
 type ProviderUpdateStore interface {
 	UpdateSSOProvider(ctx context.Context, actor Actor, id, recordID string, change ProviderChange, guard MutationGuard) (Provider, error)
 }

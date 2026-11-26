@@ -84,6 +84,8 @@
     - [x] Refuse identity resolution on a store that cannot apply it ([test](../../../plugins/scim/http_test.go#L162))
   - [x] `SCIMIdentityResolution` ([test](../../../adapters/sqlstore/scim_identity_test.go#L158))
     - [x] Create on the zero value, link with manage or preserve, answer 409 for a missing account and 500 for a failing or invalid decision ([test](../../../adapters/sqlstore/scim_identity_test.go#L158))
+    - [x] Run a reclaim whose inactive User vanished before the write through the resolver again, and create an account when the resolver says create ([test](../../../adapters/sqlstore/scim_identity_test.go#L221))
+    - [x] Create an account for the source on an explicit create decision ([test](../../../adapters/sqlstore/scim_identity_test.go#L184))
   - [x] `SCIMIdentityResolutionContext` ([test](../../../adapters/sqlstore/scim_identity_test.go#L117))
     - [x] Run the SCIM resolver outside the directory transaction, so it can read through the store ([test](../../../adapters/sqlstore/scim_identity_test.go#L117))
   - [x] `SCIMIdentityResolutionInput` ([test](../../../adapters/sqlstore/scim_identity_test.go#L120))
@@ -186,6 +188,9 @@
     - [x] Match the connection ID and externalId exactly and case-sensitively ([test](../../../adapters/sqlstore/sso_scim_link_test.go#L111))
   - [x] `acquireActiveSCIMUserLink` ([test](../../../adapters/sqlstore/sso_scim_link_test.go#L99))
     - [x] Sign an active SCIM User in through the paired provider and refuse an inactive or deleted one ([test](../../../adapters/sqlstore/sso_scim_link_test.go#L99))
+    - [x] Find no active link for a User of a retired connection and refuse its sign-in ([test](../../../adapters/sqlstore/sso_scim_link_test.go#L154))
+    - [x] Refuse a sign-in whose connection was retired while the resolver ran ([test](../../../adapters/sqlstore/sso_scim_link_test.go#L163))
+    - [x] Find no active link for a tombstoned externalId or an orphaned SCIM User ([test](../../../adapters/sqlstore/sso_scim_link_test.go#L180))
   - [ ] `scim`
   - `SCIMPlugin` — *not applicable: TypeScript type (ReturnType<typeof createSCIMPlugin>), consistent with the UsernamePlugin and OrganizationPlugin rules in scope.json*
   - `SCIMEndpoints` — *not applicable: TypeScript type alias (SCIMPlugin["endpoints"]) with no runtime behaviour*
@@ -221,7 +226,7 @@
     - [x] Create, reject conflicts, reprovision inactive Users and restore an external identity after deletion ([test](../../../conformance/scim-contract.mjs#L45))
     - [x] Normalize directory role values, type and primary flags and replace the role profile when reprovisioning the same inactive external identity ([test](../../../conformance/scim-roles.mjs#L59))
     - [x] ValidateUserInfo checks a provisioned user with method scim on SQLite, PostgreSQL and MySQL, and a refusal answers a SCIM 403 with the message and stores nothing ([test](../../../adapters/sqlstore/scim_user_validation_test.go#L17))
-    - [x] Link an existing account from a POST, and skip the resolver for a reclaimed deleted or inactive User's externalId ([test](../../../adapters/sqlstore/scim_identity_test.go#L190))
+    - [x] Link an existing account from a POST, and skip the resolver for a reclaimed deleted or inactive User's externalId ([test](../../../adapters/sqlstore/scim_identity_test.go#L197))
   - [x] `GET /scim/v2/Users/:userId` ([test](../../../adapters/sqlstore/scim_test.go#L143))
     - [x] Read a scoped User written by the other implementation from shared SQLite ([test](../../../conformance/scim-contract.mjs#L45))
     - [x] Read canonical directory role arrays from SQLite records written by either implementation ([test](../../../conformance/scim-roles.mjs#L75))
@@ -500,7 +505,7 @@
     - [ ] Nested Groups or non-User Group members
       - [x] Reject a Group created with another Group as a member with 400 ([test](../../../adapters/sqlstore/scim_groups_test.go#L111))
       - [x] Reject adding a Group ID as a member with 400 invalidValue on both runtimes ([test](../../../conformance/scim-contract.mjs#L112))
-    - [x] Bulk requests, POST-based search, `/Me`, ETags, cursors, or sorting ([test](../../../plugins/scim/http_test.go#L234))
+    - [ ] Bulk requests, POST-based search, `/Me`, ETags, cursors, or sorting
       - [x] Refuse Bulk and /Me with 404 and POST search with 405, and advertise no sorting or ETags ([test](../../../plugins/scim/http_test.go#L234))
     - [ ] Operators other than equality and logical `and`
       - [x] Reject a User filter using the co operator with 400 ([test](../../../adapters/sqlstore/scim_test.go#L159))

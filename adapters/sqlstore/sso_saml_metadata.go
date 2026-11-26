@@ -46,13 +46,13 @@ func (s *Store) UpdateSSOMetadata(ctx context.Context, actor sso.Actor, id, reco
 					return sso.ErrInvalidSAML
 				}
 				identityChanged := !sso.SameSAMLIdentity(*current.SAML, *next)
-				var links int
-				query := `SELECT COUNT(*) FROM "account" WHERE ` + s.scimExact(`"providerId"`) + `=?`
-				if e = tx.QueryRowContext(ctx, s.bind(query), id).Scan(&links); e != nil {
+				linked, e := s.linkedAccounts(ctx, tx, id)
+				if e != nil {
 					return e
 				}
+				links := len(linked)
 				mutation := sso.ProviderMutation{Action: "update", ID: recordID, ProviderID: id, OrganizationID: current.OrganizationID, Reference: expected, LinkedAccounts: links, AuthenticationBoundaryChanged: identityChanged || sso.SAMLTrustChanged(*current.SAML, *next)}
-				if e = g.check(mutation); e != nil {
+				if e = g.check(mutation, linkDigest(linked)); e != nil {
 					return e
 				}
 				if identityChanged && links != 0 {

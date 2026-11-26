@@ -22,8 +22,13 @@ type Options struct {
 	SAML *SAMLOptions
 	// DomainVerification enables DNS ownership checks for managed OIDC domains.
 	DomainVerification *DomainVerificationOptions
-	// GuardProviderMutation can reject a metadata update or deletion after the exact provider and
-	// its authorization have been checked inside the store transaction.
+	// GuardProviderMutation reviews a provider deletion, SAML metadata
+	// replacement or general update after the exact provider and its
+	// authorization are checked. It runs outside the store's transaction on a
+	// snapshot of the locked provider and its linked accounts, and the store
+	// commits only if it locks the same snapshot again, asking again up to
+	// three times. Keep it free of side effects; an error denies the
+	// operation and nothing is written.
 	GuardProviderMutation MutationGuard
 	// SharedCallback registers the same /sso/callback URL for every enterprise client.
 	// The shared callback is always {basePath}/sso/callback; another runtime

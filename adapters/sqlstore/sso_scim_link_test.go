@@ -139,6 +139,47 @@ func TestEnterpriseSignInGatedBySCIM(t *testing.T) {
 				t.Fatal("an inactive SCIM User signed in", got)
 			}
 			active(id, true)
+			exec := func(q string, args ...any) {
+				t.Helper()
+				_, err := store.db.ExecContext(ctx, store.bind(q), args...)
+				must(err)
+			}
+			// A retired connection, a tombstone for the externalId and an
+			// orphaned User each lose the active link.
+			exec(`UPDATE "scimConnectionBinding" SET "decommissionStatus"='reconciling' WHERE "connectionId"=?`, "workforce")
+			if _, err := store.SCIMActiveUserLink(ctx, ref); !errors.Is(err, scim.ErrNotFound) {
+				t.Fatal("a retired connection still had an active link", err)
+			}
+			if got := signIn(); !strings.Contains(got, "error=SCIM_USER_NOT_ACTIVE") {
+				t.Fatal("a User of a retired connection signed in", got)
+			}
+			exec(`UPDATE "scimConnectionBinding" SET "decommissionStatus"='active' WHERE "connectionId"=?`, "workforce")
+			mu.Lock()
+			hook = func() {
+				exec(`UPDATE "scimConnectionBinding" SET "decommissionStatus"='reconciling' WHERE "connectionId"=?`, "workforce")
+			}
+			mu.Unlock()
+			if got := signIn(); !strings.Contains(got, "error=SSO_USER_RESOLUTION_FAILED") {
+				t.Fatal("a sign-in whose connection was retired during resolution was not refused", got)
+			}
+			mu.Lock()
+			hook = nil
+			mu.Unlock()
+			exec(`UPDATE "scimConnectionBinding" SET "decommissionStatus"='active' WHERE "connectionId"=?`, "workforce")
+			if _, err := store.SCIMActiveUserLink(ctx, ref); err != nil {
+				t.Fatal("a restored connection had no active link", err)
+			}
+			exec(`INSERT INTO "scimIdentityTombstone" ("id","connectionId","provisioningDomainId","externalId","externalIdKey","userId","profile","deletedAt") VALUES (?,?,?,?,?,?,?,?)`,
+				"stale-tomb", "workforce", "workforce", "employee", scimKey("scim-user-external-id", "workforce", "employee"), owner, "preserve", now)
+			if _, err := store.SCIMActiveUserLink(ctx, ref); !errors.Is(err, scim.ErrNotFound) {
+				t.Fatal("a tombstoned externalId still had an active link", err)
+			}
+			exec(`DELETE FROM "scimIdentityTombstone" WHERE "id"=?`, "stale-tomb")
+			exec(`DELETE FROM "scimSubject" WHERE "userId"=?`, owner)
+			if _, err := store.SCIMActiveUserLink(ctx, ref); !errors.Is(err, scim.ErrNotFound) {
+				t.Fatal("an orphaned SCIM User still had an active link", err)
+			}
+			exec(`INSERT INTO "scimSubject" ("id","userId","profileSourceId","revision","createdAt","updatedAt") VALUES (?,?,?,1,?,?)`, "restored", owner, id, store.date(now), store.date(now))
 			if w := directoryCall(http.MethodDelete, "Users/"+id, nil); w.Code != 204 {
 				t.Fatal("DELETE failed", w.Code, w.Body.String())
 			}

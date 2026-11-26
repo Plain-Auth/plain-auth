@@ -176,20 +176,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					rec, err = h.store.SCIMCreate(ctx, d, profile)
 					break
 				}
-				store := h.store.(IdentityStore)
-				var reuse bool
-				if reuse, err = store.SCIMReuse(ctx, d, profile); err != nil {
-					break
-				}
-				var resolved IdentityResolution
-				if !reuse {
-					// Resolve outside any transaction; the store rechecks the
-					// decision in its own.
-					if resolved, err = h.resolve(ctx, d, profile); err != nil {
-						break
-					}
-				}
-				rec, err = store.SCIMCreateResolved(ctx, d, profile, resolved)
+				rec, err = h.createResolved(ctx, d, profile)
 			} else {
 				rec, err = h.store.SCIMUpdate(ctx, d, id, func(Record) (Profile, error) { return profile, nil })
 			}
@@ -292,3 +279,30 @@ func writeError(w http.ResponseWriter, err error) {
 }
 
 var errUnchangedPatch = errors.New("scim: unchanged patch")
+
+// createResolved reclaims the inactive or deleted User SCIMReuse predicts,
+// or resolves the incoming User outside any transaction and creates or
+// links it; the store rechecks the decision in its own. A reclaim that
+// vanished before the write starts over, a bounded number of times.
+func (h *Handler) createResolved(ctx context.Context, d Directory, profile Profile) (Record, error) {
+	store := h.store.(IdentityStore)
+	var err error
+	for range 3 {
+		var reuse bool
+		if reuse, err = store.SCIMReuse(ctx, d, profile); err != nil {
+			return Record{}, err
+		}
+		resolved := IdentityResolution{Action: ActionReclaim}
+		if !reuse {
+			if resolved, err = h.resolve(ctx, d, profile); err != nil {
+				return Record{}, err
+			}
+		}
+		var rec Record
+		rec, err = store.SCIMCreateResolved(ctx, d, profile, resolved)
+		if !errors.Is(err, ErrReclaimChanged) {
+			return rec, err
+		}
+	}
+	return Record{}, err
+}
