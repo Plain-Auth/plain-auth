@@ -179,7 +179,8 @@
     - [x] Discover a configured Keycloak realm and authenticate with a signed ID token at a custom mount ([test](../../../providers/enterprise_oidc_test.go#L23))
     - [x] Match the Keycloak realm discovery location and default scopes with the published preset ([test](../../../conformance/enterprise-oidc.test.mjs#L6))
   - [ ] `LineOptions`
-    - [ ] `providerId`
+    - [x] `providerId` ([test](../../../providers/line_test.go#L187))
+      - [x] Two LINE channels under their own keys keep their own client IDs, secrets, callbacks and account namespaces: the same LINE user is a separate account per key, a state from one key fails at the other's callback, and a direct ID token works only at its own channel's key ([test](../../../providers/line_test.go#L187))
     - [ ] `clientId`
       - [x] The Gumroad, HubSpot, LINE, Patreon, Slack and Yandex presets post the configured client ID and secret with the code, callback redirect URI and PKCE verifier ([test](../../../providers/profile_presets_test.go#L77))
     - [ ] `clientSecret`
@@ -209,9 +210,10 @@
       - [x] Refresh a returning profile with either server, preserve protected fields and use the new mailbox verification status ([test](../../../conformance/social-user-fields.mjs#L145))
       - [x] Apply the provider profile-update policy on direct sign-in, Google One Tap and permitted automatic links across three SQL engines ([test](../../../adapters/sqlstore/oauth_profile_sync_test.go#L16))
   - [ ] `line`
-    - [x] Use channel-bound verification for ID tokens and reject the wrong issuer, audience, nonce or validity period ([test](../../../providers/line_test.go#L16))
+    - [x] Use channel-bound verification for ID tokens and reject the wrong issuer, audience, nonce or validity period ([test](../../../providers/line_test.go#L21))
     - [x] Complete access-token sign-in and persist the authenticated LINE subject and unverified email ([test](../../../providers/profile_presets_test.go#L32))
     - [x] Match the LINE default scopes, UserInfo mapping and subject with the published preset ([test](../../../conformance/profile-presets.test.mjs#L6))
+    - [x] Two LINE channels under their own keys keep their own client IDs, secrets, callbacks and account namespaces: the same LINE user is a separate account per key, a state from one key fails at the other's callback, and a direct ID token works only at its own channel's key ([test](../../../providers/line_test.go#L187))
   - [ ] `MicrosoftEntraIdOptions`
     - [x] `tenantId` ([test](../../../providers/entra_test.go#L52))
       - [x] Refuse an empty, shared or malformed tenant and accept an upper-case tenant GUID ([test](../../../providers/entra_test.go#L52))

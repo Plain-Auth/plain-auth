@@ -72,6 +72,12 @@ func New(name, clientID, secret string) (auth.OAuthProvider, error) {
 		return Facebook(clientID, secret, FacebookOptions{}), nil
 	case "kakao":
 		return Kakao(clientID, secret, KakaoOptions{}), nil
+	case "line":
+		p := fromCatalog(name, clientID, secret, catalog[name])
+		p.VerifyIDToken = func(ctx context.Context, raw, nonce string) (auth.OAuthProfile, time.Time, error) {
+			return lineIDToken(ctx, clientID, raw, nonce)
+		}
+		return p, nil
 	}
 	if preset, ok := profilePresets[name]; ok {
 		return preset.provider(name, clientID, secret), nil

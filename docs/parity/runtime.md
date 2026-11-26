@@ -210,7 +210,8 @@ Each entry groups the configured endpoint’s behaviors. A checked child records
   - [ ] `line`
     - [x] Complete the default browser code exchange and map the provider profile using a local fixture ([test](../../providers/catalog_test.go#L21))
     - [x] Send the refresh grant to the provider's token endpoint with its client authentication and fields, and return the new tokens ([test](../../providers/catalog_test.go#L283))
-    - [x] The LINE channel constructor checks the code-exchange ID token at LINE's verify endpoint and refuses another channel, nonce or issuer, or an expired token ([test](../../providers/line_test.go#L16))
+    - [x] The LINE channel constructor checks the code-exchange ID token at LINE's verify endpoint and refuses another channel, nonce or issuer, or an expired token ([test](../../providers/line_test.go#L21))
+    - [x] A LINE ID token signs in directly at LINE() and New("line") once LINE's verify endpoint accepts it for that channel with the nonce, sending only the client ID, token and nonce; a token LINE refuses answers INVALID_TOKEN (deviation: the nonce is required) ([test](../../providers/line_test.go#L158))
   - [ ] `linear`
     - [x] Complete the default browser code exchange and map the provider profile using a local fixture ([test](../../providers/catalog_test.go#L21))
     - [x] Send the refresh grant to the provider's token endpoint with its client authentication and fields, and return the new tokens ([test](../../providers/catalog_test.go#L283))
@@ -426,7 +427,7 @@ Each entry groups the configured endpoint’s behaviors. A checked child records
   - [ ] `line`
     - [x] `clientId` ([test](../../providers/catalog_test.go#L79))
       - [x] Authenticate each catalog provider's browser code exchange with the configured client ID and secret ([test](../../providers/catalog_test.go#L79))
-      - [x] Send the channel ID with the LINE ID token to the verify endpoint and reject a token issued for another channel ([test](../../providers/line_test.go#L25))
+      - [x] Send the channel ID with the LINE ID token to the verify endpoint and reject a token issued for another channel ([test](../../providers/line_test.go#L30))
   - [ ] `linear`
     - [x] `clientId` ([test](../../providers/catalog_test.go#L79))
       - [x] Authenticate each catalog provider's browser code exchange with the configured client ID and secret ([test](../../providers/catalog_test.go#L79))
@@ -552,8 +553,9 @@ Each entry groups the configured endpoint’s behaviors. A checked child records
       - [x] Refuse a Keycloak issuer that is not an HTTPS URL or carries a query or fragment ([test](../../providers/enterprise_oidc_test.go#L122))
       - [x] Check that the other runtime builds the same discovery URL from the shared Keycloak issuer fixture ([test](../../conformance/enterprise-oidc.test.mjs#L6))
   - [ ] line
-    - [ ] `providerId`
+    - [x] `providerId` ([test](../../providers/line_test.go#L187))
       - [x] Register the LINE channel preset under the line key and use that key's callback URL in the authorization request and the code exchange ([test](../../providers/profile_presets_test.go#L32))
+      - [x] Two LINE channels under their own keys keep their own client IDs, secrets, callbacks and account namespaces: the same LINE user is a separate account per key, a state from one key fails at the other's callback, and a direct ID token works only at its own channel's key ([test](../../providers/line_test.go#L187))
   - [ ] microsoft-entra-id
     - [x] `tenantId` ([test](../../providers/entra_test.go#L20))
       - [x] Refuse an empty, multi-tenant or malformed Entra tenant ID, lower-case an upper-case GUID and authorize at that tenant's endpoint ([test](../../providers/entra_test.go#L20))

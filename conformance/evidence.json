@@ -3014,6 +3014,11 @@
       "label": "The LINE channel constructor checks the code-exchange ID token at LINE's verify endpoint and refuses another channel, nonce or issuer, or an expired token",
       "test": "providers/line_test.go",
       "marker": "func TestLINEChannelTokenVerification("
+    },
+    {
+      "label": "A LINE ID token signs in directly at LINE() and New(\"line\") once LINE's verify endpoint accepts it for that channel with the nonce, sending only the client ID, token and nonce; a token LINE refuses answers INVALID_TOKEN (deviation: the nonce is required)",
+      "test": "providers/line_test.go",
+      "marker": "func TestLINEDirectIDToken(t *testing.T) {"
     }
   ],
   "provider/notion": [
@@ -8114,6 +8119,11 @@
       "label": "Match the LINE default scopes, UserInfo mapping and subject with the published preset",
       "test": "conformance/profile-presets.test.mjs",
       "marker": "test(\"OAuth profile presets match"
+    },
+    {
+      "label": "Two LINE channels under their own keys keep their own client IDs, secrets, callbacks and account namespaces: the same LINE user is a separate account per key, a state from one key fails at the other's callback, and a direct ID token works only at its own channel's key",
+      "test": "providers/line_test.go",
+      "marker": "func TestLINEChannelsUnderSeparateKeys(t *testing.T) {"
     }
   ],
   "plugin-symbol/generic-oauth/microsoftEntraId": [
@@ -25319,6 +25329,12 @@
       "label": "Register the LINE channel preset under the line key and use that key's callback URL in the authorization request and the code exchange",
       "test": "providers/profile_presets_test.go",
       "marker": "func TestProfilePresetBrowserSignIn("
+    },
+    {
+      "label": "Two LINE channels under their own keys keep their own client IDs, secrets, callbacks and account namespaces: the same LINE user is a separate account per key, a state from one key fails at the other's callback, and a direct ID token works only at its own channel's key",
+      "test": "providers/line_test.go",
+      "marker": "func TestLINEChannelsUnderSeparateKeys(t *testing.T) {",
+      "complete": true
     }
   ],
   "oauth-preset/microsoft-entra-id/tenantId": [
@@ -26616,6 +26632,11 @@
       "label": "The other runtime's line helper has the same endpoints and default scopes, and maps the same sample profile to the same fields and subject",
       "test": "conformance/profile-presets.test.mjs",
       "marker": "test(\"OAuth profile presets match"
+    },
+    {
+      "label": "Two LINE channels under their own keys keep their own client IDs, secrets, callbacks and account namespaces: the same LINE user is a separate account per key, a state from one key fails at the other's callback, and a direct ID token works only at its own channel's key",
+      "test": "providers/line_test.go",
+      "marker": "func TestLINEChannelsUnderSeparateKeys(t *testing.T) {"
     }
   ],
   "docs/content/docs/authentication/other-social-providers.mdx#L94/Microsoft Entra ID (Azure AD)": [
@@ -30685,6 +30706,29 @@
       "label": "A Kakao SDK ID token signs in for the REST API key or a listed native app key with its nonce, as the account the profile endpoint names, with an unverified email; another audience, issuer or nonce and a non-numeric subject are refused (deviation: the nonce is required)",
       "test": "providers/kakao_test.go",
       "marker": "func TestKakaoIDToken(t *testing.T) {"
+    }
+  ],
+  "docs/content/docs/authentication/line.mdx#L57": [
+    {
+      "label": "A LINE ID token signs in directly at LINE() and New(\"line\") once LINE's verify endpoint accepts it for that channel with the nonce, sending only the client ID, token and nonce; a token LINE refuses answers INVALID_TOKEN (deviation: the nonce is required)",
+      "test": "providers/line_test.go",
+      "marker": "func TestLINEDirectIDToken(t *testing.T) {"
+    }
+  ],
+  "docs/content/docs/authentication/line.mdx#L79": [
+    {
+      "label": "Two LINE channels under their own keys keep their own client IDs, secrets, callbacks and account namespaces: the same LINE user is a separate account per key, a state from one key fails at the other's callback, and a direct ID token works only at its own channel's key",
+      "test": "providers/line_test.go",
+      "marker": "func TestLINEChannelsUnderSeparateKeys(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/generic-oauth/LineOptions/providerId": [
+    {
+      "label": "Two LINE channels under their own keys keep their own client IDs, secrets, callbacks and account namespaces: the same LINE user is a separate account per key, a state from one key fails at the other's callback, and a direct ID token works only at its own channel's key",
+      "test": "providers/line_test.go",
+      "marker": "func TestLINEChannelsUnderSeparateKeys(t *testing.T) {",
+      "complete": true
     }
   ]
 }
