@@ -29,6 +29,10 @@ type AnonymousStore interface {
 	CheckAnonymousSchema(context.Context) error
 	IsAnonymous(ctx context.Context, userID string) (bool, error)
 	CreateAnonymous(ctx context.Context, user User, session StoredSession) error
+	// DeleteAnonymous removes the guest's user, its sessions and its other
+	// account rows together; when it returns an error it has removed
+	// nothing. It returns ErrNotAnonymous when the user is not a guest, and
+	// ErrNotFound when the session is no longer live or not the user's.
 	DeleteAnonymous(ctx context.Context, userID, token string, now time.Time) error
 	LinkAnonymous(ctx context.Context, sourceToken, targetToken string, now time.Time, retain bool, callback func(context.Context, AnonymousLink) error) error
 }
@@ -144,12 +148,18 @@ func (o AnonymousOptions) delete(c EndpointContext) (any, error) {
 	if o.DisableDeleteAnonymousUser {
 		return nil, &APIError{400, "DELETE_ANONYMOUS_USER_DISABLED", "Deleting anonymous users is disabled"}
 	}
-	if err = c.Store().(AnonymousStore).DeleteAnonymous(c.Request.Context(), current.User.ID, current.Session.Token, c.Auth.now()); errors.Is(err, ErrNotAnonymous) {
+	ctx := c.Request.Context()
+	switch err = c.Store().(AnonymousStore).DeleteAnonymous(ctx, current.User.ID, current.Session.Token, c.Auth.now()); {
+	case errors.Is(err, ErrNotAnonymous):
 		return nil, &APIError{403, "USER_IS_NOT_ANONYMOUS", "User is not anonymous"}
-	} else if errors.Is(err, ErrNotFound) {
+	case errors.Is(err, ErrNotFound):
 		return nil, &APIError{401, "UNAUTHORIZED", "Unauthorized"}
-	} else if err != nil {
-		return nil, err
+	case err != nil:
+		// The store deletes the guest's sessions and user in one call, so a
+		// failure leaves the guest whole and signed in: there is no separate
+		// answer for sessions deleted ahead of a user that could not be.
+		c.Auth.Logger().ErrorContext(ctx, "Failed to delete anonymous user", "error", err)
+		return nil, errors.Join(&APIError{500, "FAILED_TO_DELETE_ANONYMOUS_USER", "Failed to delete anonymous user"}, err)
 	}
 	c.Auth.expireSessionCookieHeaders(c.ResponseHeader, c.Request)
 	return map[string]bool{"success": true}, nil

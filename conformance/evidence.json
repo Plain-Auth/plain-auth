@@ -37314,5 +37314,26 @@
       "test": "conformance/core.test.mjs",
       "marker": "assert.equal(payload.exp - payload.iat, 900);"
     }
+  ],
+  "plugin-symbol/anonymous/ANONYMOUS_ERROR_CODES": [
+    {
+      "label": "Answer each of the seven guest errors Go returns with its status, code and message, including 500 FAILED_TO_DELETE_ANONYMOUS_USER when the store cannot delete the guest (deviation: deletion is one store call, so there is no separate sessions code)",
+      "test": "client/anonymous_test.go",
+      "marker": "func TestGuestErrorCodes(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/anonymous.mdx#L181/Notes:": [
+    {
+      "label": "Use the generated address when an email domain is also configured",
+      "test": "client/anonymous_test.go",
+      "marker": "guest email or default name failed",
+      "complete": true
+    },
+    {
+      "label": "Fall back to the configured domain when the generator returns an empty address",
+      "test": "client/anonymous_test.go",
+      "marker": "an empty generated address did not fall back to the domain"
+    }
   ]
 }

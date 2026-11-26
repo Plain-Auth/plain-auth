@@ -19,7 +19,9 @@ options.Plugins = append(options.Plugins, guest)
 | Revoke the current login | `POST /sign-out` | `SignOut(ctx)` |
 | Remove the current guest and their sessions | `POST /delete-anonymous-user` | `DeleteAnonymousUser(ctx)` |
 
-The default profile name is `Anonymous`. Guest email addresses use the reserved `anonymous.placeholder.invalid` domain. Guests have no password or provider credentials. `GenerateName` can derive a display name from the initiating request. `EmailDomainName` sets a custom domain. `GenerateRandomEmail` can supply a valid unique address. The user controls neither the guest flag nor the identity to delete. A second guest sign-in on an active guest session returns an error.
+The default profile name is `Anonymous`. Guest email addresses use the reserved `anonymous.placeholder.invalid` domain. Guests have no password or provider credentials. `GenerateName` can derive a display name from the initiating request. `EmailDomainName` sets a custom domain. `GenerateRandomEmail` can supply a valid unique address; it takes precedence over `EmailDomainName`, which then applies only when the generator returns an empty string. The user controls neither the guest flag nor the identity to delete. A second guest sign-in on an active guest session returns an error.
+
+Each refusal carries a code and message, for example 400 `DELETE_ANONYMOUS_USER_DISABLED` or 403 `USER_IS_NOT_ANONYMOUS`. If the store cannot delete the guest, `POST /delete-anonymous-user` answers 500 `FAILED_TO_DELETE_ANONYMOUS_USER`, keeps the guest signed in and passes the store's error to `OnAPIError`. The store removes a guest's sessions and user together, so the route never answers a separate code for sessions deleted ahead of the user. [Guest error tests](../client/anonymous_test.go)
 
 ## Transfer a guest's data
 

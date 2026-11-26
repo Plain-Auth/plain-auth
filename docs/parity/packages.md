@@ -55,7 +55,7 @@ Each row tracks the behavior exposed by a published entry point. The Go implemen
     - [x] The typed client requests a magic link whose sender gets body-free request metadata, verifies it into its cookie jar, and a second verification fails ([test](../../client/magiclink_test.go#L18))
     - [x] One typed client generates a one-time token for its session, another redeems it once and keeps the bound cookie, and a second verification fails ([test](../../client/onetimetoken_test.go#L17))
     - [x] The typed client enables a delivered second factor, sends and verifies its code during sign-in, and keeps the remembered-browser grant in its cookie jar ([test](../../client/twofactor_delivery_test.go#L17))
-    - [x] The typed client's anonymous sign-in refuses an invalid generated guest email, then signs a guest in with the default name, and signing up ends the guest session ([test](../../client/anonymous_test.go#L17))
+    - [x] The typed client's anonymous sign-in refuses an invalid generated guest email, then signs a guest in with the default name, and signing up ends the guest session ([test](../../client/anonymous_test.go#L19))
     - [x] WithBearerToken sends a signed bearer credential without cookies, keeps bearer and cookie identities apart, and refuses a revoked or malformed bearer ([test](../../client/bearer_test.go#L16))
   - Client-side plugin registration (`./client/plugins`) — *not applicable: JavaScript only*
   - [ ] Configuration and result types (`./types`)

@@ -8,7 +8,8 @@
   - [x] Sign in as a guest, refuse a second guest sign-in, upgrade by password sign-up, refuse to delete the permanent account and delete a new guest, on both servers with the official client ([test](../../../conformance/core.test.mjs#L787))
   - [x] `anonymousClient` ([test](../../../conformance/core.test.mjs#L787))
     - [x] The public browser client creates, upgrades, reads and removes guest identities on both servers ([test](../../../conformance/core.test.mjs#L787))
-  - [ ] `ANONYMOUS_ERROR_CODES`
+  - [x] `ANONYMOUS_ERROR_CODES` ([test](../../../client/anonymous_test.go#L84))
+    - [x] Answer each of the seven guest errors Go returns with its status, code and message, including 500 FAILED_TO_DELETE_ANONYMOUS_USER when the store cannot delete the guest (deviation: deletion is one store call, so there is no separate sessions code) ([test](../../../client/anonymous_test.go#L84))
   - [x] `POST /sign-in/anonymous` ([test](../../../conformance/core.test.mjs#L787))
     - [x] Create a guest without a password, with a usable session and the guest flag ([test](../../../adapters/sqlstore/anonymous_test.go#L141))
     - [x] The public browser client creates, upgrades, reads and removes guest identities on both servers ([test](../../../conformance/core.test.mjs#L787))
@@ -35,8 +36,8 @@
       - [x] Retain a linked guest, block explicit deletion and deliver one callback across concurrent requests ([test](../../../adapters/sqlstore/anonymous_test.go#L261))
     - [x] `generateName` ([test](../../../adapters/sqlstore/anonymous_test.go#L81))
       - [x] Obtain guest display names from the initiating HTTP request ([test](../../../adapters/sqlstore/anonymous_test.go#L81))
-    - [x] `generateRandomEmail` ([test](../../../client/anonymous_test.go#L45))
-      - [x] Accept host-generated guest addresses and reject invalid values ([test](../../../client/anonymous_test.go#L45))
+    - [x] `generateRandomEmail` ([test](../../../client/anonymous_test.go#L49))
+      - [x] Accept host-generated guest addresses and reject invalid values ([test](../../../client/anonymous_test.go#L49))
     - [ ] `schema`
 
 ## Anonymous
@@ -47,7 +48,7 @@
     - [x] Sign In Anonymously ([test](../../../conformance/core.test.mjs#L798))
       - [x] Start a guest identity through the browser or native client ([test](../../../conformance/core.test.mjs#L787))
       - [x] Refuse a second guest sign-in from a guest session with ANONYMOUS_USERS_CANNOT_SIGN_IN_AGAIN_ANONYMOUSLY on both servers ([test](../../../conformance/core.test.mjs#L798))
-      - [x] Name a guest Anonymous by default and give it the generated address ([test](../../../client/anonymous_test.go#L49))
+      - [x] Name a guest Anonymous by default and give it the generated address ([test](../../../client/anonymous_test.go#L53))
       - [x] Create a flagged guest named by the configured generator at the configured email domain ([test](../../../adapters/sqlstore/anonymous_test.go#L123))
       - [x] `POST /sign-in/anonymous` ([test](../../../conformance/core.test.mjs#L794))
         - [x] Create a guest flagged isAnonymous through the official client on both servers ([test](../../../conformance/core.test.mjs#L794))
@@ -71,11 +72,13 @@
     - [x] `emailDomainName` ([test](../../../adapters/sqlstore/anonymous_test.go#L123))
       - [x] Give guests addresses at the configured domain ([test](../../../adapters/sqlstore/anonymous_test.go#L123))
       - [x] Give guests addresses at anonymous.placeholder.invalid when no domain is configured, on both servers ([test](../../../conformance/core.test.mjs#L795))
-    - [ ] `generateRandomEmail`
-      - [x] Use the address returned by the configured generator for a new guest ([test](../../../client/anonymous_test.go#L49))
-      - [ ] Notes:
-    - [x] `onLinkAccount` ([test](../../../client/anonymous_test.go#L21))
-      - [x] Pass the guest and the newly registered account to the callback during a password sign-up ([test](../../../client/anonymous_test.go#L21))
+    - [x] `generateRandomEmail` ([test](../../../client/anonymous_test.go#L53))
+      - [x] Use the address returned by the configured generator for a new guest ([test](../../../client/anonymous_test.go#L53))
+      - [x] Notes: ([test](../../../client/anonymous_test.go#L53))
+        - [x] Use the generated address when an email domain is also configured ([test](../../../client/anonymous_test.go#L53))
+        - [x] Fall back to the configured domain when the generator returns an empty address ([test](../../../client/anonymous_test.go#L69))
+    - [x] `onLinkAccount` ([test](../../../client/anonymous_test.go#L24))
+      - [x] Pass the guest and the newly registered account to the callback during a password sign-up ([test](../../../client/anonymous_test.go#L24))
       - [x] Pass a guest flagged anonymous and a permanent new user to the callback ([test](../../../adapters/sqlstore/anonymous_test.go#L86))
     - [ ] `disableDeleteAnonymousUser`
     - [x] `generateName` ([test](../../../adapters/sqlstore/anonymous_test.go#L81))
