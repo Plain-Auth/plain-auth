@@ -48,7 +48,7 @@
       - [x] Store plain backup codes as the JSON list of the issued codes ([test](../../../adapters/sqlstore/twofactor_delivery_test.go#L210))
     - [x] `allowPasswordless` ([test](../../../adapters/sqlstore/twofactor_options_test.go#L100))
       - [x] Let a passwordless account replace its backup codes without a password when the backup-code switch is on, even with the plugin-wide switch off; answer VALIDATION_ERROR when it is off, even with the plugin-wide switch on; and still require the password of an account that has one ([test](../../../adapters/sqlstore/twofactor_options_test.go#L100))
-  - [x] `backupCode2fa` ([test](../../../adapters/sqlstore/twofactor_errors_test.go#L111))
+  - [ ] `backupCode2fa`
     - [x] Refuse backup-code proofs and listing without codes with BACKUP_CODES_NOT_ENABLED, generation without an authenticator or with a wrong password, and answer wrong or unreadable codes with INVALID_BACKUP_CODE, on three SQL engines ([test](../../../adapters/sqlstore/twofactor_errors_test.go#L111))
     - [x] Refuse /two-factor/generate-backup-codes for an account without an authenticator with TWO_FACTOR_NOT_ENABLED ([test](../../../adapters/sqlstore/twofactor_errors_test.go#L110))
     - [x] Refuse /two-factor/generate-backup-codes with a wrong password with 400 INVALID_PASSWORD and its message ([test](../../../adapters/sqlstore/twofactor_errors_test.go#L173))
@@ -74,8 +74,10 @@
     - [x] Challenge a phone-number password sign-in for an enrolled account ([test](../../../adapters/sqlstore/phone_accounts_test.go#L300))
     - [x] Limit /two-factor/verify-totp to three requests per ten seconds under the built-in rules ([test](../../../ratelimit_test.go#L127))
   - [ ] `POST /two-factor/send-otp`
-    - [x] Answer status true when the sender fails and keep that code valid, and keep the newer code when an older send fails late ([test](../../../adapters/sqlstore/twofactor_delivery_test.go#L361))
+    - [x] Keep the code of a failed send valid, and keep the newer code when an older send fails late ([test](../../../adapters/sqlstore/twofactor_delivery_test.go#L361))
     - [x] Run the delivered code's verification create hooks before it is sent; a declined code is neither stored nor sent ([test](../../../adapters/sqlstore/twofactor_hooks_test.go#L462))
+    - [x] Answer a failed send with status true ([test](../../../adapters/sqlstore/twofactor_delivery_test.go#L436))
+    - [x] Refuse a code an earlier release left pending without counting the guess, and replace it with a new send, on three SQL engines ([test](../../../adapters/sqlstore/twofactor_delivery_test.go#L499))
   - [ ] `POST /two-factor/verify-otp`
     - [x] Bind codes to the requesting login or session and issue one session for competing proofs ([test](../../../adapters/sqlstore/twofactor_delivery_test.go#L126))
     - [x] Honor the pending challenge and reject a signed-in proof after its session is revoked ([test](../../../adapters/sqlstore/twofactor_delivery_test.go#L390))
@@ -129,9 +131,10 @@
       - [x] With authenticators disabled, answer TOTP_NOT_CONFIGURED to authenticator enrollment, URI reads and sign-in codes, right or wrong, without counting them, leave totp out of twoFactorMethods and still accept a backup code ([test](../../../adapters/sqlstore/twofactor_options_test.go#L360))
   - [ ] `totp2fa`
     - [x] With authenticators disabled, check the verify-totp body and then answer TOTP_NOT_CONFIGURED before reading a session, challenge, factor or lockout ([test](../../../adapters/sqlstore/twofactor_options_test.go#L475))
-    - [x] Accept enrollment and sign-in codes from the configured 45-second period before or after the current one, and refuse codes two periods away ([test](../../../adapters/sqlstore/twofactor_options_test.go#L437))
+    - [x] Accept enrollment and sign-in codes from the configured 45-second period before or after the current one, and refuse codes two periods away, on three SQL engines ([test](../../../adapters/sqlstore/twofactor_options_test.go#L437))
     - [x] Answer verify-totp without an authenticator with TOTP_NOT_ENABLED ([test](../../../adapters/sqlstore/twofactor_errors_test.go#L109))
     - [x] Answer a sign-in code for an authenticator awaiting confirmation with TOTP_NOT_ENABLED ([test](../../../adapters/sqlstore/twofactor_errors_test.go#L151))
+    - [x] Accept a sign-in code from the configured 45-second period before the current one ([test](../../../adapters/sqlstore/twofactor_options_test.go#L553))
   - [ ] `TwoFactorOptions`
     - [x] Configure the trusted-browser lifetime and the challenge lifetime and observe each as a cookie max age ([test](../../../adapters/sqlstore/twofactor_trust_test.go#L155))
     - [x] Configure authenticator, backup-code, lockout and skip-verification settings and observe each ([test](../../../adapters/sqlstore/twofactor_delivery_test.go#L162))

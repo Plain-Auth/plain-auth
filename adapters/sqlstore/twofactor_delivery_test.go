@@ -467,3 +467,40 @@ func TestDeliveredCodeSendsInBackground(t *testing.T) {
 		h.request(h.second, "two-factor/verify-otp", map[string]any{"code": queued.Code}, 200, later)
 	})
 }
+
+// A code an earlier release left pending while its sender ran is refused
+// without counting the guess, and a new send replaces it.
+func TestPendingDeliveredCodeFromEarlierRelease(t *testing.T) {
+	opts := twofactor.Options{OTP: twofactor.OTPOptions{Send: func(context.Context, twofactor.OTPMessage) error { return nil }}}
+	withFactorDatabases(t, opts, func(h *factorHarness) {
+		t := h.t
+		ctx := t.Context()
+		owner := h.enroll()
+		challenge := h.challenge(h.first, owner)
+		key := "2fa-otp-" + h.first.VerifySignedSessionToken(challenge.Value)
+		now := time.Now().UTC().Truncate(time.Millisecond)
+		if _, err := h.store.db.ExecContext(ctx, h.store.bind(`INSERT INTO "verification" ("id","identifier","value","expiresAt","createdAt","updatedAt") VALUES (?,?,?,?,?,?)`), rand.Text(), "pending-"+key, "424242:0", h.store.date(now.Add(time.Hour)), h.store.date(now), h.store.date(now)); err != nil {
+			t.Fatal(err)
+		}
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest("POST", "https://factor.example/api/auth/two-factor/verify-otp", strings.NewReader(`{"code":"424242"}`))
+		r.Header.Set("Origin", "https://factor.example")
+		r.Header.Set("Content-Type", "application/json")
+		r.AddCookie(challenge)
+		h.first.ServeHTTP(w, r)
+		value := func(identifier string) string {
+			var v string
+			if err := h.store.db.QueryRowContext(ctx, h.store.bind(`SELECT "value" FROM "verification" WHERE "identifier"=?`), identifier).Scan(&v); err != nil {
+				return ""
+			}
+			return v
+		}
+		if w.Code != 400 || !strings.Contains(w.Body.String(), `"code":"OTP_HAS_EXPIRED"`) || value("pending-"+key) != "424242:0" || value("2fa-attempts-"+strings.TrimPrefix(key, "2fa-otp-")) != "0" {
+			t.Fatal("a code an earlier release left pending was judged or counted", w.Code, w.Body)
+		}
+		h.request(h.first, "two-factor/send-otp", map[string]any{}, 200, challenge)
+		if value("pending-"+key) != "" || value(key) == "" {
+			t.Fatal("a new send did not replace the pending code")
+		}
+	})
+}

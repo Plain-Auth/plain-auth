@@ -5611,7 +5611,7 @@
   ],
   "plugin/2fa/POST /two-factor/send-otp": [
     {
-      "label": "Answer status true when the sender fails and keep that code valid, and keep the newer code when an older send fails late",
+      "label": "Keep the code of a failed send valid, and keep the newer code when an older send fails late",
       "test": "adapters/sqlstore/twofactor_delivery_test.go",
       "marker": "synthetic sender unavailable"
     },
@@ -5619,6 +5619,16 @@
       "label": "Run the delivered code's verification create hooks before it is sent; a declined code is neither stored nor sent",
       "test": "adapters/sqlstore/twofactor_hooks_test.go",
       "marker": "// A declined delivered code answers as sent; nothing is stored or sent."
+    },
+    {
+      "label": "Answer a failed send with status true",
+      "test": "adapters/sqlstore/twofactor_delivery_test.go",
+      "marker": "a failed send did not answer status true"
+    },
+    {
+      "label": "Refuse a code an earlier release left pending without counting the guess, and replace it with a new send, on three SQL engines",
+      "test": "adapters/sqlstore/twofactor_delivery_test.go",
+      "marker": "a code an earlier release left pending was judged or counted"
     }
   ],
   "plugin/2fa/POST /two-factor/verify-otp": [
@@ -43670,8 +43680,7 @@
     {
       "label": "Refuse backup-code proofs and listing without codes with BACKUP_CODES_NOT_ENABLED, generation without an authenticator or with a wrong password, and answer wrong or unreadable codes with INVALID_BACKUP_CODE, on three SQL engines",
       "test": "adapters/sqlstore/twofactor_errors_test.go",
-      "marker": "verify-backup-code without a record did not answer BACKUP_CODES_NOT_ENABLED",
-      "complete": true
+      "marker": "verify-backup-code without a record did not answer BACKUP_CODES_NOT_ENABLED"
     },
     {
       "label": "Refuse /two-factor/generate-backup-codes for an account without an authenticator with TWO_FACTOR_NOT_ENABLED",
@@ -43706,7 +43715,7 @@
       "marker": "a disabled authenticator was not refused before the challenge was read"
     },
     {
-      "label": "Accept enrollment and sign-in codes from the configured 45-second period before or after the current one, and refuse codes two periods away",
+      "label": "Accept enrollment and sign-in codes from the configured 45-second period before or after the current one, and refuse codes two periods away, on three SQL engines",
       "test": "adapters/sqlstore/twofactor_options_test.go",
       "marker": "func TestTOTPProviderRefusalsAndPeriodWindow("
     },
@@ -43719,6 +43728,11 @@
       "label": "Answer a sign-in code for an authenticator awaiting confirmation with TOTP_NOT_ENABLED",
       "test": "adapters/sqlstore/twofactor_errors_test.go",
       "marker": "verify-totp for an unconfirmed authenticator during sign-in did not answer TOTP_NOT_ENABLED"
+    },
+    {
+      "label": "Accept a sign-in code from the configured 45-second period before the current one",
+      "test": "adapters/sqlstore/twofactor_options_test.go",
+      "marker": "a sign-in code from the previous 45-second period was refused"
     }
   ],
   "plugin-symbol/2fa/otp2fa": [

@@ -518,11 +518,41 @@ func TestTOTPProviderRefusalsAndPeriodWindow(t *testing.T) {
 		if w := post(slow, "two-factor/verify-totp", codeAt(-45*time.Second), slowSession); w.Code != 200 {
 			t.Fatal("an enrollment code from the previous 45-second period was refused", w.Code, w.Body)
 		}
-		slowChallenge := h.cookie(post(slow, "sign-in/email", map[string]string{"email": email, "password": password}), "two_factor")
-		if w := post(slow, "two-factor/verify-totp", codeAt(90*time.Second), slowChallenge); w.Code != 401 {
-			t.Fatal("a sign-in code two 45-second periods away was accepted", w.Code, w.Body)
+		// A second enrollment accepts a code from the next period.
+		nextEmail := strings.ToLower(rand.Text()) + "@example.test"
+		nextReg, err := slow.SignUpEmail(ctx, auth.SignUpInput{Email: nextEmail, Password: password, Name: "Next"}, auth.RequestMeta{})
+		if err != nil {
+			t.Fatal(err)
 		}
-		if w := post(slow, "two-factor/verify-totp", codeAt(45*time.Second), slowChallenge); w.Code != 200 {
+		var nextSetup struct{ TOTPURI string }
+		nextSession := slow.SessionCookie(nextReg.Token, true)
+		if w := post(slow, "two-factor/enable", map[string]string{"password": password}, nextSession); w.Code != 200 || json.Unmarshal(w.Body.Bytes(), &nextSetup) != nil {
+			t.Fatal("authenticator enrollment failed", w.Code, w.Body)
+		}
+		nextURI, err := url.Parse(nextSetup.TOTPURI)
+		if err != nil {
+			t.Fatal(err)
+		}
+		nextCode, err := totp.GenerateCodeCustom(nextURI.Query().Get("secret"), at.Add(45*time.Second), totp.ValidateOpts{Period: 45, Digits: otp.DigitsSix, Algorithm: otp.AlgorithmSHA1})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if w := post(slow, "two-factor/verify-totp", map[string]any{"code": nextCode}, nextSession); w.Code != 200 {
+			t.Fatal("an enrollment code from the next 45-second period was refused", w.Code, w.Body)
+		}
+		signIn := func() *http.Cookie {
+			return h.cookie(post(slow, "sign-in/email", map[string]string{"email": email, "password": password}), "two_factor")
+		}
+		slowChallenge := signIn()
+		for _, offset := range []time.Duration{-90 * time.Second, 90 * time.Second} {
+			if w := post(slow, "two-factor/verify-totp", codeAt(offset), slowChallenge); w.Code != 401 {
+				t.Fatal("a sign-in code two 45-second periods away was accepted", offset, w.Code, w.Body)
+			}
+		}
+		if w := post(slow, "two-factor/verify-totp", codeAt(-45*time.Second), slowChallenge); w.Code != 200 {
+			t.Fatal("a sign-in code from the previous 45-second period was refused", w.Code, w.Body)
+		}
+		if w := post(slow, "two-factor/verify-totp", codeAt(45*time.Second), signIn()); w.Code != 200 {
 			t.Fatal("a sign-in code from the next 45-second period was refused", w.Code, w.Body)
 		}
 	})
