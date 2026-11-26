@@ -90,6 +90,7 @@
     - [x] Rename a key under its organization configuration ([test](../../../conformance/core.test.mjs#L963))
   - [ ] `verifyApiKey (server API only)`
     - [x] Verify permissions and consume the credential atomically ([test](../../../adapters/sqlstore/apikey_test.go#L178))
+    - [x] Verify a key under the configuration that issued it, among several sharing one store ([test](../../../adapters/sqlstore/apikey_unscoped_test.go#L14))
   - [ ] `ApiKeyOptions`
     - [ ] `schema`
   - [ ] `ApiKeyConfigurationOptions`
@@ -323,7 +324,8 @@
       - [ ] `POST /api-key/verify` (server API)
         - [x] Keep the verification endpoint off the HTTP router ([test](../../../adapters/sqlstore/apikey_test.go#L141))
         - [x] Verify a secret through the trusted Go method and check its validity, key and error code ([test](../../../adapters/sqlstore/apikey_test.go#L80))
-        - [ ] Parameter `configId` (optional)
+        - [x] Parameter `configId` (optional) ([test](../../../adapters/sqlstore/apikey_unscoped_test.go#L44))
+          - [x] Verify a key without naming its configuration against the configuration that issued it, with that configuration's validator, permissions and rate limit, and refuse an unknown secret before any validator runs, on three SQL engines ([test](../../../adapters/sqlstore/apikey_unscoped_test.go#L44))
         - [ ] Parameter `key`
           - [x] Accept the issued secret when the required permission is granted ([test](../../../adapters/sqlstore/apikey_test.go#L84))
           - [x] Return INVALID_API_KEY for the secret of a deleted key ([test](../../../adapters/sqlstore/apikey_test.go#L145))

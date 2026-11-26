@@ -14,6 +14,49 @@ import (
 )
 
 // NewPlugin shares management routes among independently configured key types.
+// VerifyAny verifies secret with the one listed service whose configuration
+// issued it, applying that configuration's validator, permissions, budget and
+// rate limit as Verify does. The services must share one store that finds a
+// key's configuration by digest, as the SQL store does. A secret that none of
+// them issued, or whose digest is held more than once across their
+// configurations, is INVALID_API_KEY and uses nothing.
+func VerifyAny(ctx context.Context, secret string, required Permissions, services ...*Service) (Verification, error) {
+	if len(services) == 0 {
+		return Verification{}, errors.New("apikey: at least one configuration is required")
+	}
+	byID := map[string]*Service{}
+	var ids []string
+	first := services[0]
+	for _, s := range services {
+		if s == nil || byID[s.opts.ConfigID] != nil {
+			return Verification{}, errors.New("apikey: nil or duplicate configuration")
+		}
+		if !reflect.ValueOf(s.opts.Store).Comparable() || any(s.opts.Store) != any(first.opts.Store) {
+			return Verification{}, errors.New("apikey: unscoped verification requires services that share one store")
+		}
+		byID[s.opts.ConfigID] = s
+		ids = append(ids, s.opts.ConfigID)
+	}
+	finder, ok := first.opts.Store.(configurationStore)
+	if !ok {
+		return Verification{}, errors.New("apikey: unscoped verification requires a store that finds a key's configuration")
+	}
+	unknown := Verification{Error: &VerifyError{Code: "INVALID_API_KEY", Message: "Invalid API key."}}
+	if secret == "" || len(secret) > 4096 {
+		return unknown, nil
+	}
+	id, err := finder.UniqueSessionKeyConfiguration(ctx, Digest(secret), ids)
+	if err != nil {
+		return Verification{}, err
+	}
+	// No match, or a digest held more than once, fails closed before any
+	// validator runs.
+	if id == "" {
+		return unknown, nil
+	}
+	return byID[id].Verify(ctx, secret, required)
+}
+
 func NewPlugin(services ...*Service) (plainauth.Plugin, error) {
 	if len(services) == 0 {
 		return plainauth.Plugin{}, errors.New("apikey: at least one configuration is required")

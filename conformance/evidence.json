@@ -9059,6 +9059,11 @@
       "label": "Verify permissions and consume the credential atomically",
       "test": "adapters/sqlstore/apikey_test.go",
       "marker": "concurrent key quota granted"
+    },
+    {
+      "label": "Verify a key under the configuration that issued it, among several sharing one store",
+      "test": "adapters/sqlstore/apikey_unscoped_test.go",
+      "marker": "func TestAPIKeyUnscopedVerification("
     }
   ],
   "plugin/api-key/ deleteAllExpiredApiKeys (server API only)": [
@@ -39835,6 +39840,14 @@
       "label": "Accept a key past its one-request limit once its stored rate maximum or window is null, without counting or recording the request, on three databases",
       "test": "adapters/sqlstore/apikey_budget_test.go",
       "marker": "t.Fatal(\"a key with a null rate limit setting was limited or stamped\", column)",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/api-key/index.mdx#L185/Parameter `configId` (optional)": [
+    {
+      "label": "Verify a key without naming its configuration against the configuration that issued it, with that configuration's validator, permissions and rate limit, and refuse an unknown secret before any validator runs, on three SQL engines",
+      "test": "adapters/sqlstore/apikey_unscoped_test.go",
+      "marker": "an unscoped verification did not use the issuing configuration",
       "complete": true
     }
   ]

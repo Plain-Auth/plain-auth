@@ -12,7 +12,13 @@ import (
 
 type sessionUserStore interface {
 	APIKeySessionUser(context.Context, string) (plainauth.User, error)
-	UniqueSessionKeyConfiguration(context.Context, string, []string) (string, error)
+	configurationStore
+}
+
+// configurationStore finds the one configuration among configs that holds a
+// key with the digest, or "" when none or several do.
+type configurationStore interface {
+	UniqueSessionKeyConfiguration(ctx context.Context, digest string, configs []string) (string, error)
 }
 type SessionProof struct{ ID, UserID, ConfigID, Digest string }
 type proofContext struct{}
