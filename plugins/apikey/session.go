@@ -113,6 +113,7 @@ func (s *Service) resolveSession(ctx context.Context, secret string, meta plaina
 	if s.opts.Organization != nil {
 		return nil, errReference
 	}
+	s.sweep(ctx)
 	k := v.Key
 	user, err := s.opts.Store.(sessionUserStore).APIKeySessionUser(ctx, k.ReferenceID)
 	if err != nil {

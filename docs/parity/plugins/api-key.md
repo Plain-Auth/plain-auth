@@ -19,8 +19,9 @@
   - [ ] `POST /api-key/create`
     - [x] Issue a user-owned key and return its secret to the official client ([test](../../../conformance/core.test.mjs#L887))
     - [x] Issue a key whose reference identifies the caller’s organization ([test](../../../conformance/core.test.mjs#L959))
-  - [ ] `deleteAllExpiredApiKeys (server API only)`
+  - [x] `deleteAllExpiredApiKeys (server API only)` ([test](../../../adapters/sqlstore/apikey_sweep_test.go#L95))
     - [x] Purge expired entries within one configuration and retain live keys ([test](../../../adapters/sqlstore/apikey_test.go#L266))
+    - [x] Purge the expired keys of every configuration in one Go call, while DeleteExpired keeps to its own configuration ([test](../../../adapters/sqlstore/apikey_sweep_test.go#L95))
   - [ ] `POST /api-key/delete`
     - [x] Revoke the selected user-owned credential ([test](../../../conformance/core.test.mjs#L887))
     - [x] Revoke an organization key through the owner’s authorized session ([test](../../../conformance/core.test.mjs#L967))
@@ -80,7 +81,8 @@
     - [x] Rename an organization key under its own configId "teams", on both runtimes ([test](../../../conformance/core.test.mjs#L963))
     - [x] Answer KEY_NOT_FOUND for an organization key looked up under the default configuration, on both runtimes ([test](../../../conformance/core.test.mjs#L962))
     - [x] Answer KEY_NOT_FOUND for an organization key read under the default configuration ([test](../../../adapters/sqlstore/apikey_session_test.go#L119))
-  - [ ] `deleteAllExpiredApiKeys`
+  - [x] `deleteAllExpiredApiKeys` ([test](../../../adapters/sqlstore/apikey_sweep_test.go#L74))
+    - [x] Remove the expired keys of every configuration after creating, reading, updating, deleting or listing a key, at most once every ten seconds per service, on three SQL engines ([test](../../../adapters/sqlstore/apikey_sweep_test.go#L74))
   - [x] `createApiKeyRoutes` ([test](../../../adapters/sqlstore/apikey_test.go#L141))
     - [x] Serve create, get, update and delete to the key owner and list to another signed-in user over HTTP, and answer 404 for the verification and expired-key cleanup paths ([test](../../../adapters/sqlstore/apikey_test.go#L141))
   - [ ] `GET /api-key/list`
@@ -418,6 +420,7 @@
       - [ ] Pagination Examples
     - [ ] Delete all expired API keys
       - [x] Purge expired entries within one configuration and retain live keys ([test](../../../adapters/sqlstore/apikey_test.go#L266))
+      - [x] Delete the expired keys of every configuration after a key operation, at most once every ten seconds per service ([test](../../../adapters/sqlstore/apikey_sweep_test.go#L82))
       - [ ] `POST /api-key/delete-all-expired-api-keys` (server API)
         - [x] Remove exactly the one expired key in its configuration through the server cleanup call ([test](../../../adapters/sqlstore/apikey_test.go#L266))
         - [x] Keep a live key in place after the cleanup call ([test](../../../adapters/sqlstore/apikey_test.go#L271))

@@ -361,6 +361,13 @@ func (s *Store) ListAPIKeys(ctx context.Context, owner ak.Owner, config string, 
 	return page, tx.Commit()
 }
 func (s *Store) DeleteExpiredAPIKeys(ctx context.Context, config string, now time.Time) (int64, error) {
+	if config == "" {
+		res, err := s.db.ExecContext(ctx, s.bind(`DELETE FROM "apikey" WHERE "expiresAt"<=?`), s.date(now))
+		if err != nil {
+			return 0, err
+		}
+		return res.RowsAffected()
+	}
 	p, _ := s.deviceTokenParameters([]string{config})
 	res, err := s.db.ExecContext(ctx, s.bind(`DELETE FROM "apikey" WHERE "configId"=`+p+` AND "expiresAt"<=?`), config, s.date(now))
 	if err != nil {

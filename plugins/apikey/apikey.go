@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"regexp"
 	"slices"
+	"sync/atomic"
 	"time"
 	"unicode/utf16"
 
@@ -83,7 +84,9 @@ type Store interface {
 	CreateAPIKey(context.Context, Owner, Key, string) error
 	WithAPIKey(context.Context, Owner, Lookup, time.Time, func(*Key) (Mutation, error)) error
 	ListAPIKeys(context.Context, Owner, string, time.Time, PageOptions) (Page, error)
-	DeleteExpiredAPIKeys(context.Context, string, time.Time) (int64, error)
+	// DeleteExpiredAPIKeys removes the keys of config that expired at or
+	// before now, or of every configuration when config is empty.
+	DeleteExpiredAPIKeys(ctx context.Context, config string, now time.Time) (int64, error)
 }
 
 // Generation describes the authorized owner and requested settings for one new key.
@@ -131,7 +134,36 @@ type Options struct {
 	RateMax                                                                           int64
 	DefaultPermissions                                                                Permissions
 }
-type Service struct{ opts Options }
+type Service struct {
+	opts  Options
+	swept atomic.Int64 // Unix milliseconds of the last expired-key sweep
+}
+
+// sweepInterval is how often key operations purge expired keys.
+const sweepInterval = 10 * time.Second
+
+// sweep deletes the expired keys of every configuration in the store, at
+// most once every ten seconds per service, as key operations do on the
+// other runtime. It runs after the operation, outside any transaction. A
+// failure is ignored: the keys it leaves are still refused, and a later
+// sweep retries.
+func (s *Service) sweep(ctx context.Context) {
+	now := current()
+	last := s.swept.Load()
+	if last != 0 && now.UnixMilli()-last < sweepInterval.Milliseconds() || !s.swept.CompareAndSwap(last, now.UnixMilli()) {
+		return
+	}
+	_, _ = s.opts.Store.DeleteExpiredAPIKeys(context.WithoutCancel(ctx), "", now)
+}
+
+// DeleteAllExpired removes the expired keys of every configuration in the
+// service's store, as the server-only expired-key purge does. DeleteExpired
+// keeps to the service's own configuration.
+func (s *Service) DeleteAllExpired(ctx context.Context) (int64, error) {
+	now := current()
+	s.swept.Store(now.UnixMilli())
+	return s.opts.Store.DeleteExpiredAPIKeys(ctx, "", now)
+}
 
 var safePrefix = regexp.MustCompile(`^[a-zA-Z0-9_-]+$`)
 
@@ -507,6 +539,7 @@ func (s *Service) create(ctx context.Context, owner Owner, in CreateInput) (*Cre
 	if err := s.opts.Store.CreateAPIKey(ctx, owner, k, Digest(secret)); err != nil {
 		return nil, err
 	}
+	s.sweep(ctx)
 	return &Created{Key: k, Secret: secret}, nil
 }
 
@@ -550,6 +583,9 @@ func (s *Service) manage(ctx context.Context, owner Owner, id string, action Mut
 		result = k
 		return action, nil
 	})
+	if err == nil {
+		s.sweep(ctx)
+	}
 	return result, err
 }
 func (s *Service) List(ctx context.Context, userID string, o PageOptions) (Page, error) {
@@ -570,7 +606,11 @@ func (s *Service) list(ctx context.Context, owner Owner, o PageOptions) (Page, e
 	if owner.Organization == nil && owner.OrganizationID != "" {
 		return Page{}, invalidField("organizationId")
 	}
-	return s.opts.Store.ListAPIKeys(ctx, owner, s.opts.ConfigID, current(), o)
+	page, err := s.opts.Store.ListAPIKeys(ctx, owner, s.opts.ConfigID, current(), o)
+	if err == nil {
+		s.sweep(ctx)
+	}
+	return page, err
 }
 func (s *Service) DeleteExpired(ctx context.Context) (int64, error) {
 	return s.opts.Store.DeleteExpiredAPIKeys(ctx, s.opts.ConfigID, current())

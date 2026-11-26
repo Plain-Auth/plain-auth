@@ -7466,6 +7466,12 @@
       "label": "Purge expired entries within one configuration and retain live keys",
       "test": "adapters/sqlstore/apikey_test.go",
       "marker": "expired cleanup did not remove exactly one key"
+    },
+    {
+      "label": "Delete the expired keys of every configuration after a key operation, at most once every ten seconds per service",
+      "test": "adapters/sqlstore/apikey_sweep_test.go",
+      "marker": "a second operation within ten seconds swept again",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/api-key/advanced.mdx#L434": [
@@ -9082,6 +9088,12 @@
       "label": "Purge expired entries within one configuration and retain live keys",
       "test": "adapters/sqlstore/apikey_test.go",
       "marker": "expired cleanup did not remove exactly one key"
+    },
+    {
+      "label": "Purge the expired keys of every configuration in one Go call, while DeleteExpired keeps to its own configuration",
+      "test": "adapters/sqlstore/apikey_sweep_test.go",
+      "marker": "DeleteAllExpired left an expired key",
+      "complete": true
     }
   ],
   "plugin-symbol/access/createAccessControl": [
@@ -39867,6 +39879,14 @@
       "label": "Work out a new key's default permissions from its owner with DefaultPermissionsFor",
       "test": "adapters/sqlstore/apikey_permissions_test.go",
       "marker": "func TestAPIKeyDefaultPermissionsCallback(",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/api-key/deleteAllExpiredApiKeys": [
+    {
+      "label": "Remove the expired keys of every configuration after creating, reading, updating, deleting or listing a key, at most once every ten seconds per service, on three SQL engines",
+      "test": "adapters/sqlstore/apikey_sweep_test.go",
+      "marker": "a key operation did not sweep expired keys of every configuration",
       "complete": true
     }
   ]
