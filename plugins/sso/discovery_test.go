@@ -358,9 +358,10 @@ func TestCallbackDiscoveryMessage(t *testing.T) {
 	for _, c := range []struct{ code, message, want string }{
 		{"discovery_incomplete", "OIDC discovery document is missing required fields: Discovery document is missing required fields: jwks_uri", "Discovery document is missing required fields: jwks_uri"},
 		{"issuer_mismatch", `OIDC issuer mismatch: Discovered issuer "a" does not match configured issuer "b"`, `Discovered issuer "a" does not match configured issuer "b"`},
-		{"discovery_not_found", "Discovery document not found", "Discovery endpoint not found"},
-		{"discovery_timeout", "Discovery timed out", "Discovery request timed out"},
-		{"discovery_invalid_json", "Invalid discovery document", "Discovery endpoint returned invalid JSON"},
+		{"discovery_not_found", "OIDC discovery endpoint not found. The issuer may not support OIDC discovery, or the URL is incorrect. Discovery endpoint not found", "Discovery endpoint not found"},
+		{"discovery_timeout", "OIDC discovery timed out: Discovery request timed out", "Discovery request timed out"},
+		{"discovery_invalid_json", "OIDC discovery returned invalid data: Discovery endpoint returned invalid JSON", "Discovery endpoint returned invalid JSON"},
+		{"discovery_unexpected_error", "OIDC discovery failed: Unexpected discovery error: Internal Server Error", "Unexpected discovery error: Internal Server Error"},
 		{"discovery_untrusted_origin", `Untrusted OIDC discovery URL: The main discovery endpoint "https://idp.test/" is not trusted by your trusted origins configuration.`, `The main discovery endpoint "https://idp.test/" is not trusted by your trusted origins configuration.`},
 	} {
 		if got := callbackDiscoveryMessage(&auth.APIError{Code: c.code, Message: c.message}); got != c.want {

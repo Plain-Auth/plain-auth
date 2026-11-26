@@ -149,27 +149,33 @@ func (c *Catalog) verify(ctx context.Context, token string) (*Principal, error) 
 	}
 	return c.store.SCIMVerifyCredential(ctx, m[1], c.digest(token), c.interval)
 }
+
+// managedDirectory reports a trimmed managed connection in a domain.
 func managedDirectory(d Directory) bool {
-	return identifier(d.ProvisioningDomainID) && identifier(d.ID) && strings.HasPrefix(d.ID, managedConnectionPrefix)
+	_, domain := apiText(d.ProvisioningDomainID, 1)
+	_, id := apiText(d.ID, 1)
+	return domain && id && strings.HasPrefix(d.ID, managedConnectionPrefix)
 }
 func (c *Catalog) Create(ctx context.Context, domain, requestID, actor string, policy CredentialPolicy) (IssuedCredential, error) {
-	domain, requestID, actor = strings.TrimSpace(domain), strings.TrimSpace(requestID), strings.TrimSpace(actor)
-	if !identifier(domain) || !identifier(requestID) || len([]rune(requestID)) < 16 {
+	domain, okDomain := apiText(domain, 1)
+	requestID, okRequest := apiText(requestID, 16)
+	if !okDomain || !okRequest {
 		return IssuedCredential{}, invalid("invalidValue", "Supply a domain and a creation request ID of 16 to 255 characters")
 	}
 	d := Directory{ID: managedConnectionPrefix + managedRandom(24), ProvisioningDomainID: domain}
 	return c.issue(ctx, d, requestID, actor, policy)
 }
 func (c *Catalog) Rotate(ctx context.Context, d Directory, actor string, policy CredentialPolicy) (IssuedCredential, error) {
-	if !managedDirectory(d) {
+	if d = trimmedDirectory(d); !managedDirectory(d) {
 		return IssuedCredential{}, ErrManagedNotFound
 	}
-	return c.issue(ctx, d, "", strings.TrimSpace(actor), policy)
+	return c.issue(ctx, d, "", actor, policy)
 }
 func (c *Catalog) issue(ctx context.Context, d Directory, requestID, actor string, p CredentialPolicy) (IssuedCredential, error) {
 	now := time.Now().UTC().Truncate(time.Millisecond)
 	p.ExpiresAt = p.ExpiresAt.UTC().Truncate(time.Millisecond)
-	if !validScopes(p.Scopes) || !identifier(actor) || !p.ExpiresAt.After(now) {
+	actor, okActor := apiText(actor, 1)
+	if !validScopes(p.Scopes) || !okActor || !p.ExpiresAt.After(now) {
 		return IssuedCredential{}, invalid("invalidValue", "A valid actor, unique scopes and future expiry are required")
 	}
 	id := managedCredentialPrefix + managedRandom(24)
@@ -183,28 +189,32 @@ func (c *Catalog) issue(ctx context.Context, d Directory, requestID, actor strin
 	return IssuedCredential{Connection: connection, Credential: credential, Token: token}, nil
 }
 func (c *Catalog) List(ctx context.Context, domain string) ([]ManagedConnection, error) {
-	if !identifier(domain) {
+	domain, ok := apiText(domain, 1)
+	if !ok {
 		return nil, invalid("invalidValue", "A valid provisioning domain is required")
 	}
 	return c.store.SCIMManagedConnections(ctx, domain)
 }
 func (c *Catalog) Get(ctx context.Context, d Directory) (ManagedState, error) {
-	if !managedDirectory(d) {
+	if d = trimmedDirectory(d); !managedDirectory(d) {
 		return ManagedState{}, ErrManagedNotFound
 	}
 	return c.store.SCIMManagedState(ctx, d)
 }
 func (c *Catalog) Revoke(ctx context.Context, d Directory, id, actor string) (ManagedState, error) {
-	if !managedDirectory(d) || !identifier(id) || !strings.HasPrefix(id, managedCredentialPrefix) {
+	d = trimmedDirectory(d)
+	id, okID := apiText(id, 1)
+	if !managedDirectory(d) || !okID || !strings.HasPrefix(id, managedCredentialPrefix) {
 		return ManagedState{}, ErrManagedNotFound
 	}
-	if !identifier(actor) {
+	actor, okActor := apiText(actor, 1)
+	if !okActor {
 		return ManagedState{}, invalid("invalidValue", "A valid actor is required")
 	}
 	return c.store.SCIMRevokeCredential(ctx, d, id, actor)
 }
 func (c *Catalog) Events(ctx context.Context, d Directory, q EventQuery) (ManagedEvents, error) {
-	if !managedDirectory(d) {
+	if d = trimmedDirectory(d); !managedDirectory(d) {
 		return ManagedEvents{}, ErrManagedNotFound
 	}
 	if q.Limit == 0 {

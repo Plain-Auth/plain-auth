@@ -46,6 +46,11 @@ func (o Options) providerFieldInput(body map[string]any, create bool) (map[strin
 		switch {
 		case ok:
 			if value, err = field.Value(raw); err != nil {
+				// A value of the right JSON type that the column cannot hold,
+				// such as 1.5 for a number, says why.
+				if jsjson.TypeName(raw) == string(field.Type) {
+					return nil, &auth.APIError{Status: 400, Code: "VALIDATION_ERROR", Message: "[body." + name + "] " + err.Error()}
+				}
 				return nil, fieldInputError(name, field, jsjson.TypeName(raw))
 			}
 		case !create:
@@ -146,7 +151,7 @@ func (o Options) providerFieldsOpenAPI() (json.RawMessage, error) {
 		if field.Type == auth.FieldDate {
 			schema = map[string]any{"type": "string", "format": "date-time"}
 		}
-		fields[name] = described{Schema: schema, Input: !field.ServerOnly, Required: field.Required && field.Default == nil, Returned: !field.Hidden}
+		fields[name] = described{Schema: schema, Input: !field.ServerOnly, Required: field.Required && !field.ServerOnly, Returned: !field.Hidden}
 	}
 	return json.Marshal(map[string]any{"x-plainauth-provider-fields": fields})
 }

@@ -472,15 +472,8 @@ const providerChanged = "SSO provider changed while account linking was in progr
 // runtime's callback sends: the registration message without its prefix, or
 // that runtime's fixed message for the code.
 func callbackDiscoveryMessage(e *auth.APIError) string {
-	switch e.Code {
-	case "discovery_not_found":
-		return "Discovery endpoint not found"
-	case "discovery_timeout":
-		return "Discovery request timed out"
-	case "discovery_invalid_json":
-		return "Discovery endpoint returned invalid JSON"
-	}
-	for _, prefix := range []string{"OIDC discovery document is missing required fields: ", "OIDC issuer mismatch: ", untrustedPrefix} {
+	for _, prefix := range []string{"OIDC discovery endpoint not found. The issuer may not support OIDC discovery, or the URL is incorrect. ", "OIDC discovery timed out: ",
+		"OIDC discovery failed: ", "OIDC discovery returned invalid data: ", "OIDC discovery document is missing required fields: ", "OIDC issuer mismatch: ", untrustedPrefix} {
 		if rest, ok := strings.CutPrefix(e.Message, prefix); ok {
 			return rest
 		}

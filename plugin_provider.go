@@ -12,7 +12,8 @@ import (
 )
 
 // HasOAuthProvider reports whether an account provider ID belongs to a
-// startup-configured OAuth integration. SQL collations may fold provider IDs.
+// startup-configured OAuth integration, in any case, because SQL collations
+// may fold provider IDs.
 func (a *Auth) HasOAuthProvider(id string) bool {
 	for name := range a.opts.SocialProviders {
 		if strings.EqualFold(name, id) {

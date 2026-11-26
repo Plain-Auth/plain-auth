@@ -455,3 +455,25 @@ func TestSCIMSerializedSizeCountsParsedValues(t *testing.T) {
 		t.Fatal("the size bound counted emails other than as sent", sent)
 	}
 }
+
+// Connection IDs are measured in UTF-16 units and trimmed as JavaScript
+// trims, as another runtime checks them; server API arguments are trimmed
+// the same way and measured in code points, as its request schemas do.
+func TestIdentifierRules(t *testing.T) {
+	emoji := func(n int) string { return strings.Repeat("\U0001F600", n) }
+	for v, want := range map[string]bool{"a\u0085": true, "\uFEFFa": false, " a": false, emoji(127) + "a": true, emoji(128): false, "": false} {
+		if identifier(v) != want {
+			t.Fatal("a connection ID was judged differently from another runtime", v, want)
+		}
+	}
+	for _, c := range []struct {
+		v     string
+		min   int
+		want  string
+		valid bool
+	}{{emoji(8), 16, emoji(8), false}, {emoji(16), 16, emoji(16), true}, {"\uFEFF" + strings.Repeat("a", 15), 16, strings.Repeat("a", 15), false}, {" padded ", 1, "padded", true}, {emoji(256), 1, emoji(256), false}} {
+		if got, ok := apiText(c.v, c.min); got != c.want || ok != c.valid {
+			t.Fatal("a server API argument was read differently from another runtime's schema", c.v, got, ok)
+		}
+	}
+}

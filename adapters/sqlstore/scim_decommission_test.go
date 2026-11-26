@@ -271,7 +271,7 @@ func TestSCIMStaticDecommission(t *testing.T) {
 			if got := status(); got != "active" {
 				t.Fatal("a provisioned connection's binding is not active", got)
 			}
-			r, err := h.Decommission(ctx, scim.Directory{ID: "static", ProvisioningDomainID: "static"})
+			r, err := h.Decommission(ctx, scim.Directory{ID: " static ", ProvisioningDomainID: "static"})
 			if err != nil || r.Status != "complete" || r.ReconciledUsers != 1 || r.Batches != 1 {
 				t.Fatal("the static connection was not retired in one batch", r, err)
 			}

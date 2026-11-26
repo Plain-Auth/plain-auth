@@ -42604,7 +42604,7 @@
   ],
   "docs/content/docs/plugins/sso/index.mdx#L113/`providerId`": [
     {
-      "label": "Reject a duplicate provider ID, a built-in sign-in method name and a trusted provider name in another case with 422",
+      "label": "Reject a duplicate provider ID with 422, and a built-in sign-in method name or trusted provider name in another case, a documented deviation that matches reserved names in any case",
       "test": "adapters/sqlstore/sso_test.go",
       "marker": "check(call(one, path, other, makeBody(\"partner\", \"\", \"/discovery\")), 422)"
     },
@@ -45264,7 +45264,7 @@
       "marker": "func TestSAMLClockSkewBounds("
     },
     {
-      "label": "Accept an assertion valid in two minutes under the default skew, refuse it under a one-minute skew, and bound the option, on SQLite, PostgreSQL and MySQL",
+      "label": "Accept an assertion valid in two minutes under the default skew and refuse it under a one-minute skew, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/sso_saml_policy_test.go",
       "marker": "t.Fatal(\"the default clock skew refused an assertion valid in two minutes\"",
       "complete": true
@@ -45402,7 +45402,7 @@
       "marker": "a digestAlgorithm outside the allow-list was accepted"
     },
     {
-      "label": "Accept a listed digest in its short form and a SHA-256-signed response under a SHA-256 digest allow-list, on SQLite, PostgreSQL and MySQL",
+      "label": "Accept a SHA-256-signed response under a SHA-256 digest allow-list, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/sso_saml_policy_test.go",
       "marker": "t.Fatal(\"the digest allow-list refused a SHA-256 digest\"",
       "complete": true
@@ -46995,6 +46995,16 @@
       "test": "adapters/sqlstore/sso_fields_test.go",
       "marker": "t.Fatal(\"an unusable provider field was not refused\"",
       "complete": true
+    },
+    {
+      "label": "Refuse a number field set to 1.5 with VALIDATION_ERROR and the reason, and a mistyped one in the body validation form",
+      "test": "plugins/sso/provider_fields_test.go",
+      "marker": "t.Fatal(\"a fractional number field was not refused with its reason\", raw, err)"
+    },
+    {
+      "label": "List a settable required provider field in the OpenAPI registration body's required list, even with a default",
+      "test": "plugins/openapi/sso_directory_test.go",
+      "marker": "t.Fatal(\"a required provider field with a default is not required at registration\", register)"
     }
   ],
   "docs/content/docs/plugins/sso/reference.mdx#L192": [

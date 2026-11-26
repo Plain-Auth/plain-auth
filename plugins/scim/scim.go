@@ -11,9 +11,11 @@ import (
 	"strings"
 	"time"
 	"unicode"
+	"unicode/utf16"
 	"unicode/utf8"
 
 	auth "github.com/Plain-Org/plain-auth"
+	"github.com/Plain-Org/plain-auth/internal/jsjson"
 )
 
 const (
@@ -169,8 +171,26 @@ func New(host *auth.Auth, opts Options) (*Handler, error) {
 	}
 	return h, nil
 }
+
+// identifier checks a code-defined or verified connection, provisioning
+// domain or credential ID as another runtime does: not empty, at most 255
+// UTF-16 code units and without surrounding JavaScript whitespace.
 func identifier(v string) bool {
-	return v != "" && utf8.RuneCountInString(v) <= 255 && strings.TrimSpace(v) == v
+	return v != "" && len(utf16.Encode([]rune(v))) <= 255 && jsjson.TrimSpace(v) == v
+}
+
+// apiText reads an argument of the trusted server APIs as another runtime's
+// request schema does: trimmed of JavaScript whitespace, then min to 255
+// code points long.
+func apiText(v string, min int) (string, bool) {
+	v = jsjson.TrimSpace(v)
+	n := utf8.RuneCountInString(v)
+	return v, n >= min && n <= 255
+}
+
+// trimmedDirectory trims a directory named to a trusted server API.
+func trimmedDirectory(d Directory) Directory {
+	return Directory{ID: jsjson.TrimSpace(d.ID), ProvisioningDomainID: jsjson.TrimSpace(d.ProvisioningDomainID)}
 }
 func (h *Handler) authorize(r *http.Request, scope, route string) (Principal, error) {
 	fields := strings.Fields(r.Header.Get("Authorization"))

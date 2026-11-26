@@ -83,6 +83,8 @@ func hydrate(ctx context.Context, trusted func(string) bool, client *http.Client
 			}
 		}
 	}
+	// Another runtime keeps an issuer's trailing slash in the URL it stores
+	// for a skipDiscovery registration; one form for both paths is simpler.
 	if cfg.DiscoveryEndpoint == "" {
 		cfg.DiscoveryEndpoint = strings.TrimSuffix(cfg.Issuer, "/") + "/.well-known/openid-configuration"
 	}
@@ -223,32 +225,39 @@ func fetchDiscovery(ctx context.Context, client *http.Client, endpoint string) (
 		return doc, discoveryError(400, "discovery_invalid_url", "Invalid discovery endpoint")
 	}
 	req.Header.Set("Accept", "application/json")
+	// The messages are another runtime's route messages; the callback
+	// leaves out their prefixes, as that runtime does.
+	timedOut := discoveryError(502, "discovery_timeout", "OIDC discovery timed out: Discovery request timed out")
 	res, err := requestClient.Do(req)
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) || ctx.Err() != nil {
-			return doc, discoveryError(502, "discovery_timeout", "Discovery timed out")
+			return doc, timedOut
 		}
-		return doc, discoveryError(502, "discovery_unexpected_error", "Could not reach the discovery endpoint")
+		// The transport error is not shown, as it can describe private
+		// network details; another runtime's fetch reports "fetch failed".
+		return doc, discoveryError(502, "discovery_unexpected_error", "OIDC discovery failed: Unexpected error during discovery: fetch failed")
 	}
 	defer res.Body.Close()
 	if res.StatusCode >= 300 && res.StatusCode < 400 {
-		return doc, discoveryError(400, "oidc_endpoint_redirect", "Configure the final discovery endpoint URL")
+		return doc, discoveryError(400, "oidc_endpoint_redirect", fmt.Sprintf("The discoveryEndpoint (%s) returned an HTTP %d redirect. Configure the final OIDC endpoint URL instead of a redirecting URL.", whatwgURL(endpoint), res.StatusCode))
 	}
 	if res.StatusCode == 408 {
-		return doc, discoveryError(502, "discovery_timeout", "Discovery timed out")
+		return doc, timedOut
 	}
 	if res.StatusCode == 404 {
-		return doc, discoveryError(400, "discovery_not_found", "Discovery document not found")
+		return doc, discoveryError(400, "discovery_not_found", "OIDC discovery endpoint not found. The issuer may not support OIDC discovery, or the URL is incorrect. Discovery endpoint not found")
 	}
-	// Any 2xx answer carries the document, as in another runtime; an empty
-	// one is invalid JSON.
+	// Any 2xx answer carries the document, as in another runtime.
 	if res.StatusCode < 200 || res.StatusCode >= 300 {
-		return doc, discoveryError(502, "discovery_unexpected_error", "Discovery document could not be retrieved")
+		return doc, discoveryError(502, "discovery_unexpected_error", "OIDC discovery failed: Unexpected discovery error: "+http.StatusText(res.StatusCode))
 	}
 	const bound = 1 << 20
 	data, e := io.ReadAll(io.LimitReader(res.Body, bound+1))
-	if e != nil || len(data) > bound || strings.TrimSpace(string(data)) == "null" || json.Unmarshal(data, &doc) != nil {
-		return doc, discoveryError(400, "discovery_invalid_json", "Invalid discovery document")
+	if e == nil && len(data) <= bound && (len(strings.TrimSpace(string(data))) == 0 || strings.TrimSpace(string(data)) == "null") {
+		return doc, discoveryError(400, "discovery_invalid_json", "OIDC discovery returned invalid data: Discovery endpoint returned an empty response")
+	}
+	if e != nil || len(data) > bound || json.Unmarshal(data, &doc) != nil {
+		return doc, discoveryError(400, "discovery_invalid_json", "OIDC discovery returned invalid data: Discovery endpoint returned invalid JSON")
 	}
 	return doc, nil
 }

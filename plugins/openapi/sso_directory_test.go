@@ -323,7 +323,7 @@ func TestEnterpriseSAMLDocumentation(t *testing.T) {
 // Declared SSO provider fields appear in the bodies a request may set and
 // in the responses that return them.
 func TestSSOProviderFieldsOpenAPI(t *testing.T) {
-	fields := map[string]sso.ProviderField{"tier": {Type: plainauth.FieldString, Required: true}, "note": {Type: plainauth.FieldString, ServerOnly: true}, "region": {Type: plainauth.FieldString, Hidden: true, Default: "eu"}}
+	fields := map[string]sso.ProviderField{"tier": {Type: plainauth.FieldString, Required: true}, "note": {Type: plainauth.FieldString, ServerOnly: true}, "region": {Type: plainauth.FieldString, Hidden: true, Default: "eu"}, "level": {Type: plainauth.FieldString, Required: true, Default: "basic"}}
 	ddl, err := schema.GenerateWithAdditionalFields("sqlite", []string{"sso"}, schema.AdditionalFields{SSOProvider: fields})
 	if err != nil {
 		t.Fatal(err)
@@ -352,6 +352,10 @@ func TestSSOProviderFieldsOpenAPI(t *testing.T) {
 	required, _ := register["required"].([]any)
 	if node(register, "properties", "tier")["type"] != "string" || node(register, "properties")["note"] != nil || !slices.Contains(required, any("tier")) {
 		t.Fatal("the registration body does not describe the settable provider fields", register)
+	}
+	// A settable required field must be sent even when it has a default.
+	if !slices.Contains(required, any("level")) {
+		t.Fatal("a required provider field with a default is not required at registration", register)
 	}
 	update := node(paths, "/sso/update-provider", "post", "requestBody", "content", "application/json", "schema")
 	if node(update, "properties", "tier")["type"] != "string" || node(update, "properties")["note"] != nil {

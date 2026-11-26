@@ -345,6 +345,8 @@ func New(o Options) (auth.Plugin, error) {
 			return nil, apiError(400, "Invalid providerId")
 		}
 		// A trusted provider ID would let this tenant's identities link by name.
+		// Reserved names match in any case, where another runtime compares
+		// exactly, because a MySQL collation folds case on account lookups.
 		trusted, trustErr := c.Auth.TrustedProviderIDs(c.Request)
 		if trustErr != nil {
 			return nil, trustErr

@@ -45,9 +45,15 @@ type ManagedRetirementStore interface {
 // connection is bound to; a connection never bound then answers
 // ErrNoBinding, as in another runtime.
 func (h *Handler) Decommission(ctx context.Context, d Directory) (Retirement, error) {
-	if !identifier(d.ID) || d.ProvisioningDomainID != "" && !identifier(d.ProvisioningDomainID) {
+	d = trimmedDirectory(d)
+	_, okID := apiText(d.ID, 1)
+	_, okDomain := apiText(d.ProvisioningDomainID, 1)
+	if !okID || d.ProvisioningDomainID != "" && !okDomain {
 		return Retirement{}, invalid("invalidValue", "Expected a directory and provisioning domain")
 	}
+	// A managed connection is retired only through its catalog, which ends
+	// its credentials too; another runtime retires its binding here and
+	// leaves the catalog row active.
 	if managedDirectory(d) {
 		return Retirement{}, invalid("invalidValue", "Retire a managed connection through its credential catalog")
 	}
@@ -66,10 +72,11 @@ func (h *Handler) Decommission(ctx context.Context, d Directory) (Retirement, er
 
 // Decommission permanently retires a managed connection and all its active credentials.
 func (c *Catalog) Decommission(ctx context.Context, d Directory, actor string) (ManagedRetirement, error) {
-	if !managedDirectory(d) {
+	if d = trimmedDirectory(d); !managedDirectory(d) {
 		return ManagedRetirement{}, ErrManagedNotFound
 	}
-	if !identifier(actor) {
+	actor, ok := apiText(actor, 1)
+	if !ok {
 		return ManagedRetirement{}, invalid("invalidValue", "Expected an administrator ID")
 	}
 	store, ok := c.store.(ManagedRetirementStore)

@@ -68,6 +68,8 @@ func TestSCIMManagedContract(t *testing.T) {
 			if _, e := catalog.List(ctx, ""); !invalid(e) {
 				t.Fatal("a list without a domain was accepted", e)
 			}
+			// Creation times have millisecond precision.
+			time.Sleep(5 * time.Millisecond)
 			newer, e := catalog.Create(ctx, "Domain", "valid-request-0002", "owner", policy)
 			must(e)
 			if list, e := catalog.List(ctx, "Domain"); e != nil || len(list) != 2 || list[0].ConnectionID != newer.Connection.ConnectionID || list[1].ConnectionID != d.ID {
