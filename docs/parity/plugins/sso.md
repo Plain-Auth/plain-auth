@@ -260,7 +260,9 @@
       - [x] Resolve the subject through UserInfo and reject disagreement with a signed ID token ([test](../../../adapters/sqlstore/sso_browser_test.go#L331))
     - [ ] `scopes`
       - [x] Store and return the registered scopes on both runtimes ([test](../../../conformance/sso-providers.mjs#L76))
-    - [ ] `overrideUserInfo`
+    - [x] `overrideUserInfo` ([test](../../../adapters/sqlstore/sso_profile_override_test.go#L90))
+      - [x] Store the top-level overrideUserInfo and refresh a returning OIDC user's name, image and mapped field at each sign-in, keeping the profile without it, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_profile_override_test.go#L90))
+      - [x] Keep a returning user's profile when the provider does not override it ([test](../../../adapters/sqlstore/sso_profile_override_test.go#L97))
     - [x] `tokenEndpoint` ([test](../../../plugins/sso/discovery_test.go#L61))
       - [x] Fill the token endpoint from discovery when it is omitted ([test](../../../plugins/sso/discovery_test.go#L61))
       - [x] Redeem the authorization code at the stored token endpoint with the registered client credentials ([test](../../../adapters/sqlstore/sso_browser_test.go#L114))
@@ -340,7 +342,8 @@
       - [x] Preserve existing roles and pending invitations, serialize competing removal and roll back new identities at capacity ([test](../../../adapters/sqlstore/sso_browser_test.go#L457))
       - [x] Add a new enterprise user to the provider's organization with the member role ([test](../../../adapters/sqlstore/sso_browser_test.go#L306))
     - [ ] `defaultSSO`
-    - [ ] `defaultOverrideUserInfo`
+    - [x] `defaultOverrideUserInfo` ([test](../../../adapters/sqlstore/sso_profile_override_test.go#L85))
+      - [x] Store overrideUserInfo over the request's false and refresh the profile on sign-in ([test](../../../adapters/sqlstore/sso_profile_override_test.go#L85))
     - [ ] `disableImplicitSignUp`
       - [x] Require an explicit signup request for new enterprise users and enforce host-wide signup controls ([test](../../../adapters/sqlstore/sso_browser_test.go#L340))
       - [x] Refuse an IdP-initiated SAML sign-in for a new user with signup_disabled when implicit sign-up is off ([test](../../../adapters/sqlstore/sso_saml_portal_test.go#L72))
@@ -597,6 +600,7 @@
     - [ ] Block new users
       - [x] Redirect with signup_disabled for a new OIDC user when implicit sign-up is off, and create the user when requestSignUp is true ([test](../../../adapters/sqlstore/sso_browser_test.go#L340))
     - [ ] Update profiles on sign-in
+      - [x] Overwrite a returning user's name, email, image and mapped fields at each OIDC sign-in and store a changed email unverified ([test](../../../adapters/sqlstore/sso_profile_override_test.go#L117))
   - [ ] Resolve SSO users
     - [ ] `accountKey.issuer`
     - [ ] `accountKey.accountId`

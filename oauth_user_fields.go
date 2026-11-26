@@ -57,9 +57,9 @@ func (a *Auth) socialProfileCompletion(profile OAuthProfile, syncProfile, requir
 // enterpriseProfileFields prepares the declared user fields an enterprise
 // profile writes before the store's transaction starts, so a host's field
 // default never runs inside it. It is nil when the host declares no user
-// fields.
+// fields and the profile does not override the owner's.
 func (a *Auth) enterpriseProfileFields(p OAuthProfile, override bool) *OAuthProfileFields {
-	if len(a.opts.UserAdditionalFields) == 0 {
+	if len(a.opts.UserAdditionalFields) == 0 && !override {
 		return nil
 	}
 	writable := a.writableProfileFields(p)

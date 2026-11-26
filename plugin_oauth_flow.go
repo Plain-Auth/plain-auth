@@ -202,6 +202,23 @@ func (c *EndpointContext) consumeEnterpriseFlow(state string, form bool) (OAuthF
 // SQL store's sign-in methods do; a completion that commits in the dry run
 // is refused, though a user it already stored stays.
 func (c EndpointContext) CompleteEnterpriseFlow(f OAuthFlow, method string, p OAuthProfile, tokens OAuthTokens, disableSignup bool, complete OAuthCompletion) (any, error) {
+	return c.CompleteEnterpriseFlowWith(f, method, p, tokens, EnterpriseCompletion{DisableSignUp: disableSignup}, complete)
+}
+
+// EnterpriseCompletion adjusts how CompleteEnterpriseFlowWith signs a
+// provider identity in.
+type EnterpriseCompletion struct {
+	// DisableSignUp refuses to create an account.
+	DisableSignUp bool
+	// OverrideUserInfo writes the provider's email, name, image and writable
+	// AdditionalFields to a returning owner, as OverrideUserInfoOnSignIn
+	// does for a social provider. A changed email is stored unverified
+	// unless the profile verifies it.
+	OverrideUserInfo bool
+}
+
+// CompleteEnterpriseFlowWith is CompleteEnterpriseFlow with options.
+func (c EndpointContext) CompleteEnterpriseFlowWith(f OAuthFlow, method string, p OAuthProfile, tokens OAuthTokens, o EnterpriseCompletion, complete OAuthCompletion) (any, error) {
 	if !validSocialProfile(p) || complete == nil {
 		return nil, validationError("Invalid enterprise identity")
 	}
@@ -213,7 +230,7 @@ func (c EndpointContext) CompleteEnterpriseFlow(f OAuthFlow, method string, p OA
 	if f.IssuerLoginQuery != "" && (login.query != f.IssuerLoginQuery || login.resume == nil) {
 		return nil, invalidEnterpriseState()
 	}
-	options := OAuthLoginOptions{DisableSignUp: disableSignup, ProfileFields: c.Auth.enterpriseProfileFields(p, false)}
+	options := OAuthLoginOptions{DisableSignUp: o.DisableSignUp, ProfileFields: c.Auth.enterpriseProfileFields(p, o.OverrideUserInfo)}
 	result, created, err := c.Auth.completeProfileWith(c.Request.Context(), c.Request, method, f.Provider, p, tokens, options, complete)
 	if err != nil {
 		return nil, err

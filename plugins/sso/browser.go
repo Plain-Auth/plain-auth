@@ -20,7 +20,9 @@ type BrowserProvider struct {
 }
 
 // BrowserStore resolves and completes enterprise sign-ins. Their flows are
-// kept by the auth instance's OAuthStateStrategy.
+// kept by the auth instance's OAuthStateStrategy. CompleteEnterpriseLogin
+// applies opts.ProfileFields: Create for a new user, and Update, when set,
+// to the returning owner.
 type BrowserStore interface {
 	auth.OAuthIdentityStore
 	FindBrowserProvider(context.Context, Selector) (BrowserProvider, error)
@@ -309,7 +311,7 @@ func (o Options) finish(c auth.EndpointContext) (any, error) {
 		}
 		return store.CompleteEnterpriseLogin(ctx, p.Reference, !o.DisableOrganizationProvisioning, id, sub, t, u, s, opts)
 	}
-	result, err := c.CompleteEnterpriseFlow(flow, "sso-oidc", profile, tokens, o.DisableImplicitSignUp && !flow.RequestSignUp, complete)
+	result, err := c.CompleteEnterpriseFlowWith(flow, "sso-oidc", profile, tokens, auth.EnterpriseCompletion{DisableSignUp: o.DisableImplicitSignUp && !flow.RequestSignUp, OverrideUserInfo: p.OIDC.OverrideUserInfo}, complete)
 	if refused := auth.UserInfoRefusal(err); refused != nil {
 		return enterpriseFailure(c, flow, refused.Code, refused.Message)
 	}

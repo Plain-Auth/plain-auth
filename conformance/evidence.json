@@ -44495,5 +44495,33 @@
       "test": "adapters/sqlstore/sso_claim_mapping_test.go",
       "marker": "t.Fatal(\"extraFields did not fill the department user field\", mapped.dept)"
     }
+  ],
+  "plugin-symbol/sso/OIDCConfig/overrideUserInfo": [
+    {
+      "label": "Store the top-level overrideUserInfo and refresh a returning OIDC user's name, image and mapped field at each sign-in, keeping the profile without it, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_profile_override_test.go",
+      "marker": "t.Fatal(\"overrideUserInfo did not refresh the returning user's name and image\", synced)",
+      "complete": true
+    },
+    {
+      "label": "Keep a returning user's profile when the provider does not override it",
+      "test": "adapters/sqlstore/sso_profile_override_test.go",
+      "marker": "t.Fatal(\"a provider without overrideUserInfo replaced the profile\", kept)"
+    }
+  ],
+  "plugin-symbol/sso/SSOOptions/defaultOverrideUserInfo": [
+    {
+      "label": "Store overrideUserInfo over the request's false and refresh the profile on sign-in",
+      "test": "adapters/sqlstore/sso_profile_override_test.go",
+      "marker": "t.Fatal(\"DefaultOverrideUserInfo was not stored over the request's false\")",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/sso/provisioning.mdx#L46": [
+    {
+      "label": "Overwrite a returning user's name, email, image and mapped fields at each OIDC sign-in and store a changed email unverified",
+      "test": "adapters/sqlstore/sso_profile_override_test.go",
+      "marker": "t.Fatal(\"overrideUserInfo did not store the changed email unverified\", moved)"
+    }
   ]
 }

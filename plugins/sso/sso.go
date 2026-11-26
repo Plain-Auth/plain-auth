@@ -29,6 +29,9 @@ type Options struct {
 	SharedCallback bool
 	// DisableImplicitSignUp requires requestSignUp before creating an account.
 	DisableImplicitSignUp bool
+	// DefaultOverrideUserInfo stores overrideUserInfo on every new OIDC
+	// registration, whatever the request says.
+	DefaultOverrideUserInfo bool
 	// DisableOrganizationProvisioning leaves membership management to the application.
 	DisableOrganizationProvisioning bool
 	// A nil ProvidersLimit allows ten registrations per creator. Zero disables registration.
@@ -316,6 +319,8 @@ func New(o Options) (auth.Plugin, error) {
 			if !validMapping(cfg.Mapping) {
 				return nil, apiError(400, "Invalid OpenID Connect mapping")
 			}
+			// Only the top-level overrideUserInfo counts, as in another runtime.
+			cfg.OverrideUserInfo = o.DefaultOverrideUserInfo
 			cfg.Issuer = issuer
 			if cfg.PKCE == nil {
 				enabled := true
@@ -326,7 +331,7 @@ func New(o Options) (auth.Plugin, error) {
 				if !ok {
 					return nil, apiError(400, "Invalid overrideUserInfo")
 				}
-				cfg.OverrideUserInfo = v
+				cfg.OverrideUserInfo = v || o.DefaultOverrideUserInfo
 			}
 			skip := false
 			if v, ok := oidc["skipDiscovery"]; ok {
