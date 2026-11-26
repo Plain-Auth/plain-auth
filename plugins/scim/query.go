@@ -2,10 +2,15 @@ package scim
 
 import (
 	"encoding/json"
+	"maps"
 	"net/url"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
+	"unicode"
+
+	"github.com/Plain-Org/plain-auth/internal/jsjson"
 )
 
 var equality = regexp.MustCompile(`(?i)^(?:urn:ietf:params:scim:schemas:core:2\.0:user:)?(id|userName|externalId|emails\.value|emails\[\s*type\s+eq\s+"work"\s*\]\.value)\s+eq\s+("(?:[^"\\]|\\.)*")(?:\s+(and)\s+|$)`)
@@ -52,75 +57,200 @@ func query(values url.Values, equality *regexp.Regexp) (Query, error) {
 	return q, nil
 }
 
-type projection struct {
+// selection holds an attributes or excludedAttributes parameter as
+// lowercased response paths. schemas and id are always returned, and an
+// unknown path selects nothing. A nil paths slice returns the whole resource.
+type selection struct {
 	include bool
-	fields  map[string]bool
+	paths   []string
 }
 
-func projectQuery(q url.Values, fields []string, schema string) (projection, error) {
-	var p projection
-	if q.Has("attributes") && q.Has("excludedAttributes") {
-		return p, invalid("invalidValue", "Choose one attribute projection")
+// selectionQuery reads the two mutually exclusive selection parameters. An
+// empty value counts as absent.
+func selectionQuery(q url.Values, schema string) (selection, error) {
+	include, err := selectionParam(q, "attributes", schema)
+	if err != nil {
+		return selection{}, err
 	}
-	key := "excludedAttributes"
-	if q.Has("attributes") {
-		key = "attributes"
-		p.include = true
+	exclude, err := selectionParam(q, "excludedAttributes", schema)
+	if err != nil {
+		return selection{}, err
 	}
-	if !q.Has(key) {
-		return p, nil
+	if include != nil && exclude != nil {
+		return selection{}, invalid("invalidValue", "attributes and excludedAttributes cannot be used together")
 	}
-	p.fields = map[string]bool{}
-	for _, arg := range q[key] {
-		for _, s := range strings.Split(arg, ",") {
-			s = strings.TrimSpace(s)
-			name := field(withoutSchema(s, schema), fields)
-			if name == "" {
-				return p, invalid("invalidValue", "Unknown projection attribute")
-			}
-			p.fields[name] = true
-		}
+	if include != nil {
+		return selection{include: true, paths: include}, nil
 	}
-	return p, nil
-}
-func (p projection) apply(m map[string]any) map[string]any {
-	if p.fields != nil {
-		roles, found := m["roles"]
-		for k := range m {
-			if k != "id" && k != "schemas" && p.fields[k] != p.include {
-				delete(m, k)
-			}
-		}
-		if found && !p.fields["roles"] && p.hasRoleSelection() {
-			rows, _ := roles.([]any)
-			selected := make([]any, 0, len(rows))
-			for _, row := range rows {
-				fields, _ := row.(map[string]any)
-				item := map[string]any{}
-				for key, value := range fields {
-					if p.fields["roles."+key] == p.include {
-						item[key] = value
-					}
-				}
-				if len(item) != 0 || !p.include {
-					selected = append(selected, item)
-				}
-			}
-			if len(selected) != 0 || !p.include {
-				m["roles"] = selected
-			}
-		}
-	}
-	return m
+	return selection{paths: exclude}, nil
 }
 
-var userProjectionFields = append(append([]string{"id", "meta"}, userFields...), "roles.value", "roles.display", "roles.type", "roles.primary")
+func selectionParam(q url.Values, key, schema string) ([]string, error) {
+	var paths []string
+	for _, value := range q[key] {
+		if jsjson.TrimSpace(value) == "" {
+			continue
+		}
+		for _, part := range strings.Split(value, ",") {
+			part = jsjson.TrimSpace(part)
+			if part == "" || strings.ContainsFunc(part, unicode.IsSpace) {
+				return nil, invalid("invalidValue", key+" must be a comma-separated list of attribute paths")
+			}
+			paths = append(paths, strings.ToLower(withoutSchema(part, schema)))
+		}
+	}
+	return paths, nil
+}
 
-func (p projection) hasRoleSelection() bool {
-	for _, f := range roleFields {
-		if p.fields["roles."+f] {
+// returns reports whether the selection can return any part of a top-level
+// attribute, so a store can skip loading it.
+func (s selection) returns(attribute string) bool {
+	if s.paths == nil {
+		return true
+	}
+	attribute = strings.ToLower(attribute)
+	for _, p := range s.paths {
+		if s.include && (p == attribute || strings.HasPrefix(p, attribute+".")) {
 			return true
 		}
+		if !s.include && p == attribute {
+			return false
+		}
 	}
-	return false
+	return !s.include
+}
+
+type pathNode struct {
+	selected bool
+	children map[string]*pathNode
+}
+
+func (n *pathNode) child(key string) *pathNode {
+	if n.children == nil {
+		n.children = map[string]*pathNode{}
+	}
+	c := n.children[key]
+	if c == nil {
+		c = &pathNode{}
+		n.children[key] = c
+	}
+	return c
+}
+
+// pathTree splits each path into segments. A path's first segment is the
+// longest resource attribute it starts with, since an attribute name such as
+// a schema URN can contain dots.
+func pathTree(paths []string, names []string) *pathNode {
+	slices.SortFunc(names, func(a, b string) int { return len(b) - len(a) })
+	root := &pathNode{}
+	for _, path := range paths {
+		var segments []string
+		for _, name := range names {
+			lower := strings.ToLower(name)
+			if path == lower || strings.HasPrefix(path, lower+".") {
+				segments = []string{lower}
+				path = strings.TrimPrefix(path[len(lower):], ".")
+				break
+			}
+		}
+		if path != "" {
+			segments = append(segments, strings.Split(path, ".")...)
+		}
+		node := root
+		for _, segment := range segments {
+			node = node.child(segment)
+		}
+		node.selected = true
+	}
+	return root
+}
+
+// apply returns the selected parts of a resource; keys match
+// case-insensitively and keep their spelling.
+func (s selection) apply(resource map[string]any) map[string]any {
+	if s.paths == nil {
+		return resource
+	}
+	root := pathTree(s.paths, slices.Collect(maps.Keys(resource)))
+	out := map[string]any{"schemas": resource["schemas"], "id": resource["id"]}
+	for key, value := range resource {
+		lower := strings.ToLower(key)
+		if lower == "schemas" || lower == "id" {
+			continue
+		}
+		node := root.children[lower]
+		switch {
+		case node == nil && !s.include:
+			out[key] = value
+		case node == nil:
+		case s.include:
+			if v, ok := pick(value, node); ok {
+				out[key] = v
+			}
+		default:
+			if v, ok := omit(value, node); ok {
+				out[key] = v
+			}
+		}
+	}
+	return out
+}
+
+// pick keeps the selected parts of a value; arrays select per entry.
+func pick(value any, node *pathNode) (any, bool) {
+	if node.selected {
+		return value, true
+	}
+	switch v := value.(type) {
+	case []any:
+		var out []any
+		for _, item := range v {
+			if x, ok := pick(item, node); ok {
+				out = append(out, x)
+			}
+		}
+		return out, len(out) > 0
+	case map[string]any:
+		out := map[string]any{}
+		for key, child := range v {
+			if n := node.children[strings.ToLower(key)]; n != nil {
+				if x, ok := pick(child, n); ok {
+					out[key] = x
+				}
+			}
+		}
+		return out, len(out) > 0
+	}
+	return nil, false
+}
+
+// omit drops the selected parts of a value; arrays keep their entries.
+func omit(value any, node *pathNode) (any, bool) {
+	if node.selected {
+		return nil, false
+	}
+	switch v := value.(type) {
+	case []any:
+		out := []any{}
+		for _, item := range v {
+			if x, ok := omit(item, node); ok {
+				out = append(out, x)
+			}
+		}
+		return out, true
+	case map[string]any:
+		out := map[string]any{}
+		for key, child := range v {
+			n := node.children[strings.ToLower(key)]
+			if n == nil {
+				out[key] = child
+				continue
+			}
+			if x, ok := omit(child, n); ok {
+				out[key] = x
+			}
+		}
+		return out, true
+	}
+	return value, true
 }

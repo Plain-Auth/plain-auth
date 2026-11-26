@@ -451,7 +451,10 @@
       - [x] Find a User by lowercase userName and an uppercase work email value on both runtimes ([test](../../../conformance/scim-contract.mjs#L66))
     - [ ] Group
       - [x] Find a Group by lowercase displayName and externalId on both runtimes ([test](../../../conformance/scim-contract.mjs#L116))
-  - [ ] Response attributes
+  - [x] Response attributes ([test](../../../plugins/scim/selection_test.go#L29))
+    - [x] Select and exclude nested, case-insensitive and core-qualified paths, ignore unknown paths, refuse empty parts, inner whitespace and combined parameters, and keep emptied array entries on exclusion ([test](../../../plugins/scim/selection_test.go#L29))
+    - [x] Apply nested selections to POST, PUT, PATCH, collection and Group responses and ignore an unknown path, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_attributes_test.go#L735))
+    - [x] Select nested Group member and meta fields ([test](../../../adapters/sqlstore/scim_attributes_test.go#L769))
   - [ ] PATCH
     - [x] Accept an empty Operations array, an empty pathless value and 101 operations, keep lastModified and the revision for an unchanged PATCH, take case-insensitive and omitted ops, and refuse an unknown op, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_attributes_test.go#L269))
     - [ ] User PATCH paths

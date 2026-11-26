@@ -729,3 +729,45 @@ func TestSCIMUserMultiValuedPatchOverHTTP(t *testing.T) {
 		})
 	}
 }
+
+// attributes and excludedAttributes select nested paths on every User
+// response, and an unknown path selects nothing.
+func TestSCIMUserSelectionOverHTTP(t *testing.T) {
+	for _, dialect := range []string{"sqlite", "postgres", "mysql"} {
+		t.Run(dialect, func(t *testing.T) {
+			_, call := attributeDirectory(t, dialect)
+			created := call("POST", "Users?attributes=userName", map[string]any{"schemas": []string{scim.UserSchema}, "userName": "sel@example.test",
+				"name": map[string]any{"givenName": "Sel", "familyName": "Ection"}, "emails": []any{map[string]any{"value": "sel@example.test", "type": "work"}}}, 201, "the User was refused")
+			if len(created) != 3 || created["userName"] != "sel@example.test" || created["id"] == nil || created["schemas"] == nil {
+				t.Fatal("POST ignored the attribute selection", created)
+			}
+			id := created["id"].(string)
+			put := call("PUT", "Users/"+id+"?excludedAttributes=name.givenName", map[string]any{"schemas": []string{scim.UserSchema}, "userName": "sel@example.test",
+				"name": map[string]any{"givenName": "Sel", "familyName": "Ection"}}, 200, "the replacement was refused")
+			if !jsonEqual(put["name"], map[string]any{"formatted": "Sel Ection", "familyName": "Ection"}) || put["userName"] == nil {
+				t.Fatal("PUT ignored a nested exclusion", put)
+			}
+			patched := call("PATCH", "Users/"+id+"?attributes=emails.value", map[string]any{"schemas": []string{scim.PatchSchema}, "Operations": []any{map[string]any{"op": "replace", "path": "title", "value": "Lead"}}}, 200, "the PATCH was refused")
+			if !jsonEqual(patched["emails"], []any{map[string]any{"value": "sel@example.test"}}) || patched["title"] != nil {
+				t.Fatal("PATCH ignored a nested selection", patched)
+			}
+			list := call("GET", "Users?attributes=name.familyName", nil, 200, "the collection was refused")
+			if !jsonEqual(list["Resources"].([]any)[0], map[string]any{"schemas": []any{scim.UserSchema}, "id": id, "name": map[string]any{"familyName": "Ection"}}) {
+				t.Fatal("a collection ignored a nested selection", list["Resources"])
+			}
+			if body := call("GET", "Users?attributes=userName&excludedAttributes=title", nil, 400, "a collection accepted both selection parameters"); body["scimType"] != "invalidValue" {
+				t.Fatal("combined selection parameters were not invalidValue", body)
+			}
+			if got := call("GET", "Users/"+id+"?attributes=unknownThing", nil, 200, "a User selection refused an unknown path"); len(got) != 2 {
+				t.Fatal("an unknown User selection path returned attributes", got)
+			}
+			group := call("POST", "Groups", map[string]any{"schemas": []string{scim.GroupSchema}, "displayName": "Readers", "members": []any{map[string]any{"value": id}}}, 201, "the Group was refused")
+			if got := call("GET", "Groups/"+group["id"].(string)+"?attributes=unknownThing", nil, 200, "a Group selection refused an unknown path"); len(got) != 2 {
+				t.Fatal("an unknown Group selection path returned attributes", got)
+			}
+			if got := call("GET", "Groups/"+group["id"].(string)+"?attributes=members.value,meta.created", nil, 200, "a nested Group selection was refused"); !jsonEqual(got["members"], []any{map[string]any{"value": id}}) || len(got["meta"].(map[string]any)) != 1 {
+				t.Fatal("a nested Group selection returned the wrong fields", got)
+			}
+		})
+	}
+}

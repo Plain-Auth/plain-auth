@@ -96,7 +96,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.serveGroups(w, r, d, id, single)
 		return
 	}
-	pr, err := projectQuery(r.URL.Query(), userProjectionFields, UserSchema)
+	pr, err := selectionQuery(r.URL.Query(), UserSchema)
 	if err != nil {
 		writeError(w, err)
 		return

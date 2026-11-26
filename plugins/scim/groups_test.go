@@ -57,11 +57,11 @@ func TestSCIMGroupCompatibilityAndPatchForms(t *testing.T) {
 		{url.Values{"attributes": {"members"}}, true},
 		{url.Values{"excludedAttributes": {"members"}}, false},
 	} {
-		p, e := projectQuery(tc.q, groupProjectionFields, GroupSchema)
+		p, e := selectionQuery(tc.q, GroupSchema)
 		if e != nil {
 			t.Fatal(e)
 		}
-		result := h.groupResource(Group{ID: "empty"}, p)
+		result := p.apply(h.groupResource(Group{ID: "empty"}, p.returns("members")))
 		_, ok := result["members"]
 		if ok != tc.hasMembers {
 			t.Fatal(tc, result)

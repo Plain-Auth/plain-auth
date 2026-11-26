@@ -3,73 +3,30 @@ package scim
 import (
 	"net/http"
 	"net/url"
-	"strings"
 )
 
-var groupProjectionFields = append(append([]string{}, groupFields...), strings.Fields("members.value members.display members.type members.$ref meta.resourceType meta.created meta.lastModified meta.location")...)
-
-func (p projection) selectGroupField(parent, child string) bool {
-	if p.fields == nil {
-		return true
-	}
-	if p.include {
-		return p.fields[parent] || p.fields[parent+"."+child]
-	}
-	return !p.fields[parent] && !p.fields[parent+"."+child]
-}
-func (p projection) groupMembers() bool {
-	if p.fields == nil || !p.include {
-		return !p.fields["members"]
-	}
-	if p.fields["members"] {
-		return true
-	}
-	for k := range p.fields {
-		if strings.HasPrefix(k, "members.") {
-			return true
-		}
-	}
-	return false
-}
-func (h *Handler) groupResource(g Group, p projection) map[string]any {
+// groupResource builds a Group; members says whether they were loaded.
+func (h *Handler) groupResource(g Group, members bool) map[string]any {
 	loc := h.base + "/Groups/" + url.PathEscape(g.ID)
 	m := map[string]any{"schemas": []string{GroupSchema}, "id": g.ID}
 	for field, val := range map[string]string{"displayName": g.DisplayName, "externalId": g.ExternalID} {
-		if val != "" && (p.fields == nil || p.fields[field] == p.include) {
+		if val != "" {
 			m[field] = val
 		}
 	}
 	const iso = "2006-01-02T15:04:05.000Z"
-	meta := map[string]any{"resourceType": "Group", "location": loc, "created": g.CreatedAt.UTC().Format(iso), "lastModified": g.UpdatedAt.UTC().Format(iso)}
-	for k := range meta {
-		if !p.selectGroupField("meta", k) {
-			delete(meta, k)
-		}
-	}
-	if len(meta) > 0 || !p.include && !p.fields["meta"] {
-		m["meta"] = meta
-	}
-	if p.groupMembers() {
-		rows := make([]map[string]string, 0, len(g.Members))
+	m["meta"] = map[string]any{"resourceType": "Group", "location": loc, "created": g.CreatedAt.UTC().Format(iso), "lastModified": g.UpdatedAt.UTC().Format(iso)}
+	if members {
+		rows := make([]any, 0, len(g.Members))
 		for _, v := range g.Members {
-			item := map[string]string{"value": v.ID, "display": v.DisplayName, "type": "User", "$ref": h.base + "/Users/" + url.PathEscape(v.ID)}
-			for k := range item {
-				if !p.selectGroupField("members", k) {
-					delete(item, k)
-				}
-			}
-			if len(item) > 0 || !p.include {
-				rows = append(rows, item)
-			}
+			rows = append(rows, map[string]any{"value": v.ID, "display": v.DisplayName, "type": "User", "$ref": h.base + "/Users/" + url.PathEscape(v.ID)})
 		}
-		if len(rows) > 0 || !p.include || p.fields["members"] {
-			m["members"] = rows
-		}
+		m["members"] = rows
 	}
 	return m
 }
 func (h *Handler) serveGroups(w http.ResponseWriter, r *http.Request, d Directory, id string, single bool) {
-	p, e := projectQuery(r.URL.Query(), groupProjectionFields, GroupSchema)
+	p, e := selectionQuery(r.URL.Query(), GroupSchema)
 	if e != nil {
 		writeError(w, e)
 		return
@@ -84,19 +41,19 @@ func (h *Handler) serveGroups(w http.ResponseWriter, r *http.Request, d Director
 				writeError(w, e)
 				return
 			}
-			rows, total, e := h.groups.SCIMListGroups(ctx, d, q, p.groupMembers())
+			rows, total, e := h.groups.SCIMListGroups(ctx, d, q, p.returns("members"))
 			if e != nil {
 				writeError(w, e)
 				return
 			}
 			items := make([]map[string]any, 0, len(rows))
 			for _, v := range rows {
-				items = append(items, h.groupResource(v, p))
+				items = append(items, p.apply(h.groupResource(v, p.returns("members"))))
 			}
 			write(w, 200, list(items, total, q.Offset+1))
 			return
 		}
-		g, e = h.groups.SCIMGetGroup(ctx, d, id, p.groupMembers())
+		g, e = h.groups.SCIMGetGroup(ctx, d, id, p.returns("members"))
 	case http.MethodDelete:
 		e = h.groups.SCIMDeleteGroup(ctx, d, id)
 		if e == nil {
@@ -141,5 +98,5 @@ func (h *Handler) serveGroups(w http.ResponseWriter, r *http.Request, d Director
 		status = 201
 		w.Header().Set("Content-Location", location)
 	}
-	write(w, status, h.groupResource(g, p))
+	write(w, status, p.apply(h.groupResource(g, p.returns("members"))))
 }

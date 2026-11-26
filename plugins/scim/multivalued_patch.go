@@ -66,13 +66,13 @@ func (a multiValued) additions(value any) ([]map[string]any, error) {
 	return items, nil
 }
 
-type selection struct {
+type selector struct {
 	kind, primary, sub string
 }
 
-func (s selection) whole() bool { return s == selection{} }
+func (s selector) whole() bool { return s == selector{} }
 
-func (s selection) matches(row map[string]any) bool {
+func (s selector) matches(row map[string]any) bool {
 	if s.primary != "" {
 		return row["primary"] == (s.primary == "true")
 	}
@@ -83,7 +83,7 @@ func (s selection) matches(row map[string]any) bool {
 	return true
 }
 
-func (s selection) additions(a multiValued, value any) ([]map[string]any, error) {
+func (s selector) additions(a multiValued, value any) ([]map[string]any, error) {
 	if s.sub != "" {
 		if s.sub == "primary" {
 			if b, e := boolValue(value); e == nil {
@@ -95,7 +95,7 @@ func (s selection) additions(a multiValued, value any) ([]map[string]any, error)
 	return a.additions(value)
 }
 
-func (s selection) assignSelector(item map[string]any) {
+func (s selector) assignSelector(item map[string]any) {
 	if s.kind != "" && s.sub != "type" {
 		item["type"] = s.kind
 	}
@@ -127,7 +127,7 @@ func patchMultiValued(m map[string]any, a multiValued, path, op string, value an
 	if parts == nil {
 		return invalid("invalidPath", "Unsupported "+a.name+" path")
 	}
-	selected := selection{kind: roleType(parts[1]), primary: strings.Trim(strings.ToLower(parts[2]), "\""), sub: field(parts[3], a.fields)}
+	selected := selector{kind: roleType(parts[1]), primary: strings.Trim(strings.ToLower(parts[2]), "\""), sub: field(parts[3], a.fields)}
 	if parts[3] != "" && selected.sub == "" {
 		return invalid("invalidPath", "Unknown "+a.name+" subattribute")
 	}

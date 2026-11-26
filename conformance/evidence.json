@@ -45481,5 +45481,23 @@
       "test": "adapters/sqlstore/scim_attributes_test.go",
       "marker": "t.Fatal(\"an address filter miss did not create the entry\", got[\"addresses\"])"
     }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L340": [
+    {
+      "label": "Select and exclude nested, case-insensitive and core-qualified paths, ignore unknown paths, refuse empty parts, inner whitespace and combined parameters, and keep emptied array entries on exclusion",
+      "test": "plugins/scim/selection_test.go",
+      "marker": "t.Fatal(\"a nested include selection returned the wrong fields\", got, err)",
+      "complete": true
+    },
+    {
+      "label": "Apply nested selections to POST, PUT, PATCH, collection and Group responses and ignore an unknown path, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_attributes_test.go",
+      "marker": "func TestSCIMUserSelectionOverHTTP("
+    },
+    {
+      "label": "Select nested Group member and meta fields",
+      "test": "adapters/sqlstore/scim_attributes_test.go",
+      "marker": "t.Fatal(\"a nested Group selection returned the wrong fields\", got)"
+    }
   ]
 }
