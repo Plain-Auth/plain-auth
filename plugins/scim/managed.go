@@ -11,6 +11,7 @@ import (
 	"slices"
 	"strings"
 	"time"
+	"unicode/utf16"
 )
 
 // ManagedOptions enables the server-only directory credential catalog.
@@ -107,7 +108,8 @@ func newCatalog(s Store, o *ManagedOptions) (*Catalog, error) {
 	if !ok {
 		return nil, errors.New("scim: managed credential store is required")
 	}
-	if len([]rune(o.CredentialHashSecret)) < 32 {
+	// Count UTF-16 code units, as another runtime counts a string's length.
+	if len(utf16.Encode([]rune(o.CredentialHashSecret))) < 32 {
 		return nil, errors.New("scim: managed credential digest secret needs at least 32 characters")
 	}
 	limit := o.MaxActiveCredentials

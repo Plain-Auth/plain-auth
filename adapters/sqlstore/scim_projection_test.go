@@ -437,3 +437,50 @@ func TestSCIMProjectionReplaySummary(t *testing.T) {
 		})
 	}
 }
+
+// A host callback's *scim.Error is answered as is and rolls the directory
+// change back; another error stays a generic 500.
+func TestSCIMProjectionCallbackErrors(t *testing.T) {
+	for _, dialect := range []string{"sqlite", "postgres", "mysql"} {
+		t.Run(dialect, func(t *testing.T) {
+			ctx := t.Context()
+			must := func(e error) {
+				t.Helper()
+				if e != nil {
+					t.Fatal(e)
+				}
+			}
+			ddl, e := schema.Generate(dialect, []string{"scim"})
+			must(e)
+			store, e := OpenWithSchema(ctx, dialect, organizationTestDSN(t, dialect), ddl)
+			must(e)
+			defer store.Close()
+			var reconcileErr error
+			policy := scim.Projection{PolicyID: "errors-v1", ReconcileUser: func(context.Context, scim.ProjectionTx, scim.ProjectedUser) error { return reconcileErr }}
+			configured, e := store.EnableSCIMProjection(ctx, "Tenant", policy)
+			must(e)
+			host, e := auth.New(auth.Options{BaseURL: "https://directory.example.test", BasePath: "/identity/custom", Secret: strings.Repeat("a", 32), Store: configured})
+			must(e)
+			h, e := scim.New(host, scim.Options{Store: configured, Connections: []scim.Connection{{Directory: scim.Directory{ID: "ACME", ProvisioningDomainID: "Tenant"}, Credentials: []scim.Credential{{ID: "owned", Token: "writer"}}}}})
+			must(e)
+			stored := func(name string) bool {
+				var n int
+				must(store.db.QueryRowContext(ctx, store.bind(`SELECT COUNT(*) FROM "scimUser" WHERE "userName"=?`), name).Scan(&n))
+				return n > 0
+			}
+			reconcileErr = &scim.Error{Status: 409, Type: "uniqueness", Detail: "The application refused this account"}
+			w := scimRequest(h, "POST", "Users", "writer", map[string]any{"schemas": []string{scim.UserSchema}, "userName": "refused@example.test"})
+			if w.Code != 409 || !strings.Contains(w.Body.String(), "The application refused this account") || !strings.Contains(w.Body.String(), `"scimType":"uniqueness"`) {
+				t.Fatal("a reconciler's SCIM error was not answered as is", w.Code, w.Body.String())
+			}
+			if stored("refused@example.test") {
+				t.Fatal("a reconciler's SCIM error did not roll the provisioning back")
+			}
+			reconcileErr = errors.New("private application detail")
+			w = scimRequest(h, "POST", "Users", "writer", map[string]any{"schemas": []string{scim.UserSchema}, "userName": "failed@example.test"})
+			if w.Code != 500 || strings.Contains(w.Body.String(), "private application detail") || !strings.Contains(w.Body.String(), "SCIM projection reconciliation failed") {
+				t.Fatal("a reconciler's plain error was not hidden behind a 500", w.Code, w.Body.String())
+			}
+		})
+	}
+}

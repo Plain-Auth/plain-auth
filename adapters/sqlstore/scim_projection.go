@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"database/sql"
+	"errors"
 	"maps"
 	"slices"
 	"strings"
@@ -129,6 +130,16 @@ func (s *Store) scimRoleInputs(ctx context.Context, tx *sql.Tx, d scim.IdentityS
 }
 
 func scimCallbackFailure(detail string) error { return &scim.Error{Status: 500, Detail: detail} }
+
+// scimCallbackError answers a host callback's *scim.Error as is and hides
+// any other error behind detail.
+func scimCallbackError(err error, detail string) error {
+	var e *scim.Error
+	if errors.As(err, &e) {
+		return e
+	}
+	return scimCallbackFailure(detail)
+}
 func (s *Store) projectSCIMUser(ctx context.Context, tx *sql.Tx, domain, owner string, withdraw bool) error {
 	policy, ok := s.scimPolicies[domain]
 	if !ok {
@@ -158,7 +169,7 @@ func (s *Store) projectSCIMUser(ctx context.Context, tx *sql.Tx, domain, owner s
 		for _, m := range mappings {
 			roles, err := policy.Map(ctx, view, m)
 			if err != nil {
-				return scimCallbackFailure("SCIM role mapping failed")
+				return scimCallbackError(err, "SCIM role mapping failed")
 			}
 			for _, raw := range roles {
 				role := jsjson.TrimSpace(raw)
@@ -173,7 +184,7 @@ func (s *Store) projectSCIMUser(ctx context.Context, tx *sql.Tx, domain, owner s
 				if !cached {
 					found, err = policy.Exists(ctx, view, lookup)
 					if err != nil {
-						return scimCallbackFailure("SCIM role validation failed")
+						return scimCallbackError(err, "SCIM role validation failed")
 					}
 					catalog[lookup] = found
 				}
@@ -192,7 +203,7 @@ func (s *Store) projectSCIMUser(ctx context.Context, tx *sql.Tx, domain, owner s
 		state.Grants = append(state.Grants, desired[k])
 	}
 	if err = policy.ReconcileUser(ctx, view, state); err != nil {
-		return scimCallbackFailure("SCIM projection reconciliation failed")
+		return scimCallbackError(err, "SCIM projection reconciliation failed")
 	}
 	return nil
 }

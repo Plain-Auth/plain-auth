@@ -10736,6 +10736,12 @@
       "label": "Authenticate the other implementation’s issued credential from a shared keyed digest",
       "test": "conformance/scim-managed.mjs",
       "marker": "export async function managedCatalog("
+    },
+    {
+      "label": "Refuse a digest secret under 32 UTF-16 code units and accept 32 ASCII characters or 16 emoji",
+      "test": "plugins/scim/managed_test.go",
+      "marker": "func TestSCIMManagedSecretLength(",
+      "complete": true
     }
   ],
   "plugin-symbol/scim/SCIMManagedConnectionOptions/maxActiveCredentials": [
@@ -43155,6 +43161,11 @@
       "label": "Roll back the directory change and the application's writes when the projection reconciler fails",
       "test": "adapters/sqlstore/scim_projection_test.go",
       "marker": "return errors.New(\"fixture application error after writes\")"
+    },
+    {
+      "label": "Answer a reconciler's SCIM error as is and roll the provisioning back, and hide a plain error behind a 500, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_projection_test.go",
+      "marker": "t.Fatal(\"a reconciler's SCIM error was not answered as is\", w.Code, w.Body.String())"
     }
   ],
   "plugin-symbol/scim/SCIMRoleProjection": [
@@ -43718,6 +43729,11 @@
       "label": "Report a never-used directory retired by one runtime as complete with no batches from the other",
       "test": "conformance/scim-managed.mjs",
       "marker": "assert.equal(observed.batches, 0);"
+    },
+    {
+      "label": "Retire a bound connection without a domain in its bound domain, a declared one in its declared domain, and refuse a never-bound connection, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_decommission_test.go",
+      "marker": "func TestSCIMRetirementWithoutDomain("
     }
   ],
   "docs/content/docs/plugins/scim/reference.mdx#L522/Nested Groups or non-User Group members": [

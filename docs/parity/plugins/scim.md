@@ -106,8 +106,9 @@
   - [ ] `SCIMIdentityState`
   - [ ] `SCIMManagedBearerPrincipal`
   - [ ] `SCIMManagedConnectionOptions`
-    - [ ] `credentialHashSecret`
+    - [x] `credentialHashSecret` ([test](../../../plugins/scim/managed_test.go#L50))
       - [x] Authenticate the other implementation’s issued credential from a shared keyed digest ([test](../../../conformance/scim-managed.mjs#L13))
+      - [x] Refuse a digest secret under 32 UTF-16 code units and accept 32 ASCII characters or 16 emoji ([test](../../../plugins/scim/managed_test.go#L50))
     - [x] `maxActiveCredentials` ([test](../../../adapters/sqlstore/scim_managed_test.go#L286))
       - [x] Bound concurrent credential rotations and reclaim slots after expiry ([test](../../../adapters/sqlstore/scim_managed_test.go#L31))
       - [x] Default the managed credential cap to five, keep 100 and refuse values outside 1 through 100 ([test](../../../plugins/scim/managed_test.go#L16))
@@ -142,6 +143,7 @@
   - [ ] `SCIMProjectedUserState`
   - [ ] `SCIMProjection`
     - [x] Roll back the directory change and the application's writes when the projection reconciler fails ([test](../../../adapters/sqlstore/scim_projection_test.go#L108))
+    - [x] Answer a reconciler's SCIM error as is and roll the provisioning back, and hide a plain error behind a 500, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_projection_test.go#L474))
   - [ ] `SCIMResolvedConnectionVerificationResult`
     - [x] Persist the first application-resolved directory domain and isolate case-sensitive connection IDs ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L35))
   - [ ] `SCIMRoleExistenceInput`
@@ -557,6 +559,7 @@
     - [ ] `decommissionSCIMConnection`
       - [x] Refuse retiring a static connection under a different provisioning domain, then retire it before first use so its token answers 401 ([test](../../../adapters/sqlstore/scim_decommission_test.go#L73))
       - [x] Report a never-used directory retired by one runtime as complete with no batches from the other ([test](../../../conformance/scim-managed.mjs#L146))
+      - [x] Retire a bound connection without a domain in its bound domain, a declared one in its declared domain, and refuse a never-bound connection, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_decommission_test.go#L191))
   - [ ] Unsupported features
     - [x] Custom schema extensions ([test](../../../adapters/sqlstore/scim_attributes_test.go#L130))
       - [x] Refuse a User or Group with a custom schema extension as invalidValue ([test](../../../adapters/sqlstore/scim_attributes_test.go#L130))

@@ -70,6 +70,16 @@ func (s *Store) acquireRetirement(ctx context.Context, d scim.Directory) (direct
 // Each batch commits its identity changes and cursor together. An interrupted
 // worker can be replaced safely after the persisted lease expires.
 func (s *Store) SCIMDecommission(ctx context.Context, d scim.Directory) (scim.Retirement, error) {
+	if d.ProvisioningDomainID == "" {
+		// Retire the domain the connection is bound to.
+		err := s.db.QueryRowContext(ctx, s.bind(`SELECT "provisioningDomainId" FROM "scimConnectionBinding" WHERE "connectionKey"=?`), scimKey("scim-connection", d.ID)).Scan(&d.ProvisioningDomainID)
+		if errors.Is(err, sql.ErrNoRows) {
+			return scim.Retirement{}, scim.ErrNoBinding
+		}
+		if err != nil {
+			return scim.Retirement{}, err
+		}
+	}
 	r, lease, err := s.acquireRetirement(ctx, d)
 	if err != nil || lease == "" {
 		return r.Retirement, err

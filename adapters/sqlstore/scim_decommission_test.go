@@ -185,3 +185,43 @@ func TestSCIMDirectoryRetirement(t *testing.T) {
 		})
 	}
 }
+
+// Retirement without a provisioning domain uses the domain the connection
+// is bound to, and a connection without a binding is refused.
+func TestSCIMRetirementWithoutDomain(t *testing.T) {
+	for _, dialect := range []string{"sqlite", "postgres", "mysql"} {
+		t.Run(dialect, func(t *testing.T) {
+			ctx := t.Context()
+			must := func(err error) {
+				t.Helper()
+				if err != nil {
+					t.Fatal(err)
+				}
+			}
+			ddl, err := schema.Generate(dialect, []string{"scim"})
+			must(err)
+			s, err := OpenWithSchema(ctx, dialect, organizationTestDSN(t, dialect), ddl)
+			must(err)
+			defer s.Close()
+			host, err := auth.New(auth.Options{Secret: strings.Repeat("x", 40), BaseURL: "https://retire.test", BasePath: "/identity/custom", Store: s})
+			must(err)
+			h, err := scim.New(host, scim.Options{Store: s, Connections: []scim.Connection{
+				{Directory: scim.Directory{ID: "bound", ProvisioningDomainID: "agency"}, Credentials: []scim.Credential{{ID: "bound-key", Token: "bound-token"}}},
+				{Directory: scim.Directory{ID: "declared", ProvisioningDomainID: "office"}, Credentials: []scim.Credential{{ID: "declared-key", Token: "declared-token"}}},
+			}})
+			must(err)
+			if w := scimRequest(h, "POST", "Users", "bound-token", map[string]any{"schemas": []string{scim.UserSchema}, "userName": "bound@example.test"}); w.Code != 201 {
+				t.Fatal("provisioning failed", w.Code, w.Body.String())
+			}
+			if r, err := s.SCIMDecommission(ctx, scim.Directory{ID: "bound"}); err != nil || r.Status != "complete" || r.ProvisioningDomainID != "agency" {
+				t.Fatal("a bound connection was not retired in its bound domain", r, err)
+			}
+			if _, err := s.SCIMDecommission(ctx, scim.Directory{ID: "never-bound"}); !errors.Is(err, scim.ErrNoBinding) {
+				t.Fatal("a connection without a binding was retired without a domain", err)
+			}
+			if r, err := h.Decommission(ctx, scim.Directory{ID: "declared"}); err != nil || r.ProvisioningDomainID != "office" {
+				t.Fatal("a declared connection was not retired in its declared domain", r, err)
+			}
+		})
+	}
+}

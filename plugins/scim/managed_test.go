@@ -44,3 +44,21 @@ func TestSCIMManagedCatalogOptionBounds(t *testing.T) {
 		t.Fatal("a negative last-used write interval was accepted", err)
 	}
 }
+
+// The digest secret minimum counts UTF-16 code units, as another runtime
+// counts a string's length.
+func TestSCIMManagedSecretLength(t *testing.T) {
+	build := func(secret string) error {
+		_, err := newCatalog(managedOnly{}, &ManagedOptions{CredentialHashSecret: secret})
+		return err
+	}
+	if build(strings.Repeat("k", 31)) == nil {
+		t.Fatal("a 31-character digest secret was accepted")
+	}
+	if err := build(strings.Repeat("k", 32)); err != nil {
+		t.Fatal("a 32-character digest secret was refused", err)
+	}
+	if err := build(strings.Repeat("😀", 16)); err != nil {
+		t.Fatal("a digest secret of 32 UTF-16 code units was refused", err)
+	}
+}

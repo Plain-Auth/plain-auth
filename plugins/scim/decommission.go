@@ -24,17 +24,30 @@ type ManagedRetirement struct {
 	Decommission Retirement `json:"decommission"`
 }
 
+// RetirementStore retires a directory. An empty ProvisioningDomainID means
+// the domain the connection is bound to; a connection without a binding then
+// answers ErrNoBinding.
 type RetirementStore interface {
 	SCIMDecommission(context.Context, Directory) (Retirement, error)
 }
+
+// ErrNoBinding answers a retirement without a provisioning domain for a
+// connection that was never bound to one.
+var ErrNoBinding = errors.New("scim: the connection has no persisted binding")
+
 type ManagedRetirementStore interface {
 	SCIMDecommissionManaged(context.Context, Directory, string) (ManagedRetirement, error)
 }
 
 // Decommission permanently retires a static or externally verified directory.
 // Callers authorize the tenant administrator before invoking this server-only operation.
+// The provisioning domain may be left empty to retire the domain the
+// connection is bound to.
 func (h *Handler) Decommission(ctx context.Context, d Directory) (Retirement, error) {
-	if !identifier(d.ID) || !identifier(d.ProvisioningDomainID) {
+	if declared, ok := h.declared[d.ID]; ok && d.ProvisioningDomainID == "" {
+		d.ProvisioningDomainID = declared.ProvisioningDomainID
+	}
+	if !identifier(d.ID) || d.ProvisioningDomainID != "" && !identifier(d.ProvisioningDomainID) {
 		return Retirement{}, invalid("invalidValue", "Expected a directory and provisioning domain")
 	}
 	if managedDirectory(d) {
