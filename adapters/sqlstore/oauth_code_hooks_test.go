@@ -192,13 +192,16 @@ func TestVerificationHooksAroundAuthorizationCodes(t *testing.T) {
 				}
 				return u.Query().Get("code")
 			}
-			exchange := func(h *auth.Auth, code, verifier string) *httptest.ResponseRecorder {
-				form := url.Values{"grant_type": {"authorization_code"}, "client_id": {"app"}, "code": {code}, "code_verifier": {verifier}, "redirect_uri": {callback}}
+			exchangeAs := func(h *auth.Auth, client, code, verifier, redirect string) *httptest.ResponseRecorder {
+				form := url.Values{"grant_type": {"authorization_code"}, "client_id": {client}, "code": {code}, "code_verifier": {verifier}, "redirect_uri": {redirect}}
 				r := httptest.NewRequest("POST", base+"/api/auth/oauth2/token", strings.NewReader(form.Encode()))
 				r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 				w := httptest.NewRecorder()
 				h.ServeHTTP(w, r)
 				return w
+			}
+			exchange := func(h *auth.Auth, code, verifier string) *httptest.ResponseRecorder {
+				return exchangeAs(h, "app", code, verifier, callback)
 			}
 			answer := func(w *httptest.ResponseRecorder, status int, code, description string) {
 				t.Helper()
@@ -352,6 +355,11 @@ func TestVerificationHooksAroundAuthorizationCodes(t *testing.T) {
 			code = codeFrom(authorize(h1, "app", "reports"), "")
 			drain()
 			answer(exchange(h2, code, strings.Repeat("w", 64)), 400, "invalid_grant", "code verification failed")
+			answer(exchangeAs(h2, "app", code, verifier, "http://127.0.0.1:41234/other"), 400, "invalid_grant", "redirect_uri mismatch")
+			answer(exchangeAs(h2, "asks", code, verifier, callback), 400, "invalid_grant", "invalid client_id")
+			write(`UPDATE "session" SET "expiresAt"=? WHERE "id"='sid'`, s.date(now))
+			answer(exchange(h1, code, verifier), 400, "invalid_request", "session no longer exists")
+			write(`UPDATE "session" SET "expiresAt"=? WHERE "id"='sid'`, s.date(now.Add(time.Hour)))
 			got, _ = drain()
 			same(got)
 			// A declined exchange keeps the code.

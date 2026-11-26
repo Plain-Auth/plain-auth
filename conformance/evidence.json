@@ -19239,7 +19239,7 @@
       "marker": "func TestVerificationGate(t *testing.T) {"
     },
     {
-      "label": "Run verification hooks around OAuth authorization codes on SQLite, PostgreSQL and MySQL: the create hooks run after the client, session and consent checks, a declined code is sent but redeems nothing, the exchange's delete hooks run after its client, redirect URI, PKCE, user and session checks and once across an offline grant's two passes, and a failed delete after hook removes the tokens the exchange stored",
+      "label": "Run verification hooks around OAuth authorization codes on SQLite, PostgreSQL and MySQL: the create hooks run after the client, session and consent checks, a declined code is sent but redeems nothing, the exchange's delete hooks run after its client, redirect URI, PKCE and session checks and once across an offline grant's two passes, and a failed delete after hook removes the tokens the exchange stored",
       "test": "adapters/sqlstore/oauth_code_hooks_test.go",
       "marker": "func TestVerificationHooksAroundAuthorizationCodes(t *testing.T) {"
     },
@@ -19340,7 +19340,7 @@
       "marker": "// A declined proof is refused before the code is compared or counted."
     },
     {
-      "label": "Decline an authorization code exchange with ErrSkipWrite after its PKCE, client, user and session checks: the exchange answers invalid_grant and the code stays usable",
+      "label": "Decline an authorization code exchange with ErrSkipWrite after its client, redirect URI, PKCE and session checks: the exchange answers invalid_grant and the code stays usable",
       "test": "adapters/sqlstore/oauth_code_hooks_test.go",
       "marker": "// A declined exchange keeps the code."
     }

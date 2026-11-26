@@ -1,9 +1,11 @@
 package goapi_test
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net/http/httptest"
 	"reflect"
 	"strings"
@@ -113,6 +115,17 @@ func (l *ledger) plugin(hooks authn.DatabaseHooks) authn.Plugin {
 				token, _ := c.Body["token"].(string)
 				return map[string]bool{"status": true}, c.GateVerifications(func(ctx context.Context) error { return redeem(ctx, token) })
 			}},
+			{Method: "POST", Path: "/ledger/careless", Handler: func(c authn.EndpointContext) (any, error) {
+				token, _ := c.Body["token"].(string)
+				return map[string]bool{"status": true}, c.GateVerifications(func(ctx context.Context) error {
+					return l.tx(func(t *ledgerTx) error {
+						// A store that ignores the stop and commits.
+						authn.VerificationGateFrom(ctx).Create(ledgerRecord(token))
+						t.records[token] = true
+						return nil
+					})
+				})
+			}},
 			{Method: "POST", Path: "/ledger/pair", Handler: func(c authn.EndpointContext) (any, error) {
 				token, _ := c.Body["token"].(string)
 				old, _ := c.Body["old"].(string)
@@ -192,8 +205,9 @@ func TestPluginVerificationGate(t *testing.T) {
 		return h
 	}
 	off := false
+	logs := &bytes.Buffer{}
 	opts := authn.Options{BaseURL: "https://auth.example", Store: gatedLedger{memory.New()}, Secret: strings.Repeat("s", 32), RateLimit: &off,
-		Plugins: []authn.Plugin{l.plugin(hooks("plugin"))}, DatabaseHooks: hooks("app")}
+		Logger: slog.New(slog.NewTextHandler(logs, nil)), Plugins: []authn.Plugin{l.plugin(hooks("plugin"))}, DatabaseHooks: hooks("app")}
 	a, err := authn.New(opts)
 	if err != nil {
 		t.Fatal(err)
@@ -265,6 +279,14 @@ func TestPluginVerificationGate(t *testing.T) {
 		"plugin:create-after:ledger-c", "app:create-after:ledger-c", "plugin:delete-after:ledger-a", "app:delete-after:ledger-a")
 	if records, _ := l.state(); records["a"] || !records["c"] {
 		t.Fatal("the pair committed", records)
+	}
+	// A store that commits while a record awaits its hooks fails the request,
+	// runs no hook and is logged.
+	call("/ledger/careless", map[string]string{"token": "careless"}, 500)
+	got, _ = drain()
+	same(got)
+	if !strings.Contains(logs.String(), "awaited its before hooks") {
+		t.Fatal("a store that ignored a stop was not logged:", logs.String())
 	}
 	// A direct Go call gets no HookContext.
 	c := authn.EndpointContext{Auth: a, Request: httptest.NewRequest("POST", "https://auth.example/", nil)}
