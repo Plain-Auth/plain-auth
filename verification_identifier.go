@@ -35,8 +35,8 @@ type VerificationIdentifierStorage struct {
 	// Hash, when set, stores its result in place of the token. It receives
 	// the whole identifier, such as "reset-password:" followed by the token,
 	// and must return the same value for the same input: 1 to 240 bytes of
-	// UTF-8 without NUL. Its error fails the request. Set Hashed or Hash, not
-	// both.
+	// UTF-8 without NUL. An error or panic fails the request. Set Hashed or
+	// Hash, not both.
 	Hash func(ctx context.Context, identifier string) (string, error)
 }
 
@@ -84,7 +84,7 @@ func (a *Auth) verificationKey(ctx context.Context, prefix, key string) (string,
 	s := a.identifierStorage[prefix]
 	switch {
 	case s.Hash != nil:
-		stored, err := s.Hash(ctx, prefix+key)
+		stored, err := hostCallback(ctx, "auth: StoreVerificationIdentifier hash failed", func() (string, error) { return s.Hash(ctx, prefix+key) })
 		if err != nil {
 			return "", err
 		}

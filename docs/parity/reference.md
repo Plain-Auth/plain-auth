@@ -516,9 +516,10 @@
       - [x] With DisableVerificationCleanup, writes on SQLite, PostgreSQL and MySQL keep the expired OAuth states, magic links, reset links, one-time transfers and DPoP proofs of other keys, still refuse them, and replace an expired row whose key is reused; a store fixed to one setting refuses the other. Expired rows are swept by writes rather than by lookups: of their kind, or for reset and deletion links and email and phone codes, at most once a minute ([test](../../adapters/sqlstore/verification_cleanup_test.go#L18))
       - [x] The memory store keeps expired reset tokens, magic links and transfers with the option, a store without VerificationCleanupStore refuses it, and a New that fails leaves the store's setting unfixed ([test](../../adapters/memory/verification_cleanup_test.go#L36))
     - [ ] `storeIdentifier`
-      - [x] With StoreVerificationIdentifier plain, hashed, or a custom hash with prefix overrides, SQLite, PostgreSQL and MySQL store password reset, account deletion, magic and one-time links as their purpose prefix followed by the token or the hash of the whole identifier; each link redeems once over HTTP, its stored value is refused as a token, deleting the user removes its live hashed reset link, and a link issued under one setting is refused under another ([test](../../adapters/sqlstore/verification_identifier_test.go#L24))
+      - [x] With StoreVerificationIdentifier plain, hashed, or a custom hash with prefix overrides, SQLite, PostgreSQL and MySQL store password reset, account deletion, magic and one-time links as their purpose prefix followed by the token or the hash of the whole identifier; each link redeems once over HTTP, its stored value is refused as a token, deleting the user removes its live hashed reset link, and a reset, deletion, magic or one-time link issued under one setting is refused under another ([test](../../adapters/sqlstore/verification_identifier_test.go#L24))
       - [x] New refuses Hashed with Hash, an override key that is empty, names an uncovered purpose such as auth-state: or sign-in-otp-, or reaches into the token, and two keys for one purpose; a custom store receives the stored form, with fixed SHA-256 vectors, while delivered links keep the token; a failing or unusable hash fails a reset request alike for registered and unknown addresses ([test](../../conformance/goapi/store_identifier_test.go#L65))
       - [x] On both runtimes, with storeIdentifier hashed, a custom hasher or a reset-password override, reset links, hashed magic links and hashed one-time tokens redeem once, a reset refuses its stored value as a token, and both store the same hash of the purpose-prefixed identifier, Go keeping the prefix in front ([test](../../conformance/verification-identifiers.mjs#L22))
+      - [x] A StoreVerificationIdentifier hash that fails, panics or outlives its context leaves sign-up with its session and no Set-Ott header, and fails explicit one-time token issuance and redemption without leaking the failure ([test](../../client/onetimetoken_contract_test.go#L20))
     - [ ] `storeInDatabase`
   - [ ] `rateLimit`
     - [x] Select the production rate limit by default and honor an explicit override ([test](../../env_test.go#L122))
@@ -614,12 +615,12 @@
     - [x] `errorURL` ([test](../../error_page_test.go#L10))
       - [x] With Options.ErrorRedirectURL set, the mounted /api/auth/error endpoint returns 302 to the configured URL with the error code added and its own query kept ([test](../../error_page_test.go#L10))
     - [x] `customizeDefaultErrorPage` ([test](../../conformance/error-page.mjs#L71))
-      - [x] An empty customization and two full ones render the same styled page on both runtimes, after removing the reference's links to its own site ([test](../../conformance/error-page.mjs#L71))
-      - [x] A nil Options.ErrorPage keeps the plain page, an empty one serves the styled page under a style-only Content-Security-Policy, AUTH_ENV=production keeps it at the mount's /error, and ErrorRedirectURL still redirects ([test](../../conformance/goapi/error_page_test.go#L29))
-      - [x] New refuses a theme value that could leave its CSS declaration and names the field, a quoted value cannot leave its style attribute, and New keeps its own copy of the theme ([test](../../conformance/goapi/error_page_test.go#L131))
+      - [x] An empty customization and two full ones render the same styled page on both runtimes, after removing the other runtime's links to its own site ([test](../../conformance/error-page.mjs#L71))
+      - [x] A nil Options.ErrorPage keeps the plain page, an empty one serves the styled page under a style-only Content-Security-Policy, escapes markup and shows entities in the description as text rather than decoding them, AUTH_ENV=production keeps it at the mount's /error, and ErrorRedirectURL still redirects ([test](../../conformance/goapi/error_page_test.go#L29))
+      - [x] New refuses a theme value that could leave its CSS declaration, url() and comment ends included, and names the field, a quoted value cannot leave its style attribute, and New keeps its own copy of the theme ([test](../../conformance/goapi/error_page_test.go#L135))
     - [x] `colors` ([test](../../conformance/error-page.mjs#L4))
       - [x] All twelve colors set at once render the same page on both runtimes ([test](../../conformance/error-page.mjs#L4))
-      - [x] Each color reaches every place the page styles with it, including its dark-scheme variable ([test](../../conformance/goapi/error_page_test.go#L89))
+      - [x] Each color reaches every place the page styles with it, including its dark-scheme variable ([test](../../conformance/goapi/error_page_test.go#L93))
     - [x] `background` ([test](../../conformance/error-page.mjs#L5))
       - [x] Background replaces the page background, the grid fade and --background in both color schemes, in the same places on both runtimes ([test](../../conformance/error-page.mjs#L5))
     - [x] `foreground` ([test](../../conformance/error-page.mjs#L6))
@@ -645,12 +646,12 @@
     - [x] `cornerBorder` ([test](../../conformance/error-page.mjs#L16))
       - [x] CornerBorder replaces the light and dark --corner-border of the corner marks, the same on both runtimes ([test](../../conformance/error-page.mjs#L16))
     - [x] `size` ([test](../../conformance/error-page.mjs#L18))
-      - [x] The five sizes the page reads render the same page on both runtimes, and the reference page ignores the two radii it never reads ([test](../../conformance/error-page.mjs#L18))
-      - [x] Each size sets its CSS variable once ([test](../../conformance/goapi/error_page_test.go#L89))
+      - [x] The five sizes the page reads render the same page on both runtimes; the two radii no element reads are ignored ([test](../../conformance/error-page.mjs#L18))
+      - [x] Each size sets its CSS variable once ([test](../../conformance/goapi/error_page_test.go#L93))
     - [x] `radiusSm` ([test](../../conformance/error-page.mjs#L19))
       - [x] RadiusSm sets the --radius variable, which no element uses, the same on both runtimes ([test](../../conformance/error-page.mjs#L19))
-    - `radiusMd` — *not applicable: the reference declares this size but its page never reads it*
-    - `radiusLg` — *not applicable: the reference declares this size but its page never reads it*
+    - `radiusMd` — *not applicable: declared as a theme size but never read by the page*
+    - `radiusLg` — *not applicable: declared as a theme size but never read by the page*
     - [x] `textSm` ([test](../../conformance/error-page.mjs#L22))
       - [x] TextSm sets --text-sm for the code and description above 640px, the same on both runtimes ([test](../../conformance/error-page.mjs#L22))
     - [x] `text2xl` ([test](../../conformance/error-page.mjs#L23))
@@ -661,7 +662,7 @@
       - [x] Text6xl sets --text-6xl for the ERROR title above 640px, the same on both runtimes ([test](../../conformance/error-page.mjs#L25))
     - [x] `font` ([test](../../conformance/error-page.mjs#L27))
       - [x] Both font families together render the same page on both runtimes ([test](../../conformance/error-page.mjs#L27))
-      - [x] Each font family reaches the page or the code font with its quotes kept ([test](../../conformance/goapi/error_page_test.go#L89))
+      - [x] Each font family reaches the page or the code font with its quotes kept ([test](../../conformance/goapi/error_page_test.go#L93))
     - [x] `defaultFamily` ([test](../../conformance/error-page.mjs#L28))
       - [x] FontFamily sets the page font family, the same on both runtimes ([test](../../conformance/error-page.mjs#L28))
     - [x] `monoFamily` ([test](../../conformance/error-page.mjs#L29))

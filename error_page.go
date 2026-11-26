@@ -23,8 +23,8 @@ var errorCodeFormat = regexp.MustCompile("^[A-Za-z0-9_'-]+$")
 // "'Inter', sans-serif"; an empty string keeps the default shown as light /
 // dark. A color replaces its light and its dark default alike. Screens up to
 // 640px wide use fixed smaller TextSm, Text2xl and Text6xl sizes. New refuses
-// a value with a control character, a CSS comment, any of ; { } [ ] < > \
-// or an unbalanced parenthesis or quote.
+// a value with a control character, a CSS comment or its end, url(), any of
+// ; { } [ ] < > \ or an unbalanced parenthesis or quote.
 type ErrorPageOptions struct {
 	Background        string // page and grid fade; white / oklch(0.15 0 0)
 	Foreground        string // headings, code and text; oklch(0.271 0 0) / oklch(0.98 0 0)
@@ -89,8 +89,13 @@ func prepareErrorPage(o *Options) error {
 
 // cssValue reports whether v stays inside the one CSS declaration it fills:
 // it cannot end the declaration, rule or style element, escape the next
-// character, open a comment, or leave a bracket or string open.
+// character, open or close a comment, or leave a bracket or string open. An
+// unquoted url( token reads quotes and parentheses its own way, so url() is
+// refused; the page's Content-Security-Policy would block its load anyway.
 func cssValue(v string) bool {
+	if strings.Contains(strings.ToLower(v), "url(") || strings.Contains(v, "*/") {
+		return false
+	}
 	depth, quote := 0, rune(0)
 	for i, r := range v {
 		switch {

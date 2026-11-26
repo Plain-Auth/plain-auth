@@ -18,7 +18,7 @@ import (
 )
 
 func TestTransferCallbackFailures(t *testing.T) {
-	for _, stage := range []string{"generate", "hash"} {
+	for _, stage := range []string{"generate", "hash", "identifier"} {
 		for _, failure := range []string{"error", "panic", "cancel"} {
 			t.Run(stage+"/"+failure, func(t *testing.T) {
 				const origin = "https://callbacks.example.test"
@@ -68,6 +68,12 @@ func TestTransferCallbackFailures(t *testing.T) {
 					Store: memory.New(), BaseURL: origin, Secret: strings.Repeat("r", 40),
 					EmailAndPassword: true, Plugins: []auth.Plugin{p},
 					Logger: slog.New(slog.NewTextHandler(&logs, nil)),
+					StoreVerificationIdentifier: auth.VerificationIdentifierStorage{Hash: func(_ context.Context, identifier string) (string, error) {
+						if stage == "identifier" {
+							return callback("id-" + identifier)
+						}
+						return "id-" + identifier, nil
+					}},
 				})
 				if err != nil {
 					t.Fatal(err)
@@ -109,7 +115,7 @@ func TestTransferCallbackFailures(t *testing.T) {
 				if err != nil || proof != raw {
 					t.Fatal("hashed long token generation failed", err)
 				}
-				if stage == "hash" {
+				if stage != "generate" {
 					fail = true
 					ctx, stop = context.WithCancel(t.Context())
 					cancel = stop

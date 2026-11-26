@@ -19,8 +19,8 @@ import (
 // With StoreVerificationIdentifier, reset, deletion, magic and one-time links
 // keep their purpose prefix and store a hash of the whole identifier in place
 // of the token. Each redeems once with its token and never with its stored
-// value, deleting the user still removes its links, and a link issued under
-// one setting is refused under another.
+// value, deleting the user still removes its links, and a link of each kind
+// issued under one setting is refused under another.
 func TestStoreVerificationIdentifier(t *testing.T) {
 	b64 := func(s string) string {
 		sum := sha256.Sum256([]byte(s))
@@ -185,17 +185,21 @@ func TestStoreVerificationIdentifier(t *testing.T) {
 				expect(serve(a, "POST", "/sign-in/magic-link", `{"email":"`+email+`"}`, ""), 200, "the magic link request")
 				magic := last("magic")
 				stored(key("magic-link:", b64(magic)), "magic-link:", b64(magic))
-				verify := func() *httptest.ResponseRecorder {
-					return serve(a, "GET", "/magic-link/verify?"+url.Values{"token": {magic}, "callbackURL": {"/done"}}.Encode(), "", "")
+				verify := func(token string) *httptest.ResponseRecorder {
+					return serve(a, "GET", "/magic-link/verify?"+url.Values{"token": {token}, "callbackURL": {"/done"}}.Encode(), "", "")
 				}
+				if to := verify(part("magic-link:", b64(magic))).Header().Get("Location"); !strings.Contains(to, "error=INVALID_TOKEN") {
+					t.Fatal("a magic link with the stored value redirected to", to)
+				}
+				stored(key("magic-link:", b64(magic)), "magic-link:", b64(magic))
 				// Proving the mailbox ends the sign-up's session, so the
 				// deletion below uses the magic link's.
-				w = verify()
+				w = verify(magic)
 				if to := w.Header().Get("Location"); strings.Contains(to, "error") || len(w.Result().Cookies()) == 0 {
 					t.Fatal("the magic link redirected to", to)
 				}
 				cookie = w.Result().Cookies()[0].Name + "=" + w.Result().Cookies()[0].Value
-				if to := verify().Header().Get("Location"); !strings.Contains(to, "error=INVALID_TOKEN") {
+				if to := verify(magic).Header().Get("Location"); !strings.Contains(to, "error=INVALID_TOKEN") {
 					t.Fatal("a replayed magic link redirected to", to)
 				}
 				gone(key("magic-link:", b64(magic)))
@@ -246,9 +250,22 @@ func TestStoreVerificationIdentifier(t *testing.T) {
 			t.Log("switch")
 			plain, hashedAuth := newAuth(auth.VerificationIdentifierStorage{}, nil), newAuth(auth.VerificationIdentifierStorage{Hashed: true}, nil)
 			for _, pair := range [][2]*auth.Auth{{plain, hashedAuth}, {hashedAuth, plain}} {
-				email, _ := signUp(pair[0])
-				expect(serve(pair[0], "POST", "/request-password-reset", `{"email":"`+email+`"}`, ""), 200, "the reset request")
-				expect(serve(pair[1], "POST", "/reset-password", `{"token":"`+last("reset")+`","newPassword":"another password"}`, ""), 400, "a reset under another setting")
+				issuer, other := pair[0], pair[1]
+				email, cookie := signUp(issuer)
+				expect(serve(issuer, "POST", "/request-password-reset", `{"email":"`+email+`"}`, ""), 200, "the reset request")
+				expect(serve(other, "POST", "/reset-password", `{"token":"`+last("reset")+`","newPassword":"another password"}`, ""), 400, "a reset under another setting")
+				w := serve(issuer, "GET", "/one-time-token/generate", "", cookie)
+				var issued struct{ Token string }
+				if err := json.Unmarshal(w.Body.Bytes(), &issued); err != nil || issued.Token == "" {
+					t.Fatal("no one-time token:", w.Body.String())
+				}
+				expect(serve(other, "POST", "/one-time-token/verify", `{"token":"`+issued.Token+`"}`, ""), 400, "a transfer under another setting")
+				expect(serve(issuer, "POST", "/delete-user", `{"callbackURL":"/done"}`, cookie), 200, "the deletion request")
+				expect(serve(other, "GET", "/delete-user/callback?token="+last("delete"), "", cookie), 404, "a deletion under another setting")
+				expect(serve(issuer, "POST", "/sign-in/magic-link", `{"email":"`+email+`"}`, ""), 200, "the magic link request")
+				if to := serve(other, "GET", "/magic-link/verify?"+url.Values{"token": {last("magic")}, "callbackURL": {"/done"}}.Encode(), "", "").Header().Get("Location"); !strings.Contains(to, "error=INVALID_TOKEN") {
+					t.Fatal("a magic link under another setting redirected to", to)
+				}
 			}
 		})
 	}

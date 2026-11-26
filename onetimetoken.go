@@ -105,15 +105,17 @@ func NewOneTimeToken(opts OneTimeTokenOptions) (Plugin, error) {
 	}, nil
 }
 
-// A failing host callback must not unwind a request that already committed a login.
-func transferCallback(ctx context.Context, fn func() (string, error)) (value string, err error) {
+// hostCallback runs a host callback that may run after a login has
+// committed: a panic becomes the failure error instead of unwinding the
+// request, and a context that ends during the call wins over its result.
+func hostCallback(ctx context.Context, failure string, fn func() (string, error)) (value string, err error) {
 	if err = ctx.Err(); err != nil {
 		return "", err
 	}
 	defer func() {
 		if recover() != nil {
 			value = ""
-			err = errors.New("one-time token callback failed")
+			err = errors.New(failure)
 		}
 	}()
 	value, err = fn()
@@ -127,7 +129,7 @@ func (o OneTimeTokenOptions) storedKey(ctx context.Context, token string) (strin
 	key := token
 	if o.HashToken != nil {
 		var err error
-		key, err = transferCallback(ctx, func() (string, error) { return o.HashToken(ctx, token) })
+		key, err = hostCallback(ctx, "one-time token callback failed", func() (string, error) { return o.HashToken(ctx, token) })
 		if err != nil {
 			return "", err
 		}
@@ -175,11 +177,11 @@ func (a *Auth) newOneTimeToken(ctx context.Context, opts *OneTimeTokenOptions, s
 	var err error
 	switch {
 	case opts.GenerateTokenWithRequest != nil:
-		token, err = transferCallback(ctx, func() (string, error) {
+		token, err = hostCallback(ctx, "one-time token callback failed", func() (string, error) {
 			return opts.GenerateTokenWithRequest(ctx, session, accountObserverRequest(ctx, request))
 		})
 	case opts.GenerateToken != nil:
-		token, err = transferCallback(ctx, func() (string, error) { return opts.GenerateToken(ctx, session) })
+		token, err = hostCallback(ctx, "one-time token callback failed", func() (string, error) { return opts.GenerateToken(ctx, session) })
 	default:
 		token = randomID()
 	}

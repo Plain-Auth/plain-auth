@@ -407,7 +407,7 @@
         "`radiusMd`",
         "`radiusLg`"
       ],
-      "reason": "not applicable: the reference declares this size but its page never reads it"
+      "reason": "not applicable: declared as a theme size but never read by the page"
     }
   ],
   "backlog": [

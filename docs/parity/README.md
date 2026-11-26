@@ -11,7 +11,7 @@
 | No linked test evidence | 4,416 |
 | Not applicable to a Go server | 389 |
 
-The inventory covers features, options, integrations and documentation topics. Partial verification means an open entry has a passing case somewhere beneath it. The checklists also contain 3,571 links from passing scenarios to tests. Adding a scenario leaves the inventory denominator unchanged.
+The inventory covers features, options, integrations and documentation topics. Partial verification means an open entry has a passing case somewhere beneath it. The checklists also contain 3,572 links from passing scenarios to tests. Adding a scenario leaves the inventory denominator unchanged.
 
 Entries that exist only for JavaScript clients, frameworks or runtimes are listed as not applicable, with the reason, and are left out of the totals. Backlog entries stay open on the roadmap but are not scheduled.
 
@@ -83,7 +83,7 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 | [Core concepts](concepts.md) | 512 | 340 | 0 |
 | [Managed infrastructure](infrastructure.md) | 0 | 528 | 0 |
 | [Framework integrations](integrations.md) | 7 | 24 | 201 |
-| [Reference and configuration](reference.md) | 467 | 227 | 6 |
+| [Reference and configuration](reference.md) | 468 | 227 | 6 |
 
 ## Plugins and integrations
 

@@ -65,6 +65,10 @@ func TestErrorPageOptIn(t *testing.T) {
 	if !strings.Contains(body, "UNKNOWN") || !strings.Contains(body, "&lt;script&gt;alert(1)&lt;/script&gt;") || strings.Contains(body, "<script") {
 		t.Fatal("markup reached the styled page")
 	}
+	// An entity in the description is shown as sent, not decoded.
+	if _, body = errorPage(t, styled, "?error=x&error_description=Tom+%26amp%3B+Jerry", 200); !strings.Contains(body, "Tom &amp;amp; Jerry") {
+		t.Fatal("the description's entity was decoded")
+	}
 	// ErrorRedirectURL takes precedence.
 	redirected := newHTTPAuth(t, authn.Options{BaseURL: "https://auth.example", ErrorPage: &authn.ErrorPageOptions{}, ErrorRedirectURL: "/auth-problem?source=signin"})
 	h, _ = errorPage(t, redirected, query, 302)
@@ -150,7 +154,8 @@ func TestErrorPageRefusesUnsafeValues(t *testing.T) {
 			t.Fatal("New accepted a declaration in", field.Name, err)
 		}
 	}
-	for _, bad := range []string{`red}body{display:none`, `red</style><script>alert(1)</script>`, `rgb(0 0 0`, `a)b(`, `'Segoe UI`, `"Segoe UI`, `red /* x */`, `\3b`, "1rem\n", "red\u0085", `[a]`} {
+	for _, bad := range []string{`red}body{display:none`, `red</style><script>alert(1)</script>`, `rgb(0 0 0`, `a)b(`, `'Segoe UI`, `"Segoe UI`, `red /* x */`, `\3b`, "1rem\n", "red\u0085", `[a]`,
+		`url(x')/*')`, `URL(x')')`, `(url(a')'))`, `url( x')`, `url("x")`, `red */ blue`} {
 		if _, err := build(&authn.ErrorPageOptions{Background: bad}); err == nil {
 			t.Fatalf("New accepted %q", bad)
 		}

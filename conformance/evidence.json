@@ -22166,7 +22166,7 @@
   ],
   "docs/content/docs/reference/options.mdx#L582/`storeIdentifier`": [
     {
-      "label": "With StoreVerificationIdentifier plain, hashed, or a custom hash with prefix overrides, SQLite, PostgreSQL and MySQL store password reset, account deletion, magic and one-time links as their purpose prefix followed by the token or the hash of the whole identifier; each link redeems once over HTTP, its stored value is refused as a token, deleting the user removes its live hashed reset link, and a link issued under one setting is refused under another",
+      "label": "With StoreVerificationIdentifier plain, hashed, or a custom hash with prefix overrides, SQLite, PostgreSQL and MySQL store password reset, account deletion, magic and one-time links as their purpose prefix followed by the token or the hash of the whole identifier; each link redeems once over HTTP, its stored value is refused as a token, deleting the user removes its live hashed reset link, and a reset, deletion, magic or one-time link issued under one setting is refused under another",
       "test": "adapters/sqlstore/verification_identifier_test.go",
       "marker": "func TestStoreVerificationIdentifier(t *testing.T) {"
     },
@@ -22179,6 +22179,11 @@
       "label": "On both runtimes, with storeIdentifier hashed, a custom hasher or a reset-password override, reset links, hashed magic links and hashed one-time tokens redeem once, a reset refuses its stored value as a token, and both store the same hash of the purpose-prefixed identifier, Go keeping the prefix in front",
       "test": "conformance/verification-identifiers.mjs",
       "marker": "export async function compareStoredIdentifiers(t, { reference, goFixture, instrument }) {"
+    },
+    {
+      "label": "A StoreVerificationIdentifier hash that fails, panics or outlives its context leaves sign-up with its session and no Set-Ott header, and fails explicit one-time token issuance and redemption without leaking the failure",
+      "test": "client/onetimetoken_contract_test.go",
+      "marker": "func TestTransferCallbackFailures(t *testing.T) {"
     }
   ],
   "docs/content/docs/concepts/oauth.mdx#L250": [
@@ -22282,18 +22287,18 @@
   ],
   "docs/content/docs/reference/options.mdx#L909/`customizeDefaultErrorPage`": [
     {
-      "label": "An empty customization and two full ones render the same styled page on both runtimes, after removing the reference's links to its own site",
+      "label": "An empty customization and two full ones render the same styled page on both runtimes, after removing the other runtime's links to its own site",
       "test": "conformance/error-page.mjs",
       "marker": "{}, // the defaults",
       "complete": true
     },
     {
-      "label": "A nil Options.ErrorPage keeps the plain page, an empty one serves the styled page under a style-only Content-Security-Policy, AUTH_ENV=production keeps it at the mount's /error, and ErrorRedirectURL still redirects",
+      "label": "A nil Options.ErrorPage keeps the plain page, an empty one serves the styled page under a style-only Content-Security-Policy, escapes markup and shows entities in the description as text rather than decoding them, AUTH_ENV=production keeps it at the mount's /error, and ErrorRedirectURL still redirects",
       "test": "conformance/goapi/error_page_test.go",
       "marker": "func TestErrorPageOptIn(t *testing.T) {"
     },
     {
-      "label": "New refuses a theme value that could leave its CSS declaration and names the field, a quoted value cannot leave its style attribute, and New keeps its own copy of the theme",
+      "label": "New refuses a theme value that could leave its CSS declaration, url() and comment ends included, and names the field, a quoted value cannot leave its style attribute, and New keeps its own copy of the theme",
       "test": "conformance/goapi/error_page_test.go",
       "marker": "func TestErrorPageRefusesUnsafeValues(t *testing.T) {"
     }
@@ -22489,7 +22494,7 @@
   ],
   "docs/content/docs/reference/options.mdx#L923/`size`": [
     {
-      "label": "The five sizes the page reads render the same page on both runtimes, and the reference page ignores the two radii it never reads",
+      "label": "The five sizes the page reads render the same page on both runtimes; the two radii no element reads are ignored",
       "test": "conformance/error-page.mjs",
       "marker": "const size = {",
       "complete": true
