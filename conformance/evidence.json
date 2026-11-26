@@ -45199,5 +45199,35 @@
       "marker": "t.Fatal(\"a null Group externalId did not clear it\")",
       "complete": true
     }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L372/`userName`": [
+    {
+      "label": "Replace userName through PATCH and refuse an empty value or a removal",
+      "test": "adapters/sqlstore/scim_attributes_test.go",
+      "marker": "t.Fatal(\"PATCH removed userName\", body)"
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L373/`externalId`": [
+    {
+      "label": "Add, replace, filter and remove a User externalId through PATCH, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_attributes_test.go",
+      "marker": "t.Fatal(\"a removed externalId still matched a filter\")",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L375/`displayName`": [
+    {
+      "label": "Replace displayName, carry it to the account name and fall back to the formatted name on removal, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_attributes_test.go",
+      "marker": "t.Fatal(\"removing displayName did not fall back to the formatted name\", got[\"displayName\"])",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L208/A subattribute of a value in a PATCH that adds or replaces whole values, such as `emails` or `addresses`": [
+    {
+      "label": "Drop null subattributes in whole emails and roles PATCH values",
+      "test": "adapters/sqlstore/scim_attributes_test.go",
+      "marker": "t.Fatal(\"a null subattribute in a whole roles value was kept\", got[\"roles\"])"
+    }
   ]
 }

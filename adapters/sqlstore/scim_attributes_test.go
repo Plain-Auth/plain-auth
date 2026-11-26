@@ -196,3 +196,68 @@ func jsonEqual(a, b any) bool {
 	y, _ := json.Marshal(b)
 	return string(x) == string(y)
 }
+
+// PATCH replaces, adds and removes the scalar User attributes, the account
+// name follows displayName, and null subattributes in whole values are
+// treated as omitted.
+func TestSCIMUserScalarPatchOverHTTP(t *testing.T) {
+	for _, dialect := range []string{"sqlite", "postgres", "mysql"} {
+		t.Run(dialect, func(t *testing.T) {
+			store, call := attributeDirectory(t, dialect)
+			created := call("POST", "Users", map[string]any{"schemas": []string{scim.UserSchema}, "userName": "scalar@example.test", "externalId": "ext-1", "name": map[string]any{"formatted": "Ada Lovelace"}, "displayName": "Countess"}, 201, "the User was refused")
+			id := created["id"].(string)
+			patch := func(status int, failure string, ops ...map[string]any) map[string]any {
+				t.Helper()
+				return call("PATCH", "Users/"+id, map[string]any{"schemas": []string{scim.PatchSchema}, "Operations": ops}, status, failure)
+			}
+			get := func() map[string]any { t.Helper(); return call("GET", "Users/"+id, nil, 200, "GET failed") }
+			if got := patch(200, "PATCH did not replace userName", map[string]any{"op": "replace", "path": "userName", "value": "renamed@example.test"}); got["userName"] != "renamed@example.test" || get()["userName"] != "renamed@example.test" {
+				t.Fatal("PATCH did not replace userName", got["userName"])
+			}
+			if body := patch(400, "PATCH accepted an empty userName", map[string]any{"op": "replace", "path": "userName", "value": ""}); body["scimType"] != "invalidValue" {
+				t.Fatal("PATCH accepted an empty userName", body)
+			}
+			if body := patch(400, "PATCH removed userName", map[string]any{"op": "remove", "path": "userName"}); body["scimType"] != "mutability" {
+				t.Fatal("PATCH removed userName", body)
+			}
+
+			filtered := func(external string) float64 {
+				t.Helper()
+				list := call("GET", `Users?filter=externalId%20eq%20%22`+external+`%22`, nil, 200, "the filtered list failed")
+				n, _ := list["totalResults"].(float64)
+				return n
+			}
+			if got := patch(200, "PATCH did not add externalId", map[string]any{"op": "add", "path": "externalId", "value": "ext-2"}); got["externalId"] != "ext-2" {
+				t.Fatal("PATCH did not add externalId", got["externalId"])
+			}
+			patch(200, "replacing externalId failed", map[string]any{"op": "replace", "path": "externalId", "value": "ext-3"})
+			if filtered("ext-3") != 1 {
+				t.Fatal("a replaced externalId is not filterable")
+			}
+			if got := patch(200, "PATCH did not clear externalId", map[string]any{"op": "remove", "path": "externalId"}); got["externalId"] != nil {
+				t.Fatal("PATCH did not clear externalId", got["externalId"])
+			}
+			if filtered("ext-3") != 0 {
+				t.Fatal("a removed externalId still matched a filter")
+			}
+
+			if got := patch(200, "PATCH did not replace displayName", map[string]any{"op": "replace", "path": "displayName", "value": "Ada L"}); got["displayName"] != "Ada L" {
+				t.Fatal("PATCH did not replace displayName", got["displayName"])
+			}
+			var name string
+			if err := store.db.QueryRowContext(t.Context(), store.bind(`SELECT u."name" FROM "user" u JOIN "scimUser" s ON s."userId"=u."id" WHERE s."id"=?`), id).Scan(&name); err != nil || name != "Ada L" {
+				t.Fatal("the account name did not follow a patched display name", name, err)
+			}
+			if got := patch(200, "removing displayName failed", map[string]any{"op": "remove", "path": "displayName"}); got["displayName"] != "Ada Lovelace" {
+				t.Fatal("removing displayName did not fall back to the formatted name", got["displayName"])
+			}
+
+			if got := patch(200, "replacing emails failed", map[string]any{"op": "replace", "path": "emails", "value": []any{map[string]any{"value": "z@example.test", "type": nil, "primary": nil}}}); !jsonEqual(got["emails"], []any{map[string]any{"value": "z@example.test", "primary": true}}) {
+				t.Fatal("a null subattribute in a whole emails value was kept", got["emails"])
+			}
+			if got := patch(200, "replacing roles failed", map[string]any{"op": "replace", "path": "roles", "value": []any{map[string]any{"value": "r2", "display": nil, "type": nil}}}); !jsonEqual(got["roles"], []any{map[string]any{"value": "r2"}}) {
+				t.Fatal("a null subattribute in a whole roles value was kept", got["roles"])
+			}
+		})
+	}
+}

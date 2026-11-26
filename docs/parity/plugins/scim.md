@@ -354,6 +354,7 @@
       - [ ] The `value` of a PATCH `add` or `replace` operation
       - [ ] A key in a PATCH value that merges into the stored value: a pathless value, `name`, the Enterprise extension, `manager`, or a filtered value such as `addresses[type eq "work"]`
       - [ ] A subattribute of a value in a PATCH that adds or replaces whole values, such as `emails` or `addresses`
+        - [x] Drop null subattributes in whole emails and roles PATCH values ([test](../../../adapters/sqlstore/scim_attributes_test.go#L259))
     - [ ] Microsoft Entra Group compatibility
       - [x] Create a Group whose schema list carries the classic Entra marker when the compatibility option is on ([test](../../../adapters/sqlstore/scim_groups_test.go#L96))
   - [ ] Users
@@ -433,10 +434,13 @@
   - [ ] PATCH
     - [ ] User PATCH paths
       - [ ] `userName`
-      - [ ] `externalId`
+        - [x] Replace userName through PATCH and refuse an empty value or a removal ([test](../../../adapters/sqlstore/scim_attributes_test.go#L221))
+      - [x] `externalId` ([test](../../../adapters/sqlstore/scim_attributes_test.go#L241))
+        - [x] Add, replace, filter and remove a User externalId through PATCH, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_attributes_test.go#L241))
       - [ ] `active`
         - [x] Deactivate a User by patching active with the string false and revoke its sessions ([test](../../../adapters/sqlstore/scim_test.go#L202))
-      - [ ] `displayName`
+      - [x] `displayName` ([test](../../../adapters/sqlstore/scim_attributes_test.go#L252))
+        - [x] Replace displayName, carry it to the account name and fall back to the formatted name on removal, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_attributes_test.go#L252))
       - [ ] `name` and its supported subattributes
       - [ ] `emails`
       - [ ] `emails.value`
