@@ -5397,6 +5397,12 @@
       "label": "Apply the application's user-create database hook when it bootstraps the administrator through its Auth instance",
       "test": "adapters/sqlstore/database_hooks_test.go",
       "marker": "t.Fatal(\"the bootstrap ignored the user hook\", root.Name, stored.Name)"
+    },
+    {
+      "label": "On SQLite, PostgreSQL and MySQL, create an administrator named Admin with the admin role and a verified email by default, refuse a database with users unless --force or --yes is given, and refuse an account that already holds a requested role or the email; the command never prompts",
+      "test": "cmd/authctl/admin_test.go",
+      "marker": "func TestCreateAdminOptionsAcrossEngines(t *testing.T) {",
+      "complete": true
     }
   ],
   "plugin-symbol/last-login-method/LastLoginMethodOptions/maxAge": [
@@ -24154,32 +24160,46 @@
       "label": "Refuse to bootstrap with an email an existing account already uses, instead of promoting that account, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/admin_test.go",
       "marker": "t.Fatal(\"existing account was eligible for promotion\", err)"
+    },
+    {
+      "label": "Create the administrator under the --email address, and refuse an address another account already uses, on three SQL engines",
+      "test": "cmd/authctl/admin_test.go",
+      "marker": "func TestCreateAdminOptionsAcrossEngines(t *testing.T) {",
+      "complete": true
     }
   ],
   "cli/create-admin/--password <password>": [
     {
       "label": "Accept the administrator password on standard input with --password-stdin, including a trailing CRLF, and keep it out of command output",
       "test": "cmd/authctl/admin_test.go",
-      "marker": "if !strings.Contains(out.String(), \"ops@example.test\") || strings.Contains(out.String()+diagnostics.String(), password) {"
+      "marker": "if !strings.HasPrefix(out.String(), \"Admin user created successfully.\\nUser ID: \") || !strings.HasSuffix(out.String(), \"\\nEmail: ops@example.test\\nRole: admin\\n\") || strings.Contains(out.String()+diagnostics.String(), password) {"
     },
     {
       "label": "Reject short, multi-line, blank and oversized passwords read from standard input",
       "test": "cmd/authctl/admin_test.go",
       "marker": "for _, invalid := range []string{\"short\", \"first-line\\nsecond-line\", \"                    \", strings.Repeat(\"a\", 520)} {"
+    },
+    {
+      "label": "There is no password argument: -password, --password and --password=… are refused without echoing the value, and the password is read from standard input with --password-stdin",
+      "test": "cmd/authctl/admin_test.go",
+      "marker": "for _, flag := range []string{\"--password\", \"-password=\" + password, \"--password=\" + password} {",
+      "complete": true
     }
   ],
   "cli/create-admin/--force": [
     {
-      "label": "Create the first administrator while a member account already exists, leaving exactly one admin and both credentials, on three SQL engines",
-      "test": "adapters/sqlstore/admin_test.go",
-      "marker": "if admins != 1 || locks != 0 || accounts != 2 {"
+      "label": "Refuse a database that already has users unless --force is given, which then creates the administrator, on three SQL engines",
+      "test": "cmd/authctl/admin_test.go",
+      "marker": "func TestCreateAdminOptionsAcrossEngines(t *testing.T) {",
+      "complete": true
     }
   ],
   "cli/create-admin/-y, --yes": [
     {
-      "label": "Create the first administrator while a member account already exists, leaving exactly one admin and both credentials, on three SQL engines",
-      "test": "adapters/sqlstore/admin_test.go",
-      "marker": "if admins != 1 || locks != 0 || accounts != 2 {"
+      "label": "-y and --yes act like --force: they create the administrator in a database that already has users, on three SQL engines",
+      "test": "cmd/authctl/admin_test.go",
+      "marker": "func TestCreateAdminOptionsAcrossEngines(t *testing.T) {",
+      "complete": true
     }
   ],
   "cli/generate/--dialect <dialect>": [
@@ -24279,6 +24299,38 @@
       "label": "-c and --copy hand exactly the printed report to the platform clipboard command and say on standard error whether that worked; a failing clipboard still prints the report and exits successfully",
       "test": "cmd/authctl/cli_options_test.go",
       "marker": "func TestInfoCopy(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "cli/create-admin/--name <name>": [
+    {
+      "label": "Name the administrator Admin by default and with --name otherwise, on three SQL engines",
+      "test": "cmd/authctl/admin_test.go",
+      "marker": "func TestCreateAdminOptionsAcrossEngines(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "cli/create-admin/--role <role>": [
+    {
+      "label": "Grant the admin role by default and comma-separated --role roles otherwise, trimmed and stored together, and refuse a role an account already holds, on three SQL engines",
+      "test": "cmd/authctl/admin_test.go",
+      "marker": "func TestCreateAdminOptionsAcrossEngines(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "cli/create-admin/--data <json>": [
+    {
+      "label": "Set the image and declared additional user fields from a --data JSON object while declared defaults fill the rest; malformed JSON, a non-object, trailing data, a non-string image and undeclared keys are refused before anything is written, and name, email, role and emailVerified keys are ignored, on three SQL engines",
+      "test": "cmd/authctl/admin_test.go",
+      "marker": "func TestCreateAdminOptionsAcrossEngines(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "cli/create-admin/--no-email-verified": [
+    {
+      "label": "Mark the email verified by default and leave it unverified with --no-email-verified, on three SQL engines",
+      "test": "cmd/authctl/admin_test.go",
+      "marker": "func TestCreateAdminOptionsAcrossEngines(t *testing.T) {",
       "complete": true
     }
   ]

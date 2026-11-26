@@ -31,7 +31,22 @@ func OpenForAdminBootstrap(ctx context.Context, dialect, dsn string) (*Store, er
 // CreateFirstAdmin serializes bootstrap attempts using a temporary transaction
 // lock row. The row is removed before commit. The administrator and credential
 // are created together, and an existing account cannot be promoted this way.
+// It refuses with ErrAdminExists when an account already holds one of the
+// user's roles.
 func (s *Store) CreateFirstAdmin(ctx context.Context, user authn.User, hash string) error {
+	return s.CreateFirstAdminWithFields(ctx, user, hash, authn.UserFieldValues{})
+}
+
+// CountUsers returns the number of user rows.
+func (s *Store) CountUsers(ctx context.Context) (int, error) {
+	var n int
+	err := s.db.QueryRowContext(ctx, s.bind(`SELECT COUNT(*) FROM "user"`)).Scan(&n)
+	return n, err
+}
+
+// CreateFirstAdminWithFields is CreateFirstAdmin that also writes additional
+// user field columns.
+func (s *Store) CreateFirstAdminWithFields(ctx context.Context, user authn.User, hash string, fields authn.UserFieldValues) error {
 	enabled, err := s.detectAdminSchema(ctx, s.db)
 	if err != nil {
 		return err
@@ -39,7 +54,7 @@ func (s *Store) CreateFirstAdmin(ctx context.Context, user authn.User, hash stri
 	if !enabled {
 		return errors.New("sqlstore: apply the admin schema before creating an administrator")
 	}
-	if user.AdminUserFields == nil || user.Role != "admin" || user.Banned || hash == "" {
+	if user.AdminUserFields == nil || user.Role == "" || user.Banned || hash == "" {
 		return errors.New("sqlstore: invalid bootstrap credential")
 	}
 	opts := &sql.TxOptions{}
@@ -80,8 +95,12 @@ func (s *Store) CreateFirstAdmin(ctx context.Context, user authn.User, hash stri
 			rows.Close()
 			return err
 		}
-		if slices.Contains(strings.Split(role, ","), "admin") {
-			found = true
+		for _, held := range strings.Split(role, ",") {
+			if slices.Contains(strings.Split(user.Role, ","), held) {
+				found = true
+			}
+		}
+		if found {
 			break
 		}
 	}
@@ -93,7 +112,7 @@ func (s *Store) CreateFirstAdmin(ctx context.Context, user authn.User, hash stri
 	if found {
 		return authn.ErrAdminExists
 	}
-	if err = (&adminTX{s: s, ctx: ctx, tx: tx, now: now}).CreateUser(user, hash); err != nil {
+	if err = (&adminTX{s: s, ctx: ctx, tx: tx, now: now}).CreateAdminUserWithFields(user, hash, fields); err != nil {
 		return err
 	}
 	if _, err = tx.ExecContext(ctx, s.bind(`DELETE FROM "verification" WHERE "id"=? AND "identifier"=?`), lock, lock); err != nil {

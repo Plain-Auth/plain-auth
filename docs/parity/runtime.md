@@ -435,29 +435,36 @@ Each entry groups the configured endpoint’s behaviors. A checked child records
     - [x] `-c, --cwd <cwd>` ([test](../../cmd/authctl/cli_options_test.go#L21))
       - [x] -c and --cwd run the command in another directory: relative files and a relative SQLite AUTH_DSN resolve there, nothing is written outside it, and a missing directory fails before anything is written ([test](../../cmd/authctl/cli_options_test.go#L21))
     - `--config <config>` — *not applicable: path to the JavaScript or TypeScript auth configuration module the CLI imports. Go configuration is compiled code; authctl takes the schema settings from --dialect, --plugins and the JSON field-definition flags instead.*
-  - [ ] `create-admin`
-    - [x] Create the first administrator in an existing database using a password supplied on standard input ([test](../../cmd/authctl/admin_test.go#L17))
-    - [x] Refuse to run when the target has no admin schema, without creating a database at the AUTH_DSN path ([test](../../cmd/authctl/admin_test.go#L33))
-    - [x] Let the created administrator sign in with the admin role and list users through the admin service ([test](../../cmd/authctl/admin_test.go#L74))
+  - [x] `create-admin` ([test](../../cmd/authctl/admin_test.go#L97))
+    - [x] Create the first administrator in an existing database using a password supplied on standard input ([test](../../cmd/authctl/admin_test.go#L18))
+    - [x] Refuse to run when the target has no admin schema, without creating a database at the AUTH_DSN path ([test](../../cmd/authctl/admin_test.go#L34))
+    - [x] Let the created administrator sign in with the admin role and list users through the admin service ([test](../../cmd/authctl/admin_test.go#L85))
     - [x] Hash the bootstrapped administrator's password with the instance's configured hasher and refuse a second bootstrap ([test](../../adapters/sqlstore/password_codec_test.go#L54))
     - [x] Apply the application's user-create database hook when it bootstraps the administrator through its Auth instance ([test](../../adapters/sqlstore/database_hooks_test.go#L251))
+    - [x] On SQLite, PostgreSQL and MySQL, create an administrator named Admin with the admin role and a verified email by default, refuse a database with users unless --force or --yes is given, and refuse an account that already holds a requested role or the email; the command never prompts ([test](../../cmd/authctl/admin_test.go#L97))
     - [x] `-c, --cwd <cwd>` ([test](../../cmd/authctl/cli_options_test.go#L21))
       - [x] -c and --cwd run the command in another directory: relative files and a relative SQLite AUTH_DSN resolve there, nothing is written outside it, and a missing directory fails before anything is written ([test](../../cmd/authctl/cli_options_test.go#L21))
     - `--config <config>` — *not applicable: path to the JavaScript auth configuration that supplies the database and admin plugin. authctl targets the database named by --dialect and AUTH_DSN and checks that its admin schema is installed.*
-    - [ ] `--email <email>`
-      - [x] Create the administrator under the --email address and sign in with that address ([test](../../cmd/authctl/admin_test.go#L66))
+    - [x] `--email <email>` ([test](../../cmd/authctl/admin_test.go#L97))
+      - [x] Create the administrator under the --email address and sign in with that address ([test](../../cmd/authctl/admin_test.go#L77))
       - [x] Refuse to bootstrap with an email an existing account already uses, instead of promoting that account, on SQLite, PostgreSQL and MySQL ([test](../../adapters/sqlstore/admin_test.go#L339))
-    - [ ] `--password <password>`
-      - [x] Accept the administrator password on standard input with --password-stdin, including a trailing CRLF, and keep it out of command output ([test](../../cmd/authctl/admin_test.go#L52))
-      - [x] Reject short, multi-line, blank and oversized passwords read from standard input ([test](../../cmd/authctl/admin_test.go#L44))
-    - [ ] `--name <name>`
-    - [ ] `--role <role>`
-    - [ ] `--data <json>`
-    - [ ] `--no-email-verified`
-    - [ ] `--force`
-      - [x] Create the first administrator while a member account already exists, leaving exactly one admin and both credentials, on three SQL engines ([test](../../adapters/sqlstore/admin_test.go#L373))
-    - [ ] `-y, --yes`
-      - [x] Create the first administrator while a member account already exists, leaving exactly one admin and both credentials, on three SQL engines ([test](../../adapters/sqlstore/admin_test.go#L373))
+      - [x] Create the administrator under the --email address, and refuse an address another account already uses, on three SQL engines ([test](../../cmd/authctl/admin_test.go#L97))
+    - [x] `--password <password>` ([test](../../cmd/authctl/admin_test.go#L63))
+      - [x] Accept the administrator password on standard input with --password-stdin, including a trailing CRLF, and keep it out of command output ([test](../../cmd/authctl/admin_test.go#L53))
+      - [x] Reject short, multi-line, blank and oversized passwords read from standard input ([test](../../cmd/authctl/admin_test.go#L45))
+      - [x] There is no password argument: -password, --password and --password=… are refused without echoing the value, and the password is read from standard input with --password-stdin ([test](../../cmd/authctl/admin_test.go#L63))
+    - [x] `--name <name>` ([test](../../cmd/authctl/admin_test.go#L97))
+      - [x] Name the administrator Admin by default and with --name otherwise, on three SQL engines ([test](../../cmd/authctl/admin_test.go#L97))
+    - [x] `--role <role>` ([test](../../cmd/authctl/admin_test.go#L97))
+      - [x] Grant the admin role by default and comma-separated --role roles otherwise, trimmed and stored together, and refuse a role an account already holds, on three SQL engines ([test](../../cmd/authctl/admin_test.go#L97))
+    - [x] `--data <json>` ([test](../../cmd/authctl/admin_test.go#L97))
+      - [x] Set the image and declared additional user fields from a --data JSON object while declared defaults fill the rest; malformed JSON, a non-object, trailing data, a non-string image and undeclared keys are refused before anything is written, and name, email, role and emailVerified keys are ignored, on three SQL engines ([test](../../cmd/authctl/admin_test.go#L97))
+    - [x] `--no-email-verified` ([test](../../cmd/authctl/admin_test.go#L97))
+      - [x] Mark the email verified by default and leave it unverified with --no-email-verified, on three SQL engines ([test](../../cmd/authctl/admin_test.go#L97))
+    - [x] `--force` ([test](../../cmd/authctl/admin_test.go#L97))
+      - [x] Refuse a database that already has users unless --force is given, which then creates the administrator, on three SQL engines ([test](../../cmd/authctl/admin_test.go#L97))
+    - [x] `-y, --yes` ([test](../../cmd/authctl/admin_test.go#L97))
+      - [x] -y and --yes act like --force: they create the administrator in a database that already has users, on three SQL engines ([test](../../cmd/authctl/admin_test.go#L97))
     - `--y` — *not applicable: deprecated alias of -y. Go's flag package parses --y and -y as the same flag, so it has no behaviour separate from the -y, --yes item.*
   - [x] `generate` ([test](../../cmd/authctl/main_test.go#L29))
     - [x] Emit SQL DDL for SQLite, PostgreSQL and MySQL to standard output, or to a file with --output ([test](../../cmd/authctl/main_test.go#L29))

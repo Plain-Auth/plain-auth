@@ -28,7 +28,25 @@ go run ./cmd/authctl create-admin --dialect sqlite \
   --password-stdin < /run/secrets/initial-admin-password
 ```
 
-Use `--dialect postgres` or `--dialect mysql` with the corresponding connection string for a network database. The command requires an existing admin schema, a new email address, and a password 16–128 UTF-16 code units long. It reads one line from a pipe or file, hashes the password using the regular credential hasher, and prints the new administrator’s email. Concurrent attempts can create one administrator. Subsequent grants through the HTTP API require an operator with `user:set-role`. Applications that provision accounts directly can call `plainauth.BootstrapAdmin` with a trusted store.
+Use `--dialect postgres` or `--dialect mysql` with the corresponding connection string for a network database. The command requires an existing admin schema, a new email address, and a password 16–128 UTF-16 code units long. It reads one line from a pipe or file and hashes the password using the regular credential hasher. There is no password argument, so the password never reaches the shell history or the process list. It prints:
+
+```text
+Admin user created successfully.
+User ID: …
+Email: operator@example.org
+Role: admin
+```
+
+| Option | Effect |
+| --- | --- |
+| `--name NAME` | Display name; defaults to `Admin` |
+| `--role ROLES` | Comma-separated roles; defaults to `admin` |
+| `--no-email-verified` | Leaves the email unverified; it is verified by default |
+| `--data JSON` | A JSON object with `image` (a string or null) and values for additional user fields declared with `--user-fields FILE`, the file `migrate` takes. Other keys are refused, and `name`, `email`, `role` and `emailVerified` are ignored because their own options decide them |
+| `--force`, `-y`, `--yes` | Create the administrator even though the database already has users |
+| `-c DIR`, `--cwd DIR` | Run in another directory |
+
+The command refuses when an account already holds one of the requested roles, so concurrent attempts create at most one holder of each role, and `--role user` is refused once ordinary accounts exist. Grant further roles through the HTTP API, which requires an operator with `user:set-role`. The command runs outside your application, so no hooks, role map, `ValidateUserInfo` or custom password hasher apply; call `auth.BootstrapAdmin` on your configured instance for those. Applications that provision accounts directly can call `plainauth.BootstrapAdminAccount` with a trusted store and the same options. [Command tests](../cmd/authctl/admin_test.go)
 
 ## Permissions
 
