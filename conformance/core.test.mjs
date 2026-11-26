@@ -72,6 +72,11 @@ test("OpenAPI returns the pinned core and enabled username contracts over HTTP",
   await compareOpenAPI(t, goFixture);
 });
 
+test("the OpenAPI reference page sends requests from Chrome and shows each response", async (t) => {
+  const { referencePageRequests } = await import("./openapi-reference-page.mjs");
+  await referencePageRequests(t, goFixture);
+});
+
 let fixtureBuild;
 let buildDirectory;
 

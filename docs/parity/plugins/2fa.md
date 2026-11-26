@@ -10,7 +10,7 @@
   - [ ] `POST /two-factor/verify-backup-code`
     - [x] Allow one claim per backup code and challenge under concurrent use ([test](../../../adapters/sqlstore/twofactor_test.go#L201))
     - [x] Validate the proof with session issuance disabled ([test](../../../adapters/sqlstore/twofactor_test.go#L219))
-    - [x] Enroll through the public client, reject a spent backup code and accept a fresh code ([test](../../../conformance/core.test.mjs#L287))
+    - [x] Enroll through the public client, reject a spent backup code and accept a fresh code ([test](../../../conformance/core.test.mjs#L292))
     - [x] Remember a browser, rotate its account-bound grant once and invalidate it during password recovery ([test](../../../adapters/sqlstore/twofactor_trust_test.go#L210))
     - [x] Answer a proof from the run that commits it alone, when a login plan's dry run accepted a code another sign-in spent before the approved run ([test](../../../adapters/sqlstore/twofactor_records_test.go#L158))
     - [x] Spend the challenge with its verification delete after hooks when a backup code completes the sign-in, including with disableSession, which asks about no remembered browser ([test](../../../adapters/sqlstore/twofactor_hooks_test.go#L437))
@@ -39,9 +39,9 @@
     - [ ] `allowPasswordless`
   - [ ] `backupCode2fa`
   - [ ] `twoFactorClient`
-    - [x] Complete delivered second-factor enrollment, code verification and remembered sign-in through the pinned browser client ([test](../../../conformance/core.test.mjs#L707))
-    - [x] Enroll an authenticator, verify it, sign in and spend backup codes through the pinned browser client on both servers ([test](../../../conformance/core.test.mjs#L287))
-    - [x] Read the provisioning URI through the pinned browser client after an imported authenticator signs in, on both servers ([test](../../../conformance/core.test.mjs#L1141))
+    - [x] Complete delivered second-factor enrollment, code verification and remembered sign-in through the pinned browser client ([test](../../../conformance/core.test.mjs#L712))
+    - [x] Enroll an authenticator, verify it, sign in and spend backup codes through the pinned browser client on both servers ([test](../../../conformance/core.test.mjs#L292))
+    - [x] Read the provisioning URI through the pinned browser client after an imported authenticator signs in, on both servers ([test](../../../conformance/core.test.mjs#L1146))
   - [ ] `TWO_FACTOR_ERROR_CODES`
   - [ ] `POST /two-factor/enable`
     - [x] Require a password and issue a provisioning URI and ten backup codes ([test](../../../adapters/sqlstore/twofactor_test.go#L121))
@@ -150,34 +150,34 @@
       - [ ] Getting TOTP URI
         - [ ] `POST /two-factor/get-totp-uri`
           - [x] Return the enrollment's provisioning URI to the signed-in owner who supplies the account password ([test](../../../adapters/sqlstore/twofactor_test.go#L127))
-          - [x] Return the imported seed in the provisioning URI through the released client on both runtimes ([test](../../../conformance/core.test.mjs#L1142))
+          - [x] Return the imported seed in the provisioning URI through the released client on both runtimes ([test](../../../conformance/core.test.mjs#L1147))
           - [ ] Parameter `password` (optional)
         - Example: Using React — *not applicable: JavaScript only*
       - [ ] Verifying TOTP
         - [ ] `POST /two-factor/verify-totp`
           - [x] Activate a pending authenticator when its signed-in owner submits a current code ([test](../../../adapters/sqlstore/twofactor_test.go#L138))
           - [x] Refuse a code that completed one sign-in challenge when it is sent again with a new challenge ([test](../../../adapters/sqlstore/twofactor_test.go#L207))
-          - [x] Confirm enrollment with a generated code through the released client on both runtimes ([test](../../../conformance/core.test.mjs#L296))
+          - [x] Confirm enrollment with a generated code through the released client on both runtimes ([test](../../../conformance/core.test.mjs#L301))
           - [x] Parameter `code` ([test](../../../adapters/sqlstore/twofactor_test.go#L248))
             - [x] Refuse an invalid authenticator code with 401 and accept a current one ([test](../../../adapters/sqlstore/twofactor_test.go#L248))
           - [ ] Parameter `trustDevice` (optional)
       - [x] Importing Existing TOTP Secrets ([test](../../../adapters/sqlstore/twofactor_import_test.go#L18))
-        - [x] Sign in through the released client using the same external Base32 seed enrolled through each server's trusted provisioning process ([test](../../../conformance/core.test.mjs#L1112))
+        - [x] Sign in through the released client using the same external Base32 seed enrolled through each server's trusted provisioning process ([test](../../../conformance/core.test.mjs#L1117))
         - [x] Read the normalized imported key with the configured eight-digit, 45-second authenticator settings on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/twofactor_import_test.go#L97))
         - [x] Import a Base32 seed for an existing account, store it encrypted, require it at the next sign-in and accept eight-digit, 45-second codes from it on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/twofactor_import_test.go#L18))
     - [ ] OTP
       - [x] Call the configured sender with the challenged account and a numeric code ([test](../../../adapters/sqlstore/twofactor_delivery_test.go#L64))
-      - [x] Complete a delivered-code challenge through the released client on both runtimes ([test](../../../conformance/core.test.mjs#L707))
+      - [x] Complete a delivered-code challenge through the released client on both runtimes ([test](../../../conformance/core.test.mjs#L712))
       - [ ] Sending OTP
         - [x] Trigger the configured sender for the challenged account from /two-factor/send-otp without returning the code ([test](../../../adapters/sqlstore/twofactor_delivery_test.go#L64))
-        - [x] Request a delivered code through the released client and receive status true on both runtimes ([test](../../../conformance/core.test.mjs#L720))
+        - [x] Request a delivered code through the released client and receive status true on both runtimes ([test](../../../conformance/core.test.mjs#L725))
         - [x] Request a delivered code through the Go client and deliver it to the signed-up account ([test](../../../client/twofactor_delivery_test.go#L61))
         - [ ] `POST /two-factor/send-otp`
           - [x] Store the delivered code with an attempt counter and the configured expiry ([test](../../../adapters/sqlstore/twofactor_delivery_test.go#L78))
           - [x] Accept a delivered code on the sign-in challenge it was sent for and refuse it on another challenge ([test](../../../adapters/sqlstore/twofactor_delivery_test.go#L353))
           - [ ] Parameter `trustDevice` (optional)
       - [ ] Verifying OTP
-        - [x] Complete a delivered-code challenge through the released client on both runtimes ([test](../../../conformance/core.test.mjs#L726))
+        - [x] Complete a delivered-code challenge through the released client on both runtimes ([test](../../../conformance/core.test.mjs#L731))
         - [ ] `POST /two-factor/verify-otp`
           - [x] Refuse further guesses with TOO_MANY_ATTEMPTS_REQUEST_NEW_CODE once a code's attempt budget is spent ([test](../../../adapters/sqlstore/twofactor_delivery_test.go#L87))
           - [x] Refuse an expired delivered code with OTP_HAS_EXPIRED ([test](../../../adapters/sqlstore/twofactor_delivery_test.go#L94))
@@ -187,9 +187,9 @@
           - [ ] Parameter `trustDevice` (optional)
             - [x] Set the session and trust_device cookies when a delivered code is verified with trustDevice ([test](../../../adapters/sqlstore/twofactor_delivery_test.go#L119))
             - [x] Skip the challenge at the next Go client sign-in after a delivered code is verified with trustDevice ([test](../../../client/twofactor_delivery_test.go#L73))
-            - [x] Sign in without a challenge after a delivered code is verified with trustDevice through the released client on both runtimes ([test](../../../conformance/core.test.mjs#L729))
+            - [x] Sign in without a challenge after a delivered code is verified with trustDevice through the released client on both runtimes ([test](../../../conformance/core.test.mjs#L734))
     - [ ] Backup Codes
-      - [x] Complete a sign-in challenge with a backup code issued at enrollment and refuse that code a second time, through the released client on both runtimes ([test](../../../conformance/core.test.mjs#L287))
+      - [x] Complete a sign-in challenge with a backup code issued at enrollment and refuse that code a second time, through the released client on both runtimes ([test](../../../conformance/core.test.mjs#L292))
       - [ ] Generating Backup Codes
         - [x] Return ten new backup codes on regeneration and refuse a code from the previous set ([test](../../../adapters/sqlstore/twofactor_test.go#L212))
         - [ ] `POST /two-factor/generate-backup-codes`
@@ -198,7 +198,7 @@
           - [ ] Parameter `password` (optional)
       - [ ] Using Backup Codes
         - [x] Accept a backup code for exactly one of two concurrent submissions of the same sign-in challenge to two servers, and refuse it at a later challenge ([test](../../../adapters/sqlstore/twofactor_test.go#L201))
-        - [x] Refuse a used backup code through the released client on both runtimes ([test](../../../conformance/core.test.mjs#L306))
+        - [x] Refuse a used backup code through the released client on both runtimes ([test](../../../conformance/core.test.mjs#L311))
         - [ ] `POST /two-factor/verify-backup-code`
           - [x] Refuse a backup code that already completed a sign-in ([test](../../../adapters/sqlstore/twofactor_test.go#L203))
           - [x] Answer 429 ACCOUNT_TEMPORARILY_LOCKED after the configured number of wrong backup codes across two servers ([test](../../../adapters/sqlstore/twofactor_delivery_test.go#L220))
@@ -221,7 +221,7 @@
     - [ ] Trusted Devices
       - [x] Skip the second-factor prompt for a remembered browser and rotate its trust cookie on that sign-in ([test](../../../adapters/sqlstore/twofactor_trust_test.go#L217))
       - [x] Refuse remembered grants that belong to another account, are tampered with, expired or predate a password reset, and still require the password ([test](../../../adapters/sqlstore/twofactor_trust_test.go#L153))
-      - [x] Sign in without a challenge after a delivered code is verified with trustDevice through the released client on both runtimes ([test](../../../conformance/core.test.mjs#L729))
+      - [x] Sign in without a challenge after a delivered code is verified with trustDevice through the released client on both runtimes ([test](../../../conformance/core.test.mjs#L734))
       - [x] Set the trust_device cookie after an authenticator code with trustDevice, and issue a session without a challenge at the next sign-in from that browser ([test](../../../adapters/sqlstore/twofactor_hooks_test.go#L274))
     - [x] Issuer ([test](../../../conformance/goapi/freshness_test.go#L94))
       - [x] Use the plugin's issuer in the provisioning URI when set, and the application name otherwise ([test](../../../conformance/goapi/freshness_test.go#L94))
@@ -231,7 +231,7 @@
     - [x] Emit the user.twoFactorEnabled column and the twoFactor table with the same DDL as the other runtime on SQLite, PostgreSQL and MySQL ([test](../../../conformance/schema.test.mjs#L116))
     - [x] `twoFactorUserTableFields.twoFactorEnabled` ([test](../../../conformance/schema.test.mjs#L116))
       - [x] The generated optional user.twoFactorEnabled boolean column matches the other runtime's DDL on SQLite, PostgreSQL and MySQL ([test](../../../conformance/schema.test.mjs#L116))
-      - [x] Report twoFactorEnabled as true in the session once the authenticator is verified, through the released client on both runtimes ([test](../../../conformance/core.test.mjs#L297))
+      - [x] Report twoFactorEnabled as true in the session once the authenticator is verified, through the released client on both runtimes ([test](../../../conformance/core.test.mjs#L302))
     - [x] `twoFactorTableFields.id` ([test](../../../conformance/schema.test.mjs#L116))
       - [x] The generated twoFactor.id primary key column matches the other runtime's DDL on SQLite, PostgreSQL and MySQL ([test](../../../conformance/schema.test.mjs#L116))
     - [x] `twoFactorTableFields.userId` ([test](../../../conformance/schema.test.mjs#L116))

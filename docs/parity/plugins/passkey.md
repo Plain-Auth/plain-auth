@@ -10,19 +10,19 @@
   - `getPasskeyActions` — *not applicable: JavaScript only*
   - [ ] `passkeyClient`
     - [x] Use the published client to register a discoverable credential and authenticate in a local Chrome virtual authenticator on both servers ([test](../../../conformance/passkey-first-browser.mjs#L70))
-    - [x] Fetch registration options through the published client from both servers after an email sign-up ([test](../../../conformance/core.test.mjs#L413))
+    - [x] Fetch registration options through the published client from both servers after an email sign-up ([test](../../../conformance/core.test.mjs#L418))
   - [ ] `PASSKEY_ERROR_CODES`
   - [ ] `passkey`
     - [x] Register, sign in, list, rename and delete passkeys through the plugin's endpoints on three SQL engines ([test](../../../adapters/sqlstore/passkey_test.go#L86))
   - [ ] `GET /passkey/generate-register-options`
     - [x] Bind registration to a fresh account session and a secure one-use challenge ([test](../../../adapters/sqlstore/passkey_test.go#L173))
-    - [x] Use the public client to request options with the configured relying-party name, ID and public-key algorithms ([test](../../../conformance/core.test.mjs#L403))
+    - [x] Use the public client to request options with the configured relying-party name, ID and public-key algorithms ([test](../../../conformance/core.test.mjs#L408))
     - [x] Resolve a provisional enrollment identity and bind its display name and context to the ceremony ([test](../../../adapters/sqlstore/passkey_first_test.go#L85))
     - [x] Run the challenge's verification create hooks; a declined challenge is never stored and its options redeem nothing ([test](../../../adapters/sqlstore/passkey_hooks_test.go#L264))
   - [ ] `GET /passkey/generate-authenticate-options`
     - [x] Generate discoverable options and allow the current account’s enrolled credentials ([test](../../../adapters/sqlstore/passkey_test.go#L278))
     - [x] Run the challenge's verification create hooks for a signed-out caller, naming no owner ([test](../../../adapters/sqlstore/passkey_hooks_test.go#L314))
-    - [x] Return a challenge of at least 22 characters in sign-in options requested through the published client, on both servers ([test](../../../conformance/core.test.mjs#L411))
+    - [x] Return a challenge of at least 22 characters in sign-in options requested through the published client, on both servers ([test](../../../conformance/core.test.mjs#L416))
   - [ ] `POST /passkey/verify-registration`
     - [x] Verify the attested key and preserve distinct credential and record IDs ([test](../../../adapters/sqlstore/passkey_test.go#L193))
     - [x] Commit the passwordless user, unique credential and optional browser session together on three SQL backends ([test](../../../adapters/sqlstore/passkey_first_test.go#L98))
@@ -51,14 +51,14 @@
     - [x] Return a registered passkey with its own record ID, the base64url credential ID and the owner's user ID ([test](../../../adapters/sqlstore/passkey_test.go#L193))
   - [ ] `PasskeyOptions`
     - [ ] `rpID`
-      - [x] Return the configured relying-party ID in sign-in options, on both servers ([test](../../../conformance/core.test.mjs#L409))
+      - [x] Return the configured relying-party ID in sign-in options, on both servers ([test](../../../conformance/core.test.mjs#L414))
     - [ ] `rpName`
-      - [x] Return the configured relying-party name and ID in registration options, on both servers ([test](../../../conformance/core.test.mjs#L415))
+      - [x] Return the configured relying-party name and ID in registration options, on both servers ([test](../../../conformance/core.test.mjs#L420))
     - [ ] `origin`
       - [x] Require explicitly configured secure origins within the relying-party ID ([test](../../../plugins/passkey/passkey_test.go#L12))
       - [x] Refuse a signed assertion whose client data names an origin outside the configured list ([test](../../../adapters/sqlstore/passkey_test.go#L246))
     - [ ] `authenticatorSelection`
-      - [x] Require user verification in sign-in options when configured, on both servers ([test](../../../conformance/core.test.mjs#L410))
+      - [x] Require user verification in sign-in options when configured, on both servers ([test](../../../conformance/core.test.mjs#L415))
     - [ ] `advanced`
     - [ ] `schema`
     - [ ] `registration`
@@ -120,7 +120,7 @@
       - [x] Keep another user’s keys out of the results ([test](../../../adapters/sqlstore/passkey_test.go#L256))
       - [x] List the signed-in owner's passkey with its stored counter, while another account lists none ([test](../../../adapters/sqlstore/passkey_test.go#L265))
       - [ ] `GET /passkey/list-user-passkeys`
-        - [x] List no passkeys through the published client for a newly signed-up account on both servers ([test](../../../conformance/core.test.mjs#L418))
+        - [x] List no passkeys through the published client for a newly signed-up account on both servers ([test](../../../conformance/core.test.mjs#L423))
         - [x] Keep another account's passkeys out of the signed-in caller's list ([test](../../../adapters/sqlstore/passkey_test.go#L256))
     - [ ] Naming passkeys by authenticator
     - [ ] Deleting passkeys
@@ -170,9 +170,9 @@
       - [x] Generate the nullable passkey aaguid column with the same SQL as the other runtime's migration on SQLite, PostgreSQL and MySQL ([test](../../../conformance/schema.test.mjs#L106))
   - [ ] Options
     - [ ] rpID
-      - [x] Return the configured relying-party ID in the sign-in options from both servers ([test](../../../conformance/core.test.mjs#L409))
-    - [x] rpName ([test](../../../conformance/core.test.mjs#L415))
-      - [x] Return the configured relying-party ID and name in the registration options from both servers ([test](../../../conformance/core.test.mjs#L415))
+      - [x] Return the configured relying-party ID in the sign-in options from both servers ([test](../../../conformance/core.test.mjs#L414))
+    - [x] rpName ([test](../../../conformance/core.test.mjs#L420))
+      - [x] Return the configured relying-party ID and name in the registration options from both servers ([test](../../../conformance/core.test.mjs#L420))
     - [ ] origin
       - [x] Refuse an assertion whose client data reports an origin outside the configured list ([test](../../../adapters/sqlstore/passkey_test.go#L246))
       - [x] Refuse wildcard, foreign, insecure, path-bearing and credential-bearing origins when the plugin is built ([test](../../../plugins/passkey/passkey_test.go#L12))
@@ -185,7 +185,7 @@
     - [ ] `preferred`
     - [ ] `discouraged`
     - [ ] `userVerification`
-      - [x] Ask for required user verification in the sign-in options when it is configured, on both servers ([test](../../../conformance/core.test.mjs#L410))
+      - [x] Ask for required user verification in the sign-in options when it is configured, on both servers ([test](../../../conformance/core.test.mjs#L415))
     - [ ] advanced
     - [ ] `webAuthnChallengeCookie`
   - Expo Integration — *not applicable: JavaScript only*

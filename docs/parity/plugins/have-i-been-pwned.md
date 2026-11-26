@@ -17,7 +17,7 @@
     - [x] `enabled` ([test](../../../plugins/pwnedpassword/pwnedpassword_test.go#L194))
       - [x] Skip the range service when disabled and enable screening by default ([test](../../../plugins/pwnedpassword/pwnedpassword_test.go#L194))
   - [x] `haveIBeenPwned` ([test](../../../conformance/password-screening.mjs#L24))
-    - [x] Reject compromised credentials through the public JavaScript client ([test](../../../conformance/core.test.mjs#L311))
+    - [x] Reject compromised credentials through the public JavaScript client ([test](../../../conformance/core.test.mjs#L316))
     - [x] Apply the installed policy to all seven default paths and allow ordinary sign-in ([test](../../../conformance/password-screening.mjs#L24))
 
 ## Have I Been Pwned

@@ -433,7 +433,7 @@
   - [ ] Plugins Schema
     - [x] `twoFactorEnabled` ([test](../../conformance/schema.test.mjs#L106))
       - [x] The Go schema generator's DDL equals the other runtime's migration for every base profile combination, two-factor included, on SQLite, PostgreSQL and MySQL, and authctl generate prints the same DDL for single profiles, so the two-factor profile adds user.twoFactorEnabled ([test](../../conformance/schema.test.mjs#L106))
-      - [x] After a verified TOTP enrollment, the session user reports twoFactorEnabled true on both runtimes ([test](../../conformance/core.test.mjs#L297))
+      - [x] After a verified TOTP enrollment, the session user reports twoFactorEnabled true on both runtimes ([test](../../conformance/core.test.mjs#L302))
       - [x] An anonymous sign-in on a store with the two-factor plugin returns a user whose TwoFactorEnabled is false ([test](../../adapters/sqlstore/admin_factor_test.go#L89))
     - [x] `twoFactorSecret` ([test](../../conformance/schema.test.mjs#L106))
       - [x] The Go schema generator's two-factor DDL equals the other runtime's migration on SQLite, PostgreSQL and MySQL, which keeps the TOTP secret in a twoFactor.secret column rather than on the user table ([test](../../conformance/schema.test.mjs#L106))
@@ -442,7 +442,7 @@
     - [x] `twoFactorBackupCodes` ([test](../../conformance/schema.test.mjs#L106))
       - [x] The Go schema generator's two-factor DDL equals the other runtime's migration on SQLite, PostgreSQL and MySQL, which keeps backup codes in a twoFactor.backupCodes column ([test](../../conformance/schema.test.mjs#L106))
       - [x] After two-factor/enable, the twoFactor row's backupCodes column does not contain the first plaintext backup code ([test](../../adapters/sqlstore/twofactor_test.go#L135))
-      - [x] A backup code completes a two-factor sign-in once, the used code is then refused and a spare one still works, on both runtimes ([test](../../conformance/core.test.mjs#L287))
+      - [x] A backup code completes a two-factor sign-in once, the used code is then refused and a spare one still works, on both runtimes ([test](../../conformance/core.test.mjs#L292))
     - [ ] `CLI`
       - [x] On a populated SQLite base schema, each profile combination migrated through the Go store (single profiles first through authctl migrate --plugins) keeps the existing user and gives the same schema as the other runtime's migration ([test](../../conformance/schema.test.mjs#L129))
       - [x] authctl check reports a plugin's missing user column after a base migration and passes once migrate --plugins adds it ([test](../../cmd/authctl/check_test.go#L99))
@@ -490,8 +490,8 @@
       - [x] Deliver the committed profile on each explicit verification path and preserve verified state when the host callback fails ([test](../../conformance/email-verification-observers.mjs#L8))
       - [x] Run a single after callback for competing ordinary links without holding the owner lock during host code ([test](../../adapters/sqlstore/email_verification_observers_test.go#L217))
       - [x] Bind delayed session issuance to the exact proposed credential and redeem it only once across stores ([test](../../adapters/sqlstore/email_verification_observers_test.go#L287))
-    - [x] Callback on duplicate sign-up attempt ([test](../../conformance/core.test.mjs#L1462))
-      - [x] Deliver the stored owner to the host while preserving private responses across both modes and ordinary 422 behavior in the released client ([test](../../conformance/core.test.mjs#L1462))
+    - [x] Callback on duplicate sign-up attempt ([test](../../conformance/core.test.mjs#L1467))
+      - [x] Deliver the stored owner to the host while preserving private responses across both modes and ordinary 422 behavior in the released client ([test](../../conformance/core.test.mjs#L1467))
       - [x] Run the callback after storage releases the account, isolate errors and panics, and preserve owned request metadata ([test](../../adapters/sqlstore/existing_signup_test.go#L83))
       - [x] Use one committed owner for concurrent registrations across separate instances and storage connections ([test](../../adapters/sqlstore/existing_signup_test.go#L197))
   - [x] Password Reset Email ([test](../../conformance/goapi/mail_request_test.go#L56))
@@ -867,20 +867,20 @@
 ## Session Management
 
 - [ ] Session Management
-  - [x] Session table ([test](../../conformance/core.test.mjs#L211))
-    - [x] Through the official client on both runtimes, getSession bodies carrying the session's id, token, userId, expiresAt, ipAddress and userAgent are deep-compared between the Go fixture and the reference ([test](../../conformance/core.test.mjs#L211))
+  - [x] Session table ([test](../../conformance/core.test.mjs#L216))
+    - [x] Through the official client on both runtimes, getSession bodies carrying the session's id, token, userId, expiresAt, ipAddress and userAgent are deep-compared between the Go fixture and the reference ([test](../../conformance/core.test.mjs#L216))
     - [x] `id` ([test](../../conformance/schema.test.mjs#L37))
       - [x] authctl migrate produces a session table identical to the reference schema, including the id primary key column ([test](../../conformance/schema.test.mjs#L37))
-    - [x] `token` ([test](../../conformance/core.test.mjs#L197))
-      - [x] The official client reads the session back through the cookie set at sign-up, and the returned session.token equals the issued token on both runtimes ([test](../../conformance/core.test.mjs#L197))
-    - [x] `userId` ([test](../../conformance/core.test.mjs#L196))
-      - [x] getSession returns a session whose userId is the registered user's id ([test](../../conformance/core.test.mjs#L196))
-    - [x] `expiresAt` ([test](../../conformance/core.test.mjs#L198))
-      - [x] The returned session's expiresAt is seven days after its createdAt ([test](../../conformance/core.test.mjs#L198))
-    - [x] `ipAddress` ([test](../../conformance/core.test.mjs#L211))
-      - [x] Deep-compares the full getSession bodies, including the recorded client address, between the Go fixture and the reference for the same instrumented client ([test](../../conformance/core.test.mjs#L211))
-    - [x] `userAgent` ([test](../../conformance/core.test.mjs#L211))
-      - [x] The client sends user-agent authn-conformance, and the stored session's userAgent is deep-compared against the reference session body ([test](../../conformance/core.test.mjs#L211))
+    - [x] `token` ([test](../../conformance/core.test.mjs#L202))
+      - [x] The official client reads the session back through the cookie set at sign-up, and the returned session.token equals the issued token on both runtimes ([test](../../conformance/core.test.mjs#L202))
+    - [x] `userId` ([test](../../conformance/core.test.mjs#L201))
+      - [x] getSession returns a session whose userId is the registered user's id ([test](../../conformance/core.test.mjs#L201))
+    - [x] `expiresAt` ([test](../../conformance/core.test.mjs#L203))
+      - [x] The returned session's expiresAt is seven days after its createdAt ([test](../../conformance/core.test.mjs#L203))
+    - [x] `ipAddress` ([test](../../conformance/core.test.mjs#L216))
+      - [x] Deep-compares the full getSession bodies, including the recorded client address, between the Go fixture and the reference for the same instrumented client ([test](../../conformance/core.test.mjs#L216))
+    - [x] `userAgent` ([test](../../conformance/core.test.mjs#L216))
+      - [x] The client sends user-agent authn-conformance, and the stored session's userAgent is deep-compared against the reference session body ([test](../../conformance/core.test.mjs#L216))
   - [x] Session Expiration ([test](../../session_refresh_test.go#L46))
     - [x] Over HTTP: no refresh before the one-day update age, then expiresAt slides to now plus seven days exactly once, and a session past expiry reads as null and is deleted ([test](../../session_refresh_test.go#L46))
     - [x] Disable Session Refresh ([test](../../session_refresh_test.go#L94))
@@ -890,9 +890,9 @@
   - [x] Session Freshness ([test](../../conformance/goapi/freshness_test.go#L22))
     - [x] Refuse sensitive account changes from a session older than the freshness window, and turn the check off with a negative FreshAge ([test](../../conformance/goapi/freshness_test.go#L22))
   - [ ] Session Management
-    - [x] Get Session ([test](../../conformance/core.test.mjs#L211))
-      - [x] Return the signed-in user and session with the default seven-day lifetime ([test](../../conformance/core.test.mjs#L195))
-      - [x] The official client's getSession returns null before sign-up, the user and session after it, the new session after sign-in and null after sign-out, with bodies deep-compared against the reference ([test](../../conformance/core.test.mjs#L211))
+    - [x] Get Session ([test](../../conformance/core.test.mjs#L216))
+      - [x] Return the signed-in user and session with the default seven-day lifetime ([test](../../conformance/core.test.mjs#L200))
+      - [x] The official client's getSession returns null before sign-up, the user and session after it, the new session after sign-in and null after sign-out, with bodies deep-compared against the reference ([test](../../conformance/core.test.mjs#L216))
     - [ ] Use Session
     - [ ] List Sessions
       - [x] Return both active logins for the signed-in user ([test](../../conformance/goapi/http_test.go#L94))
@@ -926,10 +926,10 @@
         - [x] Exchange HS256 JWT snapshots bidirectionally on shared SQLite and verify their headers, session binding, expiry, chunks and logout ([test](../../conformance/session-cache-compact.mjs#L33))
         - [x] Reject modified, incomplete, cross-strategy, expired, future and wrong-key envelopes ([test](../../session_cache_jose_test.go#L15))
         - [x] Runs the compact, jwt and jwe strategies through HTTP and the native client across two auth hosts: cache hits, version invalidation and a forced store read after revocation ([test](../../client/session_cache_version_test.go#L17))
-        - [x] `compact` ([test](../../conformance/core.test.mjs#L1292))
-          - [x] Both runtimes exchange base64url HMAC-signed compact snapshots in both directions on shared SQLite ([test](../../conformance/core.test.mjs#L1292))
-        - [x] `jwt` ([test](../../conformance/core.test.mjs#L1432))
-          - [x] Go-issued snapshots verify with jose as HS256 against the shared secret and are exchanged with the reference in both directions ([test](../../conformance/core.test.mjs#L1432))
+        - [x] `compact` ([test](../../conformance/core.test.mjs#L1297))
+          - [x] Both runtimes exchange base64url HMAC-signed compact snapshots in both directions on shared SQLite ([test](../../conformance/core.test.mjs#L1297))
+        - [x] `jwt` ([test](../../conformance/core.test.mjs#L1437))
+          - [x] Go-issued snapshots verify with jose as HS256 against the shared secret and are exchanged with the reference in both directions ([test](../../conformance/core.test.mjs#L1437))
         - [x] `jwe` ([test](../../session_cache_jose_test.go#L15))
           - [x] The JWE subtest accepts only dir/A256CBC-HS512 with an HKDF-derived key and rejects tampered, compressed, A256GCM and foreign-kid envelopes ([test](../../session_cache_jose_test.go#L15))
         - [ ] Comparison:
@@ -957,12 +957,12 @@
       - [x] A host with a different SessionCookieCache.Version ignores snapshots issued under the prior version and returns live data ([test](../../session_cache_compact_test.go#L120))
     - [ ] Stateless with Secondary Storage
   - [ ] Customizing Session Response
-    - [x] With the Go custom-session projection, the official client getSession returns the same application-defined payload as the reference customSession plugin ([test](../../conformance/core.test.mjs#L422))
+    - [x] With the Go custom-session projection, the official client getSession returns the same application-defined payload as the reference customSession plugin ([test](../../conformance/core.test.mjs#L427))
     - [ ] Infer on the Client
     - [x] Caveats on Customizing Session Response ([test](../../conformance/session-cache-compact.mjs#L103))
       - [x] Caveat 3: the cookie cache holds only the base session, and the projection runs on each fetch, so a cached read returns the projected view of the snapshot ([test](../../conformance/session-cache-compact.mjs#L103))
-      - [x] Mutating the list-device-sessions endpoint ([test](../../conformance/core.test.mjs#L574))
-        - [x] With the option on, listDeviceSessions returns only the projected viewer rows on both runtimes ([test](../../conformance/core.test.mjs#L574))
+      - [x] Mutating the list-device-sessions endpoint ([test](../../conformance/core.test.mjs#L579))
+        - [x] With the option on, listDeviceSessions returns only the projected viewer rows on both runtimes ([test](../../conformance/core.test.mjs#L579))
 
 ## TypeScript
 

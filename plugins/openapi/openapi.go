@@ -56,7 +56,11 @@ func New(options Options) (plainauth.Plugin, error) {
 	return p, nil
 }
 
-type pageOperation struct{ Method, Path, Detail string }
+type pageOperation struct {
+	Method, Path, Detail string
+	// Body shows a JSON body field in the operation's request panel.
+	Body bool
+}
 
 func (o Options) reference(c plainauth.EndpointContext) (any, error) {
 	doc, err := Generate(c.Auth)
@@ -70,7 +74,7 @@ func (o Options) reference(c plainauth.EndpointContext) (any, error) {
 			if err != nil {
 				return nil, err
 			}
-			rows = append(rows, pageOperation{strings.ToUpper(method), path, string(detail)})
+			rows = append(rows, pageOperation{strings.ToUpper(method), path, string(detail), method != "get"})
 		}
 	}
 	sort.Slice(rows, func(i, j int) bool {
@@ -87,15 +91,16 @@ func (o Options) reference(c plainauth.EndpointContext) (any, error) {
 		}
 		nonce = base64.RawStdEncoding.EncodeToString(buf)
 	}
+	base := strings.TrimRight(c.Auth.BasePath(), "/")
 	data := struct {
-		Theme, Nonce, SchemaPath, Server string
-		Operations                       []pageOperation
-	}{o.Theme, nonce, strings.TrimRight(c.Auth.BasePath(), "/") + "/open-api/generate-schema", doc["servers"].([]object)[0]["url"].(string), rows}
+		Theme, Nonce, SchemaPath, Server, Base string
+		Operations                             []pageOperation
+	}{o.Theme, nonce, base + "/open-api/generate-schema", doc["servers"].([]object)[0]["url"].(string), base, rows}
 	var out bytes.Buffer
 	if err := pageTemplate.Execute(&out, data); err != nil {
 		return nil, err
 	}
-	c.ResponseHeader.Set("Content-Security-Policy", "default-src 'none'; style-src 'nonce-"+nonce+"'; script-src 'nonce-"+nonce+"'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'")
+	c.ResponseHeader.Set("Content-Security-Policy", "default-src 'none'; style-src 'nonce-"+nonce+"'; script-src 'nonce-"+nonce+"'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'")
 	c.ResponseHeader.Set("Referrer-Policy", "no-referrer")
 	return plainauth.HTMLPage(out.String()), nil
 }

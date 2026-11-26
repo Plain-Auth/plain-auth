@@ -8307,6 +8307,12 @@
       "label": "Apply a configured theme in the rendered browser page",
       "test": "plugins/openapi/openapi_test.go",
       "marker": "Chrome did not filter operations under the nonce CSP"
+    },
+    {
+      "label": "Serve the page with the default theme when Theme is empty and with a configured moon theme otherwise, and refuse an unknown theme",
+      "test": "plugins/openapi/openapi_test.go",
+      "marker": "func TestReferencePolicyAndOptions(t *testing.T) {",
+      "complete": true
     }
   ],
   "plugin-symbol/open-api/OpenAPIOptions/nonce": [
@@ -37520,6 +37526,32 @@
       "label": "A fixture server serves exactly the routes of the application's own options, so the helpers add no public route",
       "test": "authtest/server_test.go",
       "marker": "t.Fatal(\"authtest.New changed the HTTP routes\")",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/open-api.mdx#L40": [
+    {
+      "label": "In Chrome, the API reference page sends nothing on load, then its Send request buttons sign up, refuse a wrong password and sign in on the same origin, show each status and JSON body, and leave the browser signed in (deviation: a raw path and JSON body replace generated parameter forms)",
+      "test": "conformance/openapi-reference-page.mjs",
+      "marker": "const created = await send(\"POST\", \"/sign-up/email\", {name: \"Page User\", email: \"page@example.test\", password: \"page-password-123\"});",
+      "complete": true
+    },
+    {
+      "label": "Serve a request panel for each operation and allow page connections only to its own origin",
+      "test": "plugins/openapi/openapi_test.go",
+      "marker": "t.Fatal(\"reference page lacks a request panel\")"
+    },
+    {
+      "label": "Return an OpenAPI 3.1.1 document from the mounted HTTP endpoint",
+      "test": "conformance/openapi-contract.mjs",
+      "marker": "assert.equal(doc.openapi,\"3.1.1\")"
+    }
+  ],
+  "docs/content/docs/plugins/open-api.mdx#L84/`theme`": [
+    {
+      "label": "With no theme configured, the served page carries the default theme",
+      "test": "plugins/openapi/openapi_test.go",
+      "marker": "t.Fatal(\"unset theme did not select the default theme\")",
       "complete": true
     }
   ]

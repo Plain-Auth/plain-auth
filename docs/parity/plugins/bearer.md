@@ -4,10 +4,10 @@
 
 ## Interfaces
 
-- [x] Bearer endpoints, types and options ([test](../../../conformance/core.test.mjs#L1213))
-  - [x] Verify bearer session issuance, renewal, mixed credentials and revocation with both signature policies ([test](../../../conformance/core.test.mjs#L1213))
-  - [x] `BearerOptions` ([test](../../../conformance/core.test.mjs#L1219))
-    - [x] Configure the public signature policy and exercise each setting on both runtimes ([test](../../../conformance/core.test.mjs#L1219))
+- [x] Bearer endpoints, types and options ([test](../../../conformance/core.test.mjs#L1218))
+  - [x] Verify bearer session issuance, renewal, mixed credentials and revocation with both signature policies ([test](../../../conformance/core.test.mjs#L1218))
+  - [x] `BearerOptions` ([test](../../../conformance/core.test.mjs#L1224))
+    - [x] Configure the public signature policy and exercise each setting on both runtimes ([test](../../../conformance/core.test.mjs#L1224))
     - [x] `requireSignature` ([test](../../../plugins/bearer/bearer_test.go#L52))
       - [x] Accept valid signed credentials and reject raw or altered tokens when signatures are required ([test](../../../plugins/bearer/bearer_test.go#L52))
   - [x] `bearer` ([test](../../../conformance/bearer-contract.mjs#L5))
@@ -33,7 +33,7 @@
       - [x] Use a credential for one client view without falling back to the browser on revocation ([test](../../../client/bearer_test.go#L103))
     - [x] 5. Using Bearer Tokens Outside the Auth Client ([test](../../../client/bearer_test.go#L105))
       - [x] Authenticate a host-owned TLS route with a plain HTTP client and deny the same credential after sign-out ([test](../../../client/bearer_test.go#L105))
-  - [x] Options ([test](../../../conformance/core.test.mjs#L1218))
-    - [x] Test the default signature policy and signed-only mode with independent accounts ([test](../../../conformance/core.test.mjs#L1218))
+  - [x] Options ([test](../../../conformance/core.test.mjs#L1223))
+    - [x] Test the default signature policy and signed-only mode with independent accounts ([test](../../../conformance/core.test.mjs#L1223))
     - [x] requireSignature ([test](../../../conformance/bearer-contract.mjs#L49))
       - [x] Accept the raw credential only under the default policy and always verify signed values ([test](../../../conformance/bearer-contract.mjs#L49))

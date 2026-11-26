@@ -6,7 +6,7 @@
 
 - [ ] Email otp endpoints, types and options
   - [ ] `emailOTPClient`
-    - [x] Use the pinned browser client with hashed proofs in either runtime, including two-address confirmation ([test](../../../conformance/core.test.mjs#L501))
+    - [x] Use the pinned browser client with hashed proofs in either runtime, including two-address confirmation ([test](../../../conformance/core.test.mjs#L506))
   - [ ] `EMAIL_OTP_ERROR_CODES`
     - [x] Answer wrong sign-in codes with 400 INVALID_OTP, a code past its attempts with 403 TOO_MANY_ATTEMPTS and an expired code with 400 OTP_EXPIRED over HTTP ([test](../../../conformance/goapi/database_verification_code_hooks_test.go#L242))
   - [ ] `emailOTP`
@@ -37,7 +37,7 @@
     - [x] ValidateUserInfo refuses a new email-code user with a 403 and stores nothing ([test](../../../conformance/goapi/user_validation_test.go#L267))
     - [x] Sign in an unverified password account with a mailed code, mark it verified and remove its password ([test](../../../adapters/sqlstore/emailotp_test.go#L316))
   - [ ] `POST /email-otp/request-password-reset`
-    - [x] Deliver recovery mail to an existing owner and accept the stored proof in a second runtime ([test](../../../conformance/core.test.mjs#L521))
+    - [x] Deliver recovery mail to an existing owner and accept the stored proof in a second runtime ([test](../../../conformance/core.test.mjs#L526))
     - [x] Mail a forget-password code to a registered address from the request route ([test](../../../adapters/sqlstore/emailotp_test.go#L271))
     - [x] Answer success without mailing when an unknown address requests recovery ([test](../../../adapters/sqlstore/emailotp_test.go#L101))
   - [x] `POST /forget-password/email-otp` ([test](../../../adapters/sqlstore/emailotp_test.go#L173))

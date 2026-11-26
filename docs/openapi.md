@@ -70,9 +70,11 @@ endpoint := plainauth.Endpoint{
 | --- | --- |
 | `Path` | Changes the page path relative to the auth mount. Defaults to `/reference`. |
 | `DisableDefaultReference` | Serves the JSON schema alone. |
-| `Theme` | Selects `default`, `alternate`, `moon`, `purple`, `solarized`, `bluePlanet`, `saturn`, `kepler`, `mars`, `deepSpace`, `laserwave` or `none`. |
+| `Theme` | Selects `default`, `alternate`, `moon`, `purple`, `solarized`, `bluePlanet`, `saturn`, `kepler`, `mars`, `deepSpace`, `laserwave` or `none`. Defaults to `default`. |
 | `Nonce` | Sets the CSP nonce on the page's script and style. The default generates a fresh random nonce for each response. |
 
-The self-contained page filters operations by method or path and expands each operation's JSON. A link such as `/api/auth/reference?q=sign-in` opens a filtered view. All assets are local. The response applies a nonce-based content security policy, blocks embedding and escapes operation metadata as text. Use a separate OpenAPI viewer for interactive request execution.
+The self-contained page filters operations by method or path and expands each operation's JSON. A link such as `/api/auth/reference?q=sign-in` opens a filtered view. All assets are local. The response applies a nonce-based content security policy that allows connections only to the page's own origin, blocks embedding and escapes operation metadata as text.
+
+Each operation also has a request panel. Edit the path to fill in path parameters or add a query string, edit the JSON body, and select **Send request**. The page sends the request to its own origin with the viewer's cookies and shows the status and response body. It sends nothing until a button is selected and never takes request values from its URL. The panel takes a raw path and JSON body instead of generated parameter forms, and it reports a redirect instead of following it. [Browser request test](../conformance/openapi-reference-page.mjs)
 
 With the phone-number plugin installed, the document includes the five public phone operations and the two nullable phone profile fields. Verification accepts signed-out requests and documents the direct-session requirement for account linking. The user update schema accepts a null phone number to remove it. Password and code inputs are write-only. Installing two-factor authentication adds its challenge response to phone login and verification. [Phone-number guide](phone-number.md)

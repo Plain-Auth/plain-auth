@@ -8,9 +8,9 @@
   - `FieldSchema` — *not applicable: TypeScript type*
   - `OpenAPIModelSchema` — *not applicable: TypeScript type*
   - `Path` — *not applicable: TypeScript type*
-  - [x] `generator` ([test](../../../plugins/openapi/openapi_test.go#L275))
-    - [x] openapi.Generate returns a document for a configured instance, and each concurrent caller gets its own copy ([test](../../../plugins/openapi/openapi_test.go#L194))
-    - [x] Generated operations use the Default tag for core routes and the capitalized plugin ID for plugin routes, an endpoint's own tags replace the plugin tag, and the document lists the Default group ([test](../../../plugins/openapi/openapi_test.go#L275))
+  - [x] `generator` ([test](../../../plugins/openapi/openapi_test.go#L283))
+    - [x] openapi.Generate returns a document for a configured instance, and each concurrent caller gets its own copy ([test](../../../plugins/openapi/openapi_test.go#L202))
+    - [x] Generated operations use the Default tag for core routes and the capitalized plugin ID for plugin routes, an endpoint's own tags replace the plugin tag, and the document lists the Default group ([test](../../../plugins/openapi/openapi_test.go#L283))
     - [x] Every operation that both live documents share carries the same tags, and both documents list the same tag groups ([test](../../../conformance/openapi-contract.mjs#L50))
   - `OpenAPISchema` — *not applicable: TypeScript type*
   - `OpenAPIParameter` — *not applicable: TypeScript type*
@@ -27,7 +27,7 @@
     - [x] Describe date-time fields in public models, JSON input and email signup form input ([test](../../../plugins/openapi/user_fields_test.go#L178))
     - [x] GET /open-api/generate-schema answers 200 application/json with OpenAPI 3.1.1 and the mounted server URL, lists installed routes and leaves disabled ones out ([test](../../../plugins/openapi/openapi_test.go#L88))
   - [x] `GET /reference (configurable)` ([test](../../../plugins/openapi/openapi_test.go#L172))
-    - [x] Filter a local interactive reference in headless Chrome under its nonce policy ([test](../../../plugins/openapi/openapi_test.go#L231))
+    - [x] Filter a local interactive reference in headless Chrome under its nonce policy ([test](../../../plugins/openapi/openapi_test.go#L239))
     - [x] Serve an HTML page at a configured path with the chosen theme, nonce and CSP, answer 404 at /reference when the page is disabled, and keep serving the JSON schema ([test](../../../plugins/openapi/openapi_test.go#L172))
     - [x] Leave /reference and /open-api/generate-schema out of the generated document's paths ([test](../../../plugins/openapi/openapi_test.go#L92))
     - [x] With default options, serve the API reference page at /reference beneath the auth mount ([test](../../../plugins/openapi/sso_domain_test.go#L76))
@@ -36,13 +36,14 @@
       - [x] Serve the page at an application-selected path beneath the configured auth mount ([test](../../../plugins/openapi/openapi_test.go#L177))
       - [x] With no path configured, serve the API reference page at /reference beneath the auth mount ([test](../../../plugins/openapi/sso_domain_test.go#L76))
     - [x] `disableDefaultReference` ([test](../../../plugins/openapi/sso_domain_test.go#L76))
-      - [x] Disable the reference page while continuing to serve its JSON schema ([test](../../../plugins/openapi/openapi_test.go#L184))
+      - [x] Disable the reference page while continuing to serve its JSON schema ([test](../../../plugins/openapi/openapi_test.go#L188))
       - [x] Serve the API reference page when DisableDefaultReference is left unset ([test](../../../plugins/openapi/sso_domain_test.go#L76))
-    - [ ] `theme`
-      - [x] Apply a configured theme in the rendered browser page ([test](../../../plugins/openapi/openapi_test.go#L231))
-    - [x] `nonce` ([test](../../../plugins/openapi/openapi_test.go#L231))
+    - [x] `theme` ([test](../../../plugins/openapi/openapi_test.go#L172))
+      - [x] Apply a configured theme in the rendered browser page ([test](../../../plugins/openapi/openapi_test.go#L239))
+      - [x] Serve the page with the default theme when Theme is empty and with a configured moon theme otherwise, and refuse an unknown theme ([test](../../../plugins/openapi/openapi_test.go#L172))
+    - [x] `nonce` ([test](../../../plugins/openapi/openapi_test.go#L239))
       - [x] Apply the configured nonce to inline scripts and styles and send the matching CSP ([test](../../../plugins/openapi/openapi_test.go#L177))
-      - [x] With no nonce configured, headless Chrome still runs the served page's inline filter script and hides the operations that do not match the query ([test](../../../plugins/openapi/openapi_test.go#L231))
+      - [x] With no nonce configured, headless Chrome still runs the served page's inline filter script and hides the operations that do not match the query ([test](../../../plugins/openapi/openapi_test.go#L239))
   - [x] `openAPI` ([test](../../../plugins/openapi/openapi_test.go#L172))
     - [x] openapi.New installs the JSON schema route and an HTML page at the configured path, omits the page when disabled, and refuses an invalid path, nonce or theme ([test](../../../plugins/openapi/openapi_test.go#L172))
     - [x] With default options, openapi.New serves the page at /reference beneath the auth mount ([test](../../../plugins/openapi/sso_domain_test.go#L76))
@@ -50,20 +51,24 @@
 ## Open API
 
 - [ ] Open API
-  - [ ] Usage
-    - [x] Generated Schema ([test](../../../plugins/openapi/openapi_test.go#L194))
+  - [x] Usage ([test](../../../conformance/openapi-reference-page.mjs#L35))
+    - [x] In Chrome, the API reference page sends nothing on load, then its Send request buttons sign up, refuse a wrong password and sign in on the same origin, show each status and JSON body, and leave the browser signed in (deviation: a raw path and JSON body replace generated parameter forms) ([test](../../../conformance/openapi-reference-page.mjs#L35))
+    - [x] Serve a request panel for each operation and allow page connections only to its own origin ([test](../../../plugins/openapi/openapi_test.go#L184))
+    - [x] Return an OpenAPI 3.1.1 document from the mounted HTTP endpoint ([test](../../../conformance/openapi-contract.mjs#L28))
+    - [x] Generated Schema ([test](../../../plugins/openapi/openapi_test.go#L202))
       - [x] Return the public document from its mounted HTTP endpoint ([test](../../../conformance/openapi-contract.mjs#L28))
-      - [x] openapi.Generate returns the document for a configured instance directly from Go, and each concurrent caller gets its own copy ([test](../../../plugins/openapi/openapi_test.go#L194))
+      - [x] openapi.Generate returns the document for a configured instance directly from Go, and each concurrent caller gets its own copy ([test](../../../plugins/openapi/openapi_test.go#L202))
     - [x] Using Scalar with Multiple Sources ([test](../../../plugins/openapi/organization_role_fields_test.go#L50))
       - [x] GET /api/auth/open-api/generate-schema under the default mount answers 200 with a JSON document ([test](../../../plugins/openapi/organization_role_fields_test.go#L50))
   - [ ] Configuration
     - [x] `path` ([test](../../../plugins/openapi/sso_domain_test.go#L76))
       - [x] With no path configured, serve the API reference page at /reference beneath the auth mount ([test](../../../plugins/openapi/sso_domain_test.go#L76))
       - [x] Serve the API reference page at a configured path beneath the configured auth mount ([test](../../../plugins/openapi/openapi_test.go#L177))
-    - [x] `disableDefaultReference` ([test](../../../plugins/openapi/openapi_test.go#L184))
-      - [x] With DisableDefaultReference set, answer 404 at /reference while the JSON schema stays available ([test](../../../plugins/openapi/openapi_test.go#L184))
+    - [x] `disableDefaultReference` ([test](../../../plugins/openapi/openapi_test.go#L188))
+      - [x] With DisableDefaultReference set, answer 404 at /reference while the JSON schema stays available ([test](../../../plugins/openapi/openapi_test.go#L188))
       - [x] Serve the API reference page when DisableDefaultReference is left unset ([test](../../../plugins/openapi/sso_domain_test.go#L76))
-    - [ ] `theme`
+    - [x] `theme` ([test](../../../plugins/openapi/openapi_test.go#L198))
+      - [x] With no theme configured, the served page carries the default theme ([test](../../../plugins/openapi/openapi_test.go#L198))
     - [x] `nonce` ([test](../../../plugins/openapi/openapi_test.go#L177))
       - [x] Put a configured nonce attribute in the served page and send a Content-Security-Policy header that names the same nonce ([test](../../../plugins/openapi/openapi_test.go#L177))
-      - [x] With no nonce configured, headless Chrome still runs the served page's inline filter script and hides the operations that do not match the query ([test](../../../plugins/openapi/openapi_test.go#L231))
+      - [x] With no nonce configured, headless Chrome still runs the served page's inline filter script and hides the operations that do not match the query ([test](../../../plugins/openapi/openapi_test.go#L239))

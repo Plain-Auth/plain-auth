@@ -8,18 +8,18 @@ Each row tracks the behavior exposed by a published entry point. The Go implemen
 
 - [ ] API keys
   - [ ] Default interface (`.`)
-    - [x] Issue a user-owned key and return its secret to the official client ([test](../../conformance/core.test.mjs#L866))
-    - [x] Issue a key whose reference identifies the caller’s organization ([test](../../conformance/core.test.mjs#L938))
+    - [x] Issue a user-owned key and return its secret to the official client ([test](../../conformance/core.test.mjs#L871))
+    - [x] Issue a key whose reference identifies the caller’s organization ([test](../../conformance/core.test.mjs#L943))
   - [ ] Client integration (`./client`)
-    - [x] Create, retrieve, update, list and revoke user-owned keys with the official client ([test](../../conformance/core.test.mjs#L866))
-    - [x] Manage organization keys alongside separately authenticated automation clients ([test](../../conformance/core.test.mjs#L917))
+    - [x] Create, retrieve, update, list and revoke user-owned keys with the official client ([test](../../conformance/core.test.mjs#L871))
+    - [x] Manage organization keys alongside separately authenticated automation clients ([test](../../conformance/core.test.mjs#L922))
   - [ ] Configuration and result types (`./types`)
 
 ## Authentication server and framework bindings
 
 - [ ] Authentication server and framework bindings
   - [ ] Default interface (`.`)
-    - [x] Create a password account and return a usable session token on SQLite ([test](../../conformance/core.test.mjs#L193))
+    - [x] Create a password account and return a usable session token on SQLite ([test](../../conformance/core.test.mjs#L198))
     - [x] Apply configured email-verification gates ([test](../../conformance/goapi/account_lifecycle_test.go#L15))
     - [x] Keep callback failures private and honor cancellation while password operations are queued ([test](../../conformance/goapi/password_codec_test.go#L15))
     - [x] Keep failed version lookup retryable and issue a snapshot only for the stored ordinary profile ([test](../../session_cache_version_test.go#L147))
@@ -28,7 +28,7 @@ Each row tracks the behavior exposed by a published entry point. The Go implemen
     - [x] Keep another account’s profile and hidden inputs out of protected duplicate signup and verification output ([test](../../adapters/sqlstore/user_fields_test.go#L264))
     - [x] ValidateUserInfo refuses an email sign-up with a 403, or with the private duplicate answer in protected mode ([test](../../conformance/goapi/user_validation_test.go#L62))
     - [x] Sign-up answers VALIDATION_ERROR for an address outside the reference format, refuses a value for a plugin's own user field with FIELD_NOT_ALLOWED and gives a defaulted one its default ([test](../../conformance/goapi/credential_contract_test.go#L100))
-    - [x] Return the signed-in user and session with the default seven-day lifetime ([test](../../conformance/core.test.mjs#L195))
+    - [x] Return the signed-in user and session with the default seven-day lifetime ([test](../../conformance/core.test.mjs#L200))
     - [x] Support the sliding session window, deferred writes and expiration ([test](../../session_refresh_test.go#L46))
     - [x] Expose the application credential type and keep the presented key out of browser session lookup ([test](../../adapters/sqlstore/apikey_session_test.go#L215))
     - [x] Compare ordinary GET and deferred POST without the projection on both runtimes ([test](../../conformance/custom-session-contract.mjs#L113))
@@ -281,7 +281,7 @@ Each row tracks the behavior exposed by a published entry point. The Go implemen
     - [x] Provision and synchronize directory Users over authenticated SCIM HTTP using compatible SQL records ([test](../../conformance/scim-contract.mjs#L45))
     - [x] Exchange canonical Group and membership records with the reference runtime ([test](../../conformance/scim-contract.mjs#L92))
     - [x] Issue, rotate, authenticate and revoke managed directory credentials from either runtime on shared SQLite ([test](../../conformance/scim-managed.mjs#L13))
-    - [x] Retire managed directories across runtimes and retain their canonical status and audit records ([test](../../conformance/core.test.mjs#L1037))
+    - [x] Retire managed directories across runtimes and retain their canonical status and audit records ([test](../../conformance/core.test.mjs#L1042))
 
 ## Single sign-on
 

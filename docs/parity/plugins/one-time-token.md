@@ -4,8 +4,8 @@
 
 ## Interfaces
 
-- [x] One time token endpoints, types and options ([test](../../../conformance/core.test.mjs#L1643))
-  - [x] Generate and redeem a short-lived transfer credential with the released client ([test](../../../conformance/core.test.mjs#L1643))
+- [x] One time token endpoints, types and options ([test](../../../conformance/core.test.mjs#L1648))
+  - [x] Generate and redeem a short-lived transfer credential with the released client ([test](../../../conformance/core.test.mjs#L1648))
   - [x] `oneTimeTokenClient` ([test](../../../conformance/transfer-options.mjs#L46))
     - [x] Generate from the signed-in client, verify in a separate client and reject a replay ([test](../../../conformance/transfer-options.mjs#L46))
   - [x] `GET /one-time-token/generate` ([test](../../../conformance/transfer-options.mjs#L101))
@@ -14,7 +14,7 @@
     - [x] Check the current session before the server-only HTTP policy and accept generation from the direct host API ([test](../../../conformance/transfer-options.mjs#L101))
   - [x] `POST /one-time-token/verify` ([test](../../../conformance/transfer-options.mjs#L96))
     - [x] Limit concurrent redemption across independent servers to one successful response ([test](../../../adapters/sqlstore/onetimetoken_test.go#L150))
-    - [x] Transfer the same session in both directions using the official client ([test](../../../conformance/core.test.mjs#L378))
+    - [x] Transfer the same session in both directions using the official client ([test](../../../conformance/core.test.mjs#L383))
     - [x] Burn the proof under a current direct-owner policy even after a separate node installs administration ([test](../../../adapters/sqlstore/onetimetoken_policy_test.go#L54))
     - [x] Limit concurrent redemptions on a shared in-memory store to one owner session ([test](../../../adapters/memory/onetimetoken_test.go#L54))
     - [x] Accept a string credential, return the owning session and reject missing, ill-typed or spent proofs ([test](../../../conformance/transfer-options.mjs#L96))
@@ -22,8 +22,8 @@
     - [x] Preserve temporary-session cookies when the receiving browser changes accounts ([test](../../../conformance/transfer-options.mjs#L164))
     - [x] Replace an existing browser login with the issuing account’s current public profile and device fields while filtering hidden and physical names ([test](../../../conformance/transfer-fields.mjs#L75))
     - [x] Keep the original owner and configured fields when the Go client redeems a renewed session’s replacement proof on another node ([test](../../../adapters/sqlstore/onetimetoken_fields_test.go#L123))
-  - [x] `OneTimeTokenOptions` ([test](../../../conformance/core.test.mjs#L1643))
-    - [x] Select storage, host generation, request restrictions, token lifetimes and cookie or response-header behavior ([test](../../../conformance/core.test.mjs#L1643))
+  - [x] `OneTimeTokenOptions` ([test](../../../conformance/core.test.mjs#L1648))
+    - [x] Select storage, host generation, request restrictions, token lifetimes and cookie or response-header behavior ([test](../../../conformance/core.test.mjs#L1648))
     - [x] `expiresIn` ([test](../../../conformance/transfer-options.mjs#L131))
       - [x] Persist the configured transfer lifetime ([test](../../../adapters/sqlstore/onetimetoken_test.go#L165))
       - [x] Use the three-minute default, a fractional-minute deadline or an immediately expired proof ([test](../../../conformance/transfer-options.mjs#L131))
@@ -53,10 +53,10 @@
 
 ## One-Time Token Plugin
 
-- [x] One-Time Token Plugin ([test](../../../conformance/core.test.mjs#L1643))
-  - [x] Generate and redeem a short-lived transfer credential with the released client ([test](../../../conformance/core.test.mjs#L1643))
-  - [x] Usage ([test](../../../conformance/core.test.mjs#L1643))
-    - [x] Generate and redeem a short-lived transfer credential with the released client ([test](../../../conformance/core.test.mjs#L1643))
+- [x] One-Time Token Plugin ([test](../../../conformance/core.test.mjs#L1648))
+  - [x] Generate and redeem a short-lived transfer credential with the released client ([test](../../../conformance/core.test.mjs#L1648))
+  - [x] Usage ([test](../../../conformance/core.test.mjs#L1648))
+    - [x] Generate and redeem a short-lived transfer credential with the released client ([test](../../../conformance/core.test.mjs#L1648))
     - [x] 1. Generate a Token ([test](../../../conformance/transfer-options.mjs#L101))
       - [x] Check the current session before the server-only HTTP policy and accept generation from the direct host API ([test](../../../conformance/transfer-options.mjs#L101))
       - [x] `GET /one-time-token/generate` ([test](../../../conformance/transfer-options.mjs#L101))
@@ -67,8 +67,8 @@
         - [x] Accept a string credential, return the owning session and reject missing, ill-typed or spent proofs ([test](../../../conformance/transfer-options.mjs#L96))
         - [x] Parameter `token` ([test](../../../conformance/transfer-options.mjs#L96))
           - [x] Accept a string credential, return the owning session and reject missing, ill-typed or spent proofs ([test](../../../conformance/transfer-options.mjs#L96))
-  - [x] Options ([test](../../../conformance/core.test.mjs#L1643))
-    - [x] Select storage, host generation, request restrictions, token lifetimes and cookie or response-header behavior ([test](../../../conformance/core.test.mjs#L1643))
+  - [x] Options ([test](../../../conformance/core.test.mjs#L1648))
+    - [x] Select storage, host generation, request restrictions, token lifetimes and cookie or response-header behavior ([test](../../../conformance/core.test.mjs#L1648))
     - [x] `disableClientRequest` ([test](../../../conformance/transfer-options.mjs#L101))
       - [x] Check the current session before the server-only HTTP policy and accept generation from the direct host API ([test](../../../conformance/transfer-options.mjs#L101))
     - [x] `expiresIn` ([test](../../../conformance/transfer-options.mjs#L131))

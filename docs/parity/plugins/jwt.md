@@ -5,9 +5,9 @@
 ## Interfaces
 
 - [ ] JSON Web Tokens endpoints, types and options
-  - [x] Publish keys and issue signed tokens on both servers, and reject a token checked against the other server's keys ([test](../../../conformance/core.test.mjs#L455))
+  - [x] Publish keys and issue signed tokens on both servers, and reject a token checked against the other server's keys ([test](../../../conformance/core.test.mjs#L460))
   - [ ] `jwtClient`
-    - [x] Read the key set and request a token through the published client against both servers ([test](../../../conformance/core.test.mjs#L433))
+    - [x] Read the key set and request a token through the published client against both servers ([test](../../../conformance/core.test.mjs#L438))
     - [x] The Go client reads the key set without a session, is refused a token anonymously and receives one after sign-up ([test](../../../client/jwt_test.go#L48))
   - [ ] `signJWT (server API only)`
     - [x] Sign trusted claims with a configured algorithm or a pinned key and keep the operation server-only ([test](../../../adapters/sqlstore/jwt_test.go#L296))
@@ -18,11 +18,11 @@
   - [ ] `GET /jwks (configurable)`
     - [x] Publish public keys to anonymous clients at a configured path and serialize concurrent initialization ([test](../../../adapters/sqlstore/jwt_test.go#L91))
     - [x] Retain rotated public keys through the grace interval and remove retired keys from publication ([test](../../../adapters/sqlstore/jwt_test.go#L159))
-    - [x] Serve exactly one public key with no private members to an anonymous client of either server ([test](../../../conformance/core.test.mjs#L440))
+    - [x] Serve exactly one public key with no private members to an anonymous client of either server ([test](../../../conformance/core.test.mjs#L445))
   - [ ] `GET /token`
     - [x] Require an authenticated session and stop issuing tokens for a revoked session ([test](../../../adapters/sqlstore/jwt_test.go#L193))
     - [x] Verify Ed25519 signatures and configured issuer, audience and expiration independently ([test](../../../adapters/sqlstore/jwt_test.go#L122))
-    - [x] Verify service tokens against their issuer’s published keys and reject a different issuer’s keys ([test](../../../conformance/core.test.mjs#L433))
+    - [x] Verify service tokens against their issuer’s published keys and reject a different issuer’s keys ([test](../../../conformance/core.test.mjs#L438))
     - [x] Put the signed-in user's profile in the default token, with the user as subject and the configured lifetime ([test](../../../adapters/sqlstore/jwt_test.go#L126))
   - [ ] `jwt`
     - [x] Install the plugin with issuer, audience, lifetime, rotation and key-path settings, and serve its key and token routes ([test](../../../adapters/sqlstore/jwt_test.go#L22))
@@ -70,25 +70,25 @@
 ## JWT
 
 - [ ] JWT
-  - [x] Publish a key set and issue verifiable service tokens with the plugin on both servers ([test](../../../conformance/core.test.mjs#L433))
-  - [x] Usage ([test](../../../conformance/core.test.mjs#L438))
-    - [x] Fetch the key set and a token through their endpoints with the published client on both servers ([test](../../../conformance/core.test.mjs#L438))
+  - [x] Publish a key set and issue verifiable service tokens with the plugin on both servers ([test](../../../conformance/core.test.mjs#L438))
+  - [x] Usage ([test](../../../conformance/core.test.mjs#L443))
+    - [x] Fetch the key set and a token through their endpoints with the published client on both servers ([test](../../../conformance/core.test.mjs#L443))
   - [ ] JWT
     - [ ] Retrieve the token
-      - [x] Using the client plugin (recommended) ([test](../../../conformance/core.test.mjs#L443))
-        - [x] Request a token with the published client's token action on both servers and read it from data.token ([test](../../../conformance/core.test.mjs#L443))
+      - [x] Using the client plugin (recommended) ([test](../../../conformance/core.test.mjs#L448))
+        - [x] Request a token with the published client's token action on both servers and read it from data.token ([test](../../../conformance/core.test.mjs#L448))
       - [ ] Using your session token
         - [x] Return the token as {token} from GET /token for a request carrying the session cookie ([test](../../../adapters/sqlstore/jwt_test.go#L118))
       - [ ] From `set-auth-jwt` header
         - [x] Return a three-part token in the set-auth-jwt header on session retrieval and add it to the exposed headers ([test](../../../adapters/sqlstore/custom_session_test.go#L81))
     - [ ] Verifying the token
-      - [x] Verify a service token locally with the published key set, and match its key ID to the published key ([test](../../../conformance/core.test.mjs#L452))
+      - [x] Verify a service token locally with the published key set, and match its key ID to the published key ([test](../../../conformance/core.test.mjs#L457))
       - [ ] Example using jose with remote JWKS
-        - [x] Verify a token against keys fetched from the key endpoint by the client, with the server URL as issuer and audience ([test](../../../conformance/core.test.mjs#L448))
-      - [x] Example with local JWKS ([test](../../../conformance/core.test.mjs#L446))
-        - [x] Build a local key set from the fetched keys and verify the token with the server URL as issuer and audience ([test](../../../conformance/core.test.mjs#L446))
+        - [x] Verify a token against keys fetched from the key endpoint by the client, with the server URL as issuer and audience ([test](../../../conformance/core.test.mjs#L453))
+      - [x] Example with local JWKS ([test](../../../conformance/core.test.mjs#L451))
+        - [x] Build a local key set from the fetched keys and verify the token with the server URL as issuer and audience ([test](../../../conformance/core.test.mjs#L451))
     - [ ] OAuth Provider Mode
-      - [x] Disable both the browser token endpoint and the session JWT response header while retaining ordinary sessions ([test](../../../conformance/core.test.mjs#L1374))
+      - [x] Disable both the browser token endpoint and the session JWT response header while retaining ordinary sessions ([test](../../../conformance/core.test.mjs#L1379))
       - [x] Report a token signed with a published key but carrying no authorized party as inactive at introspection ([test](../../../conformance/oauth-signed-introspection.mjs#L104))
     - [ ] Remote JWKS Url
     - [ ] Custom JWKS Path
@@ -150,5 +150,5 @@
       - [x] Put the user's email in the default payload, and use only a host payload function's claims when one is configured ([test](../../../adapters/sqlstore/jwt_test.go#L187))
     - [ ] Modify Issuer, Audience, Subject or Expiration time
       - [x] Sign with a configured issuer, audience and lifetime that an independent verifier accepts ([test](../../../adapters/sqlstore/jwt_test.go#L122))
-      - [x] Default to the server URL as issuer and audience and to a 15-minute lifetime on both servers ([test](../../../conformance/core.test.mjs#L451))
+      - [x] Default to the server URL as issuer and audience and to a 15-minute lifetime on both servers ([test](../../../conformance/core.test.mjs#L456))
     - [ ] Custom Adapter

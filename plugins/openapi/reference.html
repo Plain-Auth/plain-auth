@@ -20,16 +20,19 @@
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:1rem/1.5 Inter,system-ui,sans-serif}main{max-width:60rem;margin:0 auto;padding:3rem 1.25rem}
 header{border-bottom:1px solid var(--line);padding-bottom:1.5rem}h1{font-size:clamp(2rem,6vw,3.5rem);line-height:1.1;margin:.4rem 0 1rem}a,strong{color:var(--accent)}
 code,pre{font-family:"IBM Plex Mono",ui-monospace,monospace}label,input{display:block}label{margin:1.5rem 0 .4rem;font-weight:600}
-input{width:100%;padding:.7rem;border:1px solid var(--line);border-radius:.35rem;color:inherit;background:var(--paper);font:inherit}section{margin:1.2rem 0}
+input,textarea{width:100%;padding:.7rem;border:1px solid var(--line);border-radius:.35rem;color:inherit;background:var(--paper);font:inherit}section{margin:1.2rem 0}
+textarea{display:block;font-family:"IBM Plex Mono",ui-monospace,monospace}.try{display:grid;gap:.5rem;margin:0 0 1rem}.try label{margin:0}
+.try button{justify-self:start;padding:.5rem 1rem;border:0;border-radius:.35rem;background:var(--accent);color:var(--paper);font:inherit;cursor:pointer}.result:empty{display:none}
 details{border-bottom:1px solid var(--line)}summary{padding:.75rem .25rem;cursor:pointer;overflow-wrap:anywhere}summary strong{display:inline-block;min-width:4rem}
 pre{background:var(--paper);padding:1rem;overflow:auto;font-size:.875rem}[hidden]{display:none}
 </style>
 </head>
-<body><main>
+<body><main data-base="{{.Base}}">
 <header><h1>Plain Auth API reference</h1><p><code>{{.Server}}</code></p><a href="{{.SchemaPath}}">OpenAPI schema (JSON)</a></header>
 <label for="filter">Filter operations</label><input id="filter" type="search" placeholder="Method or path" autocomplete="off">
 <section aria-label="HTTP operations">{{range .Operations}}
-<details><summary><strong>{{.Method}}</strong> <code>{{.Path}}</code></summary><pre>{{.Detail}}</pre></details>{{end}}</section>
+<details><summary><strong>{{.Method}}</strong> <code>{{.Path}}</code></summary><pre>{{.Detail}}</pre>
+<div class="try" data-method="{{.Method}}" data-path="{{.Path}}"><label>Request path<input name="target" value="{{.Path}}" autocomplete="off" spellcheck="false"></label>{{if .Body}}<label>JSON body<textarea name="body" rows="5" spellcheck="false">{}</textarea></label>{{end}}<button type="button">Send request</button><pre class="result" aria-live="polite"></pre></div></details>{{end}}</section>
 <p id="empty" hidden>No matching operations.</p>
 </main><script nonce="{{.Nonce}}">
 const filter=document.getElementById("filter");
@@ -45,4 +48,26 @@ function filterOperations(){
 filter.addEventListener("input",filterOperations);
 filter.value=new URLSearchParams(window.location.search).get("q")||"";
 filterOperations();
+// Each Send request button sends its operation to this page's own origin with
+// the viewer's cookies. The page sends nothing on load and never takes request
+// values from its URL. A raw path and JSON body stand in for generated
+// parameter forms, and a redirect is reported instead of followed.
+async function send(panel){
+  const out=panel.querySelector(".result");
+  const target=panel.querySelector('input[name="target"]').value.trim();
+  const url=new URL(document.querySelector("main").dataset.base+target,location.href);
+  if(!target.startsWith("/")||url.origin!==location.origin){out.textContent="Enter a path that starts with /.";return;}
+  const init={method:panel.dataset.method,credentials:"same-origin",redirect:"manual",headers:{Accept:"application/json"}};
+  const body=panel.querySelector('textarea[name="body"]');
+  if(body){init.headers["Content-Type"]="application/json";init.body=body.value;}
+  out.textContent="Sending…";
+  try{
+    const res=await fetch(url,init);
+    if(res.type==="opaqueredirect"){out.textContent="Redirect: the page does not follow it.";return;}
+    let text=await res.text();
+    try{text=JSON.stringify(JSON.parse(text),null,2);}catch{}
+    out.textContent=res.status+" "+res.statusText+"\n"+text;
+  }catch(error){out.textContent="Request failed: "+error.message;}
+}
+for(const panel of document.querySelectorAll(".try")) panel.querySelector("button").addEventListener("click",()=>send(panel));
 </script></body></html>

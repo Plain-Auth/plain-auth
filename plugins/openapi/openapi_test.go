@@ -179,6 +179,10 @@ func TestReferencePolicyAndOptions(t *testing.T) {
 	if strings.Contains(page, "<script src=") || strings.Contains(page, "cdn.jsdelivr.net") {
 		t.Fatal("external reference runtime")
 	}
+	if !strings.Contains(r.Header.Get("Content-Security-Policy"), "connect-src 'self'") || !strings.Contains(page, `<main data-base="/identity">`) ||
+		!strings.Contains(page, `<div class="try" data-method="POST" data-path="/sign-up/email">`) || !strings.Contains(page, `<textarea name="body"`) {
+		t.Fatal("reference page lacks a request panel")
+	}
 	_, s = fixture(t, openapi.Options{DisableDefaultReference: true})
 	if r, _ := get(t, s, "/identity/reference"); r.StatusCode != 404 {
 		t.Fatal("disabled reference", r.Status)
@@ -188,6 +192,10 @@ func TestReferencePolicyAndOptions(t *testing.T) {
 		if _, err := openapi.New(options); err == nil {
 			t.Fatalf("invalid options accepted: %+v", options)
 		}
+	}
+	_, s = fixture(t, openapi.Options{})
+	if r, b = get(t, s, "/identity/reference"); r.StatusCode != 200 || !strings.Contains(string(b), `<html lang="en" data-theme="default">`) {
+		t.Fatal("unset theme did not select the default theme")
 	}
 }
 
