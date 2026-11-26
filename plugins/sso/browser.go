@@ -110,6 +110,9 @@ func (o Options) start(c auth.EndpointContext) (any, error) {
 	if p.SAML != nil {
 		return o.samlStart(c, p, proof, signup)
 	}
+	if p, err = o.withRuntimeDiscovery(c.Request.Context(), c.Auth, p); err != nil {
+		return nil, err
+	}
 	cfg, err := o.oauthConfig(c, p)
 	if err != nil {
 		return nil, err
@@ -253,6 +256,13 @@ func (o Options) finish(c auth.EndpointContext) (any, error) {
 	}
 	if iss := q.Get("iss"); iss != "" && iss != p.Issuer {
 		return fail("invalid_provider")
+	}
+	if p, err = o.withRuntimeDiscovery(c.Request.Context(), c.Auth, p); err != nil {
+		var ae *auth.APIError
+		if errors.As(err, &ae) {
+			return enterpriseFailure(c, flow, "discovery_failed", ae.Message)
+		}
+		return enterpriseFailure(c, flow, "discovery_failed", "unexpected_discovery_error")
 	}
 	cfg, err := o.oauthConfig(c, p)
 	if err != nil || cfg.RedirectURL != flow.RedirectURI {

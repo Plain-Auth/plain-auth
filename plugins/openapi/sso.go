@@ -81,8 +81,6 @@ func describeSSORequest(op object, route plainauth.HTTPRoute, info plainauth.HTT
 		properties["tokenEndpointAuthentication"] = object{"enum": []string{"client_secret_basic", "client_secret_post", ""}}
 		properties["clientId"] = object{"type": "string", "minLength": 1}
 		config["required"] = []string{"clientId", "clientSecret"}
-		config["if"] = object{"properties": object{"skipDiscovery": object{"const": true}}, "required": []string{"skipDiscovery"}}
-		config["then"] = object{"required": []string{"authorizationEndpoint", "tokenEndpoint", "jwksEndpoint"}}
 		registration := responseObject(object{"providerId": providerID, "domain": text, "issuer": object{"type": "string", "format": "uri"}, "organizationId": text, "overrideUserInfo": object{"type": "boolean"}, "oidcConfig": config}, "providerId", "domain", "issuer", "oidcConfig")
 		if info.SAMLStateCookie != "" {
 			registration["properties"].(object)["samlConfig"] = samlConfigSchema()

@@ -145,10 +145,39 @@ func hydrate(ctx context.Context, host *auth.Auth, client *http.Client, cfg *Con
 			}
 		}
 	}
-	if cfg.AuthorizationEndpoint == "" || cfg.TokenEndpoint == "" || cfg.JWKSEndpoint == "" {
-		return discoveryError(400, "discovery_incomplete", "Supply authorization, token and JWKS endpoints")
-	}
+	// A skipDiscovery registration may leave endpoints out; sign-in then
+	// discovers them for each request.
 	return nil
+}
+
+// needsRuntimeDiscovery reports whether a stored OIDC configuration lacks an
+// endpoint that sign-in needs: the authorization, token or JWKS endpoint.
+func needsRuntimeDiscovery(c *Config) bool {
+	return c == nil || c.AuthorizationEndpoint == "" || c.TokenEndpoint == "" || c.JWKSEndpoint == ""
+}
+
+// withRuntimeDiscovery fills the endpoints a stored configuration leaves out
+// from the issuer's discovery document, under the registration rules: an
+// exactly trusted discovery origin, a matching issuer, a bounded fetch and
+// trusted endpoint origins. Stored endpoints win. The filled copy serves this
+// request only and is never stored.
+func (o Options) withRuntimeDiscovery(ctx context.Context, host *auth.Auth, p BrowserProvider) (BrowserProvider, error) {
+	if p.OIDC == nil || !needsRuntimeDiscovery(p.OIDC) {
+		return p, nil
+	}
+	cfg := *p.OIDC
+	if cfg.Issuer == "" {
+		cfg.Issuer = p.Issuer
+	}
+	// An unset method means client_secret_basic; runtime discovery never changes it.
+	if cfg.TokenEndpointAuthentication == "" {
+		cfg.TokenEndpointAuthentication = "client_secret_basic"
+	}
+	if err := hydrate(ctx, host, o.HTTPClient, &cfg, false); err != nil {
+		return p, err
+	}
+	p.OIDC = &cfg
+	return p, nil
 }
 func fetchDiscovery(ctx context.Context, client *http.Client, endpoint string) (doc discoveryDocument, err error) {
 	if client == nil {

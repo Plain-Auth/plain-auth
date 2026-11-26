@@ -38,6 +38,10 @@ type ssoIssuer struct {
 	codes            map[string]ssoCode
 	tokens           atomic.Int32
 	entered, release chan struct{}
+	// discoveries counts discovery fetches; discoveryDown answers them with 404.
+	discoveries   atomic.Int32
+	discoveryDown atomic.Bool
+	methods       []string
 }
 
 func newSSOIssuer(t *testing.T) *ssoIssuer {
@@ -58,6 +62,16 @@ func newSSOIssuer(t *testing.T) *ssoIssuer {
 func (i *ssoIssuer) serve(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	switch r.URL.Path {
+	case "/.well-known/openid-configuration":
+		i.discoveries.Add(1)
+		if i.discoveryDown.Load() {
+			w.WriteHeader(404)
+			return
+		}
+		i.mu.Lock()
+		methods := i.methods
+		i.mu.Unlock()
+		json.NewEncoder(w).Encode(map[string]any{"issuer": i.URL, "authorization_endpoint": i.URL + "/authorize", "token_endpoint": i.URL + "/token", "jwks_uri": i.URL + "/keys", "token_endpoint_auth_methods_supported": methods})
 	case "/keys":
 		json.NewEncoder(w).Encode(jose.JSONWebKeySet{Keys: []jose.JSONWebKey{i.key}})
 	case "/token":

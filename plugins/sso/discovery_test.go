@@ -254,3 +254,21 @@ func TestDiscoveryHydratesUserInfoEndpoint(t *testing.T) {
 		t.Fatal("discovery stored a private userinfo_endpoint", err)
 	}
 }
+
+// Sign-in discovers the endpoints a stored configuration leaves out.
+func TestNeedsRuntimeDiscovery(t *testing.T) {
+	if !needsRuntimeDiscovery(nil) {
+		t.Fatal("a missing configuration did not need discovery")
+	}
+	full := Config{AuthorizationEndpoint: "https://login.example.test/authorize", TokenEndpoint: "https://login.example.test/token", JWKSEndpoint: "https://login.example.test/keys"}
+	if needsRuntimeDiscovery(&full) {
+		t.Fatal("a complete configuration needed runtime discovery")
+	}
+	for _, blank := range []func(*Config){func(c *Config) { c.AuthorizationEndpoint = "" }, func(c *Config) { c.TokenEndpoint = "" }, func(c *Config) { c.JWKSEndpoint = "" }} {
+		c := full
+		blank(&c)
+		if !needsRuntimeDiscovery(&c) {
+			t.Fatal("a configuration missing an endpoint did not need discovery", c)
+		}
+	}
+}

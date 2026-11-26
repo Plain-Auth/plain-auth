@@ -11173,6 +11173,11 @@
       "label": "Reject a registration whose configured discovery endpoint returns a document with a different issuer",
       "test": "adapters/sqlstore/sso_test.go",
       "marker": "check(call(two, path, owner, makeBody(\"wrong\", \"\", \"/mismatch\")), 400)"
+    },
+    {
+      "label": "Discover a stored configuration's missing endpoints at sign-in under the registration rules",
+      "test": "adapters/sqlstore/sso_runtime_discovery_test.go",
+      "marker": "t.Fatal(\"sign-in did not discover the missing endpoint at start and callback\", n)"
     }
   ],
   "plugin-symbol/sso/fetchDiscoveryDocument": [
@@ -44394,6 +44399,19 @@
       "label": "Return zero from the per-user quota for everyone but administrators",
       "test": "adapters/sqlstore/sso_limit_test.go",
       "marker": "t.Fatal(\"the resolver's zero limit did not disable registration\", err)"
+    }
+  ],
+  "plugin-symbol/sso/needsRuntimeDiscovery": [
+    {
+      "label": "Need discovery for a missing configuration or a missing authorization, token or JWKS endpoint",
+      "test": "plugins/sso/discovery_test.go",
+      "marker": "func TestNeedsRuntimeDiscovery("
+    },
+    {
+      "label": "Sign in through a skipDiscovery registration without a token endpoint by discovering it at the start and the callback, without storing it, keeping the stored client authentication, and reporting discovery_failed at the callback, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_runtime_discovery_test.go",
+      "marker": "func TestEnterpriseOIDCRuntimeDiscovery(",
+      "complete": true
     }
   ]
 }
