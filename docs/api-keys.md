@@ -86,7 +86,7 @@ The callback receives the request context and the presented credential. Keep the
 | --- | --- |
 | `POST /api-key/create` | Accepts `name`, `prefix`, optional `expiresIn` in seconds and opted-in `metadata`. Returns the secret in `key`. |
 | `GET /api-key/get?id=…` | Returns one owned key’s metadata and policy. |
-| `GET /api-key/list` | Returns `apiKeys` and `total`. Accepts `offset`, `limit`, `sortBy` and `sortDirection`. |
+| `GET /api-key/list` | Returns `apiKeys` and `total`, echoing an explicit `limit` and `offset`. Accepts `offset`, `limit`, `sortBy` and `sortDirection`. `sortBy` is one of `id`, `name`, `expiresAt`, `createdAt`, `updatedAt`, `remaining`, `lastRequest`, `requestCount` and `enabled`, default `createdAt`; other fields, the stored digest among them, answer `VALIDATION_ERROR`. Missing values sort first in ascending order and last in descending order on every database. Without `configId` the keys of every configuration are merged, sorted and paged together. [Listing tests](../adapters/sqlstore/apikey_list_test.go) |
 | `POST /api-key/update` | Accepts `keyId`, `name`, `enabled`, `expiresIn` and `metadata`. Send `expiresIn: null` to remove the expiry when custom expiration is enabled. |
 | `POST /api-key/delete` | Accepts `keyId` and revokes the credential. |
 

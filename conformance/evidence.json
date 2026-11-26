@@ -39897,5 +39897,45 @@
       "marker": "a key operation did not sweep expired keys of every configuration",
       "complete": true
     }
+  ],
+  "docs/content/docs/plugins/api-key/index.mdx#L368/Parameter `limit` (optional)": [
+    {
+      "label": "Truncate a listing to its limit, echo the limit, return no keys for zero and refuse a negative or non-numeric limit, on three SQL engines",
+      "test": "adapters/sqlstore/apikey_list_test.go",
+      "marker": "a limit did not truncate the page",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/api-key/index.mdx#L372/Parameter `offset` (optional)": [
+    {
+      "label": "Skip keys by offset, echo it, return no keys past the end and refuse a negative or non-numeric offset",
+      "test": "adapters/sqlstore/apikey_list_test.go",
+      "marker": "an offset did not skip keys",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/api-key/index.mdx#L376/Parameter `sortBy` (optional)": [
+    {
+      "label": "Sort by the requested field with missing values first on every database, merge configurations in the same order, and refuse unsortable fields",
+      "test": "adapters/sqlstore/apikey_list_test.go",
+      "marker": "a key without an expiry did not sort first",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/api-key/index.mdx#L380/Parameter `sortDirection` (optional)": [
+    {
+      "label": "Reverse the order for a descending sort, with missing values last, and refuse an unknown direction",
+      "test": "adapters/sqlstore/apikey_list_test.go",
+      "marker": "a key without an expiry did not sort last in descending order",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/api-key/index.mdx#L399": [
+    {
+      "label": "Page merged keys of several configurations together, and list an organization's keys with or without naming the configuration",
+      "test": "adapters/sqlstore/apikey_list_test.go",
+      "marker": "merged pages from several configurations were not sorted and paged together",
+      "complete": true
+    }
   ]
 }

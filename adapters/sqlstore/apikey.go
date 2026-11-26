@@ -320,6 +320,8 @@ func (s *Store) ListAPIKeys(ctx context.Context, owner ak.Owner, config string, 
 	if sort == "" {
 		sort = "createdAt"
 	}
+	// Only these columns sort. Other fields, the stored digest and the JSON
+	// columns among them, fail instead of ordering the listing.
 	switch sort {
 	case "id", "name", "expiresAt", "createdAt", "updatedAt", "remaining", "lastRequest", "requestCount", "enabled":
 	default:
@@ -333,7 +335,17 @@ func (s *Store) ListAPIKeys(ctx context.Context, owner ak.Owner, config string, 
 	default:
 		return page, &plainauth.APIError{Status: 400, Code: "VALIDATION_ERROR", Message: "Unsupported sort direction"}
 	}
-	q := `SELECT ` + apiKeyFields + where + ` ORDER BY "` + sort + `" ` + dir + `,"id" ASC LIMIT ? OFFSET ?`
+	// PostgreSQL sorts NULL last in ascending order. Put missing values
+	// first, as SQLite, MySQL and the merged listing of several
+	// configurations do.
+	nulls := ""
+	if s.dialect == "postgres" {
+		nulls = " NULLS FIRST"
+		if dir == "DESC" {
+			nulls = " NULLS LAST"
+		}
+	}
+	q := `SELECT ` + apiKeyFields + where + ` ORDER BY "` + sort + `" ` + dir + nulls + `,"id" ASC LIMIT ? OFFSET ?`
 	limit, off := page.Total, 0
 	if o.Limit != nil {
 		limit = *o.Limit
