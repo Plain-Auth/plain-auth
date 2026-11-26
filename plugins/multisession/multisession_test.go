@@ -113,6 +113,10 @@ func TestDeviceAccountSwitching(t *testing.T) {
 	}
 	_, err = first.SetActiveSession(ctx, carol)
 	expectDenied(t, err, "INVALID_SESSION_TOKEN")
+	var invalid *authn.APIError
+	if !errors.As(err, &invalid) || invalid.Status != 401 || invalid.Message != "Invalid session token" {
+		t.Fatal("INVALID_SESSION_TOKEN carried another message", err)
+	}
 	_, err = other.SetActiveSession(ctx, alice)
 	expectDenied(t, err, "INVALID_SESSION_TOKEN")
 	if err := other.RevokeDeviceSession(ctx, alice); err == nil {
@@ -309,5 +313,46 @@ func TestDeviceConcurrentCookieReconciliation(t *testing.T) {
 	}
 	if count != 1 {
 		t.Fatal("extra account cookie survived list reconciliation")
+	}
+}
+
+// A browser that holds two logins of one account, as two tabs can leave it,
+// lists that account once and forgets the extra cookie without revoking
+// either login.
+func TestDeviceListShowsEachAccountOnce(t *testing.T) {
+	ctx := t.Context()
+	f := newFixture(t, nil)
+	tab, tabJar := f.device(t)
+	other, otherJar := f.device(t)
+	first := register(t, tab, "same@example.test", true)
+	register(t, other, "other@example.test", true)
+	again, err := other.SignInEmail(ctx, client.SignInRequest{Email: "same@example.test", Password: "sample-password-for-tests"})
+	if err != nil || again.Token == nil || *again.Token == first {
+		t.Fatal("second login", err)
+	}
+	c, merged := f.device(t)
+	merged.SetCookies(f.url, tabJar.Cookies(f.url))
+	merged.SetCookies(f.url, otherJar.Cookies(f.url))
+	rows, err := c.ListDeviceSessions(ctx)
+	emails := map[string]bool{}
+	for _, row := range rows {
+		emails[row.User.Email] = true
+	}
+	if err != nil || len(rows) != 2 || !emails["same@example.test"] || !emails["other@example.test"] {
+		t.Fatal("one browser listed an account twice", err, rows)
+	}
+	count := 0
+	for _, cookie := range merged.Cookies(f.url) {
+		if strings.Contains(cookie.Name, "_multi-") {
+			count++
+		}
+	}
+	if count != 2 {
+		t.Fatal("the duplicate login's cookie survived the list", count)
+	}
+	for _, token := range []string{first, *again.Token} {
+		if _, _, err := f.store.Session(ctx, token); err != nil {
+			t.Fatal("listing revoked a duplicate login", err)
+		}
 	}
 }

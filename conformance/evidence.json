@@ -4134,6 +4134,12 @@
       "label": "Remove surplus entries after simultaneous browser logins",
       "test": "plugins/multisession/multisession_test.go",
       "marker": "extra account cookie survived list reconciliation"
+    },
+    {
+      "label": "List an account once when the browser holds two of its logins, forget the extra cookie and keep both logins",
+      "test": "plugins/multisession/multisession_test.go",
+      "marker": "one browser listed an account twice",
+      "complete": true
     }
   ],
   "plugin/multi-session/POST /multi-session/set-active": [
@@ -37395,6 +37401,22 @@
       "label": "Keep the guest's user row and session and run the callback when a guest signs in with a password while deletion is disabled",
       "test": "adapters/sqlstore/anonymous_test.go",
       "marker": "a retained guest was deleted or not handed off on sign-in",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/multi-session/MULTI_SESSION_ERROR_CODES": [
+    {
+      "label": "Answer 401 INVALID_SESSION_TOKEN with the message Invalid session token when a browser switches to a login it does not hold",
+      "test": "plugins/multisession/multisession_test.go",
+      "marker": "INVALID_SESSION_TOKEN carried another message",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/multi-session/ERROR_CODES": [
+    {
+      "label": "Answer 401 INVALID_SESSION_TOKEN with the message Invalid session token when a browser switches to a login it does not hold",
+      "test": "plugins/multisession/multisession_test.go",
+      "marker": "INVALID_SESSION_TOKEN carried another message",
       "complete": true
     }
   ]

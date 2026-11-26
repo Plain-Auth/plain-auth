@@ -24,7 +24,7 @@ All routes are relative to the configured auth mount. Keep the same cookie jar w
 | `POST /multi-session/revoke` | Send the same JSON while signed in. The server revokes the selected login and returns `{"status":true}`. Removing the active login selects the first remaining live entry or signs out the browser. |
 | `POST /sign-out` | Revokes the active login and every login proven by this browser's remembered-account cookies. Other browsers retain their independent logins. |
 
-The Go client exposes `ListDeviceSessions`, `SetActiveSession` and `RevokeDeviceSession`. A signed remembered-account cookie allows listing and switching even when the primary cookie is missing. Revocation also requires a live active session. Supplying a token without its matching cookie returns HTTP 401.
+The Go client exposes `ListDeviceSessions`, `SetActiveSession` and `RevokeDeviceSession`. A signed remembered-account cookie allows listing and switching even when the primary cookie is missing. Revocation also requires a live active session. Supplying a token without its matching cookie returns HTTP 401 with code `INVALID_SESSION_TOKEN` and message `Invalid session token`.
 
 ## Cookie lifetime and concurrent requests
 
