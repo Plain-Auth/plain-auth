@@ -4,12 +4,14 @@ import (
 	"bytes"
 	"crypto/rsa"
 	"crypto/x509"
+	"encoding/base64"
 	"encoding/json"
 	"encoding/xml"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -17,6 +19,7 @@ import (
 	auth "github.com/Plain-Org/plain-auth"
 	"github.com/Plain-Org/plain-auth/plugins/sso"
 	"github.com/Plain-Org/plain-auth/schema"
+	"github.com/beevik/etree"
 	"github.com/crewjam/saml"
 	"github.com/crewjam/saml/xmlenc"
 	dsig "github.com/russellhaering/goxmldsig"
@@ -295,8 +298,144 @@ func TestEnterpriseSAMLResponsePolicy(t *testing.T) {
 						t.Fatal("an RSA 1.5 key transport did not fail with saml_deprecated_algorithm", block.Algorithm(), location)
 					}
 				}
-				if location, _ := sealed(def, cipher(xmlenc.OAEP_SHA256(), xmlenc.AES128GCM), sso.SignatureRSASHA256); location.Query().Get("error") != "invalid_saml_response" {
-					t.Fatal("an unsupported AES-128-GCM assertion changed its error", location)
+				// sealedWith edits the posted Response XML before the ACS reads it.
+				sealedWith := func(h *auth.Auth, encrypter xmlenc.Encrypter, edits ...func(*etree.Element)) (*url.URL, bool) {
+					t.Helper()
+					req, state := p.start(h, "sealed")
+					return samlOutcome(t, p.finish(h, "sealed", req, state, func(idp *saml.IdentityProvider) {
+						idp.AssertionEncrypter = encrypter
+						idp.SignatureMethod = string(sso.SignatureRSASHA256)
+					}, nil, func(form url.Values) {
+						raw, err := base64.StdEncoding.DecodeString(form.Get("SAMLResponse"))
+						doc := etree.NewDocument()
+						if err != nil || doc.ReadFromBytes(raw) != nil {
+							t.Fatal("unreadable SAML response", err)
+						}
+						for _, edit := range edits {
+							edit(doc.Root())
+						}
+						out, err := doc.WriteToBytes()
+						if err != nil {
+							t.Fatal(err)
+						}
+						form.Set("SAMLResponse", base64.StdEncoding.EncodeToString(out))
+					}))
+				}
+				unsigned := func(r *etree.Element) {
+					for _, c := range r.ChildElements() {
+						if c.Tag == "Signature" {
+							r.RemoveChild(c)
+						}
+					}
+				}
+				keyMethod := func(r *etree.Element) *etree.Element {
+					return r.FindElement("./EncryptedAssertion/EncryptedData/KeyInfo/EncryptedKey/EncryptionMethod")
+				}
+				signedIn := func(location *url.URL, session bool) bool {
+					return location.String() == "https://service.test/home" && session
+				}
+				for _, tc := range []struct {
+					key   xmlenc.RSA
+					block xmlenc.BlockCipher
+				}{{xmlenc.OAEP_SHA256(), xmlenc.AES128GCM}, {xmlenc.OAEP_SHA256(), xmlenc.AES192GCM}, {xmlenc.OAEP(), xmlenc.AES256GCM},
+					{xmlenc.OAEP_SHA512(), xmlenc.AES256GCM}, {xmlenc.OAEP_SHA256(), xmlenc.AES128CBC}, {xmlenc.OAEP(), xmlenc.AES256CBC}} {
+					if location, session := sealedWith(def, cipher(tc.key, tc.block)); !signedIn(location, session) {
+						t.Fatal("a supported encryption profile was refused", tc.key.Algorithm(), tc.block.Algorithm(), location)
+					}
+				}
+				if location, session := sealedWith(def, cipher(xmlenc.OAEP_SHA256(), xmlenc.AES256GCM), unsigned); !signedIn(location, session) {
+					t.Fatal("an AES-GCM assertion inside an unsigned Response was refused", location)
+				}
+				// AES-CBC needs a Response signature over its ciphertext.
+				cbc := cipher(xmlenc.OAEP_SHA256(), xmlenc.AES256CBC)
+				flip := func(r *etree.Element) {
+					v := r.FindElement("./EncryptedAssertion/EncryptedData/CipherData/CipherValue")
+					b, err := base64.StdEncoding.DecodeString(strings.TrimSpace(v.Text()))
+					if err != nil {
+						t.Fatal(err)
+					}
+					b[len(b)-1] ^= 1
+					v.SetText(base64.StdEncoding.EncodeToString(b))
+				}
+				// A comment inside the signed CipherValue, which
+				// canonicalization drops, leaves the ciphertext intact.
+				split := func(r *etree.Element) {
+					v := r.FindElement("./EncryptedAssertion/EncryptedData/CipherData/CipherValue")
+					text := strings.TrimSpace(v.Text())
+					v.SetText(text[:len(text)/2])
+					v.CreateComment("split")
+					v.CreateText(text[len(text)/2:])
+				}
+				if location, session := sealedWith(def, cbc, split); !signedIn(location, session) {
+					t.Fatal("a comment inside a signed AES-CBC ciphertext changed it", location)
+				}
+				for _, edit := range []func(*etree.Element){unsigned, flip} {
+					if location, session := sealedWith(def, cbc, edit); !refused(location, session, "invalid_saml_response", "SAML response must be signed when the assertion is encrypted with AES-CBC") {
+						t.Fatal("an AES-CBC assertion was decrypted without a Response signature over it", location)
+					}
+				}
+				// Key transport parameters outside the profile are refused,
+				// including an rsa-oaep-mgf1p digest the library would accept.
+				sha512MGF1P := xmlenc.OAEP()
+				sha512MGF1P.DigestMethod = xmlenc.SHA512
+				mgf := func(r *etree.Element) {
+					e := keyMethod(r).CreateElement("xenc11:MGF")
+					e.CreateAttr("xmlns:xenc11", "http://www.w3.org/2009/xmlenc11#")
+					e.CreateAttr("Algorithm", "http://www.w3.org/2009/xmlenc11#mgf1sha1")
+				}
+				label := func(r *etree.Element) {
+					e := keyMethod(r).CreateElement("xenc:OAEPparams")
+					e.CreateAttr("xmlns:xenc", "http://www.w3.org/2001/04/xmlenc#")
+					e.SetText("bGFiZWw=")
+				}
+				for _, tc := range []struct {
+					enc  xmlenc.Encrypter
+					edit func(*etree.Element)
+				}{{cipher(xmlenc.OAEP(), xmlenc.AES256GCM), mgf}, {cipher(xmlenc.OAEP_SHA256(), xmlenc.AES256GCM), label}, {cipher(sha512MGF1P, xmlenc.AES256GCM), nil}} {
+					edits := []func(*etree.Element){unsigned}
+					if tc.edit != nil {
+						edits = append(edits, tc.edit)
+					}
+					if location, session := sealedWith(def, tc.enc, edits...); location.Query().Get("error") != "invalid_saml_response" || session {
+						t.Fatal("a key transport with unsupported parameters was accepted", location)
+					}
+				}
+				// Allow-lists name the key transport before the content cipher.
+				dataList := p.host(sso.SAMLOptions{Encryption: p.recipient, Algorithms: sso.SAMLAlgorithms{AllowedDataEncryptionAlgorithms: []sso.DataEncryptionAlgorithm{sso.DataEncryptionAES256GCM}}}, nil)
+				bothLists := p.host(sso.SAMLOptions{Encryption: p.recipient, Algorithms: sso.SAMLAlgorithms{AllowedKeyEncryptionAlgorithms: []sso.KeyEncryptionAlgorithm{sso.KeyEncryptionRSAOAEPSHA256},
+					AllowedDataEncryptionAlgorithms: []sso.DataEncryptionAlgorithm{sso.DataEncryptionAES256GCM}}}, nil)
+				if location, session := sealedWith(dataList, cipher(xmlenc.OAEP_SHA256(), xmlenc.AES128GCM)); !refused(location, session, "saml_algorithm_not_allowed", "SAML data encryption algorithm not in allow-list: http://www.w3.org/2009/xmlenc11#aes128-gcm") {
+					t.Fatal("an AES-128-GCM assertion escaped the data encryption allow-list", location)
+				}
+				if location, session := sealedWith(bothLists, cipher(xmlenc.OAEP(), xmlenc.AES128GCM)); !refused(location, session, "saml_algorithm_not_allowed", "SAML key encryption algorithm not in allow-list: http://www.w3.org/2001/04/xmlenc#rsa-oaep-mgf1p") {
+					t.Fatal("the key transport allow-list was not checked first", location)
+				}
+				if location, session := sealedWith(bothLists, cipher(xmlenc.PKCS1v15(), xmlenc.AES256GCM)); !refused(location, session, "saml_algorithm_not_allowed", "SAML key encryption algorithm not in allow-list: http://www.w3.org/2001/04/xmlenc#rsa-1_5") {
+					t.Fatal("an RSA 1.5 key transport escaped the key encryption allow-list", location)
+				}
+				if location, session := sealedWith(bothLists, cipher(xmlenc.OAEP_SHA256(), xmlenc.AES256GCM)); !signedIn(location, session) {
+					t.Fatal("an allowed encryption profile was refused", location)
+				}
+				// The SP metadata advertises the allow-lists in order, with
+				// OAEP parameters only on XML Encryption 1.1 rsa-oaep.
+				listed := p.host(sso.SAMLOptions{Encryption: p.recipient, Algorithms: sso.SAMLAlgorithms{AllowedKeyEncryptionAlgorithms: []sso.KeyEncryptionAlgorithm{sso.KeyEncryptionRSAOAEP, sso.KeyEncryptionRSAOAEPSHA256},
+					AllowedDataEncryptionAlgorithms: []sso.DataEncryptionAlgorithm{sso.DataEncryptionAES128GCM, sso.DataEncryptionAES256CBC}}}, nil)
+				w := p.call(listed, "GET", "sso/saml2/sp/metadata?providerId=sealed", nil)
+				md := etree.NewDocument()
+				if w.Code != 200 || md.ReadFromBytes(w.Body.Bytes()) != nil {
+					t.Fatal("SP metadata", w.Code, w.Body.String())
+				}
+				var methods []string
+				for _, m := range md.FindElements("//KeyDescriptor[@use='encryption']/EncryptionMethod") {
+					entry := m.SelectAttrValue("Algorithm", "")
+					for _, param := range m.ChildElements() {
+						entry += " " + param.Tag + "=" + param.SelectAttrValue("Algorithm", "")
+					}
+					methods = append(methods, entry)
+				}
+				if want := []string{"http://www.w3.org/2009/xmlenc11#aes128-gcm", "http://www.w3.org/2001/04/xmlenc#aes256-cbc", "http://www.w3.org/2001/04/xmlenc#rsa-oaep-mgf1p",
+					"http://www.w3.org/2009/xmlenc11#rsa-oaep DigestMethod=http://www.w3.org/2001/04/xmlenc#sha256 MGF=http://www.w3.org/2009/xmlenc11#mgf1sha256"}; !slices.Equal(methods, want) {
+					t.Fatal("the SP metadata did not advertise the allow-lists in order", methods)
 				}
 				if location, session := sealed(def, cipher(xmlenc.OAEP_SHA256(), xmlenc.AES256GCM), sso.SignatureRSASHA256); location.String() != "https://service.test/home" || !session {
 					t.Fatal("the supported encryption profile was refused", location)

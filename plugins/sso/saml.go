@@ -47,8 +47,8 @@ type SAMLOptions struct {
 	// NotBefore nor NotOnOrAfter. Without it such an assertion is accepted
 	// and a warning is logged through the auth Logger.
 	RequireTimestamps bool
-	// Algorithms narrows the signature and digest algorithms responses and
-	// directory configurations may use.
+	// Algorithms narrows the signature, digest and encryption algorithms
+	// responses and directory configurations may use.
 	Algorithms         SAMLAlgorithms
 	RequestSigner      crypto.Signer
 	RequestCertificate *x509.Certificate
@@ -374,7 +374,7 @@ func (o Options) samlMetadata(c auth.EndpointContext) (any, error) {
 		desc.KeyDescriptors = nil
 		for _, k := range descriptors {
 			if k.Use == "encryption" && sp.EncryptionKey != nil {
-				k.EncryptionMethods = []saml.EncryptionMethod{{Algorithm: aesGCM256}, {Algorithm: rsaOAEP}}
+				k.EncryptionMethods = o.SAML.Algorithms.encryptionMethods()
 				desc.KeyDescriptors = append(desc.KeyDescriptors, k)
 			}
 			if k.Use == "signing" {

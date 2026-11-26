@@ -466,6 +466,20 @@ func TestSAMLAlgorithmOptions(t *testing.T) {
 	if refused(SAMLAlgorithms{AllowedSignatureAlgorithms: []SignatureAlgorithm{SignatureRSASHA256, SignatureECDSASHA256}, AllowedDigestAlgorithms: []DigestAlgorithm{DigestSHA512}}) {
 		t.Fatal("a supported algorithm allow-list was refused")
 	}
+	for _, a := range []SAMLAlgorithms{
+		{AllowedKeyEncryptionAlgorithms: []KeyEncryptionAlgorithm{KeyEncryptionRSA15}},
+		{AllowedKeyEncryptionAlgorithms: []KeyEncryptionAlgorithm{"rsa-oaep"}},
+		{AllowedDataEncryptionAlgorithms: []DataEncryptionAlgorithm{DataEncryptionTripleDESCBC}},
+		{AllowedDataEncryptionAlgorithms: []DataEncryptionAlgorithm{"http://www.w3.org/2009/xmlenc11#chacha20"}},
+	} {
+		if !refused(a) {
+			t.Fatal("a deprecated or unknown encryption allow-list entry was accepted", a)
+		}
+	}
+	if refused(SAMLAlgorithms{AllowedKeyEncryptionAlgorithms: []KeyEncryptionAlgorithm{KeyEncryptionRSAOAEP, KeyEncryptionRSAOAEPSHA256},
+		AllowedDataEncryptionAlgorithms: []DataEncryptionAlgorithm{DataEncryptionAES128CBC, DataEncryptionAES192CBC, DataEncryptionAES256CBC, DataEncryptionAES128GCM, DataEncryptionAES192GCM, DataEncryptionAES256GCM}}) {
+		t.Fatal("a supported encryption allow-list was refused")
+	}
 }
 
 // A directory's recorded algorithms decode, accept short forms and full

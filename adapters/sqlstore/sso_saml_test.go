@@ -520,7 +520,7 @@ func runEnterpriseSAMLBrowser(t *testing.T, encrypted, logout bool) {
 				t.Fatal("repeat login", status, headers)
 			}
 			if encrypted {
-				for _, mode := range []string{"plaintext", "AES-128-GCM", "AES-256-CBC", "legacy RSA-OAEP", "RSA-OAEP SHA-384", "different recipient certificate", "only the response is signed"} {
+				for _, mode := range []string{"plaintext", "different recipient certificate", "only the response is signed"} {
 					t.Run(mode, func(t *testing.T) {
 						h := newBrowser()
 						request, e := start(h)
@@ -536,16 +536,6 @@ func runEnterpriseSAMLBrowser(t *testing.T, encrypted, logout bool) {
 							protection := xmlenc.OAEP_SHA256()
 							protection.BlockCipher = xmlenc.AES256GCM
 							switch mode {
-							case "AES-128-GCM":
-								protection.BlockCipher = xmlenc.AES128GCM
-							case "AES-256-CBC":
-								protection.BlockCipher = xmlenc.AES256CBC
-							case "RSA-OAEP SHA-384":
-								protection = xmlenc.OAEP_SHA384()
-								protection.BlockCipher = xmlenc.AES256GCM
-							case "legacy RSA-OAEP":
-								protection = xmlenc.OAEP()
-								protection.BlockCipher = xmlenc.AES256GCM
 							case "different recipient certificate":
 								cert = spCert
 							case "only the response is signed":

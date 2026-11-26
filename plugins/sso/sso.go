@@ -233,6 +233,8 @@ func New(o Options) (auth.Plugin, error) {
 		v := *o.SAML
 		v.Algorithms.AllowedSignatureAlgorithms = slices.Clone(v.Algorithms.AllowedSignatureAlgorithms)
 		v.Algorithms.AllowedDigestAlgorithms = slices.Clone(v.Algorithms.AllowedDigestAlgorithms)
+		v.Algorithms.AllowedKeyEncryptionAlgorithms = slices.Clone(v.Algorithms.AllowedKeyEncryptionAlgorithms)
+		v.Algorithms.AllowedDataEncryptionAlgorithms = slices.Clone(v.Algorithms.AllowedDataEncryptionAlgorithms)
 		if v.Encryption != nil {
 			keys := *v.Encryption
 			v.Encryption = &keys

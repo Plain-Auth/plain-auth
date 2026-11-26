@@ -36,8 +36,10 @@ const (
 )
 
 // KeyEncryptionAlgorithm is an XML Encryption key transport URI. This service
-// decrypts only KeyEncryptionRSAOAEPSHA256, with SHA-256 digest and
-// MGF1-SHA256 parameters.
+// decrypts KeyEncryptionRSAOAEP, with a SHA-1 or SHA-256 digest, and
+// KeyEncryptionRSAOAEPSHA256, with a SHA-1, SHA-256, SHA-384 or SHA-512
+// digest and MGF1. SHA-1 there is the OAEP hash, which collisions do not
+// weaken.
 type KeyEncryptionAlgorithm string
 
 // The XML Encryption key transports. RSA 1.5 is deprecated.
@@ -48,7 +50,8 @@ const (
 )
 
 // DataEncryptionAlgorithm is an XML Encryption content cipher URI. This
-// service decrypts only DataEncryptionAES256GCM.
+// service decrypts AES-128, AES-192 and AES-256 in GCM or CBC mode, CBC only
+// inside a Response the IdP signed.
 type DataEncryptionAlgorithm string
 
 // The XML Encryption content ciphers. Triple DES is deprecated.
@@ -62,11 +65,18 @@ const (
 	DataEncryptionAES256GCM    DataEncryptionAlgorithm = "http://www.w3.org/2009/xmlenc11#aes256-gcm"
 )
 
-// SAMLAlgorithms narrows the XML signature algorithms SAML responses and
-// directory configurations may use. An empty list accepts every supported
-// algorithm of its kind. Deprecated algorithms (SHA-1 signatures and
-// digests, RSA 1.5 and Triple DES) are always refused and cannot be listed;
-// there is no warn or allow mode.
+// SAMLAlgorithms narrows the XML signature and encryption algorithms SAML
+// responses and directory configurations may use. An empty list accepts
+// every supported algorithm of its kind. Deprecated algorithms (SHA-1
+// signatures and digests, RSA 1.5 and Triple DES) are always refused and
+// cannot be listed.
+//
+// Deprecated algorithms have no warn or allow mode, where another runtime
+// warns and accepts them by default: SHA-1 admits chosen-prefix collisions,
+// RSA 1.5 key transport is a Bleichenbacher padding oracle against XML
+// Encryption, and Triple DES has a 64-bit block. The XML library enables RSA
+// 1.5 and Triple DES only through its process-wide decrypter registry, so
+// one host opting in would weaken every SAML consumer in the process.
 type SAMLAlgorithms struct {
 	// AllowedSignatureAlgorithms lists the signature methods a response may
 	// use and a directory's samlConfig.signatureAlgorithm may name.
@@ -75,11 +85,20 @@ type SAMLAlgorithms struct {
 	// samlConfig.digestAlgorithm may name. Unlike another runtime, the list
 	// also applies to the digests of response signatures.
 	AllowedDigestAlgorithms []DigestAlgorithm
+	// AllowedKeyEncryptionAlgorithms lists the key transports an encrypted
+	// assertion may use. The SP metadata advertises them in this order.
+	AllowedKeyEncryptionAlgorithms []KeyEncryptionAlgorithm
+	// AllowedDataEncryptionAlgorithms lists the content ciphers an encrypted
+	// assertion may use. The SP metadata advertises them in this order.
+	AllowedDataEncryptionAlgorithms []DataEncryptionAlgorithm
 }
 
 var (
 	secureSignatureAlgorithms = []SignatureAlgorithm{SignatureRSASHA256, SignatureRSASHA384, SignatureRSASHA512, SignatureECDSASHA256, SignatureECDSASHA384, SignatureECDSASHA512}
 	secureDigestAlgorithms    = []DigestAlgorithm{DigestSHA256, DigestSHA384, DigestSHA512}
+	secureKeyEncryption       = []KeyEncryptionAlgorithm{KeyEncryptionRSAOAEP, KeyEncryptionRSAOAEPSHA256}
+	secureDataEncryption      = []DataEncryptionAlgorithm{DataEncryptionAES128CBC, DataEncryptionAES192CBC, DataEncryptionAES256CBC, DataEncryptionAES128GCM, DataEncryptionAES192GCM, DataEncryptionAES256GCM}
+	cbcDataEncryption         = []DataEncryptionAlgorithm{DataEncryptionAES128CBC, DataEncryptionAES192CBC, DataEncryptionAES256CBC}
 )
 
 // validate refuses allow-list entries outside the supported algorithms.
@@ -94,6 +113,16 @@ func (a SAMLAlgorithms) validate() error {
 	for _, v := range a.AllowedDigestAlgorithms {
 		if !slices.Contains(secureDigestAlgorithms, v) {
 			return errors.New("sso: SAML digest allow-list entries must be SHA-256, SHA-384 or SHA-512")
+		}
+	}
+	for _, v := range a.AllowedKeyEncryptionAlgorithms {
+		if !slices.Contains(secureKeyEncryption, v) {
+			return errors.New("sso: SAML key encryption allow-list entries must be RSA-OAEP")
+		}
+	}
+	for _, v := range a.AllowedDataEncryptionAlgorithms {
+		if !slices.Contains(secureDataEncryption, v) {
+			return errors.New("sso: SAML data encryption allow-list entries must be AES in GCM or CBC mode")
 		}
 	}
 	return nil
@@ -210,10 +239,24 @@ func (a SAMLAlgorithms) checkSignatures(elements ...*etree.Element) error {
 	return nil
 }
 
-// deprecatedSAMLResponseAlgorithm refuses a deprecated encryption algorithm
-// of a response.
-func deprecatedSAMLResponseAlgorithm(kind, uri, fix string) error {
-	return samlAlgorithmFailure("SAML_DEPRECATED_ALGORITHM", "SAML response uses deprecated "+kind+" algorithm: "+uri+". Please configure your IdP to use "+fix+".")
+// checkEncryption applies an allow-list, then the deprecated algorithm, to
+// an encryption algorithm of a response. Any other algorithm this service
+// does not decrypt is an invalid response.
+func checkEncryption[T ~string](kind string, value T, allowed, secure []T, deprecated T, fix string) error {
+	if len(allowed) > 0 && !slices.Contains(allowed, value) {
+		shown := exportedURI(value, append(slices.Clone(secure), deprecated)...)
+		if shown != "" {
+			shown = ": " + shown
+		}
+		return samlAlgorithmFailure("SAML_ALGORITHM_NOT_ALLOWED", "SAML "+kind+" algorithm not in allow-list"+shown)
+	}
+	if value == deprecated {
+		return samlAlgorithmFailure("SAML_DEPRECATED_ALGORITHM", "SAML response uses deprecated "+kind+" algorithm: "+string(value)+". Please configure your IdP to use "+fix+".")
+	}
+	if !slices.Contains(secure, value) {
+		return errSAMLResponse
+	}
+	return nil
 }
 
 // The short forms a directory's samlConfig may use for its algorithms.

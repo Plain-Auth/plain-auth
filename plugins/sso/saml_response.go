@@ -495,6 +495,9 @@ func (o Options) samlFinish(c auth.EndpointContext) (any, error) {
 	if errors.Is(err, errUnrequested) {
 		return enterpriseFailure(c, flow, "unsolicited_response", notAllowed)
 	}
+	if errors.Is(err, errCBCUnsigned) {
+		return enterpriseFailure(c, flow, "invalid_saml_response", errCBCUnsigned.Error())
+	}
 	var policy *auth.APIError
 	if errors.As(err, &policy) && strings.HasPrefix(policy.Code, "SAML_") {
 		return enterpriseFailure(c, flow, strings.ToLower(policy.Code), policy.Message)

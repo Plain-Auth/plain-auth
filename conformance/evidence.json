@@ -41880,9 +41880,9 @@
       "marker": "wantAssertionsSigned:true};"
     },
     {
-      "label": "Refuse an encrypted response whose assertion is unsigned, among other unsupported protection modes",
+      "label": "Refuse an encrypted response whose assertion is unsigned, a plaintext assertion and one encrypted for another recipient",
       "test": "adapters/sqlstore/sso_saml_test.go",
-      "marker": "for _, mode := range []string{\"plaintext\", \"AES-128-GCM\", \"AES-256-CBC\", \"legacy RSA-OAEP\", \"RSA-OAEP SHA-384\""
+      "marker": "for _, mode := range []string{\"plaintext\", \"different recipient certificate\", \"only the response is signed\"} {"
     }
   ],
   "plugin-symbol/sso/SAMLConfig/authnRequestsSigned": [
@@ -42894,9 +42894,10 @@
   ],
   "docs/content/docs/plugins/sso/saml-security.mdx#L13/Algorithms": [
     {
-      "label": "Reject encrypted assertions that use AES-128-GCM, AES-256-CBC, legacy RSA-OAEP or RSA-OAEP with SHA-384",
-      "test": "adapters/sqlstore/sso_saml_test.go",
-      "marker": "for _, mode := range []string{\"plaintext\", \"AES-128-GCM\", \"AES-256-CBC\", \"legacy RSA-OAEP\", \"RSA-OAEP SHA-384\", \"different recipient certificate\", \"only the response is signed\"} {"
+      "label": "Refuse response encryption outside the key and data encryption allow-lists with saml_algorithm_not_allowed, naming the key transport first, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_saml_policy_test.go",
+      "marker": "t.Fatal(\"the key transport allow-list was not checked first\"",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/sso/saml-security.mdx#L14/Timestamps": [
@@ -43066,6 +43067,17 @@
       "label": "Sign in on both runtimes with an assertion whose key is wrapped with RSA-OAEP using SHA-256",
       "test": "conformance/core.test.mjs",
       "marker": "test(\"enterprise SAML accepts an independently encrypted signed assertion"
+    },
+    {
+      "label": "Sign in with keys wrapped by rsa-oaep-mgf1p and XML Encryption 1.1 rsa-oaep with SHA-256 or SHA-512, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_saml_policy_test.go",
+      "marker": "t.Fatal(\"a supported encryption profile was refused\"",
+      "complete": true
+    },
+    {
+      "label": "Refuse OAEP parameters outside the profile, such as an MGF on rsa-oaep-mgf1p or OAEPparams",
+      "test": "adapters/sqlstore/sso_saml_policy_test.go",
+      "marker": "t.Fatal(\"a key transport with unsupported parameters was accepted\""
     }
   ],
   "docs/content/docs/plugins/sso/saml-security.mdx#L96/Data encryption": [
@@ -43073,6 +43085,17 @@
       "label": "Sign in on both runtimes with an assertion encrypted with AES-256-GCM",
       "test": "conformance/core.test.mjs",
       "marker": "test(\"enterprise SAML accepts an independently encrypted signed assertion"
+    },
+    {
+      "label": "Sign in with AES-128, AES-192 and AES-256 in GCM mode and AES-CBC inside a signed Response, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_saml_policy_test.go",
+      "marker": "t.Fatal(\"a supported encryption profile was refused\"",
+      "complete": true
+    },
+    {
+      "label": "Refuse to decrypt AES-CBC without a Response signature over its ciphertext, a documented deviation",
+      "test": "adapters/sqlstore/sso_saml_policy_test.go",
+      "marker": "t.Fatal(\"an AES-CBC assertion was decrypted without a Response signature over it\""
     }
   ],
   "docs/content/docs/plugins/sso/saml-security.mdx#L132": [
@@ -44815,6 +44838,12 @@
       "label": "Always reject deprecated algorithms: an RSA-SHA1 response fails with saml_deprecated_algorithm (there is no warn or allow mode)",
       "test": "adapters/sqlstore/sso_saml_policy_test.go",
       "marker": "an RSA-SHA1 response did not fail with saml_deprecated_algorithm"
+    },
+    {
+      "label": "Refuse deprecated encryption algorithms as allow-list entries; there is no warn or allow mode, a documented deviation",
+      "test": "plugins/sso/saml_test.go",
+      "marker": "t.Fatal(\"a deprecated or unknown encryption allow-list entry was accepted\"",
+      "complete": true
     }
   ],
   "plugin-symbol/sso/DeprecatedAlgorithmBehavior": [
@@ -46168,6 +46197,32 @@
       "label": "Refuse User creation with a read-only scope and listing with a write-only scope, and let the read scope list",
       "test": "adapters/sqlstore/scim_groups_test.go",
       "marker": "t.Fatal(\"a read-only credential created a User\", code)"
+    }
+  ],
+  "plugin-symbol/sso/AlgorithmValidationOptions/allowedKeyEncryptionAlgorithms": [
+    {
+      "label": "Refuse a key transport outside the key encryption allow-list, RSA 1.5 included, before the content cipher, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_saml_policy_test.go",
+      "marker": "t.Fatal(\"an RSA 1.5 key transport escaped the key encryption allow-list\"",
+      "complete": true
+    },
+    {
+      "label": "Advertise the allowed data ciphers, then key transports, in list order in the SP metadata",
+      "test": "adapters/sqlstore/sso_saml_policy_test.go",
+      "marker": "t.Fatal(\"the SP metadata did not advertise the allow-lists in order\""
+    }
+  ],
+  "plugin-symbol/sso/AlgorithmValidationOptions/allowedDataEncryptionAlgorithms": [
+    {
+      "label": "Refuse an AES-128-GCM assertion outside a data encryption allow-list with saml_algorithm_not_allowed and its URI, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_saml_policy_test.go",
+      "marker": "t.Fatal(\"an AES-128-GCM assertion escaped the data encryption allow-list\"",
+      "complete": true
+    },
+    {
+      "label": "Refuse deprecated or unknown encryption allow-list entries when the plugin is built",
+      "test": "plugins/sso/saml_test.go",
+      "marker": "t.Fatal(\"a deprecated or unknown encryption allow-list entry was accepted\""
     }
   ]
 }
