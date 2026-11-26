@@ -104,7 +104,7 @@
     - [x] Reject a discovery document without jwks_uri with 400 discovery_incomplete ([test](../../../plugins/sso/discovery_test.go#L171))
     - [x] Require issuer, authorization_endpoint and token_endpoint in the discovery document ([test](../../../plugins/sso/discovery_test.go#L214))
   - `RequiredDiscoveryField` — *not applicable: TypeScript type. It is the string-literal union derived from REQUIRED_DISCOVERY_FIELDS for type checking; the required fields themselves are tracked under REQUIRED_DISCOVERY_FIELDS.*
-  - [ ] `POST /sso/request-domain-verification`
+  - [x] `POST /sso/request-domain-verification` ([test](../../../adapters/sqlstore/sso_domain_test.go#L200))
     - [x] Read a seven-day registration challenge with the released client and return HTTP 201 for a repeated request ([test](../../../conformance/sso-domains.mjs#L86))
     - [x] Replace an expired challenge once across two database instances ([test](../../../adapters/sqlstore/sso_domain_test.go#L231))
     - [x] Return a live token without hooks and run a new token's verification create hooks; a declined reissue changes nothing ([test](../../../adapters/sqlstore/sso_hooks_test.go#L439))
@@ -446,9 +446,10 @@
       - [x] Reject disabled registration and serialize concurrent requests for the final account slot ([test](../../../adapters/sqlstore/sso_test.go#L23))
       - [x] Refuse registration with 403 when the provider limit is zero ([test](../../../adapters/sqlstore/sso_test.go#L181))
       - [x] Resolve the registration quota per signed-in user, refuse zero with 403, count a negative number as reached and fail on a resolver error ([test](../../../adapters/sqlstore/sso_limit_test.go#L20))
-    - [ ] `trustEmailVerified`
+    - [x] `trustEmailVerified` ([test](../../../adapters/sqlstore/sso_saml_mapping_test.go#L139))
       - [x] Store a new enterprise OIDC user as unverified although the ID token says email_verified true ([test](../../../adapters/sqlstore/sso_browser_test.go#L301))
       - [x] Store a new SAML user as unverified by default on both runtimes ([test](../../../conformance/sso-saml.mjs#L293))
+      - [x] Verify a mapped email only with TrustEmailVerified, and leave it unverified without, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_mapping_test.go#L139))
     - [x] `domainVerification` ([test](../../../conformance/sso-domains.mjs#L78))
       - [x] Migrate a populated enterprise provider to the DNS profile and compare 24 profile selections on all three SQL dialects ([test](../../../conformance/schema.test.mjs#L252))
       - [x] Bind DNS verification to the nonsecret identity source and require fresh proof when it changes ([test](../../../adapters/sqlstore/sso_domain_test.go#L473))

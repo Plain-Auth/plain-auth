@@ -11925,7 +11925,8 @@
     {
       "label": "Answer 404 for an unknown provider",
       "test": "adapters/sqlstore/sso_domain_test.go",
-      "marker": "_, e = one.RequestSSODomainVerification(ctx, \"absent\")"
+      "marker": "_, e = one.RequestSSODomainVerification(ctx, \"absent\")",
+      "complete": true
     }
   ],
   "plugin/sso/POST /sso/verify-domain": [
@@ -42186,6 +42187,12 @@
       "label": "Store a new SAML user as unverified by default on both runtimes",
       "test": "conformance/sso-saml.mjs",
       "marker": "assert.equal(current.user.emailVerified,false);"
+    },
+    {
+      "label": "Verify a mapped email only with TrustEmailVerified, and leave it unverified without, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_saml_mapping_test.go",
+      "marker": "t.Fatal(\"mapping.emailVerified verified the email without TrustEmailVerified\", found, verified)",
+      "complete": true
     }
   ],
   "plugin-symbol/sso/SSOOptions/saml": [

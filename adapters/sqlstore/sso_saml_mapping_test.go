@@ -127,6 +127,17 @@ func TestEnterpriseSAMLDirectoryMapping(t *testing.T) {
 			if dept.Valid || verified {
 				t.Fatal("a multi-valued attribute filled a scalar user field, or a missing verification attribute verified the email", dept, verified)
 			}
+			// Without TrustEmailVerified the mapped verification is ignored.
+			untrusted, err := sso.New(sso.Options{SAML: &sso.SAMLOptions{AllowIDPInitiated: func(_ context.Context, d sso.SAMLDirectory) (bool, error) { return d.ProviderID == "mapped", nil }}})
+			must(err)
+			host, err = auth.New(auth.Options{BaseURL: "https://service.test", BasePath: "/identity", RateLimit: new(bool), Store: store, Secret: strings.Repeat("k", 32), EmailAndPassword: true, UserAdditionalFields: fields, Plugins: []auth.Plugin{untrusted}})
+			must(err)
+			if w := portal("unverified-user", attr("mail", "unverified@mapped.example"), attr("verified", "true")); w.Code != 302 || w.Header().Get("Location") != "https://service.test/directory-home" {
+				t.Fatal("the untrusted portal sign-in failed", w.Code, w.Header().Get("Location"))
+			}
+			if _, _, found := user("unverified@mapped.example"); !found || verified {
+				t.Fatal("mapping.emailVerified verified the email without TrustEmailVerified", found, verified)
+			}
 		})
 	}
 }
