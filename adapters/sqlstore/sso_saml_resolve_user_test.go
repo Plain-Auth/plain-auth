@@ -60,7 +60,7 @@ func TestEnterpriseSAMLResolveUser(t *testing.T) {
 			}
 			sessions := func() int {
 				var n int
-				if err := p.store.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM "session"`).Scan(&n); err != nil {
+				if err := p.store.db.QueryRowContext(ctx, p.store.bind(`SELECT COUNT(*) FROM "session"`)).Scan(&n); err != nil {
 					t.Fatal(err)
 				}
 				return n
