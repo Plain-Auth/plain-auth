@@ -476,13 +476,13 @@
       - [x] With the LINE channel registered as line, sign-in/social then the callback answers 302 with a session whose user has the profile's email and unverified status ([test](../../providers/profile_presets_test.go#L140))
       - [x] For the line catalog entry and each other catalog provider, sign-in/social followed by the callback exchanges the code once, reads the profile once and answers 302 with a session ([test](../../providers/catalog_test.go#L187))
     - [ ] Sign In with LINE using ID Token (optional)
-      - [x] A LINE ID token signs in directly at LINE() and New("line") once LINE's verify endpoint accepts it for that channel with the nonce, sending only the client ID, token and nonce; a request without a nonce never reaches LINE (deviation: the nonce is required), a token LINE refuses answers INVALID_TOKEN, and New("line") hands hooks the raw verified claims ([test](../../providers/line_test.go#L165))
+      - [x] A LINE ID token signs in directly at LINE() and New("line") once LINE's verify endpoint accepts it for that channel with the nonce, sending only the client ID, token and nonce; a request without a nonce never reaches LINE (deviation: the nonce is required), a token LINE refuses answers INVALID_TOKEN, and New("line") hands hooks the raw verified claims ([test](../../providers/line_test.go#L186))
     - [ ] Notes
-      - [x] providers.LINE verifies a code-flow ID token by POSTing it as a form, without an Authorization header, to https://api.line.me/oauth2/v2.1/verify ([test](../../providers/line_test.go#L42))
-      - [x] providers.LINE refuses a verified ID token issued for another channel, another nonce or another issuer, or with a bad expiry, issue time or empty subject ([test](../../providers/line_test.go#L74))
+      - [x] providers.LINE verifies a code-flow ID token by POSTing it as a form, without an Authorization header, to https://api.line.me/oauth2/v2.1/verify ([test](../../providers/line_test.go#L43))
+      - [x] providers.LINE refuses a verified ID token issued for another channel, another nonce or another issuer, or with a bad expiry, issue time or empty subject ([test](../../providers/line_test.go#L75))
       - [x] The LINE channel's authorization URL requests the default scopes openid profile email ([test](../../providers/profile_presets_test.go#L125))
-  - [x] Multi-Channel Support ([test](../../providers/line_test.go#L211))
-    - [x] Two LINE channels under their own keys keep their own client IDs, secrets, callbacks and account namespaces: a LINE user ID is a separate account per key, the same unverified email at a second key answers account_not_linked, a state from one key fails at the other's callback, and a direct ID token works only at its own channel's key ([test](../../providers/line_test.go#L211))
+  - [x] Multi-Channel Support ([test](../../providers/line_test.go#L234))
+    - [x] Two LINE channels under their own keys keep their own client IDs, secrets, callbacks and account namespaces: a LINE user ID is a separate account per key, the same unverified email at a second key answers account_not_linked, a state from one key fails at the other's callback, and a direct ID token works only at its own channel's key ([test](../../providers/line_test.go#L234))
 
 ## Linear
 
@@ -611,10 +611,10 @@
         - [x] providers.Keycloak refuses an issuer without https, with a fragment or with a query, without making any discovery request ([test](../../providers/enterprise_oidc_test.go#L134))
         - [x] The other runtime's keycloak helper, given the same issuer, derives the same discovery URL and the default scopes openid profile email ([test](../../conformance/enterprise-oidc.test.mjs#L6))
       - [ ] LINE
-        - [x] providers.LINE verifies ID tokens at LINE's verify endpoint for its channel. It refuses another channel, another browser nonce, an unknown issuer, an expired or unissued token and an empty user ID ([test](../../providers/line_test.go#L21))
+        - [x] providers.LINE verifies ID tokens at LINE's verify endpoint for its channel. It refuses another channel, another browser nonce, an unknown issuer, an expired or unissued token and an empty user ID ([test](../../providers/line_test.go#L22))
         - [x] Registered under the name line, the LINE channel preset completes a browser sign-in from its profile endpoint and links the account under the LINE user ID ([test](../../providers/profile_presets_test.go#L32))
         - [x] The other runtime's line helper has the same endpoints and default scopes, and maps the same sample profile to the same fields and subject ([test](../../conformance/profile-presets.test.mjs#L6))
-        - [x] Two LINE channels under their own keys keep their own client IDs, secrets, callbacks and account namespaces: a LINE user ID is a separate account per key, the same unverified email at a second key answers account_not_linked, a state from one key fails at the other's callback, and a direct ID token works only at its own channel's key ([test](../../providers/line_test.go#L211))
+        - [x] Two LINE channels under their own keys keep their own client IDs, secrets, callbacks and account namespaces: a LINE user ID is a separate account per key, the same unverified email at a second key answers account_not_linked, a state from one key fails at the other's callback, and a direct ID token works only at its own channel's key ([test](../../providers/line_test.go#L234))
       - [x] Microsoft Entra ID (Azure AD) ([test](../../providers/entra_test.go#L20))
         - [x] providers.MicrosoftEntraID for a tenant GUID asks for openid profile email at that tenant and keys accounts by the signed oid. It merges Graph fields only when the subject matches, and refuses tokens without an oid, from another tenant or for another audience ([test](../../providers/entra_test.go#L20))
         - [x] The other runtime's microsoftEntraId helper, run on the same fixtures, derives the same tenant discovery URL and scopes, refuses the common tenant, and maps the same subject, email, name and verification ([test](../../conformance/entra-profiles.test.mjs#L6))

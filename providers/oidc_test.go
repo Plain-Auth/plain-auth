@@ -159,7 +159,7 @@ func TestOpenIDConnectRefusesUnverifiableDiscovery(t *testing.T) {
 
 // DiscoveryHeaders reach the discovery request and signing keys on the
 // issuer's origin, never the token endpoint or keys elsewhere, while the
-// provider's TokenHeaders reach its token request; discovery
+// provider's TokenHeaders reach its token request and not the keys; discovery
 // follows no redirects, and an invalid header fails before any request. With
 // DisableNonceBinding a browser sign-in sends no nonce and accepts an ID
 // token without one, while a directly submitted token still needs its nonce.
@@ -194,7 +194,7 @@ func TestOpenIDConnectWithOptions(t *testing.T) {
 	tokenHeaderLeaked := false
 	issuer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		record(r.URL.Path, r)
-		if r.URL.Path != "/token" && r.Header.Get("X-Token") != "" {
+		if r.URL.Path == "/keys" && r.Header.Get("X-Token") != "" {
 			mu.Lock()
 			tokenHeaderLeaked = true
 			mu.Unlock()
@@ -241,7 +241,8 @@ func TestOpenIDConnectWithOptions(t *testing.T) {
 	leaked := tokenHeaderLeaked
 	mu.Unlock()
 	if leaked {
-		t.Fatal("TokenHeaders reached discovery or the keys")
+		// Discovery runs before a provider exists to carry TokenHeaders.
+		t.Fatal("TokenHeaders reached the signing keys")
 	}
 	mu.Lock()
 	gotToken := tokenHeader

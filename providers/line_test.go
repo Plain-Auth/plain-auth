@@ -3,6 +3,7 @@ package providers
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -45,7 +46,7 @@ func TestLINEChannelTokenVerification(t *testing.T) {
 				if err := r.ParseForm(); err != nil {
 					t.Fatal(err)
 				}
-				if r.PostForm.Get("client_id") != channel || r.PostForm.Get("nonce") != nonce || r.PostForm.Get("id_token") != "id-token" || len(r.PostForm) != 3 {
+				if r.PostForm.Get("client_id") != channel || r.PostForm.Get("nonce") != nonce || r.PostForm.Get("id_token") != "aWQ.dG9rZW4.c2ln" || len(r.PostForm) != 3 {
 					t.Fatal("wrong verification grant")
 				}
 				claims := map[string]any{"iss": lineIssuer, "aud": channel, "nonce": nonce, "iat": now, "exp": now + 900, "sub": "line-user", "email": "jo@example.org", "email_verified": true, "name": "Jo"}
@@ -59,7 +60,7 @@ func TestLINEChannelTokenVerification(t *testing.T) {
 				return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(bytes.NewReader(data))}, nil
 			})}
 			ctx := context.WithValue(t.Context(), oauth2.HTTPClient, client)
-			token := (&oauth2.Token{AccessToken: "access"}).WithExtra(map[string]any{"id_token": "id-token"})
+			token := (&oauth2.Token{AccessToken: "access"}).WithExtra(map[string]any{"id_token": "aWQ.dG9rZW4.c2ln"})
 			profile, err := p.Resolve(ctx, token, nonce)
 			if tc.allowed {
 				if err != nil || profile.Subject != "line-user" || profile.EmailVerified || profile.Name != "Jo" {
@@ -82,16 +83,35 @@ func TestLINEChannelTokenVerification(t *testing.T) {
 			calls++
 			return &http.Response{StatusCode: http.StatusBadRequest, Body: io.NopCloser(strings.NewReader("{}"))}, nil
 		})})
-		token := (&oauth2.Token{AccessToken: "access"}).WithExtra(map[string]any{"id_token": "rejected"})
+		token := (&oauth2.Token{AccessToken: "access"}).WithExtra(map[string]any{"id_token": "cmVq.ZWN0ZWQ.c2ln"})
 		if _, err := p.Resolve(ctx, token, nonce); err == nil || calls != 1 {
 			t.Fatal("failed channel verification must stop sign-in", err, calls)
 		}
 	})
 }
 
+// lineToken spells the fixture claims "<channel>:<user>:<email>" as a
+// compact token, one base64url segment each; lineClaims reads them back.
+func lineToken(claims string) string {
+	var parts []string
+	for _, part := range strings.SplitN(claims, ":", 3) {
+		parts = append(parts, base64.RawURLEncoding.EncodeToString([]byte(part)))
+	}
+	return strings.Join(parts, ".")
+}
+
+func lineClaims(token string) string {
+	var parts []string
+	for _, part := range strings.Split(token, ".") {
+		b, _ := base64.RawURLEncoding.DecodeString(part)
+		parts = append(parts, string(b))
+	}
+	return strings.Join(parts, ":")
+}
+
 // lineFixture answers LINE's token and verify endpoints for any channel. The
-// token endpoint returns the ID token "<channel>:<code>", where the code is
-// "<user>:<email>", and an ID token verifies only for its own channel.
+// token endpoint returns the ID token for "<channel>:<code>", where the code
+// is "<user>:<email>", and an ID token verifies only for its own channel.
 type lineFixture struct {
 	mu               sync.Mutex
 	tokens, verifies []url.Values
@@ -108,11 +128,11 @@ func (f *lineFixture) client(t *testing.T) *http.Client {
 		switch r.URL.String() {
 		case lineAPI + "/token":
 			f.tokens = append(f.tokens, r.PostForm)
-			return jsonResponse(t, map[string]any{"access_token": "access", "token_type": "Bearer", "expires_in": 3600, "id_token": r.PostForm.Get("client_id") + ":" + r.PostForm.Get("code")}), nil
+			return jsonResponse(t, map[string]any{"access_token": "access", "token_type": "Bearer", "expires_in": 3600, "id_token": lineToken(r.PostForm.Get("client_id") + ":" + r.PostForm.Get("code"))}), nil
 		case lineAPI + "/verify":
 			f.verifies = append(f.verifies, r.PostForm)
 			f.authorization = append(f.authorization, r.Header.Get("Authorization"))
-			parts := strings.SplitN(r.PostForm.Get("id_token"), ":", 3)
+			parts := strings.SplitN(lineClaims(r.PostForm.Get("id_token")), ":", 3)
 			if len(parts) != 3 || parts[0] != r.PostForm.Get("client_id") {
 				return textResponse(http.StatusBadRequest, "application/json", `{"error":"invalid_request"}`), nil
 			}
@@ -158,7 +178,8 @@ func serve(h *auth.Auth, method, path, body string, cookies []*http.Cookie) *htt
 // A LINE ID token signs in directly at LINE() and New("line") once LINE's
 // verify endpoint accepts it for that channel with the nonce; the request
 // carries exactly the client ID, token and nonce and no credentials. A
-// request without a nonce never reaches LINE, and a token LINE refuses
+// request without a nonce, or a token in another spelling, never reaches
+// LINE, and a token LINE refuses
 // answers INVALID_TOKEN. New("line") hands hooks LINE's raw claims, as its
 // browser flow hands them LINE's raw profile; LINE() hands them its mapped
 // profile.
@@ -177,21 +198,23 @@ func TestLINEDirectIDToken(t *testing.T) {
 				return nil
 			}
 		})
-		for _, body := range []string{`{"token":"channel:U1:jo@example.org"}`, `{"token":"channel:U1:jo@example.org","nonce":""}`} {
+		// A token without a nonce, or in another spelling, never reaches LINE.
+		for _, body := range []string{`{"token":"` + lineToken("channel:U1:jo@example.org") + `"}`, `{"token":"` + lineToken("channel:U1:jo@example.org") + `","nonce":""}`,
+			`{"token":"` + lineToken("channel:U1:jo@example.org") + `.","nonce":"n"}`, `{"token":"` + lineToken("channel:U1:jo@example.org") + `=","nonce":"n"}`} {
 			if res := serve(h, "POST", "/sign-in/social", `{"provider":"line","idToken":`+body+`}`, nil); res.Code != 401 || !strings.Contains(res.Body.String(), "INVALID_TOKEN") || len(f.verifies) != 0 {
 				t.Fatal(name, "answered a token without a nonce with", res.Code, res.Body)
 			}
 		}
-		res := serve(h, "POST", "/sign-in/social", `{"provider":"line","idToken":{"token":"channel:U1:jo@example.org","nonce":"n"}}`, nil)
+		res := serve(h, "POST", "/sign-in/social", `{"provider":"line","idToken":{"token":"`+lineToken("channel:U1:jo@example.org")+`","nonce":"n"}}`, nil)
 		var signedIn struct{ User struct{ EmailVerified bool } }
 		if res.Code != 200 || json.Unmarshal(res.Body.Bytes(), &signedIn) != nil || signedIn.User.EmailVerified {
 			t.Fatal(name, "answered", res.Code, res.Body)
 		}
-		if len(f.verifies) != 1 || len(f.verifies[0]) != 3 || f.verifies[0].Get("client_id") != "channel" || f.verifies[0].Get("id_token") != "channel:U1:jo@example.org" ||
+		if len(f.verifies) != 1 || len(f.verifies[0]) != 3 || f.verifies[0].Get("client_id") != "channel" || f.verifies[0].Get("id_token") != lineToken("channel:U1:jo@example.org") ||
 			f.verifies[0].Get("nonce") != "n" || f.authorization[0] != "" {
 			t.Fatal(name, "verified with", f.verifies, f.authorization)
 		}
-		res = serve(h, "POST", "/sign-in/social", `{"provider":"line","idToken":{"token":"other:U1:jo@example.org","nonce":"n"}}`, nil)
+		res = serve(h, "POST", "/sign-in/social", `{"provider":"line","idToken":{"token":"`+lineToken("other:U1:jo@example.org")+`","nonce":"n"}}`, nil)
 		if res.Code != 401 || !strings.Contains(res.Body.String(), "INVALID_TOKEN") {
 			t.Fatal(name, "accepted a token LINE refused:", res.Code, res.Body)
 		}
@@ -269,10 +292,10 @@ func TestLINEChannelsUnderSeparateKeys(t *testing.T) {
 	if !strings.Contains(crossed.Header().Get("Location"), "error=state_mismatch") || len(f.tokens) != tokens {
 		t.Fatal("a line-jp state at line-th went to", crossed.Header().Get("Location"))
 	}
-	if res := serve(h, "POST", "/sign-in/social", `{"provider":"line-th","idToken":{"token":"th-channel:U2:new@example.org","nonce":"n"}}`, nil); res.Code != 200 {
+	if res := serve(h, "POST", "/sign-in/social", `{"provider":"line-th","idToken":{"token":"`+lineToken("th-channel:U2:new@example.org")+`","nonce":"n"}}`, nil); res.Code != 200 {
 		t.Fatal("a line-th token at line-th answered", res.Code, res.Body)
 	}
-	if res := serve(h, "POST", "/sign-in/social", `{"provider":"line-th","idToken":{"token":"jp-channel:U3:other@example.org","nonce":"n"}}`, nil); res.Code != 401 {
+	if res := serve(h, "POST", "/sign-in/social", `{"provider":"line-th","idToken":{"token":"`+lineToken("jp-channel:U3:other@example.org")+`","nonce":"n"}}`, nil); res.Code != 401 {
 		t.Fatal("a line-jp token at line-th answered", res.Code, res.Body)
 	}
 }

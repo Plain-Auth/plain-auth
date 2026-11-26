@@ -165,7 +165,7 @@ func TestDirectIDTokenReencodedReplay(t *testing.T) {
 	if status := signIn("aGk.aGk.aGk"); status != 200 {
 		t.Fatal("the first sign-in answered", status)
 	}
-	for _, copy := range []string{"aGk.aGk.aGk", "aGk.aGk.aGl", "aGk.aGk.aGk=", "aGl.aGk.aGk", "aGk.aGk.aGw"} {
+	for _, copy := range []string{"aGk.aGk.aGk", "aGk.aGk.aGl", "aGk.aGk.aGk=", "aGl.aGk.aGk", "aGk.aGl.aGk", "aGk=.aGk.aGk", "aGk.aGk=.aGk", "aGk.aGk.aGw"} {
 		if status := signIn(copy); status != 401 {
 			t.Fatal("a copy of the used token,", copy, "answered", status)
 		}

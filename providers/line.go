@@ -75,7 +75,9 @@ func lineIDToken(ctx context.Context, channelID, raw, nonce string) (auth.OAuthP
 // which covers the HS256 tokens of web channels and the ES256 tokens of the
 // SDKs, then checks the claims against this sign-in and returns them.
 func lineVerify(ctx context.Context, channelID, raw, nonce string) (profileData, time.Time, error) {
-	if raw == "" || nonce == "" {
+	// LINE's server parses the token, so only its canonical compact form is
+	// sent there: a used token keeps one spelling for its single-use record.
+	if !compactToken(raw) || nonce == "" {
 		return nil, time.Time{}, errors.New("missing LINE ID token or nonce")
 	}
 	form := url.Values{"client_id": {channelID}, "id_token": {raw}, "nonce": {nonce}}
@@ -114,4 +116,21 @@ func lineProfile(claims profileData) (auth.OAuthProfile, error) {
 	}
 	result.Data = data
 	return result, nil
+}
+
+// compactToken reports whether raw is three non-empty unpadded base64url
+// segments.
+func compactToken(raw string) bool {
+	parts := strings.Split(raw, ".")
+	if len(parts) != 3 {
+		return false
+	}
+	for _, part := range parts {
+		if part == "" || strings.ContainsFunc(part, func(r rune) bool {
+			return !(r >= 'A' && r <= 'Z' || r >= 'a' && r <= 'z' || r >= '0' && r <= '9' || r == '-' || r == '_')
+		}) {
+			return false
+		}
+	}
+	return true
 }

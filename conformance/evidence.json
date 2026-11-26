@@ -31696,7 +31696,7 @@
       "complete": false
     },
     {
-      "label": "A provider built by OpenIDConnectWithOptions gets custom headers on discovery and same-origin signing keys through DiscoveryHeaders and on its token request through TokenHeaders, with neither reaching the other's requests or keys on another origin",
+      "label": "A provider built by OpenIDConnectWithOptions gets custom headers on discovery and same-origin signing keys through DiscoveryHeaders, never on its token request or keys on another origin, and on its token request through TokenHeaders, which stay off the signing keys",
       "test": "providers/oidc_test.go",
       "marker": "func TestOpenIDConnectWithOptions(t *testing.T) {",
       "complete": true
