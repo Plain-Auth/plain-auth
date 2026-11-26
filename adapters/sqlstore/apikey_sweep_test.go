@@ -1,6 +1,7 @@
 package sqlstore
 
 import (
+	"sync"
 	"testing"
 	"time"
 
@@ -93,6 +94,143 @@ func TestAPIKeyExpiredSweep(t *testing.T) {
 			}
 			if n, err := service("purge").DeleteAllExpired(ctx); err != nil || n < 2 || present(mine.ID) || present(theirs.ID) {
 				t.Fatal("DeleteAllExpired left an expired key", n, err)
+			}
+		})
+	}
+}
+
+// With DeferUpdates, verification answers an expired or used-up key at once
+// and leaves its deletion, and the expired-key sweep, to the task runner,
+// while usage counters still commit with the verification.
+func TestAPIKeyDeferredUpdates(t *testing.T) {
+	for _, dialect := range []string{"sqlite", "postgres", "mysql"} {
+		t.Run(dialect, func(t *testing.T) {
+			ctx := t.Context()
+			must := func(err error) {
+				t.Helper()
+				if err != nil {
+					t.Fatal(err)
+				}
+			}
+			ddl, err := schema.Generate(dialect, []string{"api-key"})
+			must(err)
+			store, err := OpenWithSchema(ctx, dialect, organizationTestDSN(t, dialect), ddl)
+			must(err)
+			defer store.Close()
+			owner := testUser("deferred-owner")
+			must(store.CreateUser(ctx, owner, "", nil))
+			var mu sync.Mutex
+			var tasks []func()
+			runner := func(task func()) {
+				mu.Lock()
+				defer mu.Unlock()
+				tasks = append(tasks, task)
+			}
+			run := func() {
+				mu.Lock()
+				pending := tasks
+				tasks = nil
+				mu.Unlock()
+				for _, task := range pending {
+					task()
+				}
+			}
+			if _, err := ak.New(ak.Options{Store: store, DeferUpdates: true}); err == nil {
+				t.Fatal("deferred updates were accepted without a task runner")
+			}
+			keys, err := ak.New(ak.Options{Store: store, DeferUpdates: true, BackgroundTasks: runner, DisableRateLimit: true})
+			must(err)
+			expire := func(id string) {
+				t.Helper()
+				_, err := store.db.ExecContext(ctx, store.bind(`UPDATE "apikey" SET "expiresAt"=? WHERE "id"=?`), store.date(time.Now().Add(-time.Minute)), id)
+				must(err)
+			}
+			present := func(id string) bool {
+				t.Helper()
+				var n int
+				must(store.db.QueryRowContext(ctx, store.bind(`SELECT count(*) FROM "apikey" WHERE "id"=?`), id).Scan(&n))
+				return n == 1
+			}
+			verify := func(secret, code string) {
+				t.Helper()
+				v, err := keys.Verify(ctx, secret, nil)
+				must(err)
+				if code == "" && !v.Valid || code != "" && (v.Valid || v.Error.Code != code) {
+					t.Fatalf("verification answered %+v, want %q", v.Error, code)
+				}
+			}
+
+			old, err := keys.Create(ctx, owner.ID, ak.CreateInput{})
+			must(err)
+			run()
+			expire(old.ID)
+			verify(old.Secret, "KEY_EXPIRED")
+			if !present(old.ID) {
+				t.Fatal("an expired key was deleted inside a deferred verification")
+			}
+			run()
+			if present(old.ID) {
+				t.Fatal("the deferred deletion of an expired key never ran")
+			}
+
+			one := int64(1)
+			spent, err := keys.Create(ctx, owner.ID, ak.CreateInput{Policy: ak.Policy{Remaining: &one}})
+			must(err)
+			verify(spent.Secret, "")
+			verify(spent.Secret, "USAGE_EXCEEDED")
+			if k, err := keys.Get(ctx, owner.ID, spent.ID); err != nil || k.Remaining == nil || *k.Remaining != 0 {
+				t.Fatal("a used-up key was deleted before the task runner ran", err)
+			}
+			run()
+			if present(spent.ID) {
+				t.Fatal("the deferred deletion of a used-up key never ran")
+			}
+
+			hour := time.Hour
+			refilled, err := keys.Create(ctx, owner.ID, ak.CreateInput{Policy: ak.Policy{Remaining: &one, RefillInterval: &hour, RefillAmount: &one}})
+			must(err)
+			verify(refilled.Secret, "")
+			verify(refilled.Secret, "USAGE_EXCEEDED")
+			run()
+			if !present(refilled.ID) {
+				t.Fatal("a refillable key was deleted")
+			}
+
+			rescued, err := keys.Create(ctx, owner.ID, ak.CreateInput{Policy: ak.Policy{Remaining: &one}})
+			must(err)
+			verify(rescued.Secret, "")
+			verify(rescued.Secret, "USAGE_EXCEEDED")
+			_, err = keys.Update(ctx, owner.ID, rescued.ID, ak.UpdateInput{Policy: ak.Policy{RefillInterval: &hour, RefillAmount: &one}})
+			must(err)
+			run()
+			if !present(rescued.ID) {
+				t.Fatal("a deferred deletion removed a key that gained a refill after the answer")
+			}
+
+			five := int64(5)
+			counted, err := keys.Create(ctx, owner.ID, ak.CreateInput{Policy: ak.Policy{Remaining: &five}})
+			must(err)
+			verify(counted.Secret, "")
+			if k, err := keys.Get(ctx, owner.ID, counted.ID); err != nil || k.Remaining == nil || *k.Remaining != 4 {
+				t.Fatal("a deferred verification left its usage uncommitted", err)
+			}
+			run()
+
+			later, err := ak.New(ak.Options{Store: store, ConfigID: "later", DeferUpdates: true, BackgroundTasks: runner})
+			must(err)
+			other, err := ak.New(ak.Options{Store: store, ConfigID: "other"})
+			must(err)
+			x, err := other.Create(ctx, owner.ID, ak.CreateInput{})
+			must(err)
+			expire(x.ID)
+			_, err = later.List(ctx, owner.ID, ak.PageOptions{})
+			must(err)
+			if !present(x.ID) {
+				t.Fatal("the expired-key sweep ran before the task runner")
+			}
+			run()
+			if present(x.ID) {
+				t.Fatal("the expired-key sweep was not handed to the task runner")
 			}
 		})
 	}

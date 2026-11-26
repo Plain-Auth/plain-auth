@@ -40031,5 +40031,31 @@
       "marker": "the updated rate limit maximum was not enforced",
       "complete": true
     }
+  ],
+  "plugin-symbol/api-key/PredefinedApiKeyOptions/deferUpdates": [
+    {
+      "label": "Hand the deletion of expired and used-up keys, and the expired-key sweep, to the task runner after verification answers, with usage counters committed first, on three SQL engines",
+      "test": "adapters/sqlstore/apikey_sweep_test.go",
+      "marker": "func TestAPIKeyDeferredUpdates(",
+      "complete": true
+    },
+    {
+      "label": "Refuse DeferUpdates without a task runner",
+      "test": "adapters/sqlstore/apikey_sweep_test.go",
+      "marker": "deferred updates were accepted without a task runner"
+    }
+  ],
+  "plugin-symbol/api-key/ApiKeyConfigurationOptions/deferUpdates": [
+    {
+      "label": "Defer a configuration's key deletions and expired-key sweep to the task runner while its usage counters commit with each verification",
+      "test": "adapters/sqlstore/apikey_sweep_test.go",
+      "marker": "func TestAPIKeyDeferredUpdates(",
+      "complete": true
+    },
+    {
+      "label": "Commit a deferred verification's usage before the task runner runs",
+      "test": "adapters/sqlstore/apikey_sweep_test.go",
+      "marker": "a deferred verification left its usage uncommitted"
+    }
   ]
 }

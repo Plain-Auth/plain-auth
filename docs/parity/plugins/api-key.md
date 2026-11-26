@@ -20,9 +20,9 @@
   - [ ] `POST /api-key/create`
     - [x] Issue a user-owned key and return its secret to the official client ([test](../../../conformance/core.test.mjs#L887))
     - [x] Issue a key whose reference identifies the caller’s organization ([test](../../../conformance/core.test.mjs#L959))
-  - [x] `deleteAllExpiredApiKeys (server API only)` ([test](../../../adapters/sqlstore/apikey_sweep_test.go#L95))
+  - [x] `deleteAllExpiredApiKeys (server API only)` ([test](../../../adapters/sqlstore/apikey_sweep_test.go#L96))
     - [x] Purge expired entries within one configuration and retain live keys ([test](../../../adapters/sqlstore/apikey_test.go#L266))
-    - [x] Purge the expired keys of every configuration in one Go call, while DeleteExpired keeps to its own configuration ([test](../../../adapters/sqlstore/apikey_sweep_test.go#L95))
+    - [x] Purge the expired keys of every configuration in one Go call, while DeleteExpired keeps to its own configuration ([test](../../../adapters/sqlstore/apikey_sweep_test.go#L96))
   - [ ] `POST /api-key/delete`
     - [x] Revoke the selected user-owned credential ([test](../../../conformance/core.test.mjs#L887))
     - [x] Revoke an organization key through the owner’s authorized session ([test](../../../conformance/core.test.mjs#L967))
@@ -70,7 +70,9 @@
     - [ ] `storage`
     - [ ] `fallbackToDatabase`
     - [ ] `customStorage`
-    - [ ] `deferUpdates`
+    - [x] `deferUpdates` ([test](../../../adapters/sqlstore/apikey_sweep_test.go#L105))
+      - [x] Hand the deletion of expired and used-up keys, and the expired-key sweep, to the task runner after verification answers, with usage counters committed first, on three SQL engines ([test](../../../adapters/sqlstore/apikey_sweep_test.go#L105))
+      - [x] Refuse DeferUpdates without a task runner ([test](../../../adapters/sqlstore/apikey_sweep_test.go#L139))
     - [x] `references` ([test](../../../adapters/sqlstore/apikey_session_test.go#L308))
       - [x] Keep user-owned and organization-owned keys bound to separate owners when their IDs coincide ([test](../../../adapters/sqlstore/apikey_session_test.go#L308))
   - [ ] `resolveConfiguration`
@@ -82,8 +84,8 @@
     - [x] Rename an organization key under its own configId "teams", on both runtimes ([test](../../../conformance/core.test.mjs#L963))
     - [x] Answer KEY_NOT_FOUND for an organization key looked up under the default configuration, on both runtimes ([test](../../../conformance/core.test.mjs#L962))
     - [x] Answer KEY_NOT_FOUND for an organization key read under the default configuration ([test](../../../adapters/sqlstore/apikey_session_test.go#L119))
-  - [x] `deleteAllExpiredApiKeys` ([test](../../../adapters/sqlstore/apikey_sweep_test.go#L74))
-    - [x] Remove the expired keys of every configuration after creating, reading, updating, deleting or listing a key, at most once every ten seconds per service, on three SQL engines ([test](../../../adapters/sqlstore/apikey_sweep_test.go#L74))
+  - [x] `deleteAllExpiredApiKeys` ([test](../../../adapters/sqlstore/apikey_sweep_test.go#L75))
+    - [x] Remove the expired keys of every configuration after creating, reading, updating, deleting or listing a key, at most once every ten seconds per service, on three SQL engines ([test](../../../adapters/sqlstore/apikey_sweep_test.go#L75))
   - [x] `createApiKeyRoutes` ([test](../../../adapters/sqlstore/apikey_test.go#L141))
     - [x] Serve create, get, update and delete to the key owner and list to another signed-in user over HTTP, and answer 404 for the verification and expired-key cleanup paths ([test](../../../adapters/sqlstore/apikey_test.go#L141))
   - [ ] `GET /api-key/list`
@@ -149,7 +151,9 @@
     - [ ] `storage`
     - [ ] `fallbackToDatabase`
     - [ ] `customStorage`
-    - [ ] `deferUpdates`
+    - [x] `deferUpdates` ([test](../../../adapters/sqlstore/apikey_sweep_test.go#L105))
+      - [x] Defer a configuration's key deletions and expired-key sweep to the task runner while its usage counters commit with each verification ([test](../../../adapters/sqlstore/apikey_sweep_test.go#L105))
+      - [x] Commit a deferred verification's usage before the task runner runs ([test](../../../adapters/sqlstore/apikey_sweep_test.go#L215))
     - [x] `references` ([test](../../../adapters/sqlstore/apikey_session_test.go#L308))
       - [x] Bind personal and organization keys to separate owners even when identifier values coincide ([test](../../../adapters/sqlstore/apikey_session_test.go#L308))
   - [ ] `ApiKey`
@@ -438,7 +442,7 @@
         - [x] Page merged keys of several configurations together, and list an organization's keys with or without naming the configuration ([test](../../../adapters/sqlstore/apikey_list_test.go#L121))
     - [ ] Delete all expired API keys
       - [x] Purge expired entries within one configuration and retain live keys ([test](../../../adapters/sqlstore/apikey_test.go#L266))
-      - [x] Delete the expired keys of every configuration after a key operation, at most once every ten seconds per service ([test](../../../adapters/sqlstore/apikey_sweep_test.go#L82))
+      - [x] Delete the expired keys of every configuration after a key operation, at most once every ten seconds per service ([test](../../../adapters/sqlstore/apikey_sweep_test.go#L83))
       - [ ] `POST /api-key/delete-all-expired-api-keys` (server API)
         - [x] Remove exactly the one expired key in its configuration through the server cleanup call ([test](../../../adapters/sqlstore/apikey_test.go#L266))
         - [x] Keep a live key in place after the cleanup call ([test](../../../adapters/sqlstore/apikey_test.go#L271))

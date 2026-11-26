@@ -133,6 +133,15 @@ type Options struct {
 	MinExpiration, MaxExpiration, DefaultExpiration, RateWindow                       time.Duration
 	RateMax                                                                           int64
 	DefaultPermissions                                                                Permissions
+	// DeferUpdates hands work that need not finish before the answer to
+	// BackgroundTasks: deleting a key that verification finds expired or used
+	// up, and the expired-key sweep. Usage counters still commit with the
+	// verification, so budgets and rate limits stay exact.
+	DeferUpdates bool
+	// BackgroundTasks runs deferred work with the contract of
+	// plainauth.Options.BackgroundTasks: it gets a ready task and must run it
+	// once, usually on another goroutine. DeferUpdates requires it.
+	BackgroundTasks func(task func())
 }
 type Service struct {
 	opts  Options
@@ -153,7 +162,30 @@ func (s *Service) sweep(ctx context.Context) {
 	if last != 0 && now.UnixMilli()-last < sweepInterval.Milliseconds() || !s.swept.CompareAndSwap(last, now.UnixMilli()) {
 		return
 	}
-	_, _ = s.opts.Store.DeleteExpiredAPIKeys(context.WithoutCancel(ctx), "", now)
+	ctx = context.WithoutCancel(ctx)
+	s.later(func() { _, _ = s.opts.Store.DeleteExpiredAPIKeys(ctx, "", now) })
+}
+
+// later runs task through BackgroundTasks when DeferUpdates is set, and
+// inline otherwise.
+func (s *Service) later(task func()) {
+	if s.opts.DeferUpdates {
+		s.opts.BackgroundTasks(task)
+		return
+	}
+	task()
+}
+
+// removeSpent deletes the key with digest while it is still expired, or
+// still used up with no refill. A failure is ignored: the key stays refused,
+// and a later verification or sweep retries.
+func (s *Service) removeSpent(ctx context.Context, digest string) {
+	_ = s.opts.Store.WithAPIKey(ctx, s.forAction(Owner{}, ""), Lookup{ConfigID: s.opts.ConfigID, Digest: digest}, current(), func(k *Key) (Mutation, error) {
+		if k.ExpiresAt != nil && !k.ExpiresAt.After(current()) || k.Remaining != nil && *k.Remaining <= 0 && k.RefillAmount == nil {
+			return Remove, nil
+		}
+		return Read, nil
+	})
 }
 
 // DeleteAllExpired removes the expired keys of every configuration in the
@@ -188,6 +220,9 @@ func New(o Options) (*Service, error) {
 		if _, ok := o.Store.(GeneratorStore); !ok {
 			return nil, errors.New("apikey: default permission callbacks require issuer authorization")
 		}
+	}
+	if o.DeferUpdates && o.BackgroundTasks == nil {
+		return nil, errors.New("apikey: DeferUpdates requires BackgroundTasks")
 	}
 	if o.ConfigID == "" {
 		o.ConfigID = "default"
@@ -657,8 +692,19 @@ func (s *Service) Verify(ctx context.Context, secret string, required Permission
 		}
 	}
 	now := current()
+	// An expired or used-up key is deleted in the verification's own
+	// transaction, or afterwards by the task runner with DeferUpdates.
+	spent := false
+	remove := func() Mutation {
+		if s.opts.DeferUpdates {
+			spent = true
+			return Read
+		}
+		return Remove
+	}
 	err := s.opts.Store.WithAPIKey(ctx, s.forAction(Owner{}, ""), Lookup{ConfigID: s.opts.ConfigID, Digest: Digest(secret)}, now, func(k *Key) (Mutation, error) {
 		// Evaluate time-based policies after obtaining the key lock.
+		spent = false
 		now = current()
 		if !k.Enabled {
 			invalid("KEY_DISABLED", "API Key is disabled")
@@ -666,7 +712,7 @@ func (s *Service) Verify(ctx context.Context, secret string, required Permission
 		}
 		if k.ExpiresAt != nil && !k.ExpiresAt.After(now) {
 			invalid("KEY_EXPIRED", "API Key has expired")
-			return Remove, nil
+			return remove(), nil
 		}
 		for res, actions := range required {
 			granted, ok := k.Permissions[res]
@@ -696,7 +742,7 @@ func (s *Service) Verify(ctx context.Context, secret string, required Permission
 			if remaining <= 0 {
 				invalid("USAGE_EXCEEDED", "API Key has reached its usage limit")
 				if k.RefillAmount == nil {
-					return Remove, nil
+					return remove(), nil
 				}
 				return Read, nil
 			}
@@ -738,6 +784,13 @@ func (s *Service) Verify(ctx context.Context, secret string, required Permission
 	}
 	if err != nil {
 		return Verification{}, fmt.Errorf("verify API key: %w", err)
+	}
+	if s.opts.DeferUpdates {
+		digest, background := Digest(secret), context.WithoutCancel(ctx)
+		if spent {
+			s.opts.BackgroundTasks(func() { s.removeSpent(background, digest) })
+		}
+		s.sweep(ctx)
 	}
 	return result, nil
 }
