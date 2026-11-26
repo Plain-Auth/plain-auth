@@ -163,8 +163,8 @@ func TestSCIMDynamicBearer(t *testing.T) {
 			}
 			call(a, "GET", "Users/absent", "declared", nil, 404)
 			p := <-principals
-			if p.Kind != "oauth-bearer" || p.ID != "declared" || p.ProvisioningDomainID != "assigned" || p.CredentialID != "external" {
-				t.Fatal(p)
+			if p.Kind != "oauth-bearer" || p.ID != "declared" || p.ProvisioningDomainID != "assigned" || p.CredentialID != "external" || !p.ExpiresAt.IsZero() {
+				t.Fatal("the declared principal lacks its directory or carries an expiry it was not given", p)
 			}
 			call(a, "GET", "Users/absent", "static", nil, 404)
 			p = <-principals
@@ -195,7 +195,7 @@ func TestSCIMDynamicBearer(t *testing.T) {
 			<-principals
 			call(b, "GET", "Users/"+id, "active", nil, 200)
 			p = <-principals
-			if !itemPath.Load() || p.CredentialID != good.CredentialID || p.ID != good.Connection.ID || !p.ExpiresAt.Equal(future) || !slices.Equal(p.Scopes, good.Scopes) {
+			if !itemPath.Load() || p.Kind != "oauth-bearer" || p.ProvisioningDomainID != "tenant" || p.CredentialID != good.CredentialID || p.ID != good.Connection.ID || !p.ExpiresAt.Equal(future) || !slices.Equal(p.Scopes, good.Scopes) {
 				t.Fatal("scoped request identity", p)
 			}
 			call(a, "GET", "Users", "remap", nil, 409)

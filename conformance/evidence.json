@@ -10695,7 +10695,7 @@
     {
       "label": "Authenticate a verifier result that names a declared directory and expose that directory's domain and the credential ID",
       "test": "adapters/sqlstore/scim_dynamic_test.go",
-      "marker": "if p.Kind != \"oauth-bearer\" || p.ID != \"declared\" || p.ProvisioningDomainID != \"assigned\" || p.CredentialID != \"external\" {",
+      "marker": "if p.Kind != \"oauth-bearer\" || p.ID != \"declared\" || p.ProvisioningDomainID != \"assigned\" || p.CredentialID != \"external\" || !p.ExpiresAt.IsZero() {",
       "complete": true
     },
     {
@@ -10734,6 +10734,12 @@
       "label": "Expose the verified credential ID, operation scopes, expiry and scoped directory through request context",
       "test": "adapters/sqlstore/scim_dynamic_test.go",
       "marker": "func TestSCIMDynamicBearer("
+    },
+    {
+      "label": "Give a verified bearer's principal its kind, directory, domain, credential, scopes and expiry, and no expiry when the verifier gives none, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_dynamic_test.go",
+      "marker": "t.Fatal(\"the declared principal lacks its directory or carries an expiry it was not given\", p)",
+      "complete": true
     }
   ],
   "plugin-symbol/scim/SCIMStaticBearerPrincipal": [
@@ -43809,12 +43815,12 @@
     {
       "label": "Expose the directory, credential ID, scopes and expiry from an application-resolved verifier result",
       "test": "adapters/sqlstore/scim_dynamic_test.go",
-      "marker": "if !itemPath.Load() || p.CredentialID != good.CredentialID || p.ID != good.Connection.ID || !p.ExpiresAt.Equal(future) || !slices.Equal(p.Scopes, good.Scopes) {"
+      "marker": "if !itemPath.Load() || p.Kind != \"oauth-bearer\" || p.ProvisioningDomainID != \"tenant\" || p.CredentialID != good.CredentialID || p.ID != good.Connection.ID || !p.ExpiresAt.Equal(future) || !slices.Equal(p.Scopes, good.Scopes) {"
     },
     {
       "label": "Authenticate a verifier result that names a declared directory and expose that directory's domain and the credential ID",
       "test": "adapters/sqlstore/scim_dynamic_test.go",
-      "marker": "if p.Kind != \"oauth-bearer\" || p.ID != \"declared\" || p.ProvisioningDomainID != \"assigned\" || p.CredentialID != \"external\" {"
+      "marker": "if p.Kind != \"oauth-bearer\" || p.ID != \"declared\" || p.ProvisioningDomainID != \"assigned\" || p.CredentialID != \"external\" || !p.ExpiresAt.IsZero() {"
     }
   ],
   "plugin-symbol/scim/SCIMCanonicalEmail": [
@@ -43890,7 +43896,7 @@
     {
       "label": "Expose the authenticated directory ID and provisioning domain on the request's principal",
       "test": "adapters/sqlstore/scim_dynamic_test.go",
-      "marker": "if p.Kind != \"oauth-bearer\" || p.ID != \"declared\" || p.ProvisioningDomainID != \"assigned\" || p.CredentialID != \"external\" {",
+      "marker": "if p.Kind != \"oauth-bearer\" || p.ID != \"declared\" || p.ProvisioningDomainID != \"assigned\" || p.CredentialID != \"external\" || !p.ExpiresAt.IsZero() {",
       "complete": true
     },
     {

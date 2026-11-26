@@ -134,8 +134,9 @@
       - [x] Accept the legacy Entra marker only on Group creation, never echo or advertise it, and refuse it in PUT and PATCH bodies, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_groups_test.go#L301))
   - [x] `SCIMName` ([test](../../../plugins/scim/http_test.go#L155))
     - [x] Accept name parts of 256 and a formatted name of 1,024 code points, and refuse one more or an empty part ([test](../../../plugins/scim/http_test.go#L155))
-  - [ ] `SCIMOAuthBearerPrincipal`
+  - [x] `SCIMOAuthBearerPrincipal` ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L167))
     - [x] Expose the verified credential ID, operation scopes, expiry and scoped directory through request context ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L35))
+    - [x] Give a verified bearer's principal its kind, directory, domain, credential, scopes and expiry, and no expiry when the verifier gives none, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_dynamic_test.go#L167))
   - [ ] `SCIMOptions`
     - [x] Refuse to install a reserved or duplicate connection ID, an empty, whitespace or reused token and an unsupported scope ([test](../../../plugins/scim/http_test.go#L36))
     - [x] `connections` ([test](../../../plugins/scim/http_test.go#L52))
