@@ -201,7 +201,7 @@
     - [x] Discover Groups only when the store provides the Group operations ([test](../../../conformance/scim-contract.mjs#L92))
     - [x] Serve the resource type list without a bearer credential ([test](../../../adapters/sqlstore/scim_test.go#L92))
     - [x] List the Group resource type on both runtimes ([test](../../../conformance/scim-contract.mjs#L102))
-    - [x] Give each resource type its own location, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_users_contract_test.go#L93))
+    - [x] Give each resource type its own location, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_users_contract_test.go#L111))
   - [ ] `GET /scim/v2/ResourceTypes/:resourceTypeId`
     - [x] Resolve the User resource type and reject an unavailable resource type ([test](../../../plugins/scim/http_test.go#L26))
     - [x] Retrieve the Group resource type on both implementations ([test](../../../conformance/scim-contract.mjs#L92))
@@ -304,14 +304,17 @@
     - [x] Validate role count, primary flags, unique defined types and Unicode field limits before replacing a profile ([test](../../../plugins/scim/roles_test.go#L17))
     - [x] Reject a directory profile exceeding the MySQL text capacity without changing the saved profile ([test](../../../adapters/sqlstore/scim_roles_test.go#L145))
     - [x] Clear roles omitted from a replacement User on both runtimes ([test](../../../conformance/scim-roles.mjs#L63))
-  - [ ] `PATCH /scim/v2/Users/:userId`
+    - [x] Refuse a PUT to another User's userName with 409 uniqueness, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_users_contract_test.go#L90))
+  - [x] `PATCH /scim/v2/Users/:userId` ([test](../../../adapters/sqlstore/scim_users_contract_test.go#L92))
     - [x] Apply concurrent supported attribute changes without losing updates and roll back an invalid operation sequence ([test](../../../adapters/sqlstore/scim_test.go#L33))
     - [x] Apply full, selected and pathless role updates atomically with primary reassignment and null removal ([test](../../../conformance/scim-roles.mjs#L51))
     - [x] Serialize independent role updates across connections while preserving application and organization authority ([test](../../../adapters/sqlstore/scim_roles_test.go#L131))
     - [x] Withdraw inactive source grants and restore the same provenance on reactivation ([test](../../../conformance/scim-contract.mjs#L227))
+    - [x] Refuse a PATCH to another User's userName in another case with 409 uniqueness and answer 404 to another directory, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_users_contract_test.go#L92))
   - [ ] `DELETE /scim/v2/Users/:userId`
     - [x] Revoke existing sessions, retain the stable external identity and isolate another directory ([test](../../../adapters/sqlstore/scim_test.go#L33))
     - [x] Remove a deleted User from its Group while keeping the Group and its other members ([test](../../../adapters/sqlstore/scim_groups_test.go#L164))
+    - [x] Answer 404 to a second DELETE of a User and 403 to a read-only token, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_users_contract_test.go#L105))
 
 ## Groups and custom roles
 
@@ -508,8 +511,9 @@
         - [x] Default a created User's active state to true on both runtimes ([test](../../../conformance/scim-contract.mjs#L62))
       - [x] `displayName` ([test](../../../conformance/scim-contract.mjs#L60))
         - [x] Derive displayName from the given and family names when it is omitted, on both runtimes ([test](../../../conformance/scim-contract.mjs#L60))
-      - [ ] `name.formatted`, `name.givenName`, `name.familyName`
+      - [x] `name.formatted`, `name.givenName`, `name.familyName` ([test](../../../adapters/sqlstore/scim_users_contract_test.go#L100))
         - [x] Derive the account name from given and family names when neither a formatted name nor displayName is sent ([test](../../../adapters/sqlstore/scim_test.go#L139))
+        - [x] Keep a supplied name.formatted, givenName and familyName as sent beside a different displayName, on create and read, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_users_contract_test.go#L100))
       - [x] `name.middleName`, `name.honorificPrefix`, `name.honorificSuffix` ([test](../../../adapters/sqlstore/scim_attributes_test.go#L123))
         - [x] Store and return the middle name and honorifics, and replace them on PUT ([test](../../../adapters/sqlstore/scim_attributes_test.go#L123))
       - [x] `emails` ([test](../../../adapters/sqlstore/scim_attributes_contract_test.go#L83))

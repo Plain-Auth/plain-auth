@@ -85,6 +85,24 @@ func TestSCIMUserContract(t *testing.T) {
 			call("PATCH", path, "reader", map[string]any{"schemas": []string{scim.PatchSchema}, "Operations": []map[string]any{{"op": "replace", "path": "displayName", "value": "Op"}}}, 403, "")
 			call("DELETE", path, "reader", nil, 403, "")
 			call("PATCH", path, "write-only", map[string]any{"schemas": []string{scim.PatchSchema}, "Operations": []map[string]any{{"op": "replace", "path": "displayName", "value": "Op"}}}, 200, "")
+			// PUT and PATCH keep userName unique and do not reach another directory.
+			lowerPath := "Users/" + lower["id"].(string)
+			call("PUT", lowerPath, "writer", user("writer", "operator", "id01", "lower@example.test"), 409, "uniqueness")
+			call("PATCH", lowerPath, "writer", map[string]any{"schemas": []string{scim.PatchSchema}, "Operations": []map[string]any{{"op": "replace", "path": "userName", "value": "OPERATOR"}}}, 409, "uniqueness")
+			call("PATCH", lowerPath, "second", map[string]any{"schemas": []string{scim.PatchSchema}, "Operations": []map[string]any{{"op": "replace", "path": "displayName", "value": "Elsewhere"}}}, 404, "")
+			// A supplied name.formatted is kept as sent.
+			named := user("writer", "named", "", "named@example.test")
+			named["displayName"] = "Display Name"
+			named["name"] = map[string]any{"formatted": "Formatted Name", "givenName": "Given", "familyName": "Family"}
+			got := call("POST", "Users", "writer", named, 201, "")
+			for _, read := range []map[string]any{got, call("GET", "Users/"+got["id"].(string), "reader", nil, 200, "")} {
+				if n := read["name"].(map[string]any); n["formatted"] != "Formatted Name" || n["givenName"] != "Given" || n["familyName"] != "Family" || read["displayName"] != "Display Name" {
+					t.Fatal("a supplied name.formatted was not kept as sent", read)
+				}
+			}
+			// A deleted User answers 404 to a second DELETE.
+			call("DELETE", lowerPath, "writer", nil, 204, "")
+			call("DELETE", lowerPath, "writer", nil, 404, "")
 			// Each resource type names its own location.
 			types := call("GET", "ResourceTypes", "", nil, 200, "")
 			for _, raw := range types["Resources"].([]any) {

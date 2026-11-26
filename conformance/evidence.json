@@ -9849,6 +9849,11 @@
       "label": "Clear roles omitted from a replacement User on both runtimes",
       "test": "conformance/scim-roles.mjs",
       "marker": "assert.equal((await call(\"PUT\",path,200,login)).roles,undefined);"
+    },
+    {
+      "label": "Refuse a PUT to another User's userName with 409 uniqueness, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_users_contract_test.go",
+      "marker": "call(\"PUT\", lowerPath, \"writer\", user(\"writer\", \"operator\", \"id01\", \"lower@example.test\"), 409, \"uniqueness\")"
     }
   ],
   "plugin/scim/PATCH /scim/v2/Users/:userId": [
@@ -9871,6 +9876,12 @@
       "label": "Withdraw inactive source grants and restore the same provenance on reactivation",
       "test": "conformance/scim-contract.mjs",
       "marker": "await native(\"PATCH\",path,200,patchActive(true))"
+    },
+    {
+      "label": "Refuse a PATCH to another User's userName in another case with 409 uniqueness and answer 404 to another directory, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_users_contract_test.go",
+      "marker": "call(\"PATCH\", lowerPath, \"second\", map[string]any{\"schemas\": []string{scim.PatchSchema}, \"Operations\": []map[string]any{{\"op\": \"replace\", \"path\": \"displayName\", \"value\": \"Elsewhere\"}}}, 404, \"\")",
+      "complete": true
     }
   ],
   "plugin/scim/DELETE /scim/v2/Users/:userId": [
@@ -9883,6 +9894,11 @@
       "label": "Remove a deleted User from its Group while keeping the Group and its other members",
       "test": "adapters/sqlstore/scim_groups_test.go",
       "marker": "call(replica, \"DELETE\", \"Users/\"+one, \"first\", nil, 204)"
+    },
+    {
+      "label": "Answer 404 to a second DELETE of a User and 403 to a read-only token, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_users_contract_test.go",
+      "marker": "call(\"DELETE\", lowerPath, \"writer\", nil, 404, \"\")"
     }
   ],
   "plugin-symbol/scim/SCIMBearerCredentialOptions/token": [
@@ -44336,6 +44352,12 @@
       "label": "Derive the account name from given and family names when neither a formatted name nor displayName is sent",
       "test": "adapters/sqlstore/scim_test.go",
       "marker": "if account.Name != \"Rae Doe\" || account.EmailVerified {"
+    },
+    {
+      "label": "Keep a supplied name.formatted, givenName and familyName as sent beside a different displayName, on create and read, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_users_contract_test.go",
+      "marker": "t.Fatal(\"a supplied name.formatted was not kept as sent\", read)",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/scim/reference.mdx#L254/`emails`": [
