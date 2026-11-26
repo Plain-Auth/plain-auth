@@ -236,8 +236,11 @@ func TestEnterpriseSAMLDocumentation(t *testing.T) {
 		if _, ok := paths[acs]; ok != enabled {
 			t.Fatalf("unexpected ACS route, enabled=%v", enabled)
 		}
-		if _, present := paths["/sso/update-provider"]; present != enabled {
-			t.Fatal("metadata update route availability", enabled)
+		if _, present := paths["/sso/update-provider"]; !present {
+			t.Fatal("provider update route missing", enabled)
+		}
+		if node(paths, "/sso/update-provider", "post", "requestBody", "content", "application/json", "schema", "properties", "oidcConfig", "properties")["clientSecret"] == nil {
+			t.Fatal("the update route does not describe OIDC fields", enabled)
 		}
 		if !enabled {
 			continue

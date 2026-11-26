@@ -11602,6 +11602,11 @@
       "label": "Give the guard a locked metadata update of a linked SAML directory, with its record, reference, linked-account count and a changed authentication boundary, and reject the update when the guard refuses",
       "test": "adapters/sqlstore/sso_saml_metadata_test.go",
       "marker": "t.Fatal(\"mutation guard did not receive locked authorization\", e)"
+    },
+    {
+      "label": "Review a general provider update with its linked-account count and identity change, and store nothing when the guard refuses",
+      "test": "adapters/sqlstore/sso_update_test.go",
+      "marker": "t.Fatal(\"the guard did not review the secret rotation\", last)"
     }
   ],
   "plugin-symbol/custom-session/customSessionClient": [
@@ -12792,6 +12797,11 @@
       "label": "Allow an active organization administrator to replace metadata and deny the same live session after demotion",
       "test": "adapters/sqlstore/sso_saml_metadata_test.go",
       "marker": "t.Fatal(\"demoted organization member retained metadata authority\""
+    },
+    {
+      "label": "Rotate a client secret, change scopes, mapping and domain, and refuse identity changes while accounts are linked, unsupported fields and other users, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_update_test.go",
+      "marker": "func TestEnterpriseProviderUpdate("
     }
   ],
   "docs/content/docs/reference/options.mdx#L327/`onExistingUserSignUp`": [
@@ -42044,6 +42054,11 @@
       "label": "Replace a directory's IdP metadata to rotate its signing certificate, and refuse a different authority with 409, on both runtimes",
       "test": "conformance/sso-saml.mjs",
       "marker": "const updated=ok(await change(inlineIdP([cert,rotating.cert])))"
+    },
+    {
+      "label": "Change an OIDC provider's configuration with a replacing mapping and refuse an identity change while accounts are linked",
+      "test": "adapters/sqlstore/sso_update_test.go",
+      "marker": "t.Fatal(\"an identity change was accepted while accounts are linked\", w.Code, w.Body.String())"
     }
   ],
   "docs/content/docs/plugins/sso/index.mdx#L284/Parameter `providerId`": [
@@ -44582,6 +44597,26 @@
       "test": "adapters/sqlstore/sso_idp_initiated_test.go",
       "marker": "t.Fatal(\"a stateless callback was not restarted at the authorization endpoint\", w.Code, target)",
       "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/sso/index.mdx#L288/Parameter `issuer` (optional)": [
+    {
+      "label": "Refuse an OIDC issuer change with 409 while accounts are linked and a SAML directory issuer change with 400",
+      "test": "adapters/sqlstore/sso_update_test.go",
+      "marker": "t.Fatal(\"an issuer change was accepted while accounts are linked\", w.Code, w.Body.String())"
+    }
+  ],
+  "docs/content/docs/plugins/sso/index.mdx#L292/Parameter `domain` (optional)": [
+    {
+      "label": "Normalize an updated domain, reset its DNS proof, and update a SAML directory's domain, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_update_test.go",
+      "marker": "t.Fatal(\"a domain change kept the DNS proof\")",
+      "complete": true
+    },
+    {
+      "label": "Change a SAML directory's domain through the update route",
+      "test": "adapters/sqlstore/sso_update_test.go",
+      "marker": "t.Fatal(\"a SAML directory's domain was not updated\", domain)"
     }
   ]
 }

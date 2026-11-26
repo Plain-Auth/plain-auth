@@ -92,8 +92,20 @@ func describeSSORequest(op object, route plainauth.HTTPRoute, info plainauth.HTT
 		body(registration)
 
 	case "/sso/update-provider":
-		op["description"] = "Replace a managed SAML directory’s inline IdP metadata. A certificate rotation preserves existing account links; changing the authority of linked accounts returns a conflict."
-		body(responseObject(object{"providerId": providerID, "samlConfig": responseObject(object{"idpMetadata": responseObject(object{"metadata": text}, "metadata")}, "idpMetadata")}, "providerId", "samlConfig"))
+		op["description"] = "Change a managed provider’s issuer, domain or OIDC configuration with the manager’s session; a supplied mapping replaces the whole mapping. Changing the issuer, client ID or an endpoint returns a conflict while accounts are linked."
+		config := modelSchema(reflect.TypeFor[sso.Config]())
+		properties := config["properties"].(object)
+		delete(properties, "issuer")
+		properties["clientSecret"] = object{"type": "string", "minLength": 1, "writeOnly": true}
+		properties["skipDiscovery"] = object{"type": "boolean"}
+		properties["tokenEndpointAuthentication"] = object{"enum": []string{"client_secret_basic", "client_secret_post", "private_key_jwt"}}
+		update := responseObject(object{"providerId": providerID, "issuer": object{"type": "string", "format": "uri"}, "domain": text, "oidcConfig": config}, "providerId")
+		update["additionalProperties"] = false
+		if info.SAMLStateCookie != "" {
+			op["description"] = op["description"].(string) + " For a SAML directory, samlConfig.idpMetadata.metadata replaces the inline IdP metadata instead; a certificate rotation preserves existing account links."
+			update["properties"].(object)["samlConfig"] = responseObject(object{"idpMetadata": responseObject(object{"metadata": text}, "metadata")}, "idpMetadata")
+		}
+		body(update)
 	case "/sso/providers":
 		op["description"] = "List the caller’s personal directories and directories in organizations they own or administer. Client identifiers are masked."
 	case "/sso/get-provider":

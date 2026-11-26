@@ -17,8 +17,10 @@ type ProviderMutation struct {
 	AuthenticationBoundaryChanged     bool
 }
 
-// MutationGuard runs inside a transaction and may be retried after a database
-// conflict. Return an error to deny the operation. Keep the callback read-only.
+// MutationGuard reviews a provider deletion, metadata replacement or general
+// update. It runs inside the store's transaction, as another runtime runs
+// it, and may be retried after a database conflict. Return an error to deny
+// the operation. Keep the callback read-only.
 type MutationGuard func(context.Context, ProviderMutation) error
 
 // DeletionStore performs a direct-session and tenant authorization check, then

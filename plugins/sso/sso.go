@@ -441,7 +441,7 @@ func New(o Options) (auth.Plugin, error) {
 			return ds.CheckSSODomainSchema(context.Background())
 		}
 		return nil
-	}, Endpoints: []auth.Endpoint{endpoint("/sso/register", "POST", register), endpoint("/sso/providers", "GET", read), endpoint("/sso/get-provider", "GET", read), endpoint("/sso/delete-provider", "POST", o.deleteProvider),
+	}, Endpoints: []auth.Endpoint{endpoint("/sso/register", "POST", register), endpoint("/sso/providers", "GET", read), endpoint("/sso/get-provider", "GET", read), endpoint("/sso/delete-provider", "POST", o.deleteProvider), endpoint("/sso/update-provider", "POST", o.updateProvider),
 		{Method: "POST", Path: "/sign-in/sso", Handler: o.start},
 		{Method: "GET", Path: "/sso/callback", Handler: o.finish},
 		{Method: "GET", Path: "/sso/callback/:providerId", Handler: o.finish}}}
@@ -464,7 +464,7 @@ func New(o Options) (auth.Plugin, error) {
 		if o.SAML.AllowIDPInitiated != nil {
 			acs.OpenAPI = json.RawMessage(`{"x-plainauth-idp-initiated":true}`)
 		}
-		plugin.Endpoints = append(plugin.Endpoints, endpoint("/sso/update-provider", "POST", o.updateSAMLMetadata), auth.Endpoint{Method: "GET", Path: "/sso/saml2/sp/metadata", Handler: o.samlMetadata}, acs)
+		plugin.Endpoints = append(plugin.Endpoints, auth.Endpoint{Method: "GET", Path: "/sso/saml2/sp/metadata", Handler: o.samlMetadata}, acs)
 	}
 	plugin.ValidateVerificationStore = func(s auth.Store, hooks auth.VerificationHookSet) error {
 		// A logout binding or request and a domain token are written inside the
