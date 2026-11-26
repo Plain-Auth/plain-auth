@@ -39697,5 +39697,26 @@
       "test": "client/jwt_test.go",
       "marker": "default key path still served after a custom path was configured"
     }
+  ],
+  "plugin-symbol/jwt/JwtOptions/adapter": [
+    {
+      "label": "Keep signing keys in a host keyring outside the main store, and choose each tenant's keys from the request context for publication, issuance, session headers and verification",
+      "test": "conformance/goapi/jwt_key_store_test.go",
+      "marker": "keyring selected the same key for two tenants",
+      "complete": true
+    },
+    {
+      "label": "Refuse a pinned key ID from another tenant's keyring and verify host calls only against the caller's tenant",
+      "test": "conformance/goapi/jwt_key_store_test.go",
+      "marker": "verified a token with another tenant's keyring"
+    }
+  ],
+  "docs/content/docs/plugins/jwt.mdx#L576": [
+    {
+      "label": "Store and read signing keys through an in-memory keyring instead of the database, choosing each tenant's keys from the request context, with no regeneration per request",
+      "test": "conformance/goapi/jwt_key_store_test.go",
+      "marker": "tenant key was generated more than once",
+      "complete": true
+    }
   ]
 }

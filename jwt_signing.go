@@ -97,7 +97,7 @@ func (a *Auth) SignJWT(ctx context.Context, subject string, settings JWTSignOpti
 	var row StoredJWTKey
 	var err error
 	if settings.KeyID != "" {
-		lookup, ok := a.opts.Store.(JWTKeyLookup)
+		lookup, ok := a.jwtKeys().(JWTKeyLookup)
 		if !ok {
 			return "", errors.New("jwt: store does not support signing by key ID")
 		}
@@ -169,7 +169,7 @@ func (opts *JWTOptions) verificationAlgorithms() []jose.SignatureAlgorithm {
 }
 
 func (a *Auth) jwtVerificationKey(ctx context.Context, now time.Time, header jose.Header) (any, error) {
-	rows, err := a.opts.Store.(JWTStore).PublicJWTKeys(ctx, now.Add(-*a.serviceJWT.GracePeriod))
+	rows, err := a.jwtKeys().PublicJWTKeys(ctx, now.Add(-*a.serviceJWT.GracePeriod))
 	if err != nil {
 		return nil, err
 	}

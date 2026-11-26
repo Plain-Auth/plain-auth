@@ -30,6 +30,13 @@ type JWTOptions struct {
 	GracePeriod                  *time.Duration
 	DisableHeader                bool
 	DefinePayload                func(context.Context, SessionResult) (map[string]any, error)
+	// KeyStore keeps signing keys outside the main Store, for example in
+	// memory, in a secret manager or in a per-tenant keyring chosen from the
+	// context. It may also implement JWTKeyLookup to support
+	// JWTSignOptions.KeyID. When nil, the main Store must implement JWTStore.
+	// The store, not the plugin, picks the active key and serializes its
+	// generation, so concurrent requests share one new key.
+	KeyStore JWTStore
 }
 
 type PublicJWTKey struct {
@@ -42,9 +49,26 @@ type StoredJWTKey struct {
 	EncryptedPrivateKey string
 }
 
+// JWTStore keeps the plugin's signing keys. Both methods receive the request
+// context, or the context a host passes to SignJWT and VerifyJWT, so an
+// implementation can choose a tenant's keyring from values a host middleware
+// adds.
 type JWTStore interface {
+	// ActiveJWTKey returns the newest key for algorithm that has not expired
+	// at now. With none, it calls generate, saves the new key and returns
+	// it. Serialize generation so concurrent callers share one key.
 	ActiveJWTKey(ctx context.Context, algorithm string, now time.Time, generate func() (StoredJWTKey, error)) (StoredJWTKey, error)
+	// PublicJWTKeys returns the keys with no expiry or an expiry after
+	// cutoff, oldest first.
 	PublicJWTKeys(ctx context.Context, cutoff time.Time) ([]PublicJWTKey, error)
+}
+
+// jwtKeys is the configured key store, or the main Store.
+func (a *Auth) jwtKeys() JWTStore {
+	if a.serviceJWT.KeyStore != nil {
+		return a.serviceJWT.KeyStore
+	}
+	return a.opts.Store.(JWTStore)
 }
 
 func NewJWT(opts JWTOptions) (Plugin, error) {
@@ -93,10 +117,14 @@ func NewJWT(opts JWTOptions) (Plugin, error) {
 	return Plugin{
 		ID: "jwt", serviceJWT: &opts,
 		ValidateStore: func(store Store) error {
-			if _, ok := store.(JWTStore); !ok {
-				return errors.New("jwt: a JWTStore is required")
+			var keys any = opts.KeyStore
+			if opts.KeyStore == nil {
+				if _, ok := store.(JWTStore); !ok {
+					return errors.New("jwt: a JWTStore is required")
+				}
+				keys = store
 			}
-			if check, ok := store.(interface{ CheckJWKS() error }); ok {
+			if check, ok := keys.(interface{ CheckJWKS() error }); ok {
 				return check.CheckJWKS()
 			}
 			return nil
@@ -142,7 +170,7 @@ func (a *Auth) PublicJWKS(ctx context.Context) (jose.JSONWebKeySet, error) {
 		return jose.JSONWebKeySet{}, &APIError{404, "NOT_FOUND", "JWT plugin is not enabled"}
 	}
 	now := a.now().UTC().Truncate(time.Millisecond)
-	store := a.opts.Store.(JWTStore)
+	store := a.jwtKeys()
 	cutoff := now.Add(-*opts.GracePeriod)
 	rows, err := store.PublicJWTKeys(ctx, cutoff)
 	if err != nil {
@@ -175,7 +203,7 @@ func (a *Auth) PublicJWKS(ctx context.Context) (jose.JSONWebKeySet, error) {
 
 func (a *Auth) activeSigningKey(ctx context.Context, now time.Time, algorithm string) (StoredJWTKey, error) {
 	opts := a.serviceJWT
-	return a.opts.Store.(JWTStore).ActiveJWTKey(ctx, algorithm, now, func() (StoredJWTKey, error) {
+	return a.jwtKeys().ActiveJWTKey(ctx, algorithm, now, func() (StoredJWTKey, error) {
 		var private crypto.Signer
 		var err error
 		var curve string

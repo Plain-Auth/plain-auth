@@ -45,7 +45,9 @@
       - [x] Suppress the assertion on session retrieval when requested ([test](../../../adapters/sqlstore/jwt_test.go#L144))
       - [x] By default, send the token header on session retrieval and expose it to browsers; omit it once disabled ([test](../../../adapters/sqlstore/jwt_test.go#L139))
     - [ ] `schema`
-    - [ ] `adapter`
+    - [x] `adapter` ([test](../../../conformance/goapi/jwt_key_store_test.go#L150))
+      - [x] Keep signing keys in a host keyring outside the main store, and choose each tenant's keys from the request context for publication, issuance, session headers and verification ([test](../../../conformance/goapi/jwt_key_store_test.go#L150))
+      - [x] Refuse a pinned key ID from another tenant's keyring and verify host calls only against the caller's tenant ([test](../../../conformance/goapi/jwt_key_store_test.go#L182))
   - [ ] `JWKOptions`
     - [x] Generate and independently verify keys for each supported algorithm with the default RSA modulus length ([test](../../../adapters/sqlstore/jwt_test.go#L267))
     - [x] `alg` ([test](../../../adapters/sqlstore/jwt_test.go#L267))
@@ -164,4 +166,5 @@
     - [ ] Modify Issuer, Audience, Subject or Expiration time
       - [x] Sign with a configured issuer, audience and lifetime that an independent verifier accepts ([test](../../../adapters/sqlstore/jwt_test.go#L126))
       - [x] Default to the server URL as issuer and audience and to a 15-minute lifetime on both servers ([test](../../../conformance/core.test.mjs#L456))
-    - [ ] Custom Adapter
+    - [x] Custom Adapter ([test](../../../conformance/goapi/jwt_key_store_test.go#L153))
+      - [x] Store and read signing keys through an in-memory keyring instead of the database, choosing each tenant's keys from the request context, with no regeneration per request ([test](../../../conformance/goapi/jwt_key_store_test.go#L153))

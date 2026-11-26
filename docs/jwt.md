@@ -39,8 +39,20 @@ Configure the receiving service with the auth server's public JWKS address, expe
 | `GracePeriod` | An expired signing key remains published for thirty days by default. Set a duration pointer to change that window. |
 | `JWKSPath` | Sets the public verification endpoint relative to the auth mount. Defaults to `/jwks`. |
 | `DefinePayload` | Receives the authenticated session. The default payload includes the public user profile. A callback can select individual application claims. The server supplies the subject, issuer, audience and timestamps. |
+| `KeyStore` | Keeps signing keys outside the main store. See [Keep keys in your own store](#keep-keys-in-your-own-store). |
 
 All auth instances sharing signing keys need the same encryption key configuration. The SQL store persists the encrypted private JWK under the active encryption key version and its public counterpart separately. The JWKS endpoint publishes public fields. The host can use `Auth.IssueJWT(ctx, headers)` for authenticated issuance and `Auth.PublicJWKS(ctx)` for public key discovery.
+
+## Keep keys in your own store
+
+Set `KeyStore` to a `plainauth.JWTStore` to keep signing keys in memory, in a secret manager or in a per-tenant keyring instead of the main store, which then needs no `jwks` table.
+
+```go
+keys := tenantKeyring{} // your JWTStore
+p, err := jwt.New(jwt.Options{KeyStore: keys})
+```
+
+`ActiveJWTKey` returns the newest unexpired key for an algorithm, or calls `generate` once under the store's own lock and saves the new key. `PublicJWTKeys` lists the keys with no expiry or one after the cutoff. Implement `plainauth.JWTKeyLookup` as well to support `JWTSignOptions.KeyID`. Both methods receive the request context, or the context your code passes to `SignJWT` and `VerifyJWT`, so a host middleware can put the tenant on the request context and the store choose its keyring from it. Another runtime takes a pair of functions and picks the key itself without serializing creation; here the store picks the key, so concurrent requests share one new key. [Tenant keyring test](../conformance/goapi/jwt_key_store_test.go)
 
 ## Sign and verify from Go
 
