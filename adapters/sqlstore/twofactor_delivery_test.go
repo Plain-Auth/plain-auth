@@ -431,11 +431,12 @@ func TestDeliveredCodeSendsInBackground(t *testing.T) {
 		failNext = true
 		mu.Unlock()
 		challenge := h.challenge(h.first, owner)
+		failures := logs.count("Failed to send two-factor OTP")
 		if w := h.request(h.first, "two-factor/send-otp", map[string]any{}, 200, challenge); strings.TrimSpace(w.Body.String()) != `{"status":true}` {
 			t.Fatal("a failed send did not answer status true", w.Body)
 		}
 		msg, _ := latest()
-		if logs.count("Failed to send two-factor OTP") != 1 || logs.count(msg.Code) != 0 {
+		if logs.count("Failed to send two-factor OTP") != failures+1 || logs.count(msg.Code) != 0 {
 			t.Fatal("the failed delivery was not logged once without its code")
 		}
 		h.request(h.second, "two-factor/verify-otp", map[string]any{"code": msg.Code}, 200, challenge)
