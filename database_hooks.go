@@ -34,10 +34,11 @@ type DatabaseHooks struct {
 	// password reset links, account deletion links, browser OAuth flows,
 	// magic links, one-time tokens, email and phone codes, two-factor sign-in
 	// challenges, delivered codes and remembered browsers, passkey challenges,
-	// wallet nonces and OAuth authorization codes. Spending or removing a
-	// record is its delete. A wrong guess counted against a code or a
-	// two-factor challenge is its update, which has no before hook: the delete
-	// before hooks run before every guess. They may not change the record.
+	// wallet nonces, enterprise sign-in state, SSO domain tokens and OAuth
+	// authorization codes. Spending or removing a record is its delete. A
+	// wrong guess counted against a code or a two-factor challenge is its
+	// update, which has no before hook: the delete before hooks run before
+	// every guess. They may not change the record.
 	Verification ModelHooks[VerificationRecord]
 }
 
@@ -49,9 +50,9 @@ type VerificationRecord struct {
 	// challenge's ID is derived from its stored key, and a wallet nonce's from
 	// the nonce; each is the row ID the SQL store gives it. An email or phone
 	// code's ID is its stored row's; each send stores a new one. A two-factor
-	// record's and an authorization code's ID is its stored row's too; a new
-	// code's is derived from its stored identifier. It cannot redeem the
-	// record, but keep it private.
+	// record's, an SSO domain token's and an authorization code's ID is its
+	// stored row's too; a new code's is derived from its stored identifier.
+	// It cannot redeem the record, but keep it private.
 	ID string
 	// Identifier is the kind of record: "reset-password", "delete-account",
 	// "oauth-state", "magic-link", "one-time-token", an email code's
@@ -60,8 +61,9 @@ type VerificationRecord struct {
 	// "phone-number-reset", a two-factor sign-in challenge's "2fa", a
 	// delivered second-factor code's "2fa-otp", a remembered browser's
 	// "trust-device", a passkey challenge's "passkey-registration" or
-	// "passkey-authentication", a wallet nonce's "siwe", or an OAuth
-	// authorization code's "authorization-code".
+	// "passkey-authentication", a wallet nonce's "siwe", an SSO domain
+	// token's "sso-domain-verification", or an OAuth authorization code's
+	// "authorization-code".
 	Identifier string
 	// UserID is the record's owner. An OAuth flow has one only when it
 	// links an account to a signed-in user. A one-time token names the user
@@ -72,7 +74,9 @@ type VerificationRecord struct {
 	// names the signed-in user it is for; a first-use registration's, whose
 	// account may not exist yet, and a signed-out sign-in's name none. A
 	// wallet nonce, bound to no wallet until a signed message redeems it,
-	// names none. An authorization code names the user who approved it.
+	// names none. An enterprise sign-in's flow names none, nor does an SSO
+	// domain token, which proves a domain. An authorization code names the
+	// user who approved it.
 	UserID    string
 	ExpiresAt time.Time
 }
@@ -274,8 +278,6 @@ func (a *Auth) checkDatabaseHooks() error {
 		need("phone-number", a.HasPlugin("phone-number"))
 	}
 	if d.verification.set() {
-		// SSO's logout and domain records do not run them yet.
-		need("sso", a.HasPlugin("sso"))
 		// Two-factor records are decided inside the store's transaction; the
 		// hooks follow the rows the store reports and the IDs the Auth gives.
 		if _, ok := a.opts.Store.(FactorRecordReporter); a.HasPlugin("two-factor") && !ok {
@@ -772,7 +774,7 @@ func tokenRecord(kind string, t PasswordResetToken) VerificationRecord {
 
 // oauthFlowRecord is a browser OAuth flow as a verification record.
 func oauthFlowRecord(f OAuthFlow) VerificationRecord {
-	return VerificationRecord{ID: f.State, Identifier: "oauth-state", UserID: f.LinkUserID, ExpiresAt: f.ExpiresAt}
+	return VerificationRecord{ID: f.State, Identifier: "oauth-state", UserID: f.LinkUserID, ExpiresAt: f.ExpiresAt.UTC().Truncate(time.Millisecond)}
 }
 
 // keyedRecordID is the ID of a magic link ("ml-") or one-time token ("ot-")

@@ -8329,6 +8329,11 @@
       "label": "Require host-managed recipient credentials for encrypted directory registrations on each SQL engine",
       "test": "adapters/sqlstore/sso_saml_test.go",
       "marker": "t.Fatal(\"encrypted registration on a keyless host\""
+    },
+    {
+      "label": "Run the domain token's verification create hooks; a declined token registers the provider as pending",
+      "test": "adapters/sqlstore/sso_hooks_test.go",
+      "marker": "// A declined token registers the provider, and verification answers 404."
     }
   ],
   "plugin/sso/GET /sso/providers": [
@@ -8542,6 +8547,11 @@
       "label": "Validate the signed query at entry and use the application callback after a SAML assertion",
       "test": "adapters/sqlstore/sso_saml_test.go",
       "marker": "t.Run(\"SAML keeps the application return"
+    },
+    {
+      "label": "Run the enterprise flow's verification create hooks; a declined flow is never stored",
+      "test": "adapters/sqlstore/sso_hooks_test.go",
+      "marker": "// A declined enterprise flow is never stored."
     }
   ],
   "plugin/sso/ /sso/callback/:providerId": [
@@ -8594,6 +8604,16 @@
       "test": "adapters/sqlstore/sso_user_validation_test.go",
       "marker": "func TestEnterpriseOIDCUserValidation(t *testing.T) {",
       "label": "ValidateUserInfo checks an enterprise OIDC sign-up and a returning sign-in with the SSO provider ID and raw claims, and a refusal returns to the error callback with error and error_description"
+    },
+    {
+      "label": "Spend the flow with its verification delete hooks before the code exchange; a declined spend redirects with state_mismatch and keeps it",
+      "test": "adapters/sqlstore/sso_hooks_test.go",
+      "marker": "// A declined callback keeps the flow, so the retry signs in."
+    },
+    {
+      "label": "An identity provider's error callback still spends the flow with its verification hooks",
+      "test": "adapters/sqlstore/sso_hooks_test.go",
+      "marker": "// A provider error still spends the flow with its hooks."
     }
   ],
   "plugin/sso/ /sso/callback": [
@@ -8776,6 +8796,11 @@
       "label": "Replace an expired challenge once across two database instances",
       "test": "adapters/sqlstore/sso_domain_test.go",
       "marker": "concurrent renewal returned different challenge tokens"
+    },
+    {
+      "label": "Return a live token without hooks and run a new token's verification create hooks; a declined reissue changes nothing",
+      "test": "adapters/sqlstore/sso_hooks_test.go",
+      "marker": "// A declined reissue leaves the earlier token and proof as they were."
     }
   ],
   "plugin/sso/POST /sso/verify-domain": [
@@ -8798,6 +8823,11 @@
       "label": "Reject dotted, overlong and oversized verification names before the resolver is called",
       "test": "adapters/sqlstore/sso_domain_test.go",
       "marker": "malformed verification name reached DNS"
+    },
+    {
+      "label": "Verify and delete a provider without verification hooks",
+      "test": "adapters/sqlstore/sso_hooks_test.go",
+      "marker": "// Verifying and deleting a provider run no verification hooks."
     }
   ],
   "plugin-symbol/sso/SSOOptions/domainVerification": [
@@ -8810,6 +8840,11 @@
       "label": "Bind DNS verification to the nonsecret identity source and require fresh proof when it changes",
       "test": "adapters/sqlstore/sso_domain_test.go",
       "marker": "identity source change reused the old DNS challenge"
+    },
+    {
+      "label": "Domain tokens run the verification create hooks",
+      "test": "adapters/sqlstore/sso_hooks_test.go",
+      "marker": "func TestVerificationHooksAroundSSODomains(t *testing.T) {"
     }
   ],
   "docs/content/docs/plugins/sso/domain-verification.mdx#L8": [
@@ -9617,6 +9652,16 @@
       "label": "A SAML profile carries the raw attributes ValidateUserInfo sees, one value as a string and several as a list",
       "test": "plugins/sso/saml_test.go",
       "marker": "func TestSAMLProfileRawAttributes(t *testing.T) {"
+    },
+    {
+      "label": "A response with a bad signature still spends the browser's RelayState with its verification hooks",
+      "test": "adapters/sqlstore/sso_saml_test.go",
+      "marker": "// A forged response still spends the browser's RelayState with its hooks."
+    },
+    {
+      "label": "A declined RelayState answers 400 INVALID_OAUTH_STATE and keeps the flow for a retry",
+      "test": "adapters/sqlstore/sso_saml_test.go",
+      "marker": "// A declined RelayState answers 400 and keeps the flow."
     }
   ],
   "docs/content/docs/plugins/polar.mdx#L17/Checkout Integration": [
@@ -19172,6 +19217,16 @@
       "label": "Run verification hooks around OAuth authorization codes on SQLite, PostgreSQL and MySQL: the create hooks run after the client, session and consent checks, a declined code is sent but redeems nothing, the exchange's delete hooks run after its client, redirect URI, PKCE, user and session checks and once across an offline grant's two passes, and a failed delete after hook removes the tokens the exchange stored",
       "test": "adapters/sqlstore/oauth_code_hooks_test.go",
       "marker": "func TestVerificationHooksAroundAuthorizationCodes(t *testing.T) {"
+    },
+    {
+      "label": "Run verification hooks around enterprise sign-in state on SQLite, PostgreSQL and MySQL: OIDC flows spend their oauth-state record before the code exchange, a declined spend refuses the callback and keeps the flow, and a state without its browser cookie runs none",
+      "test": "adapters/sqlstore/sso_hooks_test.go",
+      "marker": "func TestVerificationHooksAroundEnterpriseSignIn(t *testing.T) {"
+    },
+    {
+      "label": "Run verification hooks around SSO domain tokens on SQLite, PostgreSQL and MySQL: a declined token registers the provider as pending with a token that cannot be verified, a declined reissue changes nothing, and returning, verifying or deleting runs none",
+      "test": "adapters/sqlstore/sso_hooks_test.go",
+      "marker": "func TestVerificationHooksAroundSSODomains(t *testing.T) {"
     }
   ],
   "docs/content/docs/concepts/database.mdx#L881": [
@@ -19349,6 +19404,11 @@
       "label": "Run one verification delete after hook among concurrent exchanges of an authorization code, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/oauth_code_hooks_test.go",
       "marker": "// Concurrent exchanges of one authorization code run one delete after hook."
+    },
+    {
+      "label": "Store one SSO domain token and run its create after hook once among concurrent requests, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_hooks_test.go",
+      "marker": "// Concurrent domain token requests store one token and run its after hooks once."
     }
   ],
   "docs/content/docs/concepts/database.mdx#L891/Example Usage": [
@@ -19412,7 +19472,7 @@
       "marker": "// Run account hooks around the credential a sign-up stores, password"
     },
     {
-      "label": "Configure verification hooks for password reset and account deletion links, browser OAuth flows, magic links, one-time tokens, email and phone codes, two-factor challenges, delivered codes and remembered browsers, passkey challenges, wallet nonces and OAuth authorization codes, and refuse the plugins, hooks and stores that would bypass them",
+      "label": "Configure verification hooks for password reset and account deletion links, browser OAuth flows, magic links, one-time tokens, email and phone codes, two-factor challenges, delivered codes and remembered browsers, passkey challenges, wallet nonces, enterprise sign-in state, SSO domain tokens and OAuth authorization codes, and refuse the plugins, hooks and stores that would bypass them",
       "test": "conformance/goapi/database_verification_hooks_test.go",
       "marker": "func TestDatabaseVerificationHooksRefuseBypassingFeatures(t *testing.T) {"
     }
@@ -22149,6 +22209,11 @@
       "label": "A verification create hook that declines a browser OAuth flow fails the sign-in start with 500 STATE_GENERATION_ERROR and sets no state cookie",
       "test": "adapters/sqlstore/verification_hooks_test.go",
       "marker": "t.Fatal(\"a declined OAuth state answered\", res.StatusCode, problem.Code)"
+    },
+    {
+      "label": "A verification create hook that declines an enterprise sign-in's state fails /sign-in/sso with 500 STATE_GENERATION_ERROR and sets no state cookie",
+      "test": "adapters/sqlstore/sso_hooks_test.go",
+      "marker": "// A declined enterprise flow is never stored."
     }
   ],
   "docs/content/docs/reference/errors/state_mismatch.mdx#L169": [

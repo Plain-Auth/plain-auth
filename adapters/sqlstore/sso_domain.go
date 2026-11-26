@@ -71,18 +71,37 @@ func (s *Store) CreateSSODomainProvider(ctx context.Context, actor sso.Actor, p 
 	}
 	return ch.Token, nil
 }
-func (s *Store) issueDomainToken(ctx context.Context, tx *sql.Tx, p sso.Provider, ch *sso.DomainChallenge) error {
+
+// issueDomainToken stores a new token for p, asking the request's gate first.
+// A token declined at registration (initial) is returned but not stored while
+// the provider still starts pending; a declined reissue writes nothing, so a
+// token for an earlier scope cannot verify the current one.
+func (s *Store) issueDomainToken(ctx context.Context, tx *sql.Tx, p sso.Provider, ch *sso.DomainChallenge, initial bool) error {
+	gate := auth.VerificationGateFrom(ctx)
 	now := time.Now().UTC()
+	if gate != nil {
+		now = gate.Now() // every run names the same record
+	}
 	ch.ProviderID = p.ProviderID
 	ch.Domain = p.Domain
 	ch.Token = rand.Text()[:24]
 	id := originDigest("dc-", p.ID)
-	if _, err := tx.ExecContext(ctx, s.bind(`DELETE FROM "verification" WHERE "id"=?`), id); err != nil {
+	expires := now.Add(7 * 24 * time.Hour)
+	keep, err := gate.Create(sso.DomainChallengeRecord(id, expires))
+	if err != nil {
 		return err
 	}
-	q := `INSERT INTO "verification" ("id","identifier","value","expiresAt","createdAt","updatedAt") VALUES (?,?,?,?,?,?)`
-	if _, err := tx.ExecContext(ctx, s.bind(q), id, ch.Identifier, ch.Token, s.date(now.Add(7*24*time.Hour)), s.date(now), s.date(now)); err != nil {
-		return err
+	if !keep && !initial {
+		return nil
+	}
+	if keep {
+		if _, err := tx.ExecContext(ctx, s.bind(`DELETE FROM "verification" WHERE "id"=?`), id); err != nil {
+			return err
+		}
+		q := `INSERT INTO "verification" ("id","identifier","value","expiresAt","createdAt","updatedAt") VALUES (?,?,?,?,?,?)`
+		if _, err := tx.ExecContext(ctx, s.bind(q), id, ch.Identifier, ch.Token, s.date(expires), s.date(now), s.date(now)); err != nil {
+			return err
+		}
 	}
 	if _, err := tx.ExecContext(ctx, s.bind(`UPDATE "ssoProvider" SET "domainVerified"=? WHERE "id"=?`), false, p.ID); err != nil {
 		return err
@@ -150,7 +169,7 @@ func (s *Store) SSODomainChallenge(ctx context.Context, actor sso.Actor, id, ide
 		if !issue {
 			return sso.ErrNoChallenge
 		}
-		return s.issueDomainToken(ctx, tx, p, &ch)
+		return s.issueDomainToken(ctx, tx, p, &ch, false)
 	})
 	if err != nil {
 		return sso.DomainChallenge{}, err

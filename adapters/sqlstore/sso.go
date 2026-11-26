@@ -141,7 +141,7 @@ func (s *Store) ssoRegister(ctx context.Context, a sso.Actor, p sso.Provider, li
 		if err != nil {
 			return err
 		}
-		if err = s.issueDomainToken(ctx, tx, p, challenge); err != nil {
+		if err = s.issueDomainToken(ctx, tx, p, challenge, true); err != nil {
 			return err
 		}
 	}

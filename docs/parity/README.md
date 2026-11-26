@@ -11,7 +11,7 @@
 | No linked test evidence | 4,445 |
 | Not applicable to a Go server | 387 |
 
-The inventory covers features, options, integrations and documentation topics. Partial verification means an open entry has a passing case somewhere beneath it. The checklists also contain 3,516 links from passing scenarios to tests. Adding a scenario leaves the inventory denominator unchanged.
+The inventory covers features, options, integrations and documentation topics. Partial verification means an open entry has a passing case somewhere beneath it. The checklists also contain 3,529 links from passing scenarios to tests. Adding a scenario leaves the inventory denominator unchanged.
 
 Entries that exist only for JavaScript clients, frameworks or runtimes are listed as not applicable, with the reason, and are left out of the totals. Backlog entries stay open on the roadmap but are not scheduled.
 
@@ -80,10 +80,10 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 | [Core API, sign-in providers and CLI](runtime.md) | 229 | 238 | 13 |
 | [Database adapters](adapters.md) | 32 | 193 | 31 |
 | [Authentication](authentication.md) | 128 | 366 | 0 |
-| [Core concepts](concepts.md) | 507 | 340 | 0 |
+| [Core concepts](concepts.md) | 510 | 340 | 0 |
 | [Managed infrastructure](infrastructure.md) | 0 | 528 | 0 |
 | [Framework integrations](integrations.md) | 7 | 24 | 201 |
-| [Reference and configuration](reference.md) | 406 | 255 | 4 |
+| [Reference and configuration](reference.md) | 407 | 255 | 4 |
 
 ## Plugins and integrations
 
@@ -122,7 +122,7 @@ Browse [authentication, storage and tools](#authentication-storage-and-tools), [
 | [Phone number](plugins/phone-number.md) | 39 | 67 | 0 |
 | [SCIM provisioning](plugins/scim.md) | 67 | 257 | 0 |
 | [Sign in with Ethereum](plugins/siwe.md) | 96 | 11 | 0 |
-| [Single sign-on](plugins/sso.md) | 93 | 314 | 0 |
+| [Single sign-on](plugins/sso.md) | 102 | 314 | 0 |
 | [Stripe](plugins/stripe.md) | 206 | 175 | 0 |
 | [Test utils](plugins/test-utils.md) | 69 | 18 | 0 |
 | [Username](plugins/username.md) | 33 | 54 | 0 |

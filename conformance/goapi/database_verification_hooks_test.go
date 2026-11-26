@@ -2,7 +2,12 @@ package goapi_test
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
+	"crypto/x509/pkix"
 	"fmt"
+	"math/big"
 	"net/url"
 	"reflect"
 	"strings"
@@ -16,6 +21,7 @@ import (
 	"github.com/Plain-Org/plain-auth/plugins/oauthprovider"
 	"github.com/Plain-Org/plain-auth/plugins/passkey"
 	"github.com/Plain-Org/plain-auth/plugins/siwe"
+	"github.com/Plain-Org/plain-auth/plugins/sso"
 	"github.com/Plain-Org/plain-auth/schema"
 )
 
@@ -245,10 +251,11 @@ func TestDatabaseVerificationHooks(t *testing.T) {
 	same(drain(), "delete-before:delete-account", "delete-after:delete-account", "session-delete-before", "user-delete-before", "session-delete-after")
 }
 
-// New refuses verification hooks that an enabled feature would bypass: SSO,
-// which keeps its records in its store, two-factor on a store that cannot
-// report the rows its calls lock, authorization codes on a store whose code
-// methods do not ask the request's verification gate, update before hooks with email and
+// New refuses verification hooks that an enabled feature would bypass: SAML
+// single logout, whose records do not run them yet, two-factor on a store
+// that cannot report the rows its calls lock, SSO domain tokens and
+// authorization codes on a store whose methods do not ask the request's
+// verification gate, update before hooks with email and
 // phone codes and two-factor, which count a wrong guess as they judge it, and
 // delete hooks on a store that cannot read a deletion link, an OAuth flow, a
 // magic link, a one-time token, an email code, a passkey challenge or a
@@ -359,11 +366,58 @@ func TestDatabaseVerificationHooksRefuseBypassingFeatures(t *testing.T) {
 	if _, err := authn.New(factors); err == nil || !strings.Contains(err.Error(), "ReportsFactorRecords") {
 		t.Fatal("verification create hooks were accepted with two-factor without ReportsFactorRecords:", err)
 	}
-	// SSO's records stay in its store.
-	refused := base()
-	refused.Plugins = []authn.Plugin{{ID: "sso"}}
-	if _, err := authn.New(refused); err == nil || !strings.Contains(err.Error(), "sso") {
-		t.Fatal("verification hooks were accepted with sso:", err)
+	// SSO runs them for its sign-in state, through the OAuth flow store, and
+	// for domain tokens on a store whose SSO methods ask the request's gate.
+	enterprise := func(o sso.Options) authn.Plugin {
+		t.Helper()
+		p, err := sso.New(o)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return p
+	}
+	withSSO := base()
+	withSSO.EmailAndPassword = false
+	withSSO.Plugins = []authn.Plugin{enterprise(sso.Options{})}
+	if _, err := authn.New(withSSO); err == nil || !strings.Contains(err.Error(), "directory store") {
+		t.Fatal("verification hooks with SSO on the memory store answered", err)
+	}
+	directory, err := sqlstore.OpenWithOptions(t.Context(), "sqlite", ":memory:", []string{"sso-domain-verification"}, schema.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer directory.Close()
+	withSSO.Store = directory
+	withSSO.Plugins = []authn.Plugin{enterprise(sso.Options{DomainVerification: &sso.DomainVerificationOptions{}})}
+	withSSO.DatabaseHooks.Verification.Update = observe
+	withSSO.DatabaseHooks.Verification.Delete = observe
+	if _, err := authn.New(withSSO); err != nil {
+		t.Fatal("verification hooks were refused with SSO on SQLite:", err)
+	}
+	type domainStore = sso.DomainStore
+	withSSO.Store = struct {
+		authn.Store
+		domainStore
+	}{directory, directory}
+	if _, err := authn.New(withSSO); err == nil || !strings.Contains(err.Error(), "GatesSSOVerifications") {
+		t.Fatal("verification hooks were accepted with SSO domain tokens on a store that does not ask the gate:", err)
+	}
+	withSSO.Plugins = []authn.Plugin{enterprise(sso.Options{})}
+	if _, err := authn.New(withSSO); err != nil && strings.Contains(err.Error(), "GatesSSOVerifications") {
+		t.Fatal("SSO without domain verification was refused for its tokens:", err)
+	}
+	// Single logout's records do not run them yet, and session delete hooks
+	// stay refused with SSO, which ends sessions inside its store.
+	signer, certificate := samlSigner(t)
+	withSSO.Store = directory
+	withSSO.Plugins = []authn.Plugin{enterprise(sso.Options{SAML: &sso.SAMLOptions{EnableSingleLogout: true, RequestSigner: signer, RequestCertificate: certificate}})}
+	if _, err := authn.New(withSSO); err == nil || !strings.Contains(err.Error(), "SAML single logout") {
+		t.Fatal("verification hooks were accepted with SAML single logout:", err)
+	}
+	withSSO.Plugins = []authn.Plugin{enterprise(sso.Options{})}
+	withSSO.DatabaseHooks.Session.Delete = authn.OperationHooks[authn.SessionRecord]{After: func(context.Context, authn.SessionRecord, *authn.HookContext) error { return nil }}
+	if _, err := authn.New(withSSO); err == nil || !strings.Contains(err.Error(), "sso") {
+		t.Fatal("session delete hooks were accepted with SSO:", err)
 	}
 	// Authorization codes run them on a store whose code methods ask the
 	// request's gate; the memory store keeps no codes and gets the plugin's
@@ -561,4 +615,24 @@ func TestDatabaseVerificationHooksRefuseBypassingFeatures(t *testing.T) {
 	if _, err := authn.New(deletions); err != nil {
 		t.Fatal("verification delete hooks were refused with the memory store:", err)
 	}
+}
+
+// samlSigner returns a throwaway key and self-signed certificate for SAML
+// request signing.
+func samlSigner(t *testing.T) (*rsa.PrivateKey, *x509.Certificate) {
+	t.Helper()
+	key, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatal(err)
+	}
+	template := &x509.Certificate{SerialNumber: big.NewInt(1), Subject: pkix.Name{CommonName: "sp.example"}, NotBefore: time.Now().Add(-time.Hour), NotAfter: time.Now().Add(time.Hour)}
+	der, err := x509.CreateCertificate(rand.Reader, template, template, &key.PublicKey, key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	certificate, err := x509.ParseCertificate(der)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return key, certificate
 }

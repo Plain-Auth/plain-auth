@@ -113,10 +113,14 @@ func runEnterpriseSAMLBrowser(t *testing.T, encrypted, logout bool) {
 			}
 			issuer, e := oauthprovider.New(oauthprovider.Options{Scopes: []string{"read"}, Authorization: oauthprovider.BrowserAuthorizationOptions{LoginPage: "/login"}})
 			must(e)
-			host := func(s *Store, encryption *sso.SAMLEncryption, policy sso.SAMLDirectoryPolicy, disableSignup bool) *auth.Auth {
+			host := func(s *Store, encryption *sso.SAMLEncryption, policy sso.SAMLDirectoryPolicy, disableSignup bool, hooks ...auth.DatabaseHooks) *auth.Auth {
 				plug, e := sso.New(sso.Options{DisableImplicitSignUp: disableSignup, SAML: &sso.SAMLOptions{EnableSingleLogout: logout, EnableIDPInitiatedLogout: logout, AllowIDPInitiated: policy, IDPInitiatedCallbackURL: "/global-portal", Encryption: encryption, RequestSigner: spKey, RequestCertificate: spCert, TrustEmailVerified: true}, DomainVerification: &sso.DomainVerificationOptions{Resolver: dns}})
 				must(e)
-				a, e := auth.New(auth.Options{BaseURL: app.URL, BasePath: "/identity", Secret: strings.Repeat("s", 40), Store: s, RateLimit: new(bool), EmailAndPassword: true, Plugins: []auth.Plugin{plug, issuer}})
+				o := auth.Options{BaseURL: app.URL, BasePath: "/identity", Secret: strings.Repeat("s", 40), Store: s, RateLimit: new(bool), EmailAndPassword: true, Plugins: []auth.Plugin{plug, issuer}}
+				if len(hooks) > 0 {
+					o.DatabaseHooks = hooks[0]
+				}
+				a, e := auth.New(o)
 				must(e)
 				return a
 			}
@@ -293,6 +297,56 @@ func runEnterpriseSAMLBrowser(t *testing.T, encrypted, logout bool) {
 			must(owner.VerifySSODomain(ctx, "work"))
 
 			if !encrypted && !logout {
+				t.Run("verification hooks around the RelayState", func(t *testing.T) {
+					log := newHookLog(t, first, second)
+					savedNode, savedPeer := node, peer
+					node, peer = host(first, keys, portalPolicy, false, log.hooks()), host(second, keys, portalPolicy, false, log.hooks())
+					defer func() { node, peer = savedNode, savedPeer }()
+					// A SAML sign-in's one state record is named by its RelayState.
+					h := newBrowser()
+					req, e := start(h)
+					must(e)
+					got, recs := log.drain()
+					log.same(got, "v-create-before:oauth-state", "v-create-after:oauth-state")
+					if recs[0].ID != req.RelayState || recs[0].Identifier != "oauth-state" || recs[0].UserID != "" || recs[0] != recs[1] {
+						t.Fatal("the RelayState's create hooks saw", recs)
+					}
+					// A forged response still spends the browser's RelayState with its hooks.
+					fields := form(req, "hooked-forged", "hooked-forged@staff.example", nil)
+					xml, e := base64.StdEncoding.DecodeString(fields.Get("SAMLResponse"))
+					must(e)
+					forged := url.Values{"RelayState": {fields.Get("RelayState")}, "SAMLResponse": {base64.StdEncoding.EncodeToString(bytes.ReplaceAll(xml, []byte("hooked-forged@"), []byte("hooked-attack@")))}}
+					if status, head, _ := post(h, forged, acs); status == 302 && head.Get("Location") == app.URL+"/home" {
+						t.Fatal("a forged response signed in")
+					}
+					got, _ = log.drain()
+					log.same(got, "v-delete-before:oauth-state", "v-delete-after:oauth-state")
+					// A declined RelayState answers 400 and keeps the flow.
+					h = newBrowser()
+					req, e = start(h)
+					must(e)
+					log.drain()
+					fields = form(req, "hooked-declined", "hooked-declined@staff.example", nil)
+					log.set(log.skip, "v-delete-before:oauth-state", true)
+					status, _, body := post(h, fields, acs)
+					log.set(log.skip, "v-delete-before:oauth-state", false)
+					if status != 400 || !strings.Contains(string(body), "INVALID_OAUTH_STATE") {
+						t.Fatal("a declined RelayState answered", status, string(body))
+					}
+					got, _ = log.drain()
+					log.same(got, "v-delete-before:oauth-state")
+					if status, head, _ := post(h, fields, acs); status != 302 || head.Get("Location") != app.URL+"/home" {
+						t.Fatal("the kept RelayState did not sign in", status, head.Get("Location"))
+					}
+					got, _ = log.drain()
+					log.same(got, "v-delete-before:oauth-state", "v-delete-after:oauth-state", "session-before", "session-after")
+					// A replay runs no hooks.
+					if status, _, _ := post(h, fields, acs); status != 400 {
+						t.Fatal("a replayed response answered", status)
+					}
+					got, _ = log.drain()
+					log.same(got)
+				})
 				t.Run("SAML keeps the application return during issuer login", func(t *testing.T) {
 					_, err := first.db.ExecContext(ctx, first.bind(`INSERT INTO "oauthClient" ("id","clientId","applicationType","redirectUris","tokenEndpointAuthMethod","scopes") VALUES ('rp-row','rp','native',?,'none',?)`), `["https://rp.example.test/done"]`, `["read"]`)
 					if err != nil {

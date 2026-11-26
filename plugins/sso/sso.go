@@ -309,7 +309,12 @@ func New(o Options) (auth.Plugin, error) {
 		}
 		var result Registered
 		if opt := o.DomainVerification; opt != nil {
-			result.DomainVerificationToken, err = store.(DomainStore).CreateSSODomainProvider(ctx, actor, p, limit, opt.identifier(id))
+			// The store asks the request's gate before storing the token, so its
+			// verification hooks run outside the store's transaction.
+			err = c.GateVerifications(func(ctx context.Context) (err error) {
+				result.DomainVerificationToken, err = store.(DomainStore).CreateSSODomainProvider(ctx, actor, p, limit, opt.identifier(id))
+				return err
+			})
 			verified := false
 			result.DomainVerified = &verified
 		} else {
@@ -410,6 +415,19 @@ func New(o Options) (auth.Plugin, error) {
 			acs.OpenAPI = json.RawMessage(`{"x-plainauth-idp-initiated":true}`)
 		}
 		plugin.Endpoints = append(plugin.Endpoints, endpoint("/sso/update-provider", "POST", o.updateSAMLMetadata), auth.Endpoint{Method: "GET", Path: "/sso/saml2/sp/metadata", Handler: o.samlMetadata}, acs)
+	}
+	plugin.ValidateVerificationStore = func(s auth.Store, _ auth.VerificationHookSet) error {
+		if o.SAML != nil && o.SAML.EnableSingleLogout {
+			return errors.New("auth: verification hooks do not run yet for SAML single logout")
+		}
+		// A domain token is written inside the store's transactions, which must
+		// ask the request's gate. A store without DomainStore gets
+		// ValidateStore's error instead.
+		_, dns := s.(DomainStore)
+		if _, ok := s.(VerificationGater); o.DomainVerification != nil && dns && !ok {
+			return errors.New("auth: verification hooks with SSO domain verification require a store implementing GatesSSOVerifications")
+		}
+		return nil
 	}
 	return plugin, nil
 }

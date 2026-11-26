@@ -101,7 +101,14 @@ func (o DomainVerificationOptions) challenge(c auth.EndpointContext, store Store
 	if !MutableProviderID(id) || c.Auth.HasOAuthProvider(id) {
 		return DomainChallenge{}, ErrMissing
 	}
-	return store.(DomainStore).SSODomainChallenge(c.Request.Context(), actor, id, o.identifier(id), issue)
+	// The store asks the request's gate before storing a new token, so its
+	// verification hooks run outside the store's transaction.
+	var ch DomainChallenge
+	err := c.GateVerifications(func(ctx context.Context) (err error) {
+		ch, err = store.(DomainStore).SSODomainChallenge(ctx, actor, id, o.identifier(id), issue)
+		return err
+	})
+	return ch, err
 }
 func (o DomainVerificationOptions) request(c auth.EndpointContext, store Store, actor Actor) (any, error) {
 	challenge, err := o.challenge(c, store, actor, true)
