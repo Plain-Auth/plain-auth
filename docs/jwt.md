@@ -42,9 +42,24 @@ Configure the receiving service with the auth server's public JWKS address, expe
 | `DisablePrivateKeyEncryption` | Stores private keys as plain JWK JSON. Encryption with the application's encryption key is the default and is recommended. An instance cannot sign with a key stored the other way and keeps choosing the newest live key, so when you change the setting delete the existing `jwks` rows, or wait for them to expire under `RotationInterval`. |
 | `RemoteJWKSURL` | Publishes the key set at another address. See [Publish keys elsewhere](#publish-keys-elsewhere). |
 | `Sign` | Signs every token with your own key or a key service. See [Sign with your own key or a key service](#sign-with-your-own-key-or-a-key-service). |
+| `SessionCookieCache` | Signs jwt-strategy browser session snapshots with the plugin's key. See [Sign browser session snapshots with the key set](#sign-browser-session-snapshots-with-the-key-set). |
 | `KeyStore` | Keeps signing keys outside the main store. See [Keep keys in your own store](#keep-keys-in-your-own-store). |
 
 All auth instances sharing signing keys need the same encryption key configuration. The SQL store persists the encrypted private JWK, unless `DisablePrivateKeyEncryption` is set, under the active encryption key version and its public counterpart separately. The JWKS endpoint publishes public fields. The host can use `Auth.IssueJWT(ctx, headers)` for authenticated issuance and `Auth.PublicJWKS(ctx)` for public key discovery.
+
+## Sign browser session snapshots with the key set
+
+Set `SessionCookieCache` to sign the `session_data` cookie of the jwt cache strategy with the plugin's primary key instead of the application secret, so services holding the published key set can verify a browser's session without calling the server.
+
+```go
+p, err := jwt.New(jwt.Options{SessionCookieCache: true, DisableHeader: true})
+auth, err := plainauth.New(plainauth.Options{
+    SessionCookieCache: &plainauth.SessionCookieCacheOptions{Strategy: plainauth.SessionCacheJWT},
+    Plugins: []plainauth.Plugin{p},
+})
+```
+
+A snapshot carries `typ` `plainauth.session-cache+jwt`, the key's `kid`, `iss` as the token issuer, `aud` `plainauth:session-cache`, `sub` as the user ID and `sid` as the session token. Verifiers must require that type and audience, so a service token signed with the same key never passes as a snapshot, and should treat `sid` as a credential. The names are this library's own; give a verifier configured for another implementation these values. `New` refuses the option with another cache strategy, with the token header on (session reads that issue the header always read the store, so the option would do nothing) or with `Sign`, and warns when the cache `MaxAge` exceeds `GracePeriod`. A snapshot stops verifying once its key leaves the grace period, where another runtime accepts any stored key with that ID; the next read is live and replaces it. [Snapshot tests](../adapters/sqlstore/jwt_test.go)
 
 ## Publish keys elsewhere
 

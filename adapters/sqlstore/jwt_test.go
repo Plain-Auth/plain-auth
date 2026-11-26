@@ -1,6 +1,7 @@
 package sqlstore
 
 import (
+	"bytes"
 	"context"
 	"crypto"
 	"crypto/ed25519"
@@ -9,6 +10,8 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"log/slog"
+	"net/http"
 	"net/http/httptest"
 	"strings"
 	"sync"
@@ -464,6 +467,187 @@ func TestJWTUnencryptedPrivateKey(t *testing.T) {
 			}
 			if w := token(build(jwtplugin.Options{})); w.Code != 500 {
 				t.Fatal("an encrypting instance signed with an unencrypted key", w.Code)
+			}
+		})
+	}
+}
+
+// With the plugin's SessionCookieCache, jwt-strategy session snapshots are
+// signed with the published key, bound to the user and session token, and
+// refused when signed any other way or by a key past its grace period.
+func TestJWTSessionCookieCache(t *testing.T) {
+	for _, dialect := range []string{"sqlite", "postgres", "mysql"} {
+		t.Run(dialect, func(t *testing.T) {
+			ctx := t.Context()
+			ddl, err := schema.Generate(dialect, []string{"jwt"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			store, err := OpenWithSchema(ctx, dialect, organizationTestDSN(t, dialect), ddl)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer store.Close()
+			const origin = "https://snapshots.auth.test"
+			secret := strings.Repeat("s", 32)
+			build := func(opts jwtplugin.Options, cache *auth.SessionCookieCacheOptions, logger *slog.Logger) (*auth.Auth, error) {
+				p, err := jwtplugin.New(opts)
+				if err != nil {
+					return nil, err
+				}
+				return auth.New(auth.Options{Store: store, BaseURL: origin, Secret: secret, EmailAndPassword: true, Logger: logger, SessionCookieCache: cache, Plugins: []auth.Plugin{p}})
+			}
+			jwtCache := &auth.SessionCookieCacheOptions{Strategy: auth.SessionCacheJWT}
+			for _, cache := range []*auth.SessionCookieCacheOptions{nil, {Strategy: auth.SessionCacheCompact}, {Strategy: auth.SessionCacheJWE}} {
+				if _, err := build(jwtplugin.Options{SessionCookieCache: true, DisableHeader: true}, cache, nil); err == nil {
+					t.Fatal("accepted plugin-signed snapshots without the jwt cache strategy")
+				}
+			}
+			if _, err := build(jwtplugin.Options{SessionCookieCache: true}, jwtCache, nil); err == nil {
+				t.Fatal("accepted plugin-signed snapshots with the session token header on")
+			}
+			sign := func(context.Context, auth.JWTSigningRequest) (string, error) { return "", nil }
+			if _, err := build(jwtplugin.Options{SessionCookieCache: true, DisableHeader: true, Algorithm: "EdDSA", RemoteJWKSURL: "https://keys.example.test/jwks.json", Sign: sign}, jwtCache, nil); err == nil {
+				t.Fatal("accepted plugin-signed snapshots with a custom signer")
+			}
+			var logs bytes.Buffer
+			minute := time.Minute
+			if _, err := build(jwtplugin.Options{SessionCookieCache: true, DisableHeader: true, GracePeriod: &minute}, &auth.SessionCookieCacheOptions{Strategy: auth.SessionCacheJWT, MaxAge: time.Hour}, slog.New(slog.NewTextHandler(&logs, nil))); err != nil || !strings.Contains(logs.String(), "grace period") {
+				t.Fatal("missing warning about a grace period shorter than the snapshot lifetime", err)
+			}
+			a, err := build(jwtplugin.Options{SessionCookieCache: true, DisableHeader: true}, jwtCache, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			call := func(method, path, body string, cookies []*http.Cookie) *httptest.ResponseRecorder {
+				t.Helper()
+				r := httptest.NewRequest(method, origin+"/api/auth"+path, strings.NewReader(body))
+				r.Header.Set("Origin", origin)
+				r.Header.Set("Content-Type", "application/json")
+				for _, c := range cookies {
+					r.AddCookie(c)
+				}
+				w := httptest.NewRecorder()
+				a.ServeHTTP(w, r)
+				if w.Code != 200 {
+					t.Fatalf("%s %s: HTTP %d: %s", method, path, w.Code, w.Body)
+				}
+				return w
+			}
+			named := func(w *httptest.ResponseRecorder, suffix string) *http.Cookie {
+				for _, c := range w.Result().Cookies() {
+					if strings.HasSuffix(c.Name, suffix) && c.MaxAge >= 0 && c.Value != "" {
+						return c
+					}
+				}
+				return nil
+			}
+			signup := call("POST", "/sign-up/email", `{"email":"snap@example.test","password":"snapshot-password","name":"Before"}`, nil)
+			var account auth.AuthResult
+			if err := json.Unmarshal(signup.Body.Bytes(), &account); err != nil {
+				t.Fatal(err)
+			}
+			original := []*http.Cookie{named(signup, ".session_token"), named(signup, ".session_data")}
+			if original[0] == nil || original[1] == nil {
+				t.Fatal("sign-up did not set the session and snapshot cookies")
+			}
+			keySet := func() jose.JSONWebKeySet {
+				t.Helper()
+				var set jose.JSONWebKeySet
+				if err := json.Unmarshal(call("GET", "/jwks", "", nil).Body.Bytes(), &set); err != nil {
+					t.Fatal(err)
+				}
+				return set
+			}
+			set := keySet()
+			if len(set.Keys) != 1 {
+				t.Fatal("expected one published key", len(set.Keys))
+			}
+			parsed, err := libjwt.Parse(original[1].Value, func(*libjwt.Token) (any, error) { return set.Keys[0].Key, nil }, libjwt.WithValidMethods([]string{"EdDSA"}), libjwt.WithIssuer(origin), libjwt.WithAudience("plainauth:session-cache"), libjwt.WithExpirationRequired())
+			if err != nil {
+				t.Fatal("snapshot failed verification with the published key", err)
+			}
+			if parsed.Header["kid"] != set.Keys[0].KeyID || parsed.Header["typ"] != "plainauth.session-cache+jwt" {
+				t.Fatal("snapshot header does not name the published key and session-cache type", parsed.Header)
+			}
+			claims := parsed.Claims.(libjwt.MapClaims)
+			session, _ := claims["session"].(map[string]any)
+			if claims["sub"] != account.User.ID || claims["sid"] != account.Token || session["token"] != account.Token || claims["exp"].(float64)-claims["iat"].(float64) != 300 {
+				t.Fatal("snapshot claims do not bind the user and session token", claims)
+			}
+			if _, err := store.db.ExecContext(ctx, store.bind(`UPDATE "user" SET "name"='Live' WHERE "id"=?`), account.User.ID); err != nil {
+				t.Fatal(err)
+			}
+			view := func(cookies []*http.Cookie) (string, string, *http.Cookie) {
+				t.Helper()
+				w := call("GET", "/get-session", "", cookies)
+				var out auth.SessionResult
+				if err := json.Unmarshal(w.Body.Bytes(), &out); err != nil {
+					t.Fatal(err, w.Body)
+				}
+				return out.User.Name, out.Session.Token, named(w, ".session_data")
+			}
+			if name, _, _ := view(original); name != "Before" {
+				t.Fatal("browser view did not use the plugin-signed snapshot", name)
+			}
+			forge := func(method libjwt.SigningMethod, key any, header map[string]any) *http.Cookie {
+				token := libjwt.NewWithClaims(method, claims)
+				for k, v := range header {
+					token.Header[k] = v
+				}
+				signed, err := token.SignedString(key)
+				if err != nil {
+					t.Fatal(err)
+				}
+				forged := *original[1]
+				forged.Value = signed
+				return &forged
+			}
+			name, _, replaced := view([]*http.Cookie{original[0], forge(libjwt.SigningMethodHS256, []byte(secret), nil)})
+			if name != "Live" {
+				t.Fatal("accepted a snapshot signed with the application secret")
+			}
+			if replaced == nil {
+				t.Fatal("live read did not replace the snapshot with a plugin-signed one")
+			}
+			fresh, _, err := libjwt.NewParser().ParseUnverified(replaced.Value, libjwt.MapClaims{})
+			if err != nil || fresh.Header["typ"] != "plainauth.session-cache+jwt" || fresh.Header["kid"] != set.Keys[0].KeyID {
+				t.Fatal("live read did not replace the snapshot with a plugin-signed one", err)
+			}
+			_, other, err := ed25519.GenerateKey(rand.Reader)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if name, _, _ := view([]*http.Cookie{original[0], forge(libjwt.SigningMethodEdDSA, other, map[string]any{"kid": set.Keys[0].KeyID, "typ": "plainauth.session-cache+jwt"})}); name != "Live" {
+				t.Fatal("accepted a snapshot signed by another key under the published key ID")
+			}
+			second := call("POST", "/sign-in/email", `{"email":"snap@example.test","password":"snapshot-password"}`, nil)
+			var again auth.AuthResult
+			if err := json.Unmarshal(second.Body.Bytes(), &again); err != nil {
+				t.Fatal(err)
+			}
+			if name, token, _ := view([]*http.Cookie{named(second, ".session_token"), original[1]}); name != "Live" || token != again.Token {
+				t.Fatal("accepted another session's snapshot", name)
+			}
+			firstKey := set.Keys[0].KeyID
+			if _, err := store.db.ExecContext(ctx, store.bind(`UPDATE "jwks" SET "expiresAt"=? WHERE "id"=?`), store.date(time.Now().Add(-time.Minute)), firstKey); err != nil {
+				t.Fatal(err)
+			}
+			call("GET", "/token", "", original[:1])
+			if name, _, _ := view(original); name != "Before" {
+				t.Fatal("rotated key stopped verifying a snapshot inside the grace period", name)
+			}
+			if _, err := store.db.ExecContext(ctx, store.bind(`UPDATE "jwks" SET "expiresAt"=? WHERE "id"=?`), store.date(time.Now().Add(-31*24*time.Hour)), firstKey); err != nil {
+				t.Fatal(err)
+			}
+			name, _, replaced = view(original)
+			if name != "Live" {
+				t.Fatal("accepted a snapshot signed by a key past its grace period")
+			}
+			current := keySet()
+			after, _, err := libjwt.NewParser().ParseUnverified(replaced.Value, libjwt.MapClaims{})
+			if err != nil || len(current.Keys) != 1 || after.Header["kid"] != current.Keys[0].KeyID || current.Keys[0].KeyID == firstKey {
+				t.Fatal("replacement snapshot after rotation is not signed by the new key", err)
 			}
 		})
 	}

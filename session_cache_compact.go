@@ -27,7 +27,8 @@ const (
 // SessionCookieCacheOptions configures authenticated snapshots for browser session views.
 // GetSession and authenticated operations continue to read the backing store.
 type SessionCookieCacheOptions struct {
-	// Strategy defaults to compact. JWT signs the snapshot with HS256.
+	// Strategy defaults to compact. JWT signs the snapshot with HS256, or
+	// with the JWT plugin's key when jwt.Options.SessionCookieCache is set.
 	// JWE encrypts it using a symmetric key derived for this cookie.
 	Strategy SessionCookieCacheStrategy
 	// MaxAge defaults to five minutes for persistent logins. A browser-session
@@ -183,7 +184,7 @@ func (a *Auth) cachedSessionView(r *http.Request, token string) (*SessionResult,
 	if a.opts.SessionCookieCache.Strategy == SessionCacheCompact {
 		raw = a.readCompactSnapshot(encoded, now)
 	} else {
-		raw = a.readJOSESnapshot(encoded, now)
+		raw = a.readJOSESnapshot(r.Context(), encoded, now)
 	}
 	if len(raw) == 0 {
 		return nil, nil
@@ -339,16 +340,16 @@ func (a *Auth) prepareSessionCache(ctx context.Context, data SessionResult, pers
 		if prepared.input != signupVersionInput(data) {
 			return nil, nil
 		}
-		return a.encodeSessionCache(data, persistent, prepared.version), nil
+		return a.encodeSessionCache(ctx, data, persistent, prepared.version), nil
 	}
 	version, err := a.opts.SessionCookieCache.versionFor(ctx, data)
 	if err != nil {
 		return nil, err
 	}
-	return a.encodeSessionCache(data, persistent, version), nil
+	return a.encodeSessionCache(ctx, data, persistent, version), nil
 }
 
-func (a *Auth) encodeSessionCache(data SessionResult, persistent bool, version string) []*http.Cookie {
+func (a *Auth) encodeSessionCache(ctx context.Context, data SessionResult, persistent bool, version string) []*http.Cookie {
 	cache := a.opts.SessionCookieCache
 	now := a.now()
 	ttl := cache.MaxAge
@@ -366,7 +367,7 @@ func (a *Auth) encodeSessionCache(data SessionResult, persistent bool, version s
 	if cache.Strategy == SessionCacheCompact {
 		value, err = a.writeCompactSnapshot(payload, now.Add(ttl))
 	} else {
-		value, err = a.writeJOSESnapshot(payload, now, ttl)
+		value, err = a.writeJOSESnapshot(ctx, payload, now, ttl)
 	}
 	if err != nil {
 		return nil

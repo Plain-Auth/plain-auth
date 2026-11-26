@@ -319,7 +319,7 @@ opts.SessionCookieCache = &plainauth.SessionCookieCacheOptions{
 | Strategy | How it protects the snapshot | Browser-only login |
 | --- | --- | --- |
 | `SessionCacheCompact` (default) | HMAC-SHA256 over compact JSON. A cookie holder can read the session fields. | 1 minute |
-| `SessionCacheJWT` | HS256-signed JWT. A cookie holder can read the session fields. | 5 minutes |
+| `SessionCacheJWT` | HS256-signed JWT, or signed with the JWT plugin's key when `jwt.Options.SessionCookieCache` is set ([JWT](jwt.md#sign-browser-session-snapshots-with-the-key-set)). A cookie holder can read the session fields. | 5 minutes |
 | `SessionCacheJWE` | Direct symmetric JWE using A256CBC-HS512. A cookie holder needs the derived key to read the session fields. | 5 minutes |
 
 The Go handler validates the selected strategy at startup. A matching signed session cookie and a valid, unexpired snapshot let `GET /get-session` return the core user and session fields saved at issuance. With deferred session refresh enabled, the ordinary `POST /get-session` also accepts cached views. Add `disableCookieCache=true` on either method to read the store. A deferred POST then renews a due session unless a nonempty `disableRefresh` suppresses renewal.

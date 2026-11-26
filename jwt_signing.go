@@ -171,7 +171,11 @@ func (a *Auth) SignJWT(ctx context.Context, subject string, settings JWTSignOpti
 	if err != nil {
 		return "", err
 	}
-	return a.signStoredJWTKey(row, claims, settings)
+	payload, err := json.Marshal(claims)
+	if err != nil {
+		return "", err
+	}
+	return a.signStoredJWTKey(row, payload, settings.Type, settings.ContentType)
 }
 
 // VerifyJWT verifies a compact assertion using the configured algorithms and

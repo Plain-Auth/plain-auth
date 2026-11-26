@@ -39773,5 +39773,36 @@
       "marker": "remotely signed token did not verify",
       "complete": true
     }
+  ],
+  "plugin-symbol/jwt/JwtOptions/sessionCookieCache": [
+    {
+      "label": "Sign jwt-strategy session snapshots with the plugin's published key and serve later views from them, including after a rotation within the grace period, on three SQL engines",
+      "test": "adapters/sqlstore/jwt_test.go",
+      "marker": "browser view did not use the plugin-signed snapshot",
+      "complete": true
+    },
+    {
+      "label": "Refuse the option without the jwt cache strategy, with the session token header on or with a custom signer, and warn when the cache outlives the key grace period",
+      "test": "adapters/sqlstore/jwt_test.go",
+      "marker": "accepted plugin-signed snapshots without the jwt cache strategy"
+    }
+  ],
+  "docs/content/docs/plugins/jwt.mdx#L448": [
+    {
+      "label": "Issue session snapshots that a service verifies with the published key set under the session-cache type and audience, bound to the user and session token",
+      "test": "adapters/sqlstore/jwt_test.go",
+      "marker": "snapshot failed verification with the published key",
+      "complete": true
+    },
+    {
+      "label": "Reject secret-signed, foreign-key, other-session and retired-key snapshots, and replace them with key-signed ones on the live read",
+      "test": "adapters/sqlstore/jwt_test.go",
+      "marker": "accepted a snapshot signed with the application secret"
+    },
+    {
+      "label": "Require the jwt cache strategy",
+      "test": "adapters/sqlstore/jwt_test.go",
+      "marker": "accepted plugin-signed snapshots without the jwt cache strategy"
+    }
   ]
 }

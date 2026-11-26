@@ -429,6 +429,9 @@ func New(opts Options) (*Auth, error) {
 			return nil, errors.New("auth: email OTP verification callbacks require an EmailOTPVerificationObserverStore")
 		}
 	}
+	if err := a.checkJWTSessionCache(); err != nil {
+		return nil, err
+	}
 	if err := a.checkDynamicWithoutFallback(); err != nil {
 		return nil, err
 	}

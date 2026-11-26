@@ -57,6 +57,12 @@ type JWTOptions struct {
 	// so supply a KeyStore that lists the signer's public keys when this
 	// server must verify its own tokens.
 	Sign func(ctx context.Context, request JWTSigningRequest) (string, error)
+	// SessionCookieCache signs SessionCacheJWT browser snapshots with the
+	// plugin's primary key instead of the application secret, so services
+	// holding the published key set can verify them. It requires
+	// Options.SessionCookieCache with the jwt strategy and DisableHeader, and
+	// cannot be combined with Sign.
+	SessionCookieCache bool
 }
 
 type PublicJWTKey struct {
@@ -338,7 +344,7 @@ func (a *Auth) signSessionJWT(ctx context.Context, s SessionResult) (string, err
 	return a.SignJWT(ctx, s.User.ID, JWTSignOptions{Claims: claims})
 }
 
-func (a *Auth) signStoredJWTKey(row StoredJWTKey, claims map[string]any, settings JWTSignOptions) (string, error) {
+func (a *Auth) signStoredJWTKey(row StoredJWTKey, payload []byte, typ, cty string) (string, error) {
 	plain := []byte(row.EncryptedPrivateKey)
 	if !a.serviceJWT.DisablePrivateKeyEncryption {
 		var envelope string
@@ -363,15 +369,11 @@ func (a *Auth) signStoredJWTKey(row StoredJWTKey, claims map[string]any, setting
 		return "", errors.New("jwt: inconsistent signing key pair")
 	}
 	headers := (&jose.SignerOptions{}).WithHeader(jose.HeaderKey("kid"), row.ID)
-	if settings.Type != "" {
-		headers.WithType(jose.ContentType(settings.Type))
+	if typ != "" {
+		headers.WithType(jose.ContentType(typ))
 	}
-	if settings.ContentType != "" {
-		headers.WithContentType(jose.ContentType(settings.ContentType))
-	}
-	payload, err := json.Marshal(claims)
-	if err != nil {
-		return "", err
+	if cty != "" {
+		headers.WithContentType(jose.ContentType(cty))
 	}
 	signer, err := jose.NewSigner(jose.SigningKey{Algorithm: jose.SignatureAlgorithm(row.Algorithm), Key: secret.Key}, headers)
 	if err != nil {

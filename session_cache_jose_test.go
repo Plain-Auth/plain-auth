@@ -110,13 +110,13 @@ func TestJOSESessionCookieValidityAndRotation(t *testing.T) {
 			// A correctly protected envelope still needs a complete matching identity.
 			payload := sessionCachePayload{Session: data.Session, User: data.User, UpdatedAt: issued.UnixMilli(), Version: "1"}
 			payload.Session.UserID = "other-owner"
-			invalid, err := a.writeJOSESnapshot(payload, issued, time.Minute)
+			invalid, err := a.writeJOSESnapshot(t.Context(), payload, issued, time.Minute)
 			if err != nil || read(a, "value", invalid) {
 				t.Fatal("mismatched session and user", err)
 			}
 			payload.Session.UserID = data.User.ID
 			payload.User.CreatedAt = time.Time{}
-			invalid, err = a.writeJOSESnapshot(payload, issued, time.Minute)
+			invalid, err = a.writeJOSESnapshot(t.Context(), payload, issued, time.Minute)
 			if err != nil || read(a, "value", invalid) {
 				t.Fatal("missing snapshot field", err)
 			}
@@ -153,7 +153,7 @@ func TestJOSESessionCookieValidityAndRotation(t *testing.T) {
 				return s
 			}
 			recipient := jose.Recipient{Algorithm: jose.DIRECT, Key: a.sessionCacheKeys[0].material}
-			raw := a.readJOSESnapshot(c.Value, issued)
+			raw := a.readJOSESnapshot(t.Context(), c.Value, issued)
 			var claims map[string]any
 			if err = json.Unmarshal(raw, &claims); err != nil {
 				t.Fatal(err)
