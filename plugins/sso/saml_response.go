@@ -503,6 +503,11 @@ func (o Options) samlFinish(c auth.EndpointContext) (any, error) {
 		return fail("invalid_saml_response")
 	}
 	a, err := sp.ParseXMLResponse(raw, requestIDs, sp.AcsURL)
+	for _, audience := range []error{errAudienceMissing, errAudienceRestriction, errAudienceMismatch} {
+		if errors.Is(err, audience) {
+			return enterpriseFailure(c, flow, "invalid_saml_response", audience.Error())
+		}
+	}
 	switch {
 	case errors.Is(err, saml.ErrNotYetValid):
 		return enterpriseFailure(c, flow, "saml_error", samlNotYetValid)

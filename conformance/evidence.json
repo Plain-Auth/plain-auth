@@ -41829,6 +41829,12 @@
       "label": "Reject a signed assertion addressed to a different audience",
       "test": "adapters/sqlstore/sso_saml_test.go",
       "marker": "a.Conditions.AudienceRestrictions[0].Audience.Value = \"https://other.example.test/sp\""
+    },
+    {
+      "label": "Accept restrictions naming the SP or the configured audience, require the configured audience in one of them, and refuse a missing or foreign restriction with another runtime's descriptions, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_saml_policy_test.go",
+      "marker": "t.Fatal(\"an assertion naming only the SP was accepted under a configured audience\", location)",
+      "complete": true
     }
   ],
   "plugin-symbol/sso/SAMLConfig/idpInitiatedCallbackUrl": [

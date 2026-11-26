@@ -395,6 +395,57 @@ func TestEnterpriseSAMLResponsePolicy(t *testing.T) {
 					t.Fatal("a sign-in requesting a persistent NameID failed", location)
 				}
 			})
+			t.Run("audience", func(t *testing.T) {
+				p := newSAMLPolicy(t, dialect)
+				const audience = "urn:example:audience"
+				p.directory("aud", func(c *sso.SAMLConfig) { c.Audience = audience })
+				p.directory("plain", nil)
+				h := p.host(sso.SAMLOptions{}, nil)
+				restrict := func(groups ...[]string) func(*saml.Assertion) {
+					return func(a *saml.Assertion) {
+						a.Conditions.AudienceRestrictions = nil
+						for _, g := range groups {
+							r := saml.AudienceRestriction{Audience: saml.Audience{Value: g[0]}}
+							for _, more := range g[1:] {
+								r.AdditionalAudiences = append(r.AdditionalAudiences, saml.Audience{Value: more})
+							}
+							a.Conditions.AudienceRestrictions = append(a.Conditions.AudienceRestrictions, r)
+						}
+					}
+				}
+				run := func(id string, adjust func(*saml.Assertion)) (*url.URL, bool) {
+					t.Helper()
+					req, state := p.start(h, id)
+					return samlOutcome(t, p.finish(h, id, req, state, nil, adjust, nil))
+				}
+				signedIn := func(location *url.URL, session bool) bool { return location.String() == "https://service.test/home" && session }
+				refused := func(location *url.URL, session bool, description string) bool {
+					return location.Path == "/retry" && location.Query().Get("error") == "invalid_saml_response" && location.Query().Get("error_description") == description && !session
+				}
+				sp := func(id string) string { return "https://service.test/sp/" + id }
+				for _, groups := range [][][]string{{{audience}}, {{sp("aud"), audience}}, {{audience}, {sp("aud")}}} {
+					if location, session := run("aud", restrict(groups...)); !signedIn(location, session) {
+						t.Fatal("an assertion naming the configured audience was refused", groups, location)
+					}
+				}
+				if location, session := run("aud", restrict([]string{sp("aud")})); !refused(location, session, "Audience mismatch") {
+					t.Fatal("an assertion naming only the SP was accepted under a configured audience", location)
+				}
+				for _, groups := range [][][]string{{{"urn:other"}}, {{audience}, {"urn:other"}}} {
+					if location, session := run("aud", restrict(groups...)); !refused(location, session, "SAML assertion audience does not match this Service Provider") {
+						t.Fatal("a restriction naming neither the SP nor the audience was accepted", groups, location)
+					}
+				}
+				if location, session := run("plain", restrict([]string{sp("plain")})); !signedIn(location, session) {
+					t.Fatal("an assertion naming the SP was refused without a configured audience", location)
+				}
+				if location, session := run("plain", restrict([]string{sp("plain")}, []string{"urn:other"})); !refused(location, session, "SAML assertion audience does not match this Service Provider") {
+					t.Fatal("a second restriction naming another audience was accepted", location)
+				}
+				if location, session := run("plain", restrict()); !refused(location, session, "SAML assertion is missing an AudienceRestriction") {
+					t.Fatal("an assertion without an AudienceRestriction was not reported as missing one", location)
+				}
+			})
 			t.Run("timestamps", func(t *testing.T) {
 				p := newSAMLPolicy(t, dialect)
 				p.directory("clock", nil)

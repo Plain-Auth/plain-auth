@@ -248,18 +248,18 @@
     - [x] Reject a signed assertion whose NotBefore is an hour in the future ([test](../../../adapters/sqlstore/sso_saml_test.go#L614))
     - [x] Reject a signed assertion whose NotOnOrAfter passed an hour ago ([test](../../../adapters/sqlstore/sso_saml_test.go#L613))
   - [ ] `TimestampValidationOptions`
-    - [x] Apply ClockSkew and RequireTimestamps at the ACS and log an assertion without timestamps, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L451))
+    - [x] Apply ClockSkew and RequireTimestamps at the ACS and log an assertion without timestamps, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L502))
     - [ ] `clockSkew`
-      - [x] Accept an assertion expired two minutes ago under the default skew and refuse it under a one-minute skew, within the three-minute tolerance, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L422))
-      - [x] Refuse an assertion valid only in two minutes under a one-minute skew ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L428))
+      - [x] Accept an assertion expired two minutes ago under the default skew and refuse it under a one-minute skew, within the three-minute tolerance, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L473))
+      - [x] Refuse an assertion valid only in two minutes under a one-minute skew ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L479))
       - [x] Refuse a negative clock skew or one above three minutes, and keep a narrower one ([test](../../../plugins/sso/saml_test.go#L291))
-      - [x] Narrow the bearer confirmation deadline with the clock skew before the user is provisioned ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L444))
+      - [x] Narrow the bearer confirmation deadline with the clock skew before the user is provisioned ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L495))
       - [x] Refuse a clock skew below zero or above three minutes, accept values within, and default to three minutes ([test](../../../plugins/sso/saml_test.go#L532))
-    - [x] `requireTimestamps` ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L454))
-      - [x] Refuse an assertion without timestamp conditions under RequireTimestamps, and accept one that has NotBefore, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L454))
-      - [x] Accept an assertion that has NotBefore without NotOnOrAfter under RequireTimestamps ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L457))
-    - [x] `logger` ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L451))
-      - [x] Write a warning naming the provider to the auth Logger for an assertion accepted without timestamp conditions ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L451))
+    - [x] `requireTimestamps` ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L505))
+      - [x] Refuse an assertion without timestamp conditions under RequireTimestamps, and accept one that has NotBefore, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L505))
+      - [x] Accept an assertion that has NotBefore without NotOnOrAfter under RequireTimestamps ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L508))
+    - [x] `logger` ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L502))
+      - [x] Write a warning naming the provider to the auth Logger for an assertion accepted without timestamp conditions ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L502))
   - [ ] `validateSAMLTimestamp`
     - [x] Reject a signed assertion whose NotOnOrAfter passed an hour ago ([test](../../../adapters/sqlstore/sso_saml_test.go#L613))
     - [x] Reject a signed assertion whose NotBefore is an hour in the future ([test](../../../adapters/sqlstore/sso_saml_test.go#L614))
@@ -331,8 +331,9 @@
     - [ ] `cert`
       - [x] Accept a single certificate string or a list of certificates in samlConfig.cert ([test](../../../plugins/sso/saml_test.go#L26))
       - [x] Return the registered signing certificate on both runtimes ([test](../../../conformance/sso-saml.mjs#L206))
-    - [ ] `audience`
+    - [x] `audience` ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L432))
       - [x] Reject a signed assertion addressed to a different audience ([test](../../../adapters/sqlstore/sso_saml_test.go#L605))
+      - [x] Accept restrictions naming the SP or the configured audience, require the configured audience in one of them, and refuse a missing or foreign restriction with another runtime's descriptions, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L432))
     - [ ] `callbackUrl`
       - [x] Land a portal sign-in on the directory's callbackUrl when no IdP-initiated landing page is configured ([test](../../../adapters/sqlstore/sso_saml_mapping_test.go#L104))
     - [ ] `idpInitiatedCallbackUrl`
@@ -857,9 +858,9 @@
   - [ ] Timestamp validation
     - [x] Reject a signed assertion whose NotOnOrAfter passed an hour ago ([test](../../../adapters/sqlstore/sso_saml_test.go#L613))
     - [x] Reject a signed assertion whose NotBefore is an hour ahead ([test](../../../adapters/sqlstore/sso_saml_test.go#L614))
-    - [x] `saml_error` ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L425))
-      - [x] Redirect expired and not-yet-valid assertions with error=saml_error and their messages, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L425))
-      - [x] Redirect a future assertion with error=saml_error and SAML assertion is not yet valid ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L431))
+    - [x] `saml_error` ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L476))
+      - [x] Redirect expired and not-yet-valid assertions with error=saml_error and their messages, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L476))
+      - [x] Redirect a future assertion with error=saml_error and SAML assertion is not yet valid ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L482))
   - [ ] Algorithm validation
     - [x] Check a directory's recorded algorithms against the policy at registration and store nothing when refused, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/sso_saml_policy_test.go#L362))
     - [ ] Signature

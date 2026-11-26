@@ -179,6 +179,12 @@ type SAMLConfig struct {
 	DigestAlgorithm    string `json:"digestAlgorithm,omitempty"`
 }
 
+var (
+	errAudienceMissing     = errors.New("SAML assertion is missing an AudienceRestriction")
+	errAudienceRestriction = errors.New("SAML assertion audience does not match this Service Provider")
+	errAudienceMismatch    = errors.New("Audience mismatch")
+)
+
 var errCertSourceMissing = &auth.APIError{Status: 400, Code: "CERT_SOURCE_MISSING", Message: "samlConfig requires either a signing certificate (cert or idpMetadata.cert) or an idpMetadata.metadata XML document."}
 
 // requireCertSource refuses a registration without any signing certificate
@@ -305,25 +311,27 @@ func (o Options) samlSP(c auth.EndpointContext, p Provider) (*saml.ServiceProvid
 		sp.Certificate = o.SAML.RequestCertificate
 		sp.SignatureMethod = string(SignatureRSASHA256)
 	}
-	audience := cfg.Audience
-	if audience == "" {
-		audience = spEntity
-	}
+	// Each restriction must name this SP or the configured audience, and a
+	// configured audience must appear in one of them. The descriptions are
+	// the ones another runtime sends from its two checks.
 	sp.ValidateAudienceRestriction = func(a *saml.Assertion) error {
 		if a.Conditions == nil || len(a.Conditions.AudienceRestrictions) == 0 {
-			return errors.New("SAML audience is required")
+			return errAudienceMissing
 		}
+		found := cfg.Audience == ""
 		for _, group := range a.Conditions.AudienceRestrictions {
 			matched := false
 			for _, v := range group.AllAudiences() {
-				if v.Value == audience {
-					matched = true
-					break
-				}
+				configured := cfg.Audience != "" && v.Value == cfg.Audience
+				matched = matched || v.Value == spEntity || configured
+				found = found || configured
 			}
 			if !matched {
-				return errors.New("SAML audience mismatch")
+				return errAudienceRestriction
 			}
+		}
+		if !found {
+			return errAudienceMismatch
 		}
 		return nil
 	}
