@@ -524,9 +524,16 @@ func (a *Auth) writeAuthError(w http.ResponseWriter, r *http.Request, err error)
 		}
 	}
 	var denied *MissingPermissionsError
+	var detailed *DetailedError
 	switch {
 	case errors.As(err, &denied):
 		response := &MissingPermissionsError{APIError: apiErr, MissingPermissions: denied.MissingPermissions}
+		if originalMessage != nil {
+			response.OriginalMessage = *originalMessage
+		}
+		writeAuthJSON(w, apiErr.Status, response)
+	case errors.As(err, &detailed) && detailed.Details != nil:
+		response := &DetailedError{APIError: apiErr, Details: detailed.Details}
 		if originalMessage != nil {
 			response.OriginalMessage = *originalMessage
 		}

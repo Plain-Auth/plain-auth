@@ -96,7 +96,7 @@
       - [x] Example with local JWKS ([test](../../../conformance/core.test.mjs#L451))
         - [x] Build a local key set from the fetched keys and verify the token with the server URL as issuer and audience ([test](../../../conformance/core.test.mjs#L451))
     - [ ] OAuth Provider Mode
-      - [x] Disable both the browser token endpoint and the session JWT response header while retaining ordinary sessions ([test](../../../conformance/core.test.mjs#L1395))
+      - [x] Disable both the browser token endpoint and the session JWT response header while retaining ordinary sessions ([test](../../../conformance/core.test.mjs#L1422))
       - [x] Report a token signed with a published key but carrying no authorized party as inactive at introspection ([test](../../../conformance/oauth-signed-introspection.mjs#L104))
     - [x] Remote JWKS Url ([test](../../../conformance/goapi/jwt_remote_keys_test.go#L64))
       - [x] Stop serving the local key route, advertise the remote key-set address in authorization-server and OpenID discovery, and keep issuing tokens that verify with the exported keys ([test](../../../conformance/goapi/jwt_remote_keys_test.go#L64))

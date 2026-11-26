@@ -1,7 +1,10 @@
 package apikey
 
 // The errors below carry the status, code and message of the API key error
-// table.
+// table. The table's KEY_NOT_RECOVERABLE and INVALID_USER_ID_FROM_API_KEY
+// are never answered. INVALID_API_KEY_GETTER_RETURN_TYPE cannot arise,
+// because ExtractKey returns a string. A failed key write is a store error,
+// answered as 500 INTERNAL_SERVER_ERROR instead of FAILED_TO_UPDATE_API_KEY.
 var (
 	ErrMissing = problem(404, "KEY_NOT_FOUND", "API Key not found")
 	ErrSession = problem(401, "UNAUTHORIZED_SESSION", "Unauthorized or invalid session")

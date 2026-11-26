@@ -98,7 +98,7 @@ func TestAPIKeyCreateAndUpdateParameters(t *testing.T) {
 			if windowed.RateLimitTimeWindow == nil || *windowed.RateLimitTimeWindow != 60000 || windowed.RateLimitMax == nil || *windowed.RateLimitMax != 1 || !verify(windowed.Secret).Valid {
 				t.Fatal("a key's own rate window was not stored")
 			}
-			if r := verify(windowed.Secret); r.Valid || r.Error.Code != "RATE_LIMITED" || r.Error.TryAgainIn == nil || *r.Error.TryAgainIn <= 0 || *r.Error.TryAgainIn > 60000 {
+			if r := verify(windowed.Secret); r.Valid || r.Error.Code != "RATE_LIMITED" || r.Error.Details == nil || r.Error.Details.TryAgainIn <= 0 || r.Error.Details.TryAgainIn > 60000 {
 				t.Fatal("the key's own window did not set the retry interval")
 			}
 			ago("lastRequest", windowed.ID, 2*time.Minute)
@@ -179,7 +179,7 @@ func TestAPIKeyCreateAndUpdateParameters(t *testing.T) {
 			if up, err := keys.Update(ctx, uid, rk.ID, ak.UpdateInput{Policy: ak.Policy{RateLimitMax: n(1)}}); err != nil || *up.RateLimitMax != 1 || !verify(rk.Secret).Valid {
 				t.Fatal("the updated rate limit maximum was not stored", err)
 			}
-			if r := verify(rk.Secret); r.Valid || r.Error.Code != "RATE_LIMITED" || *r.Error.TryAgainIn <= 60000 {
+			if r := verify(rk.Secret); r.Valid || r.Error.Code != "RATE_LIMITED" || r.Error.Details.TryAgainIn <= 60000 {
 				t.Fatal("the updated rate limit maximum was not enforced")
 			}
 			_, err = keys.Update(ctx, uid, rk.ID, ak.UpdateInput{Policy: ak.Policy{RateLimitMax: n(0)}})
@@ -198,7 +198,7 @@ func TestAPIKeyCreateAndUpdateParameters(t *testing.T) {
 			if up, err := keys.Update(ctx, uid, rk.ID, ak.UpdateInput{Policy: ak.Policy{RateWindow: &minute}}); err != nil || *up.RateLimitTimeWindow != 60000 {
 				t.Fatal("the updated window was not stored", err)
 			}
-			if r := verify(rk.Secret); r.Valid || r.Error.Code != "RATE_LIMITED" || *r.Error.TryAgainIn <= 0 || *r.Error.TryAgainIn > 60000 {
+			if r := verify(rk.Secret); r.Valid || r.Error.Code != "RATE_LIMITED" || r.Error.Details.TryAgainIn <= 0 || r.Error.Details.TryAgainIn > 60000 {
 				t.Fatal("the updated window did not set the retry interval")
 			}
 			ago("lastRequest", rk.ID, 2*time.Minute)

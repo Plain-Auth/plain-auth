@@ -9081,6 +9081,17 @@
       "label": "Verify a key under the configuration that issued it, among several sharing one store",
       "test": "adapters/sqlstore/apikey_unscoped_test.go",
       "marker": "func TestAPIKeyUnscopedVerification("
+    },
+    {
+      "label": "Report a spent rate budget as RATE_LIMITED with tryAgainIn under details from Verify, middleware, session reads and the Go client, on three SQL engines",
+      "test": "adapters/sqlstore/apikey_errors_test.go",
+      "marker": "func TestAPIKeyRateLimitDetails(",
+      "complete": true
+    },
+    {
+      "label": "Answer a rate-limited key session with 429 RATE_LIMITED and details.tryAgainIn on both runtimes",
+      "test": "conformance/core.test.mjs",
+      "marker": "a rate-limited key session gave no retry delay"
     }
   ],
   "plugin/api-key/ deleteAllExpiredApiKeys (server API only)": [
@@ -39861,9 +39872,15 @@
   ],
   "plugin-symbol/api-key/API_KEY_ERROR_CODES": [
     {
-      "label": "Answer the key validation, update, signed-out, missing-default-configuration, verification, session-read and ban errors with their status, code and message from the routes and Go calls, on three SQL engines",
+      "label": "Answer each API key error with its status, code and message from the key routes, Go calls, verification results and session reads, organization keys included, on three SQL engines",
       "test": "adapters/sqlstore/apikey_errors_test.go",
-      "marker": "func TestAPIKeyErrorCodesAcrossEngines("
+      "marker": "func TestAPIKeyErrorCodesAcrossEngines(",
+      "complete": true
+    },
+    {
+      "label": "Answer a spent rate budget with RATE_LIMITED, the message Rate limit exceeded. and tryAgainIn under details",
+      "test": "adapters/sqlstore/apikey_errors_test.go",
+      "marker": "rate denial lacked RATE_LIMITED details"
     }
   ],
   "docs/content/docs/plugins/api-key/advanced.mdx#L625/Null Values": [

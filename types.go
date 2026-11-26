@@ -443,6 +443,22 @@ func (e *MissingPermissionsError) Unwrap() error {
 	return e.APIError
 }
 
+// DetailedError is an APIError whose response also carries a details object,
+// such as the tryAgainIn milliseconds of a rate-limited API key. Clients
+// receive it through errors.As.
+type DetailedError struct {
+	*APIError
+	Details         map[string]any `json:"details"`
+	OriginalMessage string         `json:"originalMessage,omitempty"`
+}
+
+func (e *DetailedError) Unwrap() error {
+	if e.OriginalMessage != "" {
+		return &LocalizedError{APIError: e.APIError, OriginalMessage: e.OriginalMessage}
+	}
+	return e.APIError
+}
+
 // OAuthError represents the public error fields of an OAuth protocol response.
 type OAuthError struct {
 	Status      int    `json:"-"`

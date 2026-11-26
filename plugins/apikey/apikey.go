@@ -620,9 +620,16 @@ func (s *Service) DeleteExpired(ctx context.Context) (int64, error) {
 }
 
 type VerifyError struct {
-	Code       string `json:"code"`
-	Message    string `json:"message"`
-	TryAgainIn *int64 `json:"tryAgainIn,omitempty"`
+	Code    string `json:"code"`
+	Message string `json:"message"`
+	// Details holds tryAgainIn for a RATE_LIMITED answer.
+	Details *RetryDetails `json:"details,omitempty"`
+}
+
+// RetryDetails tells a rate-limited caller when to try again.
+type RetryDetails struct {
+	// TryAgainIn is the number of milliseconds until the key's window reopens.
+	TryAgainIn int64 `json:"tryAgainIn"`
 }
 type Verification struct {
 	Valid bool         `json:"valid"`
@@ -707,7 +714,7 @@ func (s *Service) Verify(ctx context.Context, secret string, required Permission
 				// The code is RATE_LIMITED, with the table's RATE_LIMIT_EXCEEDED
 				// message, as another runtime answers a spent rate budget.
 				invalid("RATE_LIMITED", "Rate limit exceeded.")
-				result.Error.TryAgainIn = ptr(*k.RateLimitTimeWindow - now.Sub(*k.LastRequest).Milliseconds())
+				result.Error.Details = &RetryDetails{TryAgainIn: *k.RateLimitTimeWindow - now.Sub(*k.LastRequest).Milliseconds()}
 				return Read, nil
 			} else {
 				k.RequestCount++

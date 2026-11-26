@@ -351,7 +351,7 @@ A callback error on a session view fails the request. If a version mismatch is a
 
 Custom stores can implement `plainauth.SessionCacheStore` to permit cached views when current access rules allow them. Other stores use live reads. The expiry and version are fixed for each snapshot. Rolling cache renewal, JWKS-backed public verification of browser snapshots, and global partitioned-cookie defaults remain open.
 
-The Go methods `SignUpEmail`, `SignInEmail`, `GetSession`, `SignOut`, and the session management methods accept a request context. `GetSession(ctx, headers)` distinguishes an absent session from a storage failure. Use `errors.As(err, &apiErr)` with `var apiErr *plainauth.APIError` to inspect a public error code and HTTP status. Other errors can carry infrastructure details and belong in application logs.
+The Go methods `SignUpEmail`, `SignInEmail`, `GetSession`, `SignOut`, and the session management methods accept a request context. `GetSession(ctx, headers)` distinguishes an absent session from a storage failure. Use `errors.As(err, &apiErr)` with `var apiErr *plainauth.APIError` to inspect a public error code and HTTP status. An error that answers with a `details` object, such as a rate-limited API key's `tryAgainIn`, also matches `*plainauth.DetailedError`. Other errors can carry infrastructure details and belong in application logs.
 
 See the [cross-runtime conformance test](../conformance/core.test.mjs) and [remaining authentication features](parity/authentication.md).
 

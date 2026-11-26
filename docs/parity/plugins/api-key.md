@@ -9,8 +9,9 @@
     - [x] Create, retrieve, update, list and revoke user-owned keys with the official client ([test](../../../conformance/core.test.mjs#L887))
     - [x] Manage organization keys alongside separately authenticated automation clients ([test](../../../conformance/core.test.mjs#L938))
   - `ApiKeyClientPlugin` — *not applicable: TypeScript type*
-  - [ ] `API_KEY_ERROR_CODES`
-    - [x] Answer the key validation, update, signed-out, missing-default-configuration, verification, session-read and ban errors with their status, code and message from the routes and Go calls, on three SQL engines ([test](../../../adapters/sqlstore/apikey_errors_test.go#L20))
+  - [x] `API_KEY_ERROR_CODES` ([test](../../../adapters/sqlstore/apikey_errors_test.go#L21))
+    - [x] Answer each API key error with its status, code and message from the key routes, Go calls, verification results and session reads, organization keys included, on three SQL engines ([test](../../../adapters/sqlstore/apikey_errors_test.go#L21))
+    - [x] Answer a spent rate budget with RATE_LIMITED, the message Rate limit exceeded. and tryAgainIn under details ([test](../../../adapters/sqlstore/apikey_errors_test.go#L270))
   - [ ] `apiKey`
   - [x] `defaultKeyHasher` ([test](../../../conformance/core.test.mjs#L912))
     - [x] Match the pinned digest and verify a Go key on shared SQLite ([test](../../../conformance/core.test.mjs#L912))
@@ -38,14 +39,14 @@
     - [ ] `disableKeyHashing`
     - [x] `customAPIKeyGetter` ([test](../../../adapters/sqlstore/apikey_hooks_test.go#L159))
       - [x] Use the host extractor for HTTP, native session reads and middleware while keeping malformed credentials and callback errors out of browser fallback ([test](../../../adapters/sqlstore/apikey_hooks_test.go#L159))
-      - [x] Use the same generator and custom credential source with the released client on both runtimes ([test](../../../conformance/core.test.mjs#L1271))
+      - [x] Use the same generator and custom credential source with the released client on both runtimes ([test](../../../conformance/core.test.mjs#L1298))
     - [ ] `customAPIKeyValidator`
       - [x] Run the selected policy once across native, middleware and session verification, and preserve the usage budget on denial ([test](../../../adapters/sqlstore/apikey_validator_test.go#L16))
       - [x] Accept or refuse the same application session using the released client and its host policy ([test](../../../conformance/core.test.mjs#L1172))
     - [x] `customKeyGenerator` ([test](../../../adapters/sqlstore/apikey_hooks_test.go#L102))
       - [x] Backfill exact historical digests and reject reissuance after revocation, verification cleanup and restart ([test](../../../adapters/sqlstore/apikey_ledger_test.go#L16))
       - [x] Create personal and organization credentials with the effective prefix, current issuance authority and atomic digest collision checks ([test](../../../adapters/sqlstore/apikey_hooks_test.go#L102))
-      - [x] Use the same generator and custom credential source with the released client on both runtimes ([test](../../../conformance/core.test.mjs#L1271))
+      - [x] Use the same generator and custom credential source with the released client on both runtimes ([test](../../../conformance/core.test.mjs#L1298))
     - [ ] `startingCharactersConfig`
     - [ ] `defaultKeyLength`
     - [ ] `defaultPrefix`
@@ -91,9 +92,11 @@
   - [ ] `POST /api-key/update`
     - [x] Change user-owned key settings using the pinned client ([test](../../../conformance/core.test.mjs#L887))
     - [x] Rename a key under its organization configuration ([test](../../../conformance/core.test.mjs#L963))
-  - [ ] `verifyApiKey (server API only)`
+  - [x] `verifyApiKey (server API only)` ([test](../../../adapters/sqlstore/apikey_errors_test.go#L235))
     - [x] Verify permissions and consume the credential atomically ([test](../../../adapters/sqlstore/apikey_test.go#L178))
     - [x] Verify a key under the configuration that issued it, among several sharing one store ([test](../../../adapters/sqlstore/apikey_unscoped_test.go#L14))
+    - [x] Report a spent rate budget as RATE_LIMITED with tryAgainIn under details from Verify, middleware, session reads and the Go client, on three SQL engines ([test](../../../adapters/sqlstore/apikey_errors_test.go#L235))
+    - [x] Answer a rate-limited key session with 429 RATE_LIMITED and details.tryAgainIn on both runtimes ([test](../../../conformance/core.test.mjs#L1228))
   - [ ] `ApiKeyOptions`
     - [ ] `schema`
   - [ ] `ApiKeyConfigurationOptions`
@@ -108,14 +111,14 @@
     - [ ] `disableKeyHashing`
     - [x] `customAPIKeyGetter` ([test](../../../adapters/sqlstore/apikey_hooks_test.go#L159))
       - [x] Use the host extractor for HTTP, native session reads and middleware while keeping malformed credentials and callback errors out of browser fallback ([test](../../../adapters/sqlstore/apikey_hooks_test.go#L159))
-      - [x] Use the same generator and custom credential source with the released client on both runtimes ([test](../../../conformance/core.test.mjs#L1271))
+      - [x] Use the same generator and custom credential source with the released client on both runtimes ([test](../../../conformance/core.test.mjs#L1298))
     - [ ] `customAPIKeyValidator`
       - [x] Run the selected policy once across native, middleware and session verification, and preserve the usage budget on denial ([test](../../../adapters/sqlstore/apikey_validator_test.go#L16))
       - [x] Accept or refuse the same application session using the released client and its host policy ([test](../../../conformance/core.test.mjs#L1172))
     - [x] `customKeyGenerator` ([test](../../../adapters/sqlstore/apikey_hooks_test.go#L102))
       - [x] Backfill exact historical digests and reject reissuance after revocation, verification cleanup and restart ([test](../../../adapters/sqlstore/apikey_ledger_test.go#L16))
       - [x] Create personal and organization credentials with the effective prefix, current issuance authority and atomic digest collision checks ([test](../../../adapters/sqlstore/apikey_hooks_test.go#L102))
-      - [x] Use the same generator and custom credential source with the released client on both runtimes ([test](../../../conformance/core.test.mjs#L1271))
+      - [x] Use the same generator and custom credential source with the released client on both runtimes ([test](../../../conformance/core.test.mjs#L1298))
     - [ ] `startingCharactersConfig`
       - [x] Return six display characters by default ([test](../../../adapters/sqlstore/apikey_test.go#L68))
     - [ ] `defaultKeyLength`
@@ -250,7 +253,7 @@
   - [x] Custom Key generation & verification ([test](../../../adapters/sqlstore/apikey_validator_test.go#L119))
     - [x] Backfill exact historical digests and reject reissuance after revocation, verification cleanup and restart ([test](../../../adapters/sqlstore/apikey_ledger_test.go#L16))
     - [x] Create personal and organization credentials with the effective prefix, current issuance authority and atomic digest collision checks ([test](../../../adapters/sqlstore/apikey_hooks_test.go#L102))
-    - [x] Use the same generator and custom credential source with the released client on both runtimes ([test](../../../conformance/core.test.mjs#L1271))
+    - [x] Use the same generator and custom credential source with the released client on both runtimes ([test](../../../conformance/core.test.mjs#L1298))
     - [x] Validate the digest table when another PostgreSQL installer finishes during schema discovery ([test](../../../adapters/sqlstore/migrate_postgres_test.go#L108))
     - [x] Reject an unknown credential even when the application validator accepts it ([test](../../../adapters/sqlstore/apikey_validator_test.go#L119))
   - [x] Metadata ([test](../../../adapters/sqlstore/apikey_test.go#L207))
@@ -274,7 +277,7 @@
       - [x] Return metadata given at creation on a later read of the key ([test](../../../adapters/sqlstore/apikey_test.go#L88))
     - [ ] Custom prefix
       - [x] Start a key created over HTTP with prefix app_ with that prefix ([test](../../../adapters/sqlstore/apikey_test.go#L68))
-      - [x] Pass the configured default prefix, or the prefix given at creation, to a custom key generator on both runtimes ([test](../../../conformance/core.test.mjs#L1289))
+      - [x] Pass the configured default prefix, or the prefix given at creation, to a custom key generator on both runtimes ([test](../../../conformance/core.test.mjs#L1316))
     - [ ] Sessions from API keys
       - [x] Resolve the key owner's session from a personal key header with the released client, using the key id as the session id ([test](../../../conformance/core.test.mjs#L973))
       - [x] Return the key owner from a native session lookup with a key header, marked as an application credential ([test](../../../adapters/sqlstore/apikey_session_test.go#L194))
@@ -307,7 +310,7 @@
           - [x] Refuse an organization key to a user outside that organization before the generator runs ([test](../../../adapters/sqlstore/apikey_hooks_test.go#L109))
         - [ ] Parameter `prefix` (optional)
           - [x] Start the issued secret with the prefix given at creation ([test](../../../adapters/sqlstore/apikey_test.go#L68))
-          - [x] Pass the prefix given at creation to a custom key generator on both runtimes ([test](../../../conformance/core.test.mjs#L1289))
+          - [x] Pass the prefix given at creation to a custom key generator on both runtimes ([test](../../../conformance/core.test.mjs#L1316))
         - [ ] Parameter `remaining` (optional)
           - [x] Allow exactly the remaining count set by server-side creation across concurrent verifications ([test](../../../adapters/sqlstore/apikey_test.go#L181))
         - [ ] Parameter `refillAmount` (optional)

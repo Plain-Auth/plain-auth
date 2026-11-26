@@ -108,6 +108,9 @@ func (s *Service) resolveSession(ctx context.Context, secret string, meta plaina
 		if v.Error.Code == "RATE_LIMITED" || v.Error.Code == "USAGE_EXCEEDED" {
 			status = 429
 		}
+		if v.Error.Details != nil {
+			return nil, &plainauth.DetailedError{APIError: problem(status, v.Error.Code, v.Error.Message), Details: map[string]any{"tryAgainIn": v.Error.Details.TryAgainIn}}
+		}
 		return nil, problem(status, v.Error.Code, v.Error.Message)
 	}
 	if s.opts.Organization != nil {

@@ -127,10 +127,11 @@ func (c *Client) doWithHeaders(ctx context.Context, method, route string, input,
 		apiErr := &authn.APIError{Status: res.StatusCode}
 		wire := struct {
 			*authn.APIError
-			OriginalMessage    *string  `json:"originalMessage"`
-			MissingPermissions []string `json:"missingPermissions"`
-			OAuthCode          string   `json:"error"`
-			Description        string   `json:"error_description"`
+			OriginalMessage    *string        `json:"originalMessage"`
+			MissingPermissions []string       `json:"missingPermissions"`
+			Details            map[string]any `json:"details"`
+			OAuthCode          string         `json:"error"`
+			Description        string         `json:"error_description"`
 		}{APIError: apiErr}
 		_ = json.NewDecoder(io.LimitReader(res.Body, 64<<10)).Decode(&wire)
 		if apiErr.Code == "" && wire.OAuthCode != "" {
@@ -145,6 +146,13 @@ func (c *Client) doWithHeaders(ctx context.Context, method, route string, input,
 				denied.OriginalMessage = *wire.OriginalMessage
 			}
 			return res.Header, denied
+		}
+		if wire.Details != nil {
+			detailed := &authn.DetailedError{APIError: apiErr, Details: wire.Details}
+			if wire.OriginalMessage != nil {
+				detailed.OriginalMessage = *wire.OriginalMessage
+			}
+			return res.Header, detailed
 		}
 		if wire.OriginalMessage != nil {
 			return res.Header, &authn.LocalizedError{APIError: apiErr, OriginalMessage: *wire.OriginalMessage}

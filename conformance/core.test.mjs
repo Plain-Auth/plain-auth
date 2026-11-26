@@ -1202,6 +1202,33 @@ test("application key validators control sessions on both runtimes", async (t) =
   }
 });
 
+test("a rate-limited API key session answers RATE_LIMITED with a retry delay on both runtimes", async t => {
+  const { apiKey } = await import("@better-auth/api-key");
+  const { apiKeyClient } = await import("@better-auth/api-key/client");
+  const runtimes = [
+    await reference(t, [apiKey({ enableSessionForAPIKeys: true })]),
+    await goFixture(t, ["organization", "api-key"], { AUTH_TEST_API_KEY_SESSIONS: "1" }),
+  ];
+  for (const runtime of runtimes) {
+    const { client } = instrument(runtime, [apiKeyClient()]);
+    assert.equal((await client.signUp.email({ email, name, password })).error, null);
+    const issued = await client.apiKey.create({ name: "Budget" });
+    assert.equal(issued.error, null);
+    const read = () => runtime.send(new Request(runtime.baseURL + "/api/auth/get-session", {
+      headers: { "X-API-Key": issued.data.key },
+    }));
+    for (let i = 0; i < 10; i++) {
+      assert.equal((await read()).status, 200, "a key within its default budget of ten was refused");
+    }
+    const response = await read();
+    const body = await response.json();
+    assert.equal(response.status, 429);
+    assert.equal(body.code, "RATE_LIMITED");
+    assert.equal(body.message, "Rate limit exceeded.");
+    assert.ok(body.details.tryAgainIn > 0 && body.details.tryAgainIn <= 86400000, "a rate-limited key session gave no retry delay");
+  }
+});
+
 test("the released organization client updates member roles on both servers", async t => {
   const {compareMemberRoles} = await import("./organization-role.mjs");
   await compareMemberRoles(t, {reference, goFixture, instrument});

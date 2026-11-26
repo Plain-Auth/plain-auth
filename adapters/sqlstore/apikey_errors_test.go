@@ -12,6 +12,7 @@ import (
 	plainauth "github.com/Plain-Org/plain-auth"
 	"github.com/Plain-Org/plain-auth/client"
 	ak "github.com/Plain-Org/plain-auth/plugins/apikey"
+	org "github.com/Plain-Org/plain-auth/plugins/organization"
 	"github.com/Plain-Org/plain-auth/schema"
 )
 
@@ -34,7 +35,7 @@ func TestAPIKeyErrorCodesAcrossEngines(t *testing.T) {
 					t.Fatalf("expected %d %s %q, got %v", status, code, message, err)
 				}
 			}
-			ddl, err := schema.Generate(dialect, []string{"api-key", "admin"})
+			ddl, err := schema.Generate(dialect, []string{"api-key", "organization", "admin"})
 			must(err)
 			store, err := OpenWithSchema(ctx, dialect, organizationTestDSN(t, dialect), ddl)
 			must(err)
@@ -43,11 +44,15 @@ func TestAPIKeyErrorCodesAcrossEngines(t *testing.T) {
 			must(err)
 			fixed, err := ak.New(ak.Options{Store: store, ConfigID: "fixed", RequireName: true, DisableCustomExpiration: true})
 			must(err)
-			plugin, err := ak.NewPlugin(users, fixed)
+			teams, err := ak.New(ak.Options{Store: store, ConfigID: "teams", Organization: &ak.OrganizationOptions{Roles: map[string][]string{"auditor": {"read"}}}, EnableSession: true, Headers: []string{"X-Team-Key"}})
+			must(err)
+			plugin, err := ak.NewPlugin(users, fixed, teams)
+			must(err)
+			orgPlugin, err := org.New(org.Options{Store: store})
 			must(err)
 			const origin = "https://errors.example"
 			off := false
-			host, err := plainauth.New(plainauth.Options{Store: store, BaseURL: origin, Secret: strings.Repeat("e", 32), EmailAndPassword: true, RateLimit: &off, Plugins: []plainauth.Plugin{plugin}})
+			host, err := plainauth.New(plainauth.Options{Store: store, BaseURL: origin, Secret: strings.Repeat("e", 32), EmailAndPassword: true, RateLimit: &off, Plugins: []plainauth.Plugin{plugin, orgPlugin}})
 			must(err)
 			member, err := client.New(origin, &http.Client{Transport: guestTransport{host}})
 			must(err)
@@ -65,6 +70,7 @@ func TestAPIKeyErrorCodesAcrossEngines(t *testing.T) {
 			wantError(create(map[string]any{"configId": "fixed", "name": "Fixed", "expiresIn": 2 * 86400}), 400, "KEY_DISABLED_EXPIRATION", "Custom key expiration values are disabled.")
 			wantError(create(map[string]any{"configId": "fixed", "name": "Fixed", "metadata": map[string]any{"env": "test"}}), 400, "METADATA_DISABLED", "Metadata is disabled.")
 			wantError(create(map[string]any{"remaining": 5}), 400, "SERVER_ONLY_PROPERTY", "The property you're trying to set can only be set from the server auth instance only.")
+			wantError(create(map[string]any{"configId": "teams", "name": "Team"}), 400, "ORGANIZATION_ID_REQUIRED", "Organization ID is required for organization-owned API keys.")
 			_, err = fixed.Create(ctx, owner.User.ID, ak.CreateInput{})
 			wantError(err, 400, "NAME_REQUIRED", "API Key name is required.")
 			amount, interval, negative := int64(5), time.Hour, int64(-1)
@@ -86,6 +92,42 @@ func TestAPIKeyErrorCodesAcrossEngines(t *testing.T) {
 			wantError(err, 404, "KEY_NOT_FOUND", "API Key not found")
 			_, err = member.GetAPIKey(ctx, key.ID, "bogus")
 			wantError(err, 404, "KEY_NOT_FOUND", "API Key not found")
+
+			var group org.Organization
+			must(member.Do(ctx, http.MethodPost, "/organization/create", map[string]any{"name": "Errors", "slug": "errors"}, &group))
+			teamKey, err := member.CreateAPIKey(ctx, client.CreateAPIKeyRequest{ConfigID: "teams", OrganizationID: group.ID, Name: "Team"})
+			must(err)
+			visitor, err := client.New(origin, &http.Client{Transport: guestTransport{host}})
+			must(err)
+			_, err = visitor.SignUpEmail(ctx, client.SignUpRequest{Name: "Visitor", Email: "visitor@example.test", Password: "errors-password"})
+			must(err)
+			_, err = visitor.GetAPIKey(ctx, teamKey.ID, "teams")
+			wantError(err, 403, "USER_NOT_MEMBER_OF_ORGANIZATION", "You are not a member of the organization that owns this API key.")
+			plain, err := client.New(origin, &http.Client{Transport: guestTransport{host}})
+			must(err)
+			plainUser, err := plain.SignUpEmail(ctx, client.SignUpRequest{Name: "Plain", Email: "plain@example.test", Password: "errors-password"})
+			must(err)
+			_, err = store.db.ExecContext(ctx, store.bind(`INSERT INTO "member" ("id","organizationId","userId","role","createdAt") VALUES (?,?,?,?,?)`), "plain-member", group.ID, plainUser.User.ID, "member", store.date(time.Now()))
+			must(err)
+			_, err = plain.GetAPIKey(ctx, teamKey.ID, "teams")
+			wantError(err, 403, "INSUFFICIENT_API_KEY_PERMISSIONS", "You do not have permission to perform this action on organization API keys.")
+			teamSecret, err := teams.Create(ctx, owner.User.ID, ak.CreateInput{OrganizationID: group.ID, Name: "Team session"})
+			must(err)
+			r := httptest.NewRequest("GET", origin+"/api/auth/get-session", nil)
+			r.Header.Set("X-Team-Key", teamSecret.Secret)
+			w := httptest.NewRecorder()
+			host.ServeHTTP(w, r)
+			if w.Code != 401 || !strings.Contains(w.Body.String(), `"code":"INVALID_REFERENCE_ID_FROM_API_KEY","message":"The reference id from the API key is invalid."`) {
+				t.Fatal("an organization key read a user session", w.Code, w.Body)
+			}
+			bare, err := plainauth.New(plainauth.Options{Store: store, BaseURL: origin, Secret: strings.Repeat("e", 32), EmailAndPassword: true, RateLimit: &off, Plugins: []plainauth.Plugin{teams.Plugin()}})
+			must(err)
+			bareMember, err := client.New(origin, &http.Client{Transport: guestTransport{bare}})
+			must(err)
+			_, err = bareMember.SignInEmail(ctx, client.SignInRequest{Email: "owner@example.test", Password: "errors-password"})
+			must(err)
+			_, err = bareMember.CreateAPIKey(ctx, client.CreateAPIKeyRequest{ConfigID: "teams", OrganizationID: group.ID, Name: "No plugin"})
+			wantError(err, 500, "ORGANIZATION_PLUGIN_REQUIRED", "Organization plugin is required for organization-owned API keys. Please install and configure the organization plugin.")
 
 			anonymous, err := client.New(origin, &http.Client{Transport: guestTransport{host}})
 			must(err)
@@ -170,6 +212,95 @@ func TestAPIKeyErrorCodesAcrossEngines(t *testing.T) {
 			must(err)
 			if v.Valid || v.Error == nil || v.Error.Code != "USER_BANNED" || v.Error.Message != "User is banned" {
 				t.Fatal("a banned owner's key was not refused", v.Error)
+			}
+		})
+	}
+}
+
+// keyTransport sends every request with an API key header.
+type keyTransport struct {
+	server *plainauth.Auth
+	key    string
+}
+
+func (k keyTransport) RoundTrip(r *http.Request) (*http.Response, error) {
+	r = r.Clone(r.Context())
+	r.Header.Set("X-Api-Key", k.key)
+	return guestTransport{k.server}.RoundTrip(r)
+}
+
+// A spent rate budget answers RATE_LIMITED with the milliseconds until the
+// window reopens: under Details from Verify and the middleware, and under
+// details in a session read's 429, which the Go client decodes.
+func TestAPIKeyRateLimitDetails(t *testing.T) {
+	for _, dialect := range []string{"sqlite", "postgres", "mysql"} {
+		t.Run(dialect, func(t *testing.T) {
+			ctx := t.Context()
+			must := func(err error) {
+				t.Helper()
+				if err != nil {
+					t.Fatal(err)
+				}
+			}
+			ddl, err := schema.Generate(dialect, []string{"api-key"})
+			must(err)
+			store, err := OpenWithSchema(ctx, dialect, organizationTestDSN(t, dialect), ddl)
+			must(err)
+			defer store.Close()
+			keys, err := ak.New(ak.Options{Store: store, EnableSession: true, RateMax: 1})
+			must(err)
+			const origin = "https://limits.example"
+			off := false
+			host, err := plainauth.New(plainauth.Options{Store: store, BaseURL: origin, Secret: strings.Repeat("l", 32), EmailAndPassword: true, RateLimit: &off, Plugins: []plainauth.Plugin{keys.Plugin()}})
+			must(err)
+			member, err := client.New(origin, &http.Client{Transport: guestTransport{host}})
+			must(err)
+			owner, err := member.SignUpEmail(ctx, client.SignUpRequest{Name: "Owner", Email: "limits@example.test", Password: "limits-password"})
+			must(err)
+			delay := func(d *ak.RetryDetails) bool { return d != nil && d.TryAgainIn > 0 && d.TryAgainIn <= 86_400_000 }
+
+			verified, err := keys.Create(ctx, owner.User.ID, ak.CreateInput{Name: "Verify"})
+			must(err)
+			if v, err := keys.Verify(ctx, verified.Secret, nil); err != nil || !v.Valid {
+				t.Fatal("a key within its budget was refused", err, v.Error)
+			}
+			v, err := keys.Verify(ctx, verified.Secret, nil)
+			must(err)
+			if v.Valid || v.Error.Code != "RATE_LIMITED" || v.Error.Message != "Rate limit exceeded." || !delay(v.Error.Details) {
+				t.Fatal("rate denial lacked RATE_LIMITED details", v.Error)
+			}
+
+			session, err := keys.Create(ctx, owner.User.ID, ak.CreateInput{Name: "Session"})
+			must(err)
+			viaKey, err := client.New(origin, &http.Client{Transport: keyTransport{host, session.Secret}})
+			must(err)
+			must(viaKey.Do(ctx, http.MethodGet, "/get-session", nil, nil))
+			err = viaKey.Do(ctx, http.MethodGet, "/get-session", nil, nil)
+			var detailed *plainauth.DetailedError
+			if !errors.As(err, &detailed) || detailed.Status != 429 || detailed.Code != "RATE_LIMITED" || detailed.Message != "Rate limit exceeded." {
+				t.Fatal("rate-limited session read lacked its details", err)
+			}
+			if ms, ok := detailed.Details["tryAgainIn"].(float64); !ok || ms <= 0 || ms > 86_400_000 {
+				t.Fatal("the Go client lost the rate-limit details", detailed.Details)
+			}
+
+			guarded, err := keys.Create(ctx, owner.User.ID, ak.CreateInput{Name: "Middleware"})
+			must(err)
+			handler := keys.Middleware(nil, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusNoContent) }))
+			serve := func() *httptest.ResponseRecorder {
+				r := httptest.NewRequest("GET", "https://app.example/jobs", nil)
+				r.Header.Set("X-Api-Key", guarded.Secret)
+				w := httptest.NewRecorder()
+				handler.ServeHTTP(w, r)
+				return w
+			}
+			if w := serve(); w.Code != http.StatusNoContent {
+				t.Fatal("middleware refused a key within its budget", w.Code, w.Body)
+			}
+			w := serve()
+			var failure ak.VerifyError
+			if w.Code != 429 || w.Header().Get("Retry-After") == "" || json.Unmarshal(w.Body.Bytes(), &failure) != nil || failure.Code != "RATE_LIMITED" || !delay(failure.Details) {
+				t.Fatal("middleware rate refusal lacked its retry delay", w.Code, w.Header(), w.Body)
 			}
 		})
 	}
