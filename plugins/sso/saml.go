@@ -167,6 +167,12 @@ type SAMLConfig struct {
 	AuthnRequestsSigned     bool            `json:"authnRequestsSigned,omitempty"`
 	IdentifierFormat        string          `json:"identifierFormat,omitempty"`
 	Mapping                 SAMLMapping     `json:"mapping,omitempty"`
+	// SignatureAlgorithm and DigestAlgorithm record the directory's XML
+	// signature algorithms as URIs or short forms such as rsa-sha256 and
+	// sha256. Registration checks them against SAMLOptions.Algorithms;
+	// requests are still signed with RSA-SHA256.
+	SignatureAlgorithm string `json:"signatureAlgorithm,omitempty"`
+	DigestAlgorithm    string `json:"digestAlgorithm,omitempty"`
 }
 
 func DecodeSAMLConfig(raw []byte) (*SAMLConfig, error) {

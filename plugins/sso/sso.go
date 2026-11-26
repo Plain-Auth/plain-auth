@@ -89,6 +89,8 @@ type PublicSAMLConfig struct {
 	WantAssertionsSigned *bool  `json:"wantAssertionsSigned,omitempty"`
 	AuthnRequestsSigned  bool   `json:"authnRequestsSigned,omitempty"`
 	IdentifierFormat     string `json:"identifierFormat,omitempty"`
+	SignatureAlgorithm   string `json:"signatureAlgorithm,omitempty"`
+	DigestAlgorithm      string `json:"digestAlgorithm,omitempty"`
 }
 
 type PublicProvider struct {
@@ -271,6 +273,9 @@ func New(o Options) (auth.Plugin, error) {
 			if e != nil {
 				return nil, ErrInvalidSAML
 			}
+			if e = o.SAML.Algorithms.checkConfig(*p.SAML); e != nil {
+				return nil, e
+			}
 			p.SAML.Issuer = issuer
 			if _, e = o.samlSP(c, p); e != nil {
 				return nil, e
@@ -442,7 +447,7 @@ func sanitized(c auth.EndpointContext, p Provider) PublicProvider {
 	out := PublicProvider{ProviderID: p.ProviderID, Issuer: p.Issuer, Domain: p.Domain, OrganizationID: p.OrganizationID, Type: "oidc", SPMetadataURL: metadata}
 	if p.SAML != nil {
 		out.Type = "saml"
-		out.SAML = &PublicSAMLConfig{EntryPoint: p.SAML.EntryPoint, Audience: p.SAML.Audience, WantAssertionsSigned: p.SAML.WantAssertionsSigned, AuthnRequestsSigned: p.SAML.AuthnRequestsSigned, IdentifierFormat: p.SAML.IdentifierFormat}
+		out.SAML = &PublicSAMLConfig{EntryPoint: p.SAML.EntryPoint, Audience: p.SAML.Audience, WantAssertionsSigned: p.SAML.WantAssertionsSigned, AuthnRequestsSigned: p.SAML.AuthnRequestsSigned, IdentifierFormat: p.SAML.IdentifierFormat, SignatureAlgorithm: p.SAML.SignatureAlgorithm, DigestAlgorithm: p.SAML.DigestAlgorithm}
 	}
 	if cfg := p.OIDC; cfg != nil {
 		masked := "****"

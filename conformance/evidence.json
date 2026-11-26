@@ -44150,6 +44150,12 @@
       "label": "Refuse deprecated and short-form signature allow-list entries when building the plugin",
       "test": "plugins/sso/saml_test.go",
       "marker": "a short-form signature allow-list entry was accepted"
+    },
+    {
+      "label": "Apply the signature allow-list to a directory's signatureAlgorithm at registration",
+      "test": "adapters/sqlstore/sso_saml_policy_test.go",
+      "marker": "registration accepted a signatureAlgorithm outside the allow-list",
+      "complete": true
     }
   ],
   "plugin-symbol/sso/AlgorithmValidationOptions/allowedDigestAlgorithms": [
@@ -44162,6 +44168,12 @@
       "label": "Refuse a SHA-1 digest allow-list entry when building the plugin",
       "test": "plugins/sso/saml_test.go",
       "marker": "a SHA-1 digest allow-list entry was accepted"
+    },
+    {
+      "label": "Apply the digest allow-list to a directory's digestAlgorithm",
+      "test": "plugins/sso/saml_test.go",
+      "marker": "a digestAlgorithm outside the allow-list was accepted",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/sso/saml-security.mdx#L93/Signature": [
@@ -44215,6 +44227,12 @@
       "label": "Refuse ECDSA-SHA1 as an unrecognized signature method",
       "test": "plugins/sso/saml_test.go",
       "marker": "ECDSA-SHA1 was not refused as unrecognized"
+    },
+    {
+      "label": "Refuse registration with an unknown signatureAlgorithm with 400 SAML_UNKNOWN_ALGORITHM, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_saml_policy_test.go",
+      "marker": "registration accepted an unknown signatureAlgorithm",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/sso/saml-security.mdx#L128/`SAML_ALGORITHM_NOT_ALLOWED`": [
@@ -44227,6 +44245,12 @@
       "label": "Apply the allow-list before the deprecation check",
       "test": "plugins/sso/saml_test.go",
       "marker": "the allow-list did not take precedence over the deprecation check"
+    },
+    {
+      "label": "Refuse registration with a signatureAlgorithm outside the allow-list with 400 SAML_ALGORITHM_NOT_ALLOWED, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_saml_policy_test.go",
+      "marker": "registration accepted a signatureAlgorithm outside the allow-list",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/sso/saml-security.mdx#L129/`SAML_DEPRECATED_ALGORITHM`": [
@@ -44273,6 +44297,66 @@
       "label": "Refuse a deprecated algorithm rather than allow it: an RSA-SHA1 response fails with saml_deprecated_algorithm",
       "test": "adapters/sqlstore/sso_saml_policy_test.go",
       "marker": "an RSA-SHA1 response did not fail with saml_deprecated_algorithm"
+    }
+  ],
+  "plugin-symbol/sso/SAMLConfig/signatureAlgorithm": [
+    {
+      "label": "Register, store and return a directory's signatureAlgorithm, refusing deprecated, unknown and unlisted values with their codes and storing nothing, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_saml_policy_test.go",
+      "marker": "get-provider did not return the registered algorithms",
+      "complete": true
+    },
+    {
+      "label": "Accept short forms in any case and full URIs for signatureAlgorithm",
+      "test": "plugins/sso/saml_test.go",
+      "marker": "an upper-case short form was refused"
+    }
+  ],
+  "plugin-symbol/sso/SAMLConfig/digestAlgorithm": [
+    {
+      "label": "Register and return a directory's digestAlgorithm and refuse a deprecated one, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_saml_policy_test.go",
+      "marker": "registration accepted a deprecated digestAlgorithm",
+      "complete": true
+    },
+    {
+      "label": "Refuse an unknown or unlisted digestAlgorithm",
+      "test": "plugins/sso/saml_test.go",
+      "marker": "a digestAlgorithm outside the allow-list was accepted"
+    }
+  ],
+  "docs/content/docs/plugins/sso/saml-security.mdx#L85": [
+    {
+      "label": "Check a directory's recorded algorithms against the policy at registration and store nothing when refused, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_saml_policy_test.go",
+      "marker": "a refused algorithm registration stored a provider",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/sso/saml-security.mdx#L130/`SAML_DEPRECATED_CONFIG_ALGORITHM`": [
+    {
+      "label": "Refuse registration with a deprecated signatureAlgorithm with 400 SAML_DEPRECATED_CONFIG_ALGORITHM and its message, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_saml_policy_test.go",
+      "marker": "registration accepted a deprecated signatureAlgorithm",
+      "complete": true
+    },
+    {
+      "label": "Name a deprecated digestAlgorithm in SAML_DEPRECATED_CONFIG_ALGORITHM",
+      "test": "plugins/sso/saml_test.go",
+      "marker": "a SHA-1 digestAlgorithm was not refused as deprecated"
+    }
+  ],
+  "plugin-symbol/sso/SAMLConfig/identifierFormat": [
+    {
+      "label": "Advertise the directory's identifierFormat in the SP metadata, request it in the AuthnRequest and sign in with a persistent NameID the IdP enforces, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_saml_policy_test.go",
+      "marker": "the AuthnRequest did not ask for the directory's identifierFormat",
+      "complete": true
+    },
+    {
+      "label": "Advertise the directory's identifierFormat in the SP metadata",
+      "test": "adapters/sqlstore/sso_saml_policy_test.go",
+      "marker": "SP metadata did not advertise the directory's identifierFormat"
     }
   ]
 }

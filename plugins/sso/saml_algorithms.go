@@ -3,6 +3,7 @@ package sso
 import (
 	"errors"
 	"slices"
+	"strings"
 
 	auth "github.com/Plain-Org/plain-auth"
 	"github.com/beevik/etree"
@@ -106,6 +107,12 @@ func samlAlgorithmFailure(code, message string) *auth.APIError {
 // algorithm, then the supported ones. shown names the value in the message,
 // and is empty for a value the host did not choose.
 func checkSAMLAlgorithm[T ~string](kind string, value T, allowed, secure []T, deprecated T, shown, fix string) error {
+	return checkAlgorithm(kind, "response", value, allowed, secure, deprecated, shown, fix)
+}
+
+// checkAlgorithm is checkSAMLAlgorithm for a response or, with from
+// "config", for a directory's recorded algorithm.
+func checkAlgorithm[T ~string](kind, from string, value T, allowed, secure []T, deprecated T, shown, fix string) error {
 	if value == "" {
 		return nil
 	}
@@ -114,6 +121,9 @@ func checkSAMLAlgorithm[T ~string](kind string, value T, allowed, secure []T, de
 	}
 	if len(allowed) > 0 && !slices.Contains(allowed, value) {
 		return samlAlgorithmFailure("SAML_ALGORITHM_NOT_ALLOWED", "SAML "+kind+" algorithm not in allow-list"+shown)
+	}
+	if value == deprecated && from == "config" {
+		return samlAlgorithmFailure("SAML_DEPRECATED_CONFIG_ALGORITHM", "SAML config uses deprecated "+kind+" algorithm"+shown+". Consider using "+fix+".")
 	}
 	if value == deprecated {
 		return samlAlgorithmFailure("SAML_DEPRECATED_ALGORITHM", "SAML response uses deprecated "+kind+" algorithm"+shown+". Please configure your IdP to use "+fix+".")
@@ -177,4 +187,31 @@ func (a SAMLAlgorithms) checkSignatures(elements ...*etree.Element) error {
 // of a response.
 func deprecatedSAMLResponseAlgorithm(kind, uri, fix string) error {
 	return samlAlgorithmFailure("SAML_DEPRECATED_ALGORITHM", "SAML response uses deprecated "+kind+" algorithm: "+uri+". Please configure your IdP to use "+fix+".")
+}
+
+// The short forms a directory's samlConfig may use for its algorithms.
+var (
+	signatureShortForms = map[string]SignatureAlgorithm{
+		"sha1": SignatureRSASHA1, "sha256": SignatureRSASHA256, "sha384": SignatureRSASHA384, "sha512": SignatureRSASHA512,
+		"rsa-sha1": SignatureRSASHA1, "rsa-sha256": SignatureRSASHA256, "rsa-sha384": SignatureRSASHA384, "rsa-sha512": SignatureRSASHA512,
+		"ecdsa-sha256": SignatureECDSASHA256, "ecdsa-sha384": SignatureECDSASHA384, "ecdsa-sha512": SignatureECDSASHA512,
+	}
+	digestShortForms = map[string]DigestAlgorithm{"sha1": DigestSHA1, "sha256": DigestSHA256, "sha384": DigestSHA384, "sha512": DigestSHA512}
+)
+
+// checkConfig applies the policy to a directory's recorded algorithms,
+// naming the configured value in the error.
+func (a SAMLAlgorithms) checkConfig(c SAMLConfig) error {
+	signature := SignatureAlgorithm(c.SignatureAlgorithm)
+	if short, ok := signatureShortForms[strings.ToLower(c.SignatureAlgorithm)]; ok {
+		signature = short
+	}
+	if err := checkAlgorithm("signature", "config", signature, a.AllowedSignatureAlgorithms, secureSignatureAlgorithms, SignatureRSASHA1, c.SignatureAlgorithm, "SHA-256 or stronger"); err != nil {
+		return err
+	}
+	digest := DigestAlgorithm(c.DigestAlgorithm)
+	if short, ok := digestShortForms[strings.ToLower(c.DigestAlgorithm)]; ok {
+		digest = short
+	}
+	return checkAlgorithm("digest", "config", digest, a.AllowedDigestAlgorithms, secureDigestAlgorithms, DigestSHA1, c.DigestAlgorithm, "SHA-256 or stronger")
 }

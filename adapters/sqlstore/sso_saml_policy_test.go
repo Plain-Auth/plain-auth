@@ -35,6 +35,8 @@ type samlPolicy struct {
 	// respond, when set, runs after the assertion is signed and before the
 	// response is, so a test can sign them differently.
 	respond func(*saml.IdpAuthnRequest)
+	// nameIDFormat is the NameID format the IdP session declares.
+	nameIDFormat string
 }
 
 const samlPolicyIdP = "https://identity.example.test"
@@ -143,7 +145,7 @@ func (p *samlPolicy) finish(h *auth.Auth, id string, req *saml.IdpAuthnRequest, 
 	if idpEdit != nil {
 		idpEdit(req.IDP)
 	}
-	sess := &saml.Session{ID: "idp-" + id, Index: "index-" + id, CreateTime: time.Now(), ExpireTime: time.Now().Add(time.Hour), NameID: "employee-" + id,
+	sess := &saml.Session{ID: "idp-" + id, Index: "index-" + id, CreateTime: time.Now(), ExpireTime: time.Now().Add(time.Hour), NameID: "employee-" + id, NameIDFormat: p.nameIDFormat,
 		CustomAttributes: []saml.Attribute{{Name: "email", Values: []saml.AttributeValue{{Value: "employee-" + id + "@" + id + ".example"}}}}}
 	if err := (saml.DefaultAssertionMaker{}).MakeAssertion(req, sess); err != nil {
 		p.t.Fatal(err)
@@ -289,6 +291,87 @@ func TestEnterpriseSAMLResponsePolicy(t *testing.T) {
 				p.respond = nil
 				if !refused(location, session, "saml_algorithm_not_allowed", "SAML signature algorithm not in allow-list: http://www.w3.org/2001/04/xmldsig-more#rsa-sha512") {
 					t.Fatal("a decrypted RSA-SHA512 assertion escaped the allow-list", location)
+				}
+			})
+			t.Run("registration algorithms", func(t *testing.T) {
+				p := newSAMLPolicy(t, dialect)
+				def := p.host(sso.SAMLOptions{}, nil)
+				allowList := p.host(sso.SAMLOptions{Algorithms: sso.SAMLAlgorithms{AllowedSignatureAlgorithms: []sso.SignatureAlgorithm{sso.SignatureRSASHA256}}}, nil)
+				signup := p.call(def, "POST", "sign-up/email", map[string]any{"name": "Admin", "email": "admin@service.test", "password": "correct-horse-staple"})
+				var admin string
+				for _, c := range signup.Result().Cookies() {
+					if strings.Contains(c.Name, "session_token") {
+						admin = c.Name + "=" + c.Value
+					}
+				}
+				register := func(h *auth.Auth, id string, algorithms map[string]any) (int, string, string) {
+					t.Helper()
+					cfg := map[string]any{"entryPoint": samlPolicyIdP + "/sso", "idpMetadata": map[string]any{"entityID": samlPolicyIdP + "/metadata"}, "cert": p.idpPEM, "spMetadata": map[string]any{"entityID": "https://service.test/sp/" + id}}
+					for k, v := range algorithms {
+						cfg[k] = v
+					}
+					var buf bytes.Buffer
+					if err := json.NewEncoder(&buf).Encode(map[string]any{"providerId": id, "issuer": "https://service.test/sp/" + id, "domain": id + ".example", "samlConfig": cfg}); err != nil {
+						t.Fatal(err)
+					}
+					req := httptest.NewRequest("POST", "https://service.test/identity/sso/register", &buf)
+					req.Header.Set("Content-Type", "application/json")
+					req.Header.Set("Origin", "https://service.test")
+					req.Header.Set("Cookie", admin)
+					w := httptest.NewRecorder()
+					h.ServeHTTP(w, req)
+					var body struct{ Code, Message string }
+					_ = json.Unmarshal(w.Body.Bytes(), &body)
+					return w.Code, body.Code, body.Message
+				}
+				if status, code, message := register(def, "bad-sig", map[string]any{"signatureAlgorithm": "rsa-sha1"}); status != 400 || code != "SAML_DEPRECATED_CONFIG_ALGORITHM" || message != "SAML config uses deprecated signature algorithm: rsa-sha1. Consider using SHA-256 or stronger." {
+					t.Fatal("registration accepted a deprecated signatureAlgorithm", status, code, message)
+				}
+				if status, code, _ := register(def, "bad-digest", map[string]any{"digestAlgorithm": "sha1"}); status != 400 || code != "SAML_DEPRECATED_CONFIG_ALGORITHM" {
+					t.Fatal("registration accepted a deprecated digestAlgorithm", status, code)
+				}
+				if status, code, _ := register(def, "bad-unknown", map[string]any{"signatureAlgorithm": "md5"}); status != 400 || code != "SAML_UNKNOWN_ALGORITHM" {
+					t.Fatal("registration accepted an unknown signatureAlgorithm", status, code)
+				}
+				if status, code, _ := register(allowList, "bad-listed", map[string]any{"signatureAlgorithm": "rsa-sha512"}); status != 400 || code != "SAML_ALGORITHM_NOT_ALLOWED" {
+					t.Fatal("registration accepted a signatureAlgorithm outside the allow-list", status, code)
+				}
+				var stored int
+				if err := p.store.db.QueryRowContext(t.Context(), p.store.bind(`SELECT COUNT(*) FROM "ssoProvider" WHERE "providerId" LIKE 'bad-%'`)).Scan(&stored); err != nil || stored != 0 {
+					t.Fatal("a refused algorithm registration stored a provider", stored, err)
+				}
+				if status, code, message := register(def, "good-alg", map[string]any{"signatureAlgorithm": "rsa-sha256", "digestAlgorithm": "sha256"}); status != 200 {
+					t.Fatal("registration refused supported algorithms", status, code, message)
+				}
+				read := httptest.NewRequest("GET", "https://service.test/identity/sso/get-provider?providerId=good-alg", nil)
+				read.Header.Set("Cookie", admin)
+				w := httptest.NewRecorder()
+				def.ServeHTTP(w, read)
+				var got struct {
+					SAMLConfig struct{ SignatureAlgorithm, DigestAlgorithm string } `json:"samlConfig"`
+				}
+				if w.Code != 200 || json.Unmarshal(w.Body.Bytes(), &got) != nil || got.SAMLConfig.SignatureAlgorithm != "rsa-sha256" || got.SAMLConfig.DigestAlgorithm != "sha256" {
+					t.Fatal("get-provider did not return the registered algorithms", w.Code, w.Body.String())
+				}
+			})
+			t.Run("identifier format", func(t *testing.T) {
+				const persistent = "urn:oasis:names:tc:SAML:2.0:nameid-format:persistent"
+				p := newSAMLPolicy(t, dialect)
+				p.directory("persistent", func(cfg *sso.SAMLConfig) { cfg.IdentifierFormat = persistent })
+				p.nameIDFormat = persistent
+				def := p.host(sso.SAMLOptions{}, nil)
+				w := p.call(def, "GET", "sso/saml2/sp/metadata?providerId=persistent", nil)
+				var md saml.EntityDescriptor
+				if xml.Unmarshal(w.Body.Bytes(), &md) != nil || len(md.SPSSODescriptors) != 1 || len(md.SPSSODescriptors[0].NameIDFormats) != 1 || string(md.SPSSODescriptors[0].NameIDFormats[0]) != persistent {
+					t.Fatal("SP metadata did not advertise the directory's identifierFormat", w.Body.String())
+				}
+				req, state := p.start(def, "persistent")
+				if req.Request.NameIDPolicy == nil || req.Request.NameIDPolicy.Format == nil || *req.Request.NameIDPolicy.Format != persistent {
+					t.Fatal("the AuthnRequest did not ask for the directory's identifierFormat", req.Request.NameIDPolicy)
+				}
+				done := p.finish(def, "persistent", req, state, func(idp *saml.IdentityProvider) { idp.EnforceNameIDPolicy = true }, nil, nil)
+				if location, session := samlOutcome(t, done); location.String() != "https://service.test/home" || !session {
+					t.Fatal("a sign-in requesting a persistent NameID failed", location)
 				}
 			})
 			t.Run("timestamps", func(t *testing.T) {

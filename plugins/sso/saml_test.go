@@ -411,3 +411,50 @@ func TestSAMLAlgorithmOptions(t *testing.T) {
 		t.Fatal("a supported algorithm allow-list was refused")
 	}
 }
+
+// A directory's recorded algorithms decode, accept short forms and full
+// URIs, and are refused when deprecated, unknown or outside an allow-list.
+func TestSAMLConfigAlgorithms(t *testing.T) {
+	cfg, err := DecodeSAMLConfig([]byte(`{"entryPoint":"https://idp.example/sso","idpMetadata":{"entityID":"https://idp.example"},"signatureAlgorithm":"rsa-sha256","digestAlgorithm":"sha256"}`))
+	if err != nil || cfg.SignatureAlgorithm != "rsa-sha256" || cfg.DigestAlgorithm != "sha256" {
+		t.Fatal("DecodeSAMLConfig refused or dropped the configured algorithms", err)
+	}
+	failure := func(err error) (string, string) {
+		var e *auth.APIError
+		if errors.As(err, &e) {
+			return e.Code, e.Message
+		}
+		return "", ""
+	}
+	none, onlyRSA256, onlySHA256 := SAMLAlgorithms{}, SAMLAlgorithms{AllowedSignatureAlgorithms: []SignatureAlgorithm{SignatureRSASHA256}}, SAMLAlgorithms{AllowedDigestAlgorithms: []DigestAlgorithm{DigestSHA256}}
+	if err := none.checkConfig(SAMLConfig{SignatureAlgorithm: "rsa-sha256", DigestAlgorithm: "sha256"}); err != nil {
+		t.Fatal("short-form algorithms were refused", err)
+	}
+	if err := none.checkConfig(SAMLConfig{SignatureAlgorithm: "SHA256"}); err != nil {
+		t.Fatal("an upper-case short form was refused", err)
+	}
+	if err := none.checkConfig(SAMLConfig{SignatureAlgorithm: string(SignatureECDSASHA384)}); err != nil {
+		t.Fatal("an ECDSA signature URI was refused", err)
+	}
+	if code, message := failure(none.checkConfig(SAMLConfig{SignatureAlgorithm: "md5"})); code != "SAML_UNKNOWN_ALGORITHM" || message != "SAML signature algorithm not recognized: md5" {
+		t.Fatal("an unknown signatureAlgorithm was accepted", code, message)
+	}
+	if code, message := failure(none.checkConfig(SAMLConfig{DigestAlgorithm: "sha3-256"})); code != "SAML_UNKNOWN_ALGORITHM" || message != "SAML digest algorithm not recognized: sha3-256" {
+		t.Fatal("an unknown digestAlgorithm was accepted", code, message)
+	}
+	if code, message := failure(onlyRSA256.checkConfig(SAMLConfig{SignatureAlgorithm: "rsa-sha512"})); code != "SAML_ALGORITHM_NOT_ALLOWED" || message != "SAML signature algorithm not in allow-list: rsa-sha512" {
+		t.Fatal("a signatureAlgorithm outside the allow-list was accepted", code, message)
+	}
+	if err := onlyRSA256.checkConfig(SAMLConfig{SignatureAlgorithm: "sha256"}); err != nil {
+		t.Fatal("the allow-list refused a short form of a listed URI", err)
+	}
+	if code, message := failure(onlySHA256.checkConfig(SAMLConfig{DigestAlgorithm: "sha512"})); code != "SAML_ALGORITHM_NOT_ALLOWED" || message != "SAML digest algorithm not in allow-list: sha512" {
+		t.Fatal("a digestAlgorithm outside the allow-list was accepted", code, message)
+	}
+	if code, message := failure(none.checkConfig(SAMLConfig{SignatureAlgorithm: "sha1"})); code != "SAML_DEPRECATED_CONFIG_ALGORITHM" || message != "SAML config uses deprecated signature algorithm: sha1. Consider using SHA-256 or stronger." {
+		t.Fatal("a SHA-1 signatureAlgorithm was not refused as deprecated", code, message)
+	}
+	if code, message := failure(none.checkConfig(SAMLConfig{DigestAlgorithm: string(DigestSHA1)})); code != "SAML_DEPRECATED_CONFIG_ALGORITHM" || message != "SAML config uses deprecated digest algorithm: http://www.w3.org/2000/09/xmldsig#sha1. Consider using SHA-256 or stronger." {
+		t.Fatal("a SHA-1 digestAlgorithm was not refused as deprecated", code, message)
+	}
+}

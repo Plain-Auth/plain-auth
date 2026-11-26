@@ -31,6 +31,8 @@ func (c SAMLConfig) WithIDPMetadata(raw string) (*SAMLConfig, error) {
 }
 
 func (o Options) updateSAMLMetadata(c auth.EndpointContext, store Store, actor Actor) (any, error) {
+	// Only the IdP metadata changes, so the recorded algorithms need no
+	// recheck.
 	id, _ := c.Body["providerId"].(string)
 	if !MutableProviderID(id) || c.Auth.HasOAuthProvider(id) {
 		return nil, ErrMissing
