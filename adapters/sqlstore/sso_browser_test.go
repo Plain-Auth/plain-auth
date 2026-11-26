@@ -347,7 +347,7 @@ func TestEnterpriseOIDCBrowser(t *testing.T) {
 			ch := start(one, "acme", "changed@example.test", "changed", "client_secret_basic", "", withID)
 			exec(`UPDATE "ssoProvider" SET "domain"='changed.example' WHERE "providerId"='acme'`)
 			before := idp.tokens.Load()
-			target(finish(two, ch), "/retry?error=invalid_state")
+			target(finish(two, ch), "/retry?error=invalid_state&error_description=sso_provider_changed_during_authentication")
 			if idp.tokens.Load() != before {
 				t.Fatal("changed provider reached token endpoint")
 			}

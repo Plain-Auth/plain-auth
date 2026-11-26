@@ -627,8 +627,29 @@ func runEnterpriseSAMLBrowser(t *testing.T, encrypted, logout bool) {
 					}
 				})
 			}
+			// A response naming a request nobody sent is unknown, as in
+			// another runtime, and a browser-bound response without
+			// InResponseTo is unsolicited.
+			t.Run("unsent request", func(t *testing.T) {
+				h := newBrowser()
+				r, e := start(h)
+				must(e)
+				r.Request.ID = "_neverSent"
+				status, hd, _ := post(h, form(r, "unsent-request", "unsent-request@staff.example", nil), acs)
+				if status != 302 || !strings.Contains(hd.Get("Location"), "error=invalid_saml_response&error_description=Unknown+or+expired+request+ID") {
+					t.Fatal("a response to a request nobody sent was not reported as an unknown request", status, hd.Get("Location"))
+				}
+				r, e = start(h)
+				must(e)
+				r.Request.ID = ""
+				status, hd, _ = post(h, form(r, "unrequested", "unrequested@staff.example", nil), acs)
+				if status != 302 || !strings.Contains(hd.Get("Location"), "error=unsolicited_response&error_description=IdP-initiated+SSO+not+allowed") {
+					t.Fatal("a browser-bound response without InResponseTo was not reported as unsolicited", status, hd.Get("Location"))
+				}
+			})
 			// A response to another request of this browser names a request this
-			// sign-in never sent.
+			// sign-in never sent; another runtime accepts it while that request
+			// is outstanding.
 			t.Run("unknown request", func(t *testing.T) {
 				h := newBrowser()
 				earlier, e := start(h)
@@ -755,7 +776,7 @@ func runEnterpriseSAMLBrowser(t *testing.T, encrypted, logout bool) {
 			_, e = second.db.ExecContext(ctx, second.bind(`UPDATE "ssoProvider" SET "samlConfig"=? WHERE "providerId"=?`), string(raw), "work")
 			must(e)
 			st, head, _ = post(h, staleForm, acs)
-			if st != 302 || !strings.Contains(head.Get("Location"), "error=invalid_state&error_description=SSO+provider+reference+missing+or+invalid") {
+			if st != 302 || !strings.Contains(head.Get("Location"), "error=invalid_state&error_description=sso_provider_changed_during_authentication") {
 				t.Fatal("changed provider accepted response", head)
 			}
 			must(owner.DeleteSSOProvider(ctx, "work"))

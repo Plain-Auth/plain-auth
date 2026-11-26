@@ -119,7 +119,7 @@ export async function compareEnterpriseBrowser(t, {goFixture,instrument}) {
     assert.notEqual(replacement.id,registration.id);
     const response=await go.send(new Request(target,{headers:{cookie:stateCookie},redirect:"manual"}));
     assert.equal(response.status,302);
-    assert.equal(response.headers.get("location"),go.baseURL+"/retry?error=invalid_state");
+    assert.equal(response.headers.get("location"),go.baseURL+"/retry?error=invalid_state&error_description=sso_provider_changed_during_authentication");
     assert.ok(grants.delete(code),"a deleted provider's replacement reached the token endpoint");
     assert.equal(db.prepare("select count(*) as n from account where providerId='company'").get().n,0);
   }

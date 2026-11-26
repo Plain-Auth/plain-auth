@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"encoding/xml"
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -123,6 +124,19 @@ func testSAMLLogout(t *testing.T, first, second *Store, idp *saml.IdentityProvid
 	var notFound *auth.APIError
 	if _, e := sdk(h).StartSAMLLogout(ctx, "absent", "/signed-out"); !errors.As(e, &notFound) || notFound.Status != 404 || notFound.Code != "SAML_PROVIDER_NOT_FOUND" || notFound.Message != "SAML provider not found" {
 		t.Fatal("a logout for an unknown provider did not answer SAML_PROVIDER_NOT_FOUND", e)
+	}
+	// The SLO route answers an IdP request for an unknown provider with the
+	// same code. A response without this browser's logout cookie is invalid
+	// before any provider lookup.
+	sigAlg := url.QueryEscape("http://www.w3.org/2001/04/xmldsig-more#rsa-sha256")
+	for _, query := range []string{"SAMLRequest=x&SigAlg=" + sigAlg + "&Signature=y"} {
+		res, e := newBrowser().Get(api + "/sso/saml2/sp/slo/absent?" + query)
+		must(e)
+		body, _ := io.ReadAll(res.Body)
+		res.Body.Close()
+		if res.StatusCode != 404 || !strings.Contains(string(body), `"code":"SAML_PROVIDER_NOT_FOUND"`) {
+			t.Fatal("the SLO route did not answer an unknown provider with SAML_PROVIDER_NOT_FOUND", query, res.StatusCode, string(body))
+		}
 	}
 	another := newBrowser()
 	login(t, another, "employee", nil)

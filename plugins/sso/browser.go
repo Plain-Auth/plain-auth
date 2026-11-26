@@ -104,7 +104,8 @@ func (o Options) start(c auth.EndpointContext) (any, error) {
 		// Like another runtime, name the protocol a found provider lacks.
 		any := sel
 		any.Protocol = ""
-		if other, e := find(c.Request.Context(), any); e == nil && available(c, other) {
+		// A provider whose domain is not verified yet still lacks the protocol.
+		if other, e := find(c.Request.Context(), any); e == nil && available(c, other) || errors.Is(e, ErrDomainUnverified) {
 			if kind == "saml" {
 				return nil, apiError(400, "SAML provider is not configured")
 			}
@@ -299,7 +300,7 @@ func (o Options) finish(c auth.EndpointContext) (any, error) {
 		return nil, err
 	}
 	if p.OIDC == nil || !available(c, p) || strings.TrimSuffix(flow.ProviderReference, ".dns") != p.Reference {
-		return fail("invalid_state")
+		return enterpriseFailure(c, flow, "invalid_state", "sso_provider_changed_during_authentication")
 	}
 	proof, err := o.domainGate(c, p)
 	if err != nil {

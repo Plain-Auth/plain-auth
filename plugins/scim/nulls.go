@@ -35,10 +35,11 @@ const (
 func userNullTarget(path string) (nullKind, string) {
 	relative := withoutSchema(path, UserSchema)
 	if attr, sub, ok, err := enterprisePath(relative); ok && err == nil && enterpriseReachable(relative, relative != strings.TrimSpace(path)) {
-		// The URN joins its attributes with ":", the other forms with ".".
-		separator := "."
-		if strings.EqualFold(strings.TrimSpace(relative), EnterpriseUserSchema) {
-			separator = ":"
+		// Only the bare enterprise alias joins its attributes with "."; the
+		// URN and a core-prefixed alias use ":", as in another runtime.
+		separator := ":"
+		if strings.EqualFold(strings.TrimSpace(path), "enterprise") {
+			separator = "."
 		}
 		switch {
 		case attr == "":

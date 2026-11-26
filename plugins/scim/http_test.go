@@ -305,6 +305,24 @@ func TestSCIMCaseDuplicateAttributesAreInvalidSyntax(t *testing.T) {
 	if _, err := normalize(map[string]any{"schemas": []any{UserSchema}, "userName": "a@example.test", "id": "a", "ID": "b"}); !syntax(err) {
 		t.Fatal("a User naming id twice was not invalidSyntax", err)
 	}
+	// Names are checked first, so an undeclared extension naming a field
+	// twice is invalidSyntax.
+	if _, err := normalize(map[string]any{"schemas": []any{UserSchema}, "userName": "a@example.test", EnterpriseUserSchema: map[string]any{"department": "a", "Department": "b"}}); !syntax(err) {
+		t.Fatal("an undeclared Enterprise object naming a field twice was not invalidSyntax", err)
+	}
+	// A nested value that only holds nulls counts as omitted anywhere.
+	p, err := normalize(map[string]any{"schemas": []any{UserSchema}, "userName": "a@example.test", "name": map[string]any{"givenName": "Ada", "familyName": map[string]any{"x": nil}},
+		"roles": []any{map[string]any{"value": "r", "display": map[string]any{"x": nil}}}})
+	if err != nil || p.Attributes["name"].(map[string]any)["familyName"] != nil {
+		t.Fatal("a nested all-null value was not treated as omitted", err)
+	}
+	// A Group PATCH is checked for two spellings before the Group is read.
+	if err := groupOpsDuplicates([]any{map[string]any{"op": "replace", "value": map[string]any{"displayName": "A", "DisplayName": "B"}}}); !syntax(err) {
+		t.Fatal("a Group PATCH naming displayName twice was not refused before the lookup", err)
+	}
+	if err := groupOpsDuplicates([]any{map[string]any{"op": "add", "path": "members", "value": []any{map[string]any{"value": "u", "Value": "v"}}}}); !syntax(err) {
+		t.Fatal("a Group members PATCH naming value twice was not refused before the lookup", err)
+	}
 	if _, err := patchProfile(current, []any{map[string]any{"op": "replace", "path": "emails", "value": []any{map[string]any{"value": "a@example.test", "unknown": "a", "UNKNOWN": nil}}}}); err != nil {
 		t.Fatal("two spellings of an undeclared key were refused", err)
 	}

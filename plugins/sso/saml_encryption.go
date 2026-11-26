@@ -156,6 +156,9 @@ func encryptedAssertionID(raw []byte, acs, requestID string, key *rsa.PrivateKey
 	if err != nil || !namedElement(response, samlProtocolNS, "Response") || uniqueAttribute(response, "Destination") != acs {
 		return "", errSAMLResponse
 	}
+	if requestID != "" && response.SelectAttr("InResponseTo") == nil {
+		return "", errUnrequested
+	}
 	if uniqueAttribute(response, "InResponseTo") != requestID {
 		return "", errUnknownRequest
 	}

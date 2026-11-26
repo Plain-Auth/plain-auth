@@ -219,8 +219,13 @@ func TestSCIMRetirementWithoutDomain(t *testing.T) {
 			if _, err := s.SCIMDecommission(ctx, scim.Directory{ID: "never-bound"}); !errors.Is(err, scim.ErrNoBinding) {
 				t.Fatal("a connection without a binding was retired without a domain", err)
 			}
-			if r, err := h.Decommission(ctx, scim.Directory{ID: "declared"}); err != nil || r.ProvisioningDomainID != "office" {
-				t.Fatal("a declared connection was not retired in its declared domain", r, err)
+			// A configured connection is not retired in its configured domain
+			// without a binding, as in another runtime.
+			if _, err := h.Decommission(ctx, scim.Directory{ID: "declared"}); !errors.Is(err, scim.ErrNoBinding) {
+				t.Fatal("a never-bound configured connection was retired without a domain", err)
+			}
+			if r, err := h.Decommission(ctx, scim.Directory{ID: "declared", ProvisioningDomainID: "office"}); err != nil || r.Status != "complete" {
+				t.Fatal("a configured connection was not retired in its given domain", r, err)
 			}
 		})
 	}

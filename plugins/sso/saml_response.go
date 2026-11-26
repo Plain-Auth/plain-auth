@@ -34,8 +34,15 @@ var ErrAssertionUsed = apiError(400, "SAML assertion has already been consumed")
 var errSAMLResponse = apiError(400, "Invalid SAML response")
 
 // errUnknownRequest answers a response whose InResponseTo names no request
-// this sign-in sent.
+// this sign-in sent. The response must answer the request its RelayState
+// started, where another runtime accepts any outstanding request of the
+// provider whatever RelayState comes with it.
 var errUnknownRequest = errors.New("sso: unknown or expired SAML request ID")
+
+// errUnrequested answers a browser-bound response without InResponseTo. It
+// is refused even with AllowIDPInitiated, where another runtime then accepts
+// it as IdP-initiated, because the RelayState binds it to this sign-in.
+var errUnrequested = errors.New("sso: SAML response without InResponseTo")
 
 // Bound provisioning work to the lifetime of the assertion the SP already
 // verified. Only bearer confirmations for this callback can extend that window.
@@ -169,7 +176,10 @@ func assertionEnvelope(raw []byte, acs, requestID string) (string, error) {
 				if roots != 1 || t.Name != (xml.Name{Space: protocol, Local: "Response"}) || attr(t, "Destination") != acs {
 					return "", errSAMLResponse
 				}
-				if attr(t, "InResponseTo") != requestID {
+				switch {
+				case requestID != "" && !hasAttr(t, "InResponseTo"):
+					return "", errUnrequested
+				case attr(t, "InResponseTo") != requestID:
 					return "", errUnknownRequest
 				}
 			case t.Name.Local == "EncryptedAssertion" || t.Name.Local == "EncryptedID" || t.Name.Local == "EncryptedAttribute" || t.Name.Local == "EncryptedData" || t.Name.Local == "EncryptedKey":
@@ -384,8 +394,8 @@ func (o Options) samlFinish(c auth.EndpointContext) (any, error) {
 	fail := func(code string) (any, error) { return enterpriseFailure(c, flow, code, "") }
 	// The descriptions are the ones another runtime sends.
 	const (
-		invalidReference = "SSO provider reference missing or invalid"
-		notAllowed       = "IdP-initiated SSO not allowed"
+		changed    = "sso_provider_changed_during_authentication"
+		notAllowed = "IdP-initiated SSO not allowed"
 	)
 	p, err := store.FindBrowserProvider(c.Request.Context(), Selector{ProviderID: flow.Provider, Protocol: "saml"})
 	if err != nil {
@@ -398,7 +408,7 @@ func (o Options) samlFinish(c auth.EndpointContext) (any, error) {
 		return nil, err
 	}
 	if p.SAML == nil || p.ProviderID != flow.Provider || !available(c, p) || (!unsolicited && p.Reference != strings.TrimSuffix(flow.ProviderReference, ".dns")) {
-		return enterpriseFailure(c, flow, "invalid_state", invalidReference)
+		return enterpriseFailure(c, flow, "invalid_state", changed)
 	}
 	if unsolicited {
 		flow.CallbackURL = samlLanding(c, flow.RedirectURI, p.SAML.IDPInitiatedCallbackURL, o.SAML.IDPInitiatedCallbackURL, p.SAML.CallbackURL)
@@ -462,6 +472,9 @@ func (o Options) samlFinish(c auth.EndpointContext) (any, error) {
 	id, err := assertionDocumentID(raw, sp, requestID, o.SAML.Algorithms)
 	if errors.Is(err, errUnknownRequest) {
 		return enterpriseFailure(c, flow, "invalid_saml_response", "Unknown or expired request ID")
+	}
+	if errors.Is(err, errUnrequested) {
+		return enterpriseFailure(c, flow, "unsolicited_response", notAllowed)
 	}
 	var policy *auth.APIError
 	if errors.As(err, &policy) && strings.HasPrefix(policy.Code, "SAML_") {
@@ -573,4 +586,13 @@ func (o Options) samlFinish(c auth.EndpointContext) (any, error) {
 		return fail("access_denied")
 	}
 	return result, err
+}
+
+func hasAttr(t xml.StartElement, name string) bool {
+	for _, a := range t.Attr {
+		if a.Name == (xml.Name{Local: name}) {
+			return true
+		}
+	}
+	return false
 }

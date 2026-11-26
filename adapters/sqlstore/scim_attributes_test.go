@@ -796,6 +796,10 @@ func TestSCIMUserSelectionOverHTTP(t *testing.T) {
 				t.Fatal("an unknown User selection path returned attributes", got)
 			}
 			group := call("POST", "Groups", map[string]any{"schemas": []string{scim.GroupSchema}, "displayName": "Readers", "members": []any{map[string]any{"value": id}}}, 201, "the Group was refused")
+			// Two spellings in a Group PATCH are refused before the lookup.
+			if body := call("PATCH", "Groups/absent", map[string]any{"schemas": []string{scim.PatchSchema}, "Operations": []any{map[string]any{"op": "replace", "value": map[string]any{"displayName": "A", "DisplayName": "B"}}}}, 400, "a PATCH of an unknown Group with two spellings was not refused first"); body["scimType"] != "invalidSyntax" {
+				t.Fatal("a PATCH of an unknown Group with two spellings was not invalidSyntax", body)
+			}
 			if got := call("GET", "Groups/"+group["id"].(string)+"?attributes=unknownThing", nil, 200, "a Group selection refused an unknown path"); len(got) != 2 {
 				t.Fatal("an unknown Group selection path returned attributes", got)
 			}
@@ -940,6 +944,11 @@ func TestSCIMEnterpriseUserPatchOverHTTP(t *testing.T) {
 			}
 			if body := patch(400, "a core-prefixed manager alias was accepted", op("replace", scim.UserSchema+":manager", "m-2")); body["scimType"] != "invalidPath" {
 				t.Fatal("a core-prefixed manager alias was not invalidPath", body)
+			}
+			// A null key behind a core-prefixed enterprise alias joins with
+			// ":", as in another runtime, so it names no attribute.
+			if body := patch(400, "a null key behind a core-prefixed enterprise alias was applied", op("replace", scim.UserSchema+":enterprise", map[string]any{"division": nil})); body["scimType"] != "invalidPath" {
+				t.Fatal("a null key behind a core-prefixed enterprise alias was not invalidPath", body)
 			}
 			// The enterprise alias still works behind the core prefix.
 			if got := patch(200, "a core-prefixed enterprise alias failed", op("replace", scim.UserSchema+":enterprise.division", "Core")); got[urn].(map[string]any)["division"] != "Core" {

@@ -70,6 +70,11 @@ func (h *Handler) serveGroups(w http.ResponseWriter, r *http.Request, d Director
 			var ops []any
 			ops, e = groupOperations(input)
 			if e == nil {
+				// Two spellings are refused before the Group is looked up, as
+				// another runtime does on the request body.
+				e = groupOpsDuplicates(ops)
+			}
+			if e == nil {
 				g, e = h.groups.SCIMUpdateGroup(ctx, d, id, func(current Group) (GroupChange, error) { return applyGroupPatch(current, ops) })
 			}
 		} else {

@@ -1,6 +1,7 @@
 package sqlstore
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"encoding/json"
@@ -143,6 +144,24 @@ func TestEnterpriseDomainVerification(t *testing.T) {
 				return c
 			}
 			one, two := signed(first), signed(second)
+			// A providerType an unverified provider lacks still names the
+			// protocol, as another runtime checks it before the domain proof.
+			withSAML, e := sso.New(sso.Options{DomainVerification: opt, SAML: &sso.SAMLOptions{}})
+			must(e)
+			samlHost, e := auth.New(auth.Options{BaseURL: "https://domain.test", BasePath: "/identity", Store: a, Secret: strings.Repeat("x", 32), TrustedOrigins: []string{idp.URL}, RateLimit: new(bool), Plugins: []auth.Plugin{withSAML}})
+			must(e)
+			for _, selector := range []map[string]any{{"domain": "import.example"}, {"email": "someone@import.example"}} {
+				selector["providerType"], selector["callbackURL"] = "saml", "/home"
+				body, _ := json.Marshal(selector)
+				r := httptest.NewRequest("POST", "https://domain.test/identity/sign-in/sso", bytes.NewReader(body))
+				r.Header.Set("Content-Type", "application/json")
+				r.Header.Set("Origin", "https://domain.test")
+				w := httptest.NewRecorder()
+				samlHost.ServeHTTP(w, r)
+				if w.Code != 400 || !strings.Contains(w.Body.String(), "SAML provider is not configured") {
+					t.Fatal("a providerType an unverified provider lacks did not name the protocol", selector, w.Code, w.Body.String())
+				}
+			}
 			exec := func(q string, args ...any) { _, e := a.db.ExecContext(ctx, a.bind(q), args...); must(e) }
 			exec(`UPDATE "ssoProvider" SET "domainVerified"=? WHERE "id"=?`, true, prior.ID)
 			p, e := one.GetSSOProvider(ctx, prior.ProviderID)

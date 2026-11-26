@@ -163,3 +163,45 @@ func opsDuplicates(ops []any) error {
 	}
 	return nil
 }
+
+// groupOpsDuplicates checks each Group PATCH operation's value before the
+// Group is looked up: a pathless value against the Group resource and a
+// members value against the member subattributes.
+func groupOpsDuplicates(ops []any) error {
+	resource := append(append([]any{}, commonAttributes...), schemaAttributes("GroupSchema")...)
+	for _, item := range ops {
+		op, ok := item.(map[string]any)
+		if !ok {
+			continue
+		}
+		var path, value any
+		for key, v := range op {
+			switch strings.ToLower(key) {
+			case "path":
+				path = v
+			case "value":
+				value = v
+			}
+		}
+		text, isString := path.(string)
+		if path != nil && !isString {
+			continue
+		}
+		var attributes []any
+		switch text = strings.TrimSpace(text); {
+		case text == "":
+			if _, isMap := value.(map[string]any); !isMap {
+				continue
+			}
+			attributes = resource
+		case strings.EqualFold(withoutSchema(text, GroupSchema), "members"):
+			attributes = subAttributes(declared(resource, "members"), "")
+		default:
+			continue
+		}
+		if err := duplicateNames(value, attributes, false); err != nil {
+			return err
+		}
+	}
+	return nil
+}

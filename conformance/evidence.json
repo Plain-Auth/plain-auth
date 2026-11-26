@@ -11466,6 +11466,11 @@
       "label": "Answer 400 naming the protocol a found provider lacks when providerType asks for it, both ways",
       "test": "adapters/sqlstore/sso_saml_defaults_test.go",
       "marker": "t.Fatal(\"a providerType the provider lacks did not name the missing protocol\", c.kind, w.Code, w.Body.String())"
+    },
+    {
+      "label": "Name the missing protocol for a providerType an unverified provider lacks, by domain and by email",
+      "test": "adapters/sqlstore/sso_domain_test.go",
+      "marker": "t.Fatal(\"a providerType an unverified provider lacks did not name the protocol\", selector, w.Code, w.Body.String())"
     }
   ],
   "plugin/sso/ /sso/callback/:providerId": [
@@ -13563,6 +13568,11 @@
       "label": "Answer 400 SINGLE_LOGOUT_NOT_ENABLED on the SLO route while single logout is off",
       "test": "adapters/sqlstore/sso_saml_defaults_test.go",
       "marker": "t.Fatal(\"a logout route did not answer SINGLE_LOGOUT_NOT_ENABLED with single logout off\", w.Code, w.Body.String())"
+    },
+    {
+      "label": "Answer an IdP logout request for an unknown provider with 404 SAML_PROVIDER_NOT_FOUND",
+      "test": "adapters/sqlstore/sso_saml_logout_test.go",
+      "marker": "t.Fatal(\"the SLO route did not answer an unknown provider with SAML_PROVIDER_NOT_FOUND\", query, res.StatusCode, string(body))"
     }
   ],
   "docs/content/docs/plugins/test-utils.mdx#L77": [
@@ -42565,7 +42575,7 @@
       "marker": "t.Fatal(\"password session initiated SAML logout\")"
     },
     {
-      "label": "List the logout start and SLO routes in the generated OpenAPI document only when single logout is enabled",
+      "label": "List the logout start and SLO routes in the generated OpenAPI document whenever SAML is configured, including while single logout is off",
       "test": "plugins/openapi/sso_directory_test.go",
       "marker": "t.Fatal(\"logout route availability\", mode, route)"
     },
@@ -42840,9 +42850,14 @@
       "marker": "t.Fatal(\"a correlated reply was accepted without its state\", status)"
     },
     {
-      "label": "Redirect a response to another request of the browser with invalid_saml_response and Unknown or expired request ID",
+      "label": "Refuse a response to another request of the same browser with Unknown or expired request ID, where another runtime accepts it while that request is outstanding",
       "test": "adapters/sqlstore/sso_saml_test.go",
       "marker": "t.Fatal(\"a response to another request was not reported as an unknown request\", status, hd.Get(\"Location\"))"
+    },
+    {
+      "label": "Redirect a response naming a request nobody sent with invalid_saml_response and Unknown or expired request ID",
+      "test": "adapters/sqlstore/sso_saml_test.go",
+      "marker": "t.Fatal(\"a response to a request nobody sent was not reported as an unknown request\", status, hd.Get(\"Location\"))"
     }
   ],
   "docs/content/docs/plugins/sso/saml-security.mdx#L47/`unsolicited_response`": [
@@ -42861,14 +42876,18 @@
       "label": "Refuse a portal response with unsolicited_response and IdP-initiated SSO not allowed when portal sign-in is off or the host declines it",
       "test": "adapters/sqlstore/sso_saml_portal_test.go",
       "marker": "t.Fatal(\"a refused portal response did not say IdP-initiated SSO is not allowed\", res.location)"
+    },
+    {
+      "label": "Redirect a browser-bound response without InResponseTo with unsolicited_response and IdP-initiated SSO not allowed",
+      "test": "adapters/sqlstore/sso_saml_test.go",
+      "marker": "t.Fatal(\"a browser-bound response without InResponseTo was not reported as unsolicited\", status, hd.Get(\"Location\"))"
     }
   ],
   "docs/content/docs/plugins/sso/saml-security.mdx#L48/`invalid_state`": [
     {
-      "label": "Redirect with error=invalid_state when the provider's stored configuration changed after sign-in started",
+      "label": "Redirect a response for a directory changed during the sign-in with invalid_state and sso_provider_changed_during_authentication",
       "test": "adapters/sqlstore/sso_saml_test.go",
-      "marker": "t.Fatal(\"changed provider accepted response\", head)",
-      "complete": true
+      "marker": "t.Fatal(\"changed provider accepted response\", head)"
     },
     {
       "label": "Redirect with error=invalid_state for a request started before a certificate rotation",
@@ -43879,7 +43898,7 @@
       "marker": "assert.equal(observed.batches, 0);"
     },
     {
-      "label": "Retire a bound connection without a domain in its bound domain, a declared one in its declared domain, and refuse a never-bound connection, on SQLite, PostgreSQL and MySQL",
+      "label": "Retire a bound connection without a domain in its bound domain and refuse a never-bound connection, configured or not, on SQLite, PostgreSQL and MySQL",
       "test": "adapters/sqlstore/scim_decommission_test.go",
       "marker": "func TestSCIMRetirementWithoutDomain("
     }
@@ -45504,9 +45523,19 @@
       "marker": "t.Fatal(\"an all-null Enterprise object naming a field twice was not invalidSyntax\", extension, err)"
     },
     {
-      "label": "Refuse two spellings before the User lookup, skip unresolvable paths, and refuse two spellings of id on POST",
+      "label": "Skip unresolvable PATCH paths when checking two spellings, refuse two spellings of id or in an undeclared extension in a User document, and check Group PATCH values before the lookup",
       "test": "plugins/scim/http_test.go",
       "marker": "t.Fatal(\"an unresolvable PATCH path reported duplicate names\", op, err)"
+    },
+    {
+      "label": "Refuse two spellings in a User or Group PATCH before the lookup, so an unknown resource answers 400 invalidSyntax, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_attributes_test.go",
+      "marker": "t.Fatal(\"a PATCH of an unknown User with two spellings was not invalidSyntax\", body)"
+    },
+    {
+      "label": "Refuse two spellings in a PATCH of an unknown Group with invalidSyntax",
+      "test": "adapters/sqlstore/scim_attributes_test.go",
+      "marker": "t.Fatal(\"a PATCH of an unknown Group with two spellings was not invalidSyntax\", body)"
     }
   ],
   "docs/content/docs/plugins/scim/reference.mdx#L351": [

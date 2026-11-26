@@ -108,21 +108,6 @@ func managerValue(raw any) (manager map[string]any, found bool, err error) {
 	return manager, len(manager) > 0, nil
 }
 
-// allNull reports whether a nonempty object holds only nulls, directly or in
-// nested objects. Such a complex attribute is unassigned like an omitted one.
-func allNull(v any) bool {
-	m, ok := v.(map[string]any)
-	if !ok || len(m) == 0 {
-		return false
-	}
-	for _, x := range m {
-		if x != nil && !allNull(x) {
-			return false
-		}
-	}
-	return true
-}
-
 // enterprisePath resolves a schema-relative User PATCH path to the
 // Enterprise extension: the URN, a URN-qualified attribute, the enterprise
 // alias or the classic manager aliases. attr and sub are canonical names;

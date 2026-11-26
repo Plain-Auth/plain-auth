@@ -76,6 +76,10 @@ func logoutLocation(services []SAMLService) (string, error) {
 	return target, nil
 }
 
+// errLogoutProvider answers a logout route for an unknown SAML provider with
+// another runtime's code.
+var errLogoutProvider = &auth.APIError{Status: 404, Code: "SAML_PROVIDER_NOT_FOUND", Message: "SAML provider not found"}
+
 var errLogoutDisabled = &auth.APIError{Status: 400, Code: "SINGLE_LOGOUT_NOT_ENABLED", Message: "Single Logout is not enabled"}
 
 func availableSAMLLogout(c auth.EndpointContext, p Provider) error {
@@ -120,14 +124,17 @@ func (o Options) enableLogoutSP(c auth.EndpointContext, p Provider, sp *saml.Ser
 func (o Options) logoutProvider(c auth.EndpointContext, store SAMLLogoutStore, prefix string) (BrowserProvider, *saml.ServiceProvider, error) {
 	id, ok := strings.CutPrefix(c.Request.URL.EscapedPath(), strings.TrimRight(c.Auth.BasePath(), "/")+prefix)
 	if !ok || !MutableProviderID(id) {
-		return BrowserProvider{}, nil, ErrMissing
+		return BrowserProvider{}, nil, errLogoutProvider
 	}
 	p, err := store.FindBrowserProvider(c.Request.Context(), Selector{ProviderID: id, Protocol: "saml"})
+	if errors.Is(err, ErrMissing) {
+		return p, nil, errLogoutProvider
+	}
 	if err != nil {
 		return p, nil, err
 	}
 	if p.ProviderID != id || p.SAML == nil {
-		return p, nil, ErrMissing
+		return p, nil, errLogoutProvider
 	}
 	sp, err := o.samlSP(c, p.Provider)
 	if err != nil {
@@ -155,9 +162,6 @@ func (o Options) startLogout(c auth.EndpointContext, _ Store, actor Actor) (any,
 	}
 	store := c.Store().(SAMLLogoutStore)
 	p, sp, err := o.logoutProvider(c, store, "/sso/saml2/logout/")
-	if errors.Is(err, ErrMissing) {
-		return nil, &auth.APIError{Status: 404, Code: "SAML_PROVIDER_NOT_FOUND", Message: "SAML provider not found"}
-	}
 	if err != nil {
 		return nil, err
 	}

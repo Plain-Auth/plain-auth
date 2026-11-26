@@ -170,13 +170,11 @@ func emailValues(raw any, user string) ([]any, string, error) {
 }
 
 func normalize(input any) (p Profile, err error) {
-	// id and meta are never stored, but two spellings of either are refused
-	// like those of a stored attribute.
-	if err := duplicateNames(input, commonAttributes, false); err != nil {
-		return p, err
-	}
-	m, err := object(input, userFields)
-	if err != nil {
+	// Like another runtime, refuse two spellings of a declared attribute,
+	// null or not, and then drop null attributes and objects that only held
+	// nulls. A null active stays refused, because omitting it would
+	// reactivate the User.
+	if err := duplicateNames(input, append(append([]any{}, commonAttributes...), schemaAttributes("Schemas")...), true); err != nil {
 		return p, err
 	}
 	if m, ok := input.(map[string]any); ok {
@@ -185,6 +183,10 @@ func normalize(input any) (p Profile, err error) {
 				return p, invalid("invalidValue", "active cannot be null")
 			}
 		}
+	}
+	m, err := object(stripNulls(input, 0), userFields)
+	if err != nil {
+		return p, err
 	}
 	schemas, declared, err := userSchemas(m["schemas"])
 	if err != nil {
@@ -262,23 +264,15 @@ func normalize(input any) (p Profile, err error) {
 	}
 	p.Attributes = map[string]any{"schemas": schemas, "name": name, "emails": emails}
 	if raw, ok := m[EnterpriseUserSchema]; ok {
-		if allNull(raw) {
-			// An all-null object is unassigned, but two spellings of one of
-			// its fields are still refused.
-			if err := duplicateNames(raw, schemaAttributes("EnterpriseSchema"), false); err != nil {
-				return p, err
-			}
-		} else {
-			if !declared {
-				return p, invalid("invalidValue", "The Enterprise User extension requires its schema URI")
-			}
-			extension, err := enterpriseUser(raw)
-			if err != nil {
-				return p, err
-			}
-			p.Attributes["enterprise"] = extension
-			parsed[EnterpriseUserSchema] = extension
+		if !declared {
+			return p, invalid("invalidValue", "The Enterprise User extension requires its schema URI")
 		}
+		extension, err := enterpriseUser(raw)
+		if err != nil {
+			return p, err
+		}
+		p.Attributes["enterprise"] = extension
+		parsed[EnterpriseUserSchema] = extension
 	}
 	for _, a := range multiValuedAttributes {
 		if raw, provided := m[a.name]; provided {

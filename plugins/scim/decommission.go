@@ -42,18 +42,16 @@ type ManagedRetirementStore interface {
 // Decommission permanently retires a static or externally verified directory.
 // Callers authorize the tenant administrator before invoking this server-only operation.
 // The provisioning domain may be left empty to retire the domain the
-// connection is bound to.
+// connection is bound to; a connection never bound then answers
+// ErrNoBinding, as in another runtime.
 func (h *Handler) Decommission(ctx context.Context, d Directory) (Retirement, error) {
-	if declared, ok := h.declared[d.ID]; ok && d.ProvisioningDomainID == "" {
-		d.ProvisioningDomainID = declared.ProvisioningDomainID
-	}
 	if !identifier(d.ID) || d.ProvisioningDomainID != "" && !identifier(d.ProvisioningDomainID) {
 		return Retirement{}, invalid("invalidValue", "Expected a directory and provisioning domain")
 	}
 	if managedDirectory(d) {
 		return Retirement{}, invalid("invalidValue", "Retire a managed connection through its credential catalog")
 	}
-	if declared, ok := h.declared[d.ID]; ok && declared.ProvisioningDomainID != d.ProvisioningDomainID {
+	if declared, ok := h.declared[d.ID]; ok && d.ProvisioningDomainID != "" && declared.ProvisioningDomainID != d.ProvisioningDomainID {
 		return Retirement{}, ErrDomain
 	}
 	store, ok := h.store.(RetirementStore)
