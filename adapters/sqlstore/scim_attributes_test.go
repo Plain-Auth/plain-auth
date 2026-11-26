@@ -397,3 +397,49 @@ func TestSCIMUserPrereleaseRow(t *testing.T) {
 		})
 	}
 }
+
+// name add and replace merge, a derived display name follows the formatted
+// name, removing name.formatted composes it, and single-valued values may
+// arrive as a one-element array.
+func TestSCIMUserNamePatchOverHTTP(t *testing.T) {
+	for _, dialect := range []string{"sqlite", "postgres", "mysql"} {
+		t.Run(dialect, func(t *testing.T) {
+			_, call := attributeDirectory(t, dialect)
+			created := call("POST", "Users", map[string]any{"schemas": []string{scim.UserSchema}, "userName": "ada@example.test", "name": map[string]any{"givenName": "Ada", "familyName": "Lovelace", "middleName": "Byron"}}, 201, "the User was refused")
+			id := created["id"].(string)
+			patch := func(status int, failure string, ops ...any) map[string]any {
+				t.Helper()
+				return call("PATCH", "Users/"+id, map[string]any{"schemas": []string{scim.PatchSchema}, "Operations": ops}, status, failure)
+			}
+			got := patch(200, "replacing name failed", map[string]any{"op": "replace", "path": "name", "value": map[string]any{"familyName": "King"}})
+			if !jsonEqual(got["name"], map[string]any{"formatted": "Ada Lovelace", "givenName": "Ada", "familyName": "King", "middleName": "Byron"}) {
+				t.Fatal("replacing name dropped unspecified name parts", got["name"])
+			}
+			if got := patch(200, "replacing name.formatted failed", map[string]any{"op": "replace", "path": "name.formatted", "value": "Ada King"}); got["displayName"] != "Ada King" {
+				t.Fatal("a derived display name did not follow the new formatted name", got["displayName"])
+			}
+			patch(200, "replacing displayName failed", map[string]any{"op": "replace", "path": "displayName", "value": "Countess"})
+			if got := patch(200, "replacing name.formatted failed", map[string]any{"op": "replace", "path": "name.formatted", "value": "A. King"}); got["displayName"] != "Countess" {
+				t.Fatal("an explicit display name followed the formatted name", got["displayName"])
+			}
+			if got := patch(200, "removing name.formatted failed", map[string]any{"op": "remove", "path": "name.formatted"}); got["name"].(map[string]any)["formatted"] != "Ada King" {
+				t.Fatal("removing name.formatted did not compose the given and family names", got["name"])
+			}
+			if body := patch(400, "an unknown name subattribute was accepted", map[string]any{"op": "replace", "path": "name", "value": map[string]any{"nickName": "x"}}); body["scimType"] != "invalidPath" {
+				t.Fatal("an unknown name subattribute was accepted", body)
+			}
+			if got := patch(200, "a one-element active array was refused", map[string]any{"op": "replace", "path": "active", "value": []any{false}}); got["active"] != false {
+				t.Fatal("a single-element active array was not unwrapped", got["active"])
+			}
+			if body := patch(400, "an array-wrapped string active was coerced", map[string]any{"op": "replace", "path": "active", "value": []any{"true"}}); body["scimType"] != "invalidValue" {
+				t.Fatal("an array-wrapped string active was coerced", body)
+			}
+			if got := patch(200, "a one-element userName array was refused", map[string]any{"op": "replace", "path": "userName", "value": []any{"single@example.test"}}); got["userName"] != "single@example.test" {
+				t.Fatal("a single-element userName array was not unwrapped", got["userName"])
+			}
+			if got := patch(200, "removing name failed", map[string]any{"op": "remove", "path": "name"}); !jsonEqual(got["name"], map[string]any{"formatted": "Countess"}) {
+				t.Fatal("removing name kept name parts", got["name"])
+			}
+		})
+	}
+}

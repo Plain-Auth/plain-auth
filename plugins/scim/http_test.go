@@ -276,3 +276,19 @@ func TestSCIMCaseDuplicateAttributesAreInvalidSyntax(t *testing.T) {
 		t.Fatal("a case-duplicate Group attribute was not invalidSyntax", err)
 	}
 }
+
+// A pathless value applies its keys in sorted order, so "name" lands before
+// "name.givenName" every time.
+func TestSCIMPathlessPatchKeyOrder(t *testing.T) {
+	current := Record{Profile: Profile{UserName: "a@example.test", DisplayName: "Ada", PrimaryEmail: "a@example.test", Active: true, Attributes: map[string]any{"schemas": []any{UserSchema}, "name": map[string]any{}, "emails": []any{map[string]any{"value": "a@example.test", "primary": true}}}}}
+	ops := []any{map[string]any{"op": "replace", "value": map[string]any{"name": map[string]any{"givenName": "A"}, "name.givenName": "B"}}}
+	for range 50 {
+		p, err := patchProfile(current, ops)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if p.Attributes["name"].(map[string]any)["givenName"] != "B" {
+			t.Fatal("a pathless PATCH applied its keys in a varying order", p.Attributes["name"])
+		}
+	}
+}

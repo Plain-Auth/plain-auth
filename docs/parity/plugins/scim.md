@@ -437,15 +437,18 @@
     - [x] Accept an empty Operations array, an empty pathless value and 101 operations, keep lastModified and the revision for an unchanged PATCH, take case-insensitive and omitted ops, and refuse an unknown op, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_attributes_test.go#L269))
     - [ ] User PATCH paths
       - [x] Answer a pathless remove with noTarget and writes to id, schemas or meta with mutability ([test](../../../adapters/sqlstore/scim_attributes_test.go#L338))
-      - [ ] `userName`
+      - [x] `userName` ([test](../../../adapters/sqlstore/scim_attributes_test.go#L438))
         - [x] Replace userName through PATCH and refuse an empty value or a removal ([test](../../../adapters/sqlstore/scim_attributes_test.go#L222))
+        - [x] Unwrap a one-element userName array ([test](../../../adapters/sqlstore/scim_attributes_test.go#L438))
       - [x] `externalId` ([test](../../../adapters/sqlstore/scim_attributes_test.go#L242))
         - [x] Add, replace, filter and remove a User externalId through PATCH, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_attributes_test.go#L242))
       - [ ] `active`
         - [x] Deactivate a User by patching active with the string false and revoke its sessions ([test](../../../adapters/sqlstore/scim_test.go#L202))
       - [x] `displayName` ([test](../../../adapters/sqlstore/scim_attributes_test.go#L253))
         - [x] Replace displayName, carry it to the account name and fall back to the formatted name on removal, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_attributes_test.go#L253))
-      - [ ] `name` and its supported subattributes
+      - [x] `name` and its supported subattributes ([test](../../../adapters/sqlstore/scim_attributes_test.go#L404))
+        - [x] Merge name add and replace, move a derived display name with the formatted name, compose a removed formatted name and unwrap one-element values, on SQLite, PostgreSQL and MySQL ([test](../../../adapters/sqlstore/scim_attributes_test.go#L404))
+        - [x] Apply pathless PATCH keys in sorted order ([test](../../../plugins/scim/http_test.go#L282))
       - [ ] `emails`
       - [ ] `emails.value`
       - [ ] `emails[type eq "work"].value`

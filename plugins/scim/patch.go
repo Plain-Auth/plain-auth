@@ -2,6 +2,7 @@ package scim
 
 import (
 	"maps"
+	"slices"
 	"strings"
 )
 
@@ -61,8 +62,11 @@ func patchProfile(r Record, ops []any) (Profile, error) {
 			if _, err = object(fields, userFields); err != nil {
 				return Profile{}, err
 			}
-			for name, value := range fields {
-				if err = patchValue(m, name, op, value); err != nil {
+			// Go decodes a JSON object into a map, so apply its keys in sorted
+			// order to stay deterministic; another runtime applies them in
+			// request order.
+			for _, name := range slices.Sorted(maps.Keys(fields)) {
+				if err = patchValue(m, name, op, fields[name]); err != nil {
 					return Profile{}, err
 				}
 			}
@@ -124,6 +128,21 @@ func patchValue(m map[string]any, path, op string, value any) error {
 		}
 		m[name] = target
 		name = sub
+		if op == "remove" && sub == "formatted" {
+			// Removing the formatted name composes it from the given and
+			// family names; without them normalize derives it from the
+			// display name, then the primary email.
+			given, _ := target["givenName"].(string)
+			family, _ := target["familyName"].(string)
+			if joined := strings.TrimSpace(given + " " + family); joined != "" {
+				target["formatted"] = joined
+				return nil
+			}
+		}
+		value = single(value)
+		if sub == "formatted" && op != "remove" {
+			setFormatted(m, target, value)
+		}
 	}
 	if op == "remove" {
 		if name == "userName" {
@@ -135,6 +154,17 @@ func patchValue(m map[string]any, path, op string, value any) error {
 	if value == nil {
 		return invalid("invalidValue", "Patch value is required")
 	}
+	switch name {
+	case "userName", "externalId", "displayName":
+		value = single(value)
+	case "active":
+		// Only a JSON Boolean is unwrapped; a string Boolean must be bare.
+		if list, ok := value.([]any); ok && len(list) == 1 {
+			if b, ok := list[0].(bool); ok {
+				value = b
+			}
+		}
+	}
 	if name == "emails" && op == "add" {
 		old, _ := target[name].([]any)
 		extra, ok := value.([]any)
@@ -143,21 +173,57 @@ func patchValue(m map[string]any, path, op string, value any) error {
 		}
 		value = append(append([]any(nil), old...), extra...)
 	}
-	if name == "name" && op == "add" {
-		old, _ := target[name].(map[string]any)
-		newFields, err := object(value, nameFields)
+	if name == "name" && len(parts) == 1 {
+		// name add and replace both merge into the stored name; unspecified
+		// parts stay.
+		parts, ok := value.(map[string]any)
+		if !ok {
+			return invalid("invalidValue", "name must be an object")
+		}
+		for key := range parts {
+			if field(key, nameFields) == "" {
+				return invalid("invalidPath", "Unsupported name subattribute "+key)
+			}
+		}
+		newFields, err := object(parts, nameFields)
 		if err != nil {
 			return err
 		}
+		old, _ := m["name"].(map[string]any)
 		merged := maps.Clone(old)
 		if merged == nil {
 			merged = map[string]any{}
+		}
+		for key, v := range newFields {
+			newFields[key] = single(v)
+		}
+		if formatted, ok := newFields["formatted"]; ok {
+			setFormatted(m, merged, formatted)
 		}
 		maps.Copy(merged, newFields)
 		value = merged
 	}
 	target[name] = value
 	return nil
+}
+
+// single unwraps a one-element array; Entra sends single-valued PATCH
+// values that way.
+func single(v any) any {
+	if list, ok := v.([]any); ok && len(list) == 1 {
+		return list[0]
+	}
+	return v
+}
+
+// setFormatted runs before a new formatted name is stored in name. A display
+// name equal to the old formatted name was derived from it and follows the
+// new one.
+func setFormatted(m, name map[string]any, formatted any) {
+	old, _ := name["formatted"].(string)
+	if display, _ := m["displayName"].(string); old != "" && display == old {
+		m["displayName"] = formatted
+	}
 }
 
 func hasRolePatchValue(fields map[string]any) bool {

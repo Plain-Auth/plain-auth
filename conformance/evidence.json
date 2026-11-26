@@ -45211,6 +45211,12 @@
       "label": "Replace userName through PATCH and refuse an empty value or a removal",
       "test": "adapters/sqlstore/scim_attributes_test.go",
       "marker": "t.Fatal(\"PATCH removed userName\", body)"
+    },
+    {
+      "label": "Unwrap a one-element userName array",
+      "test": "adapters/sqlstore/scim_attributes_test.go",
+      "marker": "t.Fatal(\"a single-element userName array was not unwrapped\", got[\"userName\"])",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/scim/reference.mdx#L373/`externalId`": [
@@ -45269,6 +45275,19 @@
       "test": "adapters/sqlstore/scim_attributes_test.go",
       "marker": "func TestSCIMUserPrereleaseRow(",
       "complete": true
+    }
+  ],
+  "docs/content/docs/plugins/scim/reference.mdx#L376/`name` and its supported subattributes": [
+    {
+      "label": "Merge name add and replace, move a derived display name with the formatted name, compose a removed formatted name and unwrap one-element values, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_attributes_test.go",
+      "marker": "func TestSCIMUserNamePatchOverHTTP(",
+      "complete": true
+    },
+    {
+      "label": "Apply pathless PATCH keys in sorted order",
+      "test": "plugins/scim/http_test.go",
+      "marker": "func TestSCIMPathlessPatchKeyOrder("
     }
   ]
 }
