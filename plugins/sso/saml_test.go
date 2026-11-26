@@ -199,6 +199,42 @@ func TestSAMLProfileRawAttributes(t *testing.T) {
 	}
 }
 
+// A mapping names the attributes to read; any key it omits keeps its default
+// attribute, and missing values fall back to the NameID, as in another
+// runtime. mapping.name applies only without name parts, and "false" never
+// verifies an email.
+func TestSAMLProfileMapping(t *testing.T) {
+	attr := func(name, value string) saml.Attribute {
+		return saml.Attribute{Name: name, Values: []saml.AttributeValue{{Value: value}}}
+	}
+	profile := func(m SAMLMapping, trust bool, attrs ...saml.Attribute) auth.OAuthProfile {
+		t.Helper()
+		p, err := samlProfile(&saml.Assertion{Subject: &saml.Subject{NameID: &saml.NameID{Value: "employee@acme.example"}}, AttributeStatements: []saml.AttributeStatement{{Attributes: attrs}}}, m, trust)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return p
+	}
+	if p := profile(SAMLMapping{Email: "mail"}, false, attr("email", "decoy@acme.example")); p.Email != "employee@acme.example" || p.Name != "employee@acme.example" {
+		t.Fatal("a missing mapped email or name did not fall back to the NameID", p.Email, p.Name)
+	}
+	if p := profile(SAMLMapping{Email: "mail"}, false, attr("mail", "Mapped@Acme.example"), attr("givenName", "Ada"), attr("surname", "Lovelace")); p.Email != "mapped@acme.example" || p.Name != "Ada Lovelace" {
+		t.Fatal("a partial mapping did not keep the default name attributes", p.Email, p.Name)
+	}
+	if p := profile(SAMLMapping{Name: "label"}, false, attr("label", "Mapped Label"), attr("displayName", "Default Label")); p.Name != "Mapped Label" {
+		t.Fatal("mapping.name did not replace displayName without name parts", p.Name)
+	}
+	if p := profile(SAMLMapping{Name: "label", FirstName: "first"}, false, attr("label", "Mapped Label"), attr("first", "Ada")); p.Name != "Ada" {
+		t.Fatal("mapping.name was used beside a name part, or a first name alone was dropped", p.Name)
+	}
+	if p := profile(SAMLMapping{LastName: "last"}, false, attr("last", "Lovelace")); p.Name != "Lovelace" {
+		t.Fatal("a last name alone did not form the name", p.Name)
+	}
+	if p := profile(SAMLMapping{EmailVerified: "verified"}, true, attr("verified", "false")); p.EmailVerified {
+		t.Fatal("a false verification attribute verified the email")
+	}
+}
+
 // Without an email attribute the NameID supplies the email, as in another
 // runtime.
 func TestSAMLProfileEmailFromNameID(t *testing.T) {

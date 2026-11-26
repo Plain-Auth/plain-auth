@@ -805,6 +805,9 @@ func TestEnterpriseSAMLResponsePolicy(t *testing.T) {
 				if location, session := run(def, future(2*time.Minute)); location.String() != "https://service.test/home" || !session {
 					t.Fatal("the default clock skew refused an assertion valid in two minutes", location)
 				}
+				if location, session := run(def, func(a *saml.Assertion) { a.Conditions.NotBefore = time.Time{} }); location.String() != "https://service.test/home" || !session {
+					t.Fatal("an assertion with only NotOnOrAfter was refused", location)
+				}
 				if location, session := run(strict, future(2*time.Minute)); !refused(location, session, "SAML assertion is not yet valid") {
 					t.Fatal("a one-minute clock skew accepted an assertion valid only in two minutes", location)
 				}

@@ -41859,6 +41859,12 @@
       "label": "Reject a signed assertion whose NotOnOrAfter passed an hour ago",
       "test": "adapters/sqlstore/sso_saml_test.go",
       "marker": "\"expiry\":     func(a *saml.Assertion) { a.Conditions.NotOnOrAfter = time.Now().Add(-time.Hour) },"
+    },
+    {
+      "label": "Accept an assertion valid in two minutes under the default skew and one with only NotOnOrAfter, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/sso_saml_policy_test.go",
+      "marker": "t.Fatal(\"an assertion with only NotOnOrAfter was refused\", location)",
+      "complete": true
     }
   ],
   "plugin-symbol/sso/validateSAMLTimestamp": [
@@ -42174,6 +42180,12 @@
       "label": "A SAML profile carries the raw attributes, one value as a string and several as a list, with the email lower-cased",
       "test": "plugins/sso/saml_test.go",
       "marker": "func TestSAMLProfileRawAttributes(t *testing.T) {"
+    },
+    {
+      "label": "Fall back to the NameID for a missing mapped email or name, keep default attributes for keys a mapping omits, and never verify a false value",
+      "test": "plugins/sso/saml_test.go",
+      "marker": "t.Fatal(\"a partial mapping did not keep the default name attributes\", p.Email, p.Name)",
+      "complete": true
     }
   ],
   "plugin-symbol/sso/SAMLIdentityProviderMetadata": [
@@ -43657,6 +43669,12 @@
       "label": "Fill the user's name from displayName on both runtimes",
       "test": "conformance/sso-saml.mjs",
       "marker": "assert.equal(current.user.name,\"Enterprise Employee\");"
+    },
+    {
+      "label": "Use mapping.name without name parts, ignore it beside a first name, and form the name from a lone first or last name",
+      "test": "plugins/sso/saml_test.go",
+      "marker": "t.Fatal(\"mapping.name was used beside a name part, or a first name alone was dropped\", p.Name)",
+      "complete": true
     }
   ],
   "docs/content/docs/plugins/sso/saml.mdx#L175": [
