@@ -36,13 +36,25 @@ type PasswordResetToken struct {
 // with creation of sessions for the old password. Expired or spent tokens,
 // changed passwords, and mismatched account bindings return ErrNotFound.
 type AccountStore interface {
-	UpdateProfile(context.Context, string, ProfileUpdate, time.Time) error
+	// UpdateProfile applies the update and sets UpdatedAt to now.
+	UpdateProfile(ctx context.Context, userID string, update ProfileUpdate, now time.Time) error
+	// CreateCredentialSession stores the session only while the user's hash
+	// is still expectedHash; otherwise it returns ErrNotFound.
 	CreateCredentialSession(ctx context.Context, expectedHash string, session StoredSession) error
+	// ChangeCredential replaces oldHash, or returns ErrNotFound when the
+	// stored hash differs. A replacement session leaves only that session.
 	ChangeCredential(ctx context.Context, userID, oldHash, newHash string, replacement *StoredSession) error
+	// FindAccountUser matches the address case-insensitively.
 	FindAccountUser(ctx context.Context, email string) (User, error)
 	SavePasswordResetToken(context.Context, PasswordResetToken) error
+	// FindPasswordResetToken treats a token as expired once now reaches
+	// ExpiresAt.
 	FindPasswordResetToken(ctx context.Context, token string, now time.Time) (PasswordResetToken, error)
+	// FinishPasswordReset spends the token with the new hash; revokeSessions
+	// deletes every session of the user.
 	FinishPasswordReset(ctx context.Context, token, newHash string, now time.Time, revokeSessions bool) error
+	// VerifyAccountEmail requires the user's current address; a repeat
+	// returns nil.
 	VerifyAccountEmail(ctx context.Context, userID, email string, now time.Time) error
 }
 

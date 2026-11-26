@@ -29803,5 +29803,42 @@
       "marker": "func TestDisableProviderLogout(t *testing.T) {",
       "complete": true
     }
+  ],
+  "docs/content/docs/adapters/community-adapters.mdx": [
+    {
+      "label": "Write a store for another database or service from the exported interfaces and verify it with the storetest contract kit",
+      "test": "storetest/minimal_test.go",
+      "marker": "func TestMinimalStore(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/adapters/community-adapters.mdx#L11": [
+    {
+      "label": "Implement plainauth.Store over maps outside the module's adapters and pass every core case of storetest.Run, with the optional groups skipped",
+      "test": "storetest/minimal_test.go",
+      "marker": "func TestMinimalStore(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/guides/create-a-db-adapter.mdx": [
+    {
+      "label": "Build a store from the core interface alone and pass the core contract, including sign-up, sign-in, revocation and sign-out through plainauth.New",
+      "test": "storetest/minimal_test.go",
+      "marker": "func TestMinimalStore(t *testing.T) {",
+      "complete": true
+    }
+  ],
+  "docs/content/docs/guides/create-a-db-adapter.mdx#L420": [
+    {
+      "label": "Run the exported storetest contract kit, with its AccountStore and SessionRefreshStore groups, against the memory store",
+      "test": "adapters/memory/storetest_test.go",
+      "marker": "func TestStoreContract(t *testing.T) {"
+    },
+    {
+      "label": "Run the exported storetest contract kit, with its AccountStore and SessionRefreshStore groups, against SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/storetest_test.go",
+      "marker": "func TestStoreContract(t *testing.T) {",
+      "complete": true
+    }
   ]
 }

@@ -45,7 +45,7 @@ router.ServeHTTP(res, req) // router mounts server.Auth and your protected /prof
 
 `SaveUser` writes the user's profile without adding a password, linked provider, or session. `Login` creates a session for that user and returns the user, session, token, request headers, and signed HTTP cookie. The cookie uses the auth instance's name, signing secret, security settings, and expiration policy. Pass `login.Headers` to a native auth call or set `login.Cookies` in your browser fixture. Reusing this result keeps requests in the same session.
 
-`GetAuthHeaders(ctx, userID)` and `GetCookies(ctx, userID, domain)` each create a new session. An empty domain selects the configured cookie domain or the auth hostname. To remove a fixture and its sessions, call `server.DeleteUser(ctx, user.ID)` while the test database is still open. Custom adapters can provide profile persistence and cleanup through `authtest.UserStore`. [Four-adapter tests](../authtest/server_test.go)
+`GetAuthHeaders(ctx, userID)` and `GetCookies(ctx, userID, domain)` each create a new session. An empty domain selects the configured cookie domain or the auth hostname. To remove a fixture and its sessions, call `server.DeleteUser(ctx, user.ID)` while the test database is still open. Custom adapters can provide profile persistence and cleanup through `authtest.UserStore`, and run the [store contract tests](custom-store.md#test-your-store). [Four-adapter tests](../authtest/server_test.go)
 
 ## Import a fixture login into a browser
 

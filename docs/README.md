@@ -9,6 +9,7 @@ Each guide explains one capability and links to the tests that prove it. New to 
 | Load signing secrets, the public URL, and trusted origins from the environment | [Environment configuration](environment.md) |
 | Mount on ServeMux, chi, Gorilla Mux, Gin, Echo, or Fiber | [Router integrations](routers.md) |
 | Generate tables and migrate SQLite, PostgreSQL, or MySQL | [Databases and CLI](databases.md) |
+| Keep users and sessions in your own database or service, and check the store with contract tests | [Custom stores](custom-store.md) |
 | Generate optional organization, team, passkey, rate-limit, subscription, and two-factor tables | [Schema profiles](schema.md) |
 | Call the API from a Go service | [Go client](client.md) |
 | Create fixture users and organizations, capture email or SMS codes, or import a test login into a browser | [Test helpers](test-helpers.md) |

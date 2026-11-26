@@ -68,7 +68,7 @@ defer store.Close()
 
 Import `github.com/Plain-Org/plain-auth/adapters/sqlstore`. Use `"mysql"` or `"sqlite"` to change engines. Opening the store also applies its pending schema. Keep one store for the application's lifetime. Each request passes its own context for cancellation and deadlines.
 
-The stores have no generic query layer, so there is nothing to tune with a default row limit, join switch or startup schema check. Each operation is a typed method with its own SQL: listing and revoking read every matching row so nothing is silently cut off, endpoints that page take explicit limits, and related rows are read with SQL joins. For a database migrated by another tool, run `authctl check` or `CheckSchemaWithOptions` to compare it with the expected schema.
+The stores have no generic query layer, so there is nothing to tune with a default row limit, join switch or startup schema check. Each operation is a typed method with its own SQL: listing and revoking read every matching row so nothing is silently cut off, endpoints that page take explicit limits, and related rows are read with SQL joins. For a database migrated by another tool, run `authctl check` or `CheckSchemaWithOptions` to compare it with the expected schema. To use another database or service, implement `plainauth.Store` yourself: see [custom stores](custom-store.md).
 
 ### Hosted PostgreSQL and MySQL
 

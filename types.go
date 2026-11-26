@@ -396,22 +396,27 @@ type RequestMeta struct {
 }
 
 var (
-	ErrNotFound   = errors.New("authn: record not found")
+	// ErrNotFound reports a missing record. Stores also return it for a token
+	// that expired, was spent or belongs to another account.
+	ErrNotFound = errors.New("authn: record not found")
+	// ErrEmailTaken reports that CreateUser found another user with the
+	// address.
 	ErrEmailTaken = errors.New("authn: email already registered")
 )
 
 // Store persists users, credentials, and sessions. CreateUser commits its three
 // writes atomically. Deletions are idempotent. An empty keep token revokes all
 // sessions for that user. Implementations must support concurrent requests.
+// Package storetest checks an implementation.
 type Store interface {
-	CreateUser(context.Context, User, string, *StoredSession) error
-	Credential(context.Context, string) (User, string, error)
-	CreateSession(context.Context, StoredSession) error
-	Session(context.Context, string) (StoredSession, User, error)
-	DeleteSession(context.Context, string) error
-	ListSessions(context.Context, string) ([]StoredSession, error)
-	DeleteOtherSessions(context.Context, string, string) error
-	DeleteUserSession(context.Context, string, string) error
+	CreateUser(ctx context.Context, user User, passwordHash string, initial *StoredSession) error
+	Credential(ctx context.Context, email string) (User, string, error)
+	CreateSession(ctx context.Context, session StoredSession) error
+	Session(ctx context.Context, token string) (StoredSession, User, error)
+	DeleteSession(ctx context.Context, token string) error
+	ListSessions(ctx context.Context, userID string) ([]StoredSession, error)
+	DeleteOtherSessions(ctx context.Context, userID, keepToken string) error
+	DeleteUserSession(ctx context.Context, userID, token string) error
 }
 
 // APIError exposes a public status and error code shared by Go and HTTP callers.

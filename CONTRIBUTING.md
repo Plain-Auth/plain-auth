@@ -23,6 +23,7 @@ The module root is the `plainauth` package. Everything else is either an optiona
 | `schema/` | Table and column definitions that `authctl` and the adapters generate DDL from. |
 | `client/` | The typed Go HTTP client. |
 | `authtest/` | Fixtures that applications import in their own integration tests. |
+| `storetest/` | Contract tests that a custom store runs from its own tests. |
 | `integrations/<name>` | Separate Go modules for integrations that need extra dependencies, such as routers and Polar. |
 | `cmd/authctl` | The schema, migration and secret CLI. |
 | `internal/` | Helpers shared between packages that are not part of the public API. |

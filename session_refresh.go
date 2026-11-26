@@ -11,7 +11,12 @@ import (
 // or revoked session. Implementations compare the previously read expiry
 // atomically with the update. A lost comparison returns false.
 type SessionRefreshStore interface {
+	// RefreshSession sets the new expiry and UpdatedAt and returns true only
+	// when the stored expiry equals previousExpiry and is after now; an
+	// unknown token returns false and a nil error.
 	RefreshSession(ctx context.Context, token string, previousExpiry, now, nextExpiry time.Time) (bool, error)
+	// DeleteExpiredSession deletes the session only when its ExpiresAt is at
+	// or before now; a missing token returns nil.
 	DeleteExpiredSession(ctx context.Context, token string, now time.Time) error
 }
 

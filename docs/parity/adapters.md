@@ -4,8 +4,10 @@
 
 ## Community Adapters
 
-- [ ] Community Adapters
-  - [ ] Create Your Own Adapter
+- [x] Community Adapters ([test](../../storetest/minimal_test.go#L124))
+  - [x] Write a store for another database or service from the exported interfaces and verify it with the storetest contract kit ([test](../../storetest/minimal_test.go#L124))
+  - [x] Create Your Own Adapter ([test](../../storetest/minimal_test.go#L124))
+    - [x] Implement plainauth.Store over maps outside the module's adapters and pass every core case of storetest.Run, with the optional groups skipped ([test](../../storetest/minimal_test.go#L124))
   - Browse Community Adapters — *not applicable: JavaScript only; each listed adapter is tracked under Community database adapters*
 
 ## Drizzle ORM Adapter
@@ -90,7 +92,8 @@
 
 ## Create a Database Adapter
 
-- [ ] Create a Database Adapter
+- [x] Create a Database Adapter ([test](../../storetest/minimal_test.go#L124))
+  - [x] Build a store from the core interface alone and pass the core contract, including sign-up, sign-in, revocation and sign-out through plainauth.New ([test](../../storetest/minimal_test.go#L124))
   - Adapter — *not applicable: JavaScript adapter factory API; Go custom stores implement typed store interfaces*
     - `options`
     - `schema`
@@ -150,7 +153,9 @@
     - `createSchema` (optional)
       - `tables`
       - `file`
-  - [ ] Test your adapter
+  - [x] Test your adapter ([test](../../adapters/sqlstore/storetest_test.go#L17))
+    - [x] Run the exported storetest contract kit, with its AccountStore and SessionRefreshStore groups, against the memory store ([test](../../adapters/memory/storetest_test.go#L13))
+    - [x] Run the exported storetest contract kit, with its AccountStore and SessionRefreshStore groups, against SQLite, PostgreSQL and MySQL ([test](../../adapters/sqlstore/storetest_test.go#L17))
   - Config — *not applicable: the JavaScript createAdapterFactory config object; Go custom stores implement typed plainauth.Store and per-feature interfaces with no adapter config*
     - Required Config
     - `adapterId`
