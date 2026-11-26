@@ -45973,5 +45973,43 @@
       "test": "plugins/scim/http_test.go",
       "marker": "t.Fatal(\"scim.New accepted a configuration with\", name)"
     }
+  ],
+  "plugin-symbol/scim/SCIMRoleMappingInput": [
+    {
+      "label": "Hand the role mapper each source's directory, SCIM User ID, account and Group, on SQLite, PostgreSQL and MySQL",
+      "test": "adapters/sqlstore/scim_projection_test.go",
+      "marker": "t.Fatal(\"the role mapper did not receive the source directory, identities and Group\", mappedA)",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/scim/SCIMRoleExistenceInput": [
+    {
+      "label": "Ask the role catalog once per connection and role in one reconciliation, with the connection's directory",
+      "test": "adapters/sqlstore/scim_projection_test.go",
+      "marker": "t.Fatal(\"the role catalog was not asked once per connection and role\", lookups)",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/scim/SCIMProjectedRoleGrant": [
+    {
+      "label": "Hand the reconciler grants sorted by grant key, each with its Group",
+      "test": "adapters/sqlstore/scim_projection_test.go",
+      "marker": "t.Fatal(\"a reconciled grant did not carry its Group\", g.Group)",
+      "complete": true
+    }
+  ],
+  "plugin-symbol/scim/SCIMIdentitySource": [
+    {
+      "label": "Hand the reconciler the domain's sources sorted by SCIM User ID, a deactivated one inactive beside an active one",
+      "test": "adapters/sqlstore/scim_projection_test.go",
+      "marker": "t.Fatal(\"a deactivated source was not passed inactive beside the active one\", sources)"
+    }
+  ],
+  "plugin-symbol/scim/SCIMProjectedUserState": [
+    {
+      "label": "Hand the reconciler the domain, account and sorted sources after a deactivation",
+      "test": "adapters/sqlstore/scim_projection_test.go",
+      "marker": "t.Fatal(\"the reconciler did not receive the domain's sorted sources\", lastUser)"
+    }
   ]
 }

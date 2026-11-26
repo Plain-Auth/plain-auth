@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"slices"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -60,8 +61,16 @@ func TestSCIMGroupApplicationProjection(t *testing.T) {
 			var calls atomic.Int32
 			var pause atomic.Bool
 			entered, release := make(chan struct{}), make(chan struct{})
+			// The callbacks record their inputs for the assertions below.
+			var seenMu sync.Mutex
+			var mappings []scim.RoleMapping
+			var lookups []scim.RoleLookup
+			var lastUser scim.ProjectedUser
 			policy := scim.Projection{PolicyID: "team-mapping-v1",
 				Map: func(_ context.Context, _ scim.ProjectionTx, in scim.RoleMapping) ([]string, error) {
+					seenMu.Lock()
+					mappings = append(mappings, in)
+					seenMu.Unlock()
 					if fail.Load() == 1 {
 						return nil, errors.New("fixture mapping error")
 					}
@@ -74,6 +83,9 @@ func TestSCIMGroupApplicationProjection(t *testing.T) {
 					return nil, nil
 				},
 				Exists: func(ctx context.Context, tx scim.ProjectionTx, in scim.RoleLookup) (bool, error) {
+					seenMu.Lock()
+					lookups = append(lookups, in)
+					seenMu.Unlock()
 					if fail.Load() == 2 {
 						return false, errors.New("fixture role catalog error")
 					}
@@ -83,6 +95,9 @@ func TestSCIMGroupApplicationProjection(t *testing.T) {
 				},
 				ReconcileUser: func(ctx context.Context, tx scim.ProjectionTx, user scim.ProjectedUser) error {
 					calls.Add(1)
+					seenMu.Lock()
+					lastUser = user
+					seenMu.Unlock()
 					if pause.CompareAndSwap(true, false) {
 						entered <- struct{}{}
 						select {
@@ -208,8 +223,43 @@ func TestSCIMGroupApplicationProjection(t *testing.T) {
 				t.Fatal("lifecycle-only adoption removed existing grant")
 			}
 
+			seenMu.Lock()
+			mappings, lookups = nil, nil
+			seenMu.Unlock()
 			first, e := base.EnableSCIMProjection(ctx, domain, policy)
 			must(e)
+			// The mapper receives each source's directory, identities and Group;
+			// the catalog is asked once per connection and role.
+			seenMu.Lock()
+			var mappedA *scim.RoleMapping
+			for i := range mappings {
+				if mappings[i].Group.ID == a {
+					mappedA = &mappings[i]
+				}
+			}
+			if mappedA == nil || mappedA.Directory != (scim.Directory{ID: "north", ProvisioningDomainID: domain}) || mappedA.SCIMUserID != n || mappedA.UserID != owner ||
+				mappedA.Group.ExternalID != "directory-readers" || mappedA.Group.DisplayName != "north team" {
+				t.Fatal("the role mapper did not receive the source directory, identities and Group", mappedA)
+			}
+			distinct := map[scim.RoleLookup]int{}
+			for _, l := range lookups {
+				distinct[l]++
+			}
+			if distinct[scim.RoleLookup{Directory: scim.Directory{ID: "north", ProvisioningDomainID: domain}, Role: "reader"}] != 1 || distinct[scim.RoleLookup{Directory: scim.Directory{ID: "south", ProvisioningDomainID: domain}, Role: "reader"}] != 1 {
+				t.Fatal("the role catalog was not asked once per connection and role", lookups)
+			}
+			// The reconciler receives sorted grants with their Groups and the
+			// domain's sources.
+			grants := lastUser.Grants
+			if len(grants) != 2 || !slices.IsSortedFunc(grants, func(x, y scim.ProjectedGrant) int { return strings.Compare(x.GrantKey, y.GrantKey) }) {
+				t.Fatal("the reconciler's grants were not sorted by grant key", grants)
+			}
+			for _, g := range grants {
+				if want := map[string]string{a: "north team", b: "south team"}[g.Group.ID]; want == "" || g.Group.DisplayName != want || g.Group.ExternalID != "directory-readers" {
+					t.Fatal("a reconciled grant did not carry its Group", g.Group)
+				}
+			}
+			seenMu.Unlock()
 			second, e := peer.EnableSCIMProjection(ctx, domain, policy)
 			must(e)
 			if calls.Load() != 1 {
@@ -256,6 +306,17 @@ func TestSCIMGroupApplicationProjection(t *testing.T) {
 			}
 			call(two, "PATCH", "Users/"+n, "north", change("replace", "active", false), 200)
 			expect(1, 0)
+			seenMu.Lock()
+			sources := lastUser.Sources
+			if lastUser.ProvisioningDomainID != domain || lastUser.UserID != owner || len(sources) != 2 || !slices.IsSortedFunc(sources, func(x, y scim.IdentitySource) int { return strings.Compare(x.SCIMUserID, y.SCIMUserID) }) {
+				t.Fatal("the reconciler did not receive the domain's sorted sources", lastUser)
+			}
+			for _, src := range sources {
+				if src.ProvisioningDomainID != domain || (src.SCIMUserID == n) == src.Active || src.SCIMUserID != n && src.SCIMUserID != s {
+					t.Fatal("a deactivated source was not passed inactive beside the active one", sources)
+				}
+			}
+			seenMu.Unlock()
 			call(one, "POST", "Users", "north", usr("n"), 201)
 			expect(1, 1)
 			call(two, "PUT", "Groups/"+a, "north", group("changed", "directory-editors"), 200)
